@@ -85,3 +85,17 @@
 .htReservedKeyword {
   background-color: #ffe3e3 !important;
 }
+
+/* Fix: ensure HOT dropdown/autocomplete editors render above grid cells */
+.handsontable.autocompleteEditor,
+.handsontable .htSelectEditor {
+  position: absolute !important;
+  z-index: 1060 !important; /* above clones and cells; similar to context menu */
+}
+.handsontable.autocompleteEditor { margin-top: 2px; }
+.handsontable.autocompleteEditor { min-height: 64px; }
+.handsontable.autocompleteEditor .wtHolder { max-height: 260px; overflow: auto; }
+.handsontable .htSelectEditor select {
+  position: absolute !important;
+  z-index: 1061 !important;
+}
