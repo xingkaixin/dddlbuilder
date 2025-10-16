@@ -1,73 +1,61 @@
-# React + TypeScript + Vite
+# DDLBuilder —— 多数据库建表语句生成器
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+一个基于 React + TypeScript + Vite 的轻量工具：通过表单与表格输入，实时生成不同数据库（MySQL / PostgreSQL / SQL Server / Oracle）的建表 DDL，并支持一键复制。
 
-Currently, two official plugins are available:
+## 功能特性
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- 支持数据库：MySQL、PostgreSQL、SQL Server、Oracle
+- 实时生成建表语句；支持表注释与列注释
+- 类型智能映射与别名识别（如 varchar/varchar2、json/jsonb、serial/identity 等）
+- 便捷表格编辑（序号自动维护、行增删、是否为空下拉）
+- 一键复制 SQL，白底代码主题，便于文档或评审拷贝
 
-## React Compiler
+## 开发与构建
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+依赖 Node.js 与包管理器（npm/pnpm/yarn/bun 均可）：
 
-## Expanding the ESLint configuration
+```bash
+# 安装依赖
+npm i
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+# 本地开发
+npm run dev
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+# 产物构建
+npm run build
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# 本地预览
+npm run preview
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 使用说明
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+1. 填写表名与表中文名，选择数据库类型。
+2. 在表格中按列填写：字段名、字段中文名、字段类型、是否为空。
+3. 右侧区域将实时生成对应数据库的建表 DDL，可点击“全部复制”。
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+### 字段类型与空值规则
+
+- 类型别名示例：
+  - 文本类：varchar/nvarchar/char/nchar/text/mediumtext/longtext/clob
+  - 数值类：tinyint/smallint/int/bigint/decimal(18,2)/float/double/real/number
+  - 日期时间：date/time/timetz/timestamp/timestamptz/datetime/datetime2
+  - 其它：uuid/json/jsonb/blob/varbinary/raw/xml/serial
+- “是否为空”支持值：是/否、y/yes/true/1/√（其余视为否）。
+
+### 各数据库生成规则要点（摘录）
+
+- MySQL：列注释使用 COMMENT；text/json 等类型直接映射；serial → BIGINT UNSIGNED AUTO_INCREMENT。
+- PostgreSQL：表与列注释使用 COMMENT 语句；json → jsonb；timestamp/time 带/不带时区遵循输入。
+- SQL Server：text/json 使用 NVARCHAR(MAX)；日期时间使用 DATETIME2；注释用扩展属性 sp_addextendedproperty；uuid → UNIQUEIDENTIFIER；自增为 IDENTITY。
+- Oracle：varchar → VARCHAR2，nvarchar → NVARCHAR2；整型映射为 NUMBER(n)；长文本用 CLOB，二进制用 BLOB；自增为 NUMBER GENERATED ALWAYS AS IDENTITY。
+
+## 技术栈
+
+- React 19、TypeScript、Vite 7
+- UI 与交互：Handsontable 表格、Radix UI、Lucide 图标、Tailwind CSS
+- 代码高亮：react-syntax-highlighter（白底主题）
+
+---
+
+本项目旨在快速生成可读、可复制的建表 DDL，适用于评审与落库前的沟通与对齐场景。
