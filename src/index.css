@@ -75,3 +75,13 @@
     @apply min-h-screen bg-background text-foreground antialiased;
   }
 }
+
+/* Duplicate field name highlight */
+.htDuplicateFieldName {
+  background-color: #fff3bf !important; /* yellow-ish */
+}
+
+/* Reserved keyword highlight (use a light red) */
+.htReservedKeyword {
+  background-color: #ffe3e3 !important;
+}
