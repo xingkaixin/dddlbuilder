@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, useRef, useEffect } from 'react'
 import type Handsontable from 'handsontable'
 import { registerAllModules } from 'handsontable/registry'
 import { HotTable } from '@handsontable/react-wrapper'
@@ -726,6 +726,20 @@ function App() {
     [dbType, tableName, tableComment, normalizedFields],
   )
 
+  const hideTimerRef = useRef<number | undefined>(undefined)
+  const [toastMessage, setToastMessage] = useState('')
+  const showToast = useCallback((msg: string) => {
+    if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current)
+    setToastMessage(msg)
+    hideTimerRef.current = window.setTimeout(() => setToastMessage(''), 1600)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current)
+    }
+  }, [])
+
   const handleCopyAll = useCallback(async () => {
     const text = generatedSql || '-- 请在左侧填写表信息'
     try {
@@ -739,8 +753,10 @@ function App() {
       ta.select()
       document.execCommand('copy')
       document.body.removeChild(ta)
+    } finally {
+      showToast('已复制到剪贴板')
     }
-  }, [generatedSql])
+  }, [generatedSql, showToast])
 
   const basePlain = (vs as Record<string, unknown>).plain as
     | Record<string, unknown>
@@ -842,6 +858,11 @@ function App() {
           </SyntaxHighlighter>
         </div>
       </div>
+      {toastMessage && (
+        <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded bg-black/90 px-3 py-2 text-xs text-white shadow-md">
+          {toastMessage}
+        </div>
+      )}
     </div>
   )
 }
