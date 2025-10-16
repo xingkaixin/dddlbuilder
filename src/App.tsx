@@ -46,6 +46,28 @@ const DATABASE_OPTIONS: Array<{ value: DatabaseType; label: string }> = [
 
 const YES_VALUES = new Set(['y', 'yes', 'true', '1', '是', '√'])
 
+// Reserved keywords for each database (lowercase)
+const RESERVED_KEYWORDS: Record<DatabaseType, Set<string>> = {
+  mysql: new Set([
+    'add','all','alter','analyze','and','as','asc','between','by','case','column','constraint','create','cross','database','default','delete','desc','distinct','drop','else','exists','false','from','group','having','if','in','index','inner','insert','into','is','join','key','left','like','limit','not','null','on','or','order','outer','primary','right','select','table','then','true','union','unique','update','values','where'
+  ]),
+  postgresql: new Set([
+    'all','analyze','and','any','array','as','asc','between','case','check','collate','column','constraint','create','cross','current_date','default','delete','desc','distinct','else','exists','false','from','full','group','having','ilike','in','inner','insert','intersect','into','is','join','left','like','limit','not','null','on','or','order','outer','primary','right','select','table','then','true','union','unique','update','using','values','where','with'
+  ]),
+  sqlserver: new Set([
+    'add','all','alter','and','any','as','asc','authorization','backup','begin','between','break','by','case','check','close','column','commit','constraint','create','cross','current','cursor','database','declare','default','delete','desc','distinct','drop','else','end','exec','exists','false','fetch','for','foreign','from','full','function','grant','group','having','in','index','inner','insert','into','is','join','key','left','like','merge','not','null','on','open','or','order','outer','primary','proc','procedure','return','right','rollback','schema','select','set','table','then','top','trigger','true','union','unique','update','values','view','where','while'
+  ]),
+  oracle: new Set([
+    'access','add','all','alter','and','any','as','asc','audit','between','by','case','check','cluster','column','comment','compress','connect','create','current','date','default','delete','desc','distinct','drop','else','exists','false','for','from','grant','group','having','in','index','insert','integer','intersect','into','is','level','like','lock','long','minus','nchar','not','nowait','null','number','of','on','or','order','prior','raw','rename','resource','revoke','row','rowid','rownum','select','session','share','size','smallint','start','synonym','sysdate','table','then','to','trigger','true','uid','union','unique','update','user','validate','values','varchar','varchar2','view','where','with'
+  ]),
+}
+
+const isReservedKeyword = (db: DatabaseType, name: string) => {
+  const lower = toStringSafe(name).trim().toLowerCase()
+  if (!lower) return false
+  return RESERVED_KEYWORDS[db]?.has(lower) ?? false
+}
+
 const toStringSafe = (value: unknown) => {
   if (typeof value === 'string') {
     return value
@@ -672,6 +694,20 @@ function App() {
   const [tableComment, setTableComment] = useState('')
   const [dbType, setDbType] = useState<DatabaseType>('mysql')
   const [rows, setRows] = useState<FieldRow[]>(INITIAL_ROWS)
+  const [addCount, setAddCount] = useState<number>(1)
+  const duplicateNameSet = useMemo(() => {
+    const counts = new Map<string, number>()
+    rows.forEach((r) => {
+      const name = toStringSafe(r.fieldName).trim()
+      if (!name) return
+      counts.set(name, (counts.get(name) ?? 0) + 1)
+    })
+    const dups = new Set<string>()
+    counts.forEach((count, name) => {
+      if (count > 1) dups.add(name)
+    })
+    return dups
+  }, [rows])
 
   const handleRowsChange = useCallback(
     (changes: Handsontable.CellChange[] | null, source: Handsontable.ChangeSource) => {
@@ -718,6 +754,19 @@ function App() {
       return ensureOrder(next)
     })
   }, [])
+
+  const handleAddRows = useCallback(() => {
+    const n = Math.floor(Number(addCount))
+    const amount = Number.isFinite(n) && n > 0 ? n : 1
+    setRows((prev) => {
+      const index = prev.length
+      const next = prev.slice()
+      for (let i = 0; i < amount; i += 1) {
+        next.splice(index + i, 0, createEmptyRow(index + i))
+      }
+      return ensureOrder(next)
+    })
+  }, [addCount])
 
   const normalizedFields = useMemo(() => normalizeFields(rows), [rows])
 
@@ -811,6 +860,20 @@ function App() {
           </div>
         </div>
         <div className="min-h-[420px] flex-1 rounded-lg border bg-card p-2 shadow-sm">
+          <div className="mb-2 flex items-center gap-2">
+            <Button size="sm" onClick={handleAddRows}>添加行</Button>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={1}
+                step={1}
+                value={addCount}
+                onChange={(e) => setAddCount(Math.floor(Number(e.target.value)))}
+                className="w-20"
+              />
+              <span className="text-xs text-muted-foreground">行数</span>
+            </div>
+          </div>
           <HotTable
             data={rows}
             columns={COLUMN_SETTINGS}
@@ -822,6 +885,17 @@ function App() {
             licenseKey="non-commercial-and-evaluation"
             manualColumnResize
             contextMenu
+            cells={(row: number, _col: number, prop?: string | number) => {
+              const cellProps: Handsontable.CellMeta = {}
+              if (prop === 'fieldName') {
+                const name = toStringSafe(rows[row]?.fieldName).trim()
+                const classes: string[] = []
+                if (name && duplicateNameSet.has(name)) classes.push('htDuplicateFieldName')
+                if (name && isReservedKeyword(dbType, name)) classes.push('htReservedKeyword')
+                if (classes.length) cellProps.className = `${cellProps.className ? cellProps.className + ' ' : ''}${classes.join(' ')}`
+              }
+              return cellProps
+            }}
             afterChange={handleRowsChange}
             afterCreateRow={handleCreateRow}
             afterRemoveRow={handleRemoveRow}
