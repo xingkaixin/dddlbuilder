@@ -28,6 +28,9 @@ type FieldRow = {
   fieldType: string
   fieldComment: string
   nullable: string
+  defaultKind?: string
+  defaultValue?: string
+  onUpdate?: string
 }
 
 type NormalizedField = {
@@ -35,6 +38,9 @@ type NormalizedField = {
   type: string
   comment: string
   nullable: boolean
+  defaultKind: 'none' | 'auto_increment' | 'constant' | 'current_timestamp'
+  defaultValue: string
+  onUpdate: 'none' | 'current_timestamp'
 }
 
 const DATABASE_OPTIONS: Array<{ value: DatabaseType; label: string }> = [
@@ -83,7 +89,10 @@ const createEmptyRow = (index: number): FieldRow => ({
   fieldName: '',
   fieldType: '',
   fieldComment: '',
-  nullable: '否',
+  nullable: '是',
+  defaultKind: '无',
+  defaultValue: '',
+  onUpdate: '无',
 })
 
 const ensureOrder = (rows: FieldRow[]) =>
@@ -201,6 +210,113 @@ const ensureLength = (args: string[], fallback: string) => {
     return [fallback]
   }
   return args
+}
+
+// default helpers
+const DEFAULT_KIND_OPTIONS = ['无', '自增', '常量', '当前时间'] as const
+type UiDefaultKind = typeof DEFAULT_KIND_OPTIONS[number]
+const ON_UPDATE_OPTIONS = ['无', '当前时间'] as const
+type UiOnUpdate = typeof ON_UPDATE_OPTIONS[number]
+
+const normalizeDefaultKind = (v: string | undefined): NormalizedField['defaultKind'] => {
+  const s = toStringSafe(v).trim()
+  if (s === '自增') return 'auto_increment'
+  if (s === '常量') return 'constant'
+  if (s === '当前时间') return 'current_timestamp'
+  return 'none'
+}
+
+const normalizeOnUpdate = (v: string | undefined): NormalizedField['onUpdate'] => {
+  const s = toStringSafe(v).trim()
+  if (s === '当前时间') return 'current_timestamp'
+  return 'none'
+}
+
+const getCanonicalBaseType = (rawType: string) => {
+  const parsed = parseFieldType(rawType)
+  return canonicalizeBaseType(parsed.baseType)
+}
+
+const shouldQuoteDefault = (canonical: string) => {
+  const texty = new Set([
+    'char','nchar','varchar','nvarchar','text','mediumtext','longtext','uuid','xml','json','clob','varchar2','nvarchar2'
+  ])
+  const datetimey = new Set(['date','time','timetz','timestamp','timestamptz','datetime','datetime2'])
+  return texty.has(canonical) || datetimey.has(canonical)
+}
+
+const isLikelyFunctionOrKeyword = (value: string) => {
+  const v = value.trim()
+  if (!v) return false
+  if (/[()]/.test(v)) return true
+  return /^[A-Z_][A-Z0-9_]*$/.test(v)
+}
+
+const formatConstantDefault = (canonical: string, value: string) => {
+  const v = value.trim()
+  if (!v) return ''
+  if (isLikelyFunctionOrKeyword(v)) return ` DEFAULT ${v}`
+  if (shouldQuoteDefault(canonical)) return ` DEFAULT '${escapeSingleQuotes(v)}'`
+  return ` DEFAULT ${v}`
+}
+
+// capabilities by db + canonical type
+const isIntegerType = (canonical: string) =>
+  new Set(['tinyint', 'smallint', 'int', 'integer', 'bigint']).has(canonical)
+
+const isNumericType = (canonical: string) =>
+  new Set(['tinyint', 'smallint', 'int', 'integer', 'bigint', 'decimal', 'number', 'numeric', 'real', 'double', 'float']).has(canonical)
+
+// kept for potential future checks; currently not used
+// const isTimestampLike = (canonical: string) =>
+//   new Set(['timestamp', 'timestamptz', 'datetime', 'datetime2']).has(canonical)
+
+const supportsAutoIncrement = (db: DatabaseType, canonical: string) => {
+  switch (db) {
+    case 'mysql':
+      return isIntegerType(canonical)
+    case 'postgresql':
+      return new Set(['smallint', 'int', 'integer', 'bigint']).has(canonical)
+    case 'sqlserver':
+      return new Set(['tinyint', 'smallint', 'int', 'bigint']).has(canonical)
+    case 'oracle':
+      return isNumericType(canonical)
+    default:
+      return false
+  }
+}
+
+const supportsDefaultCurrentTimestamp = (db: DatabaseType, canonical: string) => {
+  switch (db) {
+    case 'mysql':
+      return new Set(['timestamp', 'datetime']).has(canonical)
+    case 'postgresql':
+      return new Set(['timestamp', 'timestamptz']).has(canonical)
+    case 'sqlserver':
+      return new Set(['datetime', 'datetime2']).has(canonical)
+    case 'oracle':
+      return new Set(['timestamp']).has(canonical)
+    default:
+      return false
+  }
+}
+
+const supportsOnUpdateCurrentTimestamp = (db: DatabaseType, canonical: string) => {
+  if (db !== 'mysql') return false
+  return new Set(['timestamp', 'datetime']).has(canonical)
+}
+
+const getUiDefaultKindOptions = (db: DatabaseType, canonical: string): UiDefaultKind[] => {
+  const opts: UiDefaultKind[] = ['无', '常量']
+  if (supportsAutoIncrement(db, canonical)) opts.splice(1, 0, '自增')
+  if (supportsDefaultCurrentTimestamp(db, canonical)) opts.push('当前时间')
+  return opts
+}
+
+const getUiOnUpdateOptions = (db: DatabaseType, canonical: string): UiOnUpdate[] => {
+  const opts: UiOnUpdate[] = ['无']
+  if (supportsOnUpdateCurrentTimestamp(db, canonical)) opts.push('当前时间')
+  return opts
 }
 
 const formatType = (base: string, args: string[] = [], suffix = '') => {
@@ -535,6 +651,9 @@ const normalizeFields = (rows: FieldRow[]): NormalizedField[] =>
       type: toStringSafe(row.fieldType).trim(),
       comment: toStringSafe(row.fieldComment).trim(),
       nullable: normalizeBoolean(toStringSafe(row.nullable)),
+      defaultKind: normalizeDefaultKind(row.defaultKind as UiDefaultKind),
+      defaultValue: toStringSafe(row.defaultValue).trim(),
+      onUpdate: normalizeOnUpdate(row.onUpdate as UiOnUpdate),
     }))
     .filter((field) => field.name && field.type)
 
@@ -545,9 +664,18 @@ const buildMysqlDDL = (
 ) => {
   const columnLines = fields.map((field) => {
     const type = getFieldTypeForDatabase('mysql', field.type)
+    const base = getCanonicalBaseType(field.type)
+    const autoInc = field.defaultKind === 'auto_increment' && supportsAutoIncrement('mysql', base) ? ' AUTO_INCREMENT' : ''
     const nullable = field.nullable ? ' NULL' : ' NOT NULL'
+    let def = ''
+    if (field.defaultKind === 'constant') {
+      def = formatConstantDefault(base, field.defaultValue)
+    } else if (field.defaultKind === 'current_timestamp' && supportsDefaultCurrentTimestamp('mysql', base)) {
+      def = ' DEFAULT CURRENT_TIMESTAMP'
+    }
+    const onUpd = field.onUpdate === 'current_timestamp' && supportsOnUpdateCurrentTimestamp('mysql', base) ? ' ON UPDATE CURRENT_TIMESTAMP' : ''
     const comment = field.comment ? ` COMMENT '${escapeSingleQuotes(field.comment)}'` : ''
-    return `  ${quoteMysql(field.name)} ${type}${nullable}${comment}`
+    return `  ${quoteMysql(field.name)} ${type}${autoInc}${nullable}${def}${onUpd}${comment}`
   })
   const commentClause = tableComment
     ? ` COMMENT='${escapeSingleQuotes(tableComment.trim())}'`
@@ -562,8 +690,16 @@ const buildPostgresDDL = (
 ) => {
   const columnLines = fields.map((field) => {
     const type = getFieldTypeForDatabase('postgresql', field.type)
+    const base = getCanonicalBaseType(field.type)
+    const identity = field.defaultKind === 'auto_increment' && supportsAutoIncrement('postgresql', base) ? ' GENERATED BY DEFAULT AS IDENTITY' : ''
     const nullableClause = field.nullable ? '' : ' NOT NULL'
-    return `  ${quotePostgres(field.name)} ${type}${nullableClause}`
+    let def = ''
+    if (field.defaultKind === 'constant') {
+      def = formatConstantDefault(base, field.defaultValue)
+    } else if (field.defaultKind === 'current_timestamp' && supportsDefaultCurrentTimestamp('postgresql', base)) {
+      def = ' DEFAULT CURRENT_TIMESTAMP'
+    }
+    return `  ${quotePostgres(field.name)} ${type}${identity}${nullableClause}${def}`
   })
   const qualifiedTableName = formatPostgresTableName(tableName)
   const statements: string[] = [
@@ -594,8 +730,16 @@ const buildSqlServerDDL = (
   const table = parsedTable || tableName.trim()
   const columnLines = fields.map((field) => {
     const type = getFieldTypeForDatabase('sqlserver', field.type)
+    const base = getCanonicalBaseType(field.type)
+    const identity = field.defaultKind === 'auto_increment' && supportsAutoIncrement('sqlserver', base) ? ' IDENTITY(1,1)' : ''
     const nullableClause = field.nullable ? ' NULL' : ' NOT NULL'
-    return `  ${quoteSqlServer(field.name)} ${type}${nullableClause}`
+    let def = ''
+    if (field.defaultKind === 'constant') {
+      def = formatConstantDefault(base, field.defaultValue)
+    } else if (field.defaultKind === 'current_timestamp' && supportsDefaultCurrentTimestamp('sqlserver', base)) {
+      def = ' DEFAULT GETDATE()'
+    }
+    return `  ${quoteSqlServer(field.name)} ${type}${identity}${nullableClause}${def}`
   })
   const qualified = schema ? `${schema}.${table}` : table
   const statements: string[] = [
@@ -629,8 +773,16 @@ const buildOracleDDL = (
 ) => {
   const columnLines = fields.map((field) => {
     const type = getFieldTypeForDatabase('oracle', field.type)
+    const base = getCanonicalBaseType(field.type)
+    const identity = field.defaultKind === 'auto_increment' && supportsAutoIncrement('oracle', base) ? ' GENERATED BY DEFAULT AS IDENTITY' : ''
     const nullableClause = field.nullable ? '' : ' NOT NULL'
-    return `  ${quotePostgres(field.name)} ${type}${nullableClause}`
+    let def = ''
+    if (field.defaultKind === 'constant') {
+      def = formatConstantDefault(base, field.defaultValue)
+    } else if (field.defaultKind === 'current_timestamp' && supportsDefaultCurrentTimestamp('oracle', base)) {
+      def = ' DEFAULT SYSTIMESTAMP'
+    }
+    return `  ${quotePostgres(field.name)} ${type}${identity}${nullableClause}${def}`
   })
   const qualifiedTableName = formatPostgresTableName(tableName)
   const statements: string[] = [
@@ -677,17 +829,43 @@ const buildDDL = (
   }
 }
 
-const COLUMN_HEADERS = ['序号', '字段名', '字段中文名', '字段类型', '是否为空']
+const COLUMN_HEADERS = ['序号', '字段名', '字段中文名', '字段类型', '是否为空', '默认类型', '默认值', '更新策略']
 
 const COLUMN_SETTINGS: Handsontable.ColumnSettings[] = [
-  { data: 'order', readOnly: true, width: 70, className: 'htCenter' },
+  { data: 'order', readOnly: true, width: 48, className: 'htCenter' },
   { data: 'fieldName', type: 'text' },
   { data: 'fieldComment', type: 'text' },
   { data: 'fieldType', type: 'text' },
-  { data: 'nullable', type: 'dropdown', source: ['是', '否'], allowInvalid: false },
+  { data: 'nullable', type: 'checkbox', className: 'htCenter', checkedTemplate: '是', uncheckedTemplate: '否' },
+  { data: 'defaultKind', type: 'dropdown', source: DEFAULT_KIND_OPTIONS as unknown as string[], allowInvalid: false },
+  { data: 'defaultValue', type: 'text' },
+  { data: 'onUpdate', type: 'dropdown', source: ON_UPDATE_OPTIONS as unknown as string[], allowInvalid: false },
 ]
 
 const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) => createEmptyRow(index))
+
+// Persist to localStorage
+const STORAGE_KEY = 'ddlbuilder:state:v1'
+type PersistedState = {
+  tableName: string
+  tableComment: string
+  dbType: DatabaseType
+  rows: FieldRow[]
+  addCount: number
+}
+const sanitizeRowsForPersist = (rows: FieldRow[]) =>
+  ensureOrder(
+    rows.map((r, i) => ({
+      order: i + 1,
+      fieldName: toStringSafe(r.fieldName),
+      fieldType: toStringSafe(r.fieldType),
+      fieldComment: toStringSafe(r.fieldComment),
+      nullable: r?.nullable === '是' ? '是' : '否',
+      defaultKind: DEFAULT_KIND_OPTIONS.includes((r?.defaultKind as UiDefaultKind) ?? '无') ? (r?.defaultKind as UiDefaultKind) : '无',
+      defaultValue: toStringSafe(r.defaultValue),
+      onUpdate: ON_UPDATE_OPTIONS.includes((r?.onUpdate as UiOnUpdate) ?? '无') ? (r?.onUpdate as UiOnUpdate) : '无',
+    })),
+  )
 
 function App() {
   const [tableName, setTableName] = useState('')
@@ -695,6 +873,52 @@ function App() {
   const [dbType, setDbType] = useState<DatabaseType>('mysql')
   const [rows, setRows] = useState<FieldRow[]>(INITIAL_ROWS)
   const [addCount, setAddCount] = useState<number>(1)
+  const [hydrated, setHydrated] = useState(false)
+
+  // restore from localStorage once on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<PersistedState>
+        if (typeof parsed.tableName === 'string') setTableName(parsed.tableName)
+        if (typeof parsed.tableComment === 'string') setTableComment(parsed.tableComment)
+        if (
+          parsed.dbType === 'mysql' ||
+          parsed.dbType === 'postgresql' ||
+          parsed.dbType === 'sqlserver' ||
+          parsed.dbType === 'oracle'
+        ) {
+          setDbType(parsed.dbType)
+        }
+        if (Array.isArray(parsed.rows)) setRows(sanitizeRowsForPersist(parsed.rows as FieldRow[]))
+        if (typeof parsed.addCount === 'number' && Number.isFinite(parsed.addCount)) {
+          setAddCount(Math.max(1, Math.floor(parsed.addCount)))
+        }
+      }
+    } catch {
+      // ignore corrupted localStorage
+    } finally {
+      setHydrated(true)
+    }
+  }, [])
+
+  // save to localStorage on changes
+  useEffect(() => {
+    if (!hydrated) return
+    try {
+      const payload: PersistedState = {
+        tableName,
+        tableComment,
+        dbType,
+        rows: sanitizeRowsForPersist(rows),
+        addCount,
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+    } catch {
+      // ignore quota errors
+    }
+  }, [hydrated, tableName, tableComment, dbType, rows, addCount])
   const duplicateNameSet = useMemo(() => {
     const counts = new Map<string, number>()
     rows.forEach((r) => {
@@ -726,6 +950,15 @@ function App() {
           next[rowIndex] = {
             ...next[rowIndex],
             [prop]: value == null ? '' : String(value),
+          }
+          if (prop === 'defaultKind') {
+            const kind = String(value ?? '')
+            if (kind !== '常量') {
+              next[rowIndex].defaultValue = ''
+            }
+            if (kind === '自增') {
+              next[rowIndex].nullable = '否'
+            }
           }
         })
         return ensureOrder(next)
@@ -884,6 +1117,7 @@ function App() {
             height="auto"
             licenseKey="non-commercial-and-evaluation"
             manualColumnResize
+            visibleRows={6}
             contextMenu
             cells={(row: number, _col: number, prop?: string | number) => {
               const cellProps: Handsontable.CellMeta = {}
@@ -893,6 +1127,42 @@ function App() {
                 if (name && duplicateNameSet.has(name)) classes.push('htDuplicateFieldName')
                 if (name && isReservedKeyword(dbType, name)) classes.push('htReservedKeyword')
                 if (classes.length) cellProps.className = `${cellProps.className ? cellProps.className + ' ' : ''}${classes.join(' ')}`
+              }
+              if (prop === 'defaultValue') {
+                const kind = normalizeDefaultKind(rows[row]?.defaultKind as UiDefaultKind)
+                if (kind !== 'constant') {
+                  cellProps.readOnly = true
+                  cellProps.type = 'text'
+                  cellProps.className = `${cellProps.className ? cellProps.className + ' ' : ''}htDimmed`
+                }
+              }
+              if (prop === 'defaultKind' || prop === 'onUpdate') {
+                const base = getCanonicalBaseType(toStringSafe(rows[row]?.fieldType))
+                const dd = cellProps as Handsontable.CellMeta & { source?: string[] }
+                if (prop === 'defaultKind') {
+                  const opts = getUiDefaultKindOptions(dbType, base)
+                  dd.source = opts
+                  dd.type = 'autocomplete'
+                  ;(dd as Handsontable.CellMeta & { strict?: boolean }).strict = true
+                  ;(dd as Handsontable.CellMeta & { filter?: boolean }).filter = false
+                  dd.allowInvalid = false
+                  dd.readOnly = false
+                } else if (prop === 'onUpdate') {
+                  const opts = getUiOnUpdateOptions(dbType, base)
+                  if (opts.length <= 1) {
+                    dd.type = 'text'
+                    dd.readOnly = true
+                    dd.allowInvalid = false
+                    dd.source = undefined
+                  } else {
+                    dd.source = opts
+                    dd.type = 'autocomplete'
+                    ;(dd as Handsontable.CellMeta & { strict?: boolean }).strict = true
+                    ;(dd as Handsontable.CellMeta & { filter?: boolean }).filter = false
+                    dd.allowInvalid = false
+                    dd.readOnly = false
+                  }
+                }
               }
               return cellProps
             }}
