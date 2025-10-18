@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { FieldRow, DatabaseType } from '@/App'
+import type { FieldRow } from '@/App'
 import {
   normalizeFields,
   normalizeBoolean,

@@ -1,4 +1,5 @@
 import { vi } from 'vitest'
+import type { MockHotTableInstance, MockCellChange } from '@/__tests__/types/test-types'
 
 // Mock Handsontable
 export const mockHotTable = vi.fn().mockImplementation(({ children, ...props }) => {
@@ -11,10 +12,8 @@ export const mockHotTable = vi.fn().mockImplementation(({ children, ...props }) 
 // Mock Handsontable utilities
 export const mockRegisterAllModules = vi.fn()
 
-// Mock Handsontable types
-export type MockCellChange = [number, string | number, any, any]
-
-export const mockHotTableInstance = {
+// Mock Handsontable instance
+export const mockHotTableInstance: MockHotTableInstance = {
   getCellMeta: vi.fn(),
   setCellMeta: vi.fn(),
   getData: vi.fn(),

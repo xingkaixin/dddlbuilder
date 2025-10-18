@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import {
   buildMysqlDDL,
   buildPostgresDDL,
@@ -47,21 +47,6 @@ describe('DDL Generation Functions', () => {
       defaultKind: 'constant',
       defaultValue: '0.00',
       onUpdate: 'none',
-    },
-  ]
-
-  const sampleIndexes: IndexDefinition[] = [
-    {
-      id: '1',
-      name: 'idx_users_id',
-      fields: [{ name: 'id', direction: 'ASC' }],
-      unique: false,
-    },
-    {
-      id: '2',
-      name: 'uk_users_name',
-      fields: [{ name: 'name', direction: 'ASC' }],
-      unique: true,
     },
   ]
 

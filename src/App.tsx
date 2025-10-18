@@ -1346,28 +1346,36 @@ const buildDCL = (
     case "oracle":
       authorizationObjects.forEach((authObj) => {
         if (authObj.trim()) {
-          statements.push(`GRANT SELECT ON ${cleanTableName} TO ${authObj.trim()};`);
+          statements.push(
+            `GRANT SELECT ON ${cleanTableName} TO ${authObj.trim()};`
+          );
         }
       });
       break;
     case "mysql":
       authorizationObjects.forEach((authObj) => {
         if (authObj.trim()) {
-          statements.push(`GRANT SELECT ON ${cleanTableName} TO '${authObj.trim()}'@'%';`);
+          statements.push(
+            `GRANT SELECT ON ${cleanTableName} TO '${authObj.trim()}'@'%';`
+          );
         }
       });
       break;
     case "postgresql":
       authorizationObjects.forEach((authObj) => {
         if (authObj.trim()) {
-          statements.push(`GRANT SELECT ON ${cleanTableName} TO ${authObj.trim()};`);
+          statements.push(
+            `GRANT SELECT ON ${cleanTableName} TO ${authObj.trim()};`
+          );
         }
       });
       break;
     case "sqlserver":
       authorizationObjects.forEach((authObj) => {
         if (authObj.trim()) {
-          statements.push(`GRANT SELECT ON ${cleanTableName} TO ${authObj.trim()};`);
+          statements.push(
+            `GRANT SELECT ON ${cleanTableName} TO ${authObj.trim()};`
+          );
         }
       });
       break;
@@ -1750,12 +1758,15 @@ function App() {
   }, []);
 
   // Authorization objects management functions
-  const addAuthObject = useCallback((authObj: string) => {
-    if (authObj.trim() && !authObjects.includes(authObj.trim())) {
-      setAuthObjects((prev) => [...prev, authObj.trim()]);
-      setAuthInput("");
-    }
-  }, [authObjects]);
+  const addAuthObject = useCallback(
+    (authObj: string) => {
+      if (authObj.trim() && !authObjects.includes(authObj.trim())) {
+        setAuthObjects((prev) => [...prev, authObj.trim()]);
+        setAuthInput("");
+      }
+    },
+    [authObjects]
+  );
 
   const removeAuthObject = useCallback((index: number) => {
     setAuthObjects((prev) => prev.filter((_, i) => i !== index));
@@ -1763,11 +1774,11 @@ function App() {
 
   // Toggle functions for collapse
   const toggleIndexCollapse = useCallback(() => {
-    setIsIndexCollapsed(prev => !prev);
+    setIsIndexCollapsed((prev) => !prev);
   }, []);
 
   const toggleAuthCollapse = useCallback(() => {
-    setIsAuthCollapsed(prev => !prev);
+    setIsAuthCollapsed((prev) => !prev);
   }, []);
 
   const generatedSql = useMemo(
@@ -1932,172 +1943,189 @@ function App() {
             className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors"
             onClick={toggleIndexCollapse}
           >
-            <Label className="text-base font-medium cursor-pointer">索引配置</Label>
-            <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isIndexCollapsed ? 'rotate-180' : ''}`} />
+            <Label className="text-base font-medium cursor-pointer">
+              索引配置
+            </Label>
+            <ChevronDown
+              className={`h-4 w-4 transition-transform duration-200 ${
+                isIndexCollapsed ? "rotate-180" : ""
+              }`}
+            />
           </div>
 
           {!isIndexCollapsed && (
             <div className="px-4 pb-4">
               <div className="space-y-3">
-            {/* Field Input */}
-            <div className="relative">
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    placeholder="输入字段名进行匹配..."
-                    value={indexInput}
-                    onChange={(e) => {
-                      setIndexInput(e.target.value);
-                      setShowFieldSuggestions(e.target.value.trim().length > 0);
-                      setSelectedSuggestionIndex(0);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && fieldSuggestions.length > 0) {
-                        e.preventDefault();
-                        addFieldToIndex(
-                          fieldSuggestions[selectedSuggestionIndex]
-                        );
-                      } else if (e.key === "ArrowDown") {
-                        e.preventDefault();
-                        setSelectedSuggestionIndex((prev) =>
-                          prev < fieldSuggestions.length - 1 ? prev + 1 : prev
-                        );
-                      } else if (e.key === "ArrowUp") {
-                        e.preventDefault();
-                        setSelectedSuggestionIndex((prev) =>
-                          prev > 0 ? prev - 1 : 0
-                        );
-                      } else if (e.key === "Escape") {
-                        setShowFieldSuggestions(false);
-                      } else if (
-                        e.key === "Backspace" &&
-                        indexInput === "" &&
-                        currentIndexFields.length > 0
-                      ) {
-                        e.preventDefault();
-                        removeFieldFromIndex(currentIndexFields.length - 1);
-                      }
-                    }}
-                    className="pr-20"
-                  />
-                  {currentIndexFields.length > 0 && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-6 px-2 text-xs"
-                        onClick={() => addIndex(false)}
-                      >
-                        添加索引
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-6 px-2 text-xs"
-                        onClick={() => addIndex(true)}
-                      >
-                        添加唯一索引
-                      </Button>
+                {/* Field Input */}
+                <div className="relative">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        placeholder="输入字段名进行匹配..."
+                        value={indexInput}
+                        onChange={(e) => {
+                          setIndexInput(e.target.value);
+                          setShowFieldSuggestions(
+                            e.target.value.trim().length > 0
+                          );
+                          setSelectedSuggestionIndex(0);
+                        }}
+                        onKeyDown={(e) => {
+                          if (
+                            e.key === "Enter" &&
+                            fieldSuggestions.length > 0
+                          ) {
+                            e.preventDefault();
+                            addFieldToIndex(
+                              fieldSuggestions[selectedSuggestionIndex]
+                            );
+                          } else if (e.key === "ArrowDown") {
+                            e.preventDefault();
+                            setSelectedSuggestionIndex((prev) =>
+                              prev < fieldSuggestions.length - 1
+                                ? prev + 1
+                                : prev
+                            );
+                          } else if (e.key === "ArrowUp") {
+                            e.preventDefault();
+                            setSelectedSuggestionIndex((prev) =>
+                              prev > 0 ? prev - 1 : 0
+                            );
+                          } else if (e.key === "Escape") {
+                            setShowFieldSuggestions(false);
+                          } else if (
+                            e.key === "Backspace" &&
+                            indexInput === "" &&
+                            currentIndexFields.length > 0
+                          ) {
+                            e.preventDefault();
+                            removeFieldFromIndex(currentIndexFields.length - 1);
+                          }
+                        }}
+                        className="pr-20"
+                      />
+                      {currentIndexFields.length > 0 && (
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-xs"
+                            onClick={() => addIndex(false)}
+                          >
+                            添加索引
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-xs"
+                            onClick={() => addIndex(true)}
+                          >
+                            添加唯一索引
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Field Suggestions Dropdown */}
+                  {showFieldSuggestions && fieldSuggestions.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-lg">
+                      <div className="max-h-32 overflow-auto p-1">
+                        {fieldSuggestions.map((field, index) => (
+                          <div
+                            key={field}
+                            className={`flex cursor-pointer items-center rounded-sm px-3 py-2 text-sm hover:bg-accent ${
+                              index === selectedSuggestionIndex
+                                ? "bg-accent"
+                                : ""
+                            }`}
+                            onClick={() => addFieldToIndex(field)}
+                            onMouseEnter={() =>
+                              setSelectedSuggestionIndex(index)
+                            }
+                          >
+                            {field}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
-              </div>
 
-              {/* Field Suggestions Dropdown */}
-              {showFieldSuggestions && fieldSuggestions.length > 0 && (
-                <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-lg">
-                  <div className="max-h-32 overflow-auto p-1">
-                    {fieldSuggestions.map((field, index) => (
+                {/* Selected Fields as Labels */}
+                {currentIndexFields.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {currentIndexFields.map((field, index) => (
                       <div
-                        key={field}
-                        className={`flex cursor-pointer items-center rounded-sm px-3 py-2 text-sm hover:bg-accent ${
-                          index === selectedSuggestionIndex ? "bg-accent" : ""
-                        }`}
-                        onClick={() => addFieldToIndex(field)}
-                        onMouseEnter={() => setSelectedSuggestionIndex(index)}
+                        key={index}
+                        className="group flex items-center gap-1 rounded-full border bg-muted px-2 py-1 text-sm"
+                        onClick={() => toggleFieldDirection(index)}
                       >
-                        {field}
+                        <span className="cursor-pointer">{field.name}</span>
+                        {field.direction === "ASC" ? (
+                          <ChevronUp className="h-3 w-3 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeFieldFromIndex(index);
+                          }}
+                          className="ml-1 rounded-full p-0.5 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
-            </div>
+                )}
 
-            {/* Selected Fields as Labels */}
-            {currentIndexFields.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
-                {currentIndexFields.map((field, index) => (
-                  <div
-                    key={index}
-                    className="group flex items-center gap-1 rounded-full border bg-muted px-2 py-1 text-sm"
-                    onClick={() => toggleFieldDirection(index)}
-                  >
-                    <span className="cursor-pointer">{field.name}</span>
-                    {field.direction === "ASC" ? (
-                      <ChevronUp className="h-3 w-3 text-muted-foreground" />
-                    ) : (
-                      <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                    )}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeFieldFromIndex(index);
-                      }}
-                      className="ml-1 rounded-full p-0.5 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Added Indexes */}
-            {indexes.length > 0 && (
-              <div className="space-y-2">
-                <div className="text-sm font-medium">已添加的索引</div>
-                <div className="space-y-1">
-                  {indexes.map((index) => (
-                    <div
-                      key={index.id}
-                      className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-2"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">
-                          {index.name}
-                        </span>
-                        {index.unique && (
-                          <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-800">
-                            唯一
-                          </span>
-                        )}
-                        <span className="text-xs text-muted-foreground">
-                          (
-                          {index.fields
-                            .map(
-                              (f) =>
-                                `${f.name}${
-                                  f.direction === "DESC" ? " DESC" : ""
-                                }`
-                            )
-                            .join(", ")}
-                          )
-                        </span>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 w-6 p-0"
-                        onClick={() => removeIndex(index.id)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
+                {/* Added Indexes */}
+                {indexes.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">已添加的索引</div>
+                    <div className="space-y-1">
+                      {indexes.map((index) => (
+                        <div
+                          key={index.id}
+                          className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-2"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">
+                              {index.name}
+                            </span>
+                            {index.unique && (
+                              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-800">
+                                唯一
+                              </span>
+                            )}
+                            <span className="text-xs text-muted-foreground">
+                              (
+                              {index.fields
+                                .map(
+                                  (f) =>
+                                    `${f.name}${
+                                      f.direction === "DESC" ? " DESC" : ""
+                                    }`
+                                )
+                                .join(", ")}
+                              )
+                            </span>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0"
+                            onClick={() => removeIndex(index.id)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -2109,82 +2137,88 @@ function App() {
             className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors"
             onClick={toggleAuthCollapse}
           >
-            <Label className="text-base font-medium cursor-pointer">授权对象配置</Label>
-            <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isAuthCollapsed ? 'rotate-180' : ''}`} />
+            <Label className="text-base font-medium cursor-pointer">
+              授权对象配置
+            </Label>
+            <ChevronDown
+              className={`h-4 w-4 transition-transform duration-200 ${
+                isAuthCollapsed ? "rotate-180" : ""
+              }`}
+            />
           </div>
 
           {!isAuthCollapsed && (
             <div className="px-4 pb-4">
               <div className="space-y-3">
-            {/* Authorization Object Input */}
-            <div className="relative">
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    placeholder="输入授权对象名称..."
-                    value={authInput}
-                    onChange={(e) => {
-                      setAuthInput(e.target.value);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && authInput.trim()) {
-                        e.preventDefault();
-                        addAuthObject(authInput.trim());
-                      } else if (
-                        e.key === "Backspace" &&
-                        authInput === "" &&
-                        authObjects.length > 0
-                      ) {
-                        e.preventDefault();
-                        removeAuthObject(authObjects.length - 1);
-                      }
-                    }}
-                    className="pr-20"
-                  />
-                  {authInput.trim() && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-6 px-2 text-xs"
-                        onClick={() => addAuthObject(authInput.trim())}
-                      >
-                        添加
-                      </Button>
+                {/* Authorization Object Input */}
+                <div className="relative">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        placeholder="输入授权对象名称..."
+                        value={authInput}
+                        onChange={(e) => {
+                          setAuthInput(e.target.value);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && authInput.trim()) {
+                            e.preventDefault();
+                            addAuthObject(authInput.trim());
+                          } else if (
+                            e.key === "Backspace" &&
+                            authInput === "" &&
+                            authObjects.length > 0
+                          ) {
+                            e.preventDefault();
+                            removeAuthObject(authObjects.length - 1);
+                          }
+                        }}
+                        className="pr-20"
+                      />
+                      {authInput.trim() && (
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-xs"
+                            onClick={() => addAuthObject(authInput.trim())}
+                          >
+                            添加
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Added Authorization Objects */}
-            {authObjects.length > 0 && (
-              <div className="space-y-2">
-                <div className="text-sm font-medium">已添加的授权对象</div>
-                <div className="space-y-1">
-                  {authObjects.map((authObj, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-2"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">
-                          {authObj}
-                        </span>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 w-6 p-0"
-                        onClick={() => removeAuthObject(index)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
+                {/* Added Authorization Objects */}
+                {authObjects.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">已添加的授权对象</div>
+                    <div className="space-y-1">
+                      {authObjects.map((authObj, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-2"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">
+                              {authObj}
+                            </span>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0"
+                            onClick={() => removeAuthObject(index)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -2380,8 +2414,6 @@ function App() {
   );
 }
 
-// Export utility functions for testing
-/* eslint-disable react-refresh/only-export-components */
 export {
   buildMysqlDDL,
   buildPostgresDDL,
@@ -2420,6 +2452,5 @@ export {
   type IndexField,
   type IndexDefinition,
 };
-/* eslint-enable react-refresh/only-export-components */
 
 export default App;
