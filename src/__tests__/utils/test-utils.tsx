@@ -1,6 +1,7 @@
 import { render, RenderOptions } from '@testing-library/react'
-import { ReactElement } from 'react'
+import type { ReactElement } from 'react'
 import { vi } from 'vitest'
+import type { MockEvent, MockFile, MockClipboard, MockLocalStorage, MockEventHandler, MockKeyboardEventHandler } from '@/__tests__/types/test-types'
 
 // Custom render function with providers if needed
 const customRender = (
@@ -22,14 +23,14 @@ export { customRender as render }
 export const waitForAnimationFrame = () =>
   new Promise(resolve => setTimeout(resolve, 0))
 
-export const createMockEvent = (overrides = {}) => ({
+export const createMockEvent = (overrides = {}): MockEvent => ({
   target: { value: '' },
   preventDefault: vi.fn(),
   stopPropagation: vi.fn(),
   ...overrides,
 })
 
-export const mockLocalStorage = {
+export const mockLocalStorage: MockLocalStorage = {
   getItem: vi.fn(),
   setItem: vi.fn(),
   removeItem: vi.fn(),
@@ -39,7 +40,7 @@ export const mockLocalStorage = {
 }
 
 // Helper to mock clipboard API
-export const mockClipboard = {
+export const mockClipboard: MockClipboard = {
   writeText: vi.fn().mockResolvedValue(undefined),
   readText: vi.fn().mockResolvedValue(''),
 }
