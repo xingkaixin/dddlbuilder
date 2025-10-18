@@ -1,8 +1,12 @@
 {
-  "outputStyle": "default",
   "permissions": {
     "allow": [
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(bun add:*)",
+      "Bash(bun run test:coverage)",
+      "Bash(bun run test:*)",
+      "Bash(bun test)"
     ]
-  }
+  },
+  "outputStyle": "default"
 }
