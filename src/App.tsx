@@ -2380,4 +2380,46 @@ function App() {
   );
 }
 
+// Export utility functions for testing
+/* eslint-disable react-refresh/only-export-components */
+export {
+  buildMysqlDDL,
+  buildPostgresDDL,
+  buildSqlServerDDL,
+  buildOracleDDL,
+  buildOracleSynonyms,
+  buildDCL,
+  buildDDL,
+  parseFieldType,
+  canonicalizeBaseType,
+  getFieldTypeForDatabase,
+  normalizeFields,
+  normalizeBoolean,
+  normalizeDefaultKind,
+  normalizeOnUpdate,
+  supportsAutoIncrement,
+  supportsDefaultCurrentTimestamp,
+  supportsOnUpdateCurrentTimestamp,
+  isReservedKeyword,
+  toStringSafe,
+  escapeSingleQuotes,
+  formatConstantDefault,
+  shouldQuoteDefault,
+  isLikelyFunctionOrKeyword,
+  getCanonicalBaseType,
+  splitQualifiedName,
+  getSchemaAndTable,
+  formatMysqlTableName,
+  formatPostgresTableName,
+  TYPE_ALIASES,
+  YES_VALUES,
+  RESERVED_KEYWORDS,
+  type DatabaseType,
+  type FieldRow,
+  type NormalizedField,
+  type IndexField,
+  type IndexDefinition,
+};
+/* eslint-enable react-refresh/only-export-components */
+
 export default App;
