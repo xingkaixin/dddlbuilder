@@ -1204,7 +1204,8 @@ const buildSqlServerDDL = (
 const buildOracleDDL = (
   tableName: string,
   tableComment: string,
-  fields: NormalizedField[]
+  fields: NormalizedField[],
+  includeSynonyms: boolean = true
 ) => {
   const columnLines = fields.map((field) => {
     const type = getFieldTypeForDatabase("oracle", field.type);
@@ -1248,6 +1249,15 @@ const buildOracleDDL = (
         )} IS '${escapeSingleQuotes(field.comment)}';`
       );
     });
+
+  // Add synonym generation
+  if (includeSynonyms) {
+    const synonymStatement = buildOracleSynonyms(qualifiedTableName);
+    if (synonymStatement) {
+      statements.push(synonymStatement);
+    }
+  }
+
   return statements.join("\n");
 };
 
@@ -1313,6 +1323,61 @@ const buildDDL = (
     : tableDDL;
 };
 
+const buildOracleSynonyms = (tableName: string) => {
+  const cleanTableName = tableName.trim();
+  if (!cleanTableName) return "";
+
+  return `CREATE OR REPLACE PUBLIC SYNONYM ${cleanTableName} FOR ${cleanTableName};`;
+};
+
+const buildDCL = (
+  dbType: DatabaseType,
+  tableName: string,
+  authorizationObjects: string[]
+) => {
+  if (!tableName.trim() || authorizationObjects.length === 0) {
+    return "";
+  }
+
+  const cleanTableName = tableName.trim();
+  const statements: string[] = [];
+
+  switch (dbType) {
+    case "oracle":
+      authorizationObjects.forEach((authObj) => {
+        if (authObj.trim()) {
+          statements.push(`GRANT SELECT ON ${cleanTableName} TO ${authObj.trim()};`);
+        }
+      });
+      break;
+    case "mysql":
+      authorizationObjects.forEach((authObj) => {
+        if (authObj.trim()) {
+          statements.push(`GRANT SELECT ON ${cleanTableName} TO '${authObj.trim()}'@'%';`);
+        }
+      });
+      break;
+    case "postgresql":
+      authorizationObjects.forEach((authObj) => {
+        if (authObj.trim()) {
+          statements.push(`GRANT SELECT ON ${cleanTableName} TO ${authObj.trim()};`);
+        }
+      });
+      break;
+    case "sqlserver":
+      authorizationObjects.forEach((authObj) => {
+        if (authObj.trim()) {
+          statements.push(`GRANT SELECT ON ${cleanTableName} TO ${authObj.trim()};`);
+        }
+      });
+      break;
+    default:
+      return "";
+  }
+
+  return statements.join("\n");
+};
+
 const COLUMN_HEADERS = [
   "序号",
   "字段名",
@@ -1366,6 +1431,8 @@ type PersistedState = {
   indexInput: string;
   currentIndexFields: IndexField[];
   indexes: IndexDefinition[];
+  authInput: string;
+  authObjects: string[];
 };
 const sanitizeRowsForPersist = (rows: FieldRow[]) =>
   ensureOrder(
@@ -1422,6 +1489,14 @@ function App() {
   const [showFieldSuggestions, setShowFieldSuggestions] = useState(false);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
 
+  // Authorization objects states
+  const [authInput, setAuthInput] = useState("");
+  const [authObjects, setAuthObjects] = useState<string[]>([]);
+
+  // Collapse states
+  const [isIndexCollapsed, setIsIndexCollapsed] = useState(false);
+  const [isAuthCollapsed, setIsAuthCollapsed] = useState(false);
+
   // restore from localStorage once on mount
   useEffect(() => {
     try {
@@ -1465,6 +1540,15 @@ function App() {
           );
           setIndexes(validIndexes);
         }
+        if (typeof parsed.authInput === "string")
+          setAuthInput(parsed.authInput);
+        if (Array.isArray(parsed.authObjects)) {
+          const validAuthObjects = parsed.authObjects
+            .filter((obj): obj is string => typeof obj === "string")
+            .map((obj) => obj.trim())
+            .filter((obj) => obj.length > 0);
+          setAuthObjects(validAuthObjects);
+        }
       }
     } catch {
       // ignore corrupted localStorage
@@ -1486,6 +1570,8 @@ function App() {
         indexInput,
         currentIndexFields,
         indexes: sanitizeIndexesForPersist(indexes),
+        authInput,
+        authObjects,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch {
@@ -1501,6 +1587,8 @@ function App() {
     indexInput,
     currentIndexFields,
     indexes,
+    authInput,
+    authObjects,
   ]);
   const duplicateNameSet = useMemo(() => {
     const counts = new Map<string, number>();
@@ -1661,9 +1749,35 @@ function App() {
     setIndexes((prev) => prev.filter((index) => index.id !== id));
   }, []);
 
+  // Authorization objects management functions
+  const addAuthObject = useCallback((authObj: string) => {
+    if (authObj.trim() && !authObjects.includes(authObj.trim())) {
+      setAuthObjects((prev) => [...prev, authObj.trim()]);
+      setAuthInput("");
+    }
+  }, [authObjects]);
+
+  const removeAuthObject = useCallback((index: number) => {
+    setAuthObjects((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  // Toggle functions for collapse
+  const toggleIndexCollapse = useCallback(() => {
+    setIsIndexCollapsed(prev => !prev);
+  }, []);
+
+  const toggleAuthCollapse = useCallback(() => {
+    setIsAuthCollapsed(prev => !prev);
+  }, []);
+
   const generatedSql = useMemo(
     () => buildDDL(dbType, tableName, tableComment, normalizedFields, indexes),
     [dbType, tableName, tableComment, normalizedFields, indexes]
+  );
+
+  const generatedDcl = useMemo(
+    () => buildDCL(dbType, tableName, authObjects),
+    [dbType, tableName, authObjects]
   );
 
   const hideTimerRef = useRef<number | undefined>(undefined);
@@ -1694,9 +1808,27 @@ function App() {
       document.execCommand("copy");
       document.body.removeChild(ta);
     } finally {
-      showToast("已复制到剪贴板");
+      showToast("DDL已复制到剪贴板");
     }
   }, [generatedSql, showToast]);
+
+  const handleCopyDcl = useCallback(async () => {
+    const text = generatedDcl || "-- 请在下方配置授权对象";
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    } finally {
+      showToast("DCL已复制到剪贴板");
+    }
+  }, [generatedDcl, showToast]);
 
   const basePlain = (vs as Record<string, unknown>).plain as
     | Record<string, unknown>
@@ -1795,9 +1927,18 @@ function App() {
         </div>
 
         {/* Index Configuration Area */}
-        <div className="rounded-lg border bg-card p-4 shadow-sm">
-          <Label className="text-base font-medium">索引配置</Label>
-          <div className="mt-3 space-y-3">
+        <div className="rounded-lg border bg-card shadow-sm">
+          <div
+            className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+            onClick={toggleIndexCollapse}
+          >
+            <Label className="text-base font-medium cursor-pointer">索引配置</Label>
+            <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isIndexCollapsed ? 'rotate-180' : ''}`} />
+          </div>
+
+          {!isIndexCollapsed && (
+            <div className="px-4 pb-4">
+              <div className="space-y-3">
             {/* Field Input */}
             <div className="relative">
               <div className="flex gap-2">
@@ -1957,7 +2098,96 @@ function App() {
                 </div>
               </div>
             )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Authorization Objects Configuration Area */}
+        <div className="rounded-lg border bg-card shadow-sm">
+          <div
+            className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+            onClick={toggleAuthCollapse}
+          >
+            <Label className="text-base font-medium cursor-pointer">授权对象配置</Label>
+            <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isAuthCollapsed ? 'rotate-180' : ''}`} />
           </div>
+
+          {!isAuthCollapsed && (
+            <div className="px-4 pb-4">
+              <div className="space-y-3">
+            {/* Authorization Object Input */}
+            <div className="relative">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    placeholder="输入授权对象名称..."
+                    value={authInput}
+                    onChange={(e) => {
+                      setAuthInput(e.target.value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && authInput.trim()) {
+                        e.preventDefault();
+                        addAuthObject(authInput.trim());
+                      } else if (
+                        e.key === "Backspace" &&
+                        authInput === "" &&
+                        authObjects.length > 0
+                      ) {
+                        e.preventDefault();
+                        removeAuthObject(authObjects.length - 1);
+                      }
+                    }}
+                    className="pr-20"
+                  />
+                  {authInput.trim() && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => addAuthObject(authInput.trim())}
+                      >
+                        添加
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Added Authorization Objects */}
+            {authObjects.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-sm font-medium">已添加的授权对象</div>
+                <div className="space-y-1">
+                  {authObjects.map((authObj, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">
+                          {authObj}
+                        </span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0"
+                        onClick={() => removeAuthObject(index)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="min-h-[420px] flex-1 rounded-lg border bg-card p-2 shadow-sm">
@@ -2065,39 +2295,80 @@ function App() {
         </div>
       </div>
       <div className="flex w-full flex-col rounded-lg border bg-card shadow-sm lg:max-w-xl">
-        <div className="border-b px-4 py-3">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold">建表 DDL</h2>
-              <p className="text-xs text-muted-foreground">
-                根据左侧输入实时生成不同数据库的建表语句
-              </p>
+        {/* Upper Section - DDL Output */}
+        <div className="flex flex-1 flex-col border-b">
+          <div className="border-b px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold">建表 DDL</h2>
+                <p className="text-xs text-muted-foreground">
+                  根据左侧输入实时生成不同数据库的建表语句
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="gap-1"
+                onClick={handleCopyAll}
+              >
+                <Copy className="h-4 w-4" /> 复制DDL
+              </Button>
             </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="gap-1"
-              onClick={handleCopyAll}
+          </div>
+          <div className="flex-1 overflow-auto px-4 py-4">
+            <SyntaxHighlighter
+              language="sql"
+              style={customTheme}
+              customStyle={{
+                background: "transparent",
+                margin: 0,
+                padding: 0,
+                fontSize: "1rem",
+              }}
+              lineNumberStyle={{ color: "#000" }}
+              showLineNumbers
             >
-              <Copy className="h-4 w-4" /> 全部复制
-            </Button>
+              {generatedSql || "-- 请在左侧填写表信息"}
+            </SyntaxHighlighter>
           </div>
         </div>
-        <div className="flex-1 overflow-auto px-4 py-4">
-          <SyntaxHighlighter
-            language="sql"
-            style={customTheme}
-            customStyle={{
-              background: "transparent",
-              margin: 0,
-              padding: 0,
-              fontSize: "1rem",
-            }}
-            lineNumberStyle={{ color: "#000" }}
-            showLineNumbers
-          >
-            {generatedSql || "-- 请在左侧填写表信息"}
-          </SyntaxHighlighter>
+
+        {/* Lower Section - DCL Output */}
+        <div className="flex flex-1 flex-col">
+          <div className="border-b px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold">授权 DCL</h2>
+                <p className="text-xs text-muted-foreground">
+                  生成数据库授权语句（GRANT）
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="gap-1"
+                onClick={handleCopyDcl}
+              >
+                <Copy className="h-4 w-4" /> 复制DCL
+              </Button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-auto px-4 py-4">
+            <SyntaxHighlighter
+              language="sql"
+              style={customTheme}
+              customStyle={{
+                background: "transparent",
+                margin: 0,
+                padding: 0,
+                fontSize: "1rem",
+              }}
+              lineNumberStyle={{ color: "#000" }}
+              showLineNumbers
+            >
+              {generatedDcl || "-- 请在下方配置授权对象"}
+            </SyntaxHighlighter>
+          </div>
         </div>
       </div>
       {toastMessage && (
