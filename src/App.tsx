@@ -46,7 +46,7 @@ type NormalizedField = {
   type: string;
   comment: string;
   nullable: boolean;
-  defaultKind: "none" | "auto_increment" | "constant" | "current_timestamp";
+  defaultKind: "none" | "auto_increment" | "constant" | "current_timestamp" | "uuid";
   defaultValue: string;
   onUpdate: "none" | "current_timestamp";
 };
@@ -527,7 +527,7 @@ const ensureLength = (args: string[], fallback: string) => {
 };
 
 // default helpers
-const DEFAULT_KIND_OPTIONS = ["无", "自增", "常量", "当前时间"] as const;
+const DEFAULT_KIND_OPTIONS = ["无", "自增", "常量", "当前时间", "uuid"] as const;
 type UiDefaultKind = (typeof DEFAULT_KIND_OPTIONS)[number];
 const ON_UPDATE_OPTIONS = ["无", "当前时间"] as const;
 type UiOnUpdate = (typeof ON_UPDATE_OPTIONS)[number];
@@ -539,6 +539,7 @@ const normalizeDefaultKind = (
   if (s === "自增") return "auto_increment";
   if (s === "常量") return "constant";
   if (s === "当前时间") return "current_timestamp";
+  if (s === "uuid") return "uuid";
   return "none";
 };
 
@@ -600,6 +601,23 @@ const formatConstantDefault = (canonical: string, value: string) => {
 };
 
 // capabilities by db + canonical type
+const isCharacterType = (canonical: string) =>
+  new Set([
+    "char",
+    "varchar",
+    "text",
+    "nchar",
+    "nvarchar",
+    "longtext",
+    "mediumtext",
+    "tinytext",
+    "clob",
+    "varchar2",
+    "nvarchar2"
+  ]).has(canonical);
+
+const supportsUuidDefault = (canonical: string) => isCharacterType(canonical);
+
 const isIntegerType = (canonical: string) =>
   new Set(["tinyint", "smallint", "int", "integer", "bigint"]).has(canonical);
 
@@ -669,6 +687,7 @@ const getUiDefaultKindOptions = (
 ): UiDefaultKind[] => {
   const opts: UiDefaultKind[] = ["无", "常量"];
   if (supportsAutoIncrement(db, canonical)) opts.splice(1, 0, "自增");
+  if (supportsUuidDefault(canonical)) opts.push("uuid");
   if (supportsDefaultCurrentTimestamp(db, canonical)) opts.push("当前时间");
   return opts;
 };
@@ -1064,6 +1083,8 @@ const buildMysqlDDL = (
       supportsDefaultCurrentTimestamp("mysql", base)
     ) {
       def = " DEFAULT CURRENT_TIMESTAMP";
+    } else if (field.defaultKind === "uuid" && supportsUuidDefault(base)) {
+      def = " DEFAULT UUID()";
     }
     const onUpd =
       field.onUpdate === "current_timestamp" &&
@@ -1107,6 +1128,8 @@ const buildPostgresDDL = (
       supportsDefaultCurrentTimestamp("postgresql", base)
     ) {
       def = " DEFAULT CURRENT_TIMESTAMP";
+    } else if (field.defaultKind === "uuid" && supportsUuidDefault(base)) {
+      def = " DEFAULT gen_random_uuid()";
     }
     return `  ${quotePostgres(
       field.name
@@ -1161,6 +1184,8 @@ const buildSqlServerDDL = (
       supportsDefaultCurrentTimestamp("sqlserver", base)
     ) {
       def = " DEFAULT GETDATE()";
+    } else if (field.defaultKind === "uuid" && supportsUuidDefault(base)) {
+      def = " DEFAULT NEWID()";
     }
     return `  ${quoteSqlServer(
       field.name
@@ -1224,6 +1249,8 @@ const buildOracleDDL = (
       supportsDefaultCurrentTimestamp("oracle", base)
     ) {
       def = " DEFAULT SYSTIMESTAMP";
+    } else if (field.defaultKind === "uuid" && supportsUuidDefault(base)) {
+      def = " DEFAULT SYS_GUID()";
     }
     return `  ${quotePostgres(
       field.name
@@ -2299,23 +2326,37 @@ function App() {
                   dd.allowInvalid = false;
                   dd.readOnly = false;
                 } else if (prop === "onUpdate") {
-                  const opts = getUiOnUpdateOptions(dbType, base);
-                  if (opts.length <= 1) {
+                  // Check if defaultKind is uuid, if so, disable onUpdate
+                  const defaultKind = normalizeDefaultKind(
+                    rows[row]?.defaultKind as UiDefaultKind
+                  );
+                  if (defaultKind === "uuid") {
                     dd.type = "text";
                     dd.readOnly = true;
                     dd.allowInvalid = false;
                     dd.source = undefined;
+                    dd.className = `${
+                      dd.className ? dd.className + " " : ""
+                    }htDimmed`;
                   } else {
-                    dd.source = opts;
-                    dd.type = "autocomplete";
-                    (
-                      dd as Handsontable.CellMeta & { strict?: boolean }
-                    ).strict = true;
-                    (
-                      dd as Handsontable.CellMeta & { filter?: boolean }
-                    ).filter = false;
-                    dd.allowInvalid = false;
-                    dd.readOnly = false;
+                    const opts = getUiOnUpdateOptions(dbType, base);
+                    if (opts.length <= 1) {
+                      dd.type = "text";
+                      dd.readOnly = true;
+                      dd.allowInvalid = false;
+                      dd.source = undefined;
+                    } else {
+                      dd.source = opts;
+                      dd.type = "autocomplete";
+                      (
+                        dd as Handsontable.CellMeta & { strict?: boolean }
+                      ).strict = true;
+                      (
+                        dd as Handsontable.CellMeta & { filter?: boolean }
+                      ).filter = false;
+                      dd.allowInvalid = false;
+                      dd.readOnly = false;
+                    }
                   }
                 }
               }
