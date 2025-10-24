@@ -61,6 +61,7 @@ type IndexDefinition = {
   name: string;
   fields: IndexField[];
   unique: boolean;
+  isPrimary?: boolean;
 };
 
 const DATABASE_OPTIONS: Array<{
@@ -1318,6 +1319,26 @@ const buildDDL = (
 
   // Build index DDL statements
   const indexDDLs = indexes.map((index) => {
+    // Skip primary keys as they are handled differently
+    if (index.isPrimary) {
+      const fieldList = index.fields
+        .map((f) => f.name)
+        .join(", ");
+
+      switch (dbType) {
+        case "mysql":
+          return `ALTER TABLE ${tableName.trim()} ADD PRIMARY KEY (${fieldList});`;
+        case "postgresql":
+          return `ALTER TABLE ${formatPostgresTableName(tableName.trim())} ADD PRIMARY KEY (${fieldList});`;
+        case "sqlserver":
+          return `ALTER TABLE ${formatMysqlTableName(tableName.trim())} ADD PRIMARY KEY (${fieldList});`;
+        case "oracle":
+          return `ALTER TABLE ${formatPostgresTableName(tableName.trim())} ADD PRIMARY KEY (${fieldList});`;
+        default:
+          return "";
+      }
+    }
+
     const indexType = index.unique ? "UNIQUE INDEX" : "INDEX";
     const fieldList = index.fields
       .map((f) => `${f.name} ${f.direction}`)
@@ -1504,6 +1525,7 @@ const sanitizeIndexesForPersist = (
             : "ASC",
       })),
       unique: Boolean(index.unique),
+      isPrimary: Boolean(index.isPrimary),
     }))
     .filter((index) => index.name && index.fields.length > 0);
 
@@ -1756,13 +1778,19 @@ function App() {
   }, []);
 
   const addIndex = useCallback(
-    (unique: boolean) => {
+    (unique: boolean, isPrimary: boolean = false) => {
       if (currentIndexFields.length === 0) return;
 
+      // Check if primary key already exists
+      if (isPrimary && indexes.some(index => index.isPrimary)) {
+        return; // Prevent adding multiple primary keys
+      }
+
+      const prefix = isPrimary ? "pk" : "idx";
       const indexName =
         currentIndexFields.length === 1
-          ? `idx_${tableName}_${currentIndexFields[0].name}`
-          : `idx_${tableName}_${currentIndexFields
+          ? `${prefix}_${tableName}_${currentIndexFields[0].name}`
+          : `${prefix}_${tableName}_${currentIndexFields
               .map((f) => f.name)
               .join("_")}`;
 
@@ -1771,13 +1799,14 @@ function App() {
         name: indexName,
         fields: [...currentIndexFields],
         unique,
+        isPrimary,
       };
 
       setIndexes((prev) => [...prev, newIndex]);
       setCurrentIndexFields([]);
       setIndexInput("");
     },
-    [currentIndexFields, tableName]
+    [currentIndexFields, tableName, indexes]
   );
 
   const removeIndex = useCallback((id: string) => {
@@ -2049,6 +2078,19 @@ function App() {
                           >
                             添加唯一索引
                           </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className={`h-6 px-2 text-xs ${
+                              indexes.some(index => index.isPrimary)
+                                ? "cursor-not-allowed opacity-50"
+                                : ""
+                            }`}
+                            onClick={() => addIndex(true, true)}
+                            disabled={indexes.some(index => index.isPrimary)}
+                          >
+                            添加主键
+                          </Button>
                         </div>
                       )}
                     </div>
@@ -2122,7 +2164,12 @@ function App() {
                             <span className="text-sm font-medium">
                               {index.name}
                             </span>
-                            {index.unique && (
+                            {index.isPrimary && (
+                              <span className="rounded bg-orange-100 px-1.5 py-0.5 text-xs text-orange-800 font-medium">
+                                主键
+                              </span>
+                            )}
+                            {index.unique && !index.isPrimary && (
                               <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-800">
                                 唯一
                               </span>
