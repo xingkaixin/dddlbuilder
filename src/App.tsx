@@ -14,6 +14,7 @@ import {
   ChevronUp,
   ChevronDown,
   X,
+  Trash2,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -1897,6 +1898,36 @@ function App() {
     }
   }, [generatedDcl, showToast]);
 
+  const handleClearAll = useCallback(() => {
+    if (!window.confirm("确定要清除所有配置吗？此操作不可撤销。")) return;
+
+    // Clear all state variables
+    setTableName("");
+    setTableComment("");
+    setDbType("mysql");
+    setRows(INITIAL_ROWS);
+    setAddCount(10);
+    setIndexInput("");
+    setCurrentIndexFields([]);
+    setIndexes([]);
+    setShowFieldSuggestions(false);
+    setSelectedSuggestionIndex(0);
+    setAuthInput("");
+    setAuthObjects([]);
+    setIsIndexCollapsed(false);
+    setIsAuthCollapsed(false);
+
+    // Clear localStorage
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      setHydrated(false);
+    } catch {
+      // ignore localStorage errors
+    }
+
+    showToast("所有配置已清除");
+  }, [showToast]);
+
   const basePlain = (vs as Record<string, unknown>).plain as
     | Record<string, unknown>
     | undefined;
@@ -1912,8 +1943,25 @@ function App() {
   return (
     <div className="flex min-h-screen flex-col gap-4 bg-background p-4 text-sm text-foreground lg:flex-row">
       <div className="flex flex-1 flex-col gap-4">
-        <div className="rounded-lg border bg-card p-4 shadow-sm">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="rounded-lg border bg-card shadow-sm">
+          <div className="flex items-center justify-between p-4 border-b">
+            <div>
+              <h2 className="text-base font-semibold">表信息配置</h2>
+              <p className="text-xs text-muted-foreground">
+                配置表名、注释和数据库类型
+              </p>
+            </div>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="gap-1"
+              onClick={handleClearAll}
+            >
+              <Trash2 className="h-4 w-4" /> 清空所有
+            </Button>
+          </div>
+          <div className="p-4">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="table-name">表名</Label>
               <Input
@@ -1991,6 +2039,7 @@ function App() {
               </Select>
             </div>
           </div>
+        </div>
         </div>
 
         {/* Index Configuration Area */}
