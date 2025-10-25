@@ -1814,6 +1814,30 @@ function App() {
     setIndexes((prev) => prev.filter((index) => index.id !== id));
   }, []);
 
+  // Generate index name based on table name and fields
+  const generateIndexName = useCallback((index: IndexDefinition, currentTableName: string): string => {
+    if (!currentTableName) return index.name;
+
+    const prefix = index.isPrimary ? "pk" : index.unique ? "uk" : "idx";
+    return index.fields.length === 1
+      ? `${prefix}_${currentTableName}_${index.fields[0].name}`
+      : `${prefix}_${currentTableName}_${index.fields
+          .map((f) => f.name)
+          .join("_")}`;
+  }, []);
+
+  // Update all index names based on new table name
+  const updateIndexNames = useCallback((newTableName: string) => {
+    if (!newTableName) return;
+
+    setIndexes((prevIndexes) =>
+      prevIndexes.map((index) => ({
+        ...index,
+        name: generateIndexName(index, newTableName),
+      }))
+    );
+  }, [generateIndexName]);
+
   // Authorization objects management functions
   const addAuthObject = useCallback(
     (authObj: string) => {
@@ -1861,6 +1885,13 @@ function App() {
       if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
     };
   }, []);
+
+  // Update index names when table name changes
+  useEffect(() => {
+    if (indexes.length > 0 && tableName) {
+      updateIndexNames(tableName);
+    }
+  }, [tableName, indexes.length, updateIndexNames]);
 
   const handleCopyAll = useCallback(async () => {
     const text = generatedSql || "-- 请在左侧填写表信息";
