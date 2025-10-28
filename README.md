@@ -16,16 +16,13 @@
 
 ```bash
 # 安装依赖
-npm i
+bun i
 
 # 本地开发
-npm run dev
+bun run dev
 
 # 产物构建
-npm run build
-
-# 本地预览
-npm run preview
+bun run build
 ```
 
 ## 使用说明

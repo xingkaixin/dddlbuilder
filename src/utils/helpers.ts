@@ -171,3 +171,12 @@ export const getUiOnUpdateOptions = (
   if (supportsOnUpdateCurrentTimestamp(db, canonical)) opts.push("当前时间");
   return opts;
 };
+
+// Table name formatting functions
+export const formatMysqlTableName = (tableName: string): string => {
+  return tableName.trim();
+};
+
+export const formatPostgresTableName = (tableName: string): string => {
+  return tableName.trim();
+};

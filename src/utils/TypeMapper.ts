@@ -15,8 +15,12 @@ export class TypeMapper {
     const mapping = TYPE_MAPPINGS[this.databaseType]?.[canonical];
 
     if (!mapping) {
-      // 如果没有找到映射，返回原始类型的大写形式
-      return this.formatType(parsed.baseType.toUpperCase(), parsed.args);
+      // 如果没有找到映射，返回原始类型
+      let result = this.formatType(parsed.baseType, parsed.args, "", true);
+      if (parsed.unsigned && this.databaseType === 'mysql') {
+        result += " UNSIGNED";
+      }
+      return result;
     }
 
     // 如果有自定义转换函数，使用转换函数
@@ -26,26 +30,26 @@ export class TypeMapper {
 
     // 使用配置的映射规则
     const targetType = mapping.mapping || parsed.baseType;
-    const args = mapping.defaultArgs || parsed.args;
-    const suffix = mapping.suffix || "";
+    // 如果原始字段有参数，优先使用原始参数，否则使用默认参数
+    const args = parsed.args.length > 0 ? parsed.args : mapping.defaultArgs;
+    let suffix = mapping.suffix || "";
 
     // 处理 unsigned 后缀（MySQL 特有）
-    let finalSuffix = suffix;
-    if (suffix === "UNSIGNED" && parsed.unsigned) {
-      finalSuffix = "UNSIGNED";
-    } else if (suffix === "UNSIGNED" && !parsed.unsigned) {
-      finalSuffix = "";
+    if (parsed.unsigned && this.databaseType === 'mysql') {
+      if (!suffix.includes("UNSIGNED")) {
+        suffix = suffix ? `${suffix} UNSIGNED` : "UNSIGNED";
+      }
     }
 
-    return this.formatType(targetType, args, finalSuffix);
+    return this.formatType(targetType, args, suffix);
   }
 
-  private formatType(base: string, args: string[] = [], suffix = ""): string {
+  private formatType(base: string, args: string[] = [], suffix = "", preserveCase = false): string {
     const formattedArgs = args.map(this.uppercaseArg);
     const joined = formattedArgs.join(", ");
     const typeCore = joined
-      ? `${base.toUpperCase()}(${joined})`
-      : base.toUpperCase();
+      ? `${preserveCase ? base : base.toUpperCase()}(${joined})`
+      : preserveCase ? base : base.toUpperCase();
     return suffix ? `${typeCore} ${suffix}` : typeCore;
   }
 

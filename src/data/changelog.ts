@@ -19,6 +19,11 @@ export const changelogData: ChangelogData = {
   "description": "DDL建表工具版本更新记录",
   "entries": [
     {
+      "version": "0.1.0",
+      "date": "2025-10-28",
+      "content": "- 重构代码"
+    },
+    {
       "version": "0.0.5",
       "date": "2025-10-25",
       "content": "### 新增\n- 表名变更时，自动更新索引名称\n\n### 修复\n- 修正 MySQL 时间戳精度\n- 修正 Oracle 默认约束顺序"

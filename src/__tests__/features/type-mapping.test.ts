@@ -203,10 +203,10 @@ describe('Type Mapping Functions', () => {
       })
 
       it('should map decimal types', () => {
-        expect(getFieldTypeForDatabase('mysql', 'decimal')).toBe('DECIMAL(18, 2)')
+        expect(getFieldTypeForDatabase('mysql', 'decimal')).toBe('DECIMAL(10, 3)')
         expect(getFieldTypeForDatabase('mysql', 'decimal(10,3)')).toBe('DECIMAL(10, 3)')
         expect(getFieldTypeForDatabase('mysql', 'decimal(5)')).toBe('DECIMAL(5)')
-        expect(getFieldTypeForDatabase('mysql', 'decimal unsigned')).toBe('DECIMAL(18, 2) UNSIGNED')
+        expect(getFieldTypeForDatabase('mysql', 'decimal unsigned')).toBe('DECIMAL(10, 3) UNSIGNED')
       })
 
       it('should map text types', () => {
@@ -221,7 +221,7 @@ describe('Type Mapping Functions', () => {
         expect(getFieldTypeForDatabase('mysql', 'datetime')).toBe('DATETIME')
         expect(getFieldTypeForDatabase('mysql', 'datetime(6)')).toBe('DATETIME(6)')
         expect(getFieldTypeForDatabase('mysql', 'timestamp')).toBe('TIMESTAMP')
-        expect(getFieldTypeForDatabase('mysql', 'timestamp(6)')).toBe('TIMESTAMP')
+        expect(getFieldTypeForDatabase('mysql', 'timestamp(6)')).toBe('TIMESTAMP(6)')
         expect(getFieldTypeForDatabase('mysql', 'time')).toBe('TIME')
         expect(getFieldTypeForDatabase('mysql', 'datetime2')).toBe('DATETIME')
       })
@@ -240,7 +240,7 @@ describe('Type Mapping Functions', () => {
         expect(getFieldTypeForDatabase('mysql', 'bit')).toBe('BIT(1)')
         expect(getFieldTypeForDatabase('mysql', 'bit(8)')).toBe('BIT(8)')
         expect(getFieldTypeForDatabase('mysql', 'uuid')).toBe('CHAR(36)')
-        expect(getFieldTypeForDatabase('mysql', 'float')).toBe('FLOAT')
+        expect(getFieldTypeForDatabase('mysql', 'float')).toBe('FLOAT(10, 2)')
         expect(getFieldTypeForDatabase('mysql', 'double')).toBe('DOUBLE')
         expect(getFieldTypeForDatabase('mysql', 'real')).toBe('DOUBLE')
         expect(getFieldTypeForDatabase('mysql', 'serial')).toBe('BIGINT UNSIGNED AUTO_INCREMENT')
@@ -273,10 +273,10 @@ describe('Type Mapping Functions', () => {
       })
 
       it('should map decimal types', () => {
-        expect(getFieldTypeForDatabase('postgresql', 'decimal')).toBe('NUMERIC(18, 2)')
+        expect(getFieldTypeForDatabase('postgresql', 'decimal')).toBe('NUMERIC(10, 3)')
         expect(getFieldTypeForDatabase('postgresql', 'decimal(10,3)')).toBe('NUMERIC(10, 3)')
-        expect(getFieldTypeForDatabase('postgresql', 'number')).toBe('NUMERIC(18, 2)')
-        expect(getFieldTypeForDatabase('postgresql', 'numeric')).toBe('NUMERIC(18, 2)')
+        expect(getFieldTypeForDatabase('postgresql', 'number')).toBe('NUMERIC(10, 3)')
+        expect(getFieldTypeForDatabase('postgresql', 'numeric')).toBe('NUMERIC(10, 3)')
       })
 
       it('should map date/time types', () => {
@@ -363,16 +363,16 @@ describe('Type Mapping Functions', () => {
 
     describe('Oracle type mapping', () => {
       it('should map character types', () => {
-        expect(getFieldTypeForDatabase('oracle', 'varchar')).toBe('VARCHAR2(255)')
+        expect(getFieldTypeForDatabase('oracle', 'varchar')).toBe('VARCHAR2(100)')
         expect(getFieldTypeForDatabase('oracle', 'varchar(100)')).toBe('VARCHAR2(100)')
-        expect(getFieldTypeForDatabase('oracle', 'nvarchar')).toBe('NVARCHAR2(255)')
+        expect(getFieldTypeForDatabase('oracle', 'nvarchar')).toBe('NVARCHAR2(100)')
         expect(getFieldTypeForDatabase('oracle', 'nvarchar(100)')).toBe('NVARCHAR2(100)')
         expect(getFieldTypeForDatabase('oracle', 'char')).toBe('CHAR(1)')
         expect(getFieldTypeForDatabase('oracle', 'char(10)')).toBe('CHAR(10)')
         expect(getFieldTypeForDatabase('oracle', 'nchar')).toBe('NCHAR(1)')
         expect(getFieldTypeForDatabase('oracle', 'nchar(10)')).toBe('NCHAR(10)')
-        expect(getFieldTypeForDatabase('oracle', 'varchar2')).toBe('VARCHAR2(255)')
-        expect(getFieldTypeForDatabase('oracle', 'nvarchar2')).toBe('NVARCHAR2(255)')
+        expect(getFieldTypeForDatabase('oracle', 'varchar2')).toBe('VARCHAR2(100)')
+        expect(getFieldTypeForDatabase('oracle', 'nvarchar2')).toBe('NVARCHAR2(100)')
       })
 
       it('should map text types', () => {
@@ -392,10 +392,10 @@ describe('Type Mapping Functions', () => {
       })
 
       it('should map decimal types', () => {
-        expect(getFieldTypeForDatabase('oracle', 'decimal')).toBe('NUMBER(18, 2)')
+        expect(getFieldTypeForDatabase('oracle', 'decimal')).toBe('NUMBER(10, 2)')
         expect(getFieldTypeForDatabase('oracle', 'decimal(10,3)')).toBe('NUMBER(10, 3)')
-        expect(getFieldTypeForDatabase('oracle', 'number')).toBe('NUMBER(18, 2)')
-        expect(getFieldTypeForDatabase('oracle', 'numeric')).toBe('NUMBER(18, 2)')
+        expect(getFieldTypeForDatabase('oracle', 'number')).toBe('NUMBER(10, 2)')
+        expect(getFieldTypeForDatabase('oracle', 'numeric')).toBe('NUMBER(10, 2)')
       })
 
       it('should map date/time types', () => {
@@ -416,7 +416,7 @@ describe('Type Mapping Functions', () => {
         expect(getFieldTypeForDatabase('oracle', 'real')).toBe('BINARY_FLOAT')
         expect(getFieldTypeForDatabase('oracle', 'uuid')).toBe('CHAR(36)')
         expect(getFieldTypeForDatabase('oracle', 'blob')).toBe('BLOB')
-        expect(getFieldTypeForDatabase('oracle', 'varbinary')).toBe('RAW(2000)')
+        expect(getFieldTypeForDatabase('oracle', 'varbinary')).toBe('RAW(100)')
         expect(getFieldTypeForDatabase('oracle', 'varbinary(100)')).toBe('RAW(100)')
         expect(getFieldTypeForDatabase('oracle', 'xml')).toBe('XMLTYPE')
         expect(getFieldTypeForDatabase('oracle', 'json')).toBe('CLOB')
