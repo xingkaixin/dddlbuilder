@@ -14,14 +14,17 @@ export interface UseTableDataReturn {
   normalizedFields: NormalizedField[];
   handleRowsChange: (
     changes: Handsontable.CellChange[] | null,
-    source: Handsontable.ChangeSource
+    source: Handsontable.ChangeSource,
   ) => void;
   handleCreateRow: (index: number, amount: number) => void;
   handleRemoveRow: (index: number, amount: number) => void;
   handleAddRows: (count: number) => void;
 }
 
-export function useTableData(initialRows: FieldRow[], persistedRows?: FieldRow[]): UseTableDataReturn {
+export function useTableData(
+  initialRows: FieldRow[],
+  persistedRows?: FieldRow[],
+): UseTableDataReturn {
   const [rows, setRows] = useState<FieldRow[]>(initialRows);
   const [initialized, setInitialized] = useState(false);
 
@@ -49,41 +52,118 @@ export function useTableData(initialRows: FieldRow[], persistedRows?: FieldRow[]
 
   const normalizedFields = useMemo(() => normalizeFields(rows), [rows]);
 
+  // 处理器函数：验证变更数据
+  const validateChanges = useCallback(
+    (
+      // rows: FieldRow[],
+      changes: Handsontable.CellChange[] | null,
+    ): { isValid: boolean; changes: Handsontable.CellChange[] } => {
+      if (!changes) {
+        return { isValid: false, changes: [] };
+      }
+      return { isValid: true, changes };
+    },
+    [],
+  );
+
+  // 处理器函数：确保行存在
+  const ensureRowExists = useCallback(
+    (rows: FieldRow[], changes: Handsontable.CellChange[]): FieldRow[] => {
+      const next = rows.map((row) => ({ ...row }));
+      changes.forEach(([rowIndex]) => {
+        while (next.length <= rowIndex) {
+          next.push(createEmptyRow(next.length));
+        }
+      });
+      return next;
+    },
+    [],
+  );
+
+  // 处理器函数：更新字段值
+  const updateFieldValue = useCallback(
+    (rows: FieldRow[], changes: Handsontable.CellChange[]): FieldRow[] => {
+      const next = rows.map((row) => ({ ...row }));
+      changes.forEach(([rowIndex, prop, , value]) => {
+        if (typeof prop !== "string" || prop === "order") {
+          return;
+        }
+        next[rowIndex] = {
+          ...next[rowIndex],
+          [prop]: value == null ? "" : String(value),
+        };
+      });
+      return next;
+    },
+    [],
+  );
+
+  // 处理器函数：处理特殊字段逻辑
+  const handleSpecialFieldLogic = useCallback(
+    (rows: FieldRow[], changes: Handsontable.CellChange[]): FieldRow[] => {
+      const next = rows.map((row) => ({ ...row }));
+      changes.forEach(([rowIndex, prop, , value]) => {
+        if (typeof prop !== "string" || prop !== "defaultKind") {
+          return;
+        }
+        const kind = String(value ?? "");
+        if (kind !== "常量") {
+          next[rowIndex].defaultValue = "";
+        }
+        if (kind === "自增") {
+          next[rowIndex].nullable = "否";
+        }
+      });
+      return next;
+    },
+    [],
+  );
+
+  // 处理器函数：确保顺序
+  const ensureOrderProcessor = useCallback((rows: FieldRow[]): FieldRow[] => {
+    return ensureOrder(rows);
+  }, []);
+
+  // 责任链：按顺序处理变更
+  const handleChangeChain = useCallback(
+    (rows: FieldRow[], changes: Handsontable.CellChange[]): FieldRow[] => {
+      const processors = [
+        (r: FieldRow[]) => r, // 占位符，实际处理在下面
+        (r: FieldRow[]) => ensureRowExists(r, changes),
+        (r: FieldRow[]) => updateFieldValue(r, changes),
+        (r: FieldRow[]) => handleSpecialFieldLogic(r, changes),
+        ensureOrderProcessor,
+      ];
+
+      return processors.reduce((acc, processor) => processor(acc), rows);
+    },
+    [
+      ensureRowExists,
+      updateFieldValue,
+      handleSpecialFieldLogic,
+      ensureOrderProcessor,
+    ],
+  );
+
   const handleRowsChange = useCallback(
     (
       changes: Handsontable.CellChange[] | null,
-      source: Handsontable.ChangeSource
+      source: Handsontable.ChangeSource,
     ) => {
-      if (!changes || source === "loadData") {
+      // 验证变更
+      const { isValid, changes: validChanges } = validateChanges(changes);
+
+      // 早期返回：无效变更或加载数据源
+      if (!isValid || source === "loadData") {
         return;
       }
+
+      // 使用责任链处理变更
       setRows((prev) => {
-        const next = prev.map((row) => ({ ...row }));
-        changes.forEach(([rowIndex, prop, , value]) => {
-          if (typeof prop !== "string" || prop === "order") {
-            return;
-          }
-          while (next.length <= rowIndex) {
-            next.push(createEmptyRow(next.length));
-          }
-          next[rowIndex] = {
-            ...next[rowIndex],
-            [prop]: value == null ? "" : String(value),
-          };
-          if (prop === "defaultKind") {
-            const kind = String(value ?? "");
-            if (kind !== "常量") {
-              next[rowIndex].defaultValue = "";
-            }
-            if (kind === "自增") {
-              next[rowIndex].nullable = "否";
-            }
-          }
-        });
-        return ensureOrder(next);
+        return handleChangeChain(prev, validChanges);
       });
     },
-    []
+    [validateChanges, handleChangeChain],
   );
 
   const handleCreateRow = useCallback((index: number, amount: number) => {

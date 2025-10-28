@@ -1,5 +1,4 @@
 import type { NormalizedField, IndexDefinition } from "../types";
-import type { DDLStrategy } from "../interfaces/DDLStrategy";
 import {
   getCanonicalBaseType,
   supportsAutoIncrement,
@@ -12,23 +11,11 @@ import {
   splitQualifiedName,
   parseFieldType,
 } from "../utils/databaseTypeMapping";
-import { TypeMapper } from "../utils/TypeMapper";
+import { AbstractDDLStrategy } from "./AbstractDDLStrategy";
 
-export class OracleStrategy implements DDLStrategy {
+export class OracleStrategy extends AbstractDDLStrategy {
   getDatabaseType(): "oracle" {
     return "oracle";
-  }
-
-  formatTableName(tableName: string): string {
-    const parts = splitQualifiedName(tableName);
-    if (parts.length === 0) {
-      return tableName.trim();
-    }
-    return parts.join(".");
-  }
-
-  formatFieldName(fieldName: string): string {
-    return fieldName;
   }
 
   generateTableDDL(
@@ -36,7 +23,7 @@ export class OracleStrategy implements DDLStrategy {
     tableComment: string,
     fields: NormalizedField[]
   ): string {
-    const typeMapper = TypeMapper.create("oracle");
+    const typeMapper = this.createTypeMapper();
     const columnLines = fields.map((field) => {
       const parsedType = parseFieldType(field.type);
       const type = typeMapper.mapType(parsedType);
@@ -80,39 +67,8 @@ export class OracleStrategy implements DDLStrategy {
       );
     }
 
-    fields
-      .filter((field) => field.comment)
-      .forEach((field) => {
-        statements.push(
-          `COMMENT ON COLUMN ${qualifiedTableName}.${this.formatFieldName(
-            field.name
-          )} IS '${escapeSingleQuotes(field.comment)}';`
-        );
-      });
+    statements.push(...this.generateColumnCommentsDDL(tableName, fields));
 
     return statements.join("\n");
-  }
-
-  generateIndexDDL(
-    tableName: string,
-    index: IndexDefinition,
-    fields: NormalizedField[]
-  ): string {
-    // Skip primary keys as they are handled differently
-    if (index.isPrimary) {
-      const fieldList = index.fields.map((f) => f.name).join(", ");
-      return `ALTER TABLE ${this.formatTableName(
-        tableName
-      )} ADD PRIMARY KEY (${fieldList});`;
-    }
-
-    const indexType = index.unique ? "UNIQUE INDEX" : "INDEX";
-    const fieldList = index.fields
-      .map((f) => `${f.name} ${f.direction}`)
-      .join(", ");
-
-    return `CREATE ${indexType} ${index.name} ON ${this.formatTableName(
-      tableName
-    )} (${fieldList});`;
   }
 }
