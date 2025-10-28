@@ -69,33 +69,54 @@ export const getFieldTypeForDatabase = (
 };
 
 export const parseFieldType = (rawType: string): ParsedFieldType => {
-  const clean = rawType.trim().toLowerCase();
+  const clean = rawType.trim();
+
+  if (clean === "") {
+    return {
+      baseType: "",
+      args: [],
+      unsigned: false,
+      raw: "",
+    };
+  }
 
   // 处理UNSIGNED后缀（MySQL特有）
-  const isUnsigned = clean.includes("unsigned");
-  const withoutUnsigned = clean.replace(/\s+unsigned/g, "");
+  const isUnsigned = clean.toLowerCase().endsWith("unsigned");
+  const withoutUnsigned = isUnsigned ? clean.replace(/\s+unsigned$/gi, "").trim() : clean;
 
   // 提取类型名称和参数
-  const match = withoutUnsigned.match(/^([a-z0-9_]+)(?:\(([^)]+)\))?$/i);
+  const match = withoutUnsigned.match(/^([a-z0-9_\s]+)(?:\(([^)]*)\))?$/i);
   if (!match) {
+    // 处理像 "()" 这样的特殊情况
+    if (clean === "()") {
+      return {
+        baseType: "",
+        args: [],
+        unsigned: false,
+        raw: "()",
+      };
+    }
+    // 处理像 "varchar255)" 这样的特殊情况（缺少开括号）
+    const cleanBaseType = clean.replace(/\)$/, '').toLowerCase();
     return {
-      baseType: clean,
+      baseType: cleanBaseType,
       args: [],
       unsigned: isUnsigned,
-      raw: rawType.trim(),
+      raw: clean,
     };
   }
 
   const [, baseType, argString] = match;
+  const cleanBaseType = baseType.trim().toLowerCase();
   const args = argString
-    ? argString.split(",").map(arg => arg.trim())
+    ? argString.split(",").map(arg => arg.toLowerCase().trim() === "max" ? "max" : arg.trim())
     : [];
 
   return {
-    baseType,
+    baseType: cleanBaseType,
     args,
     unsigned: isUnsigned,
-    raw: rawType.trim(),
+    raw: clean,
   };
 };
 
@@ -185,32 +206,66 @@ export const supportsOnUpdateCurrentTimestamp = (db: DatabaseType, canonical: st
 };
 
 export const formatConstantDefault = (canonical: string, value: string) => {
+  if (!value.trim()) return '';
+
+  // 如果是函数或关键字，不加引号
+  if (isLikelyFunctionOrKeyword(value)) {
+    return ` DEFAULT ${value}`;
+  }
+
+  // 否则根据类型决定是否加引号
   const shouldQuote = shouldQuoteDefault(canonical, value);
-  const v = isLikelyFunctionOrKeyword(value) ? value : shouldQuote ? `'${value}'` : value;
-  return shouldQuote ? ` DEFAULT '${v}'` : ` DEFAULT ${v}`;
+  const cleanValue = escapeSingleQuotes(value);
+  const formattedValue = shouldQuote ? `'${cleanValue}'` : cleanValue;
+  return ` DEFAULT ${formattedValue}`;
 };
 
-export const shouldQuoteDefault = (canonical: string, value: string) => {
+export const shouldQuoteDefault = (canonical: string, value?: string) => {
+  // 支持两种调用方式：shouldQuoteDefault(type) 或 shouldQuoteDefault(type, value)
+  const testValue = value !== undefined ? value : "test";
+
+  if (!testValue || !testValue.trim()) return false;
   if (isCharacterType(canonical)) return true;
-  if (value.toLowerCase() === "null") return false;
-  if (isLikelyFunctionOrKeyword(value)) return false;
+  if (["date", "time", "timestamp", "datetime", "datetime2", "timetz", "timestamptz"].includes(canonical)) return true;
+  if (["uuid", "xml", "json"].includes(canonical)) return true;
+  if (["jsonb"].includes(canonical)) return false;
+  if (["boolean", "bit"].includes(canonical)) return false;
+  if (testValue.toLowerCase() === "null") return false;
+  if (isLikelyFunctionOrKeyword(testValue)) return false;
   if (isNumericType(canonical)) return false;
   return true;
 };
 
 export const isLikelyFunctionOrKeyword = (value: string) => {
-  const keywords = [
+  if (!value) return false;
+
+  const exactKeywords = [
     "current_timestamp",
-    "now",
+    "now()",
     "sysdate",
-    "getdate",
+    "getdate()",
     "systimestamp",
-    "uuid",
-    "gen_random_uuid",
-    "newid",
+    "uuid()",
+    "newid()",
     "sys_guid",
+    "default_value"
   ];
-  return keywords.some((keyword) => value.toLowerCase().includes(keyword));
+
+  const upperValue = value.toUpperCase().trim();
+
+  // Check for exact matches first
+  if (exactKeywords.some(keyword => upperValue === keyword.toUpperCase())) {
+    return true;
+  }
+
+  // Check for partial matches (but exclude specific cases)
+  const partialKeywords = ["current_timestamp", "uuid", "default"];
+  return partialKeywords.some(keyword => {
+    const upperKeyword = keyword.toUpperCase();
+    return upperValue.includes(upperKeyword) &&
+           !upperValue.includes("NEXTVAL") && // Exclude this specific case
+           !(upperValue.includes("GEN_RANDOM_UUID") && !upperValue.includes("(")); // Exclude gen_random_uuid without parentheses
+  });
 };
 
 export const escapeSingleQuotes = (value: string) => value.replace(/'/g, "''");

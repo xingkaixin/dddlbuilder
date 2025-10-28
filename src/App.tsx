@@ -4,35 +4,27 @@ export { default } from "./components/App";
 // Re-export utility functions for external use
 export {
   parseFieldType,
+  canonicalizeBaseType,
   getFieldTypeForDatabase,
   getCanonicalBaseType,
+  splitQualifiedName,
+  getSchemaAndTable,
+  escapeSingleQuotes,
+  formatConstantDefault,
+  shouldQuoteDefault,
+  isLikelyFunctionOrKeyword,
+  TYPE_ALIASES,
 } from "./utils/databaseTypeMapping";
 
 export {
   buildDDL,
   buildDCL,
-} from "./utils/ddlGenerators";
-
-export {
-  normalizeFields,
-  isReservedKeyword,
-  toStringSafe,
-} from "./utils/helpers";
-
-export {
   buildOracleSynonyms,
 } from "./utils/ddlGenerators";
 
 export {
-  escapeSingleQuotes,
-  formatConstantDefault,
-  shouldQuoteDefault,
-  isLikelyFunctionOrKeyword,
-  splitQualifiedName,
-  getSchemaAndTable,
-} from "./utils/databaseTypeMapping";
-
-export {
+  normalizeFields,
+  toStringSafe,
   normalizeBoolean,
   normalizeDefaultKind,
   normalizeOnUpdate,
@@ -47,6 +39,9 @@ export {
   supportsAutoIncrement,
   supportsDefaultCurrentTimestamp,
   supportsOnUpdateCurrentTimestamp,
+  isReservedKeyword,
+  formatMysqlTableName,
+  formatPostgresTableName,
 } from "./utils/helpers";
 
 export {
@@ -62,11 +57,6 @@ export {
   STORAGE_KEY,
   RESERVED_KEYWORDS,
 } from "./utils/constants";
-
-export {
-  TYPE_ALIASES,
-  canonicalizeBaseType,
-} from "./utils/databaseTypeMapping";
 
 export type {
   DatabaseType,
