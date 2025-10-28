@@ -20,20 +20,17 @@ export {
 } from "./utils/helpers";
 
 export {
-  buildMysqlDDL,
-  buildPostgresDDL,
-  buildSqlServerDDL,
-  buildOracleDDL,
   buildOracleSynonyms,
+} from "./utils/ddlGenerators";
+
+export {
   escapeSingleQuotes,
   formatConstantDefault,
   shouldQuoteDefault,
   isLikelyFunctionOrKeyword,
   splitQualifiedName,
   getSchemaAndTable,
-  formatMysqlTableName,
-  formatPostgresTableName,
-} from "./utils/ddlGenerators";
+} from "./utils/databaseTypeMapping";
 
 export {
   normalizeBoolean,
@@ -69,10 +66,6 @@ export {
 export {
   TYPE_ALIASES,
   canonicalizeBaseType,
-  mapTypeForMysql,
-  mapTypeForPostgres,
-  mapTypeForSqlServer,
-  mapTypeForOracle,
 } from "./utils/databaseTypeMapping";
 
 export type {
