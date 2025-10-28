@@ -68,10 +68,29 @@ export const getFieldTypeForDatabase = (
   return typeMapper.mapType(parsed);
 };
 
-export const parseFieldType = (rawType: string): ParsedFieldType => {
-  const clean = rawType.trim();
+// 辅助函数：处理UNSIGNED后缀
+const parseUnsigned = (type: string): { clean: string; isUnsigned: boolean } => {
+  const isUnsigned = type.toLowerCase().endsWith("unsigned");
+  const clean = isUnsigned ? type.replace(/\s+unsigned$/gi, "").trim() : type;
+  return { clean, isUnsigned };
+};
 
-  if (clean === "") {
+// 辅助函数：提取类型名称和参数
+const extractTypeAndArgs = (type: string): { baseType: string; args: string[] } | null => {
+  const match = type.match(/^([a-z0-9_\s]+)(?:\(([^)]*)\))?$/i);
+  if (!match) return null;
+
+  const [, baseType, argString] = match;
+  const cleanBaseType = baseType.trim().toLowerCase();
+  const args = argString ? argString.split(",").map(arg => arg.trim()) : [];
+
+  return { baseType: cleanBaseType, args };
+};
+
+// 辅助函数：处理特殊情况
+const handleSpecialCases = (type: string): ParsedFieldType => {
+  // 处理空字符串
+  if (type === "") {
     return {
       baseType: "",
       args: [],
@@ -80,41 +99,63 @@ export const parseFieldType = (rawType: string): ParsedFieldType => {
     };
   }
 
-  // 处理UNSIGNED后缀（MySQL特有）
-  const isUnsigned = clean.toLowerCase().endsWith("unsigned");
-  const withoutUnsigned = isUnsigned ? clean.replace(/\s+unsigned$/gi, "").trim() : clean;
-
-  // 提取类型名称和参数
-  const match = withoutUnsigned.match(/^([a-z0-9_\s]+)(?:\(([^)]*)\))?$/i);
-  if (!match) {
-    // 处理像 "()" 这样的特殊情况
-    if (clean === "()") {
-      return {
-        baseType: "",
-        args: [],
-        unsigned: false,
-        raw: "()",
-      };
-    }
-    // 处理像 "varchar255)" 这样的特殊情况（缺少开括号）
-    const cleanBaseType = clean.replace(/\)$/, '').toLowerCase();
+  // 处理 "()"
+  if (type === "()") {
     return {
-      baseType: cleanBaseType,
+      baseType: "",
       args: [],
-      unsigned: isUnsigned,
-      raw: clean,
+      unsigned: false,
+      raw: "()",
     };
   }
 
-  const [, baseType, argString] = match;
-  const cleanBaseType = baseType.trim().toLowerCase();
-  const args = argString
-    ? argString.split(",").map(arg => arg.toLowerCase().trim() === "max" ? "max" : arg.trim())
-    : [];
-
+  // 处理缺少开括号的情况，如 "varchar255)"
+  const cleanBaseType = type.replace(/\)$/, '').toLowerCase();
   return {
     baseType: cleanBaseType,
-    args,
+    args: [],
+    unsigned: false,
+    raw: type,
+  };
+};
+
+// 辅助函数：标准化参数数组
+const normalizeArgs = (args: string[]): string[] => {
+  return args.map(arg => arg.toLowerCase().trim() === "max" ? "max" : arg.trim());
+};
+
+// 辅助函数：创建空字段类型
+const createEmptyField = (): ParsedFieldType => ({
+  baseType: "",
+  args: [],
+  unsigned: false,
+  raw: "",
+});
+
+export const parseFieldType = (rawType: string): ParsedFieldType => {
+  const clean = rawType.trim();
+
+  // 处理空字符串
+  if (clean === "") {
+    return createEmptyField();
+  }
+
+  // 处理UNSIGNED后缀
+  const { clean: withoutUnsigned, isUnsigned } = parseUnsigned(clean);
+
+  // 尝试提取类型名称和参数
+  const extracted = extractTypeAndArgs(withoutUnsigned);
+
+  if (!extracted) {
+    // 处理特殊情况（如 "()" 或 "varchar255)"）
+    const specialCase = handleSpecialCases(clean);
+    return { ...specialCase, unsigned: isUnsigned };
+  }
+
+  // 正常情况：标准化参数并返回结果
+  return {
+    baseType: extracted.baseType,
+    args: normalizeArgs(extracted.args),
     unsigned: isUnsigned,
     raw: clean,
   };

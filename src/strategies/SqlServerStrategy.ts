@@ -1,5 +1,4 @@
 import type { NormalizedField, IndexDefinition } from "../types";
-import type { DDLStrategy } from "../interfaces/DDLStrategy";
 import {
   getCanonicalBaseType,
   supportsAutoIncrement,
@@ -13,23 +12,11 @@ import {
   getSchemaAndTable,
   parseFieldType,
 } from "../utils/databaseTypeMapping";
-import { TypeMapper } from "../utils/TypeMapper";
+import { AbstractDDLStrategy } from "./AbstractDDLStrategy";
 
-export class SqlServerStrategy implements DDLStrategy {
+export class SqlServerStrategy extends AbstractDDLStrategy {
   getDatabaseType(): "sqlserver" {
     return "sqlserver";
-  }
-
-  formatTableName(tableName: string): string {
-    const parts = splitQualifiedName(tableName);
-    if (parts.length === 0) {
-      return tableName.trim();
-    }
-    return parts.join(".");
-  }
-
-  formatFieldName(fieldName: string): string {
-    return fieldName;
   }
 
   generateTableDDL(
@@ -41,7 +28,7 @@ export class SqlServerStrategy implements DDLStrategy {
     const schema = parsedSchema || "";
     const table = parsedTable || tableName.trim();
 
-    const typeMapper = TypeMapper.create("sqlserver");
+    const typeMapper = this.createTypeMapper();
     const columnLines = fields.map((field) => {
       const parsedType = parseFieldType(field.type);
       const type = typeMapper.mapType(parsedType);
@@ -115,25 +102,5 @@ export class SqlServerStrategy implements DDLStrategy {
       });
 
     return statements.join("\n");
-  }
-
-  generateIndexDDL(
-    tableName: string,
-    index: IndexDefinition,
-    fields: NormalizedField[]
-  ): string {
-    // Skip primary keys as they are handled differently
-    if (index.isPrimary) {
-      const fieldList = index.fields.map((f) => f.name).join(", ");
-      return `ALTER TABLE ${this.formatTableName(tableName)} ADD PRIMARY KEY (${fieldList});`;
-    }
-
-    const indexType = index.unique ? "UNIQUE INDEX" : "INDEX";
-    const fieldList = index.fields
-      .map((f) => `${f.name} ${f.direction}`)
-      .join(", ");
-
-    const qualifiedName = this.formatTableName(tableName);
-    return `CREATE ${indexType} ${index.name} ON ${qualifiedName} (${fieldList});`;
   }
 }

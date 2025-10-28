@@ -1,17 +1,16 @@
-import React from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { changelogData } from '@/data/changelog'
+} from "@/components/ui/dialog";
+import { changelogData } from "@/data/changelog";
 
 interface ChangelogModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export function ChangelogModal({ open, onOpenChange }: ChangelogModalProps) {
@@ -39,7 +38,10 @@ export function ChangelogModal({ open, onOpenChange }: ChangelogModalProps) {
                   remarkPlugins={[remarkGfm]}
                   components={{
                     h4: ({ children, ...props }) => (
-                      <h4 className="text-base font-medium mb-2 mt-4" {...props}>
+                      <h4
+                        className="text-base font-medium mb-2 mt-4"
+                        {...props}
+                      >
                         {children}
                       </h4>
                     ),
@@ -68,5 +70,5 @@ export function ChangelogModal({ open, onOpenChange }: ChangelogModalProps) {
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
