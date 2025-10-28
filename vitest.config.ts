@@ -23,7 +23,11 @@ export default defineConfig({
       include: ["src/**/*.{ts,tsx}"],
       exclude: [
         "src/**/*.{test,spec}.{ts,tsx}",
-        "src/**/components/**/*.{test,spec}.{ts,tsx}",  // Exclude UI component tests
+        "src/**/components/**/*", // Exclude UI component tests
+        "src/__tests__/**/*", // Exclude all test files and helpers
+        "src/scripts/**/*", // Exclude utility scripts
+        "src/interfaces/**/*", // Exclude TypeScript interfaces
+        "src/types/**/*", // Exclude TypeScript type definitions
         "src/main.tsx",
         "src/vite-env.d.ts",
       ],
