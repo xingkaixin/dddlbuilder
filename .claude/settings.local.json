@@ -7,7 +7,8 @@
       "Bash(bun run test:*)",
       "Bash(bun test)",
       "Bash(bun lint:*)",
-      "Bash(bun run:*)"
+      "Bash(bun run:*)",
+      "WebFetch(domain:localhost)"
     ]
   },
   "outputStyle": "default"

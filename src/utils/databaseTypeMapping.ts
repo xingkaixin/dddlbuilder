@@ -1,4 +1,5 @@
 import type { DatabaseType, ParsedFieldType } from "../types";
+import { TypeMapper } from "./TypeMapper";
 
 export const TYPE_ALIASES: Record<string, string> = {
   bigint: "bigint",
@@ -55,372 +56,179 @@ export const TYPE_ALIASES: Record<string, string> = {
   nvarchar2: "nvarchar",
 };
 
-const formatType = (base: string, args: string[] = [], suffix = "") => {
-  const formattedArgs = args.map(uppercaseArg);
-  const joined = formattedArgs.join(", ");
-  const typeCore = joined
-    ? `${base.toUpperCase()}(${joined})`
-    : base.toUpperCase();
-  return suffix ? `${typeCore} ${suffix}` : typeCore;
-};
-
-const uppercaseArg = (value: string) =>
-  value.toLowerCase() === "max" ? "MAX" : value;
-
-const ensureLength = (args: string[], fallback: string) => {
-  if (args.length === 0) {
-    return [fallback];
-  }
-  return args;
-};
-
 export const canonicalizeBaseType = (baseType: string) =>
   TYPE_ALIASES[baseType] ?? baseType;
 
-export const mapTypeForMysql = (parsed: ParsedFieldType, canonical: string) => {
-  switch (canonical) {
-    case "varchar":
-      return formatType("varchar", ensureLength(parsed.args, "255"));
-    case "nvarchar":
-      return formatType("varchar", ensureLength(parsed.args, "255"));
-    case "char":
-      return formatType("char", ensureLength(parsed.args, "1"));
-    case "nchar":
-      return formatType("char", ensureLength(parsed.args, "1"));
-    case "text":
-      return formatType("text");
-    case "mediumtext":
-      return formatType("mediumtext");
-    case "longtext":
-      return formatType("longtext");
-    case "int":
-      return formatType("int", [], parsed.unsigned ? "UNSIGNED" : "").trim();
-    case "tinyint":
-      return formatType(
-        "tinyint",
-        parsed.args.length ? parsed.args : ["1"],
-        parsed.unsigned ? "UNSIGNED" : ""
-      ).trim();
-    case "smallint":
-      return formatType(
-        "smallint",
-        [],
-        parsed.unsigned ? "UNSIGNED" : ""
-      ).trim();
-    case "bigint":
-      return formatType("bigint", [], parsed.unsigned ? "UNSIGNED" : "").trim();
-    case "decimal": {
-      const args = parsed.args.length === 0 ? ["18", "2"] : parsed.args;
-      const suffix = parsed.unsigned ? "UNSIGNED" : "";
-      return formatType("decimal", args, suffix).trim();
-    }
-    case "float":
-      return formatType("float", parsed.args);
-    case "double":
-      return formatType("double", parsed.args);
-    case "real":
-      return formatType("double", parsed.args);
-    case "boolean":
-      return formatType("tinyint", ["1"]);
-    case "bit":
-      return formatType("bit", ensureLength(parsed.args, "1"));
-    case "datetime2":
-      return formatType("datetime", parsed.args);
-    case "datetime":
-      return formatType("datetime", parsed.args);
-    case "timestamp":
-      return formatType("timestamp", []);
-    case "time":
-      return formatType("time", []);
-    case "timetz":
-      return formatType("time", parsed.args);
-    case "timestamptz":
-      return formatType("timestamp", parsed.args);
-    case "date":
-      return formatType("date");
-    case "json":
-      return formatType("json");
-    case "jsonb":
-      return formatType("json");
-    case "uuid":
-      return formatType("char", ["36"]);
-    case "blob":
-      return formatType("blob");
-    case "varbinary":
-      return formatType("varbinary", parsed.args);
-    case "serial":
-      return `${formatType("bigint")} UNSIGNED AUTO_INCREMENT`;
-    default:
-      return "";
-  }
-};
-
-export const mapTypeForPostgres = (parsed: ParsedFieldType, canonical: string) => {
-  switch (canonical) {
-    case "varchar":
-      return formatType("varchar", parsed.args);
-    case "nvarchar":
-      return formatType("varchar", parsed.args);
-    case "char":
-      return formatType("char", parsed.args);
-    case "nchar":
-      return formatType("char", parsed.args);
-    case "text":
-    case "mediumtext":
-    case "longtext":
-      return formatType("text");
-    case "int":
-      return formatType("integer");
-    case "tinyint":
-      return formatType("smallint");
-    case "smallint":
-      return formatType("smallint");
-    case "bigint":
-      return formatType("bigint");
-    case "decimal":
-      return formatType(
-        "numeric",
-        parsed.args.length === 0 ? ["18", "2"] : parsed.args
-      );
-    case "float":
-    case "double":
-      return "DOUBLE PRECISION";
-    case "real":
-      return formatType("real");
-    case "boolean":
-    case "bit":
-      return formatType("boolean");
-    case "datetime":
-    case "datetime2":
-      return formatType("timestamp", parsed.args);
-    case "timestamp":
-      return formatType("timestamp", parsed.args);
-    case "timestamptz":
-      return `${formatType("timestamp", parsed.args)} WITH TIME ZONE`;
-    case "time":
-      return `${formatType("time", parsed.args)} WITHOUT TIME ZONE`;
-    case "timetz":
-      return `${formatType("time", parsed.args)} WITH TIME ZONE`;
-    case "date":
-      return formatType("date");
-    case "json":
-      return formatType("jsonb");
-    case "jsonb":
-      return formatType("jsonb");
-    case "uuid":
-      return formatType("uuid");
-    case "serial":
-      return formatType("serial");
-    case "xml":
-      return formatType("xml");
-    default:
-      return "";
-  }
-};
-
-export const mapTypeForSqlServer = (parsed: ParsedFieldType, canonical: string) => {
-  switch (canonical) {
-    case "varchar":
-      return formatType("varchar", ensureLength(parsed.args, "255"));
-    case "nvarchar":
-      return formatType("nvarchar", ensureLength(parsed.args, "255"));
-    case "char":
-      return formatType("char", ensureLength(parsed.args, "1"));
-    case "nchar":
-      return formatType("nchar", ensureLength(parsed.args, "1"));
-    case "text":
-    case "mediumtext":
-    case "longtext":
-      return "NVARCHAR(MAX)";
-    case "int":
-      return formatType("int");
-    case "tinyint":
-      return formatType("tinyint");
-    case "smallint":
-      return formatType("smallint");
-    case "bigint":
-      return formatType("bigint");
-    case "decimal":
-      return formatType(
-        "decimal",
-        parsed.args.length === 0 ? ["18", "2"] : parsed.args
-      );
-    case "float":
-    case "double":
-      return formatType("float", parsed.args);
-    case "real":
-      return formatType("real");
-    case "boolean":
-      return formatType("bit");
-    case "bit":
-      return formatType("bit");
-    case "datetime":
-    case "datetime2":
-    case "timestamp":
-      return formatType("datetime2", parsed.args);
-    case "time":
-    case "timetz":
-      return formatType("time", parsed.args);
-    case "date":
-      return formatType("date");
-    case "json":
-    case "jsonb":
-      return "NVARCHAR(MAX)";
-    case "uuid":
-      return formatType("uniqueidentifier");
-    case "varbinary":
-      return formatType(
-        "varbinary",
-        parsed.args.length === 0 ? ["MAX"] : parsed.args
-      );
-    case "serial":
-      return "BIGINT IDENTITY(1,1)";
-    case "xml":
-      return formatType("xml");
-    default:
-      return "";
-  }
-};
-
-export const mapTypeForOracle = (parsed: ParsedFieldType, canonical: string) => {
-  switch (canonical) {
-    case "varchar":
-      return formatType("varchar2", ensureLength(parsed.args, "255"));
-    case "nvarchar":
-      return formatType("nvarchar2", ensureLength(parsed.args, "255"));
-    case "char":
-      return formatType("char", ensureLength(parsed.args, "1"));
-    case "nchar":
-      return formatType("nchar", ensureLength(parsed.args, "1"));
-    case "text":
-    case "mediumtext":
-    case "longtext":
-    case "clob":
-      return "CLOB";
-    case "int":
-      return "NUMBER(10)";
-    case "tinyint":
-      return "NUMBER(3)";
-    case "smallint":
-      return "NUMBER(5)";
-    case "bigint":
-      return "NUMBER(19)";
-    case "decimal":
-      return formatType(
-        "number",
-        parsed.args.length === 0 ? ["18", "2"] : parsed.args
-      );
-    case "float":
-      return formatType("float", parsed.args);
-    case "double":
-      return "BINARY_DOUBLE";
-    case "real":
-      return "BINARY_FLOAT";
-    case "boolean":
-    case "bit":
-      return "NUMBER(1)";
-    case "datetime":
-    case "datetime2":
-      return "TIMESTAMP";
-    case "timestamp":
-      return "TIMESTAMP";
-    case "timestamptz":
-      return "TIMESTAMP WITH TIME ZONE";
-    case "time":
-    case "timetz":
-      return "TIMESTAMP";
-    case "date":
-      return "DATE";
-    case "json":
-    case "jsonb":
-      return "CLOB";
-    case "uuid":
-      return "CHAR(36)";
-    case "blob":
-      return "BLOB";
-    case "varbinary":
-      return formatType("raw", ensureLength(parsed.args, "2000"));
-    case "serial":
-      return "NUMBER GENERATED ALWAYS AS IDENTITY";
-    case "xml":
-      return "XMLTYPE";
-    default:
-      return "";
-  }
-};
-
 export const getFieldTypeForDatabase = (
-  dbType: DatabaseType,
-  rawType: string
-) => {
-  const parsed = parseFieldType(rawType);
-  if (!parsed.baseType) {
-    return rawType.trim();
-  }
-  const canonical = canonicalizeBaseType(parsed.baseType);
-  let mapped = "";
-  switch (dbType) {
-    case "mysql":
-      mapped = mapTypeForMysql(parsed, canonical);
-      break;
-    case "postgresql":
-      mapped = mapTypeForPostgres(parsed, canonical);
-      break;
-    case "sqlserver":
-      mapped = mapTypeForSqlServer(parsed, canonical);
-      break;
-    case "oracle":
-      mapped = mapTypeForOracle(parsed, canonical);
-      break;
-    default:
-      mapped = "";
-  }
-  return mapped || parsed.raw;
+  databaseType: DatabaseType,
+  fieldType: string
+): string => {
+  const parsed = parseFieldType(fieldType);
+  const typeMapper = TypeMapper.create(databaseType);
+  return typeMapper.mapType(parsed);
 };
 
 export const parseFieldType = (rawType: string): ParsedFieldType => {
-  const raw = rawType.trim();
-  if (!raw) {
-    return { baseType: "", args: [], unsigned: false, raw };
+  const clean = rawType.trim().toLowerCase();
+
+  // 处理UNSIGNED后缀（MySQL特有）
+  const isUnsigned = clean.includes("unsigned");
+  const withoutUnsigned = clean.replace(/\s+unsigned/g, "");
+
+  // 提取类型名称和参数
+  const match = withoutUnsigned.match(/^([a-z0-9_]+)(?:\(([^)]+)\))?$/i);
+  if (!match) {
+    return {
+      baseType: clean,
+      args: [],
+      unsigned: isUnsigned,
+      raw: rawType.trim(),
+    };
   }
 
-  const lower = raw.toLowerCase();
-  const match = lower.match(
-    /^([a-z0-9_]+(?:\s+[a-z0-9_]+)*)\s*(\(([^)]*)\))?(.*)$/
-  );
-
-  const baseTokens =
-    match?.[1]
-      ?.trim()
-      .split(/\s+/)
-      .filter((token) => token.length > 0) ?? [];
-  const args =
-    match?.[3]
-      ?.split(",")
-      .map((part) => part.trim())
-      .filter((part) => part.length > 0) ?? [];
-  const remainder = match?.[4]?.trim() ?? "";
-  const modifiers = new Set(
-    remainder.split(/\s+/).filter((token) => token.length > 0)
-  );
-
-  let unsigned = modifiers.has("unsigned");
-  if (baseTokens[baseTokens.length - 1] === "unsigned") {
-    unsigned = true;
-    baseTokens.pop();
-  }
-
-  const basePart = baseTokens.join(" ");
+  const [, baseType, argString] = match;
+  const args = argString
+    ? argString.split(",").map(arg => arg.trim())
+    : [];
 
   return {
-    baseType: basePart,
+    baseType,
     args,
-    unsigned,
-    raw,
+    unsigned: isUnsigned,
+    raw: rawType.trim(),
   };
 };
 
-export const getCanonicalBaseType = (rawType: string) => {
-  const parsed = parseFieldType(rawType);
+export const getCanonicalBaseType = (fieldType: string): string => {
+  const parsed = parseFieldType(fieldType);
   return canonicalizeBaseType(parsed.baseType);
+};
+
+// 保留原有的支持函数以保持向后兼容
+const isIntegerType = (canonical: string) =>
+  new Set(["tinyint", "smallint", "int", "integer", "bigint"]).has(canonical);
+
+const isNumericType = (canonical: string) =>
+  new Set([
+    "tinyint",
+    "smallint",
+    "int",
+    "integer",
+    "bigint",
+    "decimal",
+    "number",
+    "numeric",
+    "real",
+    "double",
+    "float",
+  ]).has(canonical);
+
+const isCharacterType = (canonical: string) =>
+  new Set([
+    "char",
+    "varchar",
+    "text",
+    "nchar",
+    "nvarchar",
+    "longtext",
+    "mediumtext",
+    "tinytext",
+    "clob",
+    "varchar2",
+    "nvarchar2",
+  ]).has(canonical);
+
+export const supportsUuidDefault = (canonical: string) => isCharacterType(canonical);
+
+export const supportsAutoIncrement = (db: DatabaseType, canonical: string) => {
+  switch (db) {
+    case "mysql":
+      return isIntegerType(canonical);
+    case "postgresql":
+      return new Set(["smallint", "int", "integer", "bigint"]).has(canonical);
+    case "sqlserver":
+      return new Set(["tinyint", "smallint", "int", "bigint"]).has(canonical);
+    case "oracle":
+      return isNumericType(canonical);
+    default:
+      return false;
+  }
+};
+
+export const supportsDefaultCurrentTimestamp = (db: DatabaseType, canonical: string) => {
+  switch (db) {
+    case "mysql":
+      return new Set(["timestamp", "datetime"]).has(canonical);
+    case "postgresql":
+      return new Set(["timestamp", "timestamptz"]).has(canonical);
+    case "sqlserver":
+      return new Set([
+        "datetime",
+        "datetime2",
+        "datetimeoffset",
+        "timestamp",
+      ]).has(canonical);
+    case "oracle":
+      return new Set(["timestamp", "date"]).has(canonical);
+    default:
+      return false;
+  }
+};
+
+export const supportsOnUpdateCurrentTimestamp = (db: DatabaseType, canonical: string) => {
+  switch (db) {
+    case "mysql":
+      return new Set(["timestamp"]).has(canonical);
+    default:
+      return false;
+  }
+};
+
+export const formatConstantDefault = (canonical: string, value: string) => {
+  const shouldQuote = shouldQuoteDefault(canonical, value);
+  const v = isLikelyFunctionOrKeyword(value) ? value : shouldQuote ? `'${value}'` : value;
+  return shouldQuote ? ` DEFAULT '${v}'` : ` DEFAULT ${v}`;
+};
+
+export const shouldQuoteDefault = (canonical: string, value: string) => {
+  if (isCharacterType(canonical)) return true;
+  if (value.toLowerCase() === "null") return false;
+  if (isLikelyFunctionOrKeyword(value)) return false;
+  if (isNumericType(canonical)) return false;
+  return true;
+};
+
+export const isLikelyFunctionOrKeyword = (value: string) => {
+  const keywords = [
+    "current_timestamp",
+    "now",
+    "sysdate",
+    "getdate",
+    "systimestamp",
+    "uuid",
+    "gen_random_uuid",
+    "newid",
+    "sys_guid",
+  ];
+  return keywords.some((keyword) => value.toLowerCase().includes(keyword));
+};
+
+export const escapeSingleQuotes = (value: string) => value.replace(/'/g, "''");
+
+export const splitQualifiedName = (raw: string) =>
+  raw
+    .split(".")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+
+export const getSchemaAndTable = (raw: string) => {
+  const parts = splitQualifiedName(raw);
+  if (parts.length <= 1) {
+    const table = parts[0] ?? raw.trim();
+    return { schema: "", table };
+  }
+  return {
+    schema: parts.slice(0, -1).join("."),
+    table: parts[parts.length - 1],
+  };
 };
