@@ -36,7 +36,7 @@ export function parseChangelog(): ChangelogData {
     const nextMatch = matches[index + 1]
     const endIndex = nextMatch ? nextMatch.index! : content.length
 
-    let versionContent = content.substring(startIndex, endIndex).trim()
+    const versionContent = content.substring(startIndex, endIndex).trim()
 
     entries.push({
       version,

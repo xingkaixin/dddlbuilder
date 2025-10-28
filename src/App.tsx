@@ -28,1439 +28,63 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// Import refactored utilities
+import type {
+  DatabaseType,
+  FieldRow,
+  NormalizedField,
+  IndexField,
+  IndexDefinition,
+  UiDefaultKind,
+  UiOnUpdate
+} from "./types";
+import {
+  DATABASE_OPTIONS,
+  YES_VALUES,
+  DEFAULT_KIND_OPTIONS,
+  ON_UPDATE_OPTIONS,
+  COLUMN_HEADERS,
+  STORAGE_KEY
+} from "./utils/constants";
+import {
+  toStringSafe,
+  isReservedKeyword,
+  normalizeBoolean,
+  normalizeDefaultKind,
+  normalizeOnUpdate,
+  createEmptyRow,
+  ensureOrder,
+  normalizeFields,
+  sanitizeRowsForPersist,
+  getUiDefaultKindOptions,
+  getUiOnUpdateOptions,
+} from "./utils/helpers";
+import {
+  getFieldTypeForDatabase,
+  parseFieldType,
+  getCanonicalBaseType
+} from "./utils/databaseTypeMapping";
+import {
+  buildDDL,
+  buildDCL
+} from "./utils/ddlGenerators";
+import { sanitizeIndexesForPersist } from "./utils/indexUtils";
+
+// Import custom hooks
+import {
+  useToast,
+  usePersistedState,
+  useTableData,
+  useIndexManagement,
+  useAuthManagement,
+  useSqlGeneration,
+  useCollapseState,
+} from "./hooks";
+
 registerAllModules();
 
-type DatabaseType = "mysql" | "postgresql" | "sqlserver" | "oracle";
-
-type FieldRow = {
-  order: number;
-  fieldName: string;
-  fieldType: string;
-  fieldComment: string;
-  nullable: string;
-  defaultKind?: string;
-  defaultValue?: string;
-  onUpdate?: string;
-};
-
-type NormalizedField = {
-  name: string;
-  type: string;
-  comment: string;
-  nullable: boolean;
-  defaultKind:
-    | "none"
-    | "auto_increment"
-    | "constant"
-    | "current_timestamp"
-    | "uuid";
-  defaultValue: string;
-  onUpdate: "none" | "current_timestamp";
-};
-
-type IndexField = {
-  name: string;
-  direction: "ASC" | "DESC";
-};
-
-type IndexDefinition = {
-  id: string;
-  name: string;
-  fields: IndexField[];
-  unique: boolean;
-  isPrimary?: boolean;
-};
-
-const DATABASE_OPTIONS: Array<{
-  value: DatabaseType;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-}> = [
-  { value: "mysql", label: "MySQL", icon: Database },
-  { value: "postgresql", label: "PostgreSQL", icon: Database },
-  { value: "sqlserver", label: "SQL Server", icon: Server },
-  { value: "oracle", label: "Oracle", icon: Archive },
-];
-
-const YES_VALUES = new Set(["y", "yes", "true", "1", "是", "√"]);
-
-// Reserved keywords for each database (lowercase)
-const RESERVED_KEYWORDS: Record<DatabaseType, Set<string>> = {
-  mysql: new Set([
-    "add",
-    "all",
-    "alter",
-    "analyze",
-    "and",
-    "as",
-    "asc",
-    "between",
-    "by",
-    "case",
-    "column",
-    "constraint",
-    "create",
-    "cross",
-    "database",
-    "default",
-    "delete",
-    "desc",
-    "distinct",
-    "drop",
-    "else",
-    "exists",
-    "false",
-    "from",
-    "group",
-    "having",
-    "if",
-    "in",
-    "index",
-    "inner",
-    "insert",
-    "into",
-    "is",
-    "join",
-    "key",
-    "left",
-    "like",
-    "limit",
-    "not",
-    "null",
-    "on",
-    "or",
-    "order",
-    "outer",
-    "primary",
-    "right",
-    "select",
-    "table",
-    "then",
-    "true",
-    "union",
-    "unique",
-    "update",
-    "values",
-    "where",
-  ]),
-  postgresql: new Set([
-    "all",
-    "analyze",
-    "and",
-    "any",
-    "array",
-    "as",
-    "asc",
-    "between",
-    "case",
-    "check",
-    "collate",
-    "column",
-    "constraint",
-    "create",
-    "cross",
-    "current_date",
-    "default",
-    "delete",
-    "desc",
-    "distinct",
-    "else",
-    "exists",
-    "false",
-    "from",
-    "full",
-    "group",
-    "having",
-    "ilike",
-    "in",
-    "inner",
-    "insert",
-    "intersect",
-    "into",
-    "is",
-    "join",
-    "left",
-    "like",
-    "limit",
-    "not",
-    "null",
-    "on",
-    "or",
-    "order",
-    "outer",
-    "primary",
-    "right",
-    "select",
-    "table",
-    "then",
-    "true",
-    "union",
-    "unique",
-    "update",
-    "using",
-    "values",
-    "where",
-    "with",
-  ]),
-  sqlserver: new Set([
-    "add",
-    "all",
-    "alter",
-    "and",
-    "any",
-    "as",
-    "asc",
-    "authorization",
-    "backup",
-    "begin",
-    "between",
-    "break",
-    "by",
-    "case",
-    "check",
-    "close",
-    "column",
-    "commit",
-    "constraint",
-    "create",
-    "cross",
-    "current",
-    "cursor",
-    "database",
-    "declare",
-    "default",
-    "delete",
-    "desc",
-    "distinct",
-    "drop",
-    "else",
-    "end",
-    "exec",
-    "exists",
-    "false",
-    "fetch",
-    "for",
-    "foreign",
-    "from",
-    "full",
-    "function",
-    "grant",
-    "group",
-    "having",
-    "in",
-    "index",
-    "inner",
-    "insert",
-    "into",
-    "is",
-    "join",
-    "key",
-    "left",
-    "like",
-    "merge",
-    "not",
-    "null",
-    "on",
-    "open",
-    "or",
-    "order",
-    "outer",
-    "primary",
-    "proc",
-    "procedure",
-    "return",
-    "right",
-    "rollback",
-    "schema",
-    "select",
-    "set",
-    "table",
-    "then",
-    "top",
-    "trigger",
-    "true",
-    "union",
-    "unique",
-    "update",
-    "values",
-    "view",
-    "where",
-    "while",
-  ]),
-  oracle: new Set([
-    "access",
-    "add",
-    "all",
-    "alter",
-    "and",
-    "any",
-    "as",
-    "asc",
-    "audit",
-    "between",
-    "by",
-    "case",
-    "check",
-    "cluster",
-    "column",
-    "comment",
-    "compress",
-    "connect",
-    "create",
-    "current",
-    "date",
-    "default",
-    "delete",
-    "desc",
-    "distinct",
-    "drop",
-    "else",
-    "exists",
-    "false",
-    "for",
-    "from",
-    "grant",
-    "group",
-    "having",
-    "in",
-    "index",
-    "insert",
-    "integer",
-    "intersect",
-    "into",
-    "is",
-    "level",
-    "like",
-    "lock",
-    "long",
-    "minus",
-    "nchar",
-    "not",
-    "nowait",
-    "null",
-    "number",
-    "of",
-    "on",
-    "or",
-    "order",
-    "prior",
-    "raw",
-    "rename",
-    "resource",
-    "revoke",
-    "row",
-    "rowid",
-    "rownum",
-    "select",
-    "session",
-    "share",
-    "size",
-    "smallint",
-    "start",
-    "synonym",
-    "sysdate",
-    "table",
-    "then",
-    "to",
-    "trigger",
-    "true",
-    "uid",
-    "union",
-    "unique",
-    "update",
-    "user",
-    "validate",
-    "values",
-    "varchar",
-    "varchar2",
-    "view",
-    "where",
-    "with",
-  ]),
-};
-
-const isReservedKeyword = (db: DatabaseType, name: string) => {
-  const lower = toStringSafe(name).trim().toLowerCase();
-  if (!lower) return false;
-  return RESERVED_KEYWORDS[db]?.has(lower) ?? false;
-};
-
-const toStringSafe = (value: unknown) => {
-  if (typeof value === "string") {
-    return value;
-  }
-  if (value == null) {
-    return "";
-  }
-  return String(value);
-};
-
-const createEmptyRow = (index: number): FieldRow => ({
-  order: index + 1,
-  fieldName: "",
-  fieldType: "",
-  fieldComment: "",
-  nullable: "是",
-  defaultKind: "无",
-  defaultValue: "",
-  onUpdate: "无",
-});
-
-const ensureOrder = (rows: FieldRow[]) =>
-  rows.map((row, index) => ({ ...row, order: index + 1 }));
-
-const normalizeBoolean = (value: string) => {
-  if (value == null) {
-    return false;
-  }
-  const normalized = String(value).trim().toLowerCase();
-  return YES_VALUES.has(normalized);
-};
-
-type ParsedFieldType = {
-  baseType: string;
-  args: string[];
-  unsigned: boolean;
-  raw: string;
-};
-
-const TYPE_ALIASES: Record<string, string> = {
-  bigint: "bigint",
-  bit: "bit",
-  bool: "boolean",
-  boolean: "boolean",
-  char: "char",
-  "character varying": "varchar",
-  "character varrying": "varchar",
-  clob: "text",
-  date: "date",
-  datetime: "datetime",
-  datetime2: "datetime2",
-  "datetime offset": "datetimeoffset",
-  decimal: "decimal",
-  double: "double",
-  "double precision": "double",
-  float: "float",
-  float8: "double",
-  int: "int",
-  integer: "int",
-  int4: "int",
-  mediumtext: "mediumtext",
-  nchar: "nchar",
-  "national char": "nchar",
-  "national character": "nchar",
-  "national character varying": "nvarchar",
-  "national varchar": "nvarchar",
-  "nchar varying": "nvarchar",
-  numeric: "decimal",
-  number: "decimal",
-  nvarchar: "nvarchar",
-  real: "real",
-  serial: "serial",
-  smallint: "smallint",
-  text: "text",
-  timetz: "timetz",
-  "time with time zone": "timetz",
-  "time without time zone": "time",
-  time: "time",
-  timestamp: "timestamp",
-  "timestamp without time zone": "timestamp",
-  timestamptz: "timestamptz",
-  tinyint: "tinyint",
-  uuid: "uuid",
-  varbinary: "varbinary",
-  varchar: "varchar",
-  xml: "xml",
-  json: "json",
-  jsonb: "jsonb",
-  blob: "blob",
-  longtext: "longtext",
-  varchar2: "varchar",
-  nvarchar2: "nvarchar",
-};
-
-const parseFieldType = (rawType: string): ParsedFieldType => {
-  const raw = rawType.trim();
-  if (!raw) {
-    return { baseType: "", args: [], unsigned: false, raw };
-  }
-
-  const lower = raw.toLowerCase();
-  const match = lower.match(
-    /^([a-z0-9_]+(?:\s+[a-z0-9_]+)*)\s*(\(([^)]*)\))?(.*)$/
-  );
-
-  const baseTokens =
-    match?.[1]
-      ?.trim()
-      .split(/\s+/)
-      .filter((token) => token.length > 0) ?? [];
-  const args =
-    match?.[3]
-      ?.split(",")
-      .map((part) => part.trim())
-      .filter((part) => part.length > 0) ?? [];
-  const remainder = match?.[4]?.trim() ?? "";
-  const modifiers = new Set(
-    remainder.split(/\s+/).filter((token) => token.length > 0)
-  );
-
-  let unsigned = modifiers.has("unsigned");
-  if (baseTokens[baseTokens.length - 1] === "unsigned") {
-    unsigned = true;
-    baseTokens.pop();
-  }
-
-  const basePart = baseTokens.join(" ");
-
-  return {
-    baseType: basePart,
-    args,
-    unsigned,
-    raw,
-  };
-};
-
-const canonicalizeBaseType = (baseType: string) =>
-  TYPE_ALIASES[baseType] ?? baseType;
-
-const uppercaseArg = (value: string) =>
-  value.toLowerCase() === "max" ? "MAX" : value;
-
-const ensureLength = (args: string[], fallback: string) => {
-  if (args.length === 0) {
-    return [fallback];
-  }
-  return args;
-};
-
-// default helpers
-const DEFAULT_KIND_OPTIONS = [
-  "无",
-  "自增",
-  "常量",
-  "当前时间",
-  "uuid",
-] as const;
-type UiDefaultKind = (typeof DEFAULT_KIND_OPTIONS)[number];
-const ON_UPDATE_OPTIONS = ["无", "当前时间"] as const;
-type UiOnUpdate = (typeof ON_UPDATE_OPTIONS)[number];
-
-const normalizeDefaultKind = (
-  v: string | undefined
-): NormalizedField["defaultKind"] => {
-  const s = toStringSafe(v).trim();
-  if (s === "自增") return "auto_increment";
-  if (s === "常量") return "constant";
-  if (s === "当前时间") return "current_timestamp";
-  if (s === "uuid") return "uuid";
-  return "none";
-};
-
-const normalizeOnUpdate = (
-  v: string | undefined
-): NormalizedField["onUpdate"] => {
-  const s = toStringSafe(v).trim();
-  if (s === "当前时间") return "current_timestamp";
-  return "none";
-};
-
-const getCanonicalBaseType = (rawType: string) => {
-  const parsed = parseFieldType(rawType);
-  return canonicalizeBaseType(parsed.baseType);
-};
-
-const shouldQuoteDefault = (canonical: string) => {
-  const texty = new Set([
-    "char",
-    "nchar",
-    "varchar",
-    "nvarchar",
-    "text",
-    "mediumtext",
-    "longtext",
-    "uuid",
-    "xml",
-    "json",
-    "clob",
-    "varchar2",
-    "nvarchar2",
-  ]);
-  const datetimey = new Set([
-    "date",
-    "time",
-    "timetz",
-    "timestamp",
-    "timestamptz",
-    "datetime",
-    "datetime2",
-  ]);
-  return texty.has(canonical) || datetimey.has(canonical);
-};
-
-const isLikelyFunctionOrKeyword = (value: string) => {
-  const v = value.trim();
-  if (!v) return false;
-  if (/[()]/.test(v)) return true;
-  return /^[A-Z_][A-Z0-9_]*$/.test(v);
-};
-
-const formatConstantDefault = (canonical: string, value: string) => {
-  const v = value.trim();
-  if (!v) return "";
-  if (isLikelyFunctionOrKeyword(v)) return ` DEFAULT ${v}`;
-  if (shouldQuoteDefault(canonical))
-    return ` DEFAULT '${escapeSingleQuotes(v)}'`;
-  return ` DEFAULT ${v}`;
-};
-
-// capabilities by db + canonical type
-const isCharacterType = (canonical: string) =>
-  new Set([
-    "char",
-    "varchar",
-    "text",
-    "nchar",
-    "nvarchar",
-    "longtext",
-    "mediumtext",
-    "tinytext",
-    "clob",
-    "varchar2",
-    "nvarchar2",
-  ]).has(canonical);
-
-const supportsUuidDefault = (canonical: string) => isCharacterType(canonical);
-
-const isIntegerType = (canonical: string) =>
-  new Set(["tinyint", "smallint", "int", "integer", "bigint"]).has(canonical);
-
-const isNumericType = (canonical: string) =>
-  new Set([
-    "tinyint",
-    "smallint",
-    "int",
-    "integer",
-    "bigint",
-    "decimal",
-    "number",
-    "numeric",
-    "real",
-    "double",
-    "float",
-  ]).has(canonical);
-
-// kept for potential future checks; currently not used
-// const isTimestampLike = (canonical: string) =>
-//   new Set(['timestamp', 'timestamptz', 'datetime', 'datetime2']).has(canonical)
-
-const supportsAutoIncrement = (db: DatabaseType, canonical: string) => {
-  switch (db) {
-    case "mysql":
-      return isIntegerType(canonical);
-    case "postgresql":
-      return new Set(["smallint", "int", "integer", "bigint"]).has(canonical);
-    case "sqlserver":
-      return new Set(["tinyint", "smallint", "int", "bigint"]).has(canonical);
-    case "oracle":
-      return isNumericType(canonical);
-    default:
-      return false;
-  }
-};
-
-const supportsDefaultCurrentTimestamp = (
-  db: DatabaseType,
-  canonical: string
-) => {
-  switch (db) {
-    case "mysql":
-      return new Set(["timestamp", "datetime"]).has(canonical);
-    case "postgresql":
-      return new Set(["timestamp", "timestamptz"]).has(canonical);
-    case "sqlserver":
-      return new Set(["datetime", "datetime2"]).has(canonical);
-    case "oracle":
-      return new Set(["timestamp"]).has(canonical);
-    default:
-      return false;
-  }
-};
-
-const supportsOnUpdateCurrentTimestamp = (
-  db: DatabaseType,
-  canonical: string
-) => {
-  if (db !== "mysql") return false;
-  return new Set(["timestamp", "datetime"]).has(canonical);
-};
-
-const getUiDefaultKindOptions = (
-  db: DatabaseType,
-  canonical: string
-): UiDefaultKind[] => {
-  const opts: UiDefaultKind[] = ["无", "常量"];
-  if (supportsAutoIncrement(db, canonical)) opts.splice(1, 0, "自增");
-  if (supportsUuidDefault(canonical)) opts.push("uuid");
-  if (supportsDefaultCurrentTimestamp(db, canonical)) opts.push("当前时间");
-  return opts;
-};
-
-const getUiOnUpdateOptions = (
-  db: DatabaseType,
-  canonical: string
-): UiOnUpdate[] => {
-  const opts: UiOnUpdate[] = ["无"];
-  if (supportsOnUpdateCurrentTimestamp(db, canonical)) opts.push("当前时间");
-  return opts;
-};
-
-const formatType = (base: string, args: string[] = [], suffix = "") => {
-  const formattedArgs = args.map(uppercaseArg);
-  const joined = formattedArgs.join(", ");
-  const typeCore = joined
-    ? `${base.toUpperCase()}(${joined})`
-    : base.toUpperCase();
-  return suffix ? `${typeCore} ${suffix}` : typeCore;
-};
-
-const mapTypeForMysql = (parsed: ParsedFieldType, canonical: string) => {
-  switch (canonical) {
-    case "varchar":
-      return formatType("varchar", ensureLength(parsed.args, "255"));
-    case "nvarchar":
-      return formatType("varchar", ensureLength(parsed.args, "255"));
-    case "char":
-      return formatType("char", ensureLength(parsed.args, "1"));
-    case "nchar":
-      return formatType("char", ensureLength(parsed.args, "1"));
-    case "text":
-      return formatType("text");
-    case "mediumtext":
-      return formatType("mediumtext");
-    case "longtext":
-      return formatType("longtext");
-    case "int":
-      return formatType("int", [], parsed.unsigned ? "UNSIGNED" : "").trim();
-    case "tinyint":
-      return formatType(
-        "tinyint",
-        parsed.args.length ? parsed.args : ["1"],
-        parsed.unsigned ? "UNSIGNED" : ""
-      ).trim();
-    case "smallint":
-      return formatType(
-        "smallint",
-        [],
-        parsed.unsigned ? "UNSIGNED" : ""
-      ).trim();
-    case "bigint":
-      return formatType("bigint", [], parsed.unsigned ? "UNSIGNED" : "").trim();
-    case "decimal": {
-      const args = parsed.args.length === 0 ? ["18", "2"] : parsed.args;
-      const suffix = parsed.unsigned ? "UNSIGNED" : "";
-      return formatType("decimal", args, suffix).trim();
-    }
-    case "float":
-      return formatType("float", parsed.args);
-    case "double":
-      return formatType("double", parsed.args);
-    case "real":
-      return formatType("double", parsed.args);
-    case "boolean":
-      return formatType("tinyint", ["1"]);
-    case "bit":
-      return formatType("bit", ensureLength(parsed.args, "1"));
-    case "datetime2":
-      return formatType("datetime", parsed.args);
-    case "datetime":
-      return formatType("datetime", parsed.args);
-    case "timestamp":
-      return formatType("timestamp", []);
-    case "time":
-      return formatType("time", []);
-    case "timetz":
-      return formatType("time", parsed.args);
-    case "timestamptz":
-      return formatType("timestamp", parsed.args);
-    case "date":
-      return formatType("date");
-    case "json":
-      return formatType("json");
-    case "jsonb":
-      return formatType("json");
-    case "uuid":
-      return formatType("char", ["36"]);
-    case "blob":
-      return formatType("blob");
-    case "varbinary":
-      return formatType("varbinary", parsed.args);
-    case "serial":
-      return `${formatType("bigint")} UNSIGNED AUTO_INCREMENT`;
-    default:
-      return "";
-  }
-};
-
-const mapTypeForPostgres = (parsed: ParsedFieldType, canonical: string) => {
-  switch (canonical) {
-    case "varchar":
-      return formatType("varchar", parsed.args);
-    case "nvarchar":
-      return formatType("varchar", parsed.args);
-    case "char":
-      return formatType("char", parsed.args);
-    case "nchar":
-      return formatType("char", parsed.args);
-    case "text":
-    case "mediumtext":
-    case "longtext":
-      return formatType("text");
-    case "int":
-      return formatType("integer");
-    case "tinyint":
-      return formatType("smallint");
-    case "smallint":
-      return formatType("smallint");
-    case "bigint":
-      return formatType("bigint");
-    case "decimal":
-      return formatType(
-        "numeric",
-        parsed.args.length === 0 ? ["18", "2"] : parsed.args
-      );
-    case "float":
-    case "double":
-      return "DOUBLE PRECISION";
-    case "real":
-      return formatType("real");
-    case "boolean":
-    case "bit":
-      return formatType("boolean");
-    case "datetime":
-    case "datetime2":
-      return formatType("timestamp", parsed.args);
-    case "timestamp":
-      return formatType("timestamp", parsed.args);
-    case "timestamptz":
-      return `${formatType("timestamp", parsed.args)} WITH TIME ZONE`;
-    case "time":
-      return `${formatType("time", parsed.args)} WITHOUT TIME ZONE`;
-    case "timetz":
-      return `${formatType("time", parsed.args)} WITH TIME ZONE`;
-    case "date":
-      return formatType("date");
-    case "json":
-      return formatType("jsonb");
-    case "jsonb":
-      return formatType("jsonb");
-    case "uuid":
-      return formatType("uuid");
-    case "serial":
-      return formatType("serial");
-    case "xml":
-      return formatType("xml");
-    default:
-      return "";
-  }
-};
-
-const mapTypeForSqlServer = (parsed: ParsedFieldType, canonical: string) => {
-  switch (canonical) {
-    case "varchar":
-      return formatType("varchar", ensureLength(parsed.args, "255"));
-    case "nvarchar":
-      return formatType("nvarchar", ensureLength(parsed.args, "255"));
-    case "char":
-      return formatType("char", ensureLength(parsed.args, "1"));
-    case "nchar":
-      return formatType("nchar", ensureLength(parsed.args, "1"));
-    case "text":
-    case "mediumtext":
-    case "longtext":
-      return "NVARCHAR(MAX)";
-    case "int":
-      return formatType("int");
-    case "tinyint":
-      return formatType("tinyint");
-    case "smallint":
-      return formatType("smallint");
-    case "bigint":
-      return formatType("bigint");
-    case "decimal":
-      return formatType(
-        "decimal",
-        parsed.args.length === 0 ? ["18", "2"] : parsed.args
-      );
-    case "float":
-    case "double":
-      return formatType("float", parsed.args);
-    case "real":
-      return formatType("real");
-    case "boolean":
-      return formatType("bit");
-    case "bit":
-      return formatType("bit");
-    case "datetime":
-    case "datetime2":
-    case "timestamp":
-      return formatType("datetime2", parsed.args);
-    case "time":
-    case "timetz":
-      return formatType("time", parsed.args);
-    case "date":
-      return formatType("date");
-    case "json":
-    case "jsonb":
-      return "NVARCHAR(MAX)";
-    case "uuid":
-      return formatType("uniqueidentifier");
-    case "varbinary":
-      return formatType(
-        "varbinary",
-        parsed.args.length === 0 ? ["MAX"] : parsed.args
-      );
-    case "serial":
-      return "BIGINT IDENTITY(1,1)";
-    case "xml":
-      return formatType("xml");
-    default:
-      return "";
-  }
-};
-
-const mapTypeForOracle = (parsed: ParsedFieldType, canonical: string) => {
-  switch (canonical) {
-    case "varchar":
-      return formatType("varchar2", ensureLength(parsed.args, "255"));
-    case "nvarchar":
-      return formatType("nvarchar2", ensureLength(parsed.args, "255"));
-    case "char":
-      return formatType("char", ensureLength(parsed.args, "1"));
-    case "nchar":
-      return formatType("nchar", ensureLength(parsed.args, "1"));
-    case "text":
-    case "mediumtext":
-    case "longtext":
-    case "clob":
-      return "CLOB";
-    case "int":
-      return "NUMBER(10)";
-    case "tinyint":
-      return "NUMBER(3)";
-    case "smallint":
-      return "NUMBER(5)";
-    case "bigint":
-      return "NUMBER(19)";
-    case "decimal":
-      return formatType(
-        "number",
-        parsed.args.length === 0 ? ["18", "2"] : parsed.args
-      );
-    case "float":
-      return formatType("float", parsed.args);
-    case "double":
-      return "BINARY_DOUBLE";
-    case "real":
-      return "BINARY_FLOAT";
-    case "boolean":
-    case "bit":
-      return "NUMBER(1)";
-    case "datetime":
-    case "datetime2":
-      return "TIMESTAMP";
-    case "timestamp":
-      return "TIMESTAMP";
-    case "timestamptz":
-      return "TIMESTAMP WITH TIME ZONE";
-    case "time":
-    case "timetz":
-      return "TIMESTAMP";
-    case "date":
-      return "DATE";
-    case "json":
-    case "jsonb":
-      return "CLOB";
-    case "uuid":
-      return "CHAR(36)";
-    case "blob":
-      return "BLOB";
-    case "varbinary":
-      return formatType("raw", ensureLength(parsed.args, "2000"));
-    case "serial":
-      return "NUMBER GENERATED ALWAYS AS IDENTITY";
-    case "xml":
-      return "XMLTYPE";
-    default:
-      return "";
-  }
-};
-
-const getFieldTypeForDatabase = (dbType: DatabaseType, rawType: string) => {
-  const parsed = parseFieldType(rawType);
-  if (!parsed.baseType) {
-    return rawType.trim();
-  }
-  const canonical = canonicalizeBaseType(parsed.baseType);
-  let mapped = "";
-  switch (dbType) {
-    case "mysql":
-      mapped = mapTypeForMysql(parsed, canonical);
-      break;
-    case "postgresql":
-      mapped = mapTypeForPostgres(parsed, canonical);
-      break;
-    case "sqlserver":
-      mapped = mapTypeForSqlServer(parsed, canonical);
-      break;
-    case "oracle":
-      mapped = mapTypeForOracle(parsed, canonical);
-      break;
-    default:
-      mapped = "";
-  }
-  return mapped || parsed.raw;
-};
-
-const escapeSingleQuotes = (value: string) => value.replace(/'/g, "''");
-
-const quoteMysql = (identifier: string) => identifier;
-const quotePostgres = (identifier: string) => identifier;
-const quoteSqlServer = (identifier: string) => identifier;
-
-const splitQualifiedName = (raw: string) =>
-  raw
-    .split(".")
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0);
-
-const getSchemaAndTable = (raw: string) => {
-  const parts = splitQualifiedName(raw);
-  if (parts.length <= 1) {
-    const table = parts[0] ?? raw.trim();
-    return { schema: "", table };
-  }
-  return {
-    schema: parts.slice(0, -1).join("."),
-    table: parts[parts.length - 1],
-  };
-};
-
-const formatMysqlTableName = (raw: string) => {
-  const parts = splitQualifiedName(raw);
-  if (parts.length === 0) {
-    return raw.trim();
-  }
-  return parts.join(".");
-};
-
-const formatPostgresTableName = (raw: string) => {
-  const parts = splitQualifiedName(raw);
-  if (parts.length === 0) {
-    return raw.trim();
-  }
-  return parts.join(".");
-};
-
-const normalizeFields = (rows: FieldRow[]): NormalizedField[] =>
-  rows
-    .map((row) => ({
-      name: toStringSafe(row.fieldName).trim(),
-      type: toStringSafe(row.fieldType).trim(),
-      comment: toStringSafe(row.fieldComment).trim(),
-      nullable: normalizeBoolean(toStringSafe(row.nullable)),
-      defaultKind: normalizeDefaultKind(row.defaultKind as UiDefaultKind),
-      defaultValue: toStringSafe(row.defaultValue).trim(),
-      onUpdate: normalizeOnUpdate(row.onUpdate as UiOnUpdate),
-    }))
-    .filter((field) => field.name && field.type);
-
-const buildMysqlDDL = (
-  tableName: string,
-  tableComment: string,
-  fields: NormalizedField[]
-) => {
-  const columnLines = fields.map((field) => {
-    const type = getFieldTypeForDatabase("mysql", field.type);
-    const base = getCanonicalBaseType(field.type);
-    const autoInc =
-      field.defaultKind === "auto_increment" &&
-      supportsAutoIncrement("mysql", base)
-        ? " AUTO_INCREMENT"
-        : "";
-    const nullable = field.nullable ? " NULL" : " NOT NULL";
-    let def = "";
-    if (field.defaultKind === "constant") {
-      def = formatConstantDefault(base, field.defaultValue);
-    } else if (
-      field.defaultKind === "current_timestamp" &&
-      supportsDefaultCurrentTimestamp("mysql", base)
-    ) {
-      def = " DEFAULT CURRENT_TIMESTAMP";
-    } else if (field.defaultKind === "uuid" && supportsUuidDefault(base)) {
-      def = " DEFAULT UUID()";
-    }
-    const onUpd =
-      field.onUpdate === "current_timestamp" &&
-      supportsOnUpdateCurrentTimestamp("mysql", base)
-        ? " ON UPDATE CURRENT_TIMESTAMP"
-        : "";
-    const comment = field.comment
-      ? ` COMMENT '${escapeSingleQuotes(field.comment)}'`
-      : "";
-    return `  ${quoteMysql(
-      field.name
-    )} ${type}${autoInc}${nullable}${def}${onUpd}${comment}`;
-  });
-  const commentClause = tableComment
-    ? ` COMMENT='${escapeSingleQuotes(tableComment.trim())}'`
-    : "";
-  return `CREATE TABLE ${formatMysqlTableName(tableName)} (\n${columnLines.join(
-    ",\n"
-  )}\n)${commentClause};`;
-};
-
-const buildPostgresDDL = (
-  tableName: string,
-  tableComment: string,
-  fields: NormalizedField[]
-) => {
-  const columnLines = fields.map((field) => {
-    const type = getFieldTypeForDatabase("postgresql", field.type);
-    const base = getCanonicalBaseType(field.type);
-    const identity =
-      field.defaultKind === "auto_increment" &&
-      supportsAutoIncrement("postgresql", base)
-        ? " GENERATED BY DEFAULT AS IDENTITY"
-        : "";
-    const nullableClause = field.nullable ? "" : " NOT NULL";
-    let def = "";
-    if (field.defaultKind === "constant") {
-      def = formatConstantDefault(base, field.defaultValue);
-    } else if (
-      field.defaultKind === "current_timestamp" &&
-      supportsDefaultCurrentTimestamp("postgresql", base)
-    ) {
-      def = " DEFAULT CURRENT_TIMESTAMP";
-    } else if (field.defaultKind === "uuid" && supportsUuidDefault(base)) {
-      def = " DEFAULT gen_random_uuid()";
-    }
-    return `  ${quotePostgres(
-      field.name
-    )} ${type}${identity}${nullableClause}${def}`;
-  });
-  const qualifiedTableName = formatPostgresTableName(tableName);
-  const statements: string[] = [
-    `CREATE TABLE ${qualifiedTableName} (\n${columnLines.join(",\n")}\n);`,
-  ];
-  if (tableComment.trim()) {
-    statements.push(
-      `COMMENT ON TABLE ${qualifiedTableName} IS '${escapeSingleQuotes(
-        tableComment.trim()
-      )}';`
-    );
-  }
-  fields
-    .filter((field) => field.comment)
-    .forEach((field) => {
-      statements.push(
-        `COMMENT ON COLUMN ${qualifiedTableName}.${quotePostgres(
-          field.name
-        )} IS '${escapeSingleQuotes(field.comment)}';`
-      );
-    });
-  return statements.join("\n");
-};
-
-const buildSqlServerDDL = (
-  tableName: string,
-  tableComment: string,
-  fields: NormalizedField[]
-) => {
-  const { schema: parsedSchema, table: parsedTable } =
-    getSchemaAndTable(tableName);
-  const schema = parsedSchema || "";
-  const table = parsedTable || tableName.trim();
-  const columnLines = fields.map((field) => {
-    const type = getFieldTypeForDatabase("sqlserver", field.type);
-    const base = getCanonicalBaseType(field.type);
-    const identity =
-      field.defaultKind === "auto_increment" &&
-      supportsAutoIncrement("sqlserver", base)
-        ? " IDENTITY(1,1)"
-        : "";
-    const nullableClause = field.nullable ? " NULL" : " NOT NULL";
-    let def = "";
-    if (field.defaultKind === "constant") {
-      def = formatConstantDefault(base, field.defaultValue);
-    } else if (
-      field.defaultKind === "current_timestamp" &&
-      supportsDefaultCurrentTimestamp("sqlserver", base)
-    ) {
-      def = " DEFAULT GETDATE()";
-    } else if (field.defaultKind === "uuid" && supportsUuidDefault(base)) {
-      def = " DEFAULT NEWID()";
-    }
-    return `  ${quoteSqlServer(
-      field.name
-    )} ${type}${identity}${nullableClause}${def}`;
-  });
-  const qualified = schema ? `${schema}.${table}` : table;
-  const statements: string[] = [
-    `CREATE TABLE ${qualified} (\n${columnLines.join(",\n")}\n);`,
-  ];
-  if (tableComment.trim()) {
-    const level0name = schema
-      ? `N'${escapeSingleQuotes(schema)}'`
-      : "SCHEMA_NAME()";
-    statements.push(
-      `EXEC sp_addextendedproperty @name = N'MS_Description', @value = N'${escapeSingleQuotes(
-        tableComment.trim()
-      )}', @level0type = N'SCHEMA', @level0name = ${level0name}, @level1type = N'TABLE', @level1name = N'${escapeSingleQuotes(
-        table
-      )}';`
-    );
-  }
-  fields
-    .filter((field) => field.comment)
-    .forEach((field) => {
-      const level0name = schema
-        ? `N'${escapeSingleQuotes(schema)}'`
-        : "SCHEMA_NAME()";
-      statements.push(
-        `EXEC sp_addextendedproperty @name = N'MS_Description', @value = N'${escapeSingleQuotes(
-          field.comment
-        )}', @level0type = N'SCHEMA', @level0name = ${level0name}, @level1type = N'TABLE', @level1name = N'${escapeSingleQuotes(
-          table
-        )}', @level2type = N'COLUMN', @level2name = N'${escapeSingleQuotes(
-          field.name
-        )}';`
-      );
-    });
-  return statements.join("\n");
-};
-
-const buildOracleDDL = (
-  tableName: string,
-  tableComment: string,
-  fields: NormalizedField[],
-  includeSynonyms: boolean = true
-) => {
-  const columnLines = fields.map((field) => {
-    const type = getFieldTypeForDatabase("oracle", field.type);
-    const base = getCanonicalBaseType(field.type);
-    const identity =
-      field.defaultKind === "auto_increment" &&
-      supportsAutoIncrement("oracle", base)
-        ? " GENERATED BY DEFAULT AS IDENTITY"
-        : "";
-    let def = "";
-    if (field.defaultKind === "constant") {
-      def = formatConstantDefault(base, field.defaultValue);
-    } else if (
-      field.defaultKind === "current_timestamp" &&
-      supportsDefaultCurrentTimestamp("oracle", base)
-    ) {
-      def = " DEFAULT SYSTIMESTAMP";
-    } else if (field.defaultKind === "uuid" && supportsUuidDefault(base)) {
-      def = " DEFAULT SYS_GUID()";
-    }
-    const nullableClause = field.nullable ? "" : " NOT NULL";
-    return `  ${quotePostgres(
-      field.name
-    )} ${type}${identity}${def}${nullableClause}`;
-  });
-  const qualifiedTableName = formatPostgresTableName(tableName);
-  const statements: string[] = [
-    `CREATE TABLE ${qualifiedTableName} (\n${columnLines.join(",\n")}\n);`,
-  ];
-  if (tableComment.trim()) {
-    statements.push(
-      `COMMENT ON TABLE ${qualifiedTableName} IS '${escapeSingleQuotes(
-        tableComment.trim()
-      )}';`
-    );
-  }
-  fields
-    .filter((field) => field.comment)
-    .forEach((field) => {
-      statements.push(
-        `COMMENT ON COLUMN ${qualifiedTableName}.${quotePostgres(
-          field.name
-        )} IS '${escapeSingleQuotes(field.comment)}';`
-      );
-    });
-
-  // Add synonym generation
-  if (includeSynonyms) {
-    const synonymStatement = buildOracleSynonyms(qualifiedTableName);
-    if (synonymStatement) {
-      statements.push(synonymStatement);
-    }
-  }
-
-  return statements.join("\n");
-};
-
-const buildDDL = (
-  dbType: DatabaseType,
-  tableName: string,
-  tableComment: string,
-  fields: NormalizedField[],
-  indexes: IndexDefinition[] = []
-) => {
-  if (!tableName.trim()) {
-    return "-- 请填写表名";
-  }
-  if (fields.length === 0) {
-    return "-- 请补充字段信息";
-  }
-  const tableDDL = (() => {
-    switch (dbType) {
-      case "mysql":
-        return buildMysqlDDL(tableName.trim(), tableComment, fields);
-      case "postgresql":
-        return buildPostgresDDL(tableName.trim(), tableComment, fields);
-      case "sqlserver":
-        return buildSqlServerDDL(tableName.trim(), tableComment, fields);
-      case "oracle":
-        return buildOracleDDL(tableName.trim(), tableComment, fields);
-      default:
-        return "";
-    }
-  })();
-
-  // Build index DDL statements
-  const indexDDLs = indexes.map((index) => {
-    // Skip primary keys as they are handled differently
-    if (index.isPrimary) {
-      const fieldList = index.fields.map((f) => f.name).join(", ");
-
-      switch (dbType) {
-        case "mysql":
-          return `ALTER TABLE ${tableName.trim()} ADD PRIMARY KEY (${fieldList});`;
-        case "postgresql":
-          return `ALTER TABLE ${formatPostgresTableName(
-            tableName.trim()
-          )} ADD PRIMARY KEY (${fieldList});`;
-        case "sqlserver":
-          return `ALTER TABLE ${formatMysqlTableName(
-            tableName.trim()
-          )} ADD PRIMARY KEY (${fieldList});`;
-        case "oracle":
-          return `ALTER TABLE ${formatPostgresTableName(
-            tableName.trim()
-          )} ADD PRIMARY KEY (${fieldList});`;
-        default:
-          return "";
-      }
-    }
-
-    const indexType = index.unique ? "UNIQUE INDEX" : "INDEX";
-    const fieldList = index.fields
-      .map((f) => `${f.name} ${f.direction}`)
-      .join(", ");
-
-    switch (dbType) {
-      case "mysql":
-        return `CREATE ${indexType} ${
-          index.name
-        } ON ${tableName.trim()} (${fieldList});`;
-      case "postgresql":
-        return `CREATE ${indexType} ${index.name} ON ${formatPostgresTableName(
-          tableName.trim()
-        )} (${fieldList});`;
-      case "sqlserver": {
-        const qualifiedName = formatMysqlTableName(tableName.trim());
-        return `CREATE ${indexType} ${index.name} ON ${qualifiedName} (${fieldList});`;
-      }
-      case "oracle":
-        return `CREATE ${indexType} ${index.name} ON ${formatPostgresTableName(
-          tableName.trim()
-        )} (${fieldList});`;
-      default:
-        return "";
-    }
-  });
-
-  return indexDDLs.length > 0
-    ? `${tableDDL}\n\n${indexDDLs.join("\n")}`
-    : tableDDL;
-};
-
-const buildOracleSynonyms = (tableName: string) => {
-  const cleanTableName = tableName.trim();
-  if (!cleanTableName) return "";
-
-  return `CREATE OR REPLACE PUBLIC SYNONYM ${cleanTableName} FOR ${cleanTableName};`;
-};
-
-const buildDCL = (
-  dbType: DatabaseType,
-  tableName: string,
-  authorizationObjects: string[]
-) => {
-  if (!tableName.trim() || authorizationObjects.length === 0) {
-    return "";
-  }
-
-  const cleanTableName = tableName.trim();
-  const statements: string[] = [];
-
-  switch (dbType) {
-    case "oracle":
-      authorizationObjects.forEach((authObj) => {
-        if (authObj.trim()) {
-          statements.push(
-            `GRANT SELECT ON ${cleanTableName} TO ${authObj.trim()};`
-          );
-        }
-      });
-      break;
-    case "mysql":
-      authorizationObjects.forEach((authObj) => {
-        if (authObj.trim()) {
-          statements.push(
-            `GRANT SELECT ON ${cleanTableName} TO '${authObj.trim()}'@'%';`
-          );
-        }
-      });
-      break;
-    case "postgresql":
-      authorizationObjects.forEach((authObj) => {
-        if (authObj.trim()) {
-          statements.push(
-            `GRANT SELECT ON ${cleanTableName} TO ${authObj.trim()};`
-          );
-        }
-      });
-      break;
-    case "sqlserver":
-      authorizationObjects.forEach((authObj) => {
-        if (authObj.trim()) {
-          statements.push(
-            `GRANT SELECT ON ${cleanTableName} TO ${authObj.trim()};`
-          );
-        }
-      });
-      break;
-    default:
-      return "";
-  }
-
-  return statements.join("\n");
-};
-
-const COLUMN_HEADERS = [
-  "序号",
-  "字段名",
-  "字段中文名",
-  "字段类型",
-  "是否为空",
-  "默认类型",
-  "默认值",
-  "更新策略",
-];
+// Import reserved keywords for validation
+import { RESERVED_KEYWORDS } from "./utils/constants";
 
 const COLUMN_SETTINGS: Handsontable.ColumnSettings[] = [
   { data: "order", readOnly: true, width: 48, className: "htCenter" },
@@ -1493,146 +117,103 @@ const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) =>
   createEmptyRow(index)
 );
 
-// Persist to localStorage
-const STORAGE_KEY = "ddlbuilder:state:v1";
-type PersistedState = {
-  tableName: string;
-  tableComment: string;
-  dbType: DatabaseType;
-  rows: FieldRow[];
-  addCount: number;
-  indexInput: string;
-  currentIndexFields: IndexField[];
-  indexes: IndexDefinition[];
-  authInput: string;
-  authObjects: string[];
-};
-const sanitizeRowsForPersist = (rows: FieldRow[]) =>
-  ensureOrder(
-    rows.map((r, i) => ({
-      order: i + 1,
-      fieldName: toStringSafe(r.fieldName),
-      fieldType: toStringSafe(r.fieldType),
-      fieldComment: toStringSafe(r.fieldComment),
-      nullable: r?.nullable === "是" ? "是" : "否",
-      defaultKind: DEFAULT_KIND_OPTIONS.includes(
-        (r?.defaultKind as UiDefaultKind) ?? "无"
-      )
-        ? (r?.defaultKind as UiDefaultKind)
-        : "无",
-      defaultValue: toStringSafe(r.defaultValue),
-      onUpdate: ON_UPDATE_OPTIONS.includes((r?.onUpdate as UiOnUpdate) ?? "无")
-        ? (r?.onUpdate as UiOnUpdate)
-        : "无",
-    }))
-  );
-
-const sanitizeIndexesForPersist = (
-  indexes: IndexDefinition[]
-): IndexDefinition[] =>
-  indexes
-    .map((index) => ({
-      id: index.id,
-      name: toStringSafe(index.name).trim(),
-      fields: index.fields.map((field) => ({
-        name: toStringSafe(field.name).trim(),
-        direction:
-          field.direction === "ASC" || field.direction === "DESC"
-            ? field.direction
-            : "ASC",
-      })),
-      unique: Boolean(index.unique),
-      isPrimary: Boolean(index.isPrimary),
-    }))
-    .filter((index) => index.name && index.fields.length > 0);
-
 function App() {
   const [tableName, setTableName] = useState("");
   const [tableComment, setTableComment] = useState("");
   const [dbType, setDbType] = useState<DatabaseType>("mysql");
-  const [rows, setRows] = useState<FieldRow[]>(INITIAL_ROWS);
   const [addCount, setAddCount] = useState<number>(10);
-  const [hydrated, setHydrated] = useState(false);
-
-  // Index management states
-  const [indexInput, setIndexInput] = useState("");
-  const [currentIndexFields, setCurrentIndexFields] = useState<IndexField[]>(
-    []
-  );
-  const [indexes, setIndexes] = useState<IndexDefinition[]>([]);
-  const [showFieldSuggestions, setShowFieldSuggestions] = useState(false);
-  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
-
-  // Authorization objects states
-  const [authInput, setAuthInput] = useState("");
-  const [authObjects, setAuthObjects] = useState<string[]>([]);
-
-  // Collapse states
-  const [isIndexCollapsed, setIsIndexCollapsed] = useState(false);
-  const [isAuthCollapsed, setIsAuthCollapsed] = useState(false);
 
   // Changelog modal state
   const [showChangelog, setShowChangelog] = useState(false);
 
-  // restore from localStorage once on mount
+  // Use custom hooks
+  const { toastMessage, showToast } = useToast();
+  const { persistedState, hydrated, saveState, clearState } = usePersistedState();
+
+  const {
+    rows,
+    duplicateNameSet,
+    normalizedFields,
+    handleRowsChange,
+    handleCreateRow,
+    handleRemoveRow,
+    handleAddRows,
+  } = useTableData(INITIAL_ROWS, persistedState?.rows);
+
+  const availableFields = normalizedFields
+    .map((field) => field.name)
+    .filter((name) => name.length > 0);
+
+  const {
+    indexInput,
+    currentIndexFields,
+    indexes,
+    fieldSuggestions,
+    showFieldSuggestions,
+    selectedSuggestionIndex,
+    setIndexInput,
+    setShowFieldSuggestions,
+    setSelectedSuggestionIndex,
+    addFieldToIndex,
+    removeFieldFromIndex,
+    toggleFieldDirection,
+    addIndex,
+    removeIndex,
+  } = useIndexManagement(tableName, availableFields, persistedState);
+
+  const {
+    authInput,
+    authObjects,
+    setAuthInput,
+    addAuthObject,
+    removeAuthObject,
+  } = useAuthManagement(persistedState);
+
+  const {
+    isIndexCollapsed,
+    isAuthCollapsed,
+    toggleIndexCollapse,
+    toggleAuthCollapse,
+  } = useCollapseState();
+
+  const {
+    generatedSql,
+    generatedDcl,
+    copySql,
+    copyDcl,
+  } = useSqlGeneration(
+    dbType,
+    tableName,
+    tableComment,
+    normalizedFields,
+    indexes,
+    authObjects,
+    showToast
+  );
+
+  // restore basic state from localStorage once on mount
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Partial<PersistedState>;
-        if (typeof parsed.tableName === "string")
-          setTableName(parsed.tableName);
-        if (typeof parsed.tableComment === "string")
-          setTableComment(parsed.tableComment);
-        if (
-          parsed.dbType === "mysql" ||
-          parsed.dbType === "postgresql" ||
-          parsed.dbType === "sqlserver" ||
-          parsed.dbType === "oracle"
-        ) {
-          setDbType(parsed.dbType);
-        }
-        if (Array.isArray(parsed.rows))
-          setRows(sanitizeRowsForPersist(parsed.rows as FieldRow[]));
-        if (
-          typeof parsed.addCount === "number" &&
-          Number.isFinite(parsed.addCount)
-        ) {
-          setAddCount(Math.max(1, Math.floor(parsed.addCount)));
-        }
-        if (typeof parsed.indexInput === "string")
-          setIndexInput(parsed.indexInput);
-        if (Array.isArray(parsed.currentIndexFields)) {
-          const validFields = parsed.currentIndexFields.filter(
-            (field): field is IndexField =>
-              field &&
-              typeof field.name === "string" &&
-              (field.direction === "ASC" || field.direction === "DESC")
-          );
-          setCurrentIndexFields(validFields);
-        }
-        if (Array.isArray(parsed.indexes)) {
-          const validIndexes = sanitizeIndexesForPersist(
-            parsed.indexes as IndexDefinition[]
-          );
-          setIndexes(validIndexes);
-        }
-        if (typeof parsed.authInput === "string")
-          setAuthInput(parsed.authInput);
-        if (Array.isArray(parsed.authObjects)) {
-          const validAuthObjects = parsed.authObjects
-            .filter((obj): obj is string => typeof obj === "string")
-            .map((obj) => obj.trim())
-            .filter((obj) => obj.length > 0);
-          setAuthObjects(validAuthObjects);
-        }
-      }
-    } catch {
-      // ignore corrupted localStorage
-    } finally {
-      setHydrated(true);
+    if (!hydrated || !persistedState) return;
+
+    if (typeof persistedState.tableName === "string")
+      setTableName(persistedState.tableName);
+    if (typeof persistedState.tableComment === "string")
+      setTableComment(persistedState.tableComment);
+    if (
+      persistedState.dbType === "mysql" ||
+      persistedState.dbType === "postgresql" ||
+      persistedState.dbType === "sqlserver" ||
+      persistedState.dbType === "oracle"
+    ) {
+      setDbType(persistedState.dbType);
     }
-  }, []);
+    if (
+      typeof persistedState.addCount === "number" &&
+      Number.isFinite(persistedState.addCount)
+    ) {
+      setAddCount(Math.max(1, Math.floor(persistedState.addCount)));
+    }
+  }, [hydrated, persistedState]);
 
   // save to localStorage on changes
   useEffect(() => {
@@ -1650,7 +231,7 @@ function App() {
         authInput,
         authObjects,
       };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      saveState(payload);
     } catch {
       // ignore quota errors
     }
@@ -1666,294 +247,13 @@ function App() {
     indexes,
     authInput,
     authObjects,
+    saveState,
   ]);
-  const duplicateNameSet = useMemo(() => {
-    const counts = new Map<string, number>();
-    rows.forEach((r) => {
-      const name = toStringSafe(r.fieldName).trim();
-      if (!name) return;
-      counts.set(name, (counts.get(name) ?? 0) + 1);
-    });
-    const dups = new Set<string>();
-    counts.forEach((count, name) => {
-      if (count > 1) dups.add(name);
-    });
-    return dups;
-  }, [rows]);
-
-  const handleRowsChange = useCallback(
-    (
-      changes: Handsontable.CellChange[] | null,
-      source: Handsontable.ChangeSource
-    ) => {
-      if (!changes || source === "loadData") {
-        return;
-      }
-      setRows((prev) => {
-        const next = prev.map((row) => ({ ...row }));
-        changes.forEach(([rowIndex, prop, , value]) => {
-          if (typeof prop !== "string" || prop === "order") {
-            return;
-          }
-          while (next.length <= rowIndex) {
-            next.push(createEmptyRow(next.length));
-          }
-          next[rowIndex] = {
-            ...next[rowIndex],
-            [prop]: value == null ? "" : String(value),
-          };
-          if (prop === "defaultKind") {
-            const kind = String(value ?? "");
-            if (kind !== "常量") {
-              next[rowIndex].defaultValue = "";
-            }
-            if (kind === "自增") {
-              next[rowIndex].nullable = "否";
-            }
-          }
-        });
-        return ensureOrder(next);
-      });
-    },
-    []
-  );
-
-  const handleCreateRow = useCallback((index: number, amount: number) => {
-    setRows((prev) => {
-      const next = prev.slice();
-      for (let i = 0; i < amount; i += 1) {
-        next.splice(index + i, 0, createEmptyRow(index + i));
-      }
-      return ensureOrder(next);
-    });
-  }, []);
-
-  const handleRemoveRow = useCallback((index: number, amount: number) => {
-    setRows((prev) => {
-      const next = prev.slice();
-      next.splice(index, amount);
-      if (next.length === 0) {
-        next.push(createEmptyRow(0));
-      }
-      return ensureOrder(next);
-    });
-  }, []);
-
-  const handleAddRows = useCallback(() => {
-    const n = Math.floor(Number(addCount));
-    const amount = Number.isFinite(n) && n > 0 ? n : 1;
-    setRows((prev) => {
-      const index = prev.length;
-      const next = prev.slice();
-      for (let i = 0; i < amount; i += 1) {
-        next.splice(index + i, 0, createEmptyRow(index + i));
-      }
-      return ensureOrder(next);
-    });
-  }, [addCount]);
-
-  const normalizedFields = useMemo(() => normalizeFields(rows), [rows]);
-
-  // Get available field names for index suggestions
-  const availableFields = useMemo(() => {
-    return normalizedFields
-      .map((field) => field.name)
-      .filter((name) => name.length > 0);
-  }, [normalizedFields]);
-
-  // Filter field suggestions based on input
-  const fieldSuggestions = useMemo(() => {
-    if (!indexInput.trim()) return [];
-    const input = indexInput.toLowerCase().trim();
-    return availableFields.filter(
-      (field) =>
-        field.toLowerCase().includes(input) &&
-        !currentIndexFields.some((f) => f.name === field)
-    );
-  }, [indexInput, availableFields, currentIndexFields]);
-
-  // Index management functions
-  const addFieldToIndex = useCallback((fieldName: string) => {
-    setCurrentIndexFields((prev) => [
-      ...prev,
-      { name: fieldName, direction: "ASC" },
-    ]);
-    setIndexInput("");
-    setShowFieldSuggestions(false);
-    setSelectedSuggestionIndex(0);
-  }, []);
-
-  const removeFieldFromIndex = useCallback((index: number) => {
-    setCurrentIndexFields((prev) => prev.filter((_, i) => i !== index));
-  }, []);
-
-  const toggleFieldDirection = useCallback((index: number) => {
-    setCurrentIndexFields((prev) =>
-      prev.map((field, i) =>
-        i === index
-          ? { ...field, direction: field.direction === "ASC" ? "DESC" : "ASC" }
-          : field
-      )
-    );
-  }, []);
-
-  const addIndex = useCallback(
-    (unique: boolean, isPrimary: boolean = false) => {
-      if (currentIndexFields.length === 0) return;
-
-      // Check if primary key already exists
-      if (isPrimary && indexes.some((index) => index.isPrimary)) {
-        return; // Prevent adding multiple primary keys
-      }
-
-      const prefix = isPrimary ? "pk" : "idx";
-      const indexName =
-        currentIndexFields.length === 1
-          ? `${prefix}_${tableName}_${currentIndexFields[0].name}`
-          : `${prefix}_${tableName}_${currentIndexFields
-              .map((f) => f.name)
-              .join("_")}`;
-
-      const newIndex: IndexDefinition = {
-        id: Date.now().toString(),
-        name: indexName,
-        fields: [...currentIndexFields],
-        unique,
-        isPrimary,
-      };
-
-      setIndexes((prev) => [...prev, newIndex]);
-      setCurrentIndexFields([]);
-      setIndexInput("");
-    },
-    [currentIndexFields, tableName, indexes]
-  );
-
-  const removeIndex = useCallback((id: string) => {
-    setIndexes((prev) => prev.filter((index) => index.id !== id));
-  }, []);
-
-  // Generate index name based on table name and fields
-  const generateIndexName = useCallback(
-    (index: IndexDefinition, currentTableName: string): string => {
-      if (!currentTableName) return index.name;
-
-      const prefix = index.isPrimary ? "pk" : index.unique ? "uk" : "idx";
-      return index.fields.length === 1
-        ? `${prefix}_${currentTableName}_${index.fields[0].name}`
-        : `${prefix}_${currentTableName}_${index.fields
-            .map((f) => f.name)
-            .join("_")}`;
-    },
-    []
-  );
-
-  // Update all index names based on new table name
-  const updateIndexNames = useCallback(
-    (newTableName: string) => {
-      if (!newTableName) return;
-
-      setIndexes((prevIndexes) =>
-        prevIndexes.map((index) => ({
-          ...index,
-          name: generateIndexName(index, newTableName),
-        }))
-      );
-    },
-    [generateIndexName]
-  );
-
-  // Authorization objects management functions
-  const addAuthObject = useCallback(
-    (authObj: string) => {
-      if (authObj.trim() && !authObjects.includes(authObj.trim())) {
-        setAuthObjects((prev) => [...prev, authObj.trim()]);
-        setAuthInput("");
-      }
-    },
-    [authObjects]
-  );
-
-  const removeAuthObject = useCallback((index: number) => {
-    setAuthObjects((prev) => prev.filter((_, i) => i !== index));
-  }, []);
-
-  // Toggle functions for collapse
-  const toggleIndexCollapse = useCallback(() => {
-    setIsIndexCollapsed((prev) => !prev);
-  }, []);
-
-  const toggleAuthCollapse = useCallback(() => {
-    setIsAuthCollapsed((prev) => !prev);
-  }, []);
-
-  const generatedSql = useMemo(
-    () => buildDDL(dbType, tableName, tableComment, normalizedFields, indexes),
-    [dbType, tableName, tableComment, normalizedFields, indexes]
-  );
-
-  const generatedDcl = useMemo(
-    () => buildDCL(dbType, tableName, authObjects),
-    [dbType, tableName, authObjects]
-  );
-
-  const hideTimerRef = useRef<number | undefined>(undefined);
-  const [toastMessage, setToastMessage] = useState("");
-  const showToast = useCallback((msg: string) => {
-    if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
-    setToastMessage(msg);
-    hideTimerRef.current = window.setTimeout(() => setToastMessage(""), 1600);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
-    };
-  }, []);
-
-  // Update index names when table name changes
-  useEffect(() => {
-    if (indexes.length > 0 && tableName) {
-      updateIndexNames(tableName);
-    }
-  }, [tableName, indexes.length, updateIndexNames]);
-
-  const handleCopyAll = useCallback(async () => {
-    const text = generatedSql || "-- 请在左侧填写表信息";
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.left = "-9999px";
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-    } finally {
-      showToast("DDL已复制到剪贴板");
-    }
-  }, [generatedSql, showToast]);
-
-  const handleCopyDcl = useCallback(async () => {
-    const text = generatedDcl || "-- 请在下方配置授权对象";
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.left = "-9999px";
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-    } finally {
-      showToast("DCL已复制到剪贴板");
-    }
-  }, [generatedDcl, showToast]);
-
+  
+  
+  
+  
+  
   const handleClearAll = useCallback(() => {
     if (!window.confirm("确定要清除所有配置吗？此操作不可撤销。")) return;
 
@@ -1961,28 +261,15 @@ function App() {
     setTableName("");
     setTableComment("");
     setDbType("mysql");
-    setRows(INITIAL_ROWS);
     setAddCount(10);
     setIndexInput("");
-    setCurrentIndexFields([]);
-    setIndexes([]);
-    setShowFieldSuggestions(false);
-    setSelectedSuggestionIndex(0);
     setAuthInput("");
-    setAuthObjects([]);
-    setIsIndexCollapsed(false);
-    setIsAuthCollapsed(false);
 
     // Clear localStorage
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-      setHydrated(false);
-    } catch {
-      // ignore localStorage errors
-    }
+    clearState();
 
     showToast("所有配置已清除");
-  }, [showToast]);
+  }, [showToast, clearState]);
 
   const basePlain = (vs as Record<string, unknown>).plain as
     | Record<string, unknown>
@@ -2578,7 +865,7 @@ function App() {
                   variant="secondary"
                   size="sm"
                   className="gap-1"
-                  onClick={handleCopyAll}
+                  onClick={copySql}
                 >
                   <Copy className="h-4 w-4" /> 复制DDL
                 </Button>
@@ -2616,7 +903,7 @@ function App() {
                   variant="secondary"
                   size="sm"
                   className="gap-1"
-                  onClick={handleCopyDcl}
+                  onClick={copyDcl}
                 >
                   <Copy className="h-4 w-4" /> 复制DCL
                 </Button>
@@ -2652,43 +939,90 @@ function App() {
   );
 }
 
+// 重新导出工具函数供外部使用
+export {
+  parseFieldType,
+  getFieldTypeForDatabase,
+  getCanonicalBaseType,
+} from "./utils/databaseTypeMapping";
+
+export {
+  buildDDL,
+  buildDCL,
+} from "./utils/ddlGenerators";
+
+export {
+  normalizeFields,
+  isReservedKeyword,
+  toStringSafe,
+} from "./utils/helpers";
+
 export {
   buildMysqlDDL,
   buildPostgresDDL,
   buildSqlServerDDL,
   buildOracleDDL,
   buildOracleSynonyms,
-  buildDCL,
-  buildDDL,
-  parseFieldType,
-  canonicalizeBaseType,
-  getFieldTypeForDatabase,
-  normalizeFields,
-  normalizeBoolean,
-  normalizeDefaultKind,
-  normalizeOnUpdate,
-  supportsAutoIncrement,
-  supportsDefaultCurrentTimestamp,
-  supportsOnUpdateCurrentTimestamp,
-  isReservedKeyword,
-  toStringSafe,
   escapeSingleQuotes,
   formatConstantDefault,
   shouldQuoteDefault,
   isLikelyFunctionOrKeyword,
-  getCanonicalBaseType,
   splitQualifiedName,
   getSchemaAndTable,
   formatMysqlTableName,
   formatPostgresTableName,
-  TYPE_ALIASES,
+} from "./utils/ddlGenerators";
+
+export {
+  normalizeBoolean,
+  normalizeDefaultKind,
+  normalizeOnUpdate,
+  createEmptyRow,
+  ensureOrder,
+  sanitizeRowsForPersist,
+  getUiDefaultKindOptions,
+  getUiOnUpdateOptions,
+  isIntegerType,
+  isCharacterType,
+  supportsUuidDefault,
+  supportsAutoIncrement,
+  supportsDefaultCurrentTimestamp,
+  supportsOnUpdateCurrentTimestamp,
+} from "./utils/helpers";
+
+export {
+  sanitizeIndexesForPersist,
+} from "./utils/indexUtils";
+
+export {
+  DATABASE_OPTIONS,
   YES_VALUES,
+  DEFAULT_KIND_OPTIONS,
+  ON_UPDATE_OPTIONS,
+  COLUMN_HEADERS,
+  STORAGE_KEY,
   RESERVED_KEYWORDS,
-  type DatabaseType,
-  type FieldRow,
-  type NormalizedField,
-  type IndexField,
-  type IndexDefinition,
-};
+} from "./utils/constants";
+
+export {
+  TYPE_ALIASES,
+  canonicalizeBaseType,
+  mapTypeForMysql,
+  mapTypeForPostgres,
+  mapTypeForSqlServer,
+  mapTypeForOracle,
+} from "./utils/databaseTypeMapping";
+
+export type {
+  DatabaseType,
+  FieldRow,
+  NormalizedField,
+  IndexField,
+  IndexDefinition,
+  UiDefaultKind,
+  UiOnUpdate,
+  ParsedFieldType,
+  PersistedState,
+} from "./types";
 
 export default App;
