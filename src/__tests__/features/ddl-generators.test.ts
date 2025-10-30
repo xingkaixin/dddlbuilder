@@ -74,6 +74,43 @@ describe('DDL Generation Functions', () => {
       expect(result).toContain('CREATE TABLE users')
       expect(result).not.toContain('COMMENT=')
     })
+
+    it('should ignore precision when rendering timestamp columns', () => {
+      const fields: NormalizedField[] = [
+        {
+          name: 'created_at',
+          type: 'timestamp(6)',
+          comment: '',
+          nullable: false,
+          defaultKind: 'current_timestamp',
+          defaultValue: '',
+          onUpdate: 'none',
+        },
+      ]
+
+      const result = buildDDL('mysql', 'events', '', fields)
+
+      expect(result).toContain('created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP')
+      expect(result).not.toContain('TIMESTAMP(6)')
+    })
+
+    it('should generate UUID default expression for character columns', () => {
+      const fields: NormalizedField[] = [
+        {
+          name: 'trace_id',
+          type: 'uuid',
+          comment: '',
+          nullable: false,
+          defaultKind: 'uuid',
+          defaultValue: '',
+          onUpdate: 'none',
+        },
+      ]
+
+      const result = buildDDL('mysql', 'events', '', fields)
+
+      expect(result).toContain('trace_id CHAR(36) NOT NULL DEFAULT (UUID())')
+    })
   })
 
   describe('buildDDL for PostgreSQL', () => {
@@ -152,33 +189,33 @@ describe('DDL Generation Functions', () => {
     it('should generate Oracle DCL', () => {
       const result = buildDCL('oracle', 'users', authObjects)
 
-      expect(result).toContain('GRANT SELECT, INSERT, UPDATE, DELETE ON users TO CBD_READ;')
-      expect(result).toContain('GRANT SELECT, INSERT, UPDATE, DELETE ON users TO CBD_RW;')
-      expect(result).toContain('GRANT SELECT, INSERT, UPDATE, DELETE ON users TO CBD_PROC;')
+      expect(result).toContain('GRANT SELECT ON users TO CBD_READ;')
+      expect(result).toContain('GRANT SELECT ON users TO CBD_RW;')
+      expect(result).toContain('GRANT SELECT ON users TO CBD_PROC;')
     })
 
     it('should generate MySQL DCL', () => {
       const result = buildDCL('mysql', 'users', authObjects)
 
-      expect(result).toContain('GRANT SELECT, INSERT, UPDATE, DELETE ON users TO CBD_READ;')
-      expect(result).toContain('GRANT SELECT, INSERT, UPDATE, DELETE ON users TO CBD_RW;')
-      expect(result).toContain('GRANT SELECT, INSERT, UPDATE, DELETE ON users TO CBD_PROC;')
+      expect(result).toContain('GRANT SELECT ON users TO CBD_READ;')
+      expect(result).toContain('GRANT SELECT ON users TO CBD_RW;')
+      expect(result).toContain('GRANT SELECT ON users TO CBD_PROC;')
     })
 
     it('should generate PostgreSQL DCL', () => {
       const result = buildDCL('postgresql', 'users', authObjects)
 
-      expect(result).toContain('GRANT SELECT, INSERT, UPDATE, DELETE ON users TO CBD_READ;')
-      expect(result).toContain('GRANT SELECT, INSERT, UPDATE, DELETE ON users TO CBD_RW;')
-      expect(result).toContain('GRANT SELECT, INSERT, UPDATE, DELETE ON users TO CBD_PROC;')
+      expect(result).toContain('GRANT SELECT ON users TO CBD_READ;')
+      expect(result).toContain('GRANT SELECT ON users TO CBD_RW;')
+      expect(result).toContain('GRANT SELECT ON users TO CBD_PROC;')
     })
 
     it('should generate SQL Server DCL', () => {
       const result = buildDCL('sqlserver', 'users', authObjects)
 
-      expect(result).toContain('GRANT SELECT, INSERT, UPDATE, DELETE ON users TO CBD_READ;')
-      expect(result).toContain('GRANT SELECT, INSERT, UPDATE, DELETE ON users TO CBD_RW;')
-      expect(result).toContain('GRANT SELECT, INSERT, UPDATE, DELETE ON users TO CBD_PROC;')
+      expect(result).toContain('GRANT SELECT ON users TO CBD_READ;')
+      expect(result).toContain('GRANT SELECT ON users TO CBD_RW;')
+      expect(result).toContain('GRANT SELECT ON users TO CBD_PROC;')
     })
 
     it('should handle empty authorization objects', () => {
@@ -194,10 +231,10 @@ describe('DDL Generation Functions', () => {
     it('should filter empty authorization objects', () => {
       const result = buildDCL('oracle', 'users', ['CBD_READ', '', '  ', 'CBD_RW'])
 
-      expect(result).toContain('GRANT SELECT, INSERT, UPDATE, DELETE ON users TO CBD_READ;')
-      expect(result).toContain('GRANT SELECT, INSERT, UPDATE, DELETE ON users TO CBD_RW;')
-      expect(result).not.toContain("GRANT SELECT, INSERT, UPDATE, DELETE ON users TO '';")
-      expect(result).not.toContain("GRANT SELECT, INSERT, UPDATE, DELETE ON users TO '  ';")
+      expect(result).toContain('GRANT SELECT ON users TO CBD_READ;')
+      expect(result).toContain('GRANT SELECT ON users TO CBD_RW;')
+      expect(result).not.toContain("GRANT SELECT ON users TO '';")
+      expect(result).not.toContain("GRANT SELECT ON users TO '  ';")
     })
   })
 

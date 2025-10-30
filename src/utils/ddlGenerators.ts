@@ -48,14 +48,14 @@ export const buildDCL = (
     case "oracle":
       authorizationObjects.forEach((authObject) => {
         statements.push(
-          `GRANT SELECT, INSERT, UPDATE, DELETE ON ${cleanTableName} TO ${authObject.trim()};`
+          `GRANT SELECT ON ${cleanTableName} TO ${authObject.trim()};`
         );
       });
       break;
     default:
       authorizationObjects.forEach((authObject) => {
         statements.push(
-          `GRANT SELECT, INSERT, UPDATE, DELETE ON ${cleanTableName} TO ${authObject.trim()};`
+          `GRANT SELECT ON ${cleanTableName} TO ${authObject.trim()};`
         );
       });
       break;

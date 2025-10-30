@@ -198,6 +198,7 @@ const isCharacterType = (canonical: string) =>
     "clob",
     "varchar2",
     "nvarchar2",
+    "uuid",
   ]).has(canonical);
 
 export const supportsUuidDefault = (canonical: string) => isCharacterType(canonical);
