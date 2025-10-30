@@ -221,7 +221,7 @@ describe('Type Mapping Functions', () => {
         expect(getFieldTypeForDatabase('mysql', 'datetime')).toBe('DATETIME')
         expect(getFieldTypeForDatabase('mysql', 'datetime(6)')).toBe('DATETIME(6)')
         expect(getFieldTypeForDatabase('mysql', 'timestamp')).toBe('TIMESTAMP')
-        expect(getFieldTypeForDatabase('mysql', 'timestamp(6)')).toBe('TIMESTAMP(6)')
+        expect(getFieldTypeForDatabase('mysql', 'timestamp(6)')).toBe('TIMESTAMP')
         expect(getFieldTypeForDatabase('mysql', 'time')).toBe('TIME')
         expect(getFieldTypeForDatabase('mysql', 'datetime2')).toBe('DATETIME')
       })

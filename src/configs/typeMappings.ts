@@ -32,7 +32,9 @@ export const TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
     date: { mapping: "date" },
     datetime: { mapping: "datetime" },
     datetime2: { mapping: "datetime" },
-    timestamp: { mapping: "timestamp" },
+    timestamp: {
+      transform: () => "TIMESTAMP",
+    },
     time: { mapping: "time" },
     boolean: { mapping: "tinyint", defaultArgs: ["1"] },
     bool: { mapping: "tinyint", defaultArgs: ["1"] },

@@ -4,6 +4,7 @@ import {
   supportsAutoIncrement,
   supportsDefaultCurrentTimestamp,
   supportsOnUpdateCurrentTimestamp,
+  supportsUuidDefault,
   formatConstantDefault,
   shouldQuoteDefault,
   isLikelyFunctionOrKeyword,
@@ -40,6 +41,11 @@ export class MySqlStrategy extends AbstractDDLStrategy {
       let def = "";
       if (field.defaultKind === "constant") {
         def = formatConstantDefault(base, field.defaultValue);
+      } else if (
+        field.defaultKind === "uuid" &&
+        supportsUuidDefault(base)
+      ) {
+        def = " DEFAULT (UUID())";
       } else if (
         field.defaultKind === "current_timestamp" &&
         supportsDefaultCurrentTimestamp("mysql", base)

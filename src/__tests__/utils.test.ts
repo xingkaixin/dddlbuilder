@@ -618,6 +618,7 @@ describe('Utils', () => {
       expect(isCharacterType('clob')).toBe(true)
       expect(isCharacterType('varchar2')).toBe(true)
       expect(isCharacterType('nvarchar2')).toBe(true)
+      expect(isCharacterType('uuid')).toBe(true)
     })
 
     it('应该识别非字符类型', () => {
@@ -633,6 +634,7 @@ describe('Utils', () => {
       expect(supportsUuidDefault('varchar')).toBe(true)
       expect(supportsUuidDefault('text')).toBe(true)
       expect(supportsUuidDefault('char')).toBe(true)
+      expect(supportsUuidDefault('uuid')).toBe(true)
     })
 
     it('应该对非字符类型不支持 uuid 默认值', () => {
