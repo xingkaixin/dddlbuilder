@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { registerAllModules } from "handsontable/registry";
 import { HotTable } from "@handsontable/react-wrapper";
-import "handsontable/dist/handsontable.full.css";
+import "handsontable/styles/handsontable.css";
+import "handsontable/styles/ht-theme-main.css";
 import type Handsontable from "handsontable";
 import type { FieldRow, UiDefaultKind, DatabaseType } from "@/types";
 import {
@@ -188,6 +189,7 @@ export const DataTable = memo<DataTableProps>(({
         afterChange={onRowsChange}
         afterCreateRow={onCreateRow}
         afterRemoveRow={onRemoveRow}
+        themeName="ht-theme-main"
         className="h-full w-full"
       />
     </div>

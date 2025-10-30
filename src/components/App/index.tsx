@@ -7,6 +7,15 @@ import { IndexPanel } from "./IndexPanel";
 import { AuthPanel } from "./AuthPanel";
 import { DataTable } from "./DataTable";
 import { DDLOutput } from "./DDLOutput";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   useToast,
   usePersistedState,
@@ -31,6 +40,7 @@ function App() {
 
   // Changelog modal state
   const [showChangelog, setShowChangelog] = useState(false);
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
 
   // Use custom hooks
   const { toastMessage, showToast } = useToast();
@@ -168,9 +178,14 @@ function App() {
   ]);
 
   const handleClearAll = useCallback(() => {
-    if (!window.confirm("确定要清除所有配置吗？此操作不可撤销。")) return;
+    setIsClearDialogOpen(true);
+  }, []);
 
-    // Clear all state variables
+  const cancelClearAll = useCallback(() => {
+    setIsClearDialogOpen(false);
+  }, []);
+
+  const confirmClearAll = useCallback(() => {
     setTableName("");
     setTableComment("");
     setDbType("mysql");
@@ -181,8 +196,9 @@ function App() {
     // Clear localStorage
     clearState();
 
+    cancelClearAll();
     showToast("所有配置已清除");
-  }, [showToast, clearState, setIndexInput, setAuthInput]);
+  }, [cancelClearAll, showToast, clearState, setIndexInput, setAuthInput]);
 
   return (
     <div className="min-h-screen bg-background text-sm text-foreground">
@@ -253,6 +269,25 @@ function App() {
           onCopyDcl={copyDcl}
         />
       </div>
+
+      <Dialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>确认清空所有配置？</DialogTitle>
+            <DialogDescription>
+              此操作将移除当前填写的表信息、字段、索引及授权配置，且无法撤销。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelClearAll}>
+              取消
+            </Button>
+            <Button variant="destructive" onClick={confirmClearAll}>
+              确认清空
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {toastMessage && (
         <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded bg-black/90 px-3 py-2 text-xs text-white shadow-md">
