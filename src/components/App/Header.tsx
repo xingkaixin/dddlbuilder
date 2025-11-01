@@ -29,7 +29,7 @@ export const Header = memo<HeaderProps>(
               </div>
               <div className="text-right">
                 <div className="mb-1 text-sm text-muted-foreground">
-                  v{import.meta.env.VITE_APP_VERSION || "0.1.0"}
+                  v{import.meta.env.VITE_APP_VERSION || "0.2.0"}
                 </div>
                 <button
                   onClick={() => setShowChangelog(true)}
