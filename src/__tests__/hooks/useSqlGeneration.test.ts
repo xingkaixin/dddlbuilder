@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useSqlGeneration } from '@/hooks'
 import type { NormalizedField, IndexDefinition } from '@/types'
@@ -43,14 +43,13 @@ const defineClipboard = (writeText: (value: string) => Promise<void>) => {
 }
 
 describe('useSqlGeneration', () => {
-afterEach(() => {
-  vi.restoreAllMocks()
-  Reflect.deleteProperty(document, 'execCommand')
-})
+  afterEach(() => {
+    vi.restoreAllMocks()
+    Reflect.deleteProperty(document, 'execCommand')
+  })
 
   it('应该生成 SQL 并使用 Clipboard API 复制', async () => {
     const { mock: writeTextMock, restore } = defineClipboard(async () => {})
-    const toastMock = vi.fn()
 
     const { result } = renderHook(() =>
       useSqlGeneration(
@@ -60,31 +59,31 @@ afterEach(() => {
         baseFields,
         noopIndexes,
         ['CBD_READ'],
-        toastMock,
       ),
     )
 
     expect(result.current.generatedSql).toContain('CREATE TABLE users')
     expect(result.current.generatedDcl).toContain('GRANT SELECT ON users TO CBD_READ;')
 
+    let sqlResult = false
     await act(async () => {
-      await result.current.copySql()
+      sqlResult = await result.current.copySql()
     })
 
+    expect(sqlResult).toBe(true)
     expect(writeTextMock).toHaveBeenCalledTimes(1)
     expect(writeTextMock).toHaveBeenCalledWith(result.current.generatedSql)
-    expect(toastMock).toHaveBeenCalledWith('DDL已复制到剪贴板')
 
     writeTextMock.mockClear()
-    toastMock.mockClear()
 
+    let dclResult = false
     await act(async () => {
-      await result.current.copyDcl()
+      dclResult = await result.current.copyDcl()
     })
 
+    expect(dclResult).toBe(true)
     expect(writeTextMock).toHaveBeenCalledTimes(1)
     expect(writeTextMock).toHaveBeenCalledWith(result.current.generatedDcl)
-    expect(toastMock).toHaveBeenCalledWith('DCL已复制到剪贴板')
 
     restore()
   })
@@ -93,15 +92,13 @@ afterEach(() => {
     const { mock: writeTextMock, restore } = defineClipboard(async () => {
       throw new Error('clipboard unavailable')
     })
-    const execCommandMock = vi.fn()
+    const execCommandMock = vi.fn().mockReturnValue(true)
 
     Object.defineProperty(document, 'execCommand', {
       configurable: true,
       writable: true,
       value: execCommandMock,
     })
-
-    const toastMock = vi.fn()
 
     const { result } = renderHook(() =>
       useSqlGeneration(
@@ -111,28 +108,28 @@ afterEach(() => {
         baseFields,
         noopIndexes,
         [],
-        toastMock,
       ),
     )
 
+    let sqlResult = false
     await act(async () => {
-      await result.current.copySql()
+      sqlResult = await result.current.copySql()
     })
 
+    expect(sqlResult).toBe(true)
     expect(writeTextMock).toHaveBeenCalledTimes(1)
     expect(execCommandMock).toHaveBeenCalledWith('copy')
-    expect(toastMock).toHaveBeenCalledWith('DDL已复制到剪贴板')
 
     execCommandMock.mockClear()
-    toastMock.mockClear()
 
+    let dclResult = false
     await act(async () => {
-      await result.current.copyDcl()
+      dclResult = await result.current.copyDcl()
     })
 
+    expect(dclResult).toBe(true)
     expect(writeTextMock).toHaveBeenCalledTimes(2)
     expect(execCommandMock).toHaveBeenCalledWith('copy')
-    expect(toastMock).toHaveBeenCalledWith('DCL已复制到剪贴板')
 
     restore()
   })

@@ -12,7 +12,7 @@ export const Header = memo<HeaderProps>(
     return (
       <>
         <header className="border-b bg-card shadow-sm">
-          <div className="px-4 py-1">
+          <div className="px-6 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <img
@@ -22,18 +22,18 @@ export const Header = memo<HeaderProps>(
                 />
                 <div>
                   <h1 className="text-2xl font-bold text-foreground">筑表师</h1>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-base text-muted-foreground">
                     专业的数据库建表工具
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-xs text-muted-foreground mb-1">
+                <div className="mb-1 text-sm text-muted-foreground">
                   v{import.meta.env.VITE_APP_VERSION || "0.1.0"}
                 </div>
                 <button
                   onClick={() => setShowChangelog(true)}
-                  className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                  className="text-sm text-primary hover:text-primary/80 hover:underline"
                 >
                   更新日志
                 </button>

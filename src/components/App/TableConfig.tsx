@@ -1,7 +1,7 @@
 import React from "react";
 import { memo } from "react";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Table, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -35,12 +35,12 @@ export const TableConfig = memo<TableConfigProps>(({
 }) => {
   return (
     <div className="rounded-lg border bg-card shadow-sm">
-      <div className="flex items-center justify-between p-4 border-b">
+      <div className="flex items-center justify-between border-b px-6 py-4">
         <div>
-          <h2 className="text-base font-semibold">表信息配置</h2>
-          <p className="text-xs text-muted-foreground">
-            配置表名、注释和数据库类型
-          </p>
+          <span className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1 text-base font-semibold text-primary">
+            <Table className="h-4 w-4" />
+            表配置
+          </span>
         </div>
         <Button
           variant="destructive"
@@ -51,9 +51,9 @@ export const TableConfig = memo<TableConfigProps>(({
           <Trash2 className="h-4 w-4" /> 清空所有
         </Button>
       </div>
-      <div className="p-4">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <div className="space-y-2">
+      <div className="p-6">
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <div className="space-y-3">
             <Label htmlFor="table-name">表名</Label>
             <Input
               id="table-name"
@@ -62,7 +62,7 @@ export const TableConfig = memo<TableConfigProps>(({
               onChange={(event) => onTableNameChange(event.target.value)}
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label htmlFor="table-comment">表中文名</Label>
             <Input
               id="table-comment"
@@ -71,7 +71,7 @@ export const TableConfig = memo<TableConfigProps>(({
               onChange={(event) => onTableCommentChange(event.target.value)}
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label>数据库类型</Label>
             <Select
               value={dbType}
@@ -86,19 +86,9 @@ export const TableConfig = memo<TableConfigProps>(({
                     if (!selectedOption) return "请选择数据库类型";
                     const Icon = selectedOption.icon;
                     return (
-                      <div className="flex items-center gap-2">
-                        <Icon
-                          className={`h-4 w-4 ${
-                            selectedOption.value === "mysql"
-                              ? "text-blue-600"
-                              : selectedOption.value === "postgresql"
-                              ? "text-blue-800"
-                              : selectedOption.value === "sqlserver"
-                              ? "text-green-600"
-                              : "text-red-600"
-                          }`}
-                        />
-                        <span>{selectedOption.label}</span>
+                      <div className="flex items-center gap-3">
+                        <Icon className="h-5 w-5 text-primary" />
+                        <span className="font-medium">{selectedOption.label}</span>
                       </div>
                     );
                   })()}
@@ -109,19 +99,9 @@ export const TableConfig = memo<TableConfigProps>(({
                   const Icon = option.icon;
                   return (
                     <SelectItem key={option.value} value={option.value}>
-                      <div className="flex items-center gap-2">
-                        <Icon
-                          className={`h-4 w-4 ${
-                            option.value === "mysql"
-                              ? "text-blue-600"
-                              : option.value === "postgresql"
-                              ? "text-blue-800"
-                              : option.value === "sqlserver"
-                              ? "text-green-600"
-                              : "text-red-600"
-                          }`}
-                        />
-                        <span>{option.label}</span>
+                      <div className="flex items-center gap-3">
+                        <Icon className="h-5 w-5 text-primary" />
+                        <span className="font-medium">{option.label}</span>
                       </div>
                     </SelectItem>
                   );
