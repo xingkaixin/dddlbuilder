@@ -2,6 +2,7 @@ import React from "react";
 import { memo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Columns3Cog } from "lucide-react";
 import { registerAllModules } from "handsontable/registry";
 import { HotTable } from "@handsontable/react-wrapper";
 import "handsontable/styles/handsontable.css";
@@ -154,44 +155,54 @@ export const DataTable = memo<DataTableProps>(({
   }, [rows, duplicateNameSet, dbType]);
 
   return (
-    <div className="min-h-[420px] flex-1 rounded-lg border bg-card p-2 shadow-sm">
-      <div className="mb-2 flex items-center gap-2">
-        <Button size="sm" onClick={onAddRows}>
-          添加行
-        </Button>
-        <div className="flex items-center gap-2">
-          <Input
-            type="number"
-            min={1}
-            step={1}
-            value={addCount}
-            onChange={(e) =>
-              onAddCountChange(Math.floor(Number(e.target.value)))
-            }
-            className="w-20"
-          />
-          <span className="text-xs text-muted-foreground">行数</span>
+    <div className="min-h-[420px] flex-1 rounded-lg border bg-card p-6 shadow-sm">
+      <div className="border-b pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1 text-base font-semibold text-primary">
+            <Columns3Cog className="h-4 w-4" />
+            字段配置
+          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button onClick={onAddRows}>
+              添加行
+            </Button>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={1}
+                step={1}
+                value={addCount}
+                onChange={(e) =>
+                  onAddCountChange(Math.floor(Number(e.target.value)))
+                }
+                className="w-20"
+              />
+              <span className="text-sm text-muted-foreground">行数</span>
+            </div>
+          </div>
         </div>
       </div>
-      <HotTable
-        data={rows}
-        columns={COLUMN_SETTINGS}
-        colHeaders={COLUMN_HEADERS}
-        rowHeaders={false}
-        stretchH="all"
-        width="100%"
-        height="auto"
-        licenseKey="non-commercial-and-evaluation"
-        manualColumnResize
-        visibleRows={6}
-        contextMenu
-        cells={cells}
-        afterChange={onRowsChange}
-        afterCreateRow={onCreateRow}
-        afterRemoveRow={onRemoveRow}
-        themeName="ht-theme-main"
-        className="h-full w-full"
-      />
+      <div className="pt-4">
+        <HotTable
+          data={rows}
+          columns={COLUMN_SETTINGS}
+          colHeaders={COLUMN_HEADERS}
+          rowHeaders={false}
+          stretchH="all"
+          width="100%"
+          height="auto"
+          licenseKey="non-commercial-and-evaluation"
+          manualColumnResize
+          visibleRows={6}
+          contextMenu
+          cells={cells}
+          afterChange={onRowsChange}
+          afterCreateRow={onCreateRow}
+          afterRemoveRow={onRemoveRow}
+          themeName="ht-theme-main"
+          className="h-full w-full"
+        />
+      </div>
     </div>
   );
 });

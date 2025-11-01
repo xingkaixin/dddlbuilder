@@ -17,7 +17,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  useToast,
   usePersistedState,
   useTableData,
   useIndexManagement,
@@ -43,7 +42,6 @@ function App() {
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
 
   // Use custom hooks
-  const { toastMessage, showToast } = useToast();
   const { persistedState, hydrated, saveState, clearState } = usePersistedState();
 
   const {
@@ -103,8 +101,7 @@ function App() {
     tableComment,
     normalizedFields,
     indexes,
-    authObjects,
-    showToast
+    authObjects
   );
 
   // restore basic state from localStorage once on mount
@@ -197,19 +194,18 @@ function App() {
     clearState();
 
     cancelClearAll();
-    showToast("所有配置已清除");
-  }, [cancelClearAll, showToast, clearState, setIndexInput, setAuthInput]);
+  }, [cancelClearAll, clearState, setIndexInput, setAuthInput]);
 
   return (
-    <div className="min-h-screen bg-background text-sm text-foreground">
+    <div className="min-h-screen bg-background text-foreground">
       <Header
         showChangelog={showChangelog}
         setShowChangelog={setShowChangelog}
       />
 
       {/* Main Content */}
-      <div className="flex flex-col gap-4 p-4 lg:flex-row">
-        <div className="flex flex-1 flex-col gap-4">
+      <div className="flex flex-col gap-6 p-6 lg:flex-row">
+        <div className="flex flex-1 flex-col gap-6">
           <TableConfig
             tableName={tableName}
             tableComment={tableComment}
@@ -265,6 +261,7 @@ function App() {
         <DDLOutput
           generatedSql={generatedSql}
           generatedDcl={generatedDcl}
+          dbType={dbType}
           onCopySql={copySql}
           onCopyDcl={copyDcl}
         />
@@ -289,11 +286,6 @@ function App() {
         </DialogContent>
       </Dialog>
 
-      {toastMessage && (
-        <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded bg-black/90 px-3 py-2 text-xs text-white shadow-md">
-          {toastMessage}
-        </div>
-      )}
     </div>
   );
 }

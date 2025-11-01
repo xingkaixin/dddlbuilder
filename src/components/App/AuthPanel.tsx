@@ -3,7 +3,7 @@ import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, ShieldUser, X } from "lucide-react";
 
 interface AuthPanelProps {
   isAuthCollapsed: boolean;
@@ -27,26 +27,29 @@ export const AuthPanel = memo<AuthPanelProps>(({
   return (
     <div className="rounded-lg border bg-card shadow-sm">
       <div
-        className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+        className="flex items-center justify-between cursor-pointer border-b px-6 py-4 transition-colors hover:bg-muted/50"
         onClick={onToggleAuthCollapse}
       >
-        <Label className="text-base font-medium cursor-pointer">
-          授权对象配置
+        <Label className="cursor-pointer">
+          <span className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1 text-base font-semibold text-primary">
+            <ShieldUser className="h-4 w-4" />
+            授权配置
+          </span>
         </Label>
         <ChevronDown
-          className={`h-4 w-4 transition-transform duration-200 ${
+          className={`h-5 w-5 transition-transform duration-200 ${
             isAuthCollapsed ? "rotate-180" : ""
           }`}
         />
       </div>
 
       {!isAuthCollapsed && (
-        <div className="px-4 pb-4">
-          <div className="space-y-3">
+        <div className="px-6 pb-6">
+          <div className="space-y-4">
             {/* Authorization Object Input */}
-            <div className="relative">
-              <div className="flex gap-2">
-                <div className="relative flex-1">
+            <div className="mt-2">
+              <div className="flex flex-wrap gap-3">
+                <div className="flex-1">
                   <Input
                     placeholder="输入授权对象名称..."
                     value={authInput}
@@ -66,44 +69,44 @@ export const AuthPanel = memo<AuthPanelProps>(({
                         onRemoveAuthObject(authObjects.length - 1);
                       }
                     }}
-                    className="pr-20"
+                    className="pr-4"
                   />
-                  {authInput.trim() && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-6 px-2 text-xs"
-                        onClick={() => onAddAuthObject(authInput.trim())}
-                      >
-                        添加
-                      </Button>
-                    </div>
-                  )}
                 </div>
+                {authInput.trim() && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onAddAuthObject(authInput.trim())}
+                  >
+                    添加
+                  </Button>
+                )}
               </div>
             </div>
 
             {/* Added Authorization Objects */}
             {authObjects.length > 0 && (
-              <div className="space-y-2">
-                <div className="text-sm font-medium">已添加的授权对象</div>
-                <div className="space-y-1">
+              <div className="space-y-3">
+                <div className="text-base font-medium">已添加的授权对象</div>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   {authObjects.map((authObj, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-2"
+                      className="flex items-center justify-between gap-4 rounded-lg border bg-muted/50 px-4 py-3"
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{authObj}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-2 rounded-md bg-emerald-50 px-2 py-1 text-sm font-medium text-emerald-700">
+                          <ShieldUser className="h-4 w-4" />
+                          授权对象
+                        </span>
+                        <span className="text-base font-medium">{authObj}</span>
                       </div>
                       <Button
-                        size="sm"
+                        size="icon"
                         variant="ghost"
-                        className="h-6 w-6 p-0"
                         onClick={() => onRemoveAuthObject(index)}
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-4 w-4" />
                       </Button>
                     </div>
                   ))}
