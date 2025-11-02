@@ -19,10 +19,19 @@ SyntaxHighlighter.registerLanguage("sql", sql);
 
 export const DDLOutput = memo<DDLOutputProps>(
   ({ generatedSql, generatedDcl, dbType, onCopySql, onCopyDcl }) => {
-    const databaseLabel = useMemo(() => {
-      const match = DATABASE_OPTIONS.find((option) => option.value === dbType);
-      return match?.label ?? dbType.toUpperCase();
-    }, [dbType]);
+    const databaseOption = useMemo(
+      () => DATABASE_OPTIONS.find((option) => option.value === dbType),
+      [dbType],
+    );
+    const databaseLabel = databaseOption?.label ?? dbType.toUpperCase();
+    const DatabaseIcon = databaseOption?.icon;
+
+    const renderDatabaseBadge = () => (
+      <span className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+        {DatabaseIcon && <DatabaseIcon className="h-3.5 w-3.5" />}
+        {databaseLabel}
+      </span>
+    );
 
     const [isSqlCopied, setIsSqlCopied] = useState(false);
     const [isDclCopied, setIsDclCopied] = useState(false);
@@ -67,9 +76,7 @@ export const DDLOutput = memo<DDLOutputProps>(
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <h2 className="text-lg font-semibold">建表 DDL</h2>
-                  <span className="inline-flex items-center rounded-md bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                    {databaseLabel}
-                  </span>
+                  {renderDatabaseBadge()}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   根据左侧输入实时生成不同数据库的建表语句
@@ -119,9 +126,7 @@ export const DDLOutput = memo<DDLOutputProps>(
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <h2 className="text-lg font-semibold">授权 DCL</h2>
-                  <span className="inline-flex items-center rounded-md bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                    {databaseLabel}
-                  </span>
+                  {renderDatabaseBadge()}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   生成数据库授权语句（GRANT）

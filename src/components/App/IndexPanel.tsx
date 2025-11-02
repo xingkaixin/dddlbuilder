@@ -3,7 +3,15 @@ import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { ChevronUp, ChevronDown, Network, X } from "lucide-react";
+import {
+  ChevronUp,
+  ChevronDown,
+  Network,
+  X,
+  Key,
+  Lock,
+  Hash,
+} from "lucide-react";
 import type { IndexField, IndexDefinition } from "@/types";
 
 interface IndexPanelProps {
@@ -112,23 +120,29 @@ export const IndexPanel = memo<IndexPanelProps>(({
                   <Button
                     size="sm"
                     variant="outline"
+                    className="gap-2"
                     onClick={() => onAddIndex(false)}
                   >
+                    <Hash className="h-4 w-4" />
                     添加索引
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
+                    className="gap-2"
                     onClick={() => onAddIndex(true)}
                   >
+                    <Lock className="h-4 w-4" />
                     添加唯一索引
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
+                    className="gap-2"
                     onClick={() => onAddIndex(true, true)}
                     disabled={indexes.some((index) => index.isPrimary)}
                   >
+                    <Key className="h-4 w-4" />
                     添加主键
                   </Button>
                 </div>
@@ -194,15 +208,18 @@ export const IndexPanel = memo<IndexPanelProps>(({
                       ? {
                           label: "主键",
                           className: "bg-orange-100 text-orange-800",
+                          Icon: Key,
                         }
                       : index.unique
                       ? {
                           label: "唯一",
                           className: "bg-blue-100 text-blue-800",
+                          Icon: Lock,
                         }
                       : {
                           label: "普通",
                           className: "bg-emerald-100 text-emerald-700",
+                          Icon: Hash,
                         };
 
                     return (
@@ -212,8 +229,9 @@ export const IndexPanel = memo<IndexPanelProps>(({
                       >
                         <div className="flex flex-1 flex-wrap items-center gap-2">
                           <span
-                            className={`rounded-md px-2 py-1 text-sm font-medium ${badge.className}`}
+                            className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium ${badge.className}`}
                           >
+                            <badge.Icon className="h-3.5 w-3.5" />
                             {badge.label}
                           </span>
                           <span className="break-words text-base font-medium leading-snug">
