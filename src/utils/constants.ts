@@ -1,5 +1,6 @@
 import React from "react";
-import { Database, Server, Archive } from "lucide-react";
+import { DiMysql, DiMsqlServer } from "react-icons/di";
+import { SiPostgresql, SiOracle } from "react-icons/si";
 import type { DatabaseType } from "../types";
 
 export const DATABASE_OPTIONS: Array<{
@@ -7,10 +8,10 @@ export const DATABASE_OPTIONS: Array<{
   label: string;
   icon: React.ComponentType<{ className?: string }>;
 }> = [
-  { value: "mysql", label: "MySQL", icon: Database },
-  { value: "postgresql", label: "PostgreSQL", icon: Database },
-  { value: "sqlserver", label: "SQL Server", icon: Server },
-  { value: "oracle", label: "Oracle", icon: Archive },
+  { value: "mysql", label: "MySQL", icon: DiMysql },
+  { value: "postgresql", label: "PostgreSQL", icon: SiPostgresql },
+  { value: "sqlserver", label: "SQL Server", icon: DiMsqlServer },
+  { value: "oracle", label: "Oracle", icon: SiOracle },
 ];
 
 export const YES_VALUES = new Set(["y", "yes", "true", "1", "是", "√"]);
