@@ -1,12 +1,5 @@
 import type { DatabaseType } from "@/types";
-import {
-  memo,
-  useMemo,
-  useState,
-  useRef,
-  useEffect,
-  useCallback,
-} from "react";
+import { memo, useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Copy, Check } from "lucide-react";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -48,7 +41,10 @@ export const DDLOutput = memo<DDLOutputProps>(
       if (!success) return;
       if (sqlTimerRef.current) window.clearTimeout(sqlTimerRef.current);
       setIsSqlCopied(true);
-      sqlTimerRef.current = window.setTimeout(() => setIsSqlCopied(false), 3000);
+      sqlTimerRef.current = window.setTimeout(
+        () => setIsSqlCopied(false),
+        3000,
+      );
     }, [onCopySql]);
 
     const handleCopyDcl = useCallback(async () => {
@@ -56,7 +52,10 @@ export const DDLOutput = memo<DDLOutputProps>(
       if (!success) return;
       if (dclTimerRef.current) window.clearTimeout(dclTimerRef.current);
       setIsDclCopied(true);
-      dclTimerRef.current = window.setTimeout(() => setIsDclCopied(false), 3000);
+      dclTimerRef.current = window.setTimeout(
+        () => setIsDclCopied(false),
+        3000,
+      );
     }, [onCopyDcl]);
 
     return (
@@ -103,8 +102,10 @@ export const DDLOutput = memo<DDLOutputProps>(
                   '"SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace',
                 fontSize: "0.775rem",
                 whiteSpace: "pre-wrap",
+                background: "transparent",
               }}
-              wrapLongLines
+              // wrapLongLines
+              showLineNumbers
             >
               {generatedSql || "-- 请在左侧填写表信息"}
             </SyntaxHighlighter>
@@ -153,8 +154,10 @@ export const DDLOutput = memo<DDLOutputProps>(
                   '"SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace',
                 fontSize: "0.775rem",
                 whiteSpace: "pre-wrap",
+                background: "transparent",
               }}
-              wrapLongLines
+              // wrapLongLines
+              showLineNumbers
             >
               {generatedDcl || "-- 请在下方配置授权对象"}
             </SyntaxHighlighter>
