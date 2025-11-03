@@ -10,6 +10,7 @@ import {
   isIntegerType,
   isCharacterType,
   supportsUuidDefault,
+  getCanonicalBaseType,
   getUiDefaultKindOptions,
   getUiOnUpdateOptions
 } from '@/App'
@@ -684,6 +685,12 @@ describe('Utils', () => {
   describe('getUiOnUpdateOptions function', () => {
     it('应该为 MySQL timestamp 类型返回当前时间选项', () => {
       const result = getUiOnUpdateOptions('mysql', 'timestamp')
+      expect(result).toEqual(['无', '当前时间'])
+    })
+
+    it('应兼容附带约束的时间戳类型', () => {
+      const base = getCanonicalBaseType('timestamp(6) not null')
+      const result = getUiOnUpdateOptions('mysql', base)
       expect(result).toEqual(['无', '当前时间'])
     })
 
