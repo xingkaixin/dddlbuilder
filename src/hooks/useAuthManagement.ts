@@ -6,6 +6,7 @@ export interface UseAuthManagementReturn {
   setAuthInput: (value: string) => void;
   addAuthObject: (authObj: string) => void;
   removeAuthObject: (index: number) => void;
+  resetAuthState: () => void;
 }
 
 export function useAuthManagement(persistedState?: {
@@ -39,11 +40,17 @@ export function useAuthManagement(persistedState?: {
     setAuthObjects((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
+  const resetAuthState = useCallback(() => {
+    setAuthInput("");
+    setAuthObjects([]);
+  }, []);
+
   return {
     authInput,
     authObjects,
     setAuthInput,
     addAuthObject,
     removeAuthObject,
+    resetAuthState,
   };
 }
