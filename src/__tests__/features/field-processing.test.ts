@@ -410,6 +410,9 @@ describe('Field Processing Functions', () => {
       expect(getCanonicalBaseType('character varying(100)')).toBe('varchar')
       expect(getCanonicalBaseType('')).toBe('')
       expect(getCanonicalBaseType('   ')).toBe('')
+      expect(getCanonicalBaseType('timestamp(6) not null')).toBe('timestamp')
+      expect(getCanonicalBaseType('timestamp default current_timestamp')).toBe('timestamp')
+      expect(getCanonicalBaseType('time with time zone')).toBe('timetz')
     })
   })
 

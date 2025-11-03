@@ -68,6 +68,37 @@ export const getFieldTypeForDatabase = (
   return typeMapper.mapType(parsed);
 };
 
+const CONSTRAINT_STARTERS = new Set([
+  "default",
+  "not",
+  "null",
+  "generated",
+  "unique",
+  "primary",
+  "comment",
+  "on",
+  "check",
+  "references",
+  "constraint",
+  "collate",
+]);
+
+const stripTrailingConstraints = (type: string): string => {
+  const tokens = type.trim().split(/\s+/);
+  if (tokens.length === 0) return "";
+
+  let end = tokens.length;
+  for (let i = 0; i < tokens.length; i += 1) {
+    const token = tokens[i].toLowerCase();
+    if (CONSTRAINT_STARTERS.has(token)) {
+      end = i;
+      break;
+    }
+  }
+
+  return tokens.slice(0, end).join(" ");
+};
+
 // 辅助函数：处理UNSIGNED后缀
 const parseUnsigned = (type: string): { clean: string; isUnsigned: boolean } => {
   const isUnsigned = type.toLowerCase().endsWith("unsigned");
@@ -140,16 +171,18 @@ export const parseFieldType = (rawType: string): ParsedFieldType => {
     return createEmptyField();
   }
 
+  const withoutConstraints = stripTrailingConstraints(clean);
+
   // 处理UNSIGNED后缀
-  const { clean: withoutUnsigned, isUnsigned } = parseUnsigned(clean);
+  const { clean: withoutUnsigned, isUnsigned } = parseUnsigned(withoutConstraints);
 
   // 尝试提取类型名称和参数
   const extracted = extractTypeAndArgs(withoutUnsigned);
 
   if (!extracted) {
     // 处理特殊情况（如 "()" 或 "varchar255)"）
-    const specialCase = handleSpecialCases(clean);
-    return { ...specialCase, unsigned: isUnsigned };
+    const specialCase = handleSpecialCases(withoutConstraints);
+    return { ...specialCase, unsigned: isUnsigned, raw: clean };
   }
 
   // 正常情况：标准化参数并返回结果
