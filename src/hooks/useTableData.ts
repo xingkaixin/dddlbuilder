@@ -12,6 +12,7 @@ export interface UseTableDataReturn {
   rows: FieldRow[];
   duplicateNameSet: Set<string>;
   normalizedFields: NormalizedField[];
+  resetTableRows: () => void;
   handleRowsChange: (
     changes: Handsontable.CellChange[] | null,
     source: Handsontable.ChangeSource,
@@ -51,6 +52,14 @@ export function useTableData(
   }, [rows]);
 
   const normalizedFields = useMemo(() => normalizeFields(rows), [rows]);
+
+  const resetTableRows = useCallback(() => {
+    setRows(() =>
+      Array.from({ length: initialRows.length }, (_, index) =>
+        createEmptyRow(index),
+      ),
+    );
+  }, [initialRows]);
 
   // 处理器函数：验证变更数据
   const validateChanges = useCallback(
@@ -204,6 +213,7 @@ export function useTableData(
     rows,
     duplicateNameSet,
     normalizedFields,
+    resetTableRows,
     handleRowsChange,
     handleCreateRow,
     handleRemoveRow,

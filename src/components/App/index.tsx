@@ -48,6 +48,7 @@ function App() {
     rows,
     duplicateNameSet,
     normalizedFields,
+    resetTableRows,
     handleRowsChange,
     handleCreateRow,
     handleRemoveRow,
@@ -73,6 +74,7 @@ function App() {
     toggleFieldDirection,
     addIndex,
     removeIndex,
+    resetIndexState,
   } = useIndexManagement(tableName, availableFields, persistedState);
 
   const {
@@ -81,6 +83,7 @@ function App() {
     setAuthInput,
     addAuthObject,
     removeAuthObject,
+    resetAuthState,
   } = useAuthManagement(persistedState);
 
   const {
@@ -187,14 +190,15 @@ function App() {
     setTableComment("");
     setDbType("mysql");
     setAddCount(10);
-    setIndexInput("");
-    setAuthInput("");
+    resetTableRows();
+    resetIndexState();
+    resetAuthState();
 
     // Clear localStorage
     clearState();
 
     cancelClearAll();
-  }, [cancelClearAll, clearState, setIndexInput, setAuthInput]);
+  }, [cancelClearAll, clearState, resetTableRows, resetIndexState, resetAuthState]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">

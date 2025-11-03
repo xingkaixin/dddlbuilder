@@ -17,6 +17,7 @@ export interface UseIndexManagementReturn {
   addIndex: (unique: boolean, isPrimary?: boolean) => void;
   removeIndex: (id: string) => void;
   updateIndexNames: (newTableName: string) => void;
+  resetIndexState: () => void;
 }
 
 export function useIndexManagement(
@@ -117,6 +118,14 @@ export function useIndexManagement(
     setIndexes((prev) => prev.filter((index) => index.id !== id));
   }, []);
 
+  const resetIndexState = useCallback(() => {
+    setIndexInput("");
+    setCurrentIndexFields([]);
+    setIndexes([]);
+    setShowFieldSuggestions(false);
+    setSelectedSuggestionIndex(0);
+  }, []);
+
   // Generate index name based on table name and fields
   const generateIndexName = useCallback(
     (index: IndexDefinition, currentTableName: string): string => {
@@ -170,5 +179,6 @@ export function useIndexManagement(
     addIndex,
     removeIndex,
     updateIndexNames,
+    resetIndexState,
   };
 }

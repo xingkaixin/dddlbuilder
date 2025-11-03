@@ -19,6 +19,16 @@ export const changelogData: ChangelogData = {
   "description": "DDL建表工具版本更新记录",
   "entries": [
     {
+      "version": "0.2.1",
+      "date": "2025-11-03",
+      "content": "- 修复: **一键清空**按钮部分失效问题"
+    },
+    {
+      "version": "0.2.0",
+      "date": "2025-11-02",
+      "content": "- 界面样式调整"
+    },
+    {
       "version": "0.1.0",
       "date": "2025-10-28",
       "content": "- 重构代码"
