@@ -19,6 +19,11 @@ export const changelogData: ChangelogData = {
   "description": "DDL建表工具版本更新记录",
   "entries": [
     {
+      "version": "0.2.2",
+      "date": "2025-11-03",
+      "content": "- 修复: `mysql`的`timestamp`字段类型，当`默认类型`为`当前时间`时无法配置`更新策略`"
+    },
+    {
       "version": "0.2.1",
       "date": "2025-11-03",
       "content": "- 修复: **一键清空**按钮部分失效问题"
