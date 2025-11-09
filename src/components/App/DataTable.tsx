@@ -1,5 +1,5 @@
 import React from "react";
-import { memo, useCallback } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Columns3Cog } from "lucide-react";
@@ -58,7 +58,7 @@ interface DataTableProps {
   onRowsChange: (changes: any[] | null, source: string) => void;
   onCreateRow: (index: number, amount: number) => void;
   onRemoveRow: (index: number, amount: number) => void;
-  onAddRows: () => void;
+  onAddRows: (count: number) => void;
   onAddCountChange: (value: number) => void;
 }
 
@@ -73,22 +73,58 @@ export const DataTable = memo<DataTableProps>(({
   onAddRows,
   onAddCountChange,
 }) => {
+  const rowWarnings = useMemo(() => {
+    return rows.map((row) => {
+      const warnings: string[] = [];
+      const name = toStringSafe(row?.fieldName).trim();
+      if (!name)
+        return warnings;
+      if (duplicateNameSet.has(name))
+        warnings.push("字段名重复");
+      if (isReservedKeyword(dbType, name))
+        warnings.push("字段名为数据库保留关键字");
+      return warnings;
+    });
+  }, [rows, duplicateNameSet, dbType]);
+
+  const columns = useMemo<Handsontable.ColumnSettings[]>(() => {
+    return COLUMN_SETTINGS.map((col) => {
+      if (col.data !== "order")
+        return col;
+      return {
+        ...col,
+        renderer: (instance, td, row, colIndex, prop, value, cellProperties) => {
+          while (td.firstChild)
+            td.removeChild(td.firstChild);
+          td.classList.add("htOrderCell");
+          const wrapper = document.createElement("span");
+          wrapper.className = "htOrderCellInner";
+          const label = document.createElement("span");
+          label.className = "htOrderValue";
+          label.textContent = value == null ? "" : String(value);
+          wrapper.appendChild(label);
+          const warnings = rowWarnings[row];
+          if (warnings?.length) {
+            td.classList.add("htOrderHasWarning");
+            const icon = document.createElement("span");
+            icon.className = "htOrderWarningIcon";
+            const tooltip = warnings.join("，");
+            icon.setAttribute("title", tooltip);
+            icon.setAttribute("aria-label", tooltip);
+            icon.textContent = "!";
+            wrapper.appendChild(icon);
+          } else {
+            td.classList.remove("htOrderHasWarning");
+          }
+          td.appendChild(wrapper);
+        },
+      };
+    });
+  }, [rowWarnings]);
+
   // Enhanced cells function extracted from App.tsx
   const cells = useCallback((row: number, _col: number, prop?: string | number) => {
     const cellProps: Handsontable.CellMeta = {};
-
-    if (prop === "fieldName") {
-      const name = toStringSafe(rows[row]?.fieldName).trim();
-      const classes: string[] = [];
-      if (name && duplicateNameSet.has(name))
-        classes.push("htDuplicateFieldName");
-      if (name && isReservedKeyword(dbType, name))
-        classes.push("htReservedKeyword");
-      if (classes.length)
-        cellProps.className = `${
-          cellProps.className ? cellProps.className + " " : ""
-        }${classes.join(" ")}`;
-    }
 
     if (prop === "defaultValue") {
       const kind = normalizeDefaultKind(
@@ -152,7 +188,31 @@ export const DataTable = memo<DataTableProps>(({
     }
 
     return cellProps;
-  }, [rows, duplicateNameSet, dbType]);
+  }, [rows, dbType]);
+
+  const handleBeforeChange = useCallback((changes: Handsontable.CellChange[] | null) => {
+    if (!changes)
+      return;
+    changes.forEach((change) => {
+      if (!change)
+        return;
+      const [, prop, , nextValue] = change;
+      if (prop !== "nullable" || typeof nextValue !== "string")
+        return;
+      const normalized = nextValue.trim().toLowerCase();
+      if (normalized === "y") {
+        change[3] = "是";
+      } else if (normalized === "n") {
+        change[3] = "否";
+      }
+    });
+  }, []);
+
+  const safeAddCount = Number.isFinite(addCount) && addCount > 0 ? Math.floor(addCount) : 1;
+
+  const handleAddRowsClick = useCallback(() => {
+    onAddRows(safeAddCount);
+  }, [onAddRows, safeAddCount]);
 
   return (
     <div className="min-h-[420px] flex-1 rounded-lg border bg-card p-6 shadow-sm">
@@ -163,7 +223,7 @@ export const DataTable = memo<DataTableProps>(({
             字段配置
           </span>
           <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={onAddRows}>
+            <Button onClick={handleAddRowsClick}>
               添加行
             </Button>
             <div className="flex items-center gap-2">
@@ -171,10 +231,11 @@ export const DataTable = memo<DataTableProps>(({
                 type="number"
                 min={1}
                 step={1}
-                value={addCount}
-                onChange={(e) =>
-                  onAddCountChange(Math.floor(Number(e.target.value)))
-                }
+                value={safeAddCount}
+                onChange={(e) => {
+                  const parsed = Math.floor(Number(e.target.value));
+                  onAddCountChange(Number.isFinite(parsed) && parsed > 0 ? parsed : 1);
+                }}
                 className="w-20"
               />
               <span className="text-sm text-muted-foreground">行数</span>
@@ -185,7 +246,7 @@ export const DataTable = memo<DataTableProps>(({
       <div className="pt-4">
         <HotTable
           data={rows}
-          columns={COLUMN_SETTINGS}
+          columns={columns}
           colHeaders={COLUMN_HEADERS}
           rowHeaders={false}
           stretchH="all"
@@ -195,6 +256,7 @@ export const DataTable = memo<DataTableProps>(({
           manualColumnResize
           visibleRows={6}
           contextMenu
+          beforeChange={handleBeforeChange}
           cells={cells}
           afterChange={onRowsChange}
           afterCreateRow={onCreateRow}
