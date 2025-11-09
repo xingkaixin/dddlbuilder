@@ -8,67 +8,67 @@
             "Inter", "Noto Sans SC", "PingFang SC", "Segoe UI",
             "Helvetica Neue", Arial, sans-serif;
 
-        --background: 220 23% 97%;
-        --foreground: 220 33% 16%;
+        --background: 48 33.3333% 97.0588%;
+        --foreground: 48 19.6078% 20%;
 
-        --muted: 220 16% 92%;
-        --muted-foreground: 220 15% 40%;
+        --muted: 44 29.4118% 90%;
+        --muted-foreground: 50 2.3622% 50.1961%;
 
         --popover: 0 0% 100%;
-        --popover-foreground: 220 33% 16%;
+        --popover-foreground: 50.7692 19.4030% 13.1373%;
 
-        --card: 0 0% 100%;
-        --card-foreground: 220 33% 16%;
+        --card: 48 33.3333% 97.0588%;
+        --card-foreground: 60 2.5641% 7.6471%;
 
-        --border: 214 24% 80%;
-        --input: 214 24% 80%;
+        --border: 50 7.5000% 84.3137%;
+        --input: 50.7692 7.9755% 68.0392%;
 
-        --primary: 217 91% 60%;
-        --primary-foreground: 210 40% 98%;
+        --primary: 15.1111 55.5556% 52.3529%;
+        --primary-foreground: 0 0% 100%;
 
-        --secondary: 220 16% 94%;
-        --secondary-foreground: 220 33% 16%;
+        --secondary: 46.1538 22.8070% 88.8235%;
+        --secondary-foreground: 50.7692 8.4967% 30.0000%;
 
-        --accent: 217 90% 66%;
-        --accent-foreground: 210 40% 98%;
+        --accent: 46.1538 22.8070% 88.8235%;
+        --accent-foreground: 50.7692 19.4030% 13.1373%;
 
-        --destructive: 0 73% 52%;
-        --destructive-foreground: 210 40% 98%;
+        --destructive: 60 2.5641% 7.6471%;
+        --destructive-foreground: 0 0% 100%;
 
-        --ring: 217 91% 60%;
+        --ring: 15.1111 55.5556% 52.3529%;
 
-        --radius: 0.75rem;
+        --radius: 0.5rem;
     }
 
     .dark {
-        --background: 217 33% 10%;
-        --foreground: 214 32% 92%;
+        --background: 60 2.7027% 14.5098%;
+        --foreground: 46.1538 9.7744% 73.9216%;
 
-        --muted: 217 22% 18%;
-        --muted-foreground: 217 15% 70%;
+        --muted: 60 3.8462% 10.1961%;
+        --muted-foreground: 51.4286 8.8608% 69.0196%;
 
-        --popover: 217 33% 14%;
-        --popover-foreground: 214 32% 92%;
+        --popover: 60 2.1277% 18.4314%;
+        --popover-foreground: 60 5.4545% 89.2157%;
 
-        --card: 217 33% 14%;
-        --card-foreground: 214 32% 92%;
+        --card: 60 2.7027% 14.5098%;
+        --card-foreground: 48 33.3333% 97.0588%;
 
-        --border: 217 24% 24%;
-        --input: 217 24% 24%;
+        --border: 60 5.0847% 23.1373%;
+        --input: 52.5000 5.1282% 30.5882%;
 
-        --primary: 217 91% 65%;
-        --primary-foreground: 214 32% 12%;
+        --primary: 14.7692 63.1068% 59.6078%;
+        --primary-foreground: 0 0% 100%;
 
-        --secondary: 217 24% 20%;
-        --secondary-foreground: 214 32% 92%;
+        --secondary: 48 33.3333% 97.0588%;
+        --secondary-foreground: 60 2.1277% 18.4314%;
 
-        --accent: 217 91% 65%;
-        --accent-foreground: 214 32% 12%;
+        --accent: 48 10.6383% 9.2157%;
+        --accent-foreground: 51.4286 25.9259% 94.7059%;
 
-        --destructive: 0 70% 58%;
-        --destructive-foreground: 214 32% 12%;
+        --destructive: 0 84.2365% 60.1961%;
+        --destructive-foreground: 0 0% 100%;
 
-        --ring: 217 91% 65%;
+        --ring: 14.7692 63.1068% 59.6078%;
     }
 
     * {
@@ -81,31 +81,97 @@
     }
 }
 
-/* Duplicate field name highlight */
-.htDuplicateFieldName {
-    background-color: #fff3bf !important; /* yellow-ish */
-}
-
-/* Reserved keyword highlight (use a light red) */
-.htReservedKeyword {
-    background-color: #ffe3e3 !important;
-}
-
 /* Table readability */
 .handsontable td,
 .handsontable th {
     padding: 0.5rem 0.75rem !important;
     line-height: 1.5 !important;
     font-size: 0.95rem !important;
+    border-color: hsl(var(--border)) !important;
+}
+
+.handsontable td {
+    background-color: hsl(var(--card)) !important;
+    color: hsl(var(--foreground)) !important;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.handsontable td:hover {
+    background-color: hsl(var(--card) / 0.8) !important;
+}
+
+.handsontable th {
+    background-color: hsl(var(--muted)) !important;
+    color: hsl(var(--muted-foreground)) !important;
+    font-weight: 600 !important;
+}
+
+.handsontable td.current,
+.handsontable th.current {
+    background-color: hsl(var(--primary) / 0.18) !important;
+    color: hsl(var(--foreground)) !important;
+    font-weight: 600 !important;
+}
+
+.handsontable td.area {
+    background-color: hsl(var(--primary) / 0.08) !important;
+}
+
+.handsontable .wtBorder {
+    background-color: hsl(var(--primary)) !important;
+    border-color: hsl(var(--primary)) !important;
+}
+
+.handsontable .wtBorder.corner {
+    border-color: hsl(var(--primary)) !important;
+    background-color: hsl(var(--primary)) !important;
+    box-shadow: 0 0 0 1px hsl(var(--primary)) !important;
 }
 
 .handsontable .handsontableInput {
     font-family: var(--font-sans);
     font-size: 0.95rem;
+    color: hsl(var(--foreground));
 }
 
 .handsontable .htCore col {
     border-color: hsl(var(--border));
+}
+
+.handsontable .htDimmed {
+    color: hsl(var(--muted-foreground)) !important;
+    background-color: hsl(var(--muted) / 0.6) !important;
+}
+
+.handsontable .htOrderCell {
+    padding: 0 !important;
+}
+
+.handsontable .htOrderCellInner {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    width: 100%;
+    padding: 0.25rem 0.35rem;
+}
+
+.handsontable .htOrderValue {
+    font-weight: 600;
+}
+
+.handsontable .htOrderWarningIcon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 9999px;
+    background-color: hsl(var(--destructive) / 0.9);
+    color: hsl(var(--destructive-foreground));
+    font-size: 0.75rem;
+    line-height: 1;
+    cursor: help;
 }
 
 /* Fix: ensure HOT dropdown/autocomplete editors render above grid cells */
