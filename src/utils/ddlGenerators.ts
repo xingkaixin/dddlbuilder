@@ -27,8 +27,20 @@ export const buildDDL = (
     strategy.generateIndexDDL(tableName.trim(), index, fields)
   );
 
-  return indexDDLs.length > 0
-    ? `${tableDDL}\n\n${indexDDLs.join("\n")}`
+  const extraBlocks: string[] = [];
+  if (indexDDLs.length > 0) {
+    extraBlocks.push(indexDDLs.join("\n"));
+  }
+
+  if (dbType === "oracle") {
+    const synonymDDL = buildOracleSynonyms(tableName);
+    if (synonymDDL) {
+      extraBlocks.push(synonymDDL);
+    }
+  }
+
+  return extraBlocks.length > 0
+    ? `${tableDDL}\n\n${extraBlocks.join("\n\n")}`
     : tableDDL;
 };
 
