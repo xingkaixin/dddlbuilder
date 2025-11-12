@@ -163,6 +163,7 @@ describe('DDL Generation Functions', () => {
       expect(result).toContain('price NUMBER(10, 2) DEFAULT 0.00')
       expect(result).toContain("COMMENT ON TABLE users IS '用户表'")
       expect(result).toContain("COMMENT ON COLUMN users.name IS '名称'")
+      expect(result).toContain('CREATE OR REPLACE PUBLIC SYNONYM users FOR users;')
     })
   })
 

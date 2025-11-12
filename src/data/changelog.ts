@@ -19,6 +19,11 @@ export const changelogData: ChangelogData = {
   "description": "DDL建表工具版本更新记录",
   "entries": [
     {
+      "version": "0.2.4",
+      "date": "2025-11-12",
+      "content": "- **Oracle**生成的DDL，增加同义词的创建"
+    },
+    {
       "version": "0.2.3",
       "date": "2025-11-09",
       "content": "- **界面**颜色调整为温暖的颜色\n- **是否为空**列，可以支持「是否YNyn的粘贴」\n- **添加行**只能添加一行问题修复\n- 改善字段名重复或使用数据库保留关键字时的告警提示"
