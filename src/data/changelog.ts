@@ -19,6 +19,11 @@ export const changelogData: ChangelogData = {
   "description": "DDL建表工具版本更新记录",
   "entries": [
     {
+      "version": "0.3.0",
+      "date": "2025-11-15",
+      "content": "- **更新日志**页面样式美化"
+    },
+    {
       "version": "0.2.4",
       "date": "2025-11-12",
       "content": "- **Oracle**生成的DDL，增加同义词的创建"
