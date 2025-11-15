@@ -68,39 +68,47 @@ export const DDLOutput = memo<DDLOutputProps>(
     }, [onCopyDcl]);
 
     return (
-      <div className="flex w-full flex-col rounded-lg border bg-card shadow-sm lg:max-w-xl">
+      <div className="relative flex w-full flex-col rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5 lg:max-w-xl">
+        {/* Decorative gradient overlay */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent rounded-lg" />
+
+        {/* Top gradient bar */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/30 to-transparent rounded-t-lg" />
+
         {/* Upper Section - DDL Output */}
-        <div className="flex flex-1 flex-col border-b">
-          <div className="border-b px-6 py-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="space-y-1">
+        <div className="relative flex flex-1 flex-col border-b">
+          <div className="border-b border-primary/10 px-4 py-3.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold">建表 DDL</h2>
-                  {renderDatabaseBadge()}
+                  <h2 className="text-xl font-bold bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent transition-colors duration-200">
+                    建表 DDL
+                  </h2>
+                  <span className="transition-transform duration-200 hover:scale-105">{renderDatabaseBadge()}</span>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground/80">
                   根据左侧输入实时生成不同数据库的建表语句
                 </p>
               </div>
               <Button
                 variant="secondary"
                 size="sm"
-                className="gap-1"
+                className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md"
                 onClick={handleCopySql}
               >
                 {isSqlCopied ? (
                   <>
-                    <Check className="h-4 w-4" /> 已复制
+                    <Check className="h-4 w-4 transition-transform duration-200" /> 已复制
                   </>
                 ) : (
                   <>
-                    <Copy className="h-4 w-4" /> 复制DDL
+                    <Copy className="h-4 w-4 transition-transform duration-200" /> 复制DDL
                   </>
                 )}
               </Button>
             </div>
           </div>
-          <div className="flex-1 overflow-auto px-6 py-4">
+          <div className="relative flex-1 overflow-auto px-4 py-3.5">
             <SyntaxHighlighter
               language="sql"
               style={atomOneLight}
@@ -111,7 +119,6 @@ export const DDLOutput = memo<DDLOutputProps>(
                 whiteSpace: "pre-wrap",
                 background: "transparent",
               }}
-              // wrapLongLines
               showLineNumbers
             >
               {generatedSql || "-- 请在左侧填写表信息"}
@@ -120,37 +127,39 @@ export const DDLOutput = memo<DDLOutputProps>(
         </div>
 
         {/* Lower Section - DCL Output */}
-        <div className="flex flex-1 flex-col">
-          <div className="border-b px-6 py-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="space-y-1">
+        <div className="relative flex flex-1 flex-col">
+          <div className="border-b border-primary/10 px-4 py-3.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold">授权 DCL</h2>
-                  {renderDatabaseBadge()}
+                  <h2 className="text-xl font-bold bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent transition-colors duration-200">
+                    授权 DCL
+                  </h2>
+                  <span className="transition-transform duration-200 hover:scale-105">{renderDatabaseBadge()}</span>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground/80">
                   生成数据库授权语句（GRANT）
                 </p>
               </div>
               <Button
                 variant="secondary"
                 size="sm"
-                className="gap-1"
+                className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md"
                 onClick={handleCopyDcl}
               >
                 {isDclCopied ? (
                   <>
-                    <Check className="h-4 w-4" /> 已复制
+                    <Check className="h-4 w-4 transition-transform duration-200" /> 已复制
                   </>
                 ) : (
                   <>
-                    <Copy className="h-4 w-4" /> 复制DCL
+                    <Copy className="h-4 w-4 transition-transform duration-200" /> 复制DCL
                   </>
                 )}
               </Button>
             </div>
           </div>
-          <div className="flex-1 overflow-auto px-6 py-4">
+          <div className="relative flex-1 overflow-auto px-4 py-3.5">
             <SyntaxHighlighter
               language="sql"
               style={atomOneLight}
@@ -161,7 +170,6 @@ export const DDLOutput = memo<DDLOutputProps>(
                 whiteSpace: "pre-wrap",
                 background: "transparent",
               }}
-              // wrapLongLines
               showLineNumbers
             >
               {generatedDcl || "-- 请在下方配置授权对象"}

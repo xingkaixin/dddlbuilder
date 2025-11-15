@@ -208,8 +208,8 @@ function App() {
       />
 
       {/* Main Content */}
-      <div className="flex flex-col gap-6 p-6 lg:flex-row">
-        <div className="flex flex-1 flex-col gap-6">
+      <div className="flex flex-col gap-4 p-4 lg:flex-row">
+        <div className="flex flex-1 flex-col gap-4">
           <TableConfig
             tableName={tableName}
             tableComment={tableComment}

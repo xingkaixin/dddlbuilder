@@ -215,18 +215,24 @@ export const DataTable = memo<DataTableProps>(({
   }, [onAddRows, safeAddCount]);
 
   return (
-    <div className="min-h-[420px] flex-1 rounded-lg border bg-card p-6 shadow-sm">
-      <div className="border-b pb-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1 text-base font-semibold text-primary">
-            <Columns3Cog className="h-4 w-4" />
+    <div className="relative min-h-[420px] flex-1 rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5">
+      {/* Decorative gradient overlay */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent rounded-lg" />
+
+      {/* Top gradient bar */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-primary/30 to-transparent" />
+
+      <div className="relative border-b border-primary/10 px-4 py-3.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition-all duration-300">
+            <Columns3Cog className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
             字段配置
           </span>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={handleAddRowsClick}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={handleAddRowsClick} className="transition-all duration-200 hover:scale-105 hover:shadow-md">
               添加行
             </Button>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 group/counter">
               <Input
                 type="number"
                 min={1}
@@ -236,14 +242,14 @@ export const DataTable = memo<DataTableProps>(({
                   const parsed = Math.floor(Number(e.target.value));
                   onAddCountChange(Number.isFinite(parsed) && parsed > 0 ? parsed : 1);
                 }}
-                className="w-20"
+                className="w-24 transition-all duration-200 focus:ring-2 focus:ring-primary/20 group-hover/counter:border-primary/30"
               />
-              <span className="text-sm text-muted-foreground">行数</span>
+              <span className="text-sm text-muted-foreground transition-colors duration-200 group-hover/counter:text-foreground">行数</span>
             </div>
           </div>
         </div>
       </div>
-      <div className="pt-4">
+      <div className="relative p-4">
         <HotTable
           data={rows}
           columns={columns}
