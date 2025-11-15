@@ -1,6 +1,7 @@
 import React from "react";
 import { memo } from "react";
 import { ChangelogModal } from "@/components/ChangelogModal";
+import packageInfo from "../../../package.json";
 
 interface HeaderProps {
   showChangelog: boolean;
@@ -16,9 +17,9 @@ export const Header = memo<HeaderProps>(
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <img
-                  src="/favicon.png"
+                  src="/logo.svg"
                   alt="筑表师 Logo"
-                  className="h-10 w-10 rounded"
+                  className="h-10 w-10 text-primary"
                 />
                 <div>
                   <h1 className="text-2xl font-bold text-foreground">筑表师</h1>
@@ -29,7 +30,7 @@ export const Header = memo<HeaderProps>(
               </div>
               <div className="text-right">
                 <div className="mb-1 text-sm text-muted-foreground">
-                  v{import.meta.env.VITE_APP_VERSION || "0.2.4"}
+                  v{packageInfo.version}
                 </div>
                 <button
                   onClick={() => setShowChangelog(true)}

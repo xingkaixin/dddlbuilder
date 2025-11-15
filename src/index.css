@@ -79,6 +79,8 @@
         font-family: var(--font-sans);
         @apply min-h-screen bg-background text-foreground antialiased text-base leading-relaxed;
     }
+
+    /* Auto color SVG icons based on text color */
 }
 
 /* Table readability */
