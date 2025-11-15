@@ -8,7 +8,8 @@
       "Bash(bun test)",
       "Bash(bun lint:*)",
       "Bash(bun run:*)",
-      "WebFetch(domain:localhost)"
+      "WebFetch(domain:localhost)",
+      "Skill(frontend-design:frontend-design)"
     ]
   },
   "outputStyle": "default"
