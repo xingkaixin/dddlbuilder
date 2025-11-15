@@ -21,7 +21,7 @@ export const changelogData: ChangelogData = {
     {
       "version": "0.3.0",
       "date": "2025-11-15",
-      "content": "- **更新日志**页面样式美化"
+      "content": "- **更新日志**页面样式美化\n- 全新的品牌LOGO\n- 页面样式大升级"
     },
     {
       "version": "0.2.4",

@@ -52,29 +52,35 @@ export const IndexPanel = memo<IndexPanelProps>(({
   onRemoveIndex,
 }) => {
   return (
-    <div className="rounded-lg border bg-card shadow-sm">
+    <div className="relative group rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5">
+      {/* Decorative gradient overlay */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent rounded-lg" />
+
+      {/* Top gradient bar */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/30 to-transparent rounded-t-lg" />
+
       <div
-        className="flex items-center justify-between cursor-pointer border-b px-6 py-4 transition-colors hover:bg-muted/50"
+        className="relative flex items-center justify-between cursor-pointer border-b border-primary/10 px-4 py-3.5 transition-colors hover:bg-muted/50"
         onClick={onToggleIndexCollapse}
       >
         <Label className="cursor-pointer">
-          <span className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1 text-base font-semibold text-primary">
-            <Network className="h-4 w-4" />
+          <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary transition-all duration-300 group-hover:bg-primary/15">
+            <Network className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
             索引配置
           </span>
         </Label>
         <ChevronDown
-          className={`h-5 w-5 transition-transform duration-200 ${
+          className={`h-5 w-5 transition-transform duration-300 ${
             isIndexCollapsed ? "rotate-180" : ""
           }`}
         />
       </div>
 
       {!isIndexCollapsed && (
-        <div className="px-6 pb-6">
-          <div className="space-y-4">
+        <div className="relative px-4 pb-4">
+          <div className="space-y-3">
             {/* Field Input */}
-            <div className="relative mt-2">
+            <div className="relative mt-2 group/input">
               <div className="flex gap-3">
                 <div className="flex-1">
                   <Input
@@ -110,17 +116,17 @@ export const IndexPanel = memo<IndexPanelProps>(({
                         onRemoveFieldFromIndex(currentIndexFields.length - 1);
                       }
                     }}
-                    className="pr-4"
+                    className="pr-4 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
               </div>
 
               {currentIndexFields.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-3">
+                <div className="mt-3 flex flex-wrap gap-2">
                   <Button
                     size="sm"
                     variant="outline"
-                    className="gap-2"
+                    className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md group-hover:bg-primary/5"
                     onClick={() => onAddIndex(false)}
                   >
                     <Hash className="h-4 w-4" />
@@ -129,7 +135,7 @@ export const IndexPanel = memo<IndexPanelProps>(({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="gap-2"
+                    className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md group-hover:bg-primary/5"
                     onClick={() => onAddIndex(true)}
                   >
                     <Lock className="h-4 w-4" />
@@ -138,7 +144,7 @@ export const IndexPanel = memo<IndexPanelProps>(({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="gap-2"
+                    className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md group-hover:bg-primary/5"
                     onClick={() => onAddIndex(true, true)}
                     disabled={indexes.some((index) => index.isPrimary)}
                   >
@@ -150,17 +156,20 @@ export const IndexPanel = memo<IndexPanelProps>(({
 
               {/* Field Suggestions Dropdown */}
               {showFieldSuggestions && fieldSuggestions.length > 0 && (
-                <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-lg">
-                  <div className="max-h-32 overflow-auto p-1">
+                <div className="absolute z-10 mt-2 w-full rounded-lg border bg-popover shadow-xl overflow-hidden">
+                  <div className="max-h-32 overflow-auto">
                     {fieldSuggestions.map((field, index) => (
                       <div
                         key={field}
-                        className={`flex cursor-pointer items-center rounded-sm px-3 py-2 text-sm hover:bg-accent ${
-                          index === selectedSuggestionIndex ? "bg-accent" : ""
+                        className={`flex cursor-pointer items-center px-3 py-2 text-sm transition-all duration-150 ${
+                          index === selectedSuggestionIndex
+                            ? "bg-accent text-accent-foreground pl-4"
+                            : "hover:bg-accent hover:text-accent-foreground hover:pl-4"
                         }`}
                         onClick={() => onAddFieldToIndex(field)}
                         onMouseEnter={() => onSetSelectedSuggestionIndex(index)}
                       >
+                        <span className="text-primary mr-2 transition-transform duration-200 group-hover/input:scale-110">›</span>
                         {field}
                       </div>
                     ))}
@@ -171,25 +180,25 @@ export const IndexPanel = memo<IndexPanelProps>(({
 
             {/* Selected Fields as Labels */}
             {currentIndexFields.length > 0 && (
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
                 {currentIndexFields.map((field, index) => (
                   <div
                     key={index}
-                    className="group flex items-center gap-2 rounded-full border bg-muted px-3 py-1.5 text-sm"
+                    className="group inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-sm transition-all duration-300 hover:bg-primary/10 hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
                     onClick={() => onToggleFieldDirection(index)}
                   >
-                    <span className="cursor-pointer">{field.name}</span>
+                    <span className="font-medium text-foreground hover:text-primary transition-colors">{field.name}</span>
                     {field.direction === "ASC" ? (
-                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                      <ChevronUp className="h-4 w-4 text-primary transition-transform duration-200 group-hover:scale-110" />
                     ) : (
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      <ChevronDown className="h-4 w-4 text-primary transition-transform duration-200 group-hover:scale-110" />
                     )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         onRemoveFieldFromIndex(index);
                       }}
-                      className="ml-1 rounded-full p-1 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
+                      className="rounded-full p-1 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-all duration-200 hover:rotate-90"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -201,7 +210,10 @@ export const IndexPanel = memo<IndexPanelProps>(({
             {/* Added Indexes */}
             {indexes.length > 0 && (
               <div className="space-y-3">
-                <div className="text-base font-medium">已添加的索引</div>
+                <div className="text-sm font-semibold relative pb-2">
+                  已添加的索引
+                  <div className="absolute bottom-0 left-0 w-10 h-0.5 bg-gradient-to-r from-primary to-transparent rounded" />
+                </div>
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {indexes.map((index) => {
                     const badge = index.isPrimary
@@ -225,33 +237,39 @@ export const IndexPanel = memo<IndexPanelProps>(({
                     return (
                       <div
                         key={index.id}
-                        className="flex items-start justify-between gap-3 rounded-lg border bg-muted/50 px-4 py-3"
+                        className="group/item relative flex items-start justify-between gap-4 rounded-xl border bg-muted/50 px-5 py-4 transition-all duration-300 hover:bg-muted/70 hover:-translate-y-1 hover:shadow-lg overflow-hidden"
                       >
-                        <div className="flex flex-1 flex-wrap items-center gap-2">
+                        {/* Left gradient bar */}
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/30 to-transparent transition-all duration-300 group-hover/item:w-2" />
+
+                        <div className="relative flex flex-1 flex-wrap items-center gap-3 pl-2">
                           <span
-                            className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium ${badge.className}`}
+                            className={`inline-flex items-center gap-2 rounded-md px-3 py-1 text-sm font-semibold transition-transform duration-200 ${badge.className} group-hover/item:scale-105`}
                           >
-                            <badge.Icon className="h-3.5 w-3.5" />
+                            <badge.Icon className="h-4 w-4" />
                             {badge.label}
                           </span>
-                          <span className="break-words text-base font-medium leading-snug">
+                          <span className="break-words text-base font-semibold leading-snug transition-colors duration-200 group-hover/item:text-primary">
                             {index.name}
                           </span>
-                          <span className="break-words text-sm leading-snug text-muted-foreground">
-                            ({index.fields
-                              .map(
-                                (f) =>
-                                  `${f.name}${f.direction === "DESC" ? " DESC" : ""}`
-                              )
-                              .join(", ")})
-                          </span>
+                          <div className="w-full pl-1">
+                            <span className="break-words text-sm leading-relaxed text-muted-foreground transition-colors duration-200 group-hover/item:text-muted-foreground/80">
+                              ({index.fields
+                                .map(
+                                  (f) =>
+                                    `${f.name}${f.direction === "DESC" ? " DESC" : ""}`
+                                )
+                                .join(", ")})
+                            </span>
+                          </div>
                         </div>
                         <Button
                           size="icon"
                           variant="ghost"
+                          className="transition-all duration-200 hover:scale-110 hover:bg-destructive/10"
                           onClick={() => onRemoveIndex(index.id)}
                         >
-                          <X className="h-4 w-4" />
+                          <X className="h-4 w-4 transition-transform duration-200 group-hover/item:rotate-90" />
                         </Button>
                       </div>
                     );
