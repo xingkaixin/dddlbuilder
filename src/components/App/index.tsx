@@ -208,58 +208,66 @@ function App() {
       />
 
       {/* Main Content */}
-      <div className="flex flex-col gap-6 p-6 lg:flex-row">
-        <div className="flex flex-1 flex-col gap-6">
-          <TableConfig
-            tableName={tableName}
-            tableComment={tableComment}
-            dbType={dbType}
-            onTableNameChange={setTableName}
-            onTableCommentChange={setTableComment}
-            onDbTypeChange={setDbType}
-            onClearAll={handleClearAll}
-          />
+      <div className="flex flex-col gap-6 p-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="flex flex-col gap-6">
+            <TableConfig
+              tableName={tableName}
+              tableComment={tableComment}
+              dbType={dbType}
+              onTableNameChange={setTableName}
+              onTableCommentChange={setTableComment}
+              onDbTypeChange={setDbType}
+              onClearAll={handleClearAll}
+            />
 
-          <IndexPanel
-            isIndexCollapsed={isIndexCollapsed}
-            indexInput={indexInput}
-            currentIndexFields={currentIndexFields}
-            indexes={indexes}
-            fieldSuggestions={fieldSuggestions}
-            showFieldSuggestions={showFieldSuggestions}
-            selectedSuggestionIndex={selectedSuggestionIndex}
-            onToggleIndexCollapse={toggleIndexCollapse}
-            onIndexInputChange={setIndexInput}
-            onSetShowFieldSuggestions={setShowFieldSuggestions}
-            onSetSelectedSuggestionIndex={setSelectedSuggestionIndex}
-            onAddFieldToIndex={addFieldToIndex}
-            onRemoveFieldFromIndex={removeFieldFromIndex}
-            onToggleFieldDirection={toggleFieldDirection}
-            onAddIndex={addIndex}
-            onRemoveIndex={removeIndex}
-          />
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <IndexPanel
+                isIndexCollapsed={isIndexCollapsed}
+                indexInput={indexInput}
+                currentIndexFields={currentIndexFields}
+                indexes={indexes}
+                fieldSuggestions={fieldSuggestions}
+                showFieldSuggestions={showFieldSuggestions}
+                selectedSuggestionIndex={selectedSuggestionIndex}
+                onToggleIndexCollapse={toggleIndexCollapse}
+                onIndexInputChange={setIndexInput}
+                onSetShowFieldSuggestions={setShowFieldSuggestions}
+                onSetSelectedSuggestionIndex={setSelectedSuggestionIndex}
+                onAddFieldToIndex={addFieldToIndex}
+                onRemoveFieldFromIndex={removeFieldFromIndex}
+                onToggleFieldDirection={toggleFieldDirection}
+                onAddIndex={addIndex}
+                onRemoveIndex={removeIndex}
+              />
 
-          <AuthPanel
-            isAuthCollapsed={isAuthCollapsed}
-            authInput={authInput}
-            authObjects={authObjects}
-            onToggleAuthCollapse={toggleAuthCollapse}
-            onAuthInputChange={setAuthInput}
-            onAddAuthObject={addAuthObject}
-            onRemoveAuthObject={removeAuthObject}
-          />
+              <AuthPanel
+                isAuthCollapsed={isAuthCollapsed}
+                authInput={authInput}
+                authObjects={authObjects}
+                onToggleAuthCollapse={toggleAuthCollapse}
+                onAuthInputChange={setAuthInput}
+                onAddAuthObject={addAuthObject}
+                onRemoveAuthObject={removeAuthObject}
+              />
+            </div>
 
-          <DataTable
-            rows={rows}
-            duplicateNameSet={duplicateNameSet}
-            dbType={dbType}
-            addCount={addCount}
-            onRowsChange={handleRowsChange}
-            onCreateRow={handleCreateRow}
-            onRemoveRow={handleRemoveRow}
-            onAddRows={handleAddRows}
-            onAddCountChange={setAddCount}
-          />
+            <DataTable
+              rows={rows}
+              duplicateNameSet={duplicateNameSet}
+              dbType={dbType}
+              addCount={addCount}
+              onRowsChange={handleRowsChange}
+              onCreateRow={handleCreateRow}
+              onRemoveRow={handleRemoveRow}
+              onAddRows={handleAddRows}
+              onAddCountChange={setAddCount}
+            />
+          </div>
+
+          <div className="flex flex-col gap-6">
+            {/* 右侧可以预留用于其他功能 */}
+          </div>
         </div>
 
         <DDLOutput

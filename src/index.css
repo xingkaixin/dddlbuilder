@@ -4,71 +4,61 @@
 
 @layer base {
     :root {
-        --font-sans:
-            "Inter", "Noto Sans SC", "PingFang SC", "Segoe UI",
-            "Helvetica Neue", Arial, sans-serif;
+        /* 主要背景 - 深蓝黑 */
+        --bg-primary: 240 25% 4%;
+        /* 次要背景 */
+        --bg-secondary: 240 20% 10%;
+        /* 面板背景 */
+        --bg-panel: 240 15% 16%;
 
-        --background: 48 33.3333% 97.0588%;
-        --foreground: 48 19.6078% 20%;
+        /* 字体定义 */
+        --font-sans: "Space Grotesk", "Noto Sans SC", "PingFang SC", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+        --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
-        --muted: 44 29.4118% 90%;
-        --muted-foreground: 50 2.3622% 50.1961%;
-
-        --popover: 0 0% 100%;
-        --popover-foreground: 50.7692 19.4030% 13.1373%;
-
-        --card: 48 33.3333% 97.0588%;
-        --card-foreground: 60 2.5641% 7.6471%;
-
-        --border: 50 7.5000% 84.3137%;
-        --input: 50.7692 7.9755% 68.0392%;
-
-        --primary: 15.1111 55.5556% 52.3529%;
+        /* 科技蓝主题色 */
+        --primary: 230 70% 65%;
         --primary-foreground: 0 0% 100%;
 
-        --secondary: 46.1538 22.8070% 88.8235%;
-        --secondary-foreground: 50.7692 8.4967% 30.0000%;
+        /* 强调色 */
+        --accent: 230 70% 65%;
+        --accent-foreground: 0 0% 100%;
 
-        --accent: 46.1538 22.8070% 88.8235%;
-        --accent-foreground: 50.7692 19.4030% 13.1373%;
+        /* 成功色 */
+        --success: 160 65% 45%;
+        --success-foreground: 0 0% 100%;
 
-        --destructive: 60 2.5641% 7.6471%;
+        /* 警告色 */
+        --warning: 35 90% 60%;
+        --warning-foreground: 0 0% 100%;
+
+        /* 错误色 */
+        --destructive: 0 70% 55%;
         --destructive-foreground: 0 0% 100%;
 
-        --ring: 15.1111 55.5556% 52.3529%;
+        /* 背景色 */
+        --background: var(--bg-primary);
+        --foreground: 240 10% 90%;
+
+        --card: var(--bg-panel);
+        --card-foreground: var(--foreground);
+
+        --popover: var(--bg-panel);
+        --popover-foreground: var(--foreground);
+
+        /* 边框和分割线 */
+        --border: 240 10% 25%;
+        --input: 240 10% 30%;
+
+        /* 辅助色 */
+        --secondary: var(--bg-secondary);
+        --secondary-foreground: var(--foreground);
+
+        --muted: 240 10% 20%;
+        --muted-foreground: 240 5% 60%;
+
+        --ring: var(--primary);
 
         --radius: 0.5rem;
-    }
-
-    .dark {
-        --background: 60 2.7027% 14.5098%;
-        --foreground: 46.1538 9.7744% 73.9216%;
-
-        --muted: 60 3.8462% 10.1961%;
-        --muted-foreground: 51.4286 8.8608% 69.0196%;
-
-        --popover: 60 2.1277% 18.4314%;
-        --popover-foreground: 60 5.4545% 89.2157%;
-
-        --card: 60 2.7027% 14.5098%;
-        --card-foreground: 48 33.3333% 97.0588%;
-
-        --border: 60 5.0847% 23.1373%;
-        --input: 52.5000 5.1282% 30.5882%;
-
-        --primary: 14.7692 63.1068% 59.6078%;
-        --primary-foreground: 0 0% 100%;
-
-        --secondary: 48 33.3333% 97.0588%;
-        --secondary-foreground: 60 2.1277% 18.4314%;
-
-        --accent: 48 10.6383% 9.2157%;
-        --accent-foreground: 51.4286 25.9259% 94.7059%;
-
-        --destructive: 0 84.2365% 60.1961%;
-        --destructive-foreground: 0 0% 100%;
-
-        --ring: 14.7692 63.1068% 59.6078%;
     }
 
     * {
@@ -78,6 +68,31 @@
     body {
         font-family: var(--font-sans);
         @apply min-h-screen bg-background text-foreground antialiased text-base leading-relaxed;
+        background-image:
+            radial-gradient(circle at 1% 10%, hsl(var(--primary) / 0.03) 0%, transparent 30%),
+            radial-gradient(circle at 99% 90%, hsl(var(--accent) / 0.03) 0%, transparent 30%),
+            linear-gradient(to bottom, hsl(var(--background)), hsl(var(--background)));
+        background-attachment: fixed;
+    }
+
+    /* 自定义滚动条 */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: hsl(var(--muted));
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: hsl(var(--muted-foreground) / 0.5);
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: hsl(var(--muted-foreground) / 0.7);
     }
 }
 
