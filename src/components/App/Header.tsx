@@ -6,10 +6,11 @@ import packageInfo from "../../../package.json";
 interface HeaderProps {
   showChangelog: boolean;
   setShowChangelog: (show: boolean) => void;
+  onShare: () => void;
 }
 
 export const Header = memo<HeaderProps>(
-  ({ showChangelog, setShowChangelog }) => {
+  ({ showChangelog, setShowChangelog, onShare }) => {
     return (
       <>
         <header className="relative border-b bg-card/95 backdrop-blur-sm shadow-sm">
@@ -37,7 +38,14 @@ export const Header = memo<HeaderProps>(
                 <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-full inline-block">
                   v{packageInfo.version}
                 </div>
-                <div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={onShare}
+                    className="group inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-all duration-200 hover:translate-x-0.5"
+                  >
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 transition-all duration-200 group-hover:scale-150" />
+                    分享链接
+                  </button>
                   <button
                     onClick={() => setShowChangelog(true)}
                     className="group inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-all duration-200 hover:translate-x-0.5"
