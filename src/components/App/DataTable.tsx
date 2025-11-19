@@ -2,7 +2,6 @@ import React from "react";
 import { memo, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Columns3Cog } from "lucide-react";
 import { registerAllModules } from "handsontable/registry";
 import { HotTable } from "@handsontable/react-wrapper";
 import "handsontable/styles/handsontable.css";
@@ -223,11 +222,7 @@ export const DataTable = memo<DataTableProps>(({
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-primary/30 to-transparent" />
 
       <div className="relative border-b border-primary/10 px-4 py-3.5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition-all duration-300">
-            <Columns3Cog className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
-            字段配置
-          </span>
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <Button onClick={handleAddRowsClick} className="transition-all duration-200 hover:scale-105 hover:shadow-md">
               添加行

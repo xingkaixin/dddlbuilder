@@ -15,6 +15,3 @@ export type { UseAuthManagementReturn } from "./useAuthManagement";
 
 export { useSqlGeneration } from "./useSqlGeneration";
 export type { UseSqlGenerationReturn } from "./useSqlGeneration";
-
-export { useCollapseState } from "./useCollapseState";
-export type { UseCollapseStateReturn } from "./useCollapseState";
