@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import type { DatabaseType } from "@/types";
+import type { DatabaseType, FieldRow } from "@/types";
+import type { ParsedResult } from "@/utils/SqlParser";
 import { createEmptyRow } from "@/utils/helpers";
 import { Header } from "./Header";
 import { TableConfig } from "./TableConfig";
@@ -61,6 +62,7 @@ function App() {
     handleCreateRow,
     handleRemoveRow,
     handleAddRows,
+    setRows,
   } = useTableData(INITIAL_ROWS, persistedState?.rows);
 
   const availableFields = normalizedFields
@@ -83,6 +85,7 @@ function App() {
     addIndex,
     removeIndex,
     resetIndexState,
+    setIndexes,
   } = useIndexManagement(tableName, availableFields, persistedState || undefined);
 
   const {
@@ -92,6 +95,7 @@ function App() {
     addAuthObject,
     removeAuthObject,
     resetAuthState,
+    setAuthObjects,
   } = useAuthManagement(persistedState || undefined);
 
   const {
@@ -249,6 +253,59 @@ function App() {
 
     cancelClearAll();
   }, [cancelClearAll, clearState, resetTableRows, resetIndexState, resetAuthState]);
+  
+  const handleImport = useCallback((result: ParsedResult, importDbType: DatabaseType) => {
+    // 1. Basic Info
+    setTableName(result.tableName);
+    setTableComment(result.tableComment);
+    setDbType(importDbType);
+
+    // 2. Fields
+    const newRows: FieldRow[] = result.fields.map((field, index) => {
+      let uiNullable = "是";
+      if (field.nullable === false) uiNullable = "否";
+
+      let uiDefaultKind = "无";
+      switch (field.defaultKind) {
+        case "auto_increment": uiDefaultKind = "自增"; break;
+        case "constant": uiDefaultKind = "常量"; break;
+        case "current_timestamp": uiDefaultKind = "当前时间"; break;
+        case "uuid": uiDefaultKind = "uuid"; break;
+      }
+
+      let uiOnUpdate = "无";
+      if (field.onUpdate === "current_timestamp") uiOnUpdate = "当前时间";
+
+      return {
+        order: index + 1,
+        fieldName: field.name,
+        fieldType: field.type,
+        fieldComment: field.comment,
+        nullable: uiNullable,
+        defaultKind: uiDefaultKind,
+        defaultValue: field.defaultValue,
+        onUpdate: uiOnUpdate,
+      };
+    });
+
+    // Pad with empty rows if needed
+    const minRows = 12;
+    if (newRows.length < minRows) {
+      for (let i = newRows.length; i < minRows; i++) {
+        newRows.push(createEmptyRow(i));
+      }
+    }
+    setRows(newRows);
+
+    // 3. Indexes
+    setIndexes(result.indexes);
+    setIndexInput("");
+
+    // 4. Auth
+    setAuthObjects(result.authObjects);
+    setAuthInput("");
+
+  }, [setRows, setIndexes, setAuthObjects, setIndexInput, setAuthInput]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -256,6 +313,8 @@ function App() {
         showChangelog={showChangelog}
         setShowChangelog={setShowChangelog}
         onShare={handleShare}
+        currentDbType={dbType}
+        onImport={handleImport}
       />
 
       {/* Main Content */}

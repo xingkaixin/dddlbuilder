@@ -18,6 +18,7 @@ export interface UseIndexManagementReturn {
   removeIndex: (id: string) => void;
   updateIndexNames: (newTableName: string) => void;
   resetIndexState: () => void;
+  setIndexes: React.Dispatch<React.SetStateAction<IndexDefinition[]>>;
 }
 
 export function useIndexManagement(
@@ -180,5 +181,6 @@ export function useIndexManagement(
     removeIndex,
     updateIndexNames,
     resetIndexState,
+    setIndexes,
   };
 }

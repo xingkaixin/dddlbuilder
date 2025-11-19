@@ -20,6 +20,7 @@ export interface UseTableDataReturn {
   handleCreateRow: (index: number, amount: number) => void;
   handleRemoveRow: (index: number, amount: number) => void;
   handleAddRows: (count: number) => void;
+  setRows: React.Dispatch<React.SetStateAction<FieldRow[]>>;
 }
 
 export function useTableData(
@@ -218,5 +219,6 @@ export function useTableData(
     handleCreateRow,
     handleRemoveRow,
     handleAddRows,
+    setRows,
   };
 }

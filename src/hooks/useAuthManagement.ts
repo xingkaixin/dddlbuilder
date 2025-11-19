@@ -7,6 +7,7 @@ export interface UseAuthManagementReturn {
   addAuthObject: (authObj: string) => void;
   removeAuthObject: (index: number) => void;
   resetAuthState: () => void;
+  setAuthObjects: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 export function useAuthManagement(persistedState?: {
@@ -52,5 +53,6 @@ export function useAuthManagement(persistedState?: {
     addAuthObject,
     removeAuthObject,
     resetAuthState,
+    setAuthObjects,
   };
 }
