@@ -48,11 +48,34 @@ export function usePersistedState(): UsePersistedStateReturn {
     }
   };
 
-  // restore from localStorage once on mount
+  // restore from localStorage or URL once on mount
   useEffect(() => {
-    const data = restoreState();
-    setPersistedState(data);
-    setHydrated(true);
+    // Check for URL parameter first
+    const params = new URLSearchParams(window.location.search);
+    const shareParam = params.get("s");
+    
+    if (shareParam) {
+      import("@/utils/share").then(({ decompressState }) => {
+        const sharedState = decompressState(shareParam);
+        if (sharedState) {
+          setPersistedState(sharedState);
+          setHydrated(true);
+          // Save to localStorage so it persists
+          saveState(sharedState);
+          // Clean up URL
+          window.history.replaceState({}, "", window.location.pathname);
+          return;
+        }
+        // If decompression fails, fall back to localStorage
+        const data = restoreState();
+        setPersistedState(data);
+        setHydrated(true);
+      });
+    } else {
+      const data = restoreState();
+      setPersistedState(data);
+      setHydrated(true);
+    }
   }, []);
 
   return {

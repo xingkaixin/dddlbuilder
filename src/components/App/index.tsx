@@ -28,8 +28,10 @@ import {
   useIndexManagement,
   useAuthManagement,
   useSqlGeneration,
+  useToast,
 } from "@/hooks";
 import { sanitizeIndexesForPersist } from "@/utils/indexUtils";
+import { compressState } from "@/utils/share";
 import { Columns3Cog, Network, ShieldUser, Key, Lock, Hash } from "lucide-react";
 
 const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) =>
@@ -105,6 +107,55 @@ function App() {
     indexes,
     authObjects
   );
+
+  const { toastMessage, showToast } = useToast();
+
+  const handleShare = useCallback(() => {
+    const currentState = {
+      tableName,
+      tableComment,
+      dbType,
+      rows: rows.map(row => ({
+        ...row,
+        order: row.order || 0,
+        fieldName: row.fieldName || "",
+        fieldComment: row.fieldComment || "",
+        fieldType: row.fieldType || "",
+        nullable: row.nullable ? "是" : "否",
+        defaultKind: row.defaultKind || "",
+        defaultValue: row.defaultValue || "",
+        onUpdate: row.onUpdate || "",
+      })),
+      addCount,
+      indexInput,
+      currentIndexFields,
+      indexes: sanitizeIndexesForPersist(indexes),
+      authInput,
+      authObjects,
+    };
+
+    try {
+      const compressed = compressState(currentState);
+      const url = `${window.location.origin}${window.location.pathname}?s=${compressed}`;
+      navigator.clipboard.writeText(url);
+      showToast("链接已复制到剪贴板");
+    } catch (e) {
+      console.error("Failed to generate share link", e);
+      showToast("生成链接失败");
+    }
+  }, [
+    tableName,
+    tableComment,
+    dbType,
+    rows,
+    addCount,
+    indexInput,
+    currentIndexFields,
+    indexes,
+    authInput,
+    authObjects,
+    showToast
+  ]);
 
   // restore basic state from localStorage once on mount
   useEffect(() => {
@@ -204,6 +255,7 @@ function App() {
       <Header
         showChangelog={showChangelog}
         setShowChangelog={setShowChangelog}
+        onShare={handleShare}
       />
 
       {/* Main Content */}
@@ -336,6 +388,13 @@ function App() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-8 left-1/2 z-50 -translate-x-1/2 transform rounded-full bg-foreground/90 px-4 py-2 text-sm text-background shadow-lg transition-all animate-in fade-in slide-in-from-bottom-4">
+          {toastMessage}
+        </div>
+      )}
 
     </div>
   );
