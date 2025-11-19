@@ -21,7 +21,7 @@ export const changelogData: ChangelogData = {
     {
       "version": "0.4.0",
       "date": "2025-11-20",
-      "content": "- 合并**字段配置** **索引配置** **授权配置**\n- 品牌LOGO升级"
+      "content": "- 新增**分享链接**功能，通过链接分享你的表配置信息\n- 合并**字段配置** **索引配置** **授权配置**\n- 品牌LOGO升级"
     },
     {
       "version": "0.3.0",
