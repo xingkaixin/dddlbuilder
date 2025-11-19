@@ -19,6 +19,11 @@ export const changelogData: ChangelogData = {
   "description": "DDL建表工具版本更新记录",
   "entries": [
     {
+      "version": "0.4.0",
+      "date": "2025-11-20",
+      "content": "- 合并**字段配置** **索引配置** **授权配置**\n- 品牌LOGO升级"
+    },
+    {
       "version": "0.3.0",
       "date": "2025-11-15",
       "content": "- **更新日志**页面样式美化\n- 全新的品牌LOGO\n- 页面样式大升级"

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { DatabaseType, FieldRow, NormalizedField } from "@/types";
+import type { DatabaseType } from "@/types";
 import { createEmptyRow } from "@/utils/helpers";
 import { Header } from "./Header";
 import { TableConfig } from "./TableConfig";
@@ -17,14 +17,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
   usePersistedState,
   useTableData,
   useIndexManagement,
   useAuthManagement,
   useSqlGeneration,
-  useCollapseState,
 } from "@/hooks";
 import { sanitizeIndexesForPersist } from "@/utils/indexUtils";
+import { Columns3Cog, Network, ShieldUser, Key, Lock, Hash } from "lucide-react";
 
 const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) =>
   createEmptyRow(index)
@@ -75,7 +81,7 @@ function App() {
     addIndex,
     removeIndex,
     resetIndexState,
-  } = useIndexManagement(tableName, availableFields, persistedState);
+  } = useIndexManagement(tableName, availableFields, persistedState || undefined);
 
   const {
     authInput,
@@ -84,14 +90,7 @@ function App() {
     addAuthObject,
     removeAuthObject,
     resetAuthState,
-  } = useAuthManagement(persistedState);
-
-  const {
-    isIndexCollapsed,
-    isAuthCollapsed,
-    toggleIndexCollapse,
-    toggleAuthCollapse,
-  } = useCollapseState();
+  } = useAuthManagement(persistedState || undefined);
 
   const {
     generatedSql,
@@ -146,7 +145,7 @@ function App() {
           fieldName: row.fieldName || "",
           fieldComment: row.fieldComment || "",
           fieldType: row.fieldType || "",
-          nullable: row.nullable || false,
+          nullable: row.nullable ? "是" : "否",
           defaultKind: row.defaultKind || "",
           defaultValue: row.defaultValue || "",
           onUpdate: row.onUpdate || "",
@@ -220,46 +219,94 @@ function App() {
             onClearAll={handleClearAll}
           />
 
-          <IndexPanel
-            isIndexCollapsed={isIndexCollapsed}
-            indexInput={indexInput}
-            currentIndexFields={currentIndexFields}
-            indexes={indexes}
-            fieldSuggestions={fieldSuggestions}
-            showFieldSuggestions={showFieldSuggestions}
-            selectedSuggestionIndex={selectedSuggestionIndex}
-            onToggleIndexCollapse={toggleIndexCollapse}
-            onIndexInputChange={setIndexInput}
-            onSetShowFieldSuggestions={setShowFieldSuggestions}
-            onSetSelectedSuggestionIndex={setSelectedSuggestionIndex}
-            onAddFieldToIndex={addFieldToIndex}
-            onRemoveFieldFromIndex={removeFieldFromIndex}
-            onToggleFieldDirection={toggleFieldDirection}
-            onAddIndex={addIndex}
-            onRemoveIndex={removeIndex}
-          />
-
-          <AuthPanel
-            isAuthCollapsed={isAuthCollapsed}
-            authInput={authInput}
-            authObjects={authObjects}
-            onToggleAuthCollapse={toggleAuthCollapse}
-            onAuthInputChange={setAuthInput}
-            onAddAuthObject={addAuthObject}
-            onRemoveAuthObject={removeAuthObject}
-          />
-
-          <DataTable
-            rows={rows}
-            duplicateNameSet={duplicateNameSet}
-            dbType={dbType}
-            addCount={addCount}
-            onRowsChange={handleRowsChange}
-            onCreateRow={handleCreateRow}
-            onRemoveRow={handleRemoveRow}
-            onAddRows={handleAddRows}
-            onAddCountChange={setAddCount}
-          />
+          <Tabs defaultValue="fields" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="fields" className="gap-2">
+                <Columns3Cog className="h-4 w-4" />
+                字段配置
+                {rows.filter(r => r.fieldName?.trim()).length > 0 && (
+                  <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                    {rows.filter(r => r.fieldName?.trim()).length}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="indexes" className="gap-2">
+                <Network className="h-4 w-4" />
+                索引配置
+                {(indexes.length > 0) && (
+                  <div className="ml-2 flex items-center gap-2">
+                    {indexes.some(i => i.isPrimary) && (
+                      <span className="inline-flex items-center gap-1 text-xs text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded">
+                        <Key className="h-3 w-3" />
+                        {indexes.filter(i => i.isPrimary).length}
+                      </span>
+                    )}
+                    {indexes.some(i => i.unique && !i.isPrimary) && (
+                      <span className="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">
+                        <Lock className="h-3 w-3" />
+                        {indexes.filter(i => i.unique && !i.isPrimary).length}
+                      </span>
+                    )}
+                    {indexes.some(i => !i.unique && !i.isPrimary) && (
+                      <span className="inline-flex items-center gap-1 text-xs text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">
+                        <Hash className="h-3 w-3" />
+                        {indexes.filter(i => !i.unique && !i.isPrimary).length}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="auth" className="gap-2">
+                <ShieldUser className="h-4 w-4" />
+                授权配置
+                {authObjects.length > 0 && (
+                  <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                    {authObjects.length}
+                  </span>
+                )}
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="fields" className="mt-4">
+              <DataTable
+                rows={rows}
+                duplicateNameSet={duplicateNameSet}
+                dbType={dbType}
+                addCount={addCount}
+                onRowsChange={handleRowsChange as any}
+                onCreateRow={handleCreateRow}
+                onRemoveRow={handleRemoveRow}
+                onAddRows={handleAddRows}
+                onAddCountChange={setAddCount}
+              />
+            </TabsContent>
+            <TabsContent value="indexes" className="mt-4">
+              <IndexPanel
+                indexInput={indexInput}
+                currentIndexFields={currentIndexFields}
+                indexes={indexes}
+                fieldSuggestions={fieldSuggestions}
+                showFieldSuggestions={showFieldSuggestions}
+                selectedSuggestionIndex={selectedSuggestionIndex}
+                onIndexInputChange={setIndexInput}
+                onSetShowFieldSuggestions={setShowFieldSuggestions}
+                onSetSelectedSuggestionIndex={setSelectedSuggestionIndex}
+                onAddFieldToIndex={addFieldToIndex}
+                onRemoveFieldFromIndex={removeFieldFromIndex}
+                onToggleFieldDirection={toggleFieldDirection}
+                onAddIndex={(unique, primary) => addIndex(!!unique, primary)}
+                onRemoveIndex={removeIndex}
+              />
+            </TabsContent>
+            <TabsContent value="auth" className="mt-4">
+              <AuthPanel
+                authInput={authInput}
+                authObjects={authObjects}
+                onAuthInputChange={setAuthInput}
+                onAddAuthObject={addAuthObject}
+                onRemoveAuthObject={removeAuthObject}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
 
         <DDLOutput
