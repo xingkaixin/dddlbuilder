@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -24,9 +24,18 @@ import { useToast } from '@/hooks/useToast';
 interface ImportSqlDialogProps {
   currentDbType: DatabaseType;
   onImport: (result: ParsedResult, dbType: DatabaseType) => void;
+  triggerClassName?: string;
+  triggerIcon?: ReactNode;
+  triggerLabel?: string;
 }
 
-export function ImportSqlDialog({ currentDbType, onImport }: ImportSqlDialogProps) {
+export function ImportSqlDialog({
+  currentDbType,
+  onImport,
+  triggerClassName,
+  triggerIcon,
+  triggerLabel = "导入 SQL"
+}: ImportSqlDialogProps) {
   const [open, setOpen] = useState(false);
   const [sql, setSql] = useState("");
   const [selectedDbType, setSelectedDbType] = useState<DatabaseType>(currentDbType);
@@ -59,9 +68,13 @@ export function ImportSqlDialog({ currentDbType, onImport }: ImportSqlDialogProp
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          导入 SQL
-        </Button>
+        <button
+          type="button"
+          className={triggerClassName}
+        >
+          {triggerIcon}
+          <span>{triggerLabel}</span>
+        </button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
