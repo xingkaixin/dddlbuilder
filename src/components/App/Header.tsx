@@ -5,6 +5,7 @@ import { ImportSqlDialog } from "@/components/ImportSqlDialog";
 import type { DatabaseType } from "@/types";
 import type { ParsedResult } from "@/utils/SqlParser";
 import packageInfo from "../../../package.json";
+import { Share2, FileInput, History } from "lucide-react";
 
 interface HeaderProps {
   showChangelog: boolean;
@@ -16,6 +17,9 @@ interface HeaderProps {
 
 export const Header = memo<HeaderProps>(
   ({ showChangelog, setShowChangelog, onShare, currentDbType, onImport }) => {
+    const actionBtnClass =
+      "group inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-all duration-200 hover:translate-x-0.5";
+
     return (
       <>
         <header className="relative border-b bg-card/95 backdrop-blur-sm shadow-sm">
@@ -44,19 +48,25 @@ export const Header = memo<HeaderProps>(
                   v{packageInfo.version}
                 </div>
                 <div className="flex items-center gap-3">
-                  <ImportSqlDialog currentDbType={currentDbType} onImport={onImport} />
+                  <ImportSqlDialog
+                    currentDbType={currentDbType}
+                    onImport={onImport}
+                    triggerClassName={actionBtnClass}
+                    triggerIcon={<FileInput className="h-4 w-4" aria-hidden />}
+                    triggerLabel="导入 SQL"
+                  />
                   <button
                     onClick={onShare}
-                    className="group inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-all duration-200 hover:translate-x-0.5"
+                    className={actionBtnClass}
                   >
-                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 transition-all duration-200 group-hover:scale-150" />
+                    <Share2 className="h-4 w-4" aria-hidden />
                     分享链接
                   </button>
                   <button
                     onClick={() => setShowChangelog(true)}
-                    className="group inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-all duration-200 hover:translate-x-0.5"
+                    className={actionBtnClass}
                   >
-                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary transition-all duration-200 group-hover:scale-150" />
+                    <History className="h-4 w-4" aria-hidden />
                     更新日志
                   </button>
                 </div>

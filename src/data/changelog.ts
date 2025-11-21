@@ -19,6 +19,11 @@ export const changelogData: ChangelogData = {
   "description": "DDL建表工具版本更新记录",
   "entries": [
     {
+      "version": "0.4.1",
+      "date": "2025-11-21",
+      "content": "- 导入SQL功能完善\n- 单元测试覆盖率提升"
+    },
+    {
       "version": "0.4.0",
       "date": "2025-11-20",
       "content": "- 新增**分享链接**功能，通过链接分享你的表配置信息\n- 新增**导入SQL**功能，通过SQL语句导入表配置信息\n- 合并**字段配置** **索引配置** **授权配置**\n- 品牌LOGO升级"
