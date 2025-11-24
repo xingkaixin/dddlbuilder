@@ -1,5 +1,5 @@
-import fs from 'fs'
-import path from 'path'
+import fs from 'node:fs'
+import path from 'node:path'
 import matter from 'gray-matter'
 
 export interface ChangelogEntry {
@@ -32,9 +32,9 @@ export function parseChangelog(): ChangelogData {
     const date = match[2]
 
     // Find the content between this version and the next version
-    const startIndex = match.index! + match[0].length
+    const startIndex = (match.index ?? 0) + match[0].length
     const nextMatch = matches[index + 1]
-    const endIndex = nextMatch ? nextMatch.index! : content.length
+    const endIndex = nextMatch?.index ?? content.length
 
     const versionContent = content.substring(startIndex, endIndex).trim()
 

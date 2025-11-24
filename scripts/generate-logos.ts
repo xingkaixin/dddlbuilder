@@ -1,6 +1,6 @@
 import sharp from 'sharp';
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 // SVG 文件路径
 const svgPath = path.join(process.cwd(), 'public/logo.svg');

@@ -1,6 +1,5 @@
 import type { DatabaseType, ParsedFieldType } from "../types";
 import { TYPE_MAPPINGS } from "../configs/typeMappings";
-import type { TypeMappingRule } from "../configs/typeMappings";
 import { canonicalizeBaseType } from "./databaseTypeMapping";
 
 export class TypeMapper {

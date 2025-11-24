@@ -1,6 +1,6 @@
 
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string';
-import type { PersistedState, FieldRow, IndexDefinition, IndexField } from "@/types";
+import type { PersistedState } from "@/types";
 
 // Minified types to reduce URL length
 type MinifiedFieldRow = {

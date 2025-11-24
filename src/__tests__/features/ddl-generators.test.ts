@@ -4,7 +4,6 @@ import {
   buildDCL,
   buildOracleSynonyms,
   type NormalizedField,
-  type IndexDefinition
 } from '@/App'
 
 describe('DDL Generation Functions', () => {

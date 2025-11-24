@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import { DiMysql, DiMsqlServer } from "react-icons/di";
 import { SiPostgresql, SiOracle } from "react-icons/si";
 import type { DatabaseType } from "../types";
