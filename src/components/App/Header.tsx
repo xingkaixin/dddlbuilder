@@ -1,10 +1,10 @@
-import { memo } from "react";
-import { ChangelogModal } from "@/components/ChangelogModal";
-import { ImportSqlDialog } from "@/components/ImportSqlDialog";
-import type { DatabaseType } from "@/types";
-import type { ParsedResult } from "@/utils/SqlParser";
-import packageInfo from "../../../package.json";
-import { Share2, FileInput, History } from "lucide-react";
+import { memo } from 'react';
+import { ChangelogModal } from '@/components/ChangelogModal';
+import { ImportSqlDialog } from '@/components/ImportSqlDialog';
+import type { DatabaseType } from '@/types';
+import type { ParsedResult } from '@/utils/SqlParser';
+import packageInfo from '../../../package.json';
+import { Share2, FileInput, History } from 'lucide-react';
 
 interface HeaderProps {
   showChangelog: boolean;
@@ -17,7 +17,7 @@ interface HeaderProps {
 export const Header = memo<HeaderProps>(
   ({ showChangelog, setShowChangelog, onShare, currentDbType, onImport }) => {
     const actionBtnClass =
-      "group inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-all duration-200 hover:translate-x-0.5";
+      'group inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-all duration-200 hover:translate-x-0.5';
 
     return (
       <>
@@ -54,10 +54,7 @@ export const Header = memo<HeaderProps>(
                     triggerIcon={<FileInput className="h-4 w-4" aria-hidden />}
                     triggerLabel="导入 SQL"
                   />
-                  <button
-                    onClick={onShare}
-                    className={actionBtnClass}
-                  >
+                  <button onClick={onShare} className={actionBtnClass}>
                     <Share2 className="h-4 w-4" aria-hidden />
                     分享链接
                   </button>

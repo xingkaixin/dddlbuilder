@@ -1,13 +1,13 @@
-import { describe, it, expect } from 'vitest'
-import { SqlParser } from '@/utils/SqlParser'
+import { describe, it, expect } from 'vitest';
+import { SqlParser } from '@/utils/SqlParser';
 
 const stripIndexIds = (indexes: any[]) =>
   indexes.map(({ name, fields, unique, isPrimary }) => ({
     name,
     fields,
     unique,
-    isPrimary: Boolean(isPrimary)
-  }))
+    isPrimary: Boolean(isPrimary),
+  }));
 
 describe('SqlParser', () => {
   it('能够解析 MySQL 的表结构、索引与授权', () => {
@@ -23,13 +23,13 @@ describe('SqlParser', () => {
     ) COMMENT='用户表';
     CREATE INDEX idx_created_at ON users (created_at);
     GRANT SELECT ON users TO 'app_user';
-    `
+    `;
 
-    const parser = new SqlParser()
-    const result = parser.parse(sql, 'mysql')
+    const parser = new SqlParser();
+    const result = parser.parse(sql, 'mysql');
 
-    expect(result.tableName).toBe('users')
-    expect(result.tableComment).toBe('用户表')
+    expect(result.tableName).toBe('users');
+    expect(result.tableComment).toBe('用户表');
     expect(result.fields).toEqual([
       {
         name: 'id',
@@ -38,7 +38,7 @@ describe('SqlParser', () => {
         nullable: false,
         defaultKind: 'auto_increment',
         defaultValue: '',
-        onUpdate: 'none'
+        onUpdate: 'none',
       },
       {
         name: 'name',
@@ -47,7 +47,7 @@ describe('SqlParser', () => {
         nullable: false,
         defaultKind: 'constant',
         defaultValue: 'anonymous',
-        onUpdate: 'none'
+        onUpdate: 'none',
       },
       {
         name: 'created_at',
@@ -56,7 +56,7 @@ describe('SqlParser', () => {
         nullable: false,
         defaultKind: 'current_timestamp',
         defaultValue: '',
-        onUpdate: 'current_timestamp'
+        onUpdate: 'current_timestamp',
       },
       {
         name: 'uuid_col',
@@ -65,7 +65,7 @@ describe('SqlParser', () => {
         nullable: true,
         defaultKind: 'uuid',
         defaultValue: '',
-        onUpdate: 'none'
+        onUpdate: 'none',
       },
       {
         name: 'email',
@@ -74,37 +74,37 @@ describe('SqlParser', () => {
         nullable: true,
         defaultKind: 'none',
         defaultValue: '',
-        onUpdate: 'none'
-      }
-    ])
+        onUpdate: 'none',
+      },
+    ]);
     expect(stripIndexIds(result.indexes)).toEqual([
       {
         name: 'PRIMARY',
         fields: [{ name: 'id', direction: 'ASC' }],
         unique: true,
-        isPrimary: true
+        isPrimary: true,
       },
       {
         name: 'uk_email',
         fields: [{ name: 'email', direction: 'ASC' }],
         unique: true,
-        isPrimary: false
+        isPrimary: false,
       },
       {
         name: 'idx_name',
         fields: [{ name: 'name', direction: 'DESC' }],
         unique: false,
-        isPrimary: false
+        isPrimary: false,
       },
       {
         name: 'idx_created_at',
         fields: [{ name: 'created_at', direction: 'ASC' }],
         unique: false,
-        isPrimary: false
-      }
-    ])
-    expect(result.authObjects).toEqual(['app_user'])
-  })
+        isPrimary: false,
+      },
+    ]);
+    expect(result.authObjects).toEqual(['app_user']);
+  });
 
   it('能够处理 PostgreSQL 的多语句导入', () => {
     const sql = `
@@ -117,12 +117,12 @@ describe('SqlParser', () => {
     );
     CREATE UNIQUE INDEX idx_accounts_username ON accounts (username);
     GRANT SELECT ON accounts TO reporting;
-    `
+    `;
 
-    const parser = new SqlParser()
-    const result = parser.parse(sql, 'postgresql')
+    const parser = new SqlParser();
+    const result = parser.parse(sql, 'postgresql');
 
-    expect(result.tableName).toBe('accounts')
+    expect(result.tableName).toBe('accounts');
     expect(result.fields).toEqual([
       {
         name: 'id',
@@ -131,7 +131,7 @@ describe('SqlParser', () => {
         nullable: false,
         defaultKind: 'none',
         defaultValue: '',
-        onUpdate: 'none'
+        onUpdate: 'none',
       },
       {
         name: 'username',
@@ -140,7 +140,7 @@ describe('SqlParser', () => {
         nullable: false,
         defaultKind: 'none',
         defaultValue: '',
-        onUpdate: 'none'
+        onUpdate: 'none',
       },
       {
         name: 'balance',
@@ -149,7 +149,7 @@ describe('SqlParser', () => {
         nullable: false,
         defaultKind: 'constant',
         defaultValue: '0',
-        onUpdate: 'none'
+        onUpdate: 'none',
       },
       {
         name: 'meta',
@@ -158,7 +158,7 @@ describe('SqlParser', () => {
         nullable: true,
         defaultKind: 'constant',
         defaultValue: '{}',
-        onUpdate: 'none'
+        onUpdate: 'none',
       },
       {
         name: 'created_at',
@@ -167,25 +167,25 @@ describe('SqlParser', () => {
         nullable: true,
         defaultKind: 'current_timestamp',
         defaultValue: '',
-        onUpdate: 'none'
-      }
-    ])
+        onUpdate: 'none',
+      },
+    ]);
     expect(stripIndexIds(result.indexes)).toEqual([
       {
         name: 'PRIMARY',
         fields: [{ name: 'id', direction: 'ASC' }],
         unique: true,
-        isPrimary: true
+        isPrimary: true,
       },
       {
         name: 'idx_accounts_username',
         fields: [{ name: 'username', direction: 'ASC' }],
         unique: true,
-        isPrimary: false
-      }
-    ])
-    expect(result.authObjects).toEqual(['reporting'])
-  })
+        isPrimary: false,
+      },
+    ]);
+    expect(result.authObjects).toEqual(['reporting']);
+  });
 
   it('能够解析 SQL Server 的标识列和唯一索引', () => {
     const sql = `
@@ -195,12 +195,12 @@ describe('SqlParser', () => {
       CreatedAt DATETIME NOT NULL DEFAULT GETDATE()
     );
     CREATE UNIQUE INDEX IX_Users_Username ON dbo.Users (Username);
-    `
+    `;
 
-    const parser = new SqlParser()
-    const result = parser.parse(sql, 'sqlserver')
+    const parser = new SqlParser();
+    const result = parser.parse(sql, 'sqlserver');
 
-    expect(result.tableName).toBe('Users')
+    expect(result.tableName).toBe('Users');
     expect(result.fields).toEqual([
       {
         name: 'Id',
@@ -209,7 +209,7 @@ describe('SqlParser', () => {
         nullable: false,
         defaultKind: 'auto_increment',
         defaultValue: '',
-        onUpdate: 'none'
+        onUpdate: 'none',
       },
       {
         name: 'Username',
@@ -218,7 +218,7 @@ describe('SqlParser', () => {
         nullable: false,
         defaultKind: 'none',
         defaultValue: '',
-        onUpdate: 'none'
+        onUpdate: 'none',
       },
       {
         name: 'CreatedAt',
@@ -227,30 +227,30 @@ describe('SqlParser', () => {
         nullable: false,
         defaultKind: 'constant',
         defaultValue: 'getdate()',
-        onUpdate: 'none'
-      }
-    ])
+        onUpdate: 'none',
+      },
+    ]);
     expect(stripIndexIds(result.indexes)).toEqual([
       {
         name: 'PRIMARY',
         fields: [{ name: 'Id', direction: 'ASC' }],
         unique: true,
-        isPrimary: true
+        isPrimary: true,
       },
       {
         name: 'uk_Username',
         fields: [{ name: 'Username', direction: 'ASC' }],
         unique: true,
-        isPrimary: false
+        isPrimary: false,
       },
       {
         name: 'IX_Users_Username',
         fields: [{ name: 'Username', direction: 'ASC' }],
         unique: true,
-        isPrimary: false
-      }
-    ])
-  })
+        isPrimary: false,
+      },
+    ]);
+  });
 
   it('支持从 ALTER 语句中抓取主键', () => {
     const sql = `
@@ -259,22 +259,22 @@ describe('SqlParser', () => {
       name VARCHAR(20)
     );
     ALTER TABLE items ADD PRIMARY KEY (id);
-    `
+    `;
 
-    const parser = new SqlParser()
-    const result = parser.parse(sql, 'mysql')
+    const parser = new SqlParser();
+    const result = parser.parse(sql, 'mysql');
 
-    expect(result.tableName).toBe('items')
-    expect(result.fields.map(f => f.name)).toEqual(['id', 'name'])
+    expect(result.tableName).toBe('items');
+    expect(result.fields.map((f) => f.name)).toEqual(['id', 'name']);
     expect(stripIndexIds(result.indexes)).toEqual([
       {
         name: 'PRIMARY',
         fields: [{ name: 'id', direction: 'ASC' }],
         unique: true,
-        isPrimary: true
-      }
-    ])
-  })
+        isPrimary: true,
+      },
+    ]);
+  });
 
   it('Oracle 语法可被预处理后解析（字段注释、主键、索引、授权）', () => {
     const sql = `
@@ -317,63 +317,65 @@ describe('SqlParser', () => {
     CREATE OR REPLACE PUBLIC SYNONYM ttt FOR ttt;
     GRANT SELECT ON ttt TO cbd1;
     GRANT SELECT ON ttt TO cbdd2;
-    `
+    `;
 
-    const parser = new SqlParser()
-    const result = parser.parse(sql, 'oracle')
+    const parser = new SqlParser();
+    const result = parser.parse(sql, 'oracle');
 
-    expect(result.tableName).toBe('ttt')
-    expect(result.tableComment).toBe('dfdfdf')
-    const fieldsByName = Object.fromEntries(result.fields.map((f) => [f.name, f]))
+    expect(result.tableName).toBe('ttt');
+    expect(result.tableComment).toBe('dfdfdf');
+    const fieldsByName = Object.fromEntries(
+      result.fields.map((f) => [f.name, f]),
+    );
     expect(fieldsByName['ID']).toMatchObject({
       type: 'VARCHAR(255)',
       comment: '记录编号',
       nullable: false,
-      defaultKind: 'none'
-    })
+      defaultKind: 'none',
+    });
     expect(fieldsByName['INFO_SRC']).toMatchObject({
       defaultKind: 'uuid',
-      comment: '信息来源'
-    })
+      comment: '信息来源',
+    });
     expect(fieldsByName['INFO_TYP_CD']).toMatchObject({
       type: 'DECIMAL(10)',
-      comment: '信息类别'
-    })
+      comment: '信息类别',
+    });
     expect(fieldsByName['F_TIME']).toMatchObject({
       defaultKind: 'current_timestamp',
-      comment: '记录进表时间'
-    })
+      comment: '记录进表时间',
+    });
     expect(stripIndexIds(result.indexes)).toEqual([
       {
         name: 'PRIMARY',
         fields: [{ name: 'ID', direction: 'ASC' }],
         unique: true,
-        isPrimary: true
+        isPrimary: true,
       },
       {
         name: 'uk_ttt_CORP_ID',
         fields: [{ name: 'CORP_ID', direction: 'ASC' }],
         unique: true,
-        isPrimary: false
+        isPrimary: false,
       },
       {
         name: 'idx_ttt_END_DT',
         fields: [{ name: 'END_DT', direction: 'ASC' }],
         unique: false,
-        isPrimary: false
+        isPrimary: false,
       },
       {
         name: 'idx_ttt_ID_INFO_SRC',
         fields: [
           { name: 'ID', direction: 'ASC' },
-          { name: 'INFO_SRC', direction: 'ASC' }
+          { name: 'INFO_SRC', direction: 'ASC' },
         ],
         unique: false,
-        isPrimary: false
-      }
-    ])
-    expect(result.authObjects).toEqual(['cbd1', 'cbdd2'])
-  })
+        isPrimary: false,
+      },
+    ]);
+    expect(result.authObjects).toEqual(['cbd1', 'cbdd2']);
+  });
 
   it('PostgreSQL COMMENT 语句应被提取到字段与表注释', () => {
     const sql = `
@@ -416,16 +418,16 @@ describe('SqlParser', () => {
 
     GRANT SELECT ON ttt TO cbd1;
     GRANT SELECT ON ttt TO cbdd2;
-    `
+    `;
 
-    const parser = new SqlParser()
-    const result = parser.parse(sql, 'postgresql')
+    const parser = new SqlParser();
+    const result = parser.parse(sql, 'postgresql');
 
-    expect(result.tableComment).toBe('dfdfdf')
-    const idField = result.fields.find((f) => f.name === 'ID')
-    expect(idField?.comment).toBe('记录编号')
-    expect(result.authObjects).toEqual(['cbd1', 'cbdd2'])
-  })
+    expect(result.tableComment).toBe('dfdfdf');
+    const idField = result.fields.find((f) => f.name === 'ID');
+    expect(idField?.comment).toBe('记录编号');
+    expect(result.authObjects).toEqual(['cbd1', 'cbdd2']);
+  });
 
   it('SQL Server 扩展属性注释与授权应被提取', () => {
     const sql = `
@@ -470,14 +472,18 @@ describe('SqlParser', () => {
 
     GRANT SELECT ON ttt TO cbd1;
     GRANT SELECT ON ttt TO cbdd2;
-    `
+    `;
 
-    const parser = new SqlParser()
-    const result = parser.parse(sql, 'sqlserver')
+    const parser = new SqlParser();
+    const result = parser.parse(sql, 'sqlserver');
 
-    expect(result.tableComment).toBe('dfdfdf')
-    expect(result.fields.find((f) => f.name === 'ID')?.comment).toBe('记录编号')
-    expect(result.fields.find((f) => f.name === 'INFO_SRC')?.comment).toBe('信息来源')
-    expect(result.authObjects).toEqual(['cbd1', 'cbdd2'])
-  })
-})
+    expect(result.tableComment).toBe('dfdfdf');
+    expect(result.fields.find((f) => f.name === 'ID')?.comment).toBe(
+      '记录编号',
+    );
+    expect(result.fields.find((f) => f.name === 'INFO_SRC')?.comment).toBe(
+      '信息来源',
+    );
+    expect(result.authObjects).toEqual(['cbd1', 'cbdd2']);
+  });
+});

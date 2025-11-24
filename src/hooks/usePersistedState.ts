@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import type { PersistedState } from "@/types";
-import { STORAGE_KEY } from "@/utils/constants";
+import { useState, useEffect, useCallback, useRef } from 'react';
+import type { PersistedState } from '@/types';
+import { STORAGE_KEY } from '@/utils/constants';
 
 export interface UsePersistedStateReturn {
   persistedState: Partial<PersistedState> | null;
@@ -11,7 +11,8 @@ export interface UsePersistedStateReturn {
 
 export function usePersistedState(): UsePersistedStateReturn {
   const [hydrated, setHydrated] = useState(false);
-  const [persistedState, setPersistedState] = useState<Partial<PersistedState> | null>(null);
+  const [persistedState, setPersistedState] =
+    useState<Partial<PersistedState> | null>(null);
   const hydratedRef = useRef(false);
 
   const restoreState = useCallback(() => {
@@ -49,10 +50,10 @@ export function usePersistedState(): UsePersistedStateReturn {
   useEffect(() => {
     // Check for URL parameter first
     const params = new URLSearchParams(window.location.search);
-    const shareParam = params.get("s");
-    
+    const shareParam = params.get('s');
+
     if (shareParam) {
-      import("@/utils/share").then(({ decompressState }) => {
+      import('@/utils/share').then(({ decompressState }) => {
         const sharedState = decompressState(shareParam);
         if (sharedState) {
           setPersistedState(sharedState);
@@ -61,7 +62,7 @@ export function usePersistedState(): UsePersistedStateReturn {
           // Save to localStorage so it persists
           saveState(sharedState);
           // Clean up URL
-          window.history.replaceState({}, "", window.location.pathname);
+          window.history.replaceState({}, '', window.location.pathname);
           return;
         }
         // If decompression fails, fall back to localStorage

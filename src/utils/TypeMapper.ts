@@ -1,6 +1,6 @@
-import type { DatabaseType, ParsedFieldType } from "../types";
-import { TYPE_MAPPINGS } from "../configs/typeMappings";
-import { canonicalizeBaseType } from "./databaseTypeMapping";
+import type { DatabaseType, ParsedFieldType } from '../types';
+import { TYPE_MAPPINGS } from '../configs/typeMappings';
+import { canonicalizeBaseType } from './databaseTypeMapping';
 
 export class TypeMapper {
   private constructor(private databaseType: DatabaseType) {}
@@ -15,9 +15,9 @@ export class TypeMapper {
 
     if (!mapping) {
       // 如果没有找到映射，返回原始类型
-      let result = this.formatType(parsed.baseType, parsed.args, "", true);
+      let result = this.formatType(parsed.baseType, parsed.args, '', true);
       if (parsed.unsigned && this.databaseType === 'mysql') {
-        result += " UNSIGNED";
+        result += ' UNSIGNED';
       }
       return result;
     }
@@ -31,29 +31,36 @@ export class TypeMapper {
     const targetType = mapping.mapping || parsed.baseType;
     // 如果原始字段有参数，优先使用原始参数，否则使用默认参数
     const args = parsed.args.length > 0 ? parsed.args : mapping.defaultArgs;
-    let suffix = mapping.suffix || "";
+    let suffix = mapping.suffix || '';
 
     // 处理 unsigned 后缀（MySQL 特有）
     if (parsed.unsigned && this.databaseType === 'mysql') {
-      if (!suffix.includes("UNSIGNED")) {
-        suffix = suffix ? `${suffix} UNSIGNED` : "UNSIGNED";
+      if (!suffix.includes('UNSIGNED')) {
+        suffix = suffix ? `${suffix} UNSIGNED` : 'UNSIGNED';
       }
     }
 
     return this.formatType(targetType, args, suffix);
   }
 
-  private formatType(base: string, args: string[] = [], suffix = "", preserveCase = false): string {
+  private formatType(
+    base: string,
+    args: string[] = [],
+    suffix = '',
+    preserveCase = false,
+  ): string {
     const formattedArgs = args.map(this.uppercaseArg);
-    const joined = formattedArgs.join(", ");
+    const joined = formattedArgs.join(', ');
     const typeCore = joined
       ? `${preserveCase ? base : base.toUpperCase()}(${joined})`
-      : preserveCase ? base : base.toUpperCase();
+      : preserveCase
+        ? base
+        : base.toUpperCase();
     return suffix ? `${typeCore} ${suffix}` : typeCore;
   }
 
   private uppercaseArg = (value: string) =>
-    value.toLowerCase() === "max" ? "MAX" : value;
+    value.toLowerCase() === 'max' ? 'MAX' : value;
 
   getSupportedTypes(): string[] {
     const mapping = TYPE_MAPPINGS[this.databaseType];

@@ -1,12 +1,12 @@
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { changelogData } from "@/data/changelog";
+} from '@/components/ui/dialog';
+import { changelogData } from '@/data/changelog';
 
 interface ChangelogModalProps {
   open: boolean;
@@ -79,7 +79,10 @@ export function ChangelogModal({ open, onOpenChange }: ChangelogModalProps) {
                         </h4>
                       ),
                       ul: ({ children, ...props }) => (
-                        <ul className="list-none pl-0 space-y-3 mb-5" {...props}>
+                        <ul
+                          className="list-none pl-0 space-y-3 mb-5"
+                          {...props}
+                        >
                           {children}
                         </ul>
                       ),
@@ -95,17 +98,26 @@ export function ChangelogModal({ open, onOpenChange }: ChangelogModalProps) {
                         </li>
                       ),
                       p: ({ children, ...props }) => (
-                        <p className="text-sm leading-relaxed text-foreground/90 mb-4" {...props}>
+                        <p
+                          className="text-sm leading-relaxed text-foreground/90 mb-4"
+                          {...props}
+                        >
                           {children}
                         </p>
                       ),
                       strong: ({ children, ...props }) => (
-                        <strong className="font-semibold text-foreground" {...props}>
+                        <strong
+                          className="font-semibold text-foreground"
+                          {...props}
+                        >
                           {children}
                         </strong>
                       ),
                       em: ({ children, ...props }) => (
-                        <em className="text-primary/80 not-italic bg-primary/10 px-1 rounded" {...props}>
+                        <em
+                          className="text-primary/80 not-italic bg-primary/10 px-1 rounded"
+                          {...props}
+                        >
                           {children}
                         </em>
                       ),

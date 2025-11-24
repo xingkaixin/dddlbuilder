@@ -1,5 +1,5 @@
 // Re-export the refactored App component
-export { default } from "./components/App";
+export { default } from './components/App';
 
 // Re-export utility functions for external use
 export {
@@ -14,13 +14,13 @@ export {
   shouldQuoteDefault,
   isLikelyFunctionOrKeyword,
   TYPE_ALIASES,
-} from "./utils/databaseTypeMapping";
+} from './utils/databaseTypeMapping';
 
 export {
   buildDDL,
   buildDCL,
   buildOracleSynonyms,
-} from "./utils/ddlGenerators";
+} from './utils/ddlGenerators';
 
 export {
   normalizeFields,
@@ -42,11 +42,9 @@ export {
   isReservedKeyword,
   formatMysqlTableName,
   formatPostgresTableName,
-} from "./utils/helpers";
+} from './utils/helpers';
 
-export {
-  sanitizeIndexesForPersist,
-} from "./utils/indexUtils";
+export { sanitizeIndexesForPersist } from './utils/indexUtils';
 
 export {
   DATABASE_OPTIONS,
@@ -56,7 +54,7 @@ export {
   COLUMN_HEADERS,
   STORAGE_KEY,
   RESERVED_KEYWORDS,
-} from "./utils/constants";
+} from './utils/constants';
 
 export type {
   DatabaseType,
@@ -68,4 +66,4 @@ export type {
   UiOnUpdate,
   ParsedFieldType,
   PersistedState,
-} from "./types";
+} from './types';

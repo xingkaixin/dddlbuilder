@@ -1,4 +1,9 @@
-import type { FieldRow, NormalizedField, IndexField, IndexDefinition } from '@/App'
+import type {
+  FieldRow,
+  NormalizedField,
+  IndexField,
+  IndexDefinition,
+} from '@/App';
 
 // Sample test data for fields
 export const sampleFieldRows: FieldRow[] = [
@@ -42,7 +47,7 @@ export const sampleFieldRows: FieldRow[] = [
     defaultValue: '',
     onUpdate: '当前时间',
   },
-]
+];
 
 export const sampleNormalizedFields: NormalizedField[] = [
   {
@@ -81,13 +86,13 @@ export const sampleNormalizedFields: NormalizedField[] = [
     defaultValue: '',
     onUpdate: 'current_timestamp',
   },
-]
+];
 
 // Sample index data
 export const sampleIndexFields: IndexField[] = [
   { name: 'id', direction: 'ASC' },
   { name: 'name', direction: 'DESC' },
-]
+];
 
 export const sampleIndexes: IndexDefinition[] = [
   {
@@ -111,15 +116,10 @@ export const sampleIndexes: IndexDefinition[] = [
     ],
     unique: false,
   },
-]
+];
 
 // Sample authorization objects
-export const sampleAuthObjects = [
-  'CBD_READ',
-  'CBD_RW',
-  'CBD_PROC',
-  'CBD_DICT',
-]
+export const sampleAuthObjects = ['CBD_READ', 'CBD_RW', 'CBD_PROC', 'CBD_DICT'];
 
 // Test table names and comments
 export const sampleTableNames = [
@@ -127,17 +127,22 @@ export const sampleTableNames = [
   'order_info',
   'product_category',
   'schema.table_name',
-]
+];
 
 export const sampleTableComments = [
   '用户表',
   '订单信息表',
   '产品分类表',
   'Schema table description',
-]
+];
 
 // Database types for testing
-export const databaseTypes = ['mysql', 'postgresql', 'sqlserver', 'oracle'] as const
+export const databaseTypes = [
+  'mysql',
+  'postgresql',
+  'sqlserver',
+  'oracle',
+] as const;
 
 // Edge case field data
 export const edgeCaseFieldRows: FieldRow[] = [
@@ -171,7 +176,7 @@ export const edgeCaseFieldRows: FieldRow[] = [
     defaultValue: '',
     onUpdate: '无',
   },
-]
+];
 
 // Type mapping test cases
 export const typeMappingTestCases = [
@@ -183,7 +188,7 @@ export const typeMappingTestCases = [
   { input: 'timestamp', expectedBaseType: 'timestamp' },
   { input: 'number(18,2)', expectedBaseType: 'decimal', args: ['18', '2'] },
   { input: 'nvarchar2(100)', expectedBaseType: 'nvarchar', args: ['100'] },
-]
+];
 
 // Invalid data for testing error handling
 export const invalidFieldData = [
@@ -191,4 +196,4 @@ export const invalidFieldData = [
   { fieldName: 'test', fieldType: '', fieldComment: 'Empty type' },
   { fieldName: 'test', fieldType: 'varchar', fieldComment: '' },
   { fieldName: '', fieldType: '', fieldComment: 'Empty all' },
-]
+];

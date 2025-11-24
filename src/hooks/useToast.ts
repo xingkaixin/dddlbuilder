@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 export interface UseToastReturn {
   toastMessage: string;
@@ -7,12 +7,12 @@ export interface UseToastReturn {
 
 export function useToast(): UseToastReturn {
   const hideTimerRef = useRef<number | undefined>(undefined);
-  const [toastMessage, setToastMessage] = useState("");
+  const [toastMessage, setToastMessage] = useState('');
 
   const showToast = useCallback((msg: string) => {
     if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
     setToastMessage(msg);
-    hideTimerRef.current = window.setTimeout(() => setToastMessage(""), 1600);
+    hideTimerRef.current = window.setTimeout(() => setToastMessage(''), 1600);
   }, []);
 
   useEffect(() => {

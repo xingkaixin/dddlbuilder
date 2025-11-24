@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
-import type { IndexField, IndexDefinition } from "@/types";
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import type { IndexField, IndexDefinition } from '@/types';
 
 export interface UseIndexManagementReturn {
   indexInput: string;
@@ -28,10 +28,12 @@ export function useIndexManagement(
     indexInput?: string;
     currentIndexFields?: IndexField[];
     indexes?: IndexDefinition[];
-  }
+  },
 ): UseIndexManagementReturn {
-  const [indexInput, setIndexInput] = useState("");
-  const [currentIndexFields, setCurrentIndexFields] = useState<IndexField[]>([]);
+  const [indexInput, setIndexInput] = useState('');
+  const [currentIndexFields, setCurrentIndexFields] = useState<IndexField[]>(
+    [],
+  );
   const [indexes, setIndexes] = useState<IndexDefinition[]>([]);
   const [showFieldSuggestions, setShowFieldSuggestions] = useState(false);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
@@ -41,7 +43,8 @@ export function useIndexManagement(
   useEffect(() => {
     if (persistedState && !initialized) {
       if (persistedState.indexInput) setIndexInput(persistedState.indexInput);
-      if (persistedState.currentIndexFields) setCurrentIndexFields(persistedState.currentIndexFields);
+      if (persistedState.currentIndexFields)
+        setCurrentIndexFields(persistedState.currentIndexFields);
       if (persistedState.indexes) setIndexes(persistedState.indexes);
       setInitialized(true);
     }
@@ -54,7 +57,7 @@ export function useIndexManagement(
     return availableFields.filter(
       (field) =>
         field.toLowerCase().includes(input) &&
-        !currentIndexFields.some((f) => f.name === field)
+        !currentIndexFields.some((f) => f.name === field),
     );
   }, [indexInput, availableFields, currentIndexFields]);
 
@@ -62,9 +65,9 @@ export function useIndexManagement(
   const addFieldToIndex = useCallback((fieldName: string) => {
     setCurrentIndexFields((prev) => [
       ...prev,
-      { name: fieldName, direction: "ASC" },
+      { name: fieldName, direction: 'ASC' },
     ]);
-    setIndexInput("");
+    setIndexInput('');
     setShowFieldSuggestions(false);
     setSelectedSuggestionIndex(0);
   }, []);
@@ -77,9 +80,9 @@ export function useIndexManagement(
     setCurrentIndexFields((prev) =>
       prev.map((field, i) =>
         i === index
-          ? { ...field, direction: field.direction === "ASC" ? "DESC" : "ASC" }
-          : field
-      )
+          ? { ...field, direction: field.direction === 'ASC' ? 'DESC' : 'ASC' }
+          : field,
+      ),
     );
   }, []);
 
@@ -92,13 +95,13 @@ export function useIndexManagement(
         return; // Prevent adding multiple primary keys
       }
 
-      const prefix = isPrimary ? "pk" : "idx";
+      const prefix = isPrimary ? 'pk' : 'idx';
       const indexName =
         currentIndexFields.length === 1
           ? `${prefix}_${tableName}_${currentIndexFields[0].name}`
           : `${prefix}_${tableName}_${currentIndexFields
               .map((f) => f.name)
-              .join("_")}`;
+              .join('_')}`;
 
       const newIndex: IndexDefinition = {
         id: Date.now().toString(),
@@ -110,9 +113,9 @@ export function useIndexManagement(
 
       setIndexes((prev) => [...prev, newIndex]);
       setCurrentIndexFields([]);
-      setIndexInput("");
+      setIndexInput('');
     },
-    [currentIndexFields, tableName, indexes]
+    [currentIndexFields, tableName, indexes],
   );
 
   const removeIndex = useCallback((id: string) => {
@@ -120,7 +123,7 @@ export function useIndexManagement(
   }, []);
 
   const resetIndexState = useCallback(() => {
-    setIndexInput("");
+    setIndexInput('');
     setCurrentIndexFields([]);
     setIndexes([]);
     setShowFieldSuggestions(false);
@@ -132,14 +135,14 @@ export function useIndexManagement(
     (index: IndexDefinition, currentTableName: string): string => {
       if (!currentTableName) return index.name;
 
-      const prefix = index.isPrimary ? "pk" : index.unique ? "uk" : "idx";
+      const prefix = index.isPrimary ? 'pk' : index.unique ? 'uk' : 'idx';
       return index.fields.length === 1
         ? `${prefix}_${currentTableName}_${index.fields[0].name}`
         : `${prefix}_${currentTableName}_${index.fields
             .map((f) => f.name)
-            .join("_")}`;
+            .join('_')}`;
     },
-    []
+    [],
   );
 
   // Update all index names based on new table name
@@ -151,10 +154,10 @@ export function useIndexManagement(
         prevIndexes.map((index) => ({
           ...index,
           name: generateIndexName(index, newTableName),
-        }))
+        })),
       );
     },
-    [generateIndexName]
+    [generateIndexName],
   );
 
   // Update index names when table name changes

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from 'react';
 
 export interface UseAuthManagementReturn {
   authInput: string;
@@ -14,7 +14,7 @@ export function useAuthManagement(persistedState?: {
   authInput?: string;
   authObjects?: string[];
 }): UseAuthManagementReturn {
-  const [authInput, setAuthInput] = useState("");
+  const [authInput, setAuthInput] = useState('');
   const [authObjects, setAuthObjects] = useState<string[]>([]);
   const [initialized, setInitialized] = useState(false);
 
@@ -22,7 +22,8 @@ export function useAuthManagement(persistedState?: {
   useEffect(() => {
     if (persistedState && !initialized) {
       if (persistedState.authInput) setAuthInput(persistedState.authInput);
-      if (persistedState.authObjects) setAuthObjects(persistedState.authObjects);
+      if (persistedState.authObjects)
+        setAuthObjects(persistedState.authObjects);
       setInitialized(true);
     }
   }, [persistedState, initialized]);
@@ -31,10 +32,10 @@ export function useAuthManagement(persistedState?: {
     (authObj: string) => {
       if (authObj.trim() && !authObjects.includes(authObj.trim())) {
         setAuthObjects((prev) => [...prev, authObj.trim()]);
-        setAuthInput("");
+        setAuthInput('');
       }
     },
-    [authObjects]
+    [authObjects],
   );
 
   const removeAuthObject = useCallback((index: number) => {
@@ -42,7 +43,7 @@ export function useAuthManagement(persistedState?: {
   }, []);
 
   const resetAuthState = useCallback(() => {
-    setAuthInput("");
+    setAuthInput('');
     setAuthObjects([]);
   }, []);
 

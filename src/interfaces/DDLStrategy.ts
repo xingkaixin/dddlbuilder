@@ -1,4 +1,4 @@
-import type { DatabaseType, NormalizedField, IndexDefinition } from "../types";
+import type { DatabaseType, NormalizedField, IndexDefinition } from '../types';
 
 export interface DDLStrategy {
   /**
@@ -7,7 +7,7 @@ export interface DDLStrategy {
   generateTableDDL(
     tableName: string,
     tableComment: string,
-    fields: NormalizedField[]
+    fields: NormalizedField[],
   ): string;
 
   /**
@@ -16,7 +16,7 @@ export interface DDLStrategy {
   generateIndexDDL(
     tableName: string,
     index: IndexDefinition,
-    fields: NormalizedField[]
+    fields: NormalizedField[],
   ): string;
 
   /**
