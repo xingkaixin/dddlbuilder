@@ -1,4 +1,4 @@
-export type DatabaseType = "mysql" | "postgresql" | "sqlserver" | "oracle";
+export type DatabaseType = 'mysql' | 'postgresql' | 'sqlserver' | 'oracle';
 
 export type FieldRow = {
   order: number;
@@ -17,18 +17,18 @@ export type NormalizedField = {
   comment: string;
   nullable: boolean;
   defaultKind:
-    | "none"
-    | "auto_increment"
-    | "constant"
-    | "current_timestamp"
-    | "uuid";
+    | 'none'
+    | 'auto_increment'
+    | 'constant'
+    | 'current_timestamp'
+    | 'uuid';
   defaultValue: string;
-  onUpdate: "none" | "current_timestamp";
+  onUpdate: 'none' | 'current_timestamp';
 };
 
 export type IndexField = {
   name: string;
-  direction: "ASC" | "DESC";
+  direction: 'ASC' | 'DESC';
 };
 
 export type IndexDefinition = {
@@ -46,8 +46,8 @@ export type ParsedFieldType = {
   raw: string;
 };
 
-export type UiDefaultKind = "无" | "自增" | "常量" | "当前时间" | "uuid";
-export type UiOnUpdate = "无" | "当前时间";
+export type UiDefaultKind = '无' | '自增' | '常量' | '当前时间' | 'uuid';
+export type UiOnUpdate = '无' | '当前时间';
 
 export type PersistedState = {
   tableName: string;

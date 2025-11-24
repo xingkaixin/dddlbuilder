@@ -1,8 +1,8 @@
-import type { IndexDefinition } from "../types";
-import { toStringSafe } from "./helpers";
+import type { IndexDefinition } from '../types';
+import { toStringSafe } from './helpers';
 
 export const sanitizeIndexesForPersist = (
-  indexes: IndexDefinition[]
+  indexes: IndexDefinition[],
 ): IndexDefinition[] =>
   indexes
     .map((index) => ({
@@ -11,9 +11,9 @@ export const sanitizeIndexesForPersist = (
       fields: index.fields.map((field) => ({
         name: toStringSafe(field.name).trim(),
         direction:
-          field.direction === "ASC" || field.direction === "DESC"
+          field.direction === 'ASC' || field.direction === 'DESC'
             ? field.direction
-            : "ASC",
+            : 'ASC',
       })),
       unique: Boolean(index.unique),
       isPrimary: Boolean(index.isPrimary),

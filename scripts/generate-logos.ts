@@ -12,7 +12,7 @@ const sizes = [
   { name: 'favicon-32x32.png', size: 32 },
   { name: 'favicon-192.png', size: 192 },
   { name: 'favicon-512.png', size: 512 },
-  { name: 'apple-touch-icon.png', size: 180 }
+  { name: 'apple-touch-icon.png', size: 180 },
 ];
 
 async function generateLogos() {
@@ -27,7 +27,7 @@ async function generateLogos() {
         .png({
           quality: 100,
           compressionLevel: 9,
-          adaptiveFiltering: true
+          adaptiveFiltering: true,
         })
         .toFile(path.join(process.cwd(), 'public', name));
 

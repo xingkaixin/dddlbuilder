@@ -1,16 +1,22 @@
-import { vi } from 'vitest'
-import type { MockHotTableInstance } from '@/__tests__/types/test-types'
+import { vi } from 'vitest';
+import type { MockHotTableInstance } from '@/__tests__/types/test-types';
 
 // Mock Handsontable
-export const mockHotTable = vi.fn().mockImplementation(({ children, ...props }) => {
-  return React.createElement('div', {
-    'data-testid': 'hot-table',
-    ...props,
-  }, children)
-})
+export const mockHotTable = vi
+  .fn()
+  .mockImplementation(({ children, ...props }) => {
+    return React.createElement(
+      'div',
+      {
+        'data-testid': 'hot-table',
+        ...props,
+      },
+      children,
+    );
+  });
 
 // Mock Handsontable utilities
-export const mockRegisterAllModules = vi.fn()
+export const mockRegisterAllModules = vi.fn();
 
 // Mock Handsontable instance
 export const mockHotTableInstance: MockHotTableInstance = {
@@ -28,7 +34,7 @@ export const mockHotTableInstance: MockHotTableInstance = {
   addHook: vi.fn(),
   removeHook: vi.fn(),
   destroy: vi.fn(),
-}
+};
 
 // Mock Handsontable events
 export const mockHandsontableEvents = {
@@ -39,14 +45,14 @@ export const mockHandsontableEvents = {
   afterSelection: vi.fn(),
   beforeAutofill: vi.fn(),
   afterAutofill: vi.fn(),
-}
+};
 
 // Default test data for Handsontable
 export const mockTableData = [
   [1, 'id', 'int', '主键ID', '否', '自增', '', '无'],
   [2, 'name', 'varchar(255)', '名称', '是', '无', '', '无'],
   [3, 'created_at', 'timestamp', '创建时间', '否', '当前时间', '', '无'],
-]
+];
 
 // Mock column settings
 export const mockColumnSettings = [
@@ -58,4 +64,4 @@ export const mockColumnSettings = [
   { data: 'defaultKind', type: 'dropdown' },
   { data: 'defaultValue', type: 'text' },
   { data: 'onUpdate', type: 'dropdown' },
-]
+];

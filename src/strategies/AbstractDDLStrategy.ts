@@ -1,10 +1,10 @@
-import type { NormalizedField, IndexDefinition, DatabaseType } from "../types";
-import type { DDLStrategy } from "../interfaces/DDLStrategy";
+import type { NormalizedField, IndexDefinition, DatabaseType } from '../types';
+import type { DDLStrategy } from '../interfaces/DDLStrategy';
 import {
   escapeSingleQuotes,
   splitQualifiedName,
-} from "../utils/databaseTypeMapping";
-import { TypeMapper } from "../utils/TypeMapper";
+} from '../utils/databaseTypeMapping';
+import { TypeMapper } from '../utils/TypeMapper';
 
 /**
  * DDL策略抽象基类
@@ -24,7 +24,7 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
     if (parts.length === 0) {
       return tableName.trim();
     }
-    return parts.join(".");
+    return parts.join('.');
   }
 
   /**
@@ -41,7 +41,7 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
     tableName: string,
     index: IndexDefinition,
   ): string {
-    const fieldList = index.fields.map((f) => f.name).join(", ");
+    const fieldList = index.fields.map((f) => f.name).join(', ');
     return `ALTER TABLE ${this.formatTableName(tableName)} ADD PRIMARY KEY (${fieldList});`;
   }
 
@@ -49,7 +49,7 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
    * 生成索引字段列表的通用实现
    */
   protected formatIndexFieldList(index: IndexDefinition): string {
-    return index.fields.map((f) => `${f.name} ${f.direction}`).join(", ");
+    return index.fields.map((f) => `${f.name} ${f.direction}`).join(', ');
   }
 
   /**
@@ -63,7 +63,7 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
       return this.generatePrimaryKeyDDL(tableName, index);
     }
 
-    const indexType = index.unique ? "UNIQUE INDEX" : "INDEX";
+    const indexType = index.unique ? 'UNIQUE INDEX' : 'INDEX';
     const fieldList = this.formatIndexFieldList(index);
     const qualifiedName = this.formatTableName(tableName);
 

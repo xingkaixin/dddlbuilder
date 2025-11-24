@@ -1,16 +1,16 @@
-import type { DatabaseType } from "../types";
-import type { DDLStrategy } from "../interfaces/DDLStrategy";
-import { MySqlStrategy } from "../strategies/MySqlStrategy";
-import { PostgresStrategy } from "../strategies/PostgresStrategy";
-import { SqlServerStrategy } from "../strategies/SqlServerStrategy";
-import { OracleStrategy } from "../strategies/OracleStrategy";
+import type { DatabaseType } from '../types';
+import type { DDLStrategy } from '../interfaces/DDLStrategy';
+import { MySqlStrategy } from '../strategies/MySqlStrategy';
+import { PostgresStrategy } from '../strategies/PostgresStrategy';
+import { SqlServerStrategy } from '../strategies/SqlServerStrategy';
+import { OracleStrategy } from '../strategies/OracleStrategy';
 
 export class DDLStrategyFactory {
   private static strategies: Map<DatabaseType, DDLStrategy> = new Map([
-    ["mysql", new MySqlStrategy()],
-    ["postgresql", new PostgresStrategy()],
-    ["sqlserver", new SqlServerStrategy()],
-    ["oracle", new OracleStrategy()],
+    ['mysql', new MySqlStrategy()],
+    ['postgresql', new PostgresStrategy()],
+    ['sqlserver', new SqlServerStrategy()],
+    ['oracle', new OracleStrategy()],
   ]);
 
   static create(databaseType: DatabaseType): DDLStrategy {
@@ -25,7 +25,10 @@ export class DDLStrategyFactory {
     return Array.from(this.strategies.keys());
   }
 
-  static registerStrategy(databaseType: DatabaseType, strategy: DDLStrategy): void {
+  static registerStrategy(
+    databaseType: DatabaseType,
+    strategy: DDLStrategy,
+  ): void {
     this.strategies.set(databaseType, strategy);
   }
 }

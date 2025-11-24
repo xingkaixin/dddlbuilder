@@ -1,13 +1,10 @@
-import defaultTheme from 'tailwindcss/defaultTheme'
-import tailwindAnimate from 'tailwindcss-animate'
+import defaultTheme from 'tailwindcss/defaultTheme';
+import tailwindAnimate from 'tailwindcss-animate';
 
 /** @type {import('tailwindcss').Config} */
 const config = {
   darkMode: ['class'],
-  content: [
-    './index.html',
-    './src/**/*.{ts,tsx,js,jsx}',
-  ],
+  content: ['./index.html', './src/**/*.{ts,tsx,js,jsx}'],
   theme: {
     extend: {
       colors: {
@@ -71,6 +68,6 @@ const config = {
     },
   },
   plugins: [tailwindAnimate],
-}
+};
 
-export default config
+export default config;

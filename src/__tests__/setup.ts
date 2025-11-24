@@ -1,5 +1,5 @@
-import '@testing-library/jest-dom'
-import { vi } from 'vitest'
+import '@testing-library/jest-dom';
+import { vi } from 'vitest';
 
 // Mock localStorage
 const localStorageMock = {
@@ -7,11 +7,11 @@ const localStorageMock = {
   setItem: vi.fn(),
   removeItem: vi.fn(),
   clear: vi.fn(),
-}
+};
 
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
-})
+});
 
 // Mock clipboard API
 Object.defineProperty(navigator, 'clipboard', {
@@ -20,19 +20,19 @@ Object.defineProperty(navigator, 'clipboard', {
     readText: vi.fn().mockResolvedValue(''),
   },
   writable: true,
-})
+});
 
 // Mock ResizeObserver
 global.ResizeObserver = vi.fn().mockImplementation(() => ({
   observe: vi.fn(),
   unobserve: vi.fn(),
   disconnect: vi.fn(),
-}))
+}));
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation(query => ({
+  value: vi.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -42,7 +42,7 @@ Object.defineProperty(window, 'matchMedia', {
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
   })),
-})
+});
 
 // Mock HTMLCanvasElement methods
 HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
@@ -69,7 +69,7 @@ HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
   transform: vi.fn(),
   rect: vi.fn(),
   clip: vi.fn(),
-})
+});
 
 // Mock getComputedStyle
 Object.defineProperty(window, 'getComputedStyle', {
@@ -78,7 +78,7 @@ Object.defineProperty(window, 'getComputedStyle', {
     width: '0px',
     height: '0px',
   }),
-})
+});
 
 // Mock getBoundingClientRect
 Element.prototype.getBoundingClientRect = vi.fn().mockReturnValue({
@@ -90,10 +90,10 @@ Element.prototype.getBoundingClientRect = vi.fn().mockReturnValue({
   bottom: 0,
   x: 0,
   y: 0,
-})
+});
 
 // Mock scrollTo
 Object.defineProperty(window, 'scrollTo', {
   value: vi.fn(),
   writable: true,
-})
+});

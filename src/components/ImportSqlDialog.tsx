@@ -7,16 +7,16 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import type { DatabaseType } from '@/types';
 import { SqlParser, type ParsedResult } from '@/utils/SqlParser';
 import { useToast } from '@/hooks/useToast';
@@ -34,44 +34,44 @@ export function ImportSqlDialog({
   onImport,
   triggerClassName,
   triggerIcon,
-  triggerLabel = "导入 SQL"
+  triggerLabel = '导入 SQL',
 }: ImportSqlDialogProps) {
   const [open, setOpen] = useState(false);
-  const [sql, setSql] = useState("");
-  const [selectedDbType, setSelectedDbType] = useState<DatabaseType>(currentDbType);
+  const [sql, setSql] = useState('');
+  const [selectedDbType, setSelectedDbType] =
+    useState<DatabaseType>(currentDbType);
   const { showToast } = useToast();
 
   const handleImport = () => {
     if (!sql.trim()) {
-      showToast("请输入 SQL: SQL 内容不能为空");
+      showToast('请输入 SQL: SQL 内容不能为空');
       return;
     }
 
     try {
       const parser = new SqlParser();
       const result = parser.parse(sql, selectedDbType);
-      
-      if (result.fields.length === 0 && result.tableName === "") {
-           showToast("解析结果为空: 未能从 SQL 中解析出有效的表结构，请检查 SQL 语法。");
-          return;
+
+      if (result.fields.length === 0 && result.tableName === '') {
+        showToast(
+          '解析结果为空: 未能从 SQL 中解析出有效的表结构，请检查 SQL 语法。',
+        );
+        return;
       }
 
       onImport(result, selectedDbType);
       setOpen(false);
-      setSql("");
+      setSql('');
       showToast(`导入成功: 成功解析表: ${result.tableName || '未命名'}`);
     } catch (error: any) {
-      showToast(`解析失败: ${error.message || "未知错误"}`);
+      showToast(`解析失败: ${error.message || '未知错误'}`);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button
-          type="button"
-          className={triggerClassName}
-        >
+        <button type="button" className={triggerClassName}>
           {triggerIcon}
           <span>{triggerLabel}</span>
         </button>
@@ -80,7 +80,8 @@ export function ImportSqlDialog({
         <DialogHeader>
           <DialogTitle>导入 SQL</DialogTitle>
           <DialogDescription>
-            粘贴 CREATE TABLE 语句以自动生成表结构配置。请选择正确的源数据库类型以确保解析准确。
+            粘贴 CREATE TABLE
+            语句以自动生成表结构配置。请选择正确的源数据库类型以确保解析准确。
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -115,7 +116,9 @@ export function ImportSqlDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button type="submit" onClick={handleImport}>导入</Button>
+          <Button type="submit" onClick={handleImport}>
+            导入
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

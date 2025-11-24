@@ -1,12 +1,12 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
-import type Handsontable from "handsontable";
-import type { FieldRow, NormalizedField } from "@/types";
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import type Handsontable from 'handsontable';
+import type { FieldRow, NormalizedField } from '@/types';
 import {
   toStringSafe,
   createEmptyRow,
   ensureOrder,
   normalizeFields,
-} from "@/utils/helpers";
+} from '@/utils/helpers';
 
 export interface UseTableDataReturn {
   rows: FieldRow[];
@@ -95,12 +95,12 @@ export function useTableData(
     (rows: FieldRow[], changes: Handsontable.CellChange[]): FieldRow[] => {
       const next = rows.map((row) => ({ ...row }));
       changes.forEach(([rowIndex, prop, , value]) => {
-        if (typeof prop !== "string" || prop === "order") {
+        if (typeof prop !== 'string' || prop === 'order') {
           return;
         }
         next[rowIndex] = {
           ...next[rowIndex],
-          [prop]: value == null ? "" : String(value),
+          [prop]: value == null ? '' : String(value),
         };
       });
       return next;
@@ -113,15 +113,15 @@ export function useTableData(
     (rows: FieldRow[], changes: Handsontable.CellChange[]): FieldRow[] => {
       const next = rows.map((row) => ({ ...row }));
       changes.forEach(([rowIndex, prop, , value]) => {
-        if (typeof prop !== "string" || prop !== "defaultKind") {
+        if (typeof prop !== 'string' || prop !== 'defaultKind') {
           return;
         }
-        const kind = String(value ?? "");
-        if (kind !== "常量") {
-          next[rowIndex].defaultValue = "";
+        const kind = String(value ?? '');
+        if (kind !== '常量') {
+          next[rowIndex].defaultValue = '';
         }
-        if (kind === "自增") {
-          next[rowIndex].nullable = "否";
+        if (kind === '自增') {
+          next[rowIndex].nullable = '否';
         }
       });
       return next;
@@ -164,7 +164,7 @@ export function useTableData(
       const { isValid, changes: validChanges } = validateChanges(changes);
 
       // 早期返回：无效变更或加载数据源
-      if (!isValid || source === "loadData") {
+      if (!isValid || source === 'loadData') {
         return;
       }
 

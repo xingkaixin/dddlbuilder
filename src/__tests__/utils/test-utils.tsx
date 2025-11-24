@@ -1,34 +1,38 @@
-import { render, type RenderOptions } from '@testing-library/react'
-import type { ReactElement } from 'react'
-import { vi } from 'vitest'
-import type { MockEvent, MockClipboard, MockLocalStorage } from '@/__tests__/types/test-types'
+import { render, type RenderOptions } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { vi } from 'vitest';
+import type {
+  MockEvent,
+  MockClipboard,
+  MockLocalStorage,
+} from '@/__tests__/types/test-types';
 
 // Custom render function with providers if needed
 const customRender = (
   ui: ReactElement,
-  options?: Omit<RenderOptions, 'wrapper'>
+  options?: Omit<RenderOptions, 'wrapper'>,
 ) => {
   // In the future, you can add providers here (Theme, Router, etc.)
-  return render(ui, { ...options })
-}
+  return render(ui, { ...options });
+};
 
 // Re-export everything from testing-library
-export * from '@testing-library/react'
-export { default as userEvent } from '@testing-library/user-event'
+export * from '@testing-library/react';
+export { default as userEvent } from '@testing-library/user-event';
 
 // Override the default render with our custom one
-export { customRender as render }
+export { customRender as render };
 
 // Helper functions for common test operations
 export const waitForAnimationFrame = () =>
-  new Promise(resolve => setTimeout(resolve, 0))
+  new Promise((resolve) => setTimeout(resolve, 0));
 
 export const createMockEvent = (overrides = {}): MockEvent => ({
   target: { value: '' },
   preventDefault: vi.fn(),
   stopPropagation: vi.fn(),
   ...overrides,
-})
+});
 
 export const mockLocalStorage: MockLocalStorage = {
   getItem: vi.fn(),
@@ -37,29 +41,29 @@ export const mockLocalStorage: MockLocalStorage = {
   clear: vi.fn(),
   length: 0,
   key: vi.fn(),
-}
+};
 
 // Helper to mock clipboard API
 export const mockClipboard: MockClipboard = {
   writeText: vi.fn().mockResolvedValue(undefined),
   readText: vi.fn().mockResolvedValue(''),
-}
+};
 
 // Helper function to setup localStorage mock
 export const setupLocalStorageMock = () => {
   Object.defineProperty(window, 'localStorage', {
     value: mockLocalStorage,
     writable: true,
-  })
-}
+  });
+};
 
 // Helper function to setup clipboard mock
 export const setupClipboardMock = () => {
   Object.defineProperty(navigator, 'clipboard', {
     value: mockClipboard,
     writable: true,
-  })
-}
+  });
+};
 
 // Helper to create field data
 export const createTestField = (overrides = {}) => ({
@@ -72,7 +76,7 @@ export const createTestField = (overrides = {}) => ({
   defaultValue: '',
   onUpdate: '无',
   ...overrides,
-})
+});
 
 // Helper to create normalized field data
 export const createTestNormalizedField = (overrides = {}) => ({
@@ -84,7 +88,7 @@ export const createTestNormalizedField = (overrides = {}) => ({
   defaultValue: '',
   onUpdate: 'none',
   ...overrides,
-})
+});
 
 // Helper to create index definition
 export const createTestIndex = (overrides = {}) => ({
@@ -93,7 +97,7 @@ export const createTestIndex = (overrides = {}) => ({
   fields: [{ name: 'test_field', direction: 'ASC' }],
   unique: false,
   ...overrides,
-})
+});
 
 // Helper function to simulate keyboard events
 export const createKeyboardEvent = (key: string, options = {}) => ({
@@ -104,7 +108,8 @@ export const createKeyboardEvent = (key: string, options = {}) => ({
   bubbles: true,
   cancelable: true,
   ...options,
-})
+});
 
 // Helper to test async operations
-export const flushPromises = () => new Promise(resolve => setTimeout(resolve, 0))
+export const flushPromises = () =>
+  new Promise((resolve) => setTimeout(resolve, 0));

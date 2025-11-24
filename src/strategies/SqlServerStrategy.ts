@@ -1,4 +1,4 @@
-import type { NormalizedField } from "../types";
+import type { NormalizedField } from '../types';
 import {
   getCanonicalBaseType,
   supportsAutoIncrement,
@@ -8,21 +8,22 @@ import {
   escapeSingleQuotes,
   getSchemaAndTable,
   parseFieldType,
-} from "../utils/databaseTypeMapping";
-import { AbstractDDLStrategy } from "./AbstractDDLStrategy";
+} from '../utils/databaseTypeMapping';
+import { AbstractDDLStrategy } from './AbstractDDLStrategy';
 
 export class SqlServerStrategy extends AbstractDDLStrategy {
-  getDatabaseType(): "sqlserver" {
-    return "sqlserver";
+  getDatabaseType(): 'sqlserver' {
+    return 'sqlserver';
   }
 
   generateTableDDL(
     tableName: string,
     tableComment: string,
-    fields: NormalizedField[]
+    fields: NormalizedField[],
   ): string {
-    const { schema: parsedSchema, table: parsedTable } = getSchemaAndTable(tableName);
-    const schema = parsedSchema || "";
+    const { schema: parsedSchema, table: parsedTable } =
+      getSchemaAndTable(tableName);
+    const schema = parsedSchema || '';
     const table = parsedTable || tableName.trim();
 
     const typeMapper = this.createTypeMapper();
@@ -32,23 +33,23 @@ export class SqlServerStrategy extends AbstractDDLStrategy {
       const base = getCanonicalBaseType(field.type);
 
       const identity =
-        field.defaultKind === "auto_increment" &&
-        supportsAutoIncrement("sqlserver", base)
-          ? " IDENTITY(1,1)"
-          : "";
+        field.defaultKind === 'auto_increment' &&
+        supportsAutoIncrement('sqlserver', base)
+          ? ' IDENTITY(1,1)'
+          : '';
 
-      const nullableClause = field.nullable ? " NULL" : " NOT NULL";
+      const nullableClause = field.nullable ? ' NULL' : ' NOT NULL';
 
-      let def = "";
-      if (field.defaultKind === "constant") {
+      let def = '';
+      if (field.defaultKind === 'constant') {
         def = formatConstantDefault(base, field.defaultValue);
       } else if (
-        field.defaultKind === "current_timestamp" &&
-        supportsDefaultCurrentTimestamp("sqlserver", base)
+        field.defaultKind === 'current_timestamp' &&
+        supportsDefaultCurrentTimestamp('sqlserver', base)
       ) {
-        def = " DEFAULT GETDATE()";
-      } else if (field.defaultKind === "uuid" && supportsUuidDefault(base)) {
-        def = " DEFAULT NEWID()";
+        def = ' DEFAULT GETDATE()';
+      } else if (field.defaultKind === 'uuid' && supportsUuidDefault(base)) {
+        def = ' DEFAULT NEWID()';
       }
 
       return `  ${this.formatFieldName(field.name)} ${type}${identity}${nullableClause}${def}`;
@@ -56,13 +57,11 @@ export class SqlServerStrategy extends AbstractDDLStrategy {
 
     const qualified = schema ? `${schema}.${table}` : table;
     const statements: string[] = [
-      `CREATE TABLE ${qualified} (\n${columnLines.join(",\n")}\n);`,
+      `CREATE TABLE ${qualified} (\n${columnLines.join(',\n')}\n);`,
     ];
 
     if (tableComment.trim()) {
-      const level0name = schema
-        ? `N'${escapeSingleQuotes(schema)}'`
-        : "NULL";
+      const level0name = schema ? `N'${escapeSingleQuotes(schema)}'` : 'NULL';
       const level1name = schema
         ? `N'${escapeSingleQuotes(table)}'`
         : `N'${escapeSingleQuotes(table)}'`;
@@ -73,16 +72,14 @@ export class SqlServerStrategy extends AbstractDDLStrategy {
     @name = N'MS_Description',
     @value = N'${escapeSingleQuotes(tableComment.trim())}',
     @level0type = N'SCHEMA', @level0name = ${level0name},
-    @level1type = ${level2type}, @level1name = ${level1name};`
+    @level1type = ${level2type}, @level1name = ${level1name};`,
       );
     }
 
     fields
       .filter((field) => field.comment)
       .forEach((field) => {
-        const level0name = schema
-          ? `N'${escapeSingleQuotes(schema)}'`
-          : "NULL";
+        const level0name = schema ? `N'${escapeSingleQuotes(schema)}'` : 'NULL';
         const level1name = schema
           ? `N'${escapeSingleQuotes(table)}'`
           : `N'${escapeSingleQuotes(table)}'`;
@@ -94,10 +91,10 @@ export class SqlServerStrategy extends AbstractDDLStrategy {
     @value = N'${escapeSingleQuotes(field.comment)}',
     @level0type = N'SCHEMA', @level0name = ${level0name},
     @level1type = N'TABLE', @level1name = ${level1name},
-    @level2type = N'COLUMN', @level2name = ${level2name};`
+    @level2type = N'COLUMN', @level2name = ${level2name};`,
         );
       });
 
-    return statements.join("\n");
+    return statements.join('\n');
   }
 }
