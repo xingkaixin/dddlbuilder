@@ -1,4 +1,3 @@
-import React from "react";
 import { memo } from "react";
 import { ChangelogModal } from "@/components/ChangelogModal";
 import { ImportSqlDialog } from "@/components/ImportSqlDialog";

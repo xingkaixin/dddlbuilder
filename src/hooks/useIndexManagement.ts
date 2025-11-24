@@ -162,7 +162,7 @@ export function useIndexManagement(
     if (indexes.length > 0 && tableName) {
       updateIndexNames(tableName);
     }
-  }, [tableName, indexes.length, updateIndexNames, generateIndexName]);
+  }, [tableName, indexes.length, updateIndexNames]);
 
   return {
     indexInput,

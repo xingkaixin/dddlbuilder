@@ -1,7 +1,7 @@
-import { render, RenderOptions } from '@testing-library/react'
+import { render, type RenderOptions } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import { vi } from 'vitest'
-import type { MockEvent, MockFile, MockClipboard, MockLocalStorage, MockEventHandler, MockKeyboardEventHandler } from '@/__tests__/types/test-types'
+import type { MockEvent, MockClipboard, MockLocalStorage } from '@/__tests__/types/test-types'
 
 // Custom render function with providers if needed
 const customRender = (

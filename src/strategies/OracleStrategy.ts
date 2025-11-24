@@ -1,14 +1,11 @@
-import type { NormalizedField, IndexDefinition } from "../types";
+import type { NormalizedField } from "../types";
 import {
   getCanonicalBaseType,
   supportsAutoIncrement,
   supportsDefaultCurrentTimestamp,
   supportsUuidDefault,
   formatConstantDefault,
-  shouldQuoteDefault,
-  isLikelyFunctionOrKeyword,
   escapeSingleQuotes,
-  splitQualifiedName,
   parseFieldType,
 } from "../utils/databaseTypeMapping";
 import { AbstractDDLStrategy } from "./AbstractDDLStrategy";

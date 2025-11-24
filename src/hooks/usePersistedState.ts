@@ -1,10 +1,6 @@
-import { useState, useEffect } from "react";
-import type { PersistedState, FieldRow, IndexField, IndexDefinition } from "@/types";
+import { useState, useEffect, useCallback, useRef } from "react";
+import type { PersistedState } from "@/types";
 import { STORAGE_KEY } from "@/utils/constants";
-import {
-  sanitizeRowsForPersist,
-} from "@/utils/helpers";
-import { sanitizeIndexesForPersist } from "@/utils/indexUtils";
 
 export interface UsePersistedStateReturn {
   persistedState: Partial<PersistedState> | null;
@@ -16,8 +12,9 @@ export interface UsePersistedStateReturn {
 export function usePersistedState(): UsePersistedStateReturn {
   const [hydrated, setHydrated] = useState(false);
   const [persistedState, setPersistedState] = useState<Partial<PersistedState> | null>(null);
+  const hydratedRef = useRef(false);
 
-  const restoreState = () => {
+  const restoreState = useCallback(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
@@ -28,25 +25,25 @@ export function usePersistedState(): UsePersistedStateReturn {
       // ignore corrupted localStorage
     }
     return null;
-  };
+  }, []);
 
-  const saveState = (state: Partial<PersistedState>) => {
-    if (!hydrated) return;
+  const saveState = useCallback((state: Partial<PersistedState>) => {
+    if (!hydratedRef.current) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch {
       // ignore quota errors
     }
-  };
+  }, []);
 
-  const clearState = () => {
+  const clearState = useCallback(() => {
     try {
       localStorage.removeItem(STORAGE_KEY);
       setPersistedState(null);
     } catch {
       // ignore localStorage errors
     }
-  };
+  }, []);
 
   // restore from localStorage or URL once on mount
   useEffect(() => {
@@ -60,6 +57,7 @@ export function usePersistedState(): UsePersistedStateReturn {
         if (sharedState) {
           setPersistedState(sharedState);
           setHydrated(true);
+          hydratedRef.current = true;
           // Save to localStorage so it persists
           saveState(sharedState);
           // Clean up URL
@@ -70,13 +68,15 @@ export function usePersistedState(): UsePersistedStateReturn {
         const data = restoreState();
         setPersistedState(data);
         setHydrated(true);
+        hydratedRef.current = true;
       });
     } else {
       const data = restoreState();
       setPersistedState(data);
       setHydrated(true);
+      hydratedRef.current = true;
     }
-  }, []);
+  }, [restoreState, saveState]);
 
   return {
     persistedState,

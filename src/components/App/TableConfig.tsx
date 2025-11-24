@@ -1,4 +1,3 @@
-import React from "react";
 import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Table, Trash2 } from "lucide-react";
