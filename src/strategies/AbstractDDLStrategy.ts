@@ -5,6 +5,7 @@ import {
   splitQualifiedName,
 } from '../utils/databaseTypeMapping';
 import { TypeMapper } from '../utils/TypeMapper';
+import { buildPrimaryKeyName } from '../utils/primaryKeyNaming';
 
 /**
  * DDL策略抽象基类
@@ -42,7 +43,9 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
     index: IndexDefinition,
   ): string {
     const fieldList = index.fields.map((f) => f.name).join(', ');
-    return `ALTER TABLE ${this.formatTableName(tableName)} ADD PRIMARY KEY (${fieldList});`;
+    const constraintName = buildPrimaryKeyName(tableName);
+
+    return `ALTER TABLE ${this.formatTableName(tableName)} ADD CONSTRAINT ${constraintName} PRIMARY KEY (${fieldList});`;
   }
 
   /**

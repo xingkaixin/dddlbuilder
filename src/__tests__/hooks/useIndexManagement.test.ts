@@ -205,7 +205,7 @@ describe('useIndexManagement', () => {
     });
 
     const index = result.current.indexes[0];
-    expect(index.name).toBe('pk_test_table_id');
+    expect(index.name).toBe('pk_test_table');
     expect(index.unique).toBe(false);
     expect(index.isPrimary).toBe(true);
   });

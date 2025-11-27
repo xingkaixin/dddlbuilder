@@ -79,7 +79,7 @@ describe('SqlParser', () => {
     ]);
     expect(stripIndexIds(result.indexes)).toEqual([
       {
-        name: 'PRIMARY',
+        name: 'pk_users',
         fields: [{ name: 'id', direction: 'ASC' }],
         unique: true,
         isPrimary: true,
@@ -172,7 +172,7 @@ describe('SqlParser', () => {
     ]);
     expect(stripIndexIds(result.indexes)).toEqual([
       {
-        name: 'PRIMARY',
+        name: 'pk_accounts',
         fields: [{ name: 'id', direction: 'ASC' }],
         unique: true,
         isPrimary: true,
@@ -232,7 +232,7 @@ describe('SqlParser', () => {
     ]);
     expect(stripIndexIds(result.indexes)).toEqual([
       {
-        name: 'PRIMARY',
+        name: 'pk_Users',
         fields: [{ name: 'Id', direction: 'ASC' }],
         unique: true,
         isPrimary: true,
@@ -268,7 +268,7 @@ describe('SqlParser', () => {
     expect(result.fields.map((f) => f.name)).toEqual(['id', 'name']);
     expect(stripIndexIds(result.indexes)).toEqual([
       {
-        name: 'PRIMARY',
+        name: 'pk_items',
         fields: [{ name: 'id', direction: 'ASC' }],
         unique: true,
         isPrimary: true,
@@ -347,7 +347,7 @@ describe('SqlParser', () => {
     });
     expect(stripIndexIds(result.indexes)).toEqual([
       {
-        name: 'PRIMARY',
+        name: 'pk_ttt',
         fields: [{ name: 'ID', direction: 'ASC' }],
         unique: true,
         isPrimary: true,
