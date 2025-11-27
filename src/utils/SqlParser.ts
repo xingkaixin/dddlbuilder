@@ -6,6 +6,7 @@ import type {
   IndexField,
 } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { buildPrimaryKeyName } from './primaryKeyNaming';
 
 export type ParsedResult = {
   tableName: string;
@@ -292,9 +293,11 @@ export class SqlParser {
     isPrimary = false,
   ) {
     if (fields.length === 0) return;
+    const baseName = result.tableName || name;
+    const normalizedName = isPrimary ? buildPrimaryKeyName(baseName) : name;
     result.indexes.push({
       id: uuidv4(),
-      name,
+      name: normalizedName,
       fields,
       unique,
       isPrimary,

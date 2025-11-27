@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { IndexField, IndexDefinition } from '@/types';
+import { buildPrimaryKeyName } from '@/utils/primaryKeyNaming';
 
 export interface UseIndexManagementReturn {
   indexInput: string;
@@ -95,11 +96,11 @@ export function useIndexManagement(
         return; // Prevent adding multiple primary keys
       }
 
-      const prefix = isPrimary ? 'pk' : 'idx';
-      const indexName =
-        currentIndexFields.length === 1
-          ? `${prefix}_${tableName}_${currentIndexFields[0].name}`
-          : `${prefix}_${tableName}_${currentIndexFields
+      const indexName = isPrimary
+        ? buildPrimaryKeyName(tableName)
+        : currentIndexFields.length === 1
+          ? `${unique ? 'uk' : 'idx'}_${tableName}_${currentIndexFields[0].name}`
+          : `${unique ? 'uk' : 'idx'}_${tableName}_${currentIndexFields
               .map((f) => f.name)
               .join('_')}`;
 
@@ -135,7 +136,11 @@ export function useIndexManagement(
     (index: IndexDefinition, currentTableName: string): string => {
       if (!currentTableName) return index.name;
 
-      const prefix = index.isPrimary ? 'pk' : index.unique ? 'uk' : 'idx';
+      if (index.isPrimary) {
+        return buildPrimaryKeyName(currentTableName);
+      }
+
+      const prefix = index.unique ? 'uk' : 'idx';
       return index.fields.length === 1
         ? `${prefix}_${currentTableName}_${index.fields[0].name}`
         : `${prefix}_${currentTableName}_${index.fields

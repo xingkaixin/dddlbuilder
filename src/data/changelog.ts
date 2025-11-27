@@ -19,6 +19,12 @@ export const changelogData: ChangelogData = {
   description: 'DDL建表工具版本更新记录',
   entries: [
     {
+      version: '0.5.0',
+      date: '2025-11-27',
+      content:
+        '- 主键命名移除字段名\n- 生成的DDL显示主键命名\n- 导入SQL，解析的主键会沿用系统统一命名规则',
+    },
+    {
       version: '0.4.1',
       date: '2025-11-21',
       content: '- 导入SQL功能完善\n- 单元测试覆盖率提升',
