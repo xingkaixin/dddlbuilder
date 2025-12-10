@@ -19,8 +19,7 @@ interface DDLOutputProps {
 SyntaxHighlighter.registerLanguage('sql', sql);
 
 const CODE_BLOCK_STYLE = {
-  fontFamily:
-    '"SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace',
+  fontFamily: '"Roboto Mono", monospace',
   fontSize: '0.775rem',
   whiteSpace: 'pre-wrap',
   background: 'transparent',
