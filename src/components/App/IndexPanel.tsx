@@ -1,7 +1,15 @@
-import { memo } from 'react';
+import { memo, useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ChevronUp, ChevronDown, X, Key, Lock, Hash } from 'lucide-react';
+import {
+  ChevronUp,
+  ChevronDown,
+  X,
+  Key,
+  Lock,
+  Hash,
+  Pencil,
+} from 'lucide-react';
 import type { IndexField, IndexDefinition } from '@/types';
 
 interface IndexPanelProps {
@@ -19,6 +27,7 @@ interface IndexPanelProps {
   onToggleFieldDirection: (index: number) => void;
   onAddIndex: (unique?: boolean, primary?: boolean) => void;
   onRemoveIndex: (id: string) => void;
+  onUpdateIndexName?: (id: string, newName: string) => void;
 }
 
 export const IndexPanel = memo<IndexPanelProps>(
@@ -37,7 +46,39 @@ export const IndexPanel = memo<IndexPanelProps>(
     onToggleFieldDirection,
     onAddIndex,
     onRemoveIndex,
+    onUpdateIndexName,
   }) => {
+    const [editingIndexId, setEditingIndexId] = useState<string | null>(null);
+    const [editingName, setEditingName] = useState('');
+    const editInputRef = useRef<HTMLInputElement>(null);
+
+    // Focus input when entering edit mode
+    useEffect(() => {
+      if (editingIndexId && editInputRef.current) {
+        editInputRef.current.focus();
+        editInputRef.current.select();
+      }
+    }, [editingIndexId]);
+
+    const handleStartEdit = (index: IndexDefinition) => {
+      if (!onUpdateIndexName) return;
+      setEditingIndexId(index.id);
+      setEditingName(index.name);
+    };
+
+    const handleConfirmEdit = () => {
+      if (editingIndexId && editingName.trim() && onUpdateIndexName) {
+        onUpdateIndexName(editingIndexId, editingName);
+      }
+      setEditingIndexId(null);
+      setEditingName('');
+    };
+
+    const handleCancelEdit = () => {
+      setEditingIndexId(null);
+      setEditingName('');
+    };
+
     return (
       <div className="relative group rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5">
         {/* Decorative gradient overlay */}
@@ -226,9 +267,36 @@ export const IndexPanel = memo<IndexPanelProps>(
                             <badge.Icon className="h-4 w-4" />
                             {badge.label}
                           </span>
-                          <span className="break-words text-base font-semibold leading-snug transition-colors duration-200 group-hover/item:text-primary">
-                            {index.name}
-                          </span>
+                          {editingIndexId === index.id ? (
+                            <Input
+                              ref={editInputRef}
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleConfirmEdit();
+                                } else if (e.key === 'Escape') {
+                                  e.preventDefault();
+                                  handleCancelEdit();
+                                }
+                              }}
+                              onBlur={handleConfirmEdit}
+                              className="h-7 text-base font-semibold px-2 py-0"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : (
+                            <span
+                              className="break-all text-base font-semibold leading-snug transition-colors duration-200 group-hover/item:text-primary cursor-pointer hover:underline hover:decoration-dashed hover:underline-offset-4"
+                              onDoubleClick={() => handleStartEdit(index)}
+                              title="双击编辑索引名称"
+                            >
+                              {index.name}
+                              {onUpdateIndexName && (
+                                <Pencil className="inline-block ml-1.5 h-3 w-3 opacity-0 group-hover/item:opacity-50 transition-opacity" />
+                              )}
+                            </span>
+                          )}
                           <div className="w-full pl-1">
                             <span className="break-words text-sm leading-relaxed text-muted-foreground transition-colors duration-200 group-hover/item:text-muted-foreground/80">
                               (

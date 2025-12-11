@@ -87,6 +87,7 @@ function App() {
     toggleFieldDirection,
     addIndex,
     removeIndex,
+    updateIndexName,
     resetIndexState,
     setIndexes,
   } = useIndexManagement(
@@ -427,6 +428,7 @@ function App() {
                 onToggleFieldDirection={toggleFieldDirection}
                 onAddIndex={(unique, primary) => addIndex(!!unique, primary)}
                 onRemoveIndex={removeIndex}
+                onUpdateIndexName={updateIndexName}
               />
             </TabsContent>
             <TabsContent value="auth" className="mt-4">
