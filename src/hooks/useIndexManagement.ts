@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { IndexField, IndexDefinition } from '@/types';
 import { buildPrimaryKeyName } from '@/utils/primaryKeyNaming';
+import { buildIndexName, truncateIndexName } from '@/utils/indexNameUtils';
 
 export interface UseIndexManagementReturn {
   indexInput: string;
@@ -17,6 +18,7 @@ export interface UseIndexManagementReturn {
   toggleFieldDirection: (index: number) => void;
   addIndex: (unique: boolean, isPrimary?: boolean) => void;
   removeIndex: (id: string) => void;
+  updateIndexName: (id: string, newName: string) => void;
   updateIndexNames: (newTableName: string) => void;
   resetIndexState: () => void;
   setIndexes: React.Dispatch<React.SetStateAction<IndexDefinition[]>>;
@@ -98,11 +100,11 @@ export function useIndexManagement(
 
       const indexName = isPrimary
         ? buildPrimaryKeyName(tableName)
-        : currentIndexFields.length === 1
-          ? `${unique ? 'uk' : 'idx'}_${tableName}_${currentIndexFields[0].name}`
-          : `${unique ? 'uk' : 'idx'}_${tableName}_${currentIndexFields
-              .map((f) => f.name)
-              .join('_')}`;
+        : buildIndexName(
+            unique ? 'uk' : 'idx',
+            tableName,
+            currentIndexFields.map((f) => f.name),
+          );
 
       const newIndex: IndexDefinition = {
         id: Date.now().toString(),
@@ -123,6 +125,19 @@ export function useIndexManagement(
     setIndexes((prev) => prev.filter((index) => index.id !== id));
   }, []);
 
+  const updateIndexName = useCallback((id: string, newName: string) => {
+    const trimmedName = newName.trim();
+    if (!trimmedName) return;
+
+    setIndexes((prev) =>
+      prev.map((index) =>
+        index.id === id
+          ? { ...index, name: truncateIndexName(trimmedName) }
+          : index,
+      ),
+    );
+  }, []);
+
   const resetIndexState = useCallback(() => {
     setIndexInput('');
     setCurrentIndexFields([]);
@@ -141,11 +156,11 @@ export function useIndexManagement(
       }
 
       const prefix = index.unique ? 'uk' : 'idx';
-      return index.fields.length === 1
-        ? `${prefix}_${currentTableName}_${index.fields[0].name}`
-        : `${prefix}_${currentTableName}_${index.fields
-            .map((f) => f.name)
-            .join('_')}`;
+      return buildIndexName(
+        prefix,
+        currentTableName,
+        index.fields.map((f) => f.name),
+      );
     },
     [],
   );
@@ -187,6 +202,7 @@ export function useIndexManagement(
     toggleFieldDirection,
     addIndex,
     removeIndex,
+    updateIndexName,
     updateIndexNames,
     resetIndexState,
     setIndexes,

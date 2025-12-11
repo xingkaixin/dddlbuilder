@@ -19,6 +19,12 @@ export const changelogData: ChangelogData = {
   description: 'DDL建表工具版本更新记录',
   entries: [
     {
+      version: '0.6.0',
+      date: '2025-12-11',
+      content:
+        '- 索引名称显示优化：长名称自动换行，不再超出卡片边界\n- 索引名称自动截断：超过40字符时自动截断并添加哈希后缀确保唯一性\n- 新增双击编辑索引名称功能，支持自定义索引名称',
+    },
+    {
       version: '0.5.0',
       date: '2025-11-27',
       content:
