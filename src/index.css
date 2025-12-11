@@ -2,40 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 阿里健康体 - 自托管字体 */
-/* 使用 Bold (85B) 作为默认字重，视觉效果更饱满 */
-@font-face {
-  font-family: "Alibaba Health";
-  src: url("/font/alibabahealth/AlibabaHealthFont2.0CN-45R.ttf")
-    format("truetype");
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Alibaba Health";
-  src: url("/font/alibabahealth/AlibabaHealthFont2.0CN-85B.ttf")
-    format("truetype");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Alibaba Health";
-  src: url("/font/alibabahealth/AlibabaHealthFont2.0CN-85B.ttf")
-    format("truetype");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
+/* MiSans VF - 小米可变字体 (CDN) */
+/* 中文字体使用 MiSans，拉丁字符使用 Roboto Mono */
 
 @layer base {
   :root {
     --font-sans:
-      "Roboto Mono", "Alibaba Health", "PingFang SC", "Segoe UI",
-      "Helvetica Neue", Arial, sans-serif;
+      "Roboto Mono", "MiSans VF", "PingFang SC", "Segoe UI", "Helvetica Neue",
+      Arial, sans-serif;
 
     --background: 48 33.3333% 97.0588%;
     --foreground: 48 19.6078% 20%;
