@@ -7,6 +7,13 @@ import type {
 } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { buildPrimaryKeyName } from './primaryKeyNaming';
+import {
+  preprocessOracle,
+  preprocessSqlServer,
+  extractSqlServerGrantUsers,
+  extractStandaloneComments,
+  type PreprocessResult,
+} from './preprocessors';
 
 export type ParsedResult = {
   tableName: string;
@@ -21,154 +28,6 @@ export class SqlParser {
 
   constructor() {
     this.parser = new Parser();
-  }
-
-  private preprocessOracle(sql: string) {
-    const columnComments: Record<string, string> = {};
-    let tableComment = '';
-
-    // 提取并移除 COMMENT 语句
-    sql = sql.replace(
-      /COMMENT\s+ON\s+TABLE\s+([\w".]+)\s+IS\s+'([^']*)'\s*;/gi,
-      (_m, _table, comment) => {
-        tableComment = comment;
-        return '';
-      },
-    );
-
-    sql = sql.replace(
-      /COMMENT\s+ON\s+COLUMN\s+([\w".]+)\.([\w"]+)\s+IS\s+'([^']*)'\s*;/gi,
-      (_m, _table, column, comment) => {
-        const colName = column.replace(/"/g, '');
-        columnComments[colName] = comment;
-        return '';
-      },
-    );
-
-    // 移除同义词创建语句
-    sql = sql.replace(
-      /CREATE\s+OR\s+REPLACE\s+PUBLIC\s+SYNONYM[\s\S]*?;/gi,
-      '',
-    );
-
-    // 类型与默认值转换，使 parser 能够解析
-    const normalizedSql = sql
-      .replace(/VARCHAR2/gi, 'VARCHAR')
-      .replace(/NUMBER\(\s*(\d+)\s*,\s*null\s*\)/gi, 'DECIMAL($1)')
-      .replace(/NUMBER\(\s*(\d+)\s*,\s*(\d+)\s*\)/gi, 'DECIMAL($1,$2)')
-      .replace(/NUMBER\(\s*(\d+)\s*\)/gi, 'DECIMAL($1)')
-      .replace(/\bNUMBER\b/gi, 'DECIMAL')
-      .replace(/DEFAULT\s+SYS_GUID\(\)/gi, 'DEFAULT uuid()')
-      .replace(/DEFAULT\s+SYSTIMESTAMP/gi, 'DEFAULT CURRENT_TIMESTAMP');
-
-    return { sql: normalizedSql, tableComment, columnComments };
-  }
-
-  private preprocessSqlServer(sql: string) {
-    const columnComments: Record<string, string> = {};
-    let tableComment = '';
-
-    const execRegex = /EXEC\s+sp_addextendedproperty\s+([\s\S]*?);/gi;
-    let sqlWithoutExec = sql;
-    let match: RegExpExecArray | null = execRegex.exec(sql);
-
-    while (match !== null) {
-      const block = match[0];
-      sqlWithoutExec = sqlWithoutExec.replace(block, '');
-
-      const paramMap: Record<string, string> = {};
-      const paramRegex = /@(\w+)\s*=\s*N?'([^']*)'/gi;
-      let p: RegExpExecArray | null = paramRegex.exec(block);
-      while (p !== null) {
-        paramMap[p[1].toLowerCase()] = p[2];
-        p = paramRegex.exec(block);
-      }
-
-      if ((paramMap['name'] || '').toLowerCase() !== 'ms_description') continue;
-      const comment = paramMap['value'] || '';
-      const level1Type = (paramMap['level1type'] || '').toLowerCase();
-      const level2Type = (paramMap['level2type'] || '').toLowerCase();
-      const level2Name = paramMap['level2name'] || '';
-
-      if (level1Type === 'table' && !level2Type) {
-        tableComment = comment;
-      } else if (
-        level1Type === 'table' &&
-        level2Type === 'column' &&
-        level2Name
-      ) {
-        columnComments[level2Name] = comment;
-      }
-
-      match = execRegex.exec(sql);
-    }
-
-    const normalizedSql = sqlWithoutExec.replace(
-      /gen_random_uuid\(\)/gi,
-      'uuid()',
-    );
-
-    return { sql: normalizedSql, tableComment, columnComments };
-  }
-
-  private extractSqlServerGrantUsers(sql: string): string[] {
-    const users: string[] = [];
-    const grantRegex = /GRANT\s+[\s\S]*?\s+TO\s+([^;]+);/gi;
-    let match: RegExpExecArray | null = grantRegex.exec(sql);
-    while (match !== null) {
-      const target = match[1];
-      target
-        .split(',')
-        .map((raw) => raw.trim().replace(/^N'/, "'"))
-        .map((value) => {
-          let cleaned = value;
-          if (
-            cleaned.startsWith('[') ||
-            cleaned.startsWith("'") ||
-            cleaned.startsWith('"')
-          ) {
-            cleaned = cleaned.slice(1);
-          }
-          if (
-            cleaned.endsWith(']') ||
-            cleaned.endsWith("'") ||
-            cleaned.endsWith('"')
-          ) {
-            cleaned = cleaned.slice(0, -1);
-          }
-          return cleaned;
-        })
-        .forEach((u) => {
-          if (u && !users.includes(u)) users.push(u);
-        });
-
-      match = grantRegex.exec(sql);
-    }
-    return users;
-  }
-
-  private extractStandaloneComments(sql: string) {
-    const columnComments: Record<string, string> = {};
-    let tableComment = '';
-
-    const cleanedSql = sql
-      .replace(
-        /COMMENT\s+ON\s+TABLE\s+([\w".]+)\s+IS\s+'([^']*)'\s*;/gi,
-        (_m, _table, comment) => {
-          tableComment = comment;
-          return '';
-        },
-      )
-      .replace(
-        /COMMENT\s+ON\s+COLUMN\s+([\w".]+)\.([\w"]+)\s+IS\s+'([^']*)'\s*;/gi,
-        (_m, _table, column, comment) => {
-          const colName = column.replace(/"/g, '');
-          columnComments[colName] = comment;
-          return '';
-        },
-      );
-
-    return { sql: cleanedSql, tableComment, columnComments };
   }
 
   private mergeComments(
@@ -319,12 +178,7 @@ export class SqlParser {
     } | null = null;
     let rawGrantUsers: string[] = [];
 
-    const mergeCommentSource = (
-      source: {
-        tableComment: string;
-        columnComments: Record<string, string>;
-      } | null,
-    ) => {
+    const mergeCommentSource = (source: PreprocessResult | null) => {
       if (!source) return;
       if (!extractedComments) {
         extractedComments = {
@@ -344,19 +198,19 @@ export class SqlParser {
     };
 
     if (dbType === 'oracle') {
-      const processed = this.preprocessOracle(sqlToParse);
+      const processed = preprocessOracle(sqlToParse);
       sqlToParse = processed.sql;
       mergeCommentSource(processed);
     }
 
     if (dbType === 'sqlserver') {
-      const processed = this.preprocessSqlServer(sqlToParse);
+      const processed = preprocessSqlServer(sqlToParse);
       sqlToParse = processed.sql;
       mergeCommentSource(processed);
-      rawGrantUsers = this.extractSqlServerGrantUsers(sql);
+      rawGrantUsers = extractSqlServerGrantUsers(sql);
     }
 
-    const standalone = this.extractStandaloneComments(sqlToParse);
+    const standalone = extractStandaloneComments(sqlToParse);
     sqlToParse = standalone.sql;
     mergeCommentSource(standalone);
 
