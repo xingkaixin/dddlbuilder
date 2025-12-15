@@ -28,6 +28,8 @@ export default defineConfig({
         'src/scripts/**/*', // Exclude utility scripts
         'src/interfaces/**/*', // Exclude TypeScript interfaces
         'src/types/**/*', // Exclude TypeScript type definitions
+        'src/**/index.ts', // Exclude barrel exports
+        'src/**/types.ts', // Exclude type-only files
         'src/main.tsx',
         'src/vite-env.d.ts',
       ],
