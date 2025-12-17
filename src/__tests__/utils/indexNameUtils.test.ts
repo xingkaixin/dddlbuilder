@@ -24,7 +24,8 @@ describe('indexNameUtils', () => {
     });
 
     it('名称超过最大长度时，应该截断并添加哈希后缀', () => {
-      const longName = 'idx_very_long_table_name_with_many_fields_column1_column2_column3';
+      const longName =
+        'idx_very_long_table_name_with_many_fields_column1_column2_column3';
       const truncated = truncateIndexName(longName);
 
       expect(truncated.length).toBe(40);
@@ -33,7 +34,8 @@ describe('indexNameUtils', () => {
     });
 
     it('相同的长名称应该生成相同的截断结果', () => {
-      const longName = 'idx_consistent_hash_test_with_very_long_name_that_exceeds_limit';
+      const longName =
+        'idx_consistent_hash_test_with_very_long_name_that_exceeds_limit';
       const result1 = truncateIndexName(longName);
       const result2 = truncateIndexName(longName);
 
