@@ -106,6 +106,18 @@ describe('indexNameUtils', () => {
       expect(result).toMatch(/_[a-z0-9]{4}$/);
     });
 
+    it('支持自定义最大长度', () => {
+      const result = buildIndexName(
+        'idx',
+        'very_long_table_name',
+        ['column1', 'column2', 'column3'],
+        30,
+      );
+
+      expect(result.length).toBeLessThanOrEqual(30);
+      expect(result).toMatch(/_[a-z0-9]{4}$/);
+    });
+
     it('组合多个长字段名时应该截断', () => {
       const result = buildIndexName('uk', 'transaction_history', [
         'account_number',

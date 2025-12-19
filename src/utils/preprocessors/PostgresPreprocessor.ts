@@ -10,20 +10,21 @@ import type { PreprocessResult } from './types';
 export function extractStandaloneComments(sql: string): PreprocessResult {
   const columnComments: Record<string, string> = {};
   let tableComment = '';
+  const unescapeComment = (value: string) => value.replace(/''/g, "'");
 
   const cleanedSql = sql
     .replace(
-      /COMMENT\s+ON\s+TABLE\s+[\w".]+\s+IS\s+'([^']*)'\s*;/gi,
+      /COMMENT\s+ON\s+TABLE\s+[\w".]+\s+IS\s+'((?:''|[^'])*)'\s*;/gi,
       (_m, comment) => {
-        tableComment = comment;
+        tableComment = unescapeComment(comment);
         return '';
       },
     )
     .replace(
-      /COMMENT\s+ON\s+COLUMN\s+[\w".]+\.(["\w]+)\s+IS\s+'([^']*)'\s*;/gi,
+      /COMMENT\s+ON\s+COLUMN\s+[\w".]+\.(["\w]+)\s+IS\s+'((?:''|[^'])*)'\s*;/gi,
       (_m, column, comment) => {
         const colName = column.replace(/"/g, '');
-        columnComments[colName] = comment;
+        columnComments[colName] = unescapeComment(comment);
         return '';
       },
     );

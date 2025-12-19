@@ -94,6 +94,7 @@ function App() {
     tableName,
     availableFields,
     persistedState || undefined,
+    dbType,
   );
 
   const {

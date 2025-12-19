@@ -359,7 +359,7 @@ export const isLikelyFunctionOrKeyword = (value: string) => {
   }
 
   // Check for partial matches (but exclude specific cases)
-  const partialKeywords = ['current_timestamp', 'uuid', 'default'];
+  const partialKeywords = ['current_timestamp', 'uuid'];
   return partialKeywords.some((keyword) => {
     const upperKeyword = keyword.toUpperCase();
     return (
