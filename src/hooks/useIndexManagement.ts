@@ -1,7 +1,12 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import type { IndexField, IndexDefinition } from '@/types';
+import type { DatabaseType, IndexField, IndexDefinition } from '@/types';
 import { buildPrimaryKeyName } from '@/utils/primaryKeyNaming';
-import { buildIndexName, truncateIndexName } from '@/utils/indexNameUtils';
+import {
+  buildIndexName,
+  truncateIndexName,
+  MAX_INDEX_NAME_LENGTH,
+  ORACLE_INDEX_NAME_LENGTH,
+} from '@/utils/indexNameUtils';
 
 export interface UseIndexManagementReturn {
   indexInput: string;
@@ -32,6 +37,7 @@ export function useIndexManagement(
     currentIndexFields?: IndexField[];
     indexes?: IndexDefinition[];
   },
+  dbType?: DatabaseType,
 ): UseIndexManagementReturn {
   const [indexInput, setIndexInput] = useState('');
   const [currentIndexFields, setCurrentIndexFields] = useState<IndexField[]>(
@@ -41,6 +47,8 @@ export function useIndexManagement(
   const [showFieldSuggestions, setShowFieldSuggestions] = useState(false);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
   const [initialized, setInitialized] = useState(false);
+  const indexNameMaxLength =
+    dbType === 'oracle' ? ORACLE_INDEX_NAME_LENGTH : MAX_INDEX_NAME_LENGTH;
 
   // Update state when persisted data becomes available
   useEffect(() => {
@@ -104,6 +112,7 @@ export function useIndexManagement(
             unique ? 'uk' : 'idx',
             tableName,
             currentIndexFields.map((f) => f.name),
+            indexNameMaxLength,
           );
 
       const newIndex: IndexDefinition = {
@@ -118,25 +127,31 @@ export function useIndexManagement(
       setCurrentIndexFields([]);
       setIndexInput('');
     },
-    [currentIndexFields, tableName, indexes],
+    [currentIndexFields, tableName, indexes, indexNameMaxLength],
   );
 
   const removeIndex = useCallback((id: string) => {
     setIndexes((prev) => prev.filter((index) => index.id !== id));
   }, []);
 
-  const updateIndexName = useCallback((id: string, newName: string) => {
-    const trimmedName = newName.trim();
-    if (!trimmedName) return;
+  const updateIndexName = useCallback(
+    (id: string, newName: string) => {
+      const trimmedName = newName.trim();
+      if (!trimmedName) return;
 
-    setIndexes((prev) =>
-      prev.map((index) =>
-        index.id === id
-          ? { ...index, name: truncateIndexName(trimmedName) }
-          : index,
-      ),
-    );
-  }, []);
+      setIndexes((prev) =>
+        prev.map((index) =>
+          index.id === id
+            ? {
+                ...index,
+                name: truncateIndexName(trimmedName, indexNameMaxLength),
+              }
+            : index,
+        ),
+      );
+    },
+    [indexNameMaxLength],
+  );
 
   const resetIndexState = useCallback(() => {
     setIndexInput('');
@@ -160,9 +175,10 @@ export function useIndexManagement(
         prefix,
         currentTableName,
         index.fields.map((f) => f.name),
+        indexNameMaxLength,
       );
     },
-    [],
+    [indexNameMaxLength],
   );
 
   // Update all index names based on new table name

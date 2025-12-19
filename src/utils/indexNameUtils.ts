@@ -3,6 +3,7 @@
  */
 
 const MAX_INDEX_NAME_LENGTH = 40;
+const ORACLE_INDEX_NAME_LENGTH = 30;
 
 /**
  * Generate a short hash from a string
@@ -53,13 +54,14 @@ export function buildIndexName(
   prefix: 'idx' | 'uk' | 'pk',
   tableName: string,
   fieldNames: string[],
+  maxLength: number = MAX_INDEX_NAME_LENGTH,
 ): string {
   const fullName =
     fieldNames.length === 1
       ? `${prefix}_${tableName}_${fieldNames[0]}`
       : `${prefix}_${tableName}_${fieldNames.join('_')}`;
 
-  return truncateIndexName(fullName);
+  return truncateIndexName(fullName, maxLength);
 }
 
-export { MAX_INDEX_NAME_LENGTH };
+export { MAX_INDEX_NAME_LENGTH, ORACLE_INDEX_NAME_LENGTH };
