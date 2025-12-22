@@ -27,7 +27,7 @@
     "clsx": "^2.1.1",
     "gray-matter": "^4.0.3",
     "handsontable": "^16.2.0",
-    "lucide-react": "^0.561.0",
+    "lucide-react": "^0.562.0",
     "lz-string": "^1.5.0",
     "node-sql-parser": "^5.3.13",
     "png-to-ico": "^3.0.1",
