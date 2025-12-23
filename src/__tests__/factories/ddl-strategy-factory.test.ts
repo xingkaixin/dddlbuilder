@@ -27,6 +27,7 @@ describe('DDLStrategyFactory', () => {
   it('应该返回支持的数据库类型列表', () => {
     const supported = DDLStrategyFactory.getSupportedDatabaseTypes();
     expect(supported.sort()).toEqual([
+      'mariadb',
       'mysql',
       'oracle',
       'postgresql',
