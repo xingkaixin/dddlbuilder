@@ -3,7 +3,8 @@ export type DatabaseType =
   | 'postgresql'
   | 'sqlserver'
   | 'oracle'
-  | 'mariadb';
+  | 'mariadb'
+  | 'tidb';
 
 export type FieldRow = {
   order: number;

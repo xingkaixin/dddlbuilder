@@ -32,6 +32,7 @@ describe('DDLStrategyFactory', () => {
       'oracle',
       'postgresql',
       'sqlserver',
+      'tidb',
     ]);
   });
 
