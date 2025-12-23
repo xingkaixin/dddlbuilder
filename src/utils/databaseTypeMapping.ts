@@ -249,6 +249,7 @@ export const supportsAutoIncrement = (db: DatabaseType, canonical: string) => {
     case 'mysql':
     case 'mariadb':
     case 'tidb':
+    case 'oceanbase':
       return isIntegerType(canonical);
     case 'postgresql':
       return new Set(['smallint', 'int', 'integer', 'bigint']).has(canonical);
@@ -270,6 +271,7 @@ export const supportsDefaultCurrentTimestamp = (
     case 'mysql':
     case 'mariadb':
     case 'tidb':
+    case 'oceanbase':
       return new Set(['timestamp', 'datetime']).has(canonical);
     case 'postgresql':
       return new Set(['timestamp', 'timestamptz']).has(canonical);
@@ -282,6 +284,7 @@ export const supportsDefaultCurrentTimestamp = (
       ]).has(canonical);
     case 'oracle':
     case 'dm':
+    case 'oceanbase-oracle':
       return new Set(['timestamp', 'date']).has(canonical);
     default:
       return false;
@@ -296,6 +299,7 @@ export const supportsOnUpdateCurrentTimestamp = (
     case 'mysql':
     case 'mariadb':
     case 'tidb':
+    case 'oceanbase':
       return new Set(['timestamp']).has(canonical);
     default:
       return false;

@@ -7,6 +7,8 @@ import { OracleStrategy } from '../strategies/OracleStrategy';
 import { MariaDbStrategy } from '../strategies/MariaDbStrategy';
 import { TiDbStrategy } from '../strategies/TiDbStrategy';
 import { DmStrategy } from '../strategies/DmStrategy';
+import { OceanBaseMySqlStrategy } from '../strategies/OceanBaseMySqlStrategy';
+import { OceanBaseOracleStrategy } from '../strategies/OceanBaseOracleStrategy';
 
 export class DDLStrategyFactory {
   private static strategies: Map<DatabaseType, DDLStrategy> = new Map([
@@ -17,6 +19,8 @@ export class DDLStrategyFactory {
     ['mariadb', new MariaDbStrategy()],
     ['tidb', new TiDbStrategy()],
     ['dm', new DmStrategy()],
+    ['oceanbase', new OceanBaseMySqlStrategy()],
+    ['oceanbase-oracle', new OceanBaseOracleStrategy()],
   ]);
 
   static create(databaseType: DatabaseType): DDLStrategy {

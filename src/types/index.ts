@@ -5,7 +5,9 @@ export type DatabaseType =
   | 'oracle'
   | 'mariadb'
   | 'tidb'
-  | 'dm';
+  | 'dm'
+  | 'oceanbase'
+  | 'oceanbase-oracle';
 
 export type FieldRow = {
   order: number;
