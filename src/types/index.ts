@@ -1,4 +1,9 @@
-export type DatabaseType = 'mysql' | 'postgresql' | 'sqlserver' | 'oracle';
+export type DatabaseType =
+  | 'mysql'
+  | 'postgresql'
+  | 'sqlserver'
+  | 'oracle'
+  | 'mariadb';
 
 export type FieldRow = {
   order: number;
