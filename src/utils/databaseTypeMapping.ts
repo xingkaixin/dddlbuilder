@@ -255,6 +255,7 @@ export const supportsAutoIncrement = (db: DatabaseType, canonical: string) => {
     case 'sqlserver':
       return new Set(['tinyint', 'smallint', 'int', 'bigint']).has(canonical);
     case 'oracle':
+    case 'dm':
       return isNumericType(canonical);
     default:
       return false;
@@ -280,6 +281,7 @@ export const supportsDefaultCurrentTimestamp = (
         'timestamp',
       ]).has(canonical);
     case 'oracle':
+    case 'dm':
       return new Set(['timestamp', 'date']).has(canonical);
     default:
       return false;

@@ -4,7 +4,8 @@ export type DatabaseType =
   | 'sqlserver'
   | 'oracle'
   | 'mariadb'
-  | 'tidb';
+  | 'tidb'
+  | 'dm';
 
 export type FieldRow = {
   order: number;
