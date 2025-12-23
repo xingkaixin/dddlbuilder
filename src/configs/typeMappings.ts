@@ -239,4 +239,59 @@ export const TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
       transform: (parsed) => 'NUMBER GENERATED ALWAYS AS IDENTITY',
     },
   },
+
+  dm: {
+    // 字符串类型
+    varchar: { mapping: 'varchar', defaultArgs: ['255'] },
+    nvarchar: { mapping: 'varchar', defaultArgs: ['255'] },
+    char: { mapping: 'char', defaultArgs: ['1'] },
+    nchar: { mapping: 'char', defaultArgs: ['1'] },
+    text: { mapping: 'clob' },
+    mediumtext: { mapping: 'clob' },
+    longtext: { mapping: 'clob' },
+    clob: { mapping: 'clob' },
+
+    // 整数类型
+    int: { mapping: 'int' },
+    integer: { mapping: 'int' },
+    tinyint: { mapping: 'tinyint', defaultArgs: ['1'] },
+    smallint: { mapping: 'smallint' },
+    bigint: { mapping: 'bigint' },
+    decimal: { mapping: 'number', defaultArgs: ['10', '2'] },
+    numeric: { mapping: 'number', defaultArgs: ['10', '2'] },
+    number: { mapping: 'number', defaultArgs: ['10', '2'] },
+    double: { mapping: 'double' },
+    float: { mapping: 'float', defaultArgs: ['10', '2'] },
+    real: { mapping: 'real' },
+
+    // 日期时间类型（达梦的 DATE 包含时分秒）
+    date: { mapping: 'date' },
+    datetime: { mapping: 'timestamp' },
+    datetime2: { mapping: 'timestamp' },
+    timestamp: { mapping: 'timestamp' },
+    timestamptz: { mapping: 'timestamp', suffix: 'WITH TIME ZONE' },
+    time: { mapping: 'time' },
+    timetz: { mapping: 'time' },
+
+    // 布尔类型（达梦使用 NUMBER(1)）
+    boolean: { mapping: 'number', defaultArgs: ['1'] },
+    bool: { mapping: 'number', defaultArgs: ['1'] },
+    bit: { mapping: 'bit', defaultArgs: ['1'] },
+
+    // 大对象类型
+    blob: { mapping: 'blob' },
+    varbinary: { mapping: 'varbinary' },
+
+    // UUID 类型
+    uuid: { mapping: 'char', defaultArgs: ['36'] },
+
+    // 自增列类型
+    serial: {
+      transform: (parsed) => 'BIGINT IDENTITY(1,1)',
+    },
+
+    // JSON 类型
+    json: { mapping: 'json' },
+    jsonb: { mapping: 'json' },
+  },
 };
