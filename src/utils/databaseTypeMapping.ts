@@ -257,6 +257,7 @@ export const supportsAutoIncrement = (db: DatabaseType, canonical: string) => {
       return new Set(['tinyint', 'smallint', 'int', 'bigint']).has(canonical);
     case 'oracle':
     case 'dm':
+    case 'oceanbase-oracle':
       return isNumericType(canonical);
     default:
       return false;
@@ -296,11 +297,12 @@ export const supportsOnUpdateCurrentTimestamp = (
   canonical: string,
 ) => {
   switch (db) {
+    // MySQL 5.6.5+、MariaDB、TiDB、OceanBase MySQL 模式支持 DATETIME 的 ON UPDATE CURRENT_TIMESTAMP
     case 'mysql':
     case 'mariadb':
     case 'tidb':
     case 'oceanbase':
-      return new Set(['timestamp']).has(canonical);
+      return new Set(['timestamp', 'datetime']).has(canonical);
     default:
       return false;
   }
