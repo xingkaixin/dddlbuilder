@@ -5,6 +5,7 @@ import { PostgresStrategy } from '../strategies/PostgresStrategy';
 import { SqlServerStrategy } from '../strategies/SqlServerStrategy';
 import { OracleStrategy } from '../strategies/OracleStrategy';
 import { MariaDbStrategy } from '../strategies/MariaDbStrategy';
+import { TiDbStrategy } from '../strategies/TiDbStrategy';
 
 export class DDLStrategyFactory {
   private static strategies: Map<DatabaseType, DDLStrategy> = new Map([
@@ -13,6 +14,7 @@ export class DDLStrategyFactory {
     ['sqlserver', new SqlServerStrategy()],
     ['oracle', new OracleStrategy()],
     ['mariadb', new MariaDbStrategy()],
+    ['tidb', new TiDbStrategy()],
   ]);
 
   static create(databaseType: DatabaseType): DDLStrategy {
