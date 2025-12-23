@@ -587,5 +587,84 @@ describe('Type Mapping Functions', () => {
         expect(getFieldTypeForDatabase('oracle', 'jsonb')).toBe('CLOB');
       });
     });
+
+    describe('MariaDB type mapping', () => {
+      it('should behave the same as MySQL', () => {
+        // MariaDB 是 MySQL 的分支，类型映射应该与 MySQL 一致
+        expect(getFieldTypeForDatabase('mariadb', 'varchar')).toBe(
+          'VARCHAR(255)',
+        );
+        expect(getFieldTypeForDatabase('mariadb', 'int')).toBe('INT');
+        expect(getFieldTypeForDatabase('mariadb', 'int unsigned')).toBe(
+          'INT UNSIGNED',
+        );
+        expect(getFieldTypeForDatabase('mariadb', 'timestamp')).toBe(
+          'TIMESTAMP',
+        );
+        expect(getFieldTypeForDatabase('mariadb', 'datetime')).toBe('DATETIME');
+        expect(getFieldTypeForDatabase('mariadb', 'json')).toBe('JSON');
+      });
+    });
+
+    describe('TiDB type mapping', () => {
+      it('should behave the same as MySQL', () => {
+        // TiDB 兼容 MySQL 协议，类型映射应该与 MySQL 一致
+        expect(getFieldTypeForDatabase('tidb', 'varchar')).toBe('VARCHAR(255)');
+        expect(getFieldTypeForDatabase('tidb', 'int')).toBe('INT');
+        expect(getFieldTypeForDatabase('tidb', 'int unsigned')).toBe(
+          'INT UNSIGNED',
+        );
+        expect(getFieldTypeForDatabase('tidb', 'timestamp')).toBe('TIMESTAMP');
+        expect(getFieldTypeForDatabase('tidb', 'datetime')).toBe('DATETIME');
+        expect(getFieldTypeForDatabase('tidb', 'json')).toBe('JSON');
+      });
+    });
+
+    describe('OceanBase MySQL mode type mapping', () => {
+      it('should behave the same as MySQL', () => {
+        // OceanBase MySQL 模式高度兼容 MySQL，类型映射应该与 MySQL 一致
+        expect(getFieldTypeForDatabase('oceanbase', 'varchar')).toBe(
+          'VARCHAR(255)',
+        );
+        expect(getFieldTypeForDatabase('oceanbase', 'int')).toBe('INT');
+        expect(getFieldTypeForDatabase('oceanbase', 'int unsigned')).toBe(
+          'INT UNSIGNED',
+        );
+        expect(getFieldTypeForDatabase('oceanbase', 'timestamp')).toBe(
+          'TIMESTAMP',
+        );
+        expect(getFieldTypeForDatabase('oceanbase', 'datetime')).toBe(
+          'DATETIME',
+        );
+        expect(getFieldTypeForDatabase('oceanbase', 'json')).toBe('JSON');
+      });
+    });
+
+    describe('OceanBase Oracle mode type mapping', () => {
+      it('should behave the same as Oracle', () => {
+        // OceanBase Oracle 模式兼容 Oracle，类型映射应该与 Oracle 一致
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'varchar')).toBe(
+          'VARCHAR2(100)',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'int')).toBe(
+          'NUMBER(10)',
+        );
+        expect(
+          getFieldTypeForDatabase('oceanbase-oracle', 'decimal(10,3)'),
+        ).toBe('NUMBER(10, 3)');
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'timestamp')).toBe(
+          'TIMESTAMP',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'date')).toBe(
+          'DATE',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'text')).toBe(
+          'CLOB',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'json')).toBe(
+          'CLOB',
+        );
+      });
+    });
   });
 });
