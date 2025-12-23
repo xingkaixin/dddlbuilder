@@ -30,6 +30,8 @@ describe('DDLStrategyFactory', () => {
       'dm',
       'mariadb',
       'mysql',
+      'oceanbase',
+      'oceanbase-oracle',
       'oracle',
       'postgresql',
       'sqlserver',
