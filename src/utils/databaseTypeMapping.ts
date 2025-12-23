@@ -247,6 +247,7 @@ export const supportsUuidDefault = (canonical: string) =>
 export const supportsAutoIncrement = (db: DatabaseType, canonical: string) => {
   switch (db) {
     case 'mysql':
+    case 'mariadb':
       return isIntegerType(canonical);
     case 'postgresql':
       return new Set(['smallint', 'int', 'integer', 'bigint']).has(canonical);
@@ -265,6 +266,7 @@ export const supportsDefaultCurrentTimestamp = (
 ) => {
   switch (db) {
     case 'mysql':
+    case 'mariadb':
       return new Set(['timestamp', 'datetime']).has(canonical);
     case 'postgresql':
       return new Set(['timestamp', 'timestamptz']).has(canonical);
@@ -288,6 +290,7 @@ export const supportsOnUpdateCurrentTimestamp = (
 ) => {
   switch (db) {
     case 'mysql':
+    case 'mariadb':
       return new Set(['timestamp']).has(canonical);
     default:
       return false;
