@@ -402,4 +402,36 @@ describe('OceanBaseOracleStrategy', () => {
 
     expect(result).toContain('ts TIMESTAMP WITH TIME ZONE');
   });
+
+  it('DATE 应该使用 SYSDATE，TIMESTAMP 应该使用 SYSTIMESTAMP', () => {
+    const fields: NormalizedField[] = [
+      {
+        name: 'created_date',
+        type: 'date',
+        comment: '创建日期',
+        nullable: false,
+        defaultKind: 'current_timestamp',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+      {
+        name: 'created_at',
+        type: 'timestamp',
+        comment: '创建时间',
+        nullable: false,
+        defaultKind: 'current_timestamp',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+    ];
+
+    const result = strategy.generateTableDDL('test', '', fields);
+
+    // DATE 使用 SYSDATE（精确到秒）
+    expect(result).toContain('created_date DATE DEFAULT SYSDATE NOT NULL');
+    // TIMESTAMP 使用 SYSTIMESTAMP（包含小数秒和时区）
+    expect(result).toContain(
+      'created_at TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL',
+    );
+  });
 });
