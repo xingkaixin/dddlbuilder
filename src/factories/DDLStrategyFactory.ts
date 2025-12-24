@@ -14,6 +14,7 @@ export class DDLStrategyFactory {
   private static strategies: Map<DatabaseType, DDLStrategy> = new Map([
     ['mysql', new MySqlStrategy()],
     ['postgresql', new PostgresStrategy()],
+    ['postgresql-citus', new PostgresStrategy('postgresql-citus')],
     ['sqlserver', new SqlServerStrategy()],
     ['oracle', new OracleStrategy()],
     ['mariadb', new MariaDbStrategy()],

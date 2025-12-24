@@ -220,7 +220,9 @@ export class SqlParser {
           ? 'transactsql'
           : dbType === 'oracle'
             ? 'mysql'
-            : dbType,
+            : dbType === 'postgresql-citus'
+              ? 'postgresql'
+              : dbType,
     };
 
     let ast: any;

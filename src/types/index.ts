@@ -1,6 +1,7 @@
 export type DatabaseType =
   | 'mysql'
   | 'postgresql'
+  | 'postgresql-citus'
   | 'sqlserver'
   | 'oracle'
   | 'mariadb'
