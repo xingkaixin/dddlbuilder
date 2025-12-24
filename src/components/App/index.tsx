@@ -176,6 +176,7 @@ function App() {
     if (
       persistedState.dbType === 'mysql' ||
       persistedState.dbType === 'postgresql' ||
+      persistedState.dbType === 'postgresql-citus' ||
       persistedState.dbType === 'sqlserver' ||
       persistedState.dbType === 'oracle'
     ) {

@@ -252,6 +252,7 @@ export const supportsAutoIncrement = (db: DatabaseType, canonical: string) => {
     case 'oceanbase':
       return isIntegerType(canonical);
     case 'postgresql':
+    case 'postgresql-citus':
       return new Set(['smallint', 'int', 'integer', 'bigint']).has(canonical);
     case 'sqlserver':
       return new Set(['tinyint', 'smallint', 'int', 'bigint']).has(canonical);
@@ -275,6 +276,7 @@ export const supportsDefaultCurrentTimestamp = (
     case 'oceanbase':
       return new Set(['timestamp', 'datetime']).has(canonical);
     case 'postgresql':
+    case 'postgresql-citus':
       return new Set(['timestamp', 'timestamptz']).has(canonical);
     case 'sqlserver':
       return new Set([

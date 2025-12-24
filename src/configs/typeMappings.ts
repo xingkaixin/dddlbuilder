@@ -375,3 +375,6 @@ export const TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
     },
   },
 };
+
+// PostgreSQL (Citus) reuses PostgreSQL type mappings.
+TYPE_MAPPINGS['postgresql-citus'] = TYPE_MAPPINGS.postgresql;
