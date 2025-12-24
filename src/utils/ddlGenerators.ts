@@ -1,5 +1,28 @@
-import type { DatabaseType, NormalizedField, IndexDefinition } from '../types';
+import type {
+  DatabaseType,
+  NormalizedField,
+  IndexDefinition,
+  CitusShardingConfig,
+} from '../types';
 import { DDLStrategyFactory } from '../factories/DDLStrategyFactory';
+
+/**
+ * Generate Citus sharding DDL
+ */
+const buildCitusShardingDDL = (
+  tableName: string,
+  config: CitusShardingConfig,
+): string => {
+  const cleanTableName = tableName.trim();
+  if (config.mode === 'reference') {
+    return `SELECT create_reference_table('${cleanTableName}');`;
+  }
+  // distributed mode
+  if (config.distributionColumn) {
+    return `SELECT create_distributed_table('${cleanTableName}', '${config.distributionColumn}');`;
+  }
+  return `-- 请选择分片字段`;
+};
 
 export const buildDDL = (
   dbType: DatabaseType,
@@ -7,6 +30,7 @@ export const buildDDL = (
   tableComment: string,
   fields: NormalizedField[],
   indexes: IndexDefinition[] = [],
+  citusShardingConfig?: CitusShardingConfig,
 ) => {
   if (!tableName.trim()) {
     return '-- 请填写表名';
@@ -37,6 +61,12 @@ export const buildDDL = (
     if (synonymDDL) {
       extraBlocks.push(synonymDDL);
     }
+  }
+
+  // Add Citus sharding DDL for postgresql-citus
+  if (dbType === 'postgresql-citus' && citusShardingConfig) {
+    const citusDDL = buildCitusShardingDDL(tableName, citusShardingConfig);
+    extraBlocks.push(citusDDL);
   }
 
   return extraBlocks.length > 0

@@ -13,10 +13,17 @@ export class TypeMapper {
     const canonical = canonicalizeBaseType(parsed.baseType);
     const mapping = TYPE_MAPPINGS[this.databaseType]?.[canonical];
 
+    // 检查当前数据库是否支持 UNSIGNED（MySQL 兼容的数据库）
+    const supportsUnsigned =
+      this.databaseType === 'mysql' ||
+      this.databaseType === 'mariadb' ||
+      this.databaseType === 'tidb' ||
+      this.databaseType === 'oceanbase';
+
     if (!mapping) {
       // 如果没有找到映射，返回原始类型
       let result = this.formatType(parsed.baseType, parsed.args, '', true);
-      if (parsed.unsigned && this.databaseType === 'mysql') {
+      if (parsed.unsigned && supportsUnsigned) {
         result += ' UNSIGNED';
       }
       return result;
@@ -33,8 +40,8 @@ export class TypeMapper {
     const args = parsed.args.length > 0 ? parsed.args : mapping.defaultArgs;
     let suffix = mapping.suffix || '';
 
-    // 处理 unsigned 后缀（MySQL 特有）
-    if (parsed.unsigned && this.databaseType === 'mysql') {
+    // 处理 unsigned 后缀（MySQL 兼容数据库）
+    if (parsed.unsigned && supportsUnsigned) {
       if (!suffix.includes('UNSIGNED')) {
         suffix = suffix ? `${suffix} UNSIGNED` : 'UNSIGNED';
       }

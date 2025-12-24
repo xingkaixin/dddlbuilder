@@ -774,6 +774,103 @@ describe('Utils', () => {
     });
   });
 
+  describe('New database types support', () => {
+    describe('MariaDB', () => {
+      it('应该支持整数类型的自增', () => {
+        const result = getUiDefaultKindOptions('mariadb', 'int');
+        expect(result).toContain('自增');
+      });
+
+      it('应该支持 timestamp 和 datetime 的当前时间默认值', () => {
+        const result1 = getUiDefaultKindOptions('mariadb', 'timestamp');
+        expect(result1).toContain('当前时间');
+
+        const result2 = getUiDefaultKindOptions('mariadb', 'datetime');
+        expect(result2).toContain('当前时间');
+      });
+
+      it('应该支持 timestamp 和 datetime 的 ON UPDATE CURRENT_TIMESTAMP', () => {
+        const result1 = getUiOnUpdateOptions('mariadb', 'timestamp');
+        expect(result1).toEqual(['无', '当前时间']);
+
+        const result2 = getUiOnUpdateOptions('mariadb', 'datetime');
+        expect(result2).toEqual(['无', '当前时间']);
+      });
+    });
+
+    describe('TiDB', () => {
+      it('应该支持整数类型的自增', () => {
+        const result = getUiDefaultKindOptions('tidb', 'int');
+        expect(result).toContain('自增');
+      });
+
+      it('应该支持 timestamp 和 datetime 的当前时间默认值', () => {
+        const result1 = getUiDefaultKindOptions('tidb', 'timestamp');
+        expect(result1).toContain('当前时间');
+
+        const result2 = getUiDefaultKindOptions('tidb', 'datetime');
+        expect(result2).toContain('当前时间');
+      });
+
+      it('应该支持 timestamp 和 datetime 的 ON UPDATE CURRENT_TIMESTAMP', () => {
+        const result1 = getUiOnUpdateOptions('tidb', 'timestamp');
+        expect(result1).toEqual(['无', '当前时间']);
+
+        const result2 = getUiOnUpdateOptions('tidb', 'datetime');
+        expect(result2).toEqual(['无', '当前时间']);
+      });
+    });
+
+    describe('OceanBase MySQL 模式', () => {
+      it('应该支持整数类型的自增', () => {
+        const result = getUiDefaultKindOptions('oceanbase', 'int');
+        expect(result).toContain('自增');
+      });
+
+      it('应该支持 timestamp 和 datetime 的当前时间默认值', () => {
+        const result1 = getUiDefaultKindOptions('oceanbase', 'timestamp');
+        expect(result1).toContain('当前时间');
+
+        const result2 = getUiDefaultKindOptions('oceanbase', 'datetime');
+        expect(result2).toContain('当前时间');
+      });
+
+      it('应该支持 timestamp 和 datetime 的 ON UPDATE CURRENT_TIMESTAMP', () => {
+        const result1 = getUiOnUpdateOptions('oceanbase', 'timestamp');
+        expect(result1).toEqual(['无', '当前时间']);
+
+        const result2 = getUiOnUpdateOptions('oceanbase', 'datetime');
+        expect(result2).toEqual(['无', '当前时间']);
+      });
+    });
+
+    describe('OceanBase Oracle 模式', () => {
+      it('应该支持数值类型的自增', () => {
+        const result1 = getUiDefaultKindOptions('oceanbase-oracle', 'int');
+        expect(result1).toContain('自增');
+
+        const result2 = getUiDefaultKindOptions('oceanbase-oracle', 'decimal');
+        expect(result2).toContain('自增');
+      });
+
+      it('应该支持 timestamp 和 date 的当前时间默认值', () => {
+        const result1 = getUiDefaultKindOptions(
+          'oceanbase-oracle',
+          'timestamp',
+        );
+        expect(result1).toContain('当前时间');
+
+        const result2 = getUiDefaultKindOptions('oceanbase-oracle', 'date');
+        expect(result2).toContain('当前时间');
+      });
+
+      it('不应该支持 ON UPDATE CURRENT_TIMESTAMP', () => {
+        const result = getUiOnUpdateOptions('oceanbase-oracle', 'timestamp');
+        expect(result).toEqual(['无']);
+      });
+    });
+  });
+
   describe('Unknown database types', () => {
     it('应该对未知数据库类型不支持自增', () => {
       const result = getUiDefaultKindOptions('unknown_db' as any, 'int');

@@ -21,6 +21,7 @@ export class MySqlStrategy extends AbstractDDLStrategy {
     tableComment: string,
     fields: NormalizedField[],
   ): string {
+    const dbType = this.getDatabaseType();
     const typeMapper = this.createTypeMapper();
     const columnLines = fields.map((field) => {
       const parsedType = parseFieldType(field.type);
@@ -29,7 +30,7 @@ export class MySqlStrategy extends AbstractDDLStrategy {
 
       const autoInc =
         field.defaultKind === 'auto_increment' &&
-        supportsAutoIncrement('mysql', base)
+        supportsAutoIncrement(dbType, base)
           ? ' AUTO_INCREMENT'
           : '';
 
@@ -42,14 +43,14 @@ export class MySqlStrategy extends AbstractDDLStrategy {
         def = ' DEFAULT (UUID())';
       } else if (
         field.defaultKind === 'current_timestamp' &&
-        supportsDefaultCurrentTimestamp('mysql', base)
+        supportsDefaultCurrentTimestamp(dbType, base)
       ) {
         def = ' DEFAULT CURRENT_TIMESTAMP';
       }
 
       const onUpd =
         field.onUpdate === 'current_timestamp' &&
-        supportsOnUpdateCurrentTimestamp('mysql', base)
+        supportsOnUpdateCurrentTimestamp(dbType, base)
           ? ' ON UPDATE CURRENT_TIMESTAMP'
           : '';
 

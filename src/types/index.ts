@@ -1,4 +1,14 @@
-export type DatabaseType = 'mysql' | 'postgresql' | 'sqlserver' | 'oracle';
+export type DatabaseType =
+  | 'mysql'
+  | 'postgresql'
+  | 'postgresql-citus'
+  | 'sqlserver'
+  | 'oracle'
+  | 'mariadb'
+  | 'tidb'
+  | 'dm'
+  | 'oceanbase'
+  | 'oceanbase-oracle';
 
 export type FieldRow = {
   order: number;
@@ -49,6 +59,15 @@ export type ParsedFieldType = {
 export type UiDefaultKind = '无' | '自增' | '常量' | '当前时间' | 'uuid';
 export type UiOnUpdate = '无' | '当前时间';
 
+// Citus 分片模式
+export type CitusTableMode = 'reference' | 'distributed';
+
+// Citus 分片配置
+export type CitusShardingConfig = {
+  mode: CitusTableMode;
+  distributionColumn?: string; // 仅当 mode 为 'distributed' 时需要
+};
+
 export type PersistedState = {
   tableName: string;
   tableComment: string;
@@ -60,4 +79,5 @@ export type PersistedState = {
   indexes: IndexDefinition[];
   authInput: string;
   authObjects: string[];
+  citusShardingConfig?: CitusShardingConfig;
 };

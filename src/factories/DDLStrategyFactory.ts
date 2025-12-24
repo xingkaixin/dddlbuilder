@@ -4,13 +4,24 @@ import { MySqlStrategy } from '../strategies/MySqlStrategy';
 import { PostgresStrategy } from '../strategies/PostgresStrategy';
 import { SqlServerStrategy } from '../strategies/SqlServerStrategy';
 import { OracleStrategy } from '../strategies/OracleStrategy';
+import { MariaDbStrategy } from '../strategies/MariaDbStrategy';
+import { TiDbStrategy } from '../strategies/TiDbStrategy';
+import { DmStrategy } from '../strategies/DmStrategy';
+import { OceanBaseMySqlStrategy } from '../strategies/OceanBaseMySqlStrategy';
+import { OceanBaseOracleStrategy } from '../strategies/OceanBaseOracleStrategy';
 
 export class DDLStrategyFactory {
   private static strategies: Map<DatabaseType, DDLStrategy> = new Map([
     ['mysql', new MySqlStrategy()],
     ['postgresql', new PostgresStrategy()],
+    ['postgresql-citus', new PostgresStrategy('postgresql-citus')],
     ['sqlserver', new SqlServerStrategy()],
     ['oracle', new OracleStrategy()],
+    ['mariadb', new MariaDbStrategy()],
+    ['tidb', new TiDbStrategy()],
+    ['dm', new DmStrategy()],
+    ['oceanbase', new OceanBaseMySqlStrategy()],
+    ['oceanbase-oracle', new OceanBaseOracleStrategy()],
   ]);
 
   static create(databaseType: DatabaseType): DDLStrategy {

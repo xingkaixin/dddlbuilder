@@ -99,6 +99,9 @@ export function ImportSqlDialog({
               <SelectContent>
                 <SelectItem value="mysql">MySQL</SelectItem>
                 <SelectItem value="postgresql">PostgreSQL</SelectItem>
+                <SelectItem value="postgresql-citus">
+                  PostgreSQL (Citus)
+                </SelectItem>
                 <SelectItem value="sqlserver">SQL Server</SelectItem>
                 <SelectItem value="oracle">Oracle</SelectItem>
               </SelectContent>
