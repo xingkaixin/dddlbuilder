@@ -9,6 +9,7 @@
     "changelog": "bun run src/scripts/parseChangelog.ts",
     "logo": "bun run scripts/generate-logos.ts && bun run scripts/generate-favicon.ts",
     "lint": "biome check .",
+    "lint:fix": "biome check --fix .",
     "lint:format": "biome format .",
     "preview": "vite preview",
     "test": "vitest",

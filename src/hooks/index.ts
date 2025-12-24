@@ -15,3 +15,6 @@ export type { UseAuthManagementReturn } from './useAuthManagement';
 
 export { useSqlGeneration } from './useSqlGeneration';
 export type { UseSqlGenerationReturn } from './useSqlGeneration';
+
+export { useCitusSharding } from './useCitusSharding';
+export type { UseCitusShardingReturn } from './useCitusSharding';

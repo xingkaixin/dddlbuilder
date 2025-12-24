@@ -6,6 +6,7 @@ import { Header } from './Header';
 import { TableConfig } from './TableConfig';
 import { IndexPanel } from './IndexPanel';
 import { AuthPanel } from './AuthPanel';
+import { ShardingPanel } from './ShardingPanel';
 import { DataTable } from './DataTable';
 import { DDLOutput } from './DDLOutput';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ import {
   useAuthManagement,
   useSqlGeneration,
   useToast,
+  useCitusSharding,
 } from '@/hooks';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
 import { compressState } from '@/utils/share';
@@ -35,6 +37,7 @@ import {
   Key,
   Lock,
   Hash,
+  Share2,
 } from 'lucide-react';
 
 const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) =>
@@ -107,6 +110,13 @@ function App() {
     setAuthObjects,
   } = useAuthManagement(persistedState || undefined);
 
+  const {
+    citusShardingConfig,
+    setCitusMode,
+    setDistributionColumn,
+    resetCitusSharding,
+  } = useCitusSharding(persistedState || undefined);
+
   const { generatedSql, generatedDcl, copySql, copyDcl } = useSqlGeneration(
     dbType,
     tableName,
@@ -114,6 +124,7 @@ function App() {
     normalizedFields,
     indexes,
     authObjects,
+    dbType === 'postgresql-citus' ? citusShardingConfig : undefined,
   );
 
   const { toastMessage, showToast } = useToast();
@@ -140,6 +151,8 @@ function App() {
       indexes: sanitizeIndexesForPersist(indexes),
       authInput,
       authObjects,
+      citusShardingConfig:
+        dbType === 'postgresql-citus' ? citusShardingConfig : undefined,
     };
 
     try {
@@ -162,6 +175,7 @@ function App() {
     indexes,
     authInput,
     authObjects,
+    citusShardingConfig,
     showToast,
   ]);
 
@@ -216,6 +230,8 @@ function App() {
         indexes: sanitizeIndexesForPersist(indexes),
         authInput,
         authObjects,
+        citusShardingConfig:
+          dbType === 'postgresql-citus' ? citusShardingConfig : undefined,
       };
       saveState(payload);
     } catch {
@@ -233,6 +249,7 @@ function App() {
     indexes,
     authInput,
     authObjects,
+    citusShardingConfig,
     saveState,
   ]);
 
@@ -252,6 +269,7 @@ function App() {
     resetTableRows();
     resetIndexState();
     resetAuthState();
+    resetCitusSharding();
 
     // Clear localStorage
     clearState();
@@ -263,6 +281,7 @@ function App() {
     resetTableRows,
     resetIndexState,
     resetAuthState,
+    resetCitusSharding,
   ]);
 
   const handleImport = useCallback(
@@ -352,7 +371,11 @@ function App() {
           />
 
           <Tabs defaultValue="fields" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList
+              className={`grid w-full ${
+                dbType === 'postgresql-citus' ? 'grid-cols-4' : 'grid-cols-3'
+              }`}
+            >
               <TabsTrigger value="fields" className="gap-2">
                 <Columns3Cog className="h-4 w-4" />
                 字段配置
@@ -400,6 +423,18 @@ function App() {
                   </span>
                 )}
               </TabsTrigger>
+              {dbType === 'postgresql-citus' && (
+                <TabsTrigger value="sharding" className="gap-2">
+                  <Share2 className="h-4 w-4" />
+                  分片配置
+                  {citusShardingConfig.mode === 'distributed' &&
+                    citusShardingConfig.distributionColumn && (
+                      <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                        {citusShardingConfig.distributionColumn}
+                      </span>
+                    )}
+                </TabsTrigger>
+              )}
             </TabsList>
             <TabsContent value="fields" className="mt-4">
               <DataTable
@@ -442,6 +477,16 @@ function App() {
                 onRemoveAuthObject={removeAuthObject}
               />
             </TabsContent>
+            {dbType === 'postgresql-citus' && (
+              <TabsContent value="sharding" className="mt-4">
+                <ShardingPanel
+                  config={citusShardingConfig}
+                  availableFields={availableFields}
+                  onModeChange={setCitusMode}
+                  onDistributionColumnChange={setDistributionColumn}
+                />
+              </TabsContent>
+            )}
           </Tabs>
         </div>
 
