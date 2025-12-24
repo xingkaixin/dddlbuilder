@@ -187,6 +187,43 @@ describe('DDL Generation Functions', () => {
     });
   });
 
+  describe('buildDDL for MariaDB', () => {
+    it('should generate MariaDB DDL', () => {
+      const result = buildDDL('mariadb', 'users', '用户表', sampleFields);
+
+      // MariaDB 应该生成与 MySQL 相同的 DDL
+      expect(result).toContain('CREATE TABLE users');
+      expect(result).toContain("COMMENT='用户表'");
+      expect(result).toContain('id INT AUTO_INCREMENT NOT NULL');
+      expect(result).toContain("name VARCHAR(255) NULL COMMENT '名称'");
+      expect(result).toContain(
+        'created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP',
+      );
+      expect(result).toContain(
+        "price DECIMAL(10, 2) NULL DEFAULT 0.00 COMMENT '价格'",
+      );
+    });
+
+    it('应该支持 ON UPDATE CURRENT_TIMESTAMP', () => {
+      const fieldsWithUpdate: NormalizedField[] = [
+        ...sampleFields,
+        {
+          name: 'updated_at',
+          type: 'timestamp',
+          comment: '更新时间',
+          nullable: false,
+          defaultKind: 'current_timestamp',
+          defaultValue: '',
+          onUpdate: 'current_timestamp',
+        },
+      ];
+
+      const result = buildDDL('mariadb', 'users', '用户表', fieldsWithUpdate);
+
+      expect(result).toContain('ON UPDATE CURRENT_TIMESTAMP');
+    });
+  });
+
   describe('buildOracleSynonyms', () => {
     it('should generate PUBLIC synonym', () => {
       const result = buildOracleSynonyms('users');

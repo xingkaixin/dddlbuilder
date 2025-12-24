@@ -18,6 +18,11 @@ describe('DDLStrategyFactory', () => {
     expect(result.getDatabaseType()).toBe('postgresql');
   });
 
+  it('应该支持 PostgreSQL(Citus) 策略', () => {
+    const result = DDLStrategyFactory.create('postgresql-citus');
+    expect(result.getDatabaseType()).toBe('postgresql-citus');
+  });
+
   it('不支持的数据库类型应抛出异常', () => {
     expect(() =>
       DDLStrategyFactory.create('invalid' as DatabaseType),
@@ -27,10 +32,16 @@ describe('DDLStrategyFactory', () => {
   it('应该返回支持的数据库类型列表', () => {
     const supported = DDLStrategyFactory.getSupportedDatabaseTypes();
     expect(supported.sort()).toEqual([
+      'dm',
+      'mariadb',
       'mysql',
+      'oceanbase',
+      'oceanbase-oracle',
       'oracle',
       'postgresql',
+      'postgresql-citus',
       'sqlserver',
+      'tidb',
     ]);
   });
 

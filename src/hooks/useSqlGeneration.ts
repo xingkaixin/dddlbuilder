@@ -1,5 +1,10 @@
 import { useMemo, useCallback } from 'react';
-import type { DatabaseType, NormalizedField, IndexDefinition } from '@/types';
+import type {
+  DatabaseType,
+  NormalizedField,
+  IndexDefinition,
+  CitusShardingConfig,
+} from '@/types';
 import { buildDDL, buildDCL } from '@/utils/ddlGenerators';
 
 export interface UseSqlGenerationReturn {
@@ -16,10 +21,26 @@ export function useSqlGeneration(
   normalizedFields: NormalizedField[],
   indexes: IndexDefinition[],
   authObjects: string[],
+  citusShardingConfig?: CitusShardingConfig,
 ): UseSqlGenerationReturn {
   const generatedSql = useMemo(
-    () => buildDDL(dbType, tableName, tableComment, normalizedFields, indexes),
-    [dbType, tableName, tableComment, normalizedFields, indexes],
+    () =>
+      buildDDL(
+        dbType,
+        tableName,
+        tableComment,
+        normalizedFields,
+        indexes,
+        citusShardingConfig,
+      ),
+    [
+      dbType,
+      tableName,
+      tableComment,
+      normalizedFields,
+      indexes,
+      citusShardingConfig,
+    ],
   );
 
   const generatedDcl = useMemo(

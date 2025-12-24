@@ -247,12 +247,18 @@ export const supportsUuidDefault = (canonical: string) =>
 export const supportsAutoIncrement = (db: DatabaseType, canonical: string) => {
   switch (db) {
     case 'mysql':
+    case 'mariadb':
+    case 'tidb':
+    case 'oceanbase':
       return isIntegerType(canonical);
     case 'postgresql':
+    case 'postgresql-citus':
       return new Set(['smallint', 'int', 'integer', 'bigint']).has(canonical);
     case 'sqlserver':
       return new Set(['tinyint', 'smallint', 'int', 'bigint']).has(canonical);
     case 'oracle':
+    case 'dm':
+    case 'oceanbase-oracle':
       return isNumericType(canonical);
     default:
       return false;
@@ -265,8 +271,12 @@ export const supportsDefaultCurrentTimestamp = (
 ) => {
   switch (db) {
     case 'mysql':
+    case 'mariadb':
+    case 'tidb':
+    case 'oceanbase':
       return new Set(['timestamp', 'datetime']).has(canonical);
     case 'postgresql':
+    case 'postgresql-citus':
       return new Set(['timestamp', 'timestamptz']).has(canonical);
     case 'sqlserver':
       return new Set([
@@ -276,6 +286,8 @@ export const supportsDefaultCurrentTimestamp = (
         'timestamp',
       ]).has(canonical);
     case 'oracle':
+    case 'dm':
+    case 'oceanbase-oracle':
       return new Set(['timestamp', 'date']).has(canonical);
     default:
       return false;
@@ -287,11 +299,24 @@ export const supportsOnUpdateCurrentTimestamp = (
   canonical: string,
 ) => {
   switch (db) {
+    // MySQL 5.6.5+、MariaDB 10.1.2+、TiDB、OceanBase MySQL 模式支持 DATETIME 的 ON UPDATE CURRENT_TIMESTAMP
     case 'mysql':
-      return new Set(['timestamp']).has(canonical);
+    case 'mariadb':
+    case 'tidb':
+    case 'oceanbase':
+      return new Set(['timestamp', 'datetime']).has(canonical);
     default:
       return false;
   }
+};
+
+/**
+ * 获取 Oracle/OceanBase Oracle 模式的时间戳默认值表达式
+ * - DATE 类型使用 SYSDATE（精确到秒）
+ * - TIMESTAMP 类型使用 SYSTIMESTAMP（包含小数秒和时区）
+ */
+export const getOracleTimestampDefault = (canonical: string): string => {
+  return canonical === 'date' ? 'SYSDATE' : 'SYSTIMESTAMP';
 };
 
 export const formatConstantDefault = (canonical: string, value: string) => {

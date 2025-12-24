@@ -10,6 +10,12 @@ import {
   YES_VALUES,
   RESERVED_KEYWORDS,
 } from './constants';
+import {
+  supportsAutoIncrement,
+  supportsDefaultCurrentTimestamp,
+  supportsOnUpdateCurrentTimestamp,
+  supportsUuidDefault,
+} from './databaseTypeMapping';
 
 export const toStringSafe = (value: unknown) => {
   if (typeof value === 'string') {
@@ -120,57 +126,13 @@ export const isCharacterType = (canonical: string) =>
     'uuid',
   ]).has(canonical);
 
-export const supportsUuidDefault = (canonical: string) =>
-  isCharacterType(canonical);
-
-export const supportsAutoIncrement = (db: DatabaseType, canonical: string) => {
-  switch (db) {
-    case 'mysql':
-      return isIntegerType(canonical);
-    case 'postgresql':
-      return new Set(['smallint', 'int', 'integer', 'bigint']).has(canonical);
-    case 'sqlserver':
-      return new Set(['tinyint', 'smallint', 'int', 'bigint']).has(canonical);
-    case 'oracle':
-      return new Set([
-        'tinyint',
-        'smallint',
-        'int',
-        'integer',
-        'bigint',
-        'decimal',
-        'number',
-      ]).has(canonical);
-    default:
-      return false;
-  }
-};
-
-export const supportsDefaultCurrentTimestamp = (
-  db: DatabaseType,
-  canonical: string,
-) => {
-  switch (db) {
-    case 'mysql':
-      return new Set(['timestamp', 'datetime']).has(canonical);
-    case 'postgresql':
-      return new Set(['timestamp', 'timestamptz']).has(canonical);
-    case 'sqlserver':
-      return new Set(['datetime', 'datetime2']).has(canonical);
-    case 'oracle':
-      return new Set(['timestamp']).has(canonical);
-    default:
-      return false;
-  }
-};
-
-export const supportsOnUpdateCurrentTimestamp = (
-  db: DatabaseType,
-  canonical: string,
-) => {
-  if (db !== 'mysql') return false;
-  return new Set(['timestamp', 'datetime']).has(canonical);
-};
+// 委托到 databaseTypeMapping.ts 中的函数以保持一致性
+export {
+  supportsAutoIncrement,
+  supportsDefaultCurrentTimestamp,
+  supportsOnUpdateCurrentTimestamp,
+  supportsUuidDefault,
+} from './databaseTypeMapping';
 
 export const getUiDefaultKindOptions = (
   db: DatabaseType,

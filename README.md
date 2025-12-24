@@ -1,10 +1,11 @@
 # DDLBuilder —— 多数据库建表语句生成器
 
-一个基于 React + TypeScript + Vite 的轻量工具：通过表单与表格输入，实时生成不同数据库（MySQL / PostgreSQL / SQL Server / Oracle）的建表 DDL，并支持一键复制。
+一个基于 React + TypeScript + Vite 的轻量工具：通过表单与表格输入，实时生成不同数据库的建表 DDL，并支持一键复制。
 
 ## 功能特性
 
-- 支持数据库：MySQL、PostgreSQL、SQL Server、Oracle
+- 支持数据库：MySQL、PostgreSQL、PostgreSQL Citus、SQL Server、Oracle、MariaDB、TiDB、达梦 (Dameng)、OceanBase (MySQL/Oracle 模式)
+- PostgreSQL Citus 分片配置：支持副本表 (Reference Table) 和分片表 (Distributed Table) 模式，自动生成对应 DDL
 - 实时生成建表语句；支持表注释与列注释
 - 索引与权限配置支持，可折叠面板管理
 - 主键支持与唯一约束索引配置
@@ -51,8 +52,13 @@ bun run build
 
 - MySQL：列注释使用 COMMENT；text/json 等类型直接映射；serial → BIGINT UNSIGNED AUTO_INCREMENT。
 - PostgreSQL：表与列注释使用 COMMENT 语句；json → jsonb；timestamp/time 带/不带时区遵循输入。
+- PostgreSQL Citus：支持副本表 (`create_reference_table`) 和分片表 (`create_distributed_table`) 模式。
 - SQL Server：text/json 使用 NVARCHAR(MAX)；日期时间使用 DATETIME2；注释用扩展属性 sp_addextendedproperty；uuid → UNIQUEIDENTIFIER；自增为 IDENTITY。
 - Oracle：varchar → VARCHAR2，nvarchar → NVARCHAR2；整型映射为 NUMBER(n)；长文本用 CLOB，二进制用 BLOB；自增为 NUMBER GENERATED ALWAYS AS IDENTITY。
+- MariaDB：基于 MySQL 语法，支持 MariaDB 特有关键字。
+- TiDB：兼容 MySQL 语法，支持 TiDB 特有关键字。
+- 达梦 (Dameng)：类 Oracle 语法，支持达梦特有类型映射。
+- OceanBase：支持 MySQL 模式和 Oracle 模式，根据模式选择对应语法。
 
 ## 技术栈
 
