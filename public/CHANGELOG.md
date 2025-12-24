@@ -4,6 +4,20 @@ description: "DDL建表工具版本更新记录"
 ---
 
 # 筑表师
+## [0.7.0] - 2025-12-24
+### 新增数据库支持
+- 新增 **MariaDB** 数据库类型支持
+- 新增 **TiDB** 数据库类型支持
+- 新增 **达梦 (Dameng)** 数据库类型支持
+- 新增 **OceanBase** 数据库支持（MySQL 模式 & Oracle 模式）
+- 新增 **PostgreSQL Citus** 数据库类型支持
+
+### Citus 分片配置
+- 新增「分片配置」Tab 页，仅在选择 PostgreSQL Citus 时显示
+- 支持配置表模式：副本表 (Reference Table) 或分片表 (Distributed Table)
+- 分片表模式下可选择分片字段
+- DDL 自动生成 `create_reference_table()` 或 `create_distributed_table()` 语句
+
 ## [0.6.5] - 2025-12-19
 - 修复 COMMENT 解析对转义单引号的支持，避免截断注释内容
 - Oracle 索引名按 30 字符限制生成，避免超长
