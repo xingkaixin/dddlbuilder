@@ -3,6 +3,7 @@ import type {
   NormalizedField,
   IndexDefinition,
   CitusShardingConfig,
+  MysqlPartitionConfig,
 } from '../types';
 import { DDLStrategyFactory } from '../factories/DDLStrategyFactory';
 
@@ -24,6 +25,51 @@ const buildCitusShardingDDL = (
   return `-- 请选择分片字段`;
 };
 
+/**
+ * Generate MySQL partition DDL clause
+ */
+const buildMysqlPartitionClause = (config: MysqlPartitionConfig): string => {
+  if (!config.enabled || config.columns.length === 0) {
+    return '';
+  }
+
+  const columnsStr = config.columns.join(', ');
+
+  switch (config.type) {
+    case 'HASH':
+      return `\nPARTITION BY HASH(${columnsStr})\nPARTITIONS ${config.partitionCount || 4}`;
+
+    case 'KEY':
+      return `\nPARTITION BY KEY(${columnsStr})\nPARTITIONS ${config.partitionCount || 4}`;
+
+    case 'RANGE':
+    case 'RANGE COLUMNS':
+    case 'LIST':
+    case 'LIST COLUMNS': {
+      if (!config.partitions || config.partitions.length === 0) {
+        return `\n-- 请添加分区定义`;
+      }
+
+      const partitionType = config.type;
+      const isRange = config.type.startsWith('RANGE');
+
+      const partitionDefs = config.partitions
+        .map((p) => {
+          const valueClause = isRange
+            ? `VALUES LESS THAN (${p.value})`
+            : `VALUES IN (${p.value})`;
+          return `  PARTITION ${p.name} ${valueClause}`;
+        })
+        .join(',\n');
+
+      return `\nPARTITION BY ${partitionType}(${columnsStr}) (\n${partitionDefs}\n)`;
+    }
+
+    default:
+      return '';
+  }
+};
+
 export const buildDDL = (
   dbType: DatabaseType,
   tableName: string,
@@ -31,6 +77,7 @@ export const buildDDL = (
   fields: NormalizedField[],
   indexes: IndexDefinition[] = [],
   citusShardingConfig?: CitusShardingConfig,
+  mysqlPartitionConfig?: MysqlPartitionConfig,
 ) => {
   if (!tableName.trim()) {
     return '-- 请填写表名';
@@ -40,11 +87,23 @@ export const buildDDL = (
   }
 
   const strategy = DDLStrategyFactory.create(dbType);
-  const tableDDL = strategy.generateTableDDL(
+  let tableDDL = strategy.generateTableDDL(
     tableName.trim(),
     tableComment,
     fields,
   );
+
+  // Add MySQL partition clause - insert before the final semicolon
+  if (
+    (dbType === 'mysql' || dbType === 'mariadb' || dbType === 'tidb') &&
+    mysqlPartitionConfig?.enabled
+  ) {
+    const partitionClause = buildMysqlPartitionClause(mysqlPartitionConfig);
+    if (partitionClause) {
+      // Replace the final semicolon with partition clause + semicolon
+      tableDDL = tableDDL.replace(/;$/, `${partitionClause};`);
+    }
+  }
 
   // Build index DDL statements
   const indexDDLs = indexes.map((index) =>
