@@ -68,6 +68,30 @@ export type CitusShardingConfig = {
   distributionColumn?: string; // 仅当 mode 为 'distributed' 时需要
 };
 
+// MySQL 分区类型
+export type MysqlPartitionType =
+  | 'RANGE'
+  | 'RANGE COLUMNS'
+  | 'LIST'
+  | 'LIST COLUMNS'
+  | 'HASH'
+  | 'KEY';
+
+// 分区定义（用于 RANGE/LIST 类型）
+export type PartitionDefinition = {
+  name: string; // 分区名称，如 p2024
+  value: string; // 分区值，如 '2025-01-01' 或 MAXVALUE
+};
+
+// MySQL 分区配置
+export type MysqlPartitionConfig = {
+  enabled: boolean; // 是否启用分区
+  type: MysqlPartitionType; // 分区类型
+  columns: string[]; // 分区字段（支持多列）
+  partitionCount?: number; // 分区数量（HASH/KEY 类型）
+  partitions?: PartitionDefinition[]; // 分区定义（RANGE/LIST 类型）
+};
+
 export type PersistedState = {
   tableName: string;
   tableComment: string;
@@ -80,4 +104,5 @@ export type PersistedState = {
   authInput: string;
   authObjects: string[];
   citusShardingConfig?: CitusShardingConfig;
+  mysqlPartitionConfig?: MysqlPartitionConfig;
 };

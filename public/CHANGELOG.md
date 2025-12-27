@@ -4,6 +4,16 @@ description: "DDL建表工具版本更新记录"
 ---
 
 # 筑表师
+## [0.8.0] - 2025-12-29
+### 新增MySQL 分区表配置
+- 新增「分区配置」Tab 页，支持 MySQL、MariaDB、TiDB
+- 支持 6 种分区类型：RANGE、RANGE COLUMNS、LIST、LIST COLUMNS、HASH、KEY
+- 每种分区类型配有说明，帮助用户选择合适的分区策略
+- HASH/KEY 分区支持配置分区数量
+- RANGE/LIST 分区支持自定义分区定义
+- DDL 自动生成对应的分区语句
+
+
 ## [0.7.0] - 2025-12-24
 ### 新增数据库支持
 - 新增 **MariaDB** 数据库类型支持

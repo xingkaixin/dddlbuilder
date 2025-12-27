@@ -7,6 +7,7 @@ import { TableConfig } from './TableConfig';
 import { IndexPanel } from './IndexPanel';
 import { AuthPanel } from './AuthPanel';
 import { ShardingPanel } from './ShardingPanel';
+import { PartitionPanel } from './PartitionPanel';
 import { DataTable } from './DataTable';
 import { DDLOutput } from './DDLOutput';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,7 @@ import {
   useToast,
   useCitusSharding,
 } from '@/hooks';
+import { useMysqlPartition } from '@/hooks/useMysqlPartition';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
 import { compressState } from '@/utils/share';
 import {
@@ -38,6 +40,7 @@ import {
   Lock,
   Hash,
   Share2,
+  Layers,
 } from 'lucide-react';
 
 const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) =>
@@ -117,6 +120,21 @@ function App() {
     resetCitusSharding,
   } = useCitusSharding(persistedState || undefined);
 
+  const {
+    mysqlPartitionConfig,
+    setPartitionEnabled,
+    setPartitionType,
+    setPartitionColumns,
+    setPartitionCount,
+    addPartition,
+    removePartition,
+    updatePartition,
+    resetPartition,
+  } = useMysqlPartition(persistedState || undefined);
+
+  // Check if MySQL-compatible database that supports partitioning
+  const supportsMysqlPartition = ['mysql', 'mariadb', 'tidb'].includes(dbType);
+
   const { generatedSql, generatedDcl, copySql, copyDcl } = useSqlGeneration(
     dbType,
     tableName,
@@ -125,6 +143,7 @@ function App() {
     indexes,
     authObjects,
     dbType === 'postgresql-citus' ? citusShardingConfig : undefined,
+    supportsMysqlPartition ? mysqlPartitionConfig : undefined,
   );
 
   const { toastMessage, showToast } = useToast();
@@ -153,6 +172,9 @@ function App() {
       authObjects,
       citusShardingConfig:
         dbType === 'postgresql-citus' ? citusShardingConfig : undefined,
+      mysqlPartitionConfig: supportsMysqlPartition
+        ? mysqlPartitionConfig
+        : undefined,
     };
 
     try {
@@ -176,6 +198,8 @@ function App() {
     authInput,
     authObjects,
     citusShardingConfig,
+    mysqlPartitionConfig,
+    supportsMysqlPartition,
     showToast,
   ]);
 
@@ -232,6 +256,9 @@ function App() {
         authObjects,
         citusShardingConfig:
           dbType === 'postgresql-citus' ? citusShardingConfig : undefined,
+        mysqlPartitionConfig: supportsMysqlPartition
+          ? mysqlPartitionConfig
+          : undefined,
       };
       saveState(payload);
     } catch {
@@ -250,6 +277,8 @@ function App() {
     authInput,
     authObjects,
     citusShardingConfig,
+    mysqlPartitionConfig,
+    supportsMysqlPartition,
     saveState,
   ]);
 
@@ -270,6 +299,7 @@ function App() {
     resetIndexState();
     resetAuthState();
     resetCitusSharding();
+    resetPartition();
 
     // Clear localStorage
     clearState();
@@ -282,6 +312,7 @@ function App() {
     resetIndexState,
     resetAuthState,
     resetCitusSharding,
+    resetPartition,
   ]);
 
   const handleImport = useCallback(
@@ -373,7 +404,9 @@ function App() {
           <Tabs defaultValue="fields" className="w-full">
             <TabsList
               className={`grid w-full ${
-                dbType === 'postgresql-citus' ? 'grid-cols-4' : 'grid-cols-3'
+                dbType === 'postgresql-citus' || supportsMysqlPartition
+                  ? 'grid-cols-4'
+                  : 'grid-cols-3'
               }`}
             >
               <TabsTrigger value="fields" className="gap-2">
@@ -435,6 +468,17 @@ function App() {
                     )}
                 </TabsTrigger>
               )}
+              {supportsMysqlPartition && (
+                <TabsTrigger value="partition" className="gap-2">
+                  <Layers className="h-4 w-4" />
+                  分区配置
+                  {mysqlPartitionConfig.enabled && (
+                    <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                      {mysqlPartitionConfig.type}
+                    </span>
+                  )}
+                </TabsTrigger>
+              )}
             </TabsList>
             <TabsContent value="fields" className="mt-4">
               <DataTable
@@ -484,6 +528,21 @@ function App() {
                   availableFields={availableFields}
                   onModeChange={setCitusMode}
                   onDistributionColumnChange={setDistributionColumn}
+                />
+              </TabsContent>
+            )}
+            {supportsMysqlPartition && (
+              <TabsContent value="partition" className="mt-4">
+                <PartitionPanel
+                  config={mysqlPartitionConfig}
+                  availableFields={availableFields}
+                  onEnabledChange={setPartitionEnabled}
+                  onTypeChange={setPartitionType}
+                  onColumnsChange={setPartitionColumns}
+                  onPartitionCountChange={setPartitionCount}
+                  onAddPartition={addPartition}
+                  onRemovePartition={removePartition}
+                  onUpdatePartition={updatePartition}
                 />
               </TabsContent>
             )}
