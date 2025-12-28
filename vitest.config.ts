@@ -31,6 +31,7 @@ export default defineConfig({
         'src/**/index.ts', // Exclude barrel exports
         'src/**/types.ts', // Exclude type-only files
         'src/main.tsx',
+        'src/App.tsx', // Entry component, not suitable for unit tests
         'src/vite-env.d.ts',
       ],
     },

@@ -224,6 +224,199 @@ describe('DDL Generation Functions', () => {
     });
   });
 
+  describe('buildDDL with MySQL Partition', () => {
+    it('should generate HASH partition DDL with column', () => {
+      const partitionConfig = {
+        enabled: true,
+        type: 'HASH' as const,
+        columns: ['id'],
+        partitionCount: 4,
+        partitions: [],
+      };
+
+      const result = buildDDL(
+        'mysql',
+        'users',
+        '',
+        sampleFields,
+        [],
+        undefined,
+        partitionConfig,
+      );
+
+      expect(result).toContain('PARTITION BY HASH(id)');
+      expect(result).toContain('PARTITIONS 4');
+    });
+
+    it('should generate HASH partition DDL with expression', () => {
+      const partitionConfig = {
+        enabled: true,
+        type: 'HASH' as const,
+        columns: [],
+        expression: 'YEAR(created_at)',
+        partitionCount: 8,
+        partitions: [],
+      };
+
+      const result = buildDDL(
+        'mysql',
+        'orders',
+        '',
+        sampleFields,
+        [],
+        undefined,
+        partitionConfig,
+      );
+
+      expect(result).toContain('PARTITION BY HASH(YEAR(created_at))');
+      expect(result).toContain('PARTITIONS 8');
+    });
+
+    it('should generate KEY partition DDL', () => {
+      const partitionConfig = {
+        enabled: true,
+        type: 'KEY' as const,
+        columns: ['user_id'],
+        partitionCount: 16,
+        partitions: [],
+      };
+
+      const result = buildDDL(
+        'mysql',
+        'orders',
+        '',
+        sampleFields,
+        [],
+        undefined,
+        partitionConfig,
+      );
+
+      expect(result).toContain('PARTITION BY KEY(user_id)');
+      expect(result).toContain('PARTITIONS 16');
+    });
+
+    it('should generate RANGE partition DDL with definitions', () => {
+      const partitionConfig = {
+        enabled: true,
+        type: 'RANGE' as const,
+        columns: ['created_at'],
+        partitions: [
+          { name: 'p2023', value: '2024' },
+          { name: 'p2024', value: '2025' },
+          { name: 'pmax', value: 'MAXVALUE' },
+        ],
+      };
+
+      const result = buildDDL(
+        'mysql',
+        'orders',
+        '',
+        sampleFields,
+        [],
+        undefined,
+        partitionConfig,
+      );
+
+      expect(result).toContain('PARTITION BY RANGE(created_at)');
+      expect(result).toContain('PARTITION p2023 VALUES LESS THAN (2024)');
+      expect(result).toContain('PARTITION p2024 VALUES LESS THAN (2025)');
+      expect(result).toContain('PARTITION pmax VALUES LESS THAN (MAXVALUE)');
+    });
+
+    it('should generate LIST partition DDL', () => {
+      const partitionConfig = {
+        enabled: true,
+        type: 'LIST' as const,
+        columns: ['status'],
+        partitions: [
+          { name: 'p_active', value: '1, 2' },
+          { name: 'p_inactive', value: '0, -1' },
+        ],
+      };
+
+      const result = buildDDL(
+        'mysql',
+        'orders',
+        '',
+        sampleFields,
+        [],
+        undefined,
+        partitionConfig,
+      );
+
+      expect(result).toContain('PARTITION BY LIST(status)');
+      expect(result).toContain('PARTITION p_active VALUES IN (1, 2)');
+      expect(result).toContain('PARTITION p_inactive VALUES IN (0, -1)');
+    });
+
+    it('should not generate partition clause when disabled', () => {
+      const partitionConfig = {
+        enabled: false,
+        type: 'HASH' as const,
+        columns: ['id'],
+        partitionCount: 4,
+        partitions: [],
+      };
+
+      const result = buildDDL(
+        'mysql',
+        'users',
+        '',
+        sampleFields,
+        [],
+        undefined,
+        partitionConfig,
+      );
+
+      expect(result).not.toContain('PARTITION BY');
+    });
+
+    it('should show comment when RANGE partition has no definitions', () => {
+      const partitionConfig = {
+        enabled: true,
+        type: 'RANGE' as const,
+        columns: ['id'],
+        partitions: [],
+      };
+
+      const result = buildDDL(
+        'mysql',
+        'orders',
+        '',
+        sampleFields,
+        [],
+        undefined,
+        partitionConfig,
+      );
+
+      expect(result).toContain('-- 请添加分区定义');
+    });
+
+    it('should work with TiDB', () => {
+      const partitionConfig = {
+        enabled: true,
+        type: 'HASH' as const,
+        expression: 'dayofmonth(start_time)',
+        columns: [],
+        partitionCount: 32,
+        partitions: [],
+      };
+
+      const result = buildDDL(
+        'tidb',
+        'events',
+        '',
+        sampleFields,
+        [],
+        undefined,
+        partitionConfig,
+      );
+
+      expect(result).toContain('PARTITION BY HASH(dayofmonth(start_time))');
+      expect(result).toContain('PARTITIONS 32');
+    });
+  });
+
   describe('buildOracleSynonyms', () => {
     it('should generate PUBLIC synonym', () => {
       const result = buildOracleSynonyms('users');
