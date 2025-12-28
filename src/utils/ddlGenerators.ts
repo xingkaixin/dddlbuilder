@@ -29,18 +29,19 @@ const buildCitusShardingDDL = (
  * Generate MySQL partition DDL clause
  */
 const buildMysqlPartitionClause = (config: MysqlPartitionConfig): string => {
-  if (!config.enabled || config.columns.length === 0) {
+  // 优先使用表达式，否则使用字段列表
+  const partitionKey = config.expression || config.columns.join(', ');
+
+  if (!config.enabled || !partitionKey) {
     return '';
   }
 
-  const columnsStr = config.columns.join(', ');
-
   switch (config.type) {
     case 'HASH':
-      return `\nPARTITION BY HASH(${columnsStr})\nPARTITIONS ${config.partitionCount || 4}`;
+      return `\nPARTITION BY HASH(${partitionKey})\nPARTITIONS ${config.partitionCount || 4}`;
 
     case 'KEY':
-      return `\nPARTITION BY KEY(${columnsStr})\nPARTITIONS ${config.partitionCount || 4}`;
+      return `\nPARTITION BY KEY(${partitionKey})\nPARTITIONS ${config.partitionCount || 4}`;
 
     case 'RANGE':
     case 'RANGE COLUMNS':
@@ -62,7 +63,7 @@ const buildMysqlPartitionClause = (config: MysqlPartitionConfig): string => {
         })
         .join(',\n');
 
-      return `\nPARTITION BY ${partitionType}(${columnsStr}) (\n${partitionDefs}\n)`;
+      return `\nPARTITION BY ${partitionType}(${partitionKey}) (\n${partitionDefs}\n)`;
     }
 
     default:

@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Layers, Plus, X, Info } from 'lucide-react';
+import { Layers, Plus, X, Info, Calendar } from 'lucide-react';
 import type {
   MysqlPartitionType,
   MysqlPartitionConfig,
@@ -54,10 +54,12 @@ interface PartitionPanelProps {
   onEnabledChange: (enabled: boolean) => void;
   onTypeChange: (type: MysqlPartitionType) => void;
   onColumnsChange: (columns: string[]) => void;
+  onExpressionChange: (expression: string) => void;
   onPartitionCountChange: (count: number) => void;
   onAddPartition: (partition: PartitionDefinition) => void;
   onRemovePartition: (name: string) => void;
   onUpdatePartition: (name: string, partition: PartitionDefinition) => void;
+  onGeneratePartitions: (preset: 'year' | 'month' | 'day') => void;
 }
 
 // 判断是否需要分区定义（RANGE/LIST 类型需要）
@@ -75,6 +77,11 @@ const supportsMultipleColumns = (type: MysqlPartitionType): boolean => {
   return ['RANGE COLUMNS', 'LIST COLUMNS'].includes(type);
 };
 
+// 判断是否支持表达式（HASH/KEY/RANGE 支持，COLUMNS 类型不支持）
+const supportsExpression = (type: MysqlPartitionType): boolean => {
+  return ['HASH', 'KEY', 'RANGE', 'LIST'].includes(type);
+};
+
 export const PartitionPanel = memo<PartitionPanelProps>(
   ({
     config,
@@ -82,10 +89,12 @@ export const PartitionPanel = memo<PartitionPanelProps>(
     onEnabledChange,
     onTypeChange,
     onColumnsChange,
+    onExpressionChange,
     onPartitionCountChange,
     onAddPartition,
     onRemovePartition,
     onUpdatePartition,
+    onGeneratePartitions,
   }) => {
     const handleAddPartition = () => {
       const nextIndex = (config.partitions?.length || 0) + 1;
@@ -173,71 +182,106 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                   </div>
                 </div>
 
-                {/* Partition Column Selection */}
+                {/* Partition Column/Expression Selection */}
                 <div className="space-y-3">
                   <Label className="text-sm font-semibold flex items-center gap-2">
-                    分区字段
+                    分区键
                     {supportsMultipleColumns(config.type) && (
                       <span className="text-xs font-normal text-muted-foreground">
                         (支持多列)
                       </span>
                     )}
+                    {supportsExpression(config.type) && (
+                      <span className="text-xs font-normal text-muted-foreground">
+                        (支持表达式)
+                      </span>
+                    )}
                   </Label>
-                  {availableFields.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
-                      请先在字段配置中添加字段，然后在此选择分区字段。
+
+                  {/* Expression input for HASH/KEY/RANGE/LIST */}
+                  {supportsExpression(config.type) && (
+                    <div className="space-y-2">
+                      <Input
+                        placeholder="输入表达式，如: YEAR(created_at) 或 dayofmonth(start_time)"
+                        value={config.expression || ''}
+                        onChange={(e) => onExpressionChange(e.target.value)}
+                        className="font-mono text-sm transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        可使用函数表达式，如
+                        YEAR(col)、MONTH(col)、TO_DAYS(col)、dayofmonth(col) 等
+                      </p>
                     </div>
-                  ) : supportsMultipleColumns(config.type) ? (
-                    // Multi-column selection for COLUMNS types
-                    <div className="flex flex-wrap gap-2">
-                      {availableFields.map((field) => {
-                        const isSelected = config.columns.includes(field);
-                        return (
-                          <button
-                            key={field}
-                            type="button"
-                            onClick={() => {
-                              if (isSelected) {
-                                onColumnsChange(
-                                  config.columns.filter((c) => c !== field),
-                                );
-                              } else {
-                                onColumnsChange([...config.columns, field]);
-                              }
-                            }}
-                            className={`px-3 py-1.5 rounded-md text-sm font-mono transition-all duration-200 ${
-                              isSelected
-                                ? 'bg-primary text-primary-foreground shadow-md'
-                                : 'bg-muted hover:bg-muted/80'
-                            }`}
-                          >
-                            {field}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    // Single column selection for non-COLUMNS types
-                    <Select
-                      value={config.columns[0] || ''}
-                      onValueChange={(value) => onColumnsChange([value])}
-                    >
-                      <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
-                        <SelectValue placeholder="选择分区字段..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableFields.map((field) => (
-                          <SelectItem
-                            key={field}
-                            value={field}
-                            className="transition-colors hover:bg-accent"
-                          >
-                            <span className="font-mono text-sm">{field}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   )}
+
+                  {/* Divider when expression is supported */}
+                  {supportsExpression(config.type) && !config.expression && (
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 border-t" />
+                      <span className="text-xs text-muted-foreground">
+                        或选择字段
+                      </span>
+                      <div className="flex-1 border-t" />
+                    </div>
+                  )}
+
+                  {/* Field selection (hidden when expression is used) */}
+                  {!config.expression &&
+                    (availableFields.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+                        请先在字段配置中添加字段，然后在此选择分区字段。
+                      </div>
+                    ) : supportsMultipleColumns(config.type) ? (
+                      // Multi-column selection for COLUMNS types
+                      <div className="flex flex-wrap gap-2">
+                        {availableFields.map((field) => {
+                          const isSelected = config.columns.includes(field);
+                          return (
+                            <button
+                              key={field}
+                              type="button"
+                              onClick={() => {
+                                if (isSelected) {
+                                  onColumnsChange(
+                                    config.columns.filter((c) => c !== field),
+                                  );
+                                } else {
+                                  onColumnsChange([...config.columns, field]);
+                                }
+                              }}
+                              className={`px-3 py-1.5 rounded-md text-sm font-mono transition-all duration-200 ${
+                                isSelected
+                                  ? 'bg-primary text-primary-foreground shadow-md'
+                                  : 'bg-muted hover:bg-muted/80'
+                              }`}
+                            >
+                              {field}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      // Single column selection for non-COLUMNS types
+                      <Select
+                        value={config.columns[0] || ''}
+                        onValueChange={(value) => onColumnsChange([value])}
+                      >
+                        <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
+                          <SelectValue placeholder="选择分区字段..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableFields.map((field) => (
+                            <SelectItem
+                              key={field}
+                              value={field}
+                              className="transition-colors hover:bg-accent"
+                            >
+                              <span className="font-mono text-sm">{field}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ))}
                 </div>
 
                 {/* Partition Count (for HASH/KEY) */}
@@ -265,23 +309,61 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                 {/* Partition Definitions (for RANGE/LIST) */}
                 {needsPartitionDefinitions(config.type) && (
                   <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
                       <Label className="text-sm font-semibold">分区定义</Label>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleAddPartition}
-                        className="gap-1"
-                      >
-                        <Plus className="h-4 w-4" />
-                        添加分区
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {/* Quick generate buttons for RANGE */}
+                        {config.type.startsWith('RANGE') && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-muted-foreground mr-1">
+                              快捷：
+                            </span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onGeneratePartitions('year')}
+                              className="h-7 px-2 text-xs gap-1"
+                            >
+                              <Calendar className="h-3 w-3" />
+                              按年
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onGeneratePartitions('month')}
+                              className="h-7 px-2 text-xs"
+                            >
+                              按月
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onGeneratePartitions('day')}
+                              className="h-7 px-2 text-xs"
+                            >
+                              按日
+                            </Button>
+                          </div>
+                        )}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleAddPartition}
+                          className="gap-1"
+                        >
+                          <Plus className="h-4 w-4" />
+                          添加分区
+                        </Button>
+                      </div>
                     </div>
 
                     {(!config.partitions || config.partitions.length === 0) && (
                       <div className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
-                        暂无分区定义，点击"添加分区"开始配置
+                        暂无分区定义，点击"添加分区"或使用快捷按钮生成
                       </div>
                     )}
 

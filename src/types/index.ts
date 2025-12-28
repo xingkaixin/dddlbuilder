@@ -88,6 +88,7 @@ export type MysqlPartitionConfig = {
   enabled: boolean; // 是否启用分区
   type: MysqlPartitionType; // 分区类型
   columns: string[]; // 分区字段（支持多列）
+  expression?: string; // 分区表达式（HASH/KEY/RANGE 可使用函数，如 dayofmonth(col)）
   partitionCount?: number; // 分区数量（HASH/KEY 类型）
   partitions?: PartitionDefinition[]; // 分区定义（RANGE/LIST 类型）
 };

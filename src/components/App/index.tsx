@@ -125,10 +125,12 @@ function App() {
     setPartitionEnabled,
     setPartitionType,
     setPartitionColumns,
+    setPartitionExpression,
     setPartitionCount,
     addPartition,
     removePartition,
     updatePartition,
+    generateRangePartitions,
     resetPartition,
   } = useMysqlPartition(persistedState || undefined);
 
@@ -539,10 +541,12 @@ function App() {
                   onEnabledChange={setPartitionEnabled}
                   onTypeChange={setPartitionType}
                   onColumnsChange={setPartitionColumns}
+                  onExpressionChange={setPartitionExpression}
                   onPartitionCountChange={setPartitionCount}
                   onAddPartition={addPartition}
                   onRemovePartition={removePartition}
                   onUpdatePartition={updatePartition}
+                  onGeneratePartitions={generateRangePartitions}
                 />
               </TabsContent>
             )}
