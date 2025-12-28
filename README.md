@@ -5,7 +5,11 @@
 ## 功能特性
 
 - 支持数据库：MySQL、PostgreSQL、PostgreSQL Citus、SQL Server、Oracle、MariaDB、TiDB、达梦 (Dameng)、OceanBase (MySQL/Oracle 模式)
-- PostgreSQL Citus 分片配置：支持副本表 (Reference Table) 和分片表 (Distributed Table) 模式，自动生成对应 DDL
+- **MySQL 分区配置**：支持 MySQL、MariaDB、TiDB 的分区表配置
+  - 分区类型：RANGE、RANGE COLUMNS、LIST、LIST COLUMNS、HASH、KEY
+  - 支持分区表达式（如 `YEAR(col)`、`dayofmonth(col)`）
+  - RANGE 分区快捷生成：按年/月/日一键生成分区定义
+- **PostgreSQL Citus 分片配置**：支持副本表 (Reference Table) 和分片表 (Distributed Table) 模式，自动生成对应 DDL
 - 实时生成建表语句；支持表注释与列注释
 - 索引与权限配置支持，可折叠面板管理
 - 主键支持与唯一约束索引配置
