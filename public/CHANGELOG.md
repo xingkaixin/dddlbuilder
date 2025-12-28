@@ -4,6 +4,11 @@ description: "DDL建表工具版本更新记录"
 ---
 
 # 筑表师
+## [0.8.1] - 2025-12-29
+### 分区配置增强
+- 支持分区表达式：HASH/KEY/RANGE/LIST 类型可使用函数表达式如 `YEAR(col)`、`dayofmonth(col)`
+- RANGE 分区快捷生成：新增「按年」「按月」「按日」快捷按钮，一键生成常用分区
+
 ## [0.8.0] - 2025-12-29
 ### 新增MySQL 分区表配置
 - 新增「分区配置」Tab 页，支持 MySQL、MariaDB、TiDB
