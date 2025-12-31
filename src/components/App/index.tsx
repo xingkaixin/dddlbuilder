@@ -42,6 +42,7 @@ import {
   Share2,
   Layers,
 } from 'lucide-react';
+import FireworksOverlay from '@/components/FireworksOverlay';
 
 const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) =>
   createEmptyRow(index),
@@ -57,6 +58,22 @@ function App() {
   // Changelog modal state
   const [showChangelog, setShowChangelog] = useState(false);
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+
+  // Fireworks state
+  const [showFireworks, setShowFireworks] = useState(false);
+
+  // Check for fireworks on mount
+  useEffect(() => {
+    const hasShown = localStorage.getItem('fireworks_shown_2026');
+    if (!hasShown) {
+      setShowFireworks(true);
+    }
+  }, []);
+
+  const handleFireworksComplete = useCallback(() => {
+    setShowFireworks(false);
+    localStorage.setItem('fireworks_shown_2026', 'true');
+  }, []);
 
   // Use custom hooks
   const { persistedState, hydrated, saveState, clearState } =
@@ -389,6 +406,10 @@ function App() {
         currentDbType={dbType}
         onImport={handleImport}
       />
+
+      {showFireworks && (
+        <FireworksOverlay onComplete={handleFireworksComplete} />
+      )}
 
       {/* Main Content */}
       <div className="flex flex-col gap-4 p-4 lg:flex-row">
