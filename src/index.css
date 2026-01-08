@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.js";
 
 /* MiSans VF - 小米可变字体 (CDN) */
 /* 中文字体使用 MiSans，拉丁字符使用 Roboto Mono */
