@@ -111,7 +111,7 @@ export const DDLOutput = memo<DDLOutputProps>(
     return (
       <div className="relative flex w-full flex-col rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5 lg:max-w-xl">
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent rounded-lg" />
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/30 to-transparent rounded-t-lg" />
+        <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-primary/30 to-transparent rounded-t-lg" />
 
         <Tabs defaultValue="ddl" className="relative flex flex-col">
           <div className="border-b border-primary/10 px-4 pt-4">
@@ -138,7 +138,7 @@ export const DDLOutput = memo<DDLOutputProps>(
                     <div className="flex items-center justify-between gap-2">
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-2">
-                          <h2 className="text-xl font-bold bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent transition-colors duration-200">
+                          <h2 className="text-xl font-bold bg-linear-to-r from-foreground to-primary bg-clip-text text-transparent transition-colors duration-200">
                             {tab.title}
                           </h2>
                           <span className="transition-transform duration-200 hover:scale-105">
