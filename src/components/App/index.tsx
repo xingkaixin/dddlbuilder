@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useState, lazy, Suspense } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  lazy,
+  Suspense,
+} from 'react';
 import type { DatabaseType, FieldRow } from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
 import { createEmptyRow } from '@/utils/helpers';
@@ -89,9 +96,18 @@ function App() {
     setRows,
   } = useTableData(INITIAL_ROWS, persistedState?.rows);
 
-  const availableFields = normalizedFields
-    .map((field) => field.name)
-    .filter((name) => name.length > 0);
+  const availableFields = useMemo(
+    () =>
+      normalizedFields
+        .map((field) => field.name)
+        .filter((name) => name.length > 0),
+    [normalizedFields],
+  );
+
+  const filledRowCount = useMemo(
+    () => rows.filter((row) => row.fieldName?.trim()).length,
+    [rows],
+  );
 
   const {
     indexInput,
@@ -116,6 +132,24 @@ function App() {
     availableFields,
     persistedState || undefined,
     dbType,
+  );
+
+  const indexStats = useMemo(
+    () =>
+      indexes.reduce(
+        (acc, index) => {
+          if (index.isPrimary) {
+            acc.primary += 1;
+          } else if (index.unique) {
+            acc.unique += 1;
+          } else {
+            acc.normal += 1;
+          }
+          return acc;
+        },
+        { primary: 0, unique: 0, normal: 0 },
+      ),
+    [indexes],
   );
 
   const {
@@ -438,9 +472,9 @@ function App() {
               <TabsTrigger value="fields" className="gap-2">
                 <Columns3Cog className="h-4 w-4" />
                 字段配置
-                {rows.filter((r) => r.fieldName?.trim()).length > 0 && (
+                {filledRowCount > 0 && (
                   <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                    {rows.filter((r) => r.fieldName?.trim()).length}
+                    {filledRowCount}
                   </span>
                 )}
               </TabsTrigger>
@@ -449,25 +483,22 @@ function App() {
                 索引配置
                 {indexes.length > 0 && (
                   <div className="ml-2 flex items-center gap-2">
-                    {indexes.some((i) => i.isPrimary) && (
+                    {indexStats.primary > 0 && (
                       <span className="inline-flex items-center gap-1 text-xs text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded">
                         <Key className="h-3 w-3" />
-                        {indexes.filter((i) => i.isPrimary).length}
+                        {indexStats.primary}
                       </span>
                     )}
-                    {indexes.some((i) => i.unique && !i.isPrimary) && (
+                    {indexStats.unique > 0 && (
                       <span className="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">
                         <Lock className="h-3 w-3" />
-                        {indexes.filter((i) => i.unique && !i.isPrimary).length}
+                        {indexStats.unique}
                       </span>
                     )}
-                    {indexes.some((i) => !i.unique && !i.isPrimary) && (
+                    {indexStats.normal > 0 && (
                       <span className="inline-flex items-center gap-1 text-xs text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">
                         <Hash className="h-3 w-3" />
-                        {
-                          indexes.filter((i) => !i.unique && !i.isPrimary)
-                            .length
-                        }
+                        {indexStats.normal}
                       </span>
                     )}
                   </div>

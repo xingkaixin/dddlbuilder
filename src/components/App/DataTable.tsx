@@ -1,7 +1,20 @@
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { registerAllModules } from 'handsontable/registry';
+import {
+  AutocompleteCellType,
+  CheckboxCellType,
+  DropdownCellType,
+  TextCellType,
+  registerCellType,
+} from 'handsontable/cellTypes';
+import { registerPlugin } from 'handsontable/plugins';
+import { AutoColumnSize } from 'handsontable/plugins/autoColumnSize';
+import { ContextMenu } from 'handsontable/plugins/contextMenu';
+import { CopyPaste } from 'handsontable/plugins/copyPaste';
+import { ManualColumnResize } from 'handsontable/plugins/manualColumnResize';
+import { StretchColumns } from 'handsontable/plugins/stretchColumns';
+import { UndoRedo } from 'handsontable/plugins/undoRedo';
 import { HotTable } from '@handsontable/react-wrapper';
 import 'handsontable/styles/handsontable.css';
 import 'handsontable/styles/ht-theme-main.css';
@@ -17,7 +30,24 @@ import {
 import { getCanonicalBaseType } from '@/utils/databaseTypeMapping';
 import { COLUMN_HEADERS } from '@/utils/constants';
 
-registerAllModules();
+let handsontableModulesRegistered = false;
+
+const ensureHandsontableModules = () => {
+  if (handsontableModulesRegistered) return;
+  registerCellType(AutocompleteCellType);
+  registerCellType(CheckboxCellType);
+  registerCellType(DropdownCellType);
+  registerCellType(TextCellType);
+  registerPlugin(AutoColumnSize);
+  registerPlugin(ContextMenu);
+  registerPlugin(CopyPaste);
+  registerPlugin(ManualColumnResize);
+  registerPlugin(StretchColumns);
+  registerPlugin(UndoRedo);
+  handsontableModulesRegistered = true;
+};
+
+ensureHandsontableModules();
 
 const COLUMN_SETTINGS: Handsontable.ColumnSettings[] = [
   { data: 'order', readOnly: true, width: 48, className: 'htCenter' },
@@ -70,6 +100,9 @@ export const DataTable = memo<DataTableProps>(
     onAddRows,
     onAddCountChange,
   }) => {
+    const latestRef = useRef({ rows, dbType });
+    latestRef.current = { rows, dbType };
+
     const rowWarnings = useMemo(() => {
       return rows.map((row) => {
         const warnings: string[] = [];
@@ -126,11 +159,12 @@ export const DataTable = memo<DataTableProps>(
     // Enhanced cells function extracted from App.tsx
     const cells = useCallback(
       (row: number, _col: number, prop?: string | number) => {
+        const { rows: currentRows, dbType: currentDbType } = latestRef.current;
         const cellProps: Handsontable.CellMeta = {};
 
         if (prop === 'defaultValue') {
           const kind = normalizeDefaultKind(
-            rows[row]?.defaultKind as UiDefaultKind,
+            currentRows[row]?.defaultKind as UiDefaultKind,
           );
           if (kind !== 'constant') {
             cellProps.readOnly = true;
@@ -142,13 +176,15 @@ export const DataTable = memo<DataTableProps>(
         }
 
         if (prop === 'defaultKind' || prop === 'onUpdate') {
-          const base = getCanonicalBaseType(toStringSafe(rows[row]?.fieldType));
+          const base = getCanonicalBaseType(
+            toStringSafe(currentRows[row]?.fieldType),
+          );
           const dd = cellProps as Handsontable.CellMeta & {
             source?: string[];
           };
 
           if (prop === 'defaultKind') {
-            const opts = getUiDefaultKindOptions(dbType, base);
+            const opts = getUiDefaultKindOptions(currentDbType, base);
             dd.source = opts;
             dd.type = 'autocomplete';
             (dd as Handsontable.CellMeta & { strict?: boolean }).strict = true;
@@ -158,7 +194,7 @@ export const DataTable = memo<DataTableProps>(
           } else if (prop === 'onUpdate') {
             // Check if defaultKind is uuid, if so, disable onUpdate
             const defaultKind = normalizeDefaultKind(
-              rows[row]?.defaultKind as UiDefaultKind,
+              currentRows[row]?.defaultKind as UiDefaultKind,
             );
             if (defaultKind === 'uuid') {
               dd.type = 'text';
@@ -169,7 +205,7 @@ export const DataTable = memo<DataTableProps>(
                 dd.className ? dd.className + ' ' : ''
               }htDimmed`;
             } else {
-              const opts = getUiOnUpdateOptions(dbType, base);
+              const opts = getUiOnUpdateOptions(currentDbType, base);
               if (opts.length <= 1) {
                 dd.type = 'text';
                 dd.readOnly = true;
@@ -191,7 +227,7 @@ export const DataTable = memo<DataTableProps>(
 
         return cellProps;
       },
-      [rows, dbType],
+      [],
     );
 
     const handleBeforeChange = useCallback(
