@@ -30,7 +30,7 @@
     "handsontable": "^16.2.0",
     "lucide-react": "^0.562.0",
     "lz-string": "^1.5.0",
-    "node-sql-parser": "^5.3.13",
+    "node-sql-parser": "^5.4.0",
     "png-to-ico": "^3.0.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
@@ -47,14 +47,14 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
     "@testing-library/user-event": "^14.6.1",
-    "@types/node": "^25.0.3",
-    "@types/react": "^19.2.7",
+    "@types/node": "^25.0.8",
+    "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/uuid": "^11.0.0",
     "@vitejs/plugin-react": "^5.1.2",
-    "@vitest/coverage-v8": "^4.0.16",
-    "@vitest/ui": "^4.0.16",
+    "@vitest/coverage-v8": "^4.0.17",
+    "@vitest/ui": "^4.0.17",
     "autoprefixer": "^10.4.23",
     "jsdom": "^27.4.0",
     "postcss": "^8.5.6",
@@ -62,6 +62,6 @@
     "tailwindcss-animate": "^1.0.7",
     "typescript": "~5.9.3",
     "vite": "^7.3.1",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.17"
   }
 }
