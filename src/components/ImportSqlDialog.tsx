@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -41,6 +41,11 @@ export function ImportSqlDialog({
   const [selectedDbType, setSelectedDbType] =
     useState<DatabaseType>(currentDbType);
   const { showToast } = useToast();
+
+  useEffect(() => {
+    if (!open) return;
+    void import('@/utils/SqlParser');
+  }, [open]);
 
   const handleImport = async () => {
     if (!sql.trim()) {
