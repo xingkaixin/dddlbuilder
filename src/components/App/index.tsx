@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, lazy, Suspense } from 'react';
 import type { DatabaseType, FieldRow } from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
 import { createEmptyRow } from '@/utils/helpers';
@@ -20,18 +20,15 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  usePersistedState,
-  useTableData,
-  useIndexManagement,
-  useAuthManagement,
-  useSqlGeneration,
-  useToast,
-  useCitusSharding,
-} from '@/hooks';
+import { usePersistedState } from '@/hooks/usePersistedState';
+import { useTableData } from '@/hooks/useTableData';
+import { useIndexManagement } from '@/hooks/useIndexManagement';
+import { useAuthManagement } from '@/hooks/useAuthManagement';
+import { useSqlGeneration } from '@/hooks/useSqlGeneration';
+import { useToast } from '@/hooks/useToast';
+import { useCitusSharding } from '@/hooks/useCitusSharding';
 import { useMysqlPartition } from '@/hooks/useMysqlPartition';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
-import { compressState } from '@/utils/share';
 import {
   Columns3Cog,
   Network,
@@ -42,7 +39,8 @@ import {
   Share2,
   Layers,
 } from 'lucide-react';
-import FireworksOverlay from '@/components/FireworksOverlay';
+
+const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
 
 const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) =>
   createEmptyRow(index),
@@ -167,7 +165,7 @@ function App() {
 
   const { toastMessage, showToast } = useToast();
 
-  const handleShare = useCallback(() => {
+  const handleShare = useCallback(async () => {
     const currentState = {
       tableName,
       tableComment,
@@ -197,9 +195,10 @@ function App() {
     };
 
     try {
+      const { compressState } = await import('@/utils/share');
       const compressed = compressState(currentState);
       const url = `${window.location.origin}${window.location.pathname}?s=${compressed}`;
-      navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(url);
       showToast('链接已复制到剪贴板');
     } catch (e) {
       console.error('Failed to generate share link', e);
@@ -408,7 +407,11 @@ function App() {
       />
 
       {showFireworks && (
-        <FireworksOverlay onComplete={handleFireworksComplete} />
+        <Suspense
+          fallback={<div className="fixed inset-0 z-[100] bg-black/70" />}
+        >
+          <FireworksOverlay onComplete={handleFireworksComplete} />
+        </Suspense>
       )}
 
       {/* Main Content */}
