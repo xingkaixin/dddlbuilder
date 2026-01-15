@@ -1,10 +1,15 @@
-import { memo } from 'react';
-import { ChangelogModal } from '@/components/ChangelogModal';
+import { memo, lazy, Suspense } from 'react';
 import { ImportSqlDialog } from '@/components/ImportSqlDialog';
 import type { DatabaseType } from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
 import packageInfo from '../../../package.json';
 import { Share2, FileInput, History } from 'lucide-react';
+
+const ChangelogModal = lazy(() =>
+  import('@/components/ChangelogModal').then((module) => ({
+    default: module.ChangelogModal,
+  })),
+);
 
 interface HeaderProps {
   showChangelog: boolean;
@@ -71,7 +76,14 @@ export const Header = memo<HeaderProps>(
           </div>
         </header>
 
-        <ChangelogModal open={showChangelog} onOpenChange={setShowChangelog} />
+        {showChangelog && (
+          <Suspense fallback={null}>
+            <ChangelogModal
+              open={showChangelog}
+              onOpenChange={setShowChangelog}
+            />
+          </Suspense>
+        )}
       </>
     );
   },

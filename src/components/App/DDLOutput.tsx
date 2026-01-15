@@ -1,11 +1,18 @@
 import type { DatabaseType } from '@/types';
-import { memo, useMemo, useState, useRef, useEffect, useCallback } from 'react';
+import type { CSSProperties } from 'react';
+import {
+  memo,
+  useMemo,
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  lazy,
+  Suspense,
+} from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Copy, Check, ScrollText, ShieldCheck } from 'lucide-react';
-import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atomOneLight } from 'react-syntax-highlighter/dist/esm/styles/hljs';
-import sql from 'react-syntax-highlighter/dist/esm/languages/hljs/sql';
 import { DATABASE_OPTIONS } from '@/utils/constants';
 
 interface DDLOutputProps {
@@ -16,13 +23,14 @@ interface DDLOutputProps {
   onCopyDcl: () => void;
 }
 
-SyntaxHighlighter.registerLanguage('sql', sql);
+const SqlCodeBlock = lazy(() => import('./SqlCodeBlock'));
 
-const CODE_BLOCK_STYLE = {
+const CODE_FALLBACK_STYLE: CSSProperties = {
   fontFamily: '"Roboto Mono", monospace',
   fontSize: '0.775rem',
   whiteSpace: 'pre-wrap',
   background: 'transparent',
+  margin: 0,
 };
 
 export const DDLOutput = memo<DDLOutputProps>(
@@ -162,14 +170,13 @@ export const DDLOutput = memo<DDLOutputProps>(
                     </div>
                   </div>
                   <div className="relative flex-1 overflow-auto px-4 py-3.5">
-                    <SyntaxHighlighter
-                      language="sql"
-                      style={atomOneLight}
-                      customStyle={CODE_BLOCK_STYLE}
-                      showLineNumbers
+                    <Suspense
+                      fallback={
+                        <pre style={CODE_FALLBACK_STYLE}>{codeText}</pre>
+                      }
                     >
-                      {codeText}
-                    </SyntaxHighlighter>
+                      <SqlCodeBlock code={codeText} />
+                    </Suspense>
                   </div>
                 </div>
               </TabsContent>

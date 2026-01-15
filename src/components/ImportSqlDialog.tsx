@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import type { DatabaseType } from '@/types';
-import { SqlParser, type ParsedResult } from '@/utils/SqlParser';
+import type { ParsedResult } from '@/utils/SqlParser';
 import { useToast } from '@/hooks/useToast';
 
 interface ImportSqlDialogProps {
@@ -42,13 +42,14 @@ export function ImportSqlDialog({
     useState<DatabaseType>(currentDbType);
   const { showToast } = useToast();
 
-  const handleImport = () => {
+  const handleImport = async () => {
     if (!sql.trim()) {
       showToast('请输入 SQL: SQL 内容不能为空');
       return;
     }
 
     try {
+      const { SqlParser } = await import('@/utils/SqlParser');
       const parser = new SqlParser();
       const result = parser.parse(sql, selectedDbType);
 
