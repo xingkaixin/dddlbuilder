@@ -19,6 +19,12 @@ export const changelogData: ChangelogData = {
   description: 'DDL建表工具版本更新记录',
   entries: [
     {
+      version: '0.9.0',
+      date: '2026-01-19',
+      content:
+        '### 新增「大师评审」功能\n- 在 DDL 输出面板新增「大师评审」按钮\n- 基于 AI 大模型对生成的 DDL 进行专业评审\n- 从命名规范、数据类型、索引设计、完整性约束、可扩展性、性能等维度评分\n- 提供 1-10 分的综合评分和改进建议',
+    },
+    {
       version: '0.8.4',
       date: '2026-01-15',
       content: '- 一些微小的更新',
