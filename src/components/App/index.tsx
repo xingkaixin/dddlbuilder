@@ -203,7 +203,7 @@ function App() {
   // DDL Review hook
   const {
     isLoading: isReviewing,
-    streamingText: reviewStreamingText,
+    partialResult: reviewPartialResult,
     result: reviewResult,
     error: reviewError,
     startReview,
@@ -629,7 +629,7 @@ function App() {
           onCopySql={copySql}
           onCopyDcl={copyDcl}
           isReviewing={isReviewing}
-          reviewStreamingText={reviewStreamingText}
+          reviewPartialResult={reviewPartialResult}
           reviewResult={reviewResult}
           reviewError={reviewError}
           onStartReview={handleStartReview}

@@ -1,4 +1,8 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
+import {
+  parsePartialJson,
+  type PartialReviewResult,
+} from '@/utils/parsePartialJson';
 
 export interface ReviewResult {
   score: number;
@@ -21,6 +25,14 @@ export function useDDLReview() {
     error: null,
   });
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Parse partial result from streaming text for progressive rendering
+  const partialResult: PartialReviewResult | null = useMemo(() => {
+    if (!state.isLoading || !state.streamingText) {
+      return null;
+    }
+    return parsePartialJson(state.streamingText);
+  }, [state.isLoading, state.streamingText]);
 
   const startReview = useCallback(
     async (ddl: string, tableName: string, dbType: string) => {
@@ -73,7 +85,7 @@ export function useDDLReview() {
           const chunk = decoder.decode(value, { stream: true });
           fullText += chunk;
 
-          // Update streaming text for real-time display
+          // Update streaming text - partialResult will be computed via useMemo
           setState((prev) => ({
             ...prev,
             streamingText: fullText,
@@ -131,6 +143,7 @@ export function useDDLReview() {
   return {
     isLoading: state.isLoading,
     streamingText: state.streamingText,
+    partialResult,
     result: state.result,
     error: state.error,
     startReview,

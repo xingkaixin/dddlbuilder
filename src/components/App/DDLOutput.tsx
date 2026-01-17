@@ -1,6 +1,7 @@
 import type { DatabaseType } from '@/types';
 import type { CSSProperties } from 'react';
 import type { ReviewResult } from '@/hooks/useDDLReview';
+import type { PartialReviewResult } from '@/utils/parsePartialJson';
 import {
   memo,
   useMemo,
@@ -31,7 +32,7 @@ interface DDLOutputProps {
   onCopyDcl: () => Promise<boolean>;
   // Review props
   isReviewing: boolean;
-  reviewStreamingText: string;
+  reviewPartialResult: PartialReviewResult | null;
   reviewResult: ReviewResult | null;
   reviewError: string | null;
   onStartReview: () => void;
@@ -55,7 +56,7 @@ export const DDLOutput = memo<DDLOutputProps>(
     onCopySql,
     onCopyDcl,
     isReviewing,
-    reviewStreamingText,
+    reviewPartialResult,
     reviewResult,
     reviewError,
     onStartReview,
@@ -196,7 +197,7 @@ export const DDLOutput = memo<DDLOutputProps>(
               <div className="px-4 pb-4">
                 <ReviewResultPanel
                   isLoading={isReviewing}
-                  streamingText={reviewStreamingText}
+                  partialResult={reviewPartialResult}
                   result={reviewResult}
                   error={reviewError}
                 />
