@@ -35,6 +35,7 @@ import { useSqlGeneration } from '@/hooks/useSqlGeneration';
 import { useToast } from '@/hooks/useToast';
 import { useCitusSharding } from '@/hooks/useCitusSharding';
 import { useMysqlPartition } from '@/hooks/useMysqlPartition';
+import { useDDLReview } from '@/hooks/useDDLReview';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
 import {
   Columns3Cog,
@@ -198,6 +199,19 @@ function App() {
   );
 
   const { toastMessage, showToast } = useToast();
+
+  // DDL Review hook
+  const {
+    isLoading: isReviewing,
+    streamingText: reviewStreamingText,
+    result: reviewResult,
+    error: reviewError,
+    startReview,
+  } = useDDLReview();
+
+  const handleStartReview = useCallback(() => {
+    startReview(generatedSql, tableName, dbType);
+  }, [startReview, generatedSql, tableName, dbType]);
 
   const handleShare = useCallback(async () => {
     const currentState = {
@@ -614,6 +628,11 @@ function App() {
           dbType={dbType}
           onCopySql={copySql}
           onCopyDcl={copyDcl}
+          isReviewing={isReviewing}
+          reviewStreamingText={reviewStreamingText}
+          reviewResult={reviewResult}
+          reviewError={reviewError}
+          onStartReview={handleStartReview}
         />
       </div>
 

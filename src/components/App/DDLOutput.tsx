@@ -1,5 +1,6 @@
 import type { DatabaseType } from '@/types';
 import type { CSSProperties } from 'react';
+import type { ReviewResult } from '@/hooks/useDDLReview';
 import {
   memo,
   useMemo,
@@ -12,15 +13,28 @@ import {
 } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Copy, Check, ScrollText, ShieldCheck } from 'lucide-react';
+import {
+  Copy,
+  Check,
+  ScrollText,
+  ShieldCheck,
+  GraduationCap,
+} from 'lucide-react';
 import { DATABASE_OPTIONS } from '@/utils/constants';
+import { ReviewResultPanel } from './ReviewResult';
 
 interface DDLOutputProps {
   generatedSql: string;
   generatedDcl: string;
   dbType: DatabaseType;
-  onCopySql: () => void;
-  onCopyDcl: () => void;
+  onCopySql: () => Promise<boolean>;
+  onCopyDcl: () => Promise<boolean>;
+  // Review props
+  isReviewing: boolean;
+  reviewStreamingText: string;
+  reviewResult: ReviewResult | null;
+  reviewError: string | null;
+  onStartReview: () => void;
 }
 
 const SqlCodeBlock = lazy(() => import('./SqlCodeBlock'));
@@ -34,7 +48,18 @@ const CODE_FALLBACK_STYLE: CSSProperties = {
 };
 
 export const DDLOutput = memo<DDLOutputProps>(
-  ({ generatedSql, generatedDcl, dbType, onCopySql, onCopyDcl }) => {
+  ({
+    generatedSql,
+    generatedDcl,
+    dbType,
+    onCopySql,
+    onCopyDcl,
+    isReviewing,
+    reviewStreamingText,
+    reviewResult,
+    reviewError,
+    onStartReview,
+  }) => {
     const databaseOption = useMemo(
       () => DATABASE_OPTIONS.find((option) => option.value === dbType),
       [dbType],
@@ -83,30 +108,7 @@ export const DDLOutput = memo<DDLOutputProps>(
       );
     }, [onCopyDcl]);
 
-    const tabConfigs = [
-      {
-        value: 'ddl',
-        title: '建表 DDL',
-        description: '根据左侧输入实时生成不同数据库的建表语句',
-        copyLabel: '复制DDL',
-        icon: ScrollText,
-        isCopied: isSqlCopied,
-        onCopy: handleCopySql,
-        content: generatedSql,
-        placeholder: '-- 请在左侧填写表信息',
-      },
-      {
-        value: 'dcl',
-        title: '授权 DCL',
-        description: '生成数据库授权语句（GRANT）',
-        copyLabel: '复制DCL',
-        icon: ShieldCheck,
-        isCopied: isDclCopied,
-        onCopy: handleCopyDcl,
-        content: generatedDcl,
-        placeholder: '-- 请配置授权对象',
-      },
-    ];
+    const canReview = generatedSql && !generatedSql.startsWith('--');
 
     return (
       <div className="relative flex w-full flex-col rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5 lg:max-w-xl">
@@ -116,72 +118,143 @@ export const DDLOutput = memo<DDLOutputProps>(
         <Tabs defaultValue="ddl" className="relative flex flex-col">
           <div className="border-b border-primary/10 px-4 pt-4">
             <TabsList className="grid w-full grid-cols-2">
-              {tabConfigs.map((tab) => (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  className="w-full gap-2"
-                >
-                  {tab.icon && <tab.icon className="h-4 w-4" />}
-                  <span>{tab.title}</span>
-                </TabsTrigger>
-              ))}
+              <TabsTrigger value="ddl" className="w-full gap-2">
+                <ScrollText className="h-4 w-4" />
+                <span>建表 DDL</span>
+              </TabsTrigger>
+              <TabsTrigger value="dcl" className="w-full gap-2">
+                <ShieldCheck className="h-4 w-4" />
+                <span>授权 DCL</span>
+              </TabsTrigger>
             </TabsList>
           </div>
 
-          {tabConfigs.map((tab) => {
-            const codeText = tab.content || tab.placeholder;
-            return (
-              <TabsContent key={tab.value} value={tab.value} className="mt-0">
-                <div className="relative flex flex-col">
-                  <div className="border-b border-primary/10 px-4 py-3.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <h2 className="text-xl font-bold bg-linear-to-r from-foreground to-primary bg-clip-text text-transparent transition-colors duration-200">
-                            {tab.title}
-                          </h2>
-                          <span className="transition-transform duration-200 hover:scale-105">
-                            {renderDatabaseBadge()}
-                          </span>
-                        </div>
-                        <p className="text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground/80">
-                          {tab.description}
-                        </p>
-                      </div>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md"
-                        onClick={tab.onCopy}
-                      >
-                        {tab.isCopied ? (
-                          <>
-                            <Check className="h-4 w-4 transition-transform duration-200" />{' '}
-                            已复制
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-4 w-4 transition-transform duration-200" />{' '}
-                            {tab.copyLabel}
-                          </>
-                        )}
-                      </Button>
+          {/* DDL Tab */}
+          <TabsContent value="ddl" className="mt-0">
+            <div className="relative flex flex-col">
+              <div className="border-b border-primary/10 px-4 py-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-bold bg-linear-to-r from-foreground to-primary bg-clip-text text-transparent transition-colors duration-200">
+                        建表 DDL
+                      </h2>
+                      <span className="transition-transform duration-200 hover:scale-105">
+                        {renderDatabaseBadge()}
+                      </span>
                     </div>
+                    <p className="text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground/80">
+                      根据左侧输入实时生成不同数据库的建表语句
+                    </p>
                   </div>
-                  <div className="relative flex-1 overflow-auto px-4 py-3.5">
-                    <Suspense
-                      fallback={
-                        <pre style={CODE_FALLBACK_STYLE}>{codeText}</pre>
-                      }
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md"
+                      onClick={onStartReview}
+                      disabled={!canReview || isReviewing}
                     >
-                      <SqlCodeBlock code={codeText} />
-                    </Suspense>
+                      <GraduationCap className="h-4 w-4" />
+                      大师评审
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md"
+                      onClick={handleCopySql}
+                    >
+                      {isSqlCopied ? (
+                        <>
+                          <Check className="h-4 w-4 transition-transform duration-200" />{' '}
+                          已复制
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4 transition-transform duration-200" />{' '}
+                          复制DDL
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </div>
-              </TabsContent>
-            );
-          })}
+              </div>
+              <div className="relative flex-1 overflow-auto px-4 py-3.5">
+                <Suspense
+                  fallback={
+                    <pre style={CODE_FALLBACK_STYLE}>
+                      {generatedSql || '-- 请在左侧填写表信息'}
+                    </pre>
+                  }
+                >
+                  <SqlCodeBlock
+                    code={generatedSql || '-- 请在左侧填写表信息'}
+                  />
+                </Suspense>
+              </div>
+              {/* Review Result Panel */}
+              <div className="px-4 pb-4">
+                <ReviewResultPanel
+                  isLoading={isReviewing}
+                  streamingText={reviewStreamingText}
+                  result={reviewResult}
+                  error={reviewError}
+                />
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* DCL Tab */}
+          <TabsContent value="dcl" className="mt-0">
+            <div className="relative flex flex-col">
+              <div className="border-b border-primary/10 px-4 py-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-bold bg-linear-to-r from-foreground to-primary bg-clip-text text-transparent transition-colors duration-200">
+                        授权 DCL
+                      </h2>
+                      <span className="transition-transform duration-200 hover:scale-105">
+                        {renderDatabaseBadge()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground/80">
+                      生成数据库授权语句（GRANT）
+                    </p>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md"
+                    onClick={handleCopyDcl}
+                  >
+                    {isDclCopied ? (
+                      <>
+                        <Check className="h-4 w-4 transition-transform duration-200" />{' '}
+                        已复制
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 transition-transform duration-200" />{' '}
+                        复制DCL
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <div className="relative flex-1 overflow-auto px-4 py-3.5">
+                <Suspense
+                  fallback={
+                    <pre style={CODE_FALLBACK_STYLE}>
+                      {generatedDcl || '-- 请配置授权对象'}
+                    </pre>
+                  }
+                >
+                  <SqlCodeBlock code={generatedDcl || '-- 请配置授权对象'} />
+                </Suspense>
+              </div>
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
     );
