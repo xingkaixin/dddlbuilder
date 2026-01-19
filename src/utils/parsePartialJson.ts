@@ -84,42 +84,47 @@ export function parsePartialJson(text: string): PartialReviewResult | null {
  */
 function extractArrayStrings(content: string): string[] {
   const items: string[] = [];
+  let inString = false;
+  let escaped = false;
+  let current = '';
 
-  // Match complete strings: "content"
-  const completeRegex = /"((?:[^"\\]|\\.)*)"/g;
-  let match: RegExpExecArray | null;
+  for (let i = 0; i < content.length; i += 1) {
+    const char = content[i];
 
-  // biome-ignore lint/suspicious/noAssignInExpressions: standard regex iteration pattern
-  while ((match = completeRegex.exec(content)) !== null) {
-    // Check if this string is followed by ] or , to confirm it's complete
-    const afterMatch = content.slice(match.index + match[0].length).trim();
-    if (
-      afterMatch.startsWith(',') ||
-      afterMatch.startsWith(']') ||
-      afterMatch === ''
-    ) {
-      items.push(unescapeJsonString(match[1]));
+    if (!inString) {
+      if (char === '"') {
+        inString = true;
+        current = '';
+      } else if (char === ']') {
+        break;
+      }
+      continue;
     }
+
+    if (escaped) {
+      current += char;
+      escaped = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      escaped = true;
+      current += '\\';
+      continue;
+    }
+
+    if (char === '"') {
+      items.push(unescapeJsonString(current));
+      current = '';
+      inString = false;
+      continue;
+    }
+
+    current += char;
   }
 
-  // Check for a trailing incomplete string
-  const lastQuoteIndex = content.lastIndexOf('"');
-  if (lastQuoteIndex !== -1) {
-    const afterLastQuote = content.slice(lastQuoteIndex + 1);
-    // If there's no closing quote after the last opening quote, it's incomplete
-    if (!afterLastQuote.includes('"')) {
-      // Find the start of this incomplete string
-      const beforeLastQuote = content.slice(0, lastQuoteIndex);
-      const incompleteStart = beforeLastQuote.lastIndexOf('"');
-      if (incompleteStart !== -1) {
-        // Check if it's after a comma or at array start (new item)
-        const beforeStart = beforeLastQuote.slice(0, incompleteStart).trim();
-        if (beforeStart.endsWith(',') || beforeStart === '') {
-          // Don't add incomplete items - wait for them to complete
-          // This prevents flickering
-        }
-      }
-    }
+  if (inString && current.trim().length > 0) {
+    items.push(unescapeJsonString(current));
   }
 
   return items;
