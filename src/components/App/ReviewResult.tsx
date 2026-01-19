@@ -157,6 +157,13 @@ export const ReviewResultPanel = memo<ReviewResultPanelProps>(
                   isStreaming={isLoading && !result}
                 />
               )}
+
+            {/* Disclaimer - show only when we have any content */}
+            {!isLoading && (
+              <p className="mt-4 text-xs text-muted-foreground/70 leading-relaxed">
+                本评审结果为自动化结构分析与规则校验，仅用于技术参考，不构成质量结论、审计意见或设计否定，请结合实际业务语境自行判断。
+              </p>
+            )}
           </div>
         )}
       </div>
