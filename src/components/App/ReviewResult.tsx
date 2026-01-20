@@ -141,7 +141,7 @@ export const ReviewResultPanel = memo<ReviewResultPanelProps>(
     const displayResult = result || (isLoading ? partialResult : null);
     const suggestions = displayResult?.suggestions ?? [];
     const missingSuggestionCount = isStreaming
-      ? Math.max(0, SUGGESTION_SKELETON_COUNT - suggestions.length)
+      ? Math.max(1, SUGGESTION_SKELETON_COUNT - suggestions.length)
       : 0;
 
     if (!isLoading && !result && !error) {
