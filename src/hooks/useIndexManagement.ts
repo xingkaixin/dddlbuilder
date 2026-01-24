@@ -16,6 +16,7 @@ export interface UseIndexManagementReturn {
   showFieldSuggestions: boolean;
   selectedSuggestionIndex: number;
   setIndexInput: (value: string) => void;
+  setCurrentIndexFields: (fields: IndexField[]) => void;
   setShowFieldSuggestions: (show: boolean) => void;
   setSelectedSuggestionIndex: (index: number) => void;
   addFieldToIndex: (fieldName: string) => void;
@@ -211,6 +212,7 @@ export function useIndexManagement(
     showFieldSuggestions,
     selectedSuggestionIndex,
     setIndexInput,
+    setCurrentIndexFields,
     setShowFieldSuggestions,
     setSelectedSuggestionIndex,
     addFieldToIndex,

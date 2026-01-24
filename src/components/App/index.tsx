@@ -6,7 +6,7 @@ import {
   lazy,
   Suspense,
 } from 'react';
-import type { DatabaseType, FieldRow } from '@/types';
+import type { DatabaseType, FieldRow, PersistedState } from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
 import { createEmptyRow } from '@/utils/helpers';
 import { Header } from './Header';
@@ -17,6 +17,7 @@ import { ShardingPanel } from './ShardingPanel';
 import { PartitionPanel } from './PartitionPanel';
 import { DataTable } from './DataTable';
 import { DDLOutput } from './DDLOutput';
+import { SavedTablesSidebar } from './SavedTablesSidebar';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -26,6 +27,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { useTableData } from '@/hooks/useTableData';
@@ -36,7 +39,9 @@ import { useToast } from '@/hooks/useToast';
 import { useCitusSharding } from '@/hooks/useCitusSharding';
 import { useMysqlPartition } from '@/hooks/useMysqlPartition';
 import { useDDLReview } from '@/hooks/useDDLReview';
+import { useSavedTables, type SavedTableSummary } from '@/hooks/useSavedTables';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
+import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
 import {
   Columns3Cog,
   Network,
@@ -53,6 +58,8 @@ const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
 const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) =>
   createEmptyRow(index),
 );
+const SIDEBAR_MIN_WIDTH = 220;
+const SIDEBAR_MAX_WIDTH = 380;
 
 function App() {
   // Basic state
@@ -67,6 +74,35 @@ function App() {
 
   // Fireworks state
   const [showFireworks, setShowFireworks] = useState(false);
+
+  // Saved tables sidebar & dialogs
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(256);
+  const [loadedTableNormalizedName, setLoadedTableNormalizedName] = useState<
+    string | null
+  >(null);
+  const [loadedTableName, setLoadedTableName] = useState<string | null>(null);
+  const [loadedTableSignature, setLoadedTableSignature] = useState<
+    string | null
+  >(null);
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+  const [saveName, setSaveName] = useState('');
+  const [saveError, setSaveError] = useState('');
+  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
+  const [renameName, setRenameName] = useState('');
+  const [renameError, setRenameError] = useState('');
+  const [renameTarget, setRenameTarget] = useState<SavedTableSummary | null>(
+    null,
+  );
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<SavedTableSummary | null>(
+    null,
+  );
+  const [isLoadConfirmOpen, setIsLoadConfirmOpen] = useState(false);
+  const [pendingLoadTarget, setPendingLoadTarget] =
+    useState<SavedTableSummary | null>(null);
+  const [queuedLoadAfterSave, setQueuedLoadAfterSave] =
+    useState<SavedTableSummary | null>(null);
 
   // Check for fireworks on mount
   useEffect(() => {
@@ -118,6 +154,7 @@ function App() {
     showFieldSuggestions,
     selectedSuggestionIndex,
     setIndexInput,
+    setCurrentIndexFields,
     setShowFieldSuggestions,
     setSelectedSuggestionIndex,
     addFieldToIndex,
@@ -167,6 +204,7 @@ function App() {
     citusShardingConfig,
     setCitusMode,
     setDistributionColumn,
+    setCitusShardingConfig,
     resetCitusSharding,
   } = useCitusSharding(persistedState || undefined);
 
@@ -181,40 +219,15 @@ function App() {
     removePartition,
     updatePartition,
     generateRangePartitions,
+    setMysqlPartitionConfig,
     resetPartition,
   } = useMysqlPartition(persistedState || undefined);
 
   // Check if MySQL-compatible database that supports partitioning
   const supportsMysqlPartition = ['mysql', 'mariadb', 'tidb'].includes(dbType);
 
-  const { generatedSql, generatedDcl, copySql, copyDcl } = useSqlGeneration(
-    dbType,
-    tableName,
-    tableComment,
-    normalizedFields,
-    indexes,
-    authObjects,
-    dbType === 'postgresql-citus' ? citusShardingConfig : undefined,
-    supportsMysqlPartition ? mysqlPartitionConfig : undefined,
-  );
-
-  const { toastMessage, showToast } = useToast();
-
-  // DDL Review hook
-  const {
-    isLoading: isReviewing,
-    partialResult: reviewPartialResult,
-    result: reviewResult,
-    error: reviewError,
-    startReview,
-  } = useDDLReview();
-
-  const handleStartReview = useCallback(() => {
-    startReview(generatedSql, tableName, dbType);
-  }, [startReview, generatedSql, tableName, dbType]);
-
-  const handleShare = useCallback(async () => {
-    const currentState = {
+  const buildPersistedState = useCallback(
+    (): PersistedState => ({
       tableName,
       tableComment,
       dbType,
@@ -240,8 +253,89 @@ function App() {
       mysqlPartitionConfig: supportsMysqlPartition
         ? mysqlPartitionConfig
         : undefined,
-    };
+    }),
+    [
+      tableName,
+      tableComment,
+      dbType,
+      rows,
+      addCount,
+      indexInput,
+      currentIndexFields,
+      indexes,
+      authInput,
+      authObjects,
+      citusShardingConfig,
+      mysqlPartitionConfig,
+      supportsMysqlPartition,
+    ],
+  );
 
+  const serializePersistedState = useCallback(
+    (state: PersistedState) => JSON.stringify(state),
+    [],
+  );
+
+  const currentStateSignature = useMemo(
+    () => serializePersistedState(buildPersistedState()),
+    [buildPersistedState, serializePersistedState],
+  );
+
+  const hasLoadedTable = Boolean(loadedTableNormalizedName);
+  const isLoadedDirty =
+    hasLoadedTable &&
+    loadedTableSignature != null &&
+    currentStateSignature !== loadedTableSignature;
+  const canSaveCurrent = !hasLoadedTable || isLoadedDirty;
+  const loadedStatus = hasLoadedTable
+    ? isLoadedDirty
+      ? 'dirty'
+      : 'clean'
+    : null;
+  const saveDialogTitle = hasLoadedTable ? '更新保存的表' : '保存当前表';
+  const saveDialogDescription = hasLoadedTable
+    ? '当前为已加载表，保存将覆盖原记录。'
+    : '保存后可在左侧列表中快速加载。';
+  const saveInputDisabled = hasLoadedTable;
+
+  const { generatedSql, generatedDcl, copySql, copyDcl } = useSqlGeneration(
+    dbType,
+    tableName,
+    tableComment,
+    normalizedFields,
+    indexes,
+    authObjects,
+    dbType === 'postgresql-citus' ? citusShardingConfig : undefined,
+    supportsMysqlPartition ? mysqlPartitionConfig : undefined,
+  );
+
+  const { toastMessage, showToast } = useToast();
+  const {
+    savedTables,
+    loading: savedTablesLoading,
+    error: savedTablesError,
+    saveTable,
+    overwriteTable,
+    deleteTable,
+    renameTable,
+    loadTable,
+  } = useSavedTables();
+
+  // DDL Review hook
+  const {
+    isLoading: isReviewing,
+    partialResult: reviewPartialResult,
+    result: reviewResult,
+    error: reviewError,
+    startReview,
+  } = useDDLReview();
+
+  const handleStartReview = useCallback(() => {
+    startReview(generatedSql, tableName, dbType);
+  }, [startReview, generatedSql, tableName, dbType]);
+
+  const handleShare = useCallback(async () => {
+    const currentState = buildPersistedState();
     try {
       const { compressState } = await import('@/utils/share');
       const compressed = compressState(currentState);
@@ -252,22 +346,7 @@ function App() {
       console.error('Failed to generate share link', e);
       showToast('生成链接失败');
     }
-  }, [
-    tableName,
-    tableComment,
-    dbType,
-    rows,
-    addCount,
-    indexInput,
-    currentIndexFields,
-    indexes,
-    authInput,
-    authObjects,
-    citusShardingConfig,
-    mysqlPartitionConfig,
-    supportsMysqlPartition,
-    showToast,
-  ]);
+  }, [buildPersistedState, showToast]);
 
   // restore basic state from localStorage once on mount
   useEffect(() => {
@@ -298,59 +377,35 @@ function App() {
   useEffect(() => {
     if (!hydrated) return;
     try {
-      const payload = {
-        tableName,
-        tableComment,
-        dbType,
-        rows: rows.map((row) => ({
-          ...row,
-          // Ensure all required fields are present
-          order: row.order || 0,
-          fieldName: row.fieldName || '',
-          fieldComment: row.fieldComment || '',
-          fieldType: row.fieldType || '',
-          nullable: row.nullable ? '是' : '否',
-          defaultKind: row.defaultKind || '',
-          defaultValue: row.defaultValue || '',
-          onUpdate: row.onUpdate || '',
-        })),
-        addCount,
-        indexInput,
-        currentIndexFields,
-        indexes: sanitizeIndexesForPersist(indexes),
-        authInput,
-        authObjects,
-        citusShardingConfig:
-          dbType === 'postgresql-citus' ? citusShardingConfig : undefined,
-        mysqlPartitionConfig: supportsMysqlPartition
-          ? mysqlPartitionConfig
-          : undefined,
-      };
+      const payload = buildPersistedState();
       saveState(payload);
     } catch {
       // ignore quota errors
     }
-  }, [
-    hydrated,
-    tableName,
-    tableComment,
-    dbType,
-    rows,
-    addCount,
-    indexInput,
-    currentIndexFields,
-    indexes,
-    authInput,
-    authObjects,
-    citusShardingConfig,
-    mysqlPartitionConfig,
-    supportsMysqlPartition,
-    saveState,
-  ]);
+  }, [hydrated, buildPersistedState, saveState]);
 
   const handleClearAll = useCallback(() => {
     setIsClearDialogOpen(true);
   }, []);
+
+  const clampSidebarWidth = useCallback(
+    (value: number) =>
+      Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, value)),
+    [],
+  );
+
+  const handleResizeSidebar = useCallback(
+    (nextWidth: number) => {
+      setSidebarWidth(clampSidebarWidth(nextWidth));
+    },
+    [clampSidebarWidth],
+  );
+
+  useEffect(() => {
+    if (sidebarOpen) {
+      setSidebarWidth((prev) => clampSidebarWidth(prev));
+    }
+  }, [sidebarOpen, clampSidebarWidth]);
 
   const cancelClearAll = useCallback(() => {
     setIsClearDialogOpen(false);
@@ -366,6 +421,9 @@ function App() {
     resetAuthState();
     resetCitusSharding();
     resetPartition();
+    setLoadedTableNormalizedName(null);
+    setLoadedTableName(null);
+    setLoadedTableSignature(null);
 
     // Clear localStorage
     clearState();
@@ -380,6 +438,267 @@ function App() {
     resetCitusSharding,
     resetPartition,
   ]);
+
+  const applySavedState = useCallback(
+    (state: PersistedState) => {
+      setTableName(state.tableName ?? '');
+      setTableComment(state.tableComment ?? '');
+      setDbType(state.dbType ?? 'mysql');
+
+      if (
+        typeof state.addCount === 'number' &&
+        Number.isFinite(state.addCount)
+      ) {
+        setAddCount(Math.max(1, Math.floor(state.addCount)));
+      } else {
+        setAddCount(10);
+      }
+
+      setRows(state.rows ?? INITIAL_ROWS);
+      setIndexes(state.indexes ?? []);
+      setIndexInput(state.indexInput ?? '');
+      setCurrentIndexFields(state.currentIndexFields ?? []);
+      setAuthObjects(state.authObjects ?? []);
+      setAuthInput(state.authInput ?? '');
+
+      if (state.citusShardingConfig) {
+        setCitusShardingConfig(state.citusShardingConfig);
+      } else {
+        resetCitusSharding();
+      }
+
+      if (state.mysqlPartitionConfig) {
+        setMysqlPartitionConfig(state.mysqlPartitionConfig);
+      } else {
+        resetPartition();
+      }
+    },
+    [
+      setRows,
+      setIndexes,
+      setIndexInput,
+      setCurrentIndexFields,
+      setAuthObjects,
+      setAuthInput,
+      setCitusShardingConfig,
+      resetCitusSharding,
+      setMysqlPartitionConfig,
+      resetPartition,
+    ],
+  );
+
+  const handleLoadSavedTable = useCallback(
+    async (target: SavedTableSummary) => {
+      try {
+        const record = await loadTable(target.normalizedName);
+        if (!record) {
+          showToast('未找到保存的表');
+          return;
+        }
+        applySavedState(record.state);
+        setLoadedTableNormalizedName(record.normalizedName);
+        setLoadedTableName(record.name);
+        setLoadedTableSignature(serializePersistedState(record.state));
+        showToast(`已加载：${record.name}`);
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : '加载失败');
+      }
+    },
+    [applySavedState, loadTable, showToast, serializePersistedState],
+  );
+
+  const openSaveDialog = useCallback(
+    (queuedLoad?: SavedTableSummary | null) => {
+      const defaultName =
+        loadedTableName || tableName.trim() || DEFAULT_SAVED_TABLE_NAME;
+      setSaveName(defaultName);
+      setSaveError('');
+      setIsSaveDialogOpen(true);
+      setQueuedLoadAfterSave(queuedLoad ?? null);
+    },
+    [loadedTableName, tableName],
+  );
+
+  const handleConfirmSave = useCallback(async () => {
+    if (!canSaveCurrent) {
+      showToast('加载的表未修改，无法保存');
+      return;
+    }
+    const nextState = buildPersistedState();
+    const nextSignature = serializePersistedState(nextState);
+
+    if (hasLoadedTable && loadedTableNormalizedName) {
+      const result = await overwriteTable(loadedTableNormalizedName, nextState);
+      if (!result.ok) {
+        if (result.reason === 'not_found') {
+          showToast('未找到保存的表');
+          return;
+        }
+        showToast(result.message ?? '更新失败');
+        return;
+      }
+      setLoadedTableSignature(nextSignature);
+      showToast(`已更新：${loadedTableName ?? saveName}`);
+    } else {
+      const result = await saveTable(saveName, nextState);
+      if (!result.ok) {
+        if (result.reason === 'duplicate') {
+          setSaveError('名称已存在，请换一个');
+          return;
+        }
+        showToast(result.message ?? '保存失败');
+        return;
+      }
+      const displayName = saveName.trim() || DEFAULT_SAVED_TABLE_NAME;
+      showToast(`已保存：${displayName}`);
+    }
+    setIsSaveDialogOpen(false);
+    setSaveError('');
+
+    if (queuedLoadAfterSave) {
+      const target = queuedLoadAfterSave;
+      setQueuedLoadAfterSave(null);
+      await handleLoadSavedTable(target);
+    }
+  }, [
+    canSaveCurrent,
+    saveName,
+    saveTable,
+    overwriteTable,
+    buildPersistedState,
+    serializePersistedState,
+    showToast,
+    queuedLoadAfterSave,
+    handleLoadSavedTable,
+    hasLoadedTable,
+    loadedTableNormalizedName,
+    loadedTableName,
+  ]);
+
+  const handleSaveDialogOpenChange = useCallback((open: boolean) => {
+    setIsSaveDialogOpen(open);
+    if (!open) {
+      setSaveError('');
+      setQueuedLoadAfterSave(null);
+    }
+  }, []);
+
+  const handleSelectSavedTable = useCallback(
+    (item: SavedTableSummary) => {
+      if (hasLoadedTable && isLoadedDirty) {
+        setPendingLoadTarget(item);
+        setIsLoadConfirmOpen(true);
+        return;
+      }
+      void handleLoadSavedTable(item);
+    },
+    [hasLoadedTable, isLoadedDirty, handleLoadSavedTable],
+  );
+
+  const handleCancelLoadConfirm = useCallback(() => {
+    setIsLoadConfirmOpen(false);
+    setPendingLoadTarget(null);
+  }, []);
+
+  const handleLoadConfirmOpenChange = useCallback(
+    (open: boolean) => {
+      if (open) {
+        setIsLoadConfirmOpen(true);
+        return;
+      }
+      handleCancelLoadConfirm();
+    },
+    [handleCancelLoadConfirm],
+  );
+
+  const handleConfirmLoadIgnore = useCallback(async () => {
+    if (!pendingLoadTarget) return;
+    setIsLoadConfirmOpen(false);
+    await handleLoadSavedTable(pendingLoadTarget);
+    setPendingLoadTarget(null);
+  }, [pendingLoadTarget, handleLoadSavedTable]);
+
+  const handleConfirmLoadSave = useCallback(() => {
+    if (!pendingLoadTarget) return;
+    setIsLoadConfirmOpen(false);
+    openSaveDialog(pendingLoadTarget);
+    setPendingLoadTarget(null);
+  }, [pendingLoadTarget, openSaveDialog]);
+
+  const handleOpenRenameDialog = useCallback((item: SavedTableSummary) => {
+    setRenameTarget(item);
+    setRenameName(item.name);
+    setRenameError('');
+    setIsRenameDialogOpen(true);
+  }, []);
+
+  const handleRenameDialogOpenChange = useCallback((open: boolean) => {
+    setIsRenameDialogOpen(open);
+    if (!open) {
+      setRenameTarget(null);
+      setRenameError('');
+    }
+  }, []);
+
+  const handleConfirmRename = useCallback(async () => {
+    if (!renameTarget) return;
+    const result = await renameTable(renameTarget.normalizedName, renameName);
+    if (!result.ok) {
+      if (result.reason === 'duplicate') {
+        setRenameError('名称已存在，请换一个');
+        return;
+      }
+      showToast(result.message ?? '重命名失败');
+      return;
+    }
+    const displayName = renameName.trim() || DEFAULT_SAVED_TABLE_NAME;
+    showToast(`已重命名为：${displayName}`);
+    if (
+      loadedTableNormalizedName &&
+      renameTarget.normalizedName === loadedTableNormalizedName
+    ) {
+      setLoadedTableNormalizedName(result.normalizedName);
+      setLoadedTableName(displayName);
+    }
+    setIsRenameDialogOpen(false);
+    setRenameTarget(null);
+    setRenameError('');
+  }, [
+    renameTarget,
+    renameName,
+    renameTable,
+    showToast,
+    loadedTableNormalizedName,
+  ]);
+
+  const handleOpenDeleteDialog = useCallback((item: SavedTableSummary) => {
+    setDeleteTarget(item);
+    setIsDeleteDialogOpen(true);
+  }, []);
+
+  const handleDeleteDialogOpenChange = useCallback((open: boolean) => {
+    setIsDeleteDialogOpen(open);
+    if (!open) {
+      setDeleteTarget(null);
+    }
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+    const result = await deleteTable(deleteTarget.normalizedName);
+    if (!result.ok) {
+      showToast(result.message ?? '删除失败');
+    } else {
+      showToast(`已删除：${deleteTarget.name}`);
+      if (deleteTarget.normalizedName === loadedTableNormalizedName) {
+        setLoadedTableNormalizedName(null);
+        setLoadedTableName(null);
+        setLoadedTableSignature(null);
+      }
+    }
+    setIsDeleteDialogOpen(false);
+    setDeleteTarget(null);
+  }, [deleteTarget, deleteTable, showToast, loadedTableNormalizedName]);
 
   const handleImport = useCallback(
     (result: ParsedResult, importDbType: DatabaseType) => {
@@ -464,6 +783,22 @@ function App() {
 
       {/* Main Content */}
       <div className="flex flex-col gap-4 p-4 lg:flex-row">
+        <SavedTablesSidebar
+          open={sidebarOpen}
+          loading={savedTablesLoading}
+          error={savedTablesError}
+          items={savedTables}
+          activeNormalizedName={loadedTableNormalizedName}
+          activeDirty={isLoadedDirty}
+          width={sidebarWidth}
+          minWidth={SIDEBAR_MIN_WIDTH}
+          maxWidth={SIDEBAR_MAX_WIDTH}
+          onResize={handleResizeSidebar}
+          onToggle={() => setSidebarOpen((prev) => !prev)}
+          onSelect={handleSelectSavedTable}
+          onRename={handleOpenRenameDialog}
+          onDelete={handleOpenDeleteDialog}
+        />
         <div className="flex flex-1 flex-col gap-4">
           <TableConfig
             tableName={tableName}
@@ -473,6 +808,10 @@ function App() {
             onTableCommentChange={setTableComment}
             onDbTypeChange={setDbType}
             onClearAll={handleClearAll}
+            onSaveTable={() => openSaveDialog(null)}
+            saveDisabled={!canSaveCurrent}
+            saveDisabledHint="加载的表未修改，无法保存"
+            loadedStatus={loadedStatus}
           />
 
           <Tabs defaultValue="fields" className="w-full">
@@ -650,6 +989,144 @@ function App() {
             </Button>
             <Button variant="destructive" onClick={confirmClearAll}>
               确认清空
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isSaveDialogOpen} onOpenChange={handleSaveDialogOpenChange}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{saveDialogTitle}</DialogTitle>
+            <DialogDescription>{saveDialogDescription}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label htmlFor="save-table-name">保存名称</Label>
+            <Input
+              id="save-table-name"
+              value={saveName}
+              onChange={(event) => {
+                setSaveName(event.target.value);
+                if (saveError) setSaveError('');
+              }}
+              placeholder="例如：用户表"
+              disabled={saveInputDisabled}
+            />
+            {saveInputDisabled && (
+              <p className="text-xs text-muted-foreground">
+                已加载表仅支持覆盖保存，如需更名请在左侧列表重命名。
+              </p>
+            )}
+            {saveError && (
+              <p className="text-xs text-destructive">{saveError}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => handleSaveDialogOpenChange(false)}
+            >
+              取消
+            </Button>
+            <Button onClick={handleConfirmSave} disabled={!canSaveCurrent}>
+              保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isLoadConfirmOpen}
+        onOpenChange={handleLoadConfirmOpenChange}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>加载保存的表</DialogTitle>
+            <DialogDescription>
+              {pendingLoadTarget
+                ? `加载「${pendingLoadTarget.name}」将覆盖当前内容。`
+                : '加载将覆盖当前内容。'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="pr-2">
+            <Button variant="outline" onClick={handleCancelLoadConfirm}>
+              取消
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={handleConfirmLoadSave}
+              disabled={!canSaveCurrent}
+              title={!canSaveCurrent ? '加载的表未修改，无法保存' : undefined}
+            >
+              保存当前后加载
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmLoadIgnore}>
+              忽略当前并加载
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isRenameDialogOpen}
+        onOpenChange={handleRenameDialogOpenChange}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>重命名保存的表</DialogTitle>
+            <DialogDescription>
+              请输入新的名称，名称不可重复。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label htmlFor="rename-table-name">新名称</Label>
+            <Input
+              id="rename-table-name"
+              value={renameName}
+              onChange={(event) => {
+                setRenameName(event.target.value);
+                if (renameError) setRenameError('');
+              }}
+              placeholder="例如：订单表"
+            />
+            {renameError && (
+              <p className="text-xs text-destructive">{renameError}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => handleRenameDialogOpenChange(false)}
+            >
+              取消
+            </Button>
+            <Button onClick={handleConfirmRename}>确认</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isDeleteDialogOpen}
+        onOpenChange={handleDeleteDialogOpenChange}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>确认删除保存的表？</DialogTitle>
+            <DialogDescription>
+              {deleteTarget
+                ? `即将删除「${deleteTarget.name}」，此操作无法撤销。`
+                : '此操作无法撤销。'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => handleDeleteDialogOpenChange(false)}
+            >
+              取消
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              删除
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -9,6 +9,9 @@ export interface UseCitusShardingReturn {
   citusShardingConfig: CitusShardingConfig;
   setCitusMode: (mode: CitusTableMode) => void;
   setDistributionColumn: (column: string | undefined) => void;
+  setCitusShardingConfig: React.Dispatch<
+    React.SetStateAction<CitusShardingConfig>
+  >;
   resetCitusSharding: () => void;
 }
 
@@ -57,6 +60,7 @@ export function useCitusSharding(
     citusShardingConfig,
     setCitusMode,
     setDistributionColumn,
+    setCitusShardingConfig,
     resetCitusSharding,
   };
 }

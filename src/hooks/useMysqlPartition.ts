@@ -17,6 +17,9 @@ export interface UseMysqlPartitionReturn {
   removePartition: (name: string) => void;
   updatePartition: (name: string, partition: PartitionDefinition) => void;
   generateRangePartitions: (preset: 'year' | 'month' | 'day') => void;
+  setMysqlPartitionConfig: React.Dispatch<
+    React.SetStateAction<MysqlPartitionConfig>
+  >;
   resetPartition: () => void;
 }
 
@@ -170,6 +173,7 @@ export function useMysqlPartition(
     removePartition,
     updatePartition,
     generateRangePartitions,
+    setMysqlPartitionConfig,
     resetPartition,
   };
 }

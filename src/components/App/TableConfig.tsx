@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Table, Trash2 } from 'lucide-react';
+import { Save, Table, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -21,6 +21,10 @@ interface TableConfigProps {
   onTableCommentChange: (value: string) => void;
   onDbTypeChange: (value: DatabaseType) => void;
   onClearAll: () => void;
+  onSaveTable: () => void;
+  saveDisabled?: boolean;
+  saveDisabledHint?: string;
+  loadedStatus?: 'clean' | 'dirty' | null;
 }
 
 export const TableConfig = memo<TableConfigProps>(
@@ -32,7 +36,20 @@ export const TableConfig = memo<TableConfigProps>(
     onTableCommentChange,
     onDbTypeChange,
     onClearAll,
+    onSaveTable,
+    saveDisabled = false,
+    saveDisabledHint,
+    loadedStatus = null,
   }) => {
+    const statusLabel =
+      loadedStatus === 'dirty'
+        ? '已修改'
+        : loadedStatus === 'clean'
+          ? '已加载'
+          : '';
+    const statusClass =
+      loadedStatus === 'dirty' ? 'text-amber-600' : 'text-muted-foreground';
+
     return (
       <div className="relative group rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5">
         {/* Decorative gradient overlay */}
@@ -67,13 +84,31 @@ export const TableConfig = memo<TableConfigProps>(
               >
                 表名
               </Label>
-              <Input
-                id="table-name"
-                placeholder="例如: order_info"
-                value={tableName}
-                onChange={(event) => onTableNameChange(event.target.value)}
-                className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  id="table-name"
+                  placeholder="例如: order_info"
+                  value={tableName}
+                  onChange={(event) => onTableNameChange(event.target.value)}
+                  className="flex-1 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={onSaveTable}
+                  disabled={saveDisabled}
+                  title={saveDisabled ? saveDisabledHint : '保存表'}
+                >
+                  <Save className="h-4 w-4" />
+                </Button>
+                {statusLabel && (
+                  <span className={`text-xs ${statusClass}`}>
+                    {statusLabel}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="space-y-3 group/field">
               <Label
