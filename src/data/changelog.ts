@@ -19,6 +19,12 @@ export const changelogData: ChangelogData = {
   description: 'DDL建表工具版本更新记录',
   entries: [
     {
+      version: '0.10.0',
+      date: '2026-01-26',
+      content:
+        '### 新增\n- 已保存表侧边栏：支持加载、重命名、删除与当前加载状态标记\n- 保存表持久化到 IndexedDB，名称去重并支持已加载表覆盖更新\n- 侧边栏支持拖拽调整宽度\n\n### 优化\n- 已加载且未变更的表切换不再提示，变更后才需确认\n- 表配置区域加入保存入口与加载/修改状态提示\n- DDL 评审支持流式渲染与部分 JSON 解析，提升反馈速度\n- 评审展示在流式阶段保持骨架提示\n- UI 模块懒加载与渲染性能优化\n\n### 测试与维护\n- 新增 savedTables、DDL Review、partial JSON、IndexedDB 的单测\n- 覆盖率提升至 80% 以上\n- 依赖版本更新（Biome、Vitest 等）',
+    },
+    {
       version: '0.9.0',
       date: '2026-01-19',
       content:
