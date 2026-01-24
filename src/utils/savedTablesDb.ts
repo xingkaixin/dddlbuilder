@@ -1,0 +1,120 @@
+import type { PersistedState } from '@/types';
+
+export const DEFAULT_SAVED_TABLE_NAME = '未命名表';
+
+export type SavedTableRecord = {
+  normalizedName: string;
+  name: string;
+  state: PersistedState;
+  createdAt: number;
+  updatedAt: number;
+};
+
+const DB_NAME = 'ddlbuilder';
+const DB_VERSION = 1;
+const STORE_NAME = 'saved_tables';
+
+const ensureIndexedDb = () => {
+  if (typeof indexedDB === 'undefined') {
+    throw new Error('IndexedDB 不可用');
+  }
+};
+
+const openDb = (): Promise<IDBDatabase> =>
+  new Promise((resolve, reject) => {
+    try {
+      ensureIndexedDb();
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onerror = () => {
+        reject(request.error ?? new Error('打开 IndexedDB 失败'));
+      };
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          const store = db.createObjectStore(STORE_NAME, {
+            keyPath: 'normalizedName',
+          });
+          store.createIndex('updatedAt', 'updatedAt', { unique: false });
+          store.createIndex('name', 'name', { unique: false });
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+    } catch (error) {
+      reject(error);
+    }
+  });
+
+const runWithStore = async <T>(
+  mode: IDBTransactionMode,
+  runner: (store: IDBObjectStore) => IDBRequest<T>,
+): Promise<T> => {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish =
+      (fn: (value: T | DOMException | Error) => void) =>
+      (value: T | DOMException | Error) => {
+        if (settled) return;
+        settled = true;
+        fn(value);
+      };
+
+    const tx = db.transaction(STORE_NAME, mode);
+    const store = tx.objectStore(STORE_NAME);
+    const request = runner(store);
+
+    request.onsuccess = () => finish(resolve)(request.result as T);
+    request.onerror = () =>
+      finish(reject)(request.error ?? new Error('IndexedDB 请求失败'));
+    tx.onerror = () => finish(reject)(tx.error ?? new Error('事务失败'));
+    tx.onabort = () => finish(reject)(tx.error ?? new Error('事务被中止'));
+    tx.oncomplete = () => {
+      db.close();
+    };
+  });
+};
+
+export const normalizeSavedTableName = (name: string): string =>
+  name.trim().toLowerCase();
+
+export const ensureSavedTableName = (name: string): string => {
+  const trimmed = name.trim();
+  return trimmed || DEFAULT_SAVED_TABLE_NAME;
+};
+
+export const listSavedTables = async (): Promise<SavedTableRecord[]> => {
+  const records = await runWithStore<SavedTableRecord[]>('readonly', (store) =>
+    store.getAll(),
+  );
+  return Array.isArray(records) ? records : [];
+};
+
+export const getSavedTable = async (
+  normalizedName: string,
+): Promise<SavedTableRecord | null> => {
+  const record = await runWithStore<SavedTableRecord | undefined>(
+    'readonly',
+    (store) => store.get(normalizedName),
+  );
+  return record ?? null;
+};
+
+export const addSavedTable = async (
+  record: SavedTableRecord,
+): Promise<void> => {
+  await runWithStore<IDBValidKey>('readwrite', (store) => store.add(record));
+};
+
+export const updateSavedTable = async (
+  record: SavedTableRecord,
+): Promise<void> => {
+  await runWithStore<IDBValidKey>('readwrite', (store) => store.put(record));
+};
+
+export const deleteSavedTable = async (
+  normalizedName: string,
+): Promise<void> => {
+  await runWithStore<void>('readwrite', (store) =>
+    store.delete(normalizedName),
+  );
+};

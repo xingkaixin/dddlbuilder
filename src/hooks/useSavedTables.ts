@@ -1,0 +1,189 @@
+import { useCallback, useEffect, useState } from 'react';
+import type { PersistedState } from '@/types';
+import {
+  addSavedTable,
+  deleteSavedTable,
+  ensureSavedTableName,
+  getSavedTable,
+  listSavedTables,
+  normalizeSavedTableName,
+  updateSavedTable,
+  type SavedTableRecord,
+} from '@/utils/savedTablesDb';
+
+export type SavedTableSummary = Pick<
+  SavedTableRecord,
+  'normalizedName' | 'name' | 'createdAt' | 'updatedAt'
+>;
+
+export type SaveTableResult =
+  | { ok: true; normalizedName: string }
+  | {
+      ok: false;
+      reason: 'duplicate' | 'not_found' | 'error';
+      message?: string;
+    };
+
+const toSummary = (record: SavedTableRecord): SavedTableSummary => ({
+  normalizedName: record.normalizedName,
+  name: record.name,
+  createdAt: record.createdAt,
+  updatedAt: record.updatedAt,
+});
+
+export function useSavedTables() {
+  const [savedTables, setSavedTables] = useState<SavedTableSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      setLoading(true);
+      const records = await listSavedTables();
+      const sorted = records.sort((a, b) => b.updatedAt - a.updatedAt);
+      setSavedTables(sorted.map(toSummary));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '读取失败');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const saveTable = useCallback(
+    async (name: string, state: PersistedState): Promise<SaveTableResult> => {
+      try {
+        const displayName = ensureSavedTableName(name);
+        const normalizedName = normalizeSavedTableName(displayName);
+        const existing = await getSavedTable(normalizedName);
+        if (existing) {
+          return { ok: false, reason: 'duplicate' };
+        }
+        const now = Date.now();
+        await addSavedTable({
+          normalizedName,
+          name: displayName,
+          state,
+          createdAt: now,
+          updatedAt: now,
+        });
+        await refresh();
+        return { ok: true, normalizedName };
+      } catch (err) {
+        return {
+          ok: false,
+          reason: 'error',
+          message: err instanceof Error ? err.message : '保存失败',
+        };
+      }
+    },
+    [refresh],
+  );
+
+  const overwriteTable = useCallback(
+    async (
+      normalizedName: string,
+      state: PersistedState,
+    ): Promise<SaveTableResult> => {
+      try {
+        const record = await getSavedTable(normalizedName);
+        if (!record) {
+          return { ok: false, reason: 'not_found' };
+        }
+        const updatedRecord: SavedTableRecord = {
+          ...record,
+          state,
+          updatedAt: Date.now(),
+        };
+        await updateSavedTable(updatedRecord);
+        await refresh();
+        return { ok: true, normalizedName };
+      } catch (err) {
+        return {
+          ok: false,
+          reason: 'error',
+          message: err instanceof Error ? err.message : '更新失败',
+        };
+      }
+    },
+    [refresh],
+  );
+
+  const deleteTable = useCallback(
+    async (normalizedName: string): Promise<SaveTableResult> => {
+      try {
+        await deleteSavedTable(normalizedName);
+        await refresh();
+        return { ok: true, normalizedName };
+      } catch (err) {
+        return {
+          ok: false,
+          reason: 'error',
+          message: err instanceof Error ? err.message : '删除失败',
+        };
+      }
+    },
+    [refresh],
+  );
+
+  const renameTable = useCallback(
+    async (
+      normalizedName: string,
+      newName: string,
+    ): Promise<SaveTableResult> => {
+      try {
+        const record = await getSavedTable(normalizedName);
+        if (!record) {
+          return { ok: false, reason: 'not_found' };
+        }
+        const displayName = ensureSavedTableName(newName);
+        const nextNormalizedName = normalizeSavedTableName(displayName);
+        const existing = await getSavedTable(nextNormalizedName);
+        if (existing && existing.normalizedName !== normalizedName) {
+          return { ok: false, reason: 'duplicate' };
+        }
+        const updatedRecord: SavedTableRecord = {
+          ...record,
+          name: displayName,
+          normalizedName: nextNormalizedName,
+          updatedAt: Date.now(),
+        };
+        if (nextNormalizedName === normalizedName) {
+          await updateSavedTable(updatedRecord);
+        } else {
+          await addSavedTable(updatedRecord);
+          await deleteSavedTable(normalizedName);
+        }
+        await refresh();
+        return { ok: true, normalizedName: nextNormalizedName };
+      } catch (err) {
+        return {
+          ok: false,
+          reason: 'error',
+          message: err instanceof Error ? err.message : '重命名失败',
+        };
+      }
+    },
+    [refresh],
+  );
+
+  const loadTable = useCallback(async (normalizedName: string) => {
+    return getSavedTable(normalizedName);
+  }, []);
+
+  return {
+    savedTables,
+    loading,
+    error,
+    refresh,
+    saveTable,
+    overwriteTable,
+    deleteTable,
+    renameTable,
+    loadTable,
+  };
+}
