@@ -17,7 +17,7 @@ import { ShardingPanel } from './ShardingPanel';
 import { PartitionPanel } from './PartitionPanel';
 import { DataTable } from './DataTable';
 import { DDLOutput } from './DDLOutput';
-import { SavedTablesSidebar } from './SavedTablesSidebar';
+import { SavedTablesDrawer } from './SavedTablesDrawer';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -58,9 +58,6 @@ const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
 const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) =>
   createEmptyRow(index),
 );
-const SIDEBAR_MIN_WIDTH = 220;
-const SIDEBAR_MAX_WIDTH = 380;
-
 function App() {
   // Basic state
   const [tableName, setTableName] = useState('');
@@ -75,9 +72,8 @@ function App() {
   // Fireworks state
   const [showFireworks, setShowFireworks] = useState(false);
 
-  // Saved tables sidebar & dialogs
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [sidebarWidth, setSidebarWidth] = useState(256);
+  // Saved tables drawer & dialogs
+  const [savedTablesDrawerOpen, setSavedTablesDrawerOpen] = useState(false);
   const [loadedTableNormalizedName, setLoadedTableNormalizedName] = useState<
     string | null
   >(null);
@@ -388,25 +384,6 @@ function App() {
     setIsClearDialogOpen(true);
   }, []);
 
-  const clampSidebarWidth = useCallback(
-    (value: number) =>
-      Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, value)),
-    [],
-  );
-
-  const handleResizeSidebar = useCallback(
-    (nextWidth: number) => {
-      setSidebarWidth(clampSidebarWidth(nextWidth));
-    },
-    [clampSidebarWidth],
-  );
-
-  useEffect(() => {
-    if (sidebarOpen) {
-      setSidebarWidth((prev) => clampSidebarWidth(prev));
-    }
-  }, [sidebarOpen, clampSidebarWidth]);
-
   const cancelClearAll = useCallback(() => {
     setIsClearDialogOpen(false);
   }, []);
@@ -585,6 +562,7 @@ function App() {
 
   const handleSelectSavedTable = useCallback(
     (item: SavedTableSummary) => {
+      setSavedTablesDrawerOpen(false);
       if (hasLoadedTable && isLoadedDirty) {
         setPendingLoadTarget(item);
         setIsLoadConfirmOpen(true);
@@ -781,198 +759,199 @@ function App() {
         </Suspense>
       )}
 
-      {/* Main Content */}
-      <div className="flex flex-col gap-4 p-4 lg:flex-row">
-        <SavedTablesSidebar
-          open={sidebarOpen}
-          loading={savedTablesLoading}
-          error={savedTablesError}
-          items={savedTables}
-          activeNormalizedName={loadedTableNormalizedName}
-          activeDirty={isLoadedDirty}
-          width={sidebarWidth}
-          minWidth={SIDEBAR_MIN_WIDTH}
-          maxWidth={SIDEBAR_MAX_WIDTH}
-          onResize={handleResizeSidebar}
-          onToggle={() => setSidebarOpen((prev) => !prev)}
-          onSelect={handleSelectSavedTable}
-          onRename={handleOpenRenameDialog}
-          onDelete={handleOpenDeleteDialog}
-        />
-        <div className="flex flex-1 flex-col gap-4">
-          <TableConfig
-            tableName={tableName}
-            tableComment={tableComment}
-            dbType={dbType}
-            onTableNameChange={setTableName}
-            onTableCommentChange={setTableComment}
-            onDbTypeChange={setDbType}
-            onClearAll={handleClearAll}
-            onSaveTable={() => openSaveDialog(null)}
-            saveDisabled={!canSaveCurrent}
-            saveDisabledHint="加载的表未修改，无法保存"
-            loadedStatus={loadedStatus}
-          />
+      <SavedTablesDrawer
+        open={savedTablesDrawerOpen}
+        onOpenChange={setSavedTablesDrawerOpen}
+        loading={savedTablesLoading}
+        error={savedTablesError}
+        items={savedTables}
+        activeNormalizedName={loadedTableNormalizedName}
+        activeDirty={isLoadedDirty}
+        onSelect={handleSelectSavedTable}
+        onRename={handleOpenRenameDialog}
+        onDelete={handleOpenDeleteDialog}
+      />
 
-          <Tabs defaultValue="fields" className="w-full">
-            <TabsList
-              className={`grid w-full ${
-                dbType === 'postgresql-citus' || supportsMysqlPartition
-                  ? 'grid-cols-4'
-                  : 'grid-cols-3'
-              }`}
-            >
-              <TabsTrigger value="fields" className="gap-2">
-                <Columns3Cog className="h-4 w-4" />
-                字段配置
-                {filledRowCount > 0 && (
-                  <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                    {filledRowCount}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="indexes" className="gap-2">
-                <Network className="h-4 w-4" />
-                索引配置
-                {indexes.length > 0 && (
-                  <div className="ml-2 flex items-center gap-2">
-                    {indexStats.primary > 0 && (
-                      <span className="inline-flex items-center gap-1 text-xs text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded">
-                        <Key className="h-3 w-3" />
-                        {indexStats.primary}
-                      </span>
-                    )}
-                    {indexStats.unique > 0 && (
-                      <span className="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">
-                        <Lock className="h-3 w-3" />
-                        {indexStats.unique}
-                      </span>
-                    )}
-                    {indexStats.normal > 0 && (
-                      <span className="inline-flex items-center gap-1 text-xs text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">
-                        <Hash className="h-3 w-3" />
-                        {indexStats.normal}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="auth" className="gap-2">
-                <ShieldUser className="h-4 w-4" />
-                授权配置
-                {authObjects.length > 0 && (
-                  <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                    {authObjects.length}
-                  </span>
-                )}
-              </TabsTrigger>
-              {dbType === 'postgresql-citus' && (
-                <TabsTrigger value="sharding" className="gap-2">
-                  <Share2 className="h-4 w-4" />
-                  分片配置
-                  {citusShardingConfig.mode === 'distributed' &&
-                    citusShardingConfig.distributionColumn && (
-                      <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                        {citusShardingConfig.distributionColumn}
-                      </span>
-                    )}
-                </TabsTrigger>
-              )}
-              {supportsMysqlPartition && (
-                <TabsTrigger value="partition" className="gap-2">
-                  <Layers className="h-4 w-4" />
-                  分区配置
-                  {mysqlPartitionConfig.enabled && (
+      {/* Main Content */}
+      <div className="flex flex-col gap-4 p-4">
+        <div className="flex flex-col gap-4 lg:flex-row">
+          <div className="flex flex-1 flex-col gap-4">
+            <TableConfig
+              tableName={tableName}
+              tableComment={tableComment}
+              dbType={dbType}
+              onTableNameChange={setTableName}
+              onTableCommentChange={setTableComment}
+              onDbTypeChange={setDbType}
+              onClearAll={handleClearAll}
+              onSaveTable={() => openSaveDialog(null)}
+              onOpenSavedTables={() => setSavedTablesDrawerOpen(true)}
+              saveDisabled={!canSaveCurrent}
+              saveDisabledHint="加载的表未修改，无法保存"
+              loadedStatus={loadedStatus}
+              loadedTableName={loadedTableName}
+            />
+
+            <Tabs defaultValue="fields" className="w-full">
+              <TabsList
+                className={`grid w-full ${
+                  dbType === 'postgresql-citus' || supportsMysqlPartition
+                    ? 'grid-cols-4'
+                    : 'grid-cols-3'
+                }`}
+              >
+                <TabsTrigger value="fields" className="gap-2">
+                  <Columns3Cog className="h-4 w-4" />
+                  字段配置
+                  {filledRowCount > 0 && (
                     <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                      {mysqlPartitionConfig.type}
+                      {filledRowCount}
                     </span>
                   )}
                 </TabsTrigger>
+                <TabsTrigger value="indexes" className="gap-2">
+                  <Network className="h-4 w-4" />
+                  索引配置
+                  {indexes.length > 0 && (
+                    <div className="ml-2 flex items-center gap-2">
+                      {indexStats.primary > 0 && (
+                        <span className="inline-flex items-center gap-1 text-xs text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded">
+                          <Key className="h-3 w-3" />
+                          {indexStats.primary}
+                        </span>
+                      )}
+                      {indexStats.unique > 0 && (
+                        <span className="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">
+                          <Lock className="h-3 w-3" />
+                          {indexStats.unique}
+                        </span>
+                      )}
+                      {indexStats.normal > 0 && (
+                        <span className="inline-flex items-center gap-1 text-xs text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">
+                          <Hash className="h-3 w-3" />
+                          {indexStats.normal}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="auth" className="gap-2">
+                  <ShieldUser className="h-4 w-4" />
+                  授权配置
+                  {authObjects.length > 0 && (
+                    <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                      {authObjects.length}
+                    </span>
+                  )}
+                </TabsTrigger>
+                {dbType === 'postgresql-citus' && (
+                  <TabsTrigger value="sharding" className="gap-2">
+                    <Share2 className="h-4 w-4" />
+                    分片配置
+                    {citusShardingConfig.mode === 'distributed' &&
+                      citusShardingConfig.distributionColumn && (
+                        <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                          {citusShardingConfig.distributionColumn}
+                        </span>
+                      )}
+                  </TabsTrigger>
+                )}
+                {supportsMysqlPartition && (
+                  <TabsTrigger value="partition" className="gap-2">
+                    <Layers className="h-4 w-4" />
+                    分区配置
+                    {mysqlPartitionConfig.enabled && (
+                      <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                        {mysqlPartitionConfig.type}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                )}
+              </TabsList>
+              <TabsContent value="fields" className="mt-4">
+                <DataTable
+                  rows={rows}
+                  duplicateNameSet={duplicateNameSet}
+                  dbType={dbType}
+                  addCount={addCount}
+                  onRowsChange={handleRowsChange as any}
+                  onCreateRow={handleCreateRow}
+                  onRemoveRow={handleRemoveRow}
+                  onAddRows={handleAddRows}
+                  onAddCountChange={setAddCount}
+                />
+              </TabsContent>
+              <TabsContent value="indexes" className="mt-4">
+                <IndexPanel
+                  indexInput={indexInput}
+                  currentIndexFields={currentIndexFields}
+                  indexes={indexes}
+                  fieldSuggestions={fieldSuggestions}
+                  showFieldSuggestions={showFieldSuggestions}
+                  selectedSuggestionIndex={selectedSuggestionIndex}
+                  onIndexInputChange={setIndexInput}
+                  onSetShowFieldSuggestions={setShowFieldSuggestions}
+                  onSetSelectedSuggestionIndex={setSelectedSuggestionIndex}
+                  onAddFieldToIndex={addFieldToIndex}
+                  onRemoveFieldFromIndex={removeFieldFromIndex}
+                  onToggleFieldDirection={toggleFieldDirection}
+                  onAddIndex={(unique, primary) => addIndex(!!unique, primary)}
+                  onRemoveIndex={removeIndex}
+                  onUpdateIndexName={updateIndexName}
+                />
+              </TabsContent>
+              <TabsContent value="auth" className="mt-4">
+                <AuthPanel
+                  authInput={authInput}
+                  authObjects={authObjects}
+                  onAuthInputChange={setAuthInput}
+                  onAddAuthObject={addAuthObject}
+                  onRemoveAuthObject={removeAuthObject}
+                />
+              </TabsContent>
+              {dbType === 'postgresql-citus' && (
+                <TabsContent value="sharding" className="mt-4">
+                  <ShardingPanel
+                    config={citusShardingConfig}
+                    availableFields={availableFields}
+                    onModeChange={setCitusMode}
+                    onDistributionColumnChange={setDistributionColumn}
+                  />
+                </TabsContent>
               )}
-            </TabsList>
-            <TabsContent value="fields" className="mt-4">
-              <DataTable
-                rows={rows}
-                duplicateNameSet={duplicateNameSet}
-                dbType={dbType}
-                addCount={addCount}
-                onRowsChange={handleRowsChange as any}
-                onCreateRow={handleCreateRow}
-                onRemoveRow={handleRemoveRow}
-                onAddRows={handleAddRows}
-                onAddCountChange={setAddCount}
-              />
-            </TabsContent>
-            <TabsContent value="indexes" className="mt-4">
-              <IndexPanel
-                indexInput={indexInput}
-                currentIndexFields={currentIndexFields}
-                indexes={indexes}
-                fieldSuggestions={fieldSuggestions}
-                showFieldSuggestions={showFieldSuggestions}
-                selectedSuggestionIndex={selectedSuggestionIndex}
-                onIndexInputChange={setIndexInput}
-                onSetShowFieldSuggestions={setShowFieldSuggestions}
-                onSetSelectedSuggestionIndex={setSelectedSuggestionIndex}
-                onAddFieldToIndex={addFieldToIndex}
-                onRemoveFieldFromIndex={removeFieldFromIndex}
-                onToggleFieldDirection={toggleFieldDirection}
-                onAddIndex={(unique, primary) => addIndex(!!unique, primary)}
-                onRemoveIndex={removeIndex}
-                onUpdateIndexName={updateIndexName}
-              />
-            </TabsContent>
-            <TabsContent value="auth" className="mt-4">
-              <AuthPanel
-                authInput={authInput}
-                authObjects={authObjects}
-                onAuthInputChange={setAuthInput}
-                onAddAuthObject={addAuthObject}
-                onRemoveAuthObject={removeAuthObject}
-              />
-            </TabsContent>
-            {dbType === 'postgresql-citus' && (
-              <TabsContent value="sharding" className="mt-4">
-                <ShardingPanel
-                  config={citusShardingConfig}
-                  availableFields={availableFields}
-                  onModeChange={setCitusMode}
-                  onDistributionColumnChange={setDistributionColumn}
-                />
-              </TabsContent>
-            )}
-            {supportsMysqlPartition && (
-              <TabsContent value="partition" className="mt-4">
-                <PartitionPanel
-                  config={mysqlPartitionConfig}
-                  availableFields={availableFields}
-                  onEnabledChange={setPartitionEnabled}
-                  onTypeChange={setPartitionType}
-                  onColumnsChange={setPartitionColumns}
-                  onExpressionChange={setPartitionExpression}
-                  onPartitionCountChange={setPartitionCount}
-                  onAddPartition={addPartition}
-                  onRemovePartition={removePartition}
-                  onUpdatePartition={updatePartition}
-                  onGeneratePartitions={generateRangePartitions}
-                />
-              </TabsContent>
-            )}
-          </Tabs>
-        </div>
+              {supportsMysqlPartition && (
+                <TabsContent value="partition" className="mt-4">
+                  <PartitionPanel
+                    config={mysqlPartitionConfig}
+                    availableFields={availableFields}
+                    onEnabledChange={setPartitionEnabled}
+                    onTypeChange={setPartitionType}
+                    onColumnsChange={setPartitionColumns}
+                    onExpressionChange={setPartitionExpression}
+                    onPartitionCountChange={setPartitionCount}
+                    onAddPartition={addPartition}
+                    onRemovePartition={removePartition}
+                    onUpdatePartition={updatePartition}
+                    onGeneratePartitions={generateRangePartitions}
+                  />
+                </TabsContent>
+              )}
+            </Tabs>
+          </div>
 
-        <DDLOutput
-          generatedSql={generatedSql}
-          generatedDcl={generatedDcl}
-          dbType={dbType}
-          onCopySql={copySql}
-          onCopyDcl={copyDcl}
-          isReviewing={isReviewing}
-          reviewPartialResult={reviewPartialResult}
-          reviewResult={reviewResult}
-          reviewError={reviewError}
-          onStartReview={handleStartReview}
-        />
+          <DDLOutput
+            generatedSql={generatedSql}
+            generatedDcl={generatedDcl}
+            dbType={dbType}
+            onCopySql={copySql}
+            onCopyDcl={copyDcl}
+            isReviewing={isReviewing}
+            reviewPartialResult={reviewPartialResult}
+            reviewResult={reviewResult}
+            reviewError={reviewError}
+            onStartReview={handleStartReview}
+          />
+        </div>
       </div>
 
       <Dialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>

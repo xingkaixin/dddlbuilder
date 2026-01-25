@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Save, Table, Trash2 } from 'lucide-react';
+import { List, Save, Table, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -22,9 +22,11 @@ interface TableConfigProps {
   onDbTypeChange: (value: DatabaseType) => void;
   onClearAll: () => void;
   onSaveTable: () => void;
+  onOpenSavedTables: () => void;
   saveDisabled?: boolean;
   saveDisabledHint?: string;
   loadedStatus?: 'clean' | 'dirty' | null;
+  loadedTableName?: string | null;
 }
 
 export const TableConfig = memo<TableConfigProps>(
@@ -37,9 +39,11 @@ export const TableConfig = memo<TableConfigProps>(
     onDbTypeChange,
     onClearAll,
     onSaveTable,
+    onOpenSavedTables,
     saveDisabled = false,
     saveDisabledHint,
     loadedStatus = null,
+    loadedTableName = null,
   }) => {
     const statusLabel =
       loadedStatus === 'dirty'
@@ -59,11 +63,25 @@ export const TableConfig = memo<TableConfigProps>(
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/30 to-transparent rounded-t-lg" />
 
         <div className="relative flex items-center justify-between border-b border-primary/10 px-4 py-3.5">
-          <div className="inline-flex items-center gap-2 rounded-full px-1">
+          <div className="flex min-w-0 items-center gap-3">
             <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary transition-all duration-300 group-hover:bg-primary/15">
               <Table className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
               表配置
             </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 px-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+              onClick={onOpenSavedTables}
+            >
+              <List className="h-3.5 w-3.5" />
+              查看已保存表
+            </Button>
+            {loadedTableName && (
+              <span className="max-w-[240px] truncate text-xs text-muted-foreground">
+                当前：{loadedTableName}
+              </span>
+            )}
           </div>
           <Button
             variant="destructive"
