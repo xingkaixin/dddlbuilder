@@ -665,6 +665,238 @@ describe('Type Mapping Functions', () => {
           'CLOB',
         );
       });
+
+      it('should map all character types correctly', () => {
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'char')).toBe(
+          'CHAR(1)',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'char(10)')).toBe(
+          'CHAR(10)',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'nchar')).toBe(
+          'NCHAR(1)',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'nvarchar')).toBe(
+          'NVARCHAR2(100)',
+        );
+        expect(
+          getFieldTypeForDatabase('oceanbase-oracle', 'nvarchar(50)'),
+        ).toBe('NVARCHAR2(50)');
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'varchar2')).toBe(
+          'VARCHAR2(100)',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'nvarchar2')).toBe(
+          'NVARCHAR2(100)',
+        );
+      });
+
+      it('should map all integer types correctly', () => {
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'integer')).toBe(
+          'NUMBER(10)',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'smallint')).toBe(
+          'NUMBER(5)',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'tinyint')).toBe(
+          'NUMBER(3)',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'bigint')).toBe(
+          'NUMBER(19)',
+        );
+      });
+
+      it('should map all decimal types correctly', () => {
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'decimal')).toBe(
+          'NUMBER(10, 2)',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'numeric')).toBe(
+          'NUMBER(10, 2)',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'number')).toBe(
+          'NUMBER(10, 2)',
+        );
+        expect(
+          getFieldTypeForDatabase('oceanbase-oracle', 'number(15,4)'),
+        ).toBe('NUMBER(15, 4)');
+      });
+
+      it('should map all date/time types correctly', () => {
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'datetime')).toBe(
+          'TIMESTAMP',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'datetime2')).toBe(
+          'TIMESTAMP',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'timestamptz')).toBe(
+          'TIMESTAMP WITH TIME ZONE',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'time')).toBe(
+          'TIMESTAMP',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'timetz')).toBe(
+          'TIMESTAMP',
+        );
+      });
+
+      it('should map LOB and binary types correctly', () => {
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'clob')).toBe(
+          'CLOB',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'blob')).toBe(
+          'BLOB',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'varbinary')).toBe(
+          'RAW(100)',
+        );
+        expect(
+          getFieldTypeForDatabase('oceanbase-oracle', 'varbinary(200)'),
+        ).toBe('RAW(200)');
+      });
+
+      it('should map other types correctly', () => {
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'boolean')).toBe(
+          'NUMBER(1)',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'bit')).toBe(
+          'NUMBER(1)',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'uuid')).toBe(
+          'CHAR(36)',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'xml')).toBe(
+          'XMLTYPE',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'float')).toBe(
+          'FLOAT',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'double')).toBe(
+          'BINARY_DOUBLE',
+        );
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'real')).toBe(
+          'BINARY_FLOAT',
+        );
+      });
+
+      it('should handle serial type', () => {
+        expect(getFieldTypeForDatabase('oceanbase-oracle', 'serial')).toBe(
+          'NUMBER GENERATED ALWAYS AS IDENTITY',
+        );
+      });
+    });
+
+    describe('PostgreSQL Citus type mapping', () => {
+      it('should reuse PostgreSQL type mappings', () => {
+        // PostgreSQL Citus 应该复用 PostgreSQL 的类型映射
+        expect(getFieldTypeForDatabase('postgresql-citus', 'varchar')).toBe(
+          'VARCHAR',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'int')).toBe(
+          'INTEGER',
+        );
+        expect(
+          getFieldTypeForDatabase('postgresql-citus', 'decimal(10,2)'),
+        ).toBe('NUMERIC(10, 2)');
+        expect(getFieldTypeForDatabase('postgresql-citus', 'timestamp')).toBe(
+          'TIMESTAMP',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'json')).toBe(
+          'JSONB',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'text')).toBe(
+          'TEXT',
+        );
+      });
+
+      it('should map character types correctly', () => {
+        expect(
+          getFieldTypeForDatabase('postgresql-citus', 'varchar(100)'),
+        ).toBe('VARCHAR(100)');
+        expect(getFieldTypeForDatabase('postgresql-citus', 'char')).toBe(
+          'CHAR',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'char(10)')).toBe(
+          'CHAR(10)',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'nvarchar')).toBe(
+          'VARCHAR',
+        );
+        expect(
+          getFieldTypeForDatabase('postgresql-citus', 'character varying'),
+        ).toBe('VARCHAR');
+      });
+
+      it('should map integer types correctly', () => {
+        expect(getFieldTypeForDatabase('postgresql-citus', 'integer')).toBe(
+          'INTEGER',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'smallint')).toBe(
+          'SMALLINT',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'bigint')).toBe(
+          'BIGINT',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'serial')).toBe(
+          'SERIAL',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'bigserial')).toBe(
+          'BIGSERIAL',
+        );
+      });
+
+      it('should map date/time types correctly', () => {
+        expect(getFieldTypeForDatabase('postgresql-citus', 'date')).toBe(
+          'DATE',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'time')).toBe(
+          'TIME WITHOUT TIME ZONE',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'timetz')).toBe(
+          'TIME WITH TIME ZONE',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'timestamptz')).toBe(
+          'TIMESTAMP WITH TIME ZONE',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'datetime')).toBe(
+          'TIMESTAMP',
+        );
+      });
+
+      it('should map JSON and binary types correctly', () => {
+        expect(getFieldTypeForDatabase('postgresql-citus', 'json')).toBe(
+          'JSONB',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'jsonb')).toBe(
+          'JSONB',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'blob')).toBe(
+          'BYTEA',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'varbinary')).toBe(
+          'BYTEA',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'xml')).toBe('XML');
+      });
+
+      it('should map other types correctly', () => {
+        expect(getFieldTypeForDatabase('postgresql-citus', 'boolean')).toBe(
+          'BOOLEAN',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'bit')).toBe(
+          'BOOLEAN',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'uuid')).toBe(
+          'UUID',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'float')).toBe(
+          'DOUBLE PRECISION',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'double')).toBe(
+          'DOUBLE PRECISION',
+        );
+        expect(getFieldTypeForDatabase('postgresql-citus', 'real')).toBe(
+          'REAL',
+        );
+      });
     });
   });
 });

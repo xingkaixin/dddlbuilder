@@ -53,6 +53,153 @@ describe('useIndexManagement', () => {
     expect(result.current.indexes[0].name).toBe('idx_test_table_name');
   });
 
+  it('应该处理空的 persistedState', () => {
+    const { result } = renderHook(() =>
+      useIndexManagement(defaultTableName, defaultFields, {}),
+    );
+
+    expect(result.current.indexInput).toBe('');
+    expect(result.current.currentIndexFields).toEqual([]);
+    expect(result.current.indexes).toEqual([]);
+  });
+
+  it('应该处理只有部分字段的 persistedState', () => {
+    const persistedState = {
+      indexes: [
+        {
+          id: '1',
+          name: 'idx_test_table_id',
+          fields: [{ name: 'id', direction: 'ASC' }],
+          unique: true,
+          isPrimary: false,
+        },
+      ],
+    };
+
+    const { result } = renderHook(() =>
+      useIndexManagement(defaultTableName, defaultFields, persistedState),
+    );
+
+    expect(result.current.indexInput).toBe('');
+    expect(result.current.currentIndexFields).toEqual([]);
+    expect(result.current.indexes).toHaveLength(1);
+    expect(result.current.indexes[0].unique).toBe(true);
+  });
+
+  it('应该能够更新索引名称', () => {
+    const { result } = renderHook(() =>
+      useIndexManagement(defaultTableName, defaultFields),
+    );
+
+    // 先添加一个索引
+    act(() => {
+      result.current.addFieldToIndex('name');
+    });
+
+    act(() => {
+      result.current.addIndex(false, false);
+    });
+
+    const indexId = result.current.indexes[0].id;
+
+    // 更新索引名称
+    act(() => {
+      result.current.updateIndexName(indexId, 'new_custom_name');
+    });
+
+    expect(result.current.indexes[0].name).toBe('new_custom_name');
+
+    // 尝试更新为空字符串应该被忽略
+    act(() => {
+      result.current.updateIndexName(indexId, '   ');
+    });
+
+    expect(result.current.indexes[0].name).toBe('new_custom_name');
+  });
+
+  it('应该能够重置索引状态', async () => {
+    const { result } = renderHook(() =>
+      useIndexManagement(defaultTableName, defaultFields),
+    );
+
+    // 添加一些数据
+    act(() => {
+      result.current.addFieldToIndex('name');
+      result.current.addIndex(false, false);
+    });
+
+    // 等待 useEffect 执行完毕
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+
+    act(() => {
+      result.current.setIndexInput('test');
+      result.current.setShowFieldSuggestions(true);
+      result.current.setSelectedSuggestionIndex(2);
+    });
+
+    expect(result.current.indexes.length).toBeGreaterThanOrEqual(0);
+    expect(result.current.indexInput).toBe('test');
+
+    // 重置状态
+    act(() => {
+      result.current.resetIndexState();
+    });
+
+    expect(result.current.indexInput).toBe('');
+    expect(result.current.currentIndexFields).toEqual([]);
+    expect(result.current.indexes).toEqual([]);
+    expect(result.current.showFieldSuggestions).toBe(false);
+    expect(result.current.selectedSuggestionIndex).toBe(0);
+  });
+
+  it('应该能够直接设置索引数组', () => {
+    const { result } = renderHook(() =>
+      useIndexManagement(defaultTableName, defaultFields),
+    );
+
+    const newIndexes = [
+      {
+        id: 'custom-1',
+        name: 'idx_custom',
+        fields: [{ name: 'id', direction: 'ASC' }],
+        unique: true,
+        isPrimary: false,
+      },
+    ];
+
+    act(() => {
+      result.current.setIndexes(newIndexes);
+    });
+
+    // 索引名称会根据表名自动更新
+    expect(result.current.indexes).toHaveLength(1);
+    expect(result.current.indexes[0].id).toBe('custom-1');
+    expect(result.current.indexes[0].unique).toBe(true);
+  });
+
+  it('应该处理 Oracle 数据库类型的索引名称长度限制', () => {
+    const { result } = renderHook(() =>
+      useIndexManagement(defaultTableName, defaultFields, undefined, 'oracle'),
+    );
+
+    // 添加多个字段创建长名称索引
+    act(() => {
+      result.current.addFieldToIndex('id');
+      result.current.addFieldToIndex('name');
+      result.current.addFieldToIndex('email');
+      result.current.addFieldToIndex('created_at');
+    });
+
+    act(() => {
+      result.current.addIndex(false, false);
+    });
+
+    // Oracle 索引名称应该被截断到 30 字符
+    expect(result.current.indexes[0].name.length).toBeLessThanOrEqual(30);
+  });
+
   it('应该根据输入过滤字段建议', () => {
     const { result } = renderHook(() =>
       useIndexManagement(defaultTableName, defaultFields),

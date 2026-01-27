@@ -486,4 +486,244 @@ describe('SqlParser', () => {
     );
     expect(result.authObjects).toEqual(['cbd1', 'cbdd2']);
   });
+
+  it('能够解析复杂的 ALTER TABLE 语句', () => {
+    const sql = `
+    CREATE TABLE orders (
+      id INT,
+      user_id INT,
+      amount DECIMAL(10,2)
+    );
+    ALTER TABLE orders ADD CONSTRAINT pk_orders PRIMARY KEY (id);
+    ALTER TABLE orders ADD CONSTRAINT uk_user_id UNIQUE (user_id);
+    ALTER TABLE orders ADD CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES users(id);
+    `;
+
+    const parser = new SqlParser();
+    const result = parser.parse(sql, 'mysql');
+
+    expect(result.tableName).toBe('orders');
+    expect(result.fields.map((f) => f.name)).toEqual([
+      'id',
+      'user_id',
+      'amount',
+    ]);
+    // Primary key should be extracted from ALTER TABLE
+    const primaryKey = result.indexes.find((idx) => idx.isPrimary);
+    expect(primaryKey).toBeDefined();
+    expect(primaryKey?.fields).toEqual([{ name: 'id', direction: 'ASC' }]);
+  });
+
+  it('能够解析包含复杂类型定义的 SQL', () => {
+    const sql = `
+    CREATE TABLE complex_types (
+      id INT PRIMARY KEY,
+      json_data JSON,
+      jsonb_data JSONB,
+      uuid_col UUID,
+      bit_col BIT(8),
+      inet_col INET,
+      cidr_col CIDR
+    );
+    `;
+
+    const parser = new SqlParser();
+    const result = parser.parse(sql, 'postgresql');
+
+    expect(result.tableName).toBe('complex_types');
+    expect(result.fields.length).toBeGreaterThan(0);
+
+    const fieldNames = result.fields.map((f) => f.name);
+    expect(fieldNames).toContain('id');
+    expect(fieldNames).toContain('json_data');
+    expect(fieldNames).toContain('uuid_col');
+  });
+
+  it('能够解析带 IF NOT EXISTS 的 CREATE TABLE', () => {
+    const sql = `
+    CREATE TABLE IF NOT EXISTS test_table (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(100) NOT NULL
+    );
+    `;
+
+    const parser = new SqlParser();
+    const result = parser.parse(sql, 'postgresql');
+
+    expect(result.tableName).toBe('test_table');
+    expect(result.fields).toHaveLength(2);
+  });
+
+  it('能够解析带表空间信息的 SQL Server 表', () => {
+    const sql = `
+    CREATE TABLE dbo.TestTable (
+      Id INT IDENTITY(1,1) PRIMARY KEY,
+      Data NVARCHAR(100)
+    ) ON [PRIMARY];
+    `;
+
+    const parser = new SqlParser();
+    const result = parser.parse(sql, 'sqlserver');
+
+    expect(result.tableName).toBe('TestTable');
+    expect(result.fields).toHaveLength(2);
+  });
+
+  it('能够解析带默认值的复杂表达式', () => {
+    const sql = `
+    CREATE TABLE defaults_test (
+      id INT PRIMARY KEY,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      uuid_col CHAR(36) DEFAULT '00000000-0000-0000-0000-000000000000'
+    );
+    `;
+
+    const parser = new SqlParser();
+    const result = parser.parse(sql, 'mysql');
+
+    expect(result.tableName).toBe('defaults_test');
+    expect(result.fields.length).toBeGreaterThanOrEqual(3);
+
+    const createdAtField = result.fields.find((f) => f.name === 'created_at');
+    expect(createdAtField?.defaultKind).toBe('current_timestamp');
+  });
+
+  it('能够解析带 CHECK 约束的表', () => {
+    const sql = `
+    CREATE TABLE check_test (
+      id INT PRIMARY KEY,
+      age INT CHECK (age >= 0),
+      email VARCHAR(100),
+      CONSTRAINT chk_email CHECK (email LIKE '%@%')
+    );
+    `;
+
+    const parser = new SqlParser();
+    const result = parser.parse(sql, 'mysql');
+
+    expect(result.tableName).toBe('check_test');
+    expect(result.fields).toHaveLength(3);
+  });
+
+  it('能够解析带外键约束的表', () => {
+    const sql = `
+    CREATE TABLE orders (
+      id INT PRIMARY KEY,
+      user_id INT,
+      product_id INT,
+      CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(id),
+      CONSTRAINT fk_product FOREIGN KEY (product_id) REFERENCES products(id)
+    );
+    `;
+
+    const parser = new SqlParser();
+    const result = parser.parse(sql, 'mysql');
+
+    expect(result.tableName).toBe('orders');
+    expect(result.fields).toHaveLength(3);
+  });
+
+  it('能够解析带索引的 ALTER TABLE 语句', () => {
+    const sql = `
+    CREATE TABLE idx_test (
+      id INT,
+      col1 VARCHAR(50),
+      col2 INT
+    );
+    ALTER TABLE idx_test ADD PRIMARY KEY (id);
+    CREATE INDEX idx_col1 ON idx_test (col1);
+    CREATE UNIQUE INDEX idx_col2 ON idx_test (col2 DESC);
+    `;
+
+    const parser = new SqlParser();
+    const result = parser.parse(sql, 'mysql');
+
+    expect(result.tableName).toBe('idx_test');
+    expect(result.indexes.length).toBeGreaterThanOrEqual(2);
+
+    const uniqueIndex = result.indexes.find((idx) => idx.unique);
+    expect(uniqueIndex).toBeDefined();
+  });
+
+  it('能够解析带 GENERATED ALWAYS AS 的列', () => {
+    const sql = `
+    CREATE TABLE generated_test (
+      id INT PRIMARY KEY,
+      price DECIMAL(10,2),
+      quantity INT,
+      total DECIMAL(10,2) GENERATED ALWAYS AS (price * quantity) STORED
+    );
+    `;
+
+    const parser = new SqlParser();
+    const result = parser.parse(sql, 'mysql');
+
+    expect(result.tableName).toBe('generated_test');
+    expect(result.fields.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('能够解析带 COLLATE 的字符列', () => {
+    const sql = `
+    CREATE TABLE collate_test (
+      id INT PRIMARY KEY,
+      name VARCHAR(100) COLLATE utf8mb4_unicode_ci,
+      description TEXT COLLATE utf8mb4_bin
+    );
+    `;
+
+    const parser = new SqlParser();
+    const result = parser.parse(sql, 'mysql');
+
+    expect(result.tableName).toBe('collate_test');
+    expect(result.fields).toHaveLength(3);
+  });
+
+  it('能够解析带 CHARACTER SET 的列', () => {
+    const sql = `
+    CREATE TABLE charset_test (
+      id INT PRIMARY KEY,
+      name VARCHAR(100) CHARACTER SET utf8mb4,
+      description TEXT CHARACTER SET latin1
+    );
+    `;
+
+    const parser = new SqlParser();
+    const result = parser.parse(sql, 'mysql');
+
+    expect(result.tableName).toBe('charset_test');
+    expect(result.fields).toHaveLength(3);
+  });
+
+  it('能够解析带 ZEROFILL 的数字列', () => {
+    const sql = `
+    CREATE TABLE zerofill_test (
+      id INT PRIMARY KEY,
+      code INT(8) ZEROFILL,
+      amount DECIMAL(10,2) ZEROFILL
+    );
+    `;
+
+    const parser = new SqlParser();
+    const result = parser.parse(sql, 'mysql');
+
+    expect(result.tableName).toBe('zerofill_test');
+    expect(result.fields).toHaveLength(3);
+  });
+
+  it('能够解析带 AUTO_INCREMENT 和起始值的列', () => {
+    const sql = `
+    CREATE TABLE autoinc_test (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      name VARCHAR(50)
+    ) AUTO_INCREMENT=1000;
+    `;
+
+    const parser = new SqlParser();
+    const result = parser.parse(sql, 'mysql');
+
+    expect(result.tableName).toBe('autoinc_test');
+    const idField = result.fields.find((f) => f.name === 'id');
+    expect(idField?.defaultKind).toBe('auto_increment');
+  });
 });

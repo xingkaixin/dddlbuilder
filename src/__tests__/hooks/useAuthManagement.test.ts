@@ -13,6 +13,70 @@ describe('useAuthManagement', () => {
     expect(typeof result.current.setAuthInput).toBe('function');
   });
 
+  it('应该从 persistedState 恢复状态', () => {
+    const persistedState = {
+      authInput: 'test_user',
+      authObjects: ['user1', 'user2'],
+    };
+
+    const { result } = renderHook(() => useAuthManagement(persistedState));
+
+    expect(result.current.authInput).toBe('test_user');
+    expect(result.current.authObjects).toEqual(['user1', 'user2']);
+  });
+
+  it('应该处理部分 persistedState', () => {
+    const persistedState = {
+      authObjects: ['user1'],
+    };
+
+    const { result } = renderHook(() => useAuthManagement(persistedState));
+
+    expect(result.current.authInput).toBe('');
+    expect(result.current.authObjects).toEqual(['user1']);
+  });
+
+  it('应该处理只有 authInput 的 persistedState', () => {
+    const persistedState = {
+      authInput: 'test_input',
+    };
+
+    const { result } = renderHook(() => useAuthManagement(persistedState));
+
+    expect(result.current.authInput).toBe('test_input');
+    expect(result.current.authObjects).toEqual([]);
+  });
+
+  it('应该能够重置授权状态', () => {
+    const { result } = renderHook(() => useAuthManagement());
+
+    // 添加一些授权对象
+    act(() => {
+      result.current.addAuthObject('user1');
+      result.current.addAuthObject('user2');
+    });
+
+    expect(result.current.authObjects).toEqual(['user1', 'user2']);
+
+    // 重置状态
+    act(() => {
+      result.current.resetAuthState();
+    });
+
+    expect(result.current.authInput).toBe('');
+    expect(result.current.authObjects).toEqual([]);
+  });
+
+  it('应该能够直接设置授权对象数组', () => {
+    const { result } = renderHook(() => useAuthManagement());
+
+    act(() => {
+      result.current.setAuthObjects(['user1', 'user2', 'user3']);
+    });
+
+    expect(result.current.authObjects).toEqual(['user1', 'user2', 'user3']);
+  });
+
   it('应该能够设置授权输入值', () => {
     const { result } = renderHook(() => useAuthManagement());
 

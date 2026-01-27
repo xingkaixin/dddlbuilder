@@ -29,6 +29,11 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 });
 
+// Mock share module
+vi.mock('@/utils/share', () => ({
+  decompressState: vi.fn(),
+}));
+
 describe('usePersistedState', () => {
   beforeEach(() => {
     localStorageMock.clear();
