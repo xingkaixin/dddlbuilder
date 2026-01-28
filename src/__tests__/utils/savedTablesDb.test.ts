@@ -5,6 +5,7 @@ import {
   ensureSavedTableName,
   getSavedTable,
   listSavedTables,
+  listSavedTableMetadata,
   normalizeSavedTableName,
   updateSavedTable,
   DEFAULT_SAVED_TABLE_NAME,
@@ -87,5 +88,43 @@ describe('savedTablesDb', () => {
 
     await addSavedTable(record);
     await expect(addSavedTable(record)).rejects.toThrow('ConstraintError');
+  });
+
+  it('should list metadata without loading full state', async () => {
+    const record = {
+      normalizedName: 'meta-test',
+      name: 'Meta Test',
+      state: createState({
+        dbType: 'postgresql',
+        rows: [
+          {
+            order: 1,
+            fieldName: 'id',
+            fieldType: 'int',
+            fieldComment: '',
+            nullable: '否',
+          },
+          {
+            order: 2,
+            fieldName: 'name',
+            fieldType: 'varchar',
+            fieldComment: '',
+            nullable: '是',
+          },
+        ],
+      }),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    await addSavedTable(record);
+
+    const metadata = await listSavedTableMetadata();
+    expect(metadata).toHaveLength(1);
+    expect(metadata[0].normalizedName).toBe('meta-test');
+    expect(metadata[0].name).toBe('Meta Test');
+    expect(metadata[0].dbType).toBe('postgresql');
+    expect(metadata[0].fieldCount).toBe(2);
+    expect(metadata[0]).not.toHaveProperty('state');
   });
 });

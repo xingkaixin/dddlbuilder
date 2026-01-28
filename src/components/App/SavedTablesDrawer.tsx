@@ -1,7 +1,10 @@
-import { memo } from 'react';
-import { Database, Pencil, Trash2, X } from 'lucide-react';
+import { memo, useState, useMemo } from 'react';
+import { Database, Pencil, Trash2, X, Search, Columns3 } from 'lucide-react';
+import { DiMysql, DiMsqlServer } from 'react-icons/di';
+import { SiPostgresql, SiOracle, SiMariadbfoundation } from 'react-icons/si';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Drawer, DrawerClose, DrawerContent } from '@/components/ui/drawer';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 
@@ -24,6 +27,34 @@ const formatDate = (timestamp: number) =>
     day: '2-digit',
   });
 
+// 数据库图标映射
+const DbIcon = memo<{ dbType: string; className?: string }>(
+  ({ dbType, className }) => {
+    const iconClass = cn('h-3.5 w-3.5', className);
+
+    switch (dbType) {
+      case 'mysql':
+      case 'tidb':
+      case 'dm':
+      case 'oceanbase':
+        return <DiMysql className={iconClass} />;
+      case 'postgresql':
+      case 'postgresql-citus':
+        return <SiPostgresql className={iconClass} />;
+      case 'sqlserver':
+        return <DiMsqlServer className={iconClass} />;
+      case 'oracle':
+      case 'oceanbase-oracle':
+        return <SiOracle className={iconClass} />;
+      case 'mariadb':
+        return <SiMariadbfoundation className={iconClass} />;
+      default:
+        return <Database className={iconClass} />;
+    }
+  },
+);
+DbIcon.displayName = 'DbIcon';
+
 export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
   ({
     open,
@@ -37,6 +68,19 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     onRename,
     onDelete,
   }) => {
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // 过滤逻辑
+    const filteredItems = useMemo(() => {
+      if (!searchQuery.trim()) return items;
+      const query = searchQuery.toLowerCase().trim();
+      return items.filter(
+        (item) =>
+          item.name.toLowerCase().includes(query) ||
+          item.dbType.toLowerCase().includes(query),
+      );
+    }, [items, searchQuery]);
+
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent className="flex h-full flex-col p-0">
@@ -62,6 +106,21 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
             </DrawerClose>
           </div>
 
+          {/* 搜索框 */}
+          {!loading && !error && items.length > 0 && (
+            <div className="border-b border-primary/10 px-3 py-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="搜索表名或数据库类型..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-8 pl-8 text-xs"
+                />
+              </div>
+            </div>
+          )}
+
           <div className="flex-1 overflow-y-auto p-3">
             {loading && (
               <div className="px-2 py-3 text-xs text-muted-foreground">
@@ -73,12 +132,20 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
             )}
             {!loading && !error && items.length === 0 && (
               <div className="px-2 py-3 text-xs text-muted-foreground">
-                还没有保存的表
+                还没有保存的表，点击上方「保存表」按钮保存第一个表
               </div>
             )}
-            {!loading && !error && items.length > 0 && (
+            {!loading &&
+              !error &&
+              items.length > 0 &&
+              filteredItems.length === 0 && (
+                <div className="px-2 py-3 text-xs text-muted-foreground">
+                  未找到匹配的表
+                </div>
+              )}
+            {!loading && !error && filteredItems.length > 0 && (
               <div className="space-y-2">
-                {items.map((item) => {
+                {filteredItems.map((item) => {
                   const isActive = activeNormalizedName === item.normalizedName;
                   const statusLabel = isActive
                     ? activeDirty
@@ -116,8 +183,19 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {formatDate(item.updatedAt)}
+                        <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                          {/* 数据库类型图标 */}
+                          <span className="inline-flex items-center gap-1">
+                            <DbIcon dbType={item.dbType} />
+                            <span className="capitalize">{item.dbType}</span>
+                          </span>
+                          {/* 字段数量 */}
+                          <span className="inline-flex items-center gap-1">
+                            <Columns3 className="h-3 w-3" />
+                            {item.fieldCount} 字段
+                          </span>
+                          {/* 日期 */}
+                          <span>{formatDate(item.updatedAt)}</span>
                         </div>
                       </button>
                       <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">

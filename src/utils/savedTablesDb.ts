@@ -10,6 +10,16 @@ export type SavedTableRecord = {
   updatedAt: number;
 };
 
+// 仅包含元数据的轻量级类型（用于列表展示）
+export type SavedTableMetadata = {
+  normalizedName: string;
+  name: string;
+  dbType: string;
+  fieldCount: number;
+  createdAt: number;
+  updatedAt: number;
+};
+
 const DB_NAME = 'ddlbuilder';
 const DB_VERSION = 1;
 const STORE_NAME = 'saved_tables';
@@ -51,13 +61,11 @@ const runWithStore = async <T>(
   const db = await openDb();
   return new Promise((resolve, reject) => {
     let settled = false;
-    const finish =
-      (fn: (value: T | DOMException | Error) => void) =>
-      (value: T | DOMException | Error) => {
-        if (settled) return;
-        settled = true;
-        fn(value);
-      };
+    const finish = (fn: (value: T) => void) => (value: T) => {
+      if (settled) return;
+      settled = true;
+      fn(value);
+    };
 
     const tx = db.transaction(STORE_NAME, mode);
     const store = tx.objectStore(STORE_NAME);
@@ -65,9 +73,9 @@ const runWithStore = async <T>(
 
     request.onsuccess = () => finish(resolve)(request.result as T);
     request.onerror = () =>
-      finish(reject)(request.error ?? new Error('IndexedDB 请求失败'));
-    tx.onerror = () => finish(reject)(tx.error ?? new Error('事务失败'));
-    tx.onabort = () => finish(reject)(tx.error ?? new Error('事务被中止'));
+      reject(request.error ?? new Error('IndexedDB 请求失败'));
+    tx.onerror = () => reject(tx.error ?? new Error('事务失败'));
+    tx.onabort = () => reject(tx.error ?? new Error('事务被中止'));
     tx.oncomplete = () => {
       db.close();
     };
@@ -87,6 +95,26 @@ export const listSavedTables = async (): Promise<SavedTableRecord[]> => {
     store.getAll(),
   );
   return Array.isArray(records) ? records : [];
+};
+
+// 仅获取元数据（性能优化）
+export const listSavedTableMetadata = async (): Promise<
+  SavedTableMetadata[]
+> => {
+  const records = await runWithStore<SavedTableRecord[]>('readonly', (store) =>
+    store.getAll(),
+  );
+  if (!Array.isArray(records)) return [];
+
+  return records.map((record) => ({
+    normalizedName: record.normalizedName,
+    name: record.name,
+    dbType: record.state.dbType,
+    fieldCount:
+      record.state.rows?.filter((row) => row.fieldName?.trim()).length || 0,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+  }));
 };
 
 export const getSavedTable = async (
@@ -114,7 +142,7 @@ export const updateSavedTable = async (
 export const deleteSavedTable = async (
   normalizedName: string,
 ): Promise<void> => {
-  await runWithStore<void>('readwrite', (store) =>
+  await runWithStore<undefined>('readwrite', (store) =>
     store.delete(normalizedName),
   );
 };

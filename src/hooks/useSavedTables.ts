@@ -5,16 +5,14 @@ import {
   deleteSavedTable,
   ensureSavedTableName,
   getSavedTable,
-  listSavedTables,
+  listSavedTableMetadata,
   normalizeSavedTableName,
   updateSavedTable,
+  type SavedTableMetadata,
   type SavedTableRecord,
 } from '@/utils/savedTablesDb';
 
-export type SavedTableSummary = Pick<
-  SavedTableRecord,
-  'normalizedName' | 'name' | 'createdAt' | 'updatedAt'
->;
+export type SavedTableSummary = SavedTableMetadata;
 
 export type SaveTableResult =
   | { ok: true; normalizedName: string }
@@ -24,13 +22,6 @@ export type SaveTableResult =
       message?: string;
     };
 
-const toSummary = (record: SavedTableRecord): SavedTableSummary => ({
-  normalizedName: record.normalizedName,
-  name: record.name,
-  createdAt: record.createdAt,
-  updatedAt: record.updatedAt,
-});
-
 export function useSavedTables() {
   const [savedTables, setSavedTables] = useState<SavedTableSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,9 +30,9 @@ export function useSavedTables() {
   const refresh = useCallback(async () => {
     try {
       setLoading(true);
-      const records = await listSavedTables();
-      const sorted = records.sort((a, b) => b.updatedAt - a.updatedAt);
-      setSavedTables(sorted.map(toSummary));
+      const metadata = await listSavedTableMetadata();
+      const sorted = metadata.sort((a, b) => b.updatedAt - a.updatedAt);
+      setSavedTables(sorted);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : '读取失败');
