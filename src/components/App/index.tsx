@@ -1113,7 +1113,7 @@ function App() {
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-8 left-1/2 z-50 -translate-x-1/2 transform rounded-full bg-foreground/90 px-4 py-2 text-sm text-background shadow-lg transition-all animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed top-6 left-1/2 z-50 -translate-x-1/2 transform rounded-full bg-foreground/90 px-5 py-2.5 text-sm font-medium text-background shadow-xl transition-all duration-300 animate-in fade-in zoom-in-95 slide-in-from-top-4">
           {toastMessage}
         </div>
       )}
