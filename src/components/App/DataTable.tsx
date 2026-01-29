@@ -1,6 +1,7 @@
 import { memo, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { GripVertical } from 'lucide-react';
 import {
   AutocompleteCellType,
   CheckboxCellType,
@@ -13,6 +14,7 @@ import { AutoColumnSize } from 'handsontable/plugins/autoColumnSize';
 import { ContextMenu } from 'handsontable/plugins/contextMenu';
 import { CopyPaste } from 'handsontable/plugins/copyPaste';
 import { ManualColumnResize } from 'handsontable/plugins/manualColumnResize';
+import { ManualRowMove } from 'handsontable/plugins/manualRowMove';
 import { StretchColumns } from 'handsontable/plugins/stretchColumns';
 import { UndoRedo } from 'handsontable/plugins/undoRedo';
 import { HotTable } from '@handsontable/react-wrapper';
@@ -42,6 +44,7 @@ const ensureHandsontableModules = () => {
   registerPlugin(ContextMenu);
   registerPlugin(CopyPaste);
   registerPlugin(ManualColumnResize);
+  registerPlugin(ManualRowMove);
   registerPlugin(StretchColumns);
   registerPlugin(UndoRedo);
   handsontableModulesRegistered = true;
@@ -50,7 +53,7 @@ const ensureHandsontableModules = () => {
 ensureHandsontableModules();
 
 const COLUMN_SETTINGS: Handsontable.ColumnSettings[] = [
-  { data: 'order', readOnly: true, width: 48, className: 'htCenter' },
+  { data: 'order', readOnly: true, width: 40, className: 'htCenter' },
   { data: 'fieldName', type: 'text' },
   { data: 'fieldComment', type: 'text' },
   { data: 'fieldType', type: 'text' },
@@ -86,6 +89,7 @@ interface DataTableProps {
   onRemoveRow: (index: number, amount: number) => void;
   onAddRows: (count: number) => void;
   onAddCountChange: (value: number) => void;
+  onRowMove?: (from: number, to: number) => void;
 }
 
 export const DataTable = memo<DataTableProps>(
@@ -99,8 +103,10 @@ export const DataTable = memo<DataTableProps>(
     onRemoveRow,
     onAddRows,
     onAddCountChange,
+    onRowMove,
   }) => {
     const latestRef = useRef({ rows, dbType });
+    const hotTableRef = useRef<Handsontable | null>(null);
     latestRef.current = { rows, dbType };
 
     const rowWarnings = useMemo(() => {
@@ -109,8 +115,7 @@ export const DataTable = memo<DataTableProps>(
         const name = toStringSafe(row?.fieldName).trim();
         if (!name) return warnings;
         if (duplicateNameSet.has(name)) warnings.push('字段名重复');
-        if (isReservedKeyword(dbType, name))
-          warnings.push('字段名为数据库保留关键字');
+        if (isReservedKeyword(dbType, name)) warnings.push('保留关键字');
         return warnings;
       });
     }, [rows, duplicateNameSet, dbType]);
@@ -120,23 +125,25 @@ export const DataTable = memo<DataTableProps>(
         if (col.data !== 'order') return col;
         return {
           ...col,
-          renderer: (
-            instance,
-            td,
-            row,
-            colIndex,
-            prop,
-            value,
-            cellProperties,
-          ) => {
+          renderer: (_instance, td, row, _col, _prop, value) => {
             while (td.firstChild) td.removeChild(td.firstChild);
             td.classList.add('htOrderCell');
             const wrapper = document.createElement('span');
             wrapper.className = 'htOrderCellInner';
+
+            // Drag handle
+            const dragHandle = document.createElement('span');
+            dragHandle.className = 'htDragHandle';
+            dragHandle.innerHTML = '⋮⋮';
+            dragHandle.style.cssText =
+              'font-size: 10px; letter-spacing: -2px; margin-right: 4px; color: hsl(var(--muted-foreground));';
+            wrapper.appendChild(dragHandle);
+
             const label = document.createElement('span');
             label.className = 'htOrderValue';
             label.textContent = value == null ? '' : String(value);
             wrapper.appendChild(label);
+
             const warnings = rowWarnings[row];
             if (warnings?.length) {
               td.classList.add('htOrderHasWarning');
@@ -156,7 +163,6 @@ export const DataTable = memo<DataTableProps>(
       });
     }, [rowWarnings]);
 
-    // Enhanced cells function extracted from App.tsx
     const cells = useCallback(
       (row: number, _col: number, prop?: string | number) => {
         const { rows: currentRows, dbType: currentDbType } = latestRef.current;
@@ -192,7 +198,6 @@ export const DataTable = memo<DataTableProps>(
             dd.allowInvalid = false;
             dd.readOnly = false;
           } else if (prop === 'onUpdate') {
-            // Check if defaultKind is uuid, if so, disable onUpdate
             const defaultKind = normalizeDefaultKind(
               currentRows[row]?.defaultKind as UiDefaultKind,
             );
@@ -248,6 +253,16 @@ export const DataTable = memo<DataTableProps>(
       [],
     );
 
+    const handleAfterRowMove = useCallback(
+      (movedRows: number[], finalIndex: number) => {
+        if (!onRowMove || movedRows.length === 0) return;
+        const from = movedRows[0];
+        const to = finalIndex;
+        onRowMove(from, to);
+      },
+      [onRowMove],
+    );
+
     const safeAddCount =
       Number.isFinite(addCount) && addCount > 0 ? Math.floor(addCount) : 1;
 
@@ -256,45 +271,43 @@ export const DataTable = memo<DataTableProps>(
     }, [onAddRows, safeAddCount]);
 
     return (
-      <div className="relative min-h-[420px] flex-1 rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5">
-        {/* Decorative gradient overlay */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent rounded-lg" />
-
-        {/* Top gradient bar */}
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-primary/30 to-transparent" />
-
-        <div className="relative border-b border-primary/10 px-4 py-3.5">
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <div className="flex flex-wrap items-center gap-2">
+      <div className="rounded-lg border bg-card shadow-sm">
+        {/* Toolbar */}
+        <div className="flex items-center justify-between border-b px-4 py-2">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <GripVertical className="h-3.5 w-3.5" />
+            <span>拖拽行号可调整字段顺序</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={1}
+                step={1}
+                value={safeAddCount}
+                onChange={(e) => {
+                  const parsed = Math.floor(Number(e.target.value));
+                  onAddCountChange(
+                    Number.isFinite(parsed) && parsed > 0 ? parsed : 1,
+                  );
+                }}
+                className="h-7 w-16 text-sm"
+              />
               <Button
                 onClick={handleAddRowsClick}
-                className="transition-all duration-200 hover:scale-105 hover:shadow-md"
+                size="sm"
+                className="h-7 text-xs"
               >
                 添加行
               </Button>
-              <div className="flex items-center gap-2 group/counter">
-                <Input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={safeAddCount}
-                  onChange={(e) => {
-                    const parsed = Math.floor(Number(e.target.value));
-                    onAddCountChange(
-                      Number.isFinite(parsed) && parsed > 0 ? parsed : 1,
-                    );
-                  }}
-                  className="w-24 transition-all duration-200 focus:ring-2 focus:ring-primary/20 group-hover/counter:border-primary/30"
-                />
-                <span className="text-sm text-muted-foreground transition-colors duration-200 group-hover/counter:text-foreground">
-                  行数
-                </span>
-              </div>
             </div>
           </div>
         </div>
-        <div className="relative p-4">
+
+        {/* Table */}
+        <div className="p-4">
           <HotTable
+            ref={hotTableRef as any}
             data={rows}
             columns={columns}
             colHeaders={COLUMN_HEADERS}
@@ -304,13 +317,15 @@ export const DataTable = memo<DataTableProps>(
             height="auto"
             licenseKey="non-commercial-and-evaluation"
             manualColumnResize
-            visibleRows={6}
+            manualRowMove
+            visibleRows={8}
             contextMenu
             beforeChange={handleBeforeChange}
             cells={cells}
             afterChange={onRowsChange}
             afterCreateRow={onCreateRow}
             afterRemoveRow={onRemoveRow}
+            afterRowMove={handleAfterRowMove}
             themeName="ht-theme-main"
             className="h-full w-full"
           />

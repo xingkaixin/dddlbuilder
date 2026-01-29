@@ -1,9 +1,10 @@
 import { memo, lazy, Suspense } from 'react';
 import { ImportSqlDialog } from '@/components/ImportSqlDialog';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import type { DatabaseType } from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
 import packageInfo from '../../../package.json';
-import { Share2, FileInput, History } from 'lucide-react';
+import { Share2, FileInput, History, Github } from 'lucide-react';
 
 const ChangelogModal = lazy(() =>
   import('@/components/ChangelogModal').then((module) => ({
@@ -17,60 +18,84 @@ interface HeaderProps {
   onShare: () => void;
   currentDbType: DatabaseType;
   onImport: (result: ParsedResult, dbType: DatabaseType) => void;
+  isDark: boolean;
+  onToggleTheme: () => void;
 }
 
 export const Header = memo<HeaderProps>(
-  ({ showChangelog, setShowChangelog, onShare, currentDbType, onImport }) => {
-    const actionBtnClass =
-      'group inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-all duration-200 hover:translate-x-0.5';
-
+  ({
+    showChangelog,
+    setShowChangelog,
+    onShare,
+    currentDbType,
+    onImport,
+    isDark,
+    onToggleTheme,
+  }) => {
     return (
       <>
-        <header className="relative border-b bg-card/95 backdrop-blur-sm shadow-sm">
-          {/* Decorative gradient overlay */}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
-
-          <div className="relative px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 group">
+        <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="container mx-auto px-4">
+            <div className="flex h-14 items-center justify-between">
+              {/* Logo & Title */}
+              <div className="flex items-center gap-3">
                 <img
                   src="/logo.svg"
-                  alt="筑表师 Logo"
-                  className="h-10 w-10 text-primary transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
+                  alt="筑表师"
+                  className="h-8 w-8 text-primary"
                 />
-                <div>
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent tracking-tight">
-                    筑表师
-                  </h1>
-                  <p className="text-sm text-muted-foreground transition-colors duration-300 group-hover:text-foreground/80">
-                    专业的数据库建表工具
-                  </p>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg font-bold tracking-tight">筑表师</h1>
+                  <span className="text-xs text-muted-foreground">
+                    v{packageInfo.version}
+                  </span>
                 </div>
               </div>
-              <div className="text-right space-y-1">
-                <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-full inline-block">
-                  v{packageInfo.version}
-                </div>
-                <div className="flex items-center gap-3">
-                  <ImportSqlDialog
-                    currentDbType={currentDbType}
-                    onImport={onImport}
-                    triggerClassName={actionBtnClass}
-                    triggerIcon={<FileInput className="h-4 w-4" aria-hidden />}
-                    triggerLabel="导入 SQL"
-                  />
-                  <button onClick={onShare} className={actionBtnClass}>
-                    <Share2 className="h-4 w-4" aria-hidden />
-                    分享链接
-                  </button>
-                  <button
-                    onClick={() => setShowChangelog(true)}
-                    className={actionBtnClass}
-                  >
-                    <History className="h-4 w-4" aria-hidden />
-                    更新日志
-                  </button>
-                </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-1">
+                {/* Import SQL */}
+                <ImportSqlDialog
+                  currentDbType={currentDbType}
+                  onImport={onImport}
+                  triggerClassName="inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                  triggerIcon={<FileInput className="h-4 w-4" />}
+                  triggerLabel=""
+                />
+
+                {/* Share */}
+                <button
+                  onClick={onShare}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                  title="分享链接"
+                >
+                  <Share2 className="h-4 w-4" />
+                </button>
+
+                {/* Changelog */}
+                <button
+                  onClick={() => setShowChangelog(true)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                  title="更新日志"
+                >
+                  <History className="h-4 w-4" />
+                </button>
+
+                {/* GitHub */}
+                <a
+                  href="https://github.com/your-repo/ddlbuilder"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                  title="GitHub"
+                >
+                  <Github className="h-4 w-4" />
+                </a>
+
+                <div className="mx-1 h-4 w-px bg-border" />
+
+                {/* Theme Toggle */}
+                <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />
               </div>
             </div>
           </div>

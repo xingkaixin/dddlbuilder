@@ -1,97 +1,252 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
-/* MiSans VF - 小米可变字体 (CDN) */
-/* 中文字体使用 MiSans，拉丁字符使用 Roboto Mono */
-
 @layer base {
   :root {
-    --font-sans:
-      "Roboto Mono", "MiSans VF", "PingFang SC", "Segoe UI", "Helvetica Neue",
-      Arial, sans-serif;
+    /* Brand Colors - 橙色品牌色系 */
+    --brand-50: 24 100% 97%;
+    --brand-100: 22 100% 91%;
+    --brand-200: 20 100% 82%;
+    --brand-300: 19 100% 70%;
+    --brand-400: 17 95% 58%;
+    --brand-500: 15 80% 52%;
+    --brand-600: 13 75% 45%;
+    --brand-700: 12 70% 38%;
+    --brand-800: 11 65% 32%;
+    --brand-900: 10 60% 25%;
 
-    --background: 48 33.3333% 97.0588%;
-    --foreground: 48 19.6078% 20%;
+    /* Slate Scale */
+    --slate-50: 210 40% 98%;
+    --slate-100: 210 40% 96%;
+    --slate-200: 214 32% 91%;
+    --slate-300: 213 27% 84%;
+    --slate-400: 215 20% 65%;
+    --slate-500: 215 16% 47%;
+    --slate-600: 215 19% 35%;
+    --slate-700: 215 25% 27%;
+    --slate-800: 217 33% 17%;
+    --slate-900: 222 47% 11%;
 
-    --muted: 44 29.4118% 90%;
-    --muted-foreground: 50 2.3622% 50.1961%;
+    /* Light Theme - 浅色默认 */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 50.7692 19.4030% 13.1373%;
+    --popover-foreground: 222 47% 11%;
 
-    --card: 48 33.3333% 97.0588%;
-    --card-foreground: 60 2.5641% 7.6471%;
-
-    --border: 50 7.5000% 84.3137%;
-    --input: 50.7692 7.9755% 68.0392%;
-
-    --primary: 15.1111 55.5556% 52.3529%;
+    --primary: 15 80% 52%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 46.1538 22.8070% 88.8235%;
-    --secondary-foreground: 50.7692 8.4967% 30.0000%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
 
-    --accent: 46.1538 22.8070% 88.8235%;
-    --accent-foreground: 50.7692 19.4030% 13.1373%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
 
-    --destructive: 60 2.5641% 7.6471%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --ring: 15.1111 55.5556% 52.3529%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 15 80% 52%;
 
     --radius: 0.5rem;
+
+    /* Code Block Colors - VS Code Light */
+    --code-bg: 220 13% 95%;
+    --code-fg: 222 47% 11%;
+    --code-keyword: 207 82% 43%;
+    --code-string: 95 38% 47%;
+    --code-comment: 120 6% 50%;
+    --code-number: 26 62% 48%;
+    --code-function: 207 82% 43%;
+    --code-operator: 222 47% 11%;
   }
 
   .dark {
-    --background: 60 2.7027% 14.5098%;
-    --foreground: 46.1538 9.7744% 73.9216%;
+    /* Dark Theme - 深色模式 */
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
 
-    --muted: 60 3.8462% 10.1961%;
-    --muted-foreground: 51.4286 8.8608% 69.0196%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 60 2.1277% 18.4314%;
-    --popover-foreground: 60 5.4545% 89.2157%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
 
-    --card: 60 2.7027% 14.5098%;
-    --card-foreground: 48 33.3333% 97.0588%;
-
-    --border: 60 5.0847% 23.1373%;
-    --input: 52.5 5.1282% 30.5882%;
-
-    --primary: 14.7692 63.1068% 59.6078%;
+    --primary: 15 80% 52%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 48 33.3333% 97.0588%;
-    --secondary-foreground: 60 2.1277% 18.4314%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
 
-    --accent: 48 10.6383% 9.2157%;
-    --accent-foreground: 51.4286 25.9259% 94.7059%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
 
-    --destructive: 0 84.2365% 60.1961%;
-    --destructive-foreground: 0 0% 100%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
 
-    --ring: 14.7692 63.1068% 59.6078%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 15 80% 52%;
+
+    /* Code Block Colors - VS Code Dark */
+    --code-bg: 220 13% 15%;
+    --code-fg: 210 40% 98%;
+    --code-keyword: 207 82% 66%;
+    --code-string: 95 38% 62%;
+    --code-comment: 120 6% 50%;
+    --code-number: 26 62% 55%;
+    --code-function: 207 82% 66%;
+    --code-operator: 210 40% 98%;
   }
 
   * {
     @apply border-border;
   }
 
-  body {
-    font-family: var(--font-sans);
-    @apply min-h-screen bg-background text-foreground antialiased text-base leading-relaxed;
+  html {
+    scroll-behavior: smooth;
   }
 
-  /* Auto color SVG icons based on text color */
+  body {
+    font-family: var(--font-sans);
+    @apply min-h-screen bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
 }
 
-/* Table readability */
+/* Animation utilities */
+@layer utilities {
+  .animate-fade-in {
+    animation: fade-in 0.2s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.3s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scale-in 0.2s ease-out;
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+}
+
+/* Code block styles - VS Code inspired */
+.code-block {
+  background: hsl(var(--code-bg));
+  color: hsl(var(--code-fg));
+  font-family: "Roboto Mono", "Fira Code", "JetBrains Mono", monospace;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  border-radius: 0.5rem;
+}
+
+.code-block .line {
+  counter-increment: line;
+  display: flex;
+}
+
+.code-block .line::before {
+  content: counter(line);
+  display: inline-block;
+  width: 2.5rem;
+  margin-right: 1rem;
+  text-align: right;
+  color: hsl(var(--muted-foreground) / 0.5);
+  user-select: none;
+}
+
+/* Syntax highlighting colors */
+.token-keyword {
+  color: hsl(var(--code-keyword));
+}
+.token-string {
+  color: hsl(var(--code-string));
+}
+.token-comment {
+  color: hsl(var(--code-comment));
+}
+.token-number {
+  color: hsl(var(--code-number));
+}
+.token-function {
+  color: hsl(var(--code-function));
+}
+.token-operator {
+  color: hsl(var(--code-operator));
+}
+
+/* Handsontable custom styles */
+.handsontable {
+  font-family: var(--font-sans) !important;
+}
+
 .handsontable td,
 .handsontable th {
   font-family: var(--font-sans) !important;
   padding: 0.5rem 0.75rem !important;
   line-height: 1.5 !important;
-  font-size: 0.95rem !important;
+  font-size: 0.875rem !important;
   border-color: hsl(var(--border)) !important;
 }
 
@@ -99,12 +254,12 @@
   background-color: hsl(var(--card)) !important;
   color: hsl(var(--foreground)) !important;
   transition:
-    background-color 0.12s ease,
-    color 0.12s ease;
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .handsontable td:hover {
-  background-color: hsl(var(--card) / 0.8) !important;
+  background-color: hsl(var(--accent)) !important;
 }
 
 .handsontable th {
@@ -115,9 +270,10 @@
 
 .handsontable td.current,
 .handsontable th.current {
-  background-color: hsl(var(--primary) / 0.18) !important;
+  background-color: hsl(var(--primary) / 0.15) !important;
   color: hsl(var(--foreground)) !important;
   font-weight: 600 !important;
+  box-shadow: inset 0 0 0 2px hsl(var(--primary)) !important;
 }
 
 .handsontable td.area {
@@ -137,8 +293,12 @@
 
 .handsontable .handsontableInput {
   font-family: var(--font-sans);
-  font-size: 0.95rem;
+  font-size: 0.875rem;
   color: hsl(var(--foreground));
+  background-color: hsl(var(--background));
+  border: 2px solid hsl(var(--primary)) !important;
+  border-radius: 0.25rem;
+  box-shadow: 0 0 0 4px hsl(var(--primary) / 0.1) !important;
 }
 
 .handsontable .htCore col {
@@ -147,7 +307,7 @@
 
 .handsontable .htDimmed {
   color: hsl(var(--muted-foreground)) !important;
-  background-color: hsl(var(--muted) / 0.6) !important;
+  background-color: hsl(var(--muted) / 0.5) !important;
 }
 
 .handsontable .htOrderCell {
@@ -160,11 +320,13 @@
   justify-content: center;
   gap: 0.2rem;
   width: 100%;
-  padding: 0.25rem 0.35rem;
+  padding: 0.25rem 0.5rem;
 }
 
 .handsontable .htOrderValue {
   font-weight: 600;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
 }
 
 .handsontable .htOrderWarningIcon {
@@ -174,11 +336,26 @@
   width: 1rem;
   height: 1rem;
   border-radius: 9999px;
-  background-color: hsl(var(--destructive) / 0.9);
+  background-color: hsl(var(--destructive));
   color: hsl(var(--destructive-foreground));
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   line-height: 1;
   cursor: help;
+}
+
+/* Drag handle for row reordering */
+.handsontable .htDragHandle {
+  cursor: grab;
+  opacity: 0.4;
+  transition: opacity 0.15s ease;
+}
+
+.handsontable .htDragHandle:hover {
+  opacity: 1;
+}
+
+.handsontable .htDragHandle:active {
+  cursor: grabbing;
 }
 
 /* Fix: ensure HOT dropdown/autocomplete editors render above grid cells */
@@ -186,14 +363,10 @@
 .handsontable .htSelectEditor {
   position: absolute !important;
   z-index: 1060 !important;
-  /* above clones and cells; similar to context menu */
 }
 
 .handsontable.autocompleteEditor {
   margin-top: 2px;
-}
-
-.handsontable.autocompleteEditor {
   min-height: 112px;
 }
 
@@ -206,4 +379,48 @@
 .handsontable .htSelectEditor select {
   position: absolute !important;
   z-index: 1061 !important;
+}
+
+/* Skeleton loading animation */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 25%,
+    hsl(var(--muted) / 0.5) 50%,
+    hsl(var(--muted)) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Focus visible styles */
+*:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Selection color */
+::selection {
+  background-color: hsl(var(--primary) / 0.2);
+  color: hsl(var(--primary));
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

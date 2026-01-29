@@ -40,6 +40,7 @@ import { useCitusSharding } from '@/hooks/useCitusSharding';
 import { useMysqlPartition } from '@/hooks/useMysqlPartition';
 import { useDDLReview } from '@/hooks/useDDLReview';
 import { useSavedTables, type SavedTableSummary } from '@/hooks/useSavedTables';
+import { useTheme } from '@/hooks/useTheme';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
 import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
 import {
@@ -59,6 +60,9 @@ const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) =>
   createEmptyRow(index),
 );
 function App() {
+  // Theme
+  const { isDark, toggleTheme } = useTheme();
+
   // Basic state
   const [tableName, setTableName] = useState('');
   const [tableComment, setTableComment] = useState('');
@@ -749,6 +753,8 @@ function App() {
         onShare={handleShare}
         currentDbType={dbType}
         onImport={handleImport}
+        isDark={isDark}
+        onToggleTheme={toggleTheme}
       />
 
       {showFireworks && (
