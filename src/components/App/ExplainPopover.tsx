@@ -2,6 +2,7 @@ import type React from 'react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Lightbulb, Loader2, X } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import { useDDLExplain } from '@/hooks/useDDLExplain';
 
@@ -18,6 +19,7 @@ export function ExplainPopover({
     text: string;
     x: number;
     y: number;
+    bottom: number;
   } | null>(null);
   const [showResult, setShowResult] = useState(false);
   const { isLoading, explanation, error, startExplain, clearExplain } =
@@ -26,7 +28,6 @@ export function ExplainPopover({
   const isInteractingRef = useRef(false);
 
   const handleSelectionChange = useCallback(() => {
-    // 如果正在与弹窗交互，不更新选区状态
     if (isInteractingRef.current) return;
 
     const sel = window.getSelection();
@@ -37,7 +38,6 @@ export function ExplainPopover({
 
     try {
       const range = sel.getRangeAt(0);
-      // 检查选区是否在目标容器内
       const isInside =
         containerRef.current.contains(sel.anchorNode) ||
         containerRef.current.contains(sel.focusNode) ||
@@ -56,12 +56,13 @@ export function ExplainPopover({
           text,
           x: rect.left + rect.width / 2,
           y: rect.top,
+          bottom: rect.bottom,
         });
       } else {
         if (!showResult) setSelection(null);
       }
     } catch (e) {
-      // 忽略 range 错误
+      // Ignore range errors
     }
   }, [containerRef, showResult]);
 
@@ -88,7 +89,6 @@ export function ExplainPopover({
     clearExplain();
   };
 
-  // 点击外部关闭
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -103,6 +103,9 @@ export function ExplainPopover({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showResult, clearExplain]);
 
+  // 计算是否在上方显示
+  const showOnTop = selection ? selection.y > 400 : true;
+
   return (
     <div className="relative w-full h-full">
       {children}
@@ -111,8 +114,13 @@ export function ExplainPopover({
         !showResult &&
         createPortal(
           <div
-            className="fixed z-50 -translate-x-1/2 -translate-y-full pb-2 animate-in fade-in zoom-in duration-200 pointer-events-auto"
-            style={{ left: selection.x, top: selection.y }}
+            className={`fixed z-[100] -translate-x-1/2 pb-2 animate-in fade-in zoom-in duration-200 pointer-events-auto ${
+              showOnTop ? '-translate-y-full' : 'mt-2'
+            }`}
+            style={{
+              left: selection.x,
+              top: showOnTop ? selection.y : selection.bottom,
+            }}
             onMouseDown={() => (isInteractingRef.current = true)}
             onMouseUp={() => {
               setTimeout(() => (isInteractingRef.current = false), 100);
@@ -120,7 +128,7 @@ export function ExplainPopover({
           >
             <Button
               size="sm"
-              className="h-8 gap-1.5 shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground"
+              className="h-8 gap-1.5 shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground border border-white/20"
               onClick={handleExplain}
             >
               <Lightbulb className="h-3.5 w-3.5" />
@@ -135,50 +143,62 @@ export function ExplainPopover({
         createPortal(
           <div
             ref={popoverRef}
-            className="fixed z-50 -translate-x-1/2 -translate-y-full pb-3 animate-in fade-in slide-in-from-bottom-2 duration-300 pointer-events-auto"
-            style={{ left: selection.x, top: selection.y }}
+            className={`fixed z-[100] -translate-x-1/2 pb-3 animate-in fade-in duration-300 pointer-events-auto ${
+              showOnTop
+                ? '-translate-y-full slide-in-from-bottom-2'
+                : 'pt-3 slide-in-from-top-2'
+            }`}
+            style={{
+              left: selection.x,
+              top: showOnTop ? selection.y : selection.bottom,
+            }}
           >
-            <div className="w-80 rounded-xl border bg-card/95 backdrop-blur-md shadow-2xl overflow-hidden flex flex-col border-primary/20">
+            <div className="w-96 rounded-xl border bg-card/98 backdrop-blur-xl shadow-2xl overflow-hidden flex flex-col border-primary/20 ring-1 ring-black/5">
               <div className="flex items-center justify-between border-b px-3 py-2 bg-primary/5">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
                   <Lightbulb className="h-3.5 w-3.5" />
-                  AI 解释
+                  AI 代码解释器
                 </div>
                 <button
                   onClick={handleClose}
-                  className="rounded-full p-1 hover:bg-muted transition-colors"
+                  className="rounded-full p-1.5 hover:bg-muted/80 transition-colors"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               </div>
 
-              <div className="max-h-60 overflow-y-auto p-3 text-sm leading-relaxed">
+              <div className="max-h-[min(500px,60vh)] overflow-y-auto p-4 text-sm leading-relaxed prose prose-sm prose-slate dark:prose-invert">
                 {isLoading ? (
-                  <div className="flex flex-col items-center justify-center py-6 gap-2">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary/60" />
-                    <span className="text-xs text-muted-foreground animate-pulse">
-                      正在解析代码...
+                  <div className="flex flex-col items-center justify-center py-10 gap-3">
+                    <Loader2 className="h-7 w-7 animate-spin text-primary/60" />
+                    <span className="text-xs text-muted-foreground animate-pulse font-medium">
+                      深度解析中...
                     </span>
                   </div>
                 ) : error ? (
-                  <div className="text-red-500 bg-red-50 p-2 rounded border border-red-100 italic text-xs">
+                  <div className="text-red-500 bg-red-50/50 p-3 rounded-lg border border-red-100 text-xs font-medium">
                     {error}
                   </div>
                 ) : (
-                  <div className="whitespace-pre-wrap text-foreground/90 font-medium">
-                    {explanation}
+                  <div className="text-foreground/90 markdown-content">
+                    <ReactMarkdown>{explanation || ''}</ReactMarkdown>
                   </div>
                 )}
               </div>
 
-              <div className="border-t px-3 py-1.5 bg-muted/30">
-                <p className="text-[10px] text-muted-foreground italic">
-                  选中内容: "{selection.text.slice(0, 30)}
-                  {selection.text.length > 30 ? '...' : ''}"
+              <div className="border-t px-3.5 py-2 bg-muted/20">
+                <p className="text-[10px] text-muted-foreground italic font-medium opacity-80">
+                  选中片段: "{selection.text.slice(0, 45)}
+                  {selection.text.length > 45 ? '...' : ''}"
                 </p>
               </div>
             </div>
-            <div className="absolute left-1/2 bottom-1.5 -translate-x-1/2 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-card" />
+            {/* 这里的箭头逻辑需要根据 showOnTop 调整 */}
+            {showOnTop ? (
+              <div className="absolute left-1/2 bottom-1.5 -translate-x-1/2 border-l-[8px] border-r-[8px] border-t-[10px] border-l-transparent border-r-transparent border-t-card/98 drop-shadow-sm" />
+            ) : (
+              <div className="absolute left-1/2 top-1.5 -translate-x-1/2 border-l-[8px] border-r-[8px] border-b-[10px] border-l-transparent border-r-transparent border-b-primary/10" />
+            )}
           </div>,
           document.body,
         )}

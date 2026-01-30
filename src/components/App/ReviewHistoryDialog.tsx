@@ -154,10 +154,17 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
                     key={r.id}
                     className="group rounded-lg border bg-muted/30 transition-colors hover:bg-muted/50"
                   >
-                    <button
-                      type="button"
+                    <div
+                      role="button"
+                      tabIndex={0}
                       onClick={() => handleToggleExpand(r.id)}
-                      className="flex w-full items-start gap-3 p-3 text-left"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleToggleExpand(r.id);
+                        }
+                      }}
+                      className="flex w-full cursor-pointer items-start gap-3 p-3 text-left outline-none"
                     >
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
                         <Star
@@ -203,7 +210,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
                           <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
                         </Button>
                       </div>
-                    </button>
+                    </div>
 
                     {expandedId === r.id && expandedDetail && (
                       <div className="border-t px-3 py-2">

@@ -40,7 +40,7 @@ export type TableVersionMetadata = {
 };
 
 export const DB_NAME = 'ddlbuilder';
-export const DB_VERSION = 3;
+export const DB_VERSION = 4;
 export const STORE_NAME = 'saved_tables';
 export const VERSION_STORE_NAME = 'table_versions';
 export const REVIEW_STORE_NAME = 'review_history';
@@ -59,12 +59,11 @@ export const openDb = (): Promise<IDBDatabase> =>
       request.onerror = () => {
         reject(request.error ?? new Error('打开 IndexedDB 失败'));
       };
-      request.onupgradeneeded = (event) => {
+      request.onupgradeneeded = () => {
         const db = request.result;
-        const oldVersion = event.oldVersion;
 
         // Version 1: saved_tables store
-        if (oldVersion < 1) {
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
           const store = db.createObjectStore(STORE_NAME, {
             keyPath: 'normalizedName',
           });
@@ -73,7 +72,7 @@ export const openDb = (): Promise<IDBDatabase> =>
         }
 
         // Version 2: table_versions store
-        if (oldVersion < 2) {
+        if (!db.objectStoreNames.contains(VERSION_STORE_NAME)) {
           const versionStore = db.createObjectStore(VERSION_STORE_NAME, {
             keyPath: 'id',
           });
@@ -85,8 +84,8 @@ export const openDb = (): Promise<IDBDatabase> =>
           versionStore.createIndex('createdAt', 'createdAt', { unique: false });
         }
 
-        // Version 3: review_history store
-        if (oldVersion < 3) {
+        // Version 3+: review_history store
+        if (!db.objectStoreNames.contains(REVIEW_STORE_NAME)) {
           const reviewStore = db.createObjectStore(REVIEW_STORE_NAME, {
             keyPath: 'id',
           });

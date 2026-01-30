@@ -44,7 +44,10 @@ import { useMysqlPartition } from '@/hooks/useMysqlPartition';
 import { useDDLReview } from '@/hooks/useDDLReview';
 import { useSavedTables, type SavedTableSummary } from '@/hooks/useSavedTables';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
-import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
+import {
+  DEFAULT_SAVED_TABLE_NAME,
+  normalizeSavedTableName,
+} from '@/utils/savedTablesDb';
 import { diffPersistedState, type TableDiff } from '@/utils/tableDiff';
 import { createVersion } from '@/utils/tableVersions';
 import { saveReview } from '@/utils/reviewHistory';
@@ -364,7 +367,8 @@ function App() {
   // 当评审完成时保存记录
   useEffect(() => {
     if (reviewResult && !isReviewing) {
-      const normalizedName = loadedTableNormalizedName || tableName;
+      const normalizedName =
+        loadedTableNormalizedName || normalizeSavedTableName(tableName);
       saveReview(
         normalizedName,
         tableName,
