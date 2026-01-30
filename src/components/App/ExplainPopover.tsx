@@ -61,7 +61,7 @@ export function ExplainPopover({
       } else {
         if (!showResult) setSelection(null);
       }
-    } catch (e) {
+    } catch (_e) {
       // Ignore range errors
     }
   }, [containerRef, showResult]);
@@ -81,13 +81,16 @@ export function ExplainPopover({
     }
   };
 
-  const handleClose = (e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
-    setShowResult(false);
-    setSelection(null);
-    clearExplain();
-  };
+  const handleClose = useCallback(
+    (e?: React.MouseEvent) => {
+      e?.preventDefault();
+      e?.stopPropagation();
+      setShowResult(false);
+      setSelection(null);
+      clearExplain();
+    },
+    [clearExplain],
+  );
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -101,7 +104,7 @@ export function ExplainPopover({
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showResult, clearExplain]);
+  }, [showResult, handleClose]);
 
   // 计算是否在上方显示
   const showOnTop = selection ? selection.y > 400 : true;
@@ -121,9 +124,13 @@ export function ExplainPopover({
               left: selection.x,
               top: showOnTop ? selection.y : selection.bottom,
             }}
-            onMouseDown={() => (isInteractingRef.current = true)}
+            onMouseDown={() => {
+              isInteractingRef.current = true;
+            }}
             onMouseUp={() => {
-              setTimeout(() => (isInteractingRef.current = false), 100);
+              setTimeout(() => {
+                isInteractingRef.current = false;
+              }, 100);
             }}
           >
             <Button

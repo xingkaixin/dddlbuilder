@@ -154,62 +154,58 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
                     key={r.id}
                     className="group rounded-lg border bg-muted/30 transition-colors hover:bg-muted/50"
                   >
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => handleToggleExpand(r.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handleToggleExpand(r.id);
-                        }
-                      }}
-                      className="flex w-full cursor-pointer items-start gap-3 p-3 text-left outline-none"
-                    >
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                        <Star
-                          className={cn('h-4 w-4', getScoreColor(r.score))}
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              'text-lg font-semibold',
-                              getScoreColor(r.score),
-                            )}
-                          >
-                            {r.score}/10
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleExpand(r.id)}
+                        className="flex w-full cursor-pointer items-start gap-3 p-3 text-left outline-none"
+                      >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                          <Star
+                            className={cn('h-4 w-4', getScoreColor(r.score))}
+                          />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center gap-2">
+                            <span
+                              className={cn(
+                                'text-lg font-semibold',
+                                getScoreColor(r.score),
+                              )}
+                            >
+                              {r.score}/10
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {formatDate(r.createdAt)}
+                            </span>
                           </span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDate(r.createdAt)}
+                          <span className="mt-0.5 block truncate text-sm text-muted-foreground">
+                            {r.tableName} · {r.dbType.toUpperCase()}
                           </span>
-                        </div>
-                        <p className="mt-0.5 truncate text-sm text-muted-foreground">
-                          {r.tableName} · {r.dbType.toUpperCase()}
-                        </p>
-                        <p className="mt-1 line-clamp-2 text-xs text-foreground/80">
-                          {r.summary}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1">
-                        {expandedId === r.id ? (
-                          <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteConfirmId(r.id);
-                          }}
-                        >
-                          <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                        </Button>
-                      </div>
+                          <span className="mt-1 line-clamp-2 block text-xs text-foreground/80">
+                            {r.summary}
+                          </span>
+                        </span>
+                        <span className="flex shrink-0 items-center gap-1 pr-8">
+                          {expandedId === r.id ? (
+                            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </span>
+                      </button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-3 top-3 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirmId(r.id);
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
                     </div>
 
                     {expandedId === r.id && expandedDetail && (
