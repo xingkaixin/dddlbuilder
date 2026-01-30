@@ -129,6 +129,23 @@ class FakeObjectStore {
     );
   }
 
+  count(tx: FakeTransaction, query?: IDBValidKey) {
+    return this.run(
+      tx,
+      () => {
+        if (query === undefined) {
+          return this.data.size;
+        }
+        // Simplified: only support direct key matching for now as needed by tests
+        const key = String(query);
+        return this.data.has(key) ? 1 : 0;
+      },
+      () => {
+        tx.onerror?.({ target: tx });
+      },
+    );
+  }
+
   get(tx: FakeTransaction, key: string) {
     return this.run(
       tx,
@@ -220,6 +237,7 @@ class FakeTransaction {
       add: (value: any) => this.store.add(this, value),
       put: (value: any) => this.store.put(this, value),
       delete: (key: string) => this.store.delete(this, key),
+      count: (query?: IDBValidKey) => this.store.count(this, query),
       index: (name: string) => this.store.index(this, name),
     };
   }

@@ -20,6 +20,7 @@ import { DDLOutput } from './DDLOutput';
 import { SavedTablesDrawer } from './SavedTablesDrawer';
 import { DiffDialog } from './DiffDialog';
 import { VersionHistoryDialog } from './VersionHistoryDialog';
+import { ReviewHistoryDialog } from './ReviewHistoryDialog';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -46,6 +47,7 @@ import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
 import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
 import { diffPersistedState, type TableDiff } from '@/utils/tableDiff';
 import { createVersion } from '@/utils/tableVersions';
+import { saveReview } from '@/utils/reviewHistory';
 import {
   Columns3Cog,
   Network,
@@ -113,6 +115,9 @@ function App() {
     normalizedName: string;
     name: string;
   } | null>(null);
+
+  // Review history dialog state
+  const [isReviewHistoryOpen, setIsReviewHistoryOpen] = useState(false);
 
   // Check for fireworks on mount
   useEffect(() => {
@@ -355,6 +360,31 @@ function App() {
   const handleStartReview = useCallback(() => {
     startReview(generatedSql, tableName, dbType);
   }, [startReview, generatedSql, tableName, dbType]);
+
+  // 当评审完成时保存记录
+  useEffect(() => {
+    if (reviewResult && !isReviewing) {
+      const normalizedName = loadedTableNormalizedName || tableName;
+      saveReview(
+        normalizedName,
+        tableName,
+        generatedSql,
+        dbType,
+        reviewResult,
+      ).catch((err) => console.error('Failed to save review:', err));
+    }
+  }, [
+    reviewResult,
+    isReviewing,
+    loadedTableNormalizedName,
+    tableName,
+    generatedSql,
+    dbType,
+  ]);
+
+  const handleViewReviewHistory = useCallback(() => {
+    setIsReviewHistoryOpen(true);
+  }, []);
 
   const handleShare = useCallback(async () => {
     const currentState = buildPersistedState();
@@ -833,6 +863,12 @@ function App() {
         }}
       />
 
+      <ReviewHistoryDialog
+        open={isReviewHistoryOpen}
+        onOpenChange={setIsReviewHistoryOpen}
+        tableNormalizedName={loadedTableNormalizedName}
+      />
+
       {/* Main Content */}
       <div className="flex flex-col gap-4 p-4">
         <div className="flex flex-col gap-4 lg:flex-row">
@@ -1013,6 +1049,7 @@ function App() {
             reviewResult={reviewResult}
             reviewError={reviewError}
             onStartReview={handleStartReview}
+            onViewReviewHistory={handleViewReviewHistory}
           />
         </div>
       </div>

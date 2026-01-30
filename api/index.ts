@@ -13,6 +13,67 @@ app.get('/health', (c) => {
   return c.json({ status: 'ok' });
 });
 
+// DDL Explain endpoint
+app.post('/explain', async (c) => {
+  const { sql, context } = await c.req.json();
+  console.log('[Explain] Request received:', {
+    sqlLength: sql?.length,
+    contextLength: context?.length,
+  });
+
+  if (!sql || sql.trim().length === 0) {
+    return c.json({ error: 'SQL is required' }, 400);
+  }
+
+  const baseURL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+  const apiKey = process.env.OPENAI_API_KEY;
+  const model = process.env.OPENAI_MODEL_NAME || 'gpt-4o-mini';
+
+  if (!apiKey) {
+    return c.json({ error: 'OpenAI API key not configured' }, 500);
+  }
+
+  const openai = new OpenAI({
+    baseURL,
+    apiKey,
+  });
+
+  const systemPrompt = `你是一位资深的数据库专家。请简洁明了地解释用户提供的 SQL 片段的功能和关键点。如果提供了上下文，请结合上下文进行解释。
+请直接返回解释文本，不要包含 Markdown 代码块。`;
+
+  const userPrompt = `请解释以下 SQL 片段：
+${sql}
+
+${context ? `上下文相关 SQL：\n${context}` : ''}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.3,
+      max_tokens: 1000,
+      ...({
+        thinking: {
+          type: 'disabled',
+        },
+      } as any),
+    });
+
+    const explanation =
+      response.choices[0]?.message?.content || '未生成解释内容';
+    return c.json({ explanation });
+  } catch (error) {
+    console.error('[Explain] Error:', error);
+    return c.json(
+      { error: error instanceof Error ? error.message : 'Explain failed' },
+      500,
+    );
+  }
+});
+
 // DDL Review endpoint with streaming
 app.post('/review', async (c) => {
   const { ddl, tableName, dbType } = await c.req.json();
@@ -76,7 +137,7 @@ ${ddl}
   return streamText(c, async (stream) => {
     try {
       console.log('[Review] Calling OpenAI API with streaming...');
-      const response = await openai.chat.completions.create({
+      const response = (await openai.chat.completions.create({
         model,
         messages: [
           { role: 'system', content: systemPrompt },
@@ -86,10 +147,12 @@ ${ddl}
         temperature: 0.3,
         max_tokens: 2000,
         stream: true,
-        thinking: {
-          type: 'disabled',
-        },
-      });
+        ...({
+          thinking: {
+            type: 'disabled',
+          },
+        } as any),
+      })) as any;
 
       let fullContent = '';
       let chunkCount = 0;

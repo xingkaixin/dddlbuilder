@@ -1,0 +1,84 @@
+import { useState, useCallback, useRef } from 'react';
+
+interface ExplainState {
+  isLoading: boolean;
+  explanation: string | null;
+  error: string | null;
+}
+
+export function useDDLExplain() {
+  const [state, setState] = useState<ExplainState>({
+    isLoading: false,
+    explanation: null,
+    error: null,
+  });
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const startExplain = useCallback(async (sql: string, context?: string) => {
+    if (!sql || sql.trim().length === 0) {
+      setState((prev) => ({ ...prev, error: '未选中有效的 SQL 内容' }));
+      return;
+    }
+
+    // Abort any existing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
+    setState({
+      isLoading: true,
+      explanation: null,
+      error: null,
+    });
+
+    try {
+      const response = await fetch('/api/explain', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sql, context }),
+        signal: abortControllerRef.current.signal,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `请求失败: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setState({
+        isLoading: false,
+        explanation: data.explanation || '未生成解释内容',
+        error: null,
+      });
+    } catch (error) {
+      if ((error as Error).name === 'AbortError') {
+        return; // Request was cancelled
+      }
+      setState({
+        isLoading: false,
+        explanation: null,
+        error: error instanceof Error ? error.message : '解释请求失败',
+      });
+    }
+  }, []);
+
+  const clearExplain = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    setState({
+      isLoading: false,
+      explanation: null,
+      error: null,
+    });
+  }, []);
+
+  return {
+    ...state,
+    startExplain,
+    clearExplain,
+  };
+}

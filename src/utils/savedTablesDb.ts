@@ -40,9 +40,10 @@ export type TableVersionMetadata = {
 };
 
 export const DB_NAME = 'ddlbuilder';
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 export const STORE_NAME = 'saved_tables';
 export const VERSION_STORE_NAME = 'table_versions';
+export const REVIEW_STORE_NAME = 'review_history';
 
 const ensureIndexedDb = () => {
   if (typeof indexedDB === 'undefined') {
@@ -82,6 +83,19 @@ export const openDb = (): Promise<IDBDatabase> =>
             { unique: false },
           );
           versionStore.createIndex('createdAt', 'createdAt', { unique: false });
+        }
+
+        // Version 3: review_history store
+        if (oldVersion < 3) {
+          const reviewStore = db.createObjectStore(REVIEW_STORE_NAME, {
+            keyPath: 'id',
+          });
+          reviewStore.createIndex(
+            'tableNormalizedName',
+            'tableNormalizedName',
+            { unique: false },
+          );
+          reviewStore.createIndex('createdAt', 'createdAt', { unique: false });
         }
       };
       request.onsuccess = () => resolve(request.result);

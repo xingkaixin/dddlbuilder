@@ -20,6 +20,7 @@ import {
   ScrollText,
   ShieldCheck,
   GraduationCap,
+  History,
 } from 'lucide-react';
 import { DATABASE_OPTIONS } from '@/utils/constants';
 import { ReviewResultPanel } from './ReviewResult';
@@ -36,6 +37,7 @@ interface DDLOutputProps {
   reviewResult: ReviewResult | null;
   reviewError: string | null;
   onStartReview: () => void;
+  onViewReviewHistory?: () => void;
 }
 
 const SqlCodeBlock = lazy(() => import('./SqlCodeBlock'));
@@ -60,6 +62,7 @@ export const DDLOutput = memo<DDLOutputProps>(
     reviewResult,
     reviewError,
     onStartReview,
+    onViewReviewHistory,
   }) => {
     const databaseOption = useMemo(
       () => DATABASE_OPTIONS.find((option) => option.value === dbType),
@@ -159,6 +162,16 @@ export const DDLOutput = memo<DDLOutputProps>(
                       <GraduationCap className="h-4 w-4" />
                       大师评审
                     </Button>
+                    {onViewReviewHistory && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-1 transition-all duration-200 hover:scale-105"
+                        onClick={onViewReviewHistory}
+                      >
+                        <History className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button
                       variant="secondary"
                       size="sm"
