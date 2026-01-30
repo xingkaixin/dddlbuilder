@@ -6,6 +6,7 @@ export type SavedTableRecord = {
   normalizedName: string;
   name: string;
   state: PersistedState;
+  folderId?: string; // 关联的文件夹ID，null/undefined 表示未分组
   createdAt: number;
   updatedAt: number;
 };
@@ -16,8 +17,18 @@ export type SavedTableMetadata = {
   name: string;
   dbType: string;
   fieldCount: number;
+  folderId?: string;
   createdAt: number;
   updatedAt: number;
+};
+
+// 文件夹类型（支持多级嵌套）
+export type TableFolder = {
+  id: string;
+  name: string;
+  parentId?: string; // 父文件夹ID，null/undefined 表示根级
+  order: number; // 同级排序权重
+  createdAt: number;
 };
 
 // 版本快照类型
@@ -40,10 +51,11 @@ export type TableVersionMetadata = {
 };
 
 export const DB_NAME = 'ddlbuilder';
-export const DB_VERSION = 4;
+export const DB_VERSION = 5;
 export const STORE_NAME = 'saved_tables';
 export const VERSION_STORE_NAME = 'table_versions';
 export const REVIEW_STORE_NAME = 'review_history';
+export const FOLDER_STORE_NAME = 'table_folders';
 
 const ensureIndexedDb = () => {
   if (typeof indexedDB === 'undefined') {
@@ -95,6 +107,24 @@ export const openDb = (): Promise<IDBDatabase> =>
             { unique: false },
           );
           reviewStore.createIndex('createdAt', 'createdAt', { unique: false });
+        }
+
+        // Version 5: table_folders store
+        if (!db.objectStoreNames.contains(FOLDER_STORE_NAME)) {
+          const folderStore = db.createObjectStore(FOLDER_STORE_NAME, {
+            keyPath: 'id',
+          });
+          folderStore.createIndex('parentId', 'parentId', { unique: false });
+          folderStore.createIndex('order', 'order', { unique: false });
+        }
+
+        // Version 5: Add folderId index to saved_tables
+        const tx = request.transaction;
+        if (tx && db.objectStoreNames.contains(STORE_NAME)) {
+          const tableStore = tx.objectStore(STORE_NAME);
+          if (!tableStore.indexNames.contains('folderId')) {
+            tableStore.createIndex('folderId', 'folderId', { unique: false });
+          }
         }
       };
       request.onsuccess = () => resolve(request.result);
@@ -161,6 +191,7 @@ export const listSavedTableMetadata = async (): Promise<
     dbType: record.state.dbType,
     fieldCount:
       record.state.rows?.filter((row) => row.fieldName?.trim()).length || 0,
+    folderId: record.folderId,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
   }));

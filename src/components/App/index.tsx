@@ -43,6 +43,8 @@ import { useCitusSharding } from '@/hooks/useCitusSharding';
 import { useMysqlPartition } from '@/hooks/useMysqlPartition';
 import { useDDLReview } from '@/hooks/useDDLReview';
 import { useSavedTables, type SavedTableSummary } from '@/hooks/useSavedTables';
+import { useFolders, type FolderTreeNode } from '@/hooks/useFolders';
+import { FolderDialog, DeleteFolderDialog } from './FolderDialogs';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
 import {
   DEFAULT_SAVED_TABLE_NAME,
@@ -349,7 +351,34 @@ function App() {
     deleteTable,
     renameTable,
     loadTable,
+    moveTableToFolder,
+    clearTablesFromFolders,
   } = useSavedTables();
+
+  // Folders hook
+  const {
+    folderTree,
+    loading: foldersLoading,
+    createFolder,
+    renameFolder,
+    deleteFolder: deleteFolderAction,
+  } = useFolders();
+
+  // Folder dialog state
+  const [isFolderDialogOpen, setIsFolderDialogOpen] = useState(false);
+  const [folderDialogMode, setFolderDialogMode] = useState<'create' | 'rename'>(
+    'create',
+  );
+  const [folderDialogParent, setFolderDialogParent] =
+    useState<FolderTreeNode | null>(null);
+  const [folderDialogTarget, setFolderDialogTarget] =
+    useState<FolderTreeNode | null>(null);
+
+  // Delete folder dialog state
+  const [isDeleteFolderDialogOpen, setIsDeleteFolderDialogOpen] =
+    useState(false);
+  const [deleteFolderTarget, setDeleteFolderTarget] =
+    useState<FolderTreeNode | null>(null);
 
   // DDL Review hook
   const {
@@ -744,6 +773,88 @@ function App() {
     setDeleteTarget(null);
   }, [deleteTarget, deleteTable, showToast, loadedTableNormalizedName]);
 
+  // Folder handlers
+  const handleOpenCreateFolderDialog = useCallback(
+    (parentId?: string) => {
+      const parent = parentId
+        ? (folderTree.find((f) => f.id === parentId) ?? null)
+        : null;
+      setFolderDialogParent(parent);
+      setFolderDialogTarget(null);
+      setFolderDialogMode('create');
+      setIsFolderDialogOpen(true);
+    },
+    [folderTree],
+  );
+
+  const handleOpenRenameFolderDialog = useCallback((folder: FolderTreeNode) => {
+    setFolderDialogParent(null);
+    setFolderDialogTarget(folder);
+    setFolderDialogMode('rename');
+    setIsFolderDialogOpen(true);
+  }, []);
+
+  const handleOpenDeleteFolderDialog = useCallback((folder: FolderTreeNode) => {
+    setDeleteFolderTarget(folder);
+    setIsDeleteFolderDialogOpen(true);
+  }, []);
+
+  const handleFolderDialogConfirm = useCallback(
+    async (name: string) => {
+      if (folderDialogMode === 'create') {
+        await createFolder(name, folderDialogParent?.id);
+        showToast(`已创建文件夹：${name}`);
+      } else if (folderDialogTarget) {
+        await renameFolder(folderDialogTarget.id, name);
+        showToast(`已重命名为：${name}`);
+      }
+    },
+    [
+      folderDialogMode,
+      folderDialogParent,
+      folderDialogTarget,
+      createFolder,
+      renameFolder,
+      showToast,
+    ],
+  );
+
+  const handleDeleteFolderConfirm = useCallback(async () => {
+    if (!deleteFolderTarget) return;
+    try {
+      const affectedFolderIds = await deleteFolderAction(deleteFolderTarget.id);
+      // Clear folderId from tables in deleted folders
+      await clearTablesFromFolders(affectedFolderIds);
+      showToast(`已删除文件夹：${deleteFolderTarget.name}`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : '删除失败');
+    }
+  }, [
+    deleteFolderTarget,
+    deleteFolderAction,
+    clearTablesFromFolders,
+    showToast,
+  ]);
+
+  // Calculate table count for delete folder dialog
+  const deleteFolderTableCount = useMemo(() => {
+    if (!deleteFolderTarget) return 0;
+    return savedTables.filter((t) => t.folderId === deleteFolderTarget.id)
+      .length;
+  }, [deleteFolderTarget, savedTables]);
+
+  const handleMoveTableToFolder = useCallback(
+    async (item: SavedTableSummary, folderId?: string) => {
+      const result = await moveTableToFolder(item.normalizedName, folderId);
+      if (result.ok) {
+        showToast(folderId ? '已移动到文件夹' : '已移到未分组');
+      } else {
+        showToast(result.message ?? '移动失败');
+      }
+    },
+    [moveTableToFolder, showToast],
+  );
+
   const handleImport = useCallback(
     (result: ParsedResult, importDbType: DatabaseType) => {
       // 1. Basic Info
@@ -831,6 +942,8 @@ function App() {
         loading={savedTablesLoading}
         error={savedTablesError}
         items={savedTables}
+        folders={folderTree}
+        foldersLoading={foldersLoading}
         activeNormalizedName={loadedTableNormalizedName}
         activeDirty={isLoadedDirty}
         onSelect={handleSelectSavedTable}
@@ -843,6 +956,27 @@ function App() {
           });
           setIsVersionHistoryOpen(true);
         }}
+        onMoveToFolder={handleMoveTableToFolder}
+        onCreateFolder={handleOpenCreateFolderDialog}
+        onRenameFolder={handleOpenRenameFolderDialog}
+        onDeleteFolder={handleOpenDeleteFolderDialog}
+      />
+
+      <FolderDialog
+        open={isFolderDialogOpen}
+        onOpenChange={setIsFolderDialogOpen}
+        mode={folderDialogMode}
+        parentFolder={folderDialogParent}
+        targetFolder={folderDialogTarget}
+        onConfirm={handleFolderDialogConfirm}
+      />
+
+      <DeleteFolderDialog
+        open={isDeleteFolderDialogOpen}
+        onOpenChange={setIsDeleteFolderDialogOpen}
+        folder={deleteFolderTarget}
+        tableCount={deleteFolderTableCount}
+        onConfirm={handleDeleteFolderConfirm}
       />
 
       <DiffDialog

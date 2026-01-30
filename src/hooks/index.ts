@@ -20,3 +20,6 @@ export { useCitusSharding } from './useCitusSharding';
 export type { UseCitusShardingReturn } from './useCitusSharding';
 
 export { useSavedTables } from './useSavedTables';
+
+export { useFolders } from './useFolders';
+export type { FolderTreeNode } from './useFolders';

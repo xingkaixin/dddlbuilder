@@ -166,6 +166,58 @@ export function useSavedTables() {
     return getSavedTable(normalizedName);
   }, []);
 
+  // 移动表到指定文件夹
+  const moveTableToFolder = useCallback(
+    async (
+      normalizedName: string,
+      folderId?: string,
+    ): Promise<SaveTableResult> => {
+      try {
+        const record = await getSavedTable(normalizedName);
+        if (!record) {
+          return { ok: false, reason: 'not_found' };
+        }
+        const updatedRecord: SavedTableRecord = {
+          ...record,
+          folderId,
+          updatedAt: Date.now(),
+        };
+        await updateSavedTable(updatedRecord);
+        await refresh();
+        return { ok: true, normalizedName };
+      } catch (err) {
+        return {
+          ok: false,
+          reason: 'error',
+          message: err instanceof Error ? err.message : '移动失败',
+        };
+      }
+    },
+    [refresh],
+  );
+
+  // 清理指定文件夹ID关联的表（将它们移回未分组）
+  const clearTablesFromFolders = useCallback(
+    async (folderIds: string[]): Promise<void> => {
+      const tables = savedTables.filter(
+        (t) => t.folderId && folderIds.includes(t.folderId),
+      );
+      for (const table of tables) {
+        const record = await getSavedTable(table.normalizedName);
+        if (record) {
+          const updatedRecord: SavedTableRecord = {
+            ...record,
+            folderId: undefined,
+            updatedAt: Date.now(),
+          };
+          await updateSavedTable(updatedRecord);
+        }
+      }
+      await refresh();
+    },
+    [savedTables, refresh],
+  );
+
   return {
     savedTables,
     loading,
@@ -176,5 +228,7 @@ export function useSavedTables() {
     deleteTable,
     renameTable,
     loadTable,
+    moveTableToFolder,
+    clearTablesFromFolders,
   };
 }
