@@ -18,6 +18,7 @@ import { PartitionPanel } from './PartitionPanel';
 import { DataTable } from './DataTable';
 import { DDLOutput } from './DDLOutput';
 import { SavedTablesDrawer } from './SavedTablesDrawer';
+import { DiffDialog } from './DiffDialog';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -42,6 +43,7 @@ import { useDDLReview } from '@/hooks/useDDLReview';
 import { useSavedTables, type SavedTableSummary } from '@/hooks/useSavedTables';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
 import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
+import { diffPersistedState, type TableDiff } from '@/utils/tableDiff';
 import {
   Columns3Cog,
   Network,
@@ -99,6 +101,9 @@ function App() {
     useState<SavedTableSummary | null>(null);
   const [queuedLoadAfterSave, setQueuedLoadAfterSave] =
     useState<SavedTableSummary | null>(null);
+
+  // Diff dialog state
+  const [isDiffDialogOpen, setIsDiffDialogOpen] = useState(false);
 
   // Check for fireworks on mount
   useEffect(() => {
@@ -293,6 +298,18 @@ function App() {
     ? '当前为已加载表，保存将覆盖原记录。'
     : '保存后可在左侧列表中快速加载。';
   const saveInputDisabled = hasLoadedTable;
+
+  // Compute diff between loaded state and current state
+  const tableDiff = useMemo<TableDiff | null>(() => {
+    if (!isLoadedDirty || !loadedTableSignature) return null;
+    try {
+      const oldState = JSON.parse(loadedTableSignature) as PersistedState;
+      const newState = buildPersistedState();
+      return diffPersistedState(oldState, newState);
+    } catch {
+      return null;
+    }
+  }, [isLoadedDirty, loadedTableSignature, buildPersistedState]);
 
   const { generatedSql, generatedDcl, copySql, copyDcl } = useSqlGeneration(
     dbType,
@@ -772,6 +789,16 @@ function App() {
         onDelete={handleOpenDeleteDialog}
       />
 
+      <DiffDialog
+        open={isDiffDialogOpen}
+        onOpenChange={setIsDiffDialogOpen}
+        tableName={tableName}
+        dbType={dbType}
+        diff={tableDiff}
+        fields={normalizedFields}
+        onCopy={() => showToast('变更脚本已复制')}
+      />
+
       {/* Main Content */}
       <div className="flex flex-col gap-4 p-4">
         <div className="flex flex-col gap-4 lg:flex-row">
@@ -786,8 +813,10 @@ function App() {
               onClearAll={handleClearAll}
               onSaveTable={() => openSaveDialog(null)}
               onOpenSavedTables={() => setSavedTablesDrawerOpen(true)}
+              onViewDiff={() => setIsDiffDialogOpen(true)}
               saveDisabled={!canSaveCurrent}
               saveDisabledHint="加载的表未修改，无法保存"
+              showDiffButton={isLoadedDirty && tableDiff?.hasChanges}
               loadedStatus={loadedStatus}
               loadedTableName={loadedTableName}
             />

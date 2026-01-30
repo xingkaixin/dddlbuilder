@@ -1,4 +1,5 @@
 import type { DatabaseType, NormalizedField, IndexDefinition } from '../types';
+import type { TableDiff } from '../utils/tableDiff';
 
 export interface DDLStrategy {
   /**
@@ -20,6 +21,15 @@ export interface DDLStrategy {
   ): string;
 
   /**
+   * 生成ALTER TABLE变更DDL语句
+   */
+  generateAlterDDL?(
+    tableName: string,
+    diff: TableDiff,
+    fields: NormalizedField[],
+  ): string;
+
+  /**
    * 格式化表名（处理schema、引号等）
    */
   formatTableName(tableName: string): string;
@@ -34,3 +44,4 @@ export interface DDLStrategy {
    */
   getDatabaseType(): DatabaseType;
 }
+

@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Button } from '@/components/ui/button';
-import { List, Save, Table, Trash2 } from 'lucide-react';
+import { GitCompare, List, Save, Table, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -23,8 +23,10 @@ interface TableConfigProps {
   onClearAll: () => void;
   onSaveTable: () => void;
   onOpenSavedTables: () => void;
+  onViewDiff?: () => void;
   saveDisabled?: boolean;
   saveDisabledHint?: string;
+  showDiffButton?: boolean;
   loadedStatus?: 'clean' | 'dirty' | null;
   loadedTableName?: string | null;
 }
@@ -40,8 +42,10 @@ export const TableConfig = memo<TableConfigProps>(
     onClearAll,
     onSaveTable,
     onOpenSavedTables,
+    onViewDiff,
     saveDisabled = false,
     saveDisabledHint,
+    showDiffButton = false,
     loadedStatus = null,
     loadedTableName = null,
   }) => {
@@ -121,6 +125,18 @@ export const TableConfig = memo<TableConfigProps>(
                 >
                   <Save className="h-4 w-4" />
                 </Button>
+                {showDiffButton && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0"
+                    onClick={onViewDiff}
+                    title="查看变更"
+                  >
+                    <GitCompare className="h-4 w-4" />
+                  </Button>
+                )}
                 {statusLabel && (
                   <span className={`text-xs ${statusClass}`}>
                     {statusLabel}
