@@ -3,10 +3,11 @@ import {
   useEffect,
   useMemo,
   useState,
+  useRef,
   lazy,
   Suspense,
 } from 'react';
-import type { DatabaseType, FieldRow, PersistedState } from '@/types';
+import type { DatabaseType, FieldRow, PersistedState, IndexDefinition } from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
 import { createEmptyRow } from '@/utils/helpers';
 import { Header } from './Header';
@@ -41,10 +42,19 @@ import { useSqlGeneration } from '@/hooks/useSqlGeneration';
 import { useToast } from '@/hooks/useToast';
 import { useCitusSharding } from '@/hooks/useCitusSharding';
 import { useMysqlPartition } from '@/hooks/useMysqlPartition';
-import { useDDLReview } from '@/hooks/useDDLReview';
+import { useDDLReview, type StructuredSuggestion } from '@/hooks/useDDLReview';
 import { useSavedTables, type SavedTableSummary } from '@/hooks/useSavedTables';
 import { useFolders, type FolderTreeNode } from '@/hooks/useFolders';
+import {
+  useFieldTemplates,
+  type FieldTemplate,
+} from '@/hooks/useFieldTemplates';
 import { FolderDialog, DeleteFolderDialog } from './FolderDialogs';
+import {
+  TemplateManagerDialog,
+  CreateTemplateDialog,
+} from './TemplateManagerDialog';
+import { ApplyTemplatePopover } from './ApplyTemplatePopover';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
 import {
   DEFAULT_SAVED_TABLE_NAME,
@@ -380,6 +390,27 @@ function App() {
   const [deleteFolderTarget, setDeleteFolderTarget] =
     useState<FolderTreeNode | null>(null);
 
+  // Field templates hook
+  const {
+    templates,
+    loading: templatesLoading,
+    create: createTemplate,
+    createFromFields: createTemplateFromFields,
+    update: updateTemplate,
+    remove: deleteTemplate,
+    duplicate: duplicateTemplate,
+  } = useFieldTemplates();
+
+  // Template manager dialog state
+  const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
+
+  // Create template dialog state (from selected fields)
+  const [isCreateTemplateDialogOpen, setIsCreateTemplateDialogOpen] =
+    useState(false);
+  const [selectedFieldsForTemplate, _setSelectedFieldsForTemplate] = useState<
+    typeof rows
+  >([]);
+
   // DDL Review hook
   const {
     isLoading: isReviewing,
@@ -387,15 +418,19 @@ function App() {
     result: reviewResult,
     error: reviewError,
     startReview,
+    setReviewResult,
   } = useDDLReview();
 
   const handleStartReview = useCallback(() => {
     startReview(generatedSql, tableName, dbType);
   }, [startReview, generatedSql, tableName, dbType]);
 
+  const isReviewingRef = useRef(false);
+
   // 当评审完成时保存记录
   useEffect(() => {
-    if (reviewResult && !isReviewing) {
+    // 仅在评审状态从 true 变为 false 且有结果时保存
+    if (isReviewingRef.current && !isReviewing && reviewResult) {
       const normalizedName =
         loadedTableNormalizedName || normalizeSavedTableName(tableName);
       saveReview(
@@ -406,6 +441,7 @@ function App() {
         reviewResult,
       ).catch((err) => console.error('Failed to save review:', err));
     }
+    isReviewingRef.current = isReviewing;
   }, [
     reviewResult,
     isReviewing,
@@ -855,6 +891,143 @@ function App() {
     [moveTableToFolder, showToast],
   );
 
+  // Template handlers
+  const handleApplyTemplate = useCallback(
+    (template: FieldTemplate) => {
+      // 将模板字段添加到当前表末尾
+      const newRows: typeof rows = template.fields.map((field, index) => ({
+        order: rows.length + index + 1,
+        fieldName: field.fieldName,
+        fieldComment: field.fieldComment || '',
+        fieldType: field.fieldType,
+        nullable: field.nullable,
+        defaultKind: field.defaultKind || '无',
+        defaultValue: field.defaultValue || '',
+        onUpdate: field.onUpdate || '无',
+      }));
+      setRows([...rows, ...newRows]);
+      showToast(
+        `已应用模板「${template.name}」，添加了 ${template.fields.length} 个字段`,
+      );
+    },
+    [rows, setRows, showToast],
+  );
+
+  const handleApplySuggestion = useCallback(
+    (suggestion: StructuredSuggestion) => {
+      if (suggestion.applied) return;
+
+      let appliedCount = 0;
+
+      switch (suggestion.type) {
+        case 'add_field':
+          if (suggestion.field) {
+            const newRow: FieldRow = {
+              order: rows.length + 1,
+              fieldName: suggestion.field.fieldName,
+              fieldType: suggestion.field.fieldType,
+              fieldComment: suggestion.field.fieldComment || '',
+              nullable: suggestion.field.nullable || '是',
+              defaultKind: suggestion.field.defaultKind || '无',
+              defaultValue: suggestion.field.defaultValue || '',
+              onUpdate: suggestion.field.onUpdate || '无',
+            };
+            setRows([...rows, newRow]);
+            appliedCount = 1;
+          }
+          break;
+
+        case 'modify_field':
+          if (suggestion.fieldModification) {
+            const { fieldName, changes } = suggestion.fieldModification;
+            const rowIndex = rows.findIndex((r) => r.fieldName === fieldName);
+            if (rowIndex !== -1) {
+              const newRows = [...rows];
+              newRows[rowIndex] = { ...newRows[rowIndex], ...changes };
+              setRows(newRows);
+              appliedCount = 1;
+            }
+          }
+          break;
+
+        case 'remove_field':
+          if (suggestion.fieldName) {
+            const newRows = rows.filter((r) => r.fieldName !== suggestion.fieldName);
+            // 重新排序
+            const reorderedRows = newRows.map((r, i) => ({
+              ...r,
+              order: i + 1,
+            }));
+            setRows(reorderedRows);
+            appliedCount = 1;
+          }
+          break;
+
+        case 'add_index':
+          if (suggestion.index) {
+            const newIndex: IndexDefinition = {
+              id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+              name: suggestion.index.name,
+              fields: suggestion.index.fields,
+              unique: !!suggestion.index.unique,
+            };
+            setIndexes([...indexes, newIndex]);
+            appliedCount = 1;
+          }
+          break;
+        
+        default:
+          break;
+      }
+
+      if (appliedCount > 0 && reviewResult) {
+        // 更新评审结果，标记该建议已应用
+        const newSuggestions = reviewResult.suggestions.map((s) => {
+          if (typeof s !== 'string' && s.id === suggestion.id) {
+            return { ...s, applied: true };
+          }
+          return s;
+        });
+        setReviewResult({ ...reviewResult, suggestions: newSuggestions });
+        showToast(`已应用建议：${suggestion.description}`);
+      }
+    },
+    [
+      rows,
+      indexes,
+      reviewResult,
+      setRows,
+      setIndexes,
+      setReviewResult,
+      showToast,
+    ],
+  );
+
+  const handleCreateTemplateFromFields = useCallback(
+    async (
+      name: string,
+      fields: Array<{
+        fieldName?: string;
+        fieldType?: string;
+        fieldComment?: string;
+        nullable?: string;
+        defaultKind?: string;
+        defaultValue?: string;
+        onUpdate?: string;
+      }>,
+      description?: string,
+    ) => {
+      const result = await createTemplateFromFields(name, fields, description);
+      if (result.ok) {
+        showToast(`已创建模板「${name}」`);
+      } else {
+        showToast(result.message ?? '创建失败');
+      }
+      return result;
+    },
+    [createTemplateFromFields, showToast],
+  );
+
   const handleImport = useCallback(
     (result: ParsedResult, importDbType: DatabaseType) => {
       // 1. Basic Info
@@ -977,6 +1150,24 @@ function App() {
         folder={deleteFolderTarget}
         tableCount={deleteFolderTableCount}
         onConfirm={handleDeleteFolderConfirm}
+      />
+
+      <TemplateManagerDialog
+        open={isTemplateManagerOpen}
+        onOpenChange={setIsTemplateManagerOpen}
+        templates={templates}
+        loading={templatesLoading}
+        onCreateTemplate={createTemplate}
+        onUpdateTemplate={updateTemplate}
+        onDuplicateTemplate={duplicateTemplate}
+        onDeleteTemplate={deleteTemplate}
+      />
+
+      <CreateTemplateDialog
+        open={isCreateTemplateDialogOpen}
+        onOpenChange={setIsCreateTemplateDialogOpen}
+        selectedFields={selectedFieldsForTemplate}
+        onConfirm={handleCreateTemplateFromFields}
       />
 
       <DiffDialog
@@ -1116,6 +1307,14 @@ function App() {
                   onRemoveRow={handleRemoveRow}
                   onAddRows={handleAddRows}
                   onAddCountChange={setAddCount}
+                  toolbarLeft={
+                    <ApplyTemplatePopover
+                      templates={templates}
+                      loading={templatesLoading}
+                      onApplyTemplate={handleApplyTemplate}
+                      onManageTemplates={() => setIsTemplateManagerOpen(true)}
+                    />
+                  }
                 />
               </TabsContent>
               <TabsContent value="indexes" className="mt-4">
@@ -1188,6 +1387,7 @@ function App() {
             reviewError={reviewError}
             onStartReview={handleStartReview}
             onViewReviewHistory={handleViewReviewHistory}
+            onApplySuggestion={handleApplySuggestion}
           />
         </div>
       </div>

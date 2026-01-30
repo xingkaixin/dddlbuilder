@@ -106,24 +106,53 @@ app.post('/review', async (c) => {
     apiKey,
   });
 
-  const systemPrompt = `你是一位资深的数据库架构师和DDL评审专家。你的任务是评审用户提供的DDL语句，给出专业的评分和建议。
+  const systemPrompt = `你是一位资深的数据库架构师和DDL评审专家。你的任务是评审用户提供的DDL语句，给出专业的评分和改进建议。
 
-评审维度包括：
-1. 命名规范性（表名、字段名是否符合规范）
-2. 数据类型选择（是否合理、是否有更优选择）
-3. 索引设计（是否合理、是否缺少必要索引）
-4. 完整性约束（主键、外键、唯一约束等）
-5. 可扩展性（是否考虑未来扩展）
-6. 性能考虑（是否有潜在性能问题）
+评审维度包括：命名规范性、数据类型选择、索引设计、完整性约束、可扩展性、性能考虑等。
 
 请以JSON格式返回评审结果：
 {
   "score": 8,
   "summary": "简要评价，约50字以内",
-  "suggestions": ["建议1", "建议2", "建议3"]
+  "suggestions": [
+    {
+      "id": "sug_1",
+      "description": "建议描述",
+      "type": "add_field" | "modify_field" | "remove_field" | "add_index" | "general",
+      "actionable": true,
+      "field": { // 仅当 type 为 add_field 时提供
+        "fieldName": "string",
+        "fieldType": "string",
+        "fieldComment": "string",
+        "nullable": "是" | "否",
+        "defaultKind": "无" | "自增" | "常量" | "当前时间" | "uuid",
+        "defaultValue": "string",
+        "onUpdate": "无" | "当前时间"
+      },
+      "fieldModification": { // 仅当 type 为 modify_field 时提供
+        "fieldName": "string", // 目标字段名
+        "changes": {
+          "fieldType": "string",
+          "fieldComment": "string",
+          "nullable": "是" | "否",
+          "defaultKind": "string",
+          "defaultValue": "string",
+          "onUpdate": "string"
+        }
+      },
+      "fieldName": "string", // 仅当 type 为 remove_field 时提供，标识要移除的字段
+      "index": { // 仅当 type 为 add_index 时提供
+        "name": "string",
+        "fields": [{ "name": "string", "direction": "ASC" | "DESC" }],
+        "unique": boolean
+      }
+    }
+  ]
 }
 
-只返回JSON，不要有其他内容。`;
+注意：
+1. actionable: 如果建议可以被程序自动执行，则为 true (如增/删/改字段或索引)；如果是笼统的建议 (general)，则为 false。
+2. 只返回 JSON，不要有其他描述文字。`;
 
   const userPrompt = `请评审以下${dbType.toUpperCase()}数据库的DDL语句：
 

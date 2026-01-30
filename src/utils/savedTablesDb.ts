@@ -31,6 +31,26 @@ export type TableFolder = {
   createdAt: number;
 };
 
+// 字段模板类型
+export type TemplateField = {
+  fieldName: string;
+  fieldType: string;
+  fieldComment?: string;
+  nullable: '是' | '否';
+  defaultKind?: string;
+  defaultValue?: string;
+  onUpdate?: string;
+};
+
+export type FieldTemplate = {
+  id: string;
+  name: string;
+  description?: string;
+  fields: TemplateField[];
+  createdAt: number;
+  updatedAt: number;
+};
+
 // 版本快照类型
 export type TableVersion = {
   id: string;
@@ -51,11 +71,12 @@ export type TableVersionMetadata = {
 };
 
 export const DB_NAME = 'ddlbuilder';
-export const DB_VERSION = 5;
+export const DB_VERSION = 6;
 export const STORE_NAME = 'saved_tables';
 export const VERSION_STORE_NAME = 'table_versions';
 export const REVIEW_STORE_NAME = 'review_history';
 export const FOLDER_STORE_NAME = 'table_folders';
+export const TEMPLATE_STORE_NAME = 'field_templates';
 
 const ensureIndexedDb = () => {
   if (typeof indexedDB === 'undefined') {
@@ -125,6 +146,17 @@ export const openDb = (): Promise<IDBDatabase> =>
           if (!tableStore.indexNames.contains('folderId')) {
             tableStore.createIndex('folderId', 'folderId', { unique: false });
           }
+        }
+
+        // Version 6: field_templates store
+        if (!db.objectStoreNames.contains(TEMPLATE_STORE_NAME)) {
+          const templateStore = db.createObjectStore(TEMPLATE_STORE_NAME, {
+            keyPath: 'id',
+          });
+          templateStore.createIndex('name', 'name', { unique: false });
+          templateStore.createIndex('updatedAt', 'updatedAt', {
+            unique: false,
+          });
         }
       };
       request.onsuccess = () => resolve(request.result);

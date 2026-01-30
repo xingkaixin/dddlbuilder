@@ -86,6 +86,8 @@ interface DataTableProps {
   onRemoveRow: (index: number, amount: number) => void;
   onAddRows: (count: number) => void;
   onAddCountChange: (value: number) => void;
+  /** 工具栏左侧插槽，用于添加额外按钮（如"应用模板"） */
+  toolbarLeft?: React.ReactNode;
 }
 
 export const DataTable = memo<DataTableProps>(
@@ -99,6 +101,7 @@ export const DataTable = memo<DataTableProps>(
     onRemoveRow,
     onAddRows,
     onAddCountChange,
+    toolbarLeft,
   }) => {
     const latestRef = useRef({ rows, dbType });
     latestRef.current = { rows, dbType };
@@ -264,7 +267,13 @@ export const DataTable = memo<DataTableProps>(
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-primary/30 to-transparent" />
 
         <div className="relative border-b border-primary/10 px-4 py-3.5">
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {/* 左侧工具栏插槽 */}
+            <div className="flex flex-wrap items-center gap-2">
+              {toolbarLeft}
+            </div>
+
+            {/* 右侧添加行按钮 */}
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 onClick={handleAddRowsClick}

@@ -1,13 +1,28 @@
 import { memo } from 'react';
-import { Star, Lightbulb, AlertCircle, Loader2 } from 'lucide-react';
-import type { ReviewResult } from '@/hooks/useDDLReview';
+import {
+  Star,
+  Lightbulb,
+  AlertCircle,
+  Loader2,
+  Check,
+  Plus,
+  ArrowRight,
+  Minus,
+} from 'lucide-react';
+import type {
+  ReviewResult,
+  StructuredSuggestion,
+} from '@/hooks/useDDLReview';
 import type { PartialReviewResult } from '@/utils/parsePartialJson';
+import { Button } from '@/components/ui/button';
+
 
 interface ReviewResultPanelProps {
   isLoading: boolean;
   partialResult: PartialReviewResult | null;
   result: ReviewResult | null;
   error: string | null;
+  onApplySuggestion?: (suggestion: StructuredSuggestion) => void;
 }
 
 function getScoreColor(score: number): string {
@@ -24,7 +39,7 @@ function getScoreBgColor(score: number): string {
 
 const SUGGESTION_SKELETON_COUNT = 3;
 
-// Shared component for rendering score
+// Component for rendering score
 function ScoreDisplay({
   score,
   isStreaming,
@@ -67,39 +82,133 @@ function SummarySkeleton() {
   );
 }
 
-// Shared component for rendering suggestions
+// Component for rendering a single suggestion
+const SuggestionItem = memo<{
+  suggestion: string | StructuredSuggestion;
+  onApply?: (suggestion: StructuredSuggestion) => void;
+}>(({ suggestion, onApply }) => {
+  if (typeof suggestion === 'string') {
+    return (
+      <li className="text-sm text-foreground/70 list-disc relative pl-1">
+        {suggestion}
+      </li>
+    );
+  }
+
+  const isApplied = suggestion.applied;
+  const isActionable = suggestion.actionable && !isApplied;
+
+  return (
+    <li className="group flex items-start gap-3 rounded-md border border-transparent p-2 transition-all hover:bg-muted/50 hover:border-border">
+      <div className="mt-1 flex-shrink-0">
+        {suggestion.applied ? (
+          <Check className="h-4 w-4 text-emerald-500" />
+        ) : suggestion.type === 'remove_field' ? (
+          <Minus className="h-4 w-4 text-red-400" />
+        ) : suggestion.type === 'add_field' || suggestion.type === 'add_index' ? (
+          <Plus className="h-4 w-4 text-emerald-400" />
+        ) : suggestion.type === 'modify_field' ? (
+          <ArrowRight className="h-4 w-4 text-amber-400" />
+        ) : (
+          <Lightbulb className="h-4 w-4 text-blue-400" />
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="text-sm text-foreground/80 leading-relaxed font-medium">
+          {suggestion.description}
+        </div>
+        
+        {/* Detail view based on type */}
+        {!isApplied && suggestion.type === 'modify_field' && suggestion.fieldModification && (
+          <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
+            <span className="font-mono bg-muted px-1 rounded truncate max-w-[100px]">{suggestion.fieldModification.fieldName}</span>
+            <ArrowRight className="h-3 w-3" />
+            <span className="text-amber-600 font-medium">
+              {suggestion.fieldModification.changes.fieldType || suggestion.fieldModification.changes.fieldComment || '变更属性'}
+            </span>
+          </div>
+        )}
+
+        {!isApplied && suggestion.type === 'add_field' && suggestion.field && (
+          <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
+             <span className="text-emerald-600 font-medium px-1 rounded bg-emerald-50 border border-emerald-100">
+               + {suggestion.field.fieldName} ({suggestion.field.fieldType})
+             </span>
+          </div>
+        )}
+
+        {!isApplied && suggestion.type === 'add_index' && suggestion.index && (
+          <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
+             <span className="text-emerald-600 font-medium px-1 rounded bg-emerald-50 border border-emerald-100">
+               + INDEX {suggestion.index.name}
+             </span>
+          </div>
+        )}
+      </div>
+
+      {isActionable && onApply && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 px-2 text-xs gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background"
+          onClick={() => onApply(suggestion)}
+        >
+          应用
+        </Button>
+      )}
+
+      {isApplied && (
+        <span className="text-[10px] font-medium text-emerald-500 bg-emerald-50 px-1 rounded border border-emerald-100">
+          已应用
+        </span>
+      )}
+    </li>
+  );
+});
+SuggestionItem.displayName = 'SuggestionItem';
+
+// Component for rendering suggestions list
 function SuggestionsList({
   suggestions,
   skeletonCount = 0,
   isStreaming,
+  onApply,
 }: {
-  suggestions: string[];
+  suggestions: (string | StructuredSuggestion)[];
   skeletonCount?: number;
   isStreaming?: boolean;
+  onApply?: (suggestion: StructuredSuggestion) => void;
 }) {
   if (suggestions.length === 0) return null;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
         <Lightbulb className="h-4 w-4" />
-        <span>改进建议</span>
+        <span>具体建议</span>
         {isStreaming && (
           <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
         )}
       </div>
-      <ul className="space-y-1.5 pl-6">
+      <ul className="space-y-1">
         {suggestions.map((suggestion, index) => (
-          <li key={index} className="text-sm text-foreground/70 list-disc">
-            {suggestion}
-          </li>
+          <SuggestionItem
+            key={typeof suggestion === 'string' ? index : suggestion.id || index}
+            suggestion={suggestion}
+            onApply={onApply}
+          />
         ))}
         {Array.from({ length: skeletonCount }).map((_, index) => (
           <li
             key={`suggestion-skeleton-${index}`}
-            className="list-disc text-sm"
+            className="flex items-start gap-3 p-2"
           >
-            <div className="h-3 w-11/12 rounded bg-muted/70 animate-pulse" />
+             <div className="mt-1 h-4 w-4 rounded-full bg-muted/50 animate-pulse shrink-0" />
+             <div className="flex-1 space-y-2 py-1">
+                <div className="h-3 w-11/12 rounded bg-muted/70 animate-pulse" />
+                <div className="h-2 w-1/3 rounded bg-muted/50 animate-pulse" />
+             </div>
           </li>
         ))}
       </ul>
@@ -112,21 +221,24 @@ function SuggestionsSkeleton({
   showHeader = false,
 }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {showHeader && (
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
           <Lightbulb className="h-4 w-4" />
-          <span>改进建议</span>
+          <span>正在生成建议...</span>
           <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
         </div>
       )}
-      <ul className="space-y-1.5 pl-6">
+      <ul className="space-y-1">
         {Array.from({ length: count }).map((_, index) => (
           <li
             key={`suggestion-skeleton-${index}`}
-            className="list-disc text-sm"
+            className="flex items-start gap-3 p-2"
           >
-            <div className="h-3 w-11/12 rounded bg-muted/70 animate-pulse" />
+             <div className="mt-1 h-4 w-4 rounded-full bg-muted/50 animate-pulse shrink-0" />
+             <div className="flex-1 space-y-2 py-1">
+                <div className="h-3 w-11/12 rounded bg-muted/70 animate-pulse" />
+             </div>
           </li>
         ))}
       </ul>
@@ -135,7 +247,7 @@ function SuggestionsSkeleton({
 }
 
 export const ReviewResultPanel = memo<ReviewResultPanelProps>(
-  ({ isLoading, partialResult, result, error }) => {
+  ({ isLoading, partialResult, result, error, onApplySuggestion }) => {
     const isStreaming = isLoading && !result;
     // Determine what to show: final result or partial result during streaming
     const displayResult = result || (isLoading ? partialResult : null);
@@ -149,29 +261,31 @@ export const ReviewResultPanel = memo<ReviewResultPanelProps>(
     }
 
     return (
-      <div className="mt-4 rounded-lg border border-primary/10 bg-card/50 p-4">
+      <div className="mt-4 rounded-lg border border-primary/10 bg-card/50 p-4 shadow-sm">
         {error && (
-          <div className="flex items-center gap-2 text-red-500">
+          <div className="flex items-center gap-2 text-red-500 mb-4 animate-in fade-in slide-in-from-top-1">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
-            <span className="text-sm">{error}</span>
+            <span className="text-sm font-medium">{error}</span>
           </div>
         )}
 
         {/* Progressive rendering of result */}
         {(displayResult || isStreaming) && (
-          <div className="space-y-4">
-            {/* Score - show as soon as it's available */}
-            <div className="flex items-center gap-4">
+          <div className="space-y-5">
+            {/* Score & Summary */}
+            <div className="flex items-start gap-4">
               {displayResult?.score !== undefined ? (
-                <ScoreDisplay
-                  score={displayResult.score}
-                  isStreaming={isStreaming}
-                />
+                <div className="shrink-0">
+                  <ScoreDisplay
+                    score={displayResult.score}
+                    isStreaming={isStreaming}
+                  />
+                </div>
               ) : (
                 isStreaming && <ScoreSkeleton />
               )}
               {displayResult?.summary ? (
-                <p className="flex-1 text-sm text-foreground/80">
+                <div className="flex-1 text-sm text-foreground/80 leading-relaxed py-1">
                   {displayResult.summary}
                   {isStreaming && (
                     <span className="inline-flex ml-1">
@@ -180,7 +294,7 @@ export const ReviewResultPanel = memo<ReviewResultPanelProps>(
                       </span>
                     </span>
                   )}
-                </p>
+                </div>
               ) : (
                 isStreaming && <SummarySkeleton />
               )}
@@ -192,14 +306,15 @@ export const ReviewResultPanel = memo<ReviewResultPanelProps>(
                 suggestions={suggestions}
                 skeletonCount={missingSuggestionCount}
                 isStreaming={isStreaming}
+                onApply={onApplySuggestion}
               />
             )}
-            {isStreaming && suggestions.length === 0 && <SuggestionsSkeleton />}
+            {isStreaming && suggestions.length === 0 && <SuggestionsSkeleton showHeader />}
 
-            {/* Disclaimer - show only when we have any content */}
+            {/* Disclaimer */}
             {!isLoading && (
-              <p className="mt-4 text-xs text-muted-foreground/70 leading-relaxed">
-                本评审结果为自动化结构分析与规则校验，仅用于技术参考，不构成质量结论、审计意见或设计否定，请结合实际业务语境自行判断。
+              <p className="mt-4 text-[10px] text-muted-foreground/60 leading-relaxed border-t pt-3 italic">
+                大师评审由 AI 自动化生成，仅供参考。应用建议前请务必确认是否符合具体业务逻辑。
               </p>
             )}
           </div>

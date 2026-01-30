@@ -38,6 +38,7 @@ interface DDLOutputProps {
   reviewError: string | null;
   onStartReview: () => void;
   onViewReviewHistory?: () => void;
+  onApplySuggestion?: (suggestion: any) => void;
 }
 
 const SqlCodeBlock = lazy(() => import('./SqlCodeBlock'));
@@ -63,6 +64,7 @@ export const DDLOutput = memo<DDLOutputProps>(
     reviewError,
     onStartReview,
     onViewReviewHistory,
+    onApplySuggestion,
   }) => {
     const databaseOption = useMemo(
       () => DATABASE_OPTIONS.find((option) => option.value === dbType),
@@ -80,8 +82,8 @@ export const DDLOutput = memo<DDLOutputProps>(
 
     const [isSqlCopied, setIsSqlCopied] = useState(false);
     const [isDclCopied, setIsDclCopied] = useState(false);
-    const sqlTimerRef = useRef<number | undefined>();
-    const dclTimerRef = useRef<number | undefined>();
+    const sqlTimerRef = useRef<number | undefined>(undefined);
+    const dclTimerRef = useRef<number | undefined>(undefined);
 
     useEffect(() => {
       return () => {
@@ -213,6 +215,7 @@ export const DDLOutput = memo<DDLOutputProps>(
                   partialResult={reviewPartialResult}
                   result={reviewResult}
                   error={reviewError}
+                  onApplySuggestion={onApplySuggestion}
                 />
               </div>
             </div>

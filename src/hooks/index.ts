@@ -23,3 +23,6 @@ export { useSavedTables } from './useSavedTables';
 
 export { useFolders } from './useFolders';
 export type { FolderTreeNode } from './useFolders';
+
+export { useFieldTemplates } from './useFieldTemplates';
+export type { FieldTemplate, TemplateField } from './useFieldTemplates';

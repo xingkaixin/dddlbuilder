@@ -11,7 +11,7 @@
 export interface PartialReviewResult {
   score?: number;
   summary?: string;
-  suggestions?: string[];
+  suggestions?: (string | any)[];
 }
 
 /**
@@ -163,7 +163,7 @@ function normalizeResult(result: unknown): PartialReviewResult | null {
 
   if (Array.isArray(obj.suggestions)) {
     normalized.suggestions = obj.suggestions
-      .filter((s): s is string => typeof s === 'string')
+      .filter((s): s is string | any => typeof s === 'string' || (typeof s === 'object' && s !== null))
       .slice(0, 5);
   }
 
