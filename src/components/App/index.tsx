@@ -407,7 +407,7 @@ function App() {
   // Create template dialog state (from selected fields)
   const [isCreateTemplateDialogOpen, setIsCreateTemplateDialogOpen] =
     useState(false);
-  const [selectedFieldsForTemplate, _setSelectedFieldsForTemplate] = useState<
+  const [selectedFieldsForTemplate, setSelectedFieldsForTemplate] = useState<
     typeof rows
   >([]);
 
@@ -1028,6 +1028,17 @@ function App() {
     [createTemplateFromFields, showToast],
   );
 
+  const handleSaveAsTemplate = useCallback(() => {
+    // 过滤掉完全为空的行
+    const validRows = rows.filter((r) => r.fieldName.trim());
+    if (validRows.length === 0) {
+      showToast('当前表中没有有效字段可保存');
+      return;
+    }
+    setSelectedFieldsForTemplate(validRows);
+    setIsCreateTemplateDialogOpen(true);
+  }, [rows, showToast]);
+
   const handleImport = useCallback(
     (result: ParsedResult, importDbType: DatabaseType) => {
       // 1. Basic Info
@@ -1313,6 +1324,7 @@ function App() {
                       loading={templatesLoading}
                       onApplyTemplate={handleApplyTemplate}
                       onManageTemplates={() => setIsTemplateManagerOpen(true)}
+                      onSaveAsTemplate={handleSaveAsTemplate}
                     />
                   }
                 />

@@ -11,7 +11,8 @@ import {
   Copy,
   FileText,
   Search,
-  GripVertical,
+  ChevronUp,
+  ChevronDown,
   X,
 } from 'lucide-react';
 import {
@@ -59,12 +60,14 @@ const createEmptyField = (): TemplateField => ({
 interface FieldEditRowProps {
   field: TemplateField;
   index: number;
+  total: number;
   onChange: (index: number, field: TemplateField) => void;
   onRemove: (index: number) => void;
+  onMove: (index: number, direction: 'up' | 'down') => void;
 }
 
 const FieldEditRow = memo<FieldEditRowProps>(
-  ({ field, index, onChange, onRemove }) => {
+  ({ field, index, total, onChange, onRemove, onMove }) => {
     const handleChange = useCallback(
       (key: keyof TemplateField, value: string) => {
         onChange(index, { ...field, [key]: value });
@@ -74,37 +77,59 @@ const FieldEditRow = memo<FieldEditRowProps>(
 
     return (
       <div className="group flex items-center gap-2 rounded-md border bg-background p-2">
-        <GripVertical className="h-4 w-4 text-muted-foreground cursor-move shrink-0" />
+        <div className="flex flex-col gap-0.5 items-center shrink-0 w-6">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-4 w-4 text-muted-foreground disabled:opacity-0"
+            disabled={index === 0}
+            onClick={() => onMove(index, 'up')}
+          >
+            <ChevronUp className="h-3 w-3" />
+          </Button>
+          <span className="text-[10px] text-muted-foreground leading-none">
+            {index + 1}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-4 w-4 text-muted-foreground disabled:opacity-0"
+            disabled={index === total - 1}
+            onClick={() => onMove(index, 'down')}
+          >
+            <ChevronDown className="h-3 w-3" />
+          </Button>
+        </div>
 
-        <div className="flex-1 grid grid-cols-3 gap-2">
+        <div className="flex-1 grid grid-cols-[1.5fr_1.2fr_1.5fr_80px_1fr_1fr_1fr] gap-2 items-center">
           <Input
             placeholder="字段名"
             value={field.fieldName}
             onChange={(e) => handleChange('fieldName', e.target.value)}
-            className="h-8 text-sm"
+            className="h-8 text-xs font-mono"
+            title="字段名"
           />
           <Input
             placeholder="类型"
             value={field.fieldType}
             onChange={(e) => handleChange('fieldType', e.target.value)}
-            className="h-8 text-sm"
+            className="h-8 text-xs font-mono"
+            title="数据类型"
           />
           <Input
             placeholder="注释"
             value={field.fieldComment || ''}
             onChange={(e) => handleChange('fieldComment', e.target.value)}
-            className="h-8 text-sm"
+            className="h-8 text-xs"
+            title="说明文字"
           />
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
           <Select
             value={field.nullable}
             onValueChange={(value) =>
               handleChange('nullable', value as '是' | '否')
             }
           >
-            <SelectTrigger className="h-8 w-16 text-xs">
+            <SelectTrigger className="h-8 text-[11px] px-2 text-center">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -112,16 +137,37 @@ const FieldEditRow = memo<FieldEditRowProps>(
               <SelectItem value="否">非空</SelectItem>
             </SelectContent>
           </Select>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={() => onRemove(index)}
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          <Input
+            placeholder="默认类型"
+            value={field.defaultKind || ''}
+            onChange={(e) => handleChange('defaultKind', e.target.value)}
+            className="h-8 text-xs"
+            title="默认值类型"
+          />
+          <Input
+            placeholder="默认值"
+            value={field.defaultValue || ''}
+            onChange={(e) => handleChange('defaultValue', e.target.value)}
+            className="h-8 text-xs"
+            title="默认内容"
+          />
+          <Input
+            placeholder="更新时"
+            value={field.onUpdate || ''}
+            onChange={(e) => handleChange('onUpdate', e.target.value)}
+            className="h-8 text-xs"
+            title="更新操作"
+          />
         </div>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+          onClick={() => onRemove(index)}
+        >
+          <X className="h-4 w-4" />
+        </Button>
       </div>
     );
   },
@@ -283,6 +329,17 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
       setEditFields((prev) => prev.filter((_, i) => i !== index));
     }, []);
 
+    // 移动字段
+    const handleMoveField = useCallback((index: number, direction: 'up' | 'down') => {
+      setEditFields((prev) => {
+        const next = [...prev];
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= next.length) return prev;
+        [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+        return next;
+      });
+    }, []);
+
     // 保存模板
     const handleSaveTemplate = useCallback(async () => {
       const trimmedName = editName.trim();
@@ -425,7 +482,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
 
         {/* 新建/编辑对话框 - 包含字段编辑器 */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogContent className="sm:max-w-[90vw] md:max-w-4xl lg:max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle>
                 {editingTemplate ? '编辑模板' : '新建模板'}
@@ -437,7 +494,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
               </DialogDescription>
             </DialogHeader>
 
-            <div className="flex-1 overflow-y-auto space-y-4 py-4">
+            <div className="flex-1 overflow-y-auto space-y-4 py-4 min-h-0">
               {/* 基本信息 */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
@@ -480,14 +537,15 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
                 </div>
 
                 {/* 表头 */}
-                <div className="grid grid-cols-[24px_1fr_80px_28px] gap-2 px-2 text-xs text-muted-foreground">
+                <div className="grid grid-cols-[24px_1.5fr_1.2fr_1.5fr_80px_1fr_1fr_1fr_28px] gap-2 px-2 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
                   <div />
-                  <div className="grid grid-cols-3 gap-2">
-                    <span>字段名</span>
-                    <span>类型</span>
-                    <span>注释</span>
-                  </div>
-                  <span>可空</span>
+                  <span>字段名</span>
+                  <span>类型</span>
+                  <span>注释</span>
+                  <span className="text-center">可空</span>
+                  <span>默认类型</span>
+                  <span>默认值</span>
+                  <span>更新时</span>
                   <div />
                 </div>
 
@@ -503,8 +561,10 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
                         key={index}
                         field={field}
                         index={index}
+                        total={editFields.length}
                         onChange={handleFieldChange}
                         onRemove={handleRemoveField}
+                        onMove={handleMoveField}
                       />
                     ))
                   )}

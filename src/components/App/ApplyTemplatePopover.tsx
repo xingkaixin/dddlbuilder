@@ -4,7 +4,7 @@
  */
 
 import { memo, useState, useMemo, useCallback } from 'react';
-import { FileText, ChevronDown, Settings } from 'lucide-react';
+import { FileText, ChevronDown, Settings, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -18,10 +18,17 @@ interface ApplyTemplatePopoverProps {
   loading: boolean;
   onApplyTemplate: (template: FieldTemplate) => void;
   onManageTemplates: () => void;
+  onSaveAsTemplate: () => void;
 }
 
 export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
-  ({ templates, loading, onApplyTemplate, onManageTemplates }) => {
+  ({
+    templates,
+    loading,
+    onApplyTemplate,
+    onManageTemplates,
+    onSaveAsTemplate,
+  }) => {
     const [open, setOpen] = useState(false);
 
     // 按更新时间排序显示最近使用的
@@ -43,6 +50,11 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
       onManageTemplates();
       setOpen(false);
     }, [onManageTemplates]);
+
+    const handleSaveAsTemplate = useCallback(() => {
+      onSaveAsTemplate();
+      setOpen(false);
+    }, [onSaveAsTemplate]);
 
     return (
       <Popover open={open} onOpenChange={setOpen}>
@@ -92,7 +104,15 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
             )}
           </div>
 
-          <div className="border-t p-1">
+          <div className="border-t p-1 flex flex-col gap-0.5">
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent text-left text-muted-foreground"
+              onClick={handleSaveAsTemplate}
+            >
+              <Plus className="h-4 w-4" />
+              将当前行保存为模板...
+            </button>
             <button
               type="button"
               className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent text-left text-muted-foreground"
