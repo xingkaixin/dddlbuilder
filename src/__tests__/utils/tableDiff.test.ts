@@ -1,10 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { diffPersistedState, type TableDiff } from '@/utils/tableDiff';
+import { diffPersistedState } from '@/utils/tableDiff';
 import type { PersistedState, IndexDefinition } from '@/types';
 
-function createState(
-  overrides: Partial<PersistedState> = {},
-): PersistedState {
+function createState(overrides: Partial<PersistedState> = {}): PersistedState {
   return {
     tableName: 'users',
     tableComment: '',
@@ -263,14 +261,10 @@ describe('diffPersistedState', () => {
 
     it('索引方向变化视为变更', () => {
       const old = createState({
-        indexes: [
-          createIndex({ fields: [{ name: 'id', direction: 'ASC' }] }),
-        ],
+        indexes: [createIndex({ fields: [{ name: 'id', direction: 'ASC' }] })],
       });
       const newState = createState({
-        indexes: [
-          createIndex({ fields: [{ name: 'id', direction: 'DESC' }] }),
-        ],
+        indexes: [createIndex({ fields: [{ name: 'id', direction: 'DESC' }] })],
       });
       const result = diffPersistedState(old, newState);
       expect(result.hasChanges).toBe(true);

@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { generateAlterDDL } from '@/utils/alterDdlGenerator';
-import type { TableDiff, FieldDiff, IndexDiff } from '@/utils/tableDiff';
-import type { NormalizedField, DatabaseType } from '@/types';
+import type { TableDiff } from '@/utils/tableDiff';
+import type { NormalizedField } from '@/types';
 
-function createField(overrides: Partial<NormalizedField> = {}): NormalizedField {
+function createField(
+  overrides: Partial<NormalizedField> = {},
+): NormalizedField {
   return {
     name: 'test_field',
     type: 'VARCHAR(100)',
@@ -68,7 +70,11 @@ describe('generateAlterDDL', () => {
           {
             type: 'add',
             fieldName: 'email',
-            newField: createField({ name: 'email', type: 'VARCHAR(255)', nullable: false }),
+            newField: createField({
+              name: 'email',
+              type: 'VARCHAR(255)',
+              nullable: false,
+            }),
           },
         ],
       };
@@ -139,15 +145,25 @@ describe('generateAlterDDL', () => {
           {
             type: 'modify',
             fieldName: 'name',
-            oldField: createField({ name: 'name', type: 'VARCHAR(50)', nullable: true }),
-            newField: createField({ name: 'name', type: 'VARCHAR(100)', nullable: false }),
+            oldField: createField({
+              name: 'name',
+              type: 'VARCHAR(50)',
+              nullable: true,
+            }),
+            newField: createField({
+              name: 'name',
+              type: 'VARCHAR(100)',
+              nullable: false,
+            }),
             changes: ['type', 'nullable'],
           },
         ],
       };
       const result = generateAlterDDL('users', diff, [], 'postgresql');
       expect(result).toContain('ALTER TABLE users ALTER COLUMN name TYPE');
-      expect(result).toContain('ALTER TABLE users ALTER COLUMN name SET NOT NULL');
+      expect(result).toContain(
+        'ALTER TABLE users ALTER COLUMN name SET NOT NULL',
+      );
     });
 
     it('SQL Server 生成 ALTER COLUMN', () => {
@@ -310,11 +326,21 @@ describe('generateAlterDDL', () => {
         indexes: [
           {
             type: 'remove',
-            index: { id: '1', name: 'idx_old', fields: [{ name: 'old', direction: 'ASC' }], unique: false },
+            index: {
+              id: '1',
+              name: 'idx_old',
+              fields: [{ name: 'old', direction: 'ASC' }],
+              unique: false,
+            },
           },
           {
             type: 'add',
-            index: { id: '2', name: 'idx_new', fields: [{ name: 'new_field', direction: 'ASC' }], unique: false },
+            index: {
+              id: '2',
+              name: 'idx_new',
+              fields: [{ name: 'new_field', direction: 'ASC' }],
+              unique: false,
+            },
           },
         ],
       };
@@ -322,7 +348,7 @@ describe('generateAlterDDL', () => {
       const dropIdx = result.indexOf('DROP INDEX');
       const addCol = result.indexOf('ADD COLUMN');
       const createIdx = result.indexOf('CREATE INDEX');
-      
+
       expect(dropIdx).toBeLessThan(addCol);
       expect(addCol).toBeLessThan(createIdx);
     });

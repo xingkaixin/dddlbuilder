@@ -16,16 +16,46 @@ const createRequest = (): FakeRequest => ({
   onerror: null,
 });
 
+class FakeIndex {
+  private store: FakeObjectStore;
+  private indexKey: string;
+  private tx: FakeTransaction;
+
+  constructor(store: FakeObjectStore, indexKey: string, tx: FakeTransaction) {
+    this.store = store;
+    this.indexKey = indexKey;
+    this.tx = tx;
+  }
+
+  getAll(query?: IDBValidKey) {
+    return this.store.getAllByIndex(this.tx, this.indexKey, query);
+  }
+
+  count(query?: IDBValidKey) {
+    return this.store.countByIndex(this.tx, this.indexKey, query);
+  }
+}
+
 class FakeObjectStore {
   private data: Map<string, any> = new Map();
   private keyPath: string;
+  private indexes: Map<string, string> = new Map();
 
   constructor(keyPath: string) {
     this.keyPath = keyPath;
   }
 
-  createIndex() {
+  createIndex(name: string, keyPath: string) {
+    this.indexes.set(name, keyPath);
     return undefined;
+  }
+
+  index(tx: FakeTransaction, name: string) {
+    const keyPath = this.indexes.get(name);
+    if (!keyPath) {
+      throw new Error(`Index ${name} not found`);
+    }
+    return new FakeIndex(this, keyPath, tx);
   }
 
   private run<T>(
@@ -40,7 +70,8 @@ class FakeObjectStore {
         const result = operation();
         request.result = result;
         request.onsuccess?.({ target: request });
-        queueMicrotask(() => tx.oncomplete?.({ target: tx }));
+        // 让 transaction 标记一个 pending request 完成
+        tx.markRequestComplete();
       } catch (error) {
         const err =
           error instanceof Error ? error : new Error('Request failed');
@@ -50,6 +81,7 @@ class FakeObjectStore {
       }
     });
 
+    tx.addPendingRequest();
     return request;
   }
 
@@ -57,6 +89,40 @@ class FakeObjectStore {
     return this.run(
       tx,
       () => Array.from(this.data.values()),
+      () => {
+        tx.onerror?.({ target: tx });
+      },
+    );
+  }
+
+  getAllByIndex(tx: FakeTransaction, indexKey: string, query?: IDBValidKey) {
+    return this.run(
+      tx,
+      () => {
+        if (query === undefined) {
+          return Array.from(this.data.values());
+        }
+        return Array.from(this.data.values()).filter(
+          (item) => item[indexKey] === query,
+        );
+      },
+      () => {
+        tx.onerror?.({ target: tx });
+      },
+    );
+  }
+
+  countByIndex(tx: FakeTransaction, indexKey: string, query?: IDBValidKey) {
+    return this.run(
+      tx,
+      () => {
+        if (query === undefined) {
+          return this.data.size;
+        }
+        return Array.from(this.data.values()).filter(
+          (item) => item[indexKey] === query,
+        ).length;
+      },
       () => {
         tx.onerror?.({ target: tx });
       },
@@ -128,9 +194,23 @@ class FakeTransaction {
   error: Error | null = null;
 
   private store: FakeObjectStore;
+  private pendingRequests = 0;
+  private completed = false;
 
   constructor(store: FakeObjectStore) {
     this.store = store;
+  }
+
+  addPendingRequest() {
+    this.pendingRequests++;
+  }
+
+  markRequestComplete() {
+    this.pendingRequests--;
+    if (this.pendingRequests <= 0 && !this.completed) {
+      this.completed = true;
+      queueMicrotask(() => this.oncomplete?.({ target: this }));
+    }
   }
 
   objectStore() {
@@ -140,6 +220,7 @@ class FakeTransaction {
       add: (value: any) => this.store.add(this, value),
       put: (value: any) => this.store.put(this, value),
       delete: (key: string) => this.store.delete(this, key),
+      index: (name: string) => this.store.index(this, name),
     };
   }
 }
@@ -181,22 +262,29 @@ class FakeIndexedDB {
   private databases = new Map<string, FakeDatabase>();
 
   open(name: string, version?: number) {
-    const request = createRequest();
+    const request = createRequest() as FakeRequest & {
+      onupgradeneeded?: RequestHandler;
+    };
     const existing = this.databases.get(name);
-    const db = existing ?? new FakeDatabase(name, version ?? 1);
+    const targetVersion = version ?? 1;
+    const db = existing ?? new FakeDatabase(name, 0);
     if (!existing) {
       this.databases.set(name, db);
     }
 
     queueMicrotask(() => {
-      const shouldUpgrade = version && version > db.version;
+      const oldVersion = db.version;
+      const shouldUpgrade = targetVersion > oldVersion;
       if (shouldUpgrade) {
-        db.version = version;
+        db.version = targetVersion;
         request.result = db;
-        request.onupgradeneeded?.({ target: request });
-      } else if (!db.objectStoreNames.contains('saved_tables')) {
-        request.result = db;
-        request.onupgradeneeded?.({ target: request });
+        // Create upgrade event with oldVersion
+        const upgradeEvent = {
+          target: request,
+          oldVersion,
+          newVersion: targetVersion,
+        };
+        (request as any).onupgradeneeded?.(upgradeEvent);
       }
       request.result = db;
       request.onsuccess?.({ target: request });

@@ -1,5 +1,13 @@
 import { memo, useState, useMemo } from 'react';
-import { Database, Pencil, Trash2, X, Search, Columns3 } from 'lucide-react';
+import {
+  Database,
+  History,
+  Pencil,
+  Trash2,
+  X,
+  Search,
+  Columns3,
+} from 'lucide-react';
 import { DiMysql, DiMsqlServer } from 'react-icons/di';
 import { SiPostgresql, SiOracle, SiMariadbfoundation } from 'react-icons/si';
 import { cn } from '@/lib/utils';
@@ -19,6 +27,7 @@ interface SavedTablesDrawerProps {
   onSelect: (item: SavedTableSummary) => void;
   onRename: (item: SavedTableSummary) => void;
   onDelete: (item: SavedTableSummary) => void;
+  onViewHistory?: (item: SavedTableSummary) => void;
 }
 
 const formatDate = (timestamp: number) =>
@@ -67,6 +76,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     onSelect,
     onRename,
     onDelete,
+    onViewHistory,
   }) => {
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -199,6 +209,17 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                         </div>
                       </button>
                       <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        {onViewHistory && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => onViewHistory(item)}
+                            aria-label="历史版本"
+                          >
+                            <History className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"

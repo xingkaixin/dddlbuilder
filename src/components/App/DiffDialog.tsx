@@ -58,9 +58,7 @@ const FieldDiffRow = memo<{ diff: FieldDiff }>(({ diff }) => {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="font-mono font-medium">{diff.fieldName}</span>
-          {field && (
-            <span className="text-muted-foreground">{field.type}</span>
-          )}
+          {field && <span className="text-muted-foreground">{field.type}</span>}
           {field && !field.nullable && (
             <span className="text-xs text-muted-foreground">NOT NULL</span>
           )}
@@ -126,7 +124,9 @@ const IndexDiffRow = memo<{ diff: IndexDiff }>(({ diff }) => {
           <span className="font-mono font-medium">{index.name}</span>
           <span className="text-xs text-muted-foreground">{typeLabel}</span>
         </div>
-        <div className="mt-0.5 text-xs text-muted-foreground">({fieldList})</div>
+        <div className="mt-0.5 text-xs text-muted-foreground">
+          ({fieldList})
+        </div>
       </div>
     </div>
   );
@@ -165,9 +165,7 @@ export const DiffDialog = memo<DiffDialogProps>(
         <DialogContent className="max-h-[85vh] max-w-2xl overflow-hidden">
           <DialogHeader>
             <DialogTitle>表结构变更对比</DialogTitle>
-            <DialogDescription>
-              对比当前表与已保存版本的差异
-            </DialogDescription>
+            <DialogDescription>对比当前表与已保存版本的差异</DialogDescription>
           </DialogHeader>
 
           <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto pr-1">

@@ -19,6 +19,7 @@ import { DataTable } from './DataTable';
 import { DDLOutput } from './DDLOutput';
 import { SavedTablesDrawer } from './SavedTablesDrawer';
 import { DiffDialog } from './DiffDialog';
+import { VersionHistoryDialog } from './VersionHistoryDialog';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -44,6 +45,7 @@ import { useSavedTables, type SavedTableSummary } from '@/hooks/useSavedTables';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
 import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
 import { diffPersistedState, type TableDiff } from '@/utils/tableDiff';
+import { createVersion } from '@/utils/tableVersions';
 import {
   Columns3Cog,
   Network,
@@ -104,6 +106,13 @@ function App() {
 
   // Diff dialog state
   const [isDiffDialogOpen, setIsDiffDialogOpen] = useState(false);
+
+  // Version history dialog state
+  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
+  const [versionHistoryTarget, setVersionHistoryTarget] = useState<{
+    normalizedName: string;
+    name: string;
+  } | null>(null);
 
   // Check for fireworks on mount
   useEffect(() => {
@@ -533,6 +542,8 @@ function App() {
       }
       setLoadedTableSignature(nextSignature);
       showToast(`已更新：${loadedTableName ?? saveName}`);
+      // 创建版本快照
+      await createVersion(loadedTableNormalizedName, nextState);
     } else {
       const result = await saveTable(saveName, nextState);
       if (!result.ok) {
@@ -545,6 +556,10 @@ function App() {
       }
       const displayName = saveName.trim() || DEFAULT_SAVED_TABLE_NAME;
       showToast(`已保存：${displayName}`);
+      // 创建初始版本快照
+      const normalizedName =
+        saveName.trim().toLowerCase() || DEFAULT_SAVED_TABLE_NAME.toLowerCase();
+      await createVersion(normalizedName, nextState, '初始版本');
     }
     setIsSaveDialogOpen(false);
     setSaveError('');
@@ -787,6 +802,13 @@ function App() {
         onSelect={handleSelectSavedTable}
         onRename={handleOpenRenameDialog}
         onDelete={handleOpenDeleteDialog}
+        onViewHistory={(item) => {
+          setVersionHistoryTarget({
+            normalizedName: item.normalizedName,
+            name: item.name,
+          });
+          setIsVersionHistoryOpen(true);
+        }}
       />
 
       <DiffDialog
@@ -797,6 +819,18 @@ function App() {
         diff={tableDiff}
         fields={normalizedFields}
         onCopy={() => showToast('变更脚本已复制')}
+      />
+
+      <VersionHistoryDialog
+        open={isVersionHistoryOpen}
+        onOpenChange={setIsVersionHistoryOpen}
+        tableNormalizedName={versionHistoryTarget?.normalizedName ?? null}
+        tableName={versionHistoryTarget?.name ?? null}
+        currentState={buildPersistedState()}
+        onRollback={(state) => {
+          applySavedState(state);
+          showToast('已回滚到选中版本');
+        }}
       />
 
       {/* Main Content */}

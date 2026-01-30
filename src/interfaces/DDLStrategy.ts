@@ -44,4 +44,3 @@ export interface DDLStrategy {
    */
   getDatabaseType(): DatabaseType;
 }
-

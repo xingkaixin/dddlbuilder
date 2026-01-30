@@ -19,7 +19,7 @@ import {
 export function generateAlterDDL(
   tableName: string,
   diff: TableDiff,
-  fields: NormalizedField[],
+  _fields: NormalizedField[],
   dbType: DatabaseType,
 ): string {
   if (!diff.hasChanges) {
@@ -52,16 +52,12 @@ export function generateAlterDDL(
 
   // 3. 处理新增的字段
   for (const fieldDiff of diff.fields.filter((f) => f.type === 'add')) {
-    statements.push(
-      generateAddColumn(tableName, fieldDiff, dbType),
-    );
+    statements.push(generateAddColumn(tableName, fieldDiff, dbType));
   }
 
   // 4. 处理修改的字段
   for (const fieldDiff of diff.fields.filter((f) => f.type === 'modify')) {
-    statements.push(
-      generateModifyColumn(tableName, fieldDiff, dbType),
-    );
+    statements.push(generateModifyColumn(tableName, fieldDiff, dbType));
   }
 
   // 5. 处理新增的索引
@@ -141,7 +137,10 @@ function generateAddColumn(
   fieldDiff: FieldDiff,
   dbType: DatabaseType,
 ): string {
-  const field = fieldDiff.newField!;
+  if (!fieldDiff.newField) {
+    return '';
+  }
+  const field = fieldDiff.newField;
   const columnDef = buildColumnDefinition(field, dbType);
 
   switch (dbType) {
@@ -172,7 +171,10 @@ function generateModifyColumn(
   fieldDiff: FieldDiff,
   dbType: DatabaseType,
 ): string {
-  const field = fieldDiff.newField!;
+  if (!fieldDiff.newField) {
+    return '';
+  }
+  const field = fieldDiff.newField;
   const columnDef = buildColumnDefinition(field, dbType);
 
   switch (dbType) {
@@ -203,7 +205,10 @@ function generatePostgresModifyColumn(
   tableName: string,
   fieldDiff: FieldDiff,
 ): string {
-  const field = fieldDiff.newField!;
+  if (!fieldDiff.newField) {
+    return '';
+  }
+  const field = fieldDiff.newField;
   const changes = fieldDiff.changes || [];
   const statements: string[] = [];
 
@@ -312,7 +317,9 @@ function generateAddIndex(
   dbType: DatabaseType,
 ): string {
   const index = idxDiff.index;
-  const fieldList = index.fields.map((f) => `${f.name} ${f.direction}`).join(', ');
+  const fieldList = index.fields
+    .map((f) => `${f.name} ${f.direction}`)
+    .join(', ');
 
   // 主键
   if (index.isPrimary) {
@@ -356,7 +363,10 @@ function buildColumnDefinition(
   const parts: string[] = [type];
 
   // 自增（仅特定数据库和类型支持）
-  if (field.defaultKind === 'auto_increment' && supportsAutoIncrement(dbType, base)) {
+  if (
+    field.defaultKind === 'auto_increment' &&
+    supportsAutoIncrement(dbType, base)
+  ) {
     if (dbType === 'mysql' || dbType === 'mariadb' || dbType === 'tidb') {
       parts.push('AUTO_INCREMENT');
     }
@@ -383,7 +393,10 @@ function buildColumnDefinition(
   // 注释（仅 MySQL 系内联）
   if (
     field.comment &&
-    (dbType === 'mysql' || dbType === 'mariadb' || dbType === 'tidb' || dbType === 'oceanbase')
+    (dbType === 'mysql' ||
+      dbType === 'mariadb' ||
+      dbType === 'tidb' ||
+      dbType === 'oceanbase')
   ) {
     parts.push(`COMMENT '${escapeSingleQuotes(field.comment)}'`);
   }

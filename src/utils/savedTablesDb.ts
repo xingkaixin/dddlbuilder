@@ -20,9 +20,29 @@ export type SavedTableMetadata = {
   updatedAt: number;
 };
 
-const DB_NAME = 'ddlbuilder';
-const DB_VERSION = 1;
-const STORE_NAME = 'saved_tables';
+// 版本快照类型
+export type TableVersion = {
+  id: string;
+  tableNormalizedName: string;
+  state: PersistedState;
+  message?: string;
+  createdAt: number;
+};
+
+// 版本元数据（用于列表展示）
+export type TableVersionMetadata = {
+  id: string;
+  tableNormalizedName: string;
+  message?: string;
+  dbType: string;
+  fieldCount: number;
+  createdAt: number;
+};
+
+export const DB_NAME = 'ddlbuilder';
+export const DB_VERSION = 2;
+export const STORE_NAME = 'saved_tables';
+export const VERSION_STORE_NAME = 'table_versions';
 
 const ensureIndexedDb = () => {
   if (typeof indexedDB === 'undefined') {
@@ -30,7 +50,7 @@ const ensureIndexedDb = () => {
   }
 };
 
-const openDb = (): Promise<IDBDatabase> =>
+export const openDb = (): Promise<IDBDatabase> =>
   new Promise((resolve, reject) => {
     try {
       ensureIndexedDb();
@@ -38,14 +58,30 @@ const openDb = (): Promise<IDBDatabase> =>
       request.onerror = () => {
         reject(request.error ?? new Error('打开 IndexedDB 失败'));
       };
-      request.onupgradeneeded = () => {
+      request.onupgradeneeded = (event) => {
         const db = request.result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
+        const oldVersion = event.oldVersion;
+
+        // Version 1: saved_tables store
+        if (oldVersion < 1) {
           const store = db.createObjectStore(STORE_NAME, {
             keyPath: 'normalizedName',
           });
           store.createIndex('updatedAt', 'updatedAt', { unique: false });
           store.createIndex('name', 'name', { unique: false });
+        }
+
+        // Version 2: table_versions store
+        if (oldVersion < 2) {
+          const versionStore = db.createObjectStore(VERSION_STORE_NAME, {
+            keyPath: 'id',
+          });
+          versionStore.createIndex(
+            'tableNormalizedName',
+            'tableNormalizedName',
+            { unique: false },
+          );
+          versionStore.createIndex('createdAt', 'createdAt', { unique: false });
         }
       };
       request.onsuccess = () => resolve(request.result);

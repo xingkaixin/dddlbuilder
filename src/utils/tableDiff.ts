@@ -150,30 +150,12 @@ function getFieldChanges(
 }
 
 /**
- * 比较两个索引是否相同
- */
-function indexesEqual(a: IndexDefinition, b: IndexDefinition): boolean {
-  if (a.unique !== b.unique) return false;
-  if (a.isPrimary !== b.isPrimary) return false;
-  if (a.fields.length !== b.fields.length) return false;
-
-  for (let i = 0; i < a.fields.length; i++) {
-    if (
-      a.fields[i].name !== b.fields[i].name ||
-      a.fields[i].direction !== b.fields[i].direction
-    ) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-/**
  * 生成索引的唯一标识（用于比较）
  */
 function getIndexSignature(index: IndexDefinition): string {
-  const fieldsSig = index.fields.map((f) => `${f.name}:${f.direction}`).join(',');
+  const fieldsSig = index.fields
+    .map((f) => `${f.name}:${f.direction}`)
+    .join(',');
   const prefix = index.isPrimary ? 'PK' : index.unique ? 'UQ' : 'IX';
   return `${prefix}:${fieldsSig}`;
 }
