@@ -149,7 +149,11 @@ describe('parsePartialJson', () => {
       suggestions: ['a', { id: 'sug_1', description: 'test' }, 'b'],
     });
     const result = parsePartialJson(input);
-    expect(result?.suggestions).toEqual(['a', { id: 'sug_1', description: 'test' }, 'b']);
+    expect(result?.suggestions).toEqual([
+      'a',
+      { id: 'sug_1', description: 'test' },
+      'b',
+    ]);
   });
 
   it('should handle backslash escaping', () => {
@@ -173,9 +177,12 @@ describe('parsePartialJson', () => {
   it('should skip incomplete objects in suggestions array during streaming', () => {
     // This simulates streaming where an object is partially received
     // Only complete objects should be returned
-    const input = '{"suggestions": [{"id": "sug_1", "description": "complete"}, {"id": "sug_2", "descr';
+    const input =
+      '{"suggestions": [{"id": "sug_1", "description": "complete"}, {"id": "sug_2", "descr';
     const result = parsePartialJson(input);
-    expect(result?.suggestions).toEqual([{ id: 'sug_1', description: 'complete' }]);
+    expect(result?.suggestions).toEqual([
+      { id: 'sug_1', description: 'complete' },
+    ]);
   });
 
   it('should handle mixed complete and incomplete items in array', () => {
@@ -186,15 +193,19 @@ describe('parsePartialJson', () => {
 
   it('should handle nested objects in suggestions', () => {
     const input = JSON.stringify({
-      suggestions: [{ 
-        id: 'sug_1', 
-        field: { fieldName: 'test', fieldType: 'VARCHAR(255)' } 
-      }],
+      suggestions: [
+        {
+          id: 'sug_1',
+          field: { fieldName: 'test', fieldType: 'VARCHAR(255)' },
+        },
+      ],
     });
     const result = parsePartialJson(input);
-    expect(result?.suggestions).toEqual([{
-      id: 'sug_1',
-      field: { fieldName: 'test', fieldType: 'VARCHAR(255)' }
-    }]);
+    expect(result?.suggestions).toEqual([
+      {
+        id: 'sug_1',
+        field: { fieldName: 'test', fieldType: 'VARCHAR(255)' },
+      },
+    ]);
   });
 });

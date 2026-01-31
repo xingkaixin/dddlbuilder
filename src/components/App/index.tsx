@@ -7,7 +7,12 @@ import {
   lazy,
   Suspense,
 } from 'react';
-import type { DatabaseType, FieldRow, PersistedState, IndexDefinition } from '@/types';
+import type {
+  DatabaseType,
+  FieldRow,
+  PersistedState,
+  IndexDefinition,
+} from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
 import { createEmptyRow } from '@/utils/helpers';
 import { Header } from './Header';
@@ -952,7 +957,9 @@ function App() {
 
         case 'remove_field':
           if (suggestion.fieldName) {
-            const newRows = rows.filter((r) => r.fieldName !== suggestion.fieldName);
+            const newRows = rows.filter(
+              (r) => r.fieldName !== suggestion.fieldName,
+            );
             // 重新排序
             const reorderedRows = newRows.map((r, i) => ({
               ...r,
@@ -978,14 +985,16 @@ function App() {
 
         case 'remove_index':
           if (suggestion.indexName) {
-            const newIndexes = indexes.filter((idx) => idx.name !== suggestion.indexName);
+            const newIndexes = indexes.filter(
+              (idx) => idx.name !== suggestion.indexName,
+            );
             if (newIndexes.length < indexes.length) {
               setIndexes(newIndexes);
               appliedCount = 1;
             }
           }
           break;
-        
+
         default:
           break;
       }

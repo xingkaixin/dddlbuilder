@@ -9,13 +9,9 @@ import {
   ArrowRight,
   Minus,
 } from 'lucide-react';
-import type {
-  ReviewResult,
-  StructuredSuggestion,
-} from '@/hooks/useDDLReview';
+import type { ReviewResult, StructuredSuggestion } from '@/hooks/useDDLReview';
 import type { PartialReviewResult } from '@/utils/parsePartialJson';
 import { Button } from '@/components/ui/button';
-
 
 interface ReviewResultPanelProps {
   isLoading: boolean;
@@ -110,9 +106,11 @@ const SuggestionItem = memo<{
       <div className="mt-1 flex-shrink-0">
         {suggestion.applied ? (
           <Check className="h-4 w-4 text-emerald-500" />
-        ) : suggestion.type === 'remove_field' || suggestion.type === 'remove_index' ? (
+        ) : suggestion.type === 'remove_field' ||
+          suggestion.type === 'remove_index' ? (
           <Minus className="h-4 w-4 text-red-400" />
-        ) : suggestion.type === 'add_field' || suggestion.type === 'add_index' ? (
+        ) : suggestion.type === 'add_field' ||
+          suggestion.type === 'add_index' ? (
           <Plus className="h-4 w-4 text-emerald-400" />
         ) : suggestion.type === 'modify_field' ? (
           <ArrowRight className="h-4 w-4 text-amber-400" />
@@ -125,41 +123,49 @@ const SuggestionItem = memo<{
         <div className="text-sm text-foreground/80 leading-relaxed font-medium">
           {suggestion.description}
         </div>
-        
+
         {/* Detail view based on type */}
-        {!isApplied && suggestion.type === 'modify_field' && suggestion.fieldModification && (
-          <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
-            <span className="font-mono bg-muted px-1 rounded truncate max-w-[100px]">{suggestion.fieldModification.fieldName}</span>
-            <ArrowRight className="h-3 w-3" />
-            <span className="text-amber-600 font-medium">
-              {suggestion.fieldModification.changes.fieldType || suggestion.fieldModification.changes.fieldComment || '变更属性'}
-            </span>
-          </div>
-        )}
+        {!isApplied &&
+          suggestion.type === 'modify_field' &&
+          suggestion.fieldModification && (
+            <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
+              <span className="font-mono bg-muted px-1 rounded truncate max-w-[100px]">
+                {suggestion.fieldModification.fieldName}
+              </span>
+              <ArrowRight className="h-3 w-3" />
+              <span className="text-amber-600 font-medium">
+                {suggestion.fieldModification.changes.fieldType ||
+                  suggestion.fieldModification.changes.fieldComment ||
+                  '变更属性'}
+              </span>
+            </div>
+          )}
 
         {!isApplied && suggestion.type === 'add_field' && suggestion.field && (
           <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
-             <span className="text-emerald-600 font-medium px-1 rounded bg-emerald-50 border border-emerald-100">
-               + {suggestion.field.fieldName} ({suggestion.field.fieldType})
-             </span>
+            <span className="text-emerald-600 font-medium px-1 rounded bg-emerald-50 border border-emerald-100">
+              + {suggestion.field.fieldName} ({suggestion.field.fieldType})
+            </span>
           </div>
         )}
 
         {!isApplied && suggestion.type === 'add_index' && suggestion.index && (
           <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
-             <span className="text-emerald-600 font-medium px-1 rounded bg-emerald-50 border border-emerald-100">
-               + INDEX {suggestion.index.name}
-             </span>
+            <span className="text-emerald-600 font-medium px-1 rounded bg-emerald-50 border border-emerald-100">
+              + INDEX {suggestion.index.name}
+            </span>
           </div>
         )}
 
-        {!isApplied && suggestion.type === 'remove_index' && suggestion.indexName && (
-          <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
-             <span className="text-red-600 font-medium px-1 rounded bg-red-50 border border-red-100">
-               - INDEX {suggestion.indexName}
-             </span>
-          </div>
-        )}
+        {!isApplied &&
+          suggestion.type === 'remove_index' &&
+          suggestion.indexName && (
+            <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
+              <span className="text-red-600 font-medium px-1 rounded bg-red-50 border border-red-100">
+                - INDEX {suggestion.indexName}
+              </span>
+            </div>
+          )}
       </div>
 
       {isActionable && onApply && (
@@ -209,7 +215,9 @@ function SuggestionsList({
       <ul className="space-y-1">
         {suggestions.map((suggestion, index) => (
           <SuggestionItem
-            key={typeof suggestion === 'string' ? index : suggestion.id || index}
+            key={
+              typeof suggestion === 'string' ? index : suggestion.id || index
+            }
             suggestion={suggestion}
             onApply={onApply}
             isStreaming={isStreaming}
@@ -220,11 +228,11 @@ function SuggestionsList({
             key={`suggestion-skeleton-${index}`}
             className="flex items-start gap-3 p-2"
           >
-             <div className="mt-1 h-4 w-4 rounded-full bg-muted/50 animate-pulse shrink-0" />
-             <div className="flex-1 space-y-2 py-1">
-                <div className="h-3 w-11/12 rounded bg-muted/70 animate-pulse" />
-                <div className="h-2 w-1/3 rounded bg-muted/50 animate-pulse" />
-             </div>
+            <div className="mt-1 h-4 w-4 rounded-full bg-muted/50 animate-pulse shrink-0" />
+            <div className="flex-1 space-y-2 py-1">
+              <div className="h-3 w-11/12 rounded bg-muted/70 animate-pulse" />
+              <div className="h-2 w-1/3 rounded bg-muted/50 animate-pulse" />
+            </div>
           </li>
         ))}
       </ul>
@@ -251,10 +259,10 @@ function SuggestionsSkeleton({
             key={`suggestion-skeleton-${index}`}
             className="flex items-start gap-3 p-2"
           >
-             <div className="mt-1 h-4 w-4 rounded-full bg-muted/50 animate-pulse shrink-0" />
-             <div className="flex-1 space-y-2 py-1">
-                <div className="h-3 w-11/12 rounded bg-muted/70 animate-pulse" />
-             </div>
+            <div className="mt-1 h-4 w-4 rounded-full bg-muted/50 animate-pulse shrink-0" />
+            <div className="flex-1 space-y-2 py-1">
+              <div className="h-3 w-11/12 rounded bg-muted/70 animate-pulse" />
+            </div>
           </li>
         ))}
       </ul>
@@ -325,12 +333,15 @@ export const ReviewResultPanel = memo<ReviewResultPanelProps>(
                 onApply={onApplySuggestion}
               />
             )}
-            {isStreaming && suggestions.length === 0 && <SuggestionsSkeleton showHeader />}
+            {isStreaming && suggestions.length === 0 && (
+              <SuggestionsSkeleton showHeader />
+            )}
 
             {/* Disclaimer */}
             {!isLoading && (
               <p className="mt-4 text-[10px] text-muted-foreground/60 leading-relaxed border-t pt-3 italic">
-                大师评审由 AI 自动化生成，仅供参考。应用建议前请务必确认是否符合具体业务逻辑。
+                大师评审由 AI
+                自动化生成，仅供参考。应用建议前请务必确认是否符合具体业务逻辑。
               </p>
             )}
           </div>

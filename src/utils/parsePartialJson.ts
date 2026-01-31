@@ -80,11 +80,13 @@ export function parsePartialJson(text: string): PartialReviewResult | null {
 
 /**
  * Extract items from a partial array content.
- * Handles both strings and objects. 
+ * Handles both strings and objects.
  * For objects, only returns complete (parseable) items.
  * Incomplete objects are skipped to avoid rendering field names as text.
  */
-function extractArrayItems(content: string): (string | Record<string, unknown>)[] {
+function extractArrayItems(
+  content: string,
+): (string | Record<string, unknown>)[] {
   const items: (string | Record<string, unknown>)[] = [];
   let depth = 0;
   let inString = false;
@@ -220,7 +222,10 @@ function normalizeResult(result: unknown): PartialReviewResult | null {
 
   if (Array.isArray(obj.suggestions)) {
     normalized.suggestions = obj.suggestions
-      .filter((s): s is string | any => typeof s === 'string' || (typeof s === 'object' && s !== null))
+      .filter(
+        (s): s is string | any =>
+          typeof s === 'string' || (typeof s === 'object' && s !== null),
+      )
       .slice(0, 5);
   }
 

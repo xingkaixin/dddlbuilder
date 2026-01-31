@@ -330,15 +330,18 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
     }, []);
 
     // 移动字段
-    const handleMoveField = useCallback((index: number, direction: 'up' | 'down') => {
-      setEditFields((prev) => {
-        const next = [...prev];
-        const targetIndex = direction === 'up' ? index - 1 : index + 1;
-        if (targetIndex < 0 || targetIndex >= next.length) return prev;
-        [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
-        return next;
-      });
-    }, []);
+    const handleMoveField = useCallback(
+      (index: number, direction: 'up' | 'down') => {
+        setEditFields((prev) => {
+          const next = [...prev];
+          const targetIndex = direction === 'up' ? index - 1 : index + 1;
+          if (targetIndex < 0 || targetIndex >= next.length) return prev;
+          [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+          return next;
+        });
+      },
+      [],
+    );
 
     // 保存模板
     const handleSaveTemplate = useCallback(async () => {
@@ -584,11 +587,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
                 取消
               </Button>
               <Button onClick={handleSaveTemplate} disabled={isSaving}>
-                {isSaving
-                  ? '保存中...'
-                  : editingTemplate
-                    ? '保存'
-                    : '创建模板'}
+                {isSaving ? '保存中...' : editingTemplate ? '保存' : '创建模板'}
               </Button>
             </DialogFooter>
           </DialogContent>
