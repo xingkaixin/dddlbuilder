@@ -62,7 +62,7 @@ export function parsePartialJson(text: string): PartialReviewResult | null {
 
     if (arrayStart !== -1) {
       const arrayContent = afterSuggestions.slice(arrayStart + 1);
-      result.suggestions = extractArrayStrings(arrayContent);
+      result.suggestions = extractArrayItems(arrayContent);
     }
   }
 
@@ -79,52 +79,109 @@ export function parsePartialJson(text: string): PartialReviewResult | null {
 }
 
 /**
- * Extract strings from a partial array content.
- * Handles both complete and incomplete string items.
+ * Extract items from a partial array content.
+ * Handles both strings and objects. 
+ * For objects, only returns complete (parseable) items.
+ * Incomplete objects are skipped to avoid rendering field names as text.
  */
-function extractArrayStrings(content: string): string[] {
-  const items: string[] = [];
+function extractArrayItems(content: string): (string | Record<string, unknown>)[] {
+  const items: (string | Record<string, unknown>)[] = [];
+  let depth = 0;
   let inString = false;
   let escaped = false;
-  let current = '';
+  let currentItem = '';
+  let itemType: 'string' | 'object' | null = null;
 
   for (let i = 0; i < content.length; i += 1) {
     const char = content[i];
 
-    if (!inString) {
-      if (char === '"') {
-        inString = true;
-        current = '';
-      } else if (char === ']') {
-        break;
-      }
-      continue;
+    // Handle end of array
+    if (char === ']' && !inString && depth === 0) {
+      break;
     }
 
+    // Handle string escaping
     if (escaped) {
-      current += char;
+      currentItem += char;
       escaped = false;
       continue;
     }
 
-    if (char === '\\') {
+    if (char === '\\' && inString) {
       escaped = true;
-      current += '\\';
+      currentItem += char;
       continue;
     }
 
+    // Handle string start/end
     if (char === '"') {
-      items.push(unescapeJsonString(current));
-      current = '';
-      inString = false;
+      if (!inString) {
+        if (itemType === null) {
+          itemType = 'string';
+        }
+        inString = true;
+        if (itemType === 'string' && depth === 0) {
+          currentItem = '';
+        } else {
+          currentItem += char;
+        }
+      } else {
+        inString = false;
+        if (itemType === 'string' && depth === 0) {
+          // Complete string item
+          items.push(unescapeJsonString(currentItem));
+          currentItem = '';
+          itemType = null;
+        } else {
+          currentItem += char;
+        }
+      }
       continue;
     }
 
-    current += char;
-  }
+    // Handle object start
+    if (char === '{' && !inString) {
+      if (itemType === null) {
+        itemType = 'object';
+        currentItem = char;
+        depth = 1;
+      } else if (itemType === 'object') {
+        depth += 1;
+        currentItem += char;
+      }
+      continue;
+    }
 
-  if (inString && current.trim().length > 0) {
-    items.push(unescapeJsonString(current));
+    // Handle object end
+    if (char === '}' && !inString && itemType === 'object') {
+      currentItem += char;
+      depth -= 1;
+      if (depth === 0) {
+        // Try to parse the complete object
+        try {
+          const parsed = JSON.parse(currentItem);
+          items.push(parsed);
+        } catch {
+          // Incomplete object, skip it
+        }
+        currentItem = '';
+        itemType = null;
+      }
+      continue;
+    }
+
+    // Handle item separator
+    if (char === ',' && !inString && depth === 0) {
+      // Skip incomplete items
+      currentItem = '';
+      itemType = null;
+      continue;
+    }
+
+    // Accumulate characters based on current item type
+    if (itemType === 'string' || itemType === 'object') {
+      currentItem += char;
+    }
   }
 
   return items;

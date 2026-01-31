@@ -53,9 +53,10 @@ describe('parsePartialJson', () => {
   });
 
   it('should handle incomplete suggestions array', () => {
+    // New behavior: only complete items are returned to avoid rendering partial content
     const input = '{"suggestions": ["item1", "item2';
     const result = parsePartialJson(input);
-    expect(result?.suggestions).toEqual(['item1', 'item2']);
+    expect(result?.suggestions).toEqual(['item1']);
   });
 
   it('should handle suggestions with escaped quotes', () => {
@@ -142,12 +143,13 @@ describe('parsePartialJson', () => {
     expect(result?.suggestions).toEqual(['a', 'b', 'c', 'd', 'e']);
   });
 
-  it('should filter non-string items from suggestions', () => {
+  it('should allow objects in suggestions array', () => {
+    // Now objects are supported for StructuredSuggestion
     const input = JSON.stringify({
-      suggestions: ['a', 123, 'b', null, 'c', {}, 'd'],
+      suggestions: ['a', { id: 'sug_1', description: 'test' }, 'b'],
     });
     const result = parsePartialJson(input);
-    expect(result?.suggestions).toEqual(['a', 'b', 'c', 'd']);
+    expect(result?.suggestions).toEqual(['a', { id: 'sug_1', description: 'test' }, 'b']);
   });
 
   it('should handle backslash escaping', () => {
@@ -166,5 +168,33 @@ describe('parsePartialJson', () => {
     const input = '{"summary": "col1\\tcol2"}';
     const result = parsePartialJson(input);
     expect(result?.summary).toBe('col1\tcol2');
+  });
+
+  it('should skip incomplete objects in suggestions array during streaming', () => {
+    // This simulates streaming where an object is partially received
+    // Only complete objects should be returned
+    const input = '{"suggestions": [{"id": "sug_1", "description": "complete"}, {"id": "sug_2", "descr';
+    const result = parsePartialJson(input);
+    expect(result?.suggestions).toEqual([{ id: 'sug_1', description: 'complete' }]);
+  });
+
+  it('should handle mixed complete and incomplete items in array', () => {
+    const input = '{"suggestions": ["first", {"id": "sug_1"}, "incomplete';
+    const result = parsePartialJson(input);
+    expect(result?.suggestions).toEqual(['first', { id: 'sug_1' }]);
+  });
+
+  it('should handle nested objects in suggestions', () => {
+    const input = JSON.stringify({
+      suggestions: [{ 
+        id: 'sug_1', 
+        field: { fieldName: 'test', fieldType: 'VARCHAR(255)' } 
+      }],
+    });
+    const result = parsePartialJson(input);
+    expect(result?.suggestions).toEqual([{
+      id: 'sug_1',
+      field: { fieldName: 'test', fieldType: 'VARCHAR(255)' }
+    }]);
   });
 });
