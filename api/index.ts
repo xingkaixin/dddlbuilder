@@ -118,7 +118,7 @@ app.post('/review', async (c) => {
     {
       "id": "sug_1",
       "description": "建议描述",
-      "type": "add_field" | "modify_field" | "remove_field" | "add_index" | "general",
+      "type": "add_field" | "modify_field" | "remove_field" | "add_index" | "remove_index" | "general",
       "actionable": true,
       "field": { // 仅当 type 为 add_field 时提供
         "fieldName": "string",
@@ -145,7 +145,8 @@ app.post('/review', async (c) => {
         "name": "string",
         "fields": [{ "name": "string", "direction": "ASC" | "DESC" }],
         "unique": boolean
-      }
+      },
+      "indexName": "string" // 仅当 type 为 remove_index 时提供，标识要移除的索引名
     }
   ]
 }

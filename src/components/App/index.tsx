@@ -975,6 +975,16 @@ function App() {
             appliedCount = 1;
           }
           break;
+
+        case 'remove_index':
+          if (suggestion.indexName) {
+            const newIndexes = indexes.filter((idx) => idx.name !== suggestion.indexName);
+            if (newIndexes.length < indexes.length) {
+              setIndexes(newIndexes);
+              appliedCount = 1;
+            }
+          }
+          break;
         
         default:
           break;

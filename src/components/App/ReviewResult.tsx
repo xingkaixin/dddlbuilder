@@ -86,7 +86,8 @@ function SummarySkeleton() {
 const SuggestionItem = memo<{
   suggestion: string | StructuredSuggestion;
   onApply?: (suggestion: StructuredSuggestion) => void;
-}>(({ suggestion, onApply }) => {
+  isStreaming?: boolean;
+}>(({ suggestion, onApply, isStreaming }) => {
   if (typeof suggestion === 'string') {
     return (
       <li className="text-sm text-foreground/70 list-disc relative pl-1">
@@ -95,15 +96,21 @@ const SuggestionItem = memo<{
     );
   }
 
+  // Guard check: ensure required properties exist (for partial objects during streaming)
+  if (!suggestion.id || !suggestion.description) {
+    return null;
+  }
+
   const isApplied = suggestion.applied;
-  const isActionable = suggestion.actionable && !isApplied;
+  // Disable apply button during streaming to prevent state inconsistency
+  const isActionable = suggestion.actionable && !isApplied && !isStreaming;
 
   return (
     <li className="group flex items-start gap-3 rounded-md border border-transparent p-2 transition-all hover:bg-muted/50 hover:border-border">
       <div className="mt-1 flex-shrink-0">
         {suggestion.applied ? (
           <Check className="h-4 w-4 text-emerald-500" />
-        ) : suggestion.type === 'remove_field' ? (
+        ) : suggestion.type === 'remove_field' || suggestion.type === 'remove_index' ? (
           <Minus className="h-4 w-4 text-red-400" />
         ) : suggestion.type === 'add_field' || suggestion.type === 'add_index' ? (
           <Plus className="h-4 w-4 text-emerald-400" />
@@ -142,6 +149,14 @@ const SuggestionItem = memo<{
           <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
              <span className="text-emerald-600 font-medium px-1 rounded bg-emerald-50 border border-emerald-100">
                + INDEX {suggestion.index.name}
+             </span>
+          </div>
+        )}
+
+        {!isApplied && suggestion.type === 'remove_index' && suggestion.indexName && (
+          <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
+             <span className="text-red-600 font-medium px-1 rounded bg-red-50 border border-red-100">
+               - INDEX {suggestion.indexName}
              </span>
           </div>
         )}
@@ -197,6 +212,7 @@ function SuggestionsList({
             key={typeof suggestion === 'string' ? index : suggestion.id || index}
             suggestion={suggestion}
             onApply={onApply}
+            isStreaming={isStreaming}
           />
         ))}
         {Array.from({ length: skeletonCount }).map((_, index) => (

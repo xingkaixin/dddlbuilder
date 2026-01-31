@@ -221,7 +221,9 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
                                 className="flex items-start gap-1.5"
                               >
                                 <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/50" />
-                                <span>{s}</span>
+                                <span>
+                                  {typeof s === 'string' ? s : s.description}
+                                </span>
                               </li>
                             ))}
                           </ul>

@@ -7,12 +7,13 @@ import {
 export interface StructuredSuggestion {
   id: string;
   description: string;
-  type: 'add_field' | 'modify_field' | 'remove_field' | 'add_index' | 'general';
+  type: 'add_field' | 'modify_field' | 'remove_field' | 'add_index' | 'remove_index' | 'general';
   actionable: boolean;
   applied?: boolean; // 是否已应用
 
   // 根据 type 填充
   fieldName?: string; // 用于 remove_field
+  indexName?: string; // 用于 remove_index
 
   field?: {
     fieldName: string;
