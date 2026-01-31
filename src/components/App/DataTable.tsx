@@ -1,6 +1,7 @@
 import { memo, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { HardDrive } from 'lucide-react';
 import {
   AutocompleteCellType,
   CheckboxCellType,
@@ -96,6 +97,8 @@ interface DataTableProps {
   isHighlighted?: boolean;
   /** 需要高亮的行索引 */
   highlightedRowIndex?: number | null;
+  /** 打开存储估算按钮的回调 */
+  onOpenStorageEstimator?: () => void;
 }
 
 export const DataTable = memo<DataTableProps>(
@@ -112,6 +115,7 @@ export const DataTable = memo<DataTableProps>(
     toolbarLeft,
     isHighlighted,
     highlightedRowIndex,
+    onOpenStorageEstimator,
   }) => {
     const latestRef = useRef({ rows, dbType });
     latestRef.current = { rows, dbType };
@@ -340,6 +344,17 @@ export const DataTable = memo<DataTableProps>(
             {/* 左侧工具栏插槽 */}
             <div className="flex flex-wrap items-center gap-2">
               {toolbarLeft}
+              {onOpenStorageEstimator && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onOpenStorageEstimator}
+                  className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md border-primary/20 hover:border-primary/50 text-muted-foreground hover:text-primary"
+                >
+                  <HardDrive className="h-4 w-4" />
+                  估算容量
+                </Button>
+              )}
             </div>
 
             {/* 右侧添加行按钮 */}

@@ -61,6 +61,7 @@ import {
   CreateTemplateDialog,
 } from './TemplateManagerDialog';
 import { ApplyTemplatePopover } from './ApplyTemplatePopover';
+import { StorageEstimatorDialog } from './StorageEstimatorDialog';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
 import {
   DEFAULT_SAVED_TABLE_NAME,
@@ -142,6 +143,9 @@ function App() {
 
   // Review history dialog state
   const [isReviewHistoryOpen, setIsReviewHistoryOpen] = useState(false);
+
+  // Storage estimator dialog state
+  const [isStorageEstimatorOpen, setIsStorageEstimatorOpen] = useState(false);
 
   // Check for fireworks on mount
   useEffect(() => {
@@ -1423,6 +1427,7 @@ function App() {
                   onAddCountChange={setAddCount}
                   isHighlighted={isFieldTableHighlighted}
                   highlightedRowIndex={highlightedRowIndex}
+                  onOpenStorageEstimator={() => setIsStorageEstimatorOpen(true)}
                   toolbarLeft={
                     <ApplyTemplatePopover
                       templates={templates}
@@ -1674,6 +1679,13 @@ function App() {
           {toastMessage}
         </div>
       )}
+
+      <StorageEstimatorDialog
+        open={isStorageEstimatorOpen}
+        onOpenChange={setIsStorageEstimatorOpen}
+        dbType={dbType}
+        fields={normalizedFields}
+      />
     </div>
   );
 }
