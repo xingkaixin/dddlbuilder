@@ -82,7 +82,10 @@ interface DataTableProps {
   duplicateNameSet: Set<string>;
   dbType: DatabaseType;
   addCount: number;
-  onRowsChange: (changes: any[] | null, source: string) => void;
+  onRowsChange: (
+    changes: (Handsontable.CellChange | null)[] | null,
+    source: string,
+  ) => void;
   onCreateRow: (index: number, amount: number) => void;
   onRemoveRow: (index: number, amount: number) => void;
   onAddRows: (count: number) => void;
@@ -134,13 +137,13 @@ export const DataTable = memo<DataTableProps>(
         return {
           ...col,
           renderer: (
-            instance,
+            _instance,
             td,
             row,
-            colIndex,
-            prop,
+            _colIndex,
+            _prop,
             value,
-            cellProperties,
+            _cellProperties,
           ) => {
             while (td.firstChild) td.removeChild(td.firstChild);
             td.classList.add('htOrderCell');
@@ -244,7 +247,7 @@ export const DataTable = memo<DataTableProps>(
     );
 
     const handleBeforeChange = useCallback(
-      (changes: Handsontable.CellChange[] | null) => {
+      (changes: (Handsontable.CellChange | null)[] | null, _source: string) => {
         if (!changes) return;
         changes.forEach((change) => {
           if (!change) return;

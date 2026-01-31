@@ -966,7 +966,7 @@ function App() {
               defaultValue: suggestion.field.defaultValue || '',
               onUpdate: suggestion.field.onUpdate || '无',
             };
-            setRows([...rows, newRow]);
+            setRows((prev) => [...prev, newRow]);
             appliedCount = 1;
             // Trigger field table highlight animation on the new row (last row)
             triggerFieldTableHighlight(rows.length);
@@ -987,13 +987,18 @@ function App() {
             };
             const rowIndex = rows.findIndex((r) => r.fieldName === fieldName);
             if (rowIndex !== -1) {
-              const newRows = [...rows];
               // Filter out undefined values to avoid overwriting with undefined
               const filteredChanges = Object.fromEntries(
                 Object.entries(changes).filter(([, v]) => v !== undefined),
               );
-              newRows[rowIndex] = { ...newRows[rowIndex], ...filteredChanges };
-              setRows(newRows);
+              setRows((prev) => {
+                const updatedRows = [...prev];
+                updatedRows[rowIndex] = {
+                  ...updatedRows[rowIndex],
+                  ...filteredChanges,
+                };
+                return updatedRows;
+              });
               appliedCount = 1;
               // Trigger field table highlight animation on the modified row
               triggerFieldTableHighlight(rowIndex);
@@ -1003,18 +1008,29 @@ function App() {
 
         case 'remove_field':
           if (suggestion.fieldName) {
-            const newRows = rows.filter(
-              (r) => r.fieldName !== suggestion.fieldName,
+            const rowIndex = rows.findIndex(
+              (r) => r.fieldName === suggestion.fieldName,
             );
-            // 重新排序
-            const reorderedRows = newRows.map((r, i) => ({
-              ...r,
-              order: i + 1,
-            }));
-            setRows(reorderedRows);
-            appliedCount = 1;
-            // Trigger field table highlight animation
-            triggerFieldTableHighlight();
+            if (rowIndex !== -1) {
+              // Trigger row highlight first
+              triggerFieldTableHighlight(rowIndex);
+
+              // Delay actual removal
+              setTimeout(() => {
+                setRows((prev) => {
+                  const newRows = prev.filter(
+                    (r) => r.fieldName !== suggestion.fieldName,
+                  );
+                  // 重新排序
+                  return newRows.map((r, i) => ({
+                    ...r,
+                    order: i + 1,
+                  }));
+                });
+              }, 500);
+
+              appliedCount = 1;
+            }
           }
           break;
 
@@ -1027,7 +1043,7 @@ function App() {
               fields: suggestion.index.fields,
               unique: !!suggestion.index.unique,
             };
-            setIndexes([...indexes, newIndex]);
+            setIndexes((prev) => [...prev, newIndex]);
             appliedCount = 1;
             // Trigger add animation after a small delay to ensure DOM is updated
             setTimeout(() => {
@@ -1081,7 +1097,6 @@ function App() {
       setIndexes,
       setReviewResult,
       showToast,
-      setActiveTab,
       triggerIndexAnimation,
       triggerFieldTableHighlight,
     ],

@@ -211,27 +211,27 @@
 /* Handsontable Row Highlight Animation */
 @keyframes ht-row-highlight-anim {
   0% {
-    background-color: rgba(59, 130, 246, 0.4) !important;
+    background-color: rgba(59, 130, 246, 0.4);
     box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.3);
   }
 
   25% {
-    background-color: rgba(59, 130, 246, 0.25) !important;
+    background-color: rgba(59, 130, 246, 0.25);
     box-shadow: inset 0 0 15px rgba(59, 130, 246, 0.2);
   }
 
   50% {
-    background-color: rgba(59, 130, 246, 0.4) !important;
+    background-color: rgba(59, 130, 246, 0.4);
     box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.3);
   }
 
   75% {
-    background-color: rgba(59, 130, 246, 0.25) !important;
+    background-color: rgba(59, 130, 246, 0.25);
     box-shadow: inset 0 0 15px rgba(59, 130, 246, 0.2);
   }
 
   100% {
-    background-color: hsl(var(--card)) !important;
+    background-color: hsl(var(--card));
     box-shadow: none;
   }
 }
@@ -246,27 +246,27 @@
 
 @keyframes ht-row-highlight-anim-dark {
   0% {
-    background-color: rgba(59, 130, 246, 0.3) !important;
+    background-color: rgba(59, 130, 246, 0.3);
     box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.25);
   }
 
   25% {
-    background-color: rgba(59, 130, 246, 0.18) !important;
+    background-color: rgba(59, 130, 246, 0.18);
     box-shadow: inset 0 0 15px rgba(59, 130, 246, 0.15);
   }
 
   50% {
-    background-color: rgba(59, 130, 246, 0.3) !important;
+    background-color: rgba(59, 130, 246, 0.3);
     box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.25);
   }
 
   75% {
-    background-color: rgba(59, 130, 246, 0.18) !important;
+    background-color: rgba(59, 130, 246, 0.18);
     box-shadow: inset 0 0 15px rgba(59, 130, 246, 0.15);
   }
 
   100% {
-    background-color: hsl(var(--card)) !important;
+    background-color: hsl(var(--card));
     box-shadow: none;
   }
 }
