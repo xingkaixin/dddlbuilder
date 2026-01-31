@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useRef } from 'react';
+import { memo, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -29,6 +29,7 @@ import {
 } from '@/utils/helpers';
 import { getCanonicalBaseType } from '@/utils/databaseTypeMapping';
 import { COLUMN_HEADERS } from '@/utils/constants';
+import { cn } from '@/lib/utils';
 
 let handsontableModulesRegistered = false;
 
@@ -88,6 +89,10 @@ interface DataTableProps {
   onAddCountChange: (value: number) => void;
   /** 工具栏左侧插槽，用于添加额外按钮（如"应用模板"） */
   toolbarLeft?: React.ReactNode;
+  /** 是否显示字段变更高亮动画 */
+  isHighlighted?: boolean;
+  /** 需要高亮的行索引 */
+  highlightedRowIndex?: number | null;
 }
 
 export const DataTable = memo<DataTableProps>(
@@ -102,9 +107,14 @@ export const DataTable = memo<DataTableProps>(
     onAddRows,
     onAddCountChange,
     toolbarLeft,
+    isHighlighted,
+    highlightedRowIndex,
   }) => {
     const latestRef = useRef({ rows, dbType });
     latestRef.current = { rows, dbType };
+
+    // Ref for Handsontable instance
+    const hotRef = useRef<any>(null);
 
     const rowWarnings = useMemo(() => {
       return rows.map((row) => {
@@ -258,8 +268,64 @@ export const DataTable = memo<DataTableProps>(
       onAddRows(safeAddCount);
     }, [onAddRows, safeAddCount]);
 
+    // Apply row-level highlight animation
+    useEffect(() => {
+      if (highlightedRowIndex == null || highlightedRowIndex < 0) return;
+
+      const hot = hotRef.current?.hotInstance;
+      if (!hot) return;
+
+      const colCount = COLUMN_HEADERS.length;
+      const currentRow = highlightedRowIndex;
+
+      // Add highlight class to all cells in the row
+      for (let col = 0; col < colCount; col++) {
+        const existingClass = hot.getCellMeta(currentRow, col).className || '';
+        // Avoid duplicate classes
+        if (!existingClass.includes('ht-row-highlight')) {
+          hot.setCellMeta(
+            currentRow,
+            col,
+            'className',
+            `${existingClass} ht-row-highlight`.trim(),
+          );
+        }
+      }
+      hot.render();
+
+      // Remove highlight after animation duration
+      const timeout = setTimeout(() => {
+        const hotInstance = hotRef.current?.hotInstance;
+        if (!hotInstance) return;
+
+        for (let col = 0; col < colCount; col++) {
+          const existingClass =
+            hotInstance.getCellMeta(currentRow, col).className || '';
+          hotInstance.setCellMeta(
+            currentRow,
+            col,
+            'className',
+            existingClass.replace(/\s*ht-row-highlight\s*/g, ' ').trim(),
+          );
+        }
+        hotInstance.render();
+      }, 1200);
+
+      return () => clearTimeout(timeout);
+    }, [highlightedRowIndex]);
+
     return (
-      <div className="relative min-h-[420px] flex-1 rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5">
+      <div
+        className={cn(
+          'relative min-h-[420px] flex-1 rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5',
+          isHighlighted && 'animate-field-highlight',
+        )}
+      >
+        {/* Field change highlight overlay */}
+        {isHighlighted && (
+          <div className="pointer-events-none absolute inset-0 rounded-lg border-2 border-blue-500 animate-pulse z-10" />
+        )}
+
         {/* Decorative gradient overlay */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent rounded-lg" />
 
@@ -304,6 +370,7 @@ export const DataTable = memo<DataTableProps>(
         </div>
         <div className="relative p-4">
           <HotTable
+            ref={hotRef}
             data={rows}
             columns={columns}
             colHeaders={COLUMN_HEADERS}

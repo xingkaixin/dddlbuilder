@@ -48,6 +48,7 @@ import { useToast } from '@/hooks/useToast';
 import { useCitusSharding } from '@/hooks/useCitusSharding';
 import { useMysqlPartition } from '@/hooks/useMysqlPartition';
 import { useDDLReview, type StructuredSuggestion } from '@/hooks/useDDLReview';
+import { useSuggestionAnimation } from '@/hooks/useSuggestionAnimation';
 import { useSavedTables, type SavedTableSummary } from '@/hooks/useSavedTables';
 import { useFolders, type FolderTreeNode } from '@/hooks/useFolders';
 import {
@@ -97,6 +98,9 @@ function App() {
 
   // Fireworks state
   const [showFireworks, setShowFireworks] = useState(false);
+
+  // Active tab state for controlled Tabs
+  const [activeTab, setActiveTab] = useState<string>('fields');
 
   // Saved tables drawer & dialogs
   const [savedTablesDrawerOpen, setSavedTablesDrawerOpen] = useState(false);
@@ -242,6 +246,16 @@ function App() {
     setCitusShardingConfig,
     resetCitusSharding,
   } = useCitusSharding(persistedState || undefined);
+
+  // Suggestion animation hook
+  const {
+    animatingIndexIds,
+    removingIndexIds,
+    triggerIndexAnimation,
+    isFieldTableHighlighted,
+    highlightedRowIndex,
+    triggerFieldTableHighlight,
+  } = useSuggestionAnimation();
 
   const {
     mysqlPartitionConfig,
@@ -923,6 +937,21 @@ function App() {
       if (suggestion.applied) return;
 
       let appliedCount = 0;
+      let newIndexId: string | null = null;
+
+      // Switch to appropriate tab based on suggestion type
+      if (
+        suggestion.type === 'add_index' ||
+        suggestion.type === 'remove_index'
+      ) {
+        setActiveTab('indexes');
+      } else if (
+        suggestion.type === 'add_field' ||
+        suggestion.type === 'modify_field' ||
+        suggestion.type === 'remove_field'
+      ) {
+        setActiveTab('fields');
+      }
 
       switch (suggestion.type) {
         case 'add_field':
@@ -939,18 +968,35 @@ function App() {
             };
             setRows([...rows, newRow]);
             appliedCount = 1;
+            // Trigger field table highlight animation on the new row (last row)
+            triggerFieldTableHighlight(rows.length);
           }
           break;
 
         case 'modify_field':
           if (suggestion.fieldModification) {
-            const { fieldName, changes } = suggestion.fieldModification;
+            const { fieldName } = suggestion.fieldModification;
+            // Support both nested changes structure and flat structure from LLM
+            const changes = suggestion.fieldModification.changes || {
+              fieldType: (suggestion.fieldModification as any).fieldType,
+              fieldComment: (suggestion.fieldModification as any).fieldComment,
+              nullable: (suggestion.fieldModification as any).nullable,
+              defaultKind: (suggestion.fieldModification as any).defaultKind,
+              defaultValue: (suggestion.fieldModification as any).defaultValue,
+              onUpdate: (suggestion.fieldModification as any).onUpdate,
+            };
             const rowIndex = rows.findIndex((r) => r.fieldName === fieldName);
             if (rowIndex !== -1) {
               const newRows = [...rows];
-              newRows[rowIndex] = { ...newRows[rowIndex], ...changes };
+              // Filter out undefined values to avoid overwriting with undefined
+              const filteredChanges = Object.fromEntries(
+                Object.entries(changes).filter(([, v]) => v !== undefined),
+              );
+              newRows[rowIndex] = { ...newRows[rowIndex], ...filteredChanges };
               setRows(newRows);
               appliedCount = 1;
+              // Trigger field table highlight animation on the modified row
+              triggerFieldTableHighlight(rowIndex);
             }
           }
           break;
@@ -967,29 +1013,45 @@ function App() {
             }));
             setRows(reorderedRows);
             appliedCount = 1;
+            // Trigger field table highlight animation
+            triggerFieldTableHighlight();
           }
           break;
 
         case 'add_index':
           if (suggestion.index) {
+            newIndexId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
             const newIndex: IndexDefinition = {
-              id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+              id: newIndexId,
               name: suggestion.index.name,
               fields: suggestion.index.fields,
               unique: !!suggestion.index.unique,
             };
             setIndexes([...indexes, newIndex]);
             appliedCount = 1;
+            // Trigger add animation after a small delay to ensure DOM is updated
+            setTimeout(() => {
+              if (newIndexId) {
+                triggerIndexAnimation(newIndexId, 'add');
+              }
+            }, 50);
           }
           break;
 
         case 'remove_index':
           if (suggestion.indexName) {
-            const newIndexes = indexes.filter(
-              (idx) => idx.name !== suggestion.indexName,
+            const targetIndex = indexes.find(
+              (idx) => idx.name === suggestion.indexName,
             );
-            if (newIndexes.length < indexes.length) {
-              setIndexes(newIndexes);
+            if (targetIndex) {
+              // Trigger remove animation first
+              triggerIndexAnimation(targetIndex.id, 'remove');
+              // Delay actual removal until animation completes
+              setTimeout(() => {
+                setIndexes((prev) =>
+                  prev.filter((idx) => idx.name !== suggestion.indexName),
+                );
+              }, 500);
               appliedCount = 1;
             }
           }
@@ -1019,6 +1081,9 @@ function App() {
       setIndexes,
       setReviewResult,
       showToast,
+      setActiveTab,
+      triggerIndexAnimation,
+      triggerFieldTableHighlight,
     ],
   );
 
@@ -1250,7 +1315,11 @@ function App() {
               loadedTableName={loadedTableName}
             />
 
-            <Tabs defaultValue="fields" className="w-full">
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full"
+            >
               <TabsList
                 className={`grid w-full ${
                   dbType === 'postgresql-citus' || supportsMysqlPartition
@@ -1337,6 +1406,8 @@ function App() {
                   onRemoveRow={handleRemoveRow}
                   onAddRows={handleAddRows}
                   onAddCountChange={setAddCount}
+                  isHighlighted={isFieldTableHighlighted}
+                  highlightedRowIndex={highlightedRowIndex}
                   toolbarLeft={
                     <ApplyTemplatePopover
                       templates={templates}
@@ -1365,6 +1436,8 @@ function App() {
                   onAddIndex={(unique, primary) => addIndex(!!unique, primary)}
                   onRemoveIndex={removeIndex}
                   onUpdateIndexName={updateIndexName}
+                  animatingIndexIds={animatingIndexIds}
+                  removingIndexIds={removingIndexIds}
                 />
               </TabsContent>
               <TabsContent value="auth" className="mt-4">

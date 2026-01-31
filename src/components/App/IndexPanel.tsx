@@ -11,6 +11,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import type { IndexField, IndexDefinition } from '@/types';
+import { cn } from '@/lib/utils';
 
 interface IndexPanelProps {
   indexInput: string;
@@ -28,6 +29,9 @@ interface IndexPanelProps {
   onAddIndex: (unique?: boolean, primary?: boolean) => void;
   onRemoveIndex: (id: string) => void;
   onUpdateIndexName?: (id: string, newName: string) => void;
+  // Animation props
+  animatingIndexIds?: Set<string>;
+  removingIndexIds?: Set<string>;
 }
 
 export const IndexPanel = memo<IndexPanelProps>(
@@ -47,6 +51,8 @@ export const IndexPanel = memo<IndexPanelProps>(
     onAddIndex,
     onRemoveIndex,
     onUpdateIndexName,
+    animatingIndexIds,
+    removingIndexIds,
   }) => {
     const [editingIndexId, setEditingIndexId] = useState<string | null>(null);
     const [editingName, setEditingName] = useState('');
@@ -252,10 +258,17 @@ export const IndexPanel = memo<IndexPanelProps>(
                             Icon: Hash,
                           };
 
+                    const isAnimatingAdd = animatingIndexIds?.has(index.id);
+                    const isAnimatingRemove = removingIndexIds?.has(index.id);
+
                     return (
                       <div
                         key={index.id}
-                        className="group/item relative flex items-start justify-between gap-4 rounded-xl border bg-muted/50 px-5 py-4 transition-all duration-300 hover:bg-muted/70 hover:-translate-y-1 hover:shadow-lg overflow-hidden"
+                        className={cn(
+                          'group/item relative flex items-start justify-between gap-4 rounded-xl border bg-muted/50 px-5 py-4 transition-all duration-300 hover:bg-muted/70 hover:-translate-y-1 hover:shadow-lg overflow-hidden',
+                          isAnimatingAdd && 'animate-suggestion-add',
+                          isAnimatingRemove && 'animate-suggestion-remove',
+                        )}
                       >
                         {/* Left gradient bar */}
                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/30 to-transparent transition-all duration-300 group-hover/item:w-2" />

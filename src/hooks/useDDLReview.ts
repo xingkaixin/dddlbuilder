@@ -154,7 +154,7 @@ export function useDDLReview() {
             score: Math.min(10, Math.max(1, Number(result.score) || 5)),
             summary: result.summary || '评审完成',
             suggestions: Array.isArray(result.suggestions)
-              ? result.suggestions.slice(0, 5)
+              ? result.suggestions
               : [],
           },
           error: null,

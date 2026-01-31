@@ -134,8 +134,10 @@ const SuggestionItem = memo<{
               </span>
               <ArrowRight className="h-3 w-3" />
               <span className="text-amber-600 font-medium">
-                {suggestion.fieldModification.changes.fieldType ||
-                  suggestion.fieldModification.changes.fieldComment ||
+                {suggestion.fieldModification.changes?.fieldType ||
+                  suggestion.fieldModification.changes?.fieldComment ||
+                  (suggestion.fieldModification as any).fieldType ||
+                  (suggestion.fieldModification as any).fieldComment ||
                   '变更属性'}
               </span>
             </div>
