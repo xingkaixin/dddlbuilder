@@ -46,32 +46,39 @@ ${sql}
 
 ${context ? `上下文相关 SQL：\n${context}` : ''}`;
 
-  try {
-    const response = await openai.chat.completions.create({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.3,
-      max_tokens: 1000,
-      ...({
-        thinking: {
-          type: 'disabled',
-        },
-      } as any),
-    });
+  return streamText(c, async (stream) => {
+    try {
+      const response = (await openai.chat.completions.create({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: 0.3,
+        max_tokens: 1000,
+        stream: true,
+        ...({
+          thinking: {
+            type: 'disabled',
+          },
+        } as any),
+      })) as any;
 
-    const explanation =
-      response.choices[0]?.message?.content || '未生成解释内容';
-    return c.json({ explanation });
-  } catch (error) {
-    console.error('[Explain] Error:', error);
-    return c.json(
-      { error: error instanceof Error ? error.message : 'Explain failed' },
-      500,
-    );
-  }
+      for await (const chunk of response) {
+        const content = chunk.choices[0]?.delta?.content || '';
+        if (content) {
+          await stream.write(content);
+        }
+      }
+    } catch (error) {
+      console.error('[Explain] Streaming error:', error);
+      await stream.write(
+        JSON.stringify({
+          error: error instanceof Error ? error.message : 'Explain failed',
+        }),
+      );
+    }
+  });
 });
 
 // DDL Review endpoint with streaming

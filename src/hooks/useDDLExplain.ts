@@ -47,12 +47,30 @@ export function useDDLExplain() {
         throw new Error(errorData.error || `请求失败: ${response.status}`);
       }
 
-      const data = await response.json();
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('无法读取响应流');
+      }
+
       setState({
         isLoading: false,
-        explanation: data.explanation || '未生成解释内容',
+        explanation: '',
         error: null,
       });
+
+      const decoder = new TextDecoder();
+      let done = false;
+
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        const chunkValue = decoder.decode(value, { stream: !done });
+        
+        setState((prev) => ({
+          ...prev,
+          explanation: (prev.explanation || '') + chunkValue,
+        }));
+      }
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
         return; // Request was cancelled
