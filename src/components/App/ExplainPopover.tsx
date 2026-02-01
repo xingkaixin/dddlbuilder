@@ -1,5 +1,6 @@
 import type React from 'react';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { track } from '@vercel/analytics';
 import { createPortal } from 'react-dom';
 import { Lightbulb, Loader2, X, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -84,6 +85,7 @@ export function ExplainPopover({
     e.preventDefault();
     e.stopPropagation();
     if (selection) {
+      track('sql_explain_start', { textLength: selection.text.length });
       startExplain(selection.text);
       setShowResult(true);
     }
@@ -99,6 +101,12 @@ export function ExplainPopover({
     },
     [clearExplain],
   );
+
+  useEffect(() => {
+    if (isComplete && !isStreaming && showResult) {
+      track('sql_explain_complete');
+    }
+  }, [isComplete, isStreaming, showResult]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

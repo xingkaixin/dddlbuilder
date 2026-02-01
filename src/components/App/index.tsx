@@ -7,6 +7,7 @@ import {
   lazy,
   Suspense,
 } from 'react';
+import { track } from '@vercel/analytics';
 import type {
   DatabaseType,
   FieldRow,
@@ -445,6 +446,7 @@ function App() {
   } = useDDLReview();
 
   const handleStartReview = useCallback(() => {
+    track('sql_review_start', { dbType, tableName });
     startReview(generatedSql, tableName, dbType);
   }, [startReview, generatedSql, tableName, dbType]);
 
@@ -456,13 +458,11 @@ function App() {
     if (isReviewingRef.current && !isReviewing && reviewResult) {
       const normalizedName =
         loadedTableNormalizedName || normalizeSavedTableName(tableName);
-      saveReview(
-        normalizedName,
-        tableName,
-        generatedSql,
-        dbType,
-        reviewResult,
-      ).catch((err) => console.error('Failed to save review:', err));
+      saveReview(normalizedName, tableName, generatedSql, dbType, reviewResult)
+        .then(() => {
+          track('sql_review_complete', { dbType, tableName });
+        })
+        .catch((err) => console.error('Failed to save review:', err));
     }
     isReviewingRef.current = isReviewing;
   }, [
@@ -485,6 +485,7 @@ function App() {
       const compressed = compressState(currentState);
       const url = `${window.location.origin}${window.location.pathname}?s=${compressed}`;
       await navigator.clipboard.writeText(url);
+      track('share_link_create');
       showToast('链接已复制到剪贴板');
     } catch (e) {
       console.error('Failed to generate share link', e);
@@ -552,6 +553,7 @@ function App() {
 
     // Clear localStorage
     clearState();
+    track('table_clear_all');
 
     cancelClearAll();
   }, [
@@ -624,6 +626,7 @@ function App() {
         setLoadedTableNormalizedName(record.normalizedName);
         setLoadedTableName(record.name);
         setLoadedTableSignature(serializePersistedState(record.state));
+        track('table_load', { tableName: record.name });
         showToast(`已加载：${record.name}`);
       } catch (error) {
         showToast(error instanceof Error ? error.message : '加载失败');
@@ -663,6 +666,7 @@ function App() {
         return;
       }
       setLoadedTableSignature(nextSignature);
+      track('table_update', { tableName: loadedTableName });
       showToast(`已更新：${loadedTableName ?? saveName}`);
       // 创建版本快照
       await createVersion(loadedTableNormalizedName, nextState);
@@ -677,6 +681,7 @@ function App() {
         return;
       }
       const displayName = saveName.trim() || DEFAULT_SAVED_TABLE_NAME;
+      track('table_save', { tableName: displayName });
       showToast(`已保存：${displayName}`);
       // 创建初始版本快照
       const normalizedName =
@@ -784,6 +789,10 @@ function App() {
       return;
     }
     const displayName = renameName.trim() || DEFAULT_SAVED_TABLE_NAME;
+    track('table_rename', {
+      oldName: renameTarget.name,
+      newName: displayName,
+    });
     showToast(`已重命名为：${displayName}`);
     if (
       loadedTableNormalizedName &&
@@ -821,6 +830,7 @@ function App() {
     if (!result.ok) {
       showToast(result.message ?? '删除失败');
     } else {
+      track('table_delete', { tableName: deleteTarget.name });
       showToast(`已删除：${deleteTarget.name}`);
       if (deleteTarget.normalizedName === loadedTableNormalizedName) {
         setLoadedTableNormalizedName(null);
@@ -929,6 +939,7 @@ function App() {
         onUpdate: field.onUpdate || '无',
       }));
       setRows([...rows, ...newRows]);
+      track('template_apply', { templateName: template.name });
       showToast(
         `已应用模板「${template.name}」，添加了 ${template.fields.length} 个字段`,
       );
@@ -1090,6 +1101,10 @@ function App() {
           return s;
         });
         setReviewResult({ ...reviewResult, suggestions: newSuggestions });
+        track('sql_suggestion_apply', {
+          type: suggestion.type,
+          description: suggestion.description,
+        });
         showToast(`已应用建议：${suggestion.description}`);
       }
     },
@@ -1122,6 +1137,7 @@ function App() {
     ) => {
       const result = await createTemplateFromFields(name, fields, description);
       if (result.ok) {
+        track('template_create', { templateName: name });
         showToast(`已创建模板「${name}」`);
       } else {
         showToast(result.message ?? '创建失败');
@@ -1201,6 +1217,7 @@ function App() {
       // 4. Auth
       setAuthObjects(result.authObjects);
       setAuthInput('');
+      track('sql_import', { dbType: importDbType });
     },
     [setRows, setIndexes, setAuthObjects, setIndexInput, setAuthInput],
   );
@@ -1302,6 +1319,7 @@ function App() {
         currentState={buildPersistedState()}
         onRollback={(state) => {
           applySavedState(state);
+          track('table_version_rollback');
           showToast('已回滚到选中版本');
         }}
       />
@@ -1325,8 +1343,14 @@ function App() {
               onDbTypeChange={setDbType}
               onClearAll={handleClearAll}
               onSaveTable={() => openSaveDialog(null)}
-              onOpenSavedTables={() => setSavedTablesDrawerOpen(true)}
-              onViewDiff={() => setIsDiffDialogOpen(true)}
+              onOpenSavedTables={() => {
+                track('sidebar_open');
+                setSavedTablesDrawerOpen(true);
+              }}
+              onViewDiff={() => {
+                track('diff_view_open');
+                setIsDiffDialogOpen(true);
+              }}
               saveDisabled={!canSaveCurrent}
               saveDisabledHint="加载的表未修改，无法保存"
               showDiffButton={isLoadedDirty && tableDiff?.hasChanges}
@@ -1336,7 +1360,10 @@ function App() {
 
             <Tabs
               value={activeTab}
-              onValueChange={setActiveTab}
+              onValueChange={(value) => {
+                setActiveTab(value);
+                track('tab_switch', { tab: value });
+              }}
               className="w-full"
             >
               <TabsList
@@ -1427,7 +1454,10 @@ function App() {
                   onAddCountChange={setAddCount}
                   isHighlighted={isFieldTableHighlighted}
                   highlightedRowIndex={highlightedRowIndex}
-                  onOpenStorageEstimator={() => setIsStorageEstimatorOpen(true)}
+                  onOpenStorageEstimator={() => {
+                    track('storage_estimator_open');
+                    setIsStorageEstimatorOpen(true);
+                  }}
                   toolbarLeft={
                     <ApplyTemplatePopover
                       templates={templates}

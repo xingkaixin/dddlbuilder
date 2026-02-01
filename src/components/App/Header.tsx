@@ -1,4 +1,5 @@
 import { memo, lazy, Suspense } from 'react';
+import { track } from '@vercel/analytics';
 import { ImportSqlDialog } from '@/components/ImportSqlDialog';
 import type { DatabaseType } from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
@@ -64,7 +65,10 @@ export const Header = memo<HeaderProps>(
                     分享链接
                   </button>
                   <button
-                    onClick={() => setShowChangelog(true)}
+                    onClick={() => {
+                      track('changelog_view');
+                      setShowChangelog(true);
+                    }}
                     className={actionBtnClass}
                   >
                     <History className="h-4 w-4" aria-hidden />
