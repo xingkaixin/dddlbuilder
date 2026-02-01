@@ -3,10 +3,16 @@ import {
   useEffect,
   useMemo,
   useState,
+  useRef,
   lazy,
   Suspense,
 } from 'react';
-import type { DatabaseType, FieldRow, PersistedState } from '@/types';
+import type {
+  DatabaseType,
+  FieldRow,
+  PersistedState,
+  IndexDefinition,
+} from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
 import { createEmptyRow } from '@/utils/helpers';
 import { Header } from './Header';
@@ -18,6 +24,9 @@ import { PartitionPanel } from './PartitionPanel';
 import { DataTable } from './DataTable';
 import { DDLOutput } from './DDLOutput';
 import { SavedTablesDrawer } from './SavedTablesDrawer';
+import { DiffDialog } from './DiffDialog';
+import { VersionHistoryDialog } from './VersionHistoryDialog';
+import { ReviewHistoryDialog } from './ReviewHistoryDialog';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -38,10 +47,29 @@ import { useSqlGeneration } from '@/hooks/useSqlGeneration';
 import { useToast } from '@/hooks/useToast';
 import { useCitusSharding } from '@/hooks/useCitusSharding';
 import { useMysqlPartition } from '@/hooks/useMysqlPartition';
-import { useDDLReview } from '@/hooks/useDDLReview';
+import { useDDLReview, type StructuredSuggestion } from '@/hooks/useDDLReview';
+import { useSuggestionAnimation } from '@/hooks/useSuggestionAnimation';
 import { useSavedTables, type SavedTableSummary } from '@/hooks/useSavedTables';
+import { useFolders, type FolderTreeNode } from '@/hooks/useFolders';
+import {
+  useFieldTemplates,
+  type FieldTemplate,
+} from '@/hooks/useFieldTemplates';
+import { FolderDialog, DeleteFolderDialog } from './FolderDialogs';
+import {
+  TemplateManagerDialog,
+  CreateTemplateDialog,
+} from './TemplateManagerDialog';
+import { ApplyTemplatePopover } from './ApplyTemplatePopover';
+import { StorageEstimatorDialog } from './StorageEstimatorDialog';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
-import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
+import {
+  DEFAULT_SAVED_TABLE_NAME,
+  normalizeSavedTableName,
+} from '@/utils/savedTablesDb';
+import { diffPersistedState, type TableDiff } from '@/utils/tableDiff';
+import { createVersion } from '@/utils/tableVersions';
+import { saveReview } from '@/utils/reviewHistory';
 import {
   Columns3Cog,
   Network,
@@ -72,6 +100,9 @@ function App() {
   // Fireworks state
   const [showFireworks, setShowFireworks] = useState(false);
 
+  // Active tab state for controlled Tabs
+  const [activeTab, setActiveTab] = useState<string>('fields');
+
   // Saved tables drawer & dialogs
   const [savedTablesDrawerOpen, setSavedTablesDrawerOpen] = useState(false);
   const [loadedTableNormalizedName, setLoadedTableNormalizedName] = useState<
@@ -99,6 +130,22 @@ function App() {
     useState<SavedTableSummary | null>(null);
   const [queuedLoadAfterSave, setQueuedLoadAfterSave] =
     useState<SavedTableSummary | null>(null);
+
+  // Diff dialog state
+  const [isDiffDialogOpen, setIsDiffDialogOpen] = useState(false);
+
+  // Version history dialog state
+  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
+  const [versionHistoryTarget, setVersionHistoryTarget] = useState<{
+    normalizedName: string;
+    name: string;
+  } | null>(null);
+
+  // Review history dialog state
+  const [isReviewHistoryOpen, setIsReviewHistoryOpen] = useState(false);
+
+  // Storage estimator dialog state
+  const [isStorageEstimatorOpen, setIsStorageEstimatorOpen] = useState(false);
 
   // Check for fireworks on mount
   useEffect(() => {
@@ -204,6 +251,16 @@ function App() {
     resetCitusSharding,
   } = useCitusSharding(persistedState || undefined);
 
+  // Suggestion animation hook
+  const {
+    animatingIndexIds,
+    removingIndexIds,
+    triggerIndexAnimation,
+    isFieldTableHighlighted,
+    highlightedRowIndex,
+    triggerFieldTableHighlight,
+  } = useSuggestionAnimation();
+
   const {
     mysqlPartitionConfig,
     setPartitionEnabled,
@@ -294,6 +351,18 @@ function App() {
     : '保存后可在左侧列表中快速加载。';
   const saveInputDisabled = hasLoadedTable;
 
+  // Compute diff between loaded state and current state
+  const tableDiff = useMemo<TableDiff | null>(() => {
+    if (!isLoadedDirty || !loadedTableSignature) return null;
+    try {
+      const oldState = JSON.parse(loadedTableSignature) as PersistedState;
+      const newState = buildPersistedState();
+      return diffPersistedState(oldState, newState);
+    } catch {
+      return null;
+    }
+  }, [isLoadedDirty, loadedTableSignature, buildPersistedState]);
+
   const { generatedSql, generatedDcl, copySql, copyDcl } = useSqlGeneration(
     dbType,
     tableName,
@@ -315,7 +384,55 @@ function App() {
     deleteTable,
     renameTable,
     loadTable,
+    moveTableToFolder,
+    clearTablesFromFolders,
   } = useSavedTables();
+
+  // Folders hook
+  const {
+    folderTree,
+    loading: foldersLoading,
+    createFolder,
+    renameFolder,
+    deleteFolder: deleteFolderAction,
+  } = useFolders();
+
+  // Folder dialog state
+  const [isFolderDialogOpen, setIsFolderDialogOpen] = useState(false);
+  const [folderDialogMode, setFolderDialogMode] = useState<'create' | 'rename'>(
+    'create',
+  );
+  const [folderDialogParent, setFolderDialogParent] =
+    useState<FolderTreeNode | null>(null);
+  const [folderDialogTarget, setFolderDialogTarget] =
+    useState<FolderTreeNode | null>(null);
+
+  // Delete folder dialog state
+  const [isDeleteFolderDialogOpen, setIsDeleteFolderDialogOpen] =
+    useState(false);
+  const [deleteFolderTarget, setDeleteFolderTarget] =
+    useState<FolderTreeNode | null>(null);
+
+  // Field templates hook
+  const {
+    templates,
+    loading: templatesLoading,
+    create: createTemplate,
+    createFromFields: createTemplateFromFields,
+    update: updateTemplate,
+    remove: deleteTemplate,
+    duplicate: duplicateTemplate,
+  } = useFieldTemplates();
+
+  // Template manager dialog state
+  const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
+
+  // Create template dialog state (from selected fields)
+  const [isCreateTemplateDialogOpen, setIsCreateTemplateDialogOpen] =
+    useState(false);
+  const [selectedFieldsForTemplate, setSelectedFieldsForTemplate] = useState<
+    typeof rows
+  >([]);
 
   // DDL Review hook
   const {
@@ -324,11 +441,42 @@ function App() {
     result: reviewResult,
     error: reviewError,
     startReview,
+    setReviewResult,
   } = useDDLReview();
 
   const handleStartReview = useCallback(() => {
     startReview(generatedSql, tableName, dbType);
   }, [startReview, generatedSql, tableName, dbType]);
+
+  const isReviewingRef = useRef(false);
+
+  // 当评审完成时保存记录
+  useEffect(() => {
+    // 仅在评审状态从 true 变为 false 且有结果时保存
+    if (isReviewingRef.current && !isReviewing && reviewResult) {
+      const normalizedName =
+        loadedTableNormalizedName || normalizeSavedTableName(tableName);
+      saveReview(
+        normalizedName,
+        tableName,
+        generatedSql,
+        dbType,
+        reviewResult,
+      ).catch((err) => console.error('Failed to save review:', err));
+    }
+    isReviewingRef.current = isReviewing;
+  }, [
+    reviewResult,
+    isReviewing,
+    loadedTableNormalizedName,
+    tableName,
+    generatedSql,
+    dbType,
+  ]);
+
+  const handleViewReviewHistory = useCallback(() => {
+    setIsReviewHistoryOpen(true);
+  }, []);
 
   const handleShare = useCallback(async () => {
     const currentState = buildPersistedState();
@@ -516,6 +664,8 @@ function App() {
       }
       setLoadedTableSignature(nextSignature);
       showToast(`已更新：${loadedTableName ?? saveName}`);
+      // 创建版本快照
+      await createVersion(loadedTableNormalizedName, nextState);
     } else {
       const result = await saveTable(saveName, nextState);
       if (!result.ok) {
@@ -528,6 +678,10 @@ function App() {
       }
       const displayName = saveName.trim() || DEFAULT_SAVED_TABLE_NAME;
       showToast(`已保存：${displayName}`);
+      // 创建初始版本快照
+      const normalizedName =
+        saveName.trim().toLowerCase() || DEFAULT_SAVED_TABLE_NAME.toLowerCase();
+      await createVersion(normalizedName, nextState, '初始版本');
     }
     setIsSaveDialogOpen(false);
     setSaveError('');
@@ -678,6 +832,316 @@ function App() {
     setDeleteTarget(null);
   }, [deleteTarget, deleteTable, showToast, loadedTableNormalizedName]);
 
+  // Folder handlers
+  const handleOpenCreateFolderDialog = useCallback(
+    (parentId?: string) => {
+      const parent = parentId
+        ? (folderTree.find((f) => f.id === parentId) ?? null)
+        : null;
+      setFolderDialogParent(parent);
+      setFolderDialogTarget(null);
+      setFolderDialogMode('create');
+      setIsFolderDialogOpen(true);
+    },
+    [folderTree],
+  );
+
+  const handleOpenRenameFolderDialog = useCallback((folder: FolderTreeNode) => {
+    setFolderDialogParent(null);
+    setFolderDialogTarget(folder);
+    setFolderDialogMode('rename');
+    setIsFolderDialogOpen(true);
+  }, []);
+
+  const handleOpenDeleteFolderDialog = useCallback((folder: FolderTreeNode) => {
+    setDeleteFolderTarget(folder);
+    setIsDeleteFolderDialogOpen(true);
+  }, []);
+
+  const handleFolderDialogConfirm = useCallback(
+    async (name: string) => {
+      if (folderDialogMode === 'create') {
+        await createFolder(name, folderDialogParent?.id);
+        showToast(`已创建文件夹：${name}`);
+      } else if (folderDialogTarget) {
+        await renameFolder(folderDialogTarget.id, name);
+        showToast(`已重命名为：${name}`);
+      }
+    },
+    [
+      folderDialogMode,
+      folderDialogParent,
+      folderDialogTarget,
+      createFolder,
+      renameFolder,
+      showToast,
+    ],
+  );
+
+  const handleDeleteFolderConfirm = useCallback(async () => {
+    if (!deleteFolderTarget) return;
+    try {
+      const affectedFolderIds = await deleteFolderAction(deleteFolderTarget.id);
+      // Clear folderId from tables in deleted folders
+      await clearTablesFromFolders(affectedFolderIds);
+      showToast(`已删除文件夹：${deleteFolderTarget.name}`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : '删除失败');
+    }
+  }, [
+    deleteFolderTarget,
+    deleteFolderAction,
+    clearTablesFromFolders,
+    showToast,
+  ]);
+
+  // Calculate table count for delete folder dialog
+  const deleteFolderTableCount = useMemo(() => {
+    if (!deleteFolderTarget) return 0;
+    return savedTables.filter((t) => t.folderId === deleteFolderTarget.id)
+      .length;
+  }, [deleteFolderTarget, savedTables]);
+
+  const handleMoveTableToFolder = useCallback(
+    async (item: SavedTableSummary, folderId?: string) => {
+      const result = await moveTableToFolder(item.normalizedName, folderId);
+      if (result.ok) {
+        showToast(folderId ? '已移动到文件夹' : '已移到未分组');
+      } else {
+        showToast(result.message ?? '移动失败');
+      }
+    },
+    [moveTableToFolder, showToast],
+  );
+
+  // Template handlers
+  const handleApplyTemplate = useCallback(
+    (template: FieldTemplate) => {
+      // 将模板字段添加到当前表末尾
+      const newRows: typeof rows = template.fields.map((field, index) => ({
+        order: rows.length + index + 1,
+        fieldName: field.fieldName,
+        fieldComment: field.fieldComment || '',
+        fieldType: field.fieldType,
+        nullable: field.nullable,
+        defaultKind: field.defaultKind || '无',
+        defaultValue: field.defaultValue || '',
+        onUpdate: field.onUpdate || '无',
+      }));
+      setRows([...rows, ...newRows]);
+      showToast(
+        `已应用模板「${template.name}」，添加了 ${template.fields.length} 个字段`,
+      );
+    },
+    [rows, setRows, showToast],
+  );
+
+  const handleApplySuggestion = useCallback(
+    (suggestion: StructuredSuggestion) => {
+      if (suggestion.applied) return;
+
+      let appliedCount = 0;
+      let newIndexId: string | null = null;
+
+      // Switch to appropriate tab based on suggestion type
+      if (
+        suggestion.type === 'add_index' ||
+        suggestion.type === 'remove_index'
+      ) {
+        setActiveTab('indexes');
+      } else if (
+        suggestion.type === 'add_field' ||
+        suggestion.type === 'modify_field' ||
+        suggestion.type === 'remove_field'
+      ) {
+        setActiveTab('fields');
+      }
+
+      switch (suggestion.type) {
+        case 'add_field':
+          if (suggestion.field) {
+            const newRow: FieldRow = {
+              order: rows.length + 1,
+              fieldName: suggestion.field.fieldName,
+              fieldType: suggestion.field.fieldType,
+              fieldComment: suggestion.field.fieldComment || '',
+              nullable: suggestion.field.nullable || '是',
+              defaultKind: suggestion.field.defaultKind || '无',
+              defaultValue: suggestion.field.defaultValue || '',
+              onUpdate: suggestion.field.onUpdate || '无',
+            };
+            setRows((prev) => [...prev, newRow]);
+            appliedCount = 1;
+            // Trigger field table highlight animation on the new row (last row)
+            triggerFieldTableHighlight(rows.length);
+          }
+          break;
+
+        case 'modify_field':
+          if (suggestion.fieldModification) {
+            const { fieldName } = suggestion.fieldModification;
+            // Support both nested changes structure and flat structure from LLM
+            const changes = suggestion.fieldModification.changes || {
+              fieldType: (suggestion.fieldModification as any).fieldType,
+              fieldComment: (suggestion.fieldModification as any).fieldComment,
+              nullable: (suggestion.fieldModification as any).nullable,
+              defaultKind: (suggestion.fieldModification as any).defaultKind,
+              defaultValue: (suggestion.fieldModification as any).defaultValue,
+              onUpdate: (suggestion.fieldModification as any).onUpdate,
+            };
+            const rowIndex = rows.findIndex((r) => r.fieldName === fieldName);
+            if (rowIndex !== -1) {
+              // Filter out undefined values to avoid overwriting with undefined
+              const filteredChanges = Object.fromEntries(
+                Object.entries(changes).filter(([, v]) => v !== undefined),
+              );
+              setRows((prev) => {
+                const updatedRows = [...prev];
+                updatedRows[rowIndex] = {
+                  ...updatedRows[rowIndex],
+                  ...filteredChanges,
+                };
+                return updatedRows;
+              });
+              appliedCount = 1;
+              // Trigger field table highlight animation on the modified row
+              triggerFieldTableHighlight(rowIndex);
+            }
+          }
+          break;
+
+        case 'remove_field':
+          if (suggestion.fieldName) {
+            const rowIndex = rows.findIndex(
+              (r) => r.fieldName === suggestion.fieldName,
+            );
+            if (rowIndex !== -1) {
+              // Trigger row highlight first
+              triggerFieldTableHighlight(rowIndex);
+
+              // Delay actual removal
+              setTimeout(() => {
+                setRows((prev) => {
+                  const newRows = prev.filter(
+                    (r) => r.fieldName !== suggestion.fieldName,
+                  );
+                  // 重新排序
+                  return newRows.map((r, i) => ({
+                    ...r,
+                    order: i + 1,
+                  }));
+                });
+              }, 500);
+
+              appliedCount = 1;
+            }
+          }
+          break;
+
+        case 'add_index':
+          if (suggestion.index) {
+            newIndexId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+            const newIndex: IndexDefinition = {
+              id: newIndexId,
+              name: suggestion.index.name,
+              fields: suggestion.index.fields,
+              unique: !!suggestion.index.unique,
+            };
+            setIndexes((prev) => [...prev, newIndex]);
+            appliedCount = 1;
+            // Trigger add animation after a small delay to ensure DOM is updated
+            setTimeout(() => {
+              if (newIndexId) {
+                triggerIndexAnimation(newIndexId, 'add');
+              }
+            }, 50);
+          }
+          break;
+
+        case 'remove_index':
+          if (suggestion.indexName) {
+            const targetIndex = indexes.find(
+              (idx) => idx.name === suggestion.indexName,
+            );
+            if (targetIndex) {
+              // Trigger remove animation first
+              triggerIndexAnimation(targetIndex.id, 'remove');
+              // Delay actual removal until animation completes
+              setTimeout(() => {
+                setIndexes((prev) =>
+                  prev.filter((idx) => idx.name !== suggestion.indexName),
+                );
+              }, 500);
+              appliedCount = 1;
+            }
+          }
+          break;
+
+        default:
+          break;
+      }
+
+      if (appliedCount > 0 && reviewResult) {
+        // 更新评审结果，标记该建议已应用
+        const newSuggestions = reviewResult.suggestions.map((s) => {
+          if (typeof s !== 'string' && s.id === suggestion.id) {
+            return { ...s, applied: true };
+          }
+          return s;
+        });
+        setReviewResult({ ...reviewResult, suggestions: newSuggestions });
+        showToast(`已应用建议：${suggestion.description}`);
+      }
+    },
+    [
+      rows,
+      indexes,
+      reviewResult,
+      setRows,
+      setIndexes,
+      setReviewResult,
+      showToast,
+      triggerIndexAnimation,
+      triggerFieldTableHighlight,
+    ],
+  );
+
+  const handleCreateTemplateFromFields = useCallback(
+    async (
+      name: string,
+      fields: Array<{
+        fieldName?: string;
+        fieldType?: string;
+        fieldComment?: string;
+        nullable?: string;
+        defaultKind?: string;
+        defaultValue?: string;
+        onUpdate?: string;
+      }>,
+      description?: string,
+    ) => {
+      const result = await createTemplateFromFields(name, fields, description);
+      if (result.ok) {
+        showToast(`已创建模板「${name}」`);
+      } else {
+        showToast(result.message ?? '创建失败');
+      }
+      return result;
+    },
+    [createTemplateFromFields, showToast],
+  );
+
+  const handleSaveAsTemplate = useCallback(() => {
+    // 过滤掉完全为空的行
+    const validRows = rows.filter((r) => r.fieldName.trim());
+    if (validRows.length === 0) {
+      showToast('当前表中没有有效字段可保存');
+      return;
+    }
+    setSelectedFieldsForTemplate(validRows);
+    setIsCreateTemplateDialogOpen(true);
+  }, [rows, showToast]);
+
   const handleImport = useCallback(
     (result: ParsedResult, importDbType: DatabaseType) => {
       // 1. Basic Info
@@ -765,11 +1229,87 @@ function App() {
         loading={savedTablesLoading}
         error={savedTablesError}
         items={savedTables}
+        folders={folderTree}
+        foldersLoading={foldersLoading}
         activeNormalizedName={loadedTableNormalizedName}
         activeDirty={isLoadedDirty}
         onSelect={handleSelectSavedTable}
         onRename={handleOpenRenameDialog}
         onDelete={handleOpenDeleteDialog}
+        onViewHistory={(item) => {
+          setVersionHistoryTarget({
+            normalizedName: item.normalizedName,
+            name: item.name,
+          });
+          setIsVersionHistoryOpen(true);
+        }}
+        onMoveToFolder={handleMoveTableToFolder}
+        onCreateFolder={handleOpenCreateFolderDialog}
+        onRenameFolder={handleOpenRenameFolderDialog}
+        onDeleteFolder={handleOpenDeleteFolderDialog}
+      />
+
+      <FolderDialog
+        open={isFolderDialogOpen}
+        onOpenChange={setIsFolderDialogOpen}
+        mode={folderDialogMode}
+        parentFolder={folderDialogParent}
+        targetFolder={folderDialogTarget}
+        onConfirm={handleFolderDialogConfirm}
+      />
+
+      <DeleteFolderDialog
+        open={isDeleteFolderDialogOpen}
+        onOpenChange={setIsDeleteFolderDialogOpen}
+        folder={deleteFolderTarget}
+        tableCount={deleteFolderTableCount}
+        onConfirm={handleDeleteFolderConfirm}
+      />
+
+      <TemplateManagerDialog
+        open={isTemplateManagerOpen}
+        onOpenChange={setIsTemplateManagerOpen}
+        templates={templates}
+        loading={templatesLoading}
+        onCreateTemplate={createTemplate}
+        onUpdateTemplate={updateTemplate}
+        onDuplicateTemplate={duplicateTemplate}
+        onDeleteTemplate={deleteTemplate}
+      />
+
+      <CreateTemplateDialog
+        open={isCreateTemplateDialogOpen}
+        onOpenChange={setIsCreateTemplateDialogOpen}
+        selectedFields={selectedFieldsForTemplate}
+        onConfirm={handleCreateTemplateFromFields}
+      />
+
+      <DiffDialog
+        open={isDiffDialogOpen}
+        onOpenChange={setIsDiffDialogOpen}
+        tableName={tableName}
+        dbType={dbType}
+        diff={tableDiff}
+        fields={normalizedFields}
+        onCopy={() => showToast('变更脚本已复制')}
+      />
+
+      <VersionHistoryDialog
+        open={isVersionHistoryOpen}
+        onOpenChange={setIsVersionHistoryOpen}
+        tableNormalizedName={versionHistoryTarget?.normalizedName ?? null}
+        tableName={versionHistoryTarget?.name ?? null}
+        currentState={buildPersistedState()}
+        onRollback={(state) => {
+          applySavedState(state);
+          showToast('已回滚到选中版本');
+        }}
+      />
+
+      <ReviewHistoryDialog
+        open={isReviewHistoryOpen}
+        onOpenChange={setIsReviewHistoryOpen}
+        tableNormalizedName={loadedTableNormalizedName}
       />
 
       {/* Main Content */}
@@ -786,13 +1326,19 @@ function App() {
               onClearAll={handleClearAll}
               onSaveTable={() => openSaveDialog(null)}
               onOpenSavedTables={() => setSavedTablesDrawerOpen(true)}
+              onViewDiff={() => setIsDiffDialogOpen(true)}
               saveDisabled={!canSaveCurrent}
               saveDisabledHint="加载的表未修改，无法保存"
+              showDiffButton={isLoadedDirty && tableDiff?.hasChanges}
               loadedStatus={loadedStatus}
               loadedTableName={loadedTableName}
             />
 
-            <Tabs defaultValue="fields" className="w-full">
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full"
+            >
               <TabsList
                 className={`grid w-full ${
                   dbType === 'postgresql-citus' || supportsMysqlPartition
@@ -879,6 +1425,18 @@ function App() {
                   onRemoveRow={handleRemoveRow}
                   onAddRows={handleAddRows}
                   onAddCountChange={setAddCount}
+                  isHighlighted={isFieldTableHighlighted}
+                  highlightedRowIndex={highlightedRowIndex}
+                  onOpenStorageEstimator={() => setIsStorageEstimatorOpen(true)}
+                  toolbarLeft={
+                    <ApplyTemplatePopover
+                      templates={templates}
+                      loading={templatesLoading}
+                      onApplyTemplate={handleApplyTemplate}
+                      onManageTemplates={() => setIsTemplateManagerOpen(true)}
+                      onSaveAsTemplate={handleSaveAsTemplate}
+                    />
+                  }
                 />
               </TabsContent>
               <TabsContent value="indexes" className="mt-4">
@@ -898,6 +1456,8 @@ function App() {
                   onAddIndex={(unique, primary) => addIndex(!!unique, primary)}
                   onRemoveIndex={removeIndex}
                   onUpdateIndexName={updateIndexName}
+                  animatingIndexIds={animatingIndexIds}
+                  removingIndexIds={removingIndexIds}
                 />
               </TabsContent>
               <TabsContent value="auth" className="mt-4">
@@ -950,6 +1510,8 @@ function App() {
             reviewResult={reviewResult}
             reviewError={reviewError}
             onStartReview={handleStartReview}
+            onViewReviewHistory={handleViewReviewHistory}
+            onApplySuggestion={handleApplySuggestion}
           />
         </div>
       </div>
@@ -1117,6 +1679,13 @@ function App() {
           {toastMessage}
         </div>
       )}
+
+      <StorageEstimatorDialog
+        open={isStorageEstimatorOpen}
+        onOpenChange={setIsStorageEstimatorOpen}
+        dbType={dbType}
+        fields={normalizedFields}
+      />
     </div>
   );
 }

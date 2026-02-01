@@ -1,6 +1,8 @@
+import { useRef } from 'react';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomOneLight } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import sql from 'react-syntax-highlighter/dist/esm/languages/hljs/sql';
+import { ExplainPopover } from './ExplainPopover';
 
 interface SqlCodeBlockProps {
   code: string;
@@ -16,14 +18,20 @@ const CODE_BLOCK_STYLE = {
 };
 
 export default function SqlCodeBlock({ code }: SqlCodeBlockProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
   return (
-    <SyntaxHighlighter
-      language="sql"
-      style={atomOneLight}
-      customStyle={CODE_BLOCK_STYLE}
-      showLineNumbers
-    >
-      {code}
-    </SyntaxHighlighter>
+    <div ref={containerRef}>
+      <ExplainPopover containerRef={containerRef}>
+        <SyntaxHighlighter
+          language="sql"
+          style={atomOneLight}
+          customStyle={CODE_BLOCK_STYLE}
+          showLineNumbers
+        >
+          {code}
+        </SyntaxHighlighter>
+      </ExplainPopover>
+    </div>
   );
 }

@@ -1,6 +1,7 @@
-import { memo, useCallback, useMemo, useRef } from 'react';
+import { memo, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { HardDrive } from 'lucide-react';
 import {
   AutocompleteCellType,
   CheckboxCellType,
@@ -29,6 +30,7 @@ import {
 } from '@/utils/helpers';
 import { getCanonicalBaseType } from '@/utils/databaseTypeMapping';
 import { COLUMN_HEADERS } from '@/utils/constants';
+import { cn } from '@/lib/utils';
 
 let handsontableModulesRegistered = false;
 
@@ -81,11 +83,22 @@ interface DataTableProps {
   duplicateNameSet: Set<string>;
   dbType: DatabaseType;
   addCount: number;
-  onRowsChange: (changes: any[] | null, source: string) => void;
+  onRowsChange: (
+    changes: (Handsontable.CellChange | null)[] | null,
+    source: string,
+  ) => void;
   onCreateRow: (index: number, amount: number) => void;
   onRemoveRow: (index: number, amount: number) => void;
   onAddRows: (count: number) => void;
   onAddCountChange: (value: number) => void;
+  /** 工具栏左侧插槽，用于添加额外按钮（如"应用模板"） */
+  toolbarLeft?: React.ReactNode;
+  /** 是否显示字段变更高亮动画 */
+  isHighlighted?: boolean;
+  /** 需要高亮的行索引 */
+  highlightedRowIndex?: number | null;
+  /** 打开存储估算按钮的回调 */
+  onOpenStorageEstimator?: () => void;
 }
 
 export const DataTable = memo<DataTableProps>(
@@ -99,9 +112,16 @@ export const DataTable = memo<DataTableProps>(
     onRemoveRow,
     onAddRows,
     onAddCountChange,
+    toolbarLeft,
+    isHighlighted,
+    highlightedRowIndex,
+    onOpenStorageEstimator,
   }) => {
     const latestRef = useRef({ rows, dbType });
     latestRef.current = { rows, dbType };
+
+    // Ref for Handsontable instance
+    const hotRef = useRef<any>(null);
 
     const rowWarnings = useMemo(() => {
       return rows.map((row) => {
@@ -121,13 +141,13 @@ export const DataTable = memo<DataTableProps>(
         return {
           ...col,
           renderer: (
-            instance,
+            _instance,
             td,
             row,
-            colIndex,
-            prop,
+            _colIndex,
+            _prop,
             value,
-            cellProperties,
+            _cellProperties,
           ) => {
             while (td.firstChild) td.removeChild(td.firstChild);
             td.classList.add('htOrderCell');
@@ -231,7 +251,7 @@ export const DataTable = memo<DataTableProps>(
     );
 
     const handleBeforeChange = useCallback(
-      (changes: Handsontable.CellChange[] | null) => {
+      (changes: (Handsontable.CellChange | null)[] | null, _source: string) => {
         if (!changes) return;
         changes.forEach((change) => {
           if (!change) return;
@@ -255,8 +275,64 @@ export const DataTable = memo<DataTableProps>(
       onAddRows(safeAddCount);
     }, [onAddRows, safeAddCount]);
 
+    // Apply row-level highlight animation
+    useEffect(() => {
+      if (highlightedRowIndex == null || highlightedRowIndex < 0) return;
+
+      const hot = hotRef.current?.hotInstance;
+      if (!hot) return;
+
+      const colCount = COLUMN_HEADERS.length;
+      const currentRow = highlightedRowIndex;
+
+      // Add highlight class to all cells in the row
+      for (let col = 0; col < colCount; col++) {
+        const existingClass = hot.getCellMeta(currentRow, col).className || '';
+        // Avoid duplicate classes
+        if (!existingClass.includes('ht-row-highlight')) {
+          hot.setCellMeta(
+            currentRow,
+            col,
+            'className',
+            `${existingClass} ht-row-highlight`.trim(),
+          );
+        }
+      }
+      hot.render();
+
+      // Remove highlight after animation duration
+      const timeout = setTimeout(() => {
+        const hotInstance = hotRef.current?.hotInstance;
+        if (!hotInstance) return;
+
+        for (let col = 0; col < colCount; col++) {
+          const existingClass =
+            hotInstance.getCellMeta(currentRow, col).className || '';
+          hotInstance.setCellMeta(
+            currentRow,
+            col,
+            'className',
+            existingClass.replace(/\s*ht-row-highlight\s*/g, ' ').trim(),
+          );
+        }
+        hotInstance.render();
+      }, 1200);
+
+      return () => clearTimeout(timeout);
+    }, [highlightedRowIndex]);
+
     return (
-      <div className="relative min-h-[420px] flex-1 rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5">
+      <div
+        className={cn(
+          'relative min-h-[420px] flex-1 rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5',
+          isHighlighted && 'animate-field-highlight',
+        )}
+      >
+        {/* Field change highlight overlay */}
+        {isHighlighted && (
+          <div className="pointer-events-none absolute inset-0 rounded-lg border-2 border-blue-500 animate-pulse z-10" />
+        )}
+
         {/* Decorative gradient overlay */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent rounded-lg" />
 
@@ -264,7 +340,24 @@ export const DataTable = memo<DataTableProps>(
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-primary/30 to-transparent" />
 
         <div className="relative border-b border-primary/10 px-4 py-3.5">
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {/* 左侧工具栏插槽 */}
+            <div className="flex flex-wrap items-center gap-2">
+              {toolbarLeft}
+              {onOpenStorageEstimator && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onOpenStorageEstimator}
+                  className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md border-primary/20 hover:border-primary/50 text-muted-foreground hover:text-primary"
+                >
+                  <HardDrive className="h-4 w-4" />
+                  估算容量
+                </Button>
+              )}
+            </div>
+
+            {/* 右侧添加行按钮 */}
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 onClick={handleAddRowsClick}
@@ -295,6 +388,7 @@ export const DataTable = memo<DataTableProps>(
         </div>
         <div className="relative p-4">
           <HotTable
+            ref={hotRef}
             data={rows}
             columns={columns}
             colHeaders={COLUMN_HEADERS}

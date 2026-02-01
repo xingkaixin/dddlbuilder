@@ -4,10 +4,56 @@ import {
   type PartialReviewResult,
 } from '@/utils/parsePartialJson';
 
+export interface StructuredSuggestion {
+  id: string;
+  description: string;
+  type:
+    | 'add_field'
+    | 'modify_field'
+    | 'remove_field'
+    | 'add_index'
+    | 'remove_index'
+    | 'general';
+  actionable: boolean;
+  applied?: boolean; // 是否已应用
+
+  // 根据 type 填充
+  fieldName?: string; // 用于 remove_field
+  indexName?: string; // 用于 remove_index
+
+  field?: {
+    fieldName: string;
+    fieldType: string;
+    fieldComment?: string;
+    nullable?: '是' | '否';
+    defaultKind?: string;
+    defaultValue?: string;
+    onUpdate?: string;
+  };
+
+  fieldModification?: {
+    fieldName: string;
+    changes: {
+      fieldType?: string;
+      fieldComment?: string;
+      nullable?: '是' | '否';
+      defaultKind?: string;
+      defaultValue?: string;
+      onUpdate?: string;
+    };
+  };
+
+  index?: {
+    name: string;
+    fields: { name: string; direction: 'ASC' | 'DESC' }[];
+    unique?: boolean;
+  };
+}
+
 export interface ReviewResult {
   score: number;
   summary: string;
-  suggestions: string[];
+  suggestions: (string | StructuredSuggestion)[];
 }
 
 interface ReviewState {
@@ -108,7 +154,7 @@ export function useDDLReview() {
             score: Math.min(10, Math.max(1, Number(result.score) || 5)),
             summary: result.summary || '评审完成',
             suggestions: Array.isArray(result.suggestions)
-              ? result.suggestions.slice(0, 5)
+              ? result.suggestions
               : [],
           },
           error: null,
@@ -140,6 +186,10 @@ export function useDDLReview() {
     });
   }, []);
 
+  const setReviewResult = useCallback((result: ReviewResult | null) => {
+    setState((prev) => ({ ...prev, result }));
+  }, []);
+
   return {
     isLoading: state.isLoading,
     streamingText: state.streamingText,
@@ -148,5 +198,6 @@ export function useDDLReview() {
     error: state.error,
     startReview,
     clearReview,
+    setReviewResult,
   };
 }

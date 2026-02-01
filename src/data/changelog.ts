@@ -19,6 +19,12 @@ export const changelogData: ChangelogData = {
   description: 'DDL建表工具版本更新记录',
   entries: [
     {
+      version: '0.11.0',
+      date: '2026-02-02',
+      content:
+        '### 新增\n- **字段模板管理**：支持字段模板的增删改查、字段排序、保存当前表为模板\n- **文件夹管理**：已保存表支持文件夹分组管理，新增 UI 组件与数据库集成\n- **表版本历史**：支持版本回滚与对比，新增对话框 UI 和 IndexedDB 版本控制\n- **表差异对比**：实现表结构 Diff 与 ALTER DDL 生成，新增变更查看对话框\n- **评审记录历史**：支持查看历史评审记录\n- **评审建议应用**：支持一键应用评审建议到当前表配置\n- **SQL 解释说明**：选中 DDL 语句后可查看 AI 解释说明\n- **存储容量估算器**：支持 MySQL、PostgreSQL、TiDB、OceanBase 等主流数据库的物理磁盘占用预估，包含架构特性说明与交互式容量规划\n\n### 优化\n- 已保存表列表支持字段数徽章、数据库类型图标、实时搜索过滤\n- Tab 页切换动画与 Toast 通知样式改进\n- 评审历史项可访问性与结构优化，Explain 弹窗事件处理提升\n- 部分 JSON 解析增强，可从建议数组中提取完整字符串与对象项\n\n### 测试与维护\n- 新增 hooks 与 utils 的单元测试，覆盖率提升\n- 依赖更新：React、OpenAI、Hono、Biome、Autoprefixer 等',
+    },
+    {
       version: '0.10.0',
       date: '2026-01-26',
       content:
