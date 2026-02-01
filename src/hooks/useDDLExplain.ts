@@ -2,6 +2,8 @@ import { useState, useCallback, useRef } from 'react';
 
 interface ExplainState {
   isLoading: boolean;
+  isStreaming: boolean;
+  isComplete: boolean;
   explanation: string | null;
   error: string | null;
 }
@@ -9,6 +11,8 @@ interface ExplainState {
 export function useDDLExplain() {
   const [state, setState] = useState<ExplainState>({
     isLoading: false,
+    isStreaming: false,
+    isComplete: false,
     explanation: null,
     error: null,
   });
@@ -28,6 +32,8 @@ export function useDDLExplain() {
 
     setState({
       isLoading: true,
+      isStreaming: false,
+      isComplete: false,
       explanation: null,
       error: null,
     });
@@ -54,6 +60,8 @@ export function useDDLExplain() {
 
       setState({
         isLoading: false,
+        isStreaming: true,
+        isComplete: false,
         explanation: '',
         error: null,
       });
@@ -71,12 +79,20 @@ export function useDDLExplain() {
           explanation: (prev.explanation || '') + chunkValue,
         }));
       }
+
+      setState((prev) => ({
+        ...prev,
+        isStreaming: false,
+        isComplete: true,
+      }));
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
         return; // Request was cancelled
       }
       setState({
         isLoading: false,
+        isStreaming: false,
+        isComplete: false,
         explanation: null,
         error: error instanceof Error ? error.message : '解释请求失败',
       });
@@ -89,6 +105,8 @@ export function useDDLExplain() {
     }
     setState({
       isLoading: false,
+      isStreaming: false,
+      isComplete: false,
       explanation: null,
       error: null,
     });

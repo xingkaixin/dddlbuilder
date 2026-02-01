@@ -1,9 +1,10 @@
 import type React from 'react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Lightbulb, Loader2, X } from 'lucide-react';
+import { Lightbulb, Loader2, X, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useDDLExplain } from '@/hooks/useDDLExplain';
 
 interface ExplainPopoverProps {
@@ -22,7 +23,7 @@ export function ExplainPopover({
     bottom: number;
   } | null>(null);
   const [showResult, setShowResult] = useState(false);
-  const { isLoading, explanation, error, startExplain, clearExplain } =
+  const { isLoading, isStreaming, isComplete, explanation, error, startExplain, clearExplain } =
     useDDLExplain();
   const popoverRef = useRef<HTMLDivElement>(null);
   const isInteractingRef = useRef(false);
@@ -165,6 +166,12 @@ export function ExplainPopover({
                 <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
                   <Lightbulb className="h-3.5 w-3.5" />
                   AI 代码解释器
+                  {(isLoading || isStreaming) && (
+                    <Loader2 className="h-3 w-3 animate-spin text-primary/60 ml-0.5" />
+                  )}
+                  {isComplete && !isStreaming && (
+                    <Check className="h-3 w-3 text-green-500 animate-in zoom-in duration-300 ml-0.5" />
+                  )}
                 </div>
                 <button
                   onClick={handleClose}
@@ -176,11 +183,12 @@ export function ExplainPopover({
 
               <div className="max-h-[min(500px,60vh)] overflow-y-auto p-4 text-sm leading-relaxed prose prose-sm prose-slate dark:prose-invert">
                 {isLoading ? (
-                  <div className="flex flex-col items-center justify-center py-10 gap-3">
-                    <Loader2 className="h-7 w-7 animate-spin text-primary/60" />
-                    <span className="text-xs text-muted-foreground animate-pulse font-medium">
-                      深度解析中...
-                    </span>
+                  <div className="space-y-3 py-2">
+                    <Skeleton className="h-4 w-[90%]" />
+                    <Skeleton className="h-4 w-[85%]" />
+                    <Skeleton className="h-4 w-[70%]" />
+                    <Skeleton className="h-4 w-[80%]" />
+                    <Skeleton className="h-4 w-[40%]" />
                   </div>
                 ) : error ? (
                   <div className="text-red-500 bg-red-50/50 p-3 rounded-lg border border-red-100 text-xs font-medium">
