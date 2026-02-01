@@ -73,7 +73,7 @@ export function useDDLExplain() {
         const { value, done: doneReading } = await reader.read();
         done = doneReading;
         const chunkValue = decoder.decode(value, { stream: !done });
-        
+
         setState((prev) => ({
           ...prev,
           explanation: (prev.explanation || '') + chunkValue,

@@ -23,8 +23,15 @@ export function ExplainPopover({
     bottom: number;
   } | null>(null);
   const [showResult, setShowResult] = useState(false);
-  const { isLoading, isStreaming, isComplete, explanation, error, startExplain, clearExplain } =
-    useDDLExplain();
+  const {
+    isLoading,
+    isStreaming,
+    isComplete,
+    explanation,
+    error,
+    startExplain,
+    clearExplain,
+  } = useDDLExplain();
   const popoverRef = useRef<HTMLDivElement>(null);
   const isInteractingRef = useRef(false);
 
