@@ -41,10 +41,24 @@ export default defineConfig({
       output: {
         manualChunks: {
           // 将 Handsontable 单独打包
-          handsontable: ['handsontable'],
+          handsontable: ['handsontable', '@handsontable/react-wrapper'],
+          // 将 node-sql-parser 单独打包（最大的依赖）
+          sqlParser: ['node-sql-parser'],
           // 将 React 相关库单独打包
           'react-vendor': ['react', 'react-dom'],
-          // 其他大型库也可以单独分离
+          // UI 组件库
+          ui: [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-select',
+            '@radix-ui/react-tabs',
+          ],
+          // 工具库
+          utils: [
+            'lucide-react',
+            'clsx',
+            'class-variance-authority',
+            'tailwind-merge',
+          ],
         },
       },
     },

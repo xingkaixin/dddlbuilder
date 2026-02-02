@@ -8,7 +8,11 @@ export type DatabaseType =
   | 'tidb'
   | 'dm'
   | 'oceanbase'
-  | 'oceanbase-oracle';
+  | 'oceanbase-oracle'
+  | 'kingbase'
+  | 'gbase'
+  | 'polardb'
+  | 'gaussdb';
 
 export type FieldRow = {
   order: number;
