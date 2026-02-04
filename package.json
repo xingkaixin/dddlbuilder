@@ -16,7 +16,9 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@handsontable/react-wrapper": "^16.2.0",
@@ -51,6 +53,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.14",
+    "@playwright/test": "^1.58.1",
     "@tailwindcss/postcss": "4.1.18",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
