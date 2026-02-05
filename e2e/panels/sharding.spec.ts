@@ -23,7 +23,9 @@ test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
     await page.keyboard.press('Enter');
     await expect(cell).toHaveText('user_id');
 
-    const typeCell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(4)');
+    const typeCell = page.locator(
+      '.htCore tbody tr:nth-child(1) td:nth-child(4)',
+    );
     await typeCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('int');
     await page.keyboard.press('Enter');
@@ -42,7 +44,9 @@ test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
     await page.getByRole('option', { name: /user_id/i }).click();
 
     const sqlOutput = page.locator('[data-state="active"] pre');
-    await expect(sqlOutput).toContainText(/SELECT create_distributed_table\('sharded_table', 'user_id'\)/i);
+    await expect(sqlOutput).toContainText(
+      /SELECT create_distributed_table\('sharded_table', 'user_id'\)/i,
+    );
   });
 
   test('场景：配置为副本表', async ({ page }) => {
@@ -56,7 +60,9 @@ test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
     await page.locator('textarea.handsontableInput').fill('id');
     await page.keyboard.press('Enter');
 
-    const typeCell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(4)');
+    const typeCell = page.locator(
+      '.htCore tbody tr:nth-child(1) td:nth-child(4)',
+    );
     await typeCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('int');
     await page.keyboard.press('Enter');
@@ -65,7 +71,9 @@ test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
     await page.getByRole('button', { name: /副本表/i }).click();
 
     const sqlOutput = page.locator('[data-state="active"] pre');
-    await expect(sqlOutput).toContainText(/SELECT create_reference_table\('reference_table'\)/i);
+    await expect(sqlOutput).toContainText(
+      /SELECT create_reference_table\('reference_table'\)/i,
+    );
   });
 
   test('场景：无字段提示', async ({ page }) => {
@@ -76,8 +84,6 @@ test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
 
     await page.getByText('分片配置').click();
     await page.getByRole('button', { name: /分片表/i }).click();
-    await expect(
-      page.getByText(/请先在字段配置中添加字段/),
-    ).toBeVisible();
+    await expect(page.getByText(/请先在字段配置中添加字段/)).toBeVisible();
   });
 });

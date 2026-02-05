@@ -6,18 +6,27 @@ const fillBasicField = async (page: any, name = 'f1') => {
   await page.keyboard.type(name, { delay: 30 });
   await page.keyboard.press('Tab');
 
-  const typeCell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(4)');
+  const typeCell = page.locator(
+    '.htCore tbody tr:nth-child(1) td:nth-child(4)',
+  );
   await typeCell.dblclick();
   await page.locator('textarea.handsontableInput').fill('int');
   await page.keyboard.press('Enter');
 };
 
 const openHistoryDialog = async (page: any, tableName: string) => {
-  await page.getByRole('button', { name: /查看已保存表/i, exact: true }).click();
+  await page
+    .getByRole('button', { name: /查看已保存表/i, exact: true })
+    .click();
   await expect(page.getByText('已保存的表')).toBeVisible();
-  const savedRow = page.getByRole('button', { name: new RegExp(tableName, 'i') });
+  const savedRow = page.getByRole('button', {
+    name: new RegExp(tableName, 'i'),
+  });
   await savedRow.hover();
-  await savedRow.locator('..').getByRole('button', { name: /历史版本/i }).click();
+  await savedRow
+    .locator('..')
+    .getByRole('button', { name: /历史版本/i })
+    .click();
   const dialog = page.getByRole('dialog', { name: /版本历史/i });
   await expect(dialog).toBeVisible();
   return dialog;
@@ -38,10 +47,10 @@ test.describe('版本管理验证 @storage', () => {
   test('场景：版本列表展示', async ({ page }) => {
     const tableName = 'version_test_' + Date.now();
     await page.locator('#table-name').fill(tableName);
-    
+
     // 1. 保存初始版本
     await fillBasicField(page, 'f1');
-    
+
     await page.locator('button[title="保存表"]').click();
     await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeVisible();
     await page.getByLabel('保存名称').fill(tableName);
@@ -49,10 +58,16 @@ test.describe('版本管理验证 @storage', () => {
     await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
 
     // 1.5 加载保存的表，进入更新流程
-    await page.getByRole('button', { name: /查看已保存表/i, exact: true }).click();
+    await page
+      .getByRole('button', { name: /查看已保存表/i, exact: true })
+      .click();
     await expect(page.getByText('已保存的表')).toBeVisible();
-    await page.getByRole('button', { name: new RegExp(tableName, 'i') }).click();
-    await expect(page.getByText(new RegExp(`当前：${tableName}`))).toBeVisible();
+    await page
+      .getByRole('button', { name: new RegExp(tableName, 'i') })
+      .click();
+    await expect(
+      page.getByText(new RegExp(`当前：${tableName}`)),
+    ).toBeVisible();
 
     // 2. 修改并保存为新版本
     const cell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)');
@@ -61,7 +76,7 @@ test.describe('版本管理验证 @storage', () => {
     await page.keyboard.press('Backspace');
     await page.keyboard.type('f1_updated', { delay: 50 });
     await page.keyboard.press('Tab');
-    
+
     await page.locator('button[title="保存表"]').click();
     // 此时应该是更新逻辑
     await page.getByRole('button', { name: /^保存$/ }).click();
@@ -85,10 +100,16 @@ test.describe('版本管理验证 @storage', () => {
     await page.getByRole('button', { name: /^保存$/ }).click();
     await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
 
-    await page.getByRole('button', { name: /查看已保存表/i, exact: true }).click();
+    await page
+      .getByRole('button', { name: /查看已保存表/i, exact: true })
+      .click();
     await expect(page.getByText('已保存的表')).toBeVisible();
-    await page.getByRole('button', { name: new RegExp(tableName, 'i') }).click();
-    await expect(page.getByText(new RegExp(`当前：${tableName}`))).toBeVisible();
+    await page
+      .getByRole('button', { name: new RegExp(tableName, 'i') })
+      .click();
+    await expect(
+      page.getByText(new RegExp(`当前：${tableName}`)),
+    ).toBeVisible();
 
     const cell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)');
     await cell.click();
@@ -120,9 +141,13 @@ test.describe('版本管理验证 @storage', () => {
     await page.getByRole('button', { name: /^保存$/ }).click();
     await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
 
-    await page.getByRole('button', { name: /查看已保存表/i, exact: true }).click();
+    await page
+      .getByRole('button', { name: /查看已保存表/i, exact: true })
+      .click();
     await expect(page.getByText('已保存的表')).toBeVisible();
-    await page.getByRole('button', { name: new RegExp(tableName, 'i') }).click();
+    await page
+      .getByRole('button', { name: new RegExp(tableName, 'i') })
+      .click();
 
     const cell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)');
     await cell.click();
@@ -136,7 +161,9 @@ test.describe('版本管理验证 @storage', () => {
     await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
 
     const dialog = await openHistoryDialog(page, tableName);
-    const versionItems = dialog.locator('button').filter({ hasText: /最新|初始版本/ });
+    const versionItems = dialog
+      .locator('button')
+      .filter({ hasText: /最新|初始版本/ });
     await expect(versionItems).toHaveCount(2);
 
     const v1Row = dialog.getByRole('button', { name: /初始版本/i });

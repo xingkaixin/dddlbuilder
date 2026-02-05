@@ -21,9 +21,9 @@ test.describe('MySQL 分区配置验证 @panels', () => {
     });
     await page.goto('/');
     await expect(page.locator('#table-name')).toBeVisible({ timeout: 10000 });
-    
+
     await page.locator('#table-name').fill('partition_test');
-    
+
     // 添加字段
     const cell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)');
     await cell.dblclick();
@@ -31,7 +31,9 @@ test.describe('MySQL 分区配置验证 @panels', () => {
     await page.keyboard.press('Enter');
     await expect(cell).toHaveText('id');
 
-    const typeCell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(4)');
+    const typeCell = page.locator(
+      '.htCore tbody tr:nth-child(1) td:nth-child(4)',
+    );
     await typeCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('int');
     await page.keyboard.press('Enter');

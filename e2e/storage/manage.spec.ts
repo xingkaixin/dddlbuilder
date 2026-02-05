@@ -1,12 +1,16 @@
 import { test, expect } from '@playwright/test';
 
 const fillBasicField = async (page: any, name = 'id') => {
-  const nameCell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)');
+  const nameCell = page.locator(
+    '.htCore tbody tr:nth-child(1) td:nth-child(2)',
+  );
   await nameCell.dblclick();
   await page.locator('textarea.handsontableInput').fill(name);
   await page.keyboard.press('Enter');
 
-  const typeCell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(4)');
+  const typeCell = page.locator(
+    '.htCore tbody tr:nth-child(1) td:nth-child(4)',
+  );
   await typeCell.dblclick();
   await page.locator('textarea.handsontableInput').fill('int');
   await page.keyboard.press('Enter');
@@ -53,13 +57,18 @@ test.describe('保存表管理补充 @storage', () => {
     await openSavedTables(page);
     const row = page.getByRole('button', { name: new RegExp(baseName, 'i') });
     await row.hover();
-    await row.locator('..').getByRole('button', { name: /重命名/i }).click();
+    await row
+      .locator('..')
+      .getByRole('button', { name: /重命名/i })
+      .click();
 
     await expect(page.getByText('重命名保存的表')).toBeVisible();
     await page.getByLabel('新名称').fill(nextName);
     await page.getByRole('button', { name: /确认/i }).click();
 
-    await expect(page.getByRole('button', { name: new RegExp(nextName, 'i') })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: new RegExp(nextName, 'i') }),
+    ).toBeVisible();
     await expect(page.getByText(new RegExp(`当前：${nextName}`))).toBeVisible();
   });
 
@@ -76,7 +85,9 @@ test.describe('保存表管理补充 @storage', () => {
     await expect(page.getByText('确认删除保存的表？')).toBeVisible();
     await page.getByRole('button', { name: /^删除$/ }).click();
 
-    await expect(page.getByRole('button', { name: new RegExp(tableName, 'i') })).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: new RegExp(tableName, 'i') }),
+    ).toHaveCount(0);
   });
 
   test('场景：未保存修改加载确认', async ({ page }) => {
@@ -90,7 +101,9 @@ test.describe('保存表管理补充 @storage', () => {
     await page.getByRole('button', { name: new RegExp(tableA, 'i') }).click();
     await expect(page.getByText(new RegExp(`当前：${tableA}`))).toBeVisible();
 
-    const nameCell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)');
+    const nameCell = page.locator(
+      '.htCore tbody tr:nth-child(1) td:nth-child(2)',
+    );
     await nameCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('id_changed');
     await page.keyboard.press('Enter');
@@ -113,7 +126,11 @@ test.describe('保存表管理补充 @storage', () => {
     await openSavedTables(page);
     await page.getByPlaceholder(/搜索表名或数据库类型/i).fill(tableA);
 
-    await expect(page.getByRole('button', { name: new RegExp(tableA, 'i') })).toBeVisible();
-    await expect(page.getByRole('button', { name: new RegExp(tableB, 'i') })).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: new RegExp(tableA, 'i') }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: new RegExp(tableB, 'i') }),
+    ).toHaveCount(0);
   });
 });

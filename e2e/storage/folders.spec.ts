@@ -1,12 +1,16 @@
 import { test, expect } from '@playwright/test';
 
 const fillBasicField = async (page: any, name = 'id') => {
-  const nameCell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)');
+  const nameCell = page.locator(
+    '.htCore tbody tr:nth-child(1) td:nth-child(2)',
+  );
   await nameCell.dblclick();
   await page.locator('textarea.handsontableInput').fill(name);
   await page.keyboard.press('Enter');
 
-  const typeCell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(4)');
+  const typeCell = page.locator(
+    '.htCore tbody tr:nth-child(1) td:nth-child(4)',
+  );
   await typeCell.dblclick();
   await page.locator('textarea.handsontableInput').fill('int');
   await page.keyboard.press('Enter');
@@ -44,7 +48,7 @@ test.describe('文件夹管理验证 @storage', () => {
 
   test('场景：创建文件夹并归类表', async ({ page }) => {
     await openSavedTables(page);
-    
+
     // 点击“新建文件夹”图标
     await page.getByRole('button', { name: /新建文件夹/i }).click();
     await page.getByLabel('文件夹名称').fill('MyProject');
@@ -88,7 +92,9 @@ test.describe('文件夹管理验证 @storage', () => {
     await folderButton.locator('..').getByRole('button').last().click();
     await page.getByRole('menuitem', { name: /删除/i }).click();
 
-    await expect(page.getByRole('heading', { name: '删除文件夹' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: '删除文件夹' }),
+    ).toBeVisible();
     await page.getByRole('button', { name: /确定删除/i }).click();
 
     await expect(page.getByText('DeleteFolder')).toHaveCount(0);
@@ -104,20 +110,37 @@ test.describe('文件夹管理验证 @storage', () => {
     await page.getByLabel('文件夹名称').fill('Group1');
     await page.getByRole('button', { name: /确定/i }).click();
 
-    const tableRow = page.getByRole('button', { name: new RegExp(tableName, 'i') });
+    const tableRow = page.getByRole('button', {
+      name: new RegExp(tableName, 'i'),
+    });
     await tableRow.hover();
-    await tableRow.locator('..').getByRole('button', { name: /移动到文件夹/i }).click();
+    await tableRow
+      .locator('..')
+      .getByRole('button', { name: /移动到文件夹/i })
+      .click();
     await page.getByRole('menuitem', { name: /Group1/i }).click();
 
     const folderButton = page.getByRole('button', { name: /Group1/i });
-    await folderButton.locator('..').getByRole('button', { name: /展开/i }).click();
-    await expect(page.getByRole('button', { name: new RegExp(tableName, 'i') })).toBeVisible();
+    await folderButton
+      .locator('..')
+      .getByRole('button', { name: /展开/i })
+      .click();
+    await expect(
+      page.getByRole('button', { name: new RegExp(tableName, 'i') }),
+    ).toBeVisible();
 
-    const movedRow = page.getByRole('button', { name: new RegExp(tableName, 'i') });
+    const movedRow = page.getByRole('button', {
+      name: new RegExp(tableName, 'i'),
+    });
     await movedRow.hover();
-    await movedRow.locator('..').getByRole('button', { name: /移动到文件夹/i }).click();
+    await movedRow
+      .locator('..')
+      .getByRole('button', { name: /移动到文件夹/i })
+      .click();
     await page.getByRole('menuitem', { name: /移到根目录/i }).click();
 
-    await expect(page.getByRole('button', { name: new RegExp(tableName, 'i') })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: new RegExp(tableName, 'i') }),
+    ).toBeVisible();
   });
 });

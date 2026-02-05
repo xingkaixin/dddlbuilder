@@ -9,21 +9,26 @@ test.describe('字段行操作验证 @fields', () => {
 
   test('场景：添加多行字段并验证 SQL', async ({ context, page }) => {
     await context.addInitScript(() => {
-      const rows = Array.from({ length: 6 }, (_, i) => ({ 
-        order: i + 1, 
-        fieldName: `field_${i + 1}`, 
-        fieldType: 'INT' 
+      const rows = Array.from({ length: 6 }, (_, i) => ({
+        order: i + 1,
+        fieldName: `field_${i + 1}`,
+        fieldType: 'INT',
       }));
-      window.localStorage.setItem('ddlbuilder:state:v1', JSON.stringify({ 
-        tableName: 'multi_fields',
-        rows
-      }));
+      window.localStorage.setItem(
+        'ddlbuilder:state:v1',
+        JSON.stringify({
+          tableName: 'multi_fields',
+          rows,
+        }),
+      );
     });
     await page.goto('/');
-    await expect(page.locator('#table-name')).toHaveValue('multi_fields', { timeout: 10000 });
-    
+    await expect(page.locator('#table-name')).toHaveValue('multi_fields', {
+      timeout: 10000,
+    });
+
     const sqlOutput = page.locator('[data-state="active"] pre');
-    
+
     // 填写第一行并确保 SQL 更新
     const cell1 = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)');
     await cell1.dblclick();
@@ -43,14 +48,16 @@ test.describe('字段行操作验证 @fields', () => {
     await page.goto('/');
     await expect(page.locator('#table-name')).toBeVisible({ timeout: 10000 });
     await page.locator('#table-name').fill('clear_test');
-    
+
     const cell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)');
     await cell.dblclick();
     await page.locator('textarea.handsontableInput').fill('to_be_cleared');
     await page.keyboard.press('Enter');
     await expect(cell).toHaveText('to_be_cleared', { timeout: 5000 });
 
-    const typeCell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(4)');
+    const typeCell = page.locator(
+      '.htCore tbody tr:nth-child(1) td:nth-child(4)',
+    );
     await typeCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('int');
     await page.keyboard.press('Enter');

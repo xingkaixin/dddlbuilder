@@ -59,7 +59,7 @@ export const TableConfig = memo<TableConfigProps>(
       loadedStatus === 'dirty' ? 'text-amber-600' : 'text-muted-foreground';
 
     return (
-      <div className="relative group rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5">
+      <div className="relative group rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-shadow transition-transform duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5">
         {/* Decorative gradient overlay */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent rounded-lg" />
 

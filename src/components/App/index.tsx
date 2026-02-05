@@ -7,7 +7,6 @@ import {
   lazy,
   Suspense,
 } from 'react';
-import { track } from '@vercel/analytics';
 import type {
   DatabaseType,
   FieldRow,
@@ -88,6 +87,14 @@ const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) =>
   createEmptyRow(index),
 );
 function App() {
+  const trackEvent = useCallback(
+    async (event: string, data?: Record<string, unknown>) => {
+      const { track } = await import('@vercel/analytics');
+      track(event, data);
+    },
+    [],
+  );
+
   // Basic state
   const [tableName, setTableName] = useState('');
   const [tableComment, setTableComment] = useState('');
@@ -459,9 +466,7 @@ function App() {
       const normalizedName =
         loadedTableNormalizedName || normalizeSavedTableName(tableName);
       saveReview(normalizedName, tableName, generatedSql, dbType, reviewResult)
-        .then(() => {
-          track('sql_review_complete', { dbType, tableName });
-        })
+        .then(() => trackEvent('sql_review_complete', { dbType, tableName }))
         .catch((err) => console.error('Failed to save review:', err));
     }
     isReviewingRef.current = isReviewing;
@@ -472,6 +477,7 @@ function App() {
     tableName,
     generatedSql,
     dbType,
+    trackEvent,
   ]);
 
   const handleViewReviewHistory = useCallback(() => {
@@ -485,13 +491,13 @@ function App() {
       const compressed = compressState(currentState);
       const url = `${window.location.origin}${window.location.pathname}?s=${compressed}`;
       await navigator.clipboard.writeText(url);
-      track('share_link_create');
+      trackEvent('share_link_create');
       showToast('链接已复制到剪贴板');
     } catch (e) {
       console.error('Failed to generate share link', e);
       showToast('生成链接失败');
     }
-  }, [buildPersistedState, showToast]);
+  }, [buildPersistedState, showToast, trackEvent]);
 
   // restore basic state from localStorage once on mount
   useEffect(() => {
@@ -553,7 +559,7 @@ function App() {
 
     // Clear localStorage
     clearState();
-    track('table_clear_all');
+    trackEvent('table_clear_all');
 
     cancelClearAll();
   }, [
@@ -564,6 +570,7 @@ function App() {
     resetAuthState,
     resetCitusSharding,
     resetPartition,
+    trackEvent,
   ]);
 
   const applySavedState = useCallback(

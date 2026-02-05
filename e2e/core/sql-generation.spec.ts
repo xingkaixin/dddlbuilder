@@ -5,10 +5,13 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
     // 规避放烟火特效，减少测试干扰并提高速度
     await context.addInitScript(() => {
       window.localStorage.setItem('fireworks_shown_2026', 'true');
-      window.localStorage.setItem('ddlbuilder:state:v1', JSON.stringify({ 
-        tableName: 'HYDRATION_CHECK',
-        rows: [{ order: 1, fieldName: 'HYDRATED_FIELD', fieldType: 'INT' }] 
-      }));
+      window.localStorage.setItem(
+        'ddlbuilder:state:v1',
+        JSON.stringify({
+          tableName: 'HYDRATION_CHECK',
+          rows: [{ order: 1, fieldName: 'HYDRATED_FIELD', fieldType: 'INT' }],
+        }),
+      );
       Object.defineProperty(navigator, 'clipboard', {
         value: { writeText: async () => {} },
         configurable: true,
@@ -20,8 +23,12 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
   test('场景：填写表信息和字段后，应正确生成建表 SQL', async ({ page }) => {
     // 1. 访问首页
     await page.goto('/');
-    await expect(page.locator('#table-name')).toHaveValue('HYDRATION_CHECK', { timeout: 10000 });
-    await expect(page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)')).toHaveText('HYDRATED_FIELD', { timeout: 10000 });
+    await expect(page.locator('#table-name')).toHaveValue('HYDRATION_CHECK', {
+      timeout: 10000,
+    });
+    await expect(
+      page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)'),
+    ).toHaveText('HYDRATED_FIELD', { timeout: 10000 });
     await expect(page).toHaveTitle(/筑表师/);
 
     // 2. 填写表信息
@@ -33,19 +40,25 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
 
     // 3. 填写字段信息
     // 点击第一行字段名单元格开始输入
-    const firstFieldNameCell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)');
+    const firstFieldNameCell = page.locator(
+      '.htCore tbody tr:nth-child(1) td:nth-child(2)',
+    );
     await firstFieldNameCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('id');
     await page.keyboard.press('Enter');
-    
+
     // 填写字段注释 (第三列)
-    const firstFieldCommentCell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(3)');
+    const firstFieldCommentCell = page.locator(
+      '.htCore tbody tr:nth-child(1) td:nth-child(3)',
+    );
     await firstFieldCommentCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('用户编号');
     await page.keyboard.press('Enter');
-    
+
     // 填写字段类型 (第四列)
-    const firstFieldTypeCell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(4)');
+    const firstFieldTypeCell = page.locator(
+      '.htCore tbody tr:nth-child(1) td:nth-child(4)',
+    );
     await firstFieldTypeCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('varchar(255)');
     await page.keyboard.press('Enter');
@@ -57,17 +70,21 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
 
     // 4. 选择可为空 (第五列是 Checkbox)
     // 4. 选择可为空 (第五列是 Checkbox)
-    const firstNullableCell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(5)');
-    
+    const firstNullableCell = page.locator(
+      '.htCore tbody tr:nth-child(1) td:nth-child(5)',
+    );
+
     // 5. 验证生成的 SQL
     const sqlOutput = page.locator('[data-state="active"] pre');
-    
+
     // 等待状态同步
-    await expect(sqlOutput).toContainText(/CREATE TABLE\s+`?user_profile`?/i, { timeout: 10000 });
+    await expect(sqlOutput).toContainText(/CREATE TABLE\s+`?user_profile`?/i, {
+      timeout: 10000,
+    });
     await expect(sqlOutput).toContainText(/COMMENT\s*=?\s*'用户详情表'/i);
     await expect(sqlOutput).toContainText(/`?id`?\s+VARCHAR\(255\)/i);
     await expect(sqlOutput).toContainText(/COMMENT\s+'用户编号'/i);
-    
+
     // 点击切换为 '否' (NOT NULL)
     await firstNullableCell.click();
     await page.keyboard.press('Space');
@@ -76,16 +93,22 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
 
   test('场景：复制 DDL', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('#table-name')).toHaveValue('HYDRATION_CHECK', { timeout: 10000 });
+    await expect(page.locator('#table-name')).toHaveValue('HYDRATION_CHECK', {
+      timeout: 10000,
+    });
 
     await page.locator('#table-name').fill('copy_test');
 
-    const nameCell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)');
+    const nameCell = page.locator(
+      '.htCore tbody tr:nth-child(1) td:nth-child(2)',
+    );
     await nameCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('id');
     await page.keyboard.press('Enter');
 
-    const typeCell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(4)');
+    const typeCell = page.locator(
+      '.htCore tbody tr:nth-child(1) td:nth-child(4)',
+    );
     await typeCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('int');
     await page.keyboard.press('Enter');
