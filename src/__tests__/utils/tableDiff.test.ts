@@ -90,6 +90,21 @@ describe('diffPersistedState', () => {
     });
   });
 
+  describe('杂项设置变更', () => {
+    it('检测杂项启用状态变更', () => {
+      const old = createState({
+        tableMiscConfig: { enabled: false },
+      });
+      const newState = createState({
+        tableMiscConfig: { enabled: true, engine: 'InnoDB' },
+      });
+      const result = diffPersistedState(old, newState);
+      expect(result.hasChanges).toBe(true);
+      expect(result.miscConfigChanged).toBe(true);
+      expect(result.newMiscConfig?.enabled).toBe(true);
+    });
+  });
+
   describe('字段变更', () => {
     it('检测新增字段', () => {
       const old = createState({

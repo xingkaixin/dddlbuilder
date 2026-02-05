@@ -116,6 +116,28 @@ describe('DDL Generation Functions', () => {
 
       expect(result).toContain('trace_id CHAR(36) NOT NULL DEFAULT (UUID())');
     });
+
+    it('should include table options when misc config enabled', () => {
+      const result = buildDDL(
+        'mysql',
+        'users',
+        '',
+        sampleFields,
+        [],
+        undefined,
+        undefined,
+        {
+          enabled: true,
+          engine: 'InnoDB',
+          charset: 'utf8mb4',
+          collation: 'utf8mb4_general_ci',
+        },
+      );
+
+      expect(result).toContain('ENGINE=InnoDB');
+      expect(result).toContain('DEFAULT CHARSET=utf8mb4');
+      expect(result).toContain('COLLATE=utf8mb4_general_ci');
+    });
   });
 
   describe('buildDDL for PostgreSQL', () => {
@@ -133,6 +155,24 @@ describe('DDL Generation Functions', () => {
       expect(result).toContain('price NUMERIC(10, 2) DEFAULT 0.00');
       expect(result).toContain("COMMENT ON TABLE users IS '用户表'");
       expect(result).toContain("COMMENT ON COLUMN users.name IS '名称'");
+    });
+
+    it('should include tablespace when configured', () => {
+      const result = buildDDL(
+        'postgresql',
+        'users',
+        '',
+        sampleFields,
+        [],
+        undefined,
+        undefined,
+        {
+          enabled: true,
+          tablespace: 'ts_data',
+        },
+      );
+
+      expect(result).toContain('TABLESPACE ts_data');
     });
 
     it('should handle qualified table names', () => {

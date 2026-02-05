@@ -97,6 +97,15 @@ export type MysqlPartitionConfig = {
   partitions?: PartitionDefinition[]; // 分区定义（RANGE/LIST 类型）
 };
 
+// 表级杂项配置
+export type TableMiscConfig = {
+  enabled: boolean; // 是否启用杂项设置
+  engine?: string; // 表引擎（MySQL 系）
+  charset?: string; // 表字符集（MySQL 系）
+  collation?: string; // 表排序规则（MySQL 系）
+  tablespace?: string; // 表空间（部分数据库）
+};
+
 export type PersistedState = {
   tableName: string;
   tableComment: string;
@@ -110,4 +119,5 @@ export type PersistedState = {
   authObjects: string[];
   citusShardingConfig?: CitusShardingConfig;
   mysqlPartitionConfig?: MysqlPartitionConfig;
+  tableMiscConfig?: TableMiscConfig;
 };

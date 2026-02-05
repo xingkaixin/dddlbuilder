@@ -158,7 +158,9 @@ export const DiffDialog = memo<DiffDialogProps>(
     const hasFieldChanges = diff.fields.length > 0;
     const hasIndexChanges = diff.indexes.length > 0;
     const hasTableMetaChanges =
-      diff.tableNameChanged || diff.tableCommentChanged;
+      diff.tableNameChanged ||
+      diff.tableCommentChanged ||
+      diff.miscConfigChanged;
 
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -186,6 +188,65 @@ export const DiffDialog = memo<DiffDialogProps>(
                 {diff.tableCommentChanged && (
                   <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm">
                     <span className="text-muted-foreground">表注释已变更</span>
+                  </div>
+                )}
+                {diff.miscConfigChanged && (
+                  <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm">
+                    <span className="text-muted-foreground">
+                      杂项设置已变更
+                    </span>
+                    {diff.oldMiscConfig && diff.newMiscConfig && (
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {diff.oldMiscConfig.enabled !==
+                          diff.newMiscConfig.enabled && (
+                          <div>
+                            启用状态:{' '}
+                            {diff.oldMiscConfig.enabled ? '开启' : '关闭'}
+                            <span className="mx-1">→</span>
+                            {diff.newMiscConfig.enabled ? '开启' : '关闭'}
+                          </div>
+                        )}
+                        {diff.oldMiscConfig.enabled &&
+                          diff.newMiscConfig.enabled && (
+                            <>
+                              {diff.oldMiscConfig.engine !==
+                                diff.newMiscConfig.engine && (
+                                <div>
+                                  引擎: {diff.oldMiscConfig.engine || '默认'}
+                                  <span className="mx-1">→</span>
+                                  {diff.newMiscConfig.engine || '默认'}
+                                </div>
+                              )}
+                              {diff.oldMiscConfig.charset !==
+                                diff.newMiscConfig.charset && (
+                                <div>
+                                  字符集: {diff.oldMiscConfig.charset || '默认'}
+                                  <span className="mx-1">→</span>
+                                  {diff.newMiscConfig.charset || '默认'}
+                                </div>
+                              )}
+                              {diff.oldMiscConfig.collation !==
+                                diff.newMiscConfig.collation && (
+                                <div>
+                                  排序规则:{' '}
+                                  {diff.oldMiscConfig.collation || '默认'}
+                                  <span className="mx-1">→</span>
+                                  {diff.newMiscConfig.collation || '默认'}
+                                </div>
+                              )}
+                              {diff.oldMiscConfig.tablespace !==
+                                diff.newMiscConfig.tablespace && (
+                                <div>
+                                  表空间:{' '}
+                                  {diff.oldMiscConfig.tablespace || '默认'}
+                                  <span className="mx-1">→</span>
+                                  {diff.newMiscConfig.tablespace || '默认'}
+                                </div>
+                              )}
+                            </>
+                          )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -5,6 +5,7 @@ import type {
   IndexDefinition,
   CitusShardingConfig,
   MysqlPartitionConfig,
+  TableMiscConfig,
 } from '@/types';
 import { buildDDL, buildDCL } from '@/utils/ddlGenerators';
 
@@ -24,6 +25,7 @@ export function useSqlGeneration(
   authObjects: string[],
   citusShardingConfig?: CitusShardingConfig,
   mysqlPartitionConfig?: MysqlPartitionConfig,
+  tableMiscConfig?: TableMiscConfig,
 ): UseSqlGenerationReturn {
   const generatedSql = useMemo(
     () =>
@@ -35,6 +37,7 @@ export function useSqlGeneration(
         indexes,
         citusShardingConfig,
         mysqlPartitionConfig,
+        tableMiscConfig,
       ),
     [
       dbType,
@@ -44,6 +47,7 @@ export function useSqlGeneration(
       indexes,
       citusShardingConfig,
       mysqlPartitionConfig,
+      tableMiscConfig,
     ],
   );
 

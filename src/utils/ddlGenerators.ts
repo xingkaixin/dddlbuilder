@@ -4,8 +4,10 @@ import type {
   IndexDefinition,
   CitusShardingConfig,
   MysqlPartitionConfig,
+  TableMiscConfig,
 } from '../types';
 import { DDLStrategyFactory } from '../factories/DDLStrategyFactory';
+import { buildTableOptionsClause } from './tableOptions';
 
 /**
  * Generate Citus sharding DDL
@@ -79,6 +81,7 @@ export const buildDDL = (
   indexes: IndexDefinition[] = [],
   citusShardingConfig?: CitusShardingConfig,
   mysqlPartitionConfig?: MysqlPartitionConfig,
+  tableMiscConfig?: TableMiscConfig,
 ) => {
   if (!tableName.trim()) {
     return '-- 请填写表名';
@@ -93,6 +96,11 @@ export const buildDDL = (
     tableComment,
     fields,
   );
+
+  const tableOptionsClause = buildTableOptionsClause(dbType, tableMiscConfig);
+  if (tableOptionsClause) {
+    tableDDL = insertTableOptions(tableDDL, tableOptionsClause);
+  }
 
   // Add MySQL partition clause - insert before the final semicolon
   if (
@@ -171,4 +179,17 @@ export const buildOracleSynonyms = (tableName: string) => {
   if (!cleanTableName) return '';
 
   return `CREATE OR REPLACE PUBLIC SYNONYM ${cleanTableName} FOR ${cleanTableName};`;
+};
+
+const insertTableOptions = (ddl: string, clause: string): string => {
+  if (!clause) return ddl;
+  const createIndex = ddl.indexOf('CREATE TABLE');
+  if (createIndex === -1) return ddl;
+  const afterCreate = ddl.slice(createIndex);
+  const semiIndex = afterCreate.indexOf(';');
+  if (semiIndex === -1) return ddl;
+  const before = ddl.slice(0, createIndex);
+  const createStatement = afterCreate.slice(0, semiIndex);
+  const rest = afterCreate.slice(semiIndex);
+  return `${before}${createStatement}${clause}${rest}`;
 };

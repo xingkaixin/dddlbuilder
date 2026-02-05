@@ -21,6 +21,7 @@ import { IndexPanel } from './IndexPanel';
 import { AuthPanel } from './AuthPanel';
 import { ShardingPanel } from './ShardingPanel';
 import { PartitionPanel } from './PartitionPanel';
+import { TableOptionsPanel } from './TableOptionsPanel';
 import { DataTable } from './DataTable';
 import { DDLOutput } from './DDLOutput';
 import { SavedTablesDrawer } from './SavedTablesDrawer';
@@ -47,6 +48,7 @@ import { useSqlGeneration } from '@/hooks/useSqlGeneration';
 import { useToast } from '@/hooks/useToast';
 import { useCitusSharding } from '@/hooks/useCitusSharding';
 import { useMysqlPartition } from '@/hooks/useMysqlPartition';
+import { useTableOptions } from '@/hooks/useTableOptions';
 import { useDDLReview, type StructuredSuggestion } from '@/hooks/useDDLReview';
 import { useSuggestionAnimation } from '@/hooks/useSuggestionAnimation';
 import { useSavedTables, type SavedTableSummary } from '@/hooks/useSavedTables';
@@ -79,6 +81,7 @@ import {
   Hash,
   Share2,
   Layers,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
@@ -284,8 +287,29 @@ function App() {
     resetPartition,
   } = useMysqlPartition(persistedState || undefined);
 
+  const {
+    tableMiscConfig,
+    setMiscEnabled,
+    setEngine,
+    setCharset,
+    setCollation,
+    setTablespace,
+    setTableMiscConfig,
+    resetTableMiscConfig,
+  } = useTableOptions(persistedState || undefined);
+
   // Check if MySQL-compatible database that supports partitioning
   const supportsMysqlPartition = ['mysql', 'mariadb', 'tidb'].includes(dbType);
+  const baseTabCount = 4;
+  const extraTabCount =
+    (dbType === 'postgresql-citus' ? 1 : 0) + (supportsMysqlPartition ? 1 : 0);
+  const totalTabCount = baseTabCount + extraTabCount;
+  const tabGridClass =
+    totalTabCount === 6
+      ? 'grid-cols-6'
+      : totalTabCount === 5
+        ? 'grid-cols-5'
+        : 'grid-cols-4';
 
   const buildPersistedState = useCallback(
     (): PersistedState => ({
@@ -314,6 +338,7 @@ function App() {
       mysqlPartitionConfig: supportsMysqlPartition
         ? mysqlPartitionConfig
         : undefined,
+      tableMiscConfig,
     }),
     [
       tableName,
@@ -329,6 +354,7 @@ function App() {
       citusShardingConfig,
       mysqlPartitionConfig,
       supportsMysqlPartition,
+      tableMiscConfig,
     ],
   );
 
@@ -380,6 +406,7 @@ function App() {
     authObjects,
     dbType === 'postgresql-citus' ? citusShardingConfig : undefined,
     supportsMysqlPartition ? mysqlPartitionConfig : undefined,
+    tableMiscConfig,
   );
 
   const { toastMessage, showToast } = useToast();
@@ -553,6 +580,7 @@ function App() {
     resetAuthState();
     resetCitusSharding();
     resetPartition();
+    resetTableMiscConfig();
     setLoadedTableNormalizedName(null);
     setLoadedTableName(null);
     setLoadedTableSignature(null);
@@ -570,6 +598,7 @@ function App() {
     resetAuthState,
     resetCitusSharding,
     resetPartition,
+    resetTableMiscConfig,
     trackEvent,
   ]);
 
@@ -606,6 +635,12 @@ function App() {
       } else {
         resetPartition();
       }
+
+      if (state.tableMiscConfig) {
+        setTableMiscConfig(state.tableMiscConfig);
+      } else {
+        resetTableMiscConfig();
+      }
     },
     [
       setRows,
@@ -618,6 +653,8 @@ function App() {
       resetCitusSharding,
       setMysqlPartitionConfig,
       resetPartition,
+      setTableMiscConfig,
+      resetTableMiscConfig,
     ],
   );
 
@@ -1373,13 +1410,7 @@ function App() {
               }}
               className="w-full"
             >
-              <TabsList
-                className={`grid w-full ${
-                  dbType === 'postgresql-citus' || supportsMysqlPartition
-                    ? 'grid-cols-4'
-                    : 'grid-cols-3'
-                }`}
-              >
+              <TabsList className={`grid w-full ${tabGridClass}`}>
                 <TabsTrigger value="fields" className="gap-2">
                   <Columns3Cog className="h-4 w-4" />
                   字段配置
@@ -1421,6 +1452,15 @@ function App() {
                   {authObjects.length > 0 && (
                     <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                       {authObjects.length}
+                    </span>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="misc" className="gap-2">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  杂项设置
+                  {tableMiscConfig.enabled && (
+                    <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                      已启用
                     </span>
                   )}
                 </TabsTrigger>
@@ -1504,6 +1544,17 @@ function App() {
                   onAuthInputChange={setAuthInput}
                   onAddAuthObject={addAuthObject}
                   onRemoveAuthObject={removeAuthObject}
+                />
+              </TabsContent>
+              <TabsContent value="misc" className="mt-4">
+                <TableOptionsPanel
+                  dbType={dbType}
+                  config={tableMiscConfig}
+                  onEnabledChange={setMiscEnabled}
+                  onEngineChange={setEngine}
+                  onCharsetChange={setCharset}
+                  onCollationChange={setCollation}
+                  onTablespaceChange={setTablespace}
                 />
               </TabsContent>
               {dbType === 'postgresql-citus' && (

@@ -19,6 +19,8 @@ export type { UseSqlGenerationReturn } from './useSqlGeneration';
 export { useCitusSharding } from './useCitusSharding';
 export type { UseCitusShardingReturn } from './useCitusSharding';
 
+export { useTableOptions } from './useTableOptions';
+
 export { useSavedTables } from './useSavedTables';
 
 export { useFolders } from './useFolders';
