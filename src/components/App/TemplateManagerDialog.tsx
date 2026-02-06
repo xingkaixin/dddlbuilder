@@ -84,6 +84,7 @@ const FieldEditRow = memo<FieldEditRowProps>(
             className="h-4 w-4 text-muted-foreground disabled:opacity-0"
             disabled={index === 0}
             onClick={() => onMove(index, 'up')}
+            aria-label={`上移第${index + 1}个模板字段`}
           >
             <ChevronUp className="h-3 w-3" />
           </Button>
@@ -96,6 +97,7 @@ const FieldEditRow = memo<FieldEditRowProps>(
             className="h-4 w-4 text-muted-foreground disabled:opacity-0"
             disabled={index === total - 1}
             onClick={() => onMove(index, 'down')}
+            aria-label={`下移第${index + 1}个模板字段`}
           >
             <ChevronDown className="h-3 w-3" />
           </Button>
@@ -108,6 +110,7 @@ const FieldEditRow = memo<FieldEditRowProps>(
             onChange={(e) => handleChange('fieldName', e.target.value)}
             className="h-8 text-xs font-mono"
             title="字段名"
+            aria-label={`第${index + 1}行模板字段名`}
           />
           <Input
             placeholder="类型"
@@ -115,6 +118,7 @@ const FieldEditRow = memo<FieldEditRowProps>(
             onChange={(e) => handleChange('fieldType', e.target.value)}
             className="h-8 text-xs font-mono"
             title="数据类型"
+            aria-label={`第${index + 1}行模板字段类型`}
           />
           <Input
             placeholder="注释"
@@ -122,6 +126,7 @@ const FieldEditRow = memo<FieldEditRowProps>(
             onChange={(e) => handleChange('fieldComment', e.target.value)}
             className="h-8 text-xs"
             title="说明文字"
+            aria-label={`第${index + 1}行模板字段注释`}
           />
           <Select
             value={field.nullable}
@@ -129,7 +134,10 @@ const FieldEditRow = memo<FieldEditRowProps>(
               handleChange('nullable', value as '是' | '否')
             }
           >
-            <SelectTrigger className="h-8 text-[11px] px-2 text-center">
+            <SelectTrigger
+              className="h-8 text-[11px] px-2 text-center"
+              aria-label={`第${index + 1}行模板字段可空设置`}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -143,6 +151,7 @@ const FieldEditRow = memo<FieldEditRowProps>(
             onChange={(e) => handleChange('defaultKind', e.target.value)}
             className="h-8 text-xs"
             title="默认值类型"
+            aria-label={`第${index + 1}行模板默认类型`}
           />
           <Input
             placeholder="默认值"
@@ -150,6 +159,7 @@ const FieldEditRow = memo<FieldEditRowProps>(
             onChange={(e) => handleChange('defaultValue', e.target.value)}
             className="h-8 text-xs"
             title="默认内容"
+            aria-label={`第${index + 1}行模板默认值`}
           />
           <Input
             placeholder="更新时"
@@ -157,6 +167,7 @@ const FieldEditRow = memo<FieldEditRowProps>(
             onChange={(e) => handleChange('onUpdate', e.target.value)}
             className="h-8 text-xs"
             title="更新操作"
+            aria-label={`第${index + 1}行模板更新动作`}
           />
         </div>
 
@@ -165,6 +176,7 @@ const FieldEditRow = memo<FieldEditRowProps>(
           size="icon"
           className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
           onClick={() => onRemove(index)}
+          aria-label={`删除第${index + 1}个模板字段`}
         >
           <X className="h-4 w-4" />
         </Button>
@@ -201,6 +213,7 @@ const TemplateListItem = memo<TemplateListItemProps>(
             className="h-7 w-7"
             onClick={onEdit}
             title="编辑"
+            aria-label={`编辑模板 ${template.name}`}
           >
             <Pencil className="h-3.5 w-3.5" />
           </Button>
@@ -210,6 +223,7 @@ const TemplateListItem = memo<TemplateListItemProps>(
             className="h-7 w-7"
             onClick={onDuplicate}
             title="复制"
+            aria-label={`复制模板 ${template.name}`}
           >
             <Copy className="h-3.5 w-3.5" />
           </Button>
@@ -219,6 +233,7 @@ const TemplateListItem = memo<TemplateListItemProps>(
             className="h-7 w-7 text-destructive hover:text-destructive"
             onClick={onDelete}
             title="删除"
+            aria-label={`删除模板 ${template.name}`}
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>

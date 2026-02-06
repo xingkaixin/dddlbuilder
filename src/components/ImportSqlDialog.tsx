@@ -409,7 +409,7 @@ export function ImportSqlDialog({
               </div>
 
               {/* 字段列表 */}
-              <div className="max-h-[300px] overflow-auto rounded-md border">
+              <div className="max-h-[300px] overflow-auto overscroll-contain rounded-md border">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-muted">
                     <tr>
@@ -436,6 +436,7 @@ export function ImportSqlDialog({
                             }
                             className="h-7 w-16 text-center"
                             min={1}
+                            aria-label={`第${index + 1}行字段序号`}
                           />
                         </td>
                         <td className="px-2 py-2">
@@ -449,6 +450,7 @@ export function ImportSqlDialog({
                               )
                             }
                             className="h-7"
+                            aria-label={`第${index + 1}行字段名`}
                           />
                         </td>
                         <td className="px-2 py-2">
@@ -462,6 +464,7 @@ export function ImportSqlDialog({
                               )
                             }
                             className="h-7"
+                            aria-label={`第${index + 1}行字段类型`}
                           />
                         </td>
                         <td className="px-2 py-2 text-center">
@@ -471,7 +474,10 @@ export function ImportSqlDialog({
                               handleFieldChange(index, 'nullable', value)
                             }
                           >
-                            <SelectTrigger className="h-7 w-16 mx-auto">
+                            <SelectTrigger
+                              className="h-7 w-16 mx-auto"
+                              aria-label={`第${index + 1}行是否可空`}
+                            >
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -488,6 +494,7 @@ export function ImportSqlDialog({
                               className="h-7 w-7"
                               onClick={() => moveField(index, 'up')}
                               disabled={index === 0}
+                              aria-label={`上移第${index + 1}个字段`}
                             >
                               <ArrowLeft className="h-4 w-4" />
                             </Button>
@@ -497,6 +504,7 @@ export function ImportSqlDialog({
                               className="h-7 w-7"
                               onClick={() => moveField(index, 'down')}
                               disabled={index === previewFields.length - 1}
+                              aria-label={`下移第${index + 1}个字段`}
                             >
                               <ArrowRight className="h-4 w-4" />
                             </Button>
@@ -505,6 +513,7 @@ export function ImportSqlDialog({
                               size="icon"
                               className="h-7 w-7 text-destructive hover:text-destructive"
                               onClick={() => deleteField(index)}
+                              aria-label={`删除第${index + 1}个字段`}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -522,7 +531,7 @@ export function ImportSqlDialog({
                   <div className="bg-muted px-3 py-2 text-sm font-medium">
                     索引明细 ({parsedResult.indexes.length} 个)
                   </div>
-                  <div className="max-h-[150px] overflow-auto">
+                  <div className="max-h-[150px] overflow-auto overscroll-contain">
                     <table className="w-full text-sm">
                       <thead className="sticky top-0 bg-muted/50">
                         <tr>

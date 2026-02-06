@@ -155,7 +155,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
               </DialogDescription>
             </DialogHeader>
 
-            <div className="flex max-h-[50vh] flex-col gap-3 overflow-y-auto pr-1">
+            <div className="flex max-h-[50vh] flex-col gap-3 overflow-y-auto overscroll-contain pr-1">
               {loading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -166,58 +166,62 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                 </div>
               ) : (
                 versions.map((v, index) => (
-                  <button
-                    type="button"
-                    key={v.id}
-                    onClick={() => setSelectedId(v.id)}
-                    className={cn(
-                      'group flex items-start gap-3 rounded-lg border p-3 text-left transition-colors',
-                      selectedId === v.id
-                        ? 'border-primary bg-primary/5'
-                        : 'border-transparent bg-muted/30 hover:bg-muted/50',
-                    )}
-                  >
-                    <div
+                  <div key={v.id} className="group relative">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(v.id)}
                       className={cn(
-                        'mt-1 h-2.5 w-2.5 shrink-0 rounded-full',
-                        index === 0 ? 'bg-green-500' : 'bg-muted-foreground/30',
+                        'flex w-full items-start gap-3 rounded-lg border p-3 pr-12 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                        selectedId === v.id
+                          ? 'border-primary bg-primary/5'
+                          : 'border-transparent bg-muted/30 hover:bg-muted/50',
                       )}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">
-                          v{versions.length - index}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDate(v.createdAt)}
-                        </span>
-                        {index === 0 && (
-                          <span className="rounded bg-green-500/10 px-1.5 py-0.5 text-xs text-green-600">
-                            最新
-                          </span>
+                    >
+                      <div
+                        className={cn(
+                          'mt-1 h-2.5 w-2.5 shrink-0 rounded-full',
+                          index === 0
+                            ? 'bg-green-500'
+                            : 'bg-muted-foreground/30',
                         )}
-                      </div>
-                      {v.message && (
-                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                          {v.message}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">
+                            v{versions.length - index}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDate(v.createdAt)}
+                          </span>
+                          {index === 0 && (
+                            <span className="rounded bg-green-500/10 px-1.5 py-0.5 text-xs text-green-600">
+                              最新
+                            </span>
+                          )}
+                        </div>
+                        {v.message && (
+                          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                            {v.message}
+                          </p>
+                        )}
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {v.fieldCount} 个字段 · {v.dbType.toUpperCase()}
                         </p>
-                      )}
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {v.fieldCount} 个字段 · {v.dbType.toUpperCase()}
-                      </p>
-                    </div>
+                      </div>
+                    </button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                      className="absolute right-3 top-3 h-7 w-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
                       onClick={(e) => {
                         e.stopPropagation();
                         setDeleteConfirmId(v.id);
                       }}
+                      aria-label={`删除版本 ${versions.length - index}`}
                     >
                       <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
                     </Button>
-                  </button>
+                  </div>
                 ))
               )}
             </div>

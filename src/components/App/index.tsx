@@ -89,9 +89,12 @@ const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
 const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) =>
   createEmptyRow(index),
 );
+
+type AnalyticsValue = string | number | boolean | null | undefined;
+
 function App() {
   const trackEvent = useCallback(
-    async (event: string, data?: Record<string, unknown>) => {
+    async (event: string, data?: Record<string, AnalyticsValue>) => {
       const { track } = await import('@vercel/analytics');
       track(event, data);
     },
@@ -311,12 +314,9 @@ function App() {
         ? 'grid-cols-5'
         : 'grid-cols-4';
 
-  const buildPersistedState = useCallback(
-    (): PersistedState => ({
-      tableName,
-      tableComment,
-      dbType,
-      rows: rows.map((row) => ({
+  const normalizedRowsForPersist = useMemo(
+    () =>
+      rows.map((row) => ({
         ...row,
         order: row.order || 0,
         fieldName: row.fieldName || '',
@@ -327,10 +327,24 @@ function App() {
         defaultValue: row.defaultValue || '',
         onUpdate: row.onUpdate || '',
       })),
+    [rows],
+  );
+
+  const sanitizedIndexesForPersist = useMemo(
+    () => sanitizeIndexesForPersist(indexes),
+    [indexes],
+  );
+
+  const currentPersistedState = useMemo(
+    (): PersistedState => ({
+      tableName,
+      tableComment,
+      dbType,
+      rows: normalizedRowsForPersist,
       addCount,
       indexInput,
       currentIndexFields,
-      indexes: sanitizeIndexesForPersist(indexes),
+      indexes: sanitizedIndexesForPersist,
       authInput,
       authObjects,
       citusShardingConfig:
@@ -344,11 +358,11 @@ function App() {
       tableName,
       tableComment,
       dbType,
-      rows,
+      normalizedRowsForPersist,
       addCount,
       indexInput,
       currentIndexFields,
-      indexes,
+      sanitizedIndexesForPersist,
       authInput,
       authObjects,
       citusShardingConfig,
@@ -358,20 +372,29 @@ function App() {
     ],
   );
 
+  const buildPersistedState = useCallback(
+    (): PersistedState => currentPersistedState,
+    [currentPersistedState],
+  );
+
   const serializePersistedState = useCallback(
     (state: PersistedState) => JSON.stringify(state),
     [],
   );
 
   const currentStateSignature = useMemo(
-    () => serializePersistedState(buildPersistedState()),
-    [buildPersistedState, serializePersistedState],
+    () =>
+      loadedTableSignature == null
+        ? null
+        : serializePersistedState(currentPersistedState),
+    [loadedTableSignature, currentPersistedState, serializePersistedState],
   );
 
   const hasLoadedTable = Boolean(loadedTableNormalizedName);
   const isLoadedDirty =
     hasLoadedTable &&
     loadedTableSignature != null &&
+    currentStateSignature != null &&
     currentStateSignature !== loadedTableSignature;
   const canSaveCurrent = !hasLoadedTable || isLoadedDirty;
   const loadedStatus = hasLoadedTable
@@ -390,12 +413,12 @@ function App() {
     if (!isLoadedDirty || !loadedTableSignature) return null;
     try {
       const oldState = JSON.parse(loadedTableSignature) as PersistedState;
-      const newState = buildPersistedState();
+      const newState = currentPersistedState;
       return diffPersistedState(oldState, newState);
     } catch {
       return null;
     }
-  }, [isLoadedDirty, loadedTableSignature, buildPersistedState]);
+  }, [isLoadedDirty, loadedTableSignature, currentPersistedState]);
 
   const { generatedSql, generatedDcl, copySql, copyDcl } = useSqlGeneration(
     dbType,
@@ -480,9 +503,9 @@ function App() {
   } = useDDLReview();
 
   const handleStartReview = useCallback(() => {
-    track('sql_review_start', { dbType, tableName });
+    trackEvent('sql_review_start', { dbType, tableName });
     startReview(generatedSql, tableName, dbType);
-  }, [startReview, generatedSql, tableName, dbType]);
+  }, [trackEvent, startReview, generatedSql, tableName, dbType]);
 
   const isReviewingRef = useRef(false);
 
@@ -670,13 +693,19 @@ function App() {
         setLoadedTableNormalizedName(record.normalizedName);
         setLoadedTableName(record.name);
         setLoadedTableSignature(serializePersistedState(record.state));
-        track('table_load', { tableName: record.name });
+        trackEvent('table_load', { tableName: record.name });
         showToast(`已加载：${record.name}`);
       } catch (error) {
         showToast(error instanceof Error ? error.message : '加载失败');
       }
     },
-    [applySavedState, loadTable, showToast, serializePersistedState],
+    [
+      applySavedState,
+      loadTable,
+      showToast,
+      serializePersistedState,
+      trackEvent,
+    ],
   );
 
   const openSaveDialog = useCallback(
@@ -710,7 +739,7 @@ function App() {
         return;
       }
       setLoadedTableSignature(nextSignature);
-      track('table_update', { tableName: loadedTableName });
+      trackEvent('table_update', { tableName: loadedTableName });
       showToast(`已更新：${loadedTableName ?? saveName}`);
       // 创建版本快照
       await createVersion(loadedTableNormalizedName, nextState);
@@ -725,7 +754,7 @@ function App() {
         return;
       }
       const displayName = saveName.trim() || DEFAULT_SAVED_TABLE_NAME;
-      track('table_save', { tableName: displayName });
+      trackEvent('table_save', { tableName: displayName });
       showToast(`已保存：${displayName}`);
       // 创建初始版本快照
       const normalizedName =
@@ -753,6 +782,7 @@ function App() {
     hasLoadedTable,
     loadedTableNormalizedName,
     loadedTableName,
+    trackEvent,
   ]);
 
   const handleSaveDialogOpenChange = useCallback((open: boolean) => {
@@ -833,7 +863,7 @@ function App() {
       return;
     }
     const displayName = renameName.trim() || DEFAULT_SAVED_TABLE_NAME;
-    track('table_rename', {
+    trackEvent('table_rename', {
       oldName: renameTarget.name,
       newName: displayName,
     });
@@ -854,6 +884,7 @@ function App() {
     renameTable,
     showToast,
     loadedTableNormalizedName,
+    trackEvent,
   ]);
 
   const handleOpenDeleteDialog = useCallback((item: SavedTableSummary) => {
@@ -874,7 +905,7 @@ function App() {
     if (!result.ok) {
       showToast(result.message ?? '删除失败');
     } else {
-      track('table_delete', { tableName: deleteTarget.name });
+      trackEvent('table_delete', { tableName: deleteTarget.name });
       showToast(`已删除：${deleteTarget.name}`);
       if (deleteTarget.normalizedName === loadedTableNormalizedName) {
         setLoadedTableNormalizedName(null);
@@ -884,7 +915,13 @@ function App() {
     }
     setIsDeleteDialogOpen(false);
     setDeleteTarget(null);
-  }, [deleteTarget, deleteTable, showToast, loadedTableNormalizedName]);
+  }, [
+    deleteTarget,
+    deleteTable,
+    showToast,
+    loadedTableNormalizedName,
+    trackEvent,
+  ]);
 
   // Folder handlers
   const handleOpenCreateFolderDialog = useCallback(
@@ -971,24 +1008,28 @@ function App() {
   // Template handlers
   const handleApplyTemplate = useCallback(
     (template: FieldTemplate) => {
-      // 将模板字段添加到当前表末尾
-      const newRows: typeof rows = template.fields.map((field, index) => ({
-        order: rows.length + index + 1,
-        fieldName: field.fieldName,
-        fieldComment: field.fieldComment || '',
-        fieldType: field.fieldType,
-        nullable: field.nullable,
-        defaultKind: field.defaultKind || '无',
-        defaultValue: field.defaultValue || '',
-        onUpdate: field.onUpdate || '无',
-      }));
-      setRows([...rows, ...newRows]);
-      track('template_apply', { templateName: template.name });
+      setRows((prevRows) => {
+        const startOrder = prevRows.length;
+        const newRows: typeof prevRows = template.fields.map(
+          (field, index) => ({
+            order: startOrder + index + 1,
+            fieldName: field.fieldName,
+            fieldComment: field.fieldComment || '',
+            fieldType: field.fieldType,
+            nullable: field.nullable,
+            defaultKind: field.defaultKind || '无',
+            defaultValue: field.defaultValue || '',
+            onUpdate: field.onUpdate || '无',
+          }),
+        );
+        return [...prevRows, ...newRows];
+      });
+      trackEvent('template_apply', { templateName: template.name });
       showToast(
         `已应用模板「${template.name}」，添加了 ${template.fields.length} 个字段`,
       );
     },
-    [rows, setRows, showToast],
+    [setRows, showToast, trackEvent],
   );
 
   const handleApplySuggestion = useCallback(
@@ -1145,7 +1186,7 @@ function App() {
           return s;
         });
         setReviewResult({ ...reviewResult, suggestions: newSuggestions });
-        track('sql_suggestion_apply', {
+        trackEvent('sql_suggestion_apply', {
           type: suggestion.type,
           description: suggestion.description,
         });
@@ -1160,6 +1201,7 @@ function App() {
       setIndexes,
       setReviewResult,
       showToast,
+      trackEvent,
       triggerIndexAnimation,
       triggerFieldTableHighlight,
     ],
@@ -1181,14 +1223,14 @@ function App() {
     ) => {
       const result = await createTemplateFromFields(name, fields, description);
       if (result.ok) {
-        track('template_create', { templateName: name });
+        trackEvent('template_create', { templateName: name });
         showToast(`已创建模板「${name}」`);
       } else {
         showToast(result.message ?? '创建失败');
       }
       return result;
     },
-    [createTemplateFromFields, showToast],
+    [createTemplateFromFields, showToast, trackEvent],
   );
 
   const handleSaveAsTemplate = useCallback(() => {
@@ -1261,9 +1303,66 @@ function App() {
       // 4. Auth
       setAuthObjects(result.authObjects);
       setAuthInput('');
-      track('sql_import', { dbType: importDbType });
+      trackEvent('sql_import', { dbType: importDbType });
     },
-    [setRows, setIndexes, setAuthObjects, setIndexInput, setAuthInput],
+    [
+      setRows,
+      setIndexes,
+      setAuthObjects,
+      setIndexInput,
+      setAuthInput,
+      trackEvent,
+    ],
+  );
+
+  const handleOpenSaveDialog = useCallback(() => {
+    openSaveDialog(null);
+  }, [openSaveDialog]);
+
+  const handleOpenSavedTablesDrawer = useCallback(() => {
+    trackEvent('sidebar_open');
+    setSavedTablesDrawerOpen(true);
+  }, [trackEvent]);
+
+  const handleOpenDiffDialog = useCallback(() => {
+    trackEvent('diff_view_open');
+    setIsDiffDialogOpen(true);
+  }, [trackEvent]);
+
+  const handleTabValueChange = useCallback(
+    (value: string) => {
+      setActiveTab(value);
+      trackEvent('tab_switch', { tab: value });
+    },
+    [trackEvent],
+  );
+
+  const handleOpenStorageEstimator = useCallback(() => {
+    trackEvent('storage_estimator_open');
+    setIsStorageEstimatorOpen(true);
+  }, [trackEvent]);
+
+  const handleManageTemplates = useCallback(() => {
+    setIsTemplateManagerOpen(true);
+  }, []);
+
+  const dataTableToolbarLeft = useMemo(
+    () => (
+      <ApplyTemplatePopover
+        templates={templates}
+        loading={templatesLoading}
+        onApplyTemplate={handleApplyTemplate}
+        onManageTemplates={handleManageTemplates}
+        onSaveAsTemplate={handleSaveAsTemplate}
+      />
+    ),
+    [
+      templates,
+      templatesLoading,
+      handleApplyTemplate,
+      handleManageTemplates,
+      handleSaveAsTemplate,
+    ],
   );
 
   return (
@@ -1360,10 +1459,10 @@ function App() {
         onOpenChange={setIsVersionHistoryOpen}
         tableNormalizedName={versionHistoryTarget?.normalizedName ?? null}
         tableName={versionHistoryTarget?.name ?? null}
-        currentState={buildPersistedState()}
+        currentState={currentPersistedState}
         onRollback={(state) => {
           applySavedState(state);
-          track('table_version_rollback');
+          trackEvent('table_version_rollback');
           showToast('已回滚到选中版本');
         }}
       />
@@ -1386,15 +1485,9 @@ function App() {
               onTableCommentChange={setTableComment}
               onDbTypeChange={setDbType}
               onClearAll={handleClearAll}
-              onSaveTable={() => openSaveDialog(null)}
-              onOpenSavedTables={() => {
-                track('sidebar_open');
-                setSavedTablesDrawerOpen(true);
-              }}
-              onViewDiff={() => {
-                track('diff_view_open');
-                setIsDiffDialogOpen(true);
-              }}
+              onSaveTable={handleOpenSaveDialog}
+              onOpenSavedTables={handleOpenSavedTablesDrawer}
+              onViewDiff={handleOpenDiffDialog}
               saveDisabled={!canSaveCurrent}
               saveDisabledHint="加载的表未修改，无法保存"
               showDiffButton={isLoadedDirty && tableDiff?.hasChanges}
@@ -1404,10 +1497,7 @@ function App() {
 
             <Tabs
               value={activeTab}
-              onValueChange={(value) => {
-                setActiveTab(value);
-                track('tab_switch', { tab: value });
-              }}
+              onValueChange={handleTabValueChange}
               className="w-full"
             >
               <TabsList className={`grid w-full ${tabGridClass}`}>
@@ -1501,19 +1591,8 @@ function App() {
                   onAddCountChange={setAddCount}
                   isHighlighted={isFieldTableHighlighted}
                   highlightedRowIndex={highlightedRowIndex}
-                  onOpenStorageEstimator={() => {
-                    track('storage_estimator_open');
-                    setIsStorageEstimatorOpen(true);
-                  }}
-                  toolbarLeft={
-                    <ApplyTemplatePopover
-                      templates={templates}
-                      loading={templatesLoading}
-                      onApplyTemplate={handleApplyTemplate}
-                      onManageTemplates={() => setIsTemplateManagerOpen(true)}
-                      onSaveAsTemplate={handleSaveAsTemplate}
-                    />
-                  }
+                  onOpenStorageEstimator={handleOpenStorageEstimator}
+                  toolbarLeft={dataTableToolbarLeft}
                 />
               </TabsContent>
               <TabsContent value="indexes" className="mt-4">
@@ -1763,7 +1842,7 @@ function App() {
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-6 left-1/2 z-50 -translate-x-1/2 transform rounded-full bg-foreground/90 px-5 py-2.5 text-sm font-medium text-background shadow-xl transition-all duration-300 animate-in fade-in zoom-in-95 slide-in-from-top-4">
+        <div className="fixed top-6 left-1/2 z-50 -translate-x-1/2 transform rounded-full bg-foreground/90 px-5 py-2.5 text-sm font-medium text-background shadow-xl transition-[opacity,transform] duration-300 animate-in fade-in zoom-in-95 slide-in-from-top-4 motion-reduce:animate-none motion-reduce:transition-none">
           {toastMessage}
         </div>
       )}

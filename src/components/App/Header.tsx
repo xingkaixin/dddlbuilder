@@ -41,6 +41,8 @@ export const Header = memo<HeaderProps>(
                 <img
                   src="/logo.svg"
                   alt="筑表师 Logo"
+                  width={40}
+                  height={40}
                   className="h-10 w-10 text-primary transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
                 />
                 <div>

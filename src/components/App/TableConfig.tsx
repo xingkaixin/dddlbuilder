@@ -122,6 +122,7 @@ export const TableConfig = memo<TableConfigProps>(
                   onClick={onSaveTable}
                   disabled={saveDisabled}
                   title={saveDisabled ? saveDisabledHint : '保存表'}
+                  aria-label="保存当前表"
                 >
                   <Save className="h-4 w-4" />
                 </Button>
@@ -133,6 +134,7 @@ export const TableConfig = memo<TableConfigProps>(
                     className="shrink-0"
                     onClick={onViewDiff}
                     title="查看变更"
+                    aria-label="查看表结构变更"
                   >
                     <GitCompare className="h-4 w-4" />
                   </Button>

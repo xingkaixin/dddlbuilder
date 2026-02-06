@@ -521,3 +521,15 @@
       0 0 0 transparent;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .animate-suggestion-add,
+  .animate-suggestion-remove,
+  .animate-suggestion-modify,
+  .animate-field-highlight,
+  .handsontable td.ht-row-highlight {
+    animation: none !important;
+    transition-duration: 0ms !important;
+  }
+}
