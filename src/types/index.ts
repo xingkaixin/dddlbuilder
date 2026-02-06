@@ -106,6 +106,11 @@ export type TableMiscConfig = {
   tablespace?: string; // 表空间（部分数据库）
 };
 
+export type FieldTableViewConfig = {
+  freezeEnabled: boolean; // 是否启用左侧列冻结
+  freezeColumns: number; // 冻结列数（从左到右）
+};
+
 export type PersistedState = {
   tableName: string;
   tableComment: string;
@@ -120,4 +125,5 @@ export type PersistedState = {
   citusShardingConfig?: CitusShardingConfig;
   mysqlPartitionConfig?: MysqlPartitionConfig;
   tableMiscConfig?: TableMiscConfig;
+  fieldTableViewConfig?: FieldTableViewConfig;
 };

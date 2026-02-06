@@ -1,7 +1,7 @@
 {
   "name": "ddlbuilder",
   "private": true,
-  "version": "0.11.0",
+  "version": "0.12.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,7 +13,7 @@
     "lint:fix": "biome check --fix .",
     "lint:format": "biome format .",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",

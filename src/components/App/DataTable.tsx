@@ -1,6 +1,8 @@
 import { memo, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { HardDrive } from 'lucide-react';
 import {
   AutocompleteCellType,
@@ -91,6 +93,10 @@ interface DataTableProps {
   onRemoveRow: (index: number, amount: number) => void;
   onAddRows: (count: number) => void;
   onAddCountChange: (value: number) => void;
+  freezeEnabled: boolean;
+  freezeColumns: number;
+  onFreezeEnabledChange: (enabled: boolean) => void;
+  onFreezeColumnsChange: (count: number) => void;
   /** 工具栏左侧插槽，用于添加额外按钮（如"应用模板"） */
   toolbarLeft?: React.ReactNode;
   /** 是否显示字段变更高亮动画 */
@@ -112,6 +118,10 @@ export const DataTable = memo<DataTableProps>(
     onRemoveRow,
     onAddRows,
     onAddCountChange,
+    freezeEnabled,
+    freezeColumns,
+    onFreezeEnabledChange,
+    onFreezeColumnsChange,
     toolbarLeft,
     isHighlighted,
     highlightedRowIndex,
@@ -270,6 +280,14 @@ export const DataTable = memo<DataTableProps>(
 
     const safeAddCount =
       Number.isFinite(addCount) && addCount > 0 ? Math.floor(addCount) : 1;
+    const safeFreezeColumns =
+      Number.isFinite(freezeColumns) && freezeColumns > 0
+        ? Math.floor(freezeColumns)
+        : 1;
+    const effectiveFreezeColumns = Math.min(
+      safeFreezeColumns,
+      COLUMN_HEADERS.length,
+    );
 
     const handleAddRowsClick = useCallback(() => {
       onAddRows(safeAddCount);
@@ -359,6 +377,36 @@ export const DataTable = memo<DataTableProps>(
 
             {/* 右侧添加行按钮 */}
             <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 rounded-md px-3 py-1.5">
+                <Label
+                  htmlFor="field-freeze-switch"
+                  className="text-sm text-muted-foreground"
+                >
+                  冻结
+                </Label>
+                <Switch
+                  id="field-freeze-switch"
+                  checked={freezeEnabled}
+                  onCheckedChange={onFreezeEnabledChange}
+                  aria-label="启用字段表格列冻结"
+                />
+                <Input
+                  type="number"
+                  min={1}
+                  max={COLUMN_HEADERS.length}
+                  step={1}
+                  value={effectiveFreezeColumns}
+                  disabled={!freezeEnabled}
+                  onChange={(e) => {
+                    const parsed = Math.floor(Number(e.target.value));
+                    onFreezeColumnsChange(
+                      Number.isFinite(parsed) && parsed > 0 ? parsed : 1,
+                    );
+                  }}
+                  className="w-20 transition-all duration-200 focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+                />
+                <span className="text-sm text-muted-foreground">列</span>
+              </div>
               <Button
                 onClick={handleAddRowsClick}
                 className="transition-all duration-200 hover:scale-105 hover:shadow-md"
@@ -392,6 +440,7 @@ export const DataTable = memo<DataTableProps>(
             data={rows}
             columns={columns}
             colHeaders={COLUMN_HEADERS}
+            fixedColumnsStart={freezeEnabled ? effectiveFreezeColumns : 0}
             rowHeaders={false}
             stretchH="all"
             width="100%"

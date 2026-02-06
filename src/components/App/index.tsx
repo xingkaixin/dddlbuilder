@@ -89,6 +89,8 @@ const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
 const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) =>
   createEmptyRow(index),
 );
+const DEFAULT_FIELD_TABLE_FREEZE_ENABLED = true;
+const DEFAULT_FIELD_TABLE_FREEZE_COLUMNS = 3;
 
 type AnalyticsValue = string | number | boolean | null | undefined;
 
@@ -106,6 +108,12 @@ function App() {
   const [tableComment, setTableComment] = useState('');
   const [dbType, setDbType] = useState<DatabaseType>('mysql');
   const [addCount, setAddCount] = useState<number>(10);
+  const [fieldTableFreezeEnabled, setFieldTableFreezeEnabled] = useState(
+    DEFAULT_FIELD_TABLE_FREEZE_ENABLED,
+  );
+  const [fieldTableFreezeColumns, setFieldTableFreezeColumns] = useState(
+    DEFAULT_FIELD_TABLE_FREEZE_COLUMNS,
+  );
 
   // Changelog modal state
   const [showChangelog, setShowChangelog] = useState(false);
@@ -353,6 +361,10 @@ function App() {
         ? mysqlPartitionConfig
         : undefined,
       tableMiscConfig,
+      fieldTableViewConfig: {
+        freezeEnabled: fieldTableFreezeEnabled,
+        freezeColumns: fieldTableFreezeColumns,
+      },
     }),
     [
       tableName,
@@ -369,6 +381,8 @@ function App() {
       mysqlPartitionConfig,
       supportsMysqlPartition,
       tableMiscConfig,
+      fieldTableFreezeEnabled,
+      fieldTableFreezeColumns,
     ],
   );
 
@@ -572,6 +586,19 @@ function App() {
     ) {
       setAddCount(Math.max(1, Math.floor(persistedState.addCount)));
     }
+
+    const persistedFieldTableViewConfig = persistedState.fieldTableViewConfig;
+    if (persistedFieldTableViewConfig) {
+      setFieldTableFreezeEnabled(
+        persistedFieldTableViewConfig.freezeEnabled !== false,
+      );
+      const freezeColumns = persistedFieldTableViewConfig.freezeColumns;
+      setFieldTableFreezeColumns(
+        typeof freezeColumns === 'number' && Number.isFinite(freezeColumns)
+          ? Math.max(1, Math.floor(freezeColumns))
+          : DEFAULT_FIELD_TABLE_FREEZE_COLUMNS,
+      );
+    }
   }, [hydrated, persistedState]);
 
   // save to localStorage on changes
@@ -598,6 +625,8 @@ function App() {
     setTableComment('');
     setDbType('mysql');
     setAddCount(10);
+    setFieldTableFreezeEnabled(DEFAULT_FIELD_TABLE_FREEZE_ENABLED);
+    setFieldTableFreezeColumns(DEFAULT_FIELD_TABLE_FREEZE_COLUMNS);
     resetTableRows();
     resetIndexState();
     resetAuthState();
@@ -663,6 +692,19 @@ function App() {
         setTableMiscConfig(state.tableMiscConfig);
       } else {
         resetTableMiscConfig();
+      }
+
+      if (state.fieldTableViewConfig) {
+        setFieldTableFreezeEnabled(state.fieldTableViewConfig.freezeEnabled);
+        const freezeColumns = state.fieldTableViewConfig.freezeColumns;
+        setFieldTableFreezeColumns(
+          typeof freezeColumns === 'number' && Number.isFinite(freezeColumns)
+            ? Math.max(1, Math.floor(freezeColumns))
+            : DEFAULT_FIELD_TABLE_FREEZE_COLUMNS,
+        );
+      } else {
+        setFieldTableFreezeEnabled(DEFAULT_FIELD_TABLE_FREEZE_ENABLED);
+        setFieldTableFreezeColumns(DEFAULT_FIELD_TABLE_FREEZE_COLUMNS);
       }
     },
     [
@@ -1589,6 +1631,10 @@ function App() {
                   onRemoveRow={handleRemoveRow}
                   onAddRows={handleAddRows}
                   onAddCountChange={setAddCount}
+                  freezeEnabled={fieldTableFreezeEnabled}
+                  freezeColumns={fieldTableFreezeColumns}
+                  onFreezeEnabledChange={setFieldTableFreezeEnabled}
+                  onFreezeColumnsChange={setFieldTableFreezeColumns}
                   isHighlighted={isFieldTableHighlighted}
                   highlightedRowIndex={highlightedRowIndex}
                   onOpenStorageEstimator={handleOpenStorageEstimator}
