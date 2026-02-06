@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 
+const STREAM_UPDATE_INTERVAL_MS = 33;
+
 interface ExplainState {
   isLoading: boolean;
   isStreaming: boolean;
@@ -68,22 +70,48 @@ export function useDDLExplain() {
 
       const decoder = new TextDecoder();
       let done = false;
+      let fullExplanation = '';
+      let lastEmittedText = '';
+      let hasEmittedFirstChunk = false;
+      let lastEmitAt = 0;
+
+      const emitExplanation = () => {
+        lastEmittedText = fullExplanation;
+        setState((prev) => ({
+          ...prev,
+          explanation: lastEmittedText,
+        }));
+      };
 
       while (!done) {
         const { value, done: doneReading } = await reader.read();
         done = doneReading;
         const chunkValue = decoder.decode(value, { stream: !done });
+        fullExplanation += chunkValue;
 
-        setState((prev) => ({
-          ...prev,
-          explanation: (prev.explanation || '') + chunkValue,
-        }));
+        if (!hasEmittedFirstChunk) {
+          hasEmittedFirstChunk = true;
+          lastEmitAt = Date.now();
+          emitExplanation();
+          continue;
+        }
+
+        const now = Date.now();
+        if (now - lastEmitAt >= STREAM_UPDATE_INTERVAL_MS) {
+          lastEmitAt = now;
+          emitExplanation();
+        }
+      }
+
+      if (lastEmittedText !== fullExplanation) {
+        emitExplanation();
       }
 
       setState((prev) => ({
         ...prev,
         isStreaming: false,
         isComplete: true,
+        explanation: fullExplanation,
       }));
     } catch (error) {
       if ((error as Error).name === 'AbortError') {

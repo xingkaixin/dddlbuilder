@@ -66,4 +66,5 @@ export type {
   UiOnUpdate,
   ParsedFieldType,
   PersistedState,
+  TableMiscConfig,
 } from './types';

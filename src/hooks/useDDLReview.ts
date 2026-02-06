@@ -4,6 +4,8 @@ import {
   type PartialReviewResult,
 } from '@/utils/parsePartialJson';
 
+const STREAM_UPDATE_INTERVAL_MS = 33;
+
 export interface StructuredSuggestion {
   id: string;
   description: string;
@@ -123,6 +125,17 @@ export function useDDLReview() {
 
         const decoder = new TextDecoder();
         let fullText = '';
+        let lastEmittedText = '';
+        let hasEmittedFirstChunk = false;
+        let lastEmitAt = 0;
+
+        const emitStreamingText = () => {
+          lastEmittedText = fullText;
+          setState((prev) => ({
+            ...prev,
+            streamingText: lastEmittedText,
+          }));
+        };
 
         while (true) {
           const { done, value } = await reader.read();
@@ -131,11 +144,22 @@ export function useDDLReview() {
           const chunk = decoder.decode(value, { stream: true });
           fullText += chunk;
 
-          // Update streaming text - partialResult will be computed via useMemo
-          setState((prev) => ({
-            ...prev,
-            streamingText: fullText,
-          }));
+          if (!hasEmittedFirstChunk) {
+            hasEmittedFirstChunk = true;
+            lastEmitAt = Date.now();
+            emitStreamingText();
+            continue;
+          }
+
+          const now = Date.now();
+          if (now - lastEmitAt >= STREAM_UPDATE_INTERVAL_MS) {
+            lastEmitAt = now;
+            emitStreamingText();
+          }
+        }
+
+        if (lastEmittedText !== fullText) {
+          emitStreamingText();
         }
 
         console.log('[Review] Full response:', fullText);

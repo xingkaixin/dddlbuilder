@@ -3,6 +3,7 @@ import type {
   NormalizedField,
   IndexDefinition,
   FieldRow,
+  TableMiscConfig,
 } from '@/types';
 
 /**
@@ -50,6 +51,9 @@ export type TableDiff = {
   tableCommentChanged: boolean;
   oldTableComment?: string;
   newTableComment?: string;
+  miscConfigChanged: boolean;
+  oldMiscConfig?: TableMiscConfig;
+  newMiscConfig?: TableMiscConfig;
   fields: FieldDiff[];
   indexes: IndexDiff[];
 };
@@ -171,6 +175,7 @@ export function diffPersistedState(
     hasChanges: false,
     tableNameChanged: false,
     tableCommentChanged: false,
+    miscConfigChanged: false,
     fields: [],
     indexes: [],
   };
@@ -192,6 +197,45 @@ export function diffPersistedState(
     result.tableCommentChanged = true;
     result.oldTableComment = oldTableComment;
     result.newTableComment = newTableComment;
+    result.hasChanges = true;
+  }
+
+  // 2.5 杂项设置变更
+  const normalizeMiscConfig = (
+    config?: TableMiscConfig,
+  ): Required<TableMiscConfig> => {
+    const normalized: Required<TableMiscConfig> = {
+      enabled: false,
+      engine: '',
+      charset: '',
+      collation: '',
+      tablespace: '',
+      ...(config || {}),
+    };
+    if (!normalized.enabled) {
+      return {
+        ...normalized,
+        engine: '',
+        charset: '',
+        collation: '',
+        tablespace: '',
+      };
+    }
+    return normalized;
+  };
+
+  const oldMiscConfig = normalizeMiscConfig(oldState.tableMiscConfig);
+  const newMiscConfig = normalizeMiscConfig(newState.tableMiscConfig);
+  if (
+    oldMiscConfig.enabled !== newMiscConfig.enabled ||
+    oldMiscConfig.engine !== newMiscConfig.engine ||
+    oldMiscConfig.charset !== newMiscConfig.charset ||
+    oldMiscConfig.collation !== newMiscConfig.collation ||
+    oldMiscConfig.tablespace !== newMiscConfig.tablespace
+  ) {
+    result.miscConfigChanged = true;
+    result.oldMiscConfig = oldMiscConfig;
+    result.newMiscConfig = newMiscConfig;
     result.hasChanges = true;
   }
 

@@ -23,6 +23,7 @@ function createEmptyDiff(): TableDiff {
     hasChanges: false,
     tableNameChanged: false,
     tableCommentChanged: false,
+    miscConfigChanged: false,
     fields: [],
     indexes: [],
   };

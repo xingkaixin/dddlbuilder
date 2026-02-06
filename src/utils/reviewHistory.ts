@@ -164,11 +164,21 @@ export async function pruneOldReviews(
   }
 
   const toDelete = records.slice(maxCount);
-  for (const record of toDelete) {
-    await deleteReview(record.id);
-  }
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(REVIEW_STORE_NAME, 'readwrite');
+    const store = tx.objectStore(REVIEW_STORE_NAME);
 
-  return toDelete.length;
+    for (const record of toDelete) {
+      store.delete(record.id);
+    }
+
+    tx.oncomplete = () => {
+      db.close();
+      resolve(toDelete.length);
+    };
+    tx.onerror = () => reject(tx.error);
+  });
 }
 
 /**

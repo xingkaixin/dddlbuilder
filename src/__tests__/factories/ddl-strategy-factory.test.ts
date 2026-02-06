@@ -33,11 +33,15 @@ describe('DDLStrategyFactory', () => {
     const supported = DDLStrategyFactory.getSupportedDatabaseTypes();
     expect(supported.sort()).toEqual([
       'dm',
+      'gaussdb',
+      'gbase',
+      'kingbase',
       'mariadb',
       'mysql',
       'oceanbase',
       'oceanbase-oracle',
       'oracle',
+      'polardb',
       'postgresql',
       'postgresql-citus',
       'sqlserver',

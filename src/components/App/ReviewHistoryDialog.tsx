@@ -139,7 +139,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
               <DialogDescription>查看历史评审记录</DialogDescription>
             </DialogHeader>
 
-            <div className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto pr-1">
+            <div className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto overscroll-contain pr-1">
               {loading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -158,7 +158,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
                       <button
                         type="button"
                         onClick={() => handleToggleExpand(r.id)}
-                        className="flex w-full cursor-pointer items-start gap-3 p-3 text-left outline-none"
+                        className="flex w-full cursor-pointer items-start gap-3 rounded-lg p-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       >
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
                           <Star
@@ -203,6 +203,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
                           e.stopPropagation();
                           setDeleteConfirmId(r.id);
                         }}
+                        aria-label={`删除 ${r.tableName} 的评审记录`}
                       >
                         <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
                       </Button>

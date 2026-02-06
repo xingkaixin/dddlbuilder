@@ -19,6 +19,12 @@ export const changelogData: ChangelogData = {
   description: 'DDL建表工具版本更新记录',
   entries: [
     {
+      version: '0.12.0',
+      date: '2026-02-06',
+      content:
+        '### 新增\n- **数据库扩展**：新增 GaussDB、Kingbase、GBase、PolarDB 的 DDL 生成支持，并同步完善类型映射与策略工厂接入\n- **SQL 导入升级**：导入流程升级为「校验 → 预览 → 确认」三步模式，支持导入前字段预览与编辑\n- **表级杂项配置**：新增表级选项面板，可按数据库生成 `ENGINE`、`CHARSET`、`COLLATION`、`TABLESPACE` 等配置\n- **E2E 自动化测试**：引入 Playwright 测试框架，覆盖核心功能、配置面板、工具能力与存储管理流程\n\n### 优化\n- 对话框无障碍与交互体验增强：补充 `aria-label`、焦点样式优化\n- Vercel Analytics 改为懒加载，降低首屏加载开销\n- 调整 E2E 选择器与测试配置，提升自动化用例稳定性\n- 调整 Vitest 配置，排除 E2E 目录，避免与单测执行互相干扰\n- 字段配置表格新增冻结配置：可选择是否开启冻结，并可自定义冻结列数（默认 3 列）\n\n### 测试与维护\n- 增加并完善多模块测试用例，提升回归保障能力\n- 依赖更新：OpenAI、`@types/node`、`@types/react`、Biome 等',
+    },
+    {
       version: '0.11.0',
       date: '2026-02-02',
       content:

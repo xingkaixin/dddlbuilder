@@ -1,5 +1,4 @@
 import { memo, lazy, Suspense } from 'react';
-import { track } from '@vercel/analytics';
 import { ImportSqlDialog } from '@/components/ImportSqlDialog';
 import type { DatabaseType } from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
@@ -25,6 +24,11 @@ export const Header = memo<HeaderProps>(
     const actionBtnClass =
       'group inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-all duration-200 hover:translate-x-0.5';
 
+    const trackEvent = async (event: string) => {
+      const { track } = await import('@vercel/analytics');
+      track(event);
+    };
+
     return (
       <>
         <header className="relative border-b bg-card/95 backdrop-blur-sm shadow-sm">
@@ -37,6 +41,8 @@ export const Header = memo<HeaderProps>(
                 <img
                   src="/logo.svg"
                   alt="筑表师 Logo"
+                  width={40}
+                  height={40}
                   className="h-10 w-10 text-primary transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
                 />
                 <div>
@@ -66,7 +72,7 @@ export const Header = memo<HeaderProps>(
                   </button>
                   <button
                     onClick={() => {
-                      track('changelog_view');
+                      trackEvent('changelog_view');
                       setShowChangelog(true);
                     }}
                     className={actionBtnClass}

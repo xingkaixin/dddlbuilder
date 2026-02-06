@@ -202,17 +202,18 @@ export function useSavedTables() {
       const tables = savedTables.filter(
         (t) => t.folderId && folderIds.includes(t.folderId),
       );
-      for (const table of tables) {
-        const record = await getSavedTable(table.normalizedName);
-        if (record) {
+      await Promise.all(
+        tables.map(async (table) => {
+          const record = await getSavedTable(table.normalizedName);
+          if (!record) return;
           const updatedRecord: SavedTableRecord = {
             ...record,
             folderId: undefined,
             updatedAt: Date.now(),
           };
           await updateSavedTable(updatedRecord);
-        }
-      }
+        }),
+      );
       await refresh();
     },
     [savedTables, refresh],

@@ -192,6 +192,113 @@ const SqlServerProfile: StorageProfile = {
   },
 };
 
+const KingbaseProfile: StorageProfile = {
+  name: 'Kingbase (人大金仓)',
+  calculateRowSize: (fields) => {
+    // Kingbase 基于 PostgreSQL，使用类似的计算逻辑
+    const overhead = 23 + 4; // Header + ItemID
+    let data = fields.reduce(
+      (acc, f) => acc + getFieldSize(f.type, 'kingbase'),
+      0,
+    );
+
+    // 对齐补全 (粗略估算)
+    const padding = Math.ceil(data / 8) * 8 - data;
+    data += padding;
+
+    return {
+      overhead,
+      data,
+      explanation: [
+        'Kingbase 基于 PostgreSQL 内核，采用堆元组存储格式',
+        '包含堆元组头 (23字节) 与行指针 (4字节)',
+        `已计入估算的 8 字节对齐补全 (${padding}字节)`,
+        '支持国产加密及审计特性，会额外占用少量元数据空间',
+      ],
+    };
+  },
+};
+
+const GBaseProfile: StorageProfile = {
+  name: 'GBase (南大通用)',
+  calculateRowSize: (fields) => {
+    // GBase 基于 MySQL，使用类似的计算逻辑
+    let overhead = 5 + 6 + 7; // 隐藏列开销
+    const data = fields.reduce(
+      (acc, f) => acc + getFieldSize(f.type, 'gbase'),
+      0,
+    );
+    const nullBitmap = Math.ceil(fields.filter((f) => f.nullable).length / 8);
+    overhead += nullBitmap;
+
+    return {
+      overhead,
+      data,
+      explanation: [
+        'GBase 兼容 MySQL 协议，采用类似的 InnoDB 存储格式',
+        '包含 InnoDB 记录头 (5字节)',
+        '包含隐藏事务 ID (6字节) 与回滚指针 (7字节)',
+        `包含 Null 值位图 (${nullBitmap}字节)`,
+        '支持列存储模式，如使用列存则实际占用会显著不同',
+      ],
+    };
+  },
+};
+
+const PolarDBProfile: StorageProfile = {
+  name: 'PolarDB (阿里云)',
+  calculateRowSize: (fields) => {
+    // PolarDB 基于 MySQL，使用类似的计算逻辑
+    let overhead = 5 + 6 + 7; // 隐藏列开销
+    const data = fields.reduce(
+      (acc, f) => acc + getFieldSize(f.type, 'polardb'),
+      0,
+    );
+    const nullBitmap = Math.ceil(fields.filter((f) => f.nullable).length / 8);
+    overhead += nullBitmap;
+
+    return {
+      overhead,
+      data,
+      explanation: [
+        'PolarDB 完全兼容 MySQL，采用共享存储架构',
+        '包含 InnoDB 记录头 (5字节)',
+        '包含隐藏事务 ID (6字节) 与回滚指针 (7字节)',
+        `包含 Null 值位图 (${nullBitmap}字节)`,
+        '共享存储模式下，数据只需存储一份，大幅降低存储成本',
+      ],
+    };
+  },
+};
+
+const GaussDBProfile: StorageProfile = {
+  name: 'GaussDB (华为)',
+  calculateRowSize: (fields) => {
+    // GaussDB 基于 PostgreSQL，使用类似的计算逻辑
+    const overhead = 23 + 4; // Header + ItemID
+    let data = fields.reduce(
+      (acc, f) => acc + getFieldSize(f.type, 'gaussdb'),
+      0,
+    );
+
+    // 对齐补全 (粗略估算)
+    const padding = Math.ceil(data / 8) * 8 - data;
+    data += padding;
+
+    return {
+      overhead,
+      data,
+      explanation: [
+        'GaussDB 基于 PostgreSQL 内核，采用分布式架构',
+        '包含堆元组头 (23字节) 与行指针 (4字节)',
+        `已计入估算的 8 字节对齐补全 (${padding}字节)`,
+        '分布式部署下数据有多副本，实际存储需乘以副本数',
+        '支持高压缩存储，开启压缩后实际占用可降低 50-70%',
+      ],
+    };
+  },
+};
+
 const Profiles: Record<string, StorageProfile> = {
   mysql: MySQLProfile,
   mariadb: MySQLProfile,
@@ -203,6 +310,10 @@ const Profiles: Record<string, StorageProfile> = {
   oracle: OracleProfile,
   sqlserver: SqlServerProfile,
   dm: OracleProfile, // 达梦参考 Oracle
+  kingbase: KingbaseProfile,
+  gbase: GBaseProfile,
+  polardb: PolarDBProfile,
+  gaussdb: GaussDBProfile,
 };
 
 export function estimateStorage(
