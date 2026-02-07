@@ -115,7 +115,16 @@ app.post('/review', async (c) => {
 
   const systemPrompt = `你是一位资深的数据库架构师和DDL评审专家。你的任务是评审用户提供的DDL语句，给出专业的评分和改进建议。
 
-评审维度包括：命名规范性、数据类型选择、索引设计、完整性约束、可扩展性、性能考虑等。
+评审维度包括：
+1. **命名规范性**：表名、字段名是否符合命名规范，是否使用数据库保留字
+2. **数据类型选择**：类型是否与实际用途匹配（如用 VARCHAR 存日期、用 TEXT 存固定长度）
+3. **索引设计**：是否缺少常用查询索引、索引是否冗余、索引字段顺序是否合理
+4. **完整性约束**：主键、非空约束、默认值是否合理
+5. **可扩展性**：是否缺少审计字段（created_at, updated_at）、版本控制字段
+6. **性能考虑**：
+   - 主键设计：大字段（TEXT/VARCHAR(500)以上）作为主键、复合主键字段过多
+   - 索引效率：高频查询字段缺少索引
+   - 字段设计：过多可 NULL 字段、超长 VARCHAR（如 VARCHAR(4000) 可能应该是 TEXT）
 
 请以JSON格式返回评审结果：
 {
@@ -125,7 +134,7 @@ app.post('/review', async (c) => {
     {
       "id": "sug_1",
       "description": "建议描述",
-      "type": "add_field" | "modify_field" | "remove_field" | "add_index" | "remove_index" | "general",
+      "type": "add_field" | "modify_field" | "remove_field" | "add_index" | "remove_index" | "performance_warning" | "general",
       "actionable": true,
       "field": { // 仅当 type 为 add_field 时提供
         "fieldName": "string",
@@ -153,14 +162,16 @@ app.post('/review', async (c) => {
         "fields": [{ "name": "string", "direction": "ASC" | "DESC" }],
         "unique": boolean
       },
-      "indexName": "string" // 仅当 type 为 remove_index 时提供，标识要移除的索引名
+      "indexName": "string", // 仅当 type 为 remove_index 时提供，标识要移除的索引名
+      "severity": "warning" | "error" // 仅当 type 为 performance_warning 时可选提供，标识问题严重程度
     }
   ]
 }
 
 注意：
-1. actionable: 如果建议可以被程序自动执行，则为 true (如增/删/改字段或索引)；如果是笼统的建议 (general)，则为 false。
-2. 只返回 JSON，不要有其他描述文字。`;
+1. actionable: 如果建议可以被程序自动执行，则为 true (如增/删/改字段或索引)；如果是性能警告 (performance_warning) 或笼统建议 (general)，则为 false。
+2. performance_warning: 用于标识可能影响数据库性能的问题，如主键设计不当、类型选择不当等。这类建议可能需要用户自行判断是否修改。
+3. 只返回 JSON，不要有其他描述文字。`;
 
   const userPrompt = `请评审以下${dbType.toUpperCase()}数据库的DDL语句：
 
@@ -232,6 +243,148 @@ ${ddl}
       await stream.write(
         JSON.stringify({
           error: error instanceof Error ? error.message : 'Review failed',
+        }),
+      );
+    }
+  });
+});
+
+// Natural Language Table Generation endpoint with streaming
+app.post('/generate-table', async (c) => {
+  const {
+    description,
+    dbType,
+    templates,
+    existingConfig,
+    conversationHistory,
+  } = await c.req.json();
+
+  console.log('[GenerateTable] Request received:', {
+    descriptionLength: description?.length,
+    dbType,
+    hasTemplates: !!templates?.length,
+    hasExistingConfig: !!existingConfig,
+    hasHistory: !!conversationHistory?.length,
+  });
+
+  if (!description || description.trim().length === 0) {
+    return c.json({ error: 'Description is required' }, 400);
+  }
+
+  const baseURL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+  const apiKey = process.env.OPENAI_API_KEY;
+  const model = process.env.OPENAI_MODEL_NAME || 'gpt-4o-mini';
+
+  if (!apiKey) {
+    return c.json({ error: 'OpenAI API key not configured' }, 500);
+  }
+
+  const openai = new OpenAI({
+    baseURL,
+    apiKey,
+  });
+
+  // Build template context if provided
+  const templateContext = templates?.length
+    ? `\n\n用户定义的字段模板（优先参考）：
+${JSON.stringify(templates, null, 2)}`
+    : '';
+
+  // Build existing config context if provided
+  const existingContext = existingConfig
+    ? `\n\n当前已有表配置（用户可能希望基于此修改）：
+${JSON.stringify(existingConfig, null, 2)}`
+    : '';
+
+  const systemPrompt = `你是一位资深的数据库架构师。根据用户的自然语言描述，生成符合 ${dbType.toUpperCase()} 数据库规范的表结构。
+${templateContext}
+${existingContext}
+
+请以 JSON 格式返回，格式如下：
+{
+  "tableName": "表名（英文，下划线命名）",
+  "tableComment": "表注释（中文）",
+  "fields": [
+    {
+      "fieldName": "字段名",
+      "fieldType": "数据类型",
+      "fieldComment": "字段注释",
+      "nullable": "是" | "否",
+      "defaultKind": "无" | "自增" | "常量" | "当前时间" | "uuid",
+      "defaultValue": "默认值（仅当 defaultKind 为常量时填写）",
+      "onUpdate": "无" | "当前时间",
+      "isPrimaryKey": true | false
+    }
+  ],
+  "indexes": [
+    {
+      "name": "索引名",
+      "fields": [{ "name": "字段名", "direction": "ASC" | "DESC" }],
+      "unique": true | false
+    }
+  ]
+}
+
+注意：
+1. 如果用户提供了字段模板，优先使用模板中的字段定义
+2. 字段类型应符合 ${dbType.toUpperCase()} 数据库语法
+3. 主键字段的 isPrimaryKey 设为 true
+4. 建议包含 created_at 和 updated_at 审计字段
+5. 只返回 JSON，不要有其他描述文字`;
+
+  // Build messages array with conversation history
+  const messages: Array<{
+    role: 'system' | 'user' | 'assistant';
+    content: string;
+  }> = [{ role: 'system', content: systemPrompt }];
+
+  // Add conversation history if provided
+  if (conversationHistory?.length) {
+    for (const msg of conversationHistory) {
+      messages.push({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      });
+    }
+  }
+
+  // Add current user message
+  messages.push({ role: 'user', content: description });
+
+  return streamText(c, async (stream) => {
+    try {
+      console.log('[GenerateTable] Calling OpenAI API with streaming...');
+      const response = (await openai.chat.completions.create({
+        model,
+        messages,
+        response_format: { type: 'json_object' },
+        temperature: 0.3,
+        max_tokens: 4000,
+        stream: true,
+        ...({
+          thinking: {
+            type: 'disabled',
+          },
+        } as any),
+      })) as any;
+
+      let fullContent = '';
+
+      for await (const chunk of response) {
+        const content = chunk.choices[0]?.delta?.content || '';
+        if (content) {
+          fullContent += content;
+          await stream.write(content);
+        }
+      }
+
+      console.log('[GenerateTable] Streaming complete');
+      console.log('[GenerateTable] Full content length:', fullContent.length);
+    } catch (error) {
+      console.error('[GenerateTable] Streaming error:', error);
+      await stream.write(
+        JSON.stringify({
+          error: error instanceof Error ? error.message : 'Generation failed',
         }),
       );
     }

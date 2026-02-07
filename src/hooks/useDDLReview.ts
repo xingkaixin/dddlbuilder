@@ -15,9 +15,11 @@ export interface StructuredSuggestion {
     | 'remove_field'
     | 'add_index'
     | 'remove_index'
+    | 'performance_warning'
     | 'general';
   actionable: boolean;
   applied?: boolean; // 是否已应用
+  severity?: 'warning' | 'error'; // 仅用于 performance_warning 类型
 
   // 根据 type 填充
   fieldName?: string; // 用于 remove_field

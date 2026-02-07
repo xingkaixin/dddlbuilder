@@ -1,5 +1,13 @@
-import { memo, useMemo, useCallback } from 'react';
-import { Copy, Plus, Minus, RefreshCw } from 'lucide-react';
+import { memo, useMemo, useCallback, useState } from 'react';
+import {
+  Copy,
+  Plus,
+  Minus,
+  RefreshCw,
+  RotateCcw,
+  ChevronDown,
+  ChevronRight,
+} from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +19,10 @@ import { Button } from '@/components/ui/button';
 import SqlCodeBlock from './SqlCodeBlock';
 import type { TableDiff, FieldDiff, IndexDiff } from '@/utils/tableDiff';
 import type { NormalizedField, DatabaseType } from '@/types';
-import { generateAlterDDL } from '@/utils/alterDdlGenerator';
+import {
+  generateAlterDDL,
+  generateRollbackDDL,
+} from '@/utils/alterDdlGenerator';
 import { cn } from '@/lib/utils';
 
 interface DiffDialogProps {
@@ -138,9 +149,16 @@ IndexDiffRow.displayName = 'IndexDiffRow';
  */
 export const DiffDialog = memo<DiffDialogProps>(
   ({ open, onOpenChange, tableName, dbType, diff, fields, onCopy }) => {
+    const [showRollback, setShowRollback] = useState(false);
+
     const alterDDL = useMemo(() => {
       if (!diff || !diff.hasChanges) return '';
       return generateAlterDDL(tableName, diff, fields, dbType);
+    }, [tableName, diff, fields, dbType]);
+
+    const rollbackDDL = useMemo(() => {
+      if (!diff || !diff.hasChanges) return '';
+      return generateRollbackDDL(tableName, diff, fields, dbType);
     }, [tableName, diff, fields, dbType]);
 
     const handleCopy = useCallback(async () => {
@@ -152,6 +170,16 @@ export const DiffDialog = memo<DiffDialogProps>(
         // 忽略复制失败
       }
     }, [alterDDL, onCopy]);
+
+    const handleCopyRollback = useCallback(async () => {
+      if (!rollbackDDL) return;
+      try {
+        await navigator.clipboard.writeText(rollbackDDL);
+        onCopy?.();
+      } catch {
+        // 忽略复制失败
+      }
+    }, [rollbackDDL, onCopy]);
 
     if (!diff) return null;
 
@@ -300,6 +328,46 @@ export const DiffDialog = memo<DiffDialogProps>(
                 <div className="max-h-48 overflow-auto rounded-md border bg-muted/30">
                   <SqlCodeBlock code={alterDDL} />
                 </div>
+              </div>
+            )}
+
+            {/* 回滚脚本 */}
+            {rollbackDDL && (
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => setShowRollback(!showRollback)}
+                >
+                  {showRollback ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  回滚脚本
+                </button>
+                {showRollback && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-amber-600">
+                        执行回滚脚本将撤销以上变更
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCopyRollback}
+                        className="h-7 gap-1.5 text-xs"
+                      >
+                        <Copy className="h-3 w-3" />
+                        复制回滚
+                      </Button>
+                    </div>
+                    <div className="max-h-48 overflow-auto rounded-md border border-amber-200 bg-amber-50/50">
+                      <SqlCodeBlock code={rollbackDDL} />
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>

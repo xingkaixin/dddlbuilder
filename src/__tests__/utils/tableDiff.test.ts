@@ -205,6 +205,75 @@ describe('diffPersistedState', () => {
       const result = diffPersistedState(old, newState);
       expect(result.hasChanges).toBe(false);
     });
+
+    it('检测字段重命名（相同类型和注释）', () => {
+      const old = createState({
+        rows: [
+          createRow({
+            name: 'old_name',
+            type: 'VARCHAR(50)',
+            comment: '用户名',
+          }),
+        ],
+      });
+      const newState = createState({
+        rows: [
+          createRow({
+            name: 'new_name',
+            type: 'VARCHAR(50)',
+            comment: '用户名',
+          }),
+        ],
+      });
+      const result = diffPersistedState(old, newState);
+      expect(result.hasChanges).toBe(true);
+      expect(result.fields).toHaveLength(1);
+      expect(result.fields[0].type).toBe('rename');
+      expect(result.fields[0].oldFieldName).toBe('old_name');
+      expect(result.fields[0].newFieldName).toBe('new_name');
+    });
+
+    it('不同类型不视为重命名', () => {
+      const old = createState({
+        rows: [
+          createRow({ name: 'old_name', type: 'VARCHAR(50)', comment: '字段' }),
+        ],
+      });
+      const newState = createState({
+        rows: [createRow({ name: 'new_name', type: 'INT', comment: '字段' })],
+      });
+      const result = diffPersistedState(old, newState);
+      expect(result.hasChanges).toBe(true);
+      expect(result.fields).toHaveLength(2);
+      expect(result.fields.some((f) => f.type === 'remove')).toBe(true);
+      expect(result.fields.some((f) => f.type === 'add')).toBe(true);
+    });
+
+    it('不同注释不视为重命名', () => {
+      const old = createState({
+        rows: [
+          createRow({
+            name: 'old_name',
+            type: 'VARCHAR(50)',
+            comment: '旧注释',
+          }),
+        ],
+      });
+      const newState = createState({
+        rows: [
+          createRow({
+            name: 'new_name',
+            type: 'VARCHAR(50)',
+            comment: '新注释',
+          }),
+        ],
+      });
+      const result = diffPersistedState(old, newState);
+      expect(result.hasChanges).toBe(true);
+      expect(result.fields).toHaveLength(2);
+      expect(result.fields.some((f) => f.type === 'remove')).toBe(true);
+      expect(result.fields.some((f) => f.type === 'add')).toBe(true);
+    });
   });
 
   describe('索引变更', () => {

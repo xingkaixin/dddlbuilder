@@ -3,6 +3,7 @@ import {
   Star,
   Lightbulb,
   AlertCircle,
+  AlertTriangle,
   Loader2,
   Check,
   Plus,
@@ -12,6 +13,17 @@ import {
 import type { ReviewResult, StructuredSuggestion } from '@/hooks/useDDLReview';
 import type { PartialReviewResult } from '@/utils/parsePartialJson';
 import { Button } from '@/components/ui/button';
+
+// Known suggestion types for compatibility
+const KNOWN_SUGGESTION_TYPES = new Set([
+  'add_field',
+  'modify_field',
+  'remove_field',
+  'add_index',
+  'remove_index',
+  'performance_warning',
+  'general',
+]);
 
 interface ReviewResultPanelProps {
   isLoading: boolean;
@@ -101,19 +113,27 @@ const SuggestionItem = memo<{
   // Disable apply button during streaming to prevent state inconsistency
   const isActionable = suggestion.actionable && !isApplied && !isStreaming;
 
+  // Normalize type for compatibility - fallback unknown types to 'general'
+  const normalizedType = KNOWN_SUGGESTION_TYPES.has(suggestion.type)
+    ? suggestion.type
+    : 'general';
+
   return (
     <li className="group flex items-start gap-3 rounded-md border border-transparent p-2 transition-all hover:bg-muted/50 hover:border-border">
       <div className="mt-1 flex-shrink-0">
         {suggestion.applied ? (
           <Check className="h-4 w-4 text-emerald-500" />
-        ) : suggestion.type === 'remove_field' ||
-          suggestion.type === 'remove_index' ? (
+        ) : normalizedType === 'remove_field' ||
+          normalizedType === 'remove_index' ? (
           <Minus className="h-4 w-4 text-red-400" />
-        ) : suggestion.type === 'add_field' ||
-          suggestion.type === 'add_index' ? (
+        ) : normalizedType === 'add_field' || normalizedType === 'add_index' ? (
           <Plus className="h-4 w-4 text-emerald-400" />
-        ) : suggestion.type === 'modify_field' ? (
+        ) : normalizedType === 'modify_field' ? (
           <ArrowRight className="h-4 w-4 text-amber-400" />
+        ) : normalizedType === 'performance_warning' ? (
+          <AlertTriangle
+            className={`h-4 w-4 ${suggestion.severity === 'error' ? 'text-red-500' : 'text-amber-500'}`}
+          />
         ) : (
           <Lightbulb className="h-4 w-4 text-blue-400" />
         )}
@@ -124,9 +144,22 @@ const SuggestionItem = memo<{
           {suggestion.description}
         </div>
 
+        {/* Performance warning severity badge */}
+        {normalizedType === 'performance_warning' && suggestion.severity && (
+          <span
+            className={`mt-1 inline-block text-[10px] font-medium px-1.5 py-0.5 rounded ${
+              suggestion.severity === 'error'
+                ? 'text-red-600 bg-red-50 border border-red-100'
+                : 'text-amber-600 bg-amber-50 border border-amber-100'
+            }`}
+          >
+            {suggestion.severity === 'error' ? '严重' : '警告'}
+          </span>
+        )}
+
         {/* Detail view based on type */}
         {!isApplied &&
-          suggestion.type === 'modify_field' &&
+          normalizedType === 'modify_field' &&
           suggestion.fieldModification && (
             <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
               <span className="font-mono bg-muted px-1 rounded truncate max-w-[100px]">
@@ -143,7 +176,7 @@ const SuggestionItem = memo<{
             </div>
           )}
 
-        {!isApplied && suggestion.type === 'add_field' && suggestion.field && (
+        {!isApplied && normalizedType === 'add_field' && suggestion.field && (
           <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
             <span className="text-emerald-600 font-medium px-1 rounded bg-emerald-50 border border-emerald-100">
               + {suggestion.field.fieldName} ({suggestion.field.fieldType})
@@ -151,7 +184,7 @@ const SuggestionItem = memo<{
           </div>
         )}
 
-        {!isApplied && suggestion.type === 'add_index' && suggestion.index && (
+        {!isApplied && normalizedType === 'add_index' && suggestion.index && (
           <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
             <span className="text-emerald-600 font-medium px-1 rounded bg-emerald-50 border border-emerald-100">
               + INDEX {suggestion.index.name}
@@ -160,7 +193,7 @@ const SuggestionItem = memo<{
         )}
 
         {!isApplied &&
-          suggestion.type === 'remove_index' &&
+          normalizedType === 'remove_index' &&
           suggestion.indexName && (
             <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
               <span className="text-red-600 font-medium px-1 rounded bg-red-50 border border-red-100">
