@@ -254,4 +254,55 @@ describe('useDDLReview', () => {
     // The hook should handle aborting previous request internally
     expect(result.current.isLoading).toBe(true);
   });
+
+  it('should handle performance_warning type suggestions', async () => {
+    const { result } = renderHook(() => useDDLReview());
+
+    const mockResponse = JSON.stringify({
+      score: 6,
+      summary: 'Found some performance issues',
+      suggestions: [
+        {
+          id: 'sug_1',
+          description: 'VARCHAR(500) as primary key may impact performance',
+          type: 'performance_warning',
+          actionable: false,
+          severity: 'warning',
+        },
+        {
+          id: 'sug_2',
+          description: 'TEXT column as primary key is not recommended',
+          type: 'performance_warning',
+          actionable: false,
+          severity: 'error',
+        },
+      ],
+    });
+
+    const stream = createStream([mockResponse]);
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: stream,
+      json: vi.fn(),
+    } as unknown as Response);
+
+    await act(async () => {
+      await result.current.startReview('ddl', 'table', 'mysql');
+      await flushPromises();
+    });
+
+    expect(result.current.result?.score).toBe(6);
+    expect(result.current.result?.suggestions).toHaveLength(2);
+
+    const suggestion1 = result.current.result?.suggestions[0] as any;
+    expect(suggestion1.type).toBe('performance_warning');
+    expect(suggestion1.severity).toBe('warning');
+    expect(suggestion1.actionable).toBe(false);
+
+    const suggestion2 = result.current.result?.suggestions[1] as any;
+    expect(suggestion2.type).toBe('performance_warning');
+    expect(suggestion2.severity).toBe('error');
+  });
 });

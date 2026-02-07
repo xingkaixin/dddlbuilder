@@ -64,6 +64,8 @@ import {
 } from './TemplateManagerDialog';
 import { ApplyTemplatePopover } from './ApplyTemplatePopover';
 import { StorageEstimatorDialog } from './StorageEstimatorDialog';
+import { AIGenerateDialog } from './AIGenerateDialog';
+import type { GeneratedTableSchema } from '@/hooks/useAIGenerateTable';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
 import {
   DEFAULT_SAVED_TABLE_NAME,
@@ -168,6 +170,9 @@ function App() {
 
   // Storage estimator dialog state
   const [isStorageEstimatorOpen, setIsStorageEstimatorOpen] = useState(false);
+
+  // AI Generate dialog state
+  const [isAIGenerateDialogOpen, setIsAIGenerateDialogOpen] = useState(false);
 
   // Check for fireworks on mount
   useEffect(() => {
@@ -1515,6 +1520,73 @@ function App() {
         tableNormalizedName={loadedTableNormalizedName}
       />
 
+      <AIGenerateDialog
+        open={isAIGenerateDialogOpen}
+        onOpenChange={setIsAIGenerateDialogOpen}
+        dbType={dbType}
+        existingConfig={{
+          tableName,
+          rows,
+          indexes,
+        }}
+        templates={templates}
+        onApply={(schema: GeneratedTableSchema) => {
+          // Apply generated table name and comment
+          if (schema.tableName) {
+            setTableName(schema.tableName);
+          }
+          if (schema.tableComment) {
+            setTableComment(schema.tableComment);
+          }
+
+          // Apply generated fields
+          if (schema.fields && schema.fields.length > 0) {
+            const newRows = schema.fields.map((f, idx) => ({
+              order: idx + 1,
+              fieldName: f.fieldName,
+              fieldType: f.fieldType,
+              fieldComment: f.fieldComment,
+              nullable: f.nullable,
+              defaultKind: f.defaultKind,
+              defaultValue: f.defaultValue || '',
+              onUpdate: f.onUpdate || '无',
+            }));
+            setRows(newRows as FieldRow[]);
+          }
+
+          // Apply generated indexes
+          if (schema.indexes && schema.indexes.length > 0) {
+            const newIndexes = schema.indexes.map((idx, i) => ({
+              id: `ai-${Date.now()}-${i}`,
+              name: idx.name,
+              fields: idx.fields,
+              unique: idx.unique,
+              isPrimary: false,
+            }));
+
+            // Check for primary key from fields
+            const pkFields = schema.fields
+              ?.filter((f) => f.isPrimaryKey)
+              .map((f) => ({ name: f.fieldName, direction: 'ASC' as const }));
+
+            if (pkFields && pkFields.length > 0) {
+              newIndexes.unshift({
+                id: `pk-${Date.now()}`,
+                name: 'PRIMARY',
+                fields: pkFields,
+                unique: true,
+                isPrimary: true,
+              });
+            }
+
+            setIndexes(newIndexes as IndexDefinition[]);
+          }
+
+          trackEvent('ai_generate_apply', { tableName: schema.tableName });
+          showToast('AI 生成的表结构已应用');
+        }}
+      />
+
       {/* Main Content */}
       <div className="flex flex-col gap-4 p-4">
         <div className="flex flex-col gap-4 lg:flex-row">
@@ -1530,6 +1602,7 @@ function App() {
               onSaveTable={handleOpenSaveDialog}
               onOpenSavedTables={handleOpenSavedTablesDrawer}
               onViewDiff={handleOpenDiffDialog}
+              onOpenAIGenerate={() => setIsAIGenerateDialogOpen(true)}
               saveDisabled={!canSaveCurrent}
               saveDisabledHint="加载的表未修改，无法保存"
               showDiffButton={isLoadedDirty && tableDiff?.hasChanges}

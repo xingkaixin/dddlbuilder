@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Button } from '@/components/ui/button';
-import { GitCompare, List, Save, Table, Trash2 } from 'lucide-react';
+import { GitCompare, List, Save, Sparkles, Table, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -24,6 +24,7 @@ interface TableConfigProps {
   onSaveTable: () => void;
   onOpenSavedTables: () => void;
   onViewDiff?: () => void;
+  onOpenAIGenerate?: () => void;
   saveDisabled?: boolean;
   saveDisabledHint?: string;
   showDiffButton?: boolean;
@@ -43,6 +44,7 @@ export const TableConfig = memo<TableConfigProps>(
     onSaveTable,
     onOpenSavedTables,
     onViewDiff,
+    onOpenAIGenerate,
     saveDisabled = false,
     saveDisabledHint,
     showDiffButton = false,
@@ -85,6 +87,17 @@ export const TableConfig = memo<TableConfigProps>(
               <span className="max-w-[240px] truncate text-xs text-muted-foreground">
                 当前：{loadedTableName}
               </span>
+            )}
+            {onOpenAIGenerate && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 px-2 text-xs font-medium text-primary border-primary/30 hover:bg-primary/10"
+                onClick={onOpenAIGenerate}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                AI 生成
+              </Button>
             )}
           </div>
           <Button

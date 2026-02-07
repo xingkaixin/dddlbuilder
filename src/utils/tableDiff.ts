@@ -9,7 +9,7 @@ import type {
 /**
  * 字段变更类型
  */
-export type FieldDiffType = 'add' | 'remove' | 'modify';
+export type FieldDiffType = 'add' | 'remove' | 'modify' | 'rename';
 
 /**
  * 字段属性变更类型
@@ -25,6 +25,9 @@ export type FieldDiff = {
   oldField?: NormalizedField;
   newField?: NormalizedField;
   changes?: FieldChangeType[];
+  // 仅用于 rename 类型
+  oldFieldName?: string;
+  newFieldName?: string;
 };
 
 /**
@@ -287,6 +290,78 @@ export function diffPersistedState(
       });
       result.hasChanges = true;
     }
+  }
+
+  // 5. 重命名检测：将匹配的 remove + add 合并为 rename
+  // 规则：相同类型 + 相同注释 视为重命名
+  const removedFields = result.fields.filter((f) => f.type === 'remove');
+  const addedFields = result.fields.filter((f) => f.type === 'add');
+
+  const renamedPairs: Array<{ removeIdx: number; addIdx: number }> = [];
+
+  for (let i = 0; i < removedFields.length; i++) {
+    const removed = removedFields[i];
+    if (!removed.oldField) continue;
+
+    for (let j = 0; j < addedFields.length; j++) {
+      const added = addedFields[j];
+      if (!added.newField) continue;
+
+      // 检查是否已被配对
+      if (renamedPairs.some((p) => p.addIdx === j)) continue;
+
+      // 匹配规则：类型相同且注释相同
+      if (
+        removed.oldField.type === added.newField.type &&
+        removed.oldField.comment === added.newField.comment
+      ) {
+        renamedPairs.push({ removeIdx: i, addIdx: j });
+        break; // 每个 remove 只能配对一个 add
+      }
+    }
+  }
+
+  // 如果有重命名配对，需要更新 result.fields
+  if (renamedPairs.length > 0) {
+    const removeIndexes = new Set(
+      renamedPairs.map((p) =>
+        result.fields.indexOf(removedFields[p.removeIdx]),
+      ),
+    );
+    const addIndexes = new Set(
+      renamedPairs.map((p) => result.fields.indexOf(addedFields[p.addIdx])),
+    );
+
+    // 过滤掉已配对的 add 和 remove
+    const filteredFields = result.fields.filter(
+      (_, idx) => !removeIndexes.has(idx) && !addIndexes.has(idx),
+    );
+
+    // 添加 rename 类型
+    for (const pair of renamedPairs) {
+      const removed = removedFields[pair.removeIdx];
+      const added = addedFields[pair.addIdx];
+
+      // 检查除了名称之外是否有其他变更
+      const changes =
+        removed.oldField && added.newField
+          ? getFieldChanges(removed.oldField, added.newField).filter(
+              (c) => c !== 'comment', // 注释相同是匹配条件，不算变更
+            )
+          : [];
+
+      filteredFields.push({
+        type: 'rename',
+        fieldName: added.newField?.name || '',
+        oldField: removed.oldField,
+        newField: added.newField,
+        oldFieldName: removed.oldField?.name,
+        newFieldName: added.newField?.name,
+        changes: changes.length > 0 ? changes : undefined,
+      });
+    }
+
+    result.fields = filteredFields;
   }
 
   // 4. 索引变更

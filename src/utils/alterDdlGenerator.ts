@@ -50,17 +50,22 @@ export function generateAlterDDL(
     statements.push(generateDropColumn(tableName, fieldDiff, dbType));
   }
 
-  // 3. 处理新增的字段
+  // 3. 处理重命名的字段（在删除之后、新增之前）
+  for (const fieldDiff of diff.fields.filter((f) => f.type === 'rename')) {
+    statements.push(generateRenameColumn(tableName, fieldDiff, dbType));
+  }
+
+  // 4. 处理新增的字段
   for (const fieldDiff of diff.fields.filter((f) => f.type === 'add')) {
     statements.push(generateAddColumn(tableName, fieldDiff, dbType));
   }
 
-  // 4. 处理修改的字段
+  // 5. 处理修改的字段
   for (const fieldDiff of diff.fields.filter((f) => f.type === 'modify')) {
     statements.push(generateModifyColumn(tableName, fieldDiff, dbType));
   }
 
-  // 5. 处理新增的索引
+  // 6. 处理新增的索引
   for (const idxDiff of diff.indexes.filter((i) => i.type === 'add')) {
     statements.push(generateAddIndex(tableName, idxDiff, dbType));
   }
@@ -126,6 +131,42 @@ function generateDropColumn(
       return `ALTER TABLE ${tableName} DROP COLUMN ${fieldName};`;
     default:
       return `ALTER TABLE ${tableName} DROP COLUMN ${fieldName};`;
+  }
+}
+
+/**
+ * 生成重命名字段语句
+ */
+function generateRenameColumn(
+  tableName: string,
+  fieldDiff: FieldDiff,
+  dbType: DatabaseType,
+): string {
+  const oldName = fieldDiff.oldFieldName || '';
+  const newName = fieldDiff.newFieldName || '';
+
+  if (!oldName || !newName) {
+    return '';
+  }
+
+  switch (dbType) {
+    case 'mysql':
+    case 'mariadb':
+    case 'tidb':
+    case 'oceanbase':
+      // MySQL 8.0+ 支持 RENAME COLUMN，旧版本需要 CHANGE COLUMN
+      return `ALTER TABLE ${tableName} RENAME COLUMN ${oldName} TO ${newName};`;
+    case 'postgresql':
+    case 'postgresql-citus':
+      return `ALTER TABLE ${tableName} RENAME COLUMN ${oldName} TO ${newName};`;
+    case 'sqlserver':
+      return `EXEC sp_rename '${tableName}.${oldName}', '${newName}', 'COLUMN';`;
+    case 'oracle':
+    case 'oceanbase-oracle':
+    case 'dm':
+      return `ALTER TABLE ${tableName} RENAME COLUMN ${oldName} TO ${newName};`;
+    default:
+      return `ALTER TABLE ${tableName} RENAME COLUMN ${oldName} TO ${newName};`;
   }
 }
 
@@ -437,4 +478,97 @@ function buildDefaultClause(
   }
 
   return '';
+}
+
+/**
+ * 生成回滚 DDL 语句（逆向操作）
+ * 用于撤销 generateAlterDDL 生成的变更
+ */
+export function generateRollbackDDL(
+  tableName: string,
+  diff: TableDiff,
+  _fields: NormalizedField[],
+  dbType: DatabaseType,
+): string {
+  if (!diff.hasChanges) {
+    return '';
+  }
+
+  const statements: string[] = [];
+
+  // 回滚顺序与正向操作相反
+
+  // 1. 删除新增的索引
+  for (const idxDiff of diff.indexes.filter((i) => i.type === 'add')) {
+    statements.push(
+      generateDropIndex(tableName, { ...idxDiff, type: 'remove' }, dbType),
+    );
+  }
+
+  // 2. 恢复修改的字段（使用旧字段定义）
+  for (const fieldDiff of diff.fields.filter((f) => f.type === 'modify')) {
+    if (fieldDiff.oldField) {
+      const rollbackDiff: FieldDiff = {
+        type: 'modify',
+        fieldName: fieldDiff.fieldName,
+        oldField: fieldDiff.newField,
+        newField: fieldDiff.oldField,
+        changes: fieldDiff.changes,
+      };
+      statements.push(generateModifyColumn(tableName, rollbackDiff, dbType));
+    }
+  }
+
+  // 3. 删除新增的字段
+  for (const fieldDiff of diff.fields.filter((f) => f.type === 'add')) {
+    statements.push(
+      generateDropColumn(tableName, { ...fieldDiff, type: 'remove' }, dbType),
+    );
+  }
+
+  // 4. 恢复重命名的字段（反向重命名）
+  for (const fieldDiff of diff.fields.filter((f) => f.type === 'rename')) {
+    const rollbackDiff: FieldDiff = {
+      type: 'rename',
+      fieldName: fieldDiff.oldFieldName || '',
+      oldField: fieldDiff.newField,
+      newField: fieldDiff.oldField,
+      oldFieldName: fieldDiff.newFieldName,
+      newFieldName: fieldDiff.oldFieldName,
+    };
+    statements.push(generateRenameColumn(tableName, rollbackDiff, dbType));
+  }
+
+  // 5. 恢复删除的字段
+  for (const fieldDiff of diff.fields.filter((f) => f.type === 'remove')) {
+    if (fieldDiff.oldField) {
+      const rollbackDiff: FieldDiff = {
+        type: 'add',
+        fieldName: fieldDiff.fieldName,
+        newField: fieldDiff.oldField,
+      };
+      statements.push(generateAddColumn(tableName, rollbackDiff, dbType));
+    }
+  }
+
+  // 6. 恢复删除的索引
+  for (const idxDiff of diff.indexes.filter((i) => i.type === 'remove')) {
+    statements.push(
+      generateAddIndex(tableName, { ...idxDiff, type: 'add' }, dbType),
+    );
+  }
+
+  // 7. 恢复表注释
+  if (diff.tableCommentChanged && diff.oldTableComment !== undefined) {
+    const commentSql = generateTableCommentAlter(
+      tableName,
+      diff.oldTableComment,
+      dbType,
+    );
+    if (commentSql) {
+      statements.push(commentSql);
+    }
+  }
+
+  return statements.filter((s) => s.trim()).join('\n\n');
 }
