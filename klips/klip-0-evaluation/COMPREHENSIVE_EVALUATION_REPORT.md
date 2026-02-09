@@ -1,3 +1,10 @@
+---
+created: "2026-02-08"
+updated: "2026-02-09"
+status: "ready"
+---
+
+
 # DDLBuilder 代码深度评估综合报告
 
 **项目名称**: DDLBuilder(筑表师)
