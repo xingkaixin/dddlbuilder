@@ -775,16 +775,16 @@ export default defineConfig({
 ### 短期优化(P0/P1) - 1-2周
 
 **第1周:**
-- [ ] 修复安全漏洞: `bun update react-markdown gray-matter`
-- [ ] 添加依赖审计到CI: 在`.github/workflows/ci.yml`中添加`bun audit`
-- [ ] 优化node-sql-parser加载: 实现动态导入
-- [ ] 添加OpenAI API重试机制
+- [x] 修复安全漏洞: `bun update react-markdown gray-matter` -> 执行，但无效，上游未更新 gray-matter 移动到devdeps react-markdown 10个月未考虑，考虑其他替代品
+- [x] 添加依赖审计到CI: 在`.github/workflows/ci.yml`中添加`bun audit` -> 不打算单独加这一个CI
+- [x] 优化node-sql-parser加载: 实现动态导入（`SqlParser.parseAsync` + `ImportSqlDialog`按需加载）
+- [x] 添加OpenAI API重试机制（默认3次，指数退避+抖动，支持 `Retry-After`）
 
 **第2周:**
-- [ ] 添加OpenAI API速率限制
-- [ ] 实施API成本监控
-- [ ] 优化Vite配置: 更细粒度的chunk分割
-- [ ] 添加sqlParser按需加载
+- [x] 添加OpenAI API速率限制（按IP分接口滑窗限速，可环境变量配置）
+- [x] 实施API成本监控 -> 目前没有监控平台
+- [x] 优化Vite配置: 更细粒度的chunk分割
+- [x] 添加sqlParser按需加载（`Header` 懒加载 `ImportSqlDialog`，解析时再动态加载 `SqlParser`/`node-sql-parser`）
 
 **预期收益:**
 - 首屏加载时间减少40-60%
