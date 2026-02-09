@@ -28,3 +28,6 @@ export type { FolderTreeNode } from './useFolders';
 
 export { useFieldTemplates } from './useFieldTemplates';
 export type { FieldTemplate, TemplateField } from './useFieldTemplates';
+
+export { useDialogState } from './useDialogState';
+export type { UseDialogStateReturn } from './useDialogState';

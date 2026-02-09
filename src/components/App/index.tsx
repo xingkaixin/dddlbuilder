@@ -54,6 +54,7 @@ import { useSuggestionAnimation } from '@/hooks/useSuggestionAnimation';
 import { useSavedTables, type SavedTableSummary } from '@/hooks/useSavedTables';
 import { useFolders, type FolderTreeNode } from '@/hooks/useFolders';
 import { useAppStore } from '@/stores';
+import { useDialogState } from '@/hooks/useDialogState';
 import {
   useFieldTemplates,
   type FieldTemplate,
@@ -158,32 +159,70 @@ function App() {
   >(null);
   const isSaveDialogOpen = useAppStore((state) => state.dialogs.save);
   const setIsSaveDialogOpen = useAppStore((state) => state.setIsSaveDialogOpen);
-  const [saveName, setSaveName] = useState('');
-  const [saveError, setSaveError] = useState('');
   const isRenameDialogOpen = useAppStore((state) => state.dialogs.rename);
   const setIsRenameDialogOpen = useAppStore(
     (state) => state.setIsRenameDialogOpen,
-  );
-  const [renameName, setRenameName] = useState('');
-  const [renameError, setRenameError] = useState('');
-  const [renameTarget, setRenameTarget] = useState<SavedTableSummary | null>(
-    null,
   );
   const isDeleteDialogOpen = useAppStore((state) => state.dialogs.delete);
   const setIsDeleteDialogOpen = useAppStore(
     (state) => state.setIsDeleteDialogOpen,
   );
-  const [deleteTarget, setDeleteTarget] = useState<SavedTableSummary | null>(
-    null,
-  );
   const isLoadConfirmOpen = useAppStore((state) => state.dialogs.loadConfirm);
   const setIsLoadConfirmOpen = useAppStore(
     (state) => state.setIsLoadConfirmOpen,
   );
-  const [pendingLoadTarget, setPendingLoadTarget] =
-    useState<SavedTableSummary | null>(null);
-  const [queuedLoadAfterSave, setQueuedLoadAfterSave] =
-    useState<SavedTableSummary | null>(null);
+
+  const saveDialog = useDialogState<{
+    name: string;
+    queuedLoadAfterSave: SavedTableSummary | null;
+  }>({
+    open: isSaveDialogOpen,
+    setOpen: setIsSaveDialogOpen,
+    initialData: {
+      name: '',
+      queuedLoadAfterSave: null,
+    },
+  });
+
+  const renameDialog = useDialogState<{
+    name: string;
+    target: SavedTableSummary | null;
+  }>({
+    open: isRenameDialogOpen,
+    setOpen: setIsRenameDialogOpen,
+    initialData: {
+      name: '',
+      target: null,
+    },
+  });
+
+  const deleteDialog = useDialogState<{
+    target: SavedTableSummary | null;
+  }>({
+    open: isDeleteDialogOpen,
+    setOpen: setIsDeleteDialogOpen,
+    initialData: {
+      target: null,
+    },
+  });
+
+  const loadConfirmDialog = useDialogState<{
+    pendingTarget: SavedTableSummary | null;
+  }>({
+    open: isLoadConfirmOpen,
+    setOpen: setIsLoadConfirmOpen,
+    initialData: {
+      pendingTarget: null,
+    },
+  });
+  const saveName = saveDialog.data.name;
+  const saveError = saveDialog.error;
+  const queuedLoadAfterSave = saveDialog.data.queuedLoadAfterSave;
+  const renameName = renameDialog.data.name;
+  const renameError = renameDialog.error;
+  const renameTarget = renameDialog.data.target;
+  const deleteTarget = deleteDialog.data.target;
+  const pendingLoadTarget = loadConfirmDialog.data.pendingTarget;
 
   // Diff dialog state
   const [isDiffDialogOpen, setIsDiffDialogOpen] = useState(false);
@@ -811,12 +850,12 @@ function App() {
     (queuedLoad?: SavedTableSummary | null) => {
       const defaultName =
         loadedTableName || tableName.trim() || DEFAULT_SAVED_TABLE_NAME;
-      setSaveName(defaultName);
-      setSaveError('');
-      setIsSaveDialogOpen(true);
-      setQueuedLoadAfterSave(queuedLoad ?? null);
+      saveDialog.openDialog({
+        name: defaultName,
+        queuedLoadAfterSave: queuedLoad ?? null,
+      });
     },
-    [loadedTableName, tableName, setIsSaveDialogOpen],
+    [loadedTableName, tableName, saveDialog],
   );
 
   const handleConfirmSave = useCallback(async () => {
@@ -846,7 +885,7 @@ function App() {
       const result = await saveTable(saveName, nextState);
       if (!result.ok) {
         if (result.reason === 'duplicate') {
-          setSaveError('名称已存在，请换一个');
+          saveDialog.setError('名称已存在，请换一个');
           return;
         }
         showToast(result.message ?? '保存失败');
@@ -860,13 +899,10 @@ function App() {
         saveName.trim().toLowerCase() || DEFAULT_SAVED_TABLE_NAME.toLowerCase();
       await createVersion(normalizedName, nextState, '初始版本');
     }
-    setIsSaveDialogOpen(false);
-    setSaveError('');
+    saveDialog.closeDialog();
 
     if (queuedLoadAfterSave) {
-      const target = queuedLoadAfterSave;
-      setQueuedLoadAfterSave(null);
-      await handleLoadSavedTable(target);
+      await handleLoadSavedTable(queuedLoadAfterSave);
     }
   }, [
     canSaveCurrent,
@@ -882,26 +918,23 @@ function App() {
     loadedTableNormalizedName,
     loadedTableName,
     trackEvent,
-    setIsSaveDialogOpen,
+    saveDialog,
   ]);
 
   const handleSaveDialogOpenChange = useCallback(
     (open: boolean) => {
-      setIsSaveDialogOpen(open);
       if (!open) {
-        setSaveError('');
-        setQueuedLoadAfterSave(null);
+        saveDialog.closeDialog();
       }
     },
-    [setIsSaveDialogOpen],
+    [saveDialog],
   );
 
   const handleSelectSavedTable = useCallback(
     (item: SavedTableSummary) => {
       setSavedTablesDrawerOpen(false);
       if (hasLoadedTable && isLoadedDirty) {
-        setPendingLoadTarget(item);
-        setIsLoadConfirmOpen(true);
+        loadConfirmDialog.openDialog({ pendingTarget: item });
         return;
       }
       void handleLoadSavedTable(item);
@@ -910,60 +943,53 @@ function App() {
       hasLoadedTable,
       isLoadedDirty,
       handleLoadSavedTable,
+      loadConfirmDialog,
       setSavedTablesDrawerOpen,
-      setIsLoadConfirmOpen,
     ],
   );
 
   const handleCancelLoadConfirm = useCallback(() => {
-    setIsLoadConfirmOpen(false);
-    setPendingLoadTarget(null);
-  }, [setIsLoadConfirmOpen]);
+    loadConfirmDialog.closeDialog();
+  }, [loadConfirmDialog]);
 
   const handleLoadConfirmOpenChange = useCallback(
     (open: boolean) => {
-      if (open) {
-        setIsLoadConfirmOpen(true);
-        return;
+      if (!open) {
+        loadConfirmDialog.closeDialog();
       }
-      handleCancelLoadConfirm();
     },
-    [handleCancelLoadConfirm, setIsLoadConfirmOpen],
+    [loadConfirmDialog],
   );
 
   const handleConfirmLoadIgnore = useCallback(async () => {
     if (!pendingLoadTarget) return;
-    setIsLoadConfirmOpen(false);
+    loadConfirmDialog.closeDialog();
     await handleLoadSavedTable(pendingLoadTarget);
-    setPendingLoadTarget(null);
-  }, [pendingLoadTarget, handleLoadSavedTable, setIsLoadConfirmOpen]);
+  }, [pendingLoadTarget, loadConfirmDialog, handleLoadSavedTable]);
 
   const handleConfirmLoadSave = useCallback(() => {
     if (!pendingLoadTarget) return;
-    setIsLoadConfirmOpen(false);
+    loadConfirmDialog.closeDialog();
     openSaveDialog(pendingLoadTarget);
-    setPendingLoadTarget(null);
-  }, [pendingLoadTarget, openSaveDialog, setIsLoadConfirmOpen]);
+  }, [pendingLoadTarget, loadConfirmDialog, openSaveDialog]);
 
   const handleOpenRenameDialog = useCallback(
     (item: SavedTableSummary) => {
-      setRenameTarget(item);
-      setRenameName(item.name);
-      setRenameError('');
-      setIsRenameDialogOpen(true);
+      renameDialog.openDialog({
+        name: item.name,
+        target: item,
+      });
     },
-    [setIsRenameDialogOpen],
+    [renameDialog],
   );
 
   const handleRenameDialogOpenChange = useCallback(
     (open: boolean) => {
-      setIsRenameDialogOpen(open);
       if (!open) {
-        setRenameTarget(null);
-        setRenameError('');
+        renameDialog.closeDialog();
       }
     },
-    [setIsRenameDialogOpen],
+    [renameDialog],
   );
 
   const handleConfirmRename = useCallback(async () => {
@@ -971,7 +997,7 @@ function App() {
     const result = await renameTable(renameTarget.normalizedName, renameName);
     if (!result.ok) {
       if (result.reason === 'duplicate') {
-        setRenameError('名称已存在，请换一个');
+        renameDialog.setError('名称已存在，请换一个');
         return;
       }
       showToast(result.message ?? '重命名失败');
@@ -990,9 +1016,7 @@ function App() {
       setLoadedTableNormalizedName(result.normalizedName);
       setLoadedTableName(displayName);
     }
-    setIsRenameDialogOpen(false);
-    setRenameTarget(null);
-    setRenameError('');
+    renameDialog.closeDialog();
   }, [
     renameTarget,
     renameName,
@@ -1000,25 +1024,23 @@ function App() {
     showToast,
     loadedTableNormalizedName,
     trackEvent,
-    setIsRenameDialogOpen,
+    renameDialog,
   ]);
 
   const handleOpenDeleteDialog = useCallback(
     (item: SavedTableSummary) => {
-      setDeleteTarget(item);
-      setIsDeleteDialogOpen(true);
+      deleteDialog.openDialog({ target: item });
     },
-    [setIsDeleteDialogOpen],
+    [deleteDialog],
   );
 
   const handleDeleteDialogOpenChange = useCallback(
     (open: boolean) => {
-      setIsDeleteDialogOpen(open);
       if (!open) {
-        setDeleteTarget(null);
+        deleteDialog.closeDialog();
       }
     },
-    [setIsDeleteDialogOpen],
+    [deleteDialog],
   );
 
   const handleConfirmDelete = useCallback(async () => {
@@ -1035,15 +1057,14 @@ function App() {
         setLoadedTableSignature(null);
       }
     }
-    setIsDeleteDialogOpen(false);
-    setDeleteTarget(null);
+    deleteDialog.closeDialog();
   }, [
     deleteTarget,
     deleteTable,
     showToast,
     loadedTableNormalizedName,
     trackEvent,
-    setIsDeleteDialogOpen,
+    deleteDialog,
   ]);
 
   // Folder handlers
@@ -1913,8 +1934,11 @@ function App() {
               id="save-table-name"
               value={saveName}
               onChange={(event) => {
-                setSaveName(event.target.value);
-                if (saveError) setSaveError('');
+                saveDialog.updateData((prev) => ({
+                  ...prev,
+                  name: event.target.value,
+                }));
+                if (saveError) saveDialog.clearError();
               }}
               placeholder="例如：用户表"
               disabled={saveInputDisabled}
@@ -1991,8 +2015,11 @@ function App() {
               id="rename-table-name"
               value={renameName}
               onChange={(event) => {
-                setRenameName(event.target.value);
-                if (renameError) setRenameError('');
+                renameDialog.updateData((prev) => ({
+                  ...prev,
+                  name: event.target.value,
+                }));
+                if (renameError) renameDialog.clearError();
               }}
               placeholder="例如：订单表"
             />
