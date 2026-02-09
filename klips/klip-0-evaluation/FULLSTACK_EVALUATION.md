@@ -1,3 +1,10 @@
+---
+created: "2026-02-08"
+updated: "2026-02-09"
+status: "ready"
+---
+
+
 # DDLBuilder 全栈集成质量评估报告
 
 ## 执行摘要
