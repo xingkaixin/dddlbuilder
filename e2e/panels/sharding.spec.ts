@@ -17,14 +17,16 @@ test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
     await page.locator('#table-name').fill('sharded_table');
 
     // 添加字段
-    const cell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)');
+    const cell = page.locator(
+      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+    );
     await cell.dblclick();
     await page.locator('textarea.handsontableInput').fill('user_id');
     await page.keyboard.press('Enter');
     await expect(cell).toHaveText('user_id');
 
     const typeCell = page.locator(
-      '.htCore tbody tr:nth-child(1) td:nth-child(4)',
+      '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(4)',
     );
     await typeCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('int');
@@ -55,13 +57,15 @@ test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
 
     await page.locator('#table-name').fill('reference_table');
 
-    const cell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)');
+    const cell = page.locator(
+      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+    );
     await cell.dblclick();
     await page.locator('textarea.handsontableInput').fill('id');
     await page.keyboard.press('Enter');
 
     const typeCell = page.locator(
-      '.htCore tbody tr:nth-child(1) td:nth-child(4)',
+      '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(4)',
     );
     await typeCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('int');

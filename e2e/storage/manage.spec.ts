@@ -2,14 +2,14 @@ import { test, expect } from '@playwright/test';
 
 const fillBasicField = async (page: any, name = 'id') => {
   const nameCell = page.locator(
-    '.htCore tbody tr:nth-child(1) td:nth-child(2)',
+    '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
   );
   await nameCell.dblclick();
   await page.locator('textarea.handsontableInput').fill(name);
   await page.keyboard.press('Enter');
 
   const typeCell = page.locator(
-    '.htCore tbody tr:nth-child(1) td:nth-child(4)',
+    '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(4)',
   );
   await typeCell.dblclick();
   await page.locator('textarea.handsontableInput').fill('int');
@@ -102,7 +102,7 @@ test.describe('保存表管理补充 @storage', () => {
     await expect(page.getByText(new RegExp(`当前：${tableA}`))).toBeVisible();
 
     const nameCell = page.locator(
-      '.htCore tbody tr:nth-child(1) td:nth-child(2)',
+      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
     );
     await nameCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('id_changed');

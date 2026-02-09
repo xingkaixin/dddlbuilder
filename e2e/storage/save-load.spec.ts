@@ -22,7 +22,9 @@ test.describe('存储管理验证 @storage @smoke', () => {
     await page.locator('#table-name').fill('save_test_table');
 
     // 添加一个字段以确保可以保存（如果有校验的话）
-    const cell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)');
+    const cell = page.locator(
+      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+    );
     await cell.dblclick();
     await page.locator('textarea.handsontableInput').fill('id');
     await page.keyboard.press('Enter');

@@ -22,7 +22,9 @@ test.describe('数据库切换与方言验证 @core', () => {
       timeout: 10000,
     });
     await expect(
-      page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)'),
+      page.locator(
+        '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+      ),
     ).toHaveText('HYDRATED_FIELD', { timeout: 10000 });
 
     // 1. 填写表名
@@ -30,7 +32,7 @@ test.describe('数据库切换与方言验证 @core', () => {
 
     // 2. 填写第一个字段名 (id)
     const firstFieldNameCell = page.locator(
-      '.htCore tbody tr:nth-child(1) td:nth-child(2)',
+      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
     );
     await firstFieldNameCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('id');
@@ -38,7 +40,7 @@ test.describe('数据库切换与方言验证 @core', () => {
 
     // 3. 填写第一个字段类型 (VARCHAR255)
     const firstFieldTypeCell = page.locator(
-      '.htCore tbody tr:nth-child(1) td:nth-child(4)',
+      '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(4)',
     );
     await firstFieldTypeCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('varchar(255)');

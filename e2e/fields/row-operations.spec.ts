@@ -30,14 +30,18 @@ test.describe('字段行操作验证 @fields', () => {
     const sqlOutput = page.locator('[data-state="active"] pre');
 
     // 填写第一行并确保 SQL 更新
-    const cell1 = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)');
+    const cell1 = page.locator(
+      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+    );
     await cell1.dblclick();
     await page.locator('textarea.handsontableInput').fill('f1');
     await page.keyboard.press('Enter');
     await expect(sqlOutput).toContainText(/f1/i, { timeout: 10000 });
 
     // 填写第二行并确保 SQL 更新
-    const cell2 = page.locator('.htCore tbody tr:nth-child(2) td:nth-child(2)');
+    const cell2 = page.locator(
+      '.ht_clone_inline_start .htCore tbody tr:nth-child(2) td:nth-child(2)',
+    );
     await cell2.dblclick();
     await page.locator('textarea.handsontableInput').fill('f2');
     await page.keyboard.press('Enter');
@@ -49,14 +53,16 @@ test.describe('字段行操作验证 @fields', () => {
     await expect(page.locator('#table-name')).toBeVisible({ timeout: 10000 });
     await page.locator('#table-name').fill('clear_test');
 
-    const cell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)');
+    const cell = page.locator(
+      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+    );
     await cell.dblclick();
     await page.locator('textarea.handsontableInput').fill('to_be_cleared');
     await page.keyboard.press('Enter');
     await expect(cell).toHaveText('to_be_cleared', { timeout: 5000 });
 
     const typeCell = page.locator(
-      '.htCore tbody tr:nth-child(1) td:nth-child(4)',
+      '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(4)',
     );
     await typeCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('int');
