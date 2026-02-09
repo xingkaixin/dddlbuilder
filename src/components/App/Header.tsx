@@ -1,9 +1,14 @@
 import { memo, lazy, Suspense } from 'react';
-import { ImportSqlDialog } from '@/components/ImportSqlDialog';
 import type { DatabaseType } from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
 import packageInfo from '../../../package.json';
 import { Share2, FileInput, History } from 'lucide-react';
+
+const ImportSqlDialog = lazy(() =>
+  import('@/components/ImportSqlDialog').then((module) => ({
+    default: module.ImportSqlDialog,
+  })),
+);
 
 const ChangelogModal = lazy(() =>
   import('@/components/ChangelogModal').then((module) => ({
@@ -59,13 +64,24 @@ export const Header = memo<HeaderProps>(
                   v{packageInfo.version}
                 </div>
                 <div className="flex items-center gap-3">
-                  <ImportSqlDialog
-                    currentDbType={currentDbType}
-                    onImport={onImport}
-                    triggerClassName={actionBtnClass}
-                    triggerIcon={<FileInput className="h-4 w-4" aria-hidden />}
-                    triggerLabel="导入 SQL"
-                  />
+                  <Suspense
+                    fallback={
+                      <button type="button" className={actionBtnClass} disabled>
+                        <FileInput className="h-4 w-4" aria-hidden />
+                        导入 SQL
+                      </button>
+                    }
+                  >
+                    <ImportSqlDialog
+                      currentDbType={currentDbType}
+                      onImport={onImport}
+                      triggerClassName={actionBtnClass}
+                      triggerIcon={
+                        <FileInput className="h-4 w-4" aria-hidden />
+                      }
+                      triggerLabel="导入 SQL"
+                    />
+                  </Suspense>
                   <button onClick={onShare} className={actionBtnClass}>
                     <Share2 className="h-4 w-4" aria-hidden />
                     分享链接

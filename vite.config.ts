@@ -39,26 +39,60 @@ export default defineConfig({
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
-        manualChunks: {
-          // 将 Handsontable 单独打包
-          handsontable: ['handsontable', '@handsontable/react-wrapper'],
-          // 将 node-sql-parser 单独打包（最大的依赖）
-          sqlParser: ['node-sql-parser'],
-          // 将 React 相关库单独打包
-          'react-vendor': ['react', 'react-dom'],
-          // UI 组件库
-          ui: [
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-select',
-            '@radix-ui/react-tabs',
-          ],
-          // 工具库
-          utils: [
-            'lucide-react',
-            'clsx',
-            'class-variance-authority',
-            'tailwind-merge',
-          ],
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+
+          const includesAny = (patterns: string[]) =>
+            patterns.some((pattern) => id.includes(pattern));
+
+          if (includesAny(['node-sql-parser'])) return 'vendor-sql-parser';
+          if (includesAny(['handsontable', '@handsontable/'])) {
+            return 'vendor-handsontable';
+          }
+          if (
+            includesAny([
+              'react-markdown',
+              'remark-gfm',
+              'remark-',
+              'rehype-',
+              'mdast',
+              'micromark',
+              'hast-',
+              'unist-',
+              'unified',
+              'vfile',
+            ])
+          ) {
+            return 'vendor-markdown';
+          }
+          if (
+            includesAny([
+              'react-syntax-highlighter',
+              'highlight.js',
+              'lowlight',
+              'refractor',
+              'prismjs',
+            ])
+          ) {
+            return 'vendor-code-highlight';
+          }
+          if (includesAny(['@radix-ui/'])) return 'vendor-radix';
+          if (includesAny(['@vercel/analytics'])) return 'vendor-analytics';
+          if (includesAny(['/react/', '/react-dom/', 'scheduler'])) {
+            return 'vendor-react';
+          }
+          if (
+            includesAny([
+              'lucide-react',
+              'clsx',
+              'class-variance-authority',
+              'tailwind-merge',
+            ])
+          ) {
+            return 'vendor-utils';
+          }
+
+          return 'vendor-misc';
         },
       },
     },
