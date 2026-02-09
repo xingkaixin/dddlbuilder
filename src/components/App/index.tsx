@@ -9,6 +9,7 @@ import { TableBuilderContainer } from './containers/TableBuilderContainer';
 import { useFolderActions } from './hooks/useFolderActions';
 import { useTemplateActions } from './hooks/useTemplateActions';
 import { useSchemaApplyActions } from './hooks/useSchemaApplyActions';
+import { useSavedTableFlowActions } from './hooks/useSavedTableFlowActions';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { useAuthManagement } from '@/hooks/useAuthManagement';
 import { useSqlGeneration } from '@/hooks/useSqlGeneration';
@@ -35,7 +36,6 @@ import {
   normalizeSavedTableName,
 } from '@/utils/savedTablesDb';
 import { diffPersistedState, type TableDiff } from '@/utils/tableDiff';
-import { createVersion } from '@/utils/tableVersions';
 import { saveReview } from '@/utils/reviewHistory';
 import { reportError } from '@/utils/errorReporter';
 
@@ -177,7 +177,6 @@ function App() {
   });
   const saveName = saveDialog.data.name;
   const saveError = saveDialog.error;
-  const queuedLoadAfterSave = saveDialog.data.queuedLoadAfterSave;
   const renameName = renameDialog.data.name;
   const renameError = renameDialog.error;
   const renameTarget = renameDialog.data.target;
@@ -805,163 +804,37 @@ function App() {
     ],
   );
 
-  const handleLoadSavedTable = useCallback(
-    async (target: SavedTableSummary) => {
-      try {
-        const record = await loadTable(target.normalizedName);
-        if (!record) {
-          showToast('未找到保存的表');
-          return;
-        }
-        applySavedState(record.state);
-        setLoadedTableNormalizedName(record.normalizedName);
-        setLoadedTableName(record.name);
-        setLoadedTableSignature(serializePersistedState(record.state));
-        trackEvent('table_load', { tableName: record.name });
-        showToast(`已加载：${record.name}`);
-      } catch (error) {
-        showToast(error instanceof Error ? error.message : '加载失败');
-      }
-    },
-    [
-      applySavedState,
-      loadTable,
-      showToast,
-      serializePersistedState,
-      setLoadedTableNormalizedName,
-      setLoadedTableName,
-      setLoadedTableSignature,
-      trackEvent,
-    ],
-  );
-
-  const openSaveDialog = useCallback(
-    (queuedLoad?: SavedTableSummary | null) => {
-      const defaultName =
-        loadedTableName || tableName.trim() || DEFAULT_SAVED_TABLE_NAME;
-      saveDialog.openDialog({
-        name: defaultName,
-        queuedLoadAfterSave: queuedLoad ?? null,
-      });
-    },
-    [loadedTableName, tableName, saveDialog],
-  );
-
-  const handleConfirmSave = useCallback(async () => {
-    if (!canSaveCurrent) {
-      showToast('加载的表未修改，无法保存');
-      return;
-    }
-    const nextState = buildPersistedState();
-    const nextSignature = serializePersistedState(nextState);
-
-    if (hasLoadedTable && loadedTableNormalizedName) {
-      const result = await overwriteTable(loadedTableNormalizedName, nextState);
-      if (!result.ok) {
-        if (result.reason === 'not_found') {
-          showToast('未找到保存的表');
-          return;
-        }
-        showToast(result.message ?? '更新失败');
-        return;
-      }
-      setLoadedTableSignature(nextSignature);
-      trackEvent('table_update', { tableName: loadedTableName });
-      showToast(`已更新：${loadedTableName ?? saveName}`);
-      // 创建版本快照
-      await createVersion(loadedTableNormalizedName, nextState);
-    } else {
-      const result = await saveTable(saveName, nextState);
-      if (!result.ok) {
-        if (result.reason === 'duplicate') {
-          saveDialog.setError('名称已存在，请换一个');
-          return;
-        }
-        showToast(result.message ?? '保存失败');
-        return;
-      }
-      const displayName = saveName.trim() || DEFAULT_SAVED_TABLE_NAME;
-      trackEvent('table_save', { tableName: displayName });
-      showToast(`已保存：${displayName}`);
-      // 创建初始版本快照
-      const normalizedName =
-        saveName.trim().toLowerCase() || DEFAULT_SAVED_TABLE_NAME.toLowerCase();
-      await createVersion(normalizedName, nextState, '初始版本');
-    }
-    saveDialog.closeDialog();
-
-    if (queuedLoadAfterSave) {
-      await handleLoadSavedTable(queuedLoadAfterSave);
-    }
-  }, [
-    canSaveCurrent,
-    saveName,
-    saveTable,
-    overwriteTable,
-    buildPersistedState,
-    serializePersistedState,
-    showToast,
-    queuedLoadAfterSave,
-    handleLoadSavedTable,
+  const {
+    handleOpenSaveDialog,
+    handleConfirmSave,
+    handleSaveDialogOpenChange,
+    handleSelectSavedTable,
+    handleCancelLoadConfirm,
+    handleLoadConfirmOpenChange,
+    handleConfirmLoadIgnore,
+    handleConfirmLoadSave,
+  } = useSavedTableFlowActions({
+    tableName,
     hasLoadedTable,
+    isLoadedDirty,
+    canSaveCurrent,
     loadedTableNormalizedName,
     loadedTableName,
+    setLoadedTableNormalizedName,
+    setLoadedTableName,
     setLoadedTableSignature,
-    trackEvent,
+    setSavedTablesDrawerOpen,
     saveDialog,
-  ]);
-
-  const handleSaveDialogOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) {
-        saveDialog.closeDialog();
-      }
-    },
-    [saveDialog],
-  );
-
-  const handleSelectSavedTable = useCallback(
-    (item: SavedTableSummary) => {
-      setSavedTablesDrawerOpen(false);
-      if (hasLoadedTable && isLoadedDirty) {
-        loadConfirmDialog.openDialog({ pendingTarget: item });
-        return;
-      }
-      void handleLoadSavedTable(item);
-    },
-    [
-      hasLoadedTable,
-      isLoadedDirty,
-      handleLoadSavedTable,
-      loadConfirmDialog,
-      setSavedTablesDrawerOpen,
-    ],
-  );
-
-  const handleCancelLoadConfirm = useCallback(() => {
-    loadConfirmDialog.closeDialog();
-  }, [loadConfirmDialog]);
-
-  const handleLoadConfirmOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) {
-        loadConfirmDialog.closeDialog();
-      }
-    },
-    [loadConfirmDialog],
-  );
-
-  const handleConfirmLoadIgnore = useCallback(async () => {
-    if (!pendingLoadTarget) return;
-    loadConfirmDialog.closeDialog();
-    await handleLoadSavedTable(pendingLoadTarget);
-  }, [pendingLoadTarget, loadConfirmDialog, handleLoadSavedTable]);
-
-  const handleConfirmLoadSave = useCallback(() => {
-    if (!pendingLoadTarget) return;
-    loadConfirmDialog.closeDialog();
-    openSaveDialog(pendingLoadTarget);
-  }, [pendingLoadTarget, loadConfirmDialog, openSaveDialog]);
+    loadConfirmDialog,
+    buildPersistedState,
+    serializePersistedState,
+    applySavedState,
+    loadTable,
+    saveTable,
+    overwriteTable,
+    showToast,
+    trackEvent,
+  });
 
   const handleOpenRenameDialog = useCallback(
     (item: SavedTableSummary) => {
@@ -1082,10 +955,6 @@ function App() {
       showToast,
       trackEvent,
     });
-
-  const handleOpenSaveDialog = useCallback(() => {
-    openSaveDialog(null);
-  }, [openSaveDialog]);
 
   const handleOpenSavedTablesDrawer = useCallback(() => {
     trackEvent('sidebar_open');
