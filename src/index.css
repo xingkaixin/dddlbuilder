@@ -522,12 +522,67 @@
   }
 }
 
+/* TanStack Table Row Highlight Animation */
+@keyframes tanstack-row-highlight {
+  0% {
+    background-color: rgba(59, 130, 246, 0.4);
+  }
+
+  25% {
+    background-color: rgba(59, 130, 246, 0.25);
+  }
+
+  50% {
+    background-color: rgba(59, 130, 246, 0.4);
+  }
+
+  75% {
+    background-color: rgba(59, 130, 246, 0.25);
+  }
+
+  100% {
+    background-color: transparent;
+  }
+}
+
+.animate-row-highlight {
+  animation: tanstack-row-highlight 1200ms ease-out forwards;
+}
+
+.dark .animate-row-highlight {
+  animation-name: tanstack-row-highlight-dark;
+}
+
+@keyframes tanstack-row-highlight-dark {
+  0% {
+    background-color: rgba(59, 130, 246, 0.3);
+  }
+
+  25% {
+    background-color: rgba(59, 130, 246, 0.18);
+  }
+
+  50% {
+    background-color: rgba(59, 130, 246, 0.3);
+  }
+
+  75% {
+    background-color: rgba(59, 130, 246, 0.18);
+  }
+
+  100% {
+    background-color: transparent;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+
   .animate-in,
   .animate-suggestion-add,
   .animate-suggestion-remove,
   .animate-suggestion-modify,
   .animate-field-highlight,
+  .animate-row-highlight,
   .handsontable td.ht-row-highlight {
     animation: none !important;
     transition-duration: 0ms !important;

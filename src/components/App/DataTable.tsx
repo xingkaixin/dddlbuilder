@@ -1,28 +1,33 @@
-import { memo, useCallback, useMemo, useRef, useEffect } from 'react';
+import { memo, useCallback, useMemo, useRef, useEffect, useState } from 'react';
+import {
+  useReactTable,
+  getCoreRowModel,
+  flexRender,
+  createColumnHelper,
+  type ColumnDef,
+} from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { HardDrive } from 'lucide-react';
 import {
-  AutocompleteCellType,
-  CheckboxCellType,
-  DropdownCellType,
-  TextCellType,
-  registerCellType,
-} from 'handsontable/cellTypes';
-import { registerPlugin } from 'handsontable/plugins';
-import { AutoColumnSize } from 'handsontable/plugins/autoColumnSize';
-import { ContextMenu } from 'handsontable/plugins/contextMenu';
-import { CopyPaste } from 'handsontable/plugins/copyPaste';
-import { ManualColumnResize } from 'handsontable/plugins/manualColumnResize';
-import { StretchColumns } from 'handsontable/plugins/stretchColumns';
-import { UndoRedo } from 'handsontable/plugins/undoRedo';
-import { HotTable } from '@handsontable/react-wrapper';
-import 'handsontable/styles/handsontable.css';
-import 'handsontable/styles/ht-theme-main.css';
-import type Handsontable from 'handsontable';
-import type { UiDefaultKind } from '@/types';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { HardDrive, Trash2 } from 'lucide-react';
+import {
+  EditableCell,
+  SelectCell,
+  CheckboxCell,
+  OrderCell,
+} from './table';
+import type { FieldRow, UiDefaultKind } from '@/types';
 import {
   toStringSafe,
   isReservedKeyword,
@@ -35,62 +40,26 @@ import { COLUMN_HEADERS } from '@/utils/constants';
 import { cn } from '@/lib/utils';
 import { buildDuplicateNameSet, useAppStore, useFieldStore } from '@/stores';
 
-let handsontableModulesRegistered = false;
-
-const ensureHandsontableModules = () => {
-  if (handsontableModulesRegistered) return;
-  registerCellType(AutocompleteCellType);
-  registerCellType(CheckboxCellType);
-  registerCellType(DropdownCellType);
-  registerCellType(TextCellType);
-  registerPlugin(AutoColumnSize);
-  registerPlugin(ContextMenu);
-  registerPlugin(CopyPaste);
-  registerPlugin(ManualColumnResize);
-  registerPlugin(StretchColumns);
-  registerPlugin(UndoRedo);
-  handsontableModulesRegistered = true;
-};
-
-ensureHandsontableModules();
-
-const COLUMN_SETTINGS: Handsontable.ColumnSettings[] = [
-  { data: 'order', readOnly: true, width: 48, className: 'htCenter' },
-  { data: 'fieldName', type: 'text' },
-  { data: 'fieldComment', type: 'text' },
-  { data: 'fieldType', type: 'text' },
-  {
-    data: 'nullable',
-    type: 'checkbox',
-    className: 'htCenter',
-    checkedTemplate: '是',
-    uncheckedTemplate: '否',
-  },
-  {
-    data: 'defaultKind',
-    type: 'dropdown',
-    source: [],
-    allowInvalid: false,
-  },
-  { data: 'defaultValue', type: 'text' },
-  {
-    data: 'onUpdate',
-    type: 'dropdown',
-    source: [],
-    allowInvalid: false,
-  },
-];
+const columnHelper = createColumnHelper<FieldRow>();
 
 interface DataTableProps {
-  /** 工具栏左侧插槽，用于添加额外按钮（如"应用模板"） */
   toolbarLeft?: React.ReactNode;
-  /** 是否显示字段变更高亮动画 */
   isHighlighted?: boolean;
-  /** 需要高亮的行索引 */
   highlightedRowIndex?: number | null;
-  /** 打开存储估算按钮的回调 */
   onOpenStorageEstimator?: () => void;
 }
+
+// Helper to normalize nullable values from various formats
+const parseNullable = (value: string): string => {
+  if (!value) return '是';
+  const v = value.trim().toLowerCase();
+  // Check for "not nullable" values
+  const notNullableValues = new Set(['n', 'no', '否', 'false', '0', 'not null', 'notnull']);
+  if (notNullableValues.has(v)) {
+    return '否';
+  }
+  return '是'; // Default to nullable (yes, y, 是, true, 1, null, etc.)
+};
 
 export const DataTable = memo<DataTableProps>(
   ({
@@ -100,10 +69,9 @@ export const DataTable = memo<DataTableProps>(
     onOpenStorageEstimator,
   }) => {
     const rows = useFieldStore((state) => state.rows);
-    const onRowsChange = useFieldStore((state) => state.handleRowsChange);
-    const onCreateRow = useFieldStore((state) => state.handleCreateRow);
-    const onRemoveRow = useFieldStore((state) => state.handleRemoveRow);
+    const setRows = useFieldStore((state) => state.setRows);
     const onAddRows = useFieldStore((state) => state.handleAddRows);
+    const onRemoveRow = useFieldStore((state) => state.handleRemoveRow);
     const dbType = useAppStore((state) => state.dbType);
     const addCount = useAppStore((state) => state.addCount);
     const onAddCountChange = useAppStore((state) => state.setAddCount);
@@ -117,13 +85,78 @@ export const DataTable = memo<DataTableProps>(
     );
 
     const duplicateNameSet = useMemo(() => buildDuplicateNameSet(rows), [rows]);
+    const tableRef = useRef<HTMLDivElement>(null);
 
-    const latestRef = useRef({ rows, dbType });
-    latestRef.current = { rows, dbType };
+    // Column resize state
+    const [columnWidths] = useState<Record<string, number>>({
+      order: 48,
+      fieldName: 120,
+      fieldComment: 150,
+      fieldType: 120,
+      nullable: 70,
+      defaultKind: 110,
+      defaultValue: 100,
+      onUpdate: 100,
+      actions: 50,
+    });
 
-    // Ref for Handsontable instance
-    const hotRef = useRef<any>(null);
+    // Selected cell for paste position
+    const [selectedCell, setSelectedCell] = useState<{
+      row: number;
+      col: number;
+    } | null>(null);
 
+    // Column keys for paste mapping
+    const editableColumnKeys = [
+      'fieldName',
+      'fieldComment',
+      'fieldType',
+      'nullable',
+      'defaultKind',
+      'defaultValue',
+      'onUpdate',
+    ] as const;
+
+    // Delete confirmation dialog state
+    const [deleteConfirm, setDeleteConfirm] = useState<{
+      open: boolean;
+      rowIndex: number;
+      fieldName: string;
+      fieldComment: string;
+    }>({ open: false, rowIndex: -1, fieldName: '', fieldComment: '' });
+
+    // Update cell value helper
+    const updateCellValue = useCallback(
+      (rowIndex: number, columnId: string, value: string | boolean) => {
+        setRows((prev) => {
+          const newRows = [...prev];
+          const row = { ...newRows[rowIndex] };
+
+          if (columnId === 'nullable') {
+            row.nullable = value ? '是' : '否';
+          } else {
+            (row as Record<string, unknown>)[columnId] = value;
+          }
+
+          // Handle special field logic
+          if (columnId === 'defaultKind') {
+            const kind = String(value ?? '');
+            if (kind !== '常量') {
+              row.defaultValue = '';
+            }
+            if (kind === '自增') {
+              row.nullable = '否';
+            }
+          }
+
+          newRows[rowIndex] = row;
+          return newRows;
+        });
+      },
+      [setRows],
+    );
+
+    // Row warnings calculation
     const rowWarnings = useMemo(() => {
       return rows.map((row) => {
         const warnings: string[] = [];
@@ -136,138 +169,194 @@ export const DataTable = memo<DataTableProps>(
       });
     }, [rows, duplicateNameSet, dbType]);
 
-    const columns = useMemo<Handsontable.ColumnSettings[]>(() => {
-      return COLUMN_SETTINGS.map((col) => {
-        if (col.data !== 'order') return col;
-        return {
-          ...col,
-          renderer: (
-            _instance,
-            td,
-            row,
-            _colIndex,
-            _prop,
-            value,
-            _cellProperties,
-          ) => {
-            while (td.firstChild) td.removeChild(td.firstChild);
-            td.classList.add('htOrderCell');
-            const wrapper = document.createElement('span');
-            wrapper.className = 'htOrderCellInner';
-            const label = document.createElement('span');
-            label.className = 'htOrderValue';
-            label.textContent = value == null ? '' : String(value);
-            wrapper.appendChild(label);
-            const warnings = rowWarnings[row];
-            if (warnings?.length) {
-              td.classList.add('htOrderHasWarning');
-              const icon = document.createElement('span');
-              icon.className = 'htOrderWarningIcon';
-              const tooltip = warnings.join('，');
-              icon.setAttribute('title', tooltip);
-              icon.setAttribute('aria-label', tooltip);
-              icon.textContent = '!';
-              wrapper.appendChild(icon);
-            } else {
-              td.classList.remove('htOrderHasWarning');
-            }
-            td.appendChild(wrapper);
-          },
-        };
-      });
-    }, [rowWarnings]);
-
-    // Enhanced cells function extracted from App.tsx
-    const cells = useCallback(
-      (row: number, _col: number, prop?: string | number) => {
-        const { rows: currentRows, dbType: currentDbType } = latestRef.current;
-        const cellProps: Handsontable.CellMeta = {};
-
-        if (prop === 'defaultValue') {
-          const kind = normalizeDefaultKind(
-            currentRows[row]?.defaultKind as UiDefaultKind,
-          );
-          if (kind !== 'constant') {
-            cellProps.readOnly = true;
-            cellProps.type = 'text';
-            cellProps.className = `${
-              cellProps.className ? cellProps.className + ' ' : ''
-            }htDimmed`;
-          }
-        }
-
-        if (prop === 'defaultKind' || prop === 'onUpdate') {
-          const base = getCanonicalBaseType(
-            toStringSafe(currentRows[row]?.fieldType),
-          );
-          const dd = cellProps as Handsontable.CellMeta & {
-            source?: string[];
-          };
-
-          if (prop === 'defaultKind') {
-            const opts = getUiDefaultKindOptions(currentDbType, base);
-            dd.source = opts;
-            dd.type = 'autocomplete';
-            (dd as Handsontable.CellMeta & { strict?: boolean }).strict = true;
-            (dd as Handsontable.CellMeta & { filter?: boolean }).filter = false;
-            dd.allowInvalid = false;
-            dd.readOnly = false;
-          } else if (prop === 'onUpdate') {
-            // Check if defaultKind is uuid, if so, disable onUpdate
-            const defaultKind = normalizeDefaultKind(
-              currentRows[row]?.defaultKind as UiDefaultKind,
+    // Define columns
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const columns = useMemo<ColumnDef<FieldRow, any>[]>(
+      () => [
+        columnHelper.accessor('order', {
+          header: () => COLUMN_HEADERS[0],
+          size: columnWidths.order,
+          cell: ({ row }) => (
+            <OrderCell
+              order={row.original.order}
+              warnings={rowWarnings[row.index] || []}
+            />
+          ),
+        }),
+        columnHelper.accessor('fieldName', {
+          header: () => COLUMN_HEADERS[1],
+          size: columnWidths.fieldName,
+          cell: ({ row, getValue }) => (
+            <EditableCell
+              value={getValue() as string}
+              onChange={(v) => updateCellValue(row.index, 'fieldName', v)}
+              placeholder="字段名"
+            />
+          ),
+        }),
+        columnHelper.accessor('fieldComment', {
+          header: () => COLUMN_HEADERS[2],
+          size: columnWidths.fieldComment,
+          cell: ({ row, getValue }) => (
+            <EditableCell
+              value={getValue() as string}
+              onChange={(v) => updateCellValue(row.index, 'fieldComment', v)}
+              placeholder="字段中文名"
+            />
+          ),
+        }),
+        columnHelper.accessor('fieldType', {
+          header: () => COLUMN_HEADERS[3],
+          size: columnWidths.fieldType,
+          cell: ({ row, getValue }) => (
+            <EditableCell
+              value={getValue() as string}
+              onChange={(v) => updateCellValue(row.index, 'fieldType', v)}
+              placeholder="字段类型"
+            />
+          ),
+        }),
+        columnHelper.accessor('nullable', {
+          header: () => COLUMN_HEADERS[4],
+          size: columnWidths.nullable,
+          cell: ({ row, getValue }) => (
+            <CheckboxCell
+              checked={getValue() === '是'}
+              onChange={(v) => updateCellValue(row.index, 'nullable', v)}
+            />
+          ),
+        }),
+        columnHelper.accessor('defaultKind', {
+          header: () => COLUMN_HEADERS[5],
+          size: columnWidths.defaultKind,
+          cell: ({ row, getValue }) => {
+            const fieldType = toStringSafe(row.original.fieldType);
+            const base = getCanonicalBaseType(fieldType);
+            const options = getUiDefaultKindOptions(dbType, base);
+            return (
+              <SelectCell
+                value={(getValue() as string) || '无'}
+                options={options}
+                onChange={(v) => updateCellValue(row.index, 'defaultKind', v)}
+              />
             );
+          },
+        }),
+        columnHelper.accessor('defaultValue', {
+          header: () => COLUMN_HEADERS[6],
+          size: columnWidths.defaultValue,
+          cell: ({ row, getValue }) => {
+            const kind = normalizeDefaultKind(
+              row.original.defaultKind as UiDefaultKind,
+            );
+            const disabled = kind !== 'constant';
+            return (
+              <EditableCell
+                value={(getValue() as string) || ''}
+                onChange={(v) => updateCellValue(row.index, 'defaultValue', v)}
+                disabled={disabled}
+                placeholder={disabled ? '' : '默认值'}
+              />
+            );
+          },
+        }),
+        columnHelper.accessor('onUpdate', {
+          header: () => COLUMN_HEADERS[7],
+          size: columnWidths.onUpdate,
+          cell: ({ row, getValue }) => {
+            const fieldType = toStringSafe(row.original.fieldType);
+            const base = getCanonicalBaseType(fieldType);
+            const defaultKind = normalizeDefaultKind(
+              row.original.defaultKind as UiDefaultKind,
+            );
+
+            // Disable if defaultKind is uuid
             if (defaultKind === 'uuid') {
-              dd.type = 'text';
-              dd.readOnly = true;
-              dd.allowInvalid = false;
-              dd.source = undefined;
-              dd.className = `${
-                dd.className ? dd.className + ' ' : ''
-              }htDimmed`;
-            } else {
-              const opts = getUiOnUpdateOptions(currentDbType, base);
-              if (opts.length <= 1) {
-                dd.type = 'text';
-                dd.readOnly = true;
-                dd.allowInvalid = false;
-                dd.source = undefined;
-              } else {
-                dd.source = opts;
-                dd.type = 'autocomplete';
-                (dd as Handsontable.CellMeta & { strict?: boolean }).strict =
-                  true;
-                (dd as Handsontable.CellMeta & { filter?: boolean }).filter =
-                  false;
-                dd.allowInvalid = false;
-                dd.readOnly = false;
-              }
+              return (
+                <SelectCell
+                  value={(getValue() as string) || '无'}
+                  options={['无']}
+                  onChange={() => {}}
+                  disabled
+                />
+              );
             }
-          }
-        }
 
-        return cellProps;
-      },
-      [],
+            const options = getUiOnUpdateOptions(dbType, base);
+            if (options.length <= 1) {
+              return (
+                <SelectCell
+                  value={(getValue() as string) || '无'}
+                  options={['无']}
+                  onChange={() => {}}
+                  disabled
+                />
+              );
+            }
+
+            return (
+              <SelectCell
+                value={(getValue() as string) || '无'}
+                options={options}
+                onChange={(v) => updateCellValue(row.index, 'onUpdate', v)}
+              />
+            );
+          },
+        }),
+        columnHelper.display({
+          id: 'actions',
+          size: columnWidths.actions,
+          cell: ({ row }) => {
+            const hasContent =
+              row.original.fieldName?.trim() ||
+              row.original.fieldComment?.trim();
+
+            const handleDelete = () => {
+              if (hasContent) {
+                // Show confirmation dialog
+                setDeleteConfirm({
+                  open: true,
+                  rowIndex: row.index,
+                  fieldName: row.original.fieldName || '',
+                  fieldComment: row.original.fieldComment || '',
+                });
+              } else {
+                // Direct delete for empty rows
+                onRemoveRow(row.index, 1);
+              }
+            };
+
+            return (
+              <div className="flex h-8 items-center justify-center">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                  onClick={handleDelete}
+                  title="删除行"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            );
+          },
+        }),
+      ],
+      [
+        columnWidths,
+        rowWarnings,
+        dbType,
+        updateCellValue,
+        onRemoveRow,
+      ],
     );
 
-    const handleBeforeChange = useCallback(
-      (changes: (Handsontable.CellChange | null)[] | null, _source: string) => {
-        if (!changes) return;
-        changes.forEach((change) => {
-          if (!change) return;
-          const [, prop, , nextValue] = change;
-          if (prop !== 'nullable' || typeof nextValue !== 'string') return;
-          const normalized = nextValue.trim().toLowerCase();
-          if (normalized === 'y') {
-            change[3] = '是';
-          } else if (normalized === 'n') {
-            change[3] = '否';
-          }
-        });
-      },
-      [],
-    );
+    const table = useReactTable({
+      data: rows,
+      columns,
+      getCoreRowModel: getCoreRowModel(),
+      getRowId: (row) => String(row.order),
+    });
 
     const safeAddCount =
       Number.isFinite(addCount) && addCount > 0 ? Math.floor(addCount) : 1;
@@ -284,51 +373,117 @@ export const DataTable = memo<DataTableProps>(
       onAddRows(safeAddCount);
     }, [onAddRows, safeAddCount]);
 
-    // Apply row-level highlight animation
+    // Row highlight animation
     useEffect(() => {
       if (highlightedRowIndex == null || highlightedRowIndex < 0) return;
 
-      const hot = hotRef.current?.hotInstance;
-      if (!hot) return;
+      const rowElement = tableRef.current?.querySelector(
+        `[data-row-index="${highlightedRowIndex}"]`,
+      );
+      if (!rowElement) return;
 
-      const colCount = COLUMN_HEADERS.length;
-      const currentRow = highlightedRowIndex;
+      rowElement.classList.add('animate-row-highlight');
 
-      // Add highlight class to all cells in the row
-      for (let col = 0; col < colCount; col++) {
-        const existingClass = hot.getCellMeta(currentRow, col).className || '';
-        // Avoid duplicate classes
-        if (!existingClass.includes('ht-row-highlight')) {
-          hot.setCellMeta(
-            currentRow,
-            col,
-            'className',
-            `${existingClass} ht-row-highlight`.trim(),
-          );
-        }
-      }
-      hot.render();
-
-      // Remove highlight after animation duration
       const timeout = setTimeout(() => {
-        const hotInstance = hotRef.current?.hotInstance;
-        if (!hotInstance) return;
-
-        for (let col = 0; col < colCount; col++) {
-          const existingClass =
-            hotInstance.getCellMeta(currentRow, col).className || '';
-          hotInstance.setCellMeta(
-            currentRow,
-            col,
-            'className',
-            existingClass.replace(/\s*ht-row-highlight\s*/g, ' ').trim(),
-          );
-        }
-        hotInstance.render();
+        rowElement.classList.remove('animate-row-highlight');
       }, 1200);
 
       return () => clearTimeout(timeout);
     }, [highlightedRowIndex]);
+
+    // Calculate sticky left positions for frozen columns
+    const getStickyLeft = useCallback(
+      (colIndex: number): number => {
+        if (!freezeEnabled || colIndex >= effectiveFreezeColumns) return 0;
+        let left = 0;
+        const colKeys = ['order', 'fieldName', 'fieldComment', 'fieldType', 'nullable', 'defaultKind', 'defaultValue', 'onUpdate', 'actions'];
+        for (let i = 0; i < colIndex; i++) {
+          left += columnWidths[colKeys[i]] || 100;
+        }
+        return left;
+      },
+      [freezeEnabled, effectiveFreezeColumns, columnWidths],
+    );
+
+    // Handle paste from Excel/spreadsheet
+    // Pastes at selected cell position, or appends to end if no selection
+    const handlePaste = useCallback(
+      (e: React.ClipboardEvent) => {
+        const clipboardData = e.clipboardData?.getData('text/plain');
+        if (!clipboardData) return;
+
+        // Parse tab-separated values (Excel format)
+        const pastedRows = clipboardData
+          .split(/\r?\n/)
+          .filter((line) => line.trim())
+          .map((line) => line.split('\t'));
+
+        if (pastedRows.length === 0) return;
+
+        // Prevent default paste behavior
+        e.preventDefault();
+
+        const startRow = selectedCell?.row ?? rows.length;
+        const startCol = selectedCell?.col ?? 0;
+
+        setRows((prev) => {
+          const newRows = [...prev];
+
+          pastedRows.forEach((cols, rowOffset) => {
+            const targetRowIndex = startRow + rowOffset;
+
+            // Ensure row exists
+            while (newRows.length <= targetRowIndex) {
+              newRows.push({
+                order: newRows.length + 1,
+                fieldName: '',
+                fieldComment: '',
+                fieldType: '',
+                nullable: '是',
+                defaultKind: '无',
+                defaultValue: '',
+                onUpdate: '无',
+              });
+            }
+
+            // Update cells starting from startCol
+            const row = { ...newRows[targetRowIndex] };
+            cols.forEach((cellValue, colOffset) => {
+              const targetColIndex = startCol + colOffset;
+              if (targetColIndex >= editableColumnKeys.length) return;
+
+              const key = editableColumnKeys[targetColIndex];
+              const value = cellValue?.trim() || '';
+
+              if (key === 'nullable') {
+                row.nullable = parseNullable(value);
+              } else {
+                (row as Record<string, unknown>)[key] = value || (key === 'defaultKind' || key === 'onUpdate' ? '无' : '');
+              }
+            });
+            newRows[targetRowIndex] = row;
+          });
+
+          // Re-order all rows
+          return newRows.map((row, idx) => ({ ...row, order: idx + 1 }));
+        });
+
+        // Clear selection after paste
+        setSelectedCell(null);
+      },
+      [setRows, selectedCell, rows.length, editableColumnKeys],
+    );
+
+    // Handle cell click for selection
+    const handleCellClick = useCallback(
+      (rowIndex: number, colIndex: number) => {
+        // Only allow selection of editable columns (skip order column at 0 and actions column at end)
+        if (colIndex >= 1 && colIndex <= editableColumnKeys.length) {
+          setSelectedCell({ row: rowIndex, col: colIndex - 1 }); // Adjust for order column
+        }
+      },
+      [editableColumnKeys.length],
+    );
 
     return (
       <div
@@ -336,6 +491,8 @@ export const DataTable = memo<DataTableProps>(
           'relative min-h-[420px] flex-1 rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5',
           isHighlighted && 'animate-field-highlight',
         )}
+        onPaste={handlePaste}
+        tabIndex={0}
       >
         {/* Field change highlight overlay */}
         {isHighlighted && (
@@ -350,7 +507,7 @@ export const DataTable = memo<DataTableProps>(
 
         <div className="relative border-b border-primary/10 px-4 py-3.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            {/* 左侧工具栏插槽 */}
+            {/* Left toolbar slot */}
             <div className="flex flex-wrap items-center gap-2">
               {toolbarLeft}
               {onOpenStorageEstimator && (
@@ -366,7 +523,7 @@ export const DataTable = memo<DataTableProps>(
               )}
             </div>
 
-            {/* 右侧添加行按钮 */}
+            {/* Right side: Add rows button */}
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-2 rounded-md px-3 py-1.5">
                 <Label
@@ -425,31 +582,125 @@ export const DataTable = memo<DataTableProps>(
             </div>
           </div>
         </div>
-        <div className="relative p-4">
-          <HotTable
-            ref={hotRef}
-            data={rows}
-            columns={columns}
-            colHeaders={COLUMN_HEADERS}
-            fixedColumnsStart={freezeEnabled ? effectiveFreezeColumns : 0}
-            rowHeaders={false}
-            stretchH="all"
-            width="100%"
-            height="auto"
-            licenseKey="non-commercial-and-evaluation"
-            manualColumnResize
-            visibleRows={6}
-            contextMenu
-            beforeChange={handleBeforeChange}
-            cells={cells}
-            afterChange={onRowsChange}
-            afterCreateRow={onCreateRow}
-            afterRemoveRow={onRemoveRow}
-            themeName="ht-theme-main"
-            className="h-full w-full"
-          />
+
+        <div ref={tableRef} className="relative overflow-x-auto p-4">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id} className="border-b border-border/50">
+                  {headerGroup.headers.map((header, colIndex) => {
+                    const isFrozen = freezeEnabled && colIndex < effectiveFreezeColumns;
+                    const isLastFrozen = freezeEnabled && colIndex === effectiveFreezeColumns - 1;
+                    return (
+                      <th
+                        key={header.id}
+                        className={cn(
+                          'h-10 px-2 text-left text-sm font-medium text-muted-foreground bg-muted/30',
+                          isFrozen && 'sticky z-10',
+                          isLastFrozen && 'border-r-2 border-primary/30 shadow-[4px_0_12px_-2px_rgba(0,0,0,0.2)]',
+                        )}
+                        style={{
+                          width: header.getSize(),
+                          minWidth: header.getSize(),
+                          left: isFrozen ? getStickyLeft(colIndex) : undefined,
+                        }}
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )}
+                      </th>
+                    );
+                  })}
+                </tr>
+              ))}
+            </thead>
+            <tbody>
+              {table.getRowModel().rows.map((row) => (
+                <tr
+                  key={row.id}
+                  data-row-index={row.index}
+                  className={cn(
+                    'border-b border-border/30 transition-colors hover:bg-muted/30',
+                    highlightedRowIndex === row.index && 'bg-blue-500/10',
+                  )}
+                >
+                  {row.getVisibleCells().map((cell, colIndex) => {
+                    const isFrozen = freezeEnabled && colIndex < effectiveFreezeColumns;
+                    const isLastFrozen = freezeEnabled && colIndex === effectiveFreezeColumns - 1;
+                    const isSelected =
+                      selectedCell &&
+                      selectedCell.row === row.index &&
+                      selectedCell.col === colIndex - 1; // Adjust for order column
+                    return (
+                      <td
+                        key={cell.id}
+                        className={cn(
+                          'h-10 px-1 bg-background',
+                          isFrozen && 'sticky z-10',
+                          isLastFrozen && 'border-r-2 border-primary/30 shadow-[4px_0_12px_-2px_rgba(0,0,0,0.2)]',
+                          isSelected && 'ring-2 ring-primary ring-inset',
+                        )}
+                        style={{
+                          width: cell.column.getSize(),
+                          minWidth: cell.column.getSize(),
+                          left: isFrozen ? getStickyLeft(colIndex) : undefined,
+                        }}
+                        onClick={() => handleCellClick(row.index, colIndex)}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+
+        {/* Delete confirmation dialog */}
+        <AlertDialog
+          open={deleteConfirm.open}
+          onOpenChange={(open) =>
+            setDeleteConfirm((prev) => ({ ...prev, open }))
+          }
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>删除字段行</AlertDialogTitle>
+              <AlertDialogDescription>
+                确定要删除此行吗？
+                <br />
+                <span className="mt-2 block text-foreground">
+                  字段名: {deleteConfirm.fieldName || '(空)'}
+                </span>
+                <span className="block text-foreground">
+                  中文名: {deleteConfirm.fieldComment || '(空)'}
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  onRemoveRow(deleteConfirm.rowIndex, 1);
+                  setDeleteConfirm((prev) => ({ ...prev, open: false }));
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                确定删除
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   },
 );
+
+DataTable.displayName = 'DataTable';
