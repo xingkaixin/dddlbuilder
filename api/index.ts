@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { streamText } from 'hono/streaming';
 import OpenAI from 'openai';
+import { enforceOpenAIRateLimit, withOpenAIRetry } from './openaiControl';
 
 const app = new Hono().basePath('/api');
 
@@ -15,6 +16,9 @@ app.get('/health', (c) => {
 
 // DDL Explain endpoint
 app.post('/explain', async (c) => {
+  const rateLimitResponse = enforceOpenAIRateLimit(c, 'explain');
+  if (rateLimitResponse) return rateLimitResponse;
+
   const { sql, context } = await c.req.json();
   console.log('[Explain] Request received:', {
     sqlLength: sql?.length,
@@ -48,21 +52,25 @@ ${context ? `上下文相关 SQL：\n${context}` : ''}`;
 
   return streamText(c, async (stream) => {
     try {
-      const response = (await openai.chat.completions.create({
-        model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: 0.3,
-        max_tokens: 1000,
-        stream: true,
-        ...({
-          thinking: {
-            type: 'disabled',
-          },
-        } as any),
-      })) as any;
+      const response = (await withOpenAIRetry(
+        async () =>
+          (await openai.chat.completions.create({
+            model,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+            temperature: 0.3,
+            max_tokens: 1000,
+            stream: true,
+            ...({
+              thinking: {
+                type: 'disabled',
+              },
+            } as any),
+          })) as any,
+        { scope: 'Explain' },
+      )) as any;
 
       for await (const chunk of response) {
         const content = chunk.choices[0]?.delta?.content || '';
@@ -83,6 +91,9 @@ ${context ? `上下文相关 SQL：\n${context}` : ''}`;
 
 // DDL Review endpoint with streaming
 app.post('/review', async (c) => {
+  const rateLimitResponse = enforceOpenAIRateLimit(c, 'review');
+  if (rateLimitResponse) return rateLimitResponse;
+
   const { ddl, tableName, dbType } = await c.req.json();
   console.log('[Review] Request received:', {
     tableName,
@@ -185,22 +196,26 @@ ${ddl}
   return streamText(c, async (stream) => {
     try {
       console.log('[Review] Calling OpenAI API with streaming...');
-      const response = (await openai.chat.completions.create({
-        model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0.3,
-        max_tokens: 2000,
-        stream: true,
-        ...({
-          thinking: {
-            type: 'disabled',
-          },
-        } as any),
-      })) as any;
+      const response = (await withOpenAIRetry(
+        async () =>
+          (await openai.chat.completions.create({
+            model,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.3,
+            max_tokens: 2000,
+            stream: true,
+            ...({
+              thinking: {
+                type: 'disabled',
+              },
+            } as any),
+          })) as any,
+        { scope: 'Review' },
+      )) as any;
 
       let fullContent = '';
       let chunkCount = 0;
@@ -251,6 +266,9 @@ ${ddl}
 
 // Natural Language Table Generation endpoint with streaming
 app.post('/generate-table', async (c) => {
+  const rateLimitResponse = enforceOpenAIRateLimit(c, 'generate-table');
+  if (rateLimitResponse) return rateLimitResponse;
+
   const {
     description,
     dbType,
@@ -354,19 +372,23 @@ ${existingContext}
   return streamText(c, async (stream) => {
     try {
       console.log('[GenerateTable] Calling OpenAI API with streaming...');
-      const response = (await openai.chat.completions.create({
-        model,
-        messages,
-        response_format: { type: 'json_object' },
-        temperature: 0.3,
-        max_tokens: 4000,
-        stream: true,
-        ...({
-          thinking: {
-            type: 'disabled',
-          },
-        } as any),
-      })) as any;
+      const response = (await withOpenAIRetry(
+        async () =>
+          (await openai.chat.completions.create({
+            model,
+            messages,
+            response_format: { type: 'json_object' },
+            temperature: 0.3,
+            max_tokens: 4000,
+            stream: true,
+            ...({
+              thinking: {
+                type: 'disabled',
+              },
+            } as any),
+          })) as any,
+        { scope: 'GenerateTable' },
+      )) as any;
 
       let fullContent = '';
 
