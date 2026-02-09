@@ -1,12 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useRef,
-  lazy,
-  Suspense,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import type { PersistedState } from '@/types';
 import { createEmptyRow } from '@/utils/helpers';
 import { Header } from './Header';
@@ -91,12 +83,15 @@ function App() {
     (state) => state.resetTableViewConfig,
   );
 
-  // Changelog modal state
-  const [showChangelog, setShowChangelog] = useState(false);
-  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
-
-  // Fireworks state
-  const [showFireworks, setShowFireworks] = useState(false);
+  // Changelog / global UI states (batch 4: migrated to zustand)
+  const showChangelog = useAppStore((state) => state.showChangelog);
+  const setShowChangelog = useAppStore((state) => state.setShowChangelog);
+  const isClearDialogOpen = useAppStore((state) => state.isClearDialogOpen);
+  const setIsClearDialogOpen = useAppStore(
+    (state) => state.setIsClearDialogOpen,
+  );
+  const showFireworks = useAppStore((state) => state.showFireworks);
+  const setShowFireworks = useAppStore((state) => state.setShowFireworks);
 
   // Saved tables drawer & dialogs (batch 4: migrated to zustand)
   const savedTablesDrawerOpen = useAppStore(
@@ -105,13 +100,20 @@ function App() {
   const setSavedTablesDrawerOpen = useAppStore(
     (state) => state.setSavedTablesDrawerOpen,
   );
-  const [loadedTableNormalizedName, setLoadedTableNormalizedName] = useState<
-    string | null
-  >(null);
-  const [loadedTableName, setLoadedTableName] = useState<string | null>(null);
-  const [loadedTableSignature, setLoadedTableSignature] = useState<
-    string | null
-  >(null);
+  const loadedTableNormalizedName = useAppStore(
+    (state) => state.loadedTableNormalizedName,
+  );
+  const setLoadedTableNormalizedName = useAppStore(
+    (state) => state.setLoadedTableNormalizedName,
+  );
+  const loadedTableName = useAppStore((state) => state.loadedTableName);
+  const setLoadedTableName = useAppStore((state) => state.setLoadedTableName);
+  const loadedTableSignature = useAppStore(
+    (state) => state.loadedTableSignature,
+  );
+  const setLoadedTableSignature = useAppStore(
+    (state) => state.setLoadedTableSignature,
+  );
   const isSaveDialogOpen = useAppStore((state) => state.dialogs.save);
   const setIsSaveDialogOpen = useAppStore((state) => state.setIsSaveDialogOpen);
   const isRenameDialogOpen = useAppStore((state) => state.dialogs.rename);
@@ -179,24 +181,36 @@ function App() {
   const deleteTarget = deleteDialog.data.target;
   const pendingLoadTarget = loadConfirmDialog.data.pendingTarget;
 
-  // Diff dialog state
-  const [isDiffDialogOpen, setIsDiffDialogOpen] = useState(false);
-
-  // Version history dialog state
-  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
-  const [versionHistoryTarget, setVersionHistoryTarget] = useState<{
-    normalizedName: string;
-    name: string;
-  } | null>(null);
-
-  // Review history dialog state
-  const [isReviewHistoryOpen, setIsReviewHistoryOpen] = useState(false);
-
-  // Storage estimator dialog state
-  const [isStorageEstimatorOpen, setIsStorageEstimatorOpen] = useState(false);
-
-  // AI Generate dialog state
-  const [isAIGenerateDialogOpen, setIsAIGenerateDialogOpen] = useState(false);
+  const isDiffDialogOpen = useAppStore((state) => state.isDiffDialogOpen);
+  const setIsDiffDialogOpen = useAppStore((state) => state.setIsDiffDialogOpen);
+  const isVersionHistoryOpen = useAppStore(
+    (state) => state.isVersionHistoryOpen,
+  );
+  const setIsVersionHistoryOpen = useAppStore(
+    (state) => state.setIsVersionHistoryOpen,
+  );
+  const versionHistoryTarget = useAppStore(
+    (state) => state.versionHistoryTarget,
+  );
+  const setVersionHistoryTarget = useAppStore(
+    (state) => state.setVersionHistoryTarget,
+  );
+  const isReviewHistoryOpen = useAppStore((state) => state.isReviewHistoryOpen);
+  const setIsReviewHistoryOpen = useAppStore(
+    (state) => state.setIsReviewHistoryOpen,
+  );
+  const isStorageEstimatorOpen = useAppStore(
+    (state) => state.isStorageEstimatorOpen,
+  );
+  const setIsStorageEstimatorOpen = useAppStore(
+    (state) => state.setIsStorageEstimatorOpen,
+  );
+  const isAIGenerateDialogOpen = useAppStore(
+    (state) => state.isAIGenerateDialogOpen,
+  );
+  const setIsAIGenerateDialogOpen = useAppStore(
+    (state) => state.setIsAIGenerateDialogOpen,
+  );
 
   // Check for fireworks on mount
   useEffect(() => {
@@ -204,12 +218,12 @@ function App() {
     if (!hasShown) {
       setShowFireworks(true);
     }
-  }, []);
+  }, [setShowFireworks]);
 
   const handleFireworksComplete = useCallback(() => {
     setShowFireworks(false);
     localStorage.setItem('fireworks_shown_2026', 'true');
-  }, []);
+  }, [setShowFireworks]);
 
   // Use custom hooks
   const { persistedState, hydrated, saveState, clearState } =
@@ -600,7 +614,7 @@ function App() {
 
   const handleViewReviewHistory = useCallback(() => {
     setIsReviewHistoryOpen(true);
-  }, []);
+  }, [setIsReviewHistoryOpen]);
 
   const handleShare = useCallback(async () => {
     const currentState = buildPersistedState();
@@ -680,11 +694,11 @@ function App() {
 
   const handleClearAll = useCallback(() => {
     setIsClearDialogOpen(true);
-  }, []);
+  }, [setIsClearDialogOpen]);
 
   const cancelClearAll = useCallback(() => {
     setIsClearDialogOpen(false);
-  }, []);
+  }, [setIsClearDialogOpen]);
 
   const confirmClearAll = useCallback(() => {
     resetTableConfig();
@@ -715,6 +729,9 @@ function App() {
     resetCitusSharding,
     resetPartition,
     resetTableMiscConfig,
+    setLoadedTableNormalizedName,
+    setLoadedTableName,
+    setLoadedTableSignature,
     trackEvent,
   ]);
 
@@ -816,6 +833,9 @@ function App() {
       loadTable,
       showToast,
       serializePersistedState,
+      setLoadedTableNormalizedName,
+      setLoadedTableName,
+      setLoadedTableSignature,
       trackEvent,
     ],
   );
@@ -891,6 +911,7 @@ function App() {
     hasLoadedTable,
     loadedTableNormalizedName,
     loadedTableName,
+    setLoadedTableSignature,
     trackEvent,
     saveDialog,
   ]);
@@ -997,6 +1018,8 @@ function App() {
     renameTable,
     showToast,
     loadedTableNormalizedName,
+    setLoadedTableNormalizedName,
+    setLoadedTableName,
     trackEvent,
     renameDialog,
   ]);
@@ -1037,6 +1060,9 @@ function App() {
     deleteTable,
     showToast,
     loadedTableNormalizedName,
+    setLoadedTableNormalizedName,
+    setLoadedTableName,
+    setLoadedTableSignature,
     trackEvent,
     deleteDialog,
   ]);
@@ -1074,7 +1100,7 @@ function App() {
   const handleOpenDiffDialog = useCallback(() => {
     trackEvent('diff_view_open');
     setIsDiffDialogOpen(true);
-  }, [trackEvent]);
+  }, [trackEvent, setIsDiffDialogOpen]);
 
   const handleTabValueChange = useCallback(
     (value: string) => {
@@ -1087,19 +1113,22 @@ function App() {
   const handleOpenStorageEstimator = useCallback(() => {
     trackEvent('storage_estimator_open');
     setIsStorageEstimatorOpen(true);
-  }, [trackEvent]);
+  }, [trackEvent, setIsStorageEstimatorOpen]);
 
-  const handleViewVersionHistory = useCallback((item: SavedTableSummary) => {
-    setVersionHistoryTarget({
-      normalizedName: item.normalizedName,
-      name: item.name,
-    });
-    setIsVersionHistoryOpen(true);
-  }, []);
+  const handleViewVersionHistory = useCallback(
+    (item: SavedTableSummary) => {
+      setVersionHistoryTarget({
+        normalizedName: item.normalizedName,
+        name: item.name,
+      });
+      setIsVersionHistoryOpen(true);
+    },
+    [setVersionHistoryTarget, setIsVersionHistoryOpen],
+  );
 
   const handleOpenAIGenerateDialog = useCallback(() => {
     setIsAIGenerateDialogOpen(true);
-  }, []);
+  }, [setIsAIGenerateDialogOpen]);
 
   const dataTableToolbarLeft = useMemo(
     () => (

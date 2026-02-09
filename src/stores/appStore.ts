@@ -5,6 +5,11 @@ type CoreDialogKey = 'save' | 'rename' | 'delete' | 'loadConfirm';
 
 type CoreDialogState = Record<CoreDialogKey, boolean>;
 
+interface VersionHistoryTarget {
+  normalizedName: string;
+  name: string;
+}
+
 function createInitialDialogs(): CoreDialogState {
   return {
     save: false,
@@ -24,6 +29,18 @@ interface AppStoreState {
   activeTab: string;
   savedTablesDrawerOpen: boolean;
   dialogs: CoreDialogState;
+  showChangelog: boolean;
+  isClearDialogOpen: boolean;
+  showFireworks: boolean;
+  loadedTableNormalizedName: string | null;
+  loadedTableName: string | null;
+  loadedTableSignature: string | null;
+  isDiffDialogOpen: boolean;
+  isVersionHistoryOpen: boolean;
+  versionHistoryTarget: VersionHistoryTarget | null;
+  isReviewHistoryOpen: boolean;
+  isStorageEstimatorOpen: boolean;
+  isAIGenerateDialogOpen: boolean;
 
   setTableName: (tableName: string) => void;
   setTableComment: (tableComment: string) => void;
@@ -40,6 +57,18 @@ interface AppStoreState {
   setIsRenameDialogOpen: (open: boolean) => void;
   setIsDeleteDialogOpen: (open: boolean) => void;
   setIsLoadConfirmOpen: (open: boolean) => void;
+  setShowChangelog: (show: boolean) => void;
+  setIsClearDialogOpen: (open: boolean) => void;
+  setShowFireworks: (show: boolean) => void;
+  setLoadedTableNormalizedName: (name: string | null) => void;
+  setLoadedTableName: (name: string | null) => void;
+  setLoadedTableSignature: (signature: string | null) => void;
+  setIsDiffDialogOpen: (open: boolean) => void;
+  setIsVersionHistoryOpen: (open: boolean) => void;
+  setVersionHistoryTarget: (target: VersionHistoryTarget | null) => void;
+  setIsReviewHistoryOpen: (open: boolean) => void;
+  setIsStorageEstimatorOpen: (open: boolean) => void;
+  setIsAIGenerateDialogOpen: (open: boolean) => void;
 }
 
 export const useAppStore = create<AppStoreState>((set) => ({
@@ -52,6 +81,18 @@ export const useAppStore = create<AppStoreState>((set) => ({
   activeTab: 'fields',
   savedTablesDrawerOpen: false,
   dialogs: createInitialDialogs(),
+  showChangelog: false,
+  isClearDialogOpen: false,
+  showFireworks: false,
+  loadedTableNormalizedName: null,
+  loadedTableName: null,
+  loadedTableSignature: null,
+  isDiffDialogOpen: false,
+  isVersionHistoryOpen: false,
+  versionHistoryTarget: null,
+  isReviewHistoryOpen: false,
+  isStorageEstimatorOpen: false,
+  isAIGenerateDialogOpen: false,
 
   setTableName: (tableName) => set({ tableName }),
   setTableComment: (tableComment) => set({ tableComment }),
@@ -94,4 +135,22 @@ export const useAppStore = create<AppStoreState>((set) => ({
     set((state) => ({
       dialogs: { ...state.dialogs, loadConfirm: open },
     })),
+  setShowChangelog: (showChangelog) => set({ showChangelog }),
+  setIsClearDialogOpen: (isClearDialogOpen) => set({ isClearDialogOpen }),
+  setShowFireworks: (showFireworks) => set({ showFireworks }),
+  setLoadedTableNormalizedName: (loadedTableNormalizedName) =>
+    set({ loadedTableNormalizedName }),
+  setLoadedTableName: (loadedTableName) => set({ loadedTableName }),
+  setLoadedTableSignature: (loadedTableSignature) =>
+    set({ loadedTableSignature }),
+  setIsDiffDialogOpen: (isDiffDialogOpen) => set({ isDiffDialogOpen }),
+  setIsVersionHistoryOpen: (isVersionHistoryOpen) =>
+    set({ isVersionHistoryOpen }),
+  setVersionHistoryTarget: (versionHistoryTarget) =>
+    set({ versionHistoryTarget }),
+  setIsReviewHistoryOpen: (isReviewHistoryOpen) => set({ isReviewHistoryOpen }),
+  setIsStorageEstimatorOpen: (isStorageEstimatorOpen) =>
+    set({ isStorageEstimatorOpen }),
+  setIsAIGenerateDialogOpen: (isAIGenerateDialogOpen) =>
+    set({ isAIGenerateDialogOpen }),
 }));

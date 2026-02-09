@@ -10,6 +10,18 @@ function resetAppStore() {
   state.setIsRenameDialogOpen(false);
   state.setIsDeleteDialogOpen(false);
   state.setIsLoadConfirmOpen(false);
+  state.setShowChangelog(false);
+  state.setIsClearDialogOpen(false);
+  state.setShowFireworks(false);
+  state.setLoadedTableNormalizedName(null);
+  state.setLoadedTableName(null);
+  state.setLoadedTableSignature(null);
+  state.setIsDiffDialogOpen(false);
+  state.setIsVersionHistoryOpen(false);
+  state.setVersionHistoryTarget(null);
+  state.setIsReviewHistoryOpen(false);
+  state.setIsStorageEstimatorOpen(false);
+  state.setIsAIGenerateDialogOpen(false);
 }
 
 describe('appStore', () => {
@@ -86,5 +98,69 @@ describe('appStore', () => {
     expect(current.dialogs.rename).toBe(false);
     expect(current.dialogs.delete).toBe(false);
     expect(current.dialogs.loadConfirm).toBe(false);
+  });
+
+  it('应该管理批次4迁移的全局 UI 与加载上下文状态', () => {
+    const state = useAppStore.getState();
+
+    state.setShowChangelog(true);
+    state.setIsClearDialogOpen(true);
+    state.setShowFireworks(true);
+    state.setLoadedTableNormalizedName('users');
+    state.setLoadedTableName('Users');
+    state.setLoadedTableSignature('{"table":"users"}');
+    state.setIsDiffDialogOpen(true);
+    state.setIsVersionHistoryOpen(true);
+    state.setVersionHistoryTarget({
+      normalizedName: 'users',
+      name: 'Users',
+    });
+    state.setIsReviewHistoryOpen(true);
+    state.setIsStorageEstimatorOpen(true);
+    state.setIsAIGenerateDialogOpen(true);
+
+    let current = useAppStore.getState();
+    expect(current.showChangelog).toBe(true);
+    expect(current.isClearDialogOpen).toBe(true);
+    expect(current.showFireworks).toBe(true);
+    expect(current.loadedTableNormalizedName).toBe('users');
+    expect(current.loadedTableName).toBe('Users');
+    expect(current.loadedTableSignature).toBe('{"table":"users"}');
+    expect(current.isDiffDialogOpen).toBe(true);
+    expect(current.isVersionHistoryOpen).toBe(true);
+    expect(current.versionHistoryTarget).toEqual({
+      normalizedName: 'users',
+      name: 'Users',
+    });
+    expect(current.isReviewHistoryOpen).toBe(true);
+    expect(current.isStorageEstimatorOpen).toBe(true);
+    expect(current.isAIGenerateDialogOpen).toBe(true);
+
+    current.setShowChangelog(false);
+    current.setIsClearDialogOpen(false);
+    current.setShowFireworks(false);
+    current.setLoadedTableNormalizedName(null);
+    current.setLoadedTableName(null);
+    current.setLoadedTableSignature(null);
+    current.setIsDiffDialogOpen(false);
+    current.setIsVersionHistoryOpen(false);
+    current.setVersionHistoryTarget(null);
+    current.setIsReviewHistoryOpen(false);
+    current.setIsStorageEstimatorOpen(false);
+    current.setIsAIGenerateDialogOpen(false);
+
+    current = useAppStore.getState();
+    expect(current.showChangelog).toBe(false);
+    expect(current.isClearDialogOpen).toBe(false);
+    expect(current.showFireworks).toBe(false);
+    expect(current.loadedTableNormalizedName).toBeNull();
+    expect(current.loadedTableName).toBeNull();
+    expect(current.loadedTableSignature).toBeNull();
+    expect(current.isDiffDialogOpen).toBe(false);
+    expect(current.isVersionHistoryOpen).toBe(false);
+    expect(current.versionHistoryTarget).toBeNull();
+    expect(current.isReviewHistoryOpen).toBe(false);
+    expect(current.isStorageEstimatorOpen).toBe(false);
+    expect(current.isAIGenerateDialogOpen).toBe(false);
   });
 });
