@@ -1,14 +1,14 @@
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo } from "react";
 import {
   requestGenerateTable,
   type GenerateTableRequestOptions,
-} from '@/services/aiGenerateTableService';
+} from "@/services/aiGenerateTableService";
 import type {
   ConversationMessage,
   GeneratedTableSchema,
   PartialTableSchema,
-} from '@/types/aiGenerate';
-import { parsePartialTableSchema } from '@/utils/parsePartialTableSchema';
+} from "@/types/aiGenerate";
+import { parsePartialTableSchema } from "@/utils/parsePartialTableSchema";
 
 export type {
   ConversationMessage,
@@ -16,7 +16,7 @@ export type {
   GeneratedIndex,
   GeneratedTableSchema,
   PartialTableSchema,
-} from '@/types/aiGenerate';
+} from "@/types/aiGenerate";
 
 interface GenerateState {
   isLoading: boolean;
@@ -25,8 +25,10 @@ interface GenerateState {
   error: string | null;
 }
 
-interface GenerateTableOptions
-  extends Omit<GenerateTableRequestOptions, 'conversationHistory'> {
+interface GenerateTableOptions extends Omit<
+  GenerateTableRequestOptions,
+  "conversationHistory"
+> {
   continueConversation?: boolean;
 }
 
@@ -37,18 +39,18 @@ function appendConversation(
 ): ConversationMessage[] {
   return [
     ...baseHistory,
-    { role: 'user', content: description },
-    { role: 'assistant', content: assistantContent },
+    { role: "user", content: description },
+    { role: "assistant", content: assistantContent },
   ];
 }
 
 /**
- * AI 生成表结构的 Hook
+ * 大师建表工坊 表结构的 Hook
  */
 export function useAIGenerateTable() {
   const [state, setState] = useState<GenerateState>({
     isLoading: false,
-    streamingText: '',
+    streamingText: "",
     result: null,
     error: null,
   });
@@ -73,7 +75,7 @@ export function useAIGenerateTable() {
       options?: GenerateTableOptions,
     ) => {
       if (!description.trim()) {
-        setState((prev) => ({ ...prev, error: '请输入表结构描述' }));
+        setState((prev) => ({ ...prev, error: "请输入表结构描述" }));
         return;
       }
 
@@ -86,7 +88,7 @@ export function useAIGenerateTable() {
 
       setState({
         isLoading: true,
-        streamingText: '',
+        streamingText: "",
         result: null,
         error: null,
       });
@@ -119,7 +121,7 @@ export function useAIGenerateTable() {
 
         setState({
           isLoading: false,
-          streamingText: '',
+          streamingText: "",
           result,
           error: null,
         });
@@ -128,14 +130,14 @@ export function useAIGenerateTable() {
           appendConversation(baseConversation, description, fullText),
         );
       } catch (err) {
-        if ((err as Error).name === 'AbortError') {
+        if ((err as Error).name === "AbortError") {
           return;
         }
         setState({
           isLoading: false,
-          streamingText: '',
+          streamingText: "",
           result: null,
-          error: (err as Error).message || 'Generation failed',
+          error: (err as Error).message || "Generation failed",
         });
       } finally {
         if (abortControllerRef.current === abortController) {
@@ -149,7 +151,7 @@ export function useAIGenerateTable() {
   const clearResult = useCallback(() => {
     setState({
       isLoading: false,
-      streamingText: '',
+      streamingText: "",
       result: null,
       error: null,
     });
