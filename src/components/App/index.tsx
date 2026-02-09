@@ -10,6 +10,7 @@ import { useFolderActions } from './hooks/useFolderActions';
 import { useTemplateActions } from './hooks/useTemplateActions';
 import { useSchemaApplyActions } from './hooks/useSchemaApplyActions';
 import { useSavedTableFlowActions } from './hooks/useSavedTableFlowActions';
+import { usePersistedSync } from './hooks/usePersistedSync';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { useAuthManagement } from '@/hooks/useAuthManagement';
 import { useSqlGeneration } from '@/hooks/useSqlGeneration';
@@ -31,10 +32,7 @@ import { useDialogState } from '@/hooks/useDialogState';
 import { useFieldTemplates } from '@/hooks/useFieldTemplates';
 import { ApplyTemplatePopover } from './ApplyTemplatePopover';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
-import {
-  DEFAULT_SAVED_TABLE_NAME,
-  normalizeSavedTableName,
-} from '@/utils/savedTablesDb';
+import { normalizeSavedTableName } from '@/utils/savedTablesDb';
 import { diffPersistedState, type TableDiff } from '@/utils/tableDiff';
 import { saveReview } from '@/utils/reviewHistory';
 import { reportError } from '@/utils/errorReporter';
@@ -179,7 +177,6 @@ function App() {
   const saveError = saveDialog.error;
   const renameName = renameDialog.data.name;
   const renameError = renameDialog.error;
-  const renameTarget = renameDialog.data.target;
   const deleteTarget = deleteDialog.data.target;
   const pendingLoadTarget = loadConfirmDialog.data.pendingTarget;
 
@@ -624,47 +621,11 @@ function App() {
     }
   }, [buildPersistedState, showToast, trackEvent]);
 
-  // restore basic state from localStorage once on mount
-  useEffect(() => {
-    if (!hydrated || !persistedState) return;
-
-    if (typeof persistedState.tableName === 'string')
-      setTableName(persistedState.tableName);
-    if (typeof persistedState.tableComment === 'string')
-      setTableComment(persistedState.tableComment);
-    if (
-      persistedState.dbType === 'mysql' ||
-      persistedState.dbType === 'postgresql' ||
-      persistedState.dbType === 'postgresql-citus' ||
-      persistedState.dbType === 'sqlserver' ||
-      persistedState.dbType === 'oracle'
-    ) {
-      setDbType(persistedState.dbType);
-    }
-    if (
-      typeof persistedState.addCount === 'number' &&
-      Number.isFinite(persistedState.addCount)
-    ) {
-      setAddCount(Math.max(1, Math.floor(persistedState.addCount)));
-    }
-    initializeRows(persistedState.rows);
-    initializeIndexState(persistedState);
-
-    const persistedFieldTableViewConfig = persistedState.fieldTableViewConfig;
-    if (persistedFieldTableViewConfig) {
-      setFieldTableFreezeEnabled(
-        persistedFieldTableViewConfig.freezeEnabled !== false,
-      );
-      const freezeColumns = persistedFieldTableViewConfig.freezeColumns;
-      setFieldTableFreezeColumns(
-        typeof freezeColumns === 'number' && Number.isFinite(freezeColumns)
-          ? Math.max(1, Math.floor(freezeColumns))
-          : DEFAULT_FIELD_TABLE_FREEZE_COLUMNS,
-      );
-    }
-  }, [
+  usePersistedSync({
     hydrated,
     persistedState,
+    saveState,
+    buildPersistedState,
     setTableName,
     setTableComment,
     setDbType,
@@ -673,18 +634,8 @@ function App() {
     initializeIndexState,
     setFieldTableFreezeEnabled,
     setFieldTableFreezeColumns,
-  ]);
-
-  // save to localStorage on changes
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      const payload = buildPersistedState();
-      saveState(payload);
-    } catch {
-      // ignore quota errors
-    }
-  }, [hydrated, buildPersistedState, saveState]);
+    defaultFieldTableFreezeColumns: DEFAULT_FIELD_TABLE_FREEZE_COLUMNS,
+  });
 
   const handleClearAll = useCallback(() => {
     setIsClearDialogOpen(true);
@@ -813,6 +764,12 @@ function App() {
     handleLoadConfirmOpenChange,
     handleConfirmLoadIgnore,
     handleConfirmLoadSave,
+    handleOpenRenameDialog,
+    handleRenameDialogOpenChange,
+    handleConfirmRename,
+    handleOpenDeleteDialog,
+    handleDeleteDialogOpenChange,
+    handleConfirmDelete,
   } = useSavedTableFlowActions({
     tableName,
     hasLoadedTable,
@@ -826,114 +783,19 @@ function App() {
     setSavedTablesDrawerOpen,
     saveDialog,
     loadConfirmDialog,
+    renameDialog,
+    deleteDialog,
     buildPersistedState,
     serializePersistedState,
     applySavedState,
     loadTable,
+    renameTable,
+    deleteTable,
     saveTable,
     overwriteTable,
     showToast,
     trackEvent,
   });
-
-  const handleOpenRenameDialog = useCallback(
-    (item: SavedTableSummary) => {
-      renameDialog.openDialog({
-        name: item.name,
-        target: item,
-      });
-    },
-    [renameDialog],
-  );
-
-  const handleRenameDialogOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) {
-        renameDialog.closeDialog();
-      }
-    },
-    [renameDialog],
-  );
-
-  const handleConfirmRename = useCallback(async () => {
-    if (!renameTarget) return;
-    const result = await renameTable(renameTarget.normalizedName, renameName);
-    if (!result.ok) {
-      if (result.reason === 'duplicate') {
-        renameDialog.setError('名称已存在，请换一个');
-        return;
-      }
-      showToast(result.message ?? '重命名失败');
-      return;
-    }
-    const displayName = renameName.trim() || DEFAULT_SAVED_TABLE_NAME;
-    trackEvent('table_rename', {
-      oldName: renameTarget.name,
-      newName: displayName,
-    });
-    showToast(`已重命名为：${displayName}`);
-    if (
-      loadedTableNormalizedName &&
-      renameTarget.normalizedName === loadedTableNormalizedName
-    ) {
-      setLoadedTableNormalizedName(result.normalizedName);
-      setLoadedTableName(displayName);
-    }
-    renameDialog.closeDialog();
-  }, [
-    renameTarget,
-    renameName,
-    renameTable,
-    showToast,
-    loadedTableNormalizedName,
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
-    trackEvent,
-    renameDialog,
-  ]);
-
-  const handleOpenDeleteDialog = useCallback(
-    (item: SavedTableSummary) => {
-      deleteDialog.openDialog({ target: item });
-    },
-    [deleteDialog],
-  );
-
-  const handleDeleteDialogOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) {
-        deleteDialog.closeDialog();
-      }
-    },
-    [deleteDialog],
-  );
-
-  const handleConfirmDelete = useCallback(async () => {
-    if (!deleteTarget) return;
-    const result = await deleteTable(deleteTarget.normalizedName);
-    if (!result.ok) {
-      showToast(result.message ?? '删除失败');
-    } else {
-      trackEvent('table_delete', { tableName: deleteTarget.name });
-      showToast(`已删除：${deleteTarget.name}`);
-      if (deleteTarget.normalizedName === loadedTableNormalizedName) {
-        setLoadedTableNormalizedName(null);
-        setLoadedTableName(null);
-        setLoadedTableSignature(null);
-      }
-    }
-    deleteDialog.closeDialog();
-  }, [
-    deleteTarget,
-    deleteTable,
-    showToast,
-    loadedTableNormalizedName,
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
-    setLoadedTableSignature,
-    trackEvent,
-    deleteDialog,
-  ]);
 
   const { handleApplySuggestion, handleImport, handleApplyAIGeneratedSchema } =
     useSchemaApplyActions({

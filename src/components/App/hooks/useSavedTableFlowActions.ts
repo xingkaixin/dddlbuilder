@@ -19,6 +19,15 @@ type LoadConfirmDialogData = {
   pendingTarget: SavedTableSummary | null;
 };
 
+type RenameDialogData = {
+  name: string;
+  target: SavedTableSummary | null;
+};
+
+type DeleteDialogData = {
+  target: SavedTableSummary | null;
+};
+
 interface UseSavedTableFlowActionsParams {
   tableName: string;
   hasLoadedTable: boolean;
@@ -32,6 +41,8 @@ interface UseSavedTableFlowActionsParams {
   setSavedTablesDrawerOpen: (open: boolean) => void;
   saveDialog: UseDialogStateReturn<SaveDialogData>;
   loadConfirmDialog: UseDialogStateReturn<LoadConfirmDialogData>;
+  renameDialog: UseDialogStateReturn<RenameDialogData>;
+  deleteDialog: UseDialogStateReturn<DeleteDialogData>;
   buildPersistedState: () => PersistedState;
   serializePersistedState: (state: PersistedState) => string;
   applySavedState: (state: PersistedState) => void;
@@ -40,6 +51,11 @@ interface UseSavedTableFlowActionsParams {
     name: string;
     state: PersistedState;
   } | null>;
+  renameTable: (
+    normalizedName: string,
+    newName: string,
+  ) => Promise<SaveTableResult>;
+  deleteTable: (normalizedName: string) => Promise<SaveTableResult>;
   saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
   overwriteTable: (
     normalizedName: string,
@@ -65,10 +81,14 @@ export function useSavedTableFlowActions({
   setSavedTablesDrawerOpen,
   saveDialog,
   loadConfirmDialog,
+  renameDialog,
+  deleteDialog,
   buildPersistedState,
   serializePersistedState,
   applySavedState,
   loadTable,
+  renameTable,
+  deleteTable,
   saveTable,
   overwriteTable,
   showToast,
@@ -77,6 +97,9 @@ export function useSavedTableFlowActions({
   const saveName = saveDialog.data.name;
   const queuedLoadAfterSave = saveDialog.data.queuedLoadAfterSave;
   const pendingLoadTarget = loadConfirmDialog.data.pendingTarget;
+  const renameName = renameDialog.data.name;
+  const renameTarget = renameDialog.data.target;
+  const deleteTarget = deleteDialog.data.target;
 
   const handleLoadSavedTable = useCallback(
     async (target: SavedTableSummary) => {
@@ -238,6 +261,105 @@ export function useSavedTableFlowActions({
     openSaveDialog(null);
   }, [openSaveDialog]);
 
+  const handleOpenRenameDialog = useCallback(
+    (item: SavedTableSummary) => {
+      renameDialog.openDialog({
+        name: item.name,
+        target: item,
+      });
+    },
+    [renameDialog],
+  );
+
+  const handleRenameDialogOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        renameDialog.closeDialog();
+      }
+    },
+    [renameDialog],
+  );
+
+  const handleConfirmRename = useCallback(async () => {
+    if (!renameTarget) return;
+    const result = await renameTable(renameTarget.normalizedName, renameName);
+    if (!result.ok) {
+      if (result.reason === 'duplicate') {
+        renameDialog.setError('名称已存在，请换一个');
+        return;
+      }
+      showToast(result.message ?? '重命名失败');
+      return;
+    }
+    const displayName = renameName.trim() || DEFAULT_SAVED_TABLE_NAME;
+    trackEvent('table_rename', {
+      oldName: renameTarget.name,
+      newName: displayName,
+    });
+    showToast(`已重命名为：${displayName}`);
+    if (
+      loadedTableNormalizedName &&
+      renameTarget.normalizedName === loadedTableNormalizedName
+    ) {
+      setLoadedTableNormalizedName(result.normalizedName);
+      setLoadedTableName(displayName);
+    }
+    renameDialog.closeDialog();
+  }, [
+    renameTarget,
+    renameTable,
+    renameName,
+    renameDialog,
+    showToast,
+    trackEvent,
+    loadedTableNormalizedName,
+    setLoadedTableNormalizedName,
+    setLoadedTableName,
+  ]);
+
+  const handleOpenDeleteDialog = useCallback(
+    (item: SavedTableSummary) => {
+      deleteDialog.openDialog({ target: item });
+    },
+    [deleteDialog],
+  );
+
+  const handleDeleteDialogOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        deleteDialog.closeDialog();
+      }
+    },
+    [deleteDialog],
+  );
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+    const result = await deleteTable(deleteTarget.normalizedName);
+    if (!result.ok) {
+      showToast(result.message ?? '删除失败');
+    } else {
+      trackEvent('table_delete', { tableName: deleteTarget.name });
+      showToast(`已删除：${deleteTarget.name}`);
+      if (deleteTarget.normalizedName === loadedTableNormalizedName) {
+        setLoadedTableNormalizedName(null);
+        setLoadedTableName(null);
+        setLoadedTableSignature(null);
+      }
+    }
+    deleteDialog.closeDialog();
+  }, [
+    deleteTarget,
+    deleteTable,
+    showToast,
+    trackEvent,
+    loadedTableNormalizedName,
+    setLoadedTableNormalizedName,
+    setLoadedTableName,
+    setLoadedTableSignature,
+    deleteDialog,
+  ]);
+
   return {
     handleOpenSaveDialog,
     handleConfirmSave,
@@ -247,5 +369,11 @@ export function useSavedTableFlowActions({
     handleLoadConfirmOpenChange,
     handleConfirmLoadIgnore,
     handleConfirmLoadSave,
+    handleOpenRenameDialog,
+    handleRenameDialogOpenChange,
+    handleConfirmRename,
+    handleOpenDeleteDialog,
+    handleDeleteDialogOpenChange,
+    handleConfirmDelete,
   };
 }
