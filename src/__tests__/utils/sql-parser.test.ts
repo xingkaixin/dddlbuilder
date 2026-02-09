@@ -10,7 +10,7 @@ const stripIndexIds = (indexes: any[]) =>
   }));
 
 describe('SqlParser', () => {
-  it('能够解析 MySQL 的表结构、索引与授权', () => {
+  it('能够解析 MySQL 的表结构、索引与授权', async () => {
     const sql = `
     CREATE TABLE users (
       id INT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
@@ -26,7 +26,7 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = parser.parse(sql, 'mysql');
+    const result = await parser.parseAsync(sql, 'mysql');
 
     expect(result.tableName).toBe('users');
     expect(result.tableComment).toBe('用户表');
@@ -106,7 +106,7 @@ describe('SqlParser', () => {
     expect(result.authObjects).toEqual(['app_user']);
   });
 
-  it('能够处理 PostgreSQL 的多语句导入', () => {
+  it('能够处理 PostgreSQL 的多语句导入', async () => {
     const sql = `
     CREATE TABLE accounts (
       id SERIAL PRIMARY KEY,
@@ -120,7 +120,7 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = parser.parse(sql, 'postgresql');
+    const result = await parser.parseAsync(sql, 'postgresql');
 
     expect(result.tableName).toBe('accounts');
     expect(result.fields).toEqual([
@@ -187,7 +187,7 @@ describe('SqlParser', () => {
     expect(result.authObjects).toEqual(['reporting']);
   });
 
-  it('能够解析 SQL Server 的标识列和唯一索引', () => {
+  it('能够解析 SQL Server 的标识列和唯一索引', async () => {
     const sql = `
     CREATE TABLE dbo.Users (
       Id INT IDENTITY(1,1) PRIMARY KEY,
@@ -198,7 +198,7 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = parser.parse(sql, 'sqlserver');
+    const result = await parser.parseAsync(sql, 'sqlserver');
 
     expect(result.tableName).toBe('Users');
     expect(result.fields).toEqual([
@@ -252,7 +252,7 @@ describe('SqlParser', () => {
     ]);
   });
 
-  it('支持从 ALTER 语句中抓取主键', () => {
+  it('支持从 ALTER 语句中抓取主键', async () => {
     const sql = `
     CREATE TABLE items (
       id INT,
@@ -262,7 +262,7 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = parser.parse(sql, 'mysql');
+    const result = await parser.parseAsync(sql, 'mysql');
 
     expect(result.tableName).toBe('items');
     expect(result.fields.map((f) => f.name)).toEqual(['id', 'name']);
@@ -276,7 +276,7 @@ describe('SqlParser', () => {
     ]);
   });
 
-  it('Oracle 语法可被预处理后解析（字段注释、主键、索引、授权）', () => {
+  it('Oracle 语法可被预处理后解析（字段注释、主键、索引、授权）', async () => {
     const sql = `
     CREATE TABLE ttt (
       ID VARCHAR2(255),
@@ -320,7 +320,7 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = parser.parse(sql, 'oracle');
+    const result = await parser.parseAsync(sql, 'oracle');
 
     expect(result.tableName).toBe('ttt');
     expect(result.tableComment).toBe('dfdfdf');
@@ -377,7 +377,7 @@ describe('SqlParser', () => {
     expect(result.authObjects).toEqual(['cbd1', 'cbdd2']);
   });
 
-  it('PostgreSQL COMMENT 语句应被提取到字段与表注释', () => {
+  it('PostgreSQL COMMENT 语句应被提取到字段与表注释', async () => {
     const sql = `
     CREATE TABLE ttt (
       ID VARCHAR(255) NOT NULL,
@@ -421,7 +421,7 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = parser.parse(sql, 'postgresql');
+    const result = await parser.parseAsync(sql, 'postgresql');
 
     expect(result.tableComment).toBe('dfdfdf');
     const idField = result.fields.find((f) => f.name === 'ID');
@@ -429,7 +429,7 @@ describe('SqlParser', () => {
     expect(result.authObjects).toEqual(['cbd1', 'cbdd2']);
   });
 
-  it('SQL Server 扩展属性注释与授权应被提取', () => {
+  it('SQL Server 扩展属性注释与授权应被提取', async () => {
     const sql = `
     CREATE TABLE ttt (
       ID VARCHAR(255) NOT NULL,
@@ -475,7 +475,7 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = parser.parse(sql, 'sqlserver');
+    const result = await parser.parseAsync(sql, 'sqlserver');
 
     expect(result.tableComment).toBe('dfdfdf');
     expect(result.fields.find((f) => f.name === 'ID')?.comment).toBe(
@@ -487,7 +487,7 @@ describe('SqlParser', () => {
     expect(result.authObjects).toEqual(['cbd1', 'cbdd2']);
   });
 
-  it('能够解析复杂的 ALTER TABLE 语句', () => {
+  it('能够解析复杂的 ALTER TABLE 语句', async () => {
     const sql = `
     CREATE TABLE orders (
       id INT,
@@ -500,7 +500,7 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = parser.parse(sql, 'mysql');
+    const result = await parser.parseAsync(sql, 'mysql');
 
     expect(result.tableName).toBe('orders');
     expect(result.fields.map((f) => f.name)).toEqual([
@@ -514,7 +514,7 @@ describe('SqlParser', () => {
     expect(primaryKey?.fields).toEqual([{ name: 'id', direction: 'ASC' }]);
   });
 
-  it('能够解析包含复杂类型定义的 SQL', () => {
+  it('能够解析包含复杂类型定义的 SQL', async () => {
     const sql = `
     CREATE TABLE complex_types (
       id INT PRIMARY KEY,
@@ -528,7 +528,7 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = parser.parse(sql, 'postgresql');
+    const result = await parser.parseAsync(sql, 'postgresql');
 
     expect(result.tableName).toBe('complex_types');
     expect(result.fields.length).toBeGreaterThan(0);
@@ -539,7 +539,7 @@ describe('SqlParser', () => {
     expect(fieldNames).toContain('uuid_col');
   });
 
-  it('能够解析带 IF NOT EXISTS 的 CREATE TABLE', () => {
+  it('能够解析带 IF NOT EXISTS 的 CREATE TABLE', async () => {
     const sql = `
     CREATE TABLE IF NOT EXISTS test_table (
       id SERIAL PRIMARY KEY,
@@ -548,13 +548,13 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = parser.parse(sql, 'postgresql');
+    const result = await parser.parseAsync(sql, 'postgresql');
 
     expect(result.tableName).toBe('test_table');
     expect(result.fields).toHaveLength(2);
   });
 
-  it('能够解析带表空间信息的 SQL Server 表', () => {
+  it('能够解析带表空间信息的 SQL Server 表', async () => {
     const sql = `
     CREATE TABLE dbo.TestTable (
       Id INT IDENTITY(1,1) PRIMARY KEY,
@@ -563,13 +563,13 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = parser.parse(sql, 'sqlserver');
+    const result = await parser.parseAsync(sql, 'sqlserver');
 
     expect(result.tableName).toBe('TestTable');
     expect(result.fields).toHaveLength(2);
   });
 
-  it('能够解析带默认值的复杂表达式', () => {
+  it('能够解析带默认值的复杂表达式', async () => {
     const sql = `
     CREATE TABLE defaults_test (
       id INT PRIMARY KEY,
@@ -580,7 +580,7 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = parser.parse(sql, 'mysql');
+    const result = await parser.parseAsync(sql, 'mysql');
 
     expect(result.tableName).toBe('defaults_test');
     expect(result.fields.length).toBeGreaterThanOrEqual(3);
@@ -589,7 +589,7 @@ describe('SqlParser', () => {
     expect(createdAtField?.defaultKind).toBe('current_timestamp');
   });
 
-  it('能够解析带 CHECK 约束的表', () => {
+  it('能够解析带 CHECK 约束的表', async () => {
     const sql = `
     CREATE TABLE check_test (
       id INT PRIMARY KEY,
@@ -600,13 +600,13 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = parser.parse(sql, 'mysql');
+    const result = await parser.parseAsync(sql, 'mysql');
 
     expect(result.tableName).toBe('check_test');
     expect(result.fields).toHaveLength(3);
   });
 
-  it('能够解析带外键约束的表', () => {
+  it('能够解析带外键约束的表', async () => {
     const sql = `
     CREATE TABLE orders (
       id INT PRIMARY KEY,
@@ -618,13 +618,13 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = parser.parse(sql, 'mysql');
+    const result = await parser.parseAsync(sql, 'mysql');
 
     expect(result.tableName).toBe('orders');
     expect(result.fields).toHaveLength(3);
   });
 
-  it('能够解析带索引的 ALTER TABLE 语句', () => {
+  it('能够解析带索引的 ALTER TABLE 语句', async () => {
     const sql = `
     CREATE TABLE idx_test (
       id INT,
@@ -637,7 +637,7 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = parser.parse(sql, 'mysql');
+    const result = await parser.parseAsync(sql, 'mysql');
 
     expect(result.tableName).toBe('idx_test');
     expect(result.indexes.length).toBeGreaterThanOrEqual(2);
@@ -646,7 +646,7 @@ describe('SqlParser', () => {
     expect(uniqueIndex).toBeDefined();
   });
 
-  it('能够解析带 GENERATED ALWAYS AS 的列', () => {
+  it('能够解析带 GENERATED ALWAYS AS 的列', async () => {
     const sql = `
     CREATE TABLE generated_test (
       id INT PRIMARY KEY,
@@ -657,13 +657,13 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = parser.parse(sql, 'mysql');
+    const result = await parser.parseAsync(sql, 'mysql');
 
     expect(result.tableName).toBe('generated_test');
     expect(result.fields.length).toBeGreaterThanOrEqual(3);
   });
 
-  it('能够解析带 COLLATE 的字符列', () => {
+  it('能够解析带 COLLATE 的字符列', async () => {
     const sql = `
     CREATE TABLE collate_test (
       id INT PRIMARY KEY,
@@ -673,13 +673,13 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = parser.parse(sql, 'mysql');
+    const result = await parser.parseAsync(sql, 'mysql');
 
     expect(result.tableName).toBe('collate_test');
     expect(result.fields).toHaveLength(3);
   });
 
-  it('能够解析带 CHARACTER SET 的列', () => {
+  it('能够解析带 CHARACTER SET 的列', async () => {
     const sql = `
     CREATE TABLE charset_test (
       id INT PRIMARY KEY,
@@ -689,13 +689,13 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = parser.parse(sql, 'mysql');
+    const result = await parser.parseAsync(sql, 'mysql');
 
     expect(result.tableName).toBe('charset_test');
     expect(result.fields).toHaveLength(3);
   });
 
-  it('能够解析带 ZEROFILL 的数字列', () => {
+  it('能够解析带 ZEROFILL 的数字列', async () => {
     const sql = `
     CREATE TABLE zerofill_test (
       id INT PRIMARY KEY,
@@ -705,13 +705,13 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = parser.parse(sql, 'mysql');
+    const result = await parser.parseAsync(sql, 'mysql');
 
     expect(result.tableName).toBe('zerofill_test');
     expect(result.fields).toHaveLength(3);
   });
 
-  it('能够解析带 AUTO_INCREMENT 和起始值的列', () => {
+  it('能够解析带 AUTO_INCREMENT 和起始值的列', async () => {
     const sql = `
     CREATE TABLE autoinc_test (
       id INT PRIMARY KEY AUTO_INCREMENT,
@@ -720,7 +720,7 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = parser.parse(sql, 'mysql');
+    const result = await parser.parseAsync(sql, 'mysql');
 
     expect(result.tableName).toBe('autoinc_test');
     const idField = result.fields.find((f) => f.name === 'id');

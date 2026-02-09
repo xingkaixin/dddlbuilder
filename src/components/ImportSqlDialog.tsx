@@ -102,7 +102,7 @@ export function ImportSqlDialog({
     try {
       const { SqlParser } = await import('@/utils/SqlParser');
       const parser = new SqlParser();
-      const result = parser.parse(sql, selectedDbType);
+      const result = await parser.parseAsync(sql, selectedDbType);
 
       if (result.fields.length === 0 && result.tableName === '') {
         setValidationResult({
