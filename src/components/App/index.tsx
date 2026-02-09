@@ -53,6 +53,7 @@ import { useDDLReview, type StructuredSuggestion } from '@/hooks/useDDLReview';
 import { useSuggestionAnimation } from '@/hooks/useSuggestionAnimation';
 import { useSavedTables, type SavedTableSummary } from '@/hooks/useSavedTables';
 import { useFolders, type FolderTreeNode } from '@/hooks/useFolders';
+import { useAppStore } from '@/stores';
 import {
   useFieldTemplates,
   type FieldTemplate,
@@ -105,16 +106,32 @@ function App() {
     [],
   );
 
-  // Basic state
-  const [tableName, setTableName] = useState('');
-  const [tableComment, setTableComment] = useState('');
-  const [dbType, setDbType] = useState<DatabaseType>('mysql');
-  const [addCount, setAddCount] = useState<number>(10);
-  const [fieldTableFreezeEnabled, setFieldTableFreezeEnabled] = useState(
-    DEFAULT_FIELD_TABLE_FREEZE_ENABLED,
+  // Basic state (batch 4: migrated to zustand)
+  const tableName = useAppStore((state) => state.tableName);
+  const tableComment = useAppStore((state) => state.tableComment);
+  const dbType = useAppStore((state) => state.dbType);
+  const setTableName = useAppStore((state) => state.setTableName);
+  const setTableComment = useAppStore((state) => state.setTableComment);
+  const setDbType = useAppStore((state) => state.setDbType);
+  const addCount = useAppStore((state) => state.addCount);
+  const setAddCount = useAppStore((state) => state.setAddCount);
+  const fieldTableFreezeEnabled = useAppStore(
+    (state) => state.fieldTableFreezeEnabled,
   );
-  const [fieldTableFreezeColumns, setFieldTableFreezeColumns] = useState(
-    DEFAULT_FIELD_TABLE_FREEZE_COLUMNS,
+  const setFieldTableFreezeEnabled = useAppStore(
+    (state) => state.setFieldTableFreezeEnabled,
+  );
+  const fieldTableFreezeColumns = useAppStore(
+    (state) => state.fieldTableFreezeColumns,
+  );
+  const setFieldTableFreezeColumns = useAppStore(
+    (state) => state.setFieldTableFreezeColumns,
+  );
+  const activeTab = useAppStore((state) => state.activeTab);
+  const setActiveTab = useAppStore((state) => state.setActiveTab);
+  const resetTableConfig = useAppStore((state) => state.resetTableConfig);
+  const resetTableViewConfig = useAppStore(
+    (state) => state.resetTableViewConfig,
   );
 
   // Changelog modal state
@@ -124,11 +141,13 @@ function App() {
   // Fireworks state
   const [showFireworks, setShowFireworks] = useState(false);
 
-  // Active tab state for controlled Tabs
-  const [activeTab, setActiveTab] = useState<string>('fields');
-
-  // Saved tables drawer & dialogs
-  const [savedTablesDrawerOpen, setSavedTablesDrawerOpen] = useState(false);
+  // Saved tables drawer & dialogs (batch 4: migrated to zustand)
+  const savedTablesDrawerOpen = useAppStore(
+    (state) => state.savedTablesDrawerOpen,
+  );
+  const setSavedTablesDrawerOpen = useAppStore(
+    (state) => state.setSavedTablesDrawerOpen,
+  );
   const [loadedTableNormalizedName, setLoadedTableNormalizedName] = useState<
     string | null
   >(null);
@@ -136,20 +155,30 @@ function App() {
   const [loadedTableSignature, setLoadedTableSignature] = useState<
     string | null
   >(null);
-  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+  const isSaveDialogOpen = useAppStore((state) => state.dialogs.save);
+  const setIsSaveDialogOpen = useAppStore((state) => state.setIsSaveDialogOpen);
   const [saveName, setSaveName] = useState('');
   const [saveError, setSaveError] = useState('');
-  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
+  const isRenameDialogOpen = useAppStore((state) => state.dialogs.rename);
+  const setIsRenameDialogOpen = useAppStore(
+    (state) => state.setIsRenameDialogOpen,
+  );
   const [renameName, setRenameName] = useState('');
   const [renameError, setRenameError] = useState('');
   const [renameTarget, setRenameTarget] = useState<SavedTableSummary | null>(
     null,
   );
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const isDeleteDialogOpen = useAppStore((state) => state.dialogs.delete);
+  const setIsDeleteDialogOpen = useAppStore(
+    (state) => state.setIsDeleteDialogOpen,
+  );
   const [deleteTarget, setDeleteTarget] = useState<SavedTableSummary | null>(
     null,
   );
-  const [isLoadConfirmOpen, setIsLoadConfirmOpen] = useState(false);
+  const isLoadConfirmOpen = useAppStore((state) => state.dialogs.loadConfirm);
+  const setIsLoadConfirmOpen = useAppStore(
+    (state) => state.setIsLoadConfirmOpen,
+  );
   const [pendingLoadTarget, setPendingLoadTarget] =
     useState<SavedTableSummary | null>(null);
   const [queuedLoadAfterSave, setQueuedLoadAfterSave] =
@@ -604,7 +633,16 @@ function App() {
           : DEFAULT_FIELD_TABLE_FREEZE_COLUMNS,
       );
     }
-  }, [hydrated, persistedState]);
+  }, [
+    hydrated,
+    persistedState,
+    setTableName,
+    setTableComment,
+    setDbType,
+    setAddCount,
+    setFieldTableFreezeEnabled,
+    setFieldTableFreezeColumns,
+  ]);
 
   // save to localStorage on changes
   useEffect(() => {
@@ -626,12 +664,8 @@ function App() {
   }, []);
 
   const confirmClearAll = useCallback(() => {
-    setTableName('');
-    setTableComment('');
-    setDbType('mysql');
-    setAddCount(10);
-    setFieldTableFreezeEnabled(DEFAULT_FIELD_TABLE_FREEZE_ENABLED);
-    setFieldTableFreezeColumns(DEFAULT_FIELD_TABLE_FREEZE_COLUMNS);
+    resetTableConfig();
+    resetTableViewConfig();
     resetTableRows();
     resetIndexState();
     resetAuthState();
@@ -650,6 +684,8 @@ function App() {
   }, [
     cancelClearAll,
     clearState,
+    resetTableConfig,
+    resetTableViewConfig,
     resetTableRows,
     resetIndexState,
     resetAuthState,
@@ -725,6 +761,12 @@ function App() {
       resetPartition,
       setTableMiscConfig,
       resetTableMiscConfig,
+      setTableName,
+      setTableComment,
+      setDbType,
+      setAddCount,
+      setFieldTableFreezeEnabled,
+      setFieldTableFreezeColumns,
     ],
   );
 
@@ -764,7 +806,7 @@ function App() {
       setIsSaveDialogOpen(true);
       setQueuedLoadAfterSave(queuedLoad ?? null);
     },
-    [loadedTableName, tableName],
+    [loadedTableName, tableName, setIsSaveDialogOpen],
   );
 
   const handleConfirmSave = useCallback(async () => {
@@ -830,15 +872,19 @@ function App() {
     loadedTableNormalizedName,
     loadedTableName,
     trackEvent,
+    setIsSaveDialogOpen,
   ]);
 
-  const handleSaveDialogOpenChange = useCallback((open: boolean) => {
-    setIsSaveDialogOpen(open);
-    if (!open) {
-      setSaveError('');
-      setQueuedLoadAfterSave(null);
-    }
-  }, []);
+  const handleSaveDialogOpenChange = useCallback(
+    (open: boolean) => {
+      setIsSaveDialogOpen(open);
+      if (!open) {
+        setSaveError('');
+        setQueuedLoadAfterSave(null);
+      }
+    },
+    [setIsSaveDialogOpen],
+  );
 
   const handleSelectSavedTable = useCallback(
     (item: SavedTableSummary) => {
@@ -850,13 +896,19 @@ function App() {
       }
       void handleLoadSavedTable(item);
     },
-    [hasLoadedTable, isLoadedDirty, handleLoadSavedTable],
+    [
+      hasLoadedTable,
+      isLoadedDirty,
+      handleLoadSavedTable,
+      setSavedTablesDrawerOpen,
+      setIsLoadConfirmOpen,
+    ],
   );
 
   const handleCancelLoadConfirm = useCallback(() => {
     setIsLoadConfirmOpen(false);
     setPendingLoadTarget(null);
-  }, []);
+  }, [setIsLoadConfirmOpen]);
 
   const handleLoadConfirmOpenChange = useCallback(
     (open: boolean) => {
@@ -866,7 +918,7 @@ function App() {
       }
       handleCancelLoadConfirm();
     },
-    [handleCancelLoadConfirm],
+    [handleCancelLoadConfirm, setIsLoadConfirmOpen],
   );
 
   const handleConfirmLoadIgnore = useCallback(async () => {
@@ -874,29 +926,35 @@ function App() {
     setIsLoadConfirmOpen(false);
     await handleLoadSavedTable(pendingLoadTarget);
     setPendingLoadTarget(null);
-  }, [pendingLoadTarget, handleLoadSavedTable]);
+  }, [pendingLoadTarget, handleLoadSavedTable, setIsLoadConfirmOpen]);
 
   const handleConfirmLoadSave = useCallback(() => {
     if (!pendingLoadTarget) return;
     setIsLoadConfirmOpen(false);
     openSaveDialog(pendingLoadTarget);
     setPendingLoadTarget(null);
-  }, [pendingLoadTarget, openSaveDialog]);
+  }, [pendingLoadTarget, openSaveDialog, setIsLoadConfirmOpen]);
 
-  const handleOpenRenameDialog = useCallback((item: SavedTableSummary) => {
-    setRenameTarget(item);
-    setRenameName(item.name);
-    setRenameError('');
-    setIsRenameDialogOpen(true);
-  }, []);
-
-  const handleRenameDialogOpenChange = useCallback((open: boolean) => {
-    setIsRenameDialogOpen(open);
-    if (!open) {
-      setRenameTarget(null);
+  const handleOpenRenameDialog = useCallback(
+    (item: SavedTableSummary) => {
+      setRenameTarget(item);
+      setRenameName(item.name);
       setRenameError('');
-    }
-  }, []);
+      setIsRenameDialogOpen(true);
+    },
+    [setIsRenameDialogOpen],
+  );
+
+  const handleRenameDialogOpenChange = useCallback(
+    (open: boolean) => {
+      setIsRenameDialogOpen(open);
+      if (!open) {
+        setRenameTarget(null);
+        setRenameError('');
+      }
+    },
+    [setIsRenameDialogOpen],
+  );
 
   const handleConfirmRename = useCallback(async () => {
     if (!renameTarget) return;
@@ -932,19 +990,26 @@ function App() {
     showToast,
     loadedTableNormalizedName,
     trackEvent,
+    setIsRenameDialogOpen,
   ]);
 
-  const handleOpenDeleteDialog = useCallback((item: SavedTableSummary) => {
-    setDeleteTarget(item);
-    setIsDeleteDialogOpen(true);
-  }, []);
+  const handleOpenDeleteDialog = useCallback(
+    (item: SavedTableSummary) => {
+      setDeleteTarget(item);
+      setIsDeleteDialogOpen(true);
+    },
+    [setIsDeleteDialogOpen],
+  );
 
-  const handleDeleteDialogOpenChange = useCallback((open: boolean) => {
-    setIsDeleteDialogOpen(open);
-    if (!open) {
-      setDeleteTarget(null);
-    }
-  }, []);
+  const handleDeleteDialogOpenChange = useCallback(
+    (open: boolean) => {
+      setIsDeleteDialogOpen(open);
+      if (!open) {
+        setDeleteTarget(null);
+      }
+    },
+    [setIsDeleteDialogOpen],
+  );
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
@@ -968,6 +1033,7 @@ function App() {
     showToast,
     loadedTableNormalizedName,
     trackEvent,
+    setIsDeleteDialogOpen,
   ]);
 
   // Folder handlers
@@ -1251,6 +1317,7 @@ function App() {
       trackEvent,
       triggerIndexAnimation,
       triggerFieldTableHighlight,
+      setActiveTab,
     ],
   );
 
@@ -1358,6 +1425,9 @@ function App() {
       setAuthObjects,
       setIndexInput,
       setAuthInput,
+      setTableName,
+      setTableComment,
+      setDbType,
       trackEvent,
     ],
   );
@@ -1369,7 +1439,7 @@ function App() {
   const handleOpenSavedTablesDrawer = useCallback(() => {
     trackEvent('sidebar_open');
     setSavedTablesDrawerOpen(true);
-  }, [trackEvent]);
+  }, [trackEvent, setSavedTablesDrawerOpen]);
 
   const handleOpenDiffDialog = useCallback(() => {
     trackEvent('diff_view_open');
@@ -1381,7 +1451,7 @@ function App() {
       setActiveTab(value);
       trackEvent('tab_switch', { tab: value });
     },
-    [trackEvent],
+    [setActiveTab, trackEvent],
   );
 
   const handleOpenStorageEstimator = useCallback(() => {
