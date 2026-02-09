@@ -75,6 +75,7 @@ import {
 import { diffPersistedState, type TableDiff } from '@/utils/tableDiff';
 import { createVersion } from '@/utils/tableVersions';
 import { saveReview } from '@/utils/reviewHistory';
+import { reportError } from '@/utils/errorReporter';
 import {
   Columns3Cog,
   Network,
@@ -565,7 +566,13 @@ function App() {
         loadedTableNormalizedName || normalizeSavedTableName(tableName);
       saveReview(normalizedName, tableName, generatedSql, dbType, reviewResult)
         .then(() => trackEvent('sql_review_complete', { dbType, tableName }))
-        .catch((err) => console.error('Failed to save review:', err));
+        .catch((err) =>
+          reportError(err, {
+            scope: 'App',
+            action: 'saveReview',
+            metadata: { dbType, tableName, normalizedName },
+          }),
+        );
     }
     isReviewingRef.current = isReviewing;
   }, [
@@ -592,7 +599,10 @@ function App() {
       trackEvent('share_link_create');
       showToast('链接已复制到剪贴板');
     } catch (e) {
-      console.error('Failed to generate share link', e);
+      reportError(e, {
+        scope: 'App',
+        action: 'generateShareLink',
+      });
       showToast('生成链接失败');
     }
   }, [buildPersistedState, showToast, trackEvent]);

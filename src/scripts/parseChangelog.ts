@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import matter from 'gray-matter';
+import { reportError } from '../utils/errorReporter';
 
 export interface ChangelogEntry {
   version: string;
@@ -99,7 +100,10 @@ export const changelogData: ChangelogData = ${JSON.stringify(changelogData, null
     fs.writeFileSync(outputPath, tsContent, 'utf8');
     console.log('✅ Changelog data generated successfully');
   } catch (error) {
-    console.error('❌ Error generating changelog data:', error);
+    reportError(error, {
+      scope: 'parseChangelogScript',
+      action: 'generateChangelogData',
+    });
     process.exit(1);
   }
 }
