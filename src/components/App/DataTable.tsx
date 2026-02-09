@@ -22,7 +22,7 @@ import { HotTable } from '@handsontable/react-wrapper';
 import 'handsontable/styles/handsontable.css';
 import 'handsontable/styles/ht-theme-main.css';
 import type Handsontable from 'handsontable';
-import type { FieldRow, UiDefaultKind, DatabaseType } from '@/types';
+import type { UiDefaultKind } from '@/types';
 import {
   toStringSafe,
   isReservedKeyword,
@@ -33,6 +33,7 @@ import {
 import { getCanonicalBaseType } from '@/utils/databaseTypeMapping';
 import { COLUMN_HEADERS } from '@/utils/constants';
 import { cn } from '@/lib/utils';
+import { buildDuplicateNameSet, useAppStore, useFieldStore } from '@/stores';
 
 let handsontableModulesRegistered = false;
 
@@ -81,22 +82,6 @@ const COLUMN_SETTINGS: Handsontable.ColumnSettings[] = [
 ];
 
 interface DataTableProps {
-  rows: FieldRow[];
-  duplicateNameSet: Set<string>;
-  dbType: DatabaseType;
-  addCount: number;
-  onRowsChange: (
-    changes: (Handsontable.CellChange | null)[] | null,
-    source: string,
-  ) => void;
-  onCreateRow: (index: number, amount: number) => void;
-  onRemoveRow: (index: number, amount: number) => void;
-  onAddRows: (count: number) => void;
-  onAddCountChange: (value: number) => void;
-  freezeEnabled: boolean;
-  freezeColumns: number;
-  onFreezeEnabledChange: (enabled: boolean) => void;
-  onFreezeColumnsChange: (count: number) => void;
   /** 工具栏左侧插槽，用于添加额外按钮（如"应用模板"） */
   toolbarLeft?: React.ReactNode;
   /** 是否显示字段变更高亮动画 */
@@ -109,24 +94,30 @@ interface DataTableProps {
 
 export const DataTable = memo<DataTableProps>(
   ({
-    rows,
-    duplicateNameSet,
-    dbType,
-    addCount,
-    onRowsChange,
-    onCreateRow,
-    onRemoveRow,
-    onAddRows,
-    onAddCountChange,
-    freezeEnabled,
-    freezeColumns,
-    onFreezeEnabledChange,
-    onFreezeColumnsChange,
     toolbarLeft,
     isHighlighted,
     highlightedRowIndex,
     onOpenStorageEstimator,
   }) => {
+    const rows = useFieldStore((state) => state.rows);
+    const onRowsChange = useFieldStore((state) => state.handleRowsChange);
+    const onCreateRow = useFieldStore((state) => state.handleCreateRow);
+    const onRemoveRow = useFieldStore((state) => state.handleRemoveRow);
+    const onAddRows = useFieldStore((state) => state.handleAddRows);
+    const dbType = useAppStore((state) => state.dbType);
+    const addCount = useAppStore((state) => state.addCount);
+    const onAddCountChange = useAppStore((state) => state.setAddCount);
+    const freezeEnabled = useAppStore((state) => state.fieldTableFreezeEnabled);
+    const onFreezeEnabledChange = useAppStore(
+      (state) => state.setFieldTableFreezeEnabled,
+    );
+    const freezeColumns = useAppStore((state) => state.fieldTableFreezeColumns);
+    const onFreezeColumnsChange = useAppStore(
+      (state) => state.setFieldTableFreezeColumns,
+    );
+
+    const duplicateNameSet = useMemo(() => buildDuplicateNameSet(rows), [rows]);
+
     const latestRef = useRef({ rows, dbType });
     latestRef.current = { rows, dbType };
 

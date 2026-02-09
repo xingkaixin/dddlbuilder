@@ -21,7 +21,6 @@ import { useSuggestionAnimation } from '@/hooks/useSuggestionAnimation';
 import { useSavedTables, type SavedTableSummary } from '@/hooks/useSavedTables';
 import { useFolders } from '@/hooks/useFolders';
 import {
-  buildDuplicateNameSet,
   buildNormalizedFields,
   useAppStore,
   useFieldStore,
@@ -237,12 +236,6 @@ function App() {
   const setRows = useFieldStore((state) => state.setRows);
   const initializeRows = useFieldStore((state) => state.initializeRows);
   const resetTableRows = useFieldStore((state) => state.resetRows);
-  const handleRowsChange = useFieldStore((state) => state.handleRowsChange);
-  const handleCreateRow = useFieldStore((state) => state.handleCreateRow);
-  const handleRemoveRow = useFieldStore((state) => state.handleRemoveRow);
-  const handleAddRows = useFieldStore((state) => state.handleAddRows);
-
-  const duplicateNameSet = useMemo(() => buildDuplicateNameSet(rows), [rows]);
   const normalizedFields = useMemo(() => buildNormalizedFields(rows), [rows]);
 
   const availableFields = useMemo(
@@ -261,49 +254,16 @@ function App() {
   const indexInput = useIndexStore((state) => state.indexInput);
   const currentIndexFields = useIndexStore((state) => state.currentIndexFields);
   const indexes = useIndexStore((state) => state.indexes);
-  const showFieldSuggestions = useIndexStore(
-    (state) => state.showFieldSuggestions,
-  );
-  const selectedSuggestionIndex = useIndexStore(
-    (state) => state.selectedSuggestionIndex,
-  );
   const setIndexInput = useIndexStore((state) => state.setIndexInput);
   const setCurrentIndexFields = useIndexStore(
     (state) => state.setCurrentIndexFields,
   );
-  const setShowFieldSuggestions = useIndexStore(
-    (state) => state.setShowFieldSuggestions,
-  );
-  const setSelectedSuggestionIndex = useIndexStore(
-    (state) => state.setSelectedSuggestionIndex,
-  );
   const initializeIndexState = useIndexStore(
     (state) => state.initializeIndexState,
   );
-  const addFieldToIndex = useIndexStore((state) => state.addFieldToIndex);
-  const removeFieldFromIndex = useIndexStore(
-    (state) => state.removeFieldFromIndex,
-  );
-  const toggleFieldDirection = useIndexStore(
-    (state) => state.toggleFieldDirection,
-  );
-  const addIndex = useIndexStore((state) => state.addIndex);
-  const removeIndex = useIndexStore((state) => state.removeIndex);
-  const updateIndexName = useIndexStore((state) => state.updateIndexName);
   const updateIndexNames = useIndexStore((state) => state.updateIndexNames);
   const resetIndexState = useIndexStore((state) => state.resetIndexState);
   const setIndexes = useIndexStore((state) => state.setIndexes);
-
-  const fieldSuggestions = useMemo(() => {
-    if (!indexInput.trim()) return [];
-
-    const input = indexInput.toLowerCase().trim();
-    return availableFields.filter(
-      (field) =>
-        field.toLowerCase().includes(input) &&
-        !currentIndexFields.some((item) => item.name === field),
-    );
-  }, [indexInput, availableFields, currentIndexFields]);
 
   const indexStats = useMemo(
     () =>
@@ -1264,42 +1224,12 @@ function App() {
               mysqlPartitionConfig.enabled ? mysqlPartitionConfig.type : null
             }
             dataTableProps={{
-              rows,
-              duplicateNameSet,
-              dbType,
-              addCount,
-              onRowsChange: handleRowsChange as any,
-              onCreateRow: handleCreateRow,
-              onRemoveRow: handleRemoveRow,
-              onAddRows: handleAddRows,
-              onAddCountChange: setAddCount,
-              freezeEnabled: fieldTableFreezeEnabled,
-              freezeColumns: fieldTableFreezeColumns,
-              onFreezeEnabledChange: setFieldTableFreezeEnabled,
-              onFreezeColumnsChange: setFieldTableFreezeColumns,
               isHighlighted: isFieldTableHighlighted,
               highlightedRowIndex: highlightedRowIndex,
               onOpenStorageEstimator: handleOpenStorageEstimator,
               toolbarLeft: dataTableToolbarLeft,
             }}
             indexPanelProps={{
-              indexInput,
-              currentIndexFields,
-              indexes,
-              fieldSuggestions,
-              showFieldSuggestions,
-              selectedSuggestionIndex,
-              onIndexInputChange: setIndexInput,
-              onSetShowFieldSuggestions: setShowFieldSuggestions,
-              onSetSelectedSuggestionIndex: setSelectedSuggestionIndex,
-              onAddFieldToIndex: addFieldToIndex,
-              onRemoveFieldFromIndex: removeFieldFromIndex,
-              onToggleFieldDirection: toggleFieldDirection,
-              onAddIndex: (unique, primary) =>
-                addIndex(!!unique, !!primary, tableName, dbType),
-              onRemoveIndex: removeIndex,
-              onUpdateIndexName: (id, name) =>
-                updateIndexName(id, name, dbType),
               animatingIndexIds: animatingIndexIds,
               removingIndexIds: removingIndexIds,
             }}
