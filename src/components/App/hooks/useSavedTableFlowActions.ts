@@ -1,0 +1,251 @@
+import { useCallback } from 'react';
+import type { PersistedState } from '@/types';
+import type {
+  SaveTableResult,
+  SavedTableSummary,
+} from '@/hooks/useSavedTables';
+import type { UseDialogStateReturn } from '@/hooks/useDialogState';
+import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
+import { createVersion } from '@/utils/tableVersions';
+
+type AnalyticsValue = string | number | boolean | null | undefined;
+
+type SaveDialogData = {
+  name: string;
+  queuedLoadAfterSave: SavedTableSummary | null;
+};
+
+type LoadConfirmDialogData = {
+  pendingTarget: SavedTableSummary | null;
+};
+
+interface UseSavedTableFlowActionsParams {
+  tableName: string;
+  hasLoadedTable: boolean;
+  isLoadedDirty: boolean;
+  canSaveCurrent: boolean;
+  loadedTableNormalizedName: string | null;
+  loadedTableName: string | null;
+  setLoadedTableNormalizedName: (value: string | null) => void;
+  setLoadedTableName: (value: string | null) => void;
+  setLoadedTableSignature: (value: string | null) => void;
+  setSavedTablesDrawerOpen: (open: boolean) => void;
+  saveDialog: UseDialogStateReturn<SaveDialogData>;
+  loadConfirmDialog: UseDialogStateReturn<LoadConfirmDialogData>;
+  buildPersistedState: () => PersistedState;
+  serializePersistedState: (state: PersistedState) => string;
+  applySavedState: (state: PersistedState) => void;
+  loadTable: (normalizedName: string) => Promise<{
+    normalizedName: string;
+    name: string;
+    state: PersistedState;
+  } | null>;
+  saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
+  overwriteTable: (
+    normalizedName: string,
+    state: PersistedState,
+  ) => Promise<SaveTableResult>;
+  showToast: (message: string) => void;
+  trackEvent: (
+    event: string,
+    data?: Record<string, AnalyticsValue>,
+  ) => Promise<void> | void;
+}
+
+export function useSavedTableFlowActions({
+  tableName,
+  hasLoadedTable,
+  isLoadedDirty,
+  canSaveCurrent,
+  loadedTableNormalizedName,
+  loadedTableName,
+  setLoadedTableNormalizedName,
+  setLoadedTableName,
+  setLoadedTableSignature,
+  setSavedTablesDrawerOpen,
+  saveDialog,
+  loadConfirmDialog,
+  buildPersistedState,
+  serializePersistedState,
+  applySavedState,
+  loadTable,
+  saveTable,
+  overwriteTable,
+  showToast,
+  trackEvent,
+}: UseSavedTableFlowActionsParams) {
+  const saveName = saveDialog.data.name;
+  const queuedLoadAfterSave = saveDialog.data.queuedLoadAfterSave;
+  const pendingLoadTarget = loadConfirmDialog.data.pendingTarget;
+
+  const handleLoadSavedTable = useCallback(
+    async (target: SavedTableSummary) => {
+      try {
+        const record = await loadTable(target.normalizedName);
+        if (!record) {
+          showToast('未找到保存的表');
+          return;
+        }
+        applySavedState(record.state);
+        setLoadedTableNormalizedName(record.normalizedName);
+        setLoadedTableName(record.name);
+        setLoadedTableSignature(serializePersistedState(record.state));
+        trackEvent('table_load', { tableName: record.name });
+        showToast(`已加载：${record.name}`);
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : '加载失败');
+      }
+    },
+    [
+      loadTable,
+      showToast,
+      applySavedState,
+      setLoadedTableNormalizedName,
+      setLoadedTableName,
+      setLoadedTableSignature,
+      serializePersistedState,
+      trackEvent,
+    ],
+  );
+
+  const openSaveDialog = useCallback(
+    (queuedLoad?: SavedTableSummary | null) => {
+      const defaultName =
+        loadedTableName || tableName.trim() || DEFAULT_SAVED_TABLE_NAME;
+      saveDialog.openDialog({
+        name: defaultName,
+        queuedLoadAfterSave: queuedLoad ?? null,
+      });
+    },
+    [loadedTableName, tableName, saveDialog],
+  );
+
+  const handleConfirmSave = useCallback(async () => {
+    if (!canSaveCurrent) {
+      showToast('加载的表未修改，无法保存');
+      return;
+    }
+    const nextState = buildPersistedState();
+    const nextSignature = serializePersistedState(nextState);
+
+    if (hasLoadedTable && loadedTableNormalizedName) {
+      const result = await overwriteTable(loadedTableNormalizedName, nextState);
+      if (!result.ok) {
+        if (result.reason === 'not_found') {
+          showToast('未找到保存的表');
+          return;
+        }
+        showToast(result.message ?? '更新失败');
+        return;
+      }
+      setLoadedTableSignature(nextSignature);
+      trackEvent('table_update', { tableName: loadedTableName });
+      showToast(`已更新：${loadedTableName ?? saveName}`);
+      await createVersion(loadedTableNormalizedName, nextState);
+    } else {
+      const result = await saveTable(saveName, nextState);
+      if (!result.ok) {
+        if (result.reason === 'duplicate') {
+          saveDialog.setError('名称已存在，请换一个');
+          return;
+        }
+        showToast(result.message ?? '保存失败');
+        return;
+      }
+      const displayName = saveName.trim() || DEFAULT_SAVED_TABLE_NAME;
+      trackEvent('table_save', { tableName: displayName });
+      showToast(`已保存：${displayName}`);
+      const normalizedName =
+        saveName.trim().toLowerCase() || DEFAULT_SAVED_TABLE_NAME.toLowerCase();
+      await createVersion(normalizedName, nextState, '初始版本');
+    }
+    saveDialog.closeDialog();
+
+    if (queuedLoadAfterSave) {
+      await handleLoadSavedTable(queuedLoadAfterSave);
+    }
+  }, [
+    canSaveCurrent,
+    showToast,
+    buildPersistedState,
+    serializePersistedState,
+    hasLoadedTable,
+    loadedTableNormalizedName,
+    overwriteTable,
+    setLoadedTableSignature,
+    trackEvent,
+    loadedTableName,
+    saveName,
+    saveTable,
+    saveDialog,
+    queuedLoadAfterSave,
+    handleLoadSavedTable,
+  ]);
+
+  const handleSaveDialogOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        saveDialog.closeDialog();
+      }
+    },
+    [saveDialog],
+  );
+
+  const handleSelectSavedTable = useCallback(
+    (item: SavedTableSummary) => {
+      setSavedTablesDrawerOpen(false);
+      if (hasLoadedTable && isLoadedDirty) {
+        loadConfirmDialog.openDialog({ pendingTarget: item });
+        return;
+      }
+      void handleLoadSavedTable(item);
+    },
+    [
+      setSavedTablesDrawerOpen,
+      hasLoadedTable,
+      isLoadedDirty,
+      loadConfirmDialog,
+      handleLoadSavedTable,
+    ],
+  );
+
+  const handleCancelLoadConfirm = useCallback(() => {
+    loadConfirmDialog.closeDialog();
+  }, [loadConfirmDialog]);
+
+  const handleLoadConfirmOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        loadConfirmDialog.closeDialog();
+      }
+    },
+    [loadConfirmDialog],
+  );
+
+  const handleConfirmLoadIgnore = useCallback(async () => {
+    if (!pendingLoadTarget) return;
+    loadConfirmDialog.closeDialog();
+    await handleLoadSavedTable(pendingLoadTarget);
+  }, [pendingLoadTarget, loadConfirmDialog, handleLoadSavedTable]);
+
+  const handleConfirmLoadSave = useCallback(() => {
+    if (!pendingLoadTarget) return;
+    loadConfirmDialog.closeDialog();
+    openSaveDialog(pendingLoadTarget);
+  }, [pendingLoadTarget, loadConfirmDialog, openSaveDialog]);
+
+  const handleOpenSaveDialog = useCallback(() => {
+    openSaveDialog(null);
+  }, [openSaveDialog]);
+
+  return {
+    handleOpenSaveDialog,
+    handleConfirmSave,
+    handleSaveDialogOpenChange,
+    handleSelectSavedTable,
+    handleCancelLoadConfirm,
+    handleLoadConfirmOpenChange,
+    handleConfirmLoadIgnore,
+    handleConfirmLoadSave,
+  };
+}
