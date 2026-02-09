@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
+import { useCallback, useEffect, useMemo, lazy, Suspense } from 'react';
 import type { PersistedState } from '@/types';
 import { createEmptyRow } from '@/utils/helpers';
 import { Header } from './Header';
@@ -11,6 +11,14 @@ import { useTemplateActions } from './hooks/useTemplateActions';
 import { useSchemaApplyActions } from './hooks/useSchemaApplyActions';
 import { useSavedTableFlowActions } from './hooks/useSavedTableFlowActions';
 import { usePersistedSync } from './hooks/usePersistedSync';
+import { useApplySavedState } from './hooks/useApplySavedState';
+import { useClearAllActions } from './hooks/useClearAllActions';
+import { useReviewActions } from './hooks/useReviewActions';
+import { useShareAction } from './hooks/useShareAction';
+import { useNavigationActions } from './hooks/useNavigationActions';
+import { useTemplateToolbarLeft } from './hooks/useTemplateToolbarLeft';
+import { useTrackEvent } from './hooks/useTrackEvent';
+import { useFireworksIntro } from './hooks/useFireworksIntro';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { useAuthManagement } from '@/hooks/useAuthManagement';
 import { useSqlGeneration } from '@/hooks/useSqlGeneration';
@@ -30,12 +38,8 @@ import {
 } from '@/stores';
 import { useDialogState } from '@/hooks/useDialogState';
 import { useFieldTemplates } from '@/hooks/useFieldTemplates';
-import { ApplyTemplatePopover } from './ApplyTemplatePopover';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
-import { normalizeSavedTableName } from '@/utils/savedTablesDb';
 import { diffPersistedState, type TableDiff } from '@/utils/tableDiff';
-import { saveReview } from '@/utils/reviewHistory';
-import { reportError } from '@/utils/errorReporter';
 
 const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
 
@@ -45,16 +49,8 @@ const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) =>
 const DEFAULT_FIELD_TABLE_FREEZE_ENABLED = true;
 const DEFAULT_FIELD_TABLE_FREEZE_COLUMNS = 3;
 
-type AnalyticsValue = string | number | boolean | null | undefined;
-
 function App() {
-  const trackEvent = useCallback(
-    async (event: string, data?: Record<string, AnalyticsValue>) => {
-      const { track } = await import('@vercel/analytics');
-      track(event, data);
-    },
-    [],
-  );
+  const trackEvent = useTrackEvent();
 
   // Basic state (batch 4: migrated to zustand)
   const tableName = useAppStore((state) => state.tableName);
@@ -211,18 +207,7 @@ function App() {
     (state) => state.setIsAIGenerateDialogOpen,
   );
 
-  // Check for fireworks on mount
-  useEffect(() => {
-    const hasShown = localStorage.getItem('fireworks_shown_2026');
-    if (!hasShown) {
-      setShowFireworks(true);
-    }
-  }, [setShowFireworks]);
-
-  const handleFireworksComplete = useCallback(() => {
-    setShowFireworks(false);
-    localStorage.setItem('fireworks_shown_2026', 'true');
-  }, [setShowFireworks]);
+  const { handleFireworksComplete } = useFireworksIntro({ setShowFireworks });
 
   // Use custom hooks
   const { persistedState, hydrated, saveState, clearState } =
@@ -565,61 +550,23 @@ function App() {
     setReviewResult,
   } = useDDLReview();
 
-  const handleStartReview = useCallback(() => {
-    trackEvent('sql_review_start', { dbType, tableName });
-    startReview(generatedSql, tableName, dbType);
-  }, [trackEvent, startReview, generatedSql, tableName, dbType]);
-
-  const isReviewingRef = useRef(false);
-
-  // 当评审完成时保存记录
-  useEffect(() => {
-    // 仅在评审状态从 true 变为 false 且有结果时保存
-    if (isReviewingRef.current && !isReviewing && reviewResult) {
-      const normalizedName =
-        loadedTableNormalizedName || normalizeSavedTableName(tableName);
-      saveReview(normalizedName, tableName, generatedSql, dbType, reviewResult)
-        .then(() => trackEvent('sql_review_complete', { dbType, tableName }))
-        .catch((err) =>
-          reportError(err, {
-            scope: 'App',
-            action: 'saveReview',
-            metadata: { dbType, tableName, normalizedName },
-          }),
-        );
-    }
-    isReviewingRef.current = isReviewing;
-  }, [
-    reviewResult,
-    isReviewing,
-    loadedTableNormalizedName,
+  const { handleStartReview, handleViewReviewHistory } = useReviewActions({
+    dbType,
     tableName,
     generatedSql,
-    dbType,
+    loadedTableNormalizedName,
+    isReviewing,
+    reviewResult,
+    startReview,
+    setIsReviewHistoryOpen,
     trackEvent,
-  ]);
+  });
 
-  const handleViewReviewHistory = useCallback(() => {
-    setIsReviewHistoryOpen(true);
-  }, [setIsReviewHistoryOpen]);
-
-  const handleShare = useCallback(async () => {
-    const currentState = buildPersistedState();
-    try {
-      const { compressState } = await import('@/utils/share');
-      const compressed = compressState(currentState);
-      const url = `${window.location.origin}${window.location.pathname}?s=${compressed}`;
-      await navigator.clipboard.writeText(url);
-      trackEvent('share_link_create');
-      showToast('链接已复制到剪贴板');
-    } catch (e) {
-      reportError(e, {
-        scope: 'App',
-        action: 'generateShareLink',
-      });
-      showToast('生成链接失败');
-    }
-  }, [buildPersistedState, showToast, trackEvent]);
+  const handleShare = useShareAction({
+    buildPersistedState,
+    showToast,
+    trackEvent,
+  });
 
   usePersistedSync({
     hydrated,
@@ -637,123 +584,47 @@ function App() {
     defaultFieldTableFreezeColumns: DEFAULT_FIELD_TABLE_FREEZE_COLUMNS,
   });
 
-  const handleClearAll = useCallback(() => {
-    setIsClearDialogOpen(true);
-  }, [setIsClearDialogOpen]);
-
-  const cancelClearAll = useCallback(() => {
-    setIsClearDialogOpen(false);
-  }, [setIsClearDialogOpen]);
-
-  const confirmClearAll = useCallback(() => {
-    resetTableConfig();
-    resetTableViewConfig();
-    resetTableRows();
-    resetIndexState();
-    resetAuthState();
-    resetCitusSharding();
-    resetPartition();
-    resetTableMiscConfig();
-    setLoadedTableNormalizedName(null);
-    setLoadedTableName(null);
-    setLoadedTableSignature(null);
-
-    // Clear localStorage
-    clearState();
-    trackEvent('table_clear_all');
-
-    cancelClearAll();
-  }, [
-    cancelClearAll,
-    clearState,
-    resetTableConfig,
-    resetTableViewConfig,
-    resetTableRows,
-    resetIndexState,
-    resetAuthState,
-    resetCitusSharding,
-    resetPartition,
-    resetTableMiscConfig,
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
-    setLoadedTableSignature,
-    trackEvent,
-  ]);
-
-  const applySavedState = useCallback(
-    (state: PersistedState) => {
-      setTableName(state.tableName ?? '');
-      setTableComment(state.tableComment ?? '');
-      setDbType(state.dbType ?? 'mysql');
-
-      if (
-        typeof state.addCount === 'number' &&
-        Number.isFinite(state.addCount)
-      ) {
-        setAddCount(Math.max(1, Math.floor(state.addCount)));
-      } else {
-        setAddCount(10);
-      }
-
-      setRows(state.rows ?? INITIAL_ROWS);
-      setIndexes(state.indexes ?? []);
-      setIndexInput(state.indexInput ?? '');
-      setCurrentIndexFields(state.currentIndexFields ?? []);
-      setAuthObjects(state.authObjects ?? []);
-      setAuthInput(state.authInput ?? '');
-
-      if (state.citusShardingConfig) {
-        setCitusShardingConfig(state.citusShardingConfig);
-      } else {
-        resetCitusSharding();
-      }
-
-      if (state.mysqlPartitionConfig) {
-        setMysqlPartitionConfig(state.mysqlPartitionConfig);
-      } else {
-        resetPartition();
-      }
-
-      if (state.tableMiscConfig) {
-        setTableMiscConfig(state.tableMiscConfig);
-      } else {
-        resetTableMiscConfig();
-      }
-
-      if (state.fieldTableViewConfig) {
-        setFieldTableFreezeEnabled(state.fieldTableViewConfig.freezeEnabled);
-        const freezeColumns = state.fieldTableViewConfig.freezeColumns;
-        setFieldTableFreezeColumns(
-          typeof freezeColumns === 'number' && Number.isFinite(freezeColumns)
-            ? Math.max(1, Math.floor(freezeColumns))
-            : DEFAULT_FIELD_TABLE_FREEZE_COLUMNS,
-        );
-      } else {
-        setFieldTableFreezeEnabled(DEFAULT_FIELD_TABLE_FREEZE_ENABLED);
-        setFieldTableFreezeColumns(DEFAULT_FIELD_TABLE_FREEZE_COLUMNS);
-      }
-    },
-    [
-      setRows,
-      setIndexes,
-      setIndexInput,
-      setCurrentIndexFields,
-      setAuthObjects,
-      setAuthInput,
-      setCitusShardingConfig,
+  const { handleClearAll, cancelClearAll, confirmClearAll } =
+    useClearAllActions({
+      setIsClearDialogOpen,
+      clearState,
+      resetTableConfig,
+      resetTableViewConfig,
+      resetTableRows,
+      resetIndexState,
+      resetAuthState,
       resetCitusSharding,
-      setMysqlPartitionConfig,
       resetPartition,
-      setTableMiscConfig,
       resetTableMiscConfig,
-      setTableName,
-      setTableComment,
-      setDbType,
-      setAddCount,
-      setFieldTableFreezeEnabled,
-      setFieldTableFreezeColumns,
-    ],
-  );
+      setLoadedTableNormalizedName,
+      setLoadedTableName,
+      setLoadedTableSignature,
+      trackEvent,
+    });
+
+  const applySavedState = useApplySavedState({
+    initialRows: INITIAL_ROWS,
+    defaultFieldTableFreezeEnabled: DEFAULT_FIELD_TABLE_FREEZE_ENABLED,
+    defaultFieldTableFreezeColumns: DEFAULT_FIELD_TABLE_FREEZE_COLUMNS,
+    setRows,
+    setIndexes,
+    setIndexInput,
+    setCurrentIndexFields,
+    setAuthObjects,
+    setAuthInput,
+    setCitusShardingConfig,
+    resetCitusSharding,
+    setMysqlPartitionConfig,
+    resetPartition,
+    setTableMiscConfig,
+    resetTableMiscConfig,
+    setTableName,
+    setTableComment,
+    setDbType,
+    setAddCount,
+    setFieldTableFreezeEnabled,
+    setFieldTableFreezeColumns,
+  });
 
   const {
     handleOpenSaveDialog,
@@ -818,62 +689,31 @@ function App() {
       trackEvent,
     });
 
-  const handleOpenSavedTablesDrawer = useCallback(() => {
-    trackEvent('sidebar_open');
-    setSavedTablesDrawerOpen(true);
-  }, [trackEvent, setSavedTablesDrawerOpen]);
+  const {
+    handleOpenSavedTablesDrawer,
+    handleOpenDiffDialog,
+    handleTabValueChange,
+    handleOpenStorageEstimator,
+    handleViewVersionHistory,
+    handleOpenAIGenerateDialog,
+  } = useNavigationActions({
+    setSavedTablesDrawerOpen,
+    setIsDiffDialogOpen,
+    setActiveTab,
+    setIsStorageEstimatorOpen,
+    setVersionHistoryTarget,
+    setIsVersionHistoryOpen,
+    setIsAIGenerateDialogOpen,
+    trackEvent,
+  });
 
-  const handleOpenDiffDialog = useCallback(() => {
-    trackEvent('diff_view_open');
-    setIsDiffDialogOpen(true);
-  }, [trackEvent, setIsDiffDialogOpen]);
-
-  const handleTabValueChange = useCallback(
-    (value: string) => {
-      setActiveTab(value);
-      trackEvent('tab_switch', { tab: value });
-    },
-    [setActiveTab, trackEvent],
-  );
-
-  const handleOpenStorageEstimator = useCallback(() => {
-    trackEvent('storage_estimator_open');
-    setIsStorageEstimatorOpen(true);
-  }, [trackEvent, setIsStorageEstimatorOpen]);
-
-  const handleViewVersionHistory = useCallback(
-    (item: SavedTableSummary) => {
-      setVersionHistoryTarget({
-        normalizedName: item.normalizedName,
-        name: item.name,
-      });
-      setIsVersionHistoryOpen(true);
-    },
-    [setVersionHistoryTarget, setIsVersionHistoryOpen],
-  );
-
-  const handleOpenAIGenerateDialog = useCallback(() => {
-    setIsAIGenerateDialogOpen(true);
-  }, [setIsAIGenerateDialogOpen]);
-
-  const dataTableToolbarLeft = useMemo(
-    () => (
-      <ApplyTemplatePopover
-        templates={templates}
-        loading={templatesLoading}
-        onApplyTemplate={handleApplyTemplate}
-        onManageTemplates={handleManageTemplates}
-        onSaveAsTemplate={handleSaveAsTemplate}
-      />
-    ),
-    [
-      templates,
-      templatesLoading,
-      handleApplyTemplate,
-      handleManageTemplates,
-      handleSaveAsTemplate,
-    ],
-  );
+  const dataTableToolbarLeft = useTemplateToolbarLeft({
+    templates,
+    templatesLoading,
+    handleApplyTemplate,
+    handleManageTemplates,
+    handleSaveAsTemplate,
+  });
 
   return (
     <div className="min-h-screen bg-background text-foreground">
