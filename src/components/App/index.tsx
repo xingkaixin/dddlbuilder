@@ -7,39 +7,16 @@ import {
   lazy,
   Suspense,
 } from 'react';
-import type {
-  DatabaseType,
-  FieldRow,
-  PersistedState,
-  IndexDefinition,
-} from '@/types';
-import type { ParsedResult } from '@/utils/SqlParser';
+import type { PersistedState } from '@/types';
 import { createEmptyRow } from '@/utils/helpers';
 import { Header } from './Header';
-import { TableConfig } from './TableConfig';
-import { IndexPanel } from './IndexPanel';
-import { AuthPanel } from './AuthPanel';
-import { ShardingPanel } from './ShardingPanel';
-import { PartitionPanel } from './PartitionPanel';
-import { TableOptionsPanel } from './TableOptionsPanel';
-import { DataTable } from './DataTable';
-import { DDLOutput } from './DDLOutput';
-import { SavedTablesDrawer } from './SavedTablesDrawer';
-import { DiffDialog } from './DiffDialog';
-import { VersionHistoryDialog } from './VersionHistoryDialog';
-import { ReviewHistoryDialog } from './ReviewHistoryDialog';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { GlobalDialogs } from './containers/GlobalDialogs';
+import { OutputContainer } from './containers/OutputContainer';
+import { SavedTablesContainer } from './containers/SavedTablesContainer';
+import { TableBuilderContainer } from './containers/TableBuilderContainer';
+import { useFolderActions } from './hooks/useFolderActions';
+import { useTemplateActions } from './hooks/useTemplateActions';
+import { useSchemaApplyActions } from './hooks/useSchemaApplyActions';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { useTableData } from '@/hooks/useTableData';
 import { useIndexManagement } from '@/hooks/useIndexManagement';
@@ -49,25 +26,14 @@ import { useToast } from '@/hooks/useToast';
 import { useCitusSharding } from '@/hooks/useCitusSharding';
 import { useMysqlPartition } from '@/hooks/useMysqlPartition';
 import { useTableOptions } from '@/hooks/useTableOptions';
-import { useDDLReview, type StructuredSuggestion } from '@/hooks/useDDLReview';
+import { useDDLReview } from '@/hooks/useDDLReview';
 import { useSuggestionAnimation } from '@/hooks/useSuggestionAnimation';
 import { useSavedTables, type SavedTableSummary } from '@/hooks/useSavedTables';
-import { useFolders, type FolderTreeNode } from '@/hooks/useFolders';
+import { useFolders } from '@/hooks/useFolders';
 import { useAppStore } from '@/stores';
 import { useDialogState } from '@/hooks/useDialogState';
-import {
-  useFieldTemplates,
-  type FieldTemplate,
-} from '@/hooks/useFieldTemplates';
-import { FolderDialog, DeleteFolderDialog } from './FolderDialogs';
-import {
-  TemplateManagerDialog,
-  CreateTemplateDialog,
-} from './TemplateManagerDialog';
+import { useFieldTemplates } from '@/hooks/useFieldTemplates';
 import { ApplyTemplatePopover } from './ApplyTemplatePopover';
-import { StorageEstimatorDialog } from './StorageEstimatorDialog';
-import { AIGenerateDialog } from './AIGenerateDialog';
-import type { GeneratedTableSchema } from '@/hooks/useAIGenerateTable';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
 import {
   DEFAULT_SAVED_TABLE_NAME,
@@ -77,17 +43,6 @@ import { diffPersistedState, type TableDiff } from '@/utils/tableDiff';
 import { createVersion } from '@/utils/tableVersions';
 import { saveReview } from '@/utils/reviewHistory';
 import { reportError } from '@/utils/errorReporter';
-import {
-  Columns3Cog,
-  Network,
-  ShieldUser,
-  Key,
-  Lock,
-  Hash,
-  Share2,
-  Layers,
-  SlidersHorizontal,
-} from 'lucide-react';
 
 const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
 
@@ -543,22 +498,6 @@ function App() {
     deleteFolder: deleteFolderAction,
   } = useFolders();
 
-  // Folder dialog state
-  const [isFolderDialogOpen, setIsFolderDialogOpen] = useState(false);
-  const [folderDialogMode, setFolderDialogMode] = useState<'create' | 'rename'>(
-    'create',
-  );
-  const [folderDialogParent, setFolderDialogParent] =
-    useState<FolderTreeNode | null>(null);
-  const [folderDialogTarget, setFolderDialogTarget] =
-    useState<FolderTreeNode | null>(null);
-
-  // Delete folder dialog state
-  const [isDeleteFolderDialogOpen, setIsDeleteFolderDialogOpen] =
-    useState(false);
-  const [deleteFolderTarget, setDeleteFolderTarget] =
-    useState<FolderTreeNode | null>(null);
-
   // Field templates hook
   const {
     templates,
@@ -570,15 +509,50 @@ function App() {
     duplicate: duplicateTemplate,
   } = useFieldTemplates();
 
-  // Template manager dialog state
-  const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
+  const {
+    isFolderDialogOpen,
+    setIsFolderDialogOpen,
+    folderDialogMode,
+    folderDialogParent,
+    folderDialogTarget,
+    isDeleteFolderDialogOpen,
+    setIsDeleteFolderDialogOpen,
+    deleteFolderTarget,
+    deleteFolderTableCount,
+    handleOpenCreateFolderDialog,
+    handleOpenRenameFolderDialog,
+    handleOpenDeleteFolderDialog,
+    handleFolderDialogConfirm,
+    handleDeleteFolderConfirm,
+    handleMoveTableToFolder,
+  } = useFolderActions({
+    folderTree,
+    savedTables,
+    createFolder,
+    renameFolder,
+    deleteFolderAction,
+    clearTablesFromFolders,
+    moveTableToFolder,
+    showToast,
+  });
 
-  // Create template dialog state (from selected fields)
-  const [isCreateTemplateDialogOpen, setIsCreateTemplateDialogOpen] =
-    useState(false);
-  const [selectedFieldsForTemplate, setSelectedFieldsForTemplate] = useState<
-    typeof rows
-  >([]);
+  const {
+    isTemplateManagerOpen,
+    setIsTemplateManagerOpen,
+    isCreateTemplateDialogOpen,
+    setIsCreateTemplateDialogOpen,
+    selectedFieldsForTemplate,
+    handleManageTemplates,
+    handleApplyTemplate,
+    handleCreateTemplateFromFields,
+    handleSaveAsTemplate,
+  } = useTemplateActions({
+    rows,
+    setRows,
+    createTemplateFromFields,
+    showToast,
+    trackEvent,
+  });
 
   // DDL Review hook
   const {
@@ -1067,401 +1041,26 @@ function App() {
     deleteDialog,
   ]);
 
-  // Folder handlers
-  const handleOpenCreateFolderDialog = useCallback(
-    (parentId?: string) => {
-      const parent = parentId
-        ? (folderTree.find((f) => f.id === parentId) ?? null)
-        : null;
-      setFolderDialogParent(parent);
-      setFolderDialogTarget(null);
-      setFolderDialogMode('create');
-      setIsFolderDialogOpen(true);
-    },
-    [folderTree],
-  );
-
-  const handleOpenRenameFolderDialog = useCallback((folder: FolderTreeNode) => {
-    setFolderDialogParent(null);
-    setFolderDialogTarget(folder);
-    setFolderDialogMode('rename');
-    setIsFolderDialogOpen(true);
-  }, []);
-
-  const handleOpenDeleteFolderDialog = useCallback((folder: FolderTreeNode) => {
-    setDeleteFolderTarget(folder);
-    setIsDeleteFolderDialogOpen(true);
-  }, []);
-
-  const handleFolderDialogConfirm = useCallback(
-    async (name: string) => {
-      if (folderDialogMode === 'create') {
-        await createFolder(name, folderDialogParent?.id);
-        showToast(`已创建文件夹：${name}`);
-      } else if (folderDialogTarget) {
-        await renameFolder(folderDialogTarget.id, name);
-        showToast(`已重命名为：${name}`);
-      }
-    },
-    [
-      folderDialogMode,
-      folderDialogParent,
-      folderDialogTarget,
-      createFolder,
-      renameFolder,
-      showToast,
-    ],
-  );
-
-  const handleDeleteFolderConfirm = useCallback(async () => {
-    if (!deleteFolderTarget) return;
-    try {
-      const affectedFolderIds = await deleteFolderAction(deleteFolderTarget.id);
-      // Clear folderId from tables in deleted folders
-      await clearTablesFromFolders(affectedFolderIds);
-      showToast(`已删除文件夹：${deleteFolderTarget.name}`);
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : '删除失败');
-    }
-  }, [
-    deleteFolderTarget,
-    deleteFolderAction,
-    clearTablesFromFolders,
-    showToast,
-  ]);
-
-  // Calculate table count for delete folder dialog
-  const deleteFolderTableCount = useMemo(() => {
-    if (!deleteFolderTarget) return 0;
-    return savedTables.filter((t) => t.folderId === deleteFolderTarget.id)
-      .length;
-  }, [deleteFolderTarget, savedTables]);
-
-  const handleMoveTableToFolder = useCallback(
-    async (item: SavedTableSummary, folderId?: string) => {
-      const result = await moveTableToFolder(item.normalizedName, folderId);
-      if (result.ok) {
-        showToast(folderId ? '已移动到文件夹' : '已移到未分组');
-      } else {
-        showToast(result.message ?? '移动失败');
-      }
-    },
-    [moveTableToFolder, showToast],
-  );
-
-  // Template handlers
-  const handleApplyTemplate = useCallback(
-    (template: FieldTemplate) => {
-      setRows((prevRows) => {
-        const startOrder = prevRows.length;
-        const newRows: typeof prevRows = template.fields.map(
-          (field, index) => ({
-            order: startOrder + index + 1,
-            fieldName: field.fieldName,
-            fieldComment: field.fieldComment || '',
-            fieldType: field.fieldType,
-            nullable: field.nullable,
-            defaultKind: field.defaultKind || '无',
-            defaultValue: field.defaultValue || '',
-            onUpdate: field.onUpdate || '无',
-          }),
-        );
-        return [...prevRows, ...newRows];
-      });
-      trackEvent('template_apply', { templateName: template.name });
-      showToast(
-        `已应用模板「${template.name}」，添加了 ${template.fields.length} 个字段`,
-      );
-    },
-    [setRows, showToast, trackEvent],
-  );
-
-  const handleApplySuggestion = useCallback(
-    (suggestion: StructuredSuggestion) => {
-      if (suggestion.applied) return;
-
-      let appliedCount = 0;
-      let newIndexId: string | null = null;
-
-      // Switch to appropriate tab based on suggestion type
-      if (
-        suggestion.type === 'add_index' ||
-        suggestion.type === 'remove_index'
-      ) {
-        setActiveTab('indexes');
-      } else if (
-        suggestion.type === 'add_field' ||
-        suggestion.type === 'modify_field' ||
-        suggestion.type === 'remove_field'
-      ) {
-        setActiveTab('fields');
-      }
-
-      switch (suggestion.type) {
-        case 'add_field':
-          if (suggestion.field) {
-            const newRow: FieldRow = {
-              order: rows.length + 1,
-              fieldName: suggestion.field.fieldName,
-              fieldType: suggestion.field.fieldType,
-              fieldComment: suggestion.field.fieldComment || '',
-              nullable: suggestion.field.nullable || '是',
-              defaultKind: suggestion.field.defaultKind || '无',
-              defaultValue: suggestion.field.defaultValue || '',
-              onUpdate: suggestion.field.onUpdate || '无',
-            };
-            setRows((prev) => [...prev, newRow]);
-            appliedCount = 1;
-            // Trigger field table highlight animation on the new row (last row)
-            triggerFieldTableHighlight(rows.length);
-          }
-          break;
-
-        case 'modify_field':
-          if (suggestion.fieldModification) {
-            const { fieldName } = suggestion.fieldModification;
-            // Support both nested changes structure and flat structure from LLM
-            const changes = suggestion.fieldModification.changes || {
-              fieldType: (suggestion.fieldModification as any).fieldType,
-              fieldComment: (suggestion.fieldModification as any).fieldComment,
-              nullable: (suggestion.fieldModification as any).nullable,
-              defaultKind: (suggestion.fieldModification as any).defaultKind,
-              defaultValue: (suggestion.fieldModification as any).defaultValue,
-              onUpdate: (suggestion.fieldModification as any).onUpdate,
-            };
-            const rowIndex = rows.findIndex((r) => r.fieldName === fieldName);
-            if (rowIndex !== -1) {
-              // Filter out undefined values to avoid overwriting with undefined
-              const filteredChanges = Object.fromEntries(
-                Object.entries(changes).filter(([, v]) => v !== undefined),
-              );
-              setRows((prev) => {
-                const updatedRows = [...prev];
-                updatedRows[rowIndex] = {
-                  ...updatedRows[rowIndex],
-                  ...filteredChanges,
-                };
-                return updatedRows;
-              });
-              appliedCount = 1;
-              // Trigger field table highlight animation on the modified row
-              triggerFieldTableHighlight(rowIndex);
-            }
-          }
-          break;
-
-        case 'remove_field':
-          if (suggestion.fieldName) {
-            const rowIndex = rows.findIndex(
-              (r) => r.fieldName === suggestion.fieldName,
-            );
-            if (rowIndex !== -1) {
-              // Trigger row highlight first
-              triggerFieldTableHighlight(rowIndex);
-
-              // Delay actual removal
-              setTimeout(() => {
-                setRows((prev) => {
-                  const newRows = prev.filter(
-                    (r) => r.fieldName !== suggestion.fieldName,
-                  );
-                  // 重新排序
-                  return newRows.map((r, i) => ({
-                    ...r,
-                    order: i + 1,
-                  }));
-                });
-              }, 500);
-
-              appliedCount = 1;
-            }
-          }
-          break;
-
-        case 'add_index':
-          if (suggestion.index) {
-            newIndexId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-            const newIndex: IndexDefinition = {
-              id: newIndexId,
-              name: suggestion.index.name,
-              fields: suggestion.index.fields,
-              unique: !!suggestion.index.unique,
-            };
-            setIndexes((prev) => [...prev, newIndex]);
-            appliedCount = 1;
-            // Trigger add animation after a small delay to ensure DOM is updated
-            setTimeout(() => {
-              if (newIndexId) {
-                triggerIndexAnimation(newIndexId, 'add');
-              }
-            }, 50);
-          }
-          break;
-
-        case 'remove_index':
-          if (suggestion.indexName) {
-            const targetIndex = indexes.find(
-              (idx) => idx.name === suggestion.indexName,
-            );
-            if (targetIndex) {
-              // Trigger remove animation first
-              triggerIndexAnimation(targetIndex.id, 'remove');
-              // Delay actual removal until animation completes
-              setTimeout(() => {
-                setIndexes((prev) =>
-                  prev.filter((idx) => idx.name !== suggestion.indexName),
-                );
-              }, 500);
-              appliedCount = 1;
-            }
-          }
-          break;
-
-        default:
-          break;
-      }
-
-      if (appliedCount > 0 && reviewResult) {
-        // 更新评审结果，标记该建议已应用
-        const newSuggestions = reviewResult.suggestions.map((s) => {
-          if (typeof s !== 'string' && s.id === suggestion.id) {
-            return { ...s, applied: true };
-          }
-          return s;
-        });
-        setReviewResult({ ...reviewResult, suggestions: newSuggestions });
-        trackEvent('sql_suggestion_apply', {
-          type: suggestion.type,
-          description: suggestion.description,
-        });
-        showToast(`已应用建议：${suggestion.description}`);
-      }
-    },
-    [
+  const { handleApplySuggestion, handleImport, handleApplyAIGeneratedSchema } =
+    useSchemaApplyActions({
       rows,
       indexes,
       reviewResult,
       setRows,
       setIndexes,
       setReviewResult,
-      showToast,
-      trackEvent,
-      triggerIndexAnimation,
-      triggerFieldTableHighlight,
-      setActiveTab,
-    ],
-  );
-
-  const handleCreateTemplateFromFields = useCallback(
-    async (
-      name: string,
-      fields: Array<{
-        fieldName?: string;
-        fieldType?: string;
-        fieldComment?: string;
-        nullable?: string;
-        defaultKind?: string;
-        defaultValue?: string;
-        onUpdate?: string;
-      }>,
-      description?: string,
-    ) => {
-      const result = await createTemplateFromFields(name, fields, description);
-      if (result.ok) {
-        trackEvent('template_create', { templateName: name });
-        showToast(`已创建模板「${name}」`);
-      } else {
-        showToast(result.message ?? '创建失败');
-      }
-      return result;
-    },
-    [createTemplateFromFields, showToast, trackEvent],
-  );
-
-  const handleSaveAsTemplate = useCallback(() => {
-    // 过滤掉完全为空的行
-    const validRows = rows.filter((r) => r.fieldName.trim());
-    if (validRows.length === 0) {
-      showToast('当前表中没有有效字段可保存');
-      return;
-    }
-    setSelectedFieldsForTemplate(validRows);
-    setIsCreateTemplateDialogOpen(true);
-  }, [rows, showToast]);
-
-  const handleImport = useCallback(
-    (result: ParsedResult, importDbType: DatabaseType) => {
-      // 1. Basic Info
-      setTableName(result.tableName);
-      setTableComment(result.tableComment);
-      setDbType(importDbType);
-
-      // 2. Fields
-      const newRows: FieldRow[] = result.fields.map((field, index) => {
-        let uiNullable = '是';
-        if (field.nullable === false) uiNullable = '否';
-
-        let uiDefaultKind = '无';
-        switch (field.defaultKind) {
-          case 'auto_increment':
-            uiDefaultKind = '自增';
-            break;
-          case 'constant':
-            uiDefaultKind = '常量';
-            break;
-          case 'current_timestamp':
-            uiDefaultKind = '当前时间';
-            break;
-          case 'uuid':
-            uiDefaultKind = 'uuid';
-            break;
-        }
-
-        let uiOnUpdate = '无';
-        if (field.onUpdate === 'current_timestamp') uiOnUpdate = '当前时间';
-
-        return {
-          order: index + 1,
-          fieldName: field.name,
-          fieldType: field.type,
-          fieldComment: field.comment,
-          nullable: uiNullable,
-          defaultKind: uiDefaultKind,
-          defaultValue: field.defaultValue,
-          onUpdate: uiOnUpdate,
-        };
-      });
-
-      // Pad with empty rows if needed
-      const minRows = 12;
-      if (newRows.length < minRows) {
-        for (let i = newRows.length; i < minRows; i++) {
-          newRows.push(createEmptyRow(i));
-        }
-      }
-      setRows(newRows);
-
-      // 3. Indexes
-      setIndexes(result.indexes);
-      setIndexInput('');
-
-      // 4. Auth
-      setAuthObjects(result.authObjects);
-      setAuthInput('');
-      trackEvent('sql_import', { dbType: importDbType });
-    },
-    [
-      setRows,
-      setIndexes,
-      setAuthObjects,
       setIndexInput,
+      setAuthObjects,
       setAuthInput,
       setTableName,
       setTableComment,
       setDbType,
+      setActiveTab,
+      triggerIndexAnimation,
+      triggerFieldTableHighlight,
+      showToast,
       trackEvent,
-    ],
-  );
+    });
 
   const handleOpenSaveDialog = useCallback(() => {
     openSaveDialog(null);
@@ -1490,8 +1089,16 @@ function App() {
     setIsStorageEstimatorOpen(true);
   }, [trackEvent]);
 
-  const handleManageTemplates = useCallback(() => {
-    setIsTemplateManagerOpen(true);
+  const handleViewVersionHistory = useCallback((item: SavedTableSummary) => {
+    setVersionHistoryTarget({
+      normalizedName: item.normalizedName,
+      name: item.name,
+    });
+    setIsVersionHistoryOpen(true);
+  }, []);
+
+  const handleOpenAIGenerateDialog = useCallback(() => {
+    setIsAIGenerateDialogOpen(true);
   }, []);
 
   const dataTableToolbarLeft = useMemo(
@@ -1531,553 +1138,291 @@ function App() {
         </Suspense>
       )}
 
-      <SavedTablesDrawer
-        open={savedTablesDrawerOpen}
-        onOpenChange={setSavedTablesDrawerOpen}
-        loading={savedTablesLoading}
-        error={savedTablesError}
-        items={savedTables}
-        folders={folderTree}
-        foldersLoading={foldersLoading}
-        activeNormalizedName={loadedTableNormalizedName}
-        activeDirty={isLoadedDirty}
-        onSelect={handleSelectSavedTable}
-        onRename={handleOpenRenameDialog}
-        onDelete={handleOpenDeleteDialog}
-        onViewHistory={(item) => {
-          setVersionHistoryTarget({
-            normalizedName: item.normalizedName,
-            name: item.name,
-          });
-          setIsVersionHistoryOpen(true);
-        }}
-        onMoveToFolder={handleMoveTableToFolder}
-        onCreateFolder={handleOpenCreateFolderDialog}
-        onRenameFolder={handleOpenRenameFolderDialog}
-        onDeleteFolder={handleOpenDeleteFolderDialog}
-      />
-
-      <FolderDialog
-        open={isFolderDialogOpen}
-        onOpenChange={setIsFolderDialogOpen}
-        mode={folderDialogMode}
-        parentFolder={folderDialogParent}
-        targetFolder={folderDialogTarget}
-        onConfirm={handleFolderDialogConfirm}
-      />
-
-      <DeleteFolderDialog
-        open={isDeleteFolderDialogOpen}
-        onOpenChange={setIsDeleteFolderDialogOpen}
-        folder={deleteFolderTarget}
-        tableCount={deleteFolderTableCount}
-        onConfirm={handleDeleteFolderConfirm}
-      />
-
-      <TemplateManagerDialog
-        open={isTemplateManagerOpen}
-        onOpenChange={setIsTemplateManagerOpen}
-        templates={templates}
-        loading={templatesLoading}
-        onCreateTemplate={createTemplate}
-        onUpdateTemplate={updateTemplate}
-        onDuplicateTemplate={duplicateTemplate}
-        onDeleteTemplate={deleteTemplate}
-      />
-
-      <CreateTemplateDialog
-        open={isCreateTemplateDialogOpen}
-        onOpenChange={setIsCreateTemplateDialogOpen}
-        selectedFields={selectedFieldsForTemplate}
-        onConfirm={handleCreateTemplateFromFields}
-      />
-
-      <DiffDialog
-        open={isDiffDialogOpen}
-        onOpenChange={setIsDiffDialogOpen}
-        tableName={tableName}
-        dbType={dbType}
-        diff={tableDiff}
-        fields={normalizedFields}
-        onCopy={() => showToast('变更脚本已复制')}
-      />
-
-      <VersionHistoryDialog
-        open={isVersionHistoryOpen}
-        onOpenChange={setIsVersionHistoryOpen}
-        tableNormalizedName={versionHistoryTarget?.normalizedName ?? null}
-        tableName={versionHistoryTarget?.name ?? null}
-        currentState={currentPersistedState}
-        onRollback={(state) => {
-          applySavedState(state);
-          trackEvent('table_version_rollback');
-          showToast('已回滚到选中版本');
+      <SavedTablesContainer
+        drawerProps={{
+          open: savedTablesDrawerOpen,
+          onOpenChange: setSavedTablesDrawerOpen,
+          loading: savedTablesLoading,
+          error: savedTablesError,
+          items: savedTables,
+          folders: folderTree,
+          foldersLoading: foldersLoading,
+          activeNormalizedName: loadedTableNormalizedName,
+          activeDirty: isLoadedDirty,
+          onSelect: handleSelectSavedTable,
+          onRename: handleOpenRenameDialog,
+          onDelete: handleOpenDeleteDialog,
+          onViewHistory: handleViewVersionHistory,
+          onMoveToFolder: handleMoveTableToFolder,
+          onCreateFolder: handleOpenCreateFolderDialog,
+          onRenameFolder: handleOpenRenameFolderDialog,
+          onDeleteFolder: handleOpenDeleteFolderDialog,
         }}
       />
 
-      <ReviewHistoryDialog
-        open={isReviewHistoryOpen}
-        onOpenChange={setIsReviewHistoryOpen}
-        tableNormalizedName={loadedTableNormalizedName}
-      />
-
-      <AIGenerateDialog
-        open={isAIGenerateDialogOpen}
-        onOpenChange={setIsAIGenerateDialogOpen}
-        dbType={dbType}
-        existingConfig={{
-          tableName,
-          rows,
-          indexes,
-        }}
-        templates={templates}
-        onApply={(schema: GeneratedTableSchema) => {
-          // Apply generated table name and comment
-          if (schema.tableName) {
-            setTableName(schema.tableName);
-          }
-          if (schema.tableComment) {
-            setTableComment(schema.tableComment);
-          }
-
-          // Apply generated fields
-          if (schema.fields && schema.fields.length > 0) {
-            const newRows = schema.fields.map((f, idx) => ({
-              order: idx + 1,
-              fieldName: f.fieldName,
-              fieldType: f.fieldType,
-              fieldComment: f.fieldComment,
-              nullable: f.nullable,
-              defaultKind: f.defaultKind,
-              defaultValue: f.defaultValue || '',
-              onUpdate: f.onUpdate || '无',
-            }));
-            setRows(newRows as FieldRow[]);
-          }
-
-          // Apply generated indexes
-          if (schema.indexes && schema.indexes.length > 0) {
-            const newIndexes = schema.indexes.map((idx, i) => ({
-              id: `ai-${Date.now()}-${i}`,
-              name: idx.name,
-              fields: idx.fields,
-              unique: idx.unique,
-              isPrimary: false,
-            }));
-
-            // Check for primary key from fields
-            const pkFields = schema.fields
-              ?.filter((f) => f.isPrimaryKey)
-              .map((f) => ({ name: f.fieldName, direction: 'ASC' as const }));
-
-            if (pkFields && pkFields.length > 0) {
-              newIndexes.unshift({
-                id: `pk-${Date.now()}`,
-                name: 'PRIMARY',
-                fields: pkFields,
-                unique: true,
-                isPrimary: true,
-              });
-            }
-
-            setIndexes(newIndexes as IndexDefinition[]);
-          }
-
-          trackEvent('ai_generate_apply', { tableName: schema.tableName });
-          showToast('AI 生成的表结构已应用');
-        }}
-      />
-
-      {/* Main Content */}
       <div className="flex flex-col gap-4 p-4">
         <div className="flex flex-col gap-4 lg:flex-row">
-          <div className="flex flex-1 flex-col gap-4">
-            <TableConfig
-              tableName={tableName}
-              tableComment={tableComment}
-              dbType={dbType}
-              onTableNameChange={setTableName}
-              onTableCommentChange={setTableComment}
-              onDbTypeChange={setDbType}
-              onClearAll={handleClearAll}
-              onSaveTable={handleOpenSaveDialog}
-              onOpenSavedTables={handleOpenSavedTablesDrawer}
-              onViewDiff={handleOpenDiffDialog}
-              onOpenAIGenerate={() => setIsAIGenerateDialogOpen(true)}
-              saveDisabled={!canSaveCurrent}
-              saveDisabledHint="加载的表未修改，无法保存"
-              showDiffButton={isLoadedDirty && tableDiff?.hasChanges}
-              loadedStatus={loadedStatus}
-              loadedTableName={loadedTableName}
-            />
+          <TableBuilderContainer
+            tableConfigProps={{
+              tableName,
+              tableComment,
+              dbType,
+              onTableNameChange: setTableName,
+              onTableCommentChange: setTableComment,
+              onDbTypeChange: setDbType,
+              onClearAll: handleClearAll,
+              onSaveTable: handleOpenSaveDialog,
+              onOpenSavedTables: handleOpenSavedTablesDrawer,
+              onViewDiff: handleOpenDiffDialog,
+              onOpenAIGenerate: handleOpenAIGenerateDialog,
+              saveDisabled: !canSaveCurrent,
+              saveDisabledHint: '加载的表未修改，无法保存',
+              showDiffButton: isLoadedDirty && tableDiff?.hasChanges,
+              loadedStatus,
+              loadedTableName,
+            }}
+            tabsValue={activeTab}
+            onTabsValueChange={handleTabValueChange}
+            tabGridClass={tabGridClass}
+            filledRowCount={filledRowCount}
+            indexesLength={indexes.length}
+            indexStats={indexStats}
+            authObjectsLength={authObjects.length}
+            miscEnabled={tableMiscConfig.enabled}
+            showShardingTab={dbType === 'postgresql-citus'}
+            shardingBadgeText={
+              citusShardingConfig.mode === 'distributed'
+                ? citusShardingConfig.distributionColumn
+                : null
+            }
+            showPartitionTab={supportsMysqlPartition}
+            partitionBadgeText={
+              mysqlPartitionConfig.enabled ? mysqlPartitionConfig.type : null
+            }
+            dataTableProps={{
+              rows,
+              duplicateNameSet,
+              dbType,
+              addCount,
+              onRowsChange: handleRowsChange as any,
+              onCreateRow: handleCreateRow,
+              onRemoveRow: handleRemoveRow,
+              onAddRows: handleAddRows,
+              onAddCountChange: setAddCount,
+              freezeEnabled: fieldTableFreezeEnabled,
+              freezeColumns: fieldTableFreezeColumns,
+              onFreezeEnabledChange: setFieldTableFreezeEnabled,
+              onFreezeColumnsChange: setFieldTableFreezeColumns,
+              isHighlighted: isFieldTableHighlighted,
+              highlightedRowIndex: highlightedRowIndex,
+              onOpenStorageEstimator: handleOpenStorageEstimator,
+              toolbarLeft: dataTableToolbarLeft,
+            }}
+            indexPanelProps={{
+              indexInput,
+              currentIndexFields,
+              indexes,
+              fieldSuggestions,
+              showFieldSuggestions,
+              selectedSuggestionIndex,
+              onIndexInputChange: setIndexInput,
+              onSetShowFieldSuggestions: setShowFieldSuggestions,
+              onSetSelectedSuggestionIndex: setSelectedSuggestionIndex,
+              onAddFieldToIndex: addFieldToIndex,
+              onRemoveFieldFromIndex: removeFieldFromIndex,
+              onToggleFieldDirection: toggleFieldDirection,
+              onAddIndex: (unique, primary) => addIndex(!!unique, primary),
+              onRemoveIndex: removeIndex,
+              onUpdateIndexName: updateIndexName,
+              animatingIndexIds: animatingIndexIds,
+              removingIndexIds: removingIndexIds,
+            }}
+            authPanelProps={{
+              authInput,
+              authObjects,
+              onAuthInputChange: setAuthInput,
+              onAddAuthObject: addAuthObject,
+              onRemoveAuthObject: removeAuthObject,
+            }}
+            tableOptionsPanelProps={{
+              dbType,
+              config: tableMiscConfig,
+              onEnabledChange: setMiscEnabled,
+              onEngineChange: setEngine,
+              onCharsetChange: setCharset,
+              onCollationChange: setCollation,
+              onTablespaceChange: setTablespace,
+            }}
+            shardingPanelProps={{
+              config: citusShardingConfig,
+              availableFields,
+              onModeChange: setCitusMode,
+              onDistributionColumnChange: setDistributionColumn,
+            }}
+            partitionPanelProps={{
+              config: mysqlPartitionConfig,
+              availableFields,
+              onEnabledChange: setPartitionEnabled,
+              onTypeChange: setPartitionType,
+              onColumnsChange: setPartitionColumns,
+              onExpressionChange: setPartitionExpression,
+              onPartitionCountChange: setPartitionCount,
+              onAddPartition: addPartition,
+              onRemovePartition: removePartition,
+              onUpdatePartition: updatePartition,
+              onGeneratePartitions: generateRangePartitions,
+            }}
+          />
 
-            <Tabs
-              value={activeTab}
-              onValueChange={handleTabValueChange}
-              className="w-full"
-            >
-              <TabsList className={`grid w-full ${tabGridClass}`}>
-                <TabsTrigger value="fields" className="gap-2">
-                  <Columns3Cog className="h-4 w-4" />
-                  字段配置
-                  {filledRowCount > 0 && (
-                    <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                      {filledRowCount}
-                    </span>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="indexes" className="gap-2">
-                  <Network className="h-4 w-4" />
-                  索引配置
-                  {indexes.length > 0 && (
-                    <div className="ml-2 flex items-center gap-2">
-                      {indexStats.primary > 0 && (
-                        <span className="inline-flex items-center gap-1 text-xs text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded">
-                          <Key className="h-3 w-3" />
-                          {indexStats.primary}
-                        </span>
-                      )}
-                      {indexStats.unique > 0 && (
-                        <span className="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">
-                          <Lock className="h-3 w-3" />
-                          {indexStats.unique}
-                        </span>
-                      )}
-                      {indexStats.normal > 0 && (
-                        <span className="inline-flex items-center gap-1 text-xs text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">
-                          <Hash className="h-3 w-3" />
-                          {indexStats.normal}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="auth" className="gap-2">
-                  <ShieldUser className="h-4 w-4" />
-                  授权配置
-                  {authObjects.length > 0 && (
-                    <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                      {authObjects.length}
-                    </span>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="misc" className="gap-2">
-                  <SlidersHorizontal className="h-4 w-4" />
-                  杂项设置
-                  {tableMiscConfig.enabled && (
-                    <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                      已启用
-                    </span>
-                  )}
-                </TabsTrigger>
-                {dbType === 'postgresql-citus' && (
-                  <TabsTrigger value="sharding" className="gap-2">
-                    <Share2 className="h-4 w-4" />
-                    分片配置
-                    {citusShardingConfig.mode === 'distributed' &&
-                      citusShardingConfig.distributionColumn && (
-                        <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                          {citusShardingConfig.distributionColumn}
-                        </span>
-                      )}
-                  </TabsTrigger>
-                )}
-                {supportsMysqlPartition && (
-                  <TabsTrigger value="partition" className="gap-2">
-                    <Layers className="h-4 w-4" />
-                    分区配置
-                    {mysqlPartitionConfig.enabled && (
-                      <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                        {mysqlPartitionConfig.type}
-                      </span>
-                    )}
-                  </TabsTrigger>
-                )}
-              </TabsList>
-              <TabsContent value="fields" className="mt-4">
-                <DataTable
-                  rows={rows}
-                  duplicateNameSet={duplicateNameSet}
-                  dbType={dbType}
-                  addCount={addCount}
-                  onRowsChange={handleRowsChange as any}
-                  onCreateRow={handleCreateRow}
-                  onRemoveRow={handleRemoveRow}
-                  onAddRows={handleAddRows}
-                  onAddCountChange={setAddCount}
-                  freezeEnabled={fieldTableFreezeEnabled}
-                  freezeColumns={fieldTableFreezeColumns}
-                  onFreezeEnabledChange={setFieldTableFreezeEnabled}
-                  onFreezeColumnsChange={setFieldTableFreezeColumns}
-                  isHighlighted={isFieldTableHighlighted}
-                  highlightedRowIndex={highlightedRowIndex}
-                  onOpenStorageEstimator={handleOpenStorageEstimator}
-                  toolbarLeft={dataTableToolbarLeft}
-                />
-              </TabsContent>
-              <TabsContent value="indexes" className="mt-4">
-                <IndexPanel
-                  indexInput={indexInput}
-                  currentIndexFields={currentIndexFields}
-                  indexes={indexes}
-                  fieldSuggestions={fieldSuggestions}
-                  showFieldSuggestions={showFieldSuggestions}
-                  selectedSuggestionIndex={selectedSuggestionIndex}
-                  onIndexInputChange={setIndexInput}
-                  onSetShowFieldSuggestions={setShowFieldSuggestions}
-                  onSetSelectedSuggestionIndex={setSelectedSuggestionIndex}
-                  onAddFieldToIndex={addFieldToIndex}
-                  onRemoveFieldFromIndex={removeFieldFromIndex}
-                  onToggleFieldDirection={toggleFieldDirection}
-                  onAddIndex={(unique, primary) => addIndex(!!unique, primary)}
-                  onRemoveIndex={removeIndex}
-                  onUpdateIndexName={updateIndexName}
-                  animatingIndexIds={animatingIndexIds}
-                  removingIndexIds={removingIndexIds}
-                />
-              </TabsContent>
-              <TabsContent value="auth" className="mt-4">
-                <AuthPanel
-                  authInput={authInput}
-                  authObjects={authObjects}
-                  onAuthInputChange={setAuthInput}
-                  onAddAuthObject={addAuthObject}
-                  onRemoveAuthObject={removeAuthObject}
-                />
-              </TabsContent>
-              <TabsContent value="misc" className="mt-4">
-                <TableOptionsPanel
-                  dbType={dbType}
-                  config={tableMiscConfig}
-                  onEnabledChange={setMiscEnabled}
-                  onEngineChange={setEngine}
-                  onCharsetChange={setCharset}
-                  onCollationChange={setCollation}
-                  onTablespaceChange={setTablespace}
-                />
-              </TabsContent>
-              {dbType === 'postgresql-citus' && (
-                <TabsContent value="sharding" className="mt-4">
-                  <ShardingPanel
-                    config={citusShardingConfig}
-                    availableFields={availableFields}
-                    onModeChange={setCitusMode}
-                    onDistributionColumnChange={setDistributionColumn}
-                  />
-                </TabsContent>
-              )}
-              {supportsMysqlPartition && (
-                <TabsContent value="partition" className="mt-4">
-                  <PartitionPanel
-                    config={mysqlPartitionConfig}
-                    availableFields={availableFields}
-                    onEnabledChange={setPartitionEnabled}
-                    onTypeChange={setPartitionType}
-                    onColumnsChange={setPartitionColumns}
-                    onExpressionChange={setPartitionExpression}
-                    onPartitionCountChange={setPartitionCount}
-                    onAddPartition={addPartition}
-                    onRemovePartition={removePartition}
-                    onUpdatePartition={updatePartition}
-                    onGeneratePartitions={generateRangePartitions}
-                  />
-                </TabsContent>
-              )}
-            </Tabs>
-          </div>
-
-          <DDLOutput
-            generatedSql={generatedSql}
-            generatedDcl={generatedDcl}
-            dbType={dbType}
-            onCopySql={copySql}
-            onCopyDcl={copyDcl}
-            isReviewing={isReviewing}
-            reviewPartialResult={reviewPartialResult}
-            reviewResult={reviewResult}
-            reviewError={reviewError}
-            onStartReview={handleStartReview}
-            onViewReviewHistory={handleViewReviewHistory}
-            onApplySuggestion={handleApplySuggestion}
+          <OutputContainer
+            ddlOutputProps={{
+              generatedSql,
+              generatedDcl,
+              dbType,
+              onCopySql: copySql,
+              onCopyDcl: copyDcl,
+              isReviewing,
+              reviewPartialResult,
+              reviewResult,
+              reviewError,
+              onStartReview: handleStartReview,
+              onViewReviewHistory: handleViewReviewHistory,
+              onApplySuggestion: handleApplySuggestion,
+            }}
           />
         </div>
       </div>
 
-      <Dialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>确认清空所有配置？</DialogTitle>
-            <DialogDescription>
-              此操作将移除当前填写的表信息、字段、索引及授权配置，且无法撤销。
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={cancelClearAll}>
-              取消
-            </Button>
-            <Button variant="destructive" onClick={confirmClearAll}>
-              确认清空
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isSaveDialogOpen} onOpenChange={handleSaveDialogOpenChange}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{saveDialogTitle}</DialogTitle>
-            <DialogDescription>{saveDialogDescription}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Label htmlFor="save-table-name">保存名称</Label>
-            <Input
-              id="save-table-name"
-              value={saveName}
-              onChange={(event) => {
-                saveDialog.updateData((prev) => ({
-                  ...prev,
-                  name: event.target.value,
-                }));
-                if (saveError) saveDialog.clearError();
-              }}
-              placeholder="例如：用户表"
-              disabled={saveInputDisabled}
-            />
-            {saveInputDisabled && (
-              <p className="text-xs text-muted-foreground">
-                已加载表仅支持覆盖保存，如需更名请在左侧列表重命名。
-              </p>
-            )}
-            {saveError && (
-              <p className="text-xs text-destructive">{saveError}</p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => handleSaveDialogOpenChange(false)}
-            >
-              取消
-            </Button>
-            <Button onClick={handleConfirmSave} disabled={!canSaveCurrent}>
-              保存
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={isLoadConfirmOpen}
-        onOpenChange={handleLoadConfirmOpenChange}
-      >
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>加载保存的表</DialogTitle>
-            <DialogDescription>
-              {pendingLoadTarget
-                ? `加载「${pendingLoadTarget.name}」将覆盖当前内容。`
-                : '加载将覆盖当前内容。'}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="pr-2">
-            <Button variant="outline" onClick={handleCancelLoadConfirm}>
-              取消
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={handleConfirmLoadSave}
-              disabled={!canSaveCurrent}
-              title={!canSaveCurrent ? '加载的表未修改，无法保存' : undefined}
-            >
-              保存当前后加载
-            </Button>
-            <Button variant="destructive" onClick={handleConfirmLoadIgnore}>
-              忽略当前并加载
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={isRenameDialogOpen}
-        onOpenChange={handleRenameDialogOpenChange}
-      >
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>重命名保存的表</DialogTitle>
-            <DialogDescription>
-              请输入新的名称，名称不可重复。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Label htmlFor="rename-table-name">新名称</Label>
-            <Input
-              id="rename-table-name"
-              value={renameName}
-              onChange={(event) => {
-                renameDialog.updateData((prev) => ({
-                  ...prev,
-                  name: event.target.value,
-                }));
-                if (renameError) renameDialog.clearError();
-              }}
-              placeholder="例如：订单表"
-            />
-            {renameError && (
-              <p className="text-xs text-destructive">{renameError}</p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => handleRenameDialogOpenChange(false)}
-            >
-              取消
-            </Button>
-            <Button onClick={handleConfirmRename}>确认</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={isDeleteDialogOpen}
-        onOpenChange={handleDeleteDialogOpenChange}
-      >
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>确认删除保存的表？</DialogTitle>
-            <DialogDescription>
-              {deleteTarget
-                ? `即将删除「${deleteTarget.name}」，此操作无法撤销。`
-                : '此操作无法撤销。'}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => handleDeleteDialogOpenChange(false)}
-            >
-              取消
-            </Button>
-            <Button variant="destructive" onClick={handleConfirmDelete}>
-              删除
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed top-6 left-1/2 z-50 -translate-x-1/2 transform rounded-full bg-foreground/90 px-5 py-2.5 text-sm font-medium text-background shadow-xl transition-[opacity,transform] duration-300 animate-in fade-in zoom-in-95 slide-in-from-top-4 motion-reduce:animate-none motion-reduce:transition-none">
-          {toastMessage}
-        </div>
-      )}
-
-      <StorageEstimatorDialog
-        open={isStorageEstimatorOpen}
-        onOpenChange={setIsStorageEstimatorOpen}
-        dbType={dbType}
-        fields={normalizedFields}
+      <GlobalDialogs
+        clearDialog={{
+          open: isClearDialogOpen,
+          onOpenChange: setIsClearDialogOpen,
+          onCancel: cancelClearAll,
+          onConfirm: confirmClearAll,
+        }}
+        saveDialog={{
+          open: isSaveDialogOpen,
+          onOpenChange: handleSaveDialogOpenChange,
+          title: saveDialogTitle,
+          description: saveDialogDescription,
+          name: saveName,
+          onNameChange: (value) => {
+            saveDialog.updateData((prev) => ({
+              ...prev,
+              name: value,
+            }));
+            if (saveError) saveDialog.clearError();
+          },
+          error: saveError,
+          inputDisabled: saveInputDisabled,
+          canSaveCurrent,
+          onConfirm: handleConfirmSave,
+        }}
+        loadConfirmDialog={{
+          open: isLoadConfirmOpen,
+          onOpenChange: handleLoadConfirmOpenChange,
+          pendingName: pendingLoadTarget?.name,
+          canSaveCurrent,
+          onCancel: handleCancelLoadConfirm,
+          onConfirmSave: handleConfirmLoadSave,
+          onConfirmIgnore: handleConfirmLoadIgnore,
+        }}
+        renameDialog={{
+          open: isRenameDialogOpen,
+          onOpenChange: handleRenameDialogOpenChange,
+          name: renameName,
+          onNameChange: (value) => {
+            renameDialog.updateData((prev) => ({
+              ...prev,
+              name: value,
+            }));
+            if (renameError) renameDialog.clearError();
+          },
+          error: renameError,
+          onConfirm: handleConfirmRename,
+        }}
+        deleteDialog={{
+          open: isDeleteDialogOpen,
+          onOpenChange: handleDeleteDialogOpenChange,
+          targetName: deleteTarget?.name,
+          onConfirm: handleConfirmDelete,
+        }}
+        folderDialogProps={{
+          open: isFolderDialogOpen,
+          onOpenChange: setIsFolderDialogOpen,
+          mode: folderDialogMode,
+          parentFolder: folderDialogParent,
+          targetFolder: folderDialogTarget,
+          onConfirm: handleFolderDialogConfirm,
+        }}
+        deleteFolderDialogProps={{
+          open: isDeleteFolderDialogOpen,
+          onOpenChange: setIsDeleteFolderDialogOpen,
+          folder: deleteFolderTarget,
+          tableCount: deleteFolderTableCount,
+          onConfirm: handleDeleteFolderConfirm,
+        }}
+        templateManagerDialogProps={{
+          open: isTemplateManagerOpen,
+          onOpenChange: setIsTemplateManagerOpen,
+          templates,
+          loading: templatesLoading,
+          onCreateTemplate: createTemplate,
+          onUpdateTemplate: updateTemplate,
+          onDuplicateTemplate: duplicateTemplate,
+          onDeleteTemplate: deleteTemplate,
+        }}
+        createTemplateDialogProps={{
+          open: isCreateTemplateDialogOpen,
+          onOpenChange: setIsCreateTemplateDialogOpen,
+          selectedFields: selectedFieldsForTemplate,
+          onConfirm: handleCreateTemplateFromFields,
+        }}
+        diffDialogProps={{
+          open: isDiffDialogOpen,
+          onOpenChange: setIsDiffDialogOpen,
+          tableName,
+          dbType,
+          diff: tableDiff,
+          fields: normalizedFields,
+          onCopy: () => showToast('变更脚本已复制'),
+        }}
+        versionHistoryDialogProps={{
+          open: isVersionHistoryOpen,
+          onOpenChange: setIsVersionHistoryOpen,
+          tableNormalizedName: versionHistoryTarget?.normalizedName ?? null,
+          tableName: versionHistoryTarget?.name ?? null,
+          currentState: currentPersistedState,
+          onRollback: (state) => {
+            applySavedState(state);
+            trackEvent('table_version_rollback');
+            showToast('已回滚到选中版本');
+          },
+        }}
+        reviewHistoryDialogProps={{
+          open: isReviewHistoryOpen,
+          onOpenChange: setIsReviewHistoryOpen,
+          tableNormalizedName: loadedTableNormalizedName,
+        }}
+        aiGenerateDialogProps={{
+          open: isAIGenerateDialogOpen,
+          onOpenChange: setIsAIGenerateDialogOpen,
+          dbType,
+          existingConfig: {
+            tableName,
+            rows,
+            indexes,
+          },
+          templates,
+          onApply: handleApplyAIGeneratedSchema,
+        }}
+        storageEstimatorDialogProps={{
+          open: isStorageEstimatorOpen,
+          onOpenChange: setIsStorageEstimatorOpen,
+          dbType,
+          fields: normalizedFields,
+        }}
+        toastMessage={toastMessage}
       />
     </div>
   );
