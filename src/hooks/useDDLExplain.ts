@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-
-const STREAM_UPDATE_INTERVAL_MS = 33;
+import { readTextStream } from '@/services/streamingText';
 
 interface ExplainState {
   isLoading: boolean;
@@ -55,8 +54,7 @@ export function useDDLExplain() {
         throw new Error(errorData.error || `请求失败: ${response.status}`);
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) {
+      if (!response.body) {
         throw new Error('无法读取响应流');
       }
 
@@ -68,44 +66,14 @@ export function useDDLExplain() {
         error: null,
       });
 
-      const decoder = new TextDecoder();
-      let done = false;
-      let fullExplanation = '';
-      let lastEmittedText = '';
-      let hasEmittedFirstChunk = false;
-      let lastEmitAt = 0;
-
-      const emitExplanation = () => {
-        lastEmittedText = fullExplanation;
-        setState((prev) => ({
-          ...prev,
-          explanation: lastEmittedText,
-        }));
-      };
-
-      while (!done) {
-        const { value, done: doneReading } = await reader.read();
-        done = doneReading;
-        const chunkValue = decoder.decode(value, { stream: !done });
-        fullExplanation += chunkValue;
-
-        if (!hasEmittedFirstChunk) {
-          hasEmittedFirstChunk = true;
-          lastEmitAt = Date.now();
-          emitExplanation();
-          continue;
-        }
-
-        const now = Date.now();
-        if (now - lastEmitAt >= STREAM_UPDATE_INTERVAL_MS) {
-          lastEmitAt = now;
-          emitExplanation();
-        }
-      }
-
-      if (lastEmittedText !== fullExplanation) {
-        emitExplanation();
-      }
+      const fullExplanation = await readTextStream(response.body, {
+        onUpdate: (explanation) => {
+          setState((prev) => ({
+            ...prev,
+            explanation,
+          }));
+        },
+      });
 
       setState((prev) => ({
         ...prev,

@@ -1,7 +1,6 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
 import type { FieldRow, IndexDefinition } from '@/types';
-
-const STREAM_UPDATE_INTERVAL_MS = 33;
+import { readTextStream } from '@/services/streamingText';
 
 /**
  * AI 生成的表结构
@@ -364,46 +363,14 @@ export function useAIGenerateTable() {
           throw new Error('No response body');
         }
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let fullText = '';
-        let lastEmittedText = '';
-        let hasEmittedFirstChunk = false;
-        let lastEmitAt = 0;
-
-        const emitStreamingText = () => {
-          lastEmittedText = fullText;
-          setState((prev) => ({
-            ...prev,
-            streamingText: lastEmittedText,
-          }));
-        };
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value, { stream: true });
-          fullText += chunk;
-
-          if (!hasEmittedFirstChunk) {
-            hasEmittedFirstChunk = true;
-            lastEmitAt = Date.now();
-            emitStreamingText();
-            continue;
-          }
-
-          const now = Date.now();
-          if (now - lastEmitAt >= STREAM_UPDATE_INTERVAL_MS) {
-            lastEmitAt = now;
-            emitStreamingText();
-          }
-        }
-
-        // Emit any remaining text
-        if (lastEmittedText !== fullText) {
-          emitStreamingText();
-        }
+        const fullText = await readTextStream(response.body, {
+          onUpdate: (streamingText) => {
+            setState((prev) => ({
+              ...prev,
+              streamingText,
+            }));
+          },
+        });
 
         // Parse final result
         try {
