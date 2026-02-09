@@ -1,4 +1,3 @@
-import { Parser } from 'node-sql-parser';
 import type {
   DatabaseType,
   NormalizedField,
@@ -133,11 +132,36 @@ export type ParsedResult = {
   authObjects: string[];
 };
 
-export class SqlParser {
-  private parser: Parser;
+type ParserInstance = {
+  astify: (sql: string, opt: { database: string }) => any;
+};
 
-  constructor() {
-    this.parser = new Parser();
+type ParserConstructor = new () => ParserInstance;
+
+export class SqlParser {
+  private static parserConstructorPromise: Promise<ParserConstructor> | null =
+    null;
+  private parser: ParserInstance | null;
+
+  constructor(parser?: ParserInstance) {
+    this.parser = parser ?? null;
+  }
+
+  private static loadParserConstructor(): Promise<ParserConstructor> {
+    if (!this.parserConstructorPromise) {
+      this.parserConstructorPromise = import('node-sql-parser').then(
+        (module) => module.Parser as ParserConstructor,
+      );
+    }
+    return this.parserConstructorPromise;
+  }
+
+  private async getParser(): Promise<ParserInstance> {
+    if (!this.parser) {
+      const Parser = await SqlParser.loadParserConstructor();
+      this.parser = new Parser();
+    }
+    return this.parser;
   }
 
   private mergeComments(
@@ -280,7 +304,11 @@ export class SqlParser {
     );
   }
 
-  parse(sql: string, dbType: DatabaseType): ParsedResult {
+  private parseWithParser(
+    parser: ParserInstance,
+    sql: string,
+    dbType: DatabaseType,
+  ): ParsedResult {
     let sqlToParse = sql;
     let extractedComments: {
       tableComment: string;
@@ -363,7 +391,7 @@ export class SqlParser {
 
     let ast: any;
     try {
-      ast = this.parser.astify(sqlToParse, opt);
+      ast = parser.astify(sqlToParse, opt);
     } catch (e) {
       reportError(e, {
         scope: 'SqlParser',
@@ -423,6 +451,18 @@ export class SqlParser {
     }
 
     return result;
+  }
+
+  parse(sql: string, dbType: DatabaseType): ParsedResult {
+    if (!this.parser) {
+      throw new Error('SqlParser尚未初始化，请使用 parseAsync() 方法。');
+    }
+    return this.parseWithParser(this.parser, sql, dbType);
+  }
+
+  async parseAsync(sql: string, dbType: DatabaseType): Promise<ParsedResult> {
+    const parser = await this.getParser();
+    return this.parseWithParser(parser, sql, dbType);
   }
 
   private parseCreateTable(
