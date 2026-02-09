@@ -14,6 +14,7 @@ import {
   extractStandaloneComments,
   type PreprocessResult,
 } from './preprocessors';
+import { reportError } from './errorReporter';
 
 interface PreprocessMySqlResult {
   sql: string;
@@ -364,7 +365,11 @@ export class SqlParser {
     try {
       ast = this.parser.astify(sqlToParse, opt);
     } catch (e) {
-      console.error('SQL Parse Error:', e);
+      reportError(e, {
+        scope: 'SqlParser',
+        action: 'astify',
+        metadata: { dbType },
+      });
       throw new Error('无法解析 SQL，请检查语法或数据库类型是否正确。');
     }
 

@@ -3,6 +3,7 @@ import {
   decompressFromEncodedURIComponent,
 } from 'lz-string';
 import type { PersistedState } from '@/types';
+import { reportError } from './errorReporter';
 
 // Minified types to reduce URL length
 type MinifiedFieldRow = {
@@ -104,7 +105,10 @@ export const decompressState = (
       authObjects: minified.a || [],
     };
   } catch (e) {
-    console.error('Failed to decompress state', e);
+    reportError(e, {
+      scope: 'Share',
+      action: 'decompressState',
+    });
     return null;
   }
 };
