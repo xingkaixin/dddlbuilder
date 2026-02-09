@@ -3,8 +3,7 @@ import {
   parsePartialJson,
   type PartialReviewResult,
 } from '@/utils/parsePartialJson';
-
-const STREAM_UPDATE_INTERVAL_MS = 33;
+import { requestDDLReview } from '@/services/reviewService';
 
 export interface StructuredSuggestion {
   id: string;
@@ -95,7 +94,8 @@ export function useDDLReview() {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
-      abortControllerRef.current = new AbortController();
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
 
       setState({
         isLoading: true,
@@ -105,83 +105,29 @@ export function useDDLReview() {
       });
 
       try {
-        const response = await fetch('/api/review', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+        const result = await requestDDLReview(
+          { ddl, tableName, dbType },
+          {
+            signal: abortController.signal,
+            onStreamingText: (streamingText) => {
+              setState((prev) => ({
+                ...prev,
+                streamingText,
+              }));
+            },
           },
-          body: JSON.stringify({ ddl, tableName, dbType }),
-          signal: abortControllerRef.current.signal,
-        });
+        );
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `请求失败: ${response.status}`);
-        }
-
-        // Handle streaming response
-        const reader = response.body?.getReader();
-        if (!reader) {
-          throw new Error('无法读取响应流');
-        }
-
-        const decoder = new TextDecoder();
-        let fullText = '';
-        let lastEmittedText = '';
-        let hasEmittedFirstChunk = false;
-        let lastEmitAt = 0;
-
-        const emitStreamingText = () => {
-          lastEmittedText = fullText;
-          setState((prev) => ({
-            ...prev,
-            streamingText: lastEmittedText,
-          }));
-        };
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value, { stream: true });
-          fullText += chunk;
-
-          if (!hasEmittedFirstChunk) {
-            hasEmittedFirstChunk = true;
-            lastEmitAt = Date.now();
-            emitStreamingText();
-            continue;
-          }
-
-          const now = Date.now();
-          if (now - lastEmitAt >= STREAM_UPDATE_INTERVAL_MS) {
-            lastEmitAt = now;
-            emitStreamingText();
-          }
-        }
-
-        if (lastEmittedText !== fullText) {
-          emitStreamingText();
-        }
-
-        console.log('[Review] Full response:', fullText);
-
-        // Parse the complete JSON response
-        const jsonMatch = fullText.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-          throw new Error('无法解析评审结果');
-        }
-
-        const result = JSON.parse(jsonMatch[0]);
         setState({
           isLoading: false,
           streamingText: '',
           result: {
-            score: Math.min(10, Math.max(1, Number(result.score) || 5)),
-            summary: result.summary || '评审完成',
-            suggestions: Array.isArray(result.suggestions)
-              ? result.suggestions
-              : [],
+            score: result.score,
+            summary: result.summary,
+            suggestions: result.suggestions as (
+              | string
+              | StructuredSuggestion
+            )[],
           },
           error: null,
         });
@@ -195,6 +141,10 @@ export function useDDLReview() {
           result: null,
           error: error instanceof Error ? error.message : '评审请求失败',
         });
+      } finally {
+        if (abortControllerRef.current === abortController) {
+          abortControllerRef.current = null;
+        }
       }
     },
     [],
