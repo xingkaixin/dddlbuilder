@@ -27,7 +27,9 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
       timeout: 10000,
     });
     await expect(
-      page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)'),
+      page.locator(
+        '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+      ),
     ).toHaveText('HYDRATED_FIELD', { timeout: 10000 });
     await expect(page).toHaveTitle(/筑表师/);
 
@@ -41,7 +43,7 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
     // 3. 填写字段信息
     // 点击第一行字段名单元格开始输入
     const firstFieldNameCell = page.locator(
-      '.htCore tbody tr:nth-child(1) td:nth-child(2)',
+      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
     );
     await firstFieldNameCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('id');
@@ -49,7 +51,7 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
 
     // 填写字段注释 (第三列)
     const firstFieldCommentCell = page.locator(
-      '.htCore tbody tr:nth-child(1) td:nth-child(3)',
+      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(3)',
     );
     await firstFieldCommentCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('用户编号');
@@ -57,7 +59,7 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
 
     // 填写字段类型 (第四列)
     const firstFieldTypeCell = page.locator(
-      '.htCore tbody tr:nth-child(1) td:nth-child(4)',
+      '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(4)',
     );
     await firstFieldTypeCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('varchar(255)');
@@ -71,7 +73,7 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
     // 4. 选择可为空 (第五列是 Checkbox)
     // 4. 选择可为空 (第五列是 Checkbox)
     const firstNullableCell = page.locator(
-      '.htCore tbody tr:nth-child(1) td:nth-child(5)',
+      '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(5)',
     );
 
     // 5. 验证生成的 SQL
@@ -100,14 +102,14 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
     await page.locator('#table-name').fill('copy_test');
 
     const nameCell = page.locator(
-      '.htCore tbody tr:nth-child(1) td:nth-child(2)',
+      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
     );
     await nameCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('id');
     await page.keyboard.press('Enter');
 
     const typeCell = page.locator(
-      '.htCore tbody tr:nth-child(1) td:nth-child(4)',
+      '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(4)',
     );
     await typeCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('int');

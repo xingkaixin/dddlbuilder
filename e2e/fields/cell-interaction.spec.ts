@@ -17,7 +17,9 @@ test.describe('单元格深度交互验证 @fields', () => {
       timeout: 10000,
     });
     await expect(
-      page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)'),
+      page.locator(
+        '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+      ),
     ).toHaveText('HYDRATED_FIELD', { timeout: 10000 });
     await page.locator('#table-name').fill('cell_test');
   });
@@ -26,7 +28,7 @@ test.describe('单元格深度交互验证 @fields', () => {
     await page.locator('#table-name').fill('cell_test');
 
     const firstFieldNameCell = page.locator(
-      '.htCore tbody tr:nth-child(1) td:nth-child(2)',
+      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
     );
     await firstFieldNameCell.dblclick();
     await page.locator('textarea.handsontableInput').fill('f1');
@@ -39,7 +41,7 @@ test.describe('单元格深度交互验证 @fields', () => {
 
     // 点击第五列 (可为空)
     const nullableCell = page.locator(
-      '.htCore tbody tr:nth-child(1) td:nth-child(5)',
+      '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(5)',
     );
     await nullableCell.click();
     await page.keyboard.press('Space');
@@ -55,7 +57,7 @@ test.describe('单元格深度交互验证 @fields', () => {
 
   test('场景：使用 Tab 键在跨行/跨列导航并输入', async ({ page }) => {
     const cell_1_2 = page.locator(
-      '.htCore tbody tr:nth-child(1) td:nth-child(2)',
+      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
     );
     await cell_1_2.dblclick();
     await page.locator('textarea.handsontableInput').fill('id');

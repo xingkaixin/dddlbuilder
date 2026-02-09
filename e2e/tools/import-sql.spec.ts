@@ -37,7 +37,9 @@ test.describe('SQL 导入功能验证 @tools', () => {
     await expect(page.locator('#table-name')).toHaveValue('import_test');
 
     // 验证 HOT 中的字段
-    const cell1 = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)');
+    const cell1 = page.locator(
+      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+    );
     await expect(cell1).toHaveText('id');
 
     // 验证 SQL 生成面板同步更新

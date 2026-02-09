@@ -43,7 +43,7 @@ test.describe('字段模板应用验证 @fields', () => {
 
       // 1. 填一个字段
       const cell = page.locator(
-        '.htCore tbody tr:nth-child(1) td:nth-child(2)',
+        '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
       );
       await expect(cell).toBeVisible();
       await cell.dblclick();

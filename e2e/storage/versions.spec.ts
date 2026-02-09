@@ -1,13 +1,15 @@
 import { test, expect } from '@playwright/test';
 
 const fillBasicField = async (page: any, name = 'f1') => {
-  const cell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)');
+  const cell = page.locator(
+    '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+  );
   await cell.click();
   await page.keyboard.type(name, { delay: 30 });
   await page.keyboard.press('Tab');
 
   const typeCell = page.locator(
-    '.htCore tbody tr:nth-child(1) td:nth-child(4)',
+    '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(4)',
   );
   await typeCell.dblclick();
   await page.locator('textarea.handsontableInput').fill('int');
@@ -70,7 +72,9 @@ test.describe('版本管理验证 @storage', () => {
     ).toBeVisible();
 
     // 2. 修改并保存为新版本
-    const cell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)');
+    const cell = page.locator(
+      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+    );
     await cell.click();
     await page.keyboard.press('Control+A');
     await page.keyboard.press('Backspace');
@@ -111,7 +115,9 @@ test.describe('版本管理验证 @storage', () => {
       page.getByText(new RegExp(`当前：${tableName}`)),
     ).toBeVisible();
 
-    const cell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)');
+    const cell = page.locator(
+      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+    );
     await cell.click();
     await page.keyboard.press('Control+A');
     await page.keyboard.press('Backspace');
@@ -149,7 +155,9 @@ test.describe('版本管理验证 @storage', () => {
       .getByRole('button', { name: new RegExp(tableName, 'i') })
       .click();
 
-    const cell = page.locator('.htCore tbody tr:nth-child(1) td:nth-child(2)');
+    const cell = page.locator(
+      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+    );
     await cell.click();
     await page.keyboard.press('Control+A');
     await page.keyboard.press('Backspace');
@@ -166,9 +174,7 @@ test.describe('版本管理验证 @storage', () => {
       .filter({ hasText: /最新|初始版本/ });
     await expect(versionItems).toHaveCount(2);
 
-    const v1Row = dialog.getByRole('button', { name: /初始版本/i });
-    await v1Row.hover();
-    await v1Row.locator('button').click();
+    await dialog.getByRole('button', { name: /删除版本 1/i }).click();
     await expect(page.getByText('删除此版本？')).toBeVisible();
     await page.getByRole('button', { name: /^删除$/ }).click();
 
