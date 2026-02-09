@@ -1,4 +1,4 @@
-import { memo, useState, useRef, useEffect } from 'react';
+import { memo, useMemo, useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -10,50 +10,72 @@ import {
   Hash,
   Pencil,
 } from 'lucide-react';
-import type { IndexField, IndexDefinition } from '@/types';
 import { cn } from '@/lib/utils';
+import {
+  buildNormalizedFields,
+  useAppStore,
+  useFieldStore,
+  useIndexStore,
+} from '@/stores';
 
 interface IndexPanelProps {
-  indexInput: string;
-  currentIndexFields: IndexField[];
-  indexes: IndexDefinition[];
-  fieldSuggestions: string[];
-  showFieldSuggestions: boolean;
-  selectedSuggestionIndex: number;
-  onIndexInputChange: (value: string) => void;
-  onSetShowFieldSuggestions: (show: boolean) => void;
-  onSetSelectedSuggestionIndex: (index: number) => void;
-  onAddFieldToIndex: (field: string) => void;
-  onRemoveFieldFromIndex: (index: number) => void;
-  onToggleFieldDirection: (index: number) => void;
-  onAddIndex: (unique?: boolean, primary?: boolean) => void;
-  onRemoveIndex: (id: string) => void;
-  onUpdateIndexName?: (id: string, newName: string) => void;
   // Animation props
   animatingIndexIds?: Set<string>;
   removingIndexIds?: Set<string>;
 }
 
 export const IndexPanel = memo<IndexPanelProps>(
-  ({
-    indexInput,
-    currentIndexFields,
-    indexes,
-    fieldSuggestions,
-    showFieldSuggestions,
-    selectedSuggestionIndex,
-    onIndexInputChange,
-    onSetShowFieldSuggestions,
-    onSetSelectedSuggestionIndex,
-    onAddFieldToIndex,
-    onRemoveFieldFromIndex,
-    onToggleFieldDirection,
-    onAddIndex,
-    onRemoveIndex,
-    onUpdateIndexName,
-    animatingIndexIds,
-    removingIndexIds,
-  }) => {
+  ({ animatingIndexIds, removingIndexIds }) => {
+    const rows = useFieldStore((state) => state.rows);
+    const tableName = useAppStore((state) => state.tableName);
+    const dbType = useAppStore((state) => state.dbType);
+    const indexInput = useIndexStore((state) => state.indexInput);
+    const currentIndexFields = useIndexStore(
+      (state) => state.currentIndexFields,
+    );
+    const indexes = useIndexStore((state) => state.indexes);
+    const showFieldSuggestions = useIndexStore(
+      (state) => state.showFieldSuggestions,
+    );
+    const selectedSuggestionIndex = useIndexStore(
+      (state) => state.selectedSuggestionIndex,
+    );
+    const onIndexInputChange = useIndexStore((state) => state.setIndexInput);
+    const onSetShowFieldSuggestions = useIndexStore(
+      (state) => state.setShowFieldSuggestions,
+    );
+    const onSetSelectedSuggestionIndex = useIndexStore(
+      (state) => state.setSelectedSuggestionIndex,
+    );
+    const onAddFieldToIndex = useIndexStore((state) => state.addFieldToIndex);
+    const onRemoveFieldFromIndex = useIndexStore(
+      (state) => state.removeFieldFromIndex,
+    );
+    const onToggleFieldDirection = useIndexStore(
+      (state) => state.toggleFieldDirection,
+    );
+    const onAddIndex = useIndexStore((state) => state.addIndex);
+    const onRemoveIndex = useIndexStore((state) => state.removeIndex);
+    const onUpdateIndexName = useIndexStore((state) => state.updateIndexName);
+
+    const availableFields = useMemo(
+      () =>
+        buildNormalizedFields(rows)
+          .map((field) => field.name)
+          .filter((name) => name.length > 0),
+      [rows],
+    );
+
+    const fieldSuggestions = useMemo(() => {
+      if (!indexInput.trim()) return [];
+      const input = indexInput.toLowerCase().trim();
+      return availableFields.filter(
+        (field) =>
+          field.toLowerCase().includes(input) &&
+          !currentIndexFields.some((item) => item.name === field),
+      );
+    }, [indexInput, availableFields, currentIndexFields]);
+
     const [editingIndexId, setEditingIndexId] = useState<string | null>(null);
     const [editingName, setEditingName] = useState('');
     const editInputRef = useRef<HTMLInputElement>(null);
@@ -66,15 +88,14 @@ export const IndexPanel = memo<IndexPanelProps>(
       }
     }, [editingIndexId]);
 
-    const handleStartEdit = (index: IndexDefinition) => {
-      if (!onUpdateIndexName) return;
+    const handleStartEdit = (index: (typeof indexes)[number]) => {
       setEditingIndexId(index.id);
       setEditingName(index.name);
     };
 
     const handleConfirmEdit = () => {
-      if (editingIndexId && editingName.trim() && onUpdateIndexName) {
-        onUpdateIndexName(editingIndexId, editingName);
+      if (editingIndexId && editingName.trim()) {
+        onUpdateIndexName(editingIndexId, editingName, dbType);
       }
       setEditingIndexId(null);
       setEditingName('');
@@ -147,7 +168,7 @@ export const IndexPanel = memo<IndexPanelProps>(
                     size="sm"
                     variant="outline"
                     className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md group-hover:bg-primary/5"
-                    onClick={() => onAddIndex(false)}
+                    onClick={() => onAddIndex(false, false, tableName, dbType)}
                   >
                     <Hash className="h-4 w-4" />
                     添加索引
@@ -156,7 +177,7 @@ export const IndexPanel = memo<IndexPanelProps>(
                     size="sm"
                     variant="outline"
                     className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md group-hover:bg-primary/5"
-                    onClick={() => onAddIndex(true)}
+                    onClick={() => onAddIndex(true, false, tableName, dbType)}
                   >
                     <Lock className="h-4 w-4" />
                     添加唯一索引
@@ -165,7 +186,7 @@ export const IndexPanel = memo<IndexPanelProps>(
                     size="sm"
                     variant="outline"
                     className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md group-hover:bg-primary/5"
-                    onClick={() => onAddIndex(true, true)}
+                    onClick={() => onAddIndex(true, true, tableName, dbType)}
                     disabled={indexes.some((index) => index.isPrimary)}
                   >
                     <Key className="h-4 w-4" />
@@ -305,9 +326,7 @@ export const IndexPanel = memo<IndexPanelProps>(
                               title="双击编辑索引名称"
                             >
                               {index.name}
-                              {onUpdateIndexName && (
-                                <Pencil className="inline-block ml-1.5 h-3 w-3 opacity-0 group-hover/item:opacity-50 transition-opacity" />
-                              )}
+                              <Pencil className="inline-block ml-1.5 h-3 w-3 opacity-0 group-hover/item:opacity-50 transition-opacity" />
                             </span>
                           )}
                           <div className="w-full pl-1">
