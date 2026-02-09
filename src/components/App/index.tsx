@@ -10,8 +10,6 @@ import { useFolderActions } from './hooks/useFolderActions';
 import { useTemplateActions } from './hooks/useTemplateActions';
 import { useSchemaApplyActions } from './hooks/useSchemaApplyActions';
 import { usePersistedState } from '@/hooks/usePersistedState';
-import { useTableData } from '@/hooks/useTableData';
-import { useIndexManagement } from '@/hooks/useIndexManagement';
 import { useAuthManagement } from '@/hooks/useAuthManagement';
 import { useSqlGeneration } from '@/hooks/useSqlGeneration';
 import { useToast } from '@/hooks/useToast';
@@ -22,7 +20,13 @@ import { useDDLReview } from '@/hooks/useDDLReview';
 import { useSuggestionAnimation } from '@/hooks/useSuggestionAnimation';
 import { useSavedTables, type SavedTableSummary } from '@/hooks/useSavedTables';
 import { useFolders } from '@/hooks/useFolders';
-import { useAppStore } from '@/stores';
+import {
+  buildDuplicateNameSet,
+  buildNormalizedFields,
+  useAppStore,
+  useFieldStore,
+  useIndexStore,
+} from '@/stores';
 import { useDialogState } from '@/hooks/useDialogState';
 import { useFieldTemplates } from '@/hooks/useFieldTemplates';
 import { ApplyTemplatePopover } from './ApplyTemplatePopover';
@@ -229,17 +233,17 @@ function App() {
   const { persistedState, hydrated, saveState, clearState } =
     usePersistedState();
 
-  const {
-    rows,
-    duplicateNameSet,
-    normalizedFields,
-    resetTableRows,
-    handleRowsChange,
-    handleCreateRow,
-    handleRemoveRow,
-    handleAddRows,
-    setRows,
-  } = useTableData(INITIAL_ROWS, persistedState?.rows);
+  const rows = useFieldStore((state) => state.rows);
+  const setRows = useFieldStore((state) => state.setRows);
+  const initializeRows = useFieldStore((state) => state.initializeRows);
+  const resetTableRows = useFieldStore((state) => state.resetRows);
+  const handleRowsChange = useFieldStore((state) => state.handleRowsChange);
+  const handleCreateRow = useFieldStore((state) => state.handleCreateRow);
+  const handleRemoveRow = useFieldStore((state) => state.handleRemoveRow);
+  const handleAddRows = useFieldStore((state) => state.handleAddRows);
+
+  const duplicateNameSet = useMemo(() => buildDuplicateNameSet(rows), [rows]);
+  const normalizedFields = useMemo(() => buildNormalizedFields(rows), [rows]);
 
   const availableFields = useMemo(
     () =>
@@ -254,31 +258,52 @@ function App() {
     [rows],
   );
 
-  const {
-    indexInput,
-    currentIndexFields,
-    indexes,
-    fieldSuggestions,
-    showFieldSuggestions,
-    selectedSuggestionIndex,
-    setIndexInput,
-    setCurrentIndexFields,
-    setShowFieldSuggestions,
-    setSelectedSuggestionIndex,
-    addFieldToIndex,
-    removeFieldFromIndex,
-    toggleFieldDirection,
-    addIndex,
-    removeIndex,
-    updateIndexName,
-    resetIndexState,
-    setIndexes,
-  } = useIndexManagement(
-    tableName,
-    availableFields,
-    persistedState || undefined,
-    dbType,
+  const indexInput = useIndexStore((state) => state.indexInput);
+  const currentIndexFields = useIndexStore((state) => state.currentIndexFields);
+  const indexes = useIndexStore((state) => state.indexes);
+  const showFieldSuggestions = useIndexStore(
+    (state) => state.showFieldSuggestions,
   );
+  const selectedSuggestionIndex = useIndexStore(
+    (state) => state.selectedSuggestionIndex,
+  );
+  const setIndexInput = useIndexStore((state) => state.setIndexInput);
+  const setCurrentIndexFields = useIndexStore(
+    (state) => state.setCurrentIndexFields,
+  );
+  const setShowFieldSuggestions = useIndexStore(
+    (state) => state.setShowFieldSuggestions,
+  );
+  const setSelectedSuggestionIndex = useIndexStore(
+    (state) => state.setSelectedSuggestionIndex,
+  );
+  const initializeIndexState = useIndexStore(
+    (state) => state.initializeIndexState,
+  );
+  const addFieldToIndex = useIndexStore((state) => state.addFieldToIndex);
+  const removeFieldFromIndex = useIndexStore(
+    (state) => state.removeFieldFromIndex,
+  );
+  const toggleFieldDirection = useIndexStore(
+    (state) => state.toggleFieldDirection,
+  );
+  const addIndex = useIndexStore((state) => state.addIndex);
+  const removeIndex = useIndexStore((state) => state.removeIndex);
+  const updateIndexName = useIndexStore((state) => state.updateIndexName);
+  const updateIndexNames = useIndexStore((state) => state.updateIndexNames);
+  const resetIndexState = useIndexStore((state) => state.resetIndexState);
+  const setIndexes = useIndexStore((state) => state.setIndexes);
+
+  const fieldSuggestions = useMemo(() => {
+    if (!indexInput.trim()) return [];
+
+    const input = indexInput.toLowerCase().trim();
+    return availableFields.filter(
+      (field) =>
+        field.toLowerCase().includes(input) &&
+        !currentIndexFields.some((item) => item.name === field),
+    );
+  }, [indexInput, availableFields, currentIndexFields]);
 
   const indexStats = useMemo(
     () =>
@@ -297,6 +322,12 @@ function App() {
       ),
     [indexes],
   );
+
+  useEffect(() => {
+    if (indexes.length > 0 && tableName) {
+      updateIndexNames(tableName, dbType);
+    }
+  }, [tableName, dbType, indexes.length, updateIndexNames]);
 
   const {
     authInput,
@@ -657,6 +688,8 @@ function App() {
     ) {
       setAddCount(Math.max(1, Math.floor(persistedState.addCount)));
     }
+    initializeRows(persistedState.rows);
+    initializeIndexState(persistedState);
 
     const persistedFieldTableViewConfig = persistedState.fieldTableViewConfig;
     if (persistedFieldTableViewConfig) {
@@ -677,6 +710,8 @@ function App() {
     setTableComment,
     setDbType,
     setAddCount,
+    initializeRows,
+    initializeIndexState,
     setFieldTableFreezeEnabled,
     setFieldTableFreezeColumns,
   ]);
@@ -1260,9 +1295,11 @@ function App() {
               onAddFieldToIndex: addFieldToIndex,
               onRemoveFieldFromIndex: removeFieldFromIndex,
               onToggleFieldDirection: toggleFieldDirection,
-              onAddIndex: (unique, primary) => addIndex(!!unique, primary),
+              onAddIndex: (unique, primary) =>
+                addIndex(!!unique, !!primary, tableName, dbType),
               onRemoveIndex: removeIndex,
-              onUpdateIndexName: updateIndexName,
+              onUpdateIndexName: (id, name) =>
+                updateIndexName(id, name, dbType),
               animatingIndexIds: animatingIndexIds,
               removingIndexIds: removingIndexIds,
             }}
