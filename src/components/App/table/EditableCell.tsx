@@ -5,16 +5,26 @@ import { cn } from '@/lib/utils';
 interface EditableCellProps {
   value: string;
   onChange: (value: string) => void;
+  onTabNavigate?: (direction: 1 | -1) => void;
   disabled?: boolean;
   className?: string;
   placeholder?: string;
 }
 
 export const EditableCell = memo<EditableCellProps>(
-  ({ value, onChange, disabled = false, className, placeholder }) => {
+  ({
+    value,
+    onChange,
+    onTabNavigate,
+    disabled = false,
+    className,
+    placeholder,
+  }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState(value);
     const inputRef = useRef<HTMLInputElement>(null);
+    const cellRef = useRef<HTMLDivElement>(null);
+    const pendingTabDirectionRef = useRef<1 | -1 | null>(null);
 
     // Sync with external value when not editing
     useEffect(() => {
@@ -23,26 +33,51 @@ export const EditableCell = memo<EditableCellProps>(
       }
     }, [value, isEditing]);
 
+    // Start editing with current value (double-click behavior)
     const handleDoubleClick = useCallback(() => {
       if (disabled) return;
       setIsEditing(true);
       setEditValue(value);
     }, [disabled, value]);
 
+    // Start editing with empty value (type-to-replace behavior)
+    const startEditingWithReplace = useCallback(
+      (initialChar: string) => {
+        if (disabled) return;
+        setIsEditing(true);
+        setEditValue(initialChar);
+      },
+      [disabled],
+    );
+
     const handleBlur = useCallback(() => {
       setIsEditing(false);
       if (editValue !== value) {
         onChange(editValue);
       }
-    }, [editValue, value, onChange]);
+      const direction = pendingTabDirectionRef.current;
+      pendingTabDirectionRef.current = null;
+      if (direction) {
+        setTimeout(() => {
+          onTabNavigate?.(direction);
+        }, 0);
+      }
+    }, [editValue, value, onChange, onTabNavigate]);
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Tab') {
           e.preventDefault();
+          pendingTabDirectionRef.current = e.shiftKey ? -1 : 1;
+          inputRef.current?.blur();
+          return;
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          pendingTabDirectionRef.current = null;
           inputRef.current?.blur();
         } else if (e.key === 'Escape') {
           e.preventDefault();
+          pendingTabDirectionRef.current = null;
           setEditValue(value);
           setIsEditing(false);
         }
@@ -50,12 +85,49 @@ export const EditableCell = memo<EditableCellProps>(
       [value],
     );
 
+    // Handle keyboard input when cell is focused (not editing)
+    const handleCellKeyDown = useCallback(
+      (e: React.KeyboardEvent) => {
+        if (disabled) return;
+
+        // Enter or F2 to start editing with current value
+        if (e.key === 'Enter' || e.key === 'F2') {
+          e.preventDefault();
+          setIsEditing(true);
+          setEditValue(value);
+          return;
+        }
+
+        // Delete/Backspace to clear and start editing
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+          e.preventDefault();
+          startEditingWithReplace('');
+          return;
+        }
+
+        // Printable character - start editing with this character
+        if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault();
+          startEditingWithReplace(e.key);
+        }
+      },
+      [disabled, value, startEditingWithReplace],
+    );
+
+    // Focus input when editing starts
     useEffect(() => {
       if (isEditing && inputRef.current) {
         inputRef.current.focus();
-        inputRef.current.select();
+        // If editValue equals value, select all; otherwise cursor at end
+        if (editValue === value) {
+          inputRef.current.select();
+        } else {
+          // Move cursor to end for type-to-replace
+          const len = inputRef.current.value.length;
+          inputRef.current.setSelectionRange(len, len);
+        }
       }
-    }, [isEditing]);
+    }, [isEditing, editValue, value]);
 
     if (isEditing) {
       return (
@@ -76,9 +148,12 @@ export const EditableCell = memo<EditableCellProps>(
 
     return (
       <div
+        ref={cellRef}
+        tabIndex={disabled ? -1 : 0}
         onDoubleClick={handleDoubleClick}
+        onKeyDown={handleCellKeyDown}
         className={cn(
-          'flex h-8 w-full cursor-text items-center truncate px-2 py-1',
+          'flex h-8 w-full cursor-text items-center truncate px-2 py-1 outline-none focus:ring-1 focus:ring-primary/30',
           disabled && 'cursor-not-allowed text-muted-foreground opacity-60',
           !value && 'text-muted-foreground/50',
           className,

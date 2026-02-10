@@ -1,14 +1,14 @@
-import { useCallback, type Dispatch, type SetStateAction } from "react";
-import type { ParsedResult } from "@/utils/SqlParser";
-import { createEmptyRow } from "@/utils/helpers";
+import { useCallback, type Dispatch, type SetStateAction } from 'react';
+import type { ParsedResult } from '@/utils/SqlParser';
+import { createEmptyRow } from '@/utils/helpers';
 import type {
   DatabaseType,
   FieldRow,
   IndexDefinition,
   NullableDefault,
-} from "@/types";
-import type { ReviewResult, StructuredSuggestion } from "@/hooks/useDDLReview";
-import type { GeneratedTableSchema } from "@/hooks/useAIGenerateTable";
+} from '@/types';
+import type { ReviewResult, StructuredSuggestion } from '@/hooks/useDDLReview';
+import type { GeneratedTableSchema } from '@/hooks/useAIGenerateTable';
 
 type AnalyticsValue = string | number | boolean | null | undefined;
 
@@ -26,7 +26,7 @@ interface UseSchemaApplyActionsParams {
   setTableComment: (value: string) => void;
   setDbType: (value: DatabaseType) => void;
   setActiveTab: (value: string) => void;
-  triggerIndexAnimation: (indexId: string, mode: "add" | "remove") => void;
+  triggerIndexAnimation: (indexId: string, mode: 'add' | 'remove') => void;
   triggerFieldTableHighlight: (rowIndex: number) => void;
   showToast: (message: string) => void;
   trackEvent: (
@@ -62,30 +62,30 @@ export function useSchemaApplyActions({
       let newIndexId: string | null = null;
 
       if (
-        suggestion.type === "add_index" ||
-        suggestion.type === "remove_index"
+        suggestion.type === 'add_index' ||
+        suggestion.type === 'remove_index'
       ) {
-        setActiveTab("indexes");
+        setActiveTab('indexes');
       } else if (
-        suggestion.type === "add_field" ||
-        suggestion.type === "modify_field" ||
-        suggestion.type === "remove_field"
+        suggestion.type === 'add_field' ||
+        suggestion.type === 'modify_field' ||
+        suggestion.type === 'remove_field'
       ) {
-        setActiveTab("fields");
+        setActiveTab('fields');
       }
 
       switch (suggestion.type) {
-        case "add_field":
+        case 'add_field':
           if (suggestion.field) {
             const newRow: FieldRow = {
               order: rows.length + 1,
               fieldName: suggestion.field.fieldName,
               fieldType: suggestion.field.fieldType,
-              fieldComment: suggestion.field.fieldComment || "",
-              nullable: suggestion.field.nullable || "是",
-              defaultKind: suggestion.field.defaultKind || "无",
-              defaultValue: suggestion.field.defaultValue || "",
-              onUpdate: suggestion.field.onUpdate || "无",
+              fieldComment: suggestion.field.fieldComment || '',
+              nullable: suggestion.field.nullable || '是',
+              defaultKind: suggestion.field.defaultKind || '无',
+              defaultValue: suggestion.field.defaultValue || '',
+              onUpdate: suggestion.field.onUpdate || '无',
             };
             setRows((prev) => [...prev, newRow]);
             appliedCount = 1;
@@ -93,7 +93,7 @@ export function useSchemaApplyActions({
           }
           break;
 
-        case "modify_field":
+        case 'modify_field':
           if (suggestion.fieldModification) {
             const { fieldName } = suggestion.fieldModification;
             const changes = suggestion.fieldModification.changes || {
@@ -127,7 +127,7 @@ export function useSchemaApplyActions({
           }
           break;
 
-        case "remove_field":
+        case 'remove_field':
           if (suggestion.fieldName) {
             const rowIndex = rows.findIndex(
               (row) => row.fieldName === suggestion.fieldName,
@@ -150,7 +150,7 @@ export function useSchemaApplyActions({
           }
           break;
 
-        case "add_index":
+        case 'add_index':
           if (suggestion.index) {
             newIndexId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
             const newIndex: IndexDefinition = {
@@ -163,19 +163,19 @@ export function useSchemaApplyActions({
             appliedCount = 1;
             setTimeout(() => {
               if (newIndexId) {
-                triggerIndexAnimation(newIndexId, "add");
+                triggerIndexAnimation(newIndexId, 'add');
               }
             }, 50);
           }
           break;
 
-        case "remove_index":
+        case 'remove_index':
           if (suggestion.indexName) {
             const targetIndex = indexes.find(
               (index) => index.name === suggestion.indexName,
             );
             if (targetIndex) {
-              triggerIndexAnimation(targetIndex.id, "remove");
+              triggerIndexAnimation(targetIndex.id, 'remove');
               setTimeout(() => {
                 setIndexes((prev) =>
                   prev.filter((index) => index.name !== suggestion.indexName),
@@ -192,13 +192,13 @@ export function useSchemaApplyActions({
 
       if (appliedCount > 0 && reviewResult) {
         const newSuggestions = reviewResult.suggestions.map((item) => {
-          if (typeof item !== "string" && item.id === suggestion.id) {
+          if (typeof item !== 'string' && item.id === suggestion.id) {
             return { ...item, applied: true };
           }
           return item;
         });
         setReviewResult({ ...reviewResult, suggestions: newSuggestions });
-        trackEvent("sql_suggestion_apply", {
+        trackEvent('sql_suggestion_apply', {
           type: suggestion.type,
           description: suggestion.description,
         });
@@ -227,31 +227,31 @@ export function useSchemaApplyActions({
       setDbType(importDbType);
 
       const newRows: FieldRow[] = result.fields.map((field, index) => {
-        let uiNullable = "是";
-        if (field.nullable === false) uiNullable = "否";
+        let uiNullable = '是';
+        if (field.nullable === false) uiNullable = '否';
 
-        let uiDefaultKind: NullableDefault = "无";
+        let uiDefaultKind: NullableDefault = '无';
         switch (field.defaultKind) {
-          case "auto_increment":
-            uiDefaultKind = "自增";
+          case 'auto_increment':
+            uiDefaultKind = '自增';
             break;
-          case "constant":
-            uiDefaultKind = "常量";
+          case 'constant':
+            uiDefaultKind = '常量';
             break;
-          case "current_timestamp":
-            uiDefaultKind = "当前时间";
+          case 'current_timestamp':
+            uiDefaultKind = '当前时间';
             break;
-          case "uuid":
-            uiDefaultKind = "uuid";
+          case 'uuid':
+            uiDefaultKind = 'uuid';
             break;
           default:
-            uiDefaultKind = "无";
+            uiDefaultKind = '无';
             break;
         }
 
-        let uiOnUpdate: NullableDefault = "无";
-        if (field.onUpdate === "current_timestamp") {
-          uiOnUpdate = "当前时间";
+        let uiOnUpdate: NullableDefault = '无';
+        if (field.onUpdate === 'current_timestamp') {
+          uiOnUpdate = '当前时间';
         }
 
         return {
@@ -275,11 +275,11 @@ export function useSchemaApplyActions({
       setRows(newRows);
 
       setIndexes(result.indexes);
-      setIndexInput("");
+      setIndexInput('');
 
       setAuthObjects(result.authObjects);
-      setAuthInput("");
-      trackEvent("sql_import", { dbType: importDbType });
+      setAuthInput('');
+      trackEvent('sql_import', { dbType: importDbType });
     },
     [
       setRows,
@@ -311,8 +311,8 @@ export function useSchemaApplyActions({
           fieldComment: field.fieldComment,
           nullable: field.nullable,
           defaultKind: field.defaultKind,
-          defaultValue: field.defaultValue || "",
-          onUpdate: field.onUpdate || "无",
+          defaultValue: field.defaultValue || '',
+          onUpdate: field.onUpdate || '无',
         }));
         setRows(newRows as FieldRow[]);
       }
@@ -330,13 +330,13 @@ export function useSchemaApplyActions({
           ?.filter((field) => field.isPrimaryKey)
           .map((field) => ({
             name: field.fieldName,
-            direction: "ASC" as const,
+            direction: 'ASC' as const,
           }));
 
         if (pkFields && pkFields.length > 0) {
           newIndexes.unshift({
             id: `pk-${Date.now()}`,
-            name: "PRIMARY",
+            name: 'PRIMARY',
             fields: pkFields,
             unique: true,
             isPrimary: true,
@@ -346,8 +346,8 @@ export function useSchemaApplyActions({
         setIndexes(newIndexes as IndexDefinition[]);
       }
 
-      trackEvent("ai_generate_apply", { tableName: schema.tableName });
-      showToast("大师建表工坊的表结构已应用");
+      trackEvent('ai_generate_apply', { tableName: schema.tableName });
+      showToast('大师建表工坊的表结构已应用');
     },
     [setTableName, setTableComment, setRows, setIndexes, trackEvent, showToast],
   );

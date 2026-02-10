@@ -1,7 +1,7 @@
 ---
 created: "2026-02-08"
 updated: "2026-02-09"
-status: "ready"
+status: "in-progress"
 ---
 
 
@@ -31,7 +31,7 @@ DDLBuilder项目在第三方库集成方面总体表现良好,但存在一些关
 
 ### P0 (Critical) - 严重集成问题
 
-#### 1.1 Handsontable 许可证合规风险
+#### 1.1 Handsontable 许可证合规风险 -> 替换为 tanstack table
 - **类型**: 法律合规风险
 - **位置**: `/Users/Kevin/workspace/projects/work/ddlbuilder/package.json` (L24, L39)
 - **影响**: 项目使用 `licenseKey="non-commercial-and-evaluation"`,仅允许非商业用途和评估。商业化部署需购买商业许可证($449-$1,299/年)

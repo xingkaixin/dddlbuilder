@@ -268,7 +268,7 @@ DDLBuilder是一个功能丰富的DDL生成工具,当前版本在核心功能上
   - 改善用户输入流畅度
 - **实施复杂度**: 中 (需要2-3天)
 
-#### P1-3: Handsontable性能优化不足
+#### P1-3: Handsontable性能优化不足 -> 替换为 Tanstack Table，不再涉及
 - **位置**: `src/components/App/DataTable.tsx:438-460`
 - **影响**:
   - 大数据量(200+行)时渲染卡顿

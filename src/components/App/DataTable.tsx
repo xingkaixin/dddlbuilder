@@ -21,12 +21,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { HardDrive, Trash2 } from 'lucide-react';
-import {
-  EditableCell,
-  SelectCell,
-  CheckboxCell,
-  OrderCell,
-} from './table';
+import { EditableCell, SelectCell, CheckboxCell, OrderCell } from './table';
 import type { FieldRow, UiDefaultKind } from '@/types';
 import {
   toStringSafe,
@@ -54,7 +49,15 @@ const parseNullable = (value: string): string => {
   if (!value) return '是';
   const v = value.trim().toLowerCase();
   // Check for "not nullable" values
-  const notNullableValues = new Set(['n', 'no', '否', 'false', '0', 'not null', 'notnull']);
+  const notNullableValues = new Set([
+    'n',
+    'no',
+    '否',
+    'false',
+    '0',
+    'not null',
+    'notnull',
+  ]);
   if (notNullableValues.has(v)) {
     return '否';
   }
@@ -169,6 +172,84 @@ export const DataTable = memo<DataTableProps>(
       });
     }, [rows, duplicateNameSet, dbType]);
 
+    const focusFirstInteractiveInCell = useCallback(
+      (cellElement: HTMLTableCellElement | null) => {
+        const focusTarget = cellElement?.querySelector<HTMLElement>(
+          'input:not([disabled]), div[tabindex="0"], button:not([disabled])',
+        );
+        focusTarget?.focus();
+      },
+      [],
+    );
+
+    // Keep selected cell synced with focused/clicked editable cell
+    const handleCellActivate = useCallback(
+      (rowIndex: number, colIndex: number) => {
+        // Only allow selection of editable columns (skip order column at 0 and actions column at end)
+        if (colIndex >= 1 && colIndex <= editableColumnKeys.length) {
+          const nextCol = colIndex - 1; // Adjust for order column
+          setSelectedCell((prev) => {
+            if (prev?.row === rowIndex && prev.col === nextCol) {
+              return prev;
+            }
+            return { row: rowIndex, col: nextCol };
+          });
+        }
+      },
+      [editableColumnKeys.length],
+    );
+
+    const focusEditableCell = useCallback(
+      (rowIndex: number, editableColIndex: number) => {
+        if (rowIndex < 0 || rowIndex >= rows.length) return;
+        if (
+          editableColIndex < 0 ||
+          editableColIndex >= editableColumnKeys.length
+        )
+          return;
+
+        const tableColIndex = editableColIndex + 1;
+        const cellElement =
+          tableRef.current?.querySelector<HTMLTableCellElement>(
+            `td[data-row-index="${rowIndex}"][data-col-index="${tableColIndex}"]`,
+          );
+        if (!cellElement) return;
+
+        handleCellActivate(rowIndex, tableColIndex);
+        focusFirstInteractiveInCell(cellElement);
+      },
+      [
+        rows.length,
+        editableColumnKeys.length,
+        handleCellActivate,
+        focusFirstInteractiveInCell,
+      ],
+    );
+
+    const handleTabNavigation = useCallback(
+      (rowIndex: number, editableColIndex: number, direction: 1 | -1) => {
+        let nextRow = rowIndex;
+        let nextCol = editableColIndex + direction;
+        const lastEditableCol = editableColumnKeys.length - 1;
+
+        while (nextRow >= 0 && nextRow < rows.length) {
+          if (nextCol > lastEditableCol) {
+            nextRow += 1;
+            nextCol = 0;
+            continue;
+          }
+          if (nextCol < 0) {
+            nextRow -= 1;
+            nextCol = lastEditableCol;
+            continue;
+          }
+          focusEditableCell(nextRow, nextCol);
+          return;
+        }
+      },
+      [editableColumnKeys.length, rows.length, focusEditableCell],
+    );
+
     // Define columns
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const columns = useMemo<ColumnDef<FieldRow, any>[]>(
@@ -190,6 +271,9 @@ export const DataTable = memo<DataTableProps>(
             <EditableCell
               value={getValue() as string}
               onChange={(v) => updateCellValue(row.index, 'fieldName', v)}
+              onTabNavigate={(direction) =>
+                handleTabNavigation(row.index, 0, direction)
+              }
               placeholder="字段名"
             />
           ),
@@ -201,6 +285,9 @@ export const DataTable = memo<DataTableProps>(
             <EditableCell
               value={getValue() as string}
               onChange={(v) => updateCellValue(row.index, 'fieldComment', v)}
+              onTabNavigate={(direction) =>
+                handleTabNavigation(row.index, 1, direction)
+              }
               placeholder="字段中文名"
             />
           ),
@@ -212,6 +299,9 @@ export const DataTable = memo<DataTableProps>(
             <EditableCell
               value={getValue() as string}
               onChange={(v) => updateCellValue(row.index, 'fieldType', v)}
+              onTabNavigate={(direction) =>
+                handleTabNavigation(row.index, 2, direction)
+              }
               placeholder="字段类型"
             />
           ),
@@ -254,6 +344,9 @@ export const DataTable = memo<DataTableProps>(
               <EditableCell
                 value={(getValue() as string) || ''}
                 onChange={(v) => updateCellValue(row.index, 'defaultValue', v)}
+                onTabNavigate={(direction) =>
+                  handleTabNavigation(row.index, 5, direction)
+                }
                 disabled={disabled}
                 placeholder={disabled ? '' : '默认值'}
               />
@@ -347,6 +440,7 @@ export const DataTable = memo<DataTableProps>(
         rowWarnings,
         dbType,
         updateCellValue,
+        handleTabNavigation,
         onRemoveRow,
       ],
     );
@@ -396,7 +490,17 @@ export const DataTable = memo<DataTableProps>(
       (colIndex: number): number => {
         if (!freezeEnabled || colIndex >= effectiveFreezeColumns) return 0;
         let left = 0;
-        const colKeys = ['order', 'fieldName', 'fieldComment', 'fieldType', 'nullable', 'defaultKind', 'defaultValue', 'onUpdate', 'actions'];
+        const colKeys = [
+          'order',
+          'fieldName',
+          'fieldComment',
+          'fieldType',
+          'nullable',
+          'defaultKind',
+          'defaultValue',
+          'onUpdate',
+          'actions',
+        ];
         for (let i = 0; i < colIndex; i++) {
           left += columnWidths[colKeys[i]] || 100;
         }
@@ -458,7 +562,9 @@ export const DataTable = memo<DataTableProps>(
               if (key === 'nullable') {
                 row.nullable = parseNullable(value);
               } else {
-                (row as Record<string, unknown>)[key] = value || (key === 'defaultKind' || key === 'onUpdate' ? '无' : '');
+                (row as Record<string, unknown>)[key] =
+                  value ||
+                  (key === 'defaultKind' || key === 'onUpdate' ? '无' : '');
               }
             });
             newRows[targetRowIndex] = row;
@@ -474,17 +580,6 @@ export const DataTable = memo<DataTableProps>(
       [setRows, selectedCell, rows.length, editableColumnKeys],
     );
 
-    // Handle cell click for selection
-    const handleCellClick = useCallback(
-      (rowIndex: number, colIndex: number) => {
-        // Only allow selection of editable columns (skip order column at 0 and actions column at end)
-        if (colIndex >= 1 && colIndex <= editableColumnKeys.length) {
-          setSelectedCell({ row: rowIndex, col: colIndex - 1 }); // Adjust for order column
-        }
-      },
-      [editableColumnKeys.length],
-    );
-
     return (
       <div
         className={cn(
@@ -492,7 +587,6 @@ export const DataTable = memo<DataTableProps>(
           isHighlighted && 'animate-field-highlight',
         )}
         onPaste={handlePaste}
-        tabIndex={0}
       >
         {/* Field change highlight overlay */}
         {isHighlighted && (
@@ -584,20 +678,28 @@ export const DataTable = memo<DataTableProps>(
         </div>
 
         <div ref={tableRef} className="relative overflow-x-auto p-4">
-          <table className="w-full border-collapse text-sm">
+          <table
+            className="w-full border-collapse text-sm"
+            data-testid="data-table"
+          >
             <thead>
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id} className="border-b border-border/50">
                   {headerGroup.headers.map((header, colIndex) => {
-                    const isFrozen = freezeEnabled && colIndex < effectiveFreezeColumns;
-                    const isLastFrozen = freezeEnabled && colIndex === effectiveFreezeColumns - 1;
+                    const isFrozen =
+                      freezeEnabled && colIndex < effectiveFreezeColumns;
+                    const isLastFrozen =
+                      freezeEnabled && colIndex === effectiveFreezeColumns - 1;
                     return (
                       <th
                         key={header.id}
                         className={cn(
-                          'h-10 px-2 text-left text-sm font-medium text-muted-foreground bg-muted/30',
-                          isFrozen && 'sticky z-10',
-                          isLastFrozen && 'border-r-2 border-primary/30 shadow-[4px_0_12px_-2px_rgba(0,0,0,0.2)]',
+                          'h-10 px-2 text-left text-sm font-medium text-muted-foreground',
+                          isFrozen
+                            ? 'sticky z-30 bg-background'
+                            : 'bg-muted/30',
+                          isLastFrozen &&
+                            'border-r-2 border-primary/30 shadow-[4px_0_12px_-2px_rgba(0,0,0,0.2)]',
                         )}
                         style={{
                           width: header.getSize(),
@@ -628,8 +730,10 @@ export const DataTable = memo<DataTableProps>(
                   )}
                 >
                   {row.getVisibleCells().map((cell, colIndex) => {
-                    const isFrozen = freezeEnabled && colIndex < effectiveFreezeColumns;
-                    const isLastFrozen = freezeEnabled && colIndex === effectiveFreezeColumns - 1;
+                    const isFrozen =
+                      freezeEnabled && colIndex < effectiveFreezeColumns;
+                    const isLastFrozen =
+                      freezeEnabled && colIndex === effectiveFreezeColumns - 1;
                     const isSelected =
                       selectedCell &&
                       selectedCell.row === row.index &&
@@ -637,10 +741,13 @@ export const DataTable = memo<DataTableProps>(
                     return (
                       <td
                         key={cell.id}
+                        data-row-index={row.index}
+                        data-col-index={colIndex}
                         className={cn(
                           'h-10 px-1 bg-background',
-                          isFrozen && 'sticky z-10',
-                          isLastFrozen && 'border-r-2 border-primary/30 shadow-[4px_0_12px_-2px_rgba(0,0,0,0.2)]',
+                          isFrozen && 'sticky z-20',
+                          isLastFrozen &&
+                            'border-r-2 border-primary/30 shadow-[4px_0_12px_-2px_rgba(0,0,0,0.2)]',
                           isSelected && 'ring-2 ring-primary ring-inset',
                         )}
                         style={{
@@ -648,7 +755,13 @@ export const DataTable = memo<DataTableProps>(
                           minWidth: cell.column.getSize(),
                           left: isFrozen ? getStickyLeft(colIndex) : undefined,
                         }}
-                        onClick={() => handleCellClick(row.index, colIndex)}
+                        onClick={(event) => {
+                          handleCellActivate(row.index, colIndex);
+                          focusFirstInteractiveInCell(event.currentTarget);
+                        }}
+                        onFocusCapture={() =>
+                          handleCellActivate(row.index, colIndex)
+                        }
                       >
                         {flexRender(
                           cell.column.columnDef.cell,

@@ -122,7 +122,7 @@ export const useTableStore = create((set) => ({
 - [ ] 主组件拆分为容器
 
 ### P0可访问性 ✅
-- [ ] Handsontable ARIA标签
+- [x] Handsontable ARIA标签-> 已替换不涉及
 - [ ] 错误提示role="alert"
 - [ ] 加载状态aria-live
 - [ ] Toast通知role="status"

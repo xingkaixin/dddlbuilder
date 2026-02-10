@@ -345,7 +345,7 @@ function App() {
         fieldName: row.fieldName || '',
         fieldComment: row.fieldComment || '',
         fieldType: row.fieldType || '',
-        nullable: row.nullable ? '是' : '否',
+        nullable: row.nullable === '否' ? '否' : '是',
         defaultKind: row.defaultKind || '',
         defaultValue: row.defaultValue || '',
         onUpdate: row.onUpdate || '',
