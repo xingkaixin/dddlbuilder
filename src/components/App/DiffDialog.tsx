@@ -1,4 +1,4 @@
-import { memo, useMemo, useCallback, useState } from 'react';
+import { memo, useMemo, useCallback, useState, lazy, Suspense } from 'react';
 import {
   Copy,
   Plus,
@@ -16,7 +16,6 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import SqlCodeBlock from './SqlCodeBlock';
 import type { TableDiff, FieldDiff, IndexDiff } from '@/utils/tableDiff';
 import type { NormalizedField, DatabaseType } from '@/types';
 import {
@@ -24,6 +23,8 @@ import {
   generateRollbackDDL,
 } from '@/utils/alterDdlGenerator';
 import { cn } from '@/lib/utils';
+
+const SqlCodeBlock = lazy(() => import('./SqlCodeBlock'));
 
 interface DiffDialogProps {
   open: boolean;
@@ -326,7 +327,15 @@ export const DiffDialog = memo<DiffDialogProps>(
                   </Button>
                 </div>
                 <div className="max-h-48 overflow-auto rounded-md border bg-muted/30">
-                  <SqlCodeBlock code={alterDDL} />
+                  <Suspense
+                    fallback={
+                      <pre className="m-0 whitespace-pre-wrap p-3 font-mono text-xs">
+                        {alterDDL}
+                      </pre>
+                    }
+                  >
+                    <SqlCodeBlock code={alterDDL} />
+                  </Suspense>
                 </div>
               </div>
             )}
@@ -364,7 +373,15 @@ export const DiffDialog = memo<DiffDialogProps>(
                       </Button>
                     </div>
                     <div className="max-h-48 overflow-auto rounded-md border border-amber-200 bg-amber-50/50">
-                      <SqlCodeBlock code={rollbackDDL} />
+                      <Suspense
+                        fallback={
+                          <pre className="m-0 whitespace-pre-wrap p-3 font-mono text-xs">
+                            {rollbackDDL}
+                          </pre>
+                        }
+                      >
+                        <SqlCodeBlock code={rollbackDDL} />
+                      </Suspense>
                     </div>
                   </>
                 )}
