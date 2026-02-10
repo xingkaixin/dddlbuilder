@@ -12,7 +12,6 @@ import {
   lazy,
   Suspense,
 } from 'react';
-import { track } from '@vercel/analytics';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -25,6 +24,7 @@ import {
 } from 'lucide-react';
 import { DATABASE_OPTIONS } from '@/utils/constants';
 import { ReviewResultPanel } from './ReviewResult';
+import { useTrackEvent } from './hooks/useTrackEvent';
 
 interface DDLOutputProps {
   generatedSql: string;
@@ -67,6 +67,7 @@ export const DDLOutput = memo<DDLOutputProps>(
     onViewReviewHistory,
     onApplySuggestion,
   }) => {
+    const trackEvent = useTrackEvent();
     const databaseOption = useMemo(
       () => DATABASE_OPTIONS.find((option) => option.value === dbType),
       [dbType],
@@ -96,26 +97,26 @@ export const DDLOutput = memo<DDLOutputProps>(
     const handleCopySql = useCallback(async () => {
       const success = await onCopySql();
       if (!success) return;
-      track('sql_copy_ddl', { dbType });
+      void trackEvent('sql_copy_ddl', { dbType });
       if (sqlTimerRef.current) window.clearTimeout(sqlTimerRef.current);
       setIsSqlCopied(true);
       sqlTimerRef.current = window.setTimeout(
         () => setIsSqlCopied(false),
         3000,
       );
-    }, [onCopySql, dbType]);
+    }, [onCopySql, dbType, trackEvent]);
 
     const handleCopyDcl = useCallback(async () => {
       const success = await onCopyDcl();
       if (!success) return;
-      track('sql_copy_dcl', { dbType });
+      void trackEvent('sql_copy_dcl', { dbType });
       if (dclTimerRef.current) window.clearTimeout(dclTimerRef.current);
       setIsDclCopied(true);
       dclTimerRef.current = window.setTimeout(
         () => setIsDclCopied(false),
         3000,
       );
-    }, [onCopyDcl, dbType]);
+    }, [onCopyDcl, dbType, trackEvent]);
 
     const canReview = generatedSql && !generatedSql.startsWith('--');
 
