@@ -1,5 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { PersistedState, TableMiscConfig } from '@/types';
+import { useTableOptionsStore } from '@/stores';
 
 export interface UseTableOptionsReturn {
   tableMiscConfig: TableMiscConfig;
@@ -12,69 +13,33 @@ export interface UseTableOptionsReturn {
   resetTableMiscConfig: () => void;
 }
 
-const DEFAULT_CONFIG: TableMiscConfig = {
-  enabled: false,
-  engine: '',
-  charset: '',
-  collation: '',
-  tablespace: '',
-};
-
 export function useTableOptions(
   persistedState?: Pick<PersistedState, 'tableMiscConfig'>,
 ): UseTableOptionsReturn {
-  const [tableMiscConfig, setTableMiscConfig] =
-    useState<TableMiscConfig>(DEFAULT_CONFIG);
-  const [initialized, setInitialized] = useState(false);
+  const tableMiscConfig = useTableOptionsStore(
+    (state) => state.tableMiscConfig,
+  );
+  const setMiscEnabled = useTableOptionsStore((state) => state.setMiscEnabled);
+  const setEngine = useTableOptionsStore((state) => state.setEngine);
+  const setCharset = useTableOptionsStore((state) => state.setCharset);
+  const setCollation = useTableOptionsStore((state) => state.setCollation);
+  const setTablespace = useTableOptionsStore((state) => state.setTablespace);
+  const setTableMiscConfig = useTableOptionsStore(
+    (state) => state.setTableMiscConfig,
+  );
+  const resetTableMiscConfig = useTableOptionsStore(
+    (state) => state.resetTableMiscConfig,
+  );
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    if (persistedState?.tableMiscConfig && !initialized) {
-      setTableMiscConfig({
-        ...DEFAULT_CONFIG,
-        ...persistedState.tableMiscConfig,
-      });
-      setInitialized(true);
-    }
-  }, [persistedState, initialized]);
-
-  const setMiscEnabled = useCallback((enabled: boolean) => {
+    if (!persistedState?.tableMiscConfig || initializedRef.current) return;
     setTableMiscConfig((prev) => ({
       ...prev,
-      enabled,
+      ...persistedState.tableMiscConfig,
     }));
-  }, []);
-
-  const setEngine = useCallback((engine: string) => {
-    setTableMiscConfig((prev) => ({
-      ...prev,
-      engine,
-    }));
-  }, []);
-
-  const setCharset = useCallback((charset: string) => {
-    setTableMiscConfig((prev) => ({
-      ...prev,
-      charset,
-    }));
-  }, []);
-
-  const setCollation = useCallback((collation: string) => {
-    setTableMiscConfig((prev) => ({
-      ...prev,
-      collation,
-    }));
-  }, []);
-
-  const setTablespace = useCallback((tablespace: string) => {
-    setTableMiscConfig((prev) => ({
-      ...prev,
-      tablespace,
-    }));
-  }, []);
-
-  const resetTableMiscConfig = useCallback(() => {
-    setTableMiscConfig(DEFAULT_CONFIG);
-  }, []);
+    initializedRef.current = true;
+  }, [persistedState, setTableMiscConfig]);
 
   return {
     tableMiscConfig,

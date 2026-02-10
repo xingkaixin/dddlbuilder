@@ -1,51 +1,35 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { useAuthStore } from '@/stores';
 
 export interface UseAuthManagementReturn {
   authInput: string;
   authObjects: string[];
-  setAuthInput: (value: string) => void;
+  setAuthInput: (value: string | ((prev: string) => string)) => void;
   addAuthObject: (authObj: string) => void;
   removeAuthObject: (index: number) => void;
   resetAuthState: () => void;
-  setAuthObjects: React.Dispatch<React.SetStateAction<string[]>>;
+  setAuthObjects: (value: string[] | ((prev: string[]) => string[])) => void;
 }
 
 export function useAuthManagement(persistedState?: {
   authInput?: string;
   authObjects?: string[];
 }): UseAuthManagementReturn {
-  const [authInput, setAuthInput] = useState('');
-  const [authObjects, setAuthObjects] = useState<string[]>([]);
-  const [initialized, setInitialized] = useState(false);
+  const authInput = useAuthStore((state) => state.authInput);
+  const authObjects = useAuthStore((state) => state.authObjects);
+  const setAuthInput = useAuthStore((state) => state.setAuthInput);
+  const setAuthObjects = useAuthStore((state) => state.setAuthObjects);
+  const addAuthObject = useAuthStore((state) => state.addAuthObject);
+  const removeAuthObject = useAuthStore((state) => state.removeAuthObject);
+  const resetAuthState = useAuthStore((state) => state.resetAuthState);
+  const initializedRef = useRef(false);
 
-  // Update state when persisted data becomes available
   useEffect(() => {
-    if (persistedState && !initialized) {
-      if (persistedState.authInput) setAuthInput(persistedState.authInput);
-      if (persistedState.authObjects)
-        setAuthObjects(persistedState.authObjects);
-      setInitialized(true);
-    }
-  }, [persistedState, initialized]);
-
-  const addAuthObject = useCallback(
-    (authObj: string) => {
-      if (authObj.trim() && !authObjects.includes(authObj.trim())) {
-        setAuthObjects((prev) => [...prev, authObj.trim()]);
-        setAuthInput('');
-      }
-    },
-    [authObjects],
-  );
-
-  const removeAuthObject = useCallback((index: number) => {
-    setAuthObjects((prev) => prev.filter((_, i) => i !== index));
-  }, []);
-
-  const resetAuthState = useCallback(() => {
-    setAuthInput('');
-    setAuthObjects([]);
-  }, []);
+    if (!persistedState || initializedRef.current) return;
+    if (persistedState.authInput) setAuthInput(persistedState.authInput);
+    if (persistedState.authObjects) setAuthObjects(persistedState.authObjects);
+    initializedRef.current = true;
+  }, [persistedState, setAuthInput, setAuthObjects]);
 
   return {
     authInput,

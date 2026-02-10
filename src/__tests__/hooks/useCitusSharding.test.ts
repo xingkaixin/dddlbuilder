@@ -1,8 +1,17 @@
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useCitusSharding } from '@/hooks/useCitusSharding';
+import { useShardingStore } from '@/stores';
+
+function resetShardingStore() {
+  useShardingStore.getState().resetCitusSharding();
+}
 
 describe('useCitusSharding', () => {
+  beforeEach(() => {
+    resetShardingStore();
+  });
+
   it('应该返回默认配置', () => {
     const { result } = renderHook(() => useCitusSharding());
 

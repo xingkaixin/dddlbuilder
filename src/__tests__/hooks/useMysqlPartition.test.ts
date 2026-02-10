@@ -1,8 +1,17 @@
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useMysqlPartition } from '@/hooks/useMysqlPartition';
+import { usePartitionStore } from '@/stores';
+
+function resetPartitionStore() {
+  usePartitionStore.getState().resetPartition();
+}
 
 describe('useMysqlPartition', () => {
+  beforeEach(() => {
+    resetPartitionStore();
+  });
+
   it('应该返回默认配置', () => {
     const { result } = renderHook(() => useMysqlPartition());
 
