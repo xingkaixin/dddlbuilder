@@ -1,0 +1,21 @@
+import { useEffect, type DependencyList, type EffectCallback } from 'react';
+
+export function useDebouncedEffect(
+  effect: EffectCallback,
+  deps: DependencyList,
+  delay: number,
+) {
+  useEffect(() => {
+    let cleanup: undefined | (() => void);
+    const timer = window.setTimeout(() => {
+      cleanup = effect();
+    }, delay);
+
+    return () => {
+      window.clearTimeout(timer);
+      if (typeof cleanup === 'function') {
+        cleanup();
+      }
+    };
+  }, [effect, delay, ...deps]);
+}
