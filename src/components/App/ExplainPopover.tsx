@@ -1,12 +1,12 @@
 import type React from 'react';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { track } from '@vercel/analytics';
 import { createPortal } from 'react-dom';
 import { Lightbulb, Loader2, X, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDDLExplain } from '@/hooks/useDDLExplain';
+import { useTrackEvent } from './hooks/useTrackEvent';
 
 interface ExplainPopoverProps {
   children: React.ReactNode;
@@ -17,6 +17,7 @@ export function ExplainPopover({
   children,
   containerRef,
 }: ExplainPopoverProps) {
+  const trackEvent = useTrackEvent();
   const [selection, setSelection] = useState<{
     text: string;
     x: number;
@@ -85,7 +86,9 @@ export function ExplainPopover({
     e.preventDefault();
     e.stopPropagation();
     if (selection) {
-      track('sql_explain_start', { textLength: selection.text.length });
+      void trackEvent('sql_explain_start', {
+        textLength: selection.text.length,
+      });
       startExplain(selection.text);
       setShowResult(true);
     }
@@ -104,9 +107,9 @@ export function ExplainPopover({
 
   useEffect(() => {
     if (isComplete && !isStreaming && showResult) {
-      track('sql_explain_complete');
+      void trackEvent('sql_explain_complete');
     }
-  }, [isComplete, isStreaming, showResult]);
+  }, [isComplete, isStreaming, showResult, trackEvent]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
