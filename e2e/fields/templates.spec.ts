@@ -43,11 +43,11 @@ test.describe('字段模板应用验证 @fields', () => {
 
       // 1. 填一个字段
       const cell = page.locator(
-        '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+        '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
       );
       await expect(cell).toBeVisible();
       await cell.dblclick();
-      await page.locator('textarea.handsontableInput').fill('custom_f1');
+      await page.locator('[data-testid="data-table"] input').fill('custom_f1');
       await page.keyboard.press('Enter');
 
       await templateBtn.click();

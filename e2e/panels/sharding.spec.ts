@@ -11,25 +11,25 @@ test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
 
   test('场景：配置为分布式表', async ({ page }) => {
     // 切换到 PostgreSQL (Citus)
-    await page.getByRole('combobox').click();
+    await page.locator('[data-testid="db-type-selector"]').click();
     await page.getByRole('option', { name: /PostgreSQL \(Citus\)/i }).click();
 
     await page.locator('#table-name').fill('sharded_table');
 
     // 添加字段
     const cell = page.locator(
-      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await cell.dblclick();
-    await page.locator('textarea.handsontableInput').fill('user_id');
+    await page.locator('[data-testid="data-table"] input').fill('user_id');
     await page.keyboard.press('Enter');
     await expect(cell).toHaveText('user_id');
 
     const typeCell = page.locator(
-      '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(4)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
     await typeCell.dblclick();
-    await page.locator('textarea.handsontableInput').fill('int');
+    await page.locator('[data-testid="data-table"] input').fill('int');
     await page.keyboard.press('Enter');
 
     // 切换到“PostgreSQL Citus”面板 (如果已显示)
@@ -52,23 +52,23 @@ test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
   });
 
   test('场景：配置为副本表', async ({ page }) => {
-    await page.getByRole('combobox').click();
+    await page.locator('[data-testid="db-type-selector"]').click();
     await page.getByRole('option', { name: /PostgreSQL \(Citus\)/i }).click();
 
     await page.locator('#table-name').fill('reference_table');
 
     const cell = page.locator(
-      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await cell.dblclick();
-    await page.locator('textarea.handsontableInput').fill('id');
+    await page.locator('[data-testid="data-table"] input').fill('id');
     await page.keyboard.press('Enter');
 
     const typeCell = page.locator(
-      '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(4)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
     await typeCell.dblclick();
-    await page.locator('textarea.handsontableInput').fill('int');
+    await page.locator('[data-testid="data-table"] input').fill('int');
     await page.keyboard.press('Enter');
 
     await page.getByText('分片配置').click();
@@ -81,7 +81,7 @@ test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
   });
 
   test('场景：无字段提示', async ({ page }) => {
-    await page.getByRole('combobox').click();
+    await page.locator('[data-testid="db-type-selector"]').click();
     await page.getByRole('option', { name: /PostgreSQL \(Citus\)/i }).click();
 
     await page.locator('#table-name').fill('empty_table');

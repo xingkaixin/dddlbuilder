@@ -15,10 +15,10 @@ test.describe('权限管理验证 @panels', () => {
 
     // 添加一个字段
     const cell = page.locator(
-      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await cell.dblclick();
-    await page.locator('textarea.handsontableInput').fill('id');
+    await page.locator('[data-testid="data-table"] input').fill('id');
     await page.keyboard.press('Enter');
   });
 

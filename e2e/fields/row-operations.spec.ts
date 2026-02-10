@@ -31,19 +31,19 @@ test.describe('字段行操作验证 @fields', () => {
 
     // 填写第一行并确保 SQL 更新
     const cell1 = page.locator(
-      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await cell1.dblclick();
-    await page.locator('textarea.handsontableInput').fill('f1');
+    await page.locator('[data-testid="data-table"] input').fill('f1');
     await page.keyboard.press('Enter');
     await expect(sqlOutput).toContainText(/f1/i, { timeout: 10000 });
 
     // 填写第二行并确保 SQL 更新
     const cell2 = page.locator(
-      '.ht_clone_inline_start .htCore tbody tr:nth-child(2) td:nth-child(2)',
+      '[data-testid="data-table"] tbody tr:nth-child(2) td:nth-child(2)',
     );
     await cell2.dblclick();
-    await page.locator('textarea.handsontableInput').fill('f2');
+    await page.locator('[data-testid="data-table"] input').fill('f2');
     await page.keyboard.press('Enter');
     await expect(sqlOutput).toContainText(/f2/i, { timeout: 10000 });
   });
@@ -54,18 +54,20 @@ test.describe('字段行操作验证 @fields', () => {
     await page.locator('#table-name').fill('clear_test');
 
     const cell = page.locator(
-      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await cell.dblclick();
-    await page.locator('textarea.handsontableInput').fill('to_be_cleared');
+    await page
+      .locator('[data-testid="data-table"] input')
+      .fill('to_be_cleared');
     await page.keyboard.press('Enter');
     await expect(cell).toHaveText('to_be_cleared', { timeout: 5000 });
 
     const typeCell = page.locator(
-      '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(4)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
     await typeCell.dblclick();
-    await page.locator('textarea.handsontableInput').fill('int');
+    await page.locator('[data-testid="data-table"] input').fill('int');
     await page.keyboard.press('Enter');
     await expect(typeCell).toHaveText(/int/i);
 

@@ -23,7 +23,7 @@ test.describe('数据库切换与方言验证 @core', () => {
     });
     await expect(
       page.locator(
-        '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+        '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
       ),
     ).toHaveText('HYDRATED_FIELD', { timeout: 10000 });
 
@@ -32,18 +32,18 @@ test.describe('数据库切换与方言验证 @core', () => {
 
     // 2. 填写第一个字段名 (id)
     const firstFieldNameCell = page.locator(
-      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await firstFieldNameCell.dblclick();
-    await page.locator('textarea.handsontableInput').fill('id');
+    await page.locator('[data-testid="data-table"] input').fill('id');
     await page.keyboard.press('Enter');
 
     // 3. 填写第一个字段类型 (VARCHAR255)
     const firstFieldTypeCell = page.locator(
-      '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(4)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
     await firstFieldTypeCell.dblclick();
-    await page.locator('textarea.handsontableInput').fill('varchar(255)');
+    await page.locator('[data-testid="data-table"] input').fill('varchar(255)');
     await page.keyboard.press('Enter');
 
     // 验证 UI 上的值是否已填入 (Handsontable 渲染可能滞后，等待其更新)
@@ -63,7 +63,7 @@ test.describe('数据库切换与方言验证 @core', () => {
     await expect(sqlOutputElement).toContainText(/COMMENT='用户表'/i);
 
     // 2. 切换到 PostgreSQL
-    await page.getByRole('combobox').click();
+    await page.locator('[data-testid="db-type-selector"]').click();
     await page.getByRole('option', { name: 'PostgreSQL', exact: true }).click();
 
     // 验证 PG 语法 (COMMENT ON TABLE)
@@ -81,7 +81,7 @@ test.describe('数据库切换与方言验证 @core', () => {
     const sqlOutputElement = sqlOutput(page);
 
     // 切换到 Oracle
-    await page.getByRole('combobox').click();
+    await page.locator('[data-testid="db-type-selector"]').click();
     await page.getByRole('option', { name: 'Oracle', exact: true }).click();
 
     // Oracle Table COMMENT 语法

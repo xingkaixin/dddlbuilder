@@ -2,17 +2,17 @@ import { test, expect } from '@playwright/test';
 
 const fillBasicField = async (page: any, name = 'id') => {
   const nameCell = page.locator(
-    '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+    '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
   );
   await nameCell.dblclick();
-  await page.locator('textarea.handsontableInput').fill(name);
+  await page.locator('[data-testid="data-table"] input').fill(name);
   await page.keyboard.press('Enter');
 
   const typeCell = page.locator(
-    '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(4)',
+    '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
   );
   await typeCell.dblclick();
-  await page.locator('textarea.handsontableInput').fill('int');
+  await page.locator('[data-testid="data-table"] input').fill('int');
   await page.keyboard.press('Enter');
 };
 
@@ -102,10 +102,10 @@ test.describe('保存表管理补充 @storage', () => {
     await expect(page.getByText(new RegExp(`当前：${tableA}`))).toBeVisible();
 
     const nameCell = page.locator(
-      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await nameCell.dblclick();
-    await page.locator('textarea.handsontableInput').fill('id_changed');
+    await page.locator('[data-testid="data-table"] input').fill('id_changed');
     await page.keyboard.press('Enter');
 
     await openSavedTables(page);

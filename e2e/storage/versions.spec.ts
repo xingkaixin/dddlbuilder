@@ -2,17 +2,17 @@ import { test, expect } from '@playwright/test';
 
 const fillBasicField = async (page: any, name = 'f1') => {
   const cell = page.locator(
-    '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+    '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
   );
   await cell.click();
   await page.keyboard.type(name, { delay: 30 });
   await page.keyboard.press('Tab');
 
   const typeCell = page.locator(
-    '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(4)',
+    '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
   );
   await typeCell.dblclick();
-  await page.locator('textarea.handsontableInput').fill('int');
+  await page.locator('[data-testid="data-table"] input').fill('int');
   await page.keyboard.press('Enter');
 };
 
@@ -73,7 +73,7 @@ test.describe('版本管理验证 @storage', () => {
 
     // 2. 修改并保存为新版本
     const cell = page.locator(
-      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await cell.click();
     await page.keyboard.press('Control+A');
@@ -116,7 +116,7 @@ test.describe('版本管理验证 @storage', () => {
     ).toBeVisible();
 
     const cell = page.locator(
-      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await cell.click();
     await page.keyboard.press('Control+A');
@@ -156,7 +156,7 @@ test.describe('版本管理验证 @storage', () => {
       .click();
 
     const cell = page.locator(
-      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await cell.click();
     await page.keyboard.press('Control+A');

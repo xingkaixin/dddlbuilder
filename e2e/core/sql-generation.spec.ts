@@ -28,7 +28,7 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
     });
     await expect(
       page.locator(
-        '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+        '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
       ),
     ).toHaveText('HYDRATED_FIELD', { timeout: 10000 });
     await expect(page).toHaveTitle(/筑表师/);
@@ -43,26 +43,26 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
     // 3. 填写字段信息
     // 点击第一行字段名单元格开始输入
     const firstFieldNameCell = page.locator(
-      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await firstFieldNameCell.dblclick();
-    await page.locator('textarea.handsontableInput').fill('id');
+    await page.locator('[data-testid="data-table"] input').fill('id');
     await page.keyboard.press('Enter');
 
     // 填写字段注释 (第三列)
     const firstFieldCommentCell = page.locator(
-      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(3)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(3)',
     );
     await firstFieldCommentCell.dblclick();
-    await page.locator('textarea.handsontableInput').fill('用户编号');
+    await page.locator('[data-testid="data-table"] input').fill('用户编号');
     await page.keyboard.press('Enter');
 
     // 填写字段类型 (第四列)
     const firstFieldTypeCell = page.locator(
-      '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(4)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
     await firstFieldTypeCell.dblclick();
-    await page.locator('textarea.handsontableInput').fill('varchar(255)');
+    await page.locator('[data-testid="data-table"] input').fill('varchar(255)');
     await page.keyboard.press('Enter');
 
     // 验证 UI 上的值是否已填入
@@ -70,13 +70,7 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
     await expect(firstFieldCommentCell).toHaveText('用户编号');
     await expect(firstFieldTypeCell).toHaveText('varchar(255)');
 
-    // 4. 选择可为空 (第五列是 Checkbox)
-    // 4. 选择可为空 (第五列是 Checkbox)
-    const firstNullableCell = page.locator(
-      '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(5)',
-    );
-
-    // 5. 验证生成的 SQL
+    // 4. 验证生成的 SQL
     const sqlOutput = page.locator('[data-state="active"] pre');
 
     // 等待状态同步
@@ -87,10 +81,13 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
     await expect(sqlOutput).toContainText(/`?id`?\s+VARCHAR\(255\)/i);
     await expect(sqlOutput).toContainText(/COMMENT\s+'用户编号'/i);
 
-    // 点击切换为 '否' (NOT NULL)
-    await firstNullableCell.click();
-    await page.keyboard.press('Space');
-    await expect(sqlOutput).toContainText(/NOT NULL/i);
+    // 5. 点击第五列的 checkbox 切换为 '否' (NOT NULL)
+    const firstNullableCheckbox = page.locator(
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(5) button[role="checkbox"]',
+    );
+    await firstNullableCheckbox.click();
+    await page.waitForTimeout(1000); // 等待状态更新和 SQL 重新生成
+    await expect(sqlOutput).toContainText(/NOT NULL/i, { timeout: 5000 });
   });
 
   test('场景：复制 DDL', async ({ page }) => {
@@ -102,17 +99,17 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
     await page.locator('#table-name').fill('copy_test');
 
     const nameCell = page.locator(
-      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await nameCell.dblclick();
-    await page.locator('textarea.handsontableInput').fill('id');
+    await page.locator('[data-testid="data-table"] input').fill('id');
     await page.keyboard.press('Enter');
 
     const typeCell = page.locator(
-      '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(4)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
     await typeCell.dblclick();
-    await page.locator('textarea.handsontableInput').fill('int');
+    await page.locator('[data-testid="data-table"] input').fill('int');
     await page.keyboard.press('Enter');
 
     await page.evaluate(() => {
