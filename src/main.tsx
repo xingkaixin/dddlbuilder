@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import './index.css';
 import App from './App.tsx';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
@@ -20,6 +21,7 @@ createRoot(rootElement).render(
         <App />
       </AppErrorBoundary>
       <Analytics />
+      <SpeedInsights />
     </QueryClientProvider>
   </StrictMode>,
 );
