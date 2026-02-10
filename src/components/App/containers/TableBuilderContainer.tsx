@@ -67,7 +67,7 @@ export function TableBuilderContainer({
   partitionPanelProps,
 }: TableBuilderContainerProps) {
   return (
-    <div className="flex flex-1 flex-col gap-4">
+    <div className="flex min-w-0 flex-1 flex-col gap-4">
       <TableConfig {...tableConfigProps} />
 
       <Tabs
@@ -75,7 +75,9 @@ export function TableBuilderContainer({
         onValueChange={onTabsValueChange}
         className="w-full"
       >
-        <TabsList className={`grid w-full ${tabGridClass}`}>
+        <TabsList
+          className={`flex w-full overflow-x-auto whitespace-nowrap xl:grid xl:overflow-visible xl:whitespace-normal [&>*]:shrink-0 xl:[&>*]:shrink ${tabGridClass}`}
+        >
           <TabsTrigger value="fields" className="gap-2">
             <Columns3Cog className="h-4 w-4" />
             字段配置

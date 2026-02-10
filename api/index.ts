@@ -2,10 +2,7 @@ import { Hono, type Context } from 'hono';
 import { cors } from 'hono/cors';
 import { streamText } from 'hono/streaming';
 import OpenAI from 'openai';
-import {
-  enforceOpenAIRateLimit,
-  withOpenAIRetry,
-} from './openaiControl.js';
+import { enforceOpenAIRateLimit, withOpenAIRetry } from './openaiControl.js';
 import type { DatabaseType } from '../src/types';
 
 const app = new Hono().basePath('/api');

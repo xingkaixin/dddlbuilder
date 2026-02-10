@@ -19,6 +19,11 @@ export const changelogData: ChangelogData = {
   description: 'DDL建表工具版本更新记录',
   entries: [
     {
+      version: '0.13.1',
+      date: '2026-02-11',
+      content: '- 一些微小的更新',
+    },
+    {
       version: '0.13.0',
       date: '2026-02-10',
       content:

@@ -121,7 +121,7 @@ export const DDLOutput = memo<DDLOutputProps>(
     const canReview = generatedSql && !generatedSql.startsWith('--');
 
     return (
-      <div className="relative flex w-full flex-col rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5 lg:max-w-xl">
+      <div className="relative flex w-full flex-col rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5 xl:w-[34rem] xl:shrink-0 2xl:w-[38rem]">
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent rounded-lg" />
         <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-primary/30 to-transparent rounded-t-lg" />
 
@@ -143,7 +143,7 @@ export const DDLOutput = memo<DDLOutputProps>(
           <TabsContent value="ddl" className="mt-0">
             <div className="relative flex flex-col">
               <div className="border-b border-primary/10 px-4 py-3.5">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
                       <h2 className="text-xl font-bold bg-linear-to-r from-foreground to-primary bg-clip-text text-transparent transition-colors duration-200">
@@ -157,7 +157,7 @@ export const DDLOutput = memo<DDLOutputProps>(
                       根据左侧输入实时生成不同数据库的建表语句
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -229,7 +229,7 @@ export const DDLOutput = memo<DDLOutputProps>(
           <TabsContent value="dcl" className="mt-0">
             <div className="relative flex flex-col">
               <div className="border-b border-primary/10 px-4 py-3.5">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
                       <h2 className="text-xl font-bold bg-linear-to-r from-foreground to-primary bg-clip-text text-transparent transition-colors duration-200">

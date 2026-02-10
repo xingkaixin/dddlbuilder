@@ -755,8 +755,8 @@ function App() {
         }}
       />
 
-      <div className="flex flex-col gap-4 p-4">
-        <div className="flex flex-col gap-4 lg:flex-row">
+      <div className="flex flex-col gap-3 p-3 sm:gap-4 sm:p-4">
+        <div className="flex flex-col gap-4 xl:flex-row">
           <TableBuilderContainer
             tableConfigProps={{
               tableName,
