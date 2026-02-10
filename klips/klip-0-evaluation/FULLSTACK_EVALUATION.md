@@ -1,7 +1,7 @@
 ---
 created: "2026-02-08"
 updated: "2026-02-09"
-status: "in-progress"
+status: "almost complete"
 ---
 
 
@@ -56,7 +56,7 @@ DDLBuilder项目在第三方库集成方面总体表现良好,但存在一些关
   | TanStack Table | MIT | 50KB | ⭐⭐⭐ | 高 |
   | 自研方案 | MIT | 自定义 | ⭐⭐ | 极高 |
 
-#### 1.2 node-sql-parser 体积过大导致首屏加载缓慢
+#### 1.2 node-sql-parser 体积过大导致首屏加载缓慢 -> 作为后端API提供
 - **类型**: 性能问题
 - **位置**: `/Users/Kevin/workspace/projects/work/ddlbuilder/vite.config.ts` (L46)
 - **影响**: sqlParser chunk达2.6MB(gzip后515KB),占总体积的60%,首屏加载慢
@@ -87,7 +87,7 @@ DDLBuilder项目在第三方库集成方面总体表现良好,但存在一些关
 
 ### P1 (High) - 重要集成改进
 
-#### 1.3 依赖安全漏洞未修复
+#### 1.3 依赖安全漏洞未修复 -> 上游未更新
 - **类型**: 安全风险
 - **位置**: 依赖树中的transitive dependencies
 - **影响**: 2个中等风险漏洞可能被攻击者利用
@@ -112,7 +112,7 @@ DDLBuilder项目在第三方库集成方面总体表现良好,但存在一些关
   bun audit fix
   ```
 
-#### 1.4 OpenAI API流式响应错误处理不完善
+#### 1.4 OpenAI API流式响应错误处理不完善 -> 添加了重试机制
 - **类型**: 可靠性问题
 - **位置**: `/Users/Kevin/workspace/projects/work/ddlbuilder/api/index.ts` (L51-81, L188-249)
 - **影响**: API超时或失败时用户体验差,没有重试机制
@@ -158,7 +158,7 @@ DDLBuilder项目在第三方库集成方面总体表现良好,但存在一些关
   3. **降级方案**: 流式失败时回退到非流式模式
 - **预期收益**: API调用成功率提升至99%+
 
-#### 1.5 缺少API成本控制机制
+#### 1.5 缺少API成本控制机制 -> 添加了限流
 - **类型**: 成本控制
 - **位置**: `/Users/Kevin/workspace/projects/work/ddlbuilder/api/index.ts`
 - **影响**: 无限制调用可能导致费用失控
@@ -194,7 +194,7 @@ DDLBuilder项目在第三方库集成方面总体表现良好,但存在一些关
 
 ### P2 (Medium) - 一般集成改进
 
-#### 1.6 Radix UI组件重复导入未优化
+#### 1.6 Radix UI组件重复导入未优化 -> 已拆分
 - **类型**: 性能优化
 - **位置**: `/Users/Kevin/workspace/projects/work/ddlbuilder/vite.config.ts` (L50-54)
 - **影响**: Radix UI组件未按需加载,增加bundle大小
@@ -252,7 +252,7 @@ DDLBuilder项目在第三方库集成方面总体表现良好,但存在一些关
 | openai | 6.18.0 | Apache-2.0 | OpenAI API |
 | @playwright/test | 1.58.2 | Apache-2.0 | E2E测试 |
 
-#### 许可证风险评估
+#### 许可证风险评估 -> hansontable 已替换为 Tanstack table
 | 风险等级 | 依赖 | 数量 |
 |---------|------|------|
 | 高风险 | Handsontable(商业) | 1 |
@@ -261,7 +261,7 @@ DDLBuilder项目在第三方库集成方面总体表现良好,但存在一些关
 
 ### 2.2 依赖优化建议
 
-#### 建议移除的依赖
+#### 建议移除的依赖 -> 已处理
 1. **react-icons** (L48): 功能与lucide-react重复,建议统一使用lucide-react
    ```bash
    bun remove react-icons
@@ -272,13 +272,14 @@ DDLBuilder项目在第三方库集成方面总体表现良好,但存在一些关
    bun remove @types/uuid
    ```
 
-#### 建议更新的版本
+#### 建议更新的版本 -> 上游未更新
 | 依赖 | 当前版本 | 最新版本 | 更新原因 |
 |------|---------|---------|---------|
 | react-markdown | 10.1.0 | 10.1.2 | 修复安全漏洞 |
 | gray-matter | 4.0.3 | 4.0.4 | 修复js-yaml漏洞 |
 
-#### 替代方案推荐
+#### 替代方案推荐 -> 替换为 Tanstack Table
+
 
 **1. Handsontable替代方案**
 
@@ -801,14 +802,14 @@ export default defineConfig({
 ### 中长期改进(P2/P3) - 1-3个月
 
 **第1个月:**
-- [ ] 评估Handsontable替代方案(AG Grid/TanStack Table)
-- [ ] 创建表格抽象层,降低迁移成本
+- [x] 评估Handsontable替代方案(AG Grid/TanStack Table)
+- [x] 创建表格抽象层,降低迁移成本
 - [ ] 添加DDL生成自动化测试
 - [ ] 实施依赖版本自动更新(CI Dependabot)
 
 **第2-3个月:**
-- [ ] 根据评估结果决定是否替换Handsontable
-- [ ] 如果替换,执行迁移计划
+- [x] 根据评估结果决定是否替换Handsontable
+- [x] 如果替换,执行迁移计划
 - [ ] 完善文档(集成指南、数据库添加指南)
 - [ ] 添加性能监控(Web Vitals)
 
