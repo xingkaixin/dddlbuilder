@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import type { DatabaseType } from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
 import { useToast } from '@/hooks/useToast';
+import { requestSqlParse } from '@/services/sqlParseService';
 import {
   CheckCircle2,
   AlertCircle,
@@ -100,9 +101,10 @@ export function ImportSqlDialog({
     setValidationResult(null);
 
     try {
-      const { SqlParser } = await import('@/utils/SqlParser');
-      const parser = new SqlParser();
-      const result = await parser.parseAsync(sql, selectedDbType);
+      const result = await requestSqlParse({
+        sql,
+        dbType: selectedDbType,
+      });
 
       if (result.fields.length === 0 && result.tableName === '') {
         setValidationResult({
