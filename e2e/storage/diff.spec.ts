@@ -2,17 +2,17 @@ import { test, expect } from '@playwright/test';
 
 const fillBasicField = async (page: any, name = 'id') => {
   const nameCell = page.locator(
-    '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+    '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
   );
   await nameCell.dblclick();
-  await page.locator('textarea.handsontableInput').fill(name);
+  await page.locator('[data-testid="data-table"] input').fill(name);
   await page.keyboard.press('Enter');
 
   const typeCell = page.locator(
-    '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(4)',
+    '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
   );
   await typeCell.dblclick();
-  await page.locator('textarea.handsontableInput').fill('int');
+  await page.locator('[data-testid="data-table"] input').fill('int');
   await page.keyboard.press('Enter');
 };
 
@@ -51,10 +51,10 @@ test.describe('变更对比验证 @storage', () => {
     ).toBeVisible();
 
     const typeCell = page.locator(
-      '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(4)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
     await typeCell.dblclick();
-    await page.locator('textarea.handsontableInput').fill('varchar(20)');
+    await page.locator('[data-testid="data-table"] input').fill('varchar(20)');
     await page.keyboard.press('Enter');
 
     await page.getByRole('button', { name: /查看表结构变更/i }).click();

@@ -17,18 +17,18 @@ test.describe('索引管理验证 @panels', () => {
 
     // 添加一个字段
     const cell = page.locator(
-      '.ht_clone_inline_start .htCore tbody tr:nth-child(1) td:nth-child(2)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await cell.dblclick();
-    await page.locator('textarea.handsontableInput').fill('id');
+    await page.locator('[data-testid="data-table"] input').fill('id');
     await page.keyboard.press('Enter');
     await expect(cell).toHaveText('id');
 
     const typeCell = page.locator(
-      '.ht_master .htCore tbody tr:nth-child(1) td:nth-child(4)',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
     await typeCell.dblclick();
-    await page.locator('textarea.handsontableInput').fill('int');
+    await page.locator('[data-testid="data-table"] input').fill('int');
     await page.keyboard.press('Enter');
     await expect(typeCell).toHaveText(/int/i);
   });
