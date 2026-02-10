@@ -1,9 +1,11 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   parsePartialJson,
   type PartialReviewResult,
 } from '@/utils/parsePartialJson';
 import { requestDDLReview } from '@/services/reviewService';
+import { buildDDLReviewQueryKey } from '@/queryKeys/ai';
 
 export interface StructuredSuggestion {
   id: string;
@@ -66,6 +68,9 @@ interface ReviewState {
   error: string | null;
 }
 
+const REVIEW_CACHE_STALE_TIME_MS = 5 * 60 * 1000;
+const REVIEW_CACHE_GC_TIME_MS = 15 * 60 * 1000;
+
 export function useDDLReview() {
   const [state, setState] = useState<ReviewState>({
     isLoading: false,
@@ -73,7 +78,11 @@ export function useDDLReview() {
     result: null,
     error: null,
   });
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const queryClient = useQueryClient();
+  const activeRequestRef = useRef<{
+    key: string;
+    controller: AbortController;
+  } | null>(null);
 
   // Parse partial result from streaming text for progressive rendering
   const partialResult: PartialReviewResult | null = useMemo(() => {
@@ -90,12 +99,21 @@ export function useDDLReview() {
         return;
       }
 
-      // Abort any existing request
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+      const queryKey = buildDDLReviewQueryKey({ ddl, tableName, dbType });
+      const requestKey = JSON.stringify(queryKey);
+
+      if (activeRequestRef.current) {
+        if (activeRequestRef.current.key === requestKey) {
+          return;
+        }
+        activeRequestRef.current.controller.abort();
       }
+
       const abortController = new AbortController();
-      abortControllerRef.current = abortController;
+      activeRequestRef.current = {
+        key: requestKey,
+        controller: abortController,
+      };
 
       setState({
         isLoading: true,
@@ -105,18 +123,24 @@ export function useDDLReview() {
       });
 
       try {
-        const result = await requestDDLReview(
-          { ddl, tableName, dbType },
-          {
-            signal: abortController.signal,
-            onStreamingText: (streamingText) => {
-              setState((prev) => ({
-                ...prev,
-                streamingText,
-              }));
-            },
-          },
-        );
+        const result = await queryClient.fetchQuery({
+          queryKey,
+          staleTime: REVIEW_CACHE_STALE_TIME_MS,
+          gcTime: REVIEW_CACHE_GC_TIME_MS,
+          queryFn: () =>
+            requestDDLReview(
+              { ddl, tableName, dbType },
+              {
+                signal: abortController.signal,
+                onStreamingText: (streamingText) => {
+                  setState((prev) => ({
+                    ...prev,
+                    streamingText,
+                  }));
+                },
+              },
+            ),
+        });
 
         setState({
           isLoading: false,
@@ -142,17 +166,18 @@ export function useDDLReview() {
           error: error instanceof Error ? error.message : '评审请求失败',
         });
       } finally {
-        if (abortControllerRef.current === abortController) {
-          abortControllerRef.current = null;
+        if (activeRequestRef.current?.controller === abortController) {
+          activeRequestRef.current = null;
         }
       }
     },
-    [],
+    [queryClient],
   );
 
   const clearReview = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
+    if (activeRequestRef.current) {
+      activeRequestRef.current.controller.abort();
+      activeRequestRef.current = null;
     }
     setState({
       isLoading: false,
