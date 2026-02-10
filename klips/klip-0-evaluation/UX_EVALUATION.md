@@ -33,7 +33,7 @@ DDLBuilder是一个专业的数据库建表工具,整体UI/UX设计较为完善,
 
 ### P0 (Critical) - 阻碍核心功能
 
-#### P0-1: Handsontable表格缺少ARIA标签和屏幕阅读器支持
+#### P0-1: Handsontable表格缺少ARIA标签和屏幕阅读器支持 -> 已替换为 Tanstack Table，有必要的话需要重新对此做检查
 - **类型**: 可访问性
 - **位置**: `/Users/Kevin/workspace/projects/work/ddlbuilder/src/components/App/DataTable.tsx` (438-459行)
 - **用户影响**:
@@ -469,7 +469,7 @@ const DialogContent = React.forwardRef<
 
 ---
 
-#### P1-5: 表格行高亮动画触发癫痫风险
+#### P1-5: 表格行高亮动画触发癫痫风险 -> 现在应该不会有闪烁，只是高亮背景一下
 - **类型**: 可访问性
 - **位置**: `/Users/Kevin/workspace/projects/work/ddlbuilder/src/index.css` (212-241行)
 - **用户影响**:
@@ -669,7 +669,7 @@ const DialogContent = React.forwardRef<
 
 ---
 
-#### P1-9: 深色模式切换缺少持久化和过渡动画
+#### P1-9: 深色模式切换缺少持久化和过渡动画 -> 我们没有深色模式
 - **类型**: 可用性
 - **位置**: 全局
 - **用户影响**:
@@ -753,7 +753,7 @@ export const Header = memo<HeaderProps>(({ /* ... */ }) => {
 
 ### P2 (Medium) - 中等问题
 
-#### P2-1: 导入SQL对话框的文件输入缺少拖拽支持
+#### P2-1: 导入SQL对话框的文件输入缺少拖拽支持 -> 目前功能上并没有支持已文件形式的SQL
 - **类型**: 可用性
 - **位置**: `/Users/Kevin/workspace/projects/work/ddlbuilder/src/components/ImportSqlDialog.tsx`
 - **用户影响**:
@@ -810,7 +810,7 @@ const handleDrop = (e: React.DragEvent) => {
 
 ---
 
-#### P2-2: DDL输出代码块缺少行号和语法高亮选项
+#### P2-2: DDL输出代码块缺少行号和语法高亮选项 -> 行号，语法高亮都是有的
 - **类型**: 可用性
 - **位置**: `/Users/Kevin/workspace/projects/work/ddlbuilder/src/components/App/DDLOutput.tsx` (201-213行)
 - **用户影响**:
@@ -1062,7 +1062,7 @@ const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
 
 ---
 
-#### P2-7: 索引卡片双击编辑缺少视觉提示
+#### P2-7: 索引卡片双击编辑缺少视觉提示 -> hover 索引名字有下划线和编辑的icon，你觉得还需要补充什么视觉？
 - **类型**: 可用性
 - **位置**: `/Users/Kevin/workspace/projects/work/ddlbuilder/src/components/App/IndexPanel.tsx` (302-311行)
 - **用户影响**:
@@ -1258,7 +1258,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 ---
 
-#### P3-2: 深色模式未自动跟随系统
+#### P3-2: 深色模式未自动跟随系统 -> 我们没有深色模式
 - **类型**: 可用性
 - **位置**: 全局
 - **用户影响**: 首次访问时主题可能不匹配用户偏好
@@ -1381,7 +1381,7 @@ const SavedTablesDrawer = memo<SavedTablesDrawerProps>(({ /* ... */ }) => {
 
 ---
 
-#### P3-5: 颜色对比度需要验证
+#### P3-5: 颜色对比度需要验证 -> 忽略
 - **类型**: 可访问性
 - **位置**: 全局CSS变量
 - **用户影响**: 部分文本可能难以阅读
@@ -1455,7 +1455,7 @@ const validateTableName = (name: string) => {
 
 ---
 
-#### P3-7: 快捷键缺失
+#### P3-7: 快捷键缺失 -> 忽略
 - **类型**: 可用性
 - **位置**: 全局
 - **用户影响**: 高级用户效率低
@@ -1510,7 +1510,7 @@ useKeyboardShortcuts({
 
 ---
 
-#### P3-8: 文字大小不可调节
+#### P3-8: 文字大小不可调节 -> 忽略
 - **类型**: 可访问性
 - **位置**: 全局
 - **用户影响**: 视力障碍用户阅读困难

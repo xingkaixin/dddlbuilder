@@ -26,6 +26,8 @@ import {
 import type { FieldRow, IndexDefinition, DatabaseType } from '@/types';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
 
+const MAX_INPUT_LENGTH = 500;
+
 interface AIGenerateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -139,6 +141,16 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
       },
       [handleGenerate],
     );
+
+    const handleInputChange = useCallback(
+      (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const value = e.target.value;
+        setInput(value.slice(0, MAX_INPUT_LENGTH));
+      },
+      [],
+    );
+
+    const generatedFieldCount = displayResult?.fields?.length ?? 0;
 
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -271,17 +283,41 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                 )}
 
                 {isLoading && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    {isStreaming ? '正在生成字段...' : '生成中...'}
-                  </div>
+                  <output
+                    aria-live="polite"
+                    aria-busy="true"
+                    className="flex items-center gap-2 text-xs text-muted-foreground"
+                  >
+                    <Loader2
+                      className="h-3 w-3 animate-spin"
+                      aria-hidden="true"
+                    />
+                    {isStreaming
+                      ? `正在生成字段...（已生成 ${generatedFieldCount} 个字段）`
+                      : '生成中...'}
+                  </output>
                 )}
               </div>
             )}
 
+            {isLoading && !displayResult && (
+              <output
+                aria-live="polite"
+                aria-busy="true"
+                className="flex items-center gap-2 text-xs text-muted-foreground"
+              >
+                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                生成中...
+              </output>
+            )}
+
             {/* Error display */}
             {error && (
-              <div className="text-sm text-red-500 bg-red-50 border border-red-100 rounded-md px-3 py-2">
+              <div
+                role="alert"
+                aria-live="assertive"
+                className="text-sm text-red-500 bg-red-50 border border-red-100 rounded-md px-3 py-2"
+              >
                 {error}
               </div>
             )}
@@ -296,14 +332,17 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                   : '描述你需要的表结构，例如：创建一个订单表，包含订单号、用户ID、商品列表、金额、状态...'
               }
               value={input}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                setInput(e.target.value)
-              }
+              onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               rows={3}
               className="resize-none"
               disabled={isLoading}
+              maxLength={MAX_INPUT_LENGTH}
+              aria-describedby="ai-generate-input-hint ai-generate-input-counter"
             />
+            <span id="ai-generate-input-hint" className="sr-only">
+              输入建表需求，按 Command 或 Control 加 Enter 可快速生成。
+            </span>
 
             <div className="flex items-center justify-between">
               {/* Template selection */}
@@ -366,7 +405,14 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                 </span>
               )}
 
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
+                <span
+                  id="ai-generate-input-counter"
+                  className="text-xs text-muted-foreground"
+                  aria-live="polite"
+                >
+                  {input.length}/{MAX_INPUT_LENGTH}
+                </span>
                 {isLoading ? (
                   <Button variant="outline" onClick={cancelGeneration}>
                     取消

@@ -35,6 +35,7 @@ interface FolderTreeProps {
 interface FolderNodeProps {
   folder: FolderTreeNode;
   depth: number;
+  level: number;
   isExpanded: boolean;
   isSelected: boolean;
   onToggle: () => void;
@@ -49,6 +50,7 @@ const FolderNode = memo<FolderNodeProps>(
   ({
     folder,
     depth,
+    level,
     isExpanded,
     isSelected,
     onToggle,
@@ -65,7 +67,13 @@ const FolderNode = memo<FolderNodeProps>(
     const FolderIcon = isExpanded ? FolderOpen : Folder;
 
     return (
-      <div>
+      <div
+        role="treeitem"
+        aria-expanded={hasChildren ? isExpanded : undefined}
+        aria-level={level}
+        aria-selected={isSelected}
+        tabIndex={isSelected ? 0 : -1}
+      >
         <div
           className={cn(
             'group flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent',
@@ -81,7 +89,7 @@ const FolderNode = memo<FolderNodeProps>(
               !hasChildren && 'invisible',
             )}
             onClick={onToggle}
-            aria-label={isExpanded ? '折叠' : '展开'}
+            aria-label={`${isExpanded ? '折叠' : '展开'} ${folder.name}`}
           >
             <ChevronIcon className="h-3.5 w-3.5" />
           </button>
@@ -137,7 +145,9 @@ const FolderNode = memo<FolderNodeProps>(
         </div>
 
         {/* 子内容（展开时显示） */}
-        {isExpanded && children}
+        {isExpanded && (
+          <fieldset className="m-0 min-w-0 border-0 p-0">{children}</fieldset>
+        )}
       </div>
     );
   },
@@ -167,6 +177,7 @@ export const FolderTree = memo<FolderTreeProps>(
             key={folder.id}
             folder={folder}
             depth={depth}
+            level={depth + 1}
             isExpanded={isExpanded}
             isSelected={isSelected}
             onToggle={() => onToggleFolder(folder.id)}
@@ -196,8 +207,12 @@ export const FolderTree = memo<FolderTreeProps>(
 
     return (
       <div className="space-y-0.5">
-        {/* 根级文件夹 */}
-        {folders.map((folder) => renderFolder(folder, 0))}
+        {folders.length > 0 && (
+          <div role="tree" aria-label="保存的表文件夹" className="space-y-0.5">
+            {/* 根级文件夹 */}
+            {folders.map((folder) => renderFolder(folder, 0))}
+          </div>
+        )}
 
         {/* 未分组的表 */}
         {renderTables(undefined)}

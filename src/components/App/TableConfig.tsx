@@ -135,10 +135,24 @@ export const TableConfig = memo<TableConfigProps>(
                   onClick={onSaveTable}
                   disabled={saveDisabled}
                   title={saveDisabled ? saveDisabledHint : '保存表'}
-                  aria-label="保存当前表"
+                  aria-label={
+                    saveDisabled && saveDisabledHint
+                      ? `${saveDisabledHint}，无法保存`
+                      : '保存当前表'
+                  }
+                  aria-describedby={
+                    saveDisabled && saveDisabledHint
+                      ? 'save-disabled-reason'
+                      : undefined
+                  }
                 >
                   <Save className="h-4 w-4" />
                 </Button>
+                {saveDisabled && saveDisabledHint && (
+                  <span id="save-disabled-reason" className="sr-only">
+                    {saveDisabledHint}
+                  </span>
+                )}
                 {showDiffButton && (
                   <Button
                     type="button"
@@ -175,7 +189,10 @@ export const TableConfig = memo<TableConfigProps>(
               />
             </div>
             <div className="space-y-3 group/field">
-              <Label className="text-sm font-medium transition-colors duration-200 group-hover/field:text-primary">
+              <Label
+                htmlFor="db-type-select"
+                className="text-sm font-medium transition-colors duration-200 group-hover/field:text-primary"
+              >
                 数据库类型
               </Label>
               <Select
@@ -183,6 +200,7 @@ export const TableConfig = memo<TableConfigProps>(
                 onValueChange={(value) => onDbTypeChange(value as DatabaseType)}
               >
                 <SelectTrigger
+                  id="db-type-select"
                   data-testid="db-type-selector"
                   className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                 >

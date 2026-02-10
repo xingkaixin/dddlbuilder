@@ -79,6 +79,12 @@ export const IndexPanel = memo<IndexPanelProps>(
     const [editingIndexId, setEditingIndexId] = useState<string | null>(null);
     const [editingName, setEditingName] = useState('');
     const editInputRef = useRef<HTMLInputElement>(null);
+    const suggestionsListId = 'index-field-suggestions-listbox';
+    const hasSuggestions = showFieldSuggestions && fieldSuggestions.length > 0;
+    const activeSuggestionId =
+      hasSuggestions && selectedSuggestionIndex >= 0
+        ? `index-field-suggestion-${selectedSuggestionIndex}`
+        : undefined;
 
     // Focus input when entering edit mode
     useEffect(() => {
@@ -157,6 +163,13 @@ export const IndexPanel = memo<IndexPanelProps>(
                         onRemoveFieldFromIndex(currentIndexFields.length - 1);
                       }
                     }}
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={hasSuggestions}
+                    aria-controls={
+                      hasSuggestions ? suggestionsListId : undefined
+                    }
+                    aria-activedescendant={activeSuggestionId}
                     className="pr-4 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
@@ -197,11 +210,20 @@ export const IndexPanel = memo<IndexPanelProps>(
 
               {/* Field Suggestions Dropdown */}
               {showFieldSuggestions && fieldSuggestions.length > 0 && (
-                <div className="absolute z-10 mt-2 w-full rounded-lg border bg-popover shadow-xl overflow-hidden">
+                <div
+                  id={suggestionsListId}
+                  role="listbox"
+                  aria-label="字段建议"
+                  className="absolute z-10 mt-2 w-full rounded-lg border bg-popover shadow-xl overflow-hidden"
+                >
                   <div className="max-h-32 overflow-auto">
                     {fieldSuggestions.map((field, index) => (
                       <div
                         key={field}
+                        id={`index-field-suggestion-${index}`}
+                        role="option"
+                        aria-selected={index === selectedSuggestionIndex}
+                        tabIndex={-1}
                         className={`flex cursor-pointer items-center px-3 py-2 text-sm transition-all duration-150 ${
                           index === selectedSuggestionIndex
                             ? 'bg-accent text-accent-foreground pl-4'
@@ -320,14 +342,19 @@ export const IndexPanel = memo<IndexPanelProps>(
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : (
-                            <span
-                              className="break-all text-base font-semibold leading-snug transition-colors duration-200 group-hover/item:text-primary cursor-pointer hover:underline hover:decoration-dashed hover:underline-offset-4"
-                              onDoubleClick={() => handleStartEdit(index)}
-                              title="双击编辑索引名称"
-                            >
-                              {index.name}
-                              <Pencil className="inline-block ml-1.5 h-3 w-3 opacity-0 group-hover/item:opacity-50 transition-opacity" />
-                            </span>
+                            <>
+                              <span
+                                className="break-all text-base font-semibold leading-snug transition-colors duration-200 group-hover/item:text-primary cursor-pointer hover:underline hover:decoration-dashed hover:underline-offset-4"
+                                onDoubleClick={() => handleStartEdit(index)}
+                                title="双击编辑索引名称"
+                              >
+                                {index.name}
+                                <Pencil className="inline-block ml-1.5 h-3 w-3 opacity-0 group-hover/item:opacity-50 transition-opacity" />
+                              </span>
+                              <span className="sr-only">
+                                提示：双击或按 Enter 可编辑索引名称
+                              </span>
+                            </>
                           )}
                           <div className="w-full pl-1">
                             <span className="break-words text-sm leading-relaxed text-muted-foreground transition-colors duration-200 group-hover/item:text-muted-foreground/80">

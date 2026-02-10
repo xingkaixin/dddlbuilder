@@ -1,4 +1,5 @@
-import type { ComponentProps } from 'react';
+import { useEffect, useRef, type ComponentProps } from 'react';
+import { AlertTriangle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -92,6 +93,42 @@ export function GlobalDialogs({
   storageEstimatorDialogProps,
   toastMessage,
 }: GlobalDialogsProps) {
+  const saveInputRef = useRef<HTMLInputElement>(null);
+  const saveErrorRef = useRef<HTMLParagraphElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
+  const renameErrorRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    if (saveDialog.open && saveDialog.error) {
+      const timer = window.setTimeout(() => {
+        saveErrorRef.current?.focus();
+      }, 0);
+      return () => window.clearTimeout(timer);
+    }
+  }, [saveDialog.open, saveDialog.error]);
+
+  useEffect(() => {
+    if (renameDialog.open && renameDialog.error) {
+      const timer = window.setTimeout(() => {
+        renameErrorRef.current?.focus();
+      }, 0);
+      return () => window.clearTimeout(timer);
+    }
+  }, [renameDialog.open, renameDialog.error]);
+
+  const saveDescriptionIds = [
+    saveDialog.inputDisabled ? 'save-table-name-hint' : null,
+    saveDialog.error ? 'save-table-name-error' : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const renameDescriptionIds = [
+    renameDialog.error ? 'rename-table-name-error' : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <>
       <FolderDialog {...folderDialogProps} />
@@ -131,6 +168,7 @@ export function GlobalDialogs({
           <div className="space-y-3">
             <Label htmlFor="save-table-name">保存名称</Label>
             <Input
+              ref={saveInputRef}
               id="save-table-name"
               value={saveDialog.name}
               onChange={(event) => {
@@ -138,14 +176,27 @@ export function GlobalDialogs({
               }}
               placeholder="例如：用户表"
               disabled={saveDialog.inputDisabled}
+              aria-describedby={saveDescriptionIds || undefined}
             />
             {saveDialog.inputDisabled && (
-              <p className="text-xs text-muted-foreground">
+              <p
+                id="save-table-name-hint"
+                className="text-xs text-muted-foreground"
+              >
                 已加载表仅支持覆盖保存，如需更名请在左侧列表重命名。
               </p>
             )}
             {saveDialog.error && (
-              <p className="text-xs text-destructive">{saveDialog.error}</p>
+              <p
+                id="save-table-name-error"
+                ref={saveErrorRef}
+                tabIndex={-1}
+                role="alert"
+                aria-live="assertive"
+                className="text-xs text-destructive"
+              >
+                {saveDialog.error}
+              </p>
             )}
           </div>
           <DialogFooter>
@@ -215,15 +266,26 @@ export function GlobalDialogs({
           <div className="space-y-3">
             <Label htmlFor="rename-table-name">新名称</Label>
             <Input
+              ref={renameInputRef}
               id="rename-table-name"
               value={renameDialog.name}
               onChange={(event) => {
                 renameDialog.onNameChange(event.target.value);
               }}
               placeholder="例如：订单表"
+              aria-describedby={renameDescriptionIds || undefined}
             />
             {renameDialog.error && (
-              <p className="text-xs text-destructive">{renameDialog.error}</p>
+              <p
+                id="rename-table-name-error"
+                ref={renameErrorRef}
+                tabIndex={-1}
+                role="alert"
+                aria-live="assertive"
+                className="text-xs text-destructive"
+              >
+                {renameDialog.error}
+              </p>
             )}
           </div>
           <DialogFooter>
@@ -241,7 +303,13 @@ export function GlobalDialogs({
       <Dialog open={deleteDialog.open} onOpenChange={deleteDialog.onOpenChange}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>确认删除保存的表？</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle
+                className="h-5 w-5 text-destructive"
+                aria-hidden="true"
+              />
+              确认删除保存的表？
+            </DialogTitle>
             <DialogDescription>
               {deleteDialog.targetName
                 ? `即将删除「${deleteDialog.targetName}」，此操作无法撤销。`
@@ -255,17 +323,29 @@ export function GlobalDialogs({
             >
               取消
             </Button>
-            <Button variant="destructive" onClick={deleteDialog.onConfirm}>
+            <Button
+              variant="destructive"
+              onClick={deleteDialog.onConfirm}
+              aria-describedby="delete-warning"
+            >
+              <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
               删除
             </Button>
           </DialogFooter>
+          <p id="delete-warning" className="sr-only">
+            警告：删除操作不可逆，请确认后再继续。
+          </p>
         </DialogContent>
       </Dialog>
 
       {toastMessage && (
-        <div className="fixed top-6 left-1/2 z-50 -translate-x-1/2 transform rounded-full bg-foreground/90 px-5 py-2.5 text-sm font-medium text-background shadow-xl transition-[opacity,transform] duration-300 animate-in fade-in zoom-in-95 slide-in-from-top-4 motion-reduce:animate-none motion-reduce:transition-none">
+        <output
+          aria-live="polite"
+          aria-atomic="true"
+          className="fixed top-6 left-1/2 z-50 -translate-x-1/2 transform rounded-full bg-foreground/90 px-5 py-2.5 text-sm font-medium text-background shadow-xl transition-[opacity,transform] duration-300 animate-in fade-in zoom-in-95 slide-in-from-top-4 motion-reduce:animate-none motion-reduce:transition-none"
+        >
           {toastMessage}
-        </div>
+        </output>
       )}
 
       <StorageEstimatorDialog {...storageEstimatorDialogProps} />
