@@ -2,7 +2,10 @@ import { Hono, type Context } from 'hono';
 import { cors } from 'hono/cors';
 import { streamText } from 'hono/streaming';
 import OpenAI from 'openai';
-import { enforceOpenAIRateLimit, withOpenAIRetry } from './openaiControl';
+import {
+  enforceOpenAIRateLimit,
+  withOpenAIRetry,
+} from './openaiControl.js';
 import type { DatabaseType } from '../src/types';
 
 const app = new Hono().basePath('/api');
@@ -170,7 +173,7 @@ app.post('/parse-sql', async (c) => {
   }
 
   try {
-    const { SqlParser } = await import('../src/utils/SqlParser');
+    const { SqlParser } = await import('../src/utils/SqlParser.js');
     const parser = new SqlParser();
     const result = await parser.parseAsync(sql, dbType);
 
