@@ -28,7 +28,7 @@ describe('useToast', () => {
     expect(result.current.toastMessage).toBe('测试消息');
   });
 
-  it('应该在 1.6 秒后自动隐藏消息', () => {
+  it('应该在 2.8 秒后自动隐藏消息', () => {
     const { result } = renderHook(() => useToast());
 
     act(() => {
@@ -38,7 +38,7 @@ describe('useToast', () => {
     expect(result.current.toastMessage).toBe('自动消失的消息');
 
     act(() => {
-      vi.advanceTimersByTime(1600);
+      vi.advanceTimersByTime(2800);
     });
 
     expect(result.current.toastMessage).toBe('');
@@ -111,7 +111,7 @@ describe('useToast', () => {
 
     // 前进时间，应该清除的是最后一条消息
     act(() => {
-      vi.advanceTimersByTime(1600);
+      vi.advanceTimersByTime(2800);
     });
 
     expect(result.current.toastMessage).toBe('');
@@ -131,7 +131,7 @@ describe('useToast', () => {
 
     // 前进时间，不应该有错误
     act(() => {
-      vi.advanceTimersByTime(1600);
+      vi.advanceTimersByTime(2800);
     });
 
     // 这里主要测试没有内存泄漏或错误抛出

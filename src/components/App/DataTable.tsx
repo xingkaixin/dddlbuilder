@@ -647,6 +647,7 @@ export const DataTable = memo<DataTableProps>(
                   aria-label="启用字段表格列冻结"
                 />
                 <Input
+                  id="field-freeze-columns-input"
                   type="number"
                   min={1}
                   max={COLUMN_HEADERS.length}
@@ -655,6 +656,7 @@ export const DataTable = memo<DataTableProps>(
                   disabled={!freezeEnabled}
                   name="freeze-columns"
                   aria-label="冻结列数"
+                  aria-describedby="field-freeze-columns-description"
                   onChange={(e) => {
                     const parsed = Math.floor(Number(e.target.value));
                     onFreezeColumnsChange(
@@ -663,7 +665,15 @@ export const DataTable = memo<DataTableProps>(
                   }}
                   className="w-20 transition-all duration-200 focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
                 />
-                <span className="text-sm text-muted-foreground">列</span>
+                <Label
+                  htmlFor="field-freeze-columns-input"
+                  className="text-sm text-muted-foreground"
+                >
+                  列
+                </Label>
+                <span id="field-freeze-columns-description" className="sr-only">
+                  设置冻结前 N 列，横向滚动时保持可见
+                </span>
               </div>
               <Button
                 onClick={handleAddRowsClick}
@@ -695,7 +705,14 @@ export const DataTable = memo<DataTableProps>(
           </div>
         </div>
 
-        <div ref={tableRef} className="relative overflow-x-auto p-4">
+        <section
+          ref={tableRef}
+          aria-label="字段配置表格"
+          className="relative overflow-x-auto p-4"
+        >
+          <p id="field-config-table-description" className="sr-only">
+            可编辑字段配置表格，包含字段名、字段类型、注释、可空与默认值等列。
+          </p>
           {freezeEnabled && frozenAreaWidth > 0 && (
             <div
               aria-hidden
@@ -706,6 +723,8 @@ export const DataTable = memo<DataTableProps>(
           <table
             className="w-full border-collapse text-sm"
             data-testid="data-table"
+            aria-label="字段配置表格"
+            aria-describedby="field-config-table-description"
           >
             <thead>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -807,7 +826,7 @@ export const DataTable = memo<DataTableProps>(
               })}
             </tbody>
           </table>
-        </div>
+        </section>
 
         {/* Delete confirmation dialog */}
         <AlertDialog

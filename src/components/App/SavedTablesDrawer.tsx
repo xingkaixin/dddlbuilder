@@ -404,12 +404,18 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
 
           <div className="flex-1 overflow-y-auto p-3">
             {isLoading && (
-              <div className="px-2 py-3 text-xs text-muted-foreground">
+              <output
+                aria-live="polite"
+                aria-busy="true"
+                className="px-2 py-3 text-xs text-muted-foreground"
+              >
                 正在读取保存的表...
-              </div>
+              </output>
             )}
             {!isLoading && error && (
-              <div className="px-2 py-3 text-xs text-destructive">{error}</div>
+              <div role="alert" className="px-2 py-3 text-xs text-destructive">
+                {error}
+              </div>
             )}
             {!isLoading && !error && items.length === 0 && (
               <div className="px-2 py-3 text-xs text-muted-foreground">
