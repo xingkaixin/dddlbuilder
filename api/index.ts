@@ -3,8 +3,32 @@ import { cors } from 'hono/cors';
 import { streamText } from 'hono/streaming';
 import OpenAI from 'openai';
 import { enforceOpenAIRateLimit, withOpenAIRetry } from './openaiControl';
+import type { DatabaseType } from '../src/types';
 
 const app = new Hono().basePath('/api');
+const SUPPORTED_DATABASE_TYPES = new Set<DatabaseType>([
+  'mysql',
+  'postgresql',
+  'postgresql-citus',
+  'sqlserver',
+  'oracle',
+  'mariadb',
+  'tidb',
+  'dm',
+  'oceanbase',
+  'oceanbase-oracle',
+  'kingbase',
+  'gbase',
+  'polardb',
+  'gaussdb',
+]);
+
+function isValidDatabaseType(value: unknown): value is DatabaseType {
+  return (
+    typeof value === 'string' &&
+    SUPPORTED_DATABASE_TYPES.has(value as DatabaseType)
+  );
+}
 
 // Enable CORS for local development
 app.use('/*', cors());
@@ -12,6 +36,34 @@ app.use('/*', cors());
 // Health check endpoint
 app.get('/health', (c) => {
   return c.json({ status: 'ok' });
+});
+
+// SQL Parse endpoint
+app.post('/parse-sql', async (c) => {
+  const { sql, dbType } = await c.req.json();
+
+  if (typeof sql !== 'string' || sql.trim().length === 0) {
+    return c.json({ error: 'SQL is required' }, 400);
+  }
+
+  if (!isValidDatabaseType(dbType)) {
+    return c.json({ error: 'Invalid database type' }, 400);
+  }
+
+  try {
+    const { SqlParser } = await import('../src/utils/SqlParser');
+    const parser = new SqlParser();
+    const result = await parser.parseAsync(sql, dbType);
+
+    return c.json({ result });
+  } catch (error) {
+    return c.json(
+      {
+        error: error instanceof Error ? error.message : 'SQL parse failed',
+      },
+      400,
+    );
+  }
 });
 
 // DDL Explain endpoint

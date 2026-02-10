@@ -10,8 +10,6 @@ import {
   FolderPlus,
   FolderInput,
 } from 'lucide-react';
-import { DiMysql, DiMsqlServer } from 'react-icons/di';
-import { SiPostgresql, SiOracle, SiMariadbfoundation } from 'react-icons/si';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import type { FolderTreeNode } from '@/hooks/useFolders';
+import { DATABASE_OPTIONS } from '@/utils/constants';
 import { FolderTree, useFolderExpansion } from './FolderTree';
 
 interface SavedTablesDrawerProps {
@@ -53,30 +52,16 @@ const formatDate = (timestamp: number) =>
     day: '2-digit',
   });
 
+const DB_ICON_MAP = Object.fromEntries(
+  DATABASE_OPTIONS.map((option) => [option.value, option.icon]),
+) as Record<string, React.ComponentType<{ className?: string }>>;
+
 // 数据库图标映射
 const DbIcon = memo<{ dbType: string; className?: string }>(
   ({ dbType, className }) => {
     const iconClass = cn('h-3.5 w-3.5', className);
-
-    switch (dbType) {
-      case 'mysql':
-      case 'tidb':
-      case 'dm':
-      case 'oceanbase':
-        return <DiMysql className={iconClass} />;
-      case 'postgresql':
-      case 'postgresql-citus':
-        return <SiPostgresql className={iconClass} />;
-      case 'sqlserver':
-        return <DiMsqlServer className={iconClass} />;
-      case 'oracle':
-      case 'oceanbase-oracle':
-        return <SiOracle className={iconClass} />;
-      case 'mariadb':
-        return <SiMariadbfoundation className={iconClass} />;
-      default:
-        return <Database className={iconClass} />;
-    }
+    const Icon = DB_ICON_MAP[dbType] ?? Database;
+    return <Icon className={iconClass} />;
   },
 );
 DbIcon.displayName = 'DbIcon';

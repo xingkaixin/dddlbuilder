@@ -137,6 +137,10 @@ type ParserInstance = {
 };
 
 type ParserConstructor = new () => ParserInstance;
+type ParserModule = {
+  Parser?: unknown;
+  default?: unknown;
+};
 
 export class SqlParser {
   private static parserConstructorPromise: Promise<ParserConstructor> | null =
@@ -147,10 +151,35 @@ export class SqlParser {
     this.parser = parser ?? null;
   }
 
+  private static normalizeParserConstructor(module: ParserModule) {
+    const parserFromNamed = module.Parser;
+    if (typeof parserFromNamed === 'function') {
+      return parserFromNamed as ParserConstructor;
+    }
+
+    if (
+      module.default &&
+      typeof module.default === 'object' &&
+      'Parser' in module.default
+    ) {
+      const parserFromDefaultObject = (module.default as { Parser?: unknown })
+        .Parser;
+      if (typeof parserFromDefaultObject === 'function') {
+        return parserFromDefaultObject as ParserConstructor;
+      }
+    }
+
+    if (typeof module.default === 'function') {
+      return module.default as ParserConstructor;
+    }
+
+    throw new Error('node-sql-parser 模块加载失败：Parser 构造器不可用');
+  }
+
   private static loadParserConstructor(): Promise<ParserConstructor> {
     if (!this.parserConstructorPromise) {
-      this.parserConstructorPromise = import('node-sql-parser').then(
-        (module) => module.Parser as ParserConstructor,
+      this.parserConstructorPromise = import('node-sql-parser').then((module) =>
+        this.normalizeParserConstructor(module),
       );
     }
     return this.parserConstructorPromise;

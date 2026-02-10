@@ -76,7 +76,10 @@ export default defineConfig({
           ) {
             return 'vendor-code-highlight';
           }
-          if (includesAny(['@radix-ui/'])) return 'vendor-radix';
+          const radixPackageMatch = id.match(/@radix-ui\/react-[^/]+/);
+          if (radixPackageMatch) {
+            return `vendor-${radixPackageMatch[0].replace('@radix-ui/', 'radix-')}`;
+          }
           if (includesAny(['@vercel/analytics'])) return 'vendor-analytics';
           if (includesAny(['/react/', '/react-dom/', 'scheduler'])) {
             return 'vendor-react';
