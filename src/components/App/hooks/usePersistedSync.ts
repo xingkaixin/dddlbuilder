@@ -1,5 +1,8 @@
 import { useEffect } from 'react';
 import type { PersistedState } from '@/types';
+import { useDebouncedEffect } from '@/hooks/useDebouncedEffect';
+
+const PERSIST_DEBOUNCE_MS = 500;
 
 interface UsePersistedSyncParams {
   hydrated: boolean;
@@ -89,13 +92,17 @@ export function usePersistedSync({
     defaultFieldTableFreezeColumns,
   ]);
 
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      const payload = buildPersistedState();
-      saveState(payload);
-    } catch {
-      // ignore quota errors
-    }
-  }, [hydrated, buildPersistedState, saveState]);
+  useDebouncedEffect(
+    () => {
+      if (!hydrated) return;
+      try {
+        const payload = buildPersistedState();
+        saveState(payload);
+      } catch {
+        // ignore quota errors
+      }
+    },
+    [hydrated, buildPersistedState, saveState],
+    PERSIST_DEBOUNCE_MS,
+  );
 }
