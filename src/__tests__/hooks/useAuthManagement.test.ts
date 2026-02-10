@@ -1,8 +1,17 @@
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useAuthManagement } from '@/hooks';
+import { useAuthStore } from '@/stores';
+
+function resetAuthStore() {
+  useAuthStore.getState().resetAuthState();
+}
 
 describe('useAuthManagement', () => {
+  beforeEach(() => {
+    resetAuthStore();
+  });
+
   it('应该初始化为空状态', () => {
     const { result } = renderHook(() => useAuthManagement());
 
@@ -252,7 +261,7 @@ describe('useAuthManagement', () => {
     expect(result.current.authObjects).toEqual([longAuth]);
   });
 
-  it('应该能够重复添加相同的授权对象', () => {
+  it('应该忽略重复添加的授权对象', () => {
     const { result } = renderHook(() => useAuthManagement());
 
     const user = 'user1';
@@ -264,7 +273,7 @@ describe('useAuthManagement', () => {
       result.current.addAuthObject(user);
     });
 
-    expect(result.current.authObjects).toEqual([user, user, user]);
+    expect(result.current.authObjects).toEqual([user]);
   });
 
   it('应该在添加授权对象后清空输入', () => {

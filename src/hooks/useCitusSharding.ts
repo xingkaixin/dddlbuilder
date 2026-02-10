@@ -1,9 +1,10 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type {
   CitusTableMode,
   CitusShardingConfig,
   PersistedState,
 } from '@/types';
+import { useShardingStore } from '@/stores';
 
 export interface UseCitusShardingReturn {
   citusShardingConfig: CitusShardingConfig;
@@ -15,46 +16,29 @@ export interface UseCitusShardingReturn {
   resetCitusSharding: () => void;
 }
 
-const DEFAULT_CONFIG: CitusShardingConfig = {
-  mode: 'reference',
-  distributionColumn: undefined,
-};
-
 export function useCitusSharding(
   persistedState?: Pick<PersistedState, 'citusShardingConfig'>,
 ): UseCitusShardingReturn {
-  const [citusShardingConfig, setCitusShardingConfig] =
-    useState<CitusShardingConfig>(DEFAULT_CONFIG);
-  const [initialized, setInitialized] = useState(false);
+  const citusShardingConfig = useShardingStore(
+    (state) => state.citusShardingConfig,
+  );
+  const setCitusMode = useShardingStore((state) => state.setCitusMode);
+  const setDistributionColumn = useShardingStore(
+    (state) => state.setDistributionColumn,
+  );
+  const setCitusShardingConfig = useShardingStore(
+    (state) => state.setCitusShardingConfig,
+  );
+  const resetCitusSharding = useShardingStore(
+    (state) => state.resetCitusSharding,
+  );
+  const initializedRef = useRef(false);
 
-  // Restore from persisted state
   useEffect(() => {
-    if (persistedState?.citusShardingConfig && !initialized) {
-      setCitusShardingConfig(persistedState.citusShardingConfig);
-      setInitialized(true);
-    }
-  }, [persistedState, initialized]);
-
-  const setCitusMode = useCallback((mode: CitusTableMode) => {
-    setCitusShardingConfig((prev) => ({
-      ...prev,
-      mode,
-      // 切换为副本表时清空分片字段
-      distributionColumn:
-        mode === 'reference' ? undefined : prev.distributionColumn,
-    }));
-  }, []);
-
-  const setDistributionColumn = useCallback((column: string | undefined) => {
-    setCitusShardingConfig((prev) => ({
-      ...prev,
-      distributionColumn: column,
-    }));
-  }, []);
-
-  const resetCitusSharding = useCallback(() => {
-    setCitusShardingConfig(DEFAULT_CONFIG);
-  }, []);
+    if (!persistedState?.citusShardingConfig || initializedRef.current) return;
+    setCitusShardingConfig(persistedState.citusShardingConfig);
+    initializedRef.current = true;
+  }, [persistedState, setCitusShardingConfig]);
 
   return {
     citusShardingConfig,
