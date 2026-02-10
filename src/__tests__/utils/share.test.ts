@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { compressToEncodedURIComponent } from 'lz-string';
 import { compressState, decompressState } from '@/utils/share';
 import type { PersistedState } from '@/types';
 
@@ -103,5 +104,49 @@ describe('share utils', () => {
 
   it('decompressState 遇到非法输入时返回 null', () => {
     expect(decompressState('invalid-payload')).toBeNull();
+  });
+
+  it('decompressState 应拒绝超长压缩参数', () => {
+    const oversized = 'a'.repeat(20_001);
+    expect(decompressState(oversized)).toBeNull();
+  });
+
+  it('decompressState 应拒绝非法 dbType', () => {
+    const payload = compressToEncodedURIComponent(
+      JSON.stringify({
+        tn: 't1',
+        dt: 'unknown',
+        r: [{ n: 'id', t: 'int' }],
+      }),
+    );
+
+    expect(decompressState(payload)).toBeNull();
+  });
+
+  it('decompressState 应拒绝超过上限的字段数量', () => {
+    const payload = compressToEncodedURIComponent(
+      JSON.stringify({
+        tn: 't1',
+        dt: 'mysql',
+        r: Array.from({ length: 501 }).map((_, i) => ({
+          n: `f_${i}`,
+          t: 'int',
+        })),
+      }),
+    );
+
+    expect(decompressState(payload)).toBeNull();
+  });
+
+  it('decompressState 应拒绝包含额外字段的结构', () => {
+    const payload = compressToEncodedURIComponent(
+      JSON.stringify({
+        tn: 't1',
+        dt: 'mysql',
+        r: [{ n: 'id', t: 'int', extra: true }],
+      }),
+    );
+
+    expect(decompressState(payload)).toBeNull();
   });
 });

@@ -48,34 +48,46 @@ export function usePersistedState(): UsePersistedStateReturn {
 
   // restore from localStorage or URL once on mount
   useEffect(() => {
+    const hydrateWithState = (state: Partial<PersistedState> | null) => {
+      setPersistedState(state);
+      setHydrated(true);
+      hydratedRef.current = true;
+    };
+
+    const clearShareParamFromUrl = () => {
+      const url = new URL(window.location.href);
+      if (!url.searchParams.has('s')) return;
+      url.searchParams.delete('s');
+      const query = url.searchParams.toString();
+      const nextUrl = `${url.pathname}${query ? `?${query}` : ''}${url.hash}`;
+      window.history.replaceState({}, '', nextUrl);
+    };
+
     // Check for URL parameter first
     const params = new URLSearchParams(window.location.search);
     const shareParam = params.get('s');
 
     if (shareParam) {
-      import('@/utils/share').then(({ decompressState }) => {
-        const sharedState = decompressState(shareParam);
-        if (sharedState) {
-          setPersistedState(sharedState);
-          setHydrated(true);
-          hydratedRef.current = true;
-          // Save to localStorage so it persists
-          saveState(sharedState);
-          // Clean up URL
-          window.history.replaceState({}, '', window.location.pathname);
-          return;
-        }
-        // If decompression fails, fall back to localStorage
-        const data = restoreState();
-        setPersistedState(data);
-        setHydrated(true);
-        hydratedRef.current = true;
-      });
+      import('@/utils/share')
+        .then(({ decompressState }) => {
+          const sharedState = decompressState(shareParam);
+          if (sharedState) {
+            hydrateWithState(sharedState);
+            // Save to localStorage so it persists
+            saveState(sharedState);
+            return;
+          }
+          // If decompression fails, fall back to localStorage
+          hydrateWithState(restoreState());
+        })
+        .catch(() => {
+          hydrateWithState(restoreState());
+        })
+        .finally(() => {
+          clearShareParamFromUrl();
+        });
     } else {
-      const data = restoreState();
-      setPersistedState(data);
-      setHydrated(true);
-      hydratedRef.current = true;
+      hydrateWithState(restoreState());
     }
   }, [restoreState, saveState]);
 

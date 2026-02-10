@@ -58,6 +58,9 @@ interface PreviewField {
   defaultValue: string;
 }
 
+const MAX_SQL_LENGTH = 50_000;
+const SQL_PARSE_ERROR_MESSAGE = 'SQL 解析失败，请检查 SQL 语法后重试。';
+
 export function ImportSqlDialog({
   currentDbType,
   onImport,
@@ -88,10 +91,20 @@ export function ImportSqlDialog({
   }, [open]);
 
   const validateSql = useCallback(async () => {
-    if (!sql.trim()) {
+    const trimmedSql = sql.trim();
+    if (!trimmedSql) {
       setValidationResult({
         success: false,
         error: 'SQL 内容不能为空',
+        lineNumber: 1,
+      });
+      return;
+    }
+
+    if (trimmedSql.length > MAX_SQL_LENGTH) {
+      setValidationResult({
+        success: false,
+        error: `SQL 内容过长，最大允许 ${MAX_SQL_LENGTH.toLocaleString()} 个字符`,
         lineNumber: 1,
       });
       return;
@@ -102,7 +115,7 @@ export function ImportSqlDialog({
 
     try {
       const result = await requestSqlParse({
-        sql,
+        sql: trimmedSql,
         dbType: selectedDbType,
       });
 
@@ -138,10 +151,10 @@ export function ImportSqlDialog({
       }));
       setPreviewFields(fields);
       setStep('preview');
-    } catch (error: any) {
+    } catch {
       setValidationResult({
         success: false,
-        error: error.message || '解析失败，请检查 SQL 语法。',
+        error: SQL_PARSE_ERROR_MESSAGE,
       });
     } finally {
       setIsValidating(false);

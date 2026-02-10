@@ -1,7 +1,7 @@
 ---
 created: "2026-02-08"
 updated: "2026-02-09"
-status: "ready"
+status: "Almost Complete"
 ---
 
 
@@ -180,7 +180,7 @@ const hugeState = {
 
 ---
 
-#### 漏洞 #2: localStorage明文存储敏感数据
+#### 漏洞 #2: localStorage明文存储敏感数据 -> 忽略
 
 **类型**: 敏感数据泄露
 **位置**: `/src/hooks/usePersistedState.ts:18-47`
@@ -328,7 +328,7 @@ const restoreState = useCallback(() => {
 
 ### P1 (High) - 潜在安全问题
 
-#### 漏洞 #3: 未验证的JSON.parse调用
+#### 漏洞 #3: 未验证的JSON.parse调用 -> 忽略
 
 **类型**: 原型污染 / JSON注入
 **位置**:
@@ -531,7 +531,7 @@ const validateSql = useCallback(async () => {
 
 ---
 
-#### 漏洞 #5: API端点缺少速率限制和身份验证
+#### 漏洞 #5: API端点缺少速率限制和身份验证 -> 已添加限流，网站目前缺少身份验证，暂时无法处理，可以通过CORS策略来避免被其他网站滥用
 
 **类型**: API滥用 / DoS
 **位置**: `/api/index.ts`
@@ -627,7 +627,7 @@ app.post('/review', async (c) => {
 
 ### P2 (Medium) - 需要关注的问题
 
-#### 漏洞 #6: 依赖项已知漏洞
+#### 漏洞 #6: 依赖项已知漏洞 -> 上游未更新
 
 **类型**: 依赖漏洞
 **位置**: `package.json`
@@ -719,7 +719,7 @@ export default defineConfig({
 
 ---
 
-#### 漏洞 #8: AI响应未进行深度验证
+#### 漏洞 #8: AI响应未进行深度验证 -> 忽略
 
 **类型**: AI注入 / 提示注入
 **位置**: `/api/index.ts:116-174,299-333`
