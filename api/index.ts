@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { cors } from 'hono/cors';
 import { streamText } from 'hono/streaming';
 import OpenAI from 'openai';
@@ -6,6 +6,98 @@ import { enforceOpenAIRateLimit, withOpenAIRetry } from './openaiControl';
 import type { DatabaseType } from '../src/types';
 
 const app = new Hono().basePath('/api');
+const MAX_SQL_LENGTH = 50_000;
+const MAX_PARSE_SQL_BODY_BYTES = 131_072;
+const DEFAULT_ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+];
+
+type ApiErrorCode =
+  | 'PAYLOAD_TOO_LARGE'
+  | 'INVALID_JSON'
+  | 'SQL_REQUIRED'
+  | 'SQL_TOO_LONG'
+  | 'INVALID_DATABASE_TYPE'
+  | 'SQL_PARSE_FAILED'
+  | 'OPENAI_API_KEY_MISSING'
+  | 'EXPLAIN_FAILED'
+  | 'REVIEW_FAILED'
+  | 'GENERATION_FAILED'
+  | 'DESCRIPTION_REQUIRED'
+  | 'DDL_REQUIRED';
+
+const parseAllowedOrigins = () => {
+  const raw = process.env.CORS_ALLOWED_ORIGINS?.trim();
+  if (!raw) return DEFAULT_ALLOWED_ORIGINS;
+  const items = raw
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return items.length > 0 ? items : DEFAULT_ALLOWED_ORIGINS;
+};
+
+const ALLOWED_CORS_ORIGINS = parseAllowedOrigins();
+
+const errorResponse = (
+  c: Context,
+  status: number,
+  error: string,
+  code?: ApiErrorCode,
+) => c.json(code ? { error, code } : { error }, status);
+
+const streamErrorPayload = (error: string, code?: ApiErrorCode) =>
+  JSON.stringify(code ? { error, code } : { error });
+
+const parseJsonBodyWithLimit = async <T>(
+  c: Context,
+  maxBytes: number,
+): Promise<{ data: T | null; errorResponse: Response | null }> => {
+  const contentLength = Number(c.req.header('content-length'));
+  if (!Number.isNaN(contentLength) && contentLength > maxBytes) {
+    return {
+      data: null,
+      errorResponse: errorResponse(
+        c,
+        413,
+        `Payload too large, maximum ${maxBytes} bytes`,
+        'PAYLOAD_TOO_LARGE',
+      ),
+    };
+  }
+
+  let raw = '';
+  try {
+    raw = await c.req.text();
+  } catch {
+    return {
+      data: null,
+      errorResponse: errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON'),
+    };
+  }
+
+  if (new TextEncoder().encode(raw).length > maxBytes) {
+    return {
+      data: null,
+      errorResponse: errorResponse(
+        c,
+        413,
+        `Payload too large, maximum ${maxBytes} bytes`,
+        'PAYLOAD_TOO_LARGE',
+      ),
+    };
+  }
+
+  try {
+    return { data: JSON.parse(raw) as T, errorResponse: null };
+  } catch {
+    return {
+      data: null,
+      errorResponse: errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON'),
+    };
+  }
+};
+
 const SUPPORTED_DATABASE_TYPES = new Set<DatabaseType>([
   'mysql',
   'postgresql',
@@ -30,8 +122,14 @@ function isValidDatabaseType(value: unknown): value is DatabaseType {
   );
 }
 
-// Enable CORS for local development
-app.use('/*', cors());
+app.use(
+  '/*',
+  cors({
+    origin: ALLOWED_CORS_ORIGINS,
+    allowMethods: ['GET', 'POST', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+  }),
+);
 
 // Health check endpoint
 app.get('/health', (c) => {
@@ -40,14 +138,35 @@ app.get('/health', (c) => {
 
 // SQL Parse endpoint
 app.post('/parse-sql', async (c) => {
-  const { sql, dbType } = await c.req.json();
+  const parsed = await parseJsonBodyWithLimit<{
+    sql: unknown;
+    dbType: unknown;
+  }>(c, MAX_PARSE_SQL_BODY_BYTES);
+  if (parsed.errorResponse) return parsed.errorResponse;
+
+  const body = parsed.data || {};
+  const { sql, dbType } = body;
 
   if (typeof sql !== 'string' || sql.trim().length === 0) {
-    return c.json({ error: 'SQL is required' }, 400);
+    return errorResponse(c, 400, 'SQL is required', 'SQL_REQUIRED');
+  }
+
+  if (sql.length > MAX_SQL_LENGTH) {
+    return errorResponse(
+      c,
+      400,
+      `SQL too long, maximum ${MAX_SQL_LENGTH} characters`,
+      'SQL_TOO_LONG',
+    );
   }
 
   if (!isValidDatabaseType(dbType)) {
-    return c.json({ error: 'Invalid database type' }, 400);
+    return errorResponse(
+      c,
+      400,
+      'Invalid database type',
+      'INVALID_DATABASE_TYPE',
+    );
   }
 
   try {
@@ -57,12 +176,8 @@ app.post('/parse-sql', async (c) => {
 
     return c.json({ result });
   } catch (error) {
-    return c.json(
-      {
-        error: error instanceof Error ? error.message : 'SQL parse failed',
-      },
-      400,
-    );
+    console.error('[ParseSQL] Failed to parse SQL:', error);
+    return errorResponse(c, 400, 'SQL parse failed', 'SQL_PARSE_FAILED');
   }
 });
 
@@ -78,7 +193,7 @@ app.post('/explain', async (c) => {
   });
 
   if (!sql || sql.trim().length === 0) {
-    return c.json({ error: 'SQL is required' }, 400);
+    return errorResponse(c, 400, 'SQL is required', 'SQL_REQUIRED');
   }
 
   const baseURL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
@@ -86,7 +201,12 @@ app.post('/explain', async (c) => {
   const model = process.env.OPENAI_MODEL_NAME || 'gpt-4o-mini';
 
   if (!apiKey) {
-    return c.json({ error: 'OpenAI API key not configured' }, 500);
+    return errorResponse(
+      c,
+      500,
+      'OpenAI API key not configured',
+      'OPENAI_API_KEY_MISSING',
+    );
   }
 
   const openai = new OpenAI({
@@ -133,9 +253,7 @@ ${context ? `上下文相关 SQL：\n${context}` : ''}`;
     } catch (error) {
       console.error('[Explain] Streaming error:', error);
       await stream.write(
-        JSON.stringify({
-          error: error instanceof Error ? error.message : 'Explain failed',
-        }),
+        streamErrorPayload('Explain failed', 'EXPLAIN_FAILED'),
       );
     }
   });
@@ -154,7 +272,7 @@ app.post('/review', async (c) => {
   });
 
   if (!ddl || ddl.trim().length === 0) {
-    return c.json({ error: 'DDL is required' }, 400);
+    return errorResponse(c, 400, 'DDL is required', 'DDL_REQUIRED');
   }
 
   const baseURL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
@@ -168,7 +286,12 @@ app.post('/review', async (c) => {
   });
 
   if (!apiKey) {
-    return c.json({ error: 'OpenAI API key not configured' }, 500);
+    return errorResponse(
+      c,
+      500,
+      'OpenAI API key not configured',
+      'OPENAI_API_KEY_MISSING',
+    );
   }
 
   const openai = new OpenAI({
@@ -307,11 +430,7 @@ ${ddl}
         console.error('[Review] Error message:', error.message);
         console.error('[Review] Error stack:', error.stack);
       }
-      await stream.write(
-        JSON.stringify({
-          error: error instanceof Error ? error.message : 'Review failed',
-        }),
-      );
+      await stream.write(streamErrorPayload('Review failed', 'REVIEW_FAILED'));
     }
   });
 });
@@ -338,7 +457,12 @@ app.post('/generate-table', async (c) => {
   });
 
   if (!description || description.trim().length === 0) {
-    return c.json({ error: 'Description is required' }, 400);
+    return errorResponse(
+      c,
+      400,
+      'Description is required',
+      'DESCRIPTION_REQUIRED',
+    );
   }
 
   const baseURL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
@@ -346,7 +470,12 @@ app.post('/generate-table', async (c) => {
   const model = process.env.OPENAI_MODEL_NAME || 'gpt-4o-mini';
 
   if (!apiKey) {
-    return c.json({ error: 'OpenAI API key not configured' }, 500);
+    return errorResponse(
+      c,
+      500,
+      'OpenAI API key not configured',
+      'OPENAI_API_KEY_MISSING',
+    );
   }
 
   const openai = new OpenAI({
@@ -457,9 +586,7 @@ ${existingContext}
     } catch (error) {
       console.error('[GenerateTable] Streaming error:', error);
       await stream.write(
-        JSON.stringify({
-          error: error instanceof Error ? error.message : 'Generation failed',
-        }),
+        streamErrorPayload('Generation failed', 'GENERATION_FAILED'),
       );
     }
   });

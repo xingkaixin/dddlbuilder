@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { usePersistedState } from '@/hooks';
 import { STORAGE_KEY } from '@/utils/constants';
+import { decompressState } from '@/utils/share';
 
 // Mock localStorage
 const localStorageMock = (() => {
@@ -34,10 +35,14 @@ vi.mock('@/utils/share', () => ({
   decompressState: vi.fn(),
 }));
 
+const mockedDecompressState = vi.mocked(decompressState);
+
 describe('usePersistedState', () => {
   beforeEach(() => {
     localStorageMock.clear();
     vi.clearAllMocks();
+    mockedDecompressState.mockReturnValue(null);
+    window.history.replaceState({}, '', '/');
   });
 
   afterEach(() => {
@@ -118,7 +123,7 @@ describe('usePersistedState', () => {
 
   it('应该处理 localStorage 访问错误', () => {
     // Mock localStorage 抛出错误
-    localStorageMock.getItem.mockImplementation(() => {
+    localStorageMock.getItem.mockImplementationOnce(() => {
       throw new Error('localStorage access denied');
     });
 
@@ -246,5 +251,38 @@ describe('usePersistedState', () => {
 
     expect(result.current.persistedState).toBe(null);
     expect(localStorageMock.removeItem).toHaveBeenCalledWith(STORAGE_KEY);
+  });
+
+  it('当分享参数解析成功时应清理 URL 参数', async () => {
+    const sharedState = { tableName: 'from_share' };
+    mockedDecompressState.mockReturnValue(sharedState as any);
+    window.history.pushState({}, '', '/?s=shared-payload');
+    const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+
+    const { result } = renderHook(() => usePersistedState());
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+      expect(result.current.persistedState).toEqual(sharedState);
+    });
+
+    expect(replaceStateSpy).toHaveBeenCalledWith({}, '', '/');
+  });
+
+  it('当分享参数解析失败时应回退 localStorage 并清理 URL 参数', async () => {
+    const savedState = { restored: 'from_local_storage' };
+    localStorageMock.setItem(STORAGE_KEY, JSON.stringify(savedState));
+    mockedDecompressState.mockReturnValue(null);
+    window.history.pushState({}, '', '/?s=broken-payload');
+    const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+
+    const { result } = renderHook(() => usePersistedState());
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+      expect(result.current.persistedState).toEqual(savedState);
+    });
+
+    expect(replaceStateSpy).toHaveBeenCalledWith({}, '', '/');
   });
 });

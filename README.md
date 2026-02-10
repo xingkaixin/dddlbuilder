@@ -37,6 +37,15 @@ bun run dev
 bun run build
 ```
 
+### 环境变量
+
+可通过 `.env` 配置后端行为（示例见 `.env.sample`）：
+
+- `OPENAI_BASE_URL`：OpenAI 兼容接口地址
+- `OPENAI_API_KEY`：模型服务密钥
+- `OPENAI_MODEL_NAME`：默认模型名
+- `CORS_ALLOWED_ORIGINS`：允许跨域来源，多个来源用逗号分隔
+
 ## 使用说明
 
 1. 填写表名与表中文名，选择数据库类型；或点击右上角“导入 SQL”按钮，粘贴已有 DDL 语句进行快速导入。
