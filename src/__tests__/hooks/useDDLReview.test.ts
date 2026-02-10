@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useDDLReview } from '@/hooks/useDDLReview';
 import { flushPromises } from '@/__tests__/utils/test-utils';
+import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
 const createStream = (chunks: string[]) => {
   const encoder = new TextEncoder();
@@ -15,6 +16,11 @@ const createStream = (chunks: string[]) => {
   });
 };
 
+function renderDDLReviewHook() {
+  const { wrapper } = createQueryClientWrapper();
+  return renderHook(() => useDDLReview(), { wrapper });
+}
+
 describe('useDDLReview', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -25,7 +31,7 @@ describe('useDDLReview', () => {
   });
 
   it('should return error when ddl is empty', async () => {
-    const { result } = renderHook(() => useDDLReview());
+    const { result } = renderDDLReviewHook();
 
     await act(async () => {
       await result.current.startReview('', '', 'mysql');
@@ -35,7 +41,7 @@ describe('useDDLReview', () => {
   });
 
   it('should handle streaming review response', async () => {
-    const { result } = renderHook(() => useDDLReview());
+    const { result } = renderDDLReviewHook();
 
     const stream = createStream([
       '{"score": 8,',
@@ -69,7 +75,7 @@ describe('useDDLReview', () => {
       json: vi.fn().mockResolvedValue({ error: 'boom' }),
     } as unknown as Response);
 
-    const { result } = renderHook(() => useDDLReview());
+    const { result } = renderDDLReviewHook();
 
     await act(async () => {
       await result.current.startReview('ddl', 'table', 'mysql');
@@ -81,7 +87,7 @@ describe('useDDLReview', () => {
   });
 
   it('should handle streaming with partialResult during loading', async () => {
-    const { result } = renderHook(() => useDDLReview());
+    const { result } = renderDDLReviewHook();
 
     const encoder = new TextEncoder();
     let controllerRef: ReadableStreamDefaultController | null = null;
@@ -142,7 +148,7 @@ describe('useDDLReview', () => {
   });
 
   it('should handle request cancellation via clearReview', async () => {
-    const { result } = renderHook(() => useDDLReview());
+    const { result } = renderDDLReviewHook();
 
     // Start a review
     act(() => {
@@ -164,7 +170,7 @@ describe('useDDLReview', () => {
   });
 
   it('should handle response parsing error', async () => {
-    const { result } = renderHook(() => useDDLReview());
+    const { result } = renderDDLReviewHook();
 
     const stream = createStream(['invalid json response']);
 
@@ -185,7 +191,7 @@ describe('useDDLReview', () => {
   });
 
   it('should handle empty response body', async () => {
-    const { result } = renderHook(() => useDDLReview());
+    const { result } = renderDDLReviewHook();
 
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
@@ -204,7 +210,7 @@ describe('useDDLReview', () => {
   });
 
   it('should handle network error', async () => {
-    const { result } = renderHook(() => useDDLReview());
+    const { result } = renderDDLReviewHook();
 
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Network error'));
 
@@ -218,7 +224,7 @@ describe('useDDLReview', () => {
   });
 
   it('should handle abort error silently', async () => {
-    const { result } = renderHook(() => useDDLReview());
+    const { result } = renderDDLReviewHook();
 
     const abortError = new Error('AbortError');
     abortError.name = 'AbortError';
@@ -235,7 +241,7 @@ describe('useDDLReview', () => {
   });
 
   it('should abort previous request when starting new review', async () => {
-    const { result } = renderHook(() => useDDLReview());
+    const { result } = renderDDLReviewHook();
 
     // Start first review
     act(() => {
@@ -256,7 +262,7 @@ describe('useDDLReview', () => {
   });
 
   it('should handle performance_warning type suggestions', async () => {
-    const { result } = renderHook(() => useDDLReview());
+    const { result } = renderDDLReviewHook();
 
     const mockResponse = JSON.stringify({
       score: 6,
@@ -304,5 +310,33 @@ describe('useDDLReview', () => {
     const suggestion2 = result.current.result?.suggestions[1] as any;
     expect(suggestion2.type).toBe('performance_warning');
     expect(suggestion2.severity).toBe('error');
+  });
+
+  it('should reuse cached result for same request params', async () => {
+    const { result } = renderDDLReviewHook();
+
+    const stream = createStream([
+      '{"score": 9, "summary": "cached", "suggestions": []}',
+    ]);
+
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: stream,
+      json: vi.fn(),
+    } as unknown as Response);
+
+    await act(async () => {
+      await result.current.startReview('ddl', 'table', 'mysql');
+      await flushPromises();
+    });
+
+    await act(async () => {
+      await result.current.startReview('ddl', 'table', 'mysql');
+      await flushPromises();
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.current.result?.summary).toBe('cached');
   });
 });

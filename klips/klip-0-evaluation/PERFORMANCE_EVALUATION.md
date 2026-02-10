@@ -1,7 +1,7 @@
 ---
 created: "2026-02-08"
 updated: "2026-02-09"
-status: "ready"
+status: "Almost Complete"
 ---
 
 
@@ -384,7 +384,7 @@ DDLBuilder是一个功能丰富的DDL生成工具,当前版本在核心功能上
 
 ### P3 (Low)
 
-#### P3-1: 图片和资源优化
+#### P3-1: 图片和资源优化 -> 咩有图片
 - **位置**: 全局
 - **影响**: 图片资源未优化
 - **优化方案**:
@@ -441,7 +441,7 @@ DDLBuilder是一个功能丰富的DDL生成工具,当前版本在核心功能上
 
 ---
 
-## 2. 性能基线数据
+## 2. 性能基线数据 -> 已经调整，可重新检查
 
 ### Bundle大小分析
 
@@ -500,7 +500,7 @@ DDLBuilder是一个功能丰富的DDL生成工具,当前版本在核心功能上
 
 ### 短期优化 (1-2周) - P0问题
 
-#### 1. 实施SQL Parser动态导入 (P0-2)
+#### 1. 实施SQL Parser动态导入 (P0-2) 0> 已切换到后端API
 **优先级**: 🔴 Critical
 **工作量**: 3-5天
 **预期收益**:
@@ -643,7 +643,7 @@ function TableConfig() {
 }
 ```
 
-#### 3. Handsontable性能优化 (P1-3)
+#### 3. Handsontable性能优化 (P1-3) -> 已替换为  Tanstack Table
 **优先级**: 🟡 High
 **工作量**: 3-5天
 **预期收益**:
@@ -803,7 +803,7 @@ function TableConfig() {
 ## 7. 建议的技术选型
 
 ### 状态管理库
-**推荐**: Zustand
+**推荐**: Zustand -> 是的，我们目前已经在逐步迁移了
 
 **理由**:
 - ✅ 轻量级 (3KB gzip)
@@ -819,14 +819,14 @@ function TableConfig() {
 - Recoil: Facebook维护,但体积较大
 
 ### 性能监控
-**推荐**: Web Vitals + Vercel Analytics
+**推荐**: Web Vitals + Vercel Analytics -> 暂时不处理
 
 **理由**:
 - ✅ 项目已使用Vercel Analytics
 - ✅ Web Vitals是业界标准
 - ✅ 简单易集成
 
-### AI请求缓存
+### AI请求缓存 -> 十分需要
 **推荐**: @tanstack/react-query
 
 **理由**:
@@ -842,9 +842,9 @@ function TableConfig() {
 ### 关键发现
 1. ✅ 项目整体架构合理,子组件已使用React.memo优化
 2. ❌ 主App组件过于复杂,需要重构
-3. ❌ node-sql-parser是最大的性能瓶颈
+3. ❌ node-sql-parser是最大的性能瓶颈 -> 已迁移至后端api处理
 4. ⚠️ localStorage保存频率过高
-5. ⚠️ Handsontable在大数据量时性能不足
+5. ⚠️ Handsontable在大数据量时性能不足 -> 已替换为Tanstack Table，且实际情况不会有大数据量发生
 
 ### 优先级建议
 1. **立即执行** (Week 1-2):

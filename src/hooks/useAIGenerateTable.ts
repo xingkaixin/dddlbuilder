@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   requestGenerateTable,
   type GenerateTableRequestOptions,
@@ -9,6 +10,7 @@ import type {
   PartialTableSchema,
 } from '@/types/aiGenerate';
 import { parsePartialTableSchema } from '@/utils/parsePartialTableSchema';
+import { buildAIGenerateQueryKey } from '@/queryKeys/ai';
 
 export type {
   ConversationMessage,
@@ -29,6 +31,9 @@ interface GenerateTableOptions
   extends Omit<GenerateTableRequestOptions, 'conversationHistory'> {
   continueConversation?: boolean;
 }
+
+const AI_GENERATE_CACHE_STALE_TIME_MS = 5 * 60 * 1000;
+const AI_GENERATE_CACHE_GC_TIME_MS = 15 * 60 * 1000;
 
 function appendConversation(
   baseHistory: ConversationMessage[],
@@ -55,8 +60,12 @@ export function useAIGenerateTable() {
   const [conversationHistory, setConversationHistory] = useState<
     ConversationMessage[]
   >([]);
+  const queryClient = useQueryClient();
   const conversationHistoryRef = useRef<ConversationMessage[]>([]);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const activeRequestRef = useRef<{
+    key: string;
+    controller: AbortController;
+  } | null>(null);
   conversationHistoryRef.current = conversationHistory;
 
   const partialResult = useMemo<PartialTableSchema | null>(() => {
@@ -77,12 +86,36 @@ export function useAIGenerateTable() {
         return;
       }
 
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+      const baseConversation = options?.continueConversation
+        ? conversationHistoryRef.current
+        : [];
+      const normalizedDescription = description.trim();
+      const requestOptions = {
+        templates: options?.templates,
+        existingConfig: options?.existingConfig,
+        conversationHistory: baseConversation,
+      };
+      const queryKey = buildAIGenerateQueryKey({
+        description: normalizedDescription,
+        dbType,
+        templates: requestOptions.templates,
+        existingConfig: requestOptions.existingConfig,
+        conversationHistory: requestOptions.conversationHistory,
+      });
+      const requestKey = JSON.stringify(queryKey);
+
+      if (activeRequestRef.current) {
+        if (activeRequestRef.current.key === requestKey) {
+          return;
+        }
+        activeRequestRef.current.controller.abort();
       }
 
       const abortController = new AbortController();
-      abortControllerRef.current = abortController;
+      activeRequestRef.current = {
+        key: requestKey,
+        controller: abortController,
+      };
 
       setState({
         isLoading: true,
@@ -91,31 +124,29 @@ export function useAIGenerateTable() {
         error: null,
       });
 
-      const baseConversation = options?.continueConversation
-        ? conversationHistoryRef.current
-        : [];
-
       try {
-        const { fullText, result } = await requestGenerateTable(
-          {
-            description,
-            dbType,
-            options: {
-              templates: options?.templates,
-              existingConfig: options?.existingConfig,
-              conversationHistory: baseConversation,
-            },
-          },
-          {
-            signal: abortController.signal,
-            onStreamingText: (streamingText) => {
-              setState((prev) => ({
-                ...prev,
-                streamingText,
-              }));
-            },
-          },
-        );
+        const { fullText, result } = await queryClient.fetchQuery({
+          queryKey,
+          staleTime: AI_GENERATE_CACHE_STALE_TIME_MS,
+          gcTime: AI_GENERATE_CACHE_GC_TIME_MS,
+          queryFn: () =>
+            requestGenerateTable(
+              {
+                description: normalizedDescription,
+                dbType,
+                options: requestOptions,
+              },
+              {
+                signal: abortController.signal,
+                onStreamingText: (streamingText) => {
+                  setState((prev) => ({
+                    ...prev,
+                    streamingText,
+                  }));
+                },
+              },
+            ),
+        });
 
         setState({
           isLoading: false,
@@ -125,7 +156,7 @@ export function useAIGenerateTable() {
         });
 
         setConversationHistory(() =>
-          appendConversation(baseConversation, description, fullText),
+          appendConversation(baseConversation, normalizedDescription, fullText),
         );
       } catch (err) {
         if ((err as Error).name === 'AbortError') {
@@ -138,12 +169,12 @@ export function useAIGenerateTable() {
           error: (err as Error).message || 'Generation failed',
         });
       } finally {
-        if (abortControllerRef.current === abortController) {
-          abortControllerRef.current = null;
+        if (activeRequestRef.current?.controller === abortController) {
+          activeRequestRef.current = null;
         }
       }
     },
-    [],
+    [queryClient],
   );
 
   const clearResult = useCallback(() => {
@@ -160,9 +191,9 @@ export function useAIGenerateTable() {
   }, []);
 
   const cancelGeneration = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
+    if (activeRequestRef.current) {
+      activeRequestRef.current.controller.abort();
+      activeRequestRef.current = null;
       setState((prev) => ({
         ...prev,
         isLoading: false,
