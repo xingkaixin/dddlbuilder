@@ -462,6 +462,20 @@ export const DataTable = memo<DataTableProps>(
       safeFreezeColumns,
       COLUMN_HEADERS.length,
     );
+    const freezeColumnKeys = useMemo(
+      () => [
+        'order',
+        'fieldName',
+        'fieldComment',
+        'fieldType',
+        'nullable',
+        'defaultKind',
+        'defaultValue',
+        'onUpdate',
+        'actions',
+      ],
+      [],
+    );
 
     const handleAddRowsClick = useCallback(() => {
       onAddRows(safeAddCount);
@@ -486,28 +500,28 @@ export const DataTable = memo<DataTableProps>(
     }, [highlightedRowIndex]);
 
     // Calculate sticky left positions for frozen columns
-    const getStickyLeft = useCallback(
+    const getColumnLeftOffset = useCallback(
       (colIndex: number): number => {
-        if (!freezeEnabled || colIndex >= effectiveFreezeColumns) return 0;
         let left = 0;
-        const colKeys = [
-          'order',
-          'fieldName',
-          'fieldComment',
-          'fieldType',
-          'nullable',
-          'defaultKind',
-          'defaultValue',
-          'onUpdate',
-          'actions',
-        ];
-        for (let i = 0; i < colIndex; i++) {
-          left += columnWidths[colKeys[i]] || 100;
+        for (let i = 0; i < Math.min(colIndex, freezeColumnKeys.length); i++) {
+          left += columnWidths[freezeColumnKeys[i]] || 100;
         }
         return left;
       },
-      [freezeEnabled, effectiveFreezeColumns, columnWidths],
+      [columnWidths, freezeColumnKeys],
     );
+
+    const getStickyLeft = useCallback(
+      (colIndex: number): number => {
+        if (!freezeEnabled || colIndex >= effectiveFreezeColumns) return 0;
+        return getColumnLeftOffset(colIndex);
+      },
+      [freezeEnabled, effectiveFreezeColumns, getColumnLeftOffset],
+    );
+    const frozenAreaWidth =
+      freezeEnabled && effectiveFreezeColumns > 0
+        ? getColumnLeftOffset(effectiveFreezeColumns)
+        : 0;
 
     // Handle paste from Excel/spreadsheet
     // Pastes at selected cell position, or appends to end if no selection
@@ -622,7 +636,7 @@ export const DataTable = memo<DataTableProps>(
               <div className="flex items-center gap-2 rounded-md px-3 py-1.5">
                 <Label
                   htmlFor="field-freeze-switch"
-                  className="text-sm text-muted-foreground"
+                  className="text-sm text-muted-foreground select-none"
                 >
                   冻结
                 </Label>
@@ -639,6 +653,8 @@ export const DataTable = memo<DataTableProps>(
                   step={1}
                   value={effectiveFreezeColumns}
                   disabled={!freezeEnabled}
+                  name="freeze-columns"
+                  aria-label="冻结列数"
                   onChange={(e) => {
                     const parsed = Math.floor(Number(e.target.value));
                     onFreezeColumnsChange(
@@ -661,6 +677,8 @@ export const DataTable = memo<DataTableProps>(
                   min={1}
                   step={1}
                   value={safeAddCount}
+                  name="add-row-count"
+                  aria-label="添加行数"
                   onChange={(e) => {
                     const parsed = Math.floor(Number(e.target.value));
                     onAddCountChange(
@@ -678,6 +696,13 @@ export const DataTable = memo<DataTableProps>(
         </div>
 
         <div ref={tableRef} className="relative overflow-x-auto p-4">
+          {freezeEnabled && frozenAreaWidth > 0 && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute bottom-4 left-4 top-4 z-10 rounded-l-md bg-gradient-to-r from-primary/[0.07] via-primary/[0.03] to-transparent transition-[width] duration-200"
+              style={{ width: frozenAreaWidth }}
+            />
+          )}
           <table
             className="w-full border-collapse text-sm"
             data-testid="data-table"
@@ -696,10 +721,10 @@ export const DataTable = memo<DataTableProps>(
                         className={cn(
                           'h-10 px-2 text-left text-sm font-medium text-muted-foreground',
                           isFrozen
-                            ? 'sticky z-30 bg-background'
+                            ? 'relative sticky z-30 bg-gradient-to-r from-background to-background/95 supports-[backdrop-filter]:bg-background/85 supports-[backdrop-filter]:backdrop-blur-[2px]'
                             : 'bg-muted/30',
                           isLastFrozen &&
-                            'border-r-2 border-primary/30 shadow-[4px_0_12px_-2px_rgba(0,0,0,0.2)]',
+                            'border-r border-primary/30 shadow-[8px_0_18px_-12px_hsl(var(--foreground)_/_0.22)] after:pointer-events-none after:absolute after:-right-3 after:top-0 after:h-full after:w-3 after:bg-gradient-to-r after:from-primary/20 after:to-transparent',
                         )}
                         style={{
                           width: header.getSize(),
@@ -720,58 +745,66 @@ export const DataTable = memo<DataTableProps>(
               ))}
             </thead>
             <tbody>
-              {table.getRowModel().rows.map((row) => (
-                <tr
-                  key={row.id}
-                  data-row-index={row.index}
-                  className={cn(
-                    'border-b border-border/30 transition-colors hover:bg-muted/30',
-                    highlightedRowIndex === row.index && 'bg-blue-500/10',
-                  )}
-                >
-                  {row.getVisibleCells().map((cell, colIndex) => {
-                    const isFrozen =
-                      freezeEnabled && colIndex < effectiveFreezeColumns;
-                    const isLastFrozen =
-                      freezeEnabled && colIndex === effectiveFreezeColumns - 1;
-                    const isSelected =
-                      selectedCell &&
-                      selectedCell.row === row.index &&
-                      selectedCell.col === colIndex - 1; // Adjust for order column
-                    return (
-                      <td
-                        key={cell.id}
-                        data-row-index={row.index}
-                        data-col-index={colIndex}
-                        className={cn(
-                          'h-10 px-1 bg-background',
-                          isFrozen && 'sticky z-20',
-                          isLastFrozen &&
-                            'border-r-2 border-primary/30 shadow-[4px_0_12px_-2px_rgba(0,0,0,0.2)]',
-                          isSelected && 'ring-2 ring-primary ring-inset',
-                        )}
-                        style={{
-                          width: cell.column.getSize(),
-                          minWidth: cell.column.getSize(),
-                          left: isFrozen ? getStickyLeft(colIndex) : undefined,
-                        }}
-                        onClick={(event) => {
-                          handleCellActivate(row.index, colIndex);
-                          focusFirstInteractiveInCell(event.currentTarget);
-                        }}
-                        onFocusCapture={() =>
-                          handleCellActivate(row.index, colIndex)
-                        }
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+              {table.getRowModel().rows.map((row) => {
+                const isRowHighlighted = highlightedRowIndex === row.index;
+                return (
+                  <tr
+                    key={row.id}
+                    data-row-index={row.index}
+                    className={cn(
+                      'group/row border-b border-border/30 transition-colors hover:bg-muted/30',
+                      isRowHighlighted && 'bg-blue-500/10',
+                    )}
+                  >
+                    {row.getVisibleCells().map((cell, colIndex) => {
+                      const isFrozen =
+                        freezeEnabled && colIndex < effectiveFreezeColumns;
+                      const isLastFrozen =
+                        freezeEnabled &&
+                        colIndex === effectiveFreezeColumns - 1;
+                      const isSelected =
+                        selectedCell &&
+                        selectedCell.row === row.index &&
+                        selectedCell.col === colIndex - 1; // Adjust for order column
+                      return (
+                        <td
+                          key={cell.id}
+                          data-row-index={row.index}
+                          data-col-index={colIndex}
+                          className={cn(
+                            'h-10 px-1 bg-background transition-colors group-hover/row:bg-muted/30',
+                            isFrozen &&
+                              'relative sticky z-20 bg-gradient-to-r from-background to-background/95 supports-[backdrop-filter]:bg-background/90 supports-[backdrop-filter]:backdrop-blur-[2px] group-hover/row:bg-muted/35',
+                            isLastFrozen &&
+                              'border-r border-primary/30 shadow-[8px_0_18px_-12px_hsl(var(--foreground)_/_0.22)] after:pointer-events-none after:absolute after:-right-3 after:top-0 after:h-full after:w-3 after:bg-gradient-to-r after:from-primary/20 after:to-transparent',
+                            isRowHighlighted && 'bg-blue-500/10',
+                            isSelected && 'ring-2 ring-primary ring-inset',
+                          )}
+                          style={{
+                            width: cell.column.getSize(),
+                            minWidth: cell.column.getSize(),
+                            left: isFrozen
+                              ? getStickyLeft(colIndex)
+                              : undefined,
+                          }}
+                          onClick={(event) => {
+                            handleCellActivate(row.index, colIndex);
+                            focusFirstInteractiveInCell(event.currentTarget);
+                          }}
+                          onFocusCapture={() =>
+                            handleCellActivate(row.index, colIndex)
+                          }
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
