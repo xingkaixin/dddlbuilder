@@ -24,7 +24,6 @@ export const OrderCell = memo<OrderCellProps>(
           <span
             className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-500/20 text-xs font-bold text-amber-600 dark:text-amber-400"
             title={tooltipText}
-            aria-label={tooltipText}
           >
             !
           </span>

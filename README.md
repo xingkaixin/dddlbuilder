@@ -67,7 +67,7 @@ bun run build
 ## 技术栈
 
 - React 19、TypeScript、Vite 7
-- UI 与交互：Handsontable 表格、Radix UI、Lucide 图标、Tailwind CSS
+- UI 与交互：Tanstack Table 表格、Radix UI、Lucide 图标、Tailwind CSS
 - 代码高亮：react-syntax-highlighter（白底主题）
 
 ---

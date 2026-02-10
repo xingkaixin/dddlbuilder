@@ -1,17 +1,17 @@
-import { memo } from "react";
-import { Button } from "@/components/ui/button";
-import { GitCompare, List, Save, Sparkles, Table, Trash2 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { memo } from 'react';
+import { Button } from '@/components/ui/button';
+import { GitCompare, List, Save, Sparkles, Table, Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import type { DatabaseType } from "@/types";
-import { DATABASE_OPTIONS } from "@/utils/constants";
+} from '@/components/ui/select';
+import type { DatabaseType } from '@/types';
+import { DATABASE_OPTIONS } from '@/utils/constants';
 
 interface TableConfigProps {
   tableName: string;
@@ -28,7 +28,7 @@ interface TableConfigProps {
   saveDisabled?: boolean;
   saveDisabledHint?: string;
   showDiffButton?: boolean;
-  loadedStatus?: "clean" | "dirty" | null;
+  loadedStatus?: 'clean' | 'dirty' | null;
   loadedTableName?: string | null;
 }
 
@@ -52,13 +52,13 @@ export const TableConfig = memo<TableConfigProps>(
     loadedTableName = null,
   }) => {
     const statusLabel =
-      loadedStatus === "dirty"
-        ? "已修改"
-        : loadedStatus === "clean"
-          ? "已加载"
-          : "";
+      loadedStatus === 'dirty'
+        ? '已修改'
+        : loadedStatus === 'clean'
+          ? '已加载'
+          : '';
     const statusClass =
-      loadedStatus === "dirty" ? "text-amber-600" : "text-muted-foreground";
+      loadedStatus === 'dirty' ? 'text-amber-600' : 'text-muted-foreground';
 
     return (
       <div className="relative group rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-shadow transition-transform duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5">
@@ -106,7 +106,7 @@ export const TableConfig = memo<TableConfigProps>(
             className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md"
             onClick={onClearAll}
           >
-            <Trash2 className="h-4 w-4 transition-transform duration-200" />{" "}
+            <Trash2 className="h-4 w-4 transition-transform duration-200" />{' '}
             清空所有
           </Button>
         </div>
@@ -134,7 +134,7 @@ export const TableConfig = memo<TableConfigProps>(
                   className="shrink-0"
                   onClick={onSaveTable}
                   disabled={saveDisabled}
-                  title={saveDisabled ? saveDisabledHint : "保存表"}
+                  title={saveDisabled ? saveDisabledHint : '保存表'}
                   aria-label="保存当前表"
                 >
                   <Save className="h-4 w-4" />
@@ -182,13 +182,16 @@ export const TableConfig = memo<TableConfigProps>(
                 value={dbType}
                 onValueChange={(value) => onDbTypeChange(value as DatabaseType)}
               >
-                <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
+                <SelectTrigger
+                  data-testid="db-type-selector"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                >
                   <SelectValue>
                     {(() => {
                       const selectedOption = DATABASE_OPTIONS.find(
                         (option) => option.value === dbType,
                       );
-                      if (!selectedOption) return "请选择数据库类型";
+                      if (!selectedOption) return '请选择数据库类型';
                       const Icon = selectedOption.icon;
                       return (
                         <div className="flex items-center gap-3">

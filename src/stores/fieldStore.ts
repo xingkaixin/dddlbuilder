@@ -16,6 +16,26 @@ function normalizeRowValue(value: unknown): string {
   return value == null ? '' : String(value);
 }
 
+function normalizeNullableValue(value: unknown): '是' | '否' {
+  if (value === false) return '否';
+  return String(value ?? '').trim() === '否' ? '否' : '是';
+}
+
+function normalizePersistedRows(rows: FieldRow[]): FieldRow[] {
+  return rows.map((row, index) => ({
+    ...createEmptyRow(index),
+    ...row,
+    order: index + 1,
+    fieldName: normalizeRowValue(row.fieldName),
+    fieldType: normalizeRowValue(row.fieldType),
+    fieldComment: normalizeRowValue(row.fieldComment),
+    nullable: normalizeNullableValue(row.nullable),
+    defaultKind: normalizeRowValue(row.defaultKind) || '无',
+    defaultValue: normalizeRowValue(row.defaultValue),
+    onUpdate: normalizeRowValue(row.onUpdate) || '无',
+  }));
+}
+
 interface FieldStoreState {
   rows: FieldRow[];
   setRows: (next: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => void;
@@ -38,7 +58,7 @@ export const useFieldStore = create<FieldStoreState>((set) => ({
     })),
   initializeRows: (persistedRows) => {
     if (!persistedRows || persistedRows.length === 0) return;
-    set({ rows: ensureOrder(persistedRows) });
+    set({ rows: normalizePersistedRows(persistedRows) });
   },
   resetRows: (count = 12) => {
     set({ rows: createInitialRows(Math.max(1, Math.floor(count))) });
