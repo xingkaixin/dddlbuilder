@@ -25,6 +25,7 @@ export const EditableCell = memo<EditableCellProps>(
     const inputRef = useRef<HTMLInputElement>(null);
     const cellRef = useRef<HTMLDivElement>(null);
     const pendingTabDirectionRef = useRef<1 | -1 | null>(null);
+    const triggerSourceRef = useRef<'doubleClick' | 'keyboard' | null>(null);
 
     // Sync with external value when not editing
     useEffect(() => {
@@ -36,6 +37,7 @@ export const EditableCell = memo<EditableCellProps>(
     // Start editing with current value (double-click behavior)
     const handleDoubleClick = useCallback(() => {
       if (disabled) return;
+      triggerSourceRef.current = 'doubleClick';
       setIsEditing(true);
       setEditValue(value);
     }, [disabled, value]);
@@ -93,6 +95,7 @@ export const EditableCell = memo<EditableCellProps>(
         // Enter or F2 to start editing with current value
         if (e.key === 'Enter' || e.key === 'F2') {
           e.preventDefault();
+          triggerSourceRef.current = 'keyboard';
           setIsEditing(true);
           setEditValue(value);
           return;
@@ -118,16 +121,16 @@ export const EditableCell = memo<EditableCellProps>(
     useEffect(() => {
       if (isEditing && inputRef.current) {
         inputRef.current.focus();
-        // If editValue equals value, select all; otherwise cursor at end
-        if (editValue === value) {
-          inputRef.current.select();
-        } else {
-          // Move cursor to end for type-to-replace
+        const isDoubleClick = triggerSourceRef.current === 'doubleClick';
+        if (isDoubleClick) {
           const len = inputRef.current.value.length;
           inputRef.current.setSelectionRange(len, len);
+        } else {
+          inputRef.current.select();
         }
+        triggerSourceRef.current = null;
       }
-    }, [isEditing, editValue, value]);
+    }, [isEditing]);
 
     if (isEditing) {
       return (
