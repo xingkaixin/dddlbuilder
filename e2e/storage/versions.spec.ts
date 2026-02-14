@@ -4,9 +4,8 @@ const fillBasicField = async (page: any, name = 'f1') => {
   const cell = page.locator(
     '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
   );
-  await cell.click();
-  await page.keyboard.type(name, { delay: 30 });
-  await page.keyboard.press('Tab');
+  await cell.dblclick();
+  await page.locator('[data-testid="data-table"] input').fill(name);
 
   const typeCell = page.locator(
     '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
@@ -103,6 +102,7 @@ test.describe('版本管理验证 @storage', () => {
     await page.getByLabel('保存名称').fill(tableName);
     await page.getByRole('button', { name: /^保存$/ }).click();
     await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
+    await page.waitForTimeout(300);
 
     await page
       .getByRole('button', { name: /查看已保存表/i, exact: true })
@@ -115,25 +115,37 @@ test.describe('版本管理验证 @storage', () => {
       page.getByText(new RegExp(`当前：${tableName}`)),
     ).toBeVisible();
 
+    // 确认初始字段名为 f1
     const cell = page.locator(
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
-    await cell.click();
-    await page.keyboard.press('Control+A');
-    await page.keyboard.press('Backspace');
-    await page.keyboard.type('f1_updated', { delay: 50 });
-    await page.keyboard.press('Tab');
+    await expect(cell).toHaveText('f1', { timeout: 5000 });
 
+    // 修改字段名
+    await cell.dblclick();
+    await page.locator('[data-testid="data-table"] input').fill('f1_updated');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(200);
+
+    // 保存修改
     await page.locator('button[title="保存表"]').click();
     await page.getByRole('button', { name: /^保存$/ }).click();
     await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
+    await page.waitForTimeout(300);
 
+    // 确认字段名已更新
+    await expect(cell).toHaveText('f1_updated', { timeout: 5000 });
+
+    // 回滚到初始版本
     const dialog = await openHistoryDialog(page, tableName);
     await dialog.getByRole('button', { name: /初始版本/i }).click();
     await page.getByRole('button', { name: /回滚到此版本/i }).click();
 
     await expect(dialog).toBeHidden();
-    await expect(cell).toHaveText('f1');
+    await page.waitForTimeout(500);
+
+    // 验证回滚成功
+    await expect(cell).toHaveText('f1', { timeout: 10000 });
   });
 
   test('场景：删除版本', async ({ page }) => {
