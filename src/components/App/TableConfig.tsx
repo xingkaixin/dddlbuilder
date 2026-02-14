@@ -3,13 +3,7 @@ import { Button } from '@/components/ui/button';
 import { GitCompare, List, Save, Sparkles, Table, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/select';
 import type { DatabaseType } from '@/types';
 import { DATABASE_OPTIONS } from '@/utils/constants';
 
@@ -195,51 +189,46 @@ export const TableConfig = memo<TableConfigProps>(
               >
                 数据库类型
               </Label>
-              <Select
+              <SearchableSelect
                 value={dbType}
                 onValueChange={(value) => onDbTypeChange(value as DatabaseType)}
-              >
-                <SelectTrigger
-                  id="db-type-select"
-                  data-testid="db-type-selector"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                >
-                  <SelectValue>
-                    {(() => {
-                      const selectedOption = DATABASE_OPTIONS.find(
-                        (option) => option.value === dbType,
-                      );
-                      if (!selectedOption) return '请选择数据库类型';
-                      const Icon = selectedOption.icon;
-                      return (
-                        <div className="flex items-center gap-3">
-                          <Icon className="h-5 w-5 text-primary" />
-                          <span className="font-medium">
-                            {selectedOption.label}
-                          </span>
-                        </div>
-                      );
-                    })()}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {DATABASE_OPTIONS.map((option) => {
-                    const Icon = option.icon;
-                    return (
-                      <SelectItem
-                        key={option.value}
-                        value={option.value}
-                        className="transition-colors hover:bg-accent"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Icon className="h-5 w-5 text-primary" />
-                          <span className="font-medium">{option.label}</span>
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+                options={DATABASE_OPTIONS.map((opt) => ({
+                  value: opt.value,
+                  label: opt.label,
+                }))}
+                id="db-type-select"
+                data-testid="db-type-selector"
+                triggerClassName="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                renderTrigger={() => {
+                  const selectedOption = DATABASE_OPTIONS.find(
+                    (option) => option.value === dbType,
+                  );
+                  if (!selectedOption) return '请选择数据库类型';
+                  const Icon = selectedOption.icon;
+                  return (
+                    <div className="flex items-center gap-3">
+                      <Icon className="h-5 w-5 text-primary" />
+                      <span className="font-medium">
+                        {selectedOption.label}
+                      </span>
+                    </div>
+                  );
+                }}
+                renderItem={(option) => {
+                  const dbOption = DATABASE_OPTIONS.find(
+                    (opt) => opt.value === option.value,
+                  );
+                  if (!dbOption) return <span>{option.label}</span>;
+                  const Icon = dbOption.icon;
+                  return (
+                    <div className="flex items-center gap-3">
+                      <Icon className="h-5 w-5 text-primary" />
+                      <span className="font-medium">{option.label}</span>
+                    </div>
+                  );
+                }}
+                emptyMessage="没有匹配的数据库类型"
+              />
             </div>
           </div>
         </div>
