@@ -59,24 +59,28 @@ test.describe('单元格深度交互验证 @fields', () => {
   test('场景：使用 Tab 键在跨行/跨列导航并输入', async ({ page }) => {
     await page.locator('#table-name').fill('cell_test');
 
-    // 从第一个单元格开始，点击并输入
-    const cell_1_2 = page.locator(
+    // 第一个单元格：字段名
+    const fieldNameCell = page.locator(
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
-    await cell_1_2.click();
-    await page.keyboard.type('id');
+    await fieldNameCell.dblclick();
+    await page.locator('[data-testid="data-table"] input').fill('id');
+    await page.keyboard.press('Enter');
 
-    // Tab 到第二列（字段中文名）
-    await page.keyboard.press('Tab');
-    await page.waitForTimeout(100); // 等待焦点移动
-    await page.keyboard.type('primary_key');
+    // 第二个单元格：字段中文名
+    const commentCell = page.locator(
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(3)',
+    );
+    await commentCell.dblclick();
+    await page.locator('[data-testid="data-table"] input').fill('primary_key');
+    await page.keyboard.press('Enter');
 
-    // Tab 到第三列（字段类型）
-    await page.keyboard.press('Tab');
-    await page.waitForTimeout(100);
-    await page.keyboard.type('bigint');
-
-    // 按 Enter 确认最后一个输入
+    // 第三个单元格：字段类型
+    const typeCell = page.locator(
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
+    );
+    await typeCell.dblclick();
+    await page.locator('[data-testid="data-table"] input').fill('bigint');
     await page.keyboard.press('Enter');
 
     const sqlOutput = page.locator('[data-state="active"] pre');
