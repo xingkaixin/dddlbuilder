@@ -13,17 +13,20 @@ const DEFAULT_CONFIG: TableMiscConfig = {
 
 interface TableOptionsStoreState {
   tableMiscConfig: TableMiscConfig;
+  hydratedFromPersisted: boolean;
   setMiscEnabled: (enabled: boolean) => void;
   setEngine: (engine: string) => void;
   setCharset: (charset: string) => void;
   setCollation: (collation: string) => void;
   setTablespace: (tablespace: string) => void;
   setTableMiscConfig: (value: Setter<TableMiscConfig>) => void;
+  markHydratedFromPersisted: () => void;
   resetTableMiscConfig: () => void;
 }
 
 export const useTableOptionsStore = create<TableOptionsStoreState>((set) => ({
   tableMiscConfig: DEFAULT_CONFIG,
+  hydratedFromPersisted: false,
   setMiscEnabled: (enabled) =>
     set((state) => ({
       tableMiscConfig: {
@@ -64,8 +67,13 @@ export const useTableOptionsStore = create<TableOptionsStoreState>((set) => ({
       tableMiscConfig:
         typeof value === 'function' ? value(state.tableMiscConfig) : value,
     })),
+  markHydratedFromPersisted: () =>
+    set({
+      hydratedFromPersisted: true,
+    }),
   resetTableMiscConfig: () =>
     set({
       tableMiscConfig: DEFAULT_CONFIG,
+      hydratedFromPersisted: false,
     }),
 }));

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useAuthStore } from '@/stores';
 
 export interface UseAuthManagementReturn {
@@ -21,15 +21,26 @@ export function useAuthManagement(persistedState?: {
   const setAuthObjects = useAuthStore((state) => state.setAuthObjects);
   const addAuthObject = useAuthStore((state) => state.addAuthObject);
   const removeAuthObject = useAuthStore((state) => state.removeAuthObject);
+  const hydratedFromPersisted = useAuthStore(
+    (state) => state.hydratedFromPersisted,
+  );
+  const markHydratedFromPersisted = useAuthStore(
+    (state) => state.markHydratedFromPersisted,
+  );
   const resetAuthState = useAuthStore((state) => state.resetAuthState);
-  const initializedRef = useRef(false);
 
   useEffect(() => {
-    if (!persistedState || initializedRef.current) return;
+    if (!persistedState || hydratedFromPersisted) return;
     if (persistedState.authInput) setAuthInput(persistedState.authInput);
     if (persistedState.authObjects) setAuthObjects(persistedState.authObjects);
-    initializedRef.current = true;
-  }, [persistedState, setAuthInput, setAuthObjects]);
+    markHydratedFromPersisted();
+  }, [
+    hydratedFromPersisted,
+    markHydratedFromPersisted,
+    persistedState,
+    setAuthInput,
+    setAuthObjects,
+  ]);
 
   return {
     authInput,

@@ -48,4 +48,15 @@ describe('tableOptionsStore', () => {
     expect(current.tableMiscConfig.enabled).toBe(true);
     expect(current.tableMiscConfig.tablespace).toBe('ts_app');
   });
+
+  it('应该在重置时清理持久化初始化标记', () => {
+    const state = useTableOptionsStore.getState();
+
+    expect(state.hydratedFromPersisted).toBe(false);
+    state.markHydratedFromPersisted();
+    expect(useTableOptionsStore.getState().hydratedFromPersisted).toBe(true);
+
+    useTableOptionsStore.getState().resetTableMiscConfig();
+    expect(useTableOptionsStore.getState().hydratedFromPersisted).toBe(false);
+  });
 });

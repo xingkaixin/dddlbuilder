@@ -10,14 +10,17 @@ const DEFAULT_CONFIG: CitusShardingConfig = {
 
 interface ShardingStoreState {
   citusShardingConfig: CitusShardingConfig;
+  hydratedFromPersisted: boolean;
   setCitusMode: (mode: CitusTableMode) => void;
   setDistributionColumn: (column: string | undefined) => void;
   setCitusShardingConfig: (value: Setter<CitusShardingConfig>) => void;
+  markHydratedFromPersisted: () => void;
   resetCitusSharding: () => void;
 }
 
 export const useShardingStore = create<ShardingStoreState>((set) => ({
   citusShardingConfig: DEFAULT_CONFIG,
+  hydratedFromPersisted: false,
   setCitusMode: (mode) =>
     set((state) => ({
       citusShardingConfig: {
@@ -41,8 +44,13 @@ export const useShardingStore = create<ShardingStoreState>((set) => ({
       citusShardingConfig:
         typeof value === 'function' ? value(state.citusShardingConfig) : value,
     })),
+  markHydratedFromPersisted: () =>
+    set({
+      hydratedFromPersisted: true,
+    }),
   resetCitusSharding: () =>
     set({
       citusShardingConfig: DEFAULT_CONFIG,
+      hydratedFromPersisted: false,
     }),
 }));
