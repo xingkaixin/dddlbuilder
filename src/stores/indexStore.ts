@@ -2,6 +2,10 @@ import { create } from 'zustand';
 import type { DatabaseType, IndexDefinition, IndexField } from '@/types';
 import { buildPrimaryKeyName } from '@/utils/primaryKeyNaming';
 import {
+  isSameIdentifierToken,
+  replaceIdentifierToken,
+} from '@/utils/fieldRenameUtils';
+import {
   MAX_INDEX_NAME_LENGTH,
   ORACLE_INDEX_NAME_LENGTH,
   buildIndexName,
@@ -52,6 +56,11 @@ interface IndexStoreState {
   removeIndex: (id: string) => void;
   updateIndexName: (id: string, newName: string, dbType: DatabaseType) => void;
   updateIndexNames: (tableName: string, dbType: DatabaseType) => void;
+  syncFieldRename: (
+    oldFieldName: string,
+    newFieldName: string,
+    dbType: DatabaseType,
+  ) => void;
   resetIndexState: () => void;
 }
 
@@ -218,6 +227,50 @@ export const useIndexStore = create<IndexStoreState>((set, get) => ({
             index.fields.map((field) => field.name),
             indexNameMaxLength,
           ),
+        };
+      }),
+    }));
+  },
+
+  syncFieldRename: (oldFieldName, newFieldName, dbType) => {
+    if (!oldFieldName || !newFieldName || oldFieldName === newFieldName) {
+      return;
+    }
+
+    const indexNameMaxLength = getIndexNameMaxLength(dbType);
+
+    set((state) => ({
+      currentIndexFields: state.currentIndexFields.map((field) =>
+        isSameIdentifierToken(field.name, oldFieldName)
+          ? { ...field, name: newFieldName }
+          : field,
+      ),
+      indexes: state.indexes.map((index) => {
+        const fieldsChanged = index.fields.some((field) =>
+          isSameIdentifierToken(field.name, oldFieldName),
+        );
+
+        if (!fieldsChanged) {
+          return index;
+        }
+
+        const nextNameRaw = replaceIdentifierToken(
+          index.name,
+          oldFieldName,
+          newFieldName,
+        );
+
+        return {
+          ...index,
+          fields: index.fields.map((field) =>
+            isSameIdentifierToken(field.name, oldFieldName)
+              ? { ...field, name: newFieldName }
+              : field,
+          ),
+          name:
+            nextNameRaw === index.name
+              ? index.name
+              : truncateIndexName(nextNameRaw, indexNameMaxLength),
         };
       }),
     }));

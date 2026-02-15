@@ -4,6 +4,7 @@ import type {
   MysqlPartitionType,
   PartitionDefinition,
 } from '@/types';
+import { replaceIdentifierToken } from '@/utils/fieldRenameUtils';
 
 type Setter<T> = T | ((prev: T) => T);
 
@@ -27,6 +28,7 @@ interface PartitionStoreState {
   removePartition: (name: string) => void;
   updatePartition: (name: string, partition: PartitionDefinition) => void;
   generateRangePartitions: (preset: 'year' | 'month' | 'day') => void;
+  syncFieldRename: (oldFieldName: string, newFieldName: string) => void;
   setMysqlPartitionConfig: (value: Setter<MysqlPartitionConfig>) => void;
   markHydratedFromPersisted: () => void;
   resetPartition: () => void;
@@ -137,6 +139,27 @@ export const usePartitionStore = create<PartitionStoreState>((set) => ({
       mysqlPartitionConfig: {
         ...state.mysqlPartitionConfig,
         partitions,
+      },
+    }));
+  },
+  syncFieldRename: (oldFieldName, newFieldName) => {
+    if (!oldFieldName || !newFieldName || oldFieldName === newFieldName) {
+      return;
+    }
+
+    set((state) => ({
+      mysqlPartitionConfig: {
+        ...state.mysqlPartitionConfig,
+        columns: state.mysqlPartitionConfig.columns.map((column) =>
+          replaceIdentifierToken(column, oldFieldName, newFieldName),
+        ),
+        expression: state.mysqlPartitionConfig.expression
+          ? replaceIdentifierToken(
+              state.mysqlPartitionConfig.expression,
+              oldFieldName,
+              newFieldName,
+            )
+          : undefined,
       },
     }));
   },

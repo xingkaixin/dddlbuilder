@@ -48,4 +48,26 @@ describe('partitionStore', () => {
     usePartitionStore.getState().resetPartition();
     expect(usePartitionStore.getState().hydratedFromPersisted).toBe(false);
   });
+
+  it('字段重命名时应同步分区字段与表达式', () => {
+    const state = usePartitionStore.getState();
+
+    state.setMysqlPartitionConfig({
+      enabled: true,
+      type: 'RANGE',
+      columns: ['dayofmonth(CREATED_AT)', 'tenant_id'],
+      expression: 'YEAR(CREATED_AT)',
+      partitionCount: 4,
+      partitions: [],
+    });
+
+    state.syncFieldRename('created_at', 'created_on');
+
+    const current = usePartitionStore.getState();
+    expect(current.mysqlPartitionConfig.columns).toEqual([
+      'dayofmonth(created_on)',
+      'tenant_id',
+    ]);
+    expect(current.mysqlPartitionConfig.expression).toBe('YEAR(created_on)');
+  });
 });
