@@ -1,7 +1,7 @@
 ---
 created: "2026-02-15"
 updated: "2026-02-15"
-status: "proposed"
+status: "completed"
 priority: "P2"
 ---
 
@@ -43,20 +43,26 @@ priority: "P2"
 
 ### 阶段 2：主组件保留编排逻辑
 
-- `ImportSqlDialog.tsx` 仅保留向导步骤导航和状态编排
+- `ImportSqlDialog/index.tsx` 仅保留向导步骤导航和状态编排
 - 各步骤组件通过 props 接收数据和回调
-- 预期瘦身至 ~250 行
+- 共享类型放入 `types.ts`
 
 ---
 
 ## 验证计划
 
-1. `bun run lint` — 无新增 lint 错误
-2. `bun run test:run` — 全量单测通过
+1. `bun run lint` — 无新增 lint 错误 ✅
+2. `bun run test:run` — 全量单测通过 (627/627) ✅
 3. 手动验证：SQL 导入向导全流程（输入 → 预览 → 确认导入）
 
 ---
 
-## 持续跟进
+## 最终行数对比
 
-- 任务清单: `klips/klip-5-split-import-dialog/task_plan.md`
+| 文件 | 拆分前 | 拆分后 |
+|------|--------|--------|
+| `ImportSqlDialog.tsx` → `index.tsx` | 663 行 | 364 行 |
+| `SqlInputStep.tsx` | — | 101 行 |
+| `PreviewStep.tsx` | — | 208 行 |
+| `ConfirmStep.tsx` | — | 45 行 |
+| `types.ts` | — | 15 行 |
