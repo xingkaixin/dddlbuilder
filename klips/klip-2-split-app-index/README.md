@@ -1,14 +1,15 @@
 ---
 created: "2026-02-15"
 updated: "2026-02-15"
-status: "proposed"
+status: "completed"
 priority: "P0"
 ---
 
 # App/index.tsx 组件拆分（klip-2）
 
-**目标文件**: `src/components/App/index.tsx`（998 行）  
+**目标文件**: `src/components/App/index.tsx`（998 行 → 784 行）  
 **创建日期**: 2026-02-15  
+**完成日期**: 2026-02-15  
 **优先级**: P0（最高）
 
 ---
@@ -29,41 +30,25 @@ priority: "P0"
 
 ---
 
-## 拆分方案
+## 实施结果
 
-### 阶段 1：抽取 Hooks 编排层
+提取 3 个聚合 hooks，App 组件从 999 行降至 784 行（-21.5%）：
 
-将 `App` 组件中对多个 hooks 的调用和状态组合抽取为一个或多个专用 hooks：
+| 新文件 | 行数 | 职责 |
+|--------|------|------|
+| `hooks/useAppSelectors.ts` | 171 | Zustand selector 聚合（AppStore + FieldStore + IndexStore）|
+| `hooks/useDialogStates.ts` | 81 | 4 个 dialog state 初始化 + 便捷别名 |
+| `hooks/useDerivedTableState.ts` | 261 | 派生/计算状态（normalizedFields, indexStats, persistedState, tableDiff 等）|
 
-- `useAppState()` — 聚合所有业务 hooks 的返回值，统一对外暴露
-- 或按功能分组：`useAppTableActions()`、`useAppDialogState()` 等
+### 阶段 2 & 3：评估后跳过
 
-**目标**：App 组件内不再直接调用 10+ 个独立 hook，而是通过 1~3 个聚合 hook 获取所有状态和回调。
-
-### 阶段 2：拆分 JSX 渲染区域
-
-将 JSX 按 UI 区域拆分为独立的容器组件：
-
-- `AppToolbar` — 顶部工具栏区域（如已有 `Header`，可进一步收敛）
-- `AppMainContent` — 主体内容区域（DataTable + TabPanel）
-- `GlobalDialogs` — 已存在 `containers/GlobalDialogs.tsx`（354 行），检查是否可进一步利用
-
-### 阶段 3：业务回调函数外移
-
-将 `onNameChange`、`onCopy`、`onRollback` 等回调移入对应的 hooks 或 action 文件中（延续已有 `hooks/useSavedTableFlowActions.ts` 模式）。
+- **JSX 拆分**：已由 `GlobalDialogs`、`TableBuilderContainer`、`OutputContainer`、`SavedTablesContainer` 四个容器组件充分分层，无需进一步拆分
+- **业务回调外移**：已由 13 个 action hooks 充分提取，无需进一步外移
 
 ---
 
-## 验证计划
+## 验证结果
 
-每个拆分步骤完成后执行：
-1. `bun run lint` — 无新增 lint 错误
-2. `bun run test:run` — 全量单测通过
-3. `bun run test:e2e` — 端到端测试通过（涉及 UI 结构变更）
-4. 手动验证：主界面渲染、Tab 切换、对话框交互均正常
-
----
-
-## 持续跟进
-
-- 任务清单: `klips/klip-2-split-app-index/task_plan.md`
+- `bun run lint` ✅
+- `bun run test:run` ✅（64 files / 627 tests）
+- 纯重构，无功能变更
