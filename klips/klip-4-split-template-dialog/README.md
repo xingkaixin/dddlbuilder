@@ -1,7 +1,7 @@
 ---
 created: "2026-02-15"
 updated: "2026-02-15"
-status: "proposed"
+status: "completed"
 priority: "P1"
 ---
 
@@ -55,6 +55,11 @@ priority: "P1"
 
 ---
 
-## 持续跟进
+## 最终行数对比
 
-- 任务清单: `klips/klip-4-split-template-dialog/task_plan.md`
+| 文件 | 拆分前 | 拆分后 |
+|------|--------|--------|
+| `TemplateManagerDialog.tsx` | 783 行 | ~310 行 |
+| `FieldEditRow.tsx` | — | ~150 行 |
+| `TemplateListItem.tsx` | — | ~68 行 |
+| `CreateTemplateDialog.tsx` | — | ~150 行 |

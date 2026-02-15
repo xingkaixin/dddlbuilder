@@ -16,10 +16,8 @@ import { DiffDialog } from '../DiffDialog';
 import { DeleteFolderDialog, FolderDialog } from '../FolderDialogs';
 import { ReviewHistoryDialog } from '../ReviewHistoryDialog';
 import { StorageEstimatorDialog } from '../StorageEstimatorDialog';
-import {
-  CreateTemplateDialog,
-  TemplateManagerDialog,
-} from '../TemplateManagerDialog';
+import { TemplateManagerDialog } from '../TemplateManagerDialog';
+import { CreateTemplateDialog } from '../CreateTemplateDialog';
 import { VersionHistoryDialog } from '../VersionHistoryDialog';
 
 interface GlobalDialogsProps {

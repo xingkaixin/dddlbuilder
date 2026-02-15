@@ -25,6 +25,9 @@ vi.mock('@/components/App/StorageEstimatorDialog', () => ({
 
 vi.mock('@/components/App/TemplateManagerDialog', () => ({
   TemplateManagerDialog: () => null,
+}));
+
+vi.mock('@/components/App/CreateTemplateDialog', () => ({
   CreateTemplateDialog: () => null,
 }));
 
