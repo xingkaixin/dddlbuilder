@@ -1,36 +1,15 @@
-import { memo, useCallback, useMemo, useRef, useEffect, useState } from 'react';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
   flexRender,
-  createColumnHelper,
-  type ColumnDef,
 } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { HardDrive, Trash2 } from 'lucide-react';
-import { EditableCell, SelectCell, CheckboxCell, OrderCell } from './table';
-import type { FieldRow, UiDefaultKind } from '@/types';
-import {
-  toStringSafe,
-  isReservedKeyword,
-  normalizeDefaultKind,
-  getUiDefaultKindOptions,
-  getUiOnUpdateOptions,
-} from '@/utils/helpers';
-import { getCanonicalBaseType } from '@/utils/databaseTypeMapping';
+import { HardDrive } from 'lucide-react';
+import { toStringSafe, isReservedKeyword } from '@/utils/helpers';
 import { COLUMN_HEADERS } from '@/utils/constants';
 import { cn } from '@/lib/utils';
 import {
@@ -41,8 +20,9 @@ import {
   usePartitionStore,
   useShardingStore,
 } from '@/stores';
-
-const columnHelper = createColumnHelper<FieldRow>();
+import { useFieldColumns } from './table/columns';
+import { useFreezeColumns } from './table/useFreezeColumns';
+import { useRowHighlight } from './table/useRowHighlight';
 
 interface DataTableProps {
   toolbarLeft?: React.ReactNode;
@@ -135,14 +115,6 @@ export const DataTable = memo<DataTableProps>(
       'defaultValue',
       'onUpdate',
     ] as const;
-
-    // Delete confirmation dialog state
-    const [deleteConfirm, setDeleteConfirm] = useState<{
-      open: boolean;
-      rowIndex: number;
-      fieldName: string;
-      fieldComment: string;
-    }>({ open: false, rowIndex: -1, fieldName: '', fieldComment: '' });
 
     // Update cell value helper
     const syncFieldRenameDependencies = useCallback(
@@ -296,200 +268,15 @@ export const DataTable = memo<DataTableProps>(
       [editableColumnKeys.length, rows.length, focusEditableCell],
     );
 
-    // Define columns
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const columns = useMemo<ColumnDef<FieldRow, any>[]>(
-      () => [
-        columnHelper.accessor('order', {
-          header: () => COLUMN_HEADERS[0],
-          size: columnWidths.order,
-          cell: ({ row }) => (
-            <OrderCell
-              order={row.original.order}
-              warnings={rowWarnings[row.index] || []}
-            />
-          ),
-        }),
-        columnHelper.accessor('fieldName', {
-          header: () => COLUMN_HEADERS[1],
-          size: columnWidths.fieldName,
-          cell: ({ row, getValue }) => (
-            <EditableCell
-              value={getValue() as string}
-              onChange={(v) => updateCellValue(row.index, 'fieldName', v)}
-              onTabNavigate={(direction) =>
-                handleTabNavigation(row.index, 0, direction)
-              }
-              placeholder="字段名"
-            />
-          ),
-        }),
-        columnHelper.accessor('fieldComment', {
-          header: () => COLUMN_HEADERS[2],
-          size: columnWidths.fieldComment,
-          cell: ({ row, getValue }) => (
-            <EditableCell
-              value={getValue() as string}
-              onChange={(v) => updateCellValue(row.index, 'fieldComment', v)}
-              onTabNavigate={(direction) =>
-                handleTabNavigation(row.index, 1, direction)
-              }
-              placeholder="字段中文名"
-            />
-          ),
-        }),
-        columnHelper.accessor('fieldType', {
-          header: () => COLUMN_HEADERS[3],
-          size: columnWidths.fieldType,
-          cell: ({ row, getValue }) => (
-            <EditableCell
-              value={getValue() as string}
-              onChange={(v) => updateCellValue(row.index, 'fieldType', v)}
-              onTabNavigate={(direction) =>
-                handleTabNavigation(row.index, 2, direction)
-              }
-              placeholder="字段类型"
-            />
-          ),
-        }),
-        columnHelper.accessor('nullable', {
-          header: () => COLUMN_HEADERS[4],
-          size: columnWidths.nullable,
-          cell: ({ row, getValue }) => (
-            <CheckboxCell
-              checked={getValue() === '是'}
-              onChange={(v) => updateCellValue(row.index, 'nullable', v)}
-            />
-          ),
-        }),
-        columnHelper.accessor('defaultKind', {
-          header: () => COLUMN_HEADERS[5],
-          size: columnWidths.defaultKind,
-          cell: ({ row, getValue }) => {
-            const fieldType = toStringSafe(row.original.fieldType);
-            const base = getCanonicalBaseType(fieldType);
-            const options = getUiDefaultKindOptions(dbType, base);
-            return (
-              <SelectCell
-                value={(getValue() as string) || '无'}
-                options={options}
-                onChange={(v) => updateCellValue(row.index, 'defaultKind', v)}
-              />
-            );
-          },
-        }),
-        columnHelper.accessor('defaultValue', {
-          header: () => COLUMN_HEADERS[6],
-          size: columnWidths.defaultValue,
-          cell: ({ row, getValue }) => {
-            const kind = normalizeDefaultKind(
-              row.original.defaultKind as UiDefaultKind,
-            );
-            const disabled = kind !== 'constant';
-            return (
-              <EditableCell
-                value={(getValue() as string) || ''}
-                onChange={(v) => updateCellValue(row.index, 'defaultValue', v)}
-                onTabNavigate={(direction) =>
-                  handleTabNavigation(row.index, 5, direction)
-                }
-                disabled={disabled}
-                placeholder={disabled ? '' : '默认值'}
-              />
-            );
-          },
-        }),
-        columnHelper.accessor('onUpdate', {
-          header: () => COLUMN_HEADERS[7],
-          size: columnWidths.onUpdate,
-          cell: ({ row, getValue }) => {
-            const fieldType = toStringSafe(row.original.fieldType);
-            const base = getCanonicalBaseType(fieldType);
-            const defaultKind = normalizeDefaultKind(
-              row.original.defaultKind as UiDefaultKind,
-            );
-
-            // Disable if defaultKind is uuid
-            if (defaultKind === 'uuid') {
-              return (
-                <SelectCell
-                  value={(getValue() as string) || '无'}
-                  options={['无']}
-                  onChange={() => {}}
-                  disabled
-                />
-              );
-            }
-
-            const options = getUiOnUpdateOptions(dbType, base);
-            if (options.length <= 1) {
-              return (
-                <SelectCell
-                  value={(getValue() as string) || '无'}
-                  options={['无']}
-                  onChange={() => {}}
-                  disabled
-                />
-              );
-            }
-
-            return (
-              <SelectCell
-                value={(getValue() as string) || '无'}
-                options={options}
-                onChange={(v) => updateCellValue(row.index, 'onUpdate', v)}
-              />
-            );
-          },
-        }),
-        columnHelper.display({
-          id: 'actions',
-          size: columnWidths.actions,
-          cell: ({ row }) => {
-            const hasContent =
-              row.original.fieldName?.trim() ||
-              row.original.fieldComment?.trim();
-
-            const handleDelete = () => {
-              if (hasContent) {
-                // Show confirmation dialog
-                setDeleteConfirm({
-                  open: true,
-                  rowIndex: row.index,
-                  fieldName: row.original.fieldName || '',
-                  fieldComment: row.original.fieldComment || '',
-                });
-              } else {
-                // Direct delete for empty rows
-                onRemoveRow(row.index, 1);
-              }
-            };
-
-            return (
-              <div className="flex h-8 items-center justify-center">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                  onClick={handleDelete}
-                  title="删除行"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            );
-          },
-        }),
-      ],
-      [
-        columnWidths,
-        rowWarnings,
-        dbType,
-        updateCellValue,
-        handleTabNavigation,
-        onRemoveRow,
-      ],
-    );
+    // Define columns via extracted hook
+    const columns = useFieldColumns({
+      columnWidths,
+      rowWarnings,
+      dbType,
+      updateCellValue,
+      handleTabNavigation,
+      onRemoveRow,
+    });
 
     const table = useReactTable({
       data: rows,
@@ -498,76 +285,19 @@ export const DataTable = memo<DataTableProps>(
       getRowId: (row) => String(row.order),
     });
 
+    // Freeze columns
+    const { getStickyLeft, frozenAreaWidth, effectiveFreezeColumns } =
+      useFreezeColumns(columnWidths, freezeEnabled, freezeColumns);
+
+    // Row highlight animation
+    useRowHighlight(tableRef, highlightedRowIndex);
+
     const safeAddCount =
       Number.isFinite(addCount) && addCount > 0 ? Math.floor(addCount) : 1;
-    const safeFreezeColumns =
-      Number.isFinite(freezeColumns) && freezeColumns > 0
-        ? Math.floor(freezeColumns)
-        : 1;
-    const effectiveFreezeColumns = Math.min(
-      safeFreezeColumns,
-      COLUMN_HEADERS.length,
-    );
-    const freezeColumnKeys = useMemo(
-      () => [
-        'order',
-        'fieldName',
-        'fieldComment',
-        'fieldType',
-        'nullable',
-        'defaultKind',
-        'defaultValue',
-        'onUpdate',
-        'actions',
-      ],
-      [],
-    );
 
     const handleAddRowsClick = useCallback(() => {
       onAddRows(safeAddCount);
     }, [onAddRows, safeAddCount]);
-
-    // Row highlight animation
-    useEffect(() => {
-      if (highlightedRowIndex == null || highlightedRowIndex < 0) return;
-
-      const rowElement = tableRef.current?.querySelector(
-        `[data-row-index="${highlightedRowIndex}"]`,
-      );
-      if (!rowElement) return;
-
-      rowElement.classList.add('animate-row-highlight');
-
-      const timeout = setTimeout(() => {
-        rowElement.classList.remove('animate-row-highlight');
-      }, 1200);
-
-      return () => clearTimeout(timeout);
-    }, [highlightedRowIndex]);
-
-    // Calculate sticky left positions for frozen columns
-    const getColumnLeftOffset = useCallback(
-      (colIndex: number): number => {
-        let left = 0;
-        for (let i = 0; i < Math.min(colIndex, freezeColumnKeys.length); i++) {
-          left += columnWidths[freezeColumnKeys[i]] || 100;
-        }
-        return left;
-      },
-      [columnWidths, freezeColumnKeys],
-    );
-
-    const getStickyLeft = useCallback(
-      (colIndex: number): number => {
-        if (!freezeEnabled || colIndex >= effectiveFreezeColumns) return 0;
-        return getColumnLeftOffset(colIndex);
-      },
-      [freezeEnabled, effectiveFreezeColumns, getColumnLeftOffset],
-    );
-    const frozenAreaWidth =
-      freezeEnabled && effectiveFreezeColumns > 0
-        ? getColumnLeftOffset(effectiveFreezeColumns)
-        : 0;
 
     // Handle paste from Excel/spreadsheet
     // Pastes at selected cell position, or appends to end if no selection
@@ -887,42 +617,6 @@ export const DataTable = memo<DataTableProps>(
             </tbody>
           </table>
         </section>
-
-        {/* Delete confirmation dialog */}
-        <AlertDialog
-          open={deleteConfirm.open}
-          onOpenChange={(open) =>
-            setDeleteConfirm((prev) => ({ ...prev, open }))
-          }
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>删除字段行</AlertDialogTitle>
-              <AlertDialogDescription>
-                确定要删除此行吗？
-                <br />
-                <span className="mt-2 block text-foreground">
-                  字段名: {deleteConfirm.fieldName || '(空)'}
-                </span>
-                <span className="block text-foreground">
-                  中文名: {deleteConfirm.fieldComment || '(空)'}
-                </span>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>取消</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => {
-                  onRemoveRow(deleteConfirm.rowIndex, 1);
-                  setDeleteConfirm((prev) => ({ ...prev, open: false }));
-                }}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                确定删除
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
     );
   },
