@@ -17,6 +17,7 @@ const DEFAULT_CONFIG: MysqlPartitionConfig = {
 
 interface PartitionStoreState {
   mysqlPartitionConfig: MysqlPartitionConfig;
+  hydratedFromPersisted: boolean;
   setPartitionEnabled: (enabled: boolean) => void;
   setPartitionType: (type: MysqlPartitionType) => void;
   setPartitionColumns: (columns: string[]) => void;
@@ -27,11 +28,13 @@ interface PartitionStoreState {
   updatePartition: (name: string, partition: PartitionDefinition) => void;
   generateRangePartitions: (preset: 'year' | 'month' | 'day') => void;
   setMysqlPartitionConfig: (value: Setter<MysqlPartitionConfig>) => void;
+  markHydratedFromPersisted: () => void;
   resetPartition: () => void;
 }
 
 export const usePartitionStore = create<PartitionStoreState>((set) => ({
   mysqlPartitionConfig: DEFAULT_CONFIG,
+  hydratedFromPersisted: false,
   setPartitionEnabled: (enabled) =>
     set((state) => ({
       mysqlPartitionConfig: {
@@ -142,8 +145,13 @@ export const usePartitionStore = create<PartitionStoreState>((set) => ({
       mysqlPartitionConfig:
         typeof value === 'function' ? value(state.mysqlPartitionConfig) : value,
     })),
+  markHydratedFromPersisted: () =>
+    set({
+      hydratedFromPersisted: true,
+    }),
   resetPartition: () =>
     set({
       mysqlPartitionConfig: DEFAULT_CONFIG,
+      hydratedFromPersisted: false,
     }),
 }));

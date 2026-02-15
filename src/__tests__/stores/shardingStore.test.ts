@@ -40,4 +40,15 @@ describe('shardingStore', () => {
       distributionColumn: 'user_id',
     });
   });
+
+  it('应该在重置时清理持久化初始化标记', () => {
+    const state = useShardingStore.getState();
+
+    expect(state.hydratedFromPersisted).toBe(false);
+    state.markHydratedFromPersisted();
+    expect(useShardingStore.getState().hydratedFromPersisted).toBe(true);
+
+    useShardingStore.getState().resetCitusSharding();
+    expect(useShardingStore.getState().hydratedFromPersisted).toBe(false);
+  });
 });

@@ -37,4 +37,15 @@ describe('partitionStore', () => {
     expect(current.mysqlPartitionConfig.enabled).toBe(false);
     expect(current.mysqlPartitionConfig.type).toBe('RANGE');
   });
+
+  it('应该在重置时清理持久化初始化标记', () => {
+    const state = usePartitionStore.getState();
+
+    expect(state.hydratedFromPersisted).toBe(false);
+    state.markHydratedFromPersisted();
+    expect(usePartitionStore.getState().hydratedFromPersisted).toBe(true);
+
+    usePartitionStore.getState().resetPartition();
+    expect(usePartitionStore.getState().hydratedFromPersisted).toBe(false);
+  });
 });

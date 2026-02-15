@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import type {
   CitusTableMode,
   CitusShardingConfig,
@@ -29,16 +29,26 @@ export function useCitusSharding(
   const setCitusShardingConfig = useShardingStore(
     (state) => state.setCitusShardingConfig,
   );
+  const hydratedFromPersisted = useShardingStore(
+    (state) => state.hydratedFromPersisted,
+  );
+  const markHydratedFromPersisted = useShardingStore(
+    (state) => state.markHydratedFromPersisted,
+  );
   const resetCitusSharding = useShardingStore(
     (state) => state.resetCitusSharding,
   );
-  const initializedRef = useRef(false);
 
   useEffect(() => {
-    if (!persistedState?.citusShardingConfig || initializedRef.current) return;
+    if (!persistedState?.citusShardingConfig || hydratedFromPersisted) return;
     setCitusShardingConfig(persistedState.citusShardingConfig);
-    initializedRef.current = true;
-  }, [persistedState, setCitusShardingConfig]);
+    markHydratedFromPersisted();
+  }, [
+    hydratedFromPersisted,
+    markHydratedFromPersisted,
+    persistedState,
+    setCitusShardingConfig,
+  ]);
 
   return {
     citusShardingConfig,

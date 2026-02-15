@@ -47,4 +47,15 @@ describe('authStore', () => {
     expect(current.authInput).toBe('');
     expect(current.authObjects).toEqual([]);
   });
+
+  it('应该在重置时清理持久化初始化标记', () => {
+    const state = useAuthStore.getState();
+
+    expect(state.hydratedFromPersisted).toBe(false);
+    state.markHydratedFromPersisted();
+    expect(useAuthStore.getState().hydratedFromPersisted).toBe(true);
+
+    useAuthStore.getState().resetAuthState();
+    expect(useAuthStore.getState().hydratedFromPersisted).toBe(false);
+  });
 });

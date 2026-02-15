@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import type { PersistedState, TableMiscConfig } from '@/types';
 import { useTableOptionsStore } from '@/stores';
 
@@ -27,19 +27,29 @@ export function useTableOptions(
   const setTableMiscConfig = useTableOptionsStore(
     (state) => state.setTableMiscConfig,
   );
+  const hydratedFromPersisted = useTableOptionsStore(
+    (state) => state.hydratedFromPersisted,
+  );
+  const markHydratedFromPersisted = useTableOptionsStore(
+    (state) => state.markHydratedFromPersisted,
+  );
   const resetTableMiscConfig = useTableOptionsStore(
     (state) => state.resetTableMiscConfig,
   );
-  const initializedRef = useRef(false);
 
   useEffect(() => {
-    if (!persistedState?.tableMiscConfig || initializedRef.current) return;
+    if (!persistedState?.tableMiscConfig || hydratedFromPersisted) return;
     setTableMiscConfig((prev) => ({
       ...prev,
       ...persistedState.tableMiscConfig,
     }));
-    initializedRef.current = true;
-  }, [persistedState, setTableMiscConfig]);
+    markHydratedFromPersisted();
+  }, [
+    hydratedFromPersisted,
+    markHydratedFromPersisted,
+    persistedState,
+    setTableMiscConfig,
+  ]);
 
   return {
     tableMiscConfig,

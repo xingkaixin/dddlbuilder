@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import type {
   MysqlPartitionType,
   MysqlPartitionConfig,
@@ -52,14 +52,24 @@ export function useMysqlPartition(
   const setMysqlPartitionConfig = usePartitionStore(
     (state) => state.setMysqlPartitionConfig,
   );
+  const hydratedFromPersisted = usePartitionStore(
+    (state) => state.hydratedFromPersisted,
+  );
+  const markHydratedFromPersisted = usePartitionStore(
+    (state) => state.markHydratedFromPersisted,
+  );
   const resetPartition = usePartitionStore((state) => state.resetPartition);
-  const initializedRef = useRef(false);
 
   useEffect(() => {
-    if (!persistedState?.mysqlPartitionConfig || initializedRef.current) return;
+    if (!persistedState?.mysqlPartitionConfig || hydratedFromPersisted) return;
     setMysqlPartitionConfig(persistedState.mysqlPartitionConfig);
-    initializedRef.current = true;
-  }, [persistedState, setMysqlPartitionConfig]);
+    markHydratedFromPersisted();
+  }, [
+    hydratedFromPersisted,
+    markHydratedFromPersisted,
+    persistedState,
+    setMysqlPartitionConfig,
+  ]);
 
   return {
     mysqlPartitionConfig,
