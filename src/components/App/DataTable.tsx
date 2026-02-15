@@ -33,7 +33,14 @@ import {
 import { getCanonicalBaseType } from '@/utils/databaseTypeMapping';
 import { COLUMN_HEADERS } from '@/utils/constants';
 import { cn } from '@/lib/utils';
-import { buildDuplicateNameSet, useAppStore, useFieldStore } from '@/stores';
+import {
+  buildDuplicateNameSet,
+  useAppStore,
+  useFieldStore,
+  useIndexStore,
+  usePartitionStore,
+  useShardingStore,
+} from '@/stores';
 
 const columnHelper = createColumnHelper<FieldRow>();
 
@@ -86,6 +93,15 @@ export const DataTable = memo<DataTableProps>(
     const onFreezeColumnsChange = useAppStore(
       (state) => state.setFieldTableFreezeColumns,
     );
+    const syncIndexFieldRename = useIndexStore(
+      (state) => state.syncFieldRename,
+    );
+    const syncPartitionFieldRename = usePartitionStore(
+      (state) => state.syncFieldRename,
+    );
+    const syncShardingFieldRename = useShardingStore(
+      (state) => state.syncFieldRename,
+    );
 
     const duplicateNameSet = useMemo(() => buildDuplicateNameSet(rows), [rows]);
     const tableRef = useRef<HTMLDivElement>(null);
@@ -129,8 +145,38 @@ export const DataTable = memo<DataTableProps>(
     }>({ open: false, rowIndex: -1, fieldName: '', fieldComment: '' });
 
     // Update cell value helper
+    const syncFieldRenameDependencies = useCallback(
+      (oldFieldName: string, newFieldName: string) => {
+        if (!oldFieldName || !newFieldName || oldFieldName === newFieldName) {
+          return;
+        }
+
+        syncIndexFieldRename(oldFieldName, newFieldName, dbType);
+
+        if (['mysql', 'mariadb', 'tidb'].includes(dbType)) {
+          syncPartitionFieldRename(oldFieldName, newFieldName);
+        }
+
+        if (dbType === 'postgresql-citus') {
+          syncShardingFieldRename(oldFieldName, newFieldName);
+        }
+      },
+      [
+        dbType,
+        syncIndexFieldRename,
+        syncPartitionFieldRename,
+        syncShardingFieldRename,
+      ],
+    );
+
     const updateCellValue = useCallback(
       (rowIndex: number, columnId: string, value: string | boolean) => {
+        if (columnId === 'fieldName') {
+          const oldFieldName = rows[rowIndex]?.fieldName || '';
+          const newFieldName = String(value ?? '');
+          syncFieldRenameDependencies(oldFieldName, newFieldName);
+        }
+
         setRows((prev) => {
           const newRows = [...prev];
           const row = { ...newRows[rowIndex] };
@@ -156,7 +202,7 @@ export const DataTable = memo<DataTableProps>(
           return newRows;
         });
       },
-      [setRows],
+      [rows, setRows, syncFieldRenameDependencies],
     );
 
     // Row warnings calculation
@@ -544,54 +590,68 @@ export const DataTable = memo<DataTableProps>(
         const startRow = selectedCell?.row ?? rows.length;
         const startCol = selectedCell?.col ?? 0;
 
-        setRows((prev) => {
-          const newRows = [...prev];
+        const renamePairs: Array<{ oldName: string; newName: string }> = [];
+        const newRows = [...rows];
 
-          pastedRows.forEach((cols, rowOffset) => {
-            const targetRowIndex = startRow + rowOffset;
+        pastedRows.forEach((cols, rowOffset) => {
+          const targetRowIndex = startRow + rowOffset;
 
-            // Ensure row exists
-            while (newRows.length <= targetRowIndex) {
-              newRows.push({
-                order: newRows.length + 1,
-                fieldName: '',
-                fieldComment: '',
-                fieldType: '',
-                nullable: '是',
-                defaultKind: '无',
-                defaultValue: '',
-                onUpdate: '无',
-              });
+          while (newRows.length <= targetRowIndex) {
+            newRows.push({
+              order: newRows.length + 1,
+              fieldName: '',
+              fieldComment: '',
+              fieldType: '',
+              nullable: '是',
+              defaultKind: '无',
+              defaultValue: '',
+              onUpdate: '无',
+            });
+          }
+
+          const row = { ...newRows[targetRowIndex] };
+          cols.forEach((cellValue, colOffset) => {
+            const targetColIndex = startCol + colOffset;
+            if (targetColIndex >= editableColumnKeys.length) return;
+
+            const key = editableColumnKeys[targetColIndex];
+            const value = cellValue?.trim() || '';
+
+            if (key === 'fieldName') {
+              const oldName = row.fieldName || '';
+              const newName = value;
+              if (oldName && newName && oldName !== newName) {
+                renamePairs.push({ oldName, newName });
+              }
             }
 
-            // Update cells starting from startCol
-            const row = { ...newRows[targetRowIndex] };
-            cols.forEach((cellValue, colOffset) => {
-              const targetColIndex = startCol + colOffset;
-              if (targetColIndex >= editableColumnKeys.length) return;
-
-              const key = editableColumnKeys[targetColIndex];
-              const value = cellValue?.trim() || '';
-
-              if (key === 'nullable') {
-                row.nullable = parseNullable(value);
-              } else {
-                (row as Record<string, unknown>)[key] =
-                  value ||
-                  (key === 'defaultKind' || key === 'onUpdate' ? '无' : '');
-              }
-            });
-            newRows[targetRowIndex] = row;
+            if (key === 'nullable') {
+              row.nullable = parseNullable(value);
+            } else {
+              (row as Record<string, unknown>)[key] =
+                value ||
+                (key === 'defaultKind' || key === 'onUpdate' ? '无' : '');
+            }
           });
+          newRows[targetRowIndex] = row;
+        });
 
-          // Re-order all rows
-          return newRows.map((row, idx) => ({ ...row, order: idx + 1 }));
+        setRows(newRows.map((row, idx) => ({ ...row, order: idx + 1 })));
+
+        renamePairs.forEach(({ oldName, newName }) => {
+          syncFieldRenameDependencies(oldName, newName);
         });
 
         // Clear selection after paste
         setSelectedCell(null);
       },
-      [setRows, selectedCell, rows.length, editableColumnKeys],
+      [
+        setRows,
+        selectedCell,
+        rows,
+        editableColumnKeys,
+        syncFieldRenameDependencies,
+      ],
     );
 
     return (

@@ -51,4 +51,20 @@ describe('shardingStore', () => {
     useShardingStore.getState().resetCitusSharding();
     expect(useShardingStore.getState().hydratedFromPersisted).toBe(false);
   });
+
+  it('字段重命名时应同步分片字段', () => {
+    const state = useShardingStore.getState();
+
+    state.setCitusShardingConfig({
+      mode: 'distributed',
+      distributionColumn: 'tenant_id',
+    });
+    state.syncFieldRename('tenant_id', 'org_id');
+
+    const current = useShardingStore.getState();
+    expect(current.citusShardingConfig).toEqual({
+      mode: 'distributed',
+      distributionColumn: 'org_id',
+    });
+  });
 });
