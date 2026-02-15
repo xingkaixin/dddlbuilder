@@ -266,6 +266,10 @@ describe('usePersistedState', () => {
       expect(result.current.persistedState).toEqual(sharedState);
     });
 
+    expect(localStorageMock.setItem).toHaveBeenCalledWith(
+      STORAGE_KEY,
+      JSON.stringify(sharedState),
+    );
     expect(replaceStateSpy).toHaveBeenCalledWith({}, '', '/');
   });
 

@@ -20,6 +20,15 @@ function useDialogHarness() {
   });
 }
 
+function useDialogHarnessWithInitialData(initialData: DialogData) {
+  const [open, setOpen] = useState(false);
+  return useDialogState<DialogData>({
+    open,
+    setOpen,
+    initialData,
+  });
+}
+
 describe('useDialogState', () => {
   it('should open and close dialog with data reset', () => {
     const { result } = renderHook(() => useDialogHarness());
@@ -59,5 +68,29 @@ describe('useDialogState', () => {
       result.current.updateData((prev) => ({ ...prev, name: 'orders' }));
     });
     expect(result.current.data.name).toBe('orders');
+  });
+
+  it('should keep first initialData snapshot for reset behavior', () => {
+    const { result, rerender } = renderHook(
+      ({ initialData }: { initialData: DialogData }) =>
+        useDialogHarnessWithInitialData(initialData),
+      {
+        initialProps: {
+          initialData: { name: 'first', targetId: '1' },
+        },
+      },
+    );
+
+    rerender({ initialData: { name: 'second', targetId: '2' } });
+
+    act(() => {
+      result.current.openDialog({ name: 'editing', targetId: '9' });
+    });
+
+    act(() => {
+      result.current.closeDialog();
+    });
+
+    expect(result.current.data).toEqual({ name: 'first', targetId: '1' });
   });
 });

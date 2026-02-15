@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { PersistedState } from '@/types';
 import { STORAGE_KEY } from '@/utils/constants';
 
@@ -13,7 +13,6 @@ export function usePersistedState(): UsePersistedStateReturn {
   const [hydrated, setHydrated] = useState(false);
   const [persistedState, setPersistedState] =
     useState<Partial<PersistedState> | null>(null);
-  const hydratedRef = useRef(false);
 
   const restoreState = useCallback(() => {
     try {
@@ -28,14 +27,21 @@ export function usePersistedState(): UsePersistedStateReturn {
     return null;
   }, []);
 
-  const saveState = useCallback((state: Partial<PersistedState>) => {
-    if (!hydratedRef.current) return;
+  const writeStateToStorage = useCallback((state: Partial<PersistedState>) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch {
       // ignore quota errors
     }
   }, []);
+
+  const saveState = useCallback(
+    (state: Partial<PersistedState>) => {
+      if (!hydrated) return;
+      writeStateToStorage(state);
+    },
+    [hydrated, writeStateToStorage],
+  );
 
   const clearState = useCallback(() => {
     try {
@@ -51,7 +57,6 @@ export function usePersistedState(): UsePersistedStateReturn {
     const hydrateWithState = (state: Partial<PersistedState> | null) => {
       setPersistedState(state);
       setHydrated(true);
-      hydratedRef.current = true;
     };
 
     const clearShareParamFromUrl = () => {
@@ -74,7 +79,7 @@ export function usePersistedState(): UsePersistedStateReturn {
           if (sharedState) {
             hydrateWithState(sharedState);
             // Save to localStorage so it persists
-            saveState(sharedState);
+            writeStateToStorage(sharedState);
             return;
           }
           // If decompression fails, fall back to localStorage
@@ -89,7 +94,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     } else {
       hydrateWithState(restoreState());
     }
-  }, [restoreState, saveState]);
+  }, [restoreState, writeStateToStorage]);
 
   return {
     persistedState,
