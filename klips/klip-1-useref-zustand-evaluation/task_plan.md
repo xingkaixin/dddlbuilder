@@ -8,7 +8,7 @@
 - [x] Phase 2: 落地第一批最小改动（4 个域的 hydration 标记下沉到 store）
 - [x] Phase 3: 回归验证（lint/test/e2e 视改动范围）
 - [x] Phase 4: 第二批可选优化评估（`usePersistedState` / `useDialogState`）
-- [ ] Phase 5: 阶段复盘与规范固化（开发约定 + 代码审查清单）
+- [x] Phase 5: 阶段复盘与规范固化（开发约定 + 代码审查清单）
 
 ## Key Questions
 1. `usePersistedState` 的 `hydratedRef` 是否值得在不引入行为风险前提下去除？
@@ -41,6 +41,8 @@
 - [x] 更新 `klip-1` 文档的验证结果与下一步计划
 - [x] 更新 `usePersistedState` 并补充分享参数场景持久化断言
 - [x] 补充 `useDialogState` “初始快照语义”测试
+- [x] 新增代码审查清单 `REVIEW_CHECKLIST.md`
+- [x] 在 `README` 建立清单入口
 
 ## Validation Snapshot (2026-02-15)
 - `bun run lint`: 通过（`biome check .`）
@@ -48,4 +50,4 @@
 - `bun run test:e2e`: 本轮未执行（未涉及 UI 交互行为调整）
 
 ## Status
-**Currently in Phase 5** - 收敛本轮经验并固化后续代码审查约束。
+**Completed** - 本轮治理已完成，后续按审查清单持续执行。

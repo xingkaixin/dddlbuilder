@@ -134,3 +134,4 @@ status: "ready"
 ## 7. 持续跟进
 
 - 持续任务清单: `klips/klip-1-useref-zustand-evaluation/task_plan.md`
+- 代码审查清单: `klips/klip-1-useref-zustand-evaluation/REVIEW_CHECKLIST.md`
