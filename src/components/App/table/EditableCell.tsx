@@ -25,7 +25,9 @@ export const EditableCell = memo<EditableCellProps>(
     const inputRef = useRef<HTMLInputElement>(null);
     const cellRef = useRef<HTMLDivElement>(null);
     const pendingTabDirectionRef = useRef<1 | -1 | null>(null);
-    const triggerSourceRef = useRef<'doubleClick' | 'keyboard' | null>(null);
+    const triggerSourceRef = useRef<
+      'doubleClick' | 'keyboard' | 'replace' | null
+    >(null);
 
     // Sync with external value when not editing
     useEffect(() => {
@@ -46,6 +48,7 @@ export const EditableCell = memo<EditableCellProps>(
     const startEditingWithReplace = useCallback(
       (initialChar: string) => {
         if (disabled) return;
+        triggerSourceRef.current = 'replace';
         setIsEditing(true);
         setEditValue(initialChar);
       },
@@ -121,12 +124,12 @@ export const EditableCell = memo<EditableCellProps>(
     useEffect(() => {
       if (isEditing && inputRef.current) {
         inputRef.current.focus();
-        const isDoubleClick = triggerSourceRef.current === 'doubleClick';
-        if (isDoubleClick) {
+        const shouldSelectAll = triggerSourceRef.current === 'keyboard';
+        if (shouldSelectAll) {
+          inputRef.current.select();
+        } else {
           const len = inputRef.current.value.length;
           inputRef.current.setSelectionRange(len, len);
-        } else {
-          inputRef.current.select();
         }
         triggerSourceRef.current = null;
       }
