@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, lazy, Suspense } from 'react';
+import { lazy, Suspense } from 'react';
 import type { PersistedState } from '@/types';
 import { createEmptyRow } from '@/utils/helpers';
 import { Header } from './Header';
@@ -6,6 +6,9 @@ import { GlobalDialogs } from './containers/GlobalDialogs';
 import { OutputContainer } from './containers/OutputContainer';
 import { SavedTablesContainer } from './containers/SavedTablesContainer';
 import { TableBuilderContainer } from './containers/TableBuilderContainer';
+import { useAppSelectors } from './hooks/useAppSelectors';
+import { useDialogStates } from './hooks/useDialogStates';
+import { useDerivedTableState } from './hooks/useDerivedTableState';
 import { useFolderActions } from './hooks/useFolderActions';
 import { useTemplateActions } from './hooks/useTemplateActions';
 import { useSchemaApplyActions } from './hooks/useSchemaApplyActions';
@@ -28,18 +31,9 @@ import { useMysqlPartition } from '@/hooks/useMysqlPartition';
 import { useTableOptions } from '@/hooks/useTableOptions';
 import { useDDLReview } from '@/hooks/useDDLReview';
 import { useSuggestionAnimation } from '@/hooks/useSuggestionAnimation';
-import { useSavedTables, type SavedTableSummary } from '@/hooks/useSavedTables';
+import { useSavedTables } from '@/hooks/useSavedTables';
 import { useFolders } from '@/hooks/useFolders';
-import {
-  buildNormalizedFields,
-  useAppStore,
-  useFieldStore,
-  useIndexStore,
-} from '@/stores';
-import { useDialogState } from '@/hooks/useDialogState';
 import { useFieldTemplates } from '@/hooks/useFieldTemplates';
-import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
-import { diffPersistedState, type TableDiff } from '@/utils/tableDiff';
 
 const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
 
@@ -52,223 +46,101 @@ const DEFAULT_FIELD_TABLE_FREEZE_COLUMNS = 3;
 function App() {
   const trackEvent = useTrackEvent();
 
-  // Basic state (batch 4: migrated to zustand)
-  const tableName = useAppStore((state) => state.tableName);
-  const tableComment = useAppStore((state) => state.tableComment);
-  const dbType = useAppStore((state) => state.dbType);
-  const setTableName = useAppStore((state) => state.setTableName);
-  const setTableComment = useAppStore((state) => state.setTableComment);
-  const setDbType = useAppStore((state) => state.setDbType);
-  const addCount = useAppStore((state) => state.addCount);
-  const setAddCount = useAppStore((state) => state.setAddCount);
-  const fieldTableFreezeEnabled = useAppStore(
-    (state) => state.fieldTableFreezeEnabled,
-  );
-  const setFieldTableFreezeEnabled = useAppStore(
-    (state) => state.setFieldTableFreezeEnabled,
-  );
-  const fieldTableFreezeColumns = useAppStore(
-    (state) => state.fieldTableFreezeColumns,
-  );
-  const setFieldTableFreezeColumns = useAppStore(
-    (state) => state.setFieldTableFreezeColumns,
-  );
-  const activeTab = useAppStore((state) => state.activeTab);
-  const setActiveTab = useAppStore((state) => state.setActiveTab);
-  const resetTableConfig = useAppStore((state) => state.resetTableConfig);
-  const resetTableViewConfig = useAppStore(
-    (state) => state.resetTableViewConfig,
-  );
+  // ─── 1. Zustand selectors (aggregated) ─────────────────────────
+  const {
+    tableName,
+    tableComment,
+    dbType,
+    setTableName,
+    setTableComment,
+    setDbType,
+    addCount,
+    setAddCount,
+    activeTab,
+    setActiveTab,
+    resetTableConfig,
+    resetTableViewConfig,
+    fieldTableFreezeEnabled,
+    setFieldTableFreezeEnabled,
+    fieldTableFreezeColumns,
+    setFieldTableFreezeColumns,
+    showChangelog,
+    setShowChangelog,
+    isClearDialogOpen,
+    setIsClearDialogOpen,
+    showFireworks,
+    setShowFireworks,
+    savedTablesDrawerOpen,
+    setSavedTablesDrawerOpen,
+    loadedTableNormalizedName,
+    setLoadedTableNormalizedName,
+    loadedTableName,
+    setLoadedTableName,
+    loadedTableSignature,
+    setLoadedTableSignature,
+    isSaveDialogOpen,
+    setIsSaveDialogOpen,
+    isRenameDialogOpen,
+    setIsRenameDialogOpen,
+    isDeleteDialogOpen,
+    setIsDeleteDialogOpen,
+    isLoadConfirmOpen,
+    setIsLoadConfirmOpen,
+    isDiffDialogOpen,
+    setIsDiffDialogOpen,
+    isVersionHistoryOpen,
+    setIsVersionHistoryOpen,
+    versionHistoryTarget,
+    setVersionHistoryTarget,
+    isReviewHistoryOpen,
+    setIsReviewHistoryOpen,
+    isStorageEstimatorOpen,
+    setIsStorageEstimatorOpen,
+    isAIGenerateDialogOpen,
+    setIsAIGenerateDialogOpen,
+    rows,
+    setRows,
+    initializeRows,
+    resetTableRows,
+    indexInput,
+    currentIndexFields,
+    indexes,
+    setIndexInput,
+    setCurrentIndexFields,
+    initializeIndexState,
+    updateIndexNames,
+    resetIndexState,
+    setIndexes,
+  } = useAppSelectors();
 
-  // Changelog / global UI states (batch 4: migrated to zustand)
-  const showChangelog = useAppStore((state) => state.showChangelog);
-  const setShowChangelog = useAppStore((state) => state.setShowChangelog);
-  const isClearDialogOpen = useAppStore((state) => state.isClearDialogOpen);
-  const setIsClearDialogOpen = useAppStore(
-    (state) => state.setIsClearDialogOpen,
-  );
-  const showFireworks = useAppStore((state) => state.showFireworks);
-  const setShowFireworks = useAppStore((state) => state.setShowFireworks);
-
-  // Saved tables drawer & dialogs (batch 4: migrated to zustand)
-  const savedTablesDrawerOpen = useAppStore(
-    (state) => state.savedTablesDrawerOpen,
-  );
-  const setSavedTablesDrawerOpen = useAppStore(
-    (state) => state.setSavedTablesDrawerOpen,
-  );
-  const loadedTableNormalizedName = useAppStore(
-    (state) => state.loadedTableNormalizedName,
-  );
-  const setLoadedTableNormalizedName = useAppStore(
-    (state) => state.setLoadedTableNormalizedName,
-  );
-  const loadedTableName = useAppStore((state) => state.loadedTableName);
-  const setLoadedTableName = useAppStore((state) => state.setLoadedTableName);
-  const loadedTableSignature = useAppStore(
-    (state) => state.loadedTableSignature,
-  );
-  const setLoadedTableSignature = useAppStore(
-    (state) => state.setLoadedTableSignature,
-  );
-  const isSaveDialogOpen = useAppStore((state) => state.dialogs.save);
-  const setIsSaveDialogOpen = useAppStore((state) => state.setIsSaveDialogOpen);
-  const isRenameDialogOpen = useAppStore((state) => state.dialogs.rename);
-  const setIsRenameDialogOpen = useAppStore(
-    (state) => state.setIsRenameDialogOpen,
-  );
-  const isDeleteDialogOpen = useAppStore((state) => state.dialogs.delete);
-  const setIsDeleteDialogOpen = useAppStore(
-    (state) => state.setIsDeleteDialogOpen,
-  );
-  const isLoadConfirmOpen = useAppStore((state) => state.dialogs.loadConfirm);
-  const setIsLoadConfirmOpen = useAppStore(
-    (state) => state.setIsLoadConfirmOpen,
-  );
-
-  const saveDialog = useDialogState<{
-    name: string;
-    queuedLoadAfterSave: SavedTableSummary | null;
-  }>({
-    open: isSaveDialogOpen,
-    setOpen: setIsSaveDialogOpen,
-    initialData: {
-      name: '',
-      queuedLoadAfterSave: null,
-    },
+  // ─── 2. Dialog states ──────────────────────────────────────────
+  const {
+    saveDialog,
+    renameDialog,
+    deleteDialog,
+    loadConfirmDialog,
+    saveName,
+    saveError,
+    renameName,
+    renameError,
+    deleteTarget,
+    pendingLoadTarget,
+  } = useDialogStates({
+    isSaveDialogOpen,
+    setIsSaveDialogOpen,
+    isRenameDialogOpen,
+    setIsRenameDialogOpen,
+    isDeleteDialogOpen,
+    setIsDeleteDialogOpen,
+    isLoadConfirmOpen,
+    setIsLoadConfirmOpen,
   });
-
-  const renameDialog = useDialogState<{
-    name: string;
-    target: SavedTableSummary | null;
-  }>({
-    open: isRenameDialogOpen,
-    setOpen: setIsRenameDialogOpen,
-    initialData: {
-      name: '',
-      target: null,
-    },
-  });
-
-  const deleteDialog = useDialogState<{
-    target: SavedTableSummary | null;
-  }>({
-    open: isDeleteDialogOpen,
-    setOpen: setIsDeleteDialogOpen,
-    initialData: {
-      target: null,
-    },
-  });
-
-  const loadConfirmDialog = useDialogState<{
-    pendingTarget: SavedTableSummary | null;
-  }>({
-    open: isLoadConfirmOpen,
-    setOpen: setIsLoadConfirmOpen,
-    initialData: {
-      pendingTarget: null,
-    },
-  });
-  const saveName = saveDialog.data.name;
-  const saveError = saveDialog.error;
-  const renameName = renameDialog.data.name;
-  const renameError = renameDialog.error;
-  const deleteTarget = deleteDialog.data.target;
-  const pendingLoadTarget = loadConfirmDialog.data.pendingTarget;
-
-  const isDiffDialogOpen = useAppStore((state) => state.isDiffDialogOpen);
-  const setIsDiffDialogOpen = useAppStore((state) => state.setIsDiffDialogOpen);
-  const isVersionHistoryOpen = useAppStore(
-    (state) => state.isVersionHistoryOpen,
-  );
-  const setIsVersionHistoryOpen = useAppStore(
-    (state) => state.setIsVersionHistoryOpen,
-  );
-  const versionHistoryTarget = useAppStore(
-    (state) => state.versionHistoryTarget,
-  );
-  const setVersionHistoryTarget = useAppStore(
-    (state) => state.setVersionHistoryTarget,
-  );
-  const isReviewHistoryOpen = useAppStore((state) => state.isReviewHistoryOpen);
-  const setIsReviewHistoryOpen = useAppStore(
-    (state) => state.setIsReviewHistoryOpen,
-  );
-  const isStorageEstimatorOpen = useAppStore(
-    (state) => state.isStorageEstimatorOpen,
-  );
-  const setIsStorageEstimatorOpen = useAppStore(
-    (state) => state.setIsStorageEstimatorOpen,
-  );
-  const isAIGenerateDialogOpen = useAppStore(
-    (state) => state.isAIGenerateDialogOpen,
-  );
-  const setIsAIGenerateDialogOpen = useAppStore(
-    (state) => state.setIsAIGenerateDialogOpen,
-  );
 
   const { handleFireworksComplete } = useFireworksIntro({ setShowFireworks });
 
-  // Use custom hooks
+  // ─── 3. Domain hooks (must come before derived state) ──────────
   const { persistedState, hydrated, saveState, clearState } =
     usePersistedState();
-
-  const rows = useFieldStore((state) => state.rows);
-  const setRows = useFieldStore((state) => state.setRows);
-  const initializeRows = useFieldStore((state) => state.initializeRows);
-  const resetTableRows = useFieldStore((state) => state.resetRows);
-  const normalizedFields = useMemo(() => buildNormalizedFields(rows), [rows]);
-
-  const availableFields = useMemo(
-    () =>
-      normalizedFields
-        .map((field) => field.name)
-        .filter((name) => name.length > 0),
-    [normalizedFields],
-  );
-
-  const filledRowCount = useMemo(
-    () => rows.filter((row) => row.fieldName?.trim()).length,
-    [rows],
-  );
-
-  const indexInput = useIndexStore((state) => state.indexInput);
-  const currentIndexFields = useIndexStore((state) => state.currentIndexFields);
-  const indexes = useIndexStore((state) => state.indexes);
-  const setIndexInput = useIndexStore((state) => state.setIndexInput);
-  const setCurrentIndexFields = useIndexStore(
-    (state) => state.setCurrentIndexFields,
-  );
-  const initializeIndexState = useIndexStore(
-    (state) => state.initializeIndexState,
-  );
-  const updateIndexNames = useIndexStore((state) => state.updateIndexNames);
-  const resetIndexState = useIndexStore((state) => state.resetIndexState);
-  const setIndexes = useIndexStore((state) => state.setIndexes);
-
-  const indexStats = useMemo(
-    () =>
-      indexes.reduce(
-        (acc, index) => {
-          if (index.isPrimary) {
-            acc.primary += 1;
-          } else if (index.unique) {
-            acc.unique += 1;
-          } else {
-            acc.normal += 1;
-          }
-          return acc;
-        },
-        { primary: 0, unique: 0, normal: 0 },
-      ),
-    [indexes],
-  );
-
-  useEffect(() => {
-    if (indexes.length > 0 && tableName) {
-      updateIndexNames(tableName, dbType);
-    }
-  }, [tableName, dbType, indexes.length, updateIndexNames]);
 
   const {
     authInput,
@@ -288,7 +160,6 @@ function App() {
     resetCitusSharding,
   } = useCitusSharding(persistedState || undefined);
 
-  // Suggestion animation hook
   const {
     animatingIndexIds,
     removingIndexIds,
@@ -324,131 +195,47 @@ function App() {
     resetTableMiscConfig,
   } = useTableOptions(persistedState || undefined);
 
-  // Check if MySQL-compatible database that supports partitioning
-  const supportsMysqlPartition = ['mysql', 'mariadb', 'tidb'].includes(dbType);
-  const baseTabCount = 4;
-  const extraTabCount =
-    (dbType === 'postgresql-citus' ? 1 : 0) + (supportsMysqlPartition ? 1 : 0);
-  const totalTabCount = baseTabCount + extraTabCount;
-  const tabGridClass =
-    totalTabCount === 6
-      ? 'grid-cols-6'
-      : totalTabCount === 5
-        ? 'grid-cols-5'
-        : 'grid-cols-4';
+  // ─── 4. Derived / computed state ───────────────────────────────
+  const {
+    normalizedFields,
+    availableFields,
+    filledRowCount,
+    indexStats,
+    supportsMysqlPartition,
+    tabGridClass,
+    currentPersistedState,
+    buildPersistedState,
+    serializePersistedState,
+    hasLoadedTable,
+    isLoadedDirty,
+    canSaveCurrent,
+    loadedStatus,
+    saveDialogTitle,
+    saveDialogDescription,
+    saveInputDisabled,
+    tableDiff,
+  } = useDerivedTableState({
+    tableName,
+    tableComment,
+    dbType,
+    addCount,
+    rows,
+    indexes,
+    indexInput,
+    currentIndexFields,
+    authInput,
+    authObjects,
+    citusShardingConfig,
+    mysqlPartitionConfig,
+    tableMiscConfig,
+    fieldTableFreezeEnabled,
+    fieldTableFreezeColumns,
+    loadedTableNormalizedName,
+    loadedTableSignature,
+    updateIndexNames,
+  });
 
-  const normalizedRowsForPersist = useMemo(
-    () =>
-      rows.map((row) => ({
-        ...row,
-        order: row.order || 0,
-        fieldName: row.fieldName || '',
-        fieldComment: row.fieldComment || '',
-        fieldType: row.fieldType || '',
-        nullable: row.nullable === '否' ? '否' : '是',
-        defaultKind: row.defaultKind || '',
-        defaultValue: row.defaultValue || '',
-        onUpdate: row.onUpdate || '',
-      })),
-    [rows],
-  );
-
-  const sanitizedIndexesForPersist = useMemo(
-    () => sanitizeIndexesForPersist(indexes),
-    [indexes],
-  );
-
-  const currentPersistedState = useMemo(
-    (): PersistedState => ({
-      tableName,
-      tableComment,
-      dbType,
-      rows: normalizedRowsForPersist,
-      addCount,
-      indexInput,
-      currentIndexFields,
-      indexes: sanitizedIndexesForPersist,
-      authInput,
-      authObjects,
-      citusShardingConfig:
-        dbType === 'postgresql-citus' ? citusShardingConfig : undefined,
-      mysqlPartitionConfig: supportsMysqlPartition
-        ? mysqlPartitionConfig
-        : undefined,
-      tableMiscConfig,
-      fieldTableViewConfig: {
-        freezeEnabled: fieldTableFreezeEnabled,
-        freezeColumns: fieldTableFreezeColumns,
-      },
-    }),
-    [
-      tableName,
-      tableComment,
-      dbType,
-      normalizedRowsForPersist,
-      addCount,
-      indexInput,
-      currentIndexFields,
-      sanitizedIndexesForPersist,
-      authInput,
-      authObjects,
-      citusShardingConfig,
-      mysqlPartitionConfig,
-      supportsMysqlPartition,
-      tableMiscConfig,
-      fieldTableFreezeEnabled,
-      fieldTableFreezeColumns,
-    ],
-  );
-
-  const buildPersistedState = useCallback(
-    (): PersistedState => currentPersistedState,
-    [currentPersistedState],
-  );
-
-  const serializePersistedState = useCallback(
-    (state: PersistedState) => JSON.stringify(state),
-    [],
-  );
-
-  const currentStateSignature = useMemo(
-    () =>
-      loadedTableSignature == null
-        ? null
-        : serializePersistedState(currentPersistedState),
-    [loadedTableSignature, currentPersistedState, serializePersistedState],
-  );
-
-  const hasLoadedTable = Boolean(loadedTableNormalizedName);
-  const isLoadedDirty =
-    hasLoadedTable &&
-    loadedTableSignature != null &&
-    currentStateSignature != null &&
-    currentStateSignature !== loadedTableSignature;
-  const canSaveCurrent = !hasLoadedTable || isLoadedDirty;
-  const loadedStatus = hasLoadedTable
-    ? isLoadedDirty
-      ? 'dirty'
-      : 'clean'
-    : null;
-  const saveDialogTitle = hasLoadedTable ? '更新保存的表' : '保存当前表';
-  const saveDialogDescription = hasLoadedTable
-    ? '当前为已加载表，保存将覆盖原记录。'
-    : '保存后可在左侧列表中快速加载。';
-  const saveInputDisabled = hasLoadedTable;
-
-  // Compute diff between loaded state and current state
-  const tableDiff = useMemo<TableDiff | null>(() => {
-    if (!isLoadedDirty || !loadedTableSignature) return null;
-    try {
-      const oldState = JSON.parse(loadedTableSignature) as PersistedState;
-      const newState = currentPersistedState;
-      return diffPersistedState(oldState, newState);
-    } catch {
-      return null;
-    }
-  }, [isLoadedDirty, loadedTableSignature, currentPersistedState]);
-
+  // ─── 5. SQL generation & data hooks ────────────────────────────
   const { generatedSql, generatedDcl, copySql, copyDcl } = useSqlGeneration(
     dbType,
     tableName,
@@ -475,7 +262,6 @@ function App() {
     clearTablesFromFolders,
   } = useSavedTables();
 
-  // Folders hook
   const {
     folderTree,
     loading: foldersLoading,
@@ -484,7 +270,6 @@ function App() {
     deleteFolder: deleteFolderAction,
   } = useFolders();
 
-  // Field templates hook
   const {
     templates,
     loading: templatesLoading,
@@ -495,6 +280,7 @@ function App() {
     duplicate: duplicateTemplate,
   } = useFieldTemplates();
 
+  // ─── 6. Action hooks ──────────────────────────────────────────
   const {
     isFolderDialogOpen,
     setIsFolderDialogOpen,
@@ -540,7 +326,6 @@ function App() {
     trackEvent,
   });
 
-  // DDL Review hook
   const {
     isLoading: isReviewing,
     partialResult: reviewPartialResult,
@@ -715,6 +500,7 @@ function App() {
     handleSaveAsTemplate,
   });
 
+  // ─── 7. Render ─────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header
@@ -960,7 +746,7 @@ function App() {
           tableNormalizedName: versionHistoryTarget?.normalizedName ?? null,
           tableName: versionHistoryTarget?.name ?? null,
           currentState: currentPersistedState,
-          onRollback: (state) => {
+          onRollback: (state: PersistedState) => {
             applySavedState(state);
             trackEvent('table_version_rollback');
             showToast('已回滚到选中版本');
