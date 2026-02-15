@@ -118,8 +118,10 @@ status: "ready"
 
 本轮落地结果（2026-02-15）:
 - 已完成 4 个域的 `initializedRef -> store hydration 标记` 改造
+- 已完成 `usePersistedState` 的 `hydratedRef` 去除，改为 `hydrated` 门控 + 独立存储写入函数
+- `useDialogState` 维持 `initialDataRef` 设计（补充测试锁定“初始快照”语义）
 - `bun run lint` 通过
-- `bun run test:run` 通过（`62 files / 614 tests`）
+- `bun run test:run` 通过（`62 files / 615 tests`）
 - `bun run test:e2e` 未执行（本轮未涉及 UI 交互行为调整）
 
 ---
