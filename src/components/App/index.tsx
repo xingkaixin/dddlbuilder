@@ -1,6 +1,7 @@
-import { lazy, Suspense } from 'react';
-import type { PersistedState } from '@/types';
+import { lazy, Suspense, useCallback } from 'react';
+import type { DatabaseType, PersistedState } from '@/types';
 import { createEmptyRow } from '@/utils/helpers';
+import { isTabAvailable } from '@/utils/tabUtils';
 import { Header } from './Header';
 import { GlobalDialogs } from './containers/GlobalDialogs';
 import { OutputContainer } from './containers/OutputContainer';
@@ -492,6 +493,16 @@ function App() {
     trackEvent,
   });
 
+  const handleDbTypeChange = useCallback(
+    (newDbType: DatabaseType) => {
+      setDbType(newDbType);
+      if (!isTabAvailable(activeTab, newDbType)) {
+        setActiveTab('fields');
+      }
+    },
+    [setDbType, activeTab, setActiveTab],
+  );
+
   const dataTableToolbarLeft = useTemplateToolbarLeft({
     templates,
     templatesLoading,
@@ -550,7 +561,7 @@ function App() {
               dbType,
               onTableNameChange: setTableName,
               onTableCommentChange: setTableComment,
-              onDbTypeChange: setDbType,
+              onDbTypeChange: handleDbTypeChange,
               onClearAll: handleClearAll,
               onSaveTable: handleOpenSaveDialog,
               onOpenSavedTables: handleOpenSavedTablesDrawer,

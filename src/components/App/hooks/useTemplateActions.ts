@@ -58,9 +58,21 @@ export function useTemplateActions({
   const handleApplyTemplate = useCallback(
     (template: FieldTemplate) => {
       setRows((prevRows) => {
-        const startOrder = prevRows.length;
+        // 找到最后一个非空字段行的索引
+        let lastFilledIndex = -1;
+        for (let i = prevRows.length - 1; i >= 0; i--) {
+          if (prevRows[i].fieldName.trim() !== '') {
+            lastFilledIndex = i;
+            break;
+          }
+        }
+        const insertAt = lastFilledIndex + 1;
+
+        const before = prevRows.slice(0, insertAt);
+        const after = prevRows.slice(insertAt);
+
         const newRows: FieldRow[] = template.fields.map((field, index) => ({
-          order: startOrder + index + 1,
+          order: insertAt + index + 1,
           fieldName: field.fieldName,
           fieldComment: field.fieldComment || '',
           fieldType: field.fieldType,
@@ -69,7 +81,11 @@ export function useTemplateActions({
           defaultValue: field.defaultValue || '',
           onUpdate: field.onUpdate || '无',
         }));
-        return [...prevRows, ...newRows];
+
+        return [...before, ...newRows, ...after].map((row, idx) => ({
+          ...row,
+          order: idx + 1,
+        }));
       });
 
       trackEvent('template_apply', { templateName: template.name });
