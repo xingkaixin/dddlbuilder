@@ -1,7 +1,7 @@
 ---
 created: "2026-02-16"
 updated: "2026-02-16"
-status: "planned"
+status: "completed"
 priority: "P2"
 ---
 
@@ -42,6 +42,20 @@ priority: "P2"
 1. `bun run lint`
 2. `bun run test:run`
 3. `bun run test:e2e`（涉及抽屉与文件夹交互）
+
+## 执行结果
+
+1. 已完成模块拆分，新增：
+   - `src/components/App/saved-tables/TableItem.tsx`
+   - `src/components/App/saved-tables/useSavedTablesFilter.ts`
+   - `src/components/App/saved-tables/folderMenu.tsx`
+2. `SavedTablesDrawer.tsx` 已回归为主容器编排层，保持原有对外 props 与行为。
+3. 验证结果：
+   - `bun run lint`：通过
+   - `bun run test:run`：通过（65 files / 634 tests）
+   - `bun run test:e2e`：执行完成但存在失败（32 passed / 1 skipped / 16 failed）
+     - 失败主要集中在 `e2e/storage/*` 保存表按钮等待超时，以及个别 strict mode 选择器冲突。
+     - 当前记录为已知 e2e 稳定性问题，需单独任务持续跟进。
 
 ---
 

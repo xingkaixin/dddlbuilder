@@ -1,7 +1,7 @@
 ---
 created: "2026-02-16"
 updated: "2026-02-16"
-status: "in_progress"
+status: "completed"
 priority: "P0"
 ---
 
@@ -22,7 +22,7 @@ priority: "P0"
 | `klip-7` | `src/utils/SqlParser.ts` | 742 | P0 | completed |
 | `klip-8` | `src/utils/constants.ts` | 885 | P1 | completed |
 | `klip-9` | `src/utils/alterDdlGenerator.ts` | 574 | P1 | completed |
-| `klip-10` | `src/components/App/SavedTablesDrawer.tsx` | 528 | P2 | planned |
+| `klip-10` | `src/components/App/SavedTablesDrawer.tsx` | 528 | P2 | completed |
 
 ---
 
@@ -49,3 +49,11 @@ priority: "P0"
 - 每个目标使用独立 `README.md + task_plan.md` 维护。
 - 执行时只更新对应 klip，避免跨文件重复记录。
 - 统一用 `planned/in_progress/completed/blocked` 更新状态。
+
+---
+
+## 当前结论
+
+1. `klip-6` ~ `klip-10` 的代码拆分均已完成。
+2. 本批次 lint 与单测验证通过。
+3. e2e 仍有已知失败（主要在 `e2e/storage/*`），建议作为独立稳定性任务跟进，不阻塞本批次拆分结项。
