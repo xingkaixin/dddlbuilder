@@ -29,6 +29,7 @@ import { Label } from '@/components/ui/label';
 import type { FieldTemplate, TemplateField } from '@/hooks/useFieldTemplates';
 import { FieldEditRow, createEmptyField } from './FieldEditRow';
 import { TemplateListItem } from './TemplateListItem';
+import { useToast } from '@/hooks/useToast';
 
 // 模板管理对话框
 interface TemplateManagerDialogProps {
@@ -63,6 +64,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
     onDuplicateTemplate,
     onDeleteTemplate,
   }) => {
+    const { showToast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
     const [editingTemplate, setEditingTemplate] =
       useState<FieldTemplate | null>(null);
@@ -177,8 +179,14 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
         if (result.ok) {
           setIsEditDialogOpen(false);
           setEditingTemplate(null);
+          showToast(
+            editingTemplate
+              ? `已更新模板「${trimmedName}」`
+              : `已创建模板「${trimmedName}」`,
+          );
         } else {
           setEditError('保存失败');
+          showToast(result.ok === false ? '保存失败，请重试' : '保存失败');
         }
       } finally {
         setIsSaving(false);
@@ -190,14 +198,20 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
       editingTemplate,
       onUpdateTemplate,
       onCreateTemplate,
+      showToast,
     ]);
 
     // 复制模板
     const handleDuplicate = useCallback(
       async (template: FieldTemplate) => {
-        await onDuplicateTemplate(template.id);
+        const result = await onDuplicateTemplate(template.id);
+        if (result.ok) {
+          showToast(`已复制模板「${template.name}」`);
+        } else {
+          showToast(result.message ?? '复制失败');
+        }
       },
-      [onDuplicateTemplate],
+      [onDuplicateTemplate, showToast],
     );
 
     // 打开删除确认
@@ -209,10 +223,15 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
     // 确认删除
     const handleConfirmDelete = useCallback(async () => {
       if (!deleteTarget) return;
-      await onDeleteTemplate(deleteTarget.id);
+      const result = await onDeleteTemplate(deleteTarget.id);
+      if (result.ok) {
+        showToast(`已删除模板「${deleteTarget.name}」`);
+      } else {
+        showToast(result.message ?? '删除失败');
+      }
       setIsDeleteDialogOpen(false);
       setDeleteTarget(null);
-    }, [deleteTarget, onDeleteTemplate]);
+    }, [deleteTarget, onDeleteTemplate, showToast]);
 
     // 关闭时重置状态
     useEffect(() => {

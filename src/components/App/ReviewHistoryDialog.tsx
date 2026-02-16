@@ -32,6 +32,7 @@ import {
   getReview,
   deleteReview,
 } from '@/utils/reviewHistory';
+import { useToast } from '@/hooks/useToast';
 
 interface ReviewHistoryDialogProps {
   open: boolean;
@@ -69,6 +70,7 @@ function getScoreColor(score: number): string {
 
 export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
   ({ open, onOpenChange, tableNormalizedName }) => {
+    const { showToast } = useToast();
     const [reviews, setReviews] = useState<ReviewRecordMetadata[]>([]);
     const [loading, setLoading] = useState(false);
     const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -122,10 +124,13 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
         await deleteReview(deleteConfirmId);
         setDeleteConfirmId(null);
         await loadReviews();
+        showToast('已删除评审记录');
+      } catch {
+        showToast('删除失败，请重试');
       } finally {
         setActionLoading(false);
       }
-    }, [deleteConfirmId, loadReviews]);
+    }, [deleteConfirmId, loadReviews, showToast]);
 
     return (
       <>

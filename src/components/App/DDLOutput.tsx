@@ -30,6 +30,7 @@ import {
 import { DATABASE_OPTIONS } from '@/utils/constants';
 import { ReviewResultPanel } from './ReviewResult';
 import { useTrackEvent } from './hooks/useTrackEvent';
+import { useToast } from '@/hooks/useToast';
 
 interface DDLOutputProps {
   generatedSql: string;
@@ -73,6 +74,7 @@ export const DDLOutput = memo<DDLOutputProps>(
     onApplySuggestion,
   }) => {
     const trackEvent = useTrackEvent();
+    const { showToast } = useToast();
     const databaseOption = useMemo(
       () => DATABASE_OPTIONS.find((option) => option.value === dbType),
       [dbType],
@@ -101,7 +103,10 @@ export const DDLOutput = memo<DDLOutputProps>(
 
     const handleCopySql = useCallback(async () => {
       const success = await onCopySql();
-      if (!success) return;
+      if (!success) {
+        showToast('复制失败，请重试');
+        return;
+      }
       void trackEvent('sql_copy_ddl', { dbType });
       if (sqlTimerRef.current) window.clearTimeout(sqlTimerRef.current);
       setIsSqlCopied(true);
@@ -109,11 +114,14 @@ export const DDLOutput = memo<DDLOutputProps>(
         () => setIsSqlCopied(false),
         3000,
       );
-    }, [onCopySql, dbType, trackEvent]);
+    }, [onCopySql, dbType, trackEvent, showToast]);
 
     const handleCopyDcl = useCallback(async () => {
       const success = await onCopyDcl();
-      if (!success) return;
+      if (!success) {
+        showToast('复制失败，请重试');
+        return;
+      }
       void trackEvent('sql_copy_dcl', { dbType });
       if (dclTimerRef.current) window.clearTimeout(dclTimerRef.current);
       setIsDclCopied(true);
@@ -121,7 +129,7 @@ export const DDLOutput = memo<DDLOutputProps>(
         () => setIsDclCopied(false),
         3000,
       );
-    }, [onCopyDcl, dbType, trackEvent]);
+    }, [onCopyDcl, dbType, trackEvent, showToast]);
 
     const canReview = generatedSql && !generatedSql.startsWith('--');
 
