@@ -19,7 +19,7 @@ const fillBasicField = async (page: any, name = 'id') => {
 const saveTable = async (page: any, name: string) => {
   await page.locator('#table-name').fill(name);
   await fillBasicField(page);
-  await page.locator('button[title="保存表"]').click();
+  await page.getByRole('button', { name: /保存当前表/i }).click();
   await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeVisible();
   const nameInput = page.getByLabel('保存名称');
   if (await nameInput.isEnabled()) {
@@ -31,7 +31,7 @@ const saveTable = async (page: any, name: string) => {
 
 const openSavedTables = async (page: any) => {
   await page.getByRole('button', { name: /查看已保存表/i }).click();
-  await expect(page.getByText('已保存的表')).toBeVisible();
+  await expect(page.getByRole('heading', { name: '已保存的表' })).toBeVisible();
 };
 
 test.describe('保存表管理补充 @storage', () => {
