@@ -134,7 +134,6 @@ function createProps(): Parameters<typeof GlobalDialogs>[0] {
       rows: [],
       dbType: 'mysql',
     } as any,
-    toastMessage: '',
   };
 }
 
@@ -196,17 +195,5 @@ describe('GlobalDialogs a11y', () => {
     expect(
       screen.getByText('警告：删除操作不可逆，请确认后再继续。'),
     ).toBeInTheDocument();
-  });
-
-  it('toast 应以 status 语义播报', () => {
-    const props = createProps();
-    props.toastMessage = '保存成功';
-
-    render(<GlobalDialogs {...props} />);
-
-    const toast = screen.getByRole('status');
-    expect(toast).toHaveTextContent('保存成功');
-    expect(toast).toHaveAttribute('aria-live', 'polite');
-    expect(toast).toHaveAttribute('aria-atomic', 'true');
   });
 });

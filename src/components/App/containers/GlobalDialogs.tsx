@@ -71,7 +71,6 @@ interface GlobalDialogsProps {
   reviewHistoryDialogProps: ComponentProps<typeof ReviewHistoryDialog>;
   aiGenerateDialogProps: ComponentProps<typeof AIGenerateDialog>;
   storageEstimatorDialogProps: ComponentProps<typeof StorageEstimatorDialog>;
-  toastMessage: string;
 }
 
 export function GlobalDialogs({
@@ -89,7 +88,6 @@ export function GlobalDialogs({
   reviewHistoryDialogProps,
   aiGenerateDialogProps,
   storageEstimatorDialogProps,
-  toastMessage,
 }: GlobalDialogsProps) {
   const saveInputRef = useRef<HTMLInputElement>(null);
   const saveErrorRef = useRef<HTMLParagraphElement>(null);
@@ -335,16 +333,6 @@ export function GlobalDialogs({
           </p>
         </DialogContent>
       </Dialog>
-
-      {toastMessage && (
-        <output
-          aria-live="polite"
-          aria-atomic="true"
-          className="fixed top-6 left-1/2 z-50 -translate-x-1/2 transform rounded-full bg-foreground/90 px-5 py-2.5 text-sm font-medium text-background shadow-xl transition-[opacity,transform] duration-300 animate-in fade-in zoom-in-95 slide-in-from-top-4 motion-reduce:animate-none motion-reduce:transition-none"
-        >
-          {toastMessage}
-        </output>
-      )}
 
       <StorageEstimatorDialog {...storageEstimatorDialogProps} />
     </>

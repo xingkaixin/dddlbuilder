@@ -444,7 +444,9 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                                   type="button"
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => onRemovePartition(partition.name)}
+                                  onClick={() =>
+                                    onRemovePartition(partition.name)
+                                  }
                                   className="h-8 w-8 text-destructive hover:text-destructive"
                                 >
                                   <X className="h-4 w-4" />
