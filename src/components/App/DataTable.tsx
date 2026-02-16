@@ -306,6 +306,14 @@ export const DataTable = memo<DataTableProps>(
         const clipboardData = e.clipboardData?.getData('text/plain');
         if (!clipboardData) return;
 
+        // Ignore paste if target is an input/textarea (allow default behavior for editing)
+        if (
+          e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLTextAreaElement
+        ) {
+          return;
+        }
+
         // Parse tab-separated values (Excel format)
         const pastedRows = clipboardData
           .split(/\r?\n/)
