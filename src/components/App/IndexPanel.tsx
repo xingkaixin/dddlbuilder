@@ -12,6 +12,11 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   buildNormalizedFields,
   useAppStore,
   useFieldStore,
@@ -177,34 +182,62 @@ export const IndexPanel = memo<IndexPanelProps>(
 
               {currentIndexFields.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md group-hover:bg-primary/5"
-                    onClick={() => onAddIndex(false, false, tableName, dbType)}
-                  >
-                    <Hash className="h-3.5 w-3.5" />
-                    添加索引
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md group-hover:bg-primary/5"
-                    onClick={() => onAddIndex(true, false, tableName, dbType)}
-                  >
-                    <Lock className="h-3.5 w-3.5" />
-                    添加唯一索引
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md group-hover:bg-primary/5"
-                    onClick={() => onAddIndex(true, true, tableName, dbType)}
-                    disabled={indexes.some((index) => index.isPrimary)}
-                  >
-                    <Key className="h-3.5 w-3.5" />
-                    添加主键
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md group-hover:bg-primary/5"
+                        onClick={() => onAddIndex(false, false, tableName, dbType)}
+                      >
+                        <Hash className="h-3.5 w-3.5" />
+                        添加索引
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>添加普通索引</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md group-hover:bg-primary/5"
+                        onClick={() => onAddIndex(true, false, tableName, dbType)}
+                      >
+                        <Lock className="h-3.5 w-3.5" />
+                        添加唯一索引
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>添加唯一(UNIQUE)索引</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      {/* Wrap potentially disabled button */}
+                      <span className="inline-flex" tabIndex={indexes.some((index) => index.isPrimary) ? 0 : -1}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md group-hover:bg-primary/5"
+                          onClick={() => onAddIndex(true, true, tableName, dbType)}
+                          disabled={indexes.some((index) => index.isPrimary)}
+                        >
+                          <Key className="h-3.5 w-3.5" />
+                          添加主键
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>
+                        {indexes.some((index) => index.isPrimary)
+                          ? '已存在主键'
+                          : '添加主键索引'}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               )}
 
@@ -260,15 +293,22 @@ export const IndexPanel = memo<IndexPanelProps>(
                     ) : (
                       <ChevronDown className="h-3 w-3 text-primary transition-transform duration-200 group-hover:scale-110" />
                     )}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onRemoveFieldFromIndex(index);
-                      }}
-                      className="rounded-full p-0.5 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-all duration-200 hover:rotate-90"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRemoveFieldFromIndex(index);
+                          }}
+                          className="rounded-full p-0.5 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-all duration-200 hover:rotate-90"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>移除字段</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                 ))}
               </div>
@@ -369,14 +409,21 @@ export const IndexPanel = memo<IndexPanelProps>(
                             </span>
                           </div>
                         </div>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="transition-all duration-200 hover:scale-110 hover:bg-destructive/10"
-                          onClick={() => onRemoveIndex(index.id)}
-                        >
-                          <X className="h-4 w-4 transition-transform duration-200 group-hover/item:rotate-90" />
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="transition-all duration-200 hover:scale-110 hover:bg-destructive/10"
+                              onClick={() => onRemoveIndex(index.id)}
+                            >
+                              <X className="h-4 w-4 transition-transform duration-200 group-hover/item:rotate-90" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>删除索引</p>
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                     );
                   })}

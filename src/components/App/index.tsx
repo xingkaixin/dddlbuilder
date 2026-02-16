@@ -36,6 +36,8 @@ import { useSavedTables } from '@/hooks/useSavedTables';
 import { useFolders } from '@/hooks/useFolders';
 import { useFieldTemplates } from '@/hooks/useFieldTemplates';
 
+import { TooltipProvider } from '@/components/ui/tooltip';
+
 const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
 
 const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) =>
@@ -512,8 +514,9 @@ function App() {
 
   // ─── 7. Render ─────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Header
+    <TooltipProvider>
+      <div className="min-h-screen bg-background text-foreground">
+        <Header
         showChangelog={showChangelog}
         setShowChangelog={setShowChangelog}
         onShare={handleShare}
@@ -786,7 +789,8 @@ function App() {
         }}
         toastMessage={toastMessage}
       />
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }
 

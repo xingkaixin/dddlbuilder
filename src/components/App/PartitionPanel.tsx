@@ -11,6 +11,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Layers, Plus, X, Info, Calendar } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type {
   MysqlPartitionType,
   MysqlPartitionConfig,
@@ -318,46 +323,74 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                             <span className="text-xs text-muted-foreground mr-1">
                               快捷：
                             </span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onGeneratePartitions('year')}
-                              className="h-7 px-2 text-xs gap-1"
-                            >
-                              <Calendar className="h-3 w-3" />
-                              按年
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onGeneratePartitions('month')}
-                              className="h-7 px-2 text-xs"
-                            >
-                              按月
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onGeneratePartitions('day')}
-                              className="h-7 px-2 text-xs"
-                            >
-                              按日
-                            </Button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => onGeneratePartitions('year')}
+                                  className="h-7 px-2 text-xs gap-1"
+                                >
+                                  <Calendar className="h-3 w-3" />
+                                  按年
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>按年份生成分区 (2020-2030)</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => onGeneratePartitions('month')}
+                                  className="h-7 px-2 text-xs"
+                                >
+                                  按月
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>按月份生成分区 (1-12月)</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => onGeneratePartitions('day')}
+                                  className="h-7 px-2 text-xs"
+                                >
+                                  按日
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>按天生成分区 (1-31日)</p>
+                              </TooltipContent>
+                            </Tooltip>
                           </div>
                         )}
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={handleAddPartition}
-                          className="gap-1"
-                        >
-                          <Plus className="h-4 w-4" />
-                          添加分区
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={handleAddPartition}
+                              className="gap-1"
+                            >
+                              <Plus className="h-4 w-4" />
+                              添加分区
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>添加一个新的分区定义</p>
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                     </div>
 
@@ -405,15 +438,22 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                               }
                               className="flex-1 font-mono text-sm"
                             />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => onRemovePartition(partition.name)}
-                              className="h-8 w-8 text-destructive hover:text-destructive"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => onRemovePartition(partition.name)}
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>移除此分区</p>
+                              </TooltipContent>
+                            </Tooltip>
                           </div>
                         ))}
                       </div>

@@ -8,6 +8,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import type { DatabaseType } from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
@@ -193,12 +198,19 @@ export function ImportSqlDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <button type="button" className={triggerClassName}>
-          {triggerIcon}
-          <span>{triggerLabel}</span>
-        </button>
-      </DialogTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DialogTrigger asChild>
+            <button type="button" className={triggerClassName}>
+              {triggerIcon}
+              <span>{triggerLabel}</span>
+            </button>
+          </DialogTrigger>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>导入 SQL 自动生成表结构</p>
+        </TooltipContent>
+      </Tooltip>
       <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
           <DialogTitle>导入 SQL</DialogTitle>

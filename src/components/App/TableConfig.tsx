@@ -1,5 +1,10 @@
 import { memo } from 'react';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { GitCompare, List, Save, Sparkles, Table, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -68,41 +73,62 @@ export const TableConfig = memo<TableConfigProps>(
               <Table className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
               表配置
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 gap-1.5 px-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-              onClick={onOpenSavedTables}
-            >
-              <List className="h-3.5 w-3.5" />
-              查看已保存表
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1.5 px-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  onClick={onOpenSavedTables}
+                >
+                  <List className="h-3.5 w-3.5" />
+                  查看已保存表
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>查看所有已保存的表结构</p>
+              </TooltipContent>
+            </Tooltip>
             {loadedTableName && (
               <span className="max-w-[240px] truncate text-xs text-muted-foreground">
                 当前：{loadedTableName}
               </span>
             )}
             {onOpenAIGenerate && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 gap-1.5 px-2 text-xs font-medium text-primary border-primary/30 hover:bg-primary/10"
-                onClick={onOpenAIGenerate}
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                大师建表工坊
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 gap-1.5 px-2 text-xs font-medium text-primary border-primary/30 hover:bg-primary/10"
+                    onClick={onOpenAIGenerate}
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    大师建表工坊
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>使用 AI 辅助生成表结构</p>
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
-          <Button
-            variant="destructive"
-            size="sm"
-            className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md"
-            onClick={onClearAll}
-          >
-            <Trash2 className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
-            清空所有
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md"
+                onClick={onClearAll}
+              >
+                <Trash2 className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
+                清空所有
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>清空当前所有配置并重置</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
         <div className="relative p-4">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -121,44 +147,59 @@ export const TableConfig = memo<TableConfigProps>(
                   onChange={(event) => onTableNameChange(event.target.value)}
                   className="flex-1 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                 />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="icon"
-                  className="h-7 w-7 shrink-0"
-                  onClick={onSaveTable}
-                  disabled={saveDisabled}
-                  title={saveDisabled ? saveDisabledHint : '保存表'}
-                  aria-label={
-                    saveDisabled && saveDisabledHint
-                      ? `${saveDisabledHint}，无法保存`
-                      : '保存当前表'
-                  }
-                  aria-describedby={
-                    saveDisabled && saveDisabledHint
-                      ? 'save-disabled-reason'
-                      : undefined
-                  }
-                >
-                  <Save className="h-3.5 w-3.5" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {/* Wrap enabled button in span to ensure tooltip works even if button is disabled/pointer-events-none */}
+                    <span className="inline-flex" tabIndex={saveDisabled ? 0 : -1}>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="icon"
+                        className="h-7 w-7 shrink-0"
+                        onClick={onSaveTable}
+                        disabled={saveDisabled}
+                        aria-label={
+                          saveDisabled && saveDisabledHint
+                            ? `${saveDisabledHint}，无法保存`
+                            : '保存当前表'
+                        }
+                        aria-describedby={
+                          saveDisabled && saveDisabledHint
+                            ? 'save-disabled-reason'
+                            : undefined
+                        }
+                      >
+                        <Save className="h-3.5 w-3.5" />
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{saveDisabled ? saveDisabledHint : '保存当前表'}</p>
+                  </TooltipContent>
+                </Tooltip>
                 {saveDisabled && saveDisabledHint && (
                   <span id="save-disabled-reason" className="sr-only">
                     {saveDisabledHint}
                   </span>
                 )}
                 {showDiffButton && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-7 w-7 shrink-0"
-                    onClick={onViewDiff}
-                    title="查看变更"
-                    aria-label="查看表结构变更"
-                  >
-                    <GitCompare className="h-3.5 w-3.5" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-7 w-7 shrink-0"
+                        onClick={onViewDiff}
+                        aria-label="查看表结构变更"
+                      >
+                        <GitCompare className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>查看表结构变更</p>
+                    </TooltipContent>
+                  </Tooltip>
                 )}
                 {statusLabel && (
                   <span className={`text-xs ${statusClass}`}>
