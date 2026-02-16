@@ -125,7 +125,7 @@ export const IndexPanel = memo<IndexPanelProps>(
             {/* Field Input */}
             <div className="relative group/input">
               <div className="flex gap-3">
-                <div className="flex-1">
+                <div className="w-full max-w-sm">
                   <Input
                     placeholder="输入字段名进行匹配..."
                     value={indexInput}
@@ -180,29 +180,29 @@ export const IndexPanel = memo<IndexPanelProps>(
                   <Button
                     size="sm"
                     variant="outline"
-                    className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md group-hover:bg-primary/5"
+                    className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md group-hover:bg-primary/5"
                     onClick={() => onAddIndex(false, false, tableName, dbType)}
                   >
-                    <Hash className="h-4 w-4" />
+                    <Hash className="h-3.5 w-3.5" />
                     添加索引
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md group-hover:bg-primary/5"
+                    className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md group-hover:bg-primary/5"
                     onClick={() => onAddIndex(true, false, tableName, dbType)}
                   >
-                    <Lock className="h-4 w-4" />
+                    <Lock className="h-3.5 w-3.5" />
                     添加唯一索引
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md group-hover:bg-primary/5"
+                    className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md group-hover:bg-primary/5"
                     onClick={() => onAddIndex(true, true, tableName, dbType)}
                     disabled={indexes.some((index) => index.isPrimary)}
                   >
-                    <Key className="h-4 w-4" />
+                    <Key className="h-3.5 w-3.5" />
                     添加主键
                   </Button>
                 </div>
@@ -249,25 +249,25 @@ export const IndexPanel = memo<IndexPanelProps>(
                 {currentIndexFields.map((field, index) => (
                   <div
                     key={index}
-                    className="group inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-sm transition-all duration-300 hover:bg-primary/10 hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
+                    className="group inline-flex h-7 items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-2.5 text-xs transition-all duration-300 hover:bg-primary/10 hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
                     onClick={() => onToggleFieldDirection(index)}
                   >
                     <span className="font-medium text-foreground hover:text-primary transition-colors">
                       {field.name}
                     </span>
                     {field.direction === 'ASC' ? (
-                      <ChevronUp className="h-4 w-4 text-primary transition-transform duration-200 group-hover:scale-110" />
+                      <ChevronUp className="h-3 w-3 text-primary transition-transform duration-200 group-hover:scale-110" />
                     ) : (
-                      <ChevronDown className="h-4 w-4 text-primary transition-transform duration-200 group-hover:scale-110" />
+                      <ChevronDown className="h-3 w-3 text-primary transition-transform duration-200 group-hover:scale-110" />
                     )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         onRemoveFieldFromIndex(index);
                       }}
-                      className="rounded-full p-1 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-all duration-200 hover:rotate-90"
+                      className="rounded-full p-0.5 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-all duration-200 hover:rotate-90"
                     >
-                      <X className="h-4 w-4" />
+                      <X className="h-3 w-3" />
                     </button>
                   </div>
                 ))}
