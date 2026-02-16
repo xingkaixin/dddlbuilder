@@ -59,8 +59,12 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
     return (
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-1">
-            <FileText className="h-4 w-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1.5 px-2 text-xs font-medium"
+          >
+            <FileText className="h-3.5 w-3.5" />
             应用模板
             <ChevronDown className="h-3 w-3 opacity-50" />
           </Button>

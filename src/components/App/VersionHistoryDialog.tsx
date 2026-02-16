@@ -234,7 +234,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                     size="sm"
                     disabled={!selectedId || actionLoading}
                     onClick={handleCompare}
-                    className="gap-1.5"
+                    className="h-7 gap-1.5 px-2 text-xs font-medium"
                   >
                     <GitCompare className="h-3.5 w-3.5" />
                     与当前对比
@@ -246,7 +246,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                     size="sm"
                     disabled={!selectedId || actionLoading}
                     onClick={handleRollback}
-                    className="gap-1.5"
+                    className="h-7 gap-1.5 px-2 text-xs font-medium"
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
                     回滚到此版本

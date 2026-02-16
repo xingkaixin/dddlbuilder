@@ -73,9 +73,7 @@ export function TableBuilderContainer({
         onValueChange={onTabsValueChange}
         className="w-full"
       >
-        <TabsList
-          className="flex h-auto w-full flex-wrap gap-1 [&>*]:after:hidden sm:flex-nowrap sm:gap-0 sm:overflow-x-auto sm:whitespace-nowrap sm:[&>*]:after:block [&>*]:shrink-0"
-        >
+        <TabsList className="flex h-auto w-full flex-wrap gap-1 [&>*]:after:hidden sm:flex-nowrap sm:gap-0 sm:overflow-x-auto sm:whitespace-nowrap sm:[&>*]:after:block [&>*]:shrink-0">
           <TabsTrigger value="fields" className="gap-2">
             <Columns3Cog className="h-4 w-4" />
             字段配置

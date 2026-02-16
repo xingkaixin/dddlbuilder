@@ -320,9 +320,9 @@ export const DiffDialog = memo<DiffDialogProps>(
                     variant="outline"
                     size="sm"
                     onClick={handleCopy}
-                    className="h-7 gap-1.5 text-xs"
+                    className="h-7 gap-1.5 px-2 text-xs font-medium"
                   >
-                    <Copy className="h-3 w-3" />
+                    <Copy className="h-3.5 w-3.5" />
                     复制
                   </Button>
                 </div>
@@ -366,9 +366,9 @@ export const DiffDialog = memo<DiffDialogProps>(
                         variant="outline"
                         size="sm"
                         onClick={handleCopyRollback}
-                        className="h-7 gap-1.5 text-xs"
+                        className="h-7 gap-1.5 px-2 text-xs font-medium"
                       >
-                        <Copy className="h-3 w-3" />
+                        <Copy className="h-3.5 w-3.5" />
                         复制回滚
                       </Button>
                     </div>

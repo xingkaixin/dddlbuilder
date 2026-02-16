@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ShieldUser, X } from 'lucide-react';
+import { ShieldUser, X, Plus } from 'lucide-react';
 
 interface AuthPanelProps {
   authInput: string;
@@ -31,41 +31,42 @@ export const AuthPanel = memo<AuthPanelProps>(
           <div className="space-y-2">
             {/* Authorization Object Input */}
             <div className="relative group/input">
-              <div className="flex flex-wrap gap-2">
-                <div className="flex-1">
-                  <Input
-                    placeholder="输入授权对象名称..."
-                    value={authInput}
-                    onChange={(e) => {
-                      onAuthInputChange(e.target.value);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && authInput.trim()) {
-                        e.preventDefault();
-                        onAddAuthObject(authInput.trim());
-                      } else if (
-                        e.key === 'Backspace' &&
-                        authInput === '' &&
-                        authObjects.length > 0
-                      ) {
-                        e.preventDefault();
-                        onRemoveAuthObject(authObjects.length - 1);
-                      }
-                    }}
-                    className="pr-4 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
-                {authInput.trim() && (
+              <div className="w-full max-w-sm">
+                <Input
+                  placeholder="输入授权对象名称..."
+                  value={authInput}
+                  onChange={(e) => {
+                    onAuthInputChange(e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && authInput.trim()) {
+                      e.preventDefault();
+                      onAddAuthObject(authInput.trim());
+                    } else if (
+                      e.key === 'Backspace' &&
+                      authInput === '' &&
+                      authObjects.length > 0
+                    ) {
+                      e.preventDefault();
+                      onRemoveAuthObject(authObjects.length - 1);
+                    }
+                  }}
+                  className="pr-4 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              {authInput.trim() && (
+                <div className="mt-3">
                   <Button
                     size="sm"
                     variant="outline"
-                    className="transition-all duration-200 hover:scale-105 hover:shadow-md group-hover/input:bg-primary/5"
+                    className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md group-hover/input:bg-primary/5"
                     onClick={() => onAddAuthObject(authInput.trim())}
                   >
+                    <Plus className="h-3.5 w-3.5" />
                     添加
                   </Button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Added Authorization Objects */}

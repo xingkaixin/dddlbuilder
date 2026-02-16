@@ -97,10 +97,10 @@ export const TableConfig = memo<TableConfigProps>(
           <Button
             variant="destructive"
             size="sm"
-            className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md"
+            className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md"
             onClick={onClearAll}
           >
-            <Trash2 className="h-4 w-4 transition-transform duration-200" />{' '}
+            <Trash2 className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
             清空所有
           </Button>
         </div>
@@ -125,7 +125,7 @@ export const TableConfig = memo<TableConfigProps>(
                   type="button"
                   variant="secondary"
                   size="icon"
-                  className="shrink-0"
+                  className="h-7 w-7 shrink-0"
                   onClick={onSaveTable}
                   disabled={saveDisabled}
                   title={saveDisabled ? saveDisabledHint : '保存表'}
@@ -140,7 +140,7 @@ export const TableConfig = memo<TableConfigProps>(
                       : undefined
                   }
                 >
-                  <Save className="h-4 w-4" />
+                  <Save className="h-3.5 w-3.5" />
                 </Button>
                 {saveDisabled && saveDisabledHint && (
                   <span id="save-disabled-reason" className="sr-only">
@@ -152,12 +152,12 @@ export const TableConfig = memo<TableConfigProps>(
                     type="button"
                     variant="outline"
                     size="icon"
-                    className="shrink-0"
+                    className="h-7 w-7 shrink-0"
                     onClick={onViewDiff}
                     title="查看变更"
                     aria-label="查看表结构变更"
                   >
-                    <GitCompare className="h-4 w-4" />
+                    <GitCompare className="h-3.5 w-3.5" />
                   </Button>
                 )}
                 {statusLabel && (

@@ -161,37 +161,37 @@ export const DDLOutput = memo<DDLOutputProps>(
                     <Button
                       variant="outline"
                       size="sm"
-                      className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md"
+                      className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md"
                       onClick={onStartReview}
                       disabled={!canReview || isReviewing}
                     >
-                      <GraduationCap className="h-4 w-4" />
+                      <GraduationCap className="h-3.5 w-3.5" />
                       大师评审
                     </Button>
                     {onViewReviewHistory && (
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="gap-1 transition-all duration-200 hover:scale-105"
+                        className="h-7 w-7 text-xs font-medium gap-1 transition-all duration-200 hover:scale-105 p-0"
                         onClick={onViewReviewHistory}
                       >
-                        <History className="h-4 w-4" />
+                        <History className="h-3.5 w-3.5" />
                       </Button>
                     )}
                     <Button
                       variant="secondary"
                       size="sm"
-                      className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md"
+                      className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md"
                       onClick={handleCopySql}
                     >
                       {isSqlCopied ? (
                         <>
-                          <Check className="h-4 w-4 transition-transform duration-200" />{' '}
+                          <Check className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
                           已复制
                         </>
                       ) : (
                         <>
-                          <Copy className="h-4 w-4 transition-transform duration-200" />{' '}
+                          <Copy className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
                           复制DDL
                         </>
                       )}
@@ -246,17 +246,17 @@ export const DDLOutput = memo<DDLOutputProps>(
                   <Button
                     variant="secondary"
                     size="sm"
-                    className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md"
+                    className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md"
                     onClick={handleCopyDcl}
                   >
                     {isDclCopied ? (
                       <>
-                        <Check className="h-4 w-4 transition-transform duration-200" />{' '}
+                        <Check className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
                         已复制
                       </>
                     ) : (
                       <>
-                        <Copy className="h-4 w-4 transition-transform duration-200" />{' '}
+                        <Copy className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
                         复制DCL
                       </>
                     )}

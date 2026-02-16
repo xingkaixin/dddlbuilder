@@ -183,10 +183,10 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 text-xs"
+                    className="h-7 gap-1.5 px-2 text-xs font-medium"
                     onClick={handleReset}
                   >
-                    <RotateCcw className="h-3 w-3 mr-1" />
+                    <RotateCcw className="h-3.5 w-3.5" />
                     重新开始
                   </Button>
                 </div>
@@ -414,16 +414,30 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                   {input.length}/{MAX_INPUT_LENGTH}
                 </span>
                 {isLoading ? (
-                  <Button variant="outline" onClick={cancelGeneration}>
+                  <Button
+                    variant="outline"
+                    onClick={cancelGeneration}
+                    size="sm"
+                    className="h-7 px-2 text-xs font-medium"
+                  >
                     取消
                   </Button>
                 ) : result ? (
                   <>
-                    <Button variant="outline" onClick={handleReset}>
+                    <Button
+                      variant="outline"
+                      onClick={handleReset}
+                      size="sm"
+                      className="h-7 px-2 text-xs font-medium"
+                    >
                       重新生成
                     </Button>
-                    <Button onClick={handleApply} className="gap-1">
-                      <Check className="h-4 w-4" />
+                    <Button
+                      onClick={handleApply}
+                      className="h-7 gap-1.5 px-2 text-xs font-medium"
+                      size="sm"
+                    >
+                      <Check className="h-3.5 w-3.5" />
                       应用到表配置
                     </Button>
                   </>
@@ -431,12 +445,13 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                   <Button
                     onClick={handleGenerate}
                     disabled={!input.trim() || isLoading}
-                    className="gap-1"
+                    className="h-7 gap-1.5 px-2 text-xs font-medium"
+                    size="sm"
                   >
                     {isLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
-                      <Send className="h-4 w-4" />
+                      <Send className="h-3.5 w-3.5" />
                     )}
                     生成
                   </Button>

@@ -5,10 +5,10 @@ import {
   flexRender,
 } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { HardDrive } from 'lucide-react';
+import { HardDrive, Minus, Plus, Pin, ListPlus } from 'lucide-react';
 import { toStringSafe, isReservedKeyword } from '@/utils/helpers';
 import { COLUMN_HEADERS } from '@/utils/constants';
 import { cn } from '@/lib/utils';
@@ -413,9 +413,9 @@ export const DataTable = memo<DataTableProps>(
                   variant="outline"
                   size="sm"
                   onClick={onOpenStorageEstimator}
-                  className="gap-2 transition-all duration-200 hover:scale-105 hover:shadow-md border-primary/20 hover:border-primary/50 text-muted-foreground hover:text-primary"
+                  className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md border-primary/20 hover:border-primary/50 text-muted-foreground hover:text-primary"
                 >
-                  <HardDrive className="h-4 w-4" />
+                  <HardDrive className="h-3.5 w-3.5" />
                   估算容量
                 </Button>
               )}
@@ -423,73 +423,114 @@ export const DataTable = memo<DataTableProps>(
 
             {/* Right side: Add rows button */}
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-2 rounded-md px-3 py-1.5">
-                <Label
-                  htmlFor="field-freeze-switch"
-                  className="text-sm text-muted-foreground select-none"
-                >
-                  冻结
-                </Label>
-                <Switch
-                  id="field-freeze-switch"
-                  checked={freezeEnabled}
-                  onCheckedChange={onFreezeEnabledChange}
-                  aria-label="启用字段表格列冻结"
-                />
-                <Input
-                  id="field-freeze-columns-input"
-                  type="number"
-                  min={1}
-                  max={COLUMN_HEADERS.length}
-                  step={1}
-                  value={effectiveFreezeColumns}
-                  disabled={!freezeEnabled}
-                  name="freeze-columns"
-                  aria-label="冻结列数"
-                  aria-describedby="field-freeze-columns-description"
-                  onChange={(e) => {
-                    const parsed = Math.floor(Number(e.target.value));
-                    onFreezeColumnsChange(
-                      Number.isFinite(parsed) && parsed > 0 ? parsed : 1,
-                    );
-                  }}
-                  className="w-20 transition-all duration-200 focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
-                />
-                <Label
-                  htmlFor="field-freeze-columns-input"
-                  className="text-sm text-muted-foreground"
-                >
-                  列
-                </Label>
-                <span id="field-freeze-columns-description" className="sr-only">
-                  设置冻结前 N 列，横向滚动时保持可见
-                </span>
+              {/* Freeze Control Group */}
+              <div className="flex h-7 items-center rounded-md border shadow-sm transition-all hover:shadow-md bg-background">
+                <div className="flex h-full items-center gap-2 border-r bg-muted/30 px-2 pl-2.5">
+                  <Label
+                    htmlFor="field-freeze-switch"
+                    className="flex cursor-pointer items-center gap-1 text-xs font-medium text-muted-foreground select-none"
+                  >
+                    <Pin className="h-3.5 w-3.5" />
+                    冻结
+                  </Label>
+                  <Switch
+                    id="field-freeze-switch"
+                    checked={freezeEnabled}
+                    onCheckedChange={onFreezeEnabledChange}
+                    className="scale-75 data-[state=checked]:bg-primary"
+                    aria-label="启用字段表格列冻结"
+                  />
+                </div>
+                <div className="flex h-full items-center gap-1 px-1.5">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                    disabled={!freezeEnabled || effectiveFreezeColumns <= 1}
+                    onClick={() =>
+                      onFreezeColumnsChange(
+                        Math.max(1, effectiveFreezeColumns - 1),
+                      )
+                    }
+                  >
+                    <Minus className="h-3 w-3" />
+                  </Button>
+                  <span
+                    className={cn(
+                      'min-w-[1.25rem] text-center text-xs font-medium tabular-nums',
+                      !freezeEnabled && 'text-muted-foreground opacity-50',
+                    )}
+                  >
+                    {effectiveFreezeColumns}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                    disabled={
+                      !freezeEnabled ||
+                      effectiveFreezeColumns >= COLUMN_HEADERS.length
+                    }
+                    onClick={() =>
+                      onFreezeColumnsChange(
+                        Math.min(
+                          COLUMN_HEADERS.length,
+                          effectiveFreezeColumns + 1,
+                        ),
+                      )
+                    }
+                  >
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                  <Label
+                    className={cn(
+                      'ml-0.5 text-xs text-muted-foreground',
+                      !freezeEnabled && 'opacity-50',
+                    )}
+                  >
+                    列
+                  </Label>
+                </div>
               </div>
-              <Button
-                onClick={handleAddRowsClick}
-                className="transition-all duration-200 hover:scale-105 hover:shadow-md"
-              >
-                添加行
-              </Button>
-              <div className="flex items-center gap-2 group/counter">
-                <Input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={safeAddCount}
-                  name="add-row-count"
-                  aria-label="添加行数"
-                  onChange={(e) => {
-                    const parsed = Math.floor(Number(e.target.value));
-                    onAddCountChange(
-                      Number.isFinite(parsed) && parsed > 0 ? parsed : 1,
-                    );
-                  }}
-                  className="w-24 transition-all duration-200 focus:ring-2 focus:ring-primary/20 group-hover/counter:border-primary/30"
-                />
-                <span className="text-sm text-muted-foreground transition-colors duration-200 group-hover/counter:text-foreground">
-                  行数
-                </span>
+
+              {/* Add Row Control Group */}
+              <div className="flex h-7 items-center rounded-md border shadow-sm transition-all hover:shadow-md bg-background">
+                <Button
+                  onClick={handleAddRowsClick}
+                  variant="ghost"
+                  size="sm"
+                  className="h-full rounded-none rounded-l-md border-r px-3 text-xs font-medium hover:bg-muted/50"
+                >
+                  <ListPlus className="mr-1.5 h-3.5 w-3.5" />
+                  添加行
+                </Button>
+                <div className="flex h-full items-center gap-1 px-1.5">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                    disabled={safeAddCount <= 1}
+                    onClick={() =>
+                      onAddCountChange(Math.max(1, safeAddCount - 1))
+                    }
+                  >
+                    <Minus className="h-3 w-3" />
+                  </Button>
+                  <span className="min-w-[1.25rem] text-center text-xs font-medium tabular-nums">
+                    {safeAddCount}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                    onClick={() => onAddCountChange(safeAddCount + 1)}
+                  >
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                  <span className="ml-0.5 text-xs text-muted-foreground">
+                    行
+                  </span>
+                </div>
               </div>
             </div>
           </div>
