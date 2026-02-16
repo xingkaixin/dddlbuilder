@@ -1,6 +1,7 @@
 import { render, type RenderOptions } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { vi } from 'vitest';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import type {
   MockEvent,
   MockClipboard,
@@ -12,8 +13,11 @@ const customRender = (
   ui: ReactElement,
   options?: Omit<RenderOptions, 'wrapper'>,
 ) => {
-  // In the future, you can add providers here (Theme, Router, etc.)
-  return render(ui, { ...options });
+  // Wrap with TooltipProvider for components using Tooltip
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <TooltipProvider>{children}</TooltipProvider>
+  );
+  return render(ui, { wrapper: Wrapper, ...options });
 };
 
 // Re-export everything from testing-library

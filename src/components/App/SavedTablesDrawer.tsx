@@ -13,7 +13,13 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Drawer, DrawerClose, DrawerContent } from '@/components/ui/drawer';
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerTitle,
+  DrawerDescription,
+} from '@/components/ui/drawer';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -352,6 +358,13 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent className="flex h-full flex-col p-0">
+          {/* Accessibility: Visually hidden title and description */}
+          <div className="sr-only">
+            <DrawerTitle>已保存的表</DrawerTitle>
+            <DrawerDescription>
+              管理和浏览已保存的数据库表配置
+            </DrawerDescription>
+          </div>
           <div className="flex items-center justify-between border-b border-primary/10 px-4 py-3">
             <div className="flex items-center gap-2">
               <Database className="h-4 w-4 text-primary" />
