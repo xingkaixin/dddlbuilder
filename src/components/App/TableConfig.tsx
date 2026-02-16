@@ -62,8 +62,8 @@ export const TableConfig = memo<TableConfigProps>(
         {/* Top gradient bar */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/30 to-transparent rounded-t-lg" />
 
-        <div className="relative flex items-center justify-between border-b border-primary/10 px-4 py-3.5">
-          <div className="flex min-w-0 items-center gap-3">
+        <div className="relative flex flex-wrap items-center justify-between gap-2 border-b border-primary/10 px-4 py-3.5">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
             <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary transition-all duration-300 group-hover:bg-primary/15">
               <Table className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
               表配置
