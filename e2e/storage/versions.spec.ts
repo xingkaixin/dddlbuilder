@@ -19,7 +19,7 @@ const openHistoryDialog = async (page: any, tableName: string) => {
   await page
     .getByRole('button', { name: /查看已保存表/i, exact: true })
     .click();
-  await expect(page.getByText('已保存的表')).toBeVisible();
+  await expect(page.getByRole('heading', { name: '已保存的表' })).toBeVisible();
   const savedRow = page.getByRole('button', {
     name: new RegExp(tableName, 'i'),
   });
@@ -52,7 +52,7 @@ test.describe('版本管理验证 @storage', () => {
     // 1. 保存初始版本
     await fillBasicField(page, 'f1');
 
-    await page.locator('button[title="保存表"]').click();
+    await page.getByRole('button', { name: /保存当前表/i }).click();
     await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeVisible();
     await page.getByLabel('保存名称').fill(tableName);
     await page.getByRole('button', { name: /^保存$/ }).click();
@@ -62,7 +62,9 @@ test.describe('版本管理验证 @storage', () => {
     await page
       .getByRole('button', { name: /查看已保存表/i, exact: true })
       .click();
-    await expect(page.getByText('已保存的表')).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: '已保存的表' }),
+    ).toBeVisible();
     await page
       .getByRole('button', { name: new RegExp(tableName, 'i') })
       .click();
@@ -80,7 +82,7 @@ test.describe('版本管理验证 @storage', () => {
     await page.keyboard.type('f1_updated', { delay: 50 });
     await page.keyboard.press('Tab');
 
-    await page.locator('button[title="保存表"]').click();
+    await page.getByRole('button', { name: /保存当前表/i }).click();
     // 此时应该是更新逻辑
     await page.getByRole('button', { name: /^保存$/ }).click();
     await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
@@ -97,7 +99,7 @@ test.describe('版本管理验证 @storage', () => {
     await page.locator('#table-name').fill(tableName);
     await fillBasicField(page, 'f1');
 
-    await page.locator('button[title="保存表"]').click();
+    await page.getByRole('button', { name: /保存当前表/i }).click();
     await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeVisible();
     await page.getByLabel('保存名称').fill(tableName);
     await page.getByRole('button', { name: /^保存$/ }).click();
@@ -107,7 +109,9 @@ test.describe('版本管理验证 @storage', () => {
     await page
       .getByRole('button', { name: /查看已保存表/i, exact: true })
       .click();
-    await expect(page.getByText('已保存的表')).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: '已保存的表' }),
+    ).toBeVisible();
     await page
       .getByRole('button', { name: new RegExp(tableName, 'i') })
       .click();
@@ -128,7 +132,7 @@ test.describe('版本管理验证 @storage', () => {
     await page.waitForTimeout(200);
 
     // 保存修改
-    await page.locator('button[title="保存表"]').click();
+    await page.getByRole('button', { name: /保存当前表/i }).click();
     await page.getByRole('button', { name: /^保存$/ }).click();
     await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
     await page.waitForTimeout(300);
@@ -153,7 +157,7 @@ test.describe('版本管理验证 @storage', () => {
     await page.locator('#table-name').fill(tableName);
     await fillBasicField(page, 'f1');
 
-    await page.locator('button[title="保存表"]').click();
+    await page.getByRole('button', { name: /保存当前表/i }).click();
     await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeVisible();
     await page.getByLabel('保存名称').fill(tableName);
     await page.getByRole('button', { name: /^保存$/ }).click();
@@ -162,7 +166,9 @@ test.describe('版本管理验证 @storage', () => {
     await page
       .getByRole('button', { name: /查看已保存表/i, exact: true })
       .click();
-    await expect(page.getByText('已保存的表')).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: '已保存的表' }),
+    ).toBeVisible();
     await page
       .getByRole('button', { name: new RegExp(tableName, 'i') })
       .click();
@@ -176,7 +182,7 @@ test.describe('版本管理验证 @storage', () => {
     await page.keyboard.type('f1_updated', { delay: 50 });
     await page.keyboard.press('Tab');
 
-    await page.locator('button[title="保存表"]').click();
+    await page.getByRole('button', { name: /保存当前表/i }).click();
     await page.getByRole('button', { name: /^保存$/ }).click();
     await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
 
