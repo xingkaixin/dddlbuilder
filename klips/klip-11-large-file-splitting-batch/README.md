@@ -19,7 +19,7 @@ priority: "P0"
 | klip | 目标文件 | 当前行数 | 优先级 | 状态 |
 |------|---------|---------|--------|------|
 | `klip-6` | `api/index.ts` | 595 | P0 | completed |
-| `klip-7` | `src/utils/SqlParser.ts` | 742 | P0 | planned |
+| `klip-7` | `src/utils/SqlParser.ts` | 742 | P0 | completed |
 | `klip-8` | `src/utils/constants.ts` | 885 | P1 | completed |
 | `klip-9` | `src/utils/alterDdlGenerator.ts` | 574 | P1 | completed |
 | `klip-10` | `src/components/App/SavedTablesDrawer.tsx` | 528 | P2 | planned |
