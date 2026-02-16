@@ -15,6 +15,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   Copy,
   Check,
   ScrollText,
@@ -158,44 +163,67 @@ export const DDLOutput = memo<DDLOutputProps>(
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md"
-                      onClick={onStartReview}
-                      disabled={!canReview || isReviewing}
-                    >
-                      <GraduationCap className="h-3.5 w-3.5" />
-                      大师评审
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex" tabIndex={(!canReview || isReviewing) ? 0 : -1}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md"
+                            onClick={onStartReview}
+                            disabled={!canReview || isReviewing}
+                          >
+                            <GraduationCap className="h-3.5 w-3.5" />
+                            大师评审
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>使用 AI 分析并优化建表语句</p>
+                      </TooltipContent>
+                    </Tooltip>
                     {onViewReviewHistory && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 text-xs font-medium gap-1 transition-all duration-200 hover:scale-105 p-0"
-                        onClick={onViewReviewHistory}
-                      >
-                        <History className="h-3.5 w-3.5" />
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 text-xs font-medium gap-1 transition-all duration-200 hover:scale-105 p-0"
+                            onClick={onViewReviewHistory}
+                          >
+                            <History className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>查看历史评审记录</p>
+                        </TooltipContent>
+                      </Tooltip>
                     )}
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md"
-                      onClick={handleCopySql}
-                    >
-                      {isSqlCopied ? (
-                        <>
-                          <Check className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
-                          已复制
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
-                          复制DDL
-                        </>
-                      )}
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md"
+                          onClick={handleCopySql}
+                        >
+                          {isSqlCopied ? (
+                            <>
+                              <Check className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
+                              已复制
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
+                              复制DDL
+                            </>
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>复制建表语句到剪贴板</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                 </div>
               </div>
@@ -243,24 +271,31 @@ export const DDLOutput = memo<DDLOutputProps>(
                       生成数据库授权语句（GRANT）
                     </p>
                   </div>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md"
-                    onClick={handleCopyDcl}
-                  >
-                    {isDclCopied ? (
-                      <>
-                        <Check className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
-                        已复制
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
-                        复制DCL
-                      </>
-                    )}
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md"
+                        onClick={handleCopyDcl}
+                      >
+                        {isDclCopied ? (
+                          <>
+                            <Check className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
+                            已复制
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
+                            复制DCL
+                          </>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>复制授权语句到剪贴板</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
               <div className="relative flex-1 overflow-auto px-4 py-3.5">

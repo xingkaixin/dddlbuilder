@@ -2,6 +2,11 @@ import { memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ShieldUser, X, Plus } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface AuthPanelProps {
   authInput: string;
@@ -56,15 +61,22 @@ export const AuthPanel = memo<AuthPanelProps>(
               </div>
               {authInput.trim() && (
                 <div className="mt-3">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md group-hover/input:bg-primary/5"
-                    onClick={() => onAddAuthObject(authInput.trim())}
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    添加
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md group-hover/input:bg-primary/5"
+                        onClick={() => onAddAuthObject(authInput.trim())}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        添加
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>添加授权对象</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               )}
             </div>
@@ -94,14 +106,21 @@ export const AuthPanel = memo<AuthPanelProps>(
                           {authObj}
                         </span>
                       </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="transition-all duration-200 hover:scale-110 hover:bg-destructive/10"
-                        onClick={() => onRemoveAuthObject(index)}
-                      >
-                        <X className="h-4 w-4 transition-transform duration-200 group-hover/item:rotate-90" />
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="transition-all duration-200 hover:scale-110 hover:bg-destructive/10"
+                            onClick={() => onRemoveAuthObject(index)}
+                          >
+                            <X className="h-4 w-4 transition-transform duration-200 group-hover/item:rotate-90" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>移除授权对象</p>
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                   ))}
                 </div>

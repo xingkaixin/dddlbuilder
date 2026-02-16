@@ -4,6 +4,11 @@ import {
   getCoreRowModel,
   flexRender,
 } from '@tanstack/react-table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 
 import { Label } from '@/components/ui/label';
@@ -417,15 +422,22 @@ export const DataTable = memo<DataTableProps>(
             <div className="flex flex-wrap items-center gap-2">
               {toolbarLeft}
               {onOpenStorageEstimator && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onOpenStorageEstimator}
-                  className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md border-primary/20 hover:border-primary/50 text-muted-foreground hover:text-primary"
-                >
-                  <HardDrive className="h-3.5 w-3.5" />
-                  估算容量
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onOpenStorageEstimator}
+                      className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md border-primary/20 hover:border-primary/50 text-muted-foreground hover:text-primary"
+                    >
+                      <HardDrive className="h-3.5 w-3.5" />
+                      估算容量
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>估算当前表数据量占用空间</p>
+                  </TooltipContent>
+                </Tooltip>
               )}
             </div>
 
@@ -434,13 +446,20 @@ export const DataTable = memo<DataTableProps>(
               {/* Freeze Control Group */}
               <div className="flex h-7 items-center rounded-md border shadow-sm transition-all hover:shadow-md bg-background">
                 <div className="flex h-full items-center gap-2 border-r bg-muted/30 px-2 pl-2.5">
-                  <Label
-                    htmlFor="field-freeze-switch"
-                    className="flex cursor-pointer items-center gap-1 text-xs font-medium text-muted-foreground select-none"
-                  >
-                    <Pin className="h-3.5 w-3.5" />
-                    冻结
-                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Label
+                        htmlFor="field-freeze-switch"
+                        className="flex cursor-pointer items-center gap-1 text-xs font-medium text-muted-foreground select-none"
+                      >
+                        <Pin className="h-3.5 w-3.5" />
+                        冻结
+                      </Label>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>锁定前几列，使其在横向滚动时保持可见</p>
+                    </TooltipContent>
+                  </Tooltip>
                   <Switch
                     id="field-freeze-switch"
                     checked={freezeEnabled}
@@ -450,19 +469,26 @@ export const DataTable = memo<DataTableProps>(
                   />
                 </div>
                 <div className="flex h-full items-center gap-1 px-1.5">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-                    disabled={!freezeEnabled || effectiveFreezeColumns <= 1}
-                    onClick={() =>
-                      onFreezeColumnsChange(
-                        Math.max(1, effectiveFreezeColumns - 1),
-                      )
-                    }
-                  >
-                    <Minus className="h-3 w-3" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                        disabled={!freezeEnabled || effectiveFreezeColumns <= 1}
+                        onClick={() =>
+                          onFreezeColumnsChange(
+                            Math.max(1, effectiveFreezeColumns - 1),
+                          )
+                        }
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>减少冻结列数</p>
+                    </TooltipContent>
+                  </Tooltip>
                   <span
                     className={cn(
                       'min-w-[1.25rem] text-center text-xs font-medium tabular-nums',
@@ -471,25 +497,32 @@ export const DataTable = memo<DataTableProps>(
                   >
                     {effectiveFreezeColumns}
                   </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-                    disabled={
-                      !freezeEnabled ||
-                      effectiveFreezeColumns >= COLUMN_HEADERS.length
-                    }
-                    onClick={() =>
-                      onFreezeColumnsChange(
-                        Math.min(
-                          COLUMN_HEADERS.length,
-                          effectiveFreezeColumns + 1,
-                        ),
-                      )
-                    }
-                  >
-                    <Plus className="h-3 w-3" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                        disabled={
+                          !freezeEnabled ||
+                          effectiveFreezeColumns >= COLUMN_HEADERS.length
+                        }
+                        onClick={() =>
+                          onFreezeColumnsChange(
+                            Math.min(
+                              COLUMN_HEADERS.length,
+                              effectiveFreezeColumns + 1,
+                            ),
+                          )
+                        }
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>增加冻结列数</p>
+                    </TooltipContent>
+                  </Tooltip>
                   <Label
                     className={cn(
                       'ml-0.5 text-xs text-muted-foreground',
@@ -503,38 +536,59 @@ export const DataTable = memo<DataTableProps>(
 
               {/* Add Row Control Group */}
               <div className="flex h-7 items-center rounded-md border shadow-sm transition-all hover:shadow-md bg-background">
-                <Button
-                  onClick={handleAddRowsClick}
-                  variant="ghost"
-                  size="sm"
-                  className="h-full rounded-none rounded-l-md border-r px-3 text-xs font-medium hover:bg-muted/50"
-                >
-                  <ListPlus className="mr-1.5 h-3.5 w-3.5" />
-                  添加行
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={handleAddRowsClick}
+                      variant="ghost"
+                      size="sm"
+                      className="h-full rounded-none rounded-l-md border-r px-3 text-xs font-medium hover:bg-muted/50"
+                    >
+                      <ListPlus className="mr-1.5 h-3.5 w-3.5" />
+                      添加行
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>在表格末尾添加空行</p>
+                  </TooltipContent>
+                </Tooltip>
                 <div className="flex h-full items-center gap-1 px-1.5">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                    disabled={safeAddCount <= 1}
-                    onClick={() =>
-                      onAddCountChange(Math.max(1, safeAddCount - 1))
-                    }
-                  >
-                    <Minus className="h-3 w-3" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                        disabled={safeAddCount <= 1}
+                        onClick={() =>
+                          onAddCountChange(Math.max(1, safeAddCount - 1))
+                        }
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>减少每次添加的行数</p>
+                    </TooltipContent>
+                  </Tooltip>
                   <span className="min-w-[1.25rem] text-center text-xs font-medium tabular-nums">
                     {safeAddCount}
                   </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                    onClick={() => onAddCountChange(safeAddCount + 1)}
-                  >
-                    <Plus className="h-3 w-3" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                        onClick={() => onAddCountChange(safeAddCount + 1)}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>增加每次添加的行数</p>
+                    </TooltipContent>
+                  </Tooltip>
                   <span className="ml-0.5 text-xs text-muted-foreground">
                     行
                   </span>

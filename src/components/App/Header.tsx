@@ -3,6 +3,11 @@ import type { DatabaseType } from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
 import packageInfo from '../../../package.json';
 import { Share2, FileInput, History } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 const ImportSqlDialog = lazy(() =>
   import('@/components/ImportSqlDialog').then((module) => ({
@@ -82,20 +87,34 @@ export const Header = memo<HeaderProps>(
                       triggerLabel="导入 SQL"
                     />
                   </Suspense>
-                  <button onClick={onShare} className={actionBtnClass}>
-                    <Share2 className="h-4 w-4" aria-hidden />
-                    分享链接
-                  </button>
-                  <button
-                    onClick={() => {
-                      trackEvent('changelog_view');
-                      setShowChangelog(true);
-                    }}
-                    className={actionBtnClass}
-                  >
-                    <History className="h-4 w-4" aria-hidden />
-                    更新日志
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button onClick={onShare} className={actionBtnClass}>
+                        <Share2 className="h-4 w-4" aria-hidden />
+                        分享链接
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>生成分享链接</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => {
+                          trackEvent('changelog_view');
+                          setShowChangelog(true);
+                        }}
+                        className={actionBtnClass}
+                      >
+                        <History className="h-4 w-4" aria-hidden />
+                        更新日志
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>查看版本更新历史</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
             </div>
