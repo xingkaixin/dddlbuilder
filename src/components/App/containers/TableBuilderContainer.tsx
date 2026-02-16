@@ -23,7 +23,6 @@ interface TableBuilderContainerProps {
   tableConfigProps: ComponentProps<typeof TableConfig>;
   tabsValue: string;
   onTabsValueChange: (value: string) => void;
-  tabGridClass: string;
   filledRowCount: number;
   indexesLength: number;
   indexStats: {
@@ -49,7 +48,6 @@ export function TableBuilderContainer({
   tableConfigProps,
   tabsValue,
   onTabsValueChange,
-  tabGridClass,
   filledRowCount,
   indexesLength,
   indexStats,
@@ -76,13 +74,13 @@ export function TableBuilderContainer({
         className="w-full"
       >
         <TabsList
-          className={`flex w-full overflow-x-auto whitespace-nowrap xl:grid xl:overflow-visible xl:whitespace-normal [&>*]:shrink-0 xl:[&>*]:shrink ${tabGridClass}`}
+          className="flex h-auto w-full flex-wrap gap-1 [&>*]:after:hidden sm:flex-nowrap sm:gap-0 sm:overflow-x-auto sm:whitespace-nowrap sm:[&>*]:after:block [&>*]:shrink-0"
         >
           <TabsTrigger value="fields" className="gap-2">
             <Columns3Cog className="h-4 w-4" />
             字段配置
             {filledRowCount > 0 && (
-              <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+              <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
                 {filledRowCount}
               </span>
             )}
@@ -91,7 +89,7 @@ export function TableBuilderContainer({
             <Network className="h-4 w-4" />
             索引配置
             {indexesLength > 0 && (
-              <div className="ml-2 flex items-center gap-2">
+              <div className="ml-2 hidden items-center gap-2 2xl:flex">
                 {indexStats.primary > 0 && (
                   <span className="inline-flex items-center gap-1 rounded bg-orange-100 px-1.5 py-0.5 text-xs text-orange-600">
                     <Key className="h-3 w-3" />
@@ -117,7 +115,7 @@ export function TableBuilderContainer({
             <ShieldUser className="h-4 w-4" />
             授权配置
             {authObjectsLength > 0 && (
-              <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+              <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
                 {authObjectsLength}
               </span>
             )}
@@ -126,7 +124,7 @@ export function TableBuilderContainer({
             <SlidersHorizontal className="h-4 w-4" />
             杂项设置
             {miscEnabled && (
-              <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+              <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
                 已启用
               </span>
             )}
@@ -136,7 +134,7 @@ export function TableBuilderContainer({
               <Share2 className="h-4 w-4" />
               分片配置
               {shardingBadgeText && (
-                <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
                   {shardingBadgeText}
                 </span>
               )}
@@ -147,7 +145,7 @@ export function TableBuilderContainer({
               <Layers className="h-4 w-4" />
               分区配置
               {partitionBadgeText && (
-                <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
                   {partitionBadgeText}
                 </span>
               )}

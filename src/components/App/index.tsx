@@ -203,7 +203,6 @@ function App() {
     filledRowCount,
     indexStats,
     supportsMysqlPartition,
-    tabGridClass,
     currentPersistedState,
     buildPersistedState,
     serializePersistedState,
@@ -575,7 +574,6 @@ function App() {
             }}
             tabsValue={activeTab}
             onTabsValueChange={handleTabValueChange}
-            tabGridClass={tabGridClass}
             filledRowCount={filledRowCount}
             indexesLength={indexes.length}
             indexStats={indexStats}

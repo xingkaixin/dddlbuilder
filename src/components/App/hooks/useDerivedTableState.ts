@@ -108,16 +108,6 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
 
   // --- Tab 计算 ---
   const supportsMysqlPartition = ['mysql', 'mariadb', 'tidb'].includes(dbType);
-  const baseTabCount = 4;
-  const extraTabCount =
-    (dbType === 'postgresql-citus' ? 1 : 0) + (supportsMysqlPartition ? 1 : 0);
-  const totalTabCount = baseTabCount + extraTabCount;
-  const tabGridClass =
-    totalTabCount === 6
-      ? 'grid-cols-6'
-      : totalTabCount === 5
-        ? 'grid-cols-5'
-        : 'grid-cols-4';
 
   // --- 持久化状态 ---
   const normalizedRowsForPersist = useMemo(
@@ -242,7 +232,6 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     indexStats,
     // Tab
     supportsMysqlPartition,
-    tabGridClass,
     // 持久化
     currentPersistedState,
     buildPersistedState,
