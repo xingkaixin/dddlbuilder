@@ -53,9 +53,9 @@ export const SelectCell = memo<SelectCellProps>(
         >
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="text-sm">
           {options.map((option) => (
-            <SelectItem key={option} value={option}>
+            <SelectItem key={option} value={option} className="text-sm">
               {option}
             </SelectItem>
           ))}
