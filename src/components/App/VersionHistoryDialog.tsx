@@ -26,6 +26,7 @@ import {
   getVersion,
   deleteVersion,
 } from '@/utils/tableVersions';
+import { useToast } from '@/hooks/useToast';
 
 interface VersionHistoryDialogProps {
   open: boolean;
@@ -69,6 +70,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
     onCompare,
     currentState,
   }) => {
+    const { showToast } = useToast();
     const [versions, setVersions] = useState<TableVersionMetadata[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -136,10 +138,13 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
         await deleteVersion(deleteConfirmId);
         setDeleteConfirmId(null);
         await loadVersions();
+        showToast('已删除版本');
+      } catch {
+        showToast('删除版本失败，请重试');
       } finally {
         setActionLoading(false);
       }
-    }, [deleteConfirmId, loadVersions]);
+    }, [deleteConfirmId, loadVersions, showToast]);
 
     return (
       <>
