@@ -188,7 +188,9 @@ export const IndexPanel = memo<IndexPanelProps>(
                         size="sm"
                         variant="outline"
                         className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md group-hover:bg-primary/5"
-                        onClick={() => onAddIndex(false, false, tableName, dbType)}
+                        onClick={() =>
+                          onAddIndex(false, false, tableName, dbType)
+                        }
                       >
                         <Hash className="h-3.5 w-3.5" />
                         添加索引
@@ -204,7 +206,9 @@ export const IndexPanel = memo<IndexPanelProps>(
                         size="sm"
                         variant="outline"
                         className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md group-hover:bg-primary/5"
-                        onClick={() => onAddIndex(true, false, tableName, dbType)}
+                        onClick={() =>
+                          onAddIndex(true, false, tableName, dbType)
+                        }
                       >
                         <Lock className="h-3.5 w-3.5" />
                         添加唯一索引
@@ -217,12 +221,19 @@ export const IndexPanel = memo<IndexPanelProps>(
                   <Tooltip>
                     <TooltipTrigger asChild>
                       {/* Wrap potentially disabled button */}
-                      <span className="inline-flex" tabIndex={indexes.some((index) => index.isPrimary) ? 0 : -1}>
+                      <span
+                        className="inline-flex"
+                        tabIndex={
+                          indexes.some((index) => index.isPrimary) ? 0 : -1
+                        }
+                      >
                         <Button
                           size="sm"
                           variant="outline"
                           className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md group-hover:bg-primary/5"
-                          onClick={() => onAddIndex(true, true, tableName, dbType)}
+                          onClick={() =>
+                            onAddIndex(true, true, tableName, dbType)
+                          }
                           disabled={indexes.some((index) => index.isPrimary)}
                         >
                           <Key className="h-3.5 w-3.5" />

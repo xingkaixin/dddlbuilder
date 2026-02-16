@@ -165,7 +165,10 @@ export const DDLOutput = memo<DDLOutputProps>(
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="inline-flex" tabIndex={(!canReview || isReviewing) ? 0 : -1}>
+                        <span
+                          className="inline-flex"
+                          tabIndex={!canReview || isReviewing ? 0 : -1}
+                        >
                           <Button
                             variant="outline"
                             size="sm"

@@ -7,6 +7,7 @@ import './index.css';
 import App from './App.tsx';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { appQueryClient } from './lib/queryClient';
+import { Toaster } from './components/ui/sonner';
 
 const rootElement = document.getElementById('root');
 
@@ -19,6 +20,7 @@ createRoot(rootElement).render(
     <QueryClientProvider client={appQueryClient}>
       <AppErrorBoundary>
         <App />
+        <Toaster position="top-center" />
       </AppErrorBoundary>
       <Analytics />
       <SpeedInsights />

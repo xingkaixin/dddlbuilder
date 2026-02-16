@@ -1,140 +1,84 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { renderHook } from '@testing-library/react';
 import { useToast } from '@/hooks';
+import { toast } from 'sonner';
+
+// Mock sonner
+vi.mock('sonner', () => ({
+  toast: Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+    promise: vi.fn(),
+    dismiss: vi.fn(),
+  }),
+}));
 
 describe('useToast', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('应该初始化为空状态', () => {
+  it('应该暴露所有 toast 方法', () => {
     const { result } = renderHook(() => useToast());
-
-    expect(result.current.toastMessage).toBe('');
     expect(typeof result.current.showToast).toBe('function');
+    expect(typeof result.current.success).toBe('function');
+    expect(typeof result.current.error).toBe('function');
+    expect(typeof result.current.info).toBe('function');
+    expect(typeof result.current.warning).toBe('function');
+    expect(typeof result.current.promise).toBe('function');
+    expect(typeof result.current.dismiss).toBe('function');
   });
 
-  it('应该显示 toast 消息', () => {
+  it('调用 showToast 应该触发 sonner.toast', () => {
     const { result } = renderHook(() => useToast());
-
-    act(() => {
-      result.current.showToast('测试消息');
-    });
-
-    expect(result.current.toastMessage).toBe('测试消息');
+    const message = '测试消息';
+    result.current.showToast(message);
+    expect(toast).toHaveBeenCalledWith(message, undefined);
   });
 
-  it('应该在 2.8 秒后自动隐藏消息', () => {
+  it('调用 success 应该触发 sonner.toast.success', () => {
     const { result } = renderHook(() => useToast());
-
-    act(() => {
-      result.current.showToast('自动消失的消息');
-    });
-
-    expect(result.current.toastMessage).toBe('自动消失的消息');
-
-    act(() => {
-      vi.advanceTimersByTime(2800);
-    });
-
-    expect(result.current.toastMessage).toBe('');
+    const message = '成功消息';
+    result.current.success(message);
+    expect(toast.success).toHaveBeenCalledWith(message, undefined);
   });
 
-  it('应该能够连续显示不同的消息', () => {
+  it('调用 error 应该触发 sonner.toast.error', () => {
     const { result } = renderHook(() => useToast());
-
-    act(() => {
-      result.current.showToast('第一条消息');
-    });
-
-    expect(result.current.toastMessage).toBe('第一条消息');
-
-    act(() => {
-      result.current.showToast('第二条消息');
-    });
-
-    expect(result.current.toastMessage).toBe('第二条消息');
+    const message = '错误消息';
+    result.current.error(message);
+    expect(toast.error).toHaveBeenCalledWith(message, undefined);
   });
 
-  it('应该处理空字符串消息', () => {
+  it('调用 info 应该触发 sonner.toast.info', () => {
     const { result } = renderHook(() => useToast());
-
-    act(() => {
-      result.current.showToast('');
-    });
-
-    expect(result.current.toastMessage).toBe('');
+    const message = '提示消息';
+    result.current.info(message);
+    expect(toast.info).toHaveBeenCalledWith(message, undefined);
   });
 
-  it('应该处理特殊字符消息', () => {
+  it('调用 warning 应该触发 sonner.toast.warning', () => {
     const { result } = renderHook(() => useToast());
-
-    const specialMessage = '🎉 消息包含 emoji 和特殊字符 @#$%^&*()';
-
-    act(() => {
-      result.current.showToast(specialMessage);
-    });
-
-    expect(result.current.toastMessage).toBe(specialMessage);
+    const message = '警告消息';
+    result.current.warning(message);
+    expect(toast.warning).toHaveBeenCalledWith(message, undefined);
   });
 
-  it('应该处理长消息', () => {
+  it('调用 promise 应该触发 sonner.toast.promise', () => {
     const { result } = renderHook(() => useToast());
+    const promise = Promise.resolve('data');
+    const data = { loading: 'Loading...', success: 'Success', error: 'Error' };
 
-    const longMessage = 'a'.repeat(1000);
-
-    act(() => {
-      result.current.showToast(longMessage);
-    });
-
-    expect(result.current.toastMessage).toBe(longMessage);
+    result.current.promise(promise, data);
+    expect(toast.promise).toHaveBeenCalledWith(
+      promise,
+      expect.objectContaining(data),
+    );
   });
 
-  it('应该能够多次调用 showTest 并正确处理定时器', () => {
+  it('调用 dismiss 应该触发 sonner.toast.dismiss', () => {
     const { result } = renderHook(() => useToast());
+    const toastId = 'test-id';
 
-    // 显示第一条消息
-    act(() => {
-      result.current.showToast('消息1');
-    });
-
-    // 快速显示第二条消息
-    act(() => {
-      result.current.showToast('消息2');
-    });
-
-    expect(result.current.toastMessage).toBe('消息2');
-
-    // 前进时间，应该清除的是最后一条消息
-    act(() => {
-      vi.advanceTimersByTime(2800);
-    });
-
-    expect(result.current.toastMessage).toBe('');
-  });
-
-  it('应该正确处理定时器清理', () => {
-    const { result, unmount } = renderHook(() => useToast());
-
-    act(() => {
-      result.current.showToast('测试消息');
-    });
-
-    expect(result.current.toastMessage).toBe('测试消息');
-
-    // 在消息消失前卸载组件
-    unmount();
-
-    // 前进时间，不应该有错误
-    act(() => {
-      vi.advanceTimersByTime(2800);
-    });
-
-    // 这里主要测试没有内存泄漏或错误抛出
-    expect(true).toBe(true);
+    result.current.dismiss(toastId);
+    expect(toast.dismiss).toHaveBeenCalledWith(toastId);
   });
 });
