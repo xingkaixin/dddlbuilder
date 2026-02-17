@@ -6,6 +6,7 @@ import { useSavedTableFlowActions } from '@/components/App/hooks/useSavedTableFl
 
 vi.mock('@/utils/tableVersions', () => ({
   createVersion: vi.fn().mockResolvedValue(undefined),
+  countVersions: vi.fn().mockResolvedValue(1),
 }));
 
 const createState = (tableName: string): PersistedState => ({
@@ -67,6 +68,7 @@ describe('useSavedTableFlowActions', () => {
         setLoadedTableNormalizedName,
         setLoadedTableName,
         setLoadedTableSignature,
+        setLoadedTableVersion: vi.fn(),
         setSavedTablesDrawerOpen: vi.fn(),
         saveDialog,
         loadConfirmDialog: createDialog({ pendingTarget: null }),
@@ -123,6 +125,7 @@ describe('useSavedTableFlowActions', () => {
         setLoadedTableNormalizedName: vi.fn(),
         setLoadedTableName: vi.fn(),
         setLoadedTableSignature: vi.fn(),
+        setLoadedTableVersion: vi.fn(),
         setSavedTablesDrawerOpen: vi.fn(),
         saveDialog: createDialog({ name: 'Users', queuedLoadAfterSave: null }),
         loadConfirmDialog: createDialog({ pendingTarget: null }),
@@ -171,6 +174,7 @@ describe('useSavedTableFlowActions', () => {
         setLoadedTableNormalizedName: vi.fn(),
         setLoadedTableName: vi.fn(),
         setLoadedTableSignature: vi.fn(),
+        setLoadedTableVersion: vi.fn(),
         setSavedTablesDrawerOpen: vi.fn(),
         saveDialog: createDialog({ name: 'Users', queuedLoadAfterSave: null }),
         loadConfirmDialog: createDialog({ pendingTarget: null }),
@@ -199,7 +203,7 @@ describe('useSavedTableFlowActions', () => {
     expect(removeSavedTableDraft).toHaveBeenCalledWith('users');
   });
 
-  it('加载表时应忽略基线不匹配的陈旧草稿', async () => {
+  it('加载表时应应用已保存版本', async () => {
     const target = createSavedTableSummary('Users', 'users');
     const savedState = createState('Users');
     const staleDraftState = createState('GlobalDraftLike');
@@ -226,6 +230,7 @@ describe('useSavedTableFlowActions', () => {
         setLoadedTableNormalizedName: vi.fn(),
         setLoadedTableName: vi.fn(),
         setLoadedTableSignature: vi.fn(),
+        setLoadedTableVersion: vi.fn(),
         setSavedTablesDrawerOpen: vi.fn(),
         saveDialog: createDialog({ name: 'Users', queuedLoadAfterSave: null }),
         loadConfirmDialog: createDialog({ pendingTarget: null }),
@@ -258,12 +263,11 @@ describe('useSavedTableFlowActions', () => {
     });
 
     expect(loadTable).toHaveBeenCalledWith('users');
-    expect(removeSavedTableDraft).toHaveBeenCalledWith('users');
     expect(applySavedState).toHaveBeenCalledWith(savedState);
     expect(trackEvent).toHaveBeenCalledWith('table_load', {
       tableName: 'Users',
     });
-    expect(showToast).toHaveBeenCalledWith('已加载：Users');
+    expect(showToast).toHaveBeenCalledWith('已加载：Users (v1)');
     expect(setWorkspaceSnapshot.mock.invocationCallOrder[0]).toBeLessThan(
       applySavedState.mock.invocationCallOrder[0],
     );

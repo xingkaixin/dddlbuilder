@@ -11,14 +11,13 @@ import { getShareState, ShareApiError } from '@/services/shareService';
 import type { WorkspaceSavePayload } from '@/types/workspace';
 import {
   readGlobalDraft,
-  readSavedDraft,
   readWorkspaceSession,
   writeGlobalDraft,
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
+import { addSavedTable } from '@/utils/savedTablesDb';
 
 const GLOBAL_DRAFT_STORAGE_KEY = `${STORAGE_KEY}:draft:global:v1`;
-const SAVED_TABLE_DRAFTS_STORAGE_KEY = `${STORAGE_KEY}:draft:saved:v1`;
 const WORKSPACE_SESSION_STORAGE_KEY = `${STORAGE_KEY}:workspace:v1`;
 
 const localStorageMock = (() => {
@@ -139,7 +138,7 @@ describe('usePersistedState', () => {
     });
   });
 
-  it('保存已保存表草稿时应写入 IndexedDB，并在 clean 时删除', async () => {
+  it('保存已保存表状态时应仅记录查看来源，不记录 activeState', async () => {
     const { wrapper } = createQueryClientWrapper();
     const { result } = renderHook(() => usePersistedState(), { wrapper });
     const savedSource: WorkspaceSavePayload['source'] = {
@@ -163,21 +162,12 @@ describe('usePersistedState', () => {
     });
 
     await waitFor(async () => {
-      const draft = await readSavedDraft('users');
-      expect(draft?.state.tableName).toBe('users_draft');
-    });
-
-    act(() => {
-      result.current.saveState({
-        state: createState('users'),
-        source: savedSource,
-        isDirty: false,
+      const session = await readWorkspaceSession();
+      expect(session?.activeSource).toMatchObject({
+        kind: 'saved_table',
+        normalizedName: 'users',
       });
-    });
-
-    await waitFor(async () => {
-      const draft = await readSavedDraft('users');
-      expect(draft).toBeNull();
+      expect(session?.activeState).toBeNull();
     });
   });
 
@@ -190,7 +180,6 @@ describe('usePersistedState', () => {
       tableName: 'Users',
       baseSignature: '{"table":"users"}',
     };
-    const savedDraftState = createState('users_saved_draft');
     const globalState = createState('global_current');
     const staleState = createState('leaked_global_content');
 
@@ -201,15 +190,18 @@ describe('usePersistedState', () => {
     act(() => {
       result.current.setWorkspaceSnapshot(savedSource, createState('users'));
       result.current.saveState({
-        state: savedDraftState,
+        state: createState('users_saved'),
         source: savedSource,
         isDirty: true,
       });
     });
 
     await waitFor(async () => {
-      const draft = await readSavedDraft('users');
-      expect(draft?.state.tableName).toBe(savedDraftState.tableName);
+      const session = await readWorkspaceSession();
+      expect(session?.activeSource).toMatchObject({
+        kind: 'saved_table',
+        normalizedName: 'users',
+      });
     });
 
     act(() => {
@@ -231,11 +223,6 @@ describe('usePersistedState', () => {
       });
     });
 
-    await waitFor(async () => {
-      const draft = await readSavedDraft('users');
-      expect(draft?.state.tableName).toBe(savedDraftState.tableName);
-    });
-
     expect(result.current.activeSource).toEqual({ kind: 'global_draft' });
     expect(result.current.getGlobalDraftState()?.tableName).toBe(
       globalState.tableName,
@@ -248,8 +235,16 @@ describe('usePersistedState', () => {
     });
   });
 
-  it('应根据 IndexedDB 会话恢复已保存表草稿上下文', async () => {
-    const draftState = createState('users_draft');
+  it('应根据 IndexedDB 会话恢复已保存表查看上下文', async () => {
+    const savedState = createState('users_saved');
+    await addSavedTable({
+      normalizedName: 'users',
+      name: 'Users',
+      state: savedState,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
     await writeWorkspaceSession({
       activeSource: {
         kind: 'saved_table',
@@ -257,7 +252,7 @@ describe('usePersistedState', () => {
         tableName: 'Users',
         baseSignature: '{"table":"users"}',
       },
-      activeState: draftState,
+      activeState: null,
       updatedAt: Date.now(),
     });
 
@@ -270,55 +265,32 @@ describe('usePersistedState', () => {
         kind: 'saved_table',
         normalizedName: 'users',
       });
-      expect(result.current.persistedState).toEqual(draftState);
+      expect(result.current.persistedState).toEqual(savedState);
     });
   });
 
-  it('重命名和删除草稿 API 应写入 IndexedDB', async () => {
+  it('setWorkspaceSnapshot 切到草稿箱时应写入会话与全局草稿', async () => {
     const { wrapper } = createQueryClientWrapper();
     const { result } = renderHook(() => usePersistedState(), { wrapper });
-    const savedSource: WorkspaceSavePayload['source'] = {
-      kind: 'saved_table',
-      normalizedName: 'users',
-      tableName: 'Users',
-      baseSignature: '{"table":"users"}',
-    };
+    const globalState = createState('snapshot_global');
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
     });
 
     act(() => {
-      result.current.setWorkspaceSnapshot(savedSource, createState('users'));
-      result.current.saveState({
-        state: createState('users_draft'),
-        source: savedSource,
-        isDirty: true,
-      });
+      result.current.setWorkspaceSnapshot(
+        { kind: 'global_draft' },
+        globalState,
+      );
     });
 
     await waitFor(async () => {
-      expect(await readSavedDraft('users')).not.toBeNull();
-    });
-
-    act(() => {
-      result.current.renameSavedTableDraft('users', 'users_new', 'Users New');
-    });
-
-    await waitFor(async () => {
-      const oldDraft = await readSavedDraft('users');
-      const newDraft = await readSavedDraft('users_new');
-      expect(oldDraft).toBeNull();
-      expect(newDraft?.tableName).toBe('Users New');
-    });
-
-    act(() => {
-      result.current.removeSavedTableDraft('users_new');
-    });
-
-    await waitFor(async () => {
-      const draft = await readSavedDraft('users_new');
-      expect(draft).toBeNull();
+      const draft = await readGlobalDraft();
+      const session = await readWorkspaceSession();
+      expect(draft?.state.tableName).toBe(globalState.tableName);
+      expect(session?.activeSource).toEqual({ kind: 'global_draft' });
+      expect(session?.activeState?.tableName).toBe(globalState.tableName);
     });
   });
 
@@ -360,19 +332,16 @@ describe('usePersistedState', () => {
     });
   });
 
-  it('应迁移 localStorage 保存表草稿与会话到 IndexedDB', async () => {
-    const draftState = createState('users_legacy_draft');
-    localStorageMock.setItem(
-      SAVED_TABLE_DRAFTS_STORAGE_KEY,
-      JSON.stringify({
-        users: {
-          state: draftState,
-          tableName: 'Users',
-          baseSignature: '{"table":"users"}',
-          updatedAt: Date.now(),
-        },
-      }),
-    );
+  it('应迁移 localStorage 工作区会话并恢复已保存表', async () => {
+    const savedState = createState('users_saved');
+    await addSavedTable({
+      normalizedName: 'users',
+      name: 'Users',
+      state: savedState,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
     localStorageMock.setItem(
       WORKSPACE_SESSION_STORAGE_KEY,
       JSON.stringify({
@@ -382,7 +351,7 @@ describe('usePersistedState', () => {
           tableName: 'Users',
           baseSignature: '{"table":"users"}',
         },
-        activeState: draftState,
+        activeState: null,
         updatedAt: Date.now(),
       }),
     );
@@ -396,11 +365,10 @@ describe('usePersistedState', () => {
         kind: 'saved_table',
         normalizedName: 'users',
       });
-      expect(result.current.persistedState).toEqual(draftState);
+      expect(result.current.persistedState).toEqual(savedState);
     });
 
     await waitFor(async () => {
-      expect(await readSavedDraft('users')).not.toBeNull();
       const session = await readWorkspaceSession();
       expect(session?.activeSource).toMatchObject({
         kind: 'saved_table',
