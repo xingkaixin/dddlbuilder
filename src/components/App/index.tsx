@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback } from 'react';
+import { lazy, Suspense, useCallback, useEffect } from 'react';
 import type { DatabaseType, PersistedState } from '@/types';
 import { createEmptyRow } from '@/utils/helpers';
 import { isTabAvailable } from '@/utils/tabUtils';
@@ -45,6 +45,7 @@ const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) =>
 );
 const DEFAULT_FIELD_TABLE_FREEZE_ENABLED = true;
 const DEFAULT_FIELD_TABLE_FREEZE_COLUMNS = 3;
+const SHARE_COPY_SAVED_TOAST_KEY = 'ddlbuilder:share:copy-saved:v1';
 
 function App() {
   const trackEvent = useTrackEvent();
@@ -142,8 +143,14 @@ function App() {
   const { handleFireworksComplete } = useFireworksIntro({ setShowFireworks });
 
   // ─── 3. Domain hooks (must come before derived state) ──────────
-  const { persistedState, hydrated, saveState, clearState } =
-    usePersistedState();
+  const {
+    persistedState,
+    hydrated,
+    saveState,
+    clearState,
+    shareLoadStatus,
+    isShareView,
+  } = usePersistedState();
 
   const {
     authInput,
@@ -251,6 +258,38 @@ function App() {
   );
 
   const { showToast } = useToast();
+
+  useEffect(() => {
+    if (shareLoadStatus === 'not_found') {
+      showToast('分享链接不存在或已过期，已返回首页');
+      return;
+    }
+    if (shareLoadStatus === 'error') {
+      showToast('分享链接加载失败，已返回首页');
+    }
+  }, [shareLoadStatus, showToast]);
+
+  useEffect(() => {
+    if (!hydrated || !isShareView) return;
+    showToast(
+      '当前分享链接为只读。请先保存为副本，系统会返回首页后再继续编辑。',
+    );
+  }, [hydrated, isShareView, showToast]);
+
+  useEffect(() => {
+    if (isShareView) return;
+    try {
+      const savedCopyName = sessionStorage.getItem(SHARE_COPY_SAVED_TOAST_KEY);
+      if (!savedCopyName) return;
+      sessionStorage.removeItem(SHARE_COPY_SAVED_TOAST_KEY);
+      showToast(
+        `已保存副本「${savedCopyName}」。请从“查看已保存表”加载后继续编辑。`,
+      );
+    } catch {
+      // ignore sessionStorage errors
+    }
+  }, [isShareView, showToast]);
+
   const {
     savedTables,
     loading: savedTablesLoading,
@@ -453,6 +492,15 @@ function App() {
     overwriteTable,
     showToast,
     trackEvent,
+    onSaveSuccess: ({ displayName }) => {
+      if (!isShareView) return;
+      try {
+        sessionStorage.setItem(SHARE_COPY_SAVED_TOAST_KEY, displayName);
+      } catch {
+        // ignore sessionStorage errors
+      }
+      window.location.replace('/');
+    },
   });
 
   const { handleApplySuggestion, handleImport, handleApplyAIGeneratedSchema } =
@@ -526,6 +574,21 @@ function App() {
           onImport={handleImport}
         />
 
+        {isShareView && (
+          <div className="mx-3 mt-3 flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-300 sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              当前分享链接是只读视图，不能直接修改。请先保存为副本，保存后会自动返回首页。你原本首页暂存内容不会被覆盖。
+            </p>
+            <button
+              type="button"
+              onClick={handleOpenSaveDialog}
+              className="inline-flex shrink-0 items-center justify-center rounded-md border border-amber-500/40 bg-amber-100 px-3 py-2 text-xs font-medium text-amber-900 transition-colors hover:bg-amber-200 dark:border-amber-600 dark:bg-amber-900/50 dark:text-amber-100 dark:hover:bg-amber-900"
+            >
+              保存为副本并开始编辑
+            </button>
+          </div>
+        )}
+
         {showFireworks && (
           <Suspense
             fallback={<div className="fixed inset-0 z-[100] bg-black/70" />}
@@ -556,7 +619,11 @@ function App() {
           }}
         />
 
-        <div className="flex flex-col gap-3 p-3 sm:gap-4 sm:p-4">
+        <div
+          className={`flex flex-col gap-3 p-3 sm:gap-4 sm:p-4 ${
+            isShareView ? 'pointer-events-none select-none opacity-80' : ''
+          }`}
+        >
           <div className="flex flex-col gap-4 xl:flex-row">
             <TableBuilderContainer
               tableConfigProps={{

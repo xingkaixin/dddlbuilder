@@ -19,6 +19,21 @@ test.describe('分享功能验证 @tools @smoke', () => {
   });
 
   test('场景：生成分享链接并保存到剪贴板', async ({ page, context }) => {
+    const fakeShareId = '8c6afce1-2a39-47aa-a14f-f3450c3ad7dd';
+    let createShareRequestCount = 0;
+    await page.route('**/api/share', async (route) => {
+      createShareRequestCount += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: fakeShareId,
+          url: `http://127.0.0.1:5173/share/${fakeShareId}`,
+          expiresInSeconds: 604800,
+        }),
+      });
+    });
+
     await page.locator('#table-name').fill('share_test');
 
     // 给权限让 Playwright 访问剪贴板
@@ -27,13 +42,19 @@ test.describe('分享功能验证 @tools @smoke', () => {
     // 点击分享按钮
     await page.getByRole('button', { name: /分享/i }).click();
 
-    // 验证 Toast 提示
-    await expect(page.getByText(/链接已复制/i)).toBeVisible();
+    // 验证 Toast 提示（包含有效期）
+    await expect(page.getByText(/链接已复制到剪贴板/i)).toBeVisible();
+    await expect(page.getByText(/7天后失效/i)).toBeVisible();
 
-    // 验证剪贴板内容包含 ?s=
+    // 验证剪贴板内容是短链接
     const clipboardText = await page.evaluate(() =>
       navigator.clipboard.readText(),
     );
-    expect(clipboardText).toContain('?s=');
+    expect(clipboardText).toContain(`/share/${fakeShareId}`);
+
+    // 第二次点击应复用已有链接，不再创建新的 Redis key
+    await page.getByRole('button', { name: /分享/i }).click();
+    await expect(page.getByText(/复用已有链接/i)).toBeVisible();
+    expect(createShareRequestCount).toBe(1);
   });
 });

@@ -12,7 +12,14 @@ export type ApiErrorCode =
   | 'REVIEW_FAILED'
   | 'GENERATION_FAILED'
   | 'DESCRIPTION_REQUIRED'
-  | 'DDL_REQUIRED';
+  | 'DDL_REQUIRED'
+  | 'REDIS_CONFIG_MISSING'
+  | 'SHARE_STATE_REQUIRED'
+  | 'SHARE_STATE_INVALID'
+  | 'SHARE_UUID_INVALID'
+  | 'SHARE_NOT_FOUND'
+  | 'SHARE_STORE_FAILED'
+  | 'SHARE_LOAD_FAILED';
 
 export const errorResponse = (
   c: Context,

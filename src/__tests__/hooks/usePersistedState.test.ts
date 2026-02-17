@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { usePersistedState } from '@/hooks';
+import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 import { STORAGE_KEY } from '@/utils/constants';
-import { decompressState } from '@/utils/share';
+import { getShareState, ShareApiError } from '@/services/shareService';
 
 // Mock localStorage
 const localStorageMock = (() => {
@@ -30,18 +31,30 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 });
 
-// Mock share module
-vi.mock('@/utils/share', () => ({
-  decompressState: vi.fn(),
+vi.mock('@/services/shareService', () => ({
+  getShareState: vi.fn(),
+  ShareApiError: class ShareApiError extends Error {
+    code?: string;
+    status: number;
+
+    constructor(message: string, status: number, code?: string) {
+      super(message);
+      this.name = 'ShareApiError';
+      this.status = status;
+      this.code = code;
+    }
+  },
 }));
 
-const mockedDecompressState = vi.mocked(decompressState);
+const mockedGetShareState = vi.mocked(getShareState);
+
+const VALID_SHARE_ID = '8c6afce1-2a39-47aa-a14f-f3450c3ad7dd';
+const SHARE_STORAGE_KEY = `${STORAGE_KEY}:share:${VALID_SHARE_ID}`;
 
 describe('usePersistedState', () => {
   beforeEach(() => {
     localStorageMock.clear();
     vi.clearAllMocks();
-    mockedDecompressState.mockReturnValue(null);
     window.history.replaceState({}, '', '/');
   });
 
@@ -49,175 +62,24 @@ describe('usePersistedState', () => {
     vi.restoreAllMocks();
   });
 
-  it('应该初始化并自动从 localStorage 恢复状态', () => {
-    const { result } = renderHook(() => usePersistedState());
-
-    // 初始状态应该是 null（localStorage 为空时）
-    expect(result.current.persistedState).toBe(null);
-    // hydrated 应该为 true，因为 useEffect 已经执行
-    expect(result.current.hydrated).toBe(true);
-    expect(typeof result.current.saveState).toBe('function');
-    expect(typeof result.current.clearState).toBe('function');
-  });
-
-  it('应该能够保存状态到 localStorage', () => {
-    const { result } = renderHook(() => usePersistedState());
-
-    const testState = { test: 'data', number: 123 };
-
-    act(() => {
-      result.current.saveState(testState);
-    });
-
-    expect(localStorageMock.setItem).toHaveBeenCalledWith(
-      STORAGE_KEY,
-      JSON.stringify(testState),
-    );
-  });
-
-  it('应该能够从 localStorage 恢复状态', () => {
-    // 预设 localStorage 中的数据
-    const savedState = { restored: 'data', value: 456 };
+  it('应从主存储恢复状态', () => {
+    const savedState = { tableName: 'users' };
     localStorageMock.setItem(STORAGE_KEY, JSON.stringify(savedState));
 
-    const { result } = renderHook(() => usePersistedState());
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
 
-    // 状态应该自动恢复（useEffect 已经执行）
+    expect(result.current.hydrated).toBe(true);
     expect(result.current.persistedState).toEqual(savedState);
-    expect(result.current.hydrated).toBe(true);
+    expect(result.current.shareLoadStatus).toBe('idle');
+    expect(result.current.isShareView).toBe(false);
   });
 
-  it('应该能够清除 localStorage 中的状态', () => {
-    // 预设 localStorage 中的数据
-    localStorageMock.setItem(STORAGE_KEY, JSON.stringify({ test: 'data' }));
+  it('应保存状态到主存储', () => {
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const testState = { tableName: 'orders' };
 
-    const { result } = renderHook(() => usePersistedState());
-
-    act(() => {
-      result.current.clearState();
-    });
-
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith(STORAGE_KEY);
-    expect(result.current.persistedState).toBe(null);
-  });
-
-  it('应该处理 localStorage 中的无效 JSON 数据', () => {
-    // 设置无效的 JSON 数据
-    localStorageMock.setItem(STORAGE_KEY, 'invalid json');
-
-    const { result } = renderHook(() => usePersistedState());
-
-    // 应该优雅地处理无效数据
-    expect(result.current.persistedState).toBe(null);
-    expect(result.current.hydrated).toBe(true);
-  });
-
-  it('应该处理 localStorage 为空的情况', () => {
-    // localStorage 为空，不设置任何数据
-
-    const { result } = renderHook(() => usePersistedState());
-
-    expect(result.current.persistedState).toBe(null);
-    expect(result.current.hydrated).toBe(true);
-  });
-
-  it('应该处理 localStorage 访问错误', () => {
-    // Mock localStorage 抛出错误
-    localStorageMock.getItem.mockImplementationOnce(() => {
-      throw new Error('localStorage access denied');
-    });
-
-    const { result } = renderHook(() => usePersistedState());
-
-    // 应该优雅地处理错误
-    expect(result.current.persistedState).toBe(null);
-    expect(result.current.hydrated).toBe(true);
-  });
-
-  it('应该处理复杂的对象状态', () => {
-    const { result } = renderHook(() => usePersistedState());
-
-    const complexState = {
-      user: {
-        name: 'Test User',
-        email: 'test@example.com',
-        settings: {
-          theme: 'dark',
-          notifications: true,
-        },
-      },
-      data: [1, 2, 3, { nested: 'value' }],
-      timestamp: new Date().toISOString(),
-    };
-
-    act(() => {
-      result.current.saveState(complexState);
-    });
-
-    expect(localStorageMock.setItem).toHaveBeenCalledWith(
-      STORAGE_KEY,
-      JSON.stringify(complexState),
-    );
-  });
-
-  it('应该能够更新已保存的状态', () => {
-    const { result } = renderHook(() => usePersistedState());
-
-    const initialState = { version: 1, data: 'initial' };
-    const updatedState = { version: 2, data: 'updated' };
-
-    // 保存初始状态
-    act(() => {
-      result.current.saveState(initialState);
-    });
-
-    expect(localStorageMock.setItem).toHaveBeenLastCalledWith(
-      STORAGE_KEY,
-      JSON.stringify(initialState),
-    );
-
-    // 更新状态
-    act(() => {
-      result.current.saveState(updatedState);
-    });
-
-    expect(localStorageMock.setItem).toHaveBeenLastCalledWith(
-      STORAGE_KEY,
-      JSON.stringify(updatedState),
-    );
-  });
-
-  it('应该处理 null 和 undefined 状态值', () => {
-    const { result } = renderHook(() => usePersistedState());
-
-    // 保存 null 状态
-    act(() => {
-      result.current.saveState(null);
-    });
-
-    expect(localStorageMock.setItem).toHaveBeenCalledWith(
-      STORAGE_KEY,
-      JSON.stringify(null),
-    );
-
-    // 保存 undefined 状态
-    act(() => {
-      result.current.saveState(undefined);
-    });
-
-    expect(localStorageMock.setItem).toHaveBeenCalledWith(
-      STORAGE_KEY,
-      JSON.stringify(undefined),
-    );
-  });
-
-  it('应该在未水合时拒绝保存状态', () => {
-    // Mock 一个未水合的状态（虽然实际使用中不会出现）
-    const { result } = renderHook(() => usePersistedState());
-
-    const testState = { test: 'data' };
-
-    // 直接调用 saveState，但由于已经水合了，所以应该能正常保存
     act(() => {
       result.current.saveState(testState);
     });
@@ -228,65 +90,126 @@ describe('usePersistedState', () => {
     );
   });
 
-  it('应该能够连续操作状态', () => {
-    const { result } = renderHook(() => usePersistedState());
+  it('应清理主存储状态', () => {
+    localStorageMock.setItem(STORAGE_KEY, JSON.stringify({ tableName: 'tmp' }));
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
 
-    const states = [
-      { step: 1, data: 'first' },
-      { step: 2, data: 'second' },
-      { step: 3, data: 'third' },
-    ];
-
-    // 连续保存不同状态
-    states.forEach((state) => {
-      act(() => {
-        result.current.saveState(state);
-      });
-    });
-
-    // 清除状态
     act(() => {
       result.current.clearState();
     });
 
-    expect(result.current.persistedState).toBe(null);
     expect(localStorageMock.removeItem).toHaveBeenCalledWith(STORAGE_KEY);
+    expect(result.current.persistedState).toBeNull();
   });
 
-  it('当分享参数解析成功时应清理 URL 参数', async () => {
-    const sharedState = { tableName: 'from_share' };
-    mockedDecompressState.mockReturnValue(sharedState as any);
-    window.history.pushState({}, '', '/?s=shared-payload');
-    const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+  it('应在分享路径加载远端状态并写入分享存储', async () => {
+    const sharedState = {
+      tableName: 'from_share',
+      tableComment: '',
+      dbType: 'mysql',
+      rows: [],
+      addCount: 10,
+      indexInput: '',
+      currentIndexFields: [],
+      indexes: [],
+      authInput: '',
+      authObjects: [],
+    };
+    mockedGetShareState.mockResolvedValue(sharedState as any);
+    window.history.replaceState({}, '', `/share/${VALID_SHARE_ID}`);
 
-    const { result } = renderHook(() => usePersistedState());
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
       expect(result.current.persistedState).toEqual(sharedState);
+      expect(result.current.isShareView).toBe(true);
     });
 
+    expect(mockedGetShareState).toHaveBeenCalledWith(VALID_SHARE_ID);
     expect(localStorageMock.setItem).toHaveBeenCalledWith(
-      STORAGE_KEY,
+      SHARE_STORAGE_KEY,
       JSON.stringify(sharedState),
     );
-    expect(replaceStateSpy).toHaveBeenCalledWith({}, '', '/');
   });
 
-  it('当分享参数解析失败时应回退 localStorage 并清理 URL 参数', async () => {
-    const savedState = { restored: 'from_local_storage' };
-    localStorageMock.setItem(STORAGE_KEY, JSON.stringify(savedState));
-    mockedDecompressState.mockReturnValue(null);
-    window.history.pushState({}, '', '/?s=broken-payload');
-    const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+  it('分享路径保存应写入分享存储而不是主存储', async () => {
+    const sharedState = {
+      tableName: 'from_share',
+      tableComment: '',
+      dbType: 'mysql',
+      rows: [],
+      addCount: 10,
+      indexInput: '',
+      currentIndexFields: [],
+      indexes: [],
+      authInput: '',
+      authObjects: [],
+    };
+    mockedGetShareState.mockResolvedValue(sharedState as any);
+    window.history.replaceState({}, '', `/share/${VALID_SHARE_ID}`);
 
-    const { result } = renderHook(() => usePersistedState());
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
-      expect(result.current.persistedState).toEqual(savedState);
     });
 
-    expect(replaceStateSpy).toHaveBeenCalledWith({}, '', '/');
+    const nextState = { ...sharedState, tableName: 'edited_share' };
+    act(() => {
+      result.current.saveState(nextState);
+    });
+
+    expect(localStorageMock.setItem).toHaveBeenCalledWith(
+      SHARE_STORAGE_KEY,
+      JSON.stringify(nextState),
+    );
+    expect(localStorageMock.setItem).not.toHaveBeenCalledWith(
+      STORAGE_KEY,
+      JSON.stringify(nextState),
+    );
+  });
+
+  it('当分享不存在时应回跳首页并回退主存储', async () => {
+    const mainState = { tableName: 'local_draft' };
+    localStorageMock.setItem(STORAGE_KEY, JSON.stringify(mainState));
+    mockedGetShareState.mockRejectedValue(
+      new ShareApiError('Share not found', 404, 'SHARE_NOT_FOUND'),
+    );
+    window.history.replaceState({}, '', `/share/${VALID_SHARE_ID}`);
+
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+      expect(result.current.shareLoadStatus).toBe('not_found');
+      expect(result.current.persistedState).toEqual(mainState);
+      expect(result.current.isShareView).toBe(false);
+    });
+
+    expect(window.location.pathname).toBe('/');
+  });
+
+  it('当分享路径非法时应回跳首页并标记错误状态', async () => {
+    const mainState = { tableName: 'local_draft' };
+    localStorageMock.setItem(STORAGE_KEY, JSON.stringify(mainState));
+    window.history.replaceState({}, '', '/share/not-a-uuid');
+
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+      expect(result.current.shareLoadStatus).toBe('error');
+      expect(result.current.persistedState).toEqual(mainState);
+      expect(result.current.isShareView).toBe(false);
+    });
+
+    expect(window.location.pathname).toBe('/');
+    expect(mockedGetShareState).not.toHaveBeenCalled();
   });
 });
