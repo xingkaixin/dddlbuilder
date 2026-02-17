@@ -7,7 +7,7 @@ import type {
 } from '@/hooks/useSavedTables';
 import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
-import { createVersion } from '@/utils/tableVersions';
+import { createVersion, countVersions } from '@/utils/tableVersions';
 
 type AnalyticsValue = string | number | boolean | null | undefined;
 
@@ -40,6 +40,7 @@ interface UseSavedTableFlowActionsParams {
   setLoadedTableNormalizedName: (value: string | null) => void;
   setLoadedTableName: (value: string | null) => void;
   setLoadedTableSignature: (value: string | null) => void;
+  setLoadedTableVersion: (version: number) => void;
   setSavedTablesDrawerOpen: (open: boolean) => void;
   saveDialog: UseDialogStateReturn<SaveDialogData>;
   loadConfirmDialog: UseDialogStateReturn<LoadConfirmDialogData>;
@@ -98,6 +99,7 @@ export function useSavedTableFlowActions({
   setLoadedTableNormalizedName,
   setLoadedTableName,
   setLoadedTableSignature,
+  setLoadedTableVersion,
   setSavedTablesDrawerOpen,
   saveDialog,
   loadConfirmDialog,
@@ -157,77 +159,13 @@ export function useSavedTableFlowActions({
         });
 
         const savedBaseSignature = serializePersistedState(record.state);
-        const draftRecord = getSavedTableDraft?.(target.normalizedName);
-
-        console.log('[DEBUG] 加载已保存的表 - 草稿检查:', {
-          hasDraft: !!draftRecord,
-          draftRecord: draftRecord
-            ? {
-                tableName: draftRecord.tableName,
-                baseSignature: draftRecord.baseSignature,
-                fieldCount: draftRecord.state.rows.filter((r) =>
-                  r.fieldName?.trim(),
-                ).length,
-              }
-            : null,
-        });
-
-        const shouldLoadDraft =
-          !!draftRecord &&
-          draftRecord.baseSignature === savedBaseSignature &&
-          isSavedTableDraftDirty(draftRecord);
-
-        console.log('[DEBUG] 加载已保存的表 - 是否加载草稿:', {
-          shouldLoadDraft,
-          reason: !draftRecord
-            ? '无草稿'
-            : draftRecord.baseSignature !== savedBaseSignature
-              ? '草稿基线不匹配'
-              : !isSavedTableDraftDirty(draftRecord)
-                ? '草稿未修改'
-                : '符合加载条件',
-        });
-
-        if (shouldLoadDraft && draftRecord) {
-          const draftTableName = draftRecord.tableName || record.name;
-
-          console.log('[DEBUG] 加载已保存的表 - 加载草稿版本:', {
-            source: {
-              kind: 'saved_table',
-              normalizedName: record.normalizedName,
-              tableName: draftTableName,
-              baseSignature: draftRecord.baseSignature,
-            },
-            tableName: draftRecord.state.tableName,
-            dbType: draftRecord.state.dbType,
-            fieldCount: draftRecord.state.rows.filter((r) =>
-              r.fieldName?.trim(),
-            ).length,
-          });
-
-          setWorkspaceSnapshot?.(
-            {
-              kind: 'saved_table',
-              normalizedName: record.normalizedName,
-              tableName: draftTableName,
-              baseSignature: draftRecord.baseSignature,
-            },
-            draftRecord.state,
-          );
-          applySavedState(draftRecord.state);
-          setLoadedTableNormalizedName(record.normalizedName);
-          setLoadedTableName(draftTableName);
-          setLoadedTableSignature(draftRecord.baseSignature);
-          trackEvent('table_load_draft', { tableName: record.name });
-          showToast(`已加载草稿：${record.name}`);
-          return;
-        }
-
-        if (draftRecord) {
-          console.log('[DEBUG] 加载已保存的表 - 清理失效草稿:', {
-            normalizedName: target.normalizedName,
-          });
-          removeSavedTableDraft?.(target.normalizedName);
+        
+        // 获取版本数量以显示当前版本号
+        let versionCount = 0;
+        try {
+           versionCount = await countVersions(record.normalizedName);
+        } catch (e) {
+           console.error('获取版本号失败', e);
         }
 
         console.log('[DEBUG] 加载已保存的表 - 加载原始保存版本:', {
@@ -238,9 +176,7 @@ export function useSavedTableFlowActions({
             baseSignature: savedBaseSignature,
           },
           tableName: record.state.tableName,
-          dbType: record.state.dbType,
-          fieldCount: record.state.rows.filter((r) => r.fieldName?.trim())
-            .length,
+          version: versionCount,
         });
 
         setWorkspaceSnapshot?.(
@@ -256,8 +192,9 @@ export function useSavedTableFlowActions({
         setLoadedTableNormalizedName(record.normalizedName);
         setLoadedTableName(record.name);
         setLoadedTableSignature(savedBaseSignature);
+        setLoadedTableVersion(versionCount > 0 ? versionCount : 1); // 默认为v1如果没找到历史？通常createVersion会创建初始版本
         trackEvent('table_load', { tableName: record.name });
-        showToast(`已加载：${record.name}`);
+        showToast(`已加载：${record.name} (v${versionCount})`);
       } catch (error) {
         showToast(error instanceof Error ? error.message : '加载失败');
       }
@@ -269,10 +206,8 @@ export function useSavedTableFlowActions({
       setLoadedTableNormalizedName,
       setLoadedTableName,
       setLoadedTableSignature,
+      setLoadedTableVersion,
       serializePersistedState,
-      getSavedTableDraft,
-      isSavedTableDraftDirty,
-      removeSavedTableDraft,
       setWorkspaceSnapshot,
       trackEvent,
     ],

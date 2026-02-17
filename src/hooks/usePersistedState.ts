@@ -5,7 +5,6 @@ import { buildShareStateQueryKey } from '@/queryKeys/share';
 import { ShareApiError, getShareState } from '@/services/shareService';
 import type {
   GlobalDraftSummary,
-  SavedTableDraftRecord,
   WorkspaceSavePayload,
   WorkspaceSource,
 } from '@/types/workspace';
@@ -13,18 +12,14 @@ import { STORAGE_KEY } from '@/utils/constants';
 import {
   clearGlobalDraft,
   clearWorkspaceSession,
-  deleteSavedDraft,
-  listSavedDrafts,
-  migrateLegacyWorkspaceFromLocalStorage,
   readGlobalDraft,
   readWorkspaceSession,
-  renameSavedDraftKey,
-  upsertSavedDraft,
   writeGlobalDraft,
   writeWorkspaceSession,
   type WorkspaceGlobalDraftRecord,
   type WorkspaceSessionRecord,
 } from '@/utils/workspaceStateDb';
+import { getSavedTable } from '@/utils/savedTablesDb';
 
 const SHARE_CACHE_GC_TIME_MS = 15 * 60 * 1000;
 const SHARE_UUID_REGEX =
@@ -33,8 +28,6 @@ const SHARE_UUID_REGEX =
 type ShareLoadStatus = 'idle' | 'not_found' | 'error';
 
 type GlobalDraftRecord = WorkspaceGlobalDraftRecord;
-
-type SavedTableDraftMap = Record<string, SavedTableDraftRecord>;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -230,57 +223,43 @@ const buildGlobalDraftSummary = (
 };
 
 const normalizeGlobalDraftRecord = (
-  record: WorkspaceGlobalDraftRecord | null,
+  value: unknown,
 ): GlobalDraftRecord | null => {
-  if (!record) return null;
-  const normalizedState = normalizePersistedState(record.state);
-  if (!normalizedState) return null;
-  return {
-    state: normalizedState,
-    updatedAt:
-      typeof record.updatedAt === 'number' ? record.updatedAt : Date.now(),
-  };
-};
+  if (!isRecord(value)) return null;
+  const state = normalizePersistedState(value.state);
+  if (!state) return null;
 
-const normalizeSavedDraftMap = (
-  draftMap: Record<string, SavedTableDraftRecord>,
-): SavedTableDraftMap => {
-  const normalizedMap: SavedTableDraftMap = {};
-  for (const [normalizedName, draft] of Object.entries(draftMap)) {
-    const normalizedState = normalizePersistedState(draft.state);
-    if (!normalizedState) continue;
-    if (typeof draft.baseSignature !== 'string') continue;
-    if (typeof draft.tableName !== 'string') continue;
-    normalizedMap[normalizedName] = {
-      state: normalizedState,
-      tableName: draft.tableName,
-      baseSignature: draft.baseSignature,
-      updatedAt:
-        typeof draft.updatedAt === 'number' ? draft.updatedAt : Date.now(),
-    };
-  }
-  return normalizedMap;
+  return {
+    id: toText(value.id, 'global_draft'),
+    name: toText(value.name, 'Global Draft'),
+    dbType: toText(value.dbType, 'mysql') as PersistedState['dbType'],
+    fieldCount: toNumber(value.fieldCount, 0),
+    updatedAt: toNumber(value.updatedAt, Date.now()),
+    state,
+  };
 };
 
 const normalizeWorkspaceSession = (
-  session: WorkspaceSessionRecord | null,
+  value: unknown,
 ): WorkspaceSessionRecord | null => {
-  if (!session || !isWorkspaceSource(session.activeSource)) {
-    return null;
-  }
+  if (!isRecord(value)) return null;
+  if (!isWorkspaceSource(value.activeSource)) return null;
+
   return {
-    activeSource: session.activeSource,
-    activeState: normalizePersistedState(session.activeState),
-    updatedAt:
-      typeof session.updatedAt === 'number' ? session.updatedAt : Date.now(),
+    id: toText(value.id, 'session'),
+    activeSource: value.activeSource,
+    activeState: normalizePersistedState(value.activeState),
+    updatedAt: toNumber(value.updatedAt, Date.now()),
   };
 };
 
-const isSavedTableDraftDirty = (draft: SavedTableDraftRecord) =>
-  JSON.stringify(draft.state) !== draft.baseSignature;
+// Helper for local serialization if needed
+const serializePersistedState = (state: PersistedState): string => {
+  return JSON.stringify(state);
+};
 
 export interface UsePersistedStateReturn {
-  persistedState: Partial<PersistedState> | null;
+  persistedState: PersistedState | null;
   hydrated: boolean;
   saveState: (payload: WorkspaceSavePayload) => void;
   clearState: () => void;
@@ -289,17 +268,10 @@ export interface UsePersistedStateReturn {
   activeSource: WorkspaceSource;
   globalDraftSummary: GlobalDraftSummary | null;
   getGlobalDraftState: () => PersistedState | null;
-  getSavedTableDraft: (normalizedName: string) => SavedTableDraftRecord | null;
   setWorkspaceSnapshot: (
     source: WorkspaceSource,
-    state: PersistedState | null,
+    state: PersistedState,
   ) => void;
-  renameSavedTableDraft: (
-    fromNormalizedName: string,
-    toNormalizedName: string,
-    nextTableName: string,
-  ) => void;
-  removeSavedTableDraft: (normalizedName: string) => void;
 }
 
 export function usePersistedState(): UsePersistedStateReturn {
@@ -309,9 +281,11 @@ export function usePersistedState(): UsePersistedStateReturn {
   const shareStorageKey = shareId ? buildShareStorageKey(shareId) : null;
   const [hydrated, setHydrated] = useState(false);
   const [persistedState, setPersistedState] =
-    useState<Partial<PersistedState> | null>(null);
+    useState<PersistedState | null>(null);
   const [shareLoadStatus, setShareLoadStatus] =
     useState<ShareLoadStatus>('idle');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [isShareView, setIsShareView] = useState(false);
   const [activeSource, setActiveSource] = useState<WorkspaceSource>({
     kind: 'global_draft',
   });
@@ -322,7 +296,6 @@ export function usePersistedState(): UsePersistedStateReturn {
     kind: 'global_draft',
   });
   const globalDraftRef = useRef<GlobalDraftRecord | null>(null);
-  const savedDraftMapRef = useRef<SavedTableDraftMap>({});
 
   const syncActiveSource = useCallback((source: WorkspaceSource) => {
     activeSourceRef.current = source;
@@ -342,20 +315,21 @@ export function usePersistedState(): UsePersistedStateReturn {
     return globalDraftRef.current?.state ?? null;
   }, []);
 
-  const getSavedTableDraft = useCallback((normalizedName: string) => {
-    return savedDraftMapRef.current[normalizedName] ?? null;
-  }, []);
-
   const setWorkspaceSnapshot = useCallback(
-    (source: WorkspaceSource, state: PersistedState | null) => {
+    (source: WorkspaceSource, state: PersistedState) => {
       if (shareId) return;
 
       syncActiveSource(source);
+      setPersistedState(state); // Update the displayed state immediately
 
-      if (source.kind === 'global_draft' && state) {
+      if (source.kind === 'global_draft') {
         const globalRecord: GlobalDraftRecord = {
-          state,
+          id: 'global_draft',
+          name: 'Global Draft',
+          dbType: state.dbType,
+          fieldCount: state.rows.filter((r) => r.fieldName?.trim()).length,
           updatedAt: Date.now(),
+          state,
         };
         updateGlobalDraft(globalRecord);
         fireAndForget(writeGlobalDraft(globalRecord));
@@ -363,6 +337,7 @@ export function usePersistedState(): UsePersistedStateReturn {
 
       fireAndForget(
         writeWorkspaceSession({
+          id: 'session',
           activeSource: source,
           activeState: state,
           updatedAt: Date.now(),
@@ -372,73 +347,13 @@ export function usePersistedState(): UsePersistedStateReturn {
     [shareId, syncActiveSource, updateGlobalDraft],
   );
 
-  const renameSavedTableDraft = useCallback(
-    (
-      fromNormalizedName: string,
-      toNormalizedName: string,
-      nextTableName: string,
-    ) => {
-      if (shareId) return;
-
-      const currentDraft = savedDraftMapRef.current[fromNormalizedName];
-      if (!currentDraft) return;
-
-      const nextDraft: SavedTableDraftRecord = {
-        ...currentDraft,
-        tableName: nextTableName,
-        updatedAt: Date.now(),
-      };
-
-      const nextDraftMap = { ...savedDraftMapRef.current };
-      nextDraftMap[toNormalizedName] = nextDraft;
-      if (fromNormalizedName !== toNormalizedName) {
-        delete nextDraftMap[fromNormalizedName];
-      }
-      savedDraftMapRef.current = nextDraftMap;
-
-      const currentSource = activeSourceRef.current;
-      if (
-        currentSource.kind === 'saved_table' &&
-        currentSource.normalizedName === fromNormalizedName
-      ) {
-        syncActiveSource({
-          ...currentSource,
-          normalizedName: toNormalizedName,
-          tableName: nextTableName,
-        });
-      }
-
-      fireAndForget(
-        renameSavedDraftKey(
-          fromNormalizedName,
-          toNormalizedName,
-          nextTableName,
-        ),
-      );
-    },
-    [shareId, syncActiveSource],
-  );
-
-  const removeSavedTableDraft = useCallback(
-    (normalizedName: string) => {
-      if (shareId) return;
-      if (!savedDraftMapRef.current[normalizedName]) return;
-
-      const nextDraftMap = { ...savedDraftMapRef.current };
-      delete nextDraftMap[normalizedName];
-      savedDraftMapRef.current = nextDraftMap;
-
-      fireAndForget(deleteSavedDraft(normalizedName));
-    },
-    [shareId],
-  );
-
   const saveState = useCallback(
     (payload: WorkspaceSavePayload) => {
       if (!hydrated) return;
 
       if (shareStorageKey) {
         writeStorageJson(shareStorageKey, payload.state);
+        setPersistedState(payload.state); // Update displayed state
         return;
       }
 
@@ -448,79 +363,32 @@ export function usePersistedState(): UsePersistedStateReturn {
         return;
       }
 
+      setPersistedState(payload.state); // Update displayed state
+
       if (payload.source.kind === 'global_draft') {
         const globalRecord: GlobalDraftRecord = {
-          state: payload.state,
+          id: 'global_draft',
+          name: 'Global Draft',
+          dbType: payload.state.dbType,
+          fieldCount: payload.state.rows.filter((r) => r.fieldName?.trim())
+            .length,
           updatedAt: Date.now(),
+          state: payload.state,
         };
         updateGlobalDraft(globalRecord);
         fireAndForget(writeGlobalDraft(globalRecord));
-      } else if (payload.isDirty) {
-        let baseSignatureParsed: {
-          tableName?: string;
-          tableComment?: string;
-          dbType?: string;
-        } | null = null;
-        try {
-          baseSignatureParsed = JSON.parse(payload.source.baseSignature);
-        } catch {
-          baseSignatureParsed = null;
-        }
-        const hasCriticalFieldInSignature =
-          baseSignatureParsed &&
-          (baseSignatureParsed.tableName !== undefined ||
-            baseSignatureParsed.tableComment !== undefined ||
-            baseSignatureParsed.dbType !== undefined);
-
-        if (hasCriticalFieldInSignature) {
-          const originalTableName = baseSignatureParsed?.tableName ?? '';
-          const originalTableComment = baseSignatureParsed?.tableComment ?? '';
-          const originalDbType = baseSignatureParsed?.dbType ?? 'mysql';
-          const currentTableName = payload.state.tableName ?? '';
-          const currentTableComment = payload.state.tableComment ?? '';
-          const currentDbType = payload.state.dbType ?? 'mysql';
-          const hasCriticalChange =
-            currentTableName !== originalTableName ||
-            currentTableComment !== originalTableComment ||
-            currentDbType !== originalDbType;
-
-          if (hasCriticalChange) {
-            console.log(
-              '[DEBUG] saveState - 跳过保存：表名/类型/中文名已变化，应触发保存对话框',
-            );
-            return;
-          }
-        }
-
-        const nextDraftMap = { ...savedDraftMapRef.current };
-        nextDraftMap[payload.source.normalizedName] = {
-          state: payload.state,
-          tableName: payload.source.tableName,
-          baseSignature: payload.source.baseSignature,
-          updatedAt: Date.now(),
-        };
-        savedDraftMapRef.current = nextDraftMap;
-        fireAndForget(
-          upsertSavedDraft(
-            payload.source.normalizedName,
-            nextDraftMap[payload.source.normalizedName],
-          ),
-        );
-      } else {
-        const nextDraftMap = { ...savedDraftMapRef.current };
-        delete nextDraftMap[payload.source.normalizedName];
-        savedDraftMapRef.current = nextDraftMap;
-        fireAndForget(deleteSavedDraft(payload.source.normalizedName));
-      }
+      } 
+      
+      const activeStateToPersist = payload.source.kind === 'saved_table' ? null : payload.state;
 
       fireAndForget(
         writeWorkspaceSession({
+          id: 'session',
           activeSource: payload.source,
-          activeState: payload.state,
+          activeState: activeStateToPersist,
           updatedAt: Date.now(),
         }),
       );
-
       syncActiveSource(payload.source);
     },
     [hydrated, shareStorageKey, syncActiveSource, updateGlobalDraft],
@@ -534,10 +402,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     }
 
     if (activeSource.kind === 'saved_table') {
-      const nextDraftMap = { ...savedDraftMapRef.current };
-      delete nextDraftMap[activeSource.normalizedName];
-      savedDraftMapRef.current = nextDraftMap;
-      fireAndForget(deleteSavedDraft(activeSource.normalizedName));
+      // No draft to delete for saved table
     } else {
       updateGlobalDraft(null);
       fireAndForget(clearGlobalDraft());
@@ -559,20 +424,15 @@ export function usePersistedState(): UsePersistedStateReturn {
     };
 
     const hydrateMainWorkspace = async () => {
-      await migrateLegacyWorkspaceFromLocalStorage();
-
-      const [globalDraftRaw, savedDraftMapRaw, sessionRaw] = await Promise.all([
+      const [globalDraftRaw, sessionRaw] = await Promise.all([
         readGlobalDraft().catch(() => null),
-        listSavedDrafts().catch(() => ({})),
         readWorkspaceSession().catch(() => null),
       ]);
 
       const globalDraftRecord = normalizeGlobalDraftRecord(globalDraftRaw);
-      const savedDraftMap = normalizeSavedDraftMap(savedDraftMapRaw);
       const session = normalizeWorkspaceSession(sessionRaw);
 
       updateGlobalDraft(globalDraftRecord);
-      savedDraftMapRef.current = savedDraftMap;
 
       if (!session) {
         syncActiveSource({ kind: 'global_draft' });
@@ -581,31 +441,38 @@ export function usePersistedState(): UsePersistedStateReturn {
       }
 
       if (session.activeSource.kind === 'saved_table') {
-        const draft = savedDraftMap[session.activeSource.normalizedName];
-        if (draft && isSavedTableDraftDirty(draft)) {
-          syncActiveSource({
-            kind: 'saved_table',
-            normalizedName: session.activeSource.normalizedName,
-            tableName: draft.tableName,
-            baseSignature: draft.baseSignature,
-          });
-          hydrateWithState(draft.state);
-          return;
+        // Try to load the saved table from DB
+        try {
+           const savedTable = await getSavedTable(session.activeSource.normalizedName);
+           if (savedTable) {
+             syncActiveSource({
+               kind: 'saved_table',
+               normalizedName: savedTable.normalizedName,
+               tableName: savedTable.name,
+               baseSignature: serializePersistedState(savedTable.state),
+             });
+             // Always hydrate with the CLEAN state from DB
+             hydrateWithState(savedTable.state);
+             return;
+           }
+        } catch (e) {
+           console.error('Failed to load saved table for session:', e);
         }
 
-        if (session.activeState) {
-          syncActiveSource(session.activeSource);
-          hydrateWithState(session.activeState);
-          return;
-        }
-
+        // Fallback: Global Draft if saved table missing
         syncActiveSource({ kind: 'global_draft' });
         hydrateWithState(globalDraftRecord?.state ?? null);
         return;
       }
 
+      // Default: Global Draft
       syncActiveSource({ kind: 'global_draft' });
-      hydrateWithState(session.activeState ?? globalDraftRecord?.state ?? null);
+      // If session.activeState exists and is for Global Draft, use it
+      if (session.activeState) {
+        hydrateWithState(session.activeState);
+      } else {
+        hydrateWithState(globalDraftRecord?.state ?? null);
+      }
     };
 
     const redirectHome = () => {
@@ -674,9 +541,6 @@ export function usePersistedState(): UsePersistedStateReturn {
     activeSource,
     globalDraftSummary,
     getGlobalDraftState,
-    getSavedTableDraft,
     setWorkspaceSnapshot,
-    renameSavedTableDraft,
-    removeSavedTableDraft,
   };
 }
