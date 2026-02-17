@@ -33,9 +33,20 @@ export function ConfirmStep({
             </span>
           </p>
           <p>
+            授权对象数:{' '}
+            <span className="text-foreground">
+              {parsedResult?.authObjects.length || 0}
+            </span>
+          </p>
+          <p>
             数据库: <span className="text-foreground">{selectedDbType}</span>
           </p>
         </div>
+        {(parsedResult?.authObjects.length || 0) > 0 && (
+          <p className="mt-2 text-muted-foreground">
+            授权对象: {parsedResult?.authObjects.join(', ')}
+          </p>
+        )}
       </div>
       <p className="text-sm text-muted-foreground">
         点击确认后，表结构将导入到当前工作区。

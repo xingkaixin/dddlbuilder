@@ -117,4 +117,55 @@ describe('ImportSqlDialog', () => {
     expect(await screen.findByText(/表名:/)).toBeInTheDocument();
     expect(screen.getByText('users')).toBeInTheDocument();
   });
+
+  it('解析到授权信息时应在预览和确认步骤展示并导入', async () => {
+    const parsedResult = {
+      tableName: 'COO_SC_RAT',
+      tableComment: '',
+      fields: [
+        {
+          name: 'id',
+          type: 'int',
+          comment: '主键',
+          nullable: false,
+          defaultKind: 'none' as const,
+          defaultValue: '',
+          onUpdate: 'none' as const,
+        },
+      ],
+      indexes: [],
+      authObjects: ['cb1', 'cb2'],
+    };
+    mockedRequestSqlParse.mockResolvedValue(parsedResult);
+    const onImport = vi.fn();
+
+    render(
+      <ImportSqlDialog
+        currentDbType="mysql"
+        onImport={onImport}
+        triggerLabel="导入 SQL"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '导入 SQL' }));
+    const textarea = await screen.findByLabelText('SQL 内容');
+    fireEvent.change(textarea, {
+      target: {
+        value:
+          'CREATE TABLE COO_SC_RAT (id INT); GRANT SELECT ON COO_SC_RAT TO cb1;',
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '下一步' }));
+
+    expect(await screen.findByText(/授权对象数:/)).toBeInTheDocument();
+    expect(screen.getByText('cb1')).toBeInTheDocument();
+    expect(screen.getByText('cb2')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '下一步' }));
+    expect(await screen.findByText('授权对象: cb1, cb2')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '确认导入' }));
+
+    expect(onImport).toHaveBeenCalledWith(parsedResult, 'mysql');
+  });
 });

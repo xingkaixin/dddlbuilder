@@ -6,6 +6,7 @@ import type {
   FieldRow,
   IndexDefinition,
   NullableDefault,
+  TableMiscConfig,
 } from '@/types';
 import type { ReviewResult, StructuredSuggestion } from '@/hooks/useDDLReview';
 import type { GeneratedTableSchema } from '@/hooks/useAIGenerateTable';
@@ -25,6 +26,7 @@ interface UseSchemaApplyActionsParams {
   setTableName: (value: string) => void;
   setTableComment: (value: string) => void;
   setDbType: (value: DatabaseType) => void;
+  setTableMiscConfig: Dispatch<SetStateAction<TableMiscConfig>>;
   setActiveTab: (value: string) => void;
   triggerIndexAnimation: (indexId: string, mode: 'add' | 'remove') => void;
   triggerFieldTableHighlight: (rowIndex: number) => void;
@@ -34,6 +36,14 @@ interface UseSchemaApplyActionsParams {
     data?: Record<string, AnalyticsValue>,
   ) => Promise<void>;
 }
+
+const DEFAULT_TABLE_MISC_CONFIG: TableMiscConfig = {
+  enabled: false,
+  engine: '',
+  charset: '',
+  collation: '',
+  tablespace: '',
+};
 
 export function useSchemaApplyActions({
   rows,
@@ -48,6 +58,7 @@ export function useSchemaApplyActions({
   setTableName,
   setTableComment,
   setDbType,
+  setTableMiscConfig,
   setActiveTab,
   triggerIndexAnimation,
   triggerFieldTableHighlight,
@@ -225,6 +236,10 @@ export function useSchemaApplyActions({
       setTableName(result.tableName);
       setTableComment(result.tableComment);
       setDbType(importDbType);
+      setTableMiscConfig({
+        ...DEFAULT_TABLE_MISC_CONFIG,
+        ...(result.tableMiscConfig || {}),
+      });
 
       const newRows: FieldRow[] = result.fields.map((field, index) => {
         let uiNullable = '是';
@@ -290,6 +305,7 @@ export function useSchemaApplyActions({
       setTableName,
       setTableComment,
       setDbType,
+      setTableMiscConfig,
       trackEvent,
     ],
   );

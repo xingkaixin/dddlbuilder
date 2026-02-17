@@ -39,6 +39,27 @@ describe('preprocessMysql', () => {
     expect(result.indexes[1]).toContain('ALTER TABLE users ADD INDEX');
   });
 
+  it('不应把列默认函数中的右括号误判为建表结束', () => {
+    const sql = [
+      'CREATE TABLE COO_SC_RAT (',
+      "  ID VARCHAR(100) NULL DEFAULT (UUID()) COMMENT '记录编号',",
+      "  INFO_SRC VARCHAR(10) NULL DEFAULT '1' COMMENT '信息来源'",
+      ") COMMENT='证券公司评级1'",
+      'PARTITION BY KEY(ID)',
+      'PARTITIONS 4;',
+      'CREATE INDEX idx_corp_id ON COO_SC_RAT (INFO_SRC ASC);',
+    ].join('\n');
+
+    const result = preprocessMysql(sql);
+
+    expect(result.sql).toContain('DEFAULT (UUID())');
+    expect(result.sql).toContain("COMMENT='证券公司评级1'");
+    expect(result.sql).not.toContain('PARTITION BY KEY(ID)');
+    expect(result.sql).toContain(
+      'CREATE INDEX idx_corp_id ON COO_SC_RAT (INFO_SRC ASC);',
+    );
+  });
+
   it('含分区但不含 CREATE TABLE 时应保持默认返回', () => {
     const sql = 'ALTER TABLE users PARTITION BY HASH(id);';
     const result = preprocessMysql(sql);

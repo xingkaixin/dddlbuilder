@@ -469,6 +469,7 @@ function App() {
       setTableName,
       setTableComment,
       setDbType,
+      setTableMiscConfig,
       setActiveTab,
       triggerIndexAnimation,
       triggerFieldTableHighlight,
