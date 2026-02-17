@@ -2,10 +2,12 @@ import type { PersistedState } from '@/types';
 import type { SavedTableDraftRecord, WorkspaceSource } from '@/types/workspace';
 import { STORAGE_KEY } from '@/utils/constants';
 import {
+  STORE_NAME,
   WORKSPACE_GLOBAL_DRAFT_STORE_NAME,
   WORKSPACE_SAVED_DRAFTS_STORE_NAME,
   WORKSPACE_SESSION_STORE_NAME,
   openDb,
+  type SavedTableRecord,
 } from './savedTablesDb';
 
 const GLOBAL_DRAFT_ROW_ID = 'global';
@@ -40,6 +42,8 @@ type WorkspaceStoreName =
   | typeof WORKSPACE_GLOBAL_DRAFT_STORE_NAME
   | typeof WORKSPACE_SAVED_DRAFTS_STORE_NAME
   | typeof WORKSPACE_SESSION_STORE_NAME;
+
+type BootstrapReadableStoreName = WorkspaceStoreName | typeof STORE_NAME;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -217,6 +221,68 @@ export const readWorkspaceSession =
       updatedAt: entity.updatedAt,
     };
   };
+
+export const readWorkspaceBootstrap = async (): Promise<{
+  globalDraft: WorkspaceGlobalDraftRecord | null;
+  session: WorkspaceSessionRecord | null;
+  savedTable: SavedTableRecord | null;
+}> => {
+  const db = await openDb();
+  const readEntity = <T>(
+    storeName: BootstrapReadableStoreName,
+    key: string,
+  ): Promise<T | undefined> =>
+    new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readonly');
+      const store = tx.objectStore(storeName);
+      const request = store.get(key);
+
+      request.onsuccess = () => resolve(request.result as T | undefined);
+      request.onerror = () =>
+        reject(request.error ?? new Error('IndexedDB 请求失败'));
+      tx.onerror = () => reject(tx.error ?? new Error('事务失败'));
+      tx.onabort = () => reject(tx.error ?? new Error('事务被中止'));
+    });
+
+  try {
+    const [globalEntity, sessionEntity] = await Promise.all([
+      readEntity<WorkspaceGlobalDraftEntity>(
+        WORKSPACE_GLOBAL_DRAFT_STORE_NAME,
+        GLOBAL_DRAFT_ROW_ID,
+      ),
+      readEntity<WorkspaceSessionEntity>(
+        WORKSPACE_SESSION_STORE_NAME,
+        WORKSPACE_SESSION_ROW_ID,
+      ),
+    ]);
+    const savedTableEntity =
+      sessionEntity?.activeSource.kind === 'saved_table'
+        ? await readEntity<SavedTableRecord>(
+            STORE_NAME,
+            sessionEntity.activeSource.normalizedName,
+          )
+        : undefined;
+
+    return {
+      globalDraft: globalEntity
+        ? {
+            state: globalEntity.state,
+            updatedAt: globalEntity.updatedAt,
+          }
+        : null,
+      session: sessionEntity
+        ? {
+            activeSource: sessionEntity.activeSource,
+            activeState: sessionEntity.activeState,
+            updatedAt: sessionEntity.updatedAt,
+          }
+        : null,
+      savedTable: savedTableEntity ?? null,
+    };
+  } finally {
+    db.close();
+  }
+};
 
 export const writeWorkspaceSession = async (
   record: WorkspaceSessionRecord,

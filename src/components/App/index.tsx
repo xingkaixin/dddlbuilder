@@ -943,6 +943,7 @@ function App() {
             currentState: currentPersistedState,
             onRollback: (state: PersistedState) => {
               applySavedState(state);
+              setSavedTablesDrawerOpen(false);
               trackEvent('table_version_rollback');
               showToast('已回滚到选中版本');
             },
