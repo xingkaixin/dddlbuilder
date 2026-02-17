@@ -29,6 +29,7 @@ interface TableConfigProps {
   showDiffButton?: boolean;
   loadedStatus?: 'clean' | 'dirty' | null;
   loadedTableName?: string | null;
+  workspaceLabel?: string | null;
 }
 
 export const TableConfig = memo<TableConfigProps>(
@@ -49,6 +50,7 @@ export const TableConfig = memo<TableConfigProps>(
     showDiffButton = false,
     loadedStatus = null,
     loadedTableName = null,
+    workspaceLabel = null,
   }) => {
     const statusLabel =
       loadedStatus === 'dirty'
@@ -89,9 +91,9 @@ export const TableConfig = memo<TableConfigProps>(
                 <p>查看所有已保存的表结构</p>
               </TooltipContent>
             </Tooltip>
-            {loadedTableName && (
+            {(workspaceLabel || loadedTableName) && (
               <span className="max-w-[240px] truncate text-xs text-muted-foreground">
-                当前：{loadedTableName}
+                {workspaceLabel || `当前：${loadedTableName}`}
               </span>
             )}
             {onOpenAIGenerate && (

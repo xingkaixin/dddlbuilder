@@ -1,13 +1,15 @@
 import { useEffect } from 'react';
 import type { PersistedState } from '@/types';
+import type { WorkspaceSavePayload, WorkspaceSource } from '@/types/workspace';
 import { useDebouncedEffect } from '@/hooks/useDebouncedEffect';
 
 const PERSIST_DEBOUNCE_MS = 500;
 
 interface UsePersistedSyncParams {
   hydrated: boolean;
-  persistedState: PersistedState | null;
-  saveState: (state: PersistedState) => void;
+  persistedState: Partial<PersistedState> | null;
+  activeSource: WorkspaceSource;
+  saveState: (payload: WorkspaceSavePayload) => void;
   buildPersistedState: () => PersistedState;
   setTableName: (name: string) => void;
   setTableComment: (comment: string) => void;
@@ -22,11 +24,15 @@ interface UsePersistedSyncParams {
   setFieldTableFreezeEnabled: (enabled: boolean) => void;
   setFieldTableFreezeColumns: (columns: number) => void;
   defaultFieldTableFreezeColumns: number;
+  setLoadedTableNormalizedName: (name: string | null) => void;
+  setLoadedTableName: (name: string | null) => void;
+  setLoadedTableSignature: (signature: string | null) => void;
 }
 
 export function usePersistedSync({
   hydrated,
   persistedState,
+  activeSource,
   saveState,
   buildPersistedState,
   setTableName,
@@ -38,6 +44,9 @@ export function usePersistedSync({
   setFieldTableFreezeEnabled,
   setFieldTableFreezeColumns,
   defaultFieldTableFreezeColumns,
+  setLoadedTableNormalizedName,
+  setLoadedTableName,
+  setLoadedTableSignature,
 }: UsePersistedSyncParams) {
   useEffect(() => {
     if (!hydrated || !persistedState) return;
@@ -48,13 +57,7 @@ export function usePersistedSync({
     if (typeof persistedState.tableComment === 'string') {
       setTableComment(persistedState.tableComment);
     }
-    if (
-      persistedState.dbType === 'mysql' ||
-      persistedState.dbType === 'postgresql' ||
-      persistedState.dbType === 'postgresql-citus' ||
-      persistedState.dbType === 'sqlserver' ||
-      persistedState.dbType === 'oracle'
-    ) {
+    if (typeof persistedState.dbType === 'string') {
       setDbType(persistedState.dbType);
     }
     if (
@@ -63,7 +66,7 @@ export function usePersistedSync({
     ) {
       setAddCount(Math.max(1, Math.floor(persistedState.addCount)));
     }
-    initializeRows(persistedState.rows);
+    initializeRows(persistedState.rows ?? []);
     initializeIndexState(persistedState);
 
     const persistedFieldTableViewConfig = persistedState.fieldTableViewConfig;
@@ -78,9 +81,20 @@ export function usePersistedSync({
           : defaultFieldTableFreezeColumns,
       );
     }
+
+    if (activeSource.kind === 'saved_table') {
+      setLoadedTableNormalizedName(activeSource.normalizedName);
+      setLoadedTableName(activeSource.tableName);
+      setLoadedTableSignature(activeSource.baseSignature);
+    } else {
+      setLoadedTableNormalizedName(null);
+      setLoadedTableName(null);
+      setLoadedTableSignature(null);
+    }
   }, [
     hydrated,
     persistedState,
+    activeSource,
     setTableName,
     setTableComment,
     setDbType,
@@ -90,19 +104,32 @@ export function usePersistedSync({
     setFieldTableFreezeEnabled,
     setFieldTableFreezeColumns,
     defaultFieldTableFreezeColumns,
+    setLoadedTableNormalizedName,
+    setLoadedTableName,
+    setLoadedTableSignature,
   ]);
 
   useDebouncedEffect(
     () => {
       if (!hydrated) return;
       try {
-        const payload = buildPersistedState();
-        saveState(payload);
+        const state = buildPersistedState();
+        const currentSignature = JSON.stringify(state);
+        const source = activeSource;
+        const isDirty =
+          source.kind === 'saved_table'
+            ? currentSignature !== source.baseSignature
+            : false;
+        saveState({
+          state,
+          source,
+          isDirty,
+        });
       } catch {
         // ignore quota errors
       }
     },
-    [hydrated, buildPersistedState, saveState],
+    [hydrated, buildPersistedState, activeSource, saveState],
     PERSIST_DEBOUNCE_MS,
   );
 }

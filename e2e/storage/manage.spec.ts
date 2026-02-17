@@ -16,8 +16,13 @@ const fillBasicField = async (page: any, name = 'id') => {
   await page.keyboard.press('Enter');
 };
 
-const saveTable = async (page: any, name: string) => {
+const saveTable = async (page: any, name: string, comment = '') => {
+  await openSavedTables(page);
+  await page.getByRole('button', { name: /全局草稿箱/i }).click();
   await page.locator('#table-name').fill(name);
+  if (comment) {
+    await page.locator('#table-comment').fill(comment);
+  }
   await fillBasicField(page);
   await page.getByRole('button', { name: /保存当前表/i }).click();
   await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeVisible();
@@ -30,8 +35,12 @@ const saveTable = async (page: any, name: string) => {
 };
 
 const openSavedTables = async (page: any) => {
+  const heading = page.getByRole('heading', { name: '已保存的表' });
+  if (await heading.isVisible().catch(() => false)) {
+    return;
+  }
   await page.getByRole('button', { name: /查看已保存表/i }).click();
-  await expect(page.getByRole('heading', { name: '已保存的表' })).toBeVisible();
+  await expect(heading).toBeVisible();
 };
 
 test.describe('保存表管理补充 @storage', () => {
@@ -132,5 +141,115 @@ test.describe('保存表管理补充 @storage', () => {
     await expect(
       page.getByRole('button', { name: new RegExp(tableB, 'i') }),
     ).toHaveCount(0);
+  });
+
+  test('场景：全局草稿与保存表草稿应隔离', async ({ page }) => {
+    const tableName = `e2e_isolation_${Date.now()}`;
+    const savedComment = '保存版本注释V2';
+    const globalDraftComment = '全局草稿注释';
+    const savedEditedComment = '保存表草稿注释';
+
+    await page.locator('#table-name').fill(tableName);
+    await page.locator('#table-comment').fill(savedComment);
+    await fillBasicField(page, 'isolation_id');
+    await page.getByRole('button', { name: /保存当前表/i }).click();
+    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeVisible();
+    await page.getByLabel('保存名称').fill(tableName);
+    await page.getByRole('button', { name: /^保存$/ }).click();
+    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
+
+    await openSavedTables(page);
+    await page.getByRole('button', { name: /全局草稿箱/i }).click();
+    await page.locator('#table-comment').fill(globalDraftComment);
+
+    await openSavedTables(page);
+    await page
+      .getByRole('button', { name: new RegExp(tableName, 'i') })
+      .click();
+    await expect(page.locator('#table-comment')).toHaveValue(savedComment);
+
+    await page.locator('#table-comment').fill(savedEditedComment);
+    await page.getByRole('button', { name: /保存当前表/i }).click();
+    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeVisible();
+    await page.getByRole('button', { name: /^保存$/ }).click();
+    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
+
+    await openSavedTables(page);
+    await page.getByRole('button', { name: /全局草稿箱/i }).click();
+    await expect(page.locator('#table-comment')).toHaveValue(
+      globalDraftComment,
+    );
+
+    await openSavedTables(page);
+    await page
+      .getByRole('button', { name: new RegExp(tableName, 'i') })
+      .click();
+    await expect(page.locator('#table-comment')).toHaveValue(
+      savedEditedComment,
+    );
+  });
+
+  test('场景：重命名迁移草稿，删除后应清理草稿', async ({ page }) => {
+    const originalName = `e2e_draft_lifecycle_${Date.now()}`;
+    const renamedName = `${originalName}_renamed`;
+    const draftComment = 'rename_after_draft_comment';
+    const freshSavedComment = 'fresh_saved_after_delete';
+    const globalComment = 'global_after_lifecycle';
+
+    await page.locator('#table-name').fill(originalName);
+    await page.locator('#table-comment').fill('initial_saved_comment');
+    await fillBasicField(page, 'draft_lifecycle_id');
+    await page.getByRole('button', { name: /保存当前表/i }).click();
+    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeVisible();
+    await page.getByLabel('保存名称').fill(originalName);
+    await page.getByRole('button', { name: /^保存$/ }).click();
+    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
+
+    await page.locator('#table-comment').fill(draftComment);
+
+    await openSavedTables(page);
+    const row = page.getByRole('button', {
+      name: new RegExp(originalName, 'i'),
+    });
+    await row.hover();
+    await row
+      .locator('..')
+      .getByRole('button', { name: /重命名/i })
+      .click();
+    await expect(page.getByText('重命名保存的表')).toBeVisible();
+    await page.getByLabel('新名称').fill(renamedName);
+    await page.getByRole('button', { name: /确认/i }).click();
+    await expect(page.getByText('重命名保存的表')).toBeHidden();
+
+    await openSavedTables(page);
+    await page.getByRole('button', { name: /全局草稿箱/i }).click();
+    await page.locator('#table-comment').fill(globalComment);
+
+    await openSavedTables(page);
+    await page
+      .getByRole('button', { name: new RegExp(renamedName, 'i') })
+      .click();
+    await expect(page.locator('#table-comment')).toHaveValue(draftComment);
+
+    await openSavedTables(page);
+    const renamedRow = page.getByRole('button', {
+      name: new RegExp(renamedName, 'i'),
+    });
+    await renamedRow.hover();
+    await renamedRow
+      .locator('..')
+      .getByRole('button', { name: /删除/i })
+      .click();
+    await expect(page.getByText('确认删除保存的表？')).toBeVisible();
+    await page.getByRole('button', { name: /^删除$/ }).click();
+    await expect(page.getByText('确认删除保存的表？')).toBeHidden();
+
+    await saveTable(page, renamedName, freshSavedComment);
+
+    await openSavedTables(page);
+    await page
+      .getByRole('button', { name: new RegExp(renamedName, 'i') })
+      .click();
+    await expect(page.locator('#table-comment')).toHaveValue(freshSavedComment);
   });
 });

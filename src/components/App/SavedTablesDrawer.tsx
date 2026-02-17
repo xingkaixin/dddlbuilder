@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/drawer';
 import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
+import type { GlobalDraftSummary } from '@/types/workspace';
 import { Input } from '../ui/input';
 import { FolderTree, useFolderExpansion } from './FolderTree';
 import { TableItem } from './saved-tables/TableItem';
@@ -20,11 +21,14 @@ export interface SavedTablesDrawerProps {
   loading: boolean;
   error?: string | null;
   items: SavedTableSummary[];
+  draftItem?: GlobalDraftSummary | null;
+  draftActive?: boolean;
   folders: FolderTreeNode[];
   foldersLoading?: boolean;
   activeNormalizedName?: string | null;
   activeDirty?: boolean;
   onOpenChange: (open: boolean) => void;
+  onSelectDraft?: () => void;
   onSelect: (item: SavedTableSummary) => void;
   onRename: (item: SavedTableSummary) => void;
   onDelete: (item: SavedTableSummary) => void;
@@ -41,11 +45,14 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     loading,
     error,
     items,
+    draftItem,
+    draftActive = false,
     folders,
     foldersLoading = false,
     activeNormalizedName,
     activeDirty = false,
     onOpenChange,
+    onSelectDraft,
     onSelect,
     onRename,
     onDelete,
@@ -143,9 +150,9 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
             <div className="flex items-center gap-2">
               <Database className="h-4 w-4 text-primary" />
               <span className="text-sm font-semibold">已保存的表</span>
-              {items.length > 0 && (
+              {(items.length > 0 || draftItem) && (
                 <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                  {items.length}
+                  {items.length + (draftItem ? 1 : 0)}
                 </span>
               )}
             </div>
@@ -206,6 +213,32 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
             {!isLoading && !error && items.length === 0 && (
               <div className="px-2 py-3 text-xs text-muted-foreground">
                 还没有保存的表，点击上方「保存表」按钮保存第一个表
+              </div>
+            )}
+            {!isLoading && !error && draftItem && onSelectDraft && (
+              <div className="mb-3">
+                <button
+                  type="button"
+                  className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left transition-colors ${
+                    draftActive
+                      ? 'border-primary/40 bg-primary/10'
+                      : 'border-border bg-card hover:bg-accent'
+                  }`}
+                  onClick={onSelectDraft}
+                >
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">
+                      全局草稿箱
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      自动保存 · {draftItem.dbType} · {draftItem.fieldCount}{' '}
+                      字段
+                    </div>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {draftActive ? '已加载' : '点击加载'}
+                  </span>
+                </button>
               </div>
             )}
             {!isLoading &&

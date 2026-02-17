@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo } from 'react';
 import type { DatabaseType, PersistedState } from '@/types';
 import { createEmptyRow } from '@/utils/helpers';
 import { isTabAvailable } from '@/utils/tabUtils';
@@ -46,6 +46,19 @@ const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) =>
 const DEFAULT_FIELD_TABLE_FREEZE_ENABLED = true;
 const DEFAULT_FIELD_TABLE_FREEZE_COLUMNS = 3;
 const SHARE_COPY_SAVED_TOAST_KEY = 'ddlbuilder:share:copy-saved:v1';
+
+const createEmptyGlobalDraftState = (): PersistedState => ({
+  tableName: '',
+  tableComment: '',
+  dbType: 'mysql',
+  rows: Array.from({ length: 12 }, (_, index) => createEmptyRow(index)),
+  addCount: 10,
+  indexInput: '',
+  currentIndexFields: [],
+  indexes: [],
+  authInput: '',
+  authObjects: [],
+});
 
 function App() {
   const trackEvent = useTrackEvent();
@@ -150,6 +163,13 @@ function App() {
     clearState,
     shareLoadStatus,
     isShareView,
+    activeSource,
+    globalDraftSummary,
+    getGlobalDraftState,
+    getSavedTableDraft,
+    setWorkspaceSnapshot,
+    renameSavedTableDraft,
+    removeSavedTableDraft,
   } = usePersistedState();
 
   const {
@@ -397,6 +417,7 @@ function App() {
   usePersistedSync({
     hydrated,
     persistedState,
+    activeSource,
     saveState,
     buildPersistedState,
     setTableName,
@@ -408,6 +429,9 @@ function App() {
     setFieldTableFreezeEnabled,
     setFieldTableFreezeColumns,
     defaultFieldTableFreezeColumns: DEFAULT_FIELD_TABLE_FREEZE_COLUMNS,
+    setLoadedTableNormalizedName,
+    setLoadedTableName,
+    setLoadedTableSignature,
   });
 
   const { handleClearAll, cancelClearAll, confirmClearAll } =
@@ -452,6 +476,24 @@ function App() {
     setFieldTableFreezeColumns,
   });
 
+  const flushCurrentWorkspace = useCallback(() => {
+    if (!hydrated || isShareView) return;
+    const state = buildPersistedState();
+    const source = activeSource;
+    const isDirty =
+      source.kind === 'saved_table'
+        ? serializePersistedState(state) !== source.baseSignature
+        : false;
+    saveState({ state, source, isDirty });
+  }, [
+    hydrated,
+    isShareView,
+    buildPersistedState,
+    activeSource,
+    serializePersistedState,
+    saveState,
+  ]);
+
   const {
     handleOpenSaveDialog,
     handleConfirmSave,
@@ -474,6 +516,7 @@ function App() {
     canSaveCurrent,
     loadedTableNormalizedName,
     loadedTableName,
+    loadedTableSignature,
     setLoadedTableNormalizedName,
     setLoadedTableName,
     setLoadedTableSignature,
@@ -492,6 +535,11 @@ function App() {
     overwriteTable,
     showToast,
     trackEvent,
+    flushCurrentWorkspace,
+    getSavedTableDraft,
+    setWorkspaceSnapshot,
+    renameSavedTableDraft,
+    removeSavedTableDraft,
     onSaveSuccess: ({ displayName }) => {
       if (!isShareView) return;
       try {
@@ -562,6 +610,57 @@ function App() {
     handleSaveAsTemplate,
   });
 
+  const effectiveGlobalDraftSummary = useMemo(() => {
+    if (globalDraftSummary) return globalDraftSummary;
+    return {
+      name: '未命名草稿',
+      dbType: 'mysql',
+      fieldCount: 0,
+      updatedAt: Date.now(),
+    };
+  }, [globalDraftSummary]);
+
+  const handleSelectGlobalDraft = useCallback(() => {
+    if (isShareView) {
+      showToast('分享链接只读，请先保存为副本后再编辑');
+      return;
+    }
+
+    flushCurrentWorkspace();
+    const existedDraftState = getGlobalDraftState();
+    const draftState = existedDraftState ?? createEmptyGlobalDraftState();
+    applySavedState(draftState);
+    setLoadedTableNormalizedName(null);
+    setLoadedTableName(null);
+    setLoadedTableSignature(null);
+    setWorkspaceSnapshot({ kind: 'global_draft' }, draftState);
+    setSavedTablesDrawerOpen(false);
+    trackEvent('global_draft_load');
+    showToast(
+      existedDraftState ? '已加载全局草稿' : '草稿箱为空，已创建新的全局草稿',
+    );
+  }, [
+    isShareView,
+    flushCurrentWorkspace,
+    showToast,
+    getGlobalDraftState,
+    applySavedState,
+    setLoadedTableNormalizedName,
+    setLoadedTableName,
+    setLoadedTableSignature,
+    setWorkspaceSnapshot,
+    setSavedTablesDrawerOpen,
+    trackEvent,
+  ]);
+
+  const workspaceLabel = useMemo(() => {
+    if (isShareView) return '当前：分享副本（只读）';
+    if (loadedTableName) {
+      return `当前：${loadedTableName}${isLoadedDirty ? '（草稿）' : '（已保存）'}`;
+    }
+    return '当前：全局草稿';
+  }, [isShareView, loadedTableName, isLoadedDirty]);
+
   // ─── 7. Render ─────────────────────────────────────────────────
   return (
     <TooltipProvider>
@@ -604,10 +703,16 @@ function App() {
             loading: savedTablesLoading,
             error: savedTablesError,
             items: savedTables,
+            draftItem: effectiveGlobalDraftSummary,
+            draftActive:
+              !isShareView &&
+              activeSource.kind === 'global_draft' &&
+              loadedTableNormalizedName == null,
             folders: folderTree,
             foldersLoading: foldersLoading,
             activeNormalizedName: loadedTableNormalizedName,
             activeDirty: isLoadedDirty,
+            onSelectDraft: handleSelectGlobalDraft,
             onSelect: handleSelectSavedTable,
             onRename: handleOpenRenameDialog,
             onDelete: handleOpenDeleteDialog,
@@ -643,6 +748,7 @@ function App() {
                 showDiffButton: isLoadedDirty && tableDiff?.hasChanges,
                 loadedStatus,
                 loadedTableName,
+                workspaceLabel,
               }}
               tabsValue={activeTab}
               onTabsValueChange={handleTabValueChange}
