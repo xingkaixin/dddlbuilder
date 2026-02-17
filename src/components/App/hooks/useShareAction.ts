@@ -1,8 +1,61 @@
 import { useCallback } from 'react';
 import type { PersistedState } from '@/types';
+import { ShareApiError, createShare } from '@/services/shareService';
 import { reportError } from '@/utils/errorReporter';
 
 type AnalyticsValue = string | number | boolean | null | undefined;
+type ShareLinkCacheRecord = {
+  signature: string;
+  url: string;
+  expiresAt: number;
+};
+
+const SHARE_LINK_CACHE_KEY = 'ddlbuilder:share:last:v1';
+
+const hashString = (input: string): string => {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash +=
+      (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+};
+
+const buildStateSignature = (state: PersistedState): string => {
+  const json = JSON.stringify(state);
+  return `v1:${json.length}:${hashString(json)}`;
+};
+
+const readShareLinkCache = (): ShareLinkCacheRecord | null => {
+  try {
+    const raw = localStorage.getItem(SHARE_LINK_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<ShareLinkCacheRecord>;
+    if (
+      typeof parsed.signature !== 'string' ||
+      typeof parsed.url !== 'string' ||
+      typeof parsed.expiresAt !== 'number'
+    ) {
+      return null;
+    }
+    return {
+      signature: parsed.signature,
+      url: parsed.url,
+      expiresAt: parsed.expiresAt,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const writeShareLinkCache = (record: ShareLinkCacheRecord) => {
+  try {
+    localStorage.setItem(SHARE_LINK_CACHE_KEY, JSON.stringify(record));
+  } catch {
+    // ignore localStorage quota errors
+  }
+};
 
 interface UseShareActionParams {
   buildPersistedState: () => PersistedState;
@@ -20,18 +73,41 @@ export function useShareAction({
 }: UseShareActionParams) {
   return useCallback(async () => {
     const currentState = buildPersistedState();
+    const signature = buildStateSignature(currentState);
+    const cached = readShareLinkCache();
+    const now = Date.now();
+
+    if (
+      cached &&
+      cached.signature === signature &&
+      cached.expiresAt > now &&
+      cached.url.length > 0
+    ) {
+      await navigator.clipboard.writeText(cached.url);
+      trackEvent('share_link_reuse');
+      showToast('链接已复制到剪贴板（复用已有链接，7天后失效）');
+      return;
+    }
+
     try {
-      const { compressState } = await import('@/utils/share');
-      const compressed = compressState(currentState);
-      const url = `${window.location.origin}${window.location.pathname}?s=${compressed}`;
-      await navigator.clipboard.writeText(url);
+      const share = await createShare(currentState);
+      await navigator.clipboard.writeText(share.url);
+      writeShareLinkCache({
+        signature,
+        url: share.url,
+        expiresAt: now + share.expiresInSeconds * 1000,
+      });
       trackEvent('share_link_create');
-      showToast('链接已复制到剪贴板');
+      showToast('链接已复制到剪贴板（7天后失效）');
     } catch (e) {
       reportError(e, {
         scope: 'App',
         action: 'generateShareLink',
       });
+      if (e instanceof ShareApiError && e.code === 'REDIS_CONFIG_MISSING') {
+        showToast('分享功能未配置完成，请先配置 Redis 环境变量');
+        return;
+      }
       showToast('生成链接失败');
     }
   }, [buildPersistedState, showToast, trackEvent]);

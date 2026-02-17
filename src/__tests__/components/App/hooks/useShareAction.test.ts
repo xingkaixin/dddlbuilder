@@ -1,0 +1,160 @@
+import { renderHook, act } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useShareAction } from '@/components/App/hooks/useShareAction';
+import { ShareApiError, createShare } from '@/services/shareService';
+import { reportError } from '@/utils/errorReporter';
+
+vi.mock('@/services/shareService', () => ({
+  createShare: vi.fn(),
+  ShareApiError: class ShareApiError extends Error {
+    code?: string;
+    status: number;
+
+    constructor(message: string, status: number, code?: string) {
+      super(message);
+      this.name = 'ShareApiError';
+      this.status = status;
+      this.code = code;
+    }
+  },
+}));
+
+vi.mock('@/utils/errorReporter', () => ({
+  reportError: vi.fn(),
+}));
+
+const mockedCreateShare = vi.mocked(createShare);
+const mockedReportError = vi.mocked(reportError);
+
+const SHARE_LINK_CACHE_KEY = 'ddlbuilder:share:last:v1';
+
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: vi.fn((key: string) => store[key] ?? null),
+    setItem: vi.fn((key: string, value: string) => {
+      store[key] = value;
+    }),
+    removeItem: vi.fn((key: string) => {
+      delete store[key];
+    }),
+    clear: vi.fn(() => {
+      store = {};
+    }),
+  };
+})();
+
+Object.defineProperty(window, 'localStorage', {
+  value: localStorageMock,
+});
+
+const buildPersistedState = () => ({
+  tableName: 'users',
+  tableComment: '用户表',
+  dbType: 'mysql' as const,
+  rows: [],
+  addCount: 10,
+  indexInput: '',
+  currentIndexFields: [],
+  indexes: [],
+  authInput: '',
+  authObjects: [],
+});
+
+describe('useShareAction', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorageMock.clear();
+  });
+
+  it('首次分享应创建链接并缓存', async () => {
+    mockedCreateShare.mockResolvedValue({
+      id: 'id-1',
+      url: 'https://example.com/share/id-1',
+      expiresInSeconds: 604800,
+    });
+    const showToast = vi.fn();
+    const trackEvent = vi.fn();
+
+    const { result } = renderHook(() =>
+      useShareAction({
+        buildPersistedState,
+        showToast,
+        trackEvent,
+      }),
+    );
+
+    await act(async () => {
+      await result.current();
+    });
+
+    expect(mockedCreateShare).toHaveBeenCalledTimes(1);
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      'https://example.com/share/id-1',
+    );
+    expect(localStorage.setItem).toHaveBeenCalledWith(
+      SHARE_LINK_CACHE_KEY,
+      expect.any(String),
+    );
+    expect(trackEvent).toHaveBeenCalledWith('share_link_create');
+    expect(showToast).toHaveBeenCalledWith('链接已复制到剪贴板（7天后失效）');
+  });
+
+  it('状态未变化且缓存未过期时应复用链接', async () => {
+    mockedCreateShare.mockResolvedValue({
+      id: 'id-1',
+      url: 'https://example.com/share/id-1',
+      expiresInSeconds: 604800,
+    });
+    const showToast = vi.fn();
+    const trackEvent = vi.fn();
+
+    const { result } = renderHook(() =>
+      useShareAction({
+        buildPersistedState,
+        showToast,
+        trackEvent,
+      }),
+    );
+
+    await act(async () => {
+      await result.current();
+    });
+    await act(async () => {
+      await result.current();
+    });
+
+    expect(mockedCreateShare).toHaveBeenCalledTimes(1);
+    expect(trackEvent).toHaveBeenNthCalledWith(1, 'share_link_create');
+    expect(trackEvent).toHaveBeenNthCalledWith(2, 'share_link_reuse');
+    expect(showToast).toHaveBeenNthCalledWith(
+      2,
+      '链接已复制到剪贴板（复用已有链接，7天后失效）',
+    );
+  });
+
+  it('redis 未配置时应提示用户配置环境变量', async () => {
+    mockedCreateShare.mockRejectedValue(
+      new ShareApiError('Redis config missing', 500, 'REDIS_CONFIG_MISSING'),
+    );
+    const showToast = vi.fn();
+    const trackEvent = vi.fn();
+
+    const { result } = renderHook(() =>
+      useShareAction({
+        buildPersistedState,
+        showToast,
+        trackEvent,
+      }),
+    );
+
+    await act(async () => {
+      await result.current();
+    });
+
+    expect(mockedReportError).toHaveBeenCalledTimes(1);
+    expect(showToast).toHaveBeenCalledWith(
+      '分享功能未配置完成，请先配置 Redis 环境变量',
+    );
+  });
+});

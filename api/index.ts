@@ -4,6 +4,7 @@ import { registerParseSqlRoute } from './routes/parseSql.js';
 import { registerExplainRoute } from './routes/explain.js';
 import { registerReviewRoute } from './routes/review.js';
 import { registerGenerateTableRoute } from './routes/generateTable.js';
+import { registerShareRoutes } from './routes/share.js';
 
 const app = new Hono().basePath('/api');
 
@@ -39,5 +40,6 @@ registerParseSqlRoute(app);
 registerExplainRoute(app);
 registerReviewRoute(app);
 registerGenerateTableRoute(app);
+registerShareRoutes(app);
 
 export default app;

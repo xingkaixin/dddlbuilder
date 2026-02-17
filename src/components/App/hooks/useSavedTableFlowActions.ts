@@ -66,6 +66,11 @@ interface UseSavedTableFlowActionsParams {
     event: string,
     data?: Record<string, AnalyticsValue>,
   ) => Promise<void> | void;
+  onSaveSuccess?: (payload: {
+    normalizedName: string;
+    displayName: string;
+    mode: 'create' | 'update';
+  }) => Promise<void> | void;
 }
 
 export function useSavedTableFlowActions({
@@ -93,6 +98,7 @@ export function useSavedTableFlowActions({
   overwriteTable,
   showToast,
   trackEvent,
+  onSaveSuccess,
 }: UseSavedTableFlowActionsParams) {
   const saveName = saveDialog.data.name;
   const queuedLoadAfterSave = saveDialog.data.queuedLoadAfterSave;
@@ -151,6 +157,10 @@ export function useSavedTableFlowActions({
     const nextState = buildPersistedState();
     const nextSignature = serializePersistedState(nextState);
 
+    let savedNormalizedName = '';
+    let savedDisplayName = '';
+    let saveMode: 'create' | 'update' = 'create';
+
     if (hasLoadedTable && loadedTableNormalizedName) {
       const result = await overwriteTable(loadedTableNormalizedName, nextState);
       if (!result.ok) {
@@ -165,6 +175,9 @@ export function useSavedTableFlowActions({
       trackEvent('table_update', { tableName: loadedTableName });
       showToast(`已更新：${loadedTableName ?? saveName}`);
       await createVersion(loadedTableNormalizedName, nextState);
+      savedNormalizedName = loadedTableNormalizedName;
+      savedDisplayName = loadedTableName ?? saveName;
+      saveMode = 'update';
     } else {
       const result = await saveTable(saveName, nextState);
       if (!result.ok) {
@@ -181,8 +194,19 @@ export function useSavedTableFlowActions({
       const normalizedName =
         saveName.trim().toLowerCase() || DEFAULT_SAVED_TABLE_NAME.toLowerCase();
       await createVersion(normalizedName, nextState, '初始版本');
+      savedNormalizedName = normalizedName;
+      savedDisplayName = displayName;
+      saveMode = 'create';
     }
     saveDialog.closeDialog();
+
+    if (onSaveSuccess) {
+      await onSaveSuccess({
+        normalizedName: savedNormalizedName,
+        displayName: savedDisplayName,
+        mode: saveMode,
+      });
+    }
 
     if (queuedLoadAfterSave) {
       await handleLoadSavedTable(queuedLoadAfterSave);
@@ -201,6 +225,7 @@ export function useSavedTableFlowActions({
     saveName,
     saveTable,
     saveDialog,
+    onSaveSuccess,
     queuedLoadAfterSave,
     handleLoadSavedTable,
   ]);
