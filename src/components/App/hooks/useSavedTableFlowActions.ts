@@ -135,46 +135,56 @@ export function useSavedTableFlowActions({
 
   const handleLoadSavedTable = useCallback(
     async (target: SavedTableSummary) => {
-      const draftRecord = getSavedTableDraft?.(target.normalizedName);
-      if (draftRecord && isSavedTableDraftDirty(draftRecord)) {
-        applySavedState(draftRecord.state);
-        setLoadedTableNormalizedName(target.normalizedName);
-        setLoadedTableName(draftRecord.tableName || target.name);
-        setLoadedTableSignature(draftRecord.baseSignature);
-        setWorkspaceSnapshot?.(
-          {
-            kind: 'saved_table',
-            normalizedName: target.normalizedName,
-            tableName: draftRecord.tableName || target.name,
-            baseSignature: draftRecord.baseSignature,
-          },
-          draftRecord.state,
-        );
-        trackEvent('table_load_draft', { tableName: target.name });
-        showToast(`已加载草稿：${target.name}`);
-        return;
-      }
-
       try {
         const record = await loadTable(target.normalizedName);
         if (!record) {
           showToast('未找到保存的表');
           return;
         }
-        applySavedState(record.state);
-        setLoadedTableNormalizedName(record.normalizedName);
-        setLoadedTableName(record.name);
-        const baseSignature = serializePersistedState(record.state);
-        setLoadedTableSignature(baseSignature);
+        const savedBaseSignature = serializePersistedState(record.state);
+        const draftRecord = getSavedTableDraft?.(target.normalizedName);
+        const shouldLoadDraft =
+          !!draftRecord &&
+          draftRecord.baseSignature === savedBaseSignature &&
+          isSavedTableDraftDirty(draftRecord);
+
+        if (shouldLoadDraft && draftRecord) {
+          const draftTableName = draftRecord.tableName || record.name;
+          setWorkspaceSnapshot?.(
+            {
+              kind: 'saved_table',
+              normalizedName: record.normalizedName,
+              tableName: draftTableName,
+              baseSignature: draftRecord.baseSignature,
+            },
+            draftRecord.state,
+          );
+          applySavedState(draftRecord.state);
+          setLoadedTableNormalizedName(record.normalizedName);
+          setLoadedTableName(draftTableName);
+          setLoadedTableSignature(draftRecord.baseSignature);
+          trackEvent('table_load_draft', { tableName: record.name });
+          showToast(`已加载草稿：${record.name}`);
+          return;
+        }
+
+        if (draftRecord) {
+          removeSavedTableDraft?.(target.normalizedName);
+        }
+
         setWorkspaceSnapshot?.(
           {
             kind: 'saved_table',
             normalizedName: record.normalizedName,
             tableName: record.name,
-            baseSignature,
+            baseSignature: savedBaseSignature,
           },
           record.state,
         );
+        applySavedState(record.state);
+        setLoadedTableNormalizedName(record.normalizedName);
+        setLoadedTableName(record.name);
+        setLoadedTableSignature(savedBaseSignature);
         trackEvent('table_load', { tableName: record.name });
         showToast(`已加载：${record.name}`);
       } catch (error) {
@@ -191,6 +201,7 @@ export function useSavedTableFlowActions({
       serializePersistedState,
       getSavedTableDraft,
       isSavedTableDraftDirty,
+      removeSavedTableDraft,
       setWorkspaceSnapshot,
       trackEvent,
     ],

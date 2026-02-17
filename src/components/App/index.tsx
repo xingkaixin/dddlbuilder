@@ -629,11 +629,11 @@ function App() {
     flushCurrentWorkspace();
     const existedDraftState = getGlobalDraftState();
     const draftState = existedDraftState ?? createEmptyGlobalDraftState();
+    setWorkspaceSnapshot({ kind: 'global_draft' }, draftState);
     applySavedState(draftState);
     setLoadedTableNormalizedName(null);
     setLoadedTableName(null);
     setLoadedTableSignature(null);
-    setWorkspaceSnapshot({ kind: 'global_draft' }, draftState);
     setSavedTablesDrawerOpen(false);
     trackEvent('global_draft_load');
     showToast(
