@@ -42,6 +42,8 @@ import { useSuggestionAnimation } from '@/hooks/useSuggestionAnimation';
 import { useSavedTables } from '@/hooks/useSavedTables';
 import { useFolders } from '@/hooks/useFolders';
 import { useFieldTemplates } from '@/hooks/useFieldTemplates';
+import { countVersions } from '@/utils/tableVersions';
+import { writeWorkspaceSession } from '@/utils/workspaceStateDb';
 
 import { TooltipProvider } from '@/components/ui/tooltip';
 
@@ -306,9 +308,7 @@ function App() {
       const savedCopyName = sessionStorage.getItem(SHARE_COPY_SAVED_TOAST_KEY);
       if (!savedCopyName) return;
       sessionStorage.removeItem(SHARE_COPY_SAVED_TOAST_KEY);
-      showToast(
-        `已保存副本「${savedCopyName}」。请从“查看已保存表”加载后继续编辑。`,
-      );
+      showToast(`已保存副本「${savedCopyName}」，并已自动加载。`);
     } catch {
       // ignore sessionStorage errors
     }
@@ -508,6 +508,29 @@ function App() {
 
   const [loadedTableVersion, setLoadedTableVersion] = useState<number>(0);
 
+  useEffect(() => {
+    if (!hydrated || isShareView) return;
+    if (!loadedTableNormalizedName) {
+      setLoadedTableVersion(0);
+      return;
+    }
+
+    let cancelled = false;
+    void countVersions(loadedTableNormalizedName)
+      .then((count) => {
+        if (cancelled) return;
+        setLoadedTableVersion(count > 0 ? count : 1);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLoadedTableVersion(1);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated, isShareView, loadedTableNormalizedName]);
+
   const {
     handleOpenSaveDialog,
     handleConfirmSave,
@@ -552,12 +575,22 @@ function App() {
     trackEvent,
     flushCurrentWorkspace,
     setWorkspaceSnapshot,
-    onSaveSuccess: ({ displayName }) => {
+    onSaveSuccess: async ({ normalizedName, displayName, baseSignature }) => {
       if (!isShareView) return;
       try {
+        await writeWorkspaceSession({
+          activeSource: {
+            kind: 'saved_table',
+            normalizedName,
+            tableName: displayName,
+            baseSignature,
+          },
+          activeState: null,
+          updatedAt: Date.now(),
+        });
         sessionStorage.setItem(SHARE_COPY_SAVED_TOAST_KEY, displayName);
       } catch {
-        // ignore sessionStorage errors
+        // ignore persistence errors
       }
       window.location.replace('/');
     },

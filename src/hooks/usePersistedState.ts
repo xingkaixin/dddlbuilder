@@ -177,6 +177,16 @@ const writeStorageJson = (key: string, value: unknown) => {
   }
 };
 
+const readStorageJson = <T>(key: string): T | null => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+};
+
 const removeStorage = (key: string) => {
   try {
     localStorage.removeItem(key);
@@ -523,6 +533,13 @@ export function usePersistedState(): UsePersistedStateReturn {
       return () => {
         cancelled = true;
       };
+    }
+
+    const cachedShareState = normalizePersistedState(
+      readStorageJson<unknown>(shareStorageKey),
+    );
+    if (cachedShareState) {
+      hydrateWithState(cachedShareState);
     }
 
     queryClient

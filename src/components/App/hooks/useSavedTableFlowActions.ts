@@ -84,6 +84,7 @@ interface UseSavedTableFlowActionsParams {
   onSaveSuccess?: (payload: {
     normalizedName: string;
     displayName: string;
+    baseSignature: string;
     mode: 'create' | 'update';
   }) => Promise<void> | void;
 }
@@ -298,6 +299,7 @@ export function useSavedTableFlowActions({
       await onSaveSuccess({
         normalizedName: savedNormalizedName,
         displayName: savedDisplayName,
+        baseSignature: nextSignature,
         mode: saveMode,
       });
     }
