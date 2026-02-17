@@ -142,20 +142,22 @@ describe('usePersistedState', () => {
   it('保存已保存表草稿时应写入 IndexedDB，并在 clean 时删除', async () => {
     const { wrapper } = createQueryClientWrapper();
     const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const savedSource: WorkspaceSavePayload['source'] = {
+      kind: 'saved_table',
+      normalizedName: 'users',
+      tableName: 'Users',
+      baseSignature: '{"table":"users"}',
+    };
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
     });
 
     act(() => {
+      result.current.setWorkspaceSnapshot(savedSource, createState('users'));
       result.current.saveState({
         state: createState('users_draft'),
-        source: {
-          kind: 'saved_table',
-          normalizedName: 'users',
-          tableName: 'Users',
-          baseSignature: '{"table":"users"}',
-        },
+        source: savedSource,
         isDirty: true,
       });
     });
@@ -168,12 +170,7 @@ describe('usePersistedState', () => {
     act(() => {
       result.current.saveState({
         state: createState('users'),
-        source: {
-          kind: 'saved_table',
-          normalizedName: 'users',
-          tableName: 'Users',
-          baseSignature: '{"table":"users"}',
-        },
+        source: savedSource,
         isDirty: false,
       });
     });
@@ -181,6 +178,73 @@ describe('usePersistedState', () => {
     await waitFor(async () => {
       const draft = await readSavedDraft('users');
       expect(draft).toBeNull();
+    });
+  });
+
+  it('应忽略过期 source 的保存，避免跨工作区污染', async () => {
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const savedSource: WorkspaceSavePayload['source'] = {
+      kind: 'saved_table',
+      normalizedName: 'users',
+      tableName: 'Users',
+      baseSignature: '{"table":"users"}',
+    };
+    const savedDraftState = createState('users_saved_draft');
+    const globalState = createState('global_current');
+    const staleState = createState('leaked_global_content');
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+    });
+
+    act(() => {
+      result.current.setWorkspaceSnapshot(savedSource, createState('users'));
+      result.current.saveState({
+        state: savedDraftState,
+        source: savedSource,
+        isDirty: true,
+      });
+    });
+
+    await waitFor(async () => {
+      const draft = await readSavedDraft('users');
+      expect(draft?.state.tableName).toBe(savedDraftState.tableName);
+    });
+
+    act(() => {
+      result.current.setWorkspaceSnapshot(
+        { kind: 'global_draft' },
+        globalState,
+      );
+    });
+
+    await waitFor(() => {
+      expect(result.current.activeSource).toEqual({ kind: 'global_draft' });
+    });
+
+    act(() => {
+      result.current.saveState({
+        state: staleState,
+        source: savedSource,
+        isDirty: true,
+      });
+    });
+
+    await waitFor(async () => {
+      const draft = await readSavedDraft('users');
+      expect(draft?.state.tableName).toBe(savedDraftState.tableName);
+    });
+
+    expect(result.current.activeSource).toEqual({ kind: 'global_draft' });
+    expect(result.current.getGlobalDraftState()?.tableName).toBe(
+      globalState.tableName,
+    );
+
+    await waitFor(async () => {
+      const session = await readWorkspaceSession();
+      expect(session?.activeSource).toEqual({ kind: 'global_draft' });
+      expect(session?.activeState?.tableName).toBe(globalState.tableName);
     });
   });
 
@@ -213,20 +277,22 @@ describe('usePersistedState', () => {
   it('重命名和删除草稿 API 应写入 IndexedDB', async () => {
     const { wrapper } = createQueryClientWrapper();
     const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const savedSource: WorkspaceSavePayload['source'] = {
+      kind: 'saved_table',
+      normalizedName: 'users',
+      tableName: 'Users',
+      baseSignature: '{"table":"users"}',
+    };
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
     });
 
     act(() => {
+      result.current.setWorkspaceSnapshot(savedSource, createState('users'));
       result.current.saveState({
         state: createState('users_draft'),
-        source: {
-          kind: 'saved_table',
-          normalizedName: 'users',
-          tableName: 'Users',
-          baseSignature: '{"table":"users"}',
-        },
+        source: savedSource,
         isDirty: true,
       });
     });

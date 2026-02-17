@@ -318,8 +318,18 @@ export function usePersistedState(): UsePersistedStateReturn {
   const [globalDraftSummary, setGlobalDraftSummary] =
     useState<GlobalDraftSummary | null>(null);
 
+  const activeSourceRef = useRef<WorkspaceSource>({
+    kind: 'global_draft',
+  });
   const globalDraftRef = useRef<GlobalDraftRecord | null>(null);
   const savedDraftMapRef = useRef<SavedTableDraftMap>({});
+
+  const syncActiveSource = useCallback((source: WorkspaceSource) => {
+    activeSourceRef.current = source;
+    setActiveSource((prev) =>
+      isSameWorkspaceSource(prev, source) ? prev : source,
+    );
+  }, []);
 
   const updateGlobalDraft = useCallback((record: GlobalDraftRecord | null) => {
     globalDraftRef.current = record;
@@ -340,6 +350,8 @@ export function usePersistedState(): UsePersistedStateReturn {
     (source: WorkspaceSource, state: PersistedState | null) => {
       if (shareId) return;
 
+      syncActiveSource(source);
+
       if (source.kind === 'global_draft' && state) {
         const globalRecord: GlobalDraftRecord = {
           state,
@@ -356,12 +368,8 @@ export function usePersistedState(): UsePersistedStateReturn {
           updatedAt: Date.now(),
         }),
       );
-
-      setActiveSource((prev) =>
-        isSameWorkspaceSource(prev, source) ? prev : source,
-      );
     },
-    [shareId, updateGlobalDraft],
+    [shareId, syncActiveSource, updateGlobalDraft],
   );
 
   const renameSavedTableDraft = useCallback(
@@ -388,15 +396,17 @@ export function usePersistedState(): UsePersistedStateReturn {
       }
       savedDraftMapRef.current = nextDraftMap;
 
-      setActiveSource((prev) => {
-        if (prev.kind !== 'saved_table') return prev;
-        if (prev.normalizedName !== fromNormalizedName) return prev;
-        return {
-          ...prev,
+      const currentSource = activeSourceRef.current;
+      if (
+        currentSource.kind === 'saved_table' &&
+        currentSource.normalizedName === fromNormalizedName
+      ) {
+        syncActiveSource({
+          ...currentSource,
           normalizedName: toNormalizedName,
           tableName: nextTableName,
-        };
-      });
+        });
+      }
 
       fireAndForget(
         renameSavedDraftKey(
@@ -406,7 +416,7 @@ export function usePersistedState(): UsePersistedStateReturn {
         ),
       );
     },
-    [shareId],
+    [shareId, syncActiveSource],
   );
 
   const removeSavedTableDraft = useCallback(
@@ -429,6 +439,10 @@ export function usePersistedState(): UsePersistedStateReturn {
 
       if (shareStorageKey) {
         writeStorageJson(shareStorageKey, payload.state);
+        return;
+      }
+
+      if (!isSameWorkspaceSource(payload.source, activeSourceRef.current)) {
         return;
       }
 
@@ -469,11 +483,9 @@ export function usePersistedState(): UsePersistedStateReturn {
         }),
       );
 
-      setActiveSource((prev) =>
-        isSameWorkspaceSource(prev, payload.source) ? prev : payload.source,
-      );
+      syncActiveSource(payload.source);
     },
-    [hydrated, shareStorageKey, updateGlobalDraft],
+    [hydrated, shareStorageKey, syncActiveSource, updateGlobalDraft],
   );
 
   const clearState = useCallback(() => {
@@ -493,10 +505,10 @@ export function usePersistedState(): UsePersistedStateReturn {
       fireAndForget(clearGlobalDraft());
     }
 
-    setActiveSource({ kind: 'global_draft' });
+    syncActiveSource({ kind: 'global_draft' });
     fireAndForget(clearWorkspaceSession());
     setPersistedState(null);
-  }, [activeSource, shareStorageKey, updateGlobalDraft]);
+  }, [activeSource, shareStorageKey, syncActiveSource, updateGlobalDraft]);
 
   // restore from workspace or share link once on mount
   useEffect(() => {
@@ -525,7 +537,7 @@ export function usePersistedState(): UsePersistedStateReturn {
       savedDraftMapRef.current = savedDraftMap;
 
       if (!session) {
-        setActiveSource({ kind: 'global_draft' });
+        syncActiveSource({ kind: 'global_draft' });
         hydrateWithState(globalDraftRecord?.state ?? null);
         return;
       }
@@ -533,7 +545,7 @@ export function usePersistedState(): UsePersistedStateReturn {
       if (session.activeSource.kind === 'saved_table') {
         const draft = savedDraftMap[session.activeSource.normalizedName];
         if (draft && isSavedTableDraftDirty(draft)) {
-          setActiveSource({
+          syncActiveSource({
             kind: 'saved_table',
             normalizedName: session.activeSource.normalizedName,
             tableName: draft.tableName,
@@ -544,17 +556,17 @@ export function usePersistedState(): UsePersistedStateReturn {
         }
 
         if (session.activeState) {
-          setActiveSource(session.activeSource);
+          syncActiveSource(session.activeSource);
           hydrateWithState(session.activeState);
           return;
         }
 
-        setActiveSource({ kind: 'global_draft' });
+        syncActiveSource({ kind: 'global_draft' });
         hydrateWithState(globalDraftRecord?.state ?? null);
         return;
       }
 
-      setActiveSource({ kind: 'global_draft' });
+      syncActiveSource({ kind: 'global_draft' });
       hydrateWithState(session.activeState ?? globalDraftRecord?.state ?? null);
     };
 
@@ -610,6 +622,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     queryClient,
     shareId,
     shareStorageKey,
+    syncActiveSource,
     updateGlobalDraft,
   ]);
 

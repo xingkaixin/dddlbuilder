@@ -198,4 +198,74 @@ describe('useSavedTableFlowActions', () => {
 
     expect(removeSavedTableDraft).toHaveBeenCalledWith('users');
   });
+
+  it('加载表时应忽略基线不匹配的陈旧草稿', async () => {
+    const target = createSavedTableSummary('Users', 'users');
+    const savedState = createState('Users');
+    const staleDraftState = createState('GlobalDraftLike');
+    const setWorkspaceSnapshot = vi.fn();
+    const applySavedState = vi.fn();
+    const removeSavedTableDraft = vi.fn();
+    const trackEvent = vi.fn();
+    const showToast = vi.fn();
+    const loadTable = vi.fn().mockResolvedValue({
+      normalizedName: 'users',
+      name: 'Users',
+      state: savedState,
+    });
+
+    const { result } = renderHook(() =>
+      useSavedTableFlowActions({
+        tableName: 'Users',
+        hasLoadedTable: false,
+        isLoadedDirty: false,
+        canSaveCurrent: true,
+        loadedTableNormalizedName: null,
+        loadedTableName: null,
+        loadedTableSignature: null,
+        setLoadedTableNormalizedName: vi.fn(),
+        setLoadedTableName: vi.fn(),
+        setLoadedTableSignature: vi.fn(),
+        setSavedTablesDrawerOpen: vi.fn(),
+        saveDialog: createDialog({ name: 'Users', queuedLoadAfterSave: null }),
+        loadConfirmDialog: createDialog({ pendingTarget: null }),
+        renameDialog: createDialog({ name: '', target: null }),
+        deleteDialog: createDialog({ target: null }),
+        buildPersistedState: () => createState('Users'),
+        serializePersistedState: (nextState) => JSON.stringify(nextState),
+        applySavedState,
+        loadTable,
+        renameTable: vi.fn(),
+        deleteTable: vi.fn(),
+        saveTable: vi.fn(),
+        overwriteTable: vi.fn(),
+        showToast,
+        trackEvent,
+        getSavedTableDraft: () => ({
+          state: staleDraftState,
+          tableName: 'Users',
+          baseSignature: JSON.stringify(createState('OldUsers')),
+          updatedAt: Date.now(),
+        }),
+        removeSavedTableDraft,
+        setWorkspaceSnapshot,
+      }),
+    );
+
+    await act(async () => {
+      result.current.handleSelectSavedTable(target);
+      await Promise.resolve();
+    });
+
+    expect(loadTable).toHaveBeenCalledWith('users');
+    expect(removeSavedTableDraft).toHaveBeenCalledWith('users');
+    expect(applySavedState).toHaveBeenCalledWith(savedState);
+    expect(trackEvent).toHaveBeenCalledWith('table_load', {
+      tableName: 'Users',
+    });
+    expect(showToast).toHaveBeenCalledWith('已加载：Users');
+    expect(setWorkspaceSnapshot.mock.invocationCallOrder[0]).toBeLessThan(
+      applySavedState.mock.invocationCallOrder[0],
+    );
+  });
 });
