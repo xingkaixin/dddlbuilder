@@ -233,12 +233,28 @@ const loadWorkspaceBootstrap = async (): Promise<WorkspaceBootstrapRaw> => {
 };
 
 let workspaceBootstrapPromise: Promise<WorkspaceBootstrapRaw> | null = null;
+let workspaceBootstrapCache: WorkspaceBootstrapRaw | null = null;
+let workspaceBootstrapCacheAt = 0;
+const WORKSPACE_BOOTSTRAP_CACHE_TTL_MS = 50;
 
 const getWorkspaceBootstrap = () => {
+  if (
+    workspaceBootstrapCache &&
+    Date.now() - workspaceBootstrapCacheAt < WORKSPACE_BOOTSTRAP_CACHE_TTL_MS
+  ) {
+    return Promise.resolve(workspaceBootstrapCache);
+  }
+
   if (!workspaceBootstrapPromise) {
-    workspaceBootstrapPromise = loadWorkspaceBootstrap().finally(() => {
-      workspaceBootstrapPromise = null;
-    });
+    workspaceBootstrapPromise = loadWorkspaceBootstrap()
+      .then((value) => {
+        workspaceBootstrapCache = value;
+        workspaceBootstrapCacheAt = Date.now();
+        return value;
+      })
+      .finally(() => {
+        workspaceBootstrapPromise = null;
+      });
   }
   return workspaceBootstrapPromise;
 };
@@ -281,11 +297,6 @@ const normalizeWorkspaceSession = (
     activeState: normalizePersistedState(value.activeState),
     updatedAt: toNumber(value.updatedAt, Date.now()),
   };
-};
-
-// Helper for local serialization if needed
-const serializePersistedState = (state: PersistedState): string => {
-  return JSON.stringify(state);
 };
 
 export interface UsePersistedStateReturn {
@@ -461,11 +472,17 @@ export function usePersistedState(): UsePersistedStateReturn {
 
       if (session.activeSource.kind === 'saved_table') {
         if (savedTable) {
+          const baseSignature =
+            session.activeSource.baseSignature ||
+            (typeof (savedTable as { stateSignature?: unknown })
+              .stateSignature === 'string'
+              ? (savedTable as { stateSignature?: string }).stateSignature
+              : JSON.stringify(savedTable.state));
           syncActiveSource({
             kind: 'saved_table',
             normalizedName: savedTable.normalizedName,
             tableName: savedTable.name,
-            baseSignature: serializePersistedState(savedTable.state),
+            baseSignature,
           });
           // Always hydrate with the CLEAN state from DB
           hydrateWithState(savedTable.state);
