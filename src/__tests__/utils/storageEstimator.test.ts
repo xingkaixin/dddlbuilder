@@ -169,4 +169,91 @@ describe('storageEstimator', () => {
     ]);
     expect(unknownResult.dataSize).toBe(8); // Default fallback
   });
+
+  it('should support kingbase and gaussdb postgres-like profiles', () => {
+    const kingbaseResult = estimateStorage('kingbase', fields);
+    const gaussdbResult = estimateStorage('gaussdb', fields);
+
+    expect(kingbaseResult.dbName).toBe('Kingbase (人大金仓)');
+    expect(gaussdbResult.dbName).toBe('GaussDB (华为)');
+    expect(kingbaseResult.rowOverhead).toBe(23 + 4);
+    expect(gaussdbResult.rowOverhead).toBe(23 + 4);
+    expect(kingbaseResult.dataSize).toBe(72);
+    expect(gaussdbResult.dataSize).toBe(72);
+  });
+
+  it('should support gbase and polardb mysql-like profiles', () => {
+    const gbaseResult = estimateStorage('gbase', fields);
+    const polardbResult = estimateStorage('polardb', fields);
+
+    expect(gbaseResult.dbName).toBe('GBase (南大通用)');
+    expect(polardbResult.dbName).toBe('PolarDB (阿里云)');
+    expect(gbaseResult.rowOverhead).toBe(5 + 6 + 7 + 1);
+    expect(polardbResult.rowOverhead).toBe(5 + 6 + 7 + 1);
+    expect(gbaseResult.dataSize).toBe(66);
+    expect(polardbResult.dataSize).toBe(66);
+  });
+
+  it('should fallback to mysql profile when db type is unknown', () => {
+    const result = estimateStorage('unknown-db' as any, fields);
+    expect(result.dbName).toBe('MySQL (InnoDB)');
+    expect(result.rowOverhead).toBe(5 + 6 + 7 + 1);
+  });
+
+  it('should cover float53 char date bit and blob sizing branches', () => {
+    const specialFields: NormalizedField[] = [
+      {
+        name: 'f1',
+        type: 'float(53)',
+        nullable: false,
+        comment: '',
+        defaultKind: 'none',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+      {
+        name: 'f2',
+        type: 'char(10)',
+        nullable: false,
+        comment: '',
+        defaultKind: 'none',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+      {
+        name: 'f3',
+        type: 'date',
+        nullable: false,
+        comment: '',
+        defaultKind: 'none',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+      {
+        name: 'f4',
+        type: 'bit',
+        nullable: false,
+        comment: '',
+        defaultKind: 'none',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+      {
+        name: 'f5',
+        type: 'blob',
+        nullable: false,
+        comment: '',
+        defaultKind: 'none',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+    ];
+
+    const mysqlResult = estimateStorage('mysql', specialFields);
+    const pgResult = estimateStorage('postgresql', specialFields);
+
+    expect(mysqlResult.dataSize).toBe(42);
+    expect(pgResult.dataSize).toBe(48);
+    expect(pgResult.dataSize).toBeGreaterThan(mysqlResult.dataSize);
+  });
 });

@@ -242,23 +242,49 @@ describe('useDDLReview', () => {
 
   it('should abort previous request when starting new review', async () => {
     const { result } = renderDDLReviewHook();
+    let firstSignal: AbortSignal | undefined;
+    let requestCount = 0;
 
-    // Start first review
-    act(() => {
-      result.current.startReview('ddl1', 'table1', 'mysql');
+    vi.spyOn(globalThis, 'fetch').mockImplementation((_, init) => {
+      requestCount += 1;
+      const signal = init?.signal as AbortSignal | undefined;
+
+      if (requestCount === 1) {
+        firstSignal = signal;
+        return new Promise<Response>((_, reject) => {
+          signal?.addEventListener('abort', () => {
+            const abortError = new Error('AbortError');
+            abortError.name = 'AbortError';
+            reject(abortError);
+          });
+        });
+      }
+
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        body: createStream([
+          '{"score": 9, "summary": "second", "suggestions": []}',
+        ]),
+        json: vi.fn(),
+      } as unknown as Response);
     });
 
+    // Start first review
     await act(async () => {
+      void result.current.startReview('ddl1', 'table1', 'mysql');
       await flushPromises();
     });
 
     // Start second review - should work without error
-    act(() => {
-      result.current.startReview('ddl2', 'table2', 'mysql');
+    await act(async () => {
+      void result.current.startReview('ddl2', 'table2', 'mysql');
+      await flushPromises();
     });
 
-    // The hook should handle aborting previous request internally
-    expect(result.current.isLoading).toBe(true);
+    expect(firstSignal?.aborted).toBe(true);
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.result?.summary).toBe('second');
   });
 
   it('should handle performance_warning type suggestions', async () => {

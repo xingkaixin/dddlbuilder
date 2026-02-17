@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useFieldStore } from '@/stores';
 import { createEmptyRow } from '@/utils/helpers';
+import {
+  buildDuplicateNameSet,
+  buildNormalizedFields,
+} from '@/stores/fieldStore';
 
 function resetFieldStore() {
   useFieldStore.getState().resetRows(12);
@@ -44,5 +48,136 @@ describe('fieldStore', () => {
     expect(current.rows[0].defaultKind).toBe('自增');
     expect(current.rows[0].nullable).toBe('否');
     expect(current.rows[0].defaultValue).toBe('');
+  });
+
+  it('应该标准化持久化行并重新编号', () => {
+    const state = useFieldStore.getState();
+
+    state.initializeRows([
+      {
+        order: 99,
+        fieldName: 123 as unknown as string,
+        fieldType: 'varchar(20)',
+        fieldComment: null as unknown as string,
+        nullable: false as unknown as string,
+        defaultKind: '',
+        defaultValue: undefined as unknown as string,
+        onUpdate: '',
+      },
+    ]);
+
+    const current = useFieldStore.getState();
+    expect(current.rows).toEqual([
+      {
+        order: 1,
+        fieldName: '123',
+        fieldType: 'varchar(20)',
+        fieldComment: '',
+        nullable: '否',
+        defaultKind: '无',
+        defaultValue: '',
+        onUpdate: '无',
+      },
+    ]);
+  });
+
+  it('空初始化与无效变更应保持数据不变', () => {
+    const state = useFieldStore.getState();
+    state.setRows([createEmptyRow(0)]);
+
+    state.initializeRows([]);
+    state.initializeRows(undefined);
+    state.handleRowsChange(null, 'edit');
+    state.handleRowsChange([[0, 'fieldName', '', 'name']], 'loadData');
+    state.handleRowsChange([null], 'edit');
+
+    const current = useFieldStore.getState();
+    expect(current.rows).toEqual([createEmptyRow(0)]);
+  });
+
+  it('应该扩容到目标行并处理默认值规则', () => {
+    const state = useFieldStore.getState();
+    state.setRows([createEmptyRow(0)]);
+
+    state.handleRowsChange(
+      [
+        [2, 'fieldName', '', 'status'],
+        [2, 'defaultValue', '', '1'],
+        [2, 'defaultKind', '无', 'uuid'],
+      ],
+      'edit',
+    );
+
+    const current = useFieldStore.getState();
+    expect(current.rows.length).toBe(3);
+    expect(current.rows[2].order).toBe(3);
+    expect(current.rows[2].fieldName).toBe('status');
+    expect(current.rows[2].defaultKind).toBe('uuid');
+    expect(current.rows[2].defaultValue).toBe('');
+  });
+
+  it('删除全部行后至少保留一行，非法新增数量按 1 处理', () => {
+    const state = useFieldStore.getState();
+    state.resetRows(1);
+
+    state.handleRemoveRow(0, 1);
+    let current = useFieldStore.getState();
+    expect(current.rows.length).toBe(1);
+    expect(current.rows[0].order).toBe(1);
+
+    state.handleAddRows(0);
+    current = useFieldStore.getState();
+    expect(current.rows.length).toBe(2);
+  });
+});
+
+describe('fieldStore helpers', () => {
+  it('应该识别重复字段名并规范化字段结构', () => {
+    const rows = [
+      {
+        ...createEmptyRow(0),
+        fieldName: ' id ',
+        fieldType: 'int',
+        nullable: '否',
+      },
+      {
+        ...createEmptyRow(1),
+        fieldName: 'id',
+        fieldType: 'varchar(20)',
+        nullable: '是',
+        defaultKind: '常量',
+        defaultValue: 'abc',
+      },
+      {
+        ...createEmptyRow(2),
+        fieldName: '',
+        fieldType: '',
+      },
+    ];
+
+    const duplicates = buildDuplicateNameSet(rows);
+    expect(duplicates.has('id')).toBe(true);
+
+    const normalized = buildNormalizedFields(rows);
+    expect(normalized).toEqual([
+      {
+        name: 'id',
+        type: 'int',
+        comment: '',
+        nullable: false,
+        defaultKind: 'none',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+      {
+        name: 'id',
+        type: 'varchar(20)',
+        comment: '',
+        nullable: true,
+        defaultKind: 'constant',
+        defaultValue: 'abc',
+        onUpdate: 'none',
+      },
+    ]);
   });
 });

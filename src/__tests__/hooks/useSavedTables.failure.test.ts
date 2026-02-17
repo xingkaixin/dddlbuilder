@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useSavedTables } from '@/hooks/useSavedTables';
+import type { SavedTableRecord } from '@/utils/savedTablesDb';
 
 const savedTableMocks = vi.hoisted(() => ({
   addSavedTable: vi.fn(),
@@ -35,6 +36,27 @@ const createState = (name: string) => ({
   authObjects: [],
 });
 
+const createRecord = (
+  normalizedName: string,
+  name: string,
+  folderId?: string,
+): SavedTableRecord => ({
+  normalizedName,
+  name,
+  folderId,
+  state: createState(name),
+  createdAt: 1,
+  updatedAt: 1,
+});
+
+type SaveResult =
+  | { ok: true; normalizedName: string }
+  | {
+      ok: false;
+      reason: 'duplicate' | 'not_found' | 'error';
+      message?: string;
+    };
+
 describe('useSavedTables failure states', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -48,15 +70,7 @@ describe('useSavedTables failure states', () => {
     const { result } = renderHook(() => useSavedTables());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    let response:
-      | { ok: true; normalizedName: string }
-      | {
-          ok: false;
-          reason: 'duplicate' | 'not_found' | 'error';
-          message?: string;
-        }
-      | undefined;
-
+    let response: SaveResult | undefined;
     await act(async () => {
       response = await result.current.saveTable('demo', createState('demo'));
     });
@@ -69,12 +83,214 @@ describe('useSavedTables failure states', () => {
   });
 
   it('should return null when loadTable cannot find record', async () => {
-    savedTableMocks.getSavedTable.mockResolvedValueOnce(null);
-
     const { result } = renderHook(() => useSavedTables());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     const loaded = await result.current.loadTable('missing-table');
     expect(loaded).toBeNull();
+  });
+
+  it('should set default refresh error when list throws non-Error', async () => {
+    savedTableMocks.listSavedTableMetadata.mockRejectedValueOnce('boom');
+
+    const { result } = renderHook(() => useSavedTables());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.error).toBe('读取失败');
+  });
+
+  it('overwriteTable should cover not_found and error branches', async () => {
+    const { result } = renderHook(() => useSavedTables());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    let notFound: SaveResult | undefined;
+    await act(async () => {
+      notFound = await result.current.overwriteTable(
+        'missing',
+        createState('missing'),
+      );
+    });
+    expect(notFound).toEqual({ ok: false, reason: 'not_found' });
+
+    savedTableMocks.getSavedTable.mockResolvedValueOnce(
+      createRecord('alpha', 'Alpha'),
+    );
+    savedTableMocks.updateSavedTable.mockRejectedValueOnce(
+      new Error('更新异常'),
+    );
+
+    let failed: SaveResult | undefined;
+    await act(async () => {
+      failed = await result.current.overwriteTable(
+        'alpha',
+        createState('next'),
+      );
+    });
+    expect(failed).toEqual({
+      ok: false,
+      reason: 'error',
+      message: '更新异常',
+    });
+  });
+
+  it('deleteTable should return error when deletion throws', async () => {
+    savedTableMocks.deleteSavedTable.mockRejectedValueOnce(
+      new Error('删除失败'),
+    );
+
+    const { result } = renderHook(() => useSavedTables());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    let response: SaveResult | undefined;
+    await act(async () => {
+      response = await result.current.deleteTable('demo');
+    });
+
+    expect(response).toEqual({
+      ok: false,
+      reason: 'error',
+      message: '删除失败',
+    });
+  });
+
+  it('renameTable should cover not_found and duplicate branches', async () => {
+    const sourceRecord = createRecord('alpha', 'Alpha');
+    const duplicateRecord = createRecord('beta', 'Beta');
+
+    savedTableMocks.getSavedTable
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(sourceRecord)
+      .mockResolvedValueOnce(duplicateRecord);
+
+    const { result } = renderHook(() => useSavedTables());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    let missing: SaveResult | undefined;
+    await act(async () => {
+      missing = await result.current.renameTable('missing', 'New');
+    });
+    expect(missing).toEqual({ ok: false, reason: 'not_found' });
+
+    let duplicate: SaveResult | undefined;
+    await act(async () => {
+      duplicate = await result.current.renameTable('alpha', 'beta');
+    });
+    expect(duplicate).toEqual({ ok: false, reason: 'duplicate' });
+  });
+
+  it('renameTable should cover update/add-delete/error branches', async () => {
+    const sourceRecord = createRecord('alpha', 'Alpha');
+    const { result } = renderHook(() => useSavedTables());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    savedTableMocks.getSavedTable
+      .mockResolvedValueOnce(sourceRecord)
+      .mockResolvedValueOnce(sourceRecord);
+    let sameName: SaveResult | undefined;
+    await act(async () => {
+      sameName = await result.current.renameTable('alpha', ' alpha ');
+    });
+    expect(sameName).toEqual({ ok: true, normalizedName: 'alpha' });
+
+    savedTableMocks.getSavedTable
+      .mockResolvedValueOnce(sourceRecord)
+      .mockResolvedValueOnce(null);
+    let changedName: SaveResult | undefined;
+    await act(async () => {
+      changedName = await result.current.renameTable('alpha', 'Gamma');
+    });
+    expect(changedName).toEqual({ ok: true, normalizedName: 'gamma' });
+
+    savedTableMocks.getSavedTable
+      .mockResolvedValueOnce(sourceRecord)
+      .mockResolvedValueOnce(sourceRecord);
+    savedTableMocks.updateSavedTable.mockRejectedValueOnce(
+      new Error('重命名异常'),
+    );
+    let failed: SaveResult | undefined;
+    await act(async () => {
+      failed = await result.current.renameTable('alpha', ' alpha ');
+    });
+    expect(failed).toEqual({
+      ok: false,
+      reason: 'error',
+      message: '重命名异常',
+    });
+  });
+
+  it('moveTableToFolder should cover not_found/success/error branches', async () => {
+    const { result } = renderHook(() => useSavedTables());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    savedTableMocks.getSavedTable.mockResolvedValueOnce(null);
+    let notFound: SaveResult | undefined;
+    await act(async () => {
+      notFound = await result.current.moveTableToFolder('missing', 'folder-1');
+    });
+    expect(notFound).toEqual({ ok: false, reason: 'not_found' });
+
+    savedTableMocks.getSavedTable
+      .mockResolvedValueOnce(createRecord('alpha', 'Alpha'))
+      .mockResolvedValueOnce(createRecord('alpha', 'Alpha'));
+    savedTableMocks.updateSavedTable
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('移动异常'));
+
+    let success: SaveResult | undefined;
+    await act(async () => {
+      success = await result.current.moveTableToFolder('alpha', 'folder-a');
+    });
+    expect(success).toEqual({ ok: true, normalizedName: 'alpha' });
+
+    let failed: SaveResult | undefined;
+    await act(async () => {
+      failed = await result.current.moveTableToFolder('alpha', 'folder-b');
+    });
+    expect(failed).toEqual({
+      ok: false,
+      reason: 'error',
+      message: '移动异常',
+    });
+  });
+
+  it('clearTablesFromFolders should update matched existing records', async () => {
+    savedTableMocks.listSavedTableMetadata.mockResolvedValueOnce([
+      {
+        normalizedName: 'a',
+        name: 'A',
+        dbType: 'mysql',
+        fieldCount: 1,
+        folderId: 'folder-a',
+        createdAt: 1,
+        updatedAt: 2,
+      },
+      {
+        normalizedName: 'b',
+        name: 'B',
+        dbType: 'mysql',
+        fieldCount: 1,
+        folderId: 'folder-b',
+        createdAt: 1,
+        updatedAt: 3,
+      },
+    ]);
+    savedTableMocks.getSavedTable.mockImplementation(async (name: string) => {
+      if (name === 'a') return createRecord('a', 'A', 'folder-a');
+      return null;
+    });
+
+    const { result } = renderHook(() => useSavedTables());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.clearTablesFromFolders(['folder-a', 'folder-b']);
+    });
+
+    expect(savedTableMocks.updateSavedTable).toHaveBeenCalledWith(
+      expect.objectContaining({
+        normalizedName: 'a',
+        folderId: undefined,
+      }),
+    );
   });
 });
