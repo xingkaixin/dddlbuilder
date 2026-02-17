@@ -1,5 +1,6 @@
 import type {
   IndexDefinition,
+  MysqlPartitionConfig,
   NormalizedField,
   TableMiscConfig,
 } from '../types';
@@ -11,6 +12,7 @@ export type ParsedResult = {
   indexes: IndexDefinition[];
   authObjects: string[];
   tableMiscConfig?: TableMiscConfig;
+  mysqlPartitionConfig?: MysqlPartitionConfig;
 };
 
 export type ParserInstance = {

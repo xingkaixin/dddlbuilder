@@ -787,6 +787,14 @@ describe('SqlParser', () => {
     expect(result.fields.find((f) => f.name === 'ID')?.defaultKind).toBe(
       'uuid',
     );
+    expect(result.mysqlPartitionConfig).toEqual({
+      enabled: true,
+      type: 'KEY',
+      columns: ['ID'],
+      partitionCount: 4,
+      partitions: [],
+      expression: undefined,
+    });
     expect(result.indexes.map((idx) => idx.name)).toEqual(
       expect.arrayContaining([
         'pk_COO_SC_RAT',

@@ -5,6 +5,7 @@ import type {
   DatabaseType,
   FieldRow,
   IndexDefinition,
+  MysqlPartitionConfig,
   NullableDefault,
   TableMiscConfig,
 } from '@/types';
@@ -27,6 +28,7 @@ interface UseSchemaApplyActionsParams {
   setTableComment: (value: string) => void;
   setDbType: (value: DatabaseType) => void;
   setTableMiscConfig: Dispatch<SetStateAction<TableMiscConfig>>;
+  setMysqlPartitionConfig: Dispatch<SetStateAction<MysqlPartitionConfig>>;
   setActiveTab: (value: string) => void;
   triggerIndexAnimation: (indexId: string, mode: 'add' | 'remove') => void;
   triggerFieldTableHighlight: (rowIndex: number) => void;
@@ -45,6 +47,16 @@ const DEFAULT_TABLE_MISC_CONFIG: TableMiscConfig = {
   tablespace: '',
 };
 
+const MYSQL_PARTITION_DBS: DatabaseType[] = ['mysql', 'mariadb', 'tidb'];
+
+const DEFAULT_MYSQL_PARTITION_CONFIG: MysqlPartitionConfig = {
+  enabled: false,
+  type: 'RANGE',
+  columns: [],
+  partitionCount: 4,
+  partitions: [],
+};
+
 export function useSchemaApplyActions({
   rows,
   indexes,
@@ -59,6 +71,7 @@ export function useSchemaApplyActions({
   setTableComment,
   setDbType,
   setTableMiscConfig,
+  setMysqlPartitionConfig,
   setActiveTab,
   triggerIndexAnimation,
   triggerFieldTableHighlight,
@@ -240,6 +253,14 @@ export function useSchemaApplyActions({
         ...DEFAULT_TABLE_MISC_CONFIG,
         ...(result.tableMiscConfig || {}),
       });
+      setMysqlPartitionConfig(
+        MYSQL_PARTITION_DBS.includes(importDbType)
+          ? {
+              ...DEFAULT_MYSQL_PARTITION_CONFIG,
+              ...(result.mysqlPartitionConfig || {}),
+            }
+          : DEFAULT_MYSQL_PARTITION_CONFIG,
+      );
 
       const newRows: FieldRow[] = result.fields.map((field, index) => {
         let uiNullable = '是';
@@ -306,6 +327,7 @@ export function useSchemaApplyActions({
       setTableComment,
       setDbType,
       setTableMiscConfig,
+      setMysqlPartitionConfig,
       trackEvent,
     ],
   );

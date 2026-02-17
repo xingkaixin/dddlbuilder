@@ -14,6 +14,7 @@ function createHook() {
   const setTableComment = vi.fn();
   const setDbType = vi.fn();
   const setTableMiscConfig = vi.fn();
+  const setMysqlPartitionConfig = vi.fn();
   const setActiveTab = vi.fn();
   const triggerIndexAnimation = vi.fn();
   const triggerFieldTableHighlight = vi.fn();
@@ -35,6 +36,7 @@ function createHook() {
       setTableComment,
       setDbType,
       setTableMiscConfig,
+      setMysqlPartitionConfig,
       setActiveTab,
       triggerIndexAnimation,
       triggerFieldTableHighlight,
@@ -50,6 +52,7 @@ function createHook() {
       setIndexes,
       setAuthObjects,
       setTableMiscConfig,
+      setMysqlPartitionConfig,
     },
   };
 }
@@ -70,6 +73,13 @@ describe('useSchemaApplyActions', () => {
         collation: 'utf8mb4_bin',
         tablespace: '',
       },
+      mysqlPartitionConfig: {
+        enabled: true,
+        type: 'HASH',
+        columns: ['ID'],
+        partitionCount: 4,
+        partitions: [],
+      },
     };
 
     act(() => {
@@ -82,6 +92,13 @@ describe('useSchemaApplyActions', () => {
       charset: 'utf8mb4',
       collation: 'utf8mb4_bin',
       tablespace: '',
+    });
+    expect(spies.setMysqlPartitionConfig).toHaveBeenCalledWith({
+      enabled: true,
+      type: 'HASH',
+      columns: ['ID'],
+      partitionCount: 4,
+      partitions: [],
     });
   });
 
@@ -105,6 +122,13 @@ describe('useSchemaApplyActions', () => {
       charset: '',
       collation: '',
       tablespace: '',
+    });
+    expect(spies.setMysqlPartitionConfig).toHaveBeenCalledWith({
+      enabled: false,
+      type: 'RANGE',
+      columns: [],
+      partitionCount: 4,
+      partitions: [],
     });
   });
 });

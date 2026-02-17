@@ -470,6 +470,7 @@ function App() {
       setTableComment,
       setDbType,
       setTableMiscConfig,
+      setMysqlPartitionConfig,
       setActiveTab,
       triggerIndexAnimation,
       triggerFieldTableHighlight,

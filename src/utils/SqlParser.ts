@@ -60,6 +60,7 @@ export class SqlParser {
       columnComments: Record<string, string>;
     } | null = null;
     let rawGrantUsers: string[] = [];
+    let extractedPartitionConfig: ParsedResult['mysqlPartitionConfig'];
 
     const mergeCommentSource = (source: PreprocessResult | null) => {
       if (!source) return;
@@ -96,6 +97,7 @@ export class SqlParser {
     if (['mysql', 'mariadb', 'tidb', 'oceanbase'].includes(dbType)) {
       const processed = preprocessMysql(sqlToParse);
       sqlToParse = processed.sql;
+      extractedPartitionConfig = processed.partitionConfig;
       if (
         processed.tableComment ||
         Object.keys(processed.columnComments).length > 0
@@ -178,6 +180,10 @@ export class SqlParser {
           result.authObjects.push(u);
         }
       });
+    }
+
+    if (extractedPartitionConfig) {
+      result.mysqlPartitionConfig = extractedPartitionConfig;
     }
 
     return result;

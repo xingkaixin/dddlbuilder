@@ -11,6 +11,7 @@ describe('preprocessMysql', () => {
       indexes: [],
       tableComment: '',
       columnComments: {},
+      partitionConfig: undefined,
     });
   });
 
@@ -37,6 +38,14 @@ describe('preprocessMysql', () => {
     expect(result.indexes).toHaveLength(2);
     expect(result.indexes[0]).toContain('CREATE INDEX idx_users_name');
     expect(result.indexes[1]).toContain('ALTER TABLE users ADD INDEX');
+    expect(result.partitionConfig).toEqual({
+      enabled: true,
+      type: 'HASH',
+      columns: ['id'],
+      partitionCount: 4,
+      partitions: [],
+      expression: undefined,
+    });
   });
 
   it('不应把列默认函数中的右括号误判为建表结束', () => {
@@ -58,6 +67,14 @@ describe('preprocessMysql', () => {
     expect(result.sql).toContain(
       'CREATE INDEX idx_corp_id ON COO_SC_RAT (INFO_SRC ASC);',
     );
+    expect(result.partitionConfig).toEqual({
+      enabled: true,
+      type: 'KEY',
+      columns: ['ID'],
+      partitionCount: 4,
+      partitions: [],
+      expression: undefined,
+    });
   });
 
   it('含分区但不含 CREATE TABLE 时应保持默认返回', () => {
@@ -68,5 +85,6 @@ describe('preprocessMysql', () => {
     expect(result.indexes).toEqual([]);
     expect(result.tableComment).toBe('');
     expect(result.columnComments).toEqual({});
+    expect(result.partitionConfig).toBeUndefined();
   });
 });
