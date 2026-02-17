@@ -3,7 +3,10 @@ import { test, expect } from '@playwright/test';
 test.describe('字段行操作验证 @fields', () => {
   test.beforeEach(async ({ context }) => {
     await context.addInitScript(() => {
-      window.localStorage.setItem('fireworks_shown_2026', 'true');
+      window.localStorage.setItem(
+        'ddlbuilder:fireworks:cny:shown:2026:v1',
+        'true',
+      );
     });
   });
 

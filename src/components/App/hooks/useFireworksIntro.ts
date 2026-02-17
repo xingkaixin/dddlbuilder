@@ -4,11 +4,13 @@ interface UseFireworksIntroParams {
   setShowFireworks: (show: boolean) => void;
 }
 
+const CNY_FIREWORKS_FLAG_KEY = 'ddlbuilder:fireworks:cny:shown:2026:v1';
+
 export function useFireworksIntro({
   setShowFireworks,
 }: UseFireworksIntroParams) {
   useEffect(() => {
-    const hasShown = localStorage.getItem('fireworks_shown_2026');
+    const hasShown = localStorage.getItem(CNY_FIREWORKS_FLAG_KEY);
     if (!hasShown) {
       setShowFireworks(true);
     }
@@ -16,7 +18,7 @@ export function useFireworksIntro({
 
   const handleFireworksComplete = useCallback(() => {
     setShowFireworks(false);
-    localStorage.setItem('fireworks_shown_2026', 'true');
+    localStorage.setItem(CNY_FIREWORKS_FLAG_KEY, 'true');
   }, [setShowFireworks]);
 
   return { handleFireworksComplete };

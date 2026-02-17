@@ -4,7 +4,10 @@ test.describe('数据库切换与方言验证 @core', () => {
   test.beforeEach(async ({ context, page }) => {
     // 规避放烟火特效
     await context.addInitScript(() => {
-      window.localStorage.setItem('fireworks_shown_2026', 'true');
+      window.localStorage.setItem(
+        'ddlbuilder:fireworks:cny:shown:2026:v1',
+        'true',
+      );
       // 设置完全的水合标记以确保 initialized 状态
       window.localStorage.setItem(
         'ddlbuilder:state:v1',

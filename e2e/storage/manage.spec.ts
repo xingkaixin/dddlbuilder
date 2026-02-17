@@ -49,7 +49,7 @@ test.describe('保存表管理补充 @storage', () => {
       indexedDB.deleteDatabase('ddlbuilder');
       localStorage.clear();
       sessionStorage.clear();
-      localStorage.setItem('fireworks_shown_2026', 'true');
+      localStorage.setItem('ddlbuilder:fireworks:cny:shown:2026:v1', 'true');
     });
     await page.goto('/');
     await expect(page.locator('#table-name')).toBeVisible();
@@ -233,7 +233,9 @@ test.describe('保存表管理补充 @storage', () => {
     await page
       .getByRole('button', { name: new RegExp(renamedName, 'i') })
       .click();
-    await expect(page.locator('#table-comment')).toHaveValue(initialSavedComment);
+    await expect(page.locator('#table-comment')).toHaveValue(
+      initialSavedComment,
+    );
 
     await openSavedTables(page);
     const renamedRow = page.getByRole('button', {

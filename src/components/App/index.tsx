@@ -163,6 +163,9 @@ function App() {
   });
 
   const { handleFireworksComplete } = useFireworksIntro({ setShowFireworks });
+  const handlePlayFireworks = useCallback(() => {
+    setShowFireworks(true);
+  }, [setShowFireworks]);
 
   // ─── 3. Domain hooks (must come before derived state) ──────────
   const {
@@ -712,6 +715,7 @@ function App() {
           onShare={handleShare}
           currentDbType={dbType}
           onImport={handleImport}
+          onPlayFireworks={handlePlayFireworks}
         />
 
         {isShareView && (
