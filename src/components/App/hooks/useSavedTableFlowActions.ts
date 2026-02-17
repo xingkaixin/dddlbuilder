@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import type { PersistedState } from '@/types';
+import type { SavedTableDraftRecord, WorkspaceSource } from '@/types/workspace';
 import type {
   SaveTableResult,
   SavedTableSummary,
@@ -35,6 +36,7 @@ interface UseSavedTableFlowActionsParams {
   canSaveCurrent: boolean;
   loadedTableNormalizedName: string | null;
   loadedTableName: string | null;
+  loadedTableSignature: string | null;
   setLoadedTableNormalizedName: (value: string | null) => void;
   setLoadedTableName: (value: string | null) => void;
   setLoadedTableSignature: (value: string | null) => void;
@@ -66,6 +68,18 @@ interface UseSavedTableFlowActionsParams {
     event: string,
     data?: Record<string, AnalyticsValue>,
   ) => Promise<void> | void;
+  flushCurrentWorkspace?: () => void;
+  getSavedTableDraft?: (normalizedName: string) => SavedTableDraftRecord | null;
+  setWorkspaceSnapshot?: (
+    source: WorkspaceSource,
+    state: PersistedState | null,
+  ) => void;
+  renameSavedTableDraft?: (
+    fromNormalizedName: string,
+    toNormalizedName: string,
+    nextTableName: string,
+  ) => void;
+  removeSavedTableDraft?: (normalizedName: string) => void;
   onSaveSuccess?: (payload: {
     normalizedName: string;
     displayName: string;
@@ -80,6 +94,7 @@ export function useSavedTableFlowActions({
   canSaveCurrent,
   loadedTableNormalizedName,
   loadedTableName,
+  loadedTableSignature,
   setLoadedTableNormalizedName,
   setLoadedTableName,
   setLoadedTableSignature,
@@ -98,6 +113,11 @@ export function useSavedTableFlowActions({
   overwriteTable,
   showToast,
   trackEvent,
+  flushCurrentWorkspace,
+  getSavedTableDraft,
+  setWorkspaceSnapshot,
+  renameSavedTableDraft,
+  removeSavedTableDraft,
   onSaveSuccess,
 }: UseSavedTableFlowActionsParams) {
   const saveName = saveDialog.data.name;
@@ -107,8 +127,34 @@ export function useSavedTableFlowActions({
   const renameTarget = renameDialog.data.target;
   const deleteTarget = deleteDialog.data.target;
 
+  const isSavedTableDraftDirty = useCallback(
+    (draft: SavedTableDraftRecord) =>
+      serializePersistedState(draft.state) !== draft.baseSignature,
+    [serializePersistedState],
+  );
+
   const handleLoadSavedTable = useCallback(
     async (target: SavedTableSummary) => {
+      const draftRecord = getSavedTableDraft?.(target.normalizedName);
+      if (draftRecord && isSavedTableDraftDirty(draftRecord)) {
+        applySavedState(draftRecord.state);
+        setLoadedTableNormalizedName(target.normalizedName);
+        setLoadedTableName(draftRecord.tableName || target.name);
+        setLoadedTableSignature(draftRecord.baseSignature);
+        setWorkspaceSnapshot?.(
+          {
+            kind: 'saved_table',
+            normalizedName: target.normalizedName,
+            tableName: draftRecord.tableName || target.name,
+            baseSignature: draftRecord.baseSignature,
+          },
+          draftRecord.state,
+        );
+        trackEvent('table_load_draft', { tableName: target.name });
+        showToast(`已加载草稿：${target.name}`);
+        return;
+      }
+
       try {
         const record = await loadTable(target.normalizedName);
         if (!record) {
@@ -118,7 +164,17 @@ export function useSavedTableFlowActions({
         applySavedState(record.state);
         setLoadedTableNormalizedName(record.normalizedName);
         setLoadedTableName(record.name);
-        setLoadedTableSignature(serializePersistedState(record.state));
+        const baseSignature = serializePersistedState(record.state);
+        setLoadedTableSignature(baseSignature);
+        setWorkspaceSnapshot?.(
+          {
+            kind: 'saved_table',
+            normalizedName: record.normalizedName,
+            tableName: record.name,
+            baseSignature,
+          },
+          record.state,
+        );
         trackEvent('table_load', { tableName: record.name });
         showToast(`已加载：${record.name}`);
       } catch (error) {
@@ -133,6 +189,9 @@ export function useSavedTableFlowActions({
       setLoadedTableName,
       setLoadedTableSignature,
       serializePersistedState,
+      getSavedTableDraft,
+      isSavedTableDraftDirty,
+      setWorkspaceSnapshot,
       trackEvent,
     ],
   );
@@ -172,6 +231,15 @@ export function useSavedTableFlowActions({
         return;
       }
       setLoadedTableSignature(nextSignature);
+      setWorkspaceSnapshot?.(
+        {
+          kind: 'saved_table',
+          normalizedName: loadedTableNormalizedName,
+          tableName: loadedTableName ?? saveName,
+          baseSignature: nextSignature,
+        },
+        nextState,
+      );
       trackEvent('table_update', { tableName: loadedTableName });
       showToast(`已更新：${loadedTableName ?? saveName}`);
       await createVersion(loadedTableNormalizedName, nextState);
@@ -189,10 +257,21 @@ export function useSavedTableFlowActions({
         return;
       }
       const displayName = saveName.trim() || DEFAULT_SAVED_TABLE_NAME;
+      const normalizedName = result.normalizedName;
+      setLoadedTableNormalizedName(normalizedName);
+      setLoadedTableName(displayName);
+      setLoadedTableSignature(nextSignature);
+      setWorkspaceSnapshot?.(
+        {
+          kind: 'saved_table',
+          normalizedName,
+          tableName: displayName,
+          baseSignature: nextSignature,
+        },
+        nextState,
+      );
       trackEvent('table_save', { tableName: displayName });
       showToast(`已保存：${displayName}`);
-      const normalizedName =
-        saveName.trim().toLowerCase() || DEFAULT_SAVED_TABLE_NAME.toLowerCase();
       await createVersion(normalizedName, nextState, '初始版本');
       savedNormalizedName = normalizedName;
       savedDisplayName = displayName;
@@ -220,10 +299,13 @@ export function useSavedTableFlowActions({
     loadedTableNormalizedName,
     overwriteTable,
     setLoadedTableSignature,
+    setWorkspaceSnapshot,
     trackEvent,
     loadedTableName,
     saveName,
     saveTable,
+    setLoadedTableNormalizedName,
+    setLoadedTableName,
     saveDialog,
     onSaveSuccess,
     queuedLoadAfterSave,
@@ -241,6 +323,7 @@ export function useSavedTableFlowActions({
 
   const handleSelectSavedTable = useCallback(
     (item: SavedTableSummary) => {
+      flushCurrentWorkspace?.();
       setSavedTablesDrawerOpen(false);
       if (hasLoadedTable && isLoadedDirty) {
         loadConfirmDialog.openDialog({ pendingTarget: item });
@@ -250,6 +333,7 @@ export function useSavedTableFlowActions({
     },
     [
       setSavedTablesDrawerOpen,
+      flushCurrentWorkspace,
       hasLoadedTable,
       isLoadedDirty,
       loadConfirmDialog,
@@ -322,12 +406,29 @@ export function useSavedTableFlowActions({
       newName: displayName,
     });
     showToast(`已重命名为：${displayName}`);
+    renameSavedTableDraft?.(
+      renameTarget.normalizedName,
+      result.normalizedName,
+      displayName,
+    );
     if (
       loadedTableNormalizedName &&
       renameTarget.normalizedName === loadedTableNormalizedName
     ) {
       setLoadedTableNormalizedName(result.normalizedName);
       setLoadedTableName(displayName);
+      const currentState = buildPersistedState();
+      const nextSignature =
+        loadedTableSignature ?? serializePersistedState(currentState);
+      setWorkspaceSnapshot?.(
+        {
+          kind: 'saved_table',
+          normalizedName: result.normalizedName,
+          tableName: displayName,
+          baseSignature: nextSignature,
+        },
+        currentState,
+      );
     }
     renameDialog.closeDialog();
   }, [
@@ -340,6 +441,11 @@ export function useSavedTableFlowActions({
     loadedTableNormalizedName,
     setLoadedTableNormalizedName,
     setLoadedTableName,
+    loadedTableSignature,
+    serializePersistedState,
+    setWorkspaceSnapshot,
+    buildPersistedState,
+    renameSavedTableDraft,
   ]);
 
   const handleOpenDeleteDialog = useCallback(
@@ -364,12 +470,14 @@ export function useSavedTableFlowActions({
     if (!result.ok) {
       showToast(result.message ?? '删除失败');
     } else {
+      removeSavedTableDraft?.(deleteTarget.normalizedName);
       trackEvent('table_delete', { tableName: deleteTarget.name });
       showToast(`已删除：${deleteTarget.name}`);
       if (deleteTarget.normalizedName === loadedTableNormalizedName) {
         setLoadedTableNormalizedName(null);
         setLoadedTableName(null);
         setLoadedTableSignature(null);
+        setWorkspaceSnapshot?.({ kind: 'global_draft' }, buildPersistedState());
       }
     }
     deleteDialog.closeDialog();
@@ -382,6 +490,9 @@ export function useSavedTableFlowActions({
     setLoadedTableNormalizedName,
     setLoadedTableName,
     setLoadedTableSignature,
+    setWorkspaceSnapshot,
+    buildPersistedState,
+    removeSavedTableDraft,
     deleteDialog,
   ]);
 

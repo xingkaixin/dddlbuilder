@@ -83,7 +83,6 @@ export const TableItem = memo<TableItemProps>(
             'min-w-0 flex-1 text-left disabled:cursor-not-allowed disabled:opacity-70',
           )}
           onClick={onSelect}
-          disabled={isActive}
         >
           <div className="flex items-center gap-2">
             <span

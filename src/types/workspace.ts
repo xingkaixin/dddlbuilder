@@ -1,0 +1,30 @@
+import type { PersistedState } from '@/types';
+
+export type WorkspaceSource =
+  | { kind: 'global_draft' }
+  | {
+      kind: 'saved_table';
+      normalizedName: string;
+      tableName: string;
+      baseSignature: string;
+    };
+
+export type WorkspaceSavePayload = {
+  state: PersistedState;
+  source: WorkspaceSource;
+  isDirty: boolean;
+};
+
+export type SavedTableDraftRecord = {
+  state: PersistedState;
+  tableName: string;
+  baseSignature: string;
+  updatedAt: number;
+};
+
+export type GlobalDraftSummary = {
+  name: string;
+  dbType: string;
+  fieldCount: number;
+  updatedAt: number;
+};
