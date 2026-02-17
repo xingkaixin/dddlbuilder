@@ -1,4 +1,8 @@
-import type { IndexDefinition, NormalizedField } from '../types';
+import type {
+  IndexDefinition,
+  NormalizedField,
+  TableMiscConfig,
+} from '../types';
 
 export type ParsedResult = {
   tableName: string;
@@ -6,6 +10,7 @@ export type ParsedResult = {
   fields: NormalizedField[];
   indexes: IndexDefinition[];
   authObjects: string[];
+  tableMiscConfig?: TableMiscConfig;
 };
 
 export type ParserInstance = {

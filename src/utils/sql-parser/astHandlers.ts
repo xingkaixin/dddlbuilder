@@ -10,6 +10,14 @@ import {
   normalizeLiteral,
 } from './normalizers';
 
+const MYSQL_ENGINE_NAME_MAP: Record<string, string> = {
+  innodb: 'InnoDB',
+  myisam: 'MyISAM',
+  memory: 'MEMORY',
+  archive: 'ARCHIVE',
+  csv: 'CSV',
+};
+
 function pushIndex(
   result: ParsedResult,
   name: string,
@@ -34,6 +42,28 @@ function enforceNotNullForFields(result: ParsedResult, fieldNames: string[]) {
   result.fields = result.fields.map((f) =>
     fieldNames.includes(f.name) ? { ...f, nullable: false } : f,
   );
+}
+
+function normalizeTableOptionValue(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') {
+    return normalizeLiteral(value);
+  }
+  if (
+    typeof value === 'object' &&
+    value &&
+    'value' in value &&
+    typeof (value as Record<string, unknown>).value === 'string'
+  ) {
+    return normalizeLiteral((value as Record<string, string>).value);
+  }
+  return '';
+}
+
+function normalizeEngineName(engine: string): string {
+  const normalized = engine.trim();
+  if (!normalized) return '';
+  return MYSQL_ENGINE_NAME_MAP[normalized.toLowerCase()] ?? normalized;
 }
 
 function mapColumnToField(colDef: any, _dbType: DatabaseType): NormalizedField {
@@ -127,11 +157,56 @@ export function parseCreateTable(
 
   // 2. Table Comment
   if (stmt.table_options) {
-    const commentOpt = stmt.table_options.find(
-      (o: any) => o.keyword === 'comment',
-    );
-    if (commentOpt) {
-      result.tableComment = commentOpt.value.replace(/^'|'$/g, '');
+    const tableMiscConfig = {
+      enabled: false,
+      engine: '',
+      charset: '',
+      collation: '',
+      tablespace: '',
+    };
+
+    stmt.table_options.forEach((option: any) => {
+      const keyword = String(option.keyword || '')
+        .toLowerCase()
+        .trim();
+      const optionValue = normalizeTableOptionValue(option.value);
+      if (!optionValue) return;
+
+      if (keyword === 'comment' && !result.tableComment) {
+        result.tableComment = optionValue;
+        return;
+      }
+
+      if (keyword === 'engine') {
+        tableMiscConfig.engine = normalizeEngineName(optionValue);
+        return;
+      }
+
+      if (keyword === 'default charset' || keyword === 'charset') {
+        tableMiscConfig.charset = optionValue;
+        return;
+      }
+
+      if (keyword === 'collate' || keyword === 'collation') {
+        tableMiscConfig.collation = optionValue;
+        return;
+      }
+
+      if (keyword === 'tablespace') {
+        tableMiscConfig.tablespace = optionValue;
+      }
+    });
+
+    if (
+      tableMiscConfig.engine ||
+      tableMiscConfig.charset ||
+      tableMiscConfig.collation ||
+      tableMiscConfig.tablespace
+    ) {
+      result.tableMiscConfig = {
+        ...tableMiscConfig,
+        enabled: true,
+      };
     }
   }
 

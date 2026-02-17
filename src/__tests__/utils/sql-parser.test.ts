@@ -726,4 +726,76 @@ describe('SqlParser', () => {
     const idField = result.fields.find((f) => f.name === 'id');
     expect(idField?.defaultKind).toBe('auto_increment');
   });
+
+  it('能够解析 MySQL 的 ENGINE、CHARSET、COLLATE 表选项', async () => {
+    const sql = `
+    CREATE TABLE COO_SC_RAT (
+      ID VARCHAR(100) NOT NULL DEFAULT (UUID()) COMMENT '记录编号'
+    ) COMMENT='证券公司评级1' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+    `;
+
+    const parser = new SqlParser();
+    const result = await parser.parseAsync(sql, 'mysql');
+
+    expect(result.tableName).toBe('COO_SC_RAT');
+    expect(result.tableComment).toBe('证券公司评级1');
+    expect(result.tableMiscConfig).toEqual({
+      enabled: true,
+      engine: 'InnoDB',
+      charset: 'utf8mb4',
+      collation: 'utf8mb4_bin',
+      tablespace: '',
+    });
+  });
+
+  it('能够解析带分区和函数默认值的 MySQL 导入 SQL', async () => {
+    const sql = `
+    CREATE TABLE COO_SC_RAT (
+      ID VARCHAR(100) NULL DEFAULT (UUID()) COMMENT '记录编号',
+      INFO_SRC VARCHAR(10) NULL DEFAULT '1' COMMENT '信息来源',
+      CORP_ID VARCHAR(32) NULL COMMENT '公司编号',
+      CORP_NAME VARCHAR(100) NULL COMMENT '公司名称',
+      PUB_DT DATE NULL COMMENT '发布日期',
+      END_DT DATE NULL COMMENT '截止日期',
+      INFO_TYP_CD DECIMAL(10, 2) NULL COMMENT '信息类别',
+      EVA_DESC VARCHAR(100) NULL COMMENT '评价结果',
+      F_TIME TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录进表时间',
+      U_TIME TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录更新时间',
+      G_TIME TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录落地时间',
+      SOURCE_TYP VARCHAR(100) NULL COMMENT '来源标识',
+      SOURCE_ID VARCHAR(100) NULL COMMENT '来源记录编号',
+      IS_DELETE CHAR(1) NULL DEFAULT '1' COMMENT '删除标识',
+      aaa TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'dfd'
+    ) COMMENT='证券公司评级1'
+    PARTITION BY KEY(ID)
+    PARTITIONS 4;
+
+    CREATE UNIQUE INDEX uk_COO_SC_RAT_CORP_ID_END_DT ON COO_SC_RAT (CORP_ID ASC, END_DT DESC);
+    CREATE INDEX idx_COO_SC_RAT_CORP_ID ON COO_SC_RAT (CORP_ID ASC);
+    CREATE INDEX idx_COO_SC_RAT_END_DT ON COO_SC_RAT (END_DT ASC);
+    ALTER TABLE COO_SC_RAT ADD CONSTRAINT pk_COO_SC_RAT PRIMARY KEY (ID);
+    CREATE INDEX idx_COO_SC_RAT_CORP_ID_ID_SOURCE_TY_g25v ON COO_SC_RAT (CORP_ID ASC, ID ASC, SOURCE_TYP ASC, SOURCE_ID ASC, CORP_NAME ASC);
+    CREATE INDEX idx_COO_SC_RAT_ID_CORP_ID_CORP_NAME_o7yc ON COO_SC_RAT (ID ASC, CORP_ID ASC, CORP_NAME ASC, EVA_DESC ASC, END_DT ASC, INFO_SRC ASC, PUB_DT ASC);
+    `;
+
+    const parser = new SqlParser();
+    const result = await parser.parseAsync(sql, 'mysql');
+
+    expect(result.tableName).toBe('COO_SC_RAT');
+    expect(result.tableComment).toBe('证券公司评级1');
+    expect(result.fields).toHaveLength(15);
+    expect(result.fields.find((f) => f.name === 'ID')?.defaultKind).toBe(
+      'uuid',
+    );
+    expect(result.indexes.map((idx) => idx.name)).toEqual(
+      expect.arrayContaining([
+        'pk_COO_SC_RAT',
+        'uk_COO_SC_RAT_CORP_ID_END_DT',
+        'idx_COO_SC_RAT_CORP_ID',
+        'idx_COO_SC_RAT_END_DT',
+        'idx_COO_SC_RAT_CORP_ID_ID_SOURCE_TY_g25v',
+        'idx_COO_SC_RAT_ID_CORP_ID_CORP_NAME_o7yc',
+      ]),
+    );
+  });
 });

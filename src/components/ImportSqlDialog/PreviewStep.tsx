@@ -48,6 +48,9 @@ export function PreviewStep({
         <span>
           索引数: <strong>{parsedResult.indexes.length}</strong>
         </span>
+        <span>
+          授权对象数: <strong>{parsedResult.authObjects.length}</strong>
+        </span>
       </div>
 
       {/* 字段列表 */}
@@ -200,6 +203,25 @@ export function PreviewStep({
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* 授权对象明细 */}
+      {parsedResult.authObjects.length > 0 && (
+        <div className="rounded-md border">
+          <div className="bg-muted px-3 py-2 text-sm font-medium">
+            授权对象 ({parsedResult.authObjects.length} 个)
+          </div>
+          <div className="flex flex-wrap gap-2 p-3">
+            {parsedResult.authObjects.map((authObject) => (
+              <span
+                key={authObject}
+                className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
+              >
+                {authObject}
+              </span>
+            ))}
           </div>
         </div>
       )}
