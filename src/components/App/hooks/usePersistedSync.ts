@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { PersistedState } from '@/types';
 import type { WorkspaceSavePayload, WorkspaceSource } from '@/types/workspace';
 import { useDebouncedEffect } from '@/hooks/useDebouncedEffect';
@@ -48,6 +48,9 @@ export function usePersistedSync({
   setLoadedTableName,
   setLoadedTableSignature,
 }: UsePersistedSyncParams) {
+  const activeSourceRef = useRef(activeSource);
+  activeSourceRef.current = activeSource;
+
   useEffect(() => {
     if (!hydrated || !persistedState) return;
 
@@ -112,10 +115,11 @@ export function usePersistedSync({
   useDebouncedEffect(
     () => {
       if (!hydrated) return;
+      const source = activeSourceRef.current;
+      if (!source) return;
       try {
         const state = buildPersistedState();
         const currentSignature = JSON.stringify(state);
-        const source = activeSource;
         const isDirty =
           source.kind === 'saved_table'
             ? currentSignature !== source.baseSignature
@@ -129,7 +133,7 @@ export function usePersistedSync({
         // ignore quota errors
       }
     },
-    [hydrated, buildPersistedState, activeSource, saveState],
+    [hydrated, buildPersistedState, saveState],
     PERSIST_DEBOUNCE_MS,
   );
 }
