@@ -1,4 +1,11 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import type { DatabaseType, PersistedState } from '@/types';
 import { createEmptyRow } from '@/utils/helpers';
 import { isTabAvailable } from '@/utils/tabUtils';
@@ -556,25 +563,33 @@ function App() {
     },
   });
 
-  // ... (useSchemaApplyActions, useNavigationActions)
-
-  // ... (handleDbTypeChange, dataTableToolbarLeft, effectiveGlobalDraftSummary)
-
   const handleSelectGlobalDraft = useCallback(() => {
-    // ...
+    flushCurrentWorkspace();
+    setSavedTablesDrawerOpen(false);
+    const existedDraftState = getGlobalDraftState();
+    const nextState = existedDraftState ?? createEmptyGlobalDraftState();
+
+    setWorkspaceSnapshot?.({ kind: 'global_draft' }, nextState);
+    applySavedState(nextState);
+
     setLoadedTableNormalizedName(null);
     setLoadedTableName(null);
     setLoadedTableSignature(null);
     setLoadedTableVersion(0);
-    flushCurrentWorkspace();
-    const existedDraftState = getGlobalDraftState();
-    // ...
+
     showToast(
-      existedDraftState ? '已加载草稿' : '草稿箱为空，已创建新的草稿',
+      existedDraftState ? '已加载草稿箱' : '草稿箱为空，已创建新的草稿',
     );
   }, [
-    // ... deps
-    setLoadedTableVersion,
+    flushCurrentWorkspace,
+    setSavedTablesDrawerOpen,
+    getGlobalDraftState,
+    setWorkspaceSnapshot,
+    applySavedState,
+    setLoadedTableNormalizedName,
+    setLoadedTableName,
+    setLoadedTableSignature,
+    showToast,
   ]);
 
   const workspaceLabel = useMemo(() => {
@@ -582,7 +597,7 @@ function App() {
     if (loadedTableName) {
       return `当前：${loadedTableName} ${loadedTableVersion > 0 ? `(v${loadedTableVersion})` : ''}${isLoadedDirty ? ' *' : ''}`;
     }
-    return '当前：草稿';
+    return '当前：草稿箱';
   }, [isShareView, loadedTableName, isLoadedDirty, loadedTableVersion]);
 
   const { handleApplySuggestion, handleImport, handleApplyAIGeneratedSchema } =
@@ -653,8 +668,6 @@ function App() {
       updatedAt: Date.now(),
     };
   }, [globalDraftSummary]);
-
-  /* Removed duplicate handleSelectGlobalDraft and workspaceLabel */
 
   // ─── 7. Render ─────────────────────────────────────────────────
   return (

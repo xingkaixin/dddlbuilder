@@ -12,6 +12,7 @@ import { STORAGE_KEY } from '@/utils/constants';
 import {
   clearGlobalDraft,
   clearWorkspaceSession,
+  migrateLegacyWorkspaceFromLocalStorage,
   readGlobalDraft,
   readWorkspaceSession,
   writeGlobalDraft,
@@ -230,10 +231,6 @@ const normalizeGlobalDraftRecord = (
   if (!state) return null;
 
   return {
-    id: toText(value.id, 'global_draft'),
-    name: toText(value.name, 'Global Draft'),
-    dbType: toText(value.dbType, 'mysql') as PersistedState['dbType'],
-    fieldCount: toNumber(value.fieldCount, 0),
     updatedAt: toNumber(value.updatedAt, Date.now()),
     state,
   };
@@ -246,7 +243,6 @@ const normalizeWorkspaceSession = (
   if (!isWorkspaceSource(value.activeSource)) return null;
 
   return {
-    id: toText(value.id, 'session'),
     activeSource: value.activeSource,
     activeState: normalizePersistedState(value.activeState),
     updatedAt: toNumber(value.updatedAt, Date.now()),
@@ -280,12 +276,11 @@ export function usePersistedState(): UsePersistedStateReturn {
   const shareId = pathInfo.shareId;
   const shareStorageKey = shareId ? buildShareStorageKey(shareId) : null;
   const [hydrated, setHydrated] = useState(false);
-  const [persistedState, setPersistedState] =
-    useState<PersistedState | null>(null);
+  const [persistedState, setPersistedState] = useState<PersistedState | null>(
+    null,
+  );
   const [shareLoadStatus, setShareLoadStatus] =
     useState<ShareLoadStatus>('idle');
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [isShareView, setIsShareView] = useState(false);
   const [activeSource, setActiveSource] = useState<WorkspaceSource>({
     kind: 'global_draft',
   });
@@ -324,10 +319,6 @@ export function usePersistedState(): UsePersistedStateReturn {
 
       if (source.kind === 'global_draft') {
         const globalRecord: GlobalDraftRecord = {
-          id: 'global_draft',
-          name: 'Global Draft',
-          dbType: state.dbType,
-          fieldCount: state.rows.filter((r) => r.fieldName?.trim()).length,
           updatedAt: Date.now(),
           state,
         };
@@ -335,11 +326,11 @@ export function usePersistedState(): UsePersistedStateReturn {
         fireAndForget(writeGlobalDraft(globalRecord));
       }
 
+      const activeState = source.kind === 'global_draft' ? state : null;
       fireAndForget(
         writeWorkspaceSession({
-          id: 'session',
           activeSource: source,
-          activeState: state,
+          activeState,
           updatedAt: Date.now(),
         }),
       );
@@ -367,23 +358,18 @@ export function usePersistedState(): UsePersistedStateReturn {
 
       if (payload.source.kind === 'global_draft') {
         const globalRecord: GlobalDraftRecord = {
-          id: 'global_draft',
-          name: 'Global Draft',
-          dbType: payload.state.dbType,
-          fieldCount: payload.state.rows.filter((r) => r.fieldName?.trim())
-            .length,
           updatedAt: Date.now(),
           state: payload.state,
         };
         updateGlobalDraft(globalRecord);
         fireAndForget(writeGlobalDraft(globalRecord));
-      } 
-      
-      const activeStateToPersist = payload.source.kind === 'saved_table' ? null : payload.state;
+      }
+
+      const activeStateToPersist =
+        payload.source.kind === 'saved_table' ? null : payload.state;
 
       fireAndForget(
         writeWorkspaceSession({
-          id: 'session',
           activeSource: payload.source,
           activeState: activeStateToPersist,
           updatedAt: Date.now(),
@@ -424,6 +410,8 @@ export function usePersistedState(): UsePersistedStateReturn {
     };
 
     const hydrateMainWorkspace = async () => {
+      await migrateLegacyWorkspaceFromLocalStorage().catch(() => undefined);
+
       const [globalDraftRaw, sessionRaw] = await Promise.all([
         readGlobalDraft().catch(() => null),
         readWorkspaceSession().catch(() => null),
@@ -443,20 +431,22 @@ export function usePersistedState(): UsePersistedStateReturn {
       if (session.activeSource.kind === 'saved_table') {
         // Try to load the saved table from DB
         try {
-           const savedTable = await getSavedTable(session.activeSource.normalizedName);
-           if (savedTable) {
-             syncActiveSource({
-               kind: 'saved_table',
-               normalizedName: savedTable.normalizedName,
-               tableName: savedTable.name,
-               baseSignature: serializePersistedState(savedTable.state),
-             });
-             // Always hydrate with the CLEAN state from DB
-             hydrateWithState(savedTable.state);
-             return;
-           }
+          const savedTable = await getSavedTable(
+            session.activeSource.normalizedName,
+          );
+          if (savedTable) {
+            syncActiveSource({
+              kind: 'saved_table',
+              normalizedName: savedTable.normalizedName,
+              tableName: savedTable.name,
+              baseSignature: serializePersistedState(savedTable.state),
+            });
+            // Always hydrate with the CLEAN state from DB
+            hydrateWithState(savedTable.state);
+            return;
+          }
         } catch (e) {
-           console.error('Failed to load saved table for session:', e);
+          console.error('Failed to load saved table for session:', e);
         }
 
         // Fallback: Global Draft if saved table missing

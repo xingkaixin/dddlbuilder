@@ -227,9 +227,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                   onClick={onSelectDraft}
                 >
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">
-                      全局草稿箱
-                    </div>
+                    <div className="truncate text-sm font-medium">草稿箱</div>
                     <div className="mt-1 text-xs text-muted-foreground">
                       自动保存 · {draftItem.dbType} · {draftItem.fieldCount}{' '}
                       字段

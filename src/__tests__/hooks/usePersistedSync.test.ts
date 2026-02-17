@@ -218,7 +218,6 @@ describe('usePersistedSync debounce save', () => {
 
   it('应在 ActiveSource 与 LoadedName 不匹配时跳过保存（防止竞态条件）', () => {
     const saveState = vi.fn();
-    const globalState = createState('global_draft');
     const savedState = createState('saved_table_content');
 
     // 模拟竞态条件：

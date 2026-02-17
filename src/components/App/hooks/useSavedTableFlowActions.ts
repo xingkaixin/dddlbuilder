@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type { PersistedState } from '@/types';
-import type { SavedTableDraftRecord, WorkspaceSource } from '@/types/workspace';
+import type { WorkspaceSource } from '@/types/workspace';
 import type {
   SaveTableResult,
   SavedTableSummary,
@@ -129,12 +129,6 @@ export function useSavedTableFlowActions({
   const renameTarget = renameDialog.data.target;
   const deleteTarget = deleteDialog.data.target;
 
-  const isSavedTableDraftDirty = useCallback(
-    (draft: SavedTableDraftRecord) =>
-      serializePersistedState(draft.state) !== draft.baseSignature,
-    [serializePersistedState],
-  );
-
   const handleLoadSavedTable = useCallback(
     async (target: SavedTableSummary) => {
       console.log('[DEBUG] 加载已保存的表 - 开始:', {
@@ -159,14 +153,15 @@ export function useSavedTableFlowActions({
         });
 
         const savedBaseSignature = serializePersistedState(record.state);
-        
+
         // 获取版本数量以显示当前版本号
         let versionCount = 0;
         try {
-           versionCount = await countVersions(record.normalizedName);
+          versionCount = await countVersions(record.normalizedName);
         } catch (e) {
-           console.error('获取版本号失败', e);
+          console.error('获取版本号失败', e);
         }
+        const resolvedVersion = versionCount > 0 ? versionCount : 1;
 
         console.log('[DEBUG] 加载已保存的表 - 加载原始保存版本:', {
           source: {
@@ -192,9 +187,9 @@ export function useSavedTableFlowActions({
         setLoadedTableNormalizedName(record.normalizedName);
         setLoadedTableName(record.name);
         setLoadedTableSignature(savedBaseSignature);
-        setLoadedTableVersion(versionCount > 0 ? versionCount : 1); // 默认为v1如果没找到历史？通常createVersion会创建初始版本
+        setLoadedTableVersion(resolvedVersion);
         trackEvent('table_load', { tableName: record.name });
-        showToast(`已加载：${record.name} (v${versionCount})`);
+        showToast(`已加载：${record.name} (v${resolvedVersion})`);
       } catch (error) {
         showToast(error instanceof Error ? error.message : '加载失败');
       }
@@ -260,6 +255,8 @@ export function useSavedTableFlowActions({
       trackEvent('table_update', { tableName: loadedTableName });
       showToast(`已更新：${loadedTableName ?? saveName}`);
       await createVersion(loadedTableNormalizedName, nextState);
+      const versionCount = await countVersions(loadedTableNormalizedName);
+      setLoadedTableVersion(versionCount > 0 ? versionCount : 1);
       savedNormalizedName = loadedTableNormalizedName;
       savedDisplayName = loadedTableName ?? saveName;
       saveMode = 'update';
@@ -290,6 +287,7 @@ export function useSavedTableFlowActions({
       trackEvent('table_save', { tableName: displayName });
       showToast(`已保存：${displayName}`);
       await createVersion(normalizedName, nextState, '初始版本');
+      setLoadedTableVersion(1);
       savedNormalizedName = normalizedName;
       savedDisplayName = displayName;
       saveMode = 'create';
@@ -320,6 +318,7 @@ export function useSavedTableFlowActions({
     trackEvent,
     loadedTableName,
     saveName,
+    setLoadedTableVersion,
     saveTable,
     setLoadedTableNormalizedName,
     setLoadedTableName,
