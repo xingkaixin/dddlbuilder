@@ -4,6 +4,7 @@ import {
   buildDCL,
   buildOracleSynonyms,
   type NormalizedField,
+  type IndexDefinition,
 } from '@/App';
 
 describe('DDL Generation Functions', () => {
@@ -454,6 +455,137 @@ describe('DDL Generation Functions', () => {
 
       expect(result).toContain('PARTITION BY HASH(dayofmonth(start_time))');
       expect(result).toContain('PARTITIONS 32');
+    });
+
+    it('should support RANGE COLUMNS partition type', () => {
+      const partitionConfig = {
+        enabled: true,
+        type: 'RANGE COLUMNS' as const,
+        columns: ['created_at'],
+        partitions: [{ name: 'pmax', value: 'MAXVALUE' }],
+      };
+
+      const result = buildDDL(
+        'mysql',
+        'orders',
+        '',
+        sampleFields,
+        [],
+        undefined,
+        partitionConfig,
+      );
+
+      expect(result).toContain('PARTITION BY RANGE COLUMNS(created_at)');
+      expect(result).toContain('PARTITION pmax VALUES LESS THAN (MAXVALUE)');
+    });
+
+    it('should ignore unsupported partition type', () => {
+      const partitionConfig = {
+        enabled: true,
+        type: 'UNKNOWN' as any,
+        columns: ['id'],
+        partitions: [],
+      };
+
+      const result = buildDDL(
+        'mysql',
+        'users',
+        '',
+        sampleFields,
+        [],
+        undefined,
+        partitionConfig,
+      );
+
+      expect(result).not.toContain('PARTITION BY');
+    });
+  });
+
+  describe('buildDDL with indexes and citus', () => {
+    it('should append generated index DDL blocks', () => {
+      const indexes: IndexDefinition[] = [
+        {
+          id: 'idx-1',
+          name: 'idx_users_name',
+          fields: [{ name: 'name', direction: 'ASC' }],
+          unique: true,
+        },
+      ];
+
+      const result = buildDDL('mysql', 'users', '', sampleFields, indexes);
+
+      expect(result).toContain(
+        'CREATE UNIQUE INDEX idx_users_name ON users (name ASC);',
+      );
+    });
+
+    it('should append primary key index DDL block', () => {
+      const indexes: IndexDefinition[] = [
+        {
+          id: 'pk-1',
+          name: 'pk_users',
+          fields: [{ name: 'id', direction: 'ASC' }],
+          unique: true,
+          isPrimary: true,
+        },
+      ];
+
+      const result = buildDDL('mysql', 'users', '', sampleFields, indexes);
+
+      expect(result).toContain('PRIMARY KEY (id);');
+    });
+
+    it('should append citus reference table SQL', () => {
+      const result = buildDDL(
+        'postgresql-citus',
+        'users',
+        '',
+        sampleFields,
+        [],
+        { mode: 'reference' },
+      );
+
+      expect(result).toContain("SELECT create_reference_table('users');");
+    });
+
+    it('should append citus distributed table SQL', () => {
+      const fieldsForCitus: NormalizedField[] = [
+        ...sampleFields,
+        {
+          name: 'tenant_id',
+          type: 'bigint',
+          comment: '租户ID',
+          nullable: false,
+          defaultKind: 'none',
+          defaultValue: '',
+          onUpdate: 'none',
+        },
+      ];
+      const result = buildDDL(
+        'postgresql-citus',
+        'users',
+        '',
+        fieldsForCitus,
+        [],
+        { mode: 'distributed', distributionColumn: 'tenant_id' },
+      );
+
+      expect(result).toContain(
+        "SELECT create_distributed_table('users', 'tenant_id');",
+      );
+    });
+
+    it('should fallback when citus distributed mode has no distribution column', () => {
+      const result = buildDDL(
+        'postgresql-citus',
+        'users',
+        '',
+        sampleFields,
+        [],
+        { mode: 'distributed' },
+      );
+
+      expect(result).toContain('-- 请选择分片字段');
     });
   });
 

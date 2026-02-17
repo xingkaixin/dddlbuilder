@@ -55,4 +55,15 @@ describe('useStorageEstimation hook', () => {
     // MySQL InnoDB has 18 bytes baseline overhead (header + TRX_ID + ROLL_PTR)
     expect(result.current.rowSizeFormatted).toBe('18 B');
   });
+
+  it('should format zero total size when estimated rows is zero', () => {
+    const { result } = renderHook(() => useStorageEstimation('mysql', fields));
+
+    act(() => {
+      result.current.setEstimateRows(0);
+    });
+
+    expect(result.current.totalSize).toBe(0);
+    expect(result.current.totalSizeFormatted).toBe('0 B');
+  });
 });

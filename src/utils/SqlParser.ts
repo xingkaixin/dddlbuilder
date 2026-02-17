@@ -100,22 +100,7 @@ export class SqlParser {
         processed.tableComment ||
         Object.keys(processed.columnComments).length > 0
       ) {
-        if (!extractedComments) {
-          extractedComments = {
-            tableComment: processed.tableComment,
-            columnComments: processed.columnComments,
-          };
-        } else {
-          if (processed.tableComment && !extractedComments.tableComment) {
-            extractedComments.tableComment = processed.tableComment;
-          }
-          for (const key of Object.keys(processed.columnComments)) {
-            if (!extractedComments.columnComments[key]) {
-              extractedComments.columnComments[key] =
-                processed.columnComments[key];
-            }
-          }
-        }
+        mergeCommentSource(processed);
       }
     }
 

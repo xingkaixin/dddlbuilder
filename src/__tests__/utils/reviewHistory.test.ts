@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   saveReview,
   listReviews,
+  listReviewMetadata,
   getReview,
   deleteReview,
   countReviews,
@@ -116,5 +117,34 @@ describe('reviewHistory', () => {
     expect(list[0].tableName).toBe('t4');
     expect(list[1].tableName).toBe('t3');
     expect(list[2].tableName).toBe('t2');
+  });
+
+  it('should return zero when prune limit is not exceeded', async () => {
+    const tableNamespace = 'test_prune_noop';
+    await saveReview(tableNamespace, 't1', 'd1', 'mysql', mockReview);
+
+    const deletedCount = await pruneOldReviews(tableNamespace, 10);
+    expect(deletedCount).toBe(0);
+  });
+
+  it('should list all reviews and return metadata projection', async () => {
+    const tableNamespace = 'test_metadata';
+    await saveReview(tableNamespace, 'meta_table', 'ddl', 'postgresql', {
+      ...mockReview,
+      score: 9,
+      summary: 'Metadata summary',
+    });
+
+    const allReviews = await listReviews();
+    expect(allReviews.length).toBeGreaterThan(0);
+
+    const metadataList = await listReviewMetadata(tableNamespace);
+    expect(metadataList).toHaveLength(1);
+    expect(metadataList[0].tableName).toBe('meta_table');
+    expect(metadataList[0].dbType).toBe('postgresql');
+    expect(metadataList[0].score).toBe(9);
+    expect(metadataList[0].summary).toBe('Metadata summary');
+    expect(metadataList[0]).not.toHaveProperty('ddl');
+    expect(metadataList[0]).not.toHaveProperty('result');
   });
 });

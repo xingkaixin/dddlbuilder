@@ -128,4 +128,96 @@ describe('indexStore', () => {
       fields: [{ name: 'nickname', direction: 'ASC' }],
     });
   });
+
+  it('空字段时不创建索引，且主键只允许一个', () => {
+    const state = useIndexStore.getState();
+
+    state.addIndex(false, false, 'users', 'mysql');
+    expect(useIndexStore.getState().indexes.length).toBe(0);
+
+    state.addFieldToIndex('id');
+    state.addIndex(true, true, 'users', 'mysql');
+    expect(useIndexStore.getState().indexes.length).toBe(1);
+    expect(useIndexStore.getState().indexes[0].name).toBe('pk_users');
+
+    state.addFieldToIndex('name');
+    state.addIndex(true, true, 'users', 'mysql');
+    expect(useIndexStore.getState().indexes.length).toBe(1);
+  });
+
+  it('应支持初始化、切换排序方向与删除字段', () => {
+    const state = useIndexStore.getState();
+    const persisted = {
+      indexInput: 'na',
+      currentIndexFields: [{ name: 'name', direction: 'ASC' as const }],
+      indexes: [],
+    };
+
+    state.initializeIndexState(undefined);
+    state.initializeIndexState(persisted);
+    expect(useIndexStore.getState().indexInput).toBe('na');
+
+    state.toggleFieldDirection(0);
+    expect(useIndexStore.getState().currentIndexFields[0].direction).toBe(
+      'DESC',
+    );
+
+    state.removeFieldFromIndex(0);
+    expect(useIndexStore.getState().currentIndexFields).toEqual([]);
+  });
+
+  it('应忽略空名称更新，并在 Oracle 下截断过长索引名', () => {
+    const state = useIndexStore.getState();
+    state.setIndexes([
+      {
+        id: '1',
+        name: 'idx_old',
+        fields: [{ name: 'id', direction: 'ASC' }],
+        unique: false,
+      },
+    ]);
+
+    state.updateIndexName('1', '   ', 'mysql');
+    expect(useIndexStore.getState().indexes[0].name).toBe('idx_old');
+
+    const longName = `idx_${'a'.repeat(80)}`;
+    state.updateIndexName('1', longName, 'oracle');
+    expect(useIndexStore.getState().indexes[0].name.length).toBeLessThanOrEqual(
+      30,
+    );
+  });
+
+  it('应批量更新索引名并跳过空表名', () => {
+    const state = useIndexStore.getState();
+    state.setIndexes([
+      {
+        id: '1',
+        name: 'pk_users',
+        fields: [{ name: 'id', direction: 'ASC' }],
+        unique: true,
+        isPrimary: true,
+      },
+      {
+        id: '2',
+        name: 'idx_users_name',
+        fields: [{ name: 'name', direction: 'ASC' }],
+        unique: false,
+      },
+      {
+        id: '3',
+        name: 'uk_users_email',
+        fields: [{ name: 'email', direction: 'ASC' }],
+        unique: true,
+      },
+    ]);
+
+    state.updateIndexNames('', 'mysql');
+    expect(useIndexStore.getState().indexes[0].name).toBe('pk_users');
+
+    state.updateIndexNames('orders', 'mysql');
+    const current = useIndexStore.getState();
+    expect(current.indexes[0].name).toBe('pk_orders');
+    expect(current.indexes[1].name).toBe('idx_orders_name');
+    expect(current.indexes[2].name).toBe('uk_orders_email');
+  });
 });

@@ -35,6 +35,9 @@ export default defineConfig({
         'src/interfaces/**/*', // Exclude TypeScript interfaces
         'src/types/**/*', // Exclude TypeScript type definitions
         'src/**/index.ts', // Exclude barrel exports
+        // Exclude backward-compatible re-export barrels (no business logic).
+        'src/utils/alterDdlGenerator.ts',
+        'src/utils/constants.ts',
         'src/**/types.ts', // Exclude type-only files
         'src/main.tsx',
         'src/App.tsx', // Entry component, not suitable for unit tests

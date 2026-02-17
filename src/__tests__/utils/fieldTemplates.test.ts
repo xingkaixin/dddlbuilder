@@ -4,6 +4,7 @@ import {
   getTemplate,
   createTemplate,
   updateTemplate,
+  renameTemplate,
   deleteTemplate,
   duplicateTemplate,
   createTemplateFromFields,
@@ -70,6 +71,13 @@ describe('fieldTemplates', () => {
     expect(result).toBeNull();
   });
 
+  it('should rename template through renameTemplate wrapper', async () => {
+    const template = await createTemplate('Old Name', []);
+    const renamed = await renameTemplate(template.id, '  New Name  ');
+
+    expect(renamed?.name).toBe('New Name');
+  });
+
   it('should create template from fields with filtering and normalize', async () => {
     const template = await createTemplateFromFields(
       'From Fields',
@@ -105,8 +113,57 @@ describe('fieldTemplates', () => {
     });
   });
 
+  it('should normalize nullable field to 否 when value is not 是', async () => {
+    const template = await createTemplateFromFields('Nullable Fallback', [
+      {
+        fieldName: 'status',
+        fieldType: 'varchar(20)',
+        nullable: 'unknown',
+      },
+    ]);
+
+    expect(template.fields[0].nullable).toBe('否');
+  });
+
   it('should return null when duplicating missing template', async () => {
     const result = await duplicateTemplate('missing');
     expect(result).toBeNull();
+  });
+
+  it('should close db and reject when transaction throws', async () => {
+    const close = vi.fn();
+    const brokenDb = {
+      transaction: () => {
+        throw new Error('tx failed');
+      },
+      close,
+    };
+    const request: {
+      result: unknown;
+      error: unknown;
+      onsuccess: null | (() => void);
+      onerror: null | (() => void);
+      onupgradeneeded: null | (() => void);
+    } = {
+      result: brokenDb,
+      error: null,
+      onsuccess: null,
+      onerror: null,
+      onupgradeneeded: null,
+    };
+
+    Object.defineProperty(globalThis, 'indexedDB', {
+      value: {
+        open: () => {
+          queueMicrotask(() => request.onsuccess?.());
+          return request;
+        },
+      },
+      configurable: true,
+      writable: true,
+    });
+
+    await expect(listTemplates()).rejects.toThrow('tx failed');
+    expect(close).toHaveBeenCalledTimes(1);
   });
 });

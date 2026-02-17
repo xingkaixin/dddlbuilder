@@ -75,6 +75,28 @@ describe('tableFolders', () => {
     expect(path.map((f) => f.name)).toEqual(['Root', 'Child', 'Grand']);
   });
 
+  it('should return empty path for missing folder id', async () => {
+    const path = await getFolderPath('missing-folder');
+    expect(path).toEqual([]);
+  });
+
+  it('should treat missing-parent folder as root in tree', async () => {
+    const orphan = await createFolder('Orphan', 'missing-parent-id');
+    const tree = await buildFolderTree();
+
+    expect(tree.map((node) => node.id)).toContain(orphan.id);
+  });
+
+  it('should move folder back to root when parent is undefined', async () => {
+    const root = await createFolder('Root');
+    const child = await createFolder('Child', root.id);
+
+    await moveFolder(child.id, undefined);
+    const moved = await getFolder(child.id);
+
+    expect(moved?.parentId).toBeUndefined();
+  });
+
   it('should delete folder and descendants', async () => {
     const root = await createFolder('Root');
     const child = await createFolder('Child', root.id);

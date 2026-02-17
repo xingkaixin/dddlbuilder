@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   addSavedTable,
   deleteSavedTable,
@@ -7,8 +7,10 @@ import {
   listSavedTables,
   listSavedTableMetadata,
   normalizeSavedTableName,
+  openDb,
   updateSavedTable,
   DEFAULT_SAVED_TABLE_NAME,
+  STORE_NAME,
 } from '@/utils/savedTablesDb';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from './fakeIndexedDb';
 import type { PersistedState } from '@/types';
@@ -126,5 +128,117 @@ describe('savedTablesDb', () => {
     expect(metadata[0].dbType).toBe('postgresql');
     expect(metadata[0].fieldCount).toBe(2);
     expect(metadata[0]).not.toHaveProperty('state');
+  });
+
+  it('should reject when indexedDB is unavailable', async () => {
+    Object.defineProperty(globalThis, 'indexedDB', {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+
+    await expect(openDb()).rejects.toThrow('IndexedDB 不可用');
+  });
+
+  it('should fallback to default open error when request.error is null', async () => {
+    const request: {
+      result?: unknown;
+      error: unknown;
+      onsuccess: null | (() => void);
+      onerror: null | (() => void);
+      onupgradeneeded: null | (() => void);
+      transaction?: unknown;
+    } = {
+      error: null,
+      onsuccess: null,
+      onerror: null,
+      onupgradeneeded: null,
+    };
+
+    Object.defineProperty(globalThis, 'indexedDB', {
+      value: {
+        open: vi.fn(() => {
+          queueMicrotask(() => request.onerror?.());
+          return request;
+        }),
+      },
+      configurable: true,
+      writable: true,
+    });
+
+    await expect(openDb()).rejects.toThrow('打开 IndexedDB 失败');
+  });
+
+  it('should create folderId index during upgrade when missing', async () => {
+    const tableStore = {
+      indexNames: { contains: vi.fn(() => false) },
+      createIndex: vi.fn(),
+    };
+    const createStore = () => ({
+      createIndex: vi.fn(),
+    });
+
+    const db = {
+      objectStoreNames: {
+        contains: (storeName: string) => storeName === STORE_NAME,
+      },
+      createObjectStore: vi.fn(() => createStore()),
+    };
+
+    const request: {
+      result: typeof db;
+      error: unknown;
+      onsuccess: null | (() => void);
+      onerror: null | (() => void);
+      onupgradeneeded: null | (() => void);
+      transaction: { objectStore: (storeName: string) => unknown };
+    } = {
+      result: db,
+      error: null,
+      onsuccess: null,
+      onerror: null,
+      onupgradeneeded: null,
+      transaction: {
+        objectStore: () => tableStore,
+      },
+    };
+
+    Object.defineProperty(globalThis, 'indexedDB', {
+      value: {
+        open: vi.fn(() => {
+          queueMicrotask(() => {
+            request.onupgradeneeded?.();
+            request.onsuccess?.();
+          });
+          return request;
+        }),
+      },
+      configurable: true,
+      writable: true,
+    });
+
+    const opened = await openDb();
+    expect(opened).toBe(db as unknown as IDBDatabase);
+    expect(tableStore.createIndex).toHaveBeenCalledWith(
+      'folderId',
+      'folderId',
+      {
+        unique: false,
+      },
+    );
+  });
+
+  it('should reject when indexedDB.open throws', async () => {
+    Object.defineProperty(globalThis, 'indexedDB', {
+      value: {
+        open: () => {
+          throw new Error('boom open');
+        },
+      },
+      configurable: true,
+      writable: true,
+    });
+
+    await expect(openDb()).rejects.toThrow('boom open');
   });
 });
