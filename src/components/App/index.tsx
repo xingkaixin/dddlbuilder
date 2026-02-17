@@ -480,6 +480,13 @@ function App() {
     if (!hydrated || isShareView) return;
     const state = buildPersistedState();
     const source = activeSource;
+
+    console.log('[DEBUG] flushCurrentWorkspace - 保存当前工作区:', {
+      sourceKind: source.kind,
+      sourceDetails: source,
+      currentUITableName: state.tableName,
+    });
+
     const isDirty =
       source.kind === 'saved_table'
         ? serializePersistedState(state) !== source.baseSignature
@@ -488,8 +495,8 @@ function App() {
   }, [
     hydrated,
     isShareView,
-    buildPersistedState,
     activeSource,
+    buildPersistedState,
     serializePersistedState,
     saveState,
   ]);
@@ -626,14 +633,26 @@ function App() {
       return;
     }
 
-    flushCurrentWorkspace();
-    const existedDraftState = getGlobalDraftState();
-    const draftState = existedDraftState ?? createEmptyGlobalDraftState();
-    setWorkspaceSnapshot({ kind: 'global_draft' }, draftState);
-    applySavedState(draftState);
+    console.log('[DEBUG] 切换到全局草稿 - 当前状态:', {
+      loadedTableNormalizedName,
+      loadedTableName,
+      activeSource,
+    });
+
     setLoadedTableNormalizedName(null);
     setLoadedTableName(null);
     setLoadedTableSignature(null);
+    flushCurrentWorkspace();
+    const existedDraftState = getGlobalDraftState();
+    const draftState = existedDraftState ?? createEmptyGlobalDraftState();
+    console.log('[DEBUG] 切换到全局草稿 - 快照:', {
+      source: { kind: 'global_draft' },
+      tableName: draftState.tableName,
+      dbType: draftState.dbType,
+      fieldCount: draftState.rows.filter((r) => r.fieldName?.trim()).length,
+    });
+    setWorkspaceSnapshot({ kind: 'global_draft' }, draftState);
+    applySavedState(draftState);
     setSavedTablesDrawerOpen(false);
     trackEvent('global_draft_load');
     showToast(
@@ -641,6 +660,9 @@ function App() {
     );
   }, [
     isShareView,
+    activeSource,
+    loadedTableNormalizedName,
+    loadedTableName,
     flushCurrentWorkspace,
     showToast,
     getGlobalDraftState,

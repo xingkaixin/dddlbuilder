@@ -442,7 +442,9 @@ export function usePersistedState(): UsePersistedStateReturn {
         return;
       }
 
-      if (!isSameWorkspaceSource(payload.source, activeSourceRef.current)) {
+      const currentSource = activeSourceRef.current;
+      if (!isSameWorkspaceSource(payload.source, currentSource)) {
+        console.log('[DEBUG] saveState - 源不匹配，跳过保存');
         return;
       }
 
@@ -454,6 +456,42 @@ export function usePersistedState(): UsePersistedStateReturn {
         updateGlobalDraft(globalRecord);
         fireAndForget(writeGlobalDraft(globalRecord));
       } else if (payload.isDirty) {
+        let baseSignatureParsed: {
+          tableName?: string;
+          tableComment?: string;
+          dbType?: string;
+        } | null = null;
+        try {
+          baseSignatureParsed = JSON.parse(payload.source.baseSignature);
+        } catch {
+          baseSignatureParsed = null;
+        }
+        const hasCriticalFieldInSignature =
+          baseSignatureParsed &&
+          (baseSignatureParsed.tableName !== undefined ||
+            baseSignatureParsed.tableComment !== undefined ||
+            baseSignatureParsed.dbType !== undefined);
+
+        if (hasCriticalFieldInSignature) {
+          const originalTableName = baseSignatureParsed?.tableName ?? '';
+          const originalTableComment = baseSignatureParsed?.tableComment ?? '';
+          const originalDbType = baseSignatureParsed?.dbType ?? 'mysql';
+          const currentTableName = payload.state.tableName ?? '';
+          const currentTableComment = payload.state.tableComment ?? '';
+          const currentDbType = payload.state.dbType ?? 'mysql';
+          const hasCriticalChange =
+            currentTableName !== originalTableName ||
+            currentTableComment !== originalTableComment ||
+            currentDbType !== originalDbType;
+
+          if (hasCriticalChange) {
+            console.log(
+              '[DEBUG] saveState - 跳过保存：表名/类型/中文名已变化，应触发保存对话框',
+            );
+            return;
+          }
+        }
+
         const nextDraftMap = { ...savedDraftMapRef.current };
         nextDraftMap[payload.source.normalizedName] = {
           state: payload.state,
