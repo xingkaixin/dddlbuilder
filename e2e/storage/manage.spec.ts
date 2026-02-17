@@ -18,7 +18,7 @@ const fillBasicField = async (page: any, name = 'id') => {
 
 const saveTable = async (page: any, name: string, comment = '') => {
   await openSavedTables(page);
-  await page.getByRole('button', { name: /全局草稿箱/i }).click();
+  await page.getByRole('button', { name: /草稿箱/i }).click();
   await page.locator('#table-name').fill(name);
   if (comment) {
     await page.locator('#table-comment').fill(comment);
@@ -91,8 +91,11 @@ test.describe('保存表管理补充 @storage', () => {
     await row.hover();
     await row.locator('..').getByRole('button', { name: /删除/i }).click();
 
-    await expect(page.getByText('确认删除保存的表？')).toBeVisible();
-    await page.getByRole('button', { name: /^删除$/ }).click();
+    const deleteConfirmDialog = page
+      .getByRole('dialog')
+      .filter({ hasText: '确认删除保存的表？' });
+    await expect(deleteConfirmDialog).toBeVisible();
+    await deleteConfirmDialog.getByRole('button', { name: /^删除$/ }).click();
 
     await expect(
       page.getByRole('button', { name: new RegExp(tableName, 'i') }),
@@ -159,7 +162,7 @@ test.describe('保存表管理补充 @storage', () => {
     await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
 
     await openSavedTables(page);
-    await page.getByRole('button', { name: /全局草稿箱/i }).click();
+    await page.getByRole('button', { name: /草稿箱/i }).click();
     await page.locator('#table-comment').fill(globalDraftComment);
 
     await openSavedTables(page);
@@ -175,7 +178,7 @@ test.describe('保存表管理补充 @storage', () => {
     await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
 
     await openSavedTables(page);
-    await page.getByRole('button', { name: /全局草稿箱/i }).click();
+    await page.getByRole('button', { name: /草稿箱/i }).click();
     await expect(page.locator('#table-comment')).toHaveValue(
       globalDraftComment,
     );
@@ -189,15 +192,16 @@ test.describe('保存表管理补充 @storage', () => {
     );
   });
 
-  test('场景：重命名迁移草稿，删除后应清理草稿', async ({ page }) => {
+  test('场景：重命名应保留已保存版本，删除后可重新保存', async ({ page }) => {
     const originalName = `e2e_draft_lifecycle_${Date.now()}`;
     const renamedName = `${originalName}_renamed`;
+    const initialSavedComment = 'initial_saved_comment';
     const draftComment = 'rename_after_draft_comment';
     const freshSavedComment = 'fresh_saved_after_delete';
     const globalComment = 'global_after_lifecycle';
 
     await page.locator('#table-name').fill(originalName);
-    await page.locator('#table-comment').fill('initial_saved_comment');
+    await page.locator('#table-comment').fill(initialSavedComment);
     await fillBasicField(page, 'draft_lifecycle_id');
     await page.getByRole('button', { name: /保存当前表/i }).click();
     await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeVisible();
@@ -222,14 +226,14 @@ test.describe('保存表管理补充 @storage', () => {
     await expect(page.getByText('重命名保存的表')).toBeHidden();
 
     await openSavedTables(page);
-    await page.getByRole('button', { name: /全局草稿箱/i }).click();
+    await page.getByRole('button', { name: /草稿箱/i }).click();
     await page.locator('#table-comment').fill(globalComment);
 
     await openSavedTables(page);
     await page
       .getByRole('button', { name: new RegExp(renamedName, 'i') })
       .click();
-    await expect(page.locator('#table-comment')).toHaveValue(draftComment);
+    await expect(page.locator('#table-comment')).toHaveValue(initialSavedComment);
 
     await openSavedTables(page);
     const renamedRow = page.getByRole('button', {
@@ -240,9 +244,12 @@ test.describe('保存表管理补充 @storage', () => {
       .locator('..')
       .getByRole('button', { name: /删除/i })
       .click();
-    await expect(page.getByText('确认删除保存的表？')).toBeVisible();
-    await page.getByRole('button', { name: /^删除$/ }).click();
-    await expect(page.getByText('确认删除保存的表？')).toBeHidden();
+    const deleteConfirmDialog = page
+      .getByRole('dialog')
+      .filter({ hasText: '确认删除保存的表？' });
+    await expect(deleteConfirmDialog).toBeVisible();
+    await deleteConfirmDialog.getByRole('button', { name: /^删除$/ }).click();
+    await expect(deleteConfirmDialog).toBeHidden();
 
     await saveTable(page, renamedName, freshSavedComment);
 
