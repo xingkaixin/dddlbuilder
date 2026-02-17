@@ -4,7 +4,10 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
   test.beforeEach(async ({ context }) => {
     // 规避放烟火特效，减少测试干扰并提高速度
     await context.addInitScript(() => {
-      window.localStorage.setItem('fireworks_shown_2026', 'true');
+      window.localStorage.setItem(
+        'ddlbuilder:fireworks:cny:shown:2026:v1',
+        'true',
+      );
       window.localStorage.setItem(
         'ddlbuilder:state:v1',
         JSON.stringify({
