@@ -27,6 +27,8 @@ interface UsePersistedSyncParams {
   setLoadedTableNormalizedName: (name: string | null) => void;
   setLoadedTableName: (name: string | null) => void;
   setLoadedTableSignature: (signature: string | null) => void;
+  // 新增：用于一致性检查
+  loadedTableNormalizedName: string | null;
 }
 
 export function usePersistedSync({
@@ -47,6 +49,7 @@ export function usePersistedSync({
   setLoadedTableNormalizedName,
   setLoadedTableName,
   setLoadedTableSignature,
+  loadedTableNormalizedName,
 }: UsePersistedSyncParams) {
   const activeSourceRef = useRef(activeSource);
   activeSourceRef.current = activeSource;
@@ -117,6 +120,24 @@ export function usePersistedSync({
       if (!hydrated) return;
       const source = activeSourceRef.current;
       if (!source) return;
+
+      // 一致性检查：防止因 State 与 Source 更新不同步导致的覆写
+      // 当切换表时，如果 ActiveSource 已更新但 Store (loadedTableData) 尚未更新（或反之），
+      // 此时保存会导致将 旧State 写入 新Source 或 新State 写入 旧Source。
+      // 我们通过检查 activeSource 与 loadedTableNormalizedName 是否匹配来避免此情况。
+      if (source.kind === 'saved_table') {
+        if (source.normalizedName !== loadedTableNormalizedName) {
+          // 不匹配，跳过保存
+          return;
+        }
+      } else {
+        // global_draft
+        if (loadedTableNormalizedName != null) {
+          // 不匹配，跳过保存
+          return;
+        }
+      }
+
       try {
         const state = buildPersistedState();
         const currentSignature = JSON.stringify(state);
@@ -133,7 +154,7 @@ export function usePersistedSync({
         // ignore quota errors
       }
     },
-    [hydrated, buildPersistedState, saveState],
+    [hydrated, buildPersistedState, saveState, loadedTableNormalizedName],
     PERSIST_DEBOUNCE_MS,
   );
 }

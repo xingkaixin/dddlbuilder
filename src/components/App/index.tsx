@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import type { DatabaseType, PersistedState } from '@/types';
 import { createEmptyRow } from '@/utils/helpers';
 import { isTabAvailable } from '@/utils/tabUtils';
@@ -166,10 +166,7 @@ function App() {
     activeSource,
     globalDraftSummary,
     getGlobalDraftState,
-    getSavedTableDraft,
     setWorkspaceSnapshot,
-    renameSavedTableDraft,
-    removeSavedTableDraft,
   } = usePersistedState();
 
   const {
@@ -432,6 +429,7 @@ function App() {
     setLoadedTableNormalizedName,
     setLoadedTableName,
     setLoadedTableSignature,
+    loadedTableNormalizedName,
   });
 
   const { handleClearAll, cancelClearAll, confirmClearAll } =
@@ -501,6 +499,8 @@ function App() {
     saveState,
   ]);
 
+  const [loadedTableVersion, setLoadedTableVersion] = useState<number>(0);
+
   const {
     handleOpenSaveDialog,
     handleConfirmSave,
@@ -527,6 +527,7 @@ function App() {
     setLoadedTableNormalizedName,
     setLoadedTableName,
     setLoadedTableSignature,
+    setLoadedTableVersion,
     setSavedTablesDrawerOpen,
     saveDialog,
     loadConfirmDialog,
@@ -543,10 +544,7 @@ function App() {
     showToast,
     trackEvent,
     flushCurrentWorkspace,
-    getSavedTableDraft,
     setWorkspaceSnapshot,
-    renameSavedTableDraft,
-    removeSavedTableDraft,
     onSaveSuccess: ({ displayName }) => {
       if (!isShareView) return;
       try {
@@ -557,6 +555,35 @@ function App() {
       window.location.replace('/');
     },
   });
+
+  // ... (useSchemaApplyActions, useNavigationActions)
+
+  // ... (handleDbTypeChange, dataTableToolbarLeft, effectiveGlobalDraftSummary)
+
+  const handleSelectGlobalDraft = useCallback(() => {
+    // ...
+    setLoadedTableNormalizedName(null);
+    setLoadedTableName(null);
+    setLoadedTableSignature(null);
+    setLoadedTableVersion(0);
+    flushCurrentWorkspace();
+    const existedDraftState = getGlobalDraftState();
+    // ...
+    showToast(
+      existedDraftState ? '已加载草稿' : '草稿箱为空，已创建新的草稿',
+    );
+  }, [
+    // ... deps
+    setLoadedTableVersion,
+  ]);
+
+  const workspaceLabel = useMemo(() => {
+    if (isShareView) return '当前：分享副本（只读）';
+    if (loadedTableName) {
+      return `当前：${loadedTableName} ${loadedTableVersion > 0 ? `(v${loadedTableVersion})` : ''}${isLoadedDirty ? ' *' : ''}`;
+    }
+    return '当前：草稿';
+  }, [isShareView, loadedTableName, isLoadedDirty, loadedTableVersion]);
 
   const { handleApplySuggestion, handleImport, handleApplyAIGeneratedSchema } =
     useSchemaApplyActions({
@@ -627,61 +654,7 @@ function App() {
     };
   }, [globalDraftSummary]);
 
-  const handleSelectGlobalDraft = useCallback(() => {
-    if (isShareView) {
-      showToast('分享链接只读，请先保存为副本后再编辑');
-      return;
-    }
-
-    console.log('[DEBUG] 切换到全局草稿 - 当前状态:', {
-      loadedTableNormalizedName,
-      loadedTableName,
-      activeSource,
-    });
-
-    setLoadedTableNormalizedName(null);
-    setLoadedTableName(null);
-    setLoadedTableSignature(null);
-    flushCurrentWorkspace();
-    const existedDraftState = getGlobalDraftState();
-    const draftState = existedDraftState ?? createEmptyGlobalDraftState();
-    console.log('[DEBUG] 切换到全局草稿 - 快照:', {
-      source: { kind: 'global_draft' },
-      tableName: draftState.tableName,
-      dbType: draftState.dbType,
-      fieldCount: draftState.rows.filter((r) => r.fieldName?.trim()).length,
-    });
-    setWorkspaceSnapshot({ kind: 'global_draft' }, draftState);
-    applySavedState(draftState);
-    setSavedTablesDrawerOpen(false);
-    trackEvent('global_draft_load');
-    showToast(
-      existedDraftState ? '已加载全局草稿' : '草稿箱为空，已创建新的全局草稿',
-    );
-  }, [
-    isShareView,
-    activeSource,
-    loadedTableNormalizedName,
-    loadedTableName,
-    flushCurrentWorkspace,
-    showToast,
-    getGlobalDraftState,
-    applySavedState,
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
-    setLoadedTableSignature,
-    setWorkspaceSnapshot,
-    setSavedTablesDrawerOpen,
-    trackEvent,
-  ]);
-
-  const workspaceLabel = useMemo(() => {
-    if (isShareView) return '当前：分享副本（只读）';
-    if (loadedTableName) {
-      return `当前：${loadedTableName}${isLoadedDirty ? '（草稿）' : '（已保存）'}`;
-    }
-    return '当前：全局草稿';
-  }, [isShareView, loadedTableName, isLoadedDirty]);
+  /* Removed duplicate handleSelectGlobalDraft and workspaceLabel */
 
   // ─── 7. Render ─────────────────────────────────────────────────
   return (
