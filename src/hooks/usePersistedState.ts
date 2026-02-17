@@ -13,14 +13,12 @@ import {
   clearGlobalDraft,
   clearWorkspaceSession,
   migrateLegacyWorkspaceFromLocalStorage,
-  readGlobalDraft,
-  readWorkspaceSession,
+  readWorkspaceBootstrap,
   writeGlobalDraft,
   writeWorkspaceSession,
   type WorkspaceGlobalDraftRecord,
   type WorkspaceSessionRecord,
 } from '@/utils/workspaceStateDb';
-import { getSavedTable } from '@/utils/savedTablesDb';
 
 const SHARE_CACHE_GC_TIME_MS = 15 * 60 * 1000;
 const SHARE_UUID_REGEX =
@@ -209,6 +207,42 @@ const parseSharePath = (
   return { shareId: match[1], invalid: false };
 };
 
+type WorkspaceBootstrapRaw = {
+  globalDraft: unknown | null;
+  session: unknown | null;
+  savedTable: unknown | null;
+};
+
+const loadWorkspaceBootstrap = async (): Promise<WorkspaceBootstrapRaw> => {
+  const initial = await readWorkspaceBootstrap().catch(() => ({
+    globalDraft: null,
+    session: null,
+    savedTable: null,
+  }));
+
+  if (initial.globalDraft || initial.session) {
+    return initial;
+  }
+
+  await migrateLegacyWorkspaceFromLocalStorage().catch(() => undefined);
+  return readWorkspaceBootstrap().catch(() => ({
+    globalDraft: null,
+    session: null,
+    savedTable: null,
+  }));
+};
+
+let workspaceBootstrapPromise: Promise<WorkspaceBootstrapRaw> | null = null;
+
+const getWorkspaceBootstrap = () => {
+  if (!workspaceBootstrapPromise) {
+    workspaceBootstrapPromise = loadWorkspaceBootstrap().finally(() => {
+      workspaceBootstrapPromise = null;
+    });
+  }
+  return workspaceBootstrapPromise;
+};
+
 const buildGlobalDraftSummary = (
   state: PersistedState,
   updatedAt: number,
@@ -354,8 +388,6 @@ export function usePersistedState(): UsePersistedStateReturn {
         return;
       }
 
-      setPersistedState(payload.state); // Update displayed state
-
       if (payload.source.kind === 'global_draft') {
         const globalRecord: GlobalDraftRecord = {
           updatedAt: Date.now(),
@@ -410,12 +442,11 @@ export function usePersistedState(): UsePersistedStateReturn {
     };
 
     const hydrateMainWorkspace = async () => {
-      await migrateLegacyWorkspaceFromLocalStorage().catch(() => undefined);
-
-      const [globalDraftRaw, sessionRaw] = await Promise.all([
-        readGlobalDraft().catch(() => null),
-        readWorkspaceSession().catch(() => null),
-      ]);
+      const {
+        globalDraft: globalDraftRaw,
+        session: sessionRaw,
+        savedTable,
+      } = await getWorkspaceBootstrap();
 
       const globalDraftRecord = normalizeGlobalDraftRecord(globalDraftRaw);
       const session = normalizeWorkspaceSession(sessionRaw);
@@ -429,24 +460,16 @@ export function usePersistedState(): UsePersistedStateReturn {
       }
 
       if (session.activeSource.kind === 'saved_table') {
-        // Try to load the saved table from DB
-        try {
-          const savedTable = await getSavedTable(
-            session.activeSource.normalizedName,
-          );
-          if (savedTable) {
-            syncActiveSource({
-              kind: 'saved_table',
-              normalizedName: savedTable.normalizedName,
-              tableName: savedTable.name,
-              baseSignature: serializePersistedState(savedTable.state),
-            });
-            // Always hydrate with the CLEAN state from DB
-            hydrateWithState(savedTable.state);
-            return;
-          }
-        } catch (e) {
-          console.error('Failed to load saved table for session:', e);
+        if (savedTable) {
+          syncActiveSource({
+            kind: 'saved_table',
+            normalizedName: savedTable.normalizedName,
+            tableName: savedTable.name,
+            baseSignature: serializePersistedState(savedTable.state),
+          });
+          // Always hydrate with the CLEAN state from DB
+          hydrateWithState(savedTable.state);
+          return;
         }
 
         // Fallback: Global Draft if saved table missing
