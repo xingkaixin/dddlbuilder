@@ -1,8 +1,10 @@
 import { Laptop, Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { memo } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
+import { useThemeTransition } from './hooks/useThemeTransition';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,11 +27,17 @@ interface ThemeSwitcherProps {
 export const ThemeSwitcher = memo<ThemeSwitcherProps>(
   ({ triggerClassName }) => {
     const { t } = useTranslation();
-    const { theme, setTheme } = useTheme();
+    const { theme, resolvedTheme, setTheme } = useTheme();
     const selectedTheme: ThemeMode =
       theme === 'light' || theme === 'dark' || theme === 'system'
         ? theme
         : 'system';
+    const { phase, isTransitioning, targetEffectiveTheme, runThemeTransition } =
+      useThemeTransition({
+        theme: selectedTheme,
+        resolvedTheme,
+        setTheme,
+      });
 
     const themeLabels: Record<ThemeMode, string> = {
       system: t('theme.system'),
@@ -40,6 +48,22 @@ export const ThemeSwitcher = memo<ThemeSwitcherProps>(
     const triggerLabel = t('theme.triggerFixed', {
       theme: themeLabels[selectedTheme],
     });
+    const overlay =
+      phase === 'wipe' || phase === 'fade' ? (
+        <div
+          aria-hidden
+          data-testid="theme-transition-overlay"
+          className={cn(
+            'theme-transition-overlay',
+            phase === 'wipe'
+              ? 'theme-transition-overlay--wipe'
+              : 'theme-transition-overlay--fade',
+            targetEffectiveTheme === 'dark'
+              ? 'theme-transition-overlay--to-dark'
+              : 'theme-transition-overlay--to-light',
+          )}
+        />
+      ) : null;
 
     return (
       <DropdownMenu>
@@ -50,8 +74,9 @@ export const ThemeSwitcher = memo<ThemeSwitcherProps>(
                 type="button"
                 data-testid="theme-switcher-trigger"
                 aria-label={triggerLabel}
+                disabled={isTransitioning}
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  'inline-flex items-center gap-1.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-70',
                   triggerClassName,
                 )}
               >
@@ -73,7 +98,7 @@ export const ThemeSwitcher = memo<ThemeSwitcherProps>(
         <DropdownMenuContent align="end" className="w-52">
           <DropdownMenuRadioGroup
             value={selectedTheme}
-            onValueChange={(value) => setTheme(value as ThemeMode)}
+            onValueChange={(value) => runThemeTransition(value as ThemeMode)}
           >
             <DropdownMenuRadioItem
               value="system"
@@ -95,6 +120,9 @@ export const ThemeSwitcher = memo<ThemeSwitcherProps>(
             </DropdownMenuRadioItem>
           </DropdownMenuRadioGroup>
         </DropdownMenuContent>
+        {overlay && typeof document !== 'undefined'
+          ? createPortal(overlay, document.body)
+          : null}
       </DropdownMenu>
     );
   },

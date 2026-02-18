@@ -365,13 +365,104 @@
   }
 }
 
+@keyframes theme-transition-wipe-down {
+  0% {
+    opacity: 1;
+    clip-path: inset(0 0 100% 0);
+  }
+
+  100% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes theme-view-transition-reveal-down {
+  0% {
+    clip-path: inset(0 0 100% 0);
+  }
+
+  100% {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes theme-transition-fade-out {
+  0% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+
+  100% {
+    opacity: 0;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.theme-view-transition-active::view-transition-group(root) {
+  animation: none;
+}
+
+.theme-view-transition-active::view-transition-old(root),
+.theme-view-transition-active::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+.theme-view-transition-active::view-transition-old(root) {
+  z-index: 1199;
+}
+
+.theme-view-transition-active::view-transition-new(root) {
+  z-index: 1200;
+  animation: theme-view-transition-reveal-down 420ms linear forwards;
+}
+
+.theme-transition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  pointer-events: none;
+  will-change: clip-path, opacity;
+}
+
+.theme-transition-overlay--to-dark {
+  background: linear-gradient(
+    180deg,
+    rgba(24, 17, 12, 0.94) 0%,
+    rgba(24, 17, 12, 0.9) 45%,
+    rgba(24, 17, 12, 0.86) 75%,
+    rgba(24, 17, 12, 0.8) 100%
+  );
+}
+
+.theme-transition-overlay--to-light {
+  background: linear-gradient(
+    180deg,
+    rgba(248, 245, 237, 0.94) 0%,
+    rgba(248, 245, 237, 0.9) 45%,
+    rgba(248, 245, 237, 0.86) 75%,
+    rgba(248, 245, 237, 0.8) 100%
+  );
+}
+
+.theme-transition-overlay--wipe {
+  animation: theme-transition-wipe-down 420ms linear forwards;
+}
+
+.theme-transition-overlay--fade {
+  animation: theme-transition-fade-out 180ms ease-out forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-in,
   .animate-suggestion-add,
   .animate-suggestion-remove,
   .animate-suggestion-modify,
   .animate-field-highlight,
-  .animate-row-highlight {
+  .animate-row-highlight,
+  .theme-transition-overlay--wipe,
+  .theme-transition-overlay--fade {
     animation: none !important;
     transition-duration: 0ms !important;
   }
