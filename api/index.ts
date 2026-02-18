@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { applyCspHeaders } from './lib/csp.js';
 import { withMeta } from './lib/http.js';
 import { registerParseSqlRoute } from './routes/parseSql.js';
 import { registerExplainRoute } from './routes/explain.js';
@@ -60,6 +61,11 @@ app.use(
     ],
   }),
 );
+
+app.use('/*', async (c, next) => {
+  await next();
+  applyCspHeaders(c);
+});
 
 app.get('/health', (c) => c.json(withMeta(c, { status: 'ok' })));
 

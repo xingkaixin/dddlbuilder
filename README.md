@@ -51,6 +51,11 @@ bun run build
 - `OPENAI_RATELIMIT_STORE`：计数存储（`redis` 或 `memory`，默认 `redis`，失败自动降级）
 - `OPENAI_DAILY_BUDGET_ENABLED`：是否启用每日预算控制
 - `OPENAI_DAILY_BUDGET_MAX_TOKENS`：每日预算上限（估算 token）
+- `CSP_ENABLE`：是否启用 CSP 响应头
+- `CSP_MODE`：CSP 灰度模式（`off` / `report-only` / `enforce` / `both`）
+- `CSP_POLICY`：自定义 CSP 策略文本（可选，不配置则使用内置默认策略）
+
+说明：`CSP_*` 配置在 Bun 服务端与 API 运行时生效；`vercel.json` 中仍保留静态 CSP 兜底策略。
 
 ## 使用说明
 

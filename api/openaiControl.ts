@@ -33,7 +33,17 @@ type AuditLogPayload = {
   retryCount: number;
   rateLimitHit: boolean;
   estimatedTokens: number;
+  model?: string;
+  maxOutputTokens?: number;
+  rateLimitEnabled: boolean;
+  rateLimitStore: 'memory' | 'redis';
+  rateLimitLimit: number | null;
+  rateLimitRemaining: number | null;
+  rateLimitWindowMs: number | null;
   budgetHit?: boolean;
+  budgetEnabled: boolean;
+  budgetLimitTokens: number | null;
+  budgetUsedTokens: number | null;
   errorCode?: ApiErrorCode;
 };
 
@@ -89,6 +99,15 @@ const COUNTER_STORE_MODE =
   process.env.OPENAI_RATELIMIT_STORE?.trim().toLowerCase() === 'memory'
     ? 'memory'
     : 'redis';
+
+export type GovernanceSnapshot = {
+  rateLimitEnabled: boolean;
+  rateLimitStore: 'memory' | 'redis';
+  rateLimitLimit: number | null;
+  rateLimitWindowMs: number | null;
+  budgetEnabled: boolean;
+  budgetLimitTokens: number | null;
+};
 
 const MEMORY_COUNTERS = new Map<string, CounterBucket>();
 let hasWarnedRedisConfigMissing = false;
@@ -239,6 +258,23 @@ export const estimateRequestTokens = (
   return estimatedInputTokens + outputTokens;
 };
 
+export const getOpenAIGovernanceSnapshot = (
+  routeKey: OpenAIRouteKey,
+): GovernanceSnapshot => {
+  const rule = RATE_LIMIT_RULES[routeKey];
+  return {
+    rateLimitEnabled: RATE_LIMIT_ENABLED,
+    rateLimitStore: COUNTER_STORE_MODE,
+    rateLimitLimit: RATE_LIMIT_ENABLED ? rule.maxRequests : null,
+    rateLimitWindowMs: RATE_LIMIT_ENABLED ? rule.windowMs : null,
+    budgetEnabled: DAILY_BUDGET_ENABLED,
+    budgetLimitTokens:
+      DAILY_BUDGET_ENABLED && DAILY_BUDGET_MAX_TOKENS > 0
+        ? DAILY_BUDGET_MAX_TOKENS
+        : null,
+  };
+};
+
 const getRedisConfig = (): RedisConfig | null => {
   const restUrlRaw = process.env.redis_KV_REST_API_URL?.trim();
   const token = process.env.redis_KV_REST_API_TOKEN?.trim();
@@ -382,9 +418,21 @@ const getMsUntilUtcTomorrow = () => {
 export async function enforceOpenAIRateLimit(
   c: Context,
   routeKey: OpenAIRouteKey,
-): Promise<{ response: Response | null; rateLimitHit: boolean }> {
+): Promise<{
+  response: Response | null;
+  rateLimitHit: boolean;
+  limit: number | null;
+  remaining: number | null;
+  windowMs: number | null;
+}> {
   if (!RATE_LIMIT_ENABLED) {
-    return { response: null, rateLimitHit: false };
+    return {
+      response: null,
+      rateLimitHit: false,
+      limit: null,
+      remaining: null,
+      windowMs: null,
+    };
   }
 
   const rule = RATE_LIMIT_RULES[routeKey];
@@ -402,7 +450,13 @@ export async function enforceOpenAIRateLimit(
   c.header('X-RateLimit-Window-Ms', String(rule.windowMs));
 
   if (count <= rule.maxRequests) {
-    return { response: null, rateLimitHit: false };
+    return {
+      response: null,
+      rateLimitHit: false,
+      limit: rule.maxRequests,
+      remaining,
+      windowMs: rule.windowMs,
+    };
   }
 
   const retryAfterSeconds = Math.max(
@@ -420,15 +474,28 @@ export async function enforceOpenAIRateLimit(
       'RATE_LIMIT_EXCEEDED',
     ),
     rateLimitHit: true,
+    limit: rule.maxRequests,
+    remaining: 0,
+    windowMs: rule.windowMs,
   };
 }
 
 export async function enforceOpenAIDailyBudget(
   c: Context,
   estimatedTokens: number,
-): Promise<{ response: Response | null; budgetHit: boolean }> {
+): Promise<{
+  response: Response | null;
+  budgetHit: boolean;
+  limitTokens: number | null;
+  usedTokens: number | null;
+}> {
   if (!DAILY_BUDGET_ENABLED || DAILY_BUDGET_MAX_TOKENS <= 0) {
-    return { response: null, budgetHit: false };
+    return {
+      response: null,
+      budgetHit: false,
+      limitTokens: null,
+      usedTokens: null,
+    };
   }
 
   const safeEstimatedTokens = Math.max(1, Math.floor(estimatedTokens));
@@ -442,7 +509,12 @@ export async function enforceOpenAIDailyBudget(
   c.header('X-Budget-Used-Tokens', String(usedTokens));
 
   if (usedTokens <= DAILY_BUDGET_MAX_TOKENS) {
-    return { response: null, budgetHit: false };
+    return {
+      response: null,
+      budgetHit: false,
+      limitTokens: DAILY_BUDGET_MAX_TOKENS,
+      usedTokens,
+    };
   }
 
   return {
@@ -453,6 +525,8 @@ export async function enforceOpenAIDailyBudget(
       'BUDGET_EXCEEDED',
     ),
     budgetHit: true,
+    limitTokens: DAILY_BUDGET_MAX_TOKENS,
+    usedTokens,
   };
 }
 

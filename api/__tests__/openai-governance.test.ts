@@ -224,5 +224,23 @@ describe.sequential('openai governance', () => {
 
     expect(loggedText).toContain('openai_audit');
     expect(loggedText).not.toContain(sensitiveDDL);
+
+    const auditPayloadRaw = consoleInfoSpy.mock.calls[0]?.[0];
+    expect(typeof auditPayloadRaw).toBe('string');
+    const auditPayload = JSON.parse(String(auditPayloadRaw)) as Record<
+      string,
+      unknown
+    >;
+    expect(auditPayload).toMatchObject({
+      event: 'openai_audit',
+      route: 'review',
+      model: expect.any(String),
+      maxOutputTokens: expect.any(Number),
+      rateLimitEnabled: expect.any(Boolean),
+      rateLimitStore: expect.stringMatching(/^(memory|redis)$/),
+      budgetEnabled: expect.any(Boolean),
+    });
+    expect(auditPayload).toHaveProperty('budgetLimitTokens');
+    expect(auditPayload).toHaveProperty('budgetUsedTokens');
   });
 });

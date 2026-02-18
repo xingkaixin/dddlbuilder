@@ -1,11 +1,17 @@
 import { Hono } from 'hono';
 import { serveStatic } from 'hono/bun';
+import { applyCspHeaders } from './api/lib/csp';
 import api from './api/index';
 
 const app = new Hono();
 
 // Mount API routes
 app.route('/', api);
+
+app.use('/*', async (c, next) => {
+  await next();
+  applyCspHeaders(c);
+});
 
 // Serve static files from dist/
 app.use('/*', serveStatic({ root: './dist' }));
