@@ -1,6 +1,10 @@
 import type { Hono } from 'hono';
 import type { PersistedState } from '../../src/types';
-import { errorResponse, parseJsonBodyWithLimit } from '../lib/http.js';
+import {
+  errorResponse,
+  parseJsonBodyWithLimit,
+  withMeta,
+} from '../lib/http.js';
 
 const SHARE_TTL_SECONDS = 7 * 24 * 60 * 60;
 const SHARE_BODY_MAX_BYTES = 512 * 1024;
@@ -174,11 +178,13 @@ export function registerShareRoutes(app: Hono) {
     }
 
     const origin = new URL(c.req.url).origin;
-    return c.json({
-      id: shareId,
-      url: `${origin}/share/${shareId}`,
-      expiresInSeconds: SHARE_TTL_SECONDS,
-    });
+    return c.json(
+      withMeta(c, {
+        id: shareId,
+        url: `${origin}/share/${shareId}`,
+        expiresInSeconds: SHARE_TTL_SECONDS,
+      }),
+    );
   });
 
   app.get('/share/:uuid', async (c) => {
@@ -214,6 +220,6 @@ export function registerShareRoutes(app: Hono) {
       return errorResponse(c, 404, 'Share not found', 'SHARE_NOT_FOUND');
     }
 
-    return c.json({ state, id: shareId });
+    return c.json(withMeta(c, { state, id: shareId }));
   });
 }

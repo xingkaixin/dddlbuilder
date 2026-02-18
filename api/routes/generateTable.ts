@@ -1,35 +1,86 @@
 import type { Hono } from 'hono';
 import { streamText } from 'hono/streaming';
 import OpenAI from 'openai';
-import { enforceOpenAIRateLimit, withOpenAIRetry } from '../openaiControl.js';
-import { errorResponse, streamErrorPayload } from '../lib/http.js';
+import {
+  enforceOpenAIDailyBudget,
+  enforceOpenAIRateLimit,
+  estimateRequestTokens,
+  logOpenAIAudit,
+  withOpenAIRetry,
+} from '../openaiControl.js';
+import {
+  errorResponse,
+  getRequestId,
+  streamErrorPayload,
+  type ApiErrorCode,
+} from '../lib/http.js';
 import {
   buildGenerateTableMessages,
   buildGenerateTableSystemPrompt,
 } from '../prompts/generateTable.js';
 
+const MAX_OUTPUT_TOKENS = 4000;
+
 export function registerGenerateTableRoute(app: Hono) {
   app.post('/generate-table', async (c) => {
-    const rateLimitResponse = enforceOpenAIRateLimit(c, 'generate-table');
-    if (rateLimitResponse) return rateLimitResponse;
+    const route = 'generate-table' as const;
+    const requestId = getRequestId(c) ?? 'unknown';
+    const startedAt = Date.now();
 
-    const {
-      description,
-      dbType,
-      templates,
-      existingConfig,
-      conversationHistory,
-    } = await c.req.json();
+    let estimatedTokens = 0;
 
-    console.log('[GenerateTable] Request received:', {
-      descriptionLength: description?.length,
-      dbType,
-      hasTemplates: !!templates?.length,
-      hasExistingConfig: !!existingConfig,
-      hasHistory: !!conversationHistory?.length,
-    });
+    const audit = (
+      status: number,
+      retryCount: number,
+      rateLimitHit: boolean,
+      budgetHit: boolean,
+      errorCode?: ApiErrorCode,
+    ) => {
+      logOpenAIAudit({
+        requestId,
+        route,
+        status,
+        latencyMs: Date.now() - startedAt,
+        retryCount,
+        rateLimitHit,
+        estimatedTokens,
+        budgetHit,
+        errorCode,
+      });
+    };
 
-    if (!description || description.trim().length === 0) {
+    const rateLimit = await enforceOpenAIRateLimit(c, route);
+    if (rateLimit.response) {
+      audit(429, 0, true, false, 'RATE_LIMIT_EXCEEDED');
+      return rateLimit.response;
+    }
+
+    let body: {
+      description?: unknown;
+      dbType?: unknown;
+      templates?: unknown;
+      existingConfig?: unknown;
+      conversationHistory?: unknown;
+    };
+
+    try {
+      body = await c.req.json();
+    } catch {
+      audit(400, 0, false, false, 'INVALID_JSON');
+      return errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON');
+    }
+
+    const description =
+      typeof body.description === 'string' ? body.description : '';
+    const dbType = typeof body.dbType === 'string' ? body.dbType : '';
+    const templates = Array.isArray(body.templates) ? body.templates : [];
+    const existingConfig = body.existingConfig;
+    const conversationHistory = Array.isArray(body.conversationHistory)
+      ? body.conversationHistory
+      : [];
+
+    if (description.trim().length === 0) {
+      audit(400, 0, false, false, 'DESCRIPTION_REQUIRED');
       return errorResponse(
         c,
         400,
@@ -38,16 +89,34 @@ export function registerGenerateTableRoute(app: Hono) {
       );
     }
 
+    estimatedTokens = estimateRequestTokens(
+      {
+        description,
+        dbType,
+        templates,
+        existingConfig,
+        conversationHistory,
+      },
+      MAX_OUTPUT_TOKENS,
+    );
+
+    const budget = await enforceOpenAIDailyBudget(c, estimatedTokens);
+    if (budget.response) {
+      audit(429, 0, false, true, 'BUDGET_EXCEEDED');
+      return budget.response;
+    }
+
     const baseURL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
     const apiKey = process.env.OPENAI_API_KEY;
     const model = process.env.OPENAI_MODEL_NAME || 'gpt-4o-mini';
 
     if (!apiKey) {
+      audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
       return errorResponse(
         c,
-        500,
-        'OpenAI API key not configured',
-        'OPENAI_API_KEY_MISSING',
+        503,
+        'OpenAI service unavailable',
+        'SERVICE_UNAVAILABLE',
       );
     }
 
@@ -69,16 +138,16 @@ export function registerGenerateTableRoute(app: Hono) {
     });
 
     return streamText(c, async (stream) => {
+      let retryCount = 0;
       try {
-        console.log('[GenerateTable] Calling OpenAI API with streaming...');
-        const response = (await withOpenAIRetry(
+        const { data: response, attempts } = await withOpenAIRetry(
           async () =>
             (await openai.chat.completions.create({
               model,
               messages,
               response_format: { type: 'json_object' },
               temperature: 0.3,
-              max_tokens: 4000,
+              max_tokens: MAX_OUTPUT_TOKENS,
               stream: true,
               ...({
                 thinking: {
@@ -87,24 +156,26 @@ export function registerGenerateTableRoute(app: Hono) {
               } as any),
             })) as any,
           { scope: 'GenerateTable' },
-        )) as any;
+        );
 
-        let fullContent = '';
+        retryCount = attempts;
 
         for await (const chunk of response) {
           const content = chunk.choices[0]?.delta?.content || '';
           if (content) {
-            fullContent += content;
             await stream.write(content);
           }
         }
 
-        console.log('[GenerateTable] Streaming complete');
-        console.log('[GenerateTable] Full content length:', fullContent.length);
-      } catch (error) {
-        console.error('[GenerateTable] Streaming error:', error);
+        audit(200, retryCount, false, false);
+      } catch {
+        audit(502, retryCount, false, false, 'UPSTREAM_OPENAI_ERROR');
         await stream.write(
-          streamErrorPayload('Generation failed', 'GENERATION_FAILED'),
+          streamErrorPayload(
+            'Upstream OpenAI error',
+            'UPSTREAM_OPENAI_ERROR',
+            requestId,
+          ),
         );
       }
     });

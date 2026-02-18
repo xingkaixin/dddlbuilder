@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import { errorResponse, type ApiErrorCode } from './lib/http.js';
 
 export type OpenAIRouteKey = 'explain' | 'review' | 'generate-table';
 
@@ -14,9 +15,31 @@ type RetryOptions = {
   maxDelayMs?: number;
 };
 
-type RateLimitBucket = {
-  timestamps: number[];
-  lastSeenAt: number;
+type CounterBucket = {
+  count: number;
+  expiresAt: number;
+};
+
+type RedisConfig = {
+  restUrl: string;
+  token: string;
+};
+
+type AuditLogPayload = {
+  requestId: string;
+  route: OpenAIRouteKey;
+  status: number;
+  latencyMs: number;
+  retryCount: number;
+  rateLimitHit: boolean;
+  estimatedTokens: number;
+  budgetHit?: boolean;
+  errorCode?: ApiErrorCode;
+};
+
+export type OpenAIRetryResult<T> = {
+  data: T;
+  attempts: number;
 };
 
 const readEnvInt = (key: string, fallback: number): number => {
@@ -36,65 +59,54 @@ const readEnvBool = (key: string, fallback: boolean): boolean => {
 };
 
 const DEFAULT_WINDOW_MS = readEnvInt('OPENAI_RATELIMIT_WINDOW_MS', 60_000);
+const RATE_LIMIT_ENABLED = readEnvBool('OPENAI_RATELIMIT_ENABLED', true);
+const RETRY_MAX_ATTEMPTS = readEnvInt('OPENAI_RETRY_MAX_ATTEMPTS', 3);
+const RETRY_BASE_DELAY_MS = readEnvInt('OPENAI_RETRY_BASE_DELAY_MS', 400);
+const RETRY_MAX_DELAY_MS = readEnvInt('OPENAI_RETRY_MAX_DELAY_MS', 3_000);
+const RETRYABLE_STATUS_CODES = new Set([
+  408, 409, 425, 429, 500, 502, 503, 504,
+]);
+
+const DAILY_BUDGET_ENABLED = readEnvBool('OPENAI_DAILY_BUDGET_ENABLED', false);
+const DAILY_BUDGET_MAX_TOKENS = readEnvInt('OPENAI_DAILY_BUDGET_MAX_TOKENS', 0);
 
 const RATE_LIMIT_RULES: Record<OpenAIRouteKey, RateLimitRule> = {
-  // explain 成本最低，默认限制放宽
   explain: {
     maxRequests: readEnvInt('OPENAI_RATELIMIT_EXPLAIN_MAX', 15),
     windowMs: DEFAULT_WINDOW_MS,
   },
-  // review 成本中等
   review: {
     maxRequests: readEnvInt('OPENAI_RATELIMIT_REVIEW_MAX', 6),
     windowMs: DEFAULT_WINDOW_MS,
   },
-  // generate-table 成本最高
   'generate-table': {
     maxRequests: readEnvInt('OPENAI_RATELIMIT_GENERATE_MAX', 4),
     windowMs: DEFAULT_WINDOW_MS,
   },
 };
 
-const RATE_LIMIT_ENABLED = readEnvBool('OPENAI_RATELIMIT_ENABLED', true);
-const RETRY_MAX_ATTEMPTS = readEnvInt('OPENAI_RETRY_MAX_ATTEMPTS', 3);
-const RETRY_BASE_DELAY_MS = readEnvInt('OPENAI_RETRY_BASE_DELAY_MS', 400);
-const RETRY_MAX_DELAY_MS = readEnvInt('OPENAI_RETRY_MAX_DELAY_MS', 3_000);
+const COUNTER_STORE_MODE =
+  process.env.OPENAI_RATELIMIT_STORE?.trim().toLowerCase() === 'memory'
+    ? 'memory'
+    : 'redis';
 
-const RATE_LIMIT_BUCKETS = new Map<string, RateLimitBucket>();
-const RATE_LIMIT_CLEANUP_THRESHOLD = 1_000;
-const RETRYABLE_STATUS_CODES = new Set([
-  408, 409, 425, 429, 500, 502, 503, 504,
-]);
+const MEMORY_COUNTERS = new Map<string, CounterBucket>();
+let hasWarnedRedisConfigMissing = false;
+let hasWarnedRedisUnavailable = false;
 
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => {
     setTimeout(resolve, ms);
   });
 
-const cleanupExpiredBuckets = () => {
-  if (RATE_LIMIT_BUCKETS.size < RATE_LIMIT_CLEANUP_THRESHOLD) return;
-  const now = Date.now();
-  for (const [key, bucket] of RATE_LIMIT_BUCKETS.entries()) {
-    if (now - bucket.lastSeenAt > DEFAULT_WINDOW_MS * 2) {
-      RATE_LIMIT_BUCKETS.delete(key);
-    }
+const hashFNV1a = (input: string): string => {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash +=
+      (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
   }
-};
-
-const getClientIp = (c: Context): string => {
-  const cfConnectingIp = c.req.header('cf-connecting-ip');
-  if (cfConnectingIp) return cfConnectingIp;
-
-  const xForwardedFor = c.req.header('x-forwarded-for');
-  if (xForwardedFor) {
-    const [first] = xForwardedFor.split(',');
-    if (first?.trim()) return first.trim();
-  }
-
-  const xRealIp = c.req.header('x-real-ip');
-  if (xRealIp) return xRealIp;
-
-  return 'unknown';
+  return (hash >>> 0).toString(16).padStart(8, '0');
 };
 
 const parseRetryAfterMs = (retryAfterHeader: string | null | undefined) => {
@@ -118,7 +130,6 @@ const readHeaderFromUnknown = (
   if (!headers || typeof headers !== 'object') return undefined;
   const normalizedKey = key.toLowerCase();
 
-  // Headers 实例
   if (
     'get' in headers &&
     typeof (headers as { get: unknown }).get === 'function'
@@ -129,13 +140,13 @@ const readHeaderFromUnknown = (
     return value ?? undefined;
   }
 
-  // 普通对象
   const entries = Object.entries(headers as Record<string, unknown>);
   for (const [name, value] of entries) {
     if (name.toLowerCase() === normalizedKey && typeof value === 'string') {
       return value;
     }
   }
+
   return undefined;
 };
 
@@ -180,15 +191,285 @@ const computeBackoffDelayMs = (
   maxDelayMs: number,
 ) => {
   const exponential = Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs);
-  // 0.8 ~ 1.2 抖动，避免并发请求同时重试
   const jitter = 0.8 + Math.random() * 0.4;
   return Math.max(100, Math.round(exponential * jitter));
 };
 
+const getClientIp = (c: Context): string => {
+  const cfConnectingIp = c.req.header('cf-connecting-ip');
+  if (cfConnectingIp) return cfConnectingIp;
+
+  const xForwardedFor = c.req.header('x-forwarded-for');
+  if (xForwardedFor) {
+    const [first] = xForwardedFor.split(',');
+    if (first?.trim()) return first.trim();
+  }
+
+  const xRealIp = c.req.header('x-real-ip');
+  if (xRealIp) return xRealIp;
+
+  return 'unknown';
+};
+
+const getClientFingerprint = (c: Context, routeKey: OpenAIRouteKey): string => {
+  const ip = getClientIp(c);
+  const ua = c.req.header('user-agent')?.slice(0, 256) ?? 'unknown';
+  return hashFNV1a(`${routeKey}|${ip}|${ua}`);
+};
+
+const toUtf8Bytes = (input: string) => new TextEncoder().encode(input).length;
+
+const estimateValueChars = (value: unknown): number => {
+  if (value == null) return 0;
+  if (typeof value === 'string') return value.length;
+  try {
+    return JSON.stringify(value).length;
+  } catch {
+    return String(value).length;
+  }
+};
+
+export const estimateRequestTokens = (
+  payload: unknown,
+  maxOutputTokens = 0,
+): number => {
+  const estimatedInputChars = estimateValueChars(payload);
+  const estimatedInputTokens = Math.max(1, Math.ceil(estimatedInputChars / 4));
+  const outputTokens = Math.max(0, Math.floor(maxOutputTokens));
+  return estimatedInputTokens + outputTokens;
+};
+
+const getRedisConfig = (): RedisConfig | null => {
+  const restUrlRaw = process.env.redis_KV_REST_API_URL?.trim();
+  const token = process.env.redis_KV_REST_API_TOKEN?.trim();
+  if (!restUrlRaw || !token) return null;
+
+  return {
+    restUrl: restUrlRaw.replace(/\/+$/, ''),
+    token,
+  };
+};
+
+const parseRedisResult = async (response: Response): Promise<number> => {
+  const payload = (await response.json().catch(() => ({}))) as {
+    result?: unknown;
+    error?: unknown;
+  };
+
+  if (!response.ok || payload.error) {
+    throw new Error('REDIS_COMMAND_FAILED');
+  }
+
+  const result = Number(payload.result);
+  if (!Number.isFinite(result)) {
+    throw new Error('REDIS_RESULT_INVALID');
+  }
+
+  return result;
+};
+
+const runRedisCounterCommands = async (
+  config: RedisConfig,
+  key: string,
+  ttlSeconds: number,
+  amount: number,
+): Promise<number> => {
+  const encodedKey = encodeURIComponent(key);
+
+  const incrResponse = await fetch(
+    `${config.restUrl}/incrby/${encodedKey}/${Math.max(1, amount)}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.token}`,
+      },
+    },
+  );
+  const count = await parseRedisResult(incrResponse);
+
+  const expireResponse = await fetch(
+    `${config.restUrl}/expire/${encodedKey}/${Math.max(1, ttlSeconds)}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.token}`,
+      },
+    },
+  );
+  await parseRedisResult(expireResponse);
+
+  return count;
+};
+
+const incrMemoryCounter = (key: string, ttlMs: number, amount: number) => {
+  const now = Date.now();
+  const existing = MEMORY_COUNTERS.get(key);
+  if (!existing || existing.expiresAt <= now) {
+    const next: CounterBucket = {
+      count: Math.max(1, amount),
+      expiresAt: now + ttlMs,
+    };
+    MEMORY_COUNTERS.set(key, next);
+    return next.count;
+  }
+
+  existing.count += Math.max(1, amount);
+  existing.expiresAt = now + ttlMs;
+  MEMORY_COUNTERS.set(key, existing);
+  return existing.count;
+};
+
+const incrCounter = async (
+  key: string,
+  ttlMs: number,
+  amount: number,
+): Promise<number> => {
+  if (COUNTER_STORE_MODE === 'memory') {
+    return incrMemoryCounter(key, ttlMs, amount);
+  }
+
+  const redisConfig = getRedisConfig();
+  if (!redisConfig) {
+    if (!hasWarnedRedisConfigMissing) {
+      hasWarnedRedisConfigMissing = true;
+      console.warn(
+        '[OpenAIControl] Redis 配置缺失，限流与预算已自动降级到 memory',
+      );
+    }
+    return incrMemoryCounter(key, ttlMs, amount);
+  }
+
+  try {
+    return await runRedisCounterCommands(
+      redisConfig,
+      key,
+      Math.ceil(ttlMs / 1000),
+      amount,
+    );
+  } catch {
+    if (!hasWarnedRedisUnavailable) {
+      hasWarnedRedisUnavailable = true;
+      console.warn(
+        '[OpenAIControl] Redis 不可用，限流与预算已自动降级到 memory',
+      );
+    }
+    return incrMemoryCounter(key, ttlMs, amount);
+  }
+};
+
+const getCurrentUtcDateKey = () => {
+  const now = new Date();
+  const y = now.getUTCFullYear();
+  const m = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(now.getUTCDate()).padStart(2, '0');
+  return `${y}${m}${d}`;
+};
+
+const getMsUntilUtcTomorrow = () => {
+  const now = new Date();
+  const tomorrow = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate() + 1,
+    0,
+    0,
+    0,
+    0,
+  );
+  return Math.max(60_000, tomorrow - now.getTime());
+};
+
+export async function enforceOpenAIRateLimit(
+  c: Context,
+  routeKey: OpenAIRouteKey,
+): Promise<{ response: Response | null; rateLimitHit: boolean }> {
+  if (!RATE_LIMIT_ENABLED) {
+    return { response: null, rateLimitHit: false };
+  }
+
+  const rule = RATE_LIMIT_RULES[routeKey];
+  const now = Date.now();
+  const windowBucket = Math.floor(now / rule.windowMs);
+  const clientFingerprint = getClientFingerprint(c, routeKey);
+  const counterKey = `openai:rl:${routeKey}:${clientFingerprint}:${windowBucket}`;
+  const ttlMs = rule.windowMs + 5_000;
+
+  const count = await incrCounter(counterKey, ttlMs, 1);
+  const remaining = Math.max(rule.maxRequests - count, 0);
+
+  c.header('X-RateLimit-Limit', String(rule.maxRequests));
+  c.header('X-RateLimit-Remaining', String(remaining));
+  c.header('X-RateLimit-Window-Ms', String(rule.windowMs));
+
+  if (count <= rule.maxRequests) {
+    return { response: null, rateLimitHit: false };
+  }
+
+  const retryAfterSeconds = Math.max(
+    1,
+    Math.ceil((rule.windowMs - (now % rule.windowMs)) / 1000),
+  );
+
+  c.header('Retry-After', String(retryAfterSeconds));
+
+  return {
+    response: errorResponse(
+      c,
+      429,
+      '请求过于频繁，请稍后再试',
+      'RATE_LIMIT_EXCEEDED',
+    ),
+    rateLimitHit: true,
+  };
+}
+
+export async function enforceOpenAIDailyBudget(
+  c: Context,
+  estimatedTokens: number,
+): Promise<{ response: Response | null; budgetHit: boolean }> {
+  if (!DAILY_BUDGET_ENABLED || DAILY_BUDGET_MAX_TOKENS <= 0) {
+    return { response: null, budgetHit: false };
+  }
+
+  const safeEstimatedTokens = Math.max(1, Math.floor(estimatedTokens));
+  const dayKey = getCurrentUtcDateKey();
+  const counterKey = `openai:budget:tokens:${dayKey}`;
+  const ttlMs = getMsUntilUtcTomorrow() + 60 * 60 * 1000;
+
+  const usedTokens = await incrCounter(counterKey, ttlMs, safeEstimatedTokens);
+
+  c.header('X-Budget-Limit-Tokens', String(DAILY_BUDGET_MAX_TOKENS));
+  c.header('X-Budget-Used-Tokens', String(usedTokens));
+
+  if (usedTokens <= DAILY_BUDGET_MAX_TOKENS) {
+    return { response: null, budgetHit: false };
+  }
+
+  return {
+    response: errorResponse(
+      c,
+      429,
+      '服务预算已达上限，请稍后再试',
+      'BUDGET_EXCEEDED',
+    ),
+    budgetHit: true,
+  };
+}
+
+export function logOpenAIAudit(payload: AuditLogPayload) {
+  console.info(
+    JSON.stringify({
+      event: 'openai_audit',
+      ts: new Date().toISOString(),
+      ...payload,
+    }),
+  );
+}
+
 export async function withOpenAIRetry<T>(
   operation: () => Promise<T>,
   options: RetryOptions,
-): Promise<T> {
+): Promise<OpenAIRetryResult<T>> {
   const maxAttempts = options.maxAttempts ?? RETRY_MAX_ATTEMPTS;
   const baseDelayMs = options.baseDelayMs ?? RETRY_BASE_DELAY_MS;
   const maxDelayMs = options.maxDelayMs ?? RETRY_MAX_DELAY_MS;
@@ -197,7 +478,11 @@ export async function withOpenAIRetry<T>(
   while (attempt < maxAttempts) {
     attempt += 1;
     try {
-      return await operation();
+      const data = await operation();
+      return {
+        data,
+        attempts: attempt,
+      };
     } catch (error) {
       const shouldRetry = isRetryableError(error) && attempt < maxAttempts;
       if (!shouldRetry) {
@@ -220,62 +505,11 @@ export async function withOpenAIRetry<T>(
     }
   }
 
-  // 理论上不会触发，兜底处理
   throw new Error(`[${options.scope}] OpenAI retry failed unexpectedly`);
 }
 
-export function enforceOpenAIRateLimit(c: Context, routeKey: OpenAIRouteKey) {
-  if (!RATE_LIMIT_ENABLED) return null;
-
-  cleanupExpiredBuckets();
-
-  const rule = RATE_LIMIT_RULES[routeKey];
-  const ip = getClientIp(c);
-  const now = Date.now();
-  const key = `${routeKey}:${ip}`;
-  const bucket = RATE_LIMIT_BUCKETS.get(key) ?? {
-    timestamps: [],
-    lastSeenAt: 0,
-  };
-
-  const validTimestamps = bucket.timestamps.filter(
-    (timestamp) => now - timestamp < rule.windowMs,
-  );
-  const remaining = Math.max(rule.maxRequests - validTimestamps.length, 0);
-
-  if (remaining === 0) {
-    const oldestTimestamp = validTimestamps[0] ?? now;
-    const retryAfterMs = Math.max(
-      rule.windowMs - (now - oldestTimestamp),
-      1_000,
-    );
-    const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1_000));
-
-    c.header('Retry-After', String(retryAfterSeconds));
-    c.header('X-RateLimit-Limit', String(rule.maxRequests));
-    c.header('X-RateLimit-Remaining', '0');
-    c.header('X-RateLimit-Window-Ms', String(rule.windowMs));
-
-    return c.json(
-      {
-        error: '请求过于频繁，请稍后再试',
-        retryAfterSeconds,
-        limit: rule.maxRequests,
-        windowMs: rule.windowMs,
-      },
-      429,
-    );
-  }
-
-  validTimestamps.push(now);
-  RATE_LIMIT_BUCKETS.set(key, {
-    timestamps: validTimestamps,
-    lastSeenAt: now,
-  });
-
-  c.header('X-RateLimit-Limit', String(rule.maxRequests));
-  c.header('X-RateLimit-Remaining', String(Math.max(remaining - 1, 0)));
-  c.header('X-RateLimit-Window-Ms', String(rule.windowMs));
-
-  return null;
-}
+export const estimateResponseTokensFromText = (text: string) => {
+  const safeText = typeof text === 'string' ? text : '';
+  const bytes = toUtf8Bytes(safeText);
+  return Math.max(1, Math.ceil(bytes / 4));
+};

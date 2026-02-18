@@ -57,6 +57,9 @@ export {
 } from './utils/constants';
 
 export type {
+  ApiErrorCode,
+  ApiErrorPayload,
+  ApiMeta,
   DatabaseType,
   FieldRow,
   NormalizedField,
