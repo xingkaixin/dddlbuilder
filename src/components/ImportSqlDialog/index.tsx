@@ -228,7 +228,7 @@ export function ImportSqlDialog({
                 step === 'validate'
                   ? 'bg-primary text-primary-foreground shadow-md ring-2 ring-primary/20'
                   : step === 'preview' || step === 'confirm'
-                    ? 'bg-green-100 text-green-700 border border-green-200'
+                    ? 'border border-green-200 bg-green-100 text-green-700 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
                     : 'bg-muted text-muted-foreground border border-border'
               }`}
             >
@@ -237,7 +237,7 @@ export function ImportSqlDialog({
                   step === 'validate'
                     ? 'bg-primary-foreground/20'
                     : step === 'preview' || step === 'confirm'
-                      ? 'bg-green-500 text-white'
+                      ? 'bg-green-500 text-white dark:bg-emerald-500'
                       : 'bg-muted-foreground/20'
                 }`}
               >
@@ -252,7 +252,7 @@ export function ImportSqlDialog({
             <div
               className={`h-0.5 w-8 transition-colors ${
                 step === 'preview' || step === 'confirm'
-                  ? 'bg-green-400'
+                  ? 'bg-green-400 dark:bg-emerald-500'
                   : 'bg-border'
               }`}
             />
@@ -262,7 +262,7 @@ export function ImportSqlDialog({
                 step === 'preview'
                   ? 'bg-primary text-primary-foreground shadow-md ring-2 ring-primary/20'
                   : step === 'confirm'
-                    ? 'bg-green-100 text-green-700 border border-green-200'
+                    ? 'border border-green-200 bg-green-100 text-green-700 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
                     : 'bg-muted text-muted-foreground border border-border'
               }`}
             >
@@ -271,7 +271,7 @@ export function ImportSqlDialog({
                   step === 'preview'
                     ? 'bg-primary-foreground/20'
                     : step === 'confirm'
-                      ? 'bg-green-500 text-white'
+                      ? 'bg-green-500 text-white dark:bg-emerald-500'
                       : 'bg-muted-foreground/20'
                 }`}
               >
@@ -281,7 +281,9 @@ export function ImportSqlDialog({
             </div>
             <div
               className={`h-0.5 w-8 transition-colors ${
-                step === 'confirm' ? 'bg-green-400' : 'bg-border'
+                step === 'confirm'
+                  ? 'bg-green-400 dark:bg-emerald-500'
+                  : 'bg-border'
               }`}
             />
             {/* 步骤 3: 确认 */}

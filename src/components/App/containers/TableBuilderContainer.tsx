@@ -89,19 +89,19 @@ export function TableBuilderContainer({
             {indexesLength > 0 && (
               <div className="ml-2 hidden items-center gap-2 2xl:flex">
                 {indexStats.primary > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded bg-orange-100 px-1.5 py-0.5 text-xs text-orange-600">
+                  <span className="inline-flex items-center gap-1 rounded bg-orange-100 px-1.5 py-0.5 text-xs text-orange-600 dark:bg-orange-900/40 dark:text-orange-200">
                     <Key className="h-3 w-3" />
                     {indexStats.primary}
                   </span>
                 )}
                 {indexStats.unique > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-600">
+                  <span className="inline-flex items-center gap-1 rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-600 dark:bg-blue-900/40 dark:text-blue-200">
                     <Lock className="h-3 w-3" />
                     {indexStats.unique}
                   </span>
                 )}
                 {indexStats.normal > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-600">
+                  <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-200">
                     <Hash className="h-3 w-3" />
                     {indexStats.normal}
                   </span>

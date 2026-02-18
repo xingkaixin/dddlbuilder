@@ -337,18 +337,21 @@ export const IndexPanel = memo<IndexPanelProps>(
                     const badge = index.isPrimary
                       ? {
                           label: '主键',
-                          className: 'bg-orange-100 text-orange-800',
+                          className:
+                            'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200',
                           Icon: Key,
                         }
                       : index.unique
                         ? {
                             label: '唯一',
-                            className: 'bg-blue-100 text-blue-800',
+                            className:
+                              'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
                             Icon: Lock,
                           }
                         : {
                             label: '普通',
-                            className: 'bg-emerald-100 text-emerald-700',
+                            className:
+                              'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200',
                             Icon: Hash,
                           };
 

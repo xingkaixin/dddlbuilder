@@ -3,6 +3,7 @@ import type { DatabaseType } from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
 import packageInfo from '../../../package.json';
 import { Share2, FileInput, History } from 'lucide-react';
+import { ThemeSwitcher } from './ThemeSwitcher';
 import {
   Tooltip,
   TooltipContent,
@@ -40,7 +41,7 @@ export const Header = memo<HeaderProps>(
     onPlayFireworks,
   }) => {
     const actionBtnClass =
-      'group inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-all duration-200 hover:translate-x-0.5';
+      'group inline-flex items-center gap-1.5 rounded-md px-1 py-1 text-xs font-medium text-primary transition-all duration-200 hover:translate-x-0.5 hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 
     const trackEvent = async (event: string) => {
       const { track } = await import('@vercel/analytics');
@@ -235,6 +236,7 @@ export const Header = memo<HeaderProps>(
                       <p>生成分享链接</p>
                     </TooltipContent>
                   </Tooltip>
+                  <ThemeSwitcher triggerClassName={actionBtnClass} />
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button

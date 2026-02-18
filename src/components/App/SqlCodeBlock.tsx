@@ -1,6 +1,10 @@
 import { useRef } from 'react';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atomOneLight } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import { useTheme } from 'next-themes';
+import {
+  atomOneDark,
+  atomOneLight,
+} from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import sql from 'react-syntax-highlighter/dist/esm/languages/hljs/sql';
 import { ExplainPopover } from './ExplainPopover';
 
@@ -19,13 +23,15 @@ const CODE_BLOCK_STYLE = {
 
 export default function SqlCodeBlock({ code }: SqlCodeBlockProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const { resolvedTheme } = useTheme();
+  const syntaxTheme = resolvedTheme === 'dark' ? atomOneDark : atomOneLight;
 
   return (
     <div ref={containerRef}>
       <ExplainPopover containerRef={containerRef}>
         <SyntaxHighlighter
           language="sql"
-          style={atomOneLight}
+          style={syntaxTheme}
           customStyle={CODE_BLOCK_STYLE}
           showLineNumbers
         >
