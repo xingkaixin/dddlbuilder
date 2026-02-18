@@ -23,6 +23,8 @@ describe('useStorageEstimation hook', () => {
     expect(result.current.result.dbName).toBe('MySQL (InnoDB)');
     expect(result.current.rowSizeFormatted).toContain('B');
     expect(result.current.totalSizeFormatted).toContain('KB');
+    expect(result.current.rowSizeDisplay.unit).toBe('B');
+    expect(result.current.totalSizeDisplay.unit).toBe('KB');
   });
 
   it('should correctly format large sizes', () => {
@@ -54,6 +56,7 @@ describe('useStorageEstimation hook', () => {
     const { result } = renderHook(() => useStorageEstimation('mysql', []));
     // MySQL InnoDB has 18 bytes baseline overhead (header + TRX_ID + ROLL_PTR)
     expect(result.current.rowSizeFormatted).toBe('18 B');
+    expect(result.current.rowSizeDisplay).toEqual({ value: 18, unit: 'B' });
   });
 
   it('should format zero total size when estimated rows is zero', () => {
@@ -65,5 +68,6 @@ describe('useStorageEstimation hook', () => {
 
     expect(result.current.totalSize).toBe(0);
     expect(result.current.totalSizeFormatted).toBe('0 B');
+    expect(result.current.totalSizeDisplay).toEqual({ value: 0, unit: 'B' });
   });
 });

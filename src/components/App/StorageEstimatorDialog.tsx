@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 import type { DatabaseType, NormalizedField } from '@/types';
 import { useStorageEstimation } from '@/hooks/useStorageEstimation';
 import { Database, HardDrive, InfoIcon, PieChart, Layers } from 'lucide-react';
@@ -25,8 +26,8 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
       estimateRows,
       setEstimateRows,
       result,
-      totalSizeFormatted,
       rowSizeFormatted,
+      totalSizeDisplay,
     } = useStorageEstimation(dbType, fields);
 
     return (
@@ -60,7 +61,12 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
                   <span>总计预估大小</span>
                 </div>
                 <div className="text-3xl font-bold text-emerald-600">
-                  {totalSizeFormatted}
+                  <AnimatedNumber
+                    key={totalSizeDisplay.unit}
+                    value={totalSizeDisplay.value}
+                    format={{ useGrouping: true, maximumFractionDigits: 2 }}
+                  />
+                  <span className="ml-1">{totalSizeDisplay.unit}</span>
                 </div>
               </div>
             </div>
@@ -73,7 +79,11 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
                     预估承载数据量 (行)
                   </Label>
                   <span className="text-xs font-mono text-muted-foreground">
-                    {estimateRows.toLocaleString()} 行
+                    <AnimatedNumber
+                      value={estimateRows}
+                      format={{ useGrouping: true, maximumFractionDigits: 0 }}
+                    />{' '}
+                    行
                   </span>
                 </div>
                 <div className="flex gap-4 items-center">
