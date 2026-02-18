@@ -4,7 +4,6 @@ type ThemeMode = 'system' | 'light' | 'dark';
 type EffectiveTheme = 'light' | 'dark';
 type TransitionPhase = 'idle' | 'view' | 'wipe' | 'fade';
 
-const WIPE_DURATION_MS = 420;
 const SWITCH_THEME_AT_MS = 470;
 const FADE_START_AT_MS = 520;
 const TOTAL_DURATION_MS = 700;
