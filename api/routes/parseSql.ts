@@ -1,6 +1,10 @@
 import type { Hono } from 'hono';
 import type { DatabaseType } from '../../src/types';
-import { errorResponse, parseJsonBodyWithLimit } from '../lib/http.js';
+import {
+  errorResponse,
+  parseJsonBodyWithLimit,
+  withMeta,
+} from '../lib/http.js';
 
 const MAX_SQL_LENGTH = 50_000;
 const MAX_PARSE_SQL_BODY_BYTES = 131_072;
@@ -67,7 +71,7 @@ export function registerParseSqlRoute(app: Hono) {
       const parser = new SqlParser();
       const result = await parser.parseAsync(sql, dbType);
 
-      return c.json({ result });
+      return c.json(withMeta(c, { result }));
     } catch (error) {
       console.error('[ParseSQL] Failed to parse SQL:', error);
       return errorResponse(c, 400, 'SQL parse failed', 'SQL_PARSE_FAILED');

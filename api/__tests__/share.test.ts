@@ -86,10 +86,11 @@ describe('share api', () => {
 
     expect(response.status).toBe(200);
     const payload = await response.json();
-    expect(payload).toEqual({
+    expect(payload).toMatchObject({
       id: VALID_SHARE_ID,
       state,
     });
+    expect(payload.meta?.requestId).toEqual(expect.any(String));
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     const [_, init] = fetchSpy.mock.calls[0];

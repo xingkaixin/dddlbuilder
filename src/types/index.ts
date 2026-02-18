@@ -127,3 +127,5 @@ export type PersistedState = {
   tableMiscConfig?: TableMiscConfig;
   fieldTableViewConfig?: FieldTableViewConfig;
 };
+
+export type { ApiErrorCode, ApiMeta, ApiErrorPayload } from './api';

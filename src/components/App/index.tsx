@@ -769,95 +769,99 @@ function App() {
           }}
         />
 
-        <div
-          className={`flex flex-col gap-3 p-3 sm:gap-4 sm:p-4 ${
-            isShareView ? 'pointer-events-none select-none opacity-80' : ''
-          }`}
-        >
+        <div className="flex flex-col gap-3 p-3 sm:gap-4 sm:p-4">
           <div className="flex flex-col gap-4 xl:flex-row">
-            <TableBuilderContainer
-              tableConfigProps={{
-                tableName,
-                tableComment,
-                dbType,
-                onTableNameChange: setTableName,
-                onTableCommentChange: setTableComment,
-                onDbTypeChange: handleDbTypeChange,
-                onClearAll: handleClearAll,
-                onSaveTable: handleOpenSaveDialog,
-                onOpenSavedTables: handleOpenSavedTablesDrawer,
-                onViewDiff: handleOpenDiffDialog,
-                onOpenAIGenerate: handleOpenAIGenerateDialog,
-                saveDisabled: !canSaveCurrent,
-                saveDisabledHint: '加载的表未修改，无法保存',
-                showDiffButton: isLoadedDirty && tableDiff?.hasChanges,
-                loadedStatus,
-                loadedTableName,
-                workspaceLabel,
-              }}
-              tabsValue={activeTab}
-              onTabsValueChange={handleTabValueChange}
-              filledRowCount={filledRowCount}
-              indexesLength={indexes.length}
-              indexStats={indexStats}
-              authObjectsLength={authObjects.length}
-              miscEnabled={tableMiscConfig.enabled}
-              showShardingTab={dbType === 'postgresql-citus'}
-              shardingBadgeText={
-                citusShardingConfig.mode === 'distributed'
-                  ? citusShardingConfig.distributionColumn
-                  : null
-              }
-              showPartitionTab={supportsMysqlPartition}
-              partitionBadgeText={
-                mysqlPartitionConfig.enabled ? mysqlPartitionConfig.type : null
-              }
-              dataTableProps={{
-                isHighlighted: isFieldTableHighlighted,
-                highlightedRowIndex: highlightedRowIndex,
-                onOpenStorageEstimator: handleOpenStorageEstimator,
-                toolbarLeft: dataTableToolbarLeft,
-              }}
-              indexPanelProps={{
-                animatingIndexIds: animatingIndexIds,
-                removingIndexIds: removingIndexIds,
-              }}
-              authPanelProps={{
-                authInput,
-                authObjects,
-                onAuthInputChange: setAuthInput,
-                onAddAuthObject: addAuthObject,
-                onRemoveAuthObject: removeAuthObject,
-              }}
-              tableOptionsPanelProps={{
-                dbType,
-                config: tableMiscConfig,
-                onEnabledChange: setMiscEnabled,
-                onEngineChange: setEngine,
-                onCharsetChange: setCharset,
-                onCollationChange: setCollation,
-                onTablespaceChange: setTablespace,
-              }}
-              shardingPanelProps={{
-                config: citusShardingConfig,
-                availableFields,
-                onModeChange: setCitusMode,
-                onDistributionColumnChange: setDistributionColumn,
-              }}
-              partitionPanelProps={{
-                config: mysqlPartitionConfig,
-                availableFields,
-                onEnabledChange: setPartitionEnabled,
-                onTypeChange: setPartitionType,
-                onColumnsChange: setPartitionColumns,
-                onExpressionChange: setPartitionExpression,
-                onPartitionCountChange: setPartitionCount,
-                onAddPartition: addPartition,
-                onRemovePartition: removePartition,
-                onUpdatePartition: updatePartition,
-                onGeneratePartitions: generateRangePartitions,
-              }}
-            />
+            <div
+              className={`min-w-0 flex-1 ${
+                isShareView ? 'pointer-events-none select-none opacity-80' : ''
+              }`}
+            >
+              <TableBuilderContainer
+                tableConfigProps={{
+                  tableName,
+                  tableComment,
+                  dbType,
+                  onTableNameChange: setTableName,
+                  onTableCommentChange: setTableComment,
+                  onDbTypeChange: handleDbTypeChange,
+                  onClearAll: handleClearAll,
+                  onSaveTable: handleOpenSaveDialog,
+                  onOpenSavedTables: handleOpenSavedTablesDrawer,
+                  onViewDiff: handleOpenDiffDialog,
+                  onOpenAIGenerate: handleOpenAIGenerateDialog,
+                  saveDisabled: !canSaveCurrent,
+                  saveDisabledHint: '加载的表未修改，无法保存',
+                  showDiffButton: isLoadedDirty && tableDiff?.hasChanges,
+                  loadedStatus,
+                  loadedTableName,
+                  workspaceLabel,
+                }}
+                tabsValue={activeTab}
+                onTabsValueChange={handleTabValueChange}
+                filledRowCount={filledRowCount}
+                indexesLength={indexes.length}
+                indexStats={indexStats}
+                authObjectsLength={authObjects.length}
+                miscEnabled={tableMiscConfig.enabled}
+                showShardingTab={dbType === 'postgresql-citus'}
+                shardingBadgeText={
+                  citusShardingConfig.mode === 'distributed'
+                    ? citusShardingConfig.distributionColumn
+                    : null
+                }
+                showPartitionTab={supportsMysqlPartition}
+                partitionBadgeText={
+                  mysqlPartitionConfig.enabled
+                    ? mysqlPartitionConfig.type
+                    : null
+                }
+                dataTableProps={{
+                  isHighlighted: isFieldTableHighlighted,
+                  highlightedRowIndex: highlightedRowIndex,
+                  onOpenStorageEstimator: handleOpenStorageEstimator,
+                  toolbarLeft: dataTableToolbarLeft,
+                }}
+                indexPanelProps={{
+                  animatingIndexIds: animatingIndexIds,
+                  removingIndexIds: removingIndexIds,
+                }}
+                authPanelProps={{
+                  authInput,
+                  authObjects,
+                  onAuthInputChange: setAuthInput,
+                  onAddAuthObject: addAuthObject,
+                  onRemoveAuthObject: removeAuthObject,
+                }}
+                tableOptionsPanelProps={{
+                  dbType,
+                  config: tableMiscConfig,
+                  onEnabledChange: setMiscEnabled,
+                  onEngineChange: setEngine,
+                  onCharsetChange: setCharset,
+                  onCollationChange: setCollation,
+                  onTablespaceChange: setTablespace,
+                }}
+                shardingPanelProps={{
+                  config: citusShardingConfig,
+                  availableFields,
+                  onModeChange: setCitusMode,
+                  onDistributionColumnChange: setDistributionColumn,
+                }}
+                partitionPanelProps={{
+                  config: mysqlPartitionConfig,
+                  availableFields,
+                  onEnabledChange: setPartitionEnabled,
+                  onTypeChange: setPartitionType,
+                  onColumnsChange: setPartitionColumns,
+                  onExpressionChange: setPartitionExpression,
+                  onPartitionCountChange: setPartitionCount,
+                  onAddPartition: addPartition,
+                  onRemovePartition: removePartition,
+                  onUpdatePartition: updatePartition,
+                  onGeneratePartitions: generateRangePartitions,
+                }}
+              />
+            </div>
 
             <OutputContainer
               ddlOutputProps={{

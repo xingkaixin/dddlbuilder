@@ -16,10 +16,12 @@ describe('api security guards', () => {
     });
 
     expect(response.status).toBe(413);
+    expect(response.headers.get('x-request-id')).toEqual(expect.any(String));
     const json = await response.json();
     expect(json).toMatchObject({
       error: expect.stringContaining('Payload too large'),
       code: 'PAYLOAD_TOO_LARGE',
+      requestId: expect.any(String),
     });
   });
 

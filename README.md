@@ -45,6 +45,12 @@ bun run build
 - `OPENAI_API_KEY`：模型服务密钥
 - `OPENAI_MODEL_NAME`：默认模型名
 - `CORS_ALLOWED_ORIGINS`：允许跨域来源，多个来源用逗号分隔
+- `OPENAI_RATELIMIT_ENABLED`：是否启用 AI 接口限流
+- `OPENAI_RATELIMIT_WINDOW_MS`：限流窗口时长（毫秒）
+- `OPENAI_RATELIMIT_EXPLAIN_MAX` / `OPENAI_RATELIMIT_REVIEW_MAX` / `OPENAI_RATELIMIT_GENERATE_MAX`：各 AI 路由窗口内最大请求数
+- `OPENAI_RATELIMIT_STORE`：计数存储（`redis` 或 `memory`，默认 `redis`，失败自动降级）
+- `OPENAI_DAILY_BUDGET_ENABLED`：是否启用每日预算控制
+- `OPENAI_DAILY_BUDGET_MAX_TOKENS`：每日预算上限（估算 token）
 
 ## 使用说明
 

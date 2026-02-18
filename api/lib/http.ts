@@ -19,17 +19,70 @@ export type ApiErrorCode =
   | 'SHARE_UUID_INVALID'
   | 'SHARE_NOT_FOUND'
   | 'SHARE_STORE_FAILED'
-  | 'SHARE_LOAD_FAILED';
+  | 'SHARE_LOAD_FAILED'
+  | 'RATE_LIMIT_EXCEEDED'
+  | 'BUDGET_EXCEEDED'
+  | 'UPSTREAM_OPENAI_ERROR'
+  | 'SERVICE_UNAVAILABLE';
+
+export type ApiMeta = {
+  requestId?: string;
+};
+
+export type ApiErrorPayload = {
+  error: string;
+  code?: ApiErrorCode;
+  requestId?: string;
+};
+
+const REQUEST_ID_CONTEXT_KEY = 'requestId';
+
+export const getRequestId = (c: Context): string | undefined => {
+  const value = c.get(REQUEST_ID_CONTEXT_KEY) as unknown;
+  return typeof value === 'string' && value.trim().length > 0
+    ? value.trim()
+    : undefined;
+};
+
+export const withMeta = <T extends Record<string, unknown>>(
+  c: Context,
+  payload: T,
+): T & { meta?: ApiMeta } => {
+  const requestId = getRequestId(c);
+  if (!requestId) return payload;
+  return {
+    ...payload,
+    meta: {
+      requestId,
+    },
+  };
+};
 
 export const errorResponse = (
   c: Context,
   status: number,
   error: string,
   code?: ApiErrorCode,
-) => c.json(code ? { error, code } : { error }, status);
+) => {
+  const requestId = getRequestId(c);
+  const payload: ApiErrorPayload = {
+    error,
+    ...(code ? { code } : {}),
+    ...(requestId ? { requestId } : {}),
+  };
+  return c.json(payload, status);
+};
 
-export const streamErrorPayload = (error: string, code?: ApiErrorCode) =>
-  JSON.stringify(code ? { error, code } : { error });
+export const streamErrorPayload = (
+  error: string,
+  code?: ApiErrorCode,
+  requestId?: string,
+) =>
+  JSON.stringify({
+    error,
+    ...(code ? { code } : {}),
+    ...(requestId ? { requestId } : {}),
+  } satisfies ApiErrorPayload);
 
 export const parseJsonBodyWithLimit = async <T>(
   c: Context,

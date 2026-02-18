@@ -1,45 +1,103 @@
 import type { Hono } from 'hono';
 import { streamText } from 'hono/streaming';
 import OpenAI from 'openai';
-import { enforceOpenAIRateLimit, withOpenAIRetry } from '../openaiControl.js';
-import { errorResponse, streamErrorPayload } from '../lib/http.js';
+import {
+  enforceOpenAIDailyBudget,
+  enforceOpenAIRateLimit,
+  estimateRequestTokens,
+  logOpenAIAudit,
+  withOpenAIRetry,
+} from '../openaiControl.js';
+import {
+  errorResponse,
+  getRequestId,
+  streamErrorPayload,
+  type ApiErrorCode,
+} from '../lib/http.js';
 import {
   REVIEW_SYSTEM_PROMPT,
   buildReviewUserPrompt,
 } from '../prompts/review.js';
 
+const MAX_OUTPUT_TOKENS = 2000;
+
 export function registerReviewRoute(app: Hono) {
   app.post('/review', async (c) => {
-    const rateLimitResponse = enforceOpenAIRateLimit(c, 'review');
-    if (rateLimitResponse) return rateLimitResponse;
+    const route = 'review' as const;
+    const requestId = getRequestId(c) ?? 'unknown';
+    const startedAt = Date.now();
 
-    const { ddl, tableName, dbType } = await c.req.json();
-    console.log('[Review] Request received:', {
-      tableName,
-      dbType,
-      ddlLength: ddl?.length,
-    });
+    let estimatedTokens = 0;
 
-    if (!ddl || ddl.trim().length === 0) {
+    const audit = (
+      status: number,
+      retryCount: number,
+      rateLimitHit: boolean,
+      budgetHit: boolean,
+      errorCode?: ApiErrorCode,
+    ) => {
+      logOpenAIAudit({
+        requestId,
+        route,
+        status,
+        latencyMs: Date.now() - startedAt,
+        retryCount,
+        rateLimitHit,
+        estimatedTokens,
+        budgetHit,
+        errorCode,
+      });
+    };
+
+    const rateLimit = await enforceOpenAIRateLimit(c, route);
+    if (rateLimit.response) {
+      audit(429, 0, true, false, 'RATE_LIMIT_EXCEEDED');
+      return rateLimit.response;
+    }
+
+    let body: { ddl?: unknown; tableName?: unknown; dbType?: unknown };
+    try {
+      body = await c.req.json();
+    } catch {
+      audit(400, 0, false, false, 'INVALID_JSON');
+      return errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON');
+    }
+
+    const ddl = typeof body.ddl === 'string' ? body.ddl : '';
+    const tableName = typeof body.tableName === 'string' ? body.tableName : '';
+    const dbType = typeof body.dbType === 'string' ? body.dbType : '';
+
+    if (ddl.trim().length === 0) {
+      audit(400, 0, false, false, 'DDL_REQUIRED');
       return errorResponse(c, 400, 'DDL is required', 'DDL_REQUIRED');
+    }
+
+    estimatedTokens = estimateRequestTokens(
+      {
+        ddl,
+        tableName,
+        dbType,
+      },
+      MAX_OUTPUT_TOKENS,
+    );
+
+    const budget = await enforceOpenAIDailyBudget(c, estimatedTokens);
+    if (budget.response) {
+      audit(429, 0, false, true, 'BUDGET_EXCEEDED');
+      return budget.response;
     }
 
     const baseURL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
     const apiKey = process.env.OPENAI_API_KEY;
     const model = process.env.OPENAI_MODEL_NAME || 'gpt-4o-mini';
 
-    console.log('[Review] OpenAI config:', {
-      baseURL,
-      model,
-      hasApiKey: !!apiKey,
-    });
-
     if (!apiKey) {
+      audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
       return errorResponse(
         c,
-        500,
-        'OpenAI API key not configured',
-        'OPENAI_API_KEY_MISSING',
+        503,
+        'OpenAI service unavailable',
+        'SERVICE_UNAVAILABLE',
       );
     }
 
@@ -51,9 +109,9 @@ export function registerReviewRoute(app: Hono) {
     const userPrompt = buildReviewUserPrompt(ddl, tableName, dbType);
 
     return streamText(c, async (stream) => {
+      let retryCount = 0;
       try {
-        console.log('[Review] Calling OpenAI API with streaming...');
-        const response = (await withOpenAIRetry(
+        const { data: response, attempts } = await withOpenAIRetry(
           async () =>
             (await openai.chat.completions.create({
               model,
@@ -63,7 +121,7 @@ export function registerReviewRoute(app: Hono) {
               ],
               response_format: { type: 'json_object' },
               temperature: 0.3,
-              max_tokens: 2000,
+              max_tokens: MAX_OUTPUT_TOKENS,
               stream: true,
               ...({
                 thinking: {
@@ -72,50 +130,26 @@ export function registerReviewRoute(app: Hono) {
               } as any),
             })) as any,
           { scope: 'Review' },
-        )) as any;
+        );
 
-        let fullContent = '';
-        let chunkCount = 0;
+        retryCount = attempts;
 
         for await (const chunk of response) {
-          chunkCount++;
-          // Log raw chunk for debugging
-          console.log(`[Review] Chunk ${chunkCount}:`, JSON.stringify(chunk));
-
-          const delta = chunk.choices[0]?.delta;
-          const content = delta?.content || '';
-          const finishReason = chunk.choices[0]?.finish_reason;
-
-          console.log(
-            `[Review] Chunk ${chunkCount} - content: "${content}", finish_reason: ${finishReason}`,
-          );
-
+          const content = chunk.choices[0]?.delta?.content || '';
           if (content) {
-            fullContent += content;
             await stream.write(content);
           }
-
-          if (finishReason) {
-            console.log(
-              `[Review] Stream finished with reason: ${finishReason}`,
-            );
-          }
         }
 
-        console.log('[Review] Streaming complete');
-        console.log('[Review] Total chunks:', chunkCount);
-        console.log('[Review] Full content:', fullContent);
-        console.log('[Review] Content length:', fullContent.length);
-      } catch (error) {
-        console.error('[Review] Streaming error:', error);
-        // Log more details about the error
-        if (error instanceof Error) {
-          console.error('[Review] Error name:', error.name);
-          console.error('[Review] Error message:', error.message);
-          console.error('[Review] Error stack:', error.stack);
-        }
+        audit(200, retryCount, false, false);
+      } catch {
+        audit(502, retryCount, false, false, 'UPSTREAM_OPENAI_ERROR');
         await stream.write(
-          streamErrorPayload('Review failed', 'REVIEW_FAILED'),
+          streamErrorPayload(
+            'Upstream OpenAI error',
+            'UPSTREAM_OPENAI_ERROR',
+            requestId,
+          ),
         );
       }
     });
