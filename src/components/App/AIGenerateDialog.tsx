@@ -25,6 +25,7 @@ import {
 } from '@/hooks/useAIGenerateTable';
 import type { FieldRow, IndexDefinition, DatabaseType } from '@/types';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
+import { useTranslation } from 'react-i18next';
 
 const MAX_INPUT_LENGTH = 500;
 
@@ -43,6 +44,7 @@ interface AIGenerateDialogProps {
 
 export const AIGenerateDialog = memo<AIGenerateDialogProps>(
   ({ open, onOpenChange, dbType, existingConfig, templates, onApply }) => {
+    const { t } = useTranslation();
     const [input, setInput] = useState('');
     const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<string>>(
       new Set(),
@@ -158,18 +160,16 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
-              AI 智能建表
+              {t('aiGenerate.title')}
             </DialogTitle>
-            <DialogDescription>
-              用自然语言描述你需要的表结构，AI 会自动生成字段和索引配置
-            </DialogDescription>
+            <DialogDescription>{t('aiGenerate.description')}</DialogDescription>
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto space-y-4 pr-1">
             {/* Existing config hint */}
             {hasExistingConfig && !conversationHistory.length && (
               <div className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-md px-3 py-2">
-                检测到当前已有表配置，AI 会参考现有结构进行生成或调整
+                {t('aiGenerate.existingConfigHint')}
               </div>
             )}
 
@@ -178,7 +178,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
               <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-muted-foreground">
-                    对话历史
+                    {t('aiGenerate.conversationHistory')}
                   </span>
                   <Button
                     variant="ghost"
@@ -187,7 +187,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                     onClick={handleReset}
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
-                    重新开始
+                    {t('aiGenerate.restart')}
                   </Button>
                 </div>
                 {conversationHistory.map((msg, idx) => (
@@ -199,8 +199,9 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                         : 'text-muted-foreground'
                     }`}
                   >
-                    {msg.role === 'user' ? '你: ' : 'AI: '}
-                    {msg.role === 'user' ? msg.content : '已生成表结构'}
+                    {msg.role === 'user'
+                      ? `${t('aiGenerate.userPrefix')}${msg.content}`
+                      : `${t('aiGenerate.assistantPrefix')}${t('aiGenerate.assistantGenerated')}`}
                   </div>
                 ))}
               </div>
@@ -211,7 +212,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
               <div className="border rounded-lg p-4 bg-card space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium text-sm">
-                    {displayResult.tableName || '生成中...'}
+                    {displayResult.tableName || t('aiGenerate.tableGenerating')}
                   </h4>
                   {displayResult.tableComment && (
                     <span className="text-xs text-muted-foreground">
@@ -224,7 +225,9 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                 {displayResult.fields && displayResult.fields.length > 0 && (
                   <div className="space-y-1">
                     <span className="text-xs font-medium text-muted-foreground">
-                      字段 ({displayResult.fields.length})
+                      {t('aiGenerate.fields', {
+                        count: displayResult.fields.length,
+                      })}
                     </span>
                     <div className="grid gap-1 text-xs">
                       {displayResult.fields.map((field, idx) => (
@@ -259,7 +262,9 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                 {displayResult.indexes && displayResult.indexes.length > 0 && (
                   <div className="space-y-1">
                     <span className="text-xs font-medium text-muted-foreground">
-                      索引 ({displayResult.indexes.length})
+                      {t('aiGenerate.indexes', {
+                        count: displayResult.indexes.length,
+                      })}
                     </span>
                     <div className="grid gap-1 text-xs">
                       {displayResult.indexes.map((idx, i) => (
@@ -293,8 +298,10 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                       aria-hidden="true"
                     />
                     {isStreaming
-                      ? `正在生成字段...（已生成 ${generatedFieldCount} 个字段）`
-                      : '生成中...'}
+                      ? t('aiGenerate.generatingFields', {
+                          count: generatedFieldCount,
+                        })
+                      : t('aiGenerate.generating')}
                   </output>
                 )}
               </div>
@@ -307,7 +314,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                 className="flex items-center gap-2 text-xs text-muted-foreground"
               >
                 <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-                生成中...
+                {t('aiGenerate.generating')}
               </output>
             )}
 
@@ -328,8 +335,8 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
             <Textarea
               placeholder={
                 conversationHistory.length > 0
-                  ? '继续描述你的需求，例如：添加一个状态字段...'
-                  : '描述你需要的表结构，例如：创建一个订单表，包含订单号、用户ID、商品列表、金额、状态...'
+                  ? t('aiGenerate.inputContinuePlaceholder')
+                  : t('aiGenerate.inputPlaceholder')
               }
               value={input}
               onChange={handleInputChange}
@@ -341,7 +348,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
               aria-describedby="ai-generate-input-hint ai-generate-input-counter"
             />
             <span id="ai-generate-input-hint" className="sr-only">
-              输入建表需求，按 Command 或 Control 加 Enter 可快速生成。
+              {t('aiGenerate.inputHint')}
             </span>
 
             <div className="flex items-center justify-between">
@@ -360,7 +367,10 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                     ) : (
                       <ChevronRight className="h-3.5 w-3.5" />
                     )}
-                    已选择 {selectedTemplateIds.size}/{templates.length} 个模板
+                    {t('aiGenerate.templateSelected', {
+                      selected: selectedTemplateIds.size,
+                      total: templates.length,
+                    })}
                   </button>
                   {showTemplateSelection && (
                     <div className="mt-2 space-y-1.5 pl-5">
@@ -370,8 +380,8 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                         onClick={toggleAllTemplates}
                       >
                         {selectedTemplateIds.size === templates.length
-                          ? '取消全选'
-                          : '全选'}
+                          ? t('aiGenerate.unselectAll')
+                          : t('aiGenerate.selectAll')}
                       </button>
                       {templates.map((template) => (
                         <div
@@ -392,7 +402,9 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                             </span>
                           )}
                           <span className="text-muted-foreground/60">
-                            ({template.fields?.length || 0} 字段)
+                            {t('aiGenerate.templateFields', {
+                              count: template.fields?.length || 0,
+                            })}
                           </span>
                         </div>
                       ))}
@@ -401,7 +413,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                 </div>
               ) : (
                 <span className="text-xs text-muted-foreground">
-                  提示：创建字段模板可让 AI 优先使用
+                  {t('aiGenerate.templateHint')}
                 </span>
               )}
 
@@ -420,7 +432,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                     size="sm"
                     className="h-7 px-2 text-xs font-medium"
                   >
-                    取消
+                    {t('aiGenerate.cancel')}
                   </Button>
                 ) : result ? (
                   <>
@@ -430,7 +442,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                       size="sm"
                       className="h-7 px-2 text-xs font-medium"
                     >
-                      重新生成
+                      {t('aiGenerate.regenerate')}
                     </Button>
                     <Button
                       onClick={handleApply}
@@ -438,7 +450,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                       size="sm"
                     >
                       <Check className="h-3.5 w-3.5" />
-                      应用到表配置
+                      {t('aiGenerate.apply')}
                     </Button>
                   </>
                 ) : (
@@ -453,7 +465,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                     ) : (
                       <Send className="h-3.5 w-3.5" />
                     )}
-                    生成
+                    {t('aiGenerate.generate')}
                   </Button>
                 )}
               </div>

@@ -9,6 +9,8 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
+import { useTranslation } from 'react-i18next';
+import { useLocale } from '@/i18n/LocaleContext';
 
 interface SavedTablesSidebarProps {
   open: boolean;
@@ -27,8 +29,8 @@ interface SavedTablesSidebarProps {
   onDelete: (item: SavedTableSummary) => void;
 }
 
-const formatDate = (timestamp: number) =>
-  new Date(timestamp).toLocaleDateString('zh-CN', {
+const formatDate = (timestamp: number, locale: string) =>
+  new Date(timestamp).toLocaleDateString(locale, {
     month: '2-digit',
     day: '2-digit',
   });
@@ -50,6 +52,8 @@ export const SavedTablesSidebar = memo<SavedTablesSidebarProps>(
     onRename,
     onDelete,
   }) => {
+    const { t } = useTranslation();
+    const { resolvedLocale } = useLocale();
     const resizingRef = useRef(false);
     const startXRef = useRef(0);
     const startWidthRef = useRef(width);
@@ -122,7 +126,9 @@ export const SavedTablesSidebar = memo<SavedTablesSidebarProps>(
                 open ? 'block' : 'block lg:hidden',
               )}
             >
-              <span className="text-sm font-semibold">已保存的表</span>
+              <span className="text-sm font-semibold">
+                {t('savedTables.title')}
+              </span>
               {items.length > 0 && (
                 <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                   {items.length}
@@ -135,7 +141,9 @@ export const SavedTablesSidebar = memo<SavedTablesSidebarProps>(
             size="icon"
             onClick={onToggle}
             className="h-8 w-8"
-            aria-label={open ? '收起侧边栏' : '展开侧边栏'}
+            aria-label={
+              open ? t('savedTables.collapse') : t('savedTables.expand')
+            }
           >
             {open ? (
               <ChevronLeft className="h-4 w-4" />
@@ -148,7 +156,7 @@ export const SavedTablesSidebar = memo<SavedTablesSidebarProps>(
         <div className={cn('p-2', open ? 'block' : 'block lg:hidden')}>
           {loading && (
             <div className="px-2 py-3 text-xs text-muted-foreground">
-              正在读取保存的表...
+              {t('savedTables.loading')}
             </div>
           )}
           {!loading && error && (
@@ -156,7 +164,7 @@ export const SavedTablesSidebar = memo<SavedTablesSidebarProps>(
           )}
           {!loading && !error && items.length === 0 && (
             <div className="px-2 py-3 text-xs text-muted-foreground">
-              还没有保存的表
+              {t('savedTables.empty')}
             </div>
           )}
           {!loading && !error && items.length > 0 && (
@@ -165,8 +173,8 @@ export const SavedTablesSidebar = memo<SavedTablesSidebarProps>(
                 const isActive = activeNormalizedName === item.normalizedName;
                 const statusLabel = isActive
                   ? activeDirty
-                    ? '已修改'
-                    : '已加载'
+                    ? t('savedTables.dirty')
+                    : t('savedTables.loaded')
                   : '';
                 return (
                   <div
@@ -200,7 +208,7 @@ export const SavedTablesSidebar = memo<SavedTablesSidebarProps>(
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {formatDate(item.updatedAt)}
+                        {formatDate(item.updatedAt, resolvedLocale)}
                       </div>
                     </button>
                     <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
@@ -209,7 +217,7 @@ export const SavedTablesSidebar = memo<SavedTablesSidebarProps>(
                         size="icon"
                         className="h-7 w-7"
                         onClick={() => onRename(item)}
-                        aria-label="重命名"
+                        aria-label={t('savedTables.rename')}
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
@@ -218,7 +226,7 @@ export const SavedTablesSidebar = memo<SavedTablesSidebarProps>(
                         size="icon"
                         className="h-7 w-7 text-destructive hover:text-destructive"
                         onClick={() => onDelete(item)}
-                        aria-label="删除"
+                        aria-label={t('savedTables.delete')}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>

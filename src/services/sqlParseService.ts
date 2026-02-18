@@ -1,5 +1,6 @@
 import type { DatabaseType } from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
+import i18n from '@/i18n';
 
 const SQL_PARSE_API_ENDPOINT = '/api/parse-sql';
 
@@ -28,13 +29,13 @@ export async function requestSqlParse(
     throw new Error(
       typeof errorData.error === 'string'
         ? errorData.error
-        : `请求失败: ${response.status}`,
+        : i18n.t('services.requestFailed', { status: response.status }),
     );
   }
 
   const data: unknown = await response.json();
   if (!data || typeof data !== 'object' || !('result' in data)) {
-    throw new Error('解析结果格式无效');
+    throw new Error(i18n.t('services.parseResultInvalid'));
   }
 
   return (data as SqlParseResponsePayload).result;

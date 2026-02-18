@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { PropsWithChildren } from 'react';
+import { LocaleProvider } from '@/i18n/LocaleContext';
 
 export function createTestQueryClient() {
   return new QueryClient({
@@ -19,7 +20,11 @@ export function createQueryClientWrapper() {
 
   function Wrapper({ children }: PropsWithChildren) {
     return (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <LocaleProvider>
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      </LocaleProvider>
     );
   }
 

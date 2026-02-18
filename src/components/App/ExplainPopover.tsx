@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDDLExplain } from '@/hooks/useDDLExplain';
 import { useTrackEvent } from './hooks/useTrackEvent';
+import { useTranslation } from 'react-i18next';
 
 interface ExplainPopoverProps {
   children: React.ReactNode;
@@ -17,6 +18,7 @@ export function ExplainPopover({
   children,
   containerRef,
 }: ExplainPopoverProps) {
+  const { t } = useTranslation();
   const trackEvent = useTrackEvent();
   const [selection, setSelection] = useState<{
     text: string;
@@ -158,7 +160,7 @@ export function ExplainPopover({
               onClick={handleExplain}
             >
               <Lightbulb className="h-3.5 w-3.5" />
-              解释选中
+              {t('explain.explainSelected')}
             </Button>
           </div>,
           document.body,
@@ -183,7 +185,7 @@ export function ExplainPopover({
               <div className="flex items-center justify-between border-b px-3 py-2 bg-primary/5">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
                   <Lightbulb className="h-3.5 w-3.5" />
-                  AI 代码解释器
+                  {t('explain.title')}
                   {(isLoading || isStreaming) && (
                     <Loader2 className="h-3 w-3 animate-spin text-primary/60 ml-0.5" />
                   )}
@@ -221,8 +223,9 @@ export function ExplainPopover({
 
               <div className="border-t px-3.5 py-2 bg-muted/20">
                 <p className="text-[10px] text-muted-foreground italic font-medium opacity-80">
-                  选中片段: "{selection.text.slice(0, 45)}
-                  {selection.text.length > 45 ? '...' : ''}"
+                  {t('explain.selectedSnippet', {
+                    text: `${selection.text.slice(0, 45)}${selection.text.length > 45 ? '...' : ''}`,
+                  })}
                 </p>
               </div>
             </div>

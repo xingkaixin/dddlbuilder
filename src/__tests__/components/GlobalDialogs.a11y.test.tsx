@@ -189,11 +189,9 @@ describe('GlobalDialogs a11y', () => {
 
     expect(
       screen.getByRole('button', {
-        name: '删除',
+        name: '确认删除',
       }),
     ).toHaveAttribute('aria-describedby', 'delete-warning');
-    expect(
-      screen.getByText('警告：删除操作不可逆，请确认后再继续。'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('此操作无法撤销。')).toBeInTheDocument();
   });
 });

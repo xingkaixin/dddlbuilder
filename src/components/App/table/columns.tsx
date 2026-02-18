@@ -10,7 +10,8 @@ import {
   getUiOnUpdateOptions,
 } from '@/utils/helpers';
 import { getCanonicalBaseType } from '@/utils/databaseTypeMapping';
-import { COLUMN_HEADERS } from '@/utils/constants';
+import { getDefaultKindLabel, getOnUpdateLabel } from '@/i18n/fieldEnums';
+import { useTranslation } from 'react-i18next';
 
 const columnHelper = createColumnHelper<FieldRow>();
 
@@ -35,6 +36,7 @@ interface UseFieldColumnsParams {
 export function useFieldColumns(
   params: UseFieldColumnsParams,
 ): ColumnDef<FieldRow, any>[] {
+  const { t } = useTranslation();
   const {
     columnWidths,
     rowWarnings,
@@ -48,7 +50,7 @@ export function useFieldColumns(
   return useMemo<ColumnDef<FieldRow, any>[]>(
     () => [
       columnHelper.accessor('order', {
-        header: () => COLUMN_HEADERS[0],
+        header: () => t('dataTable.headers.order'),
         size: columnWidths.order,
         cell: ({ row }) => (
           <OrderCell
@@ -58,7 +60,7 @@ export function useFieldColumns(
         ),
       }),
       columnHelper.accessor('fieldName', {
-        header: () => COLUMN_HEADERS[1],
+        header: () => t('dataTable.headers.fieldName'),
         size: columnWidths.fieldName,
         cell: ({ row, getValue }) => (
           <EditableCell
@@ -67,12 +69,12 @@ export function useFieldColumns(
             onTabNavigate={(direction) =>
               handleTabNavigation(row.index, 0, direction)
             }
-            placeholder="字段名"
+            placeholder={t('dataTable.placeholder.fieldName')}
           />
         ),
       }),
       columnHelper.accessor('fieldComment', {
-        header: () => COLUMN_HEADERS[2],
+        header: () => t('dataTable.headers.fieldComment'),
         size: columnWidths.fieldComment,
         cell: ({ row, getValue }) => (
           <EditableCell
@@ -81,12 +83,12 @@ export function useFieldColumns(
             onTabNavigate={(direction) =>
               handleTabNavigation(row.index, 1, direction)
             }
-            placeholder="字段中文名"
+            placeholder={t('dataTable.placeholder.fieldComment')}
           />
         ),
       }),
       columnHelper.accessor('fieldType', {
-        header: () => COLUMN_HEADERS[3],
+        header: () => t('dataTable.headers.fieldType'),
         size: columnWidths.fieldType,
         cell: ({ row, getValue }) => (
           <EditableCell
@@ -95,12 +97,12 @@ export function useFieldColumns(
             onTabNavigate={(direction) =>
               handleTabNavigation(row.index, 2, direction)
             }
-            placeholder="字段类型"
+            placeholder={t('dataTable.placeholder.fieldType')}
           />
         ),
       }),
       columnHelper.accessor('nullable', {
-        header: () => COLUMN_HEADERS[4],
+        header: () => t('dataTable.headers.nullable'),
         size: columnWidths.nullable,
         cell: ({ row, getValue }) => (
           <CheckboxCell
@@ -110,7 +112,7 @@ export function useFieldColumns(
         ),
       }),
       columnHelper.accessor('defaultKind', {
-        header: () => COLUMN_HEADERS[5],
+        header: () => t('dataTable.headers.defaultKind'),
         size: columnWidths.defaultKind,
         cell: ({ row, getValue }) => {
           const fieldType = toStringSafe(row.original.fieldType);
@@ -119,14 +121,17 @@ export function useFieldColumns(
           return (
             <SelectCell
               value={(getValue() as string) || '无'}
-              options={options}
+              options={options.map((option) => ({
+                value: option,
+                label: getDefaultKindLabel(option, t),
+              }))}
               onChange={(v) => updateCellValue(row.index, 'defaultKind', v)}
             />
           );
         },
       }),
       columnHelper.accessor('defaultValue', {
-        header: () => COLUMN_HEADERS[6],
+        header: () => t('dataTable.headers.defaultValue'),
         size: columnWidths.defaultValue,
         cell: ({ row, getValue }) => {
           const kind = normalizeDefaultKind(
@@ -141,13 +146,15 @@ export function useFieldColumns(
                 handleTabNavigation(row.index, 5, direction)
               }
               disabled={disabled}
-              placeholder={disabled ? '' : '默认值'}
+              placeholder={
+                disabled ? '' : t('dataTable.placeholder.defaultValue')
+              }
             />
           );
         },
       }),
       columnHelper.accessor('onUpdate', {
-        header: () => COLUMN_HEADERS[7],
+        header: () => t('dataTable.headers.onUpdate'),
         size: columnWidths.onUpdate,
         cell: ({ row, getValue }) => {
           const fieldType = toStringSafe(row.original.fieldType);
@@ -161,7 +168,7 @@ export function useFieldColumns(
             return (
               <SelectCell
                 value={(getValue() as string) || '无'}
-                options={['无']}
+                options={[{ value: '无', label: getOnUpdateLabel('无', t) }]}
                 onChange={() => {}}
                 disabled
               />
@@ -173,7 +180,7 @@ export function useFieldColumns(
             return (
               <SelectCell
                 value={(getValue() as string) || '无'}
-                options={['无']}
+                options={[{ value: '无', label: getOnUpdateLabel('无', t) }]}
                 onChange={() => {}}
                 disabled
               />
@@ -183,7 +190,10 @@ export function useFieldColumns(
           return (
             <SelectCell
               value={(getValue() as string) || '无'}
-              options={options}
+              options={options.map((option) => ({
+                value: option,
+                label: getOnUpdateLabel(option, t),
+              }))}
               onChange={(v) => updateCellValue(row.index, 'onUpdate', v)}
             />
           );
@@ -208,6 +218,7 @@ export function useFieldColumns(
       }),
     ],
     [
+      t,
       columnWidths,
       rowWarnings,
       dbType,

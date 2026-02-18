@@ -4,11 +4,13 @@ import type { ParsedResult } from '@/utils/SqlParser';
 import packageInfo from '../../../package.json';
 import { Share2, FileInput, History } from 'lucide-react';
 import { ThemeSwitcher } from './ThemeSwitcher';
+import { LocaleSwitcher } from './LocaleSwitcher';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useTranslation } from 'react-i18next';
 
 const ImportSqlDialog = lazy(() =>
   import('@/components/ImportSqlDialog').then((module) => ({
@@ -40,6 +42,7 @@ export const Header = memo<HeaderProps>(
     onImport,
     onPlayFireworks,
   }) => {
+    const { t } = useTranslation();
     const actionBtnClass =
       'group inline-flex items-center gap-1.5 rounded-md px-1 py-1 text-xs font-medium text-primary transition-all duration-200 hover:translate-x-0.5 hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 
@@ -74,7 +77,7 @@ export const Header = memo<HeaderProps>(
               <div className="flex items-center gap-3 group">
                 <img
                   src="/logo.svg"
-                  alt="筑表师 Logo"
+                  alt={`${t('header.appName')} Logo`}
                   width={40}
                   height={40}
                   className="h-10 w-10 text-primary transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
@@ -82,13 +85,13 @@ export const Header = memo<HeaderProps>(
                 <div>
                   <div className="flex items-center gap-2">
                     <h1 className="text-2xl font-bold bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent tracking-tight">
-                      筑表师
+                      {t('header.appName')}
                     </h1>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button
                           type="button"
-                          aria-label="点击播放烟花"
+                          aria-label={t('header.playFireworks')}
                           onClick={onPlayFireworks}
                           className="header-lantern-btn transition-transform duration-300 hover:scale-105"
                         >
@@ -193,12 +196,12 @@ export const Header = memo<HeaderProps>(
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>点击播放烟花</p>
+                        <p>{t('header.playFireworks')}</p>
                       </TooltipContent>
                     </Tooltip>
                   </div>
                   <p className="text-sm text-muted-foreground transition-colors duration-300 group-hover:text-foreground/80">
-                    专业的数据库建表工具
+                    {t('header.appDescription')}
                   </p>
                 </div>
               </div>
@@ -211,7 +214,7 @@ export const Header = memo<HeaderProps>(
                     fallback={
                       <button type="button" className={actionBtnClass} disabled>
                         <FileInput className="h-4 w-4" aria-hidden />
-                        导入 SQL
+                        {t('header.importSql')}
                       </button>
                     }
                   >
@@ -222,20 +225,21 @@ export const Header = memo<HeaderProps>(
                       triggerIcon={
                         <FileInput className="h-4 w-4" aria-hidden />
                       }
-                      triggerLabel="导入 SQL"
+                      triggerLabel={t('header.importSql')}
                     />
                   </Suspense>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button onClick={onShare} className={actionBtnClass}>
                         <Share2 className="h-4 w-4" aria-hidden />
-                        分享链接
+                        {t('header.shareLink')}
                       </button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>生成分享链接</p>
+                      <p>{t('header.generateShareLink')}</p>
                     </TooltipContent>
                   </Tooltip>
+                  <LocaleSwitcher triggerClassName={actionBtnClass} />
                   <ThemeSwitcher triggerClassName={actionBtnClass} />
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -247,11 +251,11 @@ export const Header = memo<HeaderProps>(
                         className={actionBtnClass}
                       >
                         <History className="h-4 w-4" aria-hidden />
-                        更新日志
+                        {t('header.changelog')}
                       </button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>查看版本更新历史</p>
+                      <p>{t('header.viewChangelog')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>

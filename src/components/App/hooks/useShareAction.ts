@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import type { PersistedState } from '@/types';
 import { ShareApiError, createShare } from '@/services/shareService';
 import { reportError } from '@/utils/errorReporter';
+import i18n from '@/i18n';
 
 type AnalyticsValue = string | number | boolean | null | undefined;
 type ShareLinkCacheRecord = {
@@ -85,7 +86,7 @@ export function useShareAction({
     ) {
       await navigator.clipboard.writeText(cached.url);
       trackEvent('share_link_reuse');
-      showToast('链接已复制到剪贴板（复用已有链接，7天后失效）');
+      showToast(i18n.t('services.shareCopiedReused'));
       return;
     }
 
@@ -98,17 +99,17 @@ export function useShareAction({
         expiresAt: now + share.expiresInSeconds * 1000,
       });
       trackEvent('share_link_create');
-      showToast('链接已复制到剪贴板（7天后失效）');
+      showToast(i18n.t('services.shareCopied'));
     } catch (e) {
       reportError(e, {
         scope: 'App',
         action: 'generateShareLink',
       });
       if (e instanceof ShareApiError && e.code === 'REDIS_CONFIG_MISSING') {
-        showToast('分享功能未配置完成，请先配置 Redis 环境变量');
+        showToast(i18n.t('services.shareRedisMissing'));
         return;
       }
-      showToast('生成链接失败');
+      showToast(i18n.t('services.shareCreateFailed'));
     }
   }, [buildPersistedState, showToast, trackEvent]);
 }

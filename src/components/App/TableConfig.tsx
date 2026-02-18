@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/select';
 import type { DatabaseType } from '@/types';
 import { DATABASE_OPTIONS } from '@/utils/constants';
+import { useTranslation } from 'react-i18next';
 
 interface TableConfigProps {
   tableName: string;
@@ -52,11 +53,12 @@ export const TableConfig = memo<TableConfigProps>(
     loadedTableName = null,
     workspaceLabel = null,
   }) => {
+    const { t } = useTranslation();
     const statusLabel =
       loadedStatus === 'dirty'
-        ? '已修改'
+        ? t('tableConfig.statusDirty')
         : loadedStatus === 'clean'
-          ? '已加载'
+          ? t('tableConfig.statusClean')
           : '';
     const statusClass =
       loadedStatus === 'dirty' ? 'text-amber-600' : 'text-muted-foreground';
@@ -73,7 +75,7 @@ export const TableConfig = memo<TableConfigProps>(
           <div className="flex min-w-0 flex-wrap items-center gap-3">
             <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary transition-all duration-300 group-hover:bg-primary/15">
               <Table className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
-              表配置
+              {t('tableConfig.title')}
             </span>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -84,16 +86,16 @@ export const TableConfig = memo<TableConfigProps>(
                   onClick={onOpenSavedTables}
                 >
                   <List className="h-3.5 w-3.5" />
-                  查看已保存表
+                  {t('tableConfig.openSavedTables')}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>查看所有已保存的表结构</p>
+                <p>{t('tableConfig.openSavedTablesTip')}</p>
               </TooltipContent>
             </Tooltip>
             {(workspaceLabel || loadedTableName) && (
               <span className="max-w-[240px] truncate text-xs text-muted-foreground">
-                {workspaceLabel || `当前：${loadedTableName}`}
+                {workspaceLabel || loadedTableName}
               </span>
             )}
             {onOpenAIGenerate && (
@@ -106,11 +108,11 @@ export const TableConfig = memo<TableConfigProps>(
                     onClick={onOpenAIGenerate}
                   >
                     <Sparkles className="h-3.5 w-3.5" />
-                    大师建表工坊
+                    {t('tableConfig.aiGenerate')}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>使用 AI 辅助生成表结构</p>
+                  <p>{t('tableConfig.aiGenerateTip')}</p>
                 </TooltipContent>
               </Tooltip>
             )}
@@ -124,11 +126,11 @@ export const TableConfig = memo<TableConfigProps>(
                 onClick={onClearAll}
               >
                 <Trash2 className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
-                清空所有
+                {t('tableConfig.clearAll')}
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>清空当前所有配置并重置</p>
+              <p>{t('tableConfig.clearAllTip')}</p>
             </TooltipContent>
           </Tooltip>
         </div>
@@ -139,12 +141,12 @@ export const TableConfig = memo<TableConfigProps>(
                 htmlFor="table-name"
                 className="text-sm font-medium transition-colors duration-200 group-hover/field:text-primary"
               >
-                表名
+                {t('tableConfig.tableName')}
               </Label>
               <div className="flex flex-wrap items-center gap-2">
                 <Input
                   id="table-name"
-                  placeholder="例如: order_info"
+                  placeholder={t('tableConfig.tableNamePlaceholder')}
                   value={tableName}
                   onChange={(event) => onTableNameChange(event.target.value)}
                   className="flex-1 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
@@ -165,8 +167,10 @@ export const TableConfig = memo<TableConfigProps>(
                         disabled={saveDisabled}
                         aria-label={
                           saveDisabled && saveDisabledHint
-                            ? `${saveDisabledHint}，无法保存`
-                            : '保存当前表'
+                            ? t('tableConfig.saveDisabled', {
+                                reason: saveDisabledHint,
+                              })
+                            : t('tableConfig.saveCurrent')
                         }
                         aria-describedby={
                           saveDisabled && saveDisabledHint
@@ -179,7 +183,11 @@ export const TableConfig = memo<TableConfigProps>(
                     </span>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>{saveDisabled ? saveDisabledHint : '保存当前表'}</p>
+                    <p>
+                      {saveDisabled
+                        ? saveDisabledHint
+                        : t('tableConfig.saveCurrent')}
+                    </p>
                   </TooltipContent>
                 </Tooltip>
                 {saveDisabled && saveDisabledHint && (
@@ -196,13 +204,13 @@ export const TableConfig = memo<TableConfigProps>(
                         size="icon"
                         className="h-7 w-7 shrink-0"
                         onClick={onViewDiff}
-                        aria-label="查看表结构变更"
+                        aria-label={t('tableConfig.viewDiff')}
                       >
                         <GitCompare className="h-3.5 w-3.5" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>查看表结构变更</p>
+                      <p>{t('tableConfig.viewDiff')}</p>
                     </TooltipContent>
                   </Tooltip>
                 )}
@@ -218,11 +226,11 @@ export const TableConfig = memo<TableConfigProps>(
                 htmlFor="table-comment"
                 className="text-sm font-medium transition-colors duration-200 group-hover/field:text-primary"
               >
-                表中文名
+                {t('tableConfig.tableComment')}
               </Label>
               <Input
                 id="table-comment"
-                placeholder="例如: 订单信息表"
+                placeholder={t('tableConfig.tableCommentPlaceholder')}
                 value={tableComment}
                 onChange={(event) => onTableCommentChange(event.target.value)}
                 className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
@@ -233,7 +241,7 @@ export const TableConfig = memo<TableConfigProps>(
                 htmlFor="db-type-select"
                 className="text-sm font-medium transition-colors duration-200 group-hover/field:text-primary"
               >
-                数据库类型
+                {t('tableConfig.dbType')}
               </Label>
               <SearchableSelect
                 value={dbType}
@@ -245,11 +253,13 @@ export const TableConfig = memo<TableConfigProps>(
                 id="db-type-select"
                 data-testid="db-type-selector"
                 triggerClassName="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                emptyMessage={t('searchableSelect.empty')}
                 renderTrigger={() => {
                   const selectedOption = DATABASE_OPTIONS.find(
                     (option) => option.value === dbType,
                   );
-                  if (!selectedOption) return '请选择数据库类型';
+                  if (!selectedOption)
+                    return t('tableConfig.dbTypePlaceholder');
                   const Icon = selectedOption.icon;
                   return (
                     <div className="flex items-center gap-3">
@@ -273,7 +283,6 @@ export const TableConfig = memo<TableConfigProps>(
                     </div>
                   );
                 }}
-                emptyMessage="没有匹配的数据库类型"
               />
             </div>
           </div>

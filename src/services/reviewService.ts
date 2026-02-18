@@ -1,4 +1,7 @@
 import { readTextStream } from '@/services/streamingText';
+import type { AppLocale } from '@/types/locale';
+import i18n from '@/i18n';
+import { normalizeReviewSuggestions } from '@/utils/normalizeAiEnumValue';
 
 const REVIEW_API_ENDPOINT = '/api/review';
 
@@ -6,6 +9,7 @@ export interface ReviewRequestPayload {
   ddl: string;
   tableName: string;
   dbType: string;
+  locale?: AppLocale;
 }
 
 export interface ReviewServiceResult {
@@ -23,7 +27,7 @@ function normalizeReviewPayload(payload: unknown): ReviewServiceResult {
   if (!payload || typeof payload !== 'object') {
     return {
       score: 5,
-      summary: '评审完成',
+      summary: i18n.t('services.reviewDone'),
       suggestions: [],
     };
   }
@@ -31,15 +35,20 @@ function normalizeReviewPayload(payload: unknown): ReviewServiceResult {
   const data = payload as Record<string, unknown>;
   return {
     score: Math.min(10, Math.max(1, Number(data.score) || 5)),
-    summary: typeof data.summary === 'string' ? data.summary : '评审完成',
-    suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
+    summary:
+      typeof data.summary === 'string'
+        ? data.summary
+        : i18n.t('services.reviewDone'),
+    suggestions: Array.isArray(data.suggestions)
+      ? normalizeReviewSuggestions(data.suggestions)
+      : [],
   };
 }
 
 function extractJsonObject(text: string): string {
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
-    throw new Error('无法解析评审结果');
+    throw new Error(i18n.t('services.parseReviewFailed'));
   }
   return jsonMatch[0];
 }
@@ -62,12 +71,12 @@ export async function requestDDLReview(
     throw new Error(
       typeof errorData.error === 'string'
         ? errorData.error
-        : `请求失败: ${response.status}`,
+        : i18n.t('services.requestFailed', { status: response.status }),
     );
   }
 
   if (!response.body) {
-    throw new Error('无法读取响应流');
+    throw new Error(i18n.t('services.noResponseBody'));
   }
 
   const fullText = await readTextStream(response.body, {
@@ -78,7 +87,7 @@ export async function requestDDLReview(
   try {
     parsed = JSON.parse(extractJsonObject(fullText));
   } catch {
-    throw new Error('无法解析评审结果');
+    throw new Error(i18n.t('services.parseReviewFailed'));
   }
 
   return normalizeReviewPayload(parsed);

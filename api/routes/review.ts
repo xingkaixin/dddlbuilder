@@ -19,6 +19,7 @@ import {
   REVIEW_SYSTEM_PROMPT,
   buildReviewUserPrompt,
 } from '../prompts/review.js';
+import { isAppLocale, type AppLocale } from '../../src/types/locale.js';
 
 const MAX_OUTPUT_TOKENS = 2000;
 
@@ -70,7 +71,12 @@ export function registerReviewRoute(app: Hono) {
       return rateLimit.response;
     }
 
-    let body: { ddl?: unknown; tableName?: unknown; dbType?: unknown };
+    let body: {
+      ddl?: unknown;
+      tableName?: unknown;
+      dbType?: unknown;
+      locale?: unknown;
+    };
     try {
       body = await c.req.json();
     } catch {
@@ -81,6 +87,7 @@ export function registerReviewRoute(app: Hono) {
     const ddl = typeof body.ddl === 'string' ? body.ddl : '';
     const tableName = typeof body.tableName === 'string' ? body.tableName : '';
     const dbType = typeof body.dbType === 'string' ? body.dbType : '';
+    const locale: AppLocale = isAppLocale(body.locale) ? body.locale : 'zh-CN';
 
     if (ddl.trim().length === 0) {
       audit(400, 0, false, false, 'DDL_REQUIRED');
@@ -122,7 +129,8 @@ export function registerReviewRoute(app: Hono) {
       apiKey,
     });
 
-    const userPrompt = buildReviewUserPrompt(ddl, tableName, dbType);
+    const userPrompt = buildReviewUserPrompt(ddl, tableName, dbType, locale);
+    const systemPrompt = REVIEW_SYSTEM_PROMPT[locale];
 
     return streamText(c, async (stream) => {
       let retryCount = 0;
@@ -132,7 +140,7 @@ export function registerReviewRoute(app: Hono) {
             (await openai.chat.completions.create({
               model,
               messages: [
-                { role: 'system', content: REVIEW_SYSTEM_PROMPT },
+                { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },
               ],
               response_format: { type: 'json_object' },

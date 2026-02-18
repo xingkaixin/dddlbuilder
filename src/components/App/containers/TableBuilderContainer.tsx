@@ -11,6 +11,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useTranslation } from 'react-i18next';
 import { AuthPanel } from '../AuthPanel';
 import { DataTable } from '../DataTable';
 import { IndexPanel } from '../IndexPanel';
@@ -64,6 +65,8 @@ export function TableBuilderContainer({
   shardingPanelProps,
   partitionPanelProps,
 }: TableBuilderContainerProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-4">
       <TableConfig {...tableConfigProps} />
@@ -76,7 +79,7 @@ export function TableBuilderContainer({
         <TabsList className="flex h-auto w-full flex-wrap gap-1 [&>*]:after:hidden sm:flex-nowrap sm:gap-0 sm:overflow-x-auto sm:whitespace-nowrap sm:[&>*]:after:block [&>*]:shrink-0">
           <TabsTrigger value="fields" className="gap-2">
             <Columns3Cog className="h-4 w-4" />
-            字段配置
+            {t('builderTabs.fields')}
             {filledRowCount > 0 && (
               <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
                 {filledRowCount}
@@ -85,7 +88,7 @@ export function TableBuilderContainer({
           </TabsTrigger>
           <TabsTrigger value="indexes" className="gap-2">
             <Network className="h-4 w-4" />
-            索引配置
+            {t('builderTabs.indexes')}
             {indexesLength > 0 && (
               <div className="ml-2 hidden items-center gap-2 2xl:flex">
                 {indexStats.primary > 0 && (
@@ -111,7 +114,7 @@ export function TableBuilderContainer({
           </TabsTrigger>
           <TabsTrigger value="auth" className="gap-2">
             <ShieldUser className="h-4 w-4" />
-            授权配置
+            {t('builderTabs.auth')}
             {authObjectsLength > 0 && (
               <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
                 {authObjectsLength}
@@ -120,17 +123,17 @@ export function TableBuilderContainer({
           </TabsTrigger>
           <TabsTrigger value="misc" className="gap-2">
             <SlidersHorizontal className="h-4 w-4" />
-            杂项设置
+            {t('builderTabs.misc')}
             {miscEnabled && (
               <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
-                已启用
+                {t('builderTabs.enabled')}
               </span>
             )}
           </TabsTrigger>
           {showShardingTab && (
             <TabsTrigger value="sharding" className="gap-2">
               <Share2 className="h-4 w-4" />
-              分片配置
+              {t('builderTabs.sharding')}
               {shardingBadgeText && (
                 <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
                   {shardingBadgeText}
@@ -141,7 +144,7 @@ export function TableBuilderContainer({
           {showPartitionTab && (
             <TabsTrigger value="partition" className="gap-2">
               <Layers className="h-4 w-4" />
-              分区配置
+              {t('builderTabs.partition')}
               {partitionBadgeText && (
                 <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
                   {partitionBadgeText}

@@ -95,7 +95,9 @@ test.describe('保存表管理补充 @storage', () => {
       .getByRole('dialog')
       .filter({ hasText: '确认删除保存的表？' });
     await expect(deleteConfirmDialog).toBeVisible();
-    await deleteConfirmDialog.getByRole('button', { name: /^删除$/ }).click();
+    await deleteConfirmDialog
+      .getByRole('button', { name: /确认删除|删除/i })
+      .click();
 
     await expect(
       page.getByRole('button', { name: new RegExp(tableName, 'i') }),
@@ -250,7 +252,9 @@ test.describe('保存表管理补充 @storage', () => {
       .getByRole('dialog')
       .filter({ hasText: '确认删除保存的表？' });
     await expect(deleteConfirmDialog).toBeVisible();
-    await deleteConfirmDialog.getByRole('button', { name: /^删除$/ }).click();
+    await deleteConfirmDialog
+      .getByRole('button', { name: /确认删除|删除/i })
+      .click();
     await expect(deleteConfirmDialog).toBeHidden();
 
     await saveTable(page, renamedName, freshSavedComment);

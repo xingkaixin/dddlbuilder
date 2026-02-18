@@ -33,6 +33,8 @@ import {
   deleteReview,
 } from '@/utils/reviewHistory';
 import { useToast } from '@/hooks/useToast';
+import { useTranslation } from 'react-i18next';
+import { useLocale } from '@/i18n/LocaleContext';
 
 interface ReviewHistoryDialogProps {
   open: boolean;
@@ -40,21 +42,25 @@ interface ReviewHistoryDialogProps {
   tableNormalizedName: string | null;
 }
 
-function formatDate(timestamp: number): string {
+function formatDate(
+  timestamp: number,
+  locale: string,
+  todayLabel: (time: string) => string,
+): string {
   const date = new Date(timestamp);
   const now = new Date();
   const isToday = date.toDateString() === now.toDateString();
 
-  const time = date.toLocaleTimeString('zh-CN', {
+  const time = date.toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
   });
 
   if (isToday) {
-    return `今天 ${time}`;
+    return todayLabel(time);
   }
 
-  return date.toLocaleDateString('zh-CN', {
+  return date.toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -70,6 +76,8 @@ function getScoreColor(score: number): string {
 
 export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
   ({ open, onOpenChange, tableNormalizedName }) => {
+    const { t } = useTranslation();
+    const { resolvedLocale } = useLocale();
     const { showToast } = useToast();
     const [reviews, setReviews] = useState<ReviewRecordMetadata[]>([]);
     const [loading, setLoading] = useState(false);
@@ -124,13 +132,13 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
         await deleteReview(deleteConfirmId);
         setDeleteConfirmId(null);
         await loadReviews();
-        showToast('已删除评审记录');
+        showToast(t('reviewHistory.deleteSuccess'));
       } catch {
-        showToast('删除失败，请重试');
+        showToast(t('reviewHistory.deleteFailed'));
       } finally {
         setActionLoading(false);
       }
-    }, [deleteConfirmId, loadReviews, showToast]);
+    }, [deleteConfirmId, loadReviews, showToast, t]);
 
     return (
       <>
@@ -139,9 +147,11 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <History className="h-5 w-5" />
-                评审历史
+                {t('reviewHistory.title')}
               </DialogTitle>
-              <DialogDescription>查看历史评审记录</DialogDescription>
+              <DialogDescription>
+                {t('reviewHistory.description')}
+              </DialogDescription>
             </DialogHeader>
 
             <div className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto overscroll-contain pr-1">
@@ -151,7 +161,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
                 </div>
               ) : reviews.length === 0 ? (
                 <div className="py-8 text-center text-sm text-muted-foreground">
-                  暂无评审记录
+                  {t('reviewHistory.empty')}
                 </div>
               ) : (
                 reviews.map((r) => (
@@ -181,7 +191,11 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
                               {r.score}/10
                             </span>
                             <span className="text-xs text-muted-foreground">
-                              {formatDate(r.createdAt)}
+                              {formatDate(r.createdAt, resolvedLocale, (time) =>
+                                t('reviewHistory.today', {
+                                  time,
+                                }),
+                              )}
                             </span>
                           </span>
                           <span className="mt-0.5 block truncate text-sm text-muted-foreground">
@@ -208,7 +222,9 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
                           e.stopPropagation();
                           setDeleteConfirmId(r.id);
                         }}
-                        aria-label={`删除 ${r.tableName} 的评审记录`}
+                        aria-label={t('reviewHistory.deleteAria', {
+                          tableName: r.tableName,
+                        })}
                       >
                         <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
                       </Button>
@@ -217,7 +233,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
                     {expandedId === r.id && expandedDetail && (
                       <div className="border-t px-3 py-2">
                         <p className="mb-2 text-xs font-medium text-muted-foreground">
-                          改进建议
+                          {t('reviewHistory.suggestionTitle')}
                         </p>
                         {expandedDetail.result.suggestions.length > 0 ? (
                           <ul className="space-y-1 text-xs">
@@ -235,7 +251,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
                           </ul>
                         ) : (
                           <p className="text-xs text-muted-foreground">
-                            无建议
+                            {t('reviewHistory.noSuggestion')}
                           </p>
                         )}
                       </div>
@@ -253,17 +269,23 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>删除此评审记录？</AlertDialogTitle>
-              <AlertDialogDescription>此操作无法撤销。</AlertDialogDescription>
+              <AlertDialogTitle>
+                {t('reviewHistory.deleteConfirmTitle')}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {t('reviewHistory.deleteConfirmDescription')}
+              </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogCancel>
+                {t('dialogs.delete.cancel')}
+              </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDelete}
                 disabled={actionLoading}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                删除
+                {t('dialogs.delete.confirm')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

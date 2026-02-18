@@ -2,6 +2,7 @@ import * as React from 'react';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { Check, ChevronDown } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { cn } from '@/lib/utils';
 
@@ -38,6 +39,7 @@ const SearchableSelect = React.forwardRef<
     },
     ref,
   ) => {
+    const { t } = useTranslation();
     const [open, setOpen] = React.useState(false);
     const [searchValue, setSearchValue] = React.useState('');
     const inputRef = React.useRef<HTMLInputElement>(null);
@@ -100,7 +102,7 @@ const SearchableSelect = React.forwardRef<
                 type="text"
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
-                placeholder="搜索数据库"
+                placeholder={t('searchableSelect.searchDatabase')}
                 className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {
@@ -114,7 +116,9 @@ const SearchableSelect = React.forwardRef<
                 !searchValue &&
                 options.length > 8 && (
                   <div className="border-b py-2 text-center text-xs text-muted-foreground">
-                    共 {options.length} 个数据库，请搜索或滚动查看
+                    {t('searchableSelect.totalDatabases', {
+                      count: options.length,
+                    })}
                   </div>
                 )}
               {filteredOptions.length > 0 ? (

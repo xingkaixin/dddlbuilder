@@ -21,6 +21,7 @@ import { useRowHighlight } from './table/useRowHighlight';
 import { DataTableToolbar } from './table/DataTableToolbar';
 import { useDataTableNavigation } from './table/useDataTableNavigation';
 import { useDataTableClipboard } from './table/useDataTableClipboard';
+import { useTranslation } from 'react-i18next';
 
 interface DataTableProps {
   toolbarLeft?: ReactNode;
@@ -36,6 +37,7 @@ export const DataTable = memo<DataTableProps>(
     highlightedRowIndex,
     onOpenStorageEstimator,
   }) => {
+    const { t } = useTranslation();
     const rows = useFieldStore((state) => state.rows);
     const setRows = useFieldStore((state) => state.setRows);
     const onAddRows = useFieldStore((state) => state.handleAddRows);
@@ -150,12 +152,13 @@ export const DataTable = memo<DataTableProps>(
         const warnings: string[] = [];
         const name = toStringSafe(row?.fieldName).trim();
         if (!name) return warnings;
-        if (duplicateNameSet.has(name)) warnings.push('字段名重复');
+        if (duplicateNameSet.has(name))
+          warnings.push(t('dataTable.duplicateName'));
         if (isReservedKeyword(dbType, name))
-          warnings.push('字段名为数据库保留关键字');
+          warnings.push(t('dataTable.reservedKeyword'));
         return warnings;
       });
-    }, [rows, duplicateNameSet, dbType]);
+    }, [rows, duplicateNameSet, dbType, t]);
 
     const {
       selectedCell,
@@ -240,11 +243,11 @@ export const DataTable = memo<DataTableProps>(
 
         <section
           ref={tableRef}
-          aria-label="字段配置表格"
+          aria-label={t('dataTable.ariaLabel')}
           className="relative overflow-x-auto p-4"
         >
           <p id="field-config-table-description" className="sr-only">
-            可编辑字段配置表格，包含字段名、字段类型、注释、可空与默认值等列。
+            {t('dataTable.ariaDescription')}
           </p>
           {freezeEnabled && frozenAreaWidth > 0 && (
             <div
@@ -256,7 +259,7 @@ export const DataTable = memo<DataTableProps>(
           <table
             className="w-full border-collapse text-sm"
             data-testid="data-table"
-            aria-label="字段配置表格"
+            aria-label={t('dataTable.ariaLabel')}
             aria-describedby="field-config-table-description"
           >
             <thead>

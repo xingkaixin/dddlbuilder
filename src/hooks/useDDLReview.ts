@@ -6,6 +6,8 @@ import {
 } from '@/utils/parsePartialJson';
 import { requestDDLReview } from '@/services/reviewService';
 import { buildDDLReviewQueryKey } from '@/queryKeys/ai';
+import { useLocale } from '@/i18n/LocaleContext';
+import i18n from '@/i18n';
 
 export interface StructuredSuggestion {
   id: string;
@@ -72,6 +74,7 @@ const REVIEW_CACHE_STALE_TIME_MS = 5 * 60 * 1000;
 const REVIEW_CACHE_GC_TIME_MS = 15 * 60 * 1000;
 
 export function useDDLReview() {
+  const { resolvedLocale } = useLocale();
   const [state, setState] = useState<ReviewState>({
     isLoading: false,
     streamingText: '',
@@ -95,11 +98,19 @@ export function useDDLReview() {
   const startReview = useCallback(
     async (ddl: string, tableName: string, dbType: string) => {
       if (!ddl || ddl.trim().length === 0) {
-        setState((prev) => ({ ...prev, error: '请先生成DDL语句' }));
+        setState((prev) => ({
+          ...prev,
+          error: i18n.t('services.ddlRequired'),
+        }));
         return;
       }
 
-      const queryKey = buildDDLReviewQueryKey({ ddl, tableName, dbType });
+      const queryKey = buildDDLReviewQueryKey({
+        ddl,
+        tableName,
+        dbType,
+        locale: resolvedLocale,
+      });
       const requestKey = JSON.stringify(queryKey);
 
       if (activeRequestRef.current) {
@@ -129,7 +140,7 @@ export function useDDLReview() {
           gcTime: REVIEW_CACHE_GC_TIME_MS,
           queryFn: () =>
             requestDDLReview(
-              { ddl, tableName, dbType },
+              { ddl, tableName, dbType, locale: resolvedLocale },
               {
                 signal: abortController.signal,
                 onStreamingText: (streamingText) => {
@@ -163,7 +174,10 @@ export function useDDLReview() {
           isLoading: false,
           streamingText: '',
           result: null,
-          error: error instanceof Error ? error.message : '评审请求失败',
+          error:
+            error instanceof Error
+              ? error.message
+              : i18n.t('services.reviewFailed'),
         });
       } finally {
         if (activeRequestRef.current?.controller === abortController) {
@@ -171,7 +185,7 @@ export function useDDLReview() {
         }
       }
     },
-    [queryClient],
+    [queryClient, resolvedLocale],
   );
 
   const clearReview = useCallback(() => {

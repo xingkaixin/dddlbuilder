@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { CheckCircle2, AlertCircle } from 'lucide-react';
 import type { DatabaseType } from '@/types';
 import type { ValidationResult } from './types';
+import { useTranslation } from 'react-i18next';
 
 interface SqlInputStepProps {
   selectedDbType: DatabaseType;
@@ -25,18 +26,19 @@ export function SqlInputStep({
   onSqlChange,
   validationResult,
 }: SqlInputStepProps) {
+  const { t } = useTranslation();
   return (
     <>
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="db-type" className="text-right">
-          源数据库
+          {t('importSql.sourceDb')}
         </Label>
         <Select
           value={selectedDbType}
           onValueChange={(v) => onDbTypeChange(v as DatabaseType)}
         >
           <SelectTrigger className="col-span-3">
-            <SelectValue placeholder="选择数据库类型" />
+            <SelectValue placeholder={t('importSql.selectDbType')} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="mysql">MySQL</SelectItem>
@@ -57,7 +59,7 @@ export function SqlInputStep({
         </Select>
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="sql-content">SQL 内容</Label>
+        <Label htmlFor="sql-content">{t('importSql.sqlContent')}</Label>
         <textarea
           id="sql-content"
           className="flex min-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -81,13 +83,19 @@ export function SqlInputStep({
           )}
           <div>
             {validationResult.success ? (
-              <span className="font-medium">校验通过</span>
+              <span className="font-medium">
+                {t('importSql.validationPass')}
+              </span>
             ) : (
               <>
-                <span className="font-medium">校验失败</span>
+                <span className="font-medium">
+                  {t('importSql.validationFail')}
+                </span>
                 {validationResult.lineNumber && (
                   <span className="ml-2 text-muted-foreground">
-                    (第 {validationResult.lineNumber} 行)
+                    {t('importSql.lineNo', {
+                      line: validationResult.lineNumber,
+                    })}
                   </span>
                 )}
                 <p className="mt-1">{validationResult.error}</p>
