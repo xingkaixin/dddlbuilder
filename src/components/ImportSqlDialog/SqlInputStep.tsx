@@ -70,7 +70,7 @@ export function SqlInputStep({
         <div
           className={`flex items-start gap-2 rounded-md p-3 text-sm ${
             validationResult.success
-              ? 'bg-green-50 text-green-700'
+              ? 'bg-green-50 text-green-700 dark:bg-emerald-950/40 dark:text-emerald-300'
               : 'bg-destructive/10 text-destructive'
           }`}
         >

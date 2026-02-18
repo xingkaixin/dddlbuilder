@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
+import { ThemeProvider } from 'next-themes';
 import './index.css';
 import App from './App.tsx';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
@@ -17,13 +18,21 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <QueryClientProvider client={appQueryClient}>
-      <AppErrorBoundary>
-        <App />
-        <Toaster position="top-center" />
-      </AppErrorBoundary>
-      <Analytics />
-      <SpeedInsights />
-    </QueryClientProvider>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+      storageKey="ddlbuilder:theme:v1"
+    >
+      <QueryClientProvider client={appQueryClient}>
+        <AppErrorBoundary>
+          <App />
+          <Toaster position="top-center" />
+        </AppErrorBoundary>
+        <Analytics />
+        <SpeedInsights />
+      </QueryClientProvider>
+    </ThemeProvider>
   </StrictMode>,
 );

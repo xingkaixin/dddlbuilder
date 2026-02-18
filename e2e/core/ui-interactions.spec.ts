@@ -80,6 +80,27 @@ test.describe('核心 UI 交互功能测试 @core', () => {
     await expect(changelogTitle).not.toBeVisible({ timeout: 5000 });
   });
 
+  test('场景：主题可切换并支持系统跟随', async ({ page }) => {
+    const html = page.locator('html');
+    const themeTrigger = page.getByTestId('theme-switcher-trigger');
+
+    await themeTrigger.click();
+    await page.getByTestId('theme-option-dark').click();
+    await expect(html).toHaveClass(/dark/);
+
+    await page.reload();
+    await expect(html).toHaveClass(/dark/);
+
+    await themeTrigger.click();
+    await page.getByTestId('theme-option-system').click();
+
+    await page.emulateMedia({ colorScheme: 'light' });
+    await expect(html).not.toHaveClass(/dark/);
+
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await expect(html).toHaveClass(/dark/);
+  });
+
   test('场景：标签页切换应正常工作', async ({ page }) => {
     // 填写表名以激活 SQL 生成
     await page.locator('#table-name').fill('tab_test');
