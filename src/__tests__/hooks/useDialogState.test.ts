@@ -68,6 +68,11 @@ describe('useDialogState', () => {
       result.current.updateData((prev) => ({ ...prev, name: 'orders' }));
     });
     expect(result.current.data.name).toBe('orders');
+
+    act(() => {
+      result.current.updateData({ name: 'users', targetId: '2' });
+    });
+    expect(result.current.data).toEqual({ name: 'users', targetId: '2' });
   });
 
   it('should keep first initialData snapshot for reset behavior', () => {
@@ -92,5 +97,27 @@ describe('useDialogState', () => {
     });
 
     expect(result.current.data).toEqual({ name: 'first', targetId: '1' });
+  });
+
+  it('should keep data and error when close options disable reset', () => {
+    const { result } = renderHook(() => useDialogHarness());
+
+    act(() => {
+      result.current.openDialog();
+      result.current.updateData({ name: 'temp', targetId: '8' });
+      result.current.setError('error');
+    });
+
+    expect(result.current.open).toBe(true);
+    expect(result.current.data).toEqual({ name: 'temp', targetId: '8' });
+    expect(result.current.error).toBe('error');
+
+    act(() => {
+      result.current.closeDialog({ resetData: false, clearError: false });
+    });
+
+    expect(result.current.open).toBe(false);
+    expect(result.current.data).toEqual({ name: 'temp', targetId: '8' });
+    expect(result.current.error).toBe('error');
   });
 });
