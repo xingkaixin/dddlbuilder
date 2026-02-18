@@ -7,6 +7,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 import { HardDrive, Minus, Plus, Pin, ListPlus } from 'lucide-react';
 import { COLUMN_HEADERS } from '@/utils/constants';
 import { cn } from '@/lib/utils';
@@ -113,7 +114,10 @@ export function DataTableToolbar({
                   !freezeEnabled && 'text-muted-foreground opacity-50',
                 )}
               >
-                {effectiveFreezeColumns}
+                <AnimatedNumber
+                  value={effectiveFreezeColumns}
+                  format={{ useGrouping: false, maximumFractionDigits: 0 }}
+                />
               </span>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -189,7 +193,10 @@ export function DataTableToolbar({
                 </TooltipContent>
               </Tooltip>
               <span className="min-w-[1.25rem] text-center text-xs font-medium tabular-nums">
-                {safeAddCount}
+                <AnimatedNumber
+                  value={safeAddCount}
+                  format={{ useGrouping: false, maximumFractionDigits: 0 }}
+                />
               </span>
               <Tooltip>
                 <TooltipTrigger asChild>
