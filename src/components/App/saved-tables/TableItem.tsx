@@ -21,9 +21,11 @@ import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import { cn } from '@/lib/utils';
 import { DATABASE_OPTIONS } from '@/utils/constants';
 import { renderFolderMenuItems } from './folderMenu';
+import { useTranslation } from 'react-i18next';
+import { useLocale } from '@/i18n/LocaleContext';
 
-const formatDate = (timestamp: number) =>
-  new Date(timestamp).toLocaleDateString('zh-CN', {
+const formatDate = (timestamp: number, locale: string) =>
+  new Date(timestamp).toLocaleDateString(locale, {
     month: '2-digit',
     day: '2-digit',
   });
@@ -67,7 +69,13 @@ export const TableItem = memo<TableItemProps>(
     onViewHistory,
     onMoveToFolder,
   }) => {
-    const statusLabel = isActive ? (activeDirty ? '已修改' : '已加载') : '';
+    const { t } = useTranslation();
+    const { resolvedLocale } = useLocale();
+    const statusLabel = isActive
+      ? activeDirty
+        ? t('savedTables.dirty')
+        : t('savedTables.loaded')
+      : '';
 
     return (
       <div
@@ -106,9 +114,9 @@ export const TableItem = memo<TableItemProps>(
             </span>
             <span className="inline-flex items-center gap-1">
               <Columns3 className="h-3 w-3" />
-              {item.fieldCount} 字段
+              {t('savedTables.fieldCount', { count: item.fieldCount })}
             </span>
-            <span>{formatDate(item.updatedAt)}</span>
+            <span>{formatDate(item.updatedAt, resolvedLocale)}</span>
           </div>
         </button>
         <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
@@ -118,7 +126,7 @@ export const TableItem = memo<TableItemProps>(
               size="icon"
               className="h-7 w-7"
               onClick={onViewHistory}
-              aria-label="历史版本"
+              aria-label={t('savedTables.history')}
             >
               <History className="h-3.5 w-3.5" />
             </Button>
@@ -130,7 +138,7 @@ export const TableItem = memo<TableItemProps>(
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7"
-                  aria-label="移动到文件夹"
+                  aria-label={t('savedTables.moveToFolder')}
                 >
                   <FolderInput className="h-3.5 w-3.5" />
                 </Button>
@@ -143,7 +151,7 @@ export const TableItem = memo<TableItemProps>(
                   disabled={!item.folderId}
                   onClick={() => onMoveToFolder(undefined)}
                 >
-                  📂 移到根目录
+                  {t('savedTables.moveToRoot')}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {renderFolderMenuItems(folders, item.folderId, onMoveToFolder)}
@@ -155,7 +163,7 @@ export const TableItem = memo<TableItemProps>(
             size="icon"
             className="h-7 w-7"
             onClick={onRename}
-            aria-label="重命名"
+            aria-label={t('savedTables.rename')}
           >
             <Pencil className="h-3.5 w-3.5" />
           </Button>
@@ -164,7 +172,7 @@ export const TableItem = memo<TableItemProps>(
             size="icon"
             className="h-7 w-7 text-destructive hover:text-destructive"
             onClick={onDelete}
-            aria-label="删除"
+            aria-label={t('savedTables.delete')}
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>

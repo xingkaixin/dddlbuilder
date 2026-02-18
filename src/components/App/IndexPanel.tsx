@@ -22,6 +22,7 @@ import {
   useFieldStore,
   useIndexStore,
 } from '@/stores';
+import { useTranslation } from 'react-i18next';
 
 interface IndexPanelProps {
   // Animation props
@@ -31,6 +32,7 @@ interface IndexPanelProps {
 
 export const IndexPanel = memo<IndexPanelProps>(
   ({ animatingIndexIds, removingIndexIds }) => {
+    const { t } = useTranslation();
     const rows = useFieldStore((state) => state.rows);
     const tableName = useAppStore((state) => state.tableName);
     const dbType = useAppStore((state) => state.dbType);
@@ -132,7 +134,7 @@ export const IndexPanel = memo<IndexPanelProps>(
               <div className="flex gap-3">
                 <div className="w-full max-w-sm">
                   <Input
-                    placeholder="输入字段名进行匹配..."
+                    placeholder={t('indexPanel.inputPlaceholder')}
                     value={indexInput}
                     onChange={(e) => {
                       onIndexInputChange(e.target.value);
@@ -193,11 +195,11 @@ export const IndexPanel = memo<IndexPanelProps>(
                         }
                       >
                         <Hash className="h-3.5 w-3.5" />
-                        添加索引
+                        {t('indexPanel.addIndex')}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>添加普通索引</p>
+                      <p>{t('indexPanel.addIndexTip')}</p>
                     </TooltipContent>
                   </Tooltip>
                   <Tooltip>
@@ -211,11 +213,11 @@ export const IndexPanel = memo<IndexPanelProps>(
                         }
                       >
                         <Lock className="h-3.5 w-3.5" />
-                        添加唯一索引
+                        {t('indexPanel.addUnique')}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>添加唯一(UNIQUE)索引</p>
+                      <p>{t('indexPanel.addUniqueTip')}</p>
                     </TooltipContent>
                   </Tooltip>
                   <Tooltip>
@@ -237,15 +239,15 @@ export const IndexPanel = memo<IndexPanelProps>(
                           disabled={indexes.some((index) => index.isPrimary)}
                         >
                           <Key className="h-3.5 w-3.5" />
-                          添加主键
+                          {t('indexPanel.addPrimary')}
                         </Button>
                       </span>
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>
                         {indexes.some((index) => index.isPrimary)
-                          ? '已存在主键'
-                          : '添加主键索引'}
+                          ? t('indexPanel.primaryExists')
+                          : t('indexPanel.addPrimaryTip')}
                       </p>
                     </TooltipContent>
                   </Tooltip>
@@ -257,7 +259,7 @@ export const IndexPanel = memo<IndexPanelProps>(
                 <div
                   id={suggestionsListId}
                   role="listbox"
-                  aria-label="字段建议"
+                  aria-label={t('indexPanel.suggestionAria')}
                   className="absolute z-10 mt-2 w-full rounded-lg border bg-popover shadow-xl overflow-hidden"
                 >
                   <div className="max-h-32 overflow-auto">
@@ -317,7 +319,7 @@ export const IndexPanel = memo<IndexPanelProps>(
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>移除字段</p>
+                        <p>{t('indexPanel.removeFieldTip')}</p>
                       </TooltipContent>
                     </Tooltip>
                   </div>
@@ -329,27 +331,27 @@ export const IndexPanel = memo<IndexPanelProps>(
             {indexes.length > 0 && (
               <div className="space-y-3">
                 <div className="text-sm font-semibold relative pb-2">
-                  已添加的索引
+                  {t('indexPanel.addedTitle')}
                   <div className="absolute bottom-0 left-0 w-10 h-0.5 bg-gradient-to-r from-primary to-transparent rounded" />
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {indexes.map((index) => {
                     const badge = index.isPrimary
                       ? {
-                          label: '主键',
+                          label: t('indexPanel.badgePrimary'),
                           className:
                             'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200',
                           Icon: Key,
                         }
                       : index.unique
                         ? {
-                            label: '唯一',
+                            label: t('indexPanel.badgeUnique'),
                             className:
                               'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
                             Icon: Lock,
                           }
                         : {
-                            label: '普通',
+                            label: t('indexPanel.badgeNormal'),
                             className:
                               'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200',
                             Icon: Hash,
@@ -400,13 +402,13 @@ export const IndexPanel = memo<IndexPanelProps>(
                               <span
                                 className="break-all text-base font-semibold leading-snug transition-colors duration-200 group-hover/item:text-primary cursor-pointer hover:underline hover:decoration-dashed hover:underline-offset-4"
                                 onDoubleClick={() => handleStartEdit(index)}
-                                title="双击编辑索引名称"
+                                title={t('indexPanel.editNameTitle')}
                               >
                                 {index.name}
                                 <Pencil className="inline-block ml-1.5 h-3 w-3 opacity-0 group-hover/item:opacity-50 transition-opacity" />
                               </span>
                               <span className="sr-only">
-                                提示：双击或按 Enter 可编辑索引名称
+                                {t('indexPanel.editNameSrHint')}
                               </span>
                             </>
                           )}
@@ -435,7 +437,7 @@ export const IndexPanel = memo<IndexPanelProps>(
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>删除索引</p>
+                            <p>{t('indexPanel.deleteIndexTip')}</p>
                           </TooltipContent>
                         </Tooltip>
                       </div>

@@ -143,7 +143,7 @@ test.describe('版本管理验证 @storage', () => {
     // 回滚到初始版本
     const dialog = await openHistoryDialog(page, tableName);
     await dialog.getByRole('button', { name: /初始版本/i }).click();
-    await page.getByRole('button', { name: /回滚到此版本/i }).click();
+    await page.getByRole('button', { name: /回滚到(该|此)版本/i }).click();
 
     await expect(dialog).toBeHidden();
     await page.waitForTimeout(500);
@@ -194,7 +194,7 @@ test.describe('版本管理验证 @storage', () => {
 
     await dialog.getByRole('button', { name: /删除版本 1/i }).click();
     await expect(page.getByText('删除此版本？')).toBeVisible();
-    await page.getByRole('button', { name: /^删除$/ }).click();
+    await page.getByRole('button', { name: /确认删除|删除/i }).click();
 
     await expect(versionItems).toHaveCount(1);
   });

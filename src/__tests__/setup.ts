@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom';
+import i18n from '@/i18n';
 import { vi } from 'vitest';
 
 // Mock localStorage
@@ -12,6 +13,19 @@ const localStorageMock = {
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 });
+
+Object.defineProperty(window.navigator, 'language', {
+  value: 'zh-CN',
+  configurable: true,
+});
+
+Object.defineProperty(window.navigator, 'languages', {
+  value: ['zh-CN', 'en-US'],
+  configurable: true,
+});
+
+void i18n.changeLanguage('zh-CN');
+document.documentElement.lang = 'zh-CN';
 
 // Mock clipboard API
 Object.defineProperty(navigator, 'clipboard', {

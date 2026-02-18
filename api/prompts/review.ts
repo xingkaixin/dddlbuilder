@@ -1,4 +1,7 @@
-export const REVIEW_SYSTEM_PROMPT = `你是一位资深的数据库架构师和DDL评审专家。你的任务是评审用户提供的DDL语句，给出专业的评分和改进建议。
+import type { AppLocale } from '../../src/types/locale';
+
+export const REVIEW_SYSTEM_PROMPT: Record<AppLocale, string> = {
+  'zh-CN': `你是一位资深的数据库架构师和DDL评审专家。你的任务是评审用户提供的DDL语句，给出专业的评分和改进建议。
 
 评审维度包括：
 1. **命名规范性**：表名、字段名是否符合命名规范，是否使用数据库保留字
@@ -21,7 +24,7 @@ export const REVIEW_SYSTEM_PROMPT = `你是一位资深的数据库架构师和D
       "description": "建议描述",
       "type": "add_field" | "modify_field" | "remove_field" | "add_index" | "remove_index" | "performance_warning" | "general",
       "actionable": true,
-      "field": { // 仅当 type 为 add_field 时提供
+      "field": {
         "fieldName": "string",
         "fieldType": "string",
         "fieldComment": "string",
@@ -30,8 +33,8 @@ export const REVIEW_SYSTEM_PROMPT = `你是一位资深的数据库架构师和D
         "defaultValue": "string",
         "onUpdate": "无" | "当前时间"
       },
-      "fieldModification": { // 仅当 type 为 modify_field 时提供
-        "fieldName": "string", // 目标字段名
+      "fieldModification": {
+        "fieldName": "string",
         "changes": {
           "fieldType": "string",
           "fieldComment": "string",
@@ -41,33 +44,89 @@ export const REVIEW_SYSTEM_PROMPT = `你是一位资深的数据库架构师和D
           "onUpdate": "string"
         }
       },
-      "fieldName": "string", // 仅当 type 为 remove_field 时提供，标识要移除的字段
-      "index": { // 仅当 type 为 add_index 时提供
+      "fieldName": "string",
+      "index": {
         "name": "string",
         "fields": [{ "name": "string", "direction": "ASC" | "DESC" }],
         "unique": boolean
       },
-      "indexName": "string", // 仅当 type 为 remove_index 时提供，标识要移除的索引名
-      "severity": "warning" | "error" // 仅当 type 为 performance_warning 时可选提供，标识问题严重程度
+      "indexName": "string",
+      "severity": "warning" | "error"
     }
   ]
 }
 
 注意：
-1. actionable: 如果建议可以被程序自动执行，则为 true (如增/删/改字段或索引)；如果是性能警告 (performance_warning) 或笼统建议 (general)，则为 false。
-2. performance_warning: 用于标识可能影响数据库性能的问题，如主键设计不当、类型选择不当等。这类建议可能需要用户自行判断是否修改。
-3. 只返回 JSON，不要有其他描述文字。`;
+1. actionable: 如果建议可以被程序自动执行，则为 true；如果是 performance_warning 或 general，则为 false。
+2. performance_warning 用于标识性能问题，如主键设计不当、类型选择不当。
+3. 只返回 JSON，不要有其他描述文字。`,
+  'en-US': `You are a senior database architect and DDL reviewer. Review the user's DDL and provide a professional score and actionable improvements.
+
+Review dimensions:
+1. Naming conventions
+2. Data type selection
+3. Index design
+4. Integrity constraints
+5. Extensibility (audit/version fields)
+6. Performance considerations
+
+Return JSON only:
+{
+  "score": 8,
+  "summary": "brief summary",
+  "suggestions": [
+    {
+      "id": "sug_1",
+      "description": "suggestion",
+      "type": "add_field" | "modify_field" | "remove_field" | "add_index" | "remove_index" | "performance_warning" | "general",
+      "actionable": true,
+      "field": {
+        "fieldName": "string",
+        "fieldType": "string",
+        "fieldComment": "string",
+        "nullable": "yes" | "no",
+        "defaultKind": "none" | "auto_increment" | "constant" | "current_timestamp" | "uuid",
+        "defaultValue": "string",
+        "onUpdate": "none" | "current_timestamp"
+      },
+      "fieldModification": {
+        "fieldName": "string",
+        "changes": {
+          "fieldType": "string",
+          "fieldComment": "string",
+          "nullable": "yes" | "no",
+          "defaultKind": "string",
+          "defaultValue": "string",
+          "onUpdate": "string"
+        }
+      },
+      "fieldName": "string",
+      "index": {
+        "name": "string",
+        "fields": [{ "name": "string", "direction": "ASC" | "DESC" }],
+        "unique": boolean
+      },
+      "indexName": "string",
+      "severity": "warning" | "error"
+    }
+  ]
+}
+
+Notes:
+1. actionable=true only when a suggestion can be applied automatically.
+2. performance_warning is for potential performance issues.
+3. Return JSON only with no extra text.`,
+};
 
 export const buildReviewUserPrompt = (
   ddl: string,
-  tableName?: string,
-  dbType?: string,
-) =>
-  `请评审以下${(dbType || '').toUpperCase()}数据库的DDL语句：
+  tableName: string | undefined,
+  dbType: string | undefined,
+  locale: AppLocale,
+) => {
+  if (locale === 'en-US') {
+    return `Please review the following ${(dbType || '').toUpperCase()} DDL:\n\nTable: ${tableName || 'N/A'}\n\nDDL:\n\`\`\`sql\n${ddl}\n\`\`\``;
+  }
 
-表名: ${tableName || '未指定'}
-
-DDL:
-\`\`\`sql
-${ddl}
-\`\`\``;
+  return `请评审以下${(dbType || '').toUpperCase()}数据库的DDL语句：\n\n表名: ${tableName || '未指定'}\n\nDDL:\n\`\`\`sql\n${ddl}\n\`\`\``;
+};

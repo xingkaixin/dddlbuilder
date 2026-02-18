@@ -31,6 +31,7 @@ import { DATABASE_OPTIONS } from '@/utils/constants';
 import { ReviewResultPanel } from './ReviewResult';
 import { useTrackEvent } from './hooks/useTrackEvent';
 import { useToast } from '@/hooks/useToast';
+import { useTranslation } from 'react-i18next';
 
 interface DDLOutputProps {
   generatedSql: string;
@@ -73,6 +74,7 @@ export const DDLOutput = memo<DDLOutputProps>(
     onViewReviewHistory,
     onApplySuggestion,
   }) => {
+    const { t } = useTranslation();
     const trackEvent = useTrackEvent();
     const { showToast } = useToast();
     const databaseOption = useMemo(
@@ -104,7 +106,7 @@ export const DDLOutput = memo<DDLOutputProps>(
     const handleCopySql = useCallback(async () => {
       const success = await onCopySql();
       if (!success) {
-        showToast('复制失败，请重试');
+        showToast(t('ddlOutput.copyFailed'));
         return;
       }
       void trackEvent('sql_copy_ddl', { dbType });
@@ -114,12 +116,12 @@ export const DDLOutput = memo<DDLOutputProps>(
         () => setIsSqlCopied(false),
         3000,
       );
-    }, [onCopySql, dbType, trackEvent, showToast]);
+    }, [onCopySql, dbType, trackEvent, showToast, t]);
 
     const handleCopyDcl = useCallback(async () => {
       const success = await onCopyDcl();
       if (!success) {
-        showToast('复制失败，请重试');
+        showToast(t('ddlOutput.copyFailed'));
         return;
       }
       void trackEvent('sql_copy_dcl', { dbType });
@@ -129,7 +131,7 @@ export const DDLOutput = memo<DDLOutputProps>(
         () => setIsDclCopied(false),
         3000,
       );
-    }, [onCopyDcl, dbType, trackEvent, showToast]);
+    }, [onCopyDcl, dbType, trackEvent, showToast, t]);
 
     const canReview = generatedSql && !generatedSql.startsWith('--');
 
@@ -143,11 +145,11 @@ export const DDLOutput = memo<DDLOutputProps>(
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="ddl" className="w-full gap-2">
                 <ScrollText className="h-4 w-4" />
-                <span>建表 DDL</span>
+                <span>{t('ddlOutput.ddlTab')}</span>
               </TabsTrigger>
               <TabsTrigger value="dcl" className="w-full gap-2">
                 <ShieldCheck className="h-4 w-4" />
-                <span>授权 DCL</span>
+                <span>{t('ddlOutput.dclTab')}</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -160,14 +162,14 @@ export const DDLOutput = memo<DDLOutputProps>(
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
                       <h2 className="text-xl font-bold bg-linear-to-r from-foreground to-primary bg-clip-text text-transparent transition-colors duration-200">
-                        建表 DDL
+                        {t('ddlOutput.ddlTitle')}
                       </h2>
                       <span className="transition-transform duration-200 hover:scale-105">
                         {renderDatabaseBadge()}
                       </span>
                     </div>
                     <p className="text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground/80">
-                      根据左侧输入实时生成不同数据库的建表语句
+                      {t('ddlOutput.ddlDesc')}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center justify-end gap-2">
@@ -185,12 +187,12 @@ export const DDLOutput = memo<DDLOutputProps>(
                             disabled={!canReview || isReviewing}
                           >
                             <GraduationCap className="h-3.5 w-3.5" />
-                            大师评审
+                            {t('ddlOutput.review')}
                           </Button>
                         </span>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>使用 AI 分析并优化建表语句</p>
+                        <p>{t('ddlOutput.reviewTip')}</p>
                       </TooltipContent>
                     </Tooltip>
                     {onViewReviewHistory && (
@@ -206,7 +208,7 @@ export const DDLOutput = memo<DDLOutputProps>(
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>查看历史评审记录</p>
+                          <p>{t('ddlOutput.reviewHistoryTip')}</p>
                         </TooltipContent>
                       </Tooltip>
                     )}
@@ -221,18 +223,18 @@ export const DDLOutput = memo<DDLOutputProps>(
                           {isSqlCopied ? (
                             <>
                               <Check className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
-                              已复制
+                              {t('ddlOutput.copied')}
                             </>
                           ) : (
                             <>
                               <Copy className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
-                              复制DDL
+                              {t('ddlOutput.copyDdl')}
                             </>
                           )}
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>复制建表语句到剪贴板</p>
+                        <p>{t('ddlOutput.copyDdlTip')}</p>
                       </TooltipContent>
                     </Tooltip>
                   </div>
@@ -242,12 +244,12 @@ export const DDLOutput = memo<DDLOutputProps>(
                 <Suspense
                   fallback={
                     <pre style={CODE_FALLBACK_STYLE}>
-                      {generatedSql || '-- 请在左侧填写表信息'}
+                      {generatedSql || t('ddlOutput.emptyDdl')}
                     </pre>
                   }
                 >
                   <SqlCodeBlock
-                    code={generatedSql || '-- 请在左侧填写表信息'}
+                    code={generatedSql || t('ddlOutput.emptyDdl')}
                   />
                 </Suspense>
               </div>
@@ -272,14 +274,14 @@ export const DDLOutput = memo<DDLOutputProps>(
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
                       <h2 className="text-xl font-bold bg-linear-to-r from-foreground to-primary bg-clip-text text-transparent transition-colors duration-200">
-                        授权 DCL
+                        {t('ddlOutput.dclTitle')}
                       </h2>
                       <span className="transition-transform duration-200 hover:scale-105">
                         {renderDatabaseBadge()}
                       </span>
                     </div>
                     <p className="text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground/80">
-                      生成数据库授权语句（GRANT）
+                      {t('ddlOutput.dclDesc')}
                     </p>
                   </div>
                   <Tooltip>
@@ -293,18 +295,18 @@ export const DDLOutput = memo<DDLOutputProps>(
                         {isDclCopied ? (
                           <>
                             <Check className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
-                            已复制
+                            {t('ddlOutput.copied')}
                           </>
                         ) : (
                           <>
                             <Copy className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
-                            复制DCL
+                            {t('ddlOutput.copyDcl')}
                           </>
                         )}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>复制授权语句到剪贴板</p>
+                      <p>{t('ddlOutput.copyDclTip')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -313,11 +315,13 @@ export const DDLOutput = memo<DDLOutputProps>(
                 <Suspense
                   fallback={
                     <pre style={CODE_FALLBACK_STYLE}>
-                      {generatedDcl || '-- 请配置授权对象'}
+                      {generatedDcl || t('ddlOutput.emptyDcl')}
                     </pre>
                   }
                 >
-                  <SqlCodeBlock code={generatedDcl || '-- 请配置授权对象'} />
+                  <SqlCodeBlock
+                    code={generatedDcl || t('ddlOutput.emptyDcl')}
+                  />
                 </Suspense>
               </div>
             </div>

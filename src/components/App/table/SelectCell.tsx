@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 
 interface SelectCellProps {
   value: string;
-  options: string[];
+  options: Array<string | { value: string; label: string }>;
   onChange: (value: string) => void;
   disabled?: boolean;
   className?: string;
@@ -19,6 +19,16 @@ interface SelectCellProps {
 
 export const SelectCell = memo<SelectCellProps>(
   ({ value, options, onChange, disabled = false, className, placeholder }) => {
+    const normalizedOptions = options.map((option) =>
+      typeof option === 'string'
+        ? { value: option, label: option }
+        : { value: option.value, label: option.label },
+    );
+
+    const selectedLabel =
+      normalizedOptions.find((option) => option.value === value)?.label ??
+      value;
+
     const handleChange = useCallback(
       (newValue: string) => {
         if (newValue !== value) {
@@ -36,9 +46,9 @@ export const SelectCell = memo<SelectCellProps>(
             'flex h-8 w-full cursor-not-allowed items-center truncate whitespace-nowrap px-2 py-1 text-sm text-muted-foreground opacity-60',
             className,
           )}
-          title={value || placeholder}
+          title={selectedLabel || placeholder}
         >
-          {value || placeholder || '\u00A0'}
+          {selectedLabel || placeholder || '\u00A0'}
         </div>
       );
     }
@@ -54,9 +64,13 @@ export const SelectCell = memo<SelectCellProps>(
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent className="text-sm">
-          {options.map((option) => (
-            <SelectItem key={option} value={option} className="text-sm">
-              {option}
+          {normalizedOptions.map((option) => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              className="text-sm"
+            >
+              {option.label}
             </SelectItem>
           ))}
         </SelectContent>

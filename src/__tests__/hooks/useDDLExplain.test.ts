@@ -1,6 +1,8 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
+import { createElement, type PropsWithChildren } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useDDLExplain } from '@/hooks/useDDLExplain';
+import { LocaleProvider } from '@/i18n/LocaleContext';
 
 const streamingMocks = vi.hoisted(() => ({
   readTextStream: vi.fn(),
@@ -16,13 +18,21 @@ function createAbortError() {
   return err;
 }
 
+function renderDDLExplainHook() {
+  function Wrapper({ children }: PropsWithChildren) {
+    return createElement(LocaleProvider, null, children);
+  }
+
+  return renderHook(() => useDDLExplain(), { wrapper: Wrapper });
+}
+
 describe('useDDLExplain', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('should set error when sql is empty', async () => {
-    const { result } = renderHook(() => useDDLExplain());
+    const { result } = renderDDLExplainHook();
 
     await act(async () => {
       await result.current.startExplain('   ');
@@ -45,7 +55,7 @@ describe('useDDLExplain', () => {
       return 'full explanation';
     });
 
-    const { result } = renderHook(() => useDDLExplain());
+    const { result } = renderDDLExplainHook();
 
     await act(async () => {
       await result.current.startExplain('SELECT 1', 'ctx');
@@ -55,7 +65,11 @@ describe('useDDLExplain', () => {
       '/api/explain',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ sql: 'SELECT 1', context: 'ctx' }),
+        body: JSON.stringify({
+          sql: 'SELECT 1',
+          context: 'ctx',
+          locale: 'zh-CN',
+        }),
       }),
     );
     expect(streamingMocks.readTextStream).toHaveBeenCalledTimes(1);
@@ -73,7 +87,7 @@ describe('useDDLExplain', () => {
       json: vi.fn().mockResolvedValue({ error: '服务异常' }),
     } as unknown as Response);
 
-    const { result } = renderHook(() => useDDLExplain());
+    const { result } = renderDDLExplainHook();
 
     await act(async () => {
       await result.current.startExplain('SELECT 1');
@@ -91,7 +105,7 @@ describe('useDDLExplain', () => {
       json: vi.fn().mockRejectedValue(new Error('invalid json')),
     } as unknown as Response);
 
-    const { result } = renderHook(() => useDDLExplain());
+    const { result } = renderDDLExplainHook();
 
     await act(async () => {
       await result.current.startExplain('SELECT 1');
@@ -109,7 +123,7 @@ describe('useDDLExplain', () => {
       json: vi.fn(),
     } as unknown as Response);
 
-    const { result } = renderHook(() => useDDLExplain());
+    const { result } = renderDDLExplainHook();
 
     await act(async () => {
       await result.current.startExplain('SELECT 1');
@@ -144,7 +158,7 @@ describe('useDDLExplain', () => {
 
     streamingMocks.readTextStream.mockResolvedValue('second explanation');
 
-    const { result } = renderHook(() => useDDLExplain());
+    const { result } = renderDDLExplainHook();
 
     act(() => {
       void result.current.startExplain('first sql');
@@ -171,7 +185,7 @@ describe('useDDLExplain', () => {
       return new Promise<Response>(() => {});
     });
 
-    const { result } = renderHook(() => useDDLExplain());
+    const { result } = renderDDLExplainHook();
 
     act(() => {
       void result.current.startExplain('long running sql');

@@ -16,6 +16,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface RowActionsProps {
   hasContent: boolean;
@@ -26,6 +27,7 @@ interface RowActionsProps {
 
 export const RowActions = memo<RowActionsProps>(
   ({ hasContent, fieldName, fieldComment, onRemove }) => {
+    const { t } = useTranslation();
     const [confirmOpen, setConfirmOpen] = useState(false);
 
     const handleDelete = () => {
@@ -50,27 +52,35 @@ export const RowActions = memo<RowActionsProps>(
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>删除行</p>
+            <p>{t('dataTable.rowActions.removeRow')}</p>
           </TooltipContent>
         </Tooltip>
 
         <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>删除字段行</AlertDialogTitle>
+              <AlertDialogTitle>
+                {t('dataTable.rowActions.removeFieldRow')}
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                确定要删除此行吗？
+                {t('dataTable.rowActions.removeFieldRowConfirm')}
                 <br />
                 <span className="mt-2 block text-foreground">
-                  字段名: {fieldName || '(空)'}
+                  {t('dataTable.rowActions.fieldName', {
+                    name: fieldName || t('dataTable.rowActions.empty'),
+                  })}
                 </span>
                 <span className="block text-foreground">
-                  中文名: {fieldComment || '(空)'}
+                  {t('dataTable.rowActions.fieldComment', {
+                    comment: fieldComment || t('dataTable.rowActions.empty'),
+                  })}
                 </span>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogCancel>
+                {t('dataTable.rowActions.cancel')}
+              </AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
                   onRemove();
@@ -78,7 +88,7 @@ export const RowActions = memo<RowActionsProps>(
                 }}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                确定删除
+                {t('dataTable.rowActions.confirmDelete')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

@@ -7,6 +7,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useTranslation } from 'react-i18next';
 
 interface AuthPanelProps {
   authInput: string;
@@ -24,6 +25,8 @@ export const AuthPanel = memo<AuthPanelProps>(
     onAddAuthObject,
     onRemoveAuthObject,
   }) => {
+    const { t } = useTranslation();
+
     return (
       <div className="relative group rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5">
         {/* Decorative gradient overlay */}
@@ -38,7 +41,7 @@ export const AuthPanel = memo<AuthPanelProps>(
             <div className="relative group/input">
               <div className="w-full max-w-sm">
                 <Input
-                  placeholder="输入授权对象名称..."
+                  placeholder={t('authPanel.inputPlaceholder')}
                   value={authInput}
                   onChange={(e) => {
                     onAuthInputChange(e.target.value);
@@ -70,11 +73,11 @@ export const AuthPanel = memo<AuthPanelProps>(
                         onClick={() => onAddAuthObject(authInput.trim())}
                       >
                         <Plus className="h-3.5 w-3.5" />
-                        添加
+                        {t('authPanel.add')}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>添加授权对象</p>
+                      <p>{t('authPanel.addTip')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -85,7 +88,7 @@ export const AuthPanel = memo<AuthPanelProps>(
             {authObjects.length > 0 && (
               <div className="space-y-2">
                 <div className="text-sm font-semibold relative pb-2">
-                  已添加的授权对象
+                  {t('authPanel.addedTitle')}
                   <div className="absolute bottom-0 left-0 w-10 h-0.5 bg-gradient-to-r from-primary to-transparent rounded" />
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
@@ -100,7 +103,7 @@ export const AuthPanel = memo<AuthPanelProps>(
                       <div className="relative flex items-center gap-2 pl-2">
                         <span className="inline-flex items-center gap-2 rounded-md bg-emerald-100 px-3 py-1.5 text-sm font-semibold text-emerald-700 transition-transform duration-200 group-hover/item:scale-105">
                           <ShieldUser className="h-4 w-4" />
-                          授权对象
+                          {t('authPanel.objectTag')}
                         </span>
                         <span className="text-sm font-semibold transition-colors duration-200 group-hover/item:text-primary">
                           {authObj}
@@ -118,7 +121,7 @@ export const AuthPanel = memo<AuthPanelProps>(
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>移除授权对象</p>
+                          <p>{t('authPanel.removeTip')}</p>
                         </TooltipContent>
                       </Tooltip>
                     </div>

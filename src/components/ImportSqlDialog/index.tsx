@@ -19,6 +19,7 @@ import type { ParsedResult } from '@/utils/SqlParser';
 import { useToast } from '@/hooks/useToast';
 import { requestSqlParse } from '@/services/sqlParseService';
 import { ArrowRight, Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { SqlInputStep } from './SqlInputStep';
 import { PreviewStep } from './PreviewStep';
 import { ConfirmStep } from './ConfirmStep';
@@ -35,15 +36,15 @@ interface ImportSqlDialogProps {
 }
 
 const MAX_SQL_LENGTH = 50_000;
-const SQL_PARSE_ERROR_MESSAGE = 'SQL 解析失败，请检查 SQL 语法后重试。';
 
 export function ImportSqlDialog({
   currentDbType,
   onImport,
   triggerClassName,
   triggerIcon,
-  triggerLabel = '导入 SQL',
+  triggerLabel,
 }: ImportSqlDialogProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<ImportStep>('validate');
   const [sql, setSql] = useState('');
@@ -55,6 +56,8 @@ export function ImportSqlDialog({
   const [isValidating, setIsValidating] = useState(false);
   const [previewFields, setPreviewFields] = useState<PreviewField[]>([]);
   const { showToast } = useToast();
+
+  const resolvedTriggerLabel = triggerLabel ?? t('importSql.title');
 
   useEffect(() => {
     if (!open) {
@@ -71,7 +74,7 @@ export function ImportSqlDialog({
     if (!trimmedSql) {
       setValidationResult({
         success: false,
-        error: 'SQL 内容不能为空',
+        error: t('importSql.sqlRequired'),
         lineNumber: 1,
       });
       return;
@@ -80,7 +83,9 @@ export function ImportSqlDialog({
     if (trimmedSql.length > MAX_SQL_LENGTH) {
       setValidationResult({
         success: false,
-        error: `SQL 内容过长，最大允许 ${MAX_SQL_LENGTH.toLocaleString()} 个字符`,
+        error: t('importSql.sqlTooLong', {
+          max: MAX_SQL_LENGTH.toLocaleString(),
+        }),
         lineNumber: 1,
       });
       return;
@@ -98,7 +103,7 @@ export function ImportSqlDialog({
       if (result.fields.length === 0 && result.tableName === '') {
         setValidationResult({
           success: false,
-          error: '未能从 SQL 中解析出有效的表结构，请检查 SQL 语法。',
+          error: t('importSql.sqlNoTable'),
         });
         setIsValidating(false);
         return;
@@ -130,12 +135,12 @@ export function ImportSqlDialog({
     } catch {
       setValidationResult({
         success: false,
-        error: SQL_PARSE_ERROR_MESSAGE,
+        error: t('importSql.sqlParseFailed'),
       });
     } finally {
       setIsValidating(false);
     }
-  }, [sql, selectedDbType]);
+  }, [sql, selectedDbType, t]);
 
   const handleNext = () => {
     if (step === 'validate') {
@@ -163,7 +168,11 @@ export function ImportSqlDialog({
     setValidationResult(null);
     setPreviewFields([]);
     setStep('validate');
-    showToast(`导入成功: 成功解析表: ${parsedResult.tableName || '未命名'}`);
+    showToast(
+      t('importSql.importSuccess', {
+        tableName: parsedResult.tableName || t('importSql.unnamed'),
+      }),
+    );
   };
 
   const handleFieldChange = (
@@ -203,26 +212,22 @@ export function ImportSqlDialog({
           <DialogTrigger asChild>
             <button type="button" className={triggerClassName}>
               {triggerIcon}
-              <span>{triggerLabel}</span>
+              <span>{resolvedTriggerLabel}</span>
             </button>
           </DialogTrigger>
         </TooltipTrigger>
         <TooltipContent>
-          <p>导入 SQL 自动生成表结构</p>
+          <p>{t('importSql.triggerTip')}</p>
         </TooltipContent>
       </Tooltip>
       <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
-          <DialogTitle>导入 SQL</DialogTitle>
-          <DialogDescription>
-            粘贴 CREATE TABLE 语句以自动生成表结构配置。
-          </DialogDescription>
+          <DialogTitle>{t('importSql.title')}</DialogTitle>
+          <DialogDescription>{t('importSql.description')}</DialogDescription>
         </DialogHeader>
 
-        {/* Stepper */}
         <div className="flex items-center justify-center py-4">
           <div className="flex items-center gap-2">
-            {/* 步骤 1: 校验 */}
             <div
               className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
                 step === 'validate'
@@ -247,7 +252,7 @@ export function ImportSqlDialog({
                   '1'
                 )}
               </span>
-              校验
+              {t('importSql.stepValidate')}
             </div>
             <div
               className={`h-0.5 w-8 transition-colors ${
@@ -256,7 +261,6 @@ export function ImportSqlDialog({
                   : 'bg-border'
               }`}
             />
-            {/* 步骤 2: 预览 */}
             <div
               className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
                 step === 'preview'
@@ -277,7 +281,7 @@ export function ImportSqlDialog({
               >
                 {step === 'confirm' ? <Check className="h-3 w-3" /> : '2'}
               </span>
-              预览
+              {t('importSql.stepPreview')}
             </div>
             <div
               className={`h-0.5 w-8 transition-colors ${
@@ -286,7 +290,6 @@ export function ImportSqlDialog({
                   : 'bg-border'
               }`}
             />
-            {/* 步骤 3: 确认 */}
             <div
               className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
                 step === 'confirm'
@@ -303,12 +306,11 @@ export function ImportSqlDialog({
               >
                 3
               </span>
-              确认
+              {t('importSql.stepConfirm')}
             </div>
           </div>
         </div>
 
-        {/* Step Content */}
         <div className="grid gap-4 py-4">
           {step === 'validate' && (
             <SqlInputStep
@@ -343,32 +345,34 @@ export function ImportSqlDialog({
           {step === 'validate' && (
             <>
               <Button variant="outline" onClick={() => setOpen(false)}>
-                取消
+                {t('importSql.cancel')}
               </Button>
               <Button
                 onClick={handleNext}
                 disabled={isValidating || !sql.trim()}
               >
-                {isValidating ? '校验中...' : '下一步'}
+                {isValidating ? t('importSql.validating') : t('importSql.next')}
               </Button>
             </>
           )}
           {step === 'preview' && (
             <>
               <Button variant="outline" onClick={handleBack}>
-                上一步
+                {t('importSql.previous')}
               </Button>
               <Button onClick={handleNext}>
-                下一步 <ArrowRight className="ml-2 h-4 w-4" />
+                {t('importSql.next')} <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </>
           )}
           {step === 'confirm' && (
             <>
               <Button variant="outline" onClick={handleBack}>
-                上一步
+                {t('importSql.previous')}
               </Button>
-              <Button onClick={handleConfirm}>确认导入</Button>
+              <Button onClick={handleConfirm}>
+                {t('importSql.confirmImport')}
+              </Button>
             </>
           )}
         </DialogFooter>

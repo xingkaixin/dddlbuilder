@@ -19,6 +19,7 @@ import { StorageEstimatorDialog } from '../StorageEstimatorDialog';
 import { TemplateManagerDialog } from '../TemplateManagerDialog';
 import { CreateTemplateDialog } from '../CreateTemplateDialog';
 import { VersionHistoryDialog } from '../VersionHistoryDialog';
+import { useTranslation } from 'react-i18next';
 
 interface GlobalDialogsProps {
   clearDialog: {
@@ -89,6 +90,7 @@ export function GlobalDialogs({
   aiGenerateDialogProps,
   storageEstimatorDialogProps,
 }: GlobalDialogsProps) {
+  const { t } = useTranslation();
   const saveInputRef = useRef<HTMLInputElement>(null);
   const saveErrorRef = useRef<HTMLParagraphElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
@@ -139,17 +141,17 @@ export function GlobalDialogs({
       <Dialog open={clearDialog.open} onOpenChange={clearDialog.onOpenChange}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>确认清空所有配置？</DialogTitle>
+            <DialogTitle>{t('dialogs.clear.title')}</DialogTitle>
             <DialogDescription>
-              此操作将移除当前填写的表信息、字段、索引及授权配置，且无法撤销。
+              {t('dialogs.clear.description')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={clearDialog.onCancel}>
-              取消
+              {t('dialogs.clear.cancel')}
             </Button>
             <Button variant="destructive" onClick={clearDialog.onConfirm}>
-              确认清空
+              {t('dialogs.clear.confirm')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -162,7 +164,7 @@ export function GlobalDialogs({
             <DialogDescription>{saveDialog.description}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Label htmlFor="save-table-name">保存名称</Label>
+            <Label htmlFor="save-table-name">{t('dialogs.save.name')}</Label>
             <Input
               ref={saveInputRef}
               id="save-table-name"
@@ -170,7 +172,7 @@ export function GlobalDialogs({
               onChange={(event) => {
                 saveDialog.onNameChange(event.target.value);
               }}
-              placeholder="例如：用户表"
+              placeholder={t('dialogs.save.placeholder')}
               disabled={saveDialog.inputDisabled}
               aria-describedby={saveDescriptionIds || undefined}
             />
@@ -179,7 +181,7 @@ export function GlobalDialogs({
                 id="save-table-name-hint"
                 className="text-xs text-muted-foreground"
               >
-                已加载表仅支持覆盖保存，如需更名请在左侧列表重命名。
+                {t('dialogs.save.loadedHint')}
               </p>
             )}
             {saveDialog.error && (
@@ -200,13 +202,13 @@ export function GlobalDialogs({
               variant="outline"
               onClick={() => saveDialog.onOpenChange(false)}
             >
-              取消
+              {t('dialogs.save.cancel')}
             </Button>
             <Button
               onClick={saveDialog.onConfirm}
               disabled={!saveDialog.canSaveCurrent}
             >
-              保存
+              {t('dialogs.save.confirm')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -218,16 +220,18 @@ export function GlobalDialogs({
       >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>加载保存的表</DialogTitle>
+            <DialogTitle>{t('dialogs.load.title')}</DialogTitle>
             <DialogDescription>
               {loadConfirmDialog.pendingName
-                ? `加载「${loadConfirmDialog.pendingName}」将覆盖当前内容。`
-                : '加载将覆盖当前内容。'}
+                ? t('dialogs.load.descriptionWithName', {
+                    name: loadConfirmDialog.pendingName,
+                  })
+                : t('dialogs.load.descriptionFallback')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="pr-2">
             <Button variant="outline" onClick={loadConfirmDialog.onCancel}>
-              取消
+              {t('dialogs.load.cancel')}
             </Button>
             <Button
               variant="secondary"
@@ -235,17 +239,17 @@ export function GlobalDialogs({
               disabled={!loadConfirmDialog.canSaveCurrent}
               title={
                 !loadConfirmDialog.canSaveCurrent
-                  ? '加载的表未修改，无法保存'
+                  ? t('dialogs.load.saveDisabledTip')
                   : undefined
               }
             >
-              保存当前后加载
+              {t('dialogs.load.saveThenLoad')}
             </Button>
             <Button
               variant="destructive"
               onClick={loadConfirmDialog.onConfirmIgnore}
             >
-              忽略当前并加载
+              {t('dialogs.load.ignoreAndLoad')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -254,13 +258,15 @@ export function GlobalDialogs({
       <Dialog open={renameDialog.open} onOpenChange={renameDialog.onOpenChange}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>重命名保存的表</DialogTitle>
+            <DialogTitle>{t('dialogs.rename.title')}</DialogTitle>
             <DialogDescription>
-              请输入新的名称，名称不可重复。
+              {t('dialogs.rename.description')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Label htmlFor="rename-table-name">新名称</Label>
+            <Label htmlFor="rename-table-name">
+              {t('dialogs.rename.newName')}
+            </Label>
             <Input
               ref={renameInputRef}
               id="rename-table-name"
@@ -268,7 +274,7 @@ export function GlobalDialogs({
               onChange={(event) => {
                 renameDialog.onNameChange(event.target.value);
               }}
-              placeholder="例如：订单表"
+              placeholder={t('dialogs.rename.placeholder')}
               aria-describedby={renameDescriptionIds || undefined}
             />
             {renameDialog.error && (
@@ -289,9 +295,11 @@ export function GlobalDialogs({
               variant="outline"
               onClick={() => renameDialog.onOpenChange(false)}
             >
-              取消
+              {t('dialogs.rename.cancel')}
             </Button>
-            <Button onClick={renameDialog.onConfirm}>确认</Button>
+            <Button onClick={renameDialog.onConfirm}>
+              {t('dialogs.rename.confirm')}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -304,12 +312,14 @@ export function GlobalDialogs({
                 className="h-5 w-5 text-destructive"
                 aria-hidden="true"
               />
-              确认删除保存的表？
+              {t('dialogs.delete.title')}
             </DialogTitle>
             <DialogDescription>
               {deleteDialog.targetName
-                ? `即将删除「${deleteDialog.targetName}」，此操作无法撤销。`
-                : '此操作无法撤销。'}
+                ? t('dialogs.delete.descriptionWithName', {
+                    name: deleteDialog.targetName,
+                  })
+                : t('dialogs.delete.descriptionFallback')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -317,7 +327,7 @@ export function GlobalDialogs({
               variant="outline"
               onClick={() => deleteDialog.onOpenChange(false)}
             >
-              取消
+              {t('dialogs.delete.cancel')}
             </Button>
             <Button
               variant="destructive"
@@ -325,11 +335,11 @@ export function GlobalDialogs({
               aria-describedby="delete-warning"
             >
               <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
-              删除
+              {t('dialogs.delete.confirm')}
             </Button>
           </DialogFooter>
           <p id="delete-warning" className="sr-only">
-            警告：删除操作不可逆，请确认后再继续。
+            {t('dialogs.delete.descriptionFallback')}
           </p>
         </DialogContent>
       </Dialog>

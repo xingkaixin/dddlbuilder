@@ -4,6 +4,9 @@ import type {
   GeneratedTableSchema,
 } from '@/types/aiGenerate';
 import type { FieldRow, IndexDefinition } from '@/types';
+import type { AppLocale } from '@/types/locale';
+import i18n from '@/i18n';
+import { normalizeGeneratedTableSchema } from '@/utils/normalizeAiEnumValue';
 
 const AI_GENERATE_API_ENDPOINT = '/api/generate-table';
 
@@ -25,6 +28,7 @@ interface RequestGenerateTableOptions {
 interface RequestGenerateTablePayload {
   description: string;
   dbType: string;
+  locale?: AppLocale;
   options?: GenerateTableRequestOptions;
 }
 
@@ -43,6 +47,7 @@ export async function requestGenerateTable(
     body: JSON.stringify({
       description: payload.description,
       dbType: payload.dbType,
+      locale: payload.locale,
       templates: payload.options?.templates,
       existingConfig: payload.options?.existingConfig,
       conversationHistory: payload.options?.conversationHistory ?? [],
@@ -52,11 +57,11 @@ export async function requestGenerateTable(
 
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.error || 'Generation failed');
+    throw new Error(errorData.error || i18n.t('services.generationFailed'));
   }
 
   if (!response.body) {
-    throw new Error('No response body');
+    throw new Error(i18n.t('services.noResponseBody'));
   }
 
   const fullText = await readTextStream(response.body, {
@@ -66,9 +71,11 @@ export async function requestGenerateTable(
   try {
     return {
       fullText,
-      result: JSON.parse(fullText) as GeneratedTableSchema,
+      result: normalizeGeneratedTableSchema(
+        JSON.parse(fullText) as GeneratedTableSchema,
+      ),
     };
   } catch {
-    throw new Error('Failed to parse response');
+    throw new Error(i18n.t('services.parseResponseFailed'));
   }
 }

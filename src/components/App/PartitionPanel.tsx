@@ -16,40 +16,31 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useTranslation } from 'react-i18next';
 import type {
   MysqlPartitionType,
   MysqlPartitionConfig,
   PartitionDefinition,
 } from '@/types';
 
-// 分区类型说明
-const PARTITION_TYPE_INFO: Record<
-  MysqlPartitionType,
-  { label: string; description: string }
-> = {
+const PARTITION_TYPE_INFO: Record<MysqlPartitionType, { label: string }> = {
   RANGE: {
     label: 'RANGE',
-    description: '按连续范围分区，适用于日期、ID 等连续值字段',
   },
   'RANGE COLUMNS': {
     label: 'RANGE COLUMNS',
-    description: '多列范围分区，支持非整数类型如 DATE、VARCHAR',
   },
   LIST: {
     label: 'LIST',
-    description: '按离散值列表分区，适用于地区、状态码等枚举值',
   },
   'LIST COLUMNS': {
     label: 'LIST COLUMNS',
-    description: '多列列表分区，支持非整数类型',
   },
   HASH: {
     label: 'HASH',
-    description: '按哈希值均匀分布数据，适合无明显分区规律的场景',
   },
   KEY: {
     label: 'KEY',
-    description: '类似 HASH，使用 MySQL 内部哈希算法，支持更多数据类型',
   },
 };
 
@@ -101,6 +92,8 @@ export const PartitionPanel = memo<PartitionPanelProps>(
     onUpdatePartition,
     onGeneratePartitions,
   }) => {
+    const { t } = useTranslation();
+
     const handleAddPartition = () => {
       const nextIndex = (config.partitions?.length || 0) + 1;
       onAddPartition({
@@ -123,9 +116,9 @@ export const PartitionPanel = memo<PartitionPanelProps>(
             <div className="flex items-start gap-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
               <Layers className="h-5 w-5 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-medium">MySQL 分区表配置</p>
+                <p className="font-medium">{t('partitionPanel.title')}</p>
                 <p className="mt-1 text-xs opacity-80">
-                  分区表将数据分散存储到多个物理分区中，可提升大表查询性能。此配置为可选项。
+                  {t('partitionPanel.description')}
                 </p>
               </div>
             </div>
@@ -133,9 +126,11 @@ export const PartitionPanel = memo<PartitionPanelProps>(
             {/* Enable Partition Switch */}
             <div className="flex items-center justify-between rounded-lg border border-dashed p-4">
               <div className="space-y-0.5">
-                <Label className="text-sm font-semibold">启用分区</Label>
+                <Label className="text-sm font-semibold">
+                  {t('partitionPanel.enable')}
+                </Label>
                 <p className="text-xs text-muted-foreground">
-                  开启后可配置表的分区策略
+                  {t('partitionPanel.enableDesc')}
                 </p>
               </div>
               <Switch
@@ -150,7 +145,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                 <div className="space-y-3">
                   <Label className="text-sm font-semibold flex items-center gap-2">
                     <Layers className="h-4 w-4 text-primary" />
-                    分区类型
+                    {t('partitionPanel.type')}
                   </Label>
                   <Select
                     value={config.type}
@@ -159,7 +154,9 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                     }
                   >
                     <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
-                      <SelectValue placeholder="选择分区类型..." />
+                      <SelectValue
+                        placeholder={t('partitionPanel.typePlaceholder')}
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       {(
@@ -183,22 +180,22 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                   {/* Type Description */}
                   <div className="flex items-start gap-2 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
                     <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                    <span>{PARTITION_TYPE_INFO[config.type].description}</span>
+                    <span>{t(`partitionPanel.typeDesc.${config.type}`)}</span>
                   </div>
                 </div>
 
                 {/* Partition Column/Expression Selection */}
                 <div className="space-y-3">
                   <Label className="text-sm font-semibold flex items-center gap-2">
-                    分区键
+                    {t('partitionPanel.partitionKey')}
                     {supportsMultipleColumns(config.type) && (
                       <span className="text-xs font-normal text-muted-foreground">
-                        (支持多列)
+                        ({t('partitionPanel.multiColumn')})
                       </span>
                     )}
                     {supportsExpression(config.type) && (
                       <span className="text-xs font-normal text-muted-foreground">
-                        (支持表达式)
+                        ({t('partitionPanel.expressionSupport')})
                       </span>
                     )}
                   </Label>
@@ -207,14 +204,13 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                   {supportsExpression(config.type) && (
                     <div className="space-y-2">
                       <Input
-                        placeholder="输入表达式，如: YEAR(created_at) 或 dayofmonth(start_time)"
+                        placeholder={t('partitionPanel.expressionPlaceholder')}
                         value={config.expression || ''}
                         onChange={(e) => onExpressionChange(e.target.value)}
                         className="font-mono text-sm transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                       />
                       <p className="text-xs text-muted-foreground">
-                        可使用函数表达式，如
-                        YEAR(col)、MONTH(col)、TO_DAYS(col)、dayofmonth(col) 等
+                        {t('partitionPanel.expressionHint')}
                       </p>
                     </div>
                   )}
@@ -224,7 +220,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                     <div className="flex items-center gap-3">
                       <div className="flex-1 border-t" />
                       <span className="text-xs text-muted-foreground">
-                        或选择字段
+                        {t('partitionPanel.orSelectField')}
                       </span>
                       <div className="flex-1 border-t" />
                     </div>
@@ -234,7 +230,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                   {!config.expression &&
                     (availableFields.length === 0 ? (
                       <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
-                        请先在字段配置中添加字段，然后在此选择分区字段。
+                        {t('partitionPanel.noFields')}
                       </div>
                     ) : supportsMultipleColumns(config.type) ? (
                       // Multi-column selection for COLUMNS types
@@ -272,7 +268,9 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                         onValueChange={(value) => onColumnsChange([value])}
                       >
                         <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
-                          <SelectValue placeholder="选择分区字段..." />
+                          <SelectValue
+                            placeholder={t('partitionPanel.fieldPlaceholder')}
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {availableFields.map((field) => (
@@ -292,7 +290,9 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                 {/* Partition Count (for HASH/KEY) */}
                 {needsPartitionCount(config.type) && (
                   <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
-                    <Label className="text-sm font-semibold">分区数量</Label>
+                    <Label className="text-sm font-semibold">
+                      {t('partitionPanel.partitionCount')}
+                    </Label>
                     <Input
                       type="number"
                       min={1}
@@ -306,7 +306,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                       className="w-32 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                     />
                     <p className="text-xs text-muted-foreground">
-                      建议设置为 2 的幂次方，如 4、8、16
+                      {t('partitionPanel.partitionCountHint')}
                     </p>
                   </div>
                 )}
@@ -315,13 +315,15 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                 {needsPartitionDefinitions(config.type) && (
                   <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
                     <div className="flex items-center justify-between flex-wrap gap-2">
-                      <Label className="text-sm font-semibold">分区定义</Label>
+                      <Label className="text-sm font-semibold">
+                        {t('partitionPanel.partitionDefs')}
+                      </Label>
                       <div className="flex items-center gap-2">
                         {/* Quick generate buttons for RANGE */}
                         {config.type.startsWith('RANGE') && (
                           <div className="flex items-center gap-1">
                             <span className="text-xs text-muted-foreground mr-1">
-                              快捷：
+                              {t('partitionPanel.quick')}:
                             </span>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -333,11 +335,11 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                                   className="h-7 px-2 text-xs gap-1"
                                 >
                                   <Calendar className="h-3 w-3" />
-                                  按年
+                                  {t('partitionPanel.byYear')}
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>按年份生成分区 (2020-2030)</p>
+                                <p>{t('partitionPanel.byYearTip')}</p>
                               </TooltipContent>
                             </Tooltip>
                             <Tooltip>
@@ -349,11 +351,11 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                                   onClick={() => onGeneratePartitions('month')}
                                   className="h-7 px-2 text-xs"
                                 >
-                                  按月
+                                  {t('partitionPanel.byMonth')}
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>按月份生成分区 (1-12月)</p>
+                                <p>{t('partitionPanel.byMonthTip')}</p>
                               </TooltipContent>
                             </Tooltip>
                             <Tooltip>
@@ -365,11 +367,11 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                                   onClick={() => onGeneratePartitions('day')}
                                   className="h-7 px-2 text-xs"
                                 >
-                                  按日
+                                  {t('partitionPanel.byDay')}
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>按天生成分区 (1-31日)</p>
+                                <p>{t('partitionPanel.byDayTip')}</p>
                               </TooltipContent>
                             </Tooltip>
                           </div>
@@ -384,11 +386,11 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                               className="gap-1"
                             >
                               <Plus className="h-4 w-4" />
-                              添加分区
+                              {t('partitionPanel.addPartition')}
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>添加一个新的分区定义</p>
+                            <p>{t('partitionPanel.addPartitionTip')}</p>
                           </TooltipContent>
                         </Tooltip>
                       </div>
@@ -396,7 +398,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
 
                     {(!config.partitions || config.partitions.length === 0) && (
                       <div className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
-                        暂无分区定义，点击"添加分区"或使用快捷按钮生成
+                        {t('partitionPanel.emptyDefs')}
                       </div>
                     )}
 
@@ -408,7 +410,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                             className="flex items-center gap-2 rounded-lg border bg-muted/30 p-3"
                           >
                             <Input
-                              placeholder="分区名"
+                              placeholder={t('partitionPanel.partitionName')}
                               value={partition.name}
                               onChange={(e) =>
                                 onUpdatePartition(partition.name, {
@@ -420,14 +422,14 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                             />
                             <span className="text-xs text-muted-foreground whitespace-nowrap">
                               {config.type.startsWith('RANGE')
-                                ? 'LESS THAN'
-                                : 'IN'}
+                                ? t('partitionPanel.lessThan')
+                                : t('partitionPanel.in')}
                             </span>
                             <Input
                               placeholder={
                                 config.type.startsWith('RANGE')
-                                  ? "如: 2025 或 MAXVALUE 或 ('2025-01-01')"
-                                  : "如: (1, 2, 3) 或 ('CN', 'US')"
+                                  ? t('partitionPanel.rangeValuePlaceholder')
+                                  : t('partitionPanel.listValuePlaceholder')
                               }
                               value={partition.value}
                               onChange={(e) =>
@@ -453,7 +455,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>移除此分区</p>
+                                <p>{t('partitionPanel.removePartitionTip')}</p>
                               </TooltipContent>
                             </Tooltip>
                           </div>
@@ -463,8 +465,8 @@ export const PartitionPanel = memo<PartitionPanelProps>(
 
                     <p className="text-xs text-muted-foreground">
                       {config.type.startsWith('RANGE')
-                        ? '对于 RANGE 分区，最后一个分区可使用 MAXVALUE 来捕获所有剩余值'
-                        : '对于 LIST 分区，每个分区的值列表不能重叠'}
+                        ? t('partitionPanel.rangeHint')
+                        : t('partitionPanel.listHint')}
                     </p>
                   </div>
                 )}

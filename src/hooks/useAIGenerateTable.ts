@@ -11,6 +11,8 @@ import type {
 } from '@/types/aiGenerate';
 import { parsePartialTableSchema } from '@/utils/parsePartialTableSchema';
 import { buildAIGenerateQueryKey } from '@/queryKeys/ai';
+import { useLocale } from '@/i18n/LocaleContext';
+import i18n from '@/i18n';
 
 export type {
   ConversationMessage,
@@ -51,6 +53,7 @@ function appendConversation(
  * 大师建表工坊 表结构的 Hook
  */
 export function useAIGenerateTable() {
+  const { resolvedLocale } = useLocale();
   const [state, setState] = useState<GenerateState>({
     isLoading: false,
     streamingText: '',
@@ -82,7 +85,10 @@ export function useAIGenerateTable() {
       options?: GenerateTableOptions,
     ) => {
       if (!description.trim()) {
-        setState((prev) => ({ ...prev, error: '请输入表结构描述' }));
+        setState((prev) => ({
+          ...prev,
+          error: i18n.t('services.inputDescribeRequired'),
+        }));
         return;
       }
 
@@ -98,6 +104,7 @@ export function useAIGenerateTable() {
       const queryKey = buildAIGenerateQueryKey({
         description: normalizedDescription,
         dbType,
+        locale: resolvedLocale,
         templates: requestOptions.templates,
         existingConfig: requestOptions.existingConfig,
         conversationHistory: requestOptions.conversationHistory,
@@ -134,6 +141,7 @@ export function useAIGenerateTable() {
               {
                 description: normalizedDescription,
                 dbType,
+                locale: resolvedLocale,
                 options: requestOptions,
               },
               {
@@ -166,7 +174,7 @@ export function useAIGenerateTable() {
           isLoading: false,
           streamingText: '',
           result: null,
-          error: (err as Error).message || 'Generation failed',
+          error: (err as Error).message || i18n.t('services.generationFailed'),
         });
       } finally {
         if (activeRequestRef.current?.controller === abortController) {
@@ -174,7 +182,7 @@ export function useAIGenerateTable() {
         }
       }
     },
-    [queryClient],
+    [queryClient, resolvedLocale],
   );
 
   const clearResult = useCallback(() => {

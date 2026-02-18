@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { HardDrive, Minus, Plus, Pin, ListPlus } from 'lucide-react';
 import { COLUMN_HEADERS } from '@/utils/constants';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 interface DataTableToolbarProps {
   toolbarLeft?: ReactNode;
@@ -34,6 +35,7 @@ export function DataTableToolbar({
   onAddCountChange,
   onAddRowsClick,
 }: DataTableToolbarProps) {
+  const { t } = useTranslation();
   return (
     <div className="relative border-b border-primary/10 px-4 py-3.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -49,11 +51,11 @@ export function DataTableToolbar({
                   className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md border-primary/20 hover:border-primary/50 text-muted-foreground hover:text-primary"
                 >
                   <HardDrive className="h-3.5 w-3.5" />
-                  估算容量
+                  {t('dataTable.toolbar.storageEstimator')}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>估算当前表数据量占用空间</p>
+                <p>{t('dataTable.toolbar.storageEstimatorTip')}</p>
               </TooltipContent>
             </Tooltip>
           )}
@@ -69,11 +71,11 @@ export function DataTableToolbar({
                     className="flex cursor-pointer items-center gap-1 text-xs font-medium text-muted-foreground select-none"
                   >
                     <Pin className="h-3.5 w-3.5" />
-                    冻结
+                    {t('dataTable.toolbar.freeze')}
                   </Label>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>锁定前几列，使其在横向滚动时保持可见</p>
+                  <p>{t('dataTable.toolbar.freezeTip')}</p>
                 </TooltipContent>
               </Tooltip>
               <Switch
@@ -81,7 +83,7 @@ export function DataTableToolbar({
                 checked={freezeEnabled}
                 onCheckedChange={onFreezeEnabledChange}
                 className="scale-75 data-[state=checked]:bg-primary"
-                aria-label="启用字段表格列冻结"
+                aria-label={t('dataTable.toolbar.freezeAria')}
               />
             </div>
             <div className="flex h-full items-center gap-1 px-1.5">
@@ -102,7 +104,7 @@ export function DataTableToolbar({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>减少冻结列数</p>
+                  <p>{t('dataTable.toolbar.freezeDecrease')}</p>
                 </TooltipContent>
               </Tooltip>
               <span
@@ -136,7 +138,7 @@ export function DataTableToolbar({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>增加冻结列数</p>
+                  <p>{t('dataTable.toolbar.freezeIncrease')}</p>
                 </TooltipContent>
               </Tooltip>
               <Label
@@ -145,7 +147,7 @@ export function DataTableToolbar({
                   !freezeEnabled && 'opacity-50',
                 )}
               >
-                列
+                {t('dataTable.toolbar.columnUnit')}
               </Label>
             </div>
           </div>
@@ -160,11 +162,11 @@ export function DataTableToolbar({
                   className="h-full rounded-none rounded-l-md border-r px-3 text-xs font-medium hover:bg-muted/50"
                 >
                   <ListPlus className="mr-1.5 h-3.5 w-3.5" />
-                  添加行
+                  {t('dataTable.toolbar.addRows')}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>在表格末尾添加空行</p>
+                <p>{t('dataTable.toolbar.addRowsTip')}</p>
               </TooltipContent>
             </Tooltip>
             <div className="flex h-full items-center gap-1 px-1.5">
@@ -183,7 +185,7 @@ export function DataTableToolbar({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>减少每次添加的行数</p>
+                  <p>{t('dataTable.toolbar.addCountDecrease')}</p>
                 </TooltipContent>
               </Tooltip>
               <span className="min-w-[1.25rem] text-center text-xs font-medium tabular-nums">
@@ -201,10 +203,12 @@ export function DataTableToolbar({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>增加每次添加的行数</p>
+                  <p>{t('dataTable.toolbar.addCountIncrease')}</p>
                 </TooltipContent>
               </Tooltip>
-              <span className="ml-0.5 text-xs text-muted-foreground">行</span>
+              <span className="ml-0.5 text-xs text-muted-foreground">
+                {t('dataTable.toolbar.rowUnit')}
+              </span>
             </div>
           </div>
         </div>

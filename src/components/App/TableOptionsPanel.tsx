@@ -17,6 +17,7 @@ import {
   supportsCollationOption,
   supportsTablespaceOption,
 } from '@/utils/tableOptions';
+import { useTranslation } from 'react-i18next';
 
 const DEFAULT_OPTION_VALUE = 'default';
 
@@ -54,6 +55,7 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
     const supportsCharset = supportsCharsetOption(dbType);
     const supportsCollation = supportsCollationOption(dbType);
     const supportsTablespace = supportsTablespaceOption(dbType);
+    const { t } = useTranslation();
     const hasAnyOption =
       supportsEngine ||
       supportsCharset ||
@@ -67,10 +69,10 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
 
     const infoText = useMemo(() => {
       if (!hasAnyOption) {
-        return '当前数据库暂无可配置的杂项项';
+        return t('tableOptionsPanel.noOptionsShort');
       }
-      return '开启后才会在 DDL 中生成对应配置';
-    }, [hasAnyOption]);
+      return t('tableOptionsPanel.infoEnabled');
+    }, [hasAnyOption, t]);
 
     return (
       <div className="relative group rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5">
@@ -81,16 +83,18 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
           <div className="flex items-start gap-3 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:bg-slate-950/50 dark:text-slate-300">
             <Settings2 className="h-5 w-5 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-medium">表级杂项配置</p>
+              <p className="font-medium">{t('tableOptionsPanel.title')}</p>
               <p className="mt-1 text-xs opacity-80">{infoText}</p>
             </div>
           </div>
 
           <div className="flex items-center justify-between rounded-lg border border-dashed p-4">
             <div className="space-y-0.5">
-              <Label className="text-sm font-semibold">启用杂项设置</Label>
+              <Label className="text-sm font-semibold">
+                {t('tableOptionsPanel.enable')}
+              </Label>
               <p className="text-xs text-muted-foreground">
-                未开启时不会写入 DDL
+                {t('tableOptionsPanel.enableDesc')}
               </p>
             </div>
             <Switch
@@ -101,7 +105,7 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
 
           {!hasAnyOption ? (
             <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950/50 dark:text-slate-300">
-              当前数据库暂不支持引擎、字符集、排序规则或表空间配置。
+              {t('tableOptionsPanel.noOptions')}
             </div>
           ) : (
             <div className="space-y-5">
@@ -109,7 +113,9 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {supportsEngine && (
                     <div className="space-y-2">
-                      <Label className="text-sm font-semibold">表引擎</Label>
+                      <Label className="text-sm font-semibold">
+                        {t('tableOptionsPanel.engine')}
+                      </Label>
                       <Select
                         value={effectiveEngine}
                         onValueChange={(value) =>
@@ -120,11 +126,15 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                         disabled={disabled}
                       >
                         <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
-                          <SelectValue placeholder="选择引擎..." />
+                          <SelectValue
+                            placeholder={t(
+                              'tableOptionsPanel.enginePlaceholder',
+                            )}
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value={DEFAULT_OPTION_VALUE}>
-                            默认
+                            {t('tableOptionsPanel.default')}
                           </SelectItem>
                           {ENGINE_OPTIONS.map((opt) => (
                             <SelectItem key={opt} value={opt}>
@@ -138,7 +148,9 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
 
                   {supportsCharset && (
                     <div className="space-y-2">
-                      <Label className="text-sm font-semibold">字符集</Label>
+                      <Label className="text-sm font-semibold">
+                        {t('tableOptionsPanel.charset')}
+                      </Label>
                       <Select
                         value={effectiveCharset}
                         onValueChange={(value) =>
@@ -149,11 +161,15 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                         disabled={disabled}
                       >
                         <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
-                          <SelectValue placeholder="选择字符集..." />
+                          <SelectValue
+                            placeholder={t(
+                              'tableOptionsPanel.charsetPlaceholder',
+                            )}
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value={DEFAULT_OPTION_VALUE}>
-                            默认
+                            {t('tableOptionsPanel.default')}
                           </SelectItem>
                           {CHARSET_OPTIONS.map((opt) => (
                             <SelectItem key={opt} value={opt}>
@@ -167,7 +183,9 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
 
                   {supportsCollation && (
                     <div className="space-y-2 md:col-span-2">
-                      <Label className="text-sm font-semibold">排序规则</Label>
+                      <Label className="text-sm font-semibold">
+                        {t('tableOptionsPanel.collation')}
+                      </Label>
                       <Select
                         value={effectiveCollation}
                         onValueChange={(value) =>
@@ -178,11 +196,15 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                         disabled={disabled}
                       >
                         <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
-                          <SelectValue placeholder="选择排序规则..." />
+                          <SelectValue
+                            placeholder={t(
+                              'tableOptionsPanel.collationPlaceholder',
+                            )}
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value={DEFAULT_OPTION_VALUE}>
-                            默认
+                            {t('tableOptionsPanel.default')}
                           </SelectItem>
                           {COLLATION_OPTIONS.map((opt) => (
                             <SelectItem key={opt} value={opt}>
@@ -198,9 +220,11 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
 
               {supportsTablespace && (
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold">表空间</Label>
+                  <Label className="text-sm font-semibold">
+                    {t('tableOptionsPanel.tablespace')}
+                  </Label>
                   <Input
-                    placeholder="例如：ts_data"
+                    placeholder={t('tableOptionsPanel.tablespacePlaceholder')}
                     value={config.tablespace || ''}
                     onChange={(event) => onTablespaceChange(event.target.value)}
                     disabled={disabled}
@@ -212,7 +236,7 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
               {disabled && (
                 <div className="flex items-start gap-2 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
                   <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                  <span>当前为关闭状态，配置不会写入 DDL。</span>
+                  <span>{t('tableOptionsPanel.disabledHint')}</span>
                 </div>
               )}
             </div>

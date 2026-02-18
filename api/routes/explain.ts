@@ -19,6 +19,7 @@ import {
   EXPLAIN_SYSTEM_PROMPT,
   buildExplainUserPrompt,
 } from '../prompts/explain.js';
+import { isAppLocale, type AppLocale } from '../../src/types/locale.js';
 
 const MAX_OUTPUT_TOKENS = 1000;
 
@@ -70,7 +71,7 @@ export function registerExplainRoute(app: Hono) {
       return rateLimit.response;
     }
 
-    let body: { sql?: unknown; context?: unknown };
+    let body: { sql?: unknown; context?: unknown; locale?: unknown };
     try {
       body = await c.req.json();
     } catch {
@@ -80,6 +81,7 @@ export function registerExplainRoute(app: Hono) {
 
     const sql = typeof body.sql === 'string' ? body.sql : '';
     const context = typeof body.context === 'string' ? body.context : '';
+    const locale: AppLocale = isAppLocale(body.locale) ? body.locale : 'zh-CN';
 
     if (sql.trim().length === 0) {
       audit(400, 0, false, false, 'SQL_REQUIRED');
@@ -120,7 +122,8 @@ export function registerExplainRoute(app: Hono) {
       apiKey,
     });
 
-    const userPrompt = buildExplainUserPrompt(sql, context);
+    const userPrompt = buildExplainUserPrompt(sql, context, locale);
+    const systemPrompt = EXPLAIN_SYSTEM_PROMPT[locale];
 
     return streamText(c, async (stream) => {
       let retryCount = 0;
@@ -130,7 +133,7 @@ export function registerExplainRoute(app: Hono) {
             (await openai.chat.completions.create({
               model,
               messages: [
-                { role: 'system', content: EXPLAIN_SYSTEM_PROMPT },
+                { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },
               ],
               temperature: 0.3,

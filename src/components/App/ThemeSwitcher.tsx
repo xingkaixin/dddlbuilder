@@ -2,6 +2,7 @@ import { Laptop, Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { memo } from 'react';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,19 +17,9 @@ interface ThemeSwitcherProps {
   triggerClassName?: string;
 }
 
-const THEME_LABELS: Record<ThemeMode, string> = {
-  system: '跟随系统',
-  light: '亮色',
-  dark: '暗色',
-};
-
-const RESOLVED_THEME_LABELS = {
-  light: '亮色',
-  dark: '暗色',
-} as const;
-
 export const ThemeSwitcher = memo<ThemeSwitcherProps>(
   ({ triggerClassName }) => {
+    const { t } = useTranslation();
     const { theme, setTheme, resolvedTheme } = useTheme();
     const selectedTheme: ThemeMode =
       theme === 'light' || theme === 'dark' || theme === 'system'
@@ -36,14 +27,18 @@ export const ThemeSwitcher = memo<ThemeSwitcherProps>(
         : 'system';
 
     const currentResolvedTheme =
-      resolvedTheme === 'dark'
-        ? RESOLVED_THEME_LABELS.dark
-        : RESOLVED_THEME_LABELS.light;
+      resolvedTheme === 'dark' ? t('theme.dark') : t('theme.light');
+
+    const themeLabels: Record<ThemeMode, string> = {
+      system: t('theme.system'),
+      light: t('theme.light'),
+      dark: t('theme.dark'),
+    };
 
     const triggerLabel =
       selectedTheme === 'system'
-        ? `主题：系统（当前${currentResolvedTheme}）`
-        : `主题：${THEME_LABELS[selectedTheme]}`;
+        ? t('theme.triggerSystem', { theme: currentResolvedTheme })
+        : t('theme.triggerFixed', { theme: themeLabels[selectedTheme] });
 
     return (
       <DropdownMenu>
@@ -77,9 +72,9 @@ export const ThemeSwitcher = memo<ThemeSwitcherProps>(
               data-testid="theme-option-system"
             >
               <Laptop className="h-4 w-4" aria-hidden />
-              跟随系统
+              {t('theme.system')}
               <span className="ml-auto text-xs text-muted-foreground">
-                当前{currentResolvedTheme}
+                {t('theme.current', { theme: currentResolvedTheme })}
               </span>
             </DropdownMenuRadioItem>
             <DropdownMenuRadioItem
@@ -87,11 +82,11 @@ export const ThemeSwitcher = memo<ThemeSwitcherProps>(
               data-testid="theme-option-light"
             >
               <Sun className="h-4 w-4" aria-hidden />
-              亮色
+              {t('theme.light')}
             </DropdownMenuRadioItem>
             <DropdownMenuRadioItem value="dark" data-testid="theme-option-dark">
               <Moon className="h-4 w-4" aria-hidden />
-              暗色
+              {t('theme.dark')}
             </DropdownMenuRadioItem>
           </DropdownMenuRadioGroup>
         </DropdownMenuContent>

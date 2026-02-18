@@ -27,6 +27,8 @@ import {
   deleteVersion,
 } from '@/utils/tableVersions';
 import { useToast } from '@/hooks/useToast';
+import { useTranslation } from 'react-i18next';
+import { useLocale } from '@/i18n/LocaleContext';
 
 interface VersionHistoryDialogProps {
   open: boolean;
@@ -38,21 +40,25 @@ interface VersionHistoryDialogProps {
   currentState?: PersistedState | null;
 }
 
-function formatDate(timestamp: number): string {
+function formatDate(
+  timestamp: number,
+  locale: string,
+  todayLabel: (time: string) => string,
+): string {
   const date = new Date(timestamp);
   const now = new Date();
   const isToday = date.toDateString() === now.toDateString();
 
-  const time = date.toLocaleTimeString('zh-CN', {
+  const time = date.toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
   });
 
   if (isToday) {
-    return `今天 ${time}`;
+    return todayLabel(time);
   }
 
-  return date.toLocaleDateString('zh-CN', {
+  return date.toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -70,6 +76,8 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
     onCompare,
     currentState,
   }) => {
+    const { t } = useTranslation();
+    const { resolvedLocale } = useLocale();
     const { showToast } = useToast();
     const [versions, setVersions] = useState<TableVersionMetadata[]>([]);
     const [loading, setLoading] = useState(false);
@@ -138,13 +146,13 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
         await deleteVersion(deleteConfirmId);
         setDeleteConfirmId(null);
         await loadVersions();
-        showToast('已删除版本');
+        showToast(t('versionHistory.deleteSuccess'));
       } catch {
-        showToast('删除版本失败，请重试');
+        showToast(t('versionHistory.deleteFailed'));
       } finally {
         setActionLoading(false);
       }
-    }, [deleteConfirmId, loadVersions, showToast]);
+    }, [deleteConfirmId, loadVersions, showToast, t]);
 
     return (
       <>
@@ -153,10 +161,12 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <History className="h-5 w-5" />
-                版本历史
+                {t('versionHistory.title')}
               </DialogTitle>
               <DialogDescription>
-                {tableName ? `${tableName} 的历史版本` : '查看和管理历史版本'}
+                {tableName
+                  ? t('versionHistory.descriptionWithName', { name: tableName })
+                  : t('versionHistory.descriptionFallback')}
               </DialogDescription>
             </DialogHeader>
 
@@ -167,7 +177,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                 </div>
               ) : versions.length === 0 ? (
                 <div className="py-8 text-center text-sm text-muted-foreground">
-                  暂无历史版本
+                  {t('versionHistory.empty')}
                 </div>
               ) : (
                 versions.map((v, index) => (
@@ -196,11 +206,15 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                             v{versions.length - index}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {formatDate(v.createdAt)}
+                            {formatDate(v.createdAt, resolvedLocale, (time) =>
+                              t('reviewHistory.today', {
+                                time,
+                              }),
+                            )}
                           </span>
                           {index === 0 && (
                             <span className="rounded bg-green-500/10 px-1.5 py-0.5 text-xs text-green-600">
-                              最新
+                              {t('versionHistory.latest')}
                             </span>
                           )}
                         </div>
@@ -210,7 +224,10 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                           </p>
                         )}
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {v.fieldCount} 个字段 · {v.dbType.toUpperCase()}
+                          {t('versionHistory.fieldCount', {
+                            count: v.fieldCount,
+                          })}{' '}
+                          · {v.dbType.toUpperCase()}
                         </p>
                       </div>
                     </button>
@@ -222,7 +239,9 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                         e.stopPropagation();
                         setDeleteConfirmId(v.id);
                       }}
-                      aria-label={`删除版本 ${versions.length - index}`}
+                      aria-label={t('versionHistory.deleteAria', {
+                        version: versions.length - index,
+                      })}
                     >
                       <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
                     </Button>
@@ -242,7 +261,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                     className="h-7 gap-1.5 px-2 text-xs font-medium"
                   >
                     <GitCompare className="h-3.5 w-3.5" />
-                    与当前对比
+                    {t('versionHistory.compare')}
                   </Button>
                 )}
                 {onRollback && (
@@ -254,7 +273,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                     className="h-7 gap-1.5 px-2 text-xs font-medium"
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
-                    回滚到此版本
+                    {t('versionHistory.rollback')}
                   </Button>
                 )}
               </div>
@@ -268,18 +287,22 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>删除此版本？</AlertDialogTitle>
+              <AlertDialogTitle>
+                {t('versionHistory.deleteConfirmTitle')}
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                此操作无法撤销，删除后将无法恢复该版本。
+                {t('versionHistory.deleteConfirmDescription')}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogCancel>
+                {t('dialogs.delete.cancel')}
+              </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDelete}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                删除
+                {t('dialogs.delete.confirm')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

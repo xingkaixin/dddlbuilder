@@ -19,6 +19,7 @@ import {
   buildGenerateTableMessages,
   buildGenerateTableSystemPrompt,
 } from '../prompts/generateTable.js';
+import { isAppLocale, type AppLocale } from '../../src/types/locale.js';
 
 const MAX_OUTPUT_TOKENS = 4000;
 
@@ -73,6 +74,7 @@ export function registerGenerateTableRoute(app: Hono) {
     let body: {
       description?: unknown;
       dbType?: unknown;
+      locale?: unknown;
       templates?: unknown;
       existingConfig?: unknown;
       conversationHistory?: unknown;
@@ -88,6 +90,7 @@ export function registerGenerateTableRoute(app: Hono) {
     const description =
       typeof body.description === 'string' ? body.description : '';
     const dbType = typeof body.dbType === 'string' ? body.dbType : '';
+    const locale: AppLocale = isAppLocale(body.locale) ? body.locale : 'zh-CN';
     const templates = Array.isArray(body.templates) ? body.templates : [];
     const existingConfig = body.existingConfig;
     const conversationHistory = Array.isArray(body.conversationHistory)
@@ -108,6 +111,7 @@ export function registerGenerateTableRoute(app: Hono) {
       {
         description,
         dbType,
+        locale,
         templates,
         existingConfig,
         conversationHistory,
@@ -143,6 +147,7 @@ export function registerGenerateTableRoute(app: Hono) {
 
     const systemPrompt = buildGenerateTableSystemPrompt({
       dbType,
+      locale,
       templates,
       existingConfig,
     });

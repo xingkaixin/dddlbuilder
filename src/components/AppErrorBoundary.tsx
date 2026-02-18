@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { reportError } from '@/utils/errorReporter';
+import i18n from '@/i18n';
 
 interface AppErrorBoundaryProps {
   children: ReactNode;
@@ -40,11 +41,15 @@ export class AppErrorBoundary extends Component<
     if (this.state.hasError) {
       return (
         <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
-          <h1 className="text-2xl font-semibold">页面发生错误</h1>
+          <h1 className="text-2xl font-semibold">
+            {i18n.t('errorBoundary.title')}
+          </h1>
           <p className="max-w-md text-sm text-muted-foreground">
-            应用遇到异常并已记录。请刷新页面重试。
+            {i18n.t('errorBoundary.description')}
           </p>
-          <Button onClick={this.handleReload}>刷新页面</Button>
+          <Button onClick={this.handleReload}>
+            {i18n.t('errorBoundary.reload')}
+          </Button>
         </div>
       );
     }

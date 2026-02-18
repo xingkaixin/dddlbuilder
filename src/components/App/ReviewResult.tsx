@@ -13,6 +13,7 @@ import {
 import type { ReviewResult, StructuredSuggestion } from '@/hooks/useDDLReview';
 import type { PartialReviewResult } from '@/utils/parsePartialJson';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
 
 // Known suggestion types for compatibility
 const KNOWN_SUGGESTION_TYPES = new Set([
@@ -96,6 +97,7 @@ const SuggestionItem = memo<{
   onApply?: (suggestion: StructuredSuggestion) => void;
   isStreaming?: boolean;
 }>(({ suggestion, onApply, isStreaming }) => {
+  const { t } = useTranslation();
   if (typeof suggestion === 'string') {
     return (
       <li className="text-sm text-foreground/70 list-disc relative pl-1">
@@ -153,7 +155,9 @@ const SuggestionItem = memo<{
                 : 'text-amber-600 bg-amber-50 border border-amber-100'
             }`}
           >
-            {suggestion.severity === 'error' ? '严重' : '警告'}
+            {suggestion.severity === 'error'
+              ? t('review.severe')
+              : t('review.warning')}
           </span>
         )}
 
@@ -171,7 +175,7 @@ const SuggestionItem = memo<{
                   suggestion.fieldModification.changes?.fieldComment ||
                   (suggestion.fieldModification as any).fieldType ||
                   (suggestion.fieldModification as any).fieldComment ||
-                  '变更属性'}
+                  t('review.details')}
               </span>
             </div>
           )}
@@ -210,13 +214,13 @@ const SuggestionItem = memo<{
           className="h-7 px-2 text-xs gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background"
           onClick={() => onApply(suggestion)}
         >
-          应用
+          {t('review.apply')}
         </Button>
       )}
 
       {isApplied && (
         <span className="text-[10px] font-medium text-emerald-500 bg-emerald-50 px-1 rounded border border-emerald-100">
-          已应用
+          {t('review.applied')}
         </span>
       )}
     </li>
@@ -236,13 +240,14 @@ function SuggestionsList({
   isStreaming?: boolean;
   onApply?: (suggestion: StructuredSuggestion) => void;
 }) {
+  const { t } = useTranslation();
   if (suggestions.length === 0) return null;
 
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
         <Lightbulb className="h-4 w-4" />
-        <span>具体建议</span>
+        <span>{t('review.details')}</span>
         {isStreaming && (
           <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
         )}
@@ -279,12 +284,13 @@ function SuggestionsSkeleton({
   count = SUGGESTION_SKELETON_COUNT,
   showHeader = false,
 }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-3">
       {showHeader && (
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
           <Lightbulb className="h-4 w-4" />
-          <span>正在生成建议...</span>
+          <span>{t('review.generatingSuggestions')}</span>
           <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
         </div>
       )}
@@ -307,6 +313,7 @@ function SuggestionsSkeleton({
 
 export const ReviewResultPanel = memo<ReviewResultPanelProps>(
   ({ isLoading, partialResult, result, error, onApplySuggestion }) => {
+    const { t } = useTranslation();
     const isStreaming = isLoading && !result;
     // Determine what to show: final result or partial result during streaming
     const displayResult = result || (isLoading ? partialResult : null);
@@ -375,8 +382,7 @@ export const ReviewResultPanel = memo<ReviewResultPanelProps>(
             {/* Disclaimer */}
             {!isLoading && (
               <p className="mt-4 text-[10px] text-muted-foreground/60 leading-relaxed border-t pt-3 italic">
-                大师评审由 AI
-                自动化生成，仅供参考。应用建议前请务必确认是否符合具体业务逻辑。
+                {t('review.disclaimer')}
               </p>
             )}
           </div>

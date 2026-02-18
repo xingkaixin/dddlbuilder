@@ -10,6 +10,8 @@ import {
 import { Eye, ArrowLeft, ArrowRight, Trash2 } from 'lucide-react';
 import type { ParsedResult } from '@/utils/SqlParser';
 import type { PreviewField } from './types';
+import { useTranslation } from 'react-i18next';
+import { getNullableLabel } from '@/i18n/fieldEnums';
 
 interface PreviewStepProps {
   parsedResult: ParsedResult;
@@ -30,26 +32,32 @@ export function PreviewStep({
   onMoveField,
   onDeleteField,
 }: PreviewStepProps) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md bg-muted p-3 text-sm">
         <Eye className="h-5 w-5" />
         <span>
-          表名: <strong>{parsedResult.tableName || '未命名'}</strong>
+          {t('importSql.preview.tableName')}:{' '}
+          <strong>{parsedResult.tableName || t('importSql.unnamed')}</strong>
         </span>
         {parsedResult.tableComment && (
           <span>
-            表中文名: <strong>{parsedResult.tableComment}</strong>
+            {t('importSql.preview.tableComment')}:{' '}
+            <strong>{parsedResult.tableComment}</strong>
           </span>
         )}
         <span>
-          字段数: <strong>{previewFields.length}</strong>
+          {t('importSql.preview.fieldCount')}:{' '}
+          <strong>{previewFields.length}</strong>
         </span>
         <span>
-          索引数: <strong>{parsedResult.indexes.length}</strong>
+          {t('importSql.preview.indexCount')}:{' '}
+          <strong>{parsedResult.indexes.length}</strong>
         </span>
         <span>
-          授权对象数: <strong>{parsedResult.authObjects.length}</strong>
+          {t('importSql.preview.authCount')}:{' '}
+          <strong>{parsedResult.authObjects.length}</strong>
         </span>
       </div>
 
@@ -58,11 +66,24 @@ export function PreviewStep({
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-muted">
             <tr>
-              <th className="w-16 px-2 py-2 text-center">序号</th>
-              <th className="px-2 py-2 text-left">字段名</th>
-              <th className="px-2 py-2 text-left">字段类型</th>
-              <th className="px-2 py-2 text-center">非空</th>
-              <th className="w-28 px-2 py-2 text-center">操作</th>
+              <th className="w-16 px-2 py-2 text-center">
+                {t('importSql.preview.order')}
+              </th>
+              <th className="w-16 px-2 py-2 text-center">
+                {t('importSql.preview.order')}
+              </th>
+              <th className="px-2 py-2 text-left">
+                {t('importSql.preview.fieldName')}
+              </th>
+              <th className="px-2 py-2 text-left">
+                {t('importSql.preview.fieldType')}
+              </th>
+              <th className="px-2 py-2 text-center">
+                {t('importSql.preview.nullable')}
+              </th>
+              <th className="w-28 px-2 py-2 text-center">
+                {t('importSql.preview.action')}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -81,7 +102,7 @@ export function PreviewStep({
                     }
                     className="h-7 w-16 text-center"
                     min={1}
-                    aria-label={`第${index + 1}行字段序号`}
+                    aria-label={`${t('importSql.preview.order')} #${index + 1}`}
                   />
                 </td>
                 <td className="px-2 py-2">
@@ -91,7 +112,7 @@ export function PreviewStep({
                       onFieldChange(index, 'fieldName', e.target.value)
                     }
                     className="h-7"
-                    aria-label={`第${index + 1}行字段名`}
+                    aria-label={`${t('importSql.preview.fieldName')} #${index + 1}`}
                   />
                 </td>
                 <td className="px-2 py-2">
@@ -101,7 +122,7 @@ export function PreviewStep({
                       onFieldChange(index, 'fieldType', e.target.value)
                     }
                     className="h-7"
-                    aria-label={`第${index + 1}行字段类型`}
+                    aria-label={`${t('importSql.preview.fieldType')} #${index + 1}`}
                   />
                 </td>
                 <td className="px-2 py-2 text-center">
@@ -113,13 +134,19 @@ export function PreviewStep({
                   >
                     <SelectTrigger
                       className="h-7 w-16 mx-auto"
-                      aria-label={`第${index + 1}行是否可空`}
+                      aria-label={`${t('importSql.preview.nullable')} #${index + 1}`}
                     >
-                      <SelectValue />
+                      <SelectValue
+                        placeholder={getNullableLabel(field.nullable, t)}
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="是">是</SelectItem>
-                      <SelectItem value="否">否</SelectItem>
+                      <SelectItem value="是">
+                        {t('importSql.preview.yes')}
+                      </SelectItem>
+                      <SelectItem value="否">
+                        {t('importSql.preview.no')}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </td>
@@ -131,7 +158,7 @@ export function PreviewStep({
                       className="h-7 w-7"
                       onClick={() => onMoveField(index, 'up')}
                       disabled={index === 0}
-                      aria-label={`上移第${index + 1}个字段`}
+                      aria-label={`Move up #${index + 1}`}
                     >
                       <ArrowLeft className="h-4 w-4" />
                     </Button>
@@ -141,7 +168,7 @@ export function PreviewStep({
                       className="h-7 w-7"
                       onClick={() => onMoveField(index, 'down')}
                       disabled={index === previewFields.length - 1}
-                      aria-label={`下移第${index + 1}个字段`}
+                      aria-label={`Move down #${index + 1}`}
                     >
                       <ArrowRight className="h-4 w-4" />
                     </Button>
@@ -150,7 +177,7 @@ export function PreviewStep({
                       size="icon"
                       className="h-7 w-7 text-destructive hover:text-destructive"
                       onClick={() => onDeleteField(index)}
-                      aria-label={`删除第${index + 1}个字段`}
+                      aria-label={`Delete #${index + 1}`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -166,15 +193,23 @@ export function PreviewStep({
       {parsedResult.indexes.length > 0 && (
         <div className="rounded-md border">
           <div className="bg-muted px-3 py-2 text-sm font-medium">
-            索引明细 ({parsedResult.indexes.length} 个)
+            {t('importSql.preview.indexDetails', {
+              count: parsedResult.indexes.length,
+            })}
           </div>
           <div className="max-h-[150px] overflow-auto overscroll-contain">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-muted/50">
                 <tr>
-                  <th className="px-3 py-2 text-left">索引名</th>
-                  <th className="px-3 py-2 text-left">字段</th>
-                  <th className="px-3 py-2 text-center">类型</th>
+                  <th className="px-3 py-2 text-left">
+                    {t('importSql.preview.indexName')}
+                  </th>
+                  <th className="px-3 py-2 text-left">
+                    {t('importSql.preview.indexFields')}
+                  </th>
+                  <th className="px-3 py-2 text-center">
+                    {t('importSql.preview.indexType')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -187,15 +222,15 @@ export function PreviewStep({
                     <td className="px-3 py-2 text-center">
                       {index.isPrimary ? (
                         <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/40 dark:text-blue-200">
-                          主键
+                          {t('importSql.preview.primary')}
                         </span>
                       ) : index.unique ? (
                         <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-emerald-900/40 dark:text-emerald-200">
-                          唯一
+                          {t('importSql.preview.unique')}
                         </span>
                       ) : (
                         <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-slate-700/50 dark:text-slate-200">
-                          普通
+                          {t('importSql.preview.normal')}
                         </span>
                       )}
                     </td>
@@ -211,7 +246,9 @@ export function PreviewStep({
       {parsedResult.authObjects.length > 0 && (
         <div className="rounded-md border">
           <div className="bg-muted px-3 py-2 text-sm font-medium">
-            授权对象 ({parsedResult.authObjects.length} 个)
+            {t('importSql.preview.authDetails', {
+              count: parsedResult.authObjects.length,
+            })}
           </div>
           <div className="flex flex-wrap gap-2 p-3">
             {parsedResult.authObjects.map((authObject) => (

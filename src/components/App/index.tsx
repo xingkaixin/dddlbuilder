@@ -44,6 +44,7 @@ import { useFolders } from '@/hooks/useFolders';
 import { useFieldTemplates } from '@/hooks/useFieldTemplates';
 import { countVersions } from '@/utils/tableVersions';
 import { writeWorkspaceSession } from '@/utils/workspaceStateDb';
+import { useTranslation } from 'react-i18next';
 
 import { TooltipProvider } from '@/components/ui/tooltip';
 
@@ -71,6 +72,7 @@ const createEmptyGlobalDraftState = (): PersistedState => ({
 
 function App() {
   const trackEvent = useTrackEvent();
+  const { t } = useTranslation();
 
   // ─── 1. Zustand selectors (aggregated) ─────────────────────────
   const {
@@ -290,20 +292,18 @@ function App() {
 
   useEffect(() => {
     if (shareLoadStatus === 'not_found') {
-      showToast('分享链接不存在或已过期，已返回首页');
+      showToast(t('app.shareNotFound'));
       return;
     }
     if (shareLoadStatus === 'error') {
-      showToast('分享链接加载失败，已返回首页');
+      showToast(t('app.shareLoadFailed'));
     }
-  }, [shareLoadStatus, showToast]);
+  }, [shareLoadStatus, showToast, t]);
 
   useEffect(() => {
     if (!hydrated || !isShareView) return;
-    showToast(
-      '当前分享链接为只读。请先保存为副本，系统会返回首页后再继续编辑。',
-    );
-  }, [hydrated, isShareView, showToast]);
+    showToast(t('app.shareReadOnly'));
+  }, [hydrated, isShareView, showToast, t]);
 
   useEffect(() => {
     if (isShareView) return;
@@ -311,11 +311,15 @@ function App() {
       const savedCopyName = sessionStorage.getItem(SHARE_COPY_SAVED_TOAST_KEY);
       if (!savedCopyName) return;
       sessionStorage.removeItem(SHARE_COPY_SAVED_TOAST_KEY);
-      showToast(`已保存副本「${savedCopyName}」，并已自动加载。`);
+      showToast(
+        t('app.shareCopySaved', {
+          name: savedCopyName,
+        }),
+      );
     } catch {
       // ignore sessionStorage errors
     }
-  }, [isShareView, showToast]);
+  }, [isShareView, showToast, t]);
 
   const {
     savedTables,
@@ -614,7 +618,7 @@ function App() {
     setLoadedTableVersion(0);
 
     showToast(
-      existedDraftState ? '已加载草稿箱' : '草稿箱为空，已创建新的草稿',
+      existedDraftState ? t('app.loadedDraft') : t('app.emptyDraftCreated'),
     );
   }, [
     flushCurrentWorkspace,
@@ -626,15 +630,23 @@ function App() {
     setLoadedTableName,
     setLoadedTableSignature,
     showToast,
+    t,
   ]);
 
   const workspaceLabel = useMemo(() => {
-    if (isShareView) return '当前：分享副本（只读）';
+    if (isShareView) return t('app.workspace.shareReadonly');
     if (loadedTableName) {
-      return `当前：${loadedTableName} ${loadedTableVersion > 0 ? `(v${loadedTableVersion})` : ''}${isLoadedDirty ? ' *' : ''}`;
+      return t('app.workspace.currentTable', {
+        name: loadedTableName,
+        version:
+          loadedTableVersion > 0
+            ? t('app.workspace.version', { version: loadedTableVersion })
+            : '',
+        dirty: isLoadedDirty ? t('app.workspace.dirtyMark') : '',
+      });
     }
-    return '当前：草稿箱';
-  }, [isShareView, loadedTableName, isLoadedDirty, loadedTableVersion]);
+    return t('app.workspace.globalDraft');
+  }, [isShareView, loadedTableName, isLoadedDirty, loadedTableVersion, t]);
 
   const { handleApplySuggestion, handleImport, handleApplyAIGeneratedSchema } =
     useSchemaApplyActions({
@@ -698,12 +710,12 @@ function App() {
   const effectiveGlobalDraftSummary = useMemo(() => {
     if (globalDraftSummary) return globalDraftSummary;
     return {
-      name: '未命名草稿',
+      name: t('app.workspace.unnamedDraft'),
       dbType: 'mysql',
       fieldCount: 0,
       updatedAt: Date.now(),
     };
-  }, [globalDraftSummary]);
+  }, [globalDraftSummary, t]);
 
   // ─── 7. Render ─────────────────────────────────────────────────
   return (
@@ -720,15 +732,13 @@ function App() {
 
         {isShareView && (
           <div className="mx-3 mt-3 flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-300 sm:flex-row sm:items-center sm:justify-between">
-            <p>
-              当前分享链接是只读视图，不能直接修改。请先保存为副本，保存后会自动返回首页。你原本首页暂存内容不会被覆盖。
-            </p>
+            <p>{t('app.shareBanner')}</p>
             <button
               type="button"
               onClick={handleOpenSaveDialog}
               className="inline-flex shrink-0 items-center justify-center rounded-md border border-amber-500/40 bg-amber-100 px-3 py-2 text-xs font-medium text-amber-900 transition-colors hover:bg-amber-200 dark:border-amber-600 dark:bg-amber-900/50 dark:text-amber-100 dark:hover:bg-amber-900"
             >
-              保存为副本并开始编辑
+              {t('app.saveAsCopy')}
             </button>
           </div>
         )}
@@ -790,7 +800,7 @@ function App() {
                   onViewDiff: handleOpenDiffDialog,
                   onOpenAIGenerate: handleOpenAIGenerateDialog,
                   saveDisabled: !canSaveCurrent,
-                  saveDisabledHint: '加载的表未修改，无法保存',
+                  saveDisabledHint: t('dialogs.load.saveDisabledTip'),
                   showDiffButton: isLoadedDirty && tableDiff?.hasChanges,
                   loadedStatus,
                   loadedTableName,
@@ -974,7 +984,7 @@ function App() {
             dbType,
             diff: tableDiff,
             fields: normalizedFields,
-            onCopy: () => showToast('变更脚本已复制'),
+            onCopy: () => showToast(t('app.copyDiffDone')),
           }}
           versionHistoryDialogProps={{
             open: isVersionHistoryOpen,
@@ -986,7 +996,7 @@ function App() {
               applySavedState(state);
               setSavedTablesDrawerOpen(false);
               trackEvent('table_version_rollback');
-              showToast('已回滚到选中版本');
+              showToast(t('app.rollbackDone'));
             },
           }}
           reviewHistoryDialogProps={{

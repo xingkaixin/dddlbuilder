@@ -1,4 +1,5 @@
 import type { PersistedState } from '@/types';
+import i18n from '@/i18n';
 
 const SHARE_API_ENDPOINT = '/api/share';
 
@@ -35,7 +36,7 @@ async function parseError(response: Response): Promise<ShareApiError> {
   const message =
     typeof payload.error === 'string'
       ? payload.error
-      : `请求失败: ${response.status}`;
+      : i18n.t('services.requestFailed', { status: response.status });
   const code = typeof payload.code === 'string' ? payload.code : undefined;
   return new ShareApiError(message, response.status, code);
 }
@@ -62,7 +63,7 @@ export async function createShare(
     typeof data.url !== 'string' ||
     typeof data.expiresInSeconds !== 'number'
   ) {
-    throw new Error('分享响应格式无效');
+    throw new Error(i18n.t('services.shareResponseInvalid'));
   }
 
   return {
@@ -83,7 +84,7 @@ export async function getShareState(shareId: string): Promise<PersistedState> {
 
   const data = (await response.json()) as Partial<GetShareResponse>;
   if (!data.state || typeof data.state !== 'object') {
-    throw new Error('分享数据格式无效');
+    throw new Error(i18n.t('services.shareDataInvalid'));
   }
 
   return data.state as PersistedState;
