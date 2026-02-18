@@ -10,6 +10,11 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 type ThemeMode = 'system' | 'light' | 'dark';
 
@@ -20,14 +25,11 @@ interface ThemeSwitcherProps {
 export const ThemeSwitcher = memo<ThemeSwitcherProps>(
   ({ triggerClassName }) => {
     const { t } = useTranslation();
-    const { theme, setTheme, resolvedTheme } = useTheme();
+    const { theme, setTheme } = useTheme();
     const selectedTheme: ThemeMode =
       theme === 'light' || theme === 'dark' || theme === 'system'
         ? theme
         : 'system';
-
-    const currentResolvedTheme =
-      resolvedTheme === 'dark' ? t('theme.dark') : t('theme.light');
 
     const themeLabels: Record<ThemeMode, string> = {
       system: t('theme.system'),
@@ -35,33 +37,39 @@ export const ThemeSwitcher = memo<ThemeSwitcherProps>(
       dark: t('theme.dark'),
     };
 
-    const triggerLabel =
-      selectedTheme === 'system'
-        ? t('theme.triggerSystem', { theme: currentResolvedTheme })
-        : t('theme.triggerFixed', { theme: themeLabels[selectedTheme] });
+    const triggerLabel = t('theme.triggerFixed', {
+      theme: themeLabels[selectedTheme],
+    });
 
     return (
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            data-testid="theme-switcher-trigger"
-            aria-label={triggerLabel}
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-              triggerClassName,
-            )}
-          >
-            {selectedTheme === 'dark' ? (
-              <Moon className="h-4 w-4" aria-hidden />
-            ) : selectedTheme === 'light' ? (
-              <Sun className="h-4 w-4" aria-hidden />
-            ) : (
-              <Laptop className="h-4 w-4" aria-hidden />
-            )}
-            <span>{triggerLabel}</span>
-          </button>
-        </DropdownMenuTrigger>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                data-testid="theme-switcher-trigger"
+                aria-label={triggerLabel}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  triggerClassName,
+                )}
+              >
+                {selectedTheme === 'dark' ? (
+                  <Moon className="h-4 w-4" aria-hidden />
+                ) : selectedTheme === 'light' ? (
+                  <Sun className="h-4 w-4" aria-hidden />
+                ) : (
+                  <Laptop className="h-4 w-4" aria-hidden />
+                )}
+                <span>{triggerLabel}</span>
+              </button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{t('header.changeTheme')}</p>
+          </TooltipContent>
+        </Tooltip>
         <DropdownMenuContent align="end" className="w-52">
           <DropdownMenuRadioGroup
             value={selectedTheme}
@@ -73,9 +81,6 @@ export const ThemeSwitcher = memo<ThemeSwitcherProps>(
             >
               <Laptop className="h-4 w-4" aria-hidden />
               {t('theme.system')}
-              <span className="ml-auto text-xs text-muted-foreground">
-                {t('theme.current', { theme: currentResolvedTheme })}
-              </span>
             </DropdownMenuRadioItem>
             <DropdownMenuRadioItem
               value="light"

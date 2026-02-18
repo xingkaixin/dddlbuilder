@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { FolderTreeNode } from '@/hooks/useFolders';
+import { useTranslation } from 'react-i18next';
 
 interface FolderTreeProps {
   folders: FolderTreeNode[];
@@ -60,6 +61,7 @@ const FolderNode = memo<FolderNodeProps>(
     onDelete,
     children,
   }) => {
+    const { t } = useTranslation();
     const hasChildren =
       folder.children.length > 0 ||
       (folder.tableCount && folder.tableCount > 0);
@@ -89,7 +91,11 @@ const FolderNode = memo<FolderNodeProps>(
               !hasChildren && 'invisible',
             )}
             onClick={onToggle}
-            aria-label={`${isExpanded ? '折叠' : '展开'} ${folder.name}`}
+            aria-label={
+              isExpanded
+                ? t('savedTables.collapseFolder', { name: folder.name })
+                : t('savedTables.expandFolder', { name: folder.name })
+            }
           >
             <ChevronIcon className="h-3.5 w-3.5" />
           </button>
@@ -126,11 +132,11 @@ const FolderNode = memo<FolderNodeProps>(
             <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuItem onClick={onCreateSubfolder}>
                 <FolderPlus className="mr-2 h-4 w-4" />
-                新建子文件夹
+                {t('savedTables.createSubfolder')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onRename}>
                 <Pencil className="mr-2 h-4 w-4" />
-                重命名
+                {t('savedTables.rename')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -138,7 +144,7 @@ const FolderNode = memo<FolderNodeProps>(
                 onClick={onDelete}
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                删除
+                {t('savedTables.delete')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -166,6 +172,7 @@ export const FolderTree = memo<FolderTreeProps>(
     onDeleteFolder,
     renderTables,
   }) => {
+    const { t } = useTranslation();
     // 递归渲染文件夹
     const renderFolder = useCallback(
       (folder: FolderTreeNode, depth: number): React.ReactNode => {
@@ -208,7 +215,11 @@ export const FolderTree = memo<FolderTreeProps>(
     return (
       <div className="space-y-0.5">
         {folders.length > 0 && (
-          <div role="tree" aria-label="保存的表文件夹" className="space-y-0.5">
+          <div
+            role="tree"
+            aria-label={t('savedTables.folderTreeAria')}
+            className="space-y-0.5"
+          >
             {/* 根级文件夹 */}
             {folders.map((folder) => renderFolder(folder, 0))}
           </div>

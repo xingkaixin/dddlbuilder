@@ -23,6 +23,7 @@ import {
   generateRollbackDDL,
 } from '@/utils/alterDdlGenerator';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 const SqlCodeBlock = lazy(() => import('./SqlCodeBlock'));
 
@@ -40,6 +41,7 @@ interface DiffDialogProps {
  * 字段变更行组件
  */
 const FieldDiffRow = memo<{ diff: FieldDiff }>(({ diff }) => {
+  const { t } = useTranslation();
   const icon =
     diff.type === 'add' ? (
       <Plus className="h-3.5 w-3.5 text-green-500" />
@@ -79,17 +81,23 @@ const FieldDiffRow = memo<{ diff: FieldDiff }>(({ diff }) => {
           <div className="mt-1 text-xs text-muted-foreground">
             {diff.changes.includes('type') && (
               <span className="mr-2">
-                类型: {oldField.type} → {field?.type}
+                {t('diffDialog.type')}: {oldField.type} → {field?.type}
               </span>
             )}
             {diff.changes.includes('nullable') && (
               <span className="mr-2">
-                可空: {oldField.nullable ? '是' : '否'} →{' '}
-                {field?.nullable ? '是' : '否'}
+                {t('diffDialog.nullable')}:{' '}
+                {oldField.nullable
+                  ? t('fieldEnums.nullable.yes')
+                  : t('fieldEnums.nullable.no')}{' '}
+                →{' '}
+                {field?.nullable
+                  ? t('fieldEnums.nullable.yes')
+                  : t('fieldEnums.nullable.no')}
               </span>
             )}
             {diff.changes.includes('comment') && (
-              <span className="mr-2">注释已变更</span>
+              <span className="mr-2">{t('diffDialog.commentChanged')}</span>
             )}
           </div>
         )}
@@ -103,6 +111,7 @@ FieldDiffRow.displayName = 'FieldDiffRow';
  * 索引变更行组件
  */
 const IndexDiffRow = memo<{ diff: IndexDiff }>(({ diff }) => {
+  const { t } = useTranslation();
   const icon =
     diff.type === 'add' ? (
       <Plus className="h-3.5 w-3.5 text-green-500" />
@@ -118,10 +127,10 @@ const IndexDiffRow = memo<{ diff: IndexDiff }>(({ diff }) => {
   const index = diff.index;
   const fieldList = index.fields.map((f) => f.name).join(', ');
   const typeLabel = index.isPrimary
-    ? 'PRIMARY KEY'
+    ? t('diffDialog.indexTypePrimary')
     : index.unique
-      ? 'UNIQUE'
-      : 'INDEX';
+      ? t('diffDialog.indexTypeUnique')
+      : t('diffDialog.indexTypeNormal');
 
   return (
     <div
@@ -150,6 +159,7 @@ IndexDiffRow.displayName = 'IndexDiffRow';
  */
 export const DiffDialog = memo<DiffDialogProps>(
   ({ open, onOpenChange, tableName, dbType, diff, fields, onCopy }) => {
+    const { t } = useTranslation();
     const [showRollback, setShowRollback] = useState(false);
 
     const alterDDL = useMemo(() => {
@@ -195,8 +205,8 @@ export const DiffDialog = memo<DiffDialogProps>(
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-h-[85vh] max-w-2xl overflow-hidden">
           <DialogHeader>
-            <DialogTitle>表结构变更对比</DialogTitle>
-            <DialogDescription>对比当前表与已保存版本的差异</DialogDescription>
+            <DialogTitle>{t('diffDialog.title')}</DialogTitle>
+            <DialogDescription>{t('diffDialog.description')}</DialogDescription>
           </DialogHeader>
 
           <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto pr-1">
@@ -204,11 +214,13 @@ export const DiffDialog = memo<DiffDialogProps>(
             {hasTableMetaChanges && (
               <div className="space-y-2">
                 <h4 className="text-sm font-medium text-muted-foreground">
-                  表配置变更
+                  {t('diffDialog.tableMetaChanges')}
                 </h4>
                 {diff.tableNameChanged && (
                   <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm">
-                    <span className="text-muted-foreground">表名: </span>
+                    <span className="text-muted-foreground">
+                      {t('diffDialog.tableName')}:{' '}
+                    </span>
                     <span className="line-through">{diff.oldTableName}</span>
                     <span className="mx-1">→</span>
                     <span className="font-medium">{diff.newTableName}</span>
@@ -216,23 +228,29 @@ export const DiffDialog = memo<DiffDialogProps>(
                 )}
                 {diff.tableCommentChanged && (
                   <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm">
-                    <span className="text-muted-foreground">表注释已变更</span>
+                    <span className="text-muted-foreground">
+                      {t('diffDialog.tableCommentChanged')}
+                    </span>
                   </div>
                 )}
                 {diff.miscConfigChanged && (
                   <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm">
                     <span className="text-muted-foreground">
-                      杂项设置已变更
+                      {t('diffDialog.miscChanged')}
                     </span>
                     {diff.oldMiscConfig && diff.newMiscConfig && (
                       <div className="mt-1 text-xs text-muted-foreground">
                         {diff.oldMiscConfig.enabled !==
                           diff.newMiscConfig.enabled && (
                           <div>
-                            启用状态:{' '}
-                            {diff.oldMiscConfig.enabled ? '开启' : '关闭'}
+                            {t('diffDialog.enabledStatus')}:{' '}
+                            {diff.oldMiscConfig.enabled
+                              ? t('diffDialog.enabled')
+                              : t('diffDialog.disabled')}
                             <span className="mx-1">→</span>
-                            {diff.newMiscConfig.enabled ? '开启' : '关闭'}
+                            {diff.newMiscConfig.enabled
+                              ? t('diffDialog.enabled')
+                              : t('diffDialog.disabled')}
                           </div>
                         )}
                         {diff.oldMiscConfig.enabled &&
@@ -241,35 +259,45 @@ export const DiffDialog = memo<DiffDialogProps>(
                               {diff.oldMiscConfig.engine !==
                                 diff.newMiscConfig.engine && (
                                 <div>
-                                  引擎: {diff.oldMiscConfig.engine || '默认'}
+                                  {t('diffDialog.engine')}:{' '}
+                                  {diff.oldMiscConfig.engine ||
+                                    t('diffDialog.default')}
                                   <span className="mx-1">→</span>
-                                  {diff.newMiscConfig.engine || '默认'}
+                                  {diff.newMiscConfig.engine ||
+                                    t('diffDialog.default')}
                                 </div>
                               )}
                               {diff.oldMiscConfig.charset !==
                                 diff.newMiscConfig.charset && (
                                 <div>
-                                  字符集: {diff.oldMiscConfig.charset || '默认'}
+                                  {t('diffDialog.charset')}:{' '}
+                                  {diff.oldMiscConfig.charset ||
+                                    t('diffDialog.default')}
                                   <span className="mx-1">→</span>
-                                  {diff.newMiscConfig.charset || '默认'}
+                                  {diff.newMiscConfig.charset ||
+                                    t('diffDialog.default')}
                                 </div>
                               )}
                               {diff.oldMiscConfig.collation !==
                                 diff.newMiscConfig.collation && (
                                 <div>
-                                  排序规则:{' '}
-                                  {diff.oldMiscConfig.collation || '默认'}
+                                  {t('diffDialog.collation')}:{' '}
+                                  {diff.oldMiscConfig.collation ||
+                                    t('diffDialog.default')}
                                   <span className="mx-1">→</span>
-                                  {diff.newMiscConfig.collation || '默认'}
+                                  {diff.newMiscConfig.collation ||
+                                    t('diffDialog.default')}
                                 </div>
                               )}
                               {diff.oldMiscConfig.tablespace !==
                                 diff.newMiscConfig.tablespace && (
                                 <div>
-                                  表空间:{' '}
-                                  {diff.oldMiscConfig.tablespace || '默认'}
+                                  {t('diffDialog.tablespace')}:{' '}
+                                  {diff.oldMiscConfig.tablespace ||
+                                    t('diffDialog.default')}
                                   <span className="mx-1">→</span>
-                                  {diff.newMiscConfig.tablespace || '默认'}
+                                  {diff.newMiscConfig.tablespace ||
+                                    t('diffDialog.default')}
                                 </div>
                               )}
                             </>
@@ -285,7 +313,7 @@ export const DiffDialog = memo<DiffDialogProps>(
             {hasFieldChanges && (
               <div className="space-y-2">
                 <h4 className="text-sm font-medium text-muted-foreground">
-                  字段变更 ({diff.fields.length})
+                  {t('diffDialog.fieldChanges', { count: diff.fields.length })}
                 </h4>
                 <div className="space-y-1.5">
                   {diff.fields.map((f, i) => (
@@ -299,7 +327,7 @@ export const DiffDialog = memo<DiffDialogProps>(
             {hasIndexChanges && (
               <div className="space-y-2">
                 <h4 className="text-sm font-medium text-muted-foreground">
-                  索引变更 ({diff.indexes.length})
+                  {t('diffDialog.indexChanges', { count: diff.indexes.length })}
                 </h4>
                 <div className="space-y-1.5">
                   {diff.indexes.map((idx, i) => (
@@ -314,7 +342,7 @@ export const DiffDialog = memo<DiffDialogProps>(
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-medium text-muted-foreground">
-                    变更脚本
+                    {t('diffDialog.alterScript')}
                   </h4>
                   <Button
                     variant="outline"
@@ -323,7 +351,7 @@ export const DiffDialog = memo<DiffDialogProps>(
                     className="h-7 gap-1.5 px-2 text-xs font-medium"
                   >
                     <Copy className="h-3.5 w-3.5" />
-                    复制
+                    {t('diffDialog.copy')}
                   </Button>
                 </div>
                 <div className="max-h-48 overflow-auto rounded-md border bg-muted/30">
@@ -354,13 +382,13 @@ export const DiffDialog = memo<DiffDialogProps>(
                     <ChevronRight className="h-4 w-4" />
                   )}
                   <RotateCcw className="h-3.5 w-3.5" />
-                  回滚脚本
+                  {t('diffDialog.rollbackScript')}
                 </button>
                 {showRollback && (
                   <>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-amber-600">
-                        执行回滚脚本将撤销以上变更
+                      <span className="text-xs text-amber-600 dark:text-amber-300">
+                        {t('diffDialog.rollbackWarning')}
                       </span>
                       <Button
                         variant="outline"
@@ -369,10 +397,10 @@ export const DiffDialog = memo<DiffDialogProps>(
                         className="h-7 gap-1.5 px-2 text-xs font-medium"
                       >
                         <Copy className="h-3.5 w-3.5" />
-                        复制回滚
+                        {t('diffDialog.copyRollback')}
                       </Button>
                     </div>
-                    <div className="max-h-48 overflow-auto rounded-md border border-amber-200 bg-amber-50/50">
+                    <div className="max-h-48 overflow-auto rounded-md border border-amber-300/60 bg-amber-50/20 dark:border-amber-700/60 dark:bg-amber-950/35">
                       <Suspense
                         fallback={
                           <pre className="m-0 whitespace-pre-wrap p-3 font-mono text-xs">

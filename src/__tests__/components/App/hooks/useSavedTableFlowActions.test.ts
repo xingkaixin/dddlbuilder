@@ -7,6 +7,7 @@ import { useSavedTableFlowActions } from '@/components/App/hooks/useSavedTableFl
 vi.mock('@/utils/tableVersions', () => ({
   createVersion: vi.fn().mockResolvedValue(undefined),
   countVersions: vi.fn().mockResolvedValue(1),
+  INITIAL_VERSION_MESSAGE_KEY: 'initial_version',
 }));
 
 const createState = (tableName: string): PersistedState => ({
