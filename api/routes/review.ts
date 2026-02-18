@@ -4,6 +4,7 @@ import OpenAI from 'openai';
 import {
   enforceOpenAIDailyBudget,
   enforceOpenAIRateLimit,
+  getOpenAIGovernanceSnapshot,
   estimateRequestTokens,
   logOpenAIAudit,
   withOpenAIRetry,
@@ -26,8 +27,11 @@ export function registerReviewRoute(app: Hono) {
     const route = 'review' as const;
     const requestId = getRequestId(c) ?? 'unknown';
     const startedAt = Date.now();
+    const governance = getOpenAIGovernanceSnapshot(route);
 
     let estimatedTokens = 0;
+    let rateLimitRemaining: number | null = governance.rateLimitLimit;
+    let budgetUsedTokens: number | null = null;
 
     const audit = (
       status: number,
@@ -44,12 +48,23 @@ export function registerReviewRoute(app: Hono) {
         retryCount,
         rateLimitHit,
         estimatedTokens,
+        model: process.env.OPENAI_MODEL_NAME || 'gpt-4o-mini',
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+        rateLimitEnabled: governance.rateLimitEnabled,
+        rateLimitStore: governance.rateLimitStore,
+        rateLimitLimit: governance.rateLimitLimit,
+        rateLimitRemaining,
+        rateLimitWindowMs: governance.rateLimitWindowMs,
         budgetHit,
+        budgetEnabled: governance.budgetEnabled,
+        budgetLimitTokens: governance.budgetLimitTokens,
+        budgetUsedTokens,
         errorCode,
       });
     };
 
     const rateLimit = await enforceOpenAIRateLimit(c, route);
+    rateLimitRemaining = rateLimit.remaining;
     if (rateLimit.response) {
       audit(429, 0, true, false, 'RATE_LIMIT_EXCEEDED');
       return rateLimit.response;
@@ -82,6 +97,7 @@ export function registerReviewRoute(app: Hono) {
     );
 
     const budget = await enforceOpenAIDailyBudget(c, estimatedTokens);
+    budgetUsedTokens = budget.usedTokens;
     if (budget.response) {
       audit(429, 0, false, true, 'BUDGET_EXCEEDED');
       return budget.response;
