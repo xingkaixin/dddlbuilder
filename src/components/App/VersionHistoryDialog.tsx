@@ -25,6 +25,7 @@ import {
   listVersionMetadata,
   getVersion,
   deleteVersion,
+  INITIAL_VERSION_MESSAGE_KEY,
 } from '@/utils/tableVersions';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
@@ -84,6 +85,20 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const resolveVersionMessage = useCallback(
+      (message?: string | null) => {
+        if (!message) return '';
+        if (
+          message === INITIAL_VERSION_MESSAGE_KEY ||
+          message === '初始版本' ||
+          message === 'Initial version'
+        ) {
+          return t('versionHistory.initialVersion');
+        }
+        return message;
+      },
+      [t],
+    );
 
     // 加载版本列表
     const loadVersions = useCallback(async () => {
@@ -218,9 +233,9 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                             </span>
                           )}
                         </div>
-                        {v.message && (
+                        {resolveVersionMessage(v.message) && (
                           <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                            {v.message}
+                            {resolveVersionMessage(v.message)}
                           </p>
                         )}
                         <p className="mt-1 text-xs text-muted-foreground">

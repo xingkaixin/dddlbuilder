@@ -8,6 +8,11 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useLocale } from '@/i18n/LocaleContext';
 import { useTranslation } from 'react-i18next';
 import type { AppLocale } from '@/types/locale';
@@ -32,19 +37,26 @@ export const LocaleSwitcher = memo<LocaleSwitcherProps>(
 
     return (
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            aria-label={triggerLabel}
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-              triggerClassName,
-            )}
-          >
-            <Globe className="h-4 w-4" aria-hidden />
-            <span>{labelMap[locale]}</span>
-          </button>
-        </DropdownMenuTrigger>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label={triggerLabel}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  triggerClassName,
+                )}
+              >
+                <Globe className="h-4 w-4" aria-hidden />
+                <span>{labelMap[locale]}</span>
+              </button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{t('header.changeLanguage')}</p>
+          </TooltipContent>
+        </Tooltip>
         <DropdownMenuContent align="end" className="w-40">
           <DropdownMenuRadioGroup
             value={locale}

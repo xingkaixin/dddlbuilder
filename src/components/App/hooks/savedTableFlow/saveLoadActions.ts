@@ -7,7 +7,11 @@ import type {
 } from '@/hooks/useSavedTables';
 import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
-import { createVersion, countVersions } from '@/utils/tableVersions';
+import {
+  createVersion,
+  countVersions,
+  INITIAL_VERSION_MESSAGE_KEY,
+} from '@/utils/tableVersions';
 
 type AnalyticsValue = string | number | boolean | null | undefined;
 
@@ -251,7 +255,11 @@ export function useSaveLoadActions({
       );
       trackEvent('table_save', { tableName: displayName });
       showToast(`已保存：${displayName}`);
-      await createVersion(normalizedName, nextState, '初始版本');
+      await createVersion(
+        normalizedName,
+        nextState,
+        INITIAL_VERSION_MESSAGE_KEY,
+      );
       setLoadedTableVersion(1);
       savedNormalizedName = normalizedName;
       savedDisplayName = displayName;

@@ -11,6 +11,7 @@ import {
 import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import type { GlobalDraftSummary } from '@/types/workspace';
+import { useTranslation } from 'react-i18next';
 import { Input } from '../ui/input';
 import { FolderTree, useFolderExpansion } from './FolderTree';
 import { TableItem } from './saved-tables/TableItem';
@@ -62,6 +63,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     onRenameFolder,
     onDeleteFolder,
   }) => {
+    const { t } = useTranslation();
     const [searchQuery, setSearchQuery] = useState('');
     const { expandedFolders, toggleFolder } = useFolderExpansion();
     const [selectedFolderId, setSelectedFolderId] = useState<
@@ -141,15 +143,17 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent className="flex h-full flex-col p-0">
           <div className="sr-only">
-            <DrawerTitle>已保存的表</DrawerTitle>
+            <DrawerTitle>{t('savedTables.title')}</DrawerTitle>
             <DrawerDescription>
-              管理和浏览已保存的数据库表配置
+              {t('savedTables.drawerDescription')}
             </DrawerDescription>
           </div>
           <div className="flex items-center justify-between border-b border-primary/10 px-4 py-3">
             <div className="flex items-center gap-2">
               <Database className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold">已保存的表</span>
+              <span className="text-sm font-semibold">
+                {t('savedTables.title')}
+              </span>
               {(items.length > 0 || draftItem) && (
                 <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                   {items.length + (draftItem ? 1 : 0)}
@@ -163,7 +167,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                   size="icon"
                   className="h-7 w-7"
                   onClick={() => onCreateFolder()}
-                  aria-label="新建文件夹"
+                  aria-label={t('savedTables.createFolder')}
                 >
                   <FolderPlus className="h-3.5 w-3.5" />
                 </Button>
@@ -173,7 +177,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7"
-                  aria-label="关闭"
+                  aria-label={t('savedTables.close')}
                 >
                   <X className="h-3.5 w-3.5" />
                 </Button>
@@ -186,7 +190,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="搜索表名或数据库类型..."
+                  placeholder={t('savedTables.searchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-8 pl-8 text-xs"
@@ -202,7 +206,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                 aria-busy="true"
                 className="px-2 py-3 text-xs text-muted-foreground"
               >
-                正在读取保存的表...
+                {t('savedTables.loading')}
               </output>
             )}
             {!isLoading && error && (
@@ -212,7 +216,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
             )}
             {!isLoading && !error && items.length === 0 && (
               <div className="px-2 py-3 text-xs text-muted-foreground">
-                还没有保存的表，点击上方「保存表」按钮保存第一个表
+                {t('savedTables.emptyHint')}
               </div>
             )}
             {!isLoading && !error && draftItem && onSelectDraft && (
@@ -227,14 +231,20 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                   onClick={onSelectDraft}
                 >
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">草稿箱</div>
+                    <div className="truncate text-sm font-medium">
+                      {t('savedTables.draft')}
+                    </div>
                     <div className="mt-1 text-xs text-muted-foreground">
-                      自动保存 · {draftItem.dbType} · {draftItem.fieldCount}{' '}
-                      字段
+                      {t('savedTables.draftMeta', {
+                        dbType: draftItem.dbType,
+                        count: draftItem.fieldCount,
+                      })}
                     </div>
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    {draftActive ? '已加载' : '点击加载'}
+                    {draftActive
+                      ? t('savedTables.loaded')
+                      : t('savedTables.clickToLoad')}
                   </span>
                 </button>
               </div>
@@ -244,7 +254,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
               items.length > 0 &&
               filteredItems.length === 0 && (
                 <div className="px-2 py-3 text-xs text-muted-foreground">
-                  未找到匹配的表
+                  {t('savedTables.noMatch')}
                 </div>
               )}
 

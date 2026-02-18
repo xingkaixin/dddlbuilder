@@ -26,11 +26,11 @@ describe('ThemeSwitcher', () => {
     });
   });
 
-  it('默认 system 时应显示系统模式及当前解析主题', () => {
+  it('默认 system 时应显示系统模式', () => {
     render(<ThemeSwitcher />);
 
     expect(screen.getByTestId('theme-switcher-trigger')).toHaveTextContent(
-      '主题：系统（当前暗色）',
+      '主题：跟随系统',
     );
   });
 

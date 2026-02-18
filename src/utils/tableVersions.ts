@@ -4,6 +4,7 @@ import { openDb, VERSION_STORE_NAME } from './savedTablesDb';
 
 /** 每个表最多保留的版本数量 */
 export const MAX_VERSIONS_PER_TABLE = 20;
+export const INITIAL_VERSION_MESSAGE_KEY = 'initial_version';
 
 /**
  * 生成唯一 ID

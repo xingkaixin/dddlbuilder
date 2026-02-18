@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { changelogData } from '@/data/changelog';
+import {
+  changelogData,
+  changelogDataMap,
+  getChangelogData,
+} from '@/data/changelog';
 
 describe('changelogData', () => {
   it('should contain basic metadata and entries', () => {
@@ -14,5 +18,13 @@ describe('changelogData', () => {
       expect(entry.date).toBeTruthy();
       expect(entry.content).toBeTruthy();
     }
+  });
+
+  it('should expose both zh-CN and en-US changelog datasets', () => {
+    expect(changelogDataMap['zh-CN'].entries.length).toBeGreaterThan(0);
+    expect(changelogDataMap['en-US'].entries.length).toBeGreaterThan(0);
+
+    expect(getChangelogData('zh-CN').title).toBeTruthy();
+    expect(getChangelogData('en-US').title).toBeTruthy();
   });
 });

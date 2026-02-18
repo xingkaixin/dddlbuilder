@@ -6,7 +6,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { changelogData } from '@/data/changelog';
+import { getChangelogData } from '@/data/changelog';
+import { useLocale } from '@/i18n/LocaleContext';
 
 interface ChangelogModalProps {
   open: boolean;
@@ -14,6 +15,9 @@ interface ChangelogModalProps {
 }
 
 export function ChangelogModal({ open, onOpenChange }: ChangelogModalProps) {
+  const { locale } = useLocale();
+  const changelogData = getChangelogData(locale);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto backdrop-blur-md bg-card/95 border border-primary/20 shadow-2xl shadow-primary/10">

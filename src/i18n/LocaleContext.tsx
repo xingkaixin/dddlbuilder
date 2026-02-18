@@ -43,10 +43,17 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   }, [locale]);
 
   useEffect(() => {
-    const fromI18n = normalizeLocale(i18n.resolvedLanguage) ?? locale;
-    if (fromI18n !== locale) {
-      setLocaleState(fromI18n);
-    }
+    const handleLanguageChanged = (language: string) => {
+      const normalized = normalizeLocale(language);
+      if (normalized && normalized !== locale) {
+        setLocaleState(normalized);
+      }
+    };
+
+    i18n.on('languageChanged', handleLanguageChanged);
+    return () => {
+      i18n.off('languageChanged', handleLanguageChanged);
+    };
   }, [locale]);
 
   const value = useMemo<LocaleContextValue>(
