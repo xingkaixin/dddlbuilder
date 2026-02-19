@@ -79,7 +79,7 @@ export const TableItem = memo<TableItemProps>(
       <div
         ref={setNodeRef}
         className={cn(
-          'group flex w-full items-center justify-between gap-1 rounded-md px-2 py-2 transition-colors hover:bg-accent',
+          'group relative flex w-full items-center gap-1 rounded-md px-2 py-2 transition-colors hover:bg-accent focus-within:bg-accent',
           isActive && 'bg-accent/60',
         )}
         style={{
@@ -135,19 +135,39 @@ export const TableItem = memo<TableItemProps>(
               </span>
             )}
           </div>
-          <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <DbIcon dbType={item.dbType} />
-              <span className="capitalize">{item.dbType}</span>
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Columns3 className="h-3 w-3" />
-              {t('savedTables.fieldCount', { count: item.fieldCount })}
-            </span>
-            <span>{formatDate(item.updatedAt, resolvedLocale)}</span>
+          <div className="mt-1 ml-1 border-l border-border/50 pl-2">
+            <div
+              className="flex items-center gap-2 overflow-hidden text-[11px] text-muted-foreground/80 whitespace-nowrap"
+              data-testid={`table-meta-row:${item.normalizedName}`}
+            >
+              <span className="inline-flex items-center gap-1">
+                <DbIcon dbType={item.dbType} />
+                <span className="capitalize">{item.dbType}</span>
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Columns3 className="h-3 w-3" />
+                {t('savedTables.fieldCount', { count: item.fieldCount })}
+              </span>
+              <span>
+                {t('savedTables.updatedAtShort', {
+                  date: formatDate(
+                    item.updatedAt || item.createdAt,
+                    resolvedLocale,
+                  ),
+                })}
+              </span>
+            </div>
           </div>
         </button>
-        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-accent via-accent/95 to-transparent opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+          data-testid={`table-actions-mask:${item.normalizedName}`}
+        />
+        <div
+          className="pointer-events-none absolute right-2 top-1/2 z-20 flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+          data-testid={`table-actions:${item.normalizedName}`}
+        >
           {onViewHistory && (
             <Button
               variant="ghost"

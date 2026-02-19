@@ -517,6 +517,7 @@ export const enUSCommon = {
     rename: 'Rename',
     delete: 'Delete',
     fieldCount: '{{count}} fields',
+    updatedAtShort: 'Updated {{date}}',
     history: 'Version history',
     dragTable: 'Drag to move table',
     dragFolder: 'Drag to move folder',
