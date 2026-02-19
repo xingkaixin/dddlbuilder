@@ -315,7 +315,10 @@ describe('usePersistedState', () => {
     });
 
     act(() => {
-      result.current.setWorkspaceSnapshot({ kind: 'global_draft' }, globalState);
+      result.current.setWorkspaceSnapshot(
+        { kind: 'global_draft' },
+        globalState,
+      );
     });
 
     await waitFor(async () => {
