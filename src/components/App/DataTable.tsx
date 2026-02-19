@@ -1,12 +1,22 @@
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { DndContext, closestCenter } from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   useReactTable,
   getCoreRowModel,
   flexRender,
+  type Row,
 } from '@tanstack/react-table';
+import { GripVertical } from 'lucide-react';
 import { toStringSafe, isReservedKeyword } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
+import type { FieldRow } from '@/types';
 import {
   buildDuplicateNameSet,
   useAppStore,
@@ -22,6 +32,7 @@ import { DataTableToolbar } from './table/DataTableToolbar';
 import { useDataTableNavigation } from './table/useDataTableNavigation';
 import { useDataTableClipboard } from './table/useDataTableClipboard';
 import { useFieldRowMutations } from './table/useFieldRowMutations';
+import { useSortableFieldRows } from './table/useSortableFieldRows';
 import { useTranslation } from 'react-i18next';
 
 interface DataTableProps {
@@ -30,6 +41,116 @@ interface DataTableProps {
   highlightedRowIndex?: number | null;
   onOpenStorageEstimator?: () => void;
 }
+
+interface SortableDataRowProps {
+  row: Row<FieldRow>;
+  selectedCell: { row: number; col: number } | null;
+  handleCellActivate: (rowIndex: number, colIndex: number) => void;
+  focusFirstInteractiveInCell: (
+    cellElement: HTMLTableCellElement | null,
+  ) => void;
+  freezeEnabled: boolean;
+  effectiveFreezeColumns: number;
+  getStickyLeft: (colIndex: number) => number;
+  isRowHighlighted: boolean;
+  dragFieldLabel: string;
+}
+
+const SortableDataRow = memo<SortableDataRowProps>(
+  ({
+    row,
+    selectedCell,
+    handleCellActivate,
+    focusFirstInteractiveInCell,
+    freezeEnabled,
+    effectiveFreezeColumns,
+    getStickyLeft,
+    isRowHighlighted,
+    dragFieldLabel,
+  }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: row.id });
+
+    return (
+      <tr
+        ref={setNodeRef}
+        style={{
+          transform: CSS.Transform.toString(transform),
+          transition,
+        }}
+        data-row-index={row.index}
+        className={cn(
+          'group/row border-b border-border/30 transition-colors hover:bg-muted/30',
+          isRowHighlighted && 'bg-blue-500/10',
+          isDragging && 'opacity-80',
+        )}
+      >
+        {row.getVisibleCells().map((cell, colIndex) => {
+          const isFrozen = freezeEnabled && colIndex < effectiveFreezeColumns;
+          const isLastFrozen =
+            freezeEnabled && colIndex === effectiveFreezeColumns - 1;
+          const isSelected =
+            selectedCell &&
+            selectedCell.row === row.index &&
+            selectedCell.col === colIndex - 1;
+          const isOrderColumn = cell.column.id === 'order';
+
+          return (
+            <td
+              key={cell.id}
+              data-row-index={row.index}
+              data-col-index={colIndex}
+              className={cn(
+                'h-10 px-1 bg-background transition-colors group-hover/row:bg-muted/30',
+                isFrozen &&
+                  'relative sticky z-20 bg-gradient-to-r from-background to-background/95 supports-[backdrop-filter]:bg-background/90 supports-[backdrop-filter]:backdrop-blur-[2px] group-hover/row:bg-muted/35',
+                isLastFrozen &&
+                  'border-r border-primary/30 shadow-[8px_0_18px_-12px_hsl(var(--foreground)_/_0.22)] after:pointer-events-none after:absolute after:-right-3 after:top-0 after:h-full after:w-3 after:bg-gradient-to-r after:from-primary/20 after:to-transparent',
+                isRowHighlighted && 'bg-blue-500/10',
+                isSelected && 'ring-2 ring-primary ring-inset',
+              )}
+              style={{
+                width: cell.column.getSize(),
+                minWidth: cell.column.getSize(),
+                left: isFrozen ? getStickyLeft(colIndex) : undefined,
+              }}
+              onClick={(event) => {
+                handleCellActivate(row.index, colIndex);
+                focusFirstInteractiveInCell(event.currentTarget);
+              }}
+              onFocusCapture={() => handleCellActivate(row.index, colIndex)}
+            >
+              {isOrderColumn ? (
+                <div className="flex items-center justify-center gap-1.5">
+                  <button
+                    type="button"
+                    className="inline-flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    aria-label={dragFieldLabel}
+                    {...attributes}
+                    {...listeners}
+                  >
+                    <GripVertical className="h-3.5 w-3.5" />
+                  </button>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </div>
+              ) : (
+                flexRender(cell.column.columnDef.cell, cell.getContext())
+              )}
+            </td>
+          );
+        })}
+      </tr>
+    );
+  },
+);
+
+SortableDataRow.displayName = 'SortableDataRow';
 
 export const DataTable = memo<DataTableProps>(
   ({
@@ -68,7 +189,7 @@ export const DataTable = memo<DataTableProps>(
     const tableRef = useRef<HTMLDivElement>(null);
 
     const [columnWidths] = useState<Record<string, number>>({
-      order: 48,
+      order: 72,
       fieldName: 120,
       fieldComment: 150,
       fieldType: 120,
@@ -173,6 +294,11 @@ export const DataTable = memo<DataTableProps>(
       getRowId: (row) => String(row.order),
     });
 
+    const { sensors, rowIds, handleDragEnd } = useSortableFieldRows({
+      rows,
+      setRows,
+    });
+
     const { getStickyLeft, frozenAreaWidth, effectiveFreezeColumns } =
       useFreezeColumns(columnWidths, freezeEnabled, freezeColumns);
 
@@ -271,68 +397,33 @@ export const DataTable = memo<DataTableProps>(
                 </tr>
               ))}
             </thead>
-            <tbody>
-              {table.getRowModel().rows.map((row) => {
-                const isRowHighlighted = highlightedRowIndex === row.index;
-                return (
-                  <tr
-                    key={row.id}
-                    data-row-index={row.index}
-                    className={cn(
-                      'group/row border-b border-border/30 transition-colors hover:bg-muted/30',
-                      isRowHighlighted && 'bg-blue-500/10',
-                    )}
-                  >
-                    {row.getVisibleCells().map((cell, colIndex) => {
-                      const isFrozen =
-                        freezeEnabled && colIndex < effectiveFreezeColumns;
-                      const isLastFrozen =
-                        freezeEnabled &&
-                        colIndex === effectiveFreezeColumns - 1;
-                      const isSelected =
-                        selectedCell &&
-                        selectedCell.row === row.index &&
-                        selectedCell.col === colIndex - 1;
-                      return (
-                        <td
-                          key={cell.id}
-                          data-row-index={row.index}
-                          data-col-index={colIndex}
-                          className={cn(
-                            'h-10 px-1 bg-background transition-colors group-hover/row:bg-muted/30',
-                            isFrozen &&
-                              'relative sticky z-20 bg-gradient-to-r from-background to-background/95 supports-[backdrop-filter]:bg-background/90 supports-[backdrop-filter]:backdrop-blur-[2px] group-hover/row:bg-muted/35',
-                            isLastFrozen &&
-                              'border-r border-primary/30 shadow-[8px_0_18px_-12px_hsl(var(--foreground)_/_0.22)] after:pointer-events-none after:absolute after:-right-3 after:top-0 after:h-full after:w-3 after:bg-gradient-to-r after:from-primary/20 after:to-transparent',
-                            isRowHighlighted && 'bg-blue-500/10',
-                            isSelected && 'ring-2 ring-primary ring-inset',
-                          )}
-                          style={{
-                            width: cell.column.getSize(),
-                            minWidth: cell.column.getSize(),
-                            left: isFrozen
-                              ? getStickyLeft(colIndex)
-                              : undefined,
-                          }}
-                          onClick={(event) => {
-                            handleCellActivate(row.index, colIndex);
-                            focusFirstInteractiveInCell(event.currentTarget);
-                          }}
-                          onFocusCapture={() =>
-                            handleCellActivate(row.index, colIndex)
-                          }
-                        >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={rowIds}
+                strategy={verticalListSortingStrategy}
+              >
+                <tbody>
+                  {table.getRowModel().rows.map((row) => (
+                    <SortableDataRow
+                      key={row.id}
+                      row={row}
+                      selectedCell={selectedCell}
+                      handleCellActivate={handleCellActivate}
+                      focusFirstInteractiveInCell={focusFirstInteractiveInCell}
+                      freezeEnabled={freezeEnabled}
+                      effectiveFreezeColumns={effectiveFreezeColumns}
+                      getStickyLeft={getStickyLeft}
+                      isRowHighlighted={highlightedRowIndex === row.index}
+                      dragFieldLabel={t('dataTable.dragField')}
+                    />
+                  ))}
+                </tbody>
+              </SortableContext>
+            </DndContext>
           </table>
         </section>
       </div>
