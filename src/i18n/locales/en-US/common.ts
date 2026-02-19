@@ -231,6 +231,7 @@ export const enUSCommon = {
       addCountIncrease: 'Increase rows added per click',
       rowUnit: 'rows',
     },
+    dragField: 'Drag to reorder fields',
     rowActions: {
       removeRow: 'Delete row',
       removeFieldRow: 'Delete field row',

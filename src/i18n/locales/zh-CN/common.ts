@@ -223,6 +223,7 @@ export const zhCNCommon = {
       addCountIncrease: '增加每次添加的行数',
       rowUnit: '行',
     },
+    dragField: '拖拽调整字段顺序',
     rowActions: {
       removeRow: '删除行',
       removeFieldRow: '删除字段行',

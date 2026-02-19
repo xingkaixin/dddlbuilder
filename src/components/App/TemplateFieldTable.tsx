@@ -1,18 +1,8 @@
 import { memo, useCallback, useMemo, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
+import { DndContext, closestCenter } from '@dnd-kit/core';
 import {
   SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
@@ -37,6 +27,7 @@ import { useFieldColumns } from './table/columns';
 import { useDataTableNavigation } from './table/useDataTableNavigation';
 import { useDataTableClipboard } from './table/useDataTableClipboard';
 import { useFieldRowMutations } from './table/useFieldRowMutations';
+import { useSortableFieldRows } from './table/useSortableFieldRows';
 import { useTranslation } from 'react-i18next';
 
 interface TemplateFieldTableProps {
@@ -242,41 +233,10 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(
       getRowId: (row) => String(row.order),
     });
 
-    const sensors = useSensors(
-      useSensor(PointerSensor, {
-        activationConstraint: {
-          distance: 6,
-        },
-      }),
-      useSensor(KeyboardSensor, {
-        coordinateGetter: sortableKeyboardCoordinates,
-      }),
-    );
-
-    const rowIds = useMemo(() => rows.map((row) => String(row.order)), [rows]);
-
-    const handleDragEnd = useCallback(
-      (event: DragEndEvent) => {
-        const { active, over } = event;
-        if (!over || active.id === over.id) return;
-
-        setRows((prev) => {
-          const oldIndex = prev.findIndex(
-            (row) => String(row.order) === active.id,
-          );
-          const newIndex = prev.findIndex(
-            (row) => String(row.order) === over.id,
-          );
-
-          if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) {
-            return prev;
-          }
-
-          return ensureOrder(arrayMove(prev, oldIndex, newIndex));
-        });
-      },
-      [setRows],
-    );
+    const { sensors, rowIds, handleDragEnd } = useSortableFieldRows({
+      rows,
+      setRows,
+    });
 
     return (
       <div className="rounded-md border bg-card/60">
