@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { FolderTreeNode } from '@/hooks/useFolders';
+import { useTranslation } from 'react-i18next';
 
 interface FolderDialogProps {
   open: boolean;
@@ -33,6 +34,7 @@ interface FolderDialogProps {
 
 export const FolderDialog = memo<FolderDialogProps>(
   ({ open, onOpenChange, mode, parentFolder, targetFolder, onConfirm }) => {
+    const { t } = useTranslation();
     const [name, setName] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -49,7 +51,7 @@ export const FolderDialog = memo<FolderDialogProps>(
     const handleConfirm = useCallback(async () => {
       const trimmed = name.trim();
       if (!trimmed) {
-        setError('请输入文件夹名称');
+        setError(t('savedTables.folderDialog.nameRequired'));
         return;
       }
       setLoading(true);
@@ -57,19 +59,30 @@ export const FolderDialog = memo<FolderDialogProps>(
         await onConfirm(trimmed);
         onOpenChange(false);
       } catch (err) {
-        setError(err instanceof Error ? err.message : '操作失败');
+        setError(
+          err instanceof Error
+            ? err.message
+            : t('savedTables.folderDialog.actionFailed'),
+        );
       } finally {
         setLoading(false);
       }
-    }, [name, onConfirm, onOpenChange]);
+    }, [name, onConfirm, onOpenChange, t]);
 
-    const title = mode === 'create' ? '新建文件夹' : '重命名文件夹';
+    const title =
+      mode === 'create'
+        ? t('savedTables.folderDialog.createTitle')
+        : t('savedTables.folderDialog.renameTitle');
     const description =
       mode === 'create'
         ? parentFolder
-          ? `在「${parentFolder.name}」下创建子文件夹`
-          : '创建根级文件夹'
-        : `重命名「${targetFolder?.name}」`;
+          ? t('savedTables.folderDialog.createInParent', {
+              name: parentFolder.name,
+            })
+          : t('savedTables.folderDialog.createRoot')
+        : t('savedTables.folderDialog.renameDescription', {
+            name: targetFolder?.name ?? '',
+          });
 
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -80,7 +93,9 @@ export const FolderDialog = memo<FolderDialogProps>(
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="folder-name">文件夹名称</Label>
+              <Label htmlFor="folder-name">
+                {t('savedTables.folderDialog.nameLabel')}
+              </Label>
               <Input
                 id="folder-name"
                 value={name}
@@ -93,7 +108,7 @@ export const FolderDialog = memo<FolderDialogProps>(
                     handleConfirm();
                   }
                 }}
-                placeholder="请输入名称"
+                placeholder={t('savedTables.folderDialog.namePlaceholder')}
                 autoFocus
               />
               {error && <p className="text-sm text-destructive">{error}</p>}
@@ -101,10 +116,12 @@ export const FolderDialog = memo<FolderDialogProps>(
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              取消
+              {t('savedTables.folderDialog.cancel')}
             </Button>
             <Button onClick={handleConfirm} disabled={loading}>
-              {loading ? '处理中...' : '确定'}
+              {loading
+                ? t('savedTables.folderDialog.processing')
+                : t('savedTables.folderDialog.confirm')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -124,6 +141,7 @@ interface DeleteFolderDialogProps {
 
 export const DeleteFolderDialog = memo<DeleteFolderDialogProps>(
   ({ open, onOpenChange, folder, tableCount, onConfirm }) => {
+    const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
 
     const handleConfirm = useCallback(async () => {
@@ -146,26 +164,39 @@ export const DeleteFolderDialog = memo<DeleteFolderDialogProps>(
       <AlertDialog open={open} onOpenChange={onOpenChange}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>删除文件夹</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t('savedTables.deleteFolderDialog.title')}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              确定要删除文件夹「{folder.name}」吗？
+              {t('savedTables.deleteFolderDialog.description', {
+                name: folder.name,
+              })}
               {hasContent && (
                 <>
                   <br />
                   <span className="text-amber-600">
-                    该文件夹
-                    {tableCount > 0 && `包含 ${tableCount} 个表`}
-                    {tableCount > 0 && folder.children.length > 0 && '和'}
+                    {t('savedTables.deleteFolderDialog.contentPrefix')}
+                    {tableCount > 0 &&
+                      t('savedTables.deleteFolderDialog.containsTables', {
+                        count: tableCount,
+                      })}
+                    {tableCount > 0 &&
+                      folder.children.length > 0 &&
+                      t('savedTables.deleteFolderDialog.and')}
                     {folder.children.length > 0 &&
-                      `${folder.children.length} 个子文件夹`}
-                    ，删除后它们将被移到「未分组」。
+                      t('savedTables.deleteFolderDialog.containsChildren', {
+                        count: folder.children.length,
+                      })}
+                    {t('savedTables.deleteFolderDialog.contentSuffix')}
                   </span>
                 </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={loading}>取消</AlertDialogCancel>
+            <AlertDialogCancel disabled={loading}>
+              {t('savedTables.deleteFolderDialog.cancel')}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
@@ -174,7 +205,9 @@ export const DeleteFolderDialog = memo<DeleteFolderDialogProps>(
               disabled={loading}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {loading ? '删除中...' : '确定删除'}
+              {loading
+                ? t('savedTables.deleteFolderDialog.deleting')
+                : t('savedTables.deleteFolderDialog.confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
