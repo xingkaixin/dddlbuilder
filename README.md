@@ -31,7 +31,7 @@
 bun i
 
 # 本地开发
-bun run dev
+bun dev
 
 # 产物构建
 bun run build
