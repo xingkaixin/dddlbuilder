@@ -12,6 +12,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
+import { useTranslation } from 'react-i18next';
 
 interface ApplyTemplatePopoverProps {
   templates: FieldTemplate[];
@@ -29,6 +30,7 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
     onManageTemplates,
     onSaveAsTemplate,
   }) => {
+    const { t } = useTranslation();
     const [open, setOpen] = useState(false);
 
     // 按更新时间排序显示最近使用的
@@ -65,23 +67,25 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
             className="h-7 gap-1.5 px-2 text-xs font-medium"
           >
             <FileText className="h-3.5 w-3.5" />
-            应用模板
+            {t('templateManager.quickApply.trigger')}
             <ChevronDown className="h-3 w-3 opacity-50" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-64 p-0" align="start">
           <div className="p-2 border-b">
-            <div className="text-sm font-medium">选择模板</div>
+            <div className="text-sm font-medium">
+              {t('templateManager.quickApply.selectTitle')}
+            </div>
           </div>
 
           <div className="max-h-[240px] overflow-y-auto">
             {loading ? (
               <div className="py-4 text-center text-sm text-muted-foreground">
-                加载中...
+                {t('templateManager.quickApply.loading')}
               </div>
             ) : sortedTemplates.length === 0 ? (
               <div className="py-4 text-center text-sm text-muted-foreground">
-                暂无模板
+                {t('templateManager.quickApply.empty')}
               </div>
             ) : (
               <div className="p-1">
@@ -98,10 +102,14 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
                         {template.name}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {template.fields.length} 个字段
+                        {t('templateManager.quickApply.fieldsCount', {
+                          count: template.fields.length,
+                        })}
                       </div>
                     </div>
-                    <span className="text-xs text-muted-foreground">应用</span>
+                    <span className="text-xs text-muted-foreground">
+                      {t('templateManager.quickApply.apply')}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -115,7 +123,7 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
               onClick={handleSaveAsTemplate}
             >
               <Plus className="h-4 w-4" />
-              将当前行保存为模板...
+              {t('templateManager.quickApply.saveCurrentAsTemplate')}
             </button>
             <button
               type="button"
@@ -123,7 +131,7 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
               onClick={handleManage}
             >
               <Settings className="h-4 w-4" />
-              管理模板...
+              {t('templateManager.quickApply.manageTemplates')}
             </button>
           </div>
         </PopoverContent>

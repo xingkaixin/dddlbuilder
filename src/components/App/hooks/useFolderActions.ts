@@ -4,6 +4,7 @@ import type {
   SaveTableResult,
   SavedTableSummary,
 } from '@/hooks/useSavedTables';
+import i18n from '@/i18n';
 
 interface UseFolderActionsParams {
   folderTree: FolderTreeNode[];
@@ -72,7 +73,7 @@ export function useFolderActions({
     async (name: string) => {
       if (folderDialogMode === 'create') {
         await createFolder(name, folderDialogParent?.id);
-        showToast(`已创建文件夹：${name}`);
+        showToast(i18n.t('savedTables.toast.createdFolder', { name }));
         return;
       }
 
@@ -81,7 +82,7 @@ export function useFolderActions({
       }
 
       await renameFolder(folderDialogTarget.id, name);
-      showToast(`已重命名为：${name}`);
+      showToast(i18n.t('savedTables.toast.renamedFolder', { name }));
     },
     [
       folderDialogMode,
@@ -99,9 +100,17 @@ export function useFolderActions({
     try {
       const affectedFolderIds = await deleteFolderAction(deleteFolderTarget.id);
       await clearTablesFromFolders(affectedFolderIds);
-      showToast(`已删除文件夹：${deleteFolderTarget.name}`);
+      showToast(
+        i18n.t('savedTables.toast.deletedFolder', {
+          name: deleteFolderTarget.name,
+        }),
+      );
     } catch (error) {
-      showToast(error instanceof Error ? error.message : '删除失败');
+      showToast(
+        error instanceof Error
+          ? error.message
+          : i18n.t('savedTables.toast.deleteFolderFailed'),
+      );
     }
   }, [
     deleteFolderTarget,
@@ -122,10 +131,14 @@ export function useFolderActions({
     async (item: SavedTableSummary, folderId?: string) => {
       const result = await moveTableToFolder(item.normalizedName, folderId);
       if (result.ok) {
-        showToast(folderId ? '已移动到文件夹' : '已移到未分组');
+        showToast(
+          folderId
+            ? i18n.t('savedTables.toast.movedToFolder')
+            : i18n.t('savedTables.toast.movedToUngrouped'),
+        );
         return;
       }
-      showToast(result.message ?? '移动失败');
+      showToast(result.message ?? i18n.t('savedTables.toast.moveFailed'));
     },
     [moveTableToFolder, showToast],
   );

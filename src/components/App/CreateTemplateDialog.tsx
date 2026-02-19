@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useTranslation } from 'react-i18next';
 
 interface CreateTemplateDialogProps {
   open: boolean;
@@ -45,6 +46,7 @@ interface CreateTemplateDialogProps {
 
 export const CreateTemplateDialog = memo<CreateTemplateDialogProps>(
   ({ open, onOpenChange, selectedFields, onConfirm }) => {
+    const { t } = useTranslation();
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [error, setError] = useState('');
@@ -69,7 +71,7 @@ export const CreateTemplateDialog = memo<CreateTemplateDialogProps>(
     const handleConfirm = useCallback(async () => {
       const trimmedName = name.trim();
       if (!trimmedName) {
-        setError('请输入模板名称');
+        setError(t('templateManager.createFromFieldsDialog.nameRequired'));
         return;
       }
 
@@ -83,27 +85,33 @@ export const CreateTemplateDialog = memo<CreateTemplateDialogProps>(
         if (result.ok) {
           onOpenChange(false);
         } else {
-          setError('创建失败');
+          setError(t('templateManager.createFromFieldsDialog.createFailed'));
         }
       } finally {
         setLoading(false);
       }
-    }, [name, description, validFields, onConfirm, onOpenChange]);
+    }, [name, description, validFields, onConfirm, onOpenChange, t]);
 
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle>保存为模板</DialogTitle>
+            <DialogTitle>
+              {t('templateManager.createFromFieldsDialog.title')}
+            </DialogTitle>
             <DialogDescription>
-              将选中的 {validFields.length} 个字段保存为可复用的模板
+              {t('templateManager.createFromFieldsDialog.description', {
+                count: validFields.length,
+              })}
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             {/* 字段预览 */}
             <div className="rounded-md bg-muted p-3">
-              <div className="text-sm font-medium mb-2">包含字段：</div>
+              <div className="text-sm font-medium mb-2">
+                {t('templateManager.createFromFieldsDialog.fieldPreviewTitle')}
+              </div>
               <div className="flex flex-wrap gap-1">
                 {validFields.map((f, i) => (
                   <span
@@ -117,7 +125,9 @@ export const CreateTemplateDialog = memo<CreateTemplateDialogProps>(
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="new-template-name">模板名称</Label>
+              <Label htmlFor="new-template-name">
+                {t('templateManager.createFromFieldsDialog.nameLabel')}
+              </Label>
               <Input
                 id="new-template-name"
                 value={name}
@@ -125,17 +135,23 @@ export const CreateTemplateDialog = memo<CreateTemplateDialogProps>(
                   setName(e.target.value);
                   setError('');
                 }}
-                placeholder="例如：审计字段"
+                placeholder={t(
+                  'templateManager.createFromFieldsDialog.namePlaceholder',
+                )}
                 autoFocus
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="new-template-desc">描述（可选）</Label>
+              <Label htmlFor="new-template-desc">
+                {t('templateManager.createFromFieldsDialog.descriptionLabel')}
+              </Label>
               <Input
                 id="new-template-desc"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="简要说明模板用途"
+                placeholder={t(
+                  'templateManager.createFromFieldsDialog.descriptionPlaceholder',
+                )}
               />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
@@ -143,10 +159,12 @@ export const CreateTemplateDialog = memo<CreateTemplateDialogProps>(
 
           <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              取消
+              {t('templateManager.createFromFieldsDialog.cancel')}
             </Button>
             <Button onClick={handleConfirm} disabled={loading}>
-              {loading ? '创建中...' : '创建模板'}
+              {loading
+                ? t('templateManager.createFromFieldsDialog.creating')
+                : t('templateManager.createFromFieldsDialog.create')}
             </Button>
           </DialogFooter>
         </DialogContent>

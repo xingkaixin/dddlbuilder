@@ -7,6 +7,7 @@ import { memo } from 'react';
 import { Pencil, Trash2, Copy, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
+import { useTranslation } from 'react-i18next';
 
 interface TemplateListItemProps {
   template: FieldTemplate;
@@ -17,13 +18,17 @@ interface TemplateListItemProps {
 
 export const TemplateListItem = memo<TemplateListItemProps>(
   ({ template, onEdit, onDuplicate, onDelete }) => {
+    const { t } = useTranslation();
+
     return (
       <div className="group flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-accent">
         <FileText className="h-5 w-5 text-blue-500" />
         <div className="flex-1 min-w-0">
           <div className="font-medium truncate">{template.name}</div>
           <div className="text-sm text-muted-foreground">
-            {template.fields.length} 个字段
+            {t('templateManager.listItem.fieldsCount', {
+              count: template.fields.length,
+            })}
             {template.description && ` · ${template.description}`}
           </div>
         </div>
@@ -33,8 +38,10 @@ export const TemplateListItem = memo<TemplateListItemProps>(
             size="icon"
             className="h-7 w-7"
             onClick={onEdit}
-            title="编辑"
-            aria-label={`编辑模板 ${template.name}`}
+            title={t('templateManager.listItem.edit')}
+            aria-label={t('templateManager.listItem.editAria', {
+              name: template.name,
+            })}
           >
             <Pencil className="h-3.5 w-3.5" />
           </Button>
@@ -43,8 +50,10 @@ export const TemplateListItem = memo<TemplateListItemProps>(
             size="icon"
             className="h-7 w-7"
             onClick={onDuplicate}
-            title="复制"
-            aria-label={`复制模板 ${template.name}`}
+            title={t('templateManager.listItem.duplicate')}
+            aria-label={t('templateManager.listItem.duplicateAria', {
+              name: template.name,
+            })}
           >
             <Copy className="h-3.5 w-3.5" />
           </Button>
@@ -53,8 +62,10 @@ export const TemplateListItem = memo<TemplateListItemProps>(
             size="icon"
             className="h-7 w-7 text-destructive hover:text-destructive"
             onClick={onDelete}
-            title="删除"
-            aria-label={`删除模板 ${template.name}`}
+            title={t('templateManager.listItem.delete')}
+            aria-label={t('templateManager.listItem.deleteAria', {
+              name: template.name,
+            })}
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>

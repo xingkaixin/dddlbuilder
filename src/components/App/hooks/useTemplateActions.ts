@@ -6,6 +6,7 @@ import {
 } from 'react';
 import type { FieldRow } from '@/types';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
+import i18n from '@/i18n';
 
 interface CreateTemplateResult {
   ok: boolean;
@@ -90,7 +91,10 @@ export function useTemplateActions({
 
       trackEvent('template_apply', { templateName: template.name });
       showToast(
-        `已应用模板「${template.name}」，添加了 ${template.fields.length} 个字段`,
+        i18n.t('templateManager.toast.applied', {
+          name: template.name,
+          count: template.fields.length,
+        }),
       );
     },
     [setRows, showToast, trackEvent],
@@ -113,9 +117,12 @@ export function useTemplateActions({
       const result = await createTemplateFromFields(name, fields, description);
       if (result.ok) {
         trackEvent('template_create', { templateName: name });
-        showToast(`已创建模板「${name}」`);
+        showToast(i18n.t('templateManager.toast.created', { name }));
       } else {
-        showToast(result.message ?? '创建失败');
+        showToast(
+          result.message ??
+            i18n.t('templateManager.toast.createFromFieldsFailed'),
+        );
       }
       return result;
     },
@@ -125,7 +132,7 @@ export function useTemplateActions({
   const handleSaveAsTemplate = useCallback(() => {
     const validRows = rows.filter((row) => row.fieldName.trim());
     if (validRows.length === 0) {
-      showToast('当前表中没有有效字段可保存');
+      showToast(i18n.t('templateManager.toast.noValidFieldsForSave'));
       return;
     }
 
