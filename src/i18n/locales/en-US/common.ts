@@ -32,6 +32,7 @@ export const enUSCommon = {
     shareReadOnly:
       'This shared link is read-only. Save as a copy first, then continue editing on home page.',
     shareCopySaved: 'Copy "{{name}}" saved and loaded automatically.',
+    loadingWorkspace: 'Loading workspace content...',
     workspace: {
       shareReadonly: 'Current: Shared copy (read-only)',
       currentTable: 'Current: {{name}} {{version}}{{dirty}}',

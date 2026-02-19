@@ -67,6 +67,7 @@ interface UseSaveLoadActionsParams {
     baseSignature: string;
     mode: 'create' | 'update';
   }) => Promise<void> | void;
+  onTableLoadStateChange?: (loading: boolean) => void;
 }
 
 export function useSaveLoadActions({
@@ -94,6 +95,7 @@ export function useSaveLoadActions({
   flushCurrentWorkspace,
   setWorkspaceSnapshot,
   onSaveSuccess,
+  onTableLoadStateChange,
 }: UseSaveLoadActionsParams) {
   const saveName = saveDialog.data.name;
   const queuedLoadAfterSave = saveDialog.data.queuedLoadAfterSave;
@@ -101,6 +103,7 @@ export function useSaveLoadActions({
 
   const handleLoadSavedTable = useCallback(
     async (target: SavedTableSummary) => {
+      onTableLoadStateChange?.(true);
       console.log('[DEBUG] 加载已保存的表 - 开始:', {
         targetName: target.name,
         targetNormalizedName: target.normalizedName,
@@ -161,6 +164,8 @@ export function useSaveLoadActions({
         showToast(`已加载：${record.name} (v${resolvedVersion})`);
       } catch (error) {
         showToast(error instanceof Error ? error.message : '加载失败');
+      } finally {
+        onTableLoadStateChange?.(false);
       }
     },
     [
@@ -174,6 +179,7 @@ export function useSaveLoadActions({
       serializePersistedState,
       setWorkspaceSnapshot,
       trackEvent,
+      onTableLoadStateChange,
     ],
   );
 
