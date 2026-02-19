@@ -8,6 +8,7 @@ import {
   GripVertical,
   History,
   Pencil,
+  Table2,
   Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -78,7 +79,7 @@ export const TableItem = memo<TableItemProps>(
       <div
         ref={setNodeRef}
         className={cn(
-          'group flex w-full items-center justify-between rounded-md px-2 py-2 transition-colors hover:bg-accent',
+          'group flex w-full items-center justify-between gap-1 rounded-md px-2 py-2 transition-colors hover:bg-accent',
           isActive && 'bg-accent/60',
         )}
         style={{
@@ -91,7 +92,7 @@ export const TableItem = memo<TableItemProps>(
         <button
           type="button"
           className={cn(
-            'mr-1 inline-flex h-6 w-6 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+            'inline-flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
             dragDisabled &&
               'cursor-not-allowed opacity-40 hover:bg-transparent',
           )}
@@ -103,6 +104,11 @@ export const TableItem = memo<TableItemProps>(
         >
           <GripVertical className="h-3.5 w-3.5" />
         </button>
+        <span
+          aria-hidden="true"
+          className="inline-flex h-5 w-5 shrink-0"
+          data-testid={`table-expand-placeholder:${item.normalizedName}`}
+        />
         <button
           type="button"
           className={cn(
@@ -110,7 +116,11 @@ export const TableItem = memo<TableItemProps>(
           )}
           onClick={onSelect}
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <Table2
+              className="h-4 w-4 shrink-0 text-primary/80"
+              data-testid={`table-icon:${item.normalizedName}`}
+            />
             <span
               className={cn(
                 'truncate text-sm',

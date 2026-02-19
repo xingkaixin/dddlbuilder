@@ -20,7 +20,7 @@ const folders: FolderTreeNode[] = [
         parentId: 'folder-root',
         order: 0,
         createdAt: now,
-        tableCount: 0,
+        tableCount: 1,
         children: [],
       },
     ],
@@ -32,14 +32,22 @@ describe('FolderTree a11y', () => {
     render(
       <FolderTree
         folders={folders}
-        expandedFolders={new Set(['folder-root'])}
+        expandedFolders={new Set(['folder-root', 'folder-child'])}
         selectedFolderId="folder-root"
         onToggleFolder={vi.fn()}
         onSelectFolder={vi.fn()}
         onCreateFolder={vi.fn()}
         onRenameFolder={vi.fn()}
         onDeleteFolder={vi.fn()}
-        renderTables={() => null}
+        renderTables={(folderId, depth = 0) => {
+          if (!folderId) return null;
+          return (
+            <div
+              data-testid={`folder-table-container:${folderId}`}
+              style={{ marginLeft: `${(depth + 1) * 16}px` }}
+            />
+          );
+        }}
       />,
     );
 
@@ -58,11 +66,22 @@ describe('FolderTree a11y', () => {
     expect(childItem).toHaveAttribute('aria-level', '2');
 
     expect(
+      screen
+        .getByTestId('folder-table-container:folder-root')
+        .getAttribute('style'),
+    ).toContain('margin-left: 16px');
+    expect(
+      screen
+        .getByTestId('folder-table-container:folder-child')
+        .getAttribute('style'),
+    ).toContain('margin-left: 32px');
+
+    expect(
       screen.getByRole('button', { name: '折叠 业务表' }),
     ).toBeInTheDocument();
     expect(
       screen.getAllByRole('button', { name: '拖拽移动文件夹' }).length,
     ).toBeGreaterThan(0);
-    expect(screen.getByRole('group')).toBeInTheDocument();
+    expect(screen.getAllByRole('group').length).toBeGreaterThan(0);
   });
 });

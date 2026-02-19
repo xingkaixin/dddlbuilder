@@ -35,7 +35,7 @@ interface FolderTreeProps {
   onCreateFolder: (parentId?: string) => void;
   onRenameFolder: (folder: FolderTreeNode) => void;
   onDeleteFolder: (folder: FolderTreeNode) => void;
-  renderTables: (folderId?: string) => React.ReactNode;
+  renderTables: (folderId?: string, depth?: number) => React.ReactNode;
 }
 
 interface FolderNodeProps {
@@ -249,7 +249,7 @@ export const FolderTree = memo<FolderTreeProps>(
             {/* 子文件夹 */}
             {folder.children.map((child) => renderFolder(child, depth + 1))}
             {/* 该文件夹下的表 */}
-            {renderTables(folder.id)}
+            {renderTables(folder.id, depth)}
           </FolderNode>
         );
       },
@@ -280,7 +280,7 @@ export const FolderTree = memo<FolderTreeProps>(
         )}
 
         {/* 未分组的表 */}
-        {renderTables(undefined)}
+        {renderTables(undefined, 0)}
       </div>
     );
   },
