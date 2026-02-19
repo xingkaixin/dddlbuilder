@@ -213,6 +213,7 @@ describe('useSavedTableFlowActions', () => {
     const removeSavedTableDraft = vi.fn();
     const trackEvent = vi.fn();
     const showToast = vi.fn();
+    const onTableLoadStateChange = vi.fn();
     const loadTable = vi.fn().mockResolvedValue({
       normalizedName: 'users',
       name: 'Users',
@@ -255,6 +256,7 @@ describe('useSavedTableFlowActions', () => {
         }),
         removeSavedTableDraft,
         setWorkspaceSnapshot,
+        onTableLoadStateChange,
       }),
     );
 
@@ -269,8 +271,58 @@ describe('useSavedTableFlowActions', () => {
       tableName: 'Users',
     });
     expect(showToast).toHaveBeenCalledWith('已加载：Users (v1)');
+    expect(onTableLoadStateChange).toHaveBeenNthCalledWith(1, true);
+    expect(onTableLoadStateChange).toHaveBeenLastCalledWith(false);
     expect(setWorkspaceSnapshot.mock.invocationCallOrder[0]).toBeLessThan(
       applySavedState.mock.invocationCallOrder[0],
     );
+  });
+
+  it('加载表未命中时也应结束加载状态', async () => {
+    const target = createSavedTableSummary('Users', 'users');
+    const onTableLoadStateChange = vi.fn();
+    const loadTable = vi.fn().mockResolvedValue(null);
+    const showToast = vi.fn();
+
+    const { result } = renderHook(() =>
+      useSavedTableFlowActions({
+        tableName: 'Users',
+        hasLoadedTable: false,
+        isLoadedDirty: false,
+        canSaveCurrent: true,
+        loadedTableNormalizedName: null,
+        loadedTableName: null,
+        loadedTableSignature: null,
+        setLoadedTableNormalizedName: vi.fn(),
+        setLoadedTableName: vi.fn(),
+        setLoadedTableSignature: vi.fn(),
+        setLoadedTableVersion: vi.fn(),
+        setSavedTablesDrawerOpen: vi.fn(),
+        saveDialog: createDialog({ name: 'Users', queuedLoadAfterSave: null }),
+        loadConfirmDialog: createDialog({ pendingTarget: null }),
+        renameDialog: createDialog({ name: '', target: null }),
+        deleteDialog: createDialog({ target: null }),
+        buildPersistedState: () => createState('Users'),
+        serializePersistedState: (nextState) => JSON.stringify(nextState),
+        applySavedState: vi.fn(),
+        loadTable,
+        renameTable: vi.fn(),
+        deleteTable: vi.fn(),
+        saveTable: vi.fn(),
+        overwriteTable: vi.fn(),
+        showToast,
+        trackEvent: vi.fn(),
+        onTableLoadStateChange,
+      }),
+    );
+
+    await act(async () => {
+      result.current.handleSelectSavedTable(target);
+      await Promise.resolve();
+    });
+
+    expect(showToast).toHaveBeenCalledWith('未找到保存的表');
+    expect(onTableLoadStateChange).toHaveBeenNthCalledWith(1, true);
+    expect(onTableLoadStateChange).toHaveBeenLastCalledWith(false);
   });
 });

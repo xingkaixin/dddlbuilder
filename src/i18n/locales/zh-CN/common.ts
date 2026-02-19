@@ -32,6 +32,7 @@ export const zhCNCommon = {
     shareReadOnly:
       '当前分享链接为只读。请先保存为副本，系统会返回首页后再继续编辑。',
     shareCopySaved: '已保存副本「{{name}}」，并已自动加载。',
+    loadingWorkspace: '正在加载工作区内容...',
     workspace: {
       shareReadonly: '当前：分享副本（只读）',
       currentTable: '当前：{{name}} {{version}}{{dirty}}',
