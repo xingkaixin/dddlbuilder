@@ -195,7 +195,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     );
 
     const renderTables = useCallback(
-      (folderId?: string) => {
+      (folderId?: string, depth = 0) => {
         const folderItems = folderId
           ? filteredItems.filter((item) => item.folderId === folderId)
           : ungroupedItems;
@@ -206,9 +206,13 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
           return null;
         }
 
+        if (!folderId) {
+          return renderTableList(folderItems, 0);
+        }
+
         return (
-          <div className="ml-6">
-            {renderTableList(folderItems, folderId ? 1 : 0)}
+          <div style={{ marginLeft: `${(depth + 1) * 16}px` }}>
+            {renderTableList(folderItems, 0)}
           </div>
         );
       },

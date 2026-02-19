@@ -91,6 +91,12 @@ const ensureFolderExpanded = async (page: any, folderName: string) => {
   }
 };
 
+const getLeftX = async (locator: any) => {
+  const box = await locator.boundingBox();
+  expect(box).not.toBeNull();
+  return box?.x ?? 0;
+};
+
 test.describe('文件夹管理验证 @storage', () => {
   test.beforeEach(async ({ context, page }) => {
     await context.addInitScript(() => {
@@ -114,6 +120,40 @@ test.describe('文件夹管理验证 @storage', () => {
     await expect(
       page.getByRole('button', { name: /MyProject/i }),
     ).toBeVisible();
+  });
+
+  test('场景：根级文件夹与根级表图标应对齐', async ({ page }) => {
+    const tableNameA = `align_root_a_${Date.now()}`;
+    const tableNameB = `align_root_b_${Date.now()}`;
+
+    await saveTable(page, tableNameA);
+
+    await page.getByRole('button', { name: /清空/i }).click();
+    await page.getByRole('button', { name: /确认清空/i }).click();
+    await expect(page.locator('#table-name')).toHaveValue('');
+
+    await saveTable(page, tableNameB);
+    await openSavedTables(page);
+
+    await page.getByRole('button', { name: /新建文件夹/i }).click();
+    await page.getByLabel('文件夹名称').fill('AlignFolder');
+    await page.getByRole('button', { name: /确定/i }).click();
+
+    const folderRow = getFolderRowByName(page, /AlignFolder/i);
+    const folderIcon = folderRow
+      .locator('button')
+      .nth(2)
+      .locator('svg')
+      .first();
+    const tableIconA = page.getByTestId(`table-icon:${tableNameA}`);
+    const tableIconB = page.getByTestId(`table-icon:${tableNameB}`);
+
+    const folderIconX = await getLeftX(folderIcon);
+    const tableIconAX = await getLeftX(tableIconA);
+    const tableIconBX = await getLeftX(tableIconB);
+
+    expect(Math.abs(tableIconAX - folderIconX)).toBeLessThanOrEqual(2);
+    expect(Math.abs(tableIconBX - folderIconX)).toBeLessThanOrEqual(2);
   });
 
   test('场景：重命名文件夹', async ({ page }) => {
