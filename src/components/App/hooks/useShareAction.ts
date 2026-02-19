@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { PersistedState } from '@/types';
 import { ShareApiError, createShare } from '@/services/shareService';
 import { reportError } from '@/utils/errorReporter';
@@ -72,25 +72,35 @@ export function useShareAction({
   showToast,
   trackEvent,
 }: UseShareActionParams) {
-  return useCallback(async () => {
-    const currentState = buildPersistedState();
-    const signature = buildStateSignature(currentState);
-    const cached = readShareLinkCache();
-    const now = Date.now();
+  const [isSharing, setIsSharing] = useState(false);
+  const inFlightRef = useRef(false);
 
-    if (
-      cached &&
-      cached.signature === signature &&
-      cached.expiresAt > now &&
-      cached.url.length > 0
-    ) {
-      await navigator.clipboard.writeText(cached.url);
-      trackEvent('share_link_reuse');
-      showToast(i18n.t('services.shareCopiedReused'));
+  const handleShare = useCallback(async () => {
+    if (inFlightRef.current) {
       return;
     }
 
+    inFlightRef.current = true;
+    setIsSharing(true);
+
     try {
+      const currentState = buildPersistedState();
+      const signature = buildStateSignature(currentState);
+      const cached = readShareLinkCache();
+      const now = Date.now();
+
+      if (
+        cached &&
+        cached.signature === signature &&
+        cached.expiresAt > now &&
+        cached.url.length > 0
+      ) {
+        await navigator.clipboard.writeText(cached.url);
+        trackEvent('share_link_reuse');
+        showToast(i18n.t('services.shareCopiedReused'));
+        return;
+      }
+
       const share = await createShare(currentState);
       await navigator.clipboard.writeText(share.url);
       writeShareLinkCache({
@@ -110,6 +120,14 @@ export function useShareAction({
         return;
       }
       showToast(i18n.t('services.shareCreateFailed'));
+    } finally {
+      inFlightRef.current = false;
+      setIsSharing(false);
     }
   }, [buildPersistedState, showToast, trackEvent]);
+
+  return {
+    handleShare,
+    isSharing,
+  };
 }

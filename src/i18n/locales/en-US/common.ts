@@ -21,6 +21,7 @@ export const enUSCommon = {
     importSql: 'Import SQL',
     shareLink: 'Share',
     generateShareLink: 'Generate share link',
+    generatingShareLink: 'Generating...',
     changelog: 'Changelog',
     viewChangelog: 'View release history',
     changeLanguage: 'Switch language',

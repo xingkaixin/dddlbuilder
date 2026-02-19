@@ -17,6 +17,7 @@ test.describe('分享功能验证 @tools @smoke', () => {
     let createShareRequestCount = 0;
     await page.route('**/api/share', async (route) => {
       createShareRequestCount += 1;
+      await new Promise((resolve) => setTimeout(resolve, 1200));
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -33,8 +34,10 @@ test.describe('分享功能验证 @tools @smoke', () => {
     // 给权限让 Playwright 访问剪贴板
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
-    // 点击分享按钮
-    await page.getByRole('button', { name: /分享/i }).click();
+    // 双击分享按钮，验证并发防重入仅触发一次请求
+    await page.getByRole('button', { name: /分享/i }).dblclick();
+    await expect(page.getByRole('button', { name: /生成中/i })).toBeDisabled();
+    expect(createShareRequestCount).toBe(1);
 
     // 验证 Toast 提示（包含有效期）
     await expect(page.getByText(/链接已复制到剪贴板/i)).toBeVisible();
