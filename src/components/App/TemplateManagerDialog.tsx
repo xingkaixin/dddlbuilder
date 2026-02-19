@@ -27,9 +27,45 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { FieldTemplate, TemplateField } from '@/hooks/useFieldTemplates';
-import { FieldEditRow, createEmptyField } from './FieldEditRow';
+import type { DatabaseType, FieldRow } from '@/types';
+import { createEmptyRow, ensureOrder } from '@/utils/helpers';
+import { useAppStore } from '@/stores';
 import { TemplateListItem } from './TemplateListItem';
+import { TemplateFieldTable } from './TemplateFieldTable';
 import { useToast } from '@/hooks/useToast';
+import { useTranslation } from 'react-i18next';
+
+const toFieldRows = (fields: TemplateField[]): FieldRow[] => {
+  if (fields.length === 0) {
+    return [createEmptyRow(0)];
+  }
+
+  return fields.map((field, index) => ({
+    ...createEmptyRow(index),
+    order: index + 1,
+    fieldName: field.fieldName,
+    fieldComment: field.fieldComment || '',
+    fieldType: field.fieldType,
+    nullable: field.nullable === '否' ? '否' : '是',
+    defaultKind: field.defaultKind || '无',
+    defaultValue: field.defaultValue || '',
+    onUpdate: field.onUpdate || '无',
+  }));
+};
+
+const toTemplateFields = (rows: FieldRow[]): TemplateField[] => {
+  return rows
+    .filter((row) => row.fieldName.trim())
+    .map((row) => ({
+      fieldName: row.fieldName.trim(),
+      fieldType: row.fieldType.trim(),
+      fieldComment: row.fieldComment?.trim() || undefined,
+      nullable: row.nullable === '否' ? '否' : '是',
+      defaultKind: row.defaultKind || '无',
+      defaultValue: row.defaultValue || '',
+      onUpdate: row.onUpdate || '无',
+    }));
+};
 
 // 模板管理对话框
 interface TemplateManagerDialogProps {
@@ -41,16 +77,16 @@ interface TemplateManagerDialogProps {
     name: string,
     fields: TemplateField[],
     description?: string,
-  ) => Promise<{ ok: boolean }>;
+  ) => Promise<{ ok: boolean; message?: string }>;
   onUpdateTemplate: (
     id: string,
     updates: Partial<Pick<FieldTemplate, 'name' | 'description' | 'fields'>>,
-  ) => Promise<{ ok: boolean }>;
+  ) => Promise<{ ok: boolean; message?: string }>;
   onDuplicateTemplate: (
     id: string,
     newName?: string,
-  ) => Promise<{ ok: boolean }>;
-  onDeleteTemplate: (id: string) => Promise<{ ok: boolean }>;
+  ) => Promise<{ ok: boolean; message?: string }>;
+  onDeleteTemplate: (id: string) => Promise<{ ok: boolean; message?: string }>;
 }
 
 export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
@@ -64,14 +100,16 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
     onDuplicateTemplate,
     onDeleteTemplate,
   }) => {
+    const { t } = useTranslation();
     const { showToast } = useToast();
+    const dbType = useAppStore((state) => state.dbType) as DatabaseType;
     const [searchTerm, setSearchTerm] = useState('');
     const [editingTemplate, setEditingTemplate] =
       useState<FieldTemplate | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [editName, setEditName] = useState('');
     const [editDescription, setEditDescription] = useState('');
-    const [editFields, setEditFields] = useState<TemplateField[]>([]);
+    const [editRows, setEditRows] = useState<FieldRow[]>([]);
     const [editError, setEditError] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
@@ -97,13 +135,13 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
         setEditingTemplate(template);
         setEditName(template.name);
         setEditDescription(template.description || '');
-        setEditFields([...template.fields]);
+        setEditRows(toFieldRows(template.fields));
       } else {
         setEditingTemplate(null);
         setEditName('');
         setEditDescription('');
         // 新建时提供一个空字段
-        setEditFields([createEmptyField()]);
+        setEditRows([createEmptyRow(0)]);
       }
       setEditError('');
       setIsSaving(false);
@@ -112,56 +150,24 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
 
     // 添加字段
     const handleAddField = useCallback(() => {
-      setEditFields((prev) => [...prev, createEmptyField()]);
+      setEditRows((prev) => [...prev, createEmptyRow(prev.length)]);
     }, []);
-
-    // 更新字段
-    const handleFieldChange = useCallback(
-      (index: number, field: TemplateField) => {
-        setEditFields((prev) => {
-          const next = [...prev];
-          next[index] = field;
-          return next;
-        });
-      },
-      [],
-    );
-
-    // 删除字段
-    const handleRemoveField = useCallback((index: number) => {
-      setEditFields((prev) => prev.filter((_, i) => i !== index));
-    }, []);
-
-    // 移动字段
-    const handleMoveField = useCallback(
-      (index: number, direction: 'up' | 'down') => {
-        setEditFields((prev) => {
-          const next = [...prev];
-          const targetIndex = direction === 'up' ? index - 1 : index + 1;
-          if (targetIndex < 0 || targetIndex >= next.length) return prev;
-          [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
-          return next;
-        });
-      },
-      [],
-    );
 
     // 保存模板
     const handleSaveTemplate = useCallback(async () => {
       const trimmedName = editName.trim();
       if (!trimmedName) {
-        setEditError('请输入模板名称');
+        setEditError(t('templateManager.editor.nameRequired'));
         return;
       }
 
-      // 过滤掉空字段
-      const validFields = editFields.filter((f) => f.fieldName.trim());
+      const validFields = toTemplateFields(editRows);
 
       setIsSaving(true);
       setEditError('');
 
       try {
-        let result: { ok: boolean };
+        let result: { ok: boolean; message?: string };
         if (editingTemplate) {
           result = await onUpdateTemplate(editingTemplate.id, {
             name: trimmedName,
@@ -181,20 +187,23 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
           setEditingTemplate(null);
           showToast(
             editingTemplate
-              ? `已更新模板「${trimmedName}」`
-              : `已创建模板「${trimmedName}」`,
+              ? t('templateManager.toast.updated', { name: trimmedName })
+              : t('templateManager.toast.created', { name: trimmedName }),
           );
         } else {
-          setEditError('保存失败');
-          showToast(result.ok === false ? '保存失败，请重试' : '保存失败');
+          setEditError(t('templateManager.toast.saveFailed'));
+          showToast(
+            result.message ?? t('templateManager.toast.saveFailedRetry'),
+          );
         }
       } finally {
         setIsSaving(false);
       }
     }, [
+      t,
       editName,
       editDescription,
-      editFields,
+      editRows,
       editingTemplate,
       onUpdateTemplate,
       onCreateTemplate,
@@ -206,12 +215,16 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
       async (template: FieldTemplate) => {
         const result = await onDuplicateTemplate(template.id);
         if (result.ok) {
-          showToast(`已复制模板「${template.name}」`);
+          showToast(
+            t('templateManager.toast.duplicated', { name: template.name }),
+          );
         } else {
-          showToast(result.message ?? '复制失败');
+          showToast(
+            result.message ?? t('templateManager.toast.duplicateFailed'),
+          );
         }
       },
-      [onDuplicateTemplate, showToast],
+      [onDuplicateTemplate, showToast, t],
     );
 
     // 打开删除确认
@@ -225,13 +238,15 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
       if (!deleteTarget) return;
       const result = await onDeleteTemplate(deleteTarget.id);
       if (result.ok) {
-        showToast(`已删除模板「${deleteTarget.name}」`);
+        showToast(
+          t('templateManager.toast.deleted', { name: deleteTarget.name }),
+        );
       } else {
-        showToast(result.message ?? '删除失败');
+        showToast(result.message ?? t('templateManager.toast.deleteFailed'));
       }
       setIsDeleteDialogOpen(false);
       setDeleteTarget(null);
-    }, [deleteTarget, onDeleteTemplate, showToast]);
+    }, [deleteTarget, onDeleteTemplate, showToast, t]);
 
     // 关闭时重置状态
     useEffect(() => {
@@ -245,9 +260,9 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
         <Dialog open={open} onOpenChange={onOpenChange}>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>字段模板管理</DialogTitle>
+              <DialogTitle>{t('templateManager.title')}</DialogTitle>
               <DialogDescription>
-                管理可复用的字段模板，快速应用到表结构中
+                {t('templateManager.description')}
               </DialogDescription>
             </DialogHeader>
 
@@ -257,7 +272,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
                 <div className="relative flex-1">
                   <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    placeholder="搜索模板..."
+                    placeholder={t('templateManager.searchPlaceholder')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-8"
@@ -265,7 +280,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
                 </div>
                 <Button onClick={() => handleOpenEditDialog()}>
                   <Plus className="mr-1 h-4 w-4" />
-                  新建
+                  {t('templateManager.create')}
                 </Button>
               </div>
 
@@ -273,13 +288,13 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
               <div className="max-h-[400px] space-y-2 overflow-y-auto">
                 {loading ? (
                   <div className="py-8 text-center text-muted-foreground">
-                    加载中...
+                    {t('templateManager.loading')}
                   </div>
                 ) : filteredTemplates.length === 0 ? (
                   <div className="py-8 text-center text-muted-foreground">
                     {searchTerm
-                      ? '未找到匹配的模板'
-                      : '暂无模板，点击「新建」创建'}
+                      ? t('templateManager.emptyFiltered')
+                      : t('templateManager.empty')}
                   </div>
                 ) : (
                   filteredTemplates.map((template) => (
@@ -297,7 +312,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
 
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
-                关闭
+                {t('templateManager.close')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -308,12 +323,14 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
           <DialogContent className="sm:max-w-[90vw] md:max-w-4xl lg:max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle>
-                {editingTemplate ? '编辑模板' : '新建模板'}
+                {editingTemplate
+                  ? t('templateManager.editor.editTitle')
+                  : t('templateManager.editor.createTitle')}
               </DialogTitle>
               <DialogDescription>
                 {editingTemplate
-                  ? '修改模板名称、描述和字段'
-                  : '创建一个新的字段模板'}
+                  ? t('templateManager.editor.editDescription')
+                  : t('templateManager.editor.createDescription')}
               </DialogDescription>
             </DialogHeader>
 
@@ -321,7 +338,9 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
               {/* 基本信息 */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="template-name">模板名称</Label>
+                  <Label htmlFor="template-name">
+                    {t('templateManager.editor.name')}
+                  </Label>
                   <Input
                     id="template-name"
                     value={editName}
@@ -329,17 +348,21 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
                       setEditName(e.target.value);
                       setEditError('');
                     }}
-                    placeholder="例如：审计字段"
+                    placeholder={t('templateManager.editor.namePlaceholder')}
                     autoFocus
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="template-desc">描述（可选）</Label>
+                  <Label htmlFor="template-desc">
+                    {t('templateManager.editor.descriptionLabel')}
+                  </Label>
                   <Input
                     id="template-desc"
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
-                    placeholder="简要说明模板用途"
+                    placeholder={t(
+                      'templateManager.editor.descriptionPlaceholder',
+                    )}
                   />
                 </div>
               </div>
@@ -347,7 +370,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
               {/* 字段编辑区 */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label>字段列表</Label>
+                  <Label>{t('templateManager.editor.fieldList')}</Label>
                   <Button
                     variant="outline"
                     size="sm"
@@ -355,43 +378,21 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
                     className="h-7"
                   >
                     <Plus className="mr-1 h-3.5 w-3.5" />
-                    添加字段
+                    {t('templateManager.editor.addField')}
                   </Button>
                 </div>
 
-                {/* 表头 */}
-                <div className="grid grid-cols-[24px_1.5fr_1.2fr_1.5fr_80px_1fr_1fr_1fr_28px] gap-2 px-2 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
-                  <div />
-                  <span>字段名</span>
-                  <span>类型</span>
-                  <span>注释</span>
-                  <span className="text-center">可空</span>
-                  <span>默认类型</span>
-                  <span>默认值</span>
-                  <span>更新时</span>
-                  <div />
-                </div>
-
-                {/* 字段列表 */}
-                <div className="space-y-1 max-h-[300px] overflow-y-auto">
-                  {editFields.length === 0 ? (
-                    <div className="py-4 text-center text-sm text-muted-foreground border rounded-md">
-                      暂无字段，点击「添加字段」开始
-                    </div>
-                  ) : (
-                    editFields.map((field, index) => (
-                      <FieldEditRow
-                        key={index}
-                        field={field}
-                        index={index}
-                        total={editFields.length}
-                        onChange={handleFieldChange}
-                        onRemove={handleRemoveField}
-                        onMove={handleMoveField}
-                      />
-                    ))
-                  )}
-                </div>
+                <TemplateFieldTable
+                  rows={editRows}
+                  setRows={(next) => {
+                    setEditRows((prev) =>
+                      ensureOrder(
+                        typeof next === 'function' ? next(prev) : next,
+                      ),
+                    );
+                  }}
+                  dbType={dbType}
+                />
               </div>
 
               {editError && (
@@ -404,10 +405,14 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
                 variant="outline"
                 onClick={() => setIsEditDialogOpen(false)}
               >
-                取消
+                {t('templateManager.editor.cancel')}
               </Button>
               <Button onClick={handleSaveTemplate} disabled={isSaving}>
-                {isSaving ? '保存中...' : editingTemplate ? '保存' : '创建模板'}
+                {isSaving
+                  ? t('templateManager.editor.saving')
+                  : editingTemplate
+                    ? t('templateManager.editor.save')
+                    : t('templateManager.editor.create')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -420,13 +425,19 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>删除模板</AlertDialogTitle>
+              <AlertDialogTitle>
+                {t('templateManager.delete.title')}
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                确定要删除模板「{deleteTarget?.name}」吗？此操作无法撤销。
+                {t('templateManager.delete.description', {
+                  name: deleteTarget?.name || '',
+                })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogCancel>
+                {t('templateManager.delete.cancel')}
+              </AlertDialogCancel>
               <AlertDialogAction
                 onClick={(e) => {
                   e.preventDefault();
@@ -434,7 +445,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
                 }}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                删除
+                {t('templateManager.delete.confirm')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
