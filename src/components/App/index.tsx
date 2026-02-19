@@ -420,7 +420,7 @@ function App() {
     trackEvent,
   });
 
-  const handleShare = useShareAction({
+  const { handleShare, isSharing } = useShareAction({
     buildPersistedState,
     showToast,
     trackEvent,
@@ -730,6 +730,7 @@ function App() {
           showChangelog={showChangelog}
           setShowChangelog={setShowChangelog}
           onShare={handleShare}
+          isSharing={isSharing}
           currentDbType={dbType}
           onImport={handleImport}
           onPlayFireworks={handlePlayFireworks}

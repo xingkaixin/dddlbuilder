@@ -2,7 +2,7 @@ import { memo, lazy, Suspense } from 'react';
 import type { DatabaseType } from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
 import packageInfo from '../../../package.json';
-import { Share2, FileInput, History } from 'lucide-react';
+import { Share2, FileInput, History, Loader2 } from 'lucide-react';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { LocaleSwitcher } from './LocaleSwitcher';
 import {
@@ -28,6 +28,7 @@ interface HeaderProps {
   showChangelog: boolean;
   setShowChangelog: (show: boolean) => void;
   onShare: () => void;
+  isSharing: boolean;
   currentDbType: DatabaseType;
   onImport: (result: ParsedResult, dbType: DatabaseType) => void;
   onPlayFireworks: () => void;
@@ -38,13 +39,14 @@ export const Header = memo<HeaderProps>(
     showChangelog,
     setShowChangelog,
     onShare,
+    isSharing,
     currentDbType,
     onImport,
     onPlayFireworks,
   }) => {
     const { t } = useTranslation();
     const actionBtnClass =
-      'group inline-flex items-center gap-1.5 rounded-md px-1 py-1 text-xs font-medium text-primary transition-all duration-200 hover:translate-x-0.5 hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+      'group inline-flex items-center gap-1.5 rounded-md px-1 py-1 text-xs font-medium text-primary transition-all duration-200 hover:translate-x-0.5 hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60';
 
     const trackEvent = async (event: string) => {
       const { track } = await import('@vercel/analytics');
@@ -230,13 +232,32 @@ export const Header = memo<HeaderProps>(
                   </Suspense>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <button onClick={onShare} className={actionBtnClass}>
-                        <Share2 className="h-4 w-4" aria-hidden />
-                        {t('header.shareLink')}
+                      <button
+                        type="button"
+                        onClick={onShare}
+                        className={actionBtnClass}
+                        disabled={isSharing}
+                        aria-busy={isSharing}
+                      >
+                        {isSharing ? (
+                          <Loader2
+                            className="h-4 w-4 animate-spin"
+                            aria-hidden
+                          />
+                        ) : (
+                          <Share2 className="h-4 w-4" aria-hidden />
+                        )}
+                        {isSharing
+                          ? t('header.generatingShareLink')
+                          : t('header.shareLink')}
                       </button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>{t('header.generateShareLink')}</p>
+                      <p>
+                        {isSharing
+                          ? t('header.generatingShareLink')
+                          : t('header.generateShareLink')}
+                      </p>
                     </TooltipContent>
                   </Tooltip>
                   <LocaleSwitcher triggerClassName={actionBtnClass} />
