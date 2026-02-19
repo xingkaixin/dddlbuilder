@@ -499,6 +499,7 @@ export const zhCNCommon = {
     rename: '重命名',
     delete: '删除',
     fieldCount: '{{count}} 字段',
+    updatedAtShort: '更新 {{date}}',
     history: '历史版本',
     dragTable: '拖拽移动表',
     dragFolder: '拖拽移动文件夹',
