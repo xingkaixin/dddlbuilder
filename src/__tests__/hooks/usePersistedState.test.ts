@@ -60,6 +60,17 @@ vi.mock('@/services/shareService', () => ({
 
 const mockedGetShareState = vi.mocked(getShareState);
 const VALID_SHARE_ID = '8c6afce1-2a39-47aa-a14f-f3450c3ad7dd';
+const SHARE_STORAGE_KEY = `${STORAGE_KEY}:share:${VALID_SHARE_ID}`;
+
+const createDeferred = <T>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+};
 
 const createState = (tableName: string) => ({
   tableName,
@@ -294,6 +305,83 @@ describe('usePersistedState', () => {
     });
   });
 
+  it('主工作区 clearState 在 global_draft 下应清空草稿与会话', async () => {
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const globalState = createState('global_to_clear');
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+    });
+
+    act(() => {
+      result.current.setWorkspaceSnapshot({ kind: 'global_draft' }, globalState);
+    });
+
+    await waitFor(async () => {
+      const draft = await readGlobalDraft();
+      const session = await readWorkspaceSession();
+      expect(draft?.state.tableName).toBe(globalState.tableName);
+      expect(session?.activeSource).toEqual({ kind: 'global_draft' });
+    });
+
+    act(() => {
+      result.current.clearState();
+    });
+
+    await waitFor(async () => {
+      const draft = await readGlobalDraft();
+      const session = await readWorkspaceSession();
+      expect(draft).toBeNull();
+      expect(session).toBeNull();
+      expect(result.current.activeSource).toEqual({ kind: 'global_draft' });
+      expect(result.current.persistedState).toBeNull();
+      expect(result.current.getGlobalDraftState()).toBeNull();
+    });
+  });
+
+  it('主工作区 clearState 在 saved_table 下不应清空全局草稿', async () => {
+    const existingGlobal = createState('existing_global');
+    await writeGlobalDraft({ state: existingGlobal, updatedAt: Date.now() });
+
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const savedSource: WorkspaceSavePayload['source'] = {
+      kind: 'saved_table',
+      normalizedName: 'users',
+      tableName: 'Users',
+      baseSignature: '{"table":"users"}',
+    };
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+    });
+
+    act(() => {
+      result.current.setWorkspaceSnapshot(savedSource, createState('users'));
+    });
+
+    await waitFor(() => {
+      expect(result.current.activeSource).toMatchObject({
+        kind: 'saved_table',
+        normalizedName: 'users',
+      });
+    });
+
+    act(() => {
+      result.current.clearState();
+    });
+
+    await waitFor(async () => {
+      const draft = await readGlobalDraft();
+      const session = await readWorkspaceSession();
+      expect(draft?.state.tableName).toBe(existingGlobal.tableName);
+      expect(session).toBeNull();
+      expect(result.current.activeSource).toEqual({ kind: 'global_draft' });
+      expect(result.current.persistedState).toBeNull();
+    });
+  });
+
   it('分享路径应加载远端状态', async () => {
     const sharedState = createState('shared_users');
     mockedGetShareState.mockResolvedValue(sharedState as any);
@@ -307,6 +395,43 @@ describe('usePersistedState', () => {
       expect(result.current.persistedState).toEqual(sharedState);
       expect(result.current.isShareView).toBe(true);
     });
+  });
+
+  it('分享路径 saveState 与 clearState 应写入并清理 share 本地快照', async () => {
+    const sharedState = createState('shared_from_remote');
+    mockedGetShareState.mockResolvedValue(sharedState as any);
+    window.history.replaceState({}, '', `/share/${VALID_SHARE_ID}`);
+
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+      expect(result.current.isShareView).toBe(true);
+    });
+
+    const nextState = createState('shared_local_next');
+
+    act(() => {
+      result.current.saveState({
+        state: nextState,
+        source: { kind: 'global_draft' },
+        isDirty: true,
+      });
+    });
+
+    expect(result.current.persistedState).toEqual(nextState);
+    expect(localStorageMock.setItem).toHaveBeenCalledWith(
+      SHARE_STORAGE_KEY,
+      JSON.stringify(nextState),
+    );
+
+    act(() => {
+      result.current.clearState();
+    });
+
+    expect(result.current.persistedState).toBeNull();
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith(SHARE_STORAGE_KEY);
   });
 
   it('分享不存在时应回跳首页并恢复主工作区', async () => {
@@ -329,6 +454,127 @@ describe('usePersistedState', () => {
         createState('global_after_share_fail'),
       );
       expect(result.current.isShareView).toBe(false);
+    });
+  });
+
+  it('非法分享路径应标记错误并回退主工作区', async () => {
+    const fallbackState = createState('fallback_from_invalid_share');
+    await writeGlobalDraft({ state: fallbackState, updatedAt: Date.now() });
+    window.history.replaceState({}, '', '/share/not-uuid');
+
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+      expect(result.current.shareLoadStatus).toBe('error');
+      expect(result.current.persistedState).toEqual(fallbackState);
+      expect(result.current.isShareView).toBe(false);
+      expect(window.location.pathname).toBe('/');
+    });
+  });
+
+  it('分享路径应先使用本地缓存再被远端状态刷新', async () => {
+    const cachedState = createState('cached_share_state');
+    const remoteState = createState('remote_share_state');
+    const deferred = createDeferred<any>();
+    localStorageMock.setItem(SHARE_STORAGE_KEY, JSON.stringify(cachedState));
+    mockedGetShareState.mockReturnValueOnce(deferred.promise);
+    window.history.replaceState({}, '', `/share/${VALID_SHARE_ID}`);
+
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+      expect(result.current.persistedState).toEqual(cachedState);
+    });
+
+    deferred.resolve(remoteState);
+
+    await waitFor(() => {
+      expect(result.current.persistedState).toEqual(remoteState);
+    });
+  });
+
+  it('分享加载出现通用错误时应标记 error 并回退主工作区', async () => {
+    const fallbackState = createState('global_after_share_error');
+    await writeGlobalDraft({ state: fallbackState, updatedAt: Date.now() });
+    mockedGetShareState.mockRejectedValue(new Error('network failed'));
+    window.history.replaceState({}, '', `/share/${VALID_SHARE_ID}`);
+
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+      expect(result.current.shareLoadStatus).toBe('error');
+      expect(result.current.persistedState).toEqual(fallbackState);
+      expect(result.current.isShareView).toBe(false);
+      expect(window.location.pathname).toBe('/');
+    });
+  });
+
+  it('会话为 saved_table 但实体缺失时应回退到 global_draft', async () => {
+    const fallbackState = createState('global_fallback_when_saved_missing');
+    await writeGlobalDraft({ state: fallbackState, updatedAt: Date.now() });
+    await writeWorkspaceSession({
+      activeSource: {
+        kind: 'saved_table',
+        normalizedName: 'missing',
+        tableName: 'Missing',
+        baseSignature: '{"table":"missing"}',
+      },
+      activeState: null,
+      updatedAt: Date.now(),
+    });
+
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+      expect(result.current.activeSource).toEqual({ kind: 'global_draft' });
+      expect(result.current.persistedState).toEqual(fallbackState);
+    });
+  });
+
+  it('会话为 global_draft 且存在 activeState 时应优先恢复 activeState', async () => {
+    const sessionState = createState('session_active_state');
+    const globalState = createState('global_backup_state');
+    await writeGlobalDraft({ state: globalState, updatedAt: Date.now() });
+    await writeWorkspaceSession({
+      activeSource: { kind: 'global_draft' },
+      activeState: sessionState,
+      updatedAt: Date.now(),
+    });
+
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+      expect(result.current.activeSource).toEqual({ kind: 'global_draft' });
+      expect(result.current.persistedState).toEqual(sessionState);
+    });
+  });
+
+  it('会话为 global_draft 且无 activeState 时应回退到 globalDraft', async () => {
+    const globalState = createState('global_fallback_state');
+    await writeGlobalDraft({ state: globalState, updatedAt: Date.now() });
+    await writeWorkspaceSession({
+      activeSource: { kind: 'global_draft' },
+      activeState: null,
+      updatedAt: Date.now(),
+    });
+
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+      expect(result.current.activeSource).toEqual({ kind: 'global_draft' });
+      expect(result.current.persistedState).toEqual(globalState);
     });
   });
 
