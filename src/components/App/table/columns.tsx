@@ -1,5 +1,9 @@
-import { useMemo } from 'react';
-import { createColumnHelper, type ColumnDef } from '@tanstack/react-table';
+import { useMemo, type ReactNode } from 'react';
+import {
+  createColumnHelper,
+  type ColumnDef,
+  type Row,
+} from '@tanstack/react-table';
 import { EditableCell, SelectCell, CheckboxCell, OrderCell } from './index';
 import { RowActions } from './RowActions';
 import type { DatabaseType, FieldRow, UiDefaultKind } from '@/types';
@@ -16,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 const columnHelper = createColumnHelper<FieldRow>();
 
 interface UseFieldColumnsParams {
+  mode?: 'table' | 'template';
   columnWidths: Record<string, number>;
   rowWarnings: string[][];
   dbType: DatabaseType;
@@ -30,6 +35,10 @@ interface UseFieldColumnsParams {
     direction: 1 | -1,
   ) => void;
   onRemoveRow: (rowIndex: number, count: number) => void;
+  renderOrderCell?: (params: {
+    row: Row<FieldRow>;
+    warnings: string[];
+  }) => ReactNode;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -38,12 +47,14 @@ export function useFieldColumns(
 ): ColumnDef<FieldRow, any>[] {
   const { t } = useTranslation();
   const {
+    mode = 'table',
     columnWidths,
     rowWarnings,
     dbType,
     updateCellValue,
     handleTabNavigation,
     onRemoveRow,
+    renderOrderCell,
   } = params;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -52,12 +63,18 @@ export function useFieldColumns(
       columnHelper.accessor('order', {
         header: () => t('dataTable.headers.order'),
         size: columnWidths.order,
-        cell: ({ row }) => (
-          <OrderCell
-            order={row.original.order}
-            warnings={rowWarnings[row.index] || []}
-          />
-        ),
+        cell: ({ row }) =>
+          renderOrderCell ? (
+            renderOrderCell({
+              row,
+              warnings: rowWarnings[row.index] || [],
+            })
+          ) : (
+            <OrderCell
+              order={row.original.order}
+              warnings={rowWarnings[row.index] || []}
+            />
+          ),
       }),
       columnHelper.accessor('fieldName', {
         header: () => t('dataTable.headers.fieldName'),
@@ -205,10 +222,16 @@ export function useFieldColumns(
         cell: ({ row }) => (
           <RowActions
             hasContent={
-              !!(
-                row.original.fieldName?.trim() ||
-                row.original.fieldComment?.trim()
-              )
+              mode === 'template'
+                ? !!(
+                    row.original.fieldName?.trim() ||
+                    row.original.fieldType?.trim() ||
+                    row.original.fieldComment?.trim()
+                  )
+                : !!(
+                    row.original.fieldName?.trim() ||
+                    row.original.fieldComment?.trim()
+                  )
             }
             fieldName={row.original.fieldName || ''}
             fieldComment={row.original.fieldComment || ''}
@@ -219,12 +242,14 @@ export function useFieldColumns(
     ],
     [
       t,
+      mode,
       columnWidths,
       rowWarnings,
       dbType,
       updateCellValue,
       handleTabNavigation,
       onRemoveRow,
+      renderOrderCell,
     ],
   );
 }

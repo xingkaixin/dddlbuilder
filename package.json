@@ -22,6 +22,9 @@
     "test:e2e:report": "bunx playwright show-report"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@hono/vite-dev-server": "^0.25.0",
     "@number-flow/react": "^0.5.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",

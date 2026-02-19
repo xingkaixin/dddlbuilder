@@ -21,6 +21,7 @@ import { useRowHighlight } from './table/useRowHighlight';
 import { DataTableToolbar } from './table/DataTableToolbar';
 import { useDataTableNavigation } from './table/useDataTableNavigation';
 import { useDataTableClipboard } from './table/useDataTableClipboard';
+import { useFieldRowMutations } from './table/useFieldRowMutations';
 import { useTranslation } from 'react-i18next';
 
 interface DataTableProps {
@@ -112,40 +113,11 @@ export const DataTable = memo<DataTableProps>(
       ],
     );
 
-    const updateCellValue = useCallback(
-      (rowIndex: number, columnId: string, value: string | boolean) => {
-        if (columnId === 'fieldName') {
-          const oldFieldName = rows[rowIndex]?.fieldName || '';
-          const newFieldName = String(value ?? '');
-          syncFieldRenameDependencies(oldFieldName, newFieldName);
-        }
-
-        setRows((prev) => {
-          const newRows = [...prev];
-          const row = { ...newRows[rowIndex] };
-
-          if (columnId === 'nullable') {
-            row.nullable = value ? '是' : '否';
-          } else {
-            (row as Record<string, unknown>)[columnId] = value;
-          }
-
-          if (columnId === 'defaultKind') {
-            const kind = String(value ?? '');
-            if (kind !== '常量') {
-              row.defaultValue = '';
-            }
-            if (kind === '自增') {
-              row.nullable = '否';
-            }
-          }
-
-          newRows[rowIndex] = row;
-          return newRows;
-        });
-      },
-      [rows, setRows, syncFieldRenameDependencies],
-    );
+    const { updateCellValue } = useFieldRowMutations({
+      rows,
+      setRows,
+      onFieldRename: syncFieldRenameDependencies,
+    });
 
     const rowWarnings = useMemo(() => {
       return rows.map((row) => {
