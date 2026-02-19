@@ -109,7 +109,7 @@ const SortableDataRow = memo<SortableDataRowProps>(
               className={cn(
                 'h-10 px-1 bg-background transition-colors group-hover/row:bg-muted/30',
                 isFrozen &&
-                  'relative sticky z-20 bg-gradient-to-r from-background to-background/95 supports-[backdrop-filter]:bg-background/90 supports-[backdrop-filter]:backdrop-blur-[2px] group-hover/row:bg-muted/35',
+                  'relative sticky z-20 supports-[backdrop-filter]:backdrop-blur-[2px]',
                 isLastFrozen &&
                   'border-r border-primary/30 shadow-[8px_0_18px_-12px_hsl(var(--foreground)_/_0.22)] after:pointer-events-none after:absolute after:-right-3 after:top-0 after:h-full after:w-3 after:bg-gradient-to-r after:from-primary/20 after:to-transparent',
                 isRowHighlighted && 'bg-blue-500/10',
@@ -374,7 +374,7 @@ export const DataTable = memo<DataTableProps>(
                         className={cn(
                           'h-10 px-2 text-left text-sm font-medium text-muted-foreground',
                           isFrozen
-                            ? 'relative sticky z-30 bg-gradient-to-r from-background to-background/95 supports-[backdrop-filter]:bg-background/85 supports-[backdrop-filter]:backdrop-blur-[2px]'
+                            ? 'relative sticky z-30 bg-muted/30 supports-[backdrop-filter]:backdrop-blur-[2px]'
                             : 'bg-muted/30',
                           isLastFrozen &&
                             'border-r border-primary/30 shadow-[8px_0_18px_-12px_hsl(var(--foreground)_/_0.22)] after:pointer-events-none after:absolute after:-right-3 after:top-0 after:h-full after:w-3 after:bg-gradient-to-r after:from-primary/20 after:to-transparent',
