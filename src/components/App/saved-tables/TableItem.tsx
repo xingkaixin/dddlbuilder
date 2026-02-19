@@ -1,26 +1,20 @@
 import type React from 'react';
 import { memo } from 'react';
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import {
   Columns3,
   Database,
-  FolderInput,
+  GripVertical,
   History,
   Pencil,
   Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import { cn } from '@/lib/utils';
 import { DATABASE_OPTIONS } from '@/utils/constants';
-import { renderFolderMenuItems } from './folderMenu';
+import { toTableDragId } from './dnd';
 import { useTranslation } from 'react-i18next';
 import { useLocale } from '@/i18n/LocaleContext';
 
@@ -48,12 +42,11 @@ export interface TableItemProps {
   isActive: boolean;
   activeDirty: boolean;
   depth?: number;
-  folders: FolderTreeNode[];
   onSelect: () => void;
   onRename: () => void;
   onDelete: () => void;
   onViewHistory?: () => void;
-  onMoveToFolder?: (folderId?: string) => void;
+  dragDisabled?: boolean;
 }
 
 export const TableItem = memo<TableItemProps>(
@@ -62,15 +55,19 @@ export const TableItem = memo<TableItemProps>(
     isActive,
     activeDirty,
     depth = 0,
-    folders,
     onSelect,
     onRename,
     onDelete,
     onViewHistory,
-    onMoveToFolder,
+    dragDisabled = false,
   }) => {
     const { t } = useTranslation();
     const { resolvedLocale } = useLocale();
+    const { attributes, listeners, setNodeRef, transform, transition } =
+      useDraggable({
+        id: toTableDragId(item.normalizedName),
+        disabled: dragDisabled,
+      });
     const statusLabel = isActive
       ? activeDirty
         ? t('savedTables.dirty')
@@ -79,12 +76,33 @@ export const TableItem = memo<TableItemProps>(
 
     return (
       <div
+        ref={setNodeRef}
         className={cn(
           'group flex w-full items-center justify-between rounded-md px-2 py-2 transition-colors hover:bg-accent',
           isActive && 'bg-accent/60',
         )}
-        style={{ paddingLeft: `${depth * 16 + 8}px` }}
+        style={{
+          paddingLeft: `${depth * 16 + 8}px`,
+          transform: CSS.Transform.toString(transform),
+          transition,
+        }}
+        data-testid={`saved-table-row:${item.normalizedName}`}
       >
+        <button
+          type="button"
+          className={cn(
+            'mr-1 inline-flex h-6 w-6 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+            dragDisabled &&
+              'cursor-not-allowed opacity-40 hover:bg-transparent',
+          )}
+          aria-label={t('savedTables.dragTable')}
+          disabled={dragDisabled}
+          {...attributes}
+          {...listeners}
+          data-testid={`drag-handle-table:${item.normalizedName}`}
+        >
+          <GripVertical className="h-3.5 w-3.5" />
+        </button>
         <button
           type="button"
           className={cn(
@@ -130,33 +148,6 @@ export const TableItem = memo<TableItemProps>(
             >
               <History className="h-3.5 w-3.5" />
             </Button>
-          )}
-          {onMoveToFolder && folders.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  aria-label={t('savedTables.moveToFolder')}
-                >
-                  <FolderInput className="h-3.5 w-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="w-48 max-h-64 overflow-y-auto"
-              >
-                <DropdownMenuItem
-                  disabled={!item.folderId}
-                  onClick={() => onMoveToFolder(undefined)}
-                >
-                  {t('savedTables.moveToRoot')}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {renderFolderMenuItems(folders, item.folderId, onMoveToFolder)}
-              </DropdownMenuContent>
-            </DropdownMenu>
           )}
           <Button
             variant="ghost"

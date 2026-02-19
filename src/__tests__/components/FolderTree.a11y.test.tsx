@@ -60,6 +60,9 @@ describe('FolderTree a11y', () => {
     expect(
       screen.getByRole('button', { name: '折叠 业务表' }),
     ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole('button', { name: '拖拽移动文件夹' }).length,
+    ).toBeGreaterThan(0);
     expect(screen.getByRole('group')).toBeInTheDocument();
   });
 });

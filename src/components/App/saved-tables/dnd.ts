@@ -1,0 +1,167 @@
+import type { UniqueIdentifier } from '@dnd-kit/core';
+import type { FolderTreeNode } from '@/hooks/useFolders';
+
+export const ROOT_DROP_ID = 'root';
+export const TABLE_DRAG_PREFIX = 'table:';
+export const FOLDER_DRAG_PREFIX = 'folder:';
+
+export type FolderParentMap = Record<string, string | undefined>;
+export type TableFolderMap = Record<string, string | undefined>;
+
+export type DragEntity =
+  | { kind: 'table'; normalizedName: string }
+  | { kind: 'folder'; folderId: string };
+
+export type DropTarget =
+  | { kind: 'root' }
+  | { kind: 'folder'; folderId: string };
+
+export type DropAction =
+  | { kind: 'none' }
+  | { kind: 'move_table'; normalizedName: string; folderId?: string }
+  | { kind: 'move_folder'; folderId: string; parentId?: string }
+  | { kind: 'invalid_folder_cycle'; folderId: string; parentId: string };
+
+export interface ResolveDropActionInput {
+  activeId: UniqueIdentifier;
+  overId: UniqueIdentifier | null;
+  isSearching: boolean;
+  tableFolderMap: TableFolderMap;
+  folderParentMap: FolderParentMap;
+}
+
+export const toTableDragId = (normalizedName: string) =>
+  `${TABLE_DRAG_PREFIX}${normalizedName}`;
+
+export const toFolderDragId = (folderId: string) =>
+  `${FOLDER_DRAG_PREFIX}${folderId}`;
+
+export function parseDragEntity(id: UniqueIdentifier): DragEntity | null {
+  const raw = String(id);
+  if (raw.startsWith(TABLE_DRAG_PREFIX)) {
+    const normalizedName = raw.slice(TABLE_DRAG_PREFIX.length);
+    if (!normalizedName) return null;
+    return { kind: 'table', normalizedName };
+  }
+  if (raw.startsWith(FOLDER_DRAG_PREFIX)) {
+    const folderId = raw.slice(FOLDER_DRAG_PREFIX.length);
+    if (!folderId) return null;
+    return { kind: 'folder', folderId };
+  }
+  return null;
+}
+
+export function parseDropTarget(id: UniqueIdentifier): DropTarget | null {
+  const raw = String(id);
+  if (raw === ROOT_DROP_ID) {
+    return { kind: 'root' };
+  }
+  if (raw.startsWith(FOLDER_DRAG_PREFIX)) {
+    const folderId = raw.slice(FOLDER_DRAG_PREFIX.length);
+    if (!folderId) return null;
+    return { kind: 'folder', folderId };
+  }
+  return null;
+}
+
+export function buildFolderParentMap(
+  folders: FolderTreeNode[],
+): FolderParentMap {
+  const map: FolderParentMap = {};
+  const walk = (nodes: FolderTreeNode[]) => {
+    for (const node of nodes) {
+      map[node.id] = node.parentId;
+      walk(node.children);
+    }
+  };
+  walk(folders);
+  return map;
+}
+
+export function isFolderMoveToSelfOrDescendant(
+  movingFolderId: string,
+  targetParentId: string,
+  parentMap: FolderParentMap,
+): boolean {
+  if (movingFolderId === targetParentId) {
+    return true;
+  }
+
+  let current: string | undefined = targetParentId;
+  const visited = new Set<string>();
+  while (current) {
+    if (current === movingFolderId) {
+      return true;
+    }
+    if (visited.has(current)) {
+      return false;
+    }
+    visited.add(current);
+    current = parentMap[current];
+  }
+  return false;
+}
+
+export function resolveDropAction({
+  activeId,
+  overId,
+  isSearching,
+  tableFolderMap,
+  folderParentMap,
+}: ResolveDropActionInput): DropAction {
+  if (isSearching || !overId) {
+    return { kind: 'none' };
+  }
+
+  const dragEntity = parseDragEntity(activeId);
+  const dropTarget = parseDropTarget(overId);
+
+  if (!dragEntity || !dropTarget) {
+    return { kind: 'none' };
+  }
+
+  if (dragEntity.kind === 'table') {
+    const currentFolderId = tableFolderMap[dragEntity.normalizedName];
+    const nextFolderId =
+      dropTarget.kind === 'folder' ? dropTarget.folderId : undefined;
+
+    if (currentFolderId === nextFolderId) {
+      return { kind: 'none' };
+    }
+
+    return {
+      kind: 'move_table',
+      normalizedName: dragEntity.normalizedName,
+      folderId: nextFolderId,
+    };
+  }
+
+  const currentParentId = folderParentMap[dragEntity.folderId];
+  const nextParentId =
+    dropTarget.kind === 'folder' ? dropTarget.folderId : undefined;
+
+  if (currentParentId === nextParentId) {
+    return { kind: 'none' };
+  }
+
+  if (
+    nextParentId &&
+    isFolderMoveToSelfOrDescendant(
+      dragEntity.folderId,
+      nextParentId,
+      folderParentMap,
+    )
+  ) {
+    return {
+      kind: 'invalid_folder_cycle',
+      folderId: dragEntity.folderId,
+      parentId: nextParentId,
+    };
+  }
+
+  return {
+    kind: 'move_folder',
+    folderId: dragEntity.folderId,
+    parentId: nextParentId,
+  };
+}

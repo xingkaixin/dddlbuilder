@@ -1,4 +1,12 @@
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
+import {
+  DndContext,
+  PointerSensor,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
 import { Database, FolderPlus, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +23,11 @@ import { useTranslation } from 'react-i18next';
 import { Input } from '../ui/input';
 import { FolderTree, useFolderExpansion } from './FolderTree';
 import { TableItem } from './saved-tables/TableItem';
+import {
+  ROOT_DROP_ID,
+  buildFolderParentMap,
+  resolveDropAction,
+} from './saved-tables/dnd';
 import { useSavedTablesFilter } from './saved-tables/useSavedTablesFilter';
 
 export interface SavedTablesDrawerProps {
@@ -34,11 +47,48 @@ export interface SavedTablesDrawerProps {
   onRename: (item: SavedTableSummary) => void;
   onDelete: (item: SavedTableSummary) => void;
   onViewHistory?: (item: SavedTableSummary) => void;
-  onMoveToFolder?: (item: SavedTableSummary, folderId?: string) => void;
+  onMoveToFolder?: (
+    item: SavedTableSummary,
+    folderId?: string,
+  ) => Promise<void> | void;
+  onMoveFolder?: (
+    folder: FolderTreeNode,
+    parentId?: string,
+  ) => Promise<void> | void;
   onCreateFolder?: (parentId?: string) => void;
   onRenameFolder?: (folder: FolderTreeNode) => void;
   onDeleteFolder?: (folder: FolderTreeNode) => void;
 }
+
+interface RootDropZoneProps {
+  disabled: boolean;
+}
+
+const RootDropZone = memo<RootDropZoneProps>(({ disabled }) => {
+  const { t } = useTranslation();
+  const { setNodeRef, isOver } = useDroppable({
+    id: ROOT_DROP_ID,
+    disabled,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`mb-2 rounded-md border border-dashed px-3 py-2 text-xs transition-colors ${
+        disabled
+          ? 'border-border text-muted-foreground opacity-60'
+          : isOver
+            ? 'border-primary bg-primary/10 text-primary'
+            : 'border-border text-muted-foreground'
+      }`}
+      aria-disabled={disabled}
+      data-testid="root-dropzone"
+    >
+      {t('savedTables.rootDropzone')}
+    </div>
+  );
+});
+RootDropZone.displayName = 'RootDropZone';
 
 export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
   ({
@@ -59,16 +109,23 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     onDelete,
     onViewHistory,
     onMoveToFolder,
+    onMoveFolder,
     onCreateFolder,
     onRenameFolder,
     onDeleteFolder,
   }) => {
     const { t } = useTranslation();
     const [searchQuery, setSearchQuery] = useState('');
-    const { expandedFolders, toggleFolder } = useFolderExpansion();
+    const { expandedFolders, toggleFolder, expandFolder } =
+      useFolderExpansion();
     const [selectedFolderId, setSelectedFolderId] = useState<
       string | undefined
     >();
+    const sensors = useSensors(
+      useSensor(PointerSensor, {
+        activationConstraint: { distance: 6 },
+      }),
+    );
 
     const { foldersWithCount, filteredItems, ungroupedItems, isSearching } =
       useSavedTablesFilter({
@@ -76,6 +133,34 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
         folders,
         searchQuery,
       });
+
+    const itemMap = useMemo(
+      () => new Map(items.map((item) => [item.normalizedName, item])),
+      [items],
+    );
+    const tableFolderMap = useMemo(
+      () =>
+        items.reduce<Record<string, string | undefined>>((acc, item) => {
+          acc[item.normalizedName] = item.folderId;
+          return acc;
+        }, {}),
+      [items],
+    );
+    const folderParentMap = useMemo(
+      () => buildFolderParentMap(foldersWithCount),
+      [foldersWithCount],
+    );
+    const folderNodeMap = useMemo(() => {
+      const map = new Map<string, FolderTreeNode>();
+      const walk = (nodes: FolderTreeNode[]) => {
+        for (const node of nodes) {
+          map.set(node.id, node);
+          walk(node.children);
+        }
+      };
+      walk(foldersWithCount);
+      return map;
+    }, [foldersWithCount]);
 
     const renderTableList = useCallback(
       (tableItems: SavedTableSummary[], depth = 0) => (
@@ -87,18 +172,13 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
               isActive={activeNormalizedName === item.normalizedName}
               activeDirty={activeDirty}
               depth={depth}
-              folders={foldersWithCount}
               onSelect={() => onSelect(item)}
               onRename={() => onRename(item)}
               onDelete={() => onDelete(item)}
               onViewHistory={
                 onViewHistory ? () => onViewHistory(item) : undefined
               }
-              onMoveToFolder={
-                onMoveToFolder
-                  ? (targetFolderId) => onMoveToFolder(item, targetFolderId)
-                  : undefined
-              }
+              dragDisabled={isSearching}
             />
           ))}
         </div>
@@ -106,9 +186,8 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
       [
         activeDirty,
         activeNormalizedName,
-        foldersWithCount,
+        isSearching,
         onDelete,
-        onMoveToFolder,
         onRename,
         onSelect,
         onViewHistory,
@@ -136,7 +215,62 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
       [filteredItems, isSearching, renderTableList, ungroupedItems],
     );
 
+    const handleDragEnd = useCallback(
+      async (event: DragEndEvent) => {
+        const action = resolveDropAction({
+          activeId: event.active.id,
+          overId: event.over?.id ?? null,
+          isSearching,
+          tableFolderMap,
+          folderParentMap,
+        });
+
+        if (action.kind === 'none') {
+          return;
+        }
+
+        if (action.kind === 'move_table') {
+          if (!onMoveToFolder) return;
+          const item = itemMap.get(action.normalizedName);
+          if (!item) return;
+          await Promise.resolve(onMoveToFolder(item, action.folderId));
+          if (action.folderId) {
+            expandFolder(action.folderId);
+          }
+          return;
+        }
+
+        if (action.kind === 'move_folder') {
+          if (!onMoveFolder) return;
+          const folder = folderNodeMap.get(action.folderId);
+          if (!folder) return;
+          await Promise.resolve(onMoveFolder(folder, action.parentId));
+          if (action.parentId) {
+            expandFolder(action.parentId);
+          }
+          return;
+        }
+
+        if (!onMoveFolder) return;
+        const folder = folderNodeMap.get(action.folderId);
+        if (!folder) return;
+        await Promise.resolve(onMoveFolder(folder, action.parentId));
+      },
+      [
+        expandFolder,
+        folderNodeMap,
+        folderParentMap,
+        isSearching,
+        itemMap,
+        onMoveFolder,
+        onMoveToFolder,
+        tableFolderMap,
+      ],
+    );
+
     const hasFolders = folders.length > 0;
+    const hasVisibleContent =
+      filteredItems.length > 0 || foldersWithCount.length > 0;
     const isLoading = loading || foldersLoading;
 
     return (
@@ -258,34 +392,32 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                 </div>
               )}
 
-            {!isLoading &&
-              !error &&
-              isSearching &&
-              filteredItems.length > 0 &&
-              renderTableList(filteredItems)}
-
-            {!isLoading &&
-              !error &&
-              !isSearching &&
-              filteredItems.length > 0 &&
-              (hasFolders &&
-              onCreateFolder &&
-              onRenameFolder &&
-              onDeleteFolder ? (
-                <FolderTree
-                  folders={foldersWithCount}
-                  expandedFolders={expandedFolders}
-                  selectedFolderId={selectedFolderId}
-                  onToggleFolder={toggleFolder}
-                  onSelectFolder={setSelectedFolderId}
-                  onCreateFolder={onCreateFolder}
-                  onRenameFolder={onRenameFolder}
-                  onDeleteFolder={onDeleteFolder}
-                  renderTables={renderTables}
-                />
-              ) : (
-                renderTableList(filteredItems)
-              ))}
+            {!isLoading && !error && hasVisibleContent && (
+              <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+                <RootDropZone disabled={isSearching} />
+                {isSearching ? (
+                  renderTableList(filteredItems)
+                ) : hasFolders &&
+                  onCreateFolder &&
+                  onRenameFolder &&
+                  onDeleteFolder ? (
+                  <FolderTree
+                    folders={foldersWithCount}
+                    expandedFolders={expandedFolders}
+                    selectedFolderId={selectedFolderId}
+                    dragDisabled={isSearching}
+                    onToggleFolder={toggleFolder}
+                    onSelectFolder={setSelectedFolderId}
+                    onCreateFolder={onCreateFolder}
+                    onRenameFolder={onRenameFolder}
+                    onDeleteFolder={onDeleteFolder}
+                    renderTables={renderTables}
+                  />
+                ) : (
+                  renderTableList(filteredItems)
+                )}
+              </DndContext>
+            )}
           </div>
         </DrawerContent>
       </Drawer>

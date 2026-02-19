@@ -500,6 +500,9 @@ export const zhCNCommon = {
     delete: '删除',
     fieldCount: '{{count}} 字段',
     history: '历史版本',
+    dragTable: '拖拽移动表',
+    dragFolder: '拖拽移动文件夹',
+    rootDropzone: '未分组（拖拽到此处可移回根级）',
     moveToFolder: '移动到文件夹',
     moveToRoot: '📂 移到根目录',
     folderDialog: {
@@ -536,6 +539,9 @@ export const zhCNCommon = {
       movedToFolder: '已移动到文件夹',
       movedToUngrouped: '已移到未分组',
       moveFailed: '移动失败',
+      movedFolder: '文件夹已移动',
+      movedFolderToRoot: '文件夹已移回根级',
+      moveFolderFailed: '文件夹移动失败',
     },
   },
   reviewHistory: {
