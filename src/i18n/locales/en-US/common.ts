@@ -518,6 +518,9 @@ export const enUSCommon = {
     delete: 'Delete',
     fieldCount: '{{count}} fields',
     history: 'Version history',
+    dragTable: 'Drag to move table',
+    dragFolder: 'Drag to move folder',
+    rootDropzone: 'Ungrouped (drop here to move to root)',
     moveToFolder: 'Move to folder',
     moveToRoot: '📂 Move to root',
     folderDialog: {
@@ -554,6 +557,9 @@ export const enUSCommon = {
       movedToFolder: 'Moved to folder',
       movedToUngrouped: 'Moved to ungrouped',
       moveFailed: 'Move failed',
+      movedFolder: 'Folder moved',
+      movedFolderToRoot: 'Folder moved to root',
+      moveFolderFailed: 'Failed to move folder',
     },
   },
   reviewHistory: {

@@ -34,6 +34,63 @@ const openSavedTables = async (page: any) => {
   await expect(page.getByRole('heading', { name: '已保存的表' })).toBeVisible();
 };
 
+const dragToTarget = async (page: any, source: any, target: any) => {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await expect(source).toBeVisible();
+      await expect(target).toBeVisible();
+      const sourceBox = await source.boundingBox();
+      const targetBox = await target.boundingBox();
+      if (!sourceBox || !targetBox) {
+        throw new Error('拖拽元素定位失败');
+      }
+
+      await page.mouse.move(
+        sourceBox.x + sourceBox.width / 2,
+        sourceBox.y + sourceBox.height / 2,
+      );
+      await page.mouse.down();
+      await page.mouse.move(
+        targetBox.x + targetBox.width / 2,
+        targetBox.y + targetBox.height / 2,
+        { steps: 12 },
+      );
+      await page.mouse.up();
+      return;
+    } catch (error) {
+      lastError = error;
+      await page.waitForTimeout(120);
+    }
+  }
+
+  throw lastError;
+};
+
+const getTableRowByName = (page: any, name: RegExp) =>
+  page
+    .locator('[data-testid^="saved-table-row:"]')
+    .filter({ has: page.getByRole('button', { name }) })
+    .first();
+
+const getFolderRowByName = (page: any, name: RegExp) =>
+  page
+    .locator('[data-testid^="folder-row:"]')
+    .filter({ has: page.getByRole('button', { name }) })
+    .first();
+
+const ensureFolderExpanded = async (page: any, folderName: string) => {
+  const expandButton = page
+    .getByRole('button', {
+      name: new RegExp(`展开\\s*${folderName}`, 'i'),
+    })
+    .first();
+  if (await expandButton.isVisible().catch(() => false)) {
+    await expandButton.click();
+  }
+};
+
 test.describe('文件夹管理验证 @storage', () => {
   test.beforeEach(async ({ context, page }) => {
     await context.addInitScript(() => {
@@ -54,9 +111,9 @@ test.describe('文件夹管理验证 @storage', () => {
     await page.getByLabel('文件夹名称').fill('MyProject');
     await page.getByRole('button', { name: /确定/i }).click();
 
-    await expect(page.getByText('MyProject')).toBeVisible();
-
-    // (可选) 拖拽表到文件夹的操作在 E2E 中比较复杂，暂不实现
+    await expect(
+      page.getByRole('button', { name: /MyProject/i }),
+    ).toBeVisible();
   });
 
   test('场景：重命名文件夹', async ({ page }) => {
@@ -110,34 +167,78 @@ test.describe('文件夹管理验证 @storage', () => {
     await page.getByLabel('文件夹名称').fill('Group1');
     await page.getByRole('button', { name: /确定/i }).click();
 
-    const tableRow = page.getByRole('button', {
-      name: new RegExp(tableName, 'i'),
-    });
-    await tableRow.hover();
-    await tableRow
-      .locator('..')
-      .getByRole('button', { name: /移动到文件夹/i })
-      .click();
-    await page.getByRole('menuitem', { name: /Group1/i }).click();
+    const tableRow = getTableRowByName(page, new RegExp(tableName, 'i'));
+    const tableHandle = tableRow.getByRole('button', { name: /拖拽移动表/i });
+    const groupRow = getFolderRowByName(page, /Group1/i);
+    await dragToTarget(page, tableHandle, groupRow);
 
-    const folderButton = page.getByRole('button', { name: /Group1/i });
-    await folderButton
-      .locator('..')
-      .getByRole('button', { name: /展开/i })
-      .click();
+    await ensureFolderExpanded(page, 'Group1');
     await expect(
       page.getByRole('button', { name: new RegExp(tableName, 'i') }),
     ).toBeVisible();
 
-    const movedRow = page.getByRole('button', {
-      name: new RegExp(tableName, 'i'),
+    const movedRow = getTableRowByName(page, new RegExp(tableName, 'i'));
+    const movedHandle = movedRow.getByRole('button', { name: /拖拽移动表/i });
+    await dragToTarget(page, movedHandle, page.getByTestId('root-dropzone'));
+
+    await expect(
+      page.getByRole('button', { name: new RegExp(tableName, 'i') }),
+    ).toBeVisible();
+  });
+
+  test('场景：文件夹拖拽到另一文件夹下', async ({ page }) => {
+    await openSavedTables(page);
+
+    await page.getByRole('button', { name: /新建文件夹/i }).click();
+    await page.getByLabel('文件夹名称').fill('FolderParentA');
+    await page.getByRole('button', { name: /确定/i }).click();
+
+    await page.getByRole('button', { name: /新建文件夹/i }).click();
+    await page.getByLabel('文件夹名称').fill('FolderParentB');
+    await page.getByRole('button', { name: /确定/i }).click();
+
+    const folderARow = getFolderRowByName(page, /FolderParentA/i);
+    const folderAHandle = folderARow.getByRole('button', {
+      name: /拖拽移动文件夹/i,
     });
-    await movedRow.hover();
-    await movedRow
-      .locator('..')
-      .getByRole('button', { name: /移动到文件夹/i })
-      .click();
-    await page.getByRole('menuitem', { name: /移到根目录/i }).click();
+    const folderBRow = getFolderRowByName(page, /FolderParentB/i);
+    await dragToTarget(page, folderAHandle, folderBRow);
+
+    await ensureFolderExpanded(page, 'FolderParentB');
+    await expect(
+      page.getByRole('button', { name: /FolderParentA/i }),
+    ).toBeVisible();
+  });
+
+  test('场景：移动包含表的文件夹后，表随文件夹一起移动', async ({ page }) => {
+    const tableName = `folder_with_table_${Date.now()}`;
+    await saveTable(page, tableName);
+    await openSavedTables(page);
+
+    await page.getByRole('button', { name: /新建文件夹/i }).click();
+    await page.getByLabel('文件夹名称').fill('SourceFolder');
+    await page.getByRole('button', { name: /确定/i }).click();
+
+    await page.getByRole('button', { name: /新建文件夹/i }).click();
+    await page.getByLabel('文件夹名称').fill('TargetFolder');
+    await page.getByRole('button', { name: /确定/i }).click();
+
+    const tableRow = getTableRowByName(page, new RegExp(tableName, 'i'));
+    const tableHandle = tableRow.getByRole('button', { name: /拖拽移动表/i });
+    const sourceFolderRow = getFolderRowByName(page, /SourceFolder/i);
+    await dragToTarget(page, tableHandle, sourceFolderRow);
+
+    const sourceHandle = getFolderRowByName(page, /SourceFolder/i).getByRole(
+      'button',
+      {
+        name: /拖拽移动文件夹/i,
+      },
+    );
+    const targetFolderRow = getFolderRowByName(page, /TargetFolder/i);
+    await dragToTarget(page, sourceHandle, targetFolderRow);
+
+    await ensureFolderExpanded(page, 'TargetFolder');
+    await ensureFolderExpanded(page, 'SourceFolder');
 
     await expect(
       page.getByRole('button', { name: new RegExp(tableName, 'i') }),

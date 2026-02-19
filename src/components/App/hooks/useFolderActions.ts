@@ -11,6 +11,7 @@ interface UseFolderActionsParams {
   savedTables: SavedTableSummary[];
   createFolder: (name: string, parentId?: string) => Promise<FolderTreeNode>;
   renameFolder: (id: string, name: string) => Promise<void>;
+  moveFolder: (id: string, parentId?: string) => Promise<void>;
   deleteFolderAction: (id: string) => Promise<string[]>;
   clearTablesFromFolders: (folderIds: string[]) => Promise<void>;
   moveTableToFolder: (
@@ -25,6 +26,7 @@ export function useFolderActions({
   savedTables,
   createFolder,
   renameFolder,
+  moveFolder,
   deleteFolderAction,
   clearTablesFromFolders,
   moveTableToFolder,
@@ -143,6 +145,26 @@ export function useFolderActions({
     [moveTableToFolder, showToast],
   );
 
+  const handleMoveFolderToFolder = useCallback(
+    async (folder: FolderTreeNode, parentId?: string) => {
+      try {
+        await moveFolder(folder.id, parentId);
+        showToast(
+          parentId
+            ? i18n.t('savedTables.toast.movedFolder')
+            : i18n.t('savedTables.toast.movedFolderToRoot'),
+        );
+      } catch (error) {
+        showToast(
+          error instanceof Error
+            ? error.message
+            : i18n.t('savedTables.toast.moveFolderFailed'),
+        );
+      }
+    },
+    [moveFolder, showToast],
+  );
+
   return {
     isFolderDialogOpen,
     setIsFolderDialogOpen,
@@ -159,5 +181,6 @@ export function useFolderActions({
     handleFolderDialogConfirm,
     handleDeleteFolderConfirm,
     handleMoveTableToFolder,
+    handleMoveFolderToFolder,
   };
 }

@@ -340,6 +340,7 @@ function App() {
     loading: foldersLoading,
     createFolder,
     renameFolder,
+    moveFolder,
     deleteFolder: deleteFolderAction,
   } = useFolders();
 
@@ -370,11 +371,13 @@ function App() {
     handleFolderDialogConfirm,
     handleDeleteFolderConfirm,
     handleMoveTableToFolder,
+    handleMoveFolderToFolder,
   } = useFolderActions({
     folderTree,
     savedTables,
     createFolder,
     renameFolder,
+    moveFolder,
     deleteFolderAction,
     clearTablesFromFolders,
     moveTableToFolder,
@@ -779,6 +782,7 @@ function App() {
             onDelete: handleOpenDeleteDialog,
             onViewHistory: handleViewVersionHistory,
             onMoveToFolder: handleMoveTableToFolder,
+            onMoveFolder: handleMoveFolderToFolder,
             onCreateFolder: handleOpenCreateFolderDialog,
             onRenameFolder: handleOpenRenameFolderDialog,
             onDeleteFolder: handleOpenDeleteFolderDialog,

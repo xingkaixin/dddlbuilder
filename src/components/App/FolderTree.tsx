@@ -1,10 +1,13 @@
 import { memo, useState, useCallback } from 'react';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import {
   ChevronDown,
   ChevronRight,
   Folder,
   FolderOpen,
   FolderPlus,
+  GripVertical,
   Pencil,
   Trash2,
   MoreHorizontal,
@@ -20,11 +23,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { FolderTreeNode } from '@/hooks/useFolders';
 import { useTranslation } from 'react-i18next';
+import { toFolderDragId } from './saved-tables/dnd';
 
 interface FolderTreeProps {
   folders: FolderTreeNode[];
   expandedFolders: Set<string>;
   selectedFolderId?: string | null;
+  dragDisabled?: boolean;
   onToggleFolder: (folderId: string) => void;
   onSelectFolder: (folderId: string | undefined) => void;
   onCreateFolder: (parentId?: string) => void;
@@ -39,6 +44,7 @@ interface FolderNodeProps {
   level: number;
   isExpanded: boolean;
   isSelected: boolean;
+  dragDisabled: boolean;
   onToggle: () => void;
   onSelect: () => void;
   onCreateSubfolder: () => void;
@@ -54,6 +60,7 @@ const FolderNode = memo<FolderNodeProps>(
     level,
     isExpanded,
     isSelected,
+    dragDisabled,
     onToggle,
     onSelect,
     onCreateSubfolder,
@@ -65,6 +72,28 @@ const FolderNode = memo<FolderNodeProps>(
     const hasChildren =
       folder.children.length > 0 ||
       (folder.tableCount && folder.tableCount > 0);
+    const dragId = toFolderDragId(folder.id);
+    const { setNodeRef: setDropRef, isOver } = useDroppable({
+      id: dragId,
+      disabled: dragDisabled,
+    });
+    const {
+      attributes,
+      listeners,
+      setNodeRef: setDragRef,
+      transform,
+      transition,
+    } = useDraggable({
+      id: dragId,
+      disabled: dragDisabled,
+    });
+    const setNodeRef = useCallback(
+      (node: HTMLDivElement | null) => {
+        setDropRef(node);
+        setDragRef(node);
+      },
+      [setDropRef, setDragRef],
+    );
     const ChevronIcon = isExpanded ? ChevronDown : ChevronRight;
     const FolderIcon = isExpanded ? FolderOpen : Folder;
 
@@ -77,12 +106,34 @@ const FolderNode = memo<FolderNodeProps>(
         tabIndex={isSelected ? 0 : -1}
       >
         <div
+          ref={setNodeRef}
           className={cn(
             'group flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent',
             isSelected && 'bg-accent',
+            isOver && !dragDisabled && 'ring-1 ring-primary bg-primary/10',
           )}
-          style={{ paddingLeft: `${depth * 16 + 8}px` }}
+          style={{
+            paddingLeft: `${depth * 16 + 8}px`,
+            transform: CSS.Transform.toString(transform),
+            transition,
+          }}
+          data-testid={`folder-row:${folder.id}`}
         >
+          <button
+            type="button"
+            className={cn(
+              'inline-flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+              dragDisabled &&
+                'cursor-not-allowed opacity-40 hover:bg-transparent',
+            )}
+            aria-label={t('savedTables.dragFolder')}
+            disabled={dragDisabled}
+            {...attributes}
+            {...listeners}
+            data-testid={`drag-handle-folder:${folder.id}`}
+          >
+            <GripVertical className="h-3.5 w-3.5" />
+          </button>
           {/* 展开/折叠按钮 */}
           <button
             type="button"
@@ -165,6 +216,7 @@ export const FolderTree = memo<FolderTreeProps>(
     folders,
     expandedFolders,
     selectedFolderId,
+    dragDisabled = false,
     onToggleFolder,
     onSelectFolder,
     onCreateFolder,
@@ -187,6 +239,7 @@ export const FolderTree = memo<FolderTreeProps>(
             level={depth + 1}
             isExpanded={isExpanded}
             isSelected={isSelected}
+            dragDisabled={dragDisabled}
             onToggle={() => onToggleFolder(folder.id)}
             onSelect={() => onSelectFolder(folder.id)}
             onCreateSubfolder={() => onCreateFolder(folder.id)}
@@ -203,6 +256,7 @@ export const FolderTree = memo<FolderTreeProps>(
       [
         expandedFolders,
         selectedFolderId,
+        dragDisabled,
         onToggleFolder,
         onSelectFolder,
         onCreateFolder,
