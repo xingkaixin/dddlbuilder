@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { reorderFieldRowsByIds } from '@/components/App/table/useSortableFieldRows';
 import type { FieldRow } from '@/types';
 
@@ -47,5 +47,15 @@ describe('reorderFieldRowsByIds', () => {
     const reordered = reorderFieldRowsByIds(rows, '999', '1');
 
     expect(reordered).toBe(rows);
+  });
+
+  it('有效拖拽时应返回新引用（可用于触发反馈）', () => {
+    const rows = createRows(['f1', 'f2', 'f3']);
+    const onDragResult = vi.fn();
+
+    const reordered = reorderFieldRowsByIds(rows, '1', '2');
+    onDragResult({ moved: reordered !== rows });
+
+    expect(onDragResult).toHaveBeenCalledWith({ moved: true });
   });
 });

@@ -161,11 +161,11 @@ export const TableItem = memo<TableItemProps>(
         </button>
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-accent via-accent/95 to-transparent opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+          className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-accent via-accent/90 to-transparent opacity-80 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
           data-testid={`table-actions-mask:${item.normalizedName}`}
         />
         <div
-          className="pointer-events-none absolute right-2 top-1/2 z-20 flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+          className="absolute right-2 top-1/2 z-20 flex -translate-y-1/2 items-center gap-1 opacity-70 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
           data-testid={`table-actions:${item.normalizedName}`}
         >
           {onViewHistory && (

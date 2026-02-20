@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   PointerSensor,
@@ -29,6 +29,9 @@ import {
   resolveDropAction,
 } from './saved-tables/dnd';
 import { useSavedTablesFilter } from './saved-tables/useSavedTablesFilter';
+import { useTrackEvent } from './hooks/useTrackEvent';
+
+type MoveOperationResult = { ok: boolean; message?: string };
 
 export interface SavedTablesDrawerProps {
   open: boolean;
@@ -39,6 +42,7 @@ export interface SavedTablesDrawerProps {
   draftActive?: boolean;
   folders: FolderTreeNode[];
   foldersLoading?: boolean;
+  showSearchWhenEmpty?: boolean;
   activeNormalizedName?: string | null;
   activeDirty?: boolean;
   onOpenChange: (open: boolean) => void;
@@ -50,11 +54,17 @@ export interface SavedTablesDrawerProps {
   onMoveToFolder?: (
     item: SavedTableSummary,
     folderId?: string,
-  ) => Promise<void> | void;
+  ) =>
+    | MoveOperationResult
+    | Promise<MoveOperationResult | undefined>
+    | undefined;
   onMoveFolder?: (
     folder: FolderTreeNode,
     parentId?: string,
-  ) => Promise<void> | void;
+  ) =>
+    | MoveOperationResult
+    | Promise<MoveOperationResult | undefined>
+    | undefined;
   onCreateFolder?: (parentId?: string) => void;
   onRenameFolder?: (folder: FolderTreeNode) => void;
   onDeleteFolder?: (folder: FolderTreeNode) => void;
@@ -74,14 +84,15 @@ const RootDropZone = memo<RootDropZoneProps>(({ disabled }) => {
   return (
     <div
       ref={setNodeRef}
-      className={`mb-2 rounded-md border border-dashed px-3 py-2 text-xs transition-colors ${
+      className={`mb-3 rounded-lg border-2 border-dashed px-3 py-2 text-xs font-medium transition-all ${
         disabled
-          ? 'border-border text-muted-foreground opacity-60'
+          ? 'border-border/70 text-muted-foreground/80 opacity-70'
           : isOver
-            ? 'border-primary bg-primary/10 text-primary'
-            : 'border-border text-muted-foreground'
+            ? 'border-primary bg-primary/15 text-primary shadow-sm shadow-primary/20'
+            : 'border-border/80 bg-muted/20 text-muted-foreground'
       }`}
       aria-disabled={disabled}
+      data-drag-over={isOver ? 'true' : 'false'}
       data-testid="root-dropzone"
     >
       {t('savedTables.rootDropzone')}
@@ -100,6 +111,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     draftActive = false,
     folders,
     foldersLoading = false,
+    showSearchWhenEmpty = true,
     activeNormalizedName,
     activeDirty = false,
     onOpenChange,
@@ -115,7 +127,15 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     onDeleteFolder,
   }) => {
     const { t } = useTranslation();
+    const trackEvent = useTrackEvent();
     const [searchQuery, setSearchQuery] = useState('');
+    const [dragFeedback, setDragFeedback] = useState<{
+      type: 'success' | 'blocked' | 'error';
+      message: string;
+    } | null>(null);
+    const dragFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+      null,
+    );
     const { expandedFolders, toggleFolder, expandFolder } =
       useFolderExpansion();
     const [selectedFolderId, setSelectedFolderId] = useState<
@@ -161,6 +181,28 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
       walk(foldersWithCount);
       return map;
     }, [foldersWithCount]);
+
+    useEffect(
+      () => () => {
+        if (dragFeedbackTimerRef.current) {
+          clearTimeout(dragFeedbackTimerRef.current);
+        }
+      },
+      [],
+    );
+
+    const showDragFeedback = useCallback(
+      (type: 'success' | 'blocked' | 'error', message: string) => {
+        setDragFeedback({ type, message });
+        if (dragFeedbackTimerRef.current) {
+          clearTimeout(dragFeedbackTimerRef.current);
+        }
+        dragFeedbackTimerRef.current = setTimeout(() => {
+          setDragFeedback(null);
+        }, 2400);
+      },
+      [],
+    );
 
     const renderTableList = useCallback(
       (tableItems: SavedTableSummary[], depth = 0) => (
@@ -229,36 +271,112 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
           folderParentMap,
         });
 
-        if (action.kind === 'none') {
-          return;
-        }
+        void trackEvent('saved_tables_drag_attempt', {
+          action: action.kind,
+          reason: action.reason,
+          hasTarget: Boolean(event.over?.id),
+        });
 
-        if (action.kind === 'move_table') {
-          if (!onMoveToFolder) return;
-          const item = itemMap.get(action.normalizedName);
-          if (!item) return;
-          await Promise.resolve(onMoveToFolder(item, action.folderId));
-          if (action.folderId) {
-            expandFolder(action.folderId);
+        switch (action.kind) {
+          case 'none':
+            return;
+          case 'invalid_folder_cycle': {
+            showDragFeedback(
+              'blocked',
+              t('savedTables.dragFeedback.folderCycle'),
+            );
+            void trackEvent('saved_tables_drag_blocked', {
+              reason: action.reason,
+            });
+            return;
           }
-          return;
-        }
-
-        if (action.kind === 'move_folder') {
-          if (!onMoveFolder) return;
-          const folder = folderNodeMap.get(action.folderId);
-          if (!folder) return;
-          await Promise.resolve(onMoveFolder(folder, action.parentId));
-          if (action.parentId) {
-            expandFolder(action.parentId);
+          case 'move_table': {
+            if (!onMoveToFolder) return;
+            const item = itemMap.get(action.normalizedName);
+            if (!item) return;
+            try {
+              const result = await Promise.resolve(
+                onMoveToFolder(item, action.folderId),
+              );
+              if (result && result.ok === false) {
+                showDragFeedback(
+                  'error',
+                  result.message ?? t('savedTables.dragFeedback.moveFailed'),
+                );
+                return;
+              }
+              if (action.folderId) {
+                expandFolder(action.folderId);
+              }
+              showDragFeedback(
+                'success',
+                action.folderId
+                  ? t('savedTables.dragFeedback.tableMovedToFolder', {
+                      name:
+                        folderNodeMap.get(action.folderId)?.name ??
+                        t('savedTables.dragFeedback.unknownFolder'),
+                    })
+                  : t('savedTables.dragFeedback.tableMovedToRoot'),
+              );
+              void trackEvent('saved_tables_drag_success', {
+                entity: 'table',
+                reason: action.reason,
+                target: action.folderId ?? 'root',
+              });
+            } catch {
+              showDragFeedback(
+                'error',
+                t('savedTables.dragFeedback.moveFailed'),
+              );
+            }
+            return;
           }
-          return;
+          case 'move_folder': {
+            if (!onMoveFolder) return;
+            const folder = folderNodeMap.get(action.folderId);
+            if (!folder) return;
+            try {
+              const result = await Promise.resolve(
+                onMoveFolder(folder, action.parentId),
+              );
+              if (result && result.ok === false) {
+                showDragFeedback(
+                  'error',
+                  result.message ?? t('savedTables.dragFeedback.moveFailed'),
+                );
+                return;
+              }
+              if (action.parentId) {
+                expandFolder(action.parentId);
+              }
+              showDragFeedback(
+                'success',
+                action.parentId
+                  ? t('savedTables.dragFeedback.folderMovedToFolder', {
+                      name:
+                        folderNodeMap.get(action.parentId)?.name ??
+                        t('savedTables.dragFeedback.unknownFolder'),
+                    })
+                  : t('savedTables.dragFeedback.folderMovedToRoot'),
+              );
+              void trackEvent('saved_tables_drag_success', {
+                entity: 'folder',
+                reason: action.reason,
+                target: action.parentId ?? 'root',
+              });
+            } catch {
+              showDragFeedback(
+                'error',
+                t('savedTables.dragFeedback.moveFailed'),
+              );
+            }
+            return;
+          }
+          default: {
+            const _exhaustiveCheck: never = action;
+            return _exhaustiveCheck;
+          }
         }
-
-        if (!onMoveFolder) return;
-        const folder = folderNodeMap.get(action.folderId);
-        if (!folder) return;
-        await Promise.resolve(onMoveFolder(folder, action.parentId));
       },
       [
         expandFolder,
@@ -268,7 +386,10 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
         itemMap,
         onMoveFolder,
         onMoveToFolder,
+        showDragFeedback,
         tableFolderMap,
+        t,
+        trackEvent,
       ],
     );
 
@@ -276,6 +397,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     const hasVisibleContent =
       filteredItems.length > 0 || foldersWithCount.length > 0;
     const isLoading = loading || foldersLoading;
+    const canSearch = items.length > 0;
 
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
@@ -323,7 +445,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
             </div>
           </div>
 
-          {!isLoading && !error && items.length > 0 && (
+          {!isLoading && !error && showSearchWhenEmpty && (
             <div className="border-b border-primary/10 px-3 py-2">
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -331,9 +453,16 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                   placeholder={t('savedTables.searchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-8 pl-8 text-xs"
+                  disabled={!canSearch}
+                  className="h-8 pl-8 text-xs disabled:opacity-70"
+                  data-testid="saved-tables-search"
                 />
               </div>
+              {!canSearch && (
+                <p className="mt-1 px-0.5 text-[11px] text-muted-foreground">
+                  {t('savedTables.searchDisabledHint')}
+                </p>
+              )}
             </div>
           )}
 
@@ -399,6 +528,21 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
             {!isLoading && !error && hasVisibleContent && (
               <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
                 <RootDropZone disabled={isSearching} />
+                {dragFeedback && (
+                  <div
+                    role={dragFeedback.type === 'error' ? 'alert' : 'status'}
+                    className={`mb-3 rounded-md px-2.5 py-2 text-xs ${
+                      dragFeedback.type === 'success'
+                        ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                        : dragFeedback.type === 'blocked'
+                          ? 'border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                          : 'border border-destructive/30 bg-destructive/10 text-destructive'
+                    }`}
+                    data-testid="saved-tables-drag-feedback"
+                  >
+                    {dragFeedback.message}
+                  </div>
+                )}
                 {isSearching ? (
                   renderTableList(filteredItems)
                 ) : hasFolders &&

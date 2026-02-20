@@ -17,10 +17,28 @@ export type DropTarget =
   | { kind: 'folder'; folderId: string };
 
 export type DropAction =
-  | { kind: 'none' }
-  | { kind: 'move_table'; normalizedName: string; folderId?: string }
-  | { kind: 'move_folder'; folderId: string; parentId?: string }
-  | { kind: 'invalid_folder_cycle'; folderId: string; parentId: string };
+  | {
+      kind: 'none';
+      reason: 'searching' | 'missing_target' | 'invalid_target' | 'same_target';
+    }
+  | {
+      kind: 'move_table';
+      reason: 'table_relocated';
+      normalizedName: string;
+      folderId?: string;
+    }
+  | {
+      kind: 'move_folder';
+      reason: 'folder_relocated';
+      folderId: string;
+      parentId?: string;
+    }
+  | {
+      kind: 'invalid_folder_cycle';
+      reason: 'folder_cycle';
+      folderId: string;
+      parentId: string;
+    };
 
 export interface ResolveDropActionInput {
   activeId: UniqueIdentifier;
@@ -109,15 +127,19 @@ export function resolveDropAction({
   tableFolderMap,
   folderParentMap,
 }: ResolveDropActionInput): DropAction {
-  if (isSearching || !overId) {
-    return { kind: 'none' };
+  if (isSearching) {
+    return { kind: 'none', reason: 'searching' };
+  }
+
+  if (!overId) {
+    return { kind: 'none', reason: 'missing_target' };
   }
 
   const dragEntity = parseDragEntity(activeId);
   const dropTarget = parseDropTarget(overId);
 
   if (!dragEntity || !dropTarget) {
-    return { kind: 'none' };
+    return { kind: 'none', reason: 'invalid_target' };
   }
 
   if (dragEntity.kind === 'table') {
@@ -126,11 +148,12 @@ export function resolveDropAction({
       dropTarget.kind === 'folder' ? dropTarget.folderId : undefined;
 
     if (currentFolderId === nextFolderId) {
-      return { kind: 'none' };
+      return { kind: 'none', reason: 'same_target' };
     }
 
     return {
       kind: 'move_table',
+      reason: 'table_relocated',
       normalizedName: dragEntity.normalizedName,
       folderId: nextFolderId,
     };
@@ -141,7 +164,7 @@ export function resolveDropAction({
     dropTarget.kind === 'folder' ? dropTarget.folderId : undefined;
 
   if (currentParentId === nextParentId) {
-    return { kind: 'none' };
+    return { kind: 'none', reason: 'same_target' };
   }
 
   if (
@@ -154,6 +177,7 @@ export function resolveDropAction({
   ) {
     return {
       kind: 'invalid_folder_cycle',
+      reason: 'folder_cycle',
       folderId: dragEntity.folderId,
       parentId: nextParentId,
     };
@@ -161,6 +185,7 @@ export function resolveDropAction({
 
   return {
     kind: 'move_folder',
+    reason: 'folder_relocated',
     folderId: dragEntity.folderId,
     parentId: nextParentId,
   };

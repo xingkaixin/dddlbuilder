@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import {
@@ -187,6 +187,10 @@ export const DataTable = memo<DataTableProps>(
 
     const duplicateNameSet = useMemo(() => buildDuplicateNameSet(rows), [rows]);
     const tableRef = useRef<HTMLDivElement>(null);
+    const dragFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+      null,
+    );
+    const [dragFeedback, setDragFeedback] = useState<string | null>(null);
 
     const [columnWidths] = useState<Record<string, number>>({
       order: 72,
@@ -253,6 +257,15 @@ export const DataTable = memo<DataTableProps>(
       });
     }, [rows, duplicateNameSet, dbType, t]);
 
+    useEffect(
+      () => () => {
+        if (dragFeedbackTimerRef.current) {
+          clearTimeout(dragFeedbackTimerRef.current);
+        }
+      },
+      [],
+    );
+
     const {
       selectedCell,
       setSelectedCell,
@@ -294,9 +307,24 @@ export const DataTable = memo<DataTableProps>(
       getRowId: (row) => String(row.order),
     });
 
+    const handleDragResult = useCallback(
+      ({ moved }: { moved: boolean }) => {
+        if (!moved) return;
+        setDragFeedback(t('dataTable.dragReordered'));
+        if (dragFeedbackTimerRef.current) {
+          clearTimeout(dragFeedbackTimerRef.current);
+        }
+        dragFeedbackTimerRef.current = setTimeout(() => {
+          setDragFeedback(null);
+        }, 1600);
+      },
+      [t],
+    );
+
     const { sensors, rowIds, handleDragEnd } = useSortableFieldRows({
       rows,
       setRows,
+      onDragResult: handleDragResult,
     });
 
     const { getStickyLeft, frozenAreaWidth, effectiveFreezeColumns } =
@@ -338,6 +366,15 @@ export const DataTable = memo<DataTableProps>(
           onAddCountChange={onAddCountChange}
           onAddRowsClick={handleAddRowsClick}
         />
+        {dragFeedback && (
+          <output
+            aria-live="polite"
+            className="absolute right-4 top-3 z-20 rounded-md border border-primary/20 bg-primary/10 px-2 py-1 text-[11px] text-primary"
+            data-testid="field-drag-feedback"
+          >
+            {dragFeedback}
+          </output>
+        )}
 
         <section
           ref={tableRef}

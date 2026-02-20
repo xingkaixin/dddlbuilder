@@ -46,6 +46,7 @@ export type FieldTemplate = {
   id: string;
   name: string;
   description?: string;
+  keywords?: string[];
   fields: TemplateField[];
   createdAt: number;
   updatedAt: number;

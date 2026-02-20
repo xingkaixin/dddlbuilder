@@ -118,7 +118,9 @@ export function useFieldTemplates() {
   const update = useCallback(
     async (
       id: string,
-      updates: Partial<Pick<FieldTemplate, 'name' | 'description' | 'fields'>>,
+      updates: Partial<
+        Pick<FieldTemplate, 'name' | 'description' | 'keywords' | 'fields'>
+      >,
     ): Promise<OperationResult> => {
       try {
         const result = await updateTemplate(id, updates);

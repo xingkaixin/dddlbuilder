@@ -224,6 +224,7 @@ export const zhCNCommon = {
       rowUnit: '行',
     },
     dragField: '拖拽调整字段顺序',
+    dragReordered: '字段顺序已更新',
     rowActions: {
       removeRow: '删除行',
       removeFieldRow: '删除字段行',
@@ -260,6 +261,9 @@ export const zhCNCommon = {
     quickApply: {
       trigger: '应用模板',
       selectTitle: '选择模板',
+      searchPlaceholder: '搜索模板名称、关键词或字段...',
+      recentTitle: '最近使用',
+      allTitle: '全部模板',
       loading: '加载中...',
       empty: '暂无模板',
       fieldsCount: '{{count}} 个字段',
@@ -484,6 +488,7 @@ export const zhCNCommon = {
     empty: '还没有保存的表',
     emptyHint: '还没有保存的表，点击上方「保存表」按钮保存第一个表',
     searchPlaceholder: '搜索表名或数据库类型...',
+    searchDisabledHint: '暂无可搜索内容，先保存一个表即可使用搜索。',
     createFolder: '新建文件夹',
     createSubfolder: '新建子文件夹',
     close: '关闭',
@@ -504,6 +509,15 @@ export const zhCNCommon = {
     dragTable: '拖拽移动表',
     dragFolder: '拖拽移动文件夹',
     rootDropzone: '未分组（拖拽到此处可移回根级）',
+    dragFeedback: {
+      folderCycle: '不能将文件夹移动到自身或子文件夹，请选择其他目标目录。',
+      tableMovedToFolder: '已将表移动到「{{name}}」',
+      tableMovedToRoot: '已将表移回未分组',
+      folderMovedToFolder: '已将文件夹移动到「{{name}}」',
+      folderMovedToRoot: '已将文件夹移回根级',
+      moveFailed: '拖拽移动失败，请重试。',
+      unknownFolder: '目标文件夹',
+    },
     moveToFolder: '移动到文件夹',
     moveToRoot: '📂 移到根目录',
     folderDialog: {

@@ -138,9 +138,13 @@ export function useFolderActions({
             ? i18n.t('savedTables.toast.movedToFolder')
             : i18n.t('savedTables.toast.movedToUngrouped'),
         );
-        return;
+        return { ok: true as const };
       }
       showToast(result.message ?? i18n.t('savedTables.toast.moveFailed'));
+      return {
+        ok: false as const,
+        message: result.message ?? i18n.t('savedTables.toast.moveFailed'),
+      };
     },
     [moveTableToFolder, showToast],
   );
@@ -154,12 +158,14 @@ export function useFolderActions({
             ? i18n.t('savedTables.toast.movedFolder')
             : i18n.t('savedTables.toast.movedFolderToRoot'),
         );
+        return { ok: true as const };
       } catch (error) {
-        showToast(
+        const message =
           error instanceof Error
             ? error.message
-            : i18n.t('savedTables.toast.moveFolderFailed'),
-        );
+            : i18n.t('savedTables.toast.moveFolderFailed');
+        showToast(message);
+        return { ok: false as const, message };
       }
     },
     [moveFolder, showToast],
