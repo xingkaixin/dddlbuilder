@@ -52,6 +52,7 @@ describe('saved tables dnd decision', () => {
 
     expect(action).toEqual({
       kind: 'move_table',
+      reason: 'table_relocated',
       normalizedName: 'users',
       folderId: 'root-a',
     });
@@ -68,6 +69,7 @@ describe('saved tables dnd decision', () => {
 
     expect(action).toEqual({
       kind: 'move_table',
+      reason: 'table_relocated',
       normalizedName: 'users',
       folderId: undefined,
     });
@@ -82,7 +84,7 @@ describe('saved tables dnd decision', () => {
       folderParentMap,
     });
 
-    expect(action).toEqual({ kind: 'none' });
+    expect(action).toEqual({ kind: 'none', reason: 'same_target' });
   });
 
   it('文件夹拖到另一个文件夹应返回 move_folder', () => {
@@ -96,6 +98,7 @@ describe('saved tables dnd decision', () => {
 
     expect(action).toEqual({
       kind: 'move_folder',
+      reason: 'folder_relocated',
       folderId: 'child-a-1',
       parentId: 'root-b',
     });
@@ -112,6 +115,7 @@ describe('saved tables dnd decision', () => {
 
     expect(action).toEqual({
       kind: 'invalid_folder_cycle',
+      reason: 'folder_cycle',
       folderId: 'root-a',
       parentId: 'child-a-1',
     });
@@ -126,6 +130,6 @@ describe('saved tables dnd decision', () => {
       folderParentMap,
     });
 
-    expect(action).toEqual({ kind: 'none' });
+    expect(action).toEqual({ kind: 'none', reason: 'searching' });
   });
 });

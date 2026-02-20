@@ -79,16 +79,14 @@ describe('TableItem', () => {
     expect(placeholder).toHaveClass('h-5', 'w-5');
     expect(placeholder).not.toHaveClass('mr-1');
     expect(metaRow).toHaveClass('whitespace-nowrap');
-    expect(actionMask).toHaveClass('absolute', 'opacity-0');
+    expect(actionMask).toHaveClass('absolute', 'opacity-80');
     expect(actionMask).toHaveClass(
       'group-hover:opacity-100',
       'group-focus-within:opacity-100',
     );
-    expect(actions).toHaveClass('absolute', 'opacity-0');
-    expect(actions).toHaveClass(
-      'group-hover:opacity-100',
-      'group-focus-within:opacity-100',
-    );
+    expect(actions).toHaveClass('absolute', 'opacity-70');
+    expect(actions).not.toHaveClass('pointer-events-none');
+    expect(actions).toHaveClass('group-hover:opacity-100');
     expect(titleRow).not.toBeNull();
     expect(titleRow).toHaveClass('gap-1');
 

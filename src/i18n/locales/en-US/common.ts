@@ -232,6 +232,7 @@ export const enUSCommon = {
       rowUnit: 'rows',
     },
     dragField: 'Drag to reorder fields',
+    dragReordered: 'Field order updated',
     rowActions: {
       removeRow: 'Delete row',
       removeFieldRow: 'Delete field row',
@@ -268,6 +269,9 @@ export const enUSCommon = {
     quickApply: {
       trigger: 'Apply Template',
       selectTitle: 'Choose Template',
+      searchPlaceholder: 'Search by name, keyword, or field...',
+      recentTitle: 'Recent',
+      allTitle: 'All templates',
       loading: 'Loading...',
       empty: 'No templates',
       fieldsCount: '{{count}} fields',
@@ -502,6 +506,7 @@ export const enUSCommon = {
     emptyHint:
       'No saved tables yet. Click "Save current table" above to add the first one.',
     searchPlaceholder: 'Search by table name or database type...',
+    searchDisabledHint: 'Nothing to search yet. Save a table to enable search.',
     createFolder: 'Create folder',
     createSubfolder: 'Create subfolder',
     close: 'Close',
@@ -522,6 +527,16 @@ export const enUSCommon = {
     dragTable: 'Drag to move table',
     dragFolder: 'Drag to move folder',
     rootDropzone: 'Ungrouped (drop here to move to root)',
+    dragFeedback: {
+      folderCycle:
+        'A folder cannot be moved into itself or its subfolder. Choose a different target.',
+      tableMovedToFolder: 'Table moved to "{{name}}"',
+      tableMovedToRoot: 'Table moved to ungrouped',
+      folderMovedToFolder: 'Folder moved to "{{name}}"',
+      folderMovedToRoot: 'Folder moved to root',
+      moveFailed: 'Failed to move by drag and drop. Please retry.',
+      unknownFolder: 'target folder',
+    },
     moveToFolder: 'Move to folder',
     moveToRoot: '📂 Move to root',
     folderDialog: {

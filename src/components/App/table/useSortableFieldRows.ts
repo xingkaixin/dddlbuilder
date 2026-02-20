@@ -15,6 +15,11 @@ type SetRows = (next: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => void;
 interface UseSortableFieldRowsParams {
   rows: FieldRow[];
   setRows: SetRows;
+  onDragResult?: (result: {
+    moved: boolean;
+    activeId: string;
+    overId: string | null;
+  }) => void;
 }
 
 export const reorderFieldRowsByIds = (
@@ -39,6 +44,7 @@ export const reorderFieldRowsByIds = (
 export function useSortableFieldRows({
   rows,
   setRows,
+  onDragResult,
 }: UseSortableFieldRowsParams) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -56,16 +62,22 @@ export function useSortableFieldRows({
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
+      const activeId = String(active.id);
+      const overId = over ? String(over.id) : null;
+      const moved =
+        Boolean(overId) &&
+        activeId !== overId &&
+        rows.findIndex((row) => String(row.order) === activeId) >= 0 &&
+        rows.findIndex((row) => String(row.order) === overId) >= 0;
 
-      setRows((prev) =>
-        reorderFieldRowsByIds(
-          prev,
-          String(active.id),
-          over ? String(over.id) : null,
-        ),
-      );
+      setRows((prev) => reorderFieldRowsByIds(prev, activeId, overId));
+      onDragResult?.({
+        moved,
+        activeId,
+        overId,
+      });
     },
-    [setRows],
+    [onDragResult, rows, setRows],
   );
 
   return {

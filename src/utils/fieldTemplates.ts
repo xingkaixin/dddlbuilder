@@ -100,7 +100,9 @@ export const createTemplate = async (
  */
 export const updateTemplate = async (
   id: string,
-  updates: Partial<Pick<FieldTemplate, 'name' | 'description' | 'fields'>>,
+  updates: Partial<
+    Pick<FieldTemplate, 'name' | 'description' | 'keywords' | 'fields'>
+  >,
 ): Promise<FieldTemplate | null> => {
   const existing = await getTemplate(id);
   if (!existing) return null;
@@ -113,6 +115,7 @@ export const updateTemplate = async (
     ...(updates.description !== undefined && {
       description: updates.description?.trim(),
     }),
+    ...(updates.keywords !== undefined && { keywords: updates.keywords }),
     ...(updates.fields !== undefined && { fields: updates.fields }),
     updatedAt: Date.now(),
   };
