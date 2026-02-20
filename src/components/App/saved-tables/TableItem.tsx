@@ -38,6 +38,9 @@ const DbIcon = memo<{ dbType: string; className?: string }>(
 );
 DbIcon.displayName = 'DbIcon';
 
+const drawerInteractiveButtonClass =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50';
+
 export interface TableItemProps {
   item: SavedTableSummary;
   isActive: boolean;
@@ -93,6 +96,7 @@ export const TableItem = memo<TableItemProps>(
           type="button"
           className={cn(
             'inline-flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+            drawerInteractiveButtonClass,
             dragDisabled &&
               'cursor-not-allowed opacity-40 hover:bg-transparent',
           )}
@@ -112,7 +116,8 @@ export const TableItem = memo<TableItemProps>(
         <button
           type="button"
           className={cn(
-            'min-w-0 flex-1 text-left disabled:cursor-not-allowed disabled:opacity-70',
+            'min-w-0 flex-1 rounded-sm text-left disabled:cursor-not-allowed disabled:opacity-70',
+            drawerInteractiveButtonClass,
           )}
           onClick={onSelect}
         >
@@ -172,7 +177,7 @@ export const TableItem = memo<TableItemProps>(
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className={cn('h-7 w-7', drawerInteractiveButtonClass)}
               onClick={onViewHistory}
               aria-label={t('savedTables.history')}
             >
@@ -182,7 +187,7 @@ export const TableItem = memo<TableItemProps>(
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className={cn('h-7 w-7', drawerInteractiveButtonClass)}
             onClick={onRename}
             aria-label={t('savedTables.rename')}
           >
@@ -191,7 +196,10 @@ export const TableItem = memo<TableItemProps>(
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-destructive hover:text-destructive"
+            className={cn(
+              'h-7 w-7 text-destructive hover:text-destructive',
+              drawerInteractiveButtonClass,
+            )}
             onClick={onDelete}
             aria-label={t('savedTables.delete')}
           >
