@@ -32,6 +32,10 @@ import { useSavedTablesFilter } from './saved-tables/useSavedTablesFilter';
 import { useTrackEvent } from './hooks/useTrackEvent';
 
 type MoveOperationResult = { ok: boolean; message?: string };
+const drawerIconButtonClass =
+  'h-7 w-7 text-muted-foreground/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50';
+const drawerCardButtonClass =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-60';
 
 export interface SavedTablesDrawerProps {
   open: boolean;
@@ -84,12 +88,12 @@ const RootDropZone = memo<RootDropZoneProps>(({ disabled }) => {
   return (
     <div
       ref={setNodeRef}
-      className={`mb-3 rounded-lg border-2 border-dashed px-3 py-2 text-xs font-medium transition-all ${
+      className={`mb-3 rounded-lg border-2 border-dashed bg-gradient-to-r px-3 py-2 text-xs font-medium transition-all ${
         disabled
-          ? 'border-border/70 text-muted-foreground/80 opacity-70'
+          ? 'from-muted/20 to-transparent border-border/70 text-muted-foreground/80 opacity-70'
           : isOver
-            ? 'border-primary bg-primary/15 text-primary shadow-sm shadow-primary/20'
-            : 'border-border/80 bg-muted/20 text-muted-foreground'
+            ? 'from-primary/20 to-primary/5 border-primary bg-primary/10 text-primary shadow-sm shadow-primary/25'
+            : 'from-muted/35 to-muted/5 border-border/80 text-muted-foreground'
       }`}
       aria-disabled={disabled}
       data-drag-over={isOver ? 'true' : 'false'}
@@ -425,7 +429,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
+                  className={drawerIconButtonClass}
                   onClick={() => onCreateFolder()}
                   aria-label={t('savedTables.createFolder')}
                 >
@@ -436,7 +440,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
+                  className={drawerIconButtonClass}
                   aria-label={t('savedTables.close')}
                 >
                   <X className="h-3.5 w-3.5" />
@@ -454,7 +458,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   disabled={!canSearch}
-                  className="h-8 pl-8 text-xs disabled:opacity-70"
+                  className="h-8 pl-8 text-xs disabled:cursor-not-allowed disabled:opacity-70"
                   data-testid="saved-tables-search"
                 />
               </div>
@@ -490,9 +494,9 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
               <div className="mb-3">
                 <button
                   type="button"
-                  className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left transition-colors ${
+                  className={`${drawerCardButtonClass} flex w-full items-center justify-between rounded-md border px-3 py-2 text-left transition-colors ${
                     draftActive
-                      ? 'border-primary/40 bg-primary/10'
+                      ? 'border-primary/40 bg-primary/10 shadow-sm shadow-primary/10'
                       : 'border-border bg-card hover:bg-accent'
                   }`}
                   onClick={onSelectDraft}

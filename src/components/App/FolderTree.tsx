@@ -53,6 +53,9 @@ interface FolderNodeProps {
   children?: React.ReactNode;
 }
 
+const drawerInteractiveButtonClass =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50';
+
 const FolderNode = memo<FolderNodeProps>(
   ({
     folder,
@@ -108,7 +111,7 @@ const FolderNode = memo<FolderNodeProps>(
         <div
           ref={setNodeRef}
           className={cn(
-            'group flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent',
+            'group flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent focus-within:bg-accent',
             isSelected && 'bg-accent',
             isOver && !dragDisabled && 'ring-1 ring-primary bg-primary/10',
           )}
@@ -123,6 +126,7 @@ const FolderNode = memo<FolderNodeProps>(
             type="button"
             className={cn(
               'inline-flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+              drawerInteractiveButtonClass,
               dragDisabled &&
                 'cursor-not-allowed opacity-40 hover:bg-transparent',
             )}
@@ -138,7 +142,8 @@ const FolderNode = memo<FolderNodeProps>(
           <button
             type="button"
             className={cn(
-              'flex h-5 w-5 items-center justify-center rounded hover:bg-accent/50',
+              'flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+              drawerInteractiveButtonClass,
               !hasChildren && 'invisible',
             )}
             onClick={onToggle}
@@ -154,7 +159,10 @@ const FolderNode = memo<FolderNodeProps>(
           {/* 可点击的文件夹名称区域 */}
           <button
             type="button"
-            className="flex flex-1 items-center gap-1 text-left"
+            className={cn(
+              'flex flex-1 items-center gap-1 rounded-sm text-left',
+              drawerInteractiveButtonClass,
+            )}
             onClick={onSelect}
           >
             {/* 文件夹图标 */}
@@ -175,7 +183,10 @@ const FolderNode = memo<FolderNodeProps>(
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+                className={cn(
+                  'h-6 w-6 text-muted-foreground opacity-70 transition-opacity hover:text-foreground group-hover:opacity-100',
+                  drawerInteractiveButtonClass,
+                )}
               >
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
