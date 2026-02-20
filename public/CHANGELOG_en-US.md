@@ -4,6 +4,28 @@ description: "DDL Table Creation Tool Version Update Log"
 ---
 
 # DDLBuilder
+## [0.14.0] - 2026-02-25
+### Added
+- **Drag-and-drop organization**: Supports drag-and-drop field reordering with DDL sync, plus drag-and-drop management for saved tables and folders.
+- **Template editing upgrade**: Replaces custom template field editing with a sortable table and smoother apply/switch flow.
+- **Enhanced sharing flow**: Adds loading states, duplicate-request prevention, auto-loading of shared copies, and version count tracking.
+- **Theme and language expansion**: Adds dark theme, system theme following, smooth theme transition, and broader English UI/changelog coverage.
+
+### Improved
+- **Workspace persistence**: Migrates workspace state to IndexedDB and adds bootstrap caching for more reliable recovery after reload/reopen.
+- **Table editing UX**: Improves cell selection/edit behavior and fixes first-character loss and paste interference in input/textarea scenarios.
+- **Stronger schema linkage**: Field rename now propagates to indexes, partitioning, and sharding settings.
+- **Better SQL import**: Enhances MySQL import for partition parsing, table-level misc options, and authorization object handling.
+- **UI polish**: Improves searchable database selector, drawer/button interactions, feedback toasts, and loading skeletons.
+
+### Stability & Security
+- Adds OpenAI governance controls (rate limiting and daily budget) for more stable operation under load.
+- Adds configurable CSP headers with environment-based controls for safer deployments.
+- Expands unit and E2E coverage to strengthen regression safety on core workflows.
+
+### Branding
+- Refreshes favicon and logo assets.
+
 ## [0.13.1] - 2026-02-11
 - Some minor updates
 
