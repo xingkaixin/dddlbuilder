@@ -22,6 +22,12 @@ export const changelogDataMap: Record<ChangelogLocale, ChangelogData> = {
     description: 'DDL建表工具版本更新记录',
     entries: [
       {
+        version: '0.14.0',
+        date: '2026-02-25',
+        content:
+          '### 新增\n- **字段与对象拖拽整理**：支持字段顺序拖拽并同步 DDL；已保存表与文件夹支持拖拽整理。\n- **模板编辑升级**：模板字段编辑改为可排序表格，插入模板与切换流程更顺畅。\n- **分享体验增强**：分享流程增加加载态、防重复提交，并支持自动加载分享副本与版本计数。\n- **主题与语言能力扩展**：新增深色主题、跟随系统主题与平滑切换动画；完善英文界面与双语更新日志。\n\n### 优化\n- **工作区持久化升级**：工作区状态迁移至 IndexedDB，并引入启动缓存，刷新与重开后的状态恢复更稳定。\n- **表格编辑体验提升**：改进单元格选中与输入行为，修复点击编辑首字符丢失、输入框粘贴干扰等问题。\n- **结构联动更完整**：字段重命名可同步更新索引、分区与分片配置，减少手工修正。\n- **SQL 导入能力增强**：MySQL 导入补全分区、表级杂项配置与授权对象解析。\n- **界面细节打磨**：搜索型数据库选择器、按钮/抽屉交互样式、提示与骨架反馈进一步优化。\n\n### 稳定性与安全\n- 新增 OpenAI 调用治理能力（频率限制与日预算控制），高峰期可用性更稳。\n- 新增可配置 CSP 安全头与环境开关，部署安全策略更灵活。\n- 增强单元测试与 E2E 覆盖，核心流程回归保障进一步提高。\n\n### 品牌\n- 更新 favicon 与品牌 Logo 资源。',
+      },
+      {
         version: '0.13.1',
         date: '2026-02-11',
         content: '- 一些微小的更新',
@@ -212,6 +218,12 @@ export const changelogDataMap: Record<ChangelogLocale, ChangelogData> = {
     title: 'DDLBuilder ChangeLog',
     description: 'DDL Table Creation Tool Version Update Log',
     entries: [
+      {
+        version: '0.14.0',
+        date: '2026-02-25',
+        content:
+          '### Added\n- **Drag-and-drop organization**: Supports drag-and-drop field reordering with DDL sync, plus drag-and-drop management for saved tables and folders.\n- **Template editing upgrade**: Replaces custom template field editing with a sortable table and smoother apply/switch flow.\n- **Enhanced sharing flow**: Adds loading states, duplicate-request prevention, auto-loading of shared copies, and version count tracking.\n- **Theme and language expansion**: Adds dark theme, system theme following, smooth theme transition, and broader English UI/changelog coverage.\n\n### Improved\n- **Workspace persistence**: Migrates workspace state to IndexedDB and adds bootstrap caching for more reliable recovery after reload/reopen.\n- **Table editing UX**: Improves cell selection/edit behavior and fixes first-character loss and paste interference in input/textarea scenarios.\n- **Stronger schema linkage**: Field rename now propagates to indexes, partitioning, and sharding settings.\n- **Better SQL import**: Enhances MySQL import for partition parsing, table-level misc options, and authorization object handling.\n- **UI polish**: Improves searchable database selector, drawer/button interactions, feedback toasts, and loading skeletons.\n\n### Stability & Security\n- Adds OpenAI governance controls (rate limiting and daily budget) for more stable operation under load.\n- Adds configurable CSP headers with environment-based controls for safer deployments.\n- Expands unit and E2E coverage to strengthen regression safety on core workflows.\n\n### Branding\n- Refreshes favicon and logo assets.',
+      },
       {
         version: '0.13.1',
         date: '2026-02-11',
