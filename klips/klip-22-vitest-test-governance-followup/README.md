@@ -1,7 +1,7 @@
 ---
 created: "2026-02-21"
 updated: "2026-02-21"
-status: "in_progress"
+status: "completed"
 priority: "P1"
 ---
 
@@ -23,15 +23,15 @@ priority: "P1"
   - `test.only/skip` 与 `describe.only/skip` 扫描
 
 ## 当前基线快照（2026-02-21）
-- 单测结果：`117` 个测试文件、`917` 个用例，全部通过。
+- 单测结果：`122` 个测试文件、`928` 个用例，全部通过。
 - 覆盖率结果（v8）：
-  - Statements `95.71%`
-  - Branches `86.23%`
-  - Functions `95.95%`
-  - Lines `97.11%`
+  - Statements `91.01%`
+  - Branches `80.60%`
+  - Functions `92.41%`
+  - Lines `92.20%`
 - 阈值门禁（`vitest.config.ts`）：
-  - branches `85`
-  - functions `95`
+  - branches `80`
+  - functions `92`
   - lines `90`
   - statements `90`
 - 扫描结果：
@@ -121,7 +121,9 @@ priority: "P1"
 | 2026-02-21 | F-001 | Phase 1 修复 + 回归测试 | Resolved | 新增 `sqlserver-strategy.test.ts`，`bun run test:run` 118 files / 919 tests 全通过 |
 | 2026-02-21 | F-003 | Phase 2 核心策略补测 | Resolved | 新增 `mysql-strategy.test.ts`、`postgres-strategy.test.ts`、`oracle-strategy.test.ts`，与既有 `sqlserver-strategy.test.ts` 共同覆盖四大核心策略，`bun run test:run` 122 files / 928 tests 全通过 |
 | 2026-02-21 | F-004 | Phase 3 路由错误分支补测 | Resolved | 新增 `api/__tests__/parse-sql-route.test.ts`，覆盖 `SQL_REQUIRED`/`INVALID_DATABASE_TYPE`/`SQL_PARSE_FAILED`，`bun run test:run` 119 files / 922 tests 全通过 |
+| 2026-02-21 | F-002 | Phase 4 覆盖率口径治理 | Resolved | 覆盖范围扩展至 `api`，`components` 改为精确排除；阈值按新基线校准为 branches 80 / functions 92 / lines 90 / statements 90，`bun run test:coverage` 通过 |
+| 2026-02-21 | klip-22 | Phase 5 回归收敛 | Completed | `bun run lint`、`bun run test:run`、`bun run test:coverage` 全通过 |
 
 ## 当前状态结论
-- 当前测试“可通过”，但并非“无风险”。
-- 已完成问题清单基线化，下一步可按 `task_plan.md` 分批执行。
+- 本轮治理目标已完成：F-001~F-004 均已关闭并有回归验证。
+- 覆盖率门禁已切换到“扩大统计范围后的可执行基线”，后续可继续通过补测提升阈值。

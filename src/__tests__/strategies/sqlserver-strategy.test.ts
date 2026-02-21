@@ -25,6 +25,8 @@ describe('SqlServerStrategy', () => {
     const ddl = strategy.generateTableDDL('dbo.users', '用户表', baseFields);
 
     expect(ddl).toContain("@level1type = N'TABLE', @level1name = N'users';");
-    expect(ddl).not.toContain("@level1type = N'COLUMN', @level1name = N'users';");
+    expect(ddl).not.toContain(
+      "@level1type = N'COLUMN', @level1name = N'users';",
+    );
   });
 });
