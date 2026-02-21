@@ -1,0 +1,16 @@
+---
+name: translate-docs
+description: Translate and sync bilingual documentation.
+---
+
+现在我们正在为当前项目 DDLBuilder - 筑表师 编写和维护用户文档，文档内容在 docs 目录下，docs/AGENTS.md 中有写作规范。
+
+
+## 翻译方向
+**以中文为准，翻译到英文**
+
+## 注意事项
+
+- 必要时可以参考代码文件以确保翻译的准确性
+- 要保证不同语言的表达风格、结构标记等保持一致
+- 但需要遵守两者可能不同的用词和排版偏好（主要是 sentence case、翻译对照之类的）
