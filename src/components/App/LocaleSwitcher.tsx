@@ -1,4 +1,4 @@
-import { Globe } from 'lucide-react';
+import { Languages } from 'lucide-react';
 import { memo } from 'react';
 import { cn } from '@/lib/utils';
 import {
@@ -48,7 +48,7 @@ export const LocaleSwitcher = memo<LocaleSwitcherProps>(
                   triggerClassName,
                 )}
               >
-                <Globe className="h-4 w-4" aria-hidden />
+                <Languages className="h-4 w-4" aria-hidden />
                 <span>{labelMap[locale]}</span>
               </button>
             </DropdownMenuTrigger>
