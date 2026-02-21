@@ -65,14 +65,14 @@ export class SqlServerStrategy extends AbstractDDLStrategy {
       const level1name = schema
         ? `N'${escapeSingleQuotes(table)}'`
         : `N'${escapeSingleQuotes(table)}'`;
-      const level2type = schema ? "N'COLUMN'" : "N'TABLE'";
+      const level1type = "N'TABLE'";
 
       statements.push(
         `EXEC sp_addextendedproperty
     @name = N'MS_Description',
     @value = N'${escapeSingleQuotes(tableComment.trim())}',
     @level0type = N'SCHEMA', @level0name = ${level0name},
-    @level1type = ${level2type}, @level1name = ${level1name};`,
+    @level1type = ${level1type}, @level1name = ${level1name};`,
       );
     }
 
