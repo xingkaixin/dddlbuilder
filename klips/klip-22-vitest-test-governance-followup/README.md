@@ -119,6 +119,7 @@ priority: "P1"
 |------|--------|------|------|------|
 | 2026-02-21 | F-001~F-004 | 建立问题基线 | Open | 待进入修复批次 |
 | 2026-02-21 | F-001 | Phase 1 修复 + 回归测试 | Resolved | 新增 `sqlserver-strategy.test.ts`，`bun run test:run` 118 files / 919 tests 全通过 |
+| 2026-02-21 | F-003 | Phase 2 核心策略补测 | Resolved | 新增 `mysql-strategy.test.ts`、`postgres-strategy.test.ts`、`oracle-strategy.test.ts`，与既有 `sqlserver-strategy.test.ts` 共同覆盖四大核心策略，`bun run test:run` 122 files / 928 tests 全通过 |
 | 2026-02-21 | F-004 | Phase 3 路由错误分支补测 | Resolved | 新增 `api/__tests__/parse-sql-route.test.ts`，覆盖 `SQL_REQUIRED`/`INVALID_DATABASE_TYPE`/`SQL_PARSE_FAILED`，`bun run test:run` 119 files / 922 tests 全通过 |
 
 ## 当前状态结论
