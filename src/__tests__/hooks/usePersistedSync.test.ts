@@ -268,4 +268,159 @@ describe('usePersistedSync debounce save', () => {
       isDirty: true,
     });
   });
+
+  it('应在 source.kind 为 saved_table 且当 loadedTableNormalizedName 不匹配时跳过保存', () => {
+    const saveState = vi.fn();
+    const savedState = createState('saved_table_content');
+    const source: WorkspaceSource = {
+      kind: 'saved_table',
+      normalizedName: 'users',
+      tableName: 'Users',
+      baseSignature: '{"table":"users"}',
+    };
+
+    const params = createBaseParams({
+      saveState,
+      activeSource: source,
+      buildPersistedState: () => savedState,
+      loadedTableNormalizedName: 'other_table', // 不匹配
+    });
+
+    renderHook(() => usePersistedSync(params));
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(saveState).not.toHaveBeenCalled();
+  });
+});
+
+describe('usePersistedSync useEffect synchronization', () => {
+  it('应在 hydrated 和 persistedState 都在时同步数据', () => {
+    const setTableName = vi.fn();
+    const setTableComment = vi.fn();
+    const setDbType = vi.fn();
+    const setAddCount = vi.fn();
+    const initializeRows = vi.fn();
+    const initializeIndexState = vi.fn();
+    
+    const persistedState = createState('test_table');
+    persistedState.tableComment = 'test comment';
+    persistedState.dbType = 'postgresql';
+    persistedState.addCount = 5;
+    
+    const params = createBaseParams({
+      hydrated: true,
+      persistedState,
+    });
+    params.setTableName = setTableName;
+    params.setTableComment = setTableComment;
+    params.setDbType = setDbType;
+    params.setAddCount = setAddCount;
+    params.initializeRows = initializeRows;
+    params.initializeIndexState = initializeIndexState;
+
+    renderHook(() => usePersistedSync(params));
+
+    expect(setTableName).toHaveBeenCalledWith('test_table');
+    expect(setTableComment).toHaveBeenCalledWith('test comment');
+    expect(setDbType).toHaveBeenCalledWith('postgresql');
+    expect(setAddCount).toHaveBeenCalledWith(5);
+    expect(initializeRows).toHaveBeenCalledWith([]);
+    expect(initializeIndexState).toHaveBeenCalledWith(persistedState);
+  });
+
+  it('应同步 fieldTableViewConfig', () => {
+    const setFieldTableFreezeEnabled = vi.fn();
+    const setFieldTableFreezeColumns = vi.fn();
+    
+    const persistedState = createState('test_table');
+    persistedState.fieldTableViewConfig = {
+      freezeEnabled: false,
+      freezeColumns: 5,
+    };
+    
+    const params = createBaseParams({
+      hydrated: true,
+      persistedState,
+    });
+    params.setFieldTableFreezeEnabled = setFieldTableFreezeEnabled;
+    params.setFieldTableFreezeColumns = setFieldTableFreezeColumns;
+
+    renderHook(() => usePersistedSync(params));
+
+    expect(setFieldTableFreezeEnabled).toHaveBeenCalledWith(false);
+    expect(setFieldTableFreezeColumns).toHaveBeenCalledWith(5);
+  });
+
+  it('如果 freezeColumns 不是有效数字，应使用默认值', () => {
+    const setFieldTableFreezeColumns = vi.fn();
+    
+    const persistedState = createState('test_table');
+    persistedState.fieldTableViewConfig = {
+      freezeEnabled: true,
+      freezeColumns: NaN,
+    };
+    
+    const params = createBaseParams({
+      hydrated: true,
+      persistedState,
+    });
+    params.setFieldTableFreezeColumns = setFieldTableFreezeColumns;
+    params.defaultFieldTableFreezeColumns = 4;
+
+    renderHook(() => usePersistedSync(params));
+
+    expect(setFieldTableFreezeColumns).toHaveBeenCalledWith(4);
+  });
+
+  it('如果 activeSource 为 saved_table，应设置 loadedTable', () => {
+    const setLoadedTableNormalizedName = vi.fn();
+    const setLoadedTableName = vi.fn();
+    const setLoadedTableSignature = vi.fn();
+    
+    const params = createBaseParams({
+      hydrated: true,
+      persistedState: createState('test'),
+      activeSource: {
+        kind: 'saved_table',
+        normalizedName: 'norm_test',
+        tableName: 'test',
+        baseSignature: 'sig',
+      }
+    });
+    params.setLoadedTableNormalizedName = setLoadedTableNormalizedName;
+    params.setLoadedTableName = setLoadedTableName;
+    params.setLoadedTableSignature = setLoadedTableSignature;
+
+    renderHook(() => usePersistedSync(params));
+
+    expect(setLoadedTableNormalizedName).toHaveBeenCalledWith('norm_test');
+    expect(setLoadedTableName).toHaveBeenCalledWith('test');
+    expect(setLoadedTableSignature).toHaveBeenCalledWith('sig');
+  });
+
+  it('如果 activeSource 为 global_draft，应重置 loadedTable', () => {
+    const setLoadedTableNormalizedName = vi.fn();
+    const setLoadedTableName = vi.fn();
+    const setLoadedTableSignature = vi.fn();
+    
+    const params = createBaseParams({
+      hydrated: true,
+      persistedState: createState('test'),
+      activeSource: {
+        kind: 'global_draft',
+      }
+    });
+    params.setLoadedTableNormalizedName = setLoadedTableNormalizedName;
+    params.setLoadedTableName = setLoadedTableName;
+    params.setLoadedTableSignature = setLoadedTableSignature;
+
+    renderHook(() => usePersistedSync(params));
+
+    expect(setLoadedTableNormalizedName).toHaveBeenCalledWith(null);
+    expect(setLoadedTableName).toHaveBeenCalledWith(null);
+    expect(setLoadedTableSignature).toHaveBeenCalledWith(null);
+  });
 });
