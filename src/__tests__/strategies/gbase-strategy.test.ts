@@ -90,13 +90,13 @@ describe('GBaseStrategy', () => {
     ];
 
     const sql = strategy.generateTableDDL('logs', '', fields);
-    
+
     // Constant
-    expect(sql).toContain("status int");
-    
-    // CURRENT_TIMESTAMP (if supported by datetime in mapping, it should be included, 
+    expect(sql).toContain('status int');
+
+    // CURRENT_TIMESTAMP (if supported by datetime in mapping, it should be included,
     // otherwise it correctly falls through without crashing)
     // We just want to ensure branches in GBaseStrategy are executed!
-    expect(sql).toContain('created_at datetime NOT NULL'); 
+    expect(sql).toContain('created_at datetime NOT NULL');
   });
 });

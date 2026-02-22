@@ -35,14 +35,18 @@ describe('useSaveLoadActions', () => {
     saveDialog = {
       isOpen: false,
       data: { name: '', queuedLoadAfterSave: null },
-      openDialog: vi.fn().mockImplementation((d: any) => { saveDialog.data = d; }),
+      openDialog: vi.fn().mockImplementation((d: any) => {
+        saveDialog.data = d;
+      }),
       closeDialog: vi.fn(),
       setError: vi.fn(),
     };
     loadConfirmDialog = {
       isOpen: false,
       data: { pendingTarget: null },
-      openDialog: vi.fn().mockImplementation((d: any) => { loadConfirmDialog.data = d; }),
+      openDialog: vi.fn().mockImplementation((d: any) => {
+        loadConfirmDialog.data = d;
+      }),
       closeDialog: vi.fn(),
       setError: vi.fn(),
     };
@@ -65,34 +69,37 @@ describe('useSaveLoadActions', () => {
     serializePersistedState = vi.fn().mockReturnValue('mock-sig');
   });
 
-  const getHook = (overrides = {}) => renderHook(() => useSaveLoadActions({
-    tableName: 'default_name',
-    hasLoadedTable: false,
-    isLoadedDirty: false,
-    canSaveCurrent: true,
-    loadedTableNormalizedName: null,
-    loadedTableName: null,
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
-    setLoadedTableSignature,
-    setLoadedTableVersion,
-    setSavedTablesDrawerOpen,
-    saveDialog,
-    loadConfirmDialog,
-    buildPersistedState,
-    serializePersistedState,
-    applySavedState,
-    loadTable,
-    saveTable,
-    overwriteTable,
-    showToast,
-    trackEvent,
-    flushCurrentWorkspace,
-    setWorkspaceSnapshot,
-    onSaveSuccess,
-    onTableLoadStateChange,
-    ...overrides,
-  }));
+  const getHook = (overrides = {}) =>
+    renderHook(() =>
+      useSaveLoadActions({
+        tableName: 'default_name',
+        hasLoadedTable: false,
+        isLoadedDirty: false,
+        canSaveCurrent: true,
+        loadedTableNormalizedName: null,
+        loadedTableName: null,
+        setLoadedTableNormalizedName,
+        setLoadedTableName,
+        setLoadedTableSignature,
+        setLoadedTableVersion,
+        setSavedTablesDrawerOpen,
+        saveDialog,
+        loadConfirmDialog,
+        buildPersistedState,
+        serializePersistedState,
+        applySavedState,
+        loadTable,
+        saveTable,
+        overwriteTable,
+        showToast,
+        trackEvent,
+        flushCurrentWorkspace,
+        setWorkspaceSnapshot,
+        onSaveSuccess,
+        onTableLoadStateChange,
+        ...overrides,
+      }),
+    );
 
   it('handleLoadSavedTable handles not found', async () => {
     loadTable.mockResolvedValue(null);
@@ -100,7 +107,9 @@ describe('useSaveLoadActions', () => {
 
     await act(async () => {
       // It is not exposed directly, but can be triggered by handleSelectSavedTable if not dirty
-      result.current.handleSelectSavedTable({ normalizedName: 'missing' } as any);
+      result.current.handleSelectSavedTable({
+        normalizedName: 'missing',
+      } as any);
     });
 
     expect(showToast).toHaveBeenCalledWith('未找到保存的表');
@@ -111,7 +120,9 @@ describe('useSaveLoadActions', () => {
     const { result } = getHook();
 
     await act(async () => {
-      result.current.handleSelectSavedTable({ normalizedName: 'error_table' } as any);
+      result.current.handleSelectSavedTable({
+        normalizedName: 'error_table',
+      } as any);
     });
 
     expect(showToast).toHaveBeenCalledWith('Load failed');
@@ -125,8 +136,8 @@ describe('useSaveLoadActions', () => {
       state: {
         tableName: 'test_table',
         dbType: 'mysql',
-        rows: [{ fieldName: 'id' }, { fieldName: '  ' }]
-      }
+        rows: [{ fieldName: 'id' }, { fieldName: '  ' }],
+      },
     };
     loadTable.mockResolvedValue(mockRecord);
     const { result } = getHook();
@@ -141,11 +152,15 @@ describe('useSaveLoadActions', () => {
     expect(setLoadedTableNormalizedName).toHaveBeenCalledWith('norm_test');
     expect(setLoadedTableName).toHaveBeenCalledWith('test_table');
     expect(setLoadedTableSignature).toHaveBeenCalledWith('mock-sig');
-    expect(trackEvent).toHaveBeenCalledWith('table_load', { tableName: 'test_table' });
-    expect(showToast).toHaveBeenCalledWith(expect.stringContaining('已加载：test_table'));
+    expect(trackEvent).toHaveBeenCalledWith('table_load', {
+      tableName: 'test_table',
+    });
+    expect(showToast).toHaveBeenCalledWith(
+      expect.stringContaining('已加载：test_table'),
+    );
     expect(onTableLoadStateChange).toHaveBeenCalledWith(false);
   });
-  
+
   it('handleOpenSaveDialog fallback name uses defaults', () => {
     const { result } = getHook({ tableName: ' ' });
     act(() => {
@@ -180,7 +195,10 @@ describe('useSaveLoadActions', () => {
   });
 
   it('handleConfirmSave handles overwriteTable arbitrary error', async () => {
-    overwriteTable.mockResolvedValue({ ok: false, message: 'Custom update error' });
+    overwriteTable.mockResolvedValue({
+      ok: false,
+      message: 'Custom update error',
+    });
     const { result } = getHook({
       hasLoadedTable: true,
       loadedTableNormalizedName: 'norm',
@@ -192,14 +210,17 @@ describe('useSaveLoadActions', () => {
   });
 
   it('handleConfirmSave handles overwriteTable success with exact states mapped', async () => {
-    saveDialog.data = { name: 'saved_name', queuedLoadAfterSave: { normalizedName: 'queue_1' } };
+    saveDialog.data = {
+      name: 'saved_name',
+      queuedLoadAfterSave: { normalizedName: 'queue_1' },
+    };
     overwriteTable.mockResolvedValue({ ok: true });
-    
+
     // We mock the loadTable so queuedLoadAfterSave works cleanly
     loadTable.mockResolvedValue({
       normalizedName: 'queue_1',
       name: 'queue_table',
-      state: { rows: [] }
+      state: { rows: [] },
     });
 
     const { result } = getHook({
@@ -214,7 +235,9 @@ describe('useSaveLoadActions', () => {
 
     expect(setLoadedTableSignature).toHaveBeenCalledWith('mock-sig');
     expect(setWorkspaceSnapshot).toHaveBeenCalled();
-    expect(trackEvent).toHaveBeenCalledWith('table_update', { tableName: 'orig_name' });
+    expect(trackEvent).toHaveBeenCalledWith('table_update', {
+      tableName: 'orig_name',
+    });
     expect(showToast).toHaveBeenCalledWith('已更新：orig_name');
     expect(saveDialog.closeDialog).toHaveBeenCalled();
     expect(onSaveSuccess).toHaveBeenCalledWith({
@@ -265,7 +288,9 @@ describe('useSaveLoadActions', () => {
     expect(setLoadedTableName).toHaveBeenCalledWith('new_name');
     expect(setLoadedTableSignature).toHaveBeenCalledWith('mock-sig');
     expect(setWorkspaceSnapshot).toHaveBeenCalled();
-    expect(trackEvent).toHaveBeenCalledWith('table_save', { tableName: 'new_name' });
+    expect(trackEvent).toHaveBeenCalledWith('table_save', {
+      tableName: 'new_name',
+    });
     expect(showToast).toHaveBeenCalledWith('已保存：new_name');
     expect(setLoadedTableVersion).toHaveBeenCalledWith(1);
     expect(saveDialog.closeDialog).toHaveBeenCalled();
@@ -280,29 +305,45 @@ describe('useSaveLoadActions', () => {
   it('Dialog open/close change testing and save target routing', () => {
     loadConfirmDialog.data.pendingTarget = { name: 'pending' };
     const { result } = getHook({ hasLoadedTable: true, isLoadedDirty: true });
-    
-    act(() => { result.current.handleSaveDialogOpenChange(false); });
+
+    act(() => {
+      result.current.handleSaveDialogOpenChange(false);
+    });
     expect(saveDialog.closeDialog).toHaveBeenCalled();
 
-    act(() => { result.current.handleSaveDialogOpenChange(true); });
+    act(() => {
+      result.current.handleSaveDialogOpenChange(true);
+    });
     expect(saveDialog.closeDialog).toHaveBeenCalledTimes(1);
 
-    act(() => { result.current.handleLoadConfirmOpenChange(false); });
+    act(() => {
+      result.current.handleLoadConfirmOpenChange(false);
+    });
     expect(loadConfirmDialog.closeDialog).toHaveBeenCalled();
 
-    act(() => { result.current.handleCancelLoadConfirm(); });
+    act(() => {
+      result.current.handleCancelLoadConfirm();
+    });
     expect(loadConfirmDialog.closeDialog).toHaveBeenCalledTimes(2);
 
-    act(() => { result.current.handleConfirmLoadSave(); });
+    act(() => {
+      result.current.handleConfirmLoadSave();
+    });
     expect(loadConfirmDialog.closeDialog).toHaveBeenCalledTimes(3);
     expect(saveDialog.openDialog).toHaveBeenCalled();
 
-    act(() => { result.current.handleConfirmLoadIgnore(); });
+    act(() => {
+      result.current.handleConfirmLoadIgnore();
+    });
     expect(loadConfirmDialog.closeDialog).toHaveBeenCalledTimes(4);
-    
+
     // handle select saved table when dirty
-    act(() => { result.current.handleSelectSavedTable({ name: 'pending' } as any); });
-    expect(loadConfirmDialog.openDialog).toHaveBeenCalledWith({ pendingTarget: { name: 'pending' } });
+    act(() => {
+      result.current.handleSelectSavedTable({ name: 'pending' } as any);
+    });
+    expect(loadConfirmDialog.openDialog).toHaveBeenCalledWith({
+      pendingTarget: { name: 'pending' },
+    });
   });
 
   it('handleConfirmLoadIgnore proceeds loading table', async () => {
@@ -311,7 +352,7 @@ describe('useSaveLoadActions', () => {
     loadTable.mockResolvedValue({
       normalizedName: 'pending_norm',
       name: 'pending',
-      state: { rows: [] }
+      state: { rows: [] },
     });
 
     await act(async () => {

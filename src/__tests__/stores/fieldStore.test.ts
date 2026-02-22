@@ -133,7 +133,7 @@ describe('fieldStore', () => {
   it('应该支持中间插入行 handleCreateRow', () => {
     const state = useFieldStore.getState();
     state.resetRows(2);
-    
+
     let current = useFieldStore.getState();
     expect(current.rows.length).toBe(2);
 
@@ -146,18 +146,19 @@ describe('fieldStore', () => {
 
   it('应该处理 normalizeNullableValue 与 handleRowsChange 异常 prop 边界', () => {
     const state = useFieldStore.getState();
-    
-    state.initializeRows([
-      { ...createEmptyRow(0), nullable: false as any }
-    ]);
-    
+
+    state.initializeRows([{ ...createEmptyRow(0), nullable: false as any }]);
+
     expect(useFieldStore.getState().rows[0].nullable).toBe('否');
-    
-    useFieldStore.getState().handleRowsChange([
-      [0, 123 as any, '', 'ignored'],
-      [0, 'order', 1, 2]
-    ], 'edit');
-    
+
+    useFieldStore.getState().handleRowsChange(
+      [
+        [0, 123 as any, '', 'ignored'],
+        [0, 'order', 1, 2],
+      ],
+      'edit',
+    );
+
     expect(useFieldStore.getState().rows[0].order).toBe(1);
   });
 });

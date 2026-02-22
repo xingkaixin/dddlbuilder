@@ -113,19 +113,24 @@ describe('api security guards', () => {
     });
 
     it('should parse custom comma-separated CORS origins', async () => {
-      process.env.CORS_ALLOWED_ORIGINS = 'https://custom1.com, https://custom2.com ';
+      process.env.CORS_ALLOWED_ORIGINS =
+        'https://custom1.com, https://custom2.com ';
       const { default: dynamicApp } = await import('../index');
-      
+
       const res1 = await dynamicApp.request('/api/health', {
         headers: { origin: 'https://custom1.com' },
       });
-      expect(res1.headers.get('access-control-allow-origin')).toBe('https://custom1.com');
+      expect(res1.headers.get('access-control-allow-origin')).toBe(
+        'https://custom1.com',
+      );
 
       const res2 = await dynamicApp.request('/api/health', {
         headers: { origin: 'https://custom2.com' },
       });
-      expect(res2.headers.get('access-control-allow-origin')).toBe('https://custom2.com');
-      
+      expect(res2.headers.get('access-control-allow-origin')).toBe(
+        'https://custom2.com',
+      );
+
       // Default shouldn't be allowed now unless it's in the list
       const res3 = await dynamicApp.request('/api/health', {
         headers: { origin: 'http://localhost:5173' },
@@ -136,11 +141,13 @@ describe('api security guards', () => {
     it('should fallback to default origins if custom env is empty or whitespace', async () => {
       process.env.CORS_ALLOWED_ORIGINS = '   ,,,  ';
       const { default: dynamicApp } = await import('../index');
-      
+
       const res1 = await dynamicApp.request('/api/health', {
         headers: { origin: 'http://localhost:5173' },
       });
-      expect(res1.headers.get('access-control-allow-origin')).toBe('http://localhost:5173');
+      expect(res1.headers.get('access-control-allow-origin')).toBe(
+        'http://localhost:5173',
+      );
     });
   });
 });

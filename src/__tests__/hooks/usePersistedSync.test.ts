@@ -304,12 +304,12 @@ describe('usePersistedSync useEffect synchronization', () => {
     const setAddCount = vi.fn();
     const initializeRows = vi.fn();
     const initializeIndexState = vi.fn();
-    
+
     const persistedState = createState('test_table');
     persistedState.tableComment = 'test comment';
     persistedState.dbType = 'postgresql';
     persistedState.addCount = 5;
-    
+
     const params = createBaseParams({
       hydrated: true,
       persistedState,
@@ -334,13 +334,13 @@ describe('usePersistedSync useEffect synchronization', () => {
   it('应同步 fieldTableViewConfig', () => {
     const setFieldTableFreezeEnabled = vi.fn();
     const setFieldTableFreezeColumns = vi.fn();
-    
+
     const persistedState = createState('test_table');
     persistedState.fieldTableViewConfig = {
       freezeEnabled: false,
       freezeColumns: 5,
     };
-    
+
     const params = createBaseParams({
       hydrated: true,
       persistedState,
@@ -356,13 +356,13 @@ describe('usePersistedSync useEffect synchronization', () => {
 
   it('如果 freezeColumns 不是有效数字，应使用默认值', () => {
     const setFieldTableFreezeColumns = vi.fn();
-    
+
     const persistedState = createState('test_table');
     persistedState.fieldTableViewConfig = {
       freezeEnabled: true,
       freezeColumns: NaN,
     };
-    
+
     const params = createBaseParams({
       hydrated: true,
       persistedState,
@@ -379,7 +379,7 @@ describe('usePersistedSync useEffect synchronization', () => {
     const setLoadedTableNormalizedName = vi.fn();
     const setLoadedTableName = vi.fn();
     const setLoadedTableSignature = vi.fn();
-    
+
     const params = createBaseParams({
       hydrated: true,
       persistedState: createState('test'),
@@ -388,7 +388,7 @@ describe('usePersistedSync useEffect synchronization', () => {
         normalizedName: 'norm_test',
         tableName: 'test',
         baseSignature: 'sig',
-      }
+      },
     });
     params.setLoadedTableNormalizedName = setLoadedTableNormalizedName;
     params.setLoadedTableName = setLoadedTableName;
@@ -405,13 +405,13 @@ describe('usePersistedSync useEffect synchronization', () => {
     const setLoadedTableNormalizedName = vi.fn();
     const setLoadedTableName = vi.fn();
     const setLoadedTableSignature = vi.fn();
-    
+
     const params = createBaseParams({
       hydrated: true,
       persistedState: createState('test'),
       activeSource: {
         kind: 'global_draft',
-      }
+      },
     });
     params.setLoadedTableNormalizedName = setLoadedTableNormalizedName;
     params.setLoadedTableName = setLoadedTableName;

@@ -391,13 +391,13 @@ describe('useDDLReview', () => {
         status: 200,
         body: stream,
         json: vi.fn(),
-      } as unknown as Response)
+      } as unknown as Response);
     });
 
     act(() => {
       result.current.startReview('ddl_dup', 'table', 'mysql');
     });
-    
+
     act(() => {
       result.current.startReview('ddl_dup', 'table', 'mysql'); // Same params
     });

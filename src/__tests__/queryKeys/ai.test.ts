@@ -12,7 +12,13 @@ describe('queryKeys/ai', () => {
         tableName: 'x',
         dbType: 'mysql',
       });
-      expect(key).toEqual(['ddl-review', 'zh-CN', 'mysql', 'x', 'CREATE TABLE x']);
+      expect(key).toEqual([
+        'ddl-review',
+        'zh-CN',
+        'mysql',
+        'x',
+        'CREATE TABLE x',
+      ]);
     });
 
     it('使用传入的 locale', () => {
@@ -22,7 +28,13 @@ describe('queryKeys/ai', () => {
         dbType: 'postgres',
         locale: 'en-US',
       });
-      expect(key).toEqual(['ddl-review', 'en-US', 'postgres', 'y', 'CREATE TABLE y']);
+      expect(key).toEqual([
+        'ddl-review',
+        'en-US',
+        'postgres',
+        'y',
+        'CREATE TABLE y',
+      ]);
     });
   });
 
@@ -32,7 +44,7 @@ describe('queryKeys/ai', () => {
         description: 'test',
         dbType: 'mysql',
       });
-      
+
       const expectedPayload = JSON.stringify({
         templates: [],
         existingConfig: null,
@@ -78,7 +90,7 @@ describe('queryKeys/ai', () => {
       // it always passes an object { templates: ..., ... }
       // To get 100% on serializeKeyPayload(payload ?? null), since we can't export serializeKeyPayload directly,
       // wait, `serializeKeyPayload` is not exported. But `buildAIGenerateQueryKey` calls it with `{...}` which is never null.
-      // Why does line 25 have: `return JSON.stringify(payload ?? null);`? 
+      // Why does line 25 have: `return JSON.stringify(payload ?? null);`?
       // payload ?? null is impossible to reach the null fallback if payload is an object literal.
       // So maybe "payload ?? null" branch is hit implicitly if undefined is passed somewhere, but let's test it anyway.
     });

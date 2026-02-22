@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Context } from 'hono';
+import type { Context } from 'hono';
 import {
   getRequestId,
   withMeta,
@@ -9,7 +9,11 @@ import {
 } from '../../lib/http';
 
 describe('http lib utilities', () => {
-  const mockContext = (requestId?: string, bodyText?: string, headers: Record<string, string> = {}) => {
+  const mockContext = (
+    requestId?: string,
+    bodyText?: string,
+    headers: Record<string, string> = {},
+  ) => {
     return {
       get: (key: string) => {
         if (key === 'requestId') return requestId;
@@ -69,7 +73,12 @@ describe('http lib utilities', () => {
 
     it('returns error with code and requestId', () => {
       const c = mockContext('my-req');
-      const res: any = errorResponse(c, 500, 'Server fail', 'SHARE_LOAD_FAILED');
+      const res: any = errorResponse(
+        c,
+        500,
+        'Server fail',
+        'SHARE_LOAD_FAILED',
+      );
       expect(res.status).toBe(500);
       expect(res.data).toEqual({
         error: 'Server fail',
@@ -81,10 +90,16 @@ describe('http lib utilities', () => {
 
   describe('streamErrorPayload', () => {
     it('serializes basic error', () => {
-      expect(streamErrorPayload('error')).toBe(JSON.stringify({ error: 'error' }));
+      expect(streamErrorPayload('error')).toBe(
+        JSON.stringify({ error: 'error' }),
+      );
     });
     it('serializes with code and request id', () => {
-      const exact = JSON.stringify({ error: 'err', code: 'INVALID_JSON', requestId: '1' });
+      const exact = JSON.stringify({
+        error: 'err',
+        code: 'INVALID_JSON',
+        requestId: '1',
+      });
       expect(streamErrorPayload('err', 'INVALID_JSON', '1')).toBe(exact);
     });
   });

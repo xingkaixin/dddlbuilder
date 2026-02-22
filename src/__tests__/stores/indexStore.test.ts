@@ -237,7 +237,7 @@ describe('indexStore', () => {
   it('同步字段重命名时如果参数为空或相同应直接返回', () => {
     const state = useIndexStore.getState();
     state.setCurrentIndexFields([{ name: 'id', direction: 'ASC' }]);
-    
+
     // missing arg
     state.syncFieldRename('', 'new_id', 'mysql');
     expect(useIndexStore.getState().currentIndexFields[0].name).toBe('id');

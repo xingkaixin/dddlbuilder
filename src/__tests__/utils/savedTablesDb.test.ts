@@ -276,8 +276,13 @@ describe('savedTablesDb', () => {
 
     // 1. request.onerror fallback
     mockRequest = { onerror: null, onsuccess: null, error: null };
-    mockTx = { objectStore: () => ({ getAll: () => mockRequest }), onerror: null, onabort: null, oncomplete: null };
-    
+    mockTx = {
+      objectStore: () => ({ getAll: () => mockRequest }),
+      onerror: null,
+      onabort: null,
+      oncomplete: null,
+    };
+
     const p1 = listSavedTables();
     await flushMicrotasks(); // yield to let openDb resolve
     mockRequest.onerror();
@@ -285,15 +290,27 @@ describe('savedTablesDb', () => {
 
     // 2. tx.onabort fallback
     mockRequest = { onerror: null, onsuccess: null, result: [] };
-    mockTx = { objectStore: () => ({ getAll: () => mockRequest }), onerror: null, onabort: null, oncomplete: null, error: null };
-    
+    mockTx = {
+      objectStore: () => ({ getAll: () => mockRequest }),
+      onerror: null,
+      onabort: null,
+      oncomplete: null,
+      error: null,
+    };
+
     const p2 = listSavedTables();
     await flushMicrotasks();
     mockTx.onabort();
     await expect(p2).rejects.toThrow('事务被中止');
-    
+
     // 3. tx.onerror explicit
-    mockTx = { objectStore: () => ({ getAll: () => mockRequest }), onerror: null, onabort: null, oncomplete: null, error: new Error('tx error') };
+    mockTx = {
+      objectStore: () => ({ getAll: () => mockRequest }),
+      onerror: null,
+      onabort: null,
+      oncomplete: null,
+      error: new Error('tx error'),
+    };
     const p3 = listSavedTables();
     await flushMicrotasks();
     mockTx.onerror();
@@ -302,7 +319,11 @@ describe('savedTablesDb', () => {
 
   it('should handle non-array records returned by indexeddb in list functions', async () => {
     let mockTx: any;
-    let mockRequest: any = { onerror: null, onsuccess: null, result: { notArray: true } };
+    const mockRequest: any = {
+      onerror: null,
+      onsuccess: null,
+      result: { notArray: true },
+    };
 
     const mockDb = {
       transaction: () => mockTx,
@@ -328,8 +349,13 @@ describe('savedTablesDb', () => {
       writable: true,
     });
 
-    mockTx = { objectStore: () => ({ getAll: () => mockRequest }), onerror: null, onabort: null, oncomplete: null };
-    
+    mockTx = {
+      objectStore: () => ({ getAll: () => mockRequest }),
+      onerror: null,
+      onabort: null,
+      oncomplete: null,
+    };
+
     const p1 = listSavedTables();
     await flushMicrotasks();
     mockRequest.onsuccess();

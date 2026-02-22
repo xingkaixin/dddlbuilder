@@ -1,5 +1,13 @@
 import { renderHook, act } from '@testing-library/react';
-import { beforeEach, afterEach, describe, expect, it, vi, type MockInstance } from 'vitest';
+import {
+  beforeEach,
+  afterEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type MockInstance,
+} from 'vitest';
 import { useThemeTransition } from '@/components/App/hooks/useThemeTransition';
 
 describe('useThemeTransition', () => {
@@ -8,11 +16,13 @@ describe('useThemeTransition', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
-    matchMediaMock = vi.spyOn(window, 'matchMedia').mockImplementation((query) => {
-      return {
-        matches: query === '(prefers-color-scheme: dark)' ? true : false,
-      } as any;
-    });
+    matchMediaMock = vi
+      .spyOn(window, 'matchMedia')
+      .mockImplementation((query) => {
+        return {
+          matches: query === '(prefers-color-scheme: dark)',
+        } as any;
+      });
   });
 
   afterEach(() => {
@@ -29,7 +39,7 @@ describe('useThemeTransition', () => {
   it('should return initial state', () => {
     const setTheme = vi.fn();
     const { result } = renderHook(() =>
-      useThemeTransition({ theme: 'system', resolvedTheme: 'dark', setTheme })
+      useThemeTransition({ theme: 'system', resolvedTheme: 'dark', setTheme }),
     );
 
     expect(result.current.phase).toBe('idle');
@@ -39,11 +49,15 @@ describe('useThemeTransition', () => {
   });
 
   it('should handle missing matchMedia gracefully in getSystemTheme and prefersReducedMotion', () => {
-    Object.defineProperty(window, 'matchMedia', { value: undefined, configurable: true, writable: true });
+    Object.defineProperty(window, 'matchMedia', {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
 
     const setTheme = vi.fn();
     const { result } = renderHook(() =>
-      useThemeTransition({ theme: 'system', resolvedTheme: 'dark', setTheme })
+      useThemeTransition({ theme: 'system', resolvedTheme: 'dark', setTheme }),
     );
 
     // Call transition to evaluate resolveCurrentEffectiveTheme where matchMedia is used
@@ -59,28 +73,38 @@ describe('useThemeTransition', () => {
     const setTheme = vi.fn();
     const { result } = renderHook(() =>
       // Pass a theme that isn't light or dark, and invalid resolvedTheme
-      useThemeTransition({ theme: 'system', resolvedTheme: 'invalid', setTheme })
+      useThemeTransition({
+        theme: 'system',
+        resolvedTheme: 'invalid',
+        setTheme,
+      }),
     );
 
     act(() => {
       result.current.runThemeTransition('light');
     });
-    
+
     // wipe transition will start if it wasn't reduced motion
     expect(result.current.phase).toBe('wipe');
 
     // advance to SWITCH_THEME_AT_MS
-    act(() => { vi.advanceTimersByTime(470); });
+    act(() => {
+      vi.advanceTimersByTime(470);
+    });
     expect(setTheme).toHaveBeenCalledWith('light');
   });
 
   it('should evaluate resolveTargetEffectiveTheme when target is system and systemTheme is null', () => {
     // systemTheme = null by mocking matchMedia to undefined
-    Object.defineProperty(window, 'matchMedia', { value: undefined, configurable: true, writable: true });
+    Object.defineProperty(window, 'matchMedia', {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
 
     const setTheme = vi.fn();
     const { result } = renderHook(() =>
-      useThemeTransition({ theme: 'system', resolvedTheme: 'dark', setTheme })
+      useThemeTransition({ theme: 'system', resolvedTheme: 'dark', setTheme }),
     );
 
     act(() => {
@@ -93,26 +117,15 @@ describe('useThemeTransition', () => {
   });
 
   it('should return resolvedTheme as light from resolveTargetEffectiveTheme', () => {
-    Object.defineProperty(window, 'matchMedia', { value: undefined, configurable: true, writable: true });
-
-    const setTheme = vi.fn();
-    const { result } = renderHook(() =>
-      useThemeTransition({ theme: 'system', resolvedTheme: 'light', setTheme })
-    );
-
-    act(() => {
-      result.current.runThemeTransition('system'); 
+    Object.defineProperty(window, 'matchMedia', {
+      value: undefined,
+      configurable: true,
+      writable: true,
     });
 
-    expect(setTheme).toHaveBeenCalledWith('system');
-  });
-
-  it('should return null from resolveTargetEffectiveTheme when everything fails', () => {
-    Object.defineProperty(window, 'matchMedia', { value: undefined, configurable: true, writable: true });
-
     const setTheme = vi.fn();
     const { result } = renderHook(() =>
-      useThemeTransition({ theme: 'system', resolvedTheme: 'invalid', setTheme })
+      useThemeTransition({ theme: 'system', resolvedTheme: 'light', setTheme }),
     );
 
     act(() => {
@@ -121,11 +134,34 @@ describe('useThemeTransition', () => {
 
     expect(setTheme).toHaveBeenCalledWith('system');
   });
-  
+
+  it('should return null from resolveTargetEffectiveTheme when everything fails', () => {
+    Object.defineProperty(window, 'matchMedia', {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+
+    const setTheme = vi.fn();
+    const { result } = renderHook(() =>
+      useThemeTransition({
+        theme: 'system',
+        resolvedTheme: 'invalid',
+        setTheme,
+      }),
+    );
+
+    act(() => {
+      result.current.runThemeTransition('system');
+    });
+
+    expect(setTheme).toHaveBeenCalledWith('system');
+  });
+
   it('should not run transition if phase is not idle', () => {
     const setTheme = vi.fn();
     const { result } = renderHook(() =>
-      useThemeTransition({ theme: 'light', resolvedTheme: 'light', setTheme })
+      useThemeTransition({ theme: 'light', resolvedTheme: 'light', setTheme }),
     );
 
     act(() => {
@@ -145,7 +181,7 @@ describe('useThemeTransition', () => {
   it('should return immediately if next effective theme equals current effective theme', () => {
     const setTheme = vi.fn();
     const { result } = renderHook(() =>
-      useThemeTransition({ theme: 'light', resolvedTheme: 'light', setTheme })
+      useThemeTransition({ theme: 'light', resolvedTheme: 'light', setTheme }),
     );
 
     act(() => {
@@ -160,7 +196,7 @@ describe('useThemeTransition', () => {
   it('should use ViewTransition when available', async () => {
     const setTheme = vi.fn();
     let transitionCallback: any;
-    
+
     const mockFinished = Promise.resolve();
     (document as any).startViewTransition = vi.fn((cb: any) => {
       transitionCallback = cb;
@@ -168,7 +204,7 @@ describe('useThemeTransition', () => {
     });
 
     const { result } = renderHook(() =>
-      useThemeTransition({ theme: 'light', resolvedTheme: 'light', setTheme })
+      useThemeTransition({ theme: 'light', resolvedTheme: 'light', setTheme }),
     );
 
     act(() => {
@@ -177,27 +213,37 @@ describe('useThemeTransition', () => {
 
     expect((document as any).startViewTransition).toHaveBeenCalled();
     expect(result.current.phase).toBe('view');
-    expect(document.documentElement.classList.contains('theme-view-transition-active')).toBe(true);
+    expect(
+      document.documentElement.classList.contains(
+        'theme-view-transition-active',
+      ),
+    ).toBe(true);
 
     // Simulate callback inside startViewTransition
     if (transitionCallback) {
-        act(() => { transitionCallback(); });
-        expect(setTheme).toHaveBeenCalledWith('dark');
+      act(() => {
+        transitionCallback();
+      });
+      expect(setTheme).toHaveBeenCalledWith('dark');
     }
 
     // Wait for promise resolution
     await act(async () => {
-        await mockFinished;
+      await mockFinished;
     });
 
-    expect(document.documentElement.classList.contains('theme-view-transition-active')).toBe(false);
+    expect(
+      document.documentElement.classList.contains(
+        'theme-view-transition-active',
+      ),
+    ).toBe(false);
     expect(result.current.phase).toBe('idle');
   });
 
   it('should fallback to wipe, fade and idle timers without startViewTransition', () => {
     const setTheme = vi.fn();
     const { result } = renderHook(() =>
-      useThemeTransition({ theme: 'light', resolvedTheme: 'light', setTheme })
+      useThemeTransition({ theme: 'light', resolvedTheme: 'light', setTheme }),
     );
 
     act(() => {

@@ -248,12 +248,19 @@ describe('tableVersions', () => {
         close: vi.fn(),
       };
 
-      vi.spyOn(dbUtils, 'openDb').mockResolvedValue(mockDb as unknown as IDBDatabase);
+      vi.spyOn(dbUtils, 'openDb').mockResolvedValue(
+        mockDb as unknown as IDBDatabase,
+      );
 
       // 1. request.onerror fallback
       mockRequest = { onerror: null, onsuccess: null, error: null };
-      mockTx = { objectStore: () => ({ get: () => mockRequest }), onerror: null, onabort: null, oncomplete: null };
-      
+      mockTx = {
+        objectStore: () => ({ get: () => mockRequest }),
+        onerror: null,
+        onabort: null,
+        oncomplete: null,
+      };
+
       const p1 = getVersion('1');
       await Promise.resolve(); // yield to let openDb resolve
       mockRequest.onerror();
@@ -261,8 +268,14 @@ describe('tableVersions', () => {
 
       // 2. tx.onerror fallback
       mockRequest = { onerror: null, onsuccess: null, result: undefined };
-      mockTx = { objectStore: () => ({ get: () => mockRequest }), onerror: null, onabort: null, oncomplete: null, error: null };
-      
+      mockTx = {
+        objectStore: () => ({ get: () => mockRequest }),
+        onerror: null,
+        onabort: null,
+        oncomplete: null,
+        error: null,
+      };
+
       const p2 = getVersion('1');
       await Promise.resolve();
       mockTx.onerror();
@@ -273,26 +286,51 @@ describe('tableVersions', () => {
 
     it('should handle explicit indexeddb errors', async () => {
       let mockTx: any;
-      let mockRequest: any = { onerror: null, onsuccess: null, error: new Error('index error') };
-      let mockIndex: any = { getAll: () => mockRequest, count: () => mockRequest };
+      let mockRequest: any = {
+        onerror: null,
+        onsuccess: null,
+        error: new Error('index error'),
+      };
+      const mockIndex: any = {
+        getAll: () => mockRequest,
+        count: () => mockRequest,
+      };
 
       const mockDb = {
         transaction: () => mockTx,
         close: vi.fn(),
       };
 
-      vi.spyOn(dbUtils, 'openDb').mockResolvedValue(mockDb as unknown as IDBDatabase);
+      vi.spyOn(dbUtils, 'openDb').mockResolvedValue(
+        mockDb as unknown as IDBDatabase,
+      );
 
       // countVersions error
-      mockTx = { objectStore: () => ({ index: () => mockIndex }), onerror: null, oncomplete: null };
+      mockTx = {
+        objectStore: () => ({ index: () => mockIndex }),
+        onerror: null,
+        oncomplete: null,
+      };
       const p1 = countVersions('test');
       await Promise.resolve();
       mockRequest.onerror();
       await expect(p1).rejects.toThrow('index error');
 
       // listVersions error
-      mockRequest = { onerror: null, onsuccess: null, error: new Error('list error') };
-      mockTx = { objectStore: () => ({ index: () => { return { getAll: () => mockRequest } } }), onerror: null, oncomplete: null };
+      mockRequest = {
+        onerror: null,
+        onsuccess: null,
+        error: new Error('list error'),
+      };
+      mockTx = {
+        objectStore: () => ({
+          index: () => {
+            return { getAll: () => mockRequest };
+          },
+        }),
+        onerror: null,
+        oncomplete: null,
+      };
       const p2 = listVersions('test');
       await Promise.resolve();
       mockRequest.onerror();
@@ -300,12 +338,12 @@ describe('tableVersions', () => {
 
       // deleteAllVersions error
       vi.restoreAllMocks();
-      
+
       // Need to spy again but only fail the delete transaction, let listVersions pass
       const testTableName = getTestTableName();
       await createVersion(testTableName, createMockState(), 'v1');
-      
-      let failDelete = true;
+
+      const failDelete = true;
       vi.spyOn(dbUtils, 'openDb').mockImplementation(async () => {
         await dbUtils.openDb(); // The original is mocked by fakeIndexedDB but spyOn overrides it!
         // Wait, if we use actualDb it's intercepted by spyOn if we don't restore.
@@ -316,9 +354,9 @@ describe('tableVersions', () => {
               objectStore: () => ({ delete: vi.fn() }),
               onerror: null,
               oncomplete: null,
-              error: new Error('delete error')
+              error: new Error('delete error'),
             }),
-            close: vi.fn()
+            close: vi.fn(),
           } as unknown as IDBDatabase;
         }
         return {} as unknown as IDBDatabase; // Not used

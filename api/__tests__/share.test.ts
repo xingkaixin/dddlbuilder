@@ -260,12 +260,12 @@ describe('share api', () => {
     } as any);
 
     const response = await app.request(
-        `https://ddlbuilder.test/api/share/${VALID_SHARE_ID}`
+      `https://ddlbuilder.test/api/share/${VALID_SHARE_ID}`,
     );
     // Since fetch succeeds but returns {} due to catch, getShareState sees payload = {}
     // response.ok is true, but wait... if ok=true and no payload error, fetch returns state null?
-    // Wait, getShareState expects payload.result. If payload={}, payload.result is undefined. 
-    // It returns null, creating a 404! Wait, decodeRedisResponse is used by GET and POST. 
+    // Wait, getShareState expects payload.result. If payload={}, payload.result is undefined.
+    // It returns null, creating a 404! Wait, decodeRedisResponse is used by GET and POST.
     expect(response.status).toBe(404);
   });
 

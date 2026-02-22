@@ -391,58 +391,64 @@ export const DataTable = memo<DataTableProps>(
               style={{ width: frozenAreaWidth }}
             />
           )}
-          <table
-            className="w-full border-collapse text-sm"
-            data-testid="data-table"
-            aria-label={t('dataTable.ariaLabel')}
-            aria-describedby="field-config-table-description"
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
           >
-            <thead>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id} className="border-b border-border/50">
-                  {headerGroup.headers.map((header, colIndex) => {
-                    const isFrozen =
-                      freezeEnabled && colIndex < effectiveFreezeColumns;
-                    const isLastFrozen =
-                      freezeEnabled && colIndex === effectiveFreezeColumns - 1;
-                    return (
-                      <th
-                        key={header.id}
-                        className={cn(
-                          'h-10 px-2 text-left text-sm font-medium text-muted-foreground',
-                          isFrozen
-                            ? 'relative sticky z-30 bg-muted/30 supports-[backdrop-filter]:backdrop-blur-[2px]'
-                            : 'bg-muted/30',
-                          isLastFrozen &&
-                            'border-r border-primary/30 shadow-[8px_0_18px_-12px_hsl(var(--foreground)_/_0.22)] after:pointer-events-none after:absolute after:-right-3 after:top-0 after:h-full after:w-3 after:bg-gradient-to-r after:from-primary/20 after:to-transparent',
-                        )}
-                        style={{
-                          width: header.getSize(),
-                          minWidth: header.getSize(),
-                          left: isFrozen ? getStickyLeft(colIndex) : undefined,
-                        }}
-                      >
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
-                            )}
-                      </th>
-                    );
-                  })}
-                </tr>
-              ))}
-            </thead>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
+            <SortableContext
+              items={rowIds}
+              strategy={verticalListSortingStrategy}
             >
-              <SortableContext
-                items={rowIds}
-                strategy={verticalListSortingStrategy}
+              <table
+                className="w-full border-collapse text-sm"
+                data-testid="data-table"
+                aria-label={t('dataTable.ariaLabel')}
+                aria-describedby="field-config-table-description"
               >
+                <thead>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <tr
+                      key={headerGroup.id}
+                      className="border-b border-border/50"
+                    >
+                      {headerGroup.headers.map((header, colIndex) => {
+                        const isFrozen =
+                          freezeEnabled && colIndex < effectiveFreezeColumns;
+                        const isLastFrozen =
+                          freezeEnabled &&
+                          colIndex === effectiveFreezeColumns - 1;
+                        return (
+                          <th
+                            key={header.id}
+                            className={cn(
+                              'h-10 px-2 text-left text-sm font-medium text-muted-foreground',
+                              isFrozen
+                                ? 'relative sticky z-30 bg-muted/30 supports-[backdrop-filter]:backdrop-blur-[2px]'
+                                : 'bg-muted/30',
+                              isLastFrozen &&
+                                'border-r border-primary/30 shadow-[8px_0_18px_-12px_hsl(var(--foreground)_/_0.22)] after:pointer-events-none after:absolute after:-right-3 after:top-0 after:h-full after:w-3 after:bg-gradient-to-r after:from-primary/20 after:to-transparent',
+                            )}
+                            style={{
+                              width: header.getSize(),
+                              minWidth: header.getSize(),
+                              left: isFrozen
+                                ? getStickyLeft(colIndex)
+                                : undefined,
+                            }}
+                          >
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(
+                                  header.column.columnDef.header,
+                                  header.getContext(),
+                                )}
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </thead>
                 <tbody>
                   {table.getRowModel().rows.map((row) => (
                     <SortableDataRow
@@ -459,9 +465,9 @@ export const DataTable = memo<DataTableProps>(
                     />
                   ))}
                 </tbody>
-              </SortableContext>
-            </DndContext>
-          </table>
+              </table>
+            </SortableContext>
+          </DndContext>
         </section>
       </div>
     );

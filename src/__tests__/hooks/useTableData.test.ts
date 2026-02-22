@@ -409,7 +409,7 @@ describe('useTableData', () => {
   it('应该能重置表数据 (resetTableRows)', () => {
     const initialRows = createInitialRows();
     const { result } = renderHook(() => useTableData(initialRows));
-    
+
     act(() => {
       result.current.handleRemoveRow(0, 3);
     });
@@ -425,7 +425,7 @@ describe('useTableData', () => {
   it('如果 changes 为 null 应该返回验证失败并忽略', () => {
     const initialRows = createInitialRows();
     const { result } = renderHook(() => useTableData(initialRows));
-    
+
     act(() => {
       result.current.handleRowsChange(null, 'edit');
     });
@@ -435,9 +435,12 @@ describe('useTableData', () => {
   it('如果 source 是 loadData 应该忽略更改', () => {
     const initialRows = createInitialRows();
     const { result } = renderHook(() => useTableData(initialRows));
-    
+
     act(() => {
-      result.current.handleRowsChange([[0, 'fieldName', 'id', 'user_id']], 'loadData');
+      result.current.handleRowsChange(
+        [[0, 'fieldName', 'id', 'user_id']],
+        'loadData',
+      );
     });
     expect(result.current.rows[0].fieldName).toBe('id'); // no change
   });
@@ -445,7 +448,7 @@ describe('useTableData', () => {
   it('删除所有行时应该补充一个空行', () => {
     const initialRows = createInitialRows();
     const { result } = renderHook(() => useTableData(initialRows));
-    
+
     act(() => {
       // initialRows has 3 rows
       result.current.handleRemoveRow(0, 3);

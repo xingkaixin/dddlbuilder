@@ -154,7 +154,7 @@ describe('reviewHistory', () => {
       onerror: null,
       onsuccess: null,
     };
-    
+
     const mockStore: any = {
       add: () => {
         setTimeout(() => {
@@ -163,21 +163,25 @@ describe('reviewHistory', () => {
         return mockRequest;
       },
     };
-    
+
     const mockTx: any = {
       objectStore: () => mockStore,
       onerror: null,
       onabort: null,
     };
-    
+
     const mockDb: any = {
       transaction: () => mockTx,
     };
-    
-    vi.spyOn(dbUtils, 'openDb').mockResolvedValue(mockDb as unknown as IDBDatabase);
-    
-    await expect(saveReview('ns', 'tb', 'ddl', 'mysql', mockReview)).rejects.toThrow('IndexedDB 请求失败');
-    
+
+    vi.spyOn(dbUtils, 'openDb').mockResolvedValue(
+      mockDb as unknown as IDBDatabase,
+    );
+
+    await expect(
+      saveReview('ns', 'tb', 'ddl', 'mysql', mockReview),
+    ).rejects.toThrow('IndexedDB 请求失败');
+
     vi.restoreAllMocks();
   });
 });

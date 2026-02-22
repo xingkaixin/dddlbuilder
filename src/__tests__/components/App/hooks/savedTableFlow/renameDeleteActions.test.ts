@@ -23,7 +23,9 @@ describe('useRenameDeleteActions', () => {
       isOpen: false,
       data: { name: '', target: null },
       error: null,
-      openDialog: vi.fn().mockImplementation((d: any) => { renameDialog.data = d; }),
+      openDialog: vi.fn().mockImplementation((d: any) => {
+        renameDialog.data = d;
+      }),
       closeDialog: vi.fn(),
       setError: vi.fn(),
     };
@@ -31,7 +33,9 @@ describe('useRenameDeleteActions', () => {
       isOpen: false,
       data: { target: null },
       error: null,
-      openDialog: vi.fn().mockImplementation((d: any) => { deleteDialog.data = d; }),
+      openDialog: vi.fn().mockImplementation((d: any) => {
+        deleteDialog.data = d;
+      }),
       closeDialog: vi.fn(),
       setError: vi.fn(),
     };
@@ -49,34 +53,47 @@ describe('useRenameDeleteActions', () => {
     serializePersistedState = vi.fn().mockReturnValue('mock-signature');
   });
 
-  const getHook = (overrides = {}) => renderHook(() => useRenameDeleteActions({
-    loadedTableNormalizedName: 'test_table',
-    loadedTableSignature: 'sig',
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
-    setLoadedTableSignature,
-    renameDialog,
-    deleteDialog,
-    buildPersistedState,
-    serializePersistedState,
-    renameTable,
-    deleteTable,
-    showToast,
-    trackEvent,
-    setWorkspaceSnapshot,
-    renameSavedTableDraft,
-    removeSavedTableDraft,
-    ...overrides,
-  }));
+  const getHook = (overrides = {}) =>
+    renderHook(() =>
+      useRenameDeleteActions({
+        loadedTableNormalizedName: 'test_table',
+        loadedTableSignature: 'sig',
+        setLoadedTableNormalizedName,
+        setLoadedTableName,
+        setLoadedTableSignature,
+        renameDialog,
+        deleteDialog,
+        buildPersistedState,
+        serializePersistedState,
+        renameTable,
+        deleteTable,
+        showToast,
+        trackEvent,
+        setWorkspaceSnapshot,
+        renameSavedTableDraft,
+        removeSavedTableDraft,
+        ...overrides,
+      }),
+    );
 
   it('handleOpenRenameDialog sets dialog data', () => {
     const { result } = getHook();
     act(() => {
-      result.current.handleOpenRenameDialog({ name: 'old', normalizedName: 'old_norm', updatedAt: 0, preview: '' });
+      result.current.handleOpenRenameDialog({
+        name: 'old',
+        normalizedName: 'old_norm',
+        updatedAt: 0,
+        preview: '',
+      });
     });
     expect(renameDialog.openDialog).toHaveBeenCalledWith({
       name: 'old',
-      target: { name: 'old', normalizedName: 'old_norm', updatedAt: 0, preview: '' },
+      target: {
+        name: 'old',
+        normalizedName: 'old_norm',
+        updatedAt: 0,
+        preview: '',
+      },
     });
   });
 
@@ -105,7 +122,10 @@ describe('useRenameDeleteActions', () => {
   });
 
   it('handleConfirmRename handles duplicate error', async () => {
-    renameDialog.data = { name: 'new_name', target: { normalizedName: 'old_norm' } };
+    renameDialog.data = {
+      name: 'new_name',
+      target: { normalizedName: 'old_norm' },
+    };
     renameTable.mockResolvedValue({ ok: false, reason: 'duplicate' });
     const { result } = getHook();
 
@@ -118,7 +138,10 @@ describe('useRenameDeleteActions', () => {
   });
 
   it('handleConfirmRename handles arbitrary rename failure', async () => {
-    renameDialog.data = { name: 'new_name', target: { normalizedName: 'old_norm' } };
+    renameDialog.data = {
+      name: 'new_name',
+      target: { normalizedName: 'old_norm' },
+    };
     renameTable.mockResolvedValue({ ok: false });
     const { result } = getHook();
 
@@ -130,7 +153,10 @@ describe('useRenameDeleteActions', () => {
   });
 
   it('handleConfirmRename handles explicit rename error message', async () => {
-    renameDialog.data = { name: 'new_name', target: { normalizedName: 'old_norm' } };
+    renameDialog.data = {
+      name: 'new_name',
+      target: { normalizedName: 'old_norm' },
+    };
     renameTable.mockResolvedValue({ ok: false, message: 'Custom fallback' });
     const { result } = getHook();
 
@@ -142,8 +168,14 @@ describe('useRenameDeleteActions', () => {
   });
 
   it('handleConfirmRename successfully updates name and loaded state when operating on loaded table', async () => {
-    renameDialog.data = { name: '  new_name  ', target: { name: 'old', normalizedName: 'test_table' } };
-    renameTable.mockResolvedValue({ ok: true, normalizedName: 'new_name_norm' });
+    renameDialog.data = {
+      name: '  new_name  ',
+      target: { name: 'old', normalizedName: 'test_table' },
+    };
+    renameTable.mockResolvedValue({
+      ok: true,
+      normalizedName: 'new_name_norm',
+    });
     const { result } = getHook();
 
     await act(async () => {
@@ -151,9 +183,16 @@ describe('useRenameDeleteActions', () => {
     });
 
     expect(showToast).toHaveBeenCalledWith('已重命名为：new_name');
-    expect(trackEvent).toHaveBeenCalledWith('table_rename', { oldName: 'old', newName: 'new_name' });
-    expect(renameSavedTableDraft).toHaveBeenCalledWith('test_table', 'new_name_norm', 'new_name');
-    
+    expect(trackEvent).toHaveBeenCalledWith('table_rename', {
+      oldName: 'old',
+      newName: 'new_name',
+    });
+    expect(renameSavedTableDraft).toHaveBeenCalledWith(
+      'test_table',
+      'new_name_norm',
+      'new_name',
+    );
+
     // Loaded table updates matched the target
     expect(setLoadedTableNormalizedName).toHaveBeenCalledWith('new_name_norm');
     expect(setLoadedTableName).toHaveBeenCalledWith('new_name');
@@ -162,8 +201,14 @@ describe('useRenameDeleteActions', () => {
   });
 
   it('handleConfirmRename successfully updates name using DEFAULT if blank', async () => {
-    renameDialog.data = { name: '    ', target: { name: 'old', normalizedName: 'other_table' } };
-    renameTable.mockResolvedValue({ ok: true, normalizedName: 'new_name_norm' });
+    renameDialog.data = {
+      name: '    ',
+      target: { name: 'old', normalizedName: 'other_table' },
+    };
+    renameTable.mockResolvedValue({
+      ok: true,
+      normalizedName: 'new_name_norm',
+    });
     const { result } = getHook({ loadedTableNormalizedName: 'test_table' });
 
     await act(async () => {
@@ -178,10 +223,20 @@ describe('useRenameDeleteActions', () => {
   it('handleOpenDeleteDialog sets delete dialog data', () => {
     const { result } = getHook();
     act(() => {
-      result.current.handleOpenDeleteDialog({ name: 'old', normalizedName: 'old_norm', updatedAt: 0, preview: '' });
+      result.current.handleOpenDeleteDialog({
+        name: 'old',
+        normalizedName: 'old_norm',
+        updatedAt: 0,
+        preview: '',
+      });
     });
     expect(deleteDialog.openDialog).toHaveBeenCalledWith({
-      target: { name: 'old', normalizedName: 'old_norm', updatedAt: 0, preview: '' },
+      target: {
+        name: 'old',
+        normalizedName: 'old_norm',
+        updatedAt: 0,
+        preview: '',
+      },
     });
   });
 
@@ -223,7 +278,10 @@ describe('useRenameDeleteActions', () => {
 
   it('handleConfirmDelete handles failure with specific message', async () => {
     deleteDialog.data = { target: { normalizedName: 'old_norm' } };
-    deleteTable.mockResolvedValue({ ok: false, message: 'Custom delete error' });
+    deleteTable.mockResolvedValue({
+      ok: false,
+      message: 'Custom delete error',
+    });
     const { result } = getHook();
 
     await act(async () => {
@@ -234,7 +292,9 @@ describe('useRenameDeleteActions', () => {
   });
 
   it('handleConfirmDelete success matching loaded table resets global state', async () => {
-    deleteDialog.data = { target: { name: 'old', normalizedName: 'test_table' } };
+    deleteDialog.data = {
+      target: { name: 'old', normalizedName: 'test_table' },
+    };
     deleteTable.mockResolvedValue({ ok: true });
     const { result } = getHook({ loadedTableNormalizedName: 'test_table' });
 
@@ -244,16 +304,23 @@ describe('useRenameDeleteActions', () => {
 
     expect(removeSavedTableDraft).toHaveBeenCalledWith('test_table');
     expect(showToast).toHaveBeenCalledWith('已删除：old');
-    expect(trackEvent).toHaveBeenCalledWith('table_delete', { tableName: 'old' });
+    expect(trackEvent).toHaveBeenCalledWith('table_delete', {
+      tableName: 'old',
+    });
     expect(setLoadedTableNormalizedName).toHaveBeenCalledWith(null);
     expect(setLoadedTableName).toHaveBeenCalledWith(null);
     expect(setLoadedTableSignature).toHaveBeenCalledWith(null);
-    expect(setWorkspaceSnapshot).toHaveBeenCalledWith({ kind: 'global_draft' }, { test: 1 });
+    expect(setWorkspaceSnapshot).toHaveBeenCalledWith(
+      { kind: 'global_draft' },
+      { test: 1 },
+    );
     expect(deleteDialog.closeDialog).toHaveBeenCalled();
   });
 
   it('handleConfirmDelete success NOT matching loaded table does not reset global state', async () => {
-    deleteDialog.data = { target: { name: 'old', normalizedName: 'other_table' } };
+    deleteDialog.data = {
+      target: { name: 'old', normalizedName: 'other_table' },
+    };
     deleteTable.mockResolvedValue({ ok: true });
     const { result } = getHook({ loadedTableNormalizedName: 'test_table' });
 
@@ -265,5 +332,4 @@ describe('useRenameDeleteActions', () => {
     expect(setLoadedTableNormalizedName).not.toHaveBeenCalled();
     expect(deleteDialog.closeDialog).toHaveBeenCalled();
   });
-
 });

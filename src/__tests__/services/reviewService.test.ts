@@ -61,8 +61,11 @@ describe('requestDDLReview', () => {
     } as unknown as Response);
 
     await expect(
-      requestDDLReview({ ddl: 'ddl', tableName: 'users', dbType: 'mysql' }, { signal: new AbortController().signal }),
-    ).rejects.toThrow('请求失败: 502'); 
+      requestDDLReview(
+        { ddl: 'ddl', tableName: 'users', dbType: 'mysql' },
+        { signal: new AbortController().signal },
+      ),
+    ).rejects.toThrow('请求失败: 502');
   });
 
   it('should throw error when missing response body', async () => {
@@ -74,7 +77,10 @@ describe('requestDDLReview', () => {
     } as unknown as Response);
 
     await expect(
-      requestDDLReview({ ddl: 'ddl', tableName: 'users', dbType: 'mysql' }, { signal: new AbortController().signal }),
+      requestDDLReview(
+        { ddl: 'ddl', tableName: 'users', dbType: 'mysql' },
+        { signal: new AbortController().signal },
+      ),
     ).rejects.toThrow('无法读取响应流');
   });
 
@@ -87,7 +93,10 @@ describe('requestDDLReview', () => {
     } as unknown as Response);
 
     await expect(
-      requestDDLReview({ ddl: 'ddl', tableName: 'users', dbType: 'mysql' }, { signal: new AbortController().signal }),
+      requestDDLReview(
+        { ddl: 'ddl', tableName: 'users', dbType: 'mysql' },
+        { signal: new AbortController().signal },
+      ),
     ).rejects.toThrow('无法解析评审结果');
   });
 
@@ -95,13 +104,18 @@ describe('requestDDLReview', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       status: 200,
-      body: createTextStream(['{"score": "abc", "summary": 123, "suggestions": "not_an_array"}']),
+      body: createTextStream([
+        '{"score": "abc", "summary": 123, "suggestions": "not_an_array"}',
+      ]),
       json: vi.fn(),
     } as unknown as Response);
 
-    const result = await requestDDLReview({ ddl: 'ddl', tableName: 'users', dbType: 'mysql' }, { signal: new AbortController().signal });
+    const result = await requestDDLReview(
+      { ddl: 'ddl', tableName: 'users', dbType: 'mysql' },
+      { signal: new AbortController().signal },
+    );
 
-    expect(result.score).toBe(5); 
+    expect(result.score).toBe(5);
     expect(result.summary).toBe('评审完成');
     expect(result.suggestions).toEqual([]);
   });
@@ -115,12 +129,15 @@ describe('requestDDLReview', () => {
       json: vi.fn(),
     } as unknown as Response);
 
-    const result = await requestDDLReview({ ddl: 'ddl', tableName: 'users', dbType: 'mysql' }, { signal: new AbortController().signal });
+    const result = await requestDDLReview(
+      { ddl: 'ddl', tableName: 'users', dbType: 'mysql' },
+      { signal: new AbortController().signal },
+    );
 
     expect(result.score).toBe(5);
     expect(result.summary).toBe('评审完成');
     expect(result.suggestions).toEqual([]);
-      
+
     parseSpy.mockRestore();
   });
 });

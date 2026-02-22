@@ -245,43 +245,46 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(
           className="max-h-[360px] overflow-auto p-2"
           onPaste={handlePaste}
         >
-          <table
-            className="w-full border-collapse text-sm"
-            data-testid="template-field-table"
-            aria-label={t('templateManager.editor.fieldList')}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
           >
-            <thead>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id} className="border-b border-border/50">
-                  {headerGroup.headers.map((header) => (
-                    <th
-                      key={header.id}
-                      className="h-10 px-2 text-left text-sm font-medium text-muted-foreground bg-muted/30"
-                      style={{
-                        width: header.getSize(),
-                        minWidth: header.getSize(),
-                      }}
-                    >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
+            <SortableContext
+              items={rowIds}
+              strategy={verticalListSortingStrategy}
             >
-              <SortableContext
-                items={rowIds}
-                strategy={verticalListSortingStrategy}
+              <table
+                className="w-full border-collapse text-sm"
+                data-testid="template-field-table"
+                aria-label={t('templateManager.editor.fieldList')}
               >
+                <thead>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <tr
+                      key={headerGroup.id}
+                      className="border-b border-border/50"
+                    >
+                      {headerGroup.headers.map((header) => (
+                        <th
+                          key={header.id}
+                          className="h-10 px-2 text-left text-sm font-medium text-muted-foreground bg-muted/30"
+                          style={{
+                            width: header.getSize(),
+                            minWidth: header.getSize(),
+                          }}
+                        >
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext(),
+                              )}
+                        </th>
+                      ))}
+                    </tr>
+                  ))}
+                </thead>
                 <tbody>
                   {table.getRowModel().rows.map((row) => (
                     <SortableTemplateRow
@@ -294,9 +297,9 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(
                     />
                   ))}
                 </tbody>
-              </SortableContext>
-            </DndContext>
-          </table>
+              </table>
+            </SortableContext>
+          </DndContext>
         </div>
       </div>
     );

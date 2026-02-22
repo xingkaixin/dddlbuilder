@@ -3,7 +3,9 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { useSchemaApplyActions } from '@/components/App/hooks/useSchemaApplyActions';
 import type { ParsedResult } from '@/utils/SqlParser';
 
-function createHook(initialState: Partial<Parameters<typeof useSchemaApplyActions>[0]> = {}) {
+function createHook(
+  initialState: Partial<Parameters<typeof useSchemaApplyActions>[0]> = {},
+) {
   const spies = {
     setRows: vi.fn(),
     setIndexes: vi.fn(),
@@ -23,16 +25,17 @@ function createHook(initialState: Partial<Parameters<typeof useSchemaApplyAction
     trackEvent: vi.fn().mockResolvedValue(undefined),
   };
 
-  const hook = renderHook((props) =>
-    useSchemaApplyActions({
-      rows: [],
-      indexes: [],
-      reviewResult: null,
-      ...initialState,
-      ...props,
-      ...spies,
-    }),
-    { initialProps: initialState }
+  const hook = renderHook(
+    (props) =>
+      useSchemaApplyActions({
+        rows: [],
+        indexes: [],
+        reviewResult: null,
+        ...initialState,
+        ...props,
+        ...spies,
+      }),
+    { initialProps: initialState },
   );
 
   return {
@@ -141,7 +144,11 @@ describe('useSchemaApplyActions', () => {
     it('should apply add_field suggestion', () => {
       const { hook, spies } = createHook({
         rows: [],
-        reviewResult: { suggestions: [{ id: 's1', type: 'add_field', description: 'Add field' }] } as any,
+        reviewResult: {
+          suggestions: [
+            { id: 's1', type: 'add_field', description: 'Add field' },
+          ],
+        } as any,
       });
 
       act(() => {
@@ -168,13 +175,31 @@ describe('useSchemaApplyActions', () => {
         description: 'Add field',
       });
       expect(spies.setReviewResult).toHaveBeenCalledWith({
-        suggestions: [{ id: 's1', type: 'add_field', description: 'Add field', applied: true }]
+        suggestions: [
+          {
+            id: 's1',
+            type: 'add_field',
+            description: 'Add field',
+            applied: true,
+          },
+        ],
       });
     });
 
     it('should apply modify_field suggestion', () => {
       const { hook, spies } = createHook({
-        rows: [{ order: 1, fieldName: 'col1', fieldType: 'VARCHAR', fieldComment: '', nullable: '是', defaultKind: '无', defaultValue: '', onUpdate: '无' }],
+        rows: [
+          {
+            order: 1,
+            fieldName: 'col1',
+            fieldType: 'VARCHAR',
+            fieldComment: '',
+            nullable: '是',
+            defaultKind: '无',
+            defaultValue: '',
+            onUpdate: '无',
+          },
+        ],
         reviewResult: { suggestions: [{ id: 's2' }] } as any,
       });
 
@@ -200,7 +225,18 @@ describe('useSchemaApplyActions', () => {
 
     it('should apply remove_field suggestion', () => {
       const { hook, spies } = createHook({
-        rows: [{ order: 1, fieldName: 'col1', fieldType: 'VARCHAR', fieldComment: '', nullable: '是', defaultKind: '无', defaultValue: '', onUpdate: '无' }],
+        rows: [
+          {
+            order: 1,
+            fieldName: 'col1',
+            fieldType: 'VARCHAR',
+            fieldComment: '',
+            nullable: '是',
+            defaultKind: '无',
+            defaultValue: '',
+            onUpdate: '无',
+          },
+        ],
       });
 
       act(() => {
@@ -218,7 +254,9 @@ describe('useSchemaApplyActions', () => {
       });
 
       const setRowsUpdater = spies.setRows.mock.calls[0][0];
-      const newRows = setRowsUpdater([{ order: 1, fieldName: 'col1', fieldType: 'VARCHAR' }]);
+      const newRows = setRowsUpdater([
+        { order: 1, fieldName: 'col1', fieldType: 'VARCHAR' },
+      ]);
       expect(newRows).toHaveLength(0);
     });
 
@@ -232,7 +270,11 @@ describe('useSchemaApplyActions', () => {
           id: 's4',
           type: 'add_index',
           description: 'Add index',
-          index: { name: 'idx_1', fields: [{ name: 'col1', direction: 'ASC' }], unique: true },
+          index: {
+            name: 'idx_1',
+            fields: [{ name: 'col1', direction: 'ASC' }],
+            unique: true,
+          },
         } as any);
       });
 
@@ -247,7 +289,10 @@ describe('useSchemaApplyActions', () => {
       act(() => {
         vi.advanceTimersByTime(50);
       });
-      expect(spies.triggerIndexAnimation).toHaveBeenCalledWith(newIndexes[0].id, 'add');
+      expect(spies.triggerIndexAnimation).toHaveBeenCalledWith(
+        newIndexes[0].id,
+        'add',
+      );
     });
 
     it('should apply remove_index suggestion', () => {
@@ -264,13 +309,18 @@ describe('useSchemaApplyActions', () => {
         } as any);
       });
 
-      expect(spies.triggerIndexAnimation).toHaveBeenCalledWith('idx_1_id', 'remove');
+      expect(spies.triggerIndexAnimation).toHaveBeenCalledWith(
+        'idx_1_id',
+        'remove',
+      );
       act(() => {
         vi.advanceTimersByTime(500);
       });
 
       const setIndexesUpdater = spies.setIndexes.mock.calls[0][0];
-      const newIndexes = setIndexesUpdater([{ id: 'idx_1_id', name: 'idx_1', fields: [], unique: false }]);
+      const newIndexes = setIndexesUpdater([
+        { id: 'idx_1_id', name: 'idx_1', fields: [], unique: false },
+      ]);
       expect(newIndexes).toHaveLength(0);
     });
   });
@@ -282,11 +332,47 @@ describe('useSchemaApplyActions', () => {
         tableName: 'test',
         tableComment: '',
         fields: [
-          { name: 'f1', type: 'INT', comment: '', nullable: false, defaultKind: 'auto_increment', defaultValue: '' },
-          { name: 'f2', type: 'INT', comment: '', nullable: true, defaultKind: 'constant', defaultValue: '1' },
-          { name: 'f3', type: 'DATETIME', comment: '', nullable: false, defaultKind: 'current_timestamp', defaultValue: '', onUpdate: 'current_timestamp' },
-          { name: 'f4', type: 'VARCHAR', comment: '', nullable: true, defaultKind: 'uuid', defaultValue: '' },
-          { name: 'f5', type: 'VARCHAR', comment: '', nullable: true, defaultKind: 'none', defaultValue: '' },
+          {
+            name: 'f1',
+            type: 'INT',
+            comment: '',
+            nullable: false,
+            defaultKind: 'auto_increment',
+            defaultValue: '',
+          },
+          {
+            name: 'f2',
+            type: 'INT',
+            comment: '',
+            nullable: true,
+            defaultKind: 'constant',
+            defaultValue: '1',
+          },
+          {
+            name: 'f3',
+            type: 'DATETIME',
+            comment: '',
+            nullable: false,
+            defaultKind: 'current_timestamp',
+            defaultValue: '',
+            onUpdate: 'current_timestamp',
+          },
+          {
+            name: 'f4',
+            type: 'VARCHAR',
+            comment: '',
+            nullable: true,
+            defaultKind: 'uuid',
+            defaultValue: '',
+          },
+          {
+            name: 'f5',
+            type: 'VARCHAR',
+            comment: '',
+            nullable: true,
+            defaultKind: 'none',
+            defaultValue: '',
+          },
         ],
         indexes: [],
         authObjects: [],
@@ -299,7 +385,7 @@ describe('useSchemaApplyActions', () => {
       const rows = spies.setRows.mock.calls[0][0];
       expect(rows[0].nullable).toBe('否');
       expect(rows[0].defaultKind).toBe('自增');
-      
+
       expect(rows[1].nullable).toBe('是');
       expect(rows[1].defaultKind).toBe('常量');
 
@@ -307,7 +393,7 @@ describe('useSchemaApplyActions', () => {
       expect(rows[2].onUpdate).toBe('当前时间');
 
       expect(rows[3].defaultKind).toBe('uuid');
-      
+
       expect(rows[4].defaultKind).toBe('无');
       expect(rows.length).toBe(12); // padded to 12
     });
@@ -321,27 +407,65 @@ describe('useSchemaApplyActions', () => {
           tableName: 'ai_table',
           tableComment: 'AI Generated',
           fields: [
-            { fieldName: 'id', fieldType: 'INT', fieldComment: '', nullable: '否', defaultKind: '无', isPrimaryKey: true },
-            { fieldName: 'name', fieldType: 'VARCHAR', fieldComment: '', nullable: '是', defaultKind: '无', isPrimaryKey: false },
+            {
+              fieldName: 'id',
+              fieldType: 'INT',
+              fieldComment: '',
+              nullable: '否',
+              defaultKind: '无',
+              isPrimaryKey: true,
+            },
+            {
+              fieldName: 'name',
+              fieldType: 'VARCHAR',
+              fieldComment: '',
+              nullable: '是',
+              defaultKind: '无',
+              isPrimaryKey: false,
+            },
           ],
           indexes: [
-            { name: 'idx_name', fields: [{ name: 'name', direction: 'ASC' }], unique: false }
-          ]
+            {
+              name: 'idx_name',
+              fields: [{ name: 'name', direction: 'ASC' }],
+              unique: false,
+            },
+          ],
         });
       });
 
       expect(spies.setTableName).toHaveBeenCalledWith('ai_table');
       expect(spies.setTableComment).toHaveBeenCalledWith('AI Generated');
       expect(spies.setRows).toHaveBeenCalledWith([
-        { order: 1, fieldName: 'id', fieldType: 'INT', fieldComment: '', nullable: '否', defaultKind: '无', defaultValue: '', onUpdate: '无' },
-        { order: 2, fieldName: 'name', fieldType: 'VARCHAR', fieldComment: '', nullable: '是', defaultKind: '无', defaultValue: '', onUpdate: '无' }
+        {
+          order: 1,
+          fieldName: 'id',
+          fieldType: 'INT',
+          fieldComment: '',
+          nullable: '否',
+          defaultKind: '无',
+          defaultValue: '',
+          onUpdate: '无',
+        },
+        {
+          order: 2,
+          fieldName: 'name',
+          fieldType: 'VARCHAR',
+          fieldComment: '',
+          nullable: '是',
+          defaultKind: '无',
+          defaultValue: '',
+          onUpdate: '无',
+        },
       ]);
       const indexes = spies.setIndexes.mock.calls[0][0];
       expect(indexes).toHaveLength(2); // PK autogenerated + idx_name
       expect(indexes[0].name).toBe('PRIMARY');
       expect(indexes[0].fields[0].name).toBe('id');
       expect(indexes[1].name).toBe('idx_name');
-      expect(spies.trackEvent).toHaveBeenCalledWith('ai_generate_apply', { tableName: 'ai_table' });
+      expect(spies.trackEvent).toHaveBeenCalledWith('ai_generate_apply', {
+        tableName: 'ai_table',
+      });
     });
   });
 });
