@@ -220,4 +220,30 @@ describe('indexStore', () => {
     expect(current.indexes[1].name).toBe('idx_orders_name');
     expect(current.indexes[2].name).toBe('uk_orders_email');
   });
+
+  it('应该支持删除索引 removeIndex', () => {
+    const state = useIndexStore.getState();
+    state.setIndexes([
+      { id: '1', name: 'idx_1', fields: [], unique: false },
+      { id: '2', name: 'idx_2', fields: [], unique: false },
+    ]);
+    state.removeIndex('1');
+
+    const current = useIndexStore.getState();
+    expect(current.indexes.length).toBe(1);
+    expect(current.indexes[0].id).toBe('2');
+  });
+
+  it('同步字段重命名时如果参数为空或相同应直接返回', () => {
+    const state = useIndexStore.getState();
+    state.setCurrentIndexFields([{ name: 'id', direction: 'ASC' }]);
+    
+    // missing arg
+    state.syncFieldRename('', 'new_id', 'mysql');
+    expect(useIndexStore.getState().currentIndexFields[0].name).toBe('id');
+
+    // same arg
+    state.syncFieldRename('id', 'id', 'mysql');
+    expect(useIndexStore.getState().currentIndexFields[0].name).toBe('id');
+  });
 });

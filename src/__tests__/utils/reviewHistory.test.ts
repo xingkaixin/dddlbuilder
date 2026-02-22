@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   saveReview,
   listReviews,
@@ -8,6 +8,7 @@ import {
   countReviews,
   pruneOldReviews,
 } from '@/utils/reviewHistory';
+import * as dbUtils from '@/utils/savedTablesDb';
 import { setupFakeIndexedDB } from './fakeIndexedDb';
 
 describe('reviewHistory', () => {
@@ -146,5 +147,37 @@ describe('reviewHistory', () => {
     expect(metadataList[0].summary).toBe('Metadata summary');
     expect(metadataList[0]).not.toHaveProperty('ddl');
     expect(metadataList[0]).not.toHaveProperty('result');
+  });
+
+  it('should handle IndexedDB request error fallback when error is null/undefined', async () => {
+    const mockRequest: any = {
+      onerror: null,
+      onsuccess: null,
+    };
+    
+    const mockStore: any = {
+      add: () => {
+        setTimeout(() => {
+          if (mockRequest.onerror) mockRequest.onerror();
+        }, 10);
+        return mockRequest;
+      },
+    };
+    
+    const mockTx: any = {
+      objectStore: () => mockStore,
+      onerror: null,
+      onabort: null,
+    };
+    
+    const mockDb: any = {
+      transaction: () => mockTx,
+    };
+    
+    vi.spyOn(dbUtils, 'openDb').mockResolvedValue(mockDb as unknown as IDBDatabase);
+    
+    await expect(saveReview('ns', 'tb', 'ddl', 'mysql', mockReview)).rejects.toThrow('IndexedDB 请求失败');
+    
+    vi.restoreAllMocks();
   });
 });

@@ -274,6 +274,42 @@ describe('diffPersistedState', () => {
       expect(result.fields.some((f) => f.type === 'remove')).toBe(true);
       expect(result.fields.some((f) => f.type === 'add')).toBe(true);
     });
+
+    it('处理不同 defaultKind(uuid) 与 onUpdate(当前时间/current_timestamp) 变更', () => {
+      const old = createState({
+        rows: [
+          createRow({ name: 'f1', defaultKind: 'uuid', onUpdate: '当前时间' }),
+          createRow({ name: 'f2', defaultKind: '无', onUpdate: 'current_timestamp' })
+        ],
+      });
+      const newState = createState({
+        rows: [
+          createRow({ name: 'f1', defaultKind: 'uuid', onUpdate: '无' }),
+          createRow({ name: 'f2', defaultKind: '常量', onUpdate: '无' })
+        ],
+      });
+      const result = diffPersistedState(old, newState);
+      expect(result.hasChanges).toBe(true);
+      expect(result.fields[0].changes).toContain('default');
+      expect(result.fields[1].changes).toContain('default');
+    });
+
+    it('重命名时如果还存在其他非注释变更，也应该被包含', () => {
+      const old = createState({
+        rows: [
+          createRow({ name: 'old_name', type: 'INT', comment: '测试', nullable: '是' }),
+        ],
+      });
+      const newState = createState({
+        rows: [
+          createRow({ name: 'new_name', type: 'INT', comment: '测试', nullable: '否' }),
+        ],
+      });
+      const result = diffPersistedState(old, newState);
+      expect(result.hasChanges).toBe(true);
+      expect(result.fields[0].type).toBe('rename');
+      expect(result.fields[0].changes).toContain('nullable');
+    });
   });
 
   describe('索引变更', () => {

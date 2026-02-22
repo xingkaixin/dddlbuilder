@@ -147,18 +147,26 @@ describe('useDDLReview', () => {
     expect(result.current.result?.suggestions).toEqual(['fix 1', 'fix 2']);
   });
 
-  it('should handle request cancellation via clearReview', async () => {
+  it('should handle request cancellation via clearReview during active request', async () => {
     const { result } = renderDDLReviewHook();
+
+    const stream = new ReadableStream({
+      start() {},
+    });
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: stream,
+      json: vi.fn(),
+    } as unknown as Response);
 
     // Start a review
     act(() => {
       result.current.startReview('ddl', 'table', 'mysql');
     });
 
-    await act(async () => {
-      await flushPromises();
-    });
-
+    // We do NOT flush promises here so that the request is still active
     // Cancel the review
     act(() => {
       result.current.clearReview();
@@ -364,5 +372,51 @@ describe('useDDLReview', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(result.current.result?.summary).toBe('cached');
+  });
+
+  it('should ignore duplicate concurrent review requests', async () => {
+    const { result } = renderDDLReviewHook();
+    let fetchCount = 0;
+
+    const stream = new ReadableStream({
+      start() {
+        // stream never finishes immediately
+      },
+    });
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
+      fetchCount++;
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        body: stream,
+        json: vi.fn(),
+      } as unknown as Response)
+    });
+
+    act(() => {
+      result.current.startReview('ddl_dup', 'table', 'mysql');
+    });
+    
+    act(() => {
+      result.current.startReview('ddl_dup', 'table', 'mysql'); // Same params
+    });
+
+    expect(fetchCount).toBe(1); // Should only be called once
+  });
+
+  it('should set review result directly', () => {
+    const { result } = renderDDLReviewHook();
+
+    act(() => {
+      result.current.setReviewResult({
+        score: 100,
+        summary: 'perfect',
+        suggestions: [],
+      });
+    });
+
+    expect(result.current.result?.score).toBe(100);
+    expect(result.current.result?.summary).toBe('perfect');
   });
 });
