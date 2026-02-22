@@ -21,6 +21,7 @@ if (!i18n.isInitialized) {
       escapeValue: false,
     },
     returnNull: false,
+    showSupportNotice: false,
   });
 }
 
