@@ -29,13 +29,7 @@ interface HeaderProps {
 }
 
 export const Header = memo<HeaderProps>(
-  ({
-    onShare,
-    isSharing,
-    currentDbType,
-    onImport,
-    onPlayFireworks,
-  }) => {
+  ({ onShare, isSharing, currentDbType, onImport, onPlayFireworks }) => {
     const { t } = useTranslation();
     const { locale } = useLocale();
     const docsUrl = getDocsUrl(locale);
