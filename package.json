@@ -10,7 +10,6 @@
     "docs:build": "bun install --cwd docs && bun run --cwd docs docs:build",
     "docs:preview": "bun run --cwd docs docs:preview",
     "start": "bun run server.ts",
-    "changelog": "bun run src/scripts/parseChangelog.ts",
     "logo": "bun run scripts/generate-logos.ts && bun run scripts/generate-favicon.ts",
     "lint": "biome check .",
     "lint:fix": "biome check --fix .",

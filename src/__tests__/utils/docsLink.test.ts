@@ -6,8 +6,8 @@ describe('docsLink', () => {
     expect(getDocsUrl('zh-CN')).toBe('/docs/zh/');
   });
 
-  it('应将 en-US 在一期回退到中文文档路径', () => {
-    expect(getDocsUrl('en-US')).toBe('/docs/zh/');
+  it('应将 en-US 解析到英文文档路径', () => {
+    expect(getDocsUrl('en-US')).toBe('/docs/en/');
   });
 
   it('应将未知语言回退到中文文档路径', () => {

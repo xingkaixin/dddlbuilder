@@ -10,7 +10,6 @@ function resetAppStore() {
   state.setIsRenameDialogOpen(false);
   state.setIsDeleteDialogOpen(false);
   state.setIsLoadConfirmOpen(false);
-  state.setShowChangelog(false);
   state.setIsClearDialogOpen(false);
   state.setShowFireworks(false);
   state.setLoadedTableNormalizedName(null);
@@ -103,7 +102,6 @@ describe('appStore', () => {
   it('应该管理批次4迁移的全局 UI 与加载上下文状态', () => {
     const state = useAppStore.getState();
 
-    state.setShowChangelog(true);
     state.setIsClearDialogOpen(true);
     state.setShowFireworks(true);
     state.setLoadedTableNormalizedName('users');
@@ -120,7 +118,6 @@ describe('appStore', () => {
     state.setIsAIGenerateDialogOpen(true);
 
     let current = useAppStore.getState();
-    expect(current.showChangelog).toBe(true);
     expect(current.isClearDialogOpen).toBe(true);
     expect(current.showFireworks).toBe(true);
     expect(current.loadedTableNormalizedName).toBe('users');
@@ -136,7 +133,6 @@ describe('appStore', () => {
     expect(current.isStorageEstimatorOpen).toBe(true);
     expect(current.isAIGenerateDialogOpen).toBe(true);
 
-    current.setShowChangelog(false);
     current.setIsClearDialogOpen(false);
     current.setShowFireworks(false);
     current.setLoadedTableNormalizedName(null);
@@ -150,7 +146,6 @@ describe('appStore', () => {
     current.setIsAIGenerateDialogOpen(false);
 
     current = useAppStore.getState();
-    expect(current.showChangelog).toBe(false);
     expect(current.isClearDialogOpen).toBe(false);
     expect(current.showFireworks).toBe(false);
     expect(current.loadedTableNormalizedName).toBeNull();

@@ -29,7 +29,6 @@ interface AppStoreState {
   activeTab: string;
   savedTablesDrawerOpen: boolean;
   dialogs: CoreDialogState;
-  showChangelog: boolean;
   isClearDialogOpen: boolean;
   showFireworks: boolean;
   loadedTableNormalizedName: string | null;
@@ -57,7 +56,6 @@ interface AppStoreState {
   setIsRenameDialogOpen: (open: boolean) => void;
   setIsDeleteDialogOpen: (open: boolean) => void;
   setIsLoadConfirmOpen: (open: boolean) => void;
-  setShowChangelog: (show: boolean) => void;
   setIsClearDialogOpen: (open: boolean) => void;
   setShowFireworks: (show: boolean) => void;
   setLoadedTableNormalizedName: (name: string | null) => void;
@@ -81,7 +79,6 @@ export const useAppStore = create<AppStoreState>((set) => ({
   activeTab: 'fields',
   savedTablesDrawerOpen: false,
   dialogs: createInitialDialogs(),
-  showChangelog: false,
   isClearDialogOpen: false,
   showFireworks: false,
   loadedTableNormalizedName: null,
@@ -135,7 +132,6 @@ export const useAppStore = create<AppStoreState>((set) => ({
     set((state) => ({
       dialogs: { ...state.dialogs, loadConfirm: open },
     })),
-  setShowChangelog: (showChangelog) => set({ showChangelog }),
   setIsClearDialogOpen: (isClearDialogOpen) => set({ isClearDialogOpen }),
   setShowFireworks: (showFireworks) => set({ showFireworks }),
   setLoadedTableNormalizedName: (loadedTableNormalizedName) =>

@@ -15,7 +15,7 @@ You can make clear what to copy and what others can do after sharing, avoiding w
 3. Click `Copy DDL` or `Copy DCL` as needed. Result: SQL is copied to clipboard and can be pasted directly into review docs or execution systems.
 4. Click `Share` in the top bar. Result: the system generates an accessible read-only link and copies it automatically, with a default validity window.
 5. If the recipient needs to continue editing after opening the link, click `Save as copy and edit` in the page prompt. Result: the system returns to home and loads an editable copy without changing the original shared view.
-6. During collaboration, use top entries such as `Docs`, `Changelog`, `Language`, and `Theme`. Result: collaborators can quickly check guidance and adjust reading preferences.
+6. During collaboration, use top entries such as `Docs`, `Language`, and `Theme`. Result: collaborators can quickly check guidance, open locale-matched docs, and adjust reading preferences.
 
 ## Done when
 

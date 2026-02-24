@@ -93,8 +93,6 @@ function App() {
     setFieldTableFreezeEnabled,
     fieldTableFreezeColumns,
     setFieldTableFreezeColumns,
-    showChangelog,
-    setShowChangelog,
     isClearDialogOpen,
     setIsClearDialogOpen,
     showFireworks,
@@ -730,8 +728,6 @@ function App() {
     <TooltipProvider>
       <div className="min-h-screen bg-background text-foreground">
         <Header
-          showChangelog={showChangelog}
-          setShowChangelog={setShowChangelog}
           onShare={handleShare}
           isSharing={isSharing}
           currentDbType={dbType}

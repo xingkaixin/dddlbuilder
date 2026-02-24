@@ -2,7 +2,7 @@ import { memo, lazy, Suspense } from 'react';
 import type { DatabaseType } from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
 import packageInfo from '../../../package.json';
-import { Share2, FileInput, History, Loader2, BookOpen } from 'lucide-react';
+import { Share2, FileInput, Loader2, BookOpen } from 'lucide-react';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { LocaleSwitcher } from './LocaleSwitcher';
 import {
@@ -20,15 +20,7 @@ const ImportSqlDialog = lazy(() =>
   })),
 );
 
-const ChangelogModal = lazy(() =>
-  import('@/components/ChangelogModal').then((module) => ({
-    default: module.ChangelogModal,
-  })),
-);
-
 interface HeaderProps {
-  showChangelog: boolean;
-  setShowChangelog: (show: boolean) => void;
   onShare: () => void;
   isSharing: boolean;
   currentDbType: DatabaseType;
@@ -38,8 +30,6 @@ interface HeaderProps {
 
 export const Header = memo<HeaderProps>(
   ({
-    showChangelog,
-    setShowChangelog,
     onShare,
     isSharing,
     currentDbType,
@@ -236,23 +226,6 @@ export const Header = memo<HeaderProps>(
                   </Suspense>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <a
-                        href={docsUrl}
-                        className={actionBtnClass}
-                        onClick={() => {
-                          void trackEvent('docs_view');
-                        }}
-                      >
-                        <BookOpen className="h-4 w-4" aria-hidden />
-                        {t('header.docs')}
-                      </a>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{t('header.viewDocs')}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
                       <button
                         type="button"
                         onClick={onShare}
@@ -285,19 +258,21 @@ export const Header = memo<HeaderProps>(
                   <ThemeSwitcher triggerClassName={actionBtnClass} />
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <button
-                        onClick={() => {
-                          trackEvent('changelog_view');
-                          setShowChangelog(true);
-                        }}
+                      <a
+                        href={docsUrl}
                         className={actionBtnClass}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => {
+                          void trackEvent('docs_view');
+                        }}
                       >
-                        <History className="h-4 w-4" aria-hidden />
-                        {t('header.changelog')}
-                      </button>
+                        <BookOpen className="h-4 w-4" aria-hidden />
+                        {t('header.docs')}
+                      </a>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>{t('header.viewChangelog')}</p>
+                      <p>{t('header.viewDocs')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -305,15 +280,6 @@ export const Header = memo<HeaderProps>(
             </div>
           </div>
         </header>
-
-        {showChangelog && (
-          <Suspense fallback={null}>
-            <ChangelogModal
-              open={showChangelog}
-              onOpenChange={setShowChangelog}
-            />
-          </Suspense>
-        )}
       </>
     );
   },

@@ -24,8 +24,6 @@ export const enUSCommon = {
     shareLink: 'Share',
     generateShareLink: 'Generate share link',
     generatingShareLink: 'Generating...',
-    changelog: 'Changelog',
-    viewChangelog: 'View release history',
     changeLanguage: 'Switch language',
     changeTheme: 'Switch theme',
   },

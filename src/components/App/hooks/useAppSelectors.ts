@@ -30,8 +30,6 @@ export function useAppSelectors() {
   );
 
   // --- 全局 UI 状态 ---
-  const showChangelog = useAppStore((s) => s.showChangelog);
-  const setShowChangelog = useAppStore((s) => s.setShowChangelog);
   const isClearDialogOpen = useAppStore((s) => s.isClearDialogOpen);
   const setIsClearDialogOpen = useAppStore((s) => s.setIsClearDialogOpen);
   const showFireworks = useAppStore((s) => s.showFireworks);
@@ -116,8 +114,6 @@ export function useAppSelectors() {
     fieldTableFreezeColumns,
     setFieldTableFreezeColumns,
     // 全局 UI
-    showChangelog,
-    setShowChangelog,
     isClearDialogOpen,
     setIsClearDialogOpen,
     showFireworks,

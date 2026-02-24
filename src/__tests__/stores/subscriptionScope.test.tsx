@@ -12,7 +12,6 @@ function resetAppStore() {
   state.setIsRenameDialogOpen(false);
   state.setIsDeleteDialogOpen(false);
   state.setIsLoadConfirmOpen(false);
-  state.setShowChangelog(false);
   state.setIsClearDialogOpen(false);
   state.setShowFireworks(false);
   state.setLoadedTableNormalizedName(null);
@@ -92,7 +91,7 @@ describe('store selector subscription scope', () => {
     const initialRenderCount = renderCount;
 
     act(() => {
-      useAppStore.getState().setShowChangelog(true);
+      useAppStore.getState().setIsClearDialogOpen(true);
     });
 
     expect(renderCount).toBe(initialRenderCount);
