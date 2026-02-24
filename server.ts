@@ -8,6 +8,9 @@ const app = new Hono();
 // Mount API routes
 app.route('/', api);
 
+// Keep docs base path canonical for VitePress
+app.get('/docs', (c) => c.redirect('/docs/', 301));
+
 app.use('/*', async (c, next) => {
   await next();
   applyCspHeaders(c);
