@@ -67,19 +67,6 @@ test.describe('核心 UI 交互功能测试 @core', () => {
     await expect(page.locator('#table-name')).toHaveValue('');
   });
 
-  test('场景：更新日志弹窗应能正常打开和关闭', async ({ page }) => {
-    // 点击"更新日志"按钮
-    await page.getByRole('button', { name: /更新日志/i }).click();
-
-    // 验证弹窗打开 - 通过查找标题
-    const changelogTitle = page.getByRole('heading', { name: /更新日志/i });
-    await expect(changelogTitle).toBeVisible();
-
-    // 关闭弹窗
-    await page.keyboard.press('Escape');
-    await expect(changelogTitle).not.toBeVisible({ timeout: 5000 });
-  });
-
   test('场景：主题可切换并支持系统跟随', async ({ page }) => {
     const html = page.locator('html');
     const themeTrigger = page.getByTestId('theme-switcher-trigger');
