@@ -1,6 +1,17 @@
 # Changelog
 
-## [Unreleased]
+## [0.15.0] - 2026-02-26
+### Added
+- **Documentation site launch**: Introduces a VitePress docs center with Chinese and English routes, including Basic Guide, Advanced Guide, FAQ, and release notes.
+- **In-app docs entry**: Adds a `Docs` button in the top action area that opens locale-specific documentation.
+
+### Improved
+- **Docs path canonicalization**: Redirects `/docs` to `/docs/`, and auto-routes docs root by browser language.
+- **Unified release-notes access**: Removes the in-app changelog modal and maintains release notes on the documentation site.
+
+### Fixed
+- **Drag-and-drop stability**: Fixes nested DnD context issues in the field table and template field table to prevent reorder anomalies.
+- **i18n console noise**: Disables i18next support notices to reduce unnecessary console output.
 
 ## [0.14.0] - 2026-02-25
 ### Added
