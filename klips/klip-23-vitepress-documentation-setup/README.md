@@ -1,3 +1,9 @@
+---
+created: "2026-02-22"
+updated: "2026-02-24"
+status: "completed"
+---
+
 # KLIP-23: 集成 VitePress 帮助文档系统
 
 ## 1. 需求分析
