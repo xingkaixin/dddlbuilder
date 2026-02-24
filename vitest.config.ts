@@ -11,6 +11,7 @@ export default defineConfig({
     setupFiles: ['./src/__tests__/setup.ts'],
     exclude: [
       'node_modules/**',
+      '**/node_modules/**',
       'e2e/**',
       'playwright-report/**',
       'test-results/**',

@@ -2,6 +2,19 @@ import '@testing-library/jest-dom';
 import i18n from '@/i18n';
 import { vi } from 'vitest';
 
+// Ensure events created from globalThis are compatible with jsdom EventTarget.
+Object.defineProperty(globalThis, 'Event', {
+  value: window.Event,
+  configurable: true,
+  writable: true,
+});
+
+Object.defineProperty(globalThis, 'CustomEvent', {
+  value: window.CustomEvent,
+  configurable: true,
+  writable: true,
+});
+
 // Mock localStorage
 const localStorageMock = {
   getItem: vi.fn(),
