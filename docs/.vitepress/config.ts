@@ -116,6 +116,40 @@ export default defineConfig({
   base: '/docs/',
   outDir: '../dist/docs',
   srcExclude: ['AGENTS.md'],
+  head: [
+    ['meta', { name: 'theme-color', content: '#E07A5F' }],
+    ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.cn' }],
+    [
+      'link',
+      {
+        rel: 'preconnect',
+        href: 'https://fonts.gstatic.cn',
+        crossorigin: '',
+      },
+    ],
+    [
+      'link',
+      {
+        rel: 'preconnect',
+        href: 'https://cdn-font.hyperos.mi.com',
+        crossorigin: '',
+      },
+    ],
+    [
+      'link',
+      {
+        rel: 'stylesheet',
+        href: 'https://fonts.googleapis.cn/css2?family=Roboto+Mono:wght@400;500;600;700&display=swap',
+      },
+    ],
+    [
+      'link',
+      {
+        rel: 'stylesheet',
+        href: 'https://cdn-font.hyperos.mi.com/font/css?family=MiSans_VF:VF:Chinese_Simplify,Latin&display=swap',
+      },
+    ],
+  ],
   lastUpdated: true,
   locales: {
     root: {
