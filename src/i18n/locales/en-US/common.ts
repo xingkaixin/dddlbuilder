@@ -19,6 +19,8 @@ export const enUSCommon = {
     appDescription: 'A professional database table design tool',
     playFireworks: 'Play fireworks',
     importSql: 'Import SQL',
+    docs: 'Docs',
+    viewDocs: 'Open documentation',
     shareLink: 'Share',
     generateShareLink: 'Generate share link',
     generatingShareLink: 'Generating...',

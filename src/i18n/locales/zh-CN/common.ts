@@ -19,6 +19,8 @@ export const zhCNCommon = {
     appDescription: '专业的数据库建表工具',
     playFireworks: '点击播放烟花',
     importSql: '导入 SQL',
+    docs: '帮助文档',
+    viewDocs: '查看使用文档',
     shareLink: '分享链接',
     generateShareLink: '生成分享链接',
     generatingShareLink: '生成中...',

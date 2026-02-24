@@ -5,6 +5,14 @@ import path from 'node:path';
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    proxy: {
+      '/docs': {
+        target: 'http://127.0.0.1:5174',
+        changeOrigin: true,
+      },
+    },
+  },
   plugins: [
     react(),
     devServer({

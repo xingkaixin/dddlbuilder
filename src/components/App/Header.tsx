@@ -2,7 +2,7 @@ import { memo, lazy, Suspense } from 'react';
 import type { DatabaseType } from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
 import packageInfo from '../../../package.json';
-import { Share2, FileInput, History, Loader2 } from 'lucide-react';
+import { Share2, FileInput, History, Loader2, BookOpen } from 'lucide-react';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { LocaleSwitcher } from './LocaleSwitcher';
 import {
@@ -10,6 +10,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useLocale } from '@/i18n/LocaleContext';
+import { getDocsUrl } from '@/utils/docsLink';
 import { useTranslation } from 'react-i18next';
 
 const ImportSqlDialog = lazy(() =>
@@ -45,6 +47,8 @@ export const Header = memo<HeaderProps>(
     onPlayFireworks,
   }) => {
     const { t } = useTranslation();
+    const { locale } = useLocale();
+    const docsUrl = getDocsUrl(locale);
     const actionBtnClass =
       'group inline-flex items-center gap-1.5 rounded-md px-1 py-1 text-xs font-medium text-primary transition-all duration-200 hover:translate-x-0.5 hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60';
 
@@ -230,6 +234,23 @@ export const Header = memo<HeaderProps>(
                       triggerLabel={t('header.importSql')}
                     />
                   </Suspense>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <a
+                        href={docsUrl}
+                        className={actionBtnClass}
+                        onClick={() => {
+                          void trackEvent('docs_view');
+                        }}
+                      >
+                        <BookOpen className="h-4 w-4" aria-hidden />
+                        {t('header.docs')}
+                      </a>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{t('header.viewDocs')}</p>
+                    </TooltipContent>
+                  </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
