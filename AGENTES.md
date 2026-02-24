@@ -3,7 +3,7 @@
 
 ## 测试
 - lint 使用`bun run lint`
-- unittest 使用`bun run test:run`
+- test 使用`bun run test`
 - test coverage 使用`bun run test:coverage`
 
 ## E2E测试
