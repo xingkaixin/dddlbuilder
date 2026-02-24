@@ -8,8 +8,8 @@ description: Generate changelog entries for code changes.
 ## 步骤
 
 1. **分析变更**：查看 `git log main..HEAD --oneline` 和 `git diff main..HEAD --stat`，理解所有变更。
-2. **更新中文 CHANGELOG**：在 docs/zh/changelog 目录 `changelog.md` 的 `## 未发布` 下添加条目；
-3. **更新英文 CHANGELOG**：在 docs/en/changelog 目录 `changelog.md` 的 `## Unreleased` 下添加对应的英文翻译条目，遵循现有格式和用词规范
+2. **更新中文文档 CHANGELOG**：在 docs/zh/changelog 目录 `changelog.md` 的 `## 未发布` 下添加条目；
+3. **更新英文文档 CHANGELOG**：在 docs/en/changelog 目录 `changelog.md` 的 `## Unreleased` 下添加对应的英文翻译条目，遵循现有格式和用词规范
 4. **更新项目 CHANGELOG**：在根目录 `CHANGELOG.md` 的 `## Unreleased` 下同步添加本次英文 changelog的内容
 
 
