@@ -1,7 +1,7 @@
 # DDLBuilder LLM Context
 
 ## Product URL
-- [DDLBuilder](https://ddl.xingkaixin.me/)  
+- [DDLBuilder](https://ddl.xingkaixin.me/)
   Entry point of the web product.
 
 ## Purpose
@@ -33,37 +33,37 @@
 - This file is a capability overview, not a full operational manual.
 
 ## Official Documentation (English)
-- [Documentation Home](https://ddl.xingkaixin.me/docs/en/)  
+- [Documentation Home](https://ddl.xingkaixin.me/docs/en/)
   Start here for the complete English documentation index.
-- [Quick Start](https://ddl.xingkaixin.me/docs/en/basic/getting-started)  
+- [Quick Start](https://ddl.xingkaixin.me/docs/en/basic/getting-started.html)
   First-run workflow to build and copy your first DDL/DCL output.
-- [Core Concepts](https://ddl.xingkaixin.me/docs/en/basic/core-concepts)  
+- [Core Concepts](https://ddl.xingkaixin.me/docs/en/basic/core-concepts.html)
   Definitions of workspace, draft, saved table, share copy, DDL, and DCL.
-- [Table and Field Configuration](https://ddl.xingkaixin.me/docs/en/basic/table-and-fields)  
+- [Table and Field Configuration](https://ddl.xingkaixin.me/docs/en/basic/table-and-fields.html)
   How to model table metadata and field-level configuration.
-- [Indexes, Privileges, and Misc](https://ddl.xingkaixin.me/docs/en/basic/index-auth-misc)  
+- [Indexes, Privileges, and Misc](https://ddl.xingkaixin.me/docs/en/basic/index-auth-misc.html)
   How to configure indexes, access control, and table-level options.
-- [DDL Output and Sharing](https://ddl.xingkaixin.me/docs/en/basic/ddl-and-share)  
+- [DDL Output and Sharing](https://ddl.xingkaixin.me/docs/en/basic/ddl-and-share.html)
   How to copy SQL outputs and collaborate through share links.
-- [Saved Tables and Draft box](https://ddl.xingkaixin.me/docs/en/basic/saved-tables)  
+- [Saved Tables and Draft box](https://ddl.xingkaixin.me/docs/en/basic/saved-tables.html
   How to persist, reload, and organize schema versions.
-- [Import and Parse SQL](https://ddl.xingkaixin.me/docs/en/advanced/import-and-parse)  
+- [Import and Parse SQL](https://ddl.xingkaixin.me/docs/en/advanced/import-and-parse.html)
   How to import existing SQL and convert it into editable configuration.
-- [AI-Assisted Table Design Workflow](https://ddl.xingkaixin.me/docs/en/advanced/ai-workflow)  
+- [AI-Assisted Table Design Workflow](https://ddl.xingkaixin.me/docs/en/advanced/ai-workflow.html)
   How to generate and refine schema drafts through AI conversation.
-- [Review and Explain SQL](https://ddl.xingkaixin.me/docs/en/advanced/review-and-explain)  
+- [Review and Explain SQL](https://ddl.xingkaixin.me/docs/en/advanced/review-and-explain.html)
   How to use AI review and SQL explanation for quality checks.
-- [Partitioning and Sharding Configuration](https://ddl.xingkaixin.me/docs/en/advanced/partition-and-sharding)  
+- [Partitioning and Sharding Configuration](https://ddl.xingkaixin.me/docs/en/advanced/partition-and-sharding.html)
   How to use partition and sharding related features by database type.
-- [Change Diff and Rollback](https://ddl.xingkaixin.me/docs/en/advanced/diff-and-rollback)  
+- [Change Diff and Rollback](https://ddl.xingkaixin.me/docs/en/advanced/diff-and-rollback.html)
   How to inspect schema differences and rollback-related SQL outputs.
-- [Errors and Failure Handling](https://ddl.xingkaixin.me/docs/en/faq/common-errors)  
+- [Errors and Failure Handling](https://ddl.xingkaixin.me/docs/en/faq/common-errors.html)
   Troubleshooting guide for common failures and recovery paths.
-- [Feature Entry and Visibility](https://ddl.xingkaixin.me/docs/en/faq/feature-visibility)  
+- [Feature Entry and Visibility](https://ddl.xingkaixin.me/docs/en/faq/feature-visibility.html)
   Why specific tabs or buttons may appear or be hidden.
-- [Sharing and Collaboration](https://ddl.xingkaixin.me/docs/en/faq/sharing-and-collaboration)  
+- [Sharing and Collaboration](https://ddl.xingkaixin.me/docs/en/faq/sharing-and-collaboration.html)
   Collaboration expectations and behavior around share links.
-- [Changelog](https://ddl.xingkaixin.me/docs/en/changelog/changelog)  
+- [Changelog](https://ddl.xingkaixin.me/docs/en/changelog/changelog.html)
   Release history and feature evolution reference.
 
 ## How an LLM Should Use This File
