@@ -25,9 +25,12 @@ describe('i18n/LocaleContext', () => {
       key === LOCAL_STORAGE_KEY ? 'en-US' : null,
     );
 
+    await i18n.changeLanguage('zh-CN');
+
     const { result } = renderHook(() => useLocale(), { wrapper: Wrapper });
 
     expect(result.current.locale).toBe('en-US');
+    expect(result.current.resolvedLocale).toBe('en-US');
     await waitFor(() => {
       expect(document.documentElement.lang).toBe('en-US');
     });
@@ -47,6 +50,22 @@ describe('i18n/LocaleContext', () => {
     });
 
     expect(setItemSpy).toHaveBeenCalledWith(LOCAL_STORAGE_KEY, 'en-US');
+  });
+
+  it('切换语言后 resolvedLocale 应与当前 locale 保持一致', async () => {
+    await i18n.changeLanguage('zh-CN');
+
+    const { result } = renderHook(() => useLocale(), { wrapper: Wrapper });
+
+    act(() => {
+      result.current.setLocale('en-US');
+    });
+
+    await waitFor(() => {
+      expect(result.current.locale).toBe('en-US');
+      expect(result.current.resolvedLocale).toBe('en-US');
+      expect(document.documentElement.lang).toBe('en-US');
+    });
   });
 
   it('setLocale 在 localStorage 抛错时不应中断流程', () => {
