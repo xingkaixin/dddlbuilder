@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { createElement, type PropsWithChildren } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useDDLExplain } from '@/hooks/useDDLExplain';
-import { LocaleProvider } from '@/i18n/LocaleContext';
+import { LocaleProvider, useLocale } from '@/i18n/LocaleContext';
 
 const streamingMocks = vi.hoisted(() => ({
   readTextStream: vi.fn(),
@@ -24,6 +24,20 @@ function renderDDLExplainHook() {
   }
 
   return renderHook(() => useDDLExplain(), { wrapper: Wrapper });
+}
+
+function renderDDLExplainWithLocaleHook() {
+  function Wrapper({ children }: PropsWithChildren) {
+    return createElement(LocaleProvider, null, children);
+  }
+
+  return renderHook(
+    () => ({
+      explain: useDDLExplain(),
+      locale: useLocale(),
+    }),
+    { wrapper: Wrapper },
+  );
 }
 
 describe('useDDLExplain', () => {
@@ -78,6 +92,42 @@ describe('useDDLExplain', () => {
     expect(result.current.isComplete).toBe(true);
     expect(result.current.explanation).toBe('full explanation');
     expect(result.current.error).toBeNull();
+  });
+
+  it('should send the current locale after switching language', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: new ReadableStream(),
+      json: vi.fn(),
+    } as unknown as Response);
+
+    streamingMocks.readTextStream.mockResolvedValue('english explanation');
+
+    const { result } = renderDDLExplainWithLocaleHook();
+
+    act(() => {
+      result.current.locale.setLocale('en-US');
+    });
+
+    await waitFor(() => {
+      expect(result.current.locale.resolvedLocale).toBe('en-US');
+    });
+
+    await act(async () => {
+      await result.current.explain.startExplain('SELECT 1');
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/explain',
+      expect.objectContaining({
+        body: JSON.stringify({
+          sql: 'SELECT 1',
+          context: undefined,
+          locale: 'en-US',
+        }),
+      }),
+    );
   });
 
   it('should handle non-ok response with server error', async () => {

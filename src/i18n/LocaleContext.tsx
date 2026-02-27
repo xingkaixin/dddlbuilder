@@ -45,21 +45,33 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const handleLanguageChanged = (language: string) => {
       const normalized = normalizeLocale(language);
-      if (normalized && normalized !== locale) {
-        setLocaleState(normalized);
-      }
+      if (!normalized) return;
+
+      setLocaleState((currentLocale) => {
+        if (currentLocale === normalized) {
+          return currentLocale;
+        }
+
+        try {
+          window.localStorage.setItem(LOCAL_STORAGE_KEY, normalized);
+        } catch {
+          // ignore storage errors
+        }
+
+        return normalized;
+      });
     };
 
     i18n.on('languageChanged', handleLanguageChanged);
     return () => {
       i18n.off('languageChanged', handleLanguageChanged);
     };
-  }, [locale]);
+  }, []);
 
   const value = useMemo<LocaleContextValue>(
     () => ({
       locale,
-      resolvedLocale: normalizeLocale(i18n.resolvedLanguage) ?? locale,
+      resolvedLocale: locale,
       setLocale,
     }),
     [locale, setLocale],

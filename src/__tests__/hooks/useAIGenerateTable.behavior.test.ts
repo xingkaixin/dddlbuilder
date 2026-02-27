@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GenerateTableServiceResult } from '@/services/aiGenerateTableService';
 import { useAIGenerateTable } from '@/hooks/useAIGenerateTable';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
+import { useLocale } from '@/i18n/LocaleContext';
 
 const aiServiceMocks = vi.hoisted(() => ({
   requestGenerateTable: vi.fn(),
@@ -15,6 +16,17 @@ vi.mock('@/services/aiGenerateTableService', () => ({
 function renderAIGenerateTableHook() {
   const { wrapper } = createQueryClientWrapper();
   return renderHook(() => useAIGenerateTable(), { wrapper });
+}
+
+function renderAIGenerateTableWithLocaleHook() {
+  const { wrapper } = createQueryClientWrapper();
+  return renderHook(
+    () => ({
+      ai: useAIGenerateTable(),
+      locale: useLocale(),
+    }),
+    { wrapper },
+  );
 }
 
 function createResult(tableName: string): GenerateTableServiceResult {
@@ -78,6 +90,33 @@ describe('useAIGenerateTable behaviors', () => {
       result.current.clearConversation();
     });
     expect(result.current.conversationHistory).toEqual([]);
+  });
+
+  it('should send the current locale after switching language', async () => {
+    aiServiceMocks.requestGenerateTable.mockResolvedValue(
+      createResult('users'),
+    );
+
+    const { result } = renderAIGenerateTableWithLocaleHook();
+
+    act(() => {
+      result.current.locale.setLocale('en-US');
+    });
+
+    await waitFor(() => {
+      expect(result.current.locale.resolvedLocale).toBe('en-US');
+    });
+
+    await act(async () => {
+      await result.current.ai.generateTable('generate users table', 'mysql');
+    });
+
+    expect(aiServiceMocks.requestGenerateTable).toHaveBeenCalledWith(
+      expect.objectContaining({
+        locale: 'en-US',
+      }),
+      expect.any(Object),
+    );
   });
 
   it('should ignore duplicated in-flight request with same key', async () => {

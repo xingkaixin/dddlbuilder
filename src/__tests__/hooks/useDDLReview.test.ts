@@ -3,6 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useDDLReview } from '@/hooks/useDDLReview';
 import { flushPromises } from '@/__tests__/utils/test-utils';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
+import { useLocale } from '@/i18n/LocaleContext';
 
 const createStream = (chunks: string[]) => {
   const encoder = new TextEncoder();
@@ -19,6 +20,17 @@ const createStream = (chunks: string[]) => {
 function renderDDLReviewHook() {
   const { wrapper } = createQueryClientWrapper();
   return renderHook(() => useDDLReview(), { wrapper });
+}
+
+function renderDDLReviewWithLocaleHook() {
+  const { wrapper } = createQueryClientWrapper();
+  return renderHook(
+    () => ({
+      review: useDDLReview(),
+      locale: useLocale(),
+    }),
+    { wrapper },
+  );
 }
 
 describe('useDDLReview', () => {
@@ -66,6 +78,42 @@ describe('useDDLReview', () => {
     expect(result.current.result?.score).toBe(8);
     expect(result.current.result?.summary).toBe('ok');
     expect(result.current.result?.suggestions).toEqual(['a', 'b']);
+  });
+
+  it('should send the current locale after switching language', async () => {
+    const { result } = renderDDLReviewWithLocaleHook();
+
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: createStream(['{"score": 8, "summary": "ok", "suggestions": []}']),
+      json: vi.fn(),
+    } as unknown as Response);
+
+    act(() => {
+      result.current.locale.setLocale('en-US');
+    });
+
+    await act(async () => {
+      await flushPromises();
+    });
+
+    await act(async () => {
+      await result.current.review.startReview('ddl', 'table', 'mysql');
+      await flushPromises();
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/review',
+      expect.objectContaining({
+        body: JSON.stringify({
+          ddl: 'ddl',
+          tableName: 'table',
+          dbType: 'mysql',
+          locale: 'en-US',
+        }),
+      }),
+    );
   });
 
   it('should handle non-ok response', async () => {

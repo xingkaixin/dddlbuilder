@@ -4,6 +4,23 @@ export const LOCAL_STORAGE_KEY = 'ddlbuilder:locale:v1';
 
 export const DEFAULT_LOCALE: AppLocale = 'zh-CN';
 
+function getStorageItem(key: string): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const storage = window.localStorage;
+  if (!storage || typeof storage.getItem !== 'function') {
+    return null;
+  }
+
+  try {
+    return storage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
 function isSupportedLocale(value: string): value is AppLocale {
   return isAppLocale(value);
 }
@@ -44,7 +61,7 @@ export function resolveInitialLocale(): AppLocale {
     return DEFAULT_LOCALE;
   }
 
-  const saved = normalizeLocale(window.localStorage.getItem(LOCAL_STORAGE_KEY));
+  const saved = normalizeLocale(getStorageItem(LOCAL_STORAGE_KEY));
   if (saved) {
     return saved;
   }
