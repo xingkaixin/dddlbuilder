@@ -45,7 +45,7 @@
   How to configure indexes, access control, and table-level options.
 - [DDL Output and Sharing](https://ddl.xingkaixin.me/docs/en/basic/ddl-and-share.html)
   How to copy SQL outputs and collaborate through share links.
-- [Saved Tables and Draft box](https://ddl.xingkaixin.me/docs/en/basic/saved-tables.html
+- [Saved Tables and Draft box](https://ddl.xingkaixin.me/docs/en/basic/saved-tables.html)
   How to persist, reload, and organize schema versions.
 - [Import and Parse SQL](https://ddl.xingkaixin.me/docs/en/advanced/import-and-parse.html)
   How to import existing SQL and convert it into editable configuration.
@@ -70,3 +70,76 @@
 - Identify the user goal first: new table design, SQL import, AI review, SQL explanation, sharing, or troubleshooting.
 - Route the user to the best matching doc link above and summarize actionable next steps.
 - Keep guidance aligned with the selected database dialect and visible feature set.
+
+## 中文说明
+
+## 产品地址
+- [DDLBuilder](https://ddl.xingkaixin.me/)
+  Web 产品入口。
+
+## 文件用途
+- 这份文件用于帮助 LLM 快速理解 DDLBuilder 的能力边界，并把用户路由到合适的文档页面。
+- 适用对象：希望在 DDLBuilder 中借助 AI 完成表结构设计和 SQL 工作流的用户。
+
+## 产品定位
+- DDLBuilder 是一个用于表结构设计与 SQL 生成的 Web 应用。
+- 它支持实用建模、DDL/DCL 输出、AI 辅助工作流与协作分享。
+
+## DDLBuilder 能做什么
+- 通过表单化的结构配置生成建表 DDL。
+- 针对授权场景生成权限 DCL。
+- 支持多种数据库方言：MySQL、PostgreSQL、PostgreSQL (Citus)、SQL Server、Oracle、MariaDB、TiDB、Dameng、OceanBase (MySQL)、OceanBase (Oracle)、Kingbase、GBase、PolarDB 和 GaussDB。
+- 配置字段、索引、约束以及表级选项。
+- 导入 SQL，并将结构相关语句解析回可编辑配置。
+- 通过 AI 辅助建表，用自然语言生成表结构草稿。
+- 对生成的 DDL 执行 AI 评审，并应用选中的建议。
+- 对选中的 SQL 片段进行解释，便于评审和沟通。
+- 管理草稿和已保存表，支持迭代式设计。
+- 通过只读分享链接共享结构视图，并基于可编辑副本继续修改。
+- 对比结构变更，并生成 alter / rollback 相关输出。
+- 配置分区能力（支持的数据库方言）和分片能力（PostgreSQL Citus 流程）。
+
+## 范围与限制
+- AI 输出属于草稿和建议，投入生产执行前仍需人工校验。
+- 分享链接默认是只读的；如需编辑，需要先创建副本。
+- 某些功能是否可见取决于当前选择的数据库类型，例如分区和分片相关标签页。
+- 这份文件提供的是能力概览，不是完整的操作手册。
+
+## 官方文档（中文）
+- [文档首页](https://ddl.xingkaixin.me/docs/zh/)
+  从这里进入完整的中文文档目录。
+- [快速开始](https://ddl.xingkaixin.me/docs/zh/basic/getting-started.html)
+  首次使用流程，帮助你完成第一份 DDL / DCL 的配置与复制。
+- [核心概念](https://ddl.xingkaixin.me/docs/zh/basic/core-concepts.html)
+  了解工作区、草稿、已保存表、分享副本、DDL、DCL 等核心概念。
+- [表与字段配置](https://ddl.xingkaixin.me/docs/zh/basic/table-and-fields.html)
+  说明如何配置表元信息和字段级属性。
+- [索引、权限与杂项](https://ddl.xingkaixin.me/docs/zh/basic/index-auth-misc.html)
+  说明如何配置索引、权限控制和表级选项。
+- [DDL 输出与分享](https://ddl.xingkaixin.me/docs/zh/basic/ddl-and-share.html)
+  说明如何复制 SQL 输出，以及如何通过分享链接协作。
+- [已保存表与草稿箱](https://ddl.xingkaixin.me/docs/zh/basic/saved-tables.html)
+  说明如何持久化、重新加载和整理不同版本的表结构。
+- [导入与解析 SQL](https://ddl.xingkaixin.me/docs/zh/advanced/import-and-parse.html)
+  说明如何导入已有 SQL，并转换为可编辑配置。
+- [AI 辅助建表流程](https://ddl.xingkaixin.me/docs/zh/advanced/ai-workflow.html)
+  说明如何通过 AI 对话生成并细化表结构草稿。
+- [评审与解释 SQL](https://ddl.xingkaixin.me/docs/zh/advanced/review-and-explain.html)
+  说明如何使用 AI 评审和 SQL 解释能力做质量检查。
+- [分区与分片配置](https://ddl.xingkaixin.me/docs/zh/advanced/partition-and-sharding.html)
+  说明如何按数据库类型使用分区与分片相关能力。
+- [变更对比与回滚](https://ddl.xingkaixin.me/docs/zh/advanced/diff-and-rollback.html)
+  说明如何查看结构差异以及回滚相关 SQL 输出。
+- [常见错误与失败处理](https://ddl.xingkaixin.me/docs/zh/faq/common-errors.html)
+  常见失败场景和恢复路径的排查说明。
+- [功能入口与显示规则](https://ddl.xingkaixin.me/docs/zh/faq/feature-visibility.html)
+  说明为什么某些标签页或按钮会显示或隐藏。
+- [分享与协作](https://ddl.xingkaixin.me/docs/zh/faq/sharing-and-collaboration.html)
+  说明分享链接场景下的协作方式与行为边界。
+- [更新日志](https://ddl.xingkaixin.me/docs/zh/changelog/changelog.html)
+  用于查看版本演进和功能变更记录。
+
+## LLM 应如何使用这份文件
+- 先识别用户目标：新建表设计、SQL 导入、AI 评审、SQL 解释、分享协作，还是问题排查。
+- 从上面的文档链接中选择最匹配的一项，并给出可执行的下一步建议。
+- 回答时要和当前选择的数据库方言以及界面中可见的功能保持一致。

@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.15.1] - 2026-02-27
+### Improved
+- **Consistent AI response language**: AI table generation, DDL explanation, and DDL review now consistently follow the current application language after locale switches.
+
 ## [0.15.0] - 2026-02-26
 ### Added
 - **Documentation site launch**: Introduces a VitePress docs center with Chinese and English routes, including Basic Guide, Advanced Guide, FAQ, and release notes.
