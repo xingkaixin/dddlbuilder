@@ -4,10 +4,6 @@ test.describe('字段模板应用验证 @fields', () => {
   test.beforeEach(async ({ context, page }) => {
     await context.addInitScript(() => {
       window.localStorage.setItem(
-        'ddlbuilder:fireworks:cny:shown:2026:v1',
-        'true',
-      );
-      window.localStorage.setItem(
         'ddlbuilder:state:v1',
         JSON.stringify({
           tableName: 'HYDRATION_CHECK',

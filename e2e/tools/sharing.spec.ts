@@ -1,13 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('分享功能验证 @tools @smoke', () => {
-  test.beforeEach(async ({ context, page }) => {
-    await context.addInitScript(() => {
-      window.localStorage.setItem(
-        'ddlbuilder:fireworks:cny:shown:2026:v1',
-        'true',
-      );
-    });
+  test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('#table-name')).toBeVisible({ timeout: 10000 });
   });

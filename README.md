@@ -57,6 +57,8 @@ bun run build
 
 说明：`CSP_*` 配置在 Bun 服务端与 API 运行时生效；`vercel.json` 中仍保留静态 CSP 兜底策略。
 
+- `VITE_ENABLE_CNY_FIREWORKS`：是否启用春节烟花入口与节日动效（默认 `false`，设为 `true` 后恢复 Header 入口和烟花 overlay）
+
 ## 使用说明
 
 1. 填写表名与表中文名，选择数据库类型；或点击右上角“导入 SQL”按钮，粘贴已有 DDL 语句进行快速导入。

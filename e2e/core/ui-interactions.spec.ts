@@ -4,10 +4,6 @@ test.describe('核心 UI 交互功能测试 @core', () => {
   test.beforeEach(async ({ context, page }) => {
     await context.addInitScript(() => {
       window.localStorage.setItem(
-        'ddlbuilder:fireworks:cny:shown:2026:v1',
-        'true',
-      );
-      window.localStorage.setItem(
         'ddlbuilder:state:v1',
         JSON.stringify({
           tableName: 'HYDRATION_CHECK',
@@ -65,6 +61,15 @@ test.describe('核心 UI 交互功能测试 @core', () => {
 
     // 验证数据已被清空
     await expect(page.locator('#table-name')).toHaveValue('');
+  });
+
+  test('场景：默认配置下不显示烟花入口和节日弹层', async ({ page }) => {
+    await expect(
+      page.getByRole('button', { name: /点击播放烟花|Play fireworks/i }),
+    ).toHaveCount(0);
+    await expect(page.getByRole('dialog', { name: /新春烟花/i })).toHaveCount(
+      0,
+    );
   });
 
   test('场景：主题可切换并支持系统跟随', async ({ page }) => {

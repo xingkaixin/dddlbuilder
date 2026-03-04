@@ -4,10 +4,6 @@ test.describe('SQL 导入功能验证 @tools', () => {
   test.beforeEach(async ({ context, page }) => {
     await context.addInitScript(() => {
       window.localStorage.setItem(
-        'ddlbuilder:fireworks:cny:shown:2026:v1',
-        'true',
-      );
-      window.localStorage.setItem(
         'ddlbuilder:state:v1',
         JSON.stringify({
           tableName: 'HYDRATION_CHECK',

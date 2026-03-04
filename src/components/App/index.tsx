@@ -48,6 +48,7 @@ import { writeWorkspaceSession } from '@/utils/workspaceStateDb';
 import { useTranslation } from 'react-i18next';
 
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { isCnyFireworksEnabled } from '@/config/featureFlags';
 
 const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
 
@@ -163,8 +164,14 @@ function App() {
     setIsLoadConfirmOpen,
   });
 
-  const { handleFireworksComplete } = useFireworksIntro({ setShowFireworks });
+  const { handleFireworksComplete } = useFireworksIntro({
+    enabled: isCnyFireworksEnabled,
+    setShowFireworks,
+  });
   const handlePlayFireworks = useCallback(() => {
+    if (!isCnyFireworksEnabled) {
+      return;
+    }
     setShowFireworks(true);
   }, [setShowFireworks]);
 
@@ -732,7 +739,9 @@ function App() {
           isSharing={isSharing}
           currentDbType={dbType}
           onImport={handleImport}
-          onPlayFireworks={handlePlayFireworks}
+          onPlayFireworks={
+            isCnyFireworksEnabled ? handlePlayFireworks : undefined
+          }
         />
 
         {isShareView && (
@@ -748,7 +757,7 @@ function App() {
           </div>
         )}
 
-        {showFireworks && (
+        {isCnyFireworksEnabled && showFireworks && (
           <Suspense
             fallback={<div className="fixed inset-0 z-[100] bg-black/70" />}
           >

@@ -3,10 +3,6 @@ import { test, expect } from '@playwright/test';
 test.describe('权限管理验证 @panels', () => {
   test.beforeEach(async ({ context, page }) => {
     await context.addInitScript(() => {
-      window.localStorage.setItem(
-        'ddlbuilder:fireworks:cny:shown:2026:v1',
-        'true',
-      );
       Object.defineProperty(navigator, 'clipboard', {
         value: { writeText: async () => {} },
         configurable: true,

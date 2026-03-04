@@ -22,7 +22,6 @@ test.describe('变更对比验证 @storage', () => {
       indexedDB.deleteDatabase('ddlbuilder');
       localStorage.clear();
       sessionStorage.clear();
-      localStorage.setItem('ddlbuilder:fireworks:cny:shown:2026:v1', 'true');
     });
     await page.goto('/');
     await expect(page.locator('#table-name')).toBeVisible({ timeout: 10000 });

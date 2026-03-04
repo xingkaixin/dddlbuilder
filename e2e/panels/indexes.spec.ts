@@ -8,13 +8,7 @@ const selectIndexField = async (page: any) => {
 };
 
 test.describe('索引管理验证 @panels', () => {
-  test.beforeEach(async ({ context, page }) => {
-    await context.addInitScript(() => {
-      window.localStorage.setItem(
-        'ddlbuilder:fireworks:cny:shown:2026:v1',
-        'true',
-      );
-    });
+  test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.locator('#table-name').fill('index_test');
 

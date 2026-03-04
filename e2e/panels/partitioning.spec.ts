@@ -15,10 +15,7 @@ const selectPartitionType = async (page: any, panel: any, type: string) => {
 };
 
 test.describe('MySQL 分区配置验证 @panels', () => {
-  test.beforeEach(async ({ context, page }) => {
-    await context.addInitScript(() => {
-      localStorage.setItem('ddlbuilder:fireworks:cny:shown:2026:v1', 'true');
-    });
+  test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('#table-name')).toBeVisible({ timeout: 10000 });
 

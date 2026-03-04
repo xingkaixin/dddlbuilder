@@ -1,15 +1,6 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('字段行操作验证 @fields', () => {
-  test.beforeEach(async ({ context }) => {
-    await context.addInitScript(() => {
-      window.localStorage.setItem(
-        'ddlbuilder:fireworks:cny:shown:2026:v1',
-        'true',
-      );
-    });
-  });
-
   test('场景：添加多行字段并验证 SQL', async ({ context, page }) => {
     await context.addInitScript(() => {
       const rows = Array.from({ length: 6 }, (_, i) => ({

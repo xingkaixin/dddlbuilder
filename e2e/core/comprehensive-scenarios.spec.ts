@@ -4,10 +4,6 @@ test.describe('综合场景测试 @core @smoke', () => {
   test.beforeEach(async ({ context, page }) => {
     await context.addInitScript(() => {
       window.localStorage.setItem(
-        'ddlbuilder:fireworks:cny:shown:2026:v1',
-        'true',
-      );
-      window.localStorage.setItem(
         'ddlbuilder:state:v1',
         JSON.stringify({
           tableName: 'HYDRATION_CHECK',

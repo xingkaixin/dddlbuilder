@@ -25,7 +25,7 @@ interface HeaderProps {
   isSharing: boolean;
   currentDbType: DatabaseType;
   onImport: (result: ParsedResult, dbType: DatabaseType) => void;
-  onPlayFireworks: () => void;
+  onPlayFireworks?: () => void;
 }
 
 export const Header = memo<HeaderProps>(
@@ -43,21 +43,23 @@ export const Header = memo<HeaderProps>(
 
     return (
       <>
-        <style>{`
-          @keyframes header-lantern-sway {
-            0%, 100% { transform: rotate(-4deg); }
-            50% { transform: rotate(4deg); }
-          }
+        {onPlayFireworks ? (
+          <style>{`
+            @keyframes header-lantern-sway {
+              0%, 100% { transform: rotate(-4deg); }
+              50% { transform: rotate(4deg); }
+            }
 
-          .header-lantern-btn {
-            transform-origin: 50% 0%;
-            animation: header-lantern-sway 4.8s ease-in-out infinite;
-          }
+            .header-lantern-btn {
+              transform-origin: 50% 0%;
+              animation: header-lantern-sway 4.8s ease-in-out infinite;
+            }
 
-          .header-lantern-btn:hover {
-            filter: drop-shadow(0 0 10px hsl(var(--primary)));
-          }
-        `}</style>
+            .header-lantern-btn:hover {
+              filter: drop-shadow(0 0 10px hsl(var(--primary)));
+            }
+          `}</style>
+        ) : null}
         <header className="relative border-b bg-card/95 backdrop-blur-sm shadow-sm">
           {/* Decorative gradient overlay */}
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
@@ -77,118 +79,120 @@ export const Header = memo<HeaderProps>(
                     <h1 className="text-2xl font-bold bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent tracking-tight">
                       {t('header.appName')}
                     </h1>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          aria-label={t('header.playFireworks')}
-                          onClick={onPlayFireworks}
-                          className="header-lantern-btn transition-transform duration-300 hover:scale-105"
-                        >
-                          <svg
-                            width="30"
-                            height="30"
-                            viewBox="0 0 100 100"
-                            xmlns="http://www.w3.org/2000/svg"
-                            aria-hidden="true"
+                    {onPlayFireworks ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label={t('header.playFireworks')}
+                            onClick={onPlayFireworks}
+                            className="header-lantern-btn transition-transform duration-300 hover:scale-105"
                           >
-                            <line
-                              x1="50"
-                              y1="0"
-                              x2="50"
-                              y2="15"
-                              stroke="#FFD700"
-                              strokeWidth="2"
-                            />
-                            <rect
-                              x="35"
-                              y="15"
+                            <svg
                               width="30"
-                              height="6"
-                              rx="2"
-                              fill="#FFD700"
-                            />
-                            <ellipse
-                              cx="50"
-                              cy="45"
-                              rx="35"
-                              ry="28"
-                              fill="#D32F2F"
-                            />
-                            <path
-                              d="M50 17 V 73"
-                              stroke="#B71C1C"
-                              strokeWidth="1"
-                              fill="none"
-                            />
-                            <path
-                              d="M35 19 Q 25 45 35 71"
-                              stroke="#B71C1C"
-                              strokeWidth="1"
-                              fill="none"
-                            />
-                            <path
-                              d="M65 19 Q 75 45 65 71"
-                              stroke="#B71C1C"
-                              strokeWidth="1"
-                              fill="none"
-                            />
-                            <rect
-                              x="35"
-                              y="70"
-                              width="30"
-                              height="6"
-                              rx="2"
-                              fill="#FFD700"
-                            />
-                            <path
-                              d="M50 76 V 85"
-                              stroke="#D32F2F"
-                              strokeWidth="3"
-                            />
-                            <path
-                              d="M50 85 Q 45 95 40 98"
-                              stroke="#D32F2F"
-                              strokeWidth="2"
-                              fill="none"
-                            />
-                            <path
-                              d="M50 85 Q 55 95 60 98"
-                              stroke="#D32F2F"
-                              strokeWidth="2"
-                              fill="none"
-                            />
-                            <path
-                              d="M50 85 V 100"
-                              stroke="#D32F2F"
-                              strokeWidth="2"
-                              fill="none"
-                            />
-                            <circle
-                              cx="50"
-                              cy="45"
-                              r="8"
-                              fill="#FFD700"
-                              opacity="0.8"
-                            />
-                            <text
-                              x="50"
-                              y="49"
-                              fontSize="10"
-                              textAnchor="middle"
-                              fill="#D32F2F"
-                              fontFamily="serif"
-                              fontWeight="700"
+                              height="30"
+                              viewBox="0 0 100 100"
+                              xmlns="http://www.w3.org/2000/svg"
+                              aria-hidden="true"
                             >
-                              福
-                            </text>
-                          </svg>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{t('header.playFireworks')}</p>
-                      </TooltipContent>
-                    </Tooltip>
+                              <line
+                                x1="50"
+                                y1="0"
+                                x2="50"
+                                y2="15"
+                                stroke="#FFD700"
+                                strokeWidth="2"
+                              />
+                              <rect
+                                x="35"
+                                y="15"
+                                width="30"
+                                height="6"
+                                rx="2"
+                                fill="#FFD700"
+                              />
+                              <ellipse
+                                cx="50"
+                                cy="45"
+                                rx="35"
+                                ry="28"
+                                fill="#D32F2F"
+                              />
+                              <path
+                                d="M50 17 V 73"
+                                stroke="#B71C1C"
+                                strokeWidth="1"
+                                fill="none"
+                              />
+                              <path
+                                d="M35 19 Q 25 45 35 71"
+                                stroke="#B71C1C"
+                                strokeWidth="1"
+                                fill="none"
+                              />
+                              <path
+                                d="M65 19 Q 75 45 65 71"
+                                stroke="#B71C1C"
+                                strokeWidth="1"
+                                fill="none"
+                              />
+                              <rect
+                                x="35"
+                                y="70"
+                                width="30"
+                                height="6"
+                                rx="2"
+                                fill="#FFD700"
+                              />
+                              <path
+                                d="M50 76 V 85"
+                                stroke="#D32F2F"
+                                strokeWidth="3"
+                              />
+                              <path
+                                d="M50 85 Q 45 95 40 98"
+                                stroke="#D32F2F"
+                                strokeWidth="2"
+                                fill="none"
+                              />
+                              <path
+                                d="M50 85 Q 55 95 60 98"
+                                stroke="#D32F2F"
+                                strokeWidth="2"
+                                fill="none"
+                              />
+                              <path
+                                d="M50 85 V 100"
+                                stroke="#D32F2F"
+                                strokeWidth="2"
+                                fill="none"
+                              />
+                              <circle
+                                cx="50"
+                                cy="45"
+                                r="8"
+                                fill="#FFD700"
+                                opacity="0.8"
+                              />
+                              <text
+                                x="50"
+                                y="49"
+                                fontSize="10"
+                                textAnchor="middle"
+                                fill="#D32F2F"
+                                fontFamily="serif"
+                                fontWeight="700"
+                              >
+                                福
+                              </text>
+                            </svg>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{t('header.playFireworks')}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : null}
                   </div>
                   <p className="text-sm text-muted-foreground transition-colors duration-300 group-hover:text-foreground/80">
                     {t('header.appDescription')}
