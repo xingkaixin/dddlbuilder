@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.15.2] - 2026-03-04
+### Improved
+- **Seasonal effects disabled by default**: The Chinese New Year fireworks entry and intro overlay are now turned off after the holiday, keeping the everyday workspace cleaner.
+
+
 ## [0.15.1] - 2026-02-27
 ### Improved
 - **Consistent AI response language**: AI table generation, DDL explanation, and DDL review now consistently follow the current application language after locale switches.
