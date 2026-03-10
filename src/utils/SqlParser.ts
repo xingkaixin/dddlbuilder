@@ -1,24 +1,24 @@
-import type { DatabaseType } from '../types';
+import type { DatabaseType } from '../types.js';
 import {
   preprocessOracle,
   preprocessSqlServer,
   extractSqlServerGrantUsers,
   extractStandaloneComments,
   type PreprocessResult,
-} from './preprocessors';
-import { reportError } from './errorReporter';
+} from './preprocessors/index.js';
+import { reportError } from './errorReporter.js';
 import {
   parseCreateIndex,
   parseCreateTable,
   parseAlterTable,
   parseDCL,
   parseTransactGrant,
-} from './sql-parser/astHandlers';
-import { loadParserConstructor } from './sql-parser/parserLoader';
-import { preprocessMysql } from './sql-parser/preprocessMysql';
-import type { ParsedResult, ParserInstance } from './sql-parser/types';
+} from './sql-parser/astHandlers.js';
+import { loadParserConstructor } from './sql-parser/parserLoader.js';
+import { preprocessMysql } from './sql-parser/preprocessMysql.js';
+import type { ParsedResult, ParserInstance } from './sql-parser/types.js';
 
-export type { ParsedResult } from './sql-parser/types';
+export type { ParsedResult } from './sql-parser/types.js';
 
 export class SqlParser {
   private parser: ParserInstance | null;

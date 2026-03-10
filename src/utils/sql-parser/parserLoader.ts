@@ -1,4 +1,4 @@
-import type { ParserConstructor, ParserModule } from './types';
+import type { ParserConstructor, ParserModule } from './types.js';
 
 let parserConstructorPromise: Promise<ParserConstructor> | null = null;
 

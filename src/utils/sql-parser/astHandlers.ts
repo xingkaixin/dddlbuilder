@@ -1,14 +1,14 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { DatabaseType, IndexField, NormalizedField } from '../types';
-import { buildPrimaryKeyName } from '../primaryKeyNaming';
-import type { ParsedResult } from './types';
+import type { DatabaseType, IndexField, NormalizedField } from '../types.js';
+import { buildPrimaryKeyName } from '../primaryKeyNaming.js';
+import type { ParsedResult } from './types.js';
 import {
   buildIndexFields,
   buildTypeString,
   extractFunctionName,
   normalizeColumnName,
   normalizeLiteral,
-} from './normalizers';
+} from './normalizers.js';
 
 const MYSQL_ENGINE_NAME_MAP: Record<string, string> = {
   innodb: 'InnoDB',

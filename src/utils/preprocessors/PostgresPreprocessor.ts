@@ -1,4 +1,4 @@
-import type { PreprocessResult } from './types';
+import type { PreprocessResult } from './types.js';
 
 /**
  * Extract standalone COMMENT ON statements from PostgreSQL SQL

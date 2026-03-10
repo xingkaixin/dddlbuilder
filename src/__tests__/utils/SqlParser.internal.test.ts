@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import { SqlParser } from '@/utils/SqlParser';
 import type { ParsedResult } from '@/utils/sql-parser/types';
@@ -20,7 +22,41 @@ function createEmptyResult(): ParsedResult {
   };
 }
 
+const sqlParserRuntimeImportFiles = [
+  '../../utils/SqlParser.ts',
+  '../../utils/preprocessors/index.ts',
+  '../../utils/preprocessors/OraclePreprocessor.ts',
+  '../../utils/preprocessors/PostgresPreprocessor.ts',
+  '../../utils/preprocessors/SqlServerPreprocessor.ts',
+  '../../utils/sql-parser/astHandlers.ts',
+  '../../utils/sql-parser/normalizers.ts',
+  '../../utils/sql-parser/parserLoader.ts',
+  '../../utils/sql-parser/partitionParser.ts',
+  '../../utils/sql-parser/preprocessMysql.ts',
+  '../../utils/sql-parser/types.ts',
+].map((relativePath) => fileURLToPath(new URL(relativePath, import.meta.url)));
+
 describe('SqlParser internals', () => {
+  it('服务端运行子树不应使用目录导入或省略 .js 后缀', () => {
+    const invalidImports: string[] = [];
+
+    for (const filePath of sqlParserRuntimeImportFiles) {
+      const content = readFileSync(filePath, 'utf8');
+      const matches = content.matchAll(
+        /(?:import|export)\s+(?:type\s+)?(?:[^'"]+?\s+from\s+)?['"](\.[^'"]+)['"]/g,
+      );
+
+      for (const [, specifier] of matches) {
+        if (specifier.endsWith('.js')) {
+          continue;
+        }
+        invalidImports.push(`${filePath}: ${specifier}`);
+      }
+    }
+
+    expect(invalidImports).toEqual([]);
+  });
+
   it('parse 在未初始化时应抛出明确错误', () => {
     const parser = new SqlParser();
     expect(() => parser.parse('CREATE TABLE t(id INT);', 'mysql')).toThrow(

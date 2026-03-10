@@ -1,6 +1,9 @@
-import type { MysqlPartitionConfig } from '../types';
-import { PARTITION_BY_REGEX, extractPartitionConfig } from './partitionParser';
-import { stripPartitionClauses } from './partitionStripper';
+import type { MysqlPartitionConfig } from '../types.js';
+import {
+  PARTITION_BY_REGEX,
+  extractPartitionConfig,
+} from './partitionParser.js';
+import { stripPartitionClauses } from './partitionStripper.js';
 
 export interface PreprocessMySqlResult {
   sql: string;

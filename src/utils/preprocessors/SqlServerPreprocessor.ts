@@ -1,4 +1,4 @@
-import type { PreprocessResult } from './types';
+import type { PreprocessResult } from './types.js';
 
 /**
  * Preprocess SQL Server SQL for parsing

@@ -1,10 +1,10 @@
 // SQL Preprocessors
-export { preprocessOracle } from './OraclePreprocessor';
+export { preprocessOracle } from './OraclePreprocessor.js';
 export {
   preprocessSqlServer,
   extractSqlServerGrantUsers,
-} from './SqlServerPreprocessor';
-export { extractStandaloneComments } from './PostgresPreprocessor';
+} from './SqlServerPreprocessor.js';
+export { extractStandaloneComments } from './PostgresPreprocessor.js';
 
 // Types
-export type { PreprocessResult } from './types';
+export type { PreprocessResult } from './types.js';

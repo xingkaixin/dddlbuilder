@@ -3,7 +3,7 @@ import type {
   MysqlPartitionConfig,
   NormalizedField,
   TableMiscConfig,
-} from '../types';
+} from '../types.js';
 
 export type ParsedResult = {
   tableName: string;
