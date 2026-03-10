@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.15.3] - 2026-03-10
+### Fixed
+- **SQL import works again in production**: Fixes a parsing failure when importing SQL on Vercel production deployments, preventing online environments from breaking due to module-loading errors.
+
 ## [0.15.2] - 2026-03-04
 ### Improved
 - **Seasonal effects disabled by default**: The Chinese New Year fireworks entry and intro overlay are now turned off after the holiday, keeping the everyday workspace cleaner.
