@@ -1,4 +1,4 @@
-import type { DatabaseType } from '../types.js';
+import type { DatabaseType } from '../types/index.js';
 import {
   preprocessOracle,
   preprocessSqlServer,

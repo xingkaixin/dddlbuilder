@@ -1,5 +1,6 @@
 import type { Hono } from 'hono';
-import type { PersistedState } from '../../src/types';
+import type { PersistedState } from '../../src/types/index.js';
+import type { ApiEnv } from '../lib/context.js';
 import {
   errorResponse,
   parseJsonBodyWithLimit,
@@ -134,7 +135,7 @@ async function getShareState(
   }
 }
 
-export function registerShareRoutes(app: Hono) {
+export function registerShareRoutes(app: Hono<ApiEnv>) {
   app.post('/share', async (c) => {
     const redisConfig = ensureRedisConfig();
     if (!redisConfig) {

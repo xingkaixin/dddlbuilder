@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { applyCspHeaders } from './lib/csp.js';
+import type { ApiEnv } from './lib/context.js';
 import { withMeta } from './lib/http.js';
 import { registerParseSqlRoute } from './routes/parseSql.js';
 import { registerExplainRoute } from './routes/explain.js';
@@ -8,7 +9,7 @@ import { registerReviewRoute } from './routes/review.js';
 import { registerGenerateTableRoute } from './routes/generateTable.js';
 import { registerShareRoutes } from './routes/share.js';
 
-const app = new Hono().basePath('/api');
+const app = new Hono<ApiEnv>().basePath('/api');
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:5173',

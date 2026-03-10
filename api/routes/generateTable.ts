@@ -1,6 +1,7 @@
 import type { Hono } from 'hono';
 import { streamText } from 'hono/streaming';
 import OpenAI from 'openai';
+import type { ApiEnv } from '../lib/context.js';
 import {
   enforceOpenAIDailyBudget,
   enforceOpenAIRateLimit,
@@ -23,7 +24,7 @@ import { isAppLocale, type AppLocale } from '../../src/types/locale.js';
 
 const MAX_OUTPUT_TOKENS = 4000;
 
-export function registerGenerateTableRoute(app: Hono) {
+export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
   app.post('/generate-table', async (c) => {
     const route = 'generate-table' as const;
     const requestId = getRequestId(c) ?? 'unknown';

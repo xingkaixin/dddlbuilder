@@ -1,6 +1,7 @@
 import type { Hono } from 'hono';
 import { streamText } from 'hono/streaming';
 import OpenAI from 'openai';
+import type { ApiEnv } from '../lib/context.js';
 import {
   enforceOpenAIDailyBudget,
   enforceOpenAIRateLimit,
@@ -23,7 +24,7 @@ import { isAppLocale, type AppLocale } from '../../src/types/locale.js';
 
 const MAX_OUTPUT_TOKENS = 2000;
 
-export function registerReviewRoute(app: Hono) {
+export function registerReviewRoute(app: Hono<ApiEnv>) {
   app.post('/review', async (c) => {
     const route = 'review' as const;
     const requestId = getRequestId(c) ?? 'unknown';

@@ -1,5 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { DatabaseType, IndexField, NormalizedField } from '../types.js';
+import type {
+  DatabaseType,
+  IndexField,
+  NormalizedField,
+} from '../../types/index.js';
 import { buildPrimaryKeyName } from '../primaryKeyNaming.js';
 import type { ParsedResult } from './types.js';
 import {

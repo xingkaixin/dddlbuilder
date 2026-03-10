@@ -1,4 +1,4 @@
-import type { MysqlPartitionConfig } from '../types.js';
+import type { MysqlPartitionConfig } from '../../types/index.js';
 import {
   PARTITION_BY_REGEX,
   extractPartitionConfig,

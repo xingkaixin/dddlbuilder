@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import type { ApiEnv } from './lib/context.js';
 import { errorResponse, type ApiErrorCode } from './lib/http.js';
 
 export type OpenAIRouteKey = 'explain' | 'review' | 'generate-table';
@@ -214,7 +215,7 @@ const computeBackoffDelayMs = (
   return Math.max(100, Math.round(exponential * jitter));
 };
 
-const getClientIp = (c: Context): string => {
+const getClientIp = (c: Context<ApiEnv>): string => {
   const cfConnectingIp = c.req.header('cf-connecting-ip');
   if (cfConnectingIp) return cfConnectingIp;
 
@@ -230,7 +231,10 @@ const getClientIp = (c: Context): string => {
   return 'unknown';
 };
 
-const getClientFingerprint = (c: Context, routeKey: OpenAIRouteKey): string => {
+const getClientFingerprint = (
+  c: Context<ApiEnv>,
+  routeKey: OpenAIRouteKey,
+): string => {
   const ip = getClientIp(c);
   const ua = c.req.header('user-agent')?.slice(0, 256) ?? 'unknown';
   return hashFNV1a(`${routeKey}|${ip}|${ua}`);
@@ -416,7 +420,7 @@ const getMsUntilUtcTomorrow = () => {
 };
 
 export async function enforceOpenAIRateLimit(
-  c: Context,
+  c: Context<ApiEnv>,
   routeKey: OpenAIRouteKey,
 ): Promise<{
   response: Response | null;
@@ -481,7 +485,7 @@ export async function enforceOpenAIRateLimit(
 }
 
 export async function enforceOpenAIDailyBudget(
-  c: Context,
+  c: Context<ApiEnv>,
   estimatedTokens: number,
 ): Promise<{
   response: Response | null;

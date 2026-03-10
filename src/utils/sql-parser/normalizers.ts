@@ -1,4 +1,4 @@
-import type { IndexField } from '../types.js';
+import type { IndexField } from '../../types/index.js';
 
 export function normalizeColumnName(column: any): string {
   if (column === undefined || column === null) return '';

@@ -1,4 +1,4 @@
-import type { DatabaseType, ParsedFieldType } from '../types.js';
+import type { DatabaseType, ParsedFieldType } from '../types/index.js';
 import { TypeMapper } from './TypeMapper.js';
 
 export const TYPE_ALIASES: Record<string, string> = {

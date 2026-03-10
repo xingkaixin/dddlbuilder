@@ -1,4 +1,4 @@
-import type { AppLocale } from '../../src/types/locale';
+import type { AppLocale } from '../../src/types/locale.js';
 
 export type ConversationMessage = {
   role: 'user' | 'assistant';

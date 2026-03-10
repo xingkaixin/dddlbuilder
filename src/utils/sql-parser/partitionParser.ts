@@ -1,4 +1,7 @@
-import type { MysqlPartitionConfig, MysqlPartitionType } from '../types.js';
+import type {
+  MysqlPartitionConfig,
+  MysqlPartitionType,
+} from '../../types/index.js';
 
 export const PARTITION_BY_REGEX = /\bPARTITION\s+BY\b/i;
 

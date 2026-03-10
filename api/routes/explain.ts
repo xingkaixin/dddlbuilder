@@ -1,6 +1,7 @@
 import type { Hono } from 'hono';
 import { streamText } from 'hono/streaming';
 import OpenAI from 'openai';
+import type { ApiEnv } from '../lib/context.js';
 import {
   enforceOpenAIDailyBudget,
   enforceOpenAIRateLimit,
@@ -23,7 +24,7 @@ import { isAppLocale, type AppLocale } from '../../src/types/locale.js';
 
 const MAX_OUTPUT_TOKENS = 1000;
 
-export function registerExplainRoute(app: Hono) {
+export function registerExplainRoute(app: Hono<ApiEnv>) {
   app.post('/explain', async (c) => {
     const route = 'explain' as const;
     const requestId = getRequestId(c) ?? 'unknown';

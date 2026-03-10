@@ -1,5 +1,6 @@
 import type { Hono } from 'hono';
-import type { DatabaseType } from '../../src/types';
+import type { DatabaseType } from '../../src/types/index.js';
+import type { ApiEnv } from '../lib/context.js';
 import {
   errorResponse,
   parseJsonBodyWithLimit,
@@ -33,7 +34,7 @@ function isValidDatabaseType(value: unknown): value is DatabaseType {
   );
 }
 
-export function registerParseSqlRoute(app: Hono) {
+export function registerParseSqlRoute(app: Hono<ApiEnv>) {
   app.post('/parse-sql', async (c) => {
     const parsed = await parseJsonBodyWithLimit<{
       sql: unknown;
@@ -41,8 +42,8 @@ export function registerParseSqlRoute(app: Hono) {
     }>(c, MAX_PARSE_SQL_BODY_BYTES);
     if (parsed.errorResponse) return parsed.errorResponse;
 
-    const body = parsed.data || {};
-    const { sql, dbType } = body;
+    const sql = parsed.data?.sql;
+    const dbType = parsed.data?.dbType;
 
     if (typeof sql !== 'string' || sql.trim().length === 0) {
       return errorResponse(c, 400, 'SQL is required', 'SQL_REQUIRED');

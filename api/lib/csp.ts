@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import type { ApiEnv } from './context.js';
 
 export type CspMode = 'off' | 'report-only' | 'enforce' | 'both';
 
@@ -48,7 +49,7 @@ export const resolveCspConfig = (): ResolvedCspConfig => {
   };
 };
 
-export const applyCspHeaders = (c: Context) => {
+export const applyCspHeaders = (c: Context<ApiEnv>) => {
   const config = resolveCspConfig();
   if (!config.enabled) {
     return;

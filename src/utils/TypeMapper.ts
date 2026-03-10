@@ -1,4 +1,4 @@
-import type { DatabaseType, ParsedFieldType } from '../types.js';
+import type { DatabaseType, ParsedFieldType } from '../types/index.js';
 import { TYPE_MAPPINGS } from '../configs/typeMappings.js';
 import { canonicalizeBaseType } from './databaseTypeMapping.js';
 

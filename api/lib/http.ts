@@ -1,4 +1,6 @@
 import type { Context } from 'hono';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
+import type { ApiEnv } from './context.js';
 
 export type ApiErrorCode =
   | 'PAYLOAD_TOO_LARGE'
@@ -37,7 +39,7 @@ export type ApiErrorPayload = {
 
 const REQUEST_ID_CONTEXT_KEY = 'requestId';
 
-export const getRequestId = (c: Context): string | undefined => {
+export const getRequestId = (c: Context<ApiEnv>): string | undefined => {
   const value = c.get(REQUEST_ID_CONTEXT_KEY) as unknown;
   return typeof value === 'string' && value.trim().length > 0
     ? value.trim()
@@ -45,7 +47,7 @@ export const getRequestId = (c: Context): string | undefined => {
 };
 
 export const withMeta = <T extends Record<string, unknown>>(
-  c: Context,
+  c: Context<ApiEnv>,
   payload: T,
 ): T & { meta?: ApiMeta } => {
   const requestId = getRequestId(c);
@@ -59,8 +61,8 @@ export const withMeta = <T extends Record<string, unknown>>(
 };
 
 export const errorResponse = (
-  c: Context,
-  status: number,
+  c: Context<ApiEnv>,
+  status: ContentfulStatusCode,
   error: string,
   code?: ApiErrorCode,
 ) => {
@@ -85,7 +87,7 @@ export const streamErrorPayload = (
   } satisfies ApiErrorPayload);
 
 export const parseJsonBodyWithLimit = async <T>(
-  c: Context,
+  c: Context<ApiEnv>,
   maxBytes: number,
 ): Promise<{ data: T | null; errorResponse: Response | null }> => {
   const contentLength = Number(c.req.header('content-length'));
