@@ -1,6 +1,6 @@
-import type { DatabaseType, ParsedFieldType } from '../types';
-import { TYPE_MAPPINGS } from '../configs/typeMappings';
-import { canonicalizeBaseType } from './databaseTypeMapping';
+import type { DatabaseType, ParsedFieldType } from '../types.js';
+import { TYPE_MAPPINGS } from '../configs/typeMappings.js';
+import { canonicalizeBaseType } from './databaseTypeMapping.js';
 
 export class TypeMapper {
   private constructor(private databaseType: DatabaseType) {}

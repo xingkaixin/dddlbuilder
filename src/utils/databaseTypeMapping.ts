@@ -1,5 +1,5 @@
-import type { DatabaseType, ParsedFieldType } from '../types';
-import { TypeMapper } from './TypeMapper';
+import type { DatabaseType, ParsedFieldType } from '../types.js';
+import { TypeMapper } from './TypeMapper.js';
 
 export const TYPE_ALIASES: Record<string, string> = {
   bigint: 'bigint',

@@ -128,4 +128,4 @@ export type PersistedState = {
   fieldTableViewConfig?: FieldTableViewConfig;
 };
 
-export type { ApiErrorCode, ApiMeta, ApiErrorPayload } from './api';
+export type { ApiErrorCode, ApiMeta, ApiErrorPayload } from './api.js';

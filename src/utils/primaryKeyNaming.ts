@@ -1,4 +1,4 @@
-import { getSchemaAndTable } from './databaseTypeMapping';
+import { getSchemaAndTable } from './databaseTypeMapping.js';
 
 export const buildPrimaryKeyName = (tableName: string) => {
   const { table } = getSchemaAndTable(tableName);

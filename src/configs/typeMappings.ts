@@ -1,4 +1,4 @@
-import type { ParsedFieldType } from '../types';
+import type { ParsedFieldType } from '../types.js';
 
 export interface TypeMappingRule {
   defaultArgs?: string[];
