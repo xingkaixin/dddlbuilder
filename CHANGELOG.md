@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.15.4] - 2026-03-12
+- Some minor updates
+
 ## [0.15.3] - 2026-03-10
 ### Fixed
 - **SQL import works again in production**: Fixes a parsing failure when importing SQL on Vercel production deployments, preventing online environments from breaking due to module-loading errors.
