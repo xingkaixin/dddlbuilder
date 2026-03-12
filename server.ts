@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { serveStatic } from 'hono/bun';
-import { applyCspHeaders } from './api/lib/csp';
+import { applyCspHeaders } from './server-api/lib/csp';
 import api from './api/index';
 
 const app = new Hono();

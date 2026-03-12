@@ -29,7 +29,7 @@ const loadApp = async (env: Record<string, string | undefined>) => {
   }
 
   vi.resetModules();
-  const module = await import('../index');
+  const module = await import('../../api/index');
   return module.default;
 };
 

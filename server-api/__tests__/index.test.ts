@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import app from '../index';
+import app from '../../api/index';
 describe('api security guards', () => {
   it('应对超大请求体返回 413', async () => {
     const response = await app.request('/api/parse-sql', {
@@ -115,7 +115,7 @@ describe('api security guards', () => {
     it('should parse custom comma-separated CORS origins', async () => {
       process.env.CORS_ALLOWED_ORIGINS =
         'https://custom1.com, https://custom2.com ';
-      const { default: dynamicApp } = await import('../index');
+      const { default: dynamicApp } = await import('../../api/index');
 
       const res1 = await dynamicApp.request('/api/health', {
         headers: { origin: 'https://custom1.com' },
@@ -140,7 +140,7 @@ describe('api security guards', () => {
 
     it('should fallback to default origins if custom env is empty or whitespace', async () => {
       process.env.CORS_ALLOWED_ORIGINS = '   ,,,  ';
-      const { default: dynamicApp } = await import('../index');
+      const { default: dynamicApp } = await import('../../api/index');
 
       const res1 = await dynamicApp.request('/api/health', {
         headers: { origin: 'http://localhost:5173' },

@@ -1,13 +1,13 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { applyCspHeaders } from './lib/csp.js';
-import type { ApiEnv } from './lib/context.js';
-import { withMeta } from './lib/http.js';
-import { registerParseSqlRoute } from './routes/parseSql.js';
-import { registerExplainRoute } from './routes/explain.js';
-import { registerReviewRoute } from './routes/review.js';
-import { registerGenerateTableRoute } from './routes/generateTable.js';
-import { registerShareRoutes } from './routes/share.js';
+import { applyCspHeaders } from '../server-api/lib/csp.js';
+import type { ApiEnv } from '../server-api/lib/context.js';
+import { withMeta } from '../server-api/lib/http.js';
+import { registerParseSqlRoute } from '../server-api/routes/parseSql.js';
+import { registerExplainRoute } from '../server-api/routes/explain.js';
+import { registerReviewRoute } from '../server-api/routes/review.js';
+import { registerGenerateTableRoute } from '../server-api/routes/generateTable.js';
+import { registerShareRoutes } from '../server-api/routes/share.js';
 
 const app = new Hono<ApiEnv>().basePath('/api');
 

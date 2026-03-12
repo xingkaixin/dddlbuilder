@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import app from '../index';
+import app from '../../api/index';
 
 const REDIS_URL = 'https://example.upstash.io';
 const WRITE_TOKEN = 'write-token';

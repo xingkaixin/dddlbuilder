@@ -25,12 +25,14 @@ export default defineConfig({
         lines: 90,
         statements: 90,
       },
-      include: ['src/**/*.{ts,tsx}', 'api/**/*.{ts,tsx}'],
+      include: ['src/**/*.{ts,tsx}', 'api/**/*.{ts,tsx}', 'server-api/**/*.{ts,tsx}'],
       exclude: [
         'src/**/*.{test,spec}.{ts,tsx}',
         'api/**/*.{test,spec}.{ts,tsx}',
+        'server-api/**/*.{test,spec}.{ts,tsx}',
         'src/__tests__/**/*', // Exclude all test files and helpers
         'api/__tests__/**/*', // Exclude API test files
+        'server-api/__tests__/**/*', // Exclude API test files
         'src/components/**/*.tsx', // Exclude presentational React components
         // Exclude not-yet-covered heavy visual-effect internals.
         'src/components/fireworks/**/*.ts',
@@ -50,11 +52,11 @@ export default defineConfig({
         'src/components/App/table/useDataTableClipboard.ts',
         'src/components/App/table/useDataTableNavigation.ts',
         // Exclude AI upstream orchestration internals and prompt templates.
-        'api/openaiControl.ts',
-        'api/prompts/**/*',
-        'api/routes/explain.ts',
-        'api/routes/generateTable.ts',
-        'api/routes/review.ts',
+        'server-api/openaiControl.ts',
+        'server-api/prompts/**/*',
+        'server-api/routes/explain.ts',
+        'server-api/routes/generateTable.ts',
+        'server-api/routes/review.ts',
         'src/scripts/**/*', // Exclude utility scripts
         'src/interfaces/**/*', // Exclude TypeScript interfaces
         'src/types/**/*', // Exclude TypeScript type definitions

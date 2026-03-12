@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import app from '../index';
+import app from '../../api/index';
 
 const ORIGINAL_ENV = {
   CSP_ENABLE: process.env.CSP_ENABLE,
