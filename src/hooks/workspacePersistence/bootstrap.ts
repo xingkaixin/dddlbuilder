@@ -34,6 +34,12 @@ let workspaceBootstrapPromise: Promise<WorkspaceBootstrapRaw> | null = null;
 let workspaceBootstrapCache: WorkspaceBootstrapRaw | null = null;
 let workspaceBootstrapCacheAt = 0;
 
+export const resetWorkspaceBootstrapCache = () => {
+  workspaceBootstrapPromise = null;
+  workspaceBootstrapCache = null;
+  workspaceBootstrapCacheAt = 0;
+};
+
 export const getWorkspaceBootstrap = () => {
   if (
     workspaceBootstrapCache &&

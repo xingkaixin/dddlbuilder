@@ -6,6 +6,7 @@ import {
   setupFakeIndexedDB,
   teardownFakeIndexedDB,
 } from '@/__tests__/utils/fakeIndexedDb';
+import { resetWorkspaceBootstrapCache } from '@/hooks/workspacePersistence/bootstrap';
 import { STORAGE_KEY } from '@/utils/constants';
 import { getShareState, ShareApiError } from '@/services/shareService';
 import type { WorkspaceSavePayload } from '@/types/workspace';
@@ -88,12 +89,14 @@ const createState = (tableName: string) => ({
 describe('usePersistedState', () => {
   beforeEach(() => {
     setupFakeIndexedDB();
+    resetWorkspaceBootstrapCache();
     localStorageMock.clear();
     vi.clearAllMocks();
     window.history.replaceState({}, '', '/');
   });
 
   afterEach(() => {
+    resetWorkspaceBootstrapCache();
     teardownFakeIndexedDB();
     vi.restoreAllMocks();
   });
