@@ -175,6 +175,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
                 thinking: {
                   type: 'disabled',
                 },
+                enable_thinking: false,
               } as any),
             })) as any,
           { scope: 'GenerateTable' },

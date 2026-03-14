@@ -152,6 +152,7 @@ export function registerReviewRoute(app: Hono<ApiEnv>) {
                 thinking: {
                   type: 'disabled',
                 },
+                enable_thinking: false,
               } as any),
             })) as any,
           { scope: 'Review' },
