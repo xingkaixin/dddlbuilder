@@ -1,5 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import app from '../../api/index';
+import type { ApiEnv } from '../lib/context.js';
+
+// Helper to create env object for tests
+const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
+  ASSETS: { fetch: globalThis.fetch },
+  SHARE_KV: {} as KVNamespace,
+  RATE_LIMIT_KV: {} as KVNamespace,
+  ...overrides,
+});
+
+// Helper to create a request
+const createRequest = (path: string, options: RequestInit = {}) =>
+  new Request(`http://localhost${path}`, options);
 
 describe('parse-sql route', () => {
   afterEach(() => {
@@ -7,16 +20,20 @@ describe('parse-sql route', () => {
   });
 
   it('sql 为空时应返回 SQL_REQUIRED', async () => {
-    const response = await app.request('/api/parse-sql', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        sql: '   ',
-        dbType: 'mysql',
+    const env = createEnv();
+    const response = await app.fetch(
+      createRequest('/api/parse-sql', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          sql: '   ',
+          dbType: 'mysql',
+        }),
       }),
-    });
+      env,
+    );
 
     expect(response.status).toBe(400);
     const payload = await response.json();
@@ -28,16 +45,20 @@ describe('parse-sql route', () => {
   });
 
   it('dbType 非法时应返回 INVALID_DATABASE_TYPE', async () => {
-    const response = await app.request('/api/parse-sql', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        sql: 'SELECT 1',
-        dbType: 'invalid-db',
+    const env = createEnv();
+    const response = await app.fetch(
+      createRequest('/api/parse-sql', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          sql: 'SELECT 1',
+          dbType: 'invalid-db',
+        }),
       }),
-    });
+      env,
+    );
 
     expect(response.status).toBe(400);
     const payload = await response.json();
@@ -51,16 +72,20 @@ describe('parse-sql route', () => {
   it('SQL 语法错误时应返回 SQL_PARSE_FAILED', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const response = await app.request('/api/parse-sql', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        sql: '%%% not sql %%%',
-        dbType: 'mysql',
+    const env = createEnv();
+    const response = await app.fetch(
+      createRequest('/api/parse-sql', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          sql: '%%% not sql %%%',
+          dbType: 'mysql',
+        }),
       }),
-    });
+      env,
+    );
 
     expect(response.status).toBe(400);
     const payload = await response.json();

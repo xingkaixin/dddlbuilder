@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { ApiEnv } from '../lib/context.js';
+import type { Hono } from 'hono';
 
 const ORIGINAL_ENV = { ...process.env };
 
@@ -18,9 +20,35 @@ const restoreEnv = () => {
   }
 };
 
-const loadApp = async (env: Record<string, string | undefined>) => {
+// Helper to create env object for tests
+const createEnv = (
+  overrides: Partial<ApiEnv['Bindings']> = {},
+): ApiEnv['Bindings'] => ({
+  ASSETS: { fetch: globalThis.fetch },
+  SHARE_KV: {} as KVNamespace,
+  RATE_LIMIT_KV: {} as KVNamespace,
+  ...overrides,
+});
+
+// Wrapper to make app.fetch with env easier to use
+const createAppWrapper = (
+  app: Hono<ApiEnv>,
+  env: ApiEnv['Bindings'],
+): {
+  request: (path: string, options?: RequestInit) => Promise<Response>;
+} => ({
+  request: async (path: string, options: RequestInit = {}) => {
+    const url = path.startsWith('http')
+      ? path
+      : `http://localhost${path.startsWith('/') ? path : `/${path}`}`;
+    const request = new Request(url, options);
+    return app.fetch(request, env);
+  },
+});
+
+const loadApp = async (envConfig: Record<string, string | undefined>) => {
   restoreEnv();
-  for (const [key, value] of Object.entries(env)) {
+  for (const [key, value] of Object.entries(envConfig)) {
     if (value == null) {
       delete process.env[key];
       continue;
@@ -30,7 +58,16 @@ const loadApp = async (env: Record<string, string | undefined>) => {
 
   vi.resetModules();
   const module = await import('../../api/index');
-  return module.default;
+  const app = module.default as Hono<ApiEnv>;
+
+  // Create env with both the env vars from envConfig and default bindings
+  const env = createEnv(
+    Object.fromEntries(
+      Object.entries(envConfig).filter(([, v]) => v !== undefined),
+    ) as Partial<ApiEnv['Bindings']>,
+  );
+
+  return createAppWrapper(app, env);
 };
 
 afterEach(() => {
