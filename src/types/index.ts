@@ -105,10 +105,18 @@ export type HivePartitionColumn = {
   comment: string; // 分区列注释
 };
 
-// Hive 分区配置（PARTITIONED BY）
+// Hive 分桶配置（CLUSTERED BY）
+export type HiveClusteringConfig = {
+  enabled: boolean; // 是否启用分桶
+  columns: string[]; // 分桶列名
+  bucketCount: number; // 桶数量
+};
+
+// Hive 分区配置（PARTITIONED BY + CLUSTERED BY）
 export type HivePartitionConfig = {
   enabled: boolean; // 是否启用分区
   columns: HivePartitionColumn[]; // 分区列定义
+  clustering?: HiveClusteringConfig; // 分桶配置（可选）
 };
 
 // 表级杂项配置

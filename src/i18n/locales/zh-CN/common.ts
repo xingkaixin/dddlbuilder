@@ -145,6 +145,15 @@ export const zhCNCommon = {
     columnType: '类型',
     columnComment: '注释',
     removeTip: '删除此分区列',
+    clustering: {
+      title: '分桶配置',
+      description:
+        '通过 CLUSTERED BY 定义分桶列，数据按哈希分布到指定数量的桶中，优化 JOIN 和聚合查询性能。',
+      columns: '分桶列',
+      addColumn: '添加分桶列',
+      columnPlaceholder: '输入分桶列名',
+      bucketCount: '桶数量',
+    },
   },
   shardingPanel: {
     title: 'Citus 分布式表配置',

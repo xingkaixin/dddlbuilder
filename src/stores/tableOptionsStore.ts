@@ -93,7 +93,12 @@ export const useTableOptionsStore = create<TableOptionsStoreState>((set) => ({
         ...state.tableMiscConfig,
         partitions:
           typeof value === 'function'
-            ? value(state.tableMiscConfig.partitions!)
+            ? value(
+                state.tableMiscConfig.partitions ?? {
+                  enabled: false,
+                  columns: [],
+                },
+              )
             : value,
       },
     })),

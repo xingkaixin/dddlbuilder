@@ -917,19 +917,24 @@ function App() {
                         ...(prev || { enabled: true, columns: [] }),
                         columns: [...(prev?.columns || []), column],
                       })),
-                    onRemoveColumn: (name) =>
+                    onRemoveColumn: (index) =>
                       setHivePartitionConfig((prev) => ({
                         ...(prev || { enabled: false, columns: [] }),
                         columns: (prev?.columns || []).filter(
-                          (c) => c.name !== name,
+                          (_, i) => i !== index,
                         ),
                       })),
-                    onUpdateColumn: (originalName, column) =>
+                    onUpdateColumn: (index, column) =>
                       setHivePartitionConfig((prev) => ({
                         ...(prev || { enabled: false, columns: [] }),
-                        columns: (prev?.columns || []).map((c) =>
-                          c.name === originalName ? column : c,
+                        columns: (prev?.columns || []).map((c, i) =>
+                          i === index ? column : c,
                         ),
+                      })),
+                    onClusteringChange: (clustering) =>
+                      setHivePartitionConfig((prev) => ({
+                        ...(prev || { enabled: false, columns: [] }),
+                        clustering,
                       })),
                   }}
                 />

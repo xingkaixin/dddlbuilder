@@ -1,4 +1,8 @@
-import type { NormalizedField, TableMiscConfig } from '../types';
+import type {
+  HiveClusteringConfig,
+  NormalizedField,
+  TableMiscConfig,
+} from '../types';
 import {
   escapeSingleQuotes,
   parseFieldType,
@@ -39,6 +43,10 @@ export class HiveStrategy extends AbstractDDLStrategy {
       tableMiscConfig?.partitions,
     );
 
+    const clusteringClause = this.buildClusteringClause(
+      tableMiscConfig?.partitions?.clustering,
+    );
+
     const storedAsClause = tableMiscConfig?.storedAs
       ? `\nSTORED AS ${tableMiscConfig.storedAs}`
       : '';
@@ -50,7 +58,7 @@ export class HiveStrategy extends AbstractDDLStrategy {
     return (
       `CREATE ${externalClause}TABLE ${this.formatTableName(tableName)} (\n` +
       `${columnLines.join(',\n')}\n)` +
-      `${partitionClause}${commentClause}${storedAsClause}${locationClause};`
+      `${partitionClause}${clusteringClause}${commentClause}${storedAsClause}${locationClause};`
     );
   }
 
@@ -58,9 +66,7 @@ export class HiveStrategy extends AbstractDDLStrategy {
     return '';
   }
 
-  private buildPartitionClause(
-    config?: TableMiscConfig['partitions'],
-  ): string {
+  private buildPartitionClause(config?: TableMiscConfig['partitions']): string {
     if (!config?.enabled || config.columns.length === 0) {
       return '';
     }
@@ -76,5 +82,14 @@ export class HiveStrategy extends AbstractDDLStrategy {
     });
 
     return `\nPARTITIONED BY (\n${columns.join(',\n')}\n)`;
+  }
+
+  private buildClusteringClause(config?: HiveClusteringConfig): string {
+    if (!config?.enabled || config.columns.length === 0) {
+      return '';
+    }
+
+    const columns = config.columns.join(', ');
+    return `\nCLUSTERED BY (${columns}) INTO ${config.bucketCount} BUCKETS`;
   }
 }

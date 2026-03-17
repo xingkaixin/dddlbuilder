@@ -295,15 +295,15 @@ describe('HiveStrategy', () => {
       enabled: true,
       partitions: {
         enabled: true,
-        columns: [
-          { name: 'pt', type: 'string', comment: '日期分区' },
-        ],
+        columns: [{ name: 'pt', type: 'string', comment: '日期分区' }],
       },
     };
 
     const ddl = strategy.generateTableDDL('events', '', fields, config);
 
-    expect(ddl).toContain("PARTITIONED BY (\n  pt STRING COMMENT '日期分区'\n)");
+    expect(ddl).toContain(
+      "PARTITIONED BY (\n  pt STRING COMMENT '日期分区'\n)",
+    );
   });
 
   it('应生成 PARTITIONED BY 多列分区', () => {
@@ -333,8 +333,8 @@ describe('HiveStrategy', () => {
     const ddl = strategy.generateTableDDL('logs', '', fields, config);
 
     expect(ddl).toContain('PARTITIONED BY (');
-    expect(ddl).toContain('  year INT COMMENT \'年\'');
-    expect(ddl).toContain('  month STRING COMMENT \'月\'');
+    expect(ddl).toContain("  year INT COMMENT '年'");
+    expect(ddl).toContain("  month STRING COMMENT '月'");
   });
 
   it('应组合 PARTITIONED BY + STORED AS + EXTERNAL', () => {
@@ -357,18 +357,11 @@ describe('HiveStrategy', () => {
       location: '/data/events',
       partitions: {
         enabled: true,
-        columns: [
-          { name: 'dt', type: 'string', comment: '' },
-        ],
+        columns: [{ name: 'dt', type: 'string', comment: '' }],
       },
     };
 
-    const ddl = strategy.generateTableDDL(
-      'events',
-      '事件表',
-      fields,
-      config,
-    );
+    const ddl = strategy.generateTableDDL('events', '事件表', fields, config);
 
     expect(ddl).toContain('CREATE EXTERNAL TABLE events (');
     expect(ddl).toContain("COMMENT '事件表'");
@@ -412,5 +405,141 @@ describe('HiveStrategy', () => {
     });
 
     expect(result).toBe('');
+  });
+
+  it('应生成 CLUSTERED BY 分桶子句', () => {
+    const fields: NormalizedField[] = [
+      {
+        name: 'id',
+        type: 'bigint',
+        comment: '',
+        nullable: false,
+        defaultKind: 'none',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+    ];
+
+    const config: TableMiscConfig = {
+      enabled: true,
+      partitions: {
+        enabled: true,
+        columns: [{ name: 'dt', type: 'string', comment: '' }],
+        clustering: {
+          enabled: true,
+          columns: ['user_id'],
+          bucketCount: 8,
+        },
+      },
+    };
+
+    const ddl = strategy.generateTableDDL('events', '', fields, config);
+
+    expect(ddl).toContain('PARTITIONED BY (');
+    expect(ddl).toContain('CLUSTERED BY (user_id) INTO 8 BUCKETS');
+  });
+
+  it('应生成多列分桶子句', () => {
+    const fields: NormalizedField[] = [
+      {
+        name: 'id',
+        type: 'bigint',
+        comment: '',
+        nullable: false,
+        defaultKind: 'none',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+    ];
+
+    const config: TableMiscConfig = {
+      enabled: true,
+      partitions: {
+        enabled: true,
+        columns: [{ name: 'dt', type: 'string', comment: '' }],
+        clustering: {
+          enabled: true,
+          columns: ['user_id', 'order_id'],
+          bucketCount: 16,
+        },
+      },
+    };
+
+    const ddl = strategy.generateTableDDL('orders', '', fields, config);
+
+    expect(ddl).toContain('CLUSTERED BY (user_id, order_id) INTO 16 BUCKETS');
+  });
+
+  it('应组合 PARTITIONED BY + CLUSTERED BY + STORED AS + EXTERNAL', () => {
+    const fields: NormalizedField[] = [
+      {
+        name: 'id',
+        type: 'bigint',
+        comment: '',
+        nullable: false,
+        defaultKind: 'none',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+    ];
+
+    const config: TableMiscConfig = {
+      enabled: true,
+      external: true,
+      storedAs: 'ORC',
+      location: '/data/events',
+      partitions: {
+        enabled: true,
+        columns: [{ name: 'dt', type: 'string', comment: '日期分区' }],
+        clustering: {
+          enabled: true,
+          columns: ['user_id'],
+          bucketCount: 8,
+        },
+      },
+    };
+
+    const ddl = strategy.generateTableDDL('events', '事件表', fields, config);
+
+    expect(ddl).toContain('CREATE EXTERNAL TABLE events (');
+    expect(ddl).toContain("COMMENT '事件表'");
+    expect(ddl).toContain(
+      "PARTITIONED BY (\n  dt STRING COMMENT '日期分区'\n)",
+    );
+    expect(ddl).toContain('CLUSTERED BY (user_id) INTO 8 BUCKETS');
+    expect(ddl).toContain('STORED AS ORC');
+    expect(ddl).toContain("LOCATION '/data/events'");
+  });
+
+  it('分桶未启用时不应生成 CLUSTERED BY', () => {
+    const fields: NormalizedField[] = [
+      {
+        name: 'id',
+        type: 'int',
+        comment: '',
+        nullable: false,
+        defaultKind: 'none',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+    ];
+
+    const config: TableMiscConfig = {
+      enabled: true,
+      partitions: {
+        enabled: true,
+        columns: [{ name: 'dt', type: 'string', comment: '' }],
+        clustering: {
+          enabled: false,
+          columns: ['user_id'],
+          bucketCount: 8,
+        },
+      },
+    };
+
+    const ddl = strategy.generateTableDDL('test_table', '', fields, config);
+
+    expect(ddl).toContain('PARTITIONED BY');
+    expect(ddl).not.toContain('CLUSTERED BY');
   });
 });

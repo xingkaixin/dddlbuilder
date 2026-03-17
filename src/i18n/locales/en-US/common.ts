@@ -145,6 +145,15 @@ export const enUSCommon = {
     columnName: 'Column Name',
     columnType: 'Type',
     columnComment: 'Comment',
+    clustering: {
+      title: 'Bucketing Configuration',
+      description:
+        'Define bucketing columns via CLUSTERED BY. Data is distributed across buckets by hash, optimizing JOIN and aggregation queries.',
+      columns: 'Bucketing Columns',
+      addColumn: 'Add Bucket Column',
+      columnPlaceholder: 'Enter bucket column name',
+      bucketCount: 'Bucket Count',
+    },
   },
   shardingPanel: {
     title: 'Citus Distributed Table Configuration',
