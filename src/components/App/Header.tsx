@@ -36,11 +36,6 @@ export const Header = memo<HeaderProps>(
     const actionBtnClass =
       'group inline-flex items-center gap-1.5 rounded-md px-1 py-1 text-xs font-medium text-primary transition-all duration-200 hover:translate-x-0.5 hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60';
 
-    const trackEvent = async (event: string) => {
-      const { track } = await import('@vercel/analytics');
-      track(event);
-    };
-
     return (
       <>
         {onPlayFireworks ? (
@@ -261,9 +256,6 @@ export const Header = memo<HeaderProps>(
                         className={actionBtnClass}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={() => {
-                          void trackEvent('docs_view');
-                        }}
                       >
                         <BookOpen className="h-4 w-4" aria-hidden />
                         {t('header.docs')}

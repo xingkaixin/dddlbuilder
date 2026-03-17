@@ -4,7 +4,7 @@ import type { ApiEnv } from './context.js';
 export type CspMode = 'off' | 'report-only' | 'enforce' | 'both';
 
 const DEFAULT_CSP_POLICY =
-  "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.cn https://cdn-font.hyperos.mi.com; font-src 'self' data: https://fonts.gstatic.cn https://cdn-font.hyperos.mi.com; img-src 'self' data: blob: https:; connect-src 'self' https://vitals.vercel-insights.com https://*.vercel-analytics.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+  "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.cn https://cdn-font.hyperos.mi.com; font-src 'self' data: https://fonts.gstatic.cn https://cdn-font.hyperos.mi.com; img-src 'self' data: blob: https:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
 
 const readEnvBool = (key: string, fallback: boolean): boolean => {
   const raw = process.env[key];

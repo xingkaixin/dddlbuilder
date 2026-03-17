@@ -6,7 +6,6 @@ import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDDLExplain } from '@/hooks/useDDLExplain';
-import { useTrackEvent } from './hooks/useTrackEvent';
 import { useTranslation } from 'react-i18next';
 
 interface ExplainPopoverProps {
@@ -19,7 +18,7 @@ export function ExplainPopover({
   containerRef,
 }: ExplainPopoverProps) {
   const { t } = useTranslation();
-  const trackEvent = useTrackEvent();
+  const trackEvent = (..._args: unknown[]) => {};
   const [selection, setSelection] = useState<{
     text: string;
     x: number;

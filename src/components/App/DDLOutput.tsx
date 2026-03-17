@@ -29,7 +29,6 @@ import {
 } from 'lucide-react';
 import { DATABASE_OPTIONS } from '@/utils/constants';
 import { ReviewResultPanel } from './ReviewResult';
-import { useTrackEvent } from './hooks/useTrackEvent';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
 
@@ -75,7 +74,7 @@ export const DDLOutput = memo<DDLOutputProps>(
     onApplySuggestion,
   }) => {
     const { t } = useTranslation();
-    const trackEvent = useTrackEvent();
+    const trackEvent = (..._args: unknown[]) => {};
     const { showToast } = useToast();
     const databaseOption = useMemo(
       () => DATABASE_OPTIONS.find((option) => option.value === dbType),

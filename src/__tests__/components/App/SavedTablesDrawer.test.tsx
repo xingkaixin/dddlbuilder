@@ -47,11 +47,6 @@ vi.mock('@/components/ui/drawer', () => ({
   DrawerClose: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
-const mockTrackEvent = vi.fn().mockResolvedValue(undefined);
-vi.mock('@/components/App/hooks/useTrackEvent', () => ({
-  useTrackEvent: () => mockTrackEvent,
-}));
-
 function createBaseProps() {
   return {
     open: true,
@@ -69,7 +64,6 @@ function createBaseProps() {
 describe('SavedTablesDrawer', () => {
   beforeEach(() => {
     latestOnDragEnd = undefined;
-    mockTrackEvent.mockClear();
   });
 
   it('空状态应显示可见但禁用的搜索框', () => {
@@ -147,14 +141,5 @@ describe('SavedTablesDrawer', () => {
         '不能将文件夹移动到自身或子文件夹，请选择其他目标目录。',
       ),
     ).toBeInTheDocument();
-    expect(mockTrackEvent).toHaveBeenCalledWith(
-      'saved_tables_drag_attempt',
-      expect.objectContaining({
-        action: 'invalid_folder_cycle',
-      }),
-    );
-    expect(mockTrackEvent).toHaveBeenCalledWith('saved_tables_drag_blocked', {
-      reason: 'folder_cycle',
-    });
   });
 });

@@ -1,8 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { Analytics } from '@vercel/analytics/react';
-import { SpeedInsights } from '@vercel/speed-insights/react';
 import { ThemeProvider } from 'next-themes';
 import './index.css';
 import App from './App.tsx';
@@ -33,8 +31,6 @@ createRoot(rootElement).render(
             <App />
             <Toaster position="top-center" />
           </AppErrorBoundary>
-          <Analytics />
-          <SpeedInsights />
         </QueryClientProvider>
       </ThemeProvider>
     </LocaleProvider>

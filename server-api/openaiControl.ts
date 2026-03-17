@@ -21,11 +21,6 @@ type CounterBucket = {
   expiresAt: number;
 };
 
-type RedisConfig = {
-  restUrl: string;
-  token: string;
-};
-
 type AuditLogPayload = {
   requestId: string;
   route: OpenAIRouteKey;
@@ -37,7 +32,7 @@ type AuditLogPayload = {
   model?: string;
   maxOutputTokens?: number;
   rateLimitEnabled: boolean;
-  rateLimitStore: 'memory' | 'redis';
+  rateLimitStore: 'memory' | 'kv';
   rateLimitLimit: number | null;
   rateLimitRemaining: number | null;
   rateLimitWindowMs: number | null;
@@ -99,11 +94,11 @@ const RATE_LIMIT_RULES: Record<OpenAIRouteKey, RateLimitRule> = {
 const COUNTER_STORE_MODE =
   process.env.OPENAI_RATELIMIT_STORE?.trim().toLowerCase() === 'memory'
     ? 'memory'
-    : 'redis';
+    : 'kv';
 
 export type GovernanceSnapshot = {
   rateLimitEnabled: boolean;
-  rateLimitStore: 'memory' | 'redis';
+  rateLimitStore: 'memory' | 'kv';
   rateLimitLimit: number | null;
   rateLimitWindowMs: number | null;
   budgetEnabled: boolean;
@@ -111,8 +106,7 @@ export type GovernanceSnapshot = {
 };
 
 const MEMORY_COUNTERS = new Map<string, CounterBucket>();
-let hasWarnedRedisConfigMissing = false;
-let hasWarnedRedisUnavailable = false;
+let hasWarnedKVUnavailable = false;
 
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => {
@@ -279,66 +273,22 @@ export const getOpenAIGovernanceSnapshot = (
   };
 };
 
-const getRedisConfig = (): RedisConfig | null => {
-  const restUrlRaw = process.env.redis_KV_REST_API_URL?.trim();
-  const token = process.env.redis_KV_REST_API_TOKEN?.trim();
-  if (!restUrlRaw || !token) return null;
-
-  return {
-    restUrl: restUrlRaw.replace(/\/+$/, ''),
-    token,
-  };
-};
-
-const parseRedisResult = async (response: Response): Promise<number> => {
-  const payload = (await response.json().catch(() => ({}))) as {
-    result?: unknown;
-    error?: unknown;
-  };
-
-  if (!response.ok || payload.error) {
-    throw new Error('REDIS_COMMAND_FAILED');
-  }
-
-  const result = Number(payload.result);
-  if (!Number.isFinite(result)) {
-    throw new Error('REDIS_RESULT_INVALID');
-  }
-
-  return result;
-};
-
-const runRedisCounterCommands = async (
-  config: RedisConfig,
+// KV-based counter implementation using CF KV
+const runKVIncrCounter = async (
+  kv: KVNamespace,
   key: string,
   ttlSeconds: number,
   amount: number,
 ): Promise<number> => {
-  const encodedKey = encodeURIComponent(key);
+  const currentValue = await kv.get(key);
+  const currentCount = currentValue ? parseInt(currentValue, 10) : 0;
+  if (Number.isNaN(currentCount)) {
+    throw new Error('KV_COUNTER_INVALID');
+  }
 
-  const incrResponse = await fetch(
-    `${config.restUrl}/incrby/${encodedKey}/${Math.max(1, amount)}`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${config.token}`,
-      },
-    },
-  );
-  const count = await parseRedisResult(incrResponse);
-
-  const expireResponse = await fetch(
-    `${config.restUrl}/expire/${encodedKey}/${Math.max(1, ttlSeconds)}`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${config.token}`,
-      },
-    },
-  );
-  await parseRedisResult(expireResponse);
-
-  return count;
+  const newCount = currentCount + Math.max(1, amount);
+  await kv.put(key, String(newCount), { expirationTtl: ttlSeconds });
+  return newCount;
 };
 
 const incrMemoryCounter = (key: string, ttlMs: number, amount: number) => {
@@ -360,37 +310,22 @@ const incrMemoryCounter = (key: string, ttlMs: number, amount: number) => {
 };
 
 const incrCounter = async (
+  kv: KVNamespace | undefined,
   key: string,
   ttlMs: number,
   amount: number,
 ): Promise<number> => {
-  if (COUNTER_STORE_MODE === 'memory') {
-    return incrMemoryCounter(key, ttlMs, amount);
-  }
-
-  const redisConfig = getRedisConfig();
-  if (!redisConfig) {
-    if (!hasWarnedRedisConfigMissing) {
-      hasWarnedRedisConfigMissing = true;
-      console.warn(
-        '[OpenAIControl] Redis 配置缺失，限流与预算已自动降级到 memory',
-      );
-    }
+  if (COUNTER_STORE_MODE === 'memory' || !kv) {
     return incrMemoryCounter(key, ttlMs, amount);
   }
 
   try {
-    return await runRedisCounterCommands(
-      redisConfig,
-      key,
-      Math.ceil(ttlMs / 1000),
-      amount,
-    );
+    return await runKVIncrCounter(kv, key, Math.ceil(ttlMs / 1000), amount);
   } catch {
-    if (!hasWarnedRedisUnavailable) {
-      hasWarnedRedisUnavailable = true;
+    if (!hasWarnedKVUnavailable) {
+      hasWarnedKVUnavailable = true;
       console.warn(
-        '[OpenAIControl] Redis 不可用，限流与预算已自动降级到 memory',
+        '[OpenAIControl] KV unavailable, rate limiting and budget control fell back to memory',
       );
     }
     return incrMemoryCounter(key, ttlMs, amount);
@@ -446,7 +381,8 @@ export async function enforceOpenAIRateLimit(
   const counterKey = `openai:rl:${routeKey}:${clientFingerprint}:${windowBucket}`;
   const ttlMs = rule.windowMs + 5_000;
 
-  const count = await incrCounter(counterKey, ttlMs, 1);
+  const kv = c.env?.RATE_LIMIT_KV;
+  const count = await incrCounter(kv, counterKey, ttlMs, 1);
   const remaining = Math.max(rule.maxRequests - count, 0);
 
   c.header('X-RateLimit-Limit', String(rule.maxRequests));
@@ -507,7 +443,13 @@ export async function enforceOpenAIDailyBudget(
   const counterKey = `openai:budget:tokens:${dayKey}`;
   const ttlMs = getMsUntilUtcTomorrow() + 60 * 60 * 1000;
 
-  const usedTokens = await incrCounter(counterKey, ttlMs, safeEstimatedTokens);
+  const kv = c.env?.RATE_LIMIT_KV;
+  const usedTokens = await incrCounter(
+    kv,
+    counterKey,
+    ttlMs,
+    safeEstimatedTokens,
+  );
 
   c.header('X-Budget-Limit-Tokens', String(DAILY_BUDGET_MAX_TOKENS));
   c.header('X-Budget-Used-Tokens', String(usedTokens));

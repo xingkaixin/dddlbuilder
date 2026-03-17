@@ -15,11 +15,6 @@ vi.mock('@/components/ui/popover', () => ({
   ),
 }));
 
-const mockTrackEvent = vi.fn();
-vi.mock('@/components/App/hooks/useTrackEvent', () => ({
-  useTrackEvent: () => mockTrackEvent,
-}));
-
 const templates: FieldTemplate[] = [
   {
     id: 'tpl-1',
@@ -97,8 +92,7 @@ describe('ApplyTemplatePopover i18n', () => {
     expect(screen.getByText('Manage templates...')).toBeInTheDocument();
   });
 
-  it('应支持关键词搜索并上报一次搜索埋点', async () => {
-    mockTrackEvent.mockResolvedValue(undefined);
+  it('应支持关键词搜索', async () => {
     render(
       <ApplyTemplatePopover
         templates={templates}
@@ -117,13 +111,5 @@ describe('ApplyTemplatePopover i18n', () => {
     await userEvent.clear(searchInput);
     await userEvent.type(searchInput, '审计');
     expect(screen.getByText('审计日志')).toBeInTheDocument();
-    expect(mockTrackEvent).toHaveBeenCalledWith(
-      'template_quick_apply_search_used',
-      expect.objectContaining({
-        queryLength: 1,
-        templateCount: 3,
-      }),
-    );
-    expect(mockTrackEvent).toHaveBeenCalledTimes(1);
   });
 });

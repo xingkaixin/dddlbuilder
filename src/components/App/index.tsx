@@ -29,7 +29,6 @@ import { useReviewActions } from './hooks/useReviewActions';
 import { useShareAction } from './hooks/useShareAction';
 import { useNavigationActions } from './hooks/useNavigationActions';
 import { useTemplateToolbarLeft } from './hooks/useTemplateToolbarLeft';
-import { useTrackEvent } from './hooks/useTrackEvent';
 import { useFireworksIntro } from './hooks/useFireworksIntro';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { useAuthManagement } from '@/hooks/useAuthManagement';
@@ -73,7 +72,7 @@ const createEmptyGlobalDraftState = (): PersistedState => ({
 });
 
 function App() {
-  const trackEvent = useTrackEvent();
+  const trackEvent = async (..._args: unknown[]) => {};
   const { t } = useTranslation();
 
   // ─── 1. Zustand selectors (aggregated) ─────────────────────────

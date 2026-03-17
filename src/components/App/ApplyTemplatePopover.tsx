@@ -14,7 +14,6 @@ import {
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
 import { useTranslation } from 'react-i18next';
 import { Input } from '../ui/input';
-import { useTrackEvent } from './hooks/useTrackEvent';
 
 interface ApplyTemplatePopoverProps {
   templates: FieldTemplate[];
@@ -25,6 +24,8 @@ interface ApplyTemplatePopoverProps {
   onManageTemplates: () => void;
   onSaveAsTemplate: () => void;
 }
+
+const trackEvent = (..._args: unknown[]) => {};
 
 function includesQuery(value: string | undefined, query: string): boolean {
   if (!value) return false;
@@ -65,7 +66,7 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
     onSaveAsTemplate,
   }) => {
     const { t } = useTranslation();
-    const trackEvent = useTrackEvent();
+    const trackEvent = (..._args: unknown[]) => {};
     const [open, setOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const hasTrackedSearchRef = useRef(false);

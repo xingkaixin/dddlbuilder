@@ -87,37 +87,14 @@ describe.sequential('openai governance', () => {
     expect(third.status).toBe(503);
   });
 
-  it('应在 redis 计数模式下命中限流并在窗口后恢复', async () => {
-    const counters = new Map<string, number>();
-
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
-      const url = String(input);
-      const incrMatch = url.match(/\/incrby\/([^/]+)\/(\d+)/);
-      if (incrMatch) {
-        const key = decodeURIComponent(incrMatch[1]);
-        const amount = Number(incrMatch[2]);
-        const next = (counters.get(key) ?? 0) + amount;
-        counters.set(key, next);
-        return jsonResponse({ result: next });
-      }
-
-      const expireMatch = url.match(/\/expire\/([^/]+)\/(\d+)/);
-      if (expireMatch) {
-        return jsonResponse({ result: 1 });
-      }
-
-      throw new Error(`Unexpected fetch url: ${url}`);
-    });
-
+  it('应在 kv 计数模式下命中限流并在窗口后恢复', async () => {
     const app = await loadApp({
       OPENAI_RATELIMIT_ENABLED: 'true',
-      OPENAI_RATELIMIT_STORE: 'redis',
+      OPENAI_RATELIMIT_STORE: 'kv',
       OPENAI_RATELIMIT_WINDOW_MS: '200',
       OPENAI_RATELIMIT_EXPLAIN_MAX: '1',
       OPENAI_DAILY_BUDGET_ENABLED: 'false',
       OPENAI_API_KEY: undefined,
-      redis_KV_REST_API_URL: 'https://example.upstash.io',
-      redis_KV_REST_API_TOKEN: 'test-token',
     });
 
     const request = () =>
@@ -237,7 +214,7 @@ describe.sequential('openai governance', () => {
       model: expect.any(String),
       maxOutputTokens: expect.any(Number),
       rateLimitEnabled: expect.any(Boolean),
-      rateLimitStore: expect.stringMatching(/^(memory|redis)$/),
+      rateLimitStore: expect.stringMatching(/^(memory|kv)$/),
       budgetEnabled: expect.any(Boolean),
     });
     expect(auditPayload).toHaveProperty('budgetLimitTokens');

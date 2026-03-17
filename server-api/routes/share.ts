@@ -13,11 +13,6 @@ const SHARE_KEY_PREFIX = 'share:';
 const SHARE_UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-interface RedisCommandResponse {
-  result?: unknown;
-  error?: string;
-}
-
 type ShareCreateBody = {
   state?: unknown;
 };
@@ -47,89 +42,34 @@ const isValidPersistedState = (value: unknown): value is PersistedState => {
 
 const isValidShareUuid = (value: string) => SHARE_UUID_REGEX.test(value);
 
-const ensureRedisConfig = () => {
-  const restUrlRaw = process.env.redis_KV_REST_API_URL?.trim();
-  const writeToken = process.env.redis_KV_REST_API_TOKEN?.trim();
-  const readToken =
-    process.env.redis_KV_REST_API_READ_ONLY_TOKEN?.trim() || writeToken;
-
-  if (!restUrlRaw || !writeToken || !readToken) {
-    return null;
-  }
-
-  return {
-    restUrl: restUrlRaw.replace(/\/+$/, ''),
-    writeToken,
-    readToken,
-  };
-};
-
-const decodeRedisResponse = async (
-  response: Response,
-): Promise<RedisCommandResponse> => {
-  const payload = (await response
-    .json()
-    .catch(() => ({}))) as RedisCommandResponse;
-  return payload;
-};
-
 async function setShareState(
-  redisUrl: string,
-  token: string,
+  kv: KVNamespace,
   key: string,
   state: PersistedState,
 ): Promise<boolean> {
-  const response = await fetch(
-    `${redisUrl}/set/${encodeURIComponent(key)}?EX=${SHARE_TTL_SECONDS}`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(state),
-    },
-  );
-
-  const payload = await decodeRedisResponse(response);
-  if (!response.ok || payload.error) {
+  try {
+    await kv.put(key, JSON.stringify(state), {
+      expirationTtl: SHARE_TTL_SECONDS,
+    });
+    return true;
+  } catch {
     return false;
   }
-
-  return true;
 }
 
 async function getShareState(
-  redisUrl: string,
-  token: string,
+  kv: KVNamespace,
   key: string,
 ): Promise<PersistedState | null> {
-  const response = await fetch(`${redisUrl}/get/${encodeURIComponent(key)}`, {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  const payload = await decodeRedisResponse(response);
-  if (!response.ok || payload.error) {
-    throw new Error('REDIS_GET_FAILED');
-  }
-
   try {
-    if (typeof payload.result === 'string') {
-      const parsed = JSON.parse(payload.result);
-      if (!isValidPersistedState(parsed)) {
-        return null;
-      }
-      return parsed;
-    }
+    const value = await kv.get(key);
+    if (!value) return null;
 
-    if (isValidPersistedState(payload.result)) {
-      return payload.result;
+    const parsed = JSON.parse(value);
+    if (!isValidPersistedState(parsed)) {
+      return null;
     }
-
-    return null;
+    return parsed;
   } catch {
     return null;
   }
@@ -137,14 +77,9 @@ async function getShareState(
 
 export function registerShareRoutes(app: Hono<ApiEnv>) {
   app.post('/share', async (c) => {
-    const redisConfig = ensureRedisConfig();
-    if (!redisConfig) {
-      return errorResponse(
-        c,
-        500,
-        'Redis config missing',
-        'REDIS_CONFIG_MISSING',
-      );
+    const kv = c.env.SHARE_KV;
+    if (!kv) {
+      return errorResponse(c, 500, 'KV binding missing', 'KV_CONFIG_MISSING');
     }
 
     const parsed = await parseJsonBodyWithLimit<ShareCreateBody>(
@@ -167,12 +102,7 @@ export function registerShareRoutes(app: Hono<ApiEnv>) {
     const shareId = crypto.randomUUID();
     const key = `${SHARE_KEY_PREFIX}${shareId}`;
 
-    const ok = await setShareState(
-      redisConfig.restUrl,
-      redisConfig.writeToken,
-      key,
-      state,
-    );
+    const ok = await setShareState(kv, key, state);
 
     if (!ok) {
       return errorResponse(c, 502, 'Share store failed', 'SHARE_STORE_FAILED');
@@ -189,14 +119,9 @@ export function registerShareRoutes(app: Hono<ApiEnv>) {
   });
 
   app.get('/share/:uuid', async (c) => {
-    const redisConfig = ensureRedisConfig();
-    if (!redisConfig) {
-      return errorResponse(
-        c,
-        500,
-        'Redis config missing',
-        'REDIS_CONFIG_MISSING',
-      );
+    const kv = c.env.SHARE_KV;
+    if (!kv) {
+      return errorResponse(c, 500, 'KV binding missing', 'KV_CONFIG_MISSING');
     }
 
     const shareId = c.req.param('uuid');
@@ -206,16 +131,7 @@ export function registerShareRoutes(app: Hono<ApiEnv>) {
 
     const key = `${SHARE_KEY_PREFIX}${shareId}`;
 
-    let state: PersistedState | null = null;
-    try {
-      state = await getShareState(
-        redisConfig.restUrl,
-        redisConfig.readToken,
-        key,
-      );
-    } catch {
-      return errorResponse(c, 502, 'Share load failed', 'SHARE_LOAD_FAILED');
-    }
+    const state = await getShareState(kv, key);
 
     if (!state) {
       return errorResponse(c, 404, 'Share not found', 'SHARE_NOT_FOUND');
