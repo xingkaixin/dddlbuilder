@@ -83,8 +83,14 @@ export const buildOpenAIConfig = (env: ApiEnv['Bindings']): OpenAIConfig => {
   const retryMaxAttempts = readEnvInt(env.OPENAI_RETRY_MAX_ATTEMPTS, 3);
   const retryBaseDelayMs = readEnvInt(env.OPENAI_RETRY_BASE_DELAY_MS, 400);
   const retryMaxDelayMs = readEnvInt(env.OPENAI_RETRY_MAX_DELAY_MS, 3_000);
-  const dailyBudgetEnabled = readEnvBool(env.OPENAI_DAILY_BUDGET_ENABLED, false);
-  const dailyBudgetMaxTokens = readEnvInt(env.OPENAI_DAILY_BUDGET_MAX_TOKENS, 0);
+  const dailyBudgetEnabled = readEnvBool(
+    env.OPENAI_DAILY_BUDGET_ENABLED,
+    false,
+  );
+  const dailyBudgetMaxTokens = readEnvInt(
+    env.OPENAI_DAILY_BUDGET_MAX_TOKENS,
+    0,
+  );
   const counterStoreMode =
     env.OPENAI_RATELIMIT_STORE?.trim().toLowerCase() === 'memory'
       ? 'memory'
@@ -409,7 +415,13 @@ export async function enforceOpenAIRateLimit(
   const ttlMs = rule.windowMs + 5_000;
 
   const kv = c.env?.RATE_LIMIT_KV;
-  const count = await incrCounter(kv, counterKey, ttlMs, 1, config.counterStoreMode);
+  const count = await incrCounter(
+    kv,
+    counterKey,
+    ttlMs,
+    1,
+    config.counterStoreMode,
+  );
   const remaining = Math.max(rule.maxRequests - count, 0);
 
   c.header('X-RateLimit-Limit', String(rule.maxRequests));

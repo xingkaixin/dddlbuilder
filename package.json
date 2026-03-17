@@ -21,7 +21,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "bunx playwright show-report",
-    "deploy":"bun run build && wrangler deploy --config wrangler.deploy.toml"
+    "deploy": "bun run build && wrangler deploy --config wrangler.deploy.toml"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

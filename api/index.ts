@@ -81,7 +81,9 @@ registerShareRoutes(app);
 app.get('*', async (c) => {
   const res = await c.env.ASSETS.fetch(c.req.raw);
   if (res.ok) return res;
-  const indexRes = await c.env.ASSETS.fetch(new Request(new URL('/index.html', c.req.url)));
+  const indexRes = await c.env.ASSETS.fetch(
+    new Request(new URL('/index.html', c.req.url)),
+  );
   return new Response(indexRes.body, {
     headers: { 'content-type': 'text/html; charset=utf-8' },
   });
