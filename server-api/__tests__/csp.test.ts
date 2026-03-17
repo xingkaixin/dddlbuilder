@@ -9,7 +9,9 @@ const ORIGINAL_ENV = {
 };
 
 // Helper to create env object for tests
-const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
+const createEnv = (
+  overrides: Partial<ApiEnv['Bindings']> = {},
+): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
   SHARE_KV: {} as KVNamespace,
   RATE_LIMIT_KV: {} as KVNamespace,
@@ -29,7 +31,10 @@ describe('csp headers', () => {
       CSP_MODE: 'report-only',
     });
 
-    const response = await app.fetch(new Request('http://localhost/api/health'), env);
+    const response = await app.fetch(
+      new Request('http://localhost/api/health'),
+      env,
+    );
     expect(
       response.headers.get('content-security-policy-report-only'),
     ).toBeTruthy();
@@ -42,7 +47,10 @@ describe('csp headers', () => {
       CSP_MODE: 'enforce',
     });
 
-    const response = await app.fetch(new Request('http://localhost/api/health'), env);
+    const response = await app.fetch(
+      new Request('http://localhost/api/health'),
+      env,
+    );
     expect(response.headers.get('content-security-policy')).toBeTruthy();
     expect(
       response.headers.get('content-security-policy-report-only'),
@@ -55,7 +63,10 @@ describe('csp headers', () => {
       CSP_MODE: 'both',
     });
 
-    const response = await app.fetch(new Request('http://localhost/api/health'), env);
+    const response = await app.fetch(
+      new Request('http://localhost/api/health'),
+      env,
+    );
     expect(response.headers.get('content-security-policy')).toBeTruthy();
     expect(
       response.headers.get('content-security-policy-report-only'),
@@ -68,7 +79,10 @@ describe('csp headers', () => {
       CSP_MODE: 'both',
     });
 
-    const response = await app.fetch(new Request('http://localhost/api/health'), env);
+    const response = await app.fetch(
+      new Request('http://localhost/api/health'),
+      env,
+    );
     expect(response.headers.get('content-security-policy')).toBeNull();
     expect(
       response.headers.get('content-security-policy-report-only'),
