@@ -6,6 +6,7 @@ main = "dist/server.js"
 [assets]
 directory = "dist/client"
 html_handling = "auto-trailing-slash"
+not_found_handling = "single-page-application"
 
 # KV 命名空间绑定
 # 本地开发：创建 wrangler.local.toml 并填入实际的 KV ID
