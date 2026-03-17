@@ -3,7 +3,7 @@ compatibility_date = "2024-01-01"
 main = "dist/server.js"
 
 # 前端静态资源
-[[assets]]
+[assets]
 directory = "dist/client"
 
 # KV 命名空间绑定
