@@ -18,17 +18,18 @@ interface StorageEstimatorDialogProps {
   onOpenChange: (open: boolean) => void;
   dbType: DatabaseType;
   fields: NormalizedField[];
+  storageFormat?: string;
 }
 
 export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
-  ({ open, onOpenChange, dbType, fields }) => {
+  ({ open, onOpenChange, dbType, fields, storageFormat }) => {
     const {
       estimateRows,
       setEstimateRows,
       result,
       rowSizeFormatted,
       totalSizeDisplay,
-    } = useStorageEstimation(dbType, fields);
+    } = useStorageEstimation(dbType, fields, storageFormat);
 
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>

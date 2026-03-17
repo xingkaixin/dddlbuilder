@@ -32,12 +32,13 @@ function formatSizeText(display: SizeDisplay): string {
 export function useStorageEstimation(
   dbType: DatabaseType,
   fields: NormalizedField[],
+  storageFormat?: string,
 ) {
   const [estimateRows, setEstimateRows] = useState<number>(10000);
 
   const result = useMemo<StorageResult>(() => {
-    return estimateStorage(dbType, fields);
-  }, [dbType, fields]);
+    return estimateStorage(dbType, fields, storageFormat);
+  }, [dbType, fields, storageFormat]);
 
   const totalSize = useMemo(() => {
     return result.totalRowSize * estimateRows;

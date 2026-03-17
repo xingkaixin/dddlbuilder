@@ -1090,6 +1090,7 @@ function App() {
             onOpenChange: setIsStorageEstimatorOpen,
             dbType,
             fields: normalizedFields,
+            storageFormat: tableMiscConfig.storedAs || undefined,
           }}
         />
       </div>

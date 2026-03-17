@@ -256,4 +256,74 @@ describe('storageEstimator', () => {
     expect(pgResult.dataSize).toBe(48);
     expect(pgResult.dataSize).toBeGreaterThan(mysqlResult.dataSize);
   });
+
+  describe('Hive storage formats', () => {
+    const hiveFields: NormalizedField[] = [
+      {
+        name: 'id',
+        type: 'bigint',
+        nullable: false,
+        comment: '',
+        defaultKind: 'none',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+      {
+        name: 'name',
+        type: 'varchar(100)',
+        nullable: true,
+        comment: '',
+        defaultKind: 'none',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+    ];
+
+    it('should use ORC profile by default for Hive', () => {
+      const result = estimateStorage('hive', hiveFields);
+      expect(result.dbName).toBe('Hive (ORC)');
+      // ORC: 75% compression -> rawData = 8 + 50 = 58, compressed = ceil(58 * 0.25) = 15
+      expect(result.dataSize).toBe(15);
+    });
+
+    it('should use ORC profile when storageFormat is ORC', () => {
+      const result = estimateStorage('hive', hiveFields, 'ORC');
+      expect(result.dbName).toBe('Hive (ORC)');
+      expect(result.dataSize).toBe(15);
+    });
+
+    it('should use Parquet profile when storageFormat is PARQUET', () => {
+      const result = estimateStorage('hive', hiveFields, 'PARQUET');
+      expect(result.dbName).toBe('Hive (Parquet)');
+      // Parquet: 55% compression -> rawData = 58, compressed = ceil(58 * 0.45) = 27
+      expect(result.dataSize).toBe(27);
+    });
+
+    it('should use TEXTFILE profile when storageFormat is TEXTFILE', () => {
+      const result = estimateStorage('hive', hiveFields, 'TEXTFILE');
+      expect(result.dbName).toBe('Hive (TEXTFILE)');
+      // TEXTFILE: no compression -> rawData = 58
+      expect(result.dataSize).toBe(58);
+    });
+
+    it('should be case-insensitive for storageFormat', () => {
+      const upperResult = estimateStorage('hive', hiveFields, 'PARQUET');
+      const lowerResult = estimateStorage('hive', hiveFields, 'parquet');
+      expect(upperResult.dbName).toBe(lowerResult.dbName);
+      expect(upperResult.dataSize).toBe(lowerResult.dataSize);
+    });
+
+    it('should fallback to ORC for unknown storageFormat', () => {
+      const result = estimateStorage('hive', hiveFields, 'UNKNOWN_FORMAT');
+      expect(result.dbName).toBe('Hive (ORC)');
+    });
+
+    it('should ignore storageFormat for non-Hive databases', () => {
+      const mysqlResult = estimateStorage('mysql', hiveFields, 'ORC');
+      expect(mysqlResult.dbName).toBe('MySQL (InnoDB)');
+
+      const pgResult = estimateStorage('postgresql', hiveFields, 'PARQUET');
+      expect(pgResult.dbName).toBe('PostgreSQL');
+    });
+  });
 });

@@ -299,6 +299,79 @@ const GaussDBProfile: StorageProfile = {
   },
 };
 
+const HiveOrcProfile: StorageProfile = {
+  name: 'Hive (ORC)',
+  calculateRowSize: (fields) => {
+    const overhead = 16; // ORC 行组元数据 + 索引
+    const rawData = fields.reduce(
+      (acc, f) => acc + getFieldSize(f.type, 'hive'),
+      0,
+    );
+    const compressedData = Math.ceil(rawData * 0.25); // ORC 75% 压缩
+
+    return {
+      overhead,
+      data: compressedData,
+      explanation: [
+        'ORC 采用列式存储，支持字典编码、RLE 及 Snappy/LZO 压缩',
+        '当前结果基于 75% 的平均压缩率进行估算',
+        'ORC 文件包含 Stripe (默认 64MB) 和 Row Group 级别的索引',
+        '小文件场景下索引开销占比会显著增大',
+      ],
+    };
+  },
+};
+
+const HiveParquetProfile: StorageProfile = {
+  name: 'Hive (Parquet)',
+  calculateRowSize: (fields) => {
+    const overhead = 12; // Parquet 页级元数据
+    const rawData = fields.reduce(
+      (acc, f) => acc + getFieldSize(f.type, 'hive'),
+      0,
+    );
+    const compressedData = Math.ceil(rawData * 0.45); // Parquet 55% 压缩
+
+    return {
+      overhead,
+      data: compressedData,
+      explanation: [
+        'Parquet 采用列式存储，支持页级 Snappy/Gzip 压缩',
+        '当前结果基于 55% 的平均压缩率进行估算',
+        'Parquet 文件包含 Row Group 和 Page 级别的统计信息',
+        '适合 Spark/Presto 等计算引擎的高效扫描',
+      ],
+    };
+  },
+};
+
+const HiveTextfileProfile: StorageProfile = {
+  name: 'Hive (TEXTFILE)',
+  calculateRowSize: (fields) => {
+    const overhead = 1; // 行分隔符
+    const data = fields.reduce(
+      (acc, f) => acc + getFieldSize(f.type, 'hive'),
+      0,
+    );
+
+    return {
+      overhead,
+      data,
+      explanation: [
+        'TEXTFILE 为纯文本存储，无压缩，按分隔符划分列',
+        '适合小数据量调试或需要直接读取原始文件的场景',
+        '不推荐用于生产环境，存储效率较低',
+      ],
+    };
+  },
+};
+
+const HiveProfiles: Record<string, StorageProfile> = {
+  ORC: HiveOrcProfile,
+  PARQUET: HiveParquetProfile,
+  TEXTFILE: HiveTextfileProfile,
+};
+
 const Profiles: Record<string, StorageProfile> = {
   mysql: MySQLProfile,
   mariadb: MySQLProfile,
@@ -314,13 +387,18 @@ const Profiles: Record<string, StorageProfile> = {
   gbase: GBaseProfile,
   polardb: PolarDBProfile,
   gaussdb: GaussDBProfile,
+  hive: HiveOrcProfile,
 };
 
 export function estimateStorage(
   dbType: DatabaseType,
   fields: NormalizedField[],
+  storageFormat?: string,
 ): StorageResult {
-  const profile = Profiles[dbType] || MySQLProfile;
+  const profile =
+    dbType === 'hive' && storageFormat
+      ? HiveProfiles[storageFormat.toUpperCase()] || HiveOrcProfile
+      : Profiles[dbType] || MySQLProfile;
   const { overhead, data, explanation } = profile.calculateRowSize(fields);
 
   return {
