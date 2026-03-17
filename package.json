@@ -1,7 +1,7 @@
 {
   "name": "ddlbuilder",
   "private": true,
-  "version": "0.15.4",
+  "version": "0.15.5",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev --port 3000",

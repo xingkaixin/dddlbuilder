@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.15.5] - 2026-03-17
+### Added
+- **Hive database support**: Adds support for Apache Hive database with partitioning, bucketing (CLUSTERED BY), and storage format options. Indexes tab is hidden for Hive databases as they are not applicable.
+- **Storage estimator for Hive**: Adds Hive storage format support to the storage capacity estimator.
+
+### Improved
+- **SPA routing**: Enhances single-page application routing with proper fallback handling, ensuring client-side navigation works correctly.
+- **API efficiency**: Disables thinking in API routes for faster response times.
+
 ## [0.15.4] - 2026-03-12
 - Some minor updates
 
