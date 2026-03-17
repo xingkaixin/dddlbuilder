@@ -836,6 +836,7 @@ function App() {
                   indexStats={indexStats}
                   authObjectsLength={authObjects.length}
                   miscEnabled={tableMiscConfig.enabled}
+                  showIndexTab={dbType !== 'hive'}
                   showShardingTab={dbType === 'postgresql-citus'}
                   shardingBadgeText={
                     citusShardingConfig.mode === 'distributed'

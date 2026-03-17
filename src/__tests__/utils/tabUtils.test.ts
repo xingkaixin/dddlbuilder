@@ -55,6 +55,15 @@ describe('tabUtils', () => {
       expect(isTabAvailable('sharding', 'postgresql-citus')).toBe(true);
     });
 
+    it('should return false for indexes tab on hive', () => {
+      expect(isTabAvailable('indexes', 'hive')).toBe(false);
+      expect(getAvailableTabs('hive')).not.toContain('indexes');
+    });
+
+    it('should return true for hive-partition tab on hive', () => {
+      expect(isTabAvailable('hive-partition', 'hive')).toBe(true);
+    });
+
     it('should return false for unknown tabs', () => {
       expect(isTabAvailable('nonexistent', 'mysql')).toBe(false);
     });

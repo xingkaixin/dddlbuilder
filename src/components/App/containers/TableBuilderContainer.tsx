@@ -34,6 +34,7 @@ interface TableBuilderContainerProps {
   };
   authObjectsLength: number;
   miscEnabled: boolean;
+  showIndexTab: boolean;
   showShardingTab: boolean;
   shardingBadgeText?: string | null;
   showPartitionTab: boolean;
@@ -58,6 +59,7 @@ export function TableBuilderContainer({
   indexStats,
   authObjectsLength,
   miscEnabled,
+  showIndexTab,
   showShardingTab,
   shardingBadgeText,
   showPartitionTab,
@@ -93,32 +95,34 @@ export function TableBuilderContainer({
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="indexes" className="gap-2">
-            <Network className="h-4 w-4" />
-            {t('builderTabs.indexes')}
-            {indexesLength > 0 && (
-              <div className="ml-2 hidden items-center gap-2 2xl:flex">
-                {indexStats.primary > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded bg-orange-100 px-1.5 py-0.5 text-xs text-orange-600 dark:bg-orange-900/40 dark:text-orange-200">
-                    <Key className="h-3 w-3" />
-                    {indexStats.primary}
-                  </span>
-                )}
-                {indexStats.unique > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-600 dark:bg-blue-900/40 dark:text-blue-200">
-                    <Lock className="h-3 w-3" />
-                    {indexStats.unique}
-                  </span>
-                )}
-                {indexStats.normal > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-200">
-                    <Hash className="h-3 w-3" />
-                    {indexStats.normal}
-                  </span>
-                )}
-              </div>
-            )}
-          </TabsTrigger>
+          {showIndexTab && (
+            <TabsTrigger value="indexes" className="gap-2">
+              <Network className="h-4 w-4" />
+              {t('builderTabs.indexes')}
+              {indexesLength > 0 && (
+                <div className="ml-2 hidden items-center gap-2 2xl:flex">
+                  {indexStats.primary > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded bg-orange-100 px-1.5 py-0.5 text-xs text-orange-600 dark:bg-orange-900/40 dark:text-orange-200">
+                      <Key className="h-3 w-3" />
+                      {indexStats.primary}
+                    </span>
+                  )}
+                  {indexStats.unique > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-600 dark:bg-blue-900/40 dark:text-blue-200">
+                      <Lock className="h-3 w-3" />
+                      {indexStats.unique}
+                    </span>
+                  )}
+                  {indexStats.normal > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-200">
+                      <Hash className="h-3 w-3" />
+                      {indexStats.normal}
+                    </span>
+                  )}
+                </div>
+              )}
+            </TabsTrigger>
+          )}
           <TabsTrigger value="auth" className="gap-2">
             <ShieldUser className="h-4 w-4" />
             {t('builderTabs.auth')}
@@ -174,9 +178,11 @@ export function TableBuilderContainer({
         <TabsContent value="fields" className="mt-4">
           <DataTable {...dataTableProps} />
         </TabsContent>
-        <TabsContent value="indexes" className="mt-4">
-          <IndexPanel {...indexPanelProps} />
-        </TabsContent>
+        {showIndexTab && (
+          <TabsContent value="indexes" className="mt-4">
+            <IndexPanel {...indexPanelProps} />
+          </TabsContent>
+        )}
         <TabsContent value="auth" className="mt-4">
           <AuthPanel {...authPanelProps} />
         </TabsContent>
