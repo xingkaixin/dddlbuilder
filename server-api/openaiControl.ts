@@ -48,8 +48,9 @@ export type OpenAIRetryResult<T> = {
   attempts: number;
 };
 
-const readEnvInt = (key: string, fallback: number): number => {
-  const raw = process.env[key];
+// Environment variable helpers
+const readEnvInt = (value: string | undefined, fallback: number): number => {
+  const raw = value;
   const parsed = Number(raw);
   if (!raw || Number.isNaN(parsed) || parsed <= 0) {
     return fallback;
@@ -57,44 +58,67 @@ const readEnvInt = (key: string, fallback: number): number => {
   return Math.floor(parsed);
 };
 
-const readEnvBool = (key: string, fallback: boolean): boolean => {
-  const raw = process.env[key];
-  if (!raw) return fallback;
-  const normalized = raw.trim().toLowerCase();
+const readEnvBool = (value: string | undefined, fallback: boolean): boolean => {
+  if (!value) return fallback;
+  const normalized = value.trim().toLowerCase();
   return ['1', 'true', 'yes', 'on'].includes(normalized);
 };
 
-const DEFAULT_WINDOW_MS = readEnvInt('OPENAI_RATELIMIT_WINDOW_MS', 60_000);
-const RATE_LIMIT_ENABLED = readEnvBool('OPENAI_RATELIMIT_ENABLED', true);
-const RETRY_MAX_ATTEMPTS = readEnvInt('OPENAI_RETRY_MAX_ATTEMPTS', 3);
-const RETRY_BASE_DELAY_MS = readEnvInt('OPENAI_RETRY_BASE_DELAY_MS', 400);
-const RETRY_MAX_DELAY_MS = readEnvInt('OPENAI_RETRY_MAX_DELAY_MS', 3_000);
+// Build config from environment bindings
+export type OpenAIConfig = {
+  defaultWindowMs: number;
+  rateLimitEnabled: boolean;
+  retryMaxAttempts: number;
+  retryBaseDelayMs: number;
+  retryMaxDelayMs: number;
+  dailyBudgetEnabled: boolean;
+  dailyBudgetMaxTokens: number;
+  counterStoreMode: 'memory' | 'kv';
+  rateLimitRules: Record<OpenAIRouteKey, RateLimitRule>;
+};
+
+export const buildOpenAIConfig = (env: ApiEnv['Bindings']): OpenAIConfig => {
+  const defaultWindowMs = readEnvInt(env.OPENAI_RATELIMIT_WINDOW_MS, 60_000);
+  const rateLimitEnabled = readEnvBool(env.OPENAI_RATELIMIT_ENABLED, true);
+  const retryMaxAttempts = readEnvInt(env.OPENAI_RETRY_MAX_ATTEMPTS, 3);
+  const retryBaseDelayMs = readEnvInt(env.OPENAI_RETRY_BASE_DELAY_MS, 400);
+  const retryMaxDelayMs = readEnvInt(env.OPENAI_RETRY_MAX_DELAY_MS, 3_000);
+  const dailyBudgetEnabled = readEnvBool(env.OPENAI_DAILY_BUDGET_ENABLED, false);
+  const dailyBudgetMaxTokens = readEnvInt(env.OPENAI_DAILY_BUDGET_MAX_TOKENS, 0);
+  const counterStoreMode =
+    env.OPENAI_RATELIMIT_STORE?.trim().toLowerCase() === 'memory'
+      ? 'memory'
+      : 'kv';
+
+  return {
+    defaultWindowMs,
+    rateLimitEnabled,
+    retryMaxAttempts,
+    retryBaseDelayMs,
+    retryMaxDelayMs,
+    dailyBudgetEnabled,
+    dailyBudgetMaxTokens,
+    counterStoreMode,
+    rateLimitRules: {
+      explain: {
+        maxRequests: readEnvInt(env.OPENAI_RATELIMIT_EXPLAIN_MAX, 15),
+        windowMs: defaultWindowMs,
+      },
+      review: {
+        maxRequests: readEnvInt(env.OPENAI_RATELIMIT_REVIEW_MAX, 6),
+        windowMs: defaultWindowMs,
+      },
+      'generate-table': {
+        maxRequests: readEnvInt(env.OPENAI_RATELIMIT_GENERATE_MAX, 4),
+        windowMs: defaultWindowMs,
+      },
+    },
+  };
+};
+
 const RETRYABLE_STATUS_CODES = new Set([
   408, 409, 425, 429, 500, 502, 503, 504,
 ]);
-
-const DAILY_BUDGET_ENABLED = readEnvBool('OPENAI_DAILY_BUDGET_ENABLED', false);
-const DAILY_BUDGET_MAX_TOKENS = readEnvInt('OPENAI_DAILY_BUDGET_MAX_TOKENS', 0);
-
-const RATE_LIMIT_RULES: Record<OpenAIRouteKey, RateLimitRule> = {
-  explain: {
-    maxRequests: readEnvInt('OPENAI_RATELIMIT_EXPLAIN_MAX', 15),
-    windowMs: DEFAULT_WINDOW_MS,
-  },
-  review: {
-    maxRequests: readEnvInt('OPENAI_RATELIMIT_REVIEW_MAX', 6),
-    windowMs: DEFAULT_WINDOW_MS,
-  },
-  'generate-table': {
-    maxRequests: readEnvInt('OPENAI_RATELIMIT_GENERATE_MAX', 4),
-    windowMs: DEFAULT_WINDOW_MS,
-  },
-};
-
-const COUNTER_STORE_MODE =
-  process.env.OPENAI_RATELIMIT_STORE?.trim().toLowerCase() === 'memory'
-    ? 'memory'
-    : 'kv';
 
 export type GovernanceSnapshot = {
   rateLimitEnabled: boolean;
@@ -258,17 +282,18 @@ export const estimateRequestTokens = (
 
 export const getOpenAIGovernanceSnapshot = (
   routeKey: OpenAIRouteKey,
+  config: OpenAIConfig,
 ): GovernanceSnapshot => {
-  const rule = RATE_LIMIT_RULES[routeKey];
+  const rule = config.rateLimitRules[routeKey];
   return {
-    rateLimitEnabled: RATE_LIMIT_ENABLED,
-    rateLimitStore: COUNTER_STORE_MODE,
-    rateLimitLimit: RATE_LIMIT_ENABLED ? rule.maxRequests : null,
-    rateLimitWindowMs: RATE_LIMIT_ENABLED ? rule.windowMs : null,
-    budgetEnabled: DAILY_BUDGET_ENABLED,
+    rateLimitEnabled: config.rateLimitEnabled,
+    rateLimitStore: config.counterStoreMode,
+    rateLimitLimit: config.rateLimitEnabled ? rule.maxRequests : null,
+    rateLimitWindowMs: config.rateLimitEnabled ? rule.windowMs : null,
+    budgetEnabled: config.dailyBudgetEnabled,
     budgetLimitTokens:
-      DAILY_BUDGET_ENABLED && DAILY_BUDGET_MAX_TOKENS > 0
-        ? DAILY_BUDGET_MAX_TOKENS
+      config.dailyBudgetEnabled && config.dailyBudgetMaxTokens > 0
+        ? config.dailyBudgetMaxTokens
         : null,
   };
 };
@@ -314,8 +339,9 @@ const incrCounter = async (
   key: string,
   ttlMs: number,
   amount: number,
+  storeMode: 'memory' | 'kv',
 ): Promise<number> => {
-  if (COUNTER_STORE_MODE === 'memory' || !kv) {
+  if (storeMode === 'memory' || !kv) {
     return incrMemoryCounter(key, ttlMs, amount);
   }
 
@@ -357,6 +383,7 @@ const getMsUntilUtcTomorrow = () => {
 export async function enforceOpenAIRateLimit(
   c: Context<ApiEnv>,
   routeKey: OpenAIRouteKey,
+  config: OpenAIConfig,
 ): Promise<{
   response: Response | null;
   rateLimitHit: boolean;
@@ -364,7 +391,7 @@ export async function enforceOpenAIRateLimit(
   remaining: number | null;
   windowMs: number | null;
 }> {
-  if (!RATE_LIMIT_ENABLED) {
+  if (!config.rateLimitEnabled) {
     return {
       response: null,
       rateLimitHit: false,
@@ -374,7 +401,7 @@ export async function enforceOpenAIRateLimit(
     };
   }
 
-  const rule = RATE_LIMIT_RULES[routeKey];
+  const rule = config.rateLimitRules[routeKey];
   const now = Date.now();
   const windowBucket = Math.floor(now / rule.windowMs);
   const clientFingerprint = getClientFingerprint(c, routeKey);
@@ -382,7 +409,7 @@ export async function enforceOpenAIRateLimit(
   const ttlMs = rule.windowMs + 5_000;
 
   const kv = c.env?.RATE_LIMIT_KV;
-  const count = await incrCounter(kv, counterKey, ttlMs, 1);
+  const count = await incrCounter(kv, counterKey, ttlMs, 1, config.counterStoreMode);
   const remaining = Math.max(rule.maxRequests - count, 0);
 
   c.header('X-RateLimit-Limit', String(rule.maxRequests));
@@ -423,13 +450,14 @@ export async function enforceOpenAIRateLimit(
 export async function enforceOpenAIDailyBudget(
   c: Context<ApiEnv>,
   estimatedTokens: number,
+  config: OpenAIConfig,
 ): Promise<{
   response: Response | null;
   budgetHit: boolean;
   limitTokens: number | null;
   usedTokens: number | null;
 }> {
-  if (!DAILY_BUDGET_ENABLED || DAILY_BUDGET_MAX_TOKENS <= 0) {
+  if (!config.dailyBudgetEnabled || config.dailyBudgetMaxTokens <= 0) {
     return {
       response: null,
       budgetHit: false,
@@ -449,16 +477,17 @@ export async function enforceOpenAIDailyBudget(
     counterKey,
     ttlMs,
     safeEstimatedTokens,
+    config.counterStoreMode,
   );
 
-  c.header('X-Budget-Limit-Tokens', String(DAILY_BUDGET_MAX_TOKENS));
+  c.header('X-Budget-Limit-Tokens', String(config.dailyBudgetMaxTokens));
   c.header('X-Budget-Used-Tokens', String(usedTokens));
 
-  if (usedTokens <= DAILY_BUDGET_MAX_TOKENS) {
+  if (usedTokens <= config.dailyBudgetMaxTokens) {
     return {
       response: null,
       budgetHit: false,
-      limitTokens: DAILY_BUDGET_MAX_TOKENS,
+      limitTokens: config.dailyBudgetMaxTokens,
       usedTokens,
     };
   }
@@ -471,7 +500,7 @@ export async function enforceOpenAIDailyBudget(
       'BUDGET_EXCEEDED',
     ),
     budgetHit: true,
-    limitTokens: DAILY_BUDGET_MAX_TOKENS,
+    limitTokens: config.dailyBudgetMaxTokens,
     usedTokens,
   };
 }
@@ -489,10 +518,11 @@ export function logOpenAIAudit(payload: AuditLogPayload) {
 export async function withOpenAIRetry<T>(
   operation: () => Promise<T>,
   options: RetryOptions,
+  config: OpenAIConfig,
 ): Promise<OpenAIRetryResult<T>> {
-  const maxAttempts = options.maxAttempts ?? RETRY_MAX_ATTEMPTS;
-  const baseDelayMs = options.baseDelayMs ?? RETRY_BASE_DELAY_MS;
-  const maxDelayMs = options.maxDelayMs ?? RETRY_MAX_DELAY_MS;
+  const maxAttempts = options.maxAttempts ?? config.retryMaxAttempts;
+  const baseDelayMs = options.baseDelayMs ?? config.retryBaseDelayMs;
+  const maxDelayMs = options.maxDelayMs ?? config.retryMaxDelayMs;
 
   let attempt = 0;
   while (attempt < maxAttempts) {

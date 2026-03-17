@@ -25,6 +25,8 @@ dist-ssr
 
 .claude
 .env
+wrangler.local.toml
+wrangler.deploy.toml
 
 playwright-report
 test-results

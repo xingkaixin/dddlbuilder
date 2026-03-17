@@ -6,10 +6,9 @@ export type CspMode = 'off' | 'report-only' | 'enforce' | 'both';
 const DEFAULT_CSP_POLICY =
   "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.cn https://cdn-font.hyperos.mi.com; font-src 'self' data: https://fonts.gstatic.cn https://cdn-font.hyperos.mi.com; img-src 'self' data: blob: https:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
 
-const readEnvBool = (key: string, fallback: boolean): boolean => {
-  const raw = process.env[key];
-  if (!raw) return fallback;
-  return ['1', 'true', 'yes', 'on'].includes(raw.trim().toLowerCase());
+const readEnvBool = (value: string | undefined, fallback: boolean): boolean => {
+  if (!value) return fallback;
+  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
 };
 
 const normalizeMode = (raw: string | undefined): CspMode => {
@@ -27,10 +26,10 @@ export type ResolvedCspConfig = {
   policy: string;
 };
 
-export const resolveCspConfig = (): ResolvedCspConfig => {
-  const enabled = readEnvBool('CSP_ENABLE', true);
-  const mode = normalizeMode(process.env.CSP_MODE);
-  const policyRaw = process.env.CSP_POLICY?.trim();
+export const resolveCspConfig = (env: ApiEnv['Bindings']): ResolvedCspConfig => {
+  const enabled = readEnvBool(env.CSP_ENABLE, true);
+  const mode = normalizeMode(env.CSP_MODE);
+  const policyRaw = env.CSP_POLICY?.trim();
   const policy =
     policyRaw && policyRaw.length > 0 ? policyRaw : DEFAULT_CSP_POLICY;
 
@@ -50,7 +49,7 @@ export const resolveCspConfig = (): ResolvedCspConfig => {
 };
 
 export const applyCspHeaders = (c: Context<ApiEnv>) => {
-  const config = resolveCspConfig();
+  const config = resolveCspConfig(c.env);
   if (!config.enabled) {
     return;
   }

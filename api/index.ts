@@ -18,8 +18,8 @@ const DEFAULT_ALLOWED_ORIGINS = [
 
 const REQUEST_ID_PATTERN = /^[a-zA-Z0-9._:-]{1,128}$/;
 
-const parseAllowedOrigins = () => {
-  const raw = process.env.CORS_ALLOWED_ORIGINS?.trim();
+const parseAllowedOrigins = (envOrigins?: string): string[] => {
+  const raw = envOrigins?.trim();
   if (!raw) return DEFAULT_ALLOWED_ORIGINS;
   const items = raw
     .split(',')
@@ -27,8 +27,6 @@ const parseAllowedOrigins = () => {
     .filter(Boolean);
   return items.length > 0 ? items : DEFAULT_ALLOWED_ORIGINS;
 };
-
-const ALLOWED_CORS_ORIGINS = parseAllowedOrigins();
 
 const normalizeIncomingRequestId = (value: string | undefined) => {
   if (!value) return null;
@@ -48,7 +46,10 @@ app.use('/*', async (c, next) => {
 app.use(
   '/*',
   cors({
-    origin: ALLOWED_CORS_ORIGINS,
+    origin: (origin, c) => {
+      const allowed = parseAllowedOrigins(c.env.CORS_ALLOWED_ORIGINS);
+      return allowed.includes(origin) ? origin : null;
+    },
     allowMethods: ['GET', 'POST', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
     exposeHeaders: [

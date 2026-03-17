@@ -1,5 +1,5 @@
 name = "ddlbuilder"
-compatibility_date = "2024-01-01"
+compatibility_date = "2026-03-17"
 main = "dist/server.js"
 
 # 前端静态资源
@@ -7,19 +7,33 @@ main = "dist/server.js"
 directory = "dist/client"
 
 # KV 命名空间绑定
+# 本地开发：创建 wrangler.local.toml 并填入实际的 KV ID
+# 创建命令：wrangler kv namespace create "ddl-share"
+# 创建命令：wrangler kv namespace create "ddl-llm-rate"
 [[kv_namespaces]]
 binding = "SHARE_KV"
-id = "ddl-share"
+id = "YOUR_SHARE_KV_ID"
 
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
-id = "ddl-llm-rate"
+id = "YOUR_RATE_LIMIT_KV_ID"
 
 # 环境变量（敏感信息通过 wrangler secret 设置）
 [vars]
+CORS_ALLOWED_ORIGINS="https://ddl.xingkaixin.me"
 OPENAI_RATELIMIT_STORE = "kv"
+OPENAI_RATELIMIT_ENABLED = "true"
+OPENAI_RATELIMIT_WINDOW_MS = "60000"
+OPENAI_RATELIMIT_EXPLAIN_MAX = "15"
+OPENAI_RATELIMIT_REVIEW_MAX = "6"
+OPENAI_RATELIMIT_GENERATE_MAX = "4"
+OPENAI_RETRY_MAX_ATTEMPTS = "3"
+OPENAI_RETRY_BASE_DELAY_MS = "400"
+OPENAI_RETRY_MAX_DELAY_MS = "3000"
+OPENAI_DAILY_BUDGET_ENABLED = "false"
+OPENAI_DAILY_BUDGET_MAX_TOKENS = "0"
+CSP_ENABLE = "true"
+CSP_MODE = "both"
 
-# 路由规则（可选，也可以通过 CF Dashboard 配置）
-[[routes]]
-pattern = "ddl.xingkaixin.me/*"
-custom_domain = true
+# 自定义域名（已在 CF Dashboard 配置）
+# 注意：custom_domain 类型不需要 pattern，Workers 会自动处理所有路径

@@ -9,6 +9,7 @@ import {
   estimateRequestTokens,
   logOpenAIAudit,
   withOpenAIRetry,
+  buildOpenAIConfig,
 } from '../openaiControl.js';
 import {
   errorResponse,
@@ -27,9 +28,10 @@ const MAX_OUTPUT_TOKENS = 4000;
 export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
   app.post('/generate-table', async (c) => {
     const route = 'generate-table' as const;
+    const config = buildOpenAIConfig(c.env);
     const requestId = getRequestId(c) ?? 'unknown';
     const startedAt = Date.now();
-    const governance = getOpenAIGovernanceSnapshot(route);
+    const governance = getOpenAIGovernanceSnapshot(route, config);
 
     let estimatedTokens = 0;
     let rateLimitRemaining: number | null = governance.rateLimitLimit;
@@ -50,7 +52,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
         retryCount,
         rateLimitHit,
         estimatedTokens,
-        model: process.env.OPENAI_MODEL_NAME || 'gpt-4o-mini',
+        model: c.env.OPENAI_MODEL_NAME || 'gpt-4o-mini',
         maxOutputTokens: MAX_OUTPUT_TOKENS,
         rateLimitEnabled: governance.rateLimitEnabled,
         rateLimitStore: governance.rateLimitStore,
@@ -65,7 +67,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
       });
     };
 
-    const rateLimit = await enforceOpenAIRateLimit(c, route);
+    const rateLimit = await enforceOpenAIRateLimit(c, route, config);
     rateLimitRemaining = rateLimit.remaining;
     if (rateLimit.response) {
       audit(429, 0, true, false, 'RATE_LIMIT_EXCEEDED');
@@ -120,16 +122,16 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
       MAX_OUTPUT_TOKENS,
     );
 
-    const budget = await enforceOpenAIDailyBudget(c, estimatedTokens);
+    const budget = await enforceOpenAIDailyBudget(c, estimatedTokens, config);
     budgetUsedTokens = budget.usedTokens;
     if (budget.response) {
       audit(429, 0, false, true, 'BUDGET_EXCEEDED');
       return budget.response;
     }
 
-    const baseURL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
-    const apiKey = process.env.OPENAI_API_KEY;
-    const model = process.env.OPENAI_MODEL_NAME || 'gpt-4o-mini';
+    const baseURL = c.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+    const apiKey = c.env.OPENAI_API_KEY;
+    const model = c.env.OPENAI_MODEL_NAME || 'gpt-4o-mini';
 
     if (!apiKey) {
       audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
@@ -179,6 +181,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
               } as any),
             })) as any,
           { scope: 'GenerateTable' },
+          config,
         );
 
         retryCount = attempts;
