@@ -25,8 +25,6 @@ interface ApplyTemplatePopoverProps {
   onSaveAsTemplate: () => void;
 }
 
-const trackEvent = (..._args: unknown[]) => {};
-
 function includesQuery(value: string | undefined, query: string): boolean {
   if (!value) return false;
   return value.toLowerCase().includes(query);
@@ -66,7 +64,7 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
     onSaveAsTemplate,
   }) => {
     const { t } = useTranslation();
-    const trackEvent = (..._args: unknown[]) => {};
+    const trackEvent = useCallback((..._args: unknown[]) => {}, []);
     const [open, setOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const hasTrackedSearchRef = useRef(false);

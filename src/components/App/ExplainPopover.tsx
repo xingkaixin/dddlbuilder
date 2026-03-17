@@ -18,7 +18,7 @@ export function ExplainPopover({
   containerRef,
 }: ExplainPopoverProps) {
   const { t } = useTranslation();
-  const trackEvent = (..._args: unknown[]) => {};
+  const trackEvent = useCallback((..._args: unknown[]) => {}, []);
   const [selection, setSelection] = useState<{
     text: string;
     x: number;

@@ -74,7 +74,7 @@ export const DDLOutput = memo<DDLOutputProps>(
     onApplySuggestion,
   }) => {
     const { t } = useTranslation();
-    const trackEvent = (..._args: unknown[]) => {};
+    const trackEvent = useCallback((..._args: unknown[]) => {}, []);
     const { showToast } = useToast();
     const databaseOption = useMemo(
       () => DATABASE_OPTIONS.find((option) => option.value === dbType),

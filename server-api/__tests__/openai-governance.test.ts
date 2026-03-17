@@ -33,14 +33,6 @@ const loadApp = async (env: Record<string, string | undefined>) => {
   return module.default;
 };
 
-const jsonResponse = (value: unknown) =>
-  new Response(JSON.stringify(value), {
-    status: 200,
-    headers: {
-      'content-type': 'application/json',
-    },
-  });
-
 afterEach(() => {
   vi.restoreAllMocks();
   restoreEnv();

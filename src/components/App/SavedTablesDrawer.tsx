@@ -31,7 +31,6 @@ import {
 import { useSavedTablesFilter } from './saved-tables/useSavedTablesFilter';
 
 type MoveOperationResult = { ok: boolean; message?: string };
-const trackEvent = (..._args: unknown[]) => {};
 const drawerIconButtonClass =
   'h-7 w-7 text-muted-foreground/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50';
 const drawerCardButtonClass =
@@ -131,7 +130,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     onDeleteFolder,
   }) => {
     const { t } = useTranslation();
-    const trackEvent = (..._args: unknown[]) => {};
+    const trackEvent = useCallback((..._args: unknown[]) => {}, []);
     const [searchQuery, setSearchQuery] = useState('');
     const [dragFeedback, setDragFeedback] = useState<{
       type: 'success' | 'blocked' | 'error';
