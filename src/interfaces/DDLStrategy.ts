@@ -1,4 +1,9 @@
-import type { DatabaseType, NormalizedField, IndexDefinition } from '../types';
+import type {
+  DatabaseType,
+  NormalizedField,
+  IndexDefinition,
+  TableMiscConfig,
+} from '../types';
 import type { TableDiff } from '../utils/tableDiff';
 
 export interface DDLStrategy {
@@ -9,6 +14,7 @@ export interface DDLStrategy {
     tableName: string,
     tableComment: string,
     fields: NormalizedField[],
+    tableMiscConfig?: TableMiscConfig,
   ): string;
 
   /**

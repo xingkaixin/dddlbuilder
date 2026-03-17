@@ -16,6 +16,7 @@ import {
   supportsCharsetOption,
   supportsCollationOption,
   supportsTablespaceOption,
+  supportsStorageOption,
 } from '@/utils/tableOptions';
 import { useTranslation } from 'react-i18next';
 
@@ -30,6 +31,7 @@ const COLLATION_OPTIONS = [
   'utf8mb4_unicode_ci',
   'utf8mb4_bin',
 ];
+const STORAGE_FORMAT_OPTIONS = ['ORC', 'TEXTFILE', 'PARQUET'];
 
 interface TableOptionsPanelProps {
   dbType: DatabaseType;
@@ -39,6 +41,9 @@ interface TableOptionsPanelProps {
   onCharsetChange: (charset: string) => void;
   onCollationChange: (collation: string) => void;
   onTablespaceChange: (tablespace: string) => void;
+  onStoredAsChange?: (value: TableMiscConfig['storedAs']) => void;
+  onExternalChange?: (value: boolean) => void;
+  onLocationChange?: (value: string) => void;
 }
 
 export const TableOptionsPanel = memo<TableOptionsPanelProps>(
@@ -50,22 +55,29 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
     onCharsetChange,
     onCollationChange,
     onTablespaceChange,
+    onStoredAsChange,
+    onExternalChange,
+    onLocationChange,
   }) => {
     const supportsEngine = supportsEngineOption(dbType);
     const supportsCharset = supportsCharsetOption(dbType);
     const supportsCollation = supportsCollationOption(dbType);
     const supportsTablespace = supportsTablespaceOption(dbType);
+    const supportsStorage = supportsStorageOption(dbType);
+    const isHive = dbType === 'hive';
     const { t } = useTranslation();
     const hasAnyOption =
       supportsEngine ||
       supportsCharset ||
       supportsCollation ||
-      supportsTablespace;
+      supportsTablespace ||
+      supportsStorage;
 
     const disabled = !config.enabled;
     const effectiveEngine = config.engine || DEFAULT_OPTION_VALUE;
     const effectiveCharset = config.charset || DEFAULT_OPTION_VALUE;
     const effectiveCollation = config.collation || DEFAULT_OPTION_VALUE;
+    const effectiveStoredAs = config.storedAs || DEFAULT_OPTION_VALUE;
 
     const infoText = useMemo(() => {
       if (!hasAnyOption) {
@@ -109,6 +121,7 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
             </div>
           ) : (
             <div className="space-y-5">
+              {/* MySQL-style options: Engine, Charset, Collation */}
               {(supportsEngine || supportsCharset || supportsCollation) && (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {supportsEngine && (
@@ -218,6 +231,7 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                 </div>
               )}
 
+              {/* Tablespace option (PostgreSQL/Oracle) */}
               {supportsTablespace && (
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold">
@@ -230,6 +244,84 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                     disabled={disabled}
                     className="font-mono text-sm transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                   />
+                </div>
+              )}
+
+              {/* Hive-specific options */}
+              {isHive && (
+                <div className="space-y-4 rounded-lg border border-dashed p-4">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Hive
+                  </p>
+
+                  {/* Storage format */}
+                  {supportsStorage && (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">
+                        {t('tableOptionsPanel.storageFormat')}
+                      </Label>
+                      <Select
+                        value={effectiveStoredAs}
+                        onValueChange={(value) =>
+                          onStoredAsChange?.(
+                            value === DEFAULT_OPTION_VALUE
+                              ? ''
+                              : (value as TableMiscConfig['storedAs']),
+                          )
+                        }
+                        disabled={disabled}
+                      >
+                        <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
+                          <SelectValue
+                            placeholder={t(
+                              'tableOptionsPanel.storageFormatPlaceholder',
+                            )}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={DEFAULT_OPTION_VALUE}>
+                            {t('tableOptionsPanel.default')}
+                          </SelectItem>
+                          {STORAGE_FORMAT_OPTIONS.map((opt) => (
+                            <SelectItem key={opt} value={opt}>
+                              {opt}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* External table toggle */}
+                  <div className="flex items-center justify-between rounded-lg border border-dashed p-3">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-semibold">
+                        {t('tableOptionsPanel.externalTable')}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        {t('tableOptionsPanel.externalTableDesc')}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={!!config.external}
+                      onCheckedChange={(v) => onExternalChange?.(v)}
+                      disabled={disabled}
+                    />
+                  </div>
+
+                  {/* Location path */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">
+                      {t('tableOptionsPanel.location')}
+                    </Label>
+                    <Input
+                      placeholder={t('tableOptionsPanel.locationPlaceholder')}
+                      value={config.location || ''}
+                      onChange={(e) => onLocationChange?.(e.target.value)}
+                      disabled={disabled}
+                      className="font-mono text-sm transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
                 </div>
               )}
 

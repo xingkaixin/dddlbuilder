@@ -95,6 +95,7 @@ export const buildDDL = (
     tableName.trim(),
     tableComment,
     fields,
+    tableMiscConfig,
   );
 
   const tableOptionsClause = buildTableOptionsClause(dbType, tableMiscConfig);

@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTranslation } from 'react-i18next';
 import { AuthPanel } from '../AuthPanel';
 import { DataTable } from '../DataTable';
+import { HivePartitionPanel } from '../HivePartitionPanel';
 import { IndexPanel } from '../IndexPanel';
 import { PartitionPanel } from '../PartitionPanel';
 import { ShardingPanel } from '../ShardingPanel';
@@ -37,12 +38,15 @@ interface TableBuilderContainerProps {
   shardingBadgeText?: string | null;
   showPartitionTab: boolean;
   partitionBadgeText?: string | null;
+  showHivePartitionTab: boolean;
+  hivePartitionBadgeText?: string | null;
   dataTableProps: ComponentProps<typeof DataTable>;
   indexPanelProps: ComponentProps<typeof IndexPanel>;
   authPanelProps: ComponentProps<typeof AuthPanel>;
   tableOptionsPanelProps: ComponentProps<typeof TableOptionsPanel>;
   shardingPanelProps?: ComponentProps<typeof ShardingPanel>;
   partitionPanelProps?: ComponentProps<typeof PartitionPanel>;
+  hivePartitionPanelProps?: ComponentProps<typeof HivePartitionPanel>;
 }
 
 export function TableBuilderContainer({
@@ -58,12 +62,15 @@ export function TableBuilderContainer({
   shardingBadgeText,
   showPartitionTab,
   partitionBadgeText,
+  showHivePartitionTab,
+  hivePartitionBadgeText,
   dataTableProps,
   indexPanelProps,
   authPanelProps,
   tableOptionsPanelProps,
   shardingPanelProps,
   partitionPanelProps,
+  hivePartitionPanelProps,
 }: TableBuilderContainerProps) {
   const { t } = useTranslation();
 
@@ -152,6 +159,17 @@ export function TableBuilderContainer({
               )}
             </TabsTrigger>
           )}
+          {showHivePartitionTab && (
+            <TabsTrigger value="hive-partition" className="gap-2">
+              <Layers className="h-4 w-4" />
+              {t('builderTabs.hivePartition')}
+              {hivePartitionBadgeText && (
+                <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
+                  {hivePartitionBadgeText}
+                </span>
+              )}
+            </TabsTrigger>
+          )}
         </TabsList>
         <TabsContent value="fields" className="mt-4">
           <DataTable {...dataTableProps} />
@@ -173,6 +191,11 @@ export function TableBuilderContainer({
         {showPartitionTab && partitionPanelProps && (
           <TabsContent value="partition" className="mt-4">
             <PartitionPanel {...partitionPanelProps} />
+          </TabsContent>
+        )}
+        {showHivePartitionTab && hivePartitionPanelProps && (
+          <TabsContent value="hive-partition" className="mt-4">
+            <HivePartitionPanel {...hivePartitionPanelProps} />
           </TabsContent>
         )}
       </Tabs>

@@ -12,7 +12,8 @@ export type DatabaseType =
   | 'kingbase'
   | 'gbase'
   | 'polardb'
-  | 'gaussdb';
+  | 'gaussdb'
+  | 'hive';
 
 export type FieldRow = {
   order: number;
@@ -97,6 +98,19 @@ export type MysqlPartitionConfig = {
   partitions?: PartitionDefinition[]; // 分区定义（RANGE/LIST 类型）
 };
 
+// Hive 分区列定义
+export type HivePartitionColumn = {
+  name: string; // 分区列名
+  type: string; // 分区列类型（STRING, INT, BIGINT 等）
+  comment: string; // 分区列注释
+};
+
+// Hive 分区配置（PARTITIONED BY）
+export type HivePartitionConfig = {
+  enabled: boolean; // 是否启用分区
+  columns: HivePartitionColumn[]; // 分区列定义
+};
+
 // 表级杂项配置
 export type TableMiscConfig = {
   enabled: boolean; // 是否启用杂项设置
@@ -104,6 +118,10 @@ export type TableMiscConfig = {
   charset?: string; // 表字符集（MySQL 系）
   collation?: string; // 表排序规则（MySQL 系）
   tablespace?: string; // 表空间（部分数据库）
+  storedAs?: 'ORC' | 'TEXTFILE' | 'PARQUET' | ''; // 存储格式（Hive）
+  external?: boolean; // 是否外部表（Hive）
+  location?: string; // 存储路径（Hive）
+  partitions?: HivePartitionConfig; // 分区配置（Hive）
 };
 
 export type FieldTableViewConfig = {

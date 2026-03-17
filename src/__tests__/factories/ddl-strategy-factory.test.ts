@@ -35,6 +35,7 @@ describe('DDLStrategyFactory', () => {
       'dm',
       'gaussdb',
       'gbase',
+      'hive',
       'kingbase',
       'mariadb',
       'mysql',

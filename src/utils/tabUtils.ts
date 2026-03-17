@@ -11,6 +11,7 @@ export function getAvailableTabs(dbType: DatabaseType): string[] {
   const tabs = [...ALWAYS_AVAILABLE_TABS];
   if (dbType === 'postgresql-citus') tabs.push('sharding');
   if (MYSQL_PARTITION_DBS.includes(dbType)) tabs.push('partition');
+  if (dbType === 'hive') tabs.push('hive-partition');
   return tabs;
 }
 

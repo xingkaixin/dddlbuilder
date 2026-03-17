@@ -25,4 +25,5 @@ export const DATABASE_OPTIONS: Array<{
   { value: 'gbase', label: 'GBase', icon: Database },
   { value: 'polardb', label: 'PolarDB', icon: Database },
   { value: 'gaussdb', label: 'GaussDB', icon: HardDrive },
+  { value: 'hive', label: 'Hive', icon: Database },
 ];

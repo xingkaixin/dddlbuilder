@@ -237,6 +237,10 @@ function App() {
     setCharset,
     setCollation,
     setTablespace,
+    setStoredAs,
+    setExternal,
+    setLocation,
+    setHivePartitionConfig,
     setTableMiscConfig,
     resetTableMiscConfig,
   } = useTableOptions(persistedState || undefined);
@@ -844,6 +848,12 @@ function App() {
                       ? mysqlPartitionConfig.type
                       : null
                   }
+                  showHivePartitionTab={dbType === 'hive'}
+                  hivePartitionBadgeText={
+                    tableMiscConfig.partitions?.enabled
+                      ? `${tableMiscConfig.partitions.columns.length}`
+                      : null
+                  }
                   dataTableProps={{
                     isHighlighted: isFieldTableHighlighted,
                     highlightedRowIndex: highlightedRowIndex,
@@ -869,6 +879,9 @@ function App() {
                     onCharsetChange: setCharset,
                     onCollationChange: setCollation,
                     onTablespaceChange: setTablespace,
+                    onStoredAsChange: setStoredAs,
+                    onExternalChange: setExternal,
+                    onLocationChange: setLocation,
                   }}
                   shardingPanelProps={{
                     config: citusShardingConfig,
@@ -888,6 +901,36 @@ function App() {
                     onRemovePartition: removePartition,
                     onUpdatePartition: updatePartition,
                     onGeneratePartitions: generateRangePartitions,
+                  }}
+                  hivePartitionPanelProps={{
+                    config: tableMiscConfig.partitions || {
+                      enabled: false,
+                      columns: [],
+                    },
+                    onEnabledChange: (enabled) =>
+                      setHivePartitionConfig((prev) => ({
+                        ...(prev || { enabled: false, columns: [] }),
+                        enabled,
+                      })),
+                    onAddColumn: (column) =>
+                      setHivePartitionConfig((prev) => ({
+                        ...(prev || { enabled: true, columns: [] }),
+                        columns: [...(prev?.columns || []), column],
+                      })),
+                    onRemoveColumn: (name) =>
+                      setHivePartitionConfig((prev) => ({
+                        ...(prev || { enabled: false, columns: [] }),
+                        columns: (prev?.columns || []).filter(
+                          (c) => c.name !== name,
+                        ),
+                      })),
+                    onUpdateColumn: (originalName, column) =>
+                      setHivePartitionConfig((prev) => ({
+                        ...(prev || { enabled: false, columns: [] }),
+                        columns: (prev?.columns || []).map((c) =>
+                          c.name === originalName ? column : c,
+                        ),
+                      })),
                   }}
                 />
               </div>

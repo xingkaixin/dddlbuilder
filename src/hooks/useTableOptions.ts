@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import type { PersistedState, TableMiscConfig } from '@/types';
+import type { PersistedState, TableMiscConfig, HivePartitionConfig } from '@/types';
 import { useTableOptionsStore } from '@/stores';
 
 export interface UseTableOptionsReturn {
@@ -9,6 +9,12 @@ export interface UseTableOptionsReturn {
   setCharset: (charset: string) => void;
   setCollation: (collation: string) => void;
   setTablespace: (tablespace: string) => void;
+  setStoredAs: (value: TableMiscConfig['storedAs']) => void;
+  setExternal: (value: boolean) => void;
+  setLocation: (value: string) => void;
+  setHivePartitionConfig: React.Dispatch<
+    React.SetStateAction<HivePartitionConfig>
+  >;
   setTableMiscConfig: React.Dispatch<React.SetStateAction<TableMiscConfig>>;
   resetTableMiscConfig: () => void;
 }
@@ -24,6 +30,12 @@ export function useTableOptions(
   const setCharset = useTableOptionsStore((state) => state.setCharset);
   const setCollation = useTableOptionsStore((state) => state.setCollation);
   const setTablespace = useTableOptionsStore((state) => state.setTablespace);
+  const setStoredAs = useTableOptionsStore((state) => state.setStoredAs);
+  const setExternal = useTableOptionsStore((state) => state.setExternal);
+  const setLocation = useTableOptionsStore((state) => state.setLocation);
+  const setHivePartitionConfig = useTableOptionsStore(
+    (state) => state.setHivePartitionConfig,
+  );
   const setTableMiscConfig = useTableOptionsStore(
     (state) => state.setTableMiscConfig,
   );
@@ -58,6 +70,10 @@ export function useTableOptions(
     setCharset,
     setCollation,
     setTablespace,
+    setStoredAs,
+    setExternal,
+    setLocation,
+    setHivePartitionConfig,
     setTableMiscConfig,
     resetTableMiscConfig,
   };

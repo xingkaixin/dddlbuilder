@@ -13,6 +13,7 @@ import { KingbaseStrategy } from '../strategies/KingbaseStrategy';
 import { GBaseStrategy } from '../strategies/GBaseStrategy';
 import { PolarDbStrategy } from '../strategies/PolarDbStrategy';
 import { GaussDbStrategy } from '../strategies/GaussDbStrategy';
+import { HiveStrategy } from '../strategies/HiveStrategy';
 
 const strategies = new Map<DatabaseType, DDLStrategy>();
 
@@ -30,6 +31,7 @@ strategies.set('kingbase', new KingbaseStrategy());
 strategies.set('gbase', new GBaseStrategy());
 strategies.set('polardb', new PolarDbStrategy());
 strategies.set('gaussdb', new GaussDbStrategy());
+strategies.set('hive', new HiveStrategy());
 
 export class DDLStrategyFactory {
   static create(databaseType: DatabaseType): DDLStrategy {

@@ -1,0 +1,80 @@
+import type { NormalizedField, TableMiscConfig } from '../types';
+import {
+  escapeSingleQuotes,
+  parseFieldType,
+} from '../utils/databaseTypeMapping';
+import { AbstractDDLStrategy } from './AbstractDDLStrategy';
+
+export class HiveStrategy extends AbstractDDLStrategy {
+  getDatabaseType(): 'hive' {
+    return 'hive';
+  }
+
+  generateTableDDL(
+    tableName: string,
+    tableComment: string,
+    fields: NormalizedField[],
+    tableMiscConfig?: TableMiscConfig,
+  ): string {
+    const typeMapper = this.createTypeMapper();
+
+    const columnLines = fields.map((field) => {
+      const parsedType = parseFieldType(field.type);
+      const type = typeMapper.mapType(parsedType);
+
+      const comment = field.comment
+        ? ` COMMENT '${escapeSingleQuotes(field.comment)}'`
+        : '';
+
+      return `  ${this.formatFieldName(field.name)} ${type}${comment}`;
+    });
+
+    const externalClause = tableMiscConfig?.external ? 'EXTERNAL ' : '';
+
+    const commentClause = tableComment
+      ? ` COMMENT '${escapeSingleQuotes(tableComment.trim())}'`
+      : '';
+
+    const partitionClause = this.buildPartitionClause(
+      tableMiscConfig?.partitions,
+    );
+
+    const storedAsClause = tableMiscConfig?.storedAs
+      ? `\nSTORED AS ${tableMiscConfig.storedAs}`
+      : '';
+
+    const locationClause = tableMiscConfig?.location
+      ? `\nLOCATION '${escapeSingleQuotes(tableMiscConfig.location)}'`
+      : '';
+
+    return (
+      `CREATE ${externalClause}TABLE ${this.formatTableName(tableName)} (\n` +
+      `${columnLines.join(',\n')}\n)` +
+      `${partitionClause}${commentClause}${storedAsClause}${locationClause};`
+    );
+  }
+
+  generateIndexDDL(): string {
+    return '';
+  }
+
+  private buildPartitionClause(
+    config?: TableMiscConfig['partitions'],
+  ): string {
+    if (!config?.enabled || config.columns.length === 0) {
+      return '';
+    }
+
+    const typeMapper = this.createTypeMapper();
+    const columns = config.columns.map((col) => {
+      const parsedType = parseFieldType(col.type);
+      const type = typeMapper.mapType(parsedType);
+      const comment = col.comment
+        ? ` COMMENT '${escapeSingleQuotes(col.comment)}'`
+        : '';
+      return `  ${col.name} ${type}${comment}`;
+    });
+
+    return `\nPARTITIONED BY (\n${columns.join(',\n')}\n)`;
+  }
+}

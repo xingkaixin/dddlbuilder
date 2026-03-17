@@ -19,6 +19,11 @@ const TABLESPACE_DBS = new Set<DatabaseType>([
   'dm',
 ]);
 
+const HIVE_DBS = new Set<DatabaseType>(['hive']);
+
+export const supportsStorageOption = (dbType: DatabaseType): boolean =>
+  HIVE_DBS.has(dbType);
+
 export const supportsEngineOption = (dbType: DatabaseType): boolean =>
   MYSQL_LIKE_DBS.has(dbType);
 
@@ -41,6 +46,7 @@ export const buildTableOptionsClause = (
   config?: TableMiscConfig,
 ): string => {
   if (!config?.enabled) return '';
+  if (HIVE_DBS.has(dbType)) return '';
 
   const engine = normalizeValue(config.engine);
   const charset = normalizeValue(config.charset);

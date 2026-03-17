@@ -378,3 +378,39 @@ export const TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
 
 // PostgreSQL (Citus) reuses PostgreSQL type mappings.
 TYPE_MAPPINGS['postgresql-citus'] = TYPE_MAPPINGS.postgresql;
+
+// Hive 数据仓库类型映射
+TYPE_MAPPINGS.hive = {
+  string: { mapping: 'STRING' },
+  varchar: { transform: () => 'STRING' },
+  nvarchar: { transform: () => 'STRING' },
+  char: { transform: () => 'STRING' },
+  nchar: { transform: () => 'STRING' },
+  text: { transform: () => 'STRING' },
+  mediumtext: { transform: () => 'STRING' },
+  longtext: { transform: () => 'STRING' },
+  int: { mapping: 'INT' },
+  integer: { mapping: 'INT' },
+  tinyint: { mapping: 'TINYINT' },
+  smallint: { mapping: 'SMALLINT' },
+  bigint: { mapping: 'BIGINT' },
+  decimal: { mapping: 'DECIMAL', defaultArgs: ['10', '3'] },
+  numeric: { mapping: 'DECIMAL', defaultArgs: ['10', '3'] },
+  float: { mapping: 'FLOAT' },
+  double: { mapping: 'DOUBLE' },
+  real: { mapping: 'DOUBLE' },
+  date: { mapping: 'DATE' },
+  datetime: { mapping: 'TIMESTAMP' },
+  datetime2: { mapping: 'TIMESTAMP' },
+  timestamp: { mapping: 'TIMESTAMP' },
+  time: { transform: () => 'STRING' },
+  boolean: { mapping: 'BOOLEAN' },
+  bool: { mapping: 'BOOLEAN' },
+  bit: { mapping: 'BOOLEAN' },
+  json: { transform: () => 'STRING' },
+  jsonb: { transform: () => 'STRING' },
+  blob: { mapping: 'BINARY' },
+  varbinary: { mapping: 'BINARY' },
+  uuid: { transform: () => 'STRING' },
+  serial: { mapping: 'INT' },
+};

@@ -1,4 +1,9 @@
-import type { NormalizedField, IndexDefinition, DatabaseType } from '../types';
+import type {
+  NormalizedField,
+  IndexDefinition,
+  DatabaseType,
+  TableMiscConfig,
+} from '../types';
 import type { DDLStrategy } from '../interfaces/DDLStrategy';
 import {
   escapeSingleQuotes,
@@ -110,6 +115,7 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
     tableName: string,
     tableComment: string,
     fields: NormalizedField[],
+    tableMiscConfig?: TableMiscConfig,
   ): string;
 
   /**
