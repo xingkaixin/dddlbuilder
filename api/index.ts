@@ -77,4 +77,10 @@ registerReviewRoute(app);
 registerGenerateTableRoute(app);
 registerShareRoutes(app);
 
+// SPA fallback: non-API routes return index.html for client-side routing
+app.get('*', async (c) => {
+  const res = await c.env.ASSETS.fetch(c.req.raw);
+  return new Response(res.body, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+});
+
 export default app;

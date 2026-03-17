@@ -5,6 +5,7 @@ export type ApiEnv = {
     requestId: string;
   };
   Bindings: {
+    ASSETS: { fetch: typeof fetch };
     SHARE_KV: KVNamespace;
     RATE_LIMIT_KV: KVNamespace;
     // Environment variables
