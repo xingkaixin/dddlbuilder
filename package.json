@@ -4,7 +4,7 @@
   "version": "0.15.4",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "wrangler dev --port 3000",
     "build": "tsc -b tsconfig.build.json && vite build --config vite.config.server.ts && vite build && bun run docs:build && cp -r dist/docs dist/client/",
     "docs:dev": "bun run --cwd docs docs:dev",
     "docs:build": "bun install --cwd docs && bun run --cwd docs docs:build",

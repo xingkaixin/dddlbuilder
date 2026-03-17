@@ -5,6 +5,34 @@ import api from './api/index';
 
 const app = new Hono();
 
+// Local dev: bridge process.env to c.env so Hono routes can use c.env.VARIABLE_NAME
+app.use('/api/*', async (c, next) => {
+  // Only bridge if not already set (Workers runtime pre-populates c.env)
+  if (!(c.env as any).OPENAI_API_KEY) {
+    Object.assign(c.env as object, {
+      CORS_ALLOWED_ORIGINS: process.env.CORS_ALLOWED_ORIGINS,
+      OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+      OPENAI_MODEL_NAME: process.env.OPENAI_MODEL_NAME,
+      OPENAI_RATELIMIT_STORE: process.env.OPENAI_RATELIMIT_STORE,
+      OPENAI_RATELIMIT_ENABLED: process.env.OPENAI_RATELIMIT_ENABLED,
+      OPENAI_RATELIMIT_WINDOW_MS: process.env.OPENAI_RATELIMIT_WINDOW_MS,
+      OPENAI_RATELIMIT_EXPLAIN_MAX: process.env.OPENAI_RATELIMIT_EXPLAIN_MAX,
+      OPENAI_RATELIMIT_REVIEW_MAX: process.env.OPENAI_RATELIMIT_REVIEW_MAX,
+      OPENAI_RATELIMIT_GENERATE_MAX: process.env.OPENAI_RATELIMIT_GENERATE_MAX,
+      OPENAI_RETRY_MAX_ATTEMPTS: process.env.OPENAI_RETRY_MAX_ATTEMPTS,
+      OPENAI_RETRY_BASE_DELAY_MS: process.env.OPENAI_RETRY_BASE_DELAY_MS,
+      OPENAI_RETRY_MAX_DELAY_MS: process.env.OPENAI_RETRY_MAX_DELAY_MS,
+      OPENAI_DAILY_BUDGET_ENABLED: process.env.OPENAI_DAILY_BUDGET_ENABLED,
+      OPENAI_DAILY_BUDGET_MAX_TOKENS: process.env.OPENAI_DAILY_BUDGET_MAX_TOKENS,
+      CSP_ENABLE: process.env.CSP_ENABLE,
+      CSP_MODE: process.env.CSP_MODE,
+      CSP_POLICY: process.env.CSP_POLICY,
+    });
+  }
+  await next();
+});
+
 // Mount API routes
 app.route('/', api);
 
