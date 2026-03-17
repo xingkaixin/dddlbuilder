@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b tsconfig.build.json && vite build --config vite.config.server.ts && vite build && bun run docs:build",
+    "build": "tsc -b tsconfig.build.json && vite build --config vite.config.server.ts && vite build && bun run docs:build && cp -r dist/docs dist/client/",
     "docs:dev": "bun run --cwd docs docs:dev",
     "docs:build": "bun install --cwd docs && bun run --cwd docs docs:build",
     "docs:preview": "bun run --cwd docs docs:preview",
@@ -20,7 +20,8 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "bunx playwright show-report"
+    "test:e2e:report": "bunx playwright show-report",
+    "deploy":"bun run build && wrangler deploy --config wrangler.deploy.toml"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
