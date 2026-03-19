@@ -10,7 +10,7 @@
     "docs:build": "bun install --cwd docs && bun run --cwd docs docs:build",
     "docs:preview": "bun run --cwd docs docs:preview",
     "start": "bun run server.ts",
-    "e2e:serve": "mkdir -p .wrangler-home/Library/Preferences/.wrangler/logs && HOME=\"$PWD/.wrangler-home\" WRANGLER_LOG=none wrangler dev --config wrangler.e2e.toml --ip 127.0.0.1 --port 3000 --inspector-port 0",
+    "e2e:serve": "mkdir -p .wrangler-home/Library/Preferences/.wrangler/logs .wrangler/state/e2e && HOME=\"$PWD/.wrangler-home\" ./node_modules/.bin/wrangler dev --config wrangler.e2e.toml --local --no-bundle --show-interactive-dev-session=false --persist-to .wrangler/state/e2e --ip 127.0.0.1 --port 3000 --inspector-port 0 --log-level error",
     "logo": "bun run scripts/generate-logos.ts && bun run scripts/generate-favicon.ts",
     "lint": "biome check .",
     "lint:fix": "biome check --fix .",
