@@ -1,6 +1,8 @@
 import type { ParserConstructor, ParserModule } from './types.js';
 
 let parserConstructorPromise: Promise<ParserConstructor> | null = null;
+const defaultParserModuleLoader = () => import('node-sql-parser');
+let parserModuleLoader: () => Promise<ParserModule> = defaultParserModuleLoader;
 
 const normalizeParserConstructor = (module: ParserModule) => {
   const parserFromNamed = module.Parser;
@@ -29,9 +31,22 @@ const normalizeParserConstructor = (module: ParserModule) => {
 
 export const loadParserConstructor = (): Promise<ParserConstructor> => {
   if (!parserConstructorPromise) {
-    parserConstructorPromise = import('node-sql-parser').then((module) =>
+    parserConstructorPromise = parserModuleLoader().then((module) =>
       normalizeParserConstructor(module),
     );
   }
   return parserConstructorPromise;
+};
+
+// Test-only reset hook for environments where module cache survives vi.resetModules().
+export const __resetParserConstructorPromiseForTests = () => {
+  parserConstructorPromise = null;
+};
+
+// Test-only loader override to avoid brittle mocking around dynamic imports.
+export const __setParserModuleLoaderForTests = (
+  loader: (() => Promise<ParserModule>) | null,
+) => {
+  parserModuleLoader = loader ?? defaultParserModuleLoader;
+  parserConstructorPromise = null;
 };

@@ -1,9 +1,17 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const importParserLoader = async () => {
+  const { loadParserConstructor, __setParserModuleLoaderForTests } =
+    await import('@/utils/sql-parser/parserLoader');
+  return {
+    loadParserConstructor,
+    __setParserModuleLoaderForTests,
+  };
+};
 
 describe('parserLoader', () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.resetModules();
-    vi.doUnmock('node-sql-parser');
   });
 
   it('应优先使用命名导出 Parser', async () => {
@@ -13,13 +21,11 @@ describe('parserLoader', () => {
       }
     }
 
-    vi.doMock('node-sql-parser', () => ({
+    const { loadParserConstructor, __setParserModuleLoaderForTests } =
+      await importParserLoader();
+    __setParserModuleLoaderForTests(async () => ({
       Parser: NamedParser,
     }));
-
-    const { loadParserConstructor } = await import(
-      '@/utils/sql-parser/parserLoader'
-    );
     await expect(loadParserConstructor()).resolves.toBe(NamedParser);
   });
 
@@ -30,16 +36,14 @@ describe('parserLoader', () => {
       }
     }
 
-    vi.doMock('node-sql-parser', () => ({
+    const { loadParserConstructor, __setParserModuleLoaderForTests } =
+      await importParserLoader();
+    __setParserModuleLoaderForTests(async () => ({
       Parser: undefined,
       default: {
         Parser: DefaultObjectParser,
       },
     }));
-
-    const { loadParserConstructor } = await import(
-      '@/utils/sql-parser/parserLoader'
-    );
     await expect(loadParserConstructor()).resolves.toBe(DefaultObjectParser);
   });
 
@@ -50,26 +54,22 @@ describe('parserLoader', () => {
       }
     }
 
-    vi.doMock('node-sql-parser', () => ({
+    const { loadParserConstructor, __setParserModuleLoaderForTests } =
+      await importParserLoader();
+    __setParserModuleLoaderForTests(async () => ({
       Parser: undefined,
       default: DefaultParser,
     }));
-
-    const { loadParserConstructor } = await import(
-      '@/utils/sql-parser/parserLoader'
-    );
     await expect(loadParserConstructor()).resolves.toBe(DefaultParser);
   });
 
   it('无可用构造器时应抛出错误', async () => {
-    vi.doMock('node-sql-parser', () => ({
+    const { loadParserConstructor, __setParserModuleLoaderForTests } =
+      await importParserLoader();
+    __setParserModuleLoaderForTests(async () => ({
       Parser: undefined,
       default: {},
     }));
-
-    const { loadParserConstructor } = await import(
-      '@/utils/sql-parser/parserLoader'
-    );
     await expect(loadParserConstructor()).rejects.toThrow(
       'node-sql-parser 模块加载失败：Parser 构造器不可用',
     );
@@ -83,16 +83,14 @@ describe('parserLoader', () => {
       }
     }
 
-    vi.doMock('node-sql-parser', () => {
+    const { loadParserConstructor, __setParserModuleLoaderForTests } =
+      await importParserLoader();
+    __setParserModuleLoaderForTests(async () => {
       loadCount += 1;
       return {
         Parser: CachedParser,
       };
     });
-
-    const { loadParserConstructor } = await import(
-      '@/utils/sql-parser/parserLoader'
-    );
     const [first, second] = await Promise.all([
       loadParserConstructor(),
       loadParserConstructor(),
