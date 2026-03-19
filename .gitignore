@@ -26,6 +26,7 @@ dist-ssr
 .claude
 .env
 .wrangler
+.wrangler-home
 wrangler.local.toml
 wrangler.deploy.toml
 
