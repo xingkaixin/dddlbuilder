@@ -58,9 +58,7 @@ const serverConfig = {
   fetch: app.fetch,
 };
 
-if (import.meta.main) {
-  Bun.serve(serverConfig);
-  console.log(`🚀 Server running at http://localhost:${port}`);
-}
+Bun.serve(serverConfig);
+console.log(`🚀 Server running at http://localhost:${port}`);
 
 export { serverConfig };
