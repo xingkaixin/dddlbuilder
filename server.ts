@@ -53,9 +53,14 @@ app.get('*', serveStatic({ path: './dist/index.html' }));
 
 const port = Number(process.env.PORT) || 3000;
 
-console.log(`🚀 Server running at http://localhost:${port}`);
-
-export default {
+const serverConfig = {
   port,
   fetch: app.fetch,
 };
+
+if (import.meta.main) {
+  Bun.serve(serverConfig);
+  console.log(`🚀 Server running at http://localhost:${port}`);
+}
+
+export { serverConfig };

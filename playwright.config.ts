@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const webServerCommand = process.env.CI
+  ? 'PORT=3000 bun run start'
+  : 'bun run dev -- --host 127.0.0.1';
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -57,7 +61,7 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'bun run dev -- --host 127.0.0.1',
+    command: webServerCommand,
     url: 'http://127.0.0.1:3000',
     reuseExistingServer: !process.env.CI,
   },
