@@ -14,6 +14,9 @@ export default defineConfig({
     rollupOptions: {
       // Cloudflare Workers 提供内置全局变量，不需要打包
       external: [],
+      output: {
+        codeSplitting: false,
+      },
     },
     target: 'es2022',
   },
