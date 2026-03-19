@@ -45,11 +45,11 @@ app.use('/*', async (c, next) => {
   applyCspHeaders(c);
 });
 
-// Serve static files from dist/
-app.use('/*', serveStatic({ root: './dist' }));
+// Serve built client assets.
+app.use('/*', serveStatic({ root: './dist/client' }));
 
 // Fallback to index.html for SPA routing
-app.get('*', serveStatic({ path: './dist/index.html' }));
+app.get('*', serveStatic({ path: './dist/client/index.html' }));
 
 const port = Number(process.env.PORT) || 3000;
 
