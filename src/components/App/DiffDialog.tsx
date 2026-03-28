@@ -163,12 +163,12 @@ export const DiffDialog = memo<DiffDialogProps>(
     const [showRollback, setShowRollback] = useState(false);
 
     const alterDDL = useMemo(() => {
-      if (!diff || !diff.hasChanges) return '';
+      if (!diff?.hasChanges) return '';
       return generateAlterDDL(tableName, diff, fields, dbType);
     }, [tableName, diff, fields, dbType]);
 
     const rollbackDDL = useMemo(() => {
-      if (!diff || !diff.hasChanges) return '';
+      if (!diff?.hasChanges) return '';
       return generateRollbackDDL(tableName, diff, fields, dbType);
     }, [tableName, diff, fields, dbType]);
 

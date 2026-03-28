@@ -338,7 +338,7 @@ export const shouldQuoteDefault = (canonical: string, value?: string) => {
   // 支持两种调用方式：shouldQuoteDefault(type) 或 shouldQuoteDefault(type, value)
   const testValue = value !== undefined ? value : 'test';
 
-  if (!testValue || !testValue.trim()) return false;
+  if (!testValue?.trim()) return false;
   if (isCharacterType(canonical)) return true;
   if (
     [
