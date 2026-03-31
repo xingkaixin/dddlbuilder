@@ -1,9 +1,5 @@
 import { useEffect } from 'react';
-import type {
-  PersistedState,
-  TableMiscConfig,
-  HivePartitionConfig,
-} from '@/types';
+import type { PersistedState, TableMiscConfig, HivePartitionConfig } from '@/types';
 import { useTableOptionsStore } from '@/stores';
 
 export interface UseTableOptionsReturn {
@@ -16,9 +12,7 @@ export interface UseTableOptionsReturn {
   setStoredAs: (value: TableMiscConfig['storedAs']) => void;
   setExternal: (value: boolean) => void;
   setLocation: (value: string) => void;
-  setHivePartitionConfig: React.Dispatch<
-    React.SetStateAction<HivePartitionConfig>
-  >;
+  setHivePartitionConfig: React.Dispatch<React.SetStateAction<HivePartitionConfig>>;
   setTableMiscConfig: React.Dispatch<React.SetStateAction<TableMiscConfig>>;
   resetTableMiscConfig: () => void;
 }
@@ -26,9 +20,7 @@ export interface UseTableOptionsReturn {
 export function useTableOptions(
   persistedState?: Pick<PersistedState, 'tableMiscConfig'>,
 ): UseTableOptionsReturn {
-  const tableMiscConfig = useTableOptionsStore(
-    (state) => state.tableMiscConfig,
-  );
+  const tableMiscConfig = useTableOptionsStore((state) => state.tableMiscConfig);
   const setMiscEnabled = useTableOptionsStore((state) => state.setMiscEnabled);
   const setEngine = useTableOptionsStore((state) => state.setEngine);
   const setCharset = useTableOptionsStore((state) => state.setCharset);
@@ -37,21 +29,13 @@ export function useTableOptions(
   const setStoredAs = useTableOptionsStore((state) => state.setStoredAs);
   const setExternal = useTableOptionsStore((state) => state.setExternal);
   const setLocation = useTableOptionsStore((state) => state.setLocation);
-  const setHivePartitionConfig = useTableOptionsStore(
-    (state) => state.setHivePartitionConfig,
-  );
-  const setTableMiscConfig = useTableOptionsStore(
-    (state) => state.setTableMiscConfig,
-  );
-  const hydratedFromPersisted = useTableOptionsStore(
-    (state) => state.hydratedFromPersisted,
-  );
+  const setHivePartitionConfig = useTableOptionsStore((state) => state.setHivePartitionConfig);
+  const setTableMiscConfig = useTableOptionsStore((state) => state.setTableMiscConfig);
+  const hydratedFromPersisted = useTableOptionsStore((state) => state.hydratedFromPersisted);
   const markHydratedFromPersisted = useTableOptionsStore(
     (state) => state.markHydratedFromPersisted,
   );
-  const resetTableMiscConfig = useTableOptionsStore(
-    (state) => state.resetTableMiscConfig,
-  );
+  const resetTableMiscConfig = useTableOptionsStore((state) => state.resetTableMiscConfig);
 
   useEffect(() => {
     if (!persistedState?.tableMiscConfig || hydratedFromPersisted) return;
@@ -60,12 +44,7 @@ export function useTableOptions(
       ...persistedState.tableMiscConfig,
     }));
     markHydratedFromPersisted();
-  }, [
-    hydratedFromPersisted,
-    markHydratedFromPersisted,
-    persistedState,
-    setTableMiscConfig,
-  ]);
+  }, [hydratedFromPersisted, markHydratedFromPersisted, persistedState, setTableMiscConfig]);
 
   return {
     tableMiscConfig,

@@ -19,11 +19,7 @@ export class PostgresStrategy extends AbstractDDLStrategy {
     return this.databaseType;
   }
 
-  generateTableDDL(
-    tableName: string,
-    tableComment: string,
-    fields: NormalizedField[],
-  ): string {
+  generateTableDDL(tableName: string, tableComment: string, fields: NormalizedField[]): string {
     const typeMapper = this.createTypeMapper();
     const columnLines = fields.map((field) => {
       const parsedType = parseFieldType(field.type);
@@ -50,9 +46,7 @@ export class PostgresStrategy extends AbstractDDLStrategy {
         def = ' DEFAULT gen_random_uuid()';
       }
 
-      return `  ${this.formatFieldName(
-        field.name,
-      )} ${type}${identity}${nullableClause}${def}`;
+      return `  ${this.formatFieldName(field.name)} ${type}${identity}${nullableClause}${def}`;
     });
 
     const qualifiedTableName = this.formatTableName(tableName);
@@ -62,9 +56,7 @@ export class PostgresStrategy extends AbstractDDLStrategy {
 
     if (tableComment.trim()) {
       statements.push(
-        `COMMENT ON TABLE ${qualifiedTableName} IS '${escapeSingleQuotes(
-          tableComment.trim(),
-        )}';`,
+        `COMMENT ON TABLE ${qualifiedTableName} IS '${escapeSingleQuotes(tableComment.trim())}';`,
       );
     }
 

@@ -41,9 +41,7 @@ test.describe('字段模板应用验证 @fields', () => {
       });
 
       // 1. 填一个字段
-      const cell = page.locator(
-        '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
-      );
+      const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
       await expect(cell).toBeVisible();
       await cell.dblclick();
       await page.locator('[data-testid="data-table"] input').fill('custom_f1');
@@ -51,9 +49,7 @@ test.describe('字段模板应用验证 @fields', () => {
 
       await templateBtn.click();
       await page.getByText(/将当前行保存为模板/i).click();
-      await expect(
-        page.getByRole('heading', { name: /保存为模板/i }),
-      ).toBeVisible();
+      await expect(page.getByRole('heading', { name: /保存为模板/i })).toBeVisible();
 
       await page.getByLabel('模板名称').fill('MyCustomTemplate');
       await page.getByRole('button', { name: /创建模板/i }).click();
@@ -62,9 +58,7 @@ test.describe('字段模板应用验证 @fields', () => {
       await templateBtn.click();
       await page.getByRole('button', { name: /MyCustomTemplate/i }).click();
 
-      const sqlOutput = page.locator(
-        '.relative.flex-1.overflow-auto.px-4.py-3\\.5 pre',
-      );
+      const sqlOutput = page.locator('.relative.flex-1.overflow-auto.px-4.py-3\\.5 pre');
       await expect(sqlOutput).toContainText(/custom_f1/i);
     }
   });

@@ -60,9 +60,7 @@ describe('useMysqlPartition', () => {
     act(() => {
       result.current.setPartitionExpression('YEAR(created_at)');
     });
-    expect(result.current.mysqlPartitionConfig.expression).toBe(
-      'YEAR(created_at)',
-    );
+    expect(result.current.mysqlPartitionConfig.expression).toBe('YEAR(created_at)');
 
     // Setting columns should clear expression
     act(() => {
@@ -87,9 +85,7 @@ describe('useMysqlPartition', () => {
       result.current.setPartitionExpression('dayofmonth(start_time)');
     });
 
-    expect(result.current.mysqlPartitionConfig.expression).toBe(
-      'dayofmonth(start_time)',
-    );
+    expect(result.current.mysqlPartitionConfig.expression).toBe('dayofmonth(start_time)');
     expect(result.current.mysqlPartitionConfig.columns).toHaveLength(0);
   });
 
@@ -126,9 +122,7 @@ describe('useMysqlPartition', () => {
     act(() => {
       result.current.updatePartition('p1', { name: 'p1', value: '2023' });
     });
-    expect(result.current.mysqlPartitionConfig.partitions?.[0].value).toBe(
-      '2023',
-    );
+    expect(result.current.mysqlPartitionConfig.partitions?.[0].value).toBe('2023');
 
     // Remove partition
     act(() => {

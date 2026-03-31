@@ -5,15 +5,7 @@ import type { FieldRow } from '@/types';
 const parseNullable = (value: string): string => {
   if (!value) return '是';
   const v = value.trim().toLowerCase();
-  const notNullableValues = new Set([
-    'n',
-    'no',
-    '否',
-    'false',
-    '0',
-    'not null',
-    'notnull',
-  ]);
+  const notNullableValues = new Set(['n', 'no', '否', 'false', '0', 'not null', 'notnull']);
   if (notNullableValues.has(v)) {
     return '否';
   }
@@ -33,10 +25,7 @@ interface UseDataTableClipboardParams {
     'defaultValue',
     'onUpdate',
   ];
-  syncFieldRenameDependencies: (
-    oldFieldName: string,
-    newFieldName: string,
-  ) => void;
+  syncFieldRenameDependencies: (oldFieldName: string, newFieldName: string) => void;
   clearSelection: () => void;
 }
 
@@ -53,10 +42,7 @@ export function useDataTableClipboard({
       const clipboardData = e.clipboardData?.getData('text/plain');
       if (!clipboardData) return;
 
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      ) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
 
@@ -111,8 +97,7 @@ export function useDataTableClipboard({
             row.nullable = parseNullable(value);
           } else {
             (row as Record<string, unknown>)[key] =
-              value ||
-              (key === 'defaultKind' || key === 'onUpdate' ? '无' : '');
+              value || (key === 'defaultKind' || key === 'onUpdate' ? '无' : '');
           }
         });
         newRows[targetRowIndex] = row;
@@ -126,14 +111,7 @@ export function useDataTableClipboard({
 
       clearSelection();
     },
-    [
-      setRows,
-      selectedCell,
-      rows,
-      editableColumnKeys,
-      syncFieldRenameDependencies,
-      clearSelection,
-    ],
+    [setRows, selectedCell, rows, editableColumnKeys, syncFieldRenameDependencies, clearSelection],
   );
 
   return { handlePaste };

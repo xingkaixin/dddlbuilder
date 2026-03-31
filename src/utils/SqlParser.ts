@@ -49,11 +49,7 @@ export class SqlParser {
     }));
   }
 
-  private parseWithParser(
-    parser: ParserInstance,
-    sql: string,
-    dbType: DatabaseType,
-  ): ParsedResult {
+  private parseWithParser(parser: ParserInstance, sql: string, dbType: DatabaseType): ParsedResult {
     let sqlToParse = sql;
     let extractedComments: {
       tableComment: string;
@@ -98,10 +94,7 @@ export class SqlParser {
       const processed = preprocessMysql(sqlToParse);
       sqlToParse = processed.sql;
       extractedPartitionConfig = processed.partitionConfig;
-      if (
-        processed.tableComment ||
-        Object.keys(processed.columnComments).length > 0
-      ) {
+      if (processed.tableComment || Object.keys(processed.columnComments).length > 0) {
         mergeCommentSource(processed);
       }
     }
@@ -150,10 +143,7 @@ export class SqlParser {
         parseCreateTable(stmt, result, dbType);
       } else if (stmt.type === 'create' && stmt.keyword === 'index') {
         parseCreateIndex(stmt, result);
-      } else if (
-        stmt.type === 'alter' &&
-        (!stmt.keyword || stmt.keyword === 'table')
-      ) {
+      } else if (stmt.type === 'alter' && (!stmt.keyword || stmt.keyword === 'table')) {
         parseAlterTable(stmt, result);
       } else if (stmt.type === 'grant') {
         parseDCL(stmt, result);
@@ -163,18 +153,10 @@ export class SqlParser {
     }
 
     if (extractedComments) {
-      this.mergeComments(
-        result,
-        extractedComments.tableComment,
-        extractedComments.columnComments,
-      );
+      this.mergeComments(result, extractedComments.tableComment, extractedComments.columnComments);
     }
 
-    if (
-      dbType === 'sqlserver' &&
-      result.authObjects.length === 0 &&
-      rawGrantUsers.length > 0
-    ) {
+    if (dbType === 'sqlserver' && result.authObjects.length === 0 && rawGrantUsers.length > 0) {
       rawGrantUsers.forEach((u) => {
         if (!result.authObjects.includes(u)) {
           result.authObjects.push(u);

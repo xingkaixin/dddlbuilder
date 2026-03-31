@@ -31,12 +31,7 @@ export type NormalizedField = {
   type: string;
   comment: string;
   nullable: boolean;
-  defaultKind:
-    | 'none'
-    | 'auto_increment'
-    | 'constant'
-    | 'current_timestamp'
-    | 'uuid';
+  defaultKind: 'none' | 'auto_increment' | 'constant' | 'current_timestamp' | 'uuid';
   defaultValue: string;
   onUpdate: 'none' | 'current_timestamp';
 };

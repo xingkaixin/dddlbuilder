@@ -23,11 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { Input } from '../ui/input';
 import { FolderTree, useFolderExpansion } from './FolderTree';
 import { TableItem } from './saved-tables/TableItem';
-import {
-  ROOT_DROP_ID,
-  buildFolderParentMap,
-  resolveDropAction,
-} from './saved-tables/dnd';
+import { ROOT_DROP_ID, buildFolderParentMap, resolveDropAction } from './saved-tables/dnd';
 import { useSavedTablesFilter } from './saved-tables/useSavedTablesFilter';
 
 type MoveOperationResult = { ok: boolean; message?: string };
@@ -57,17 +53,11 @@ export interface SavedTablesDrawerProps {
   onMoveToFolder?: (
     item: SavedTableSummary,
     folderId?: string,
-  ) =>
-    | MoveOperationResult
-    | Promise<MoveOperationResult | undefined>
-    | undefined;
+  ) => MoveOperationResult | Promise<MoveOperationResult | undefined> | undefined;
   onMoveFolder?: (
     folder: FolderTreeNode,
     parentId?: string,
-  ) =>
-    | MoveOperationResult
-    | Promise<MoveOperationResult | undefined>
-    | undefined;
+  ) => MoveOperationResult | Promise<MoveOperationResult | undefined> | undefined;
   onCreateFolder?: (parentId?: string) => void;
   onRenameFolder?: (folder: FolderTreeNode) => void;
   onDeleteFolder?: (folder: FolderTreeNode) => void;
@@ -136,26 +126,20 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
       type: 'success' | 'blocked' | 'error';
       message: string;
     } | null>(null);
-    const dragFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-      null,
-    );
-    const { expandedFolders, toggleFolder, expandFolder } =
-      useFolderExpansion();
-    const [selectedFolderId, setSelectedFolderId] = useState<
-      string | undefined
-    >();
+    const dragFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const { expandedFolders, toggleFolder, expandFolder } = useFolderExpansion();
+    const [selectedFolderId, setSelectedFolderId] = useState<string | undefined>();
     const sensors = useSensors(
       useSensor(PointerSensor, {
         activationConstraint: { distance: 6 },
       }),
     );
 
-    const { foldersWithCount, filteredItems, ungroupedItems, isSearching } =
-      useSavedTablesFilter({
-        items,
-        folders,
-        searchQuery,
-      });
+    const { foldersWithCount, filteredItems, ungroupedItems, isSearching } = useSavedTablesFilter({
+      items,
+      folders,
+      searchQuery,
+    });
 
     const itemMap = useMemo(
       () => new Map(items.map((item) => [item.normalizedName, item])),
@@ -220,23 +204,13 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
               onSelect={() => onSelect(item)}
               onRename={() => onRename(item)}
               onDelete={() => onDelete(item)}
-              onViewHistory={
-                onViewHistory ? () => onViewHistory(item) : undefined
-              }
+              onViewHistory={onViewHistory ? () => onViewHistory(item) : undefined}
               dragDisabled={isSearching}
             />
           ))}
         </div>
       ),
-      [
-        activeDirty,
-        activeNormalizedName,
-        isSearching,
-        onDelete,
-        onRename,
-        onSelect,
-        onViewHistory,
-      ],
+      [activeDirty, activeNormalizedName, isSearching, onDelete, onRename, onSelect, onViewHistory],
     );
 
     const renderTables = useCallback(
@@ -274,7 +248,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
           folderParentMap,
         });
 
-        void trackEvent('saved_tables_drag_attempt', {
+        trackEvent('saved_tables_drag_attempt', {
           action: action.kind,
           reason: action.reason,
           hasTarget: Boolean(event.over?.id),
@@ -284,11 +258,8 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
           case 'none':
             return;
           case 'invalid_folder_cycle': {
-            showDragFeedback(
-              'blocked',
-              t('savedTables.dragFeedback.folderCycle'),
-            );
-            void trackEvent('saved_tables_drag_blocked', {
+            showDragFeedback('blocked', t('savedTables.dragFeedback.folderCycle'));
+            trackEvent('saved_tables_drag_blocked', {
               reason: action.reason,
             });
             return;
@@ -298,9 +269,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
             const item = itemMap.get(action.normalizedName);
             if (!item) return;
             try {
-              const result = await Promise.resolve(
-                onMoveToFolder(item, action.folderId),
-              );
+              const result = await Promise.resolve(onMoveToFolder(item, action.folderId));
               if (result && result.ok === false) {
                 showDragFeedback(
                   'error',
@@ -321,16 +290,13 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                     })
                   : t('savedTables.dragFeedback.tableMovedToRoot'),
               );
-              void trackEvent('saved_tables_drag_success', {
+              trackEvent('saved_tables_drag_success', {
                 entity: 'table',
                 reason: action.reason,
                 target: action.folderId ?? 'root',
               });
             } catch {
-              showDragFeedback(
-                'error',
-                t('savedTables.dragFeedback.moveFailed'),
-              );
+              showDragFeedback('error', t('savedTables.dragFeedback.moveFailed'));
             }
             return;
           }
@@ -339,9 +305,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
             const folder = folderNodeMap.get(action.folderId);
             if (!folder) return;
             try {
-              const result = await Promise.resolve(
-                onMoveFolder(folder, action.parentId),
-              );
+              const result = await Promise.resolve(onMoveFolder(folder, action.parentId));
               if (result && result.ok === false) {
                 showDragFeedback(
                   'error',
@@ -362,16 +326,13 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                     })
                   : t('savedTables.dragFeedback.folderMovedToRoot'),
               );
-              void trackEvent('saved_tables_drag_success', {
+              trackEvent('saved_tables_drag_success', {
                 entity: 'folder',
                 reason: action.reason,
                 target: action.parentId ?? 'root',
               });
             } catch {
-              showDragFeedback(
-                'error',
-                t('savedTables.dragFeedback.moveFailed'),
-              );
+              showDragFeedback('error', t('savedTables.dragFeedback.moveFailed'));
             }
             return;
           }
@@ -397,8 +358,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     );
 
     const hasFolders = folders.length > 0;
-    const hasVisibleContent =
-      filteredItems.length > 0 || foldersWithCount.length > 0;
+    const hasVisibleContent = filteredItems.length > 0 || foldersWithCount.length > 0;
     const isLoading = loading || foldersLoading;
     const canSearch = items.length > 0;
 
@@ -407,16 +367,12 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
         <DrawerContent className="flex h-full flex-col p-0">
           <div className="sr-only">
             <DrawerTitle>{t('savedTables.title')}</DrawerTitle>
-            <DrawerDescription>
-              {t('savedTables.drawerDescription')}
-            </DrawerDescription>
+            <DrawerDescription>{t('savedTables.drawerDescription')}</DrawerDescription>
           </div>
           <div className="flex items-center justify-between border-b border-primary/10 px-4 py-3">
             <div className="flex items-center gap-2">
               <Database className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold">
-                {t('savedTables.title')}
-              </span>
+              <span className="text-sm font-semibold">{t('savedTables.title')}</span>
               {(items.length > 0 || draftItem) && (
                 <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                   {items.length + (draftItem ? 1 : 0)}
@@ -501,9 +457,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                   onClick={onSelectDraft}
                 >
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">
-                      {t('savedTables.draft')}
-                    </div>
+                    <div className="truncate text-sm font-medium">{t('savedTables.draft')}</div>
                     <div className="mt-1 text-xs text-muted-foreground">
                       {t('savedTables.draftMeta', {
                         dbType: draftItem.dbType,
@@ -512,21 +466,16 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                     </div>
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    {draftActive
-                      ? t('savedTables.loaded')
-                      : t('savedTables.clickToLoad')}
+                    {draftActive ? t('savedTables.loaded') : t('savedTables.clickToLoad')}
                   </span>
                 </button>
               </div>
             )}
-            {!isLoading &&
-              !error &&
-              items.length > 0 &&
-              filteredItems.length === 0 && (
-                <div className="px-2 py-3 text-xs text-muted-foreground">
-                  {t('savedTables.noMatch')}
-                </div>
-              )}
+            {!isLoading && !error && items.length > 0 && filteredItems.length === 0 && (
+              <div className="px-2 py-3 text-xs text-muted-foreground">
+                {t('savedTables.noMatch')}
+              </div>
+            )}
 
             {!isLoading && !error && hasVisibleContent && (
               <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
@@ -548,10 +497,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                 )}
                 {isSearching ? (
                   renderTableList(filteredItems)
-                ) : hasFolders &&
-                  onCreateFolder &&
-                  onRenameFolder &&
-                  onDeleteFolder ? (
+                ) : hasFolders && onCreateFolder && onRenameFolder && onDeleteFolder ? (
                   <FolderTree
                     folders={foldersWithCount}
                     expandedFolders={expandedFolders}

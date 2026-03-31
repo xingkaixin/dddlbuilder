@@ -23,13 +23,8 @@ interface StorageEstimatorDialogProps {
 
 export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
   ({ open, onOpenChange, dbType, fields, storageFormat }) => {
-    const {
-      estimateRows,
-      setEstimateRows,
-      result,
-      rowSizeFormatted,
-      totalSizeDisplay,
-    } = useStorageEstimation(dbType, fields, storageFormat);
+    const { estimateRows, setEstimateRows, result, rowSizeFormatted, totalSizeDisplay } =
+      useStorageEstimation(dbType, fields, storageFormat);
 
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -52,9 +47,7 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
                   <Layers className="h-4 w-4" />
                   <span>单行预估大小</span>
                 </div>
-                <div className="text-3xl font-bold text-primary">
-                  {rowSizeFormatted}
-                </div>
+                <div className="text-3xl font-bold text-primary">{rowSizeFormatted}</div>
               </div>
               <div className="flex flex-col p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-xl">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
@@ -95,18 +88,14 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
                     max="10000000"
                     step="1000"
                     value={estimateRows}
-                    onChange={(e) =>
-                      setEstimateRows(parseInt(e.target.value, 10))
-                    }
+                    onChange={(e) => setEstimateRows(parseInt(e.target.value, 10))}
                     className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
                   />
                   <Input
                     id="rows-input"
                     type="number"
                     value={estimateRows}
-                    onChange={(e) =>
-                      setEstimateRows(parseInt(e.target.value, 10) || 0)
-                    }
+                    onChange={(e) => setEstimateRows(parseInt(e.target.value, 10) || 0)}
                     className="w-32 h-9 text-right font-mono"
                   />
                 </div>

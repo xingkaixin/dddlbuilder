@@ -27,12 +27,6 @@ export function useTemplateToolbarLeft({
         onSaveAsTemplate={handleSaveAsTemplate}
       />
     ),
-    [
-      templates,
-      templatesLoading,
-      handleApplyTemplate,
-      handleManageTemplates,
-      handleSaveAsTemplate,
-    ],
+    [templates, templatesLoading, handleApplyTemplate, handleManageTemplates, handleSaveAsTemplate],
   );
 }

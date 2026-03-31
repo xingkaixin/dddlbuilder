@@ -1,10 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-  fireEvent,
-  render,
-  screen,
-  userEvent,
-} from '@/__tests__/utils/test-utils';
+import { fireEvent, render, screen, userEvent } from '@/__tests__/utils/test-utils';
 import { EditableCell } from '@/components/App/table/EditableCell';
 
 describe('EditableCell', () => {

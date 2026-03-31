@@ -1,10 +1,6 @@
 import { memo } from 'react';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { GitCompare, List, Save, Sparkles, Table, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -60,8 +56,7 @@ export const TableConfig = memo<TableConfigProps>(
         : loadedStatus === 'clean'
           ? t('tableConfig.statusClean')
           : '';
-    const statusClass =
-      loadedStatus === 'dirty' ? 'text-amber-600' : 'text-muted-foreground';
+    const statusClass = loadedStatus === 'dirty' ? 'text-amber-600' : 'text-muted-foreground';
 
     return (
       <div className="relative group rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-shadow transition-transform duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5">
@@ -154,10 +149,7 @@ export const TableConfig = memo<TableConfigProps>(
                 <Tooltip>
                   <TooltipTrigger asChild>
                     {/* Wrap enabled button in span to ensure tooltip works even if button is disabled/pointer-events-none */}
-                    <span
-                      className="inline-flex"
-                      tabIndex={saveDisabled ? 0 : -1}
-                    >
+                    <span className="inline-flex" tabIndex={saveDisabled ? 0 : -1}>
                       <Button
                         type="button"
                         variant="secondary"
@@ -173,9 +165,7 @@ export const TableConfig = memo<TableConfigProps>(
                             : t('tableConfig.saveCurrent')
                         }
                         aria-describedby={
-                          saveDisabled && saveDisabledHint
-                            ? 'save-disabled-reason'
-                            : undefined
+                          saveDisabled && saveDisabledHint ? 'save-disabled-reason' : undefined
                         }
                       >
                         <Save className="h-3.5 w-3.5" />
@@ -183,11 +173,7 @@ export const TableConfig = memo<TableConfigProps>(
                     </span>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>
-                      {saveDisabled
-                        ? saveDisabledHint
-                        : t('tableConfig.saveCurrent')}
-                    </p>
+                    <p>{saveDisabled ? saveDisabledHint : t('tableConfig.saveCurrent')}</p>
                   </TooltipContent>
                 </Tooltip>
                 {saveDisabled && saveDisabledHint && (
@@ -214,11 +200,7 @@ export const TableConfig = memo<TableConfigProps>(
                     </TooltipContent>
                   </Tooltip>
                 )}
-                {statusLabel && (
-                  <span className={`text-xs ${statusClass}`}>
-                    {statusLabel}
-                  </span>
-                )}
+                {statusLabel && <span className={`text-xs ${statusClass}`}>{statusLabel}</span>}
               </div>
             </div>
             <div className="space-y-3 group/field">
@@ -255,25 +237,18 @@ export const TableConfig = memo<TableConfigProps>(
                 triggerClassName="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                 emptyMessage={t('searchableSelect.empty')}
                 renderTrigger={() => {
-                  const selectedOption = DATABASE_OPTIONS.find(
-                    (option) => option.value === dbType,
-                  );
-                  if (!selectedOption)
-                    return t('tableConfig.dbTypePlaceholder');
+                  const selectedOption = DATABASE_OPTIONS.find((option) => option.value === dbType);
+                  if (!selectedOption) return t('tableConfig.dbTypePlaceholder');
                   const Icon = selectedOption.icon;
                   return (
                     <div className="flex items-center gap-3">
                       <Icon className="h-5 w-5 text-primary" />
-                      <span className="font-medium">
-                        {selectedOption.label}
-                      </span>
+                      <span className="font-medium">{selectedOption.label}</span>
                     </div>
                   );
                 }}
                 renderItem={(option) => {
-                  const dbOption = DATABASE_OPTIONS.find(
-                    (opt) => opt.value === option.value,
-                  );
+                  const dbOption = DATABASE_OPTIONS.find((opt) => opt.value === option.value);
                   if (!dbOption) return <span>{option.label}</span>;
                   const Icon = dbOption.icon;
                   return (

@@ -95,10 +95,8 @@ export const useAppStore = create<AppStoreState>((set) => ({
   setTableComment: (tableComment) => set({ tableComment }),
   setDbType: (dbType) => set({ dbType }),
   setAddCount: (addCount) => set({ addCount }),
-  setFieldTableFreezeEnabled: (fieldTableFreezeEnabled) =>
-    set({ fieldTableFreezeEnabled }),
-  setFieldTableFreezeColumns: (fieldTableFreezeColumns) =>
-    set({ fieldTableFreezeColumns }),
+  setFieldTableFreezeEnabled: (fieldTableFreezeEnabled) => set({ fieldTableFreezeEnabled }),
+  setFieldTableFreezeColumns: (fieldTableFreezeColumns) => set({ fieldTableFreezeColumns }),
   setActiveTab: (activeTab) => set({ activeTab }),
   resetTableConfig: () =>
     set({
@@ -114,8 +112,7 @@ export const useAppStore = create<AppStoreState>((set) => ({
       activeTab: 'fields',
     }),
 
-  setSavedTablesDrawerOpen: (savedTablesDrawerOpen) =>
-    set({ savedTablesDrawerOpen }),
+  setSavedTablesDrawerOpen: (savedTablesDrawerOpen) => set({ savedTablesDrawerOpen }),
   setIsSaveDialogOpen: (open) =>
     set((state) => ({
       dialogs: { ...state.dialogs, save: open },
@@ -134,19 +131,13 @@ export const useAppStore = create<AppStoreState>((set) => ({
     })),
   setIsClearDialogOpen: (isClearDialogOpen) => set({ isClearDialogOpen }),
   setShowFireworks: (showFireworks) => set({ showFireworks }),
-  setLoadedTableNormalizedName: (loadedTableNormalizedName) =>
-    set({ loadedTableNormalizedName }),
+  setLoadedTableNormalizedName: (loadedTableNormalizedName) => set({ loadedTableNormalizedName }),
   setLoadedTableName: (loadedTableName) => set({ loadedTableName }),
-  setLoadedTableSignature: (loadedTableSignature) =>
-    set({ loadedTableSignature }),
+  setLoadedTableSignature: (loadedTableSignature) => set({ loadedTableSignature }),
   setIsDiffDialogOpen: (isDiffDialogOpen) => set({ isDiffDialogOpen }),
-  setIsVersionHistoryOpen: (isVersionHistoryOpen) =>
-    set({ isVersionHistoryOpen }),
-  setVersionHistoryTarget: (versionHistoryTarget) =>
-    set({ versionHistoryTarget }),
+  setIsVersionHistoryOpen: (isVersionHistoryOpen) => set({ isVersionHistoryOpen }),
+  setVersionHistoryTarget: (versionHistoryTarget) => set({ versionHistoryTarget }),
   setIsReviewHistoryOpen: (isReviewHistoryOpen) => set({ isReviewHistoryOpen }),
-  setIsStorageEstimatorOpen: (isStorageEstimatorOpen) =>
-    set({ isStorageEstimatorOpen }),
-  setIsAIGenerateDialogOpen: (isAIGenerateDialogOpen) =>
-    set({ isAIGenerateDialogOpen }),
+  setIsStorageEstimatorOpen: (isStorageEstimatorOpen) => set({ isStorageEstimatorOpen }),
+  setIsAIGenerateDialogOpen: (isAIGenerateDialogOpen) => set({ isAIGenerateDialogOpen }),
 }));

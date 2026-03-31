@@ -42,9 +42,7 @@ describe('TableItem', () => {
     expect(screen.getByText('users')).toBeInTheDocument();
     expect(screen.getByText('mysql')).toBeInTheDocument();
     expect(screen.getByText(/5\s*(字段|fields)/)).toBeInTheDocument();
-    expect(
-      screen.getByText(/(更新|Updated)\s*\d{1,2}[./-]\d{1,2}/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/(更新|Updated)\s*\d{1,2}[./-]\d{1,2}/)).toBeInTheDocument();
   });
 
   it('应渲染展开位占位且不影响点击选择', async () => {
@@ -80,10 +78,7 @@ describe('TableItem', () => {
     expect(placeholder).not.toHaveClass('mr-1');
     expect(metaRow).toHaveClass('whitespace-nowrap');
     expect(actionMask).toHaveClass('absolute', 'opacity-80');
-    expect(actionMask).toHaveClass(
-      'group-hover:opacity-100',
-      'group-focus-within:opacity-100',
-    );
+    expect(actionMask).toHaveClass('group-hover:opacity-100', 'group-focus-within:opacity-100');
     expect(actions).toHaveClass('absolute', 'opacity-70');
     expect(actions).not.toHaveClass('pointer-events-none');
     expect(actions).toHaveClass('group-hover:opacity-100');

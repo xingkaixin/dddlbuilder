@@ -15,9 +15,7 @@ import {
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from './fakeIndexedDb';
 import type { PersistedState } from '@/types';
 
-const createState = (
-  overrides: Partial<PersistedState> = {},
-): PersistedState => ({
+const createState = (overrides: Partial<PersistedState> = {}): PersistedState => ({
   tableName: 'test_table',
   tableComment: '测试',
   dbType: 'mysql',
@@ -219,13 +217,9 @@ describe('savedTablesDb', () => {
 
     const opened = await openDb();
     expect(opened).toBe(db as unknown as IDBDatabase);
-    expect(tableStore.createIndex).toHaveBeenCalledWith(
-      'folderId',
-      'folderId',
-      {
-        unique: false,
-      },
-    );
+    expect(tableStore.createIndex).toHaveBeenCalledWith('folderId', 'folderId', {
+      unique: false,
+    });
   });
 
   it('should reject when indexedDB.open throws', async () => {

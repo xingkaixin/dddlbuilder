@@ -17,8 +17,7 @@ const hashString = (input: string): string => {
   let hash = 2166136261;
   for (let i = 0; i < input.length; i += 1) {
     hash ^= input.charCodeAt(i);
-    hash +=
-      (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
   }
   return (hash >>> 0).toString(16).padStart(8, '0');
 };
@@ -61,10 +60,7 @@ const writeShareLinkCache = (record: ShareLinkCacheRecord) => {
 interface UseShareActionParams {
   buildPersistedState: () => PersistedState;
   showToast: (message: string) => void;
-  trackEvent: (
-    event: string,
-    data?: Record<string, AnalyticsValue>,
-  ) => Promise<void> | void;
+  trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void> | void;
 }
 
 export function useShareAction({
@@ -96,7 +92,7 @@ export function useShareAction({
         cached.url.length > 0
       ) {
         await navigator.clipboard.writeText(cached.url);
-        trackEvent('share_link_reuse');
+        void trackEvent('share_link_reuse');
         showToast(i18n.t('services.shareCopiedReused'));
         return;
       }
@@ -108,7 +104,7 @@ export function useShareAction({
         url: share.url,
         expiresAt: now + share.expiresInSeconds * 1000,
       });
-      trackEvent('share_link_create');
+      void trackEvent('share_link_create');
       showToast(i18n.t('services.shareCopied'));
     } catch (e) {
       reportError(e, {

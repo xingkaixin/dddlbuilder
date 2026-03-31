@@ -22,9 +22,7 @@ test.describe('MySQL 分区配置验证 @panels', () => {
     await page.locator('#table-name').fill('partition_test');
 
     // 添加字段
-    const cell = page.locator(
-      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
-    );
+    const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
     await cell.dblclick();
     await page.locator('[data-testid="data-table"] input').fill('id');
     await page.keyboard.press('Enter');

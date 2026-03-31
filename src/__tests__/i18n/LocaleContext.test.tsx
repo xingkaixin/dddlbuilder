@@ -100,9 +100,7 @@ describe('i18n/LocaleContext', () => {
     const normalizeSpy = vi.spyOn(localeTypes, 'normalizeLocale');
     normalizeSpy.mockImplementation((value) => {
       if (value === i18n.resolvedLanguage) return null;
-      return value === 'en-US' || value === 'zh-CN'
-        ? (value as 'en-US' | 'zh-CN')
-        : null;
+      return value === 'en-US' || value === 'zh-CN' ? (value as 'en-US' | 'zh-CN') : null;
     });
 
     const { result } = renderHook(() => useLocale(), { wrapper: Wrapper });

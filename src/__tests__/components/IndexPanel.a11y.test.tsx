@@ -1,10 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@/__tests__/utils/test-utils';
+import { fireEvent, render, screen, waitFor } from '@/__tests__/utils/test-utils';
 import { IndexPanel } from '@/components/App/IndexPanel';
 import { useAppStore, useFieldStore, useIndexStore } from '@/stores';
 
@@ -65,20 +60,11 @@ describe('IndexPanel a11y', () => {
     expect(input).toHaveAttribute('role', 'combobox');
     expect(input).toHaveAttribute('aria-autocomplete', 'list');
     expect(input).toHaveAttribute('aria-expanded', 'true');
-    expect(input).toHaveAttribute(
-      'aria-controls',
-      'index-field-suggestions-listbox',
-    );
-    expect(input).toHaveAttribute(
-      'aria-activedescendant',
-      'index-field-suggestion-0',
-    );
+    expect(input).toHaveAttribute('aria-controls', 'index-field-suggestions-listbox');
+    expect(input).toHaveAttribute('aria-activedescendant', 'index-field-suggestion-0');
 
     fireEvent.keyDown(input, { key: 'ArrowDown' });
-    expect(input).toHaveAttribute(
-      'aria-activedescendant',
-      'index-field-suggestion-1',
-    );
+    expect(input).toHaveAttribute('aria-activedescendant', 'index-field-suggestion-1');
 
     fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => {

@@ -51,9 +51,7 @@ function useIndexPanelSelectorProbe() {
   const dbType = useAppStore((state) => state.dbType);
   const rowsLength = useFieldStore((state) => state.rows.length);
   const indexInput = useIndexStore((state) => state.indexInput);
-  const currentIndexFieldsLength = useIndexStore(
-    (state) => state.currentIndexFields.length,
-  );
+  const currentIndexFieldsLength = useIndexStore((state) => state.currentIndexFields.length);
   const indexesLength = useIndexStore((state) => state.indexes.length);
 
   return {

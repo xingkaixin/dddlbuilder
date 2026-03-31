@@ -60,9 +60,7 @@ export async function createVersion(
 /**
  * 获取表的所有版本（按时间倒序）
  */
-export async function listVersions(
-  tableNormalizedName: string,
-): Promise<TableVersion[]> {
+export async function listVersions(tableNormalizedName: string): Promise<TableVersion[]> {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(VERSION_STORE_NAME, 'readonly');
@@ -102,10 +100,7 @@ export async function listVersionMetadata(
  * 获取单个版本
  */
 export async function getVersion(id: string): Promise<TableVersion | null> {
-  const result = await runWithStore<TableVersion | undefined>(
-    'readonly',
-    (store) => store.get(id),
-  );
+  const result = await runWithStore<TableVersion | undefined>('readonly', (store) => store.get(id));
   return result ?? null;
 }
 
@@ -119,9 +114,7 @@ export async function deleteVersion(id: string): Promise<void> {
 /**
  * 删除表的所有版本
  */
-export async function deleteAllVersions(
-  tableNormalizedName: string,
-): Promise<void> {
+export async function deleteAllVersions(tableNormalizedName: string): Promise<void> {
   const versions = await listVersions(tableNormalizedName);
   const db = await openDb();
 
@@ -177,9 +170,7 @@ export async function pruneOldVersions(
 /**
  * 获取表的版本数量
  */
-export async function countVersions(
-  tableNormalizedName: string,
-): Promise<number> {
+export async function countVersions(tableNormalizedName: string): Promise<number> {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(VERSION_STORE_NAME, 'readonly');

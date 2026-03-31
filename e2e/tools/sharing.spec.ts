@@ -38,9 +38,7 @@ test.describe('分享功能验证 @tools @smoke', () => {
     await expect(page.getByText(/7天后失效/i)).toBeVisible();
 
     // 验证剪贴板内容是短链接
-    const clipboardText = await page.evaluate(() =>
-      navigator.clipboard.readText(),
-    );
+    const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
     expect(clipboardText).toContain(`/share/${fakeShareId}`);
 
     // 第二次点击应复用已有链接，不再创建新的 Redis key

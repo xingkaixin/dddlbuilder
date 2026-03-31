@@ -27,11 +27,7 @@ export function generateAlterDDL(
 
   // 表注释变更 (某些数据库支持)
   if (diff.tableCommentChanged) {
-    const commentSql = generateTableCommentAlter(
-      tableName,
-      diff.newTableComment || '',
-      dbType,
-    );
+    const commentSql = generateTableCommentAlter(tableName, diff.newTableComment || '', dbType);
     if (commentSql) {
       statements.push(commentSql);
     }

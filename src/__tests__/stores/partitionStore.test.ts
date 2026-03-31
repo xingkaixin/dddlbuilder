@@ -64,10 +64,7 @@ describe('partitionStore', () => {
     state.syncFieldRename('created_at', 'created_on');
 
     const current = usePartitionStore.getState();
-    expect(current.mysqlPartitionConfig.columns).toEqual([
-      'dayofmonth(created_on)',
-      'tenant_id',
-    ]);
+    expect(current.mysqlPartitionConfig.columns).toEqual(['dayofmonth(created_on)', 'tenant_id']);
     expect(current.mysqlPartitionConfig.expression).toBe('YEAR(created_on)');
   });
 });

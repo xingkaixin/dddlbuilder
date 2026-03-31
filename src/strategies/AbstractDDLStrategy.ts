@@ -1,14 +1,6 @@
-import type {
-  NormalizedField,
-  IndexDefinition,
-  DatabaseType,
-  TableMiscConfig,
-} from '../types';
+import type { NormalizedField, IndexDefinition, DatabaseType, TableMiscConfig } from '../types';
 import type { DDLStrategy } from '../interfaces/DDLStrategy';
-import {
-  escapeSingleQuotes,
-  splitQualifiedName,
-} from '../utils/databaseTypeMapping';
+import { escapeSingleQuotes, splitQualifiedName } from '../utils/databaseTypeMapping';
 import { TypeMapper } from '../utils/TypeMapper';
 import { buildPrimaryKeyName } from '../utils/primaryKeyNaming';
 
@@ -43,10 +35,7 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
   /**
    * 生成主键DDL的通用实现
    */
-  protected generatePrimaryKeyDDL(
-    tableName: string,
-    index: IndexDefinition,
-  ): string {
+  protected generatePrimaryKeyDDL(tableName: string, index: IndexDefinition): string {
     const fieldList = index.fields.map((f) => f.name).join(', ');
     const constraintName = buildPrimaryKeyName(tableName);
 
@@ -63,10 +52,7 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
   /**
    * 生成标准索引DDL的通用实现
    */
-  protected generateStandardIndexDDL(
-    tableName: string,
-    index: IndexDefinition,
-  ): string {
+  protected generateStandardIndexDDL(tableName: string, index: IndexDefinition): string {
     if (index.isPrimary) {
       return this.generatePrimaryKeyDDL(tableName, index);
     }
@@ -88,10 +74,7 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
   /**
    * 生成列注释DDL的通用实现（用于支持列注释的数据库）
    */
-  protected generateColumnCommentsDDL(
-    tableName: string,
-    fields: NormalizedField[],
-  ): string[] {
+  protected generateColumnCommentsDDL(tableName: string, fields: NormalizedField[]): string[] {
     const statements: string[] = [];
     const qualifiedTableName = this.formatTableName(tableName);
 

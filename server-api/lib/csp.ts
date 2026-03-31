@@ -26,14 +26,11 @@ export type ResolvedCspConfig = {
   policy: string;
 };
 
-export const resolveCspConfig = (
-  env: ApiEnv['Bindings'],
-): ResolvedCspConfig => {
+export const resolveCspConfig = (env: ApiEnv['Bindings']): ResolvedCspConfig => {
   const enabled = readEnvBool(env.CSP_ENABLE, true);
   const mode = normalizeMode(env.CSP_MODE);
   const policyRaw = env.CSP_POLICY?.trim();
-  const policy =
-    policyRaw && policyRaw.length > 0 ? policyRaw : DEFAULT_CSP_POLICY;
+  const policy = policyRaw && policyRaw.length > 0 ? policyRaw : DEFAULT_CSP_POLICY;
 
   if (!enabled || mode === 'off') {
     return {

@@ -12,10 +12,7 @@ import {
   getFolderPath,
 } from '@/utils/tableFolders';
 import * as dbUtils from '@/utils/savedTablesDb';
-import {
-  setupFakeIndexedDB,
-  teardownFakeIndexedDB,
-} from '@/__tests__/utils/fakeIndexedDb';
+import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 
 describe('tableFolders', () => {
   beforeEach(() => {
@@ -116,9 +113,7 @@ describe('tableFolders', () => {
 
   it('should throw when folder not found', async () => {
     await expect(renameFolder('missing', 'x')).rejects.toThrow('文件夹不存在');
-    await expect(moveFolder('missing', undefined)).rejects.toThrow(
-      '文件夹不存在',
-    );
+    await expect(moveFolder('missing', undefined)).rejects.toThrow('文件夹不存在');
   });
 
   it('should handle request.onerror and tx.onabort in runWithFolderStore', async () => {
@@ -130,9 +125,7 @@ describe('tableFolders', () => {
       close: vi.fn(),
     };
 
-    vi.spyOn(dbUtils, 'openDb').mockResolvedValue(
-      mockDb as unknown as IDBDatabase,
-    );
+    vi.spyOn(dbUtils, 'openDb').mockResolvedValue(mockDb as unknown as IDBDatabase);
 
     // 1. request.onerror fallback
     mockRequest = { onerror: null, onsuccess: null, error: null };
@@ -192,9 +185,7 @@ describe('tableFolders', () => {
       close: vi.fn(),
     };
 
-    vi.spyOn(dbUtils, 'openDb').mockResolvedValue(
-      mockDb as unknown as IDBDatabase,
-    );
+    vi.spyOn(dbUtils, 'openDb').mockResolvedValue(mockDb as unknown as IDBDatabase);
 
     mockTx = {
       objectStore: () => ({ getAll: () => mockRequest }),

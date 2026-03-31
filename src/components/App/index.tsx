@@ -1,11 +1,4 @@
-import {
-  lazy,
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import type { DatabaseType, PersistedState } from '@/types';
 import { createEmptyRow } from '@/utils/helpers';
 import { isTabAvailable } from '@/utils/tabUtils';
@@ -51,9 +44,7 @@ import { isCnyFireworksEnabled } from '@/config/featureFlags';
 
 const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
 
-const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) =>
-  createEmptyRow(index),
-);
+const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) => createEmptyRow(index));
 const DEFAULT_FIELD_TABLE_FREEZE_ENABLED = true;
 const DEFAULT_FIELD_TABLE_FREEZE_COLUMNS = 3;
 const SHARE_COPY_SAVED_TOAST_KEY = 'ddlbuilder:share:copy-saved:v1';
@@ -458,23 +449,22 @@ function App() {
     loadedTableNormalizedName,
   });
 
-  const { handleClearAll, cancelClearAll, confirmClearAll } =
-    useClearAllActions({
-      setIsClearDialogOpen,
-      clearState,
-      resetTableConfig,
-      resetTableViewConfig,
-      resetTableRows,
-      resetIndexState,
-      resetAuthState,
-      resetCitusSharding,
-      resetPartition,
-      resetTableMiscConfig,
-      setLoadedTableNormalizedName,
-      setLoadedTableName,
-      setLoadedTableSignature,
-      trackEvent,
-    });
+  const { handleClearAll, cancelClearAll, confirmClearAll } = useClearAllActions({
+    setIsClearDialogOpen,
+    clearState,
+    resetTableConfig,
+    resetTableViewConfig,
+    resetTableRows,
+    resetIndexState,
+    resetAuthState,
+    resetCitusSharding,
+    resetPartition,
+    resetTableMiscConfig,
+    setLoadedTableNormalizedName,
+    setLoadedTableName,
+    setLoadedTableSignature,
+    trackEvent,
+  });
 
   const applySavedState = useApplySavedState({
     initialRows: INITIAL_ROWS,
@@ -631,9 +621,7 @@ function App() {
     setLoadedTableSignature(null);
     setLoadedTableVersion(0);
 
-    showToast(
-      existedDraftState ? t('app.loadedDraft') : t('app.emptyDraftCreated'),
-    );
+    showToast(existedDraftState ? t('app.loadedDraft') : t('app.emptyDraftCreated'));
   }, [
     flushCurrentWorkspace,
     setSavedTablesDrawerOpen,
@@ -653,9 +641,7 @@ function App() {
       return t('app.workspace.currentTable', {
         name: loadedTableName,
         version:
-          loadedTableVersion > 0
-            ? t('app.workspace.version', { version: loadedTableVersion })
-            : '',
+          loadedTableVersion > 0 ? t('app.workspace.version', { version: loadedTableVersion }) : '',
         dirty: isLoadedDirty ? t('app.workspace.dirtyMark') : '',
       });
     }
@@ -742,9 +728,7 @@ function App() {
           isSharing={isSharing}
           currentDbType={dbType}
           onImport={handleImport}
-          onPlayFireworks={
-            isCnyFireworksEnabled ? handlePlayFireworks : undefined
-          }
+          onPlayFireworks={isCnyFireworksEnabled ? handlePlayFireworks : undefined}
         />
 
         {isShareView && (
@@ -761,9 +745,7 @@ function App() {
         )}
 
         {isCnyFireworksEnabled && showFireworks && (
-          <Suspense
-            fallback={<div className="fixed inset-0 z-[100] bg-black/70" />}
-          >
+          <Suspense fallback={<div className="fixed inset-0 z-[100] bg-black/70" />}>
             <FireworksOverlay onComplete={handleFireworksComplete} />
           </Suspense>
         )}
@@ -804,9 +786,7 @@ function App() {
             <div className="flex flex-col gap-4 xl:flex-row">
               <div
                 className={`min-w-0 flex-1 ${
-                  isShareView
-                    ? 'pointer-events-none select-none opacity-80'
-                    : ''
+                  isShareView ? 'pointer-events-none select-none opacity-80' : ''
                 }`}
               >
                 <TableBuilderContainer
@@ -845,9 +825,7 @@ function App() {
                   }
                   showPartitionTab={supportsMysqlPartition}
                   partitionBadgeText={
-                    mysqlPartitionConfig.enabled
-                      ? mysqlPartitionConfig.type
-                      : null
+                    mysqlPartitionConfig.enabled ? mysqlPartitionConfig.type : null
                   }
                   showHivePartitionTab={dbType === 'hive'}
                   hivePartitionBadgeText={
@@ -921,16 +899,12 @@ function App() {
                     onRemoveColumn: (index) =>
                       setHivePartitionConfig((prev) => ({
                         ...(prev || { enabled: false, columns: [] }),
-                        columns: (prev?.columns || []).filter(
-                          (_, i) => i !== index,
-                        ),
+                        columns: (prev?.columns || []).filter((_, i) => i !== index),
                       })),
                     onUpdateColumn: (index, column) =>
                       setHivePartitionConfig((prev) => ({
                         ...(prev || { enabled: false, columns: [] }),
-                        columns: (prev?.columns || []).map((c, i) =>
-                          i === index ? column : c,
-                        ),
+                        columns: (prev?.columns || []).map((c, i) => (i === index ? column : c)),
                       })),
                     onClusteringChange: (clustering) =>
                       setHivePartitionConfig((prev) => ({
@@ -1064,7 +1038,7 @@ function App() {
             onRollback: (state: PersistedState) => {
               applySavedState(state);
               setSavedTablesDrawerOpen(false);
-              trackEvent('table_version_rollback');
+              void trackEvent('table_version_rollback');
               showToast(t('app.rollbackDone'));
             },
           }}

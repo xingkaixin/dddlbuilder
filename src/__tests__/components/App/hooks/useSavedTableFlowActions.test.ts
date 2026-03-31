@@ -81,9 +81,7 @@ describe('useSavedTableFlowActions', () => {
         loadTable: vi.fn(),
         renameTable: vi.fn(),
         deleteTable: vi.fn(),
-        saveTable: vi
-          .fn()
-          .mockResolvedValue({ ok: true, normalizedName: 'users' }),
+        saveTable: vi.fn().mockResolvedValue({ ok: true, normalizedName: 'users' }),
         overwriteTable: vi.fn(),
         showToast: vi.fn(),
         trackEvent: vi.fn(),
@@ -136,9 +134,7 @@ describe('useSavedTableFlowActions', () => {
         serializePersistedState: (nextState) => JSON.stringify(nextState),
         applySavedState: vi.fn(),
         loadTable: vi.fn(),
-        renameTable: vi
-          .fn()
-          .mockResolvedValue({ ok: true, normalizedName: 'users_new' }),
+        renameTable: vi.fn().mockResolvedValue({ ok: true, normalizedName: 'users_new' }),
         deleteTable: vi.fn(),
         saveTable: vi.fn(),
         overwriteTable: vi.fn(),
@@ -152,11 +148,7 @@ describe('useSavedTableFlowActions', () => {
       await result.current.handleConfirmRename();
     });
 
-    expect(renameSavedTableDraft).toHaveBeenCalledWith(
-      'users',
-      'users_new',
-      'Users New',
-    );
+    expect(renameSavedTableDraft).toHaveBeenCalledWith('users', 'users_new', 'Users New');
   });
 
   it('删除成功后应清理草稿', async () => {
@@ -186,9 +178,7 @@ describe('useSavedTableFlowActions', () => {
         applySavedState: vi.fn(),
         loadTable: vi.fn(),
         renameTable: vi.fn(),
-        deleteTable: vi
-          .fn()
-          .mockResolvedValue({ ok: true, normalizedName: 'users' }),
+        deleteTable: vi.fn().mockResolvedValue({ ok: true, normalizedName: 'users' }),
         saveTable: vi.fn(),
         overwriteTable: vi.fn(),
         showToast: vi.fn(),

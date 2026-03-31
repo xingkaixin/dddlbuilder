@@ -11,10 +11,7 @@ import { registerShareRoutes } from '../server-api/routes/share.js';
 
 const app = new Hono<ApiEnv>().basePath('/api');
 
-const DEFAULT_ALLOWED_ORIGINS = [
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-];
+const DEFAULT_ALLOWED_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173'];
 
 const REQUEST_ID_PATTERN = /^[a-zA-Z0-9._:-]{1,128}$/;
 
@@ -82,9 +79,7 @@ registerShareRoutes(app);
 app.get('*', async (c) => {
   const res = await c.env.ASSETS.fetch(c.req.raw);
   if (res.ok) return res;
-  const indexRes = await c.env.ASSETS.fetch(
-    new Request(new URL('/index.html', c.req.url)),
-  );
+  const indexRes = await c.env.ASSETS.fetch(new Request(new URL('/index.html', c.req.url)));
   return new Response(indexRes.body, {
     headers: { 'content-type': 'text/html; charset=utf-8' },
   });

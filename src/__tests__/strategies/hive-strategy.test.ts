@@ -301,9 +301,7 @@ describe('HiveStrategy', () => {
 
     const ddl = strategy.generateTableDDL('events', '', fields, config);
 
-    expect(ddl).toContain(
-      "PARTITIONED BY (\n  pt STRING COMMENT '日期分区'\n)",
-    );
+    expect(ddl).toContain("PARTITIONED BY (\n  pt STRING COMMENT '日期分区'\n)");
   });
 
   it('应生成 PARTITIONED BY 多列分区', () => {
@@ -503,9 +501,7 @@ describe('HiveStrategy', () => {
 
     expect(ddl).toContain('CREATE EXTERNAL TABLE events (');
     expect(ddl).toContain("COMMENT '事件表'");
-    expect(ddl).toContain(
-      "PARTITIONED BY (\n  dt STRING COMMENT '日期分区'\n)",
-    );
+    expect(ddl).toContain("PARTITIONED BY (\n  dt STRING COMMENT '日期分区'\n)");
     expect(ddl).toContain('CLUSTERED BY (user_id) INTO 8 BUCKETS');
     expect(ddl).toContain('STORED AS ORC');
     expect(ddl).toContain("LOCATION '/data/events'");

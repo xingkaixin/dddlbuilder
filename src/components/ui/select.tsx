@@ -47,9 +47,7 @@ const SearchableSelect = React.forwardRef<
     const filteredOptions = React.useMemo(() => {
       if (!searchValue) return options;
       const lowerSearch = searchValue.toLowerCase();
-      return options.filter((opt) =>
-        opt.label.toLowerCase().includes(lowerSearch),
-      );
+      return options.filter((opt) => opt.label.toLowerCase().includes(lowerSearch));
     }, [options, searchValue]);
 
     const selectedOption = options.find((opt) => opt.value === value);
@@ -112,15 +110,13 @@ const SearchableSelect = React.forwardRef<
               />
             </div>
             <div className="max-h-[400px] overflow-y-auto p-1">
-              {filteredOptions.length > 0 &&
-                !searchValue &&
-                options.length > 8 && (
-                  <div className="border-b py-2 text-center text-xs text-muted-foreground">
-                    {t('searchableSelect.totalDatabases', {
-                      count: options.length,
-                    })}
-                  </div>
-                )}
+              {filteredOptions.length > 0 && !searchValue && options.length > 8 && (
+                <div className="border-b py-2 text-center text-xs text-muted-foreground">
+                  {t('searchableSelect.totalDatabases', {
+                    count: options.length,
+                  })}
+                </div>
+              )}
               {filteredOptions.length > 0 ? (
                 filteredOptions.map((option) => (
                   <div
@@ -152,9 +148,7 @@ const SearchableSelect = React.forwardRef<
                   </div>
                 ))
               ) : (
-                <div className="py-6 text-center text-sm text-muted-foreground">
-                  {emptyMessage}
-                </div>
+                <div className="py-6 text-center text-sm text-muted-foreground">{emptyMessage}</div>
               )}
             </div>
           </PopoverPrimitive.Content>
@@ -220,10 +214,7 @@ const SelectLabel = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.Label
     ref={ref}
-    className={cn(
-      'px-2 py-1.5 text-sm font-semibold text-muted-foreground',
-      className,
-    )}
+    className={cn('px-2 py-1.5 text-sm font-semibold text-muted-foreground', className)}
     {...props}
   />
 ));

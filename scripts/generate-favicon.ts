@@ -19,4 +19,4 @@ async function generateFavicon() {
   }
 }
 
-generateFavicon();
+void generateFavicon();

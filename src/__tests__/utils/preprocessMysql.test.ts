@@ -64,9 +64,7 @@ describe('preprocessMysql', () => {
     expect(result.sql).toContain('DEFAULT (UUID())');
     expect(result.sql).toContain("COMMENT='证券公司评级1'");
     expect(result.sql).not.toContain('PARTITION BY KEY(ID)');
-    expect(result.sql).toContain(
-      'CREATE INDEX idx_corp_id ON COO_SC_RAT (INFO_SRC ASC);',
-    );
+    expect(result.sql).toContain('CREATE INDEX idx_corp_id ON COO_SC_RAT (INFO_SRC ASC);');
     expect(result.partitionConfig).toEqual({
       enabled: true,
       type: 'KEY',

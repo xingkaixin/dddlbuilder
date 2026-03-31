@@ -2,31 +2,11 @@ import type { DatabaseType } from '@/types';
 import type { CSSProperties } from 'react';
 import type { ReviewResult } from '@/hooks/useDDLReview';
 import type { PartialReviewResult } from '@/utils/parsePartialJson';
-import {
-  memo,
-  useMemo,
-  useState,
-  useRef,
-  useEffect,
-  useCallback,
-  lazy,
-  Suspense,
-} from 'react';
+import { memo, useMemo, useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
-  Copy,
-  Check,
-  ScrollText,
-  ShieldCheck,
-  GraduationCap,
-  History,
-} from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Copy, Check, ScrollText, ShieldCheck, GraduationCap, History } from 'lucide-react';
 import { DATABASE_OPTIONS } from '@/utils/constants';
 import { ReviewResultPanel } from './ReviewResult';
 import { useToast } from '@/hooks/useToast';
@@ -108,13 +88,10 @@ export const DDLOutput = memo<DDLOutputProps>(
         showToast(t('ddlOutput.copyFailed'));
         return;
       }
-      void trackEvent('sql_copy_ddl', { dbType });
+      trackEvent('sql_copy_ddl', { dbType });
       if (sqlTimerRef.current) window.clearTimeout(sqlTimerRef.current);
       setIsSqlCopied(true);
-      sqlTimerRef.current = window.setTimeout(
-        () => setIsSqlCopied(false),
-        3000,
-      );
+      sqlTimerRef.current = window.setTimeout(() => setIsSqlCopied(false), 3000);
     }, [onCopySql, dbType, trackEvent, showToast, t]);
 
     const handleCopyDcl = useCallback(async () => {
@@ -123,13 +100,10 @@ export const DDLOutput = memo<DDLOutputProps>(
         showToast(t('ddlOutput.copyFailed'));
         return;
       }
-      void trackEvent('sql_copy_dcl', { dbType });
+      trackEvent('sql_copy_dcl', { dbType });
       if (dclTimerRef.current) window.clearTimeout(dclTimerRef.current);
       setIsDclCopied(true);
-      dclTimerRef.current = window.setTimeout(
-        () => setIsDclCopied(false),
-        3000,
-      );
+      dclTimerRef.current = window.setTimeout(() => setIsDclCopied(false), 3000);
     }, [onCopyDcl, dbType, trackEvent, showToast, t]);
 
     const canReview = generatedSql && !generatedSql.startsWith('--');
@@ -174,10 +148,7 @@ export const DDLOutput = memo<DDLOutputProps>(
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span
-                          className="inline-flex"
-                          tabIndex={!canReview || isReviewing ? 0 : -1}
-                        >
+                        <span className="inline-flex" tabIndex={!canReview || isReviewing ? 0 : -1}>
                           <Button
                             variant="outline"
                             size="sm"
@@ -242,14 +213,10 @@ export const DDLOutput = memo<DDLOutputProps>(
               <div className="relative flex-1 overflow-auto px-4 py-3.5">
                 <Suspense
                   fallback={
-                    <pre style={CODE_FALLBACK_STYLE}>
-                      {generatedSql || t('ddlOutput.emptyDdl')}
-                    </pre>
+                    <pre style={CODE_FALLBACK_STYLE}>{generatedSql || t('ddlOutput.emptyDdl')}</pre>
                   }
                 >
-                  <SqlCodeBlock
-                    code={generatedSql || t('ddlOutput.emptyDdl')}
-                  />
+                  <SqlCodeBlock code={generatedSql || t('ddlOutput.emptyDdl')} />
                 </Suspense>
               </div>
               {/* Review Result Panel */}
@@ -313,14 +280,10 @@ export const DDLOutput = memo<DDLOutputProps>(
               <div className="relative flex-1 overflow-auto px-4 py-3.5">
                 <Suspense
                   fallback={
-                    <pre style={CODE_FALLBACK_STYLE}>
-                      {generatedDcl || t('ddlOutput.emptyDcl')}
-                    </pre>
+                    <pre style={CODE_FALLBACK_STYLE}>{generatedDcl || t('ddlOutput.emptyDcl')}</pre>
                   }
                 >
-                  <SqlCodeBlock
-                    code={generatedDcl || t('ddlOutput.emptyDcl')}
-                  />
+                  <SqlCodeBlock code={generatedDcl || t('ddlOutput.emptyDcl')} />
                 </Suspense>
               </div>
             </div>

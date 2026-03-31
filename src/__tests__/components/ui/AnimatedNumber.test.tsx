@@ -23,10 +23,7 @@ describe('AnimatedNumber', () => {
 
   it('默认应使用 NumberFlow 渲染', () => {
     render(
-      <AnimatedNumber
-        value={1234}
-        format={{ useGrouping: true, maximumFractionDigits: 0 }}
-      />,
+      <AnimatedNumber value={1234} format={{ useGrouping: true, maximumFractionDigits: 0 }} />,
     );
 
     expect(screen.getByTestId('number-flow')).toHaveTextContent('1234');
@@ -42,10 +39,7 @@ describe('AnimatedNumber', () => {
     mockUsePrefersReducedMotion.mockReturnValue(true);
 
     render(
-      <AnimatedNumber
-        value={1234}
-        format={{ useGrouping: true, maximumFractionDigits: 0 }}
-      />,
+      <AnimatedNumber value={1234} format={{ useGrouping: true, maximumFractionDigits: 0 }} />,
     );
 
     expect(screen.queryByTestId('number-flow')).not.toBeInTheDocument();

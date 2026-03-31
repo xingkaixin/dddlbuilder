@@ -74,8 +74,7 @@ export function useDDLExplain() {
           signal: abortControllerRef.current.signal,
         });
         const requestId = response.headers?.get?.('x-request-id') ?? null;
-        const serverDebugEnabled =
-          response.headers?.get?.('x-ai-stream-debug') === '1';
+        const serverDebugEnabled = response.headers?.get?.('x-ai-stream-debug') === '1';
 
         logAiStreamDebug(
           'ai_explain_response',
@@ -94,8 +93,7 @@ export function useDDLExplain() {
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           throw new Error(
-            errorData.error ||
-              i18n.t('services.requestFailed', { status: response.status }),
+            errorData.error || i18n.t('services.requestFailed', { status: response.status }),
           );
         }
 
@@ -175,10 +173,7 @@ export function useDDLExplain() {
           isStreaming: false,
           isComplete: false,
           explanation: null,
-          error:
-            error instanceof Error
-              ? error.message
-              : i18n.t('services.explainFailed'),
+          error: error instanceof Error ? error.message : i18n.t('services.explainFailed'),
           requestId: null,
           debugEnabled: false,
         });
@@ -186,8 +181,7 @@ export function useDDLExplain() {
           route: 'explain',
           phase: 'error',
           errorName: error instanceof Error ? error.name : 'UnknownError',
-          errorMessage:
-            error instanceof Error ? error.message : 'Unknown explain error',
+          errorMessage: error instanceof Error ? error.message : 'Unknown explain error',
         });
       }
     },

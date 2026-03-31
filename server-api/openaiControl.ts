@@ -84,19 +84,11 @@ export const buildOpenAIConfig = (env: ApiEnv['Bindings']): OpenAIConfig => {
   const retryMaxAttempts = readEnvInt(env.OPENAI_RETRY_MAX_ATTEMPTS, 3);
   const retryBaseDelayMs = readEnvInt(env.OPENAI_RETRY_BASE_DELAY_MS, 400);
   const retryMaxDelayMs = readEnvInt(env.OPENAI_RETRY_MAX_DELAY_MS, 3_000);
-  const dailyBudgetEnabled = readEnvBool(
-    env.OPENAI_DAILY_BUDGET_ENABLED,
-    false,
-  );
-  const dailyBudgetMaxTokens = readEnvInt(
-    env.OPENAI_DAILY_BUDGET_MAX_TOKENS,
-    0,
-  );
+  const dailyBudgetEnabled = readEnvBool(env.OPENAI_DAILY_BUDGET_ENABLED, false);
+  const dailyBudgetMaxTokens = readEnvInt(env.OPENAI_DAILY_BUDGET_MAX_TOKENS, 0);
   const streamDebugEnabled = readEnvBool(env.OPENAI_STREAM_DEBUG, false);
   const counterStoreMode =
-    env.OPENAI_RATELIMIT_STORE?.trim().toLowerCase() === 'memory'
-      ? 'memory'
-      : 'kv';
+    env.OPENAI_RATELIMIT_STORE?.trim().toLowerCase() === 'memory' ? 'memory' : 'kv';
 
   return {
     defaultWindowMs,
@@ -125,9 +117,7 @@ export const buildOpenAIConfig = (env: ApiEnv['Bindings']): OpenAIConfig => {
   };
 };
 
-const RETRYABLE_STATUS_CODES = new Set([
-  408, 409, 425, 429, 500, 502, 503, 504,
-]);
+const RETRYABLE_STATUS_CODES = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
 
 export type GovernanceSnapshot = {
   rateLimitEnabled: boolean;
@@ -150,8 +140,7 @@ const hashFNV1a = (input: string): string => {
   let hash = 2166136261;
   for (let i = 0; i < input.length; i += 1) {
     hash ^= input.charCodeAt(i);
-    hash +=
-      (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
   }
   return (hash >>> 0).toString(16).padStart(8, '0');
 };
@@ -170,20 +159,12 @@ const parseRetryAfterMs = (retryAfterHeader: string | null | undefined) => {
   return delta > 0 ? delta : null;
 };
 
-const readHeaderFromUnknown = (
-  headers: unknown,
-  key: string,
-): string | undefined => {
+const readHeaderFromUnknown = (headers: unknown, key: string): string | undefined => {
   if (!headers || typeof headers !== 'object') return undefined;
   const normalizedKey = key.toLowerCase();
 
-  if (
-    'get' in headers &&
-    typeof (headers as { get: unknown }).get === 'function'
-  ) {
-    const value = (headers as { get: (k: string) => string | null }).get(
-      normalizedKey,
-    );
+  if ('get' in headers && typeof (headers as { get: unknown }).get === 'function') {
+    const value = (headers as { get: (k: string) => string | null }).get(normalizedKey);
     return value ?? undefined;
   }
 
@@ -219,24 +200,14 @@ const isRetryableError = (error: unknown): boolean => {
   if (error && typeof error === 'object') {
     const code = (error as { code?: unknown }).code;
     if (typeof code === 'string') {
-      return [
-        'ECONNRESET',
-        'ETIMEDOUT',
-        'EAI_AGAIN',
-        'ENOTFOUND',
-        'ECONNREFUSED',
-      ].includes(code);
+      return ['ECONNRESET', 'ETIMEDOUT', 'EAI_AGAIN', 'ENOTFOUND', 'ECONNREFUSED'].includes(code);
     }
   }
 
   return false;
 };
 
-const computeBackoffDelayMs = (
-  attempt: number,
-  baseDelayMs: number,
-  maxDelayMs: number,
-) => {
+const computeBackoffDelayMs = (attempt: number, baseDelayMs: number, maxDelayMs: number) => {
   const exponential = Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs);
   const jitter = 0.8 + Math.random() * 0.4;
   return Math.max(100, Math.round(exponential * jitter));
@@ -258,10 +229,7 @@ const getClientIp = (c: Context<ApiEnv>): string => {
   return 'unknown';
 };
 
-const getClientFingerprint = (
-  c: Context<ApiEnv>,
-  routeKey: OpenAIRouteKey,
-): string => {
+const getClientFingerprint = (c: Context<ApiEnv>, routeKey: OpenAIRouteKey): string => {
   const ip = getClientIp(c);
   const ua = c.req.header('user-agent')?.slice(0, 256) ?? 'unknown';
   return hashFNV1a(`${routeKey}|${ip}|${ua}`);
@@ -272,17 +240,22 @@ const toUtf8Bytes = (input: string) => new TextEncoder().encode(input).length;
 const estimateValueChars = (value: unknown): number => {
   if (value == null) return 0;
   if (typeof value === 'string') return value.length;
-  try {
-    return JSON.stringify(value).length;
-  } catch {
+  if (
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint' ||
+    typeof value === 'symbol'
+  ) {
     return String(value).length;
+  }
+  try {
+    return JSON.stringify(value)?.length ?? 0;
+  } catch {
+    return 0;
   }
 };
 
-export const estimateRequestTokens = (
-  payload: unknown,
-  maxOutputTokens = 0,
-): number => {
+export const estimateRequestTokens = (payload: unknown, maxOutputTokens = 0): number => {
   const estimatedInputChars = estimateValueChars(payload);
   const estimatedInputTokens = Math.max(1, Math.ceil(estimatedInputChars / 4));
   const outputTokens = Math.max(0, Math.floor(maxOutputTokens));
@@ -418,13 +391,7 @@ export async function enforceOpenAIRateLimit(
   const ttlMs = rule.windowMs + 5_000;
 
   const kv = c.env?.RATE_LIMIT_KV;
-  const count = await incrCounter(
-    kv,
-    counterKey,
-    ttlMs,
-    1,
-    config.counterStoreMode,
-  );
+  const count = await incrCounter(kv, counterKey, ttlMs, 1, config.counterStoreMode);
   const remaining = Math.max(rule.maxRequests - count, 0);
 
   c.header('X-RateLimit-Limit', String(rule.maxRequests));
@@ -441,20 +408,12 @@ export async function enforceOpenAIRateLimit(
     };
   }
 
-  const retryAfterSeconds = Math.max(
-    1,
-    Math.ceil((rule.windowMs - (now % rule.windowMs)) / 1000),
-  );
+  const retryAfterSeconds = Math.max(1, Math.ceil((rule.windowMs - (now % rule.windowMs)) / 1000));
 
   c.header('Retry-After', String(retryAfterSeconds));
 
   return {
-    response: errorResponse(
-      c,
-      429,
-      '请求过于频繁，请稍后再试',
-      'RATE_LIMIT_EXCEEDED',
-    ),
+    response: errorResponse(c, 429, '请求过于频繁，请稍后再试', 'RATE_LIMIT_EXCEEDED'),
     rateLimitHit: true,
     limit: rule.maxRequests,
     remaining: 0,
@@ -508,12 +467,7 @@ export async function enforceOpenAIDailyBudget(
   }
 
   return {
-    response: errorResponse(
-      c,
-      429,
-      '服务预算已达上限，请稍后再试',
-      'BUDGET_EXCEEDED',
-    ),
+    response: errorResponse(c, 429, '服务预算已达上限，请稍后再试', 'BUDGET_EXCEEDED'),
     budgetHit: true,
     limitTokens: config.dailyBudgetMaxTokens,
     usedTokens,
@@ -555,11 +509,7 @@ export async function withOpenAIRetry<T>(
       }
 
       const retryAfterMs = getRetryAfterFromError(error);
-      const backoffDelayMs = computeBackoffDelayMs(
-        attempt,
-        baseDelayMs,
-        maxDelayMs,
-      );
+      const backoffDelayMs = computeBackoffDelayMs(attempt, baseDelayMs, maxDelayMs);
       const waitMs = Math.min(retryAfterMs ?? backoffDelayMs, maxDelayMs);
 
       const status = getErrorStatus(error);

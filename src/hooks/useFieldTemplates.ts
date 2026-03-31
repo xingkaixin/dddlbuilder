@@ -19,9 +19,7 @@ import {
 
 export type { FieldTemplate, TemplateField };
 
-type OperationResult =
-  | { ok: true }
-  | { ok: false; reason?: string; message?: string };
+type OperationResult = { ok: true } | { ok: false; reason?: string; message?: string };
 
 export function useFieldTemplates() {
   const [templates, setTemplates] = useState<FieldTemplate[]>([]);
@@ -44,21 +42,18 @@ export function useFieldTemplates() {
 
   // 初始加载
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   // 获取单个模板
-  const fetchTemplate = useCallback(
-    async (id: string): Promise<FieldTemplate | null> => {
-      try {
-        const template = await getTemplate(id);
-        return template ?? null;
-      } catch {
-        return null;
-      }
-    },
-    [],
-  );
+  const fetchTemplate = useCallback(async (id: string): Promise<FieldTemplate | null> => {
+    try {
+      const template = await getTemplate(id);
+      return template ?? null;
+    } catch {
+      return null;
+    }
+  }, []);
 
   // 创建模板
   const create = useCallback(
@@ -97,11 +92,7 @@ export function useFieldTemplates() {
       description?: string,
     ): Promise<OperationResult & { template?: FieldTemplate }> => {
       try {
-        const template = await createTemplateFromFields(
-          name,
-          fields,
-          description,
-        );
+        const template = await createTemplateFromFields(name, fields, description);
         await refresh();
         return { ok: true, template };
       } catch (err) {
@@ -118,9 +109,7 @@ export function useFieldTemplates() {
   const update = useCallback(
     async (
       id: string,
-      updates: Partial<
-        Pick<FieldTemplate, 'name' | 'description' | 'keywords' | 'fields'>
-      >,
+      updates: Partial<Pick<FieldTemplate, 'name' | 'description' | 'keywords' | 'fields'>>,
     ): Promise<OperationResult> => {
       try {
         const result = await updateTemplate(id, updates);

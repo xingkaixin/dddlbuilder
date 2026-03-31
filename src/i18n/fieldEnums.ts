@@ -14,9 +14,7 @@ const ON_UPDATE_KEY_MAP: Record<string, string> = {
 };
 
 export function getNullableLabel(value: string, t: TFunction) {
-  return value === '否'
-    ? t('fieldEnums.nullable.no')
-    : t('fieldEnums.nullable.yes');
+  return value === '否' ? t('fieldEnums.nullable.no') : t('fieldEnums.nullable.yes');
 }
 
 export function getDefaultKindLabel(value: string, t: TFunction) {

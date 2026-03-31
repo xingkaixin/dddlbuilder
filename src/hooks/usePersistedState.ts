@@ -3,11 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { PersistedState } from '@/types';
 import { buildShareStateQueryKey } from '@/queryKeys/share';
 import { ShareApiError, getShareState } from '@/services/shareService';
-import type {
-  GlobalDraftSummary,
-  WorkspaceSavePayload,
-  WorkspaceSource,
-} from '@/types/workspace';
+import type { GlobalDraftSummary, WorkspaceSavePayload, WorkspaceSource } from '@/types/workspace';
 import {
   clearGlobalDraft,
   clearWorkspaceSession,
@@ -46,10 +42,7 @@ export interface UsePersistedStateReturn {
   activeSource: WorkspaceSource;
   globalDraftSummary: GlobalDraftSummary | null;
   getGlobalDraftState: () => PersistedState | null;
-  setWorkspaceSnapshot: (
-    source: WorkspaceSource,
-    state: PersistedState,
-  ) => void;
+  setWorkspaceSnapshot: (source: WorkspaceSource, state: PersistedState) => void;
 }
 
 export function usePersistedState(): UsePersistedStateReturn {
@@ -58,16 +51,12 @@ export function usePersistedState(): UsePersistedStateReturn {
   const shareId = pathInfo.shareId;
   const shareStorageKey = shareId ? buildShareStorageKey(shareId) : null;
   const [hydrated, setHydrated] = useState(false);
-  const [persistedState, setPersistedState] = useState<PersistedState | null>(
-    null,
-  );
-  const [shareLoadStatus, setShareLoadStatus] =
-    useState<ShareLoadStatus>('idle');
+  const [persistedState, setPersistedState] = useState<PersistedState | null>(null);
+  const [shareLoadStatus, setShareLoadStatus] = useState<ShareLoadStatus>('idle');
   const [activeSource, setActiveSource] = useState<WorkspaceSource>({
     kind: 'global_draft',
   });
-  const [globalDraftSummary, setGlobalDraftSummary] =
-    useState<GlobalDraftSummary | null>(null);
+  const [globalDraftSummary, setGlobalDraftSummary] = useState<GlobalDraftSummary | null>(null);
 
   const activeSourceRef = useRef<WorkspaceSource>({
     kind: 'global_draft',
@@ -76,16 +65,12 @@ export function usePersistedState(): UsePersistedStateReturn {
 
   const syncActiveSource = useCallback((source: WorkspaceSource) => {
     activeSourceRef.current = source;
-    setActiveSource((prev) =>
-      isSameWorkspaceSource(prev, source) ? prev : source,
-    );
+    setActiveSource((prev) => (isSameWorkspaceSource(prev, source) ? prev : source));
   }, []);
 
   const updateGlobalDraft = useCallback((record: GlobalDraftRecord | null) => {
     globalDraftRef.current = record;
-    setGlobalDraftSummary(
-      record ? buildGlobalDraftSummary(record.state, record.updatedAt) : null,
-    );
+    setGlobalDraftSummary(record ? buildGlobalDraftSummary(record.state, record.updatedAt) : null);
   }, []);
 
   const getGlobalDraftState = useCallback(() => {
@@ -145,8 +130,7 @@ export function usePersistedState(): UsePersistedStateReturn {
         fireAndForget(writeGlobalDraft(globalRecord));
       }
 
-      const activeStateToPersist =
-        payload.source.kind === 'saved_table' ? null : payload.state;
+      const activeStateToPersist = payload.source.kind === 'saved_table' ? null : payload.state;
 
       fireAndForget(
         writeWorkspaceSession({
@@ -210,8 +194,7 @@ export function usePersistedState(): UsePersistedStateReturn {
         if (savedTable) {
           const baseSignature =
             session.activeSource.baseSignature ||
-            (typeof (savedTable as { stateSignature?: unknown })
-              .stateSignature === 'string'
+            (typeof (savedTable as { stateSignature?: unknown }).stateSignature === 'string'
               ? (savedTable as { stateSignature?: string }).stateSignature
               : JSON.stringify(savedTable.state));
           syncActiveSource({
@@ -257,9 +240,7 @@ export function usePersistedState(): UsePersistedStateReturn {
       };
     }
 
-    const cachedShareState = normalizePersistedState(
-      readStorageJson<unknown>(shareStorageKey),
-    );
+    const cachedShareState = normalizePersistedState(readStorageJson<unknown>(shareStorageKey));
     if (cachedShareState) {
       hydrateWithState(cachedShareState);
     }
@@ -276,10 +257,7 @@ export function usePersistedState(): UsePersistedStateReturn {
         writeStorageJson(shareStorageKey, state);
       })
       .catch((error) => {
-        if (
-          error instanceof ShareApiError &&
-          error.code === 'SHARE_NOT_FOUND'
-        ) {
+        if (error instanceof ShareApiError && error.code === 'SHARE_NOT_FOUND') {
           setShareLoadStatus('not_found');
         } else {
           setShareLoadStatus('error');

@@ -1,10 +1,7 @@
 import { useRef } from 'react';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { useTheme } from 'next-themes';
-import {
-  atomOneDark,
-  atomOneLight,
-} from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import { atomOneDark, atomOneLight } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import sql from 'react-syntax-highlighter/dist/esm/languages/hljs/sql';
 import { ExplainPopover } from './ExplainPopover';
 

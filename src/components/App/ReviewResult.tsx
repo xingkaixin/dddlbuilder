@@ -49,25 +49,13 @@ function getScoreBgColor(score: number): string {
 const SUGGESTION_SKELETON_COUNT = 3;
 
 // Component for rendering score
-function ScoreDisplay({
-  score,
-  isStreaming,
-}: {
-  score: number;
-  isStreaming?: boolean;
-}) {
+function ScoreDisplay({ score, isStreaming }: { score: number; isStreaming?: boolean }) {
   return (
-    <div
-      className={`flex items-center gap-2 rounded-lg px-4 py-2 ${getScoreBgColor(score)}`}
-    >
+    <div className={`flex items-center gap-2 rounded-lg px-4 py-2 ${getScoreBgColor(score)}`}>
       <Star className={`h-5 w-5 ${getScoreColor(score)}`} fill="currentColor" />
-      <span className={`text-2xl font-bold ${getScoreColor(score)}`}>
-        {score}
-      </span>
+      <span className={`text-2xl font-bold ${getScoreColor(score)}`}>{score}</span>
       <span className="text-sm text-muted-foreground">/10</span>
-      {isStreaming && (
-        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground ml-1" />
-      )}
+      {isStreaming && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground ml-1" />}
     </div>
   );
 }
@@ -99,11 +87,7 @@ const SuggestionItem = memo<{
 }>(({ suggestion, onApply, isStreaming }) => {
   const { t } = useTranslation();
   if (typeof suggestion === 'string') {
-    return (
-      <li className="text-sm text-foreground/70 list-disc relative pl-1">
-        {suggestion}
-      </li>
-    );
+    return <li className="text-sm text-foreground/70 list-disc relative pl-1">{suggestion}</li>;
   }
 
   // Guard check: ensure required properties exist (for partial objects during streaming)
@@ -116,17 +100,14 @@ const SuggestionItem = memo<{
   const isActionable = suggestion.actionable && !isApplied && !isStreaming;
 
   // Normalize type for compatibility - fallback unknown types to 'general'
-  const normalizedType = KNOWN_SUGGESTION_TYPES.has(suggestion.type)
-    ? suggestion.type
-    : 'general';
+  const normalizedType = KNOWN_SUGGESTION_TYPES.has(suggestion.type) ? suggestion.type : 'general';
 
   return (
     <li className="group flex items-start gap-3 rounded-md border border-transparent p-2 transition-all hover:bg-muted/50 hover:border-border">
       <div className="mt-1 flex-shrink-0">
         {suggestion.applied ? (
           <Check className="h-4 w-4 text-emerald-500" />
-        ) : normalizedType === 'remove_field' ||
-          normalizedType === 'remove_index' ? (
+        ) : normalizedType === 'remove_field' || normalizedType === 'remove_index' ? (
           <Minus className="h-4 w-4 text-red-400" />
         ) : normalizedType === 'add_field' || normalizedType === 'add_index' ? (
           <Plus className="h-4 w-4 text-emerald-400" />
@@ -155,30 +136,26 @@ const SuggestionItem = memo<{
                 : 'text-amber-600 bg-amber-50 border border-amber-100'
             }`}
           >
-            {suggestion.severity === 'error'
-              ? t('review.severe')
-              : t('review.warning')}
+            {suggestion.severity === 'error' ? t('review.severe') : t('review.warning')}
           </span>
         )}
 
         {/* Detail view based on type */}
-        {!isApplied &&
-          normalizedType === 'modify_field' &&
-          suggestion.fieldModification && (
-            <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
-              <span className="font-mono bg-muted px-1 rounded truncate max-w-[100px]">
-                {suggestion.fieldModification.fieldName}
-              </span>
-              <ArrowRight className="h-3 w-3" />
-              <span className="text-amber-600 font-medium">
-                {suggestion.fieldModification.changes?.fieldType ||
-                  suggestion.fieldModification.changes?.fieldComment ||
-                  (suggestion.fieldModification as any).fieldType ||
-                  (suggestion.fieldModification as any).fieldComment ||
-                  t('review.details')}
-              </span>
-            </div>
-          )}
+        {!isApplied && normalizedType === 'modify_field' && suggestion.fieldModification && (
+          <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
+            <span className="font-mono bg-muted px-1 rounded truncate max-w-[100px]">
+              {suggestion.fieldModification.fieldName}
+            </span>
+            <ArrowRight className="h-3 w-3" />
+            <span className="text-amber-600 font-medium">
+              {suggestion.fieldModification.changes?.fieldType ||
+                suggestion.fieldModification.changes?.fieldComment ||
+                (suggestion.fieldModification as any).fieldType ||
+                (suggestion.fieldModification as any).fieldComment ||
+                t('review.details')}
+            </span>
+          </div>
+        )}
 
         {!isApplied && normalizedType === 'add_field' && suggestion.field && (
           <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
@@ -196,15 +173,13 @@ const SuggestionItem = memo<{
           </div>
         )}
 
-        {!isApplied &&
-          normalizedType === 'remove_index' &&
-          suggestion.indexName && (
-            <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
-              <span className="text-red-600 font-medium px-1 rounded bg-red-50 border border-red-100">
-                - INDEX {suggestion.indexName}
-              </span>
-            </div>
-          )}
+        {!isApplied && normalizedType === 'remove_index' && suggestion.indexName && (
+          <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
+            <span className="text-red-600 font-medium px-1 rounded bg-red-50 border border-red-100">
+              - INDEX {suggestion.indexName}
+            </span>
+          </div>
+        )}
       </div>
 
       {isActionable && onApply && (
@@ -248,26 +223,19 @@ function SuggestionsList({
       <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
         <Lightbulb className="h-4 w-4" />
         <span>{t('review.details')}</span>
-        {isStreaming && (
-          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-        )}
+        {isStreaming && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
       </div>
       <ul className="space-y-1">
         {suggestions.map((suggestion, index) => (
           <SuggestionItem
-            key={
-              typeof suggestion === 'string' ? index : suggestion.id || index
-            }
+            key={typeof suggestion === 'string' ? index : suggestion.id || index}
             suggestion={suggestion}
             onApply={onApply}
             isStreaming={isStreaming}
           />
         ))}
         {Array.from({ length: skeletonCount }).map((_, index) => (
-          <li
-            key={`suggestion-skeleton-${index}`}
-            className="flex items-start gap-3 p-2"
-          >
+          <li key={`suggestion-skeleton-${index}`} className="flex items-start gap-3 p-2">
             <div className="mt-1 h-4 w-4 rounded-full bg-muted/50 animate-pulse shrink-0" />
             <div className="flex-1 space-y-2 py-1">
               <div className="h-3 w-11/12 rounded bg-muted/70 animate-pulse" />
@@ -280,10 +248,7 @@ function SuggestionsList({
   );
 }
 
-function SuggestionsSkeleton({
-  count = SUGGESTION_SKELETON_COUNT,
-  showHeader = false,
-}) {
+function SuggestionsSkeleton({ count = SUGGESTION_SKELETON_COUNT, showHeader = false }) {
   const { t } = useTranslation();
   return (
     <div className="space-y-3">
@@ -296,10 +261,7 @@ function SuggestionsSkeleton({
       )}
       <ul className="space-y-1">
         {Array.from({ length: count }).map((_, index) => (
-          <li
-            key={`suggestion-skeleton-${index}`}
-            className="flex items-start gap-3 p-2"
-          >
+          <li key={`suggestion-skeleton-${index}`} className="flex items-start gap-3 p-2">
             <div className="mt-1 h-4 w-4 rounded-full bg-muted/50 animate-pulse shrink-0" />
             <div className="flex-1 space-y-2 py-1">
               <div className="h-3 w-11/12 rounded bg-muted/70 animate-pulse" />
@@ -342,10 +304,7 @@ export const ReviewResultPanel = memo<ReviewResultPanelProps>(
             <div className="flex items-start gap-4">
               {displayResult?.score !== undefined ? (
                 <div className="shrink-0">
-                  <ScoreDisplay
-                    score={displayResult.score}
-                    isStreaming={isStreaming}
-                  />
+                  <ScoreDisplay score={displayResult.score} isStreaming={isStreaming} />
                 </div>
               ) : (
                 isStreaming && <ScoreSkeleton />
@@ -355,9 +314,7 @@ export const ReviewResultPanel = memo<ReviewResultPanelProps>(
                   {displayResult.summary}
                   {isStreaming && (
                     <span className="inline-flex ml-1">
-                      <span className="animate-pulse text-muted-foreground">
-                        ...
-                      </span>
+                      <span className="animate-pulse text-muted-foreground">...</span>
                     </span>
                   )}
                 </div>
@@ -375,9 +332,7 @@ export const ReviewResultPanel = memo<ReviewResultPanelProps>(
                 onApply={onApplySuggestion}
               />
             )}
-            {isStreaming && suggestions.length === 0 && (
-              <SuggestionsSkeleton showHeader />
-            )}
+            {isStreaming && suggestions.length === 0 && <SuggestionsSkeleton showHeader />}
 
             {/* Disclaimer */}
             {!isLoading && (

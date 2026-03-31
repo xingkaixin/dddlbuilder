@@ -1,9 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { FolderTreeNode } from '@/hooks/useFolders';
-import type {
-  SaveTableResult,
-  SavedTableSummary,
-} from '@/hooks/useSavedTables';
+import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
 import i18n from '@/i18n';
 
 interface UseFolderActionsParams {
@@ -14,10 +11,7 @@ interface UseFolderActionsParams {
   moveFolder: (id: string, parentId?: string) => Promise<void>;
   deleteFolderAction: (id: string) => Promise<string[]>;
   clearTablesFromFolders: (folderIds: string[]) => Promise<void>;
-  moveTableToFolder: (
-    normalizedName: string,
-    folderId?: string,
-  ) => Promise<SaveTableResult>;
+  moveTableToFolder: (normalizedName: string, folderId?: string) => Promise<SaveTableResult>;
   showToast: (message: string) => void;
 }
 
@@ -33,18 +27,12 @@ export function useFolderActions({
   showToast,
 }: UseFolderActionsParams) {
   const [isFolderDialogOpen, setIsFolderDialogOpen] = useState(false);
-  const [folderDialogMode, setFolderDialogMode] = useState<'create' | 'rename'>(
-    'create',
-  );
-  const [folderDialogParent, setFolderDialogParent] =
-    useState<FolderTreeNode | null>(null);
-  const [folderDialogTarget, setFolderDialogTarget] =
-    useState<FolderTreeNode | null>(null);
+  const [folderDialogMode, setFolderDialogMode] = useState<'create' | 'rename'>('create');
+  const [folderDialogParent, setFolderDialogParent] = useState<FolderTreeNode | null>(null);
+  const [folderDialogTarget, setFolderDialogTarget] = useState<FolderTreeNode | null>(null);
 
-  const [isDeleteFolderDialogOpen, setIsDeleteFolderDialogOpen] =
-    useState(false);
-  const [deleteFolderTarget, setDeleteFolderTarget] =
-    useState<FolderTreeNode | null>(null);
+  const [isDeleteFolderDialogOpen, setIsDeleteFolderDialogOpen] = useState(false);
+  const [deleteFolderTarget, setDeleteFolderTarget] = useState<FolderTreeNode | null>(null);
 
   const handleOpenCreateFolderDialog = useCallback(
     (parentId?: string) => {
@@ -109,24 +97,15 @@ export function useFolderActions({
       );
     } catch (error) {
       showToast(
-        error instanceof Error
-          ? error.message
-          : i18n.t('savedTables.toast.deleteFolderFailed'),
+        error instanceof Error ? error.message : i18n.t('savedTables.toast.deleteFolderFailed'),
       );
     }
-  }, [
-    deleteFolderTarget,
-    deleteFolderAction,
-    clearTablesFromFolders,
-    showToast,
-  ]);
+  }, [deleteFolderTarget, deleteFolderAction, clearTablesFromFolders, showToast]);
 
   const deleteFolderTableCount = useMemo(() => {
     if (!deleteFolderTarget) return 0;
 
-    return savedTables.filter(
-      (table) => table.folderId === deleteFolderTarget.id,
-    ).length;
+    return savedTables.filter((table) => table.folderId === deleteFolderTarget.id).length;
   }, [deleteFolderTarget, savedTables]);
 
   const handleMoveTableToFolder = useCallback(
@@ -161,9 +140,7 @@ export function useFolderActions({
         return { ok: true as const };
       } catch (error) {
         const message =
-          error instanceof Error
-            ? error.message
-            : i18n.t('savedTables.toast.moveFolderFailed');
+          error instanceof Error ? error.message : i18n.t('savedTables.toast.moveFolderFailed');
         showToast(message);
         return { ok: false as const, message };
       }

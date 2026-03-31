@@ -1,9 +1,5 @@
 import { create } from 'zustand';
-import type {
-  MysqlPartitionConfig,
-  MysqlPartitionType,
-  PartitionDefinition,
-} from '@/types';
+import type { MysqlPartitionConfig, MysqlPartitionType, PartitionDefinition } from '@/types';
 import { replaceIdentifierToken } from '@/utils/fieldRenameUtils';
 
 type Setter<T> = T | ((prev: T) => T);
@@ -81,10 +77,7 @@ export const usePartitionStore = create<PartitionStoreState>((set) => ({
     set((state) => ({
       mysqlPartitionConfig: {
         ...state.mysqlPartitionConfig,
-        partitions: [
-          ...(state.mysqlPartitionConfig.partitions || []),
-          partition,
-        ],
+        partitions: [...(state.mysqlPartitionConfig.partitions || []), partition],
       },
     })),
   removePartition: (name) =>
@@ -100,8 +93,8 @@ export const usePartitionStore = create<PartitionStoreState>((set) => ({
     set((state) => ({
       mysqlPartitionConfig: {
         ...state.mysqlPartitionConfig,
-        partitions: (state.mysqlPartitionConfig.partitions || []).map(
-          (current) => (current.name === name ? partition : current),
+        partitions: (state.mysqlPartitionConfig.partitions || []).map((current) =>
+          current.name === name ? partition : current,
         ),
       },
     })),
@@ -165,8 +158,7 @@ export const usePartitionStore = create<PartitionStoreState>((set) => ({
   },
   setMysqlPartitionConfig: (value) =>
     set((state) => ({
-      mysqlPartitionConfig:
-        typeof value === 'function' ? value(state.mysqlPartitionConfig) : value,
+      mysqlPartitionConfig: typeof value === 'function' ? value(state.mysqlPartitionConfig) : value,
     })),
   markHydratedFromPersisted: () =>
     set({

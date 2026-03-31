@@ -10,13 +10,8 @@ const normalizeParserConstructor = (module: ParserModule) => {
     return parserFromNamed as ParserConstructor;
   }
 
-  if (
-    module.default &&
-    typeof module.default === 'object' &&
-    'Parser' in module.default
-  ) {
-    const parserFromDefaultObject = (module.default as { Parser?: unknown })
-      .Parser;
+  if (module.default && typeof module.default === 'object' && 'Parser' in module.default) {
+    const parserFromDefaultObject = (module.default as { Parser?: unknown }).Parser;
     if (typeof parserFromDefaultObject === 'function') {
       return parserFromDefaultObject as ParserConstructor;
     }
@@ -44,9 +39,7 @@ export const __resetParserConstructorPromiseForTests = () => {
 };
 
 // Test-only loader override to avoid brittle mocking around dynamic imports.
-export const __setParserModuleLoaderForTests = (
-  loader: (() => Promise<ParserModule>) | null,
-) => {
+export const __setParserModuleLoaderForTests = (loader: (() => Promise<ParserModule>) | null) => {
   parserModuleLoader = loader ?? defaultParserModuleLoader;
   parserConstructorPromise = null;
 };

@@ -77,11 +77,7 @@ export const CreateTemplateDialog = memo<CreateTemplateDialogProps>(
 
       setLoading(true);
       try {
-        const result = await onConfirm(
-          trimmedName,
-          validFields,
-          description.trim() || undefined,
-        );
+        const result = await onConfirm(trimmedName, validFields, description.trim() || undefined);
         if (result.ok) {
           onOpenChange(false);
         } else {
@@ -96,9 +92,7 @@ export const CreateTemplateDialog = memo<CreateTemplateDialogProps>(
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle>
-              {t('templateManager.createFromFieldsDialog.title')}
-            </DialogTitle>
+            <DialogTitle>{t('templateManager.createFromFieldsDialog.title')}</DialogTitle>
             <DialogDescription>
               {t('templateManager.createFromFieldsDialog.description', {
                 count: validFields.length,
@@ -135,9 +129,7 @@ export const CreateTemplateDialog = memo<CreateTemplateDialogProps>(
                   setName(e.target.value);
                   setError('');
                 }}
-                placeholder={t(
-                  'templateManager.createFromFieldsDialog.namePlaceholder',
-                )}
+                placeholder={t('templateManager.createFromFieldsDialog.namePlaceholder')}
                 autoFocus
               />
             </div>
@@ -149,9 +141,7 @@ export const CreateTemplateDialog = memo<CreateTemplateDialogProps>(
                 id="new-template-desc"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder={t(
-                  'templateManager.createFromFieldsDialog.descriptionPlaceholder',
-                )}
+                placeholder={t('templateManager.createFromFieldsDialog.descriptionPlaceholder')}
               />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}

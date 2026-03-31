@@ -28,8 +28,7 @@ async function runWithFolderStore<T>(
     const request = runner(store);
 
     request.onsuccess = () => finish(resolve)(request.result as T);
-    request.onerror = () =>
-      reject(request.error ?? new Error('IndexedDB 请求失败'));
+    request.onerror = () => reject(request.error ?? new Error('IndexedDB 请求失败'));
     tx.onerror = () => reject(tx.error ?? new Error('事务失败'));
     tx.onabort = () => reject(tx.error ?? new Error('事务被中止'));
     tx.oncomplete = () => {
@@ -42,9 +41,7 @@ async function runWithFolderStore<T>(
  * 获取所有文件夹
  */
 export async function listFolders(): Promise<TableFolder[]> {
-  const folders = await runWithFolderStore<TableFolder[]>('readonly', (store) =>
-    store.getAll(),
-  );
+  const folders = await runWithFolderStore<TableFolder[]>('readonly', (store) => store.getAll());
   if (!Array.isArray(folders)) return [];
   // 按 order 排序
   return folders.sort((a, b) => a.order - b.order);
@@ -53,22 +50,17 @@ export async function listFolders(): Promise<TableFolder[]> {
 /**
  * 获取指定父文件夹下的子文件夹
  */
-export async function listChildFolders(
-  parentId?: string,
-): Promise<TableFolder[]> {
+export async function listChildFolders(parentId?: string): Promise<TableFolder[]> {
   const allFolders = await listFolders();
-  return allFolders.filter((f) =>
-    parentId ? f.parentId === parentId : !f.parentId,
-  );
+  return allFolders.filter((f) => (parentId ? f.parentId === parentId : !f.parentId));
 }
 
 /**
  * 获取单个文件夹
  */
 export async function getFolder(id: string): Promise<TableFolder | null> {
-  const folder = await runWithFolderStore<TableFolder | undefined>(
-    'readonly',
-    (store) => store.get(id),
+  const folder = await runWithFolderStore<TableFolder | undefined>('readonly', (store) =>
+    store.get(id),
   );
   return folder ?? null;
 }
@@ -76,10 +68,7 @@ export async function getFolder(id: string): Promise<TableFolder | null> {
 /**
  * 创建文件夹
  */
-export async function createFolder(
-  name: string,
-  parentId?: string,
-): Promise<TableFolder> {
+export async function createFolder(name: string, parentId?: string): Promise<TableFolder> {
   // 获取同级文件夹以确定 order
   const siblings = await listChildFolders(parentId);
   const maxOrder = siblings.reduce((max, f) => Math.max(max, f.order), 0);
@@ -92,9 +81,7 @@ export async function createFolder(
     createdAt: Date.now(),
   };
 
-  await runWithFolderStore<IDBValidKey>('readwrite', (store) =>
-    store.add(folder),
-  );
+  await runWithFolderStore<IDBValidKey>('readwrite', (store) => store.add(folder));
   return folder;
 }
 
@@ -102,9 +89,7 @@ export async function createFolder(
  * 更新文件夹
  */
 export async function updateFolder(folder: TableFolder): Promise<void> {
-  await runWithFolderStore<IDBValidKey>('readwrite', (store) =>
-    store.put(folder),
-  );
+  await runWithFolderStore<IDBValidKey>('readwrite', (store) => store.put(folder));
 }
 
 /**
@@ -122,10 +107,7 @@ export async function renameFolder(id: string, newName: string): Promise<void> {
 /**
  * 移动文件夹到新的父文件夹
  */
-export async function moveFolder(
-  id: string,
-  newParentId?: string,
-): Promise<void> {
+export async function moveFolder(id: string, newParentId?: string): Promise<void> {
   const folder = await getFolder(id);
   if (!folder) {
     throw new Error('文件夹不存在');
@@ -151,9 +133,7 @@ export async function moveFolder(
 /**
  * 获取文件夹的所有后代文件夹 ID
  */
-export async function getDescendantFolderIds(
-  folderId: string,
-): Promise<string[]> {
+export async function getDescendantFolderIds(folderId: string): Promise<string[]> {
   const allFolders = await listFolders();
   const descendants: string[] = [];
 
@@ -180,9 +160,7 @@ export async function deleteFolder(id: string): Promise<void> {
 
   // 先删除所有涉及的文件夹
   for (const folderId of allFolderIds) {
-    await runWithFolderStore<undefined>('readwrite', (store) =>
-      store.delete(folderId),
-    );
+    await runWithFolderStore<undefined>('readwrite', (store) => store.delete(folderId));
   }
 
   // 注意：表的 folderId 清理需要在调用处处理

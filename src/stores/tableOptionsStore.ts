@@ -104,8 +104,7 @@ export const useTableOptionsStore = create<TableOptionsStoreState>((set) => ({
     })),
   setTableMiscConfig: (value) =>
     set((state) => ({
-      tableMiscConfig:
-        typeof value === 'function' ? value(state.tableMiscConfig) : value,
+      tableMiscConfig: typeof value === 'function' ? value(state.tableMiscConfig) : value,
     })),
   markHydratedFromPersisted: () =>
     set({

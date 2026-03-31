@@ -30,15 +30,9 @@ const createMockKV = (): MockKV => {
   const store = new Map<string, string>();
   return {
     get: vi.fn(async (key: string) => store.get(key) ?? null),
-    put: vi.fn(
-      async (
-        key: string,
-        value: string,
-        _opts?: { expirationTtl?: number },
-      ) => {
-        store.set(key, value);
-      },
-    ),
+    put: vi.fn(async (key: string, value: string, _opts?: { expirationTtl?: number }) => {
+      store.set(key, value);
+    }),
     delete: vi.fn(async (key: string) => {
       store.delete(key);
     }),
@@ -95,12 +89,9 @@ describe('share api', () => {
     const state = buildState();
     mockKV.get.mockResolvedValueOnce(JSON.stringify(state));
 
-    const response = await app.request(
-      `https://ddlbuilder.test/api/share/${VALID_SHARE_ID}`,
-      {
-        method: 'GET',
-      },
-    );
+    const response = await app.request(`https://ddlbuilder.test/api/share/${VALID_SHARE_ID}`, {
+      method: 'GET',
+    });
 
     expect(response.status).toBe(200);
     const payload = (await response.json()) as {
@@ -119,9 +110,7 @@ describe('share api', () => {
   it('分享不存在时应返回 404', async () => {
     mockKV.get.mockResolvedValueOnce(null);
 
-    const response = await app.request(
-      `https://ddlbuilder.test/api/share/${VALID_SHARE_ID}`,
-    );
+    const response = await app.request(`https://ddlbuilder.test/api/share/${VALID_SHARE_ID}`);
 
     expect(response.status).toBe(404);
     const payload = (await response.json()) as { code: string };
@@ -159,18 +148,15 @@ describe('share api', () => {
     });
     registerShareRoutes(appNoKV);
 
-    const response = await appNoKV.request(
-      'https://ddlbuilder.test/api/share',
-      {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          state: buildState(),
-        }),
+    const response = await appNoKV.request('https://ddlbuilder.test/api/share', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
       },
-    );
+      body: JSON.stringify({
+        state: buildState(),
+      }),
+    });
 
     expect(response.status).toBe(500);
     const payload = (await response.json()) as { code: string };
@@ -210,9 +196,7 @@ describe('share api', () => {
   });
 
   it('读取分享时共享 ID 格式不对应当返回 400', async () => {
-    const response = await app.request(
-      `https://ddlbuilder.test/api/share/invalid-id`,
-    );
+    const response = await app.request(`https://ddlbuilder.test/api/share/invalid-id`);
     expect(response.status).toBe(400);
     const payload = (await response.json()) as { code: string };
     expect(payload.code).toBe('SHARE_UUID_INVALID');
@@ -221,9 +205,7 @@ describe('share api', () => {
   it('读取分享时如果 KV 报错应当返回 404', async () => {
     mockKV.get.mockRejectedValueOnce(new Error('KV error'));
 
-    const response = await app.request(
-      `https://ddlbuilder.test/api/share/${VALID_SHARE_ID}`,
-    );
+    const response = await app.request(`https://ddlbuilder.test/api/share/${VALID_SHARE_ID}`);
     expect(response.status).toBe(404);
     const payload = (await response.json()) as { code: string };
     expect(payload.code).toBe('SHARE_NOT_FOUND');
@@ -239,9 +221,7 @@ describe('share api', () => {
     });
     registerShareRoutes(appNoKV);
 
-    const response = await appNoKV.request(
-      `https://ddlbuilder.test/api/share/${VALID_SHARE_ID}`,
-    );
+    const response = await appNoKV.request(`https://ddlbuilder.test/api/share/${VALID_SHARE_ID}`);
     expect(response.status).toBe(500);
     const payload = (await response.json()) as { code: string };
     expect(payload.code).toBe('KV_CONFIG_MISSING');
@@ -250,9 +230,7 @@ describe('share api', () => {
   it('KV返回的JSON无法解析为有效State时应当返回 404', async () => {
     mockKV.get.mockResolvedValueOnce('{"invalid": true}');
 
-    const response = await app.request(
-      `https://ddlbuilder.test/api/share/${VALID_SHARE_ID}`,
-    );
+    const response = await app.request(`https://ddlbuilder.test/api/share/${VALID_SHARE_ID}`);
     expect(response.status).toBe(404);
     const payload = (await response.json()) as { code: string };
     expect(payload.code).toBe('SHARE_NOT_FOUND');
@@ -261,9 +239,7 @@ describe('share api', () => {
   it('KV返回无效JSON字符串时应当返回 404', async () => {
     mockKV.get.mockResolvedValueOnce('{invalid_json...');
 
-    const response = await app.request(
-      `https://ddlbuilder.test/api/share/${VALID_SHARE_ID}`,
-    );
+    const response = await app.request(`https://ddlbuilder.test/api/share/${VALID_SHARE_ID}`);
     expect(response.status).toBe(404);
     const payload = (await response.json()) as { code: string };
     expect(payload.code).toBe('SHARE_NOT_FOUND');

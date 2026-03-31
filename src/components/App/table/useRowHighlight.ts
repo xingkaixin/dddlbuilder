@@ -7,9 +7,7 @@ export function useRowHighlight(
   useEffect(() => {
     if (highlightedRowIndex == null || highlightedRowIndex < 0) return;
 
-    const rowElement = tableRef.current?.querySelector(
-      `[data-row-index="${highlightedRowIndex}"]`,
-    );
+    const rowElement = tableRef.current?.querySelector(`[data-row-index="${highlightedRowIndex}"]`);
     if (!rowElement) return;
 
     rowElement.classList.add('animate-row-highlight');

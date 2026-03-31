@@ -7,9 +7,7 @@ describe('useIndexManagement', () => {
   const defaultFields = ['id', 'name', 'email', 'created_at'];
 
   it('应该初始化为空状态', () => {
-    const { result } = renderHook(() =>
-      useIndexManagement(defaultTableName, defaultFields),
-    );
+    const { result } = renderHook(() => useIndexManagement(defaultTableName, defaultFields));
 
     expect(result.current.indexInput).toBe('');
     expect(result.current.currentIndexFields).toEqual([]);
@@ -46,17 +44,13 @@ describe('useIndexManagement', () => {
     );
 
     expect(result.current.indexInput).toBe('test_input');
-    expect(result.current.currentIndexFields).toEqual([
-      { name: 'id', direction: 'ASC' },
-    ]);
+    expect(result.current.currentIndexFields).toEqual([{ name: 'id', direction: 'ASC' }]);
     expect(result.current.indexes).toHaveLength(1);
     expect(result.current.indexes[0].name).toBe('idx_test_table_name');
   });
 
   it('应该处理空的 persistedState', () => {
-    const { result } = renderHook(() =>
-      useIndexManagement(defaultTableName, defaultFields, {}),
-    );
+    const { result } = renderHook(() => useIndexManagement(defaultTableName, defaultFields, {}));
 
     expect(result.current.indexInput).toBe('');
     expect(result.current.currentIndexFields).toEqual([]);
@@ -87,9 +81,7 @@ describe('useIndexManagement', () => {
   });
 
   it('应该能够更新索引名称', () => {
-    const { result } = renderHook(() =>
-      useIndexManagement(defaultTableName, defaultFields),
-    );
+    const { result } = renderHook(() => useIndexManagement(defaultTableName, defaultFields));
 
     // 先添加一个索引
     act(() => {
@@ -118,9 +110,7 @@ describe('useIndexManagement', () => {
   });
 
   it('应该能够重置索引状态', async () => {
-    const { result } = renderHook(() =>
-      useIndexManagement(defaultTableName, defaultFields),
-    );
+    const { result } = renderHook(() => useIndexManagement(defaultTableName, defaultFields));
 
     // 添加一些数据
     act(() => {
@@ -155,9 +145,7 @@ describe('useIndexManagement', () => {
   });
 
   it('应该能够直接设置索引数组', () => {
-    const { result } = renderHook(() =>
-      useIndexManagement(defaultTableName, defaultFields),
-    );
+    const { result } = renderHook(() => useIndexManagement(defaultTableName, defaultFields));
 
     const newIndexes = [
       {
@@ -201,9 +189,7 @@ describe('useIndexManagement', () => {
   });
 
   it('应该根据输入过滤字段建议', () => {
-    const { result } = renderHook(() =>
-      useIndexManagement(defaultTableName, defaultFields),
-    );
+    const { result } = renderHook(() => useIndexManagement(defaultTableName, defaultFields));
 
     act(() => {
       result.current.setIndexInput('na');
@@ -213,9 +199,7 @@ describe('useIndexManagement', () => {
   });
 
   it('应该排除已在当前索引中的字段', () => {
-    const { result } = renderHook(() =>
-      useIndexManagement(defaultTableName, defaultFields),
-    );
+    const { result } = renderHook(() => useIndexManagement(defaultTableName, defaultFields));
 
     // 先添加一个字段到当前索引
     act(() => {
@@ -230,26 +214,20 @@ describe('useIndexManagement', () => {
   });
 
   it('应该能够添加字段到当前索引', () => {
-    const { result } = renderHook(() =>
-      useIndexManagement(defaultTableName, defaultFields),
-    );
+    const { result } = renderHook(() => useIndexManagement(defaultTableName, defaultFields));
 
     act(() => {
       result.current.addFieldToIndex('name');
     });
 
-    expect(result.current.currentIndexFields).toEqual([
-      { name: 'name', direction: 'ASC' },
-    ]);
+    expect(result.current.currentIndexFields).toEqual([{ name: 'name', direction: 'ASC' }]);
     expect(result.current.indexInput).toBe('');
     expect(result.current.showFieldSuggestions).toBe(false);
     expect(result.current.selectedSuggestionIndex).toBe(0);
   });
 
   it('应该能够从当前索引移除字段', () => {
-    const { result } = renderHook(() =>
-      useIndexManagement(defaultTableName, defaultFields),
-    );
+    const { result } = renderHook(() => useIndexManagement(defaultTableName, defaultFields));
 
     // 先添加两个字段
     act(() => {
@@ -264,15 +242,11 @@ describe('useIndexManagement', () => {
       result.current.removeFieldFromIndex(1);
     });
 
-    expect(result.current.currentIndexFields).toEqual([
-      { name: 'name', direction: 'ASC' },
-    ]);
+    expect(result.current.currentIndexFields).toEqual([{ name: 'name', direction: 'ASC' }]);
   });
 
   it('应该能够切换字段排序方向', () => {
-    const { result } = renderHook(() =>
-      useIndexManagement(defaultTableName, defaultFields),
-    );
+    const { result } = renderHook(() => useIndexManagement(defaultTableName, defaultFields));
 
     act(() => {
       result.current.addFieldToIndex('name');
@@ -296,9 +270,7 @@ describe('useIndexManagement', () => {
   });
 
   it('应该能够添加普通索引', () => {
-    const { result } = renderHook(() =>
-      useIndexManagement(defaultTableName, defaultFields),
-    );
+    const { result } = renderHook(() => useIndexManagement(defaultTableName, defaultFields));
 
     // 先添加字段
     act(() => {
@@ -320,9 +292,7 @@ describe('useIndexManagement', () => {
   });
 
   it('应该能够添加唯一索引', () => {
-    const { result } = renderHook(() =>
-      useIndexManagement(defaultTableName, defaultFields),
-    );
+    const { result } = renderHook(() => useIndexManagement(defaultTableName, defaultFields));
 
     act(() => {
       result.current.addFieldToIndex('email');
@@ -339,9 +309,7 @@ describe('useIndexManagement', () => {
   });
 
   it('应该能够添加主键索引', () => {
-    const { result } = renderHook(() =>
-      useIndexManagement(defaultTableName, defaultFields),
-    );
+    const { result } = renderHook(() => useIndexManagement(defaultTableName, defaultFields));
 
     act(() => {
       result.current.addFieldToIndex('id');
@@ -358,9 +326,7 @@ describe('useIndexManagement', () => {
   });
 
   it('应该为多字段索引生成正确的名称', () => {
-    const { result } = renderHook(() =>
-      useIndexManagement(defaultTableName, defaultFields),
-    );
+    const { result } = renderHook(() => useIndexManagement(defaultTableName, defaultFields));
 
     act(() => {
       result.current.addFieldToIndex('name');
@@ -376,9 +342,7 @@ describe('useIndexManagement', () => {
   });
 
   it('应该不能在没有字段时添加索引', () => {
-    const { result } = renderHook(() =>
-      useIndexManagement(defaultTableName, defaultFields),
-    );
+    const { result } = renderHook(() => useIndexManagement(defaultTableName, defaultFields));
 
     const initialCount = result.current.indexes.length;
 
@@ -390,9 +354,7 @@ describe('useIndexManagement', () => {
   });
 
   it('应该处理不存在的索引ID', () => {
-    const { result } = renderHook(() =>
-      useIndexManagement(defaultTableName, defaultFields),
-    );
+    const { result } = renderHook(() => useIndexManagement(defaultTableName, defaultFields));
 
     const initialCount = result.current.indexes.length;
 
@@ -405,9 +367,7 @@ describe('useIndexManagement', () => {
   });
 
   it('应该处理大小写不敏感的字段过滤', () => {
-    const { result } = renderHook(() =>
-      useIndexManagement(defaultTableName, defaultFields),
-    );
+    const { result } = renderHook(() => useIndexManagement(defaultTableName, defaultFields));
 
     act(() => {
       result.current.setIndexInput('EMAIL');
@@ -417,9 +377,7 @@ describe('useIndexManagement', () => {
   });
 
   it('应该处理部分匹配的字段过滤', () => {
-    const { result } = renderHook(() =>
-      useIndexManagement(defaultTableName, defaultFields),
-    );
+    const { result } = renderHook(() => useIndexManagement(defaultTableName, defaultFields));
 
     act(() => {
       result.current.setIndexInput('creat');
@@ -429,9 +387,7 @@ describe('useIndexManagement', () => {
   });
 
   it('应该重置相关状态当添加索引后', () => {
-    const { result } = renderHook(() =>
-      useIndexManagement(defaultTableName, defaultFields),
-    );
+    const { result } = renderHook(() => useIndexManagement(defaultTableName, defaultFields));
 
     // 设置输入和建议
     act(() => {

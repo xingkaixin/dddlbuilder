@@ -1,17 +1,10 @@
 import { useCallback } from 'react';
 import type { PersistedState } from '@/types';
 import type { WorkspaceSource } from '@/types/workspace';
-import type {
-  SaveTableResult,
-  SavedTableSummary,
-} from '@/hooks/useSavedTables';
+import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
 import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
-import {
-  createVersion,
-  countVersions,
-  INITIAL_VERSION_MESSAGE_KEY,
-} from '@/utils/tableVersions';
+import { createVersion, countVersions, INITIAL_VERSION_MESSAGE_KEY } from '@/utils/tableVersions';
 
 type AnalyticsValue = string | number | boolean | null | undefined;
 
@@ -47,20 +40,11 @@ interface UseSaveLoadActionsParams {
     state: PersistedState;
   } | null>;
   saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
-  overwriteTable: (
-    normalizedName: string,
-    state: PersistedState,
-  ) => Promise<SaveTableResult>;
+  overwriteTable: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
   showToast: (message: string) => void;
-  trackEvent: (
-    event: string,
-    data?: Record<string, AnalyticsValue>,
-  ) => Promise<void> | void;
+  trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void> | void;
   flushCurrentWorkspace?: () => void;
-  setWorkspaceSnapshot?: (
-    source: WorkspaceSource,
-    state: PersistedState | null,
-  ) => void;
+  setWorkspaceSnapshot?: (source: WorkspaceSource, state: PersistedState | null) => void;
   onSaveSuccess?: (payload: {
     normalizedName: string;
     displayName: string;
@@ -121,8 +105,7 @@ export function useSaveLoadActions({
           name: record.name,
           savedTableSignature: record.state.tableName,
           dbType: record.state.dbType,
-          fieldCount: record.state.rows.filter((r) => r.fieldName?.trim())
-            .length,
+          fieldCount: record.state.rows.filter((r) => r.fieldName?.trim()).length,
         });
 
         const savedBaseSignature = serializePersistedState(record.state);
@@ -160,7 +143,7 @@ export function useSaveLoadActions({
         setLoadedTableName(record.name);
         setLoadedTableSignature(savedBaseSignature);
         setLoadedTableVersion(resolvedVersion);
-        trackEvent('table_load', { tableName: record.name });
+        void trackEvent('table_load', { tableName: record.name });
         showToast(`已加载：${record.name} (v${resolvedVersion})`);
       } catch (error) {
         showToast(error instanceof Error ? error.message : '加载失败');
@@ -185,8 +168,7 @@ export function useSaveLoadActions({
 
   const openSaveDialog = useCallback(
     (queuedLoad?: SavedTableSummary | null) => {
-      const defaultName =
-        loadedTableName || tableName.trim() || DEFAULT_SAVED_TABLE_NAME;
+      const defaultName = loadedTableName || tableName.trim() || DEFAULT_SAVED_TABLE_NAME;
       saveDialog.openDialog({
         name: defaultName,
         queuedLoadAfterSave: queuedLoad ?? null,
@@ -227,7 +209,7 @@ export function useSaveLoadActions({
         },
         nextState,
       );
-      trackEvent('table_update', { tableName: loadedTableName });
+      void trackEvent('table_update', { tableName: loadedTableName });
       showToast(`已更新：${loadedTableName ?? saveName}`);
       await createVersion(loadedTableNormalizedName, nextState);
       const versionCount = await countVersions(loadedTableNormalizedName);
@@ -259,13 +241,9 @@ export function useSaveLoadActions({
         },
         nextState,
       );
-      trackEvent('table_save', { tableName: displayName });
+      void trackEvent('table_save', { tableName: displayName });
       showToast(`已保存：${displayName}`);
-      await createVersion(
-        normalizedName,
-        nextState,
-        INITIAL_VERSION_MESSAGE_KEY,
-      );
+      await createVersion(normalizedName, nextState, INITIAL_VERSION_MESSAGE_KEY);
       setLoadedTableVersion(1);
       savedNormalizedName = normalizedName;
       savedDisplayName = displayName;

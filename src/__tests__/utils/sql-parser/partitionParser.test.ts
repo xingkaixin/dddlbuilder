@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  PARTITION_BY_REGEX,
-  extractPartitionConfig,
-} from '@/utils/sql-parser/partitionParser';
+import { PARTITION_BY_REGEX, extractPartitionConfig } from '@/utils/sql-parser/partitionParser';
 
 describe('partitionParser', () => {
   it('应识别 HASH 分区与分区数量', () => {
@@ -132,9 +129,7 @@ describe('partitionParser', () => {
   });
 
   it('非分区 SQL 不应识别配置', () => {
-    expect(PARTITION_BY_REGEX.test('ALTER TABLE t ADD COLUMN x INT')).toBe(
-      false,
-    );
+    expect(PARTITION_BY_REGEX.test('ALTER TABLE t ADD COLUMN x INT')).toBe(false);
     expect(extractPartitionConfig('CREATE TABLE t (id INT);')).toBeUndefined();
   });
 });

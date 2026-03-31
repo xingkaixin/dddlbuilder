@@ -2,9 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { NormalizedField } from '@/types';
 import { buildDefaultClause } from '@/utils/alter-ddl/defaultClause';
 
-function createField(
-  overrides: Partial<NormalizedField> = {},
-): NormalizedField {
+function createField(overrides: Partial<NormalizedField> = {}): NormalizedField {
   return {
     name: 'col',
     type: 'varchar(64)',

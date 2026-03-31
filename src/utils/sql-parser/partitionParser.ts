@@ -1,7 +1,4 @@
-import type {
-  MysqlPartitionConfig,
-  MysqlPartitionType,
-} from '../../types/index.js';
+import type { MysqlPartitionConfig, MysqlPartitionType } from '../../types/index.js';
 
 export const PARTITION_BY_REGEX = /\bPARTITION\s+BY\b/i;
 
@@ -135,8 +132,7 @@ function resolvePartitionKey(partitionKey: string): {
 
   const parts = splitTopLevelByComma(keyText);
   const isSimpleIdentifierList =
-    parts.length > 0 &&
-    parts.every((part) => /^`?[\w.$]+`?$/i.test(part.trim()));
+    parts.length > 0 && parts.every((part) => /^`?[\w.$]+`?$/i.test(part.trim()));
 
   if (!isSimpleIdentifierList) {
     return { columns: [], expression: keyText };
@@ -147,10 +143,7 @@ function resolvePartitionKey(partitionKey: string): {
   };
 }
 
-function parsePartitionDefinitions(
-  definitionsText: string,
-  partitionType: MysqlPartitionType,
-) {
+function parsePartitionDefinitions(definitionsText: string, partitionType: MysqlPartitionType) {
   if (!definitionsText.trim()) return [];
 
   const partitions: Array<{ name: string; value: string }> = [];
@@ -182,9 +175,7 @@ function extractPartitionClause(sql: string): string {
   return fromPartition.slice(0, semicolonIndex).trim();
 }
 
-export function extractPartitionConfig(
-  sql: string,
-): MysqlPartitionConfig | undefined {
+export function extractPartitionConfig(sql: string): MysqlPartitionConfig | undefined {
   const partitionClause = extractPartitionClause(sql);
   if (!partitionClause) return undefined;
 

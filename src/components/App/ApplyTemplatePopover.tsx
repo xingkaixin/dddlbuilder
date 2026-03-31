@@ -6,11 +6,7 @@
 import { memo, useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { FileText, ChevronDown, Settings, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
 import { useTranslation } from 'react-i18next';
 import { Input } from '../ui/input';
@@ -30,16 +26,11 @@ function includesQuery(value: string | undefined, query: string): boolean {
   return value.toLowerCase().includes(query);
 }
 
-function matchesTemplate(
-  template: FieldTemplate,
-  normalizedQuery: string,
-): boolean {
+function matchesTemplate(template: FieldTemplate, normalizedQuery: string): boolean {
   if (!normalizedQuery) return true;
 
   const keywords =
-    template.keywords && template.keywords.length > 0
-      ? template.keywords
-      : [template.name];
+    template.keywords && template.keywords.length > 0 ? template.keywords : [template.name];
 
   return (
     includesQuery(template.name, normalizedQuery) ||
@@ -69,10 +60,7 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
     const [searchQuery, setSearchQuery] = useState('');
     const hasTrackedSearchRef = useRef(false);
 
-    const normalizedQuery = useMemo(
-      () => searchQuery.trim().toLowerCase(),
-      [searchQuery],
-    );
+    const normalizedQuery = useMemo(() => searchQuery.trim().toLowerCase(), [searchQuery]);
 
     const sortedTemplates = useMemo(
       () => [...templates].sort((a, b) => b.updatedAt - a.updatedAt),
@@ -85,10 +73,7 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
     );
 
     const visibleTemplates = useMemo(
-      () =>
-        sortedTemplates.filter((template) =>
-          matchesTemplate(template, normalizedQuery),
-        ),
+      () => sortedTemplates.filter((template) => matchesTemplate(template, normalizedQuery)),
       [normalizedQuery, sortedTemplates],
     );
 
@@ -98,10 +83,7 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
     );
 
     const allTemplatesExceptRecent = useMemo(
-      () =>
-        visibleTemplates.filter(
-          (template) => !recentTemplateIds.has(template.id),
-        ),
+      () => visibleTemplates.filter((template) => !recentTemplateIds.has(template.id)),
       [recentTemplateIds, visibleTemplates],
     );
 
@@ -136,7 +118,7 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
         return;
       }
       hasTrackedSearchRef.current = true;
-      void trackEvent('template_quick_apply_search_used', {
+      trackEvent('template_quick_apply_search_used', {
         queryLength: normalizedQuery.length,
         templateCount: templates.length,
       });
@@ -170,11 +152,7 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
     return (
       <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1.5 px-2 text-xs font-medium"
-          >
+          <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2 text-xs font-medium">
             <FileText className="h-3.5 w-3.5" />
             {t('templateManager.quickApply.trigger')}
             <ChevronDown className="h-3 w-3 opacity-50" />
@@ -182,18 +160,14 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
         </PopoverTrigger>
         <PopoverContent className="w-64 p-0" align="start">
           <div className="border-b p-2">
-            <div className="text-sm font-medium">
-              {t('templateManager.quickApply.selectTitle')}
-            </div>
+            <div className="text-sm font-medium">{t('templateManager.quickApply.selectTitle')}</div>
             {enableSearch && (
               <div className="relative mt-2">
                 <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={t(
-                    'templateManager.quickApply.searchPlaceholder',
-                  )}
+                  placeholder={t('templateManager.quickApply.searchPlaceholder')}
                   className="h-8 pl-7 text-xs"
                   data-testid="quick-apply-search"
                 />
@@ -212,9 +186,7 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
               </div>
             ) : normalizedQuery ? (
               <div className="p-1">
-                {visibleTemplates.map((template) =>
-                  renderTemplateButton(template),
-                )}
+                {visibleTemplates.map((template) => renderTemplateButton(template))}
               </div>
             ) : (
               <div className="p-1">
@@ -223,17 +195,13 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
                     {t('templateManager.quickApply.recentTitle')}
                   </div>
                 )}
-                {recentTemplates.map((template) =>
-                  renderTemplateButton(template),
-                )}
+                {recentTemplates.map((template) => renderTemplateButton(template))}
                 {allTemplatesExceptRecent.length > 0 && (
                   <>
                     <div className="px-2 pb-1 pt-2 text-[11px] font-medium text-muted-foreground">
                       {t('templateManager.quickApply.allTitle')}
                     </div>
-                    {allTemplatesExceptRecent.map((template) =>
-                      renderTemplateButton(template),
-                    )}
+                    {allTemplatesExceptRecent.map((template) => renderTemplateButton(template))}
                   </>
                 )}
               </div>

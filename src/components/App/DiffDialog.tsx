@@ -1,13 +1,5 @@
 import { memo, useMemo, useCallback, useState, lazy, Suspense } from 'react';
-import {
-  Copy,
-  Plus,
-  Minus,
-  RefreshCw,
-  RotateCcw,
-  ChevronDown,
-  ChevronRight,
-} from 'lucide-react';
+import { Copy, Plus, Minus, RefreshCw, RotateCcw, ChevronDown, ChevronRight } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -18,10 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import type { TableDiff, FieldDiff, IndexDiff } from '@/utils/tableDiff';
 import type { NormalizedField, DatabaseType } from '@/types';
-import {
-  generateAlterDDL,
-  generateRollbackDDL,
-} from '@/utils/alterDdlGenerator';
+import { generateAlterDDL, generateRollbackDDL } from '@/utils/alterDdlGenerator';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 
@@ -62,12 +51,7 @@ const FieldDiffRow = memo<{ diff: FieldDiff }>(({ diff }) => {
   const oldField = diff.oldField;
 
   return (
-    <div
-      className={cn(
-        'flex items-start gap-2 rounded-md border px-3 py-2 text-sm',
-        bgClass,
-      )}
-    >
+    <div className={cn('flex items-start gap-2 rounded-md border px-3 py-2 text-sm', bgClass)}>
       <span className="mt-0.5 shrink-0">{icon}</span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -87,13 +71,8 @@ const FieldDiffRow = memo<{ diff: FieldDiff }>(({ diff }) => {
             {diff.changes.includes('nullable') && (
               <span className="mr-2">
                 {t('diffDialog.nullable')}:{' '}
-                {oldField.nullable
-                  ? t('fieldEnums.nullable.yes')
-                  : t('fieldEnums.nullable.no')}{' '}
-                →{' '}
-                {field?.nullable
-                  ? t('fieldEnums.nullable.yes')
-                  : t('fieldEnums.nullable.no')}
+                {oldField.nullable ? t('fieldEnums.nullable.yes') : t('fieldEnums.nullable.no')} →{' '}
+                {field?.nullable ? t('fieldEnums.nullable.yes') : t('fieldEnums.nullable.no')}
               </span>
             )}
             {diff.changes.includes('comment') && (
@@ -120,9 +99,7 @@ const IndexDiffRow = memo<{ diff: IndexDiff }>(({ diff }) => {
     );
 
   const bgClass =
-    diff.type === 'add'
-      ? 'bg-green-500/10 border-green-500/20'
-      : 'bg-red-500/10 border-red-500/20';
+    diff.type === 'add' ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20';
 
   const index = diff.index;
   const fieldList = index.fields.map((f) => f.name).join(', ');
@@ -133,21 +110,14 @@ const IndexDiffRow = memo<{ diff: IndexDiff }>(({ diff }) => {
       : t('diffDialog.indexTypeNormal');
 
   return (
-    <div
-      className={cn(
-        'flex items-start gap-2 rounded-md border px-3 py-2 text-sm',
-        bgClass,
-      )}
-    >
+    <div className={cn('flex items-start gap-2 rounded-md border px-3 py-2 text-sm', bgClass)}>
       <span className="mt-0.5 shrink-0">{icon}</span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="font-mono font-medium">{index.name}</span>
           <span className="text-xs text-muted-foreground">{typeLabel}</span>
         </div>
-        <div className="mt-0.5 text-xs text-muted-foreground">
-          ({fieldList})
-        </div>
+        <div className="mt-0.5 text-xs text-muted-foreground">({fieldList})</div>
       </div>
     </div>
   );
@@ -197,9 +167,7 @@ export const DiffDialog = memo<DiffDialogProps>(
     const hasFieldChanges = diff.fields.length > 0;
     const hasIndexChanges = diff.indexes.length > 0;
     const hasTableMetaChanges =
-      diff.tableNameChanged ||
-      diff.tableCommentChanged ||
-      diff.miscConfigChanged;
+      diff.tableNameChanged || diff.tableCommentChanged || diff.miscConfigChanged;
 
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -218,9 +186,7 @@ export const DiffDialog = memo<DiffDialogProps>(
                 </h4>
                 {diff.tableNameChanged && (
                   <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm">
-                    <span className="text-muted-foreground">
-                      {t('diffDialog.tableName')}:{' '}
-                    </span>
+                    <span className="text-muted-foreground">{t('diffDialog.tableName')}: </span>
                     <span className="line-through">{diff.oldTableName}</span>
                     <span className="mx-1">→</span>
                     <span className="font-medium">{diff.newTableName}</span>
@@ -235,13 +201,10 @@ export const DiffDialog = memo<DiffDialogProps>(
                 )}
                 {diff.miscConfigChanged && (
                   <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm">
-                    <span className="text-muted-foreground">
-                      {t('diffDialog.miscChanged')}
-                    </span>
+                    <span className="text-muted-foreground">{t('diffDialog.miscChanged')}</span>
                     {diff.oldMiscConfig && diff.newMiscConfig && (
                       <div className="mt-1 text-xs text-muted-foreground">
-                        {diff.oldMiscConfig.enabled !==
-                          diff.newMiscConfig.enabled && (
+                        {diff.oldMiscConfig.enabled !== diff.newMiscConfig.enabled && (
                           <div>
                             {t('diffDialog.enabledStatus')}:{' '}
                             {diff.oldMiscConfig.enabled
@@ -253,55 +216,42 @@ export const DiffDialog = memo<DiffDialogProps>(
                               : t('diffDialog.disabled')}
                           </div>
                         )}
-                        {diff.oldMiscConfig.enabled &&
-                          diff.newMiscConfig.enabled && (
-                            <>
-                              {diff.oldMiscConfig.engine !==
-                                diff.newMiscConfig.engine && (
-                                <div>
-                                  {t('diffDialog.engine')}:{' '}
-                                  {diff.oldMiscConfig.engine ||
-                                    t('diffDialog.default')}
-                                  <span className="mx-1">→</span>
-                                  {diff.newMiscConfig.engine ||
-                                    t('diffDialog.default')}
-                                </div>
-                              )}
-                              {diff.oldMiscConfig.charset !==
-                                diff.newMiscConfig.charset && (
-                                <div>
-                                  {t('diffDialog.charset')}:{' '}
-                                  {diff.oldMiscConfig.charset ||
-                                    t('diffDialog.default')}
-                                  <span className="mx-1">→</span>
-                                  {diff.newMiscConfig.charset ||
-                                    t('diffDialog.default')}
-                                </div>
-                              )}
-                              {diff.oldMiscConfig.collation !==
-                                diff.newMiscConfig.collation && (
-                                <div>
-                                  {t('diffDialog.collation')}:{' '}
-                                  {diff.oldMiscConfig.collation ||
-                                    t('diffDialog.default')}
-                                  <span className="mx-1">→</span>
-                                  {diff.newMiscConfig.collation ||
-                                    t('diffDialog.default')}
-                                </div>
-                              )}
-                              {diff.oldMiscConfig.tablespace !==
-                                diff.newMiscConfig.tablespace && (
-                                <div>
-                                  {t('diffDialog.tablespace')}:{' '}
-                                  {diff.oldMiscConfig.tablespace ||
-                                    t('diffDialog.default')}
-                                  <span className="mx-1">→</span>
-                                  {diff.newMiscConfig.tablespace ||
-                                    t('diffDialog.default')}
-                                </div>
-                              )}
-                            </>
-                          )}
+                        {diff.oldMiscConfig.enabled && diff.newMiscConfig.enabled && (
+                          <>
+                            {diff.oldMiscConfig.engine !== diff.newMiscConfig.engine && (
+                              <div>
+                                {t('diffDialog.engine')}:{' '}
+                                {diff.oldMiscConfig.engine || t('diffDialog.default')}
+                                <span className="mx-1">→</span>
+                                {diff.newMiscConfig.engine || t('diffDialog.default')}
+                              </div>
+                            )}
+                            {diff.oldMiscConfig.charset !== diff.newMiscConfig.charset && (
+                              <div>
+                                {t('diffDialog.charset')}:{' '}
+                                {diff.oldMiscConfig.charset || t('diffDialog.default')}
+                                <span className="mx-1">→</span>
+                                {diff.newMiscConfig.charset || t('diffDialog.default')}
+                              </div>
+                            )}
+                            {diff.oldMiscConfig.collation !== diff.newMiscConfig.collation && (
+                              <div>
+                                {t('diffDialog.collation')}:{' '}
+                                {diff.oldMiscConfig.collation || t('diffDialog.default')}
+                                <span className="mx-1">→</span>
+                                {diff.newMiscConfig.collation || t('diffDialog.default')}
+                              </div>
+                            )}
+                            {diff.oldMiscConfig.tablespace !== diff.newMiscConfig.tablespace && (
+                              <div>
+                                {t('diffDialog.tablespace')}:{' '}
+                                {diff.oldMiscConfig.tablespace || t('diffDialog.default')}
+                                <span className="mx-1">→</span>
+                                {diff.newMiscConfig.tablespace || t('diffDialog.default')}
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     )}
                   </div>

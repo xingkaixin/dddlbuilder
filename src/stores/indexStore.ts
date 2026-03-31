@@ -1,10 +1,7 @@
 import { create } from 'zustand';
 import type { DatabaseType, IndexDefinition, IndexField } from '@/types';
 import { buildPrimaryKeyName } from '@/utils/primaryKeyNaming';
-import {
-  isSameIdentifierToken,
-  replaceIdentifierToken,
-} from '@/utils/fieldRenameUtils';
+import { isSameIdentifierToken, replaceIdentifierToken } from '@/utils/fieldRenameUtils';
 import {
   MAX_INDEX_NAME_LENGTH,
   ORACLE_INDEX_NAME_LENGTH,
@@ -24,20 +21,12 @@ interface IndexStoreState {
   selectedSuggestionIndex: number;
 
   setIndexInput: (value: string | ((prev: string) => string)) => void;
-  setCurrentIndexFields: (
-    fields: IndexField[] | ((prev: IndexField[]) => IndexField[]),
-  ) => void;
+  setCurrentIndexFields: (fields: IndexField[] | ((prev: IndexField[]) => IndexField[])) => void;
   setIndexes: (
-    indexes:
-      | IndexDefinition[]
-      | ((prev: IndexDefinition[]) => IndexDefinition[]),
+    indexes: IndexDefinition[] | ((prev: IndexDefinition[]) => IndexDefinition[]),
   ) => void;
-  setShowFieldSuggestions: (
-    show: boolean | ((prev: boolean) => boolean),
-  ) => void;
-  setSelectedSuggestionIndex: (
-    index: number | ((prev: number) => number),
-  ) => void;
+  setShowFieldSuggestions: (show: boolean | ((prev: boolean) => boolean)) => void;
+  setSelectedSuggestionIndex: (index: number | ((prev: number) => number)) => void;
 
   initializeIndexState: (persistedState?: {
     indexInput?: string;
@@ -47,20 +36,11 @@ interface IndexStoreState {
   addFieldToIndex: (fieldName: string) => void;
   removeFieldFromIndex: (index: number) => void;
   toggleFieldDirection: (index: number) => void;
-  addIndex: (
-    unique: boolean,
-    isPrimary: boolean,
-    tableName: string,
-    dbType: DatabaseType,
-  ) => void;
+  addIndex: (unique: boolean, isPrimary: boolean, tableName: string, dbType: DatabaseType) => void;
   removeIndex: (id: string) => void;
   updateIndexName: (id: string, newName: string, dbType: DatabaseType) => void;
   updateIndexNames: (tableName: string, dbType: DatabaseType) => void;
-  syncFieldRename: (
-    oldFieldName: string,
-    newFieldName: string,
-    dbType: DatabaseType,
-  ) => void;
+  syncFieldRename: (oldFieldName: string, newFieldName: string, dbType: DatabaseType) => void;
   resetIndexState: () => void;
 }
 
@@ -77,10 +57,7 @@ export const useIndexStore = create<IndexStoreState>((set, get) => ({
     })),
   setCurrentIndexFields: (fields) =>
     set((state) => ({
-      currentIndexFields:
-        typeof fields === 'function'
-          ? fields(state.currentIndexFields)
-          : fields,
+      currentIndexFields: typeof fields === 'function' ? fields(state.currentIndexFields) : fields,
     })),
   setIndexes: (indexes) =>
     set((state) => ({
@@ -88,15 +65,12 @@ export const useIndexStore = create<IndexStoreState>((set, get) => ({
     })),
   setShowFieldSuggestions: (show) =>
     set((state) => ({
-      showFieldSuggestions:
-        typeof show === 'function' ? show(state.showFieldSuggestions) : show,
+      showFieldSuggestions: typeof show === 'function' ? show(state.showFieldSuggestions) : show,
     })),
   setSelectedSuggestionIndex: (index) =>
     set((state) => ({
       selectedSuggestionIndex:
-        typeof index === 'function'
-          ? index(state.selectedSuggestionIndex)
-          : index,
+        typeof index === 'function' ? index(state.selectedSuggestionIndex) : index,
     })),
 
   initializeIndexState: (persistedState) => {
@@ -113,10 +87,7 @@ export const useIndexStore = create<IndexStoreState>((set, get) => ({
 
   addFieldToIndex: (fieldName) => {
     set((state) => ({
-      currentIndexFields: [
-        ...state.currentIndexFields,
-        { name: fieldName, direction: 'ASC' },
-      ],
+      currentIndexFields: [...state.currentIndexFields, { name: fieldName, direction: 'ASC' }],
       indexInput: '',
       showFieldSuggestions: false,
       selectedSuggestionIndex: 0,
@@ -125,9 +96,7 @@ export const useIndexStore = create<IndexStoreState>((set, get) => ({
 
   removeFieldFromIndex: (index) => {
     set((state) => ({
-      currentIndexFields: state.currentIndexFields.filter(
-        (_, i) => i !== index,
-      ),
+      currentIndexFields: state.currentIndexFields.filter((_, i) => i !== index),
     }));
   },
 
@@ -241,9 +210,7 @@ export const useIndexStore = create<IndexStoreState>((set, get) => ({
 
     set((state) => ({
       currentIndexFields: state.currentIndexFields.map((field) =>
-        isSameIdentifierToken(field.name, oldFieldName)
-          ? { ...field, name: newFieldName }
-          : field,
+        isSameIdentifierToken(field.name, oldFieldName) ? { ...field, name: newFieldName } : field,
       ),
       indexes: state.indexes.map((index) => {
         const fieldsChanged = index.fields.some((field) =>
@@ -254,11 +221,7 @@ export const useIndexStore = create<IndexStoreState>((set, get) => ({
           return index;
         }
 
-        const nextNameRaw = replaceIdentifierToken(
-          index.name,
-          oldFieldName,
-          newFieldName,
-        );
+        const nextNameRaw = replaceIdentifierToken(index.name, oldFieldName, newFieldName);
 
         return {
           ...index,

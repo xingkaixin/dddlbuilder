@@ -36,8 +36,7 @@ function createBaseParams(overrides?: {
     persistedState: overrides?.persistedState ?? null,
     activeSource: overrides?.activeSource ?? { kind: 'global_draft' },
     saveState: overrides?.saveState ?? vi.fn(),
-    buildPersistedState:
-      overrides?.buildPersistedState ?? (() => createState('a')),
+    buildPersistedState: overrides?.buildPersistedState ?? (() => createState('a')),
     setTableName: vi.fn(),
     setTableComment: vi.fn(),
     setDbType: vi.fn(),

@@ -10,9 +10,7 @@ describe('MainWorkspaceSkeleton', () => {
     expect(screen.getByRole('status')).toBeInTheDocument();
     expect(screen.getAllByText(i18n.t('app.loadingWorkspace')).length).toBe(2);
 
-    expect(
-      screen.getByTestId('main-skeleton-table-config'),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('main-skeleton-table-config')).toBeInTheDocument();
     expect(screen.getByTestId('main-skeleton-fields')).toBeInTheDocument();
     expect(screen.getByTestId('main-skeleton-ddl-output')).toBeInTheDocument();
   });

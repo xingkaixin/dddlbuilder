@@ -22,9 +22,7 @@ describe('requestDDLReview', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       status: 200,
-      body: createTextStream([
-        '{"score": 99, "summary": "ok", "suggestions": []}',
-      ]),
+      body: createTextStream(['{"score": 99, "summary": "ok", "suggestions": []}']),
       json: vi.fn(),
     } as unknown as Response);
 
@@ -104,9 +102,7 @@ describe('requestDDLReview', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       status: 200,
-      body: createTextStream([
-        '{"score": "abc", "summary": 123, "suggestions": "not_an_array"}',
-      ]),
+      body: createTextStream(['{"score": "abc", "summary": 123, "suggestions": "not_an_array"}']),
       json: vi.fn(),
     } as unknown as Response);
 

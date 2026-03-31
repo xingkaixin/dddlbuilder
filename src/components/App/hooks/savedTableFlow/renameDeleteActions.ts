@@ -1,10 +1,7 @@
 import { useCallback } from 'react';
 import type { PersistedState } from '@/types';
 import type { WorkspaceSource } from '@/types/workspace';
-import type {
-  SaveTableResult,
-  SavedTableSummary,
-} from '@/hooks/useSavedTables';
+import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
 import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
 
@@ -29,20 +26,11 @@ interface UseRenameDeleteActionsParams {
   deleteDialog: UseDialogStateReturn<DeleteDialogData>;
   buildPersistedState: () => PersistedState;
   serializePersistedState: (state: PersistedState) => string;
-  renameTable: (
-    normalizedName: string,
-    newName: string,
-  ) => Promise<SaveTableResult>;
+  renameTable: (normalizedName: string, newName: string) => Promise<SaveTableResult>;
   deleteTable: (normalizedName: string) => Promise<SaveTableResult>;
   showToast: (message: string) => void;
-  trackEvent: (
-    event: string,
-    data?: Record<string, AnalyticsValue>,
-  ) => Promise<void> | void;
-  setWorkspaceSnapshot?: (
-    source: WorkspaceSource,
-    state: PersistedState | null,
-  ) => void;
+  trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void> | void;
+  setWorkspaceSnapshot?: (source: WorkspaceSource, state: PersistedState | null) => void;
   renameSavedTableDraft?: (
     fromNormalizedName: string,
     toNormalizedName: string,
@@ -104,25 +92,17 @@ export function useRenameDeleteActions({
       return;
     }
     const displayName = renameName.trim() || DEFAULT_SAVED_TABLE_NAME;
-    trackEvent('table_rename', {
+    void trackEvent('table_rename', {
       oldName: renameTarget.name,
       newName: displayName,
     });
     showToast(`已重命名为：${displayName}`);
-    renameSavedTableDraft?.(
-      renameTarget.normalizedName,
-      result.normalizedName,
-      displayName,
-    );
-    if (
-      loadedTableNormalizedName &&
-      renameTarget.normalizedName === loadedTableNormalizedName
-    ) {
+    renameSavedTableDraft?.(renameTarget.normalizedName, result.normalizedName, displayName);
+    if (loadedTableNormalizedName && renameTarget.normalizedName === loadedTableNormalizedName) {
       setLoadedTableNormalizedName(result.normalizedName);
       setLoadedTableName(displayName);
       const currentState = buildPersistedState();
-      const nextSignature =
-        loadedTableSignature ?? serializePersistedState(currentState);
+      const nextSignature = loadedTableSignature ?? serializePersistedState(currentState);
       setWorkspaceSnapshot?.(
         {
           kind: 'saved_table',
@@ -174,7 +154,7 @@ export function useRenameDeleteActions({
       showToast(result.message ?? '删除失败');
     } else {
       removeSavedTableDraft?.(deleteTarget.normalizedName);
-      trackEvent('table_delete', { tableName: deleteTarget.name });
+      void trackEvent('table_delete', { tableName: deleteTarget.name });
       showToast(`已删除：${deleteTarget.name}`);
       if (deleteTarget.normalizedName === loadedTableNormalizedName) {
         setLoadedTableNormalizedName(null);

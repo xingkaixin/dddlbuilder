@@ -7,10 +7,7 @@ interface UseFireworksIntroParams {
 
 const CNY_FIREWORKS_FLAG_KEY = 'ddlbuilder:fireworks:cny:shown:2026:v1';
 
-export function useFireworksIntro({
-  enabled,
-  setShowFireworks,
-}: UseFireworksIntroParams) {
+export function useFireworksIntro({ enabled, setShowFireworks }: UseFireworksIntroParams) {
   useEffect(() => {
     if (!enabled) {
       return;

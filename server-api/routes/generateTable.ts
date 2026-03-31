@@ -12,12 +12,7 @@ import {
   withOpenAIRetry,
   buildOpenAIConfig,
 } from '../openaiControl.js';
-import {
-  errorResponse,
-  getRequestId,
-  streamErrorPayload,
-  type ApiErrorCode,
-} from '../lib/http.js';
+import { errorResponse, getRequestId, streamErrorPayload, type ApiErrorCode } from '../lib/http.js';
 import {
   buildGenerateTableMessages,
   buildGenerateTableSystemPrompt,
@@ -91,8 +86,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
       return errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON');
     }
 
-    const description =
-      typeof body.description === 'string' ? body.description : '';
+    const description = typeof body.description === 'string' ? body.description : '';
     const dbType = typeof body.dbType === 'string' ? body.dbType : '';
     const locale: AppLocale = isAppLocale(body.locale) ? body.locale : 'zh-CN';
     const templates = Array.isArray(body.templates) ? body.templates : [];
@@ -103,12 +97,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
 
     if (description.trim().length === 0) {
       audit(400, 0, false, false, 'DESCRIPTION_REQUIRED');
-      return errorResponse(
-        c,
-        400,
-        'Description is required',
-        'DESCRIPTION_REQUIRED',
-      );
+      return errorResponse(c, 400, 'Description is required', 'DESCRIPTION_REQUIRED');
     }
 
     estimatedTokens = estimateRequestTokens(
@@ -136,12 +125,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
 
     if (!apiKey) {
       audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
-      return errorResponse(
-        c,
-        503,
-        'OpenAI service unavailable',
-        'SERVICE_UNAVAILABLE',
-      );
+      return errorResponse(c, 503, 'OpenAI service unavailable', 'SERVICE_UNAVAILABLE');
     }
 
     const openai = new OpenAI({
@@ -219,11 +203,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
         streamDebug.error(error);
         audit(502, retryCount, false, false, 'UPSTREAM_OPENAI_ERROR');
         await stream.write(
-          streamErrorPayload(
-            'Upstream OpenAI error',
-            'UPSTREAM_OPENAI_ERROR',
-            requestId,
-          ),
+          streamErrorPayload('Upstream OpenAI error', 'UPSTREAM_OPENAI_ERROR', requestId),
         );
       }
     });

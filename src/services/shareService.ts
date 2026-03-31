@@ -41,9 +41,7 @@ async function parseError(response: Response): Promise<ShareApiError> {
   return new ShareApiError(message, response.status, code);
 }
 
-export async function createShare(
-  state: PersistedState,
-): Promise<CreateShareResponse> {
+export async function createShare(state: PersistedState): Promise<CreateShareResponse> {
   const response = await fetch(SHARE_API_ENDPOINT, {
     method: 'POST',
     headers: {
@@ -74,9 +72,7 @@ export async function createShare(
 }
 
 export async function getShareState(shareId: string): Promise<PersistedState> {
-  const response = await fetch(
-    `${SHARE_API_ENDPOINT}/${encodeURIComponent(shareId)}`,
-  );
+  const response = await fetch(`${SHARE_API_ENDPOINT}/${encodeURIComponent(shareId)}`);
 
   if (!response.ok) {
     throw await parseError(response);

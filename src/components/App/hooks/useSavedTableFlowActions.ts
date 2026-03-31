@@ -1,9 +1,6 @@
 import type { PersistedState } from '@/types';
 import type { SavedTableDraftRecord, WorkspaceSource } from '@/types/workspace';
-import type {
-  SaveTableResult,
-  SavedTableSummary,
-} from '@/hooks/useSavedTables';
+import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
 import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { useRenameDeleteActions } from './savedTableFlow/renameDeleteActions';
 import { useSaveLoadActions } from './savedTableFlow/saveLoadActions';
@@ -53,27 +50,15 @@ interface UseSavedTableFlowActionsParams {
     name: string;
     state: PersistedState;
   } | null>;
-  renameTable: (
-    normalizedName: string,
-    newName: string,
-  ) => Promise<SaveTableResult>;
+  renameTable: (normalizedName: string, newName: string) => Promise<SaveTableResult>;
   deleteTable: (normalizedName: string) => Promise<SaveTableResult>;
   saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
-  overwriteTable: (
-    normalizedName: string,
-    state: PersistedState,
-  ) => Promise<SaveTableResult>;
+  overwriteTable: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
   showToast: (message: string) => void;
-  trackEvent: (
-    event: string,
-    data?: Record<string, AnalyticsValue>,
-  ) => Promise<void> | void;
+  trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void> | void;
   flushCurrentWorkspace?: () => void;
   getSavedTableDraft?: (normalizedName: string) => SavedTableDraftRecord | null;
-  setWorkspaceSnapshot?: (
-    source: WorkspaceSource,
-    state: PersistedState | null,
-  ) => void;
+  setWorkspaceSnapshot?: (source: WorkspaceSource, state: PersistedState | null) => void;
   renameSavedTableDraft?: (
     fromNormalizedName: string,
     toNormalizedName: string,

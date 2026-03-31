@@ -13,9 +13,7 @@ test.describe('权限管理验证 @panels', () => {
     await page.locator('#table-name').fill('perm_test');
 
     // 添加一个字段
-    const cell = page.locator(
-      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
-    );
+    const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
     await cell.dblclick();
     await page.locator('[data-testid="data-table"] input').fill('id');
     await page.keyboard.press('Enter');
@@ -37,15 +35,11 @@ test.describe('权限管理验证 @panels', () => {
     if (await dclTab.isVisible()) {
       await dclTab.click();
       const dclOutput = page.locator('[data-state="active"] pre');
-      await expect(dclOutput).toContainText(
-        /GRANT SELECT ON perm_test TO admin_role/i,
-      );
+      await expect(dclOutput).toContainText(/GRANT SELECT ON perm_test TO admin_role/i);
     } else {
       // 如果没有特定 Tab，可能就在同一个面板下
       const sqlOutput = page.locator('[data-state="active"] pre');
-      await expect(sqlOutput).toContainText(
-        /GRANT SELECT ON perm_test TO admin_role/i,
-      );
+      await expect(sqlOutput).toContainText(/GRANT SELECT ON perm_test TO admin_role/i);
     }
   });
 
@@ -72,8 +66,6 @@ test.describe('权限管理验证 @panels', () => {
     });
     const copyButton = page.getByRole('button', { name: /复制DCL/i });
     await copyButton.click();
-    await expect
-      .poll(() => page.evaluate(() => (window as any).__copyTriggered))
-      .toBe(true);
+    await expect.poll(() => page.evaluate(() => (window as any).__copyTriggered)).toBe(true);
   });
 });

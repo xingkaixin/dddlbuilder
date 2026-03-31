@@ -2,18 +2,16 @@ import { vi } from 'vitest';
 import type { MockHotTableInstance } from '@/__tests__/types/test-types';
 
 // Mock Handsontable
-export const mockHotTable = vi
-  .fn()
-  .mockImplementation(({ children, ...props }) => {
-    return React.createElement(
-      'div',
-      {
-        'data-testid': 'hot-table',
-        ...props,
-      },
-      children,
-    );
-  });
+export const mockHotTable = vi.fn().mockImplementation(({ children, ...props }) => {
+  return React.createElement(
+    'div',
+    {
+      'data-testid': 'hot-table',
+      ...props,
+    },
+    children,
+  );
+});
 
 // Mock Handsontable utilities
 export const mockRegisterAllModules = vi.fn();

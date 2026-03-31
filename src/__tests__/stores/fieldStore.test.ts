@@ -1,10 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useFieldStore } from '@/stores';
 import { createEmptyRow } from '@/utils/helpers';
-import {
-  buildDuplicateNameSet,
-  buildNormalizedFields,
-} from '@/stores/fieldStore';
+import { buildDuplicateNameSet, buildNormalizedFields } from '@/stores/fieldStore';
 
 function resetFieldStore() {
   useFieldStore.getState().resetRows(12);

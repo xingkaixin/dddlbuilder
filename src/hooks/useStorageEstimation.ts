@@ -13,10 +13,7 @@ function formatSizeDisplay(bytes: number): SizeDisplay {
   if (bytes === 0) return { value: 0, unit: 'B' };
 
   const k = 1024;
-  const unitIndex = Math.min(
-    Math.floor(Math.log(bytes) / Math.log(k)),
-    SIZE_UNITS.length - 1,
-  );
+  const unitIndex = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), SIZE_UNITS.length - 1);
   const value = Number.parseFloat((bytes / k ** unitIndex).toFixed(2));
 
   return {
@@ -48,10 +45,7 @@ export function useStorageEstimation(
     () => formatSizeDisplay(result.totalRowSize),
     [result.totalRowSize],
   );
-  const totalSizeDisplay = useMemo(
-    () => formatSizeDisplay(totalSize),
-    [totalSize],
-  );
+  const totalSizeDisplay = useMemo(() => formatSizeDisplay(totalSize), [totalSize]);
 
   return {
     estimateRows,

@@ -46,9 +46,7 @@ describe('MariaDbStrategy', () => {
     expect(result).toContain("COMMENT='用户表'");
     expect(result).toContain('id INT AUTO_INCREMENT NOT NULL');
     expect(result).toContain("name VARCHAR(255) NULL COMMENT '名称'");
-    expect(result).toContain(
-      'created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP',
-    );
+    expect(result).toContain('created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP');
   });
 
   it('应该支持 ON UPDATE CURRENT_TIMESTAMP', () => {

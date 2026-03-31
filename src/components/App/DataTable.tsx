@@ -1,18 +1,9 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { DndContext, closestCenter } from '@dnd-kit/core';
-import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import {
-  useReactTable,
-  getCoreRowModel,
-  flexRender,
-  type Row,
-} from '@tanstack/react-table';
+import { useReactTable, getCoreRowModel, flexRender, type Row } from '@tanstack/react-table';
 import { GripVertical } from 'lucide-react';
 import { toStringSafe, isReservedKeyword } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
@@ -46,9 +37,7 @@ interface SortableDataRowProps {
   row: Row<FieldRow>;
   selectedCell: { row: number; col: number } | null;
   handleCellActivate: (rowIndex: number, colIndex: number) => void;
-  focusFirstInteractiveInCell: (
-    cellElement: HTMLTableCellElement | null,
-  ) => void;
+  focusFirstInteractiveInCell: (cellElement: HTMLTableCellElement | null) => void;
   freezeEnabled: boolean;
   effectiveFreezeColumns: number;
   getStickyLeft: (colIndex: number) => number;
@@ -68,14 +57,9 @@ const SortableDataRow = memo<SortableDataRowProps>(
     isRowHighlighted,
     dragFieldLabel,
   }) => {
-    const {
-      attributes,
-      listeners,
-      setNodeRef,
-      transform,
-      transition,
-      isDragging,
-    } = useSortable({ id: row.id });
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+      id: row.id,
+    });
 
     return (
       <tr
@@ -93,12 +77,9 @@ const SortableDataRow = memo<SortableDataRowProps>(
       >
         {row.getVisibleCells().map((cell, colIndex) => {
           const isFrozen = freezeEnabled && colIndex < effectiveFreezeColumns;
-          const isLastFrozen =
-            freezeEnabled && colIndex === effectiveFreezeColumns - 1;
+          const isLastFrozen = freezeEnabled && colIndex === effectiveFreezeColumns - 1;
           const isSelected =
-            selectedCell &&
-            selectedCell.row === row.index &&
-            selectedCell.col === colIndex - 1;
+            selectedCell && selectedCell.row === row.index && selectedCell.col === colIndex - 1;
           const isOrderColumn = cell.column.id === 'order';
 
           return (
@@ -108,8 +89,7 @@ const SortableDataRow = memo<SortableDataRowProps>(
               data-col-index={colIndex}
               className={cn(
                 'h-10 px-1 bg-background transition-colors group-hover/row:bg-muted/30',
-                isFrozen &&
-                  'relative sticky z-20 supports-[backdrop-filter]:backdrop-blur-[2px]',
+                isFrozen && 'relative sticky z-20 supports-[backdrop-filter]:backdrop-blur-[2px]',
                 isLastFrozen &&
                   'border-r border-primary/30 shadow-[8px_0_18px_-12px_hsl(var(--foreground)_/_0.22)] after:pointer-events-none after:absolute after:-right-3 after:top-0 after:h-full after:w-3 after:bg-gradient-to-r after:from-primary/20 after:to-transparent',
                 isRowHighlighted && 'bg-blue-500/10',
@@ -153,12 +133,7 @@ const SortableDataRow = memo<SortableDataRowProps>(
 SortableDataRow.displayName = 'SortableDataRow';
 
 export const DataTable = memo<DataTableProps>(
-  ({
-    toolbarLeft,
-    isHighlighted,
-    highlightedRowIndex,
-    onOpenStorageEstimator,
-  }) => {
+  ({ toolbarLeft, isHighlighted, highlightedRowIndex, onOpenStorageEstimator }) => {
     const { t } = useTranslation();
     const rows = useFieldStore((state) => state.rows);
     const setRows = useFieldStore((state) => state.setRows);
@@ -168,28 +143,16 @@ export const DataTable = memo<DataTableProps>(
     const addCount = useAppStore((state) => state.addCount);
     const onAddCountChange = useAppStore((state) => state.setAddCount);
     const freezeEnabled = useAppStore((state) => state.fieldTableFreezeEnabled);
-    const onFreezeEnabledChange = useAppStore(
-      (state) => state.setFieldTableFreezeEnabled,
-    );
+    const onFreezeEnabledChange = useAppStore((state) => state.setFieldTableFreezeEnabled);
     const freezeColumns = useAppStore((state) => state.fieldTableFreezeColumns);
-    const onFreezeColumnsChange = useAppStore(
-      (state) => state.setFieldTableFreezeColumns,
-    );
-    const syncIndexFieldRename = useIndexStore(
-      (state) => state.syncFieldRename,
-    );
-    const syncPartitionFieldRename = usePartitionStore(
-      (state) => state.syncFieldRename,
-    );
-    const syncShardingFieldRename = useShardingStore(
-      (state) => state.syncFieldRename,
-    );
+    const onFreezeColumnsChange = useAppStore((state) => state.setFieldTableFreezeColumns);
+    const syncIndexFieldRename = useIndexStore((state) => state.syncFieldRename);
+    const syncPartitionFieldRename = usePartitionStore((state) => state.syncFieldRename);
+    const syncShardingFieldRename = useShardingStore((state) => state.syncFieldRename);
 
     const duplicateNameSet = useMemo(() => buildDuplicateNameSet(rows), [rows]);
     const tableRef = useRef<HTMLDivElement>(null);
-    const dragFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-      null,
-    );
+    const dragFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [dragFeedback, setDragFeedback] = useState<string | null>(null);
 
     const [columnWidths] = useState<Record<string, number>>({
@@ -230,12 +193,7 @@ export const DataTable = memo<DataTableProps>(
           syncShardingFieldRename(oldFieldName, newFieldName);
         }
       },
-      [
-        dbType,
-        syncIndexFieldRename,
-        syncPartitionFieldRename,
-        syncShardingFieldRename,
-      ],
+      [dbType, syncIndexFieldRename, syncPartitionFieldRename, syncShardingFieldRename],
     );
 
     const { updateCellValue } = useFieldRowMutations({
@@ -249,10 +207,8 @@ export const DataTable = memo<DataTableProps>(
         const warnings: string[] = [];
         const name = toStringSafe(row?.fieldName).trim();
         if (!name) return warnings;
-        if (duplicateNameSet.has(name))
-          warnings.push(t('dataTable.duplicateName'));
-        if (isReservedKeyword(dbType, name))
-          warnings.push(t('dataTable.reservedKeyword'));
+        if (duplicateNameSet.has(name)) warnings.push(t('dataTable.duplicateName'));
+        if (isReservedKeyword(dbType, name)) warnings.push(t('dataTable.reservedKeyword'));
         return warnings;
       });
     }, [rows, duplicateNameSet, dbType, t]);
@@ -327,13 +283,15 @@ export const DataTable = memo<DataTableProps>(
       onDragResult: handleDragResult,
     });
 
-    const { getStickyLeft, frozenAreaWidth, effectiveFreezeColumns } =
-      useFreezeColumns(columnWidths, freezeEnabled, freezeColumns);
+    const { getStickyLeft, frozenAreaWidth, effectiveFreezeColumns } = useFreezeColumns(
+      columnWidths,
+      freezeEnabled,
+      freezeColumns,
+    );
 
     useRowHighlight(tableRef, highlightedRowIndex);
 
-    const safeAddCount =
-      Number.isFinite(addCount) && addCount > 0 ? Math.floor(addCount) : 1;
+    const safeAddCount = Number.isFinite(addCount) && addCount > 0 ? Math.floor(addCount) : 1;
 
     const handleAddRowsClick = useCallback(() => {
       onAddRows(safeAddCount);
@@ -396,10 +354,7 @@ export const DataTable = memo<DataTableProps>(
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
           >
-            <SortableContext
-              items={rowIds}
-              strategy={verticalListSortingStrategy}
-            >
+            <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
               <table
                 className="w-full border-collapse text-sm"
                 data-testid="data-table"
@@ -408,16 +363,11 @@ export const DataTable = memo<DataTableProps>(
               >
                 <thead>
                   {table.getHeaderGroups().map((headerGroup) => (
-                    <tr
-                      key={headerGroup.id}
-                      className="border-b border-border/50"
-                    >
+                    <tr key={headerGroup.id} className="border-b border-border/50">
                       {headerGroup.headers.map((header, colIndex) => {
-                        const isFrozen =
-                          freezeEnabled && colIndex < effectiveFreezeColumns;
+                        const isFrozen = freezeEnabled && colIndex < effectiveFreezeColumns;
                         const isLastFrozen =
-                          freezeEnabled &&
-                          colIndex === effectiveFreezeColumns - 1;
+                          freezeEnabled && colIndex === effectiveFreezeColumns - 1;
                         return (
                           <th
                             key={header.id}
@@ -432,17 +382,12 @@ export const DataTable = memo<DataTableProps>(
                             style={{
                               width: header.getSize(),
                               minWidth: header.getSize(),
-                              left: isFrozen
-                                ? getStickyLeft(colIndex)
-                                : undefined,
+                              left: isFrozen ? getStickyLeft(colIndex) : undefined,
                             }}
                           >
                             {header.isPlaceholder
                               ? null
-                              : flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext(),
-                                )}
+                              : flexRender(header.column.columnDef.header, header.getContext())}
                           </th>
                         );
                       })}

@@ -16,10 +16,7 @@ interface UseClearAllActionsParams {
   setLoadedTableNormalizedName: (name: string | null) => void;
   setLoadedTableName: (name: string | null) => void;
   setLoadedTableSignature: (signature: string | null) => void;
-  trackEvent: (
-    event: string,
-    data?: Record<string, AnalyticsValue>,
-  ) => Promise<void> | void;
+  trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void> | void;
 }
 
 export function useClearAllActions({
@@ -60,7 +57,7 @@ export function useClearAllActions({
     setLoadedTableSignature(null);
 
     clearState();
-    trackEvent('table_clear_all');
+    void trackEvent('table_clear_all');
     cancelClearAll();
   }, [
     resetTableConfig,

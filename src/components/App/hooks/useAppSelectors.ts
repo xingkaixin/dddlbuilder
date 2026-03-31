@@ -21,13 +21,9 @@ export function useAppSelectors() {
 
   // --- 冻结列配置 ---
   const fieldTableFreezeEnabled = useAppStore((s) => s.fieldTableFreezeEnabled);
-  const setFieldTableFreezeEnabled = useAppStore(
-    (s) => s.setFieldTableFreezeEnabled,
-  );
+  const setFieldTableFreezeEnabled = useAppStore((s) => s.setFieldTableFreezeEnabled);
   const fieldTableFreezeColumns = useAppStore((s) => s.fieldTableFreezeColumns);
-  const setFieldTableFreezeColumns = useAppStore(
-    (s) => s.setFieldTableFreezeColumns,
-  );
+  const setFieldTableFreezeColumns = useAppStore((s) => s.setFieldTableFreezeColumns);
 
   // --- 全局 UI 状态 ---
   const isClearDialogOpen = useAppStore((s) => s.isClearDialogOpen);
@@ -37,15 +33,9 @@ export function useAppSelectors() {
 
   // --- 保存表相关 ---
   const savedTablesDrawerOpen = useAppStore((s) => s.savedTablesDrawerOpen);
-  const setSavedTablesDrawerOpen = useAppStore(
-    (s) => s.setSavedTablesDrawerOpen,
-  );
-  const loadedTableNormalizedName = useAppStore(
-    (s) => s.loadedTableNormalizedName,
-  );
-  const setLoadedTableNormalizedName = useAppStore(
-    (s) => s.setLoadedTableNormalizedName,
-  );
+  const setSavedTablesDrawerOpen = useAppStore((s) => s.setSavedTablesDrawerOpen);
+  const loadedTableNormalizedName = useAppStore((s) => s.loadedTableNormalizedName);
+  const setLoadedTableNormalizedName = useAppStore((s) => s.setLoadedTableNormalizedName);
   const loadedTableName = useAppStore((s) => s.loadedTableName);
   const setLoadedTableName = useAppStore((s) => s.setLoadedTableName);
   const loadedTableSignature = useAppStore((s) => s.loadedTableSignature);
@@ -69,13 +59,9 @@ export function useAppSelectors() {
   const isReviewHistoryOpen = useAppStore((s) => s.isReviewHistoryOpen);
   const setIsReviewHistoryOpen = useAppStore((s) => s.setIsReviewHistoryOpen);
   const isStorageEstimatorOpen = useAppStore((s) => s.isStorageEstimatorOpen);
-  const setIsStorageEstimatorOpen = useAppStore(
-    (s) => s.setIsStorageEstimatorOpen,
-  );
+  const setIsStorageEstimatorOpen = useAppStore((s) => s.setIsStorageEstimatorOpen);
   const isAIGenerateDialogOpen = useAppStore((s) => s.isAIGenerateDialogOpen);
-  const setIsAIGenerateDialogOpen = useAppStore(
-    (s) => s.setIsAIGenerateDialogOpen,
-  );
+  const setIsAIGenerateDialogOpen = useAppStore((s) => s.setIsAIGenerateDialogOpen);
 
   // --- Field store ---
   const rows = useFieldStore((s) => s.rows);

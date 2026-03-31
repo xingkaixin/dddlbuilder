@@ -1,7 +1,7 @@
 {
   "name": "ddlbuilder",
-  "private": true,
   "version": "0.15.5",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "bun run build:wrangler-dev && wrangler dev --port 3000",
@@ -13,9 +13,9 @@
     "start": "bun run server.ts",
     "e2e:serve": "mkdir -p .wrangler-home/Library/Preferences/.wrangler/logs .wrangler/state/e2e && HOME=\"$PWD/.wrangler-home\" ./node_modules/.bin/wrangler dev --config wrangler.e2e.toml --local --no-bundle --show-interactive-dev-session=false --persist-to .wrangler/state/e2e --ip 127.0.0.1 --port 3000 --inspector-port 0 --log-level error",
     "logo": "bun run scripts/generate-logos.ts && bun run scripts/generate-favicon.ts",
-    "lint": "biome check .",
-    "lint:fix": "biome check --fix .",
-    "lint:format": "biome format .",
+    "lint": "oxlint --type-aware --tsconfig tsconfig.oxlint.json . && oxfmt --check src server-api api scripts e2e server.ts vite.config.ts vite.config.server.ts vitest.config.ts playwright.config.ts package.json tsconfig.json tsconfig.app.json tsconfig.build.json tsconfig.node.json tsconfig.oxlint.json .oxlintrc.json .oxfmtrc.json",
+    "lint:fix": "oxlint --type-aware --tsconfig tsconfig.oxlint.json --fix . && oxfmt --write src server-api api scripts e2e server.ts vite.config.ts vite.config.server.ts vitest.config.ts playwright.config.ts package.json tsconfig.json tsconfig.app.json tsconfig.build.json tsconfig.node.json tsconfig.oxlint.json .oxlintrc.json .oxfmtrc.json",
+    "lint:format": "oxfmt --write src server-api api scripts e2e server.ts vite.config.ts vite.config.server.ts vitest.config.ts playwright.config.ts package.json tsconfig.json tsconfig.app.json tsconfig.build.json tsconfig.node.json tsconfig.oxlint.json .oxlintrc.json .oxfmtrc.json",
     "preview": "vite preview",
     "test:watch": "vitest",
     "test": "vitest run",
@@ -67,7 +67,6 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.9",
     "@cloudflare/workers-types": "^4.20250317.0",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "4.2.2",
@@ -84,6 +83,9 @@
     "autoprefixer": "^10.4.27",
     "gray-matter": "^4.0.3",
     "jsdom": "^29.0.1",
+    "oxfmt": "^0.43.0",
+    "oxlint": "^1.58.0",
+    "oxlint-tsgolint": "^0.18.1",
     "postcss": "^8.5.8",
     "tailwindcss": "4.2.2",
     "tailwindcss-animate": "^1.0.7",

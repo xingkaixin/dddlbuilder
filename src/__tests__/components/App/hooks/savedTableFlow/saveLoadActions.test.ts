@@ -155,9 +155,7 @@ describe('useSaveLoadActions', () => {
     expect(trackEvent).toHaveBeenCalledWith('table_load', {
       tableName: 'test_table',
     });
-    expect(showToast).toHaveBeenCalledWith(
-      expect.stringContaining('已加载：test_table'),
-    );
+    expect(showToast).toHaveBeenCalledWith(expect.stringContaining('已加载：test_table'));
     expect(onTableLoadStateChange).toHaveBeenCalledWith(false);
   });
 

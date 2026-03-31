@@ -1,13 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import {
-  beforeEach,
-  afterEach,
-  describe,
-  expect,
-  it,
-  vi,
-  type MockInstance,
-} from 'vitest';
+import { beforeEach, afterEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { useThemeTransition } from '@/components/App/hooks/useThemeTransition';
 
 describe('useThemeTransition', () => {
@@ -16,13 +8,11 @@ describe('useThemeTransition', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
-    matchMediaMock = vi
-      .spyOn(window, 'matchMedia')
-      .mockImplementation((query) => {
-        return {
-          matches: query === '(prefers-color-scheme: dark)',
-        } as any;
-      });
+    matchMediaMock = vi.spyOn(window, 'matchMedia').mockImplementation((query) => {
+      return {
+        matches: query === '(prefers-color-scheme: dark)',
+      } as any;
+    });
   });
 
   afterEach(() => {
@@ -213,11 +203,7 @@ describe('useThemeTransition', () => {
 
     expect((document as any).startViewTransition).toHaveBeenCalled();
     expect(result.current.phase).toBe('view');
-    expect(
-      document.documentElement.classList.contains(
-        'theme-view-transition-active',
-      ),
-    ).toBe(true);
+    expect(document.documentElement.classList.contains('theme-view-transition-active')).toBe(true);
 
     // Simulate callback inside startViewTransition
     if (transitionCallback) {
@@ -232,11 +218,7 @@ describe('useThemeTransition', () => {
       await mockFinished;
     });
 
-    expect(
-      document.documentElement.classList.contains(
-        'theme-view-transition-active',
-      ),
-    ).toBe(false);
+    expect(document.documentElement.classList.contains('theme-view-transition-active')).toBe(false);
     expect(result.current.phase).toBe('idle');
   });
 

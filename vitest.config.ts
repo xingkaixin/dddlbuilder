@@ -25,11 +25,7 @@ export default defineConfig({
         lines: 90,
         statements: 90,
       },
-      include: [
-        'src/**/*.{ts,tsx}',
-        'api/**/*.{ts,tsx}',
-        'server-api/**/*.{ts,tsx}',
-      ],
+      include: ['src/**/*.{ts,tsx}', 'api/**/*.{ts,tsx}', 'server-api/**/*.{ts,tsx}'],
       exclude: [
         'src/**/*.{test,spec}.{ts,tsx}',
         'api/**/*.{test,spec}.{ts,tsx}',

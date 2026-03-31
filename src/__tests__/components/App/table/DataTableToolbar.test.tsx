@@ -22,9 +22,10 @@ describe('DataTableToolbar', () => {
       />,
     );
 
-    expect(
-      screen.getAllByTestId('animated-number').map((item) => item.textContent),
-    ).toEqual(['3', '10']);
+    expect(screen.getAllByTestId('animated-number').map((item) => item.textContent)).toEqual([
+      '3',
+      '10',
+    ]);
 
     rerender(
       <DataTableToolbar
@@ -38,8 +39,9 @@ describe('DataTableToolbar', () => {
       />,
     );
 
-    expect(
-      screen.getAllByTestId('animated-number').map((item) => item.textContent),
-    ).toEqual(['4', '12']);
+    expect(screen.getAllByTestId('animated-number').map((item) => item.textContent)).toEqual([
+      '4',
+      '12',
+    ]);
   });
 });

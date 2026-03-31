@@ -2,17 +2,10 @@ import { render, type RenderOptions } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import type {
-  MockEvent,
-  MockClipboard,
-  MockLocalStorage,
-} from '@/__tests__/types/test-types';
+import type { MockEvent, MockClipboard, MockLocalStorage } from '@/__tests__/types/test-types';
 
 // Custom render function with providers if needed
-const customRender = (
-  ui: ReactElement,
-  options?: Omit<RenderOptions, 'wrapper'>,
-) => {
+const customRender = (ui: ReactElement, options?: Omit<RenderOptions, 'wrapper'>) => {
   // Wrap with TooltipProvider for components using Tooltip
   const Wrapper = ({ children }: { children: React.ReactNode }) => (
     <TooltipProvider>{children}</TooltipProvider>
@@ -28,8 +21,7 @@ export { default as userEvent } from '@testing-library/user-event';
 export { customRender as render };
 
 // Helper functions for common test operations
-export const waitForAnimationFrame = () =>
-  new Promise((resolve) => setTimeout(resolve, 0));
+export const waitForAnimationFrame = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 export const createMockEvent = (overrides = {}): MockEvent => ({
   target: { value: '' },
@@ -115,5 +107,4 @@ export const createKeyboardEvent = (key: string, options = {}) => ({
 });
 
 // Helper to test async operations
-export const flushPromises = () =>
-  new Promise((resolve) => setTimeout(resolve, 0));
+export const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));

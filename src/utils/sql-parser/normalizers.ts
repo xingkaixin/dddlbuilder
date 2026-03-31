@@ -22,9 +22,7 @@ export function buildTypeString(definition: any): string {
   const length = definition?.length;
   const scale = definition?.scale;
   const normalizedScale =
-    scale === null || scale === undefined || scale === 'null'
-      ? undefined
-      : scale;
+    scale === null || scale === undefined || scale === 'null' ? undefined : scale;
 
   if (length && normalizedScale !== undefined) {
     return `${baseType}(${length},${normalizedScale})`;
@@ -34,8 +32,7 @@ export function buildTypeString(definition: any): string {
   }
   if (Array.isArray(definition?.suffix) && definition.suffix.length > 0) {
     const suffixValues = definition.suffix.filter(
-      (v: any) =>
-        v !== null && v !== undefined && String(v).toLowerCase() !== 'null',
+      (v: any) => v !== null && v !== undefined && String(v).toLowerCase() !== 'null',
     );
     if (suffixValues.length > 0) {
       return `${baseType}(${suffixValues.join(',')})`;
@@ -53,8 +50,7 @@ export function extractFunctionName(val: any): string | null {
   if (val.type === 'function' && val.name) {
     if (Array.isArray(val.name.name) && val.name.name[0]) {
       const nameNode = val.name.name[0];
-      const rawName =
-        nameNode?.value ?? nameNode?.expr?.value ?? val.name.name[0];
+      const rawName = nameNode?.value ?? nameNode?.expr?.value ?? val.name.name[0];
       return rawName ? String(rawName).toLowerCase() : null;
     }
     if (typeof val.name === 'string') {

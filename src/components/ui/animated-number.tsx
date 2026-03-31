@@ -8,12 +8,7 @@ interface AnimatedNumberProps {
   locales?: Intl.LocalesArgument;
 }
 
-export function AnimatedNumber({
-  value,
-  format,
-  className,
-  locales,
-}: AnimatedNumberProps) {
+export function AnimatedNumber({ value, format, className, locales }: AnimatedNumberProps) {
   const prefersReducedMotion = usePrefersReducedMotion();
   const safeValue = Number.isFinite(value) ? value : 0;
 

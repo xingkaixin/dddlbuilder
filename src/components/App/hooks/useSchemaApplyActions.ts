@@ -33,10 +33,7 @@ interface UseSchemaApplyActionsParams {
   triggerIndexAnimation: (indexId: string, mode: 'add' | 'remove') => void;
   triggerFieldTableHighlight: (rowIndex: number) => void;
   showToast: (message: string) => void;
-  trackEvent: (
-    event: string,
-    data?: Record<string, AnalyticsValue>,
-  ) => Promise<void>;
+  trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void>;
 }
 
 const DEFAULT_TABLE_MISC_CONFIG: TableMiscConfig = {
@@ -85,10 +82,7 @@ export function useSchemaApplyActions({
       let appliedCount = 0;
       let newIndexId: string | null = null;
 
-      if (
-        suggestion.type === 'add_index' ||
-        suggestion.type === 'remove_index'
-      ) {
+      if (suggestion.type === 'add_index' || suggestion.type === 'remove_index') {
         setActiveTab('indexes');
       } else if (
         suggestion.type === 'add_field' ||
@@ -128,14 +122,10 @@ export function useSchemaApplyActions({
               defaultValue: suggestion.fieldModification.defaultValue,
               onUpdate: suggestion.fieldModification.onUpdate,
             };
-            const rowIndex = rows.findIndex(
-              (row) => row.fieldName === fieldName,
-            );
+            const rowIndex = rows.findIndex((row) => row.fieldName === fieldName);
             if (rowIndex !== -1) {
               const filteredChanges = Object.fromEntries(
-                Object.entries(changes).filter(
-                  ([, value]) => value !== undefined,
-                ),
+                Object.entries(changes).filter(([, value]) => value !== undefined),
               );
               setRows((prev) => {
                 const updatedRows = [...prev];
@@ -153,16 +143,12 @@ export function useSchemaApplyActions({
 
         case 'remove_field':
           if (suggestion.fieldName) {
-            const rowIndex = rows.findIndex(
-              (row) => row.fieldName === suggestion.fieldName,
-            );
+            const rowIndex = rows.findIndex((row) => row.fieldName === suggestion.fieldName);
             if (rowIndex !== -1) {
               triggerFieldTableHighlight(rowIndex);
               setTimeout(() => {
                 setRows((prev) => {
-                  const newRows = prev.filter(
-                    (row) => row.fieldName !== suggestion.fieldName,
-                  );
+                  const newRows = prev.filter((row) => row.fieldName !== suggestion.fieldName);
                   return newRows.map((row, index) => ({
                     ...row,
                     order: index + 1,
@@ -195,15 +181,11 @@ export function useSchemaApplyActions({
 
         case 'remove_index':
           if (suggestion.indexName) {
-            const targetIndex = indexes.find(
-              (index) => index.name === suggestion.indexName,
-            );
+            const targetIndex = indexes.find((index) => index.name === suggestion.indexName);
             if (targetIndex) {
               triggerIndexAnimation(targetIndex.id, 'remove');
               setTimeout(() => {
-                setIndexes((prev) =>
-                  prev.filter((index) => index.name !== suggestion.indexName),
-                );
+                setIndexes((prev) => prev.filter((index) => index.name !== suggestion.indexName));
               }, 500);
               appliedCount = 1;
             }
@@ -222,7 +204,7 @@ export function useSchemaApplyActions({
           return item;
         });
         setReviewResult({ ...reviewResult, suggestions: newSuggestions });
-        trackEvent('sql_suggestion_apply', {
+        void trackEvent('sql_suggestion_apply', {
           type: suggestion.type,
           description: suggestion.description,
         });
@@ -251,13 +233,13 @@ export function useSchemaApplyActions({
       setDbType(importDbType);
       setTableMiscConfig({
         ...DEFAULT_TABLE_MISC_CONFIG,
-        ...(result.tableMiscConfig || {}),
+        ...result.tableMiscConfig,
       });
       setMysqlPartitionConfig(
         MYSQL_PARTITION_DBS.includes(importDbType)
           ? {
               ...DEFAULT_MYSQL_PARTITION_CONFIG,
-              ...(result.mysqlPartitionConfig || {}),
+              ...result.mysqlPartitionConfig,
             }
           : DEFAULT_MYSQL_PARTITION_CONFIG,
       );
@@ -315,7 +297,7 @@ export function useSchemaApplyActions({
 
       setAuthObjects(result.authObjects);
       setAuthInput('');
-      trackEvent('sql_import', { dbType: importDbType });
+      void trackEvent('sql_import', { dbType: importDbType });
     },
     [
       setRows,
@@ -384,7 +366,7 @@ export function useSchemaApplyActions({
         setIndexes(newIndexes as IndexDefinition[]);
       }
 
-      trackEvent('ai_generate_apply', { tableName: schema.tableName });
+      void trackEvent('ai_generate_apply', { tableName: schema.tableName });
       showToast('大师建表工坊的表结构已应用');
     },
     [setTableName, setTableComment, setRows, setIndexes, trackEvent, showToast],

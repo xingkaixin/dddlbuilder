@@ -1,9 +1,4 @@
-import type {
-  FieldRow,
-  NormalizedField,
-  IndexField,
-  IndexDefinition,
-} from '@/App';
+import type { FieldRow, NormalizedField, IndexField, IndexDefinition } from '@/App';
 
 // Sample test data for fields
 export const sampleFieldRows: FieldRow[] = [
@@ -122,12 +117,7 @@ export const sampleIndexes: IndexDefinition[] = [
 export const sampleAuthObjects = ['CBD_READ', 'CBD_RW', 'CBD_PROC', 'CBD_DICT'];
 
 // Test table names and comments
-export const sampleTableNames = [
-  'users',
-  'order_info',
-  'product_category',
-  'schema.table_name',
-];
+export const sampleTableNames = ['users', 'order_info', 'product_category', 'schema.table_name'];
 
 export const sampleTableComments = [
   '用户表',
@@ -137,12 +127,7 @@ export const sampleTableComments = [
 ];
 
 // Database types for testing
-export const databaseTypes = [
-  'mysql',
-  'postgresql',
-  'sqlserver',
-  'oracle',
-] as const;
+export const databaseTypes = ['mysql', 'postgresql', 'sqlserver', 'oracle'] as const;
 
 // Edge case field data
 export const edgeCaseFieldRows: FieldRow[] = [

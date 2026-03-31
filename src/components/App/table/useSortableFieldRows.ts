@@ -15,11 +15,7 @@ type SetRows = (next: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => void;
 interface UseSortableFieldRowsParams {
   rows: FieldRow[];
   setRows: SetRows;
-  onDragResult?: (result: {
-    moved: boolean;
-    activeId: string;
-    overId: string | null;
-  }) => void;
+  onDragResult?: (result: { moved: boolean; activeId: string; overId: string | null }) => void;
 }
 
 export const reorderFieldRowsByIds = (
@@ -41,11 +37,7 @@ export const reorderFieldRowsByIds = (
   return ensureOrder(arrayMove(rows, oldIndex, newIndex));
 };
 
-export function useSortableFieldRows({
-  rows,
-  setRows,
-  onDragResult,
-}: UseSortableFieldRowsParams) {
+export function useSortableFieldRows({ rows, setRows, onDragResult }: UseSortableFieldRowsParams) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {

@@ -29,8 +29,7 @@ interface GenerateState {
   error: string | null;
 }
 
-interface GenerateTableOptions
-  extends Omit<GenerateTableRequestOptions, 'conversationHistory'> {
+interface GenerateTableOptions extends Omit<GenerateTableRequestOptions, 'conversationHistory'> {
   continueConversation?: boolean;
 }
 
@@ -60,9 +59,7 @@ export function useAIGenerateTable() {
     result: null,
     error: null,
   });
-  const [conversationHistory, setConversationHistory] = useState<
-    ConversationMessage[]
-  >([]);
+  const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
   const queryClient = useQueryClient();
   const conversationHistoryRef = useRef<ConversationMessage[]>([]);
   const activeRequestRef = useRef<{
@@ -79,11 +76,7 @@ export function useAIGenerateTable() {
   }, [state.isLoading, state.streamingText]);
 
   const generateTable = useCallback(
-    async (
-      description: string,
-      dbType: string,
-      options?: GenerateTableOptions,
-    ) => {
+    async (description: string, dbType: string, options?: GenerateTableOptions) => {
       if (!description.trim()) {
         setState((prev) => ({
           ...prev,
@@ -92,9 +85,7 @@ export function useAIGenerateTable() {
         return;
       }
 
-      const baseConversation = options?.continueConversation
-        ? conversationHistoryRef.current
-        : [];
+      const baseConversation = options?.continueConversation ? conversationHistoryRef.current : [];
       const normalizedDescription = description.trim();
       const requestOptions = {
         templates: options?.templates,

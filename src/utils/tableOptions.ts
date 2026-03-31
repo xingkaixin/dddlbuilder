@@ -21,14 +21,11 @@ const TABLESPACE_DBS = new Set<DatabaseType>([
 
 const HIVE_DBS = new Set<DatabaseType>(['hive']);
 
-export const supportsStorageOption = (dbType: DatabaseType): boolean =>
-  HIVE_DBS.has(dbType);
+export const supportsStorageOption = (dbType: DatabaseType): boolean => HIVE_DBS.has(dbType);
 
-export const supportsEngineOption = (dbType: DatabaseType): boolean =>
-  MYSQL_LIKE_DBS.has(dbType);
+export const supportsEngineOption = (dbType: DatabaseType): boolean => MYSQL_LIKE_DBS.has(dbType);
 
-export const supportsCharsetOption = (dbType: DatabaseType): boolean =>
-  MYSQL_LIKE_DBS.has(dbType);
+export const supportsCharsetOption = (dbType: DatabaseType): boolean => MYSQL_LIKE_DBS.has(dbType);
 
 export const supportsCollationOption = (dbType: DatabaseType): boolean =>
   MYSQL_LIKE_DBS.has(dbType);
@@ -41,10 +38,7 @@ const normalizeValue = (value?: string): string => {
   return normalized.toLowerCase() === 'default' ? '' : normalized;
 };
 
-export const buildTableOptionsClause = (
-  dbType: DatabaseType,
-  config?: TableMiscConfig,
-): string => {
+export const buildTableOptionsClause = (dbType: DatabaseType, config?: TableMiscConfig): string => {
   if (!config?.enabled) return '';
   if (HIVE_DBS.has(dbType)) return '';
 

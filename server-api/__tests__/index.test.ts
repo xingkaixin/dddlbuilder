@@ -3,9 +3,7 @@ import app from '../../api/index';
 import type { ApiEnv } from '../lib/context.js';
 
 // Helper to create env object for tests
-const createEnv = (
-  overrides: Partial<ApiEnv['Bindings']> = {},
-): ApiEnv['Bindings'] => ({
+const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
   SHARE_KV: {} as KVNamespace,
   RATE_LIMIT_KV: {} as KVNamespace,
@@ -13,10 +11,7 @@ const createEnv = (
 });
 
 // Helper to create a request with origin header
-const createRequest = (
-  path: string,
-  options: RequestInit & { origin?: string } = {},
-) => {
+const createRequest = (path: string, options: RequestInit & { origin?: string } = {}) => {
   const { origin, ...rest } = options;
   const headers = new Headers(rest.headers);
   if (origin) {
@@ -94,10 +89,7 @@ describe('api security guards', () => {
   it('应允许白名单 Origin 的 CORS', async () => {
     const origin = 'http://localhost:5173';
     const env = createEnv();
-    const response = await app.fetch(
-      createRequest('/api/health', { origin }),
-      env,
-    );
+    const response = await app.fetch(createRequest('/api/health', { origin }), env);
 
     expect(response.status).toBe(200);
     expect(response.headers.get('access-control-allow-origin')).toBe(origin);
@@ -158,17 +150,13 @@ describe('api security guards', () => {
         createRequest('/api/health', { origin: 'https://custom1.com' }),
         env,
       );
-      expect(res1.headers.get('access-control-allow-origin')).toBe(
-        'https://custom1.com',
-      );
+      expect(res1.headers.get('access-control-allow-origin')).toBe('https://custom1.com');
 
       const res2 = await app.fetch(
         createRequest('/api/health', { origin: 'https://custom2.com' }),
         env,
       );
-      expect(res2.headers.get('access-control-allow-origin')).toBe(
-        'https://custom2.com',
-      );
+      expect(res2.headers.get('access-control-allow-origin')).toBe('https://custom2.com');
 
       // Default shouldn't be allowed now unless it's in the list
       const res3 = await app.fetch(
@@ -187,9 +175,7 @@ describe('api security guards', () => {
         createRequest('/api/health', { origin: 'http://localhost:5173' }),
         env,
       );
-      expect(res1.headers.get('access-control-allow-origin')).toBe(
-        'http://localhost:5173',
-      );
+      expect(res1.headers.get('access-control-allow-origin')).toBe('http://localhost:5173');
     });
   });
 });

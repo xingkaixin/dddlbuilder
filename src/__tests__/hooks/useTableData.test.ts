@@ -190,10 +190,7 @@ describe('useTableData', () => {
 
     // 将第一行改为自增
     act(() => {
-      result.current.handleRowsChange(
-        [[0, 'defaultKind', '无', '自增']],
-        'edit',
-      );
+      result.current.handleRowsChange([[0, 'defaultKind', '无', '自增']], 'edit');
     });
 
     const updatedRow = result.current.rows[0];
@@ -207,14 +204,8 @@ describe('useTableData', () => {
 
     // 设置默认值为常量
     act(() => {
-      result.current.handleRowsChange(
-        [[0, 'defaultKind', '无', '常量']],
-        'edit',
-      );
-      result.current.handleRowsChange(
-        [[0, 'defaultValue', '', 'test_value']],
-        'edit',
-      );
+      result.current.handleRowsChange([[0, 'defaultKind', '无', '常量']], 'edit');
+      result.current.handleRowsChange([[0, 'defaultValue', '', 'test_value']], 'edit');
     });
 
     expect(result.current.rows[0].defaultKind).toBe('常量');
@@ -222,10 +213,7 @@ describe('useTableData', () => {
 
     // 切换为其他类型
     act(() => {
-      result.current.handleRowsChange(
-        [[0, 'defaultKind', '常量', '无']],
-        'edit',
-      );
+      result.current.handleRowsChange([[0, 'defaultKind', '常量', '无']], 'edit');
     });
 
     expect(result.current.rows[0].defaultKind).toBe('无');
@@ -281,10 +269,7 @@ describe('useTableData', () => {
 
     // 尝试修改超出索引的行
     act(() => {
-      result.current.handleRowsChange(
-        [[10, 'fieldName', 'new_field', 'test_value']],
-        'edit',
-      );
+      result.current.handleRowsChange([[10, 'fieldName', 'new_field', 'test_value']], 'edit');
     });
 
     // 应该自动创建足够多的行
@@ -323,10 +308,7 @@ describe('useTableData', () => {
     const { result } = renderHook(() => useTableData(rowsWithInvalid));
 
     expect(result.current.normalizedFields).toHaveLength(2);
-    expect(result.current.normalizedFields.map((f) => f.name)).toEqual([
-      'valid',
-      'also_valid',
-    ]);
+    expect(result.current.normalizedFields.map((f) => f.name)).toEqual(['valid', 'also_valid']);
   });
 
   it('应该处理复杂的变更链', () => {
@@ -397,9 +379,7 @@ describe('useTableData', () => {
       }),
     ];
 
-    const { result } = renderHook(() =>
-      useTableData(initialRows, persistedRows),
-    );
+    const { result } = renderHook(() => useTableData(initialRows, persistedRows));
 
     // 应该使用持久化状态而不是初始状态
     expect(result.current.rows).toEqual(persistedRows);
@@ -437,10 +417,7 @@ describe('useTableData', () => {
     const { result } = renderHook(() => useTableData(initialRows));
 
     act(() => {
-      result.current.handleRowsChange(
-        [[0, 'fieldName', 'id', 'user_id']],
-        'loadData',
-      );
+      result.current.handleRowsChange([[0, 'fieldName', 'id', 'user_id']], 'loadData');
     });
     expect(result.current.rows[0].fieldName).toBe('id'); // no change
   });

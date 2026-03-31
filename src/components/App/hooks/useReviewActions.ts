@@ -13,16 +13,9 @@ interface UseReviewActionsParams {
   loadedTableNormalizedName: string | null;
   isReviewing: boolean;
   reviewResult: ReviewResult | null;
-  startReview: (
-    ddl: string,
-    tableName: string,
-    dbType: string,
-  ) => Promise<void>;
+  startReview: (ddl: string, tableName: string, dbType: string) => Promise<void>;
   setIsReviewHistoryOpen: (open: boolean) => void;
-  trackEvent: (
-    event: string,
-    data?: Record<string, AnalyticsValue>,
-  ) => Promise<void> | void;
+  trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void> | void;
 }
 
 export function useReviewActions({
@@ -37,7 +30,7 @@ export function useReviewActions({
   trackEvent,
 }: UseReviewActionsParams) {
   const handleStartReview = useCallback(() => {
-    trackEvent('sql_review_start', { dbType, tableName });
+    void trackEvent('sql_review_start', { dbType, tableName });
     void startReview(generatedSql, tableName, dbType);
   }, [trackEvent, startReview, generatedSql, tableName, dbType]);
 
@@ -45,8 +38,7 @@ export function useReviewActions({
 
   useEffect(() => {
     if (isReviewingRef.current && !isReviewing && reviewResult) {
-      const normalizedName =
-        loadedTableNormalizedName || normalizeSavedTableName(tableName);
+      const normalizedName = loadedTableNormalizedName || normalizeSavedTableName(tableName);
       saveReview(normalizedName, tableName, generatedSql, dbType, reviewResult)
         .then(() => trackEvent('sql_review_complete', { dbType, tableName }))
         .catch((err) =>

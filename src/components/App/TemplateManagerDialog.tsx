@@ -82,10 +82,7 @@ interface TemplateManagerDialogProps {
     id: string,
     updates: Partial<Pick<FieldTemplate, 'name' | 'description' | 'fields'>>,
   ) => Promise<{ ok: boolean; message?: string }>;
-  onDuplicateTemplate: (
-    id: string,
-    newName?: string,
-  ) => Promise<{ ok: boolean; message?: string }>;
+  onDuplicateTemplate: (id: string, newName?: string) => Promise<{ ok: boolean; message?: string }>;
   onDeleteTemplate: (id: string) => Promise<{ ok: boolean; message?: string }>;
 }
 
@@ -104,8 +101,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
     const { showToast } = useToast();
     const dbType = useAppStore((state) => state.dbType) as DatabaseType;
     const [searchTerm, setSearchTerm] = useState('');
-    const [editingTemplate, setEditingTemplate] =
-      useState<FieldTemplate | null>(null);
+    const [editingTemplate, setEditingTemplate] = useState<FieldTemplate | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [editName, setEditName] = useState('');
     const [editDescription, setEditDescription] = useState('');
@@ -113,9 +109,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
     const [editError, setEditError] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
-    const [deleteTarget, setDeleteTarget] = useState<FieldTemplate | null>(
-      null,
-    );
+    const [deleteTarget, setDeleteTarget] = useState<FieldTemplate | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
     // 过滤模板
@@ -123,9 +117,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
       if (!searchTerm.trim()) return templates;
       const term = searchTerm.toLowerCase();
       return templates.filter(
-        (t) =>
-          t.name.toLowerCase().includes(term) ||
-          t.description?.toLowerCase().includes(term),
+        (t) => t.name.toLowerCase().includes(term) || t.description?.toLowerCase().includes(term),
       );
     }, [templates, searchTerm]);
 
@@ -192,9 +184,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
           );
         } else {
           setEditError(t('templateManager.toast.saveFailed'));
-          showToast(
-            result.message ?? t('templateManager.toast.saveFailedRetry'),
-          );
+          showToast(result.message ?? t('templateManager.toast.saveFailedRetry'));
         }
       } finally {
         setIsSaving(false);
@@ -215,13 +205,9 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
       async (template: FieldTemplate) => {
         const result = await onDuplicateTemplate(template.id);
         if (result.ok) {
-          showToast(
-            t('templateManager.toast.duplicated', { name: template.name }),
-          );
+          showToast(t('templateManager.toast.duplicated', { name: template.name }));
         } else {
-          showToast(
-            result.message ?? t('templateManager.toast.duplicateFailed'),
-          );
+          showToast(result.message ?? t('templateManager.toast.duplicateFailed'));
         }
       },
       [onDuplicateTemplate, showToast, t],
@@ -238,9 +224,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
       if (!deleteTarget) return;
       const result = await onDeleteTemplate(deleteTarget.id);
       if (result.ok) {
-        showToast(
-          t('templateManager.toast.deleted', { name: deleteTarget.name }),
-        );
+        showToast(t('templateManager.toast.deleted', { name: deleteTarget.name }));
       } else {
         showToast(result.message ?? t('templateManager.toast.deleteFailed'));
       }
@@ -261,9 +245,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>{t('templateManager.title')}</DialogTitle>
-              <DialogDescription>
-                {t('templateManager.description')}
-              </DialogDescription>
+              <DialogDescription>{t('templateManager.description')}</DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
@@ -292,9 +274,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
                   </div>
                 ) : filteredTemplates.length === 0 ? (
                   <div className="py-8 text-center text-muted-foreground">
-                    {searchTerm
-                      ? t('templateManager.emptyFiltered')
-                      : t('templateManager.empty')}
+                    {searchTerm ? t('templateManager.emptyFiltered') : t('templateManager.empty')}
                   </div>
                 ) : (
                   filteredTemplates.map((template) => (
@@ -338,9 +318,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
               {/* 基本信息 */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="template-name">
-                    {t('templateManager.editor.name')}
-                  </Label>
+                  <Label htmlFor="template-name">{t('templateManager.editor.name')}</Label>
                   <Input
                     id="template-name"
                     value={editName}
@@ -360,9 +338,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
                     id="template-desc"
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
-                    placeholder={t(
-                      'templateManager.editor.descriptionPlaceholder',
-                    )}
+                    placeholder={t('templateManager.editor.descriptionPlaceholder')}
                   />
                 </div>
               </div>
@@ -371,12 +347,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label>{t('templateManager.editor.fieldList')}</Label>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAddField}
-                    className="h-7"
-                  >
+                  <Button variant="outline" size="sm" onClick={handleAddField} className="h-7">
                     <Plus className="mr-1 h-3.5 w-3.5" />
                     {t('templateManager.editor.addField')}
                   </Button>
@@ -386,25 +357,18 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
                   rows={editRows}
                   setRows={(next) => {
                     setEditRows((prev) =>
-                      ensureOrder(
-                        typeof next === 'function' ? next(prev) : next,
-                      ),
+                      ensureOrder(typeof next === 'function' ? next(prev) : next),
                     );
                   }}
                   dbType={dbType}
                 />
               </div>
 
-              {editError && (
-                <p className="text-sm text-destructive">{editError}</p>
-              )}
+              {editError && <p className="text-sm text-destructive">{editError}</p>}
             </div>
 
             <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsEditDialogOpen(false)}
-              >
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                 {t('templateManager.editor.cancel')}
               </Button>
               <Button onClick={handleSaveTemplate} disabled={isSaving}>
@@ -419,15 +383,10 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
         </Dialog>
 
         {/* 删除确认 */}
-        <AlertDialog
-          open={isDeleteDialogOpen}
-          onOpenChange={setIsDeleteDialogOpen}
-        >
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t('templateManager.delete.title')}
-              </AlertDialogTitle>
+              <AlertDialogTitle>{t('templateManager.delete.title')}</AlertDialogTitle>
               <AlertDialogDescription>
                 {t('templateManager.delete.description', {
                   name: deleteTarget?.name || '',
@@ -435,13 +394,11 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>
-                {t('templateManager.delete.cancel')}
-              </AlertDialogCancel>
+              <AlertDialogCancel>{t('templateManager.delete.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={(e) => {
                   e.preventDefault();
-                  handleConfirmDelete();
+                  void handleConfirmDelete();
                 }}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >

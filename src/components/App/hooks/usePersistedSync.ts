@@ -66,10 +66,7 @@ export function usePersistedSync({
     if (typeof persistedState.dbType === 'string') {
       setDbType(persistedState.dbType);
     }
-    if (
-      typeof persistedState.addCount === 'number' &&
-      Number.isFinite(persistedState.addCount)
-    ) {
+    if (typeof persistedState.addCount === 'number' && Number.isFinite(persistedState.addCount)) {
       setAddCount(Math.max(1, Math.floor(persistedState.addCount)));
     }
     initializeRows(persistedState.rows ?? []);
@@ -77,9 +74,7 @@ export function usePersistedSync({
 
     const persistedFieldTableViewConfig = persistedState.fieldTableViewConfig;
     if (persistedFieldTableViewConfig) {
-      setFieldTableFreezeEnabled(
-        persistedFieldTableViewConfig.freezeEnabled !== false,
-      );
+      setFieldTableFreezeEnabled(persistedFieldTableViewConfig.freezeEnabled !== false);
       const freezeColumns = persistedFieldTableViewConfig.freezeColumns;
       setFieldTableFreezeColumns(
         typeof freezeColumns === 'number' && Number.isFinite(freezeColumns)
@@ -142,9 +137,7 @@ export function usePersistedSync({
         const state = buildPersistedState();
         const currentSignature = JSON.stringify(state);
         const isDirty =
-          source.kind === 'saved_table'
-            ? currentSignature !== source.baseSignature
-            : false;
+          source.kind === 'saved_table' ? currentSignature !== source.baseSignature : false;
         saveState({
           state,
           source,

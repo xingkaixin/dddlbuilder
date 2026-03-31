@@ -55,10 +55,7 @@ describe('useDDLReview', () => {
   it('should handle streaming review response', async () => {
     const { result } = renderDDLReviewHook();
 
-    const stream = createStream([
-      '{"score": 8,',
-      '"summary": "ok", "suggestions": ["a", "b"]}',
-    ]);
+    const stream = createStream(['{"score": 8,', '"summary": "ok", "suggestions": ["a", "b"]}']);
 
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
@@ -180,9 +177,7 @@ describe('useDDLReview', () => {
 
     // Complete the stream
     act(() => {
-      controllerRef?.enqueue(
-        encoder.encode(', "suggestions": ["fix 1", "fix 2"]}'),
-      );
+      controllerRef?.enqueue(encoder.encode(', "suggestions": ["fix 1", "fix 2"]}'));
       controllerRef?.close();
     });
 
@@ -319,9 +314,7 @@ describe('useDDLReview', () => {
       return Promise.resolve({
         ok: true,
         status: 200,
-        body: createStream([
-          '{"score": 9, "summary": "second", "suggestions": []}',
-        ]),
+        body: createStream(['{"score": 9, "summary": "second", "suggestions": []}']),
         json: vi.fn(),
       } as unknown as Response);
     });
@@ -397,9 +390,7 @@ describe('useDDLReview', () => {
   it('should reuse cached result for same request params', async () => {
     const { result } = renderDDLReviewHook();
 
-    const stream = createStream([
-      '{"score": 9, "summary": "cached", "suggestions": []}',
-    ]);
+    const stream = createStream(['{"score": 9, "summary": "cached", "suggestions": []}']);
 
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,

@@ -23,15 +23,12 @@ describe('useTableOptions', () => {
       },
     };
 
-    const { result, rerender } = renderHook(
-      ({ persisted }) => useTableOptions(persisted),
-      { initialProps: { persisted: firstPersisted } },
-    );
+    const { result, rerender } = renderHook(({ persisted }) => useTableOptions(persisted), {
+      initialProps: { persisted: firstPersisted },
+    });
 
     await waitFor(() => {
-      expect(result.current.tableMiscConfig).toEqual(
-        firstPersisted.tableMiscConfig,
-      );
+      expect(result.current.tableMiscConfig).toEqual(firstPersisted.tableMiscConfig);
     });
     expect(useTableOptionsStore.getState().hydratedFromPersisted).toBe(true);
 

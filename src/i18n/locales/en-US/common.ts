@@ -164,8 +164,7 @@ export const enUSCommon = {
     distributed: 'Distributed Table',
     column: 'Distribution Column',
     required: 'Required',
-    noFields:
-      'Please add fields in the Fields tab first, then choose a distribution column here.',
+    noFields: 'Please add fields in the Fields tab first, then choose a distribution column here.',
     columnPlaceholder: 'Select the column used for distribution...',
     columnHint:
       'Choose a column as data distribution key. Usually pick fields used in JOINs or frequent filtering, such as tenant_id or user_id.',
@@ -183,21 +182,18 @@ export const enUSCommon = {
       'RANGE COLUMNS':
         'Multi-column range partitioning, supports non-integer types like DATE and VARCHAR',
       LIST: 'Partition by discrete value lists, suitable for enums such as region or status',
-      'LIST COLUMNS':
-        'Multi-column list partitioning, supports non-integer types',
+      'LIST COLUMNS': 'Multi-column list partitioning, supports non-integer types',
       HASH: 'Distribute data evenly by hash value, suitable for data without clear partition patterns',
       KEY: 'Similar to HASH, uses MySQL internal hash algorithm and supports more data types',
     },
     partitionKey: 'Partition Key',
     multiColumn: 'Multi-column',
     expressionSupport: 'Expression supported',
-    expressionPlaceholder:
-      'Enter expression, e.g. YEAR(created_at) or dayofmonth(start_time)',
+    expressionPlaceholder: 'Enter expression, e.g. YEAR(created_at) or dayofmonth(start_time)',
     expressionHint:
       'Function expressions are supported, such as YEAR(col), MONTH(col), TO_DAYS(col), and dayofmonth(col)',
     orSelectField: 'Or select field',
-    noFields:
-      'Please add fields in the Fields tab first, then select partition fields here.',
+    noFields: 'Please add fields in the Fields tab first, then select partition fields here.',
     fieldPlaceholder: 'Select partition field...',
     partitionCount: 'Partition Count',
     partitionCountHint: 'Power of 2 is recommended, such as 4, 8, or 16',
@@ -211,8 +207,7 @@ export const enUSCommon = {
     byDayTip: 'Generate daily partitions (1-31)',
     addPartition: 'Add Partition',
     addPartitionTip: 'Add a new partition definition',
-    emptyDefs:
-      'No partition definition yet. Click "Add Partition" or use quick actions.',
+    emptyDefs: 'No partition definition yet. Click "Add Partition" or use quick actions.',
     partitionName: 'Partition Name',
     lessThan: 'LESS THAN',
     in: 'IN',
@@ -221,8 +216,7 @@ export const enUSCommon = {
     removePartitionTip: 'Remove this partition',
     rangeHint:
       'For RANGE partitioning, the last partition can use MAXVALUE to capture all remaining values',
-    listHint:
-      'For LIST partitioning, value lists across partitions must not overlap',
+    listHint: 'For LIST partitioning, value lists across partitions must not overlap',
   },
   dataTable: {
     ariaLabel: 'Field configuration table',
@@ -311,8 +305,7 @@ export const enUSCommon = {
     },
     createFromFieldsDialog: {
       title: 'Save as Template',
-      description:
-        'Save the selected {{count}} fields as a reusable field template',
+      description: 'Save the selected {{count}} fields as a reusable field template',
       fieldPreviewTitle: 'Included Fields:',
       nameLabel: 'Template Name',
       namePlaceholder: 'e.g. audit fields',
@@ -353,8 +346,7 @@ export const enUSCommon = {
     },
     delete: {
       title: 'Delete Template',
-      description:
-        'Are you sure you want to delete "{{name}}"? This action cannot be undone.',
+      description: 'Are you sure you want to delete "{{name}}"? This action cannot be undone.',
       cancel: 'Cancel',
       confirm: 'Delete',
     },
@@ -435,8 +427,7 @@ export const enUSCommon = {
     inputContinuePlaceholder: 'Continue describing, e.g. add a status field...',
     inputPlaceholder:
       'Describe your table, e.g. create an orders table with order_no, user_id, items, amount, status...',
-    inputHint:
-      'Enter schema requirements. Press Command/Ctrl + Enter to generate quickly.',
+    inputHint: 'Enter schema requirements. Press Command/Ctrl + Enter to generate quickly.',
     templateSelected: '{{selected}}/{{total}} templates selected',
     selectAll: 'Select all',
     unselectAll: 'Clear selection',
@@ -453,8 +444,7 @@ export const enUSCommon = {
   importSql: {
     triggerTip: 'Import SQL to generate table schema automatically',
     title: 'Import SQL',
-    description:
-      'Paste a CREATE TABLE statement to generate table configuration automatically.',
+    description: 'Paste a CREATE TABLE statement to generate table configuration automatically.',
     stepValidate: 'Validate',
     stepPreview: 'Preview',
     stepConfirm: 'Confirm',
@@ -466,8 +456,7 @@ export const enUSCommon = {
     sqlRequired: 'SQL content is required',
     sqlTooLong: 'SQL is too long. Maximum {{max}} characters allowed.',
     sqlParseFailed: 'SQL parse failed. Please check syntax and try again.',
-    sqlNoTable:
-      'No valid table structure could be parsed from SQL. Please check syntax.',
+    sqlNoTable: 'No valid table structure could be parsed from SQL. Please check syntax.',
     importSuccess: 'Import succeeded: table {{tableName}} parsed',
     unnamed: 'Untitled',
     sourceDb: 'Source Database',
@@ -506,8 +495,7 @@ export const enUSCommon = {
       authCount: 'Grantees',
       database: 'Database',
       authObjects: 'Grantees',
-      description:
-        'After confirmation, table structure will be imported into current workspace.',
+      description: 'After confirmation, table structure will be imported into current workspace.',
     },
   },
   explain: {
@@ -533,8 +521,7 @@ export const enUSCommon = {
     expand: 'Expand sidebar',
     loading: 'Loading saved tables...',
     empty: 'No saved tables yet',
-    emptyHint:
-      'No saved tables yet. Click "Save current table" above to add the first one.',
+    emptyHint: 'No saved tables yet. Click "Save current table" above to add the first one.',
     searchPlaceholder: 'Search by table name or database type...',
     searchDisabledHint: 'Nothing to search yet. Save a table to enable search.',
     createFolder: 'Create folder',
@@ -618,8 +605,7 @@ export const enUSCommon = {
     deleteSuccess: 'Review record deleted',
     deleteFailed: 'Delete failed, please retry',
     deleteConfirmTitle: 'Delete this review record?',
-    deleteConfirmDescription:
-      'This record will be permanently deleted and cannot be recovered.',
+    deleteConfirmDescription: 'This record will be permanently deleted and cannot be recovered.',
     today: 'Today {{time}}',
   },
   versionHistory: {
@@ -636,8 +622,7 @@ export const enUSCommon = {
     compare: 'Compare with current',
     rollback: 'Rollback to this version',
     deleteConfirmTitle: 'Delete this version?',
-    deleteConfirmDescription:
-      'This version will be permanently deleted and cannot be recovered.',
+    deleteConfirmDescription: 'This version will be permanently deleted and cannot be recovered.',
   },
   diffDialog: {
     title: 'Table Structure Diff',
@@ -683,12 +668,10 @@ export const enUSCommon = {
     explainInvalidSql: 'No valid SQL selected',
     explainFailed: 'Explain request failed',
     inputDescribeRequired: 'Please describe table requirements',
-    shareRedisMissing:
-      'Share is not configured. Please set Redis env vars first.',
+    shareRedisMissing: 'Share is not configured. Please set Redis env vars first.',
     shareCreateFailed: 'Failed to create share link',
     shareCopied: 'Link copied to clipboard (expires in 7 days)',
-    shareCopiedReused:
-      'Link copied to clipboard (reused existing link, expires in 7 days)',
+    shareCopiedReused: 'Link copied to clipboard (reused existing link, expires in 7 days)',
   },
   fieldEnums: {
     nullable: {

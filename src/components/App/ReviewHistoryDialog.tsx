@@ -1,12 +1,5 @@
 import { memo, useCallback, useEffect, useState } from 'react';
-import {
-  History,
-  Trash2,
-  Loader2,
-  Star,
-  ChevronDown,
-  ChevronUp,
-} from 'lucide-react';
+import { History, Trash2, Loader2, Star, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -27,11 +20,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import type { ReviewRecordMetadata, ReviewRecord } from '@/utils/reviewHistory';
-import {
-  listReviewMetadata,
-  getReview,
-  deleteReview,
-} from '@/utils/reviewHistory';
+import { listReviewMetadata, getReview, deleteReview } from '@/utils/reviewHistory';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
 import { useLocale } from '@/i18n/LocaleContext';
@@ -82,9 +71,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
     const [reviews, setReviews] = useState<ReviewRecordMetadata[]>([]);
     const [loading, setLoading] = useState(false);
     const [expandedId, setExpandedId] = useState<string | null>(null);
-    const [expandedDetail, setExpandedDetail] = useState<ReviewRecord | null>(
-      null,
-    );
+    const [expandedDetail, setExpandedDetail] = useState<ReviewRecord | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
 
@@ -101,7 +88,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
 
     useEffect(() => {
       if (open) {
-        loadReviews();
+        void loadReviews();
       } else {
         setReviews([]);
         setExpandedId(null);
@@ -149,9 +136,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
                 <History className="h-5 w-5" />
                 {t('reviewHistory.title')}
               </DialogTitle>
-              <DialogDescription>
-                {t('reviewHistory.description')}
-              </DialogDescription>
+              <DialogDescription>{t('reviewHistory.description')}</DialogDescription>
             </DialogHeader>
 
             <div className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto overscroll-contain pr-1">
@@ -176,18 +161,11 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
                         className="flex w-full cursor-pointer items-start gap-3 rounded-lg p-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       >
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                          <Star
-                            className={cn('h-4 w-4', getScoreColor(r.score))}
-                          />
+                          <Star className={cn('h-4 w-4', getScoreColor(r.score))} />
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center gap-2">
-                            <span
-                              className={cn(
-                                'text-lg font-semibold',
-                                getScoreColor(r.score),
-                              )}
-                            >
+                            <span className={cn('text-lg font-semibold', getScoreColor(r.score))}>
                               {r.score}/10
                             </span>
                             <span className="text-xs text-muted-foreground">
@@ -238,14 +216,9 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
                         {expandedDetail.result.suggestions.length > 0 ? (
                           <ul className="space-y-1 text-xs">
                             {expandedDetail.result.suggestions.map((s, idx) => (
-                              <li
-                                key={idx}
-                                className="flex items-start gap-1.5"
-                              >
+                              <li key={idx} className="flex items-start gap-1.5">
                                 <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/50" />
-                                <span>
-                                  {typeof s === 'string' ? s : s.description}
-                                </span>
+                                <span>{typeof s === 'string' ? s : s.description}</span>
                               </li>
                             ))}
                           </ul>
@@ -269,17 +242,13 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t('reviewHistory.deleteConfirmTitle')}
-              </AlertDialogTitle>
+              <AlertDialogTitle>{t('reviewHistory.deleteConfirmTitle')}</AlertDialogTitle>
               <AlertDialogDescription>
                 {t('reviewHistory.deleteConfirmDescription')}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>
-                {t('dialogs.delete.cancel')}
-              </AlertDialogCancel>
+              <AlertDialogCancel>{t('dialogs.delete.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDelete}
                 disabled={actionLoading}

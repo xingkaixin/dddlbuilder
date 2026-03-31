@@ -1,9 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import type {
-  DatabaseType,
-  IndexField,
-  NormalizedField,
-} from '../../types/index.js';
+import type { DatabaseType, IndexField, NormalizedField } from '../../types/index.js';
 import { buildPrimaryKeyName } from '../primaryKeyNaming.js';
 import type { ParsedResult } from './types.js';
 import {
@@ -131,10 +127,7 @@ function mapColumnToField(colDef: any, _dbType: DatabaseType): NormalizedField {
       ? colDef.default_val.value.over
       : undefined);
   const onUpdateFuncName = extractFunctionName(onUpdateSource);
-  if (
-    onUpdateFuncName &&
-    ['now', 'current_timestamp', 'sysdate'].includes(onUpdateFuncName)
-  ) {
+  if (onUpdateFuncName && ['now', 'current_timestamp', 'sysdate'].includes(onUpdateFuncName)) {
     onUpdate = 'current_timestamp';
   }
 
@@ -149,11 +142,7 @@ function mapColumnToField(colDef: any, _dbType: DatabaseType): NormalizedField {
   };
 }
 
-export function parseCreateTable(
-  stmt: any,
-  result: ParsedResult,
-  dbType: DatabaseType,
-) {
+export function parseCreateTable(stmt: any, result: ParsedResult, dbType: DatabaseType) {
   // 1. Table Name
   if (stmt.table && stmt.table.length > 0) {
     result.tableName = stmt.table[0].table;
@@ -223,13 +212,7 @@ export function parseCreateTable(
 
         // Handle inline primary key / unique
         if (def.primary_key) {
-          pushIndex(
-            result,
-            'PRIMARY',
-            [{ name: field.name, direction: 'ASC' }],
-            true,
-            true,
-          );
+          pushIndex(result, 'PRIMARY', [{ name: field.name, direction: 'ASC' }], true, true);
           enforceNotNullForFields(result, [field.name]);
         }
 
@@ -250,15 +233,10 @@ export function parseCreateTable(
             result,
             fields.map((f) => f.name),
           );
-        } else if (
-          def.constraint_type === 'unique key' ||
-          def.constraint_type === 'unique'
-        ) {
+        } else if (def.constraint_type === 'unique key' || def.constraint_type === 'unique') {
           const fields = buildIndexFields(def.definition || []);
           const indexName =
-            def.constraint ||
-            def.index ||
-            `uk_${fields.map((f: any) => f.name).join('_')}`;
+            def.constraint || def.index || `uk_${fields.map((f: any) => f.name).join('_')}`;
           pushIndex(result, indexName, fields, true, false);
         }
       } else if (def.resource === 'index') {

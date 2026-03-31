@@ -236,26 +236,14 @@ describe('Field Processing Functions', () => {
       expect(supportsDefaultCurrentTimestamp('mysql', 'varchar')).toBe(false);
 
       // PostgreSQL
-      expect(supportsDefaultCurrentTimestamp('postgresql', 'timestamp')).toBe(
-        true,
-      );
-      expect(supportsDefaultCurrentTimestamp('postgresql', 'timestamptz')).toBe(
-        true,
-      );
-      expect(supportsDefaultCurrentTimestamp('postgresql', 'varchar')).toBe(
-        false,
-      );
+      expect(supportsDefaultCurrentTimestamp('postgresql', 'timestamp')).toBe(true);
+      expect(supportsDefaultCurrentTimestamp('postgresql', 'timestamptz')).toBe(true);
+      expect(supportsDefaultCurrentTimestamp('postgresql', 'varchar')).toBe(false);
 
       // SQL Server
-      expect(supportsDefaultCurrentTimestamp('sqlserver', 'datetime')).toBe(
-        true,
-      );
-      expect(supportsDefaultCurrentTimestamp('sqlserver', 'datetime2')).toBe(
-        true,
-      );
-      expect(supportsDefaultCurrentTimestamp('sqlserver', 'varchar')).toBe(
-        false,
-      );
+      expect(supportsDefaultCurrentTimestamp('sqlserver', 'datetime')).toBe(true);
+      expect(supportsDefaultCurrentTimestamp('sqlserver', 'datetime2')).toBe(true);
+      expect(supportsDefaultCurrentTimestamp('sqlserver', 'varchar')).toBe(false);
 
       // Oracle
       expect(supportsDefaultCurrentTimestamp('oracle', 'timestamp')).toBe(true);
@@ -267,15 +255,9 @@ describe('Field Processing Functions', () => {
     it('should only support MySQL timestamp on update', () => {
       expect(supportsOnUpdateCurrentTimestamp('mysql', 'timestamp')).toBe(true);
       expect(supportsOnUpdateCurrentTimestamp('mysql', 'datetime')).toBe(true);
-      expect(supportsOnUpdateCurrentTimestamp('postgresql', 'timestamp')).toBe(
-        false,
-      );
-      expect(supportsOnUpdateCurrentTimestamp('sqlserver', 'datetime')).toBe(
-        false,
-      );
-      expect(supportsOnUpdateCurrentTimestamp('oracle', 'timestamp')).toBe(
-        false,
-      );
+      expect(supportsOnUpdateCurrentTimestamp('postgresql', 'timestamp')).toBe(false);
+      expect(supportsOnUpdateCurrentTimestamp('sqlserver', 'datetime')).toBe(false);
+      expect(supportsOnUpdateCurrentTimestamp('oracle', 'timestamp')).toBe(false);
     });
   });
 
@@ -334,9 +316,7 @@ describe('Field Processing Functions', () => {
     it('should escape single quotes for SQL', () => {
       expect(escapeSingleQuotes("O'Reilly")).toBe("O''Reilly");
       expect(escapeSingleQuotes("It's a test")).toBe("It''s a test");
-      expect(escapeSingleQuotes("''multiple''quotes''")).toBe(
-        "''''multiple''''quotes''''",
-      );
+      expect(escapeSingleQuotes("''multiple''quotes''")).toBe("''''multiple''''quotes''''");
       expect(escapeSingleQuotes('no quotes')).toBe('no quotes');
       expect(escapeSingleQuotes('')).toBe('');
     });
@@ -346,33 +326,23 @@ describe('Field Processing Functions', () => {
     it('should format constant defaults correctly', () => {
       // Text-like types should be quoted
       expect(formatConstantDefault('varchar', 'test')).toBe(" DEFAULT 'test'");
-      expect(formatConstantDefault('text', 'hello world')).toBe(
-        " DEFAULT 'hello world'",
-      );
-      expect(formatConstantDefault('char', "O'Reilly")).toBe(
-        " DEFAULT 'O''Reilly'",
-      );
-      expect(formatConstantDefault('date', '2023-01-01')).toBe(
-        " DEFAULT '2023-01-01'",
-      );
+      expect(formatConstantDefault('text', 'hello world')).toBe(" DEFAULT 'hello world'");
+      expect(formatConstantDefault('char', "O'Reilly")).toBe(" DEFAULT 'O''Reilly'");
+      expect(formatConstantDefault('date', '2023-01-01')).toBe(" DEFAULT '2023-01-01'");
       expect(formatConstantDefault('timestamp', '2023-01-01 12:00:00')).toBe(
         " DEFAULT '2023-01-01 12:00:00'",
       );
 
       // Numeric types should not be quoted
       expect(formatConstantDefault('int', '123')).toBe(' DEFAULT 123');
-      expect(formatConstantDefault('decimal', '123.45')).toBe(
-        ' DEFAULT 123.45',
-      );
+      expect(formatConstantDefault('decimal', '123.45')).toBe(' DEFAULT 123.45');
       expect(formatConstantDefault('float', '12.34')).toBe(' DEFAULT 12.34');
 
       // Function-like keywords should not be quoted
       expect(formatConstantDefault('varchar', 'CURRENT_TIMESTAMP')).toBe(
         ' DEFAULT CURRENT_TIMESTAMP',
       );
-      expect(formatConstantDefault('varchar', 'UUID()')).toBe(
-        ' DEFAULT UUID()',
-      );
+      expect(formatConstantDefault('varchar', 'UUID()')).toBe(' DEFAULT UUID()');
       expect(formatConstantDefault('varchar', 'GEN_RANDOM_UUID()')).toBe(
         ' DEFAULT GEN_RANDOM_UUID()',
       );
@@ -447,9 +417,7 @@ describe('Field Processing Functions', () => {
       expect(getCanonicalBaseType('')).toBe('');
       expect(getCanonicalBaseType('   ')).toBe('');
       expect(getCanonicalBaseType('timestamp(6) not null')).toBe('timestamp');
-      expect(getCanonicalBaseType('timestamp default current_timestamp')).toBe(
-        'timestamp',
-      );
+      expect(getCanonicalBaseType('timestamp default current_timestamp')).toBe('timestamp');
       expect(getCanonicalBaseType('time with time zone')).toBe('timetz');
     });
   });
@@ -459,20 +427,9 @@ describe('Field Processing Functions', () => {
       it('should split qualified names', () => {
         expect(splitQualifiedName('table')).toEqual(['table']);
         expect(splitQualifiedName('schema.table')).toEqual(['schema', 'table']);
-        expect(splitQualifiedName('db.schema.table')).toEqual([
-          'db',
-          'schema',
-          'table',
-        ]);
-        expect(splitQualifiedName('db.schema.table_name')).toEqual([
-          'db',
-          'schema',
-          'table_name',
-        ]);
-        expect(splitQualifiedName('schema . table')).toEqual([
-          'schema',
-          'table',
-        ]);
+        expect(splitQualifiedName('db.schema.table')).toEqual(['db', 'schema', 'table']);
+        expect(splitQualifiedName('db.schema.table_name')).toEqual(['db', 'schema', 'table_name']);
+        expect(splitQualifiedName('schema . table')).toEqual(['schema', 'table']);
         expect(splitQualifiedName('')).toEqual([]);
         expect(splitQualifiedName('   ')).toEqual([]);
       });
@@ -516,9 +473,7 @@ describe('Field Processing Functions', () => {
       it('should format PostgreSQL table names', () => {
         expect(formatPostgresTableName('table')).toBe('table');
         expect(formatPostgresTableName('schema.table')).toBe('schema.table');
-        expect(formatPostgresTableName('db.schema.table')).toBe(
-          'db.schema.table',
-        );
+        expect(formatPostgresTableName('db.schema.table')).toBe('db.schema.table');
         expect(formatPostgresTableName('  table  ')).toBe('table');
         expect(formatPostgresTableName('')).toBe('');
         expect(formatPostgresTableName('   ')).toBe('');

@@ -35,10 +35,7 @@ function normalizeReviewPayload(payload: unknown): ReviewServiceResult {
   const data = payload as Record<string, unknown>;
   return {
     score: Math.min(10, Math.max(1, Number(data.score) || 5)),
-    summary:
-      typeof data.summary === 'string'
-        ? data.summary
-        : i18n.t('services.reviewDone'),
+    summary: typeof data.summary === 'string' ? data.summary : i18n.t('services.reviewDone'),
     suggestions: Array.isArray(data.suggestions)
       ? normalizeReviewSuggestions(data.suggestions)
       : [],

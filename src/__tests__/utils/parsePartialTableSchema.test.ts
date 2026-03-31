@@ -30,8 +30,7 @@ describe('parsePartialTableSchema', () => {
   });
 
   it('should parse partial tableComment and indexes', () => {
-    const text =
-      '{"tableComment":"测试表","indexes":[{"name":"idx_a"},{"name":"idx_b"';
+    const text = '{"tableComment":"测试表","indexes":[{"name":"idx_a"},{"name":"idx_b"';
 
     const result = parsePartialTableSchema(text);
     expect(result?.tableComment).toBe('测试表');

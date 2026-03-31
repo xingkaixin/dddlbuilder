@@ -9,9 +9,7 @@ const ORIGINAL_ENV = {
 };
 
 // Helper to create env object for tests
-const createEnv = (
-  overrides: Partial<ApiEnv['Bindings']> = {},
-): ApiEnv['Bindings'] => ({
+const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
   SHARE_KV: {} as KVNamespace,
   RATE_LIMIT_KV: {} as KVNamespace,
@@ -31,13 +29,8 @@ describe('csp headers', () => {
       CSP_MODE: 'report-only',
     });
 
-    const response = await app.fetch(
-      new Request('http://localhost/api/health'),
-      env,
-    );
-    expect(
-      response.headers.get('content-security-policy-report-only'),
-    ).toBeTruthy();
+    const response = await app.fetch(new Request('http://localhost/api/health'), env);
+    expect(response.headers.get('content-security-policy-report-only')).toBeTruthy();
     expect(response.headers.get('content-security-policy')).toBeNull();
   });
 
@@ -47,14 +40,9 @@ describe('csp headers', () => {
       CSP_MODE: 'enforce',
     });
 
-    const response = await app.fetch(
-      new Request('http://localhost/api/health'),
-      env,
-    );
+    const response = await app.fetch(new Request('http://localhost/api/health'), env);
     expect(response.headers.get('content-security-policy')).toBeTruthy();
-    expect(
-      response.headers.get('content-security-policy-report-only'),
-    ).toBeNull();
+    expect(response.headers.get('content-security-policy-report-only')).toBeNull();
   });
 
   it('CSP_MODE=both 时返回两种头', async () => {
@@ -63,14 +51,9 @@ describe('csp headers', () => {
       CSP_MODE: 'both',
     });
 
-    const response = await app.fetch(
-      new Request('http://localhost/api/health'),
-      env,
-    );
+    const response = await app.fetch(new Request('http://localhost/api/health'), env);
     expect(response.headers.get('content-security-policy')).toBeTruthy();
-    expect(
-      response.headers.get('content-security-policy-report-only'),
-    ).toBeTruthy();
+    expect(response.headers.get('content-security-policy-report-only')).toBeTruthy();
   });
 
   it('CSP_ENABLE=false 时不返回 CSP 头', async () => {
@@ -79,13 +62,8 @@ describe('csp headers', () => {
       CSP_MODE: 'both',
     });
 
-    const response = await app.fetch(
-      new Request('http://localhost/api/health'),
-      env,
-    );
+    const response = await app.fetch(new Request('http://localhost/api/health'), env);
     expect(response.headers.get('content-security-policy')).toBeNull();
-    expect(
-      response.headers.get('content-security-policy-report-only'),
-    ).toBeNull();
+    expect(response.headers.get('content-security-policy-report-only')).toBeNull();
   });
 });

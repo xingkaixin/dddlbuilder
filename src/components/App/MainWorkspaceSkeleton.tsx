@@ -22,9 +22,7 @@ export function MainWorkspaceSkeleton() {
               <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary">
                 {t('tableConfig.title')}
               </span>
-              <span className="text-xs text-muted-foreground">
-                {t('app.loadingWorkspace')}
-              </span>
+              <span className="text-xs text-muted-foreground">{t('app.loadingWorkspace')}</span>
             </div>
             <div className="p-4">
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -41,9 +39,7 @@ export function MainWorkspaceSkeleton() {
                   <Skeleton className="h-10 w-full" />
                 </div>
                 <div className="space-y-3">
-                  <p className="text-sm font-medium text-foreground">
-                    {t('tableConfig.dbType')}
-                  </p>
+                  <p className="text-sm font-medium text-foreground">{t('tableConfig.dbType')}</p>
                   <Skeleton className="h-10 w-full" />
                 </div>
               </div>
@@ -127,17 +123,13 @@ export function MainWorkspaceSkeleton() {
             <span className="rounded bg-background px-3 py-2 font-medium text-foreground">
               {t('ddlOutput.ddlTab')}
             </span>
-            <span className="rounded px-3 py-2 text-muted-foreground">
-              {t('ddlOutput.dclTab')}
-            </span>
+            <span className="rounded px-3 py-2 text-muted-foreground">{t('ddlOutput.dclTab')}</span>
           </div>
         </div>
 
         <div className="border-b border-primary/10 px-4 py-3.5">
           <p className="text-xl font-bold">{t('ddlOutput.ddlTitle')}</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t('ddlOutput.ddlDesc')}
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{t('ddlOutput.ddlDesc')}</p>
         </div>
 
         <div className="flex-1 space-y-2 p-4">

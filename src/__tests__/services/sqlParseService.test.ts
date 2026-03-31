@@ -43,9 +43,9 @@ describe('requestSqlParse', () => {
       json: vi.fn().mockResolvedValue({ error: 'SQL 语法错误' }),
     } as unknown as Response);
 
-    await expect(
-      requestSqlParse({ sql: 'invalid', dbType: 'mysql' }),
-    ).rejects.toThrow('SQL 语法错误');
+    await expect(requestSqlParse({ sql: 'invalid', dbType: 'mysql' })).rejects.toThrow(
+      'SQL 语法错误',
+    );
   });
 
   it('响应结构不包含 result 时应抛出格式错误', async () => {

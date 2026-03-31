@@ -1,11 +1,7 @@
 import type { Hono } from 'hono';
 import type { PersistedState } from '../../src/types/index.js';
 import type { ApiEnv } from '../lib/context.js';
-import {
-  errorResponse,
-  parseJsonBodyWithLimit,
-  withMeta,
-} from '../lib/http.js';
+import { errorResponse, parseJsonBodyWithLimit, withMeta } from '../lib/http.js';
 
 const SHARE_TTL_SECONDS = 7 * 24 * 60 * 60;
 const SHARE_BODY_MAX_BYTES = 512 * 1024;
@@ -57,10 +53,7 @@ async function setShareState(
   }
 }
 
-async function getShareState(
-  kv: KVNamespace,
-  key: string,
-): Promise<PersistedState | null> {
+async function getShareState(kv: KVNamespace, key: string): Promise<PersistedState | null> {
   try {
     const value = await kv.get(key);
     if (!value) return null;
@@ -82,10 +75,7 @@ export function registerShareRoutes(app: Hono<ApiEnv>) {
       return errorResponse(c, 500, 'KV binding missing', 'KV_CONFIG_MISSING');
     }
 
-    const parsed = await parseJsonBodyWithLimit<ShareCreateBody>(
-      c,
-      SHARE_BODY_MAX_BYTES,
-    );
+    const parsed = await parseJsonBodyWithLimit<ShareCreateBody>(c, SHARE_BODY_MAX_BYTES);
     if (parsed.errorResponse) return parsed.errorResponse;
 
     const body = parsed.data || {};

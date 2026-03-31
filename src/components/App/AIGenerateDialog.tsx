@@ -9,15 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Loader2,
-  Sparkles,
-  Check,
-  RotateCcw,
-  Send,
-  ChevronDown,
-  ChevronRight,
-} from 'lucide-react';
+import { Loader2, Sparkles, Check, RotateCcw, Send, ChevronDown, ChevronRight } from 'lucide-react';
 import {
   useAIGenerateTable,
   type GeneratedTableSchema,
@@ -46,9 +38,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
   ({ open, onOpenChange, dbType, existingConfig, templates, onApply }) => {
     const { t } = useTranslation();
     const [input, setInput] = useState('');
-    const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<string>>(
-      new Set(),
-    );
+    const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<string>>(new Set());
     const [showTemplateSelection, setShowTemplateSelection] = useState(false);
     const {
       isLoading,
@@ -63,8 +53,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
     } = useAIGenerateTable();
 
     const hasExistingConfig =
-      existingConfig?.tableName ||
-      (existingConfig?.rows && existingConfig.rows.length > 0);
+      existingConfig?.tableName || (existingConfig?.rows && existingConfig.rows.length > 0);
 
     const isStreaming = isLoading && !result;
     const displayResult: PartialTableSchema | GeneratedTableSchema | null =
@@ -78,12 +67,10 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
       }
     }, [open, templates]);
 
-    const selectedTemplates =
-      templates?.filter((t) => selectedTemplateIds.has(t.id)) || [];
-
     const handleGenerate = useCallback(() => {
       if (!input.trim()) return;
-      generateTable(input, dbType, {
+      const selectedTemplates = templates?.filter((t) => selectedTemplateIds.has(t.id)) || [];
+      void generateTable(input, dbType, {
         templates: selectedTemplates.length > 0 ? selectedTemplates : undefined,
         existingConfig: hasExistingConfig ? existingConfig : undefined,
         continueConversation: conversationHistory.length > 0,
@@ -92,7 +79,8 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
     }, [
       input,
       dbType,
-      selectedTemplates,
+      templates,
+      selectedTemplateIds,
       existingConfig,
       hasExistingConfig,
       conversationHistory.length,
@@ -144,13 +132,10 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
       [handleGenerate],
     );
 
-    const handleInputChange = useCallback(
-      (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const value = e.target.value;
-        setInput(value.slice(0, MAX_INPUT_LENGTH));
-      },
-      [],
-    );
+    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const value = e.target.value;
+      setInput(value.slice(0, MAX_INPUT_LENGTH));
+    }, []);
 
     const generatedFieldCount = displayResult?.fields?.length ?? 0;
 
@@ -194,9 +179,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                   <div
                     key={idx}
                     className={`text-sm ${
-                      msg.role === 'user'
-                        ? 'text-foreground font-medium'
-                        : 'text-muted-foreground'
+                      msg.role === 'user' ? 'text-foreground font-medium' : 'text-muted-foreground'
                     }`}
                   >
                     {msg.role === 'user'
@@ -236,16 +219,10 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                           className="flex items-center gap-2 px-2 py-1 rounded bg-muted/50"
                         >
                           {field.isPrimaryKey && (
-                            <span className="text-[10px] font-bold text-primary">
-                              PK
-                            </span>
+                            <span className="text-[10px] font-bold text-primary">PK</span>
                           )}
-                          <span className="font-mono font-medium">
-                            {field.fieldName}
-                          </span>
-                          <span className="text-muted-foreground">
-                            {field.fieldType}
-                          </span>
+                          <span className="font-mono font-medium">{field.fieldName}</span>
+                          <span className="text-muted-foreground">{field.fieldType}</span>
                           {field.fieldComment && (
                             <span className="text-muted-foreground/70 truncate max-w-[150px]">
                               {/* 字段注释 */}
@@ -273,9 +250,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                           className="flex items-center gap-2 px-2 py-1 rounded bg-muted/50"
                         >
                           {idx.unique && (
-                            <span className="text-[10px] font-bold text-amber-600">
-                              UQ
-                            </span>
+                            <span className="text-[10px] font-bold text-amber-600">UQ</span>
                           )}
                           <span className="font-mono">{idx.name}</span>
                           <span className="text-muted-foreground">
@@ -293,10 +268,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                     aria-busy="true"
                     className="flex items-center gap-2 text-xs text-muted-foreground"
                   >
-                    <Loader2
-                      className="h-3 w-3 animate-spin"
-                      aria-hidden="true"
-                    />
+                    <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
                     {isStreaming
                       ? t('aiGenerate.generatingFields', {
                           count: generatedFieldCount,
@@ -358,9 +330,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                   <button
                     type="button"
                     className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={() =>
-                      setShowTemplateSelection(!showTemplateSelection)
-                    }
+                    onClick={() => setShowTemplateSelection(!showTemplateSelection)}
                   >
                     {showTemplateSelection ? (
                       <ChevronDown className="h-3.5 w-3.5" />

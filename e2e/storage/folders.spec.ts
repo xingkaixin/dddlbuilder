@@ -1,16 +1,12 @@
 import { test, expect } from '@playwright/test';
 
 const fillBasicField = async (page: any, name = 'id') => {
-  const nameCell = page.locator(
-    '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
-  );
+  const nameCell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
   await nameCell.dblclick();
   await page.locator('[data-testid="data-table"] input').fill(name);
   await page.keyboard.press('Enter');
 
-  const typeCell = page.locator(
-    '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
-  );
+  const typeCell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)');
   await typeCell.dblclick();
   await page.locator('[data-testid="data-table"] input').fill('int');
   await page.keyboard.press('Enter');
@@ -47,16 +43,11 @@ const dragToTarget = async (page: any, source: any, target: any) => {
         throw new Error('拖拽元素定位失败');
       }
 
-      await page.mouse.move(
-        sourceBox.x + sourceBox.width / 2,
-        sourceBox.y + sourceBox.height / 2,
-      );
+      await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
       await page.mouse.down();
-      await page.mouse.move(
-        targetBox.x + targetBox.width / 2,
-        targetBox.y + targetBox.height / 2,
-        { steps: 12 },
-      );
+      await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, {
+        steps: 12,
+      });
       await page.mouse.up();
       return;
     } catch (error) {
@@ -116,9 +107,7 @@ test.describe('文件夹管理验证 @storage', () => {
     await page.getByLabel('文件夹名称').fill('MyProject');
     await page.getByRole('button', { name: /确定/i }).click();
 
-    await expect(
-      page.getByRole('button', { name: /MyProject/i }),
-    ).toBeVisible();
+    await expect(page.getByRole('button', { name: /MyProject/i })).toBeVisible();
   });
 
   test('场景：根级文件夹与根级表图标应对齐', async ({ page }) => {
@@ -139,11 +128,7 @@ test.describe('文件夹管理验证 @storage', () => {
     await page.getByRole('button', { name: /确定/i }).click();
 
     const folderRow = getFolderRowByName(page, /AlignFolder/i);
-    const folderIcon = folderRow
-      .locator('button')
-      .nth(2)
-      .locator('svg')
-      .first();
+    const folderIcon = folderRow.locator('button').nth(2).locator('svg').first();
     const tableIconA = page.getByTestId(`table-icon:${tableNameA}`);
     const tableIconB = page.getByTestId(`table-icon:${tableNameB}`);
 
@@ -188,9 +173,7 @@ test.describe('文件夹管理验证 @storage', () => {
     await folderButton.locator('..').getByRole('button').last().click();
     await page.getByRole('menuitem', { name: /删除/i }).click();
 
-    await expect(
-      page.getByRole('heading', { name: '删除文件夹' }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: '删除文件夹' })).toBeVisible();
     await page.getByRole('button', { name: /确定删除/i }).click();
 
     await expect(page.getByText('DeleteFolder')).toHaveCount(0);
@@ -212,17 +195,13 @@ test.describe('文件夹管理验证 @storage', () => {
     await dragToTarget(page, tableHandle, groupRow);
 
     await ensureFolderExpanded(page, 'Group1');
-    await expect(
-      page.getByRole('button', { name: new RegExp(tableName, 'i') }),
-    ).toBeVisible();
+    await expect(page.getByRole('button', { name: new RegExp(tableName, 'i') })).toBeVisible();
 
     const movedRow = getTableRowByName(page, new RegExp(tableName, 'i'));
     const movedHandle = movedRow.getByRole('button', { name: /拖拽移动表/i });
     await dragToTarget(page, movedHandle, page.getByTestId('root-dropzone'));
 
-    await expect(
-      page.getByRole('button', { name: new RegExp(tableName, 'i') }),
-    ).toBeVisible();
+    await expect(page.getByRole('button', { name: new RegExp(tableName, 'i') })).toBeVisible();
   });
 
   test('场景：文件夹拖拽到另一文件夹下', async ({ page }) => {
@@ -244,9 +223,7 @@ test.describe('文件夹管理验证 @storage', () => {
     await dragToTarget(page, folderAHandle, folderBRow);
 
     await ensureFolderExpanded(page, 'FolderParentB');
-    await expect(
-      page.getByRole('button', { name: /FolderParentA/i }),
-    ).toBeVisible();
+    await expect(page.getByRole('button', { name: /FolderParentA/i })).toBeVisible();
   });
 
   test('场景：移动包含表的文件夹后，表随文件夹一起移动', async ({ page }) => {
@@ -267,20 +244,15 @@ test.describe('文件夹管理验证 @storage', () => {
     const sourceFolderRow = getFolderRowByName(page, /SourceFolder/i);
     await dragToTarget(page, tableHandle, sourceFolderRow);
 
-    const sourceHandle = getFolderRowByName(page, /SourceFolder/i).getByRole(
-      'button',
-      {
-        name: /拖拽移动文件夹/i,
-      },
-    );
+    const sourceHandle = getFolderRowByName(page, /SourceFolder/i).getByRole('button', {
+      name: /拖拽移动文件夹/i,
+    });
     const targetFolderRow = getFolderRowByName(page, /TargetFolder/i);
     await dragToTarget(page, sourceHandle, targetFolderRow);
 
     await ensureFolderExpanded(page, 'TargetFolder');
     await ensureFolderExpanded(page, 'SourceFolder');
 
-    await expect(
-      page.getByRole('button', { name: new RegExp(tableName, 'i') }),
-    ).toBeVisible();
+    await expect(page.getByRole('button', { name: new RegExp(tableName, 'i') })).toBeVisible();
   });
 });

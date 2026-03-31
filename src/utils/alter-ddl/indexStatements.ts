@@ -56,9 +56,7 @@ export function generateAddIndex(
   dbType: DatabaseType,
 ): string {
   const index = idxDiff.index;
-  const fieldList = index.fields
-    .map((f) => `${f.name} ${f.direction}`)
-    .join(', ');
+  const fieldList = index.fields.map((f) => `${f.name} ${f.direction}`).join(', ');
 
   // 主键
   if (index.isPrimary) {

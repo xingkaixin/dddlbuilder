@@ -16,13 +16,8 @@ export class SqlServerStrategy extends AbstractDDLStrategy {
     return 'sqlserver';
   }
 
-  generateTableDDL(
-    tableName: string,
-    tableComment: string,
-    fields: NormalizedField[],
-  ): string {
-    const { schema: parsedSchema, table: parsedTable } =
-      getSchemaAndTable(tableName);
+  generateTableDDL(tableName: string, tableComment: string, fields: NormalizedField[]): string {
+    const { schema: parsedSchema, table: parsedTable } = getSchemaAndTable(tableName);
     const schema = parsedSchema || '';
     const table = parsedTable || tableName.trim();
 
@@ -33,8 +28,7 @@ export class SqlServerStrategy extends AbstractDDLStrategy {
       const base = getCanonicalBaseType(field.type);
 
       const identity =
-        field.defaultKind === 'auto_increment' &&
-        supportsAutoIncrement('sqlserver', base)
+        field.defaultKind === 'auto_increment' && supportsAutoIncrement('sqlserver', base)
           ? ' IDENTITY(1,1)'
           : '';
 
@@ -56,9 +50,7 @@ export class SqlServerStrategy extends AbstractDDLStrategy {
     });
 
     const qualified = schema ? `${schema}.${table}` : table;
-    const statements: string[] = [
-      `CREATE TABLE ${qualified} (\n${columnLines.join(',\n')}\n);`,
-    ];
+    const statements: string[] = [`CREATE TABLE ${qualified} (\n${columnLines.join(',\n')}\n);`];
 
     if (tableComment.trim()) {
       const level0name = schema ? `N'${escapeSingleQuotes(schema)}'` : 'NULL';

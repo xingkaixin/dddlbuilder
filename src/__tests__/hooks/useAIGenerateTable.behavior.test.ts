@@ -74,8 +74,7 @@ describe('useAIGenerateTable behaviors', () => {
       });
     });
 
-    const secondCallPayload =
-      aiServiceMocks.requestGenerateTable.mock.calls[1][0];
+    const secondCallPayload = aiServiceMocks.requestGenerateTable.mock.calls[1][0];
     expect(secondCallPayload.options.conversationHistory).toHaveLength(2);
     expect(result.current.conversationHistory).toHaveLength(4);
     expect(result.current.result?.tableName).toBe('orders');
@@ -93,9 +92,7 @@ describe('useAIGenerateTable behaviors', () => {
   });
 
   it('should send the current locale after switching language', async () => {
-    aiServiceMocks.requestGenerateTable.mockResolvedValue(
-      createResult('users'),
-    );
+    aiServiceMocks.requestGenerateTable.mockResolvedValue(createResult('users'));
 
     const { result } = renderAIGenerateTableWithLocaleHook();
 
@@ -120,13 +117,10 @@ describe('useAIGenerateTable behaviors', () => {
   });
 
   it('should ignore duplicated in-flight request with same key', async () => {
-    let resolveRequest: ((value: GenerateTableServiceResult) => void) | null =
-      null;
-    const requestPromise = new Promise<GenerateTableServiceResult>(
-      (resolve) => {
-        resolveRequest = resolve;
-      },
-    );
+    let resolveRequest: ((value: GenerateTableServiceResult) => void) | null = null;
+    const requestPromise = new Promise<GenerateTableServiceResult>((resolve) => {
+      resolveRequest = resolve;
+    });
     aiServiceMocks.requestGenerateTable.mockReturnValue(requestPromise);
 
     const { result } = renderAIGenerateTableHook();
@@ -151,19 +145,17 @@ describe('useAIGenerateTable behaviors', () => {
 
   it('should abort previous request when new key arrives', async () => {
     let firstSignal: AbortSignal | null = null;
-    aiServiceMocks.requestGenerateTable.mockImplementation(
-      (payload, options) => {
-        if (payload.description === 'first') {
-          firstSignal = options.signal;
-          return new Promise<GenerateTableServiceResult>((_, reject) => {
-            options.signal.addEventListener('abort', () => {
-              reject(createAbortError());
-            });
+    aiServiceMocks.requestGenerateTable.mockImplementation((payload, options) => {
+      if (payload.description === 'first') {
+        firstSignal = options.signal;
+        return new Promise<GenerateTableServiceResult>((_, reject) => {
+          options.signal.addEventListener('abort', () => {
+            reject(createAbortError());
           });
-        }
-        return Promise.resolve(createResult('second_table'));
-      },
-    );
+        });
+      }
+      return Promise.resolve(createResult('second_table'));
+    });
 
     const { result } = renderAIGenerateTableHook();
 
@@ -209,13 +201,10 @@ describe('useAIGenerateTable behaviors', () => {
   });
 
   it('should expose partialResult while streaming', async () => {
-    let resolveRequest: ((value: GenerateTableServiceResult) => void) | null =
-      null;
-    const requestPromise = new Promise<GenerateTableServiceResult>(
-      (resolve) => {
-        resolveRequest = resolve;
-      },
-    );
+    let resolveRequest: ((value: GenerateTableServiceResult) => void) | null = null;
+    const requestPromise = new Promise<GenerateTableServiceResult>((resolve) => {
+      resolveRequest = resolve;
+    });
     aiServiceMocks.requestGenerateTable.mockImplementation((_, options) => {
       options.onStreamingText?.('{"tableName":"stream_users"');
       return requestPromise;

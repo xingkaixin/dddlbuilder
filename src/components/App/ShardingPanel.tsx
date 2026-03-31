@@ -37,9 +37,7 @@ export const ShardingPanel = memo<ShardingPanelProps>(
               <Share2 className="h-5 w-5 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-medium">{t('shardingPanel.title')}</p>
-                <p className="mt-1 text-xs opacity-80">
-                  {t('shardingPanel.description')}
-                </p>
+                <p className="mt-1 text-xs opacity-80">{t('shardingPanel.description')}</p>
               </div>
             </div>
 
@@ -61,18 +59,12 @@ export const ShardingPanel = memo<ShardingPanelProps>(
                 >
                   <Database
                     className={`h-8 w-8 transition-colors ${
-                      config.mode === 'reference'
-                        ? 'text-primary'
-                        : 'text-muted-foreground'
+                      config.mode === 'reference' ? 'text-primary' : 'text-muted-foreground'
                     }`}
                   />
                   <div className="text-center">
-                    <div className="font-semibold">
-                      {t('shardingPanel.reference')}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Reference Table
-                    </div>
+                    <div className="font-semibold">{t('shardingPanel.reference')}</div>
+                    <div className="text-xs text-muted-foreground mt-1">Reference Table</div>
                   </div>
                   {config.mode === 'reference' && (
                     <div className="absolute top-2 right-2 h-3 w-3 rounded-full bg-primary animate-pulse" />
@@ -90,18 +82,12 @@ export const ShardingPanel = memo<ShardingPanelProps>(
                 >
                   <GitBranch
                     className={`h-8 w-8 transition-colors ${
-                      config.mode === 'distributed'
-                        ? 'text-primary'
-                        : 'text-muted-foreground'
+                      config.mode === 'distributed' ? 'text-primary' : 'text-muted-foreground'
                     }`}
                   />
                   <div className="text-center">
-                    <div className="font-semibold">
-                      {t('shardingPanel.distributed')}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Distributed Table
-                    </div>
+                    <div className="font-semibold">{t('shardingPanel.distributed')}</div>
+                    <div className="text-xs text-muted-foreground mt-1">Distributed Table</div>
                   </div>
                   {config.mode === 'distributed' && (
                     <div className="absolute top-2 right-2 h-3 w-3 rounded-full bg-primary animate-pulse" />
@@ -127,14 +113,10 @@ export const ShardingPanel = memo<ShardingPanelProps>(
                 ) : (
                   <Select
                     value={config.distributionColumn || ''}
-                    onValueChange={(value) =>
-                      onDistributionColumnChange(value || undefined)
-                    }
+                    onValueChange={(value) => onDistributionColumnChange(value || undefined)}
                   >
                     <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
-                      <SelectValue
-                        placeholder={t('shardingPanel.columnPlaceholder')}
-                      />
+                      <SelectValue placeholder={t('shardingPanel.columnPlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       {availableFields.map((field) => (
@@ -151,9 +133,7 @@ export const ShardingPanel = memo<ShardingPanelProps>(
                     </SelectContent>
                   </Select>
                 )}
-                <p className="text-xs text-muted-foreground">
-                  {t('shardingPanel.columnHint')}
-                </p>
+                <p className="text-xs text-muted-foreground">{t('shardingPanel.columnHint')}</p>
               </div>
             )}
           </div>

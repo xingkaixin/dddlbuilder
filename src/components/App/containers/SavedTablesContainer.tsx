@@ -5,8 +5,6 @@ interface SavedTablesContainerProps {
   drawerProps: ComponentProps<typeof SavedTablesDrawer>;
 }
 
-export function SavedTablesContainer({
-  drawerProps,
-}: SavedTablesContainerProps) {
+export function SavedTablesContainer({ drawerProps }: SavedTablesContainerProps) {
   return <SavedTablesDrawer {...drawerProps} />;
 }

@@ -25,9 +25,7 @@ describe('workspacePersistence/storage', () => {
   });
 
   it('readStorageJson 应读取并解析 JSON', () => {
-    vi.spyOn(window.localStorage, 'getItem').mockReturnValue(
-      JSON.stringify({ a: 1 }),
-    );
+    vi.spyOn(window.localStorage, 'getItem').mockReturnValue(JSON.stringify({ a: 1 }));
 
     expect(readStorageJson<{ a: number }>('k1')).toEqual({ a: 1 });
   });
@@ -41,11 +39,9 @@ describe('workspacePersistence/storage', () => {
   });
 
   it('removeStorage 在异常时应静默', () => {
-    const removeSpy = vi
-      .spyOn(window.localStorage, 'removeItem')
-      .mockImplementation(() => {
-        throw new Error('failed');
-      });
+    const removeSpy = vi.spyOn(window.localStorage, 'removeItem').mockImplementation(() => {
+      throw new Error('failed');
+    });
 
     expect(() => removeStorage('k1')).not.toThrow();
     expect(removeSpy).toHaveBeenCalledWith('k1');

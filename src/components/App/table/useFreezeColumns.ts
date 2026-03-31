@@ -26,13 +26,8 @@ export function useFreezeColumns(
   freezeColumns: number,
 ): UseFreezeColumnsReturn {
   const safeFreezeColumns =
-    Number.isFinite(freezeColumns) && freezeColumns > 0
-      ? Math.floor(freezeColumns)
-      : 1;
-  const effectiveFreezeColumns = Math.min(
-    safeFreezeColumns,
-    COLUMN_HEADERS.length,
-  );
+    Number.isFinite(freezeColumns) && freezeColumns > 0 ? Math.floor(freezeColumns) : 1;
+  const effectiveFreezeColumns = Math.min(safeFreezeColumns, COLUMN_HEADERS.length);
 
   const freezeColumnKeys = useMemo(() => FREEZE_COLUMN_KEYS, []);
 
@@ -56,9 +51,7 @@ export function useFreezeColumns(
   );
 
   const frozenAreaWidth =
-    freezeEnabled && effectiveFreezeColumns > 0
-      ? getColumnLeftOffset(effectiveFreezeColumns)
-      : 0;
+    freezeEnabled && effectiveFreezeColumns > 0 ? getColumnLeftOffset(effectiveFreezeColumns) : 0;
 
   return {
     getStickyLeft,

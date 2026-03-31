@@ -1,9 +1,4 @@
-import type {
-  DatabaseType,
-  FieldRow,
-  UiDefaultKind,
-  UiOnUpdate,
-} from '../types';
+import type { DatabaseType, FieldRow, UiDefaultKind, UiOnUpdate } from '../types';
 import {
   DEFAULT_KIND_OPTIONS,
   ON_UPDATE_OPTIONS,
@@ -24,6 +19,8 @@ export const toStringSafe = (value: unknown) => {
   if (value == null) {
     return '';
   }
+  // This helper intentionally preserves JavaScript's default string coercion semantics.
+  // oxlint-disable-next-line typescript/no-base-to-string
   return String(value);
 };
 
@@ -52,9 +49,7 @@ export const normalizeDefaultKind = (
   return 'none';
 };
 
-export const normalizeOnUpdate = (
-  v: string | undefined,
-): 'none' | 'current_timestamp' => {
+export const normalizeOnUpdate = (v: string | undefined): 'none' | 'current_timestamp' => {
   const s = toStringSafe(v).trim();
   if (s === '当前时间') return 'current_timestamp';
   return 'none';
@@ -95,9 +90,7 @@ export const sanitizeRowsForPersist = (rows: FieldRow[]) =>
       fieldType: toStringSafe(r.fieldType),
       fieldComment: toStringSafe(r.fieldComment),
       nullable: r?.nullable === '是' ? '是' : '否',
-      defaultKind: DEFAULT_KIND_OPTIONS.includes(
-        (r?.defaultKind as UiDefaultKind) ?? '无',
-      )
+      defaultKind: DEFAULT_KIND_OPTIONS.includes((r?.defaultKind as UiDefaultKind) ?? '无')
         ? (r?.defaultKind as UiDefaultKind)
         : '无',
       defaultValue: toStringSafe(r.defaultValue),
@@ -134,10 +127,7 @@ export {
   supportsUuidDefault,
 } from './databaseTypeMapping';
 
-export const getUiDefaultKindOptions = (
-  db: DatabaseType,
-  canonical: string,
-): UiDefaultKind[] => {
+export const getUiDefaultKindOptions = (db: DatabaseType, canonical: string): UiDefaultKind[] => {
   const opts: UiDefaultKind[] = ['无', '常量'];
   if (supportsAutoIncrement(db, canonical)) opts.splice(1, 0, '自增');
   if (supportsUuidDefault(canonical)) opts.push('uuid');
@@ -145,10 +135,7 @@ export const getUiDefaultKindOptions = (
   return opts;
 };
 
-export const getUiOnUpdateOptions = (
-  db: DatabaseType,
-  canonical: string,
-): UiOnUpdate[] => {
+export const getUiOnUpdateOptions = (db: DatabaseType, canonical: string): UiOnUpdate[] => {
   const opts: UiOnUpdate[] = ['无'];
   if (supportsOnUpdateCurrentTimestamp(db, canonical)) opts.push('当前时间');
   return opts;

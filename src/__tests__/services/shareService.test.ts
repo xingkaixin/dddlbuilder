@@ -1,10 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '@/i18n';
-import {
-  ShareApiError,
-  createShare,
-  getShareState,
-} from '@/services/shareService';
+import { ShareApiError, createShare, getShareState } from '@/services/shareService';
 import type { PersistedState } from '@/types';
 
 const createState = (): PersistedState => ({
@@ -160,9 +156,7 @@ describe('shareService', () => {
     const result = await getShareState(shareId);
 
     expect(result).toEqual(state);
-    expect(fetchMock).toHaveBeenCalledWith(
-      `/api/share/${encodeURIComponent(shareId)}`,
-    );
+    expect(fetchMock).toHaveBeenCalledWith(`/api/share/${encodeURIComponent(shareId)}`);
   });
 
   it('getShareState 在 state 非对象时应抛出业务错误', async () => {
@@ -174,9 +168,7 @@ describe('shareService', () => {
       }),
     );
 
-    await expect(getShareState('s1')).rejects.toThrow(
-      i18n.t('services.shareDataInvalid'),
-    );
+    await expect(getShareState('s1')).rejects.toThrow(i18n.t('services.shareDataInvalid'));
   });
 
   it('getShareState 在 HTTP 错误时应抛出 ShareApiError', async () => {

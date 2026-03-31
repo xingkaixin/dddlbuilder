@@ -8,11 +8,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import type { DatabaseType } from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
@@ -48,11 +44,9 @@ export function ImportSqlDialog({
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<ImportStep>('validate');
   const [sql, setSql] = useState('');
-  const [selectedDbType, setSelectedDbType] =
-    useState<DatabaseType>(currentDbType);
+  const [selectedDbType, setSelectedDbType] = useState<DatabaseType>(currentDbType);
   const [parsedResult, setParsedResult] = useState<ParsedResult | null>(null);
-  const [validationResult, setValidationResult] =
-    useState<ValidationResult | null>(null);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [previewFields, setPreviewFields] = useState<PreviewField[]>([]);
   const { showToast } = useToast();
@@ -144,7 +138,7 @@ export function ImportSqlDialog({
 
   const handleNext = () => {
     if (step === 'validate') {
-      validateSql();
+      void validateSql();
     } else if (step === 'preview') {
       setStep('confirm');
     }
@@ -175,11 +169,7 @@ export function ImportSqlDialog({
     );
   };
 
-  const handleFieldChange = (
-    index: number,
-    field: keyof PreviewField,
-    value: string | number,
-  ) => {
+  const handleFieldChange = (index: number, field: keyof PreviewField, value: string | number) => {
     setPreviewFields((prev) => {
       const newFields = [...prev];
       newFields[index] = { ...newFields[index], [field]: value };
@@ -193,10 +183,7 @@ export function ImportSqlDialog({
 
     setPreviewFields((prev) => {
       const newFields = [...prev];
-      [newFields[index], newFields[newIndex]] = [
-        newFields[newIndex],
-        newFields[index],
-      ];
+      [newFields[index], newFields[newIndex]] = [newFields[newIndex], newFields[index]];
       return newFields;
     });
   };
@@ -246,11 +233,7 @@ export function ImportSqlDialog({
                       : 'bg-muted-foreground/20'
                 }`}
               >
-                {step === 'preview' || step === 'confirm' ? (
-                  <Check className="h-3 w-3" />
-                ) : (
-                  '1'
-                )}
+                {step === 'preview' || step === 'confirm' ? <Check className="h-3 w-3" /> : '1'}
               </span>
               {t('importSql.stepValidate')}
             </div>
@@ -285,9 +268,7 @@ export function ImportSqlDialog({
             </div>
             <div
               className={`h-0.5 w-8 transition-colors ${
-                step === 'confirm'
-                  ? 'bg-green-400 dark:bg-emerald-500'
-                  : 'bg-border'
+                step === 'confirm' ? 'bg-green-400 dark:bg-emerald-500' : 'bg-border'
               }`}
             />
             <div
@@ -299,9 +280,7 @@ export function ImportSqlDialog({
             >
               <span
                 className={`flex h-5 w-5 items-center justify-center rounded-full text-xs ${
-                  step === 'confirm'
-                    ? 'bg-primary-foreground/20'
-                    : 'bg-muted-foreground/20'
+                  step === 'confirm' ? 'bg-primary-foreground/20' : 'bg-muted-foreground/20'
                 }`}
               >
                 3
@@ -347,10 +326,7 @@ export function ImportSqlDialog({
               <Button variant="outline" onClick={() => setOpen(false)}>
                 {t('importSql.cancel')}
               </Button>
-              <Button
-                onClick={handleNext}
-                disabled={isValidating || !sql.trim()}
-              >
+              <Button onClick={handleNext} disabled={isValidating || !sql.trim()}>
                 {isValidating ? t('importSql.validating') : t('importSql.next')}
               </Button>
             </>
@@ -370,9 +346,7 @@ export function ImportSqlDialog({
               <Button variant="outline" onClick={handleBack}>
                 {t('importSql.previous')}
               </Button>
-              <Button onClick={handleConfirm}>
-                {t('importSql.confirmImport')}
-              </Button>
+              <Button onClick={handleConfirm}>{t('importSql.confirmImport')}</Button>
             </>
           )}
         </DialogFooter>

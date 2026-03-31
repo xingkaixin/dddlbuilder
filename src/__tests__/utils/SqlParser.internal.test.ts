@@ -87,10 +87,7 @@ describe('SqlParser internals', () => {
       astify: vi.fn().mockReturnValue([]),
     } as any);
 
-    const result = parser.parse(
-      'GRANT SELECT ON dbo.Users TO [report_user];',
-      'sqlserver',
-    );
+    const result = parser.parse('GRANT SELECT ON dbo.Users TO [report_user];', 'sqlserver');
 
     expect(result.authObjects).toEqual(['report_user']);
   });

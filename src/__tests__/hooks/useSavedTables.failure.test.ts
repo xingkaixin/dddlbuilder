@@ -105,26 +105,16 @@ describe('useSavedTables failure states', () => {
 
     let notFound: SaveResult | undefined;
     await act(async () => {
-      notFound = await result.current.overwriteTable(
-        'missing',
-        createState('missing'),
-      );
+      notFound = await result.current.overwriteTable('missing', createState('missing'));
     });
     expect(notFound).toEqual({ ok: false, reason: 'not_found' });
 
-    savedTableMocks.getSavedTable.mockResolvedValueOnce(
-      createRecord('alpha', 'Alpha'),
-    );
-    savedTableMocks.updateSavedTable.mockRejectedValueOnce(
-      new Error('更新异常'),
-    );
+    savedTableMocks.getSavedTable.mockResolvedValueOnce(createRecord('alpha', 'Alpha'));
+    savedTableMocks.updateSavedTable.mockRejectedValueOnce(new Error('更新异常'));
 
     let failed: SaveResult | undefined;
     await act(async () => {
-      failed = await result.current.overwriteTable(
-        'alpha',
-        createState('next'),
-      );
+      failed = await result.current.overwriteTable('alpha', createState('next'));
     });
     expect(failed).toEqual({
       ok: false,
@@ -134,9 +124,7 @@ describe('useSavedTables failure states', () => {
   });
 
   it('deleteTable should return error when deletion throws', async () => {
-    savedTableMocks.deleteSavedTable.mockRejectedValueOnce(
-      new Error('删除失败'),
-    );
+    savedTableMocks.deleteSavedTable.mockRejectedValueOnce(new Error('删除失败'));
 
     const { result } = renderHook(() => useSavedTables());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -192,9 +180,7 @@ describe('useSavedTables failure states', () => {
     });
     expect(sameName).toEqual({ ok: true, normalizedName: 'alpha' });
 
-    savedTableMocks.getSavedTable
-      .mockResolvedValueOnce(sourceRecord)
-      .mockResolvedValueOnce(null);
+    savedTableMocks.getSavedTable.mockResolvedValueOnce(sourceRecord).mockResolvedValueOnce(null);
     let changedName: SaveResult | undefined;
     await act(async () => {
       changedName = await result.current.renameTable('alpha', 'Gamma');
@@ -204,9 +190,7 @@ describe('useSavedTables failure states', () => {
     savedTableMocks.getSavedTable
       .mockResolvedValueOnce(sourceRecord)
       .mockResolvedValueOnce(sourceRecord);
-    savedTableMocks.updateSavedTable.mockRejectedValueOnce(
-      new Error('重命名异常'),
-    );
+    savedTableMocks.updateSavedTable.mockRejectedValueOnce(new Error('重命名异常'));
     let failed: SaveResult | undefined;
     await act(async () => {
       failed = await result.current.renameTable('alpha', ' alpha ');

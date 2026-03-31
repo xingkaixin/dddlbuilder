@@ -1,10 +1,6 @@
 import { useEffect, type DependencyList, type EffectCallback } from 'react';
 
-export function useDebouncedEffect(
-  effect: EffectCallback,
-  deps: DependencyList,
-  delay: number,
-) {
+export function useDebouncedEffect(effect: EffectCallback, deps: DependencyList, delay: number) {
   useEffect(() => {
     let cleanup: undefined | (() => void);
     const timer = window.setTimeout(() => {
@@ -17,5 +13,8 @@ export function useDebouncedEffect(
         cleanup();
       }
     };
+    // This custom hook intentionally expands caller-provided deps.
+    // oxlint's exhaustive-deps rule cannot model variadic dependency lists here.
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [effect, delay, ...deps]);
 }

@@ -26,10 +26,7 @@ function generateShortHash(str: string): string {
  * @param maxLength - Maximum allowed length (default: 40)
  * @returns Truncated name with hash suffix if needed, otherwise original name
  */
-export function truncateIndexName(
-  name: string,
-  maxLength: number = MAX_INDEX_NAME_LENGTH,
-): string {
+export function truncateIndexName(name: string, maxLength: number = MAX_INDEX_NAME_LENGTH): string {
   if (name.length <= maxLength) {
     return name;
   }

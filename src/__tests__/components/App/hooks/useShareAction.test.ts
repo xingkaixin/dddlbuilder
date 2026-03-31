@@ -91,21 +91,14 @@ describe('useShareAction', () => {
     });
 
     expect(mockedCreateShare).toHaveBeenCalledTimes(1);
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-      'https://example.com/share/id-1',
-    );
-    expect(localStorage.setItem).toHaveBeenCalledWith(
-      SHARE_LINK_CACHE_KEY,
-      expect.any(String),
-    );
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('https://example.com/share/id-1');
+    expect(localStorage.setItem).toHaveBeenCalledWith(SHARE_LINK_CACHE_KEY, expect.any(String));
     expect(trackEvent).toHaveBeenCalledWith('share_link_create');
     expect(showToast).toHaveBeenCalledWith('链接已复制到剪贴板（7天后失效）');
   });
 
   it('分享执行期间应暴露 loading 状态并在结束后恢复', async () => {
-    let resolveCreateShare:
-      | ((value: ReturnType<typeof createShareResponse>) => void)
-      | null = null;
+    let resolveCreateShare: ((value: ReturnType<typeof createShareResponse>) => void) | null = null;
     mockedCreateShare.mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -139,9 +132,7 @@ describe('useShareAction', () => {
   });
 
   it('并发触发分享时应防重入，只发送一次请求', async () => {
-    let resolveCreateShare:
-      | ((value: ReturnType<typeof createShareResponse>) => void)
-      | null = null;
+    let resolveCreateShare: ((value: ReturnType<typeof createShareResponse>) => void) | null = null;
     mockedCreateShare.mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -201,10 +192,7 @@ describe('useShareAction', () => {
     expect(mockedCreateShare).toHaveBeenCalledTimes(1);
     expect(trackEvent).toHaveBeenNthCalledWith(1, 'share_link_create');
     expect(trackEvent).toHaveBeenNthCalledWith(2, 'share_link_reuse');
-    expect(showToast).toHaveBeenNthCalledWith(
-      2,
-      '链接已复制到剪贴板（复用已有链接，7天后失效）',
-    );
+    expect(showToast).toHaveBeenNthCalledWith(2, '链接已复制到剪贴板（复用已有链接，7天后失效）');
   });
 
   it('redis 未配置时应提示用户配置环境变量', async () => {
@@ -227,8 +215,6 @@ describe('useShareAction', () => {
     });
 
     expect(mockedReportError).toHaveBeenCalledTimes(1);
-    expect(showToast).toHaveBeenCalledWith(
-      '分享功能未配置完成，请先配置 Redis 环境变量',
-    );
+    expect(showToast).toHaveBeenCalledWith('分享功能未配置完成，请先配置 Redis 环境变量');
   });
 });

@@ -17,10 +17,7 @@ import {
   writeGlobalDraft,
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
-import {
-  setupFakeIndexedDB,
-  teardownFakeIndexedDB,
-} from '@/__tests__/utils/fakeIndexedDb';
+import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 
 const GLOBAL_DRAFT_STORAGE_KEY = `${STORAGE_KEY}:draft:global:v1`;
 const SAVED_TABLE_DRAFTS_STORAGE_KEY = `${STORAGE_KEY}:draft:saved:v1`;
@@ -218,23 +215,14 @@ describe('workspaceStateDb', () => {
       updatedAt: 103,
     });
 
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith(
-      GLOBAL_DRAFT_STORAGE_KEY,
-    );
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith(
-      SAVED_TABLE_DRAFTS_STORAGE_KEY,
-    );
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith(
-      WORKSPACE_SESSION_STORAGE_KEY,
-    );
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith(GLOBAL_DRAFT_STORAGE_KEY);
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith(SAVED_TABLE_DRAFTS_STORAGE_KEY);
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith(WORKSPACE_SESSION_STORAGE_KEY);
     expect(localStorageMock.removeItem).toHaveBeenCalledWith(STORAGE_KEY);
   });
 
   it('应兼容旧版全局草稿键 STORAGE_KEY', async () => {
-    localStorageMock.setItem(
-      STORAGE_KEY,
-      JSON.stringify(createState('legacy_v0')),
-    );
+    localStorageMock.setItem(STORAGE_KEY, JSON.stringify(createState('legacy_v0')));
 
     await migrateLegacyWorkspaceFromLocalStorage();
 
@@ -295,10 +283,9 @@ describe('workspaceStateDb', () => {
       migrateLegacyWorkspaceFromLocalStorage(),
     ]);
 
-    const globalDraftRemoveCalls =
-      localStorageMock.removeItem.mock.calls.filter(
-        ([key]) => key === GLOBAL_DRAFT_STORAGE_KEY,
-      );
+    const globalDraftRemoveCalls = localStorageMock.removeItem.mock.calls.filter(
+      ([key]) => key === GLOBAL_DRAFT_STORAGE_KEY,
+    );
     expect(globalDraftRemoveCalls).toHaveLength(1);
     expect(await readGlobalDraft()).toMatchObject({
       state: createState('legacy_once'),

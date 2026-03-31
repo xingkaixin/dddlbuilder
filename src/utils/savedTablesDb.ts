@@ -113,11 +113,7 @@ export const openDb = (): Promise<IDBDatabase> =>
           const versionStore = db.createObjectStore(VERSION_STORE_NAME, {
             keyPath: 'id',
           });
-          versionStore.createIndex(
-            'tableNormalizedName',
-            'tableNormalizedName',
-            { unique: false },
-          );
+          versionStore.createIndex('tableNormalizedName', 'tableNormalizedName', { unique: false });
           versionStore.createIndex('createdAt', 'createdAt', { unique: false });
         }
 
@@ -126,11 +122,7 @@ export const openDb = (): Promise<IDBDatabase> =>
           const reviewStore = db.createObjectStore(REVIEW_STORE_NAME, {
             keyPath: 'id',
           });
-          reviewStore.createIndex(
-            'tableNormalizedName',
-            'tableNormalizedName',
-            { unique: false },
-          );
+          reviewStore.createIndex('tableNormalizedName', 'tableNormalizedName', { unique: false });
           reviewStore.createIndex('createdAt', 'createdAt', { unique: false });
         }
 
@@ -204,8 +196,7 @@ const runWithStore = async <T>(
     const request = runner(store);
 
     request.onsuccess = () => finish(resolve)(request.result as T);
-    request.onerror = () =>
-      reject(request.error ?? new Error('IndexedDB 请求失败'));
+    request.onerror = () => reject(request.error ?? new Error('IndexedDB 请求失败'));
     tx.onerror = () => reject(tx.error ?? new Error('事务失败'));
     tx.onabort = () => reject(tx.error ?? new Error('事务被中止'));
     tx.oncomplete = () => {
@@ -214,8 +205,7 @@ const runWithStore = async <T>(
   });
 };
 
-export const normalizeSavedTableName = (name: string): string =>
-  name.trim().toLowerCase();
+export const normalizeSavedTableName = (name: string): string => name.trim().toLowerCase();
 
 export const ensureSavedTableName = (name: string): string => {
   const trimmed = name.trim();
@@ -223,59 +213,41 @@ export const ensureSavedTableName = (name: string): string => {
 };
 
 export const listSavedTables = async (): Promise<SavedTableRecord[]> => {
-  const records = await runWithStore<SavedTableRecord[]>('readonly', (store) =>
-    store.getAll(),
-  );
+  const records = await runWithStore<SavedTableRecord[]>('readonly', (store) => store.getAll());
   return Array.isArray(records) ? records : [];
 };
 
 // 仅获取元数据（性能优化）
-export const listSavedTableMetadata = async (): Promise<
-  SavedTableMetadata[]
-> => {
-  const records = await runWithStore<SavedTableRecord[]>('readonly', (store) =>
-    store.getAll(),
-  );
+export const listSavedTableMetadata = async (): Promise<SavedTableMetadata[]> => {
+  const records = await runWithStore<SavedTableRecord[]>('readonly', (store) => store.getAll());
   if (!Array.isArray(records)) return [];
 
   return records.map((record) => ({
     normalizedName: record.normalizedName,
     name: record.name,
     dbType: record.state.dbType,
-    fieldCount:
-      record.state.rows?.filter((row) => row.fieldName?.trim()).length || 0,
+    fieldCount: record.state.rows?.filter((row) => row.fieldName?.trim()).length || 0,
     folderId: record.folderId,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
   }));
 };
 
-export const getSavedTable = async (
-  normalizedName: string,
-): Promise<SavedTableRecord | null> => {
-  const record = await runWithStore<SavedTableRecord | undefined>(
-    'readonly',
-    (store) => store.get(normalizedName),
+export const getSavedTable = async (normalizedName: string): Promise<SavedTableRecord | null> => {
+  const record = await runWithStore<SavedTableRecord | undefined>('readonly', (store) =>
+    store.get(normalizedName),
   );
   return record ?? null;
 };
 
-export const addSavedTable = async (
-  record: SavedTableRecord,
-): Promise<void> => {
+export const addSavedTable = async (record: SavedTableRecord): Promise<void> => {
   await runWithStore<IDBValidKey>('readwrite', (store) => store.add(record));
 };
 
-export const updateSavedTable = async (
-  record: SavedTableRecord,
-): Promise<void> => {
+export const updateSavedTable = async (record: SavedTableRecord): Promise<void> => {
   await runWithStore<IDBValidKey>('readwrite', (store) => store.put(record));
 };
 
-export const deleteSavedTable = async (
-  normalizedName: string,
-): Promise<void> => {
-  await runWithStore<undefined>('readwrite', (store) =>
-    store.delete(normalizedName),
-  );
+export const deleteSavedTable = async (normalizedName: string): Promise<void> => {
+  await runWithStore<undefined>('readwrite', (store) => store.delete(normalizedName));
 };

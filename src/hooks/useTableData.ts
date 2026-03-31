@@ -1,12 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import type Handsontable from 'handsontable';
 import type { FieldRow, NormalizedField } from '@/types';
-import {
-  toStringSafe,
-  createEmptyRow,
-  ensureOrder,
-  normalizeFields,
-} from '@/utils/helpers';
+import { toStringSafe, createEmptyRow, ensureOrder, normalizeFields } from '@/utils/helpers';
 
 export interface UseTableDataReturn {
   rows: FieldRow[];
@@ -55,11 +50,7 @@ export function useTableData(
   const normalizedFields = useMemo(() => normalizeFields(rows), [rows]);
 
   const resetTableRows = useCallback(() => {
-    setRows(() =>
-      Array.from({ length: initialRows.length }, (_, index) =>
-        createEmptyRow(index),
-      ),
-    );
+    setRows(() => Array.from({ length: initialRows.length }, (_, index) => createEmptyRow(index)));
   }, [initialRows]);
 
   // 处理器函数：验证变更数据
@@ -147,19 +138,11 @@ export function useTableData(
 
       return processors.reduce((acc, processor) => processor(acc), rows);
     },
-    [
-      ensureRowExists,
-      updateFieldValue,
-      handleSpecialFieldLogic,
-      ensureOrderProcessor,
-    ],
+    [ensureRowExists, updateFieldValue, handleSpecialFieldLogic, ensureOrderProcessor],
   );
 
   const handleRowsChange = useCallback(
-    (
-      changes: Handsontable.CellChange[] | null,
-      source: Handsontable.ChangeSource,
-    ) => {
+    (changes: Handsontable.CellChange[] | null, source: Handsontable.ChangeSource) => {
       // 验证变更
       const { isValid, changes: validChanges } = validateChanges(changes);
 

@@ -324,9 +324,7 @@ describe('SqlParser', () => {
 
     expect(result.tableName).toBe('ttt');
     expect(result.tableComment).toBe('dfdfdf');
-    const fieldsByName = Object.fromEntries(
-      result.fields.map((f) => [f.name, f]),
-    );
+    const fieldsByName = Object.fromEntries(result.fields.map((f) => [f.name, f]));
     expect(fieldsByName['ID']).toMatchObject({
       type: 'VARCHAR(255)',
       comment: '记录编号',
@@ -478,12 +476,8 @@ describe('SqlParser', () => {
     const result = await parser.parseAsync(sql, 'sqlserver');
 
     expect(result.tableComment).toBe('dfdfdf');
-    expect(result.fields.find((f) => f.name === 'ID')?.comment).toBe(
-      '记录编号',
-    );
-    expect(result.fields.find((f) => f.name === 'INFO_SRC')?.comment).toBe(
-      '信息来源',
-    );
+    expect(result.fields.find((f) => f.name === 'ID')?.comment).toBe('记录编号');
+    expect(result.fields.find((f) => f.name === 'INFO_SRC')?.comment).toBe('信息来源');
     expect(result.authObjects).toEqual(['cbd1', 'cbdd2']);
   });
 
@@ -503,11 +497,7 @@ describe('SqlParser', () => {
     const result = await parser.parseAsync(sql, 'mysql');
 
     expect(result.tableName).toBe('orders');
-    expect(result.fields.map((f) => f.name)).toEqual([
-      'id',
-      'user_id',
-      'amount',
-    ]);
+    expect(result.fields.map((f) => f.name)).toEqual(['id', 'user_id', 'amount']);
     // Primary key should be extracted from ALTER TABLE
     const primaryKey = result.indexes.find((idx) => idx.isPrimary);
     expect(primaryKey).toBeDefined();
@@ -784,9 +774,7 @@ describe('SqlParser', () => {
     expect(result.tableName).toBe('COO_SC_RAT');
     expect(result.tableComment).toBe('证券公司评级1');
     expect(result.fields).toHaveLength(15);
-    expect(result.fields.find((f) => f.name === 'ID')?.defaultKind).toBe(
-      'uuid',
-    );
+    expect(result.fields.find((f) => f.name === 'ID')?.defaultKind).toBe('uuid');
     expect(result.mysqlPartitionConfig).toEqual({
       enabled: true,
       type: 'KEY',

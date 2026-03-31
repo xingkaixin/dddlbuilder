@@ -9,9 +9,7 @@ import {
   generateTableCommentAlter,
 } from '@/utils/alter-ddl/columnStatements';
 
-function createField(
-  overrides: Partial<NormalizedField> = {},
-): NormalizedField {
+function createField(overrides: Partial<NormalizedField> = {}): NormalizedField {
   return {
     name: 'col',
     type: 'varchar(64)',
@@ -72,9 +70,7 @@ describe('columnStatements', () => {
       ),
     ).toBe("EXEC sp_rename 'users.old_name', 'new_name', 'COLUMN';");
 
-    expect(
-      generateRenameColumn('users', createDiff({ type: 'rename' }), 'mysql'),
-    ).toBe('');
+    expect(generateRenameColumn('users', createDiff({ type: 'rename' }), 'mysql')).toBe('');
 
     expect(
       generateRenameColumn(
@@ -102,11 +98,7 @@ describe('columnStatements', () => {
       createDiff({ type: 'add', newField }),
       'sqlserver',
     );
-    const oracleSql = generateAddColumn(
-      'users',
-      createDiff({ type: 'add', newField }),
-      'oracle',
-    );
+    const oracleSql = generateAddColumn('users', createDiff({ type: 'add', newField }), 'oracle');
 
     expect(sqlServerSql).toContain('ALTER TABLE users ADD created_at');
     expect(oracleSql).toContain('ALTER TABLE users ADD (created_at');
@@ -134,11 +126,7 @@ describe('columnStatements', () => {
     expect(fallbackSql).toContain('ALTER TABLE users ADD COLUMN created_at');
 
     expect(
-      generateAddColumn(
-        'users',
-        createDiff({ type: 'add', newField: undefined }),
-        'mysql',
-      ),
+      generateAddColumn('users', createDiff({ type: 'add', newField: undefined }), 'mysql'),
     ).toBe('');
   });
 
@@ -182,18 +170,10 @@ describe('columnStatements', () => {
       'postgresql',
     );
 
-    expect(postgresSetSql).toContain(
-      'ALTER TABLE users ALTER COLUMN name TYPE VARCHAR(128);',
-    );
-    expect(postgresSetSql).toContain(
-      'ALTER TABLE users ALTER COLUMN name DROP NOT NULL;',
-    );
-    expect(postgresSetSql).toContain(
-      "ALTER TABLE users ALTER COLUMN name SET  DEFAULT 'abc';",
-    );
-    expect(postgresSetSql).toContain(
-      "COMMENT ON COLUMN users.name IS '备注''O';",
-    );
+    expect(postgresSetSql).toContain('ALTER TABLE users ALTER COLUMN name TYPE VARCHAR(128);');
+    expect(postgresSetSql).toContain('ALTER TABLE users ALTER COLUMN name DROP NOT NULL;');
+    expect(postgresSetSql).toContain("ALTER TABLE users ALTER COLUMN name SET  DEFAULT 'abc';");
+    expect(postgresSetSql).toContain("COMMENT ON COLUMN users.name IS '备注''O';");
 
     const postgresDropDefaultSql = generateModifyColumn(
       'users',
@@ -209,9 +189,7 @@ describe('columnStatements', () => {
       }),
       'postgresql',
     );
-    expect(postgresDropDefaultSql).toContain(
-      'ALTER TABLE users ALTER COLUMN age DROP DEFAULT;',
-    );
+    expect(postgresDropDefaultSql).toContain('ALTER TABLE users ALTER COLUMN age DROP DEFAULT;');
 
     const postgresSetNotNullSql = generateModifyColumn(
       'users',
@@ -227,9 +205,7 @@ describe('columnStatements', () => {
       }),
       'postgresql',
     );
-    expect(postgresSetNotNullSql).toContain(
-      'ALTER TABLE users ALTER COLUMN code SET NOT NULL;',
-    );
+    expect(postgresSetNotNullSql).toContain('ALTER TABLE users ALTER COLUMN code SET NOT NULL;');
 
     const fallbackModifySql = generateModifyColumn(
       'users',
@@ -244,24 +220,16 @@ describe('columnStatements', () => {
   });
 
   it('应生成删除字段 SQL', () => {
-    expect(
-      generateDropColumn('users', createDiff({ fieldName: 'legacy' }), 'dm'),
-    ).toBe('ALTER TABLE users DROP COLUMN legacy;');
+    expect(generateDropColumn('users', createDiff({ fieldName: 'legacy' }), 'dm')).toBe(
+      'ALTER TABLE users DROP COLUMN legacy;',
+    );
 
     expect(
-      generateDropColumn(
-        'users',
-        createDiff({ fieldName: 'legacy' }),
-        'postgresql-citus',
-      ),
+      generateDropColumn('users', createDiff({ fieldName: 'legacy' }), 'postgresql-citus'),
     ).toBe('ALTER TABLE users DROP COLUMN legacy;');
 
-    expect(
-      generateDropColumn(
-        'users',
-        createDiff({ fieldName: 'legacy' }),
-        'polardb',
-      ),
-    ).toBe('ALTER TABLE users DROP COLUMN legacy;');
+    expect(generateDropColumn('users', createDiff({ fieldName: 'legacy' }), 'polardb')).toBe(
+      'ALTER TABLE users DROP COLUMN legacy;',
+    );
   });
 });

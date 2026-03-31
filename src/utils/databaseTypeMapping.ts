@@ -56,13 +56,9 @@ export const TYPE_ALIASES: Record<string, string> = {
   nvarchar2: 'nvarchar',
 };
 
-export const canonicalizeBaseType = (baseType: string) =>
-  TYPE_ALIASES[baseType] ?? baseType;
+export const canonicalizeBaseType = (baseType: string) => TYPE_ALIASES[baseType] ?? baseType;
 
-export const getFieldTypeForDatabase = (
-  databaseType: DatabaseType,
-  fieldType: string,
-): string => {
+export const getFieldTypeForDatabase = (databaseType: DatabaseType, fieldType: string): string => {
   const parsed = parseFieldType(fieldType);
   const typeMapper = TypeMapper.create(databaseType);
   return typeMapper.mapType(parsed);
@@ -100,18 +96,14 @@ const stripTrailingConstraints = (type: string): string => {
 };
 
 // 辅助函数：处理UNSIGNED后缀
-const parseUnsigned = (
-  type: string,
-): { clean: string; isUnsigned: boolean } => {
+const parseUnsigned = (type: string): { clean: string; isUnsigned: boolean } => {
   const isUnsigned = type.toLowerCase().endsWith('unsigned');
   const clean = isUnsigned ? type.replace(/\s+unsigned$/gi, '').trim() : type;
   return { clean, isUnsigned };
 };
 
 // 辅助函数：提取类型名称和参数
-const extractTypeAndArgs = (
-  type: string,
-): { baseType: string; args: string[] } | null => {
+const extractTypeAndArgs = (type: string): { baseType: string; args: string[] } | null => {
   const match = type.match(/^([a-z0-9_\s]+)(?:\(([^)]*)\))?$/i);
   if (!match) return null;
 
@@ -156,9 +148,7 @@ const handleSpecialCases = (type: string): ParsedFieldType => {
 
 // 辅助函数：标准化参数数组
 const normalizeArgs = (args: string[]): string[] => {
-  return args.map((arg) =>
-    arg.toLowerCase().trim() === 'max' ? 'max' : arg.trim(),
-  );
+  return args.map((arg) => (arg.toLowerCase().trim() === 'max' ? 'max' : arg.trim()));
 };
 
 // 辅助函数：创建空字段类型
@@ -180,8 +170,7 @@ export const parseFieldType = (rawType: string): ParsedFieldType => {
   const withoutConstraints = stripTrailingConstraints(clean);
 
   // 处理UNSIGNED后缀
-  const { clean: withoutUnsigned, isUnsigned } =
-    parseUnsigned(withoutConstraints);
+  const { clean: withoutUnsigned, isUnsigned } = parseUnsigned(withoutConstraints);
 
   // 尝试提取类型名称和参数
   const extracted = extractTypeAndArgs(withoutUnsigned);
@@ -241,8 +230,7 @@ const isCharacterType = (canonical: string) =>
     'uuid',
   ]).has(canonical);
 
-export const supportsUuidDefault = (canonical: string) =>
-  isCharacterType(canonical);
+export const supportsUuidDefault = (canonical: string) => isCharacterType(canonical);
 
 export const supportsAutoIncrement = (db: DatabaseType, canonical: string) => {
   switch (db) {
@@ -265,10 +253,7 @@ export const supportsAutoIncrement = (db: DatabaseType, canonical: string) => {
   }
 };
 
-export const supportsDefaultCurrentTimestamp = (
-  db: DatabaseType,
-  canonical: string,
-) => {
+export const supportsDefaultCurrentTimestamp = (db: DatabaseType, canonical: string) => {
   switch (db) {
     case 'mysql':
     case 'mariadb':
@@ -279,12 +264,7 @@ export const supportsDefaultCurrentTimestamp = (
     case 'postgresql-citus':
       return new Set(['timestamp', 'timestamptz']).has(canonical);
     case 'sqlserver':
-      return new Set([
-        'datetime',
-        'datetime2',
-        'datetimeoffset',
-        'timestamp',
-      ]).has(canonical);
+      return new Set(['datetime', 'datetime2', 'datetimeoffset', 'timestamp']).has(canonical);
     case 'oracle':
     case 'dm':
     case 'oceanbase-oracle':
@@ -294,10 +274,7 @@ export const supportsDefaultCurrentTimestamp = (
   }
 };
 
-export const supportsOnUpdateCurrentTimestamp = (
-  db: DatabaseType,
-  canonical: string,
-) => {
+export const supportsOnUpdateCurrentTimestamp = (db: DatabaseType, canonical: string) => {
   switch (db) {
     // MySQL 5.6.5+、MariaDB 10.1.2+、TiDB、OceanBase MySQL 模式支持 DATETIME 的 ON UPDATE CURRENT_TIMESTAMP
     case 'mysql':
@@ -341,15 +318,9 @@ export const shouldQuoteDefault = (canonical: string, value?: string) => {
   if (!testValue?.trim()) return false;
   if (isCharacterType(canonical)) return true;
   if (
-    [
-      'date',
-      'time',
-      'timestamp',
-      'datetime',
-      'datetime2',
-      'timetz',
-      'timestamptz',
-    ].includes(canonical)
+    ['date', 'time', 'timestamp', 'datetime', 'datetime2', 'timetz', 'timestamptz'].includes(
+      canonical,
+    )
   )
     return true;
   if (['uuid', 'xml', 'json'].includes(canonical)) return true;

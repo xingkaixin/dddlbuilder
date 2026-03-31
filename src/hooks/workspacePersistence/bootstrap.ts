@@ -4,9 +4,9 @@ import {
 } from '@/utils/workspaceStateDb';
 
 export type WorkspaceBootstrapRaw = {
-  globalDraft: unknown | null;
-  session: unknown | null;
-  savedTable: unknown | null;
+  globalDraft: unknown;
+  session: unknown;
+  savedTable: unknown;
 };
 
 const WORKSPACE_BOOTSTRAP_CACHE_TTL_MS = 50;

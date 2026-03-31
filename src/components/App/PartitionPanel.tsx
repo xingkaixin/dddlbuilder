@@ -11,17 +11,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Layers, Plus, X, Info, Calendar } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTranslation } from 'react-i18next';
-import type {
-  MysqlPartitionType,
-  MysqlPartitionConfig,
-  PartitionDefinition,
-} from '@/types';
+import type { MysqlPartitionType, MysqlPartitionConfig, PartitionDefinition } from '@/types';
 
 const PARTITION_TYPE_INFO: Record<MysqlPartitionType, { label: string }> = {
   RANGE: {
@@ -117,26 +109,17 @@ export const PartitionPanel = memo<PartitionPanelProps>(
               <Layers className="h-5 w-5 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-medium">{t('partitionPanel.title')}</p>
-                <p className="mt-1 text-xs opacity-80">
-                  {t('partitionPanel.description')}
-                </p>
+                <p className="mt-1 text-xs opacity-80">{t('partitionPanel.description')}</p>
               </div>
             </div>
 
             {/* Enable Partition Switch */}
             <div className="flex items-center justify-between rounded-lg border border-dashed p-4">
               <div className="space-y-0.5">
-                <Label className="text-sm font-semibold">
-                  {t('partitionPanel.enable')}
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  {t('partitionPanel.enableDesc')}
-                </p>
+                <Label className="text-sm font-semibold">{t('partitionPanel.enable')}</Label>
+                <p className="text-xs text-muted-foreground">{t('partitionPanel.enableDesc')}</p>
               </div>
-              <Switch
-                checked={config.enabled}
-                onCheckedChange={onEnabledChange}
-              />
+              <Switch checked={config.enabled} onCheckedChange={onEnabledChange} />
             </div>
 
             {config.enabled && (
@@ -149,28 +132,20 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                   </Label>
                   <Select
                     value={config.type}
-                    onValueChange={(value) =>
-                      onTypeChange(value as MysqlPartitionType)
-                    }
+                    onValueChange={(value) => onTypeChange(value as MysqlPartitionType)}
                   >
                     <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
-                      <SelectValue
-                        placeholder={t('partitionPanel.typePlaceholder')}
-                      />
+                      <SelectValue placeholder={t('partitionPanel.typePlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
-                      {(
-                        Object.keys(PARTITION_TYPE_INFO) as MysqlPartitionType[]
-                      ).map((type) => (
+                      {(Object.keys(PARTITION_TYPE_INFO) as MysqlPartitionType[]).map((type) => (
                         <SelectItem
                           key={type}
                           value={type}
                           className="transition-colors hover:bg-accent"
                         >
                           <div className="flex flex-col gap-0.5">
-                            <span className="font-medium">
-                              {PARTITION_TYPE_INFO[type].label}
-                            </span>
+                            <span className="font-medium">{PARTITION_TYPE_INFO[type].label}</span>
                           </div>
                         </SelectItem>
                       ))}
@@ -243,9 +218,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                               type="button"
                               onClick={() => {
                                 if (isSelected) {
-                                  onColumnsChange(
-                                    config.columns.filter((c) => c !== field),
-                                  );
+                                  onColumnsChange(config.columns.filter((c) => c !== field));
                                 } else {
                                   onColumnsChange([...config.columns, field]);
                                 }
@@ -268,9 +241,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                         onValueChange={(value) => onColumnsChange([value])}
                       >
                         <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
-                          <SelectValue
-                            placeholder={t('partitionPanel.fieldPlaceholder')}
-                          />
+                          <SelectValue placeholder={t('partitionPanel.fieldPlaceholder')} />
                         </SelectTrigger>
                         <SelectContent>
                           {availableFields.map((field) => (
@@ -299,9 +270,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                       max={1024}
                       value={config.partitionCount || 4}
                       onChange={(e) =>
-                        onPartitionCountChange(
-                          Number.parseInt(e.target.value, 10) || 4,
-                        )
+                        onPartitionCountChange(Number.parseInt(e.target.value, 10) || 4)
                       }
                       className="w-32 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                     />
@@ -446,9 +415,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                                   type="button"
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() =>
-                                    onRemovePartition(partition.name)
-                                  }
+                                  onClick={() => onRemovePartition(partition.name)}
                                   className="h-8 w-8 text-destructive hover:text-destructive"
                                 >
                                   <X className="h-4 w-4" />

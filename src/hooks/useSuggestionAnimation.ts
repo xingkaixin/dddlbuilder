@@ -36,9 +36,7 @@ export function useSuggestionAnimation() {
   });
 
   // Use refs to track pending timeouts for cleanup
-  const timeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
-    new Map(),
-  );
+  const timeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   /**
    * Trigger an animation on an index.
@@ -59,13 +57,9 @@ export function useSuggestionAnimation() {
         setState((prev) => {
           const newState = { ...prev };
           if (type === 'add') {
-            newState.animatingIndexIds = new Set(prev.animatingIndexIds).add(
-              indexId,
-            );
+            newState.animatingIndexIds = new Set(prev.animatingIndexIds).add(indexId);
           } else if (type === 'remove') {
-            newState.removingIndexIds = new Set(prev.removingIndexIds).add(
-              indexId,
-            );
+            newState.removingIndexIds = new Set(prev.removingIndexIds).add(indexId);
           }
           return newState;
         });
@@ -114,17 +108,11 @@ export function useSuggestionAnimation() {
         setState((prev) => {
           const newState = { ...prev };
           if (type === 'add') {
-            newState.animatingFieldNames = new Set(
-              prev.animatingFieldNames,
-            ).add(fieldName);
+            newState.animatingFieldNames = new Set(prev.animatingFieldNames).add(fieldName);
           } else if (type === 'remove') {
-            newState.removingFieldNames = new Set(prev.removingFieldNames).add(
-              fieldName,
-            );
+            newState.removingFieldNames = new Set(prev.removingFieldNames).add(fieldName);
           } else if (type === 'modify') {
-            newState.modifyingFieldNames = new Set(
-              prev.modifyingFieldNames,
-            ).add(fieldName);
+            newState.modifyingFieldNames = new Set(prev.modifyingFieldNames).add(fieldName);
           }
           return newState;
         });

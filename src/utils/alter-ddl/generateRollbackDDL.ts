@@ -29,9 +29,7 @@ export function generateRollbackDDL(
 
   // 1. 删除新增的索引
   for (const idxDiff of diff.indexes.filter((i) => i.type === 'add')) {
-    statements.push(
-      generateDropIndex(tableName, { ...idxDiff, type: 'remove' }, dbType),
-    );
+    statements.push(generateDropIndex(tableName, { ...idxDiff, type: 'remove' }, dbType));
   }
 
   // 2. 恢复修改的字段（使用旧字段定义）
@@ -50,9 +48,7 @@ export function generateRollbackDDL(
 
   // 3. 删除新增的字段
   for (const fieldDiff of diff.fields.filter((f) => f.type === 'add')) {
-    statements.push(
-      generateDropColumn(tableName, { ...fieldDiff, type: 'remove' }, dbType),
-    );
+    statements.push(generateDropColumn(tableName, { ...fieldDiff, type: 'remove' }, dbType));
   }
 
   // 4. 恢复重命名的字段（反向重命名）
@@ -82,18 +78,12 @@ export function generateRollbackDDL(
 
   // 6. 恢复删除的索引
   for (const idxDiff of diff.indexes.filter((i) => i.type === 'remove')) {
-    statements.push(
-      generateAddIndex(tableName, { ...idxDiff, type: 'add' }, dbType),
-    );
+    statements.push(generateAddIndex(tableName, { ...idxDiff, type: 'add' }, dbType));
   }
 
   // 7. 恢复表注释
   if (diff.tableCommentChanged && diff.oldTableComment !== undefined) {
-    const commentSql = generateTableCommentAlter(
-      tableName,
-      diff.oldTableComment,
-      dbType,
-    );
+    const commentSql = generateTableCommentAlter(tableName, diff.oldTableComment, dbType);
     if (commentSql) {
       statements.push(commentSql);
     }

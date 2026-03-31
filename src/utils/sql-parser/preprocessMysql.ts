@@ -1,8 +1,5 @@
 import type { MysqlPartitionConfig } from '../../types/index.js';
-import {
-  PARTITION_BY_REGEX,
-  extractPartitionConfig,
-} from './partitionParser.js';
+import { PARTITION_BY_REGEX, extractPartitionConfig } from './partitionParser.js';
 import { stripPartitionClauses } from './partitionStripper.js';
 
 export interface PreprocessMySqlResult {
@@ -52,8 +49,7 @@ export function preprocessMysql(sql: string): PreprocessMySqlResult {
     }
   }
 
-  const standaloneIndexRegex =
-    /CREATE\s+(UNIQUE\s+)?INDEX\s+(\w+)\s+ON\s+\w+\s*\(([^;]+)\);?/gi;
+  const standaloneIndexRegex = /CREATE\s+(UNIQUE\s+)?INDEX\s+(\w+)\s+ON\s+\w+\s*\(([^;]+)\);?/gi;
   const standaloneMatches = [...sql.matchAll(standaloneIndexRegex)];
   for (const match of standaloneMatches) {
     result.indexes.push(match[0]);

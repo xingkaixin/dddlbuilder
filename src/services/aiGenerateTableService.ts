@@ -1,8 +1,5 @@
 import { readTextStream } from '@/services/streamingText';
-import type {
-  ConversationMessage,
-  GeneratedTableSchema,
-} from '@/types/aiGenerate';
+import type { ConversationMessage, GeneratedTableSchema } from '@/types/aiGenerate';
 import type { FieldRow, IndexDefinition } from '@/types';
 import type { AppLocale } from '@/types/locale';
 import i18n from '@/i18n';
@@ -71,9 +68,7 @@ export async function requestGenerateTable(
   try {
     return {
       fullText,
-      result: normalizeGeneratedTableSchema(
-        JSON.parse(fullText) as GeneratedTableSchema,
-      ),
+      result: normalizeGeneratedTableSchema(JSON.parse(fullText) as GeneratedTableSchema),
     };
   } catch {
     throw new Error(i18n.t('services.parseResponseFailed'));

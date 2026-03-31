@@ -235,9 +235,7 @@ describe('diffPersistedState', () => {
 
     it('不同类型不视为重命名', () => {
       const old = createState({
-        rows: [
-          createRow({ name: 'old_name', type: 'VARCHAR(50)', comment: '字段' }),
-        ],
+        rows: [createRow({ name: 'old_name', type: 'VARCHAR(50)', comment: '字段' })],
       });
       const newState = createState({
         rows: [createRow({ name: 'new_name', type: 'INT', comment: '字段' })],
@@ -327,9 +325,7 @@ describe('diffPersistedState', () => {
   });
 
   describe('索引变更', () => {
-    const createIndex = (
-      overrides: Partial<IndexDefinition>,
-    ): IndexDefinition => ({
+    const createIndex = (overrides: Partial<IndexDefinition>): IndexDefinition => ({
       id: '1',
       name: 'idx_test',
       fields: [{ name: 'id', direction: 'ASC' }],

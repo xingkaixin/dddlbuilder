@@ -51,9 +51,7 @@ describe('FolderTree a11y', () => {
       />,
     );
 
-    expect(
-      screen.getByRole('tree', { name: '保存的表文件夹' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('tree', { name: '保存的表文件夹' })).toBeInTheDocument();
 
     const rootItem = screen.getByText('业务表').closest('[role="treeitem"]');
     expect(rootItem).not.toBeNull();
@@ -66,22 +64,14 @@ describe('FolderTree a11y', () => {
     expect(childItem).toHaveAttribute('aria-level', '2');
 
     expect(
-      screen
-        .getByTestId('folder-table-container:folder-root')
-        .getAttribute('style'),
+      screen.getByTestId('folder-table-container:folder-root').getAttribute('style'),
     ).toContain('margin-left: 16px');
     expect(
-      screen
-        .getByTestId('folder-table-container:folder-child')
-        .getAttribute('style'),
+      screen.getByTestId('folder-table-container:folder-child').getAttribute('style'),
     ).toContain('margin-left: 32px');
 
-    expect(
-      screen.getByRole('button', { name: '折叠 业务表' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getAllByRole('button', { name: '拖拽移动文件夹' }).length,
-    ).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: '折叠 业务表' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: '拖拽移动文件夹' }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('group').length).toBeGreaterThan(0);
   });
 });

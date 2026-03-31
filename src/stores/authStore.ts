@@ -24,8 +24,7 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
     })),
   setAuthObjects: (value) =>
     set((state) => ({
-      authObjects:
-        typeof value === 'function' ? value(state.authObjects) : value,
+      authObjects: typeof value === 'function' ? value(state.authObjects) : value,
     })),
   addAuthObject: (authObj) => {
     const trimmed = authObj.trim();

@@ -82,11 +82,7 @@ vi.mock('@/utils/savedTablesDb', () => ({
   openDb: mocks.openDb,
 }));
 
-import {
-  getVersion,
-  listVersionMetadata,
-  listVersions,
-} from '@/utils/tableVersions';
+import { getVersion, listVersionMetadata, listVersions } from '@/utils/tableVersions';
 
 describe('tableVersions internal branches', () => {
   it('should fallback to default request error when request.error is null', async () => {

@@ -12,13 +12,10 @@ function toBooleanFlag(value: string | boolean | undefined): boolean {
   return TRUE_VALUES.has(value.trim().toLowerCase());
 }
 
-export const isCnyFireworksEnabled = toBooleanFlag(
-  import.meta.env.VITE_ENABLE_CNY_FIREWORKS,
-);
+export const isCnyFireworksEnabled = toBooleanFlag(import.meta.env.VITE_ENABLE_CNY_FIREWORKS);
 
 export const isAiStreamDebugEnabled = toBooleanFlag(
-  (import.meta.env as Record<string, string | boolean | undefined>)
-    .VITE_ENABLE_AI_STREAM_DEBUG,
+  (import.meta.env as Record<string, string | boolean | undefined>).VITE_ENABLE_AI_STREAM_DEBUG,
 );
 
 export { toBooleanFlag };

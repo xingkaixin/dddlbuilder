@@ -13,9 +13,7 @@ interface SqlParseResponsePayload {
   result: ParsedResult;
 }
 
-export async function requestSqlParse(
-  payload: SqlParseRequestPayload,
-): Promise<ParsedResult> {
+export async function requestSqlParse(payload: SqlParseRequestPayload): Promise<ParsedResult> {
   const response = await fetch(SQL_PARSE_API_ENDPOINT, {
     method: 'POST',
     headers: {

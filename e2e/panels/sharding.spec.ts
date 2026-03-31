@@ -14,9 +14,7 @@ test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
     await page.locator('#table-name').fill('sharded_table');
 
     // 添加字段
-    const cell = page.locator(
-      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
-    );
+    const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
     await cell.dblclick();
     await page.locator('[data-testid="data-table"] input').fill('user_id');
     await page.keyboard.press('Enter');
@@ -54,9 +52,7 @@ test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
 
     await page.locator('#table-name').fill('reference_table');
 
-    const cell = page.locator(
-      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
-    );
+    const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
     await cell.dblclick();
     await page.locator('[data-testid="data-table"] input').fill('id');
     await page.keyboard.press('Enter');
@@ -72,9 +68,7 @@ test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
     await page.getByRole('button', { name: /副本表/i }).click();
 
     const sqlOutput = page.locator('[data-state="active"] pre');
-    await expect(sqlOutput).toContainText(
-      /SELECT create_reference_table\('reference_table'\)/i,
-    );
+    await expect(sqlOutput).toContainText(/SELECT create_reference_table\('reference_table'\)/i);
   });
 
   test('场景：无字段提示', async ({ page }) => {

@@ -1,11 +1,5 @@
 import { memo, useCallback, useEffect, useRef } from 'react';
-import {
-  Database,
-  ChevronLeft,
-  ChevronRight,
-  Pencil,
-  Trash2,
-} from 'lucide-react';
+import { Database, ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
@@ -120,15 +114,8 @@ export const SavedTablesSidebar = memo<SavedTablesSidebarProps>(
         <div className="relative flex items-center justify-between border-b border-primary/10 px-3 py-2">
           <div className="flex items-center gap-2">
             <Database className="h-4 w-4 text-primary" />
-            <div
-              className={cn(
-                'flex items-center gap-2',
-                open ? 'block' : 'block lg:hidden',
-              )}
-            >
-              <span className="text-sm font-semibold">
-                {t('savedTables.title')}
-              </span>
+            <div className={cn('flex items-center gap-2', open ? 'block' : 'block lg:hidden')}>
+              <span className="text-sm font-semibold">{t('savedTables.title')}</span>
               {items.length > 0 && (
                 <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                   {items.length}
@@ -141,15 +128,9 @@ export const SavedTablesSidebar = memo<SavedTablesSidebarProps>(
             size="icon"
             onClick={onToggle}
             className="h-8 w-8"
-            aria-label={
-              open ? t('savedTables.collapse') : t('savedTables.expand')
-            }
+            aria-label={open ? t('savedTables.collapse') : t('savedTables.expand')}
           >
-            {open ? (
-              <ChevronLeft className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
+            {open ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </Button>
         </div>
 
@@ -159,13 +140,9 @@ export const SavedTablesSidebar = memo<SavedTablesSidebarProps>(
               {t('savedTables.loading')}
             </div>
           )}
-          {!loading && error && (
-            <div className="px-2 py-3 text-xs text-destructive">{error}</div>
-          )}
+          {!loading && error && <div className="px-2 py-3 text-xs text-destructive">{error}</div>}
           {!loading && !error && items.length === 0 && (
-            <div className="px-2 py-3 text-xs text-muted-foreground">
-              {t('savedTables.empty')}
-            </div>
+            <div className="px-2 py-3 text-xs text-muted-foreground">{t('savedTables.empty')}</div>
           )}
           {!loading && !error && items.length > 0 && (
             <div className="space-y-2">
@@ -202,9 +179,7 @@ export const SavedTablesSidebar = memo<SavedTablesSidebarProps>(
                           {item.name}
                         </span>
                         {statusLabel && (
-                          <span className="text-xs text-muted-foreground">
-                            {statusLabel}
-                          </span>
+                          <span className="text-xs text-muted-foreground">{statusLabel}</span>
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground">

@@ -47,9 +47,7 @@ describe('MySqlStrategy', () => {
     expect(ddl).toContain(
       "updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'",
     );
-    expect(ddl).toContain(
-      "nickname VARCHAR(50) NULL DEFAULT 'O''Reilly' COMMENT '昵称''别名'",
-    );
+    expect(ddl).toContain("nickname VARCHAR(50) NULL DEFAULT 'O''Reilly' COMMENT '昵称''别名'");
     expect(ddl).toContain("COMMENT='用户''表'");
   });
 });

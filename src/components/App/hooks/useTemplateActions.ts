@@ -1,9 +1,4 @@
-import {
-  useCallback,
-  useState,
-  type Dispatch,
-  type SetStateAction,
-} from 'react';
+import { useCallback, useState, type Dispatch, type SetStateAction } from 'react';
 import type { FieldRow } from '@/types';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
 import i18n from '@/i18n';
@@ -32,10 +27,7 @@ interface UseTemplateActionsParams {
     description?: string,
   ) => Promise<CreateTemplateResult>;
   showToast: (message: string) => void;
-  trackEvent: (
-    event: string,
-    data?: Record<string, AnalyticsValue>,
-  ) => Promise<void>;
+  trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void>;
 }
 
 export function useTemplateActions({
@@ -46,11 +38,8 @@ export function useTemplateActions({
   trackEvent,
 }: UseTemplateActionsParams) {
   const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
-  const [isCreateTemplateDialogOpen, setIsCreateTemplateDialogOpen] =
-    useState(false);
-  const [selectedFieldsForTemplate, setSelectedFieldsForTemplate] = useState<
-    FieldRow[]
-  >([]);
+  const [isCreateTemplateDialogOpen, setIsCreateTemplateDialogOpen] = useState(false);
+  const [selectedFieldsForTemplate, setSelectedFieldsForTemplate] = useState<FieldRow[]>([]);
 
   const handleManageTemplates = useCallback(() => {
     setIsTemplateManagerOpen(true);
@@ -89,7 +78,7 @@ export function useTemplateActions({
         }));
       });
 
-      trackEvent('template_apply', { templateName: template.name });
+      void trackEvent('template_apply', { templateName: template.name });
       showToast(
         i18n.t('templateManager.toast.applied', {
           name: template.name,
@@ -116,13 +105,10 @@ export function useTemplateActions({
     ) => {
       const result = await createTemplateFromFields(name, fields, description);
       if (result.ok) {
-        trackEvent('template_create', { templateName: name });
+        void trackEvent('template_create', { templateName: name });
         showToast(i18n.t('templateManager.toast.created', { name }));
       } else {
-        showToast(
-          result.message ??
-            i18n.t('templateManager.toast.createFromFieldsFailed'),
-        );
+        showToast(result.message ?? i18n.t('templateManager.toast.createFromFieldsFailed'));
       }
       return result;
     },

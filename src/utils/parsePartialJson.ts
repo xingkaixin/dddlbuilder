@@ -11,7 +11,7 @@
 export interface PartialReviewResult {
   score?: number;
   summary?: string;
-  suggestions?: (string | any)[];
+  suggestions?: Array<string | Record<string, unknown>>;
 }
 
 /**
@@ -46,9 +46,7 @@ export function parsePartialJson(text: string): PartialReviewResult | null {
     result.summary = unescapeJsonString(summaryMatch[1]);
   } else {
     // Try to get partial summary (string not yet closed)
-    const partialSummaryMatch = text.match(
-      /"summary"\s*:\s*"((?:[^"\\]|\\.)*)$/,
-    );
+    const partialSummaryMatch = text.match(/"summary"\s*:\s*"((?:[^"\\]|\\.)*)$/);
     if (partialSummaryMatch) {
       result.summary = unescapeJsonString(partialSummaryMatch[1]);
     }
@@ -84,9 +82,7 @@ export function parsePartialJson(text: string): PartialReviewResult | null {
  * For objects, only returns complete (parseable) items.
  * Incomplete objects are skipped to avoid rendering field names as text.
  */
-function extractArrayItems(
-  content: string,
-): (string | Record<string, unknown>)[] {
+function extractArrayItems(content: string): (string | Record<string, unknown>)[] {
   const items: (string | Record<string, unknown>)[] = [];
   let depth = 0;
   let inString = false;
@@ -223,7 +219,7 @@ function normalizeResult(result: unknown): PartialReviewResult | null {
   if (Array.isArray(obj.suggestions)) {
     normalized.suggestions = obj.suggestions
       .filter(
-        (s): s is string | any =>
+        (s): s is string | Record<string, unknown> =>
           typeof s === 'string' || (typeof s === 'object' && s !== null),
       )
       .slice(0, 5);

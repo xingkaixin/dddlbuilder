@@ -1,11 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@/__tests__/utils/test-utils';
+import { fireEvent, render, screen, waitFor, within } from '@/__tests__/utils/test-utils';
 import { StorageEstimatorDialog } from '@/components/App/StorageEstimatorDialog';
 import type { NormalizedField } from '@/types';
 
@@ -29,30 +23,19 @@ describe('StorageEstimatorDialog', () => {
       },
     ];
 
-    render(
-      <StorageEstimatorDialog
-        open
-        onOpenChange={vi.fn()}
-        dbType="mysql"
-        fields={fields}
-      />,
-    );
+    render(<StorageEstimatorDialog open onOpenChange={vi.fn()} dbType="mysql" fields={fields} />);
 
-    const totalCard = screen
-      .getByText('总计预估大小')
-      .closest('div')?.parentElement;
+    const totalCard = screen.getByText('总计预估大小').closest('div')?.parentElement;
     const rowHeader = screen.getByText('预估承载数据量 (行)').closest('div');
 
     expect(totalCard).toBeTruthy();
     expect(rowHeader).toBeTruthy();
 
     const totalValueBefore = Number(
-      within(totalCard as HTMLElement).getByTestId('animated-number')
-        .textContent,
+      within(totalCard as HTMLElement).getByTestId('animated-number').textContent,
     );
     const rowsValueBefore = Number(
-      within(rowHeader as HTMLElement).getByTestId('animated-number')
-        .textContent,
+      within(rowHeader as HTMLElement).getByTestId('animated-number').textContent,
     );
 
     expect(rowsValueBefore).toBe(10000);
@@ -63,19 +46,13 @@ describe('StorageEstimatorDialog', () => {
 
     await waitFor(() => {
       expect(
-        Number(
-          within(rowHeader as HTMLElement).getByTestId('animated-number')
-            .textContent,
-        ),
+        Number(within(rowHeader as HTMLElement).getByTestId('animated-number').textContent),
       ).toBe(20000);
     });
 
     await waitFor(() => {
       expect(
-        Number(
-          within(totalCard as HTMLElement).getByTestId('animated-number')
-            .textContent,
-        ),
+        Number(within(totalCard as HTMLElement).getByTestId('animated-number').textContent),
       ).toBeGreaterThan(totalValueBefore);
     });
   });

@@ -16,11 +16,7 @@ export {
   TYPE_ALIASES,
 } from './utils/databaseTypeMapping';
 
-export {
-  buildDDL,
-  buildDCL,
-  buildOracleSynonyms,
-} from './utils/ddlGenerators';
+export { buildDDL, buildDCL, buildOracleSynonyms } from './utils/ddlGenerators';
 
 export {
   normalizeFields,

@@ -68,10 +68,7 @@ describe('useToast', () => {
     const data = { loading: 'Loading...', success: 'Success', error: 'Error' };
 
     result.current.promise(promise, data);
-    expect(toast.promise).toHaveBeenCalledWith(
-      promise,
-      expect.objectContaining(data),
-    );
+    expect(toast.promise).toHaveBeenCalledWith(promise, expect.objectContaining(data));
   });
 
   it('调用 dismiss 应该触发 sonner.toast.dismiss', () => {

@@ -15,11 +15,7 @@ interface UseFieldRowMutationsParams {
  * - defaultKind 变化时同步清理 defaultValue/nullable
  * - 可选触发字段改名联动回调（索引/分区/分片依赖）
  */
-export function useFieldRowMutations({
-  rows,
-  setRows,
-  onFieldRename,
-}: UseFieldRowMutationsParams) {
+export function useFieldRowMutations({ rows, setRows, onFieldRename }: UseFieldRowMutationsParams) {
   const updateCellValue = useCallback(
     (rowIndex: number, columnId: string, value: string | boolean) => {
       if (columnId === 'fieldName') {

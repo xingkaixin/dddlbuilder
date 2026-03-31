@@ -11,8 +11,7 @@ const createBootstrapMock = async (options?: {
   migrateImpl?: () => Promise<void>;
 }) => {
   const readWorkspaceBootstrap = vi.fn(
-    options?.readImpl ??
-      (async () => ({ globalDraft: null, session: null, savedTable: null })),
+    options?.readImpl ?? (async () => ({ globalDraft: null, session: null, savedTable: null })),
   );
   const migrateLegacyWorkspaceFromLocalStorage = vi.fn(
     options?.migrateImpl ?? (async () => undefined),
@@ -125,10 +124,9 @@ describe('workspacePersistence/bootstrap', () => {
       resolveRead = resolve;
     });
 
-    const { getWorkspaceBootstrap, readWorkspaceBootstrap } =
-      await createBootstrapMock({
-        readImpl: () => pendingRead,
-      });
+    const { getWorkspaceBootstrap, readWorkspaceBootstrap } = await createBootstrapMock({
+      readImpl: () => pendingRead,
+    });
 
     const p1 = getWorkspaceBootstrap();
     const p2 = getWorkspaceBootstrap();
@@ -148,21 +146,20 @@ describe('workspacePersistence/bootstrap', () => {
     let now = 1000;
     vi.spyOn(Date, 'now').mockImplementation(() => now);
 
-    const { getWorkspaceBootstrap, readWorkspaceBootstrap } =
-      await createBootstrapMock({
-        readImpl: vi
-          .fn()
-          .mockResolvedValueOnce({
-            globalDraft: { v: 1 },
-            session: null,
-            savedTable: null,
-          })
-          .mockResolvedValueOnce({
-            globalDraft: { v: 2 },
-            session: null,
-            savedTable: null,
-          }),
-      });
+    const { getWorkspaceBootstrap, readWorkspaceBootstrap } = await createBootstrapMock({
+      readImpl: vi
+        .fn()
+        .mockResolvedValueOnce({
+          globalDraft: { v: 1 },
+          session: null,
+          savedTable: null,
+        })
+        .mockResolvedValueOnce({
+          globalDraft: { v: 2 },
+          session: null,
+          savedTable: null,
+        }),
+    });
 
     const first = await getWorkspaceBootstrap();
     const second = await getWorkspaceBootstrap();
@@ -190,24 +187,21 @@ describe('workspacePersistence/bootstrap', () => {
   });
 
   it('resetWorkspaceBootstrapCache 应清空 TTL 缓存并允许立即重读', async () => {
-    const {
-      getWorkspaceBootstrap,
-      resetWorkspaceBootstrapCache,
-      readWorkspaceBootstrap,
-    } = await createBootstrapMock({
-      readImpl: vi
-        .fn()
-        .mockResolvedValueOnce({
-          globalDraft: { v: 1 },
-          session: null,
-          savedTable: null,
-        })
-        .mockResolvedValueOnce({
-          globalDraft: { v: 2 },
-          session: null,
-          savedTable: null,
-        }),
-    });
+    const { getWorkspaceBootstrap, resetWorkspaceBootstrapCache, readWorkspaceBootstrap } =
+      await createBootstrapMock({
+        readImpl: vi
+          .fn()
+          .mockResolvedValueOnce({
+            globalDraft: { v: 1 },
+            session: null,
+            savedTable: null,
+          })
+          .mockResolvedValueOnce({
+            globalDraft: { v: 2 },
+            session: null,
+            savedTable: null,
+          }),
+      });
 
     const first = await getWorkspaceBootstrap();
     resetWorkspaceBootstrapCache();

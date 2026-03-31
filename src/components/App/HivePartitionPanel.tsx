@@ -11,17 +11,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Layers, Plus, X, Grid3x3 } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTranslation } from 'react-i18next';
-import type {
-  HiveClusteringConfig,
-  HivePartitionColumn,
-  HivePartitionConfig,
-} from '@/types';
+import type { HiveClusteringConfig, HivePartitionColumn, HivePartitionConfig } from '@/types';
 
 const HIVE_TYPE_OPTIONS = [
   'STRING',
@@ -99,34 +91,25 @@ export const HivePartitionPanel = memo<HivePartitionPanelProps>(
               <Layers className="h-5 w-5 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-medium">{t('hivePartitionPanel.title')}</p>
-                <p className="mt-1 text-xs opacity-80">
-                  {t('hivePartitionPanel.description')}
-                </p>
+                <p className="mt-1 text-xs opacity-80">{t('hivePartitionPanel.description')}</p>
               </div>
             </div>
 
             {/* Enable Partition Switch */}
             <div className="flex items-center justify-between rounded-lg border border-dashed p-4">
               <div className="space-y-0.5">
-                <Label className="text-sm font-semibold">
-                  {t('hivePartitionPanel.enable')}
-                </Label>
+                <Label className="text-sm font-semibold">{t('hivePartitionPanel.enable')}</Label>
                 <p className="text-xs text-muted-foreground">
                   {t('hivePartitionPanel.enableDesc')}
                 </p>
               </div>
-              <Switch
-                checked={config.enabled}
-                onCheckedChange={onEnabledChange}
-              />
+              <Switch checked={config.enabled} onCheckedChange={onEnabledChange} />
             </div>
 
             {config.enabled && (
               <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-semibold">
-                    {t('hivePartitionPanel.columns')}
-                  </Label>
+                  <Label className="text-sm font-semibold">{t('hivePartitionPanel.columns')}</Label>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -170,9 +153,7 @@ export const HivePartitionPanel = memo<HivePartitionPanelProps>(
                         />
                         <Select
                           value={col.type}
-                          onValueChange={(value) =>
-                            onUpdateColumn(index, { ...col, type: value })
-                          }
+                          onValueChange={(value) => onUpdateColumn(index, { ...col, type: value })}
                         >
                           <SelectTrigger className="w-28 transition-all duration-200 focus:ring-2 focus:ring-primary/20">
                             <SelectValue />
@@ -268,25 +249,16 @@ export const HivePartitionPanel = memo<HivePartitionPanelProps>(
                         {clusteringConfig.columns.map((col, index) => (
                           <div key={index} className="flex items-center gap-2">
                             <Input
-                              placeholder={t(
-                                'hivePartitionPanel.clustering.columnPlaceholder',
-                              )}
+                              placeholder={t('hivePartitionPanel.clustering.columnPlaceholder')}
                               value={col}
-                              onChange={(e) =>
-                                handleClusteringColumnUpdate(
-                                  index,
-                                  e.target.value,
-                                )
-                              }
+                              onChange={(e) => handleClusteringColumnUpdate(index, e.target.value)}
                               className="flex-1 font-mono text-sm h-8"
                             />
                             <Button
                               type="button"
                               variant="ghost"
                               size="icon"
-                              onClick={() =>
-                                handleClusteringColumnRemove(index)
-                              }
+                              onClick={() => handleClusteringColumnRemove(index)}
                               className="h-8 w-8 text-destructive hover:text-destructive shrink-0"
                             >
                               <X className="h-3 w-3" />
@@ -306,10 +278,7 @@ export const HivePartitionPanel = memo<HivePartitionPanelProps>(
                           onChange={(e) =>
                             onClusteringChange({
                               ...clusteringConfig,
-                              bucketCount: Math.max(
-                                1,
-                                parseInt(e.target.value, 10) || 1,
-                              ),
+                              bucketCount: Math.max(1, parseInt(e.target.value, 10) || 1),
                             })
                           }
                           className="w-24 h-8 text-sm"

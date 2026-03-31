@@ -149,11 +149,7 @@ describe('parsePartialJson', () => {
       suggestions: ['a', { id: 'sug_1', description: 'test' }, 'b'],
     });
     const result = parsePartialJson(input);
-    expect(result?.suggestions).toEqual([
-      'a',
-      { id: 'sug_1', description: 'test' },
-      'b',
-    ]);
+    expect(result?.suggestions).toEqual(['a', { id: 'sug_1', description: 'test' }, 'b']);
   });
 
   it('should handle backslash escaping', () => {
@@ -180,9 +176,7 @@ describe('parsePartialJson', () => {
     const input =
       '{"suggestions": [{"id": "sug_1", "description": "complete"}, {"id": "sug_2", "descr';
     const result = parsePartialJson(input);
-    expect(result?.suggestions).toEqual([
-      { id: 'sug_1', description: 'complete' },
-    ]);
+    expect(result?.suggestions).toEqual([{ id: 'sug_1', description: 'complete' }]);
   });
 
   it('should handle mixed complete and incomplete items in array', () => {

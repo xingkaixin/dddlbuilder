@@ -2,10 +2,25 @@ import type { GeneratedField, GeneratedTableSchema } from '@/types/aiGenerate';
 import type { StructuredSuggestion } from '@/hooks/useDDLReview';
 
 function toNormalizedToken(value: unknown): string {
-  return String(value ?? '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '_');
+  if (typeof value === 'string') {
+    return value.trim().toLowerCase().replace(/\s+/g, '_');
+  }
+  if (value == null) {
+    return '';
+  }
+  if (
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint' ||
+    typeof value === 'symbol'
+  ) {
+    return String(value).trim().toLowerCase().replace(/\s+/g, '_');
+  }
+  try {
+    return (JSON.stringify(value) ?? '').trim().toLowerCase().replace(/\s+/g, '_');
+  } catch {
+    return '';
+  }
 }
 
 export function normalizeAiNullable(value: unknown): '是' | '否' {
@@ -32,13 +47,7 @@ export function normalizeAiDefaultKind(
   }
 
   if (
-    [
-      '当前时间',
-      'current_timestamp',
-      'current_time',
-      'now()',
-      'currenttimestamp',
-    ].includes(token)
+    ['当前时间', 'current_timestamp', 'current_time', 'now()', 'currenttimestamp'].includes(token)
   ) {
     return '当前时间';
   }
@@ -54,13 +63,7 @@ export function normalizeAiOnUpdate(value: unknown): '无' | '当前时间' {
   const token = toNormalizedToken(value);
 
   if (
-    [
-      '当前时间',
-      'current_timestamp',
-      'current_time',
-      'now()',
-      'currenttimestamp',
-    ].includes(token)
+    ['当前时间', 'current_timestamp', 'current_time', 'now()', 'currenttimestamp'].includes(token)
   ) {
     return '当前时间';
   }
@@ -77,20 +80,14 @@ function normalizeGeneratedField(field: GeneratedField): GeneratedField {
   };
 }
 
-export function normalizeGeneratedTableSchema(
-  schema: GeneratedTableSchema,
-): GeneratedTableSchema {
+export function normalizeGeneratedTableSchema(schema: GeneratedTableSchema): GeneratedTableSchema {
   return {
     ...schema,
-    fields: Array.isArray(schema.fields)
-      ? schema.fields.map(normalizeGeneratedField)
-      : [],
+    fields: Array.isArray(schema.fields) ? schema.fields.map(normalizeGeneratedField) : [],
   };
 }
 
-function normalizeStructuredSuggestion(
-  suggestion: StructuredSuggestion,
-): StructuredSuggestion {
+function normalizeStructuredSuggestion(suggestion: StructuredSuggestion): StructuredSuggestion {
   const next = { ...suggestion };
 
   if (next.field) {
@@ -108,9 +105,7 @@ function normalizeStructuredSuggestion(
       changes: {
         ...next.fieldModification.changes,
         nullable: normalizeAiNullable(next.fieldModification.changes.nullable),
-        defaultKind: normalizeAiDefaultKind(
-          next.fieldModification.changes.defaultKind,
-        ),
+        defaultKind: normalizeAiDefaultKind(next.fieldModification.changes.defaultKind),
         onUpdate: normalizeAiOnUpdate(next.fieldModification.changes.onUpdate),
       },
     };

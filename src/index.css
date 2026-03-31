@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 @config "../tailwind.config.js";
 
 /* MiSans VF - 小米可变字体 (CDN) */
@@ -7,8 +7,7 @@
 @layer base {
   :root {
     --font-sans:
-      "Roboto Mono", "MiSans VF", "PingFang SC", "Segoe UI", "Helvetica Neue",
-      Arial, sans-serif;
+      'Roboto Mono', 'MiSans VF', 'PingFang SC', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
 
     --background: 48 33.3333% 97.0588%;
     --foreground: 48 19.6078% 20%;
@@ -17,22 +16,22 @@
     --muted-foreground: 50 2.3622% 50.1961%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 50.7692 19.4030% 13.1373%;
+    --popover-foreground: 50.7692 19.403% 13.1373%;
 
     --card: 48 33.3333% 97.0588%;
     --card-foreground: 60 2.5641% 7.6471%;
 
-    --border: 50 7.5000% 84.3137%;
+    --border: 50 7.5% 84.3137%;
     --input: 50.7692 7.9755% 68.0392%;
 
     --primary: 15.1111 55.5556% 52.3529%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 46.1538 22.8070% 88.8235%;
-    --secondary-foreground: 50.7692 8.4967% 30.0000%;
+    --secondary: 46.1538 22.807% 88.8235%;
+    --secondary-foreground: 50.7692 8.4967% 30%;
 
-    --accent: 46.1538 22.8070% 88.8235%;
-    --accent-foreground: 50.7692 19.4030% 13.1373%;
+    --accent: 46.1538 22.807% 88.8235%;
+    --accent-foreground: 50.7692 19.403% 13.1373%;
 
     --destructive: 60 2.5641% 7.6471%;
     --destructive-foreground: 0 0% 100%;
@@ -44,16 +43,16 @@
 
   .dark {
     --background: 24 18.3673% 9.6078%;
-    --foreground: 42.8571 22.8070% 88.8235%;
+    --foreground: 42.8571 22.807% 88.8235%;
 
     --muted: 24 13.0435% 13.5294%;
     --muted-foreground: 42 11.1111% 72.9412%;
 
     --popover: 24 18.1818% 12.9412%;
-    --popover-foreground: 42.8571 22.8070% 88.8235%;
+    --popover-foreground: 42.8571 22.807% 88.8235%;
 
     --card: 24 17.0732% 10.5882%;
-    --card-foreground: 42.8571 22.8070% 88.8235%;
+    --card-foreground: 42.8571 22.807% 88.8235%;
 
     --border: 24.7059 12.2302% 22.3529%;
     --input: 24.8276 10.9489% 30.5882%;
@@ -62,10 +61,10 @@
     --primary-foreground: 0 0% 100%;
 
     --secondary: 24 14.6341% 16.0784%;
-    --secondary-foreground: 42.8571 22.8070% 88.8235%;
+    --secondary-foreground: 42.8571 22.807% 88.8235%;
 
     --accent: 24 18.6047% 16.8627%;
-    --accent-foreground: 42.8571 22.8070% 88.8235%;
+    --accent-foreground: 42.8571 22.807% 88.8235%;
 
     --destructive: 0 84.2365% 60.1961%;
     --destructive-foreground: 0 0% 100%;

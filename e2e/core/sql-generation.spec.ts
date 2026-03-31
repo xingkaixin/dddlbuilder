@@ -25,9 +25,7 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
       timeout: 10000,
     });
     await expect(
-      page.locator(
-        '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
-      ),
+      page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)'),
     ).toHaveText('HYDRATED_FIELD', { timeout: 10000 });
     await expect(page).toHaveTitle(/筑表师/);
 
@@ -127,8 +125,6 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
 
     const copyButton = page.getByRole('button', { name: /复制DDL/i });
     await copyButton.click();
-    await expect
-      .poll(() => page.evaluate(() => (window as any).__copyTriggered))
-      .toBe(true);
+    await expect.poll(() => page.evaluate(() => (window as any).__copyTriggered)).toBe(true);
   });
 });

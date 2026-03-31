@@ -23,11 +23,7 @@ const CHUNK_PREVIEW_LIMIT = 80;
 const sanitizePreview = (text: string) =>
   text.replace(/\s+/g, ' ').trim().slice(0, CHUNK_PREVIEW_LIMIT);
 
-const logEvent = (
-  enabled: boolean,
-  event: string,
-  payload: Record<string, unknown>,
-) => {
+const logEvent = (enabled: boolean, event: string, payload: Record<string, unknown>) => {
   if (!enabled) {
     return;
   }
@@ -41,8 +37,7 @@ const logEvent = (
   );
 };
 
-const shouldLogChunk = (chunkIndex: number) =>
-  chunkIndex <= 5 || chunkIndex % 20 === 0;
+const shouldLogChunk = (chunkIndex: number) => chunkIndex <= 5 || chunkIndex % 20 === 0;
 
 export const createOpenAIStreamDebugLogger = ({
   enabled,
@@ -70,8 +65,7 @@ export const createOpenAIStreamDebugLogger = ({
     chunkSize: content.length,
     totalChars,
     elapsedMs: getElapsedMs(),
-    firstChunkLatencyMs:
-      firstChunkAt === null ? null : firstChunkAt - startedAt,
+    firstChunkLatencyMs: firstChunkAt === null ? null : firstChunkAt - startedAt,
     preview: sanitizePreview(content),
   });
 
@@ -119,20 +113,14 @@ export const createOpenAIStreamDebugLogger = ({
         chunkCount,
         totalChars,
         elapsedMs: getElapsedMs(),
-        firstChunkLatencyMs:
-          firstChunkAt === null ? null : firstChunkAt - startedAt,
-        connectedLatencyMs:
-          connectedAt === null ? null : connectedAt - startedAt,
+        firstChunkLatencyMs: firstChunkAt === null ? null : firstChunkAt - startedAt,
+        connectedLatencyMs: connectedAt === null ? null : connectedAt - startedAt,
         reason: 'done',
       });
     },
     error(error: unknown) {
-      const message =
-        error instanceof Error ? error.message : 'Unknown stream error';
-      const stage =
-        connectedAt !== null || chunkCount > 0
-          ? 'during_stream'
-          : 'before_stream';
+      const message = error instanceof Error ? error.message : 'Unknown stream error';
+      const stage = connectedAt !== null || chunkCount > 0 ? 'during_stream' : 'before_stream';
 
       logEvent(enabled, 'ai_stream_error', {
         ...basePayload,
@@ -140,10 +128,8 @@ export const createOpenAIStreamDebugLogger = ({
         chunkCount,
         totalChars,
         elapsedMs: getElapsedMs(),
-        firstChunkLatencyMs:
-          firstChunkAt === null ? null : firstChunkAt - startedAt,
-        connectedLatencyMs:
-          connectedAt === null ? null : connectedAt - startedAt,
+        firstChunkLatencyMs: firstChunkAt === null ? null : firstChunkAt - startedAt,
+        connectedLatencyMs: connectedAt === null ? null : connectedAt - startedAt,
         errorMessage: message,
       });
     },

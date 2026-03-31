@@ -11,17 +11,11 @@ interface UseApplySavedStateParams {
   setCurrentIndexFields: (fields: PersistedState['currentIndexFields']) => void;
   setAuthObjects: (objects: PersistedState['authObjects']) => void;
   setAuthInput: (input: PersistedState['authInput']) => void;
-  setCitusShardingConfig: (
-    config: NonNullable<PersistedState['citusShardingConfig']>,
-  ) => void;
+  setCitusShardingConfig: (config: NonNullable<PersistedState['citusShardingConfig']>) => void;
   resetCitusSharding: () => void;
-  setMysqlPartitionConfig: (
-    config: NonNullable<PersistedState['mysqlPartitionConfig']>,
-  ) => void;
+  setMysqlPartitionConfig: (config: NonNullable<PersistedState['mysqlPartitionConfig']>) => void;
   resetPartition: () => void;
-  setTableMiscConfig: (
-    config: NonNullable<PersistedState['tableMiscConfig']>,
-  ) => void;
+  setTableMiscConfig: (config: NonNullable<PersistedState['tableMiscConfig']>) => void;
   resetTableMiscConfig: () => void;
   setTableName: (name: string) => void;
   setTableComment: (comment: string) => void;
@@ -60,10 +54,7 @@ export function useApplySavedState({
       setTableComment(state.tableComment ?? '');
       setDbType(state.dbType ?? 'mysql');
 
-      if (
-        typeof state.addCount === 'number' &&
-        Number.isFinite(state.addCount)
-      ) {
+      if (typeof state.addCount === 'number' && Number.isFinite(state.addCount)) {
         setAddCount(Math.max(1, Math.floor(state.addCount)));
       } else {
         setAddCount(10);

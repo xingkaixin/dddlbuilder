@@ -21,8 +21,7 @@ describe('parserLoader', () => {
       }
     }
 
-    const { loadParserConstructor, __setParserModuleLoaderForTests } =
-      await importParserLoader();
+    const { loadParserConstructor, __setParserModuleLoaderForTests } = await importParserLoader();
     __setParserModuleLoaderForTests(async () => ({
       Parser: NamedParser,
     }));
@@ -36,8 +35,7 @@ describe('parserLoader', () => {
       }
     }
 
-    const { loadParserConstructor, __setParserModuleLoaderForTests } =
-      await importParserLoader();
+    const { loadParserConstructor, __setParserModuleLoaderForTests } = await importParserLoader();
     __setParserModuleLoaderForTests(async () => ({
       Parser: undefined,
       default: {
@@ -54,8 +52,7 @@ describe('parserLoader', () => {
       }
     }
 
-    const { loadParserConstructor, __setParserModuleLoaderForTests } =
-      await importParserLoader();
+    const { loadParserConstructor, __setParserModuleLoaderForTests } = await importParserLoader();
     __setParserModuleLoaderForTests(async () => ({
       Parser: undefined,
       default: DefaultParser,
@@ -64,8 +61,7 @@ describe('parserLoader', () => {
   });
 
   it('无可用构造器时应抛出错误', async () => {
-    const { loadParserConstructor, __setParserModuleLoaderForTests } =
-      await importParserLoader();
+    const { loadParserConstructor, __setParserModuleLoaderForTests } = await importParserLoader();
     __setParserModuleLoaderForTests(async () => ({
       Parser: undefined,
       default: {},
@@ -83,18 +79,14 @@ describe('parserLoader', () => {
       }
     }
 
-    const { loadParserConstructor, __setParserModuleLoaderForTests } =
-      await importParserLoader();
+    const { loadParserConstructor, __setParserModuleLoaderForTests } = await importParserLoader();
     __setParserModuleLoaderForTests(async () => {
       loadCount += 1;
       return {
         Parser: CachedParser,
       };
     });
-    const [first, second] = await Promise.all([
-      loadParserConstructor(),
-      loadParserConstructor(),
-    ]);
+    const [first, second] = await Promise.all([loadParserConstructor(), loadParserConstructor()]);
 
     expect(first).toBe(CachedParser);
     expect(second).toBe(CachedParser);

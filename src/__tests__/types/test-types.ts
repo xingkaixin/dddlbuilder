@@ -77,9 +77,7 @@ export interface MockLocalStorage {
 
 // Event handler types
 export type MockEventHandler = (event: MockEvent) => void | Promise<void>;
-export type MockKeyboardEventHandler = (
-  event: MockEvent & { key: string },
-) => void;
+export type MockKeyboardEventHandler = (event: MockEvent & { key: string }) => void;
 
 // React test utilities
 export interface TestRenderResult {

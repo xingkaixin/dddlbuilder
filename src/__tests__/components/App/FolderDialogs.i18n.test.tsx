@@ -1,28 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, userEvent } from '@/__tests__/utils/test-utils';
 import type { MouseEvent, ReactNode } from 'react';
-import {
-  DeleteFolderDialog,
-  FolderDialog,
-} from '@/components/App/FolderDialogs';
+import { DeleteFolderDialog, FolderDialog } from '@/components/App/FolderDialogs';
 import type { FolderTreeNode } from '@/hooks/useFolders';
 import i18n from '@/i18n';
 
 vi.mock('@/components/ui/dialog', () => ({
   Dialog: ({ open, children }: { open: boolean; children: ReactNode }) =>
     open ? <div>{children}</div> : null,
-  DialogContent: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
-  ),
-  DialogDescription: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
-  ),
-  DialogFooter: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
-  ),
-  DialogHeader: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
-  ),
+  DialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogDescription: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
@@ -40,41 +29,20 @@ vi.mock('@/components/ui/alert-dialog', () => ({
     disabled?: boolean;
     className?: string;
   }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={className}
-    >
+    <button type="button" onClick={onClick} disabled={disabled} className={className}>
       {children}
     </button>
   ),
-  AlertDialogCancel: ({
-    children,
-    disabled,
-  }: {
-    children: ReactNode;
-    disabled?: boolean;
-  }) => (
+  AlertDialogCancel: ({ children, disabled }: { children: ReactNode; disabled?: boolean }) => (
     <button type="button" disabled={disabled}>
       {children}
     </button>
   ),
-  AlertDialogContent: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
-  ),
-  AlertDialogDescription: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
-  ),
-  AlertDialogFooter: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
-  ),
-  AlertDialogHeader: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
-  ),
-  AlertDialogTitle: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
-  ),
+  AlertDialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogDescription: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
 const now = Date.now();
@@ -127,9 +95,7 @@ describe('FolderDialogs i18n', () => {
     expect(screen.getByText('Create Folder')).toBeInTheDocument();
     expect(screen.getByText('Create root-level folder')).toBeInTheDocument();
     expect(screen.getByText('Folder Name')).toBeInTheDocument();
-    expect(
-      screen.getByPlaceholderText('Please enter a name'),
-    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Please enter a name')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Confirm' }));
@@ -168,9 +134,7 @@ describe('FolderDialogs i18n', () => {
     });
 
     expect(screen.getByText('Delete Folder')).toBeInTheDocument();
-    expect(
-      screen.getByText('Are you sure you want to delete "Archive"?'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Are you sure you want to delete "Archive"?')).toBeInTheDocument();
     expect(screen.getByText(/contains 2 table\(s\)/)).toBeInTheDocument();
     expect(screen.getByText(/1 subfolder\(s\)/)).toBeInTheDocument();
     expect(screen.getByText(/Ungrouped/)).toBeInTheDocument();

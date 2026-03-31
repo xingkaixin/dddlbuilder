@@ -1,25 +1,22 @@
 import { create } from 'zustand';
 import type Handsontable from 'handsontable';
 import type { FieldRow } from '@/types';
-import {
-  createEmptyRow,
-  ensureOrder,
-  toStringSafe,
-  normalizeFields,
-} from '@/utils/helpers';
+import { createEmptyRow, ensureOrder, toStringSafe, normalizeFields } from '@/utils/helpers';
 
 function createInitialRows(count: number): FieldRow[] {
   return Array.from({ length: count }, (_, index) => createEmptyRow(index));
 }
 
 function normalizeRowValue(value: unknown): string {
-  return value == null ? '' : String(value);
+  return toStringSafe(value);
 }
 
 function normalizeNullableValue(value: unknown): '是' | '否' {
   if (value === false) return '否';
-  return String(value ?? '').trim() === '否' ? '否' : '是';
+  return toStringSafe(value).trim() === '否' ? '否' : '是';
 }
+
+type FieldStoreCellChange = [number, string | number, unknown, unknown];
 
 function normalizePersistedRows(rows: FieldRow[]): FieldRow[] {
   return rows.map((row, index) => ({
@@ -42,7 +39,7 @@ interface FieldStoreState {
   initializeRows: (persistedRows?: FieldRow[]) => void;
   resetRows: (count?: number) => void;
   handleRowsChange: (
-    changes: (Handsontable.CellChange | null)[] | null,
+    changes: (FieldStoreCellChange | null)[] | null,
     source: Handsontable.ChangeSource,
   ) => void;
   handleCreateRow: (index: number, amount: number) => void;
@@ -68,8 +65,8 @@ export const useFieldStore = create<FieldStoreState>((set) => ({
       return;
     }
 
-    const validChanges = changes.filter(
-      (change): change is Handsontable.CellChange => Array.isArray(change),
+    const validChanges = changes.filter((change): change is FieldStoreCellChange =>
+      Array.isArray(change),
     );
 
     if (validChanges.length === 0) {

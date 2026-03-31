@@ -1,6 +1,5 @@
 const CREATE_TABLE_REGEX = /^\s*CREATE\s+TABLE\b/i;
-const STATEMENT_START_REGEX =
-  /^\s*(CREATE|ALTER|DROP|TRUNCATE|RENAME|GRANT|COMMENT)\b/i;
+const STATEMENT_START_REGEX = /^\s*(CREATE|ALTER|DROP|TRUNCATE|RENAME|GRANT|COMMENT)\b/i;
 
 function updateParenthesesDepth(line: string, initialDepth: number): number {
   let depth = initialDepth;
@@ -121,11 +120,7 @@ export function stripPartitionClauses(sql: string): string {
         }
       }
 
-      if (
-        tableDefinitionClosed &&
-        !skippingPartitionClause &&
-        /;\s*$/.test(lineToKeep)
-      ) {
+      if (tableDefinitionClosed && !skippingPartitionClause && /;\s*$/.test(lineToKeep)) {
         resetCreateTableState();
       }
     }

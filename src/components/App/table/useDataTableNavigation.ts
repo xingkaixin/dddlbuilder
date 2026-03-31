@@ -19,15 +19,12 @@ export function useDataTableNavigation({
 }: UseDataTableNavigationParams) {
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
 
-  const focusFirstInteractiveInCell = useCallback(
-    (cellElement: HTMLTableCellElement | null) => {
-      const focusTarget = cellElement?.querySelector<HTMLElement>(
-        'input:not([disabled]), div[tabindex="0"], button:not([disabled])',
-      );
-      focusTarget?.focus();
-    },
-    [],
-  );
+  const focusFirstInteractiveInCell = useCallback((cellElement: HTMLTableCellElement | null) => {
+    const focusTarget = cellElement?.querySelector<HTMLElement>(
+      'input:not([disabled]), div[tabindex="0"], button:not([disabled])',
+    );
+    focusTarget?.focus();
+  }, []);
 
   const handleCellActivate = useCallback(
     (rowIndex: number, colIndex: number) => {
@@ -47,8 +44,7 @@ export function useDataTableNavigation({
   const focusEditableCell = useCallback(
     (rowIndex: number, editableColIndex: number) => {
       if (rowIndex < 0 || rowIndex >= rowsLength) return;
-      if (editableColIndex < 0 || editableColIndex >= editableColumnCount)
-        return;
+      if (editableColIndex < 0 || editableColIndex >= editableColumnCount) return;
 
       const tableColIndex = editableColIndex + 1;
       const cellElement = tableRef.current?.querySelector<HTMLTableCellElement>(
@@ -59,13 +55,7 @@ export function useDataTableNavigation({
       handleCellActivate(rowIndex, tableColIndex);
       focusFirstInteractiveInCell(cellElement);
     },
-    [
-      rowsLength,
-      editableColumnCount,
-      tableRef,
-      handleCellActivate,
-      focusFirstInteractiveInCell,
-    ],
+    [rowsLength, editableColumnCount, tableRef, handleCellActivate, focusFirstInteractiveInCell],
   );
 
   const handleTabNavigation = useCallback(

@@ -1,13 +1,7 @@
 export const YES_VALUES = new Set(['y', 'yes', 'true', '1', '是', '√']);
 
 // default helpers
-export const DEFAULT_KIND_OPTIONS = [
-  '无',
-  '自增',
-  '常量',
-  '当前时间',
-  'uuid',
-] as const;
+export const DEFAULT_KIND_OPTIONS = ['无', '自增', '常量', '当前时间', 'uuid'] as const;
 
 export const ON_UPDATE_OPTIONS = ['无', '当前时间'] as const;
 

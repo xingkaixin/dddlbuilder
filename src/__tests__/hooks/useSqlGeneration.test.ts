@@ -52,15 +52,11 @@ describe('useSqlGeneration', () => {
     const { mock: writeTextMock, restore } = defineClipboard(async () => {});
 
     const { result } = renderHook(() =>
-      useSqlGeneration('mysql', 'users', '用户表', baseFields, noopIndexes, [
-        'CBD_READ',
-      ]),
+      useSqlGeneration('mysql', 'users', '用户表', baseFields, noopIndexes, ['CBD_READ']),
     );
 
     expect(result.current.generatedSql).toContain('CREATE TABLE users');
-    expect(result.current.generatedDcl).toContain(
-      'GRANT SELECT ON users TO CBD_READ;',
-    );
+    expect(result.current.generatedDcl).toContain('GRANT SELECT ON users TO CBD_READ;');
 
     let sqlResult = false;
     await act(async () => {

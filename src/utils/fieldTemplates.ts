@@ -54,9 +54,8 @@ const runWithTemplateStore = async <T>(
  * 获取所有模板列表
  */
 export const listTemplates = async (): Promise<FieldTemplate[]> => {
-  const templates = await runWithTemplateStore<FieldTemplate[]>(
-    'readonly',
-    (store) => store.getAll(),
+  const templates = await runWithTemplateStore<FieldTemplate[]>('readonly', (store) =>
+    store.getAll(),
   );
   // 按更新时间降序排列
   return templates.sort((a, b) => b.updatedAt - a.updatedAt);
@@ -65,12 +64,8 @@ export const listTemplates = async (): Promise<FieldTemplate[]> => {
 /**
  * 获取单个模板
  */
-export const getTemplate = async (
-  id: string,
-): Promise<FieldTemplate | undefined> => {
-  return runWithTemplateStore<FieldTemplate | undefined>('readonly', (store) =>
-    store.get(id),
-  );
+export const getTemplate = async (id: string): Promise<FieldTemplate | undefined> => {
+  return runWithTemplateStore<FieldTemplate | undefined>('readonly', (store) => store.get(id));
 };
 
 /**
@@ -100,9 +95,7 @@ export const createTemplate = async (
  */
 export const updateTemplate = async (
   id: string,
-  updates: Partial<
-    Pick<FieldTemplate, 'name' | 'description' | 'keywords' | 'fields'>
-  >,
+  updates: Partial<Pick<FieldTemplate, 'name' | 'description' | 'keywords' | 'fields'>>,
 ): Promise<FieldTemplate | null> => {
   const existing = await getTemplate(id);
   if (!existing) return null;

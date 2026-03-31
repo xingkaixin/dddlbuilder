@@ -12,16 +12,8 @@ import {
   withOpenAIRetry,
   buildOpenAIConfig,
 } from '../openaiControl.js';
-import {
-  errorResponse,
-  getRequestId,
-  streamErrorPayload,
-  type ApiErrorCode,
-} from '../lib/http.js';
-import {
-  REVIEW_SYSTEM_PROMPT,
-  buildReviewUserPrompt,
-} from '../prompts/review.js';
+import { errorResponse, getRequestId, streamErrorPayload, type ApiErrorCode } from '../lib/http.js';
+import { REVIEW_SYSTEM_PROMPT, buildReviewUserPrompt } from '../prompts/review.js';
 import { isAppLocale, type AppLocale } from '../../src/types/locale.js';
 
 const MAX_OUTPUT_TOKENS = 2000;
@@ -120,12 +112,7 @@ export function registerReviewRoute(app: Hono<ApiEnv>) {
 
     if (!apiKey) {
       audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
-      return errorResponse(
-        c,
-        503,
-        'OpenAI service unavailable',
-        'SERVICE_UNAVAILABLE',
-      );
+      return errorResponse(c, 503, 'OpenAI service unavailable', 'SERVICE_UNAVAILABLE');
     }
 
     const openai = new OpenAI({
@@ -194,11 +181,7 @@ export function registerReviewRoute(app: Hono<ApiEnv>) {
         streamDebug.error(error);
         audit(502, retryCount, false, false, 'UPSTREAM_OPENAI_ERROR');
         await stream.write(
-          streamErrorPayload(
-            'Upstream OpenAI error',
-            'UPSTREAM_OPENAI_ERROR',
-            requestId,
-          ),
+          streamErrorPayload('Upstream OpenAI error', 'UPSTREAM_OPENAI_ERROR', requestId),
         );
       }
     });

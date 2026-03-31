@@ -16,9 +16,7 @@ test.describe('模板管理功能测试 @fields', () => {
       timeout: 10000,
     });
     await expect(
-      page.locator(
-        '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
-      ),
+      page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)'),
     ).toHaveText('HYDRATED_FIELD', { timeout: 10000 });
   });
 
@@ -30,9 +28,7 @@ test.describe('模板管理功能测试 @fields', () => {
     await templateBtn.click();
 
     // 验证弹出菜单出现
-    const popoverText = page
-      .getByText(/将当前行保存为模板/i)
-      .or(page.getByText(/管理模板/i));
+    const popoverText = page.getByText(/将当前行保存为模板/i).or(page.getByText(/管理模板/i));
     if ((await popoverText.count()) > 0) {
       await expect(popoverText.first()).toBeVisible();
     }

@@ -150,14 +150,7 @@ export class Firework {
   maxTrail: number;
   color: string;
   palette: string[];
-  type:
-    | 'sphere'
-    | 'chrysanthemum'
-    | 'willow'
-    | 'ring'
-    | 'star'
-    | 'heart'
-    | 'double';
+  type: 'sphere' | 'chrysanthemum' | 'willow' | 'ring' | 'star' | 'heart' | 'double';
   arrived: boolean;
   onExplode: () => void;
   scheduleTimeout: ScheduleTimeout;

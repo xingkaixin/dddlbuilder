@@ -8,11 +8,7 @@ interface ConfirmStepProps {
   selectedDbType: DatabaseType;
 }
 
-export function ConfirmStep({
-  parsedResult,
-  previewFieldCount,
-  selectedDbType,
-}: ConfirmStepProps) {
+export function ConfirmStep({ parsedResult, previewFieldCount, selectedDbType }: ConfirmStepProps) {
   const { t } = useTranslation();
   return (
     <div className="space-y-4">
@@ -31,15 +27,11 @@ export function ConfirmStep({
           </p>
           <p>
             {t('importSql.confirm.indexCount')}:{' '}
-            <span className="text-foreground">
-              {parsedResult?.indexes.length || 0}
-            </span>
+            <span className="text-foreground">{parsedResult?.indexes.length || 0}</span>
           </p>
           <p>
             {t('importSql.confirm.authCount')}:{' '}
-            <span className="text-foreground">
-              {parsedResult?.authObjects.length || 0}
-            </span>
+            <span className="text-foreground">{parsedResult?.authObjects.length || 0}</span>
           </p>
           <p>
             {t('importSql.confirm.database')}:{' '}
@@ -48,14 +40,11 @@ export function ConfirmStep({
         </div>
         {(parsedResult?.authObjects.length || 0) > 0 && (
           <p className="mt-2 text-muted-foreground">
-            {t('importSql.confirm.authObjects')}:{' '}
-            {parsedResult?.authObjects.join(', ')}
+            {t('importSql.confirm.authObjects')}: {parsedResult?.authObjects.join(', ')}
           </p>
         )}
       </div>
-      <p className="text-sm text-muted-foreground">
-        {t('importSql.confirm.description')}
-      </p>
+      <p className="text-sm text-muted-foreground">{t('importSql.confirm.description')}</p>
     </div>
   );
 }

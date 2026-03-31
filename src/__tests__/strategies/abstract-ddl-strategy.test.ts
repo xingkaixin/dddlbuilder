@@ -40,10 +40,7 @@ class TestStrategy extends AbstractDDLStrategy {
     return this.createTypeMapper();
   }
 
-  public exposeGenerateColumnCommentsDDL(
-    table: string,
-    fields: NormalizedField[],
-  ) {
+  public exposeGenerateColumnCommentsDDL(table: string, fields: NormalizedField[]) {
     return this.generateColumnCommentsDDL(table, fields);
   }
 }
@@ -107,9 +104,7 @@ describe('AbstractDDLStrategy', () => {
   it('应该生成主键 DDL', () => {
     const strategy = new TestStrategy();
     const ddl = strategy.exposeGeneratePrimaryKeyDDL('users', primaryIndex);
-    expect(ddl).toBe(
-      'ALTER TABLE users ADD CONSTRAINT pk_users PRIMARY KEY (id, created_at);',
-    );
+    expect(ddl).toBe('ALTER TABLE users ADD CONSTRAINT pk_users PRIMARY KEY (id, created_at);');
   });
 
   it('应该格式化索引字段列表', () => {
@@ -126,9 +121,7 @@ describe('AbstractDDLStrategy', () => {
   it('generateIndexDDL 应该识别主键并复用公共实现', () => {
     const strategy = new TestStrategy();
     const ddl = strategy.generateIndexDDL('users', primaryIndex);
-    expect(ddl).toBe(
-      'ALTER TABLE users ADD CONSTRAINT pk_users PRIMARY KEY (id, created_at);',
-    );
+    expect(ddl).toBe('ALTER TABLE users ADD CONSTRAINT pk_users PRIMARY KEY (id, created_at);');
   });
 
   it('应该创建匹配数据库类型的 TypeMapper', () => {
@@ -147,10 +140,7 @@ describe('AbstractDDLStrategy', () => {
 
   it('生成列注释 DDL 时应忽略空注释', () => {
     const strategy = new TestStrategy('postgresql');
-    const statements = strategy.exposeGenerateColumnCommentsDDL(
-      'public.users',
-      sampleFields,
-    );
+    const statements = strategy.exposeGenerateColumnCommentsDDL('public.users', sampleFields);
     expect(statements).toHaveLength(1);
     expect(statements[0]).toBe("COMMENT ON COLUMN public.users.id IS '主键';");
   });

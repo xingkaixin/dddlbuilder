@@ -25,12 +25,7 @@ function serializeKeyPayload(payload: unknown): string {
   return JSON.stringify(payload ?? null);
 }
 
-export function buildDDLReviewQueryKey({
-  ddl,
-  tableName,
-  dbType,
-  locale,
-}: DDLReviewKeyParams) {
+export function buildDDLReviewQueryKey({ ddl, tableName, dbType, locale }: DDLReviewKeyParams) {
   return ['ddl-review', locale ?? 'zh-CN', dbType, tableName, ddl] as const;
 }
 

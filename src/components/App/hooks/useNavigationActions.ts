@@ -16,10 +16,7 @@ interface UseNavigationActionsParams {
   ) => void;
   setIsVersionHistoryOpen: (open: boolean) => void;
   setIsAIGenerateDialogOpen: (open: boolean) => void;
-  trackEvent: (
-    event: string,
-    data?: Record<string, AnalyticsValue>,
-  ) => Promise<void> | void;
+  trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void> | void;
 }
 
 export function useNavigationActions({
@@ -33,25 +30,25 @@ export function useNavigationActions({
   trackEvent,
 }: UseNavigationActionsParams) {
   const handleOpenSavedTablesDrawer = useCallback(() => {
-    trackEvent('sidebar_open');
+    void trackEvent('sidebar_open');
     setSavedTablesDrawerOpen(true);
   }, [trackEvent, setSavedTablesDrawerOpen]);
 
   const handleOpenDiffDialog = useCallback(() => {
-    trackEvent('diff_view_open');
+    void trackEvent('diff_view_open');
     setIsDiffDialogOpen(true);
   }, [trackEvent, setIsDiffDialogOpen]);
 
   const handleTabValueChange = useCallback(
     (value: string) => {
       setActiveTab(value);
-      trackEvent('tab_switch', { tab: value });
+      void trackEvent('tab_switch', { tab: value });
     },
     [setActiveTab, trackEvent],
   );
 
   const handleOpenStorageEstimator = useCallback(() => {
-    trackEvent('storage_estimator_open');
+    void trackEvent('storage_estimator_open');
     setIsStorageEstimatorOpen(true);
   }, [trackEvent, setIsStorageEstimatorOpen]);
 

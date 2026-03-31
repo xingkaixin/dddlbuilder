@@ -28,11 +28,7 @@ export class DmStrategy extends AbstractDDLStrategy {
     return 'dm';
   }
 
-  generateTableDDL(
-    tableName: string,
-    tableComment: string,
-    fields: NormalizedField[],
-  ): string {
+  generateTableDDL(tableName: string, tableComment: string, fields: NormalizedField[]): string {
     const typeMapper = this.createTypeMapper();
     const columnLines = fields.map((field) => {
       const parsedType = parseFieldType(field.type);
@@ -41,8 +37,7 @@ export class DmStrategy extends AbstractDDLStrategy {
 
       // 自增列：达梦使用 IDENTITY(种子, 增量) 语法
       const identity =
-        field.defaultKind === 'auto_increment' &&
-        supportsAutoIncrement('dm', base)
+        field.defaultKind === 'auto_increment' && supportsAutoIncrement('dm', base)
           ? ' IDENTITY(1,1)'
           : '';
 
@@ -64,9 +59,7 @@ export class DmStrategy extends AbstractDDLStrategy {
       // 达梦数据库：NOT NULL 必须在 DEFAULT 之前，nullable 字段显示 NULL
       const nullableClause = field.nullable ? ' NULL' : ' NOT NULL';
 
-      return `  ${this.formatFieldName(
-        field.name,
-      )} ${type}${identity}${nullableClause}${def}`;
+      return `  ${this.formatFieldName(field.name)} ${type}${identity}${nullableClause}${def}`;
     });
 
     const qualifiedTableName = this.formatTableName(tableName);
@@ -77,9 +70,7 @@ export class DmStrategy extends AbstractDDLStrategy {
     // 表注释（Oracle 风格的 COMMENT ON 语法）
     if (tableComment.trim()) {
       statements.push(
-        `COMMENT ON TABLE ${qualifiedTableName} IS '${escapeSingleQuotes(
-          tableComment.trim(),
-        )}';`,
+        `COMMENT ON TABLE ${qualifiedTableName} IS '${escapeSingleQuotes(tableComment.trim())}';`,
       );
     }
 

@@ -21,12 +21,8 @@ export function useAuthManagement(persistedState?: {
   const setAuthObjects = useAuthStore((state) => state.setAuthObjects);
   const addAuthObject = useAuthStore((state) => state.addAuthObject);
   const removeAuthObject = useAuthStore((state) => state.removeAuthObject);
-  const hydratedFromPersisted = useAuthStore(
-    (state) => state.hydratedFromPersisted,
-  );
-  const markHydratedFromPersisted = useAuthStore(
-    (state) => state.markHydratedFromPersisted,
-  );
+  const hydratedFromPersisted = useAuthStore((state) => state.hydratedFromPersisted);
+  const markHydratedFromPersisted = useAuthStore((state) => state.markHydratedFromPersisted);
   const resetAuthState = useAuthStore((state) => state.resetAuthState);
 
   useEffect(() => {

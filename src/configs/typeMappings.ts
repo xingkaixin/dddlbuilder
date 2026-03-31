@@ -45,7 +45,7 @@ export const TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
     varbinary: { mapping: 'varbinary' },
     uuid: { mapping: 'char', defaultArgs: ['36'] },
     serial: {
-      transform: (parsed) => 'BIGINT UNSIGNED AUTO_INCREMENT',
+      transform: (_parsed) => 'BIGINT UNSIGNED AUTO_INCREMENT',
     },
   },
   mariadb: {
@@ -81,7 +81,7 @@ export const TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
     varbinary: { mapping: 'varbinary' },
     uuid: { mapping: 'char', defaultArgs: ['36'] },
     serial: {
-      transform: (parsed) => 'BIGINT UNSIGNED AUTO_INCREMENT',
+      transform: (_parsed) => 'BIGINT UNSIGNED AUTO_INCREMENT',
     },
   },
   tidb: {
@@ -117,7 +117,7 @@ export const TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
     varbinary: { mapping: 'varbinary' },
     uuid: { mapping: 'char', defaultArgs: ['36'] },
     serial: {
-      transform: (parsed) => 'BIGINT UNSIGNED AUTO_INCREMENT',
+      transform: (_parsed) => 'BIGINT UNSIGNED AUTO_INCREMENT',
     },
   },
 
@@ -195,7 +195,7 @@ export const TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
     uuid: { mapping: 'uniqueidentifier' },
     xml: { mapping: 'xml' },
     serial: {
-      transform: (parsed) => 'BIGINT IDENTITY(1,1)',
+      transform: (_parsed) => 'BIGINT IDENTITY(1,1)',
     },
   },
 
@@ -236,7 +236,7 @@ export const TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
     uuid: { mapping: 'char', defaultArgs: ['36'] },
     xml: { mapping: 'xmltype' },
     serial: {
-      transform: (parsed) => 'NUMBER GENERATED ALWAYS AS IDENTITY',
+      transform: (_parsed) => 'NUMBER GENERATED ALWAYS AS IDENTITY',
     },
   },
 
@@ -287,7 +287,7 @@ export const TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
 
     // 自增列类型
     serial: {
-      transform: (parsed) => 'BIGINT IDENTITY(1,1)',
+      transform: (_parsed) => 'BIGINT IDENTITY(1,1)',
     },
 
     // JSON 类型
@@ -329,7 +329,7 @@ export const TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
     varbinary: { mapping: 'varbinary' },
     uuid: { mapping: 'char', defaultArgs: ['36'] },
     serial: {
-      transform: (parsed) => 'BIGINT UNSIGNED AUTO_INCREMENT',
+      transform: (_parsed) => 'BIGINT UNSIGNED AUTO_INCREMENT',
     },
   },
 
@@ -371,7 +371,7 @@ export const TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
     uuid: { mapping: 'char', defaultArgs: ['36'] },
     xml: { mapping: 'xmltype' },
     serial: {
-      transform: (parsed) => 'NUMBER GENERATED ALWAYS AS IDENTITY',
+      transform: (_parsed) => 'NUMBER GENERATED ALWAYS AS IDENTITY',
     },
   },
 };

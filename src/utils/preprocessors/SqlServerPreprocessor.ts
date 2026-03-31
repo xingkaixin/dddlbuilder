@@ -40,21 +40,14 @@ export function preprocessSqlServer(sql: string): PreprocessResult {
 
     if (level1Type === 'table' && !level2Type) {
       tableComment = comment;
-    } else if (
-      level1Type === 'table' &&
-      level2Type === 'column' &&
-      level2Name
-    ) {
+    } else if (level1Type === 'table' && level2Type === 'column' && level2Name) {
       columnComments[level2Name] = comment;
     }
 
     match = execRegex.exec(sql);
   }
 
-  const normalizedSql = sqlWithoutExec.replace(
-    /gen_random_uuid\(\)/gi,
-    'uuid()',
-  );
+  const normalizedSql = sqlWithoutExec.replace(/gen_random_uuid\(\)/gi, 'uuid()');
 
   return { sql: normalizedSql, tableComment, columnComments };
 }
@@ -79,18 +72,10 @@ export function extractSqlServerGrantUsers(sql: string): string[] {
       .map((raw) => raw.trim().replace(/^N'/, "'"))
       .map((value) => {
         let cleaned = value;
-        if (
-          cleaned.startsWith('[') ||
-          cleaned.startsWith("'") ||
-          cleaned.startsWith('"')
-        ) {
+        if (cleaned.startsWith('[') || cleaned.startsWith("'") || cleaned.startsWith('"')) {
           cleaned = cleaned.slice(1);
         }
-        if (
-          cleaned.endsWith(']') ||
-          cleaned.endsWith("'") ||
-          cleaned.endsWith('"')
-        ) {
+        if (cleaned.endsWith(']') || cleaned.endsWith("'") || cleaned.endsWith('"')) {
           cleaned = cleaned.slice(0, -1);
         }
         return cleaned;

@@ -19,9 +19,7 @@ describe('sql-parser normalizers', () => {
           },
         }),
       ).toBe('nested_col');
-      expect(normalizeColumnName({ expr: { value: 'expr_col' } })).toBe(
-        'expr_col',
-      );
+      expect(normalizeColumnName({ expr: { value: 'expr_col' } })).toBe('expr_col');
       expect(normalizeColumnName({ value: 'value_col' })).toBe('value_col');
       expect(normalizeColumnName(123)).toBe('123');
     });
@@ -29,18 +27,12 @@ describe('sql-parser normalizers', () => {
 
   describe('buildTypeString', () => {
     it('should build type from length scale and suffix', () => {
-      expect(
-        buildTypeString({ dataType: 'NUMERIC', length: 10, scale: 2 }),
-      ).toBe('NUMERIC(10,2)');
-      expect(
-        buildTypeString({ dataType: 'DECIMAL', length: 8, scale: 'null' }),
-      ).toBe('DECIMAL(8)');
-      expect(
-        buildTypeString({ dataType: 'TIMESTAMP', suffix: ['WITH TIME ZONE'] }),
-      ).toBe('TIMESTAMP(WITH TIME ZONE)');
-      expect(
-        buildTypeString({ dataType: 'DATE', suffix: [null, 'null'] }),
-      ).toBe('DATE');
+      expect(buildTypeString({ dataType: 'NUMERIC', length: 10, scale: 2 })).toBe('NUMERIC(10,2)');
+      expect(buildTypeString({ dataType: 'DECIMAL', length: 8, scale: 'null' })).toBe('DECIMAL(8)');
+      expect(buildTypeString({ dataType: 'TIMESTAMP', suffix: ['WITH TIME ZONE'] })).toBe(
+        'TIMESTAMP(WITH TIME ZONE)',
+      );
+      expect(buildTypeString({ dataType: 'DATE', suffix: [null, 'null'] })).toBe('DATE');
       expect(buildTypeString({ dataType: 'TEXT' })).toBe('TEXT');
     });
   });
@@ -48,9 +40,7 @@ describe('sql-parser normalizers', () => {
   describe('extractFunctionName', () => {
     it('should extract function names from multiple shapes', () => {
       expect(extractFunctionName(null)).toBeNull();
-      expect(extractFunctionName({ keyword: 'CURRENT_TIMESTAMP' })).toBe(
-        'current_timestamp',
-      );
+      expect(extractFunctionName({ keyword: 'CURRENT_TIMESTAMP' })).toBe('current_timestamp');
       expect(
         extractFunctionName({
           type: 'function',
@@ -63,9 +53,7 @@ describe('sql-parser normalizers', () => {
           name: { name: [{ expr: { value: 'NOW' } }] },
         }),
       ).toBe('now');
-      expect(extractFunctionName({ type: 'function', name: 'GETDATE' })).toBe(
-        'getdate',
-      );
+      expect(extractFunctionName({ type: 'function', name: 'GETDATE' })).toBe('getdate');
       expect(extractFunctionName('SYSTIMESTAMP')).toBe('systimestamp');
       expect(extractFunctionName({ type: 'function', name: {} })).toBeNull();
     });

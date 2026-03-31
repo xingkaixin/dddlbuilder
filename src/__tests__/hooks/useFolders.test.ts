@@ -22,9 +22,7 @@ describe('useFolders', () => {
   const mockDeleteFolder = vi.mocked(tableFolders.deleteFolder);
   const mockMoveFolder = vi.mocked(tableFolders.moveFolder);
   const mockBuildFolderTree = vi.mocked(tableFolders.buildFolderTree);
-  const mockGetDescendantFolderIds = vi.mocked(
-    tableFolders.getDescendantFolderIds,
-  );
+  const mockGetDescendantFolderIds = vi.mocked(tableFolders.getDescendantFolderIds);
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -35,9 +33,7 @@ describe('useFolders', () => {
   });
 
   it('should load folders on mount', async () => {
-    mockListFolders.mockResolvedValue([
-      { id: '1', name: 'Root', order: 1 } as any,
-    ]);
+    mockListFolders.mockResolvedValue([{ id: '1', name: 'Root', order: 1 } as any]);
     mockBuildFolderTree.mockResolvedValue([
       { id: '1', name: 'Root', order: 1, children: [] } as any,
     ]);
@@ -87,9 +83,7 @@ describe('useFolders', () => {
       .mockResolvedValueOnce([{ id: '2', name: 'New', order: 1 } as any]);
     mockBuildFolderTree
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        { id: '2', name: 'New', order: 1, children: [] } as any,
-      ]);
+      .mockResolvedValueOnce([{ id: '2', name: 'New', order: 1, children: [] } as any]);
     mockCreateFolder.mockResolvedValue({
       id: '2',
       name: 'New',
@@ -115,9 +109,7 @@ describe('useFolders', () => {
       .mockResolvedValueOnce([{ id: '1', name: 'Root', order: 1 } as any])
       .mockResolvedValueOnce([]);
     mockBuildFolderTree
-      .mockResolvedValueOnce([
-        { id: '1', name: 'Root', order: 1, children: [] } as any,
-      ])
+      .mockResolvedValueOnce([{ id: '1', name: 'Root', order: 1, children: [] } as any])
       .mockResolvedValueOnce([]);
     mockGetDescendantFolderIds.mockResolvedValue(['child']);
     mockDeleteFolder.mockResolvedValue(undefined);
@@ -148,12 +140,8 @@ describe('useFolders', () => {
       await flushPromises();
     });
 
-    await expect(result.current.renameFolder('1', 'x')).rejects.toThrow(
-      'rename failed',
-    );
-    await expect(result.current.moveFolder('1', '2')).rejects.toThrow(
-      'move failed',
-    );
+    await expect(result.current.renameFolder('1', 'x')).rejects.toThrow('rename failed');
+    await expect(result.current.moveFolder('1', '2')).rejects.toThrow('move failed');
   });
 
   it('should rename and move folder successfully', async () => {
@@ -162,15 +150,9 @@ describe('useFolders', () => {
       .mockResolvedValueOnce([{ id: '1', name: 'Renamed', order: 1 } as any])
       .mockResolvedValueOnce([{ id: '1', name: 'Renamed', order: 1 } as any]);
     mockBuildFolderTree
-      .mockResolvedValueOnce([
-        { id: '1', name: 'Root', order: 1, children: [] } as any,
-      ])
-      .mockResolvedValueOnce([
-        { id: '1', name: 'Renamed', order: 1, children: [] } as any,
-      ])
-      .mockResolvedValueOnce([
-        { id: '1', name: 'Renamed', order: 1, children: [] } as any,
-      ]);
+      .mockResolvedValueOnce([{ id: '1', name: 'Root', order: 1, children: [] } as any])
+      .mockResolvedValueOnce([{ id: '1', name: 'Renamed', order: 1, children: [] } as any])
+      .mockResolvedValueOnce([{ id: '1', name: 'Renamed', order: 1, children: [] } as any]);
     mockRenameFolder.mockResolvedValue(undefined);
     mockMoveFolder.mockResolvedValue(undefined);
 
@@ -208,18 +190,10 @@ describe('useFolders', () => {
       await flushPromises();
     });
 
-    await expect(result.current.createFolder('x')).rejects.toThrow(
-      '创建文件夹失败',
-    );
-    await expect(result.current.renameFolder('1', 'x')).rejects.toThrow(
-      '重命名文件夹失败',
-    );
-    await expect(result.current.deleteFolder('1')).rejects.toThrow(
-      '删除文件夹失败',
-    );
-    await expect(result.current.moveFolder('1', '2')).rejects.toThrow(
-      '移动文件夹失败',
-    );
+    await expect(result.current.createFolder('x')).rejects.toThrow('创建文件夹失败');
+    await expect(result.current.renameFolder('1', 'x')).rejects.toThrow('重命名文件夹失败');
+    await expect(result.current.deleteFolder('1')).rejects.toThrow('删除文件夹失败');
+    await expect(result.current.moveFolder('1', '2')).rejects.toThrow('移动文件夹失败');
   });
 
   it('should keep original error message when create/delete fail with Error', async () => {
@@ -235,11 +209,7 @@ describe('useFolders', () => {
       await flushPromises();
     });
 
-    await expect(result.current.createFolder('x')).rejects.toThrow(
-      'create err',
-    );
-    await expect(result.current.deleteFolder('1')).rejects.toThrow(
-      'delete err',
-    );
+    await expect(result.current.createFolder('x')).rejects.toThrow('create err');
+    await expect(result.current.deleteFolder('1')).rejects.toThrow('delete err');
   });
 });

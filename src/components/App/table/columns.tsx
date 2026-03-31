@@ -1,9 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
-import {
-  createColumnHelper,
-  type ColumnDef,
-  type Row,
-} from '@tanstack/react-table';
+import { createColumnHelper, type ColumnDef, type Row } from '@tanstack/react-table';
 import { EditableCell, SelectCell, CheckboxCell, OrderCell } from './index';
 import { RowActions } from './RowActions';
 import type { DatabaseType, FieldRow, UiDefaultKind } from '@/types';
@@ -24,27 +20,14 @@ interface UseFieldColumnsParams {
   columnWidths: Record<string, number>;
   rowWarnings: string[][];
   dbType: DatabaseType;
-  updateCellValue: (
-    rowIndex: number,
-    columnId: string,
-    value: string | boolean,
-  ) => void;
-  handleTabNavigation: (
-    rowIndex: number,
-    editableColIndex: number,
-    direction: 1 | -1,
-  ) => void;
+  updateCellValue: (rowIndex: number, columnId: string, value: string | boolean) => void;
+  handleTabNavigation: (rowIndex: number, editableColIndex: number, direction: 1 | -1) => void;
   onRemoveRow: (rowIndex: number, count: number) => void;
-  renderOrderCell?: (params: {
-    row: Row<FieldRow>;
-    warnings: string[];
-  }) => ReactNode;
+  renderOrderCell?: (params: { row: Row<FieldRow>; warnings: string[] }) => ReactNode;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function useFieldColumns(
-  params: UseFieldColumnsParams,
-): ColumnDef<FieldRow, any>[] {
+export function useFieldColumns(params: UseFieldColumnsParams): ColumnDef<FieldRow, any>[] {
   const { t } = useTranslation();
   const {
     mode = 'table',
@@ -70,10 +53,7 @@ export function useFieldColumns(
               warnings: rowWarnings[row.index] || [],
             })
           ) : (
-            <OrderCell
-              order={row.original.order}
-              warnings={rowWarnings[row.index] || []}
-            />
+            <OrderCell order={row.original.order} warnings={rowWarnings[row.index] || []} />
           ),
       }),
       columnHelper.accessor('fieldName', {
@@ -83,9 +63,7 @@ export function useFieldColumns(
           <EditableCell
             value={getValue() as string}
             onChange={(v) => updateCellValue(row.index, 'fieldName', v)}
-            onTabNavigate={(direction) =>
-              handleTabNavigation(row.index, 0, direction)
-            }
+            onTabNavigate={(direction) => handleTabNavigation(row.index, 0, direction)}
             placeholder={t('dataTable.placeholder.fieldName')}
           />
         ),
@@ -97,9 +75,7 @@ export function useFieldColumns(
           <EditableCell
             value={getValue() as string}
             onChange={(v) => updateCellValue(row.index, 'fieldComment', v)}
-            onTabNavigate={(direction) =>
-              handleTabNavigation(row.index, 1, direction)
-            }
+            onTabNavigate={(direction) => handleTabNavigation(row.index, 1, direction)}
             placeholder={t('dataTable.placeholder.fieldComment')}
           />
         ),
@@ -111,9 +87,7 @@ export function useFieldColumns(
           <EditableCell
             value={getValue() as string}
             onChange={(v) => updateCellValue(row.index, 'fieldType', v)}
-            onTabNavigate={(direction) =>
-              handleTabNavigation(row.index, 2, direction)
-            }
+            onTabNavigate={(direction) => handleTabNavigation(row.index, 2, direction)}
             placeholder={t('dataTable.placeholder.fieldType')}
           />
         ),
@@ -151,21 +125,15 @@ export function useFieldColumns(
         header: () => t('dataTable.headers.defaultValue'),
         size: columnWidths.defaultValue,
         cell: ({ row, getValue }) => {
-          const kind = normalizeDefaultKind(
-            row.original.defaultKind as UiDefaultKind,
-          );
+          const kind = normalizeDefaultKind(row.original.defaultKind as UiDefaultKind);
           const disabled = kind !== 'constant';
           return (
             <EditableCell
               value={(getValue() as string) || ''}
               onChange={(v) => updateCellValue(row.index, 'defaultValue', v)}
-              onTabNavigate={(direction) =>
-                handleTabNavigation(row.index, 5, direction)
-              }
+              onTabNavigate={(direction) => handleTabNavigation(row.index, 5, direction)}
               disabled={disabled}
-              placeholder={
-                disabled ? '' : t('dataTable.placeholder.defaultValue')
-              }
+              placeholder={disabled ? '' : t('dataTable.placeholder.defaultValue')}
             />
           );
         },
@@ -176,9 +144,7 @@ export function useFieldColumns(
         cell: ({ row, getValue }) => {
           const fieldType = toStringSafe(row.original.fieldType);
           const base = getCanonicalBaseType(fieldType);
-          const defaultKind = normalizeDefaultKind(
-            row.original.defaultKind as UiDefaultKind,
-          );
+          const defaultKind = normalizeDefaultKind(row.original.defaultKind as UiDefaultKind);
 
           // Disable if defaultKind is uuid
           if (defaultKind === 'uuid') {
@@ -228,10 +194,7 @@ export function useFieldColumns(
                     row.original.fieldType?.trim() ||
                     row.original.fieldComment?.trim()
                   )
-                : !!(
-                    row.original.fieldName?.trim() ||
-                    row.original.fieldComment?.trim()
-                  )
+                : !!(row.original.fieldName?.trim() || row.original.fieldComment?.trim())
             }
             fieldName={row.original.fieldName || ''}
             fieldComment={row.original.fieldComment || ''}

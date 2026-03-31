@@ -1,24 +1,18 @@
 import type { PersistedState } from '@/types';
 import type { GlobalDraftSummary, WorkspaceSource } from '@/types/workspace';
-import type {
-  WorkspaceGlobalDraftRecord,
-  WorkspaceSessionRecord,
-} from '@/utils/workspaceStateDb';
+import type { WorkspaceGlobalDraftRecord, WorkspaceSessionRecord } from '@/utils/workspaceStateDb';
 
 export type GlobalDraftRecord = WorkspaceGlobalDraftRecord;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const toText = (value: unknown, fallback = '') =>
-  typeof value === 'string' ? value : fallback;
+const toText = (value: unknown, fallback = '') => (typeof value === 'string' ? value : fallback);
 
 const toNumber = (value: unknown, fallback: number) =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 
-export const normalizePersistedState = (
-  value: unknown,
-): PersistedState | null => {
+export const normalizePersistedState = (value: unknown): PersistedState | null => {
   if (!isRecord(value)) return null;
 
   const rows = Array.isArray(value.rows) ? value.rows : [];
@@ -27,9 +21,7 @@ export const normalizePersistedState = (
     : [];
   const indexes = Array.isArray(value.indexes) ? value.indexes : [];
   const authObjects = Array.isArray(value.authObjects)
-    ? value.authObjects.filter(
-        (item): item is string => typeof item === 'string',
-      )
+    ? value.authObjects.filter((item): item is string => typeof item === 'string')
     : [];
 
   const normalized: PersistedState = {
@@ -114,8 +106,7 @@ export const normalizePersistedState = (
       value.mysqlPartitionConfig as PersistedState['mysqlPartitionConfig'];
   }
   if (isRecord(value.tableMiscConfig)) {
-    normalized.tableMiscConfig =
-      value.tableMiscConfig as PersistedState['tableMiscConfig'];
+    normalized.tableMiscConfig = value.tableMiscConfig as PersistedState['tableMiscConfig'];
   }
   if (isRecord(value.fieldTableViewConfig)) {
     normalized.fieldTableViewConfig =
@@ -137,10 +128,7 @@ export const isWorkspaceSource = (value: unknown): value is WorkspaceSource => {
   );
 };
 
-export const isSameWorkspaceSource = (
-  a: WorkspaceSource,
-  b: WorkspaceSource,
-) => {
+export const isSameWorkspaceSource = (a: WorkspaceSource, b: WorkspaceSource) => {
   if (a.kind !== b.kind) return false;
   if (a.kind === 'global_draft' && b.kind === 'global_draft') return true;
   if (a.kind === 'saved_table' && b.kind === 'saved_table') {
@@ -167,9 +155,7 @@ export const buildGlobalDraftSummary = (
   };
 };
 
-export const normalizeGlobalDraftRecord = (
-  value: unknown,
-): GlobalDraftRecord | null => {
+export const normalizeGlobalDraftRecord = (value: unknown): GlobalDraftRecord | null => {
   if (!isRecord(value)) return null;
   const state = normalizePersistedState(value.state);
   if (!state) return null;
@@ -180,9 +166,7 @@ export const normalizeGlobalDraftRecord = (
   };
 };
 
-export const normalizeWorkspaceSession = (
-  value: unknown,
-): WorkspaceSessionRecord | null => {
+export const normalizeWorkspaceSession = (value: unknown): WorkspaceSessionRecord | null => {
   if (!isRecord(value)) return null;
   if (!isWorkspaceSource(value.activeSource)) return null;
 

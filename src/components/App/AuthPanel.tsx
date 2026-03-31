@@ -2,11 +2,7 @@ import { memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ShieldUser, X, Plus } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTranslation } from 'react-i18next';
 
 interface AuthPanelProps {
@@ -18,13 +14,7 @@ interface AuthPanelProps {
 }
 
 export const AuthPanel = memo<AuthPanelProps>(
-  ({
-    authInput,
-    authObjects,
-    onAuthInputChange,
-    onAddAuthObject,
-    onRemoveAuthObject,
-  }) => {
+  ({ authInput, authObjects, onAuthInputChange, onAddAuthObject, onRemoveAuthObject }) => {
     const { t } = useTranslation();
 
     return (

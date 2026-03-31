@@ -1,7 +1,4 @@
-import {
-  compressToEncodedURIComponent,
-  decompressFromEncodedURIComponent,
-} from 'lz-string';
+import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string';
 import type { PersistedState } from '@/types';
 import { reportError } from './errorReporter';
 
@@ -76,25 +73,14 @@ const clipString = (value: string | undefined, maxLength: number): string =>
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const hasOnlyAllowedKeys = (
-  record: Record<string, unknown>,
-  allowedKeys: Set<string>,
-) => Object.keys(record).every((key) => allowedKeys.has(key));
+const hasOnlyAllowedKeys = (record: Record<string, unknown>, allowedKeys: Set<string>) =>
+  Object.keys(record).every((key) => allowedKeys.has(key));
 
-const isOptionalStringWithin = (
-  value: unknown,
-  maxLength: number,
-): value is string | undefined =>
-  value === undefined ||
-  (typeof value === 'string' && value.length <= maxLength);
+const isOptionalStringWithin = (value: unknown, maxLength: number): value is string | undefined =>
+  value === undefined || (typeof value === 'string' && value.length <= maxLength);
 
-const isMinifiedIndexField = (
-  value: unknown,
-): value is { n: string; d: 0 | 1 } => {
-  if (
-    !isRecord(value) ||
-    !hasOnlyAllowedKeys(value, MINIFIED_INDEX_FIELD_KEYS)
-  ) {
+const isMinifiedIndexField = (value: unknown): value is { n: string; d: 0 | 1 } => {
+  if (!isRecord(value) || !hasOnlyAllowedKeys(value, MINIFIED_INDEX_FIELD_KEYS)) {
     return false;
   }
 
@@ -181,8 +167,7 @@ const isMinifiedState = (value: unknown): value is MinifiedState => {
     (!Array.isArray(authObjects) ||
       authObjects.length > MAX_SHARE_AUTH_OBJECTS ||
       !authObjects.every(
-        (item) =>
-          typeof item === 'string' && item.length <= MAX_AUTH_OBJECT_LENGTH,
+        (item) => typeof item === 'string' && item.length <= MAX_AUTH_OBJECT_LENGTH,
       ))
   ) {
     return false;
@@ -201,36 +186,23 @@ export const compressState = (state: Partial<PersistedState>): string => {
           .map((item) => clipString(item, MAX_AUTH_OBJECT_LENGTH))
       : undefined;
 
-  const dbType = SUPPORTED_DATABASE_TYPES.has(
-    state.dbType as PersistedState['dbType'],
-  )
+  const dbType = SUPPORTED_DATABASE_TYPES.has(state.dbType as PersistedState['dbType'])
     ? (state.dbType as PersistedState['dbType'])
     : 'mysql';
 
   const minified: MinifiedState = {
     tn: clipString(state.tableName, MAX_TABLE_NAME_LENGTH),
-    tc: state.tableComment
-      ? clipString(state.tableComment, MAX_TABLE_COMMENT_LENGTH)
-      : undefined,
+    tc: state.tableComment ? clipString(state.tableComment, MAX_TABLE_COMMENT_LENGTH) : undefined,
     dt: dbType,
     r: rows.map((row) => ({
       n: clipString(row.fieldName, MAX_FIELD_NAME_LENGTH),
       t: clipString(row.fieldType, MAX_FIELD_TYPE_LENGTH),
-      c: row.fieldComment
-        ? clipString(row.fieldComment, MAX_FIELD_COMMENT_LENGTH)
-        : undefined,
+      c: row.fieldComment ? clipString(row.fieldComment, MAX_FIELD_COMMENT_LENGTH) : undefined,
       nu: row.nullable === '是' ? 1 : 0,
       dk:
-        row.defaultKind === '无'
-          ? undefined
-          : clipString(row.defaultKind, MAX_DEFAULT_KIND_LENGTH),
-      dv: row.defaultValue
-        ? clipString(row.defaultValue, MAX_DEFAULT_VALUE_LENGTH)
-        : undefined,
-      ou:
-        row.onUpdate === '无'
-          ? undefined
-          : clipString(row.onUpdate, MAX_ON_UPDATE_LENGTH),
+        row.defaultKind === '无' ? undefined : clipString(row.defaultKind, MAX_DEFAULT_KIND_LENGTH),
+      dv: row.defaultValue ? clipString(row.defaultValue, MAX_DEFAULT_VALUE_LENGTH) : undefined,
+      ou: row.onUpdate === '无' ? undefined : clipString(row.onUpdate, MAX_ON_UPDATE_LENGTH),
     })),
     i: indexes.map((idx) => ({
       n: clipString(idx.name, MAX_INDEX_NAME_LENGTH),
@@ -247,9 +219,7 @@ export const compressState = (state: Partial<PersistedState>): string => {
   return compressToEncodedURIComponent(JSON.stringify(minified));
 };
 
-export const decompressState = (
-  compressed: string,
-): Partial<PersistedState> | null => {
+export const decompressState = (compressed: string): Partial<PersistedState> | null => {
   if (!compressed || compressed.length > MAX_COMPRESSED_SHARE_LENGTH) {
     return null;
   }

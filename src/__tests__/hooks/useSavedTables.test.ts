@@ -1,10 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useSavedTables } from '@/hooks/useSavedTables';
-import {
-  setupFakeIndexedDB,
-  teardownFakeIndexedDB,
-} from '../utils/fakeIndexedDb';
+import { setupFakeIndexedDB, teardownFakeIndexedDB } from '../utils/fakeIndexedDb';
 import type { PersistedState } from '@/types';
 import { flushPromises } from '@/__tests__/utils/test-utils';
 
@@ -34,18 +31,12 @@ describe('useSavedTables', () => {
     const { result } = renderHook(() => useSavedTables());
 
     await act(async () => {
-      const saveResult = await result.current.saveTable(
-        'Demo',
-        createState('t1'),
-      );
+      const saveResult = await result.current.saveTable('Demo', createState('t1'));
       expect(saveResult.ok).toBe(true);
     });
 
     await act(async () => {
-      const duplicate = await result.current.saveTable(
-        ' demo ',
-        createState('t2'),
-      );
+      const duplicate = await result.current.saveTable(' demo ', createState('t2'));
       expect(duplicate.ok).toBe(false);
       if (!duplicate.ok) {
         expect(duplicate.reason).toBe('duplicate');
@@ -71,10 +62,7 @@ describe('useSavedTables', () => {
     expect(current?.name).toBe('Alpha');
 
     await act(async () => {
-      const renameResult = await result.current.renameTable(
-        current.normalizedName,
-        'Beta',
-      );
+      const renameResult = await result.current.renameTable(current.normalizedName, 'Beta');
       expect(renameResult.ok).toBe(true);
       await flushPromises();
     });
@@ -83,9 +71,7 @@ describe('useSavedTables', () => {
     expect(renamed?.name).toBe('Beta');
 
     await act(async () => {
-      const deleteResult = await result.current.deleteTable(
-        renamed.normalizedName,
-      );
+      const deleteResult = await result.current.deleteTable(renamed.normalizedName);
       expect(deleteResult.ok).toBe(true);
       await flushPromises();
     });

@@ -12,9 +12,7 @@ export type DragEntity =
   | { kind: 'table'; normalizedName: string }
   | { kind: 'folder'; folderId: string };
 
-export type DropTarget =
-  | { kind: 'root' }
-  | { kind: 'folder'; folderId: string };
+export type DropTarget = { kind: 'root' } | { kind: 'folder'; folderId: string };
 
 export type DropAction =
   | {
@@ -48,11 +46,9 @@ export interface ResolveDropActionInput {
   folderParentMap: FolderParentMap;
 }
 
-export const toTableDragId = (normalizedName: string) =>
-  `${TABLE_DRAG_PREFIX}${normalizedName}`;
+export const toTableDragId = (normalizedName: string) => `${TABLE_DRAG_PREFIX}${normalizedName}`;
 
-export const toFolderDragId = (folderId: string) =>
-  `${FOLDER_DRAG_PREFIX}${folderId}`;
+export const toFolderDragId = (folderId: string) => `${FOLDER_DRAG_PREFIX}${folderId}`;
 
 export function parseDragEntity(id: UniqueIdentifier): DragEntity | null {
   const raw = String(id);
@@ -82,9 +78,7 @@ export function parseDropTarget(id: UniqueIdentifier): DropTarget | null {
   return null;
 }
 
-export function buildFolderParentMap(
-  folders: FolderTreeNode[],
-): FolderParentMap {
+export function buildFolderParentMap(folders: FolderTreeNode[]): FolderParentMap {
   const map: FolderParentMap = {};
   const walk = (nodes: FolderTreeNode[]) => {
     for (const node of nodes) {
@@ -144,8 +138,7 @@ export function resolveDropAction({
 
   if (dragEntity.kind === 'table') {
     const currentFolderId = tableFolderMap[dragEntity.normalizedName];
-    const nextFolderId =
-      dropTarget.kind === 'folder' ? dropTarget.folderId : undefined;
+    const nextFolderId = dropTarget.kind === 'folder' ? dropTarget.folderId : undefined;
 
     if (currentFolderId === nextFolderId) {
       return { kind: 'none', reason: 'same_target' };
@@ -160,8 +153,7 @@ export function resolveDropAction({
   }
 
   const currentParentId = folderParentMap[dragEntity.folderId];
-  const nextParentId =
-    dropTarget.kind === 'folder' ? dropTarget.folderId : undefined;
+  const nextParentId = dropTarget.kind === 'folder' ? dropTarget.folderId : undefined;
 
   if (currentParentId === nextParentId) {
     return { kind: 'none', reason: 'same_target' };
@@ -169,11 +161,7 @@ export function resolveDropAction({
 
   if (
     nextParentId &&
-    isFolderMoveToSelfOrDescendant(
-      dragEntity.folderId,
-      nextParentId,
-      folderParentMap,
-    )
+    isFolderMoveToSelfOrDescendant(dragEntity.folderId, nextParentId, folderParentMap)
   ) {
     return {
       kind: 'invalid_folder_cycle',

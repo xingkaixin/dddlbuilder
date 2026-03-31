@@ -13,9 +13,7 @@ import * as dbUtils from '@/utils/savedTablesDb';
 import type { PersistedState } from '@/types';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from './fakeIndexedDb';
 
-function createMockState(
-  overrides: Partial<PersistedState> = {},
-): PersistedState {
+function createMockState(overrides: Partial<PersistedState> = {}): PersistedState {
   return {
     tableName: 'test_table',
     tableComment: '',
@@ -248,9 +246,7 @@ describe('tableVersions', () => {
         close: vi.fn(),
       };
 
-      vi.spyOn(dbUtils, 'openDb').mockResolvedValue(
-        mockDb as unknown as IDBDatabase,
-      );
+      vi.spyOn(dbUtils, 'openDb').mockResolvedValue(mockDb as unknown as IDBDatabase);
 
       // 1. request.onerror fallback
       mockRequest = { onerror: null, onsuccess: null, error: null };
@@ -301,9 +297,7 @@ describe('tableVersions', () => {
         close: vi.fn(),
       };
 
-      vi.spyOn(dbUtils, 'openDb').mockResolvedValue(
-        mockDb as unknown as IDBDatabase,
-      );
+      vi.spyOn(dbUtils, 'openDb').mockResolvedValue(mockDb as unknown as IDBDatabase);
 
       // countVersions error
       mockTx = {

@@ -9,10 +9,7 @@ import {
   duplicateTemplate,
   createTemplateFromFields,
 } from '@/utils/fieldTemplates';
-import {
-  setupFakeIndexedDB,
-  teardownFakeIndexedDB,
-} from '@/__tests__/utils/fakeIndexedDb';
+import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 
 describe('fieldTemplates', () => {
   beforeEach(() => {

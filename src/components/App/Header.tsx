@@ -5,11 +5,7 @@ import packageInfo from '../../../package.json';
 import { Share2, FileInput, Loader2, BookOpen } from 'lucide-react';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { LocaleSwitcher } from './LocaleSwitcher';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useLocale } from '@/i18n/LocaleContext';
 import { getDocsUrl } from '@/utils/docsLink';
 import { useTranslation } from 'react-i18next';
@@ -98,27 +94,9 @@ export const Header = memo<HeaderProps>(
                                 stroke="#FFD700"
                                 strokeWidth="2"
                               />
-                              <rect
-                                x="35"
-                                y="15"
-                                width="30"
-                                height="6"
-                                rx="2"
-                                fill="#FFD700"
-                              />
-                              <ellipse
-                                cx="50"
-                                cy="45"
-                                rx="35"
-                                ry="28"
-                                fill="#D32F2F"
-                              />
-                              <path
-                                d="M50 17 V 73"
-                                stroke="#B71C1C"
-                                strokeWidth="1"
-                                fill="none"
-                              />
+                              <rect x="35" y="15" width="30" height="6" rx="2" fill="#FFD700" />
+                              <ellipse cx="50" cy="45" rx="35" ry="28" fill="#D32F2F" />
+                              <path d="M50 17 V 73" stroke="#B71C1C" strokeWidth="1" fill="none" />
                               <path
                                 d="M35 19 Q 25 45 35 71"
                                 stroke="#B71C1C"
@@ -131,19 +109,8 @@ export const Header = memo<HeaderProps>(
                                 strokeWidth="1"
                                 fill="none"
                               />
-                              <rect
-                                x="35"
-                                y="70"
-                                width="30"
-                                height="6"
-                                rx="2"
-                                fill="#FFD700"
-                              />
-                              <path
-                                d="M50 76 V 85"
-                                stroke="#D32F2F"
-                                strokeWidth="3"
-                              />
+                              <rect x="35" y="70" width="30" height="6" rx="2" fill="#FFD700" />
+                              <path d="M50 76 V 85" stroke="#D32F2F" strokeWidth="3" />
                               <path
                                 d="M50 85 Q 45 95 40 98"
                                 stroke="#D32F2F"
@@ -156,19 +123,8 @@ export const Header = memo<HeaderProps>(
                                 strokeWidth="2"
                                 fill="none"
                               />
-                              <path
-                                d="M50 85 V 100"
-                                stroke="#D32F2F"
-                                strokeWidth="2"
-                                fill="none"
-                              />
-                              <circle
-                                cx="50"
-                                cy="45"
-                                r="8"
-                                fill="#FFD700"
-                                opacity="0.8"
-                              />
+                              <path d="M50 85 V 100" stroke="#D32F2F" strokeWidth="2" fill="none" />
+                              <circle cx="50" cy="45" r="8" fill="#FFD700" opacity="0.8" />
                               <text
                                 x="50"
                                 y="49"
@@ -211,9 +167,7 @@ export const Header = memo<HeaderProps>(
                       currentDbType={currentDbType}
                       onImport={onImport}
                       triggerClassName={actionBtnClass}
-                      triggerIcon={
-                        <FileInput className="h-4 w-4" aria-hidden />
-                      }
+                      triggerIcon={<FileInput className="h-4 w-4" aria-hidden />}
                       triggerLabel={t('header.importSql')}
                     />
                   </Suspense>
@@ -227,16 +181,11 @@ export const Header = memo<HeaderProps>(
                         aria-busy={isSharing}
                       >
                         {isSharing ? (
-                          <Loader2
-                            className="h-4 w-4 animate-spin"
-                            aria-hidden
-                          />
+                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                         ) : (
                           <Share2 className="h-4 w-4" aria-hidden />
                         )}
-                        {isSharing
-                          ? t('header.generatingShareLink')
-                          : t('header.shareLink')}
+                        {isSharing ? t('header.generatingShareLink') : t('header.shareLink')}
                       </button>
                     </TooltipTrigger>
                     <TooltipContent>

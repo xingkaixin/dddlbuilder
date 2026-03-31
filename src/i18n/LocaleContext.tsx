@@ -8,12 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import i18n from './index';
-import {
-  LOCAL_STORAGE_KEY,
-  type AppLocale,
-  resolveInitialLocale,
-  normalizeLocale,
-} from './types';
+import { LOCAL_STORAGE_KEY, type AppLocale, resolveInitialLocale, normalizeLocale } from './types';
 
 interface LocaleContextValue {
   locale: AppLocale;
@@ -24,9 +19,7 @@ interface LocaleContextValue {
 const LocaleContext = createContext<LocaleContextValue | null>(null);
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<AppLocale>(() =>
-    resolveInitialLocale(),
-  );
+  const [locale, setLocaleState] = useState<AppLocale>(() => resolveInitialLocale());
 
   const setLocale = useCallback((nextLocale: AppLocale) => {
     setLocaleState(nextLocale);
@@ -77,9 +70,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     [locale, setLocale],
   );
 
-  return (
-    <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>
-  );
+  return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
 }
 
 export function useLocale() {

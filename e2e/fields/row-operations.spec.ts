@@ -24,18 +24,14 @@ test.describe('字段行操作验证 @fields', () => {
     const sqlOutput = page.locator('[data-state="active"] pre');
 
     // 填写第一行并确保 SQL 更新
-    const cell1 = page.locator(
-      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
-    );
+    const cell1 = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
     await cell1.dblclick();
     await page.locator('[data-testid="data-table"] input').fill('f1');
     await page.keyboard.press('Enter');
     await expect(sqlOutput).toContainText(/f1/i, { timeout: 10000 });
 
     // 填写第二行并确保 SQL 更新
-    const cell2 = page.locator(
-      '[data-testid="data-table"] tbody tr:nth-child(2) td:nth-child(2)',
-    );
+    const cell2 = page.locator('[data-testid="data-table"] tbody tr:nth-child(2) td:nth-child(2)');
     await cell2.dblclick();
     await page.locator('[data-testid="data-table"] input').fill('f2');
     await page.keyboard.press('Enter');
@@ -66,9 +62,7 @@ test.describe('字段行操作验证 @fields', () => {
     const firstHandle = page.locator(
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(1) button',
     );
-    const thirdRow = page.locator(
-      '[data-testid="data-table"] tbody tr:nth-child(3)',
-    );
+    const thirdRow = page.locator('[data-testid="data-table"] tbody tr:nth-child(3)');
 
     const handleBox = await firstHandle.boundingBox();
     const targetBox = await thirdRow.boundingBox();
@@ -80,16 +74,11 @@ test.describe('字段行操作验证 @fields', () => {
       return;
     }
 
-    await page.mouse.move(
-      handleBox.x + handleBox.width / 2,
-      handleBox.y + handleBox.height / 2,
-    );
+    await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
     await page.mouse.down();
-    await page.mouse.move(
-      targetBox.x + targetBox.width / 2,
-      targetBox.y + targetBox.height / 2,
-      { steps: 12 },
-    );
+    await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, {
+      steps: 12,
+    });
     await page.mouse.up();
 
     const firstFieldName = page.locator(
@@ -117,13 +106,9 @@ test.describe('字段行操作验证 @fields', () => {
     await expect(page.locator('#table-name')).toBeVisible({ timeout: 10000 });
     await page.locator('#table-name').fill('clear_test');
 
-    const cell = page.locator(
-      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
-    );
+    const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
     await cell.dblclick();
-    await page
-      .locator('[data-testid="data-table"] input')
-      .fill('to_be_cleared');
+    await page.locator('[data-testid="data-table"] input').fill('to_be_cleared');
     await page.keyboard.press('Enter');
     await expect(cell).toHaveText('to_be_cleared', { timeout: 5000 });
 

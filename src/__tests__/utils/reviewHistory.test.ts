@@ -26,13 +26,7 @@ describe('reviewHistory', () => {
     const ddl = 'CREATE TABLE test_table (id INT)';
     const dbType = 'mysql';
 
-    const record = await saveReview(
-      tableNamespace,
-      tableName,
-      ddl,
-      dbType,
-      mockReview,
-    );
+    const record = await saveReview(tableNamespace, tableName, ddl, dbType, mockReview);
 
     expect(record.id).toBeDefined();
     expect(record.tableNormalizedName).toBe(tableNamespace);
@@ -47,13 +41,7 @@ describe('reviewHistory', () => {
 
   it('should get a specific review by id', async () => {
     const tableNamespace = 'test_get_id';
-    const record = await saveReview(
-      tableNamespace,
-      'table',
-      'ddl',
-      'mysql',
-      mockReview,
-    );
+    const record = await saveReview(tableNamespace, 'table', 'ddl', 'mysql', mockReview);
 
     const found = await getReview(record.id);
     expect(found).not.toBeNull();
@@ -65,13 +53,7 @@ describe('reviewHistory', () => {
 
   it('should delete a review', async () => {
     const tableNamespace = 'test_delete';
-    const record = await saveReview(
-      tableNamespace,
-      'table',
-      'ddl',
-      'mysql',
-      mockReview,
-    );
+    const record = await saveReview(tableNamespace, 'table', 'ddl', 'mysql', mockReview);
 
     await deleteReview(record.id);
     const found = await getReview(record.id);
@@ -174,13 +156,11 @@ describe('reviewHistory', () => {
       transaction: () => mockTx,
     };
 
-    vi.spyOn(dbUtils, 'openDb').mockResolvedValue(
-      mockDb as unknown as IDBDatabase,
-    );
+    vi.spyOn(dbUtils, 'openDb').mockResolvedValue(mockDb as unknown as IDBDatabase);
 
-    await expect(
-      saveReview('ns', 'tb', 'ddl', 'mysql', mockReview),
-    ).rejects.toThrow('IndexedDB 请求失败');
+    await expect(saveReview('ns', 'tb', 'ddl', 'mysql', mockReview)).rejects.toThrow(
+      'IndexedDB 请求失败',
+    );
 
     vi.restoreAllMocks();
   });

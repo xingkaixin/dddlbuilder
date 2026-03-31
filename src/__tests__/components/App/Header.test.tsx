@@ -41,9 +41,7 @@ describe('Header', () => {
   it('未传入烟花能力时不渲染灯笼按钮', () => {
     render(<Header {...baseProps} />);
 
-    expect(
-      screen.queryByRole('button', { name: '点击播放烟花' }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '点击播放烟花' })).not.toBeInTheDocument();
   });
 
   it('传入烟花能力时应渲染灯笼按钮并触发回调', () => {

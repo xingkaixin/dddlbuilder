@@ -19,8 +19,7 @@ export async function readTextStream(
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   const onUpdate = options.onUpdate;
-  const updateIntervalMs =
-    options.updateIntervalMs ?? DEFAULT_STREAM_UPDATE_INTERVAL_MS;
+  const updateIntervalMs = options.updateIntervalMs ?? DEFAULT_STREAM_UPDATE_INTERVAL_MS;
   const debugContext = options.debugContext;
   const startedAt = Date.now();
 
@@ -32,10 +31,7 @@ export async function readTextStream(
   let totalBytes = 0;
   let firstChunkAt: number | null = null;
 
-  const emitText = (
-    reason: 'first_chunk' | 'throttled' | 'final',
-    emittedAt = Date.now(),
-  ) => {
+  const emitText = (reason: 'first_chunk' | 'throttled' | 'final', emittedAt = Date.now()) => {
     if (!onUpdate) {
       return;
     }
@@ -111,8 +107,7 @@ export async function readTextStream(
         totalChars: fullText.length,
         elapsedMs: Date.now() - startedAt,
         errorName: error instanceof Error ? error.name : 'UnknownError',
-        errorMessage:
-          error instanceof Error ? error.message : 'Unknown stream read error',
+        errorMessage: error instanceof Error ? error.message : 'Unknown stream read error',
       },
       { force: debugContext?.forceDebug },
     );
@@ -138,8 +133,7 @@ export async function readTextStream(
       totalBytes,
       totalChars: fullText.length,
       elapsedMs: Date.now() - startedAt,
-      firstChunkLatencyMs:
-        firstChunkAt === null ? null : firstChunkAt - startedAt,
+      firstChunkLatencyMs: firstChunkAt === null ? null : firstChunkAt - startedAt,
     },
     { force: debugContext?.forceDebug },
   );

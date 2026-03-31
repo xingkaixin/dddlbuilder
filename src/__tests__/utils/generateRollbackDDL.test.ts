@@ -3,9 +3,7 @@ import { generateRollbackDDL } from '@/utils/alterDdlGenerator';
 import type { NormalizedField } from '@/types';
 import type { TableDiff } from '@/utils/tableDiff';
 
-function createField(
-  overrides: Partial<NormalizedField> = {},
-): NormalizedField {
+function createField(overrides: Partial<NormalizedField> = {}): NormalizedField {
   return {
     name: 'col',
     type: 'varchar(100)',

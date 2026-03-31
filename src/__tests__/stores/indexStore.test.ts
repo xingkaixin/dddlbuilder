@@ -16,9 +16,7 @@ describe('indexStore', () => {
 
     state.addFieldToIndex('id');
     let current = useIndexStore.getState();
-    expect(current.currentIndexFields).toEqual([
-      { name: 'id', direction: 'ASC' },
-    ]);
+    expect(current.currentIndexFields).toEqual([{ name: 'id', direction: 'ASC' }]);
 
     state.addIndex(false, false, 'users', 'mysql');
     current = useIndexStore.getState();
@@ -73,9 +71,7 @@ describe('indexStore', () => {
     state.syncFieldRename('name', 'nickname', 'mysql');
 
     const current = useIndexStore.getState();
-    expect(current.currentIndexFields).toEqual([
-      { name: 'nickname', direction: 'ASC' },
-    ]);
+    expect(current.currentIndexFields).toEqual([{ name: 'nickname', direction: 'ASC' }]);
     expect(current.indexes[0]).toMatchObject({
       name: 'idx_users_nickname',
       fields: [{ name: 'nickname', direction: 'ASC' }],
@@ -120,9 +116,7 @@ describe('indexStore', () => {
     state.syncFieldRename('name', 'nickname', 'mysql');
 
     const current = useIndexStore.getState();
-    expect(current.currentIndexFields).toEqual([
-      { name: 'nickname', direction: 'ASC' },
-    ]);
+    expect(current.currentIndexFields).toEqual([{ name: 'nickname', direction: 'ASC' }]);
     expect(current.indexes[0]).toMatchObject({
       name: 'idx_users_nickname',
       fields: [{ name: 'nickname', direction: 'ASC' }],
@@ -158,9 +152,7 @@ describe('indexStore', () => {
     expect(useIndexStore.getState().indexInput).toBe('na');
 
     state.toggleFieldDirection(0);
-    expect(useIndexStore.getState().currentIndexFields[0].direction).toBe(
-      'DESC',
-    );
+    expect(useIndexStore.getState().currentIndexFields[0].direction).toBe('DESC');
 
     state.removeFieldFromIndex(0);
     expect(useIndexStore.getState().currentIndexFields).toEqual([]);
@@ -182,9 +174,7 @@ describe('indexStore', () => {
 
     const longName = `idx_${'a'.repeat(80)}`;
     state.updateIndexName('1', longName, 'oracle');
-    expect(useIndexStore.getState().indexes[0].name.length).toBeLessThanOrEqual(
-      30,
-    );
+    expect(useIndexStore.getState().indexes[0].name.length).toBeLessThanOrEqual(30);
   });
 
   it('应批量更新索引名并跳过空表名', () => {

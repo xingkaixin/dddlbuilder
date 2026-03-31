@@ -1,16 +1,12 @@
 import { test, expect } from '@playwright/test';
 
 const fillBasicField = async (page: any, name = 'id') => {
-  const nameCell = page.locator(
-    '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
-  );
+  const nameCell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
   await nameCell.dblclick();
   await page.locator('[data-testid="data-table"] input').fill(name);
   await page.keyboard.press('Enter');
 
-  const typeCell = page.locator(
-    '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
-  );
+  const typeCell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)');
   await typeCell.dblclick();
   await page.locator('[data-testid="data-table"] input').fill('int');
   await page.keyboard.press('Enter');
@@ -74,9 +70,7 @@ test.describe('保存表管理补充 @storage', () => {
     await page.getByLabel('新名称').fill(nextName);
     await page.getByRole('button', { name: /确认/i }).click();
 
-    await expect(
-      page.getByRole('button', { name: new RegExp(nextName, 'i') }),
-    ).toBeVisible();
+    await expect(page.getByRole('button', { name: new RegExp(nextName, 'i') })).toBeVisible();
     await expect(page.getByText(new RegExp(`当前：${nextName}`))).toBeVisible();
   });
 
@@ -88,19 +82,16 @@ test.describe('保存表管理补充 @storage', () => {
 
     const row = page.getByRole('button', { name: new RegExp(tableName, 'i') });
     await row.hover();
-    await row.locator('..').getByRole('button', { name: /删除/i }).click();
-
-    const deleteConfirmDialog = page
-      .getByRole('dialog')
-      .filter({ hasText: '确认删除保存的表？' });
-    await expect(deleteConfirmDialog).toBeVisible();
-    await deleteConfirmDialog
-      .getByRole('button', { name: /确认删除|删除/i })
+    await row
+      .locator('..')
+      .getByRole('button', { name: /删除/i })
       .click();
 
-    await expect(
-      page.getByRole('button', { name: new RegExp(tableName, 'i') }),
-    ).toHaveCount(0);
+    const deleteConfirmDialog = page.getByRole('dialog').filter({ hasText: '确认删除保存的表？' });
+    await expect(deleteConfirmDialog).toBeVisible();
+    await deleteConfirmDialog.getByRole('button', { name: /确认删除|删除/i }).click();
+
+    await expect(page.getByRole('button', { name: new RegExp(tableName, 'i') })).toHaveCount(0);
   });
 
   test('场景：未保存修改加载确认', async ({ page }) => {
@@ -139,12 +130,8 @@ test.describe('保存表管理补充 @storage', () => {
     await openSavedTables(page);
     await page.getByPlaceholder(/搜索表名或数据库类型/i).fill(tableA);
 
-    await expect(
-      page.getByRole('button', { name: new RegExp(tableA, 'i') }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole('button', { name: new RegExp(tableB, 'i') }),
-    ).toHaveCount(0);
+    await expect(page.getByRole('button', { name: new RegExp(tableA, 'i') })).toBeVisible();
+    await expect(page.getByRole('button', { name: new RegExp(tableB, 'i') })).toHaveCount(0);
   });
 
   test('场景：全局草稿与保存表草稿应隔离', async ({ page }) => {
@@ -167,9 +154,7 @@ test.describe('保存表管理补充 @storage', () => {
     await page.locator('#table-comment').fill(globalDraftComment);
 
     await openSavedTables(page);
-    await page
-      .getByRole('button', { name: new RegExp(tableName, 'i') })
-      .click();
+    await page.getByRole('button', { name: new RegExp(tableName, 'i') }).click();
     await expect(page.locator('#table-comment')).toHaveValue(savedComment);
 
     await page.locator('#table-comment').fill(savedEditedComment);
@@ -180,17 +165,11 @@ test.describe('保存表管理补充 @storage', () => {
 
     await openSavedTables(page);
     await page.getByRole('button', { name: /草稿箱/i }).click();
-    await expect(page.locator('#table-comment')).toHaveValue(
-      globalDraftComment,
-    );
+    await expect(page.locator('#table-comment')).toHaveValue(globalDraftComment);
 
     await openSavedTables(page);
-    await page
-      .getByRole('button', { name: new RegExp(tableName, 'i') })
-      .click();
-    await expect(page.locator('#table-comment')).toHaveValue(
-      savedEditedComment,
-    );
+    await page.getByRole('button', { name: new RegExp(tableName, 'i') }).click();
+    await expect(page.locator('#table-comment')).toHaveValue(savedEditedComment);
   });
 
   test('场景：重命名应保留已保存版本，删除后可重新保存', async ({ page }) => {
@@ -231,12 +210,8 @@ test.describe('保存表管理补充 @storage', () => {
     await page.locator('#table-comment').fill(globalComment);
 
     await openSavedTables(page);
-    await page
-      .getByRole('button', { name: new RegExp(renamedName, 'i') })
-      .click();
-    await expect(page.locator('#table-comment')).toHaveValue(
-      initialSavedComment,
-    );
+    await page.getByRole('button', { name: new RegExp(renamedName, 'i') }).click();
+    await expect(page.locator('#table-comment')).toHaveValue(initialSavedComment);
 
     await openSavedTables(page);
     const renamedRow = page.getByRole('button', {
@@ -247,21 +222,15 @@ test.describe('保存表管理补充 @storage', () => {
       .locator('..')
       .getByRole('button', { name: /删除/i })
       .click();
-    const deleteConfirmDialog = page
-      .getByRole('dialog')
-      .filter({ hasText: '确认删除保存的表？' });
+    const deleteConfirmDialog = page.getByRole('dialog').filter({ hasText: '确认删除保存的表？' });
     await expect(deleteConfirmDialog).toBeVisible();
-    await deleteConfirmDialog
-      .getByRole('button', { name: /确认删除|删除/i })
-      .click();
+    await deleteConfirmDialog.getByRole('button', { name: /确认删除|删除/i }).click();
     await expect(deleteConfirmDialog).toBeHidden();
 
     await saveTable(page, renamedName, freshSavedComment);
 
     await openSavedTables(page);
-    await page
-      .getByRole('button', { name: new RegExp(renamedName, 'i') })
-      .click();
+    await page.getByRole('button', { name: new RegExp(renamedName, 'i') }).click();
     await expect(page.locator('#table-comment')).toHaveValue(freshSavedComment);
   });
 });

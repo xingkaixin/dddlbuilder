@@ -2,10 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { usePersistedState } from '@/hooks';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
-import {
-  setupFakeIndexedDB,
-  teardownFakeIndexedDB,
-} from '@/__tests__/utils/fakeIndexedDb';
+import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 import { resetWorkspaceBootstrapCache } from '@/hooks/workspacePersistence/bootstrap';
 import { STORAGE_KEY } from '@/utils/constants';
 import { getShareState, ShareApiError } from '@/services/shareService';
@@ -119,9 +116,7 @@ describe('usePersistedState', () => {
 
     const dbDraft = await readGlobalDraft();
     expect(dbDraft?.state.tableName).toBe('global_from_legacy');
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith(
-      GLOBAL_DRAFT_STORAGE_KEY,
-    );
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith(GLOBAL_DRAFT_STORAGE_KEY);
   });
 
   it('保存全局草稿时应写入 IndexedDB 全局草稿和工作区会话', async () => {
@@ -219,10 +214,7 @@ describe('usePersistedState', () => {
     });
 
     act(() => {
-      result.current.setWorkspaceSnapshot(
-        { kind: 'global_draft' },
-        globalState,
-      );
+      result.current.setWorkspaceSnapshot({ kind: 'global_draft' }, globalState);
     });
 
     await waitFor(() => {
@@ -238,9 +230,7 @@ describe('usePersistedState', () => {
     });
 
     expect(result.current.activeSource).toEqual({ kind: 'global_draft' });
-    expect(result.current.getGlobalDraftState()?.tableName).toBe(
-      globalState.tableName,
-    );
+    expect(result.current.getGlobalDraftState()?.tableName).toBe(globalState.tableName);
 
     await waitFor(async () => {
       const session = await readWorkspaceSession();
@@ -293,10 +283,7 @@ describe('usePersistedState', () => {
     });
 
     act(() => {
-      result.current.setWorkspaceSnapshot(
-        { kind: 'global_draft' },
-        globalState,
-      );
+      result.current.setWorkspaceSnapshot({ kind: 'global_draft' }, globalState);
     });
 
     await waitFor(async () => {
@@ -318,10 +305,7 @@ describe('usePersistedState', () => {
     });
 
     act(() => {
-      result.current.setWorkspaceSnapshot(
-        { kind: 'global_draft' },
-        globalState,
-      );
+      result.current.setWorkspaceSnapshot({ kind: 'global_draft' }, globalState);
     });
 
     await waitFor(async () => {
@@ -456,9 +440,7 @@ describe('usePersistedState', () => {
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
       expect(result.current.shareLoadStatus).toBe('not_found');
-      expect(result.current.persistedState).toEqual(
-        createState('global_after_share_fail'),
-      );
+      expect(result.current.persistedState).toEqual(createState('global_after_share_fail'));
       expect(result.current.isShareView).toBe(false);
     });
   });

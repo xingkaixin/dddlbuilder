@@ -27,12 +27,8 @@ describe('Utils', () => {
     });
 
     it('should handle undefined and null values', () => {
-      expect(cn('bg-red-500', undefined, 'text-white')).toBe(
-        'bg-red-500 text-white',
-      );
-      expect(cn('bg-red-500', null, 'text-white')).toBe(
-        'bg-red-500 text-white',
-      );
+      expect(cn('bg-red-500', undefined, 'text-white')).toBe('bg-red-500 text-white');
+      expect(cn('bg-red-500', null, 'text-white')).toBe('bg-red-500 text-white');
       expect(cn(undefined, null, '')).toBe('');
     });
 
@@ -40,15 +36,11 @@ describe('Utils', () => {
       const isActive = true;
       const isError = false;
 
-      expect(cn('base-class', isActive && 'active', isError && 'error')).toBe(
-        'base-class active',
-      );
+      expect(cn('base-class', isActive && 'active', isError && 'error')).toBe('base-class active');
     });
 
     it('should handle arrays of classes', () => {
-      expect(cn(['bg-red-500', 'text-white'], 'border')).toBe(
-        'bg-red-500 text-white border',
-      );
+      expect(cn(['bg-red-500', 'text-white'], 'border')).toBe('bg-red-500 text-white border');
     });
 
     it('should handle objects with boolean values', () => {
@@ -135,9 +127,7 @@ describe('Utils', () => {
     });
 
     it('should handle whitespace correctly', () => {
-      expect(cn('  bg-red-500  ', '  text-white  ')).toBe(
-        'bg-red-500 text-white',
-      );
+      expect(cn('  bg-red-500  ', '  text-white  ')).toBe('bg-red-500 text-white');
       expect(cn('bg-red-500\n\ttext-white')).toBe('bg-red-500 text-white');
     });
 
@@ -159,9 +149,9 @@ describe('Utils', () => {
       ).toContain('bg-primary');
 
       // Card component classes
-      expect(
-        cn('rounded-lg border bg-card text-card-foreground shadow-sm', 'p-6'),
-      ).toBe('rounded-lg border bg-card text-card-foreground shadow-sm p-6');
+      expect(cn('rounded-lg border bg-card text-card-foreground shadow-sm', 'p-6')).toBe(
+        'rounded-lg border bg-card text-card-foreground shadow-sm p-6',
+      );
 
       // Input component classes
       expect(
@@ -177,9 +167,7 @@ describe('Utils', () => {
 
     it('should handle edge cases gracefully', () => {
       // All falsy values
-      expect(cn(false, null, undefined, 0, '', 'valid-class')).toBe(
-        'valid-class',
-      );
+      expect(cn(false, null, undefined, 0, '', 'valid-class')).toBe('valid-class');
 
       // Numbers (should be converted to string)
       expect(cn(1, 2, 'string-class')).toBe('1 2 string-class');
@@ -854,10 +842,7 @@ describe('Utils', () => {
       });
 
       it('应该支持 timestamp 和 date 的当前时间默认值', () => {
-        const result1 = getUiDefaultKindOptions(
-          'oceanbase-oracle',
-          'timestamp',
-        );
+        const result1 = getUiDefaultKindOptions('oceanbase-oracle', 'timestamp');
         expect(result1).toContain('当前时间');
 
         const result2 = getUiDefaultKindOptions('oceanbase-oracle', 'date');

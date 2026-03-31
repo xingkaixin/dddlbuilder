@@ -59,11 +59,7 @@ export const FolderDialog = memo<FolderDialogProps>(
         await onConfirm(trimmed);
         onOpenChange(false);
       } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : t('savedTables.folderDialog.actionFailed'),
-        );
+        setError(err instanceof Error ? err.message : t('savedTables.folderDialog.actionFailed'));
       } finally {
         setLoading(false);
       }
@@ -93,9 +89,7 @@ export const FolderDialog = memo<FolderDialogProps>(
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="folder-name">
-                {t('savedTables.folderDialog.nameLabel')}
-              </Label>
+              <Label htmlFor="folder-name">{t('savedTables.folderDialog.nameLabel')}</Label>
               <Input
                 id="folder-name"
                 value={name}
@@ -105,7 +99,7 @@ export const FolderDialog = memo<FolderDialogProps>(
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    handleConfirm();
+                    void handleConfirm();
                   }
                 }}
                 placeholder={t('savedTables.folderDialog.namePlaceholder')}
@@ -164,9 +158,7 @@ export const DeleteFolderDialog = memo<DeleteFolderDialogProps>(
       <AlertDialog open={open} onOpenChange={onOpenChange}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t('savedTables.deleteFolderDialog.title')}
-            </AlertDialogTitle>
+            <AlertDialogTitle>{t('savedTables.deleteFolderDialog.title')}</AlertDialogTitle>
             <AlertDialogDescription>
               {t('savedTables.deleteFolderDialog.description', {
                 name: folder.name,
@@ -200,7 +192,7 @@ export const DeleteFolderDialog = memo<DeleteFolderDialogProps>(
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
-                handleConfirm();
+                void handleConfirm();
               }}
               disabled={loading}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"

@@ -121,9 +121,7 @@ export function GlobalDialogs({
     .filter(Boolean)
     .join(' ');
 
-  const renameDescriptionIds = [
-    renameDialog.error ? 'rename-table-name-error' : null,
-  ]
+  const renameDescriptionIds = [renameDialog.error ? 'rename-table-name-error' : null]
     .filter(Boolean)
     .join(' ');
 
@@ -142,9 +140,7 @@ export function GlobalDialogs({
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{t('dialogs.clear.title')}</DialogTitle>
-            <DialogDescription>
-              {t('dialogs.clear.description')}
-            </DialogDescription>
+            <DialogDescription>{t('dialogs.clear.description')}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={clearDialog.onCancel}>
@@ -177,10 +173,7 @@ export function GlobalDialogs({
               aria-describedby={saveDescriptionIds || undefined}
             />
             {saveDialog.inputDisabled && (
-              <p
-                id="save-table-name-hint"
-                className="text-xs text-muted-foreground"
-              >
+              <p id="save-table-name-hint" className="text-xs text-muted-foreground">
                 {t('dialogs.save.loadedHint')}
               </p>
             )}
@@ -198,26 +191,17 @@ export function GlobalDialogs({
             )}
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => saveDialog.onOpenChange(false)}
-            >
+            <Button variant="outline" onClick={() => saveDialog.onOpenChange(false)}>
               {t('dialogs.save.cancel')}
             </Button>
-            <Button
-              onClick={saveDialog.onConfirm}
-              disabled={!saveDialog.canSaveCurrent}
-            >
+            <Button onClick={saveDialog.onConfirm} disabled={!saveDialog.canSaveCurrent}>
               {t('dialogs.save.confirm')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={loadConfirmDialog.open}
-        onOpenChange={loadConfirmDialog.onOpenChange}
-      >
+      <Dialog open={loadConfirmDialog.open} onOpenChange={loadConfirmDialog.onOpenChange}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{t('dialogs.load.title')}</DialogTitle>
@@ -238,17 +222,12 @@ export function GlobalDialogs({
               onClick={loadConfirmDialog.onConfirmSave}
               disabled={!loadConfirmDialog.canSaveCurrent}
               title={
-                !loadConfirmDialog.canSaveCurrent
-                  ? t('dialogs.load.saveDisabledTip')
-                  : undefined
+                !loadConfirmDialog.canSaveCurrent ? t('dialogs.load.saveDisabledTip') : undefined
               }
             >
               {t('dialogs.load.saveThenLoad')}
             </Button>
-            <Button
-              variant="destructive"
-              onClick={loadConfirmDialog.onConfirmIgnore}
-            >
+            <Button variant="destructive" onClick={loadConfirmDialog.onConfirmIgnore}>
               {t('dialogs.load.ignoreAndLoad')}
             </Button>
           </DialogFooter>
@@ -259,14 +238,10 @@ export function GlobalDialogs({
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{t('dialogs.rename.title')}</DialogTitle>
-            <DialogDescription>
-              {t('dialogs.rename.description')}
-            </DialogDescription>
+            <DialogDescription>{t('dialogs.rename.description')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Label htmlFor="rename-table-name">
-              {t('dialogs.rename.newName')}
-            </Label>
+            <Label htmlFor="rename-table-name">{t('dialogs.rename.newName')}</Label>
             <Input
               ref={renameInputRef}
               id="rename-table-name"
@@ -291,15 +266,10 @@ export function GlobalDialogs({
             )}
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => renameDialog.onOpenChange(false)}
-            >
+            <Button variant="outline" onClick={() => renameDialog.onOpenChange(false)}>
               {t('dialogs.rename.cancel')}
             </Button>
-            <Button onClick={renameDialog.onConfirm}>
-              {t('dialogs.rename.confirm')}
-            </Button>
+            <Button onClick={renameDialog.onConfirm}>{t('dialogs.rename.confirm')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -308,10 +278,7 @@ export function GlobalDialogs({
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle
-                className="h-5 w-5 text-destructive"
-                aria-hidden="true"
-              />
+              <AlertTriangle className="h-5 w-5 text-destructive" aria-hidden="true" />
               {t('dialogs.delete.title')}
             </DialogTitle>
             <DialogDescription>
@@ -323,10 +290,7 @@ export function GlobalDialogs({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => deleteDialog.onOpenChange(false)}
-            >
+            <Button variant="outline" onClick={() => deleteDialog.onOpenChange(false)}>
               {t('dialogs.delete.cancel')}
             </Button>
             <Button

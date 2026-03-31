@@ -16,9 +16,7 @@ test.describe('综合场景测试 @core @smoke', () => {
       timeout: 10000,
     });
     await expect(
-      page.locator(
-        '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
-      ),
+      page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)'),
     ).toHaveText('HYDRATED_FIELD', { timeout: 10000 });
   });
 

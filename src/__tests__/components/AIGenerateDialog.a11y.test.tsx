@@ -9,9 +9,7 @@ vi.mock('@/hooks/useAIGenerateTable', () => ({
 
 const mockedUseAIGenerateTable = vi.mocked(useAIGenerateTable);
 
-function createHookState(
-  overrides: Partial<ReturnType<typeof useAIGenerateTable>>,
-) {
+function createHookState(overrides: Partial<ReturnType<typeof useAIGenerateTable>>) {
   return {
     isLoading: false,
     streamingText: '',
@@ -40,12 +38,7 @@ describe('AIGenerateDialog a11y', () => {
     );
 
     render(
-      <AIGenerateDialog
-        open={true}
-        onOpenChange={vi.fn()}
-        dbType="mysql"
-        onApply={vi.fn()}
-      />,
+      <AIGenerateDialog open={true} onOpenChange={vi.fn()} dbType="mysql" onApply={vi.fn()} />,
     );
 
     const status = screen.getByRole('status');
@@ -57,12 +50,7 @@ describe('AIGenerateDialog a11y', () => {
     mockedUseAIGenerateTable.mockReturnValue(createHookState({}));
 
     render(
-      <AIGenerateDialog
-        open={true}
-        onOpenChange={vi.fn()}
-        dbType="mysql"
-        onApply={vi.fn()}
-      />,
+      <AIGenerateDialog open={true} onOpenChange={vi.fn()} dbType="mysql" onApply={vi.fn()} />,
     );
 
     const textarea = screen.getByPlaceholderText(/描述你需要的表结构/);
@@ -84,12 +72,7 @@ describe('AIGenerateDialog a11y', () => {
     );
 
     render(
-      <AIGenerateDialog
-        open={true}
-        onOpenChange={vi.fn()}
-        dbType="mysql"
-        onApply={vi.fn()}
-      />,
+      <AIGenerateDialog open={true} onOpenChange={vi.fn()} dbType="mysql" onApply={vi.fn()} />,
     );
 
     const alert = screen.getByRole('alert');

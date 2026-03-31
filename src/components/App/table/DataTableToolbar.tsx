@@ -1,9 +1,5 @@
 import type { ReactNode } from 'react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -95,11 +91,7 @@ export function DataTableToolbar({
                     size="icon"
                     className="h-5 w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
                     disabled={!freezeEnabled || effectiveFreezeColumns <= 1}
-                    onClick={() =>
-                      onFreezeColumnsChange(
-                        Math.max(1, effectiveFreezeColumns - 1),
-                      )
-                    }
+                    onClick={() => onFreezeColumnsChange(Math.max(1, effectiveFreezeColumns - 1))}
                   >
                     <Minus className="h-3 w-3" />
                   </Button>
@@ -125,16 +117,10 @@ export function DataTableToolbar({
                     variant="ghost"
                     size="icon"
                     className="h-5 w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-                    disabled={
-                      !freezeEnabled ||
-                      effectiveFreezeColumns >= COLUMN_HEADERS.length
-                    }
+                    disabled={!freezeEnabled || effectiveFreezeColumns >= COLUMN_HEADERS.length}
                     onClick={() =>
                       onFreezeColumnsChange(
-                        Math.min(
-                          COLUMN_HEADERS.length,
-                          effectiveFreezeColumns + 1,
-                        ),
+                        Math.min(COLUMN_HEADERS.length, effectiveFreezeColumns + 1),
                       )
                     }
                   >
@@ -181,9 +167,7 @@ export function DataTableToolbar({
                     size="icon"
                     className="h-5 w-5 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
                     disabled={safeAddCount <= 1}
-                    onClick={() =>
-                      onAddCountChange(Math.max(1, safeAddCount - 1))
-                    }
+                    onClick={() => onAddCountChange(Math.max(1, safeAddCount - 1))}
                   >
                     <Minus className="h-3 w-3" />
                   </Button>

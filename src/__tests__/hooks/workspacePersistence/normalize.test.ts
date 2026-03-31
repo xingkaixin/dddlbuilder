@@ -42,20 +42,12 @@ describe('workspacePersistence/normalize', () => {
       ],
       addCount: 'x',
       indexInput: 1,
-      currentIndexFields: [
-        { name: 'id', direction: 'DESC' },
-        { name: '', direction: 'ASC' },
-        null,
-      ],
+      currentIndexFields: [{ name: 'id', direction: 'DESC' }, { name: '', direction: 'ASC' }, null],
       indexes: [
         {
           id: 1,
           name: 'idx_users_id',
-          fields: [
-            { name: 'id', direction: 'DESC' },
-            { name: '', direction: 'ASC' },
-            null,
-          ],
+          fields: [{ name: 'id', direction: 'DESC' }, { name: '', direction: 'ASC' }, null],
           unique: true,
           isPrimary: false,
         },
@@ -108,15 +100,11 @@ describe('workspacePersistence/normalize', () => {
       },
     ]);
 
-    expect(result?.currentIndexFields).toEqual([
-      { name: 'id', direction: 'DESC' },
-    ]);
+    expect(result?.currentIndexFields).toEqual([{ name: 'id', direction: 'DESC' }]);
     expect(result?.indexes).toHaveLength(1);
     expect(result?.indexes[0].name).toBe('idx_users_id');
     expect(result?.indexes[0].id).toContain('idx_1700000000000_');
-    expect(result?.indexes[0].fields).toEqual([
-      { name: 'id', direction: 'DESC' },
-    ]);
+    expect(result?.indexes[0].fields).toEqual([{ name: 'id', direction: 'DESC' }]);
   });
 
   it('isWorkspaceSource 应正确识别来源类型', () => {
@@ -130,9 +118,7 @@ describe('workspacePersistence/normalize', () => {
       }),
     ).toBe(true);
 
-    expect(isWorkspaceSource({ kind: 'saved_table', tableName: 'Users' })).toBe(
-      false,
-    );
+    expect(isWorkspaceSource({ kind: 'saved_table', tableName: 'Users' })).toBe(false);
     expect(isWorkspaceSource({ kind: 'other' })).toBe(false);
     expect(isWorkspaceSource(null)).toBe(false);
   });
@@ -268,9 +254,7 @@ describe('workspacePersistence/normalize', () => {
     expect(session?.activeSource.kind).toBe('saved_table');
     expect(session?.activeState?.authObjects).toEqual(['u1']);
 
-    expect(
-      normalizeWorkspaceSession({ activeSource: { kind: 'x' } }),
-    ).toBeNull();
+    expect(normalizeWorkspaceSession({ activeSource: { kind: 'x' } })).toBeNull();
     expect(normalizeWorkspaceSession(null)).toBeNull();
   });
 });

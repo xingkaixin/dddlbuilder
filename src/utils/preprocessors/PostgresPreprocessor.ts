@@ -13,13 +13,10 @@ export function extractStandaloneComments(sql: string): PreprocessResult {
   const unescapeComment = (value: string) => value.replace(/''/g, "'");
 
   const cleanedSql = sql
-    .replace(
-      /COMMENT\s+ON\s+TABLE\s+[\w".]+\s+IS\s+'((?:''|[^'])*)'\s*;/gi,
-      (_m, comment) => {
-        tableComment = unescapeComment(comment);
-        return '';
-      },
-    )
+    .replace(/COMMENT\s+ON\s+TABLE\s+[\w".]+\s+IS\s+'((?:''|[^'])*)'\s*;/gi, (_m, comment) => {
+      tableComment = unescapeComment(comment);
+      return '';
+    })
     .replace(
       /COMMENT\s+ON\s+COLUMN\s+[\w".]+\.(["\w]+)\s+IS\s+'((?:''|[^'])*)'\s*;/gi,
       (_m, column, comment) => {

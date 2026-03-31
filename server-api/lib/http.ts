@@ -42,9 +42,7 @@ const REQUEST_ID_CONTEXT_KEY = 'requestId';
 
 export const getRequestId = (c: Context<ApiEnv>): string | undefined => {
   const value = c.get(REQUEST_ID_CONTEXT_KEY) as unknown;
-  return typeof value === 'string' && value.trim().length > 0
-    ? value.trim()
-    : undefined;
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 };
 
 export const withMeta = <T extends Record<string, unknown>>(
@@ -76,11 +74,7 @@ export const errorResponse = (
   return c.json(payload, status);
 };
 
-export const streamErrorPayload = (
-  error: string,
-  code?: ApiErrorCode,
-  requestId?: string,
-) =>
+export const streamErrorPayload = (error: string, code?: ApiErrorCode, requestId?: string) =>
   JSON.stringify({
     error,
     ...(code ? { code } : {}),

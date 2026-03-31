@@ -30,8 +30,7 @@ export const zhCNCommon = {
   app: {
     shareNotFound: '分享链接不存在或已过期，已返回首页',
     shareLoadFailed: '分享链接加载失败，已返回首页',
-    shareReadOnly:
-      '当前分享链接为只读。请先保存为副本，系统会返回首页后再继续编辑。',
+    shareReadOnly: '当前分享链接为只读。请先保存为副本，系统会返回首页后再继续编辑。',
     shareCopySaved: '已保存副本「{{name}}」，并已自动加载。',
     loadingWorkspace: '正在加载工作区内容...',
     workspace: {
@@ -133,8 +132,7 @@ export const zhCNCommon = {
   },
   hivePartitionPanel: {
     title: 'Hive 分区配置',
-    description:
-      '通过 PARTITIONED BY 定义分区列，数据按分区列值组织存储，提升查询效率。',
+    description: '通过 PARTITIONED BY 定义分区列，数据按分区列值组织存储，提升查询效率。',
     enable: '启用分区',
     enableDesc: '为表添加分区列定义',
     addColumn: '添加分区列',
@@ -171,8 +169,7 @@ export const zhCNCommon = {
   },
   partitionPanel: {
     title: 'MySQL 分区表配置',
-    description:
-      '分区表将数据分散存储到多个物理分区中，可提升大表查询性能。此配置为可选项。',
+    description: '分区表将数据分散存储到多个物理分区中，可提升大表查询性能。此配置为可选项。',
     enable: '启用分区',
     enableDesc: '开启后可配置表的分区策略',
     type: '分区类型',
@@ -188,10 +185,8 @@ export const zhCNCommon = {
     partitionKey: '分区键',
     multiColumn: '支持多列',
     expressionSupport: '支持表达式',
-    expressionPlaceholder:
-      '输入表达式，如: YEAR(created_at) 或 dayofmonth(start_time)',
-    expressionHint:
-      '可使用函数表达式，如 YEAR(col)、MONTH(col)、TO_DAYS(col)、dayofmonth(col) 等',
+    expressionPlaceholder: '输入表达式，如: YEAR(created_at) 或 dayofmonth(start_time)',
+    expressionHint: '可使用函数表达式，如 YEAR(col)、MONTH(col)、TO_DAYS(col)、dayofmonth(col) 等',
     orSelectField: '或选择字段',
     noFields: '请先在字段配置中添加字段，然后在此选择分区字段。',
     fieldPlaceholder: '选择分区字段...',
@@ -219,8 +214,7 @@ export const zhCNCommon = {
   },
   dataTable: {
     ariaLabel: '字段配置表格',
-    ariaDescription:
-      '可编辑字段配置表格，包含字段名、字段类型、注释、可空与默认值等列。',
+    ariaDescription: '可编辑字段配置表格，包含字段名、字段类型、注释、可空与默认值等列。',
     duplicateName: '字段名重复',
     reservedKeyword: '字段名为数据库保留关键字',
     headers: {
@@ -372,8 +366,7 @@ export const zhCNCommon = {
   dialogs: {
     clear: {
       title: '确认清空所有配置？',
-      description:
-        '此操作将移除当前填写的表信息、字段、索引及授权配置，且无法撤销。',
+      description: '此操作将移除当前填写的表信息、字段、索引及授权配置，且无法撤销。',
       cancel: '取消',
       confirm: '确认清空',
     },
@@ -506,8 +499,7 @@ export const zhCNCommon = {
     applied: '已应用',
     details: '具体建议',
     generatingSuggestions: '正在生成建议...',
-    disclaimer:
-      '大师评审由 AI 自动化生成，仅供参考。应用建议前请务必确认是否符合具体业务逻辑。',
+    disclaimer: '大师评审由 AI 自动化生成，仅供参考。应用建议前请务必确认是否符合具体业务逻辑。',
     reviewDone: '评审完成',
   },
   savedTables: {

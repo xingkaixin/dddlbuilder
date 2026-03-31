@@ -26,8 +26,7 @@ export const SelectCell = memo<SelectCellProps>(
     );
 
     const selectedLabel =
-      normalizedOptions.find((option) => option.value === value)?.label ??
-      value;
+      normalizedOptions.find((option) => option.value === value)?.label ?? value;
 
     const handleChange = useCallback(
       (newValue: string) => {
@@ -65,11 +64,7 @@ export const SelectCell = memo<SelectCellProps>(
         </SelectTrigger>
         <SelectContent className="text-sm">
           {normalizedOptions.map((option) => (
-            <SelectItem
-              key={option.value}
-              value={option.value}
-              className="text-sm"
-            >
+            <SelectItem key={option.value} value={option.value} className="text-sm">
               {option.label}
             </SelectItem>
           ))}

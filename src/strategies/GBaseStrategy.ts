@@ -28,11 +28,7 @@ export class GBaseStrategy extends AbstractDDLStrategy {
     return 'gbase';
   }
 
-  generateTableDDL(
-    tableName: string,
-    tableComment: string,
-    fields: NormalizedField[],
-  ): string {
+  generateTableDDL(tableName: string, tableComment: string, fields: NormalizedField[]): string {
     const dbType = this.getDatabaseType();
     const typeMapper = this.createTypeMapper();
     const columnLines = fields.map((field) => {
@@ -41,8 +37,7 @@ export class GBaseStrategy extends AbstractDDLStrategy {
       const base = getCanonicalBaseType(field.type);
 
       const autoInc =
-        field.defaultKind === 'auto_increment' &&
-        supportsAutoIncrement(dbType, base)
+        field.defaultKind === 'auto_increment' && supportsAutoIncrement(dbType, base)
           ? ' AUTO_INCREMENT'
           : '';
 
@@ -61,14 +56,11 @@ export class GBaseStrategy extends AbstractDDLStrategy {
       }
 
       const onUpd =
-        field.onUpdate === 'current_timestamp' &&
-        supportsOnUpdateCurrentTimestamp(dbType, base)
+        field.onUpdate === 'current_timestamp' && supportsOnUpdateCurrentTimestamp(dbType, base)
           ? ' ON UPDATE CURRENT_TIMESTAMP'
           : '';
 
-      const comment = field.comment
-        ? ` COMMENT '${escapeSingleQuotes(field.comment)}'`
-        : '';
+      const comment = field.comment ? ` COMMENT '${escapeSingleQuotes(field.comment)}'` : '';
 
       return `  ${this.formatFieldName(
         field.name,

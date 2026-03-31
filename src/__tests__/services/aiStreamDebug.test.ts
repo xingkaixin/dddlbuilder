@@ -26,17 +26,14 @@ describe('aiStreamDebug', () => {
   it('启用后应输出带前缀的 debug 日志', async () => {
     vi.stubEnv('VITE_ENABLE_AI_STREAM_DEBUG', 'true');
     vi.resetModules();
-    const consoleInfoSpy = vi
-      .spyOn(console, 'info')
-      .mockImplementation(() => {});
+    const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     const { logAiStreamDebug } = await import('@/services/aiStreamDebug');
 
     logAiStreamDebug('ai_stream_test', { route: 'explain' });
 
-    expect(consoleInfoSpy).toHaveBeenCalledWith(
-      '[AIStreamDebug] ai_stream_test',
-      { route: 'explain' },
-    );
+    expect(consoleInfoSpy).toHaveBeenCalledWith('[AIStreamDebug] ai_stream_test', {
+      route: 'explain',
+    });
   });
 });

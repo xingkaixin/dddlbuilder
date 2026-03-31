@@ -25,9 +25,7 @@ function isSupportedLocale(value: string): value is AppLocale {
   return isAppLocale(value);
 }
 
-export function normalizeLocale(
-  value: string | null | undefined,
-): AppLocale | null {
+export function normalizeLocale(value: string | null | undefined): AppLocale | null {
   if (!value) return null;
   if (isSupportedLocale(value)) return value;
 

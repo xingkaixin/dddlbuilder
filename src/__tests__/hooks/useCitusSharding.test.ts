@@ -42,9 +42,7 @@ describe('useCitusSharding', () => {
       result.current.setDistributionColumn('user_id');
     });
 
-    expect(result.current.citusShardingConfig.distributionColumn).toBe(
-      'user_id',
-    );
+    expect(result.current.citusShardingConfig.distributionColumn).toBe('user_id');
   });
 
   it('应该正确重置配置', () => {
@@ -56,9 +54,7 @@ describe('useCitusSharding', () => {
     });
 
     expect(result.current.citusShardingConfig.mode).toBe('distributed');
-    expect(result.current.citusShardingConfig.distributionColumn).toBe(
-      'tenant_id',
-    );
+    expect(result.current.citusShardingConfig.distributionColumn).toBe('tenant_id');
 
     act(() => {
       result.current.resetCitusSharding();
@@ -81,8 +77,6 @@ describe('useCitusSharding', () => {
     const { result } = renderHook(() => useCitusSharding(persistedState));
 
     expect(result.current.citusShardingConfig.mode).toBe('distributed');
-    expect(result.current.citusShardingConfig.distributionColumn).toBe(
-      'org_id',
-    );
+    expect(result.current.citusShardingConfig.distributionColumn).toBe('org_id');
   });
 });

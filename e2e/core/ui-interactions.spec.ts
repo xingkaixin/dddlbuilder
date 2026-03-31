@@ -16,9 +16,7 @@ test.describe('核心 UI 交互功能测试 @core', () => {
       timeout: 10000,
     });
     await expect(
-      page.locator(
-        '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
-      ),
+      page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)'),
     ).toHaveText('HYDRATED_FIELD', { timeout: 10000 });
   });
 
@@ -32,9 +30,7 @@ test.describe('核心 UI 交互功能测试 @core', () => {
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await firstFieldNameCell.dblclick();
-    await page
-      .locator('[data-testid="data-table"] input')
-      .fill('field_to_clear');
+    await page.locator('[data-testid="data-table"] input').fill('field_to_clear');
     await page.keyboard.press('Enter');
 
     // 验证数据已填写
@@ -64,12 +60,8 @@ test.describe('核心 UI 交互功能测试 @core', () => {
   });
 
   test('场景：默认配置下不显示烟花入口和节日弹层', async ({ page }) => {
-    await expect(
-      page.getByRole('button', { name: /点击播放烟花|Play fireworks/i }),
-    ).toHaveCount(0);
-    await expect(page.getByRole('dialog', { name: /新春烟花/i })).toHaveCount(
-      0,
-    );
+    await expect(page.getByRole('button', { name: /点击播放烟花|Play fireworks/i })).toHaveCount(0);
+    await expect(page.getByRole('dialog', { name: /新春烟花/i })).toHaveCount(0);
   });
 
   test('场景：主题可切换并支持系统跟随', async ({ page }) => {
@@ -116,9 +108,6 @@ test.describe('核心 UI 交互功能测试 @core', () => {
 
     // 切换回字段标签
     await page.getByRole('tab', { name: /字段/i }).click();
-    await expect(page.getByRole('tab', { name: /字段/i })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
+    await expect(page.getByRole('tab', { name: /字段/i })).toHaveAttribute('aria-selected', 'true');
   });
 });

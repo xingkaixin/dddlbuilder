@@ -41,15 +41,12 @@ export function useIndexManagement(
   dbType?: DatabaseType,
 ): UseIndexManagementReturn {
   const [indexInput, setIndexInput] = useState('');
-  const [currentIndexFields, setCurrentIndexFields] = useState<IndexField[]>(
-    [],
-  );
+  const [currentIndexFields, setCurrentIndexFields] = useState<IndexField[]>([]);
   const [indexes, setIndexes] = useState<IndexDefinition[]>([]);
   const [showFieldSuggestions, setShowFieldSuggestions] = useState(false);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
   const [initialized, setInitialized] = useState(false);
-  const indexNameMaxLength =
-    dbType === 'oracle' ? ORACLE_INDEX_NAME_LENGTH : MAX_INDEX_NAME_LENGTH;
+  const indexNameMaxLength = dbType === 'oracle' ? ORACLE_INDEX_NAME_LENGTH : MAX_INDEX_NAME_LENGTH;
 
   // Update state when persisted data becomes available
   useEffect(() => {
@@ -68,17 +65,13 @@ export function useIndexManagement(
     const input = indexInput.toLowerCase().trim();
     return availableFields.filter(
       (field) =>
-        field.toLowerCase().includes(input) &&
-        !currentIndexFields.some((f) => f.name === field),
+        field.toLowerCase().includes(input) && !currentIndexFields.some((f) => f.name === field),
     );
   }, [indexInput, availableFields, currentIndexFields]);
 
   // Index management functions
   const addFieldToIndex = useCallback((fieldName: string) => {
-    setCurrentIndexFields((prev) => [
-      ...prev,
-      { name: fieldName, direction: 'ASC' },
-    ]);
+    setCurrentIndexFields((prev) => [...prev, { name: fieldName, direction: 'ASC' }]);
     setIndexInput('');
     setShowFieldSuggestions(false);
     setSelectedSuggestionIndex(0);
@@ -91,9 +84,7 @@ export function useIndexManagement(
   const toggleFieldDirection = useCallback((index: number) => {
     setCurrentIndexFields((prev) =>
       prev.map((field, i) =>
-        i === index
-          ? { ...field, direction: field.direction === 'ASC' ? 'DESC' : 'ASC' }
-          : field,
+        i === index ? { ...field, direction: field.direction === 'ASC' ? 'DESC' : 'ASC' } : field,
       ),
     );
   }, []);

@@ -42,7 +42,7 @@ export function useSavedTables() {
   }, []);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const saveTable = useCallback(
@@ -76,10 +76,7 @@ export function useSavedTables() {
   );
 
   const overwriteTable = useCallback(
-    async (
-      normalizedName: string,
-      state: PersistedState,
-    ): Promise<SaveTableResult> => {
+    async (normalizedName: string, state: PersistedState): Promise<SaveTableResult> => {
       try {
         const record = await getSavedTable(normalizedName);
         if (!record) {
@@ -122,10 +119,7 @@ export function useSavedTables() {
   );
 
   const renameTable = useCallback(
-    async (
-      normalizedName: string,
-      newName: string,
-    ): Promise<SaveTableResult> => {
+    async (normalizedName: string, newName: string): Promise<SaveTableResult> => {
       try {
         const record = await getSavedTable(normalizedName);
         if (!record) {
@@ -168,10 +162,7 @@ export function useSavedTables() {
 
   // 移动表到指定文件夹
   const moveTableToFolder = useCallback(
-    async (
-      normalizedName: string,
-      folderId?: string,
-    ): Promise<SaveTableResult> => {
+    async (normalizedName: string, folderId?: string): Promise<SaveTableResult> => {
       try {
         const record = await getSavedTable(normalizedName);
         if (!record) {
@@ -199,9 +190,7 @@ export function useSavedTables() {
   // 清理指定文件夹ID关联的表（将它们移回未分组）
   const clearTablesFromFolders = useCallback(
     async (folderIds: string[]): Promise<void> => {
-      const tables = savedTables.filter(
-        (t) => t.folderId && folderIds.includes(t.folderId),
-      );
+      const tables = savedTables.filter((t) => t.folderId && folderIds.includes(t.folderId));
       await Promise.all(
         tables.map(async (table) => {
           const record = await getSavedTable(table.normalizedName);

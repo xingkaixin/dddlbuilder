@@ -69,9 +69,7 @@ describe('useSortableFieldRows', () => {
     const rows = createRows(['f1', 'f2']);
     const setRows = vi.fn();
 
-    const { result } = renderHook(() =>
-      useSortableFieldRows({ rows, setRows }),
-    );
+    const { result } = renderHook(() => useSortableFieldRows({ rows, setRows }));
 
     expect(result.current.sensors).toBeDefined();
     expect(result.current.rowIds).toEqual(['1', '2']);
@@ -82,9 +80,7 @@ describe('useSortableFieldRows', () => {
     const setRows = vi.fn();
     const onDragResult = vi.fn();
 
-    const { result } = renderHook(() =>
-      useSortableFieldRows({ rows, setRows, onDragResult }),
-    );
+    const { result } = renderHook(() => useSortableFieldRows({ rows, setRows, onDragResult }));
 
     act(() => {
       result.current.handleDragEnd({
@@ -96,11 +92,7 @@ describe('useSortableFieldRows', () => {
     expect(setRows).toHaveBeenCalled();
     const setRowsUpdater = setRows.mock.calls[0][0];
     const newRows = setRowsUpdater(rows);
-    expect(newRows.map((r: FieldRow) => r.fieldName)).toEqual([
-      'f2',
-      'f3',
-      'f1',
-    ]);
+    expect(newRows.map((r: FieldRow) => r.fieldName)).toEqual(['f2', 'f3', 'f1']);
 
     expect(onDragResult).toHaveBeenCalledWith({
       moved: true,
@@ -114,9 +106,7 @@ describe('useSortableFieldRows', () => {
     const setRows = vi.fn();
     const onDragResult = vi.fn();
 
-    const { result } = renderHook(() =>
-      useSortableFieldRows({ rows, setRows, onDragResult }),
-    );
+    const { result } = renderHook(() => useSortableFieldRows({ rows, setRows, onDragResult }));
 
     act(() => {
       result.current.handleDragEnd({
@@ -137,9 +127,7 @@ describe('useSortableFieldRows', () => {
     const setRows = vi.fn();
     const onDragResult = vi.fn();
 
-    const { result } = renderHook(() =>
-      useSortableFieldRows({ rows, setRows, onDragResult }),
-    );
+    const { result } = renderHook(() => useSortableFieldRows({ rows, setRows, onDragResult }));
 
     act(() => {
       result.current.handleDragEnd({
@@ -160,9 +148,7 @@ describe('useSortableFieldRows', () => {
     const setRows = vi.fn();
     const onDragResult = vi.fn();
 
-    const { result } = renderHook(() =>
-      useSortableFieldRows({ rows, setRows, onDragResult }),
-    );
+    const { result } = renderHook(() => useSortableFieldRows({ rows, setRows, onDragResult }));
 
     act(() => {
       result.current.handleDragEnd({
@@ -183,9 +169,7 @@ describe('useSortableFieldRows', () => {
     const setRows = vi.fn();
     const onDragResult = vi.fn();
 
-    const { result } = renderHook(() =>
-      useSortableFieldRows({ rows, setRows, onDragResult }),
-    );
+    const { result } = renderHook(() => useSortableFieldRows({ rows, setRows, onDragResult }));
 
     act(() => {
       result.current.handleDragEnd({

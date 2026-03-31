@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  generateAddIndex,
-  generateDropIndex,
-} from '@/utils/alter-ddl/indexStatements';
+import { generateAddIndex, generateDropIndex } from '@/utils/alter-ddl/indexStatements';
 import type { IndexDiff } from '@/utils/tableDiff';
 
 function createIndexDiff(overrides: Partial<IndexDiff> = {}): IndexDiff {
@@ -53,21 +50,13 @@ describe('indexStatements', () => {
       },
     });
 
-    expect(generateDropIndex('users', diff, 'mysql')).toBe(
-      'DROP INDEX idx_users_age ON users;',
-    );
-    expect(generateDropIndex('users', diff, 'postgresql')).toBe(
-      'DROP INDEX idx_users_age;',
-    );
+    expect(generateDropIndex('users', diff, 'mysql')).toBe('DROP INDEX idx_users_age ON users;');
+    expect(generateDropIndex('users', diff, 'postgresql')).toBe('DROP INDEX idx_users_age;');
     expect(generateDropIndex('users', diff, 'sqlserver')).toBe(
       'DROP INDEX idx_users_age ON users;',
     );
-    expect(generateDropIndex('users', diff, 'oracle')).toBe(
-      'DROP INDEX idx_users_age;',
-    );
-    expect(generateDropIndex('users', diff, 'kingbase')).toBe(
-      'DROP INDEX idx_users_age ON users;',
-    );
+    expect(generateDropIndex('users', diff, 'oracle')).toBe('DROP INDEX idx_users_age;');
+    expect(generateDropIndex('users', diff, 'kingbase')).toBe('DROP INDEX idx_users_age ON users;');
   });
 
   it('应生成主键新增语句（多数据库分支）', () => {

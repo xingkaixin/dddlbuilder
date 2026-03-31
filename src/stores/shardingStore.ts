@@ -29,9 +29,7 @@ export const useShardingStore = create<ShardingStoreState>((set) => ({
         ...state.citusShardingConfig,
         mode,
         distributionColumn:
-          mode === 'reference'
-            ? undefined
-            : state.citusShardingConfig.distributionColumn,
+          mode === 'reference' ? undefined : state.citusShardingConfig.distributionColumn,
       },
     })),
   setDistributionColumn: (column) =>
@@ -47,18 +45,14 @@ export const useShardingStore = create<ShardingStoreState>((set) => ({
         ...state.citusShardingConfig,
         distributionColumn:
           state.citusShardingConfig.distributionColumn &&
-          isSameIdentifierToken(
-            state.citusShardingConfig.distributionColumn,
-            oldFieldName,
-          )
+          isSameIdentifierToken(state.citusShardingConfig.distributionColumn, oldFieldName)
             ? newFieldName
             : state.citusShardingConfig.distributionColumn,
       },
     })),
   setCitusShardingConfig: (value) =>
     set((state) => ({
-      citusShardingConfig:
-        typeof value === 'function' ? value(state.citusShardingConfig) : value,
+      citusShardingConfig: typeof value === 'function' ? value(state.citusShardingConfig) : value,
     })),
   markHydratedFromPersisted: () =>
     set({

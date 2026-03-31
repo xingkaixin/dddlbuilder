@@ -72,9 +72,7 @@ const FolderNode = memo<FolderNodeProps>(
     children,
   }) => {
     const { t } = useTranslation();
-    const hasChildren =
-      folder.children.length > 0 ||
-      (folder.tableCount && folder.tableCount > 0);
+    const hasChildren = folder.children.length > 0 || (folder.tableCount && folder.tableCount > 0);
     const dragId = toFolderDragId(folder.id);
     const { setNodeRef: setDropRef, isOver } = useDroppable({
       id: dragId,
@@ -127,8 +125,7 @@ const FolderNode = memo<FolderNodeProps>(
             className={cn(
               'inline-flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
               drawerInteractiveButtonClass,
-              dragDisabled &&
-                'cursor-not-allowed opacity-40 hover:bg-transparent',
+              dragDisabled && 'cursor-not-allowed opacity-40 hover:bg-transparent',
             )}
             aria-label={t('savedTables.dragFolder')}
             disabled={dragDisabled}
@@ -171,9 +168,7 @@ const FolderNode = memo<FolderNodeProps>(
             <span className="flex-1 truncate font-medium">{folder.name}</span>
             {/* 表数量 */}
             {folder.tableCount !== undefined && folder.tableCount > 0 && (
-              <span className="text-xs text-muted-foreground">
-                {folder.tableCount}
-              </span>
+              <span className="text-xs text-muted-foreground">{folder.tableCount}</span>
             )}
           </button>
 
@@ -213,9 +208,7 @@ const FolderNode = memo<FolderNodeProps>(
         </div>
 
         {/* 子内容（展开时显示） */}
-        {isExpanded && (
-          <fieldset className="m-0 min-w-0 border-0 p-0">{children}</fieldset>
-        )}
+        {isExpanded && <fieldset className="m-0 min-w-0 border-0 p-0">{children}</fieldset>}
       </div>
     );
   },
@@ -280,11 +273,7 @@ export const FolderTree = memo<FolderTreeProps>(
     return (
       <div className="space-y-0.5">
         {folders.length > 0 && (
-          <div
-            role="tree"
-            aria-label={t('savedTables.folderTreeAria')}
-            className="space-y-0.5"
-          >
+          <div role="tree" aria-label={t('savedTables.folderTreeAria')} className="space-y-0.5">
             {/* 根级文件夹 */}
             {folders.map((folder) => renderFolder(folder, 0))}
           </div>

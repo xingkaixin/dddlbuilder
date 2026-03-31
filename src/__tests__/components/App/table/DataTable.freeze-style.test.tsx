@@ -116,9 +116,8 @@ describe('DataTable 冻结列样式', () => {
 
   it('冻结表头应与普通表头保持一致底色，并移除旧渐变背景', () => {
     const { container } = render(<DataTable />);
-    const frozenHeader = container.querySelector<HTMLTableHeaderCellElement>(
-      'thead th:first-child',
-    );
+    const frozenHeader =
+      container.querySelector<HTMLTableHeaderCellElement>('thead th:first-child');
 
     expect(frozenHeader).not.toBeNull();
     if (!frozenHeader) return;

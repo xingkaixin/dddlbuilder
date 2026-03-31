@@ -161,10 +161,7 @@ export function generateModifyColumn(
   }
 }
 
-function generatePostgresModifyColumn(
-  tableName: string,
-  fieldDiff: FieldDiff,
-): string {
+function generatePostgresModifyColumn(tableName: string, fieldDiff: FieldDiff): string {
   if (!fieldDiff.newField) {
     return '';
   }
@@ -176,50 +173,35 @@ function generatePostgresModifyColumn(
     const typeMapper = TypeMapper.create('postgresql');
     const parsedType = parseFieldType(field.type);
     const mappedType = typeMapper.mapType(parsedType);
-    statements.push(
-      `ALTER TABLE ${tableName} ALTER COLUMN ${field.name} TYPE ${mappedType};`,
-    );
+    statements.push(`ALTER TABLE ${tableName} ALTER COLUMN ${field.name} TYPE ${mappedType};`);
   }
 
   if (changes.includes('nullable')) {
     if (field.nullable) {
-      statements.push(
-        `ALTER TABLE ${tableName} ALTER COLUMN ${field.name} DROP NOT NULL;`,
-      );
+      statements.push(`ALTER TABLE ${tableName} ALTER COLUMN ${field.name} DROP NOT NULL;`);
     } else {
-      statements.push(
-        `ALTER TABLE ${tableName} ALTER COLUMN ${field.name} SET NOT NULL;`,
-      );
+      statements.push(`ALTER TABLE ${tableName} ALTER COLUMN ${field.name} SET NOT NULL;`);
     }
   }
 
   if (changes.includes('default')) {
     const defaultClause = buildDefaultClause(field, 'postgresql');
     if (defaultClause) {
-      statements.push(
-        `ALTER TABLE ${tableName} ALTER COLUMN ${field.name} SET ${defaultClause};`,
-      );
+      statements.push(`ALTER TABLE ${tableName} ALTER COLUMN ${field.name} SET ${defaultClause};`);
     } else {
-      statements.push(
-        `ALTER TABLE ${tableName} ALTER COLUMN ${field.name} DROP DEFAULT;`,
-      );
+      statements.push(`ALTER TABLE ${tableName} ALTER COLUMN ${field.name} DROP DEFAULT;`);
     }
   }
 
   if (changes.includes('comment')) {
     const escapedComment = escapeSingleQuotes(field.comment);
-    statements.push(
-      `COMMENT ON COLUMN ${tableName}.${field.name} IS '${escapedComment}';`,
-    );
+    statements.push(`COMMENT ON COLUMN ${tableName}.${field.name} IS '${escapedComment}';`);
   }
 
   return statements.join('\n');
 }
 
-function buildColumnDefinition(
-  field: NormalizedField,
-  dbType: DatabaseType,
-): string {
+function buildColumnDefinition(field: NormalizedField, dbType: DatabaseType): string {
   const typeMapper = TypeMapper.create(dbType);
   const parsedType = parseFieldType(field.type);
   const type = typeMapper.mapType(parsedType);
@@ -228,10 +210,7 @@ function buildColumnDefinition(
   const parts: string[] = [type];
 
   // 自增（仅特定数据库和类型支持）
-  if (
-    field.defaultKind === 'auto_increment' &&
-    supportsAutoIncrement(dbType, base)
-  ) {
+  if (field.defaultKind === 'auto_increment' && supportsAutoIncrement(dbType, base)) {
     if (dbType === 'mysql' || dbType === 'mariadb' || dbType === 'tidb') {
       parts.push('AUTO_INCREMENT');
     }
@@ -248,20 +227,14 @@ function buildColumnDefinition(
   }
 
   // ON UPDATE（仅 MySQL 系）
-  if (
-    field.onUpdate === 'current_timestamp' &&
-    supportsOnUpdateCurrentTimestamp(dbType, base)
-  ) {
+  if (field.onUpdate === 'current_timestamp' && supportsOnUpdateCurrentTimestamp(dbType, base)) {
     parts.push('ON UPDATE CURRENT_TIMESTAMP');
   }
 
   // 注释（仅 MySQL 系内联）
   if (
     field.comment &&
-    (dbType === 'mysql' ||
-      dbType === 'mariadb' ||
-      dbType === 'tidb' ||
-      dbType === 'oceanbase')
+    (dbType === 'mysql' || dbType === 'mariadb' || dbType === 'tidb' || dbType === 'oceanbase')
   ) {
     parts.push(`COMMENT '${escapeSingleQuotes(field.comment)}'`);
   }

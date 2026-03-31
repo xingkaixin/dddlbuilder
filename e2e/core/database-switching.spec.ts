@@ -20,9 +20,7 @@ test.describe('数据库切换与方言验证 @core', () => {
       timeout: 10000,
     });
     await expect(
-      page.locator(
-        '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
-      ),
+      page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)'),
     ).toHaveText('HYDRATED_FIELD', { timeout: 10000 });
 
     // 1. 填写表名
@@ -65,9 +63,7 @@ test.describe('数据库切换与方言验证 @core', () => {
     await page.getByRole('option', { name: 'PostgreSQL', exact: true }).click();
 
     // 验证 PG 语法 (COMMENT ON TABLE)
-    await expect(sqlOutputElement).toContainText(
-      /COMMENT ON TABLE\s+users\s+IS\s+'用户表'/i,
-    );
+    await expect(sqlOutputElement).toContainText(/COMMENT ON TABLE\s+users\s+IS\s+'用户表'/i);
     // 验证 PG 的类型映射 (varchar(255) -> varchar(255))
     await expect(sqlOutputElement).toContainText(/id\s+varchar\(255\)/i);
   });
@@ -83,9 +79,7 @@ test.describe('数据库切换与方言验证 @core', () => {
     await page.getByRole('option', { name: 'Oracle', exact: true }).click();
 
     // Oracle Table COMMENT 语法
-    await expect(sqlOutputElement).toContainText(
-      /COMMENT ON TABLE\s+orders\s+IS\s+'订单表'/i,
-    );
+    await expect(sqlOutputElement).toContainText(/COMMENT ON TABLE\s+orders\s+IS\s+'订单表'/i);
     // Oracle 的类型映射 (varchar(255) -> VARCHAR2(255))
     await expect(sqlOutputElement).toContainText(/id\s+VARCHAR2\(255\)/i);
   });

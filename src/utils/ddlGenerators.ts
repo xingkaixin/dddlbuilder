@@ -12,10 +12,7 @@ import { buildTableOptionsClause } from './tableOptions';
 /**
  * Generate Citus sharding DDL
  */
-const buildCitusShardingDDL = (
-  tableName: string,
-  config: CitusShardingConfig,
-): string => {
+const buildCitusShardingDDL = (tableName: string, config: CitusShardingConfig): string => {
   const cleanTableName = tableName.trim();
   if (config.mode === 'reference') {
     return `SELECT create_reference_table('${cleanTableName}');`;
@@ -58,9 +55,7 @@ const buildMysqlPartitionClause = (config: MysqlPartitionConfig): string => {
 
       const partitionDefs = config.partitions
         .map((p) => {
-          const valueClause = isRange
-            ? `VALUES LESS THAN (${p.value})`
-            : `VALUES IN (${p.value})`;
+          const valueClause = isRange ? `VALUES LESS THAN (${p.value})` : `VALUES IN (${p.value})`;
           return `  PARTITION ${p.name} ${valueClause}`;
         })
         .join(',\n');
@@ -91,12 +86,7 @@ export const buildDDL = (
   }
 
   const strategy = DDLStrategyFactory.create(dbType);
-  let tableDDL = strategy.generateTableDDL(
-    tableName.trim(),
-    tableComment,
-    fields,
-    tableMiscConfig,
-  );
+  let tableDDL = strategy.generateTableDDL(tableName.trim(), tableComment, fields, tableMiscConfig);
 
   const tableOptionsClause = buildTableOptionsClause(dbType, tableMiscConfig);
   if (tableOptionsClause) {
@@ -138,9 +128,7 @@ export const buildDDL = (
     extraBlocks.push(citusDDL);
   }
 
-  return extraBlocks.length > 0
-    ? `${tableDDL}\n\n${extraBlocks.join('\n\n')}`
-    : tableDDL;
+  return extraBlocks.length > 0 ? `${tableDDL}\n\n${extraBlocks.join('\n\n')}` : tableDDL;
 };
 
 export const buildDCL = (
@@ -158,16 +146,12 @@ export const buildDCL = (
   switch (dbType) {
     case 'oracle':
       authorizationObjects.forEach((authObject) => {
-        statements.push(
-          `GRANT SELECT ON ${cleanTableName} TO ${authObject.trim()};`,
-        );
+        statements.push(`GRANT SELECT ON ${cleanTableName} TO ${authObject.trim()};`);
       });
       break;
     default:
       authorizationObjects.forEach((authObject) => {
-        statements.push(
-          `GRANT SELECT ON ${cleanTableName} TO ${authObject.trim()};`,
-        );
+        statements.push(`GRANT SELECT ON ${cleanTableName} TO ${authObject.trim()};`);
       });
       break;
   }

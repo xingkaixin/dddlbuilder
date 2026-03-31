@@ -33,9 +33,7 @@ describe('useFireworksIntro', () => {
       }),
     );
 
-    expect(localStorage.getItem).toHaveBeenCalledWith(
-      'ddlbuilder:fireworks:cny:shown:2026:v1',
-    );
+    expect(localStorage.getItem).toHaveBeenCalledWith('ddlbuilder:fireworks:cny:shown:2026:v1');
     expect(setShowFireworks).toHaveBeenCalledWith(true);
   });
 

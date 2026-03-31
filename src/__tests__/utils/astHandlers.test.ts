@@ -77,29 +77,19 @@ describe('astHandlers', () => {
 
     expect(result.tableName).toBe('users');
     expect(result.tableComment).toBe('用户表');
-    expect(result.fields.find((f) => f.name === 'id')?.defaultKind).toBe(
-      'auto_increment',
-    );
+    expect(result.fields.find((f) => f.name === 'id')?.defaultKind).toBe('auto_increment');
     expect(result.fields.find((f) => f.name === 'id')?.nullable).toBe(false);
     expect(result.fields.find((f) => f.name === 'id')?.comment).toBe('主键');
-    expect(result.fields.find((f) => f.name === 'uuid_col')?.defaultKind).toBe(
-      'uuid',
-    );
-    expect(
-      result.fields.find((f) => f.name === 'created_at')?.defaultKind,
-    ).toBe('current_timestamp');
-    expect(result.fields.find((f) => f.name === 'created_at')?.onUpdate).toBe(
+    expect(result.fields.find((f) => f.name === 'uuid_col')?.defaultKind).toBe('uuid');
+    expect(result.fields.find((f) => f.name === 'created_at')?.defaultKind).toBe(
       'current_timestamp',
     );
-    expect(
-      result.fields.find((f) => f.name === 'custom_func_col')?.defaultValue,
-    ).toBe('my_func()');
+    expect(result.fields.find((f) => f.name === 'created_at')?.onUpdate).toBe('current_timestamp');
+    expect(result.fields.find((f) => f.name === 'custom_func_col')?.defaultValue).toBe('my_func()');
 
     const primary = result.indexes.find((i) => i.isPrimary);
     const uniqueInline = result.indexes.find((i) => i.name === 'uk_uuid_col');
-    const uniqueConstraint = result.indexes.find((i) =>
-      i.name.startsWith('uk_'),
-    );
+    const uniqueConstraint = result.indexes.find((i) => i.name.startsWith('uk_'));
     const uniqueIndex = result.indexes.find((i) => i.name === 'idx_created');
 
     expect(primary).toBeDefined();
@@ -229,11 +219,7 @@ describe('astHandlers', () => {
 
     parseDCL(
       {
-        user_or_roles: [
-          { name: { value: 'app_user' } },
-          { user: 'reader' },
-          'raw_user',
-        ],
+        user_or_roles: [{ name: { value: 'app_user' } }, { user: 'reader' }, 'raw_user'],
       },
       result,
     );
@@ -249,11 +235,6 @@ describe('astHandlers', () => {
       result,
     );
 
-    expect(result.authObjects).toEqual([
-      'app_user',
-      'reader',
-      'raw_user',
-      'sa',
-    ]);
+    expect(result.authObjects).toEqual(['app_user', 'reader', 'raw_user', 'sa']);
   });
 });

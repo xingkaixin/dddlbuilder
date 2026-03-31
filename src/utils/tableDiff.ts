@@ -77,10 +77,7 @@ function normalizeFieldRow(row: FieldRow): NormalizedField | null {
     defaultKind = 'auto_increment';
   } else if (defaultKindStr === '常量' || defaultKindStr === 'constant') {
     defaultKind = 'constant';
-  } else if (
-    defaultKindStr === '当前时间' ||
-    defaultKindStr === 'current_timestamp'
-  ) {
+  } else if (defaultKindStr === '当前时间' || defaultKindStr === 'current_timestamp') {
     defaultKind = 'current_timestamp';
   } else if (defaultKindStr === 'uuid') {
     defaultKind = 'uuid';
@@ -108,9 +105,7 @@ function normalizeFieldRow(row: FieldRow): NormalizedField | null {
  */
 function extractFields(state: PersistedState): NormalizedField[] {
   if (!state.rows) return [];
-  return state.rows
-    .map(normalizeFieldRow)
-    .filter((f): f is NormalizedField => f !== null);
+  return state.rows.map(normalizeFieldRow).filter((f): f is NormalizedField => f !== null);
 }
 
 /**
@@ -130,10 +125,7 @@ function fieldsEqual(a: NormalizedField, b: NormalizedField): boolean {
 /**
  * 获取两个字段之间的差异
  */
-function getFieldChanges(
-  oldField: NormalizedField,
-  newField: NormalizedField,
-): FieldChangeType[] {
+function getFieldChanges(oldField: NormalizedField, newField: NormalizedField): FieldChangeType[] {
   const changes: FieldChangeType[] = [];
 
   if (oldField.type !== newField.type) {
@@ -160,9 +152,7 @@ function getFieldChanges(
  * 生成索引的唯一标识（用于比较）
  */
 function getIndexSignature(index: IndexDefinition): string {
-  const fieldsSig = index.fields
-    .map((f) => `${f.name}:${f.direction}`)
-    .join(',');
+  const fieldsSig = index.fields.map((f) => `${f.name}:${f.direction}`).join(',');
   const prefix = index.isPrimary ? 'PK' : index.unique ? 'UQ' : 'IX';
   return `${prefix}:${fieldsSig}`;
 }
@@ -170,10 +160,7 @@ function getIndexSignature(index: IndexDefinition): string {
 /**
  * 对比两个 PersistedState，生成变更详情
  */
-export function diffPersistedState(
-  oldState: PersistedState,
-  newState: PersistedState,
-): TableDiff {
+export function diffPersistedState(oldState: PersistedState, newState: PersistedState): TableDiff {
   const result: TableDiff = {
     hasChanges: false,
     tableNameChanged: false,
@@ -204,16 +191,14 @@ export function diffPersistedState(
   }
 
   // 2.5 杂项设置变更
-  const normalizeMiscConfig = (
-    config?: TableMiscConfig,
-  ): Required<TableMiscConfig> => {
+  const normalizeMiscConfig = (config?: TableMiscConfig): Required<TableMiscConfig> => {
     const normalized: Required<TableMiscConfig> = {
       enabled: false,
       engine: '',
       charset: '',
       collation: '',
       tablespace: '',
-      ...(config || {}),
+      ...config,
     };
     if (!normalized.enabled) {
       return {
@@ -324,9 +309,7 @@ export function diffPersistedState(
   // 如果有重命名配对，需要更新 result.fields
   if (renamedPairs.length > 0) {
     const removeIndexes = new Set(
-      renamedPairs.map((p) =>
-        result.fields.indexOf(removedFields[p.removeIdx]),
-      ),
+      renamedPairs.map((p) => result.fields.indexOf(removedFields[p.removeIdx])),
     );
     const addIndexes = new Set(
       renamedPairs.map((p) => result.fields.indexOf(addedFields[p.addIdx])),

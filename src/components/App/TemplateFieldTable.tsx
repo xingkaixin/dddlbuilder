@@ -1,28 +1,14 @@
 import { memo, useCallback, useMemo, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { DndContext, closestCenter } from '@dnd-kit/core';
-import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import {
-  useReactTable,
-  getCoreRowModel,
-  flexRender,
-  type Row,
-} from '@tanstack/react-table';
+import { useReactTable, getCoreRowModel, flexRender, type Row } from '@tanstack/react-table';
 import { GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DatabaseType, FieldRow } from '@/types';
 import { buildDuplicateNameSet } from '@/stores';
-import {
-  isReservedKeyword,
-  createEmptyRow,
-  ensureOrder,
-  toStringSafe,
-} from '@/utils/helpers';
+import { isReservedKeyword, createEmptyRow, ensureOrder, toStringSafe } from '@/utils/helpers';
 import { useFieldColumns } from './table/columns';
 import { useDataTableNavigation } from './table/useDataTableNavigation';
 import { useDataTableClipboard } from './table/useDataTableClipboard';
@@ -40,28 +26,15 @@ interface SortableTemplateRowProps {
   row: Row<FieldRow>;
   selectedCell: { row: number; col: number } | null;
   handleCellActivate: (rowIndex: number, colIndex: number) => void;
-  focusFirstInteractiveInCell: (
-    cellElement: HTMLTableCellElement | null,
-  ) => void;
+  focusFirstInteractiveInCell: (cellElement: HTMLTableCellElement | null) => void;
   t: (key: string) => string;
 }
 
 const SortableTemplateRow = memo<SortableTemplateRowProps>(
-  ({
-    row,
-    selectedCell,
-    handleCellActivate,
-    focusFirstInteractiveInCell,
-    t,
-  }) => {
-    const {
-      attributes,
-      listeners,
-      setNodeRef,
-      transform,
-      transition,
-      isDragging,
-    } = useSortable({ id: row.id });
+  ({ row, selectedCell, handleCellActivate, focusFirstInteractiveInCell, t }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+      id: row.id,
+    });
 
     return (
       <tr
@@ -78,9 +51,7 @@ const SortableTemplateRow = memo<SortableTemplateRowProps>(
       >
         {row.getVisibleCells().map((cell, colIndex) => {
           const isSelected =
-            selectedCell &&
-            selectedCell.row === row.index &&
-            selectedCell.col === colIndex - 1;
+            selectedCell && selectedCell.row === row.index && selectedCell.col === colIndex - 1;
           const isOrderColumn = cell.column.id === 'order';
 
           return (
@@ -128,182 +99,163 @@ const SortableTemplateRow = memo<SortableTemplateRowProps>(
 
 SortableTemplateRow.displayName = 'SortableTemplateRow';
 
-export const TemplateFieldTable = memo<TemplateFieldTableProps>(
-  ({ rows, setRows, dbType }) => {
-    const { t } = useTranslation();
-    const tableRef = useRef<HTMLDivElement>(null);
+export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows, dbType }) => {
+  const { t } = useTranslation();
+  const tableRef = useRef<HTMLDivElement>(null);
 
-    const columnWidths = useMemo(
-      () => ({
-        order: 72,
-        fieldName: 120,
-        fieldComment: 150,
-        fieldType: 120,
-        nullable: 70,
-        defaultKind: 110,
-        defaultValue: 100,
-        onUpdate: 100,
-        actions: 56,
-      }),
-      [],
-    );
+  const columnWidths = useMemo(
+    () => ({
+      order: 72,
+      fieldName: 120,
+      fieldComment: 150,
+      fieldType: 120,
+      nullable: 70,
+      defaultKind: 110,
+      defaultValue: 100,
+      onUpdate: 100,
+      actions: 56,
+    }),
+    [],
+  );
 
-    const editableColumnKeys = [
-      'fieldName',
-      'fieldComment',
-      'fieldType',
-      'nullable',
-      'defaultKind',
-      'defaultValue',
-      'onUpdate',
-    ] as const;
+  const editableColumnKeys = [
+    'fieldName',
+    'fieldComment',
+    'fieldType',
+    'nullable',
+    'defaultKind',
+    'defaultValue',
+    'onUpdate',
+  ] as const;
 
-    const duplicateNameSet = useMemo(() => buildDuplicateNameSet(rows), [rows]);
+  const duplicateNameSet = useMemo(() => buildDuplicateNameSet(rows), [rows]);
 
-    const rowWarnings = useMemo(() => {
-      return rows.map((row) => {
-        const warnings: string[] = [];
-        const name = toStringSafe(row?.fieldName).trim();
-        if (!name) return warnings;
-        if (duplicateNameSet.has(name)) {
-          warnings.push(t('dataTable.duplicateName'));
+  const rowWarnings = useMemo(() => {
+    return rows.map((row) => {
+      const warnings: string[] = [];
+      const name = toStringSafe(row?.fieldName).trim();
+      if (!name) return warnings;
+      if (duplicateNameSet.has(name)) {
+        warnings.push(t('dataTable.duplicateName'));
+      }
+      if (isReservedKeyword(dbType, name)) {
+        warnings.push(t('dataTable.reservedKeyword'));
+      }
+      return warnings;
+    });
+  }, [rows, duplicateNameSet, dbType, t]);
+
+  const { updateCellValue } = useFieldRowMutations({ rows, setRows });
+
+  const {
+    selectedCell,
+    setSelectedCell,
+    focusFirstInteractiveInCell,
+    handleCellActivate,
+    handleTabNavigation,
+  } = useDataTableNavigation({
+    rowsLength: rows.length,
+    editableColumnCount: editableColumnKeys.length,
+    tableRef,
+  });
+
+  const clearSelection = useCallback(() => {
+    setSelectedCell(null);
+  }, [setSelectedCell]);
+
+  const { handlePaste } = useDataTableClipboard({
+    rows,
+    setRows,
+    selectedCell,
+    editableColumnKeys,
+    syncFieldRenameDependencies: () => {},
+    clearSelection,
+  });
+
+  const handleRemoveRow = useCallback(
+    (index: number, amount: number) => {
+      setRows((prev) => {
+        const next = prev.slice();
+        next.splice(index, amount);
+        if (next.length === 0) {
+          next.push(createEmptyRow(0));
         }
-        if (isReservedKeyword(dbType, name)) {
-          warnings.push(t('dataTable.reservedKeyword'));
-        }
-        return warnings;
+        return ensureOrder(next);
       });
-    }, [rows, duplicateNameSet, dbType, t]);
+    },
+    [setRows],
+  );
 
-    const { updateCellValue } = useFieldRowMutations({ rows, setRows });
+  const columns = useFieldColumns({
+    mode: 'template',
+    columnWidths,
+    rowWarnings,
+    dbType,
+    updateCellValue,
+    handleTabNavigation,
+    onRemoveRow: handleRemoveRow,
+  });
 
-    const {
-      selectedCell,
-      setSelectedCell,
-      focusFirstInteractiveInCell,
-      handleCellActivate,
-      handleTabNavigation,
-    } = useDataTableNavigation({
-      rowsLength: rows.length,
-      editableColumnCount: editableColumnKeys.length,
-      tableRef,
-    });
+  const table = useReactTable({
+    data: rows,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getRowId: (row) => String(row.order),
+  });
 
-    const clearSelection = useCallback(() => {
-      setSelectedCell(null);
-    }, [setSelectedCell]);
+  const { sensors, rowIds, handleDragEnd } = useSortableFieldRows({
+    rows,
+    setRows,
+  });
 
-    const { handlePaste } = useDataTableClipboard({
-      rows,
-      setRows,
-      selectedCell,
-      editableColumnKeys,
-      syncFieldRenameDependencies: () => {},
-      clearSelection,
-    });
-
-    const handleRemoveRow = useCallback(
-      (index: number, amount: number) => {
-        setRows((prev) => {
-          const next = prev.slice();
-          next.splice(index, amount);
-          if (next.length === 0) {
-            next.push(createEmptyRow(0));
-          }
-          return ensureOrder(next);
-        });
-      },
-      [setRows],
-    );
-
-    const columns = useFieldColumns({
-      mode: 'template',
-      columnWidths,
-      rowWarnings,
-      dbType,
-      updateCellValue,
-      handleTabNavigation,
-      onRemoveRow: handleRemoveRow,
-    });
-
-    const table = useReactTable({
-      data: rows,
-      columns,
-      getCoreRowModel: getCoreRowModel(),
-      getRowId: (row) => String(row.order),
-    });
-
-    const { sensors, rowIds, handleDragEnd } = useSortableFieldRows({
-      rows,
-      setRows,
-    });
-
-    return (
-      <div className="rounded-md border bg-card/60">
-        <div
-          ref={tableRef}
-          className="max-h-[360px] overflow-auto p-2"
-          onPaste={handlePaste}
-        >
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={rowIds}
-              strategy={verticalListSortingStrategy}
+  return (
+    <div className="rounded-md border bg-card/60">
+      <div ref={tableRef} className="max-h-[360px] overflow-auto p-2" onPaste={handlePaste}>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
+            <table
+              className="w-full border-collapse text-sm"
+              data-testid="template-field-table"
+              aria-label={t('templateManager.editor.fieldList')}
             >
-              <table
-                className="w-full border-collapse text-sm"
-                data-testid="template-field-table"
-                aria-label={t('templateManager.editor.fieldList')}
-              >
-                <thead>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <tr
-                      key={headerGroup.id}
-                      className="border-b border-border/50"
-                    >
-                      {headerGroup.headers.map((header) => (
-                        <th
-                          key={header.id}
-                          className="h-10 px-2 text-left text-sm font-medium text-muted-foreground bg-muted/30"
-                          style={{
-                            width: header.getSize(),
-                            minWidth: header.getSize(),
-                          }}
-                        >
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext(),
-                              )}
-                        </th>
-                      ))}
-                    </tr>
-                  ))}
-                </thead>
-                <tbody>
-                  {table.getRowModel().rows.map((row) => (
-                    <SortableTemplateRow
-                      key={row.id}
-                      row={row}
-                      selectedCell={selectedCell}
-                      handleCellActivate={handleCellActivate}
-                      focusFirstInteractiveInCell={focusFirstInteractiveInCell}
-                      t={t}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </SortableContext>
-          </DndContext>
-        </div>
+              <thead>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id} className="border-b border-border/50">
+                    {headerGroup.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        className="h-10 px-2 text-left text-sm font-medium text-muted-foreground bg-muted/30"
+                        style={{
+                          width: header.getSize(),
+                          minWidth: header.getSize(),
+                        }}
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(header.column.columnDef.header, header.getContext())}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody>
+                {table.getRowModel().rows.map((row) => (
+                  <SortableTemplateRow
+                    key={row.id}
+                    row={row}
+                    selectedCell={selectedCell}
+                    handleCellActivate={handleCellActivate}
+                    focusFirstInteractiveInCell={focusFirstInteractiveInCell}
+                    t={t}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </SortableContext>
+        </DndContext>
       </div>
-    );
-  },
-);
+    </div>
+  );
+});
 
 TemplateFieldTable.displayName = 'TemplateFieldTable';

@@ -35,12 +35,9 @@ export const fireAndForget = (task: Promise<unknown>) => {
   });
 };
 
-export const buildShareStorageKey = (shareId: string) =>
-  `${STORAGE_KEY}:share:${shareId}`;
+export const buildShareStorageKey = (shareId: string) => `${STORAGE_KEY}:share:${shareId}`;
 
-export const parseSharePath = (
-  pathname: string,
-): { shareId: string | null; invalid: boolean } => {
+export const parseSharePath = (pathname: string): { shareId: string | null; invalid: boolean } => {
   if (!pathname.startsWith('/share/')) {
     return { shareId: null, invalid: false };
   }

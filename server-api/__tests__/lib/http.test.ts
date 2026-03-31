@@ -73,12 +73,7 @@ describe('http lib utilities', () => {
 
     it('returns error with code and requestId', () => {
       const c = mockContext('my-req');
-      const res: any = errorResponse(
-        c,
-        500,
-        'Server fail',
-        'SHARE_LOAD_FAILED',
-      );
+      const res: any = errorResponse(c, 500, 'Server fail', 'SHARE_LOAD_FAILED');
       expect(res.status).toBe(500);
       expect(res.data).toEqual({
         error: 'Server fail',
@@ -90,9 +85,7 @@ describe('http lib utilities', () => {
 
   describe('streamErrorPayload', () => {
     it('serializes basic error', () => {
-      expect(streamErrorPayload('error')).toBe(
-        JSON.stringify({ error: 'error' }),
-      );
+      expect(streamErrorPayload('error')).toBe(JSON.stringify({ error: 'error' }));
     });
     it('serializes with code and request id', () => {
       const exact = JSON.stringify({

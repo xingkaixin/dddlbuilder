@@ -1,16 +1,10 @@
-import type {
-  GeneratedField,
-  GeneratedIndex,
-  PartialTableSchema,
-} from '@/types/aiGenerate';
+import type { GeneratedField, GeneratedIndex, PartialTableSchema } from '@/types/aiGenerate';
 
 /**
  * Parse partial JSON for GeneratedTableSchema structure.
  * Extracts fields as they stream in, similar to parsePartialJson for ReviewResult.
  */
-export function parsePartialTableSchema(
-  text: string,
-): PartialTableSchema | null {
+export function parsePartialTableSchema(text: string): PartialTableSchema | null {
   if (!text || text.trim().length === 0) {
     return null;
   }
@@ -32,9 +26,7 @@ export function parsePartialTableSchema(
   }
 
   // Extract tableComment
-  const tableCommentMatch = text.match(
-    /"tableComment"\s*:\s*"((?:[^"\\]|\\.)*)"/,
-  );
+  const tableCommentMatch = text.match(/"tableComment"\s*:\s*"((?:[^"\\]|\\.)*)"/);
   if (tableCommentMatch) {
     result.tableComment = unescapeJsonString(tableCommentMatch[1]);
   }
@@ -47,9 +39,7 @@ export function parsePartialTableSchema(
 
     if (arrayStart !== -1) {
       const arrayContent = afterFields.slice(arrayStart + 1);
-      result.fields = extractArrayObjects(
-        arrayContent,
-      ) as unknown as GeneratedField[];
+      result.fields = extractArrayObjects(arrayContent) as unknown as GeneratedField[];
     }
   }
 
@@ -61,9 +51,7 @@ export function parsePartialTableSchema(
 
     if (arrayStart !== -1) {
       const arrayContent = afterIndexes.slice(arrayStart + 1);
-      result.indexes = extractArrayObjects(
-        arrayContent,
-      ) as unknown as GeneratedIndex[];
+      result.indexes = extractArrayObjects(arrayContent) as unknown as GeneratedIndex[];
     }
   }
 

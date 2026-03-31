@@ -3,9 +3,7 @@ import { createOpenAIStreamDebugLogger } from '../lib/aiStreamDebug.js';
 
 describe('createOpenAIStreamDebugLogger', () => {
   it('关闭时不应输出日志', () => {
-    const consoleInfoSpy = vi
-      .spyOn(console, 'info')
-      .mockImplementation(() => {});
+    const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
     const logger = createOpenAIStreamDebugLogger({
       enabled: false,
       requestId: 'req-1',
@@ -24,9 +22,7 @@ describe('createOpenAIStreamDebugLogger', () => {
   });
 
   it('启用时应输出结构化事件并截断预览', () => {
-    const consoleInfoSpy = vi
-      .spyOn(console, 'info')
-      .mockImplementation(() => {});
+    const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
     const logger = createOpenAIStreamDebugLogger({
       enabled: true,
       requestId: 'req-2',
@@ -41,9 +37,9 @@ describe('createOpenAIStreamDebugLogger', () => {
     logger.chunk(`first ${'x'.repeat(120)}`);
     logger.complete();
 
-    const payloads = consoleInfoSpy.mock.calls.map(([value]) =>
-      JSON.parse(String(value)),
-    ) as Array<Record<string, unknown>>;
+    const payloads = consoleInfoSpy.mock.calls.map(([value]) => JSON.parse(String(value))) as Array<
+      Record<string, unknown>
+    >;
 
     expect(payloads.map((payload) => payload.event)).toEqual([
       'ai_stream_start',
@@ -55,9 +51,7 @@ describe('createOpenAIStreamDebugLogger', () => {
   });
 
   it('连接后出错时应标记为 during_stream', () => {
-    const consoleInfoSpy = vi
-      .spyOn(console, 'info')
-      .mockImplementation(() => {});
+    const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
     const logger = createOpenAIStreamDebugLogger({
       enabled: true,
       requestId: 'req-3',
@@ -71,9 +65,10 @@ describe('createOpenAIStreamDebugLogger', () => {
     logger.connected();
     logger.error(new Error('boom'));
 
-    const lastPayload = JSON.parse(
-      String(consoleInfoSpy.mock.calls.at(-1)?.[0]),
-    ) as Record<string, unknown>;
+    const lastPayload = JSON.parse(String(consoleInfoSpy.mock.calls.at(-1)?.[0])) as Record<
+      string,
+      unknown
+    >;
 
     expect(lastPayload).toMatchObject({
       event: 'ai_stream_error',

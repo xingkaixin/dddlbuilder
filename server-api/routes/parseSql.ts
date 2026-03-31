@@ -1,11 +1,7 @@
 import type { Hono } from 'hono';
 import type { DatabaseType } from '../../src/types/index.js';
 import type { ApiEnv } from '../lib/context.js';
-import {
-  errorResponse,
-  parseJsonBodyWithLimit,
-  withMeta,
-} from '../lib/http.js';
+import { errorResponse, parseJsonBodyWithLimit, withMeta } from '../lib/http.js';
 
 const MAX_SQL_LENGTH = 50_000;
 const MAX_PARSE_SQL_BODY_BYTES = 131_072;
@@ -28,10 +24,7 @@ const SUPPORTED_DATABASE_TYPES = new Set<DatabaseType>([
 ]);
 
 function isValidDatabaseType(value: unknown): value is DatabaseType {
-  return (
-    typeof value === 'string' &&
-    SUPPORTED_DATABASE_TYPES.has(value as DatabaseType)
-  );
+  return typeof value === 'string' && SUPPORTED_DATABASE_TYPES.has(value as DatabaseType);
 }
 
 export function registerParseSqlRoute(app: Hono<ApiEnv>) {
@@ -59,12 +52,7 @@ export function registerParseSqlRoute(app: Hono<ApiEnv>) {
     }
 
     if (!isValidDatabaseType(dbType)) {
-      return errorResponse(
-        c,
-        400,
-        'Invalid database type',
-        'INVALID_DATABASE_TYPE',
-      );
+      return errorResponse(c, 400, 'Invalid database type', 'INVALID_DATABASE_TYPE');
     }
 
     try {

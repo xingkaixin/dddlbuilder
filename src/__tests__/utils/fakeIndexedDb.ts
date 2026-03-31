@@ -58,11 +58,7 @@ class FakeObjectStore {
     return new FakeIndex(this, keyPath, tx);
   }
 
-  private run<T>(
-    tx: FakeTransaction,
-    operation: () => T,
-    shouldError: (error: Error) => void,
-  ) {
+  private run<T>(tx: FakeTransaction, operation: () => T, shouldError: (error: Error) => void) {
     const request = createRequest();
 
     queueMicrotask(() => {
@@ -73,8 +69,7 @@ class FakeObjectStore {
         // 让 transaction 标记一个 pending request 完成
         tx.markRequestComplete();
       } catch (error) {
-        const err =
-          error instanceof Error ? error : new Error('Request failed');
+        const err = error instanceof Error ? error : new Error('Request failed');
         request.error = err;
         request.onerror?.({ target: request });
         shouldError(err);
@@ -102,9 +97,7 @@ class FakeObjectStore {
         if (query === undefined) {
           return Array.from(this.data.values());
         }
-        return Array.from(this.data.values()).filter(
-          (item) => item[indexKey] === query,
-        );
+        return Array.from(this.data.values()).filter((item) => item[indexKey] === query);
       },
       () => {
         tx.onerror?.({ target: tx });
@@ -119,9 +112,7 @@ class FakeObjectStore {
         if (query === undefined) {
           return this.data.size;
         }
-        return Array.from(this.data.values()).filter(
-          (item) => item[indexKey] === query,
-        ).length;
+        return Array.from(this.data.values()).filter((item) => item[indexKey] === query).length;
       },
       () => {
         tx.onerror?.({ target: tx });

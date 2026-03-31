@@ -68,15 +68,7 @@ function formatDate(
 }
 
 export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
-  ({
-    open,
-    onOpenChange,
-    tableNormalizedName,
-    tableName,
-    onRollback,
-    onCompare,
-    currentState,
-  }) => {
+  ({ open, onOpenChange, tableNormalizedName, tableName, onRollback, onCompare, currentState }) => {
     const { t } = useTranslation();
     const { resolvedLocale } = useLocale();
     const { showToast } = useToast();
@@ -117,7 +109,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
 
     useEffect(() => {
       if (open && tableNormalizedName) {
-        loadVersions();
+        void loadVersions();
       } else {
         setVersions([]);
         setSelectedId(null);
@@ -210,16 +202,12 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                       <div
                         className={cn(
                           'mt-1 h-2.5 w-2.5 shrink-0 rounded-full',
-                          index === 0
-                            ? 'bg-green-500'
-                            : 'bg-muted-foreground/30',
+                          index === 0 ? 'bg-green-500' : 'bg-muted-foreground/30',
                         )}
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">
-                            v{versions.length - index}
-                          </span>
+                          <span className="text-sm font-medium">v{versions.length - index}</span>
                           <span className="text-xs text-muted-foreground">
                             {formatDate(v.createdAt, resolvedLocale, (time) =>
                               t('reviewHistory.today', {
@@ -302,17 +290,13 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t('versionHistory.deleteConfirmTitle')}
-              </AlertDialogTitle>
+              <AlertDialogTitle>{t('versionHistory.deleteConfirmTitle')}</AlertDialogTitle>
               <AlertDialogDescription>
                 {t('versionHistory.deleteConfirmDescription')}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>
-                {t('dialogs.delete.cancel')}
-              </AlertDialogCancel>
+              <AlertDialogCancel>{t('dialogs.delete.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDelete}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"

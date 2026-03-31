@@ -43,8 +43,5 @@ export function reportError(error: unknown, context: ErrorContext): void {
   }
 
   // 默认行为: 开发期间仍可在控制台看到错误，后续可替换为监控 SDK 上报。
-  console.error(
-    `[${event.context.scope}] ${event.context.action}: ${event.message}`,
-    normalized,
-  );
+  console.error(`[${event.context.scope}] ${event.context.action}: ${event.message}`, normalized);
 }

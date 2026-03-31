@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  buildDDLReviewQueryKey,
-  buildAIGenerateQueryKey,
-} from '@/queryKeys/ai';
+import { buildDDLReviewQueryKey, buildAIGenerateQueryKey } from '@/queryKeys/ai';
 
 describe('queryKeys/ai', () => {
   describe('buildDDLReviewQueryKey', () => {
@@ -12,13 +9,7 @@ describe('queryKeys/ai', () => {
         tableName: 'x',
         dbType: 'mysql',
       });
-      expect(key).toEqual([
-        'ddl-review',
-        'zh-CN',
-        'mysql',
-        'x',
-        'CREATE TABLE x',
-      ]);
+      expect(key).toEqual(['ddl-review', 'zh-CN', 'mysql', 'x', 'CREATE TABLE x']);
     });
 
     it('使用传入的 locale', () => {
@@ -28,13 +19,7 @@ describe('queryKeys/ai', () => {
         dbType: 'postgres',
         locale: 'en-US',
       });
-      expect(key).toEqual([
-        'ddl-review',
-        'en-US',
-        'postgres',
-        'y',
-        'CREATE TABLE y',
-      ]);
+      expect(key).toEqual(['ddl-review', 'en-US', 'postgres', 'y', 'CREATE TABLE y']);
     });
   });
 
@@ -51,13 +36,7 @@ describe('queryKeys/ai', () => {
         conversationHistory: [],
       });
 
-      expect(key).toEqual([
-        'ai-generate-table',
-        'zh-CN',
-        'mysql',
-        'test',
-        expectedPayload,
-      ]);
+      expect(key).toEqual(['ai-generate-table', 'zh-CN', 'mysql', 'test', expectedPayload]);
     });
 
     it('传入全部参数时正确序列化', () => {

@@ -1,9 +1,6 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  parsePartialJson,
-  type PartialReviewResult,
-} from '@/utils/parsePartialJson';
+import { parsePartialJson, type PartialReviewResult } from '@/utils/parsePartialJson';
 import { requestDDLReview } from '@/services/reviewService';
 import { buildDDLReviewQueryKey } from '@/queryKeys/ai';
 import { useLocale } from '@/i18n/LocaleContext';
@@ -159,10 +156,7 @@ export function useDDLReview() {
           result: {
             score: result.score,
             summary: result.summary,
-            suggestions: result.suggestions as (
-              | string
-              | StructuredSuggestion
-            )[],
+            suggestions: result.suggestions as (string | StructuredSuggestion)[],
           },
           error: null,
         });
@@ -174,10 +168,7 @@ export function useDDLReview() {
           isLoading: false,
           streamingText: '',
           result: null,
-          error:
-            error instanceof Error
-              ? error.message
-              : i18n.t('services.reviewFailed'),
+          error: error instanceof Error ? error.message : i18n.t('services.reviewFailed'),
         });
       } finally {
         if (activeRequestRef.current?.controller === abortController) {

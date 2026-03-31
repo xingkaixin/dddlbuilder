@@ -33,10 +33,7 @@ export function SqlInputStep({
         <Label htmlFor="db-type" className="text-right">
           {t('importSql.sourceDb')}
         </Label>
-        <Select
-          value={selectedDbType}
-          onValueChange={(v) => onDbTypeChange(v as DatabaseType)}
-        >
+        <Select value={selectedDbType} onValueChange={(v) => onDbTypeChange(v as DatabaseType)}>
           <SelectTrigger className="col-span-3">
             <SelectValue placeholder={t('importSql.selectDbType')} />
           </SelectTrigger>
@@ -83,14 +80,10 @@ export function SqlInputStep({
           )}
           <div>
             {validationResult.success ? (
-              <span className="font-medium">
-                {t('importSql.validationPass')}
-              </span>
+              <span className="font-medium">{t('importSql.validationPass')}</span>
             ) : (
               <>
-                <span className="font-medium">
-                  {t('importSql.validationFail')}
-                </span>
+                <span className="font-medium">{t('importSql.validationFail')}</span>
                 {validationResult.lineNumber && (
                   <span className="ml-2 text-muted-foreground">
                     {t('importSql.lineNo', {

@@ -64,9 +64,7 @@ describe('ThemeSwitcher', () => {
   it('默认 system 时应显示系统模式', () => {
     render(<ThemeSwitcher />);
 
-    expect(screen.getByTestId('theme-switcher-trigger')).toHaveTextContent(
-      '主题：跟随系统',
-    );
+    expect(screen.getByTestId('theme-switcher-trigger')).toHaveTextContent('主题：跟随系统');
   });
 
   it('应展示三种主题选项', async () => {
@@ -139,9 +137,7 @@ describe('ThemeSwitcher', () => {
     act(() => {
       vi.advanceTimersByTime(180);
     });
-    expect(
-      screen.queryByTestId('theme-transition-overlay'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('theme-transition-overlay')).not.toBeInTheDocument();
     expect(trigger).not.toBeDisabled();
   });
 
@@ -159,9 +155,7 @@ describe('ThemeSwitcher', () => {
     fireEvent.click(screen.getByTestId('theme-option-light'));
 
     expect(setThemeMock).toHaveBeenCalledWith('light');
-    expect(
-      screen.queryByTestId('theme-transition-overlay'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('theme-transition-overlay')).not.toBeInTheDocument();
     expect(screen.getByTestId('theme-switcher-trigger')).not.toBeDisabled();
   });
 
@@ -184,9 +178,7 @@ describe('ThemeSwitcher', () => {
     fireEvent.click(screen.getByTestId('theme-option-system'));
 
     expect(setThemeMock).toHaveBeenCalledWith('system');
-    expect(
-      screen.queryByTestId('theme-transition-overlay'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('theme-transition-overlay')).not.toBeInTheDocument();
     expect(screen.getByTestId('theme-switcher-trigger')).not.toBeDisabled();
   });
 });

@@ -14,10 +14,7 @@ interface ExplainPopoverProps {
   containerRef: React.RefObject<HTMLDivElement | null>;
 }
 
-export function ExplainPopover({
-  children,
-  containerRef,
-}: ExplainPopoverProps) {
+export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) {
   const { t } = useTranslation();
   const trackEvent = useCallback((..._args: unknown[]) => {}, []);
   const [selection, setSelection] = useState<{
@@ -82,18 +79,17 @@ export function ExplainPopover({
 
   useEffect(() => {
     document.addEventListener('selectionchange', handleSelectionChange);
-    return () =>
-      document.removeEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
   }, [handleSelectionChange]);
 
   const handleExplain = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (selection) {
-      void trackEvent('sql_explain_start', {
+      trackEvent('sql_explain_start', {
         textLength: selection.text.length,
       });
-      startExplain(selection.text);
+      void startExplain(selection.text);
       setShowResult(true);
     }
   };
@@ -111,7 +107,7 @@ export function ExplainPopover({
 
   useEffect(() => {
     if (isComplete && !isStreaming && showResult) {
-      void trackEvent('sql_explain_complete');
+      trackEvent('sql_explain_complete');
     }
   }, [isComplete, isStreaming, showResult, trackEvent]);
 
@@ -131,22 +127,11 @@ export function ExplainPopover({
       },
       { force: debugEnabled },
     );
-  }, [
-    debugEnabled,
-    explanation,
-    isComplete,
-    isStreaming,
-    requestId,
-    showResult,
-  ]);
+  }, [debugEnabled, explanation, isComplete, isStreaming, requestId, showResult]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (
-        popoverRef.current &&
-        !popoverRef.current.contains(e.target as Node) &&
-        showResult
-      ) {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node) && showResult) {
         handleClose();
       }
     };
@@ -199,9 +184,7 @@ export function ExplainPopover({
           <div
             ref={popoverRef}
             className={`fixed z-[100] -translate-x-1/2 pb-3 animate-in fade-in duration-300 pointer-events-auto ${
-              showOnTop
-                ? '-translate-y-full slide-in-from-bottom-2'
-                : 'pt-3 slide-in-from-top-2'
+              showOnTop ? '-translate-y-full slide-in-from-bottom-2' : 'pt-3 slide-in-from-top-2'
             }`}
             style={{
               left: selection.x,

@@ -1,9 +1,4 @@
-import type {
-  DatabaseType,
-  NormalizedField,
-  IndexDefinition,
-  TableMiscConfig,
-} from '../types';
+import type { DatabaseType, NormalizedField, IndexDefinition, TableMiscConfig } from '../types';
 import type { TableDiff } from '../utils/tableDiff';
 
 export interface DDLStrategy {
@@ -20,20 +15,12 @@ export interface DDLStrategy {
   /**
    * 生成索引的DDL语句
    */
-  generateIndexDDL(
-    tableName: string,
-    index: IndexDefinition,
-    fields: NormalizedField[],
-  ): string;
+  generateIndexDDL(tableName: string, index: IndexDefinition, fields: NormalizedField[]): string;
 
   /**
    * 生成ALTER TABLE变更DDL语句
    */
-  generateAlterDDL?(
-    tableName: string,
-    diff: TableDiff,
-    fields: NormalizedField[],
-  ): string;
+  generateAlterDDL?(tableName: string, diff: TableDiff, fields: NormalizedField[]): string;
 
   /**
    * 格式化表名（处理schema、引号等）

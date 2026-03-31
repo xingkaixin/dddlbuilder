@@ -23,9 +23,7 @@ test.describe('SQL 导入功能验证 @tools', () => {
 
     // 填写 SQL 到导入文本框
     const sqlInput = page.locator('#sql-content');
-    await sqlInput.fill(
-      'CREATE TABLE import_test (id INT COMMENT "编号", name VARCHAR(50));',
-    );
+    await sqlInput.fill('CREATE TABLE import_test (id INT COMMENT "编号", name VARCHAR(50));');
 
     // 进入预览 -> 确认
     await page.getByRole('button', { name: /下一步/i }).click();
@@ -36,9 +34,7 @@ test.describe('SQL 导入功能验证 @tools', () => {
     await expect(page.locator('#table-name')).toHaveValue('import_test');
 
     // 验证 HOT 中的字段
-    const cell1 = page.locator(
-      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
-    );
+    const cell1 = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
     await expect(cell1).toHaveText('id');
 
     // 验证 SQL 生成面板同步更新

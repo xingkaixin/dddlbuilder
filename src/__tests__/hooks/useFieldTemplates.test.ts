@@ -24,9 +24,7 @@ describe('useFieldTemplates', () => {
   const mockRenameTemplate = vi.mocked(fieldTemplates.renameTemplate);
   const mockDeleteTemplate = vi.mocked(fieldTemplates.deleteTemplate);
   const mockDuplicateTemplate = vi.mocked(fieldTemplates.duplicateTemplate);
-  const mockCreateTemplateFromFields = vi.mocked(
-    fieldTemplates.createTemplateFromFields,
-  );
+  const mockCreateTemplateFromFields = vi.mocked(fieldTemplates.createTemplateFromFields);
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -93,9 +91,7 @@ describe('useFieldTemplates', () => {
       updatedAt: 2,
     };
 
-    mockListTemplates
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([created]);
+    mockListTemplates.mockResolvedValueOnce([]).mockResolvedValueOnce([created]);
     mockCreateTemplate.mockResolvedValue(created);
 
     const { result } = renderHook(() => useFieldTemplates());
@@ -104,9 +100,7 @@ describe('useFieldTemplates', () => {
       await flushPromises();
     });
 
-    let response:
-      | { ok: boolean; template?: { id: string }; message?: string }
-      | undefined;
+    let response: { ok: boolean; template?: { id: string }; message?: string } | undefined;
     await act(async () => {
       response = await result.current.create('New', []);
       await flushPromises();
@@ -240,9 +234,7 @@ describe('useFieldTemplates', () => {
       await flushPromises();
     });
 
-    let response:
-      | { ok: boolean; template?: { id: string }; message?: string }
-      | undefined;
+    let response: { ok: boolean; template?: { id: string }; message?: string } | undefined;
     await act(async () => {
       response = await result.current.createFromFields('From Fields', []);
       await flushPromises();
@@ -330,9 +322,7 @@ describe('useFieldTemplates', () => {
   });
 
   it('should remove template and refresh', async () => {
-    mockListTemplates
-      .mockResolvedValueOnce([{ id: '1' } as any])
-      .mockResolvedValueOnce([]);
+    mockListTemplates.mockResolvedValueOnce([{ id: '1' } as any]).mockResolvedValueOnce([]);
     mockDeleteTemplate.mockResolvedValue(undefined);
 
     const { result } = renderHook(() => useFieldTemplates());
@@ -341,9 +331,7 @@ describe('useFieldTemplates', () => {
       await flushPromises();
     });
 
-    let response:
-      | { ok: boolean; message?: string; reason?: string }
-      | undefined;
+    let response: { ok: boolean; message?: string; reason?: string } | undefined;
     await act(async () => {
       response = await result.current.remove('1');
       await flushPromises();

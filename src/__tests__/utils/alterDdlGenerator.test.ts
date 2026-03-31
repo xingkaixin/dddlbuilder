@@ -3,9 +3,7 @@ import { generateAlterDDL } from '@/utils/alterDdlGenerator';
 import type { TableDiff } from '@/utils/tableDiff';
 import type { NormalizedField } from '@/types';
 
-function createField(
-  overrides: Partial<NormalizedField> = {},
-): NormalizedField {
+function createField(overrides: Partial<NormalizedField> = {}): NormalizedField {
   return {
     name: 'test_field',
     type: 'VARCHAR(100)',
@@ -162,9 +160,7 @@ describe('generateAlterDDL', () => {
       };
       const result = generateAlterDDL('users', diff, [], 'postgresql');
       expect(result).toContain('ALTER TABLE users ALTER COLUMN name TYPE');
-      expect(result).toContain(
-        'ALTER TABLE users ALTER COLUMN name SET NOT NULL',
-      );
+      expect(result).toContain('ALTER TABLE users ALTER COLUMN name SET NOT NULL');
     });
 
     it('SQL Server 生成 ALTER COLUMN', () => {

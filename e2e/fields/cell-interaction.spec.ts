@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('单元格深度交互验证 @fields', () => {
-  test.beforeEach(async ({ context, page }) => {
+  test.beforeEach(async ({ context: _context, page }) => {
     await page.goto('/');
     await expect(page.locator('#table-name')).toBeVisible({ timeout: 10000 });
   });

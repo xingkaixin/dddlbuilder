@@ -2,15 +2,7 @@ import type React from 'react';
 import { memo } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import {
-  Columns3,
-  Database,
-  GripVertical,
-  History,
-  Pencil,
-  Table2,
-  Trash2,
-} from 'lucide-react';
+import { Columns3, Database, GripVertical, History, Pencil, Table2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import { cn } from '@/lib/utils';
@@ -29,13 +21,11 @@ const DB_ICON_MAP = Object.fromEntries(
   DATABASE_OPTIONS.map((option) => [option.value, option.icon]),
 ) as Record<string, React.ComponentType<{ className?: string }>>;
 
-const DbIcon = memo<{ dbType: string; className?: string }>(
-  ({ dbType, className }) => {
-    const iconClass = cn('h-3.5 w-3.5', className);
-    const Icon = DB_ICON_MAP[dbType] ?? Database;
-    return <Icon className={iconClass} />;
-  },
-);
+const DbIcon = memo<{ dbType: string; className?: string }>(({ dbType, className }) => {
+  const iconClass = cn('h-3.5 w-3.5', className);
+  const Icon = DB_ICON_MAP[dbType] ?? Database;
+  return <Icon className={iconClass} />;
+});
 DbIcon.displayName = 'DbIcon';
 
 const drawerInteractiveButtonClass =
@@ -67,11 +57,10 @@ export const TableItem = memo<TableItemProps>(
   }) => {
     const { t } = useTranslation();
     const { resolvedLocale } = useLocale();
-    const { attributes, listeners, setNodeRef, transform, transition } =
-      useDraggable({
-        id: toTableDragId(item.normalizedName),
-        disabled: dragDisabled,
-      });
+    const { attributes, listeners, setNodeRef, transform, transition } = useDraggable({
+      id: toTableDragId(item.normalizedName),
+      disabled: dragDisabled,
+    });
     const statusLabel = isActive
       ? activeDirty
         ? t('savedTables.dirty')
@@ -97,8 +86,7 @@ export const TableItem = memo<TableItemProps>(
           className={cn(
             'inline-flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
             drawerInteractiveButtonClass,
-            dragDisabled &&
-              'cursor-not-allowed opacity-40 hover:bg-transparent',
+            dragDisabled && 'cursor-not-allowed opacity-40 hover:bg-transparent',
           )}
           aria-label={t('savedTables.dragTable')}
           disabled={dragDisabled}
@@ -126,19 +114,10 @@ export const TableItem = memo<TableItemProps>(
               className="h-4 w-4 shrink-0 text-primary/80"
               data-testid={`table-icon:${item.normalizedName}`}
             />
-            <span
-              className={cn(
-                'truncate text-sm',
-                isActive ? 'font-semibold' : 'font-medium',
-              )}
-            >
+            <span className={cn('truncate text-sm', isActive ? 'font-semibold' : 'font-medium')}>
               {item.name}
             </span>
-            {statusLabel && (
-              <span className="text-xs text-muted-foreground">
-                {statusLabel}
-              </span>
-            )}
+            {statusLabel && <span className="text-xs text-muted-foreground">{statusLabel}</span>}
           </div>
           <div className="mt-1 ml-1 border-l border-border/50 pl-2">
             <div
@@ -155,10 +134,7 @@ export const TableItem = memo<TableItemProps>(
               </span>
               <span>
                 {t('savedTables.updatedAtShort', {
-                  date: formatDate(
-                    item.updatedAt || item.createdAt,
-                    resolvedLocale,
-                  ),
+                  date: formatDate(item.updatedAt || item.createdAt, resolvedLocale),
                 })}
               </span>
             </div>

@@ -3,9 +3,7 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { useSchemaApplyActions } from '@/components/App/hooks/useSchemaApplyActions';
 import type { ParsedResult } from '@/utils/SqlParser';
 
-function createHook(
-  initialState: Partial<Parameters<typeof useSchemaApplyActions>[0]> = {},
-) {
+function createHook(initialState: Partial<Parameters<typeof useSchemaApplyActions>[0]> = {}) {
   const spies = {
     setRows: vi.fn(),
     setIndexes: vi.fn(),
@@ -145,9 +143,7 @@ describe('useSchemaApplyActions', () => {
       const { hook, spies } = createHook({
         rows: [],
         reviewResult: {
-          suggestions: [
-            { id: 's1', type: 'add_field', description: 'Add field' },
-          ],
+          suggestions: [{ id: 's1', type: 'add_field', description: 'Add field' }],
         } as any,
       });
 
@@ -254,9 +250,7 @@ describe('useSchemaApplyActions', () => {
       });
 
       const setRowsUpdater = spies.setRows.mock.calls[0][0];
-      const newRows = setRowsUpdater([
-        { order: 1, fieldName: 'col1', fieldType: 'VARCHAR' },
-      ]);
+      const newRows = setRowsUpdater([{ order: 1, fieldName: 'col1', fieldType: 'VARCHAR' }]);
       expect(newRows).toHaveLength(0);
     });
 
@@ -289,10 +283,7 @@ describe('useSchemaApplyActions', () => {
       act(() => {
         vi.advanceTimersByTime(50);
       });
-      expect(spies.triggerIndexAnimation).toHaveBeenCalledWith(
-        newIndexes[0].id,
-        'add',
-      );
+      expect(spies.triggerIndexAnimation).toHaveBeenCalledWith(newIndexes[0].id, 'add');
     });
 
     it('should apply remove_index suggestion', () => {
@@ -309,10 +300,7 @@ describe('useSchemaApplyActions', () => {
         } as any);
       });
 
-      expect(spies.triggerIndexAnimation).toHaveBeenCalledWith(
-        'idx_1_id',
-        'remove',
-      );
+      expect(spies.triggerIndexAnimation).toHaveBeenCalledWith('idx_1_id', 'remove');
       act(() => {
         vi.advanceTimersByTime(500);
       });

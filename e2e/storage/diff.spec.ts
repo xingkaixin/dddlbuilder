@@ -1,16 +1,12 @@
 import { test, expect } from '@playwright/test';
 
 const fillBasicField = async (page: any, name = 'id') => {
-  const nameCell = page.locator(
-    '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
-  );
+  const nameCell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
   await nameCell.dblclick();
   await page.locator('[data-testid="data-table"] input').fill(name);
   await page.keyboard.press('Enter');
 
-  const typeCell = page.locator(
-    '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
-  );
+  const typeCell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)');
   await typeCell.dblclick();
   await page.locator('[data-testid="data-table"] input').fill('int');
   await page.keyboard.press('Enter');
@@ -38,18 +34,10 @@ test.describe('变更对比验证 @storage', () => {
     await page.getByRole('button', { name: /^保存$/ }).click();
     await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
 
-    await page
-      .getByRole('button', { name: /查看已保存表/i, exact: true })
-      .click();
-    await expect(
-      page.getByRole('heading', { name: '已保存的表' }),
-    ).toBeVisible();
-    await page
-      .getByRole('button', { name: new RegExp(tableName, 'i') })
-      .click();
-    await expect(
-      page.getByText(new RegExp(`当前：${tableName}`)),
-    ).toBeVisible();
+    await page.getByRole('button', { name: /查看已保存表/i, exact: true }).click();
+    await expect(page.getByRole('heading', { name: '已保存的表' })).toBeVisible();
+    await page.getByRole('button', { name: new RegExp(tableName, 'i') }).click();
+    await expect(page.getByText(new RegExp(`当前：${tableName}`))).toBeVisible();
 
     const typeCell = page.locator(
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
@@ -59,9 +47,7 @@ test.describe('变更对比验证 @storage', () => {
     await page.keyboard.press('Enter');
 
     await page.getByRole('button', { name: /查看表结构变更/i }).click();
-    await expect(
-      page.getByRole('heading', { name: /表结构变更对比/i }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: /表结构变更对比/i })).toBeVisible();
     await expect(page.getByText(/字段变更/)).toBeVisible();
   });
 });

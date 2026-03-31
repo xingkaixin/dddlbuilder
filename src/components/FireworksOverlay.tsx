@@ -20,9 +20,7 @@ interface FireworksOverlayProps {
   onComplete: () => void;
 }
 
-export default function FireworksOverlay({
-  onComplete,
-}: FireworksOverlayProps) {
+export default function FireworksOverlay({ onComplete }: FireworksOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stars, setStars] = useState<Star[]>([]);
   const [fireworkCount, setFireworkCount] = useState(0);
@@ -94,9 +92,7 @@ export default function FireworksOverlay({
       if (destroyed) return;
 
       const launchCount = prefersReducedMotion ? 2 : randomInt(3, 4);
-      const launchGap = prefersReducedMotion
-        ? random(220, 360)
-        : random(70, 130);
+      const launchGap = prefersReducedMotion ? random(220, 360) : random(70, 130);
       for (let i = 0; i < launchCount; i += 1) {
         scheduleTimeout(() => {
           const startX = random(width * 0.1, width * 0.9);

@@ -51,8 +51,7 @@ async function runWithStore<T>(
     const request = runner(store);
 
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () =>
-      reject(request.error ?? new Error('IndexedDB 请求失败'));
+    request.onerror = () => reject(request.error ?? new Error('IndexedDB 请求失败'));
     tx.onerror = () => reject(tx.error ?? new Error('事务失败'));
     tx.onabort = () => reject(tx.error ?? new Error('事务被中止'));
   });
@@ -89,9 +88,7 @@ export async function saveReview(
 /**
  * 获取评审历史列表（按时间倒序）
  */
-export async function listReviews(
-  tableNormalizedName?: string,
-): Promise<ReviewRecord[]> {
+export async function listReviews(tableNormalizedName?: string): Promise<ReviewRecord[]> {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(REVIEW_STORE_NAME, 'readonly');
@@ -136,10 +133,7 @@ export async function listReviewMetadata(
  * 获取单个评审记录
  */
 export async function getReview(id: string): Promise<ReviewRecord | null> {
-  const result = await runWithStore<ReviewRecord | undefined>(
-    'readonly',
-    (store) => store.get(id),
-  );
+  const result = await runWithStore<ReviewRecord | undefined>('readonly', (store) => store.get(id));
   return result ?? null;
 }
 
@@ -184,9 +178,7 @@ export async function pruneOldReviews(
 /**
  * 统计评审记录数量
  */
-export async function countReviews(
-  tableNormalizedName?: string,
-): Promise<number> {
+export async function countReviews(tableNormalizedName?: string): Promise<number> {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(REVIEW_STORE_NAME, 'readonly');

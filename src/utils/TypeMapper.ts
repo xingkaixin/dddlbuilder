@@ -50,12 +50,7 @@ export class TypeMapper {
     return this.formatType(targetType, args, suffix);
   }
 
-  private formatType(
-    base: string,
-    args: string[] = [],
-    suffix = '',
-    preserveCase = false,
-  ): string {
+  private formatType(base: string, args: string[] = [], suffix = '', preserveCase = false): string {
     const formattedArgs = args.map(this.uppercaseArg);
     const joined = formattedArgs.join(', ');
     const typeCore = joined
@@ -66,8 +61,7 @@ export class TypeMapper {
     return suffix ? `${typeCore} ${suffix}` : typeCore;
   }
 
-  private uppercaseArg = (value: string) =>
-    value.toLowerCase() === 'max' ? 'MAX' : value;
+  private uppercaseArg = (value: string) => (value.toLowerCase() === 'max' ? 'MAX' : value);
 
   getSupportedTypes(): string[] {
     const mapping = TYPE_MAPPINGS[this.databaseType];

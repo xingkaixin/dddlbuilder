@@ -21,9 +21,7 @@ test.describe('存储管理验证 @storage @smoke', () => {
     await page.locator('#table-name').fill('save_test_table');
 
     // 添加一个字段以确保可以保存（如果有校验的话）
-    const cell = page.locator(
-      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
-    );
+    const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
     await cell.dblclick();
     await page.locator('[data-testid="data-table"] input').fill('id');
     await page.keyboard.press('Enter');
@@ -37,13 +35,9 @@ test.describe('存储管理验证 @storage @smoke', () => {
 
     // 点击“查看已保存表”
     await page.getByRole('button', { name: /查看已保存表/i }).click();
-    await expect(
-      page.getByRole('heading', { name: '已保存的表' }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: '已保存的表' })).toBeVisible();
 
     // 在侧边栏/对话框中应该能看到
-    await expect(
-      page.getByRole('button', { name: /save_test_table/i }),
-    ).toBeVisible();
+    await expect(page.getByRole('button', { name: /save_test_table/i })).toBeVisible();
   });
 });

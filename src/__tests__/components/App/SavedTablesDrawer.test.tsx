@@ -37,12 +37,8 @@ vi.mock('@dnd-kit/core', () => ({
 
 vi.mock('@/components/ui/drawer', () => ({
   Drawer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  DrawerContent: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
-  ),
-  DrawerDescription: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
-  ),
+  DrawerContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DrawerDescription: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DrawerTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DrawerClose: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
@@ -76,9 +72,7 @@ describe('SavedTablesDrawer', () => {
     const searchInput = screen.getByTestId('saved-tables-search');
     expect(searchInput).toBeInTheDocument();
     expect(searchInput).toBeDisabled();
-    expect(
-      screen.getByText('暂无可搜索内容，先保存一个表即可使用搜索。'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('暂无可搜索内容，先保存一个表即可使用搜索。')).toBeInTheDocument();
   });
 
   it('非法文件夹循环拖拽应阻断移动并显示反馈', async () => {
@@ -137,9 +131,7 @@ describe('SavedTablesDrawer', () => {
 
     expect(onMoveFolder).not.toHaveBeenCalled();
     expect(
-      screen.getByText(
-        '不能将文件夹移动到自身或子文件夹，请选择其他目标目录。',
-      ),
+      screen.getByText('不能将文件夹移动到自身或子文件夹，请选择其他目标目录。'),
     ).toBeInTheDocument();
   });
 });

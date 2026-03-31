@@ -21,9 +21,7 @@ const restoreEnv = () => {
 };
 
 // Helper to create env object for tests
-const createEnv = (
-  overrides: Partial<ApiEnv['Bindings']> = {},
-): ApiEnv['Bindings'] => ({
+const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
   SHARE_KV: {} as KVNamespace,
   RATE_LIMIT_KV: {} as KVNamespace,
@@ -62,9 +60,9 @@ const loadApp = async (envConfig: Record<string, string | undefined>) => {
 
   // Create env with both the env vars from envConfig and default bindings
   const env = createEnv(
-    Object.fromEntries(
-      Object.entries(envConfig).filter(([, v]) => v !== undefined),
-    ) as Partial<ApiEnv['Bindings']>,
+    Object.fromEntries(Object.entries(envConfig).filter(([, v]) => v !== undefined)) as Partial<
+      ApiEnv['Bindings']
+    >,
   );
 
   return createAppWrapper(app, env);
@@ -163,24 +161,21 @@ describe.sequential('openai governance', () => {
       OPENAI_API_KEY: undefined,
     });
 
-    const response = await app.request(
-      'https://ddlbuilder.test/api/generate-table',
-      {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-forwarded-for': '3.3.3.3',
-          'user-agent': 'budget-test',
-        },
-        body: JSON.stringify({
-          description: '生成一个包含多字段和索引的大表结构',
-          dbType: 'mysql',
-          templates: [],
-          existingConfig: null,
-          conversationHistory: [],
-        }),
+    const response = await app.request('https://ddlbuilder.test/api/generate-table', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-forwarded-for': '3.3.3.3',
+        'user-agent': 'budget-test',
       },
-    );
+      body: JSON.stringify({
+        description: '生成一个包含多字段和索引的大表结构',
+        dbType: 'mysql',
+        templates: [],
+        existingConfig: null,
+        conversationHistory: [],
+      }),
+    });
 
     expect(response.status).toBe(429);
     const payload = await response.json();
@@ -192,9 +187,7 @@ describe.sequential('openai governance', () => {
   });
 
   it('结构化审计日志不应包含 SQL/DDL 原文', async () => {
-    const consoleInfoSpy = vi
-      .spyOn(console, 'info')
-      .mockImplementation(() => {});
+    const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     const app = await loadApp({
       OPENAI_RATELIMIT_ENABLED: 'true',
@@ -205,8 +198,7 @@ describe.sequential('openai governance', () => {
       OPENAI_API_KEY: undefined,
     });
 
-    const sensitiveDDL =
-      'CREATE TABLE secret_sensitive_table (card_no varchar(32));';
+    const sensitiveDDL = 'CREATE TABLE secret_sensitive_table (card_no varchar(32));';
 
     const response = await app.request('https://ddlbuilder.test/api/review', {
       method: 'POST',
@@ -224,19 +216,14 @@ describe.sequential('openai governance', () => {
 
     expect(response.status).toBe(503);
 
-    const loggedText = consoleInfoSpy.mock.calls
-      .map((args) => args.join(' '))
-      .join('\n');
+    const loggedText = consoleInfoSpy.mock.calls.map((args) => args.join(' ')).join('\n');
 
     expect(loggedText).toContain('openai_audit');
     expect(loggedText).not.toContain(sensitiveDDL);
 
     const auditPayloadRaw = consoleInfoSpy.mock.calls[0]?.[0];
     expect(typeof auditPayloadRaw).toBe('string');
-    const auditPayload = JSON.parse(String(auditPayloadRaw)) as Record<
-      string,
-      unknown
-    >;
+    const auditPayload = JSON.parse(String(auditPayloadRaw)) as Record<string, unknown>;
     expect(auditPayload).toMatchObject({
       event: 'openai_audit',
       route: 'review',

@@ -1,10 +1,6 @@
 import { memo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,9 +55,7 @@ export const RowActions = memo<RowActionsProps>(
         <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t('dataTable.rowActions.removeFieldRow')}
-              </AlertDialogTitle>
+              <AlertDialogTitle>{t('dataTable.rowActions.removeFieldRow')}</AlertDialogTitle>
               <AlertDialogDescription>
                 {t('dataTable.rowActions.removeFieldRowConfirm')}
                 <br />
@@ -78,9 +72,7 @@ export const RowActions = memo<RowActionsProps>(
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>
-                {t('dataTable.rowActions.cancel')}
-              </AlertDialogCancel>
+              <AlertDialogCancel>{t('dataTable.rowActions.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
                   onRemove();

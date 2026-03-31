@@ -26,14 +26,8 @@ export interface UseToastReturn {
     promise: Promise<T> | (() => Promise<T>),
     data?: {
       loading?: string | React.ReactNode;
-      success?:
-        | string
-        | React.ReactNode
-        | ((data: T) => string | React.ReactNode);
-      error?:
-        | string
-        | React.ReactNode
-        | ((error: any) => string | React.ReactNode);
+      success?: string | React.ReactNode | ((data: T) => string | React.ReactNode);
+      error?: string | React.ReactNode | ((error: any) => string | React.ReactNode);
     },
     options?: ExternalToast,
   ) => void;
@@ -48,54 +42,33 @@ export interface UseToastReturn {
 }
 
 export function useToast(): UseToastReturn {
-  const showToast = useCallback(
-    (msg: string | React.ReactNode, options?: ExternalToast) => {
-      toast(msg, options);
-    },
-    [],
-  );
+  const showToast = useCallback((msg: string | React.ReactNode, options?: ExternalToast) => {
+    toast(msg, options);
+  }, []);
 
-  const success = useCallback(
-    (msg: string | React.ReactNode, options?: ExternalToast) => {
-      toast.success(msg, options);
-    },
-    [],
-  );
+  const success = useCallback((msg: string | React.ReactNode, options?: ExternalToast) => {
+    toast.success(msg, options);
+  }, []);
 
-  const error = useCallback(
-    (msg: string | React.ReactNode, options?: ExternalToast) => {
-      toast.error(msg, options);
-    },
-    [],
-  );
+  const error = useCallback((msg: string | React.ReactNode, options?: ExternalToast) => {
+    toast.error(msg, options);
+  }, []);
 
-  const info = useCallback(
-    (msg: string | React.ReactNode, options?: ExternalToast) => {
-      toast.info(msg, options);
-    },
-    [],
-  );
+  const info = useCallback((msg: string | React.ReactNode, options?: ExternalToast) => {
+    toast.info(msg, options);
+  }, []);
 
-  const warning = useCallback(
-    (msg: string | React.ReactNode, options?: ExternalToast) => {
-      toast.warning(msg, options);
-    },
-    [],
-  );
+  const warning = useCallback((msg: string | React.ReactNode, options?: ExternalToast) => {
+    toast.warning(msg, options);
+  }, []);
 
   const promise = useCallback(
     <T>(
       promise: Promise<T> | (() => Promise<T>),
       data?: {
         loading?: string | React.ReactNode;
-        success?:
-          | string
-          | React.ReactNode
-          | ((data: T) => string | React.ReactNode);
-        error?:
-          | string
-          | React.ReactNode
-          | ((error: any) => string | React.ReactNode);
+        success?: string | React.ReactNode | ((data: T) => string | React.ReactNode);
+        error?: string | React.ReactNode | ((error: any) => string | React.ReactNode);
       },
       options?: ExternalToast,
     ) => {

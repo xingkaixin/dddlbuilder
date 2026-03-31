@@ -12,22 +12,13 @@ interface EditableCellProps {
 }
 
 export const EditableCell = memo<EditableCellProps>(
-  ({
-    value,
-    onChange,
-    onTabNavigate,
-    disabled = false,
-    className,
-    placeholder,
-  }) => {
+  ({ value, onChange, onTabNavigate, disabled = false, className, placeholder }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState(value);
     const inputRef = useRef<HTMLInputElement>(null);
     const cellRef = useRef<HTMLDivElement>(null);
     const pendingTabDirectionRef = useRef<1 | -1 | null>(null);
-    const triggerSourceRef = useRef<
-      'doubleClick' | 'keyboard' | 'replace' | null
-    >(null);
+    const triggerSourceRef = useRef<'doubleClick' | 'keyboard' | 'replace' | null>(null);
 
     // Sync with external value when not editing
     useEffect(() => {

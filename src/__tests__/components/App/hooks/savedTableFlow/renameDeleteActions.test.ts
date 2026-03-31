@@ -187,11 +187,7 @@ describe('useRenameDeleteActions', () => {
       oldName: 'old',
       newName: 'new_name',
     });
-    expect(renameSavedTableDraft).toHaveBeenCalledWith(
-      'test_table',
-      'new_name_norm',
-      'new_name',
-    );
+    expect(renameSavedTableDraft).toHaveBeenCalledWith('test_table', 'new_name_norm', 'new_name');
 
     // Loaded table updates matched the target
     expect(setLoadedTableNormalizedName).toHaveBeenCalledWith('new_name_norm');
@@ -310,10 +306,7 @@ describe('useRenameDeleteActions', () => {
     expect(setLoadedTableNormalizedName).toHaveBeenCalledWith(null);
     expect(setLoadedTableName).toHaveBeenCalledWith(null);
     expect(setLoadedTableSignature).toHaveBeenCalledWith(null);
-    expect(setWorkspaceSnapshot).toHaveBeenCalledWith(
-      { kind: 'global_draft' },
-      { test: 1 },
-    );
+    expect(setWorkspaceSnapshot).toHaveBeenCalledWith({ kind: 'global_draft' }, { test: 1 });
     expect(deleteDialog.closeDialog).toHaveBeenCalled();
   });
 

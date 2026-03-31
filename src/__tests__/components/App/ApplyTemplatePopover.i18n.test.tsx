@@ -7,12 +7,8 @@ import i18n from '@/i18n';
 
 vi.mock('@/components/ui/popover', () => ({
   Popover: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  PopoverTrigger: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
-  ),
-  PopoverContent: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
-  ),
+  PopoverTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  PopoverContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
 const templates: FieldTemplate[] = [
@@ -32,9 +28,7 @@ const templates: FieldTemplate[] = [
     name: 'Audit Fields',
     keywords: ['audit', 'metadata'],
     description: 'auditing',
-    fields: [
-      { fieldName: 'created_at', fieldType: 'datetime', nullable: '否' },
-    ],
+    fields: [{ fieldName: 'created_at', fieldType: 'datetime', nullable: '否' }],
     createdAt: Date.now() - 1000,
     updatedAt: Date.now() - 1000,
   },
@@ -42,9 +36,7 @@ const templates: FieldTemplate[] = [
     id: 'tpl-3',
     name: '审计日志',
     description: '记录审计轨迹',
-    fields: [
-      { fieldName: 'operator', fieldType: 'varchar(32)', nullable: '否' },
-    ],
+    fields: [{ fieldName: 'operator', fieldType: 'varchar(32)', nullable: '否' }],
     createdAt: Date.now() - 2000,
     updatedAt: Date.now() - 2000,
   },
@@ -83,12 +75,8 @@ describe('ApplyTemplatePopover i18n', () => {
     expect(screen.getByText('User Base')).toBeInTheDocument();
     expect(screen.getByText('2 fields')).toBeInTheDocument();
     expect(screen.getAllByText('Apply').length).toBeGreaterThan(0);
-    expect(
-      screen.getByPlaceholderText('Search by name, keyword, or field...'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('Save current rows as template...'),
-    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Search by name, keyword, or field...')).toBeInTheDocument();
+    expect(screen.getByText('Save current rows as template...')).toBeInTheDocument();
     expect(screen.getByText('Manage templates...')).toBeInTheDocument();
   });
 

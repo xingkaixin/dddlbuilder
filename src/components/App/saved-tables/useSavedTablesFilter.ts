@@ -8,11 +8,7 @@ type UseSavedTablesFilterParams = {
   searchQuery: string;
 };
 
-export function useSavedTablesFilter({
-  items,
-  folders,
-  searchQuery,
-}: UseSavedTablesFilterParams) {
+export function useSavedTablesFilter({ items, folders, searchQuery }: UseSavedTablesFilterParams) {
   const foldersWithCount = useMemo(() => {
     const countMap = new Map<string, number>();
 
@@ -36,8 +32,7 @@ export function useSavedTablesFilter({
     const query = searchQuery.toLowerCase().trim();
     return items.filter(
       (item) =>
-        item.name.toLowerCase().includes(query) ||
-        item.dbType.toLowerCase().includes(query),
+        item.name.toLowerCase().includes(query) || item.dbType.toLowerCase().includes(query),
     );
   }, [items, searchQuery]);
 

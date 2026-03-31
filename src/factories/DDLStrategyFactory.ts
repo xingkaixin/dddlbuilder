@@ -46,10 +46,7 @@ export class DDLStrategyFactory {
     return Array.from(strategies.keys());
   }
 
-  static registerStrategy(
-    databaseType: DatabaseType,
-    strategy: DDLStrategy,
-  ): void {
+  static registerStrategy(databaseType: DatabaseType, strategy: DDLStrategy): void {
     strategies.set(databaseType, strategy);
   }
 }

@@ -1,12 +1,5 @@
-import type {
-  HiveClusteringConfig,
-  NormalizedField,
-  TableMiscConfig,
-} from '../types';
-import {
-  escapeSingleQuotes,
-  parseFieldType,
-} from '../utils/databaseTypeMapping';
+import type { HiveClusteringConfig, NormalizedField, TableMiscConfig } from '../types';
+import { escapeSingleQuotes, parseFieldType } from '../utils/databaseTypeMapping';
 import { AbstractDDLStrategy } from './AbstractDDLStrategy';
 
 export class HiveStrategy extends AbstractDDLStrategy {
@@ -26,9 +19,7 @@ export class HiveStrategy extends AbstractDDLStrategy {
       const parsedType = parseFieldType(field.type);
       const type = typeMapper.mapType(parsedType);
 
-      const comment = field.comment
-        ? ` COMMENT '${escapeSingleQuotes(field.comment)}'`
-        : '';
+      const comment = field.comment ? ` COMMENT '${escapeSingleQuotes(field.comment)}'` : '';
 
       return `  ${this.formatFieldName(field.name)} ${type}${comment}`;
     });
@@ -39,13 +30,9 @@ export class HiveStrategy extends AbstractDDLStrategy {
       ? ` COMMENT '${escapeSingleQuotes(tableComment.trim())}'`
       : '';
 
-    const partitionClause = this.buildPartitionClause(
-      tableMiscConfig?.partitions,
-    );
+    const partitionClause = this.buildPartitionClause(tableMiscConfig?.partitions);
 
-    const clusteringClause = this.buildClusteringClause(
-      tableMiscConfig?.partitions?.clustering,
-    );
+    const clusteringClause = this.buildClusteringClause(tableMiscConfig?.partitions?.clustering);
 
     const storedAsClause = tableMiscConfig?.storedAs
       ? `\nSTORED AS ${tableMiscConfig.storedAs}`
@@ -75,9 +62,7 @@ export class HiveStrategy extends AbstractDDLStrategy {
     const columns = config.columns.map((col) => {
       const parsedType = parseFieldType(col.type);
       const type = typeMapper.mapType(parsedType);
-      const comment = col.comment
-        ? ` COMMENT '${escapeSingleQuotes(col.comment)}'`
-        : '';
+      const comment = col.comment ? ` COMMENT '${escapeSingleQuotes(col.comment)}'` : '';
       return `  ${col.name} ${type}${comment}`;
     });
 

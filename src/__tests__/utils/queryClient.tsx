@@ -21,9 +21,7 @@ export function createQueryClientWrapper() {
   function Wrapper({ children }: PropsWithChildren) {
     return (
       <LocaleProvider>
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
       </LocaleProvider>
     );
   }

@@ -102,17 +102,10 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
 
           <div className="flex items-center justify-between rounded-lg border border-dashed p-4">
             <div className="space-y-0.5">
-              <Label className="text-sm font-semibold">
-                {t('tableOptionsPanel.enable')}
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                {t('tableOptionsPanel.enableDesc')}
-              </p>
+              <Label className="text-sm font-semibold">{t('tableOptionsPanel.enable')}</Label>
+              <p className="text-xs text-muted-foreground">{t('tableOptionsPanel.enableDesc')}</p>
             </div>
-            <Switch
-              checked={config.enabled}
-              onCheckedChange={onEnabledChange}
-            />
+            <Switch checked={config.enabled} onCheckedChange={onEnabledChange} />
           </div>
 
           {!hasAnyOption ? (
@@ -132,18 +125,12 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                       <Select
                         value={effectiveEngine}
                         onValueChange={(value) =>
-                          onEngineChange(
-                            value === DEFAULT_OPTION_VALUE ? '' : value,
-                          )
+                          onEngineChange(value === DEFAULT_OPTION_VALUE ? '' : value)
                         }
                         disabled={disabled}
                       >
                         <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
-                          <SelectValue
-                            placeholder={t(
-                              'tableOptionsPanel.enginePlaceholder',
-                            )}
-                          />
+                          <SelectValue placeholder={t('tableOptionsPanel.enginePlaceholder')} />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value={DEFAULT_OPTION_VALUE}>
@@ -167,18 +154,12 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                       <Select
                         value={effectiveCharset}
                         onValueChange={(value) =>
-                          onCharsetChange(
-                            value === DEFAULT_OPTION_VALUE ? '' : value,
-                          )
+                          onCharsetChange(value === DEFAULT_OPTION_VALUE ? '' : value)
                         }
                         disabled={disabled}
                       >
                         <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
-                          <SelectValue
-                            placeholder={t(
-                              'tableOptionsPanel.charsetPlaceholder',
-                            )}
-                          />
+                          <SelectValue placeholder={t('tableOptionsPanel.charsetPlaceholder')} />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value={DEFAULT_OPTION_VALUE}>
@@ -202,18 +183,12 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                       <Select
                         value={effectiveCollation}
                         onValueChange={(value) =>
-                          onCollationChange(
-                            value === DEFAULT_OPTION_VALUE ? '' : value,
-                          )
+                          onCollationChange(value === DEFAULT_OPTION_VALUE ? '' : value)
                         }
                         disabled={disabled}
                       >
                         <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
-                          <SelectValue
-                            placeholder={t(
-                              'tableOptionsPanel.collationPlaceholder',
-                            )}
-                          />
+                          <SelectValue placeholder={t('tableOptionsPanel.collationPlaceholder')} />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value={DEFAULT_OPTION_VALUE}>
@@ -273,9 +248,7 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                       >
                         <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
                           <SelectValue
-                            placeholder={t(
-                              'tableOptionsPanel.storageFormatPlaceholder',
-                            )}
+                            placeholder={t('tableOptionsPanel.storageFormatPlaceholder')}
                           />
                         </SelectTrigger>
                         <SelectContent>

@@ -367,9 +367,7 @@ describe('TypeMapper', () => {
     it('should handle empty base type', () => {
       const mapper = TypeMapper.create('mysql');
 
-      expect(
-        mapper.mapType({ baseType: '', args: [], unsigned: false, raw: '' }),
-      ).toBe('');
+      expect(mapper.mapType({ baseType: '', args: [], unsigned: false, raw: '' })).toBe('');
     });
 
     it('should handle OceanBase Oracle mode', () => {

@@ -9,23 +9,15 @@ const FADE_START_AT_MS = 520;
 const TOTAL_DURATION_MS = 700;
 
 function getSystemTheme(): EffectiveTheme | null {
-  if (
-    typeof window === 'undefined' ||
-    typeof window.matchMedia !== 'function'
-  ) {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
     return null;
   }
 
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
-    ? 'dark'
-    : 'light';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 function prefersReducedMotion(): boolean {
-  if (
-    typeof window === 'undefined' ||
-    typeof window.matchMedia !== 'function'
-  ) {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
     return true;
   }
 
@@ -63,11 +55,7 @@ function resolveTargetEffectiveTheme(
   }
 
   if (currentTheme === 'system') {
-    return resolvedTheme === 'dark'
-      ? 'dark'
-      : resolvedTheme === 'light'
-        ? 'light'
-        : null;
+    return resolvedTheme === 'dark' ? 'dark' : resolvedTheme === 'light' ? 'light' : null;
   }
 
   return null;
@@ -78,9 +66,7 @@ interface ViewTransitionLike {
 }
 
 interface DocumentWithViewTransition extends Document {
-  startViewTransition?: (
-    callback: () => void | Promise<void>,
-  ) => ViewTransitionLike;
+  startViewTransition?: (callback: () => void | Promise<void>) => ViewTransitionLike;
 }
 
 export function useThemeTransition({
@@ -93,8 +79,7 @@ export function useThemeTransition({
   setTheme: (theme: ThemeMode) => void;
 }) {
   const [phase, setPhase] = useState<TransitionPhase>('idle');
-  const [targetEffectiveTheme, setTargetEffectiveTheme] =
-    useState<EffectiveTheme>('dark');
+  const [targetEffectiveTheme, setTargetEffectiveTheme] = useState<EffectiveTheme>('dark');
   const timersRef = useRef<number[]>([]);
 
   const clearTimers = useCallback(() => {
@@ -117,11 +102,7 @@ export function useThemeTransition({
       }
 
       const systemTheme = getSystemTheme();
-      const currentEffectiveTheme = resolveCurrentEffectiveTheme(
-        theme,
-        resolvedTheme,
-        systemTheme,
-      );
+      const currentEffectiveTheme = resolveCurrentEffectiveTheme(theme, resolvedTheme, systemTheme);
       const nextEffectiveTheme = resolveTargetEffectiveTheme(
         nextTheme,
         theme,
@@ -162,9 +143,7 @@ export function useThemeTransition({
       }
 
       clearTimers();
-      setTargetEffectiveTheme(
-        nextEffectiveTheme ?? currentEffectiveTheme ?? 'dark',
-      );
+      setTargetEffectiveTheme(nextEffectiveTheme ?? currentEffectiveTheme ?? 'dark');
       setPhase('wipe');
 
       const switchTimer = window.setTimeout(() => {

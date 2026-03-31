@@ -59,10 +59,7 @@ const MySQLProfile: StorageProfile = {
   calculateRowSize: (fields) => {
     // 隐藏列: TRX_ID(6) + ROLL_PTR(7) + ROW_ID(6, 假设有主键时不计)
     let overhead = 5 + 6 + 7;
-    const data = fields.reduce(
-      (acc, f) => acc + getFieldSize(f.type, 'mysql'),
-      0,
-    );
+    const data = fields.reduce((acc, f) => acc + getFieldSize(f.type, 'mysql'), 0);
     const nullBitmap = Math.ceil(fields.filter((f) => f.nullable).length / 8);
     overhead += nullBitmap;
 
@@ -83,10 +80,7 @@ const PostgresProfile: StorageProfile = {
   name: 'PostgreSQL',
   calculateRowSize: (fields) => {
     const overhead = 23 + 4; // Header + ItemID
-    let data = fields.reduce(
-      (acc, f) => acc + getFieldSize(f.type, 'postgresql'),
-      0,
-    );
+    let data = fields.reduce((acc, f) => acc + getFieldSize(f.type, 'postgresql'), 0);
 
     // 对齐补全 (粗略估算)
     const padding = Math.ceil(data / 8) * 8 - data;
@@ -109,10 +103,7 @@ const TiDBProfile: StorageProfile = {
   calculateRowSize: (fields) => {
     // TiDB 每行转换成 KV，Key 大约 10-20 字节，Value 含列数据
     const overhead = 20;
-    const data = fields.reduce(
-      (acc, f) => acc + getFieldSize(f.type, 'tidb'),
-      0,
-    );
+    const data = fields.reduce((acc, f) => acc + getFieldSize(f.type, 'tidb'), 0);
 
     return {
       overhead,
@@ -129,10 +120,7 @@ const TiDBProfile: StorageProfile = {
 const OceanBaseProfile: StorageProfile = {
   name: 'OceanBase',
   calculateRowSize: (fields) => {
-    const dataSize = fields.reduce(
-      (acc, f) => acc + getFieldSize(f.type, 'oceanbase'),
-      0,
-    );
+    const dataSize = fields.reduce((acc, f) => acc + getFieldSize(f.type, 'oceanbase'), 0);
     // OceanBase 高压缩率，假设 70% 压缩
     const compressedData = Math.ceil(dataSize * 0.3);
 
@@ -153,10 +141,7 @@ const OracleProfile: StorageProfile = {
   calculateRowSize: (fields) => {
     const overhead = 3; // 行头
     const columnOverhead = fields.length; // 每个字段约 1 字节长度标识
-    const data = fields.reduce(
-      (acc, f) => acc + getFieldSize(f.type, 'oracle'),
-      0,
-    );
+    const data = fields.reduce((acc, f) => acc + getFieldSize(f.type, 'oracle'), 0);
 
     return {
       overhead: overhead + columnOverhead,
@@ -175,10 +160,7 @@ const SqlServerProfile: StorageProfile = {
   calculateRowSize: (fields) => {
     const overhead = 4 + 2; // Row Header + Null Bitmap Header
     const nullBitmap = Math.ceil(fields.filter((f) => f.nullable).length / 8);
-    const data = fields.reduce(
-      (acc, f) => acc + getFieldSize(f.type, 'sqlserver'),
-      0,
-    );
+    const data = fields.reduce((acc, f) => acc + getFieldSize(f.type, 'sqlserver'), 0);
 
     return {
       overhead: overhead + nullBitmap,
@@ -197,10 +179,7 @@ const KingbaseProfile: StorageProfile = {
   calculateRowSize: (fields) => {
     // Kingbase 基于 PostgreSQL，使用类似的计算逻辑
     const overhead = 23 + 4; // Header + ItemID
-    let data = fields.reduce(
-      (acc, f) => acc + getFieldSize(f.type, 'kingbase'),
-      0,
-    );
+    let data = fields.reduce((acc, f) => acc + getFieldSize(f.type, 'kingbase'), 0);
 
     // 对齐补全 (粗略估算)
     const padding = Math.ceil(data / 8) * 8 - data;
@@ -224,10 +203,7 @@ const GBaseProfile: StorageProfile = {
   calculateRowSize: (fields) => {
     // GBase 基于 MySQL，使用类似的计算逻辑
     let overhead = 5 + 6 + 7; // 隐藏列开销
-    const data = fields.reduce(
-      (acc, f) => acc + getFieldSize(f.type, 'gbase'),
-      0,
-    );
+    const data = fields.reduce((acc, f) => acc + getFieldSize(f.type, 'gbase'), 0);
     const nullBitmap = Math.ceil(fields.filter((f) => f.nullable).length / 8);
     overhead += nullBitmap;
 
@@ -250,10 +226,7 @@ const PolarDBProfile: StorageProfile = {
   calculateRowSize: (fields) => {
     // PolarDB 基于 MySQL，使用类似的计算逻辑
     let overhead = 5 + 6 + 7; // 隐藏列开销
-    const data = fields.reduce(
-      (acc, f) => acc + getFieldSize(f.type, 'polardb'),
-      0,
-    );
+    const data = fields.reduce((acc, f) => acc + getFieldSize(f.type, 'polardb'), 0);
     const nullBitmap = Math.ceil(fields.filter((f) => f.nullable).length / 8);
     overhead += nullBitmap;
 
@@ -276,10 +249,7 @@ const GaussDBProfile: StorageProfile = {
   calculateRowSize: (fields) => {
     // GaussDB 基于 PostgreSQL，使用类似的计算逻辑
     const overhead = 23 + 4; // Header + ItemID
-    let data = fields.reduce(
-      (acc, f) => acc + getFieldSize(f.type, 'gaussdb'),
-      0,
-    );
+    let data = fields.reduce((acc, f) => acc + getFieldSize(f.type, 'gaussdb'), 0);
 
     // 对齐补全 (粗略估算)
     const padding = Math.ceil(data / 8) * 8 - data;
@@ -303,10 +273,7 @@ const HiveOrcProfile: StorageProfile = {
   name: 'Hive (ORC)',
   calculateRowSize: (fields) => {
     const overhead = 16; // ORC 行组元数据 + 索引
-    const rawData = fields.reduce(
-      (acc, f) => acc + getFieldSize(f.type, 'hive'),
-      0,
-    );
+    const rawData = fields.reduce((acc, f) => acc + getFieldSize(f.type, 'hive'), 0);
     const compressedData = Math.ceil(rawData * 0.25); // ORC 75% 压缩
 
     return {
@@ -326,10 +293,7 @@ const HiveParquetProfile: StorageProfile = {
   name: 'Hive (Parquet)',
   calculateRowSize: (fields) => {
     const overhead = 12; // Parquet 页级元数据
-    const rawData = fields.reduce(
-      (acc, f) => acc + getFieldSize(f.type, 'hive'),
-      0,
-    );
+    const rawData = fields.reduce((acc, f) => acc + getFieldSize(f.type, 'hive'), 0);
     const compressedData = Math.ceil(rawData * 0.45); // Parquet 55% 压缩
 
     return {
@@ -349,10 +313,7 @@ const HiveTextfileProfile: StorageProfile = {
   name: 'Hive (TEXTFILE)',
   calculateRowSize: (fields) => {
     const overhead = 1; // 行分隔符
-    const data = fields.reduce(
-      (acc, f) => acc + getFieldSize(f.type, 'hive'),
-      0,
-    );
+    const data = fields.reduce((acc, f) => acc + getFieldSize(f.type, 'hive'), 0);
 
     return {
       overhead,

@@ -69,17 +69,11 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
   const normalizedFields = useMemo(() => buildNormalizedFields(rows), [rows]);
 
   const availableFields = useMemo(
-    () =>
-      normalizedFields
-        .map((field) => field.name)
-        .filter((name) => name.length > 0),
+    () => normalizedFields.map((field) => field.name).filter((name) => name.length > 0),
     [normalizedFields],
   );
 
-  const filledRowCount = useMemo(
-    () => rows.filter((row) => row.fieldName?.trim()).length,
-    [rows],
-  );
+  const filledRowCount = useMemo(() => rows.filter((row) => row.fieldName?.trim()).length, [rows]);
 
   // --- 索引统计 ---
   const indexStats = useMemo(
@@ -126,10 +120,7 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     [rows],
   );
 
-  const sanitizedIndexesForPersist = useMemo(
-    () => sanitizeIndexesForPersist(indexes),
-    [indexes],
-  );
+  const sanitizedIndexesForPersist = useMemo(() => sanitizeIndexesForPersist(indexes), [indexes]);
 
   const currentPersistedState = useMemo(
     (): PersistedState => ({
@@ -143,11 +134,8 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
       indexes: sanitizedIndexesForPersist,
       authInput,
       authObjects,
-      citusShardingConfig:
-        dbType === 'postgresql-citus' ? citusShardingConfig : undefined,
-      mysqlPartitionConfig: supportsMysqlPartition
-        ? mysqlPartitionConfig
-        : undefined,
+      citusShardingConfig: dbType === 'postgresql-citus' ? citusShardingConfig : undefined,
+      mysqlPartitionConfig: supportsMysqlPartition ? mysqlPartitionConfig : undefined,
       tableMiscConfig,
       fieldTableViewConfig: {
         freezeEnabled: fieldTableFreezeEnabled,
@@ -179,17 +167,11 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     [currentPersistedState],
   );
 
-  const serializePersistedState = useCallback(
-    (state: PersistedState) => JSON.stringify(state),
-    [],
-  );
+  const serializePersistedState = useCallback((state: PersistedState) => JSON.stringify(state), []);
 
   // --- 加载状态派生 ---
   const currentStateSignature = useMemo(
-    () =>
-      loadedTableSignature == null
-        ? null
-        : serializePersistedState(currentPersistedState),
+    () => (loadedTableSignature == null ? null : serializePersistedState(currentPersistedState)),
     [loadedTableSignature, currentPersistedState, serializePersistedState],
   );
 
@@ -200,11 +182,7 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     currentStateSignature != null &&
     currentStateSignature !== loadedTableSignature;
   const canSaveCurrent = !hasLoadedTable || isLoadedDirty;
-  const loadedStatus = hasLoadedTable
-    ? isLoadedDirty
-      ? 'dirty'
-      : 'clean'
-    : null;
+  const loadedStatus = hasLoadedTable ? (isLoadedDirty ? 'dirty' : 'clean') : null;
   const saveDialogTitle = hasLoadedTable ? '更新保存的表' : '保存当前表';
   const saveDialogDescription = hasLoadedTable
     ? '当前为已加载表，保存将覆盖原记录。'

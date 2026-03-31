@@ -6,10 +6,7 @@ import {
   formatConstantDefault,
 } from '../databaseTypeMapping';
 
-export function buildDefaultClause(
-  field: NormalizedField,
-  dbType: DatabaseType,
-): string {
+export function buildDefaultClause(field: NormalizedField, dbType: DatabaseType): string {
   const base = getCanonicalBaseType(field.type);
 
   if (field.defaultKind === 'constant') {
@@ -25,10 +22,7 @@ export function buildDefaultClause(
     }
   }
 
-  if (
-    field.defaultKind === 'current_timestamp' &&
-    supportsDefaultCurrentTimestamp(dbType, base)
-  ) {
+  if (field.defaultKind === 'current_timestamp' && supportsDefaultCurrentTimestamp(dbType, base)) {
     if (dbType === 'sqlserver') {
       return 'DEFAULT GETDATE()';
     }

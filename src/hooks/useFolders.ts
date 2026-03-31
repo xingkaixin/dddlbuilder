@@ -32,10 +32,7 @@ export function useFolders() {
   const loadFolders = useCallback(async () => {
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      const [folders, folderTree] = await Promise.all([
-        listFolders(),
-        buildFolderTree(),
-      ]);
+      const [folders, folderTree] = await Promise.all([listFolders(), buildFolderTree()]);
       setState({
         folders,
         folderTree,
@@ -53,7 +50,7 @@ export function useFolders() {
 
   // 初始加载
   useEffect(() => {
-    loadFolders();
+    void loadFolders();
   }, [loadFolders]);
 
   // 创建文件夹
