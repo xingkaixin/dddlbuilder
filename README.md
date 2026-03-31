@@ -51,6 +51,7 @@ bun run build
 - `OPENAI_RATELIMIT_STORE`：计数存储（`redis` 或 `memory`，默认 `redis`，失败自动降级）
 - `OPENAI_DAILY_BUDGET_ENABLED`：是否启用每日预算控制
 - `OPENAI_DAILY_BUDGET_MAX_TOKENS`：每日预算上限（估算 token）
+- `OPENAI_STREAM_DEBUG`：是否启用后端 AI streaming 调试日志（默认 `false`）
 - `CSP_ENABLE`：是否启用 CSP 响应头
 - `CSP_MODE`：CSP 灰度模式（`off` / `report-only` / `enforce` / `both`）
 - `CSP_POLICY`：自定义 CSP 策略文本（可选，不配置则使用内置默认策略）
@@ -58,6 +59,24 @@ bun run build
 说明：`CSP_*` 配置在 Bun 服务端与 API 运行时生效；`vercel.json` 中仍保留静态 CSP 兜底策略。
 
 - `VITE_ENABLE_CNY_FIREWORKS`：是否启用春节烟花入口与节日动效（默认 `false`，设为 `true` 后恢复 Header 入口和烟花 overlay）
+- `VITE_ENABLE_AI_STREAM_DEBUG`：是否启用前端 AI streaming 调试日志（构建时变量，默认 `false`）
+
+调试说明：
+
+- 后端 `OPENAI_STREAM_DEBUG` 在 Worker 运行时生效；使用 `wrangler dev` 时，优先通过项目根目录下的 `.dev.vars` 注入，例如：
+
+```bash
+OPENAI_STREAM_DEBUG=true
+```
+
+- 前端 `VITE_ENABLE_AI_STREAM_DEBUG` 是构建时变量；如果只是临时本地排查，可直接在浏览器控制台执行：
+
+```js
+localStorage.setItem('ddlbuilder:ai-stream-debug', 'true')
+```
+
+- AI 路由响应头会暴露 `X-AI-Stream-Debug`。
+  值为 `1` 表示后端 stream debug 已生效，值为 `0` 表示当前请求未开启后端 stream debug。
 
 ## 使用说明
 

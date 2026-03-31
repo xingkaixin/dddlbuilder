@@ -2,6 +2,7 @@ import type { Hono } from 'hono';
 import { streamText } from 'hono/streaming';
 import OpenAI from 'openai';
 import type { ApiEnv } from '../lib/context.js';
+import { createOpenAIStreamDebugLogger } from '../lib/aiStreamDebug.js';
 import {
   enforceOpenAIDailyBudget,
   enforceOpenAIRateLimit,
@@ -134,9 +135,24 @@ export function registerReviewRoute(app: Hono<ApiEnv>) {
 
     const userPrompt = buildReviewUserPrompt(ddl, tableName, dbType, locale);
     const systemPrompt = REVIEW_SYSTEM_PROMPT[locale];
+    c.header('X-AI-Stream-Debug', config.streamDebugEnabled ? '1' : '0');
+    const streamDebug = createOpenAIStreamDebugLogger({
+      enabled: config.streamDebugEnabled,
+      requestId,
+      route,
+      model,
+      startedAt,
+      input: {
+        ddlLength: ddl.length,
+        tableNameLength: tableName.length,
+        dbType,
+        locale,
+      },
+    });
 
     return streamText(c, async (stream) => {
       let retryCount = 0;
+      streamDebug.start();
       try {
         const { data: response, attempts } = await withOpenAIRetry(
           async () =>
@@ -162,16 +178,20 @@ export function registerReviewRoute(app: Hono<ApiEnv>) {
         );
 
         retryCount = attempts;
+        streamDebug.connected();
 
         for await (const chunk of response) {
           const content = chunk.choices[0]?.delta?.content || '';
           if (content) {
+            streamDebug.chunk(content);
             await stream.write(content);
           }
         }
 
+        streamDebug.complete();
         audit(200, retryCount, false, false);
-      } catch {
+      } catch (error) {
+        streamDebug.error(error);
         audit(502, retryCount, false, false, 'UPSTREAM_OPENAI_ERROR');
         await stream.write(
           streamErrorPayload(

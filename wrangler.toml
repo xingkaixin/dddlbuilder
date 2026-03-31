@@ -2,6 +2,7 @@ name = "ddlbuilder"
 compatibility_date = "2026-03-17"
 main = "dist/server.js"
 
+
 # 前端静态资源
 [assets]
 directory = "dist/client"

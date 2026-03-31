@@ -23,4 +23,13 @@ describe('featureFlags', () => {
 
     expect(isCnyFireworksEnabled).toBe(true);
   });
+
+  it('设置 VITE_ENABLE_AI_STREAM_DEBUG=true 时应启用 AI 流调试', async () => {
+    vi.stubEnv('VITE_ENABLE_AI_STREAM_DEBUG', 'true');
+    vi.resetModules();
+
+    const { isAiStreamDebugEnabled } = await import('@/config/featureFlags');
+
+    expect(isAiStreamDebugEnabled).toBe(true);
+  });
 });

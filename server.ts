@@ -26,6 +26,7 @@ app.use('/api/*', async (c, next) => {
       OPENAI_DAILY_BUDGET_ENABLED: process.env.OPENAI_DAILY_BUDGET_ENABLED,
       OPENAI_DAILY_BUDGET_MAX_TOKENS:
         process.env.OPENAI_DAILY_BUDGET_MAX_TOKENS,
+      OPENAI_STREAM_DEBUG: process.env.OPENAI_STREAM_DEBUG,
       CSP_ENABLE: process.env.CSP_ENABLE,
       CSP_MODE: process.env.CSP_MODE,
       CSP_POLICY: process.env.CSP_POLICY,

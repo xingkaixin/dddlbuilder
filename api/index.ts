@@ -54,6 +54,7 @@ app.use(
     allowHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
     exposeHeaders: [
       'X-Request-Id',
+      'X-AI-Stream-Debug',
       'Retry-After',
       'X-RateLimit-Limit',
       'X-RateLimit-Remaining',

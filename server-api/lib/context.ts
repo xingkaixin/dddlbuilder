@@ -21,6 +21,7 @@ export type ApiEnv = {
     OPENAI_RETRY_MAX_DELAY_MS?: string;
     OPENAI_DAILY_BUDGET_ENABLED?: string;
     OPENAI_DAILY_BUDGET_MAX_TOKENS?: string;
+    OPENAI_STREAM_DEBUG?: string;
     OPENAI_API_KEY?: string;
     OPENAI_BASE_URL?: string;
     OPENAI_MODEL_NAME?: string;

@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDDLExplain } from '@/hooks/useDDLExplain';
+import { logAiStreamDebug } from '@/services/aiStreamDebug';
 import { useTranslation } from 'react-i18next';
 
 interface ExplainPopoverProps {
@@ -32,6 +33,8 @@ export function ExplainPopover({
     isComplete,
     explanation,
     error,
+    requestId,
+    debugEnabled,
     startExplain,
     clearExplain,
   } = useDDLExplain();
@@ -111,6 +114,31 @@ export function ExplainPopover({
       void trackEvent('sql_explain_complete');
     }
   }, [isComplete, isStreaming, showResult, trackEvent]);
+
+  useEffect(() => {
+    if (!showResult || explanation === null) {
+      return;
+    }
+
+    logAiStreamDebug(
+      'ai_explain_render_commit',
+      {
+        route: 'explain',
+        requestId,
+        explanationLength: explanation.length,
+        isStreaming,
+        isComplete,
+      },
+      { force: debugEnabled },
+    );
+  }, [
+    debugEnabled,
+    explanation,
+    isComplete,
+    isStreaming,
+    requestId,
+    showResult,
+  ]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

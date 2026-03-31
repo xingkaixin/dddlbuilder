@@ -73,6 +73,7 @@ export type OpenAIConfig = {
   retryMaxDelayMs: number;
   dailyBudgetEnabled: boolean;
   dailyBudgetMaxTokens: number;
+  streamDebugEnabled: boolean;
   counterStoreMode: 'memory' | 'kv';
   rateLimitRules: Record<OpenAIRouteKey, RateLimitRule>;
 };
@@ -91,6 +92,7 @@ export const buildOpenAIConfig = (env: ApiEnv['Bindings']): OpenAIConfig => {
     env.OPENAI_DAILY_BUDGET_MAX_TOKENS,
     0,
   );
+  const streamDebugEnabled = readEnvBool(env.OPENAI_STREAM_DEBUG, false);
   const counterStoreMode =
     env.OPENAI_RATELIMIT_STORE?.trim().toLowerCase() === 'memory'
       ? 'memory'
@@ -104,6 +106,7 @@ export const buildOpenAIConfig = (env: ApiEnv['Bindings']): OpenAIConfig => {
     retryMaxDelayMs,
     dailyBudgetEnabled,
     dailyBudgetMaxTokens,
+    streamDebugEnabled,
     counterStoreMode,
     rateLimitRules: {
       explain: {
