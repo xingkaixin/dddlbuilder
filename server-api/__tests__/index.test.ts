@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { vi } from 'vitest';
 import app from '../../api/index';
 import type { ApiEnv } from '../lib/context.js';
 
@@ -24,6 +25,55 @@ const createRequest = (path: string, options: RequestInit & { origin?: string } 
 };
 
 describe('api security guards', () => {
+  it('应将 /docs 重定向到 /docs/', async () => {
+    const env = createEnv();
+    const response = await app.fetch(createRequest('/docs'), env);
+
+    expect(response.status).toBe(301);
+    expect(response.headers.get('location')).toBe('/docs/');
+  });
+
+  it('应在 localhost 下代理 /docs/* 到 VitePress 开发服务', async () => {
+    const env = createEnv();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('<!doctype html><title>docs</title>', {
+        status: 200,
+        headers: { 'content-type': 'text/html; charset=utf-8' },
+      }),
+    );
+
+    const response = await app.fetch(createRequest('/docs/zh/?from=test'), env);
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [request] = fetchSpy.mock.calls[0] as [Request];
+    expect(request.url).toBe('http://127.0.0.1:5174/docs/zh/?from=test');
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain('<title>docs</title>');
+
+    fetchSpy.mockRestore();
+  });
+
+  it('应在非 localhost 下对 /docs/* 回落到静态资源', async () => {
+    const assetsFetch = vi.fn().mockResolvedValue(new Response('prod docs', { status: 200 }));
+    const env = createEnv({
+      ASSETS: { fetch: assetsFetch as typeof fetch },
+    });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    const response = await app.fetch(
+      new Request('https://ddl.xingkaixin.me/docs/zh/', {
+        method: 'GET',
+      }),
+      env,
+    );
+
+    expect(assetsFetch).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(await response.text()).toBe('prod docs');
+
+    fetchSpy.mockRestore();
+  });
+
   it('应对超大请求体返回 413', async () => {
     const env = createEnv();
     const response = await app.fetch(

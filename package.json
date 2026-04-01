@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun run build:wrangler-dev && wrangler dev --port 3000",
+    "dev": "bun run scripts/dev.ts",
+    "dev:docs": "bun run docs:dev",
     "build:wrangler-dev": "tsc -b tsconfig.build.json && vite build --config vite.config.server.ts && vite build",
     "build": "tsc -b tsconfig.build.json && vite build --config vite.config.server.ts && bun run scripts/verify-server-bundle.ts && vite build && bun run docs:build && cp -r dist/docs dist/client/",
     "docs:dev": "bun run --cwd docs docs:dev",

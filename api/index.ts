@@ -9,7 +9,10 @@ import { registerReviewRoute } from '../server-api/routes/review.js';
 import { registerGenerateTableRoute } from '../server-api/routes/generateTable.js';
 import { registerShareRoutes } from '../server-api/routes/share.js';
 
-const app = new Hono<ApiEnv>().basePath('/api');
+const DOCS_DEV_ORIGIN = 'http://127.0.0.1:5174';
+const LOCAL_DEV_HOSTS = new Set(['localhost', '127.0.0.1']);
+const api = new Hono<ApiEnv>().basePath('/api');
+const app = new Hono<ApiEnv>();
 
 const DEFAULT_ALLOWED_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173'];
 
@@ -32,7 +35,7 @@ const normalizeIncomingRequestId = (value: string | undefined) => {
   return trimmed;
 };
 
-app.use('/*', async (c, next) => {
+api.use('/*', async (c, next) => {
   const incoming = normalizeIncomingRequestId(c.req.header('x-request-id'));
   const requestId = incoming ?? crypto.randomUUID();
   c.set('requestId', requestId);
@@ -40,7 +43,7 @@ app.use('/*', async (c, next) => {
   await next();
 });
 
-app.use(
+api.use(
   '/*',
   cors({
     origin: (origin, c) => {
@@ -62,18 +65,40 @@ app.use(
   }),
 );
 
-app.use('/*', async (c, next) => {
+api.use('/*', async (c, next) => {
   await next();
   applyCspHeaders(c);
 });
 
-app.get('/health', (c) => c.json(withMeta(c, { status: 'ok' })));
+api.get('/health', (c) => c.json(withMeta(c, { status: 'ok' })));
 
-registerParseSqlRoute(app);
-registerExplainRoute(app);
-registerReviewRoute(app);
-registerGenerateTableRoute(app);
-registerShareRoutes(app);
+registerParseSqlRoute(api);
+registerExplainRoute(api);
+registerReviewRoute(api);
+registerGenerateTableRoute(api);
+registerShareRoutes(api);
+
+const isLocalDevRequest = (url: URL) => LOCAL_DEV_HOSTS.has(url.hostname);
+
+const createProxyRequest = (targetUrl: URL, request: Request) =>
+  new Request(targetUrl, {
+    method: request.method,
+    headers: request.headers,
+    body: request.method === 'GET' || request.method === 'HEAD' ? undefined : request.body,
+    redirect: 'manual',
+  });
+
+app.route('/', api);
+app.get('/docs', (c) => c.redirect('/docs/', 301));
+app.all('/docs/*', async (c) => {
+  const currentUrl = new URL(c.req.url);
+  if (!isLocalDevRequest(currentUrl)) {
+    return c.env.ASSETS.fetch(c.req.raw);
+  }
+
+  const targetUrl = new URL(currentUrl.pathname + currentUrl.search, DOCS_DEV_ORIGIN);
+  return fetch(createProxyRequest(targetUrl, c.req.raw));
+});
 
 // SPA fallback: non-API routes return index.html for client-side routing
 app.get('*', async (c) => {

@@ -30,12 +30,17 @@
 # 安装依赖
 bun i
 
-# 本地开发
+# 本地开发（唯一入口 http://localhost:3000）
 bun run dev
 
 # 产物构建
 bun run build
 ```
+
+开发命令说明：
+
+- `bun run dev`：同时拉起 `wrangler dev` 与 VitePress 文档服务；本地开发唯一入口是 `http://localhost:3000`，帮助文档会在 `http://localhost:3000/docs/` 下同域访问。
+- `bun run dev:docs`：仅启动文档开发服务（`http://127.0.0.1:5174/docs/`）。
 
 ### 环境变量
 
