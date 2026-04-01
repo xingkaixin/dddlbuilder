@@ -10,7 +10,7 @@ You do not need to handwrite SQL from scratch. With page-based configuration, yo
 
 ## Steps
 
-1. In the Table Config area, select the database type and fill in the table name and table comment. Result: the system locks the target database syntax and initializes the current table object.
+1. In the Table Config area, select the database type and fill in `Schema Name` when needed, together with table name and table comment. Result: the system locks the target database syntax and initializes the current table object; if `Schema Name` is filled, subsequent SQL uses the qualified `schema.table` name.
 2. In "Fields", fill in field name, field type, nullable, and default kind. Result: "Table DDL" on the right starts generating readable SQL in real time.
 3. Switch to "Indexes", "Privileges", and "Misc" as needed to complete additional settings. Result: DDL and DCL update automatically with your configuration.
 4. In the output area on the right, click "Copy DDL" or "Copy DCL". Result: statements are copied to your clipboard and can be sent directly for review or execution.
@@ -19,11 +19,13 @@ You do not need to handwrite SQL from scratch. With page-based configuration, yo
 ## Done when
 
 - A complete `CREATE TABLE` statement appears in "Table DDL" on the right.
+- If `Schema Name` is filled, DDL / DCL already uses the schema-qualified table name.
 - You see the "Copied" feedback after clicking copy.
 - You can see the newly saved table in "Saved Tables".
 
 ## Common pitfalls
 
 - If the database type is wrong, generated statements will not match your target database. Fix the database type before continuing.
+- `Schema Name` is optional. Keep the table input for the bare table name only, and do not paste `schema.table` into the table name field.
 - If you configure fields but no grantees, "Privilege DCL" may be empty. This is expected.
 - If you close the page without saving, drafts are still auto-preserved, but it is recommended to manually save a named table at key points.

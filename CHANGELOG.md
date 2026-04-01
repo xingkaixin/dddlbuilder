@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.6] - 2026-04-01
+### Added
+- **Table-level Schema Name configuration**: Adds an optional `Schema Name` input in table configuration. When schema separation is needed, DDL / DCL can now generate schema-qualified table names directly instead of requiring manual `schema.table` input in the table name field.
+
+### Improved
+- **Consistent schema handling across workflows**: AI table generation, SQL import, share links, drafts, and saved tables now preserve and restore schema information. Older data saved as `schema.table` is also split automatically into `Schema Name + Table Name` when loaded.
+
 ## [0.15.5] - 2026-03-17
 ### Added
 - **Hive database support**: Adds support for Apache Hive database with partitioning, bucketing (CLUSTERED BY), and storage format options. Indexes tab is hidden for Hive databases as they are not applicable.

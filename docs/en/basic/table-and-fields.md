@@ -10,7 +10,7 @@ You can complete table-level and field-level input in one screen and quickly pro
 
 ## Steps
 
-1. In "Table Config", fill in `Table Name`, `Table Comment`, and confirm `Database Type`. Result: the system generates subsequent SQL with the target database syntax.
+1. In "Table Config", fill in `Schema Name` when needed, together with `Table Name`, `Table Comment`, and `Database Type`. Result: the system generates subsequent SQL with the target database syntax; when `Schema Name` is not empty, table objects are emitted as `schema.table`.
 2. In "Fields", enter `Field Name`, `Comment`, and `Type` row by row. Result: the base field structure appears in the DDL on the right in real time.
 3. Configure `Nullable`, `Default Kind`, `Default Value`, and `On Update` based on field rules. Result: constraints and default behavior are written into SQL.
 4. Use `Add Rows` in the toolbar for bulk field input. Enable `Freeze` when needed to keep key columns visible. Result: editing large tables becomes faster and horizontal scrolling is less error-prone.
@@ -21,10 +21,12 @@ You can complete table-level and field-level input in one screen and quickly pro
 
 - The field list covers core fields for this table, and each row has complete field information.
 - DDL on the right updates in real time as fields change, with no blank structure.
+- If `Schema Name` is used, SQL on the right already shows the qualified table name.
 - If templates are used, template fields are successfully applied to the current table.
 
 ## Common pitfalls
 
 - Duplicate field names or reserved keywords will trigger warnings. Rename first before continuing.
+- When `Schema Name` is empty, generation keeps the original bare table name behavior. Keep the table field for the table name only, and do not mix `schema.table` into it.
 - Filling only field names without setting field types leads to incomplete structure information.
 - After large paste operations, spot-check "Default Kind" and "On Update" by column to avoid misalignment.

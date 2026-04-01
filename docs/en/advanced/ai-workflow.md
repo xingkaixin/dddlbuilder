@@ -17,20 +17,22 @@ You can turn business requirements into executable field and index drafts first,
 
 1. Click `AI Table Workshop` in the table configuration area. Result: the AI conversation panel opens.
 2. Enter your first requirement with clear object, key fields, constraints, and index preferences. Result: AI returns the first schema draft.
-3. If current configuration already exists, continue with instructions like "add fields", "adjust types", and "add indexes". Result: AI generates continuously based on existing context without re-describing everything.
+3. If current configuration already exists, continue with instructions like "add fields", "adjust types", and "add indexes". Result: AI generates continuously based on existing context without re-describing everything; if the workspace already has `Schema Name`, it is also passed in as table-level context.
 4. If you need standard field reuse, select templates before generating. Result: AI prioritizes template fields and improves structural consistency.
-5. After confirming the result, click `Apply to table config`. Result: fields and indexes are written into workspace and become editable.
+5. After confirming the result, click `Apply to table config`. Result: fields and indexes are written into workspace and become editable; if AI returns `schemaName` or a schema-qualified table name, the system splits and fills `Schema Name` and `Table Name` automatically.
 6. Return to the main interface and manually review key items. Result: types, nullable, default values, index naming, and business constraints are finally confirmed.
 
 ## Done when
 
 - AI results have been successfully applied to the current table configuration.
 - Field and index count, naming, and constraints match the target business scenario.
+- If this design requires a schema, `Schema Name` is aligned with the target table after apply.
 - DDL output on the right is ready to enter the review flow.
 
 ## Common pitfalls and failure handling
 
 - Input is too short: AI output becomes generic. Add business semantics, field roles, and constraints, then retry.
+- If you need a schema-qualified table, state the schema directly in the prompt, or fill `Schema Name` in the workspace before continuing the conversation.
 - Generation fails or is interrupted: keep current prompt and retry once directly; if needed, split into smaller requests.
 - Direct execution risk: AI output is a draft. Do not skip manual review before execution.
 - History drifts from target: use `Restart` to clear context and rebuild requirements with the new goal.

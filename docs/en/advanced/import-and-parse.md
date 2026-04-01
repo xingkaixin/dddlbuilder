@@ -19,7 +19,7 @@ You can quickly convert external SQL into editable configuration, then continue 
 2. In `Source Database`, choose the correct database type and paste SQL. Result: the system parses with that dialect.
 3. Click `Next` to complete validation. Result: on pass, it enters `Preview`; on failure, it shows error messages and location details.
 4. In `Preview`, inspect fields, indexes, and grantees. Adjust field order or remove unnecessary fields if needed. Result: import content is confirmed before final apply.
-5. Enter `Confirm` and execute import. Result: parsed results are written into the current workspace, and you can continue editing and generate new SQL.
+5. Enter `Confirm` and execute import. Result: parsed results are written into the current workspace; if source SQL includes a schema, the system splits it into `Schema Name` and the bare `Table Name`, then you can continue editing and generate new SQL.
 
 ## Supported statement scope
 
@@ -30,13 +30,14 @@ You can quickly convert external SQL into editable configuration, then continue 
 
 ## Done when
 
-- After import, table name, fields, indexes, and grantees appear in the current workspace.
+- After import, table name, fields, indexes, and grantees appear in the current workspace. If a schema exists, `Schema Name` is also filled correctly.
 - DDL and DCL outputs on the right are no longer empty and match expected structure.
 - You can continue incremental adjustments based on imported results.
 
 ## Common pitfalls and failure handling
 
 - Dialect mismatch: the same SQL may parse differently under different database types. Change `Source Database` first and retry.
+- If older SQL stores the object name as `schema.table`, the system will try to split it into `Schema Name + Table Name`. Check the split result after import.
 - SQL too long: it fails directly when beyond limits. Split into core table-creation segments before import.
 - Parse failure: keep a minimal reproducible segment first, then add statements back piece by piece to locate the problematic part.
 - No valid table structure recognized: usually caused by missing key table statements or incomplete syntax. Check the `CREATE TABLE` body first.
