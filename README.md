@@ -30,8 +30,11 @@
 # 安装依赖
 bun i
 
-# 本地开发（唯一入口 http://localhost:3000）
+# 本地开发（应用）
 bun run dev
+
+# 文档开发（需要查看 /docs 时单独启动）
+bun run dev:docs
 
 # 产物构建
 bun run build
@@ -39,8 +42,9 @@ bun run build
 
 开发命令说明：
 
-- `bun run dev`：同时拉起 `wrangler dev` 与 VitePress 文档服务；本地开发唯一入口是 `http://localhost:3000`，帮助文档会在 `http://localhost:3000/docs/` 下同域访问。
+- `bun run dev`：仅启动应用开发服务（`wrangler dev`），入口为 `http://localhost:3000`。
 - `bun run dev:docs`：仅启动文档开发服务（`http://127.0.0.1:5174/docs/`）。
+- 如需在主应用中同域查看帮助文档，请同时运行 `bun run dev` 与 `bun run dev:docs`，然后访问 `http://localhost:3000/docs/`。
 
 ### 环境变量
 
