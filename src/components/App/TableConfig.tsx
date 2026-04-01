@@ -10,9 +10,11 @@ import { DATABASE_OPTIONS } from '@/utils/constants';
 import { useTranslation } from 'react-i18next';
 
 interface TableConfigProps {
+  schemaName: string;
   tableName: string;
   tableComment: string;
   dbType: DatabaseType;
+  onSchemaNameChange: (value: string) => void;
   onTableNameChange: (value: string) => void;
   onTableCommentChange: (value: string) => void;
   onDbTypeChange: (value: DatabaseType) => void;
@@ -31,9 +33,11 @@ interface TableConfigProps {
 
 export const TableConfig = memo<TableConfigProps>(
   ({
+    schemaName,
     tableName,
     tableComment,
     dbType,
+    onSchemaNameChange,
     onTableNameChange,
     onTableCommentChange,
     onDbTypeChange,
@@ -130,7 +134,7 @@ export const TableConfig = memo<TableConfigProps>(
           </Tooltip>
         </div>
         <div className="relative p-4">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="space-y-3 group/field">
               <Label
                 htmlFor="table-name"
@@ -202,6 +206,21 @@ export const TableConfig = memo<TableConfigProps>(
                 )}
                 {statusLabel && <span className={`text-xs ${statusClass}`}>{statusLabel}</span>}
               </div>
+            </div>
+            <div className="space-y-3 group/field">
+              <Label
+                htmlFor="schema-name"
+                className="text-sm font-medium transition-colors duration-200 group-hover/field:text-primary"
+              >
+                {t('tableConfig.schemaName')}
+              </Label>
+              <Input
+                id="schema-name"
+                placeholder={t('tableConfig.schemaNamePlaceholder')}
+                value={schemaName}
+                onChange={(event) => onSchemaNameChange(event.target.value)}
+                className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+              />
             </div>
             <div className="space-y-3 group/field">
               <Label

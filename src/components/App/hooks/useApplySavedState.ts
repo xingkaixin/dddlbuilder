@@ -17,6 +17,7 @@ interface UseApplySavedStateParams {
   resetPartition: () => void;
   setTableMiscConfig: (config: NonNullable<PersistedState['tableMiscConfig']>) => void;
   resetTableMiscConfig: () => void;
+  setSchemaName: (name: string) => void;
   setTableName: (name: string) => void;
   setTableComment: (comment: string) => void;
   setDbType: (dbType: PersistedState['dbType']) => void;
@@ -41,6 +42,7 @@ export function useApplySavedState({
   resetPartition,
   setTableMiscConfig,
   resetTableMiscConfig,
+  setSchemaName,
   setTableName,
   setTableComment,
   setDbType,
@@ -50,6 +52,7 @@ export function useApplySavedState({
 }: UseApplySavedStateParams) {
   return useCallback(
     (state: PersistedState) => {
+      setSchemaName(state.schemaName ?? '');
       setTableName(state.tableName ?? '');
       setTableComment(state.tableComment ?? '');
       setDbType(state.dbType ?? 'mysql');
@@ -112,6 +115,7 @@ export function useApplySavedState({
       resetPartition,
       setTableMiscConfig,
       resetTableMiscConfig,
+      setSchemaName,
       setTableName,
       setTableComment,
       setDbType,

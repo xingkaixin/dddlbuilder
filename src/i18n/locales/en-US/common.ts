@@ -58,6 +58,8 @@ export const enUSCommon = {
     aiGenerateTip: 'Use AI to generate table schema',
     clearAll: 'Clear All',
     clearAllTip: 'Clear current configuration and reset',
+    schemaName: 'Schema Name',
+    schemaNamePlaceholder: 'Optional, e.g. public',
     tableName: 'Table Name',
     tableNamePlaceholder: 'e.g. order_info',
     saveCurrent: 'Save current table',

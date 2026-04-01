@@ -37,6 +37,7 @@ import { useFolders } from '@/hooks/useFolders';
 import { useFieldTemplates } from '@/hooks/useFieldTemplates';
 import { countVersions } from '@/utils/tableVersions';
 import { writeWorkspaceSession } from '@/utils/workspaceStateDb';
+import { buildQualifiedTableName } from '@/utils/databaseTypeMapping';
 import { useTranslation } from 'react-i18next';
 
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -50,6 +51,7 @@ const DEFAULT_FIELD_TABLE_FREEZE_COLUMNS = 3;
 const SHARE_COPY_SAVED_TOAST_KEY = 'ddlbuilder:share:copy-saved:v1';
 
 const createEmptyGlobalDraftState = (): PersistedState => ({
+  schemaName: '',
   tableName: '',
   tableComment: '',
   dbType: 'mysql',
@@ -68,9 +70,11 @@ function App() {
 
   // ─── 1. Zustand selectors (aggregated) ─────────────────────────
   const {
+    schemaName,
     tableName,
     tableComment,
     dbType,
+    setSchemaName,
     setTableName,
     setTableComment,
     setDbType,
@@ -236,6 +240,11 @@ function App() {
     resetTableMiscConfig,
   } = useTableOptions(persistedState || undefined);
 
+  const qualifiedTableName = useMemo(
+    () => buildQualifiedTableName(schemaName, tableName),
+    [schemaName, tableName],
+  );
+
   // ─── 4. Derived / computed state ───────────────────────────────
   const {
     normalizedFields,
@@ -255,6 +264,7 @@ function App() {
     saveInputDisabled,
     tableDiff,
   } = useDerivedTableState({
+    schemaName,
     tableName,
     tableComment,
     dbType,
@@ -278,6 +288,7 @@ function App() {
   // ─── 5. SQL generation & data hooks ────────────────────────────
   const { generatedSql, generatedDcl, copySql, copyDcl } = useSqlGeneration(
     dbType,
+    schemaName,
     tableName,
     tableComment,
     normalizedFields,
@@ -412,7 +423,7 @@ function App() {
 
   const { handleStartReview, handleViewReviewHistory } = useReviewActions({
     dbType,
-    tableName,
+    tableName: qualifiedTableName,
     generatedSql,
     loadedTableNormalizedName,
     isReviewing,
@@ -434,6 +445,7 @@ function App() {
     activeSource,
     saveState,
     buildPersistedState,
+    setSchemaName,
     setTableName,
     setTableComment,
     setDbType,
@@ -482,6 +494,7 @@ function App() {
     resetPartition,
     setTableMiscConfig,
     resetTableMiscConfig,
+    setSchemaName,
     setTableName,
     setTableComment,
     setDbType,
@@ -659,6 +672,7 @@ function App() {
       setIndexInput,
       setAuthObjects,
       setAuthInput,
+      setSchemaName,
       setTableName,
       setTableComment,
       setDbType,
@@ -791,9 +805,11 @@ function App() {
               >
                 <TableBuilderContainer
                   tableConfigProps={{
+                    schemaName,
                     tableName,
                     tableComment,
                     dbType,
+                    onSchemaNameChange: setSchemaName,
                     onTableNameChange: setTableName,
                     onTableCommentChange: setTableComment,
                     onDbTypeChange: handleDbTypeChange,
@@ -1052,6 +1068,7 @@ function App() {
             onOpenChange: setIsAIGenerateDialogOpen,
             dbType,
             existingConfig: {
+              schemaName,
               tableName,
               rows,
               indexes,

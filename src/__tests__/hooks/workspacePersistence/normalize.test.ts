@@ -64,6 +64,7 @@ describe('workspacePersistence/normalize', () => {
 
     expect(result).not.toBeNull();
     expect(result).toMatchObject({
+      schemaName: '',
       tableName: '',
       tableComment: '',
       dbType: 'mysql',
@@ -105,6 +106,24 @@ describe('workspacePersistence/normalize', () => {
     expect(result?.indexes[0].name).toBe('idx_users_id');
     expect(result?.indexes[0].id).toContain('idx_1700000000000_');
     expect(result?.indexes[0].fields).toEqual([{ name: 'id', direction: 'DESC' }]);
+  });
+
+  it('normalizePersistedState 应兼容旧的 schema.tableName 格式', () => {
+    const result = normalizePersistedState({
+      tableName: 'public.users',
+      tableComment: '',
+      dbType: 'postgresql',
+      rows: [],
+      addCount: 10,
+      indexInput: '',
+      currentIndexFields: [],
+      indexes: [],
+      authInput: '',
+      authObjects: [],
+    });
+
+    expect(result?.schemaName).toBe('public');
+    expect(result?.tableName).toBe('users');
   });
 
   it('isWorkspaceSource 应正确识别来源类型', () => {
@@ -155,6 +174,7 @@ describe('workspacePersistence/normalize', () => {
   it('buildGlobalDraftSummary 应统计字段并处理空表名', () => {
     const summary = buildGlobalDraftSummary(
       {
+        schemaName: '',
         tableName: '   ',
         tableComment: '',
         dbType: 'mysql',
@@ -204,6 +224,7 @@ describe('workspacePersistence/normalize', () => {
     const valid = normalizeGlobalDraftRecord({
       updatedAt: 'x',
       state: {
+        schemaName: '',
         tableName: 'users',
         tableComment: '',
         dbType: 'mysql',
@@ -235,6 +256,7 @@ describe('workspacePersistence/normalize', () => {
         baseSignature: 'sig',
       },
       activeState: {
+        schemaName: '',
         tableName: 'users',
         tableComment: '',
         dbType: 'mysql',

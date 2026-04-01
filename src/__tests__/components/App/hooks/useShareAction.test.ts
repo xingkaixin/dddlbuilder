@@ -49,6 +49,7 @@ Object.defineProperty(window, 'localStorage', {
 });
 
 const buildPersistedState = () => ({
+  schemaName: '',
   tableName: 'users',
   tableComment: '用户表',
   dbType: 'mysql' as const,

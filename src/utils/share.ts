@@ -21,6 +21,7 @@ type MinifiedIndex = {
 };
 
 type MinifiedState = {
+  sn?: string; // schemaName
   tn: string; // tableName
   tc?: string; // tableComment
   dt: string; // dbType
@@ -46,7 +47,7 @@ const MAX_ON_UPDATE_LENGTH = 32;
 const MAX_INDEX_NAME_LENGTH = 128;
 const MAX_AUTH_OBJECT_LENGTH = 128;
 
-const MINIFIED_STATE_KEYS = new Set(['tn', 'tc', 'dt', 'r', 'i', 'a']);
+const MINIFIED_STATE_KEYS = new Set(['sn', 'tn', 'tc', 'dt', 'r', 'i', 'a']);
 const MINIFIED_ROW_KEYS = new Set(['n', 't', 'c', 'nu', 'dk', 'dv', 'ou']);
 const MINIFIED_INDEX_KEYS = new Set(['n', 'f', 'u', 'p']);
 const MINIFIED_INDEX_FIELD_KEYS = new Set(['n', 'd']);
@@ -191,6 +192,7 @@ export const compressState = (state: Partial<PersistedState>): string => {
     : 'mysql';
 
   const minified: MinifiedState = {
+    sn: state.schemaName ? clipString(state.schemaName, MAX_TABLE_NAME_LENGTH) : undefined,
     tn: clipString(state.tableName, MAX_TABLE_NAME_LENGTH),
     tc: state.tableComment ? clipString(state.tableComment, MAX_TABLE_COMMENT_LENGTH) : undefined,
     dt: dbType,
@@ -239,6 +241,7 @@ export const decompressState = (compressed: string): Partial<PersistedState> | n
 
     // Restore to full state
     return {
+      schemaName: minified.sn || '',
       tableName: minified.tn,
       tableComment: minified.tc || '',
       dbType: minified.dt as PersistedState['dbType'],

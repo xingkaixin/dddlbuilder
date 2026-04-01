@@ -1,5 +1,6 @@
 import type { GeneratedField, GeneratedTableSchema } from '@/types/aiGenerate';
 import type { StructuredSuggestion } from '@/hooks/useDDLReview';
+import { getSchemaAndTable } from '@/utils/databaseTypeMapping';
 
 function toNormalizedToken(value: unknown): string {
   if (typeof value === 'string') {
@@ -81,8 +82,18 @@ function normalizeGeneratedField(field: GeneratedField): GeneratedField {
 }
 
 export function normalizeGeneratedTableSchema(schema: GeneratedTableSchema): GeneratedTableSchema {
+  const normalizedName =
+    schema.schemaName || !schema.tableName?.includes('.')
+      ? {
+          schema: schema.schemaName?.trim() || '',
+          table: schema.tableName,
+        }
+      : getSchemaAndTable(schema.tableName);
+
   return {
     ...schema,
+    schemaName: normalizedName.schema || undefined,
+    tableName: normalizedName.table,
     fields: Array.isArray(schema.fields) ? schema.fields.map(normalizeGeneratedField) : [],
   };
 }

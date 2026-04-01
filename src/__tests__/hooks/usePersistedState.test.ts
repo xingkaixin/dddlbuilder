@@ -71,6 +71,7 @@ const createDeferred = <T>() => {
 };
 
 const createState = (tableName: string) => ({
+  schemaName: '',
   tableName,
   tableComment: '',
   dbType: 'mysql' as const,

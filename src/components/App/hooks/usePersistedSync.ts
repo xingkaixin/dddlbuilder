@@ -11,6 +11,7 @@ interface UsePersistedSyncParams {
   activeSource: WorkspaceSource;
   saveState: (payload: WorkspaceSavePayload) => void;
   buildPersistedState: () => PersistedState;
+  setSchemaName: (name: string) => void;
   setTableName: (name: string) => void;
   setTableComment: (comment: string) => void;
   setDbType: (dbType: PersistedState['dbType']) => void;
@@ -37,6 +38,7 @@ export function usePersistedSync({
   activeSource,
   saveState,
   buildPersistedState,
+  setSchemaName,
   setTableName,
   setTableComment,
   setDbType,
@@ -57,6 +59,9 @@ export function usePersistedSync({
   useEffect(() => {
     if (!hydrated || !persistedState) return;
 
+    if (typeof persistedState.schemaName === 'string') {
+      setSchemaName(persistedState.schemaName);
+    }
     if (typeof persistedState.tableName === 'string') {
       setTableName(persistedState.tableName);
     }
@@ -96,6 +101,7 @@ export function usePersistedSync({
     hydrated,
     persistedState,
     activeSource,
+    setSchemaName,
     setTableName,
     setTableComment,
     setDbType,

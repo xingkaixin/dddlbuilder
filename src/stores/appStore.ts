@@ -20,6 +20,7 @@ function createInitialDialogs(): CoreDialogState {
 }
 
 interface AppStoreState {
+  schemaName: string;
   tableName: string;
   tableComment: string;
   dbType: DatabaseType;
@@ -41,6 +42,7 @@ interface AppStoreState {
   isStorageEstimatorOpen: boolean;
   isAIGenerateDialogOpen: boolean;
 
+  setSchemaName: (schemaName: string) => void;
   setTableName: (tableName: string) => void;
   setTableComment: (tableComment: string) => void;
   setDbType: (dbType: DatabaseType) => void;
@@ -70,6 +72,7 @@ interface AppStoreState {
 }
 
 export const useAppStore = create<AppStoreState>((set) => ({
+  schemaName: '',
   tableName: '',
   tableComment: '',
   dbType: 'mysql',
@@ -91,6 +94,7 @@ export const useAppStore = create<AppStoreState>((set) => ({
   isStorageEstimatorOpen: false,
   isAIGenerateDialogOpen: false,
 
+  setSchemaName: (schemaName) => set({ schemaName }),
   setTableName: (tableName) => set({ tableName }),
   setTableComment: (tableComment) => set({ tableComment }),
   setDbType: (dbType) => set({ dbType }),
@@ -100,6 +104,7 @@ export const useAppStore = create<AppStoreState>((set) => ({
   setActiveTab: (activeTab) => set({ activeTab }),
   resetTableConfig: () =>
     set({
+      schemaName: '',
       tableName: '',
       tableComment: '',
       dbType: 'mysql',

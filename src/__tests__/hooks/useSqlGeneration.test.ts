@@ -52,7 +52,7 @@ describe('useSqlGeneration', () => {
     const { mock: writeTextMock, restore } = defineClipboard(async () => {});
 
     const { result } = renderHook(() =>
-      useSqlGeneration('mysql', 'users', '用户表', baseFields, noopIndexes, ['CBD_READ']),
+      useSqlGeneration('mysql', '', 'users', '用户表', baseFields, noopIndexes, ['CBD_READ']),
     );
 
     expect(result.current.generatedSql).toContain('CREATE TABLE users');
@@ -94,7 +94,7 @@ describe('useSqlGeneration', () => {
     });
 
     const { result } = renderHook(() =>
-      useSqlGeneration('mysql', 'users', '', baseFields, noopIndexes, []),
+      useSqlGeneration('mysql', '', 'users', '', baseFields, noopIndexes, []),
     );
 
     let sqlResult = false;
@@ -118,5 +118,14 @@ describe('useSqlGeneration', () => {
     expect(execCommandMock).toHaveBeenCalledWith('copy');
 
     restore();
+  });
+
+  it('填写 schema 时应生成限定表名', () => {
+    const { result } = renderHook(() =>
+      useSqlGeneration('mysql', 'public', 'users', '', baseFields, noopIndexes, ['reader']),
+    );
+
+    expect(result.current.generatedSql).toContain('CREATE TABLE public.users');
+    expect(result.current.generatedDcl).toContain('GRANT SELECT ON public.users TO reader;');
   });
 });

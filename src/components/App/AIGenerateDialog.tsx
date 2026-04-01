@@ -26,6 +26,7 @@ interface AIGenerateDialogProps {
   onOpenChange: (open: boolean) => void;
   dbType: DatabaseType;
   existingConfig?: {
+    schemaName?: string;
     tableName?: string;
     rows?: FieldRow[];
     indexes?: IndexDefinition[];
@@ -53,7 +54,9 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
     } = useAIGenerateTable();
 
     const hasExistingConfig =
-      existingConfig?.tableName || (existingConfig?.rows && existingConfig.rows.length > 0);
+      existingConfig?.schemaName ||
+      existingConfig?.tableName ||
+      (existingConfig?.rows && existingConfig.rows.length > 0);
 
     const isStreaming = isLoading && !result;
     const displayResult: PartialTableSchema | GeneratedTableSchema | null =

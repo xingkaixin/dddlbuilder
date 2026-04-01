@@ -6,6 +6,7 @@ import type {
 } from '../../types/index.js';
 
 export type ParsedResult = {
+  schemaName?: string;
   tableName: string;
   tableComment: string;
   fields: NormalizedField[];

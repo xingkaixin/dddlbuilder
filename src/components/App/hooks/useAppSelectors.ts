@@ -6,9 +6,11 @@ import { useAppStore, useFieldStore, useIndexStore } from '@/stores';
  */
 export function useAppSelectors() {
   // --- 基础表配置 ---
+  const schemaName = useAppStore((s) => s.schemaName);
   const tableName = useAppStore((s) => s.tableName);
   const tableComment = useAppStore((s) => s.tableComment);
   const dbType = useAppStore((s) => s.dbType);
+  const setSchemaName = useAppStore((s) => s.setSchemaName);
   const setTableName = useAppStore((s) => s.setTableName);
   const setTableComment = useAppStore((s) => s.setTableComment);
   const setDbType = useAppStore((s) => s.setDbType);
@@ -82,9 +84,11 @@ export function useAppSelectors() {
 
   return {
     // 基础表配置
+    schemaName,
     tableName,
     tableComment,
     dbType,
+    setSchemaName,
     setTableName,
     setTableComment,
     setDbType,

@@ -1,6 +1,7 @@
 import type { PersistedState } from '@/types';
 import type { GlobalDraftSummary, WorkspaceSource } from '@/types/workspace';
 import type { WorkspaceGlobalDraftRecord, WorkspaceSessionRecord } from '@/utils/workspaceStateDb';
+import { getSchemaAndTable } from '@/utils/databaseTypeMapping';
 
 export type GlobalDraftRecord = WorkspaceGlobalDraftRecord;
 
@@ -15,6 +16,13 @@ const toNumber = (value: unknown, fallback: number) =>
 export const normalizePersistedState = (value: unknown): PersistedState | null => {
   if (!isRecord(value)) return null;
 
+  const explicitSchemaName = toText(value.schemaName);
+  const rawTableName = toText(value.tableName);
+  const { schema, table } =
+    explicitSchemaName || !rawTableName.includes('.')
+      ? { schema: explicitSchemaName, table: rawTableName }
+      : getSchemaAndTable(rawTableName);
+
   const rows = Array.isArray(value.rows) ? value.rows : [];
   const currentIndexFields = Array.isArray(value.currentIndexFields)
     ? value.currentIndexFields
@@ -25,7 +33,8 @@ export const normalizePersistedState = (value: unknown): PersistedState | null =
     : [];
 
   const normalized: PersistedState = {
-    tableName: toText(value.tableName),
+    schemaName: schema,
+    tableName: table,
     tableComment: toText(value.tableComment),
     dbType: toText(value.dbType, 'mysql') as PersistedState['dbType'],
     rows: rows.map((row, index) => {

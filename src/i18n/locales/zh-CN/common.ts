@@ -57,6 +57,8 @@ export const zhCNCommon = {
     aiGenerateTip: '使用 AI 辅助生成表结构',
     clearAll: '清空所有',
     clearAllTip: '清空当前所有配置并重置',
+    schemaName: 'Schema Name',
+    schemaNamePlaceholder: '可选，例如: public',
     tableName: '表名',
     tableNamePlaceholder: '例如: order_info',
     saveCurrent: '保存当前表',

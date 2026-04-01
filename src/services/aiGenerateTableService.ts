@@ -10,6 +10,7 @@ const AI_GENERATE_API_ENDPOINT = '/api/generate-table';
 export interface GenerateTableRequestOptions {
   templates?: unknown[];
   existingConfig?: Partial<{
+    schemaName: string;
     tableName: string;
     rows: FieldRow[];
     indexes: IndexDefinition[];

@@ -1,4 +1,5 @@
 export interface GeneratedTableSchema {
+  schemaName?: string;
   tableName: string;
   tableComment: string;
   fields: GeneratedField[];
@@ -28,6 +29,7 @@ export interface ConversationMessage {
 }
 
 export interface PartialTableSchema {
+  schemaName?: string;
   tableName?: string;
   tableComment?: string;
   fields?: GeneratedField[];

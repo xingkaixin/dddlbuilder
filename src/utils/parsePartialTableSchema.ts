@@ -25,6 +25,11 @@ export function parsePartialTableSchema(text: string): PartialTableSchema | null
     result.tableName = unescapeJsonString(tableNameMatch[1]);
   }
 
+  const schemaNameMatch = text.match(/"schemaName"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  if (schemaNameMatch) {
+    result.schemaName = unescapeJsonString(schemaNameMatch[1]);
+  }
+
   // Extract tableComment
   const tableCommentMatch = text.match(/"tableComment"\s*:\s*"((?:[^"\\]|\\.)*)"/);
   if (tableCommentMatch) {
@@ -194,6 +199,10 @@ function normalizeTableSchema(result: unknown): PartialTableSchema | null {
 
   if (typeof obj.tableName === 'string') {
     normalized.tableName = obj.tableName;
+  }
+
+  if (typeof obj.schemaName === 'string') {
+    normalized.schemaName = obj.schemaName;
   }
 
   if (typeof obj.tableComment === 'string') {

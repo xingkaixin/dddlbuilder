@@ -1,12 +1,12 @@
 import { useCallback, type Dispatch, type SetStateAction } from 'react';
 import type { ParsedResult } from '@/utils/SqlParser';
 import { createEmptyRow } from '@/utils/helpers';
+import { getSchemaAndTable } from '@/utils/databaseTypeMapping';
 import type {
   DatabaseType,
   FieldRow,
   IndexDefinition,
   MysqlPartitionConfig,
-  NullableDefault,
   TableMiscConfig,
 } from '@/types';
 import type { ReviewResult, StructuredSuggestion } from '@/hooks/useDDLReview';
@@ -24,6 +24,7 @@ interface UseSchemaApplyActionsParams {
   setIndexInput: (value: string) => void;
   setAuthObjects: Dispatch<SetStateAction<string[]>>;
   setAuthInput: Dispatch<SetStateAction<string>>;
+  setSchemaName: (value: string) => void;
   setTableName: (value: string) => void;
   setTableComment: (value: string) => void;
   setDbType: (value: DatabaseType) => void;
@@ -54,6 +55,8 @@ const DEFAULT_MYSQL_PARTITION_CONFIG: MysqlPartitionConfig = {
   partitions: [],
 };
 
+type UiDefaultValue = '无' | '自增' | '常量' | '当前时间' | 'uuid';
+
 export function useSchemaApplyActions({
   rows,
   indexes,
@@ -64,6 +67,7 @@ export function useSchemaApplyActions({
   setIndexInput,
   setAuthObjects,
   setAuthInput,
+  setSchemaName,
   setTableName,
   setTableComment,
   setDbType,
@@ -228,7 +232,13 @@ export function useSchemaApplyActions({
 
   const handleImport = useCallback(
     (result: ParsedResult, importDbType: DatabaseType) => {
-      setTableName(result.tableName);
+      const parsedName =
+        result.schemaName || !result.tableName.includes('.')
+          ? { schema: result.schemaName || '', table: result.tableName }
+          : getSchemaAndTable(result.tableName);
+
+      setSchemaName(parsedName.schema);
+      setTableName(parsedName.table);
       setTableComment(result.tableComment);
       setDbType(importDbType);
       setTableMiscConfig({
@@ -248,7 +258,7 @@ export function useSchemaApplyActions({
         let uiNullable = '是';
         if (field.nullable === false) uiNullable = '否';
 
-        let uiDefaultKind: NullableDefault = '无';
+        let uiDefaultKind: UiDefaultValue = '无';
         switch (field.defaultKind) {
           case 'auto_increment':
             uiDefaultKind = '自增';
@@ -267,7 +277,7 @@ export function useSchemaApplyActions({
             break;
         }
 
-        let uiOnUpdate: NullableDefault = '无';
+        let uiOnUpdate: '无' | '当前时间' = '无';
         if (field.onUpdate === 'current_timestamp') {
           uiOnUpdate = '当前时间';
         }
@@ -305,6 +315,7 @@ export function useSchemaApplyActions({
       setAuthObjects,
       setIndexInput,
       setAuthInput,
+      setSchemaName,
       setTableName,
       setTableComment,
       setDbType,
@@ -316,7 +327,17 @@ export function useSchemaApplyActions({
 
   const handleApplyAIGeneratedSchema = useCallback(
     (schema: GeneratedTableSchema) => {
-      if (schema.tableName) {
+      if (schema.schemaName) {
+        setSchemaName(schema.schemaName);
+      } else if (schema.tableName?.includes('.')) {
+        const parsedName = getSchemaAndTable(schema.tableName);
+        setSchemaName(parsedName.schema);
+        setTableName(parsedName.table);
+      } else {
+        setSchemaName('');
+      }
+
+      if (schema.tableName && !schema.tableName.includes('.')) {
         setTableName(schema.tableName);
       }
       if (schema.tableComment) {
@@ -369,7 +390,7 @@ export function useSchemaApplyActions({
       void trackEvent('ai_generate_apply', { tableName: schema.tableName });
       showToast('大师建表工坊的表结构已应用');
     },
-    [setTableName, setTableComment, setRows, setIndexes, trackEvent, showToast],
+    [setSchemaName, setTableName, setTableComment, setRows, setIndexes, trackEvent, showToast],
   );
 
   return {

@@ -145,6 +145,10 @@ function mapColumnToField(colDef: any, _dbType: DatabaseType): NormalizedField {
 export function parseCreateTable(stmt: any, result: ParsedResult, dbType: DatabaseType) {
   // 1. Table Name
   if (stmt.table && stmt.table.length > 0) {
+    const schema = stmt.table[0].db || stmt.table[0].schema || '';
+    if (typeof schema === 'string' && schema.trim()) {
+      result.schemaName = schema.trim();
+    }
     result.tableName = stmt.table[0].table;
   }
 

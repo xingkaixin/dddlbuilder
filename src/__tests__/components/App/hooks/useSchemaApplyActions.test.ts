@@ -11,6 +11,7 @@ function createHook(initialState: Partial<Parameters<typeof useSchemaApplyAction
     setIndexInput: vi.fn(),
     setAuthObjects: vi.fn(),
     setAuthInput: vi.fn(),
+    setSchemaName: vi.fn(),
     setTableName: vi.fn(),
     setTableComment: vi.fn(),
     setDbType: vi.fn(),

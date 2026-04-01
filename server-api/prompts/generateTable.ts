@@ -11,6 +11,7 @@ const SYSTEM_PROMPT_TEMPLATES: Record<AppLocale, string> = {
 
 请以 JSON 格式返回，格式如下：
 {
+  "schemaName": "schema 名（可选，不需要时留空）",
   "tableName": "表名（英文，下划线命名）",
   "tableComment": "表注释（中文）",
   "fields": [
@@ -39,12 +40,14 @@ const SYSTEM_PROMPT_TEMPLATES: Record<AppLocale, string> = {
 2. 字段类型应符合 {{DB}} 数据库语法
 3. 主键字段的 isPrimaryKey 设为 true
 4. 建议包含 created_at 和 updated_at 审计字段
-5. 只返回 JSON，不要有其他描述文字`,
+5. schemaName 为可选字段，没有时返回空字符串或省略
+6. 只返回 JSON，不要有其他描述文字`,
   'en-US': `You are a senior database architect. Generate a table schema that follows {{DB}} syntax based on the user's natural-language request.
 {{TEMPLATE_CONTEXT}}{{EXISTING_CONTEXT}}
 
 Return JSON only, in this format:
 {
+  "schemaName": "optional schema name",
   "tableName": "snake_case table name",
   "tableComment": "table comment",
   "fields": [
@@ -73,7 +76,8 @@ Notes:
 2. Field types must be valid for {{DB}}.
 3. Set isPrimaryKey=true for primary-key fields.
 4. Prefer including created_at and updated_at audit fields.
-5. Return JSON only, with no extra text.`,
+5. schemaName is optional; return an empty string or omit it when not needed.
+6. Return JSON only, with no extra text.`,
 };
 
 export const buildGenerateTableSystemPrompt = (params: {

@@ -15,6 +15,7 @@ import { diffPersistedState, type TableDiff } from '@/utils/tableDiff';
 
 interface UseDerivedTableStateDeps {
   // 基础表数据
+  schemaName: string;
   tableName: string;
   tableComment: string;
   dbType: DatabaseType;
@@ -45,6 +46,7 @@ interface UseDerivedTableStateDeps {
  */
 export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
   const {
+    schemaName,
     tableName,
     tableComment,
     dbType,
@@ -124,6 +126,7 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
 
   const currentPersistedState = useMemo(
     (): PersistedState => ({
+      schemaName,
       tableName,
       tableComment,
       dbType,
@@ -143,6 +146,7 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
       },
     }),
     [
+      schemaName,
       tableName,
       tableComment,
       dbType,

@@ -8,6 +8,7 @@ import type {
   TableMiscConfig,
 } from '@/types';
 import { buildDDL, buildDCL } from '@/utils/ddlGenerators';
+import { buildQualifiedTableName } from '@/utils/databaseTypeMapping';
 
 export interface UseSqlGenerationReturn {
   generatedSql: string;
@@ -18,6 +19,7 @@ export interface UseSqlGenerationReturn {
 
 export function useSqlGeneration(
   dbType: DatabaseType,
+  schemaName: string,
   tableName: string,
   tableComment: string,
   normalizedFields: NormalizedField[],
@@ -27,11 +29,16 @@ export function useSqlGeneration(
   mysqlPartitionConfig?: MysqlPartitionConfig,
   tableMiscConfig?: TableMiscConfig,
 ): UseSqlGenerationReturn {
+  const qualifiedTableName = useMemo(
+    () => buildQualifiedTableName(schemaName, tableName),
+    [schemaName, tableName],
+  );
+
   const generatedSql = useMemo(
     () =>
       buildDDL(
         dbType,
-        tableName,
+        qualifiedTableName,
         tableComment,
         normalizedFields,
         indexes,
@@ -41,7 +48,7 @@ export function useSqlGeneration(
       ),
     [
       dbType,
-      tableName,
+      qualifiedTableName,
       tableComment,
       normalizedFields,
       indexes,
@@ -52,8 +59,8 @@ export function useSqlGeneration(
   );
 
   const generatedDcl = useMemo(
-    () => buildDCL(dbType, tableName, authObjects),
-    [dbType, tableName, authObjects],
+    () => buildDCL(dbType, qualifiedTableName, authObjects),
+    [dbType, qualifiedTableName, authObjects],
   );
 
   const copySql = useCallback(async () => {

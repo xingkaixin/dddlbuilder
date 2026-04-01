@@ -385,3 +385,11 @@ export const getSchemaAndTable = (raw: string) => {
     table: parts[parts.length - 1],
   };
 };
+
+export const buildQualifiedTableName = (schemaName: string, tableName: string) => {
+  const table = tableName.trim();
+  if (!table) return '';
+
+  const schema = schemaName.trim();
+  return schema ? `${schema}.${table}` : table;
+};

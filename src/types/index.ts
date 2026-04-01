@@ -133,6 +133,7 @@ export type FieldTableViewConfig = {
 };
 
 export type PersistedState = {
+  schemaName: string;
   tableName: string;
   tableComment: string;
   dbType: DatabaseType;

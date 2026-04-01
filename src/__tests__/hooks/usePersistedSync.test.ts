@@ -6,6 +6,7 @@ import type { WorkspaceSource } from '@/types/workspace';
 
 function createState(name: string): PersistedState {
   return {
+    schemaName: '',
     tableName: name,
     tableComment: '',
     dbType: 'mysql',
@@ -37,6 +38,7 @@ function createBaseParams(overrides?: {
     activeSource: overrides?.activeSource ?? { kind: 'global_draft' },
     saveState: overrides?.saveState ?? vi.fn(),
     buildPersistedState: overrides?.buildPersistedState ?? (() => createState('a')),
+    setSchemaName: vi.fn(),
     setTableName: vi.fn(),
     setTableComment: vi.fn(),
     setDbType: vi.fn(),
