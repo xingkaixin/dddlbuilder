@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.15.7] - 2026-04-03
+### Added
+- **SQL output format toggle**: Adds compact and aligned display modes to the DDL output panel. Copied SQL now stays consistent with the current preview, making it easier to paste readable statements into docs, reviews, and tickets.
+
+### Improved
+- **Cross-database column alignment**: The `CREATE TABLE` field list can now align column names and type or constraint segments across supported databases. Databases with inline column comments also align the `COMMENT` segment for better vertical readability.
+- **Lighter format toggle UI**: Replaces the text switcher with an icon-only toolbar control and adds tooltips, making the format toggle easier to scan while taking less space.
+
 ## [0.15.6] - 2026-04-01
 ### Added
 - **Table-level Schema Name configuration**: Adds an optional `Schema Name` input in table configuration. When schema separation is needed, DDL / DCL can now generate schema-qualified table names directly instead of requiring manual `schema.table` input in the table name field.
