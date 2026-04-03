@@ -37,6 +37,7 @@ export const normalizePersistedState = (value: unknown): PersistedState | null =
     tableName: table,
     tableComment: toText(value.tableComment),
     dbType: toText(value.dbType, 'mysql') as PersistedState['dbType'],
+    sqlFormatMode: value.sqlFormatMode === 'aligned' ? 'aligned' : 'compact',
     rows: rows.map((row, index) => {
       if (!isRecord(row)) {
         return {

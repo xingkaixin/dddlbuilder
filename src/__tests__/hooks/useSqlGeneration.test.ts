@@ -52,7 +52,16 @@ describe('useSqlGeneration', () => {
     const { mock: writeTextMock, restore } = defineClipboard(async () => {});
 
     const { result } = renderHook(() =>
-      useSqlGeneration('mysql', '', 'users', '用户表', baseFields, noopIndexes, ['CBD_READ']),
+      useSqlGeneration(
+        'mysql',
+        '',
+        'users',
+        '用户表',
+        baseFields,
+        noopIndexes,
+        ['CBD_READ'],
+        'compact',
+      ),
     );
 
     expect(result.current.generatedSql).toContain('CREATE TABLE users');
@@ -94,7 +103,7 @@ describe('useSqlGeneration', () => {
     });
 
     const { result } = renderHook(() =>
-      useSqlGeneration('mysql', '', 'users', '', baseFields, noopIndexes, []),
+      useSqlGeneration('mysql', '', 'users', '', baseFields, noopIndexes, [], 'compact'),
     );
 
     let sqlResult = false;
@@ -122,10 +131,53 @@ describe('useSqlGeneration', () => {
 
   it('填写 schema 时应生成限定表名', () => {
     const { result } = renderHook(() =>
-      useSqlGeneration('mysql', 'public', 'users', '', baseFields, noopIndexes, ['reader']),
+      useSqlGeneration(
+        'mysql',
+        'public',
+        'users',
+        '',
+        baseFields,
+        noopIndexes,
+        ['reader'],
+        'compact',
+      ),
     );
 
     expect(result.current.generatedSql).toContain('CREATE TABLE public.users');
     expect(result.current.generatedDcl).toContain('GRANT SELECT ON public.users TO reader;');
+  });
+
+  it('对齐模式应传递到 DDL 生成', () => {
+    const alignedFields: NormalizedField[] = [
+      {
+        name: 'id',
+        type: 'int',
+        comment: '主键',
+        nullable: false,
+        defaultKind: 'auto_increment',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+      {
+        name: 'created_at',
+        type: 'timestamp',
+        comment: '创建时间',
+        nullable: false,
+        defaultKind: 'current_timestamp',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      useSqlGeneration('mysql', '', 'users', '', alignedFields, noopIndexes, [], 'aligned'),
+    );
+
+    expect(result.current.generatedSql).toContain(
+      "id          INT AUTO_INCREMENT NOT NULL                   COMMENT '主键'",
+    );
+    expect(result.current.generatedSql).toContain(
+      "created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP  COMMENT '创建时间'",
+    );
   });
 });

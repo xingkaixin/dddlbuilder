@@ -4,9 +4,11 @@ import { ShareApiError, createShare, getShareState } from '@/services/shareServi
 import type { PersistedState } from '@/types';
 
 const createState = (): PersistedState => ({
+  schemaName: '',
   tableName: 'users',
   tableComment: '用户表',
   dbType: 'mysql',
+  sqlFormatMode: 'compact',
   rows: [],
   addCount: 10,
   indexInput: '',

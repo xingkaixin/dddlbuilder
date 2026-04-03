@@ -21,6 +21,7 @@ interface UseApplySavedStateParams {
   setTableName: (name: string) => void;
   setTableComment: (comment: string) => void;
   setDbType: (dbType: PersistedState['dbType']) => void;
+  setSqlFormatMode: (mode: PersistedState['sqlFormatMode']) => void;
   setAddCount: (count: number) => void;
   setFieldTableFreezeEnabled: (enabled: boolean) => void;
   setFieldTableFreezeColumns: (columns: number) => void;
@@ -46,6 +47,7 @@ export function useApplySavedState({
   setTableName,
   setTableComment,
   setDbType,
+  setSqlFormatMode,
   setAddCount,
   setFieldTableFreezeEnabled,
   setFieldTableFreezeColumns,
@@ -56,6 +58,7 @@ export function useApplySavedState({
       setTableName(state.tableName ?? '');
       setTableComment(state.tableComment ?? '');
       setDbType(state.dbType ?? 'mysql');
+      setSqlFormatMode(state.sqlFormatMode ?? 'compact');
 
       if (typeof state.addCount === 'number' && Number.isFinite(state.addCount)) {
         setAddCount(Math.max(1, Math.floor(state.addCount)));
@@ -119,6 +122,7 @@ export function useApplySavedState({
       setTableName,
       setTableComment,
       setDbType,
+      setSqlFormatMode,
       setAddCount,
       setFieldTableFreezeEnabled,
       setFieldTableFreezeColumns,

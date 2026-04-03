@@ -1,4 +1,4 @@
-import type { DatabaseType } from '@/types';
+import type { DatabaseType, SqlFormatMode } from '@/types';
 import type { CSSProperties } from 'react';
 import type { ReviewResult } from '@/hooks/useDDLReview';
 import type { PartialReviewResult } from '@/utils/parsePartialJson';
@@ -6,7 +6,16 @@ import { memo, useMemo, useState, useRef, useEffect, useCallback, lazy, Suspense
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Copy, Check, ScrollText, ShieldCheck, GraduationCap, History } from 'lucide-react';
+import {
+  Copy,
+  Check,
+  ScrollText,
+  ShieldCheck,
+  GraduationCap,
+  History,
+  AlignLeft,
+  AlignJustify,
+} from 'lucide-react';
 import { DATABASE_OPTIONS } from '@/utils/constants';
 import { ReviewResultPanel } from './ReviewResult';
 import { useToast } from '@/hooks/useToast';
@@ -16,6 +25,8 @@ interface DDLOutputProps {
   generatedSql: string;
   generatedDcl: string;
   dbType: DatabaseType;
+  sqlFormatMode: SqlFormatMode;
+  onSqlFormatModeChange: (mode: SqlFormatMode) => void;
   onCopySql: () => Promise<boolean>;
   onCopyDcl: () => Promise<boolean>;
   // Review props
@@ -43,6 +54,8 @@ export const DDLOutput = memo<DDLOutputProps>(
     generatedSql,
     generatedDcl,
     dbType,
+    sqlFormatMode,
+    onSqlFormatModeChange,
     onCopySql,
     onCopyDcl,
     isReviewing,
@@ -146,6 +159,49 @@ export const DDLOutput = memo<DDLOutputProps>(
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center justify-end gap-2">
+                    <div className="inline-flex overflow-hidden rounded-xl border border-border/70 bg-background shadow-xs">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={t('ddlOutput.compact')}
+                            className={`h-9 w-12 rounded-none border-0 px-0 text-muted-foreground ${
+                              sqlFormatMode === 'compact'
+                                ? 'bg-muted text-foreground'
+                                : 'bg-transparent'
+                            }`}
+                            onClick={() => onSqlFormatModeChange('compact')}
+                          >
+                            <AlignLeft className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{t('ddlOutput.compactTip')}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <div className="w-px bg-border/70" />
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={t('ddlOutput.aligned')}
+                            className={`h-9 w-12 rounded-none border-0 px-0 text-muted-foreground ${
+                              sqlFormatMode === 'aligned'
+                                ? 'bg-muted text-foreground'
+                                : 'bg-transparent'
+                            }`}
+                            onClick={() => onSqlFormatModeChange('aligned')}
+                          >
+                            <AlignJustify className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{t('ddlOutput.alignedTip')}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span className="inline-flex" tabIndex={!canReview || isReviewing ? 0 : -1}>

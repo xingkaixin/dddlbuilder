@@ -11,9 +11,11 @@ vi.mock('@/utils/tableVersions', () => ({
 }));
 
 const createState = (tableName: string): PersistedState => ({
+  schemaName: '',
   tableName,
   tableComment: '',
   dbType: 'mysql',
+  sqlFormatMode: 'compact',
   rows: [],
   addCount: 10,
   indexInput: '',

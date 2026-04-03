@@ -5,6 +5,7 @@ import type {
   IndexDefinition,
   CitusShardingConfig,
   MysqlPartitionConfig,
+  SqlFormatMode,
   TableMiscConfig,
 } from '@/types';
 import { buildDDL, buildDCL } from '@/utils/ddlGenerators';
@@ -25,6 +26,7 @@ export function useSqlGeneration(
   normalizedFields: NormalizedField[],
   indexes: IndexDefinition[],
   authObjects: string[],
+  sqlFormatMode: SqlFormatMode,
   citusShardingConfig?: CitusShardingConfig,
   mysqlPartitionConfig?: MysqlPartitionConfig,
   tableMiscConfig?: TableMiscConfig,
@@ -45,6 +47,7 @@ export function useSqlGeneration(
         citusShardingConfig,
         mysqlPartitionConfig,
         tableMiscConfig,
+        sqlFormatMode,
       ),
     [
       dbType,
@@ -52,6 +55,7 @@ export function useSqlGeneration(
       tableComment,
       normalizedFields,
       indexes,
+      sqlFormatMode,
       citusShardingConfig,
       mysqlPartitionConfig,
       tableMiscConfig,

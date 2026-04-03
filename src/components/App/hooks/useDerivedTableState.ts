@@ -7,6 +7,7 @@ import type {
   DatabaseType,
   CitusShardingConfig,
   MysqlPartitionConfig,
+  SqlFormatMode,
   TableMiscConfig,
 } from '@/types';
 import { buildNormalizedFields } from '@/stores';
@@ -19,6 +20,7 @@ interface UseDerivedTableStateDeps {
   tableName: string;
   tableComment: string;
   dbType: DatabaseType;
+  sqlFormatMode: SqlFormatMode;
   addCount: number;
   rows: FieldRow[];
   indexes: IndexDefinition[];
@@ -50,6 +52,7 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     tableName,
     tableComment,
     dbType,
+    sqlFormatMode,
     addCount,
     rows,
     indexes,
@@ -130,6 +133,7 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
       tableName,
       tableComment,
       dbType,
+      sqlFormatMode,
       rows: normalizedRowsForPersist,
       addCount,
       indexInput,
@@ -150,6 +154,7 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
       tableName,
       tableComment,
       dbType,
+      sqlFormatMode,
       normalizedRowsForPersist,
       addCount,
       indexInput,

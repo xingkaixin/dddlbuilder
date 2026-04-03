@@ -1,4 +1,9 @@
-import type { HiveClusteringConfig, NormalizedField, TableMiscConfig } from '../types';
+import type {
+  HiveClusteringConfig,
+  NormalizedField,
+  SqlFormatMode,
+  TableMiscConfig,
+} from '../types';
 import { escapeSingleQuotes, parseFieldType } from '../utils/databaseTypeMapping';
 import { AbstractDDLStrategy } from './AbstractDDLStrategy';
 
@@ -12,17 +17,23 @@ export class HiveStrategy extends AbstractDDLStrategy {
     tableComment: string,
     fields: NormalizedField[],
     tableMiscConfig?: TableMiscConfig,
+    sqlFormatMode: SqlFormatMode = 'compact',
   ): string {
     const typeMapper = this.createTypeMapper();
 
-    const columnLines = fields.map((field) => {
+    const columns = fields.map((field) => {
       const parsedType = parseFieldType(field.type);
       const type = typeMapper.mapType(parsedType);
 
       const comment = field.comment ? ` COMMENT '${escapeSingleQuotes(field.comment)}'` : '';
 
-      return `  ${this.formatFieldName(field.name)} ${type}${comment}`;
+      return {
+        name: this.formatFieldName(field.name),
+        body: type,
+        comment: comment.trim() || undefined,
+      };
     });
+    const columnLines = this.renderColumnDefinitions(columns, sqlFormatMode);
 
     const externalClause = tableMiscConfig?.external ? 'EXTERNAL ' : '';
 

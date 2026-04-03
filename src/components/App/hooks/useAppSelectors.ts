@@ -10,10 +10,12 @@ export function useAppSelectors() {
   const tableName = useAppStore((s) => s.tableName);
   const tableComment = useAppStore((s) => s.tableComment);
   const dbType = useAppStore((s) => s.dbType);
+  const sqlFormatMode = useAppStore((s) => s.sqlFormatMode);
   const setSchemaName = useAppStore((s) => s.setSchemaName);
   const setTableName = useAppStore((s) => s.setTableName);
   const setTableComment = useAppStore((s) => s.setTableComment);
   const setDbType = useAppStore((s) => s.setDbType);
+  const setSqlFormatMode = useAppStore((s) => s.setSqlFormatMode);
   const addCount = useAppStore((s) => s.addCount);
   const setAddCount = useAppStore((s) => s.setAddCount);
   const activeTab = useAppStore((s) => s.activeTab);
@@ -88,10 +90,12 @@ export function useAppSelectors() {
     tableName,
     tableComment,
     dbType,
+    sqlFormatMode,
     setSchemaName,
     setTableName,
     setTableComment,
     setDbType,
+    setSqlFormatMode,
     addCount,
     setAddCount,
     activeTab,

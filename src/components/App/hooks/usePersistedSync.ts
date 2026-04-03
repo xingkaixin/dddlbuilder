@@ -15,6 +15,7 @@ interface UsePersistedSyncParams {
   setTableName: (name: string) => void;
   setTableComment: (comment: string) => void;
   setDbType: (dbType: PersistedState['dbType']) => void;
+  setSqlFormatMode: (mode: PersistedState['sqlFormatMode']) => void;
   setAddCount: (count: number) => void;
   initializeRows: (rows: PersistedState['rows']) => void;
   initializeIndexState: (persistedState?: {
@@ -42,6 +43,7 @@ export function usePersistedSync({
   setTableName,
   setTableComment,
   setDbType,
+  setSqlFormatMode,
   setAddCount,
   initializeRows,
   initializeIndexState,
@@ -70,6 +72,9 @@ export function usePersistedSync({
     }
     if (typeof persistedState.dbType === 'string') {
       setDbType(persistedState.dbType);
+    }
+    if (persistedState.sqlFormatMode === 'aligned' || persistedState.sqlFormatMode === 'compact') {
+      setSqlFormatMode(persistedState.sqlFormatMode);
     }
     if (typeof persistedState.addCount === 'number' && Number.isFinite(persistedState.addCount)) {
       setAddCount(Math.max(1, Math.floor(persistedState.addCount)));
@@ -105,6 +110,7 @@ export function usePersistedSync({
     setTableName,
     setTableComment,
     setDbType,
+    setSqlFormatMode,
     setAddCount,
     initializeRows,
     initializeIndexState,

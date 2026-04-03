@@ -68,6 +68,7 @@ describe('workspacePersistence/normalize', () => {
       tableName: '',
       tableComment: '',
       dbType: 'mysql',
+      sqlFormatMode: 'compact',
       addCount: 10,
       indexInput: '',
       authInput: '',
@@ -120,10 +121,12 @@ describe('workspacePersistence/normalize', () => {
       indexes: [],
       authInput: '',
       authObjects: [],
+      sqlFormatMode: 'aligned',
     });
 
     expect(result?.schemaName).toBe('public');
     expect(result?.tableName).toBe('users');
+    expect(result?.sqlFormatMode).toBe('aligned');
   });
 
   it('isWorkspaceSource 应正确识别来源类型', () => {

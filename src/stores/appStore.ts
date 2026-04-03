@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { DatabaseType } from '@/types';
+import type { DatabaseType, SqlFormatMode } from '@/types';
 
 type CoreDialogKey = 'save' | 'rename' | 'delete' | 'loadConfirm';
 
@@ -24,6 +24,7 @@ interface AppStoreState {
   tableName: string;
   tableComment: string;
   dbType: DatabaseType;
+  sqlFormatMode: SqlFormatMode;
   addCount: number;
   fieldTableFreezeEnabled: boolean;
   fieldTableFreezeColumns: number;
@@ -46,6 +47,7 @@ interface AppStoreState {
   setTableName: (tableName: string) => void;
   setTableComment: (tableComment: string) => void;
   setDbType: (dbType: DatabaseType) => void;
+  setSqlFormatMode: (mode: SqlFormatMode) => void;
   setAddCount: (count: number) => void;
   setFieldTableFreezeEnabled: (enabled: boolean) => void;
   setFieldTableFreezeColumns: (columns: number) => void;
@@ -76,6 +78,7 @@ export const useAppStore = create<AppStoreState>((set) => ({
   tableName: '',
   tableComment: '',
   dbType: 'mysql',
+  sqlFormatMode: 'compact',
   addCount: 10,
   fieldTableFreezeEnabled: true,
   fieldTableFreezeColumns: 3,
@@ -98,6 +101,7 @@ export const useAppStore = create<AppStoreState>((set) => ({
   setTableName: (tableName) => set({ tableName }),
   setTableComment: (tableComment) => set({ tableComment }),
   setDbType: (dbType) => set({ dbType }),
+  setSqlFormatMode: (sqlFormatMode) => set({ sqlFormatMode }),
   setAddCount: (addCount) => set({ addCount }),
   setFieldTableFreezeEnabled: (fieldTableFreezeEnabled) => set({ fieldTableFreezeEnabled }),
   setFieldTableFreezeColumns: (fieldTableFreezeColumns) => set({ fieldTableFreezeColumns }),
@@ -108,6 +112,7 @@ export const useAppStore = create<AppStoreState>((set) => ({
       tableName: '',
       tableComment: '',
       dbType: 'mysql',
+      sqlFormatMode: 'compact',
     }),
   resetTableViewConfig: () =>
     set({
@@ -115,6 +120,7 @@ export const useAppStore = create<AppStoreState>((set) => ({
       fieldTableFreezeEnabled: true,
       fieldTableFreezeColumns: 3,
       activeTab: 'fields',
+      sqlFormatMode: 'compact',
     }),
 
   setSavedTablesDrawerOpen: (savedTablesDrawerOpen) => set({ savedTablesDrawerOpen }),

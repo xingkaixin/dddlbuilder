@@ -16,9 +16,11 @@ import { setupFakeIndexedDB, teardownFakeIndexedDB } from './fakeIndexedDb';
 import type { PersistedState } from '@/types';
 
 const createState = (overrides: Partial<PersistedState> = {}): PersistedState => ({
+  schemaName: '',
   tableName: 'test_table',
   tableComment: '测试',
   dbType: 'mysql',
+  sqlFormatMode: 'compact',
   rows: [],
   addCount: 1,
   indexInput: '',

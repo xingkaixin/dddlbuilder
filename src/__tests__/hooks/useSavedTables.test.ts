@@ -6,9 +6,11 @@ import type { PersistedState } from '@/types';
 import { flushPromises } from '@/__tests__/utils/test-utils';
 
 const createState = (name: string): PersistedState => ({
+  schemaName: '',
   tableName: name,
   tableComment: '测试',
   dbType: 'mysql',
+  sqlFormatMode: 'compact',
   rows: [],
   addCount: 1,
   indexInput: '',

@@ -1,4 +1,4 @@
-import type { DatabaseType, NormalizedField } from '../types';
+import type { DatabaseType, NormalizedField, SqlFormatMode } from '../types';
 import {
   getCanonicalBaseType,
   supportsAutoIncrement,
@@ -19,9 +19,15 @@ export class PostgresStrategy extends AbstractDDLStrategy {
     return this.databaseType;
   }
 
-  generateTableDDL(tableName: string, tableComment: string, fields: NormalizedField[]): string {
+  generateTableDDL(
+    tableName: string,
+    tableComment: string,
+    fields: NormalizedField[],
+    _tableMiscConfig?: undefined,
+    sqlFormatMode: SqlFormatMode = 'compact',
+  ): string {
     const typeMapper = this.createTypeMapper();
-    const columnLines = fields.map((field) => {
+    const columns = fields.map((field) => {
       const parsedType = parseFieldType(field.type);
       const type = typeMapper.mapType(parsedType);
       const base = getCanonicalBaseType(field.type);
@@ -46,8 +52,12 @@ export class PostgresStrategy extends AbstractDDLStrategy {
         def = ' DEFAULT gen_random_uuid()';
       }
 
-      return `  ${this.formatFieldName(field.name)} ${type}${identity}${nullableClause}${def}`;
+      return {
+        name: this.formatFieldName(field.name),
+        body: `${type}${identity}${nullableClause}${def}`,
+      };
     });
+    const columnLines = this.renderColumnDefinitions(columns, sqlFormatMode);
 
     const qualifiedTableName = this.formatTableName(tableName);
     const statements: string[] = [

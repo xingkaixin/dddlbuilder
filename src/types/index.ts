@@ -56,6 +56,8 @@ export type ParsedFieldType = {
   raw: string;
 };
 
+export type SqlFormatMode = 'compact' | 'aligned';
+
 export type UiDefaultKind = '无' | '自增' | '常量' | '当前时间' | 'uuid';
 export type UiOnUpdate = '无' | '当前时间';
 
@@ -137,6 +139,7 @@ export type PersistedState = {
   tableName: string;
   tableComment: string;
   dbType: DatabaseType;
+  sqlFormatMode: SqlFormatMode;
   rows: FieldRow[];
   addCount: number;
   indexInput: string;

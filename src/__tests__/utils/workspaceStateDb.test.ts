@@ -47,9 +47,11 @@ Object.defineProperty(window, 'localStorage', {
 });
 
 const createState = (tableName = 'users'): PersistedState => ({
+  schemaName: '',
   tableName,
   tableComment: '',
   dbType: 'mysql',
+  sqlFormatMode: 'compact',
   rows: [],
   addCount: 10,
   indexInput: '',

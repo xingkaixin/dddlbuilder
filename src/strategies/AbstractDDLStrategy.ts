@@ -1,8 +1,20 @@
-import type { NormalizedField, IndexDefinition, DatabaseType, TableMiscConfig } from '../types';
+import type {
+  NormalizedField,
+  IndexDefinition,
+  DatabaseType,
+  SqlFormatMode,
+  TableMiscConfig,
+} from '../types';
 import type { DDLStrategy } from '../interfaces/DDLStrategy';
 import { escapeSingleQuotes, splitQualifiedName } from '../utils/databaseTypeMapping';
 import { TypeMapper } from '../utils/TypeMapper';
 import { buildPrimaryKeyName } from '../utils/primaryKeyNaming';
+
+export interface ColumnDefinitionSegments {
+  name: string;
+  body: string;
+  comment?: string;
+}
 
 /**
  * DDL策略抽象基类
@@ -91,6 +103,26 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
     return statements;
   }
 
+  protected renderColumnDefinitions(
+    columns: ColumnDefinitionSegments[],
+    sqlFormatMode: SqlFormatMode = 'compact',
+  ): string[] {
+    if (sqlFormatMode !== 'aligned' || columns.length === 0) {
+      return columns.map(
+        (column) => `  ${column.name} ${column.body}${column.comment ? ` ${column.comment}` : ''}`,
+      );
+    }
+
+    const maxNameWidth = Math.max(...columns.map((column) => column.name.length));
+    const maxBodyWidth = Math.max(...columns.map((column) => column.body.length));
+
+    return columns.map((column) => {
+      const name = column.name.padEnd(maxNameWidth);
+      const body = column.comment ? column.body.padEnd(maxBodyWidth) : column.body;
+      return `  ${name}  ${body}${column.comment ? `  ${column.comment}` : ''}`;
+    });
+  }
+
   /**
    * 子类必须实现的表DDL生成方法
    */
@@ -99,6 +131,7 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
     tableComment: string,
     fields: NormalizedField[],
     tableMiscConfig?: TableMiscConfig,
+    sqlFormatMode?: SqlFormatMode,
   ): string;
 
   /**

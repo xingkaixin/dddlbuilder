@@ -4,6 +4,7 @@ import type {
   IndexDefinition,
   CitusShardingConfig,
   MysqlPartitionConfig,
+  SqlFormatMode,
   TableMiscConfig,
 } from '../types';
 import { DDLStrategyFactory } from '../factories/DDLStrategyFactory';
@@ -77,6 +78,7 @@ export const buildDDL = (
   citusShardingConfig?: CitusShardingConfig,
   mysqlPartitionConfig?: MysqlPartitionConfig,
   tableMiscConfig?: TableMiscConfig,
+  sqlFormatMode: SqlFormatMode = 'compact',
 ) => {
   if (!tableName.trim()) {
     return '-- 请填写表名';
@@ -86,7 +88,13 @@ export const buildDDL = (
   }
 
   const strategy = DDLStrategyFactory.create(dbType);
-  let tableDDL = strategy.generateTableDDL(tableName.trim(), tableComment, fields, tableMiscConfig);
+  let tableDDL = strategy.generateTableDDL(
+    tableName.trim(),
+    tableComment,
+    fields,
+    tableMiscConfig,
+    sqlFormatMode,
+  );
 
   const tableOptionsClause = buildTableOptionsClause(dbType, tableMiscConfig);
   if (tableOptionsClause) {
