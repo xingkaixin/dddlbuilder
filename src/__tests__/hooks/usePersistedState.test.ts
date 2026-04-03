@@ -75,6 +75,7 @@ const createState = (tableName: string) => ({
   tableName,
   tableComment: '',
   dbType: 'mysql' as const,
+  sqlFormatMode: 'compact' as const,
   rows: [],
   addCount: 10,
   indexInput: '',
