@@ -159,14 +159,14 @@ export const DDLOutput = memo<DDLOutputProps>(
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center justify-end gap-2">
-                    <div className="inline-flex overflow-hidden rounded-xl border border-border/70 bg-background shadow-xs">
+                    <div className="inline-flex overflow-hidden rounded-md border border-border/70 bg-background shadow-xs">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
                             variant="ghost"
                             size="sm"
                             aria-label={t('ddlOutput.compact')}
-                            className={`h-9 w-12 rounded-none border-0 px-0 text-muted-foreground ${
+                            className={`h-7 min-w-0 rounded-none border-0 px-2 text-muted-foreground ${
                               sqlFormatMode === 'compact'
                                 ? 'bg-muted text-foreground'
                                 : 'bg-transparent'
@@ -187,7 +187,7 @@ export const DDLOutput = memo<DDLOutputProps>(
                             variant="ghost"
                             size="sm"
                             aria-label={t('ddlOutput.aligned')}
-                            className={`h-9 w-12 rounded-none border-0 px-0 text-muted-foreground ${
+                            className={`h-7 min-w-0 rounded-none border-0 px-2 text-muted-foreground ${
                               sqlFormatMode === 'aligned'
                                 ? 'bg-muted text-foreground'
                                 : 'bg-transparent'
