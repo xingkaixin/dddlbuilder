@@ -199,6 +199,9 @@ export function useSaveLoadActions({
         showToast(result.message ?? '更新失败');
         return;
       }
+      savedNormalizedName = loadedTableNormalizedName;
+      savedDisplayName = loadedTableName ?? saveName;
+      saveMode = 'update';
       setLoadedTableSignature(nextSignature);
       setWorkspaceSnapshot?.(
         {
@@ -211,12 +214,6 @@ export function useSaveLoadActions({
       );
       void trackEvent('table_update', { tableName: loadedTableName });
       showToast(`已更新：${loadedTableName ?? saveName}`);
-      await createVersion(loadedTableNormalizedName, nextState);
-      const versionCount = await countVersions(loadedTableNormalizedName);
-      setLoadedTableVersion(versionCount > 0 ? versionCount : 1);
-      savedNormalizedName = loadedTableNormalizedName;
-      savedDisplayName = loadedTableName ?? saveName;
-      saveMode = 'update';
     } else {
       const result = await saveTable(saveName, nextState);
       if (!result.ok) {
@@ -229,6 +226,9 @@ export function useSaveLoadActions({
       }
       const displayName = saveName.trim() || DEFAULT_SAVED_TABLE_NAME;
       const normalizedName = result.normalizedName;
+      savedNormalizedName = normalizedName;
+      savedDisplayName = displayName;
+      saveMode = 'create';
       setLoadedTableNormalizedName(normalizedName);
       setLoadedTableName(displayName);
       setLoadedTableSignature(nextSignature);
@@ -243,13 +243,21 @@ export function useSaveLoadActions({
       );
       void trackEvent('table_save', { tableName: displayName });
       showToast(`已保存：${displayName}`);
-      await createVersion(normalizedName, nextState, INITIAL_VERSION_MESSAGE_KEY);
-      setLoadedTableVersion(1);
-      savedNormalizedName = normalizedName;
-      savedDisplayName = displayName;
-      saveMode = 'create';
     }
     saveDialog.closeDialog();
+
+    try {
+      if (saveMode === 'update' && savedNormalizedName) {
+        await createVersion(savedNormalizedName, nextState);
+        const versionCount = await countVersions(savedNormalizedName);
+        setLoadedTableVersion(versionCount > 0 ? versionCount : 1);
+      } else if (saveMode === 'create' && savedNormalizedName) {
+        await createVersion(savedNormalizedName, nextState, INITIAL_VERSION_MESSAGE_KEY);
+        setLoadedTableVersion(1);
+      }
+    } catch (versionError) {
+      console.error('[DEBUG] 版本创建失败:', versionError);
+    }
 
     if (onSaveSuccess) {
       await onSaveSuccess({
