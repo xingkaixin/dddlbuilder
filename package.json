@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "bun run scripts/dev.ts",
+    "dev:app": "vite --host localhost --port 3000 --strictPort",
+    "dev:worker": "bun run scripts/dev-worker.ts",
     "dev:docs": "bun run docs:dev",
     "build:wrangler-dev": "tsc -b tsconfig.build.json && vite build --config vite.config.server.ts && vite build",
     "build": "tsc -b tsconfig.build.json && vite build --config vite.config.server.ts && bun run scripts/verify-server-bundle.ts && vite build && bun run docs:build && cp -r dist/docs dist/client/",

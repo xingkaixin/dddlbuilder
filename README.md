@@ -30,11 +30,14 @@
 # 安装依赖
 bun i
 
-# 本地开发（应用）
+# 本地开发（应用，支持热更新）
 bun run dev
 
-# 文档开发（需要查看 /docs 时单独启动）
-bun run dev:docs
+# 仅启动前端开发服务
+bun run dev:app
+
+# Worker 运行时调试
+bun run dev:worker
 
 # 产物构建
 bun run build
@@ -42,9 +45,11 @@ bun run build
 
 开发命令说明：
 
-- `bun run dev`：仅启动应用开发服务（`wrangler dev`），入口为 `http://localhost:3000`。
+- `bun run dev`：启动前端开发服务与文档开发服务，入口为 `http://localhost:3000`，修改页面代码会通过 Vite 自动热更新。
+- `bun run dev:app`：仅启动前端开发服务（Vite）。
+- `bun run dev:worker`：先构建一次 Worker 产物，再用 `wrangler dev` 在 `http://localhost:8787` 启动运行时调试服务。
 - `bun run dev:docs`：仅启动文档开发服务（`http://127.0.0.1:5174/docs/`）。
-- 如需在主应用中同域查看帮助文档，请同时运行 `bun run dev` 与 `bun run dev:docs`，然后访问 `http://localhost:3000/docs/`。
+- `bun run dev` 运行时，`/docs` 会自动代理到 docs dev server；如果只运行 `bun run dev:app`，需要再单独运行 `bun run dev:docs` 才能通过 `http://localhost:3000/docs/` 查看文档。
 
 ### 环境变量
 
@@ -72,7 +77,7 @@ bun run build
 
 调试说明：
 
-- 后端 `OPENAI_STREAM_DEBUG` 在 Worker 运行时生效；使用 `wrangler dev` 时，优先通过项目根目录下的 `.dev.vars` 注入，例如：
+- 后端 `OPENAI_STREAM_DEBUG` 在 Worker 运行时生效；使用 `bun run dev:worker` 时，优先通过项目根目录下的 `.dev.vars` 注入，例如：
 
 ```bash
 OPENAI_STREAM_DEBUG=true

@@ -1,15 +1,6 @@
-import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 
 const bunCmd = process.platform === 'win32' ? 'bun.exe' : 'bun';
-const appPort = process.env.APP_DEV_PORT ?? '3000';
-
-const build = spawnSync(bunCmd, ['run', 'build:wrangler-dev'], {
-  stdio: 'inherit',
-});
-
-if (build.status !== 0) {
-  process.exit(build.status ?? 1);
-}
 
 const children: ChildProcess[] = [];
 let shuttingDown = false;
@@ -35,10 +26,7 @@ const shutdown = (code = 0) => {
 const start = (label: string, args: string[]) => {
   const child = spawn(bunCmd, args, {
     stdio: 'inherit',
-    env: {
-      ...process.env,
-      APP_DEV_PORT: appPort,
-    },
+    env: process.env,
   });
 
   child.on('exit', (code, signal) => {
@@ -65,7 +53,8 @@ const start = (label: string, args: string[]) => {
   children.push(child);
 };
 
-start('app', ['x', 'wrangler', 'dev', '--port', appPort]);
+start('app', ['run', 'dev:app']);
+start('docs', ['run', 'dev:docs']);
 
 process.on('SIGINT', () => shutdown(0));
 process.on('SIGTERM', () => shutdown(0));
