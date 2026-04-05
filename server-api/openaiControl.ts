@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import type { ApiEnv } from './lib/context.js';
+import { dispatchTelegramAuditNotification } from './lib/telegramNotifier.js';
 import { errorResponse, type ApiErrorCode } from './lib/http.js';
 
 export type OpenAIRouteKey = 'explain' | 'review' | 'generate-table';
@@ -21,7 +22,7 @@ type CounterBucket = {
   expiresAt: number;
 };
 
-type AuditLogPayload = {
+export type AuditLogPayload = {
   requestId: string;
   route: OpenAIRouteKey;
   status: number;
@@ -29,6 +30,9 @@ type AuditLogPayload = {
   retryCount: number;
   rateLimitHit: boolean;
   estimatedTokens: number;
+  actualPromptTokens: number | null;
+  actualCompletionTokens: number | null;
+  actualTotalTokens: number | null;
   model?: string;
   maxOutputTokens?: number;
   rateLimitEnabled: boolean;
@@ -46,6 +50,12 @@ type AuditLogPayload = {
 export type OpenAIRetryResult<T> = {
   data: T;
   attempts: number;
+};
+
+export type OpenAIUsageSnapshot = {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
 };
 
 // Environment variable helpers
@@ -474,7 +484,7 @@ export async function enforceOpenAIDailyBudget(
   };
 }
 
-export function logOpenAIAudit(payload: AuditLogPayload) {
+export function logOpenAIAudit(env: ApiEnv['Bindings'], payload: AuditLogPayload) {
   console.info(
     JSON.stringify({
       event: 'openai_audit',
@@ -482,6 +492,8 @@ export function logOpenAIAudit(payload: AuditLogPayload) {
       ...payload,
     }),
   );
+
+  dispatchTelegramAuditNotification(env, payload);
 }
 
 export async function withOpenAIRetry<T>(
@@ -527,4 +539,33 @@ export const estimateResponseTokensFromText = (text: string) => {
   const safeText = typeof text === 'string' ? text : '';
   const bytes = toUtf8Bytes(safeText);
   return Math.max(1, Math.ceil(bytes / 4));
+};
+
+export const readUsageFromStreamChunk = (chunk: unknown): OpenAIUsageSnapshot | null => {
+  if (!chunk || typeof chunk !== 'object') {
+    return null;
+  }
+
+  const usage = (chunk as { usage?: unknown }).usage;
+  if (!usage || typeof usage !== 'object') {
+    return null;
+  }
+
+  const promptTokens = (usage as { prompt_tokens?: unknown }).prompt_tokens;
+  const completionTokens = (usage as { completion_tokens?: unknown }).completion_tokens;
+  const totalTokens = (usage as { total_tokens?: unknown }).total_tokens;
+
+  if (
+    typeof promptTokens !== 'number' ||
+    typeof completionTokens !== 'number' ||
+    typeof totalTokens !== 'number'
+  ) {
+    return null;
+  }
+
+  return {
+    promptTokens,
+    completionTokens,
+    totalTokens,
+  };
 };

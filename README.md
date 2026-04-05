@@ -66,6 +66,9 @@ bun run build
 - `OPENAI_DAILY_BUDGET_ENABLED`：是否启用每日预算控制
 - `OPENAI_DAILY_BUDGET_MAX_TOKENS`：每日预算上限（估算 token）
 - `OPENAI_STREAM_DEBUG`：是否启用后端 AI streaming 调试日志（默认 `false`）
+- `TELEGRAM_NOTIFY_ENABLED`：是否启用 AI usage Telegram 通知（默认 `false`）
+- `TELEGRAM_BOT_TOKEN`：Telegram Bot Token
+- `TELEGRAM_CHAT_ID`：Telegram 接收消息的 chat id
 - `CSP_ENABLE`：是否启用 CSP 响应头
 - `CSP_MODE`：CSP 灰度模式（`off` / `report-only` / `enforce` / `both`）
 - `CSP_POLICY`：自定义 CSP 策略文本（可选，不配置则使用内置默认策略）
@@ -86,7 +89,7 @@ OPENAI_STREAM_DEBUG=true
 - 前端 `VITE_ENABLE_AI_STREAM_DEBUG` 是构建时变量；如果只是临时本地排查，可直接在浏览器控制台执行：
 
 ```js
-localStorage.setItem('ddlbuilder:ai-stream-debug', 'true')
+localStorage.setItem('ddlbuilder:ai-stream-debug', 'true');
 ```
 
 - AI 路由响应头会暴露 `X-AI-Stream-Debug`。

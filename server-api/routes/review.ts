@@ -9,6 +9,7 @@ import {
   getOpenAIGovernanceSnapshot,
   estimateRequestTokens,
   logOpenAIAudit,
+  readUsageFromStreamChunk,
   withOpenAIRetry,
   buildOpenAIConfig,
 } from '../openaiControl.js';
@@ -27,6 +28,9 @@ export function registerReviewRoute(app: Hono<ApiEnv>) {
     const governance = getOpenAIGovernanceSnapshot(route, config);
 
     let estimatedTokens = 0;
+    let actualPromptTokens: number | null = null;
+    let actualCompletionTokens: number | null = null;
+    let actualTotalTokens: number | null = null;
     let rateLimitRemaining: number | null = governance.rateLimitLimit;
     let budgetUsedTokens: number | null = null;
 
@@ -37,7 +41,7 @@ export function registerReviewRoute(app: Hono<ApiEnv>) {
       budgetHit: boolean,
       errorCode?: ApiErrorCode,
     ) => {
-      logOpenAIAudit({
+      logOpenAIAudit(c.env, {
         requestId,
         route,
         status,
@@ -45,6 +49,9 @@ export function registerReviewRoute(app: Hono<ApiEnv>) {
         retryCount,
         rateLimitHit,
         estimatedTokens,
+        actualPromptTokens,
+        actualCompletionTokens,
+        actualTotalTokens,
         model: c.env.OPENAI_MODEL_NAME || 'gpt-4o-mini',
         maxOutputTokens: MAX_OUTPUT_TOKENS,
         rateLimitEnabled: governance.rateLimitEnabled,
@@ -153,6 +160,9 @@ export function registerReviewRoute(app: Hono<ApiEnv>) {
               temperature: 0.3,
               max_tokens: MAX_OUTPUT_TOKENS,
               stream: true,
+              stream_options: {
+                include_usage: true,
+              },
               ...({
                 thinking: {
                   type: 'disabled',
@@ -168,6 +178,13 @@ export function registerReviewRoute(app: Hono<ApiEnv>) {
         streamDebug.connected();
 
         for await (const chunk of response) {
+          const usage = readUsageFromStreamChunk(chunk);
+          if (usage) {
+            actualPromptTokens = usage.promptTokens;
+            actualCompletionTokens = usage.completionTokens;
+            actualTotalTokens = usage.totalTokens;
+          }
+
           const content = chunk.choices[0]?.delta?.content || '';
           if (content) {
             streamDebug.chunk(content);

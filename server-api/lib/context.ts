@@ -25,6 +25,9 @@ export type ApiEnv = {
     OPENAI_API_KEY?: string;
     OPENAI_BASE_URL?: string;
     OPENAI_MODEL_NAME?: string;
+    TELEGRAM_NOTIFY_ENABLED?: string;
+    TELEGRAM_BOT_TOKEN?: string;
+    TELEGRAM_CHAT_ID?: string;
     CSP_ENABLE?: string;
     CSP_MODE?: string;
     CSP_POLICY?: string;

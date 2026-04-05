@@ -68,8 +68,52 @@ const loadApp = async (envConfig: Record<string, string | undefined>) => {
   return createAppWrapper(app, env);
 };
 
+const createMockStream = (chunks: unknown[]) => ({
+  async *[Symbol.asyncIterator]() {
+    for (const chunk of chunks) {
+      yield chunk;
+    }
+  },
+});
+
+const loadAppWithOpenAIMock = async (
+  envConfig: Record<string, string | undefined>,
+  createCompletionMock: ReturnType<typeof vi.fn>,
+) => {
+  restoreEnv();
+  for (const [key, value] of Object.entries(envConfig)) {
+    if (value == null) {
+      delete process.env[key];
+      continue;
+    }
+    process.env[key] = value;
+  }
+
+  vi.resetModules();
+  vi.doMock('openai', () => ({
+    default: class OpenAI {
+      chat = {
+        completions: {
+          create: createCompletionMock,
+        },
+      };
+    },
+  }));
+
+  const module = await import('../../api/index');
+  const app = module.default as Hono<ApiEnv>;
+  const env = createEnv(
+    Object.fromEntries(Object.entries(envConfig).filter(([, v]) => v !== undefined)) as Partial<
+      ApiEnv['Bindings']
+    >,
+  );
+
+  return createAppWrapper(app, env);
+};
+
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.doUnmock('openai');
   restoreEnv();
   vi.resetModules();
 });
@@ -235,5 +279,169 @@ describe.sequential('openai governance', () => {
     });
     expect(auditPayload).toHaveProperty('budgetLimitTokens');
     expect(auditPayload).toHaveProperty('budgetUsedTokens');
+  });
+
+  it('开启 Telegram 通知后应在审计时异步发送消息', async () => {
+    const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('ok'));
+
+    const app = await loadApp({
+      OPENAI_RATELIMIT_ENABLED: 'true',
+      OPENAI_RATELIMIT_STORE: 'memory',
+      OPENAI_RATELIMIT_WINDOW_MS: '60000',
+      OPENAI_RATELIMIT_REVIEW_MAX: '20',
+      OPENAI_DAILY_BUDGET_ENABLED: 'false',
+      OPENAI_API_KEY: undefined,
+      TELEGRAM_NOTIFY_ENABLED: 'true',
+      TELEGRAM_BOT_TOKEN: 'bot-token',
+      TELEGRAM_CHAT_ID: 'chat-id',
+    });
+
+    const response = await app.request('https://ddlbuilder.test/api/review', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-forwarded-for': '5.5.5.5',
+        'user-agent': 'telegram-test',
+      },
+      body: JSON.stringify({
+        ddl: 'CREATE TABLE t1(id bigint);',
+        tableName: 't1',
+        dbType: 'mysql',
+      }),
+    });
+
+    expect(response.status).toBe(503);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(consoleInfoSpy).toHaveBeenCalled();
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://api.telegram.org/botbot-token/sendMessage');
+    expect(init.method).toBe('POST');
+    expect(String(init.body)).toContain('estimatedTokens');
+  });
+
+  it('Telegram 发送失败时不应影响主请求', async () => {
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('fail', { status: 500 }));
+
+    const app = await loadApp({
+      OPENAI_RATELIMIT_ENABLED: 'true',
+      OPENAI_RATELIMIT_STORE: 'memory',
+      OPENAI_RATELIMIT_WINDOW_MS: '60000',
+      OPENAI_RATELIMIT_EXPLAIN_MAX: '20',
+      OPENAI_DAILY_BUDGET_ENABLED: 'false',
+      OPENAI_API_KEY: undefined,
+      TELEGRAM_NOTIFY_ENABLED: 'true',
+      TELEGRAM_BOT_TOKEN: 'bot-token',
+      TELEGRAM_CHAT_ID: 'chat-id',
+    });
+
+    const response = await app.request('https://ddlbuilder.test/api/explain', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-forwarded-for': '6.6.6.6',
+        'user-agent': 'telegram-fail-test',
+      },
+      body: JSON.stringify({
+        sql: 'select 1',
+        context: '',
+      }),
+    });
+
+    expect(response.status).toBe(503);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('流式响应应请求真实 usage，且不透传 usage chunk', async () => {
+    const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('ok'));
+    const createCompletionMock = vi.fn().mockResolvedValue(
+      createMockStream([
+        {
+          choices: [{ delta: { content: '{"ok":' } }],
+        },
+        {
+          choices: [{ delta: { content: 'true}' } }],
+        },
+        {
+          choices: [],
+          usage: {
+            prompt_tokens: 13,
+            completion_tokens: 26,
+            total_tokens: 39,
+          },
+        },
+      ]),
+    );
+
+    const app = await loadAppWithOpenAIMock(
+      {
+        OPENAI_RATELIMIT_ENABLED: 'true',
+        OPENAI_RATELIMIT_STORE: 'memory',
+        OPENAI_RATELIMIT_WINDOW_MS: '60000',
+        OPENAI_RATELIMIT_REVIEW_MAX: '20',
+        OPENAI_DAILY_BUDGET_ENABLED: 'false',
+        OPENAI_API_KEY: 'test-key',
+        OPENAI_MODEL_NAME: 'qwen3.5-flash',
+        TELEGRAM_NOTIFY_ENABLED: 'true',
+        TELEGRAM_BOT_TOKEN: 'bot-token',
+        TELEGRAM_CHAT_ID: 'chat-id',
+      },
+      createCompletionMock,
+    );
+
+    const response = await app.request('https://ddlbuilder.test/api/review', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-forwarded-for': '7.7.7.7',
+        'user-agent': 'usage-stream-test',
+      },
+      body: JSON.stringify({
+        ddl: 'CREATE TABLE t1(id bigint);',
+        tableName: 't1',
+        dbType: 'mysql',
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe('{"ok":true}');
+
+    expect(createCompletionMock).toHaveBeenCalledTimes(1);
+    expect(createCompletionMock.mock.calls[0]?.[0]).toMatchObject({
+      stream: true,
+      stream_options: {
+        include_usage: true,
+      },
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const auditPayload = consoleInfoSpy.mock.calls
+      .map(([value]) => JSON.parse(String(value)) as Record<string, unknown>)
+      .find((payload) => payload.event === 'openai_audit');
+
+    expect(auditPayload).toMatchObject({
+      actualPromptTokens: 13,
+      actualCompletionTokens: 26,
+      actualTotalTokens: 39,
+      estimatedTokens: expect.any(Number),
+    });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(String(fetchSpy.mock.calls[0]?.[1]?.body)).toContain('actualTotalTokens: 39');
+    expect(String(fetchSpy.mock.calls[0]?.[1]?.body)).toContain('estimatedTokens:');
   });
 });
