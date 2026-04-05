@@ -58,6 +58,8 @@ export type OpenAIUsageSnapshot = {
   totalTokens: number;
 };
 
+type WaitUntilFn = (promise: Promise<unknown>) => void;
+
 // Environment variable helpers
 const readEnvInt = (value: string | undefined, fallback: number): number => {
   const raw = value;
@@ -484,7 +486,11 @@ export async function enforceOpenAIDailyBudget(
   };
 }
 
-export function logOpenAIAudit(env: ApiEnv['Bindings'], payload: AuditLogPayload) {
+export function logOpenAIAudit(
+  env: ApiEnv['Bindings'],
+  payload: AuditLogPayload,
+  waitUntil?: WaitUntilFn,
+) {
   console.info(
     JSON.stringify({
       event: 'openai_audit',
@@ -493,7 +499,16 @@ export function logOpenAIAudit(env: ApiEnv['Bindings'], payload: AuditLogPayload
     }),
   );
 
-  dispatchTelegramAuditNotification(env, payload);
+  const notifyTask = Promise.resolve().then(() => {
+    dispatchTelegramAuditNotification(env, payload);
+  });
+
+  if (waitUntil) {
+    waitUntil(notifyTask);
+    return;
+  }
+
+  void notifyTask;
 }
 
 export async function withOpenAIRetry<T>(

@@ -36,6 +36,13 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
     let actualTotalTokens: number | null = null;
     let rateLimitRemaining: number | null = governance.rateLimitLimit;
     let budgetUsedTokens: number | null = null;
+    let waitUntil: ((promise: Promise<unknown>) => void) | undefined;
+
+    try {
+      waitUntil = c.executionCtx.waitUntil.bind(c.executionCtx);
+    } catch {
+      waitUntil = undefined;
+    }
 
     const audit = (
       status: number,
@@ -67,7 +74,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
         budgetLimitTokens: governance.budgetLimitTokens,
         budgetUsedTokens,
         errorCode,
-      });
+      }, waitUntil);
     };
 
     const rateLimit = await enforceOpenAIRateLimit(c, route, config);
