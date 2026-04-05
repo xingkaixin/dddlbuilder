@@ -1,5 +1,6 @@
 ## 开发
 - 使用`bun add`,添加依赖，不要直接修改`packages.json`
+- Cloudflare Worker 中的异步副作用（如 Telegram 通知、审计上报、异步写入）如果需要在请求返回后继续执行，必须挂到 `waitUntil`；不要只写 `void someAsyncTask()`，否则本地正常、线上可能因 Worker 提前结束而丢失。
 
 ## 测试
 - lint 使用`bun run lint`
