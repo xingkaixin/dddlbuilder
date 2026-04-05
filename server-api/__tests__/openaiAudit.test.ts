@@ -46,9 +46,9 @@ describe('openai audit', () => {
       waitUntil,
     );
 
-    expect(infoSpy).toHaveBeenCalledTimes(1);
+    expect(infoSpy).toHaveBeenCalledTimes(2);
     expect(waitUntil).toHaveBeenCalledTimes(1);
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
 
     const [task] = waitUntil.mock.calls[0] as [Promise<unknown>];
     await task;

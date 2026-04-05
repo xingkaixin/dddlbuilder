@@ -499,11 +499,9 @@ export function logOpenAIAudit(
     }),
   );
 
-  const notifyTask = Promise.resolve().then(() => {
-    dispatchTelegramAuditNotification(env, payload);
-  });
+  const notifyTask = dispatchTelegramAuditNotification(env, payload);
 
-  if (waitUntil) {
+  if (waitUntil && notifyTask) {
     waitUntil(notifyTask);
     return;
   }

@@ -97,11 +97,10 @@ describe('telegram notifier', () => {
       auditPayload,
     );
 
-    await Promise.resolve();
-    await Promise.resolve();
-
     expect(fetchSpy).toHaveBeenCalledTimes(1);
-    expect(warnSpy).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => {
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+    });
 
     fetchSpy.mockRestore();
     warnSpy.mockRestore();

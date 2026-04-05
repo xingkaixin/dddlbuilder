@@ -90,19 +90,42 @@ export const sendTelegramAuditNotification = async (
   });
 
   if (!response.ok) {
-    throw new Error(`TELEGRAM_SEND_FAILED:${response.status}`);
+    const bodyText = await response.text();
+    throw new Error(`TELEGRAM_SEND_FAILED:${response.status}:${bodyText}`);
   }
+
+  console.info(
+    JSON.stringify({
+      event: 'telegram_notify_sent',
+      requestId: payload.requestId,
+      route: payload.route,
+      status: response.status,
+    }),
+  );
 };
 
 export const dispatchTelegramAuditNotification = (
   env: ApiEnv['Bindings'],
   payload: AuditNotificationPayload,
-) => {
-  if (!shouldSendTelegramNotification(env)) {
-    return;
+): Promise<void> | null => {
+  const config = readTelegramNotifyConfig(env);
+
+  console.info(
+    JSON.stringify({
+      event: 'telegram_notify_check',
+      enabled: config.enabled,
+      hasBotToken: Boolean(config.botToken),
+      hasChatId: Boolean(config.chatId),
+      requestId: payload.requestId,
+      route: payload.route,
+    }),
+  );
+
+  if (!config.enabled || !config.botToken || !config.chatId) {
+    return null;
   }
 
-  void sendTelegramAuditNotification(env, payload).catch((error) => {
+  return sendTelegramAuditNotification(env, payload).catch((error) => {
     console.warn('[TelegramNotifier] Failed to send audit notification', error);
   });
 };
