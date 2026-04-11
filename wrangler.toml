@@ -20,3 +20,9 @@ id = "YOUR_SHARE_KV_ID"
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
 id = "YOUR_RATE_LIMIT_KV_ID"
+
+[[d1_databases]]
+binding = "USER_DB"
+database_name = "ddlbuilder-user-local"
+database_id = "00000000-0000-0000-0000-000000000001"
+preview_database_id = "00000000-0000-0000-0000-000000000001"

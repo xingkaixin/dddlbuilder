@@ -48,6 +48,11 @@ bun run build
 - `bun run dev`：启动前端开发服务与文档开发服务，入口为 `http://localhost:3000`，修改页面代码会通过 Vite 自动热更新。
 - `bun run dev:app`：仅启动前端开发服务（Vite）。
 - `bun run dev:worker`：先构建一次 Worker 产物，再用 `wrangler dev` 在 `http://localhost:8787` 启动运行时调试服务。
+- `bun run db:migrate:local`：初始化或升级本地 D1 用户系统 schema。
+- `bun run db:seed:local`：写入本地 D1 最小种子数据。
+- `bun run db:reset:local`：清空并重建本地 D1 schema，再重新 seed。
+- `bun run db:inspect:local`：查看本地 D1 当前表与索引。
+- `bun run db:migrate:remote` / `bun run db:inspect:remote`：显式连接 remote D1 执行迁移或检查。
 - `bun run dev:docs`：仅启动文档开发服务（`http://127.0.0.1:5174/docs/`）。
 - `bun run dev` 运行时，`/docs` 会自动代理到 docs dev server；如果只运行 `bun run dev:app`，需要再单独运行 `bun run dev:docs` 才能通过 `http://localhost:3000/docs/` 查看文档。
 
@@ -59,6 +64,11 @@ bun run build
 - `OPENAI_API_KEY`：模型服务密钥
 - `OPENAI_MODEL_NAME`：默认模型名
 - `CORS_ALLOWED_ORIGINS`：允许跨域来源，多个来源用逗号分隔
+- `SUPABASE_URL`：Supabase 项目地址
+- `SUPABASE_ANON_KEY`：前端 Supabase Auth 公钥
+- `SUPABASE_JWKS_URL`：Worker 校验 Supabase JWT 使用的 JWKS 地址
+- `TURNSTILE_SECRET_KEY`：Turnstile 服务端校验密钥
+- `SIGNUP_BONUS_CREDITS`：注册赠送额度
 - `OPENAI_RATELIMIT_ENABLED`：是否启用 AI 接口限流
 - `OPENAI_RATELIMIT_WINDOW_MS`：限流窗口时长（毫秒）
 - `OPENAI_RATELIMIT_EXPLAIN_MAX` / `OPENAI_RATELIMIT_REVIEW_MAX` / `OPENAI_RATELIMIT_GENERATE_MAX`：各 AI 路由窗口内最大请求数
@@ -94,6 +104,28 @@ localStorage.setItem('ddlbuilder:ai-stream-debug', 'true');
 
 - AI 路由响应头会暴露 `X-AI-Stream-Debug`。
   值为 `1` 表示后端 stream debug 已生效，值为 `0` 表示当前请求未开启后端 stream debug。
+
+### 用户系统本地联调
+
+首次拉起用户系统底座时，按下面顺序执行：
+
+```bash
+bun run db:migrate:local
+bun run db:seed:local
+bun run dev:worker
+```
+
+如果需要回到干净状态：
+
+```bash
+bun run db:reset:local
+```
+
+说明：
+
+- 默认所有 D1 命令都操作 local simulation。
+- remote D1 只允许通过显式的 `:remote` 命令访问。
+- `bun run dev:worker` 会把本地 D1 状态持久化到 `.wrangler/state/dev`。
 
 ## 使用说明
 

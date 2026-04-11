@@ -3,13 +3,20 @@
 export type ApiEnv = {
   Variables: {
     requestId: string;
+    currentUserId?: string;
   };
   Bindings: {
     ASSETS: { fetch: typeof fetch };
     SHARE_KV: KVNamespace;
     RATE_LIMIT_KV: KVNamespace;
+    USER_DB: D1Database;
     // Environment variables
     CORS_ALLOWED_ORIGINS?: string;
+    SUPABASE_URL?: string;
+    SUPABASE_ANON_KEY?: string;
+    SUPABASE_JWKS_URL?: string;
+    TURNSTILE_SECRET_KEY?: string;
+    SIGNUP_BONUS_CREDITS?: string;
     OPENAI_RATELIMIT_STORE?: string;
     OPENAI_RATELIMIT_ENABLED?: string;
     OPENAI_RATELIMIT_WINDOW_MS?: string;

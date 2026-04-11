@@ -11,6 +11,11 @@ app.use('/api/*', async (c, next) => {
   if (!(c.env as any).OPENAI_API_KEY) {
     Object.assign(c.env as object, {
       CORS_ALLOWED_ORIGINS: process.env.CORS_ALLOWED_ORIGINS,
+      SUPABASE_URL: process.env.SUPABASE_URL,
+      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+      SUPABASE_JWKS_URL: process.env.SUPABASE_JWKS_URL,
+      TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
+      SIGNUP_BONUS_CREDITS: process.env.SIGNUP_BONUS_CREDITS,
       OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
       OPENAI_API_KEY: process.env.OPENAI_API_KEY,
       OPENAI_MODEL_NAME: process.env.OPENAI_MODEL_NAME,

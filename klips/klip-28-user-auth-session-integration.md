@@ -1,7 +1,7 @@
 ---
 Author: "Codex"
 Updated: 2026-04-11
-Status: Draft
+Status: Almost Complete
 Origin: "XING-104"
 ---
 
@@ -93,10 +93,10 @@ V1 接入三个点：
 
 ### 新增 Worker 路由
 
-- `POST /api/auth/exchange`
-  用于前端把外部 access token 换成 app user 上下文
 - `GET /api/me`
   返回最小用户信息与 app user id
+- `POST /api/auth/turnstile/verify`
+  用于注册 / 登录前的人机校验
 
 ### `ApiEnv` / `Context` 变化
 
@@ -141,5 +141,8 @@ V1 接入三个点：
 
 ## 待确认
 
-- JWT 校验使用 Supabase JWKS 还是走服务端 introspection
-- `POST /api/auth/exchange` 是否必要，还是 `GET /api/me` 足以承担 app user resolve 逻辑
+## 已决策约定
+
+- JWT 校验固定使用 `Supabase JWKS`
+- 不新增 `POST /api/auth/exchange`
+- `GET /api/me` 负责完成当前 token 对应的 app user resolve
