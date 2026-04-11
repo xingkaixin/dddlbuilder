@@ -1,7 +1,7 @@
 ---
 Author: "Codex"
 Updated: 2026-04-11
-Status: Almost Complete
+Status: Complete
 Origin: "XING-104"
 ---
 
@@ -111,13 +111,21 @@ V1 采用“两阶段记账”：
 - 并发 consume 不会把余额扣成负值
 - AI 上游失败时能自动退款
 
+## 实现回写
+
+- 已新增独立 `credit service`
+- 注册赠送额度已改为通过 credit service 发放，而不是 auth 流程直接写表
+- 已新增 `GET /api/credits/balance`
+- 已新增 `GET /api/credits/ledger`
+- 预扣 / 结算 / refund 还未接入 AI 路由，该部分由 `XING-118` 继续完成
+
 ## 验收标准
 
-- [ ] 任一额度变化都有 ledger 记录
-- [ ] 注册赠送额度可配置
-- [ ] 余额查询与最近 ledger 查询可用
-- [ ] 幂等与并发约束明确
-- [ ] 未来新增 paid grant 不需要重做模型
+- [x] 任一额度变化都有 ledger 记录
+- [x] 注册赠送额度可配置
+- [x] 余额查询与最近 ledger 查询可用
+- [x] 幂等与并发约束明确
+- [x] 未来新增 paid grant 不需要重做模型
 
 ## 关键参考位置
 
@@ -126,7 +134,6 @@ V1 采用“两阶段记账”：
 - `server-api/routes/review.ts`
 - `server-api/routes/explain.ts`
 
-## 待确认
 ## 已决策约定
 
 - V1 余额单位使用抽象 `credits`

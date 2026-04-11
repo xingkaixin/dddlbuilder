@@ -1,7 +1,7 @@
 ---
 Author: "Codex"
 Updated: 2026-04-11
-Status: Draft
+Status: Almost Complete
 ---
 
 # KLIP-25 用户系统总体方案与执行编排
@@ -127,13 +127,24 @@ Status: Draft
 - `klips/klip-31-ai-route-auth-and-credit-governance.md`
 - `klips/klip-32-user-center-and-ai-gating.md`
 
+## 当前阶段进展
+
+- [x] `XING-113` 已完成方案定稿并进入 review
+- [x] `XING-114` 已完成 D1 / Wrangler / 本地联调脚手架并进入 review
+- [x] `XING-115` 已完成 Supabase Auth、`GET /api/me`、Header 登录/登出最小闭环并进入 review
+- [x] `XING-117` 已完成 credit service、余额接口、ledger 接口并进入 review
+- [ ] `XING-118` 尚未实现
+- [ ] `XING-116` 尚未实现
+- [~] `XING-119` 已部分启动
+  现状：Header 登录入口已落地，但余额展示、AI 门禁、迁移提示仍未实现
+
 ## 总体验收标准
 
-- [ ] `XING-113` 到 `XING-119` 的边界清晰，无重复决策
-- [ ] 文档集能说明从匿名工作区到注册用户，再到 AI 调用扣减的完整主链
-- [ ] 总文档能明确哪些能力是本期做、哪些明确不做
-- [ ] 每个 sub-issue 都有独立可执行的输入、输出、失败路径和验收标准
-- [ ] 推荐实施顺序与依赖关系明确，后续实现不再需要重新拆题
+- [x] `XING-113` 到 `XING-119` 的边界清晰，无重复决策
+- [x] 文档集能说明从匿名工作区到注册用户，再到 AI 调用扣减的完整主链
+- [x] 总文档能明确哪些能力是本期做、哪些明确不做
+- [x] 每个 sub-issue 都有独立可执行的输入、输出、失败路径和验收标准
+- [x] 推荐实施顺序与依赖关系明确，后续实现不再需要重新拆题
 
 ## 关键参考位置
 
