@@ -6,3 +6,9 @@ main = "dist/server.js"
 directory = "dist/client"
 html_handling = "auto-trailing-slash"
 not_found_handling = "single-page-application"
+
+[[d1_databases]]
+binding = "USER_DB"
+database_name = "ddlbuilder-user-e2e"
+database_id = "00000000-0000-0000-0000-000000000002"
+preview_database_id = "00000000-0000-0000-0000-000000000002"

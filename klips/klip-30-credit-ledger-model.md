@@ -1,7 +1,7 @@
 ---
 Author: "Codex"
 Updated: 2026-04-11
-Status: Draft
+Status: Almost Complete
 Origin: "XING-104"
 ---
 
@@ -127,6 +127,8 @@ V1 采用“两阶段记账”：
 - `server-api/routes/explain.ts`
 
 ## 待确认
+## 已决策约定
 
-- 余额单位是“token points”还是抽象 credits
-- `estimated_tokens -> credits` 的换算是否按 1:1，还是按不同路由设置倍率
+- V1 余额单位使用抽象 `credits`
+- V1 先采用 `estimated_tokens = credits` 的 1:1 口径
+- 不按路由做不同倍率，避免一期把计费模型做复杂

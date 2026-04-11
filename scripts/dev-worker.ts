@@ -2,6 +2,7 @@ import { spawn, spawnSync } from 'node:child_process';
 
 const bunCmd = process.platform === 'win32' ? 'bun.exe' : 'bun';
 const workerPort = process.env.WORKER_DEV_PORT ?? '8787';
+const persistDir = process.env.WRANGLER_PERSIST_DIR ?? '.wrangler/state/dev';
 
 const build = spawnSync(bunCmd, ['run', 'build:wrangler-dev'], {
   stdio: 'inherit',
@@ -13,7 +14,17 @@ if (build.status !== 0) {
 
 const child = spawn(
   bunCmd,
-  ['x', 'wrangler', 'dev', '--port', workerPort, '--inspector-port', '0'],
+  [
+    'x',
+    'wrangler',
+    'dev',
+    '--port',
+    workerPort,
+    '--inspector-port',
+    '0',
+    '--persist-to',
+    persistDir,
+  ],
   {
     stdio: 'inherit',
     env: process.env,

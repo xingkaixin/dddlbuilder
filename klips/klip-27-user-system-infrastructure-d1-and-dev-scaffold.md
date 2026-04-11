@@ -1,7 +1,7 @@
 ---
 Author: "Codex"
 Updated: 2026-04-11
-Status: Draft
+Status: Almost Complete
 Origin: "XING-104"
 ---
 
@@ -59,11 +59,11 @@ preview_database_id = "USER_DB"
 - 认证相关配置
 - Turnstile 相关配置
 
-建议最小环境变量：
+确定采用的最小环境变量：
 
 - `SUPABASE_URL`
-- `SUPABASE_JWKS_URL` 或等价 JWT 校验配置
-- `SUPABASE_ANON_KEY` 仅前端使用，避免暴露到 Worker 内部路径
+- `SUPABASE_JWKS_URL`
+- `SUPABASE_ANON_KEY`
 - `TURNSTILE_SECRET_KEY`
 - `SIGNUP_BONUS_CREDITS`
 
@@ -85,6 +85,11 @@ V1 只要求：
 - `credit_ledger`
 - `usage_events`
 - `workspace_snapshots` 或等价云端工作区表
+- `workspace_links`
+
+并固定命名为：
+
+- `workspace_snapshots`
 - `workspace_links`
 
 ### 开发命令
@@ -168,7 +173,7 @@ V1 只要求：
 - `api/index.ts`
 - `server.ts`
 
-## 待确认
+## 已决策约定
 
-- 是否需要单独的 `wrangler.local.toml` / `wrangler.staging.toml`，还是统一使用 `wrangler.toml + env`
-- e2e 环境是否直接复用同一个本地 D1 持久化目录
+- 不新增 `wrangler.local.toml` / `wrangler.staging.toml`，统一使用 `wrangler.toml + 显式命令参数`
+- e2e 使用独立的本地持久化目录，不复用日常开发 D1 状态

@@ -1,7 +1,7 @@
 ---
 Author: "Codex"
 Updated: 2026-04-11
-Status: Draft
+Status: Almost Complete
 Origin: "XING-104"
 ---
 
@@ -141,6 +141,7 @@ user_identities
   user_id
   provider
   provider_user_id
+  provider_email
   created_at
 
 credit_accounts
@@ -155,8 +156,10 @@ credit_ledger
   kind            -- grant / consume / refund
   source          -- signup_bonus / ai_generate / ai_review / ai_explain / manual_adjustment
   amount
+  balance_after
   idempotency_key
   related_usage_id
+  metadata_json
   created_at
 
 usage_events
@@ -167,12 +170,25 @@ usage_events
   estimated_tokens
   actual_total_tokens
   status
+  error_code
   created_at
+
+workspace_snapshots
+  id
+  user_id
+  kind            -- global_draft / saved_table / saved_draft
+  normalized_name
+  payload_json
+  source_updated_at
+  created_at
+  updated_at
 
 workspace_links
   id
   user_id
   local_fingerprint
+  migration_status
+  last_idempotency_key
   migrated_at
 ```
 
@@ -181,7 +197,8 @@ workspace_links
 - `credit_accounts.balance` 是缓存余额，不是真实账本来源
 - 真实可审计来源是 `credit_ledger`
 - `version` 用于并发扣减时的乐观锁或 compare-and-swap
-- `workspace_links` 只记录本地工作区与用户名下云端归属关系，不直接存完整 workspace 内容
+- `workspace_links` 只记录迁移归属与幂等关系
+- 真正的云端工作区快照放在 `workspace_snapshots`
 
 ## 关键决策与约定
 
@@ -218,6 +235,34 @@ workspace_links
 - D1 / KV 默认使用 local simulation
 - 必要时按 binding 切 remote
 - 本地需要测试账号、最小 seed 数据、数据库 reset 能力
+
+### 预发联调
+
+- Worker 继续本地运行
+- 仅在显式指定时连接 remote D1 / KV
+- Supabase 使用独立的 staging project
+- Turnstile 使用测试 site key / secret，不与生产混用
+
+### 线上部署
+
+- Cloudflare Worker 使用生产 D1 / KV
+- Supabase 使用生产 auth project
+- 所有 user 主数据与额度数据仍以 D1 为准，不直接依赖 Supabase profile 表
+
+## 实施后约束
+
+- `XING-114` 必须按本文模型建最小 schema，不允许再改核心表职责
+- `XING-115` 必须采用 Worker 校验 JWT + D1 映射 app user 的模式，不允许把 app user 概念直接外包给 Supabase
+- `XING-117` 必须以 ledger 为事实源，不允许只保留余额字段
+- `XING-116` 一期只迁移核心工作区数据，不把 `review_history`、`table_versions`、`field_templates`、`table_folders` 偷偷带入
+
+## 验收标准
+
+- [x] 认证提供方已定为 Supabase Auth，且说明了不选自建、Auth.js、Clerk 的理由
+- [x] Cloudflare 资源边界已固定
+- [x] 核心数据模型已落到可建表粒度
+- [x] 本地 / 预发 / 线上三套环境策略已固定
+- [x] 后续子 issue 不再需要重新做产品级决策
 
 ### 预发联调
 
