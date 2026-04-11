@@ -1,6 +1,12 @@
 import type { Hono } from 'hono';
 import { streamText } from 'hono/streaming';
 import OpenAI from 'openai';
+import {
+  authenticateAIUser,
+  completeAIUsage,
+  failAIUsage,
+  reserveAIUsage,
+} from '../lib/aiUsage.js';
 import type { ApiEnv } from '../lib/context.js';
 import { createOpenAIStreamDebugLogger } from '../lib/aiStreamDebug.js';
 import {
@@ -36,6 +42,14 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
     let actualTotalTokens: number | null = null;
     let rateLimitRemaining: number | null = governance.rateLimitLimit;
     let budgetUsedTokens: number | null = null;
+    let reservation: {
+      usageEventId: string;
+      userId: string;
+      routeKey: 'generate-table';
+      requestId: string;
+      reservedTokens: number;
+    } | null = null;
+    let currentUserId: string | null = null;
     let waitUntil: ((promise: Promise<unknown>) => void) | undefined;
 
     try {
@@ -118,6 +132,27 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
       return errorResponse(c, 400, 'Description is required', 'DESCRIPTION_REQUIRED');
     }
 
+    try {
+      const user = await authenticateAIUser(c);
+      currentUserId = user.appUserId;
+    } catch (error) {
+      if (error instanceof Error && error.message === 'AUTH_REQUIRED') {
+        audit(401, 0, false, false, 'AUTH_REQUIRED');
+        return errorResponse(c, 401, 'Authentication required', 'AUTH_REQUIRED');
+      }
+      if (error instanceof Error && error.message === 'INVALID_AUTH_TOKEN') {
+        audit(401, 0, false, false, 'INVALID_AUTH_TOKEN');
+        return errorResponse(c, 401, 'Invalid or expired access token', 'INVALID_AUTH_TOKEN');
+      }
+      if (error instanceof Error && error.message === 'USER_DISABLED') {
+        audit(403, 0, false, false, 'USER_DISABLED');
+        return errorResponse(c, 403, 'User account is disabled', 'USER_DISABLED');
+      }
+      console.error('[generate-table] authentication failed', error);
+      audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
+      return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
+    }
+
     estimatedTokens = estimateRequestTokens(
       {
         description,
@@ -144,6 +179,28 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
     if (!apiKey) {
       audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
       return errorResponse(c, 503, 'OpenAI service unavailable', 'SERVICE_UNAVAILABLE');
+    }
+
+    if (!currentUserId) {
+      audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
+      return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
+    }
+
+    try {
+      reservation = await reserveAIUsage(c.env, {
+        userId: currentUserId,
+        routeKey: route,
+        requestId,
+        estimatedTokens,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'CREDIT_EXHAUSTED') {
+        audit(402, 0, false, false, 'CREDIT_EXHAUSTED');
+        return errorResponse(c, 402, 'Insufficient credits', 'CREDIT_EXHAUSTED');
+      }
+      console.error('[generate-table] credit reservation failed', error);
+      audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
+      return errorResponse(c, 503, 'Credit service unavailable', 'SERVICE_UNAVAILABLE');
     }
 
     const openai = new OpenAI({
@@ -226,9 +283,22 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
         }
 
         streamDebug.complete();
+        if (reservation) {
+          await completeAIUsage(c.env, reservation, actualTotalTokens);
+        }
         audit(200, retryCount, false, false);
       } catch (error) {
         streamDebug.error(error);
+        if (reservation) {
+          try {
+            await failAIUsage(c.env, reservation, 'UPSTREAM_OPENAI_ERROR');
+          } catch (refundError) {
+            console.error(
+              '[generate-table] failed to refund credits after upstream error',
+              refundError,
+            );
+          }
+        }
         audit(502, retryCount, false, false, 'UPSTREAM_OPENAI_ERROR');
         await stream.write(
           streamErrorPayload('Upstream OpenAI error', 'UPSTREAM_OPENAI_ERROR', requestId),

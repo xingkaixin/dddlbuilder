@@ -45,30 +45,6 @@ const createAppWrapper = (
   },
 });
 
-const loadApp = async (envConfig: Record<string, string | undefined>) => {
-  restoreEnv();
-  for (const [key, value] of Object.entries(envConfig)) {
-    if (value == null) {
-      delete process.env[key];
-      continue;
-    }
-    process.env[key] = value;
-  }
-
-  vi.resetModules();
-  const module = await import('../../api/index');
-  const app = module.default as Hono<ApiEnv>;
-
-  // Create env with both the env vars from envConfig and default bindings
-  const env = createEnv(
-    Object.fromEntries(Object.entries(envConfig).filter(([, v]) => v !== undefined)) as Partial<
-      ApiEnv['Bindings']
-    >,
-  );
-
-  return createAppWrapper(app, env);
-};
-
 const createMockStream = (chunks: unknown[]) => ({
   async *[Symbol.asyncIterator]() {
     for (const chunk of chunks) {
@@ -77,9 +53,60 @@ const createMockStream = (chunks: unknown[]) => ({
   },
 });
 
+let authenticateAIUserMock = vi.fn().mockResolvedValue({
+  appUserId: 'supabase_user-1',
+  externalUserId: 'user-1',
+  email: 'user@example.com',
+  status: 'active',
+});
+let reserveAIUsageMock = vi.fn().mockImplementation(async (_env, input) => ({
+  usageEventId: `usage:${input.requestId}`,
+  userId: input.userId,
+  routeKey: input.routeKey,
+  requestId: input.requestId,
+  reservedTokens: input.estimatedTokens,
+}));
+let completeAIUsageMock = vi.fn().mockResolvedValue(undefined);
+let failAIUsageMock = vi.fn().mockResolvedValue(undefined);
+
+const mockAIUsageModule = (options?: { authenticateError?: string; reserveError?: string }) => {
+  authenticateAIUserMock = options?.authenticateError
+    ? vi.fn().mockRejectedValue(new Error(options.authenticateError))
+    : vi.fn().mockResolvedValue({
+        appUserId: 'supabase_user-1',
+        externalUserId: 'user-1',
+        email: 'user@example.com',
+        status: 'active',
+      });
+
+  reserveAIUsageMock = options?.reserveError
+    ? vi.fn().mockRejectedValue(new Error(options.reserveError))
+    : vi.fn().mockImplementation(async (_env, input) => ({
+        usageEventId: `usage:${input.requestId}`,
+        userId: input.userId,
+        routeKey: input.routeKey,
+        requestId: input.requestId,
+        reservedTokens: input.estimatedTokens,
+      }));
+
+  completeAIUsageMock = vi.fn().mockResolvedValue(undefined);
+  failAIUsageMock = vi.fn().mockResolvedValue(undefined);
+
+  vi.doMock('../lib/aiUsage.js', () => ({
+    authenticateAIUser: authenticateAIUserMock,
+    reserveAIUsage: reserveAIUsageMock,
+    completeAIUsage: completeAIUsageMock,
+    failAIUsage: failAIUsageMock,
+  }));
+};
+
 const loadAppWithOpenAIMock = async (
   envConfig: Record<string, string | undefined>,
   createCompletionMock: ReturnType<typeof vi.fn>,
+  aiUsageOptions?: {
+    authenticateError?: string;
+    reserveError?: string;
+  },
 ) => {
   restoreEnv();
   for (const [key, value] of Object.entries(envConfig)) {
@@ -91,6 +118,7 @@ const loadAppWithOpenAIMock = async (
   }
 
   vi.resetModules();
+  mockAIUsageModule(aiUsageOptions);
   vi.doMock('openai', () => ({
     default: class OpenAI {
       chat = {
@@ -112,16 +140,46 @@ const loadAppWithOpenAIMock = async (
   return createAppWrapper(app, env);
 };
 
+const loadAuthenticatedApp = async (
+  envConfig: Record<string, string | undefined>,
+  aiUsageOptions?: {
+    authenticateError?: string;
+    reserveError?: string;
+  },
+) => {
+  restoreEnv();
+  for (const [key, value] of Object.entries(envConfig)) {
+    if (value == null) {
+      delete process.env[key];
+      continue;
+    }
+    process.env[key] = value;
+  }
+
+  vi.resetModules();
+  mockAIUsageModule(aiUsageOptions);
+  const module = await import('../../api/index');
+  const app = module.default as Hono<ApiEnv>;
+  const env = createEnv(
+    Object.fromEntries(Object.entries(envConfig).filter(([, v]) => v !== undefined)) as Partial<
+      ApiEnv['Bindings']
+    >,
+  );
+
+  return createAppWrapper(app, env);
+};
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.doUnmock('openai');
+  vi.doUnmock('../lib/aiUsage.js');
   restoreEnv();
   vi.resetModules();
 });
 
 describe.sequential('openai governance', () => {
   it('应基于 IP + UA + 路由进行匿名限流', async () => {
-    const app = await loadApp({
+    const app = await loadAuthenticatedApp({
       OPENAI_RATELIMIT_ENABLED: 'true',
       OPENAI_RATELIMIT_STORE: 'memory',
       OPENAI_RATELIMIT_WINDOW_MS: '60000',
@@ -160,7 +218,7 @@ describe.sequential('openai governance', () => {
   });
 
   it('应在 kv 计数模式下命中限流并在窗口后恢复', async () => {
-    const app = await loadApp({
+    const app = await loadAuthenticatedApp({
       OPENAI_RATELIMIT_ENABLED: 'true',
       OPENAI_RATELIMIT_STORE: 'kv',
       OPENAI_RATELIMIT_WINDOW_MS: '200',
@@ -196,7 +254,7 @@ describe.sequential('openai governance', () => {
   });
 
   it('应在预算超限时返回统一错误格式', async () => {
-    const app = await loadApp({
+    const app = await loadAuthenticatedApp({
       OPENAI_RATELIMIT_ENABLED: 'true',
       OPENAI_RATELIMIT_STORE: 'memory',
       OPENAI_RATELIMIT_WINDOW_MS: '60000',
@@ -234,7 +292,7 @@ describe.sequential('openai governance', () => {
   it('结构化审计日志不应包含 SQL/DDL 原文', async () => {
     const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
-    const app = await loadApp({
+    const app = await loadAuthenticatedApp({
       OPENAI_RATELIMIT_ENABLED: 'true',
       OPENAI_RATELIMIT_STORE: 'memory',
       OPENAI_RATELIMIT_WINDOW_MS: '60000',
@@ -286,7 +344,7 @@ describe.sequential('openai governance', () => {
     const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('ok'));
 
-    const app = await loadApp({
+    const app = await loadAuthenticatedApp({
       OPENAI_RATELIMIT_ENABLED: 'true',
       OPENAI_RATELIMIT_STORE: 'memory',
       OPENAI_RATELIMIT_WINDOW_MS: '60000',
@@ -331,7 +389,7 @@ describe.sequential('openai governance', () => {
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response('fail', { status: 500 }));
 
-    const app = await loadApp({
+    const app = await loadAuthenticatedApp({
       OPENAI_RATELIMIT_ENABLED: 'true',
       OPENAI_RATELIMIT_STORE: 'memory',
       OPENAI_RATELIMIT_WINDOW_MS: '60000',
@@ -362,6 +420,71 @@ describe.sequential('openai governance', () => {
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('匿名 AI 请求应返回 AUTH_REQUIRED', async () => {
+    const app = await loadAuthenticatedApp(
+      {
+        OPENAI_RATELIMIT_ENABLED: 'true',
+        OPENAI_RATELIMIT_STORE: 'memory',
+        OPENAI_RATELIMIT_WINDOW_MS: '60000',
+        OPENAI_RATELIMIT_EXPLAIN_MAX: '20',
+        OPENAI_DAILY_BUDGET_ENABLED: 'false',
+        OPENAI_API_KEY: 'test-key',
+      },
+      { authenticateError: 'AUTH_REQUIRED' },
+    );
+
+    const response = await app.request('https://ddlbuilder.test/api/explain', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-forwarded-for': '8.8.8.8',
+        'user-agent': 'anonymous-test',
+      },
+      body: JSON.stringify({
+        sql: 'select 1',
+        context: '',
+      }),
+    });
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({
+      code: 'AUTH_REQUIRED',
+    });
+  });
+
+  it('额度不足时应返回 CREDIT_EXHAUSTED', async () => {
+    const app = await loadAuthenticatedApp(
+      {
+        OPENAI_RATELIMIT_ENABLED: 'true',
+        OPENAI_RATELIMIT_STORE: 'memory',
+        OPENAI_RATELIMIT_WINDOW_MS: '60000',
+        OPENAI_RATELIMIT_REVIEW_MAX: '20',
+        OPENAI_DAILY_BUDGET_ENABLED: 'false',
+        OPENAI_API_KEY: 'test-key',
+      },
+      { reserveError: 'CREDIT_EXHAUSTED' },
+    );
+
+    const response = await app.request('https://ddlbuilder.test/api/review', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-forwarded-for': '9.9.9.9',
+        'user-agent': 'credit-exhausted-test',
+      },
+      body: JSON.stringify({
+        ddl: 'CREATE TABLE t1(id bigint);',
+        tableName: 't1',
+        dbType: 'mysql',
+      }),
+    });
+
+    expect(response.status).toBe(402);
+    expect(await response.json()).toMatchObject({
+      code: 'CREDIT_EXHAUSTED',
+    });
   });
 
   it('流式响应应请求真实 usage，且不透传 usage chunk', async () => {
@@ -444,5 +567,15 @@ describe.sequential('openai governance', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(String(fetchSpy.mock.calls[0]?.[1]?.body)).toContain('actualTotalTokens: 39');
     expect(String(fetchSpy.mock.calls[0]?.[1]?.body)).toContain('estimatedTokens:');
+    expect(authenticateAIUserMock).toHaveBeenCalledTimes(1);
+    expect(reserveAIUsageMock).toHaveBeenCalledTimes(1);
+    expect(completeAIUsageMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        routeKey: 'review',
+      }),
+      39,
+    );
+    expect(failAIUsageMock).not.toHaveBeenCalled();
   });
 });
