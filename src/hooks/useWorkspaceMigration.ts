@@ -6,14 +6,11 @@ import {
   commitWorkspaceMigration,
   dismissWorkspaceMigration,
   isWorkspaceMigrationDismissed,
+  type WorkspaceMigrationPayload,
 } from '@/services/workspaceMigrationService';
 
 type PendingWorkspaceMigration = {
-  payload: {
-    localFingerprint: string;
-    idempotencyKey: string;
-    snapshot: unknown;
-  };
+  payload: WorkspaceMigrationPayload;
   result: WorkspaceMigrationResponse;
 };
 

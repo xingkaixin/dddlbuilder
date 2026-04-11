@@ -31,6 +31,10 @@ export const zhCNCommon = {
       signOut: '退出登录',
       account: '账号',
       userId: '用户 ID',
+      credits: '剩余额度：{{count}}',
+      creditsShort: '额度 {{count}}',
+      creditsLoading: '额度加载中...',
+      creditsLoadFailed: '额度加载失败',
       dialogTitle: '登录到用户系统',
       dialogDescription: '输入邮箱后，我们会发送一封 magic link 登录邮件。',
       emailLabel: '邮箱',
@@ -530,6 +534,7 @@ export const zhCNCommon = {
   },
   explain: {
     explainSelected: '解释选中',
+    signInToExplain: '登录后解释',
     title: 'AI 代码解释器',
     selectedSnippet: '选中片段: "{{text}}"',
   },
@@ -701,6 +706,9 @@ export const zhCNCommon = {
     shareCopied: '链接已复制到剪贴板（7天后失效）',
     shareCopiedReused: '链接已复制到剪贴板（复用已有链接，7天后失效）',
     authConfigMissing: '当前环境未配置 Supabase 登录能力',
+    authRequired: '请先登录或注册后再使用 AI 功能',
+    creditExhausted: '当前额度不足，暂时无法使用 AI 功能',
+    aiServiceUnavailable: 'AI 服务暂时不可用，请稍后再试',
   },
   fieldEnums: {
     nullable: {

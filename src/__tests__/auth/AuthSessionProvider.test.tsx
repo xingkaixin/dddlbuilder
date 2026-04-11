@@ -24,6 +24,7 @@ const SessionProbe = () => {
       <span data-testid="status">{session.status}</span>
       <span data-testid="email">{session.email ?? ''}</span>
       <span data-testid="user-id">{session.appUserId ?? ''}</span>
+      <span data-testid="credits">{session.creditBalance ?? ''}</span>
     </div>
   );
 };
@@ -55,18 +56,20 @@ describe('AuthSessionProvider', () => {
       },
       error: null,
     });
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          signedIn: true,
-          user: {
-            appUserId: 'supabase_external-user',
-            externalUserId: 'external-user',
-            email: 'user@example.com',
-          },
-        }),
-      ),
-    );
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            signedIn: true,
+            user: {
+              appUserId: 'supabase_external-user',
+              externalUserId: 'external-user',
+              email: 'user@example.com',
+            },
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 8800 })));
 
     render(
       <AuthSessionProvider>
@@ -79,6 +82,7 @@ describe('AuthSessionProvider', () => {
     });
     expect(screen.getByTestId('email')).toHaveTextContent('user@example.com');
     expect(screen.getByTestId('user-id')).toHaveTextContent('supabase_external-user');
+    expect(screen.getByTestId('credits')).toHaveTextContent('8800');
   });
 
   it('falls back to signed out when no session exists', async () => {

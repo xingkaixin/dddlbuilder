@@ -20,6 +20,7 @@ import { DATABASE_OPTIONS } from '@/utils/constants';
 import { ReviewResultPanel } from './ReviewResult';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
+import { useAuthSession } from '@/auth/AuthSessionProvider';
 
 interface DDLOutputProps {
   generatedSql: string;
@@ -67,6 +68,7 @@ export const DDLOutput = memo<DDLOutputProps>(
     onApplySuggestion,
   }) => {
     const { t } = useTranslation();
+    const authSession = useAuthSession();
     const trackEvent = useCallback((..._args: unknown[]) => {}, []);
     const { showToast } = useToast();
     const databaseOption = useMemo(
@@ -218,7 +220,14 @@ export const DDLOutput = memo<DDLOutputProps>(
                         </span>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>{t('ddlOutput.reviewTip')}</p>
+                        <p>
+                          {authSession.status !== 'signed_in'
+                            ? t('services.authRequired')
+                            : authSession.creditsStatus === 'ready' &&
+                                (authSession.creditBalance ?? 0) <= 0
+                              ? t('services.creditExhausted')
+                              : t('ddlOutput.reviewTip')}
+                        </p>
                       </TooltipContent>
                     </Tooltip>
                     {onViewReviewHistory && (

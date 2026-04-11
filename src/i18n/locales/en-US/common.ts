@@ -31,6 +31,10 @@ export const enUSCommon = {
       signOut: 'Sign out',
       account: 'Account',
       userId: 'User ID',
+      credits: 'Credits: {{count}}',
+      creditsShort: 'Credits {{count}}',
+      creditsLoading: 'Loading credits...',
+      creditsLoadFailed: 'Failed to load credits',
       dialogTitle: 'Sign in to your account',
       dialogDescription: 'Enter your email and we will send you a magic link.',
       emailLabel: 'Email',
@@ -542,6 +546,7 @@ export const enUSCommon = {
   },
   explain: {
     explainSelected: 'Explain selection',
+    signInToExplain: 'Sign in to explain',
     title: 'AI SQL Explainer',
     selectedSnippet: 'Selected: "{{text}}"',
   },
@@ -715,6 +720,9 @@ export const enUSCommon = {
     shareCopied: 'Link copied to clipboard (expires in 7 days)',
     shareCopiedReused: 'Link copied to clipboard (reused existing link, expires in 7 days)',
     authConfigMissing: 'Supabase auth is not configured in this environment',
+    authRequired: 'Sign in or register to use AI features',
+    creditExhausted: 'You do not have enough credits to use AI right now',
+    aiServiceUnavailable: 'AI service is temporarily unavailable. Please try again later.',
   },
   fieldEnums: {
     nullable: {

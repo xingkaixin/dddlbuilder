@@ -59,9 +59,15 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
     externalUserId: null,
     appUserId: null,
     email: null,
+    creditBalance: null,
+    creditsStatus: 'idle',
+    authDialogOpen: false,
     requestMagicLink: requestMagicLinkMock,
     signOut: signOutMock,
     refreshSession: vi.fn(),
+    refreshCredits: vi.fn(),
+    openAuthDialog: vi.fn(),
+    closeAuthDialog: vi.fn(),
   })),
 }));
 
@@ -118,9 +124,27 @@ describe('Header', () => {
   });
 
   it('未登录时应展示登录入口并可发送 magic link', async () => {
+    const { useAuthSession } = await import('@/auth/AuthSessionProvider');
+    vi.mocked(useAuthSession).mockReturnValue({
+      status: 'signed_out',
+      configured: true,
+      accessToken: null,
+      externalUserId: null,
+      appUserId: null,
+      email: null,
+      creditBalance: null,
+      creditsStatus: 'idle',
+      authDialogOpen: true,
+      requestMagicLink: requestMagicLinkMock,
+      signOut: signOutMock,
+      refreshSession: vi.fn(),
+      refreshCredits: vi.fn(),
+      openAuthDialog: vi.fn(),
+      closeAuthDialog: vi.fn(),
+    });
+
     render(<Header {...baseProps} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '登录 / 注册' }));
     fireEvent.change(screen.getByLabelText('邮箱'), {
       target: {
         value: 'user@example.com',
@@ -142,9 +166,15 @@ describe('Header', () => {
       externalUserId: 'external-user',
       appUserId: 'supabase_external-user',
       email: 'user@example.com',
+      creditBalance: 8800,
+      creditsStatus: 'ready',
+      authDialogOpen: false,
       requestMagicLink: requestMagicLinkMock,
       signOut: signOutMock,
       refreshSession: vi.fn(),
+      refreshCredits: vi.fn(),
+      openAuthDialog: vi.fn(),
+      closeAuthDialog: vi.fn(),
     });
 
     render(<Header {...baseProps} />);
@@ -167,9 +197,15 @@ describe('Header', () => {
       externalUserId: 'external-user',
       appUserId: 'supabase_external-user',
       email: 'user@example.com',
+      creditBalance: 8800,
+      creditsStatus: 'ready',
+      authDialogOpen: false,
       requestMagicLink: requestMagicLinkMock,
       signOut: signOutMock,
       refreshSession: vi.fn(),
+      refreshCredits: vi.fn(),
+      openAuthDialog: vi.fn(),
+      closeAuthDialog: vi.fn(),
     });
     vi.mocked(useWorkspaceMigration).mockReturnValue({
       checking: false,

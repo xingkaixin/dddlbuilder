@@ -13,6 +13,7 @@ import { parsePartialTableSchema } from '@/utils/parsePartialTableSchema';
 import { buildAIGenerateQueryKey } from '@/queryKeys/ai';
 import { useLocale } from '@/i18n/LocaleContext';
 import i18n from '@/i18n';
+import { useAuthSession } from '@/auth/AuthSessionProvider';
 
 export type {
   ConversationMessage,
@@ -53,6 +54,7 @@ function appendConversation(
  */
 export function useAIGenerateTable() {
   const { resolvedLocale } = useLocale();
+  const authSession = useAuthSession();
   const [state, setState] = useState<GenerateState>({
     isLoading: false,
     streamingText: '',
@@ -81,6 +83,23 @@ export function useAIGenerateTable() {
         setState((prev) => ({
           ...prev,
           error: i18n.t('services.inputDescribeRequired'),
+        }));
+        return;
+      }
+
+      if (authSession.status !== 'signed_in' || !authSession.accessToken) {
+        authSession.openAuthDialog();
+        setState((prev) => ({
+          ...prev,
+          error: i18n.t('services.authRequired'),
+        }));
+        return;
+      }
+
+      if (authSession.creditsStatus === 'ready' && (authSession.creditBalance ?? 0) <= 0) {
+        setState((prev) => ({
+          ...prev,
+          error: i18n.t('services.creditExhausted'),
         }));
         return;
       }
@@ -143,6 +162,7 @@ export function useAIGenerateTable() {
                     streamingText,
                   }));
                 },
+                accessToken: authSession.accessToken,
               },
             ),
         });
@@ -157,9 +177,13 @@ export function useAIGenerateTable() {
         setConversationHistory(() =>
           appendConversation(baseConversation, normalizedDescription, fullText),
         );
+        void authSession.refreshCredits();
       } catch (err) {
         if ((err as Error).name === 'AbortError') {
           return;
+        }
+        if ((err as Error).message === i18n.t('services.authRequired')) {
+          authSession.openAuthDialog();
         }
         setState({
           isLoading: false,
@@ -173,7 +197,7 @@ export function useAIGenerateTable() {
         }
       }
     },
-    [queryClient, resolvedLocale],
+    [authSession, queryClient, resolvedLocale],
   );
 
   const clearResult = useCallback(() => {

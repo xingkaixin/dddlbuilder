@@ -135,8 +135,7 @@ Status: Complete
 - [x] `XING-117` 已完成 credit service、余额接口、ledger 接口并进入 review
 - [x] `XING-118` 已完成 AI 路由鉴权、额度预扣/退款、usage event 主链并进入 review
 - [x] `XING-116` 已完成匿名工作区 analyze/commit 迁移链路、Header 迁移提示和重试入口并进入 review
-- [~] `XING-119` 已部分启动
-  现状：Header 登录入口与迁移提示已落地，但余额展示和完整 AI 门禁前端表达仍未完成
+- [x] `XING-119` 已完成余额展示、AI 前端门禁、登录引导与错误态映射并进入 review
 
 ## 总体验收标准
 
