@@ -65,10 +65,12 @@ bun run build
 - `OPENAI_MODEL_NAME`：默认模型名
 - `CORS_ALLOWED_ORIGINS`：允许跨域来源，多个来源用逗号分隔
 - `SUPABASE_URL`：Supabase 项目地址
-- `SUPABASE_ANON_KEY`：前端 Supabase Auth 公钥
+- `SUPABASE_ANON_KEY`：后端联调用的 Supabase 公钥镜像
 - `SUPABASE_JWKS_URL`：Worker 校验 Supabase JWT 使用的 JWKS 地址
 - `TURNSTILE_SECRET_KEY`：Turnstile 服务端校验密钥
 - `SIGNUP_BONUS_CREDITS`：注册赠送额度
+- `VITE_SUPABASE_URL`：前端 Supabase Auth 地址
+- `VITE_SUPABASE_ANON_KEY`：前端 Supabase Auth 公钥
 - `OPENAI_RATELIMIT_ENABLED`：是否启用 AI 接口限流
 - `OPENAI_RATELIMIT_WINDOW_MS`：限流窗口时长（毫秒）
 - `OPENAI_RATELIMIT_EXPLAIN_MAX` / `OPENAI_RATELIMIT_REVIEW_MAX` / `OPENAI_RATELIMIT_GENERATE_MAX`：各 AI 路由窗口内最大请求数

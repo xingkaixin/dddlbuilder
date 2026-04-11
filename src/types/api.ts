@@ -1,4 +1,9 @@
 export type ApiErrorCode =
+  | 'AUTH_REQUIRED'
+  | 'INVALID_AUTH_TOKEN'
+  | 'USER_DISABLED'
+  | 'TURNSTILE_REQUIRED'
+  | 'TURNSTILE_FAILED'
   | 'PAYLOAD_TOO_LARGE'
   | 'INVALID_JSON'
   | 'SQL_REQUIRED'
@@ -32,3 +37,19 @@ export type ApiErrorPayload = {
   code?: ApiErrorCode;
   requestId?: string;
 };
+
+export type MeApiResponse =
+  | {
+      signedIn: false;
+      user: null;
+      meta?: ApiMeta;
+    }
+  | {
+      signedIn: true;
+      user: {
+        appUserId: string;
+        externalUserId: string;
+        email: string;
+      };
+      meta?: ApiMeta;
+    };

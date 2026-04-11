@@ -26,6 +26,24 @@ export const enUSCommon = {
     generatingShareLink: 'Generating...',
     changeLanguage: 'Switch language',
     changeTheme: 'Switch theme',
+    auth: {
+      signIn: 'Sign in',
+      signOut: 'Sign out',
+      account: 'Account',
+      userId: 'User ID',
+      dialogTitle: 'Sign in to your account',
+      dialogDescription: 'Enter your email and we will send you a magic link.',
+      emailLabel: 'Email',
+      emailPlaceholder: 'name@example.com',
+      emailRequired: 'Email is required',
+      sendMagicLink: 'Send magic link',
+      magicLinkSent: 'Magic link sent to {{email}}',
+      signInFailed: 'Failed to send magic link',
+      signOutFailed: 'Failed to sign out',
+      signedOut: 'Signed out',
+      notConfigured: 'Auth is not configured in this environment',
+      cancel: 'Cancel',
+    },
   },
   app: {
     shareNotFound: 'Share link not found or expired. Redirected to home.',
@@ -678,6 +696,7 @@ export const enUSCommon = {
     shareCreateFailed: 'Failed to create share link',
     shareCopied: 'Link copied to clipboard (expires in 7 days)',
     shareCopiedReused: 'Link copied to clipboard (reused existing link, expires in 7 days)',
+    authConfigMissing: 'Supabase auth is not configured in this environment',
   },
   fieldEnums: {
     nullable: {

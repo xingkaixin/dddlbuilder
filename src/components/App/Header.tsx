@@ -1,14 +1,34 @@
-import { memo, lazy, Suspense } from 'react';
+import { memo, lazy, Suspense, useState } from 'react';
 import type { DatabaseType } from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
 import packageInfo from '../../../package.json';
-import { Share2, FileInput, Loader2, BookOpen } from 'lucide-react';
+import { Share2, FileInput, Loader2, BookOpen, LogIn, User2, LogOut } from 'lucide-react';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { LocaleSwitcher } from './LocaleSwitcher';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useLocale } from '@/i18n/LocaleContext';
 import { getDocsUrl } from '@/utils/docsLink';
 import { useTranslation } from 'react-i18next';
+import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { useToast } from '@/hooks/useToast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const ImportSqlDialog = lazy(() =>
   import('@/components/ImportSqlDialog').then((module) => ({
@@ -28,9 +48,42 @@ export const Header = memo<HeaderProps>(
   ({ onShare, isSharing, currentDbType, onImport, onPlayFireworks }) => {
     const { t } = useTranslation();
     const { locale } = useLocale();
+    const { success, error } = useToast();
     const docsUrl = getDocsUrl(locale);
+    const authSession = useAuthSession();
+    const [authDialogOpen, setAuthDialogOpen] = useState(false);
+    const [email, setEmail] = useState('');
+    const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
     const actionBtnClass =
       'group inline-flex items-center gap-1.5 rounded-md px-1 py-1 text-xs font-medium text-primary transition-all duration-200 hover:translate-x-0.5 hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60';
+
+    const handleSendMagicLink = async () => {
+      const trimmedEmail = email.trim();
+      if (!trimmedEmail) {
+        error(t('header.auth.emailRequired'));
+        return;
+      }
+
+      try {
+        setIsSendingMagicLink(true);
+        await authSession.requestMagicLink(trimmedEmail);
+        success(t('header.auth.magicLinkSent', { email: trimmedEmail }));
+        setAuthDialogOpen(false);
+      } catch (err) {
+        error(err instanceof Error ? err.message : t('header.auth.signInFailed'));
+      } finally {
+        setIsSendingMagicLink(false);
+      }
+    };
+
+    const handleSignOut = async () => {
+      try {
+        await authSession.signOut();
+        success(t('header.auth.signedOut'));
+      } catch (err) {
+        error(err instanceof Error ? err.message : t('header.auth.signOutFailed'));
+      }
+    };
 
     return (
       <>
@@ -214,11 +267,83 @@ export const Header = memo<HeaderProps>(
                       <p>{t('header.viewDocs')}</p>
                     </TooltipContent>
                   </Tooltip>
+                  {authSession.status === 'signed_in' ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button type="button" className={actionBtnClass}>
+                          <User2 className="h-4 w-4" aria-hidden />
+                          {authSession.email ?? t('header.auth.account')}
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="min-w-56">
+                        <DropdownMenuLabel>{t('header.auth.account')}</DropdownMenuLabel>
+                        <DropdownMenuItem disabled>{authSession.email}</DropdownMenuItem>
+                        {authSession.appUserId ? (
+                          <DropdownMenuItem disabled>
+                            {t('header.auth.userId')}: {authSession.appUserId}
+                          </DropdownMenuItem>
+                        ) : null}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleSignOut}>
+                          <LogOut className="h-4 w-4" aria-hidden />
+                          {t('header.auth.signOut')}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : (
+                    <button
+                      type="button"
+                      className={actionBtnClass}
+                      onClick={() => setAuthDialogOpen(true)}
+                      disabled={authSession.status === 'loading'}
+                    >
+                      {authSession.status === 'loading' ? (
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      ) : (
+                        <LogIn className="h-4 w-4" aria-hidden />
+                      )}
+                      {t('header.auth.signIn')}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
           </div>
         </header>
+        <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t('header.auth.dialogTitle')}</DialogTitle>
+              <DialogDescription>{t('header.auth.dialogDescription')}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <label htmlFor="auth-email" className="text-sm font-medium text-foreground">
+                {t('header.auth.emailLabel')}
+              </label>
+              <Input
+                id="auth-email"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder={t('header.auth.emailPlaceholder')}
+                autoComplete="email"
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setAuthDialogOpen(false)}>
+                {t('header.auth.cancel')}
+              </Button>
+              <Button type="button" onClick={handleSendMagicLink} disabled={isSendingMagicLink}>
+                {isSendingMagicLink ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                ) : (
+                  <LogIn className="h-4 w-4" aria-hidden />
+                )}
+                {t('header.auth.sendMagicLink')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </>
     );
   },
