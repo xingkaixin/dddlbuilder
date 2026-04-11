@@ -44,6 +44,24 @@ export const enUSCommon = {
       notConfigured: 'Auth is not configured in this environment',
       cancel: 'Cancel',
     },
+    workspaceMigration: {
+      title: 'Migrate local workspace',
+      description:
+        'We found local anonymous workspace data in this browser. Migrating will attach it to your account.',
+      descriptionWithConflicts:
+        'We found {{conflicts}} naming conflicts. Migration will not overwrite cloud content and conflicting items will be saved as copies.',
+      summary:
+        'Pending migration: {{savedTables}} saved tables, {{savedDrafts}} drafts, global draft: {{hasGlobalDraft}}.',
+      conflicts: 'Conflict examples: {{names}}',
+      later: 'Later',
+      run: 'Start migration',
+      runWithCopies: 'Save copies and migrate',
+      running: 'Migrating...',
+      completed: 'Migration completed: {{created}} created, {{copied}} copied, {{skipped}} skipped',
+      failed: 'Workspace migration failed',
+      yes: 'Yes',
+      no: 'No',
+    },
   },
   app: {
     shareNotFound: 'Share link not found or expired. Redirected to home.',

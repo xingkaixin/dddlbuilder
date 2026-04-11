@@ -39,6 +39,22 @@ export type ApiErrorPayload = {
   requestId?: string;
 };
 
+export type WorkspaceMigrationConflict = {
+  kind: 'global_draft' | 'saved_table' | 'saved_draft';
+  normalizedName: string | null;
+  displayName: string;
+};
+
+export type WorkspaceMigrationResponse = {
+  status: 'no_data' | 'ready' | 'completed';
+  createdCount: number;
+  copiedCount: number;
+  skippedCount: number;
+  conflictCount: number;
+  conflicts: WorkspaceMigrationConflict[];
+  meta?: ApiMeta;
+};
+
 export type MeApiResponse =
   | {
       signedIn: false;

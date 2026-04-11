@@ -1,7 +1,7 @@
 ---
 Author: "Codex"
 Updated: 2026-04-11
-Status: Almost Complete
+Status: Complete
 ---
 
 # KLIP-25 用户系统总体方案与执行编排
@@ -133,10 +133,10 @@ Status: Almost Complete
 - [x] `XING-114` 已完成 D1 / Wrangler / 本地联调脚手架并进入 review
 - [x] `XING-115` 已完成 Supabase Auth、`GET /api/me`、Header 登录/登出最小闭环并进入 review
 - [x] `XING-117` 已完成 credit service、余额接口、ledger 接口并进入 review
-- [ ] `XING-118` 尚未实现
-- [ ] `XING-116` 尚未实现
+- [x] `XING-118` 已完成 AI 路由鉴权、额度预扣/退款、usage event 主链并进入 review
+- [x] `XING-116` 已完成匿名工作区 analyze/commit 迁移链路、Header 迁移提示和重试入口并进入 review
 - [~] `XING-119` 已部分启动
-  现状：Header 登录入口已落地，但余额展示、AI 门禁、迁移提示仍未实现
+  现状：Header 登录入口与迁移提示已落地，但余额展示和完整 AI 门禁前端表达仍未完成
 
 ## 总体验收标准
 

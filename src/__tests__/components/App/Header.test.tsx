@@ -4,6 +4,7 @@ import { Header } from '@/components/App/Header';
 
 const requestMagicLinkMock = vi.fn();
 const signOutMock = vi.fn();
+const runMigrationMock = vi.fn();
 
 vi.mock('@/i18n/LocaleContext', () => ({
   useLocale: () => ({
@@ -64,6 +65,19 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
   })),
 }));
 
+vi.mock('@/hooks/useWorkspaceMigration', () => ({
+  useWorkspaceMigration: vi.fn(() => ({
+    checking: false,
+    running: false,
+    open: false,
+    pending: null,
+    error: null,
+    setOpen: vi.fn(),
+    dismiss: vi.fn(),
+    runMigration: runMigrationMock,
+  })),
+}));
+
 vi.mock('@/hooks/useToast', () => ({
   useToast: () => ({
     success: vi.fn(),
@@ -74,6 +88,7 @@ vi.mock('@/hooks/useToast', () => ({
 describe('Header', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    runMigrationMock.mockReset();
   });
 
   const baseProps = {
@@ -138,6 +153,61 @@ describe('Header', () => {
 
     await waitFor(() => {
       expect(signOutMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('存在待迁移工作区时应展示迁移对话框并可执行迁移', async () => {
+    const { useAuthSession } = await import('@/auth/AuthSessionProvider');
+    const { useWorkspaceMigration } = await import('@/hooks/useWorkspaceMigration');
+
+    vi.mocked(useAuthSession).mockReturnValue({
+      status: 'signed_in',
+      configured: true,
+      accessToken: 'token',
+      externalUserId: 'external-user',
+      appUserId: 'supabase_external-user',
+      email: 'user@example.com',
+      requestMagicLink: requestMagicLinkMock,
+      signOut: signOutMock,
+      refreshSession: vi.fn(),
+    });
+    vi.mocked(useWorkspaceMigration).mockReturnValue({
+      checking: false,
+      running: false,
+      open: true,
+      pending: {
+        payload: {
+          localFingerprint: 'fingerprint',
+          idempotencyKey: 'migration-1',
+          snapshot: {
+            globalDraft: null,
+            activeSession: null,
+            savedTables: [{ normalizedName: 'users', name: 'users', state: {}, updatedAt: 1 }],
+            savedDrafts: [],
+          },
+        },
+        result: {
+          status: 'ready',
+          createdCount: 1,
+          copiedCount: 0,
+          skippedCount: 0,
+          conflictCount: 0,
+          conflicts: [],
+        },
+      },
+      error: null,
+      setOpen: vi.fn(),
+      dismiss: vi.fn(),
+      runMigration: runMigrationMock,
+    });
+
+    render(<Header {...baseProps} />);
+
+    expect(screen.getByText('迁移匿名工作区')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '开始迁移' }));
+
+    await waitFor(() => {
+      expect(runMigrationMock).toHaveBeenCalledTimes(1);
     });
   });
 });
