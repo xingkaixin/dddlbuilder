@@ -5,6 +5,26 @@ import { flushPromises } from '@/__tests__/utils/test-utils';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 import { useLocale } from '@/i18n/LocaleContext';
 
+vi.mock('@/auth/AuthSessionProvider', () => ({
+  useAuthSession: () => ({
+    status: 'signed_in',
+    configured: true,
+    accessToken: 'token',
+    externalUserId: 'external-user',
+    appUserId: 'supabase_external-user',
+    email: 'user@example.com',
+    creditBalance: 1000,
+    creditsStatus: 'ready',
+    authDialogOpen: false,
+    requestMagicLink: vi.fn(),
+    signOut: vi.fn(),
+    refreshSession: vi.fn(),
+    refreshCredits: vi.fn(),
+    openAuthDialog: vi.fn(),
+    closeAuthDialog: vi.fn(),
+  }),
+}));
+
 const createStream = (chunks: string[]) => {
   const encoder = new TextEncoder();
   return new ReadableStream({

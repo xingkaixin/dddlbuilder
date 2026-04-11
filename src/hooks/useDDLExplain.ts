@@ -3,6 +3,8 @@ import { readTextStream } from '@/services/streamingText';
 import { logAiStreamDebug } from '@/services/aiStreamDebug';
 import i18n from '@/i18n';
 import { useLocale } from '@/i18n/LocaleContext';
+import { buildAuthenticatedJsonHeaders, readAIErrorMessage } from '@/services/aiApi';
+import { useAuthSession } from '@/auth/AuthSessionProvider';
 
 interface ExplainState {
   isLoading: boolean;
@@ -16,6 +18,7 @@ interface ExplainState {
 
 export function useDDLExplain() {
   const { resolvedLocale } = useLocale();
+  const authSession = useAuthSession();
   const [state, setState] = useState<ExplainState>({
     isLoading: false,
     isStreaming: false,
@@ -33,6 +36,23 @@ export function useDDLExplain() {
         setState((prev) => ({
           ...prev,
           error: i18n.t('services.explainInvalidSql'),
+        }));
+        return;
+      }
+
+      if (authSession.status !== 'signed_in' || !authSession.accessToken) {
+        authSession.openAuthDialog();
+        setState((prev) => ({
+          ...prev,
+          error: i18n.t('services.authRequired'),
+        }));
+        return;
+      }
+
+      if (authSession.creditsStatus === 'ready' && (authSession.creditBalance ?? 0) <= 0) {
+        setState((prev) => ({
+          ...prev,
+          error: i18n.t('services.creditExhausted'),
         }));
         return;
       }
@@ -67,9 +87,7 @@ export function useDDLExplain() {
       try {
         const response = await fetch('/api/explain', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: buildAuthenticatedJsonHeaders(authSession.accessToken),
           body: JSON.stringify({ sql, context, locale: resolvedLocale }),
           signal: abortControllerRef.current.signal,
         });
@@ -91,10 +109,7 @@ export function useDDLExplain() {
         );
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(
-            errorData.error || i18n.t('services.requestFailed', { status: response.status }),
-          );
+          throw new Error(await readAIErrorMessage(response, 'explainFailed'));
         }
 
         if (!response.body) {
@@ -151,6 +166,7 @@ export function useDDLExplain() {
           requestId,
           debugEnabled: serverDebugEnabled,
         }));
+        void authSession.refreshCredits();
         logAiStreamDebug(
           'ai_explain_state_transition',
           {
@@ -167,6 +183,9 @@ export function useDDLExplain() {
             route: 'explain',
           });
           return; // Request was cancelled
+        }
+        if ((error as Error).message === i18n.t('services.authRequired')) {
+          authSession.openAuthDialog();
         }
         setState({
           isLoading: false,
@@ -185,7 +204,7 @@ export function useDDLExplain() {
         });
       }
     },
-    [resolvedLocale],
+    [authSession, resolvedLocale],
   );
 
   const clearExplain = useCallback(() => {

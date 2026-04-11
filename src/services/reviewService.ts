@@ -1,4 +1,5 @@
 import { readTextStream } from '@/services/streamingText';
+import { buildAuthenticatedJsonHeaders, readAIErrorMessage } from '@/services/aiApi';
 import type { AppLocale } from '@/types/locale';
 import i18n from '@/i18n';
 import { normalizeReviewSuggestions } from '@/utils/normalizeAiEnumValue';
@@ -21,6 +22,7 @@ export interface ReviewServiceResult {
 interface RequestDDLReviewOptions {
   signal: AbortSignal;
   onStreamingText?: (text: string) => void;
+  accessToken?: string | null;
 }
 
 function normalizeReviewPayload(payload: unknown): ReviewServiceResult {
@@ -56,20 +58,13 @@ export async function requestDDLReview(
 ): Promise<ReviewServiceResult> {
   const response = await fetch(REVIEW_API_ENDPOINT, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: buildAuthenticatedJsonHeaders(options.accessToken ?? null),
     body: JSON.stringify(payload),
     signal: options.signal,
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(
-      typeof errorData.error === 'string'
-        ? errorData.error
-        : i18n.t('services.requestFailed', { status: response.status }),
-    );
+    throw new Error(await readAIErrorMessage(response, 'reviewFailed'));
   }
 
   if (!response.body) {

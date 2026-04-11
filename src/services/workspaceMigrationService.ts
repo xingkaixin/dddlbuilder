@@ -4,7 +4,7 @@ import type { WorkspaceSource } from '@/types/workspace';
 import { listSavedTables } from '@/utils/savedTablesDb';
 import { listSavedDrafts, readGlobalDraft, readWorkspaceSession } from '@/utils/workspaceStateDb';
 
-type WorkspaceMigrationSnapshot = {
+export type WorkspaceMigrationSnapshot = {
   globalDraft: {
     state: PersistedState;
     updatedAt: number;
@@ -29,7 +29,7 @@ type WorkspaceMigrationSnapshot = {
   }>;
 };
 
-type WorkspaceMigrationPayload = {
+export type WorkspaceMigrationPayload = {
   localFingerprint: string;
   idempotencyKey: string;
   snapshot: WorkspaceMigrationSnapshot;

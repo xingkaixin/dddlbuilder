@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useDDLExplain } from '@/hooks/useDDLExplain';
 import { logAiStreamDebug } from '@/services/aiStreamDebug';
 import { useTranslation } from 'react-i18next';
+import { useAuthSession } from '@/auth/AuthSessionProvider';
 
 interface ExplainPopoverProps {
   children: React.ReactNode;
@@ -16,6 +17,7 @@ interface ExplainPopoverProps {
 
 export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) {
   const { t } = useTranslation();
+  const authSession = useAuthSession();
   const trackEvent = useCallback((..._args: unknown[]) => {}, []);
   const [selection, setSelection] = useState<{
     text: string;
@@ -172,7 +174,9 @@ export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) 
               onClick={handleExplain}
             >
               <Lightbulb className="h-3.5 w-3.5" />
-              {t('explain.explainSelected')}
+              {authSession.status === 'signed_in'
+                ? t('explain.explainSelected')
+                : t('explain.signInToExplain')}
             </Button>
           </div>,
           document.body,

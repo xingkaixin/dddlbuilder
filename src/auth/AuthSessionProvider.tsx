@@ -21,12 +21,18 @@ export type UserSessionState = {
   externalUserId: string | null;
   appUserId: string | null;
   email: string | null;
+  creditBalance: number | null;
+  creditsStatus: 'idle' | 'loading' | 'ready' | 'error';
+  authDialogOpen: boolean;
 };
 
 type AuthSessionContextValue = UserSessionState & {
   requestMagicLink: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
+  refreshCredits: () => Promise<void>;
+  openAuthDialog: () => void;
+  closeAuthDialog: () => void;
 };
 
 const AuthSessionContext = createContext<AuthSessionContextValue | null>(null);
@@ -38,6 +44,9 @@ const signedOutState = (configured: boolean): UserSessionState => ({
   externalUserId: null,
   appUserId: null,
   email: null,
+  creditBalance: null,
+  creditsStatus: 'idle',
+  authDialogOpen: false,
 });
 
 const fetchCurrentUser = async (accessToken: string): Promise<MeApiResponse> => {
@@ -62,6 +71,28 @@ const fetchCurrentUser = async (accessToken: string): Promise<MeApiResponse> => 
   return payload;
 };
 
+const fetchCreditBalance = async (accessToken: string): Promise<number> => {
+  const response = await fetch('/api/credits/balance', {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  const payload = (await response.json().catch(() => null)) as {
+    balance?: unknown;
+    error?: unknown;
+  } | null;
+  if (!response.ok) {
+    throw new Error(
+      payload && typeof payload.error === 'string'
+        ? payload.error
+        : 'Failed to load credit balance',
+    );
+  }
+
+  return typeof payload?.balance === 'number' ? payload.balance : 0;
+};
+
 export function AuthSessionProvider({ children }: PropsWithChildren) {
   const configured = isSupabaseConfigured();
   const client = getSupabaseClient();
@@ -72,6 +103,9 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     externalUserId: null,
     appUserId: null,
     email: null,
+    creditBalance: null,
+    creditsStatus: 'idle',
+    authDialogOpen: false,
   });
   const syncPromiseRef = useRef<Promise<void> | null>(null);
 
@@ -88,14 +122,44 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      setState({
+      setState((prev) => ({
+        ...prev,
         status: 'signed_in',
         configured,
         accessToken: session.access_token,
         externalUserId: me.user.externalUserId,
         appUserId: me.user.appUserId,
         email: me.user.email,
-      });
+        creditsStatus: 'loading',
+      }));
+
+      try {
+        const creditBalance = await fetchCreditBalance(session.access_token);
+        setState((prev) => ({
+          ...prev,
+          status: 'signed_in',
+          configured,
+          accessToken: session.access_token,
+          externalUserId: me.user.externalUserId,
+          appUserId: me.user.appUserId,
+          email: me.user.email,
+          creditBalance,
+          creditsStatus: 'ready',
+        }));
+      } catch (error) {
+        console.error('[auth] failed to load credit balance', error);
+        setState((prev) => ({
+          ...prev,
+          status: 'signed_in',
+          configured,
+          accessToken: session.access_token,
+          externalUserId: me.user.externalUserId,
+          appUserId: me.user.appUserId,
+          email: me.user.email,
+          creditBalance: null,
+          creditsStatus: 'error',
+        }));
+      }
     },
     [client, configured],
   );
@@ -184,6 +248,35 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
         setState(signedOutState(configured));
       },
       refreshSession,
+      refreshCredits: async () => {
+        if (!state.accessToken || state.status !== 'signed_in') {
+          setState((prev) => ({ ...prev, creditBalance: null, creditsStatus: 'idle' }));
+          return;
+        }
+
+        setState((prev) => ({ ...prev, creditsStatus: 'loading' }));
+        try {
+          const creditBalance = await fetchCreditBalance(state.accessToken);
+          setState((prev) => ({
+            ...prev,
+            creditBalance,
+            creditsStatus: 'ready',
+          }));
+        } catch (error) {
+          console.error('[auth] failed to refresh credits', error);
+          setState((prev) => ({
+            ...prev,
+            creditBalance: null,
+            creditsStatus: 'error',
+          }));
+        }
+      },
+      openAuthDialog: () => {
+        setState((prev) => ({ ...prev, authDialogOpen: true }));
+      },
+      closeAuthDialog: () => {
+        setState((prev) => ({ ...prev, authDialogOpen: false }));
+      },
     }),
     [client, configured, refreshSession, state],
   );

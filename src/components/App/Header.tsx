@@ -53,7 +53,6 @@ export const Header = memo<HeaderProps>(
     const docsUrl = getDocsUrl(locale);
     const authSession = useAuthSession();
     const workspaceMigration = useWorkspaceMigration(authSession);
-    const [authDialogOpen, setAuthDialogOpen] = useState(false);
     const [email, setEmail] = useState('');
     const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
     const actionBtnClass =
@@ -70,7 +69,7 @@ export const Header = memo<HeaderProps>(
         setIsSendingMagicLink(true);
         await authSession.requestMagicLink(trimmedEmail);
         success(t('header.auth.magicLinkSent', { email: trimmedEmail }));
-        setAuthDialogOpen(false);
+        authSession.closeAuthDialog();
       } catch (err) {
         error(err instanceof Error ? err.message : t('header.auth.signInFailed'));
       } finally {
@@ -286,6 +285,17 @@ export const Header = memo<HeaderProps>(
                     </TooltipContent>
                   </Tooltip>
                   {authSession.status === 'signed_in' ? (
+                    <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-2 py-1 text-[11px] font-medium text-primary">
+                      {authSession.creditsStatus === 'ready'
+                        ? t('header.auth.creditsShort', {
+                            count: authSession.creditBalance ?? 0,
+                          })
+                        : authSession.creditsStatus === 'loading'
+                          ? t('header.auth.creditsLoading')
+                          : t('header.auth.creditsLoadFailed')}
+                    </div>
+                  ) : null}
+                  {authSession.status === 'signed_in' ? (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button type="button" className={actionBtnClass}>
@@ -296,6 +306,15 @@ export const Header = memo<HeaderProps>(
                       <DropdownMenuContent align="end" className="min-w-56">
                         <DropdownMenuLabel>{t('header.auth.account')}</DropdownMenuLabel>
                         <DropdownMenuItem disabled>{authSession.email}</DropdownMenuItem>
+                        <DropdownMenuItem disabled>
+                          {authSession.creditsStatus === 'ready'
+                            ? t('header.auth.credits', {
+                                count: authSession.creditBalance ?? 0,
+                              })
+                            : authSession.creditsStatus === 'loading'
+                              ? t('header.auth.creditsLoading')
+                              : t('header.auth.creditsLoadFailed')}
+                        </DropdownMenuItem>
                         {authSession.appUserId ? (
                           <DropdownMenuItem disabled>
                             {t('header.auth.userId')}: {authSession.appUserId}
@@ -312,7 +331,7 @@ export const Header = memo<HeaderProps>(
                     <button
                       type="button"
                       className={actionBtnClass}
-                      onClick={() => setAuthDialogOpen(true)}
+                      onClick={authSession.openAuthDialog}
                       disabled={authSession.status === 'loading'}
                     >
                       {authSession.status === 'loading' ? (
@@ -328,7 +347,12 @@ export const Header = memo<HeaderProps>(
             </div>
           </div>
         </header>
-        <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
+        <Dialog
+          open={authSession.authDialogOpen}
+          onOpenChange={(open) =>
+            open ? authSession.openAuthDialog() : authSession.closeAuthDialog()
+          }
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{t('header.auth.dialogTitle')}</DialogTitle>
@@ -348,7 +372,7 @@ export const Header = memo<HeaderProps>(
               />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setAuthDialogOpen(false)}>
+              <Button type="button" variant="outline" onClick={authSession.closeAuthDialog}>
                 {t('header.auth.cancel')}
               </Button>
               <Button type="button" onClick={handleSendMagicLink} disabled={isSendingMagicLink}>

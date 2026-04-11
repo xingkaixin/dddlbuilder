@@ -4,6 +4,26 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useDDLExplain } from '@/hooks/useDDLExplain';
 import { LocaleProvider, useLocale } from '@/i18n/LocaleContext';
 
+vi.mock('@/auth/AuthSessionProvider', () => ({
+  useAuthSession: () => ({
+    status: 'signed_in',
+    configured: true,
+    accessToken: 'token',
+    externalUserId: 'external-user',
+    appUserId: 'supabase_external-user',
+    email: 'user@example.com',
+    creditBalance: 1000,
+    creditsStatus: 'ready',
+    authDialogOpen: false,
+    requestMagicLink: vi.fn(),
+    signOut: vi.fn(),
+    refreshSession: vi.fn(),
+    refreshCredits: vi.fn(),
+    openAuthDialog: vi.fn(),
+    closeAuthDialog: vi.fn(),
+  }),
+}));
+
 const streamingMocks = vi.hoisted(() => ({
   readTextStream: vi.fn(),
 }));

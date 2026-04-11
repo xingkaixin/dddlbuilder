@@ -1,7 +1,7 @@
 ---
 Author: "Codex"
 Updated: 2026-04-11
-Status: Almost Complete
+Status: Complete
 Origin: "XING-104"
 ---
 
@@ -122,11 +122,11 @@ flowchart TD
 
 ## 验收标准
 
-- [ ] 三个 AI 路由都接入用户鉴权
-- [ ] 登录用户调用 AI 时会扣减个人额度
-- [ ] 匿名用户可见但不可调用 AI
-- [ ] 重试不会重复扣减
-- [ ] 服务级预算、用户级额度、风控限流边界清晰
+- [x] 三个 AI 路由都接入用户鉴权
+- [x] 登录用户调用 AI 时会扣减个人额度
+- [x] 匿名用户可见但不可调用 AI
+- [x] 重试不会重复扣减
+- [x] 服务级预算、用户级额度、风控限流边界清晰
 
 ## 关键参考位置
 
@@ -136,12 +136,15 @@ flowchart TD
 - `server-api/routes/generateTable.ts`
 - `api/index.ts`
 
-## 当前进展
+## 实现回写
 
-- 前置依赖已完成：
-  - `XING-115` 已提供 `GET /api/me` 和 app user 解析
-  - `XING-117` 已提供 credit service、余额接口和 ledger 接口
-- 尚未实现：
-  - 三条 AI 路由接入 `AUTH_REQUIRED`
-  - consume / refund 正式接入 AI 调用链
-  - 幂等键与 usage event 统一到账本主链
+- 已完成：
+  - 新增统一的 `server-api/lib/aiUsage.ts`
+  - `explain`、`review`、`generate-table` 三条路由全部接入 bearer token 鉴权
+  - 匿名用户统一返回 `AUTH_REQUIRED`
+  - 额度不足统一返回 `CREDIT_EXHAUSTED`
+  - 请求开始前按 estimated tokens 预扣额度
+  - 请求成功后按 actual tokens 自动退款差额
+  - OpenAI 上游失败时自动全额退款
+  - `usage_events` 与 ledger 通过同一 `requestId` 建立关联
+  - 现有服务级预算与 IP/UA 风控继续保留为外层治理

@@ -5,6 +5,7 @@ import { requestDDLReview } from '@/services/reviewService';
 import { buildDDLReviewQueryKey } from '@/queryKeys/ai';
 import { useLocale } from '@/i18n/LocaleContext';
 import i18n from '@/i18n';
+import { useAuthSession } from '@/auth/AuthSessionProvider';
 
 export interface StructuredSuggestion {
   id: string;
@@ -72,6 +73,7 @@ const REVIEW_CACHE_GC_TIME_MS = 15 * 60 * 1000;
 
 export function useDDLReview() {
   const { resolvedLocale } = useLocale();
+  const authSession = useAuthSession();
   const [state, setState] = useState<ReviewState>({
     isLoading: false,
     streamingText: '',
@@ -98,6 +100,23 @@ export function useDDLReview() {
         setState((prev) => ({
           ...prev,
           error: i18n.t('services.ddlRequired'),
+        }));
+        return;
+      }
+
+      if (authSession.status !== 'signed_in' || !authSession.accessToken) {
+        authSession.openAuthDialog();
+        setState((prev) => ({
+          ...prev,
+          error: i18n.t('services.authRequired'),
+        }));
+        return;
+      }
+
+      if (authSession.creditsStatus === 'ready' && (authSession.creditBalance ?? 0) <= 0) {
+        setState((prev) => ({
+          ...prev,
+          error: i18n.t('services.creditExhausted'),
         }));
         return;
       }
@@ -146,6 +165,7 @@ export function useDDLReview() {
                     streamingText,
                   }));
                 },
+                accessToken: authSession.accessToken,
               },
             ),
         });
@@ -160,9 +180,13 @@ export function useDDLReview() {
           },
           error: null,
         });
+        void authSession.refreshCredits();
       } catch (error) {
         if ((error as Error).name === 'AbortError') {
           return; // Request was cancelled, don't update state
+        }
+        if ((error as Error).message === i18n.t('services.authRequired')) {
+          authSession.openAuthDialog();
         }
         setState({
           isLoading: false,
@@ -176,7 +200,7 @@ export function useDDLReview() {
         }
       }
     },
-    [queryClient, resolvedLocale],
+    [authSession, queryClient, resolvedLocale],
   );
 
   const clearReview = useCallback(() => {

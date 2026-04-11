@@ -1,4 +1,5 @@
 import { readTextStream } from '@/services/streamingText';
+import { buildAuthenticatedJsonHeaders, readAIErrorMessage } from '@/services/aiApi';
 import type { ConversationMessage, GeneratedTableSchema } from '@/types/aiGenerate';
 import type { FieldRow, IndexDefinition } from '@/types';
 import type { AppLocale } from '@/types/locale';
@@ -21,6 +22,7 @@ export interface GenerateTableRequestOptions {
 interface RequestGenerateTableOptions {
   signal: AbortSignal;
   onStreamingText?: (text: string) => void;
+  accessToken?: string | null;
 }
 
 interface RequestGenerateTablePayload {
@@ -41,7 +43,7 @@ export async function requestGenerateTable(
 ): Promise<GenerateTableServiceResult> {
   const response = await fetch(AI_GENERATE_API_ENDPOINT, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: buildAuthenticatedJsonHeaders(options.accessToken ?? null),
     body: JSON.stringify({
       description: payload.description,
       dbType: payload.dbType,
@@ -54,8 +56,7 @@ export async function requestGenerateTable(
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || i18n.t('services.generationFailed'));
+    throw new Error(await readAIErrorMessage(response, 'generationFailed'));
   }
 
   if (!response.body) {
