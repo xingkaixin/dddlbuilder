@@ -26,6 +26,24 @@ export const zhCNCommon = {
     generatingShareLink: '生成中...',
     changeLanguage: '切换语言',
     changeTheme: '切换主题',
+    auth: {
+      signIn: '登录 / 注册',
+      signOut: '退出登录',
+      account: '账号',
+      userId: '用户 ID',
+      dialogTitle: '登录到用户系统',
+      dialogDescription: '输入邮箱后，我们会发送一封 magic link 登录邮件。',
+      emailLabel: '邮箱',
+      emailPlaceholder: 'name@example.com',
+      emailRequired: '请输入邮箱地址',
+      sendMagicLink: '发送登录链接',
+      magicLinkSent: '登录链接已发送到 {{email}}',
+      signInFailed: '发送登录链接失败',
+      signOutFailed: '退出登录失败',
+      signedOut: '已退出登录',
+      notConfigured: '当前环境未配置登录能力',
+      cancel: '取消',
+    },
   },
   app: {
     shareNotFound: '分享链接不存在或已过期，已返回首页',
@@ -665,6 +683,7 @@ export const zhCNCommon = {
     shareCreateFailed: '生成链接失败',
     shareCopied: '链接已复制到剪贴板（7天后失效）',
     shareCopiedReused: '链接已复制到剪贴板（复用已有链接，7天后失效）',
+    authConfigMissing: '当前环境未配置 Supabase 登录能力',
   },
   fieldEnums: {
     nullable: {

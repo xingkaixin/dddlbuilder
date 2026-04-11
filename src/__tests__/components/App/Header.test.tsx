@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@/__tests__/utils/test-utils';
+import { fireEvent, render, screen, waitFor } from '@/__tests__/utils/test-utils';
 import { Header } from '@/components/App/Header';
+
+const requestMagicLinkMock = vi.fn();
+const signOutMock = vi.fn();
 
 vi.mock('@/i18n/LocaleContext', () => ({
   useLocale: () => ({
@@ -24,6 +27,48 @@ vi.mock('@/components/ImportSqlDialog', () => ({
   ImportSqlDialog: ({ triggerLabel }: { triggerLabel: string }) => (
     <button type="button">{triggerLabel}</button>
   ),
+}));
+
+vi.mock('@/components/ui/dropdown-menu', () => ({
+  DropdownMenu: ({ children }: { children: any }) => <div>{children}</div>,
+  DropdownMenuTrigger: ({ children }: { children: any }) => <div>{children}</div>,
+  DropdownMenuContent: ({ children }: { children: any }) => <div>{children}</div>,
+  DropdownMenuLabel: ({ children }: { children: any }) => <div>{children}</div>,
+  DropdownMenuSeparator: () => <div />,
+  DropdownMenuItem: ({
+    children,
+    onClick,
+    disabled,
+  }: {
+    children: any;
+    onClick?: () => void;
+    disabled?: boolean;
+  }) => (
+    <button type="button" onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  ),
+}));
+
+vi.mock('@/auth/AuthSessionProvider', () => ({
+  useAuthSession: vi.fn(() => ({
+    status: 'signed_out',
+    configured: true,
+    accessToken: null,
+    externalUserId: null,
+    appUserId: null,
+    email: null,
+    requestMagicLink: requestMagicLinkMock,
+    signOut: signOutMock,
+    refreshSession: vi.fn(),
+  })),
+}));
+
+vi.mock('@/hooks/useToast', () => ({
+  useToast: () => ({
+    success: vi.fn(),
+    error: vi.fn(),
+  }),
 }));
 
 describe('Header', () => {
@@ -55,5 +100,44 @@ describe('Header', () => {
     fireEvent.click(fireworksButton);
 
     expect(onPlayFireworks).toHaveBeenCalledTimes(1);
+  });
+
+  it('未登录时应展示登录入口并可发送 magic link', async () => {
+    render(<Header {...baseProps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '登录 / 注册' }));
+    fireEvent.change(screen.getByLabelText('邮箱'), {
+      target: {
+        value: 'user@example.com',
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '发送登录链接' }));
+
+    await waitFor(() => {
+      expect(requestMagicLinkMock).toHaveBeenCalledWith('user@example.com');
+    });
+  });
+
+  it('登录后应展示用户菜单并支持退出登录', async () => {
+    const { useAuthSession } = await import('@/auth/AuthSessionProvider');
+    vi.mocked(useAuthSession).mockReturnValue({
+      status: 'signed_in',
+      configured: true,
+      accessToken: 'token',
+      externalUserId: 'external-user',
+      appUserId: 'supabase_external-user',
+      email: 'user@example.com',
+      requestMagicLink: requestMagicLinkMock,
+      signOut: signOutMock,
+      refreshSession: vi.fn(),
+    });
+
+    render(<Header {...baseProps} />);
+
+    fireEvent.click(screen.getByText('退出登录'));
+
+    await waitFor(() => {
+      expect(signOutMock).toHaveBeenCalledTimes(1);
+    });
   });
 });

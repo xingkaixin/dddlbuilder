@@ -3,6 +3,11 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { ApiEnv } from './context.js';
 
 export type ApiErrorCode =
+  | 'AUTH_REQUIRED'
+  | 'INVALID_AUTH_TOKEN'
+  | 'USER_DISABLED'
+  | 'TURNSTILE_REQUIRED'
+  | 'TURNSTILE_FAILED'
   | 'PAYLOAD_TOO_LARGE'
   | 'INVALID_JSON'
   | 'SQL_REQUIRED'

@@ -8,6 +8,7 @@ import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { appQueryClient } from './lib/queryClient';
 import { Toaster } from './components/ui/sonner';
 import { LocaleProvider } from './i18n/LocaleContext';
+import { AuthSessionProvider } from './auth/AuthSessionProvider';
 import './i18n';
 
 const rootElement = document.getElementById('root');
@@ -26,12 +27,14 @@ createRoot(rootElement).render(
         disableTransitionOnChange
         storageKey="ddlbuilder:theme:v1"
       >
-        <QueryClientProvider client={appQueryClient}>
-          <AppErrorBoundary>
-            <App />
-            <Toaster position="top-center" />
-          </AppErrorBoundary>
-        </QueryClientProvider>
+        <AuthSessionProvider>
+          <QueryClientProvider client={appQueryClient}>
+            <AppErrorBoundary>
+              <App />
+              <Toaster position="top-center" />
+            </AppErrorBoundary>
+          </QueryClientProvider>
+        </AuthSessionProvider>
       </ThemeProvider>
     </LocaleProvider>
   </StrictMode>,
