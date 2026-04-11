@@ -1,6 +1,7 @@
 import { createRemoteJWKSet, jwtVerify, errors, type JWTPayload } from 'jose';
 import type { Context } from 'hono';
 import type { ApiEnv } from './context.js';
+import { applyCreditMutation, ensureCreditAccount } from './credits.js';
 import { getUserSystemConfig } from './userSystemConfig.js';
 
 export type SupabaseJwtClaims = JWTPayload & {
@@ -124,35 +125,18 @@ const ensureUserExists = async (
         VALUES (?, ?, ?, ?, ?)
       `,
     ).bind(`${provider}:${externalUserId}`, appUserId, provider, externalUserId, email || null),
-    env.USER_DB.prepare(
-      `
-        INSERT OR IGNORE INTO credit_accounts (user_id, balance, version)
-        VALUES (?, ?, 1)
-      `,
-    ).bind(appUserId, config.signupBonusCredits),
-    env.USER_DB.prepare(
-      `
-        INSERT OR IGNORE INTO credit_ledger (
-          id,
-          user_id,
-          kind,
-          source,
-          amount,
-          balance_after,
-          idempotency_key,
-          metadata_json
-        )
-        VALUES (?, ?, 'grant', 'signup_bonus', ?, ?, ?, ?)
-      `,
-    ).bind(
-      `signup_bonus:${appUserId}`,
-      appUserId,
-      config.signupBonusCredits,
-      config.signupBonusCredits,
-      `signup_bonus:${appUserId}`,
-      JSON.stringify({ provider }),
-    ),
   ]);
+
+  await ensureCreditAccount(env, appUserId);
+  await applyCreditMutation(env, {
+    userId: appUserId,
+    kind: 'grant',
+    source: 'signup_bonus',
+    amount: config.signupBonusCredits,
+    idempotencyKey: `signup_bonus:${appUserId}`,
+    ledgerId: `signup_bonus:${appUserId}`,
+    metadata: { provider },
+  });
 
   const created = await findUserByIdentity(env, provider, externalUserId);
   if (!created) {
