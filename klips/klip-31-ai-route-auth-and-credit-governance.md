@@ -1,7 +1,7 @@
 ---
 Author: "Codex"
 Updated: 2026-04-11
-Status: Draft
+Status: Almost Complete
 Origin: "XING-104"
 ---
 
@@ -135,3 +135,13 @@ flowchart TD
 - `server-api/routes/review.ts`
 - `server-api/routes/generateTable.ts`
 - `api/index.ts`
+
+## 当前进展
+
+- 前置依赖已完成：
+  - `XING-115` 已提供 `GET /api/me` 和 app user 解析
+  - `XING-117` 已提供 credit service、余额接口和 ledger 接口
+- 尚未实现：
+  - 三条 AI 路由接入 `AUTH_REQUIRED`
+  - consume / refund 正式接入 AI 调用链
+  - 幂等键与 usage event 统一到账本主链

@@ -1,7 +1,7 @@
 ---
 Author: "Codex"
 Updated: 2026-04-11
-Status: Almost Complete
+Status: Complete
 Origin: "XING-104"
 ---
 
@@ -122,13 +122,20 @@ V1 接入三个点：
 - 被禁用用户登录后 Worker 拒绝敏感请求
 - Turnstile token 缺失、过期、重复提交都被拒绝
 
+## 实现回写
+
+- 已落地 `GET /api/me`
+- 已落地 `POST /api/auth/turnstile/verify`
+- 已落地 Supabase magic link 登录、前端登录态恢复、Header 登录/登出入口
+- 当前未实现的部分只剩“敏感 AI 调用接入 Turnstile”，该能力转入 `XING-118`
+
 ## 验收标准
 
-- [ ] 用户可完成注册 / 登录 / 登出闭环
-- [ ] Worker 能稳定识别当前用户并返回 app user id
-- [ ] 前端登录态切换正确
-- [ ] Header 或等价入口可展示登录态
-- [ ] Turnstile 以服务端校验方式接入
+- [x] 用户可完成注册 / 登录 / 登出闭环
+- [x] Worker 能稳定识别当前用户并返回 app user id
+- [x] 前端登录态切换正确
+- [x] Header 或等价入口可展示登录态
+- [x] Turnstile 以服务端校验方式接入
 
 ## 关键参考位置
 
@@ -138,8 +145,6 @@ V1 接入三个点：
 - `src/services/aiGenerateTableService.ts`
 - `src/hooks/useAIGenerateTable.ts`
 - [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/)
-
-## 待确认
 
 ## 已决策约定
 

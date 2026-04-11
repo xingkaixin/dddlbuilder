@@ -1,7 +1,7 @@
 ---
 Author: "Codex"
 Updated: 2026-04-11
-Status: Almost Complete
+Status: Complete
 Origin: "XING-104"
 ---
 
@@ -256,34 +256,20 @@ workspace_links
 - `XING-117` 必须以 ledger 为事实源，不允许只保留余额字段
 - `XING-116` 一期只迁移核心工作区数据，不把 `review_history`、`table_versions`、`field_templates`、`table_folders` 偷偷带入
 
-## 验收标准
+## 实现回写
 
-- [x] 认证提供方已定为 Supabase Auth，且说明了不选自建、Auth.js、Clerk 的理由
-- [x] Cloudflare 资源边界已固定
-- [x] 核心数据模型已落到可建表粒度
-- [x] 本地 / 预发 / 线上三套环境策略已固定
-- [x] 后续子 issue 不再需要重新做产品级决策
-
-### 预发联调
-
-- 使用单独 Cloudflare 环境和资源
-- 允许 remote bindings 访问预发 D1 / KV
-- 禁止直接连生产资源
-
-### 线上部署
-
-- Worker 仅绑定生产资源
-- 所有 secret 走 Cloudflare secret / 环境变量
-- Turnstile secret 仅服务端持有
+- `XING-114` 已按本文落地 `USER_DB`、migration、local/remote D1 脚手架
+- `XING-115` 已按本文落地 `Supabase JWKS -> Worker -> D1 app user` 的映射链路
+- `XING-117` 已按本文落地 `credit_accounts + credit_ledger`，且 ledger 成为事实源
 
 ## 验收标准
 
-- [ ] 明确采用 Supabase Auth，且说明不选自建 / Auth.js / Clerk 作为本期主方案的理由
-- [ ] 明确 D1、KV、Turnstile 三者职责边界
-- [ ] 给出用户系统核心数据模型草案
-- [ ] 给出本地、预发、线上三套环境策略
-- [ ] 给出额度模型口径与并发一致性约束
-- [ ] 后续 `XING-114` 到 `XING-119` 可直接按本文推进
+- [x] 明确采用 Supabase Auth，且说明不选自建 / Auth.js / Clerk 作为本期主方案的理由
+- [x] 明确 D1、KV、Turnstile 三者职责边界
+- [x] 给出用户系统核心数据模型草案
+- [x] 给出本地、预发、线上三套环境策略
+- [x] 给出额度模型口径与并发一致性约束
+- [x] 后续 `XING-114` 到 `XING-119` 可直接按本文推进
 
 ## 参考资料
 

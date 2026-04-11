@@ -1,7 +1,7 @@
 ---
 Author: "Codex"
 Updated: 2026-04-11
-Status: Almost Complete
+Status: Complete
 Origin: "XING-104"
 ---
 
@@ -155,14 +155,22 @@ V1 只要求：
 - 为测试环境准备独立配置
 - 为 e2e 增加独立本地数据库生命周期
 
+## 实现回写
+
+- 已新增 `USER_DB` D1 binding，并同步到 `wrangler.toml`、`wrangler.deploy.toml`、`wrangler.e2e.toml`
+- 已新增 `migrations/0001_user_system_init.sql`
+- 已新增 `db:migrate:*`、`db:seed:*`、`db:reset:local`、`db:inspect:*` 脚本
+- 已在 `server-api/lib/context.ts` 补齐 D1 与 auth 相关 bindings
+- 已在 `README.md` 和 `.env.vars.example` 回填本地联调说明
+
 ## 验收标准
 
-- [ ] 本地可一键启动带 D1 绑定的 Worker
-- [ ] 本地 schema 可重复初始化
-- [ ] 本地可 reset 并重新 seed
-- [ ] remote binding 只能显式连接预发资源
-- [ ] `server-api/lib/context.ts` 能正确暴露 D1 与新增配置
-- [ ] README 补齐最小开发与联调流程
+- [x] 本地可一键启动带 D1 绑定的 Worker
+- [x] 本地 schema 可重复初始化
+- [x] 本地可 reset 并重新 seed
+- [x] remote binding 只能显式连接预发资源
+- [x] `server-api/lib/context.ts` 能正确暴露 D1 与新增配置
+- [x] README 补齐最小开发与联调流程
 
 ## 关键参考位置
 
