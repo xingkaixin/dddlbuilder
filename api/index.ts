@@ -9,6 +9,7 @@ import { registerReviewRoute } from '../server-api/routes/review.js';
 import { registerGenerateTableRoute } from '../server-api/routes/generateTable.js';
 import { registerShareRoutes } from '../server-api/routes/share.js';
 import { registerAuthRoutes } from '../server-api/routes/auth.js';
+import { registerCreditRoutes } from '../server-api/routes/credits.js';
 
 const DOCS_DEV_ORIGIN = 'http://127.0.0.1:5174';
 const LOCAL_DEV_HOSTS = new Set(['localhost', '127.0.0.1']);
@@ -79,6 +80,7 @@ registerReviewRoute(api);
 registerGenerateTableRoute(api);
 registerShareRoutes(api);
 registerAuthRoutes(api);
+registerCreditRoutes(api);
 
 const isLocalDevRequest = (url: URL) => LOCAL_DEV_HOSTS.has(url.hostname);
 
