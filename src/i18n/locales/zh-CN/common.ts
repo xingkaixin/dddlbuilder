@@ -44,6 +44,23 @@ export const zhCNCommon = {
       notConfigured: '当前环境未配置登录能力',
       cancel: '取消',
     },
+    workspaceMigration: {
+      title: '迁移匿名工作区',
+      description: '检测到当前浏览器还有未认领的本地工作区数据，迁移后会绑定到当前账号。',
+      descriptionWithConflicts:
+        '检测到 {{conflicts}} 项同名内容。迁移时不会覆盖云端内容，冲突项会自动另存为副本。',
+      summary:
+        '待迁移内容：{{savedTables}} 个已保存表、{{savedDrafts}} 个草稿，全局草稿：{{hasGlobalDraft}}。',
+      conflicts: '冲突项示例：{{names}}',
+      later: '稍后处理',
+      run: '开始迁移',
+      runWithCopies: '另存副本并迁移',
+      running: '迁移中...',
+      completed: '迁移完成：新增 {{created}} 项，另存副本 {{copied}} 项，跳过 {{skipped}} 项',
+      failed: '工作区迁移失败',
+      yes: '有',
+      no: '无',
+    },
   },
   app: {
     shareNotFound: '分享链接不存在或已过期，已返回首页',

@@ -1,7 +1,7 @@
 ---
 Author: "Codex"
 Updated: 2026-04-11
-Status: Draft
+Status: Complete
 Origin: "XING-104"
 ---
 
@@ -144,17 +144,21 @@ type WorkspaceMigrationPayload = {
 
 ## 阶段进展
 
-### Phase 1
+## 实现回写
 
-- 读取本地快照
-- 设计迁移 payload
-- 实现基础云端 upsert
-
-### Phase 2
-
-- 加入冲突识别
-- 加入幂等记录
-- 加入 UI 重试与结果摘要
+- 已完成：
+  - 前端从 IndexedDB 读取 `workspace_global_draft`、`workspace_session`、`saved_tables`、`workspace_saved_drafts` 并生成迁移快照
+  - 前端基于本地快照计算 `localFingerprint`，登录后调用 `POST /api/workspace/migrations`
+  - Worker 提供 `analyze / commit` 两阶段迁移
+  - 服务端通过 `workspace_links` 记录迁移状态，通过 `workspace_snapshots` 记录归属后的云端快照
+  - 同名同内容时视为已迁移并跳过
+  - 同名不同内容时不覆盖，统一另存为 `Imported` 副本
+  - Header 已增加首次登录后的迁移确认弹层，并保留稍后处理与失败重试能力
+- 本期明确不做：
+  - `review_history`
+  - `table_versions`
+  - `field_templates`
+  - `table_folders`
 
 ## 测试矩阵
 
@@ -168,11 +172,11 @@ type WorkspaceMigrationPayload = {
 
 ## 验收标准
 
-- [ ] 匿名用户注册后可迁移本地现有工作区
-- [ ] 冲突行为明确，不静默覆盖
-- [ ] 失败后可重试
-- [ ] 重复迁移不会双写
-- [ ] 迁移 UI 能明确展示成功/冲突/失败状态
+- [x] 匿名用户注册后可迁移本地现有工作区
+- [x] 冲突行为明确，不静默覆盖
+- [x] 失败后可重试
+- [x] 重复迁移不会双写
+- [x] 迁移 UI 能明确展示成功/冲突/失败状态
 
 ## 关键参考位置
 
