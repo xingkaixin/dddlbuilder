@@ -49,6 +49,39 @@ type AuthSessionContextValue = UserSessionState & {
 
 const AuthSessionContext = createContext<AuthSessionContextValue | null>(null);
 
+const translateAuthError = (serverMessage: string, fallbackKey: string): string => {
+  const msg = serverMessage.toLowerCase();
+  if (msg.includes('not verified') || msg.includes('verify your email')) {
+    return i18n.t('header.auth.emailNotVerified');
+  }
+  if (
+    msg.includes('invalid email') ||
+    msg.includes('incorrect password') ||
+    msg.includes('invalid credentials')
+  ) {
+    return i18n.t('header.auth.invalidCredentials');
+  }
+  if (msg.includes('not found')) {
+    return i18n.t('header.auth.userNotFound');
+  }
+  if (msg.includes('already exists')) {
+    return i18n.t('header.auth.userAlreadyExists');
+  }
+  if (msg.includes('invalid token') || msg.includes('expired')) {
+    return i18n.t('header.auth.resetTokenInvalid');
+  }
+  if (msg.includes('too short') || msg.includes('password must be')) {
+    return i18n.t('header.auth.passwordTooShort');
+  }
+  if (msg.includes('rate limit') || msg.includes('too many')) {
+    return i18n.t('header.auth.tooManyRequests');
+  }
+  if (msg.includes('disabled')) {
+    return i18n.t('header.auth.accountDisabled');
+  }
+  return i18n.t(fallbackKey);
+};
+
 const signedOutState = (configured: boolean): UserSessionState => ({
   status: 'signed_out',
   configured,
@@ -218,7 +251,9 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
           password,
         });
         if (result.error) {
-          throw new Error(result.error.message || i18n.t('header.auth.signInFailed'));
+          throw new Error(
+            translateAuthError(result.error.message || '', 'header.auth.signInFailed'),
+          );
         }
 
         await refreshSession();
@@ -235,7 +270,9 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
           callbackURL: window.location.origin,
         });
         if (result.error) {
-          throw new Error(result.error.message || i18n.t('header.auth.signInFailed'));
+          throw new Error(
+            translateAuthError(result.error.message || '', 'header.auth.signInFailed'),
+          );
         }
       },
       updateUserName: async (name: string) => {
@@ -247,7 +284,9 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
           name,
         });
         if (result.error) {
-          throw new Error(result.error.message || i18n.t('settings.usernameFailed'));
+          throw new Error(
+            translateAuthError(result.error.message || '', 'settings.usernameFailed'),
+          );
         }
 
         await refreshSession();
@@ -263,7 +302,9 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
           revokeOtherSessions: false,
         });
         if (result.error) {
-          throw new Error(result.error.message || i18n.t('settings.passwordFailed'));
+          throw new Error(
+            translateAuthError(result.error.message || '', 'settings.passwordFailed'),
+          );
         }
       },
       requestPasswordReset: async (email: string) => {
@@ -276,7 +317,9 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
           redirectTo: `${window.location.origin}/?auth_action=reset-password`,
         });
         if (result.error) {
-          throw new Error(result.error.message || i18n.t('header.auth.signInFailed'));
+          throw new Error(
+            translateAuthError(result.error.message || '', 'header.auth.signInFailed'),
+          );
         }
       },
       resetPassword: async (token: string, newPassword: string) => {
@@ -289,7 +332,9 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
           newPassword,
         });
         if (result.error) {
-          throw new Error(result.error.message || i18n.t('header.auth.signInFailed'));
+          throw new Error(
+            translateAuthError(result.error.message || '', 'header.auth.signInFailed'),
+          );
         }
       },
       sendVerificationEmail: async (email: string) => {
@@ -302,7 +347,9 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
           callbackURL: window.location.origin,
         });
         if (result.error) {
-          throw new Error(result.error.message || i18n.t('header.auth.signInFailed'));
+          throw new Error(
+            translateAuthError(result.error.message || '', 'header.auth.signInFailed'),
+          );
         }
       },
       signOut: async () => {
@@ -313,7 +360,9 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
 
         const result = await client.signOut();
         if (result.error) {
-          throw new Error(result.error.message || i18n.t('header.auth.signOutFailed'));
+          throw new Error(
+            translateAuthError(result.error.message || '', 'header.auth.signOutFailed'),
+          );
         }
 
         setCurrentWorkspaceScope(getAnonymousWorkspaceScope());

@@ -34,6 +34,7 @@ app.use('/api/*', async (c, next) => {
       CSP_ENABLE: process.env.CSP_ENABLE,
       CSP_MODE: process.env.CSP_MODE,
       CSP_POLICY: process.env.CSP_POLICY,
+      ADMIN_CONSOLE_PASSWORD: process.env.ADMIN_CONSOLE_PASSWORD,
     });
   }
   await next();

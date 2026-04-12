@@ -32,7 +32,8 @@ export type ApiErrorCode =
   | 'RATE_LIMIT_EXCEEDED'
   | 'BUDGET_EXCEEDED'
   | 'UPSTREAM_OPENAI_ERROR'
-  | 'SERVICE_UNAVAILABLE';
+  | 'SERVICE_UNAVAILABLE'
+  | 'ADMIN_REQUIRED';
 
 export type ApiMeta = {
   requestId?: string;
