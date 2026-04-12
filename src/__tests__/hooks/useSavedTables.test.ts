@@ -1,9 +1,17 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useSavedTables } from '@/hooks/useSavedTables';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '../utils/fakeIndexedDb';
 import type { PersistedState } from '@/types';
 import { flushPromises } from '@/__tests__/utils/test-utils';
+
+vi.mock('@/auth/AuthSessionProvider', () => ({
+  useAuthSession: vi.fn(() => ({
+    status: 'signed_out',
+    configured: true,
+    userId: null,
+  })),
+}));
 
 const createState = (name: string): PersistedState => ({
   schemaName: '',

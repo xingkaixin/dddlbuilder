@@ -3,6 +3,14 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useSavedTables } from '@/hooks/useSavedTables';
 import type { SavedTableRecord } from '@/utils/savedTablesDb';
 
+vi.mock('@/auth/AuthSessionProvider', () => ({
+  useAuthSession: vi.fn(() => ({
+    status: 'signed_out',
+    configured: true,
+    userId: null,
+  })),
+}));
+
 const savedTableMocks = vi.hoisted(() => ({
   addSavedTable: vi.fn(),
   deleteSavedTable: vi.fn(),
