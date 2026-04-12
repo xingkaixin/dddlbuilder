@@ -36,14 +36,15 @@ export type WorkspaceMigrationPayload = {
 };
 
 const isPersistedStateTrivial = (state: PersistedState): boolean =>
-  !state.rows?.some((row) => row.fieldName?.trim()) ?? true;
+  !state.rows?.some((row) => row.fieldName?.trim());
 
 const stripUpdatedAtFromSnapshot = (snapshot: WorkspaceMigrationSnapshot) => ({
-  globalDraft: snapshot.globalDraft
-    ? { state: snapshot.globalDraft.state }
-    : null,
+  globalDraft: snapshot.globalDraft ? { state: snapshot.globalDraft.state } : null,
   activeSession: snapshot.activeSession
-    ? { activeSource: snapshot.activeSession.activeSource, activeState: snapshot.activeSession.activeState }
+    ? {
+        activeSource: snapshot.activeSession.activeSource,
+        activeState: snapshot.activeSession.activeState,
+      }
     : null,
   savedTables: snapshot.savedTables.map(({ updatedAt: _, ...rest }) => rest),
   savedDrafts: snapshot.savedDrafts.map(({ updatedAt: _, ...rest }) => rest),
