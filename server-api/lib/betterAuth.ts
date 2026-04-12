@@ -126,7 +126,7 @@ export const createBetterAuth = (env: ApiEnv['Bindings']) => {
     },
     emailVerification: {
       sendOnSignUp: true,
-      sendOnSignIn: true,
+      sendOnSignIn: false,
       autoSignInAfterVerification: true,
       sendVerificationEmail: async ({ user, url }) => {
         const content = renderVerificationEmail(url, user.name || user.email);
