@@ -139,9 +139,11 @@ export const zhCNCommon = {
     syncUploadDescription: '把当前设备的 global draft、已保存表和已保存草稿完整上传到云端。',
     syncDownloadDescription: '把云端保存的完整工作区下载到当前设备，并覆盖当前本地版本。',
     syncUploadConfirmTitle: '确认同步到云端？',
-    syncUploadConfirmDescription: '将使用当前设备的本地工作区覆盖云端版本，此操作会替换云端现有内容。',
+    syncUploadConfirmDescription:
+      '将使用当前设备的本地工作区覆盖云端版本，此操作会替换云端现有内容。',
     syncDownloadConfirmTitle: '确认从云端下载？',
-    syncDownloadConfirmDescription: '将使用云端工作区覆盖当前设备本地版本，此操作会替换当前设备的本地内容。',
+    syncDownloadConfirmDescription:
+      '将使用云端工作区覆盖当前设备本地版本，此操作会替换当前设备的本地内容。',
     syncUploadSuccess: '已同步到云端',
     syncDownloadSuccess: '已从云端下载工作区',
     syncFailed: '工作区同步失败',

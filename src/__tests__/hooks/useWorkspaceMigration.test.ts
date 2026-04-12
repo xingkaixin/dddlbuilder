@@ -17,9 +17,8 @@ describe('useWorkspaceMigration', () => {
   });
 
   it('当前账号本地已有工作区时不应弹匿名迁移', async () => {
-    const { analyzeWorkspaceMigration, hasMeaningfulWorkspaceData } = await import(
-      '@/services/workspaceMigrationService'
-    );
+    const { analyzeWorkspaceMigration, hasMeaningfulWorkspaceData } =
+      await import('@/services/workspaceMigrationService');
 
     vi.mocked(analyzeWorkspaceMigration).mockResolvedValue({
       payload: {

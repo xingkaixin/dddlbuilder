@@ -258,11 +258,15 @@ export const renameSavedDraftKey = async (
   const record = await readSavedDraft(fromNormalizedName, scope);
   if (!record) return;
 
-  await upsertSavedDraft(toNormalizedName, {
-    ...record,
-    tableName: nextTableName,
-    updatedAt: Date.now(),
-  }, scope);
+  await upsertSavedDraft(
+    toNormalizedName,
+    {
+      ...record,
+      tableName: nextTableName,
+      updatedAt: Date.now(),
+    },
+    scope,
+  );
 
   if (fromNormalizedName !== toNormalizedName) {
     await deleteSavedDraft(fromNormalizedName, scope);

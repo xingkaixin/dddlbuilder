@@ -4,9 +4,7 @@ import type { PersistedState } from '@/types';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { buildShareStateQueryKey } from '@/queryKeys/share';
 import { ShareApiError, getShareState } from '@/services/shareService';
-import {
-  WORKSPACE_SNAPSHOT_APPLIED_EVENT,
-} from '@/services/workspaceSyncService';
+import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import type {
   GlobalDraftSummary,
   WorkspaceSavePayload,
@@ -21,10 +19,7 @@ import {
 } from '@/utils/workspaceStateDb';
 import { getWorkspaceBootstrap } from './workspacePersistence/bootstrap';
 import { resetWorkspaceBootstrapCache } from './workspacePersistence/bootstrap';
-import {
-  getAnonymousWorkspaceScope,
-  setCurrentWorkspaceScope,
-} from '@/utils/workspaceScope';
+import { getAnonymousWorkspaceScope, setCurrentWorkspaceScope } from '@/utils/workspaceScope';
 import {
   buildGlobalDraftSummary,
   isSameWorkspaceSource,
@@ -118,11 +113,14 @@ export function usePersistedState(): UsePersistedStateReturn {
 
       const activeState = source.kind === 'global_draft' ? state : null;
       fireAndForget(
-        writeWorkspaceSession({
-          activeSource: source,
-          activeState,
-          updatedAt: Date.now(),
-        }, currentScope),
+        writeWorkspaceSession(
+          {
+            activeSource: source,
+            activeState,
+            updatedAt: Date.now(),
+          },
+          currentScope,
+        ),
       );
     },
     [currentScope, shareId, syncActiveSource, updateGlobalDraft],
@@ -156,11 +154,14 @@ export function usePersistedState(): UsePersistedStateReturn {
       const activeStateToPersist = payload.source.kind === 'saved_table' ? null : payload.state;
 
       fireAndForget(
-        writeWorkspaceSession({
-          activeSource: payload.source,
-          activeState: activeStateToPersist,
-          updatedAt: Date.now(),
-        }, currentScope),
+        writeWorkspaceSession(
+          {
+            activeSource: payload.source,
+            activeState: activeStateToPersist,
+            updatedAt: Date.now(),
+          },
+          currentScope,
+        ),
       );
       syncActiveSource(payload.source);
     },
@@ -321,8 +322,11 @@ export function usePersistedState(): UsePersistedStateReturn {
       void (async () => {
         setCurrentWorkspaceScope(currentScope);
         resetWorkspaceBootstrapCache();
-        const { globalDraft: globalDraftRaw, session: sessionRaw, savedTable } =
-          await getWorkspaceBootstrap(currentScope);
+        const {
+          globalDraft: globalDraftRaw,
+          session: sessionRaw,
+          savedTable,
+        } = await getWorkspaceBootstrap(currentScope);
         if (cancelled) return;
 
         const globalDraftRecord = normalizeGlobalDraftRecord(globalDraftRaw);
@@ -363,13 +367,7 @@ export function usePersistedState(): UsePersistedStateReturn {
       cancelled = true;
       window.removeEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);
     };
-  }, [
-    shareId,
-    authSession.status,
-    currentScope,
-    syncActiveSource,
-    updateGlobalDraft,
-  ]);
+  }, [shareId, authSession.status, currentScope, syncActiveSource, updateGlobalDraft]);
 
   return {
     persistedState,

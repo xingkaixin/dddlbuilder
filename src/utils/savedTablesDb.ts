@@ -278,7 +278,9 @@ export const ensureSavedTableName = (name: string): string => {
   return trimmed || DEFAULT_SAVED_TABLE_NAME;
 };
 
-export const listSavedTables = async (scope: WorkspaceScope = getCurrentWorkspaceScope()): Promise<SavedTableRecord[]> => {
+export const listSavedTables = async (
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<SavedTableRecord[]> => {
   const records = await runWithStore<SavedTableRecord[]>('readonly', (store) => store.getAll());
   if (!Array.isArray(records)) return [];
   return records

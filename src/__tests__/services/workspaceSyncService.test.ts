@@ -72,9 +72,9 @@ describe('workspaceSyncService', () => {
       scope,
     );
 
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ ok: true })),
-    );
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify({ ok: true })));
 
     await exportWorkspaceToCloud(scope);
 
