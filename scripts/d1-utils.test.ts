@@ -27,6 +27,8 @@ describe('d1-utils', () => {
       'execute',
       'USER_DB',
       '--local',
+      '--persist-to',
+      '.wrangler/state/dev',
       '--file',
       '/tmp/test.sql',
     ]);
