@@ -45,7 +45,7 @@ bun run build
 
 开发命令说明：
 
-- `bun run dev`：启动前端开发服务与文档开发服务，入口为 `http://localhost:3000`，修改页面代码会通过 Vite 自动热更新。
+- `bun run dev`：启动前端开发服务、Worker 运行时与文档开发服务，入口为 `http://localhost:3000`，修改页面代码会通过 Vite 自动热更新。
 - `bun run dev:app`：仅启动前端开发服务（Vite）。
 - `bun run dev:worker`：先构建一次 Worker 产物，再用 `wrangler dev` 在 `http://localhost:8787` 启动运行时调试服务。
 - `bun run db:migrate:local`：初始化或升级本地 D1 用户系统 schema。
@@ -55,6 +55,7 @@ bun run build
 - `bun run db:migrate:remote` / `bun run db:inspect:remote`：显式连接 remote D1 执行迁移或检查。
 - `bun run dev:docs`：仅启动文档开发服务（`http://127.0.0.1:5174/docs/`）。
 - `bun run dev` 运行时，`/docs` 会自动代理到 docs dev server；如果只运行 `bun run dev:app`，需要再单独运行 `bun run dev:docs` 才能通过 `http://localhost:3000/docs/` 查看文档。
+- `bun run dev` 或 `bun run dev:app` 运行时，前端的 `/api/*` 请求会代理到 `http://127.0.0.1:8787`。如果没有启动 `bun run dev:worker`，D1 / KV / Better Auth / Turnstile 都不会生效。
 
 ### 环境变量
 

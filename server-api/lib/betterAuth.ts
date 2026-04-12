@@ -3,6 +3,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { drizzle } from 'drizzle-orm/d1';
 import { Resend } from 'resend';
 import type { ApiEnv } from './context.js';
+import { betterAuthSchema } from './authSchema.js';
 import { getUserSystemConfig } from './userSystemConfig.js';
 
 const DEFAULT_ALLOWED_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173'];
@@ -109,6 +110,7 @@ export const createBetterAuth = (env: ApiEnv['Bindings']) => {
     trustedOrigins: [...trustedOrigins],
     database: drizzleAdapter(db, {
       provider: 'sqlite',
+      schema: betterAuthSchema,
     }),
     emailAndPassword: {
       enabled: true,

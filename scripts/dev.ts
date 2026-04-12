@@ -53,6 +53,7 @@ const start = (label: string, args: string[]) => {
   children.push(child);
 };
 
+start('worker', ['run', 'dev:worker']);
 start('app', ['run', 'dev:app']);
 start('docs', ['run', 'dev:docs']);
 
