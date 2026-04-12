@@ -2,11 +2,7 @@ import type { PersistedState } from '@/types';
 import type { ApiErrorPayload, WorkspaceMigrationResponse } from '@/types/api';
 import type { WorkspaceScope, WorkspaceSource } from '@/types/workspace';
 import { listSavedTables } from '@/utils/savedTablesDb';
-import {
-  listSavedDrafts,
-  readGlobalDraft,
-  readWorkspaceSession,
-} from '@/utils/workspaceStateDb';
+import { listSavedDrafts, readGlobalDraft, readWorkspaceSession } from '@/utils/workspaceStateDb';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 
 export type WorkspaceMigrationSnapshot = {
@@ -45,7 +41,10 @@ const isPersistedStateTrivial = (state: PersistedState): boolean =>
 
 export const hasMeaningfulWorkspaceSnapshotData = (snapshot: WorkspaceMigrationSnapshot | null) =>
   Boolean(snapshot?.globalDraft && !isPersistedStateTrivial(snapshot.globalDraft.state)) ||
-  Boolean(snapshot?.activeSession?.activeState && !isPersistedStateTrivial(snapshot.activeSession.activeState)) ||
+  Boolean(
+    snapshot?.activeSession?.activeState &&
+    !isPersistedStateTrivial(snapshot.activeSession.activeState),
+  ) ||
   Boolean(snapshot && snapshot.savedTables.length > 0) ||
   Boolean(snapshot && snapshot.savedDrafts.length > 0);
 
@@ -105,66 +104,63 @@ const requestWorkspaceMigration = async (
   return data;
 };
 
-export const collectWorkspaceMigrationPayload =
-  async (
-    scope: WorkspaceScope = getAnonymousWorkspaceScope(),
-  ): Promise<WorkspaceMigrationPayload | null> => {
-    const [globalDraft, activeSession, savedTables, savedDraftMap] = await Promise.all([
-      readGlobalDraft(scope),
-      readWorkspaceSession(scope),
-      listSavedTables(scope),
-      listSavedDrafts(scope),
-    ]);
+export const collectWorkspaceMigrationPayload = async (
+  scope: WorkspaceScope = getAnonymousWorkspaceScope(),
+): Promise<WorkspaceMigrationPayload | null> => {
+  const [globalDraft, activeSession, savedTables, savedDraftMap] = await Promise.all([
+    readGlobalDraft(scope),
+    readWorkspaceSession(scope),
+    listSavedTables(scope),
+    listSavedDrafts(scope),
+  ]);
 
-    const savedDrafts = Object.entries(savedDraftMap).map(([normalizedName, item]) => ({
-      normalizedName,
-      tableName: item.tableName,
+  const savedDrafts = Object.entries(savedDraftMap).map(([normalizedName, item]) => ({
+    normalizedName,
+    tableName: item.tableName,
+    state: item.state,
+    updatedAt: item.updatedAt,
+    baseSignature: item.baseSignature,
+  }));
+
+  const meaningfulGlobalDraft =
+    globalDraft && !isPersistedStateTrivial(globalDraft.state) ? globalDraft : null;
+  const meaningfulActiveState =
+    activeSession?.activeState && !isPersistedStateTrivial(activeSession.activeState)
+      ? activeSession.activeState
+      : null;
+
+  const hasData =
+    Boolean(meaningfulGlobalDraft) ||
+    Boolean(meaningfulActiveState) ||
+    savedTables.length > 0 ||
+    savedDrafts.length > 0;
+
+  if (!hasData) {
+    return null;
+  }
+
+  const snapshot: WorkspaceMigrationSnapshot = {
+    globalDraft: meaningfulGlobalDraft,
+    activeSession: activeSession ? { ...activeSession, activeState: meaningfulActiveState } : null,
+    savedTables: savedTables.map((item) => ({
+      normalizedName: item.normalizedName,
+      name: item.name,
       state: item.state,
       updatedAt: item.updatedAt,
-      baseSignature: item.baseSignature,
-    }));
-
-    const meaningfulGlobalDraft =
-      globalDraft && !isPersistedStateTrivial(globalDraft.state) ? globalDraft : null;
-    const meaningfulActiveState =
-      activeSession?.activeState && !isPersistedStateTrivial(activeSession.activeState)
-        ? activeSession.activeState
-        : null;
-
-    const hasData =
-      Boolean(meaningfulGlobalDraft) ||
-      Boolean(meaningfulActiveState) ||
-      savedTables.length > 0 ||
-      savedDrafts.length > 0;
-
-    if (!hasData) {
-      return null;
-    }
-
-    const snapshot: WorkspaceMigrationSnapshot = {
-      globalDraft: meaningfulGlobalDraft,
-      activeSession: activeSession
-        ? { ...activeSession, activeState: meaningfulActiveState }
-        : null,
-      savedTables: savedTables.map((item) => ({
-        normalizedName: item.normalizedName,
-        name: item.name,
-        state: item.state,
-        updatedAt: item.updatedAt,
-      })),
-      savedDrafts,
-    };
-
-    const contentForHash = stripUpdatedAtFromSnapshot(snapshot);
-    const encoded = new TextEncoder().encode(JSON.stringify(contentForHash));
-    const digest = await crypto.subtle.digest('SHA-256', encoded);
-
-    return {
-      localFingerprint: toHex(digest),
-      idempotencyKey: crypto.randomUUID(),
-      snapshot,
-    };
+    })),
+    savedDrafts,
   };
+
+  const contentForHash = stripUpdatedAtFromSnapshot(snapshot);
+  const encoded = new TextEncoder().encode(JSON.stringify(contentForHash));
+  const digest = await crypto.subtle.digest('SHA-256', encoded);
+
+  return {
+    localFingerprint: toHex(digest),
+    idempotencyKey: crypto.randomUUID(),
+    snapshot,
+  };
+};
 
 export const analyzeWorkspaceMigration = async () => {
   const payload = await collectWorkspaceMigrationPayload(getAnonymousWorkspaceScope());

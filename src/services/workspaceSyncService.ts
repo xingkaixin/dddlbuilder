@@ -46,22 +46,28 @@ const upsertLocalSavedTable = async (input: {
     if (existing.updatedAt > input.updatedAt) {
       return;
     }
-    await updateSavedTable({
-      ...existing,
-      name: input.name,
-      state: input.state,
-      updatedAt: input.updatedAt,
-    }, scope);
+    await updateSavedTable(
+      {
+        ...existing,
+        name: input.name,
+        state: input.state,
+        updatedAt: input.updatedAt,
+      },
+      scope,
+    );
     return;
   }
 
-  await addSavedTable({
-    normalizedName: input.normalizedName,
-    name: input.name,
-    state: input.state,
-    createdAt: input.updatedAt,
-    updatedAt: input.updatedAt,
-  }, scope);
+  await addSavedTable(
+    {
+      normalizedName: input.normalizedName,
+      name: input.name,
+      state: input.state,
+      createdAt: input.updatedAt,
+      updatedAt: input.updatedAt,
+    },
+    scope,
+  );
 };
 
 export const pullWorkspaceSnapshot = async (): Promise<WorkspaceSnapshot> => {
@@ -160,7 +166,9 @@ const replaceLocalWorkspaceSnapshot = async (
 
   await Promise.all([
     ...localSavedTables.map((item) => deleteSavedTable(item.normalizedName, scope)),
-    ...Object.keys(localSavedDrafts).map((normalizedName) => deleteSavedDraft(normalizedName, scope)),
+    ...Object.keys(localSavedDrafts).map((normalizedName) =>
+      deleteSavedDraft(normalizedName, scope),
+    ),
   ]);
 
   if (snapshot.globalDraft) {
@@ -207,7 +215,10 @@ export const applyCloudSnapshotToLocal = async (
   }
 
   const localGlobalDraft = await readGlobalDraft(scope);
-  if (snapshot.globalDraft && (!localGlobalDraft || localGlobalDraft.updatedAt < snapshot.globalDraft.updatedAt)) {
+  if (
+    snapshot.globalDraft &&
+    (!localGlobalDraft || localGlobalDraft.updatedAt < snapshot.globalDraft.updatedAt)
+  ) {
     await writeGlobalDraft(snapshot.globalDraft, scope);
   }
 
@@ -237,12 +248,16 @@ export const applyCloudSnapshotToLocal = async (
   dispatchWorkspaceSnapshotApplied();
 };
 
-export const exportWorkspaceToCloud = async (scope: WorkspaceScope = getCurrentWorkspaceScope()) => {
+export const exportWorkspaceToCloud = async (
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+) => {
   const snapshot = await collectWorkspaceSnapshot(undefined, scope);
   await pushWorkspaceSnapshot(snapshot);
 };
 
-export const importWorkspaceFromCloud = async (scope: WorkspaceScope = getCurrentWorkspaceScope()) => {
+export const importWorkspaceFromCloud = async (
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+) => {
   const snapshot = await pullWorkspaceSnapshot();
   await applyCloudSnapshotToLocal(snapshot, {
     overwrite: true,

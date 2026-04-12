@@ -63,10 +63,13 @@ export const resolveAuthenticatedUser = async (
   }
 
   const response = await auth.handler(
-    new Request(`${new URL(config.betterAuthUrl).origin}/api/auth/get-session?disableRefresh=true`, {
-      method: 'GET',
-      headers: requestHeaders,
-    }),
+    new Request(
+      `${new URL(config.betterAuthUrl).origin}/api/auth/get-session?disableRefresh=true`,
+      {
+        method: 'GET',
+        headers: requestHeaders,
+      },
+    ),
   );
 
   if (!response.ok) {

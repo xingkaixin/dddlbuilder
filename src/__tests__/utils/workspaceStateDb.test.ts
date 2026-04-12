@@ -18,10 +18,7 @@ import {
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
-import {
-  getAnonymousWorkspaceScope,
-  setCurrentWorkspaceScope,
-} from '@/utils/workspaceScope';
+import { getAnonymousWorkspaceScope, setCurrentWorkspaceScope } from '@/utils/workspaceScope';
 
 const GLOBAL_DRAFT_STORAGE_KEY = `${STORAGE_KEY}:draft:global:v1`;
 const SAVED_TABLE_DRAFTS_STORAGE_KEY = `${STORAGE_KEY}:draft:saved:v1`;

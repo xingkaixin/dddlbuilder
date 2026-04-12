@@ -100,7 +100,8 @@ export const enUSCommon = {
     workspaceTab: 'Workspace Sync',
     creditTab: 'Credits',
     email: 'Email',
-    emailReadonly: 'This email is used for sign-in and password recovery. It cannot be changed here.',
+    emailReadonly:
+      'This email is used for sign-in and password recovery. It cannot be changed here.',
     username: 'Username',
     usernamePlaceholder: 'Enter a new username',
     usernameRequired: 'Username is required',
