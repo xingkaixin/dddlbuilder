@@ -127,6 +127,7 @@ export const zhCNCommon = {
     save: '保存',
     saving: '保存中...',
     updatePassword: '更新密码',
+    cancel: '取消',
     acknowledge: '知道了',
     syncUpload: '同步到云端',
     syncDownloading: '下载中...',

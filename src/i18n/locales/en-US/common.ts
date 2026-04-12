@@ -131,6 +131,7 @@ export const enUSCommon = {
     save: 'Save',
     saving: 'Saving...',
     updatePassword: 'Update password',
+    cancel: 'Cancel',
     acknowledge: 'OK',
     syncUpload: 'Upload to Cloud',
     syncDownloading: 'Downloading...',
