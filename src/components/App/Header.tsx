@@ -416,7 +416,7 @@ export const Header = memo<HeaderProps>(
                       <DropdownMenuTrigger asChild>
                         <button type="button" className={actionBtnClass}>
                           <User2 className="h-4 w-4" aria-hidden />
-                          {authSession.email ?? t('header.auth.account')}
+                          {authSession.name ?? authSession.email ?? t('header.auth.account')}
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="min-w-56">
