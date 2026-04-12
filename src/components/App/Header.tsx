@@ -11,6 +11,7 @@ import {
   User2,
   LogOut,
   MailCheck,
+  Settings,
 } from 'lucide-react';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { LocaleSwitcher } from './LocaleSwitcher';
@@ -35,10 +36,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { UserSettingsDialog } from './UserSettingsDialog';
 
 const ImportSqlDialog = lazy(() =>
   import('@/components/ImportSqlDialog').then((module) => ({
@@ -70,6 +70,7 @@ export const Header = memo<HeaderProps>(
     const [password, setPassword] = useState('');
     const [resetPassword, setResetPassword] = useState('');
     const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
+    const [userSettingsOpen, setUserSettingsOpen] = useState(false);
     const [resetToken, setResetToken] = useState<string | null>(null);
     const actionBtnClass =
       'group inline-flex items-center gap-1.5 rounded-md px-1 py-1 text-xs font-medium text-primary transition-all duration-200 hover:translate-x-0.5 hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60';
@@ -401,17 +402,6 @@ export const Header = memo<HeaderProps>(
                     </TooltipContent>
                   </Tooltip>
                   {authSession.status === 'signed_in' ? (
-                    <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-2 py-1 text-[11px] font-medium text-primary">
-                      {authSession.creditsStatus === 'ready'
-                        ? t('header.auth.creditsShort', {
-                            count: authSession.creditBalance ?? 0,
-                          })
-                        : authSession.creditsStatus === 'loading'
-                          ? t('header.auth.creditsLoading')
-                          : t('header.auth.creditsLoadFailed')}
-                    </div>
-                  ) : null}
-                  {authSession.status === 'signed_in' ? (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button type="button" className={actionBtnClass}>
@@ -419,24 +409,11 @@ export const Header = memo<HeaderProps>(
                           {authSession.name ?? authSession.email ?? t('header.auth.account')}
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="min-w-56">
-                        <DropdownMenuLabel>{t('header.auth.account')}</DropdownMenuLabel>
-                        <DropdownMenuItem disabled>{authSession.email}</DropdownMenuItem>
-                        <DropdownMenuItem disabled>
-                          {authSession.creditsStatus === 'ready'
-                            ? t('header.auth.credits', {
-                                count: authSession.creditBalance ?? 0,
-                              })
-                            : authSession.creditsStatus === 'loading'
-                              ? t('header.auth.creditsLoading')
-                              : t('header.auth.creditsLoadFailed')}
+                      <DropdownMenuContent align="end" className="min-w-48">
+                        <DropdownMenuItem onClick={() => setUserSettingsOpen(true)}>
+                          <Settings className="h-4 w-4" aria-hidden />
+                          {t('header.auth.settings')}
                         </DropdownMenuItem>
-                        {authSession.userId ? (
-                          <DropdownMenuItem disabled>
-                            {t('header.auth.userId')}: {authSession.userId}
-                          </DropdownMenuItem>
-                        ) : null}
-                        <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={handleSignOut}>
                           <LogOut className="h-4 w-4" aria-hidden />
                           {t('header.auth.signOut')}
@@ -463,6 +440,7 @@ export const Header = memo<HeaderProps>(
             </div>
           </div>
         </header>
+        <UserSettingsDialog open={userSettingsOpen} onOpenChange={setUserSettingsOpen} />
         <Dialog
           open={authSession.authDialogOpen}
           onOpenChange={(open) =>

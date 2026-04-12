@@ -8,6 +8,8 @@ const forgetPasswordMock = vi.fn();
 const resetPasswordMock = vi.fn();
 const sendVerificationEmailMock = vi.fn();
 const signOutMock = vi.fn();
+const updateUserMock = vi.fn();
+const changePasswordMock = vi.fn();
 
 vi.mock('@/auth/betterAuthClient', () => ({
   isBetterAuthConfigured: () => true,
@@ -22,6 +24,8 @@ vi.mock('@/auth/betterAuthClient', () => ({
     resetPassword: resetPasswordMock,
     sendVerificationEmail: sendVerificationEmailMock,
     signOut: signOutMock,
+    updateUser: updateUserMock,
+    changePassword: changePasswordMock,
   }),
 }));
 
@@ -46,6 +50,8 @@ describe('AuthSessionProvider', () => {
     resetPasswordMock.mockReset();
     sendVerificationEmailMock.mockReset();
     signOutMock.mockReset();
+    updateUserMock.mockReset();
+    changePasswordMock.mockReset();
   });
 
   it('restores signed-in state from existing session', async () => {
@@ -97,6 +103,67 @@ describe('AuthSessionProvider', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('status')).toHaveTextContent('signed_out');
+    });
+  });
+
+  it('supports updating username and changing password', async () => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            signedIn: true,
+            user: {
+              userId: 'user-1',
+              email: 'user@example.com',
+              emailVerified: true,
+              name: 'User One',
+            },
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 8800 })))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            signedIn: true,
+            user: {
+              userId: 'user-1',
+              email: 'user@example.com',
+              emailVerified: true,
+              name: 'User Two',
+            },
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 8800 })));
+
+    let sessionApi: ReturnType<typeof useAuthSession> | null = null;
+    const Probe = () => {
+      sessionApi = useAuthSession();
+      return null;
+    };
+
+    render(
+      <AuthSessionProvider>
+        <Probe />
+      </AuthSessionProvider>,
+    );
+
+    await waitFor(() => {
+      expect(sessionApi?.status).toBe('signed_in');
+    });
+
+    updateUserMock.mockResolvedValue({ error: null });
+    changePasswordMock.mockResolvedValue({ error: null });
+
+    await sessionApi?.updateUserName('User Two');
+    await sessionApi?.changePassword('old-pass', 'new-pass');
+
+    expect(updateUserMock).toHaveBeenCalledWith({ name: 'User Two' });
+    expect(changePasswordMock).toHaveBeenCalledWith({
+      currentPassword: 'old-pass',
+      newPassword: 'new-pass',
+      revokeOtherSessions: false,
     });
   });
 });

@@ -5,6 +5,7 @@ import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 import { resetWorkspaceBootstrapCache } from '@/hooks/workspacePersistence/bootstrap';
 import { STORAGE_KEY } from '@/utils/constants';
+import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { getShareState, ShareApiError } from '@/services/shareService';
 import type { WorkspaceSavePayload } from '@/types/workspace';
 import {
@@ -56,6 +57,32 @@ vi.mock('@/services/shareService', () => ({
   },
 }));
 
+vi.mock('@/auth/AuthSessionProvider', () => ({
+  useAuthSession: vi.fn(() => ({
+    status: 'signed_out',
+    configured: true,
+    userId: null,
+    email: null,
+    name: null,
+    emailVerified: false,
+    creditBalance: null,
+    creditsStatus: 'idle',
+    authDialogOpen: false,
+    signInWithEmail: vi.fn(),
+    signUpWithEmail: vi.fn(),
+    updateUserName: vi.fn(),
+    changePassword: vi.fn(),
+    requestPasswordReset: vi.fn(),
+    resetPassword: vi.fn(),
+    sendVerificationEmail: vi.fn(),
+    signOut: vi.fn(),
+    refreshSession: vi.fn(),
+    refreshCredits: vi.fn(),
+    openAuthDialog: vi.fn(),
+    closeAuthDialog: vi.fn(),
+  })),
+}));
+
 const mockedGetShareState = vi.mocked(getShareState);
 const VALID_SHARE_ID = '8c6afce1-2a39-47aa-a14f-f3450c3ad7dd';
 const SHARE_STORAGE_KEY = `${STORAGE_KEY}:share:${VALID_SHARE_ID}`;
@@ -91,6 +118,29 @@ describe('usePersistedState', () => {
     resetWorkspaceBootstrapCache();
     localStorageMock.clear();
     vi.clearAllMocks();
+    vi.mocked(useAuthSession).mockReturnValue({
+      status: 'signed_out',
+      configured: true,
+      userId: null,
+      email: null,
+      name: null,
+      emailVerified: false,
+      creditBalance: null,
+      creditsStatus: 'idle',
+      authDialogOpen: false,
+      signInWithEmail: vi.fn(),
+      signUpWithEmail: vi.fn(),
+      updateUserName: vi.fn(),
+      changePassword: vi.fn(),
+      requestPasswordReset: vi.fn(),
+      resetPassword: vi.fn(),
+      sendVerificationEmail: vi.fn(),
+      signOut: vi.fn(),
+      refreshSession: vi.fn(),
+      refreshCredits: vi.fn(),
+      openAuthDialog: vi.fn(),
+      closeAuthDialog: vi.fn(),
+    });
     window.history.replaceState({}, '', '/');
   });
 
@@ -119,6 +169,52 @@ describe('usePersistedState', () => {
     const dbDraft = await readGlobalDraft();
     expect(dbDraft?.state.tableName).toBe('global_from_legacy');
     expect(localStorageMock.removeItem).toHaveBeenCalledWith(GLOBAL_DRAFT_STORAGE_KEY);
+  });
+
+  it('登录用户应先拉取云端 workspace 再完成 hydrate', async () => {
+    vi.mocked(useAuthSession).mockReturnValue({
+      status: 'signed_in',
+      configured: true,
+      userId: 'user-1',
+      email: 'user@example.com',
+      name: 'User One',
+      emailVerified: true,
+      creditBalance: 100,
+      creditsStatus: 'ready',
+      authDialogOpen: false,
+      signInWithEmail: vi.fn(),
+      signUpWithEmail: vi.fn(),
+      updateUserName: vi.fn(),
+      changePassword: vi.fn(),
+      requestPasswordReset: vi.fn(),
+      resetPassword: vi.fn(),
+      sendVerificationEmail: vi.fn(),
+      signOut: vi.fn(),
+      refreshSession: vi.fn(),
+      refreshCredits: vi.fn(),
+      openAuthDialog: vi.fn(),
+      closeAuthDialog: vi.fn(),
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          globalDraft: {
+            state: createState('cloud_users'),
+            updatedAt: 999,
+          },
+          savedTables: [],
+          savedDrafts: [],
+        }),
+      ),
+    );
+
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+      expect(result.current.persistedState?.tableName).toBe('cloud_users');
+    });
   });
 
   it('保存全局草稿时应写入 IndexedDB 全局草稿和工作区会话', async () => {

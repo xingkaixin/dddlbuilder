@@ -55,6 +55,40 @@ export type WorkspaceMigrationResponse = {
   meta?: ApiMeta;
 };
 
+export type WorkspaceSnapshotItem = {
+  normalizedName: string;
+  name: string;
+  state: Record<string, unknown>;
+  updatedAt: number;
+};
+
+export type WorkspaceSavedDraftSnapshotItem = {
+  normalizedName: string;
+  tableName: string;
+  state: Record<string, unknown>;
+  updatedAt: number;
+  baseSignature: string;
+};
+
+export type WorkspaceSnapshotResponse = {
+  globalDraft: {
+    state: Record<string, unknown>;
+    updatedAt: number;
+  } | null;
+  savedTables: WorkspaceSnapshotItem[];
+  savedDrafts: WorkspaceSavedDraftSnapshotItem[];
+  meta?: ApiMeta;
+};
+
+export type WorkspaceSnapshotPushRequest = {
+  globalDraft: {
+    state: Record<string, unknown>;
+    updatedAt: number;
+  } | null;
+  savedTables: WorkspaceSnapshotItem[];
+  savedDrafts: WorkspaceSavedDraftSnapshotItem[];
+};
+
 export type MeApiResponse =
   | {
       signedIn: false;

@@ -28,3 +28,23 @@ export type GlobalDraftSummary = {
   fieldCount: number;
   updatedAt: number;
 };
+
+export type WorkspaceSnapshot = {
+  globalDraft: {
+    state: PersistedState;
+    updatedAt: number;
+  } | null;
+  savedTables: Array<{
+    normalizedName: string;
+    name: string;
+    state: PersistedState;
+    updatedAt: number;
+  }>;
+  savedDrafts: Array<{
+    normalizedName: string;
+    tableName: string;
+    state: PersistedState;
+    updatedAt: number;
+    baseSignature: string;
+  }>;
+};

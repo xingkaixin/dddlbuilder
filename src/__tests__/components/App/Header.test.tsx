@@ -68,6 +68,8 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
     authDialogOpen: false,
     signInWithEmail: signInWithEmailMock,
     signUpWithEmail: signUpWithEmailMock,
+    updateUserName: vi.fn(),
+    changePassword: vi.fn(),
     requestPasswordReset: requestPasswordResetMock,
     resetPassword: resetPasswordMock,
     sendVerificationEmail: sendVerificationEmailMock,
@@ -145,6 +147,8 @@ describe('Header', () => {
       authDialogOpen: true,
       signInWithEmail: signInWithEmailMock,
       signUpWithEmail: signUpWithEmailMock,
+      updateUserName: vi.fn(),
+      changePassword: vi.fn(),
       requestPasswordReset: requestPasswordResetMock,
       resetPassword: resetPasswordMock,
       sendVerificationEmail: sendVerificationEmailMock,
@@ -188,6 +192,8 @@ describe('Header', () => {
       authDialogOpen: false,
       signInWithEmail: signInWithEmailMock,
       signUpWithEmail: signUpWithEmailMock,
+      updateUserName: vi.fn(),
+      changePassword: vi.fn(),
       requestPasswordReset: requestPasswordResetMock,
       resetPassword: resetPasswordMock,
       sendVerificationEmail: sendVerificationEmailMock,
@@ -199,6 +205,9 @@ describe('Header', () => {
     });
 
     render(<Header {...baseProps} />);
+
+    expect(screen.getByText('设置')).toBeInTheDocument();
+    expect(screen.queryByText('额度 8800')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByText('退出登录'));
 
@@ -223,6 +232,8 @@ describe('Header', () => {
       authDialogOpen: false,
       signInWithEmail: signInWithEmailMock,
       signUpWithEmail: signUpWithEmailMock,
+      updateUserName: vi.fn(),
+      changePassword: vi.fn(),
       requestPasswordReset: requestPasswordResetMock,
       resetPassword: resetPasswordMock,
       sendVerificationEmail: sendVerificationEmailMock,
