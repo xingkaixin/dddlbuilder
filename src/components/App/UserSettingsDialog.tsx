@@ -453,7 +453,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
               onClick={() => setPendingSyncAction(null)}
               disabled={runningSyncAction != null}
             >
-              {t('savedTables.delete.cancel')}
+              {t('settings.cancel')}
             </Button>
             <AlertDialogAction
               onClick={(event) => {
