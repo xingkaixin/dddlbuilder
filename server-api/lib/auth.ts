@@ -82,6 +82,14 @@ export const resolveAuthenticatedUser = async (
     return null;
   }
 
+  const flags = await env.USER_DB.prepare('SELECT user_id FROM admin_user_flags WHERE user_id = ?')
+    .bind(session.user.id)
+    .first();
+
+  if (flags) {
+    throw new Error('USER_DISABLED');
+  }
+
   return ensureBusinessUser(env, session.user);
 };
 
