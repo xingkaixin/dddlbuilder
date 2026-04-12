@@ -1,8 +1,17 @@
-import { memo, lazy, Suspense, useState } from 'react';
+import { memo, lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import type { DatabaseType } from '@/types';
 import type { ParsedResult } from '@/utils/SqlParser';
 import packageInfo from '../../../package.json';
-import { Share2, FileInput, Loader2, BookOpen, LogIn, User2, LogOut } from 'lucide-react';
+import {
+  Share2,
+  FileInput,
+  Loader2,
+  BookOpen,
+  LogIn,
+  User2,
+  LogOut,
+  MailCheck,
+} from 'lucide-react';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { LocaleSwitcher } from './LocaleSwitcher';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -53,12 +62,49 @@ export const Header = memo<HeaderProps>(
     const docsUrl = getDocsUrl(locale);
     const authSession = useAuthSession();
     const workspaceMigration = useWorkspaceMigration(authSession);
+    const [authMode, setAuthMode] = useState<
+      'sign_in' | 'sign_up' | 'forgot_password' | 'reset_password'
+    >('sign_in');
+    const [name, setName] = useState('');
     const [email, setEmail] = useState('');
-    const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
+    const [password, setPassword] = useState('');
+    const [resetPassword, setResetPassword] = useState('');
+    const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
+    const [resetToken, setResetToken] = useState<string | null>(null);
     const actionBtnClass =
       'group inline-flex items-center gap-1.5 rounded-md px-1 py-1 text-xs font-medium text-primary transition-all duration-200 hover:translate-x-0.5 hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60';
 
-    const handleSendMagicLink = async () => {
+    const clearAuthQuery = () => {
+      const nextUrl = `${window.location.pathname}${window.location.hash}`;
+      window.history.replaceState({}, document.title, nextUrl);
+    };
+
+    useEffect(() => {
+      const query = new URLSearchParams(window.location.search);
+      if (query.get('auth_action') !== 'reset-password') {
+        return;
+      }
+
+      const token = query.get('token');
+      if (!token) {
+        error(t('header.auth.resetTokenInvalid'));
+        clearAuthQuery();
+        return;
+      }
+
+      setResetToken(token);
+      setAuthMode('reset_password');
+      authSession.openAuthDialog();
+    }, [authSession, error, t]);
+
+    const authDialogDescription = useMemo(() => {
+      if (authMode === 'sign_up') return t('header.auth.dialogDescriptionSignUp');
+      if (authMode === 'forgot_password') return t('header.auth.dialogDescriptionForgotPassword');
+      if (authMode === 'reset_password') return t('header.auth.dialogDescriptionResetPassword');
+      return t('header.auth.dialogDescriptionSignIn');
+    }, [authMode, t]);
+
+    const handleSubmitAuth = async () => {
       const trimmedEmail = email.trim();
       if (!trimmedEmail) {
         error(t('header.auth.emailRequired'));
@@ -66,14 +112,84 @@ export const Header = memo<HeaderProps>(
       }
 
       try {
-        setIsSendingMagicLink(true);
-        await authSession.requestMagicLink(trimmedEmail);
-        success(t('header.auth.magicLinkSent', { email: trimmedEmail }));
+        setIsSubmittingAuth(true);
+        if (authMode === 'sign_in') {
+          if (!password.trim()) {
+            error(t('header.auth.passwordRequired'));
+            return;
+          }
+          await authSession.signInWithEmail(trimmedEmail, password);
+          success(t('header.auth.signedIn'));
+          authSession.closeAuthDialog();
+          return;
+        }
+
+        if (authMode === 'sign_up') {
+          if (!name.trim()) {
+            error(t('header.auth.nameRequired'));
+            return;
+          }
+          if (!password.trim()) {
+            error(t('header.auth.passwordRequired'));
+            return;
+          }
+          await authSession.signUpWithEmail({
+            name: name.trim(),
+            email: trimmedEmail,
+            password,
+          });
+          success(t('header.auth.verifyEmailSent', { email: trimmedEmail }));
+          setAuthMode('sign_in');
+          setPassword('');
+          return;
+        }
+
+        if (authMode === 'forgot_password') {
+          await authSession.requestPasswordReset(trimmedEmail);
+          success(t('header.auth.resetEmailSent', { email: trimmedEmail }));
+          setAuthMode('sign_in');
+          return;
+        }
+
+        if (!resetToken) {
+          error(t('header.auth.resetTokenInvalid'));
+          return;
+        }
+
+        if (!resetPassword.trim()) {
+          error(t('header.auth.passwordRequired'));
+          return;
+        }
+
+        await authSession.resetPassword(resetToken, resetPassword);
+        success(t('header.auth.passwordResetSucceeded'));
+        setResetPassword('');
+        setResetToken(null);
+        clearAuthQuery();
+        setAuthMode('sign_in');
         authSession.closeAuthDialog();
       } catch (err) {
         error(err instanceof Error ? err.message : t('header.auth.signInFailed'));
       } finally {
-        setIsSendingMagicLink(false);
+        setIsSubmittingAuth(false);
+      }
+    };
+
+    const handleResendVerification = async () => {
+      const trimmedEmail = email.trim();
+      if (!trimmedEmail) {
+        error(t('header.auth.emailRequired'));
+        return;
+      }
+
+      try {
+        setIsSubmittingAuth(true);
+        await authSession.sendVerificationEmail(trimmedEmail);
+        success(t('header.auth.verifyEmailSent', { email: trimmedEmail }));
+      } catch (err) {
+        error(err instanceof Error ? err.message : t('header.auth.signInFailed'));
+      } finally {
+        setIsSubmittingAuth(false);
       }
     };
 
@@ -315,9 +431,9 @@ export const Header = memo<HeaderProps>(
                               ? t('header.auth.creditsLoading')
                               : t('header.auth.creditsLoadFailed')}
                         </DropdownMenuItem>
-                        {authSession.appUserId ? (
+                        {authSession.userId ? (
                           <DropdownMenuItem disabled>
-                            {t('header.auth.userId')}: {authSession.appUserId}
+                            {t('header.auth.userId')}: {authSession.userId}
                           </DropdownMenuItem>
                         ) : null}
                         <DropdownMenuSeparator />
@@ -356,8 +472,22 @@ export const Header = memo<HeaderProps>(
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{t('header.auth.dialogTitle')}</DialogTitle>
-              <DialogDescription>{t('header.auth.dialogDescription')}</DialogDescription>
+              <DialogDescription>{authDialogDescription}</DialogDescription>
             </DialogHeader>
+            {authMode === 'sign_up' ? (
+              <div className="space-y-2">
+                <label htmlFor="auth-name" className="text-sm font-medium text-foreground">
+                  {t('header.auth.nameLabel')}
+                </label>
+                <Input
+                  id="auth-name"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder={t('header.auth.namePlaceholder')}
+                  autoComplete="name"
+                />
+              </div>
+            ) : null}
             <div className="space-y-2">
               <label htmlFor="auth-email" className="text-sm font-medium text-foreground">
                 {t('header.auth.emailLabel')}
@@ -371,17 +501,95 @@ export const Header = memo<HeaderProps>(
                 autoComplete="email"
               />
             </div>
+            {authMode === 'sign_in' || authMode === 'sign_up' ? (
+              <div className="space-y-2">
+                <label htmlFor="auth-password" className="text-sm font-medium text-foreground">
+                  {t('header.auth.passwordLabel')}
+                </label>
+                <Input
+                  id="auth-password"
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder={t('header.auth.passwordPlaceholder')}
+                  autoComplete={authMode === 'sign_in' ? 'current-password' : 'new-password'}
+                />
+              </div>
+            ) : null}
+            {authMode === 'reset_password' ? (
+              <div className="space-y-2">
+                <label htmlFor="reset-password" className="text-sm font-medium text-foreground">
+                  {t('header.auth.newPasswordLabel')}
+                </label>
+                <Input
+                  id="reset-password"
+                  type="password"
+                  value={resetPassword}
+                  onChange={(event) => setResetPassword(event.target.value)}
+                  placeholder={t('header.auth.passwordPlaceholder')}
+                  autoComplete="new-password"
+                />
+              </div>
+            ) : null}
+            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+              {authMode !== 'reset_password' ? (
+                <button
+                  type="button"
+                  className="underline-offset-4 hover:underline"
+                  onClick={() => setAuthMode(authMode === 'sign_up' ? 'sign_in' : 'sign_up')}
+                >
+                  {authMode === 'sign_up'
+                    ? t('header.auth.switchToSignIn')
+                    : t('header.auth.switchToSignUp')}
+                </button>
+              ) : null}
+              {authMode === 'sign_in' ? (
+                <button
+                  type="button"
+                  className="underline-offset-4 hover:underline"
+                  onClick={() => setAuthMode('forgot_password')}
+                >
+                  {t('header.auth.switchToForgotPassword')}
+                </button>
+              ) : null}
+              {authMode === 'forgot_password' ? (
+                <button
+                  type="button"
+                  className="underline-offset-4 hover:underline"
+                  onClick={() => setAuthMode('sign_in')}
+                >
+                  {t('header.auth.switchBackToSignIn')}
+                </button>
+              ) : null}
+            </div>
             <DialogFooter>
+              {authMode === 'sign_in' ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleResendVerification}
+                  disabled={isSubmittingAuth}
+                >
+                  <MailCheck className="h-4 w-4" aria-hidden />
+                  {t('header.auth.resendVerification')}
+                </Button>
+              ) : null}
               <Button type="button" variant="outline" onClick={authSession.closeAuthDialog}>
                 {t('header.auth.cancel')}
               </Button>
-              <Button type="button" onClick={handleSendMagicLink} disabled={isSendingMagicLink}>
-                {isSendingMagicLink ? (
+              <Button type="button" onClick={handleSubmitAuth} disabled={isSubmittingAuth}>
+                {isSubmittingAuth ? (
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                 ) : (
                   <LogIn className="h-4 w-4" aria-hidden />
                 )}
-                {t('header.auth.sendMagicLink')}
+                {authMode === 'sign_up'
+                  ? t('header.auth.createAccount')
+                  : authMode === 'forgot_password'
+                    ? t('header.auth.sendResetPassword')
+                    : authMode === 'reset_password'
+                      ? t('header.auth.resetPassword')
+                      : t('header.auth.signIn')}
               </Button>
             </DialogFooter>
           </DialogContent>

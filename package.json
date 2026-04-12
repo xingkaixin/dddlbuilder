@@ -36,6 +36,7 @@
     "deploy": "bun run build && wrangler deploy --config wrangler.deploy.toml"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "^1.6.2",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -54,9 +55,11 @@
     "@supabase/supabase-js": "^2.103.0",
     "@tanstack/react-query": "^5.95.2",
     "@tanstack/react-table": "^8.21.3",
+    "better-auth": "^1.6.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "drizzle-orm": "^0.45.2",
     "hono": "^4.12.9",
     "i18next": "^25.10.10",
     "jose": "^6.2.2",
@@ -72,6 +75,7 @@
     "react-markdown": "^10.1.0",
     "react-syntax-highlighter": "^16.1.1",
     "remark-gfm": "^4.0.1",
+    "resend": "^6.10.0",
     "sharp": "^0.34.5",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
@@ -79,6 +83,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@better-auth/cli": "^1.4.21",
     "@cloudflare/workers-types": "^4.20250317.0",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "4.2.2",
@@ -93,6 +98,7 @@
     "@vitest/coverage-v8": "^4.1.2",
     "@vitest/ui": "^4.1.2",
     "autoprefixer": "^10.4.27",
+    "drizzle-kit": "^0.31.10",
     "gray-matter": "^4.0.3",
     "jsdom": "^29.0.1",
     "oxfmt": "^0.43.0",

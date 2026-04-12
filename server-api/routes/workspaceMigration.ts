@@ -1,6 +1,6 @@
 import type { Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
-import { authenticateAccessToken, isInvalidJwtError, readBearerToken } from '../lib/auth.js';
+import { authenticateRequest } from '../lib/auth.js';
 import { errorResponse, withMeta } from '../lib/http.js';
 import {
   analyzeWorkspaceMigration,
@@ -29,20 +29,12 @@ const isWorkspaceMigrationPayload = (value: unknown): value is WorkspaceMigratio
 
 export function registerWorkspaceMigrationRoutes(app: Hono<ApiEnv>) {
   app.post('/workspace/migrations', async (c) => {
-    const token = readBearerToken(c);
-    if (!token) {
-      return errorResponse(c, 401, 'Authentication required', 'AUTH_REQUIRED');
-    }
-
     let user;
     try {
-      user = await authenticateAccessToken(c.env, token);
+      user = await authenticateRequest(c);
     } catch (error) {
-      if (isInvalidJwtError(error)) {
-        return errorResponse(c, 401, 'Invalid or expired access token', 'INVALID_AUTH_TOKEN');
-      }
-      if (error instanceof Error && error.message === 'USER_DISABLED') {
-        return errorResponse(c, 403, 'User account is disabled', 'USER_DISABLED');
+      if (error instanceof Error && error.message === 'AUTH_REQUIRED') {
+        return errorResponse(c, 401, 'Authentication required', 'AUTH_REQUIRED');
       }
       console.error('[workspace-migration] auth failed', error);
       return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
@@ -75,8 +67,8 @@ export function registerWorkspaceMigrationRoutes(app: Hono<ApiEnv>) {
     try {
       const result =
         mode === 'analyze'
-          ? await analyzeWorkspaceMigration(c.env, user.appUserId, payload)
-          : await commitWorkspaceMigration(c.env, user.appUserId, payload);
+          ? await analyzeWorkspaceMigration(c.env, user.userId, payload)
+          : await commitWorkspaceMigration(c.env, user.userId, payload);
 
       return c.json(
         withMeta(c, {

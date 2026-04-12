@@ -54,10 +54,10 @@ const createMockStream = (chunks: unknown[]) => ({
 });
 
 let authenticateAIUserMock = vi.fn().mockResolvedValue({
-  appUserId: 'supabase_user-1',
-  externalUserId: 'user-1',
+  userId: 'user-1',
   email: 'user@example.com',
-  status: 'active',
+  emailVerified: true,
+  name: 'User One',
 });
 let reserveAIUsageMock = vi.fn().mockImplementation(async (_env, input) => ({
   usageEventId: `usage:${input.requestId}`,
@@ -73,10 +73,10 @@ const mockAIUsageModule = (options?: { authenticateError?: string; reserveError?
   authenticateAIUserMock = options?.authenticateError
     ? vi.fn().mockRejectedValue(new Error(options.authenticateError))
     : vi.fn().mockResolvedValue({
-        appUserId: 'supabase_user-1',
-        externalUserId: 'user-1',
+        userId: 'user-1',
         email: 'user@example.com',
-        status: 'active',
+        emailVerified: true,
+        name: 'User One',
       });
 
   reserveAIUsageMock = options?.reserveError

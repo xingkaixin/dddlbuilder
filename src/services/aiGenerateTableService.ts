@@ -22,7 +22,6 @@ export interface GenerateTableRequestOptions {
 interface RequestGenerateTableOptions {
   signal: AbortSignal;
   onStreamingText?: (text: string) => void;
-  accessToken?: string | null;
 }
 
 interface RequestGenerateTablePayload {
@@ -43,7 +42,8 @@ export async function requestGenerateTable(
 ): Promise<GenerateTableServiceResult> {
   const response = await fetch(AI_GENERATE_API_ENDPOINT, {
     method: 'POST',
-    headers: buildAuthenticatedJsonHeaders(options.accessToken ?? null),
+    headers: buildAuthenticatedJsonHeaders(),
+    credentials: 'include',
     body: JSON.stringify({
       description: payload.description,
       dbType: payload.dbType,

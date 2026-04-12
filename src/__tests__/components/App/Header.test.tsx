@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@/__tests__/utils/test-utils';
 import { Header } from '@/components/App/Header';
 
-const requestMagicLinkMock = vi.fn();
+const signInWithEmailMock = vi.fn();
+const signUpWithEmailMock = vi.fn();
+const requestPasswordResetMock = vi.fn();
+const resetPasswordMock = vi.fn();
+const sendVerificationEmailMock = vi.fn();
 const signOutMock = vi.fn();
 const runMigrationMock = vi.fn();
 
@@ -55,14 +59,18 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
   useAuthSession: vi.fn(() => ({
     status: 'signed_out',
     configured: true,
-    accessToken: null,
-    externalUserId: null,
-    appUserId: null,
+    userId: null,
     email: null,
+    name: null,
+    emailVerified: false,
     creditBalance: null,
     creditsStatus: 'idle',
     authDialogOpen: false,
-    requestMagicLink: requestMagicLinkMock,
+    signInWithEmail: signInWithEmailMock,
+    signUpWithEmail: signUpWithEmailMock,
+    requestPasswordReset: requestPasswordResetMock,
+    resetPassword: resetPasswordMock,
+    sendVerificationEmail: sendVerificationEmailMock,
     signOut: signOutMock,
     refreshSession: vi.fn(),
     refreshCredits: vi.fn(),
@@ -123,19 +131,23 @@ describe('Header', () => {
     expect(onPlayFireworks).toHaveBeenCalledTimes(1);
   });
 
-  it('未登录时应展示登录入口并可发送 magic link', async () => {
+  it('未登录时应展示登录入口并可提交邮箱密码登录', async () => {
     const { useAuthSession } = await import('@/auth/AuthSessionProvider');
     vi.mocked(useAuthSession).mockReturnValue({
       status: 'signed_out',
       configured: true,
-      accessToken: null,
-      externalUserId: null,
-      appUserId: null,
+      userId: null,
       email: null,
+      name: null,
+      emailVerified: false,
       creditBalance: null,
       creditsStatus: 'idle',
       authDialogOpen: true,
-      requestMagicLink: requestMagicLinkMock,
+      signInWithEmail: signInWithEmailMock,
+      signUpWithEmail: signUpWithEmailMock,
+      requestPasswordReset: requestPasswordResetMock,
+      resetPassword: resetPasswordMock,
+      sendVerificationEmail: sendVerificationEmailMock,
       signOut: signOutMock,
       refreshSession: vi.fn(),
       refreshCredits: vi.fn(),
@@ -150,10 +162,15 @@ describe('Header', () => {
         value: 'user@example.com',
       },
     });
-    fireEvent.click(screen.getByRole('button', { name: '发送登录链接' }));
+    fireEvent.change(screen.getByLabelText('密码'), {
+      target: {
+        value: 'password1234',
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '登录 / 注册' }));
 
     await waitFor(() => {
-      expect(requestMagicLinkMock).toHaveBeenCalledWith('user@example.com');
+      expect(signInWithEmailMock).toHaveBeenCalledWith('user@example.com', 'password1234');
     });
   });
 
@@ -162,14 +179,18 @@ describe('Header', () => {
     vi.mocked(useAuthSession).mockReturnValue({
       status: 'signed_in',
       configured: true,
-      accessToken: 'token',
-      externalUserId: 'external-user',
-      appUserId: 'supabase_external-user',
+      userId: 'user-1',
       email: 'user@example.com',
+      name: 'User One',
+      emailVerified: true,
       creditBalance: 8800,
       creditsStatus: 'ready',
       authDialogOpen: false,
-      requestMagicLink: requestMagicLinkMock,
+      signInWithEmail: signInWithEmailMock,
+      signUpWithEmail: signUpWithEmailMock,
+      requestPasswordReset: requestPasswordResetMock,
+      resetPassword: resetPasswordMock,
+      sendVerificationEmail: sendVerificationEmailMock,
       signOut: signOutMock,
       refreshSession: vi.fn(),
       refreshCredits: vi.fn(),
@@ -193,14 +214,18 @@ describe('Header', () => {
     vi.mocked(useAuthSession).mockReturnValue({
       status: 'signed_in',
       configured: true,
-      accessToken: 'token',
-      externalUserId: 'external-user',
-      appUserId: 'supabase_external-user',
+      userId: 'user-1',
       email: 'user@example.com',
+      name: 'User One',
+      emailVerified: true,
       creditBalance: 8800,
       creditsStatus: 'ready',
       authDialogOpen: false,
-      requestMagicLink: requestMagicLinkMock,
+      signInWithEmail: signInWithEmailMock,
+      signUpWithEmail: signUpWithEmailMock,
+      requestPasswordReset: requestPasswordResetMock,
+      resetPassword: resetPasswordMock,
+      sendVerificationEmail: sendVerificationEmailMock,
       signOut: signOutMock,
       refreshSession: vi.fn(),
       refreshCredits: vi.fn(),

@@ -18,9 +18,11 @@ const requirePositiveInt = (value: string | undefined, key: string): number => {
 };
 
 export type UserSystemConfig = {
-  supabaseUrl: string;
-  supabaseAnonKey: string;
-  supabaseJwksUrl: string;
+  betterAuthSecret: string;
+  betterAuthUrl: string;
+  resendApiKey: string;
+  resendFromEmail: string;
+  resendFromName: string;
   turnstileSecretKey: string;
   signupBonusCredits: number;
 };
@@ -31,9 +33,11 @@ export const getUserSystemConfig = (env: ApiEnv['Bindings']): UserSystemConfig =
   }
 
   return {
-    supabaseUrl: requireEnv(env.SUPABASE_URL, 'SUPABASE_URL'),
-    supabaseAnonKey: requireEnv(env.SUPABASE_ANON_KEY, 'SUPABASE_ANON_KEY'),
-    supabaseJwksUrl: requireEnv(env.SUPABASE_JWKS_URL, 'SUPABASE_JWKS_URL'),
+    betterAuthSecret: requireEnv(env.BETTER_AUTH_SECRET, 'BETTER_AUTH_SECRET'),
+    betterAuthUrl: requireEnv(env.BETTER_AUTH_URL, 'BETTER_AUTH_URL'),
+    resendApiKey: requireEnv(env.RESEND_API_KEY, 'RESEND_API_KEY'),
+    resendFromEmail: requireEnv(env.RESEND_FROM_EMAIL, 'RESEND_FROM_EMAIL'),
+    resendFromName: env.RESEND_FROM_NAME?.trim() || 'DDLBuilder',
     turnstileSecretKey: requireEnv(env.TURNSTILE_SECRET_KEY, 'TURNSTILE_SECRET_KEY'),
     signupBonusCredits: requirePositiveInt(env.SIGNUP_BONUS_CREDITS, 'SIGNUP_BONUS_CREDITS'),
   };

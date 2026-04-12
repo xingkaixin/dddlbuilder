@@ -64,17 +64,18 @@ bun run build
 - `OPENAI_API_KEY`：模型服务密钥
 - `OPENAI_MODEL_NAME`：默认模型名
 - `CORS_ALLOWED_ORIGINS`：允许跨域来源，多个来源用逗号分隔
-- `SUPABASE_URL`：Supabase 项目地址
-- `SUPABASE_ANON_KEY`：后端联调用的 Supabase 公钥镜像
-- `SUPABASE_JWKS_URL`：Worker 校验 Supabase JWT 使用的 JWKS 地址
+- `BETTER_AUTH_SECRET`：Better Auth 签名密钥
+- `BETTER_AUTH_URL`：Better Auth 对外基址，开发环境通常是 `http://localhost:3000`
+- `RESEND_API_KEY`：Resend API key
+- `RESEND_FROM_EMAIL`：认证邮件发件地址
+- `RESEND_FROM_NAME`：认证邮件发件名
 - `TURNSTILE_SECRET_KEY`：Turnstile 服务端校验密钥
 - `SIGNUP_BONUS_CREDITS`：注册赠送额度
-- `VITE_SUPABASE_URL`：前端 Supabase Auth 地址
-- `VITE_SUPABASE_ANON_KEY`：前端 Supabase Auth 公钥
+- `VITE_BETTER_AUTH_URL`：前端 Better Auth 基址，默认可与站点同源
 - `OPENAI_RATELIMIT_ENABLED`：是否启用 AI 接口限流
 - `OPENAI_RATELIMIT_WINDOW_MS`：限流窗口时长（毫秒）
 - `OPENAI_RATELIMIT_EXPLAIN_MAX` / `OPENAI_RATELIMIT_REVIEW_MAX` / `OPENAI_RATELIMIT_GENERATE_MAX`：各 AI 路由窗口内最大请求数
-- `OPENAI_RATELIMIT_STORE`：计数存储（`redis` 或 `memory`，默认 `redis`，失败自动降级）
+- `OPENAI_RATELIMIT_STORE`：计数存储（`kv` 或 `memory`，默认 `kv`，失败自动降级）
 - `OPENAI_DAILY_BUDGET_ENABLED`：是否启用每日预算控制
 - `OPENAI_DAILY_BUDGET_MAX_TOKENS`：每日预算上限（估算 token）
 - `OPENAI_STREAM_DEBUG`：是否启用后端 AI streaming 调试日志（默认 `false`）
@@ -89,6 +90,14 @@ bun run build
 
 - `VITE_ENABLE_CNY_FIREWORKS`：是否启用春节烟花入口与节日动效（默认 `false`，设为 `true` 后恢复 Header 入口和烟花 overlay）
 - `VITE_ENABLE_AI_STREAM_DEBUG`：是否启用前端 AI streaming 调试日志（构建时变量，默认 `false`）
+
+认证说明：
+
+- 当前认证链路为 `Better Auth + D1 + Resend + Cookie Session`
+- 注册 / 登录默认使用邮箱 + 密码
+- 邮箱验证、忘记密码、重置密码邮件由 `Resend` 发送
+- 前端所有需要登录态的请求都通过 `credentials: 'include'` 携带 cookie，不再发送 bearer token
+- 业务用户主键直接使用 Better Auth 的 `user.id`
 
 调试说明：
 

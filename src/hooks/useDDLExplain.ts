@@ -40,7 +40,7 @@ export function useDDLExplain() {
         return;
       }
 
-      if (authSession.status !== 'signed_in' || !authSession.accessToken) {
+      if (authSession.status !== 'signed_in' || !authSession.userId) {
         authSession.openAuthDialog();
         setState((prev) => ({
           ...prev,
@@ -87,7 +87,8 @@ export function useDDLExplain() {
       try {
         const response = await fetch('/api/explain', {
           method: 'POST',
-          headers: buildAuthenticatedJsonHeaders(authSession.accessToken),
+          headers: buildAuthenticatedJsonHeaders(),
+          credentials: 'include',
           body: JSON.stringify({ sql, context, locale: resolvedLocale }),
           signal: abortControllerRef.current.signal,
         });

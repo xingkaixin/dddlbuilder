@@ -124,19 +124,11 @@ export function registerReviewRoute(app: Hono<ApiEnv>) {
 
     try {
       const user = await authenticateAIUser(c);
-      currentUserId = user.appUserId;
+      currentUserId = user.userId;
     } catch (error) {
       if (error instanceof Error && error.message === 'AUTH_REQUIRED') {
         audit(401, 0, false, false, 'AUTH_REQUIRED');
         return errorResponse(c, 401, 'Authentication required', 'AUTH_REQUIRED');
-      }
-      if (error instanceof Error && error.message === 'INVALID_AUTH_TOKEN') {
-        audit(401, 0, false, false, 'INVALID_AUTH_TOKEN');
-        return errorResponse(c, 401, 'Invalid or expired access token', 'INVALID_AUTH_TOKEN');
-      }
-      if (error instanceof Error && error.message === 'USER_DISABLED') {
-        audit(403, 0, false, false, 'USER_DISABLED');
-        return errorResponse(c, 403, 'User account is disabled', 'USER_DISABLED');
       }
       console.error('[review] authentication failed', error);
       audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');

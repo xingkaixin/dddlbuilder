@@ -43,7 +43,7 @@ Origin: "XING-104"
 
 - 已完成：
   - Header 登录入口
-  - magic link 登录弹层
+  - 邮箱密码登录 / 注册弹层
   - 已登录用户菜单
   - 登出按钮
   - Header 余额 badge 与账号菜单额度摘要

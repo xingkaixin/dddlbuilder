@@ -16,8 +16,7 @@ type PendingWorkspaceMigration = {
 
 export const useWorkspaceMigration = (authState: {
   status: 'loading' | 'signed_out' | 'signed_in';
-  accessToken: string | null;
-  appUserId: string | null;
+  userId: string | null;
 }) => {
   const [pending, setPending] = useState<PendingWorkspaceMigration | null>(null);
   const [checking, setChecking] = useState(false);
@@ -26,7 +25,7 @@ export const useWorkspaceMigration = (authState: {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (authState.status !== 'signed_in' || !authState.accessToken || !authState.appUserId) {
+    if (authState.status !== 'signed_in' || !authState.userId) {
       setPending(null);
       setOpen(false);
       setError(null);
@@ -37,7 +36,7 @@ export const useWorkspaceMigration = (authState: {
     setChecking(true);
     setError(null);
 
-    void analyzeWorkspaceMigration(authState.accessToken)
+    void analyzeWorkspaceMigration()
       .then((analysis) => {
         if (cancelled || !analysis) return;
         if (analysis.result.status === 'no_data' || analysis.result.status === 'completed') {
@@ -45,7 +44,7 @@ export const useWorkspaceMigration = (authState: {
           setOpen(false);
           return;
         }
-        if (isWorkspaceMigrationDismissed(authState.appUserId, analysis.payload.localFingerprint)) {
+        if (isWorkspaceMigrationDismissed(authState.userId, analysis.payload.localFingerprint)) {
           return;
         }
         setPending(analysis);
@@ -64,25 +63,25 @@ export const useWorkspaceMigration = (authState: {
     return () => {
       cancelled = true;
     };
-  }, [authState.accessToken, authState.appUserId, authState.status]);
+  }, [authState.status, authState.userId]);
 
   const dismiss = useCallback(() => {
-    if (pending && authState.appUserId) {
-      dismissWorkspaceMigration(authState.appUserId, pending.payload.localFingerprint);
+    if (pending && authState.userId) {
+      dismissWorkspaceMigration(authState.userId, pending.payload.localFingerprint);
     }
     setOpen(false);
-  }, [authState.appUserId, pending]);
+  }, [authState.userId, pending]);
 
   const runMigration = useCallback(async () => {
-    if (!pending || !authState.accessToken || !authState.appUserId) {
+    if (!pending || !authState.userId) {
       return null;
     }
 
     setRunning(true);
     setError(null);
-    clearWorkspaceMigrationDismissed(authState.appUserId, pending.payload.localFingerprint);
+    clearWorkspaceMigrationDismissed(authState.userId, pending.payload.localFingerprint);
     try {
-      const result = await commitWorkspaceMigration(authState.accessToken, pending.payload);
+      const result = await commitWorkspaceMigration(pending.payload);
       setPending(null);
       setOpen(false);
       return result;
@@ -92,7 +91,7 @@ export const useWorkspaceMigration = (authState: {
     } finally {
       setRunning(false);
     }
-  }, [authState.accessToken, authState.appUserId, pending]);
+  }, [authState.userId, pending]);
 
   return {
     checking,

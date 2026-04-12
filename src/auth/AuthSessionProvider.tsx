@@ -1,33 +1,42 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
-  useCallback,
   type PropsWithChildren,
 } from 'react';
-import type { Session } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import type { MeApiResponse } from '@/types/api';
 import i18n from '@/i18n';
-import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient';
+import { getBetterAuthClient, isBetterAuthConfigured } from './betterAuthClient';
 
 export type UserSessionState = {
   status: 'loading' | 'signed_out' | 'signed_in';
   configured: boolean;
-  accessToken: string | null;
-  externalUserId: string | null;
-  appUserId: string | null;
+  userId: string | null;
   email: string | null;
+  name: string | null;
+  emailVerified: boolean;
   creditBalance: number | null;
   creditsStatus: 'idle' | 'loading' | 'ready' | 'error';
   authDialogOpen: boolean;
 };
 
+type SignUpInput = {
+  name: string;
+  email: string;
+  password: string;
+};
+
 type AuthSessionContextValue = UserSessionState & {
-  requestMagicLink: (email: string) => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (input: SignUpInput) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  resetPassword: (token: string, newPassword: string) => Promise<void>;
+  sendVerificationEmail: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
   refreshCredits: () => Promise<void>;
@@ -40,20 +49,18 @@ const AuthSessionContext = createContext<AuthSessionContextValue | null>(null);
 const signedOutState = (configured: boolean): UserSessionState => ({
   status: 'signed_out',
   configured,
-  accessToken: null,
-  externalUserId: null,
-  appUserId: null,
+  userId: null,
   email: null,
+  name: null,
+  emailVerified: false,
   creditBalance: null,
   creditsStatus: 'idle',
   authDialogOpen: false,
 });
 
-const fetchCurrentUser = async (accessToken: string): Promise<MeApiResponse> => {
+const fetchCurrentUser = async (): Promise<MeApiResponse> => {
   const response = await fetch('/api/me', {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    credentials: 'include',
   });
 
   const payload = (await response.json().catch(() => null)) as MeApiResponse | null;
@@ -68,14 +75,13 @@ const fetchCurrentUser = async (accessToken: string): Promise<MeApiResponse> => 
   if (!payload) {
     throw new Error('Empty user response');
   }
+
   return payload;
 };
 
-const fetchCreditBalance = async (accessToken: string): Promise<number> => {
+const fetchCreditBalance = async (): Promise<number> => {
   const response = await fetch('/api/credits/balance', {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    credentials: 'include',
   });
 
   const payload = (await response.json().catch(() => null)) as {
@@ -94,79 +100,76 @@ const fetchCreditBalance = async (accessToken: string): Promise<number> => {
 };
 
 export function AuthSessionProvider({ children }: PropsWithChildren) {
-  const configured = isSupabaseConfigured();
-  const client = getSupabaseClient();
+  const configured = isBetterAuthConfigured();
+  const client = getBetterAuthClient();
   const [state, setState] = useState<UserSessionState>({
     status: configured ? 'loading' : 'signed_out',
     configured,
-    accessToken: null,
-    externalUserId: null,
-    appUserId: null,
+    userId: null,
     email: null,
+    name: null,
+    emailVerified: false,
     creditBalance: null,
     creditsStatus: 'idle',
     authDialogOpen: false,
   });
   const syncPromiseRef = useRef<Promise<void> | null>(null);
 
-  const syncFromSession = useCallback(
-    async (session: Session | null) => {
-      if (!configured || !client || !session?.access_token || !session.user) {
-        setState(signedOutState(configured));
-        return;
-      }
+  const syncSessionState = useCallback(async () => {
+    if (!configured) {
+      setState(signedOutState(false));
+      return;
+    }
 
-      const me = await fetchCurrentUser(session.access_token);
-      if (!me.signedIn) {
-        setState(signedOutState(configured));
-        return;
-      }
+    const me = await fetchCurrentUser();
+    if (!me.signedIn) {
+      setState(signedOutState(true));
+      return;
+    }
 
+    setState((prev) => ({
+      ...prev,
+      status: 'signed_in',
+      configured: true,
+      userId: me.user.userId,
+      email: me.user.email,
+      name: me.user.name,
+      emailVerified: me.user.emailVerified,
+      creditsStatus: 'loading',
+    }));
+
+    try {
+      const creditBalance = await fetchCreditBalance();
       setState((prev) => ({
         ...prev,
         status: 'signed_in',
-        configured,
-        accessToken: session.access_token,
-        externalUserId: me.user.externalUserId,
-        appUserId: me.user.appUserId,
+        configured: true,
+        userId: me.user.userId,
         email: me.user.email,
-        creditsStatus: 'loading',
+        name: me.user.name,
+        emailVerified: me.user.emailVerified,
+        creditBalance,
+        creditsStatus: 'ready',
       }));
-
-      try {
-        const creditBalance = await fetchCreditBalance(session.access_token);
-        setState((prev) => ({
-          ...prev,
-          status: 'signed_in',
-          configured,
-          accessToken: session.access_token,
-          externalUserId: me.user.externalUserId,
-          appUserId: me.user.appUserId,
-          email: me.user.email,
-          creditBalance,
-          creditsStatus: 'ready',
-        }));
-      } catch (error) {
-        console.error('[auth] failed to load credit balance', error);
-        setState((prev) => ({
-          ...prev,
-          status: 'signed_in',
-          configured,
-          accessToken: session.access_token,
-          externalUserId: me.user.externalUserId,
-          appUserId: me.user.appUserId,
-          email: me.user.email,
-          creditBalance: null,
-          creditsStatus: 'error',
-        }));
-      }
-    },
-    [client, configured],
-  );
+    } catch (error) {
+      console.error('[auth] failed to load credit balance', error);
+      setState((prev) => ({
+        ...prev,
+        status: 'signed_in',
+        configured: true,
+        userId: me.user.userId,
+        email: me.user.email,
+        name: me.user.name,
+        emailVerified: me.user.emailVerified,
+        creditBalance: null,
+        creditsStatus: 'error',
+      }));
+    }
+  }, [configured]);
 
   const refreshSession = useCallback(async () => {
-    if (!configured || !client) {
-      setState(signedOutState(configured));
+    if (!configured) {
+      setState(signedOutState(false));
       return;
     }
 
@@ -176,12 +179,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
 
     const task = (async () => {
       setState((prev) => ({ ...prev, status: 'loading' }));
-      const { data, error } = await client.auth.getSession();
-      if (error) {
-        setState(signedOutState(configured));
-        throw error;
-      }
-      await syncFromSession(data.session);
+      await syncSessionState();
     })()
       .catch((error) => {
         console.error('[auth] failed to refresh session', error);
@@ -193,47 +191,87 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
 
     syncPromiseRef.current = task;
     return task;
-  }, [client, configured, syncFromSession]);
+  }, [configured, syncSessionState]);
 
   useEffect(() => {
-    if (!configured || !client) {
-      setState(signedOutState(configured));
+    if (!configured) {
+      setState(signedOutState(false));
       return;
     }
 
     void refreshSession();
-
-    const {
-      data: { subscription },
-    } = client.auth.onAuthStateChange((_event, session) => {
-      void syncFromSession(session).catch((error) => {
-        console.error('[auth] failed to sync auth state', error);
-        toast.error(i18n.t('header.auth.signInFailed'));
-        setState(signedOutState(configured));
-      });
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [client, configured, refreshSession, syncFromSession]);
+  }, [configured, refreshSession]);
 
   const value = useMemo<AuthSessionContextValue>(
     () => ({
       ...state,
-      requestMagicLink: async (email: string) => {
+      signInWithEmail: async (email: string, password: string) => {
         if (!client || !configured) {
           throw new Error(i18n.t('services.authConfigMissing'));
         }
-        const redirectTo = window.location.origin;
-        const { error } = await client.auth.signInWithOtp({
+
+        const result = await client.signIn.email({
           email,
-          options: {
-            emailRedirectTo: redirectTo,
-          },
+          password,
         });
-        if (error) {
-          throw error;
+        if (result.error) {
+          throw new Error(result.error.message || i18n.t('header.auth.signInFailed'));
+        }
+
+        await refreshSession();
+      },
+      signUpWithEmail: async (input: SignUpInput) => {
+        if (!client || !configured) {
+          throw new Error(i18n.t('services.authConfigMissing'));
+        }
+
+        const result = await client.signUp.email({
+          email: input.email,
+          password: input.password,
+          name: input.name,
+          callbackURL: window.location.origin,
+        });
+        if (result.error) {
+          throw new Error(result.error.message || i18n.t('header.auth.signInFailed'));
+        }
+      },
+      requestPasswordReset: async (email: string) => {
+        if (!client || !configured) {
+          throw new Error(i18n.t('services.authConfigMissing'));
+        }
+
+        const result = await client.forgetPassword({
+          email,
+          redirectTo: `${window.location.origin}/?auth_action=reset-password`,
+        });
+        if (result.error) {
+          throw new Error(result.error.message || i18n.t('header.auth.signInFailed'));
+        }
+      },
+      resetPassword: async (token: string, newPassword: string) => {
+        if (!client || !configured) {
+          throw new Error(i18n.t('services.authConfigMissing'));
+        }
+
+        const result = await client.resetPassword({
+          token,
+          newPassword,
+        });
+        if (result.error) {
+          throw new Error(result.error.message || i18n.t('header.auth.signInFailed'));
+        }
+      },
+      sendVerificationEmail: async (email: string) => {
+        if (!client || !configured) {
+          throw new Error(i18n.t('services.authConfigMissing'));
+        }
+
+        const result = await client.sendVerificationEmail({
+          email,
+          callbackURL: window.location.origin,
+        });
+        if (result.error) {
+          throw new Error(result.error.message || i18n.t('header.auth.signInFailed'));
         }
       },
       signOut: async () => {
@@ -241,22 +279,24 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
           setState(signedOutState(configured));
           return;
         }
-        const { error } = await client.auth.signOut();
-        if (error) {
-          throw error;
+
+        const result = await client.signOut();
+        if (result.error) {
+          throw new Error(result.error.message || i18n.t('header.auth.signOutFailed'));
         }
+
         setState(signedOutState(configured));
       },
       refreshSession,
       refreshCredits: async () => {
-        if (!state.accessToken || state.status !== 'signed_in') {
+        if (state.status !== 'signed_in' || !state.userId) {
           setState((prev) => ({ ...prev, creditBalance: null, creditsStatus: 'idle' }));
           return;
         }
 
         setState((prev) => ({ ...prev, creditsStatus: 'loading' }));
         try {
-          const creditBalance = await fetchCreditBalance(state.accessToken);
+          const creditBalance = await fetchCreditBalance();
           setState((prev) => ({
             ...prev,
             creditBalance,
@@ -280,6 +320,13 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     }),
     [client, configured, refreshSession, state],
   );
+
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    if (query.get('error')) {
+      toast.error(i18n.t('header.auth.verifyEmailFailed'));
+    }
+  }, []);
 
   return <AuthSessionContext.Provider value={value}>{children}</AuthSessionContext.Provider>;
 }

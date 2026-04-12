@@ -64,9 +64,10 @@ export type MeApiResponse =
   | {
       signedIn: true;
       user: {
-        appUserId: string;
-        externalUserId: string;
+        userId: string;
         email: string;
+        emailVerified: boolean;
+        name: string;
       };
       meta?: ApiMeta;
     };

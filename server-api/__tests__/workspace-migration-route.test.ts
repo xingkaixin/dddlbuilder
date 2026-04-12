@@ -6,9 +6,11 @@ const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Binding
   SHARE_KV: {} as KVNamespace,
   RATE_LIMIT_KV: {} as KVNamespace,
   USER_DB: {} as D1Database,
-  SUPABASE_URL: 'https://example.supabase.co',
-  SUPABASE_ANON_KEY: 'anon-key',
-  SUPABASE_JWKS_URL: 'https://example.supabase.co/auth/v1/.well-known/jwks.json',
+  BETTER_AUTH_SECRET: 'better-auth-secret',
+  BETTER_AUTH_URL: 'http://localhost:3000',
+  RESEND_API_KEY: 're_test_key',
+  RESEND_FROM_EMAIL: 'noreply@example.com',
+  RESEND_FROM_NAME: 'DDLBuilder',
   TURNSTILE_SECRET_KEY: 'turnstile-secret',
   SIGNUP_BONUS_CREDITS: '100000',
   ...overrides,
@@ -58,14 +60,12 @@ describe('/api/workspace/migrations', () => {
 
   it('returns analyze result for authenticated users', async () => {
     vi.doMock('../lib/auth.js', () => ({
-      readBearerToken: () => 'token',
-      authenticateAccessToken: vi.fn().mockResolvedValue({
-        appUserId: 'supabase_user-1',
-        externalUserId: 'user-1',
+      authenticateRequest: vi.fn().mockResolvedValue({
+        userId: 'user-1',
         email: 'user@example.com',
-        status: 'active',
+        emailVerified: true,
+        name: 'User One',
       }),
-      isInvalidJwtError: () => false,
     }));
     vi.doMock('../lib/workspaceMigration.js', () => ({
       analyzeWorkspaceMigration: vi.fn().mockResolvedValue({
@@ -85,7 +85,6 @@ describe('/api/workspace/migrations', () => {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          Authorization: 'Bearer token',
         },
         body: JSON.stringify({
           mode: 'analyze',
@@ -104,14 +103,12 @@ describe('/api/workspace/migrations', () => {
 
   it('returns commit result for authenticated users', async () => {
     vi.doMock('../lib/auth.js', () => ({
-      readBearerToken: () => 'token',
-      authenticateAccessToken: vi.fn().mockResolvedValue({
-        appUserId: 'supabase_user-1',
-        externalUserId: 'user-1',
+      authenticateRequest: vi.fn().mockResolvedValue({
+        userId: 'user-1',
         email: 'user@example.com',
-        status: 'active',
+        emailVerified: true,
+        name: 'User One',
       }),
-      isInvalidJwtError: () => false,
     }));
     vi.doMock('../lib/workspaceMigration.js', () => ({
       analyzeWorkspaceMigration: vi.fn(),
@@ -131,7 +128,6 @@ describe('/api/workspace/migrations', () => {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          Authorization: 'Bearer token',
         },
         body: JSON.stringify({
           mode: 'commit',

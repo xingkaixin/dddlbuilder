@@ -87,7 +87,7 @@ export function useAIGenerateTable() {
         return;
       }
 
-      if (authSession.status !== 'signed_in' || !authSession.accessToken) {
+      if (authSession.status !== 'signed_in' || !authSession.userId) {
         authSession.openAuthDialog();
         setState((prev) => ({
           ...prev,
@@ -162,7 +162,6 @@ export function useAIGenerateTable() {
                     streamingText,
                   }));
                 },
-                accessToken: authSession.accessToken,
               },
             ),
         });
