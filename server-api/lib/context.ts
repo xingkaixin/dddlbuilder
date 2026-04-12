@@ -12,9 +12,11 @@ export type ApiEnv = {
     USER_DB: D1Database;
     // Environment variables
     CORS_ALLOWED_ORIGINS?: string;
-    SUPABASE_URL?: string;
-    SUPABASE_ANON_KEY?: string;
-    SUPABASE_JWKS_URL?: string;
+    BETTER_AUTH_SECRET?: string;
+    BETTER_AUTH_URL?: string;
+    RESEND_API_KEY?: string;
+    RESEND_FROM_EMAIL?: string;
+    RESEND_FROM_NAME?: string;
     TURNSTILE_SECRET_KEY?: string;
     SIGNUP_BONUS_CREDITS?: string;
     OPENAI_RATELIMIT_STORE?: string;

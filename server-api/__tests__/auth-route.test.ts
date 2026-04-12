@@ -6,9 +6,11 @@ const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Binding
   SHARE_KV: {} as KVNamespace,
   RATE_LIMIT_KV: {} as KVNamespace,
   USER_DB: {} as D1Database,
-  SUPABASE_URL: 'https://example.supabase.co',
-  SUPABASE_ANON_KEY: 'anon-key',
-  SUPABASE_JWKS_URL: 'https://example.supabase.co/auth/v1/.well-known/jwks.json',
+  BETTER_AUTH_SECRET: 'better-auth-secret',
+  BETTER_AUTH_URL: 'http://localhost:3000',
+  RESEND_API_KEY: 're_test_key',
+  RESEND_FROM_EMAIL: 'noreply@example.com',
+  RESEND_FROM_NAME: 'DDLBuilder',
   TURNSTILE_SECRET_KEY: 'turnstile-secret',
   SIGNUP_BONUS_CREDITS: '100000',
   ...overrides,
@@ -36,22 +38,18 @@ describe('/api/me', () => {
 
   it('returns current user when authentication succeeds', async () => {
     vi.doMock('../lib/auth.js', () => ({
-      readBearerToken: () => 'test-token',
-      authenticateAccessToken: vi.fn().mockResolvedValue({
-        appUserId: 'supabase_user-1',
-        externalUserId: 'user-1',
+      resolveAuthenticatedUser: vi.fn().mockResolvedValue({
+        userId: 'user-1',
         email: 'user@example.com',
-        status: 'active',
+        emailVerified: true,
+        name: 'User One',
       }),
-      isInvalidJwtError: () => false,
     }));
 
     const { default: app } = await import('../../api/index');
     const response = await app.fetch(
       createRequest('/api/me', {
-        headers: {
-          Authorization: 'Bearer test-token',
-        },
+        headers: { Cookie: 'session=ok' },
       }),
       createEnv(),
     );
@@ -60,33 +58,26 @@ describe('/api/me', () => {
     expect(await response.json()).toMatchObject({
       signedIn: true,
       user: {
-        appUserId: 'supabase_user-1',
-        externalUserId: 'user-1',
+        userId: 'user-1',
         email: 'user@example.com',
+        emailVerified: true,
+        name: 'User One',
       },
     });
   });
 
-  it('returns 401 when access token is invalid', async () => {
+  it('returns signed out when session lookup returns null', async () => {
     vi.doMock('../lib/auth.js', () => ({
-      readBearerToken: () => 'bad-token',
-      authenticateAccessToken: vi.fn().mockRejectedValue(new Error('bad token')),
-      isInvalidJwtError: () => true,
+      resolveAuthenticatedUser: vi.fn().mockResolvedValue(null),
     }));
 
     const { default: app } = await import('../../api/index');
-    const response = await app.fetch(
-      createRequest('/api/me', {
-        headers: {
-          Authorization: 'Bearer bad-token',
-        },
-      }),
-      createEnv(),
-    );
+    const response = await app.fetch(createRequest('/api/me'), createEnv());
 
-    expect(response.status).toBe(401);
+    expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
-      code: 'INVALID_AUTH_TOKEN',
+      signedIn: false,
+      user: null,
     });
   });
 });

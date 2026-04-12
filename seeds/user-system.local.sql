@@ -1,25 +1,33 @@
-INSERT OR IGNORE INTO users (
+INSERT OR IGNORE INTO user (
   id,
-  status,
-  primary_email
+  name,
+  email,
+  email_verified,
+  created_at,
+  updated_at
 ) VALUES (
   'usr_local_seed',
-  'active',
-  'local-seed@ddlbuilder.dev'
+  'Local Seed User',
+  'local-seed@ddlbuilder.dev',
+  1,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
 );
 
-INSERT OR IGNORE INTO user_identities (
+INSERT OR IGNORE INTO account (
   id,
+  account_id,
+  provider_id,
   user_id,
-  provider,
-  provider_user_id,
-  provider_email
+  created_at,
+  updated_at
 ) VALUES (
-  'ident_local_seed',
+  'acct_local_seed_credential',
   'usr_local_seed',
-  'supabase',
-  'supabase-local-seed',
-  'local-seed@ddlbuilder.dev'
+  'credential',
+  'usr_local_seed',
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
 );
 
 INSERT OR IGNORE INTO credit_accounts (

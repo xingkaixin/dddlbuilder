@@ -6,9 +6,8 @@ type ApiErrorPayload = {
   code?: ApiErrorCode;
 };
 
-export const buildAuthenticatedJsonHeaders = (accessToken: string | null) => ({
+export const buildAuthenticatedJsonHeaders = () => ({
   'Content-Type': 'application/json',
-  ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
 });
 
 export const readAIErrorMessage = async (

@@ -22,7 +22,6 @@ export interface ReviewServiceResult {
 interface RequestDDLReviewOptions {
   signal: AbortSignal;
   onStreamingText?: (text: string) => void;
-  accessToken?: string | null;
 }
 
 function normalizeReviewPayload(payload: unknown): ReviewServiceResult {
@@ -58,7 +57,8 @@ export async function requestDDLReview(
 ): Promise<ReviewServiceResult> {
   const response = await fetch(REVIEW_API_ENDPOINT, {
     method: 'POST',
-    headers: buildAuthenticatedJsonHeaders(options.accessToken ?? null),
+    headers: buildAuthenticatedJsonHeaders(),
+    credentials: 'include',
     body: JSON.stringify(payload),
     signal: options.signal,
   });

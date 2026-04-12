@@ -7,9 +7,11 @@ const buildEnv = () =>
     SHARE_KV: {} as KVNamespace,
     RATE_LIMIT_KV: {} as KVNamespace,
     USER_DB: {} as D1Database,
-    SUPABASE_URL: 'https://example.supabase.co',
-    SUPABASE_ANON_KEY: 'anon-key',
-    SUPABASE_JWKS_URL: 'https://example.supabase.co/auth/v1/.well-known/jwks.json',
+    BETTER_AUTH_SECRET: 'better-auth-secret',
+    BETTER_AUTH_URL: 'http://localhost:3000',
+    RESEND_API_KEY: 're_test_key',
+    RESEND_FROM_EMAIL: 'noreply@example.com',
+    RESEND_FROM_NAME: 'DDLBuilder',
     TURNSTILE_SECRET_KEY: 'turnstile-secret',
     SIGNUP_BONUS_CREDITS: '100000',
   }) satisfies Record<string, unknown>;
@@ -18,7 +20,8 @@ describe('getUserSystemConfig', () => {
   it('reads required user system config', () => {
     const config = getUserSystemConfig(buildEnv() as never);
     expect(config.signupBonusCredits).toBe(100000);
-    expect(config.supabaseUrl).toContain('supabase.co');
+    expect(config.betterAuthUrl).toContain('localhost');
+    expect(config.resendFromEmail).toBe('noreply@example.com');
   });
 
   it('fails when USER_DB binding is missing', () => {

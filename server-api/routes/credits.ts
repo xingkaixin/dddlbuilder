@@ -1,6 +1,6 @@
 import type { Context, Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
-import { authenticateAccessToken, isInvalidJwtError, readBearerToken } from '../lib/auth.js';
+import { resolveAuthenticatedUser as resolveSessionUser } from '../lib/auth.js';
 import { getCreditAccount, listCreditLedger } from '../lib/credits.js';
 import { errorResponse, withMeta } from '../lib/http.js';
 
@@ -13,11 +13,7 @@ const parseLedgerLimit = (value: string | undefined) => {
 };
 
 const resolveAuthenticatedUser = async (c: Context<ApiEnv>) => {
-  const token = readBearerToken(c);
-  if (!token) {
-    return null;
-  }
-  return authenticateAccessToken(c.env, token);
+  return resolveSessionUser(c.env, c.req.raw.headers);
 };
 
 export function registerCreditRoutes(app: Hono<ApiEnv>) {
@@ -28,21 +24,15 @@ export function registerCreditRoutes(app: Hono<ApiEnv>) {
         return errorResponse(c, 401, 'Authentication required', 'AUTH_REQUIRED');
       }
 
-      const account = await getCreditAccount(c.env, user.appUserId);
+      const account = await getCreditAccount(c.env, user.userId);
       return c.json(
         withMeta(c, {
           balance: account?.balance ?? 0,
           version: account?.version ?? 0,
-          userId: user.appUserId,
+          userId: user.userId,
         }),
       );
     } catch (error) {
-      if (isInvalidJwtError(error)) {
-        return errorResponse(c, 401, 'Invalid or expired access token', 'INVALID_AUTH_TOKEN');
-      }
-      if (error instanceof Error && error.message === 'USER_DISABLED') {
-        return errorResponse(c, 403, 'User account is disabled', 'USER_DISABLED');
-      }
       console.error('[credits] balance failed', error);
       return errorResponse(c, 503, 'Credit service unavailable', 'SERVICE_UNAVAILABLE');
     }
@@ -57,7 +47,7 @@ export function registerCreditRoutes(app: Hono<ApiEnv>) {
 
       const items = await listCreditLedger(
         c.env,
-        user.appUserId,
+        user.userId,
         parseLedgerLimit(c.req.query('limit')),
       );
       return c.json(
@@ -66,12 +56,6 @@ export function registerCreditRoutes(app: Hono<ApiEnv>) {
         }),
       );
     } catch (error) {
-      if (isInvalidJwtError(error)) {
-        return errorResponse(c, 401, 'Invalid or expired access token', 'INVALID_AUTH_TOKEN');
-      }
-      if (error instanceof Error && error.message === 'USER_DISABLED') {
-        return errorResponse(c, 403, 'User account is disabled', 'USER_DISABLED');
-      }
       console.error('[credits] ledger failed', error);
       return errorResponse(c, 503, 'Credit service unavailable', 'SERVICE_UNAVAILABLE');
     }

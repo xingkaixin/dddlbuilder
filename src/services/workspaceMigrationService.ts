@@ -46,7 +46,6 @@ const toHex = (buffer: ArrayBuffer) =>
     .join('');
 
 const requestWorkspaceMigration = async (
-  accessToken: string,
   mode: 'analyze' | 'commit',
   payload: WorkspaceMigrationPayload,
 ): Promise<WorkspaceMigrationResponse> => {
@@ -54,8 +53,8 @@ const requestWorkspaceMigration = async (
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
     },
+    credentials: 'include',
     body: JSON.stringify({
       mode,
       payload,
@@ -129,23 +128,21 @@ export const collectWorkspaceMigrationPayload =
     };
   };
 
-export const analyzeWorkspaceMigration = async (accessToken: string) => {
+export const analyzeWorkspaceMigration = async () => {
   const payload = await collectWorkspaceMigrationPayload();
   if (!payload) {
     return null;
   }
 
-  const result = await requestWorkspaceMigration(accessToken, 'analyze', payload);
+  const result = await requestWorkspaceMigration('analyze', payload);
   return {
     payload,
     result,
   };
 };
 
-export const commitWorkspaceMigration = async (
-  accessToken: string,
-  payload: WorkspaceMigrationPayload,
-) => requestWorkspaceMigration(accessToken, 'commit', payload);
+export const commitWorkspaceMigration = async (payload: WorkspaceMigrationPayload) =>
+  requestWorkspaceMigration('commit', payload);
 
 export const dismissWorkspaceMigration = (appUserId: string, fingerprint: string) => {
   localStorage.setItem(buildDismissKey(appUserId, fingerprint), '1');

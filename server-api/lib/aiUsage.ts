@@ -1,5 +1,5 @@
 import type { Context } from 'hono';
-import { authenticateAccessToken, isInvalidJwtError, readBearerToken } from './auth.js';
+import { authenticateRequest } from './auth.js';
 import { applyCreditMutation, type CreditLedgerSource } from './credits.js';
 import type { ApiEnv } from './context.js';
 
@@ -71,21 +71,7 @@ const writeUsageEvent = async (
 };
 
 export const authenticateAIUser = async (c: Context<ApiEnv>) => {
-  const token = readBearerToken(c);
-  if (!token) {
-    throw new Error('AUTH_REQUIRED');
-  }
-
-  try {
-    const user = await authenticateAccessToken(c.env, token);
-    c.set('currentUserId', user.appUserId);
-    return user;
-  } catch (error) {
-    if (isInvalidJwtError(error)) {
-      throw new Error('INVALID_AUTH_TOKEN');
-    }
-    throw error;
-  }
+  return authenticateRequest(c);
 };
 
 export const reserveAIUsage = async (

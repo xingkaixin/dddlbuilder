@@ -131,7 +131,7 @@ Status: Complete
 
 - [x] `XING-113` 已完成方案定稿并进入 review
 - [x] `XING-114` 已完成 D1 / Wrangler / 本地联调脚手架并进入 review
-- [x] `XING-115` 已完成 Supabase Auth、`GET /api/me`、Header 登录/登出最小闭环并进入 review
+- [x] `XING-115` 已从 Supabase Auth 重构为 `Better Auth + Resend + D1 + Cookie Session`，并完成 `GET /api/me`、Header 登录/登出、邮箱验证与密码重置闭环
 - [x] `XING-117` 已完成 credit service、余额接口、ledger 接口并进入 review
 - [x] `XING-118` 已完成 AI 路由鉴权、额度预扣/退款、usage event 主链并进入 review
 - [x] `XING-116` 已完成匿名工作区 analyze/commit 迁移链路、Header 迁移提示和重试入口并进入 review

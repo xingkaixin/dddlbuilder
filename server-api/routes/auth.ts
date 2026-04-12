@@ -1,6 +1,7 @@
 import type { Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
-import { authenticateAccessToken, isInvalidJwtError, readBearerToken } from '../lib/auth.js';
+import { resolveAuthenticatedUser } from '../lib/auth.js';
+import { createBetterAuth } from '../lib/betterAuth.js';
 import { errorResponse, withMeta } from '../lib/http.js';
 import { getUserSystemConfig } from '../lib/userSystemConfig.js';
 
@@ -10,37 +11,6 @@ type TurnstileVerifyResponse = {
 };
 
 export function registerAuthRoutes(app: Hono<ApiEnv>) {
-  app.get('/me', async (c) => {
-    const token = readBearerToken(c);
-    if (!token) {
-      return c.json(withMeta(c, { signedIn: false as const, user: null }));
-    }
-
-    try {
-      const user = await authenticateAccessToken(c.env, token);
-      c.set('currentUserId', user.appUserId);
-      return c.json(
-        withMeta(c, {
-          signedIn: true as const,
-          user: {
-            appUserId: user.appUserId,
-            externalUserId: user.externalUserId,
-            email: user.email,
-          },
-        }),
-      );
-    } catch (error) {
-      if (isInvalidJwtError(error)) {
-        return errorResponse(c, 401, 'Invalid or expired access token', 'INVALID_AUTH_TOKEN');
-      }
-      if (error instanceof Error && error.message === 'USER_DISABLED') {
-        return errorResponse(c, 403, 'User account is disabled', 'USER_DISABLED');
-      }
-      console.error('[auth] /me failed', error);
-      return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
-    }
-  });
-
   app.post('/auth/turnstile/verify', async (c) => {
     let body: { token?: unknown };
     try {
@@ -81,5 +51,32 @@ export function registerAuthRoutes(app: Hono<ApiEnv>) {
     }
 
     return c.json(withMeta(c, { success: true as const }));
+  });
+
+  app.all('/auth/*', async (c) => createBetterAuth(c.env).handler(c.req.raw));
+
+  app.get('/me', async (c) => {
+    try {
+      const user = await resolveAuthenticatedUser(c.env, c.req.raw.headers);
+      if (!user) {
+        return c.json(withMeta(c, { signedIn: false as const, user: null }));
+      }
+
+      c.set('currentUserId', user.userId);
+      return c.json(
+        withMeta(c, {
+          signedIn: true as const,
+          user: {
+            userId: user.userId,
+            email: user.email,
+            emailVerified: user.emailVerified,
+            name: user.name,
+          },
+        }),
+      );
+    } catch (error) {
+      console.error('[auth] /me failed', error);
+      return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
+    }
   });
 }

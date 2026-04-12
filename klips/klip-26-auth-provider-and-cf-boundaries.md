@@ -89,7 +89,7 @@ Origin: "XING-104"
 - 但从官方文档结构看，当前核心优势集中在前端 SDK 与 Clerk 托管的用户管理体验；对本项目这种“自有 Hono Worker + D1 + 自定义额度账本”的服务端主链，后端接入与用户映射仍需额外设计。
 - 因此 Clerk 的前端体验很强，但对本期最关键的“Worker 原生整合 + 用户主数据归属 + 自有账本”优势不如 Supabase 明显。
 
-### 方案 D：Supabase Auth
+### 方案 D：Better Auth + Resend + D1
 
 结论：本期推荐采用。
 
@@ -104,8 +104,9 @@ Origin: "XING-104"
 
 ### 认证方案
 
-- 本期使用 Supabase Auth 作为认证提供方
-- 首个正式登录方式使用 email magic link
+- 本期使用 Better Auth 作为认证核心，运行在 Cloudflare Workers
+- 邮件发送使用 Resend
+- 首个正式登录方式使用 email + password，配套邮箱验证与密码重置
 - 后续可追加 OAuth，但不阻塞当前用户系统主链
 
 ### 核心理由
@@ -259,7 +260,7 @@ workspace_links
 ## 实现回写
 
 - `XING-114` 已按本文落地 `USER_DB`、migration、local/remote D1 脚手架
-- `XING-115` 已按本文落地 `Supabase JWKS -> Worker -> D1 app user` 的映射链路
+- `XING-115` 已按本文切换为 `Better Auth session cookie -> Worker -> D1 business tables` 的统一主键链路
 - `XING-117` 已按本文落地 `credit_accounts + credit_ledger`，且 ledger 成为事实源
 
 ## 验收标准

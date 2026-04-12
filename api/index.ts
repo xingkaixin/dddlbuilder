@@ -55,6 +55,7 @@ api.use(
     },
     allowMethods: ['GET', 'POST', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
+    credentials: true,
     exposeHeaders: [
       'X-Request-Id',
       'X-AI-Stream-Debug',

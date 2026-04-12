@@ -19,9 +19,10 @@ Origin: "XING-104"
 
 ## 目标
 
-- 接入 Supabase Auth
-- 支持 email magic link 注册 / 登录 / 登出
-- Worker 能校验 session/JWT 并映射到 `users.id`
+- 接入 Better Auth
+- 支持 email + password 注册 / 登录 / 登出
+- 支持邮箱验证、忘记密码、重置密码
+- Worker 基于 cookie session 识别用户，并直接使用 Better Auth `user.id`
 - 前端能恢复登录态、展示登出入口
 - 注册、登录、敏感入口能接入 Turnstile
 
@@ -37,7 +38,7 @@ Origin: "XING-104"
 
 建议新增独立用户域状态，而不是把登录态揉进现有 `usePersistedState()`：
 
-- `authClient.ts`：封装 Supabase Auth 客户端
+- `betterAuthClient.ts`：封装 Better Auth 客户端
 - `useAuthSession()`：负责恢复 session、监听登录/登出
 - `UserSessionProvider`：向 Header、AI 功能入口暴露登录态
 
@@ -58,7 +59,7 @@ type UserSessionState = {
 新增认证中间件：
 
 - 读取 `Authorization: Bearer <token>`
-- 校验 JWT
+- 校验 Better Auth session cookie
 - 解析外部身份 `sub`
 - 在 D1 中查找或创建 `users` + `user_identities`
 - 把 `appUserId` 注入 `c.var`
@@ -72,8 +73,8 @@ type UserSessionState = {
 
 ### 会话恢复
 
-- 前端刷新后通过 Supabase SDK 恢复会话
-- Worker 不维护额外 session store，直接信任 JWT + 本地 identity 映射
+- 前端刷新后通过 `/api/me` 恢复会话
+- Worker 使用 Better Auth session + D1，不再维护额外 provider identity 映射
 - 登出只清前端认证状态，不影响本地匿名工作区
 
 ### Turnstile 接入点
@@ -81,7 +82,7 @@ type UserSessionState = {
 V1 接入三个点：
 
 - 注册
-- magic link 登录发起
+- 邮箱密码登录 / 注册发起
 - 高频敏感 AI 调用的兜底校验
 
 服务端校验规则：
@@ -108,7 +109,7 @@ V1 接入三个点：
 
 ## 失败路径
 
-- JWT 无效：返回 401
+- session 不存在：返回匿名态
 - 外部身份存在但本地用户禁用：返回 403
 - Turnstile 校验失败：返回 400/403
 - `users` / `user_identities` 创建失败：返回 500，并记录 request id
@@ -126,7 +127,7 @@ V1 接入三个点：
 
 - 已落地 `GET /api/me`
 - 已落地 `POST /api/auth/turnstile/verify`
-- 已落地 Supabase magic link 登录、前端登录态恢复、Header 登录/登出入口
+- 已落地 Better Auth 邮箱密码登录、邮箱验证、密码重置、前端登录态恢复、Header 登录/登出入口
 - 当前未实现的部分只剩“敏感 AI 调用接入 Turnstile”，该能力转入 `XING-118`
 
 ## 验收标准
@@ -148,6 +149,6 @@ V1 接入三个点：
 
 ## 已决策约定
 
-- JWT 校验固定使用 `Supabase JWKS`
+- 鉴权固定使用 Better Auth session cookie + D1 session 表
 - 不新增 `POST /api/auth/exchange`
 - `GET /api/me` 负责完成当前 token 对应的 app user resolve
