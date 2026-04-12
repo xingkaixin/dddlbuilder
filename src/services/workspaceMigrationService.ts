@@ -35,6 +35,20 @@ export type WorkspaceMigrationPayload = {
   snapshot: WorkspaceMigrationSnapshot;
 };
 
+const isPersistedStateTrivial = (state: PersistedState): boolean =>
+  !state.rows?.some((row) => row.fieldName?.trim()) ?? true;
+
+const stripUpdatedAtFromSnapshot = (snapshot: WorkspaceMigrationSnapshot) => ({
+  globalDraft: snapshot.globalDraft
+    ? { state: snapshot.globalDraft.state }
+    : null,
+  activeSession: snapshot.activeSession
+    ? { activeSource: snapshot.activeSession.activeSource, activeState: snapshot.activeSession.activeState }
+    : null,
+  savedTables: snapshot.savedTables.map(({ updatedAt: _, ...rest }) => rest),
+  savedDrafts: snapshot.savedDrafts.map(({ updatedAt: _, ...rest }) => rest),
+});
+
 const WORKSPACE_MIGRATION_DISMISS_PREFIX = 'ddlbuilder:workspace-migration:dismissed';
 
 const buildDismissKey = (appUserId: string, fingerprint: string) =>
@@ -96,9 +110,16 @@ export const collectWorkspaceMigrationPayload =
       baseSignature: item.baseSignature,
     }));
 
+    const meaningfulGlobalDraft =
+      globalDraft && !isPersistedStateTrivial(globalDraft.state) ? globalDraft : null;
+    const meaningfulActiveState =
+      activeSession?.activeState && !isPersistedStateTrivial(activeSession.activeState)
+        ? activeSession.activeState
+        : null;
+
     const hasData =
-      Boolean(globalDraft) ||
-      Boolean(activeSession?.activeState) ||
+      Boolean(meaningfulGlobalDraft) ||
+      Boolean(meaningfulActiveState) ||
       savedTables.length > 0 ||
       savedDrafts.length > 0;
 
@@ -107,8 +128,10 @@ export const collectWorkspaceMigrationPayload =
     }
 
     const snapshot: WorkspaceMigrationSnapshot = {
-      globalDraft,
-      activeSession,
+      globalDraft: meaningfulGlobalDraft,
+      activeSession: activeSession
+        ? { ...activeSession, activeState: meaningfulActiveState }
+        : null,
       savedTables: savedTables.map((item) => ({
         normalizedName: item.normalizedName,
         name: item.name,
@@ -118,7 +141,8 @@ export const collectWorkspaceMigrationPayload =
       savedDrafts,
     };
 
-    const encoded = new TextEncoder().encode(JSON.stringify(snapshot));
+    const contentForHash = stripUpdatedAtFromSnapshot(snapshot);
+    const encoded = new TextEncoder().encode(JSON.stringify(contentForHash));
     const digest = await crypto.subtle.digest('SHA-256', encoded);
 
     return {
