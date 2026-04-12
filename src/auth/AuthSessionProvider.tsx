@@ -34,6 +34,8 @@ type SignUpInput = {
 type AuthSessionContextValue = UserSessionState & {
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (input: SignUpInput) => Promise<void>;
+  updateUserName: (name: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
   resetPassword: (token: string, newPassword: string) => Promise<void>;
   sendVerificationEmail: (email: string) => Promise<void>;
@@ -233,6 +235,34 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
         });
         if (result.error) {
           throw new Error(result.error.message || i18n.t('header.auth.signInFailed'));
+        }
+      },
+      updateUserName: async (name: string) => {
+        if (!client || !configured) {
+          throw new Error(i18n.t('services.authConfigMissing'));
+        }
+
+        const result = await client.updateUser({
+          name,
+        });
+        if (result.error) {
+          throw new Error(result.error.message || i18n.t('settings.usernameFailed'));
+        }
+
+        await refreshSession();
+      },
+      changePassword: async (currentPassword: string, newPassword: string) => {
+        if (!client || !configured) {
+          throw new Error(i18n.t('services.authConfigMissing'));
+        }
+
+        const result = await client.changePassword({
+          currentPassword,
+          newPassword,
+          revokeOtherSessions: false,
+        });
+        if (result.error) {
+          throw new Error(result.error.message || i18n.t('settings.passwordFailed'));
         }
       },
       requestPasswordReset: async (email: string) => {

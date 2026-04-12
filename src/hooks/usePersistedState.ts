@@ -1,8 +1,15 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { PersistedState } from '@/types';
+import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { buildShareStateQueryKey } from '@/queryKeys/share';
 import { ShareApiError, getShareState } from '@/services/shareService';
+import {
+  applyCloudSnapshotToLocal,
+  collectWorkspaceSnapshot,
+  pullWorkspaceSnapshot,
+  pushWorkspaceSnapshot,
+} from '@/services/workspaceSyncService';
 import type { GlobalDraftSummary, WorkspaceSavePayload, WorkspaceSource } from '@/types/workspace';
 import {
   clearGlobalDraft,
@@ -11,6 +18,7 @@ import {
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
 import { getWorkspaceBootstrap } from './workspacePersistence/bootstrap';
+import { resetWorkspaceBootstrapCache } from './workspacePersistence/bootstrap';
 import {
   buildGlobalDraftSummary,
   isSameWorkspaceSource,
@@ -46,6 +54,7 @@ export interface UsePersistedStateReturn {
 }
 
 export function usePersistedState(): UsePersistedStateReturn {
+  const authSession = useAuthSession();
   const queryClient = useQueryClient();
   const pathInfo = parseSharePath(window.location.pathname);
   const shareId = pathInfo.shareId;
@@ -140,8 +149,38 @@ export function usePersistedState(): UsePersistedStateReturn {
         }),
       );
       syncActiveSource(payload.source);
+
+      if (authSession.status === 'signed_in') {
+        fireAndForget(
+          (async () => {
+            const snapshot = await collectWorkspaceSnapshot();
+            const now = Date.now();
+
+            if (payload.source.kind === 'global_draft') {
+              snapshot.globalDraft = {
+                state: payload.state,
+                updatedAt: now,
+              };
+            } else {
+              const nextItem = {
+                normalizedName: payload.source.normalizedName,
+                name: payload.source.tableName,
+                state: payload.state,
+                updatedAt: now,
+              };
+              const nextSavedTables = snapshot.savedTables.filter(
+                (item) => item.normalizedName !== nextItem.normalizedName,
+              );
+              nextSavedTables.push(nextItem);
+              snapshot.savedTables = nextSavedTables;
+            }
+
+            await pushWorkspaceSnapshot(snapshot);
+          })(),
+        );
+      }
     },
-    [hydrated, shareStorageKey, syncActiveSource, updateGlobalDraft],
+    [authSession.status, hydrated, shareStorageKey, syncActiveSource, updateGlobalDraft],
   );
 
   const clearState = useCallback(() => {
@@ -173,6 +212,16 @@ export function usePersistedState(): UsePersistedStateReturn {
     };
 
     const hydrateMainWorkspace = async () => {
+      if (authSession.status === 'signed_in') {
+        try {
+          const cloudSnapshot = await pullWorkspaceSnapshot();
+          await applyCloudSnapshotToLocal(cloudSnapshot);
+          resetWorkspaceBootstrapCache();
+        } catch (error) {
+          console.error('[workspace-sync] failed to pull cloud snapshot', error);
+        }
+      }
+
       const {
         globalDraft: globalDraftRaw,
         session: sessionRaw,
@@ -234,6 +283,11 @@ export function usePersistedState(): UsePersistedStateReturn {
     }
 
     if (!shareId || !shareStorageKey) {
+      if (authSession.status === 'loading') {
+        return () => {
+          cancelled = true;
+        };
+      }
       void hydrateMainWorkspace();
       return () => {
         cancelled = true;
@@ -274,6 +328,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     queryClient,
     shareId,
     shareStorageKey,
+    authSession.status,
     syncActiveSource,
     updateGlobalDraft,
   ]);

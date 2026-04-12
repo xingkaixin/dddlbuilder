@@ -11,6 +11,7 @@ import { registerShareRoutes } from '../server-api/routes/share.js';
 import { registerAuthRoutes } from '../server-api/routes/auth.js';
 import { registerCreditRoutes } from '../server-api/routes/credits.js';
 import { registerWorkspaceMigrationRoutes } from '../server-api/routes/workspaceMigration.js';
+import { registerWorkspaceSnapshotRoutes } from '../server-api/routes/workspaceSnapshot.js';
 
 const DOCS_DEV_ORIGIN = 'http://127.0.0.1:5174';
 const LOCAL_DEV_HOSTS = new Set(['localhost', '127.0.0.1']);
@@ -53,7 +54,7 @@ api.use(
       const allowed = parseAllowedOrigins(c.env.CORS_ALLOWED_ORIGINS);
       return allowed.includes(origin) ? origin : null;
     },
-    allowMethods: ['GET', 'POST', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PUT', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
     credentials: true,
     exposeHeaders: [
@@ -84,6 +85,7 @@ registerShareRoutes(api);
 registerAuthRoutes(api);
 registerCreditRoutes(api);
 registerWorkspaceMigrationRoutes(api);
+registerWorkspaceSnapshotRoutes(api);
 
 const isLocalDevRequest = (url: URL) => LOCAL_DEV_HOSTS.has(url.hostname);
 
