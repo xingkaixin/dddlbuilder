@@ -1,3 +1,4 @@
+import type { WorkspaceScope } from '@/types/workspace';
 import {
   migrateLegacyWorkspaceFromLocalStorage,
   readWorkspaceBootstrap,
@@ -11,8 +12,8 @@ export type WorkspaceBootstrapRaw = {
 
 const WORKSPACE_BOOTSTRAP_CACHE_TTL_MS = 50;
 
-const loadWorkspaceBootstrap = async (): Promise<WorkspaceBootstrapRaw> => {
-  const initial = await readWorkspaceBootstrap().catch(() => ({
+const loadWorkspaceBootstrap = async (scope: WorkspaceScope): Promise<WorkspaceBootstrapRaw> => {
+  const initial = await readWorkspaceBootstrap(scope).catch(() => ({
     globalDraft: null,
     session: null,
     savedTable: null,
@@ -22,8 +23,10 @@ const loadWorkspaceBootstrap = async (): Promise<WorkspaceBootstrapRaw> => {
     return initial;
   }
 
-  await migrateLegacyWorkspaceFromLocalStorage().catch(() => undefined);
-  return readWorkspaceBootstrap().catch(() => ({
+  if (scope.kind === 'anonymous') {
+    await migrateLegacyWorkspaceFromLocalStorage().catch(() => undefined);
+  }
+  return readWorkspaceBootstrap(scope).catch(() => ({
     globalDraft: null,
     session: null,
     savedTable: null,
@@ -33,26 +36,31 @@ const loadWorkspaceBootstrap = async (): Promise<WorkspaceBootstrapRaw> => {
 let workspaceBootstrapPromise: Promise<WorkspaceBootstrapRaw> | null = null;
 let workspaceBootstrapCache: WorkspaceBootstrapRaw | null = null;
 let workspaceBootstrapCacheAt = 0;
+let workspaceBootstrapCacheScopeKey = '';
 
 export const resetWorkspaceBootstrapCache = () => {
   workspaceBootstrapPromise = null;
   workspaceBootstrapCache = null;
   workspaceBootstrapCacheAt = 0;
+  workspaceBootstrapCacheScopeKey = '';
 };
 
-export const getWorkspaceBootstrap = () => {
+export const getWorkspaceBootstrap = (scope: WorkspaceScope = getAnonymousWorkspaceScope()) => {
+  const scopeKey = scope.kind === 'anonymous' ? 'anonymous' : `user:${scope.userId}`;
   if (
     workspaceBootstrapCache &&
+    workspaceBootstrapCacheScopeKey === scopeKey &&
     Date.now() - workspaceBootstrapCacheAt < WORKSPACE_BOOTSTRAP_CACHE_TTL_MS
   ) {
     return Promise.resolve(workspaceBootstrapCache);
   }
 
   if (!workspaceBootstrapPromise) {
-    workspaceBootstrapPromise = loadWorkspaceBootstrap()
+    workspaceBootstrapPromise = loadWorkspaceBootstrap(scope)
       .then((value) => {
         workspaceBootstrapCache = value;
         workspaceBootstrapCacheAt = Date.now();
+        workspaceBootstrapCacheScopeKey = scopeKey;
         return value;
       })
       .finally(() => {
@@ -61,3 +69,4 @@ export const getWorkspaceBootstrap = () => {
   }
   return workspaceBootstrapPromise;
 };
+import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';

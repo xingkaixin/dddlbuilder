@@ -97,6 +97,7 @@ export const enUSCommon = {
     title: 'Settings',
     description: 'Manage your account and credit usage history.',
     accountTab: 'Account',
+    workspaceTab: 'Workspace Sync',
     creditTab: 'Credits',
     email: 'Email',
     emailReadonly: 'This email is used for sign-in and password recovery. It cannot be changed here.',
@@ -131,6 +132,26 @@ export const enUSCommon = {
     saving: 'Saving...',
     updatePassword: 'Update password',
     acknowledge: 'OK',
+    syncUpload: 'Upload to Cloud',
+    syncDownloading: 'Downloading...',
+    syncDownload: 'Download from Cloud',
+    syncUploading: 'Uploading...',
+    syncRequiresLogin: 'Sign in to sync your workspace.',
+    workspaceSyncHint:
+      'Workspace sync is manual. Upload replaces the cloud copy with this device’s local workspace, and download replaces this device’s local workspace with the cloud copy.',
+    syncUploadDescription:
+      'Upload this device’s complete global draft, saved tables, and saved drafts to the cloud.',
+    syncDownloadDescription:
+      'Download the complete cloud workspace to this device and overwrite the current local copy.',
+    syncUploadConfirmTitle: 'Upload this workspace to the cloud?',
+    syncUploadConfirmDescription:
+      'This will replace the current cloud workspace with the local workspace from this device.',
+    syncDownloadConfirmTitle: 'Download the cloud workspace?',
+    syncDownloadConfirmDescription:
+      'This will replace the current local workspace on this device with the cloud workspace.',
+    syncUploadSuccess: 'Workspace uploaded to the cloud',
+    syncDownloadSuccess: 'Workspace downloaded from the cloud',
+    syncFailed: 'Workspace sync failed',
     kind: {
       grant: 'Grant',
       consume: 'Consume',

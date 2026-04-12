@@ -4,22 +4,24 @@ import type {
   WorkspaceSnapshotPushRequest,
   WorkspaceSnapshotResponse,
 } from '@/types/api';
-import type { SavedTableDraftRecord, WorkspaceSnapshot } from '@/types/workspace';
+import type { SavedTableDraftRecord, WorkspaceScope, WorkspaceSnapshot } from '@/types/workspace';
 import {
   addSavedTable,
+  deleteSavedTable,
   getSavedTable,
   listSavedTables,
   updateSavedTable,
 } from '@/utils/savedTablesDb';
 import {
   clearGlobalDraft,
+  clearWorkspaceSession,
+  deleteSavedDraft,
   listSavedDrafts,
   readGlobalDraft,
-  readWorkspaceSession,
   upsertSavedDraft,
   writeGlobalDraft,
-  writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
+import { getCurrentWorkspaceScope } from '@/utils/workspaceScope';
 
 export const WORKSPACE_SNAPSHOT_APPLIED_EVENT = 'ddlbuilder:workspace-snapshot-applied';
 
@@ -38,7 +40,8 @@ const upsertLocalSavedTable = async (input: {
   state: PersistedState;
   updatedAt: number;
 }) => {
-  const existing = await getSavedTable(input.normalizedName);
+  const scope = getCurrentWorkspaceScope();
+  const existing = await getSavedTable(input.normalizedName, scope);
   if (existing) {
     if (existing.updatedAt > input.updatedAt) {
       return;
@@ -48,7 +51,7 @@ const upsertLocalSavedTable = async (input: {
       name: input.name,
       state: input.state,
       updatedAt: input.updatedAt,
-    });
+    }, scope);
     return;
   }
 
@@ -58,7 +61,7 @@ const upsertLocalSavedTable = async (input: {
     state: input.state,
     createdAt: input.updatedAt,
     updatedAt: input.updatedAt,
-  });
+  }, scope);
 };
 
 export const pullWorkspaceSnapshot = async (): Promise<WorkspaceSnapshot> => {
@@ -97,11 +100,12 @@ export const pullWorkspaceSnapshot = async (): Promise<WorkspaceSnapshot> => {
 
 export const collectWorkspaceSnapshot = async (
   overrides?: Partial<WorkspaceSnapshot>,
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
 ): Promise<WorkspaceSnapshotPushRequest> => {
   const [localGlobalDraft, localSavedTables, localSavedDraftMap] = await Promise.all([
-    readGlobalDraft(),
-    listSavedTables(),
-    listSavedDrafts(),
+    readGlobalDraft(scope),
+    listSavedTables(scope),
+    listSavedDrafts(scope),
   ]);
 
   const savedDrafts = Object.entries(localSavedDraftMap).map(([normalizedName, item]) => ({
@@ -136,56 +140,112 @@ export const pushWorkspaceSnapshot = async (snapshot?: WorkspaceSnapshotPushRequ
   }
 };
 
-export const applyCloudSnapshotToLocal = async (snapshot: WorkspaceSnapshot) => {
-  const localGlobalDraft = await readGlobalDraft();
+const dispatchWorkspaceSnapshotApplied = () => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(WORKSPACE_SNAPSHOT_APPLIED_EVENT));
+  }
+};
+
+const replaceLocalWorkspaceSnapshot = async (
+  snapshot: WorkspaceSnapshot,
+  scope: WorkspaceScope,
+) => {
+  const [localSavedTables, localSavedDrafts] = await Promise.all([
+    listSavedTables(scope),
+    listSavedDrafts(scope),
+  ]);
+
+  await clearGlobalDraft(scope);
+  await clearWorkspaceSession(scope);
+
+  await Promise.all([
+    ...localSavedTables.map((item) => deleteSavedTable(item.normalizedName, scope)),
+    ...Object.keys(localSavedDrafts).map((normalizedName) => deleteSavedDraft(normalizedName, scope)),
+  ]);
+
   if (snapshot.globalDraft) {
-    if (!localGlobalDraft || localGlobalDraft.updatedAt < snapshot.globalDraft.updatedAt) {
-      await writeGlobalDraft(snapshot.globalDraft);
-    }
-  } else if (!localGlobalDraft) {
-    await clearGlobalDraft();
+    await writeGlobalDraft(snapshot.globalDraft, scope);
   }
 
   for (const item of snapshot.savedTables) {
-    await upsertLocalSavedTable(item);
-  }
-
-  const currentSession = await readWorkspaceSession();
-  if (currentSession?.activeSource.kind === 'saved_table') {
-    const matchedTable = snapshot.savedTables.find(
-      (item) => item.normalizedName === currentSession.activeSource.normalizedName,
+    await addSavedTable(
+      {
+        normalizedName: item.normalizedName,
+        name: item.name,
+        state: item.state,
+        createdAt: item.updatedAt,
+        updatedAt: item.updatedAt,
+      },
+      scope,
     );
-    if (matchedTable && currentSession.updatedAt < matchedTable.updatedAt) {
-      await writeWorkspaceSession({
-        ...currentSession,
-        activeSource: {
-          kind: 'saved_table',
-          normalizedName: matchedTable.normalizedName,
-          tableName: matchedTable.name,
-          baseSignature: JSON.stringify(matchedTable.state),
-        },
-        updatedAt: matchedTable.updatedAt,
-      });
-    }
   }
 
-  const localSavedDrafts = await listSavedDrafts();
   for (const item of snapshot.savedDrafts) {
-    const existing = localSavedDrafts[item.normalizedName];
-    if (existing && existing.updatedAt > item.updatedAt) {
-      continue;
-    }
-
     const nextDraft: SavedTableDraftRecord = {
       tableName: item.tableName,
       state: item.state,
       updatedAt: item.updatedAt,
       baseSignature: item.baseSignature,
     };
-    await upsertSavedDraft(item.normalizedName, nextDraft);
+    await upsertSavedDraft(item.normalizedName, nextDraft, scope);
+  }
+};
+
+export const applyCloudSnapshotToLocal = async (
+  snapshot: WorkspaceSnapshot,
+  options: {
+    overwrite?: boolean;
+    scope?: WorkspaceScope;
+  } = {},
+) => {
+  const scope = options.scope ?? getCurrentWorkspaceScope();
+
+  if (options.overwrite) {
+    await replaceLocalWorkspaceSnapshot(snapshot, scope);
+    dispatchWorkspaceSnapshotApplied();
+    return;
   }
 
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent(WORKSPACE_SNAPSHOT_APPLIED_EVENT));
+  const localGlobalDraft = await readGlobalDraft(scope);
+  if (snapshot.globalDraft && (!localGlobalDraft || localGlobalDraft.updatedAt < snapshot.globalDraft.updatedAt)) {
+    await writeGlobalDraft(snapshot.globalDraft, scope);
   }
+
+  for (const item of snapshot.savedTables) {
+    await upsertLocalSavedTable({ ...item });
+  }
+
+  const localSavedDrafts = await listSavedDrafts(scope);
+  for (const item of snapshot.savedDrafts) {
+    const existing = localSavedDrafts[item.normalizedName];
+    if (existing && existing.updatedAt > item.updatedAt) {
+      continue;
+    }
+
+    await upsertSavedDraft(
+      item.normalizedName,
+      {
+        tableName: item.tableName,
+        state: item.state,
+        updatedAt: item.updatedAt,
+        baseSignature: item.baseSignature,
+      },
+      scope,
+    );
+  }
+
+  dispatchWorkspaceSnapshotApplied();
+};
+
+export const exportWorkspaceToCloud = async (scope: WorkspaceScope = getCurrentWorkspaceScope()) => {
+  const snapshot = await collectWorkspaceSnapshot(undefined, scope);
+  await pushWorkspaceSnapshot(snapshot);
+};
+
+export const importWorkspaceFromCloud = async (scope: WorkspaceScope = getCurrentWorkspaceScope()) => {
+  const snapshot = await pullWorkspaceSnapshot();
+  await applyCloudSnapshotToLocal(snapshot, {
+    overwrite: true,
+    scope,
+  });
 };

@@ -21,7 +21,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/useToast';
+import {
+  exportWorkspaceToCloud,
+  importWorkspaceFromCloud,
+} from '@/services/workspaceSyncService';
 import type { ApiErrorPayload } from '@/types/api';
+import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 
 type CreditLedgerItem = {
   id: string;
@@ -37,6 +42,8 @@ interface UserSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+type WorkspaceSyncAction = 'upload' | 'download';
 
 const getErrorMessage = (payload: ApiErrorPayload | null, fallback: string) =>
   payload && typeof payload.error === 'string' ? payload.error : fallback;
@@ -103,6 +110,8 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
   const [ledgerError, setLedgerError] = useState<string | null>(null);
   const [ledgerItems, setLedgerItems] = useState<CreditLedgerItem[]>([]);
   const [rechargeOpen, setRechargeOpen] = useState(false);
+  const [pendingSyncAction, setPendingSyncAction] = useState<WorkspaceSyncAction | null>(null);
+  const [runningSyncAction, setRunningSyncAction] = useState<WorkspaceSyncAction | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -194,6 +203,33 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
     }
   };
 
+  const currentScope =
+    authSession.status === 'signed_in' && authSession.userId
+      ? { kind: 'user' as const, userId: authSession.userId }
+      : getAnonymousWorkspaceScope();
+
+  const handleConfirmWorkspaceSync = async () => {
+    if (!pendingSyncAction) {
+      return;
+    }
+
+    try {
+      setRunningSyncAction(pendingSyncAction);
+      if (pendingSyncAction === 'upload') {
+        await exportWorkspaceToCloud(currentScope);
+        success(t('settings.syncUploadSuccess'));
+      } else {
+        await importWorkspaceFromCloud(currentScope);
+        success(t('settings.syncDownloadSuccess'));
+      }
+      setPendingSyncAction(null);
+    } catch (err) {
+      error(err instanceof Error ? err.message : t('settings.syncFailed'));
+    } finally {
+      setRunningSyncAction(null);
+    }
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -203,8 +239,9 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
             <DialogDescription>{t('settings.description')}</DialogDescription>
           </DialogHeader>
           <Tabs defaultValue="account" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="account">{t('settings.accountTab')}</TabsTrigger>
+              <TabsTrigger value="workspace">{t('settings.workspaceTab')}</TabsTrigger>
               <TabsTrigger value="credits">{t('settings.creditTab')}</TabsTrigger>
             </TabsList>
             <div className="min-h-[30rem]">
@@ -268,6 +305,54 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                     </div>
                   </div>
                 </section>
+              </TabsContent>
+              <TabsContent value="workspace" className="mt-0 space-y-6">
+                <section className="space-y-3">
+                  <h3 className="text-sm font-semibold">{t('settings.workspaceTab')}</h3>
+                  <div className="rounded-lg border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+                    {t('settings.workspaceSyncHint')}
+                  </div>
+                </section>
+                <section className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-3 rounded-lg border p-4">
+                    <div>
+                      <h4 className="text-sm font-semibold">{t('settings.syncUpload')}</h4>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {t('settings.syncUploadDescription')}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={() => setPendingSyncAction('upload')}
+                      disabled={runningSyncAction != null || authSession.status !== 'signed_in'}
+                    >
+                      {runningSyncAction === 'upload'
+                        ? t('settings.syncUploading')
+                        : t('settings.syncUpload')}
+                    </Button>
+                  </div>
+                  <div className="space-y-3 rounded-lg border p-4">
+                    <div>
+                      <h4 className="text-sm font-semibold">{t('settings.syncDownload')}</h4>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {t('settings.syncDownloadDescription')}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setPendingSyncAction('download')}
+                      disabled={runningSyncAction != null || authSession.status !== 'signed_in'}
+                    >
+                      {runningSyncAction === 'download'
+                        ? t('settings.syncDownloading')
+                        : t('settings.syncDownload')}
+                    </Button>
+                  </div>
+                </section>
+                {authSession.status !== 'signed_in' ? (
+                  <p className="text-sm text-muted-foreground">{t('settings.syncRequiresLogin')}</p>
+                ) : null}
               </TabsContent>
               <TabsContent value="credits" className="mt-0 space-y-4">
                 <section className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-3">
@@ -337,6 +422,51 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogAction>{t('settings.acknowledge')}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={pendingSyncAction != null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen && runningSyncAction == null) {
+            setPendingSyncAction(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingSyncAction === 'upload'
+                ? t('settings.syncUploadConfirmTitle')
+                : t('settings.syncDownloadConfirmTitle')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingSyncAction === 'upload'
+                ? t('settings.syncUploadConfirmDescription')
+                : t('settings.syncDownloadConfirmDescription')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingSyncAction(null)}
+              disabled={runningSyncAction != null}
+            >
+              {t('savedTables.delete.cancel')}
+            </Button>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void handleConfirmWorkspaceSync();
+              }}
+            >
+              {runningSyncAction != null
+                ? t('settings.saving')
+                : pendingSyncAction === 'upload'
+                  ? t('settings.syncUpload')
+                  : t('settings.syncDownload')}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

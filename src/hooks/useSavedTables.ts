@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { PersistedState } from '@/types';
+import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import {
   addSavedTable,
@@ -12,6 +13,7 @@ import {
   type SavedTableMetadata,
   type SavedTableRecord,
 } from '@/utils/savedTablesDb';
+import { getAnonymousWorkspaceScope, setCurrentWorkspaceScope } from '@/utils/workspaceScope';
 
 export type SavedTableSummary = SavedTableMetadata;
 
@@ -24,6 +26,7 @@ export type SaveTableResult =
     };
 
 export function useSavedTables() {
+  const authSession = useAuthSession();
   const [savedTables, setSavedTables] = useState<SavedTableSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,8 +46,13 @@ export function useSavedTables() {
   }, []);
 
   useEffect(() => {
+    const nextScope =
+      authSession.status === 'signed_in' && authSession.userId
+        ? { kind: 'user' as const, userId: authSession.userId }
+        : getAnonymousWorkspaceScope();
+    setCurrentWorkspaceScope(nextScope);
     void refresh();
-  }, [refresh]);
+  }, [authSession.status, authSession.userId, refresh]);
 
   useEffect(() => {
     const handleSnapshotApplied = () => {
