@@ -12,6 +12,9 @@ export type AuthenticatedAppUser = {
 };
 
 type BetterAuthSession = {
+  session: {
+    token: string;
+  };
   user: {
     id: string;
     email: string;
@@ -51,9 +54,26 @@ export const resolveAuthenticatedUser = async (
   headers: Headers,
 ): Promise<AuthenticatedAppUser | null> => {
   const auth = createBetterAuth(env);
-  const session = (await auth.api.getSession({
-    headers,
-  })) as BetterAuthSession | null;
+  const config = getUserSystemConfig(env);
+  const requestHeaders = new Headers();
+  const cookieHeader = headers.get('cookie');
+
+  if (cookieHeader) {
+    requestHeaders.set('cookie', cookieHeader);
+  }
+
+  const response = await auth.handler(
+    new Request(`${new URL(config.betterAuthUrl).origin}/api/auth/get-session?disableRefresh=true`, {
+      method: 'GET',
+      headers: requestHeaders,
+    }),
+  );
+
+  if (!response.ok) {
+    throw new Error('FAILED_TO_GET_SESSION');
+  }
+
+  const session = (await response.json().catch(() => null)) as BetterAuthSession | null;
 
   if (!session?.user) {
     return null;

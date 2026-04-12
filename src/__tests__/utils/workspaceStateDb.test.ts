@@ -18,6 +18,10 @@ import {
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
+import {
+  getAnonymousWorkspaceScope,
+  setCurrentWorkspaceScope,
+} from '@/utils/workspaceScope';
 
 const GLOBAL_DRAFT_STORAGE_KEY = `${STORAGE_KEY}:draft:global:v1`;
 const SAVED_TABLE_DRAFTS_STORAGE_KEY = `${STORAGE_KEY}:draft:saved:v1`;
@@ -64,6 +68,7 @@ const createState = (tableName = 'users'): PersistedState => ({
 describe('workspaceStateDb', () => {
   beforeEach(() => {
     setupFakeIndexedDB();
+    setCurrentWorkspaceScope(getAnonymousWorkspaceScope());
     localStorageMock.clear();
     vi.clearAllMocks();
   });
@@ -139,6 +144,34 @@ describe('workspaceStateDb', () => {
 
     await clearWorkspaceSession();
     expect(await readWorkspaceSession()).toBeNull();
+  });
+
+  it('workspace 数据应按账号 scope 隔离', async () => {
+    const anonymousScope = getAnonymousWorkspaceScope();
+    const userAScope = { kind: 'user' as const, userId: 'user-a' };
+    const userBScope = { kind: 'user' as const, userId: 'user-b' };
+
+    await writeGlobalDraft({ state: createState('anon'), updatedAt: 1 }, anonymousScope);
+    await writeGlobalDraft({ state: createState('userA'), updatedAt: 2 }, userAScope);
+    await upsertSavedDraft(
+      'users',
+      {
+        state: createState('draftA'),
+        tableName: 'Users',
+        baseSignature: 'sig-a',
+        updatedAt: 3,
+      },
+      userAScope,
+    );
+
+    expect((await readGlobalDraft(anonymousScope))?.state.tableName).toBe('anon');
+    expect((await readGlobalDraft(userAScope))?.state.tableName).toBe('userA');
+    expect(await readGlobalDraft(userBScope)).toBeNull();
+    expect(await readSavedDraft('users', userAScope)).toMatchObject({
+      tableName: 'Users',
+      baseSignature: 'sig-a',
+    });
+    expect(await readSavedDraft('users', userBScope)).toBeNull();
   });
 
   it('readWorkspaceBootstrap 在 activeSource 为 saved_table 时应联动读取主表', async () => {

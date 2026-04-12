@@ -1,4 +1,11 @@
 import type { PersistedState } from '@/types';
+import type { WorkspaceScope } from '@/types/workspace';
+import {
+  buildScopedWorkspaceKey,
+  getAnonymousWorkspaceScope,
+  getCurrentWorkspaceScope,
+  getWorkspaceScopeStorageKey,
+} from './workspaceScope';
 
 export const DEFAULT_SAVED_TABLE_NAME = '未命名表';
 
@@ -6,6 +13,7 @@ export type SavedTableRecord = {
   normalizedName: string;
   name: string;
   state: PersistedState;
+  scope?: string;
   folderId?: string; // 关联的文件夹ID，null/undefined 表示未分组
   createdAt: number;
   updatedAt: number;
@@ -17,6 +25,7 @@ export type SavedTableMetadata = {
   name: string;
   dbType: string;
   fieldCount: number;
+  scope?: string;
   folderId?: string;
   createdAt: number;
   updatedAt: number;
@@ -72,7 +81,7 @@ export type TableVersionMetadata = {
 };
 
 export const DB_NAME = 'ddlbuilder';
-export const DB_VERSION = 7;
+export const DB_VERSION = 8;
 export const STORE_NAME = 'saved_tables';
 export const VERSION_STORE_NAME = 'table_versions';
 export const REVIEW_STORE_NAME = 'review_history';
@@ -86,6 +95,42 @@ const ensureIndexedDb = () => {
   if (typeof indexedDB === 'undefined') {
     throw new Error('IndexedDB 不可用');
   }
+};
+
+const LEGACY_SCOPE = getWorkspaceScopeStorageKey(getAnonymousWorkspaceScope());
+
+const withScopeKey = (scope: WorkspaceScope, normalizedName: string) =>
+  buildScopedWorkspaceKey(scope, normalizedName);
+
+const decodeScopedTableRecord = (
+  record: SavedTableRecord,
+  scope: WorkspaceScope,
+): SavedTableRecord | null => {
+  const scopeKey = getWorkspaceScopeStorageKey(scope);
+  if (record.scope && record.scope !== scopeKey) {
+    return null;
+  }
+
+  if (record.normalizedName.includes('::')) {
+    const prefix = `${scopeKey}::`;
+    if (!record.normalizedName.startsWith(prefix)) {
+      return null;
+    }
+    return {
+      ...record,
+      normalizedName: record.normalizedName.slice(prefix.length),
+      scope: scopeKey,
+    };
+  }
+
+  if (scope.kind !== 'anonymous') {
+    return null;
+  }
+
+  return {
+    ...record,
+    scope: LEGACY_SCOPE,
+  };
 };
 
 export const openDb = (): Promise<IDBDatabase> =>
@@ -171,6 +216,27 @@ export const openDb = (): Promise<IDBDatabase> =>
             keyPath: 'id',
           });
         }
+
+        if (request.transaction && request.oldVersion < 8) {
+          if (db.objectStoreNames.contains(STORE_NAME)) {
+            const store = request.transaction.objectStore(STORE_NAME);
+            const cursorRequest = store.openCursor();
+            cursorRequest.onsuccess = () => {
+              const cursor = cursorRequest.result;
+              if (!cursor) return;
+              const value = cursor.value as SavedTableRecord;
+              if (!value.scope && !value.normalizedName.includes('::')) {
+                store.delete(cursor.primaryKey);
+                store.put({
+                  ...value,
+                  normalizedName: withScopeKey(getAnonymousWorkspaceScope(), value.normalizedName),
+                  scope: LEGACY_SCOPE,
+                } satisfies SavedTableRecord);
+              }
+              cursor.continue();
+            };
+          }
+        }
       };
       request.onsuccess = () => resolve(request.result);
     } catch (error) {
@@ -212,15 +278,19 @@ export const ensureSavedTableName = (name: string): string => {
   return trimmed || DEFAULT_SAVED_TABLE_NAME;
 };
 
-export const listSavedTables = async (): Promise<SavedTableRecord[]> => {
+export const listSavedTables = async (scope: WorkspaceScope = getCurrentWorkspaceScope()): Promise<SavedTableRecord[]> => {
   const records = await runWithStore<SavedTableRecord[]>('readonly', (store) => store.getAll());
-  return Array.isArray(records) ? records : [];
+  if (!Array.isArray(records)) return [];
+  return records
+    .map((record) => decodeScopedTableRecord(record, scope))
+    .filter((record): record is SavedTableRecord => record != null);
 };
 
 // 仅获取元数据（性能优化）
-export const listSavedTableMetadata = async (): Promise<SavedTableMetadata[]> => {
-  const records = await runWithStore<SavedTableRecord[]>('readonly', (store) => store.getAll());
-  if (!Array.isArray(records)) return [];
+export const listSavedTableMetadata = async (
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<SavedTableMetadata[]> => {
+  const records = await listSavedTables(scope);
 
   return records.map((record) => ({
     normalizedName: record.normalizedName,
@@ -233,21 +303,50 @@ export const listSavedTableMetadata = async (): Promise<SavedTableMetadata[]> =>
   }));
 };
 
-export const getSavedTable = async (normalizedName: string): Promise<SavedTableRecord | null> => {
+export const getSavedTable = async (
+  normalizedName: string,
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<SavedTableRecord | null> => {
   const record = await runWithStore<SavedTableRecord | undefined>('readonly', (store) =>
-    store.get(normalizedName),
+    store.get(withScopeKey(scope, normalizedName)),
   );
-  return record ?? null;
+  if (record) {
+    return decodeScopedTableRecord(record, scope);
+  }
+  return null;
 };
 
-export const addSavedTable = async (record: SavedTableRecord): Promise<void> => {
-  await runWithStore<IDBValidKey>('readwrite', (store) => store.add(record));
+export const addSavedTable = async (
+  record: SavedTableRecord,
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<void> => {
+  await runWithStore<IDBValidKey>('readwrite', (store) =>
+    store.add({
+      ...record,
+      normalizedName: withScopeKey(scope, record.normalizedName),
+      scope: getWorkspaceScopeStorageKey(scope),
+    } satisfies SavedTableRecord),
+  );
 };
 
-export const updateSavedTable = async (record: SavedTableRecord): Promise<void> => {
-  await runWithStore<IDBValidKey>('readwrite', (store) => store.put(record));
+export const updateSavedTable = async (
+  record: SavedTableRecord,
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<void> => {
+  await runWithStore<IDBValidKey>('readwrite', (store) =>
+    store.put({
+      ...record,
+      normalizedName: withScopeKey(scope, record.normalizedName),
+      scope: getWorkspaceScopeStorageKey(scope),
+    } satisfies SavedTableRecord),
+  );
 };
 
-export const deleteSavedTable = async (normalizedName: string): Promise<void> => {
-  await runWithStore<undefined>('readwrite', (store) => store.delete(normalizedName));
+export const deleteSavedTable = async (
+  normalizedName: string,
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<void> => {
+  await runWithStore<undefined>('readwrite', (store) =>
+    store.delete(withScopeKey(scope, normalizedName)),
+  );
 };

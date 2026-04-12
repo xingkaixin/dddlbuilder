@@ -5,6 +5,7 @@ import {
   clearWorkspaceMigrationDismissed,
   commitWorkspaceMigration,
   dismissWorkspaceMigration,
+  hasMeaningfulWorkspaceData,
   isWorkspaceMigrationDismissed,
   type WorkspaceMigrationPayload,
 } from '@/services/workspaceMigrationService';
@@ -37,9 +38,18 @@ export const useWorkspaceMigration = (authState: {
     setError(null);
 
     void analyzeWorkspaceMigration()
-      .then((analysis) => {
+      .then(async (analysis) => {
         if (cancelled || !analysis) return;
         if (analysis.result.status === 'no_data' || analysis.result.status === 'completed') {
+          setPending(null);
+          setOpen(false);
+          return;
+        }
+        const userScopeHasLocalData = await hasMeaningfulWorkspaceData({
+          kind: 'user',
+          userId: authState.userId,
+        });
+        if (userScopeHasLocalData) {
           setPending(null);
           setOpen(false);
           return;

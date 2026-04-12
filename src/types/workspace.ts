@@ -9,6 +9,13 @@ export type WorkspaceSource =
       baseSignature: string;
     };
 
+export type WorkspaceScope =
+  | { kind: 'anonymous' }
+  | {
+      kind: 'user';
+      userId: string;
+    };
+
 export type WorkspaceSavePayload = {
   state: PersistedState;
   source: WorkspaceSource;

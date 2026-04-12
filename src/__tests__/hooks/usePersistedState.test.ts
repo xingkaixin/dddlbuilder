@@ -15,6 +15,7 @@ import {
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
 import { addSavedTable } from '@/utils/savedTablesDb';
+import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 
 const GLOBAL_DRAFT_STORAGE_KEY = `${STORAGE_KEY}:draft:global:v1`;
 const WORKSPACE_SESSION_STORAGE_KEY = `${STORAGE_KEY}:workspace:v1`;
@@ -171,7 +172,7 @@ describe('usePersistedState', () => {
     expect(localStorageMock.removeItem).toHaveBeenCalledWith(GLOBAL_DRAFT_STORAGE_KEY);
   });
 
-  it('登录用户应先拉取云端 workspace 再完成 hydrate', async () => {
+  it('登录用户不应自动拉取云端 workspace', async () => {
     vi.mocked(useAuthSession).mockReturnValue({
       status: 'signed_in',
       configured: true,
@@ -195,26 +196,106 @@ describe('usePersistedState', () => {
       openAuthDialog: vi.fn(),
       closeAuthDialog: vi.fn(),
     });
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({
-          globalDraft: {
-            state: createState('cloud_users'),
-            updatedAt: 999,
-          },
-          savedTables: [],
-          savedDrafts: [],
-        }),
-      ),
-    );
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
     const { wrapper } = createQueryClientWrapper();
     const { result } = renderHook(() => usePersistedState(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
-      expect(result.current.persistedState?.tableName).toBe('cloud_users');
+      expect(result.current.persistedState).toBeNull();
     });
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('登录用户不应把匿名 scope 全局草稿当作自己的主工作区', async () => {
+    await writeGlobalDraft(
+      {
+        state: createState('anonymous_local'),
+        updatedAt: 999,
+      },
+      getAnonymousWorkspaceScope(),
+    );
+    vi.mocked(useAuthSession).mockReturnValue({
+      status: 'signed_in',
+      configured: true,
+      userId: 'user-1',
+      email: 'user@example.com',
+      name: 'User One',
+      emailVerified: true,
+      creditBalance: 100,
+      creditsStatus: 'ready',
+      authDialogOpen: false,
+      signInWithEmail: vi.fn(),
+      signUpWithEmail: vi.fn(),
+      updateUserName: vi.fn(),
+      changePassword: vi.fn(),
+      requestPasswordReset: vi.fn(),
+      resetPassword: vi.fn(),
+      sendVerificationEmail: vi.fn(),
+      signOut: vi.fn(),
+      refreshSession: vi.fn(),
+      refreshCredits: vi.fn(),
+      openAuthDialog: vi.fn(),
+      closeAuthDialog: vi.fn(),
+    });
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+    });
+
+    expect(result.current.persistedState).toBeNull();
+  });
+
+  it('登录用户编辑全局草稿后不应被重复 hydrate 回滚', async () => {
+    vi.mocked(useAuthSession).mockReturnValue({
+      status: 'signed_in',
+      configured: true,
+      userId: 'user-1',
+      email: 'user@example.com',
+      name: 'User One',
+      emailVerified: true,
+      creditBalance: 100,
+      creditsStatus: 'ready',
+      authDialogOpen: false,
+      signInWithEmail: vi.fn(),
+      signUpWithEmail: vi.fn(),
+      updateUserName: vi.fn(),
+      changePassword: vi.fn(),
+      requestPasswordReset: vi.fn(),
+      resetPassword: vi.fn(),
+      sendVerificationEmail: vi.fn(),
+      signOut: vi.fn(),
+      refreshSession: vi.fn(),
+      refreshCredits: vi.fn(),
+      openAuthDialog: vi.fn(),
+      closeAuthDialog: vi.fn(),
+    });
+
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+    });
+
+    const nextState = createState('editable_global_draft');
+    act(() => {
+      result.current.setWorkspaceSnapshot({ kind: 'global_draft' }, nextState);
+    });
+
+    await waitFor(() => {
+      expect(result.current.persistedState?.tableName).toBe('editable_global_draft');
+    });
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    expect(result.current.persistedState?.tableName).toBe('editable_global_draft');
   });
 
   it('保存全局草稿时应写入 IndexedDB 全局草稿和工作区会话', async () => {

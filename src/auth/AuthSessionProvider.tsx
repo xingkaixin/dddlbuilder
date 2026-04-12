@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import type { MeApiResponse } from '@/types/api';
 import i18n from '@/i18n';
 import { getBetterAuthClient, isBetterAuthConfigured } from './betterAuthClient';
+import { getAnonymousWorkspaceScope, setCurrentWorkspaceScope } from '@/utils/workspaceScope';
 
 export type UserSessionState = {
   status: 'loading' | 'signed_out' | 'signed_in';
@@ -315,6 +316,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
           throw new Error(result.error.message || i18n.t('header.auth.signOutFailed'));
         }
 
+        setCurrentWorkspaceScope(getAnonymousWorkspaceScope());
         setState(signedOutState(configured));
       },
       refreshSession,

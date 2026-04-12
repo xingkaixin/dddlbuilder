@@ -1,8 +1,13 @@
 import type { PersistedState } from '@/types';
 import type { ApiErrorPayload, WorkspaceMigrationResponse } from '@/types/api';
-import type { WorkspaceSource } from '@/types/workspace';
+import type { WorkspaceScope, WorkspaceSource } from '@/types/workspace';
 import { listSavedTables } from '@/utils/savedTablesDb';
-import { listSavedDrafts, readGlobalDraft, readWorkspaceSession } from '@/utils/workspaceStateDb';
+import {
+  listSavedDrafts,
+  readGlobalDraft,
+  readWorkspaceSession,
+} from '@/utils/workspaceStateDb';
+import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 
 export type WorkspaceMigrationSnapshot = {
   globalDraft: {
@@ -37,6 +42,12 @@ export type WorkspaceMigrationPayload = {
 
 const isPersistedStateTrivial = (state: PersistedState): boolean =>
   !state.rows?.some((row) => row.fieldName?.trim());
+
+export const hasMeaningfulWorkspaceSnapshotData = (snapshot: WorkspaceMigrationSnapshot | null) =>
+  Boolean(snapshot?.globalDraft && !isPersistedStateTrivial(snapshot.globalDraft.state)) ||
+  Boolean(snapshot?.activeSession?.activeState && !isPersistedStateTrivial(snapshot.activeSession.activeState)) ||
+  Boolean(snapshot && snapshot.savedTables.length > 0) ||
+  Boolean(snapshot && snapshot.savedDrafts.length > 0);
 
 const stripUpdatedAtFromSnapshot = (snapshot: WorkspaceMigrationSnapshot) => ({
   globalDraft: snapshot.globalDraft ? { state: snapshot.globalDraft.state } : null,
@@ -95,12 +106,14 @@ const requestWorkspaceMigration = async (
 };
 
 export const collectWorkspaceMigrationPayload =
-  async (): Promise<WorkspaceMigrationPayload | null> => {
+  async (
+    scope: WorkspaceScope = getAnonymousWorkspaceScope(),
+  ): Promise<WorkspaceMigrationPayload | null> => {
     const [globalDraft, activeSession, savedTables, savedDraftMap] = await Promise.all([
-      readGlobalDraft(),
-      readWorkspaceSession(),
-      listSavedTables(),
-      listSavedDrafts(),
+      readGlobalDraft(scope),
+      readWorkspaceSession(scope),
+      listSavedTables(scope),
+      listSavedDrafts(scope),
     ]);
 
     const savedDrafts = Object.entries(savedDraftMap).map(([normalizedName, item]) => ({
@@ -154,7 +167,7 @@ export const collectWorkspaceMigrationPayload =
   };
 
 export const analyzeWorkspaceMigration = async () => {
-  const payload = await collectWorkspaceMigrationPayload();
+  const payload = await collectWorkspaceMigrationPayload(getAnonymousWorkspaceScope());
   if (!payload) {
     return null;
   }
@@ -164,6 +177,13 @@ export const analyzeWorkspaceMigration = async () => {
     payload,
     result,
   };
+};
+
+export const hasMeaningfulWorkspaceData = async (
+  scope: WorkspaceScope = getAnonymousWorkspaceScope(),
+) => {
+  const payload = await collectWorkspaceMigrationPayload(scope);
+  return payload != null;
 };
 
 export const commitWorkspaceMigration = async (payload: WorkspaceMigrationPayload) =>

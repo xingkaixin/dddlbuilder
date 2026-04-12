@@ -1,16 +1,18 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { PersistedState } from '@/types';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { buildShareStateQueryKey } from '@/queryKeys/share';
 import { ShareApiError, getShareState } from '@/services/shareService';
 import {
-  applyCloudSnapshotToLocal,
-  collectWorkspaceSnapshot,
-  pullWorkspaceSnapshot,
-  pushWorkspaceSnapshot,
+  WORKSPACE_SNAPSHOT_APPLIED_EVENT,
 } from '@/services/workspaceSyncService';
-import type { GlobalDraftSummary, WorkspaceSavePayload, WorkspaceSource } from '@/types/workspace';
+import type {
+  GlobalDraftSummary,
+  WorkspaceSavePayload,
+  WorkspaceScope,
+  WorkspaceSource,
+} from '@/types/workspace';
 import {
   clearGlobalDraft,
   clearWorkspaceSession,
@@ -19,6 +21,10 @@ import {
 } from '@/utils/workspaceStateDb';
 import { getWorkspaceBootstrap } from './workspacePersistence/bootstrap';
 import { resetWorkspaceBootstrapCache } from './workspacePersistence/bootstrap';
+import {
+  getAnonymousWorkspaceScope,
+  setCurrentWorkspaceScope,
+} from '@/utils/workspaceScope';
 import {
   buildGlobalDraftSummary,
   isSameWorkspaceSource,
@@ -72,6 +78,14 @@ export function usePersistedState(): UsePersistedStateReturn {
   });
   const globalDraftRef = useRef<GlobalDraftRecord | null>(null);
 
+  const currentScope = useMemo<WorkspaceScope>(
+    () =>
+      authSession.status === 'signed_in' && authSession.userId
+        ? { kind: 'user', userId: authSession.userId }
+        : getAnonymousWorkspaceScope(),
+    [authSession.status, authSession.userId],
+  );
+
   const syncActiveSource = useCallback((source: WorkspaceSource) => {
     activeSourceRef.current = source;
     setActiveSource((prev) => (isSameWorkspaceSource(prev, source) ? prev : source));
@@ -99,7 +113,7 @@ export function usePersistedState(): UsePersistedStateReturn {
           state,
         };
         updateGlobalDraft(globalRecord);
-        fireAndForget(writeGlobalDraft(globalRecord));
+        fireAndForget(writeGlobalDraft(globalRecord, currentScope));
       }
 
       const activeState = source.kind === 'global_draft' ? state : null;
@@ -108,10 +122,10 @@ export function usePersistedState(): UsePersistedStateReturn {
           activeSource: source,
           activeState,
           updatedAt: Date.now(),
-        }),
+        }, currentScope),
       );
     },
-    [shareId, syncActiveSource, updateGlobalDraft],
+    [currentScope, shareId, syncActiveSource, updateGlobalDraft],
   );
 
   const saveState = useCallback(
@@ -136,7 +150,7 @@ export function usePersistedState(): UsePersistedStateReturn {
           state: payload.state,
         };
         updateGlobalDraft(globalRecord);
-        fireAndForget(writeGlobalDraft(globalRecord));
+        fireAndForget(writeGlobalDraft(globalRecord, currentScope));
       }
 
       const activeStateToPersist = payload.source.kind === 'saved_table' ? null : payload.state;
@@ -146,41 +160,11 @@ export function usePersistedState(): UsePersistedStateReturn {
           activeSource: payload.source,
           activeState: activeStateToPersist,
           updatedAt: Date.now(),
-        }),
+        }, currentScope),
       );
       syncActiveSource(payload.source);
-
-      if (authSession.status === 'signed_in') {
-        fireAndForget(
-          (async () => {
-            const snapshot = await collectWorkspaceSnapshot();
-            const now = Date.now();
-
-            if (payload.source.kind === 'global_draft') {
-              snapshot.globalDraft = {
-                state: payload.state,
-                updatedAt: now,
-              };
-            } else {
-              const nextItem = {
-                normalizedName: payload.source.normalizedName,
-                name: payload.source.tableName,
-                state: payload.state,
-                updatedAt: now,
-              };
-              const nextSavedTables = snapshot.savedTables.filter(
-                (item) => item.normalizedName !== nextItem.normalizedName,
-              );
-              nextSavedTables.push(nextItem);
-              snapshot.savedTables = nextSavedTables;
-            }
-
-            await pushWorkspaceSnapshot(snapshot);
-          })(),
-        );
-      }
     },
-    [authSession.status, hydrated, shareStorageKey, syncActiveSource, updateGlobalDraft],
+    [currentScope, hydrated, shareStorageKey, syncActiveSource, updateGlobalDraft],
   );
 
   const clearState = useCallback(() => {
@@ -194,13 +178,13 @@ export function usePersistedState(): UsePersistedStateReturn {
       // No draft to delete for saved table
     } else {
       updateGlobalDraft(null);
-      fireAndForget(clearGlobalDraft());
+      fireAndForget(clearGlobalDraft(currentScope));
     }
 
     syncActiveSource({ kind: 'global_draft' });
-    fireAndForget(clearWorkspaceSession());
+    fireAndForget(clearWorkspaceSession(currentScope));
     setPersistedState(null);
-  }, [activeSource, shareStorageKey, syncActiveSource, updateGlobalDraft]);
+  }, [activeSource, currentScope, shareStorageKey, syncActiveSource, updateGlobalDraft]);
 
   useEffect(() => {
     let cancelled = false;
@@ -212,21 +196,13 @@ export function usePersistedState(): UsePersistedStateReturn {
     };
 
     const hydrateMainWorkspace = async () => {
-      if (authSession.status === 'signed_in') {
-        try {
-          const cloudSnapshot = await pullWorkspaceSnapshot();
-          await applyCloudSnapshotToLocal(cloudSnapshot);
-          resetWorkspaceBootstrapCache();
-        } catch (error) {
-          console.error('[workspace-sync] failed to pull cloud snapshot', error);
-        }
-      }
+      setCurrentWorkspaceScope(currentScope);
 
       const {
         globalDraft: globalDraftRaw,
         session: sessionRaw,
         savedTable,
-      } = await getWorkspaceBootstrap();
+      } = await getWorkspaceBootstrap(currentScope);
 
       const globalDraftRecord = normalizeGlobalDraftRecord(globalDraftRaw);
       const session = normalizeWorkspaceSession(sessionRaw);
@@ -329,6 +305,68 @@ export function usePersistedState(): UsePersistedStateReturn {
     shareId,
     shareStorageKey,
     authSession.status,
+    authSession.userId,
+    currentScope,
+    syncActiveSource,
+    updateGlobalDraft,
+  ]);
+
+  useEffect(() => {
+    if (shareId || authSession.status === 'loading') {
+      return;
+    }
+
+    let cancelled = false;
+    const handleSnapshotApplied = () => {
+      void (async () => {
+        setCurrentWorkspaceScope(currentScope);
+        resetWorkspaceBootstrapCache();
+        const { globalDraft: globalDraftRaw, session: sessionRaw, savedTable } =
+          await getWorkspaceBootstrap(currentScope);
+        if (cancelled) return;
+
+        const globalDraftRecord = normalizeGlobalDraftRecord(globalDraftRaw);
+        const session = normalizeWorkspaceSession(sessionRaw);
+        updateGlobalDraft(globalDraftRecord);
+
+        if (!session) {
+          syncActiveSource({ kind: 'global_draft' });
+          setPersistedState(globalDraftRecord?.state ?? null);
+          setHydrated(true);
+          return;
+        }
+
+        if (session.activeSource.kind === 'saved_table' && savedTable) {
+          syncActiveSource({
+            kind: 'saved_table',
+            normalizedName: savedTable.normalizedName,
+            tableName: savedTable.name,
+            baseSignature:
+              session.activeSource.baseSignature ||
+              (typeof (savedTable as { stateSignature?: unknown }).stateSignature === 'string'
+                ? (savedTable as { stateSignature?: string }).stateSignature
+                : JSON.stringify(savedTable.state)),
+          });
+          setPersistedState(savedTable.state);
+          setHydrated(true);
+          return;
+        }
+
+        syncActiveSource({ kind: 'global_draft' });
+        setPersistedState(session.activeState ?? globalDraftRecord?.state ?? null);
+        setHydrated(true);
+      })();
+    };
+
+    window.addEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);
+    };
+  }, [
+    shareId,
+    authSession.status,
+    currentScope,
     syncActiveSource,
     updateGlobalDraft,
   ]);
