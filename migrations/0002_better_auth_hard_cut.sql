@@ -18,18 +18,18 @@ CREATE TABLE user (
   email TEXT NOT NULL,
   email_verified INTEGER NOT NULL DEFAULT 0,
   image TEXT,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
 );
 
 CREATE UNIQUE INDEX idx_user_email ON user(email);
 
 CREATE TABLE session (
   id TEXT PRIMARY KEY,
-  expires_at TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
   token TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
   ip_address TEXT,
   user_agent TEXT,
   user_id TEXT NOT NULL,
@@ -47,12 +47,12 @@ CREATE TABLE account (
   access_token TEXT,
   refresh_token TEXT,
   id_token TEXT,
-  access_token_expires_at TEXT,
-  refresh_token_expires_at TEXT,
+  access_token_expires_at INTEGER,
+  refresh_token_expires_at INTEGER,
   scope TEXT,
   password TEXT,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
   FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
 );
 
@@ -63,9 +63,9 @@ CREATE TABLE verification (
   id TEXT PRIMARY KEY,
   identifier TEXT NOT NULL,
   value TEXT NOT NULL,
-  expires_at TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
 );
 
 CREATE INDEX idx_verification_identifier ON verification(identifier);

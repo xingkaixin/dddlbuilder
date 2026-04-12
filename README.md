@@ -137,7 +137,7 @@ bun run db:reset:local
 
 - 默认所有 D1 命令都操作 local simulation。
 - remote D1 只允许通过显式的 `:remote` 命令访问。
-- `bun run dev:worker` 会把本地 D1 状态持久化到 `.wrangler/state/dev`。
+- `bun run dev:worker` 和 `bun run db:*:local` 共享同一份本地 D1，持久化目录都是 `.wrangler/state/dev`。
 
 ## 使用说明
 

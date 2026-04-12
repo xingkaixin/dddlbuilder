@@ -12,6 +12,8 @@ export const D1_BINDING = 'USER_DB';
 export const migrationDir = path.join(repoRoot, 'migrations');
 export const resetSqlPath = path.join(repoRoot, 'sql', 'reset-user-system.sql');
 export const seedSqlPath = path.join(repoRoot, 'seeds', 'user-system.local.sql');
+export const localPersistDir =
+  process.env.WRANGLER_PERSIST_DIR ?? path.join('.wrangler', 'state', 'dev');
 
 export const resolveD1Mode = (args: string[]): D1Mode =>
   args.includes('--remote') ? 'remote' : 'local';
@@ -34,6 +36,9 @@ export const buildD1ExecuteArgs = (
   }
 
   const args = ['x', 'wrangler', 'd1', 'execute', D1_BINDING, getD1Flag(mode)];
+  if (mode === 'local') {
+    args.push('--persist-to', localPersistDir);
+  }
   if (input.file) {
     args.push('--file', input.file);
   }
