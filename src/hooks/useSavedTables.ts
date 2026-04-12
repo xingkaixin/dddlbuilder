@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { PersistedState } from '@/types';
+import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import {
   addSavedTable,
   deleteSavedTable,
@@ -43,6 +44,17 @@ export function useSavedTables() {
 
   useEffect(() => {
     void refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    const handleSnapshotApplied = () => {
+      void refresh();
+    };
+
+    window.addEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);
+    return () => {
+      window.removeEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);
+    };
   }, [refresh]);
 
   const saveTable = useCallback(

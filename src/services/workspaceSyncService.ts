@@ -1,5 +1,9 @@
 import type { PersistedState } from '@/types';
-import type { ApiErrorPayload, WorkspaceSnapshotPushRequest, WorkspaceSnapshotResponse } from '@/types/api';
+import type {
+  ApiErrorPayload,
+  WorkspaceSnapshotPushRequest,
+  WorkspaceSnapshotResponse,
+} from '@/types/api';
 import type { SavedTableDraftRecord, WorkspaceSnapshot } from '@/types/workspace';
 import {
   addSavedTable,
@@ -16,6 +20,8 @@ import {
   writeGlobalDraft,
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
+
+export const WORKSPACE_SNAPSHOT_APPLIED_EVENT = 'ddlbuilder:workspace-snapshot-applied';
 
 const toErrorMessage = (payload: ApiErrorPayload | null, fallback: string) =>
   payload && typeof payload.error === 'string' ? payload.error : fallback;
@@ -177,5 +183,9 @@ export const applyCloudSnapshotToLocal = async (snapshot: WorkspaceSnapshot) => 
       baseSignature: item.baseSignature,
     };
     await upsertSavedDraft(item.normalizedName, nextDraft);
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(WORKSPACE_SNAPSHOT_APPLIED_EVENT));
   }
 };

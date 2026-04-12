@@ -94,6 +94,8 @@ export const zhCNCommon = {
     description: '管理账号信息与点数使用记录。',
     accountTab: '账户设置',
     creditTab: '点数中心',
+    email: '邮箱',
+    emailReadonly: '邮箱用于登录与找回密码，当前不支持在这里修改。',
     username: '用户名',
     usernamePlaceholder: '请输入新用户名',
     usernameRequired: '请输入用户名',
@@ -111,6 +113,8 @@ export const zhCNCommon = {
     recharge: '充值',
     rechargeNotAvailable: '充值渠道暂未开放，敬请期待',
     creditHistory: '消费记录',
+    creditHistoryHint:
+      'AI 功能会先按预估 token 预扣点数，结束后按实际消耗结算，多扣的部分会自动返还，所以你会看到“预扣”和“结算返还”两类记录。',
     time: '时间',
     type: '类型',
     source: '来源',
@@ -127,6 +131,9 @@ export const zhCNCommon = {
       grant: '授予',
       consume: '消费',
       refund: '退款',
+      aiReservedConsume: 'AI 预扣',
+      aiSettlementRefund: '结算返还',
+      aiFailedRefund: '失败返还',
     },
     sourceMap: {
       signup_bonus: '注册赠送',

@@ -98,6 +98,8 @@ export const enUSCommon = {
     description: 'Manage your account and credit usage history.',
     accountTab: 'Account',
     creditTab: 'Credits',
+    email: 'Email',
+    emailReadonly: 'This email is used for sign-in and password recovery. It cannot be changed here.',
     username: 'Username',
     usernamePlaceholder: 'Enter a new username',
     usernameRequired: 'Username is required',
@@ -115,6 +117,8 @@ export const enUSCommon = {
     recharge: 'Recharge',
     rechargeNotAvailable: 'Recharge is not available yet. Please stay tuned.',
     creditHistory: 'Usage History',
+    creditHistoryHint:
+      'AI requests first reserve credits based on estimated tokens, then settle against actual usage. Any over-reserved portion is returned automatically, so you will see both reservation and settlement return records.',
     time: 'Time',
     type: 'Type',
     source: 'Source',
@@ -131,6 +135,9 @@ export const enUSCommon = {
       grant: 'Grant',
       consume: 'Consume',
       refund: 'Refund',
+      aiReservedConsume: 'AI Reservation',
+      aiSettlementRefund: 'Settlement Return',
+      aiFailedRefund: 'Failed Request Return',
     },
     sourceMap: {
       signup_bonus: 'Signup Bonus',

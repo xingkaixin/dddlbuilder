@@ -30,6 +30,7 @@ type CreditLedgerItem = {
   amount: number;
   balanceAfter: number;
   createdAt: string;
+  metadataJson?: string | null;
 };
 
 interface UserSettingsDialogProps {
@@ -40,8 +41,16 @@ interface UserSettingsDialogProps {
 const getErrorMessage = (payload: ApiErrorPayload | null, fallback: string) =>
   payload && typeof payload.error === 'string' ? payload.error : fallback;
 
+const parseLedgerDate = (value: string) => {
+  const normalized =
+    /(?:Z|[+-]\d{2}:\d{2})$/.test(value) || value.includes('GMT')
+      ? value
+      : `${value.replace(' ', 'T')}Z`;
+  return new Date(normalized);
+};
+
 const formatLedgerTime = (value: string) => {
-  const date = new Date(value);
+  const date = parseLedgerDate(value);
   if (Number.isNaN(date.getTime())) {
     return value;
   }
@@ -52,6 +61,32 @@ const formatLedgerTime = (value: string) => {
     hour: '2-digit',
     minute: '2-digit',
   }).format(date);
+};
+
+const parseMetadata = (value?: string | null) => {
+  if (!value) return null;
+  try {
+    return JSON.parse(value) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+};
+
+const resolveLedgerTypeLabel = (
+  t: ReturnType<typeof useTranslation>['t'],
+  item: CreditLedgerItem,
+) => {
+  const metadata = parseMetadata(item.metadataJson);
+  if (item.kind === 'refund' && item.source !== 'manual_adjustment') {
+    if (metadata?.reason === 'request_failed') {
+      return t('settings.kind.aiFailedRefund');
+    }
+    return t('settings.kind.aiSettlementRefund');
+  }
+  if (item.kind === 'consume' && item.source !== 'manual_adjustment') {
+    return t('settings.kind.aiReservedConsume');
+  }
+  return t(`settings.kind.${item.kind}`);
 };
 
 export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogProps) {
@@ -89,11 +124,14 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
         const response = await fetch('/api/credits/ledger?limit=50', {
           credentials: 'include',
         });
-        const payload = (await response.json().catch(() => null)) as
-          | { items?: CreditLedgerItem[]; error?: string }
-          | null;
+        const payload = (await response.json().catch(() => null)) as {
+          items?: CreditLedgerItem[];
+          error?: string;
+        } | null;
         if (!response.ok) {
-          throw new Error(getErrorMessage(payload as ApiErrorPayload | null, t('settings.loadFailed')));
+          throw new Error(
+            getErrorMessage(payload as ApiErrorPayload | null, t('settings.loadFailed')),
+          );
         }
         if (!cancelled) {
           setLedgerItems(Array.isArray(payload?.items) ? payload.items : []);
@@ -159,7 +197,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl sm:min-h-[42rem]">
           <DialogHeader>
             <DialogTitle>{t('settings.title')}</DialogTitle>
             <DialogDescription>{t('settings.description')}</DialogDescription>
@@ -169,107 +207,125 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
               <TabsTrigger value="account">{t('settings.accountTab')}</TabsTrigger>
               <TabsTrigger value="credits">{t('settings.creditTab')}</TabsTrigger>
             </TabsList>
-            <TabsContent value="account" className="space-y-6">
-              <section className="space-y-3">
-                <h3 className="text-sm font-semibold">{t('settings.username')}</h3>
-                <div className="space-y-2">
-                  <Input
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    placeholder={t('settings.usernamePlaceholder')}
-                  />
-                  <div className="flex justify-end">
-                    <Button type="button" onClick={handleUpdateName} disabled={savingName}>
-                      {savingName ? t('settings.saving') : t('settings.save')}
-                    </Button>
+            <div className="min-h-[30rem]">
+              <TabsContent value="account" className="mt-0 space-y-6">
+                <section className="space-y-3">
+                  <h3 className="text-sm font-semibold">{t('settings.email')}</h3>
+                  <div className="rounded-lg border bg-muted/20 px-4 py-3 text-sm">
+                    <div className="font-medium">{authSession.email ?? '-'}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {t('settings.emailReadonly')}
+                    </div>
                   </div>
-                </div>
-              </section>
-              <section className="space-y-3">
-                <h3 className="text-sm font-semibold">{t('settings.passwordSection')}</h3>
-                <div className="space-y-2">
-                  <Input
-                    type="password"
-                    value={currentPassword}
-                    onChange={(event) => setCurrentPassword(event.target.value)}
-                    placeholder={t('settings.currentPassword')}
-                    autoComplete="current-password"
-                  />
-                  <Input
-                    type="password"
-                    value={newPassword}
-                    onChange={(event) => setNewPassword(event.target.value)}
-                    placeholder={t('settings.newPassword')}
-                    autoComplete="new-password"
-                  />
-                  <Input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    placeholder={t('settings.confirmPassword')}
-                    autoComplete="new-password"
-                  />
-                  <div className="flex justify-end">
-                    <Button
-                      type="button"
-                      onClick={handleChangePassword}
-                      disabled={savingPassword}
-                    >
-                      {savingPassword ? t('settings.saving') : t('settings.updatePassword')}
-                    </Button>
+                </section>
+                <section className="space-y-3">
+                  <h3 className="text-sm font-semibold">{t('settings.username')}</h3>
+                  <div className="space-y-2">
+                    <Input
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                      placeholder={t('settings.usernamePlaceholder')}
+                    />
+                    <div className="flex justify-end">
+                      <Button type="button" onClick={handleUpdateName} disabled={savingName}>
+                        {savingName ? t('settings.saving') : t('settings.save')}
+                      </Button>
+                    </div>
                   </div>
+                </section>
+                <section className="space-y-3">
+                  <h3 className="text-sm font-semibold">{t('settings.passwordSection')}</h3>
+                  <div className="space-y-2">
+                    <Input
+                      type="password"
+                      value={currentPassword}
+                      onChange={(event) => setCurrentPassword(event.target.value)}
+                      placeholder={t('settings.currentPassword')}
+                      autoComplete="current-password"
+                    />
+                    <Input
+                      type="password"
+                      value={newPassword}
+                      onChange={(event) => setNewPassword(event.target.value)}
+                      placeholder={t('settings.newPassword')}
+                      autoComplete="new-password"
+                    />
+                    <Input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      placeholder={t('settings.confirmPassword')}
+                      autoComplete="new-password"
+                    />
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        onClick={handleChangePassword}
+                        disabled={savingPassword}
+                      >
+                        {savingPassword ? t('settings.saving') : t('settings.updatePassword')}
+                      </Button>
+                    </div>
+                  </div>
+                </section>
+              </TabsContent>
+              <TabsContent value="credits" className="mt-0 space-y-4">
+                <section className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-3">
+                  <div>
+                    <div className="text-sm text-muted-foreground">
+                      {t('settings.currentBalance')}
+                    </div>
+                    <div className="text-2xl font-semibold">{authSession.creditBalance ?? 0}</div>
+                  </div>
+                  <Button type="button" variant="outline" onClick={() => setRechargeOpen(true)}>
+                    {t('settings.recharge')}
+                  </Button>
+                </section>
+                <div className="rounded-lg border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+                  {t('settings.creditHistoryHint')}
                 </div>
-              </section>
-            </TabsContent>
-            <TabsContent value="credits" className="space-y-4">
-              <section className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-3">
-                <div>
-                  <div className="text-sm text-muted-foreground">{t('settings.currentBalance')}</div>
-                  <div className="text-2xl font-semibold">{authSession.creditBalance ?? 0}</div>
-                </div>
-                <Button type="button" variant="outline" onClick={() => setRechargeOpen(true)}>
-                  {t('settings.recharge')}
-                </Button>
-              </section>
-              <section className="space-y-3">
-                <h3 className="text-sm font-semibold">{t('settings.creditHistory')}</h3>
-                {loadingLedger ? (
-                  <div className="text-sm text-muted-foreground">{t('settings.loading')}</div>
-                ) : ledgerError ? (
-                  <div className="text-sm text-destructive">{ledgerError}</div>
-                ) : ledgerItems.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">{t('settings.noHistory')}</div>
-                ) : (
-                  <div className="overflow-x-auto rounded-lg border">
-                    <table className="min-w-full text-sm">
-                      <thead className="bg-muted/40 text-left">
-                        <tr>
-                          <th className="px-3 py-2">{t('settings.time')}</th>
-                          <th className="px-3 py-2">{t('settings.type')}</th>
-                          <th className="px-3 py-2">{t('settings.source')}</th>
-                          <th className="px-3 py-2">{t('settings.amount')}</th>
-                          <th className="px-3 py-2">{t('settings.balance')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {ledgerItems.map((item) => (
-                          <tr key={item.id} className="border-t">
-                            <td className="px-3 py-2">{formatLedgerTime(item.createdAt)}</td>
-                            <td className="px-3 py-2">{t(`settings.kind.${item.kind}`)}</td>
-                            <td className="px-3 py-2">{t(`settings.sourceMap.${item.source}`)}</td>
-                            <td className="px-3 py-2">
-                              {item.kind === 'consume' ? '-' : '+'}
-                              {item.amount}
-                            </td>
-                            <td className="px-3 py-2">{item.balanceAfter}</td>
+                <section className="space-y-3">
+                  <h3 className="text-sm font-semibold">{t('settings.creditHistory')}</h3>
+                  {loadingLedger ? (
+                    <div className="text-sm text-muted-foreground">{t('settings.loading')}</div>
+                  ) : ledgerError ? (
+                    <div className="text-sm text-destructive">{ledgerError}</div>
+                  ) : ledgerItems.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">{t('settings.noHistory')}</div>
+                  ) : (
+                    <div className="overflow-x-auto rounded-lg border">
+                      <table className="min-w-full text-sm">
+                        <thead className="bg-muted/40 text-left">
+                          <tr>
+                            <th className="px-3 py-2">{t('settings.time')}</th>
+                            <th className="px-3 py-2">{t('settings.type')}</th>
+                            <th className="px-3 py-2">{t('settings.source')}</th>
+                            <th className="px-3 py-2">{t('settings.amount')}</th>
+                            <th className="px-3 py-2">{t('settings.balance')}</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </section>
-            </TabsContent>
+                        </thead>
+                        <tbody>
+                          {ledgerItems.map((item) => (
+                            <tr key={item.id} className="border-t">
+                              <td className="px-3 py-2">{formatLedgerTime(item.createdAt)}</td>
+                              <td className="px-3 py-2">{resolveLedgerTypeLabel(t, item)}</td>
+                              <td className="px-3 py-2">
+                                {t(`settings.sourceMap.${item.source}`)}
+                              </td>
+                              <td className="px-3 py-2">
+                                {item.kind === 'consume' ? '-' : '+'}
+                                {item.amount}
+                              </td>
+                              <td className="px-3 py-2">{item.balanceAfter}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
+              </TabsContent>
+            </div>
           </Tabs>
         </DialogContent>
       </Dialog>
