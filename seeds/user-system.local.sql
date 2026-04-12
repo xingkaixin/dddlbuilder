@@ -10,8 +10,8 @@ INSERT OR IGNORE INTO user (
   'Local Seed User',
   'local-seed@ddlbuilder.dev',
   1,
-  CURRENT_TIMESTAMP,
-  CURRENT_TIMESTAMP
+  CAST(strftime('%s', 'now') AS INTEGER) * 1000,
+  CAST(strftime('%s', 'now') AS INTEGER) * 1000
 );
 
 INSERT OR IGNORE INTO account (
@@ -26,8 +26,8 @@ INSERT OR IGNORE INTO account (
   'usr_local_seed',
   'credential',
   'usr_local_seed',
-  CURRENT_TIMESTAMP,
-  CURRENT_TIMESTAMP
+  CAST(strftime('%s', 'now') AS INTEGER) * 1000,
+  CAST(strftime('%s', 'now') AS INTEGER) * 1000
 );
 
 INSERT OR IGNORE INTO credit_accounts (
