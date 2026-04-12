@@ -33,7 +33,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "bunx playwright show-report",
-    "deploy": "bun run build && wrangler deploy --config wrangler.deploy.toml"
+    "deploy": "bun run build && bun run scripts/deploy.ts"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.6.2",

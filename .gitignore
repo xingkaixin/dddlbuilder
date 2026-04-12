@@ -25,7 +25,10 @@ dist-ssr
 
 .claude
 .env
+.env.*
+!.env.vars.example
 .dev.vars
+.deploy.secrets
 .wrangler
 .wrangler-home
 wrangler.local.toml

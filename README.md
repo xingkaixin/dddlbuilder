@@ -41,6 +41,9 @@ bun run dev:worker
 
 # 产物构建
 bun run build
+
+# 部署（自动读取 .deploy.secrets）
+bun run deploy
 ```
 
 开发命令说明：
@@ -56,6 +59,34 @@ bun run build
 - `bun run dev:docs`：仅启动文档开发服务（`http://127.0.0.1:5174/docs/`）。
 - `bun run dev` 运行时，`/docs` 会自动代理到 docs dev server；如果只运行 `bun run dev:app`，需要再单独运行 `bun run dev:docs` 才能通过 `http://localhost:3000/docs/` 查看文档。
 - `bun run dev` 或 `bun run dev:app` 运行时，前端的 `/api/*` 请求会代理到 `http://127.0.0.1:8787`。如果没有启动 `bun run dev:worker`，D1 / KV / Better Auth / Turnstile 都不会生效。
+
+### 部署 secrets
+
+`wrangler.deploy.toml` 适合放 Worker 名称、KV / D1 绑定、静态资源等非敏感配置，不适合把 secret 明文直接写进去。
+
+项目现在的部署方式是：
+
+1. 复制 `.deploy.secrets.example` 为 `.deploy.secrets`
+2. 在 `.deploy.secrets` 中填写生产 secrets
+3. 执行 `bun run deploy`
+
+`bun run deploy` 会在构建后自动调用 `wrangler deploy --config wrangler.deploy.toml`，如果检测到 `.deploy.secrets`，会额外带上 `--secrets-file .deploy.secrets`，不需要再一个个手动 `wrangler secret put`。
+
+`.deploy.secrets` 使用标准 `.env` 格式，例如：
+
+```bash
+OPENAI_API_KEY=xxx
+BETTER_AUTH_SECRET=xxx
+TURNSTILE_SECRET_KEY=xxx
+```
+
+这个文件已加入 `.gitignore`，不会被提交。
+
+如果你想把 secrets 文件放在别处，部署时可通过环境变量覆盖：
+
+```bash
+WRANGLER_SECRETS_FILE=/absolute/path/to/prod.secrets bun run deploy
+```
 
 ### 环境变量
 
