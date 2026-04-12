@@ -87,7 +87,7 @@ Origin: "XING-104"
 
 - Clerk 官方文档对 React + Vite 前端接入很成熟，提供 `@clerk/react` 与预制 UI 组件。[Clerk React Quickstart](https://clerk.com/docs/react/getting-started/quickstart)
 - 但从官方文档结构看，当前核心优势集中在前端 SDK 与 Clerk 托管的用户管理体验；对本项目这种“自有 Hono Worker + D1 + 自定义额度账本”的服务端主链，后端接入与用户映射仍需额外设计。
-- 因此 Clerk 的前端体验很强，但对本期最关键的“Worker 原生整合 + 用户主数据归属 + 自有账本”优势不如 Supabase 明显。
+- 因此 Clerk 的前端体验很强，但对本期最关键的”Worker 原生整合 + 用户主数据归属 + 自有账本”优势不如 Better Auth 明显。
 
 ### 方案 D：Better Auth + Resend + D1
 
@@ -95,10 +95,11 @@ Origin: "XING-104"
 
 依据：
 
-- Supabase Auth 官方支持 JWT、magic link、OAuth 等常见方式，足以覆盖本期“至少一种正式登录方式”的要求。[Supabase Auth](https://supabase.com/docs/guides/auth)
-- Supabase 官方明确区分 anonymous user 与真正未登录 public user，这反过来证明本期保持“未登录 + 本地 IndexedDB”是更轻的策略。[Supabase Users](https://supabase.com/docs/guides/auth/users)
-- Supabase 官方也明确提醒 anonymous sign-in 会引入存储膨胀与滥用风险，并建议配 CAPTCHA / Turnstile。[Supabase Anonymous Sign-Ins](https://supabase.com/docs/guides/auth/auth-anonymous)
-- 对当前项目而言，Supabase Auth 可以作为“身份发行器”，而应用主数据、额度账本、工作区归属仍保留在 Cloudflare D1。这种职责划分最清晰。
+- Better Auth 原生支持 Cloudflare Workers 运行，内置 email + password、邮箱验证、密码重置等完整认证流程。[Better Auth](https://www.better-auth.com/)
+- 通过 `@better-auth/drizzle-adapter` 直接对接 D1，无需外部认证服务依赖，所有用户与会话数据完全自主可控。
+- Session 以 HTTP-only cookie 形式存储，对应 D1 `session` 表，Worker 直接校验 cookie 有效性，无需额外 JWT 解析或外部身份映射。
+- 邮件发送集成 Resend，职责清晰：Better Auth 负责认证逻辑，Resend 负责邮件投递，D1 负责数据持久化。
+- 对当前项目而言，Better Auth 运行在 Worker 内部，应用主数据、额度账本、工作区归属全部统一在 Cloudflare D1，不存在跨服务依赖。
 
 ## 最终建议
 
@@ -112,7 +113,7 @@ Origin: "XING-104"
 ### 核心理由
 
 - 对本期而言，需要的是“稳定身份 + 可校验 JWT + 低集成成本”，不是自建认证能力
-- 使用 Supabase Auth 发行身份，Cloudflare Worker 负责校验并映射到 app user，职责边界清晰
+- 使用 Better Auth 管理身份与会话，运行在 Cloudflare Worker 内部，所有数据存储在 D1，职责边界清晰
 - 可以避免在本期引入服务端匿名账号
 
 ## 目标态设计
@@ -130,20 +131,43 @@ Origin: "XING-104"
 建议最小模型如下：
 
 ```text
-users
+user                          -- Better Auth 内置表
   id
-  status
-  primary_email
+  name
+  email
+  email_verified
+  image
   created_at
   updated_at
 
-user_identities
+session                       -- Better Auth 内置表，HTTP-only cookie 会话
   id
+  expires_at
+  token
+  ip_address
+  user_agent
   user_id
-  provider
-  provider_user_id
-  provider_email
   created_at
+  updated_at
+
+account                       -- Better Auth 内置表，凭证与 OAuth provider
+  id
+  account_id
+  provider_id
+  user_id
+  access_token
+  refresh_token
+  password
+  created_at
+  updated_at
+
+verification                  -- Better Auth 内置表，邮箱验证与密码重置令牌
+  id
+  identifier
+  value
+  expires_at
+  created_at
+  updated_at
 
 credit_accounts
   user_id
@@ -195,6 +219,8 @@ workspace_links
 
 说明：
 
+- `user`、`session`、`account`、`verification` 为 Better Auth 内置表，通过 Drizzle adapter 管理
+- `session` 存储 HTTP-only cookie 对应的会话，Worker 通过 cookie 中的 token 直接查 D1 校验
 - `credit_accounts.balance` 是缓存余额，不是真实账本来源
 - 真实可审计来源是 `credit_ledger`
 - `version` 用于并发扣减时的乐观锁或 compare-and-swap
@@ -211,7 +237,7 @@ workspace_links
 
 ### 登录方式
 
-- V1：email magic link
+- V1：email + password
 - V2：可选增加 OAuth
 - 本期不接用户名密码登录
 
@@ -225,7 +251,7 @@ workspace_links
 ### 匿名态策略
 
 - 保持真正未登录
-- 不使用 Supabase anonymous sign-in
+- 不引入服务端匿名账号
 - 原因：匿名工作区当前已经是本地态，引入服务端匿名账号会增加清理与滥用治理复杂度
 
 ## 环境策略
@@ -241,19 +267,18 @@ workspace_links
 
 - Worker 继续本地运行
 - 仅在显式指定时连接 remote D1 / KV
-- Supabase 使用独立的 staging project
 - Turnstile 使用测试 site key / secret，不与生产混用
 
 ### 线上部署
 
 - Cloudflare Worker 使用生产 D1 / KV
-- Supabase 使用生产 auth project
-- 所有 user 主数据与额度数据仍以 D1 为准，不直接依赖 Supabase profile 表
+- 所有认证与会话数据通过 Better Auth + D1 管理
+- 所有 user 主数据与额度数据以 D1 为准
 
 ## 实施后约束
 
 - `XING-114` 必须按本文模型建最小 schema，不允许再改核心表职责
-- `XING-115` 必须采用 Worker 校验 JWT + D1 映射 app user 的模式，不允许把 app user 概念直接外包给 Supabase
+- `XING-115` 必须采用 Worker 校验 session cookie + D1 的模式，不允许把 app user 概念外包给外部认证服务
 - `XING-117` 必须以 ledger 为事实源，不允许只保留余额字段
 - `XING-116` 一期只迁移核心工作区数据，不把 `review_history`、`table_versions`、`field_templates`、`table_folders` 偷偷带入
 
@@ -265,7 +290,7 @@ workspace_links
 
 ## 验收标准
 
-- [x] 明确采用 Supabase Auth，且说明不选自建 / Auth.js / Clerk 作为本期主方案的理由
+- [x] 明确采用 Better Auth，且说明不选自建 / Auth.js / Clerk 作为本期主方案的理由
 - [x] 明确 D1、KV、Turnstile 三者职责边界
 - [x] 给出用户系统核心数据模型草案
 - [x] 给出本地、预发、线上三套环境策略
@@ -274,9 +299,9 @@ workspace_links
 
 ## 参考资料
 
-- [Supabase Auth](https://supabase.com/docs/guides/auth)
-- [Supabase Users](https://supabase.com/docs/guides/auth/users)
-- [Supabase Anonymous Sign-Ins](https://supabase.com/docs/guides/auth/auth-anonymous)
+- [Better Auth](https://www.better-auth.com/)
+- [Better Auth Cloudflare Workers](https://www.better-auth.com/docs/integrations/cloudflare)
+- [Resend](https://resend.com/docs)
 - [Clerk React Quickstart](https://clerk.com/docs/react/getting-started/quickstart)
 - [Auth.js](https://authjs.dev/)
 - [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/)

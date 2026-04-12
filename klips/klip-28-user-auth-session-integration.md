@@ -58,16 +58,15 @@ type UserSessionState = {
 
 新增认证中间件：
 
-- 读取 `Authorization: Bearer <token>`
-- 校验 Better Auth session cookie
-- 解析外部身份 `sub`
-- 在 D1 中查找或创建 `users` + `user_identities`
-- 把 `appUserId` 注入 `c.var`
+- 读取 Better Auth session cookie
+- 校验 session 有效性并获取 `user.id`
+- Better Auth 直接从 D1 `session` 表识别用户，应用层使用 `user.id` 作为主键
+- 把 `currentUserId` 注入 `c.var`
 
 建议中间件分层：
 
 1. `parseAuthToken`
-2. `verifySupabaseJwt`
+2. `verifySession`
 3. `resolveAppUser`
 4. `requireUser`
 
