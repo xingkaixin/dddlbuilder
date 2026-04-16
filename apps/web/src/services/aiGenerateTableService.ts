@@ -1,6 +1,9 @@
 import { readTextStream } from '@/services/streamingText';
 import { buildAuthenticatedJsonHeaders, readAIErrorMessage } from '@/services/aiApi';
-import type { ConversationMessage, GeneratedTableSchema } from '@ddlbuilder/shared-types/ai-generate';
+import type {
+  ConversationMessage,
+  GeneratedTableSchema,
+} from '@ddlbuilder/shared-types/ai-generate';
 import type { FieldRow, IndexDefinition } from '@ddlbuilder/shared-types';
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 import i18n from '@/i18n';

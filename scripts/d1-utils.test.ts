@@ -21,7 +21,7 @@ describe('d1-utils', () => {
 
   it('builds wrangler execute args from sql file', () => {
     expect(buildD1ExecuteArgs('local', { file: '/tmp/test.sql' })).toEqual([
-      'x',
+      'exec',
       'wrangler',
       'd1',
       'execute',

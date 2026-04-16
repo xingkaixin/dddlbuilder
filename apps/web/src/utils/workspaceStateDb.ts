@@ -1,5 +1,9 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { SavedTableDraftRecord, WorkspaceScope, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
+import type {
+  SavedTableDraftRecord,
+  WorkspaceScope,
+  WorkspaceSource,
+} from '@ddlbuilder/shared-types/workspace';
 import { STORAGE_KEY } from '@/utils/constants';
 import {
   STORE_NAME,

@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url';
 
 export type D1Mode = 'local' | 'remote';
 
-const bunCmd = process.platform === 'win32' ? 'bun.exe' : 'bun';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 export const D1_BINDING = 'USER_DB';
@@ -35,7 +34,7 @@ export const buildD1ExecuteArgs = (
     throw new Error('缺少 SQL 输入');
   }
 
-  const args = ['x', 'wrangler', 'd1', 'execute', D1_BINDING, getD1Flag(mode)];
+  const args = ['exec', 'wrangler', 'd1', 'execute', D1_BINDING, getD1Flag(mode)];
   if (mode === 'local') {
     args.push('--persist-to', localPersistDir);
   }
@@ -55,7 +54,7 @@ export const runD1Execute = (
   mode: D1Mode,
   input: { file?: string; command?: string; json?: boolean },
 ): void => {
-  const result = spawnSync(bunCmd, buildD1ExecuteArgs(mode, input), {
+  const result = spawnSync('pnpm', buildD1ExecuteArgs(mode, input), {
     cwd: repoRoot,
     stdio: 'inherit',
   });

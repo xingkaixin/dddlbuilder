@@ -24,41 +24,41 @@
 
 ## 开发与构建
 
-依赖 Node.js 与包管理器（npm/pnpm/yarn/bun 均可）：
+依赖 Node.js 与 pnpm：
 
 ```bash
 # 安装依赖
-bun i
+pnpm install
 
 # 本地开发（应用，支持热更新）
-bun run dev
+pnpm run dev
 
 # 仅启动前端开发服务
-bun run dev:app
+pnpm run dev:app
 
 # Worker 运行时调试
-bun run dev:worker
+pnpm run dev:worker
 
 # 产物构建
-bun run build
+pnpm run build
 
 # 部署（自动读取 .deploy.secrets）
-bun run deploy
+pnpm run deploy
 ```
 
 开发命令说明：
 
-- `bun run dev`：启动前端开发服务、Worker 运行时与文档开发服务，入口为 `http://localhost:3000`，修改页面代码会通过 Vite 自动热更新。
-- `bun run dev:app`：仅启动前端开发服务（Vite）。
-- `bun run dev:worker`：先构建一次 Worker 产物，再用 `wrangler dev` 在 `http://localhost:8787` 启动运行时调试服务。
-- `bun run db:migrate:local`：初始化或升级本地 D1 用户系统 schema。
-- `bun run db:seed:local`：写入本地 D1 最小种子数据。
-- `bun run db:reset:local`：清空并重建本地 D1 schema，再重新 seed。
-- `bun run db:inspect:local`：查看本地 D1 当前表与索引。
-- `bun run db:migrate:remote` / `bun run db:inspect:remote`：显式连接 remote D1 执行迁移或检查。
-- `bun run dev:docs`：仅启动文档开发服务（`http://127.0.0.1:5174/docs/`）。
-- `bun run dev` 运行时，`/docs` 会自动代理到 docs dev server；如果只运行 `bun run dev:app`，需要再单独运行 `bun run dev:docs` 才能通过 `http://localhost:3000/docs/` 查看文档。
-- `bun run dev` 或 `bun run dev:app` 运行时，前端的 `/api/*` 请求会代理到 `http://127.0.0.1:8787`。如果没有启动 `bun run dev:worker`，D1 / KV / Better Auth / Turnstile 都不会生效。
+- `pnpm run dev`：启动前端开发服务、Worker 运行时与文档开发服务，入口为 `http://localhost:3000`，修改页面代码会通过 Vite 自动热更新。
+- `pnpm run dev:app`：仅启动前端开发服务（Vite）。
+- `pnpm run dev:worker`：先构建一次 Worker 产物，再用 `wrangler dev` 在 `http://localhost:8787` 启动运行时调试服务。
+- `pnpm run db:migrate:local`：初始化或升级本地 D1 用户系统 schema。
+- `pnpm run db:seed:local`：写入本地 D1 最小种子数据。
+- `pnpm run db:reset:local`：清空并重建本地 D1 schema，再重新 seed。
+- `pnpm run db:inspect:local`：查看本地 D1 当前表与索引。
+- `pnpm run db:migrate:remote` / `pnpm run db:inspect:remote`：显式连接 remote D1 执行迁移或检查。
+- `pnpm run dev:docs`：仅启动文档开发服务（`http://127.0.0.1:5174/docs/`）。
+- `pnpm run dev` 运行时，`/docs` 会自动代理到 docs dev server；如果只运行 `pnpm run dev:app`，需要再单独运行 `pnpm run dev:docs` 才能通过 `http://localhost:3000/docs/` 查看文档。
+- `pnpm run dev` 或 `pnpm run dev:app` 运行时，前端的 `/api/*` 请求会代理到 `http://127.0.0.1:8787`。如果没有启动 `pnpm run dev:worker`，D1 / KV / Better Auth / Turnstile 都不会生效。
 
 ### 部署 secrets
 
@@ -68,9 +68,9 @@ bun run deploy
 
 1. 复制 `.deploy.secrets.example` 为 `.deploy.secrets`
 2. 在 `.deploy.secrets` 中填写生产 secrets
-3. 执行 `bun run deploy`
+3. 执行 `pnpm run deploy`
 
-`bun run deploy` 会在构建后自动调用 `wrangler deploy --config wrangler.deploy.toml`，如果检测到 `.deploy.secrets`，会额外带上 `--secrets-file .deploy.secrets`，不需要再一个个手动 `wrangler secret put`。
+`pnpm run deploy` 会在构建后自动调用 `wrangler deploy --config wrangler.deploy.toml`，如果检测到 `.deploy.secrets`，会额外带上 `--secrets-file .deploy.secrets`，不需要再一个个手动 `wrangler secret put`。
 
 `.deploy.secrets` 使用标准 `.env` 格式，例如：
 
@@ -85,7 +85,7 @@ TURNSTILE_SECRET_KEY=xxx
 如果你想把 secrets 文件放在别处，部署时可通过环境变量覆盖：
 
 ```bash
-WRANGLER_SECRETS_FILE=/absolute/path/to/prod.secrets bun run deploy
+WRANGLER_SECRETS_FILE=/absolute/path/to/prod.secrets pnpm run deploy
 ```
 
 ### 环境变量
@@ -118,7 +118,7 @@ WRANGLER_SECRETS_FILE=/absolute/path/to/prod.secrets bun run deploy
 - `CSP_MODE`：CSP 灰度模式（`off` / `report-only` / `enforce` / `both`）
 - `CSP_POLICY`：自定义 CSP 策略文本（可选，不配置则使用内置默认策略）
 
-说明：`CSP_*` 配置在 Bun 服务端与 API 运行时生效；`vercel.json` 中仍保留静态 CSP 兜底策略。
+说明：`CSP_*` 配置在本地 Node 服务端与 API 运行时生效；`vercel.json` 中仍保留静态 CSP 兜底策略。
 
 - `VITE_ENABLE_CNY_FIREWORKS`：是否启用春节烟花入口与节日动效（默认 `false`，设为 `true` 后恢复 Header 入口和烟花 overlay）
 - `VITE_ENABLE_AI_STREAM_DEBUG`：是否启用前端 AI streaming 调试日志（构建时变量，默认 `false`）
@@ -133,7 +133,7 @@ WRANGLER_SECRETS_FILE=/absolute/path/to/prod.secrets bun run deploy
 
 调试说明：
 
-- 后端 `OPENAI_STREAM_DEBUG` 在 Worker 运行时生效；使用 `bun run dev:worker` 时，优先通过项目根目录下的 `.dev.vars` 注入，例如：
+- 后端 `OPENAI_STREAM_DEBUG` 在 Worker 运行时生效；使用 `pnpm run dev:worker` 时，优先通过项目根目录下的 `.dev.vars` 注入，例如：
 
 ```bash
 OPENAI_STREAM_DEBUG=true
@@ -153,22 +153,22 @@ localStorage.setItem('ddlbuilder:ai-stream-debug', 'true');
 首次拉起用户系统底座时，按下面顺序执行：
 
 ```bash
-bun run db:migrate:local
-bun run db:seed:local
-bun run dev:worker
+pnpm run db:migrate:local
+pnpm run db:seed:local
+pnpm run dev:worker
 ```
 
 如果需要回到干净状态：
 
 ```bash
-bun run db:reset:local
+pnpm run db:reset:local
 ```
 
 说明：
 
 - 默认所有 D1 命令都操作 local simulation。
 - remote D1 只允许通过显式的 `:remote` 命令访问。
-- `bun run dev:worker` 和 `bun run db:*:local` 共享同一份本地 D1，持久化目录都是 `.wrangler/state/dev`。
+- `pnpm run dev:worker` 和 `pnpm run db:*:local` 共享同一份本地 D1，持久化目录都是 `.wrangler/state/dev`。
 
 ## 使用说明
 

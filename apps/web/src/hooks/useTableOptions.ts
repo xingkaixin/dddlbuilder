@@ -1,5 +1,9 @@
 import { useEffect } from 'react';
-import type { PersistedState, TableMiscConfig, HivePartitionConfig } from '@ddlbuilder/shared-types';
+import type {
+  PersistedState,
+  TableMiscConfig,
+  HivePartitionConfig,
+} from '@ddlbuilder/shared-types';
 import { useTableOptionsStore } from '@/stores';
 
 export interface UseTableOptionsReturn {

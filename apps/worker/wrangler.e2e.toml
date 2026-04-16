@@ -7,6 +7,14 @@ directory = "../web/dist/client"
 html_handling = "auto-trailing-slash"
 not_found_handling = "single-page-application"
 
+[[kv_namespaces]]
+binding = "SHARE_KV"
+id = "YOUR_SHARE_KV_ID"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "YOUR_RATE_LIMIT_KV_ID"
+
 [[d1_databases]]
 binding = "USER_DB"
 database_name = "ddlbuilder-user-e2e"

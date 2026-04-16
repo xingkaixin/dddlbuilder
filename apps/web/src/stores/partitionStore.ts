@@ -1,5 +1,9 @@
 import { create } from 'zustand';
-import type { MysqlPartitionConfig, MysqlPartitionType, PartitionDefinition } from '@ddlbuilder/shared-types';
+import type {
+  MysqlPartitionConfig,
+  MysqlPartitionType,
+  PartitionDefinition,
+} from '@ddlbuilder/shared-types';
 import { replaceIdentifierToken } from '@/utils/fieldRenameUtils';
 
 type Setter<T> = T | ((prev: T) => T);
