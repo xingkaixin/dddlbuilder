@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const bunCmd = process.platform === 'win32' ? 'bun.exe' : 'bun';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const configPath = path.join(repoRoot, 'wrangler.deploy.toml');
+const configPath = path.join(repoRoot, 'apps', 'worker', 'wrangler.deploy.toml');
 const secretsFile = process.env.WRANGLER_SECRETS_FILE ?? path.join(repoRoot, '.deploy.secrets');
 
 const args = ['x', 'wrangler', 'deploy', '--config', configPath];

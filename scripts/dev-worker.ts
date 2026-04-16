@@ -1,11 +1,16 @@
 import { spawn, spawnSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const bunCmd = process.platform === 'win32' ? 'bun.exe' : 'bun';
 const workerPort = process.env.WORKER_DEV_PORT ?? '8787';
 const persistDir = process.env.WRANGLER_PERSIST_DIR ?? '.wrangler/state/dev';
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const workerDir = path.join(repoRoot, 'apps', 'worker');
 
 const build = spawnSync(bunCmd, ['run', 'build:wrangler-dev'], {
   stdio: 'inherit',
+  cwd: repoRoot,
 });
 
 if (build.status !== 0) {
@@ -23,11 +28,12 @@ const child = spawn(
     '--inspector-port',
     '0',
     '--persist-to',
-    persistDir,
+    path.resolve(repoRoot, persistDir),
   ],
   {
     stdio: 'inherit',
     env: process.env,
+    cwd: workerDir,
   },
 );
 

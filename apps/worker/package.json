@@ -1,0 +1,29 @@
+{
+  "name": "@ddlbuilder/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build --config vite.config.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ddlbuilder/db": "workspace:*",
+    "@ddlbuilder/shared-types": "workspace:*",
+    "better-auth": "*",
+    "hono": "*",
+    "drizzle-orm": "*",
+    "openai": "*",
+    "resend": "*",
+    "jose": "*",
+    "uuid": "*"
+  },
+  "devDependencies": {
+    "@ddlbuilder/tsconfig": "workspace:*",
+    "@cloudflare/workers-types": "*",
+    "typescript": "*",
+    "vite": "*",
+    "wrangler": "*",
+    "@better-auth/drizzle-adapter": "*"
+  }
+}

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 
-const serverBundlePath = 'dist/server.js';
+const serverBundlePath = 'apps/worker/dist/server.js';
 
 if (!existsSync(serverBundlePath)) {
   throw new Error(`Missing server bundle: ${serverBundlePath}`);
