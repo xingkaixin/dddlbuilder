@@ -1,5 +1,5 @@
 {
-  "name": "ddlbuilder-docs",
+  "name": "@ddlbuilder/docs",
   "private": true,
   "type": "module",
   "scripts": {

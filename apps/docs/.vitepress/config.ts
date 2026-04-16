@@ -114,7 +114,7 @@ export default defineConfig({
   title: '筑表师文档',
   description: '筑表师使用文档与常见问题',
   base: '/docs/',
-  outDir: '../dist/docs',
+  outDir: '.vitepress/dist',
   srcExclude: ['AGENTS.md'],
   head: [
     ['meta', { name: 'theme-color', content: '#E07A5F' }],
