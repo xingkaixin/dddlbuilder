@@ -6,7 +6,7 @@ import {
 import {
   generateAlterDDL as generateAlterDDLFromModule,
   generateRollbackDDL as generateRollbackDDLFromModule,
-} from '@/utils/alter-ddl';
+} from '@ddlbuilder/ddl-core';
 import * as constantsCompat from '@/utils/constants';
 import {
   COLUMN_HEADERS,

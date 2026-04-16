@@ -1,7 +1,7 @@
 import { useCallback, type Dispatch, type SetStateAction } from 'react';
 import type { ParsedResult } from '@/utils/SqlParser';
 import { createEmptyRow } from '@/utils/helpers';
-import { getSchemaAndTable } from '@/utils/databaseTypeMapping';
+import { getSchemaAndTable } from '@ddlbuilder/ddl-core';
 import type {
   DatabaseType,
   FieldRow,

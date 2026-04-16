@@ -1,4 +1,4 @@
-import type { NormalizedField, SqlFormatMode } from '../types';
+import type { NormalizedField, SqlFormatMode } from '@ddlbuilder/shared-types';
 import {
   getCanonicalBaseType,
   supportsAutoIncrement,

@@ -17,7 +17,7 @@ import {
   supportsCollationOption,
   supportsTablespaceOption,
   supportsStorageOption,
-} from '@/utils/tableOptions';
+} from '@ddlbuilder/ddl-core';
 import { useTranslation } from 'react-i18next';
 
 const DEFAULT_OPTION_VALUE = 'default';

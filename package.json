@@ -36,6 +36,7 @@
     "deploy": "bun run build && bun run scripts/deploy.ts"
   },
   "dependencies": {
+    "@ddlbuilder/ddl-core": "workspace:*",
     "@ddlbuilder/shared-types": "workspace:*",
     "@better-auth/drizzle-adapter": "^1.6.2",
     "@dnd-kit/core": "^6.3.1",

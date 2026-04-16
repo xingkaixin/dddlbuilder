@@ -1,6 +1,6 @@
 import type { GeneratedField, GeneratedTableSchema } from '@ddlbuilder/shared-types/ai-generate';
 import type { StructuredSuggestion } from '@/hooks/useDDLReview';
-import { getSchemaAndTable } from '@/utils/databaseTypeMapping';
+import { getSchemaAndTable } from '@ddlbuilder/ddl-core';
 
 function toNormalizedToken(value: unknown): string {
   if (typeof value === 'string') {

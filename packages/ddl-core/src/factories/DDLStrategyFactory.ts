@@ -1,4 +1,4 @@
-import type { DatabaseType } from '../types';
+import type { DatabaseType } from '@ddlbuilder/shared-types';
 import type { DDLStrategy } from '../interfaces/DDLStrategy';
 import { MySqlStrategy } from '../strategies/MySqlStrategy';
 import { PostgresStrategy } from '../strategies/PostgresStrategy';

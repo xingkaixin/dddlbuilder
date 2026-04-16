@@ -8,8 +8,8 @@ import type {
   SqlFormatMode,
   TableMiscConfig,
 } from '@ddlbuilder/shared-types';
-import { buildDDL, buildDCL } from '@/utils/ddlGenerators';
-import { buildQualifiedTableName } from '@/utils/databaseTypeMapping';
+import { buildDDL, buildDCL } from '@ddlbuilder/ddl-core';
+import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
 
 export interface UseSqlGenerationReturn {
   generatedSql: string;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { FieldDiff } from '@/utils/tableDiff';
+import type { FieldDiff } from '@ddlbuilder/ddl-core';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 import {
   generateAddColumn,
@@ -7,7 +7,7 @@ import {
   generateModifyColumn,
   generateRenameColumn,
   generateTableCommentAlter,
-} from '@/utils/alter-ddl/columnStatements';
+} from '@ddlbuilder/ddl-core';
 
 function createField(overrides: Partial<NormalizedField> = {}): NormalizedField {
   return {

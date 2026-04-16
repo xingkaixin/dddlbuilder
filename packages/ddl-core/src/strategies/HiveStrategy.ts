@@ -3,7 +3,7 @@ import type {
   NormalizedField,
   SqlFormatMode,
   TableMiscConfig,
-} from '../types';
+} from '@ddlbuilder/shared-types';
 import { escapeSingleQuotes, parseFieldType } from '../utils/databaseTypeMapping';
 import { AbstractDDLStrategy } from './AbstractDDLStrategy';
 

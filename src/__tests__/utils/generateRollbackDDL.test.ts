@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateRollbackDDL } from '@/utils/alterDdlGenerator';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
-import type { TableDiff } from '@/utils/tableDiff';
+import type { TableDiff } from '@ddlbuilder/ddl-core';
 
 function createField(overrides: Partial<NormalizedField> = {}): NormalizedField {
   return {

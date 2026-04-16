@@ -1,4 +1,4 @@
-import type { ParsedFieldType } from '../types/index.js';
+import type { ParsedFieldType } from '@ddlbuilder/shared-types';
 
 export interface TypeMappingRule {
   defaultArgs?: string[];

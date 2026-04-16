@@ -4,7 +4,7 @@ import type {
   IndexDefinition,
   SqlFormatMode,
   TableMiscConfig,
-} from '../types';
+} from '@ddlbuilder/shared-types';
 import type { TableDiff } from '../utils/tableDiff';
 
 export interface DDLStrategy {

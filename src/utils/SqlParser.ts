@@ -1,4 +1,4 @@
-import type { DatabaseType } from '../types/index.js';
+import type { DatabaseType } from '@ddlbuilder/shared-types';
 import {
   preprocessOracle,
   preprocessSqlServer,

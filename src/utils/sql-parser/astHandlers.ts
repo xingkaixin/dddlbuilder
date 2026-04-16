@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { DatabaseType, IndexField, NormalizedField } from '../../types/index.js';
-import { buildPrimaryKeyName } from '../primaryKeyNaming.js';
+import type { DatabaseType, IndexField, NormalizedField } from '@ddlbuilder/shared-types';
+import { buildPrimaryKeyName } from '@ddlbuilder/ddl-core';
 import type { ParsedResult } from './types.js';
 import {
   buildIndexFields,

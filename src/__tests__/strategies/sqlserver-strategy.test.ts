@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SqlServerStrategy } from '@/strategies/SqlServerStrategy';
+import { SqlServerStrategy } from '@ddlbuilder/ddl-core';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 const baseFields: NormalizedField[] = [

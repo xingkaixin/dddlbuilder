@@ -9,7 +9,7 @@ import {
   getUiDefaultKindOptions,
   getUiOnUpdateOptions,
 } from '@/utils/helpers';
-import { getCanonicalBaseType } from '@/utils/databaseTypeMapping';
+import { getCanonicalBaseType } from '@ddlbuilder/ddl-core';
 import { getDefaultKindLabel, getOnUpdateLabel } from '@/i18n/fieldEnums';
 import { useTranslation } from 'react-i18next';
 

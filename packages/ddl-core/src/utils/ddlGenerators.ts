@@ -6,7 +6,7 @@ import type {
   MysqlPartitionConfig,
   SqlFormatMode,
   TableMiscConfig,
-} from '../types';
+} from '@ddlbuilder/shared-types';
 import { DDLStrategyFactory } from '../factories/DDLStrategyFactory';
 import { buildTableOptionsClause } from './tableOptions';
 

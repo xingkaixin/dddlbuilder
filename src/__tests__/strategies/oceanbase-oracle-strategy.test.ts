@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { OceanBaseOracleStrategy } from '@/strategies/OceanBaseOracleStrategy';
+import { OceanBaseOracleStrategy } from '@ddlbuilder/ddl-core';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('OceanBaseOracleStrategy', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MariaDbStrategy } from '@/strategies/MariaDbStrategy';
+import { MariaDbStrategy } from '@ddlbuilder/ddl-core';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('MariaDbStrategy', () => {

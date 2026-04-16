@@ -14,9 +14,9 @@ export {
   shouldQuoteDefault,
   isLikelyFunctionOrKeyword,
   TYPE_ALIASES,
-} from './utils/databaseTypeMapping';
+} from '@ddlbuilder/ddl-core';
 
-export { buildDDL, buildDCL, buildOracleSynonyms } from './utils/ddlGenerators';
+export { buildDDL, buildDCL, buildOracleSynonyms } from '@ddlbuilder/ddl-core';
 
 export {
   normalizeFields,
@@ -67,4 +67,4 @@ export type {
   PersistedState,
   SqlFormatMode,
   TableMiscConfig,
-} from './types';
+} from '@ddlbuilder/shared-types';

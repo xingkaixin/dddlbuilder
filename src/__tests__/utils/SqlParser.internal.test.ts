@@ -28,16 +28,12 @@ const sqlParserRuntimeImportFiles = [
   '../../utils/preprocessors/OraclePreprocessor.ts',
   '../../utils/preprocessors/PostgresPreprocessor.ts',
   '../../utils/preprocessors/SqlServerPreprocessor.ts',
-  '../../utils/primaryKeyNaming.ts',
-  '../../utils/databaseTypeMapping.ts',
-  '../../utils/TypeMapper.ts',
   '../../utils/sql-parser/astHandlers.ts',
   '../../utils/sql-parser/normalizers.ts',
   '../../utils/sql-parser/parserLoader.ts',
   '../../utils/sql-parser/partitionParser.ts',
   '../../utils/sql-parser/preprocessMysql.ts',
   '../../utils/sql-parser/types.ts',
-  '../../configs/typeMappings.ts',
 ].map((relativePath) => fileURLToPath(new URL(relativePath, import.meta.url)));
 
 describe('SqlParser internals', () => {

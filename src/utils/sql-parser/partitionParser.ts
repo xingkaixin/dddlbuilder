@@ -1,4 +1,4 @@
-import type { MysqlPartitionConfig, MysqlPartitionType } from '../../types/index.js';
+import type { MysqlPartitionConfig, MysqlPartitionType } from '@ddlbuilder/shared-types';
 
 export const PARTITION_BY_REGEX = /\bPARTITION\s+BY\b/i;
 

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { DatabaseType, IndexDefinition, IndexField } from '@ddlbuilder/shared-types';
-import { buildPrimaryKeyName } from '@/utils/primaryKeyNaming';
+import { buildPrimaryKeyName } from '@ddlbuilder/ddl-core';
 import { isSameIdentifierToken, replaceIdentifierToken } from '@/utils/fieldRenameUtils';
 import {
   MAX_INDEX_NAME_LENGTH,
