@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "vitepress dev . --host 127.0.0.1 --port 5174 --strictPort",
+    "build": "vitepress build .",
+    "preview": "vitepress preview . --host 127.0.0.1 --port 5174 --strictPort",
     "docs:dev": "vitepress dev . --host 127.0.0.1 --port 5174 --strictPort",
     "docs:build": "vitepress build .",
     "docs:preview": "vitepress preview . --host 127.0.0.1 --port 5174 --strictPort"
