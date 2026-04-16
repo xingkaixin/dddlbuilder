@@ -83,6 +83,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "turbo": "^2.5.4",
     "@better-auth/cli": "^1.4.21",
     "@cloudflare/workers-types": "^4.20250317.0",
     "@playwright/test": "^1.58.2",
