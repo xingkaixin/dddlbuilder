@@ -56,8 +56,8 @@ export function registerParseSqlRoute(app: Hono<ApiEnv>) {
     }
 
     try {
-      // TODO(Phase 5): move SqlParser to @ddlbuilder/ddl-core and update this import
-      const { SqlParser } = await import('../../../../src/utils/SqlParser.js');
+      // TODO(Phase 6): move SqlParser to @ddlbuilder/ddl-core and update this import
+      const { SqlParser } = await import('../../../../apps/web/src/utils/SqlParser.js');
       const parser = new SqlParser();
       const result = await parser.parseAsync(sql, dbType);
 

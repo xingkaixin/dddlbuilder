@@ -30,7 +30,7 @@ export default defineConfig({
   build: {
     outDir: 'dist/client',
     chunkSizeWarningLimit: 1500,
-    emptyOutDir: false, // 保留服务端构建结果
+    emptyOutDir: true,
     rollupOptions: {},
   },
 });
