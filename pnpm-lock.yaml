@@ -159,6 +159,12 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^4.20250317.0
         version: 4.20260416.1
+      '@ddlbuilder/tsconfig':
+        specifier: workspace:*
+        version: link:packages/tsconfig
+      '@hono/node-server':
+        specifier: ^1.19.11
+        version: 1.19.14(hono@4.12.14)
       '@playwright/test':
         specifier: ^1.58.2
         version: 1.59.1
@@ -225,6 +231,9 @@ importers:
       tailwindcss-animate:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@4.2.2)
+      tsx:
+        specifier: ^4.19.0
+        version: 4.21.0
       turbo:
         specifier: ^2.5.4
         version: 2.9.6
@@ -258,6 +267,10 @@ importers:
       '@ddlbuilder/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
+    devDependencies:
+      '@ddlbuilder/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
 
   apps/worker:
     dependencies:
@@ -313,14 +326,26 @@ importers:
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(@cloudflare/workers-types@4.20260416.1)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.20.0)(better-sqlite3@12.9.0)(kysely@0.28.16)(pg@8.20.0)
+    devDependencies:
+      '@ddlbuilder/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
 
   packages/ddl-core:
     dependencies:
       '@ddlbuilder/shared-types':
         specifier: workspace:*
         version: link:../shared-types
+    devDependencies:
+      '@ddlbuilder/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
 
-  packages/shared-types: {}
+  packages/shared-types:
+    devDependencies:
+      '@ddlbuilder/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
 
   packages/tsconfig: {}
 

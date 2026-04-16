@@ -4,7 +4,11 @@ import type {
   WorkspaceSnapshotPushRequest,
   WorkspaceSnapshotResponse,
 } from '@ddlbuilder/shared-types/api';
-import type { SavedTableDraftRecord, WorkspaceScope, WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
+import type {
+  SavedTableDraftRecord,
+  WorkspaceScope,
+  WorkspaceSnapshot,
+} from '@ddlbuilder/shared-types/workspace';
 import {
   addSavedTable,
   deleteSavedTable,

@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
-import { serveStatic } from 'hono/bun';
+import { serveStatic } from '@hono/node-server/serve-static';
+import { serve } from '@hono/node-server';
 import { applyCspHeaders } from './server-api/lib/csp';
 import api from './api/index';
 
@@ -59,12 +60,5 @@ app.get('*', serveStatic({ path: './dist/client/index.html' }));
 
 const port = Number(process.env.PORT) || 3000;
 
-const serverConfig = {
-  port,
-  fetch: app.fetch,
-};
-
-Bun.serve(serverConfig);
+serve({ fetch: app.fetch, port });
 console.log(`🚀 Server running at http://localhost:${port}`);
-
-export { serverConfig };

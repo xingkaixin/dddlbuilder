@@ -1,7 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 
-const bunCmd = process.platform === 'win32' ? 'bun.exe' : 'bun';
-
 const children: ChildProcess[] = [];
 let shuttingDown = false;
 
@@ -24,7 +22,7 @@ const shutdown = (code = 0) => {
 };
 
 const start = (label: string, args: string[]) => {
-  const child = spawn(bunCmd, args, {
+  const child = spawn('pnpm', args, {
     stdio: 'inherit',
     env: process.env,
   });

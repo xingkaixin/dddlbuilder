@@ -15,5 +15,8 @@
   "dependencies": {
     "@ddlbuilder/ddl-core": "workspace:*",
     "@ddlbuilder/shared-types": "workspace:*"
+  },
+  "devDependencies": {
+    "@ddlbuilder/tsconfig": "workspace:*"
   }
 }

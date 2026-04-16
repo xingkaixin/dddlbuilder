@@ -22,7 +22,7 @@ Status: Draft
 
 - **wrangler.toml 当前路径依赖**：`main = "dist/server.js"`，`[assets] directory = "dist/client"`，两者都相对根目录，迁移后需重新定位。证据：[`wrangler.toml`](../wrangler.toml)
 
-- **docs 已有独立构建边界**：`docs:build` 用 `bun install --cwd docs && bun run --cwd docs docs:build`，VitePress 子项目实际上已经是半独立的。证据：[`package.json`](../package.json#L22)
+- **docs 已有独立构建边界**：`docs:build` 用 `pnpm run --dir apps/docs docs:build`，VitePress 子项目实际上已经是半独立的。证据：[`package.json`](../package.json)
 
 ---
 
@@ -53,7 +53,7 @@ Status: Draft
 - 不引入新的运行时依赖或技术栈。
 - 不改变 Cloudflare Workers 的部署模型（仍是单 Worker + D1 + KV）。
 - 不拆分 admin 为独立 app（`src/admin/` 留在 `apps/web` 内）。
-- 不迁移包管理器（暂不从 bun 切换到纯 pnpm，开发体验保持 bun 优先；pnpm 仅用于 workspace 管理）。
+- 不引入新的运行时依赖或技术栈。
 - 不在本轮引入 Changesets 或版本管理策略。
 
 ---
@@ -122,7 +122,7 @@ packages/shared-types → packages/ddl-core
 低风险改动：
 - TypeScript project references 重组（各包有独立 `tsconfig.json`）。
 - `lint` 和 `test` 命令分散到各 app/package 的 `package.json`，根目录通过 Turbo 聚合。
-- `scripts/` 目录留在根目录（用于 CI 和部署的 bun 脚本）。
+- `scripts/` 目录留在根目录（用于 CI 和部署的 pnpm 脚本）。
 
 ### 5. 日常开发体验
 
@@ -239,7 +239,7 @@ ddlbuilder/
 │       ├── drizzle.config.ts   # Drizzle Kit 配置
 │       ├── tsconfig.json
 │       └── package.json        # @ddlbuilder/db
-├── scripts/                    # CI/部署 bun 脚本（保留在根目录）
+├── scripts/                    # CI/部署 pnpm 脚本（保留在根目录）
 ├── turbo.json
 ├── pnpm-workspace.yaml
 └── package.json                # root（仅含工具脚本和 workspace devDeps）
@@ -476,7 +476,7 @@ directory = "dist/client"
 
 ## 待讨论事项
 
-- **bun vs pnpm 并存**：当前 `scripts/` 中全部脚本使用 `bun run`，迁移后是否保持 bun 作为脚本执行器、pnpm 仅用于 workspace 依赖管理？建议保持 bun 作为执行器（`bun run turbo build`），pnpm 管理 workspace，两者不冲突。
+- **包管理器已统一为 pnpm**：原 KLIP 设计阶段考虑 bun 与 pnpm 并存，实际执行中已将 `scripts/` 中所有 `bun run` 替换为 `pnpm run`，`server.ts` 也从 `hono/bun` 迁移到 `@hono/node-server`，彻底移除对 bun 的依赖。
 - **E2E 测试归属**：Playwright E2E 测试（`e2e/` 目录）当前面向完整全栈，应归属于 `apps/worker` 还是根目录？建议放在根目录 `e2e/`，因为它是跨 app 的集成测试。
 - **`src/types/aiGenerate.ts` 和 `src/types/locale.ts` 的归属**：`aiGenerate.ts` 定义的类型若仅被前端 AI 功能使用，则留在 `apps/web`；若 `server-api/` 的 AI 路由也依赖这些类型，则需移入 `shared-types`。需要代码审查确认后决定。待确认。
 

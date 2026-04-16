@@ -43,7 +43,7 @@
       }
     },
     {
-      "files": ["src/__tests__/**/*.{ts,tsx}", "server-api/__tests__/**/*.{ts,tsx}"],
+      "files": ["**/__tests__/**/*.{ts,tsx}"],
       "rules": {
         "vitest/require-mock-type-parameters": "off",
         "typescript/unbound-method": "off",
