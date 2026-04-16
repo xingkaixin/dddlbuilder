@@ -9,9 +9,9 @@ const bunCmd = process.platform === 'win32' ? 'bun.exe' : 'bun';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 export const D1_BINDING = 'USER_DB';
-export const migrationDir = path.join(repoRoot, 'migrations');
+export const migrationDir = path.join(repoRoot, 'packages', 'db', 'migrations');
 export const resetSqlPath = path.join(repoRoot, 'sql', 'reset-user-system.sql');
-export const seedSqlPath = path.join(repoRoot, 'seeds', 'user-system.local.sql');
+export const seedSqlPath = path.join(repoRoot, 'packages', 'db', 'seeds', 'user-system.local.sql');
 export const localPersistDir =
   process.env.WRANGLER_PERSIST_DIR ?? path.join('.wrangler', 'state', 'dev');
 
