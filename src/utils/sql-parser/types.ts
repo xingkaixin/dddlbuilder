@@ -3,7 +3,7 @@ import type {
   MysqlPartitionConfig,
   NormalizedField,
   TableMiscConfig,
-} from '../../types/index.js';
+} from '@ddlbuilder/shared-types';
 
 export type ParsedResult = {
   schemaName?: string;

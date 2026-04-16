@@ -8,7 +8,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import type { TableDiff, FieldDiff, IndexDiff } from '@/utils/tableDiff';
+import type { TableDiff, FieldDiff, IndexDiff } from '@ddlbuilder/ddl-core';
 import type { NormalizedField, DatabaseType } from '@ddlbuilder/shared-types';
 import { generateAlterDDL, generateRollbackDDL } from '@/utils/alterDdlGenerator';
 import { cn } from '@/lib/utils';

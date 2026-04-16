@@ -1,4 +1,4 @@
-import type { DatabaseType, ParsedFieldType } from '../types/index.js';
+import type { DatabaseType, ParsedFieldType } from '@ddlbuilder/shared-types';
 import { TypeMapper } from './TypeMapper.js';
 
 export const TYPE_ALIASES: Record<string, string> = {

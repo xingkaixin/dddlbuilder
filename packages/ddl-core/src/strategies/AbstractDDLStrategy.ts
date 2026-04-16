@@ -4,7 +4,7 @@ import type {
   DatabaseType,
   SqlFormatMode,
   TableMiscConfig,
-} from '../types';
+} from '@ddlbuilder/shared-types';
 import type { DDLStrategy } from '../interfaces/DDLStrategy';
 import { escapeSingleQuotes, splitQualifiedName } from '../utils/databaseTypeMapping';
 import { TypeMapper } from '../utils/TypeMapper';

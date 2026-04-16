@@ -12,7 +12,7 @@ import type {
 } from '@ddlbuilder/shared-types';
 import { buildNormalizedFields } from '@/stores';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
-import { diffPersistedState, type TableDiff } from '@/utils/tableDiff';
+import { diffPersistedState, type TableDiff } from '@ddlbuilder/ddl-core';
 
 interface UseDerivedTableStateDeps {
   // 基础表数据

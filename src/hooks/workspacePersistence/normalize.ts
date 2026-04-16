@@ -1,7 +1,7 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { GlobalDraftSummary, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 import type { WorkspaceGlobalDraftRecord, WorkspaceSessionRecord } from '@/utils/workspaceStateDb';
-import { getSchemaAndTable } from '@/utils/databaseTypeMapping';
+import { getSchemaAndTable } from '@ddlbuilder/ddl-core';
 
 export type GlobalDraftRecord = WorkspaceGlobalDraftRecord;
 

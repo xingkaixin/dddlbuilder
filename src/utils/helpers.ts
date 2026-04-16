@@ -1,4 +1,4 @@
-import type { DatabaseType, FieldRow, UiDefaultKind, UiOnUpdate } from '../types';
+import type { DatabaseType, FieldRow, UiDefaultKind, UiOnUpdate } from '@ddlbuilder/shared-types';
 import {
   DEFAULT_KIND_OPTIONS,
   ON_UPDATE_OPTIONS,
@@ -10,7 +10,7 @@ import {
   supportsDefaultCurrentTimestamp,
   supportsOnUpdateCurrentTimestamp,
   supportsUuidDefault,
-} from './databaseTypeMapping';
+} from '@ddlbuilder/ddl-core';
 
 export const toStringSafe = (value: unknown) => {
   if (typeof value === 'string') {
@@ -125,7 +125,7 @@ export {
   supportsDefaultCurrentTimestamp,
   supportsOnUpdateCurrentTimestamp,
   supportsUuidDefault,
-} from './databaseTypeMapping';
+} from '@ddlbuilder/ddl-core';
 
 export const getUiDefaultKindOptions = (db: DatabaseType, canonical: string): UiDefaultKind[] => {
   const opts: UiDefaultKind[] = ['无', '常量'];

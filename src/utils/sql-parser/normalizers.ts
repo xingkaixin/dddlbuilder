@@ -1,4 +1,4 @@
-import type { IndexField } from '../../types/index.js';
+import type { IndexField } from '@ddlbuilder/shared-types';
 
 export function normalizeColumnName(column: any): string {
   if (column === undefined || column === null) return '';

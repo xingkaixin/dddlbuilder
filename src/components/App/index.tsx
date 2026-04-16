@@ -37,7 +37,7 @@ import { useFolders } from '@/hooks/useFolders';
 import { useFieldTemplates } from '@/hooks/useFieldTemplates';
 import { countVersions } from '@/utils/tableVersions';
 import { writeWorkspaceSession } from '@/utils/workspaceStateDb';
-import { buildQualifiedTableName } from '@/utils/databaseTypeMapping';
+import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
 import { useTranslation } from 'react-i18next';
 
 import { TooltipProvider } from '@/components/ui/tooltip';

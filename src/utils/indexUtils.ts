@@ -1,4 +1,4 @@
-import type { IndexDefinition } from '../types';
+import type { IndexDefinition } from '@ddlbuilder/shared-types';
 import { toStringSafe } from './helpers';
 
 export const sanitizeIndexesForPersist = (indexes: IndexDefinition[]): IndexDefinition[] =>

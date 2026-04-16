@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { generateAddIndex, generateDropIndex } from '@/utils/alter-ddl/indexStatements';
-import type { IndexDiff } from '@/utils/tableDiff';
+import { generateAddIndex, generateDropIndex } from '@ddlbuilder/ddl-core';
+import type { IndexDiff } from '@ddlbuilder/ddl-core';
 
 function createIndexDiff(overrides: Partial<IndexDiff> = {}): IndexDiff {
   return {

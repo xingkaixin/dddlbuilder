@@ -1,4 +1,4 @@
-import type { MysqlPartitionConfig } from '../../types/index.js';
+import type { MysqlPartitionConfig } from '@ddlbuilder/shared-types';
 import { PARTITION_BY_REGEX, extractPartitionConfig } from './partitionParser.js';
 import { stripPartitionClauses } from './partitionStripper.js';
 

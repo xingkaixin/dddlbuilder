@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { KingbaseStrategy } from '@/strategies/KingbaseStrategy';
+import { KingbaseStrategy } from '@ddlbuilder/ddl-core';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('KingbaseStrategy', () => {

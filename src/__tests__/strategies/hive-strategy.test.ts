@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HiveStrategy } from '@/strategies/HiveStrategy';
+import { HiveStrategy } from '@ddlbuilder/ddl-core';
 import type { NormalizedField, TableMiscConfig } from '@ddlbuilder/shared-types';
 
 describe('HiveStrategy', () => {

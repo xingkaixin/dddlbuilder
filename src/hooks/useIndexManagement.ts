@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { DatabaseType, IndexField, IndexDefinition } from '@ddlbuilder/shared-types';
-import { buildPrimaryKeyName } from '@/utils/primaryKeyNaming';
+import { buildPrimaryKeyName } from '@ddlbuilder/ddl-core';
 import {
   buildIndexName,
   truncateIndexName,

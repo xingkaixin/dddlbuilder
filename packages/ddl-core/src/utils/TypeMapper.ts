@@ -1,4 +1,4 @@
-import type { DatabaseType, ParsedFieldType } from '../types/index.js';
+import type { DatabaseType, ParsedFieldType } from '@ddlbuilder/shared-types';
 import { TYPE_MAPPINGS } from '../configs/typeMappings.js';
 import { canonicalizeBaseType } from './databaseTypeMapping.js';
 
