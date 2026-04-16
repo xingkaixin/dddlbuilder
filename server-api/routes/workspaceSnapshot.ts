@@ -1,6 +1,6 @@
 import type { Hono } from 'hono';
-import type { PersistedState } from '../../src/types/index.js';
-import type { WorkspaceSnapshot } from '../../src/types/workspace.js';
+import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import type { ApiEnv } from '../lib/context.js';
 import { authenticateRequest } from '../lib/auth.js';
 import { errorResponse, withMeta } from '../lib/http.js';

@@ -1,5 +1,5 @@
-import type { PersistedState } from '@/types';
-import type { GlobalDraftSummary, WorkspaceSource } from '@/types/workspace';
+import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { GlobalDraftSummary, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 import type { WorkspaceGlobalDraftRecord, WorkspaceSessionRecord } from '@/utils/workspaceStateDb';
 import { getSchemaAndTable } from '@/utils/databaseTypeMapping';
 

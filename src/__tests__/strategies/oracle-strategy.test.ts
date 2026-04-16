@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { OracleStrategy } from '@/strategies/OracleStrategy';
-import type { NormalizedField } from '@/types';
+import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('OracleStrategy', () => {
   const strategy = new OracleStrategy();

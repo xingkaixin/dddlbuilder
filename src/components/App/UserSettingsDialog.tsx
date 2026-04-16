@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/useToast';
 import { exportWorkspaceToCloud, importWorkspaceFromCloud } from '@/services/workspaceSyncService';
-import type { ApiErrorPayload } from '@/types/api';
+import type { ApiErrorPayload } from '@ddlbuilder/shared-types/api';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 
 type CreditLedgerItem = {

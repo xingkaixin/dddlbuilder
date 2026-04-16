@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { STORAGE_KEY } from '@/utils/constants';
-import type { PersistedState } from '@/types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import { addSavedTable, type SavedTableRecord } from '@/utils/savedTablesDb';
 import {
   clearGlobalDraft,

@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import type { PersistedState } from '@/types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import { ShareApiError, createShare } from '@/services/shareService';
 import { reportError } from '@/utils/errorReporter';
 import i18n from '@/i18n';

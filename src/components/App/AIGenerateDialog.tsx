@@ -15,7 +15,7 @@ import {
   type GeneratedTableSchema,
   type PartialTableSchema,
 } from '@/hooks/useAIGenerateTable';
-import type { FieldRow, IndexDefinition, DatabaseType } from '@/types';
+import type { FieldRow, IndexDefinition, DatabaseType } from '@ddlbuilder/shared-types';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
 import { useTranslation } from 'react-i18next';
 import { useAuthSession } from '@/auth/AuthSessionProvider';

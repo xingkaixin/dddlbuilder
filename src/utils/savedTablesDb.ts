@@ -1,5 +1,5 @@
-import type { PersistedState } from '@/types';
-import type { WorkspaceScope } from '@/types/workspace';
+import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import {
   buildScopedWorkspaceKey,
   getAnonymousWorkspaceScope,

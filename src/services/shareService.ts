@@ -1,4 +1,4 @@
-import type { PersistedState } from '@/types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import i18n from '@/i18n';
 
 const SHARE_API_ENDPOINT = '/api/share';

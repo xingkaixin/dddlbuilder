@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '@/i18n';
 import { ShareApiError, createShare, getShareState } from '@/services/shareService';
-import type { PersistedState } from '@/types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 
 const createState = (): PersistedState => ({
   schemaName: '',

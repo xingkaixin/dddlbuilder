@@ -7,7 +7,7 @@ import { useReactTable, getCoreRowModel, flexRender, type Row } from '@tanstack/
 import { GripVertical } from 'lucide-react';
 import { toStringSafe, isReservedKeyword } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
-import type { FieldRow } from '@/types';
+import type { FieldRow } from '@ddlbuilder/shared-types';
 import {
   buildDuplicateNameSet,
   useAppStore,

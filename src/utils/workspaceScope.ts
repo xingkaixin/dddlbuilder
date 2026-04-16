@@ -1,4 +1,4 @@
-import type { WorkspaceScope } from '@/types/workspace';
+import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 
 const ANONYMOUS_SCOPE: WorkspaceScope = { kind: 'anonymous' };
 

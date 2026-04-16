@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import type { DatabaseType, NormalizedField } from '@/types';
+import type { DatabaseType, NormalizedField } from '@ddlbuilder/shared-types';
 import { estimateStorage, type StorageResult } from '@/utils/storageEstimator';
 
 interface SizeDisplay {

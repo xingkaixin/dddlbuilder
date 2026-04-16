@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type Handsontable from 'handsontable';
-import type { FieldRow } from '@/types';
+import type { FieldRow } from '@ddlbuilder/shared-types';
 import { createEmptyRow, ensureOrder, toStringSafe, normalizeFields } from '@/utils/helpers';
 
 function createInitialRows(count: number): FieldRow[] {

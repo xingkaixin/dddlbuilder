@@ -1,4 +1,4 @@
-import type { DatabaseType } from '@/types';
+import type { DatabaseType } from '@ddlbuilder/shared-types';
 import type { ParsedResult } from '@/utils/SqlParser';
 import { useTranslation } from 'react-i18next';
 

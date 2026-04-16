@@ -1,5 +1,5 @@
-import type { PersistedState } from '../../src/types/index.js';
-import type { WorkspaceSnapshot } from '../../src/types/workspace.js';
+import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import type { ApiEnv } from './context.js';
 
 type SnapshotKind = 'global_draft' | 'saved_table' | 'saved_draft';

@@ -7,7 +7,7 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core';
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import type { FieldRow } from '@/types';
+import type { FieldRow } from '@ddlbuilder/shared-types';
 import { ensureOrder } from '@/utils/helpers';
 
 type SetRows = (next: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => void;

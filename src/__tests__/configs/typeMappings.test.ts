@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TYPE_MAPPINGS } from '@/configs/typeMappings';
-import type { ParsedFieldType } from '@/types';
+import type { ParsedFieldType } from '@ddlbuilder/shared-types';
 
 const parsed: ParsedFieldType = {
   baseType: 'serial',

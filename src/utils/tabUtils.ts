@@ -1,4 +1,4 @@
-import type { DatabaseType } from '@/types';
+import type { DatabaseType } from '@ddlbuilder/shared-types';
 
 const ALWAYS_AVAILABLE_TABS = ['fields', 'indexes', 'auth', 'misc'];
 

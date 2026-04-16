@@ -1,4 +1,4 @@
-import type { NormalizedField, DatabaseType } from '@/types';
+import type { NormalizedField, DatabaseType } from '@ddlbuilder/shared-types';
 import {
   getCanonicalBaseType,
   supportsDefaultCurrentTimestamp,

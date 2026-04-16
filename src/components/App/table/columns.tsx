@@ -2,7 +2,7 @@ import { useMemo, type ReactNode } from 'react';
 import { createColumnHelper, type ColumnDef, type Row } from '@tanstack/react-table';
 import { EditableCell, SelectCell, CheckboxCell, OrderCell } from './index';
 import { RowActions } from './RowActions';
-import type { DatabaseType, FieldRow, UiDefaultKind } from '@/types';
+import type { DatabaseType, FieldRow, UiDefaultKind } from '@ddlbuilder/shared-types';
 import {
   toStringSafe,
   normalizeDefaultKind,

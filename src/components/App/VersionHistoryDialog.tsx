@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import type { TableVersionMetadata } from '@/utils/savedTablesDb';
-import type { PersistedState } from '@/types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import {
   listVersionMetadata,
   getVersion,

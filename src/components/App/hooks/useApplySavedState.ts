@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { PersistedState } from '@/types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 
 interface UseApplySavedStateParams {
   initialRows: PersistedState['rows'];

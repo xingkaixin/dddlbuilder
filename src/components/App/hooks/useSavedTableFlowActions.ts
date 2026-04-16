@@ -1,5 +1,5 @@
-import type { PersistedState } from '@/types';
-import type { SavedTableDraftRecord, WorkspaceSource } from '@/types/workspace';
+import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { SavedTableDraftRecord, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
 import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { useRenameDeleteActions } from './savedTableFlow/renameDeleteActions';

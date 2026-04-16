@@ -9,7 +9,7 @@ import type {
   MysqlPartitionConfig,
   SqlFormatMode,
   TableMiscConfig,
-} from '@/types';
+} from '@ddlbuilder/shared-types';
 import { buildNormalizedFields } from '@/stores';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
 import { diffPersistedState, type TableDiff } from '@/utils/tableDiff';

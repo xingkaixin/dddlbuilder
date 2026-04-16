@@ -24,7 +24,7 @@ import {
   buildGenerateTableMessages,
   buildGenerateTableSystemPrompt,
 } from '../prompts/generateTable.js';
-import { isAppLocale, type AppLocale } from '../../src/types/locale.js';
+import { isAppLocale, type AppLocale } from '@ddlbuilder/shared-types/locale';
 
 const MAX_OUTPUT_TOKENS = 4000;
 

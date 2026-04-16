@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { KingbaseStrategy } from '@/strategies/KingbaseStrategy';
-import type { NormalizedField } from '@/types';
+import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('KingbaseStrategy', () => {
   const strategy = new KingbaseStrategy();

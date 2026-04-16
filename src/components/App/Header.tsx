@@ -1,5 +1,5 @@
 import { memo, lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import type { DatabaseType } from '@/types';
+import type { DatabaseType } from '@ddlbuilder/shared-types';
 import type { ParsedResult } from '@/utils/SqlParser';
 import packageInfo from '../../../package.json';
 import {

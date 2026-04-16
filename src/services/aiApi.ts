@@ -1,5 +1,5 @@
 import i18n from '@/i18n';
-import type { ApiErrorCode } from '@/types/api';
+import type { ApiErrorCode } from '@ddlbuilder/shared-types/api';
 
 type ApiErrorPayload = {
   error?: string;

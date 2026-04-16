@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useSavedTables } from '@/hooks/useSavedTables';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '../utils/fakeIndexedDb';
-import type { PersistedState } from '@/types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import { flushPromises } from '@/__tests__/utils/test-utils';
 
 vi.mock('@/auth/AuthSessionProvider', () => ({

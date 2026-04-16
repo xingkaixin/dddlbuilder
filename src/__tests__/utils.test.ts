@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { cn } from '@/lib/utils';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
-import type { IndexDefinition } from '@/types';
+import type { IndexDefinition } from '@ddlbuilder/shared-types';
 import type { FieldRow } from '@/App';
 import {
   createEmptyRow,

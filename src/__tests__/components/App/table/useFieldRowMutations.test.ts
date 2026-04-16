@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { FieldRow } from '@/types';
+import type { FieldRow } from '@ddlbuilder/shared-types';
 import { useFieldRowMutations } from '@/components/App/table/useFieldRowMutations';
 
 const createRow = (overrides: Partial<FieldRow> = {}): FieldRow => ({

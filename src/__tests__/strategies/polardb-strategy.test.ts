@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PolarDbStrategy } from '@/strategies/PolarDbStrategy';
-import type { NormalizedField } from '@/types';
+import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('PolarDbStrategy', () => {
   const strategy = new PolarDbStrategy();

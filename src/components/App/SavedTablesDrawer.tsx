@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/drawer';
 import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
-import type { GlobalDraftSummary } from '@/types/workspace';
+import type { GlobalDraftSummary } from '@ddlbuilder/shared-types/workspace';
 import { useTranslation } from 'react-i18next';
 import { Input } from '../ui/input';
 import { FolderTree, useFolderExpansion } from './FolderTree';

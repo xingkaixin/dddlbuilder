@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { WorkspaceMigrationResponse } from '@/types/api';
+import type { WorkspaceMigrationResponse } from '@ddlbuilder/shared-types/api';
 import {
   analyzeWorkspaceMigration,
   clearWorkspaceMigrationDismissed,

@@ -21,7 +21,7 @@ import {
 } from '../openaiControl.js';
 import { errorResponse, getRequestId, streamErrorPayload, type ApiErrorCode } from '../lib/http.js';
 import { REVIEW_SYSTEM_PROMPT, buildReviewUserPrompt } from '../prompts/review.js';
-import { isAppLocale, type AppLocale } from '../../src/types/locale.js';
+import { isAppLocale, type AppLocale } from '@ddlbuilder/shared-types/locale';
 
 const MAX_OUTPUT_TOKENS = 2000;
 

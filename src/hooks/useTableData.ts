@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import type Handsontable from 'handsontable';
-import type { FieldRow, NormalizedField } from '@/types';
+import type { FieldRow, NormalizedField } from '@ddlbuilder/shared-types';
 import { toStringSafe, createEmptyRow, ensureOrder, normalizeFields } from '@/utils/helpers';
 
 export interface UseTableDataReturn {

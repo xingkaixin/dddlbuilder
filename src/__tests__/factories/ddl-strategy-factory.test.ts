@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { DDLStrategyFactory } from '@/factories/DDLStrategyFactory';
 import { MySqlStrategy } from '@/strategies/MySqlStrategy';
 import type { DDLStrategy } from '@/interfaces/DDLStrategy';
-import type { DatabaseType } from '@/types';
+import type { DatabaseType } from '@ddlbuilder/shared-types';
 
 class StubStrategy extends MySqlStrategy {}
 

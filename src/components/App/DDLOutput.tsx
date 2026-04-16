@@ -1,4 +1,4 @@
-import type { DatabaseType, SqlFormatMode } from '@/types';
+import type { DatabaseType, SqlFormatMode } from '@ddlbuilder/shared-types';
 import type { CSSProperties } from 'react';
 import type { ReviewResult } from '@/hooks/useDDLReview';
 import type { PartialReviewResult } from '@/utils/parsePartialJson';

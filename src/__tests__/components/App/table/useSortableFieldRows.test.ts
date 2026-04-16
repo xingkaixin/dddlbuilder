@@ -4,7 +4,7 @@ import {
   useSortableFieldRows,
   reorderFieldRowsByIds,
 } from '@/components/App/table/useSortableFieldRows';
-import type { FieldRow } from '@/types';
+import type { FieldRow } from '@ddlbuilder/shared-types';
 
 function createRows(names: string[]): FieldRow[] {
   return names.map((name, index) => ({

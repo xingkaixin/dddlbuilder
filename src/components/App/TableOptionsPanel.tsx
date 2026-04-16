@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 import { Settings2, Info } from 'lucide-react';
-import type { DatabaseType, TableMiscConfig } from '@/types';
+import type { DatabaseType, TableMiscConfig } from '@ddlbuilder/shared-types';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';

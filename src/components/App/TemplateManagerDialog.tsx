@@ -27,7 +27,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { FieldTemplate, TemplateField } from '@/hooks/useFieldTemplates';
-import type { DatabaseType, FieldRow } from '@/types';
+import type { DatabaseType, FieldRow } from '@ddlbuilder/shared-types';
 import { createEmptyRow, ensureOrder } from '@/utils/helpers';
 import { useAppStore } from '@/stores';
 import { TemplateListItem } from './TemplateListItem';

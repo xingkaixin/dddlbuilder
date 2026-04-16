@@ -13,7 +13,7 @@ import {
 import { Layers, Plus, X, Grid3x3 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTranslation } from 'react-i18next';
-import type { HiveClusteringConfig, HivePartitionColumn, HivePartitionConfig } from '@/types';
+import type { HiveClusteringConfig, HivePartitionColumn, HivePartitionConfig } from '@ddlbuilder/shared-types';
 
 const HIVE_TYPE_OPTIONS = [
   'STRING',

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { PersistedState } from '@/types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import {

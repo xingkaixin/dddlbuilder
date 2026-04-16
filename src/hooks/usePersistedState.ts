@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import type { PersistedState } from '@/types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { buildShareStateQueryKey } from '@/queryKeys/share';
 import { ShareApiError, getShareState } from '@/services/shareService';
@@ -10,7 +10,7 @@ import type {
   WorkspaceSavePayload,
   WorkspaceScope,
   WorkspaceSource,
-} from '@/types/workspace';
+} from '@ddlbuilder/shared-types/workspace';
 import {
   clearGlobalDraft,
   clearWorkspaceSession,

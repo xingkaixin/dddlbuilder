@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { FieldRow } from '@/types';
+import type { FieldRow } from '@ddlbuilder/shared-types';
 
 type SetRows = (value: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => void;
 

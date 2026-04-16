@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { DatabaseType, IndexDefinition, IndexField } from '@/types';
+import type { DatabaseType, IndexDefinition, IndexField } from '@ddlbuilder/shared-types';
 import { buildPrimaryKeyName } from '@/utils/primaryKeyNaming';
 import { isSameIdentifierToken, replaceIdentifierToken } from '@/utils/fieldRenameUtils';
 import {

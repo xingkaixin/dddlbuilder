@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { diffPersistedState } from '@/utils/tableDiff';
-import type { PersistedState, IndexDefinition } from '@/types';
+import type { PersistedState, IndexDefinition } from '@ddlbuilder/shared-types';
 
 function createState(overrides: Partial<PersistedState> = {}): PersistedState {
   return {

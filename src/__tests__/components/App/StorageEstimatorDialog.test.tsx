@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@/__tests__/utils/test-utils';
 import { StorageEstimatorDialog } from '@/components/App/StorageEstimatorDialog';
-import type { NormalizedField } from '@/types';
+import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 vi.mock('@/components/ui/animated-number', () => ({
   AnimatedNumber: ({ value }: { value: number }) => (

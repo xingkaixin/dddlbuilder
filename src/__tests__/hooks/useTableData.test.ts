@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useTableData } from '@/hooks';
-import type { FieldRow } from '@/types';
+import type { FieldRow } from '@ddlbuilder/shared-types';
 
 describe('useTableData', () => {
   const createTestRow = (overrides: Partial<FieldRow> = {}): FieldRow => ({

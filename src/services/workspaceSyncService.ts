@@ -1,10 +1,10 @@
-import type { PersistedState } from '@/types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import type {
   ApiErrorPayload,
   WorkspaceSnapshotPushRequest,
   WorkspaceSnapshotResponse,
-} from '@/types/api';
-import type { SavedTableDraftRecord, WorkspaceScope, WorkspaceSnapshot } from '@/types/workspace';
+} from '@ddlbuilder/shared-types/api';
+import type { SavedTableDraftRecord, WorkspaceScope, WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import {
   addSavedTable,
   deleteSavedTable,

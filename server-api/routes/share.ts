@@ -1,5 +1,5 @@
 import type { Hono } from 'hono';
-import type { PersistedState } from '../../src/types/index.js';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { ApiEnv } from '../lib/context.js';
 import { errorResponse, parseJsonBodyWithLimit, withMeta } from '../lib/http.js';
 

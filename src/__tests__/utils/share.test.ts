@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { compressToEncodedURIComponent } from 'lz-string';
 import { compressState, decompressState } from '@/utils/share';
-import type { PersistedState } from '@/types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 
 describe('share utils', () => {
   const baseState: Partial<PersistedState> = {

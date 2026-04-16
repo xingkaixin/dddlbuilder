@@ -1,4 +1,4 @@
-import type { WorkspaceScope } from '@/types/workspace';
+import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import {
   migrateLegacyWorkspaceFromLocalStorage,
   readWorkspaceBootstrap,

@@ -9,7 +9,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { AnimatedNumber } from '@/components/ui/animated-number';
-import type { DatabaseType, NormalizedField } from '@/types';
+import type { DatabaseType, NormalizedField } from '@ddlbuilder/shared-types';
 import { useStorageEstimation } from '@/hooks/useStorageEstimation';
 import { Database, HardDrive, InfoIcon, PieChart, Layers } from 'lucide-react';
 
