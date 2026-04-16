@@ -1,4 +1,4 @@
-import type { DatabaseType, NormalizedField } from '@/types';
+import type { DatabaseType, NormalizedField } from '@ddlbuilder/shared-types';
 
 export interface StorageResult {
   rowOverhead: number;

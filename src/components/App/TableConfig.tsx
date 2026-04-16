@@ -5,7 +5,7 @@ import { GitCompare, List, Save, Sparkles, Table, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/select';
-import type { DatabaseType } from '@/types';
+import type { DatabaseType } from '@ddlbuilder/shared-types';
 import { DATABASE_OPTIONS } from '@/utils/constants';
 import { useTranslation } from 'react-i18next';
 

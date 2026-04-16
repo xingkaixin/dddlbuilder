@@ -1,4 +1,4 @@
-import type { PersistedState } from '@/types';
+import type { PersistedState } from './index.js';
 
 export type WorkspaceSource =
   | { kind: 'global_draft' }

@@ -1,5 +1,5 @@
-import type { ConversationMessage } from '@/types/aiGenerate';
-import type { FieldRow, IndexDefinition } from '@/types';
+import type { ConversationMessage } from '@ddlbuilder/shared-types/ai-generate';
+import type { FieldRow, IndexDefinition } from '@ddlbuilder/shared-types';
 
 interface DDLReviewKeyParams {
   ddl: string;

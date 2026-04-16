@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { OceanBaseMySqlStrategy } from '@/strategies/OceanBaseMySqlStrategy';
-import type { NormalizedField } from '@/types';
+import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('OceanBaseMySqlStrategy', () => {
   const strategy = new OceanBaseMySqlStrategy();

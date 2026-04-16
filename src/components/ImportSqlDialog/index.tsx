@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
-import type { DatabaseType } from '@/types';
+import type { DatabaseType } from '@ddlbuilder/shared-types';
 import type { ParsedResult } from '@/utils/SqlParser';
 import { useToast } from '@/hooks/useToast';
 import { requestSqlParse } from '@/services/sqlParseService';

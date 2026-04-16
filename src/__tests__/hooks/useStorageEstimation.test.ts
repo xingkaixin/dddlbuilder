@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { useStorageEstimation } from '@/hooks/useStorageEstimation';
-import type { NormalizedField } from '@/types';
+import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('useStorageEstimation hook', () => {
   const fields: NormalizedField[] = [

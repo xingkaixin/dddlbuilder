@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import type { CitusTableMode, CitusShardingConfig, PersistedState } from '@/types';
+import type { CitusTableMode, CitusShardingConfig, PersistedState } from '@ddlbuilder/shared-types';
 import { useShardingStore } from '@/stores';
 
 export interface UseCitusShardingReturn {

@@ -11,7 +11,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useLocale } from '@/i18n/LocaleContext';
 import { useTranslation } from 'react-i18next';
-import type { AppLocale } from '@/types/locale';
+import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 
 interface LocaleSwitcherProps {
   triggerClassName?: string;

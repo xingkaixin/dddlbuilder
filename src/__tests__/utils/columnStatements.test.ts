@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FieldDiff } from '@/utils/tableDiff';
-import type { NormalizedField } from '@/types';
+import type { NormalizedField } from '@ddlbuilder/shared-types';
 import {
   generateAddColumn,
   generateDropColumn,

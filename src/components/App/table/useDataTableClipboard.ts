@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type { ClipboardEvent } from 'react';
-import type { FieldRow } from '@/types';
+import type { FieldRow } from '@ddlbuilder/shared-types';
 
 const parseNullable = (value: string): string => {
   if (!value) return '是';

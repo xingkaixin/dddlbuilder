@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useSqlGeneration } from '@/hooks';
-import type { NormalizedField, IndexDefinition } from '@/types';
+import type { NormalizedField, IndexDefinition } from '@ddlbuilder/shared-types';
 
 const baseFields: NormalizedField[] = [
   {

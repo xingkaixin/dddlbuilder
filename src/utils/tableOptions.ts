@@ -1,4 +1,4 @@
-import type { DatabaseType, TableMiscConfig } from '@/types';
+import type { DatabaseType, TableMiscConfig } from '@ddlbuilder/shared-types';
 
 const MYSQL_LIKE_DBS = new Set<DatabaseType>([
   'mysql',

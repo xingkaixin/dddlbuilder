@@ -8,7 +8,7 @@ import type {
   ConversationMessage,
   GeneratedTableSchema,
   PartialTableSchema,
-} from '@/types/aiGenerate';
+} from '@ddlbuilder/shared-types/ai-generate';
 import { parsePartialTableSchema } from '@/utils/parsePartialTableSchema';
 import { buildAIGenerateQueryKey } from '@/queryKeys/ai';
 import { useLocale } from '@/i18n/LocaleContext';
@@ -21,7 +21,7 @@ export type {
   GeneratedIndex,
   GeneratedTableSchema,
   PartialTableSchema,
-} from '@/types/aiGenerate';
+} from '@ddlbuilder/shared-types/ai-generate';
 
 interface GenerateState {
   isLoading: boolean;

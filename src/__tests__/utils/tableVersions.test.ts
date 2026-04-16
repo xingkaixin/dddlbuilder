@@ -10,7 +10,7 @@ import {
   countVersions,
 } from '@/utils/tableVersions';
 import * as dbUtils from '@/utils/savedTablesDb';
-import type { PersistedState } from '@/types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from './fakeIndexedDb';
 
 function createMockState(overrides: Partial<PersistedState> = {}): PersistedState {

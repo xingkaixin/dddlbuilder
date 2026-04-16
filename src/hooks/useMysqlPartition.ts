@@ -4,7 +4,7 @@ import type {
   MysqlPartitionConfig,
   PartitionDefinition,
   PersistedState,
-} from '@/types';
+} from '@ddlbuilder/shared-types';
 import { usePartitionStore } from '@/stores';
 
 export interface UseMysqlPartitionReturn {

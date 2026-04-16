@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { CitusShardingConfig, CitusTableMode } from '@/types';
+import type { CitusShardingConfig, CitusTableMode } from '@ddlbuilder/shared-types';
 import { isSameIdentifierToken } from '@/utils/fieldRenameUtils';
 
 type Setter<T> = T | ((prev: T) => T);

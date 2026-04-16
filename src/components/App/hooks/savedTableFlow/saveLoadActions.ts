@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
-import type { PersistedState } from '@/types';
-import type { WorkspaceSource } from '@/types/workspace';
+import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
 import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';

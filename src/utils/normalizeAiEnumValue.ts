@@ -1,4 +1,4 @@
-import type { GeneratedField, GeneratedTableSchema } from '@/types/aiGenerate';
+import type { GeneratedField, GeneratedTableSchema } from '@ddlbuilder/shared-types/ai-generate';
 import type { StructuredSuggestion } from '@/hooks/useDDLReview';
 import { getSchemaAndTable } from '@/utils/databaseTypeMapping';
 

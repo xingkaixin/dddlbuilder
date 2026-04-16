@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GaussDbStrategy } from '@/strategies/GaussDbStrategy';
-import type { NormalizedField } from '@/types';
+import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('GaussDbStrategy', () => {
   const strategy = new GaussDbStrategy();

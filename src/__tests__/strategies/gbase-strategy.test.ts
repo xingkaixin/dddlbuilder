@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GBaseStrategy } from '@/strategies/GBaseStrategy';
-import type { NormalizedField } from '@/types';
+import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('GBaseStrategy', () => {
   const strategy = new GBaseStrategy();

@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import type { TableDiff, FieldDiff, IndexDiff } from '@/utils/tableDiff';
-import type { NormalizedField, DatabaseType } from '@/types';
+import type { NormalizedField, DatabaseType } from '@ddlbuilder/shared-types';
 import { generateAlterDDL, generateRollbackDDL } from '@/utils/alterDdlGenerator';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';

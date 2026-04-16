@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MySqlStrategy } from '@/strategies/MySqlStrategy';
-import type { NormalizedField } from '@/types';
+import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('MySqlStrategy', () => {
   const strategy = new MySqlStrategy();

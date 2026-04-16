@@ -1,4 +1,4 @@
-import type { PersistedState } from '@/types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { TableVersion, TableVersionMetadata } from './savedTablesDb';
 import { openDb, VERSION_STORE_NAME } from './savedTablesDb';
 

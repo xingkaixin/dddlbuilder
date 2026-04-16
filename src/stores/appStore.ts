@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { DatabaseType, SqlFormatMode } from '@/types';
+import type { DatabaseType, SqlFormatMode } from '@ddlbuilder/shared-types';
 
 type CoreDialogKey = 'save' | 'rename' | 'delete' | 'loadConfirm';
 

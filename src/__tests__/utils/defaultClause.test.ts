@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { NormalizedField } from '@/types';
+import type { NormalizedField } from '@ddlbuilder/shared-types';
 import { buildDefaultClause } from '@/utils/alter-ddl/defaultClause';
 
 function createField(overrides: Partial<NormalizedField> = {}): NormalizedField {

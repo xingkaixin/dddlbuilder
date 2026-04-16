@@ -1,8 +1,8 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PersistedState } from '@/types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import { usePersistedSync } from '@/components/App/hooks/usePersistedSync';
-import type { WorkspaceSource } from '@/types/workspace';
+import type { WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 
 function createState(name: string): PersistedState {
   return {

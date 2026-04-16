@@ -4,7 +4,7 @@ import type {
   IndexDefinition,
   FieldRow,
   TableMiscConfig,
-} from '@/types';
+} from '@ddlbuilder/shared-types';
 
 /**
  * 字段变更类型

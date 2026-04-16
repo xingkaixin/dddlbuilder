@@ -13,7 +13,7 @@ import {
 import { Layers, Plus, X, Info, Calendar } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTranslation } from 'react-i18next';
-import type { MysqlPartitionType, MysqlPartitionConfig, PartitionDefinition } from '@/types';
+import type { MysqlPartitionType, MysqlPartitionConfig, PartitionDefinition } from '@ddlbuilder/shared-types';
 
 const PARTITION_TYPE_INFO: Record<MysqlPartitionType, { label: string }> = {
   RANGE: {

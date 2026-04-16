@@ -7,7 +7,7 @@ import type {
   MysqlPartitionConfig,
   SqlFormatMode,
   TableMiscConfig,
-} from '@/types';
+} from '@ddlbuilder/shared-types';
 import { buildDDL, buildDCL } from '@/utils/ddlGenerators';
 import { buildQualifiedTableName } from '@/utils/databaseTypeMapping';
 

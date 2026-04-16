@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { TableMiscConfig, HivePartitionConfig } from '@/types';
+import type { TableMiscConfig, HivePartitionConfig } from '@ddlbuilder/shared-types';
 
 type Setter<T> = T | ((prev: T) => T);
 

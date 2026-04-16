@@ -1,4 +1,4 @@
-import type { DatabaseType } from '@/types';
+import type { DatabaseType } from '@ddlbuilder/shared-types';
 import type { IndexDiff } from '../tableDiff';
 
 export function generateDropIndex(

@@ -13,7 +13,7 @@ import {
   STORE_NAME,
 } from '@/utils/savedTablesDb';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from './fakeIndexedDb';
-import type { PersistedState } from '@/types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 
 const createState = (overrides: Partial<PersistedState> = {}): PersistedState => ({
   schemaName: '',

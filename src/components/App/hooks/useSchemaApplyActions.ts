@@ -8,7 +8,7 @@ import type {
   IndexDefinition,
   MysqlPartitionConfig,
   TableMiscConfig,
-} from '@/types';
+} from '@ddlbuilder/shared-types';
 import type { ReviewResult, StructuredSuggestion } from '@/hooks/useDDLReview';
 import type { GeneratedTableSchema } from '@/hooks/useAIGenerateTable';
 

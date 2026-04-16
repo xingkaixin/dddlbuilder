@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DmStrategy } from '@/strategies/DmStrategy';
-import type { NormalizedField } from '@/types';
+import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('DmStrategy', () => {
   const strategy = new DmStrategy();

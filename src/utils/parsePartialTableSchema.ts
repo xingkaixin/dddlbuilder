@@ -1,4 +1,4 @@
-import type { GeneratedField, GeneratedIndex, PartialTableSchema } from '@/types/aiGenerate';
+import type { GeneratedField, GeneratedIndex, PartialTableSchema } from '@ddlbuilder/shared-types/ai-generate';
 
 /**
  * Parse partial JSON for GeneratedTableSchema structure.

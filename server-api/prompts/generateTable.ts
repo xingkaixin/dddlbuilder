@@ -1,9 +1,5 @@
-import type { AppLocale } from '../../src/types/locale.js';
-
-export type ConversationMessage = {
-  role: 'user' | 'assistant';
-  content: string;
-};
+import type { AppLocale } from '@ddlbuilder/shared-types/locale';
+import type { ConversationMessage } from '@ddlbuilder/shared-types/ai-generate';
 
 const SYSTEM_PROMPT_TEMPLATES: Record<AppLocale, string> = {
   'zh-CN': `你是一位资深的数据库架构师。根据用户的自然语言描述，生成符合 {{DB}} 数据库规范的表结构。

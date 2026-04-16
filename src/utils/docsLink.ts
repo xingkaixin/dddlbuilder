@@ -1,4 +1,4 @@
-import type { AppLocale } from '@/types/locale';
+import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 
 const DOCS_ZH_URL = '/docs/zh/';
 const DOCS_EN_URL = '/docs/en/';

@@ -1,6 +1,6 @@
 import { readTextStream } from '@/services/streamingText';
 import { buildAuthenticatedJsonHeaders, readAIErrorMessage } from '@/services/aiApi';
-import type { AppLocale } from '@/types/locale';
+import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 import i18n from '@/i18n';
 import { normalizeReviewSuggestions } from '@/utils/normalizeAiEnumValue';
 

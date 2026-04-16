@@ -1,4 +1,4 @@
-import type { AppLocale } from '../../src/types/locale.js';
+import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 
 export const REVIEW_SYSTEM_PROMPT: Record<AppLocale, string> = {
   'zh-CN': `你是一位资深的数据库架构师和DDL评审专家。你的任务是评审用户提供的DDL语句，给出专业的评分和改进建议。

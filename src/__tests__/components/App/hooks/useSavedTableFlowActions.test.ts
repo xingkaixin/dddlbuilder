@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { PersistedState } from '@/types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { useSavedTableFlowActions } from '@/components/App/hooks/useSavedTableFlowActions';
 

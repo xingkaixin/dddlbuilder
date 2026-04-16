@@ -1,4 +1,4 @@
-import type { AppLocale } from '../../src/types/locale.js';
+import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 
 export const EXPLAIN_SYSTEM_PROMPT: Record<AppLocale, string> = {
   'zh-CN': `你是一位资深的数据库专家。请简洁明了地解释用户提供的 SQL 片段的功能和关键点。如果提供了上下文，请结合上下文进行解释。

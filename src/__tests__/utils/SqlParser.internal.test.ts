@@ -38,7 +38,6 @@ const sqlParserRuntimeImportFiles = [
   '../../utils/sql-parser/preprocessMysql.ts',
   '../../utils/sql-parser/types.ts',
   '../../configs/typeMappings.ts',
-  '../../types/index.ts',
 ].map((relativePath) => fileURLToPath(new URL(relativePath, import.meta.url)));
 
 describe('SqlParser internals', () => {

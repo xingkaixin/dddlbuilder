@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { AbstractDDLStrategy } from '@/strategies/AbstractDDLStrategy';
-import type { NormalizedField, IndexDefinition, DatabaseType } from '@/types';
+import type { NormalizedField, IndexDefinition, DatabaseType } from '@ddlbuilder/shared-types';
 import { TypeMapper } from '@/utils/TypeMapper';
 
 class TestStrategy extends AbstractDDLStrategy {

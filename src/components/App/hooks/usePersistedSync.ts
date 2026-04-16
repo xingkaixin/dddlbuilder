@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
-import type { PersistedState } from '@/types';
-import type { WorkspaceSavePayload, WorkspaceSource } from '@/types/workspace';
+import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { WorkspaceSavePayload, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 import { useDebouncedEffect } from '@/hooks/useDebouncedEffect';
 
 const PERSIST_DEBOUNCE_MS = 500;

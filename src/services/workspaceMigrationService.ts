@@ -1,6 +1,6 @@
-import type { PersistedState } from '@/types';
-import type { ApiErrorPayload, WorkspaceMigrationResponse } from '@/types/api';
-import type { WorkspaceScope, WorkspaceSource } from '@/types/workspace';
+import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { ApiErrorPayload, WorkspaceMigrationResponse } from '@ddlbuilder/shared-types/api';
+import type { WorkspaceScope, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 import { listSavedTables } from '@/utils/savedTablesDb';
 import { listSavedDrafts, readGlobalDraft, readWorkspaceSession } from '@/utils/workspaceStateDb';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';

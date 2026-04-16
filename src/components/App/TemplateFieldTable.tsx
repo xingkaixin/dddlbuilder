@@ -6,7 +6,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useReactTable, getCoreRowModel, flexRender, type Row } from '@tanstack/react-table';
 import { GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { DatabaseType, FieldRow } from '@/types';
+import type { DatabaseType, FieldRow } from '@ddlbuilder/shared-types';
 import { buildDuplicateNameSet } from '@/stores';
 import { isReservedKeyword, createEmptyRow, ensureOrder, toStringSafe } from '@/utils/helpers';
 import { useFieldColumns } from './table/columns';

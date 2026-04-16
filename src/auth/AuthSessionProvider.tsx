@@ -9,7 +9,7 @@ import {
   type PropsWithChildren,
 } from 'react';
 import { toast } from 'sonner';
-import type { MeApiResponse } from '@/types/api';
+import type { MeApiResponse } from '@ddlbuilder/shared-types/api';
 import i18n from '@/i18n';
 import { getBetterAuthClient, isBetterAuthConfigured } from './betterAuthClient';
 import { getAnonymousWorkspaceScope, setCurrentWorkspaceScope } from '@/utils/workspaceScope';

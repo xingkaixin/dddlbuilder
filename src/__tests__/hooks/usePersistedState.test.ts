@@ -7,7 +7,7 @@ import { resetWorkspaceBootstrapCache } from '@/hooks/workspacePersistence/boots
 import { STORAGE_KEY } from '@/utils/constants';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { getShareState, ShareApiError } from '@/services/shareService';
-import type { WorkspaceSavePayload } from '@/types/workspace';
+import type { WorkspaceSavePayload } from '@ddlbuilder/shared-types/workspace';
 import {
   readGlobalDraft,
   readWorkspaceSession,
