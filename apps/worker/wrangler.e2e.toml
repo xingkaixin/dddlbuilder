@@ -3,7 +3,7 @@ compatibility_date = "2026-03-17"
 main = "dist/server.js"
 
 [assets]
-directory = "../../dist/client"
+directory = "../web/dist/client"
 html_handling = "auto-trailing-slash"
 not_found_handling = "single-page-application"
 

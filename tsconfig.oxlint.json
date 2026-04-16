@@ -14,18 +14,18 @@
     "skipLibCheck": true,
     "types": ["vite/client", "node"],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./apps/web/src/*"]
     }
   },
   "include": [
-    "src",
-    "api",
-    "server-api",
+    "apps/web/src",
+    "apps/worker/api",
+    "apps/worker/server-api",
     "scripts",
     "e2e",
     "server.ts",
-    "vite.config.ts",
-    "vite.config.server.ts",
+    "apps/web/vite.config.ts",
+    "apps/web/vitest.config.ts",
     "vitest.config.ts",
     "playwright.config.ts"
   ]
