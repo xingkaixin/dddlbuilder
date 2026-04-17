@@ -1,10 +1,9 @@
 {
   "name": "ddlbuilder",
-  "version": "0.15.7",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm exec tsx scripts/dev.ts",
+    "dev": "turbo run dev",
     "dev:app": "pnpm run --dir apps/web dev",
     "dev:worker": "pnpm exec tsx scripts/dev-worker.ts",
     "db:migrate:local": "pnpm exec tsx scripts/d1-migrate.ts",
