@@ -23,6 +23,8 @@ describe('d1-utils', () => {
     expect(buildD1ExecuteArgs('local', { file: '/tmp/test.sql' })).toEqual([
       'exec',
       'wrangler',
+      '--config',
+      'apps/worker/wrangler.toml',
       'd1',
       'execute',
       'USER_DB',
