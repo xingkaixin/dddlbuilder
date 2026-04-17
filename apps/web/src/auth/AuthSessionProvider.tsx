@@ -49,7 +49,7 @@ type AuthSessionContextValue = UserSessionState & {
 
 const AuthSessionContext = createContext<AuthSessionContextValue | null>(null);
 
-const translateAuthError = (serverMessage: string, fallbackKey: string): string => {
+export const translateAuthError = (serverMessage: string, fallbackKey: string): string => {
   const msg = serverMessage.toLowerCase();
   if (msg.includes('not verified') || msg.includes('verify your email')) {
     return i18n.t('header.auth.emailNotVerified');
@@ -82,7 +82,7 @@ const translateAuthError = (serverMessage: string, fallbackKey: string): string 
   return i18n.t(fallbackKey);
 };
 
-const signedOutState = (configured: boolean): UserSessionState => ({
+export const signedOutState = (configured: boolean): UserSessionState => ({
   status: 'signed_out',
   configured,
   userId: null,
@@ -94,7 +94,7 @@ const signedOutState = (configured: boolean): UserSessionState => ({
   authDialogOpen: false,
 });
 
-const fetchCurrentUser = async (): Promise<MeApiResponse> => {
+export const fetchCurrentUser = async (): Promise<MeApiResponse> => {
   const response = await fetch('/api/me', {
     credentials: 'include',
   });
@@ -115,7 +115,7 @@ const fetchCurrentUser = async (): Promise<MeApiResponse> => {
   return payload;
 };
 
-const fetchCreditBalance = async (): Promise<number> => {
+export const fetchCreditBalance = async (): Promise<number> => {
   const response = await fetch('/api/credits/balance', {
     credentials: 'include',
   });
