@@ -169,6 +169,26 @@ export async function deleteFolder(id: string): Promise<void> {
 }
 
 /**
+ * 清空所有文件夹
+ */
+export async function clearFolders(): Promise<void> {
+  await runWithFolderStore<undefined>('readwrite', (store) => store.clear());
+}
+
+/**
+ * 批量写入文件夹（覆盖式）
+ */
+export async function bulkPutFolders(folders: TableFolder[]): Promise<void> {
+  if (folders.length === 0) return;
+  await runWithFolderStore<IDBValidKey>('readwrite', (store) => {
+    for (let i = 0; i < folders.length - 1; i++) {
+      store.put(folders[i]);
+    }
+    return store.put(folders[folders.length - 1]);
+  });
+}
+
+/**
  * 获取文件夹路径（从根到当前）
  */
 export async function getFolderPath(folderId: string): Promise<TableFolder[]> {

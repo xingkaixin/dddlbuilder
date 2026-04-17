@@ -193,6 +193,19 @@ class FakeObjectStore {
       },
     );
   }
+
+  clear(tx: FakeTransaction) {
+    return this.run(
+      tx,
+      () => {
+        this.data.clear();
+        return undefined;
+      },
+      () => {
+        tx.onerror?.({ target: tx });
+      },
+    );
+  }
 }
 
 class FakeTransaction {
@@ -228,6 +241,7 @@ class FakeTransaction {
       add: (value: any) => this.store.add(this, value),
       put: (value: any) => this.store.put(this, value),
       delete: (key: string) => this.store.delete(this, key),
+      clear: () => this.store.clear(this),
       count: (query?: IDBValidKey) => this.store.count(this, query),
       index: (name: string) => this.store.index(this, name),
     };

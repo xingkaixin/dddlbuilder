@@ -2,7 +2,7 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import type { ApiEnv } from './context.js';
 
-type SnapshotKind = 'global_draft' | 'saved_table' | 'saved_draft';
+type SnapshotKind = 'global_draft' | 'saved_table' | 'saved_draft' | 'folder';
 
 type SnapshotRow = {
   kind: SnapshotKind;
@@ -14,6 +14,7 @@ type SnapshotRow = {
 type SavedTablePayload = {
   name: string;
   state: PersistedState;
+  folderId?: string;
 };
 
 type SavedDraftPayload = {
@@ -22,7 +23,15 @@ type SavedDraftPayload = {
   baseSignature: string;
 };
 
-const buildSnapshotId = (userId: string, kind: SnapshotKind, normalizedName: string | null) =>
+type FolderPayload = {
+  id: string;
+  name: string;
+  parentId?: string;
+  order: number;
+  createdAt: number;
+};
+
+const buildSnapshotId = (userId: string, kind: SnapshotKind, normalizedName: string | null, folderId?: string) =>
   `${kind}:${userId}:${normalizedName ?? 'global'}`;
 
 const listSnapshotRows = async (
@@ -86,7 +95,7 @@ const upsertSnapshot = async (
     return;
   }
 
-  await env.USER_DB.prepare(
+  const result = await env.USER_DB.prepare(
     `
       INSERT INTO workspace_snapshots (
         id,
@@ -112,6 +121,10 @@ const upsertSnapshot = async (
       input.sourceUpdatedAt,
     )
     .run();
+
+  if (!result.success) {
+    throw new Error(result.error ?? 'D1 execution failed');
+  }
 };
 
 export const getWorkspaceSnapshot = async (
@@ -119,11 +132,11 @@ export const getWorkspaceSnapshot = async (
   userId: string,
 ): Promise<WorkspaceSnapshot> => {
   const rows = await listSnapshotRows(env, userId);
-
   const snapshot: WorkspaceSnapshot = {
     globalDraft: null,
     savedTables: [],
     savedDrafts: [],
+    folders: [],
   };
 
   for (const row of rows) {
@@ -149,6 +162,19 @@ export const getWorkspaceSnapshot = async (
         name: payload.name,
         state: payload.state,
         updatedAt: row.sourceUpdatedAt,
+        folderId: payload.folderId,
+      });
+      continue;
+    }
+
+    if (row.kind === 'folder') {
+      const payload = JSON.parse(row.payloadJson) as FolderPayload;
+      snapshot.folders.push({
+        id: payload.id,
+        name: payload.name,
+        parentId: payload.parentId,
+        order: payload.order,
+        createdAt: payload.createdAt,
       });
       continue;
     }
@@ -194,6 +220,7 @@ export const putWorkspaceSnapshot = async (
       payload: {
         name: item.name,
         state: item.state,
+        folderId: item.folderId,
       },
       sourceUpdatedAt: item.updatedAt,
     });
@@ -210,6 +237,22 @@ export const putWorkspaceSnapshot = async (
         baseSignature: item.baseSignature,
       },
       sourceUpdatedAt: item.updatedAt,
+    });
+  }
+
+  for (const item of snapshot.folders) {
+    await upsertSnapshot(env, {
+      userId,
+      kind: 'folder',
+      normalizedName: item.id,
+      payload: {
+        id: item.id,
+        name: item.name,
+        parentId: item.parentId,
+        order: item.order,
+        createdAt: item.createdAt,
+      },
+      sourceUpdatedAt: item.createdAt,
     });
   }
 };

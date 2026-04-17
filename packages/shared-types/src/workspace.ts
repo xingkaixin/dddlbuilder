@@ -36,6 +36,14 @@ export type GlobalDraftSummary = {
   updatedAt: number;
 };
 
+export type TableFolderSnapshot = {
+  id: string;
+  name: string;
+  parentId?: string;
+  order: number;
+  createdAt: number;
+};
+
 export type WorkspaceSnapshot = {
   globalDraft: {
     state: PersistedState;
@@ -46,6 +54,7 @@ export type WorkspaceSnapshot = {
     name: string;
     state: PersistedState;
     updatedAt: number;
+    folderId?: string;
   }>;
   savedDrafts: Array<{
     normalizedName: string;
@@ -54,4 +63,5 @@ export type WorkspaceSnapshot = {
     updatedAt: number;
     baseSignature: string;
   }>;
+  folders: TableFolderSnapshot[];
 };

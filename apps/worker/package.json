@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build --config vite.config.ts",
-    "dev": "wrangler dev --inspector-port 0 --persist-to ../../.wrangler/state/dev",
+    "dev": "wrangler dev api/index.ts --inspector-port 0 --persist-to ../../.wrangler/state/dev",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
