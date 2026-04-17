@@ -6,6 +6,7 @@ export default defineConfig({
     projects: [
       'apps/web',
       'apps/worker',
+      'packages/ddl-core',
       {
         test: {
           name: 'scripts',
