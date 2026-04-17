@@ -67,6 +67,32 @@ Keep a minimal reproducible SQL segment and selected database type, then submit 
 
 Record failed action name (generate/review/explain) and trigger time, then contact product support.
 
+## Sign-in or sync failed
+
+### Symptoms
+
+- Sign-in shows "Email not verified", "Invalid email or password", or "Too many requests".
+- Workspace sync shows "Sync failed".
+- AI features show "Insufficient credits".
+
+### Quick checks
+
+- Whether the email and password are correct.
+- Whether the current network is stable.
+- Whether sign-in or sync was attempted too many times in a short period.
+
+### Steps
+
+1. Double-check the email and password, then retry. Result: this rules out input errors.
+2. If "Email not verified" appears, check your inbox (including spam) and click the verification link. Result: you can sign in normally after verification.
+3. If "Too many requests" appears, wait 1–2 minutes and retry. Result: this bypasses rate-limiting protection.
+4. When sync fails, refresh the page to confirm you are still signed in, then retry upload or download. Result: this rules out expired sessions.
+5. If AI features report insufficient credits, open Settings and check the Credit tab for usage history. Result: you can confirm the balance and breakdown; recharge when the channel opens.
+
+### If still unresolved
+
+Record the exact error message, operation time, and network environment, then contact product support.
+
 ## Copy failed
 
 ### Symptoms

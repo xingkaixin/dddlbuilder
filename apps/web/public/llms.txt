@@ -22,6 +22,7 @@
 - Run AI review on generated DDL and apply selected suggestions.
 - Explain selected SQL snippets for review and communication.
 - Manage drafts and saved tables for iterative design.
+- Sync saved tables and folder organization across devices when signed in.
 - Share schema views with read-only links and continue via editable copy.
 - Compare schema changes and generate alter/rollback-related outputs.
 - Configure partitioning (supported dialects) and sharding (PostgreSQL Citus flow).
@@ -95,6 +96,7 @@
 - 对生成的 DDL 执行 AI 评审，并应用选中的建议。
 - 对选中的 SQL 片段进行解释，便于评审和沟通。
 - 管理草稿和已保存表，支持迭代式设计。
+- 登录后支持已保存表与文件夹结构在多设备间同步。
 - 通过只读分享链接共享结构视图，并基于可编辑副本继续修改。
 - 对比结构变更，并生成 alter / rollback 相关输出。
 - 配置分区能力（支持的数据库方言）和分片能力（PostgreSQL Citus 流程）。
