@@ -3,7 +3,7 @@ name: translate-docs
 description: Translate and sync bilingual documentation.
 ---
 
-现在我们正在为当前项目 DDLBuilder - 筑表师 编写和维护用户文档，文档内容在 docs 目录下，docs/AGENTS.md 中有写作规范。
+现在我们正在为当前项目 DDLBuilder - 筑表师 编写和维护用户文档，文档内容在 docs 目录下，apps/docs/AGENTS.md 中有写作规范。
 
 
 ## 翻译方向
