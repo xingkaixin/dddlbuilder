@@ -34,7 +34,16 @@ export const buildD1ExecuteArgs = (
     throw new Error('缺少 SQL 输入');
   }
 
-  const args = ['exec', 'wrangler', '--config', 'apps/worker/wrangler.toml', 'd1', 'execute', D1_BINDING, getD1Flag(mode)];
+  const args = [
+    'exec',
+    'wrangler',
+    '--config',
+    'apps/worker/wrangler.toml',
+    'd1',
+    'execute',
+    D1_BINDING,
+    getD1Flag(mode),
+  ];
   if (mode === 'local') {
     args.push('--persist-to', localPersistDir);
   }
