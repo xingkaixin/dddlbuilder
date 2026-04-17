@@ -60,6 +60,7 @@ export type WorkspaceSnapshotItem = {
   name: string;
   state: Record<string, unknown>;
   updatedAt: number;
+  folderId?: string;
 };
 
 export type WorkspaceSavedDraftSnapshotItem = {
@@ -70,6 +71,14 @@ export type WorkspaceSavedDraftSnapshotItem = {
   baseSignature: string;
 };
 
+export type WorkspaceFolderSnapshotItem = {
+  id: string;
+  name: string;
+  parentId?: string;
+  order: number;
+  createdAt: number;
+};
+
 export type WorkspaceSnapshotResponse = {
   globalDraft: {
     state: Record<string, unknown>;
@@ -77,6 +86,7 @@ export type WorkspaceSnapshotResponse = {
   } | null;
   savedTables: WorkspaceSnapshotItem[];
   savedDrafts: WorkspaceSavedDraftSnapshotItem[];
+  folders: WorkspaceFolderSnapshotItem[];
   meta?: ApiMeta;
 };
 
@@ -87,6 +97,7 @@ export type WorkspaceSnapshotPushRequest = {
   } | null;
   savedTables: WorkspaceSnapshotItem[];
   savedDrafts: WorkspaceSavedDraftSnapshotItem[];
+  folders: WorkspaceFolderSnapshotItem[];
 };
 
 export type MeApiResponse =

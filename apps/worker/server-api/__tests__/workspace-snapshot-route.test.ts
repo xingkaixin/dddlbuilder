@@ -49,6 +49,7 @@ describe('/api/workspace/snapshot', () => {
         globalDraft: null,
         savedTables: [{ normalizedName: 'users', name: 'Users', state: {}, updatedAt: 10 }],
         savedDrafts: [],
+        folders: [],
       }),
       putWorkspaceSnapshot: vi.fn(),
     }));
@@ -93,6 +94,7 @@ describe('/api/workspace/snapshot', () => {
           },
           savedTables: [],
           savedDrafts: [],
+          folders: [],
         }),
       }),
       createEnv(),
@@ -100,5 +102,48 @@ describe('/api/workspace/snapshot', () => {
 
     expect(response.status).toBe(200);
     expect(putWorkspaceSnapshot).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns 503 when putWorkspaceSnapshot throws', async () => {
+    const putWorkspaceSnapshot = vi.fn().mockRejectedValue(new Error('D1 constraint failed'));
+    vi.doMock('../lib/auth.js', () => ({
+      authenticateRequest: vi.fn().mockResolvedValue({
+        userId: 'user-1',
+        email: 'user@example.com',
+        emailVerified: true,
+        name: 'User One',
+      }),
+    }));
+    vi.doMock('../lib/workspaceSnapshots.js', () => ({
+      getWorkspaceSnapshot: vi.fn(),
+      putWorkspaceSnapshot,
+    }));
+
+    const { default: app } = await import('../../api/index');
+    const response = await app.fetch(
+      createRequest('/api/workspace/snapshot', {
+        method: 'PUT',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          globalDraft: {
+            state: {
+              tableName: 'users',
+            },
+            updatedAt: 1,
+          },
+          savedTables: [],
+          savedDrafts: [],
+          folders: [],
+        }),
+      }),
+      createEnv(),
+    );
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({
+      code: 'SERVICE_UNAVAILABLE',
+    });
   });
 });

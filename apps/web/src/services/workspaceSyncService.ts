@@ -16,6 +16,7 @@ import {
   listSavedTables,
   updateSavedTable,
 } from '@/utils/savedTablesDb';
+import { listFolders, clearFolders, bulkPutFolders } from '@/utils/tableFolders';
 import {
   clearGlobalDraft,
   clearWorkspaceSession,
@@ -43,6 +44,7 @@ const upsertLocalSavedTable = async (input: {
   name: string;
   state: PersistedState;
   updatedAt: number;
+  folderId?: string;
 }) => {
   const scope = getCurrentWorkspaceScope();
   const existing = await getSavedTable(input.normalizedName, scope);
@@ -56,6 +58,7 @@ const upsertLocalSavedTable = async (input: {
         name: input.name,
         state: input.state,
         updatedAt: input.updatedAt,
+        folderId: input.folderId,
       },
       scope,
     );
@@ -69,6 +72,7 @@ const upsertLocalSavedTable = async (input: {
       state: input.state,
       createdAt: input.updatedAt,
       updatedAt: input.updatedAt,
+      folderId: input.folderId,
     },
     scope,
   );
@@ -85,7 +89,7 @@ export const pullWorkspaceSnapshot = async (): Promise<WorkspaceSnapshot> => {
   }
 
   const snapshot = payload as WorkspaceSnapshotResponse | null;
-  return {
+  const result = {
     globalDraft: snapshot?.globalDraft
       ? {
           state: normalizeState(snapshot.globalDraft.state),
@@ -97,6 +101,7 @@ export const pullWorkspaceSnapshot = async (): Promise<WorkspaceSnapshot> => {
       name: item.name,
       state: normalizeState(item.state),
       updatedAt: item.updatedAt,
+      folderId: item.folderId,
     })),
     savedDrafts: (snapshot?.savedDrafts ?? []).map((item) => ({
       normalizedName: item.normalizedName,
@@ -105,17 +110,20 @@ export const pullWorkspaceSnapshot = async (): Promise<WorkspaceSnapshot> => {
       updatedAt: item.updatedAt,
       baseSignature: item.baseSignature,
     })),
+    folders: snapshot?.folders ?? [],
   };
+  return result;
 };
 
 export const collectWorkspaceSnapshot = async (
   overrides?: Partial<WorkspaceSnapshot>,
   scope: WorkspaceScope = getCurrentWorkspaceScope(),
 ): Promise<WorkspaceSnapshotPushRequest> => {
-  const [localGlobalDraft, localSavedTables, localSavedDraftMap] = await Promise.all([
+  const [localGlobalDraft, localSavedTables, localSavedDraftMap, localFolders] = await Promise.all([
     readGlobalDraft(scope),
     listSavedTables(scope),
     listSavedDrafts(scope),
+    listFolders(),
   ]);
 
   const savedDrafts = Object.entries(localSavedDraftMap).map(([normalizedName, item]) => ({
@@ -130,6 +138,7 @@ export const collectWorkspaceSnapshot = async (
     globalDraft: overrides?.globalDraft ?? localGlobalDraft,
     savedTables: overrides?.savedTables ?? localSavedTables,
     savedDrafts: overrides?.savedDrafts ?? savedDrafts,
+    folders: overrides?.folders ?? localFolders,
   };
 };
 
@@ -167,6 +176,7 @@ const replaceLocalWorkspaceSnapshot = async (
 
   await clearGlobalDraft(scope);
   await clearWorkspaceSession(scope);
+  await clearFolders();
 
   await Promise.all([
     ...localSavedTables.map((item) => deleteSavedTable(item.normalizedName, scope)),
@@ -187,6 +197,7 @@ const replaceLocalWorkspaceSnapshot = async (
         state: item.state,
         createdAt: item.updatedAt,
         updatedAt: item.updatedAt,
+        folderId: item.folderId,
       },
       scope,
     );
@@ -200,6 +211,10 @@ const replaceLocalWorkspaceSnapshot = async (
       baseSignature: item.baseSignature,
     };
     await upsertSavedDraft(item.normalizedName, nextDraft, scope);
+  }
+
+  if (snapshot.folders.length > 0) {
+    await bulkPutFolders(snapshot.folders);
   }
 };
 
@@ -247,6 +262,11 @@ export const applyCloudSnapshotToLocal = async (
       },
       scope,
     );
+  }
+
+  await clearFolders();
+  if (snapshot.folders.length > 0) {
+    await bulkPutFolders(snapshot.folders);
   }
 
   dispatchWorkspaceSnapshotApplied();

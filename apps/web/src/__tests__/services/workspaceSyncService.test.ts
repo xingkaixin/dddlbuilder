@@ -14,6 +14,7 @@ import {
   writeGlobalDraft,
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
+import { createFolder, listFolders } from '@/utils/tableFolders';
 
 const createState = (tableName: string) => ({
   schemaName: '',
@@ -56,6 +57,7 @@ describe('workspaceSyncService', () => {
         normalizedName: 'users',
         name: 'Users',
         state: createState('users'),
+        folderId: 'folder_1',
         createdAt: 100,
         updatedAt: 120,
       },
@@ -71,6 +73,7 @@ describe('workspaceSyncService', () => {
       },
       scope,
     );
+    await createFolder('我的文件夹');
 
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
@@ -98,6 +101,7 @@ describe('workspaceSyncService', () => {
         {
           normalizedName: 'users',
           name: 'Users',
+          folderId: 'folder_1',
         },
       ],
       savedDrafts: [
@@ -105,6 +109,11 @@ describe('workspaceSyncService', () => {
           normalizedName: 'users',
           tableName: 'Users',
           baseSignature: 'base-signature',
+        },
+      ],
+      folders: [
+        {
+          name: '我的文件夹',
         },
       ],
     });
@@ -163,6 +172,7 @@ describe('workspaceSyncService', () => {
               name: 'Users',
               state: createState('users'),
               updatedAt: 210,
+              folderId: 'folder_1',
             },
           ],
           savedDrafts: [
@@ -172,6 +182,14 @@ describe('workspaceSyncService', () => {
               state: createState('users_draft'),
               updatedAt: 220,
               baseSignature: 'cloud-signature',
+            },
+          ],
+          folders: [
+            {
+              id: 'folder_1',
+              name: '云端文件夹',
+              order: 1,
+              createdAt: 230,
             },
           ],
         }),
@@ -184,12 +202,16 @@ describe('workspaceSyncService', () => {
     const savedTables = await listSavedTables(scope);
     const savedDrafts = await listSavedDrafts(scope);
     const session = await readWorkspaceSession(scope);
+    const folders = await listFolders();
 
     expect(globalDraft?.state.tableName).toBe('cloud_draft');
     expect(savedTables.map((item) => item.normalizedName)).toEqual(['users']);
+    expect(savedTables[0]?.folderId).toBe('folder_1');
     expect(Object.keys(savedDrafts)).toEqual(['users']);
     expect(savedDrafts.users?.baseSignature).toBe('cloud-signature');
     expect(session).toBeNull();
+    expect(folders).toHaveLength(1);
+    expect(folders[0]).toMatchObject({ id: 'folder_1', name: '云端文件夹' });
 
     window.removeEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, eventListener);
     expect(eventListener).toHaveBeenCalledTimes(1);
