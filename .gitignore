@@ -37,3 +37,7 @@ wrangler.deploy.toml
 playwright-report
 test-results
 coverage/
+
+
+# turbo
+.turbo
