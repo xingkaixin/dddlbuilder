@@ -28,7 +28,7 @@
     "preview": "pnpm run --dir apps/web preview",
     "test:watch": "vitest --project apps/web --project apps/worker",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "pnpm --filter @ddlbuilder/web test:coverage && pnpm --filter @ddlbuilder/worker test:coverage && pnpm --filter @ddlbuilder/ddl-core test:coverage && vitest run --coverage --project scripts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "pnpm exec playwright show-report",

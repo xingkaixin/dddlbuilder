@@ -80,6 +80,42 @@ describe('/api/auth/*', () => {
       });
     });
 
+    it('returns 400 when token is not a string', async () => {
+      const { default: app } = await import('../../api/index');
+      const response = await app.fetch(
+        createRequest('/api/auth/turnstile/verify', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ token: 12345 }),
+        }),
+        createEnv(),
+      );
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({
+        error: 'Turnstile token is required',
+        code: 'TURNSTILE_REQUIRED',
+      });
+    });
+
+    it('returns 400 when token is null', async () => {
+      const { default: app } = await import('../../api/index');
+      const response = await app.fetch(
+        createRequest('/api/auth/turnstile/verify', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ token: null }),
+        }),
+        createEnv(),
+      );
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({
+        error: 'Turnstile token is required',
+        code: 'TURNSTILE_REQUIRED',
+      });
+    });
+
     it('returns 503 when turnstile service returns non-ok', async () => {
       vi.stubGlobal(
         'fetch',
@@ -305,6 +341,26 @@ describe('/api/me', () => {
     expect(await response.json()).toMatchObject({
       signedIn: false,
       user: null,
+    });
+  });
+
+  it('returns 503 when authentication service throws', async () => {
+    vi.doMock('../lib/auth.js', () => ({
+      resolveAuthenticatedUser: vi.fn().mockRejectedValue(new Error('DB down')),
+    }));
+
+    const { default: app } = await import('../../api/index');
+    const response = await app.fetch(
+      createRequest('/api/me', {
+        headers: { Cookie: 'session=ok' },
+      }),
+      createEnv(),
+    );
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({
+      error: 'Authentication service unavailable',
+      code: 'SERVICE_UNAVAILABLE',
     });
   });
 });

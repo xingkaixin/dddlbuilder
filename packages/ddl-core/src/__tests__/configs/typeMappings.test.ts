@@ -386,6 +386,13 @@ describe('TYPE_MAPPINGS', () => {
         'BIGINT UNSIGNED AUTO_INCREMENT',
       );
     });
+
+    it('maps timestamp with transform', () => {
+      expect(TYPE_MAPPINGS.oceanbase.timestamp).toEqual({
+        transform: expect.any(Function),
+      });
+      expect(TYPE_MAPPINGS.oceanbase.timestamp.transform?.(parsed)).toBe('TIMESTAMP');
+    });
   });
 
   describe('oceanbase-oracle', () => {
@@ -455,6 +462,27 @@ describe('TYPE_MAPPINGS', () => {
       expect(TYPE_MAPPINGS.hive.json.transform?.(parsed)).toBe('STRING');
     });
 
+    it('maps jsonb with transform to STRING', () => {
+      expect(TYPE_MAPPINGS.hive.jsonb).toEqual({
+        transform: expect.any(Function),
+      });
+      expect(TYPE_MAPPINGS.hive.jsonb.transform?.(parsed)).toBe('STRING');
+    });
+
+    it('maps nvarchar with transform to STRING', () => {
+      expect(TYPE_MAPPINGS.hive.nvarchar).toEqual({
+        transform: expect.any(Function),
+      });
+      expect(TYPE_MAPPINGS.hive.nvarchar.transform?.(parsed)).toBe('STRING');
+    });
+
+    it('maps nchar with transform to STRING', () => {
+      expect(TYPE_MAPPINGS.hive.nchar).toEqual({
+        transform: expect.any(Function),
+      });
+      expect(TYPE_MAPPINGS.hive.nchar.transform?.(parsed)).toBe('STRING');
+    });
+
     it('maps blob to BINARY', () => {
       expect(TYPE_MAPPINGS.hive.blob).toEqual({ mapping: 'BINARY' });
     });
@@ -468,6 +496,27 @@ describe('TYPE_MAPPINGS', () => {
 
     it('maps serial to INT', () => {
       expect(TYPE_MAPPINGS.hive.serial).toEqual({ mapping: 'INT' });
+    });
+
+    it('maps mediumtext with transform to STRING', () => {
+      expect(TYPE_MAPPINGS.hive.mediumtext).toEqual({
+        transform: expect.any(Function),
+      });
+      expect(TYPE_MAPPINGS.hive.mediumtext.transform?.(parsed)).toBe('STRING');
+    });
+
+    it('maps longtext with transform to STRING', () => {
+      expect(TYPE_MAPPINGS.hive.longtext).toEqual({
+        transform: expect.any(Function),
+      });
+      expect(TYPE_MAPPINGS.hive.longtext.transform?.(parsed)).toBe('STRING');
+    });
+
+    it('maps uuid with transform to STRING', () => {
+      expect(TYPE_MAPPINGS.hive.uuid).toEqual({
+        transform: expect.any(Function),
+      });
+      expect(TYPE_MAPPINGS.hive.uuid.transform?.(parsed)).toBe('STRING');
     });
   });
 
