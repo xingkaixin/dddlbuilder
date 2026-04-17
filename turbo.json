@@ -20,6 +20,14 @@
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
     },
-    "lint": {}
+    "lint": {
+      "cache": true
+    },
+    "lint:fix": {
+      "cache": false
+    },
+    "format": {
+      "cache": false
+    }
   }
 }

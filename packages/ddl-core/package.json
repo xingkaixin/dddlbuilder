@@ -4,7 +4,10 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json src/ && oxfmt --config ../../.oxfmtrc.json --check src/",
+    "lint:fix": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json --fix src/ && oxfmt --config ../../.oxfmtrc.json --write src/",
+    "format": "oxfmt --config ../../.oxfmtrc.json --write src/"
   },
   "exports": {
     ".": "./src/index.ts"
