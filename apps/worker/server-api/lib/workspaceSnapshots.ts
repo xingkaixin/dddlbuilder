@@ -31,7 +31,7 @@ type FolderPayload = {
   createdAt: number;
 };
 
-const buildSnapshotId = (userId: string, kind: SnapshotKind, normalizedName: string | null, folderId?: string) =>
+const buildSnapshotId = (userId: string, kind: SnapshotKind, normalizedName: string | null) =>
   `${kind}:${userId}:${normalizedName ?? 'global'}`;
 
 const listSnapshotRows = async (
