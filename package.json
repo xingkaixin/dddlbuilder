@@ -24,7 +24,7 @@
     "logo": "pnpm exec tsx scripts/generate-logos.ts && pnpm exec tsx scripts/generate-favicon.ts",
     "lint": "oxlint --type-aware --tsconfig tsconfig.oxlint.json . && oxfmt --check apps/web/src apps/worker/api apps/worker/server-api scripts e2e server.ts apps/web/vite.config.ts vitest.config.ts playwright.config.ts package.json tsconfig.json tsconfig.node.json tsconfig.oxlint.json .oxlintrc.json .oxfmtrc.json",
     "lint:fix": "oxlint --type-aware --tsconfig tsconfig.oxlint.json --fix . && oxfmt --write apps/web/src apps/worker/api apps/worker/server-api scripts e2e server.ts apps/web/vite.config.ts vitest.config.ts playwright.config.ts package.json tsconfig.json tsconfig.node.json tsconfig.oxlint.json .oxlintrc.json .oxfmtrc.json",
-    "lint:format": "oxfmt --write apps/web/src apps/worker/api apps/worker/server-api scripts e2e server.ts apps/web/vite.config.ts vitest.config.ts playwright.config.ts package.json tsconfig.json tsconfig.node.json tsconfig.oxlint.json .oxlintrc.json .oxfmtrc.json",
+    "format": "oxfmt --write apps/web/src apps/worker/api apps/worker/server-api scripts e2e server.ts apps/web/vite.config.ts vitest.config.ts playwright.config.ts package.json tsconfig.json tsconfig.node.json tsconfig.oxlint.json .oxlintrc.json .oxfmtrc.json",
     "preview": "pnpm run --dir apps/web preview",
     "test:watch": "vitest --project apps/web --project apps/worker",
     "test": "vitest run",

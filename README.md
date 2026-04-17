@@ -31,34 +31,34 @@
 pnpm install
 
 # 本地开发（应用，支持热更新）
-pnpm run dev
+pnpm dev
 
 # 仅启动前端开发服务
-pnpm run dev:app
+pnpm dev:app
 
 # Worker 运行时调试
-pnpm run dev:worker
+pnpm dev:worker
 
 # 产物构建
-pnpm run build
+pnpm build
 
 # 部署（自动读取 .deploy.secrets）
-pnpm run deploy
+pnpm deploy
 ```
 
 开发命令说明：
 
-- `pnpm run dev`：启动前端开发服务、Worker 运行时与文档开发服务，入口为 `http://localhost:3000`，修改页面代码会通过 Vite 自动热更新。
-- `pnpm run dev:app`：仅启动前端开发服务（Vite）。
-- `pnpm run dev:worker`：先构建一次 Worker 产物，再用 `wrangler dev` 在 `http://localhost:8787` 启动运行时调试服务。
-- `pnpm run db:migrate:local`：初始化或升级本地 D1 用户系统 schema。
-- `pnpm run db:seed:local`：写入本地 D1 最小种子数据。
-- `pnpm run db:reset:local`：清空并重建本地 D1 schema，再重新 seed。
-- `pnpm run db:inspect:local`：查看本地 D1 当前表与索引。
-- `pnpm run db:migrate:remote` / `pnpm run db:inspect:remote`：显式连接 remote D1 执行迁移或检查。
-- `pnpm run dev:docs`：仅启动文档开发服务（`http://127.0.0.1:5174/docs/`）。
-- `pnpm run dev` 运行时，`/docs` 会自动代理到 docs dev server；如果只运行 `pnpm run dev:app`，需要再单独运行 `pnpm run dev:docs` 才能通过 `http://localhost:3000/docs/` 查看文档。
-- `pnpm run dev` 或 `pnpm run dev:app` 运行时，前端的 `/api/*` 请求会代理到 `http://127.0.0.1:8787`。如果没有启动 `pnpm run dev:worker`，D1 / KV / Better Auth / Turnstile 都不会生效。
+- `pnpm dev`：启动前端开发服务、Worker 运行时与文档开发服务，入口为 `http://localhost:3000`，修改页面代码会通过 Vite 自动热更新。
+- `pnpm dev:app`：仅启动前端开发服务（Vite）。
+- `pnpm dev:worker`：先构建一次 Worker 产物，再用 `wrangler dev` 在 `http://localhost:8787` 启动运行时调试服务。
+- `pnpm db:migrate:local`：初始化或升级本地 D1 用户系统 schema。
+- `pnpm db:seed:local`：写入本地 D1 最小种子数据。
+- `pnpm db:reset:local`：清空并重建本地 D1 schema，再重新 seed。
+- `pnpm db:inspect:local`：查看本地 D1 当前表与索引。
+- `pnpm db:migrate:remote` / `pnpm db:inspect:remote`：显式连接 remote D1 执行迁移或检查。
+- `pnpm dev:docs`：仅启动文档开发服务（`http://127.0.0.1:5174/docs/`）。
+- `pnpm dev` 运行时，`/docs` 会自动代理到 docs dev server；如果只运行 `pnpm dev:app`，需要再单独运行 `pnpm dev:docs` 才能通过 `http://localhost:3000/docs/` 查看文档。
+- `pnpm dev` 或 `pnpm dev:app` 运行时，前端的 `/api/*` 请求会代理到 `http://127.0.0.1:8787`。如果没有启动 `pnpm dev:worker`，D1 / KV / Better Auth / Turnstile 都不会生效。
 
 ### 部署 secrets
 
@@ -68,9 +68,9 @@ pnpm run deploy
 
 1. 复制 `.deploy.secrets.example` 为 `.deploy.secrets`
 2. 在 `.deploy.secrets` 中填写生产 secrets
-3. 执行 `pnpm run deploy`
+3. 执行 `pnpm deploy`
 
-`pnpm run deploy` 会在构建后自动调用 `wrangler deploy --config wrangler.deploy.toml`，如果检测到 `.deploy.secrets`，会额外带上 `--secrets-file .deploy.secrets`，不需要再一个个手动 `wrangler secret put`。
+`pnpm deploy` 会在构建后自动调用 `wrangler deploy --config wrangler.deploy.toml`，如果检测到 `.deploy.secrets`，会额外带上 `--secrets-file .deploy.secrets`，不需要再一个个手动 `wrangler secret put`。
 
 `.deploy.secrets` 使用标准 `.env` 格式，例如：
 
@@ -85,7 +85,7 @@ TURNSTILE_SECRET_KEY=xxx
 如果你想把 secrets 文件放在别处，部署时可通过环境变量覆盖：
 
 ```bash
-WRANGLER_SECRETS_FILE=/absolute/path/to/prod.secrets pnpm run deploy
+WRANGLER_SECRETS_FILE=/absolute/path/to/prod.secrets pnpm deploy
 ```
 
 ### 环境变量
@@ -153,22 +153,22 @@ localStorage.setItem('ddlbuilder:ai-stream-debug', 'true');
 首次拉起用户系统底座时，按下面顺序执行：
 
 ```bash
-pnpm run db:migrate:local
-pnpm run db:seed:local
-pnpm run dev:worker
+pnpm db:migrate:local
+pnpm db:seed:local
+pnpm dev:worker
 ```
 
 如果需要回到干净状态：
 
 ```bash
-pnpm run db:reset:local
+pnpm db:reset:local
 ```
 
 说明：
 
 - 默认所有 D1 命令都操作 local simulation。
 - remote D1 只允许通过显式的 `:remote` 命令访问。
-- `pnpm run dev:worker` 和 `pnpm run db:*:local` 共享同一份本地 D1，持久化目录都是 `.wrangler/state/dev`。
+- `pnpm dev:worker` 和 `pnpm db:*:local` 共享同一份本地 D1，持久化目录都是 `.wrangler/state/dev`。
 
 ## 使用说明
 
