@@ -154,7 +154,20 @@ export type PersistedState = {
 };
 
 export type { ApiErrorCode, ApiMeta, ApiErrorPayload } from './api.js';
-export type { WorkspaceSource, WorkspaceScope, WorkspaceSavePayload, SavedTableDraftRecord, GlobalDraftSummary, WorkspaceSnapshot } from './workspace.js';
+export type {
+  WorkspaceSource,
+  WorkspaceScope,
+  WorkspaceSavePayload,
+  SavedTableDraftRecord,
+  GlobalDraftSummary,
+  WorkspaceSnapshot,
+} from './workspace.js';
 export type { AppLocale } from './locale.js';
 export { APP_LOCALES, isAppLocale } from './locale.js';
-export type { GeneratedTableSchema, GeneratedField, GeneratedIndex, ConversationMessage, PartialTableSchema } from './aiGenerate.js';
+export type {
+  GeneratedTableSchema,
+  GeneratedField,
+  GeneratedIndex,
+  ConversationMessage,
+  PartialTableSchema,
+} from './aiGenerate.js';

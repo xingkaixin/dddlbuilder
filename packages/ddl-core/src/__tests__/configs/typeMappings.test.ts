@@ -110,9 +110,7 @@ describe('TYPE_MAPPINGS', () => {
   describe('tidb', () => {
     it('shares same structure as mysql', () => {
       expect(TYPE_MAPPINGS.tidb.varchar).toEqual(TYPE_MAPPINGS.mysql.varchar);
-      expect(TYPE_MAPPINGS.tidb.serial.transform?.(parsed)).toBe(
-        'BIGINT UNSIGNED AUTO_INCREMENT',
-      );
+      expect(TYPE_MAPPINGS.tidb.serial.transform?.(parsed)).toBe('BIGINT UNSIGNED AUTO_INCREMENT');
     });
   });
 

@@ -107,9 +107,7 @@ describe('d1-utils', () => {
   });
 
   it('builds wrangler execute args with both file and command', () => {
-    expect(
-      buildD1ExecuteArgs('local', { file: '/tmp/test.sql', command: 'SELECT 1' }),
-    ).toEqual([
+    expect(buildD1ExecuteArgs('local', { file: '/tmp/test.sql', command: 'SELECT 1' })).toEqual([
       'exec',
       'wrangler',
       '--config',

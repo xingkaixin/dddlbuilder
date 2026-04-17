@@ -8,6 +8,11 @@
   "dependencies": {
     "drizzle-orm": "^0.45.2"
   },
+  "scripts": {
+    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json src/ && oxfmt --config ../../.oxfmtrc.json --check src/",
+    "lint:fix": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json --fix src/ && oxfmt --config ../../.oxfmtrc.json --write src/",
+    "format": "oxfmt --config ../../.oxfmtrc.json --write src/"
+  },
   "devDependencies": {
     "@ddlbuilder/tsconfig": "workspace:*"
   }

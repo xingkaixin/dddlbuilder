@@ -7,8 +7,11 @@
     "dev": "wrangler dev api/index.ts --inspector-port 0 --persist-to ../../.wrangler/state/dev",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage --no-file-parallelism",
-    "test:watch": "vitest"
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json api/ server-api/ && oxfmt --config ../../.oxfmtrc.json --check api/ server-api/",
+    "lint:fix": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json --fix api/ server-api/ && oxfmt --config ../../.oxfmtrc.json --write api/ server-api/",
+    "format": "oxfmt --config ../../.oxfmtrc.json --write api/ server-api/"
   },
   "dependencies": {
     "@ddlbuilder/db": "workspace:*",

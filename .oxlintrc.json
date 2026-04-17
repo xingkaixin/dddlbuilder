@@ -89,7 +89,5 @@
     "**/coverage/**",
     "public/scripts/**"
   ],
-  "options": {
-    "typeAware": true
-  }
+  "options": {}
 }
