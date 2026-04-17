@@ -29,3 +29,4 @@ You do not need to handwrite SQL from scratch. With page-based configuration, yo
 - `Schema Name` is optional. Keep the table input for the bare table name only, and do not paste `schema.table` into the table name field.
 - If you configure fields but no grantees, "Privilege DCL" may be empty. This is expected.
 - If you close the page without saving, drafts are still auto-preserved, but it is recommended to manually save a named table at key points.
+- For cross-device use or to protect against data loss, sign up and sign in via the top-right account menu. After signing in, you can sync your workspace to the cloud from Settings.

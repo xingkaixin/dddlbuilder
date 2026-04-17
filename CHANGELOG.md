@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.16.0] - 2026-04-17
+### Added
+- **User system**: Supports email-based sign-up and sign-in with email verification, password reset, and branded email templates. Data is bound to your account after signing in; anonymous local workspace remains available without signing in.
+- **AI credit center**: AI table generation, DDL review, and SQL explanation now consume credits based on actual token usage. Current balance is shown in the header; the settings page provides a full usage history including reservations, settlement returns, and failure refunds.
+- **Workspace cloud sync**: A new "Workspace Sync" tab in Settings supports manually uploading or downloading your local workspace (global draft, saved tables, and saved drafts) to/from the cloud, so you can recover after switching devices.
+- **Cross-device folder sync**: Table folders created by signed-in users are included in workspace cloud sync, keeping your folder organization consistent across devices.
+- **Anonymous workspace migration**: When signing in for the first time, the system prompts to migrate existing anonymous local data to your account. Name conflicts are automatically saved as copies without overwriting cloud content.
+- **Admin console**: Adds an admin dashboard for user management and session overview.
+
+### Engineering
+- **Monorepo refactor**: The project is now organized as a pnpm workspace with Turborepo, splitting web, docs, worker, and shared packages for clearer builds and dependency management.
+
 ## [0.15.7] - 2026-04-03
 ### Added
 - **SQL output format toggle**: Adds compact and aligned display modes to the DDL output panel. Copied SQL now stays consistent with the current preview, making it easier to paste readable statements into docs, reviews, and tickets.

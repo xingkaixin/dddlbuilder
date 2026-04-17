@@ -16,6 +16,9 @@ You can manage temporary designs and formally saved versions separately, and org
 4. For cleanup or naming consistency, run `Rename` or `Delete` from the list. Result: naming becomes cleaner and redundant history can be reduced in time.
 5. Use `Create folder`, drag table items, and drag folders to organize structure. Result: tables in the same business domain can be grouped and the list becomes clearer.
 6. To return to temporary work, switch to `Draft box`. Result: you can continue unnamed drafts without affecting saved tables; draft `Schema Name` is also preserved with the workspace.
+7. After signing in, folder structure syncs automatically along with saved tables. Result: when you sign in on another device, your saved tables and folder groupings are restored automatically without manual rebuilding.
+8. When you need to manually back up or restore, click your profile in the header and open `Settings`, then go to the `Workspace Sync` tab. Result: you can upload the full workspace from this device to the cloud, or download from the cloud to overwrite the current device; both actions require confirmation to avoid accidental overwrite.
+9. When signing in for the first time, if anonymous local data exists in the browser, a migration prompt appears. Result: after starting the migration, saved tables, drafts, and folders from the anonymous workspace are bound to your account; if there are naming conflicts, the system automatically saves copies without overwriting existing cloud content.
 
 ## Done when
 
@@ -23,6 +26,7 @@ You can manage temporary designs and formally saved versions separately, and org
 - Folder hierarchy is organized by project or business domain.
 - After switching between Draft box and saved tables, workspace state matches expectation.
 - If the table uses a schema, the combination of `Schema Name` and table name remains consistent after reload.
+- After signing in, folders and saved tables stay consistent across devices.
 
 ## Common pitfalls
 
@@ -30,3 +34,4 @@ You can manage temporary designs and formally saved versions separately, and org
 - If older data used `schema.table` inside the table name itself, the system will split it into `Schema Name` and bare table name when loading. Spot-check once after load.
 - Deleting a table cannot be undone. Confirm replacement versions first.
 - If you mistake a draft for a saved table, the named record may look missing after refresh. Manually save at key milestones.
+- Without signing in, folders and saved tables are kept only in the current browser's local storage. They cannot be recovered after switching devices or clearing browser data. Sign in first if you want cross-device access.

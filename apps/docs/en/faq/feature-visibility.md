@@ -78,6 +78,46 @@ Whether valid SQL has been generated in "Table DDL" on the right, rather than pl
 
 Check whether a review task is already running. The button is temporarily disabled during processing.
 
+## Why AI features are unavailable (generate, review, explain)
+
+### Symptoms
+
+Clicking AI table generation, AI Review, or SQL explanation shows a sign-in prompt or an insufficient-credits message.
+
+### Quick checks
+
+- Whether you are currently signed in.
+- Whether your credit balance is greater than 0 after signing in.
+
+### Steps
+
+1. Anonymous users should register or sign in first. Result: AI features become available after signing in.
+2. After signing in, check the remaining credits in the header account menu. Result: you can confirm the current balance.
+3. If the balance is 0, open Settings > Credits to view usage history. Result: you can understand where credits were spent; recharge when the channel opens.
+
+### If still unresolved
+
+Confirm whether the current environment has the user and credit system enabled; some private deployments may not include these features.
+
+## Why the "Settings" entry is missing
+
+### Symptoms
+
+There is no account avatar or Settings button in the top action area.
+
+### Quick checks
+
+Whether the current deployment has the user system configured (Better Auth + D1).
+
+### Steps
+
+1. Use the official site (ddl.xingkaixin.me), where the user system is fully configured. Result: the Settings entry appears normally.
+2. For local development or private deployments, check whether environment variables such as `BETTER_AUTH_URL` and the database are configured correctly. Result: after configuration, refresh the page to see the sign-in and Settings entries.
+
+### If still unresolved
+
+Contact the deployment administrator to confirm whether the user system is enabled.
+
 ## Why review history is empty
 
 ### Symptoms
