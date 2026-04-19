@@ -72,6 +72,7 @@ export const Header = memo<HeaderProps>(
     const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
     const [userSettingsOpen, setUserSettingsOpen] = useState(false);
     const [resetToken, setResetToken] = useState<string | null>(null);
+    const [verifyEmailDialogOpen, setVerifyEmailDialogOpen] = useState(false);
     const actionBtnClass =
       'group inline-flex items-center gap-1.5 rounded-md px-1 py-1 text-xs font-medium text-primary transition-all duration-200 hover:translate-x-0.5 hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60';
 
@@ -86,6 +87,7 @@ export const Header = memo<HeaderProps>(
       if (authAction === 'verify-email') {
         void authSession.refreshSession().finally(() => {
           success(t('header.auth.verifyEmailSucceeded'));
+          setVerifyEmailDialogOpen(true);
           clearAuthQuery();
         });
         return;
@@ -577,6 +579,19 @@ export const Header = memo<HeaderProps>(
                     : authMode === 'reset_password'
                       ? t('header.auth.resetPassword')
                       : t('header.auth.signIn')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={verifyEmailDialogOpen} onOpenChange={setVerifyEmailDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t('header.auth.verifyEmailDialogTitle')}</DialogTitle>
+              <DialogDescription>{t('header.auth.verifyEmailSucceeded')}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button type="button" onClick={() => setVerifyEmailDialogOpen(false)}>
+                {t('header.auth.verifyEmailDialogConfirm')}
               </Button>
             </DialogFooter>
           </DialogContent>

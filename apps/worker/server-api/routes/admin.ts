@@ -255,6 +255,47 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
     return c.json(withMeta(c, { ok: true }));
   });
 
+  app.post('/admin/users/:userId/email-verification', async (c) => {
+    const valid = await requireAdmin(c.env, c.req.header('cookie'));
+    if (!valid) {
+      return errorResponse(c, 401, 'Admin session required', 'ADMIN_REQUIRED');
+    }
+
+    const userId = c.req.param('userId');
+    const { data: body, errorResponse: err } = await parseJsonBodyWithLimit<{
+      verified?: boolean;
+    }>(c, 1024);
+    if (err) return err;
+
+    if (typeof body.verified !== 'boolean') {
+      return errorResponse(c, 400, 'Verified flag must be a boolean');
+    }
+
+    const userRow = await c.env.USER_DB.prepare('SELECT id FROM user WHERE id = ?')
+      .bind(userId)
+      .first();
+
+    if (!userRow) {
+      return errorResponse(c, 404, 'User not found');
+    }
+
+    const updatedAt = Date.now();
+    if (body.verified) {
+      await c.env.USER_DB.prepare('UPDATE user SET email_verified = 1, updated_at = ? WHERE id = ?')
+        .bind(updatedAt, userId)
+        .run();
+    } else {
+      await c.env.USER_DB.batch([
+        c.env.USER_DB.prepare(
+          'UPDATE user SET email_verified = 0, updated_at = ? WHERE id = ?',
+        ).bind(updatedAt, userId),
+        c.env.USER_DB.prepare('DELETE FROM session WHERE user_id = ?').bind(userId),
+      ]);
+    }
+
+    return c.json(withMeta(c, { ok: true, emailVerified: body.verified }));
+  });
+
   // ─── Credits ─────────────────────────────────────────────────────
 
   app.post('/admin/users/:userId/credits', async (c) => {

@@ -23,6 +23,7 @@ import {
   resetUserPassword,
   disableUser,
   enableUser,
+  updateUserEmailVerification,
   grantUserCredits,
   type AdminUserDetail as AdminUserDetailType,
   type CreditLedgerItem,
@@ -133,6 +134,20 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
     }
   };
 
+  const handleEmailVerification = async (verified: boolean) => {
+    try {
+      await updateUserEmailVerification(userId, verified);
+      toast.success(
+        verified
+          ? t('admin.detail.markEmailVerifiedSuccess')
+          : t('admin.detail.markEmailUnverifiedSuccess'),
+      );
+      await fetchUser();
+    } catch {
+      toast.error('Failed to update email verification');
+    }
+  };
+
   const handleGrantCredits = async (e: FormEvent) => {
     e.preventDefault();
     const amount = Number(creditAmount);
@@ -192,6 +207,12 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
             <p className="font-mono text-sm text-muted-foreground">{user.email}</p>
             <div className="flex gap-4 text-xs text-muted-foreground">
               <span>
+                {t('admin.users.verified')}:{' '}
+                {user.emailVerified
+                  ? t('admin.detail.emailVerified')
+                  : t('admin.detail.emailUnverified')}
+              </span>
+              <span>
                 {t('admin.users.balance')}: {user.balance}
               </span>
               <span>
@@ -208,6 +229,24 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
               <Mail className="mr-1.5 h-4 w-4" />
               {t('admin.detail.sendResetEmail')}
             </Button>
+
+            {user.emailVerified ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleEmailVerification(false)}
+              >
+                {t('admin.detail.markEmailUnverified')}
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleEmailVerification(true)}
+              >
+                {t('admin.detail.markEmailVerified')}
+              </Button>
+            )}
 
             {user.disabled ? (
               <Button variant="outline" size="sm" onClick={handleEnable}>

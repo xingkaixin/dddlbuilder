@@ -305,6 +305,8 @@ describe('Header', () => {
       expect(successMock).toHaveBeenCalledWith('邮箱验证完成，当前可以直接登录');
     });
 
+    expect(screen.getByText('邮箱验证完成')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '我知道了' })).toBeInTheDocument();
     expect(window.location.search).toBe('');
   });
 });

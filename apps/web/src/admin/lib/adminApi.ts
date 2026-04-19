@@ -109,6 +109,18 @@ export const enableUser = async (userId: string): Promise<void> => {
   await adminFetch(`/users/${userId}/enable`, { method: 'POST' });
 };
 
+export const updateUserEmailVerification = async (
+  userId: string,
+  verified: boolean,
+): Promise<boolean> => {
+  const result = await adminFetch<{ emailVerified: boolean }>(`/users/${userId}/email-verification`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ verified }),
+  });
+  return result.emailVerified;
+};
+
 export const grantUserCredits = async (
   userId: string,
   amount: number,

@@ -631,6 +631,134 @@ describe('/api/admin/*', () => {
     });
   });
 
+  describe('POST /api/admin/users/:userId/email-verification', () => {
+    it('returns 401 without admin session', async () => {
+      vi.doMock('../lib/adminAuth.js', () => ({
+        createAdminSession: vi.fn(),
+        resolveAdminSession: vi.fn().mockResolvedValue(false),
+        deleteAdminSession: vi.fn(),
+      }));
+
+      const { default: app } = await import('../../api/index');
+      const response = await app.fetch(
+        createRequest('/api/admin/users/user-1/email-verification', { method: 'POST' }),
+        createEnv(),
+      );
+
+      expect(response.status).toBe(401);
+      expect(await response.json()).toMatchObject({
+        error: 'Admin session required',
+        code: 'ADMIN_REQUIRED',
+      });
+    });
+
+    it('returns 400 when verified is not a boolean', async () => {
+      vi.doMock('../lib/adminAuth.js', () => ({
+        createAdminSession: vi.fn(),
+        resolveAdminSession: vi.fn().mockResolvedValue(true),
+        deleteAdminSession: vi.fn(),
+      }));
+
+      const { default: app } = await import('../../api/index');
+      const response = await app.fetch(
+        createRequest('/api/admin/users/user-1/email-verification', {
+          method: 'POST',
+          headers: {
+            Cookie: 'ddlbuilder_admin_session=valid-token',
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({ verified: 'true' }),
+        }),
+        createEnv(),
+      );
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({
+        error: 'Verified flag must be a boolean',
+      });
+    });
+
+    it('returns 404 when user not found', async () => {
+      vi.doMock('../lib/adminAuth.js', () => ({
+        createAdminSession: vi.fn(),
+        resolveAdminSession: vi.fn().mockResolvedValue(true),
+        deleteAdminSession: vi.fn(),
+      }));
+
+      const { default: app } = await import('../../api/index');
+      const response = await app.fetch(
+        createRequest('/api/admin/users/user-1/email-verification', {
+          method: 'POST',
+          headers: {
+            Cookie: 'ddlbuilder_admin_session=valid-token',
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({ verified: true }),
+        }),
+        createEnv({ USER_DB: mockD1Results([]) as unknown as D1Database }),
+      );
+
+      expect(response.status).toBe(404);
+      expect(await response.json()).toMatchObject({
+        error: 'User not found',
+      });
+    });
+
+    it('marks user as verified', async () => {
+      const d1Mock = mockD1Results([{ id: 'user-1' }]);
+      vi.doMock('../lib/adminAuth.js', () => ({
+        createAdminSession: vi.fn(),
+        resolveAdminSession: vi.fn().mockResolvedValue(true),
+        deleteAdminSession: vi.fn(),
+      }));
+
+      const { default: app } = await import('../../api/index');
+      const response = await app.fetch(
+        createRequest('/api/admin/users/user-1/email-verification', {
+          method: 'POST',
+          headers: {
+            Cookie: 'ddlbuilder_admin_session=valid-token',
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({ verified: true }),
+        }),
+        createEnv({ USER_DB: d1Mock as unknown as D1Database }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({ ok: true, emailVerified: true });
+      expect(d1Mock.prepare).toHaveBeenCalledWith(
+        'UPDATE user SET email_verified = 1, updated_at = ? WHERE id = ?',
+      );
+    });
+
+    it('marks user as unverified and clears sessions', async () => {
+      const d1Mock = mockD1Results([{ id: 'user-1' }]);
+      vi.doMock('../lib/adminAuth.js', () => ({
+        createAdminSession: vi.fn(),
+        resolveAdminSession: vi.fn().mockResolvedValue(true),
+        deleteAdminSession: vi.fn(),
+      }));
+
+      const { default: app } = await import('../../api/index');
+      const response = await app.fetch(
+        createRequest('/api/admin/users/user-1/email-verification', {
+          method: 'POST',
+          headers: {
+            Cookie: 'ddlbuilder_admin_session=valid-token',
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({ verified: false }),
+        }),
+        createEnv({ USER_DB: d1Mock as unknown as D1Database }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({ ok: true, emailVerified: false });
+      expect(d1Mock.batch).toHaveBeenCalled();
+    });
+  });
+
   // ─── Credits ─────────────────────────────────────────────────────
 
   describe('POST /api/admin/users/:userId/credits', () => {

@@ -16,7 +16,7 @@ import { registerAdminRoutes } from '../server-api/routes/admin.js';
 
 const DOCS_DEV_ORIGIN = 'http://127.0.0.1:5174';
 const LOCAL_DEV_HOSTS = new Set(['localhost', '127.0.0.1']);
-const api = new Hono<ApiEnv>().basePath('/api');
+const api = new Hono<ApiEnv>();
 const app = new Hono<ApiEnv>();
 
 const DEFAULT_ALLOWED_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173'];
@@ -99,7 +99,7 @@ const createProxyRequest = (targetUrl: URL, request: Request) =>
     redirect: 'manual',
   });
 
-app.route('/', api);
+app.route('/api', api);
 app.get('/docs', (c) => c.redirect('/docs/', 301));
 app.all('/docs/*', async (c) => {
   const currentUrl = new URL(c.req.url);
@@ -113,6 +113,10 @@ app.all('/docs/*', async (c) => {
 
 // SPA fallback: non-API routes return index.html for client-side routing
 app.get('*', async (c) => {
+  if (c.req.path.startsWith('/api/')) {
+    return c.notFound();
+  }
+
   const res = await c.env.ASSETS.fetch(c.req.raw);
   if (res.ok) return res;
   const indexRes = await c.env.ASSETS.fetch(new Request(new URL('/index.html', c.req.url)));

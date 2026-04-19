@@ -75,6 +75,23 @@ describe('api security guards', () => {
     fetchSpy.mockRestore();
   });
 
+  it('应避免将未命中的 /api/* 请求回落到 SPA 首页', async () => {
+    const assetsFetch = vi.fn().mockResolvedValue(
+      new Response('<!doctype html><title>app</title>', {
+        status: 200,
+        headers: { 'content-type': 'text/html; charset=utf-8' },
+      }),
+    );
+    const env = createEnv({
+      ASSETS: { fetch: assetsFetch as typeof fetch },
+    });
+
+    const response = await app.fetch(createRequest('/api/not-found'), env);
+
+    expect(response.status).toBe(404);
+    expect(assetsFetch).not.toHaveBeenCalled();
+  });
+
   it('应对超大请求体返回 413', async () => {
     const env = createEnv();
     const response = await app.fetch(
