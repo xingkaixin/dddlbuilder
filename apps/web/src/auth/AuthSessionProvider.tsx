@@ -32,6 +32,8 @@ type SignUpInput = {
   password: string;
 };
 
+const verifyEmailCallbackURL = () => `${window.location.origin}/?auth_action=verify-email`;
+
 type AuthSessionContextValue = UserSessionState & {
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (input: SignUpInput) => Promise<void>;
@@ -267,7 +269,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
           email: input.email,
           password: input.password,
           name: input.name,
-          callbackURL: window.location.origin,
+          callbackURL: verifyEmailCallbackURL(),
         });
         if (result.error) {
           throw new Error(
@@ -344,7 +346,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
 
         const result = await client.sendVerificationEmail({
           email,
-          callbackURL: window.location.origin,
+          callbackURL: verifyEmailCallbackURL(),
         });
         if (result.error) {
           throw new Error(

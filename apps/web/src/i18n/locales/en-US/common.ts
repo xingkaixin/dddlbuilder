@@ -61,6 +61,7 @@ export const enUSCommon = {
       resetPassword: 'Reset password',
       resetEmailSent: 'Password reset email sent to {{email}}',
       verifyEmailSent: 'Verification email sent to {{email}}',
+      verifyEmailSucceeded: 'Email verified. You can sign in now.',
       verifyEmailFailed: 'Email verification failed or the link expired',
       passwordResetSucceeded: 'Password reset completed. Please sign in with your new password.',
       resetTokenInvalid: 'The password reset link is invalid or expired',

@@ -82,7 +82,16 @@ export const Header = memo<HeaderProps>(
 
     useEffect(() => {
       const query = new URLSearchParams(window.location.search);
-      if (query.get('auth_action') !== 'reset-password') {
+      const authAction = query.get('auth_action');
+      if (authAction === 'verify-email') {
+        void authSession.refreshSession().finally(() => {
+          success(t('header.auth.verifyEmailSucceeded'));
+          clearAuthQuery();
+        });
+        return;
+      }
+
+      if (authAction !== 'reset-password') {
         return;
       }
 
@@ -96,7 +105,7 @@ export const Header = memo<HeaderProps>(
       setResetToken(token);
       setAuthMode('reset_password');
       authSession.openAuthDialog();
-    }, [authSession, error, t]);
+    }, [authSession, error, success, t]);
 
     const authDialogDescription = useMemo(() => {
       if (authMode === 'sign_up') return t('header.auth.dialogDescriptionSignUp');

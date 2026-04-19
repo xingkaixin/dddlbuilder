@@ -58,6 +58,7 @@ export const zhCNCommon = {
       resetPassword: '重置密码',
       resetEmailSent: '密码重置邮件已发送到 {{email}}',
       verifyEmailSent: '验证邮件已发送到 {{email}}',
+      verifyEmailSucceeded: '邮箱验证完成，当前可以直接登录',
       verifyEmailFailed: '邮箱验证失败或链接已过期',
       passwordResetSucceeded: '密码已重置，请使用新密码登录',
       resetTokenInvalid: '密码重置链接无效或已过期',

@@ -9,6 +9,11 @@ const resetPasswordMock = vi.fn();
 const sendVerificationEmailMock = vi.fn();
 const signOutMock = vi.fn();
 const runMigrationMock = vi.fn();
+const refreshSessionMock = vi.fn();
+const openAuthDialogMock = vi.fn();
+const closeAuthDialogMock = vi.fn();
+const successMock = vi.fn();
+const errorMock = vi.fn();
 
 vi.mock('@/i18n/LocaleContext', () => ({
   useLocale: () => ({
@@ -74,10 +79,10 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
     resetPassword: resetPasswordMock,
     sendVerificationEmail: sendVerificationEmailMock,
     signOut: signOutMock,
-    refreshSession: vi.fn(),
+    refreshSession: refreshSessionMock,
     refreshCredits: vi.fn(),
-    openAuthDialog: vi.fn(),
-    closeAuthDialog: vi.fn(),
+    openAuthDialog: openAuthDialogMock,
+    closeAuthDialog: closeAuthDialogMock,
   })),
 }));
 
@@ -96,8 +101,8 @@ vi.mock('@/hooks/useWorkspaceMigration', () => ({
 
 vi.mock('@/hooks/useToast', () => ({
   useToast: () => ({
-    success: vi.fn(),
-    error: vi.fn(),
+    success: successMock,
+    error: errorMock,
   }),
 }));
 
@@ -105,6 +110,13 @@ describe('Header', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     runMigrationMock.mockReset();
+    refreshSessionMock.mockReset();
+    refreshSessionMock.mockResolvedValue(undefined);
+    openAuthDialogMock.mockReset();
+    closeAuthDialogMock.mockReset();
+    successMock.mockReset();
+    errorMock.mockReset();
+    window.history.replaceState({}, '', '/');
   });
 
   const baseProps = {
@@ -153,10 +165,10 @@ describe('Header', () => {
       resetPassword: resetPasswordMock,
       sendVerificationEmail: sendVerificationEmailMock,
       signOut: signOutMock,
-      refreshSession: vi.fn(),
+      refreshSession: refreshSessionMock,
       refreshCredits: vi.fn(),
-      openAuthDialog: vi.fn(),
-      closeAuthDialog: vi.fn(),
+      openAuthDialog: openAuthDialogMock,
+      closeAuthDialog: closeAuthDialogMock,
     });
 
     render(<Header {...baseProps} />);
@@ -198,10 +210,10 @@ describe('Header', () => {
       resetPassword: resetPasswordMock,
       sendVerificationEmail: sendVerificationEmailMock,
       signOut: signOutMock,
-      refreshSession: vi.fn(),
+      refreshSession: refreshSessionMock,
       refreshCredits: vi.fn(),
-      openAuthDialog: vi.fn(),
-      closeAuthDialog: vi.fn(),
+      openAuthDialog: openAuthDialogMock,
+      closeAuthDialog: closeAuthDialogMock,
     });
 
     render(<Header {...baseProps} />);
@@ -238,10 +250,10 @@ describe('Header', () => {
       resetPassword: resetPasswordMock,
       sendVerificationEmail: sendVerificationEmailMock,
       signOut: signOutMock,
-      refreshSession: vi.fn(),
+      refreshSession: refreshSessionMock,
       refreshCredits: vi.fn(),
-      openAuthDialog: vi.fn(),
-      closeAuthDialog: vi.fn(),
+      openAuthDialog: openAuthDialogMock,
+      closeAuthDialog: closeAuthDialogMock,
     });
     vi.mocked(useWorkspaceMigration).mockReturnValue({
       checking: false,
@@ -281,5 +293,18 @@ describe('Header', () => {
     await waitFor(() => {
       expect(runMigrationMock).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('邮箱验证成功回跳后应刷新会话并提示成功', async () => {
+    window.history.replaceState({}, '', '/?auth_action=verify-email');
+
+    render(<Header {...baseProps} />);
+
+    await waitFor(() => {
+      expect(refreshSessionMock).toHaveBeenCalledTimes(1);
+      expect(successMock).toHaveBeenCalledWith('邮箱验证完成，当前可以直接登录');
+    });
+
+    expect(window.location.search).toBe('');
   });
 });
