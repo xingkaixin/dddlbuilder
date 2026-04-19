@@ -227,6 +227,42 @@ describe('createBetterAuth', () => {
     );
   });
 
+  it('normalizes relative verification URLs into absolute HTTPS URLs', async () => {
+    const { createBetterAuth } = await import('../../lib/betterAuth.js');
+    const env = createEnv({
+      BETTER_AUTH_URL: 'https://ddl.xingkaixin.me/api/auth',
+    });
+
+    createBetterAuth(env);
+    const config = betterAuthMock.mock.calls[0][0];
+
+    const user = { email: 'user@example.com', name: 'Test User' };
+    const url = '/api/auth/verify-email?token=xyz';
+    await config.emailVerification.sendVerificationEmail({ user, url });
+
+    const sent = resendSendMock.mock.calls[0][0];
+    expect(sent.html).toContain('https://ddl.xingkaixin.me/api/auth/verify-email?token=xyz');
+    expect(sent.text).toContain('https://ddl.xingkaixin.me/api/auth/verify-email?token=xyz');
+  });
+
+  it('normalizes scheme-less verification URLs into absolute HTTPS URLs', async () => {
+    const { createBetterAuth } = await import('../../lib/betterAuth.js');
+    const env = createEnv({
+      BETTER_AUTH_URL: 'https://ddl.xingkaixin.me/api/auth',
+    });
+
+    createBetterAuth(env);
+    const config = betterAuthMock.mock.calls[0][0];
+
+    const user = { email: 'user@example.com', name: 'Test User' };
+    const url = 'ddl.xingkaixin.me/api/auth/verify-email?token=xyz';
+    await config.emailVerification.sendVerificationEmail({ user, url });
+
+    const sent = resendSendMock.mock.calls[0][0];
+    expect(sent.html).toContain('https://ddl.xingkaixin.me/api/auth/verify-email?token=xyz');
+    expect(sent.text).toContain('https://ddl.xingkaixin.me/api/auth/verify-email?token=xyz');
+  });
+
   it('escapes HTML special characters in email content', async () => {
     const { createBetterAuth } = await import('../../lib/betterAuth.js');
     const env = createEnv();

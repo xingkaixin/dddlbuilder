@@ -30,6 +30,27 @@ const escapeHtml = (value: string) =>
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 
+const normalizeAuthActionUrl = (rawUrl: string, authBaseUrl: URL) => {
+  const trimmed = rawUrl.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith('//')) {
+    return `${authBaseUrl.protocol}${trimmed}`;
+  }
+
+  if (trimmed.startsWith('/')) {
+    return new URL(trimmed, authBaseUrl.origin).toString();
+  }
+
+  if (/^[a-z0-9.-]+\.[a-z]{2,}(?:[/:?#]|$)/i.test(trimmed)) {
+    return `${authBaseUrl.protocol}//${trimmed}`;
+  }
+
+  return new URL(trimmed, authBaseUrl).toString();
+};
+
 const sendEmail = async (
   env: ApiEnv['Bindings'],
   input: {
@@ -174,7 +195,8 @@ export const createBetterAuth = (env: ApiEnv['Bindings']) => {
       enabled: true,
       requireEmailVerification: true,
       sendResetPassword: async ({ user, url }) => {
-        const content = renderResetPasswordEmail(url, user.name || user.email);
+        const normalizedUrl = normalizeAuthActionUrl(url, authBaseUrl);
+        const content = renderResetPasswordEmail(normalizedUrl, user.name || user.email);
         await sendEmail(env, {
           to: user.email,
           ...content,
@@ -187,7 +209,8 @@ export const createBetterAuth = (env: ApiEnv['Bindings']) => {
       sendOnSignIn: false,
       autoSignInAfterVerification: true,
       sendVerificationEmail: async ({ user, url }) => {
-        const content = renderVerificationEmail(url, user.name || user.email);
+        const normalizedUrl = normalizeAuthActionUrl(url, authBaseUrl);
+        const content = renderVerificationEmail(normalizedUrl, user.name || user.email);
         await sendEmail(env, {
           to: user.email,
           ...content,
