@@ -33,7 +33,7 @@
     "test:scripts": "vitest run --project scripts",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "deploy": "pnpm run build && pnpm exec tsx scripts/deploy.ts"
+    "deploy:cf": "pnpm run build && pnpm exec tsx scripts/deploy.ts"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.6.2",
