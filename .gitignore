@@ -23,7 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 
-.claude
+
 .env
 .env.*
 !.env.vars.example
@@ -41,3 +41,20 @@ coverage/
 
 # turbo
 .turbo
+
+
+# agent
+.claude
+.agents
+
+# agent skill
+skills-lock.json
+!.agents/
+!.agents/skills/
+.agents/*
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/gen-changelog/
+!.agents/skills/gen-changelog/**
+!.agents/skills/gen-docs/
+!.agents/skills/translate-docs/
