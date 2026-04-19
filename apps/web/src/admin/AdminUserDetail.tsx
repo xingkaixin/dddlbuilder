@@ -231,19 +231,11 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
             </Button>
 
             {user.emailVerified ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleEmailVerification(false)}
-              >
+              <Button variant="outline" size="sm" onClick={() => handleEmailVerification(false)}>
                 {t('admin.detail.markEmailUnverified')}
               </Button>
             ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleEmailVerification(true)}
-              >
+              <Button variant="outline" size="sm" onClick={() => handleEmailVerification(true)}>
                 {t('admin.detail.markEmailVerified')}
               </Button>
             )}

@@ -113,11 +113,14 @@ export const updateUserEmailVerification = async (
   userId: string,
   verified: boolean,
 ): Promise<boolean> => {
-  const result = await adminFetch<{ emailVerified: boolean }>(`/users/${userId}/email-verification`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ verified }),
-  });
+  const result = await adminFetch<{ emailVerified: boolean }>(
+    `/users/${userId}/email-verification`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ verified }),
+    },
+  );
   return result.emailVerified;
 };
 
