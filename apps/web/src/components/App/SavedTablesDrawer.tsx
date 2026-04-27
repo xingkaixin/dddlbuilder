@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/drawer';
 import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
-import type { GlobalDraftSummary } from '@ddlbuilder/shared-types/workspace';
+import type { DraftSummary } from '@ddlbuilder/shared-types/workspace';
 import { useTranslation } from 'react-i18next';
 import { Input } from '../ui/input';
 import { FolderTree, useFolderExpansion } from './FolderTree';
@@ -37,7 +37,7 @@ export interface SavedTablesDrawerProps {
   loading: boolean;
   error?: string | null;
   items: SavedTableSummary[];
-  draftItem?: GlobalDraftSummary | null;
+  draftItem?: DraftSummary | null;
   draftActive?: boolean;
   folders: FolderTreeNode[];
   foldersLoading?: boolean;

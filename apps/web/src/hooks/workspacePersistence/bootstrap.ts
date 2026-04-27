@@ -6,6 +6,7 @@ import {
 
 export type WorkspaceBootstrapRaw = {
   globalDraft: unknown;
+  drafts: Array<{ draftId: string; record: unknown }>;
   session: unknown;
   savedTable: unknown;
 };
@@ -15,11 +16,12 @@ const WORKSPACE_BOOTSTRAP_CACHE_TTL_MS = 50;
 const loadWorkspaceBootstrap = async (scope: WorkspaceScope): Promise<WorkspaceBootstrapRaw> => {
   const initial = await readWorkspaceBootstrap(scope).catch(() => ({
     globalDraft: null,
+    drafts: [],
     session: null,
     savedTable: null,
   }));
 
-  if (initial.globalDraft || initial.session) {
+  if (initial.globalDraft || initial.session || initial.drafts.length > 0) {
     return initial;
   }
 
@@ -28,6 +30,7 @@ const loadWorkspaceBootstrap = async (scope: WorkspaceScope): Promise<WorkspaceB
   }
   return readWorkspaceBootstrap(scope).catch(() => ({
     globalDraft: null,
+    drafts: [],
     session: null,
     savedTable: null,
   }));

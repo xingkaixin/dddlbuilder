@@ -1,9 +1,9 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { GlobalDraftSummary, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
-import type { WorkspaceGlobalDraftRecord, WorkspaceSessionRecord } from '@/utils/workspaceStateDb';
+import type { DraftSummary, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
+import type { WorkspaceDraftRecord, WorkspaceSessionRecord } from '@/utils/workspaceStateDb';
 import { getSchemaAndTable } from '@ddlbuilder/ddl-core';
 
-export type GlobalDraftRecord = WorkspaceGlobalDraftRecord;
+export type GlobalDraftRecord = WorkspaceDraftRecord;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -131,7 +131,7 @@ export const normalizePersistedState = (value: unknown): PersistedState | null =
 
 export const isWorkspaceSource = (value: unknown): value is WorkspaceSource => {
   if (!isRecord(value) || typeof value.kind !== 'string') return false;
-  if (value.kind === 'global_draft') return true;
+  if (value.kind === 'draft') return typeof value.draftId === 'string' && value.draftId.length > 0;
   if (value.kind !== 'saved_table') return false;
   return (
     typeof value.normalizedName === 'string' &&
@@ -143,7 +143,9 @@ export const isWorkspaceSource = (value: unknown): value is WorkspaceSource => {
 
 export const isSameWorkspaceSource = (a: WorkspaceSource, b: WorkspaceSource) => {
   if (a.kind !== b.kind) return false;
-  if (a.kind === 'global_draft' && b.kind === 'global_draft') return true;
+  if (a.kind === 'draft' && b.kind === 'draft') {
+    return a.draftId === b.draftId;
+  }
   if (a.kind === 'saved_table' && b.kind === 'saved_table') {
     return (
       a.normalizedName === b.normalizedName &&
@@ -154,19 +156,24 @@ export const isSameWorkspaceSource = (a: WorkspaceSource, b: WorkspaceSource) =>
   return false;
 };
 
-export const buildGlobalDraftSummary = (
+export const buildDraftSummary = (
+  draftId: string,
   state: PersistedState,
   updatedAt: number,
-): GlobalDraftSummary => {
+): DraftSummary => {
   const fieldCount = state.rows.filter((row) => row.fieldName?.trim()).length;
   const name = state.tableName.trim() || '未命名草稿';
   return {
+    draftId,
     name,
     dbType: state.dbType,
     fieldCount,
     updatedAt,
   };
 };
+
+/** @deprecated 使用 buildDraftSummary */
+export const buildGlobalDraftSummary = buildDraftSummary;
 
 export const normalizeGlobalDraftRecord = (value: unknown): GlobalDraftRecord | null => {
   if (!isRecord(value)) return null;

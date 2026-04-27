@@ -160,7 +160,7 @@ export function useRenameDeleteActions({
         setLoadedTableNormalizedName(null);
         setLoadedTableName(null);
         setLoadedTableSignature(null);
-        setWorkspaceSnapshot?.({ kind: 'global_draft' }, buildPersistedState());
+        setWorkspaceSnapshot?.({ kind: 'draft', draftId: 'default' }, buildPersistedState());
       }
     }
     deleteDialog.closeDialog();

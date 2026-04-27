@@ -8,6 +8,7 @@ import { OutputContainer } from './containers/OutputContainer';
 import { SavedTablesContainer } from './containers/SavedTablesContainer';
 import { TableBuilderContainer } from './containers/TableBuilderContainer';
 import { MainWorkspaceSkeleton } from './MainWorkspaceSkeleton';
+import { DEFAULT_DRAFT_ID } from '@/utils/workspaceStateDb';
 import { useAppSelectors } from './hooks/useAppSelectors';
 import { useDialogStates } from './hooks/useDialogStates';
 import { useDerivedTableState } from './hooks/useDerivedTableState';
@@ -187,8 +188,8 @@ function App() {
     shareLoadStatus,
     isShareView,
     activeSource,
-    globalDraftSummary,
-    getGlobalDraftState,
+    draftSummaries,
+    getDraftState,
     setWorkspaceSnapshot,
   } = usePersistedState();
 
@@ -646,10 +647,10 @@ function App() {
   const handleSelectGlobalDraft = useCallback(() => {
     flushCurrentWorkspace();
     setSavedTablesDrawerOpen(false);
-    const existedDraftState = getGlobalDraftState();
+    const existedDraftState = getDraftState(DEFAULT_DRAFT_ID);
     const nextState = existedDraftState ?? createEmptyGlobalDraftState();
 
-    setWorkspaceSnapshot?.({ kind: 'global_draft' }, nextState);
+    setWorkspaceSnapshot?.({ kind: 'draft', draftId: DEFAULT_DRAFT_ID }, nextState);
     applySavedState(nextState);
 
     setLoadedTableNormalizedName(null);
@@ -661,7 +662,7 @@ function App() {
   }, [
     flushCurrentWorkspace,
     setSavedTablesDrawerOpen,
-    getGlobalDraftState,
+    getDraftState,
     setWorkspaceSnapshot,
     applySavedState,
     setLoadedTableNormalizedName,
@@ -769,15 +770,17 @@ function App() {
     handleSaveAsTemplate,
   });
 
-  const effectiveGlobalDraftSummary = useMemo(() => {
-    if (globalDraftSummary) return globalDraftSummary;
+  const effectiveDefaultDraftSummary = useMemo(() => {
+    const defaultDraft = draftSummaries.find((d) => d.draftId === DEFAULT_DRAFT_ID);
+    if (defaultDraft) return defaultDraft;
     return {
+      draftId: DEFAULT_DRAFT_ID,
       name: t('app.workspace.unnamedDraft'),
       dbType: 'mysql',
       fieldCount: 0,
       updatedAt: Date.now(),
     };
-  }, [globalDraftSummary, t]);
+  }, [draftSummaries, t]);
 
   const isMainWorkspaceLoading = !hydrated || isSavedTableLoading;
 
@@ -819,11 +822,9 @@ function App() {
             loading: savedTablesLoading,
             error: savedTablesError,
             items: savedTables,
-            draftItem: effectiveGlobalDraftSummary,
+            draftItem: effectiveDefaultDraftSummary,
             draftActive:
-              !isShareView &&
-              activeSource.kind === 'global_draft' &&
-              loadedTableNormalizedName == null,
+              !isShareView && activeSource.kind === 'draft' && loadedTableNormalizedName == null,
             folders: folderTree,
             foldersLoading: foldersLoading,
             activeNormalizedName: loadedTableNormalizedName,

@@ -81,7 +81,7 @@ export type TableVersionMetadata = {
 };
 
 export const DB_NAME = 'ddlbuilder';
-export const DB_VERSION = 8;
+export const DB_VERSION = 9;
 export const STORE_NAME = 'saved_tables';
 export const VERSION_STORE_NAME = 'table_versions';
 export const REVIEW_STORE_NAME = 'review_history';
@@ -232,6 +232,33 @@ export const openDb = (): Promise<IDBDatabase> =>
                   normalizedName: withScopeKey(getAnonymousWorkspaceScope(), value.normalizedName),
                   scope: LEGACY_SCOPE,
                 } satisfies SavedTableRecord);
+              }
+              cursor.continue();
+            };
+          }
+        }
+
+        // Version 9: Migrate global draft keys from "::global" to "::default"
+        if (request.transaction && request.oldVersion < 9) {
+          if (db.objectStoreNames.contains(WORKSPACE_GLOBAL_DRAFT_STORE_NAME)) {
+            const draftStore = request.transaction.objectStore(WORKSPACE_GLOBAL_DRAFT_STORE_NAME);
+            const cursorRequest = draftStore.openCursor();
+            cursorRequest.onsuccess = () => {
+              const cursor = cursorRequest.result;
+              if (!cursor) return;
+              const value = cursor.value as {
+                id: string;
+                scope?: string;
+                state: unknown;
+                updatedAt: number;
+              };
+              if (typeof value.id === 'string' && value.id.endsWith('::global')) {
+                const newId = value.id.slice(0, -'::global'.length) + '::default';
+                draftStore.put({
+                  ...value,
+                  id: newId,
+                });
+                draftStore.delete(value.id);
               }
               cursor.continue();
             };

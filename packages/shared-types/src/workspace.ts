@@ -1,7 +1,7 @@
 import type { PersistedState } from './index.js';
 
 export type WorkspaceSource =
-  | { kind: 'global_draft' }
+  | { kind: 'draft'; draftId: string }
   | {
       kind: 'saved_table';
       normalizedName: string;
@@ -29,7 +29,8 @@ export type SavedTableDraftRecord = {
   updatedAt: number;
 };
 
-export type GlobalDraftSummary = {
+export type DraftSummary = {
+  draftId: string;
   name: string;
   dbType: string;
   fieldCount: number;

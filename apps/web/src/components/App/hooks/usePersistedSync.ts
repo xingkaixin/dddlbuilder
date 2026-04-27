@@ -144,7 +144,7 @@ export function usePersistedSync({
           return;
         }
       } else {
-        // global_draft
+        // draft
         if (loadedTableNormalizedName != null) {
           // 不匹配，跳过保存
           return;

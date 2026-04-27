@@ -40,7 +40,7 @@ export type ApiErrorPayload = {
 };
 
 export type WorkspaceMigrationConflict = {
-  kind: 'global_draft' | 'saved_table' | 'saved_draft';
+  kind: 'draft' | 'saved_table' | 'saved_draft';
   normalizedName: string | null;
   displayName: string;
 };

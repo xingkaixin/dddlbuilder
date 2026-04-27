@@ -184,7 +184,7 @@ export type {
   WorkspaceScope,
   WorkspaceSavePayload,
   SavedTableDraftRecord,
-  GlobalDraftSummary,
+  DraftSummary,
   WorkspaceSnapshot,
 } from './workspace.js';
 export type { AppLocale } from './locale.js';

@@ -2,7 +2,7 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 import type { ApiEnv } from './context.js';
 
-type SnapshotKind = 'global_draft' | 'saved_table' | 'saved_draft';
+type SnapshotKind = 'draft' | 'saved_table' | 'saved_draft';
 
 type SnapshotRecord = {
   id: string;
@@ -241,7 +241,7 @@ const resolveUniqueName = async (
 
 const mergeGlobalDraft = (payload: WorkspaceMigrationPayload['snapshot']) => {
   const sessionDraft =
-    payload.activeSession?.activeSource.kind === 'global_draft' && payload.activeSession.activeState
+    payload.activeSession?.activeSource.kind === 'draft' && payload.activeSession.activeState
       ? {
           state: payload.activeSession.activeState,
           updatedAt: payload.activeSession.updatedAt,
@@ -266,7 +266,7 @@ const buildSnapshotRecords = (
     records.push(
       buildSnapshotRecord(
         userId,
-        'global_draft',
+        'draft',
         null,
         'Global Draft',
         { state: globalDraft.state },
@@ -412,7 +412,7 @@ export const commitWorkspaceMigration = async (
         continue;
       }
 
-      if (record.kind === 'global_draft') {
+      if (record.kind === 'draft') {
         const copyName = await resolveUniqueName(env, userId, 'saved_draft', 'Migrated draft');
         await writeSnapshot(
           env,
