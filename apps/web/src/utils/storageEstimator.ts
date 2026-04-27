@@ -518,9 +518,7 @@ function computeIndexBytesPerRow(
   if (!isClustered) {
     explanation.push('非聚簇存储：主键及所有索引均为独立的 B-Tree 结构');
   }
-  explanation.push(
-    `B-Tree 估算系数 ${BTREE_OVERHEAD}×（含非叶节点 20% + 随机写填充率损耗 30%）`,
-  );
+  explanation.push(`B-Tree 估算系数 ${BTREE_OVERHEAD}×（含非叶节点 20% + 随机写填充率损耗 30%）`);
 
   const factor = INDEX_STORAGE_FACTORS[dbType] ?? 1;
   return { bytesPerRow: Math.ceil(totalBytesPerRow * factor), explanation };

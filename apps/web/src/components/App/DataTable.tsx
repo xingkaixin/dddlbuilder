@@ -136,7 +136,13 @@ const SortableDataRow = memo<SortableDataRowProps>(
 SortableDataRow.displayName = 'SortableDataRow';
 
 export const DataTable = memo<DataTableProps>(
-  ({ toolbarLeft, isHighlighted, highlightedRowIndex, onOpenStorageEstimator, onOpenMockDataGenerator }) => {
+  ({
+    toolbarLeft,
+    isHighlighted,
+    highlightedRowIndex,
+    onOpenStorageEstimator,
+    onOpenMockDataGenerator,
+  }) => {
     const { t } = useTranslation();
     const rows = useFieldStore((state) => state.rows);
     const setRows = useFieldStore((state) => state.setRows);

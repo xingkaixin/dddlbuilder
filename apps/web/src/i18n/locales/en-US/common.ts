@@ -957,7 +957,8 @@ export const enUSCommon = {
   },
   mockData: {
     title: 'Mock Data Generator',
-    description: 'Intelligently generate test data based on field types and comments. Export as INSERT SQL, CSV, or JSON.',
+    description:
+      'Intelligently generate test data based on field types and comments. Export as INSERT SQL, CSV, or JSON.',
     rowCount: 'Row Count',
     rowCountDecrease: 'Decrease rows',
     rowCountIncrease: 'Increase rows',

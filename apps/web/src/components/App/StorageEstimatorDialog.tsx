@@ -72,7 +72,6 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
       rawDataBytes,
       indexBytes,
       redundancyBytes,
-      totalSize,
       totalSizeDisplay,
     } = useStorageEstimation(dbType, fields, indexes, storageFormat);
 

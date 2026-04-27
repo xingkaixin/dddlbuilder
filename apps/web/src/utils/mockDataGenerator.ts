@@ -5,23 +5,108 @@ import { parseFieldType } from '@ddlbuilder/ddl-core';
 
 const CN_SURNAMES = '赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦尤许何吕施张孔曹严华金魏陶姜'.split('');
 const CN_NAMES_CHARS =
-  '伟芳娜秀英敏静艳丽燕珊雪琳倩梅梦娟灿宇子鹏博昊峰磊帆军凯洋鑫浩然志成明亮辉强生'
-    .split('');
+  '伟芳娜秀英敏静艳丽燕珊雪琳倩梅梦娟灿宇子鹏博昊峰磊帆军凯洋鑫浩然志成明亮辉强生'.split('');
 const CN_CITIES = [
-  '北京', '上海', '广州', '深圳', '杭州', '成都', '武汉', '西安', '南京', '重庆',
-  '天津', '苏州', '长沙', '青岛', '郑州', '大连', '东莞', '宁波', '厦门', '合肥',
+  '北京',
+  '上海',
+  '广州',
+  '深圳',
+  '杭州',
+  '成都',
+  '武汉',
+  '西安',
+  '南京',
+  '重庆',
+  '天津',
+  '苏州',
+  '长沙',
+  '青岛',
+  '郑州',
+  '大连',
+  '东莞',
+  '宁波',
+  '厦门',
+  '合肥',
 ];
 const CN_PROVINCES = [
-  '北京市', '天津市', '上海市', '重庆市', '河北省', '山西省', '辽宁省', '吉林省',
-  '黑龙江省', '江苏省', '浙江省', '安徽省', '福建省', '江西省', '山东省', '河南省',
-  '湖北省', '湖南省', '广东省', '海南省', '四川省', '贵州省', '云南省', '陕西省',
+  '北京市',
+  '天津市',
+  '上海市',
+  '重庆市',
+  '河北省',
+  '山西省',
+  '辽宁省',
+  '吉林省',
+  '黑龙江省',
+  '江苏省',
+  '浙江省',
+  '安徽省',
+  '福建省',
+  '江西省',
+  '山东省',
+  '河南省',
+  '湖北省',
+  '湖南省',
+  '广东省',
+  '海南省',
+  '四川省',
+  '贵州省',
+  '云南省',
+  '陕西省',
 ];
-const CN_STREET_PREFIXES = ['中山', '解放', '人民', '建设', '和平', '光明', '新华', '学府', '科技', '幸福'];
+const CN_STREET_PREFIXES = [
+  '中山',
+  '解放',
+  '人民',
+  '建设',
+  '和平',
+  '光明',
+  '新华',
+  '学府',
+  '科技',
+  '幸福',
+];
 const CN_STREET_SUFFIXES = ['路', '街', '大道', '巷', '弄'];
-const CN_DISTRICTS = ['南山区', '福田区', '罗湖区', '天河区', '海珠区', '越秀区', '朝阳区', '西城区', '浦东新区', '江宁区'];
-const EMAIL_DOMAINS = ['gmail.com', '163.com', 'qq.com', 'hotmail.com', '126.com', 'yeah.net', 'sina.com'];
-const COMPANY_SUFFIXES = ['科技有限公司', '信息技术有限公司', '软件有限公司', '网络科技有限公司', '数据技术股份有限公司'];
-const CN_ADJECTIVES = ['智能', '云端', '数字', '创新', '聚合', '星链', '蓝海', '绿源', '融通', '汇聚'];
+const CN_DISTRICTS = [
+  '南山区',
+  '福田区',
+  '罗湖区',
+  '天河区',
+  '海珠区',
+  '越秀区',
+  '朝阳区',
+  '西城区',
+  '浦东新区',
+  '江宁区',
+];
+const EMAIL_DOMAINS = [
+  'gmail.com',
+  '163.com',
+  'qq.com',
+  'hotmail.com',
+  '126.com',
+  'yeah.net',
+  'sina.com',
+];
+const COMPANY_SUFFIXES = [
+  '科技有限公司',
+  '信息技术有限公司',
+  '软件有限公司',
+  '网络科技有限公司',
+  '数据技术股份有限公司',
+];
+const CN_ADJECTIVES = [
+  '智能',
+  '云端',
+  '数字',
+  '创新',
+  '聚合',
+  '星链',
+  '蓝海',
+  '绿源',
+  '融通',
+  '汇聚',
+];
 
 // ── 随机工具 ──────────────────────────────────────────────────────────────────
 
@@ -47,17 +132,48 @@ function genChineseName(): string {
 }
 
 function genPhone(): string {
-  const prefixes = ['130', '131', '132', '133', '135', '136', '137', '138', '139',
-    '150', '151', '152', '153', '155', '156', '157', '158', '159',
-    '176', '177', '178', '180', '181', '182', '183', '185', '186', '187', '188', '189'];
+  const prefixes = [
+    '130',
+    '131',
+    '132',
+    '133',
+    '135',
+    '136',
+    '137',
+    '138',
+    '139',
+    '150',
+    '151',
+    '152',
+    '153',
+    '155',
+    '156',
+    '157',
+    '158',
+    '159',
+    '176',
+    '177',
+    '178',
+    '180',
+    '181',
+    '182',
+    '183',
+    '185',
+    '186',
+    '187',
+    '188',
+    '189',
+  ];
   return `${pick(prefixes)}${String(randInt(10000000, 99999999))}`;
 }
 
 function genEmail(seed?: string): string {
   const localParts = seed
     ? [seed.toLowerCase().replace(/[^a-z0-9]/g, ''), String(randInt(100, 9999))]
-    : [String.fromCharCode(...Array.from({ length: randInt(4, 8) }, () => randInt(97, 122))),
-      String(randInt(100, 9999))];
+    : [
+        String.fromCharCode(...Array.from({ length: randInt(4, 8) }, () => randInt(97, 122))),
+        String(randInt(100, 9999)),
+      ];
   return `${localParts.join('_')}@${pick(EMAIL_DOMAINS)}`;
 }
 
@@ -120,10 +236,29 @@ function genTime(): string {
 // ── 语义推断 ──────────────────────────────────────────────────────────────────
 
 type SemanticHint =
-  | 'chinese_name' | 'phone' | 'email' | 'address' | 'city'
-  | 'province' | 'id_card' | 'age' | 'gender_text' | 'gender_num'
-  | 'company' | 'uuid' | 'ip' | 'price' | 'status' | 'title'
-  | 'description' | 'code' | 'url' | 'avatar' | 'count' | 'year' | null;
+  | 'chinese_name'
+  | 'phone'
+  | 'email'
+  | 'address'
+  | 'city'
+  | 'province'
+  | 'id_card'
+  | 'age'
+  | 'gender_text'
+  | 'gender_num'
+  | 'company'
+  | 'uuid'
+  | 'ip'
+  | 'price'
+  | 'status'
+  | 'title'
+  | 'description'
+  | 'code'
+  | 'url'
+  | 'avatar'
+  | 'count'
+  | 'year'
+  | null;
 
 const SEMANTIC_PATTERNS: Array<{ pattern: RegExp; hint: SemanticHint }> = [
   { pattern: /name|姓名|名称|名字|真实名/i, hint: 'chinese_name' },
@@ -179,28 +314,50 @@ function generateValueForField(field: NormalizedField, rowIndex: number): unknow
   // ── 按语义优先生成 ──
   if (semantic) {
     switch (semantic) {
-      case 'chinese_name': return genChineseName();
-      case 'phone': return genPhone();
-      case 'email': return genEmail(field.name);
-      case 'address': return genAddress();
-      case 'city': return pick(CN_CITIES);
-      case 'province': return pick(CN_PROVINCES);
-      case 'id_card': return genIdCard();
-      case 'age': return randInt(18, 75);
-      case 'gender_text': return pick(['男', '女']);
-      case 'gender_num': return randInt(0, 1);
-      case 'company': return genCompany();
-      case 'uuid': return genUUID();
-      case 'ip': return genIp();
-      case 'price': return Number((Math.random() * 9999 + 1).toFixed(2));
-      case 'status': return randInt(0, 3);
-      case 'title': return `${pick(CN_ADJECTIVES)}${pick(CN_CITIES)}${pick(['项目', '方案', '计划', '报告', '通知'])}`;
-      case 'description': return `${pick(CN_CITIES)}${pick(['数字化', '智能化', '信息化'])}建设${pick(['项目', '工程', '方案'])}描述内容`;
-      case 'code': return `${String.fromCharCode(randInt(65, 90))}${String(randInt(10000, 99999))}`;
-      case 'url': return `https://example.com/${genRandomString(8)}`;
-      case 'avatar': return `https://example.com/avatar/${randInt(1, 1000)}.jpg`;
-      case 'count': return randInt(0, 9999);
-      case 'year': return randInt(2010, 2025);
+      case 'chinese_name':
+        return genChineseName();
+      case 'phone':
+        return genPhone();
+      case 'email':
+        return genEmail(field.name);
+      case 'address':
+        return genAddress();
+      case 'city':
+        return pick(CN_CITIES);
+      case 'province':
+        return pick(CN_PROVINCES);
+      case 'id_card':
+        return genIdCard();
+      case 'age':
+        return randInt(18, 75);
+      case 'gender_text':
+        return pick(['男', '女']);
+      case 'gender_num':
+        return randInt(0, 1);
+      case 'company':
+        return genCompany();
+      case 'uuid':
+        return genUUID();
+      case 'ip':
+        return genIp();
+      case 'price':
+        return Number((Math.random() * 9999 + 1).toFixed(2));
+      case 'status':
+        return randInt(0, 3);
+      case 'title':
+        return `${pick(CN_ADJECTIVES)}${pick(CN_CITIES)}${pick(['项目', '方案', '计划', '报告', '通知'])}`;
+      case 'description':
+        return `${pick(CN_CITIES)}${pick(['数字化', '智能化', '信息化'])}建设${pick(['项目', '工程', '方案'])}描述内容`;
+      case 'code':
+        return `${String.fromCharCode(randInt(65, 90))}${String(randInt(10000, 99999))}`;
+      case 'url':
+        return `https://example.com/${genRandomString(8)}`;
+      case 'avatar':
+        return `https://example.com/avatar/${randInt(1, 1000)}.jpg`;
+      case 'count':
+        return randInt(0, 9999);
+      case 'year':
+        return randInt(2010, 2025);
     }
   }
 
@@ -336,9 +493,7 @@ export function generateMockData(
 
   // ── CSV ──
   const csvHeader = validFields.map((f) => formatCsvValue(f.name)).join(',');
-  const csvRows = rows.map((row) =>
-    validFields.map((f) => formatCsvValue(row[f.name])).join(','),
-  );
+  const csvRows = rows.map((row) => validFields.map((f) => formatCsvValue(row[f.name])).join(','));
   const csv = [csvHeader, ...csvRows].join('\n');
 
   // ── JSON ──
