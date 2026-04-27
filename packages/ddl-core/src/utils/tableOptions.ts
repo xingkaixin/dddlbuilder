@@ -21,6 +21,15 @@ const TABLESPACE_DBS = new Set<DatabaseType>([
 
 const HIVE_DBS = new Set<DatabaseType>(['hive']);
 
+const FILLFACTOR_DBS = new Set<DatabaseType>([
+  'postgresql',
+  'postgresql-citus',
+  'kingbase',
+  'gaussdb',
+]);
+
+const ORACLE_STORAGE_DBS = new Set<DatabaseType>(['oracle', 'oceanbase-oracle']);
+
 export const supportsStorageOption = (dbType: DatabaseType): boolean => HIVE_DBS.has(dbType);
 
 export const supportsEngineOption = (dbType: DatabaseType): boolean => MYSQL_LIKE_DBS.has(dbType);
@@ -32,6 +41,12 @@ export const supportsCollationOption = (dbType: DatabaseType): boolean =>
 
 export const supportsTablespaceOption = (dbType: DatabaseType): boolean =>
   TABLESPACE_DBS.has(dbType);
+
+export const supportsFillfactorOption = (dbType: DatabaseType): boolean =>
+  FILLFACTOR_DBS.has(dbType);
+
+export const supportsOracleStorageOption = (dbType: DatabaseType): boolean =>
+  ORACLE_STORAGE_DBS.has(dbType);
 
 const normalizeValue = (value?: string): string => {
   const normalized = (value || '').trim();
@@ -60,6 +75,21 @@ export const buildTableOptionsClause = (dbType: DatabaseType, config?: TableMisc
   }
   if (supportsTablespaceOption(dbType) && tablespace) {
     parts.push(`TABLESPACE ${tablespace}`);
+  }
+  if (supportsFillfactorOption(dbType) && config.fillfactor != null) {
+    parts.push(`WITH (fillfactor = ${config.fillfactor})`);
+  }
+  if (supportsOracleStorageOption(dbType)) {
+    const storageParts: string[] = [];
+    if (config.pctfree != null) {
+      storageParts.push(`PCTFREE ${config.pctfree}`);
+    }
+    if (config.initrans != null) {
+      storageParts.push(`INITRANS ${config.initrans}`);
+    }
+    if (storageParts.length > 0) {
+      parts.push(`STORAGE (${storageParts.join(' ')})`);
+    }
   }
 
   if (parts.length === 0) return '';

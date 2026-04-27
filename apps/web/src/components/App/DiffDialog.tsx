@@ -250,6 +250,28 @@ export const DiffDialog = memo<DiffDialogProps>(
                                 {diff.newMiscConfig.tablespace || t('diffDialog.default')}
                               </div>
                             )}
+                            {diff.oldMiscConfig.fillfactor !== diff.newMiscConfig.fillfactor && (
+                              <div>
+                                FILLFACTOR:{' '}
+                                {diff.oldMiscConfig.fillfactor ?? t('diffDialog.default')}
+                                <span className="mx-1">→</span>
+                                {diff.newMiscConfig.fillfactor ?? t('diffDialog.default')}
+                              </div>
+                            )}
+                            {diff.oldMiscConfig.pctfree !== diff.newMiscConfig.pctfree && (
+                              <div>
+                                PCTFREE: {diff.oldMiscConfig.pctfree ?? t('diffDialog.default')}
+                                <span className="mx-1">→</span>
+                                {diff.newMiscConfig.pctfree ?? t('diffDialog.default')}
+                              </div>
+                            )}
+                            {diff.oldMiscConfig.initrans !== diff.newMiscConfig.initrans && (
+                              <div>
+                                INITRANS: {diff.oldMiscConfig.initrans ?? t('diffDialog.default')}
+                                <span className="mx-1">→</span>
+                                {diff.newMiscConfig.initrans ?? t('diffDialog.default')}
+                              </div>
+                            )}
                           </>
                         )}
                       </div>

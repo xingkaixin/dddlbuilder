@@ -51,5 +51,7 @@ export {
   supportsCharsetOption,
   supportsCollationOption,
   supportsTablespaceOption,
+  supportsFillfactorOption,
+  supportsOracleStorageOption,
   buildTableOptionsClause,
 } from './utils/tableOptions.js';

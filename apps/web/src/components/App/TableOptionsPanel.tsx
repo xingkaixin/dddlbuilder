@@ -17,6 +17,8 @@ import {
   supportsCollationOption,
   supportsTablespaceOption,
   supportsStorageOption,
+  supportsFillfactorOption,
+  supportsOracleStorageOption,
 } from '@ddlbuilder/ddl-core';
 import { useTranslation } from 'react-i18next';
 
@@ -41,6 +43,9 @@ interface TableOptionsPanelProps {
   onCharsetChange: (charset: string) => void;
   onCollationChange: (collation: string) => void;
   onTablespaceChange: (tablespace: string) => void;
+  onFillfactorChange?: (value: number | undefined) => void;
+  onPctfreeChange?: (value: number | undefined) => void;
+  onInitransChange?: (value: number | undefined) => void;
   onStoredAsChange?: (value: TableMiscConfig['storedAs']) => void;
   onExternalChange?: (value: boolean) => void;
   onLocationChange?: (value: string) => void;
@@ -55,6 +60,9 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
     onCharsetChange,
     onCollationChange,
     onTablespaceChange,
+    onFillfactorChange,
+    onPctfreeChange,
+    onInitransChange,
     onStoredAsChange,
     onExternalChange,
     onLocationChange,
@@ -64,6 +72,8 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
     const supportsCollation = supportsCollationOption(dbType);
     const supportsTablespace = supportsTablespaceOption(dbType);
     const supportsStorage = supportsStorageOption(dbType);
+    const supportsFillfactor = supportsFillfactorOption(dbType);
+    const supportsOracleStorage = supportsOracleStorageOption(dbType);
     const isHive = dbType === 'hive';
     const { t } = useTranslation();
     const hasAnyOption =
@@ -71,7 +81,9 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
       supportsCharset ||
       supportsCollation ||
       supportsTablespace ||
-      supportsStorage;
+      supportsStorage ||
+      supportsFillfactor ||
+      supportsOracleStorage;
 
     const disabled = !config.enabled;
     const effectiveEngine = config.engine || DEFAULT_OPTION_VALUE;
@@ -219,6 +231,91 @@ export const TableOptionsPanel = memo<TableOptionsPanelProps>(
                     disabled={disabled}
                     className="font-mono text-sm transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                   />
+                </div>
+              )}
+
+              {/* PostgreSQL FILLFACTOR */}
+              {supportsFillfactor && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">
+                    {t('tableOptionsPanel.fillfactor')}
+                  </Label>
+                  <Input
+                    type="number"
+                    min={10}
+                    max={100}
+                    placeholder={t('tableOptionsPanel.fillfactorPlaceholder')}
+                    value={config.fillfactor ?? ''}
+                    onChange={(event) => {
+                      const raw = event.target.value;
+                      if (raw === '') {
+                        onFillfactorChange?.(undefined);
+                        return;
+                      }
+                      const num = Number(raw);
+                      if (!Number.isNaN(num)) {
+                        onFillfactorChange?.(num);
+                      }
+                    }}
+                    disabled={disabled}
+                    className="font-mono text-sm transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+              )}
+
+              {/* Oracle STORAGE (PCTFREE, INITRANS) */}
+              {supportsOracleStorage && (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">
+                      {t('tableOptionsPanel.pctfree')}
+                    </Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={99}
+                      placeholder={t('tableOptionsPanel.pctfreePlaceholder')}
+                      value={config.pctfree ?? ''}
+                      onChange={(event) => {
+                        const raw = event.target.value;
+                        if (raw === '') {
+                          onPctfreeChange?.(undefined);
+                          return;
+                        }
+                        const num = Number(raw);
+                        if (!Number.isNaN(num)) {
+                          onPctfreeChange?.(num);
+                        }
+                      }}
+                      disabled={disabled}
+                      className="font-mono text-sm transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">
+                      {t('tableOptionsPanel.initrans')}
+                    </Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={255}
+                      placeholder={t('tableOptionsPanel.initransPlaceholder')}
+                      value={config.initrans ?? ''}
+                      onChange={(event) => {
+                        const raw = event.target.value;
+                        if (raw === '') {
+                          onInitransChange?.(undefined);
+                          return;
+                        }
+                        const num = Number(raw);
+                        if (!Number.isNaN(num)) {
+                          onInitransChange?.(num);
+                        }
+                      }}
+                      disabled={disabled}
+                      className="font-mono text-sm transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
                 </div>
               )}
 

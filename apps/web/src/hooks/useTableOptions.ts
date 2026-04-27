@@ -13,6 +13,9 @@ export interface UseTableOptionsReturn {
   setCharset: (charset: string) => void;
   setCollation: (collation: string) => void;
   setTablespace: (tablespace: string) => void;
+  setFillfactor: (fillfactor: number | undefined) => void;
+  setPctfree: (pctfree: number | undefined) => void;
+  setInitrans: (initrans: number | undefined) => void;
   setStoredAs: (value: TableMiscConfig['storedAs']) => void;
   setExternal: (value: boolean) => void;
   setLocation: (value: string) => void;
@@ -30,6 +33,9 @@ export function useTableOptions(
   const setCharset = useTableOptionsStore((state) => state.setCharset);
   const setCollation = useTableOptionsStore((state) => state.setCollation);
   const setTablespace = useTableOptionsStore((state) => state.setTablespace);
+  const setFillfactor = useTableOptionsStore((state) => state.setFillfactor);
+  const setPctfree = useTableOptionsStore((state) => state.setPctfree);
+  const setInitrans = useTableOptionsStore((state) => state.setInitrans);
   const setStoredAs = useTableOptionsStore((state) => state.setStoredAs);
   const setExternal = useTableOptionsStore((state) => state.setExternal);
   const setLocation = useTableOptionsStore((state) => state.setLocation);
@@ -57,6 +63,9 @@ export function useTableOptions(
     setCharset,
     setCollation,
     setTablespace,
+    setFillfactor,
+    setPctfree,
+    setInitrans,
     setStoredAs,
     setExternal,
     setLocation,

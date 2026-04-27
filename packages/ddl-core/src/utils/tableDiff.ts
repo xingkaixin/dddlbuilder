@@ -219,7 +219,10 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
     oldMiscConfig.engine !== newMiscConfig.engine ||
     oldMiscConfig.charset !== newMiscConfig.charset ||
     oldMiscConfig.collation !== newMiscConfig.collation ||
-    oldMiscConfig.tablespace !== newMiscConfig.tablespace
+    oldMiscConfig.tablespace !== newMiscConfig.tablespace ||
+    oldMiscConfig.fillfactor !== newMiscConfig.fillfactor ||
+    oldMiscConfig.pctfree !== newMiscConfig.pctfree ||
+    oldMiscConfig.initrans !== newMiscConfig.initrans
   ) {
     result.miscConfigChanged = true;
     result.oldMiscConfig = oldMiscConfig;

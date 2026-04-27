@@ -19,6 +19,9 @@ interface TableOptionsStoreState {
   setCharset: (charset: string) => void;
   setCollation: (collation: string) => void;
   setTablespace: (tablespace: string) => void;
+  setFillfactor: (fillfactor: number | undefined) => void;
+  setPctfree: (pctfree: number | undefined) => void;
+  setInitrans: (initrans: number | undefined) => void;
   setStoredAs: (value: TableMiscConfig['storedAs']) => void;
   setExternal: (value: boolean) => void;
   setLocation: (value: string) => void;
@@ -64,6 +67,27 @@ export const useTableOptionsStore = create<TableOptionsStoreState>((set) => ({
       tableMiscConfig: {
         ...state.tableMiscConfig,
         tablespace,
+      },
+    })),
+  setFillfactor: (fillfactor) =>
+    set((state) => ({
+      tableMiscConfig: {
+        ...state.tableMiscConfig,
+        fillfactor,
+      },
+    })),
+  setPctfree: (pctfree) =>
+    set((state) => ({
+      tableMiscConfig: {
+        ...state.tableMiscConfig,
+        pctfree,
+      },
+    })),
+  setInitrans: (initrans) =>
+    set((state) => ({
+      tableMiscConfig: {
+        ...state.tableMiscConfig,
+        initrans,
       },
     })),
   setStoredAs: (value) =>

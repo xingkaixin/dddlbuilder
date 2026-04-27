@@ -131,6 +131,9 @@ export type TableMiscConfig = {
   charset?: string; // 表字符集（MySQL 系）
   collation?: string; // 表排序规则（MySQL 系）
   tablespace?: string; // 表空间（部分数据库）
+  fillfactor?: number; // PostgreSQL 页面填充率 (10-100)
+  pctfree?: number; // Oracle STORAGE PCTFREE (0-99)
+  initrans?: number; // Oracle STORAGE INITRANS (1-255)
   storedAs?: 'ORC' | 'TEXTFILE' | 'PARQUET' | ''; // 存储格式（Hive）
   external?: boolean; // 是否外部表（Hive）
   location?: string; // 存储路径（Hive）
