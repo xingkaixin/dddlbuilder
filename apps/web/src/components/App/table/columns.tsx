@@ -2,7 +2,13 @@ import { useMemo, type ReactNode } from 'react';
 import { createColumnHelper, type ColumnDef, type Row } from '@tanstack/react-table';
 import { EditableCell, SelectCell, CheckboxCell, OrderCell } from './index';
 import { RowActions } from './RowActions';
-import type { DatabaseType, FieldRow, UiDefaultKind } from '@ddlbuilder/shared-types';
+import { EnumSetCell } from './EnumSetCell';
+import type {
+  DatabaseType,
+  EnumValueMeta,
+  FieldRow,
+  UiDefaultKind,
+} from '@ddlbuilder/shared-types';
 import {
   toStringSafe,
   normalizeDefaultKind,
@@ -21,6 +27,7 @@ interface UseFieldColumnsParams {
   rowWarnings: string[][];
   dbType: DatabaseType;
   updateCellValue: (rowIndex: number, columnId: string, value: string | boolean) => void;
+  updateEnumValues?: (rowIndex: number, fieldType: string, enumMeta: EnumValueMeta[]) => void;
   handleTabNavigation: (rowIndex: number, editableColIndex: number, direction: 1 | -1) => void;
   onRemoveRow: (rowIndex: number, count: number) => void;
   renderOrderCell?: (params: { row: Row<FieldRow>; warnings: string[] }) => ReactNode;
@@ -35,6 +42,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): ColumnDef<FieldR
     rowWarnings,
     dbType,
     updateCellValue,
+    updateEnumValues,
     handleTabNavigation,
     onRemoveRow,
     renderOrderCell,
@@ -83,14 +91,34 @@ export function useFieldColumns(params: UseFieldColumnsParams): ColumnDef<FieldR
       columnHelper.accessor('fieldType', {
         header: () => t('dataTable.headers.fieldType'),
         size: columnWidths.fieldType,
-        cell: ({ row, getValue }) => (
-          <EditableCell
-            value={getValue() as string}
-            onChange={(v) => updateCellValue(row.index, 'fieldType', v)}
-            onTabNavigate={(direction) => handleTabNavigation(row.index, 2, direction)}
-            placeholder={t('dataTable.placeholder.fieldType')}
-          />
-        ),
+        cell: ({ row, getValue }) => {
+          const fieldTypeValue = getValue() as string;
+          const canonical = getCanonicalBaseType(fieldTypeValue);
+          if (canonical === 'enum' || canonical === 'set') {
+            return (
+              <EnumSetCell
+                fieldType={fieldTypeValue}
+                enumMeta={row.original.enumMeta}
+                onSave={(ft, meta) => {
+                  if (updateEnumValues) {
+                    updateEnumValues(row.index, ft, meta);
+                  } else {
+                    updateCellValue(row.index, 'fieldType', ft);
+                  }
+                }}
+                onTabNavigate={(direction) => handleTabNavigation(row.index, 2, direction)}
+              />
+            );
+          }
+          return (
+            <EditableCell
+              value={fieldTypeValue}
+              onChange={(v) => updateCellValue(row.index, 'fieldType', v)}
+              onTabNavigate={(direction) => handleTabNavigation(row.index, 2, direction)}
+              placeholder={t('dataTable.placeholder.fieldType')}
+            />
+          );
+        },
       }),
       columnHelper.accessor('nullable', {
         header: () => t('dataTable.headers.nullable'),
@@ -210,6 +238,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): ColumnDef<FieldR
       rowWarnings,
       dbType,
       updateCellValue,
+      updateEnumValues,
       handleTabNavigation,
       onRemoveRow,
       renderOrderCell,

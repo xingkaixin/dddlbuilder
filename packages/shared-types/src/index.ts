@@ -15,6 +15,12 @@ export type DatabaseType =
   | 'gaussdb'
   | 'hive';
 
+export type EnumValueMeta = {
+  value: string;
+  color?: string;
+  i18n?: Record<string, string>;
+};
+
 export type FieldRow = {
   order: number;
   fieldName: string;
@@ -24,6 +30,7 @@ export type FieldRow = {
   defaultKind?: string;
   defaultValue?: string;
   onUpdate?: string;
+  enumMeta?: EnumValueMeta[];
 };
 
 export type NormalizedField = {

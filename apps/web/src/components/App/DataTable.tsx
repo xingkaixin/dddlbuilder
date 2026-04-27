@@ -7,7 +7,7 @@ import { useReactTable, getCoreRowModel, flexRender, type Row } from '@tanstack/
 import { GripVertical } from 'lucide-react';
 import { toStringSafe, isReservedKeyword } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
-import type { FieldRow } from '@ddlbuilder/shared-types';
+import type { EnumValueMeta, FieldRow } from '@ddlbuilder/shared-types';
 import {
   buildDuplicateNameSet,
   useAppStore,
@@ -214,6 +214,17 @@ export const DataTable = memo<DataTableProps>(
     const { guardedUpdateCellValue, pendingChange, handleConfirm, handleCancel } =
       useFieldTypeChangeGuard(rows, updateCellValue);
 
+    const updateEnumValues = useCallback(
+      (rowIndex: number, fieldType: string, enumMeta: EnumValueMeta[]) => {
+        setRows((prev) => {
+          const next = [...prev];
+          next[rowIndex] = { ...next[rowIndex], fieldType, enumMeta };
+          return next;
+        });
+      },
+      [setRows],
+    );
+
     const rowWarnings = useMemo(() => {
       return rows.map((row) => {
         const warnings: string[] = [];
@@ -264,6 +275,7 @@ export const DataTable = memo<DataTableProps>(
       rowWarnings,
       dbType,
       updateCellValue: guardedUpdateCellValue,
+      updateEnumValues,
       handleTabNavigation,
       onRemoveRow,
     });

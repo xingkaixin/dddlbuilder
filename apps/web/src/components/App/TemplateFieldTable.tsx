@@ -6,7 +6,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useReactTable, getCoreRowModel, flexRender, type Row } from '@tanstack/react-table';
 import { GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { DatabaseType, FieldRow } from '@ddlbuilder/shared-types';
+import type { DatabaseType, EnumValueMeta, FieldRow } from '@ddlbuilder/shared-types';
 import { buildDuplicateNameSet } from '@/stores';
 import { isReservedKeyword, createEmptyRow, ensureOrder, toStringSafe } from '@/utils/helpers';
 import { useFieldColumns } from './table/columns';
@@ -152,6 +152,17 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
   const { guardedUpdateCellValue, pendingChange, handleConfirm, handleCancel } =
     useFieldTypeChangeGuard(rows, updateCellValue);
 
+  const updateEnumValues = useCallback(
+    (rowIndex: number, fieldType: string, enumMeta: EnumValueMeta[]) => {
+      setRows((prev) => {
+        const next = [...prev];
+        next[rowIndex] = { ...next[rowIndex], fieldType, enumMeta };
+        return next;
+      });
+    },
+    [setRows],
+  );
+
   const {
     selectedCell,
     setSelectedCell,
@@ -197,6 +208,7 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
     rowWarnings,
     dbType,
     updateCellValue: guardedUpdateCellValue,
+    updateEnumValues,
     handleTabNavigation,
     onRemoveRow: handleRemoveRow,
   });
