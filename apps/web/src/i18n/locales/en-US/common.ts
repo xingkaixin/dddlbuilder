@@ -398,6 +398,8 @@ export const enUSCommon = {
     toolbar: {
       storageEstimator: 'Estimate Size',
       storageEstimatorTip: 'Estimate storage usage for current table',
+      mockData: 'Mock Data',
+      mockDataTip: 'Generate INSERT test data based on field types',
       freeze: 'Freeze',
       freezeTip: 'Keep leading columns visible while scrolling horizontally',
       freezeAria: 'Enable frozen columns in field table',
@@ -952,5 +954,19 @@ export const enUSCommon = {
         createdAt: 'Time',
       },
     },
+  },
+  mockData: {
+    title: 'Mock Data Generator',
+    description: 'Intelligently generate test data based on field types and comments. Export as INSERT SQL, CSV, or JSON.',
+    rowCount: 'Row Count',
+    rowCountDecrease: 'Decrease rows',
+    rowCountIncrease: 'Increase rows',
+    rowCountHint: 'Max {{max}} rows',
+    copy: 'Copy',
+    copied: 'Copied',
+    copyTip: 'Copy to clipboard',
+    download: 'Download',
+    downloadTip: 'Download as file',
+    regenerate: 'Regenerate',
   },
 };

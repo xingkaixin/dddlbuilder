@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { AnimatedNumber } from '@/components/ui/animated-number';
-import { HardDrive, Minus, Plus, Pin, ListPlus } from 'lucide-react';
+import { HardDrive, Minus, Plus, Pin, ListPlus, TableProperties } from 'lucide-react';
 import { COLUMN_HEADERS } from '@/utils/constants';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 interface DataTableToolbarProps {
   toolbarLeft?: ReactNode;
   onOpenStorageEstimator?: () => void;
+  onOpenMockDataGenerator?: () => void;
   freezeEnabled: boolean;
   onFreezeEnabledChange: (value: boolean) => void;
   effectiveFreezeColumns: number;
@@ -24,6 +25,7 @@ interface DataTableToolbarProps {
 export function DataTableToolbar({
   toolbarLeft,
   onOpenStorageEstimator,
+  onOpenMockDataGenerator,
   freezeEnabled,
   onFreezeEnabledChange,
   effectiveFreezeColumns,
@@ -53,6 +55,24 @@ export function DataTableToolbar({
               </TooltipTrigger>
               <TooltipContent>
                 <p>{t('dataTable.toolbar.storageEstimatorTip')}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {onOpenMockDataGenerator && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onOpenMockDataGenerator}
+                  className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md border-primary/20 hover:border-primary/50 text-muted-foreground hover:text-primary"
+                >
+                  <TableProperties className="h-3.5 w-3.5" />
+                  {t('dataTable.toolbar.mockData')}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{t('dataTable.toolbar.mockDataTip')}</p>
               </TooltipContent>
             </Tooltip>
           )}

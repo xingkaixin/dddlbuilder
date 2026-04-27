@@ -35,6 +35,10 @@ vi.mock('@/components/App/VersionHistoryDialog', () => ({
   VersionHistoryDialog: () => null,
 }));
 
+vi.mock('@/components/App/MockDataDialog', () => ({
+  MockDataDialog: () => null,
+}));
+
 function createProps(): Parameters<typeof GlobalDialogs>[0] {
   return {
     clearDialog: {
@@ -133,6 +137,14 @@ function createProps(): Parameters<typeof GlobalDialogs>[0] {
       totalBytes: 0,
       rows: [],
       dbType: 'mysql',
+    } as any,
+    mockDataDialogProps: {
+      open: false,
+      onOpenChange: vi.fn(),
+      tableName: '',
+      schemaName: '',
+      dbType: 'mysql',
+      fields: [],
     } as any,
   };
 }

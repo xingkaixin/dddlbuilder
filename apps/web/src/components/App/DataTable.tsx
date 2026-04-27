@@ -33,6 +33,7 @@ interface DataTableProps {
   isHighlighted?: boolean;
   highlightedRowIndex?: number | null;
   onOpenStorageEstimator?: () => void;
+  onOpenMockDataGenerator?: () => void;
 }
 
 interface SortableDataRowProps {
@@ -135,7 +136,7 @@ const SortableDataRow = memo<SortableDataRowProps>(
 SortableDataRow.displayName = 'SortableDataRow';
 
 export const DataTable = memo<DataTableProps>(
-  ({ toolbarLeft, isHighlighted, highlightedRowIndex, onOpenStorageEstimator }) => {
+  ({ toolbarLeft, isHighlighted, highlightedRowIndex, onOpenStorageEstimator, onOpenMockDataGenerator }) => {
     const { t } = useTranslation();
     const rows = useFieldStore((state) => state.rows);
     const setRows = useFieldStore((state) => state.setRows);
@@ -321,6 +322,7 @@ export const DataTable = memo<DataTableProps>(
         <DataTableToolbar
           toolbarLeft={toolbarLeft}
           onOpenStorageEstimator={onOpenStorageEstimator}
+          onOpenMockDataGenerator={onOpenMockDataGenerator}
           freezeEnabled={freezeEnabled}
           onFreezeEnabledChange={onFreezeEnabledChange}
           effectiveFreezeColumns={effectiveFreezeColumns}

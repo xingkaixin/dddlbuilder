@@ -16,6 +16,7 @@ interface UseNavigationActionsParams {
   ) => void;
   setIsVersionHistoryOpen: (open: boolean) => void;
   setIsAIGenerateDialogOpen: (open: boolean) => void;
+  setIsMockDataDialogOpen: (open: boolean) => void;
   trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void> | void;
 }
 
@@ -27,6 +28,7 @@ export function useNavigationActions({
   setVersionHistoryTarget,
   setIsVersionHistoryOpen,
   setIsAIGenerateDialogOpen,
+  setIsMockDataDialogOpen,
   trackEvent,
 }: UseNavigationActionsParams) {
   const handleOpenSavedTablesDrawer = useCallback(() => {
@@ -67,6 +69,10 @@ export function useNavigationActions({
     setIsAIGenerateDialogOpen(true);
   }, [setIsAIGenerateDialogOpen]);
 
+  const handleOpenMockDataGenerator = useCallback(() => {
+    setIsMockDataDialogOpen(true);
+  }, [setIsMockDataDialogOpen]);
+
   return {
     handleOpenSavedTablesDrawer,
     handleOpenDiffDialog,
@@ -74,5 +80,6 @@ export function useNavigationActions({
     handleOpenStorageEstimator,
     handleViewVersionHistory,
     handleOpenAIGenerateDialog,
+    handleOpenMockDataGenerator,
   };
 }

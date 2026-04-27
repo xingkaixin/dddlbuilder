@@ -384,6 +384,8 @@ export const zhCNCommon = {
     toolbar: {
       storageEstimator: '估算容量',
       storageEstimatorTip: '估算当前表数据量占用空间',
+      mockData: 'Mock 数据',
+      mockDataTip: '基于字段类型生成 INSERT 测试数据',
       freeze: '冻结',
       freezeTip: '锁定前几列，使其在横向滚动时保持可见',
       freezeAria: '启用字段表格列冻结',
@@ -930,5 +932,19 @@ export const zhCNCommon = {
         createdAt: '时间',
       },
     },
+  },
+  mockData: {
+    title: 'Mock 数据生成器',
+    description: '根据字段类型和注释智能生成测试数据，支持导出为 INSERT SQL、CSV 或 JSON 格式。',
+    rowCount: '生成行数',
+    rowCountDecrease: '减少行数',
+    rowCountIncrease: '增加行数',
+    rowCountHint: '最多 {{max}} 行',
+    copy: '复制',
+    copied: '已复制',
+    copyTip: '复制到剪贴板',
+    download: '下载',
+    downloadTip: '下载为文件',
+    regenerate: '重新生成',
   },
 };

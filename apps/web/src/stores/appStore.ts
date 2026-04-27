@@ -42,6 +42,7 @@ interface AppStoreState {
   isReviewHistoryOpen: boolean;
   isStorageEstimatorOpen: boolean;
   isAIGenerateDialogOpen: boolean;
+  isMockDataDialogOpen: boolean;
 
   setSchemaName: (schemaName: string) => void;
   setTableName: (tableName: string) => void;
@@ -71,6 +72,7 @@ interface AppStoreState {
   setIsReviewHistoryOpen: (open: boolean) => void;
   setIsStorageEstimatorOpen: (open: boolean) => void;
   setIsAIGenerateDialogOpen: (open: boolean) => void;
+  setIsMockDataDialogOpen: (open: boolean) => void;
 }
 
 export const useAppStore = create<AppStoreState>((set) => ({
@@ -96,6 +98,7 @@ export const useAppStore = create<AppStoreState>((set) => ({
   isReviewHistoryOpen: false,
   isStorageEstimatorOpen: false,
   isAIGenerateDialogOpen: false,
+  isMockDataDialogOpen: false,
 
   setSchemaName: (schemaName) => set({ schemaName }),
   setTableName: (tableName) => set({ tableName }),
@@ -151,4 +154,5 @@ export const useAppStore = create<AppStoreState>((set) => ({
   setIsReviewHistoryOpen: (isReviewHistoryOpen) => set({ isReviewHistoryOpen }),
   setIsStorageEstimatorOpen: (isStorageEstimatorOpen) => set({ isStorageEstimatorOpen }),
   setIsAIGenerateDialogOpen: (isAIGenerateDialogOpen) => set({ isAIGenerateDialogOpen }),
+  setIsMockDataDialogOpen: (isMockDataDialogOpen) => set({ isMockDataDialogOpen }),
 }));

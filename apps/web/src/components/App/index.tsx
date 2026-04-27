@@ -123,6 +123,8 @@ function App() {
     setIsStorageEstimatorOpen,
     isAIGenerateDialogOpen,
     setIsAIGenerateDialogOpen,
+    isMockDataDialogOpen,
+    setIsMockDataDialogOpen,
     rows,
     setRows,
     initializeRows,
@@ -699,6 +701,7 @@ function App() {
     handleOpenStorageEstimator,
     handleViewVersionHistory,
     handleOpenAIGenerateDialog,
+    handleOpenMockDataGenerator,
   } = useNavigationActions({
     setSavedTablesDrawerOpen,
     setIsDiffDialogOpen,
@@ -707,6 +710,7 @@ function App() {
     setVersionHistoryTarget,
     setIsVersionHistoryOpen,
     setIsAIGenerateDialogOpen,
+    setIsMockDataDialogOpen,
     trackEvent,
   });
 
@@ -860,6 +864,7 @@ function App() {
                     isHighlighted: isFieldTableHighlighted,
                     highlightedRowIndex: highlightedRowIndex,
                     onOpenStorageEstimator: handleOpenStorageEstimator,
+                    onOpenMockDataGenerator: handleOpenMockDataGenerator,
                     toolbarLeft: dataTableToolbarLeft,
                   }}
                   indexPanelProps={{
@@ -1092,6 +1097,14 @@ function App() {
             fields: normalizedFields,
             indexes,
             storageFormat: tableMiscConfig.storedAs || undefined,
+          }}
+          mockDataDialogProps={{
+            open: isMockDataDialogOpen,
+            onOpenChange: setIsMockDataDialogOpen,
+            tableName,
+            schemaName,
+            dbType,
+            fields: normalizedFields,
           }}
         />
       </div>

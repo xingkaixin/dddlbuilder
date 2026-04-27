@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { AIGenerateDialog } from '../AIGenerateDialog';
 import { DiffDialog } from '../DiffDialog';
 import { DeleteFolderDialog, FolderDialog } from '../FolderDialogs';
+import { MockDataDialog } from '../MockDataDialog';
 import { ReviewHistoryDialog } from '../ReviewHistoryDialog';
 import { StorageEstimatorDialog } from '../StorageEstimatorDialog';
 import { TemplateManagerDialog } from '../TemplateManagerDialog';
@@ -72,6 +73,7 @@ interface GlobalDialogsProps {
   reviewHistoryDialogProps: ComponentProps<typeof ReviewHistoryDialog>;
   aiGenerateDialogProps: ComponentProps<typeof AIGenerateDialog>;
   storageEstimatorDialogProps: ComponentProps<typeof StorageEstimatorDialog>;
+  mockDataDialogProps: ComponentProps<typeof MockDataDialog>;
 }
 
 export function GlobalDialogs({
@@ -89,6 +91,7 @@ export function GlobalDialogs({
   reviewHistoryDialogProps,
   aiGenerateDialogProps,
   storageEstimatorDialogProps,
+  mockDataDialogProps,
 }: GlobalDialogsProps) {
   const { t } = useTranslation();
   const saveInputRef = useRef<HTMLInputElement>(null);
@@ -309,6 +312,7 @@ export function GlobalDialogs({
       </Dialog>
 
       <StorageEstimatorDialog {...storageEstimatorDialogProps} />
+      <MockDataDialog {...mockDataDialogProps} />
     </>
   );
 }

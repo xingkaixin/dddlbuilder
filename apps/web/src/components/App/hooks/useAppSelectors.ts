@@ -66,6 +66,8 @@ export function useAppSelectors() {
   const setIsStorageEstimatorOpen = useAppStore((s) => s.setIsStorageEstimatorOpen);
   const isAIGenerateDialogOpen = useAppStore((s) => s.isAIGenerateDialogOpen);
   const setIsAIGenerateDialogOpen = useAppStore((s) => s.setIsAIGenerateDialogOpen);
+  const isMockDataDialogOpen = useAppStore((s) => s.isMockDataDialogOpen);
+  const setIsMockDataDialogOpen = useAppStore((s) => s.setIsMockDataDialogOpen);
 
   // --- Field store ---
   const rows = useFieldStore((s) => s.rows);
@@ -142,6 +144,8 @@ export function useAppSelectors() {
     setIsStorageEstimatorOpen,
     isAIGenerateDialogOpen,
     setIsAIGenerateDialogOpen,
+    isMockDataDialogOpen,
+    setIsMockDataDialogOpen,
     // Field store
     rows,
     setRows,
