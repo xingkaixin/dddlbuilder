@@ -1,6 +1,11 @@
 import { useState, useMemo } from 'react';
-import type { DatabaseType, NormalizedField } from '@ddlbuilder/shared-types';
-import { estimateStorage, type StorageResult } from '@/utils/storageEstimator';
+import type { DatabaseType, IndexDefinition, NormalizedField } from '@ddlbuilder/shared-types';
+import {
+  estimateStorage,
+  estimateStorageBreakdown,
+  type StorageBreakdown,
+  type StorageResult,
+} from '@/utils/storageEstimator';
 
 interface SizeDisplay {
   value: number;
@@ -29,17 +34,38 @@ function formatSizeText(display: SizeDisplay): string {
 export function useStorageEstimation(
   dbType: DatabaseType,
   fields: NormalizedField[],
+  indexes: IndexDefinition[] = [],
   storageFormat?: string,
 ) {
   const [estimateRows, setEstimateRows] = useState<number>(10000);
 
+  // Legacy result kept for backward compatibility
   const result = useMemo<StorageResult>(() => {
     return estimateStorage(dbType, fields, storageFormat);
   }, [dbType, fields, storageFormat]);
 
+  const breakdown = useMemo<StorageBreakdown>(() => {
+    return estimateStorageBreakdown(dbType, fields, indexes, storageFormat);
+  }, [dbType, fields, indexes, storageFormat]);
+
+  const rawDataBytes = useMemo(
+    () => breakdown.rawDataPerRow * estimateRows,
+    [breakdown.rawDataPerRow, estimateRows],
+  );
+
+  const indexBytes = useMemo(
+    () => breakdown.indexPerRow * estimateRows,
+    [breakdown.indexPerRow, estimateRows],
+  );
+
+  const redundancyBytes = useMemo(
+    () => breakdown.redundancyPerRow * estimateRows,
+    [breakdown.redundancyPerRow, estimateRows],
+  );
+
   const totalSize = useMemo(() => {
-    return result.totalRowSize * estimateRows;
-  }, [result, estimateRows]);
+    return breakdown.totalPerRow * estimateRows;
+  }, [breakdown.totalPerRow, estimateRows]);
 
   const rowSizeDisplay = useMemo(
     () => formatSizeDisplay(result.totalRowSize),
@@ -51,6 +77,10 @@ export function useStorageEstimation(
     estimateRows,
     setEstimateRows,
     result,
+    breakdown,
+    rawDataBytes,
+    indexBytes,
+    redundancyBytes,
     totalSize,
     totalSizeFormatted: formatSizeText(totalSizeDisplay),
     rowSizeFormatted: formatSizeText(rowSizeDisplay),

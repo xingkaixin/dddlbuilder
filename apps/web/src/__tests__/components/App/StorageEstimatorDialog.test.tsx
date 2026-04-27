@@ -25,7 +25,7 @@ describe('StorageEstimatorDialog', () => {
 
     render(<StorageEstimatorDialog open onOpenChange={vi.fn()} dbType="mysql" fields={fields} />);
 
-    const totalCard = screen.getByText('总计预估大小').closest('div')?.parentElement;
+    const totalCard = screen.getByText('磁盘占用合计').closest('div')?.parentElement;
     const rowHeader = screen.getByText('预估承载数据量 (行)').closest('div');
 
     expect(totalCard).toBeTruthy();

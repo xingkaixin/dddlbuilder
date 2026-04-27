@@ -1,4 +1,4 @@
-import type { DatabaseType, NormalizedField } from '@ddlbuilder/shared-types';
+import type { DatabaseType, IndexDefinition, NormalizedField } from '@ddlbuilder/shared-types';
 
 export interface StorageResult {
   rowOverhead: number;
@@ -368,5 +368,215 @@ export function estimateStorage(
     dataSize: data,
     totalRowSize: overhead + data,
     explanation,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Storage Breakdown: raw data + index + redundancy
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface StorageBreakdown {
+  dbName: string;
+  rawDataPerRow: number;
+  indexPerRow: number;
+  redundancyPerRow: number;
+  totalPerRow: number;
+  dataExplanation: string[];
+  indexExplanation: string[];
+  redundancyExplanation: string[];
+}
+
+// Databases where the PK is the clustered index (no separate PK B-tree needed)
+const CLUSTERED_DATABASES = new Set<string>([
+  'mysql',
+  'mariadb',
+  'tidb',
+  'polardb',
+  'gbase',
+  'oceanbase',
+]);
+
+// Physical row locator size for non-clustered (heap) databases
+const HEAP_LOCATOR_SIZES: Partial<Record<string, number>> = {
+  oracle: 10,
+  dm: 10,
+  'oceanbase-oracle': 10,
+  sqlserver: 8,
+};
+
+function getHeapLocatorSize(dbType: string): number {
+  return HEAP_LOCATOR_SIZES[dbType] ?? 6; // CTID for PG family
+}
+
+// Multiplier applied to raw index bytes for certain databases
+// (mirrors the same factor used in the data profiles above)
+const INDEX_STORAGE_FACTORS: Partial<Record<string, number>> = {
+  tidb: 3, // Raft 3-replica — same as data
+  oceanbase: 0.3, // LSM-tree compression — same ratio as data
+  'oceanbase-oracle': 0.3,
+};
+
+// Fraction of (rawData + index) bytes added as redundancy overhead
+const REDUNDANCY_FACTORS: Partial<Record<string, number>> = {
+  mysql: 0.3,
+  mariadb: 0.3,
+  tidb: 0.2,
+  postgresql: 0.25,
+  'postgresql-citus': 0.25,
+  oceanbase: 0.1,
+  'oceanbase-oracle': 0.1,
+  oracle: 0.15,
+  sqlserver: 0.15,
+  dm: 0.15,
+  kingbase: 0.25,
+  gbase: 0.3,
+  polardb: 0.15,
+  gaussdb: 0.25,
+  hive: 0.05,
+};
+
+const REDUNDANCY_DESCRIPTIONS: Partial<Record<string, string>> = {
+  mysql: 'InnoDB 随机写页碎片 + 事务 Undo 日志预留',
+  mariadb: 'InnoDB 随机写页碎片 + 事务 Undo 日志预留',
+  tidb: 'Raft 日志写入放大 + Compaction 开销（三副本已含在裸数据中）',
+  postgresql: 'MVCC 旧版本行（dead tuple）+ autovacuum 延迟清理',
+  'postgresql-citus': 'MVCC dead tuple + 分片元数据 + 跨节点一致性开销',
+  oceanbase: 'MemTable → SSTable Compaction 写放大，压缩后冗余极低',
+  'oceanbase-oracle': 'MemTable → SSTable 写放大，Oracle 兼容模式下 Undo 空间预留',
+  oracle: 'PCTFREE 默认 10% 页内预留 + 行迁移防护',
+  sqlserver: 'Fill Factor 默认 80% + B-Tree 页分裂碎片',
+  dm: 'PCTFREE 预留 + 行迁移防护（参考 Oracle 模型）',
+  kingbase: 'MVCC dead tuple + autovacuum（基于 PostgreSQL 内核）',
+  gbase: 'InnoDB 页碎片 + 事务 Undo 预留（参考 MySQL 模型）',
+  polardb: '共享存储架构减少副本碎片；PCTFREE 15% 作为更新缓冲',
+  gaussdb: 'MVCC dead tuple + 分布式多副本写放大（建议参考实际副本数）',
+  hive: 'Hive 列式格式（ORC/Parquet）存储效率极高，冗余开销可忽略',
+};
+
+// B-tree overhead factor: accounts for non-leaf nodes and fill-factor gaps
+const BTREE_OVERHEAD = 1.6;
+const BTREE_ENTRY_OVERHEAD = 10; // bytes per leaf entry (page format headers)
+
+function computeIndexBytesPerRow(
+  dbType: DatabaseType,
+  fields: NormalizedField[],
+  indexes: IndexDefinition[],
+): { bytesPerRow: number; explanation: string[] } {
+  if (dbType === 'hive') {
+    return {
+      bytesPerRow: 0,
+      explanation: [
+        'Hive 列式格式（ORC/Parquet）通过内置的 Stripe/RowGroup 级统计信息实现谓词下推，无传统 B-Tree 索引',
+      ],
+    };
+  }
+
+  if (indexes.length === 0) {
+    return { bytesPerRow: 0, explanation: ['当前表未定义任何索引，索引占用为 0'] };
+  }
+
+  const fieldMap = new Map(fields.map((f) => [f.name, f]));
+  const isClustered = CLUSTERED_DATABASES.has(dbType);
+
+  const pkIndex = indexes.find((idx) => idx.isPrimary);
+  const pkKeySize = pkIndex
+    ? pkIndex.fields.reduce((sum, f) => {
+        const field = fieldMap.get(f.name);
+        return sum + (field ? getFieldSize(field.type, dbType) : 8);
+      }, 0)
+    : 6; // default row-id size when no PK defined
+
+  let totalBytesPerRow = 0;
+  const indexSummaries: string[] = [];
+
+  for (const index of indexes) {
+    if (index.isPrimary && isClustered) {
+      indexSummaries.push(`主键（${index.name}）：聚簇索引，成本已含在行数据中，无额外占用`);
+      continue;
+    }
+
+    const keySize = index.isPrimary
+      ? pkKeySize
+      : index.fields.reduce((sum, f) => {
+          const field = fieldMap.get(f.name);
+          return sum + (field ? getFieldSize(field.type, dbType) : 8);
+        }, 0);
+
+    // Row locator: PK columns (clustered) or physical row ID (heap)
+    const locator = isClustered ? pkKeySize : getHeapLocatorSize(dbType);
+    const entrySize = (keySize + locator + BTREE_ENTRY_OVERHEAD) * BTREE_OVERHEAD;
+    totalBytesPerRow += entrySize;
+
+    const label = index.isPrimary ? '主键' : index.unique ? '唯一索引' : '普通索引';
+    indexSummaries.push(`${label}（${index.name}）≈ ${Math.ceil(entrySize)} B/行`);
+  }
+
+  const explanation: string[] = [...indexSummaries];
+  if (isClustered && pkIndex) {
+    explanation.push('聚簇表：二级索引的行定位器为主键列，非物理行 ID');
+  }
+  if (!isClustered) {
+    explanation.push('非聚簇存储：主键及所有索引均为独立的 B-Tree 结构');
+  }
+  explanation.push(
+    `B-Tree 估算系数 ${BTREE_OVERHEAD}×（含非叶节点 20% + 随机写填充率损耗 30%）`,
+  );
+
+  const factor = INDEX_STORAGE_FACTORS[dbType] ?? 1;
+  return { bytesPerRow: Math.ceil(totalBytesPerRow * factor), explanation };
+}
+
+function computeRedundancyBytesPerRow(
+  dbType: DatabaseType,
+  rawDataPerRow: number,
+  indexPerRow: number,
+): { bytesPerRow: number; explanation: string[] } {
+  if (dbType === 'hive') {
+    return {
+      bytesPerRow: 0,
+      explanation: [REDUNDANCY_DESCRIPTIONS.hive ?? '列式格式冗余可忽略'],
+    };
+  }
+
+  const factor = REDUNDANCY_FACTORS[dbType] ?? 0.2;
+  const bytesPerRow = Math.ceil((rawDataPerRow + indexPerRow) * factor);
+  const description = REDUNDANCY_DESCRIPTIONS[dbType] ?? '页碎片 + 系统元数据预留';
+
+  return {
+    bytesPerRow,
+    explanation: [
+      `冗余开销率 ${(factor * 100).toFixed(0)}%：${description}`,
+      '基于（裸数据 + 索引）合计估算，实际开销受写入模式影响较大',
+    ],
+  };
+}
+
+export function estimateStorageBreakdown(
+  dbType: DatabaseType,
+  fields: NormalizedField[],
+  indexes: IndexDefinition[],
+  storageFormat?: string,
+): StorageBreakdown {
+  const storageResult = estimateStorage(dbType, fields, storageFormat);
+  const rawDataPerRow = storageResult.totalRowSize;
+
+  const { bytesPerRow: indexPerRow, explanation: indexExplanation } = computeIndexBytesPerRow(
+    dbType,
+    fields,
+    indexes,
+  );
+
+  const { bytesPerRow: redundancyPerRow, explanation: redundancyExplanation } =
+    computeRedundancyBytesPerRow(dbType, rawDataPerRow, indexPerRow);
+
+  return {
+    dbName: storageResult.dbName,
+    rawDataPerRow,
+    indexPerRow,
+    redundancyPerRow,
+    totalPerRow: rawDataPerRow + indexPerRow + redundancyPerRow,
+    dataExplanation: storageResult.explanation,
+    indexExplanation,
+    redundancyExplanation,
   };
 }

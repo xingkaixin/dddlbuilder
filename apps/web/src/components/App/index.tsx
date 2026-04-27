@@ -1090,6 +1090,7 @@ function App() {
             onOpenChange: setIsStorageEstimatorOpen,
             dbType,
             fields: normalizedFields,
+            indexes,
             storageFormat: tableMiscConfig.storedAs || undefined,
           }}
         />
