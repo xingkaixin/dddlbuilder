@@ -135,6 +135,7 @@ export class SqlParser {
       tableComment: '',
       fields: [],
       indexes: [],
+      foreignKeys: [],
       authObjects: [],
     };
 

@@ -9,6 +9,7 @@ import type {
   MysqlPartitionConfig,
   SqlFormatMode,
   TableMiscConfig,
+  ForeignKeyDefinition,
 } from '@ddlbuilder/shared-types';
 import { buildNormalizedFields } from '@/stores';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
@@ -26,6 +27,8 @@ interface UseDerivedTableStateDeps {
   indexes: IndexDefinition[];
   indexInput: string;
   currentIndexFields: IndexField[];
+  // 外键
+  foreignKeys: ForeignKeyDefinition[];
   // 认证
   authInput: string;
   authObjects: string[];
@@ -58,6 +61,7 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     indexes,
     indexInput,
     currentIndexFields,
+    foreignKeys,
     authInput,
     authObjects,
     citusShardingConfig,
@@ -148,6 +152,7 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
         freezeEnabled: fieldTableFreezeEnabled,
         freezeColumns: fieldTableFreezeColumns,
       },
+      foreignKeys: foreignKeys.length > 0 ? foreignKeys : undefined,
     }),
     [
       schemaName,
@@ -168,6 +173,7 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
       tableMiscConfig,
       fieldTableFreezeEnabled,
       fieldTableFreezeColumns,
+      foreignKeys,
     ],
   );
 

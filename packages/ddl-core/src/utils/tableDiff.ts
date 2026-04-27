@@ -4,6 +4,7 @@ import type {
   IndexDefinition,
   FieldRow,
   TableMiscConfig,
+  ForeignKeyDefinition,
 } from '@ddlbuilder/shared-types';
 
 /**
@@ -44,6 +45,19 @@ export type IndexDiff = {
 };
 
 /**
+ * 外键变更类型
+ */
+export type ForeignKeyDiffType = 'add' | 'remove';
+
+/**
+ * 外键变更详情
+ */
+export type ForeignKeyDiff = {
+  type: ForeignKeyDiffType;
+  foreignKey: ForeignKeyDefinition;
+};
+
+/**
  * 表结构变更汇总
  */
 export type TableDiff = {
@@ -59,6 +73,7 @@ export type TableDiff = {
   newMiscConfig?: TableMiscConfig;
   fields: FieldDiff[];
   indexes: IndexDiff[];
+  foreignKeys: ForeignKeyDiff[];
 };
 
 /**
@@ -168,6 +183,7 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
     miscConfigChanged: false,
     fields: [],
     indexes: [],
+    foreignKeys: [],
   };
 
   // 1. 表名变更
@@ -376,6 +392,43 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
   for (const [sig, idx] of newIndexSigs) {
     if (!oldIndexSigs.has(sig)) {
       result.indexes.push({ type: 'add', index: idx });
+      result.hasChanges = true;
+    }
+  }
+
+  // 5. 外键变更
+  const oldForeignKeys = oldState.foreignKeys || [];
+  const newForeignKeys = newState.foreignKeys || [];
+
+  function getForeignKeySignature(fk: ForeignKeyDefinition): string {
+    const fieldsSig = fk.fields.join(',');
+    const refSig = `${fk.refSchema || ''}.${fk.refTable}(${fk.refFields.join(',')})`;
+    const actionSig = `${fk.onDelete || ''}|${fk.onUpdate || ''}`;
+    return `${fk.name}:${fieldsSig}:${refSig}:${actionSig}`;
+  }
+
+  const oldFkSigs = new Map<string, ForeignKeyDefinition>();
+  for (const fk of oldForeignKeys) {
+    oldFkSigs.set(getForeignKeySignature(fk), fk);
+  }
+
+  const newFkSigs = new Map<string, ForeignKeyDefinition>();
+  for (const fk of newForeignKeys) {
+    newFkSigs.set(getForeignKeySignature(fk), fk);
+  }
+
+  // 检测删除的外键
+  for (const [sig, fk] of oldFkSigs) {
+    if (!newFkSigs.has(sig)) {
+      result.foreignKeys.push({ type: 'remove', foreignKey: fk });
+      result.hasChanges = true;
+    }
+  }
+
+  // 检测新增的外键
+  for (const [sig, fk] of newFkSigs) {
+    if (!oldFkSigs.has(sig)) {
+      result.foreignKeys.push({ type: 'add', foreignKey: fk });
       result.hasChanges = true;
     }
   }

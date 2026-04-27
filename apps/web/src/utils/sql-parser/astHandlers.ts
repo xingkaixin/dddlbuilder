@@ -1,5 +1,11 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { DatabaseType, IndexField, NormalizedField } from '@ddlbuilder/shared-types';
+import type {
+  DatabaseType,
+  IndexField,
+  NormalizedField,
+  ForeignKeyDefinition,
+  ForeignKeyAction,
+} from '@ddlbuilder/shared-types';
 import { buildPrimaryKeyName } from '@ddlbuilder/ddl-core';
 import type { ParsedResult } from './types.js';
 import {
@@ -35,6 +41,66 @@ function pushIndex(
     unique,
     isPrimary,
   });
+}
+
+function parseOnAction(actionList: any[]): {
+  onDelete?: ForeignKeyAction;
+  onUpdate?: ForeignKeyAction;
+} {
+  const result: { onDelete?: ForeignKeyAction; onUpdate?: ForeignKeyAction } = {};
+  if (!Array.isArray(actionList)) return result;
+
+  for (const action of actionList) {
+    if (!action.type || !action.value) continue;
+    const actionType = action.type.toLowerCase();
+    const actionValue = action.value.value?.toUpperCase() || action.value.toUpperCase?.() || '';
+
+    if (actionType === 'on delete') {
+      result.onDelete = actionValue as ForeignKeyAction;
+    } else if (actionType === 'on update') {
+      result.onUpdate = actionValue as ForeignKeyAction;
+    }
+  }
+
+  return result;
+}
+
+function pushForeignKey(result: ParsedResult, def: any) {
+  if (!def.definition || !Array.isArray(def.definition) || def.definition.length === 0) return;
+  if (!def.reference_definition) return;
+
+  const fieldNames: string[] = [];
+  for (const col of def.definition) {
+    const colName = col.column || (typeof col === 'string' ? col : null);
+    if (colName) fieldNames.push(colName);
+  }
+  if (fieldNames.length === 0) return;
+
+  const refDef = def.reference_definition;
+  const refTableInfo = refDef.table?.[0];
+  if (!refTableInfo) return;
+
+  const refFieldNames: string[] = [];
+  for (const col of refDef.definition || []) {
+    const colName = col.column || (typeof col === 'string' ? col : null);
+    if (colName) refFieldNames.push(colName);
+  }
+  if (refFieldNames.length === 0) return;
+
+  const constraintName = def.constraint || `fk_${result.tableName}_${fieldNames.join('_')}`;
+  const onActions = parseOnAction(refDef.on_action || []);
+
+  const fk: ForeignKeyDefinition = {
+    id: uuidv4(),
+    name: constraintName,
+    fields: fieldNames,
+    refSchema: refTableInfo.db || undefined,
+    refTable: refTableInfo.table,
+    refFields: refFieldNames,
+    ...onActions,
+  };
+
+  result.foreignKeys.push(fk);
 }
 
 function enforceNotNullForFields(result: ParsedResult, fieldNames: string[]) {
@@ -242,6 +308,8 @@ export function parseCreateTable(stmt: any, result: ParsedResult, dbType: Databa
           const indexName =
             def.constraint || def.index || `uk_${fields.map((f: any) => f.name).join('_')}`;
           pushIndex(result, indexName, fields, true, false);
+        } else if (def.constraint_type?.toLowerCase() === 'foreign key') {
+          pushForeignKey(result, def);
         }
       } else if (def.resource === 'index') {
         const fields = buildIndexFields(def.definition || []);
@@ -283,24 +351,27 @@ export function parseCreateIndex(stmt: any, result: ParsedResult) {
 }
 
 export function parseAlterTable(stmt: any, result: ParsedResult) {
-  // Basic support for ALTER TABLE ADD PRIMARY KEY / INDEX
+  // Basic support for ALTER TABLE ADD PRIMARY KEY / INDEX / FOREIGN KEY
   if (!stmt.expr || !Array.isArray(stmt.expr)) return;
 
   stmt.expr.forEach((expr: any) => {
     const defs = expr.create_definitions;
     if (expr.action === 'add' && defs) {
-      if (defs.constraint_type === 'primary key') {
+      const constraintType = defs.constraint_type?.toLowerCase?.() || '';
+      if (constraintType === 'primary key') {
         const fields = buildIndexFields(defs.definition || []);
         pushIndex(result, 'PRIMARY', fields, true, true);
         enforceNotNullForFields(
           result,
           fields.map((f) => f.name),
         );
+      } else if (constraintType === 'foreign key') {
+        pushForeignKey(result, defs);
       }
     } else if (
       expr.action === 'add' &&
       expr.resource === 'constraint' &&
-      expr.constraint_type === 'primary key'
+      expr.constraint_type?.toLowerCase?.() === 'primary key'
     ) {
       // Fallback for other AST structure
       const fields = buildIndexFields(expr.definition || []);
@@ -309,6 +380,12 @@ export function parseAlterTable(stmt: any, result: ParsedResult) {
         result,
         fields.map((f) => f.name),
       );
+    } else if (
+      expr.action === 'add' &&
+      expr.resource === 'constraint' &&
+      expr.constraint_type?.toLowerCase?.() === 'foreign key'
+    ) {
+      pushForeignKey(result, expr);
     }
   });
 }

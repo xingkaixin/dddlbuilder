@@ -45,6 +45,7 @@ function createBaseParams(overrides?: {
     setAddCount: vi.fn(),
     initializeRows: vi.fn(),
     initializeIndexState: vi.fn(),
+    initializeForeignKeyState: vi.fn(),
     setFieldTableFreezeEnabled: vi.fn(),
     setFieldTableFreezeColumns: vi.fn(),
     defaultFieldTableFreezeColumns: 3,

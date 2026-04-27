@@ -1,11 +1,11 @@
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 
-const ALWAYS_AVAILABLE_TABS = ['fields', 'indexes', 'auth', 'misc'];
+const ALWAYS_AVAILABLE_TABS = ['fields', 'indexes', 'foreignKeys', 'auth', 'misc'];
 
 const MYSQL_PARTITION_DBS: DatabaseType[] = ['mysql', 'mariadb', 'tidb'];
 
 // Hive 不支持的 tab
-const HIVE_DISABLED_TABS = new Set(['indexes']);
+const HIVE_DISABLED_TABS = new Set(['indexes', 'foreignKeys']);
 
 /**
  * 获取指定数据库类型下可用的 tab 列表

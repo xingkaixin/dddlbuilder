@@ -8,6 +8,7 @@ import type {
   IndexDefinition,
   MysqlPartitionConfig,
   TableMiscConfig,
+  ForeignKeyDefinition,
 } from '@ddlbuilder/shared-types';
 import type { ReviewResult, StructuredSuggestion } from '@/hooks/useDDLReview';
 import type { GeneratedTableSchema } from '@/hooks/useAIGenerateTable';
@@ -20,6 +21,7 @@ interface UseSchemaApplyActionsParams {
   reviewResult: ReviewResult | null;
   setRows: Dispatch<SetStateAction<FieldRow[]>>;
   setIndexes: Dispatch<SetStateAction<IndexDefinition[]>>;
+  setForeignKeys: Dispatch<SetStateAction<ForeignKeyDefinition[]>>;
   setReviewResult: (result: ReviewResult | null) => void;
   setIndexInput: (value: string) => void;
   setAuthObjects: Dispatch<SetStateAction<string[]>>;
@@ -63,6 +65,7 @@ export function useSchemaApplyActions({
   reviewResult,
   setRows,
   setIndexes,
+  setForeignKeys,
   setReviewResult,
   setIndexInput,
   setAuthObjects,
@@ -305,6 +308,8 @@ export function useSchemaApplyActions({
       setIndexes(result.indexes);
       setIndexInput('');
 
+      setForeignKeys(result.foreignKeys || []);
+
       setAuthObjects(result.authObjects);
       setAuthInput('');
       void trackEvent('sql_import', { dbType: importDbType });
@@ -312,6 +317,7 @@ export function useSchemaApplyActions({
     [
       setRows,
       setIndexes,
+      setForeignKeys,
       setAuthObjects,
       setIndexInput,
       setAuthInput,

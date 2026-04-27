@@ -138,6 +138,10 @@ function App() {
     updateIndexNames,
     resetIndexState,
     setIndexes,
+    foreignKeys,
+    setForeignKeys,
+    initializeForeignKeyState,
+    resetForeignKeyState,
   } = useAppSelectors();
 
   // ─── 2. Dialog states ──────────────────────────────────────────
@@ -282,6 +286,7 @@ function App() {
     indexes,
     indexInput,
     currentIndexFields,
+    foreignKeys,
     authInput,
     authObjects,
     citusShardingConfig,
@@ -307,6 +312,7 @@ function App() {
     dbType === 'postgresql-citus' ? citusShardingConfig : undefined,
     supportsMysqlPartition ? mysqlPartitionConfig : undefined,
     tableMiscConfig,
+    foreignKeys,
   );
 
   const { showToast } = useToast();
@@ -463,6 +469,7 @@ function App() {
     setAddCount,
     initializeRows,
     initializeIndexState,
+    initializeForeignKeyState,
     setFieldTableFreezeEnabled,
     setFieldTableFreezeColumns,
     defaultFieldTableFreezeColumns: DEFAULT_FIELD_TABLE_FREEZE_COLUMNS,
@@ -483,6 +490,7 @@ function App() {
     resetCitusSharding,
     resetPartition,
     resetTableMiscConfig,
+    resetForeignKeyState,
     setLoadedTableNormalizedName,
     setLoadedTableName,
     setLoadedTableSignature,
@@ -497,6 +505,8 @@ function App() {
     setIndexes,
     setIndexInput,
     setCurrentIndexFields,
+    setForeignKeys,
+    resetForeignKeyState,
     setAuthObjects,
     setAuthInput,
     setCitusShardingConfig,
@@ -542,6 +552,7 @@ function App() {
 
   const [loadedTableVersion, setLoadedTableVersion] = useState<number>(0);
   const [isSavedTableLoading, setIsSavedTableLoading] = useState(false);
+  const [isErDialogOpen, setIsErDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!hydrated || isShareView) return;
@@ -680,6 +691,7 @@ function App() {
       reviewResult,
       setRows,
       setIndexes,
+      setForeignKeys,
       setReviewResult,
       setIndexInput,
       setAuthObjects,
@@ -705,6 +717,7 @@ function App() {
     handleViewVersionHistory,
     handleOpenAIGenerateDialog,
     handleOpenMockDataGenerator,
+    handleOpenErDiagram,
   } = useNavigationActions({
     setSavedTablesDrawerOpen,
     setIsDiffDialogOpen,
@@ -714,8 +727,29 @@ function App() {
     setIsVersionHistoryOpen,
     setIsAIGenerateDialogOpen,
     setIsMockDataDialogOpen,
+    setIsErDialogOpen,
     trackEvent,
   });
+
+  const handleSelectTableFromEr = useCallback(
+    (state: PersistedState) => {
+      applySavedState(state);
+      setLoadedTableNormalizedName(null);
+      setLoadedTableName(null);
+      setLoadedTableSignature(null);
+      setLoadedTableVersion(0);
+      showToast(t('erDiagram.tableLoaded'));
+    },
+    [
+      applySavedState,
+      setLoadedTableNormalizedName,
+      setLoadedTableName,
+      setLoadedTableSignature,
+      setLoadedTableVersion,
+      showToast,
+      t,
+    ],
+  );
 
   const handleDbTypeChange = useCallback(
     (newDbType: DatabaseType) => {
@@ -832,6 +866,7 @@ function App() {
                     onOpenSavedTables: handleOpenSavedTablesDrawer,
                     onViewDiff: handleOpenDiffDialog,
                     onOpenAIGenerate: handleOpenAIGenerateDialog,
+                    onOpenErDiagram: handleOpenErDiagram,
                     saveDisabled: !canSaveCurrent,
                     saveDisabledHint: t('dialogs.load.saveDisabledTip'),
                     showDiffButton: isLoadedDirty && tableDiff?.hasChanges,
@@ -847,6 +882,8 @@ function App() {
                   authObjectsLength={authObjects.length}
                   miscEnabled={tableMiscConfig.enabled}
                   showIndexTab={dbType !== 'hive'}
+                  showForeignKeyTab={dbType !== 'hive'}
+                  foreignKeysLength={foreignKeys.length}
                   showShardingTab={dbType === 'postgresql-citus'}
                   shardingBadgeText={
                     citusShardingConfig.mode === 'distributed'
@@ -873,6 +910,9 @@ function App() {
                   indexPanelProps={{
                     animatingIndexIds: animatingIndexIds,
                     removingIndexIds: removingIndexIds,
+                  }}
+                  foreignKeyPanelProps={{
+                    availableFields,
                   }}
                   authPanelProps={{
                     authInput,
@@ -1111,6 +1151,11 @@ function App() {
             schemaName,
             dbType,
             fields: normalizedFields,
+          }}
+          erDiagramDialogProps={{
+            open: isErDialogOpen,
+            onOpenChange: setIsErDialogOpen,
+            onSelectTable: handleSelectTableFromEr,
           }}
         />
       </div>

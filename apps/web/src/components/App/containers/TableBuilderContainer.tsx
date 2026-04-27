@@ -9,11 +9,13 @@ import {
   Share2,
   Layers,
   SlidersHorizontal,
+  Link2,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTranslation } from 'react-i18next';
 import { AuthPanel } from '../AuthPanel';
 import { DataTable } from '../DataTable';
+import { ForeignKeyPanel } from '../ForeignKeyPanel';
 import { HivePartitionPanel } from '../HivePartitionPanel';
 import { IndexPanel } from '../IndexPanel';
 import { PartitionPanel } from '../PartitionPanel';
@@ -35,6 +37,8 @@ interface TableBuilderContainerProps {
   authObjectsLength: number;
   miscEnabled: boolean;
   showIndexTab: boolean;
+  showForeignKeyTab: boolean;
+  foreignKeysLength: number;
   showShardingTab: boolean;
   shardingBadgeText?: string | null;
   showPartitionTab: boolean;
@@ -43,6 +47,7 @@ interface TableBuilderContainerProps {
   hivePartitionBadgeText?: string | null;
   dataTableProps: ComponentProps<typeof DataTable>;
   indexPanelProps: ComponentProps<typeof IndexPanel>;
+  foreignKeyPanelProps: ComponentProps<typeof ForeignKeyPanel>;
   authPanelProps: ComponentProps<typeof AuthPanel>;
   tableOptionsPanelProps: ComponentProps<typeof TableOptionsPanel>;
   shardingPanelProps?: ComponentProps<typeof ShardingPanel>;
@@ -60,6 +65,8 @@ export function TableBuilderContainer({
   authObjectsLength,
   miscEnabled,
   showIndexTab,
+  showForeignKeyTab,
+  foreignKeysLength,
   showShardingTab,
   shardingBadgeText,
   showPartitionTab,
@@ -68,6 +75,7 @@ export function TableBuilderContainer({
   hivePartitionBadgeText,
   dataTableProps,
   indexPanelProps,
+  foreignKeyPanelProps,
   authPanelProps,
   tableOptionsPanelProps,
   shardingPanelProps,
@@ -116,6 +124,17 @@ export function TableBuilderContainer({
                     </span>
                   )}
                 </div>
+              )}
+            </TabsTrigger>
+          )}
+          {showForeignKeyTab && (
+            <TabsTrigger value="foreignKeys" className="gap-2">
+              <Link2 className="h-4 w-4" />
+              {t('builderTabs.foreignKeys')}
+              {foreignKeysLength > 0 && (
+                <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
+                  {foreignKeysLength}
+                </span>
               )}
             </TabsTrigger>
           )}
@@ -177,6 +196,11 @@ export function TableBuilderContainer({
         {showIndexTab && (
           <TabsContent value="indexes" className="mt-4">
             <IndexPanel {...indexPanelProps} />
+          </TabsContent>
+        )}
+        {showForeignKeyTab && (
+          <TabsContent value="foreignKeys" className="mt-4">
+            <ForeignKeyPanel {...foreignKeyPanelProps} />
           </TabsContent>
         )}
         <TabsContent value="auth" className="mt-4">

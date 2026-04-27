@@ -8,6 +8,7 @@ import {
   generateModifyColumn,
 } from './columnStatements';
 import { generateDropIndex, generateAddIndex } from './indexStatements';
+import { generateDropForeignKey, generateAddForeignKey } from './foreignKeyStatements';
 
 /**
  * ALTER DDL 生成器
@@ -61,6 +62,16 @@ export function generateAlterDDL(
   // 6. 处理新增的索引
   for (const idxDiff of diff.indexes.filter((i) => i.type === 'add')) {
     statements.push(generateAddIndex(tableName, idxDiff, dbType));
+  }
+
+  // 7. 处理删除的外键（在新增索引之后，避免依赖冲突）
+  for (const fkDiff of (diff.foreignKeys || []).filter((f) => f.type === 'remove')) {
+    statements.push(generateDropForeignKey(tableName, fkDiff, dbType));
+  }
+
+  // 8. 处理新增的外键
+  for (const fkDiff of (diff.foreignKeys || []).filter((f) => f.type === 'add')) {
+    statements.push(generateAddForeignKey(tableName, fkDiff, dbType));
   }
 
   return statements.filter((s) => s.trim()).join('\n\n');

@@ -1,4 +1,4 @@
-import { useAppStore, useFieldStore, useIndexStore } from '@/stores';
+import { useAppStore, useFieldStore, useIndexStore, useForeignKeyStore } from '@/stores';
 
 /**
  * 聚合 App 组件所需的所有 zustand selector，按功能分组。
@@ -86,6 +86,16 @@ export function useAppSelectors() {
   const resetIndexState = useIndexStore((s) => s.resetIndexState);
   const setIndexes = useIndexStore((s) => s.setIndexes);
 
+  // --- ForeignKey store ---
+  const foreignKeys = useForeignKeyStore((s) => s.foreignKeys);
+  const setForeignKeys = useForeignKeyStore((s) => s.setForeignKeys);
+  const initializeForeignKeyState = useForeignKeyStore((s) => s.initializeForeignKeyState);
+  const resetForeignKeyState = useForeignKeyStore((s) => s.resetForeignKeyState);
+  const addForeignKey = useForeignKeyStore((s) => s.addForeignKey);
+  const removeForeignKey = useForeignKeyStore((s) => s.removeForeignKey);
+  const updateForeignKey = useForeignKeyStore((s) => s.updateForeignKey);
+  const syncForeignKeyFieldRename = useForeignKeyStore((s) => s.syncFieldRename);
+
   return {
     // 基础表配置
     schemaName,
@@ -161,5 +171,14 @@ export function useAppSelectors() {
     updateIndexNames,
     resetIndexState,
     setIndexes,
+    // ForeignKey store
+    foreignKeys,
+    setForeignKeys,
+    initializeForeignKeyState,
+    resetForeignKeyState,
+    addForeignKey,
+    removeForeignKey,
+    updateForeignKey,
+    syncForeignKeyFieldRename,
   };
 }

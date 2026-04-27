@@ -9,3 +9,4 @@ export {
 } from './columnStatements';
 export { buildDefaultClause } from './defaultClause';
 export { generateAddIndex, generateDropIndex } from './indexStatements';
+export { generateAddForeignKey, generateDropForeignKey } from './foreignKeyStatements';

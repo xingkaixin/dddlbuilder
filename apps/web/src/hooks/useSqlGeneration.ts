@@ -7,6 +7,7 @@ import type {
   MysqlPartitionConfig,
   SqlFormatMode,
   TableMiscConfig,
+  ForeignKeyDefinition,
 } from '@ddlbuilder/shared-types';
 import { buildDDL, buildDCL } from '@ddlbuilder/ddl-core';
 import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
@@ -31,6 +32,7 @@ export function useSqlGeneration(
   citusShardingConfig?: CitusShardingConfig,
   mysqlPartitionConfig?: MysqlPartitionConfig,
   tableMiscConfig?: TableMiscConfig,
+  foreignKeys?: ForeignKeyDefinition[],
 ): UseSqlGenerationReturn {
   const qualifiedTableName = useMemo(
     () => buildQualifiedTableName(schemaName, tableName),
@@ -54,6 +56,7 @@ export function useSqlGeneration(
         mysqlPartitionConfig,
         tableMiscConfig,
         sqlFormatMode,
+        foreignKeys,
       ),
     [
       dbType,
@@ -65,6 +68,7 @@ export function useSqlGeneration(
       citusShardingConfig,
       mysqlPartitionConfig,
       tableMiscConfig,
+      foreignKeys,
     ],
   );
 

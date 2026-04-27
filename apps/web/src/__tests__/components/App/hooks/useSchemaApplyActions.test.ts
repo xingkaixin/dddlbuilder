@@ -7,6 +7,7 @@ function createHook(initialState: Partial<Parameters<typeof useSchemaApplyAction
   const spies = {
     setRows: vi.fn(),
     setIndexes: vi.fn(),
+    setForeignKeys: vi.fn(),
     setReviewResult: vi.fn(),
     setIndexInput: vi.fn(),
     setAuthObjects: vi.fn(),

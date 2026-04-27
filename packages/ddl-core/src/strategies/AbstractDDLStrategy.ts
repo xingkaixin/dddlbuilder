@@ -4,6 +4,7 @@ import type {
   DatabaseType,
   SqlFormatMode,
   TableMiscConfig,
+  ForeignKeyDefinition,
 } from '@ddlbuilder/shared-types';
 import type { DDLStrategy } from '../interfaces/DDLStrategy';
 import { escapeSingleQuotes, splitQualifiedName } from '../utils/databaseTypeMapping';
@@ -143,5 +144,33 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
     // fields: NormalizedField[],
   ): string {
     return this.generateStandardIndexDDL(tableName, index);
+  }
+
+  /**
+   * 生成外键约束DDL的通用实现
+   * 子类可以重写以适配方言差异
+   */
+  generateForeignKeyDDL(tableName: string, fk: ForeignKeyDefinition): string {
+    const fieldList = fk.fields.join(', ');
+    const refFieldList = fk.refFields.join(', ');
+
+    const refTableParts: string[] = [];
+    if (fk.refSchema) {
+      refTableParts.push(fk.refSchema);
+    }
+    refTableParts.push(fk.refTable);
+    const refTable = refTableParts.join('.');
+
+    let sql = `ALTER TABLE ${this.formatTableName(tableName)} ADD CONSTRAINT ${fk.name} FOREIGN KEY (${fieldList}) REFERENCES ${refTable} (${refFieldList})`;
+
+    if (fk.onDelete) {
+      sql += ` ON DELETE ${fk.onDelete}`;
+    }
+    if (fk.onUpdate) {
+      sql += ` ON UPDATE ${fk.onUpdate}`;
+    }
+
+    sql += ';';
+    return sql;
   }
 }

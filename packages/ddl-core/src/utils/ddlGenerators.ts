@@ -6,6 +6,7 @@ import type {
   MysqlPartitionConfig,
   SqlFormatMode,
   TableMiscConfig,
+  ForeignKeyDefinition,
 } from '@ddlbuilder/shared-types';
 import { DDLStrategyFactory } from '../factories/DDLStrategyFactory';
 import { buildTableOptionsClause } from './tableOptions';
@@ -79,6 +80,7 @@ export const buildDDL = (
   mysqlPartitionConfig?: MysqlPartitionConfig,
   tableMiscConfig?: TableMiscConfig,
   sqlFormatMode: SqlFormatMode = 'compact',
+  foreignKeys: ForeignKeyDefinition[] = [],
 ) => {
   if (!tableName.trim()) {
     return '-- 请填写表名';
@@ -118,9 +120,15 @@ export const buildDDL = (
     strategy.generateIndexDDL(tableName.trim(), index, fields),
   );
 
+  // Build foreign key DDL statements
+  const fkDDLs = foreignKeys.map((fk) => strategy.generateForeignKeyDDL(tableName.trim(), fk));
+
   const extraBlocks: string[] = [];
   if (indexDDLs.length > 0) {
     extraBlocks.push(indexDDLs.join('\n'));
+  }
+  if (fkDDLs.length > 0) {
+    extraBlocks.push(fkDDLs.join('\n'));
   }
 
   if (dbType === 'oracle') {

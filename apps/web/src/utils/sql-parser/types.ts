@@ -3,6 +3,7 @@ import type {
   MysqlPartitionConfig,
   NormalizedField,
   TableMiscConfig,
+  ForeignKeyDefinition,
 } from '@ddlbuilder/shared-types';
 
 export type ParsedResult = {
@@ -11,6 +12,7 @@ export type ParsedResult = {
   tableComment: string;
   fields: NormalizedField[];
   indexes: IndexDefinition[];
+  foreignKeys: ForeignKeyDefinition[];
   authObjects: string[];
   tableMiscConfig?: TableMiscConfig;
   mysqlPartitionConfig?: MysqlPartitionConfig;

@@ -7,8 +7,10 @@ export type {
   TableDiff,
   FieldDiff,
   IndexDiff,
+  ForeignKeyDiff,
   FieldDiffType,
   IndexDiffType,
+  ForeignKeyDiffType,
   FieldChangeType,
 } from './utils/tableDiff.js';
 export { TYPE_MAPPINGS } from './configs/typeMappings.js';
@@ -44,6 +46,8 @@ export {
   buildDefaultClause,
   generateAddIndex,
   generateDropIndex,
+  generateAddForeignKey,
+  generateDropForeignKey,
 } from './utils/alter-ddl/index.js';
 export {
   supportsStorageOption,

@@ -57,6 +57,19 @@ export type IndexDefinition = {
   isPrimary?: boolean;
 };
 
+export type ForeignKeyAction = 'CASCADE' | 'SET NULL' | 'SET DEFAULT' | 'RESTRICT' | 'NO ACTION';
+
+export type ForeignKeyDefinition = {
+  id: string;
+  name: string;
+  fields: string[];
+  refSchema?: string;
+  refTable: string;
+  refFields: string[];
+  onDelete?: ForeignKeyAction;
+  onUpdate?: ForeignKeyAction;
+};
+
 export type ParsedFieldType = {
   baseType: string;
   args: string[];
@@ -162,6 +175,7 @@ export type PersistedState = {
   mysqlPartitionConfig?: MysqlPartitionConfig;
   tableMiscConfig?: TableMiscConfig;
   fieldTableViewConfig?: FieldTableViewConfig;
+  foreignKeys?: ForeignKeyDefinition[];
 };
 
 export type { ApiErrorCode, ApiMeta, ApiErrorPayload } from './api.js';

@@ -16,6 +16,7 @@ import { DiffDialog } from '../DiffDialog';
 import { DeleteFolderDialog, FolderDialog } from '../FolderDialogs';
 import { MockDataDialog } from '../MockDataDialog';
 import { ReviewHistoryDialog } from '../ReviewHistoryDialog';
+import { ErDiagramDialog } from '../ErDiagramDialog';
 import { StorageEstimatorDialog } from '../StorageEstimatorDialog';
 import { TemplateManagerDialog } from '../TemplateManagerDialog';
 import { CreateTemplateDialog } from '../CreateTemplateDialog';
@@ -74,6 +75,7 @@ interface GlobalDialogsProps {
   aiGenerateDialogProps: ComponentProps<typeof AIGenerateDialog>;
   storageEstimatorDialogProps: ComponentProps<typeof StorageEstimatorDialog>;
   mockDataDialogProps: ComponentProps<typeof MockDataDialog>;
+  erDiagramDialogProps: ComponentProps<typeof ErDiagramDialog>;
 }
 
 export function GlobalDialogs({
@@ -92,6 +94,7 @@ export function GlobalDialogs({
   aiGenerateDialogProps,
   storageEstimatorDialogProps,
   mockDataDialogProps,
+  erDiagramDialogProps,
 }: GlobalDialogsProps) {
   const { t } = useTranslation();
   const saveInputRef = useRef<HTMLInputElement>(null);
@@ -313,6 +316,7 @@ export function GlobalDialogs({
 
       <StorageEstimatorDialog {...storageEstimatorDialogProps} />
       <MockDataDialog {...mockDataDialogProps} />
+      <ErDiagramDialog {...erDiagramDialogProps} />
     </>
   );
 }

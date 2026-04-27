@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { GitCompare, List, Save, Sparkles, Table, Trash2 } from 'lucide-react';
+import { GitCompare, List, Save, Sparkles, Table, Trash2, Waypoints } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/select';
@@ -23,6 +23,7 @@ interface TableConfigProps {
   onOpenSavedTables: () => void;
   onViewDiff?: () => void;
   onOpenAIGenerate?: () => void;
+  onOpenErDiagram?: () => void;
   saveDisabled?: boolean;
   saveDisabledHint?: string;
   showDiffButton?: boolean;
@@ -46,6 +47,7 @@ export const TableConfig = memo<TableConfigProps>(
     onOpenSavedTables,
     onViewDiff,
     onOpenAIGenerate,
+    onOpenErDiagram,
     saveDisabled = false,
     saveDisabledHint,
     showDiffButton = false,
@@ -92,6 +94,24 @@ export const TableConfig = memo<TableConfigProps>(
                 <p>{t('tableConfig.openSavedTablesTip')}</p>
               </TooltipContent>
             </Tooltip>
+            {onOpenErDiagram && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 gap-1.5 px-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                    onClick={onOpenErDiagram}
+                  >
+                    <Waypoints className="h-3.5 w-3.5" />
+                    {t('tableConfig.erDiagram')}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t('tableConfig.erDiagramTip')}</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
             {(workspaceLabel || loadedTableName) && (
               <span className="max-w-[240px] truncate text-xs text-muted-foreground">
                 {workspaceLabel || loadedTableName}

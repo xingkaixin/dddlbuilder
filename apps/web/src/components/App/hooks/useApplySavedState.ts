@@ -9,6 +9,8 @@ interface UseApplySavedStateParams {
   setIndexes: (indexes: PersistedState['indexes']) => void;
   setIndexInput: (value: PersistedState['indexInput']) => void;
   setCurrentIndexFields: (fields: PersistedState['currentIndexFields']) => void;
+  setForeignKeys: (foreignKeys: PersistedState['foreignKeys']) => void;
+  resetForeignKeys: () => void;
   setAuthObjects: (objects: PersistedState['authObjects']) => void;
   setAuthInput: (input: PersistedState['authInput']) => void;
   setCitusShardingConfig: (config: NonNullable<PersistedState['citusShardingConfig']>) => void;
@@ -35,6 +37,8 @@ export function useApplySavedState({
   setIndexes,
   setIndexInput,
   setCurrentIndexFields,
+  setForeignKeys,
+  resetForeignKeys,
   setAuthObjects,
   setAuthInput,
   setCitusShardingConfig,
@@ -70,6 +74,11 @@ export function useApplySavedState({
       setIndexes(state.indexes ?? []);
       setIndexInput(state.indexInput ?? '');
       setCurrentIndexFields(state.currentIndexFields ?? []);
+      if (state.foreignKeys && state.foreignKeys.length > 0) {
+        setForeignKeys(state.foreignKeys);
+      } else {
+        resetForeignKeys();
+      }
       setAuthObjects(state.authObjects ?? []);
       setAuthInput(state.authInput ?? '');
 
@@ -110,6 +119,8 @@ export function useApplySavedState({
       setIndexes,
       setIndexInput,
       setCurrentIndexFields,
+      setForeignKeys,
+      resetForeignKeys,
       setAuthObjects,
       setAuthInput,
       setCitusShardingConfig,

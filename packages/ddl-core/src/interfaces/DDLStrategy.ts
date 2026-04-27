@@ -4,6 +4,7 @@ import type {
   IndexDefinition,
   SqlFormatMode,
   TableMiscConfig,
+  ForeignKeyDefinition,
 } from '@ddlbuilder/shared-types';
 import type { TableDiff } from '../utils/tableDiff';
 
@@ -23,6 +24,11 @@ export interface DDLStrategy {
    * 生成索引的DDL语句
    */
   generateIndexDDL(tableName: string, index: IndexDefinition, fields: NormalizedField[]): string;
+
+  /**
+   * 生成外键约束的DDL语句
+   */
+  generateForeignKeyDDL(tableName: string, fk: ForeignKeyDefinition): string;
 
   /**
    * 生成ALTER TABLE变更DDL语句

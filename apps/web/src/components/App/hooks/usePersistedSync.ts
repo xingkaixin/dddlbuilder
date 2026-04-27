@@ -23,6 +23,9 @@ interface UsePersistedSyncParams {
     currentIndexFields?: PersistedState['currentIndexFields'];
     indexes?: PersistedState['indexes'];
   }) => void;
+  initializeForeignKeyState: (persistedState?: {
+    foreignKeys?: PersistedState['foreignKeys'];
+  }) => void;
   setFieldTableFreezeEnabled: (enabled: boolean) => void;
   setFieldTableFreezeColumns: (columns: number) => void;
   defaultFieldTableFreezeColumns: number;
@@ -47,6 +50,7 @@ export function usePersistedSync({
   setAddCount,
   initializeRows,
   initializeIndexState,
+  initializeForeignKeyState,
   setFieldTableFreezeEnabled,
   setFieldTableFreezeColumns,
   defaultFieldTableFreezeColumns,
@@ -81,6 +85,7 @@ export function usePersistedSync({
     }
     initializeRows(persistedState.rows ?? []);
     initializeIndexState(persistedState);
+    initializeForeignKeyState(persistedState);
 
     const persistedFieldTableViewConfig = persistedState.fieldTableViewConfig;
     if (persistedFieldTableViewConfig) {
@@ -114,6 +119,7 @@ export function usePersistedSync({
     setAddCount,
     initializeRows,
     initializeIndexState,
+    initializeForeignKeyState,
     setFieldTableFreezeEnabled,
     setFieldTableFreezeColumns,
     defaultFieldTableFreezeColumns,

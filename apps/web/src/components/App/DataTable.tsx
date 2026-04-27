@@ -15,6 +15,7 @@ import {
   useIndexStore,
   usePartitionStore,
   useShardingStore,
+  useForeignKeyStore,
 } from '@/stores';
 import { useFieldColumns } from './table/columns';
 import { useFreezeColumns } from './table/useFreezeColumns';
@@ -158,6 +159,7 @@ export const DataTable = memo<DataTableProps>(
     const syncIndexFieldRename = useIndexStore((state) => state.syncFieldRename);
     const syncPartitionFieldRename = usePartitionStore((state) => state.syncFieldRename);
     const syncShardingFieldRename = useShardingStore((state) => state.syncFieldRename);
+    const syncForeignKeyFieldRename = useForeignKeyStore((state) => state.syncFieldRename);
 
     const duplicateNameSet = useMemo(() => buildDuplicateNameSet(rows), [rows]);
     const tableRef = useRef<HTMLDivElement>(null);
@@ -201,8 +203,16 @@ export const DataTable = memo<DataTableProps>(
         if (dbType === 'postgresql-citus') {
           syncShardingFieldRename(oldFieldName, newFieldName);
         }
+
+        syncForeignKeyFieldRename(oldFieldName, newFieldName);
       },
-      [dbType, syncIndexFieldRename, syncPartitionFieldRename, syncShardingFieldRename],
+      [
+        dbType,
+        syncIndexFieldRename,
+        syncPartitionFieldRename,
+        syncShardingFieldRename,
+        syncForeignKeyFieldRename,
+      ],
     );
 
     const { updateCellValue } = useFieldRowMutations({
