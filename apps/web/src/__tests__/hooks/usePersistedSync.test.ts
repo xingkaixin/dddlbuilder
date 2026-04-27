@@ -35,7 +35,7 @@ function createBaseParams(overrides?: {
   return {
     hydrated: overrides?.hydrated ?? true,
     persistedState: overrides?.persistedState ?? null,
-    activeSource: overrides?.activeSource ?? { kind: 'global_draft' },
+    activeSource: overrides?.activeSource ?? { kind: 'draft', draftId: 'default' },
     saveState: overrides?.saveState ?? vi.fn(),
     buildPersistedState: overrides?.buildPersistedState ?? (() => createState('a')),
     setSchemaName: vi.fn(),
@@ -105,7 +105,7 @@ describe('usePersistedSync debounce save', () => {
     expect(saveState).toHaveBeenCalledTimes(1);
     expect(saveState).toHaveBeenCalledWith({
       state: payload,
-      source: { kind: 'global_draft' },
+      source: { kind: 'draft', draftId: 'default' },
       isDirty: false,
     });
   });
@@ -149,7 +149,7 @@ describe('usePersistedSync debounce save', () => {
     expect(saveState).toHaveBeenCalledTimes(1);
     expect(saveState).toHaveBeenCalledWith({
       state: secondPayload,
-      source: { kind: 'global_draft' },
+      source: { kind: 'draft', draftId: 'default' },
       isDirty: false,
     });
     expect(firstBuild).not.toHaveBeenCalled();
@@ -226,7 +226,7 @@ describe('usePersistedSync debounce save', () => {
     // Source 仍为 Global Draft (旧)，但 Store 已更新为 Saved Table (新数据 + 新Name)
     const params = createBaseParams({
       saveState,
-      activeSource: { kind: 'global_draft' },
+      activeSource: { kind: 'draft', draftId: 'default' },
       buildPersistedState: () => savedState, // 构建出的 State 是 SavedTable 的内容
       loadedTableNormalizedName: 'users', // Store 认为当前加载的是 users 表
     });
@@ -403,7 +403,7 @@ describe('usePersistedSync useEffect synchronization', () => {
     expect(setLoadedTableSignature).toHaveBeenCalledWith('sig');
   });
 
-  it('如果 activeSource 为 global_draft，应重置 loadedTable', () => {
+  it('如果 activeSource 为 default draft，应重置 loadedTable', () => {
     const setLoadedTableNormalizedName = vi.fn();
     const setLoadedTableName = vi.fn();
     const setLoadedTableSignature = vi.fn();
@@ -412,7 +412,7 @@ describe('usePersistedSync useEffect synchronization', () => {
       hydrated: true,
       persistedState: createState('test'),
       activeSource: {
-        kind: 'global_draft',
+        kind: 'default draft',
       },
     });
     params.setLoadedTableNormalizedName = setLoadedTableNormalizedName;

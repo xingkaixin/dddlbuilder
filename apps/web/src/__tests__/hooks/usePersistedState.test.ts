@@ -164,7 +164,7 @@ describe('usePersistedState', () => {
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
       expect(result.current.persistedState).toEqual(draftState);
-      expect(result.current.activeSource).toEqual({ kind: 'global_draft' });
+      expect(result.current.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
     });
 
     const dbDraft = await readGlobalDraft();
@@ -282,20 +282,20 @@ describe('usePersistedState', () => {
       expect(result.current.hydrated).toBe(true);
     });
 
-    const nextState = createState('editable_global_draft');
+    const nextState = createState('editable_default draft');
     act(() => {
-      result.current.setWorkspaceSnapshot({ kind: 'global_draft' }, nextState);
+      result.current.setWorkspaceSnapshot({ kind: 'draft', draftId: 'default' }, nextState);
     });
 
     await waitFor(() => {
-      expect(result.current.persistedState?.tableName).toBe('editable_global_draft');
+      expect(result.current.persistedState?.tableName).toBe('editable_default draft');
     });
 
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
     });
 
-    expect(result.current.persistedState?.tableName).toBe('editable_global_draft');
+    expect(result.current.persistedState?.tableName).toBe('editable_default draft');
   });
 
   it('保存全局草稿时应写入 IndexedDB 全局草稿和工作区会话', async () => {
@@ -308,7 +308,7 @@ describe('usePersistedState', () => {
 
     const payload: WorkspaceSavePayload = {
       state: createState('next_global'),
-      source: { kind: 'global_draft' },
+      source: { kind: 'draft', draftId: 'default' },
       isDirty: false,
     };
 
@@ -322,7 +322,7 @@ describe('usePersistedState', () => {
       const dbDraft = await readGlobalDraft();
       expect(dbDraft?.state.tableName).toBe('next_global');
       const session = await readWorkspaceSession();
-      expect(session?.activeSource).toEqual({ kind: 'global_draft' });
+      expect(session?.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
     });
   });
 
@@ -393,11 +393,11 @@ describe('usePersistedState', () => {
     });
 
     act(() => {
-      result.current.setWorkspaceSnapshot({ kind: 'global_draft' }, globalState);
+      result.current.setWorkspaceSnapshot({ kind: 'draft', draftId: 'default' }, globalState);
     });
 
     await waitFor(() => {
-      expect(result.current.activeSource).toEqual({ kind: 'global_draft' });
+      expect(result.current.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
     });
 
     act(() => {
@@ -408,12 +408,12 @@ describe('usePersistedState', () => {
       });
     });
 
-    expect(result.current.activeSource).toEqual({ kind: 'global_draft' });
+    expect(result.current.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
     expect(result.current.getGlobalDraftState()?.tableName).toBe(globalState.tableName);
 
     await waitFor(async () => {
       const session = await readWorkspaceSession();
-      expect(session?.activeSource).toEqual({ kind: 'global_draft' });
+      expect(session?.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
       expect(session?.activeState?.tableName).toBe(globalState.tableName);
     });
   });
@@ -462,19 +462,19 @@ describe('usePersistedState', () => {
     });
 
     act(() => {
-      result.current.setWorkspaceSnapshot({ kind: 'global_draft' }, globalState);
+      result.current.setWorkspaceSnapshot({ kind: 'draft', draftId: 'default' }, globalState);
     });
 
     await waitFor(async () => {
       const draft = await readGlobalDraft();
       const session = await readWorkspaceSession();
       expect(draft?.state.tableName).toBe(globalState.tableName);
-      expect(session?.activeSource).toEqual({ kind: 'global_draft' });
+      expect(session?.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
       expect(session?.activeState?.tableName).toBe(globalState.tableName);
     });
   });
 
-  it('主工作区 clearState 在 global_draft 下应清空草稿与会话', async () => {
+  it('主工作区 clearState 在 default draft 下应清空草稿与会话', async () => {
     const { wrapper } = createQueryClientWrapper();
     const { result } = renderHook(() => usePersistedState(), { wrapper });
     const globalState = createState('global_to_clear');
@@ -484,14 +484,14 @@ describe('usePersistedState', () => {
     });
 
     act(() => {
-      result.current.setWorkspaceSnapshot({ kind: 'global_draft' }, globalState);
+      result.current.setWorkspaceSnapshot({ kind: 'draft', draftId: 'default' }, globalState);
     });
 
     await waitFor(async () => {
       const draft = await readGlobalDraft();
       const session = await readWorkspaceSession();
       expect(draft?.state.tableName).toBe(globalState.tableName);
-      expect(session?.activeSource).toEqual({ kind: 'global_draft' });
+      expect(session?.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
     });
 
     act(() => {
@@ -503,7 +503,7 @@ describe('usePersistedState', () => {
       const session = await readWorkspaceSession();
       expect(draft).toBeNull();
       expect(session).toBeNull();
-      expect(result.current.activeSource).toEqual({ kind: 'global_draft' });
+      expect(result.current.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
       expect(result.current.persistedState).toBeNull();
       expect(result.current.getGlobalDraftState()).toBeNull();
     });
@@ -546,7 +546,7 @@ describe('usePersistedState', () => {
       const session = await readWorkspaceSession();
       expect(draft?.state.tableName).toBe(existingGlobal.tableName);
       expect(session).toBeNull();
-      expect(result.current.activeSource).toEqual({ kind: 'global_draft' });
+      expect(result.current.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
       expect(result.current.persistedState).toBeNull();
     });
   });
@@ -584,7 +584,7 @@ describe('usePersistedState', () => {
     act(() => {
       result.current.saveState({
         state: nextState,
-        source: { kind: 'global_draft' },
+        source: { kind: 'draft', draftId: 'default' },
         isDirty: true,
       });
     });
@@ -682,7 +682,7 @@ describe('usePersistedState', () => {
     });
   });
 
-  it('会话为 saved_table 但实体缺失时应回退到 global_draft', async () => {
+  it('会话为 saved_table 但实体缺失时应回退到 default draft', async () => {
     const fallbackState = createState('global_fallback_when_saved_missing');
     await writeGlobalDraft({ state: fallbackState, updatedAt: Date.now() });
     await writeWorkspaceSession({
@@ -701,17 +701,17 @@ describe('usePersistedState', () => {
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
-      expect(result.current.activeSource).toEqual({ kind: 'global_draft' });
+      expect(result.current.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
       expect(result.current.persistedState).toEqual(fallbackState);
     });
   });
 
-  it('会话为 global_draft 且存在 activeState 时应优先恢复 activeState', async () => {
+  it('会话为 default draft 且存在 activeState 时应优先恢复 activeState', async () => {
     const sessionState = createState('session_active_state');
     const globalState = createState('global_backup_state');
     await writeGlobalDraft({ state: globalState, updatedAt: Date.now() });
     await writeWorkspaceSession({
-      activeSource: { kind: 'global_draft' },
+      activeSource: { kind: 'draft', draftId: 'default' },
       activeState: sessionState,
       updatedAt: Date.now(),
     });
@@ -721,16 +721,16 @@ describe('usePersistedState', () => {
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
-      expect(result.current.activeSource).toEqual({ kind: 'global_draft' });
+      expect(result.current.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
       expect(result.current.persistedState).toEqual(sessionState);
     });
   });
 
-  it('会话为 global_draft 且无 activeState 时应回退到 globalDraft', async () => {
+  it('会话为 default draft 且无 activeState 时应回退到 globalDraft', async () => {
     const globalState = createState('global_fallback_state');
     await writeGlobalDraft({ state: globalState, updatedAt: Date.now() });
     await writeWorkspaceSession({
-      activeSource: { kind: 'global_draft' },
+      activeSource: { kind: 'draft', draftId: 'default' },
       activeState: null,
       updatedAt: Date.now(),
     });
@@ -740,7 +740,7 @@ describe('usePersistedState', () => {
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
-      expect(result.current.activeSource).toEqual({ kind: 'global_draft' });
+      expect(result.current.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
       expect(result.current.persistedState).toEqual(globalState);
     });
   });

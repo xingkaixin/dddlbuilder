@@ -128,13 +128,13 @@ describe('workspaceStateDb', () => {
     expect(await readWorkspaceSession()).toBeNull();
 
     await writeWorkspaceSession({
-      activeSource: { kind: 'global_draft' },
+      activeSource: { kind: 'draft', draftId: 'default' },
       activeState: createState('active'),
       updatedAt: 22,
     });
 
     expect(await readWorkspaceSession()).toEqual({
-      activeSource: { kind: 'global_draft' },
+      activeSource: { kind: 'draft', draftId: 'default' },
       activeState: createState('active'),
       updatedAt: 22,
     });
@@ -223,7 +223,7 @@ describe('workspaceStateDb', () => {
     localStorageMock.setItem(
       WORKSPACE_SESSION_STORAGE_KEY,
       JSON.stringify({
-        activeSource: { kind: 'global_draft' },
+        activeSource: { kind: 'draft', draftId: 'default' },
         activeState: createState('session_legacy'),
         updatedAt: 103,
       }),
@@ -242,7 +242,7 @@ describe('workspaceStateDb', () => {
       },
     });
     expect(await readWorkspaceSession()).toMatchObject({
-      activeSource: { kind: 'global_draft' },
+      activeSource: { kind: 'draft', draftId: 'default' },
       activeState: createState('session_legacy'),
       updatedAt: 103,
     });

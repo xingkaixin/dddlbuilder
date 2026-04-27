@@ -11,7 +11,7 @@ const createBootstrapMock = async (options?: {
   migrateImpl?: () => Promise<void>;
 }) => {
   const readWorkspaceBootstrap = vi.fn(
-    options?.readImpl ?? (async () => ({ globalDraft: null, session: null, savedTable: null })),
+    options?.readImpl ?? (async () => ({ globalDraft: null, drafts: [], session: null, savedTable: null })),
   );
   const migrateLegacyWorkspaceFromLocalStorage = vi.fn(
     options?.migrateImpl ?? (async () => undefined),
@@ -76,7 +76,7 @@ describe('workspacePersistence/bootstrap', () => {
         .mockResolvedValueOnce({
           globalDraft: null,
           session: {
-            activeSource: { kind: 'global_draft' },
+            activeSource: { kind: 'draft', draftId: 'default' },
             activeState: null,
           },
           savedTable: null,
@@ -88,7 +88,7 @@ describe('workspacePersistence/bootstrap', () => {
     expect(migrateLegacyWorkspaceFromLocalStorage).toHaveBeenCalledTimes(1);
     expect(readWorkspaceBootstrap).toHaveBeenCalledTimes(2);
     expect(result.session).toEqual({
-      activeSource: { kind: 'global_draft' },
+      activeSource: { kind: 'draft', draftId: 'default' },
       activeState: null,
     });
   });
@@ -111,6 +111,7 @@ describe('workspacePersistence/bootstrap', () => {
 
     expect(result).toEqual({
       globalDraft: null,
+      drafts: [],
       session: null,
       savedTable: null,
     });
@@ -134,9 +135,10 @@ describe('workspacePersistence/bootstrap', () => {
     expect(p1).toBe(p2);
     expect(readWorkspaceBootstrap).toHaveBeenCalledTimes(1);
 
-    resolveRead({ globalDraft: null, session: { id: 1 }, savedTable: null });
+    resolveRead({ globalDraft: null, drafts: [], session: { id: 1 }, savedTable: null });
     await expect(p1).resolves.toEqual({
       globalDraft: null,
+      drafts: [],
       session: { id: 1 },
       savedTable: null,
     });

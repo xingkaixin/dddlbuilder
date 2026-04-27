@@ -21,7 +21,7 @@ const loadWorkspaceBootstrap = async (scope: WorkspaceScope): Promise<WorkspaceB
     savedTable: null,
   }));
 
-  if (initial.globalDraft || initial.session || initial.drafts.length > 0) {
+  if (initial.globalDraft || initial.session || (initial.drafts?.length ?? 0) > 0) {
     return initial;
   }
 

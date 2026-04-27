@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  buildGlobalDraftSummary,
+  buildDraftSummary,
   isSameWorkspaceSource,
   isWorkspaceSource,
   normalizeGlobalDraftRecord,
@@ -169,7 +169,7 @@ describe('workspacePersistence/normalize', () => {
   });
 
   it('isWorkspaceSource 应正确识别来源类型', () => {
-    expect(isWorkspaceSource({ kind: 'global_draft' })).toBe(true);
+    expect(isWorkspaceSource({ kind: 'draft', draftId: 'default' })).toBe(true);
     expect(
       isWorkspaceSource({
         kind: 'saved_table',
@@ -185,8 +185,8 @@ describe('workspacePersistence/normalize', () => {
   });
 
   it('isSameWorkspaceSource 应比较来源是否一致', () => {
-    const globalA = { kind: 'global_draft' } as const;
-    const globalB = { kind: 'global_draft' } as const;
+    const globalA = { kind: 'draft', draftId: 'default' } as const;
+    const globalB = { kind: 'draft', draftId: 'default' } as const;
 
     const savedA = {
       kind: 'saved_table' as const,
@@ -213,8 +213,9 @@ describe('workspacePersistence/normalize', () => {
     expect(isSameWorkspaceSource(globalA, savedA)).toBe(false);
   });
 
-  it('buildGlobalDraftSummary 应统计字段并处理空表名', () => {
-    const summary = buildGlobalDraftSummary(
+  it('buildDraftSummary 应统计字段并处理空表名', () => {
+    const summary = buildDraftSummary(
+      'default',
       {
         schemaName: '',
         tableName: '   ',
@@ -253,6 +254,7 @@ describe('workspacePersistence/normalize', () => {
     );
 
     expect(summary).toEqual({
+      draftId: 'default',
       name: '未命名草稿',
       dbType: 'mysql',
       fieldCount: 1,

@@ -149,7 +149,7 @@ describe('workspaceSyncService', () => {
     );
     await writeWorkspaceSession(
       {
-        activeSource: { kind: 'global_draft' },
+        activeSource: { kind: 'draft', draftId: 'default' },
         activeState: createState('session_state'),
         updatedAt: 10,
       },
