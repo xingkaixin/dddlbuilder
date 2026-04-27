@@ -415,12 +415,27 @@ export const enUSCommon = {
     rowActions: {
       removeRow: 'Delete row',
       removeFieldRow: 'Delete field row',
-      removeFieldRowConfirm: 'Are you sure you want to delete this row?',
+      removeFieldRowConfirm:
+        'Deleting this field will permanently remove all data in the corresponding column. This action cannot be undone.',
       fieldName: 'Field: {{name}}',
       fieldComment: 'Comment: {{comment}}',
       empty: '(empty)',
       cancel: 'Cancel',
       confirmDelete: 'Delete',
+    },
+    dangerousChange: {
+      typeChangeTitle: 'Data Type Change Risk',
+      typeChangeDesc:
+        'Changing the field type from {{from}} to {{to}} may cause data conversion failures or data loss. Always back up your data before applying this change to a table with existing records.',
+      lengthShrinkTitle: 'Field Length Reduction Risk',
+      lengthShrinkDesc:
+        'Changing {{from}} to {{to}} reduces the storage length. Data exceeding the new length will be truncated.',
+      migrationTip: 'Recommended safe migration steps:',
+      tip1: 'Back up the complete table data before making changes',
+      tip2: 'Add a temporary column with the target type, migrate and verify data, then drop the original column',
+      tip3: 'Apply during low-traffic hours and test thoroughly in a non-production environment first',
+      confirm: 'Change Anyway',
+      cancel: 'Cancel',
     },
   },
   templateManager: {

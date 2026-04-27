@@ -23,6 +23,8 @@ import { DataTableToolbar } from './table/DataTableToolbar';
 import { useDataTableNavigation } from './table/useDataTableNavigation';
 import { useDataTableClipboard } from './table/useDataTableClipboard';
 import { useFieldRowMutations } from './table/useFieldRowMutations';
+import { useFieldTypeChangeGuard } from './table/useFieldTypeChangeGuard';
+import { DangerousChangeDialog } from './table/DangerousChangeDialog';
 import { useSortableFieldRows } from './table/useSortableFieldRows';
 import { useTranslation } from 'react-i18next';
 
@@ -202,6 +204,9 @@ export const DataTable = memo<DataTableProps>(
       onFieldRename: syncFieldRenameDependencies,
     });
 
+    const { guardedUpdateCellValue, pendingChange, handleConfirm, handleCancel } =
+      useFieldTypeChangeGuard(rows, updateCellValue);
+
     const rowWarnings = useMemo(() => {
       return rows.map((row) => {
         const warnings: string[] = [];
@@ -251,7 +256,7 @@ export const DataTable = memo<DataTableProps>(
       columnWidths,
       rowWarnings,
       dbType,
-      updateCellValue,
+      updateCellValue: guardedUpdateCellValue,
       handleTabNavigation,
       onRemoveRow,
     });
@@ -414,6 +419,13 @@ export const DataTable = memo<DataTableProps>(
             </SortableContext>
           </DndContext>
         </section>
+
+        <DangerousChangeDialog
+          open={!!pendingChange}
+          risk={pendingChange?.risk ?? null}
+          onConfirm={handleConfirm}
+          onCancel={handleCancel}
+        />
       </div>
     );
   },

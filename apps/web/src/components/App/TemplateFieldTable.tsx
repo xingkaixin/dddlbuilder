@@ -13,6 +13,8 @@ import { useFieldColumns } from './table/columns';
 import { useDataTableNavigation } from './table/useDataTableNavigation';
 import { useDataTableClipboard } from './table/useDataTableClipboard';
 import { useFieldRowMutations } from './table/useFieldRowMutations';
+import { useFieldTypeChangeGuard } from './table/useFieldTypeChangeGuard';
+import { DangerousChangeDialog } from './table/DangerousChangeDialog';
 import { useSortableFieldRows } from './table/useSortableFieldRows';
 import { useTranslation } from 'react-i18next';
 
@@ -147,6 +149,9 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
 
   const { updateCellValue } = useFieldRowMutations({ rows, setRows });
 
+  const { guardedUpdateCellValue, pendingChange, handleConfirm, handleCancel } =
+    useFieldTypeChangeGuard(rows, updateCellValue);
+
   const {
     selectedCell,
     setSelectedCell,
@@ -191,7 +196,7 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
     columnWidths,
     rowWarnings,
     dbType,
-    updateCellValue,
+    updateCellValue: guardedUpdateCellValue,
     handleTabNavigation,
     onRemoveRow: handleRemoveRow,
   });
@@ -254,6 +259,12 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
           </SortableContext>
         </DndContext>
       </div>
+      <DangerousChangeDialog
+        open={!!pendingChange}
+        risk={pendingChange?.risk ?? null}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   );
 });

@@ -401,12 +401,26 @@ export const zhCNCommon = {
     rowActions: {
       removeRow: '删除行',
       removeFieldRow: '删除字段行',
-      removeFieldRowConfirm: '确定要删除此行吗？',
+      removeFieldRowConfirm: '删除此字段后，对应列的所有数据将永久丢失，此操作不可逆。',
       fieldName: '字段名: {{name}}',
       fieldComment: '中文名: {{comment}}',
       empty: '(空)',
       cancel: '取消',
       confirmDelete: '确定删除',
+    },
+    dangerousChange: {
+      typeChangeTitle: '数据类型变更风险',
+      typeChangeDesc:
+        '将字段类型从 {{from}} 修改为 {{to}} 可能导致数据转换失败或数据丢失。对已有数据的表执行此变更前，请务必做好备份。',
+      lengthShrinkTitle: '字段长度缩减风险',
+      lengthShrinkDesc:
+        '将字段 {{from}} 修改为 {{to}} 会缩减存储长度，超出新长度的数据将被截断丢失。',
+      migrationTip: '建议安全迁移步骤：',
+      tip1: '执行变更前备份相关表的完整数据',
+      tip2: '新建目标类型的临时字段，迁移并验证数据后再删除原字段',
+      tip3: '在低峰期执行，并先在测试环境充分验证',
+      confirm: '仍然修改',
+      cancel: '取消',
     },
   },
   templateManager: {
