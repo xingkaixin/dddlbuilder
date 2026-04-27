@@ -30,6 +30,7 @@ function normalizePersistedRows(rows: FieldRow[]): FieldRow[] {
     defaultKind: normalizeRowValue(row.defaultKind) || '无',
     defaultValue: normalizeRowValue(row.defaultValue),
     onUpdate: normalizeRowValue(row.onUpdate) || '无',
+    enumMeta: row.enumMeta,
   }));
 }
 

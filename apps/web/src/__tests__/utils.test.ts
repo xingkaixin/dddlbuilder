@@ -570,6 +570,7 @@ describe('Utils', () => {
         defaultKind: '自增',
         defaultValue: '',
         onUpdate: '无',
+        enumMeta: undefined,
       });
     });
 
@@ -637,7 +638,31 @@ describe('Utils', () => {
         defaultKind: null, // null 值会被保留，因为不在 DEFAULT_KIND_OPTIONS 中
         defaultValue: '',
         onUpdate: null, // null 值会被保留，因为不在 ON_UPDATE_OPTIONS 中
+        enumMeta: undefined,
       });
+    });
+
+    it('应该保留 enumMeta 用于持久化', () => {
+      const rows: FieldRow[] = [
+        {
+          order: 1,
+          fieldName: 'status',
+          fieldType: 'char(1)',
+          fieldComment: '状态',
+          nullable: '否',
+          defaultKind: '无',
+          defaultValue: '',
+          onUpdate: '无',
+          enumMeta: [
+            { value: '0', color: '#ef4444', i18n: { 'zh-CN': '删除', 'en-US': 'Deleted' } },
+            { value: '1', color: '#22c55e', i18n: { 'zh-CN': '正常', 'en-US': 'Normal' } },
+          ],
+        },
+      ];
+
+      const result = sanitizeRowsForPersist(rows);
+
+      expect(result[0].enumMeta).toEqual(rows[0].enumMeta);
     });
   });
 

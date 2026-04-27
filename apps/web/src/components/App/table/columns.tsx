@@ -3,6 +3,7 @@ import { createColumnHelper, type ColumnDef, type Row } from '@tanstack/react-ta
 import { EditableCell, SelectCell, CheckboxCell, OrderCell } from './index';
 import { RowActions } from './RowActions';
 import { EnumSetCell } from './EnumSetCell';
+import { LogicalEnumCell } from './LogicalEnumCell';
 import type {
   DatabaseType,
   EnumValueMeta,
@@ -20,6 +21,8 @@ import { getDefaultKindLabel, getOnUpdateLabel } from '@/i18n/fieldEnums';
 import { useTranslation } from 'react-i18next';
 
 const columnHelper = createColumnHelper<FieldRow>();
+
+const LOGICAL_ENUM_BASES = new Set(['tinyint', 'smallint', 'int', 'bigint', 'char', 'varchar']);
 
 interface UseFieldColumnsParams {
   mode?: 'table' | 'template';
@@ -106,6 +109,17 @@ export function useFieldColumns(params: UseFieldColumnsParams): ColumnDef<FieldR
                     updateCellValue(row.index, 'fieldType', ft);
                   }
                 }}
+                onTabNavigate={(direction) => handleTabNavigation(row.index, 2, direction)}
+              />
+            );
+          }
+          if (LOGICAL_ENUM_BASES.has(canonical)) {
+            return (
+              <LogicalEnumCell
+                fieldType={fieldTypeValue}
+                enumMeta={row.original.enumMeta}
+                onTypeChange={(v) => updateCellValue(row.index, 'fieldType', v)}
+                onEnumSave={(ft, meta) => updateEnumValues?.(row.index, ft, meta)}
                 onTabNavigate={(direction) => handleTabNavigation(row.index, 2, direction)}
               />
             );

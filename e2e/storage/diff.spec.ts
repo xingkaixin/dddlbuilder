@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { confirmFieldTypeChangeIfNeeded } from '../utils';
 
 const fillBasicField = async (page: any, name = 'id') => {
   const nameCell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
@@ -45,6 +46,7 @@ test.describe('变更对比验证 @storage', () => {
     await typeCell.dblclick();
     await page.locator('[data-testid="data-table"] input').fill('varchar(20)');
     await page.keyboard.press('Enter');
+    await confirmFieldTypeChangeIfNeeded(page);
 
     await page.getByRole('button', { name: /查看表结构变更/i }).click();
     await expect(page.getByRole('heading', { name: /表结构变更对比/i })).toBeVisible();

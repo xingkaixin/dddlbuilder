@@ -109,6 +109,45 @@ describe('workspacePersistence/normalize', () => {
     expect(result?.indexes[0].fields).toEqual([{ name: 'id', direction: 'DESC' }]);
   });
 
+  it('normalizePersistedState 应保留 enumMeta', () => {
+    const result = normalizePersistedState({
+      tableName: 't1',
+      dbType: 'mysql',
+      rows: [
+        {
+          order: 1,
+          fieldName: 'status',
+          fieldType: 'char(1)',
+          nullable: '是',
+          enumMeta: [
+            { value: '0', comment: '删除', color: '#ff0000' },
+            { value: '1', comment: '正常', color: '#00ff00' },
+          ],
+        },
+        {
+          order: 2,
+          fieldName: 'type',
+          fieldType: 'int',
+          nullable: '是',
+          enumMeta: 'not-array',
+        },
+      ],
+      addCount: 10,
+      indexInput: '',
+      currentIndexFields: [],
+      indexes: [],
+      authInput: '',
+      authObjects: [],
+    });
+
+    expect(result).not.toBeNull();
+    expect(result?.rows[0].enumMeta).toEqual([
+      { value: '0', comment: '删除', color: '#ff0000' },
+      { value: '1', comment: '正常', color: '#00ff00' },
+    ]);
+    expect(result?.rows[1].enumMeta).toBeUndefined();
+  });
+
   it('normalizePersistedState 应兼容旧的 schema.tableName 格式', () => {
     const result = normalizePersistedState({
       tableName: 'public.users',

@@ -41,6 +41,7 @@ export type NormalizedField = {
   defaultKind: 'none' | 'auto_increment' | 'constant' | 'current_timestamp' | 'uuid';
   defaultValue: string;
   onUpdate: 'none' | 'current_timestamp';
+  enumMeta?: EnumValueMeta[];
 };
 
 export type IndexField = {

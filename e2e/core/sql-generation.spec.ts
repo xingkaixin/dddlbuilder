@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { confirmFieldTypeChangeIfNeeded } from '../utils';
 
 test.describe('SQL 自动生成流程 @core @smoke', () => {
   test.beforeEach(async ({ context }) => {
@@ -60,6 +61,7 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
     await firstFieldTypeCell.dblclick();
     await page.locator('[data-testid="data-table"] input').fill('varchar(255)');
     await page.keyboard.press('Enter');
+    await confirmFieldTypeChangeIfNeeded(page);
 
     // 验证 UI 上的值是否已填入
     await expect(firstFieldNameCell).toHaveText('id');

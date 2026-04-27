@@ -305,6 +305,11 @@ function generateValueForField(field: NormalizedField, rowIndex: number): unknow
   if (field.defaultKind === 'uuid') return genUUID();
   if (field.defaultKind === 'current_timestamp') return genDatetime();
 
+  // enumMeta 存在时优先从中取值（逻辑枚举）
+  if (field.enumMeta && field.enumMeta.length > 0) {
+    return pick(field.enumMeta).value;
+  }
+
   const parsed = parseFieldType(field.type);
   const baseType = parsed.baseType.toLowerCase();
   const args = parsed.args ?? [];

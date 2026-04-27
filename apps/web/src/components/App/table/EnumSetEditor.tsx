@@ -238,26 +238,34 @@ export interface EnumSetEditorProps {
   fieldType: string;
   enumMeta: EnumValueMeta[] | undefined;
   onSave: (fieldType: string, enumMeta: EnumValueMeta[]) => void;
+  mode?: 'native' | 'logical';
 }
 
 export const EnumSetEditor = memo<EnumSetEditorProps>(
-  ({ open, onOpenChange, fieldType, enumMeta, onSave }) => {
+  ({ open, onOpenChange, fieldType, enumMeta, onSave, mode = 'native' }) => {
     const { t } = useTranslation();
     const [items, setItems] = useState<EnumItem[]>([]);
     const [newValue, setNewValue] = useState('');
     const [addError, setAddError] = useState('');
 
-    const baseType = fieldType.match(/^(enum|set)\s*/i)?.[1]?.toUpperCase() ?? 'ENUM';
+    const isLogical = mode === 'logical';
+    const baseType = isLogical
+      ? fieldType
+      : (fieldType.match(/^(enum|set)\s*/i)?.[1]?.toUpperCase() ?? 'ENUM');
 
     // Sync items when dialog opens
     useEffect(() => {
       if (open) {
-        const parsed = parseEnumValues(fieldType);
-        setItems(metaToItems(parsed, enumMeta));
+        if (isLogical) {
+          setItems(metaToItems(enumMeta?.map((m) => m.value) ?? [], enumMeta));
+        } else {
+          const parsed = parseEnumValues(fieldType);
+          setItems(metaToItems(parsed, enumMeta));
+        }
         setNewValue('');
         setAddError('');
       }
-    }, [open, fieldType, enumMeta]);
+    }, [open, fieldType, enumMeta, isLogical]);
 
     const sensors = useSensors(
       useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -326,11 +334,15 @@ export const EnumSetEditor = memo<EnumSetEditorProps>(
       const values = items.map((i) => i.value).filter(Boolean);
       const hasDuplicates = new Set(values).size !== values.length;
       if (hasDuplicates) return;
-      const newFieldType = serializeEnumType(baseType, values);
       const newMeta = itemsToMeta(items.filter((i) => i.value));
-      onSave(newFieldType, newMeta);
+      if (isLogical) {
+        onSave(fieldType, newMeta);
+      } else {
+        const newFieldType = serializeEnumType(baseType, values);
+        onSave(newFieldType, newMeta);
+      }
       onOpenChange(false);
-    }, [items, baseType, onSave, onOpenChange]);
+    }, [items, baseType, onSave, onOpenChange, isLogical, fieldType]);
 
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>

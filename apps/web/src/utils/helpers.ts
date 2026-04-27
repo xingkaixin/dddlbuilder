@@ -79,6 +79,7 @@ export const normalizeFields = (rows: FieldRow[]) =>
       defaultKind: normalizeDefaultKind(row.defaultKind as UiDefaultKind),
       defaultValue: toStringSafe(row.defaultValue).trim(),
       onUpdate: normalizeOnUpdate(row.onUpdate as UiOnUpdate),
+      enumMeta: row.enumMeta,
     }))
     .filter((field) => field.name && field.type);
 
@@ -97,6 +98,7 @@ export const sanitizeRowsForPersist = (rows: FieldRow[]) =>
       onUpdate: ON_UPDATE_OPTIONS.includes((r?.onUpdate as UiOnUpdate) ?? '无')
         ? (r?.onUpdate as UiOnUpdate)
         : '无',
+      enumMeta: r.enumMeta,
     })),
   );
 

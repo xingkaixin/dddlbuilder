@@ -61,6 +61,9 @@ export const normalizePersistedState = (value: unknown): PersistedState | null =
         defaultKind: toText(row.defaultKind, '无'),
         defaultValue: toText(row.defaultValue),
         onUpdate: toText(row.onUpdate, '无'),
+        enumMeta: Array.isArray(row.enumMeta)
+          ? (row.enumMeta as PersistedState['rows'][number]['enumMeta'])
+          : undefined,
       };
     }),
     addCount: toNumber(value.addCount, 10),

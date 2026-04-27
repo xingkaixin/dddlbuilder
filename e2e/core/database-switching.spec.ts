@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { confirmFieldTypeChangeIfNeeded } from '../utils';
 
 test.describe('数据库切换与方言验证 @core', () => {
   test.beforeEach(async ({ context, page }) => {
@@ -41,6 +42,7 @@ test.describe('数据库切换与方言验证 @core', () => {
     await firstFieldTypeCell.dblclick();
     await page.locator('[data-testid="data-table"] input').fill('varchar(255)');
     await page.keyboard.press('Enter');
+    await confirmFieldTypeChangeIfNeeded(page);
 
     // 验证 UI 上的值是否已填入 (Handsontable 渲染可能滞后，等待其更新)
     await expect(firstFieldNameCell).toHaveText('id');
