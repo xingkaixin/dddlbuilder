@@ -194,6 +194,7 @@ export const zhCNCommon = {
     copyDiffDone: '变更脚本已复制',
     loadedDraft: '已加载草稿箱',
     emptyDraftCreated: '草稿箱为空，已创建新的草稿',
+    draftDeleted: '草稿已删除',
   },
   tableConfig: {
     title: '表配置',
@@ -720,6 +721,9 @@ export const zhCNCommon = {
     expandFolder: '展开 {{name}}',
     collapseFolder: '折叠 {{name}}',
     noMatch: '未找到匹配的表',
+    draftsSection: '草稿',
+    createDraft: '新建草稿',
+    deleteDraft: '删除草稿',
     draft: '草稿箱',
     draftMeta: '自动保存 · {{dbType}} · {{count}} 字段',
     clickToLoad: '点击加载',

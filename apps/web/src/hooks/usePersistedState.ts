@@ -56,6 +56,8 @@ export interface UsePersistedStateReturn {
   getGlobalDraftState: () => PersistedState | null;
   getDraftState: (draftId: string) => PersistedState | null;
   setWorkspaceSnapshot: (source: WorkspaceSource, state: PersistedState) => void;
+  createDraft: (draftId: string, state: PersistedState) => void;
+  deleteDraftById: (draftId: string) => void;
 }
 
 export function usePersistedState(): UsePersistedStateReturn {
@@ -216,6 +218,40 @@ export function usePersistedState(): UsePersistedStateReturn {
     fireAndForget(clearWorkspaceSession(currentScope));
     setPersistedState(null);
   }, [activeSource, currentScope, shareStorageKey, syncActiveSource]);
+
+  const createDraft = useCallback(
+    (draftId: string, state: PersistedState) => {
+      if (shareId) return;
+      const draftRecord: GlobalDraftRecord = {
+        updatedAt: Date.now(),
+        state,
+      };
+      draftsRef.current.set(draftId, draftRecord);
+      setDraftSummaries((prev) => {
+        const next = prev.filter((d) => d.draftId !== draftId);
+        next.push(buildDraftSummary(draftId, state, Date.now()));
+        return next;
+      });
+      fireAndForget(writeDraft(draftId, draftRecord, currentScope));
+    },
+    [currentScope, shareId],
+  );
+
+  const deleteDraftById = useCallback(
+    (draftId: string) => {
+      if (shareId) return;
+      draftsRef.current.delete(draftId);
+      setDraftSummaries((prev) => prev.filter((d) => d.draftId !== draftId));
+      fireAndForget(deleteDraft(draftId, currentScope));
+
+      if (activeSourceRef.current.kind === 'draft' && activeSourceRef.current.draftId === draftId) {
+        syncActiveSource({ kind: 'draft', draftId: DEFAULT_DRAFT_ID });
+        fireAndForget(clearWorkspaceSession(currentScope));
+        setPersistedState(null);
+      }
+    },
+    [currentScope, shareId, syncActiveSource],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -469,5 +505,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     getGlobalDraftState,
     getDraftState,
     setWorkspaceSnapshot,
+    createDraft,
+    deleteDraftById,
   };
 }

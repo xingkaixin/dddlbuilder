@@ -306,7 +306,10 @@ describe('useRenameDeleteActions', () => {
     expect(setLoadedTableNormalizedName).toHaveBeenCalledWith(null);
     expect(setLoadedTableName).toHaveBeenCalledWith(null);
     expect(setLoadedTableSignature).toHaveBeenCalledWith(null);
-    expect(setWorkspaceSnapshot).toHaveBeenCalledWith({ kind: 'draft', draftId: 'default' }, { test: 1 });
+    expect(setWorkspaceSnapshot).toHaveBeenCalledWith(
+      { kind: 'draft', draftId: 'default' },
+      { test: 1 },
+    );
     expect(deleteDialog.closeDialog).toHaveBeenCalled();
   });
 

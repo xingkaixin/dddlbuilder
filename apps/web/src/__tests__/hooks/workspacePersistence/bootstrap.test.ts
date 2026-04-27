@@ -11,7 +11,8 @@ const createBootstrapMock = async (options?: {
   migrateImpl?: () => Promise<void>;
 }) => {
   const readWorkspaceBootstrap = vi.fn(
-    options?.readImpl ?? (async () => ({ globalDraft: null, drafts: [], session: null, savedTable: null })),
+    options?.readImpl ??
+      (async () => ({ globalDraft: null, drafts: [], session: null, savedTable: null })),
   );
   const migrateLegacyWorkspaceFromLocalStorage = vi.fn(
     options?.migrateImpl ?? (async () => undefined),

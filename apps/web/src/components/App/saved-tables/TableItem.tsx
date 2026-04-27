@@ -103,6 +103,7 @@ export const TableItem = memo<TableItemProps>(
         />
         <button
           type="button"
+          data-testid={`table-select:${item.normalizedName}`}
           className={cn(
             'min-w-0 flex-1 rounded-sm text-left disabled:cursor-not-allowed disabled:opacity-70',
             drawerInteractiveButtonClass,

@@ -7,7 +7,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
-import { Database, FolderPlus, Search, X } from 'lucide-react';
+import { Database, FilePlus, FolderPlus, Search, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Drawer,
@@ -37,15 +37,17 @@ export interface SavedTablesDrawerProps {
   loading: boolean;
   error?: string | null;
   items: SavedTableSummary[];
-  draftItem?: DraftSummary | null;
-  draftActive?: boolean;
+  draftItems?: DraftSummary[];
+  activeDraftId?: string | null;
   folders: FolderTreeNode[];
   foldersLoading?: boolean;
   showSearchWhenEmpty?: boolean;
   activeNormalizedName?: string | null;
   activeDirty?: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelectDraft?: () => void;
+  onSelectDraft?: (draftId: string) => void;
+  onCreateDraft?: () => void;
+  onDeleteDraft?: (draftId: string) => void;
   onSelect: (item: SavedTableSummary) => void;
   onRename: (item: SavedTableSummary) => void;
   onDelete: (item: SavedTableSummary) => void;
@@ -100,8 +102,8 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     loading,
     error,
     items,
-    draftItem,
-    draftActive = false,
+    draftItems = [],
+    activeDraftId,
     folders,
     foldersLoading = false,
     showSearchWhenEmpty = true,
@@ -109,6 +111,8 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     activeDirty = false,
     onOpenChange,
     onSelectDraft,
+    onCreateDraft,
+    onDeleteDraft,
     onSelect,
     onRename,
     onDelete,
@@ -373,13 +377,24 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
             <div className="flex items-center gap-2">
               <Database className="h-4 w-4 text-primary" />
               <span className="text-sm font-semibold">{t('savedTables.title')}</span>
-              {(items.length > 0 || draftItem) && (
+              {(items.length > 0 || draftItems.length > 0) && (
                 <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                  {items.length + (draftItem ? 1 : 0)}
+                  {items.length + draftItems.length}
                 </span>
               )}
             </div>
             <div className="flex items-center gap-1">
+              {onCreateDraft && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={drawerIconButtonClass}
+                  onClick={() => onCreateDraft()}
+                  aria-label={t('savedTables.createDraft')}
+                >
+                  <FilePlus className="h-3.5 w-3.5" />
+                </Button>
+              )}
               {onCreateFolder && (
                 <Button
                   variant="ghost"
@@ -440,35 +455,61 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                 {error}
               </div>
             )}
-            {!isLoading && !error && items.length === 0 && (
+            {!isLoading && !error && items.length === 0 && draftItems.length === 0 && (
               <div className="px-2 py-3 text-xs text-muted-foreground">
                 {t('savedTables.emptyHint')}
               </div>
             )}
-            {!isLoading && !error && draftItem && onSelectDraft && (
-              <div className="mb-3">
-                <button
-                  type="button"
-                  className={`${drawerCardButtonClass} flex w-full items-center justify-between rounded-md border px-3 py-2 text-left transition-colors ${
-                    draftActive
-                      ? 'border-primary/40 bg-primary/10 shadow-sm shadow-primary/10'
-                      : 'border-border bg-card hover:bg-accent'
-                  }`}
-                  onClick={onSelectDraft}
-                >
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">{t('savedTables.draft')}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {t('savedTables.draftMeta', {
-                        dbType: draftItem.dbType,
-                        count: draftItem.fieldCount,
-                      })}
+            {!isLoading && !error && draftItems.length > 0 && onSelectDraft && (
+              <div className="mb-3 space-y-2">
+                <div className="px-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {t('savedTables.draftsSection')}
+                </div>
+                {draftItems.map((draft) => {
+                  const isActive = activeDraftId === draft.draftId;
+                  const canDelete = draftItems.length > 1 || draft.draftId !== 'default';
+                  return (
+                    <div key={draft.draftId} className="group relative">
+                      <button
+                        type="button"
+                        data-testid="draft-item"
+                        data-draft-id={draft.draftId}
+                        className={`${drawerCardButtonClass} flex w-full items-center justify-between rounded-md border px-3 py-2 text-left transition-colors ${
+                          isActive
+                            ? 'border-primary/40 bg-primary/10 shadow-sm shadow-primary/10'
+                            : 'border-border bg-card hover:bg-accent'
+                        }`}
+                        onClick={() => onSelectDraft(draft.draftId)}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium">{draft.name}</div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {t('savedTables.draftMeta', {
+                              dbType: draft.dbType,
+                              count: draft.fieldCount,
+                            })}
+                          </div>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {isActive ? t('savedTables.loaded') : t('savedTables.clickToLoad')}
+                        </span>
+                      </button>
+                      {canDelete && onDeleteDraft && (
+                        <button
+                          type="button"
+                          className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteDraft(draft.draftId);
+                          }}
+                          aria-label={t('savedTables.deleteDraft')}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
                     </div>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {draftActive ? t('savedTables.loaded') : t('savedTables.clickToLoad')}
-                  </span>
-                </button>
+                  );
+                })}
               </div>
             )}
             {!isLoading && !error && items.length > 0 && filteredItems.length === 0 && (

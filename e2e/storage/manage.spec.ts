@@ -12,9 +12,15 @@ const fillBasicField = async (page: any, name = 'id') => {
   await page.keyboard.press('Enter');
 };
 
-const saveTable = async (page: any, name: string, comment = '') => {
+const selectFirstDraft = async (page: any) => {
   await openSavedTables(page);
-  await page.getByRole('button', { name: /草稿箱/i }).click();
+  const draft = page.getByTestId('draft-item').first();
+  await expect(draft).toBeVisible();
+  await draft.click();
+};
+
+const saveTable = async (page: any, name: string, comment = '') => {
+  await selectFirstDraft(page);
   await page.locator('#table-name').fill(name);
   if (comment) {
     await page.locator('#table-comment').fill(comment);
@@ -39,6 +45,16 @@ const openSavedTables = async (page: any) => {
   await expect(heading).toBeVisible();
 };
 
+const getSavedTableRow = (page: any, pattern: RegExp) => {
+  return page.locator('[data-testid^="saved-table-row:"]').filter({ hasText: pattern });
+};
+
+const clickSavedTable = async (page: any, pattern: RegExp) => {
+  const row = getSavedTableRow(page, pattern);
+  const selectBtn = row.locator('button[data-testid^="table-select:"]');
+  await selectBtn.click();
+};
+
 test.describe('保存表管理补充 @storage', () => {
   test.beforeEach(async ({ context, page }) => {
     await context.addInitScript(() => {
@@ -56,10 +72,10 @@ test.describe('保存表管理补充 @storage', () => {
 
     await saveTable(page, baseName);
     await openSavedTables(page);
-    await page.getByRole('button', { name: new RegExp(baseName, 'i') }).click();
+    await clickSavedTable(page, new RegExp(baseName, 'i'));
 
     await openSavedTables(page);
-    const row = page.getByRole('button', { name: new RegExp(baseName, 'i') });
+    const row = getSavedTableRow(page, new RegExp(baseName, 'i'));
     await row.hover();
     await row
       .locator('..')
@@ -80,7 +96,7 @@ test.describe('保存表管理补充 @storage', () => {
     await saveTable(page, tableName);
     await openSavedTables(page);
 
-    const row = page.getByRole('button', { name: new RegExp(tableName, 'i') });
+    const row = getSavedTableRow(page, new RegExp(tableName, 'i'));
     await row.hover();
     await row
       .locator('..')
@@ -91,7 +107,7 @@ test.describe('保存表管理补充 @storage', () => {
     await expect(deleteConfirmDialog).toBeVisible();
     await deleteConfirmDialog.getByRole('button', { name: /确认删除|删除/i }).click();
 
-    await expect(page.getByRole('button', { name: new RegExp(tableName, 'i') })).toHaveCount(0);
+    await expect(getSavedTableRow(page, new RegExp(tableName, 'i'))).toHaveCount(0);
   });
 
   test('场景：未保存修改加载确认', async ({ page }) => {
@@ -102,7 +118,7 @@ test.describe('保存表管理补充 @storage', () => {
     await saveTable(page, tableB);
 
     await openSavedTables(page);
-    await page.getByRole('button', { name: new RegExp(tableA, 'i') }).click();
+    await clickSavedTable(page, new RegExp(tableA, 'i'));
     await expect(page.getByText(new RegExp(`当前：${tableA}`))).toBeVisible();
 
     const nameCell = page.locator(
@@ -113,7 +129,7 @@ test.describe('保存表管理补充 @storage', () => {
     await page.keyboard.press('Enter');
 
     await openSavedTables(page);
-    await page.getByRole('button', { name: new RegExp(tableB, 'i') }).click();
+    await clickSavedTable(page, new RegExp(tableB, 'i'));
 
     await expect(page.getByText('加载保存的表')).toBeVisible();
     await page.getByRole('button', { name: /取消/i }).click();
@@ -130,8 +146,8 @@ test.describe('保存表管理补充 @storage', () => {
     await openSavedTables(page);
     await page.getByPlaceholder(/搜索表名或数据库类型/i).fill(tableA);
 
-    await expect(page.getByRole('button', { name: new RegExp(tableA, 'i') })).toBeVisible();
-    await expect(page.getByRole('button', { name: new RegExp(tableB, 'i') })).toHaveCount(0);
+    await expect(getSavedTableRow(page, new RegExp(tableA, 'i'))).toBeVisible();
+    await expect(getSavedTableRow(page, new RegExp(tableB, 'i'))).toHaveCount(0);
   });
 
   test('场景：全局草稿与保存表草稿应隔离', async ({ page }) => {
@@ -149,12 +165,11 @@ test.describe('保存表管理补充 @storage', () => {
     await page.getByRole('button', { name: /^保存$/ }).click();
     await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
 
-    await openSavedTables(page);
-    await page.getByRole('button', { name: /草稿箱/i }).click();
+    await selectFirstDraft(page);
     await page.locator('#table-comment').fill(globalDraftComment);
 
     await openSavedTables(page);
-    await page.getByRole('button', { name: new RegExp(tableName, 'i') }).click();
+    await clickSavedTable(page, new RegExp(tableName, 'i'));
     await expect(page.locator('#table-comment')).toHaveValue(savedComment);
 
     await page.locator('#table-comment').fill(savedEditedComment);
@@ -163,12 +178,11 @@ test.describe('保存表管理补充 @storage', () => {
     await page.getByRole('button', { name: /^保存$/ }).click();
     await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
 
-    await openSavedTables(page);
-    await page.getByRole('button', { name: /草稿箱/i }).click();
+    await selectFirstDraft(page);
     await expect(page.locator('#table-comment')).toHaveValue(globalDraftComment);
 
     await openSavedTables(page);
-    await page.getByRole('button', { name: new RegExp(tableName, 'i') }).click();
+    await clickSavedTable(page, new RegExp(tableName, 'i'));
     await expect(page.locator('#table-comment')).toHaveValue(savedEditedComment);
   });
 
@@ -192,9 +206,7 @@ test.describe('保存表管理补充 @storage', () => {
     await page.locator('#table-comment').fill(draftComment);
 
     await openSavedTables(page);
-    const row = page.getByRole('button', {
-      name: new RegExp(originalName, 'i'),
-    });
+    const row = getSavedTableRow(page, new RegExp(originalName, 'i'));
     await row.hover();
     await row
       .locator('..')
@@ -205,18 +217,15 @@ test.describe('保存表管理补充 @storage', () => {
     await page.getByRole('button', { name: /确认/i }).click();
     await expect(page.getByText('重命名保存的表')).toBeHidden();
 
-    await openSavedTables(page);
-    await page.getByRole('button', { name: /草稿箱/i }).click();
+    await selectFirstDraft(page);
     await page.locator('#table-comment').fill(globalComment);
 
     await openSavedTables(page);
-    await page.getByRole('button', { name: new RegExp(renamedName, 'i') }).click();
+    await clickSavedTable(page, new RegExp(renamedName, 'i'));
     await expect(page.locator('#table-comment')).toHaveValue(initialSavedComment);
 
     await openSavedTables(page);
-    const renamedRow = page.getByRole('button', {
-      name: new RegExp(renamedName, 'i'),
-    });
+    const renamedRow = getSavedTableRow(page, new RegExp(renamedName, 'i'));
     await renamedRow.hover();
     await renamedRow
       .locator('..')
@@ -230,7 +239,7 @@ test.describe('保存表管理补充 @storage', () => {
     await saveTable(page, renamedName, freshSavedComment);
 
     await openSavedTables(page);
-    await page.getByRole('button', { name: new RegExp(renamedName, 'i') }).click();
+    await clickSavedTable(page, new RegExp(renamedName, 'i'));
     await expect(page.locator('#table-comment')).toHaveValue(freshSavedComment);
   });
 });

@@ -202,6 +202,7 @@ export const enUSCommon = {
     copyDiffDone: 'Diff script copied',
     loadedDraft: 'Draft box loaded',
     emptyDraftCreated: 'Draft box was empty. A new draft has been created.',
+    draftDeleted: 'Draft deleted',
   },
   tableConfig: {
     title: 'Table Config',
@@ -740,6 +741,9 @@ export const enUSCommon = {
     expandFolder: 'Expand {{name}}',
     collapseFolder: 'Collapse {{name}}',
     noMatch: 'No matching tables found',
+    draftsSection: 'Drafts',
+    createDraft: 'New draft',
+    deleteDraft: 'Delete draft',
     draft: 'Draft box',
     draftMeta: 'Auto-saved · {{dbType}} · {{count}} fields',
     clickToLoad: 'Click to load',

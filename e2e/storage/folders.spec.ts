@@ -195,13 +195,13 @@ test.describe('文件夹管理验证 @storage', () => {
     await dragToTarget(page, tableHandle, groupRow);
 
     await ensureFolderExpanded(page, 'Group1');
-    await expect(page.getByRole('button', { name: new RegExp(tableName, 'i') })).toBeVisible();
+    await expect(getTableRowByName(page, new RegExp(tableName, 'i'))).toBeVisible();
 
     const movedRow = getTableRowByName(page, new RegExp(tableName, 'i'));
     const movedHandle = movedRow.getByRole('button', { name: /拖拽移动表/i });
     await dragToTarget(page, movedHandle, page.getByTestId('root-dropzone'));
 
-    await expect(page.getByRole('button', { name: new RegExp(tableName, 'i') })).toBeVisible();
+    await expect(getTableRowByName(page, new RegExp(tableName, 'i'))).toBeVisible();
   });
 
   test('场景：文件夹拖拽到另一文件夹下', async ({ page }) => {
@@ -253,6 +253,6 @@ test.describe('文件夹管理验证 @storage', () => {
     await ensureFolderExpanded(page, 'TargetFolder');
     await ensureFolderExpanded(page, 'SourceFolder');
 
-    await expect(page.getByRole('button', { name: new RegExp(tableName, 'i') })).toBeVisible();
+    await expect(getTableRowByName(page, new RegExp(tableName, 'i'))).toBeVisible();
   });
 });

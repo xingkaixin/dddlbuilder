@@ -191,6 +191,8 @@ function App() {
     draftSummaries,
     getDraftState,
     setWorkspaceSnapshot,
+    createDraft,
+    deleteDraftById,
   } = usePersistedState();
 
   const {
@@ -491,7 +493,6 @@ function App() {
     resetCitusSharding,
     resetPartition,
     resetTableMiscConfig,
-    resetForeignKeyState,
     setLoadedTableNormalizedName,
     setLoadedTableName,
     setLoadedTableSignature,
@@ -507,7 +508,7 @@ function App() {
     setIndexInput,
     setCurrentIndexFields,
     setForeignKeys,
-    resetForeignKeyState,
+    resetForeignKeys: resetForeignKeyState,
     setAuthObjects,
     setAuthInput,
     setCitusShardingConfig,
@@ -644,33 +645,51 @@ function App() {
     },
   });
 
-  const handleSelectGlobalDraft = useCallback(() => {
-    flushCurrentWorkspace();
-    setSavedTablesDrawerOpen(false);
-    const existedDraftState = getDraftState(DEFAULT_DRAFT_ID);
-    const nextState = existedDraftState ?? createEmptyGlobalDraftState();
+  const handleSelectDraft = useCallback(
+    (draftId: string) => {
+      flushCurrentWorkspace();
+      setSavedTablesDrawerOpen(false);
+      const existedDraftState = getDraftState(draftId);
+      const nextState = existedDraftState ?? createEmptyGlobalDraftState();
 
-    setWorkspaceSnapshot?.({ kind: 'draft', draftId: DEFAULT_DRAFT_ID }, nextState);
-    applySavedState(nextState);
+      setWorkspaceSnapshot?.({ kind: 'draft', draftId }, nextState);
+      applySavedState(nextState);
 
-    setLoadedTableNormalizedName(null);
-    setLoadedTableName(null);
-    setLoadedTableSignature(null);
-    setLoadedTableVersion(0);
+      setLoadedTableNormalizedName(null);
+      setLoadedTableName(null);
+      setLoadedTableSignature(null);
+      setLoadedTableVersion(0);
 
-    showToast(existedDraftState ? t('app.loadedDraft') : t('app.emptyDraftCreated'));
-  }, [
-    flushCurrentWorkspace,
-    setSavedTablesDrawerOpen,
-    getDraftState,
-    setWorkspaceSnapshot,
-    applySavedState,
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
-    setLoadedTableSignature,
-    showToast,
-    t,
-  ]);
+      showToast(existedDraftState ? t('app.loadedDraft') : t('app.emptyDraftCreated'));
+    },
+    [
+      flushCurrentWorkspace,
+      setSavedTablesDrawerOpen,
+      getDraftState,
+      setWorkspaceSnapshot,
+      applySavedState,
+      setLoadedTableNormalizedName,
+      setLoadedTableName,
+      setLoadedTableSignature,
+      showToast,
+      t,
+    ],
+  );
+
+  const handleCreateDraft = useCallback(() => {
+    const draftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const emptyState = createEmptyGlobalDraftState();
+    createDraft(draftId, emptyState);
+    handleSelectDraft(draftId);
+  }, [createDraft, handleSelectDraft]);
+
+  const handleDeleteDraft = useCallback(
+    (draftId: string) => {
+      deleteDraftById(draftId);
+      showToast(t('app.draftDeleted'));
+    },
+    [deleteDraftById, showToast, t],
+  );
 
   const workspaceLabel = useMemo(() => {
     if (isShareView) return t('app.workspace.shareReadonly');
@@ -770,16 +789,17 @@ function App() {
     handleSaveAsTemplate,
   });
 
-  const effectiveDefaultDraftSummary = useMemo(() => {
-    const defaultDraft = draftSummaries.find((d) => d.draftId === DEFAULT_DRAFT_ID);
-    if (defaultDraft) return defaultDraft;
-    return {
-      draftId: DEFAULT_DRAFT_ID,
-      name: t('app.workspace.unnamedDraft'),
-      dbType: 'mysql',
-      fieldCount: 0,
-      updatedAt: Date.now(),
-    };
+  const drawerDraftItems = useMemo(() => {
+    if (draftSummaries.length > 0) return draftSummaries;
+    return [
+      {
+        draftId: DEFAULT_DRAFT_ID,
+        name: t('app.workspace.unnamedDraft'),
+        dbType: 'mysql' as const,
+        fieldCount: 0,
+        updatedAt: Date.now(),
+      },
+    ];
   }, [draftSummaries, t]);
 
   const isMainWorkspaceLoading = !hydrated || isSavedTableLoading;
@@ -822,14 +842,16 @@ function App() {
             loading: savedTablesLoading,
             error: savedTablesError,
             items: savedTables,
-            draftItem: effectiveDefaultDraftSummary,
-            draftActive:
-              !isShareView && activeSource.kind === 'draft' && loadedTableNormalizedName == null,
+            draftItems: drawerDraftItems,
+            activeDraftId:
+              !isShareView && activeSource.kind === 'draft' ? activeSource.draftId : null,
             folders: folderTree,
             foldersLoading: foldersLoading,
             activeNormalizedName: loadedTableNormalizedName,
             activeDirty: isLoadedDirty,
-            onSelectDraft: handleSelectGlobalDraft,
+            onSelectDraft: handleSelectDraft,
+            onCreateDraft: handleCreateDraft,
+            onDeleteDraft: handleDeleteDraft,
             onSelect: handleSelectSavedTable,
             onRename: handleOpenRenameDialog,
             onDelete: handleOpenDeleteDialog,

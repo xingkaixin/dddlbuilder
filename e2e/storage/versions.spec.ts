@@ -11,12 +11,20 @@ const fillBasicField = async (page: any, name = 'f1') => {
   await page.keyboard.press('Enter');
 };
 
+const getSavedTableRow = (page: any, pattern: RegExp) => {
+  return page.locator('[data-testid^="saved-table-row:"]').filter({ hasText: pattern });
+};
+
+const clickSavedTable = async (page: any, pattern: RegExp) => {
+  const row = getSavedTableRow(page, pattern);
+  const selectBtn = row.locator('button[data-testid^="table-select:"]');
+  await selectBtn.click();
+};
+
 const openHistoryDialog = async (page: any, tableName: string) => {
   await page.getByRole('button', { name: /查看已保存表/i, exact: true }).click();
   await expect(page.getByRole('heading', { name: '已保存的表' })).toBeVisible();
-  const savedRow = page.getByRole('button', {
-    name: new RegExp(tableName, 'i'),
-  });
+  const savedRow = getSavedTableRow(page, new RegExp(tableName, 'i'));
   await savedRow.hover();
   await savedRow
     .locator('..')
@@ -54,7 +62,7 @@ test.describe('版本管理验证 @storage', () => {
     // 1.5 加载保存的表，进入更新流程
     await page.getByRole('button', { name: /查看已保存表/i, exact: true }).click();
     await expect(page.getByRole('heading', { name: '已保存的表' })).toBeVisible();
-    await page.getByRole('button', { name: new RegExp(tableName, 'i') }).click();
+    await clickSavedTable(page, new RegExp(tableName, 'i'));
     await expect(page.getByText(new RegExp(`当前：${tableName}`))).toBeVisible();
 
     // 2. 修改并保存为新版本
@@ -89,7 +97,7 @@ test.describe('版本管理验证 @storage', () => {
 
     await page.getByRole('button', { name: /查看已保存表/i, exact: true }).click();
     await expect(page.getByRole('heading', { name: '已保存的表' })).toBeVisible();
-    await page.getByRole('button', { name: new RegExp(tableName, 'i') }).click();
+    await clickSavedTable(page, new RegExp(tableName, 'i'));
     await expect(page.getByText(new RegExp(`当前：${tableName}`))).toBeVisible();
 
     // 确认初始字段名为 f1
@@ -136,7 +144,7 @@ test.describe('版本管理验证 @storage', () => {
 
     await page.getByRole('button', { name: /查看已保存表/i, exact: true }).click();
     await expect(page.getByRole('heading', { name: '已保存的表' })).toBeVisible();
-    await page.getByRole('button', { name: new RegExp(tableName, 'i') }).click();
+    await clickSavedTable(page, new RegExp(tableName, 'i'));
 
     const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
     await cell.click();

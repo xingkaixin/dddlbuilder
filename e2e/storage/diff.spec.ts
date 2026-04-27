@@ -13,6 +13,16 @@ const fillBasicField = async (page: any, name = 'id') => {
   await page.keyboard.press('Enter');
 };
 
+const getSavedTableRow = (page: any, pattern: RegExp) => {
+  return page.locator('[data-testid^="saved-table-row:"]').filter({ hasText: pattern });
+};
+
+const clickSavedTable = async (page: any, pattern: RegExp) => {
+  const row = getSavedTableRow(page, pattern);
+  const selectBtn = row.locator('button[data-testid^="table-select:"]');
+  await selectBtn.click();
+};
+
 test.describe('变更对比验证 @storage', () => {
   test.beforeEach(async ({ context, page }) => {
     await context.addInitScript(() => {
@@ -37,7 +47,7 @@ test.describe('变更对比验证 @storage', () => {
 
     await page.getByRole('button', { name: /查看已保存表/i, exact: true }).click();
     await expect(page.getByRole('heading', { name: '已保存的表' })).toBeVisible();
-    await page.getByRole('button', { name: new RegExp(tableName, 'i') }).click();
+    await clickSavedTable(page, new RegExp(tableName, 'i'));
     await expect(page.getByText(new RegExp(`当前：${tableName}`))).toBeVisible();
 
     const typeCell = page.locator(
