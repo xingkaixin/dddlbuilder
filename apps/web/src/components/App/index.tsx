@@ -28,6 +28,7 @@ import { useFireworksIntro } from './hooks/useFireworksIntro';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { useAuthManagement } from '@/hooks/useAuthManagement';
 import { useSqlGeneration } from '@/hooks/useSqlGeneration';
+import { useOrmGeneration } from '@/hooks/useOrmGeneration';
 import { useToast } from '@/hooks/useToast';
 import { useCitusSharding } from '@/hooks/useCitusSharding';
 import { useMysqlPartition } from '@/hooks/useMysqlPartition';
@@ -325,6 +326,14 @@ function App() {
     tableMiscConfig,
     foreignKeys,
   );
+  const { generatedOrm, copyOrm, ormTarget, setOrmTarget } = useOrmGeneration(
+    qualifiedTableName,
+    tableComment,
+    normalizedFields,
+    indexes,
+    foreignKeys,
+  );
+
   const routineTableNameDefault = useMemo(
     () => buildQualifiedTableName(schemaName, tableName),
     [schemaName, tableName],
@@ -1099,6 +1108,10 @@ function App() {
                   onSqlFormatModeChange: setSqlFormatMode,
                   onCopySql: copySql,
                   onCopyDcl: copyDcl,
+                  generatedOrm,
+                  ormTarget,
+                  onOrmTargetChange: setOrmTarget,
+                  onCopyOrm: copyOrm,
                   isReviewing,
                   reviewPartialResult,
                   reviewResult,

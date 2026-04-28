@@ -20,6 +20,7 @@ import {
   AlignLeft,
   AlignJustify,
   Workflow,
+  Code,
 } from 'lucide-react';
 import { DATABASE_OPTIONS } from '@/utils/constants';
 import { ReviewResultPanel } from './ReviewResult';
@@ -27,6 +28,8 @@ import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { buildRoutineTemplateDDL } from '@ddlbuilder/ddl-core';
+import type { ORMTarget } from '@ddlbuilder/ddl-core';
+import { ORM_TARGET_OPTIONS } from '@/hooks/useOrmGeneration';
 
 interface DDLOutputProps {
   generatedSql: string;
@@ -37,6 +40,11 @@ interface DDLOutputProps {
   onSqlFormatModeChange: (mode: SqlFormatMode) => void;
   onCopySql: () => Promise<boolean>;
   onCopyDcl: () => Promise<boolean>;
+  // ORM props
+  generatedOrm: string;
+  ormTarget: ORMTarget;
+  onOrmTargetChange: (target: ORMTarget) => void;
+  onCopyOrm: () => Promise<boolean>;
   // Review props
   isReviewing: boolean;
   reviewPartialResult: PartialReviewResult | null;
@@ -67,6 +75,10 @@ export const DDLOutput = memo<DDLOutputProps>(
     onSqlFormatModeChange,
     onCopySql,
     onCopyDcl,
+    generatedOrm,
+    ormTarget,
+    onOrmTargetChange,
+    onCopyOrm,
     isReviewing,
     reviewPartialResult,
     reviewResult,
@@ -95,6 +107,7 @@ export const DDLOutput = memo<DDLOutputProps>(
 
     const [isSqlCopied, setIsSqlCopied] = useState(false);
     const [isDclCopied, setIsDclCopied] = useState(false);
+    const [isOrmCopied, setIsOrmCopied] = useState(false);
     const [isRoutineCopied, setIsRoutineCopied] = useState(false);
     const [routineKind, setRoutineKind] = useState<RoutineTemplateKind>('updated_at_trigger');
     const [routineName, setRoutineName] = useState('trg_set_updated_at');
@@ -106,12 +119,14 @@ export const DDLOutput = memo<DDLOutputProps>(
     const [routineBody, setRoutineBody] = useState('');
     const sqlTimerRef = useRef<number | undefined>(undefined);
     const dclTimerRef = useRef<number | undefined>(undefined);
+    const ormTimerRef = useRef<number | undefined>(undefined);
     const routineTimerRef = useRef<number | undefined>(undefined);
 
     useEffect(() => {
       return () => {
         if (sqlTimerRef.current) window.clearTimeout(sqlTimerRef.current);
         if (dclTimerRef.current) window.clearTimeout(dclTimerRef.current);
+        if (ormTimerRef.current) window.clearTimeout(ormTimerRef.current);
         if (routineTimerRef.current) window.clearTimeout(routineTimerRef.current);
       };
     }, []);
@@ -171,6 +186,18 @@ export const DDLOutput = memo<DDLOutputProps>(
       dclTimerRef.current = window.setTimeout(() => setIsDclCopied(false), 3000);
     }, [onCopyDcl, dbType, trackEvent, showToast, t]);
 
+    const handleCopyOrm = useCallback(async () => {
+      const success = await onCopyOrm();
+      if (!success) {
+        showToast(t('ddlOutput.copyFailed'));
+        return;
+      }
+      trackEvent('orm_copy', { ormTarget });
+      if (ormTimerRef.current) window.clearTimeout(ormTimerRef.current);
+      setIsOrmCopied(true);
+      ormTimerRef.current = window.setTimeout(() => setIsOrmCopied(false), 3000);
+    }, [onCopyOrm, ormTarget, trackEvent, showToast, t]);
+
     const handleCopyRoutine = useCallback(async () => {
       try {
         await navigator.clipboard.writeText(routineSql);
@@ -204,7 +231,7 @@ export const DDLOutput = memo<DDLOutputProps>(
 
         <Tabs defaultValue="ddl" className="relative flex flex-col">
           <div className="border-b border-primary/10 px-4 pt-4">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="ddl" className="w-full gap-2">
                 <ScrollText className="h-4 w-4" />
                 <span>{t('ddlOutput.ddlTab')}</span>
@@ -212,6 +239,10 @@ export const DDLOutput = memo<DDLOutputProps>(
               <TabsTrigger value="dcl" className="w-full gap-2">
                 <ShieldCheck className="h-4 w-4" />
                 <span>{t('ddlOutput.dclTab')}</span>
+              </TabsTrigger>
+              <TabsTrigger value="orm" className="w-full gap-2">
+                <Code className="h-4 w-4" />
+                <span>{t('ddlOutput.ormTab')}</span>
               </TabsTrigger>
               <TabsTrigger value="routine" className="w-full gap-2">
                 <Workflow className="h-4 w-4" />
@@ -427,6 +458,73 @@ export const DDLOutput = memo<DDLOutputProps>(
                   }
                 >
                   <SqlCodeBlock code={generatedDcl || t('ddlOutput.emptyDcl')} />
+                </Suspense>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* ORM Tab */}
+          <TabsContent value="orm" className="mt-0">
+            <div className="relative flex flex-col">
+              <div className="border-b border-primary/10 px-4 py-3.5">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-bold bg-linear-to-r from-foreground to-primary bg-clip-text text-transparent transition-colors duration-200">
+                        {t('ddlOutput.ormTitle')}
+                      </h2>
+                    </div>
+                    <p className="text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground/80">
+                      {t('ddlOutput.ormDesc')}
+                    </p>
+                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md"
+                        onClick={handleCopyOrm}
+                      >
+                        {isOrmCopied ? (
+                          <>
+                            <Check className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
+                            {t('ddlOutput.copied')}
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3.5 w-3.5 transition-transform duration-200" />{' '}
+                            {t('ddlOutput.copyOrm')}
+                          </>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{t('ddlOutput.copyOrmTip')}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </div>
+              <div className="border-b border-primary/10 px-4 py-3.5">
+                <div className="space-y-2">
+                  <Label htmlFor="orm-target">{t('ddlOutput.ormFramework')}</Label>
+                  <SearchableSelect
+                    id="orm-target"
+                    value={ormTarget}
+                    onValueChange={(value) => onOrmTargetChange(value as ORMTarget)}
+                    options={ORM_TARGET_OPTIONS}
+                    triggerClassName="h-9 rounded-md px-3 py-2 text-sm"
+                    emptyMessage={t('searchableSelect.empty')}
+                  />
+                </div>
+              </div>
+              <div className="relative flex-1 overflow-auto px-4 py-3.5">
+                <Suspense
+                  fallback={
+                    <pre style={CODE_FALLBACK_STYLE}>{generatedOrm || t('ddlOutput.emptyOrm')}</pre>
+                  }
+                >
+                  <SqlCodeBlock code={generatedOrm || t('ddlOutput.emptyOrm')} />
                 </Suspense>
               </div>
             </div>

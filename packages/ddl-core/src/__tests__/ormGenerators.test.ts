@@ -1,0 +1,295 @@
+import { describe, it, expect } from 'vitest';
+import { buildORM } from '../utils/ormGenerators';
+import { ORMGeneratorFactory } from '../factories/ORMGeneratorFactory';
+import type {
+  NormalizedField,
+  IndexDefinition,
+  ForeignKeyDefinition,
+} from '@ddlbuilder/shared-types';
+
+const sampleFields: NormalizedField[] = [
+  {
+    name: 'id',
+    type: 'bigint',
+    comment: '主键ID',
+    nullable: false,
+    defaultKind: 'auto_increment',
+    defaultValue: '',
+    onUpdate: 'none',
+  },
+  {
+    name: 'name',
+    type: 'varchar(255)',
+    comment: '名称',
+    nullable: true,
+    defaultKind: 'none',
+    defaultValue: '',
+    onUpdate: 'none',
+  },
+  {
+    name: 'email',
+    type: 'varchar(100)',
+    comment: '邮箱',
+    nullable: false,
+    defaultKind: 'none',
+    defaultValue: '',
+    onUpdate: 'none',
+  },
+  {
+    name: 'created_at',
+    type: 'datetime',
+    comment: '创建时间',
+    nullable: false,
+    defaultKind: 'current_timestamp',
+    defaultValue: '',
+    onUpdate: 'none',
+  },
+];
+
+const sampleIndexes: IndexDefinition[] = [
+  {
+    id: '1',
+    name: 'PRIMARY',
+    fields: [{ name: 'id', direction: 'ASC' }],
+    unique: true,
+    isPrimary: true,
+  },
+  {
+    id: '2',
+    name: 'idx_email',
+    fields: [{ name: 'email', direction: 'ASC' }],
+    unique: true,
+    isPrimary: false,
+  },
+  {
+    id: '3',
+    name: 'idx_name_email',
+    fields: [
+      { name: 'name', direction: 'ASC' },
+      { name: 'email', direction: 'ASC' },
+    ],
+    unique: true,
+    isPrimary: false,
+  },
+];
+
+const sampleForeignKeys: ForeignKeyDefinition[] = [
+  {
+    id: '1',
+    name: 'fk_user_role',
+    fields: ['id'],
+    refTable: 'roles',
+    refFields: ['id'],
+  },
+];
+
+describe('buildORM', () => {
+  it('returns empty table message when table name is empty', () => {
+    const result = buildORM('prisma', '', '', [], [], []);
+    expect(result).toBe('-- 请填写表名');
+  });
+
+  it('returns empty fields message when fields are empty', () => {
+    const result = buildORM('prisma', 'users', '', [], [], []);
+    expect(result).toBe('-- 请补充字段信息');
+  });
+});
+
+describe('ORMGeneratorFactory', () => {
+  it('returns supported targets', () => {
+    const targets = ORMGeneratorFactory.getSupportedTargets();
+    expect(targets).toContain('prisma');
+    expect(targets).toContain('typeorm');
+    expect(targets).toContain('sqlalchemy');
+    expect(targets).toContain('gorm');
+    expect(targets).toContain('jpa');
+    expect(targets).toHaveLength(5);
+  });
+
+  it('throws for unsupported target', () => {
+    expect(() => ORMGeneratorFactory.create('invalid' as any)).toThrow('Unsupported ORM target');
+  });
+});
+
+describe('PrismaGenerator', () => {
+  it('generates Prisma model', () => {
+    const result = buildORM(
+      'prisma',
+      'user_info',
+      '用户信息表',
+      sampleFields,
+      sampleIndexes,
+      sampleForeignKeys,
+    );
+    expect(result).toContain('model UserInfo {');
+    expect(result).toContain('/// 用户信息表');
+    expect(result).toContain('id');
+    expect(result).toContain('BigInt');
+    expect(result).toContain('@id');
+    expect(result).toContain('@default(autoincrement())');
+    expect(result).toContain('name');
+    expect(result).toContain('String?');
+    expect(result).toContain('email');
+    expect(result).toContain('String');
+    expect(result).toContain('createdAt');
+    expect(result).toContain('DateTime');
+    expect(result).toContain('@default(now())');
+    expect(result).toContain('@@unique([name, email])');
+    expect(result).toContain('@@unique([email])');
+    expect(result).toContain('@@foreignKey([id])');
+  });
+
+  it('handles nullable primary key correctly', () => {
+    const fields: NormalizedField[] = [
+      {
+        name: 'id',
+        type: 'int',
+        comment: '',
+        nullable: true,
+        defaultKind: 'auto_increment',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+    ];
+    const indexes: IndexDefinition[] = [
+      {
+        id: '1',
+        name: 'PRIMARY',
+        fields: [{ name: 'id', direction: 'ASC' }],
+        unique: true,
+        isPrimary: true,
+      },
+    ];
+    const result = buildORM('prisma', 'test', '', fields, indexes, []);
+    expect(result).toContain('id');
+    expect(result).toContain('Int');
+    expect(result).not.toContain('Int?');
+  });
+});
+
+describe('TypeORMGenerator', () => {
+  it('generates TypeORM entity', () => {
+    const result = buildORM('typeorm', 'user_info', '用户信息表', sampleFields, sampleIndexes, []);
+    expect(result).toContain(
+      "import { Entity, Column, Index, PrimaryGeneratedColumn, PrimaryColumn } from 'typeorm';",
+    );
+    expect(result).toContain("@Entity('user_info')");
+    expect(result).toContain('export class UserInfo {');
+    expect(result).toContain('@PrimaryGeneratedColumn()');
+    expect(result).toContain('id: number;');
+    expect(result).toContain('name: string | null;');
+    expect(result).toContain("@Column({ unique: true, comment: '邮箱' })");
+    expect(result).toContain('email: string;');
+  });
+});
+
+describe('SQLAlchemyGenerator', () => {
+  it('generates SQLAlchemy model', () => {
+    const result = buildORM(
+      'sqlalchemy',
+      'user_info',
+      '用户信息表',
+      sampleFields,
+      sampleIndexes,
+      [],
+    );
+    expect(result).toContain('from sqlalchemy import Column');
+    expect(result).toContain('Base = declarative_base()');
+    expect(result).toContain('class UserInfo(Base):');
+    expect(result).toContain("__tablename__ = 'user_info'");
+    expect(result).toContain(
+      "id = Column(BigInteger, primary_key=True, autoincrement=True, comment='主键ID')",
+    );
+    expect(result).toContain("name = Column(String(255), nullable=True, comment='名称')");
+    expect(result).toContain("email = Column(String(100), nullable=False, comment='邮箱')");
+    expect(result).toContain(
+      "created_at = Column(DateTime, nullable=False, default=func.now(), comment='创建时间')",
+    );
+    expect(result).toContain("Index('idx_email', 'email', unique=True)");
+    expect(result).toContain("Index('idx_name_email', 'name', 'email', unique=True)");
+  });
+});
+
+describe('GORMGenerator', () => {
+  it('generates GORM struct', () => {
+    const result = buildORM('gorm', 'user_info', '用户信息表', sampleFields, sampleIndexes, []);
+    expect(result).toContain('package models');
+    expect(result).toContain('import "time"');
+    expect(result).toContain('type UserInfo struct {');
+    expect(result).toContain('gorm:"column:id;primaryKey;autoIncrement;comment:主键ID"');
+    expect(result).toContain('Id');
+    expect(result).toContain('int64');
+    expect(result).toContain('gorm:"column:email;uniqueIndex;comment:邮箱"');
+    expect(result).toContain('Name');
+    expect(result).toContain('*string');
+    expect(result).toContain('func (UserInfo) TableName() string {');
+    expect(result).toContain('return "user_info"');
+  });
+
+  it('does not import time when not needed', () => {
+    const fields: NormalizedField[] = [
+      {
+        name: 'id',
+        type: 'int',
+        comment: '',
+        nullable: false,
+        defaultKind: 'auto_increment',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+    ];
+    const result = buildORM('gorm', 'test', '', fields, [], []);
+    expect(result).not.toContain('import "time"');
+  });
+});
+
+describe('JPAGenerator', () => {
+  it('generates JPA entity', () => {
+    const result = buildORM('jpa', 'user_info', '用户信息表', sampleFields, sampleIndexes, []);
+    expect(result).toContain('import jakarta.persistence.*;');
+    expect(result).toContain('import java.util.Date;');
+    expect(result).toContain('@Entity');
+    expect(result).toContain('@Table(name = "user_info")');
+    expect(result).toContain('public class UserInfo {');
+    expect(result).toContain('@Id');
+    expect(result).toContain('@GeneratedValue(strategy = GenerationType.IDENTITY)');
+    expect(result).toContain('private Long id;');
+    expect(result).toContain('private String name;');
+    expect(result).toContain('public Long getId()');
+    expect(result).toContain('public void setId(Long id)');
+  });
+
+  it('imports BigDecimal when needed', () => {
+    const fields: NormalizedField[] = [
+      {
+        name: 'amount',
+        type: 'decimal(10,2)',
+        comment: '',
+        nullable: false,
+        defaultKind: 'none',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+    ];
+    const result = buildORM('jpa', 'test', '', fields, [], []);
+    expect(result).toContain('import java.math.BigDecimal;');
+    expect(result).toContain('private BigDecimal amount;');
+  });
+
+  it('imports UUID when needed', () => {
+    const fields: NormalizedField[] = [
+      {
+        name: 'uuid_col',
+        type: 'uuid',
+        comment: '',
+        nullable: false,
+        defaultKind: 'none',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+    ];
+    const result = buildORM('jpa', 'test', '', fields, [], []);
+    expect(result).toContain('import java.util.UUID;');
+    expect(result).toContain('private UUID uuidCol;');
+  });
+});
