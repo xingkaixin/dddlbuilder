@@ -32,7 +32,7 @@ const SYSTEM_PROMPT_TEMPLATES: Record<AppLocale, string> = {
 }
 
 注意：
-1. 如果用户提供了字段模板，优先使用模板中的字段定义
+1. 如果用户提供了字段模板或整表蓝本，优先使用其中的字段、索引和结构约束
 2. 字段类型应符合 {{DB}} 数据库语法
 3. 主键字段的 isPrimaryKey 设为 true
 4. 建议包含 created_at 和 updated_at 审计字段
@@ -68,7 +68,7 @@ Return JSON only, in this format:
 }
 
 Notes:
-1. If field templates are provided, prioritize those definitions.
+1. If field templates or table blueprints are provided, prioritize their fields, indexes, and structural constraints.
 2. Field types must be valid for {{DB}}.
 3. Set isPrimaryKey=true for primary-key fields.
 4. Prefer including created_at and updated_at audit fields.
@@ -86,8 +86,8 @@ export const buildGenerateTableSystemPrompt = (params: {
 
   const templateContext = templates?.length
     ? locale === 'zh-CN'
-      ? `\n\n用户定义的字段模板（优先参考）：\n${JSON.stringify(templates, null, 2)}`
-      : `\n\nUser-defined field templates (high priority):\n${JSON.stringify(templates, null, 2)}`
+      ? `\n\n用户定义的模板和整表蓝本（优先参考）：\n${JSON.stringify(templates, null, 2)}`
+      : `\n\nUser-defined templates and table blueprints (high priority):\n${JSON.stringify(templates, null, 2)}`
     : '';
 
   const existingContext = existingConfig

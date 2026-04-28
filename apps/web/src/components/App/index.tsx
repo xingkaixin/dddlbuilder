@@ -14,6 +14,7 @@ import { useDialogStates } from './hooks/useDialogStates';
 import { useDerivedTableState } from './hooks/useDerivedTableState';
 import { useFolderActions } from './hooks/useFolderActions';
 import { useTemplateActions } from './hooks/useTemplateActions';
+import { useTableTemplateActions } from './hooks/useTableTemplateActions';
 import { useSchemaApplyActions } from './hooks/useSchemaApplyActions';
 import { useSavedTableFlowActions } from './hooks/useSavedTableFlowActions';
 import { usePersistedSync } from './hooks/usePersistedSync';
@@ -36,6 +37,7 @@ import { useSuggestionAnimation } from '@/hooks/useSuggestionAnimation';
 import { useSavedTables } from '@/hooks/useSavedTables';
 import { useFolders } from '@/hooks/useFolders';
 import { useFieldTemplates } from '@/hooks/useFieldTemplates';
+import { useTableTemplates } from '@/hooks/useTableTemplates';
 import { countVersions } from '@/utils/tableVersions';
 import { writeWorkspaceSession } from '@/utils/workspaceStateDb';
 import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
@@ -377,6 +379,15 @@ function App() {
     duplicate: duplicateTemplate,
   } = useFieldTemplates();
 
+  const {
+    templates: tableTemplates,
+    loading: tableTemplatesLoading,
+    create: createTableTemplate,
+    rename: renameTableTemplate,
+    remove: deleteTableTemplate,
+    duplicate: duplicateTableTemplate,
+  } = useTableTemplates();
+
   // ─── 6. Action hooks ──────────────────────────────────────────
   const {
     isFolderDialogOpen,
@@ -424,6 +435,12 @@ function App() {
     showToast,
     trackEvent,
   });
+
+  const clearLoadedTable = useCallback(() => {
+    setLoadedTableNormalizedName(null);
+    setLoadedTableName(null);
+    setLoadedTableSignature(null);
+  }, [setLoadedTableName, setLoadedTableNormalizedName, setLoadedTableSignature]);
 
   const {
     isLoading: isReviewing,
@@ -519,6 +536,25 @@ function App() {
     setAddCount,
     setFieldTableFreezeEnabled,
     setFieldTableFreezeColumns,
+  });
+
+  const {
+    isManagerOpen: isTableTemplateManagerOpen,
+    setIsManagerOpen: setIsTableTemplateManagerOpen,
+    isCreateDialogOpen: isCreateTableTemplateDialogOpen,
+    setIsCreateDialogOpen: setIsCreateTableTemplateDialogOpen,
+    pendingBlueprint: pendingTableTemplateBlueprint,
+    handleManageTemplates: handleManageTableTemplates,
+    handleSaveAsTemplate: handleSaveAsTableTemplate,
+    handleCreateTemplate: handleCreateTableTemplate,
+    handleApplyTemplate: handleApplyTableTemplate,
+  } = useTableTemplateActions({
+    currentState: currentPersistedState,
+    applyState: applySavedState,
+    createTemplate: createTableTemplate,
+    clearLoadedTable,
+    showToast,
+    trackEvent,
   });
 
   const flushCurrentWorkspace = useCallback(() => {
@@ -780,6 +816,11 @@ function App() {
     handleApplyTemplate,
     handleManageTemplates,
     handleSaveAsTemplate,
+    tableTemplates,
+    tableTemplatesLoading,
+    handleApplyTableTemplate,
+    handleManageTableTemplates,
+    handleSaveAsTableTemplate,
   });
 
   const drawerDraftItems = useMemo(() => {
@@ -1112,6 +1153,21 @@ function App() {
             selectedFields: selectedFieldsForTemplate,
             onConfirm: handleCreateTemplateFromFields,
           }}
+          tableTemplateManagerDialogProps={{
+            open: isTableTemplateManagerOpen,
+            onOpenChange: setIsTableTemplateManagerOpen,
+            templates: tableTemplates,
+            loading: tableTemplatesLoading,
+            onRenameTemplate: renameTableTemplate,
+            onDuplicateTemplate: duplicateTableTemplate,
+            onDeleteTemplate: deleteTableTemplate,
+          }}
+          createTableTemplateDialogProps={{
+            open: isCreateTableTemplateDialogOpen,
+            onOpenChange: setIsCreateTableTemplateDialogOpen,
+            blueprint: pendingTableTemplateBlueprint,
+            onConfirm: handleCreateTableTemplate,
+          }}
           diffDialogProps={{
             open: isDiffDialogOpen,
             onOpenChange: setIsDiffDialogOpen,
@@ -1149,7 +1205,7 @@ function App() {
               rows,
               indexes,
             },
-            templates,
+            templates: [...templates, ...tableTemplates],
             onApply: handleApplyAIGeneratedSchema,
           }}
           storageEstimatorDialogProps={{

@@ -27,8 +27,16 @@ vi.mock('@/components/App/TemplateManagerDialog', () => ({
   TemplateManagerDialog: () => null,
 }));
 
+vi.mock('@/components/App/TableTemplateManagerDialog', () => ({
+  TableTemplateManagerDialog: () => null,
+}));
+
 vi.mock('@/components/App/CreateTemplateDialog', () => ({
   CreateTemplateDialog: () => null,
+}));
+
+vi.mock('@/components/App/CreateTableTemplateDialog', () => ({
+  CreateTableTemplateDialog: () => null,
 }));
 
 vi.mock('@/components/App/VersionHistoryDialog', () => ({

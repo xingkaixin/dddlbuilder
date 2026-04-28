@@ -19,6 +19,8 @@ import { ReviewHistoryDialog } from '../ReviewHistoryDialog';
 import { ErDiagramDialog } from '../ErDiagramDialog';
 import { StorageEstimatorDialog } from '../StorageEstimatorDialog';
 import { TemplateManagerDialog } from '../TemplateManagerDialog';
+import { TableTemplateManagerDialog } from '../TableTemplateManagerDialog';
+import { CreateTableTemplateDialog } from '../CreateTableTemplateDialog';
 import { CreateTemplateDialog } from '../CreateTemplateDialog';
 import { VersionHistoryDialog } from '../VersionHistoryDialog';
 import { useTranslation } from 'react-i18next';
@@ -60,6 +62,8 @@ interface GlobalDialogsProps {
   deleteFolderDialogProps: ComponentProps<typeof DeleteFolderDialog>;
   templateManagerDialogProps: ComponentProps<typeof TemplateManagerDialog>;
   createTemplateDialogProps: ComponentProps<typeof CreateTemplateDialog>;
+  tableTemplateManagerDialogProps: ComponentProps<typeof TableTemplateManagerDialog>;
+  createTableTemplateDialogProps: ComponentProps<typeof CreateTableTemplateDialog>;
   diffDialogProps: ComponentProps<typeof DiffDialog>;
   versionHistoryDialogProps: ComponentProps<typeof VersionHistoryDialog>;
   reviewHistoryDialogProps: ComponentProps<typeof ReviewHistoryDialog>;
@@ -78,6 +82,8 @@ export function GlobalDialogs({
   deleteFolderDialogProps,
   templateManagerDialogProps,
   createTemplateDialogProps,
+  tableTemplateManagerDialogProps,
+  createTableTemplateDialogProps,
   diffDialogProps,
   versionHistoryDialogProps,
   reviewHistoryDialogProps,
@@ -127,6 +133,8 @@ export function GlobalDialogs({
       <DeleteFolderDialog {...deleteFolderDialogProps} />
       <TemplateManagerDialog {...templateManagerDialogProps} />
       <CreateTemplateDialog {...createTemplateDialogProps} />
+      <TableTemplateManagerDialog {...tableTemplateManagerDialogProps} />
+      <CreateTableTemplateDialog {...createTableTemplateDialogProps} />
       <DiffDialog {...diffDialogProps} />
       <VersionHistoryDialog {...versionHistoryDialogProps} />
       <ReviewHistoryDialog {...reviewHistoryDialogProps} />

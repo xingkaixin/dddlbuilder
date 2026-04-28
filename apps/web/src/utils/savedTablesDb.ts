@@ -1,4 +1,12 @@
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import type {
+  DatabaseType,
+  IndexDefinition,
+  PersistedState,
+  FieldRow,
+  CitusShardingConfig,
+  MysqlPartitionConfig,
+  TableMiscConfig,
+} from '@ddlbuilder/shared-types';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import {
   buildScopedWorkspaceKey,
@@ -61,6 +69,24 @@ export type FieldTemplate = {
   updatedAt: number;
 };
 
+export type TableBlueprint = {
+  dbType: DatabaseType;
+  rows: FieldRow[];
+  indexes: IndexDefinition[];
+  citusShardingConfig?: CitusShardingConfig;
+  mysqlPartitionConfig?: MysqlPartitionConfig;
+  tableMiscConfig?: TableMiscConfig;
+};
+
+export type TableTemplate = {
+  id: string;
+  name: string;
+  description?: string;
+  blueprint: TableBlueprint;
+  createdAt: number;
+  updatedAt: number;
+};
+
 // 版本快照类型
 export type TableVersion = {
   id: string;
@@ -81,12 +107,13 @@ export type TableVersionMetadata = {
 };
 
 export const DB_NAME = 'ddlbuilder';
-export const DB_VERSION = 9;
+export const DB_VERSION = 10;
 export const STORE_NAME = 'saved_tables';
 export const VERSION_STORE_NAME = 'table_versions';
 export const REVIEW_STORE_NAME = 'review_history';
 export const FOLDER_STORE_NAME = 'table_folders';
 export const TEMPLATE_STORE_NAME = 'field_templates';
+export const TABLE_TEMPLATE_STORE_NAME = 'table_templates';
 export const WORKSPACE_GLOBAL_DRAFT_STORE_NAME = 'workspace_global_draft';
 export const WORKSPACE_SAVED_DRAFTS_STORE_NAME = 'workspace_saved_drafts';
 export const WORKSPACE_SESSION_STORE_NAME = 'workspace_session';
@@ -196,6 +223,17 @@ export const openDb = (): Promise<IDBDatabase> =>
           });
           templateStore.createIndex('name', 'name', { unique: false });
           templateStore.createIndex('updatedAt', 'updatedAt', {
+            unique: false,
+          });
+        }
+
+        // Version 10: table_templates store
+        if (!db.objectStoreNames.contains(TABLE_TEMPLATE_STORE_NAME)) {
+          const tableTemplateStore = db.createObjectStore(TABLE_TEMPLATE_STORE_NAME, {
+            keyPath: 'id',
+          });
+          tableTemplateStore.createIndex('name', 'name', { unique: false });
+          tableTemplateStore.createIndex('updatedAt', 'updatedAt', {
             unique: false,
           });
         }

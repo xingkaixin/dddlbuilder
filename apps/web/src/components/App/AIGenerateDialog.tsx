@@ -17,6 +17,7 @@ import {
 } from '@/hooks/useAIGenerateTable';
 import type { FieldRow, IndexDefinition, DatabaseType } from '@ddlbuilder/shared-types';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
+import type { TableTemplate } from '@/hooks/useTableTemplates';
 import { useTranslation } from 'react-i18next';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 
@@ -32,7 +33,7 @@ interface AIGenerateDialogProps {
     rows?: FieldRow[];
     indexes?: IndexDefinition[];
   };
-  templates?: FieldTemplate[];
+  templates?: Array<FieldTemplate | TableTemplate>;
   onApply: (schema: GeneratedTableSchema) => void;
 }
 
@@ -127,6 +128,11 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
       clearConversation();
       setInput('');
     }, [clearResult, clearConversation]);
+
+    const getTemplateFieldCount = useCallback((template: FieldTemplate | TableTemplate) => {
+      if ('fields' in template) return template.fields.length;
+      return template.blueprint.rows.length;
+    }, []);
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent) => {
@@ -390,7 +396,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                           )}
                           <span className="text-muted-foreground/60">
                             {t('aiGenerate.templateFields', {
-                              count: template.fields?.length || 0,
+                              count: getTemplateFieldCount(template),
                             })}
                           </span>
                         </div>

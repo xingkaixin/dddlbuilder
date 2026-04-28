@@ -28,6 +28,8 @@ export type { FolderTreeNode } from './useFolders';
 
 export { useFieldTemplates } from './useFieldTemplates';
 export type { FieldTemplate, TemplateField } from './useFieldTemplates';
+export { useTableTemplates } from './useTableTemplates';
+export type { TableBlueprint, TableTemplate } from './useTableTemplates';
 
 export { useDialogState } from './useDialogState';
 export type { UseDialogStateReturn } from './useDialogState';
