@@ -9,11 +9,17 @@ export function useAppSelectors() {
   const schemaName = useAppStore((s) => s.schemaName);
   const tableName = useAppStore((s) => s.tableName);
   const tableComment = useAppStore((s) => s.tableComment);
+  const objectType = useAppStore((s) => s.objectType);
+  const viewDefinition = useAppStore((s) => s.viewDefinition);
+  const viewCreateOrReplace = useAppStore((s) => s.viewCreateOrReplace);
   const dbType = useAppStore((s) => s.dbType);
   const sqlFormatMode = useAppStore((s) => s.sqlFormatMode);
   const setSchemaName = useAppStore((s) => s.setSchemaName);
   const setTableName = useAppStore((s) => s.setTableName);
   const setTableComment = useAppStore((s) => s.setTableComment);
+  const setObjectType = useAppStore((s) => s.setObjectType);
+  const setViewDefinition = useAppStore((s) => s.setViewDefinition);
+  const setViewCreateOrReplace = useAppStore((s) => s.setViewCreateOrReplace);
   const setDbType = useAppStore((s) => s.setDbType);
   const setSqlFormatMode = useAppStore((s) => s.setSqlFormatMode);
   const addCount = useAppStore((s) => s.addCount);
@@ -99,11 +105,17 @@ export function useAppSelectors() {
     schemaName,
     tableName,
     tableComment,
+    objectType,
+    viewDefinition,
+    viewCreateOrReplace,
     dbType,
     sqlFormatMode,
     setSchemaName,
     setTableName,
     setTableComment,
+    setObjectType,
+    setViewDefinition,
+    setViewCreateOrReplace,
     setDbType,
     setSqlFormatMode,
     addCount,

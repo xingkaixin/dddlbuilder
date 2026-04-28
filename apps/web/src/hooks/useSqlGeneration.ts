@@ -8,8 +8,9 @@ import type {
   SqlFormatMode,
   TableMiscConfig,
   ForeignKeyDefinition,
+  SchemaObjectType,
 } from '@ddlbuilder/shared-types';
-import { buildDDL, buildDCL } from '@ddlbuilder/ddl-core';
+import { buildDDL, buildDCL, buildViewDDL } from '@ddlbuilder/ddl-core';
 import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
 import { mergeEnumMetaIntoComment } from '@/utils/enumCommentMerger';
 
@@ -21,10 +22,13 @@ export interface UseSqlGenerationReturn {
 }
 
 export function useSqlGeneration(
+  objectType: SchemaObjectType,
   dbType: DatabaseType,
   schemaName: string,
   tableName: string,
   tableComment: string,
+  viewDefinition: string,
+  viewCreateOrReplace: boolean,
   normalizedFields: NormalizedField[],
   indexes: IndexDefinition[],
   authObjects: string[],
@@ -46,22 +50,27 @@ export function useSqlGeneration(
 
   const generatedSql = useMemo(
     () =>
-      buildDDL(
-        dbType,
-        qualifiedTableName,
-        tableComment,
-        fieldsForDdl,
-        indexes,
-        citusShardingConfig,
-        mysqlPartitionConfig,
-        tableMiscConfig,
-        sqlFormatMode,
-        foreignKeys,
-      ),
+      objectType === 'view'
+        ? buildViewDDL(dbType, qualifiedTableName, viewDefinition, viewCreateOrReplace)
+        : buildDDL(
+            dbType,
+            qualifiedTableName,
+            tableComment,
+            fieldsForDdl,
+            indexes,
+            citusShardingConfig,
+            mysqlPartitionConfig,
+            tableMiscConfig,
+            sqlFormatMode,
+            foreignKeys,
+          ),
     [
+      objectType,
       dbType,
       qualifiedTableName,
       tableComment,
+      viewDefinition,
+      viewCreateOrReplace,
       fieldsForDdl,
       indexes,
       sqlFormatMode,

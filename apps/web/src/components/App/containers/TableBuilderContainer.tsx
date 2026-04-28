@@ -10,6 +10,7 @@ import {
   Layers,
   SlidersHorizontal,
   Link2,
+  Code2,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTranslation } from 'react-i18next';
@@ -22,9 +23,11 @@ import { PartitionPanel } from '../PartitionPanel';
 import { ShardingPanel } from '../ShardingPanel';
 import { TableConfig } from '../TableConfig';
 import { TableOptionsPanel } from '../TableOptionsPanel';
+import { ViewDefinitionPanel } from '../ViewDefinitionPanel';
 
 interface TableBuilderContainerProps {
   tableConfigProps: ComponentProps<typeof TableConfig>;
+  objectType?: 'table' | 'view';
   tabsValue: string;
   onTabsValueChange: (value: string) => void;
   filledRowCount: number;
@@ -50,6 +53,7 @@ interface TableBuilderContainerProps {
   foreignKeyPanelProps: ComponentProps<typeof ForeignKeyPanel>;
   authPanelProps: ComponentProps<typeof AuthPanel>;
   tableOptionsPanelProps: ComponentProps<typeof TableOptionsPanel>;
+  viewDefinitionPanelProps?: ComponentProps<typeof ViewDefinitionPanel>;
   shardingPanelProps?: ComponentProps<typeof ShardingPanel>;
   partitionPanelProps?: ComponentProps<typeof PartitionPanel>;
   hivePartitionPanelProps?: ComponentProps<typeof HivePartitionPanel>;
@@ -57,6 +61,7 @@ interface TableBuilderContainerProps {
 
 export function TableBuilderContainer({
   tableConfigProps,
+  objectType = 'table',
   tabsValue,
   onTabsValueChange,
   filledRowCount,
@@ -78,6 +83,7 @@ export function TableBuilderContainer({
   foreignKeyPanelProps,
   authPanelProps,
   tableOptionsPanelProps,
+  viewDefinitionPanelProps,
   shardingPanelProps,
   partitionPanelProps,
   hivePartitionPanelProps,
@@ -91,15 +97,24 @@ export function TableBuilderContainer({
       <Tabs value={tabsValue} onValueChange={onTabsValueChange} className="w-full">
         <TabsList className="flex h-auto w-full flex-wrap gap-1 [&>*]:after:hidden sm:flex-nowrap sm:gap-0 sm:overflow-x-auto sm:whitespace-nowrap sm:[&>*]:after:block [&>*]:shrink-0">
           <TabsTrigger value="fields" className="gap-2">
-            <Columns3Cog className="h-4 w-4" />
-            {t('builderTabs.fields')}
-            {filledRowCount > 0 && (
-              <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
-                {filledRowCount}
-              </span>
+            {objectType === 'view' ? (
+              <>
+                <Code2 className="h-4 w-4" />
+                {t('builderTabs.viewSql')}
+              </>
+            ) : (
+              <>
+                <Columns3Cog className="h-4 w-4" />
+                {t('builderTabs.fields')}
+                {filledRowCount > 0 && (
+                  <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
+                    {filledRowCount}
+                  </span>
+                )}
+              </>
             )}
           </TabsTrigger>
-          {showIndexTab && (
+          {objectType === 'table' && showIndexTab && (
             <TabsTrigger value="indexes" className="gap-2">
               <Network className="h-4 w-4" />
               {t('builderTabs.indexes')}
@@ -127,7 +142,7 @@ export function TableBuilderContainer({
               )}
             </TabsTrigger>
           )}
-          {showForeignKeyTab && (
+          {objectType === 'table' && showForeignKeyTab && (
             <TabsTrigger value="foreignKeys" className="gap-2">
               <Link2 className="h-4 w-4" />
               {t('builderTabs.foreignKeys')}
@@ -147,16 +162,18 @@ export function TableBuilderContainer({
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="misc" className="gap-2">
-            <SlidersHorizontal className="h-4 w-4" />
-            {t('builderTabs.misc')}
-            {miscEnabled && (
-              <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
-                {t('builderTabs.enabled')}
-              </span>
-            )}
-          </TabsTrigger>
-          {showShardingTab && (
+          {objectType === 'table' && (
+            <TabsTrigger value="misc" className="gap-2">
+              <SlidersHorizontal className="h-4 w-4" />
+              {t('builderTabs.misc')}
+              {miscEnabled && (
+                <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
+                  {t('builderTabs.enabled')}
+                </span>
+              )}
+            </TabsTrigger>
+          )}
+          {objectType === 'table' && showShardingTab && (
             <TabsTrigger value="sharding" className="gap-2">
               <Share2 className="h-4 w-4" />
               {t('builderTabs.sharding')}
@@ -167,7 +184,7 @@ export function TableBuilderContainer({
               )}
             </TabsTrigger>
           )}
-          {showPartitionTab && (
+          {objectType === 'table' && showPartitionTab && (
             <TabsTrigger value="partition" className="gap-2">
               <Layers className="h-4 w-4" />
               {t('builderTabs.partition')}
@@ -178,7 +195,7 @@ export function TableBuilderContainer({
               )}
             </TabsTrigger>
           )}
-          {showHivePartitionTab && (
+          {objectType === 'table' && showHivePartitionTab && (
             <TabsTrigger value="hive-partition" className="gap-2">
               <Layers className="h-4 w-4" />
               {t('builderTabs.hivePartition')}
@@ -191,14 +208,18 @@ export function TableBuilderContainer({
           )}
         </TabsList>
         <TabsContent value="fields" className="mt-4">
-          <DataTable {...dataTableProps} />
+          {objectType === 'view' && viewDefinitionPanelProps ? (
+            <ViewDefinitionPanel {...viewDefinitionPanelProps} />
+          ) : (
+            <DataTable {...dataTableProps} />
+          )}
         </TabsContent>
-        {showIndexTab && (
+        {objectType === 'table' && showIndexTab && (
           <TabsContent value="indexes" className="mt-4">
             <IndexPanel {...indexPanelProps} />
           </TabsContent>
         )}
-        {showForeignKeyTab && (
+        {objectType === 'table' && showForeignKeyTab && (
           <TabsContent value="foreignKeys" className="mt-4">
             <ForeignKeyPanel {...foreignKeyPanelProps} />
           </TabsContent>
@@ -206,20 +227,22 @@ export function TableBuilderContainer({
         <TabsContent value="auth" className="mt-4">
           <AuthPanel {...authPanelProps} />
         </TabsContent>
-        <TabsContent value="misc" className="mt-4">
-          <TableOptionsPanel {...tableOptionsPanelProps} />
-        </TabsContent>
-        {showShardingTab && shardingPanelProps && (
+        {objectType === 'table' && (
+          <TabsContent value="misc" className="mt-4">
+            <TableOptionsPanel {...tableOptionsPanelProps} />
+          </TabsContent>
+        )}
+        {objectType === 'table' && showShardingTab && shardingPanelProps && (
           <TabsContent value="sharding" className="mt-4">
             <ShardingPanel {...shardingPanelProps} />
           </TabsContent>
         )}
-        {showPartitionTab && partitionPanelProps && (
+        {objectType === 'table' && showPartitionTab && partitionPanelProps && (
           <TabsContent value="partition" className="mt-4">
             <PartitionPanel {...partitionPanelProps} />
           </TabsContent>
         )}
-        {showHivePartitionTab && hivePartitionPanelProps && (
+        {objectType === 'table' && showHivePartitionTab && hivePartitionPanelProps && (
           <TabsContent value="hive-partition" className="mt-4">
             <HivePartitionPanel {...hivePartitionPanelProps} />
           </TabsContent>

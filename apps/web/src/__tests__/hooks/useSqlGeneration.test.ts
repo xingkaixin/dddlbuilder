@@ -53,10 +53,13 @@ describe('useSqlGeneration', () => {
 
     const { result } = renderHook(() =>
       useSqlGeneration(
+        'table',
         'mysql',
         '',
         'users',
         '用户表',
+        '',
+        true,
         baseFields,
         noopIndexes,
         ['CBD_READ'],
@@ -103,7 +106,19 @@ describe('useSqlGeneration', () => {
     });
 
     const { result } = renderHook(() =>
-      useSqlGeneration('mysql', '', 'users', '', baseFields, noopIndexes, [], 'compact'),
+      useSqlGeneration(
+        'table',
+        'mysql',
+        '',
+        'users',
+        '',
+        '',
+        true,
+        baseFields,
+        noopIndexes,
+        [],
+        'compact',
+      ),
     );
 
     let sqlResult = false;
@@ -132,10 +147,13 @@ describe('useSqlGeneration', () => {
   it('填写 schema 时应生成限定表名', () => {
     const { result } = renderHook(() =>
       useSqlGeneration(
+        'table',
         'mysql',
         'public',
         'users',
         '',
+        '',
+        true,
         baseFields,
         noopIndexes,
         ['reader'],
@@ -170,7 +188,19 @@ describe('useSqlGeneration', () => {
     ];
 
     const { result } = renderHook(() =>
-      useSqlGeneration('mysql', '', 'users', '', alignedFields, noopIndexes, [], 'aligned'),
+      useSqlGeneration(
+        'table',
+        'mysql',
+        '',
+        'users',
+        '',
+        '',
+        true,
+        alignedFields,
+        noopIndexes,
+        [],
+        'aligned',
+      ),
     );
 
     expect(result.current.generatedSql).toContain(

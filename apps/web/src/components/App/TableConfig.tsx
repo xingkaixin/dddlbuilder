@@ -1,11 +1,11 @@
 import { memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { GitCompare, List, Save, Sparkles, Table, Trash2, Waypoints } from 'lucide-react';
+import { Eye, GitCompare, List, Save, Sparkles, Table, Trash2, Waypoints } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/select';
-import type { DatabaseType } from '@ddlbuilder/shared-types';
+import type { DatabaseType, SchemaObjectType } from '@ddlbuilder/shared-types';
 import { DATABASE_OPTIONS } from '@/utils/constants';
 import { useTranslation } from 'react-i18next';
 
@@ -13,10 +13,12 @@ interface TableConfigProps {
   schemaName: string;
   tableName: string;
   tableComment: string;
+  objectType: SchemaObjectType;
   dbType: DatabaseType;
   onSchemaNameChange: (value: string) => void;
   onTableNameChange: (value: string) => void;
   onTableCommentChange: (value: string) => void;
+  onObjectTypeChange: (value: SchemaObjectType) => void;
   onDbTypeChange: (value: DatabaseType) => void;
   onClearAll: () => void;
   onSaveTable: () => void;
@@ -37,10 +39,12 @@ export const TableConfig = memo<TableConfigProps>(
     schemaName,
     tableName,
     tableComment,
+    objectType,
     dbType,
     onSchemaNameChange,
     onTableNameChange,
     onTableCommentChange,
+    onObjectTypeChange,
     onDbTypeChange,
     onClearAll,
     onSaveTable,
@@ -63,6 +67,9 @@ export const TableConfig = memo<TableConfigProps>(
           ? t('tableConfig.statusClean')
           : '';
     const statusClass = loadedStatus === 'dirty' ? 'text-amber-600' : 'text-muted-foreground';
+    const ObjectIcon = objectType === 'view' ? Eye : Table;
+    const saveLabel =
+      objectType === 'view' ? t('tableConfig.saveCurrentView') : t('tableConfig.saveCurrent');
 
     return (
       <div className="relative group rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-shadow transition-transform duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5">
@@ -75,8 +82,8 @@ export const TableConfig = memo<TableConfigProps>(
         <div className="relative flex flex-wrap items-center justify-between gap-2 border-b border-primary/10 px-4 py-3.5">
           <div className="flex min-w-0 flex-wrap items-center gap-3">
             <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary transition-all duration-300 group-hover:bg-primary/15">
-              <Table className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
-              {t('tableConfig.title')}
+              <ObjectIcon className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
+              {objectType === 'view' ? t('tableConfig.viewTitle') : t('tableConfig.title')}
             </span>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -156,16 +163,45 @@ export const TableConfig = memo<TableConfigProps>(
         <div className="relative p-4">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="space-y-3 group/field">
+              <Label className="text-sm font-medium transition-colors duration-200 group-hover/field:text-primary">
+                {t('tableConfig.objectType')}
+              </Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={objectType === 'table' ? 'default' : 'outline'}
+                  className="h-9 gap-2"
+                  onClick={() => onObjectTypeChange('table')}
+                >
+                  <Table className="h-4 w-4" />
+                  {t('tableConfig.objectTable')}
+                </Button>
+                <Button
+                  type="button"
+                  variant={objectType === 'view' ? 'default' : 'outline'}
+                  className="h-9 gap-2"
+                  onClick={() => onObjectTypeChange('view')}
+                >
+                  <Eye className="h-4 w-4" />
+                  {t('tableConfig.objectView')}
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-3 group/field">
               <Label
                 htmlFor="table-name"
                 className="text-sm font-medium transition-colors duration-200 group-hover/field:text-primary"
               >
-                {t('tableConfig.tableName')}
+                {objectType === 'view' ? t('tableConfig.viewName') : t('tableConfig.tableName')}
               </Label>
               <div className="flex flex-wrap items-center gap-2">
                 <Input
                   id="table-name"
-                  placeholder={t('tableConfig.tableNamePlaceholder')}
+                  placeholder={
+                    objectType === 'view'
+                      ? t('tableConfig.viewNamePlaceholder')
+                      : t('tableConfig.tableNamePlaceholder')
+                  }
                   value={tableName}
                   onChange={(event) => onTableNameChange(event.target.value)}
                   className="flex-1 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
@@ -186,7 +222,7 @@ export const TableConfig = memo<TableConfigProps>(
                             ? t('tableConfig.saveDisabled', {
                                 reason: saveDisabledHint,
                               })
-                            : t('tableConfig.saveCurrent')
+                            : saveLabel
                         }
                         aria-describedby={
                           saveDisabled && saveDisabledHint ? 'save-disabled-reason' : undefined
@@ -197,7 +233,7 @@ export const TableConfig = memo<TableConfigProps>(
                     </span>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>{saveDisabled ? saveDisabledHint : t('tableConfig.saveCurrent')}</p>
+                    <p>{saveDisabled ? saveDisabledHint : saveLabel}</p>
                   </TooltipContent>
                 </Tooltip>
                 {saveDisabled && saveDisabledHint && (
@@ -247,7 +283,9 @@ export const TableConfig = memo<TableConfigProps>(
                 htmlFor="table-comment"
                 className="text-sm font-medium transition-colors duration-200 group-hover/field:text-primary"
               >
-                {t('tableConfig.tableComment')}
+                {objectType === 'view'
+                  ? t('tableConfig.viewComment')
+                  : t('tableConfig.tableComment')}
               </Label>
               <Input
                 id="table-comment"

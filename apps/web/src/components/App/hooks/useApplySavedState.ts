@@ -22,6 +22,9 @@ interface UseApplySavedStateParams {
   setSchemaName: (name: string) => void;
   setTableName: (name: string) => void;
   setTableComment: (comment: string) => void;
+  setObjectType: (objectType: NonNullable<PersistedState['objectType']>) => void;
+  setViewDefinition: (definition: string) => void;
+  setViewCreateOrReplace: (enabled: boolean) => void;
   setDbType: (dbType: PersistedState['dbType']) => void;
   setSqlFormatMode: (mode: PersistedState['sqlFormatMode']) => void;
   setAddCount: (count: number) => void;
@@ -50,6 +53,9 @@ export function useApplySavedState({
   setSchemaName,
   setTableName,
   setTableComment,
+  setObjectType,
+  setViewDefinition,
+  setViewCreateOrReplace,
   setDbType,
   setSqlFormatMode,
   setAddCount,
@@ -61,6 +67,9 @@ export function useApplySavedState({
       setSchemaName(state.schemaName ?? '');
       setTableName(state.tableName ?? '');
       setTableComment(state.tableComment ?? '');
+      setObjectType(state.objectType ?? 'table');
+      setViewDefinition(state.viewDefinition ?? '');
+      setViewCreateOrReplace(state.viewCreateOrReplace !== false);
       setDbType(state.dbType ?? 'mysql');
       setSqlFormatMode(state.sqlFormatMode ?? 'compact');
 
@@ -132,6 +141,9 @@ export function useApplySavedState({
       setSchemaName,
       setTableName,
       setTableComment,
+      setObjectType,
+      setViewDefinition,
+      setViewCreateOrReplace,
       setDbType,
       setSqlFormatMode,
       setAddCount,

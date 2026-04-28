@@ -78,6 +78,7 @@ export type ParsedFieldType = {
 };
 
 export type SqlFormatMode = 'compact' | 'aligned';
+export type SchemaObjectType = 'table' | 'view';
 
 export type UiDefaultKind = '无' | '自增' | '常量' | '当前时间' | 'uuid';
 export type UiOnUpdate = '无' | '当前时间';
@@ -159,11 +160,14 @@ export type FieldTableViewConfig = {
 };
 
 export type PersistedState = {
+  objectType?: SchemaObjectType;
   schemaName: string;
   tableName: string;
   tableComment: string;
   dbType: DatabaseType;
   sqlFormatMode: SqlFormatMode;
+  viewDefinition?: string;
+  viewCreateOrReplace?: boolean;
   rows: FieldRow[];
   addCount: number;
   indexInput: string;

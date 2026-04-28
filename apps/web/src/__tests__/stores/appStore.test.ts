@@ -32,17 +32,26 @@ describe('appStore', () => {
 
     state.setTableName('users');
     state.setTableComment('用户表');
+    state.setObjectType('view');
+    state.setViewDefinition('SELECT id FROM users');
+    state.setViewCreateOrReplace(false);
     state.setDbType('postgresql');
 
     let current = useAppStore.getState();
     expect(current.tableName).toBe('users');
     expect(current.tableComment).toBe('用户表');
+    expect(current.objectType).toBe('view');
+    expect(current.viewDefinition).toBe('SELECT id FROM users');
+    expect(current.viewCreateOrReplace).toBe(false);
     expect(current.dbType).toBe('postgresql');
 
     current.resetTableConfig();
     current = useAppStore.getState();
     expect(current.tableName).toBe('');
     expect(current.tableComment).toBe('');
+    expect(current.objectType).toBe('table');
+    expect(current.viewDefinition).toBe('');
+    expect(current.viewCreateOrReplace).toBe(true);
     expect(current.dbType).toBe('mysql');
   });
 

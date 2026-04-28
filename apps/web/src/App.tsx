@@ -16,7 +16,7 @@ export {
   TYPE_ALIASES,
 } from '@ddlbuilder/ddl-core';
 
-export { buildDDL, buildDCL, buildOracleSynonyms } from '@ddlbuilder/ddl-core';
+export { buildDDL, buildDCL, buildOracleSynonyms, buildViewDDL } from '@ddlbuilder/ddl-core';
 
 export {
   normalizeFields,

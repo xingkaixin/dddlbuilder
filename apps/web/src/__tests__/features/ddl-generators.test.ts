@@ -3,6 +3,7 @@ import {
   buildDDL,
   buildDCL,
   buildOracleSynonyms,
+  buildViewDDL,
   type NormalizedField,
   type IndexDefinition,
 } from '@/App';
@@ -46,6 +47,20 @@ describe('DDL Generation Functions', () => {
       onUpdate: 'none',
     },
   ];
+
+  describe('buildViewDDL', () => {
+    it('should generate CREATE OR REPLACE VIEW DDL', () => {
+      const result = buildViewDDL('postgresql', 'public.active_users', 'SELECT id FROM users');
+
+      expect(result).toBe('CREATE OR REPLACE VIEW public.active_users AS\nSELECT id FROM users;');
+    });
+
+    it('should generate SQL Server CREATE OR ALTER VIEW DDL', () => {
+      const result = buildViewDDL('sqlserver', 'dbo.active_users', 'SELECT id FROM dbo.users;');
+
+      expect(result).toBe('CREATE OR ALTER VIEW dbo.active_users AS\nSELECT id FROM dbo.users;');
+    });
+  });
 
   describe('buildDDL for MySQL', () => {
     it('should generate basic MySQL DDL', () => {

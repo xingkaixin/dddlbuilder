@@ -17,9 +17,12 @@ import { diffPersistedState, type TableDiff } from '@ddlbuilder/ddl-core';
 
 interface UseDerivedTableStateDeps {
   // 基础表数据
+  objectType: PersistedState['objectType'];
   schemaName: string;
   tableName: string;
   tableComment: string;
+  viewDefinition: string;
+  viewCreateOrReplace: boolean;
   dbType: DatabaseType;
   sqlFormatMode: SqlFormatMode;
   addCount: number;
@@ -54,6 +57,9 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     schemaName,
     tableName,
     tableComment,
+    objectType,
+    viewDefinition,
+    viewCreateOrReplace,
     dbType,
     sqlFormatMode,
     addCount,
@@ -133,11 +139,14 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
 
   const currentPersistedState = useMemo(
     (): PersistedState => ({
+      objectType,
       schemaName,
       tableName,
       tableComment,
       dbType,
       sqlFormatMode,
+      viewDefinition,
+      viewCreateOrReplace,
       rows: normalizedRowsForPersist,
       addCount,
       indexInput,
@@ -158,6 +167,9 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
       schemaName,
       tableName,
       tableComment,
+      objectType,
+      viewDefinition,
+      viewCreateOrReplace,
       dbType,
       sqlFormatMode,
       normalizedRowsForPersist,
@@ -198,9 +210,10 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     currentStateSignature !== loadedTableSignature;
   const canSaveCurrent = !hasLoadedTable || isLoadedDirty;
   const loadedStatus = hasLoadedTable ? (isLoadedDirty ? 'dirty' : 'clean') : null;
-  const saveDialogTitle = hasLoadedTable ? '更新保存的表' : '保存当前表';
+  const objectLabel = objectType === 'view' ? '视图' : '表';
+  const saveDialogTitle = hasLoadedTable ? `更新保存的${objectLabel}` : `保存当前${objectLabel}`;
   const saveDialogDescription = hasLoadedTable
-    ? '当前为已加载表，保存将覆盖原记录。'
+    ? `当前为已加载${objectLabel}，保存将覆盖原记录。`
     : '保存后可在左侧列表中快速加载。';
   const saveInputDisabled = hasLoadedTable;
 

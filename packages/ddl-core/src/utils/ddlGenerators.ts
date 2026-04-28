@@ -147,6 +147,33 @@ export const buildDDL = (
   return extraBlocks.length > 0 ? `${tableDDL}\n\n${extraBlocks.join('\n\n')}` : tableDDL;
 };
 
+export const buildViewDDL = (
+  dbType: DatabaseType,
+  viewName: string,
+  definition: string,
+  createOrReplace = true,
+) => {
+  const cleanViewName = viewName.trim();
+  const cleanDefinition = definition.trim().replace(/;+\s*$/, '');
+
+  if (!cleanViewName) {
+    return '-- 请填写视图名';
+  }
+  if (!cleanDefinition) {
+    return '-- 请填写视图 SQL';
+  }
+
+  const strategy = DDLStrategyFactory.create(dbType);
+  const keyword =
+    createOrReplace && dbType === 'sqlserver'
+      ? 'CREATE OR ALTER VIEW'
+      : createOrReplace
+        ? 'CREATE OR REPLACE VIEW'
+        : 'CREATE VIEW';
+
+  return `${keyword} ${strategy.formatTableName(cleanViewName)} AS\n${cleanDefinition};`;
+};
+
 export const buildDCL = (
   dbType: DatabaseType,
   tableName: string,

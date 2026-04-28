@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { DatabaseType, SqlFormatMode } from '@ddlbuilder/shared-types';
+import type { DatabaseType, SchemaObjectType, SqlFormatMode } from '@ddlbuilder/shared-types';
 
 type CoreDialogKey = 'save' | 'rename' | 'delete';
 
@@ -22,6 +22,9 @@ interface AppStoreState {
   schemaName: string;
   tableName: string;
   tableComment: string;
+  objectType: SchemaObjectType;
+  viewDefinition: string;
+  viewCreateOrReplace: boolean;
   dbType: DatabaseType;
   sqlFormatMode: SqlFormatMode;
   addCount: number;
@@ -46,6 +49,9 @@ interface AppStoreState {
   setSchemaName: (schemaName: string) => void;
   setTableName: (tableName: string) => void;
   setTableComment: (tableComment: string) => void;
+  setObjectType: (objectType: SchemaObjectType) => void;
+  setViewDefinition: (definition: string) => void;
+  setViewCreateOrReplace: (enabled: boolean) => void;
   setDbType: (dbType: DatabaseType) => void;
   setSqlFormatMode: (mode: SqlFormatMode) => void;
   setAddCount: (count: number) => void;
@@ -77,6 +83,9 @@ export const useAppStore = create<AppStoreState>((set) => ({
   schemaName: '',
   tableName: '',
   tableComment: '',
+  objectType: 'table',
+  viewDefinition: '',
+  viewCreateOrReplace: true,
   dbType: 'mysql',
   sqlFormatMode: 'compact',
   addCount: 10,
@@ -101,6 +110,9 @@ export const useAppStore = create<AppStoreState>((set) => ({
   setSchemaName: (schemaName) => set({ schemaName }),
   setTableName: (tableName) => set({ tableName }),
   setTableComment: (tableComment) => set({ tableComment }),
+  setObjectType: (objectType) => set({ objectType }),
+  setViewDefinition: (viewDefinition) => set({ viewDefinition }),
+  setViewCreateOrReplace: (viewCreateOrReplace) => set({ viewCreateOrReplace }),
   setDbType: (dbType) => set({ dbType }),
   setSqlFormatMode: (sqlFormatMode) => set({ sqlFormatMode }),
   setAddCount: (addCount) => set({ addCount }),
@@ -112,6 +124,9 @@ export const useAppStore = create<AppStoreState>((set) => ({
       schemaName: '',
       tableName: '',
       tableComment: '',
+      objectType: 'table',
+      viewDefinition: '',
+      viewCreateOrReplace: true,
       dbType: 'mysql',
       sqlFormatMode: 'compact',
     }),

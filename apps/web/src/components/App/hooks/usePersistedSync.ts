@@ -14,6 +14,9 @@ interface UsePersistedSyncParams {
   setSchemaName: (name: string) => void;
   setTableName: (name: string) => void;
   setTableComment: (comment: string) => void;
+  setObjectType: (objectType: NonNullable<PersistedState['objectType']>) => void;
+  setViewDefinition: (definition: string) => void;
+  setViewCreateOrReplace: (enabled: boolean) => void;
   setDbType: (dbType: PersistedState['dbType']) => void;
   setSqlFormatMode: (mode: PersistedState['sqlFormatMode']) => void;
   setAddCount: (count: number) => void;
@@ -45,6 +48,9 @@ export function usePersistedSync({
   setSchemaName,
   setTableName,
   setTableComment,
+  setObjectType,
+  setViewDefinition,
+  setViewCreateOrReplace,
   setDbType,
   setSqlFormatMode,
   setAddCount,
@@ -74,6 +80,11 @@ export function usePersistedSync({
     if (typeof persistedState.tableComment === 'string') {
       setTableComment(persistedState.tableComment);
     }
+    setObjectType(persistedState.objectType === 'view' ? 'view' : 'table');
+    setViewDefinition(
+      typeof persistedState.viewDefinition === 'string' ? persistedState.viewDefinition : '',
+    );
+    setViewCreateOrReplace(persistedState.viewCreateOrReplace !== false);
     if (typeof persistedState.dbType === 'string') {
       setDbType(persistedState.dbType);
     }
@@ -114,6 +125,9 @@ export function usePersistedSync({
     setSchemaName,
     setTableName,
     setTableComment,
+    setObjectType,
+    setViewDefinition,
+    setViewCreateOrReplace,
     setDbType,
     setSqlFormatMode,
     setAddCount,

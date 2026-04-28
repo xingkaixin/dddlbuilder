@@ -77,11 +77,17 @@ function App() {
     schemaName,
     tableName,
     tableComment,
+    objectType,
+    viewDefinition,
+    viewCreateOrReplace,
     dbType,
     sqlFormatMode,
     setSchemaName,
     setTableName,
     setTableComment,
+    setObjectType,
+    setViewDefinition,
+    setViewCreateOrReplace,
     setDbType,
     setSqlFormatMode,
     addCount,
@@ -275,9 +281,12 @@ function App() {
     saveInputDisabled,
     tableDiff,
   } = useDerivedTableState({
+    objectType,
     schemaName,
     tableName,
     tableComment,
+    viewDefinition,
+    viewCreateOrReplace,
     dbType,
     sqlFormatMode,
     addCount,
@@ -300,10 +309,13 @@ function App() {
 
   // ─── 5. SQL generation & data hooks ────────────────────────────
   const { generatedSql, generatedDcl, copySql, copyDcl } = useSqlGeneration(
+    objectType,
     dbType,
     schemaName,
     tableName,
     tableComment,
+    viewDefinition,
+    viewCreateOrReplace,
     normalizedFields,
     indexes,
     authObjects,
@@ -478,6 +490,9 @@ function App() {
     setSchemaName,
     setTableName,
     setTableComment,
+    setObjectType,
+    setViewDefinition,
+    setViewCreateOrReplace,
     setDbType,
     setSqlFormatMode,
     setAddCount,
@@ -531,6 +546,9 @@ function App() {
     setSchemaName,
     setTableName,
     setTableComment,
+    setObjectType,
+    setViewDefinition,
+    setViewCreateOrReplace,
     setDbType,
     setSqlFormatMode,
     setAddCount,
@@ -922,10 +940,15 @@ function App() {
                     schemaName,
                     tableName,
                     tableComment,
+                    objectType,
                     dbType,
                     onSchemaNameChange: setSchemaName,
                     onTableNameChange: setTableName,
                     onTableCommentChange: setTableComment,
+                    onObjectTypeChange: (value) => {
+                      setObjectType(value);
+                      setActiveTab('fields');
+                    },
                     onDbTypeChange: handleDbTypeChange,
                     onClearAll: handleClearAll,
                     onSaveTable: handleOpenSaveDialog,
@@ -940,6 +963,7 @@ function App() {
                     loadedTableName,
                     workspaceLabel,
                   }}
+                  objectType={objectType}
                   tabsValue={activeTab}
                   onTabsValueChange={handleTabValueChange}
                   filledRowCount={filledRowCount}
@@ -972,6 +996,12 @@ function App() {
                     onOpenStorageEstimator: handleOpenStorageEstimator,
                     onOpenMockDataGenerator: handleOpenMockDataGenerator,
                     toolbarLeft: dataTableToolbarLeft,
+                  }}
+                  viewDefinitionPanelProps={{
+                    definition: viewDefinition,
+                    createOrReplace: viewCreateOrReplace,
+                    onDefinitionChange: setViewDefinition,
+                    onCreateOrReplaceChange: setViewCreateOrReplace,
                   }}
                   indexPanelProps={{
                     animatingIndexIds: animatingIndexIds,
