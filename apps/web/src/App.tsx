@@ -16,7 +16,13 @@ export {
   TYPE_ALIASES,
 } from '@ddlbuilder/ddl-core';
 
-export { buildDDL, buildDCL, buildOracleSynonyms, buildViewDDL } from '@ddlbuilder/ddl-core';
+export {
+  buildDDL,
+  buildDCL,
+  buildOracleSynonyms,
+  buildViewDDL,
+  buildRoutineTemplateDDL,
+} from '@ddlbuilder/ddl-core';
 
 export {
   normalizeFields,
@@ -67,4 +73,6 @@ export type {
   PersistedState,
   SqlFormatMode,
   TableMiscConfig,
+  RoutineTemplateConfig,
+  RoutineTemplateKind,
 } from '@ddlbuilder/shared-types';

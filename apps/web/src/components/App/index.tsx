@@ -325,6 +325,10 @@ function App() {
     tableMiscConfig,
     foreignKeys,
   );
+  const routineTableNameDefault = useMemo(
+    () => buildQualifiedTableName(schemaName, tableName),
+    [schemaName, tableName],
+  );
 
   const { showToast } = useToast();
 
@@ -1090,6 +1094,7 @@ function App() {
                   generatedSql,
                   generatedDcl,
                   dbType,
+                  routineTableNameDefault,
                   sqlFormatMode,
                   onSqlFormatModeChange: setSqlFormatMode,
                   onCopySql: copySql,

@@ -2,6 +2,7 @@ export * from './strategies/index.js';
 export type { DDLStrategy } from './interfaces/DDLStrategy.js';
 export { DDLStrategyFactory } from './factories/DDLStrategyFactory.js';
 export { buildDDL, buildDCL, buildOracleSynonyms, buildViewDDL } from './utils/ddlGenerators.js';
+export { buildRoutineTemplateDDL } from './utils/routineTemplates.js';
 export { diffPersistedState } from './utils/tableDiff.js';
 export type {
   TableDiff,

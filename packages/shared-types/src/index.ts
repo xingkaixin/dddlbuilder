@@ -79,6 +79,23 @@ export type ParsedFieldType = {
 
 export type SqlFormatMode = 'compact' | 'aligned';
 export type SchemaObjectType = 'table' | 'view';
+export type RoutineTemplateKind =
+  | 'procedure'
+  | 'function'
+  | 'updated_at_trigger'
+  | 'audit_trigger'
+  | 'custom_trigger';
+
+export type RoutineTemplateConfig = {
+  kind: RoutineTemplateKind;
+  routineName: string;
+  tableName?: string;
+  parameters?: string;
+  returnType?: string;
+  body?: string;
+  timestampColumn?: string;
+  auditTableName?: string;
+};
 
 export type UiDefaultKind = '无' | '自增' | '常量' | '当前时间' | 'uuid';
 export type UiOnUpdate = '无' | '当前时间';
