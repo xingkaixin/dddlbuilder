@@ -298,9 +298,20 @@ export function useSaveLoadActions({
     (item: SavedTableSummary) => {
       flushCurrentWorkspace?.();
       setSavedTablesDrawerOpen(false);
+      if (hasLoadedTable && canSaveCurrent) {
+        openSaveDialog(item);
+        return;
+      }
       void handleLoadSavedTable(item);
     },
-    [setSavedTablesDrawerOpen, flushCurrentWorkspace, handleLoadSavedTable],
+    [
+      setSavedTablesDrawerOpen,
+      flushCurrentWorkspace,
+      hasLoadedTable,
+      canSaveCurrent,
+      openSaveDialog,
+      handleLoadSavedTable,
+    ],
   );
 
   const handleOpenSaveDialog = useCallback(() => {

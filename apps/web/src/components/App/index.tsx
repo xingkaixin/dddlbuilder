@@ -1087,8 +1087,10 @@ function App() {
           saveDialog={{
             open: isSaveDialogOpen,
             onOpenChange: handleSaveDialogOpenChange,
-            title: saveDialogTitle,
-            description: saveDialogDescription,
+            title: saveDialog.data.queuedLoadAfterSave ? '加载保存的表' : saveDialogTitle,
+            description: saveDialog.data.queuedLoadAfterSave
+              ? '当前表有未保存修改。保存后会继续加载选中的表。'
+              : saveDialogDescription,
             name: saveName,
             onNameChange: (value) => {
               saveDialog.updateData((prev) => ({

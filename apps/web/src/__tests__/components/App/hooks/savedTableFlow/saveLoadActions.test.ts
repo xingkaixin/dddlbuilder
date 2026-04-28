@@ -302,7 +302,7 @@ describe('useSaveLoadActions', () => {
     expect(saveDialog.closeDialog).toHaveBeenCalledTimes(1);
   });
 
-  it('handleSelectSavedTable always loads the target without confirmation', async () => {
+  it('handleSelectSavedTable asks to save dirty loaded table before loading target', async () => {
     const target = { normalizedName: 'pending_norm', name: 'pending' };
     loadTable.mockResolvedValue({
       normalizedName: 'pending_norm',
@@ -318,6 +318,10 @@ describe('useSaveLoadActions', () => {
 
     expect(flushCurrentWorkspace).toHaveBeenCalled();
     expect(setSavedTablesDrawerOpen).toHaveBeenCalledWith(false);
-    expect(loadTable).toHaveBeenCalledWith('pending_norm');
+    expect(saveDialog.openDialog).toHaveBeenCalledWith({
+      name: 'default_name',
+      queuedLoadAfterSave: target,
+    });
+    expect(loadTable).not.toHaveBeenCalled();
   });
 });

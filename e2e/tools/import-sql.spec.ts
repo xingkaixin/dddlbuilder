@@ -18,8 +18,7 @@ test.describe('SQL 导入功能验证 @tools', () => {
   });
 
   test('场景：导入建表 SQL 并回填 UI', async ({ page }) => {
-    // 点击“导入 SQL”按钮 (在 Header 中)
-    await page.getByRole('button', { name: /导入\s*SQL/i }).click();
+    await page.getByRole('button', { name: /导入结构/i }).click();
 
     // 填写 SQL 到导入文本框
     const sqlInput = page.locator('#sql-content');

@@ -118,12 +118,8 @@ test.describe('保存表管理补充 @storage', () => {
     await clickSavedTable(page, new RegExp(tableA, 'i'));
     await expect(page.getByText(new RegExp(`当前：${tableA}`))).toBeVisible();
 
-    const nameCell = page.locator(
-      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
-    );
-    await nameCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('id_changed');
-    await page.keyboard.press('Enter');
+    await page.locator('#table-comment').fill('dirty load check');
+    await expect(page.getByText('已修改')).toBeVisible();
 
     await openSavedTables(page);
     await clickSavedTable(page, new RegExp(tableB, 'i'));
