@@ -1,5 +1,5 @@
-import { memo, useCallback, useEffect, useState } from 'react';
-import { History, RotateCcw, GitCompare, Trash2, Loader2 } from 'lucide-react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { History, RotateCcw, GitCompare, Trash2, Loader2, Play } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -19,10 +19,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import type { TableVersionMetadata } from '@/utils/savedTablesDb';
+import type { TableVersion } from '@/utils/savedTablesDb';
 import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { TableDiff } from '@ddlbuilder/ddl-core';
+import { diffPersistedState } from '@ddlbuilder/ddl-core';
 import {
-  listVersionMetadata,
+  listVersions,
   getVersion,
   deleteVersion,
   INITIAL_VERSION_MESSAGE_KEY,
@@ -38,6 +40,7 @@ interface VersionHistoryDialogProps {
   tableName: string | null;
   onRollback?: (state: PersistedState) => void;
   onCompare?: (oldState: PersistedState, newState: PersistedState) => void;
+  onPlayTimeline?: () => void;
   currentState?: PersistedState | null;
 }
 
@@ -67,16 +70,49 @@ function formatDate(
   });
 }
 
+function buildDiffSummary(diff: TableDiff | null): string {
+  if (!diff || !diff.hasChanges) return '';
+  const parts: string[] = [];
+  const addedFields = diff.fields.filter((f) => f.type === 'add').length;
+  const removedFields = diff.fields.filter((f) => f.type === 'remove').length;
+  const modifiedFields = diff.fields.filter(
+    (f) => f.type === 'modify' || f.type === 'rename',
+  ).length;
+  const addedIndexes = diff.indexes.filter((i) => i.type === 'add').length;
+  const removedIndexes = diff.indexes.filter((i) => i.type === 'remove').length;
+
+  if (addedFields > 0) parts.push(`+${addedFields} 字段`);
+  if (removedFields > 0) parts.push(`-${removedFields} 字段`);
+  if (modifiedFields > 0) parts.push(`~${modifiedFields} 字段`);
+  if (addedIndexes > 0) parts.push(`+${addedIndexes} 索引`);
+  if (removedIndexes > 0) parts.push(`-${removedIndexes} 索引`);
+  if (diff.tableNameChanged) parts.push('表名变更');
+  if (diff.tableCommentChanged) parts.push('注释变更');
+  if (diff.miscConfigChanged) parts.push('杂项变更');
+
+  return parts.join(', ');
+}
+
 export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
-  ({ open, onOpenChange, tableNormalizedName, tableName, onRollback, onCompare, currentState }) => {
+  ({
+    open,
+    onOpenChange,
+    tableNormalizedName,
+    tableName,
+    onRollback,
+    onCompare,
+    onPlayTimeline,
+    currentState,
+  }) => {
     const { t } = useTranslation();
     const { resolvedLocale } = useLocale();
     const { showToast } = useToast();
-    const [versions, setVersions] = useState<TableVersionMetadata[]>([]);
+    const [versions, setVersions] = useState<TableVersion[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
     const resolveVersionMessage = useCallback(
       (message?: string | null) => {
         if (!message) return '';
@@ -92,12 +128,13 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
       [t],
     );
 
-    // 加载版本列表
+    // 加载版本列表（完整版本，用于计算 diff）
     const loadVersions = useCallback(async () => {
       if (!tableNormalizedName) return;
       setLoading(true);
       try {
-        const list = await listVersionMetadata(tableNormalizedName);
+        const list = await listVersions(tableNormalizedName);
+        // listVersions 返回倒序，保持倒序（最新在前）用于时间轴展示
         setVersions(list);
         if (list.length > 0 && !selectedId) {
           setSelectedId(list[0].id);
@@ -115,6 +152,19 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
         setSelectedId(null);
       }
     }, [open, tableNormalizedName, loadVersions]);
+
+    // 预计算相邻版本之间的 diff（时间轴上每个节点 vs 它的下一个/更老的版本）
+    const versionDiffs = useMemo(() => {
+      const diffs: (TableDiff | null)[] = [];
+      for (let i = 0; i < versions.length; i++) {
+        if (i < versions.length - 1) {
+          diffs.push(diffPersistedState(versions[i + 1].state, versions[i].state));
+        } else {
+          diffs.push(null);
+        }
+      }
+      return diffs;
+    }, [versions]);
 
     // 回滚到选中版本
     const handleRollback = useCallback(async () => {
@@ -177,7 +227,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
               </DialogDescription>
             </DialogHeader>
 
-            <div className="flex max-h-[50vh] flex-col gap-3 overflow-y-auto overscroll-contain pr-1">
+            <div className="flex max-h-[50vh] flex-col overflow-y-auto overscroll-contain pr-1">
               {loading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -187,74 +237,121 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                   {t('versionHistory.empty')}
                 </div>
               ) : (
-                versions.map((v, index) => (
-                  <div key={v.id} className="group relative">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedId(v.id)}
-                      className={cn(
-                        'flex w-full items-start gap-3 rounded-lg border p-3 pr-12 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                        selectedId === v.id
-                          ? 'border-primary bg-primary/5'
-                          : 'border-transparent bg-muted/30 hover:bg-muted/50',
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          'mt-1 h-2.5 w-2.5 shrink-0 rounded-full',
-                          index === 0 ? 'bg-green-500' : 'bg-muted-foreground/30',
-                        )}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">v{versions.length - index}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDate(v.createdAt, resolvedLocale, (time) =>
-                              t('reviewHistory.today', {
-                                time,
-                              }),
-                            )}
-                          </span>
-                          {index === 0 && (
-                            <span className="rounded bg-green-500/10 px-1.5 py-0.5 text-xs text-green-600">
-                              {t('versionHistory.latest')}
-                            </span>
+                <div className="relative pl-4">
+                  {/* 时间轴线 */}
+                  <div className="absolute bottom-3 left-[11px] top-3 w-px bg-border" />
+
+                  {versions.map((v, index) => {
+                    const isSelected = selectedId === v.id;
+                    const isLatest = index === 0;
+                    const isInitial = index === versions.length - 1;
+                    const diff = versionDiffs[index];
+                    const diffSummary = buildDiffSummary(diff);
+
+                    return (
+                      <div key={v.id} className="group relative mb-1">
+                        {/* 时间节点圆点 */}
+                        <div
+                          className={cn(
+                            'absolute left-0 top-3 z-10 h-2.5 w-2.5 rounded-full border-2',
+                            isSelected
+                              ? 'border-primary bg-primary'
+                              : isLatest
+                                ? 'border-green-500 bg-green-500'
+                                : 'border-muted-foreground/40 bg-background',
                           )}
-                        </div>
-                        {resolveVersionMessage(v.message) && (
-                          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                            {resolveVersionMessage(v.message)}
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(v.id)}
+                          className={cn(
+                            'ml-5 flex w-full flex-col gap-1 rounded-lg border p-3 pr-10 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                            isSelected
+                              ? 'border-primary bg-primary/5'
+                              : 'border-transparent bg-muted/30 hover:bg-muted/50',
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">
+                              v{versions.length - index}
+                              {isLatest && (
+                                <span className="ml-1.5 rounded bg-green-500/10 px-1.5 py-0.5 text-[10px] text-green-600">
+                                  {t('versionHistory.latest')}
+                                </span>
+                              )}
+                              {isInitial && (
+                                <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                  {t('versionHistory.initialVersion')}
+                                </span>
+                              )}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {formatDate(v.createdAt, resolvedLocale, (time) =>
+                                t('reviewHistory.today', { time }),
+                              )}
+                            </span>
+                          </div>
+
+                          {resolveVersionMessage(v.message) && (
+                            <p className="truncate text-xs text-muted-foreground">
+                              {resolveVersionMessage(v.message)}
+                            </p>
+                          )}
+
+                          <p className="text-xs text-muted-foreground">
+                            {v.state.rows?.filter((r) => r.fieldName?.trim()).length || 0}{' '}
+                            {t('versionHistory.fieldCount', {
+                              count: v.state.rows?.filter((r) => r.fieldName?.trim()).length || 0,
+                            }).replace(/\d+\s*/, '')}{' '}
+                            · {v.state.dbType.toUpperCase()}
                           </p>
-                        )}
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {t('versionHistory.fieldCount', {
-                            count: v.fieldCount,
-                          })}{' '}
-                          · {v.dbType.toUpperCase()}
-                        </p>
+
+                          {diffSummary && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                              {diffSummary}
+                            </p>
+                          )}
+                        </button>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-1 top-2 h-7 w-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirmId(v.id);
+                          }}
+                          aria-label={t('versionHistory.deleteAria', {
+                            version: versions.length - index,
+                          })}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                        </Button>
                       </div>
-                    </button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-3 top-3 h-7 w-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteConfirmId(v.id);
-                      }}
-                      aria-label={t('versionHistory.deleteAria', {
-                        version: versions.length - index,
-                      })}
-                    >
-                      <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
-                  </div>
-                ))
+                    );
+                  })}
+                </div>
               )}
             </div>
 
             {versions.length > 0 && (
               <div className="flex items-center justify-end gap-2 border-t pt-3">
+                {onPlayTimeline && versions.length >= 2 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={actionLoading}
+                    onClick={() => {
+                      onOpenChange(false);
+                      onPlayTimeline();
+                    }}
+                    className="h-7 gap-1.5 px-2 text-xs font-medium"
+                  >
+                    <Play className="h-3.5 w-3.5" />
+                    {t('versionHistory.playTimeline')}
+                  </Button>
+                )}
                 {onCompare && currentState && (
                   <Button
                     variant="outline"

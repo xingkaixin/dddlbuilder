@@ -23,6 +23,7 @@ import { TableTemplateManagerDialog } from '../TableTemplateManagerDialog';
 import { CreateTableTemplateDialog } from '../CreateTableTemplateDialog';
 import { CreateTemplateDialog } from '../CreateTemplateDialog';
 import { VersionHistoryDialog } from '../VersionHistoryDialog';
+import { SchemaTimelinePlayer } from '../SchemaTimelinePlayer';
 import { useTranslation } from 'react-i18next';
 
 interface GlobalDialogsProps {
@@ -66,6 +67,7 @@ interface GlobalDialogsProps {
   createTableTemplateDialogProps: ComponentProps<typeof CreateTableTemplateDialog>;
   diffDialogProps: ComponentProps<typeof DiffDialog>;
   versionHistoryDialogProps: ComponentProps<typeof VersionHistoryDialog>;
+  timelinePlayerProps: ComponentProps<typeof SchemaTimelinePlayer>;
   reviewHistoryDialogProps: ComponentProps<typeof ReviewHistoryDialog>;
   aiGenerateDialogProps: ComponentProps<typeof AIGenerateDialog>;
   storageEstimatorDialogProps: ComponentProps<typeof StorageEstimatorDialog>;
@@ -86,6 +88,7 @@ export function GlobalDialogs({
   createTableTemplateDialogProps,
   diffDialogProps,
   versionHistoryDialogProps,
+  timelinePlayerProps,
   reviewHistoryDialogProps,
   aiGenerateDialogProps,
   storageEstimatorDialogProps,
@@ -137,6 +140,7 @@ export function GlobalDialogs({
       <CreateTableTemplateDialog {...createTableTemplateDialogProps} />
       <DiffDialog {...diffDialogProps} />
       <VersionHistoryDialog {...versionHistoryDialogProps} />
+      <SchemaTimelinePlayer {...timelinePlayerProps} />
       <ReviewHistoryDialog {...reviewHistoryDialogProps} />
       <AIGenerateDialog {...aiGenerateDialogProps} />
 

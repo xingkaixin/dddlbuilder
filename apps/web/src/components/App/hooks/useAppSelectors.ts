@@ -72,6 +72,10 @@ export function useAppSelectors() {
   const setIsAIGenerateDialogOpen = useAppStore((s) => s.setIsAIGenerateDialogOpen);
   const isMockDataDialogOpen = useAppStore((s) => s.isMockDataDialogOpen);
   const setIsMockDataDialogOpen = useAppStore((s) => s.setIsMockDataDialogOpen);
+  const isTimelinePlayerOpen = useAppStore((s) => s.isTimelinePlayerOpen);
+  const setIsTimelinePlayerOpen = useAppStore((s) => s.setIsTimelinePlayerOpen);
+  const timelinePlayerTarget = useAppStore((s) => s.timelinePlayerTarget);
+  const setTimelinePlayerTarget = useAppStore((s) => s.setTimelinePlayerTarget);
 
   // --- Field store ---
   const rows = useFieldStore((s) => s.rows);
@@ -164,6 +168,10 @@ export function useAppSelectors() {
     setIsAIGenerateDialogOpen,
     isMockDataDialogOpen,
     setIsMockDataDialogOpen,
+    isTimelinePlayerOpen,
+    setIsTimelinePlayerOpen,
+    timelinePlayerTarget,
+    setTimelinePlayerTarget,
     // Field store
     rows,
     setRows,

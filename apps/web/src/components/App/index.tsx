@@ -133,6 +133,10 @@ function App() {
     setIsAIGenerateDialogOpen,
     isMockDataDialogOpen,
     setIsMockDataDialogOpen,
+    isTimelinePlayerOpen,
+    setIsTimelinePlayerOpen,
+    timelinePlayerTarget,
+    setTimelinePlayerTarget,
     rows,
     setRows,
     initializeRows,
@@ -831,6 +835,13 @@ function App() {
     ],
   );
 
+  const handlePlayTimeline = useCallback(() => {
+    if (versionHistoryTarget) {
+      setTimelinePlayerTarget(versionHistoryTarget);
+      setIsTimelinePlayerOpen(true);
+    }
+  }, [versionHistoryTarget, setTimelinePlayerTarget, setIsTimelinePlayerOpen]);
+
   const handleDbTypeChange = useCallback(
     (newDbType: DatabaseType) => {
       setDbType(newDbType);
@@ -1239,6 +1250,13 @@ function App() {
               void trackEvent('table_version_rollback');
               showToast(t('app.rollbackDone'));
             },
+            onPlayTimeline: handlePlayTimeline,
+          }}
+          timelinePlayerProps={{
+            open: isTimelinePlayerOpen,
+            onOpenChange: setIsTimelinePlayerOpen,
+            tableNormalizedName: timelinePlayerTarget?.normalizedName ?? null,
+            tableName: timelinePlayerTarget?.name ?? null,
           }}
           reviewHistoryDialogProps={{
             open: isReviewHistoryOpen,

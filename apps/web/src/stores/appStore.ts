@@ -45,6 +45,8 @@ interface AppStoreState {
   isStorageEstimatorOpen: boolean;
   isAIGenerateDialogOpen: boolean;
   isMockDataDialogOpen: boolean;
+  isTimelinePlayerOpen: boolean;
+  timelinePlayerTarget: VersionHistoryTarget | null;
 
   setSchemaName: (schemaName: string) => void;
   setTableName: (tableName: string) => void;
@@ -77,6 +79,8 @@ interface AppStoreState {
   setIsStorageEstimatorOpen: (open: boolean) => void;
   setIsAIGenerateDialogOpen: (open: boolean) => void;
   setIsMockDataDialogOpen: (open: boolean) => void;
+  setIsTimelinePlayerOpen: (open: boolean) => void;
+  setTimelinePlayerTarget: (target: VersionHistoryTarget | null) => void;
 }
 
 export const useAppStore = create<AppStoreState>((set) => ({
@@ -106,6 +110,8 @@ export const useAppStore = create<AppStoreState>((set) => ({
   isStorageEstimatorOpen: false,
   isAIGenerateDialogOpen: false,
   isMockDataDialogOpen: false,
+  isTimelinePlayerOpen: false,
+  timelinePlayerTarget: null,
 
   setSchemaName: (schemaName) => set({ schemaName }),
   setTableName: (tableName) => set({ tableName }),
@@ -164,4 +170,6 @@ export const useAppStore = create<AppStoreState>((set) => ({
   setIsStorageEstimatorOpen: (isStorageEstimatorOpen) => set({ isStorageEstimatorOpen }),
   setIsAIGenerateDialogOpen: (isAIGenerateDialogOpen) => set({ isAIGenerateDialogOpen }),
   setIsMockDataDialogOpen: (isMockDataDialogOpen) => set({ isMockDataDialogOpen }),
+  setIsTimelinePlayerOpen: (isTimelinePlayerOpen) => set({ isTimelinePlayerOpen }),
+  setTimelinePlayerTarget: (timelinePlayerTarget) => set({ timelinePlayerTarget }),
 }));

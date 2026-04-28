@@ -43,6 +43,10 @@ vi.mock('@/components/App/VersionHistoryDialog', () => ({
   VersionHistoryDialog: () => null,
 }));
 
+vi.mock('@/components/App/SchemaTimelinePlayer', () => ({
+  SchemaTimelinePlayer: () => null,
+}));
+
 vi.mock('@/components/App/MockDataDialog', () => ({
   MockDataDialog: () => null,
 }));
@@ -144,6 +148,17 @@ function createProps(): Parameters<typeof GlobalDialogs>[0] {
       schemaName: '',
       dbType: 'mysql',
       fields: [],
+    } as any,
+    timelinePlayerProps: {
+      open: false,
+      onOpenChange: vi.fn(),
+      tableNormalizedName: null,
+      tableName: null,
+    } as any,
+    erDiagramDialogProps: {
+      open: false,
+      onOpenChange: vi.fn(),
+      onSelectTable: vi.fn(),
     } as any,
   };
 }
