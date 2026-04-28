@@ -70,6 +70,24 @@
     --destructive-foreground: 0 0% 100%;
 
     --ring: 14.7692 63.1068% 59.6078%;
+
+    /* React Flow dark mode overrides */
+    --xy-edge-stroke: hsl(var(--muted-foreground) / 0.5);
+    --xy-edge-stroke-selected: hsl(var(--primary));
+    --xy-node-background-color-default: hsl(var(--card));
+    --xy-node-border-default: hsl(var(--border));
+    --xy-handle-background-color-default: hsl(var(--primary));
+    --xy-handle-border-color-default: hsl(var(--background));
+  }
+
+  /* React Flow light mode overrides */
+  :root {
+    --xy-edge-stroke: hsl(var(--muted-foreground) / 0.5);
+    --xy-edge-stroke-selected: hsl(var(--primary));
+    --xy-node-background-color-default: hsl(var(--card));
+    --xy-node-border-default: hsl(var(--border));
+    --xy-handle-background-color-default: hsl(var(--primary));
+    --xy-handle-border-color-default: hsl(var(--background));
   }
 
   * {

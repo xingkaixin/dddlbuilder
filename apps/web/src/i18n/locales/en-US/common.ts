@@ -1213,6 +1213,25 @@ export const enUSCommon = {
     title: 'ER Diagram',
     noTables: 'No saved tables yet',
     tableLoaded: 'Selected table loaded',
+    addTablePrompt: 'Enter new table name',
+    toolbar: {
+      addTable: 'Add Table',
+      zoomIn: 'Zoom In',
+      zoomOut: 'Zoom Out',
+      fitView: 'Fit View',
+      autoLayout: 'Auto Layout',
+    },
+    fkCreate: {
+      title: 'Create Foreign Key',
+      selfReference: 'Self-reference not allowed',
+      success: 'Foreign key created successfully',
+    },
+    toast: {
+      tableSaved: 'Table saved',
+      tableDuplicate: 'Table name already exists',
+      tableSaveFailed: 'Failed to save table',
+      fkDeleted: 'Foreign key deleted',
+    },
   },
   enumEditor: {
     title: 'Edit Enum Values',

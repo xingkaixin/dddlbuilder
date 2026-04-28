@@ -217,3 +217,4 @@ export type {
   ConversationMessage,
   PartialTableSchema,
 } from './aiGenerate.js';
+export type { ErNodeData, ErEdgeData } from './erDiagram.js';

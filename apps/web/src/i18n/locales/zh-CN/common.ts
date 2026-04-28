@@ -1187,6 +1187,25 @@ export const zhCNCommon = {
     title: 'ER 关系图',
     noTables: '暂无已保存的表',
     tableLoaded: '已加载选中的表',
+    addTablePrompt: '请输入新表名',
+    toolbar: {
+      addTable: '新建表',
+      zoomIn: '放大',
+      zoomOut: '缩小',
+      fitView: '适应视图',
+      autoLayout: '自动布局',
+    },
+    fkCreate: {
+      title: '创建外键',
+      selfReference: '不能自引用',
+      success: '外键创建成功',
+    },
+    toast: {
+      tableSaved: '表已保存',
+      tableDuplicate: '表名已存在',
+      tableSaveFailed: '保存失败',
+      fkDeleted: '外键已删除',
+    },
   },
   enumEditor: {
     title: '编辑枚举值',

@@ -1296,6 +1296,7 @@ function App() {
             open: isErDialogOpen,
             onOpenChange: setIsErDialogOpen,
             onSelectTable: handleSelectTableFromEr,
+            saveTable,
           }}
         />
       </div>
