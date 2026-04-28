@@ -17,7 +17,8 @@
   },
   "dependencies": {
     "@ddlbuilder/ddl-core": "workspace:*",
-    "@ddlbuilder/shared-types": "workspace:*"
+    "@ddlbuilder/shared-types": "workspace:*",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@ddlbuilder/tsconfig": "workspace:*"

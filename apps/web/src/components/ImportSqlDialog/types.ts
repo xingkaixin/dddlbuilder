@@ -4,6 +4,8 @@ export type ImportMode = 'workspace' | 'saved';
 
 export type ConflictStrategy = 'skip' | 'overwrite' | 'rename';
 
+export type ImportSourceType = 'sql' | 'csv' | 'excel' | 'json';
+
 export type WorkspaceStep = 'validate' | 'preview' | 'confirm';
 
 export type SavedStep = 'validate' | 'select' | 'save';

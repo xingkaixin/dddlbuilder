@@ -15,6 +15,7 @@ import type { ParsedResult } from '@/utils/SqlParser';
 import { useToast } from '@/hooks/useToast';
 import { requestSqlParse, requestMultiSqlParse } from '@/services/sqlParseService';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
+import { parseExcelImport, parseStructuredImportText } from '@/utils/structuredImportParser';
 import { ArrowRight, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { SavedTableSummary, SaveTableResult } from '@/hooks/useSavedTables';
@@ -27,6 +28,7 @@ import { SaveConfigStep } from './SaveConfigStep';
 import type {
   ImportMode,
   ConflictStrategy,
+  ImportSourceType,
   ParsedTableItem,
   PreviewField,
   ValidationResult,
@@ -52,6 +54,7 @@ interface ImportSqlDialogProps {
 }
 
 const MAX_SQL_LENGTH = 50_000;
+const MAX_TEXT_LENGTH = 200_000;
 
 export function ImportSqlDialog({
   currentDbType,
@@ -76,7 +79,9 @@ export function ImportSqlDialog({
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<ImportStep>('validate');
   const [importMode, setImportMode] = useState<ImportMode>('workspace');
+  const [sourceType, setSourceType] = useState<ImportSourceType>('sql');
   const [sql, setSql] = useState('');
+  const [file, setFile] = useState<File | null>(null);
   const [selectedDbType, setSelectedDbType] = useState<DatabaseType>(currentDbType);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
@@ -99,11 +104,19 @@ export function ImportSqlDialog({
     [savedTables],
   );
 
+  const handleSourceTypeChange = useCallback((nextSourceType: ImportSourceType) => {
+    setSourceType(nextSourceType);
+    setFile(null);
+    setValidationResult(null);
+  }, []);
+
   useEffect(() => {
     if (!open) {
       setStep('validate');
       setImportMode('workspace');
+      setSourceType('sql');
       setSql('');
+      setFile(null);
       setParsedResult(null);
       setValidationResult(null);
       setPreviewFields([]);
@@ -115,18 +128,57 @@ export function ImportSqlDialog({
     }
   }, [open]);
 
-  const validateSqlForWorkspace = useCallback(async () => {
+  const buildStructuredTables = useCallback(async (): Promise<ParsedResult[]> => {
+    if (sourceType === 'excel') {
+      if (!file) throw new Error(t('importSql.file.required'));
+      return parseExcelImport(file);
+    }
+
+    const content = file ? await file.text() : sql.trim();
+    if (!content.trim()) throw new Error(t('importSql.sqlRequired'));
+
+    return parseStructuredImportText(
+      sourceType === 'json' ? 'json' : 'csv',
+      content,
+      file?.name ?? 'imported_table',
+    );
+  }, [file, sourceType, sql, t]);
+
+  const buildPreviewFields = useCallback((result: ParsedResult): PreviewField[] => {
+    return result.fields.map((field, index) => ({
+      order: index + 1,
+      fieldName: field.name,
+      fieldType: field.type,
+      fieldComment: field.comment,
+      nullable: field.nullable ? '是' : '否',
+      defaultKind:
+        field.defaultKind === 'none'
+          ? '无'
+          : field.defaultKind === 'auto_increment'
+            ? '自增'
+            : field.defaultKind === 'constant'
+              ? '常量'
+              : field.defaultKind === 'current_timestamp'
+                ? '当前时间'
+                : 'uuid',
+      defaultValue: field.defaultValue || '-',
+    }));
+  }, []);
+
+  const validateForWorkspace = useCallback(async () => {
     setIsValidating(true);
     setValidationResult(null);
 
     try {
-      const trimmedSql = sql.trim();
-      const result = await requestSqlParse({
-        sql: trimmedSql,
-        dbType: selectedDbType,
-      });
+      const result =
+        sourceType === 'sql'
+          ? await requestSqlParse({
+              sql: sql.trim(),
+              dbType: selectedDbType,
+            })
+          : (await buildStructuredTables())[0];
 
-      if (result.fields.length === 0 && result.tableName === '') {
+      if (!result || (result.fields.length === 0 && result.tableName === '')) {
         setValidationResult({
           success: false,
           error: t('importSql.sqlNoTable'),
@@ -136,47 +188,35 @@ export function ImportSqlDialog({
 
       setValidationResult({ success: true });
       setParsedResult(result);
-
-      const fields: PreviewField[] = result.fields.map((field, index) => ({
-        order: index + 1,
-        fieldName: field.name,
-        fieldType: field.type,
-        fieldComment: field.comment,
-        nullable: field.nullable ? '是' : '否',
-        defaultKind:
-          field.defaultKind === 'none'
-            ? '无'
-            : field.defaultKind === 'auto_increment'
-              ? '自增'
-              : field.defaultKind === 'constant'
-                ? '常量'
-                : field.defaultKind === 'current_timestamp'
-                  ? '当前时间'
-                  : 'uuid',
-        defaultValue: field.defaultValue || '-',
-      }));
-      setPreviewFields(fields);
+      setPreviewFields(buildPreviewFields(result));
       setStep('preview');
-    } catch {
+    } catch (err) {
       setValidationResult({
         success: false,
-        error: t('importSql.sqlParseFailed'),
+        error:
+          sourceType === 'sql'
+            ? t('importSql.sqlParseFailed')
+            : err instanceof Error
+              ? err.message
+              : t('importSql.sqlParseFailed'),
       });
     } finally {
       setIsValidating(false);
     }
-  }, [sql, selectedDbType, t]);
+  }, [sourceType, sql, selectedDbType, buildStructuredTables, buildPreviewFields, t]);
 
-  const validateSqlForSaved = useCallback(async () => {
+  const validateForSaved = useCallback(async () => {
     setIsValidating(true);
     setValidationResult(null);
 
     try {
-      const trimmedSql = sql.trim();
-      const { results, failed } = await requestMultiSqlParse({
-        sql: trimmedSql,
-        dbType: selectedDbType,
-      });
+      const { results, failed } =
+        sourceType === 'sql'
+          ? await requestMultiSqlParse({
+              sql: sql.trim(),
+              dbType: selectedDbType,
+            })
+          : { results: await buildStructuredTables(), failed: [] };
 
       if (results.length === 0) {
         setValidationResult({
@@ -203,11 +243,12 @@ export function ImportSqlDialog({
     } finally {
       setIsValidating(false);
     }
-  }, [sql, selectedDbType, savedTableNames, t]);
+  }, [sourceType, sql, selectedDbType, buildStructuredTables, savedTableNames, t]);
 
   const validateAndAdvance = useCallback(() => {
     const trimmedSql = sql.trim();
-    if (!trimmedSql) {
+    const needsText = sourceType !== 'excel' && !file;
+    if (needsText && !trimmedSql) {
       setValidationResult({
         success: false,
         error: t('importSql.sqlRequired'),
@@ -215,22 +256,40 @@ export function ImportSqlDialog({
       });
       return;
     }
-    if (trimmedSql.length > MAX_SQL_LENGTH) {
+    if (sourceType === 'excel' && !file) {
+      setValidationResult({
+        success: false,
+        error: t('importSql.file.required'),
+        lineNumber: 1,
+      });
+      return;
+    }
+    const maxLength = sourceType === 'sql' ? MAX_SQL_LENGTH : MAX_TEXT_LENGTH;
+    if (trimmedSql.length > maxLength) {
       setValidationResult({
         success: false,
         error: t('importSql.sqlTooLong', {
-          max: MAX_SQL_LENGTH.toLocaleString(),
+          max: maxLength.toLocaleString(),
         }),
         lineNumber: 1,
       });
       return;
     }
     if (importMode === 'saved' && batchImportSupported) {
-      void validateSqlForSaved();
+      void validateForSaved();
       return;
     }
-    void validateSqlForWorkspace();
-  }, [sql, importMode, batchImportSupported, validateSqlForSaved, validateSqlForWorkspace, t]);
+    void validateForWorkspace();
+  }, [
+    sql,
+    sourceType,
+    file,
+    importMode,
+    batchImportSupported,
+    validateForSaved,
+    validateForWorkspace,
+    t,
+  ]);
 
   const handleNext = () => {
     if (step === 'validate') {
@@ -417,7 +476,7 @@ export function ImportSqlDialog({
 
   const canGoNext =
     step === 'validate'
-      ? sql.trim().length > 0 && !isValidating
+      ? (sourceType === 'excel' ? Boolean(file) : Boolean(file || sql.trim())) && !isValidating
       : step === 'select'
         ? selectedTables.length > 0
         : true;
@@ -486,8 +545,12 @@ export function ImportSqlDialog({
             <SqlInputStep
               selectedDbType={selectedDbType}
               onDbTypeChange={setSelectedDbType}
+              sourceType={sourceType}
+              onSourceTypeChange={handleSourceTypeChange}
               sql={sql}
               onSqlChange={setSql}
+              file={file}
+              onFileChange={setFile}
               validationResult={validationResult}
               importMode={batchImportSupported ? importMode : undefined}
               onImportModeChange={batchImportSupported ? setImportMode : undefined}
