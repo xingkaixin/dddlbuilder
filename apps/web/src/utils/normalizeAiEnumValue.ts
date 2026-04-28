@@ -95,6 +95,14 @@ export function normalizeGeneratedTableSchema(schema: GeneratedTableSchema): Gen
     schemaName: normalizedName.schema || undefined,
     tableName: normalizedName.table,
     fields: Array.isArray(schema.fields) ? schema.fields.map(normalizeGeneratedField) : [],
+    designDecisions: Array.isArray(schema.designDecisions)
+      ? schema.designDecisions.filter(
+          (decision) =>
+            decision &&
+            typeof decision.title === 'string' &&
+            typeof decision.rationale === 'string',
+        )
+      : undefined,
   };
 }
 

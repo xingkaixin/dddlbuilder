@@ -1,4 +1,5 @@
 import type {
+  GeneratedDesignDecision,
   GeneratedField,
   GeneratedIndex,
   PartialTableSchema,
@@ -64,12 +65,26 @@ export function parsePartialTableSchema(text: string): PartialTableSchema | null
     }
   }
 
+  const designDecisionsStart = text.indexOf('"designDecisions"');
+  if (designDecisionsStart !== -1) {
+    const afterDesignDecisions = text.slice(designDecisionsStart);
+    const arrayStart = afterDesignDecisions.indexOf('[');
+
+    if (arrayStart !== -1) {
+      const arrayContent = afterDesignDecisions.slice(arrayStart + 1);
+      result.designDecisions = extractArrayObjects(
+        arrayContent,
+      ) as unknown as GeneratedDesignDecision[];
+    }
+  }
+
   // Return null if nothing was extracted
   if (
     result.tableName === undefined &&
     result.tableComment === undefined &&
     result.fields === undefined &&
-    result.indexes === undefined
+    result.indexes === undefined &&
+    result.designDecisions === undefined
   ) {
     return null;
   }
@@ -228,6 +243,16 @@ function normalizeTableSchema(result: unknown): PartialTableSchema | null {
         typeof idx === 'object' &&
         idx !== null &&
         typeof (idx as Record<string, unknown>).name === 'string',
+    );
+  }
+
+  if (Array.isArray(obj.designDecisions)) {
+    normalized.designDecisions = obj.designDecisions.filter(
+      (decision): decision is GeneratedDesignDecision =>
+        typeof decision === 'object' &&
+        decision !== null &&
+        typeof (decision as Record<string, unknown>).title === 'string' &&
+        typeof (decision as Record<string, unknown>).rationale === 'string',
     );
   }
 

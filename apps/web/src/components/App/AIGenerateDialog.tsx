@@ -285,6 +285,22 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                   </div>
                 )}
 
+                {displayResult.designDecisions && displayResult.designDecisions.length > 0 && (
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {t('aiGenerate.designDecisions')}
+                    </span>
+                    <div className="grid gap-1.5 text-xs">
+                      {displayResult.designDecisions.map((decision, i) => (
+                        <div key={i} className="rounded bg-muted/50 px-2 py-1.5">
+                          <div className="font-medium text-foreground">{decision.title}</div>
+                          <div className="mt-0.5 text-muted-foreground">{decision.rationale}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {isLoading && (
                   <output
                     aria-live="polite"

@@ -28,6 +28,12 @@ const SYSTEM_PROMPT_TEMPLATES: Record<AppLocale, string> = {
       "fields": [{ "name": "字段名", "direction": "ASC" | "DESC" }],
       "unique": true | false
     }
+  ],
+  "designDecisions": [
+    {
+      "title": "设计点标题",
+      "rationale": "说明该字段组、主键或索引为什么这样设计"
+    }
   ]
 }
 
@@ -37,7 +43,8 @@ const SYSTEM_PROMPT_TEMPLATES: Record<AppLocale, string> = {
 3. 主键字段的 isPrimaryKey 设为 true
 4. 建议包含 created_at 和 updated_at 审计字段
 5. schemaName 为可选字段，没有时返回空字符串或省略
-6. 只返回 JSON，不要有其他描述文字`,
+6. designDecisions 应解释关键建模决策，例如主键策略、状态字段、快照字段、金额字段和索引依据
+7. 只返回 JSON，不要有其他描述文字`,
   'en-US': `You are a senior database architect. Generate a table schema that follows {{DB}} syntax based on the user's natural-language request.
 {{TEMPLATE_CONTEXT}}{{EXISTING_CONTEXT}}
 
@@ -64,6 +71,12 @@ Return JSON only, in this format:
       "fields": [{ "name": "field name", "direction": "ASC" | "DESC" }],
       "unique": true | false
     }
+  ],
+  "designDecisions": [
+    {
+      "title": "decision title",
+      "rationale": "explain why this field group, primary key, or index is designed this way"
+    }
   ]
 }
 
@@ -73,7 +86,8 @@ Notes:
 3. Set isPrimaryKey=true for primary-key fields.
 4. Prefer including created_at and updated_at audit fields.
 5. schemaName is optional; return an empty string or omit it when not needed.
-6. Return JSON only, with no extra text.`,
+6. designDecisions should explain key modeling choices, such as primary-key strategy, status fields, snapshot fields, amount fields, and index rationale.
+7. Return JSON only, with no extra text.`,
 };
 
 export const buildGenerateTableSystemPrompt = (params: {

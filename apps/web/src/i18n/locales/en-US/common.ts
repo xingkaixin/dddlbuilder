@@ -746,6 +746,7 @@ export const enUSCommon = {
     generate: 'Generate',
     fields: 'Fields ({{count}})',
     indexes: 'Indexes ({{count}})',
+    designDecisions: 'Design notes',
     tableGenerating: 'Generating...',
   },
   importSql: {

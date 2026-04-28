@@ -61,6 +61,7 @@ describe('normalizeAiEnumValue', () => {
           onUpdate: 'none',
         },
       ],
+      designDecisions: [{ title: '主键策略', rationale: '使用自增主键' }, { title: '无效项' }],
     } as any);
 
     expect(normalized.fields[0]).toMatchObject({
@@ -68,6 +69,7 @@ describe('normalizeAiEnumValue', () => {
       defaultKind: '自增',
       onUpdate: '无',
     });
+    expect(normalized.designDecisions).toEqual([{ title: '主键策略', rationale: '使用自增主键' }]);
 
     const noFields = normalizeGeneratedTableSchema({
       tableName: 'users',

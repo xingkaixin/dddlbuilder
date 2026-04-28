@@ -4,6 +4,7 @@ export interface GeneratedTableSchema {
   tableComment: string;
   fields: GeneratedField[];
   indexes?: GeneratedIndex[];
+  designDecisions?: GeneratedDesignDecision[];
 }
 
 export interface GeneratedField {
@@ -23,6 +24,11 @@ export interface GeneratedIndex {
   unique: boolean;
 }
 
+export interface GeneratedDesignDecision {
+  title: string;
+  rationale: string;
+}
+
 export interface ConversationMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -34,4 +40,5 @@ export interface PartialTableSchema {
   tableComment?: string;
   fields?: GeneratedField[];
   indexes?: GeneratedIndex[];
+  designDecisions?: GeneratedDesignDecision[];
 }

@@ -214,6 +214,7 @@ export type {
   GeneratedTableSchema,
   GeneratedField,
   GeneratedIndex,
+  GeneratedDesignDecision,
   ConversationMessage,
   PartialTableSchema,
 } from './aiGenerate.js';

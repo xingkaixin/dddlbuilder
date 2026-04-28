@@ -727,6 +727,7 @@ export const zhCNCommon = {
     generate: '生成',
     fields: '字段 ({{count}})',
     indexes: '索引 ({{count}})',
+    designDecisions: '设计说明',
     tableGenerating: '生成中...',
   },
   importSql: {

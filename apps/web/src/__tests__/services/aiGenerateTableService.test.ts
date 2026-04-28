@@ -25,7 +25,7 @@ describe('requestGenerateTable', () => {
       status: 200,
       body: createTextStream([
         '{"tableName":"users","tableComment":"u",',
-        '"fields":[],"indexes":[]}',
+        '"fields":[],"indexes":[],"designDecisions":[{"title":"主键策略","rationale":"稳定标识"}]}',
       ]),
       json: vi.fn(),
     } as unknown as Response);
@@ -43,6 +43,7 @@ describe('requestGenerateTable', () => {
 
     expect(result.result.tableName).toBe('users');
     expect(result.result.fields).toEqual([]);
+    expect(result.result.designDecisions?.[0]?.title).toBe('主键策略');
     expect(updates.length).toBeGreaterThan(0);
     expect(updates[updates.length - 1]).toBe(result.fullText);
   });
