@@ -139,12 +139,11 @@ export function usePersistedState(): UsePersistedStateReturn {
         fireAndForget(writeDraft(source.draftId, draftRecord, currentScope));
       }
 
-      const activeState = source.kind === 'draft' ? state : null;
       fireAndForget(
         writeWorkspaceSession(
           {
             activeSource: source,
-            activeState,
+            activeState: state,
             updatedAt: Date.now(),
           },
           currentScope,
@@ -186,7 +185,7 @@ export function usePersistedState(): UsePersistedStateReturn {
         fireAndForget(writeDraft(draftId, draftRecord, currentScope));
       }
 
-      const activeStateToPersist = payload.source.kind === 'saved_table' ? null : payload.state;
+      const activeStateToPersist = payload.state;
 
       fireAndForget(
         writeWorkspaceSession(
@@ -324,7 +323,7 @@ export function usePersistedState(): UsePersistedStateReturn {
             tableName: st.name ?? '',
             baseSignature,
           });
-          hydrateWithState(st.state);
+          hydrateWithState(session.activeState ?? st.state);
           return;
         }
 
@@ -475,7 +474,7 @@ export function usePersistedState(): UsePersistedStateReturn {
                 : JSON.stringify(st.state)) ||
               '',
           });
-          setPersistedState(st.state);
+          setPersistedState(session.activeState ?? st.state);
           setHydrated(true);
           return;
         }

@@ -12,8 +12,6 @@ export function useDialogStates(deps: {
   setIsRenameDialogOpen: (open: boolean) => void;
   isDeleteDialogOpen: boolean;
   setIsDeleteDialogOpen: (open: boolean) => void;
-  isLoadConfirmOpen: boolean;
-  setIsLoadConfirmOpen: (open: boolean) => void;
 }) {
   const saveDialog = useDialogState<{
     name: string;
@@ -49,33 +47,20 @@ export function useDialogStates(deps: {
     },
   });
 
-  const loadConfirmDialog = useDialogState<{
-    pendingTarget: SavedTableSummary | null;
-  }>({
-    open: deps.isLoadConfirmOpen,
-    setOpen: deps.setIsLoadConfirmOpen,
-    initialData: {
-      pendingTarget: null,
-    },
-  });
-
   const saveName = saveDialog.data.name;
   const saveError = saveDialog.error;
   const renameName = renameDialog.data.name;
   const renameError = renameDialog.error;
   const deleteTarget = deleteDialog.data.target;
-  const pendingLoadTarget = loadConfirmDialog.data.pendingTarget;
 
   return {
     saveDialog,
     renameDialog,
     deleteDialog,
-    loadConfirmDialog,
     saveName,
     saveError,
     renameName,
     renameError,
     deleteTarget,
-    pendingLoadTarget,
   };
 }

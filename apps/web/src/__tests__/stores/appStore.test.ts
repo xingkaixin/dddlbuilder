@@ -9,7 +9,6 @@ function resetAppStore() {
   state.setIsSaveDialogOpen(false);
   state.setIsRenameDialogOpen(false);
   state.setIsDeleteDialogOpen(false);
-  state.setIsLoadConfirmOpen(false);
   state.setIsClearDialogOpen(false);
   state.setShowFireworks(false);
   state.setLoadedTableNormalizedName(null);
@@ -76,27 +75,23 @@ describe('appStore', () => {
     state.setIsSaveDialogOpen(true);
     state.setIsRenameDialogOpen(true);
     state.setIsDeleteDialogOpen(true);
-    state.setIsLoadConfirmOpen(true);
 
     let current = useAppStore.getState();
     expect(current.savedTablesDrawerOpen).toBe(true);
     expect(current.dialogs.save).toBe(true);
     expect(current.dialogs.rename).toBe(true);
     expect(current.dialogs.delete).toBe(true);
-    expect(current.dialogs.loadConfirm).toBe(true);
 
     current.setSavedTablesDrawerOpen(false);
     current.setIsSaveDialogOpen(false);
     current.setIsRenameDialogOpen(false);
     current.setIsDeleteDialogOpen(false);
-    current.setIsLoadConfirmOpen(false);
 
     current = useAppStore.getState();
     expect(current.savedTablesDrawerOpen).toBe(false);
     expect(current.dialogs.save).toBe(false);
     expect(current.dialogs.rename).toBe(false);
     expect(current.dialogs.delete).toBe(false);
-    expect(current.dialogs.loadConfirm).toBe(false);
   });
 
   it('应该管理批次4迁移的全局 UI 与加载上下文状态', () => {

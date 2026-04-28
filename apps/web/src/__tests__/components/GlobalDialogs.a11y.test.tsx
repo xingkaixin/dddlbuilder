@@ -59,15 +59,6 @@ function createProps(): Parameters<typeof GlobalDialogs>[0] {
       canSaveCurrent: true,
       onConfirm: vi.fn(),
     },
-    loadConfirmDialog: {
-      open: false,
-      onOpenChange: vi.fn(),
-      pendingName: undefined,
-      canSaveCurrent: true,
-      onCancel: vi.fn(),
-      onConfirmSave: vi.fn(),
-      onConfirmIgnore: vi.fn(),
-    },
     renameDialog: {
       open: false,
       onOpenChange: vi.fn(),

@@ -326,7 +326,7 @@ describe('usePersistedState', () => {
     });
   });
 
-  it('保存已保存表状态时应仅记录查看来源，不记录 activeState', async () => {
+  it('保存已保存表状态时应同时记录来源与 activeState 以保留未保存修改', async () => {
     const { wrapper } = createQueryClientWrapper();
     const { result } = renderHook(() => usePersistedState(), { wrapper });
     const savedSource: WorkspaceSavePayload['source'] = {
@@ -355,7 +355,7 @@ describe('usePersistedState', () => {
         kind: 'saved_table',
         normalizedName: 'users',
       });
-      expect(session?.activeState).toBeNull();
+      expect(session?.activeState?.tableName).toBe('users_draft');
     });
   });
 

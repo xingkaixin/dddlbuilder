@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { DatabaseType, SqlFormatMode } from '@ddlbuilder/shared-types';
 
-type CoreDialogKey = 'save' | 'rename' | 'delete' | 'loadConfirm';
+type CoreDialogKey = 'save' | 'rename' | 'delete';
 
 type CoreDialogState = Record<CoreDialogKey, boolean>;
 
@@ -15,7 +15,6 @@ function createInitialDialogs(): CoreDialogState {
     save: false,
     rename: false,
     delete: false,
-    loadConfirm: false,
   };
 }
 
@@ -60,7 +59,6 @@ interface AppStoreState {
   setIsSaveDialogOpen: (open: boolean) => void;
   setIsRenameDialogOpen: (open: boolean) => void;
   setIsDeleteDialogOpen: (open: boolean) => void;
-  setIsLoadConfirmOpen: (open: boolean) => void;
   setIsClearDialogOpen: (open: boolean) => void;
   setShowFireworks: (show: boolean) => void;
   setLoadedTableNormalizedName: (name: string | null) => void;
@@ -138,10 +136,6 @@ export const useAppStore = create<AppStoreState>((set) => ({
   setIsDeleteDialogOpen: (open) =>
     set((state) => ({
       dialogs: { ...state.dialogs, delete: open },
-    })),
-  setIsLoadConfirmOpen: (open) =>
-    set((state) => ({
-      dialogs: { ...state.dialogs, loadConfirm: open },
     })),
   setIsClearDialogOpen: (isClearDialogOpen) => set({ isClearDialogOpen }),
   setShowFireworks: (showFireworks) => set({ showFireworks }),

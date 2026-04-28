@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode, useCallback } from 'react';
+import { useEffect, useState, type ReactNode, useCallback, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,18 +10,30 @@ import {
 } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
-import type { DatabaseType } from '@ddlbuilder/shared-types';
+import type { DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
 import type { ParsedResult } from '@/utils/SqlParser';
 import { useToast } from '@/hooks/useToast';
-import { requestSqlParse } from '@/services/sqlParseService';
+import { requestSqlParse, requestMultiSqlParse } from '@/services/sqlParseService';
+import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
 import { ArrowRight, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import type { SavedTableSummary, SaveTableResult } from '@/hooks/useSavedTables';
+import type { FolderTreeNode } from '@/hooks/useFolders';
 import { SqlInputStep } from './SqlInputStep';
 import { PreviewStep } from './PreviewStep';
 import { ConfirmStep } from './ConfirmStep';
-import type { PreviewField, ValidationResult } from './types';
+import { TableSelectStep } from './TableSelectStep';
+import { SaveConfigStep } from './SaveConfigStep';
+import type {
+  ImportMode,
+  ConflictStrategy,
+  ParsedTableItem,
+  PreviewField,
+  ValidationResult,
+  FailedItem,
+} from './types';
 
-type ImportStep = 'validate' | 'preview' | 'confirm';
+type ImportStep = 'validate' | 'preview' | 'confirm' | 'select' | 'save';
 
 interface ImportSqlDialogProps {
   currentDbType: DatabaseType;
@@ -29,6 +41,14 @@ interface ImportSqlDialogProps {
   triggerClassName?: string;
   triggerIcon?: ReactNode;
   triggerLabel?: string;
+  // Optional batch save support. When all callbacks are provided, the dialog
+  // exposes a "保存为已保存表" mode in addition to "回填当前工作区".
+  savedTables?: SavedTableSummary[];
+  folderTree?: FolderTreeNode[];
+  saveTable?: (name: string, state: PersistedState) => Promise<SaveTableResult>;
+  overwriteTable?: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
+  moveTableToFolder?: (normalizedName: string, folderId?: string) => Promise<SaveTableResult>;
+  onBatchImportComplete?: () => void;
 }
 
 const MAX_SQL_LENGTH = 50_000;
@@ -39,56 +59,68 @@ export function ImportSqlDialog({
   triggerClassName,
   triggerIcon,
   triggerLabel,
+  savedTables,
+  folderTree,
+  saveTable,
+  overwriteTable,
+  moveTableToFolder,
+  onBatchImportComplete,
 }: ImportSqlDialogProps) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<ImportStep>('validate');
-  const [sql, setSql] = useState('');
-  const [selectedDbType, setSelectedDbType] = useState<DatabaseType>(currentDbType);
-  const [parsedResult, setParsedResult] = useState<ParsedResult | null>(null);
-  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
-  const [isValidating, setIsValidating] = useState(false);
-  const [previewFields, setPreviewFields] = useState<PreviewField[]>([]);
   const { showToast } = useToast();
 
+  const batchImportSupported = Boolean(
+    savedTables && folderTree && saveTable && overwriteTable && moveTableToFolder,
+  );
+
+  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<ImportStep>('validate');
+  const [importMode, setImportMode] = useState<ImportMode>('workspace');
+  const [sql, setSql] = useState('');
+  const [selectedDbType, setSelectedDbType] = useState<DatabaseType>(currentDbType);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
+
+  // Workspace-mode state
+  const [parsedResult, setParsedResult] = useState<ParsedResult | null>(null);
+  const [previewFields, setPreviewFields] = useState<PreviewField[]>([]);
+
+  // Saved-mode state
+  const [parsedTables, setParsedTables] = useState<ParsedTableItem[]>([]);
+  const [failedItems, setFailedItems] = useState<FailedItem[]>([]);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | undefined>(undefined);
+  const [conflictStrategy, setConflictStrategy] = useState<ConflictStrategy>('skip');
+  const [isImporting, setIsImporting] = useState(false);
+
   const resolvedTriggerLabel = triggerLabel ?? t('importSql.title');
+
+  const savedTableNames = useMemo(
+    () => new Set((savedTables ?? []).map((st) => st.normalizedName)),
+    [savedTables],
+  );
 
   useEffect(() => {
     if (!open) {
       setStep('validate');
+      setImportMode('workspace');
       setSql('');
       setParsedResult(null);
       setValidationResult(null);
       setPreviewFields([]);
+      setParsedTables([]);
+      setFailedItems([]);
+      setSelectedFolderId(undefined);
+      setConflictStrategy('skip');
+      setIsImporting(false);
     }
   }, [open]);
 
-  const validateSql = useCallback(async () => {
-    const trimmedSql = sql.trim();
-    if (!trimmedSql) {
-      setValidationResult({
-        success: false,
-        error: t('importSql.sqlRequired'),
-        lineNumber: 1,
-      });
-      return;
-    }
-
-    if (trimmedSql.length > MAX_SQL_LENGTH) {
-      setValidationResult({
-        success: false,
-        error: t('importSql.sqlTooLong', {
-          max: MAX_SQL_LENGTH.toLocaleString(),
-        }),
-        lineNumber: 1,
-      });
-      return;
-    }
-
+  const validateSqlForWorkspace = useCallback(async () => {
     setIsValidating(true);
     setValidationResult(null);
 
     try {
+      const trimmedSql = sql.trim();
       const result = await requestSqlParse({
         sql: trimmedSql,
         dbType: selectedDbType,
@@ -99,7 +131,6 @@ export function ImportSqlDialog({
           success: false,
           error: t('importSql.sqlNoTable'),
         });
-        setIsValidating(false);
         return;
       }
 
@@ -136,19 +167,88 @@ export function ImportSqlDialog({
     }
   }, [sql, selectedDbType, t]);
 
+  const validateSqlForSaved = useCallback(async () => {
+    setIsValidating(true);
+    setValidationResult(null);
+
+    try {
+      const trimmedSql = sql.trim();
+      const { results, failed } = await requestMultiSqlParse({
+        sql: trimmedSql,
+        dbType: selectedDbType,
+      });
+
+      if (results.length === 0) {
+        setValidationResult({
+          success: false,
+          error: t('importSql.sqlNoTable'),
+        });
+        return;
+      }
+
+      const items: ParsedTableItem[] = results.map((r: ParsedResult) => ({
+        ...r,
+        selected: true,
+        conflict: savedTableNames.has(r.tableName),
+      }));
+
+      setParsedTables(items);
+      setFailedItems(failed);
+      setStep('select');
+    } catch (err) {
+      setValidationResult({
+        success: false,
+        error: err instanceof Error ? err.message : t('importSql.sqlParseFailed'),
+      });
+    } finally {
+      setIsValidating(false);
+    }
+  }, [sql, selectedDbType, savedTableNames, t]);
+
+  const validateAndAdvance = useCallback(() => {
+    const trimmedSql = sql.trim();
+    if (!trimmedSql) {
+      setValidationResult({
+        success: false,
+        error: t('importSql.sqlRequired'),
+        lineNumber: 1,
+      });
+      return;
+    }
+    if (trimmedSql.length > MAX_SQL_LENGTH) {
+      setValidationResult({
+        success: false,
+        error: t('importSql.sqlTooLong', {
+          max: MAX_SQL_LENGTH.toLocaleString(),
+        }),
+        lineNumber: 1,
+      });
+      return;
+    }
+    if (importMode === 'saved' && batchImportSupported) {
+      void validateSqlForSaved();
+      return;
+    }
+    void validateSqlForWorkspace();
+  }, [sql, importMode, batchImportSupported, validateSqlForSaved, validateSqlForWorkspace, t]);
+
   const handleNext = () => {
     if (step === 'validate') {
-      void validateSql();
+      validateAndAdvance();
     } else if (step === 'preview') {
       setStep('confirm');
+    } else if (step === 'select') {
+      setStep('save');
     }
   };
 
   const handleBack = () => {
-    if (step === 'preview') {
+    if (step === 'preview' || step === 'select') {
       setStep('validate');
     } else if (step === 'confirm') {
       setStep('preview');
+    } else if (step === 'save') {
+      setStep('select');
     }
   };
 
@@ -157,11 +257,6 @@ export function ImportSqlDialog({
 
     onImport(parsedResult, selectedDbType);
     setOpen(false);
-    setSql('');
-    setParsedResult(null);
-    setValidationResult(null);
-    setPreviewFields([]);
-    setStep('validate');
     showToast(
       t('importSql.importSuccess', {
         tableName: parsedResult.tableName || t('importSql.unnamed'),
@@ -192,6 +287,141 @@ export function ImportSqlDialog({
     setPreviewFields((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleToggleSelect = (index: number) => {
+    setParsedTables((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], selected: !next[index].selected };
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    setParsedTables((prev) => prev.map((t) => ({ ...t, selected: true })));
+  };
+
+  const handleDeselectAll = () => {
+    setParsedTables((prev) => prev.map((t) => ({ ...t, selected: false })));
+  };
+
+  const selectedTables = useMemo(() => parsedTables.filter((t) => t.selected), [parsedTables]);
+
+  const selectedConflictCount = useMemo(
+    () => selectedTables.filter((t) => t.conflict).length,
+    [selectedTables],
+  );
+
+  const generateUniqueName = useCallback((baseName: string, existingNames: Set<string>): string => {
+    let candidate = baseName;
+    let suffix = 1;
+    while (existingNames.has(candidate)) {
+      candidate = `${baseName}_${suffix}`;
+      suffix += 1;
+    }
+    return candidate;
+  }, []);
+
+  const handleConfirmBatchImport = async () => {
+    if (selectedTables.length === 0) return;
+    if (!saveTable || !overwriteTable || !moveTableToFolder) return;
+
+    setIsImporting(true);
+    let successCount = 0;
+    let skipCount = 0;
+    let failCount = 0;
+
+    const currentSavedNames = new Set((savedTables ?? []).map((s) => s.normalizedName));
+
+    for (const table of selectedTables) {
+      const state = convertParsedResultToPersistedState(table, selectedDbType);
+      const normalizedName = table.tableName;
+
+      try {
+        if (table.conflict) {
+          if (conflictStrategy === 'skip') {
+            skipCount += 1;
+            continue;
+          }
+          if (conflictStrategy === 'overwrite') {
+            const result = await overwriteTable(normalizedName, state);
+            if (result.ok) {
+              successCount += 1;
+              if (selectedFolderId) {
+                await moveTableToFolder(normalizedName, selectedFolderId);
+              }
+            } else {
+              failCount += 1;
+            }
+            continue;
+          }
+          if (conflictStrategy === 'rename') {
+            const newName = generateUniqueName(normalizedName, currentSavedNames);
+            currentSavedNames.add(newName);
+            const result = await saveTable(newName, state);
+            if (result.ok) {
+              successCount += 1;
+              if (selectedFolderId) {
+                await moveTableToFolder(newName, selectedFolderId);
+              }
+            } else {
+              failCount += 1;
+            }
+            continue;
+          }
+        }
+
+        const result = await saveTable(normalizedName, state);
+        if (result.ok) {
+          successCount += 1;
+          currentSavedNames.add(normalizedName);
+          if (selectedFolderId) {
+            await moveTableToFolder(normalizedName, selectedFolderId);
+          }
+        } else {
+          failCount += 1;
+        }
+      } catch {
+        failCount += 1;
+      }
+    }
+
+    setIsImporting(false);
+    setOpen(false);
+
+    showToast(
+      t('importSql.batch.importResult', {
+        success: successCount,
+        skip: skipCount,
+        failed: failCount,
+      }),
+    );
+
+    onBatchImportComplete?.();
+  };
+
+  const stepDefinitions = useMemo(() => {
+    if (importMode === 'saved' && batchImportSupported) {
+      return [
+        { key: 'validate' as const, label: t('importSql.batch.stepInput') },
+        { key: 'select' as const, label: t('importSql.batch.stepSelect') },
+        { key: 'save' as const, label: t('importSql.batch.stepSave') },
+      ];
+    }
+    return [
+      { key: 'validate' as const, label: t('importSql.stepValidate') },
+      { key: 'preview' as const, label: t('importSql.stepPreview') },
+      { key: 'confirm' as const, label: t('importSql.stepConfirm') },
+    ];
+  }, [importMode, batchImportSupported, t]);
+
+  const currentStepIndex = stepDefinitions.findIndex((s) => s.key === step);
+
+  const canGoNext =
+    step === 'validate'
+      ? sql.trim().length > 0 && !isValidating
+      : step === 'select'
+        ? selectedTables.length > 0
+        : true;
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <Tooltip>
@@ -207,7 +437,7 @@ export function ImportSqlDialog({
           <p>{t('importSql.triggerTip')}</p>
         </TooltipContent>
       </Tooltip>
-      <DialogContent className="sm:max-w-[700px]">
+      <DialogContent className="sm:max-w-[720px]">
         <DialogHeader>
           <DialogTitle>{t('importSql.title')}</DialogTitle>
           <DialogDescription>{t('importSql.description')}</DialogDescription>
@@ -215,78 +445,39 @@ export function ImportSqlDialog({
 
         <div className="flex items-center justify-center py-4">
           <div className="flex items-center gap-2">
-            <div
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
-                step === 'validate'
-                  ? 'bg-primary text-primary-foreground shadow-md ring-2 ring-primary/20'
-                  : step === 'preview' || step === 'confirm'
-                    ? 'border border-green-200 bg-green-100 text-green-700 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
-                    : 'bg-muted text-muted-foreground border border-border'
-              }`}
-            >
-              <span
-                className={`flex h-5 w-5 items-center justify-center rounded-full text-xs ${
-                  step === 'validate'
-                    ? 'bg-primary-foreground/20'
-                    : step === 'preview' || step === 'confirm'
-                      ? 'bg-green-500 text-white dark:bg-emerald-500'
-                      : 'bg-muted-foreground/20'
-                }`}
-              >
-                {step === 'preview' || step === 'confirm' ? <Check className="h-3 w-3" /> : '1'}
-              </span>
-              {t('importSql.stepValidate')}
-            </div>
-            <div
-              className={`h-0.5 w-8 transition-colors ${
-                step === 'preview' || step === 'confirm'
-                  ? 'bg-green-400 dark:bg-emerald-500'
-                  : 'bg-border'
-              }`}
-            />
-            <div
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
-                step === 'preview'
-                  ? 'bg-primary text-primary-foreground shadow-md ring-2 ring-primary/20'
-                  : step === 'confirm'
-                    ? 'border border-green-200 bg-green-100 text-green-700 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
-                    : 'bg-muted text-muted-foreground border border-border'
-              }`}
-            >
-              <span
-                className={`flex h-5 w-5 items-center justify-center rounded-full text-xs ${
-                  step === 'preview'
-                    ? 'bg-primary-foreground/20'
-                    : step === 'confirm'
-                      ? 'bg-green-500 text-white dark:bg-emerald-500'
-                      : 'bg-muted-foreground/20'
-                }`}
-              >
-                {step === 'confirm' ? <Check className="h-3 w-3" /> : '2'}
-              </span>
-              {t('importSql.stepPreview')}
-            </div>
-            <div
-              className={`h-0.5 w-8 transition-colors ${
-                step === 'confirm' ? 'bg-green-400 dark:bg-emerald-500' : 'bg-border'
-              }`}
-            />
-            <div
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
-                step === 'confirm'
-                  ? 'bg-primary text-primary-foreground shadow-md ring-2 ring-primary/20'
-                  : 'bg-muted text-muted-foreground border border-border'
-              }`}
-            >
-              <span
-                className={`flex h-5 w-5 items-center justify-center rounded-full text-xs ${
-                  step === 'confirm' ? 'bg-primary-foreground/20' : 'bg-muted-foreground/20'
-                }`}
-              >
-                3
-              </span>
-              {t('importSql.stepConfirm')}
-            </div>
+            {stepDefinitions.map((s, i) => (
+              <div key={s.key} className="flex items-center gap-2">
+                {i > 0 && (
+                  <div
+                    className={`h-0.5 w-8 transition-colors ${
+                      currentStepIndex >= i ? 'bg-green-400 dark:bg-emerald-500' : 'bg-border'
+                    }`}
+                  />
+                )}
+                <div
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                    step === s.key
+                      ? 'bg-primary text-primary-foreground shadow-md ring-2 ring-primary/20'
+                      : currentStepIndex > i
+                        ? 'border border-green-200 bg-green-100 text-green-700 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
+                        : 'bg-muted text-muted-foreground border border-border'
+                  }`}
+                >
+                  <span
+                    className={`flex h-5 w-5 items-center justify-center rounded-full text-xs ${
+                      step === s.key
+                        ? 'bg-primary-foreground/20'
+                        : currentStepIndex > i
+                          ? 'bg-green-500 text-white dark:bg-emerald-500'
+                          : 'bg-muted-foreground/20'
+                    }`}
+                  >
+                    {currentStepIndex > i ? <Check className="h-3 w-3" /> : i + 1}
+                  </span>
+                  {s.label}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -298,6 +489,8 @@ export function ImportSqlDialog({
               sql={sql}
               onSqlChange={setSql}
               validationResult={validationResult}
+              importMode={batchImportSupported ? importMode : undefined}
+              onImportModeChange={batchImportSupported ? setImportMode : undefined}
             />
           )}
 
@@ -318,6 +511,29 @@ export function ImportSqlDialog({
               selectedDbType={selectedDbType}
             />
           )}
+
+          {step === 'select' && (
+            <TableSelectStep
+              tables={parsedTables}
+              failed={failedItems}
+              onToggleSelect={handleToggleSelect}
+              onSelectAll={handleSelectAll}
+              onDeselectAll={handleDeselectAll}
+            />
+          )}
+
+          {step === 'save' && batchImportSupported && (
+            <SaveConfigStep
+              folders={folderTree ?? []}
+              selectedFolderId={selectedFolderId}
+              onFolderChange={setSelectedFolderId}
+              conflictStrategy={conflictStrategy}
+              onConflictStrategyChange={setConflictStrategy}
+              totalCount={selectedTables.length}
+              newCount={selectedTables.length - selectedConflictCount}
+              conflictCount={selectedConflictCount}
+            />
+          )}
         </div>
 
         <DialogFooter>
@@ -326,7 +542,7 @@ export function ImportSqlDialog({
               <Button variant="outline" onClick={() => setOpen(false)}>
                 {t('importSql.cancel')}
               </Button>
-              <Button onClick={handleNext} disabled={isValidating || !sql.trim()}>
+              <Button onClick={handleNext} disabled={!canGoNext}>
                 {isValidating ? t('importSql.validating') : t('importSql.next')}
               </Button>
             </>
@@ -347,6 +563,26 @@ export function ImportSqlDialog({
                 {t('importSql.previous')}
               </Button>
               <Button onClick={handleConfirm}>{t('importSql.confirmImport')}</Button>
+            </>
+          )}
+          {step === 'select' && (
+            <>
+              <Button variant="outline" onClick={handleBack}>
+                {t('importSql.previous')}
+              </Button>
+              <Button onClick={handleNext} disabled={!canGoNext}>
+                {t('importSql.next')} <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </>
+          )}
+          {step === 'save' && (
+            <>
+              <Button variant="outline" onClick={handleBack}>
+                {t('importSql.previous')}
+              </Button>
+              <Button onClick={handleConfirmBatchImport} disabled={isImporting}>
+                {isImporting ? t('importSql.batch.importing') : t('importSql.batch.confirmImport')}
+              </Button>
             </>
           )}
         </DialogFooter>

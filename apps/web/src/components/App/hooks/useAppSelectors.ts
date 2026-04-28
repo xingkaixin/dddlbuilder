@@ -52,8 +52,6 @@ export function useAppSelectors() {
   const setIsRenameDialogOpen = useAppStore((s) => s.setIsRenameDialogOpen);
   const isDeleteDialogOpen = useAppStore((s) => s.dialogs.delete);
   const setIsDeleteDialogOpen = useAppStore((s) => s.setIsDeleteDialogOpen);
-  const isLoadConfirmOpen = useAppStore((s) => s.dialogs.loadConfirm);
-  const setIsLoadConfirmOpen = useAppStore((s) => s.setIsLoadConfirmOpen);
   const isDiffDialogOpen = useAppStore((s) => s.isDiffDialogOpen);
   const setIsDiffDialogOpen = useAppStore((s) => s.setIsDiffDialogOpen);
   const isVersionHistoryOpen = useAppStore((s) => s.isVersionHistoryOpen);
@@ -140,8 +138,6 @@ export function useAppSelectors() {
     setIsRenameDialogOpen,
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
-    isLoadConfirmOpen,
-    setIsLoadConfirmOpen,
     isDiffDialogOpen,
     setIsDiffDialogOpen,
     isVersionHistoryOpen,

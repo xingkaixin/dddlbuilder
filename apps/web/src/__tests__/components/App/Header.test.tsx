@@ -124,6 +124,12 @@ describe('Header', () => {
     isSharing: false,
     currentDbType: 'mysql' as const,
     onImport: vi.fn(),
+    savedTables: [],
+    folderTree: [],
+    onBatchImportComplete: vi.fn(),
+    saveTable: vi.fn(),
+    overwriteTable: vi.fn(),
+    moveTableToFolder: vi.fn(),
   };
 
   it('未传入烟花能力时不渲染灯笼按钮', () => {

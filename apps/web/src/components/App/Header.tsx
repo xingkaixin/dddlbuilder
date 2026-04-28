@@ -12,7 +12,6 @@ import {
   LogOut,
   MailCheck,
   Settings,
-  Database,
 } from 'lucide-react';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { LocaleSwitcher } from './LocaleSwitcher';
@@ -50,12 +49,6 @@ const ImportSqlDialog = lazy(() =>
   })),
 );
 
-const BatchImportSqlDialog = lazy(() =>
-  import('@/components/BatchImportSqlDialog').then((module) => ({
-    default: module.BatchImportSqlDialog,
-  })),
-);
-
 interface HeaderProps {
   onShare: () => void;
   isSharing: boolean;
@@ -63,7 +56,6 @@ interface HeaderProps {
   onImport: (result: ParsedResult, dbType: DatabaseType) => void;
   onPlayFireworks?: () => void;
   savedTables: SavedTableSummary[];
-  folders: FolderTreeNode[];
   folderTree: FolderTreeNode[];
   onBatchImportComplete: () => void;
   saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
@@ -79,7 +71,6 @@ export const Header = memo<HeaderProps>(
     onImport,
     onPlayFireworks,
     savedTables,
-    folders,
     folderTree,
     onBatchImportComplete,
     saveTable,
@@ -397,28 +388,12 @@ export const Header = memo<HeaderProps>(
                       triggerClassName={actionBtnClass}
                       triggerIcon={<FileInput className="h-4 w-4" aria-hidden />}
                       triggerLabel={t('header.importSql')}
-                    />
-                  </Suspense>
-                  <Suspense
-                    fallback={
-                      <button type="button" className={actionBtnClass} disabled>
-                        <Database className="h-4 w-4" aria-hidden />
-                        {t('header.batchImport')}
-                      </button>
-                    }
-                  >
-                    <BatchImportSqlDialog
-                      currentDbType={currentDbType}
                       savedTables={savedTables}
-                      folders={folders}
                       folderTree={folderTree}
                       saveTable={saveTable}
                       overwriteTable={overwriteTable}
                       moveTableToFolder={moveTableToFolder}
-                      onImportComplete={onBatchImportComplete}
-                      triggerClassName={actionBtnClass}
-                      triggerIcon={<Database className="h-4 w-4" aria-hidden />}
-                      triggerLabel={t('header.batchImport')}
+                      onBatchImportComplete={onBatchImportComplete}
                     />
                   </Suspense>
                   <Tooltip>

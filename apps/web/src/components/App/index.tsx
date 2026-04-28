@@ -110,8 +110,6 @@ function App() {
     setIsRenameDialogOpen,
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
-    isLoadConfirmOpen,
-    setIsLoadConfirmOpen,
     isDiffDialogOpen,
     setIsDiffDialogOpen,
     isVersionHistoryOpen,
@@ -150,13 +148,11 @@ function App() {
     saveDialog,
     renameDialog,
     deleteDialog,
-    loadConfirmDialog,
     saveName,
     saveError,
     renameName,
     renameError,
     deleteTarget,
-    pendingLoadTarget,
   } = useDialogStates({
     isSaveDialogOpen,
     setIsSaveDialogOpen,
@@ -164,8 +160,6 @@ function App() {
     setIsRenameDialogOpen,
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
-    isLoadConfirmOpen,
-    setIsLoadConfirmOpen,
   });
 
   const { handleFireworksComplete } = useFireworksIntro({
@@ -584,10 +578,6 @@ function App() {
     handleConfirmSave,
     handleSaveDialogOpenChange,
     handleSelectSavedTable,
-    handleCancelLoadConfirm,
-    handleLoadConfirmOpenChange,
-    handleConfirmLoadIgnore,
-    handleConfirmLoadSave,
     handleOpenRenameDialog,
     handleRenameDialogOpenChange,
     handleConfirmRename,
@@ -597,7 +587,6 @@ function App() {
   } = useSavedTableFlowActions({
     tableName,
     hasLoadedTable,
-    isLoadedDirty,
     canSaveCurrent,
     loadedTableNormalizedName,
     loadedTableName,
@@ -608,7 +597,6 @@ function App() {
     setLoadedTableVersion,
     setSavedTablesDrawerOpen,
     saveDialog,
-    loadConfirmDialog,
     renameDialog,
     deleteDialog,
     buildPersistedState,
@@ -820,7 +808,6 @@ function App() {
           onImport={handleImport}
           onPlayFireworks={isCnyFireworksEnabled ? handlePlayFireworks : undefined}
           savedTables={savedTables}
-          folders={folderTree}
           folderTree={folderTree}
           onBatchImportComplete={() => {
             void savedTables.refresh();
@@ -906,7 +893,7 @@ function App() {
                     onOpenAIGenerate: handleOpenAIGenerateDialog,
                     onOpenErDiagram: handleOpenErDiagram,
                     saveDisabled: !canSaveCurrent,
-                    saveDisabledHint: t('dialogs.load.saveDisabledTip'),
+                    saveDisabledHint: t('dialogs.save.disabledTip'),
                     showDiffButton: isLoadedDirty && tableDiff?.hasChanges,
                     loadedStatus,
                     loadedTableName,
@@ -1073,15 +1060,6 @@ function App() {
             inputDisabled: saveInputDisabled,
             canSaveCurrent,
             onConfirm: handleConfirmSave,
-          }}
-          loadConfirmDialog={{
-            open: isLoadConfirmOpen,
-            onOpenChange: handleLoadConfirmOpenChange,
-            pendingName: pendingLoadTarget?.name,
-            canSaveCurrent,
-            onCancel: handleCancelLoadConfirm,
-            onConfirmSave: handleConfirmLoadSave,
-            onConfirmIgnore: handleConfirmLoadIgnore,
           }}
           renameDialog={{
             open: isRenameDialogOpen,

@@ -89,16 +89,16 @@ export function SaveConfigStep({
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <Label>{t('batchImportSql.targetFolder')}</Label>
+        <Label>{t('importSql.batch.targetFolder')}</Label>
         <Select
           value={selectedFolderId ?? 'ungrouped'}
           onValueChange={(v) => onFolderChange(v === 'ungrouped' ? undefined : v)}
         >
           <SelectTrigger>
-            <SelectValue placeholder={t('batchImportSql.selectFolder')} />
+            <SelectValue placeholder={t('importSql.batch.selectFolder')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ungrouped">{t('batchImportSql.ungrouped')}</SelectItem>
+            <SelectItem value="ungrouped">{t('importSql.batch.ungrouped')}</SelectItem>
             {flatFolders.map((folder) => (
               <SelectItem key={folder.id} value={folder.id}>
                 <span style={{ paddingLeft: `${folder.depth * 12}px` }}>{folder.name}</span>
@@ -109,48 +109,48 @@ export function SaveConfigStep({
       </div>
 
       <div className="space-y-3">
-        <Label>{t('batchImportSql.conflictStrategy.label')}</Label>
+        <Label>{t('importSql.batch.conflictStrategy.label')}</Label>
         <div className="space-y-2">
           <RadioCard
             value="skip"
             checked={conflictStrategy === 'skip'}
             onChange={onConflictStrategyChange}
             id="skip"
-            title={t('batchImportSql.conflictStrategy.skip')}
-            description={t('batchImportSql.conflictStrategy.skipDesc')}
+            title={t('importSql.batch.conflictStrategy.skip')}
+            description={t('importSql.batch.conflictStrategy.skipDesc')}
           />
           <RadioCard
             value="overwrite"
             checked={conflictStrategy === 'overwrite'}
             onChange={onConflictStrategyChange}
             id="overwrite"
-            title={t('batchImportSql.conflictStrategy.overwrite')}
-            description={t('batchImportSql.conflictStrategy.overwriteDesc')}
+            title={t('importSql.batch.conflictStrategy.overwrite')}
+            description={t('importSql.batch.conflictStrategy.overwriteDesc')}
           />
           <RadioCard
             value="rename"
             checked={conflictStrategy === 'rename'}
             onChange={onConflictStrategyChange}
             id="rename"
-            title={t('batchImportSql.conflictStrategy.rename')}
-            description={t('batchImportSql.conflictStrategy.renameDesc')}
+            title={t('importSql.batch.conflictStrategy.rename')}
+            description={t('importSql.batch.conflictStrategy.renameDesc')}
           />
         </div>
       </div>
 
       <div className="rounded-md bg-muted/50 p-4 text-sm space-y-1">
-        <p className="font-medium">{t('batchImportSql.summaryTitle')}</p>
+        <p className="font-medium">{t('importSql.batch.summaryTitle')}</p>
         <p className="text-muted-foreground">
-          {t('batchImportSql.summaryTotal', { count: totalCount })}
+          {t('importSql.batch.summaryTotal', { count: totalCount })}
         </p>
         <p className="text-muted-foreground">
-          {t('batchImportSql.summaryNew', { count: newCount })}
+          {t('importSql.batch.summaryNew', { count: newCount })}
         </p>
         {conflictCount > 0 && (
           <p className="text-muted-foreground">
-            {t('batchImportSql.summaryConflict', {
+            {t('importSql.batch.summaryConflict', {
               count: conflictCount,
-              action: t(`batchImportSql.conflictStrategy.${conflictStrategy}Action`),
+              action: t(`importSql.batch.conflictStrategy.${conflictStrategy}Action`),
             })}
           </p>
         )}

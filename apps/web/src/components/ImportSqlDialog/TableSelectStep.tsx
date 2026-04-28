@@ -27,12 +27,12 @@ export function TableSelectStep({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          {t('batchImportSql.selectedCount', {
+          {t('importSql.batch.selectedCount', {
             selected: selectedCount,
             total: tables.length,
           })}
           {conflictCount > 0
-            ? ` · ${t('batchImportSql.conflictCount', { count: conflictCount })}`
+            ? ` · ${t('importSql.batch.conflictCount', { count: conflictCount })}`
             : null}
         </div>
         <div className="flex gap-2">
@@ -41,7 +41,7 @@ export function TableSelectStep({
             onClick={onSelectAll}
             className="text-xs text-primary hover:underline"
           >
-            {t('batchImportSql.selectAll')}
+            {t('importSql.batch.selectAll')}
           </button>
           <span className="text-xs text-muted-foreground">|</span>
           <button
@@ -49,7 +49,7 @@ export function TableSelectStep({
             onClick={onDeselectAll}
             className="text-xs text-primary hover:underline"
           >
-            {t('batchImportSql.deselectAll')}
+            {t('importSql.batch.deselectAll')}
           </button>
         </div>
       </div>
@@ -57,20 +57,22 @@ export function TableSelectStep({
       <div className="max-h-[320px] overflow-y-auto rounded-md border">
         {tables.length === 0 ? (
           <div className="p-4 text-center text-sm text-muted-foreground">
-            {t('batchImportSql.noTables')}
+            {t('importSql.batch.noTables')}
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-muted/50 sticky top-0">
               <tr>
                 <th className="w-10 px-3 py-2 text-left">
-                  <span className="sr-only">{t('batchImportSql.select')}</span>
+                  <span className="sr-only">{t('importSql.batch.select')}</span>
                 </th>
-                <th className="px-3 py-2 text-left font-medium">{t('batchImportSql.tableName')}</th>
-                <th className="px-3 py-2 text-right font-medium">{t('batchImportSql.fields')}</th>
-                <th className="px-3 py-2 text-right font-medium">{t('batchImportSql.indexes')}</th>
+                <th className="px-3 py-2 text-left font-medium">
+                  {t('importSql.batch.tableName')}
+                </th>
+                <th className="px-3 py-2 text-right font-medium">{t('importSql.batch.fields')}</th>
+                <th className="px-3 py-2 text-right font-medium">{t('importSql.batch.indexes')}</th>
                 <th className="px-3 py-2 text-right font-medium">
-                  {t('batchImportSql.foreignKeys')}
+                  {t('importSql.batch.foreignKeys')}
                 </th>
               </tr>
             </thead>
@@ -86,7 +88,7 @@ export function TableSelectStep({
                     <Checkbox
                       checked={table.selected}
                       onCheckedChange={() => onToggleSelect(index)}
-                      aria-label={t('batchImportSql.selectTable', {
+                      aria-label={t('importSql.batch.selectTable', {
                         name: table.tableName,
                       })}
                     />
@@ -97,7 +99,7 @@ export function TableSelectStep({
                       {table.conflict && (
                         <Badge variant="destructive" className="text-xs gap-1">
                           <AlertTriangle className="h-3 w-3" />
-                          {t('batchImportSql.conflict')}
+                          {t('importSql.batch.conflict')}
                         </Badge>
                       )}
                     </div>
@@ -121,7 +123,7 @@ export function TableSelectStep({
       {failed.length > 0 && (
         <div className="space-y-2">
           <div className="text-sm font-medium text-destructive">
-            {t('batchImportSql.parseFailedTitle', { count: failed.length })}
+            {t('importSql.batch.parseFailedTitle', { count: failed.length })}
           </div>
           <div className="max-h-[120px] overflow-y-auto rounded-md border border-destructive/20 bg-destructive/5 p-3 space-y-2">
             {failed.map((item, i) => (

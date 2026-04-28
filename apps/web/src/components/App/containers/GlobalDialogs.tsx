@@ -42,15 +42,6 @@ interface GlobalDialogsProps {
     canSaveCurrent: boolean;
     onConfirm: () => void;
   };
-  loadConfirmDialog: {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    pendingName?: string;
-    canSaveCurrent: boolean;
-    onCancel: () => void;
-    onConfirmSave: () => void;
-    onConfirmIgnore: () => void;
-  };
   renameDialog: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -81,7 +72,6 @@ interface GlobalDialogsProps {
 export function GlobalDialogs({
   clearDialog,
   saveDialog,
-  loadConfirmDialog,
   renameDialog,
   deleteDialog,
   folderDialogProps,
@@ -202,39 +192,6 @@ export function GlobalDialogs({
             </Button>
             <Button onClick={saveDialog.onConfirm} disabled={!saveDialog.canSaveCurrent}>
               {t('dialogs.save.confirm')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={loadConfirmDialog.open} onOpenChange={loadConfirmDialog.onOpenChange}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t('dialogs.load.title')}</DialogTitle>
-            <DialogDescription>
-              {loadConfirmDialog.pendingName
-                ? t('dialogs.load.descriptionWithName', {
-                    name: loadConfirmDialog.pendingName,
-                  })
-                : t('dialogs.load.descriptionFallback')}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="pr-2">
-            <Button variant="outline" onClick={loadConfirmDialog.onCancel}>
-              {t('dialogs.load.cancel')}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={loadConfirmDialog.onConfirmSave}
-              disabled={!loadConfirmDialog.canSaveCurrent}
-              title={
-                !loadConfirmDialog.canSaveCurrent ? t('dialogs.load.saveDisabledTip') : undefined
-              }
-            >
-              {t('dialogs.load.saveThenLoad')}
-            </Button>
-            <Button variant="destructive" onClick={loadConfirmDialog.onConfirmIgnore}>
-              {t('dialogs.load.ignoreAndLoad')}
             </Button>
           </DialogFooter>
         </DialogContent>

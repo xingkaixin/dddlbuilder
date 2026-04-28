@@ -13,14 +13,9 @@ type SaveDialogData = {
   queuedLoadAfterSave: SavedTableSummary | null;
 };
 
-type LoadConfirmDialogData = {
-  pendingTarget: SavedTableSummary | null;
-};
-
 interface UseSaveLoadActionsParams {
   tableName: string;
   hasLoadedTable: boolean;
-  isLoadedDirty: boolean;
   canSaveCurrent: boolean;
   loadedTableNormalizedName: string | null;
   loadedTableName: string | null;
@@ -30,7 +25,6 @@ interface UseSaveLoadActionsParams {
   setLoadedTableVersion: (version: number) => void;
   setSavedTablesDrawerOpen: (open: boolean) => void;
   saveDialog: UseDialogStateReturn<SaveDialogData>;
-  loadConfirmDialog: UseDialogStateReturn<LoadConfirmDialogData>;
   buildPersistedState: () => PersistedState;
   serializePersistedState: (state: PersistedState) => string;
   applySavedState: (state: PersistedState) => void;
@@ -57,7 +51,6 @@ interface UseSaveLoadActionsParams {
 export function useSaveLoadActions({
   tableName,
   hasLoadedTable,
-  isLoadedDirty,
   canSaveCurrent,
   loadedTableNormalizedName,
   loadedTableName,
@@ -67,7 +60,6 @@ export function useSaveLoadActions({
   setLoadedTableVersion,
   setSavedTablesDrawerOpen,
   saveDialog,
-  loadConfirmDialog,
   buildPersistedState,
   serializePersistedState,
   applySavedState,
@@ -83,7 +75,6 @@ export function useSaveLoadActions({
 }: UseSaveLoadActionsParams) {
   const saveName = saveDialog.data.name;
   const queuedLoadAfterSave = saveDialog.data.queuedLoadAfterSave;
-  const pendingLoadTarget = loadConfirmDialog.data.pendingTarget;
 
   const handleLoadSavedTable = useCallback(
     async (target: SavedTableSummary) => {
@@ -307,46 +298,10 @@ export function useSaveLoadActions({
     (item: SavedTableSummary) => {
       flushCurrentWorkspace?.();
       setSavedTablesDrawerOpen(false);
-      if (hasLoadedTable && isLoadedDirty) {
-        loadConfirmDialog.openDialog({ pendingTarget: item });
-        return;
-      }
       void handleLoadSavedTable(item);
     },
-    [
-      setSavedTablesDrawerOpen,
-      flushCurrentWorkspace,
-      hasLoadedTable,
-      isLoadedDirty,
-      loadConfirmDialog,
-      handleLoadSavedTable,
-    ],
+    [setSavedTablesDrawerOpen, flushCurrentWorkspace, handleLoadSavedTable],
   );
-
-  const handleCancelLoadConfirm = useCallback(() => {
-    loadConfirmDialog.closeDialog();
-  }, [loadConfirmDialog]);
-
-  const handleLoadConfirmOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) {
-        loadConfirmDialog.closeDialog();
-      }
-    },
-    [loadConfirmDialog],
-  );
-
-  const handleConfirmLoadIgnore = useCallback(async () => {
-    if (!pendingLoadTarget) return;
-    loadConfirmDialog.closeDialog();
-    await handleLoadSavedTable(pendingLoadTarget);
-  }, [pendingLoadTarget, loadConfirmDialog, handleLoadSavedTable]);
-
-  const handleConfirmLoadSave = useCallback(() => {
-    if (!pendingLoadTarget) return;
-    loadConfirmDialog.closeDialog();
-    openSaveDialog(pendingLoadTarget);
-  }, [pendingLoadTarget, loadConfirmDialog, openSaveDialog]);
 
   const handleOpenSaveDialog = useCallback(() => {
     openSaveDialog(null);
@@ -357,9 +312,5 @@ export function useSaveLoadActions({
     handleConfirmSave,
     handleSaveDialogOpenChange,
     handleSelectSavedTable,
-    handleCancelLoadConfirm,
-    handleLoadConfirmOpenChange,
-    handleConfirmLoadIgnore,
-    handleConfirmLoadSave,
   };
 }

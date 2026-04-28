@@ -11,7 +11,6 @@ vi.mock('@/utils/tableVersions', () => ({
 
 describe('useSaveLoadActions', () => {
   let saveDialog: any;
-  let loadConfirmDialog: any;
   let setLoadedTableNormalizedName: any;
   let setLoadedTableName: any;
   let setLoadedTableSignature: any;
@@ -41,15 +40,6 @@ describe('useSaveLoadActions', () => {
       closeDialog: vi.fn(),
       setError: vi.fn(),
     };
-    loadConfirmDialog = {
-      isOpen: false,
-      data: { pendingTarget: null },
-      openDialog: vi.fn().mockImplementation((d: any) => {
-        loadConfirmDialog.data = d;
-      }),
-      closeDialog: vi.fn(),
-      setError: vi.fn(),
-    };
     setLoadedTableNormalizedName = vi.fn();
     setLoadedTableName = vi.fn();
     setLoadedTableSignature = vi.fn();
@@ -74,7 +64,6 @@ describe('useSaveLoadActions', () => {
       useSaveLoadActions({
         tableName: 'default_name',
         hasLoadedTable: false,
-        isLoadedDirty: false,
         canSaveCurrent: true,
         loadedTableNormalizedName: null,
         loadedTableName: null,
@@ -84,7 +73,6 @@ describe('useSaveLoadActions', () => {
         setLoadedTableVersion,
         setSavedTablesDrawerOpen,
         saveDialog,
-        loadConfirmDialog,
         buildPersistedState,
         serializePersistedState,
         applySavedState,
@@ -300,63 +288,36 @@ describe('useSaveLoadActions', () => {
     });
   });
 
-  it('Dialog open/close change testing and save target routing', () => {
-    loadConfirmDialog.data.pendingTarget = { name: 'pending' };
-    const { result } = getHook({ hasLoadedTable: true, isLoadedDirty: true });
+  it('handleSaveDialogOpenChange closes dialog only on close request', () => {
+    const { result } = getHook();
 
     act(() => {
       result.current.handleSaveDialogOpenChange(false);
     });
-    expect(saveDialog.closeDialog).toHaveBeenCalled();
+    expect(saveDialog.closeDialog).toHaveBeenCalledTimes(1);
 
     act(() => {
       result.current.handleSaveDialogOpenChange(true);
     });
     expect(saveDialog.closeDialog).toHaveBeenCalledTimes(1);
-
-    act(() => {
-      result.current.handleLoadConfirmOpenChange(false);
-    });
-    expect(loadConfirmDialog.closeDialog).toHaveBeenCalled();
-
-    act(() => {
-      result.current.handleCancelLoadConfirm();
-    });
-    expect(loadConfirmDialog.closeDialog).toHaveBeenCalledTimes(2);
-
-    act(() => {
-      result.current.handleConfirmLoadSave();
-    });
-    expect(loadConfirmDialog.closeDialog).toHaveBeenCalledTimes(3);
-    expect(saveDialog.openDialog).toHaveBeenCalled();
-
-    act(() => {
-      result.current.handleConfirmLoadIgnore();
-    });
-    expect(loadConfirmDialog.closeDialog).toHaveBeenCalledTimes(4);
-
-    // handle select saved table when dirty
-    act(() => {
-      result.current.handleSelectSavedTable({ name: 'pending' } as any);
-    });
-    expect(loadConfirmDialog.openDialog).toHaveBeenCalledWith({
-      pendingTarget: { name: 'pending' },
-    });
   });
 
-  it('handleConfirmLoadIgnore proceeds loading table', async () => {
-    loadConfirmDialog.data.pendingTarget = { normalizedName: 'pending_norm' };
-    const { result } = getHook();
+  it('handleSelectSavedTable always loads the target without confirmation', async () => {
+    const target = { normalizedName: 'pending_norm', name: 'pending' };
     loadTable.mockResolvedValue({
       normalizedName: 'pending_norm',
       name: 'pending',
       state: { rows: [] },
     });
 
+    const { result } = getHook({ hasLoadedTable: true });
+
     await act(async () => {
-      await result.current.handleConfirmLoadIgnore();
+      result.current.handleSelectSavedTable(target as any);
     });
-    expect(loadConfirmDialog.closeDialog).toHaveBeenCalled();
+
+    expect(flushCurrentWorkspace).toHaveBeenCalled();
+    expect(setSavedTablesDrawerOpen).toHaveBeenCalledWith(false);
     expect(loadTable).toHaveBeenCalledWith('pending_norm');
   });
 });

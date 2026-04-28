@@ -8,7 +8,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { CheckCircle2, AlertCircle } from 'lucide-react';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
-import type { ValidationResult } from './types';
+import type { ImportMode, ValidationResult } from './types';
 import { useTranslation } from 'react-i18next';
 
 interface SqlInputStepProps {
@@ -17,6 +17,8 @@ interface SqlInputStepProps {
   sql: string;
   onSqlChange: (sql: string) => void;
   validationResult: ValidationResult | null;
+  importMode?: ImportMode;
+  onImportModeChange?: (mode: ImportMode) => void;
 }
 
 export function SqlInputStep({
@@ -25,10 +27,33 @@ export function SqlInputStep({
   sql,
   onSqlChange,
   validationResult,
+  importMode,
+  onImportModeChange,
 }: SqlInputStepProps) {
   const { t } = useTranslation();
   return (
     <>
+      {importMode && onImportModeChange && (
+        <div className="grid gap-2">
+          <Label>{t('importSql.mode.label')}</Label>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <ModeRadio
+              value="workspace"
+              checked={importMode === 'workspace'}
+              onChange={onImportModeChange}
+              title={t('importSql.mode.workspace')}
+              description={t('importSql.mode.workspaceDesc')}
+            />
+            <ModeRadio
+              value="saved"
+              checked={importMode === 'saved'}
+              onChange={onImportModeChange}
+              title={t('importSql.mode.saved')}
+              description={t('importSql.mode.savedDesc')}
+            />
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="db-type" className="text-right">
           {t('importSql.sourceDb')}
@@ -98,5 +123,44 @@ export function SqlInputStep({
         </div>
       )}
     </>
+  );
+}
+
+function ModeRadio({
+  value,
+  checked,
+  onChange,
+  title,
+  description,
+}: {
+  value: ImportMode;
+  checked: boolean;
+  onChange: (mode: ImportMode) => void;
+  title: string;
+  description: string;
+}) {
+  const id = `import-mode-${value}`;
+  return (
+    <label
+      htmlFor={id}
+      aria-label={title}
+      className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer transition-colors ${
+        checked ? 'border-primary bg-primary/5' : 'hover:bg-muted/30'
+      }`}
+    >
+      <input
+        id={id}
+        type="radio"
+        name="import-mode"
+        value={value}
+        checked={checked}
+        onChange={() => onChange(value)}
+        className="mt-0.5 h-4 w-4 accent-primary"
+      />
+      <div className="space-y-0.5">
+        <span className="text-sm font-medium">{title}</span>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+    </label>
   );
 }

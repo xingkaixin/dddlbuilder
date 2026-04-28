@@ -12,10 +12,6 @@ type SaveDialogData = {
   queuedLoadAfterSave: SavedTableSummary | null;
 };
 
-type LoadConfirmDialogData = {
-  pendingTarget: SavedTableSummary | null;
-};
-
 type RenameDialogData = {
   name: string;
   target: SavedTableSummary | null;
@@ -28,7 +24,6 @@ type DeleteDialogData = {
 interface UseSavedTableFlowActionsParams {
   tableName: string;
   hasLoadedTable: boolean;
-  isLoadedDirty: boolean;
   canSaveCurrent: boolean;
   loadedTableNormalizedName: string | null;
   loadedTableName: string | null;
@@ -39,7 +34,6 @@ interface UseSavedTableFlowActionsParams {
   setLoadedTableVersion: (version: number) => void;
   setSavedTablesDrawerOpen: (open: boolean) => void;
   saveDialog: UseDialogStateReturn<SaveDialogData>;
-  loadConfirmDialog: UseDialogStateReturn<LoadConfirmDialogData>;
   renameDialog: UseDialogStateReturn<RenameDialogData>;
   deleteDialog: UseDialogStateReturn<DeleteDialogData>;
   buildPersistedState: () => PersistedState;
@@ -77,7 +71,6 @@ interface UseSavedTableFlowActionsParams {
 export function useSavedTableFlowActions({
   tableName,
   hasLoadedTable,
-  isLoadedDirty,
   canSaveCurrent,
   loadedTableNormalizedName,
   loadedTableName,
@@ -88,7 +81,6 @@ export function useSavedTableFlowActions({
   setLoadedTableVersion,
   setSavedTablesDrawerOpen,
   saveDialog,
-  loadConfirmDialog,
   renameDialog,
   deleteDialog,
   buildPersistedState,
@@ -112,7 +104,6 @@ export function useSavedTableFlowActions({
   const saveLoadActions = useSaveLoadActions({
     tableName,
     hasLoadedTable,
-    isLoadedDirty,
     canSaveCurrent,
     loadedTableNormalizedName,
     loadedTableName,
@@ -122,7 +113,6 @@ export function useSavedTableFlowActions({
     setLoadedTableVersion,
     setSavedTablesDrawerOpen,
     saveDialog,
-    loadConfirmDialog,
     buildPersistedState,
     serializePersistedState,
     applySavedState,
