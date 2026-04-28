@@ -14,9 +14,9 @@ const fillBasicField = async (page: any, name = 'id') => {
 
 const selectFirstDraft = async (page: any) => {
   await openSavedTables(page);
-  const draft = page.getByTestId('draft-item').first();
-  await expect(draft).toBeVisible();
-  await draft.click();
+  const row = page.locator('[data-testid="saved-table-row:default"]');
+  await expect(row).toBeVisible();
+  await row.locator('[data-testid="table-select:default"]').click();
 };
 
 const saveTable = async (page: any, name: string, comment = '') => {
@@ -46,7 +46,10 @@ const openSavedTables = async (page: any) => {
 };
 
 const getSavedTableRow = (page: any, pattern: RegExp) => {
-  return page.locator('[data-testid^="saved-table-row:"]').filter({ hasText: pattern });
+  return page
+    .locator('[data-testid^="saved-table-row:"]')
+    .filter({ hasText: pattern })
+    .filter({ hasNot: page.locator('[data-testid^="draft-badge:"]') });
 };
 
 const clickSavedTable = async (page: any, pattern: RegExp) => {
@@ -77,10 +80,7 @@ test.describe('保存表管理补充 @storage', () => {
     await openSavedTables(page);
     const row = getSavedTableRow(page, new RegExp(baseName, 'i'));
     await row.hover();
-    await row
-      .locator('..')
-      .getByRole('button', { name: /重命名/i })
-      .click();
+    await row.getByRole('button', { name: /重命名/i }).click();
 
     await expect(page.getByText('重命名保存的表')).toBeVisible();
     await page.getByLabel('新名称').fill(nextName);
@@ -98,10 +98,7 @@ test.describe('保存表管理补充 @storage', () => {
 
     const row = getSavedTableRow(page, new RegExp(tableName, 'i'));
     await row.hover();
-    await row
-      .locator('..')
-      .getByRole('button', { name: /删除/i })
-      .click();
+    await row.getByRole('button', { name: /删除/i }).click();
 
     const deleteConfirmDialog = page.getByRole('dialog').filter({ hasText: '确认删除保存的表？' });
     await expect(deleteConfirmDialog).toBeVisible();
@@ -208,10 +205,7 @@ test.describe('保存表管理补充 @storage', () => {
     await openSavedTables(page);
     const row = getSavedTableRow(page, new RegExp(originalName, 'i'));
     await row.hover();
-    await row
-      .locator('..')
-      .getByRole('button', { name: /重命名/i })
-      .click();
+    await row.getByRole('button', { name: /重命名/i }).click();
     await expect(page.getByText('重命名保存的表')).toBeVisible();
     await page.getByLabel('新名称').fill(renamedName);
     await page.getByRole('button', { name: /确认/i }).click();
@@ -227,10 +221,7 @@ test.describe('保存表管理补充 @storage', () => {
     await openSavedTables(page);
     const renamedRow = getSavedTableRow(page, new RegExp(renamedName, 'i'));
     await renamedRow.hover();
-    await renamedRow
-      .locator('..')
-      .getByRole('button', { name: /删除/i })
-      .click();
+    await renamedRow.getByRole('button', { name: /删除/i }).click();
     const deleteConfirmDialog = page.getByRole('dialog').filter({ hasText: '确认删除保存的表？' });
     await expect(deleteConfirmDialog).toBeVisible();
     await deleteConfirmDialog.getByRole('button', { name: /确认删除|删除/i }).click();

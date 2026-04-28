@@ -12,7 +12,10 @@ const fillBasicField = async (page: any, name = 'f1') => {
 };
 
 const getSavedTableRow = (page: any, pattern: RegExp) => {
-  return page.locator('[data-testid^="saved-table-row:"]').filter({ hasText: pattern });
+  return page
+    .locator('[data-testid^="saved-table-row:"]')
+    .filter({ hasText: pattern })
+    .filter({ hasNot: page.locator('[data-testid^="draft-badge:"]') });
 };
 
 const clickSavedTable = async (page: any, pattern: RegExp) => {
@@ -26,10 +29,7 @@ const openHistoryDialog = async (page: any, tableName: string) => {
   await expect(page.getByRole('heading', { name: '已保存的表' })).toBeVisible();
   const savedRow = getSavedTableRow(page, new RegExp(tableName, 'i'));
   await savedRow.hover();
-  await savedRow
-    .locator('..')
-    .getByRole('button', { name: /历史版本/i })
-    .click();
+  await savedRow.getByRole('button', { name: /历史版本/i }).click();
   const dialog = page.getByRole('dialog', { name: /版本历史/i });
   await expect(dialog).toBeVisible();
   return dialog;

@@ -747,6 +747,7 @@ export const enUSCommon = {
     draft: 'Draft box',
     draftMeta: 'Auto-saved · {{dbType}} · {{count}} fields',
     clickToLoad: 'Click to load',
+    draftLabel: 'Draft',
     loaded: 'Loaded',
     dirty: 'Modified',
     rename: 'Rename',

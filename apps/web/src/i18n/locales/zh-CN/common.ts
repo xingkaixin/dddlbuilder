@@ -727,6 +727,7 @@ export const zhCNCommon = {
     draft: '草稿箱',
     draftMeta: '自动保存 · {{dbType}} · {{count}} 字段',
     clickToLoad: '点击加载',
+    draftLabel: '草稿',
     loaded: '已加载',
     dirty: '已修改',
     rename: '重命名',

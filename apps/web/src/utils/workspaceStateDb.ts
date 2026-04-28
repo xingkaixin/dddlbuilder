@@ -32,6 +32,7 @@ type WorkspaceDraftEntity = {
   scope?: string;
   state: PersistedState;
   updatedAt: number;
+  folderId?: string;
 };
 
 type WorkspaceSavedDraftEntity = SavedTableDraftRecord & {
@@ -166,6 +167,7 @@ export const readDraft = async (
   return {
     state: decoded.state,
     updatedAt: decoded.updatedAt,
+    folderId: decoded.folderId,
   };
 };
 
@@ -214,6 +216,7 @@ export const listDrafts = async (
       record: {
         state: decoded.state,
         updatedAt: decoded.updatedAt,
+        folderId: decoded.folderId,
       },
     });
   }
@@ -398,7 +401,7 @@ export const readWorkspaceBootstrap = async (
       const draftId = decoded.id.startsWith(prefix) ? decoded.id.slice(prefix.length) : decoded.id;
       drafts.push({
         draftId,
-        record: { state: decoded.state, updatedAt: decoded.updatedAt },
+        record: { state: decoded.state, updatedAt: decoded.updatedAt, folderId: decoded.folderId },
       });
     }
 

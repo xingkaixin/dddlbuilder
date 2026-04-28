@@ -35,6 +35,7 @@ export type DraftSummary = {
   dbType: string;
   fieldCount: number;
   updatedAt: number;
+  folderId?: string;
 };
 
 export type TableFolderSnapshot = {

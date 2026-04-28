@@ -2,7 +2,7 @@ import type React from 'react';
 import { memo } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { Columns3, Database, GripVertical, History, Pencil, Table2, Trash2 } from 'lucide-react';
+import { Columns3, Database, GripVertical, History, Pencil, Table2, Trash2, FileEdit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import { cn } from '@/lib/utils';
@@ -35,9 +35,10 @@ export interface TableItemProps {
   item: SavedTableSummary;
   isActive: boolean;
   activeDirty: boolean;
+  isDraft?: boolean;
   depth?: number;
   onSelect: () => void;
-  onRename: () => void;
+  onRename?: () => void;
   onDelete: () => void;
   onViewHistory?: () => void;
   dragDisabled?: boolean;
@@ -48,6 +49,7 @@ export const TableItem = memo<TableItemProps>(
     item,
     isActive,
     activeDirty,
+    isDraft = false,
     depth = 0,
     onSelect,
     onRename,
@@ -111,13 +113,28 @@ export const TableItem = memo<TableItemProps>(
           onClick={onSelect}
         >
           <div className="flex items-center gap-1">
-            <Table2
-              className="h-4 w-4 shrink-0 text-primary/80"
-              data-testid={`table-icon:${item.normalizedName}`}
-            />
+            {isDraft ? (
+              <FileEdit
+                className="h-4 w-4 shrink-0 text-amber-600/80"
+                data-testid={`table-icon:${item.normalizedName}`}
+              />
+            ) : (
+              <Table2
+                className="h-4 w-4 shrink-0 text-primary/80"
+                data-testid={`table-icon:${item.normalizedName}`}
+              />
+            )}
             <span className={cn('truncate text-sm', isActive ? 'font-semibold' : 'font-medium')}>
               {item.name}
             </span>
+            {isDraft && (
+              <span
+                className="rounded bg-amber-500/10 px-1 py-0 text-[10px] text-amber-600"
+                data-testid={`draft-badge:${item.normalizedName}`}
+              >
+                {t('savedTables.draftLabel')}
+              </span>
+            )}
             {statusLabel && <span className="text-xs text-muted-foreground">{statusLabel}</span>}
           </div>
           <div className="mt-1 ml-1 border-l border-border/50 pl-2">
@@ -150,7 +167,7 @@ export const TableItem = memo<TableItemProps>(
           className="absolute right-2 top-1/2 z-20 flex -translate-y-1/2 items-center gap-1 opacity-70 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
           data-testid={`table-actions:${item.normalizedName}`}
         >
-          {onViewHistory && (
+          {onViewHistory && !isDraft && (
             <Button
               variant="ghost"
               size="icon"
@@ -161,15 +178,17 @@ export const TableItem = memo<TableItemProps>(
               <History className="h-3.5 w-3.5" />
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn('h-7 w-7', drawerInteractiveButtonClass)}
-            onClick={onRename}
-            aria-label={t('savedTables.rename')}
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
+          {onRename && !isDraft && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn('h-7 w-7', drawerInteractiveButtonClass)}
+              onClick={onRename}
+              aria-label={t('savedTables.rename')}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"

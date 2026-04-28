@@ -624,24 +624,29 @@ function App() {
     flushCurrentWorkspace,
     setWorkspaceSnapshot,
     onTableLoadStateChange: setIsSavedTableLoading,
-    onSaveSuccess: async ({ normalizedName, displayName, baseSignature }) => {
-      if (!isShareView) return;
-      try {
-        await writeWorkspaceSession({
-          activeSource: {
-            kind: 'saved_table',
-            normalizedName,
-            tableName: displayName,
-            baseSignature,
-          },
-          activeState: null,
-          updatedAt: Date.now(),
-        });
-        sessionStorage.setItem(SHARE_COPY_SAVED_TOAST_KEY, displayName);
-      } catch {
-        // ignore persistence errors
+    onSaveSuccess: async ({ normalizedName, displayName, baseSignature, mode }) => {
+      if (isShareView) {
+        try {
+          await writeWorkspaceSession({
+            activeSource: {
+              kind: 'saved_table',
+              normalizedName,
+              tableName: displayName,
+              baseSignature,
+            },
+            activeState: null,
+            updatedAt: Date.now(),
+          });
+          sessionStorage.setItem(SHARE_COPY_SAVED_TOAST_KEY, displayName);
+        } catch {
+          // ignore persistence errors
+        }
+        window.location.replace('/');
+        return;
       }
-      window.location.replace('/');
+      if (mode === 'create' && activeSource.kind === 'draft') {
+        deleteDraftById(activeSource.draftId);
+      }
     },
   });
 

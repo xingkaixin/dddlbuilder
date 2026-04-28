@@ -160,6 +160,7 @@ export const buildDraftSummary = (
   draftId: string,
   state: PersistedState,
   updatedAt: number,
+  folderId?: string,
 ): DraftSummary => {
   const fieldCount = state.rows.filter((row) => row.fieldName?.trim()).length;
   const name = state.tableName.trim() || '未命名草稿';
@@ -169,6 +170,7 @@ export const buildDraftSummary = (
     dbType: state.dbType,
     fieldCount,
     updatedAt,
+    folderId,
   };
 };
 

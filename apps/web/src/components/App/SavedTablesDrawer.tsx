@@ -7,7 +7,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
-import { Database, FilePlus, FolderPlus, Search, Trash2, X } from 'lucide-react';
+import { Database, FilePlus, FolderPlus, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Drawer,
@@ -29,8 +29,6 @@ import { useSavedTablesFilter } from './saved-tables/useSavedTablesFilter';
 type MoveOperationResult = { ok: boolean; message?: string };
 const drawerIconButtonClass =
   'h-7 w-7 text-muted-foreground/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50';
-const drawerCardButtonClass =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-60';
 
 export interface SavedTablesDrawerProps {
   open: boolean;
@@ -139,23 +137,39 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
       }),
     );
 
+    const draftAsSavedItems = useMemo<SavedTableSummary[]>(
+      () =>
+        draftItems.map((d) => ({
+          normalizedName: d.draftId,
+          name: d.name,
+          dbType: d.dbType,
+          fieldCount: d.fieldCount,
+          updatedAt: d.updatedAt,
+          folderId: d.folderId,
+          createdAt: d.updatedAt,
+        })),
+      [draftItems],
+    );
+    const allItems = useMemo(() => [...draftAsSavedItems, ...items], [draftAsSavedItems, items]);
+    const draftIdSet = useMemo(() => new Set(draftItems.map((d) => d.draftId)), [draftItems]);
+
     const { foldersWithCount, filteredItems, ungroupedItems, isSearching } = useSavedTablesFilter({
-      items,
+      items: allItems,
       folders,
       searchQuery,
     });
 
     const itemMap = useMemo(
-      () => new Map(items.map((item) => [item.normalizedName, item])),
-      [items],
+      () => new Map(allItems.map((item) => [item.normalizedName, item])),
+      [allItems],
     );
     const tableFolderMap = useMemo(
       () =>
-        items.reduce<Record<string, string | undefined>>((acc, item) => {
+        allItems.reduce<Record<string, string | undefined>>((acc, item) => {
           acc[item.normalizedName] = item.folderId;
           return acc;
         }, {}),
-      [items],
+      [allItems],
     );
     const folderParentMap = useMemo(
       () => buildFolderParentMap(foldersWithCount),
@@ -198,23 +212,48 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     const renderTableList = useCallback(
       (tableItems: SavedTableSummary[], depth = 0) => (
         <div className="space-y-2">
-          {tableItems.map((item) => (
-            <TableItem
-              key={item.normalizedName}
-              item={item}
-              isActive={activeNormalizedName === item.normalizedName}
-              activeDirty={activeDirty}
-              depth={depth}
-              onSelect={() => onSelect(item)}
-              onRename={() => onRename(item)}
-              onDelete={() => onDelete(item)}
-              onViewHistory={onViewHistory ? () => onViewHistory(item) : undefined}
-              dragDisabled={isSearching}
-            />
-          ))}
+          {tableItems.map((item) => {
+            const isDraft = draftIdSet.has(item.normalizedName);
+            const isActive = isDraft
+              ? activeDraftId === item.normalizedName
+              : activeNormalizedName === item.normalizedName;
+            return (
+              <TableItem
+                key={item.normalizedName}
+                item={item}
+                isActive={isActive}
+                activeDirty={activeDirty}
+                isDraft={isDraft}
+                depth={depth}
+                onSelect={() =>
+                  isDraft ? onSelectDraft?.(item.normalizedName) : onSelect(item)
+                }
+                onRename={isDraft ? undefined : () => onRename(item)}
+                onDelete={() =>
+                  isDraft ? onDeleteDraft?.(item.normalizedName) : onDelete(item)
+                }
+                onViewHistory={
+                  isDraft || !onViewHistory ? undefined : () => onViewHistory(item)
+                }
+                dragDisabled={isSearching || isDraft}
+              />
+            );
+          })}
         </div>
       ),
-      [activeDirty, activeNormalizedName, isSearching, onDelete, onRename, onSelect, onViewHistory],
+      [
+        activeDirty,
+        activeNormalizedName,
+        activeDraftId,
+        draftIdSet,
+        isSearching,
+        onDelete,
+        onDeleteDraft,
+        onRename,
+        onSelect,
+        onSelectDraft,
+        onViewHistory,
+      ],
     );
 
     const renderTables = useCallback(
@@ -364,7 +403,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     const hasFolders = folders.length > 0;
     const hasVisibleContent = filteredItems.length > 0 || foldersWithCount.length > 0;
     const isLoading = loading || foldersLoading;
-    const canSearch = items.length > 0;
+    const canSearch = allItems.length > 0;
 
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
@@ -455,64 +494,12 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                 {error}
               </div>
             )}
-            {!isLoading && !error && items.length === 0 && draftItems.length === 0 && (
+            {!isLoading && !error && allItems.length === 0 && (
               <div className="px-2 py-3 text-xs text-muted-foreground">
                 {t('savedTables.emptyHint')}
               </div>
             )}
-            {!isLoading && !error && draftItems.length > 0 && onSelectDraft && (
-              <div className="mb-3 space-y-2">
-                <div className="px-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  {t('savedTables.draftsSection')}
-                </div>
-                {draftItems.map((draft) => {
-                  const isActive = activeDraftId === draft.draftId;
-                  const canDelete = draftItems.length > 1 || draft.draftId !== 'default';
-                  return (
-                    <div key={draft.draftId} className="group relative">
-                      <button
-                        type="button"
-                        data-testid="draft-item"
-                        data-draft-id={draft.draftId}
-                        className={`${drawerCardButtonClass} flex w-full items-center justify-between rounded-md border px-3 py-2 text-left transition-colors ${
-                          isActive
-                            ? 'border-primary/40 bg-primary/10 shadow-sm shadow-primary/10'
-                            : 'border-border bg-card hover:bg-accent'
-                        }`}
-                        onClick={() => onSelectDraft(draft.draftId)}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-medium">{draft.name}</div>
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            {t('savedTables.draftMeta', {
-                              dbType: draft.dbType,
-                              count: draft.fieldCount,
-                            })}
-                          </div>
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          {isActive ? t('savedTables.loaded') : t('savedTables.clickToLoad')}
-                        </span>
-                      </button>
-                      {canDelete && onDeleteDraft && (
-                        <button
-                          type="button"
-                          className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteDraft(draft.draftId);
-                          }}
-                          aria-label={t('savedTables.deleteDraft')}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            {!isLoading && !error && items.length > 0 && filteredItems.length === 0 && (
+            {!isLoading && !error && allItems.length > 0 && filteredItems.length === 0 && (
               <div className="px-2 py-3 text-xs text-muted-foreground">
                 {t('savedTables.noMatch')}
               </div>

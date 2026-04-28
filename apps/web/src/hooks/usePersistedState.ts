@@ -100,7 +100,7 @@ export function usePersistedState(): UsePersistedStateReturn {
       const summaries: DraftSummary[] = [];
       for (const { draftId, record } of drafts) {
         map.set(draftId, record);
-        summaries.push(buildDraftSummary(draftId, record.state, record.updatedAt));
+        summaries.push(buildDraftSummary(draftId, record.state, record.updatedAt, record.folderId));
       }
       draftsRef.current = map;
       setDraftSummaries(summaries);
@@ -132,7 +132,8 @@ export function usePersistedState(): UsePersistedStateReturn {
         draftsRef.current.set(source.draftId, draftRecord);
         setDraftSummaries((prev) => {
           const next = prev.filter((d) => d.draftId !== source.draftId);
-          next.push(buildDraftSummary(source.draftId, state, Date.now()));
+          const folderId = prev.find((d) => d.draftId === source.draftId)?.folderId;
+          next.push(buildDraftSummary(source.draftId, state, Date.now(), folderId));
           return next;
         });
         fireAndForget(writeDraft(source.draftId, draftRecord, currentScope));
@@ -178,7 +179,8 @@ export function usePersistedState(): UsePersistedStateReturn {
         draftsRef.current.set(draftId, draftRecord);
         setDraftSummaries((prev) => {
           const next = prev.filter((d) => d.draftId !== draftId);
-          next.push(buildDraftSummary(draftId, payload.state, Date.now()));
+          const folderId = prev.find((d) => d.draftId === draftId)?.folderId;
+          next.push(buildDraftSummary(draftId, payload.state, Date.now(), folderId));
           return next;
         });
         fireAndForget(writeDraft(draftId, draftRecord, currentScope));
