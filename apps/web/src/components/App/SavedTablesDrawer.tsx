@@ -225,16 +225,10 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                 activeDirty={activeDirty}
                 isDraft={isDraft}
                 depth={depth}
-                onSelect={() =>
-                  isDraft ? onSelectDraft?.(item.normalizedName) : onSelect(item)
-                }
+                onSelect={() => (isDraft ? onSelectDraft?.(item.normalizedName) : onSelect(item))}
                 onRename={isDraft ? undefined : () => onRename(item)}
-                onDelete={() =>
-                  isDraft ? onDeleteDraft?.(item.normalizedName) : onDelete(item)
-                }
-                onViewHistory={
-                  isDraft || !onViewHistory ? undefined : () => onViewHistory(item)
-                }
+                onDelete={() => (isDraft ? onDeleteDraft?.(item.normalizedName) : onDelete(item))}
+                onViewHistory={isDraft || !onViewHistory ? undefined : () => onViewHistory(item)}
                 dragDisabled={isSearching || isDraft}
               />
             );

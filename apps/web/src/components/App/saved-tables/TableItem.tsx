@@ -2,7 +2,16 @@ import type React from 'react';
 import { memo } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { Columns3, Database, GripVertical, History, Pencil, Table2, Trash2, FileEdit } from 'lucide-react';
+import {
+  Columns3,
+  Database,
+  GripVertical,
+  History,
+  Pencil,
+  Table2,
+  Trash2,
+  FileEdit,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import { cn } from '@/lib/utils';
