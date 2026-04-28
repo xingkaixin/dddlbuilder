@@ -325,12 +325,13 @@ export function parseCreateTable(stmt: any, result: ParsedResult, dbType: Databa
   }
 }
 
-export function parseCreateIndex(stmt: any, result: ParsedResult) {
+export function parseCreateIndex(stmt: any, result: ParsedResult, targetTableName?: string) {
   const indexName = stmt.index;
   const tableName = stmt.table.table;
 
   // Only process if table name matches (simple validation)
-  if (result.tableName && tableName !== result.tableName) {
+  const effectiveTableName = targetTableName ?? result.tableName;
+  if (effectiveTableName && tableName !== effectiveTableName) {
     return;
   }
 
@@ -350,9 +351,14 @@ export function parseCreateIndex(stmt: any, result: ParsedResult) {
   );
 }
 
-export function parseAlterTable(stmt: any, result: ParsedResult) {
+export function parseAlterTable(stmt: any, result: ParsedResult, targetTableName?: string) {
   // Basic support for ALTER TABLE ADD PRIMARY KEY / INDEX / FOREIGN KEY
   if (!stmt.expr || !Array.isArray(stmt.expr)) return;
+
+  const alterTargetTable = stmt.table?.table;
+  if (targetTableName && alterTargetTable && alterTargetTable !== targetTableName) {
+    return;
+  }
 
   stmt.expr.forEach((expr: any) => {
     const defs = expr.create_definitions;

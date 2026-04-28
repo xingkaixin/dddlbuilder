@@ -819,6 +819,16 @@ function App() {
           currentDbType={dbType}
           onImport={handleImport}
           onPlayFireworks={isCnyFireworksEnabled ? handlePlayFireworks : undefined}
+          savedTables={savedTables}
+          folders={folderTree}
+          folderTree={folderTree}
+          onBatchImportComplete={() => {
+            void savedTables.refresh();
+            setSavedTablesDrawerOpen(true);
+          }}
+          saveTable={saveTable}
+          overwriteTable={overwriteTable}
+          moveTableToFolder={moveTableToFolder}
         />
 
         {isShareView && (

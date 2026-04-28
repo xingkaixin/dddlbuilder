@@ -23,6 +23,11 @@ export type ParserInstance = {
 };
 
 export type ParserConstructor = new () => ParserInstance;
+export type MultiParsedResult = {
+  results: ParsedResult[];
+  failed: Array<{ statement: string; error: string }>;
+};
+
 export type ParserModule = {
   Parser?: unknown;
   default?: unknown;

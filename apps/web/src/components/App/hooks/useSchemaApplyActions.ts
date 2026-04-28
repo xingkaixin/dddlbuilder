@@ -1,7 +1,7 @@
 import { useCallback, type Dispatch, type SetStateAction } from 'react';
 import type { ParsedResult } from '@/utils/SqlParser';
-import { createEmptyRow } from '@/utils/helpers';
 import { getSchemaAndTable } from '@ddlbuilder/ddl-core';
+import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
 import type {
   DatabaseType,
   FieldRow,
@@ -47,8 +47,6 @@ const DEFAULT_TABLE_MISC_CONFIG: TableMiscConfig = {
   tablespace: '',
 };
 
-const MYSQL_PARTITION_DBS: DatabaseType[] = ['mysql', 'mariadb', 'tidb'];
-
 const DEFAULT_MYSQL_PARTITION_CONFIG: MysqlPartitionConfig = {
   enabled: false,
   type: 'RANGE',
@@ -56,8 +54,6 @@ const DEFAULT_MYSQL_PARTITION_CONFIG: MysqlPartitionConfig = {
   partitionCount: 4,
   partitions: [],
 };
-
-type UiDefaultValue = '无' | '自增' | '常量' | '当前时间' | 'uuid';
 
 export function useSchemaApplyActions({
   rows,
@@ -235,82 +231,19 @@ export function useSchemaApplyActions({
 
   const handleImport = useCallback(
     (result: ParsedResult, importDbType: DatabaseType) => {
-      const parsedName =
-        result.schemaName || !result.tableName.includes('.')
-          ? { schema: result.schemaName || '', table: result.tableName }
-          : getSchemaAndTable(result.tableName);
+      const state = convertParsedResultToPersistedState(result, importDbType);
 
-      setSchemaName(parsedName.schema);
-      setTableName(parsedName.table);
-      setTableComment(result.tableComment);
-      setDbType(importDbType);
-      setTableMiscConfig({
-        ...DEFAULT_TABLE_MISC_CONFIG,
-        ...result.tableMiscConfig,
-      });
-      setMysqlPartitionConfig(
-        MYSQL_PARTITION_DBS.includes(importDbType)
-          ? {
-              ...DEFAULT_MYSQL_PARTITION_CONFIG,
-              ...result.mysqlPartitionConfig,
-            }
-          : DEFAULT_MYSQL_PARTITION_CONFIG,
-      );
-
-      const newRows: FieldRow[] = result.fields.map((field, index) => {
-        let uiNullable = '是';
-        if (field.nullable === false) uiNullable = '否';
-
-        let uiDefaultKind: UiDefaultValue = '无';
-        switch (field.defaultKind) {
-          case 'auto_increment':
-            uiDefaultKind = '自增';
-            break;
-          case 'constant':
-            uiDefaultKind = '常量';
-            break;
-          case 'current_timestamp':
-            uiDefaultKind = '当前时间';
-            break;
-          case 'uuid':
-            uiDefaultKind = 'uuid';
-            break;
-          default:
-            uiDefaultKind = '无';
-            break;
-        }
-
-        let uiOnUpdate: '无' | '当前时间' = '无';
-        if (field.onUpdate === 'current_timestamp') {
-          uiOnUpdate = '当前时间';
-        }
-
-        return {
-          order: index + 1,
-          fieldName: field.name,
-          fieldType: field.type,
-          fieldComment: field.comment,
-          nullable: uiNullable,
-          defaultKind: uiDefaultKind,
-          defaultValue: field.defaultValue,
-          onUpdate: uiOnUpdate,
-        };
-      });
-
-      const minRows = 12;
-      if (newRows.length < minRows) {
-        for (let i = newRows.length; i < minRows; i += 1) {
-          newRows.push(createEmptyRow(i));
-        }
-      }
-      setRows(newRows);
-
-      setIndexes(result.indexes);
+      setSchemaName(state.schemaName);
+      setTableName(state.tableName);
+      setTableComment(state.tableComment);
+      setDbType(state.dbType);
+      setTableMiscConfig(state.tableMiscConfig ?? DEFAULT_TABLE_MISC_CONFIG);
+      setMysqlPartitionConfig(state.mysqlPartitionConfig ?? DEFAULT_MYSQL_PARTITION_CONFIG);
+      setRows(state.rows);
+      setIndexes(state.indexes);
       setIndexInput('');
-
-      setForeignKeys(result.foreignKeys || []);
-
-      setAuthObjects(result.authObjects);
+      setForeignKeys(state.foreignKeys ?? []);
+      setAuthObjects(state.authObjects);
       setAuthInput('');
       void trackEvent('sql_import', { dbType: importDbType });
     },
