@@ -890,6 +890,15 @@ export const enUSCommon = {
       'AI review is for reference only. Please validate suggestions against your business logic before applying.',
     reviewDone: 'Review completed',
   },
+  schemaLint: {
+    title: 'Schema Lint',
+    pass: 'Passed',
+    issueCount: '{{count}} items',
+    empty: 'Current schema passed built-in lint rules.',
+    error: 'Error',
+    warning: 'Warning',
+    suggestion: 'Suggestion',
+  },
   savedTables: {
     title: 'Saved Tables',
     drawerDescription: 'Manage and browse saved table configurations',

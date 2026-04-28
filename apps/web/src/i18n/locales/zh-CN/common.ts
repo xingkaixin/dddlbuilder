@@ -867,6 +867,15 @@ export const zhCNCommon = {
     disclaimer: '大师评审由 AI 自动化生成，仅供参考。应用建议前请务必确认是否符合具体业务逻辑。',
     reviewDone: '评审完成',
   },
+  schemaLint: {
+    title: '结构规范检查',
+    pass: '通过',
+    issueCount: '{{count}} 项',
+    empty: '当前结构已通过内置规范检查。',
+    error: '错误',
+    warning: '警告',
+    suggestion: '建议',
+  },
   savedTables: {
     title: '已保存的表',
     drawerDescription: '管理和浏览已保存的数据库表配置',

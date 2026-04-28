@@ -41,6 +41,7 @@ import { useFieldTemplates } from '@/hooks/useFieldTemplates';
 import { useTableTemplates } from '@/hooks/useTableTemplates';
 import { countVersions } from '@/utils/tableVersions';
 import { writeWorkspaceSession } from '@/utils/workspaceStateDb';
+import { lintSchema } from '@/utils/schemaLint';
 import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
 import { useTranslation } from 'react-i18next';
 
@@ -491,6 +492,11 @@ function App() {
     setIsReviewHistoryOpen,
     trackEvent,
   });
+
+  const schemaLintIssues = useMemo(
+    () => lintSchema({ tableName, rows, indexes }),
+    [tableName, rows, indexes],
+  );
 
   const { handleShare, isSharing } = useShareAction({
     buildPersistedState,
@@ -1127,6 +1133,7 @@ function App() {
                   reviewPartialResult,
                   reviewResult,
                   reviewError,
+                  schemaLintIssues,
                   onStartReview: handleStartReview,
                   onViewReviewHistory: handleViewReviewHistory,
                   onApplySuggestion: handleApplySuggestion,

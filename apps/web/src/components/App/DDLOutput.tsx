@@ -2,6 +2,7 @@ import type { DatabaseType, RoutineTemplateKind, SqlFormatMode } from '@ddlbuild
 import type { CSSProperties } from 'react';
 import type { ReviewResult } from '@/hooks/useDDLReview';
 import type { PartialReviewResult } from '@/utils/parsePartialJson';
+import type { SchemaLintIssue } from '@/utils/schemaLint';
 import { memo, useMemo, useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -24,6 +25,7 @@ import {
 } from 'lucide-react';
 import { DATABASE_OPTIONS } from '@/utils/constants';
 import { ReviewResultPanel } from './ReviewResult';
+import { SchemaLintPanel } from './SchemaLintPanel';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
@@ -50,6 +52,7 @@ interface DDLOutputProps {
   reviewPartialResult: PartialReviewResult | null;
   reviewResult: ReviewResult | null;
   reviewError: string | null;
+  schemaLintIssues: SchemaLintIssue[];
   onStartReview: () => void;
   onViewReviewHistory?: () => void;
   onApplySuggestion?: (suggestion: any) => void;
@@ -83,6 +86,7 @@ export const DDLOutput = memo<DDLOutputProps>(
     reviewPartialResult,
     reviewResult,
     reviewError,
+    schemaLintIssues,
     onStartReview,
     onViewReviewHistory,
     onApplySuggestion,
@@ -395,6 +399,7 @@ export const DDLOutput = memo<DDLOutputProps>(
               </div>
               {/* Review Result Panel */}
               <div className="px-4 pb-4">
+                <SchemaLintPanel issues={schemaLintIssues} />
                 <ReviewResultPanel
                   isLoading={isReviewing}
                   partialResult={reviewPartialResult}
