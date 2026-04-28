@@ -3,7 +3,7 @@ import type { ApiEnv } from './lib/context.js';
 import { dispatchTelegramAuditNotification } from './lib/telegramNotifier.js';
 import { errorResponse, type ApiErrorCode } from './lib/http.js';
 
-export type OpenAIRouteKey = 'explain' | 'review' | 'generate-table';
+export type OpenAIRouteKey = 'explain' | 'review' | 'generate-table' | 'generate-comments';
 
 type RateLimitRule = {
   maxRequests: number;
@@ -123,6 +123,10 @@ export const buildOpenAIConfig = (env: ApiEnv['Bindings']): OpenAIConfig => {
       },
       'generate-table': {
         maxRequests: readEnvInt(env.OPENAI_RATELIMIT_GENERATE_MAX, 4),
+        windowMs: defaultWindowMs,
+      },
+      'generate-comments': {
+        maxRequests: readEnvInt(env.OPENAI_RATELIMIT_GENERATE_COMMENTS_MAX, 6),
         windowMs: defaultWindowMs,
       },
     },

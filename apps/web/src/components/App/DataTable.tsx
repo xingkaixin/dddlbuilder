@@ -28,6 +28,7 @@ import { useFieldTypeChangeGuard } from './table/useFieldTypeChangeGuard';
 import { DangerousChangeDialog } from './table/DangerousChangeDialog';
 import { useSortableFieldRows } from './table/useSortableFieldRows';
 import { useTranslation } from 'react-i18next';
+import type { AICommentMode } from '@ddlbuilder/shared-types';
 
 interface DataTableProps {
   toolbarLeft?: ReactNode;
@@ -35,6 +36,8 @@ interface DataTableProps {
   highlightedRowIndex?: number | null;
   onOpenStorageEstimator?: () => void;
   onOpenMockDataGenerator?: () => void;
+  onGenerateComments?: (mode: AICommentMode, targetLocale?: 'zh-CN' | 'en-US') => void;
+  isGeneratingComments?: boolean;
 }
 
 interface SortableDataRowProps {
@@ -143,6 +146,8 @@ export const DataTable = memo<DataTableProps>(
     highlightedRowIndex,
     onOpenStorageEstimator,
     onOpenMockDataGenerator,
+    onGenerateComments,
+    isGeneratingComments,
   }) => {
     const { t } = useTranslation();
     const rows = useFieldStore((state) => state.rows);
@@ -351,6 +356,8 @@ export const DataTable = memo<DataTableProps>(
           toolbarLeft={toolbarLeft}
           onOpenStorageEstimator={onOpenStorageEstimator}
           onOpenMockDataGenerator={onOpenMockDataGenerator}
+          onGenerateComments={onGenerateComments}
+          isGeneratingComments={isGeneratingComments}
           freezeEnabled={freezeEnabled}
           onFreezeEnabledChange={onFreezeEnabledChange}
           effectiveFreezeColumns={effectiveFreezeColumns}

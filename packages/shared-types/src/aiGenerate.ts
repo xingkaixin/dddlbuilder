@@ -42,3 +42,30 @@ export interface PartialTableSchema {
   indexes?: GeneratedIndex[];
   designDecisions?: GeneratedDesignDecision[];
 }
+
+export type AICommentMode = 'fill_missing' | 'translate';
+
+export interface AICommentFieldInput {
+  fieldName: string;
+  fieldType: string;
+  fieldComment: string;
+}
+
+export interface AICommentRequest {
+  mode: AICommentMode;
+  targetLocale: 'zh-CN' | 'en-US';
+  schemaName?: string;
+  tableName: string;
+  tableComment: string;
+  fields: AICommentFieldInput[];
+}
+
+export interface AICommentFieldResult {
+  fieldName: string;
+  fieldComment: string;
+}
+
+export interface AICommentResult {
+  tableComment: string;
+  fields: AICommentFieldResult[];
+}

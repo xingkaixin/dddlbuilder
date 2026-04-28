@@ -217,5 +217,10 @@ export type {
   GeneratedDesignDecision,
   ConversationMessage,
   PartialTableSchema,
+  AICommentMode,
+  AICommentRequest,
+  AICommentResult,
+  AICommentFieldInput,
+  AICommentFieldResult,
 } from './aiGenerate.js';
 export type { ErNodeData, ErEdgeData } from './erDiagram.js';

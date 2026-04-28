@@ -448,6 +448,12 @@ export const enUSCommon = {
       storageEstimatorTip: 'Estimate storage usage for current table',
       mockData: 'Mock Data',
       mockDataTip: 'Generate INSERT test data based on field types',
+      aiComments: 'AI Comments',
+      aiCommentsRunning: 'Generating',
+      aiCommentsTip: 'Fill missing comments or translate current comments',
+      aiCommentsFillMissing: 'Fill Missing Comments',
+      aiCommentsTranslateZh: 'Translate to Chinese',
+      aiCommentsTranslateEn: 'Translate to English',
       freeze: 'Freeze',
       freezeTip: 'Keep leading columns visible while scrolling horizontally',
       freezeAria: 'Enable frozen columns in field table',
@@ -1102,6 +1108,10 @@ export const enUSCommon = {
     authRequired: 'Sign in or register to use AI features',
     creditExhausted: 'You do not have enough credits to use AI right now',
     aiServiceUnavailable: 'AI service is temporarily unavailable. Please try again later.',
+  },
+  aiComments: {
+    done: 'AI comments updated',
+    schemaRequired: 'Enter field names first',
   },
   fieldEnums: {
     nullable: {

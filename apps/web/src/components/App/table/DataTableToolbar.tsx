@@ -4,15 +4,33 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { AnimatedNumber } from '@/components/ui/animated-number';
-import { HardDrive, Minus, Plus, Pin, ListPlus, TableProperties } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  ChevronDown,
+  HardDrive,
+  Languages,
+  Minus,
+  Plus,
+  Pin,
+  ListPlus,
+  TableProperties,
+} from 'lucide-react';
 import { COLUMN_HEADERS } from '@/utils/constants';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
+import type { AICommentMode } from '@ddlbuilder/shared-types';
 
 interface DataTableToolbarProps {
   toolbarLeft?: ReactNode;
   onOpenStorageEstimator?: () => void;
   onOpenMockDataGenerator?: () => void;
+  onGenerateComments?: (mode: AICommentMode, targetLocale?: 'zh-CN' | 'en-US') => void;
+  isGeneratingComments?: boolean;
   freezeEnabled: boolean;
   onFreezeEnabledChange: (value: boolean) => void;
   effectiveFreezeColumns: number;
@@ -26,6 +44,8 @@ export function DataTableToolbar({
   toolbarLeft,
   onOpenStorageEstimator,
   onOpenMockDataGenerator,
+  onGenerateComments,
+  isGeneratingComments = false,
   freezeEnabled,
   onFreezeEnabledChange,
   effectiveFreezeColumns,
@@ -75,6 +95,42 @@ export function DataTableToolbar({
                 <p>{t('dataTable.toolbar.mockDataTip')}</p>
               </TooltipContent>
             </Tooltip>
+          )}
+          {onGenerateComments && (
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isGeneratingComments}
+                      className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md border-primary/20 hover:border-primary/50 text-muted-foreground hover:text-primary"
+                    >
+                      <Languages className="h-3.5 w-3.5" />
+                      {isGeneratingComments
+                        ? t('dataTable.toolbar.aiCommentsRunning')
+                        : t('dataTable.toolbar.aiComments')}
+                      <ChevronDown className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t('dataTable.toolbar.aiCommentsTip')}</p>
+                </TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="start" className="w-44">
+                <DropdownMenuItem onClick={() => onGenerateComments('fill_missing')}>
+                  {t('dataTable.toolbar.aiCommentsFillMissing')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onGenerateComments('translate', 'zh-CN')}>
+                  {t('dataTable.toolbar.aiCommentsTranslateZh')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onGenerateComments('translate', 'en-US')}>
+                  {t('dataTable.toolbar.aiCommentsTranslateEn')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
 

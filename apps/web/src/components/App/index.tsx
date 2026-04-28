@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import type { DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
+import type { AICommentMode, DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
 import { createEmptyRow } from '@/utils/helpers';
 import { isTabAvailable } from '@/utils/tabUtils';
 import { Header } from './Header';
@@ -34,6 +34,7 @@ import { useCitusSharding } from '@/hooks/useCitusSharding';
 import { useMysqlPartition } from '@/hooks/useMysqlPartition';
 import { useTableOptions } from '@/hooks/useTableOptions';
 import { useDDLReview } from '@/hooks/useDDLReview';
+import { useAIComments } from '@/hooks/useAIComments';
 import { useSuggestionAnimation } from '@/hooks/useSuggestionAnimation';
 import { useSavedTables } from '@/hooks/useSavedTables';
 import { useFolders } from '@/hooks/useFolders';
@@ -71,7 +72,7 @@ const createEmptyGlobalDraftState = (): PersistedState => ({
 });
 
 function App() {
-  const trackEvent = async (..._args: unknown[]) => {};
+  const trackEvent = useCallback(async (..._args: unknown[]) => {}, []);
   const { t } = useTranslation();
 
   // ─── 1. Zustand selectors (aggregated) ─────────────────────────
@@ -345,6 +346,67 @@ function App() {
   );
 
   const { showToast } = useToast();
+  const { isLoading: isGeneratingComments, generateComments } = useAIComments();
+
+  const handleGenerateComments = useCallback(
+    (mode: AICommentMode, targetLocale?: 'zh-CN' | 'en-US') => {
+      void (async () => {
+        try {
+          const result = await generateComments({
+            mode,
+            targetLocale,
+            schemaName,
+            tableName: tableName.trim() || 'current_table',
+            tableComment,
+            fields: rows
+              .filter((row) => row.fieldName.trim())
+              .map((row) => ({
+                fieldName: row.fieldName.trim(),
+                fieldType: row.fieldType.trim(),
+                fieldComment: row.fieldComment.trim(),
+              })),
+          });
+
+          if (!result) return;
+
+          const commentsByField = new Map(
+            result.fields.map((field) => [field.fieldName, field.fieldComment]),
+          );
+
+          if (result.tableComment && (mode === 'translate' || !tableComment.trim())) {
+            setTableComment(result.tableComment);
+          }
+
+          setRows((prev) =>
+            prev.map((row) => {
+              const nextComment = commentsByField.get(row.fieldName.trim());
+              if (!nextComment || (mode === 'fill_missing' && row.fieldComment.trim())) {
+                return row;
+              }
+              return { ...row, fieldComment: nextComment };
+            }),
+          );
+
+          showToast(t('aiComments.done'));
+          void trackEvent('ai_comments_apply', { mode, targetLocale });
+        } catch (error) {
+          showToast((error as Error).message || t('services.generationFailed'));
+        }
+      })();
+    },
+    [
+      generateComments,
+      schemaName,
+      tableName,
+      tableComment,
+      rows,
+      setTableComment,
+      setRows,
+      showToast,
+      t,
+      trackEvent,
+    ],
+  );
 
   useEffect(() => {
     if (shareLoadStatus === 'not_found') {
@@ -1025,6 +1087,8 @@ function App() {
                     highlightedRowIndex: highlightedRowIndex,
                     onOpenStorageEstimator: handleOpenStorageEstimator,
                     onOpenMockDataGenerator: handleOpenMockDataGenerator,
+                    onGenerateComments: handleGenerateComments,
+                    isGeneratingComments,
                     toolbarLeft: dataTableToolbarLeft,
                   }}
                   viewDefinitionPanelProps={{

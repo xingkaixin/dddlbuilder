@@ -434,6 +434,12 @@ export const zhCNCommon = {
       storageEstimatorTip: '估算当前表数据量占用空间',
       mockData: 'Mock 数据',
       mockDataTip: '基于字段类型生成 INSERT 测试数据',
+      aiComments: 'AI 注释',
+      aiCommentsRunning: '生成中',
+      aiCommentsTip: '补全缺失注释或批量翻译当前注释',
+      aiCommentsFillMissing: '补全缺失注释',
+      aiCommentsTranslateZh: '翻译为中文',
+      aiCommentsTranslateEn: '翻译为英文',
       freeze: '冻结',
       freezeTip: '锁定前几列，使其在横向滚动时保持可见',
       freezeAria: '启用字段表格列冻结',
@@ -1078,6 +1084,10 @@ export const zhCNCommon = {
     authRequired: '请先登录或注册后再使用 AI 功能',
     creditExhausted: '当前额度不足，暂时无法使用 AI 功能',
     aiServiceUnavailable: 'AI 服务暂时不可用，请稍后再试',
+  },
+  aiComments: {
+    done: 'AI 注释已更新',
+    schemaRequired: '请先填写字段名',
   },
   fieldEnums: {
     nullable: {
