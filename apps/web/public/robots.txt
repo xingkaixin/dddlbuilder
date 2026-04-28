@@ -3,3 +3,4 @@ Allow: /
 Disallow: /api/
 
 Sitemap: https://ddl.xingkaixin.me/sitemap.xml
+Sitemap: https://ddl.xingkaixin.me/docs/sitemap.xml

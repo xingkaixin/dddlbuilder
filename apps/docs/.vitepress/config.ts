@@ -116,6 +116,19 @@ export default defineConfig({
   base: '/docs/',
   outDir: '.vitepress/dist',
   srcExclude: ['AGENTS.md'],
+  sitemap: {
+    hostname: 'https://ddl.xingkaixin.me',
+    transformItems(items) {
+      return items.map((item) => ({
+        ...item,
+        url: `/docs/${item.url}`.replace(/\/+/g, '/'),
+        links: item.links?.map((link) => ({
+          ...link,
+          url: `/docs/${link.url}`.replace(/\/+/g, '/'),
+        })),
+      }));
+    },
+  },
   head: [
     ['meta', { name: 'theme-color', content: '#E07A5F' }],
     ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.cn' }],
