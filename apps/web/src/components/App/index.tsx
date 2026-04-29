@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react
 import type { AICommentMode, DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
 import { createEmptyRow } from '@/utils/helpers';
 import { isTabAvailable } from '@/utils/tabUtils';
+import { Upload } from 'lucide-react';
 import { Header } from './Header';
 import { GlobalDialogs } from './containers/GlobalDialogs';
 import { OutputContainer } from './containers/OutputContainer';
@@ -10,6 +11,8 @@ import { TableBuilderContainer } from './containers/TableBuilderContainer';
 import { MainWorkspaceSkeleton } from './MainWorkspaceSkeleton';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
 import { TabBar } from './TabBar';
+import { WorkspaceEmptyState } from './WorkspaceEmptyState';
+import { TableTemplatePopover } from './TableTemplatePopover';
 import { useTabStore } from '@/stores';
 import { useAppSelectors } from './hooks/useAppSelectors';
 import { useDialogStates } from './hooks/useDialogStates';
@@ -47,12 +50,18 @@ import { countVersions } from '@/utils/tableVersions';
 import { writeWorkspaceSession } from '@/utils/workspaceStateDb';
 import { lintSchema } from '@/utils/schemaLint';
 import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
+import { EXAMPLE_USER_PROFILE_TABLE } from '@/utils/exampleTable';
 import { useTranslation } from 'react-i18next';
 
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { isCnyFireworksEnabled } from '@/config/featureFlags';
 
 const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
+const ImportSqlDialog = lazy(() =>
+  import('@/components/ImportSqlDialog').then((module) => ({
+    default: module.ImportSqlDialog,
+  })),
+);
 
 const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) => createEmptyRow(index));
 const DEFAULT_FIELD_TABLE_FREEZE_ENABLED = false;
@@ -190,6 +199,8 @@ function App() {
     }
     setShowFireworks(true);
   }, [setShowFireworks]);
+
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   // ─── 3. Domain hooks (must come before derived state) ──────────
   const {
@@ -1041,6 +1052,44 @@ function App() {
     setLoadedTableSignature,
   ]);
 
+  const handleLoadExample = useCallback(() => {
+    flushCurrentWorkspace();
+    const draftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const exampleState = EXAMPLE_USER_PROFILE_TABLE;
+    const uniqueName = createDraft(draftId, exampleState);
+    const finalState =
+      uniqueName !== exampleState.tableName
+        ? { ...exampleState, tableName: uniqueName }
+        : exampleState;
+
+    const newTabId = addTab({
+      title: uniqueName,
+      source: { kind: 'draft', draftId },
+      stateSnapshot: finalState,
+      isDirty: false,
+    });
+    activateTab(newTabId);
+    applySavedState(finalState);
+    setWorkspaceSnapshot({ kind: 'draft', draftId }, finalState);
+    setLoadedTableNormalizedName(null);
+    setLoadedTableName(null);
+    setLoadedTableSignature(null);
+    setLoadedTableVersion(0);
+    showToast(t('emptyState.exampleLoaded'));
+  }, [
+    flushCurrentWorkspace,
+    createDraft,
+    addTab,
+    activateTab,
+    applySavedState,
+    setWorkspaceSnapshot,
+    setLoadedTableNormalizedName,
+    setLoadedTableName,
+    setLoadedTableSignature,
+    showToast,
+    t,
+  ]);
+
   const handleCloseTab = useCallback(
     (tabId: string) => {
       closeTabStore(tabId);
@@ -1049,42 +1098,10 @@ function App() {
       if (nextActive) {
         applySavedState(nextActive.stateSnapshot);
         setWorkspaceSnapshot(nextActive.source, nextActive.stateSnapshot);
-      } else {
-        // 没有标签页了，新建空草稿
-        const newDraftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        const emptyState = createEmptyGlobalDraftState();
-        const uniqueName = createDraft(newDraftId, emptyState);
-        const finalState =
-          uniqueName !== emptyState.tableName
-            ? { ...emptyState, tableName: uniqueName }
-            : emptyState;
-        const newTabId = addTab({
-          title: uniqueName,
-          source: { kind: 'draft', draftId: newDraftId },
-          stateSnapshot: finalState,
-          isDirty: false,
-        });
-        activateTab(newTabId);
-        applySavedState(finalState);
-        setWorkspaceSnapshot({ kind: 'draft', draftId: newDraftId }, finalState);
-        setLoadedTableNormalizedName(null);
-        setLoadedTableName(null);
-        setLoadedTableSignature(null);
-        setLoadedTableVersion(0);
       }
+      // 没有标签页了，不做额外操作，渲染逻辑会显示空状态
     },
-    [
-      closeTabStore,
-      getActiveTab,
-      applySavedState,
-      setWorkspaceSnapshot,
-      createDraft,
-      addTab,
-      activateTab,
-      setLoadedTableNormalizedName,
-      setLoadedTableName,
-      setLoadedTableSignature,
-    ],
+    [closeTabStore, getActiveTab, applySavedState, setWorkspaceSnapshot],
   );
 
   const handleRestoreTable = useCallback(
@@ -1450,6 +1467,32 @@ function App() {
             <div className="p-3 sm:p-4">
               {isMainWorkspaceLoading ? (
                 <MainWorkspaceSkeleton />
+              ) : tabs.length === 0 && !isShareView ? (
+                <WorkspaceEmptyState
+                  hasContent={draftSummaries.length > 0 || savedTables.length > 0}
+                  onCreateNewTable={handleCreateDraft}
+                  onLoadExample={handleLoadExample}
+                  importButton={
+                    <button
+                      type="button"
+                      onClick={() => setIsImportDialogOpen(true)}
+                      className="flex items-center justify-center gap-2 rounded-lg border bg-background px-4 py-3 text-sm font-medium transition-colors hover:bg-accent"
+                    >
+                      <Upload className="h-4 w-4" />
+                      {t('emptyState.importDDL')}
+                    </button>
+                  }
+                  templateButton={
+                    <TableTemplatePopover
+                      templates={tableTemplates}
+                      loading={tableTemplatesLoading}
+                      onApplyTemplate={handleApplyTableTemplate}
+                      onManageTemplates={handleManageTableTemplates}
+                      onSaveAsTemplate={handleSaveAsTableTemplate}
+                      triggerClassName="flex h-auto w-full items-center justify-center gap-2 rounded-lg border bg-background px-4 py-3 text-sm font-medium transition-colors hover:bg-accent"
+                    />
+                  }
+                />
               ) : (
                 <div className="flex flex-col gap-4 xl:flex-row">
                   <div
@@ -1812,6 +1855,24 @@ function App() {
             onConfirm: handleConfirmEmptyTrash,
           }}
         />
+
+        {!isShareView && (
+          <Suspense fallback={null}>
+            <ImportSqlDialog
+              currentDbType={dbType}
+              onImport={handleImport}
+              open={isImportDialogOpen}
+              onOpenChange={setIsImportDialogOpen}
+              hideTrigger
+              savedTables={savedTables}
+              folderTree={folderTree}
+              saveTable={saveTable}
+              overwriteTable={overwriteTable}
+              moveTableToFolder={moveTableToFolder}
+              onBatchImportComplete={refreshSavedTables}
+            />
+          </Suspense>
+        )}
       </div>
     </TooltipProvider>
   );

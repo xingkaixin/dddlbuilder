@@ -51,6 +51,12 @@ interface ImportSqlDialogProps {
   overwriteTable?: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
   moveTableToFolder?: (normalizedName: string, folderId?: string) => Promise<SaveTableResult>;
   onBatchImportComplete?: () => void;
+  // Controlled mode: when provided, the dialog is controlled externally.
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  // When true, the trigger button is not rendered (useful when the dialog
+  // is opened programmatically via the controlled open prop).
+  hideTrigger?: boolean;
 }
 
 const MAX_SQL_LENGTH = 50_000;
@@ -68,6 +74,9 @@ export function ImportSqlDialog({
   overwriteTable,
   moveTableToFolder,
   onBatchImportComplete,
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger,
 }: ImportSqlDialogProps) {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -76,7 +85,17 @@ export function ImportSqlDialog({
     savedTables && folderTree && saveTable && overwriteTable && moveTableToFolder,
   );
 
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = useCallback(
+    (nextOpen: boolean) => {
+      if (controlledOpen === undefined) {
+        setInternalOpen(nextOpen);
+      }
+      onOpenChange?.(nextOpen);
+    },
+    [controlledOpen, onOpenChange],
+  );
   const [step, setStep] = useState<ImportStep>('validate');
   const [importMode, setImportMode] = useState<ImportMode>('workspace');
   const [sourceType, setSourceType] = useState<ImportSourceType>('sql');
@@ -111,7 +130,7 @@ export function ImportSqlDialog({
   }, []);
 
   useEffect(() => {
-    if (!open) {
+    if (!isOpen) {
       setStep('validate');
       setImportMode('workspace');
       setSourceType('sql');
@@ -126,7 +145,7 @@ export function ImportSqlDialog({
       setConflictStrategy('skip');
       setIsImporting(false);
     }
-  }, [open]);
+  }, [isOpen]);
 
   const buildStructuredTables = useCallback(async (): Promise<ParsedResult[]> => {
     if (sourceType === 'excel') {
@@ -482,20 +501,22 @@ export function ImportSqlDialog({
         : true;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DialogTrigger asChild>
-            <button type="button" className={triggerClassName}>
-              {triggerIcon}
-              <span>{resolvedTriggerLabel}</span>
-            </button>
-          </DialogTrigger>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{t('importSql.triggerTip')}</p>
-        </TooltipContent>
-      </Tooltip>
+    <Dialog open={isOpen} onOpenChange={setOpen}>
+      {!hideTrigger && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              <button type="button" className={triggerClassName}>
+                {triggerIcon}
+                <span>{resolvedTriggerLabel}</span>
+              </button>
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{t('importSql.triggerTip')}</p>
+          </TooltipContent>
+        </Tooltip>
+      )}
       <DialogContent className="sm:max-w-[720px]">
         <DialogHeader>
           <DialogTitle>{t('importSql.title')}</DialogTitle>

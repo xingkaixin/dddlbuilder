@@ -20,6 +20,7 @@ interface TableTemplatePopoverProps {
   onApplyTemplate: (template: TableTemplate) => void;
   onManageTemplates: () => void;
   onSaveAsTemplate: () => void;
+  triggerClassName?: string;
 }
 
 function matchesTemplate(template: TableTemplate, query: string): boolean {
@@ -36,7 +37,14 @@ function matchesTemplate(template: TableTemplate, query: string): boolean {
 }
 
 export const TableTemplatePopover = memo<TableTemplatePopoverProps>(
-  ({ templates, loading, onApplyTemplate, onManageTemplates, onSaveAsTemplate }) => {
+  ({
+    templates,
+    loading,
+    onApplyTemplate,
+    onManageTemplates,
+    onSaveAsTemplate,
+    triggerClassName,
+  }) => {
     const { t } = useTranslation();
     const [open, setOpen] = useState(false);
     const [previewTemplate, setPreviewTemplate] = useState<TableTemplate | null>(null);
@@ -69,7 +77,11 @@ export const TableTemplatePopover = memo<TableTemplatePopoverProps>(
       <>
         <Popover open={open} onOpenChange={handleOpenChange}>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2 text-xs font-medium">
+            <Button
+              variant="outline"
+              size="sm"
+              className={triggerClassName ?? 'h-7 gap-1.5 px-2 text-xs font-medium'}
+            >
               <LayoutTemplate className="h-3.5 w-3.5" />
               {t('tableTemplate.quickApply.trigger')}
               <ChevronDown className="h-3 w-3 opacity-50" />

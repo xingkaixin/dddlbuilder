@@ -181,6 +181,22 @@ export const enUSCommon = {
       manual_adjustment: 'Manual Adjustment',
     },
   },
+  emptyState: {
+    noTabOpenTitle: 'No table opened yet',
+    completelyEmptyTitle: 'No tables or drafts yet',
+    description:
+      'Create a new table, import existing schema, or use a template to quickly start designing your database structure.',
+    createNewTable: 'Create New Table',
+    importDDL: 'Import DDL',
+    useTemplate: 'Use Template',
+    quickExperience: 'Quick Start',
+    exampleTitle: 'Load example: user_profile',
+    exampleDescription:
+      'Includes common field types, indexes, and constraints to help you get started quickly.',
+    loadExample: 'Load Example',
+    tip: 'Click an existing table on the left to view and edit its structure here.',
+    exampleLoaded: 'Example table loaded',
+  },
   app: {
     shareNotFound: 'Share link not found or expired. Redirected to home.',
     shareLoadFailed: 'Failed to load share link. Redirected to home.',

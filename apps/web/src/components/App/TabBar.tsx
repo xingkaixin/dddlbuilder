@@ -88,8 +88,6 @@ TabItem.displayName = 'TabItem';
 
 export const TabBar = memo(
   ({ tabs, activeTabId, onActivateTab, onCloseTab, onCreateTab }: TabBarProps) => {
-    if (tabs.length === 0) return null;
-
     const { visibleTabs, hiddenTabs } = useMemo(() => {
       if (tabs.length <= MAX_VISIBLE_TABS) {
         return { visibleTabs: tabs, hiddenTabs: [] as WorkspaceTab[] };
