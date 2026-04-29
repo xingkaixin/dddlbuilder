@@ -21,6 +21,8 @@ export interface TableItemProps {
   item: SavedTableSummary;
   isActive: boolean;
   activeDirty: boolean;
+  displayName?: string;
+  isDirty?: boolean;
   isDraft?: boolean;
   depth?: number;
   onSelect: () => void;
@@ -34,7 +36,9 @@ export const TableItem = memo<TableItemProps>(
   ({
     item,
     isActive,
-    _activeDirty,
+    activeDirty,
+    displayName,
+    isDirty,
     isDraft = false,
     depth = 0,
     onSelect,
@@ -47,6 +51,8 @@ export const TableItem = memo<TableItemProps>(
       id: toTableDragId(item.normalizedName),
       disabled: dragDisabled,
     });
+    const showDirty = isDirty ?? (isActive && activeDirty);
+
     return (
       <div
         ref={setNodeRef}
@@ -103,8 +109,9 @@ export const TableItem = memo<TableItemProps>(
               />
             )}
             <span className={cn('truncate text-sm', isActive ? 'font-semibold' : 'font-medium')}>
-              {item.name}
+              {displayName ?? item.name}
             </span>
+            {showDirty && <span className="text-xs text-amber-600">*</span>}
             {isDraft && (
               <span
                 className="rounded bg-amber-500/10 px-1 py-0 text-[10px] text-amber-600"

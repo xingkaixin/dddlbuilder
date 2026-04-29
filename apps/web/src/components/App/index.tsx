@@ -1332,6 +1332,19 @@ function App() {
     return draftSummaries;
   }, [draftSummaries]);
 
+  const tablePresentations = useMemo(() => {
+    const presentations = new Map<string, { title: string; isDirty: boolean }>();
+    for (const tab of tabs) {
+      if (tab.source.kind === 'saved_table') {
+        presentations.set(tab.source.normalizedName, {
+          title: tab.title,
+          isDirty: tab.isDirty,
+        });
+      }
+    }
+    return presentations;
+  }, [tabs]);
+
   const isMainWorkspaceLoading = !hydrated || isSavedTableLoading;
 
   // ─── 7. Render ─────────────────────────────────────────────────
@@ -1389,6 +1402,7 @@ function App() {
             foldersLoading: foldersLoading,
             activeNormalizedName: loadedTableNormalizedName,
             activeDirty: isLoadedDirty,
+            tablePresentations,
             onSelectDraft: handleSelectDraft,
             onDeleteDraft: handleDeleteDraft,
             onSelect: handleSelectSavedTable,
@@ -1417,6 +1431,7 @@ function App() {
               activeNormalizedName={loadedTableNormalizedName}
               activeDraftId={activeSource.kind === 'draft' ? activeSource.draftId : null}
               activeDirty={isLoadedDirty}
+              tablePresentations={tablePresentations}
               onToggle={() => setWorkspaceSidebarOpen((open) => !open)}
               onOpenWorkspace={handleOpenSavedTablesDrawer}
               onCreateFolder={() => handleOpenCreateFolderDialog()}

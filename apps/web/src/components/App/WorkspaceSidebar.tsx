@@ -37,6 +37,11 @@ import { TableItem } from './saved-tables/TableItem';
 import { ROOT_DROP_ID, buildFolderParentMap, resolveDropAction } from './saved-tables/dnd';
 import { useSavedTablesFilter } from './saved-tables/useSavedTablesFilter';
 
+type TablePresentation = {
+  title: string;
+  isDirty: boolean;
+};
+
 interface WorkspaceSidebarProps {
   open: boolean;
   loading: boolean;
@@ -49,6 +54,7 @@ interface WorkspaceSidebarProps {
   activeNormalizedName?: string | null;
   activeDraftId?: string | null;
   activeDirty?: boolean;
+  tablePresentations?: ReadonlyMap<string, TablePresentation>;
   onToggle: () => void;
   onOpenWorkspace: () => void;
   onCreateFolder?: () => void;
@@ -115,6 +121,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
     activeNormalizedName,
     activeDraftId,
     activeDirty = false,
+    tablePresentations,
     onToggle,
     onOpenWorkspace,
     onCreateFolder,
@@ -241,6 +248,8 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
               item={item}
               isActive={activeNormalizedName === item.normalizedName}
               activeDirty={activeDirty}
+              displayName={tablePresentations?.get(item.normalizedName)?.title}
+              isDirty={tablePresentations?.get(item.normalizedName)?.isDirty}
               depth={depth}
               onSelect={() => onSelect(item)}
               onRename={() => onRename(item)}
@@ -251,7 +260,16 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
           ))}
         </div>
       ),
-      [activeDirty, activeNormalizedName, isSearching, onDelete, onRename, onSelect, onViewHistory],
+      [
+        activeDirty,
+        activeNormalizedName,
+        isSearching,
+        onDelete,
+        onRename,
+        onSelect,
+        onViewHistory,
+        tablePresentations,
+      ],
     );
 
     const renderTables = useCallback(

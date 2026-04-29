@@ -27,6 +27,10 @@ import { ROOT_DROP_ID, buildFolderParentMap, resolveDropAction } from './saved-t
 import { useSavedTablesFilter } from './saved-tables/useSavedTablesFilter';
 
 type MoveOperationResult = { ok: boolean; message?: string };
+type TablePresentation = {
+  title: string;
+  isDirty: boolean;
+};
 const drawerIconButtonClass =
   'h-7 w-7 text-muted-foreground/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50';
 
@@ -42,6 +46,7 @@ export interface SavedTablesDrawerProps {
   showSearchWhenEmpty?: boolean;
   activeNormalizedName?: string | null;
   activeDirty?: boolean;
+  tablePresentations?: ReadonlyMap<string, TablePresentation>;
   onOpenChange: (open: boolean) => void;
   onSelectDraft?: (draftId: string) => void;
   onCreateDraft?: () => void;
@@ -107,6 +112,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     showSearchWhenEmpty = true,
     activeNormalizedName,
     activeDirty = false,
+    tablePresentations,
     onOpenChange,
     onSelectDraft,
     onCreateDraft,
@@ -223,6 +229,8 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                 item={item}
                 isActive={isActive}
                 activeDirty={activeDirty}
+                displayName={tablePresentations?.get(item.normalizedName)?.title}
+                isDirty={tablePresentations?.get(item.normalizedName)?.isDirty}
                 isDraft={isDraft}
                 depth={depth}
                 onSelect={() => (isDraft ? onSelectDraft?.(item.normalizedName) : onSelect(item))}
@@ -247,6 +255,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
         onSelect,
         onSelectDraft,
         onViewHistory,
+        tablePresentations,
       ],
     );
 
