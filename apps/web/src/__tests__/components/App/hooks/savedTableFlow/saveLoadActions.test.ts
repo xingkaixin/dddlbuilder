@@ -346,7 +346,7 @@ describe('useSaveLoadActions', () => {
     expect(saveDialog.closeDialog).toHaveBeenCalledTimes(1);
   });
 
-  it('handleSelectSavedTable flushes dirty loaded table before loading target', async () => {
+  it('handleSelectSavedTable flushes clean loaded table before loading target', async () => {
     const target = { normalizedName: 'pending_norm', name: 'pending' };
     loadTable.mockResolvedValue({
       normalizedName: 'pending_norm',
@@ -354,7 +354,7 @@ describe('useSaveLoadActions', () => {
       state: { rows: [] },
     });
 
-    const { result } = getHook({ hasLoadedTable: true });
+    const { result } = getHook({ hasLoadedTable: true, canSaveCurrent: false });
 
     await act(async () => {
       result.current.handleSelectSavedTable(target as any);
@@ -364,5 +364,23 @@ describe('useSaveLoadActions', () => {
     expect(setSavedTablesDrawerOpen).toHaveBeenCalledWith(false);
     expect(saveDialog.openDialog).not.toHaveBeenCalled();
     expect(loadTable).toHaveBeenCalledWith('pending_norm');
+  });
+
+  it('handleSelectSavedTable opens save dialog when loaded table is dirty', async () => {
+    const target = { normalizedName: 'pending_norm', name: 'pending' };
+
+    const { result } = getHook({ hasLoadedTable: true, canSaveCurrent: true });
+
+    await act(async () => {
+      result.current.handleSelectSavedTable(target as any);
+    });
+
+    expect(saveDialog.openDialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queuedLoadAfterSave: target,
+      }),
+    );
+    expect(flushCurrentWorkspace).not.toHaveBeenCalled();
+    expect(loadTable).not.toHaveBeenCalled();
   });
 });
