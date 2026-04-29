@@ -29,6 +29,13 @@ export type CreditLedgerRow = {
   createdAt: string;
 };
 
+export type CreditLedgerListOptions = {
+  limit: number;
+  offset: number;
+  startDate?: string;
+  endDate?: string;
+};
+
 type CreditMutationInput = {
   userId: string;
   kind: CreditLedgerKind;
@@ -120,8 +127,21 @@ export const getCreditAccount = async (
 export const listCreditLedger = async (
   env: ApiEnv['Bindings'],
   userId: string,
-  limit: number,
+  options: CreditLedgerListOptions,
 ): Promise<CreditLedgerRow[]> => {
+  const where = ['user_id = ?'];
+  const values: unknown[] = [userId];
+
+  if (options.startDate) {
+    where.push('created_at >= ?');
+    values.push(options.startDate);
+  }
+
+  if (options.endDate) {
+    where.push('created_at < ?');
+    values.push(options.endDate);
+  }
+
   const result = await env.USER_DB.prepare(
     `
       SELECT
@@ -136,15 +156,47 @@ export const listCreditLedger = async (
         metadata_json AS metadataJson,
         created_at AS createdAt
       FROM credit_ledger
-      WHERE user_id = ?
+      WHERE ${where.join(' AND ')}
       ORDER BY created_at DESC, id DESC
       LIMIT ?
+      OFFSET ?
     `,
   )
-    .bind(userId, limit)
+    .bind(...values, options.limit, options.offset)
     .all<Record<string, unknown>>();
 
   return (result.results ?? []).map(toLedgerRow);
+};
+
+export const countCreditLedger = async (
+  env: ApiEnv['Bindings'],
+  userId: string,
+  options: Pick<CreditLedgerListOptions, 'startDate' | 'endDate'> = {},
+): Promise<number> => {
+  const where = ['user_id = ?'];
+  const values: unknown[] = [userId];
+
+  if (options.startDate) {
+    where.push('created_at >= ?');
+    values.push(options.startDate);
+  }
+
+  if (options.endDate) {
+    where.push('created_at < ?');
+    values.push(options.endDate);
+  }
+
+  const row = await env.USER_DB.prepare(
+    `
+      SELECT COUNT(*) AS total
+      FROM credit_ledger
+      WHERE ${where.join(' AND ')}
+    `,
+  )
+    .bind(...values)
+    .first<{ total: number }>();
+
+  return Number(row?.total ?? 0);
 };
 
 const computeNextBalance = (currentBalance: number, input: CreditMutationInput) => {

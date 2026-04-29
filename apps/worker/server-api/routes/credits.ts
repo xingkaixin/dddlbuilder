@@ -1,7 +1,7 @@
 import type { Context, Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { resolveAuthenticatedUser as resolveSessionUser } from '../lib/auth.js';
-import { getCreditAccount, listCreditLedger } from '../lib/credits.js';
+import { countCreditLedger, getCreditAccount, listCreditLedger } from '../lib/credits.js';
 import { errorResponse, withMeta } from '../lib/http.js';
 
 const parseLedgerLimit = (value: string | undefined) => {
@@ -10,6 +10,29 @@ const parseLedgerLimit = (value: string | undefined) => {
     return 20;
   }
   return Math.min(parsed, 50);
+};
+
+const parseLedgerOffset = (value: string | undefined) => {
+  const parsed = Number.parseInt(value ?? '0', 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return 0;
+  }
+  return parsed;
+};
+
+const formatD1DateTime = (date: Date) => date.toISOString().slice(0, 19).replace('T', ' ');
+
+const parseLedgerDateTime = (value: string | undefined) => {
+  if (!value) {
+    return undefined;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return undefined;
+  }
+
+  return formatD1DateTime(date);
 };
 
 const resolveAuthenticatedUser = async (c: Context<ApiEnv>) => {
@@ -45,14 +68,26 @@ export function registerCreditRoutes(app: Hono<ApiEnv>) {
         return errorResponse(c, 401, 'Authentication required', 'AUTH_REQUIRED');
       }
 
-      const items = await listCreditLedger(
-        c.env,
-        user.userId,
-        parseLedgerLimit(c.req.query('limit')),
-      );
+      const limit = parseLedgerLimit(c.req.query('limit'));
+      const offset = parseLedgerOffset(c.req.query('offset'));
+      const filters = {
+        startDate: parseLedgerDateTime(c.req.query('startAt')),
+        endDate: parseLedgerDateTime(c.req.query('endAt')),
+      };
+      const [items, total] = await Promise.all([
+        listCreditLedger(c.env, user.userId, {
+          ...filters,
+          limit,
+          offset,
+        }),
+        countCreditLedger(c.env, user.userId, filters),
+      ]);
       return c.json(
         withMeta(c, {
           items,
+          total,
+          limit,
+          offset,
         }),
       );
     } catch (error) {

@@ -94,10 +94,10 @@ function buildDiffSummary(diff: TableDiff | null): string {
   return parts.join(', ');
 }
 
-function toDateTimeLocalValue(timestamp: number): string {
+function toDateInputValue(timestamp: number): string {
   const date = new Date(timestamp);
   const offsetMs = date.getTimezoneOffset() * 60 * 1000;
-  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 10);
 }
 
 export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
@@ -186,8 +186,10 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
     }, [versions]);
 
     const filteredVersions = useMemo(() => {
-      const start = startTime ? new Date(startTime).getTime() : Number.NEGATIVE_INFINITY;
-      const end = endTime ? new Date(endTime).getTime() : Number.POSITIVE_INFINITY;
+      const start = startTime ? new Date(`${startTime}T00:00`).getTime() : Number.NEGATIVE_INFINITY;
+      const end = endTime
+        ? new Date(`${endTime}T00:00`).getTime() + 24 * 60 * 60 * 1000 - 1
+        : Number.POSITIVE_INFINITY;
       return versions.filter((version) => version.createdAt >= start && version.createdAt <= end);
     }, [endTime, startTime, versions]);
 
@@ -264,14 +266,17 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                 <label className="space-y-1 text-xs font-medium text-muted-foreground">
                   <span>{t('versionHistory.startTime')}</span>
                   <Input
-                    type="datetime-local"
+                    type="date"
                     value={startTime}
                     min={
                       versions.length
-                        ? toDateTimeLocalValue(versions[versions.length - 1].createdAt)
+                        ? toDateInputValue(versions[versions.length - 1].createdAt)
                         : undefined
                     }
-                    max={versions.length ? toDateTimeLocalValue(versions[0].createdAt) : undefined}
+                    max={
+                      endTime ||
+                      (versions.length ? toDateInputValue(versions[0].createdAt) : undefined)
+                    }
                     onChange={(event) => setStartTime(event.target.value)}
                     className="h-8 text-xs"
                   />
@@ -279,14 +284,15 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                 <label className="space-y-1 text-xs font-medium text-muted-foreground">
                   <span>{t('versionHistory.endTime')}</span>
                   <Input
-                    type="datetime-local"
+                    type="date"
                     value={endTime}
                     min={
-                      versions.length
-                        ? toDateTimeLocalValue(versions[versions.length - 1].createdAt)
-                        : undefined
+                      startTime ||
+                      (versions.length
+                        ? toDateInputValue(versions[versions.length - 1].createdAt)
+                        : undefined)
                     }
-                    max={versions.length ? toDateTimeLocalValue(versions[0].createdAt) : undefined}
+                    max={versions.length ? toDateInputValue(versions[0].createdAt) : undefined}
                     onChange={(event) => setEndTime(event.target.value)}
                     className="h-8 text-xs"
                   />

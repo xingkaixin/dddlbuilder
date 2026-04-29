@@ -52,6 +52,7 @@ describe('/api/credits/*', () => {
         updatedAt: '2026-04-11T00:00:00Z',
       }),
       listCreditLedger: vi.fn(),
+      countCreditLedger: vi.fn(),
     }));
 
     const { default: app } = await import('../../api/index');
@@ -77,6 +78,7 @@ describe('/api/credits/*', () => {
     vi.doMock('../lib/credits.js', () => ({
       getCreditAccount: vi.fn().mockResolvedValue(null),
       listCreditLedger: vi.fn(),
+      countCreditLedger: vi.fn(),
     }));
 
     const { default: app } = await import('../../api/index');
@@ -115,6 +117,7 @@ describe('/api/credits/*', () => {
           createdAt: '2026-04-11T00:00:00Z',
         },
       ]),
+      countCreditLedger: vi.fn().mockResolvedValue(1),
     }));
 
     const { default: app } = await import('../../api/index');
@@ -129,11 +132,15 @@ describe('/api/credits/*', () => {
           amount: 100000,
         },
       ],
+      total: 1,
+      limit: 10,
+      offset: 0,
     });
   });
 
   it('caps ledger limit at 50', async () => {
     const listCreditLedger = vi.fn().mockResolvedValue([]);
+    const countCreditLedger = vi.fn().mockResolvedValue(0);
     vi.doMock('../lib/auth.js', () => ({
       resolveAuthenticatedUser: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -145,17 +152,24 @@ describe('/api/credits/*', () => {
     vi.doMock('../lib/credits.js', () => ({
       getCreditAccount: vi.fn(),
       listCreditLedger,
+      countCreditLedger,
     }));
 
     const { default: app } = await import('../../api/index');
     const response = await app.fetch(createRequest('/api/credits/ledger?limit=100'), createEnv());
 
     expect(response.status).toBe(200);
-    expect(listCreditLedger).toHaveBeenCalledWith(expect.anything(), 'user-1', 50);
+    expect(listCreditLedger).toHaveBeenCalledWith(expect.anything(), 'user-1', {
+      limit: 50,
+      offset: 0,
+      startDate: undefined,
+      endDate: undefined,
+    });
   });
 
   it('falls back to default limit for invalid values', async () => {
     const listCreditLedger = vi.fn().mockResolvedValue([]);
+    const countCreditLedger = vi.fn().mockResolvedValue(0);
     vi.doMock('../lib/auth.js', () => ({
       resolveAuthenticatedUser: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -167,17 +181,24 @@ describe('/api/credits/*', () => {
     vi.doMock('../lib/credits.js', () => ({
       getCreditAccount: vi.fn(),
       listCreditLedger,
+      countCreditLedger,
     }));
 
     const { default: app } = await import('../../api/index');
     const response = await app.fetch(createRequest('/api/credits/ledger?limit=abc'), createEnv());
 
     expect(response.status).toBe(200);
-    expect(listCreditLedger).toHaveBeenCalledWith(expect.anything(), 'user-1', 20);
+    expect(listCreditLedger).toHaveBeenCalledWith(expect.anything(), 'user-1', {
+      limit: 20,
+      offset: 0,
+      startDate: undefined,
+      endDate: undefined,
+    });
   });
 
   it('falls back to default limit for zero', async () => {
     const listCreditLedger = vi.fn().mockResolvedValue([]);
+    const countCreditLedger = vi.fn().mockResolvedValue(0);
     vi.doMock('../lib/auth.js', () => ({
       resolveAuthenticatedUser: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -189,17 +210,24 @@ describe('/api/credits/*', () => {
     vi.doMock('../lib/credits.js', () => ({
       getCreditAccount: vi.fn(),
       listCreditLedger,
+      countCreditLedger,
     }));
 
     const { default: app } = await import('../../api/index');
     const response = await app.fetch(createRequest('/api/credits/ledger?limit=0'), createEnv());
 
     expect(response.status).toBe(200);
-    expect(listCreditLedger).toHaveBeenCalledWith(expect.anything(), 'user-1', 20);
+    expect(listCreditLedger).toHaveBeenCalledWith(expect.anything(), 'user-1', {
+      limit: 20,
+      offset: 0,
+      startDate: undefined,
+      endDate: undefined,
+    });
   });
 
   it('falls back to default limit for negative values', async () => {
     const listCreditLedger = vi.fn().mockResolvedValue([]);
+    const countCreditLedger = vi.fn().mockResolvedValue(0);
     vi.doMock('../lib/auth.js', () => ({
       resolveAuthenticatedUser: vi.fn().mockResolvedValue({
         userId: 'user-1',
@@ -211,13 +239,62 @@ describe('/api/credits/*', () => {
     vi.doMock('../lib/credits.js', () => ({
       getCreditAccount: vi.fn(),
       listCreditLedger,
+      countCreditLedger,
     }));
 
     const { default: app } = await import('../../api/index');
     const response = await app.fetch(createRequest('/api/credits/ledger?limit=-5'), createEnv());
 
     expect(response.status).toBe(200);
-    expect(listCreditLedger).toHaveBeenCalledWith(expect.anything(), 'user-1', 20);
+    expect(listCreditLedger).toHaveBeenCalledWith(expect.anything(), 'user-1', {
+      limit: 20,
+      offset: 0,
+      startDate: undefined,
+      endDate: undefined,
+    });
+  });
+
+  it('passes ledger pagination and date filters', async () => {
+    const listCreditLedger = vi.fn().mockResolvedValue([]);
+    const countCreditLedger = vi.fn().mockResolvedValue(42);
+    vi.doMock('../lib/auth.js', () => ({
+      resolveAuthenticatedUser: vi.fn().mockResolvedValue({
+        userId: 'user-1',
+        email: 'user@example.com',
+        emailVerified: true,
+        name: 'User One',
+      }),
+    }));
+    vi.doMock('../lib/credits.js', () => ({
+      getCreditAccount: vi.fn(),
+      listCreditLedger,
+      countCreditLedger,
+    }));
+
+    const { default: app } = await import('../../api/index');
+    const response = await app.fetch(
+      createRequest(
+        '/api/credits/ledger?limit=20&offset=40&startAt=2026-04-01T00:00:00.000Z&endAt=2026-04-30T00:00:00.000Z',
+      ),
+      createEnv(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(listCreditLedger).toHaveBeenCalledWith(expect.anything(), 'user-1', {
+      limit: 20,
+      offset: 40,
+      startDate: '2026-04-01 00:00:00',
+      endDate: '2026-04-30 00:00:00',
+    });
+    expect(countCreditLedger).toHaveBeenCalledWith(expect.anything(), 'user-1', {
+      startDate: '2026-04-01 00:00:00',
+      endDate: '2026-04-30 00:00:00',
+    });
+    expect(await response.json()).toMatchObject({
+      total: 42,
+      limit: 20,
+      offset: 40,
+    });
   });
 
   it('returns 503 when balance service throws', async () => {
@@ -232,6 +309,7 @@ describe('/api/credits/*', () => {
     vi.doMock('../lib/credits.js', () => ({
       getCreditAccount: vi.fn().mockRejectedValue(new Error('DB down')),
       listCreditLedger: vi.fn(),
+      countCreditLedger: vi.fn(),
     }));
 
     const { default: app } = await import('../../api/index');
@@ -256,6 +334,7 @@ describe('/api/credits/*', () => {
     vi.doMock('../lib/credits.js', () => ({
       getCreditAccount: vi.fn(),
       listCreditLedger: vi.fn().mockRejectedValue(new Error('DB down')),
+      countCreditLedger: vi.fn().mockResolvedValue(0),
     }));
 
     const { default: app } = await import('../../api/index');

@@ -108,11 +108,11 @@ describe('credits', () => {
       const result = await listCreditLedger(
         createEnv({ USER_DB: db as unknown as D1Database }),
         'user-1',
-        10,
+        { limit: 10, offset: 0 },
       );
 
       expect(result).toEqual([]);
-      expect(db.bind).toHaveBeenCalledWith('user-1', 10);
+      expect(db.bind).toHaveBeenCalledWith('user-1', 10, 0);
     });
 
     it('returns mapped ledger rows', async () => {
@@ -138,7 +138,7 @@ describe('credits', () => {
       const result = await listCreditLedger(
         createEnv({ USER_DB: db as unknown as D1Database }),
         'user-1',
-        5,
+        { limit: 5, offset: 20 },
       );
 
       expect(result).toHaveLength(1);
@@ -149,6 +149,48 @@ describe('credits', () => {
         amount: 100000,
         balanceAfter: 100000,
       });
+      expect(db.bind).toHaveBeenCalledWith('user-1', 5, 20);
+    });
+
+    it('binds date filters when listing ledger rows', async () => {
+      const db = createMockDb();
+      db.all.mockResolvedValue({ results: [] });
+
+      const { listCreditLedger } = await import('../../lib/credits.js');
+      await listCreditLedger(createEnv({ USER_DB: db as unknown as D1Database }), 'user-1', {
+        limit: 5,
+        offset: 10,
+        startDate: '2026-04-01 00:00:00',
+        endDate: '2026-04-30 00:00:00',
+      });
+
+      expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('created_at >= ?'));
+      expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('created_at < ?'));
+      expect(db.bind).toHaveBeenCalledWith(
+        'user-1',
+        '2026-04-01 00:00:00',
+        '2026-04-30 00:00:00',
+        5,
+        10,
+      );
+    });
+
+    it('counts ledger rows with matching filters', async () => {
+      const db = createMockDb();
+      db.first.mockResolvedValue({ total: 12 });
+
+      const { countCreditLedger } = await import('../../lib/credits.js');
+      const result = await countCreditLedger(
+        createEnv({ USER_DB: db as unknown as D1Database }),
+        'user-1',
+        {
+          startDate: '2026-04-01 00:00:00',
+          endDate: '2026-04-30 00:00:00',
+        },
+      );
+
+      expect(result).toBe(12);
+      expect(db.bind).toHaveBeenCalledWith('user-1', '2026-04-01 00:00:00', '2026-04-30 00:00:00');
     });
   });
 

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 import {
@@ -41,6 +42,7 @@ interface UserSettingsDialogProps {
 }
 
 type WorkspaceSyncAction = 'upload' | 'download';
+const LEDGER_PAGE_SIZE = 20;
 
 const getErrorMessage = (payload: ApiErrorPayload | null, fallback: string) =>
   payload && typeof payload.error === 'string' ? payload.error : fallback;
@@ -51,6 +53,14 @@ const parseLedgerDate = (value: string) => {
       ? value
       : `${value.replace(' ', 'T')}Z`;
   return new Date(normalized);
+};
+
+const toLedgerBoundary = (value: string, endOfDay = false) => {
+  const date = new Date(`${value}T00:00:00`);
+  if (endOfDay) {
+    date.setDate(date.getDate() + 1);
+  }
+  return date.toISOString();
 };
 
 const formatLedgerTime = (value: string) => {
@@ -106,6 +116,10 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
   const [loadingLedger, setLoadingLedger] = useState(false);
   const [ledgerError, setLedgerError] = useState<string | null>(null);
   const [ledgerItems, setLedgerItems] = useState<CreditLedgerItem[]>([]);
+  const [ledgerTotal, setLedgerTotal] = useState(0);
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const [ledgerStartDate, setLedgerStartDate] = useState('');
+  const [ledgerEndDate, setLedgerEndDate] = useState('');
   const [rechargeOpen, setRechargeOpen] = useState(false);
   const [pendingSyncAction, setPendingSyncAction] = useState<WorkspaceSyncAction | null>(null);
   const [runningSyncAction, setRunningSyncAction] = useState<WorkspaceSyncAction | null>(null);
@@ -117,21 +131,30 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
     setName(authSession.name ?? '');
   }, [authSession.name, open]);
 
-  useEffect(() => {
-    if (!open || authSession.status !== 'signed_in') {
-      return;
-    }
+  const ledgerPageCount = useMemo(
+    () => Math.max(1, Math.ceil(ledgerTotal / LEDGER_PAGE_SIZE)),
+    [ledgerTotal],
+  );
 
-    let cancelled = false;
-    void (async () => {
+  const loadLedger = useCallback(
+    async (signal: AbortSignal) => {
       try {
         setLoadingLedger(true);
         setLedgerError(null);
-        const response = await fetch('/api/credits/ledger?limit=50', {
+        const params = new URLSearchParams({
+          limit: String(LEDGER_PAGE_SIZE),
+          offset: String((ledgerPage - 1) * LEDGER_PAGE_SIZE),
+        });
+        if (ledgerStartDate) params.set('startAt', toLedgerBoundary(ledgerStartDate));
+        if (ledgerEndDate) params.set('endAt', toLedgerBoundary(ledgerEndDate, true));
+
+        const response = await fetch(`/api/credits/ledger?${params.toString()}`, {
           credentials: 'include',
+          signal,
         });
         const payload = (await response.json().catch(() => null)) as {
           items?: CreditLedgerItem[];
+          total?: number;
           error?: string;
         } | null;
         if (!response.ok) {
@@ -139,24 +162,37 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
             getErrorMessage(payload as ApiErrorPayload | null, t('settings.loadFailed')),
           );
         }
-        if (!cancelled) {
-          setLedgerItems(Array.isArray(payload?.items) ? payload.items : []);
-        }
+        setLedgerItems(Array.isArray(payload?.items) ? payload.items : []);
+        setLedgerTotal(Number.isFinite(payload?.total) ? Number(payload?.total) : 0);
       } catch (err) {
-        if (!cancelled) {
+        if (!(err instanceof DOMException && err.name === 'AbortError')) {
           setLedgerError(err instanceof Error ? err.message : t('settings.loadFailed'));
         }
       } finally {
-        if (!cancelled) {
+        if (!signal.aborted) {
           setLoadingLedger(false);
         }
       }
-    })();
+    },
+    [ledgerEndDate, ledgerPage, ledgerStartDate, t],
+  );
+
+  useEffect(() => {
+    setLedgerPage(1);
+  }, [ledgerEndDate, ledgerStartDate]);
+
+  useEffect(() => {
+    if (!open || authSession.status !== 'signed_in') {
+      return;
+    }
+
+    const controller = new AbortController();
+    void loadLedger(controller.signal);
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
-  }, [authSession.status, open, t]);
+  }, [authSession.status, loadLedger, open]);
 
   const handleUpdateName = async () => {
     const trimmedName = name.trim();
@@ -367,7 +403,44 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                   {t('settings.creditHistoryHint')}
                 </div>
                 <section className="space-y-3">
-                  <h3 className="text-sm font-semibold">{t('settings.creditHistory')}</h3>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <h3 className="text-sm font-semibold">{t('settings.creditHistory')}</h3>
+                    <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
+                      <label className="space-y-1 text-xs font-medium text-muted-foreground">
+                        <span>{t('settings.startDate')}</span>
+                        <Input
+                          type="date"
+                          value={ledgerStartDate}
+                          max={ledgerEndDate || undefined}
+                          onChange={(event) => setLedgerStartDate(event.target.value)}
+                          className="h-8 text-xs"
+                        />
+                      </label>
+                      <label className="space-y-1 text-xs font-medium text-muted-foreground">
+                        <span>{t('settings.endDate')}</span>
+                        <Input
+                          type="date"
+                          value={ledgerEndDate}
+                          min={ledgerStartDate || undefined}
+                          onChange={(event) => setLedgerEndDate(event.target.value)}
+                          className="h-8 text-xs"
+                        />
+                      </label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-2 text-xs"
+                        disabled={!ledgerStartDate && !ledgerEndDate}
+                        onClick={() => {
+                          setLedgerStartDate('');
+                          setLedgerEndDate('');
+                        }}
+                      >
+                        {t('settings.clearFilter')}
+                      </Button>
+                    </div>
+                  </div>
                   {loadingLedger ? (
                     <div className="text-sm text-muted-foreground">{t('settings.loading')}</div>
                   ) : ledgerError ? (
@@ -375,7 +448,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                   ) : ledgerItems.length === 0 ? (
                     <div className="text-sm text-muted-foreground">{t('settings.noHistory')}</div>
                   ) : (
-                    <div className="overflow-x-auto rounded-lg border">
+                    <div className="max-h-72 overflow-auto rounded-lg border">
                       <table className="min-w-full text-sm">
                         <thead className="bg-muted/40 text-left">
                           <tr>
@@ -405,6 +478,43 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                       </table>
                     </div>
                   )}
+                  {ledgerTotal > 0 ? (
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>
+                        {t('settings.pagination', {
+                          page: ledgerPage,
+                          totalPages: ledgerPageCount,
+                          total: ledgerTotal,
+                        })}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          disabled={ledgerPage <= 1 || loadingLedger}
+                          onClick={() => setLedgerPage((page) => Math.max(1, page - 1))}
+                          aria-label={t('settings.previousPage')}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          disabled={ledgerPage >= ledgerPageCount || loadingLedger}
+                          onClick={() =>
+                            setLedgerPage((page) => Math.min(ledgerPageCount, page + 1))
+                          }
+                          aria-label={t('settings.nextPage')}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
                 </section>
               </TabsContent>
             </div>
