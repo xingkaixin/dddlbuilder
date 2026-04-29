@@ -82,10 +82,16 @@ test.describe('字段行操作验证 @fields', () => {
     await page.mouse.down();
     await page.waitForTimeout(200);
     // 先移动一小段距离以激活 dnd-kit 拖拽传感器 (distance: 6)
-    await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2 + 30, { steps: 5 });
+    await page.mouse.move(
+      handleBox.x + handleBox.width / 2,
+      handleBox.y + handleBox.height / 2 + 30,
+      { steps: 5 },
+    );
     await page.waitForTimeout(200);
     // 目标移动到第三行中心
-    await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 5 });
+    await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, {
+      steps: 5,
+    });
     await page.waitForTimeout(200);
     await page.mouse.up();
 
