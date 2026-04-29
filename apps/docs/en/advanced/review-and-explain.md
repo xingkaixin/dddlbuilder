@@ -21,6 +21,7 @@ You can use `AI Review` to identify structural risk first, then use `Explain sel
 4. Click the history icon in the review area. Result: you can view historical review records for the same table and revisit suggestions.
 5. Select one SQL snippet in the code area. Result: the `Explain selection` entry appears.
 6. Click `Explain selection` to view AI explanation. Result: you can quickly understand snippet intent and use it in review communication.
+7. When you need to supplement comments for tables or fields, request AI to generate Chinese business comments. Result: AI automatically generates Chinese comments for tables and fields and fills them into the corresponding positions.
 
 ## Done when
 

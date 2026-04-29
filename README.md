@@ -5,19 +5,29 @@
 ## 功能特性
 
 - 支持数据库：MySQL、PostgreSQL、PostgreSQL Citus、SQL Server、Oracle、MariaDB、TiDB、达梦 (Dameng)、OceanBase (MySQL/Oracle 模式)
+- **多标签页工作区**：同一工作区支持多个标签页，每张表独立管理草稿与保存状态；标签支持脏状态提示与关闭确认
 - **MySQL 分区配置**：支持 MySQL、MariaDB、TiDB 的分区表配置
   - 分区类型：RANGE、RANGE COLUMNS、LIST、LIST COLUMNS、HASH、KEY
   - 支持分区表达式（如 `YEAR(col)`、`dayofmonth(col)`）
   - RANGE 分区快捷生成：按年/月/日一键生成分区定义
 - **PostgreSQL Citus 分片配置**：支持副本表 (Reference Table) 和分片表 (Distributed Table) 模式，自动生成对应 DDL
+- **外键管理与 ER 图**：可视化配置表间外键关联、级联规则与约束名；ER 图支持节点拖拽、画布缩放与关联线展示
+- **ORM 模型代码生成**：除 DDL 外，支持生成 Prisma、TypeORM、SQLAlchemy、GORM、JPA 五种主流 ORM 模型代码
 - 实时生成建表语句；支持表注释与列注释
-- 索引与权限配置支持，可折叠面板管理
-- 主键支持与唯一约束索引配置
+- 视图与 Routine DDL 生成：支持 CREATE VIEW 配置，以及存储过程、函数、触发器的骨架代码生成
+- 索引、主键与权限配置支持，可折叠面板管理
+- **Schema 规范检查（Lint）**：内置命名规范与类型规则检测，自动发现表结构、字段与索引设计中的潜在问题
 - 字段校检：重复字段名或使用数据库保留关键字高亮告警
 - 类型智能映射与别名识别（如 varchar/varchar2、json/jsonb、serial/identity 等）
-- 便捷表格编辑：序号自动维护、批量添加行、复制粘贴「是否为空」列（支持 YNyn 输入）
+- 逻辑枚举编辑器：字段支持配置逻辑枚举值，可内联编辑枚举项、拖拽排序、设置颜色标识
+- 便捷表格编辑：序号自动维护、批量添加行、复制粘贴「是否为空」列（支持 YNyn 输入）；支持冻结列与紧凑布局模式
 - 字段默认值与更新策略（如 UUID、当前时间戳）
-- 支持 SQL 导入：解析 CREATE TABLE、CREATE INDEX、ALTER TABLE、GRANT 语句，自动回填表结构、索引及权限配置
+- 字段类型变更风险提示：修改已有字段类型时，若存在数据兼容性风险会弹出确认提示
+- **批量数据导入**：支持 SQL（CREATE TABLE / INDEX / ALTER / GRANT）解析，以及 CSV、Excel、JSON Schema 文件导入，自动识别字段名与类型
+- **表蓝图模板**：提供常见业务场景（如用户、订单、日志）的 CRUD 表结构模板，一键生成并应用
+- AI 智能注释：AI 建表与评审时自动为表与字段生成中文业务注释
+- Mock 数据生成：按字段类型与约束自动生成测试数据，支持批量导出
+- 已保存表回收站：支持软删除、单条恢复与批量清空，减少误删风险
 - 一键清空与便捷操作按钮
 - 一键复制 SQL，白底代码主题，便于文档或评审拷贝
 - 帮助文档入口，按语言跳转对应文档并查看更新说明

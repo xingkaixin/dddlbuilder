@@ -21,12 +21,14 @@ You can clearly explain "what changed" and "how to roll back" before release, re
 4. Expand and copy rollback scripts as needed. Result: you get scripts for reverting this change.
 5. Open the history entry from the target item in `Saved Tables`. Result: enter version history and inspect each snapshot.
 6. When restore is needed, choose a target version in history and execute rollback. Result: current workspace returns to the selected version state.
+7. When you need to visually view the evolution process, open "Timeline Playback" in version history. Result: the system visually plays back the table structure change process from old to new, making it easy to demonstrate evolution trajectories to the team.
 
 ## Done when
 
 - Change items are confirmed one by one, and scripts are clearly split into forward execution and rollback restore.
 - Key versions are locatable in history, and stable versions can be restored when needed.
 - You have an executable rollback plan before release.
+- If timeline playback was used, team members can understand the table structure evolution logic.
 
 ## Common pitfalls and failure handling
 
@@ -34,3 +36,4 @@ You can clearly explain "what changed" and "how to roll back" before release, re
 - Rollback scripts are not always directly executable. Recheck against real database state before running.
 - After deleting versions or overwriting saves, historical traceability changes. Keep milestone versions.
 - Reviewing only ALTER scripts but not rollback scripts increases recovery cost in failure scenarios.
+- Timeline playback is based on version snapshots; if intermediate versions are deleted, playback skips that version and shows differences before and after directly.

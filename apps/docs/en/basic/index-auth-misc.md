@@ -14,7 +14,8 @@ You can move from "table can be created" to "closer to production-ready", avoidi
 2. Choose `Add Index`, `Add Unique Index`, or `Add Primary Key` based on your goal. Result: corresponding index definitions are immediately added to DDL.
 3. If index naming needs adjustment, edit the index name directly. Result: output SQL uses your confirmed naming.
 4. Open "Privileges", enter grantees, and add them. Result: matching grant statements are generated automatically in "Privilege DCL".
-5. Open "Misc", enable the switch first, then configure engine, charset, collation, or tablespace. Result: supported databases include these table-level options in DDL.
+5. Open "Misc", enable the switch first, then configure engine, charset, collation, tablespace, fillfactor, or Oracle-specific storage options. Result: supported databases include these table-level options in DDL.
+6. If Routine skeletons are needed, select stored procedure, function, or trigger templates in Misc and adjust parameters. Result: the Routine output area generates corresponding skeleton code.
 
 ## Done when
 

@@ -1,5 +1,45 @@
 # Changelog
 
+## [0.17.0] - 2026-04-29
+### Added
+- **Multi-tab workspace**: Supports opening multiple tabs within the same workspace, each managing an independent table and draft state. Tabs support create, close, switch, and dirty-state indicators, with a save confirmation before closing unsaved changes.
+- **Foreign key management and ER diagram**: Adds a foreign key configuration panel for visual table relationship setup, including cascade rules and constraint naming. The ER diagram viewer is upgraded to a React Flow-based implementation with draggable nodes, canvas zoom, and relationship line rendering.
+- **ORM model generation**: In addition to DDL, adds ORM model generation for Prisma, TypeORM, SQLAlchemy, GORM, and JPA, making it easier to paste directly into business projects.
+- **Batch data import**: Supports importing table structures from CSV, Excel, and JSON Schema files with automatic field name and type recognition. SQL batch import adds conflict detection and field merge strategies to reduce manual entry.
+- **View DDL generation**: Adds a view configuration panel supporting SELECT query definition, field aliases, and permissions, automatically generating the corresponding CREATE VIEW statement for the target database.
+- **Routine template DDL generation**: Adds routine template DDL generation for stored procedures, functions, and triggers.
+- **Schema timeline playback**: Adds a visual timeline player to version history, allowing step-by-step playback of schema evolution from old to new states.
+- **Schema lint panel**: Adds a built-in Schema Lint panel that automatically detects potential issues in table structure, fields, and index design based on naming conventions and type rules.
+- **AI comment generation**: AI table generation and review now automatically generate Chinese business comments for tables and fields, reducing documentation effort.
+- **Mock data generator**: Adds a mock data generator that automatically produces test data based on field types and constraints, with batch export support for development and testing.
+- **Logical enum editor**: Fields support logical enum values with an inline editor for adding, deleting, reordering, and color-coding enum items. Enum metadata persists with drafts and saved tables.
+- **Table blueprint templates**: Adds common business scenario table blueprints (e.g., user, order, log CRUD tables) that generate complete table structures with one click and can be applied directly to the current workspace.
+- **Saved table trash**: Saved tables support soft deletion with a trash bin, single-item restore, and batch emptying. Drafts also support dirty-state indicators and trash management to reduce accidental deletion risk.
+- **Workspace sidebar and multiple drafts**: Adds a workspace sidebar on the left for creating and managing multiple named drafts. Drafts and saved tables are displayed together in the drawer for clearer organization and retrieval.
+- **Field type change risk detection**: When modifying an existing field type, the system warns about data compatibility risks (such as string truncation, precision loss, or implicit conversion failures) to prevent production incidents.
+- **Index-aware storage estimation**: The storage capacity estimator now includes index volume in calculations, bringing total capacity estimates closer to actual physical disk usage.
+- **Table-level storage options**: Adds fillfactor and Oracle-specific storage parameter configurations to adjust physical storage behavior per database type.
+- **Collapsible output panel and compact layout**: The DDL output panel supports collapsing to free up editing space. The field configuration table adds a compact layout mode for higher information density on smaller screens.
+- **Version history time filtering**: Adds a time-range filter to the version history dialog for quickly locating changes within a specific period.
+- **SEO and sitemap improvements**: Improves page titles, descriptions, and search engine metadata. The documentation site adds automatic VitePress sitemap generation for better search visibility.
+
+### Improved
+- **Index panel UX upgrade**: Restructures the index configuration panel with clearer information hierarchy and fully internationalized labels and tooltips.
+- **Unsaved change protection**: Prompts to save when loading another table or template while the current table has unsaved changes, preventing accidental loss.
+- **Accessibility for index field suggestions**: Index field dropdown suggestions support keyboard up/down navigation and focus management for better keyboard efficiency.
+- **Workspace empty state guidance**: Displays an empty state with quick actions when no tabs are open, allowing example tables to be loaded for a quick start.
+
+### Fixed
+- **Credit ledger date parsing**: Fixes parsing exceptions caused by invalid date boundaries in the credit ledger.
+- **Empty tab sync guard**: Skips persistence sync when no tabs are open to avoid unnecessary writes and potential errors.
+- **Duplicate tab initialization**: Prevents duplicate tab initialization during React Strict Mode double mounting to avoid state anomalies.
+- **Drag-and-drop row sorting stability**: Persists drag-over state to fix occasional failures in field table row reordering.
+- **Freeze columns default off**: Sets freeze columns to off by default to reduce initial interface complexity. Handles trash state correctly during save.
+
+### Engineering
+- **D1 migration ledger**: Adds a migration ledger and schema baseline to provide a traceable foundation for future database schema evolution.
+- **Credit ledger pagination**: Credit consumption records support paginated loading and date-range filtering for more stable queries under large data volumes.
+
 ## [0.16.0] - 2026-04-17
 ### Added
 - **User system**: Supports email-based sign-up and sign-in with email verification, password reset, and branded email templates. Data is bound to your account after signing in; anonymous local workspace remains available without signing in.

@@ -20,6 +20,12 @@ const zhSidebar = [
       { text: '评审与解释 SQL', link: '/zh/advanced/review-and-explain' },
       { text: '分区与分片配置', link: '/zh/advanced/partition-and-sharding' },
       { text: '变更对比与回滚', link: '/zh/advanced/diff-and-rollback' },
+      { text: '外键配置与 ER 图', link: '/zh/advanced/foreign-key-and-er' },
+      { text: 'ORM 模型生成', link: '/zh/advanced/orm-generation' },
+      { text: '视图与 Routine 配置', link: '/zh/advanced/view-and-routine' },
+      { text: 'Schema 规范检查', link: '/zh/advanced/schema-lint' },
+      { text: 'Mock 数据与逻辑枚举', link: '/zh/advanced/mock-data-and-enum' },
+      { text: '表蓝图模板', link: '/zh/advanced/blueprint-templates' },
     ],
   },
   {
@@ -73,6 +79,30 @@ const enSidebar = [
       {
         text: 'Change Diff and Rollback',
         link: '/en/advanced/diff-and-rollback',
+      },
+      {
+        text: 'Foreign Key Configuration and ER Diagram',
+        link: '/en/advanced/foreign-key-and-er',
+      },
+      {
+        text: 'ORM Model Generation',
+        link: '/en/advanced/orm-generation',
+      },
+      {
+        text: 'View and Routine Configuration',
+        link: '/en/advanced/view-and-routine',
+      },
+      {
+        text: 'Schema Lint',
+        link: '/en/advanced/schema-lint',
+      },
+      {
+        text: 'Mock Data and Logical Enums',
+        link: '/en/advanced/mock-data-and-enum',
+      },
+      {
+        text: 'Table Blueprint Templates',
+        link: '/en/advanced/blueprint-templates',
       },
     ],
   },
