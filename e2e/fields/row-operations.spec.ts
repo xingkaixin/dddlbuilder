@@ -14,7 +14,9 @@ test.describe('字段行操作验证 @fields', () => {
     await cell1.dblclick();
     await page.locator('[data-testid="data-table"] input').fill('f1');
     await page.keyboard.press('Enter');
-    const typeCell1 = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)');
+    const typeCell1 = page.locator(
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
+    );
     await typeCell1.dblclick();
     await page.locator('[data-testid="data-table"] input').fill('INT');
     await page.keyboard.press('Enter');
@@ -25,7 +27,9 @@ test.describe('字段行操作验证 @fields', () => {
     await cell2.dblclick();
     await page.locator('[data-testid="data-table"] input').fill('f2');
     await page.keyboard.press('Enter');
-    const typeCell2 = page.locator('[data-testid="data-table"] tbody tr:nth-child(2) td:nth-child(4)');
+    const typeCell2 = page.locator(
+      '[data-testid="data-table"] tbody tr:nth-child(2) td:nth-child(4)',
+    );
     await typeCell2.dblclick();
     await page.locator('[data-testid="data-table"] input').fill('INT');
     await page.keyboard.press('Enter');
@@ -39,11 +43,15 @@ test.describe('字段行操作验证 @fields', () => {
 
     // 填入 3 个初始字段（名称 + 类型）
     for (let i = 1; i <= 3; i += 1) {
-      const cell = page.locator(`[data-testid="data-table"] tbody tr:nth-child(${i}) td:nth-child(2)`);
+      const cell = page.locator(
+        `[data-testid="data-table"] tbody tr:nth-child(${i}) td:nth-child(2)`,
+      );
       await cell.dblclick();
       await page.locator('[data-testid="data-table"] input').fill(`field_${i}`);
       await page.keyboard.press('Enter');
-      const typeCell = page.locator(`[data-testid="data-table"] tbody tr:nth-child(${i}) td:nth-child(4)`);
+      const typeCell = page.locator(
+        `[data-testid="data-table"] tbody tr:nth-child(${i}) td:nth-child(4)`,
+      );
       await typeCell.dblclick();
       await page.locator('[data-testid="data-table"] input').fill('INT');
       await page.keyboard.press('Enter');
