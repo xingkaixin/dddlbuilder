@@ -204,6 +204,9 @@ function App() {
     createDraft,
     deleteDraftById,
     moveDraftToFolder,
+    getSavedTableDraft,
+    removeSavedTableDraft,
+    renameSavedTableDraft,
   } = usePersistedState();
 
   const {
@@ -758,7 +761,10 @@ function App() {
     showToast,
     trackEvent,
     flushCurrentWorkspace,
+    getSavedTableDraft,
     setWorkspaceSnapshot,
+    renameSavedTableDraft,
+    removeSavedTableDraft,
     onTableLoadStateChange: setIsSavedTableLoading,
     onSaveSuccess: async ({ normalizedName, displayName, baseSignature, mode }) => {
       if (isShareView) {
@@ -783,6 +789,7 @@ function App() {
       if (mode === 'create' && activeSource.kind === 'draft') {
         deleteDraftById(activeSource.draftId);
       }
+      removeSavedTableDraft(normalizedName);
     },
   });
 

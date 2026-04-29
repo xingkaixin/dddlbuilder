@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
+import type { SavedTableDraftRecord, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
 import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
@@ -38,6 +38,7 @@ interface UseSaveLoadActionsParams {
   showToast: (message: string) => void;
   trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void> | void;
   flushCurrentWorkspace?: () => void;
+  getSavedTableDraft?: (normalizedName: string) => SavedTableDraftRecord | null;
   setWorkspaceSnapshot?: (source: WorkspaceSource, state: PersistedState) => void;
   onSaveSuccess?: (payload: {
     normalizedName: string;
@@ -69,6 +70,7 @@ export function useSaveLoadActions({
   showToast,
   trackEvent,
   flushCurrentWorkspace,
+  getSavedTableDraft,
   setWorkspaceSnapshot,
   onSaveSuccess,
   onTableLoadStateChange,
@@ -100,6 +102,9 @@ export function useSaveLoadActions({
         });
 
         const savedBaseSignature = serializePersistedState(record.state);
+        const savedDraft = getSavedTableDraft?.(record.normalizedName);
+        const stateToApply =
+          savedDraft?.baseSignature === savedBaseSignature ? savedDraft.state : record.state;
 
         let versionCount = 0;
         try {
@@ -116,7 +121,7 @@ export function useSaveLoadActions({
             tableName: record.name,
             baseSignature: savedBaseSignature,
           },
-          tableName: record.state.tableName,
+          tableName: stateToApply.tableName,
           version: versionCount,
         });
 
@@ -127,9 +132,9 @@ export function useSaveLoadActions({
             tableName: record.name,
             baseSignature: savedBaseSignature,
           },
-          record.state,
+          stateToApply,
         );
-        applySavedState(record.state);
+        applySavedState(stateToApply);
         setLoadedTableNormalizedName(record.normalizedName);
         setLoadedTableName(record.name);
         setLoadedTableSignature(savedBaseSignature);
@@ -151,6 +156,7 @@ export function useSaveLoadActions({
       setLoadedTableSignature,
       setLoadedTableVersion,
       serializePersistedState,
+      getSavedTableDraft,
       setWorkspaceSnapshot,
       trackEvent,
       onTableLoadStateChange,
@@ -298,20 +304,9 @@ export function useSaveLoadActions({
     (item: SavedTableSummary) => {
       flushCurrentWorkspace?.();
       setSavedTablesDrawerOpen(false);
-      if (hasLoadedTable && canSaveCurrent) {
-        openSaveDialog(item);
-        return;
-      }
       void handleLoadSavedTable(item);
     },
-    [
-      setSavedTablesDrawerOpen,
-      flushCurrentWorkspace,
-      hasLoadedTable,
-      canSaveCurrent,
-      openSaveDialog,
-      handleLoadSavedTable,
-    ],
+    [setSavedTablesDrawerOpen, flushCurrentWorkspace, handleLoadSavedTable],
   );
 
   const handleOpenSaveDialog = useCallback(() => {

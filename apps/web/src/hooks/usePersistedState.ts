@@ -7,6 +7,7 @@ import { ShareApiError, getShareState } from '@/services/shareService';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import type {
   DraftSummary,
+  SavedTableDraftRecord,
   WorkspaceSavePayload,
   WorkspaceScope,
   WorkspaceSource,
@@ -15,6 +16,10 @@ import {
   clearWorkspaceSession,
   DEFAULT_DRAFT_ID,
   deleteDraft,
+  deleteSavedDraft,
+  listSavedDrafts,
+  renameSavedDraftKey,
+  upsertSavedDraft,
   writeDraft,
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
@@ -59,6 +64,13 @@ export interface UsePersistedStateReturn {
   createDraft: (draftId: string, state: PersistedState) => void;
   deleteDraftById: (draftId: string) => void;
   moveDraftToFolder: (draftId: string, folderId?: string) => void;
+  getSavedTableDraft: (normalizedName: string) => SavedTableDraftRecord | null;
+  removeSavedTableDraft: (normalizedName: string) => void;
+  renameSavedTableDraft: (
+    fromNormalizedName: string,
+    toNormalizedName: string,
+    nextTableName: string,
+  ) => void;
 }
 
 export function usePersistedState(): UsePersistedStateReturn {
@@ -81,6 +93,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     draftId: DEFAULT_DRAFT_ID,
   });
   const draftsRef = useRef<Map<string, GlobalDraftRecord>>(new Map());
+  const savedTableDraftsRef = useRef<Map<string, SavedTableDraftRecord>>(new Map());
 
   const currentScope = useMemo<WorkspaceScope>(
     () =>
@@ -111,6 +124,10 @@ export function usePersistedState(): UsePersistedStateReturn {
 
   const getDraftState = useCallback((draftId: string) => {
     return draftsRef.current.get(draftId)?.state ?? null;
+  }, []);
+
+  const getSavedTableDraft = useCallback((normalizedName: string) => {
+    return savedTableDraftsRef.current.get(normalizedName) ?? null;
   }, []);
 
   /** @deprecated 使用 getDraftState */
@@ -184,6 +201,23 @@ export function usePersistedState(): UsePersistedStateReturn {
           return next;
         });
         fireAndForget(writeDraft(draftId, draftRecord, currentScope));
+      }
+
+      if (payload.source.kind === 'saved_table') {
+        const { normalizedName, tableName, baseSignature } = payload.source;
+        if (payload.isDirty) {
+          const record: SavedTableDraftRecord = {
+            state: payload.state,
+            tableName,
+            baseSignature,
+            updatedAt: Date.now(),
+          };
+          savedTableDraftsRef.current.set(normalizedName, record);
+          fireAndForget(upsertSavedDraft(normalizedName, record, currentScope));
+        } else {
+          savedTableDraftsRef.current.delete(normalizedName);
+          fireAndForget(deleteSavedDraft(normalizedName, currentScope));
+        }
       }
 
       const activeStateToPersist = payload.state;
@@ -274,6 +308,37 @@ export function usePersistedState(): UsePersistedStateReturn {
     [currentScope, shareId],
   );
 
+  const removeSavedTableDraft = useCallback(
+    (normalizedName: string) => {
+      if (shareId) return;
+      savedTableDraftsRef.current.delete(normalizedName);
+      fireAndForget(deleteSavedDraft(normalizedName, currentScope));
+    },
+    [currentScope, shareId],
+  );
+
+  const renameSavedTableDraft = useCallback(
+    (fromNormalizedName: string, toNormalizedName: string, nextTableName: string) => {
+      if (shareId) return;
+      const record = savedTableDraftsRef.current.get(fromNormalizedName);
+      if (record) {
+        const nextRecord = {
+          ...record,
+          tableName: nextTableName,
+          updatedAt: Date.now(),
+        };
+        savedTableDraftsRef.current.set(toNormalizedName, nextRecord);
+        if (fromNormalizedName !== toNormalizedName) {
+          savedTableDraftsRef.current.delete(fromNormalizedName);
+        }
+      }
+      fireAndForget(
+        renameSavedDraftKey(fromNormalizedName, toNormalizedName, nextTableName, currentScope),
+      );
+    },
+    [currentScope, shareId],
+  );
+
   useEffect(() => {
     let cancelled = false;
 
@@ -292,6 +357,8 @@ export function usePersistedState(): UsePersistedStateReturn {
         session: sessionRaw,
         savedTable,
       } = await getWorkspaceBootstrap(currentScope);
+      const savedDrafts = await listSavedDrafts(currentScope);
+      savedTableDraftsRef.current = new Map(Object.entries(savedDrafts));
 
       const defaultDraftRecord = normalizeGlobalDraftRecord(globalDraftRaw);
       const allDrafts: Array<{ draftId: string; record: GlobalDraftRecord }> = [];
@@ -445,7 +512,9 @@ export function usePersistedState(): UsePersistedStateReturn {
           session: sessionRaw,
           savedTable,
         } = await getWorkspaceBootstrap(currentScope);
+        const savedDrafts = await listSavedDrafts(currentScope);
         if (cancelled) return;
+        savedTableDraftsRef.current = new Map(Object.entries(savedDrafts));
 
         const defaultDraftRecord = normalizeGlobalDraftRecord(globalDraftRaw);
         const allDrafts: Array<{ draftId: string; record: GlobalDraftRecord }> = [];
@@ -529,5 +598,8 @@ export function usePersistedState(): UsePersistedStateReturn {
     createDraft,
     deleteDraftById,
     moveDraftToFolder,
+    getSavedTableDraft,
+    removeSavedTableDraft,
+    renameSavedTableDraft,
   };
 }

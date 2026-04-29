@@ -137,7 +137,7 @@ describe('FolderDialogs i18n', () => {
     expect(screen.getByText('Are you sure you want to delete "Archive"?')).toBeInTheDocument();
     expect(screen.getByText(/contains 2 table\(s\)/)).toBeInTheDocument();
     expect(screen.getByText(/1 subfolder\(s\)/)).toBeInTheDocument();
-    expect(screen.getByText(/Ungrouped/)).toBeInTheDocument();
+    expect(screen.getByText(/Tables inside will also be deleted/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
   });

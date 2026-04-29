@@ -8,6 +8,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -93,6 +94,12 @@ function buildDiffSummary(diff: TableDiff | null): string {
   return parts.join(', ');
 }
 
+function toDateTimeLocalValue(timestamp: number): string {
+  const date = new Date(timestamp);
+  const offsetMs = date.getTimezoneOffset() * 60 * 1000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
 export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
   ({
     open,
@@ -112,6 +119,8 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [startTime, setStartTime] = useState('');
+    const [endTime, setEndTime] = useState('');
 
     const resolveVersionMessage = useCallback(
       (message?: string | null) => {
@@ -150,6 +159,8 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
       } else {
         setVersions([]);
         setSelectedId(null);
+        setStartTime('');
+        setEndTime('');
       }
     }, [open, tableNormalizedName, loadVersions]);
 
@@ -165,6 +176,27 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
       }
       return diffs;
     }, [versions]);
+
+    const versionDiffMap = useMemo(() => {
+      return new Map(versions.map((version, index) => [version.id, versionDiffs[index]]));
+    }, [versionDiffs, versions]);
+
+    const versionIndexMap = useMemo(() => {
+      return new Map(versions.map((version, index) => [version.id, index]));
+    }, [versions]);
+
+    const filteredVersions = useMemo(() => {
+      const start = startTime ? new Date(startTime).getTime() : Number.NEGATIVE_INFINITY;
+      const end = endTime ? new Date(endTime).getTime() : Number.POSITIVE_INFINITY;
+      return versions.filter((version) => version.createdAt >= start && version.createdAt <= end);
+    }, [endTime, startTime, versions]);
+
+    useEffect(() => {
+      if (filteredVersions.length === 0) return;
+      if (!selectedId || !filteredVersions.some((version) => version.id === selectedId)) {
+        setSelectedId(filteredVersions[0].id);
+      }
+    }, [filteredVersions, selectedId]);
 
     // 回滚到选中版本
     const handleRollback = useCallback(async () => {
@@ -214,8 +246,8 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
     return (
       <>
         <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="max-h-[85vh] max-w-lg overflow-hidden">
-            <DialogHeader>
+          <DialogContent className="flex max-h-[82vh] min-h-[560px] w-[min(720px,calc(100vw-2rem))] max-w-none flex-col overflow-hidden">
+            <DialogHeader className="shrink-0">
               <DialogTitle className="flex items-center gap-2">
                 <History className="h-5 w-5" />
                 {t('versionHistory.title')}
@@ -227,7 +259,55 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
               </DialogDescription>
             </DialogHeader>
 
-            <div className="flex max-h-[50vh] flex-col overflow-y-auto overscroll-contain pr-1">
+            {versions.length > 0 && (
+              <div className="grid shrink-0 grid-cols-[1fr_1fr_auto] items-end gap-2 border-b pb-3">
+                <label className="space-y-1 text-xs font-medium text-muted-foreground">
+                  <span>{t('versionHistory.startTime')}</span>
+                  <Input
+                    type="datetime-local"
+                    value={startTime}
+                    min={
+                      versions.length
+                        ? toDateTimeLocalValue(versions[versions.length - 1].createdAt)
+                        : undefined
+                    }
+                    max={versions.length ? toDateTimeLocalValue(versions[0].createdAt) : undefined}
+                    onChange={(event) => setStartTime(event.target.value)}
+                    className="h-8 text-xs"
+                  />
+                </label>
+                <label className="space-y-1 text-xs font-medium text-muted-foreground">
+                  <span>{t('versionHistory.endTime')}</span>
+                  <Input
+                    type="datetime-local"
+                    value={endTime}
+                    min={
+                      versions.length
+                        ? toDateTimeLocalValue(versions[versions.length - 1].createdAt)
+                        : undefined
+                    }
+                    max={versions.length ? toDateTimeLocalValue(versions[0].createdAt) : undefined}
+                    onChange={(event) => setEndTime(event.target.value)}
+                    className="h-8 text-xs"
+                  />
+                </label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2 text-xs"
+                  disabled={!startTime && !endTime}
+                  onClick={() => {
+                    setStartTime('');
+                    setEndTime('');
+                  }}
+                >
+                  {t('versionHistory.clearFilter')}
+                </Button>
+              </div>
+            )}
+
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
               {loading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -236,16 +316,21 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                 <div className="py-8 text-center text-sm text-muted-foreground">
                   {t('versionHistory.empty')}
                 </div>
+              ) : filteredVersions.length === 0 ? (
+                <div className="py-8 text-center text-sm text-muted-foreground">
+                  {t('versionHistory.noResults')}
+                </div>
               ) : (
-                <div className="relative pl-4">
+                <div className="relative pl-4 pr-1">
                   {/* 时间轴线 */}
                   <div className="absolute bottom-3 left-[11px] top-3 w-px bg-border" />
 
-                  {versions.map((v, index) => {
+                  {filteredVersions.map((v) => {
+                    const index = versionIndexMap.get(v.id) ?? 0;
                     const isSelected = selectedId === v.id;
                     const isLatest = index === 0;
                     const isInitial = index === versions.length - 1;
-                    const diff = versionDiffs[index];
+                    const diff = versionDiffMap.get(v.id) ?? null;
                     const diffSummary = buildDiffSummary(diff);
 
                     return (
@@ -266,7 +351,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                           type="button"
                           onClick={() => setSelectedId(v.id)}
                           className={cn(
-                            'ml-5 flex w-full flex-col gap-1 rounded-lg border p-3 pr-10 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                            'ml-5 flex w-[calc(100%-1.25rem)] flex-col gap-1 rounded-lg border p-3 pr-10 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                             isSelected
                               ? 'border-primary bg-primary/5'
                               : 'border-transparent bg-muted/30 hover:bg-muted/50',

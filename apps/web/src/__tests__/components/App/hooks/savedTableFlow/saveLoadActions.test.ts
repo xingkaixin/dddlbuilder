@@ -147,6 +147,50 @@ describe('useSaveLoadActions', () => {
     expect(onTableLoadStateChange).toHaveBeenCalledWith(false);
   });
 
+  it('handleLoadSavedTable restores matching saved-table draft', async () => {
+    const savedState = {
+      tableName: 'test_table',
+      dbType: 'mysql',
+      rows: [{ fieldName: 'id' }],
+    };
+    const draftState = {
+      ...savedState,
+      tableName: 'test_table_draft',
+    };
+    loadTable.mockResolvedValue({
+      normalizedName: 'norm_test',
+      name: 'test_table',
+      state: savedState,
+    });
+
+    const { result } = getHook({
+      getSavedTableDraft: vi.fn().mockReturnValue({
+        state: draftState,
+        tableName: 'test_table',
+        baseSignature: 'mock-sig',
+        updatedAt: Date.now(),
+      }),
+    });
+
+    await act(async () => {
+      result.current.handleSelectSavedTable({
+        normalizedName: 'norm_test',
+        name: 'test_table',
+      } as any);
+    });
+
+    expect(applySavedState).toHaveBeenCalledWith(draftState);
+    expect(setWorkspaceSnapshot).toHaveBeenCalledWith(
+      {
+        kind: 'saved_table',
+        normalizedName: 'norm_test',
+        tableName: 'test_table',
+        baseSignature: 'mock-sig',
+      },
+      draftState,
+    );
+  });
+
   it('handleOpenSaveDialog fallback name uses defaults', () => {
     const { result } = getHook({ tableName: ' ' });
     act(() => {
@@ -302,7 +346,7 @@ describe('useSaveLoadActions', () => {
     expect(saveDialog.closeDialog).toHaveBeenCalledTimes(1);
   });
 
-  it('handleSelectSavedTable asks to save dirty loaded table before loading target', async () => {
+  it('handleSelectSavedTable flushes dirty loaded table before loading target', async () => {
     const target = { normalizedName: 'pending_norm', name: 'pending' };
     loadTable.mockResolvedValue({
       normalizedName: 'pending_norm',
@@ -318,10 +362,7 @@ describe('useSaveLoadActions', () => {
 
     expect(flushCurrentWorkspace).toHaveBeenCalled();
     expect(setSavedTablesDrawerOpen).toHaveBeenCalledWith(false);
-    expect(saveDialog.openDialog).toHaveBeenCalledWith({
-      name: 'default_name',
-      queuedLoadAfterSave: target,
-    });
-    expect(loadTable).not.toHaveBeenCalled();
+    expect(saveDialog.openDialog).not.toHaveBeenCalled();
+    expect(loadTable).toHaveBeenCalledWith('pending_norm');
   });
 });
