@@ -2,7 +2,7 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import type { ApiEnv } from './context.js';
 
-type SnapshotKind = 'global_draft' | 'saved_table' | 'saved_draft' | 'folder';
+type SnapshotKind = 'global_draft' | 'draft' | 'saved_table' | 'saved_draft' | 'folder';
 
 type SnapshotRow = {
   kind: SnapshotKind;
@@ -53,6 +53,16 @@ const listSnapshotRows = async (
     .all<SnapshotRow>();
 
   return result.results ?? [];
+};
+
+const clearWorkspaceSnapshots = async (env: ApiEnv['Bindings'], userId: string) => {
+  const result = await env.USER_DB.prepare('DELETE FROM workspace_snapshots WHERE user_id = ?')
+    .bind(userId)
+    .run();
+
+  if (!result.success) {
+    throw new Error(result.error ?? 'D1 execution failed');
+  }
 };
 
 const readExistingUpdatedAt = async (
@@ -134,6 +144,7 @@ export const getWorkspaceSnapshot = async (
   const rows = await listSnapshotRows(env, userId);
   const snapshot: WorkspaceSnapshot = {
     globalDraft: null,
+    drafts: [],
     savedTables: [],
     savedDrafts: [],
     folders: [],
@@ -152,6 +163,17 @@ export const getWorkspaceSnapshot = async (
     }
 
     if (!row.normalizedName) {
+      continue;
+    }
+
+    if (row.kind === 'draft') {
+      const payload = JSON.parse(row.payloadJson) as { state: PersistedState; folderId?: string };
+      snapshot.drafts.push({
+        draftId: row.normalizedName,
+        state: payload.state,
+        updatedAt: row.sourceUpdatedAt,
+        folderId: payload.folderId,
+      });
       continue;
     }
 
@@ -189,6 +211,7 @@ export const getWorkspaceSnapshot = async (
     });
   }
 
+  snapshot.drafts.sort((a, b) => b.updatedAt - a.updatedAt);
   snapshot.savedTables.sort((a, b) => b.updatedAt - a.updatedAt);
   snapshot.savedDrafts.sort((a, b) => b.updatedAt - a.updatedAt);
 
@@ -200,6 +223,8 @@ export const putWorkspaceSnapshot = async (
   userId: string,
   snapshot: WorkspaceSnapshot,
 ) => {
+  await clearWorkspaceSnapshots(env, userId);
+
   if (snapshot.globalDraft) {
     await upsertSnapshot(env, {
       userId,
@@ -209,6 +234,19 @@ export const putWorkspaceSnapshot = async (
         state: snapshot.globalDraft.state,
       },
       sourceUpdatedAt: snapshot.globalDraft.updatedAt,
+    });
+  }
+
+  for (const item of snapshot.drafts) {
+    await upsertSnapshot(env, {
+      userId,
+      kind: 'draft',
+      normalizedName: item.draftId,
+      payload: {
+        state: item.state,
+        folderId: item.folderId,
+      },
+      sourceUpdatedAt: item.updatedAt,
     });
   }
 

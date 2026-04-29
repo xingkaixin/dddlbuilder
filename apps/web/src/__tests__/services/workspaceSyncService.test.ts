@@ -10,7 +10,9 @@ import {
   listSavedDrafts,
   readGlobalDraft,
   readWorkspaceSession,
+  listDrafts,
   upsertSavedDraft,
+  writeDraft,
   writeGlobalDraft,
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
@@ -49,6 +51,15 @@ describe('workspaceSyncService', () => {
       {
         state: createState('local_draft'),
         updatedAt: 100,
+      },
+      scope,
+    );
+    await writeDraft(
+      'draft-2',
+      {
+        state: createState('draft_2'),
+        updatedAt: 110,
+        folderId: 'folder_1',
       },
       scope,
     );
@@ -97,6 +108,23 @@ describe('workspaceSyncService', () => {
         },
         updatedAt: 100,
       },
+      drafts: [
+        {
+          draftId: 'default',
+          state: {
+            tableName: 'local_draft',
+          },
+          updatedAt: 100,
+        },
+        {
+          draftId: 'draft-2',
+          state: {
+            tableName: 'draft_2',
+          },
+          updatedAt: 110,
+          folderId: 'folder_1',
+        },
+      ],
       savedTables: [
         {
           normalizedName: 'users',
@@ -166,6 +194,14 @@ describe('workspaceSyncService', () => {
             state: createState('cloud_draft'),
             updatedAt: 200,
           },
+          drafts: [
+            {
+              draftId: 'cloud-draft',
+              state: createState('cloud_draft_2'),
+              updatedAt: 205,
+              folderId: 'folder_1',
+            },
+          ],
           savedTables: [
             {
               normalizedName: 'users',
@@ -199,12 +235,15 @@ describe('workspaceSyncService', () => {
     await importWorkspaceFromCloud(scope);
 
     const globalDraft = await readGlobalDraft(scope);
+    const drafts = await listDrafts(scope);
     const savedTables = await listSavedTables(scope);
     const savedDrafts = await listSavedDrafts(scope);
     const session = await readWorkspaceSession(scope);
     const folders = await listFolders();
 
     expect(globalDraft?.state.tableName).toBe('cloud_draft');
+    expect(drafts.map((item) => item.draftId)).toEqual(['default', 'cloud-draft']);
+    expect(drafts.find((item) => item.draftId === 'cloud-draft')?.record.folderId).toBe('folder_1');
     expect(savedTables.map((item) => item.normalizedName)).toEqual(['users']);
     expect(savedTables[0]?.folderId).toBe('folder_1');
     expect(Object.keys(savedDrafts)).toEqual(['users']);

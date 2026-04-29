@@ -20,10 +20,14 @@ import { listFolders, clearFolders, bulkPutFolders } from '@/utils/tableFolders'
 import {
   clearGlobalDraft,
   clearWorkspaceSession,
+  deleteDraft,
   deleteSavedDraft,
+  listDrafts,
   listSavedDrafts,
+  readDraft,
   readGlobalDraft,
   upsertSavedDraft,
+  writeDraft,
   writeGlobalDraft,
 } from '@/utils/workspaceStateDb';
 import { getCurrentWorkspaceScope } from '@/utils/workspaceScope';
@@ -96,6 +100,12 @@ export const pullWorkspaceSnapshot = async (): Promise<WorkspaceSnapshot> => {
           updatedAt: snapshot.globalDraft.updatedAt,
         }
       : null,
+    drafts: (snapshot?.drafts ?? []).map((item) => ({
+      draftId: item.draftId,
+      state: normalizeState(item.state),
+      updatedAt: item.updatedAt,
+      folderId: item.folderId,
+    })),
     savedTables: (snapshot?.savedTables ?? []).map((item) => ({
       normalizedName: item.normalizedName,
       name: item.name,
@@ -119,12 +129,14 @@ export const collectWorkspaceSnapshot = async (
   overrides?: Partial<WorkspaceSnapshot>,
   scope: WorkspaceScope = getCurrentWorkspaceScope(),
 ): Promise<WorkspaceSnapshotPushRequest> => {
-  const [localGlobalDraft, localSavedTables, localSavedDraftMap, localFolders] = await Promise.all([
-    readGlobalDraft(scope),
-    listSavedTables(scope),
-    listSavedDrafts(scope),
-    listFolders(),
-  ]);
+  const [localGlobalDraft, localDrafts, localSavedTables, localSavedDraftMap, localFolders] =
+    await Promise.all([
+      readGlobalDraft(scope),
+      listDrafts(scope),
+      listSavedTables(scope),
+      listSavedDrafts(scope),
+      listFolders(),
+    ]);
 
   const savedDrafts = Object.entries(localSavedDraftMap).map(([normalizedName, item]) => ({
     normalizedName,
@@ -136,6 +148,7 @@ export const collectWorkspaceSnapshot = async (
 
   return {
     globalDraft: overrides?.globalDraft ?? localGlobalDraft,
+    drafts: overrides?.drafts ?? localDrafts.map(({ draftId, record }) => ({ draftId, ...record })),
     savedTables: overrides?.savedTables ?? localSavedTables,
     savedDrafts: overrides?.savedDrafts ?? savedDrafts,
     folders: overrides?.folders ?? localFolders,
@@ -169,7 +182,8 @@ const replaceLocalWorkspaceSnapshot = async (
   snapshot: WorkspaceSnapshot,
   scope: WorkspaceScope,
 ) => {
-  const [localSavedTables, localSavedDrafts] = await Promise.all([
+  const [localDrafts, localSavedTables, localSavedDrafts] = await Promise.all([
+    listDrafts(scope),
     listSavedTables(scope),
     listSavedDrafts(scope),
   ]);
@@ -179,6 +193,7 @@ const replaceLocalWorkspaceSnapshot = async (
   await clearFolders();
 
   await Promise.all([
+    ...localDrafts.map((item) => deleteDraft(item.draftId, scope)),
     ...localSavedTables.map((item) => deleteSavedTable(item.normalizedName, scope)),
     ...Object.keys(localSavedDrafts).map((normalizedName) =>
       deleteSavedDraft(normalizedName, scope),
@@ -187,6 +202,18 @@ const replaceLocalWorkspaceSnapshot = async (
 
   if (snapshot.globalDraft) {
     await writeGlobalDraft(snapshot.globalDraft, scope);
+  }
+
+  for (const item of snapshot.drafts) {
+    await writeDraft(
+      item.draftId,
+      {
+        state: item.state,
+        updatedAt: item.updatedAt,
+        folderId: item.folderId,
+      },
+      scope,
+    );
   }
 
   for (const item of snapshot.savedTables) {
@@ -239,6 +266,23 @@ export const applyCloudSnapshotToLocal = async (
     (!localGlobalDraft || localGlobalDraft.updatedAt < snapshot.globalDraft.updatedAt)
   ) {
     await writeGlobalDraft(snapshot.globalDraft, scope);
+  }
+
+  for (const item of snapshot.drafts) {
+    const existing = await readDraft(item.draftId, scope);
+    if (existing && existing.updatedAt > item.updatedAt) {
+      continue;
+    }
+
+    await writeDraft(
+      item.draftId,
+      {
+        state: item.state,
+        updatedAt: item.updatedAt,
+        folderId: item.folderId,
+      },
+      scope,
+    );
   }
 
   for (const item of snapshot.savedTables) {

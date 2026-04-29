@@ -47,6 +47,7 @@ describe('/api/workspace/snapshot', () => {
     vi.doMock('../lib/workspaceSnapshots.js', () => ({
       getWorkspaceSnapshot: vi.fn().mockResolvedValue({
         globalDraft: null,
+        drafts: [],
         savedTables: [{ normalizedName: 'users', name: 'Users', state: {}, updatedAt: 10 }],
         savedDrafts: [],
         folders: [],
@@ -92,6 +93,7 @@ describe('/api/workspace/snapshot', () => {
             },
             updatedAt: 1,
           },
+          drafts: [],
           savedTables: [],
           savedDrafts: [],
           folders: [],
@@ -133,6 +135,7 @@ describe('/api/workspace/snapshot', () => {
             },
             updatedAt: 1,
           },
+          drafts: [],
           savedTables: [],
           savedDrafts: [],
           folders: [],

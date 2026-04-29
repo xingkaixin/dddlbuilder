@@ -52,6 +52,12 @@ export type WorkspaceSnapshot = {
     state: PersistedState;
     updatedAt: number;
   } | null;
+  drafts: Array<{
+    draftId: string;
+    state: PersistedState;
+    updatedAt: number;
+    folderId?: string;
+  }>;
   savedTables: Array<{
     normalizedName: string;
     name: string;

@@ -72,6 +72,13 @@ export type WorkspaceSavedDraftSnapshotItem = {
   baseSignature: string;
 };
 
+export type WorkspaceDraftSnapshotItem = {
+  draftId: string;
+  state: Record<string, unknown>;
+  updatedAt: number;
+  folderId?: string;
+};
+
 export type WorkspaceFolderSnapshotItem = {
   id: string;
   name: string;
@@ -85,6 +92,7 @@ export type WorkspaceSnapshotResponse = {
     state: Record<string, unknown>;
     updatedAt: number;
   } | null;
+  drafts: WorkspaceDraftSnapshotItem[];
   savedTables: WorkspaceSnapshotItem[];
   savedDrafts: WorkspaceSavedDraftSnapshotItem[];
   folders: WorkspaceFolderSnapshotItem[];
@@ -96,6 +104,7 @@ export type WorkspaceSnapshotPushRequest = {
     state: Record<string, unknown>;
     updatedAt: number;
   } | null;
+  drafts: WorkspaceDraftSnapshotItem[];
   savedTables: WorkspaceSnapshotItem[];
   savedDrafts: WorkspaceSavedDraftSnapshotItem[];
   folders: WorkspaceFolderSnapshotItem[];

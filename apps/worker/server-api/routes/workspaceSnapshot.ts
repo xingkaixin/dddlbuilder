@@ -31,6 +31,16 @@ const isWorkspaceSnapshot = (value: unknown): value is WorkspaceSnapshot => {
         typeof item.updatedAt === 'number' &&
         isPersistedState(item.state),
     );
+  const drafts =
+    Array.isArray(value.drafts) &&
+    value.drafts.every(
+      (item) =>
+        isRecord(item) &&
+        typeof item.draftId === 'string' &&
+        typeof item.updatedAt === 'number' &&
+        isPersistedState(item.state) &&
+        (item.folderId === undefined || typeof item.folderId === 'string'),
+    );
   const savedDrafts =
     Array.isArray(value.savedDrafts) &&
     value.savedDrafts.every(
@@ -54,7 +64,7 @@ const isWorkspaceSnapshot = (value: unknown): value is WorkspaceSnapshot => {
         (item.parentId === undefined || typeof item.parentId === 'string'),
     );
 
-  return globalDraft && savedTables && savedDrafts && folders;
+  return globalDraft && drafts && savedTables && savedDrafts && folders;
 };
 
 export function registerWorkspaceSnapshotRoutes(app: Hono<ApiEnv>) {
