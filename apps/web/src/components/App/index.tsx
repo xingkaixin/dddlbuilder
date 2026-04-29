@@ -872,7 +872,9 @@ function App() {
 
   const handleSelectSavedTable = useCallback(
     async (item: SavedTableSummary) => {
-      flushCurrentWorkspace();
+      if (tabs.length > 0) {
+        flushCurrentWorkspace();
+      }
       setSavedTablesDrawerOpen(false);
 
       const existingTab = findTabBySource({
@@ -939,12 +941,15 @@ function App() {
       updateActiveTabSnapshot,
       setTabLoading,
       getActiveTab,
+      tabs,
     ],
   );
 
   const handleSelectDraft = useCallback(
     (draftId: string) => {
-      flushCurrentWorkspace();
+      if (tabs.length > 0) {
+        flushCurrentWorkspace();
+      }
       setSavedTablesDrawerOpen(false);
 
       const existingTab = findTabBySource({ kind: 'draft', draftId });
@@ -995,11 +1000,14 @@ function App() {
       setLoadedTableSignature,
       showToast,
       t,
+      tabs,
     ],
   );
 
   const handleCreateDraft = useCallback(() => {
-    flushCurrentWorkspace();
+    if (tabs.length > 0) {
+      flushCurrentWorkspace();
+    }
     const draftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const emptyState = createEmptyGlobalDraftState();
     const uniqueName = createDraft(draftId, emptyState);
@@ -1029,10 +1037,13 @@ function App() {
     setLoadedTableNormalizedName,
     setLoadedTableName,
     setLoadedTableSignature,
+    tabs,
   ]);
 
   const handleLoadExample = useCallback(() => {
-    flushCurrentWorkspace();
+    if (tabs.length > 0) {
+      flushCurrentWorkspace();
+    }
     const draftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const exampleState = EXAMPLE_USER_PROFILE_TABLE;
     const uniqueName = createDraft(draftId, exampleState);
@@ -1067,6 +1078,7 @@ function App() {
     setLoadedTableSignature,
     showToast,
     t,
+    tabs,
   ]);
 
   const handleCloseTab = useCallback(
