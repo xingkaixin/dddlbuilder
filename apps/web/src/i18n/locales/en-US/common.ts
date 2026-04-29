@@ -975,6 +975,8 @@ export const enUSCommon = {
     trash: 'Trash',
     trashEmpty: 'Trash is empty',
     backToProjects: 'Back to projects',
+    emptyTrash: 'Empty Trash',
+    emptyTrashConfirm: 'Are you sure you want to empty the trash? This action cannot be undone.',
     fieldCount: '{{count}} fields',
     updatedAtShort: 'Updated {{date}}',
     history: 'Version history',

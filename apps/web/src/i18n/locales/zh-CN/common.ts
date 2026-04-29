@@ -951,6 +951,8 @@ export const zhCNCommon = {
     trash: '回收站',
     trashEmpty: '回收站为空',
     backToProjects: '返回项目',
+    emptyTrash: '全部删除',
+    emptyTrashConfirm: '确定要清空回收站吗？此操作无法撤销。',
     fieldCount: '{{count}} 字段',
     updatedAtShort: '更新 {{date}}',
     history: '历史版本',

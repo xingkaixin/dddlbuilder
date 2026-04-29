@@ -749,6 +749,7 @@ function App() {
   const [isErDialogOpen, setIsErDialogOpen] = useState(false);
   const [workspaceSidebarOpen, setWorkspaceSidebarOpen] = useState(true);
   const [outputPanelOpen, setOutputPanelOpen] = useState(true);
+  const [isEmptyTrashDialogOpen, setIsEmptyTrashDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!hydrated || isShareView) return;
@@ -1130,6 +1131,34 @@ function App() {
     [deleteTablePermanently, showToast, t],
   );
 
+  const handleEmptyTrash = useCallback(() => {
+    setIsEmptyTrashDialogOpen(true);
+  }, []);
+
+  const handleConfirmEmptyTrash = useCallback(() => {
+    setIsEmptyTrashDialogOpen(false);
+
+    // 批量永久删除回收站中的表和草稿
+    void Promise.all([
+      ...trashedTables.map((item) => deleteTablePermanently(item.normalizedName)),
+      ...trashedDrafts.map((draft) =>
+        (async () => {
+          permanentlyDeleteDraftById(draft.draftId);
+          return { ok: true as const };
+        })(),
+      ),
+    ]).then(() => {
+      showToast(t('savedTables.deletePermanently'));
+    });
+  }, [
+    trashedTables,
+    trashedDrafts,
+    deleteTablePermanently,
+    permanentlyDeleteDraftById,
+    showToast,
+    t,
+  ]);
+
   const handleDeleteDraft = useCallback(
     (draftId: string) => {
       deleteDraftById(draftId);
@@ -1392,6 +1421,7 @@ function App() {
               onDeletePermanently={handleDeleteTablePermanently}
               onRestoreDraft={handleRestoreDraft}
               onDeleteDraftPermanently={handleDeleteDraftPermanently}
+              onEmptyTrash={handleEmptyTrash}
               onMoveToFolder={handleMoveTableToFolder}
               onMoveFolder={handleMoveFolderToFolder}
               onRenameFolder={handleOpenRenameFolderDialog}
@@ -1775,6 +1805,11 @@ function App() {
             onOpenChange: setIsErDialogOpen,
             onSelectTable: handleSelectTableFromEr,
             saveTable,
+          }}
+          emptyTrashDialog={{
+            open: isEmptyTrashDialogOpen,
+            onOpenChange: setIsEmptyTrashDialogOpen,
+            onConfirm: handleConfirmEmptyTrash,
           }}
         />
       </div>

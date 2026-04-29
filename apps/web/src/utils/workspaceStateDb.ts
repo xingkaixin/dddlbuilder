@@ -436,7 +436,7 @@ export const readWorkspaceBootstrap = async (
     const drafts: Array<{ draftId: string; record: WorkspaceDraftRecord }> = [];
     for (const entity of allDraftEntities ?? []) {
       const decoded = decodeScopedEntity(entity, scope);
-      if (!decoded) continue;
+      if (!decoded || decoded.trashedAt != null) continue;
       const draftId = decoded.id.startsWith(prefix) ? decoded.id.slice(prefix.length) : decoded.id;
       drafts.push({
         draftId,

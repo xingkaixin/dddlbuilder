@@ -62,6 +62,7 @@ interface WorkspaceSidebarProps {
   onDeletePermanently?: (item: SavedTableSummary) => void;
   onRestoreDraft?: (draftId: string) => void;
   onDeleteDraftPermanently?: (draftId: string) => void;
+  onEmptyTrash?: () => void;
   onMoveToFolder?: (
     item: SavedTableSummary,
     folderId?: string,
@@ -125,6 +126,9 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
     onDelete,
     onRestore,
     onDeletePermanently,
+    onRestoreDraft,
+    onDeleteDraftPermanently,
+    onEmptyTrash,
     onMoveToFolder,
     onMoveFolder,
     onRenameFolder,
@@ -535,13 +539,20 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                 <section className="space-y-1">
                   <div className="flex items-center justify-between px-2 text-xs font-medium text-muted-foreground">
                     <span>{t('savedTables.trash')}</span>
-                    <button
-                      type="button"
-                      className="text-primary"
-                      onClick={() => setShowTrash(false)}
-                    >
-                      {t('savedTables.backToProjects')}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {onEmptyTrash && totalTrashedCount > 0 && (
+                        <button type="button" className="text-destructive" onClick={onEmptyTrash}>
+                          {t('savedTables.emptyTrash')}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="text-primary"
+                        onClick={() => setShowTrash(false)}
+                      >
+                        {t('savedTables.backToProjects')}
+                      </button>
+                    </div>
                   </div>
                   {totalTrashedCount > 0 ? (
                     <>

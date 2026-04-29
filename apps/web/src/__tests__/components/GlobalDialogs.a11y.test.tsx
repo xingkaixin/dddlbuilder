@@ -160,6 +160,11 @@ function createProps(): Parameters<typeof GlobalDialogs>[0] {
       onOpenChange: vi.fn(),
       onSelectTable: vi.fn(),
     } as any,
+    emptyTrashDialog: {
+      open: false,
+      onOpenChange: vi.fn(),
+      onConfirm: vi.fn(),
+    },
   };
 }
 

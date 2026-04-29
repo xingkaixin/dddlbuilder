@@ -73,6 +73,11 @@ interface GlobalDialogsProps {
   storageEstimatorDialogProps: ComponentProps<typeof StorageEstimatorDialog>;
   mockDataDialogProps: ComponentProps<typeof MockDataDialog>;
   erDiagramDialogProps: ComponentProps<typeof ErDiagramDialog>;
+  emptyTrashDialog: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onConfirm: () => void;
+  };
 }
 
 export function GlobalDialogs({
@@ -94,6 +99,7 @@ export function GlobalDialogs({
   storageEstimatorDialogProps,
   mockDataDialogProps,
   erDiagramDialogProps,
+  emptyTrashDialog,
 }: GlobalDialogsProps) {
   const { t } = useTranslation();
   const saveInputRef = useRef<HTMLInputElement>(null);
@@ -280,6 +286,27 @@ export function GlobalDialogs({
           <p id="delete-warning" className="sr-only">
             {t('dialogs.delete.descriptionFallback')}
           </p>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={emptyTrashDialog.open} onOpenChange={emptyTrashDialog.onOpenChange}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" aria-hidden="true" />
+              {t('savedTables.emptyTrash')}
+            </DialogTitle>
+            <DialogDescription>{t('savedTables.emptyTrashConfirm')}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => emptyTrashDialog.onOpenChange(false)}>
+              {t('dialogs.delete.cancel')}
+            </Button>
+            <Button variant="destructive" onClick={emptyTrashDialog.onConfirm}>
+              <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
+              {t('savedTables.emptyTrash')}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
