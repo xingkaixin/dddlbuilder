@@ -42,7 +42,7 @@ export const SelectCell = memo<SelectCellProps>(
       return (
         <div
           className={cn(
-            'flex h-8 w-full cursor-not-allowed items-center truncate whitespace-nowrap px-2 py-1 text-sm text-muted-foreground opacity-60',
+            'flex h-7 w-full cursor-not-allowed items-center truncate whitespace-nowrap px-2 py-1 text-xs text-muted-foreground opacity-60',
             className,
           )}
           title={selectedLabel || placeholder}
@@ -56,15 +56,15 @@ export const SelectCell = memo<SelectCellProps>(
       <Select value={value} onValueChange={handleChange} disabled={disabled}>
         <SelectTrigger
           className={cn(
-            'h-8 w-full border-0 bg-transparent text-sm shadow-none whitespace-nowrap hover:bg-muted/50 focus:ring-1 focus:ring-primary/30',
+            'h-7 w-full border-0 bg-transparent px-2 text-xs shadow-none whitespace-nowrap hover:bg-muted/50 focus:ring-1 focus:ring-primary/30',
             className,
           )}
         >
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
-        <SelectContent className="text-sm">
+        <SelectContent className="text-xs">
           {normalizedOptions.map((option) => (
-            <SelectItem key={option.value} value={option.value} className="text-sm">
+            <SelectItem key={option.value} value={option.value} className="text-xs">
               {option.label}
             </SelectItem>
           ))}

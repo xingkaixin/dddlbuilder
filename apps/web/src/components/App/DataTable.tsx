@@ -95,7 +95,7 @@ const SortableDataRow = memo<SortableDataRowProps>(
               data-row-index={row.index}
               data-col-index={colIndex}
               className={cn(
-                'h-10 px-1 bg-background transition-colors group-hover/row:bg-muted/30',
+                'h-9 px-1 bg-background text-xs transition-colors group-hover/row:bg-muted/30',
                 isFrozen && 'relative sticky z-20 supports-[backdrop-filter]:backdrop-blur-[2px]',
                 isLastFrozen &&
                   'border-r border-primary/30 shadow-[8px_0_18px_-12px_hsl(var(--foreground)_/_0.22)] after:pointer-events-none after:absolute after:-right-3 after:top-0 after:h-full after:w-3 after:bg-gradient-to-r after:from-primary/20 after:to-transparent',
@@ -398,7 +398,7 @@ export const DataTable = memo<DataTableProps>(
           >
             <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
               <table
-                className="border-separate border-spacing-0 table-fixed text-sm"
+                className="border-separate border-spacing-0 table-fixed text-xs"
                 style={{ minWidth: Object.values(columnWidths).reduce((a, b) => a + b, 0) }}
                 data-testid="data-table"
                 aria-label={t('dataTable.ariaLabel')}
@@ -415,7 +415,7 @@ export const DataTable = memo<DataTableProps>(
                           <th
                             key={header.id}
                             className={cn(
-                              'h-10 px-2 text-left text-sm font-medium text-muted-foreground',
+                              'h-9 px-2 text-left text-xs font-medium text-muted-foreground',
                               isFrozen
                                 ? 'relative sticky z-30 bg-muted/30 supports-[backdrop-filter]:backdrop-blur-[2px]'
                                 : 'bg-muted/30',

@@ -71,6 +71,7 @@ export const TableConfig = memo<TableConfigProps>(
           ? t('tableConfig.statusClean')
           : '';
     const statusClass = loadedStatus === 'dirty' ? 'text-amber-600' : 'text-muted-foreground';
+    const selectedDbOption = DATABASE_OPTIONS.find((option) => option.value === dbType);
 
     return (
       <div className="rounded-lg border bg-card/95 shadow-sm">
@@ -82,6 +83,42 @@ export const TableConfig = memo<TableConfigProps>(
               </span>
             )}
             {statusLabel && <span className={`text-xs ${statusClass}`}>{statusLabel}</span>}
+            <div className="w-40">
+              <SearchableSelect
+                value={dbType}
+                onValueChange={(value) => onDbTypeChange(value as DatabaseType)}
+                options={DATABASE_OPTIONS.map((opt) => ({
+                  value: opt.value,
+                  label: opt.label,
+                }))}
+                id="db-type-select"
+                data-testid="db-type-selector"
+                aria-label={t('tableConfig.dbType')}
+                triggerClassName="h-7 rounded-md px-2 text-xs"
+                emptyMessage={t('searchableSelect.empty')}
+                renderTrigger={() => {
+                  if (!selectedDbOption) return t('tableConfig.dbTypePlaceholder');
+                  const Icon = selectedDbOption.icon;
+                  return (
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <Icon className="h-3.5 w-3.5 shrink-0 text-primary" />
+                      <span className="truncate font-medium">{selectedDbOption.label}</span>
+                    </div>
+                  );
+                }}
+                renderItem={(option) => {
+                  const dbOption = DATABASE_OPTIONS.find((opt) => opt.value === option.value);
+                  if (!dbOption) return <span>{option.label}</span>;
+                  const Icon = dbOption.icon;
+                  return (
+                    <div className="flex items-center gap-2">
+                      <Icon className="h-4 w-4 text-primary" />
+                      <span className="font-medium">{option.label}</span>
+                    </div>
+                  );
+                }}
+              />
+            </div>
             <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
               {t('tableConfig.fieldStat', { count: fieldCount })}
             </span>
@@ -194,141 +231,96 @@ export const TableConfig = memo<TableConfigProps>(
             </Tooltip>
           </div>
         </div>
-        <div className="p-4">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <div className="space-y-2 group/field">
-              <Label
-                htmlFor="table-name"
-                className="text-sm font-medium transition-colors duration-200 group-hover/field:text-primary"
-              >
-                {objectType === 'view' ? t('tableConfig.viewName') : t('tableConfig.tableName')}
-              </Label>
-              <Input
-                id="table-name"
-                placeholder={
-                  objectType === 'view'
-                    ? t('tableConfig.viewNamePlaceholder')
-                    : t('tableConfig.tableNamePlaceholder')
-                }
-                value={tableName}
-                onChange={(event) => onTableNameChange(event.target.value)}
-                className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-            <div className="space-y-2 group/field">
-              <Label
-                htmlFor="schema-name"
-                className="text-sm font-medium transition-colors duration-200 group-hover/field:text-primary"
-              >
-                {t('tableConfig.schemaName')}
-              </Label>
-              <Input
-                id="schema-name"
-                placeholder={t('tableConfig.schemaNamePlaceholder')}
-                value={schemaName}
-                onChange={(event) => onSchemaNameChange(event.target.value)}
-                className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-            <div className="space-y-2 group/field">
-              <Label
-                htmlFor="table-comment"
-                className="text-sm font-medium transition-colors duration-200 group-hover/field:text-primary"
-              >
-                {objectType === 'view'
-                  ? t('tableConfig.viewComment')
-                  : t('tableConfig.tableComment')}
-              </Label>
-              <Input
-                id="table-comment"
-                placeholder={t('tableConfig.tableCommentPlaceholder')}
-                value={tableComment}
-                onChange={(event) => onTableCommentChange(event.target.value)}
-                className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-            <div className="space-y-2 group/field">
-              <Label
-                htmlFor="db-type-select"
-                className="text-sm font-medium transition-colors duration-200 group-hover/field:text-primary"
-              >
-                {t('tableConfig.dbType')}
-              </Label>
-              <SearchableSelect
-                value={dbType}
-                onValueChange={(value) => onDbTypeChange(value as DatabaseType)}
-                options={DATABASE_OPTIONS.map((opt) => ({
-                  value: opt.value,
-                  label: opt.label,
-                }))}
-                id="db-type-select"
-                data-testid="db-type-selector"
-                triggerClassName="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                emptyMessage={t('searchableSelect.empty')}
-                renderTrigger={() => {
-                  const selectedOption = DATABASE_OPTIONS.find((option) => option.value === dbType);
-                  if (!selectedOption) return t('tableConfig.dbTypePlaceholder');
-                  const Icon = selectedOption.icon;
-                  return (
-                    <div className="flex items-center gap-3">
-                      <Icon className="h-5 w-5 text-primary" />
-                      <span className="font-medium">{selectedOption.label}</span>
-                    </div>
-                  );
-                }}
-                renderItem={(option) => {
-                  const dbOption = DATABASE_OPTIONS.find((opt) => opt.value === option.value);
-                  if (!dbOption) return <span>{option.label}</span>;
-                  const Icon = dbOption.icon;
-                  return (
-                    <div className="flex items-center gap-3">
-                      <Icon className="h-5 w-5 text-primary" />
-                      <span className="font-medium">{option.label}</span>
-                    </div>
-                  );
-                }}
-              />
-            </div>
-            <div className="space-y-3 group/field">
-              <Label
-                htmlFor="object-type-select"
-                className="text-sm font-medium transition-colors duration-200 group-hover/field:text-primary"
-              >
-                {t('tableConfig.objectType')}
-              </Label>
-              <SearchableSelect
-                value={objectType}
-                onValueChange={(value) => onObjectTypeChange(value as SchemaObjectType)}
-                options={[
-                  { value: 'table', label: t('tableConfig.objectTable') },
-                  { value: 'view', label: t('tableConfig.objectView') },
-                ]}
-                id="object-type-select"
-                emptyMessage={t('searchableSelect.empty')}
-                renderTrigger={() => {
-                  const Icon = objectType === 'view' ? Eye : Table;
-                  return (
-                    <div className="flex items-center gap-3">
-                      <Icon className="h-5 w-5 text-primary" />
-                      <span className="font-medium">
-                        {objectType === 'view'
-                          ? t('tableConfig.objectView')
-                          : t('tableConfig.objectTable')}
-                      </span>
-                    </div>
-                  );
-                }}
-                renderItem={(option) => {
-                  const Icon = option.value === 'view' ? Eye : Table;
-                  return (
-                    <div className="flex items-center gap-3">
-                      <Icon className="h-5 w-5 text-primary" />
-                      <span className="font-medium">{option.label}</span>
-                    </div>
-                  );
-                }}
-              />
-            </div>
+        <div className="flex flex-wrap items-end gap-3 p-3">
+          <div className="w-36 space-y-1.5 group/field">
+            <Label
+              htmlFor="object-type-select"
+              className="text-xs font-medium transition-colors duration-200 group-hover/field:text-primary"
+            >
+              {t('tableConfig.objectType')}
+            </Label>
+            <SearchableSelect
+              value={objectType}
+              onValueChange={(value) => onObjectTypeChange(value as SchemaObjectType)}
+              options={[
+                { value: 'table', label: t('tableConfig.objectTable') },
+                { value: 'view', label: t('tableConfig.objectView') },
+              ]}
+              id="object-type-select"
+              emptyMessage={t('searchableSelect.empty')}
+              triggerClassName="h-8 text-sm"
+              renderTrigger={() => {
+                const Icon = objectType === 'view' ? Eye : Table;
+                return (
+                  <div className="flex items-center gap-2">
+                    <Icon className="h-4 w-4 text-primary" />
+                    <span className="font-medium">
+                      {objectType === 'view'
+                        ? t('tableConfig.objectView')
+                        : t('tableConfig.objectTable')}
+                    </span>
+                  </div>
+                );
+              }}
+              renderItem={(option) => {
+                const Icon = option.value === 'view' ? Eye : Table;
+                return (
+                  <div className="flex items-center gap-2">
+                    <Icon className="h-4 w-4 text-primary" />
+                    <span className="font-medium">{option.label}</span>
+                  </div>
+                );
+              }}
+            />
+          </div>
+          <div className="w-56 space-y-1.5 group/field">
+            <Label
+              htmlFor="schema-name"
+              className="text-xs font-medium transition-colors duration-200 group-hover/field:text-primary"
+            >
+              {t('tableConfig.schemaName')}
+            </Label>
+            <Input
+              id="schema-name"
+              placeholder={t('tableConfig.schemaNamePlaceholder')}
+              value={schemaName}
+              onChange={(event) => onSchemaNameChange(event.target.value)}
+              className="h-8 text-sm transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+          <div className="min-w-64 flex-1 space-y-1.5 group/field">
+            <Label
+              htmlFor="table-name"
+              className="text-xs font-medium transition-colors duration-200 group-hover/field:text-primary"
+            >
+              {objectType === 'view' ? t('tableConfig.viewName') : t('tableConfig.tableName')}
+            </Label>
+            <Input
+              id="table-name"
+              placeholder={
+                objectType === 'view'
+                  ? t('tableConfig.viewNamePlaceholder')
+                  : t('tableConfig.tableNamePlaceholder')
+              }
+              value={tableName}
+              onChange={(event) => onTableNameChange(event.target.value)}
+              className="h-8 text-sm transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+          <div className="min-w-80 flex-[1.4] space-y-1.5 group/field">
+            <Label
+              htmlFor="table-comment"
+              className="text-xs font-medium transition-colors duration-200 group-hover/field:text-primary"
+            >
+              {objectType === 'view' ? t('tableConfig.viewComment') : t('tableConfig.tableComment')}
+            </Label>
+            <Input
+              id="table-comment"
+              placeholder={t('tableConfig.tableCommentPlaceholder')}
+              value={tableComment}
+              onChange={(event) => onTableCommentChange(event.target.value)}
+              className="h-8 text-sm transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+            />
           </div>
         </div>
       </div>

@@ -12,6 +12,7 @@ interface UseFolderActionsParams {
   moveFolder: (id: string, parentId?: string) => Promise<void>;
   deleteFolderAction: (id: string) => Promise<string[]>;
   clearTablesFromFolders: (folderIds: string[]) => Promise<void>;
+  deleteTable: (normalizedName: string) => Promise<SaveTableResult>;
   moveTableToFolder: (normalizedName: string, folderId?: string) => Promise<SaveTableResult>;
   showToast: (message: string) => void;
 }
@@ -24,6 +25,7 @@ export function useFolderActions({
   moveFolder,
   deleteFolderAction,
   clearTablesFromFolders,
+  deleteTable,
   moveTableToFolder,
   showToast,
 }: UseFolderActionsParams) {
@@ -89,8 +91,18 @@ export function useFolderActions({
     if (!deleteFolderTarget) return;
 
     try {
-      const affectedFolderIds = await deleteFolderAction(deleteFolderTarget.id);
+      const collectFolderIds = (folder: FolderTreeNode): string[] => [
+        folder.id,
+        ...folder.children.flatMap(collectFolderIds),
+      ];
+      const affectedFolderIds = collectFolderIds(deleteFolderTarget);
+      const affectedTables = savedTables.filter(
+        (table) => table.folderId && affectedFolderIds.includes(table.folderId),
+      );
+
       await clearTablesFromFolders(affectedFolderIds);
+      await Promise.all(affectedTables.map((table) => deleteTable(table.normalizedName)));
+      await deleteFolderAction(deleteFolderTarget.id);
       showToast(
         i18n.t('savedTables.toast.deletedFolder', {
           name: deleteFolderTarget.name,
@@ -101,12 +113,26 @@ export function useFolderActions({
         error instanceof Error ? error.message : i18n.t('savedTables.toast.deleteFolderFailed'),
       );
     }
-  }, [deleteFolderTarget, deleteFolderAction, clearTablesFromFolders, showToast]);
+  }, [
+    deleteFolderTarget,
+    savedTables,
+    clearTablesFromFolders,
+    deleteTable,
+    deleteFolderAction,
+    showToast,
+  ]);
 
   const deleteFolderTableCount = useMemo(() => {
     if (!deleteFolderTarget) return 0;
+    const collectFolderIds = (folder: FolderTreeNode): string[] => [
+      folder.id,
+      ...folder.children.flatMap(collectFolderIds),
+    ];
+    const affectedFolderIds = collectFolderIds(deleteFolderTarget);
 
-    return savedTables.filter((table) => table.folderId === deleteFolderTarget.id).length;
+    return savedTables.filter(
+      (table) => table.folderId && affectedFolderIds.includes(table.folderId),
+    ).length;
   }, [deleteFolderTarget, savedTables]);
 
   const handleMoveTableToFolder = useCallback(

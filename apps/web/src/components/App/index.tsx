@@ -512,6 +512,7 @@ function App() {
     moveFolder,
     deleteFolderAction,
     clearTablesFromFolders,
+    deleteTable,
     moveTableToFolder,
     showToast,
   });
@@ -695,6 +696,7 @@ function App() {
   const [isSavedTableLoading, setIsSavedTableLoading] = useState(false);
   const [isErDialogOpen, setIsErDialogOpen] = useState(false);
   const [workspaceSidebarOpen, setWorkspaceSidebarOpen] = useState(true);
+  const [outputPanelOpen, setOutputPanelOpen] = useState(true);
 
   useEffect(() => {
     if (!hydrated || isShareView) return;
@@ -829,13 +831,6 @@ function App() {
     createDraft(draftId, emptyState);
     handleSelectDraft(draftId);
   }, [createDraft, handleSelectDraft]);
-
-  const handleMoveWorkspaceTableToFolder = useCallback(
-    (item: SavedTableSummary, folderId?: string) => {
-      void handleMoveTableToFolder(item, folderId);
-    },
-    [handleMoveTableToFolder],
-  );
 
   const handleRestoreTable = useCallback(
     (item: SavedTableSummary) => {
@@ -1117,7 +1112,10 @@ function App() {
               onDelete={handleOpenDeleteDialog}
               onRestore={handleRestoreTable}
               onDeletePermanently={handleDeleteTablePermanently}
-              onMoveToFolder={handleMoveWorkspaceTableToFolder}
+              onMoveToFolder={handleMoveTableToFolder}
+              onMoveFolder={handleMoveFolderToFolder}
+              onRenameFolder={handleOpenRenameFolderDialog}
+              onDeleteFolder={handleOpenDeleteFolderDialog}
               onViewHistory={handleViewVersionHistory}
             />
           )}
@@ -1287,6 +1285,8 @@ function App() {
                 </div>
 
                 <OutputContainer
+                  open={outputPanelOpen}
+                  onOpenChange={setOutputPanelOpen}
                   ddlOutputProps={{
                     generatedSql,
                     generatedDcl,

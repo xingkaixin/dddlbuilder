@@ -23,7 +23,7 @@ export const CheckboxCell = memo<CheckboxCellProps>(
     return (
       <div
         className={cn(
-          'flex h-8 w-full items-center justify-center',
+          'flex h-7 w-full items-center justify-center',
           disabled && 'opacity-60',
           className,
         )}

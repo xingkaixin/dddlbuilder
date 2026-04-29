@@ -117,7 +117,7 @@ export const LogicalEnumCell = memo<LogicalEnumCellProps>(
           onChange={(e) => setEditValue(e.target.value)}
           onBlur={() => finishEditing(editValue)}
           onKeyDown={handleInputKeyDown}
-          className="h-8 w-full border-primary/50 bg-background focus:ring-1 focus:ring-primary/30"
+          className="h-7 w-full border-primary/50 bg-background px-2 py-1 text-xs focus:ring-1 focus:ring-primary/30"
           placeholder={t('dataTable.placeholder.fieldType')}
         />
       );
@@ -132,7 +132,7 @@ export const LogicalEnumCell = memo<LogicalEnumCellProps>(
           onKeyDown={handleContainerKeyDown}
           onDoubleClick={handleDoubleClick}
           className={cn(
-            'group flex h-8 w-full cursor-pointer items-center gap-1 truncate px-1.5 py-1 outline-none focus:ring-1 focus:ring-primary/30',
+            'group flex h-7 w-full cursor-pointer items-center gap-1 truncate px-1.5 py-1 text-xs outline-none focus:ring-1 focus:ring-primary/30',
           )}
         >
           <span

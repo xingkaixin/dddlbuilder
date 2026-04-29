@@ -73,7 +73,7 @@ const SearchableSelect = React.forwardRef<
             type="button"
             {...triggerProps}
             className={cn(
-              'flex h-11 w-full items-center justify-between rounded-lg border border-input bg-transparent px-4 py-2.5 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+              'flex h-9 w-full items-center justify-between rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
               triggerClassName,
               triggerProps?.className,
             )}
@@ -83,7 +83,7 @@ const SearchableSelect = React.forwardRef<
             ) : (
               <>
                 <span className="truncate">{selectedLabel}</span>
-                <ChevronDown className="h-5 w-5 opacity-50" />
+                <ChevronDown className="h-4 w-4 opacity-50" />
               </>
             )}
           </button>
@@ -94,14 +94,14 @@ const SearchableSelect = React.forwardRef<
             sideOffset={4}
             align="start"
           >
-            <div className="flex items-center border-b bg-transparent px-3 py-2">
+            <div className="flex items-center border-b bg-transparent px-2.5 py-1.5">
               <input
                 ref={inputRef}
                 type="text"
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
                 placeholder={t('searchableSelect.searchDatabase')}
-                className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {
                     setOpen(false);
@@ -125,7 +125,7 @@ const SearchableSelect = React.forwardRef<
                     aria-selected={value === option.value}
                     tabIndex={0}
                     className={cn(
-                      'relative flex w-full cursor-default select-none items-center rounded-md py-2 pl-11 pr-3 text-base outline-none hover:bg-accent hover:text-accent-foreground',
+                      'relative flex w-full cursor-default select-none items-center rounded-md px-2.5 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground',
                       value === option.value && 'bg-accent',
                       option.disabled && 'opacity-50 cursor-not-allowed',
                     )}
@@ -135,11 +135,6 @@ const SearchableSelect = React.forwardRef<
                       }
                     }}
                   >
-                    {value === option.value && (
-                      <span className="absolute left-3 flex h-5 w-5 items-center justify-center">
-                        <Check className="h-4 w-4" />
-                      </span>
-                    )}
                     {renderItem ? (
                       renderItem(option)
                     ) : (
@@ -166,14 +161,14 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      'flex h-11 w-full items-center justify-between rounded-lg border border-input bg-transparent px-4 py-2.5 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+      'flex h-9 w-full items-center justify-between rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
       className,
     )}
     {...props}
   >
     {children}
     <SelectPrimitive.Icon asChild>
-      <ChevronDown className="h-5 w-5 opacity-50" />
+      <ChevronDown className="h-4 w-4 opacity-50" />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
 ));
@@ -214,7 +209,7 @@ const SelectLabel = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.Label
     ref={ref}
-    className={cn('px-2 py-1.5 text-sm font-semibold text-muted-foreground', className)}
+    className={cn('px-2 py-1.5 text-xs font-semibold text-muted-foreground', className)}
     {...props}
   />
 ));
@@ -227,14 +222,14 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex w-full cursor-default select-none items-center rounded-md py-2 pl-11 pr-3 text-base outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+      'relative flex w-full cursor-default select-none items-center rounded-md py-1.5 pl-8 pr-2.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       className,
     )}
     {...props}
   >
-    <span className="absolute left-3 flex h-5 w-5 items-center justify-center">
+    <span className="absolute left-2.5 flex h-4 w-4 items-center justify-center">
       <SelectPrimitive.ItemIndicator>
-        <Check className="h-4 w-4" />
+        <Check className="h-3.5 w-3.5" />
       </SelectPrimitive.ItemIndicator>
     </span>
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>

@@ -50,7 +50,7 @@ export const EnumSetCell = memo<EnumSetCellProps>(
           onKeyDown={handleKeyDown}
           onDoubleClick={() => setOpen(true)}
           className={cn(
-            'group flex h-8 w-full cursor-pointer items-center gap-1 truncate px-1.5 py-1 outline-none focus:ring-1 focus:ring-primary/30',
+            'group flex h-7 w-full cursor-pointer items-center gap-1 truncate px-1.5 py-1 text-xs outline-none focus:ring-1 focus:ring-primary/30',
           )}
         >
           <span className="shrink-0 rounded bg-muted px-1 py-0 font-mono text-[10px] font-medium text-muted-foreground">

@@ -95,16 +95,16 @@ export function TableBuilderContainer({
       <TableConfig {...tableConfigProps} />
 
       <Tabs value={tabsValue} onValueChange={onTabsValueChange} className="w-full">
-        <TabsList className="flex h-auto w-full flex-wrap gap-1 [&>*]:after:hidden sm:flex-nowrap sm:gap-0 sm:overflow-x-auto sm:whitespace-nowrap sm:[&>*]:after:block [&>*]:shrink-0">
-          <TabsTrigger value="fields" className="gap-2">
+        <TabsList className="inline-flex h-auto max-w-full flex-wrap justify-start gap-1 [&>*]:after:hidden sm:flex-nowrap sm:gap-0 sm:overflow-x-auto sm:whitespace-nowrap sm:[&>*]:after:block [&>*]:shrink-0">
+          <TabsTrigger value="fields" className="gap-1.5 px-2.5 text-xs">
             {objectType === 'view' ? (
               <>
-                <Code2 className="h-4 w-4" />
+                <Code2 className="h-3.5 w-3.5" />
                 {t('builderTabs.viewSql')}
               </>
             ) : (
               <>
-                <Columns3Cog className="h-4 w-4" />
+                <Columns3Cog className="h-3.5 w-3.5" />
                 {t('builderTabs.fields')}
                 {filledRowCount > 0 && (
                   <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
@@ -115,8 +115,8 @@ export function TableBuilderContainer({
             )}
           </TabsTrigger>
           {objectType === 'table' && showIndexTab && (
-            <TabsTrigger value="indexes" className="gap-2">
-              <Network className="h-4 w-4" />
+            <TabsTrigger value="indexes" className="gap-1.5 px-2.5 text-xs">
+              <Network className="h-3.5 w-3.5" />
               {t('builderTabs.indexes')}
               {indexesLength > 0 && (
                 <div className="ml-2 hidden items-center gap-2 2xl:flex">
@@ -143,8 +143,8 @@ export function TableBuilderContainer({
             </TabsTrigger>
           )}
           {objectType === 'table' && showForeignKeyTab && (
-            <TabsTrigger value="foreignKeys" className="gap-2">
-              <Link2 className="h-4 w-4" />
+            <TabsTrigger value="foreignKeys" className="gap-1.5 px-2.5 text-xs">
+              <Link2 className="h-3.5 w-3.5" />
               {t('builderTabs.foreignKeys')}
               {foreignKeysLength > 0 && (
                 <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
@@ -153,8 +153,8 @@ export function TableBuilderContainer({
               )}
             </TabsTrigger>
           )}
-          <TabsTrigger value="auth" className="gap-2">
-            <ShieldUser className="h-4 w-4" />
+          <TabsTrigger value="auth" className="gap-1.5 px-2.5 text-xs">
+            <ShieldUser className="h-3.5 w-3.5" />
             {t('builderTabs.auth')}
             {authObjectsLength > 0 && (
               <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
@@ -163,8 +163,8 @@ export function TableBuilderContainer({
             )}
           </TabsTrigger>
           {objectType === 'table' && (
-            <TabsTrigger value="misc" className="gap-2">
-              <SlidersHorizontal className="h-4 w-4" />
+            <TabsTrigger value="misc" className="gap-1.5 px-2.5 text-xs">
+              <SlidersHorizontal className="h-3.5 w-3.5" />
               {t('builderTabs.misc')}
               {miscEnabled && (
                 <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
@@ -174,8 +174,8 @@ export function TableBuilderContainer({
             </TabsTrigger>
           )}
           {objectType === 'table' && showShardingTab && (
-            <TabsTrigger value="sharding" className="gap-2">
-              <Share2 className="h-4 w-4" />
+            <TabsTrigger value="sharding" className="gap-1.5 px-2.5 text-xs">
+              <Share2 className="h-3.5 w-3.5" />
               {t('builderTabs.sharding')}
               {shardingBadgeText && (
                 <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
@@ -185,8 +185,8 @@ export function TableBuilderContainer({
             </TabsTrigger>
           )}
           {objectType === 'table' && showPartitionTab && (
-            <TabsTrigger value="partition" className="gap-2">
-              <Layers className="h-4 w-4" />
+            <TabsTrigger value="partition" className="gap-1.5 px-2.5 text-xs">
+              <Layers className="h-3.5 w-3.5" />
               {t('builderTabs.partition')}
               {partitionBadgeText && (
                 <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
@@ -196,8 +196,8 @@ export function TableBuilderContainer({
             </TabsTrigger>
           )}
           {objectType === 'table' && showHivePartitionTab && (
-            <TabsTrigger value="hive-partition" className="gap-2">
-              <Layers className="h-4 w-4" />
+            <TabsTrigger value="hive-partition" className="gap-1.5 px-2.5 text-xs">
+              <Layers className="h-3.5 w-3.5" />
               {t('builderTabs.hivePartition')}
               {hivePartitionBadgeText && (
                 <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">

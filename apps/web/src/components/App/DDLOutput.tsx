@@ -22,6 +22,7 @@ import {
   AlignJustify,
   Workflow,
   Code,
+  PanelRightClose,
 } from 'lucide-react';
 import { DATABASE_OPTIONS } from '@/utils/constants';
 import { ReviewResultPanel } from './ReviewResult';
@@ -56,6 +57,7 @@ interface DDLOutputProps {
   onStartReview: () => void;
   onViewReviewHistory?: () => void;
   onApplySuggestion?: (suggestion: any) => void;
+  onCollapsePanel?: () => void;
 }
 
 const SqlCodeBlock = lazy(() => import('./SqlCodeBlock'));
@@ -90,6 +92,7 @@ export const DDLOutput = memo<DDLOutputProps>(
     onStartReview,
     onViewReviewHistory,
     onApplySuggestion,
+    onCollapsePanel,
   }) => {
     const { t } = useTranslation();
     const authSession = useAuthSession();
@@ -229,30 +232,51 @@ export const DDLOutput = memo<DDLOutputProps>(
     const canReview = generatedSql && !generatedSql.startsWith('--');
 
     return (
-      <div className="relative flex w-full flex-col rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-shadow duration-300 hover:shadow-xl hover:shadow-primary/10 xl:w-[34rem] xl:shrink-0 2xl:w-[38rem]">
+      <div className="relative flex w-full flex-col rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-shadow duration-300 hover:shadow-xl hover:shadow-primary/10">
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent rounded-lg" />
         <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-primary/30 to-transparent rounded-t-lg" />
 
         <Tabs defaultValue="ddl" className="relative flex flex-col">
           <div className="border-b border-primary/10 px-4 pt-4">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="ddl" className="w-full gap-2">
-                <ScrollText className="h-4 w-4" />
-                <span>{t('ddlOutput.ddlTab')}</span>
-              </TabsTrigger>
-              <TabsTrigger value="dcl" className="w-full gap-2">
-                <ShieldCheck className="h-4 w-4" />
-                <span>{t('ddlOutput.dclTab')}</span>
-              </TabsTrigger>
-              <TabsTrigger value="orm" className="w-full gap-2">
-                <Code className="h-4 w-4" />
-                <span>{t('ddlOutput.ormTab')}</span>
-              </TabsTrigger>
-              <TabsTrigger value="routine" className="w-full gap-2">
-                <Workflow className="h-4 w-4" />
-                <span>{t('ddlOutput.routineTab')}</span>
-              </TabsTrigger>
-            </TabsList>
+            <div className="flex items-center gap-2 rounded-md bg-muted p-1 text-muted-foreground">
+              {onCollapsePanel && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 rounded-sm text-muted-foreground hover:bg-background hover:text-foreground"
+                      onClick={onCollapsePanel}
+                      aria-label={t('ddlOutput.collapsePanel')}
+                    >
+                      <PanelRightClose className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{t('ddlOutput.collapsePanel')}</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              <TabsList className="grid h-9 flex-1 grid-cols-4 bg-transparent p-0">
+                <TabsTrigger value="ddl" className="w-full gap-2">
+                  <ScrollText className="h-4 w-4" />
+                  <span>{t('ddlOutput.ddlTab')}</span>
+                </TabsTrigger>
+                <TabsTrigger value="dcl" className="w-full gap-2">
+                  <ShieldCheck className="h-4 w-4" />
+                  <span>{t('ddlOutput.dclTab')}</span>
+                </TabsTrigger>
+                <TabsTrigger value="orm" className="w-full gap-2">
+                  <Code className="h-4 w-4" />
+                  <span>{t('ddlOutput.ormTab')}</span>
+                </TabsTrigger>
+                <TabsTrigger value="routine" className="w-full gap-2">
+                  <Workflow className="h-4 w-4" />
+                  <span>{t('ddlOutput.routineTab')}</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
           </div>
 
           {/* DDL Tab */}

@@ -135,7 +135,7 @@ export const EditableCell = memo<EditableCellProps>(
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           className={cn(
-            'h-8 w-full border-primary/50 bg-background focus:ring-1 focus:ring-primary/30',
+            'h-7 w-full border-primary/50 bg-background px-2 py-1 text-xs focus:ring-1 focus:ring-primary/30',
             className,
           )}
           placeholder={placeholder}
@@ -150,7 +150,7 @@ export const EditableCell = memo<EditableCellProps>(
         onDoubleClick={handleDoubleClick}
         onKeyDown={handleCellKeyDown}
         className={cn(
-          'flex h-8 w-full cursor-text items-center truncate px-2 py-1 outline-none focus:ring-1 focus:ring-primary/30',
+          'flex h-7 w-full cursor-text items-center truncate px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-primary/30',
           disabled && 'cursor-not-allowed text-muted-foreground opacity-60',
           !value && 'text-muted-foreground/50',
           className,

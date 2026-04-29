@@ -1,15 +1,19 @@
-import { memo, useMemo, useState } from 'react';
-import type React from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  DndContext,
+  PointerSensor,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
 import {
   ChevronLeft,
   ChevronRight,
   FileEdit,
-  Folder,
   FolderOpen,
-  History,
   Plus,
   Search,
-  Table2,
   Trash2,
   MoreHorizontal,
   RotateCcw,
@@ -28,6 +32,10 @@ import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import type { DraftSummary } from '@ddlbuilder/shared-types/workspace';
 import { useTranslation } from 'react-i18next';
+import { FolderTree, useFolderExpansion } from './FolderTree';
+import { TableItem } from './saved-tables/TableItem';
+import { ROOT_DROP_ID, buildFolderParentMap, resolveDropAction } from './saved-tables/dnd';
+import { useSavedTablesFilter } from './saved-tables/useSavedTablesFilter';
 
 interface WorkspaceSidebarProps {
   open: boolean;
@@ -52,35 +60,44 @@ interface WorkspaceSidebarProps {
   onDelete: (item: SavedTableSummary) => void;
   onRestore?: (item: SavedTableSummary) => void;
   onDeletePermanently?: (item: SavedTableSummary) => void;
-  onMoveToFolder?: (item: SavedTableSummary, folderId?: string) => void;
+  onMoveToFolder?: (
+    item: SavedTableSummary,
+    folderId?: string,
+  ) =>
+    | { ok: boolean; message?: string }
+    | Promise<{ ok: boolean; message?: string } | undefined>
+    | undefined;
+  onMoveFolder?: (
+    folder: FolderTreeNode,
+    parentId?: string,
+  ) =>
+    | { ok: boolean; message?: string }
+    | Promise<{ ok: boolean; message?: string } | undefined>
+    | undefined;
+  onRenameFolder?: (folder: FolderTreeNode) => void;
+  onDeleteFolder?: (folder: FolderTreeNode) => void;
   onViewHistory?: (item: SavedTableSummary) => void;
 }
 
-type FolderWithTables = Omit<FolderTreeNode, 'children'> & {
-  tables: SavedTableSummary[];
-  children: FolderWithTables[];
-};
+const RootDropZone = memo<{ disabled: boolean }>(({ disabled }) => {
+  const { t } = useTranslation();
+  const { setNodeRef, isOver } = useDroppable({ id: ROOT_DROP_ID, disabled });
 
-const buildFolderTree = (folders: FolderTreeNode[], items: SavedTableSummary[]) => {
-  const tableGroups = new Map<string | undefined, SavedTableSummary[]>();
-  for (const item of items) {
-    const group = tableGroups.get(item.folderId) ?? [];
-    group.push(item);
-    tableGroups.set(item.folderId, group);
-  }
-
-  const attach = (nodes: FolderTreeNode[]): FolderWithTables[] =>
-    nodes.map((folder) => ({
-      ...folder,
-      tables: tableGroups.get(folder.id) ?? [],
-      children: attach(folder.children),
-    }));
-
-  return {
-    folders: attach(folders),
-    rootTables: tableGroups.get(undefined) ?? [],
-  };
-};
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'mb-2 rounded-md border border-dashed px-2.5 py-1.5 text-[11px] font-medium transition-colors',
+        disabled && 'border-border/70 bg-muted/20 text-muted-foreground/70',
+        !disabled && isOver && 'border-primary bg-primary/10 text-primary',
+        !disabled && !isOver && 'border-border/80 bg-muted/20 text-muted-foreground',
+      )}
+    >
+      {t('savedTables.rootDropzone')}
+    </div>
+  );
+});
+RootDropZone.displayName = 'WorkspaceRootDropZone';
 
 export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
   ({
@@ -107,13 +124,27 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
     onRestore,
     onDeletePermanently,
     onMoveToFolder,
+    onMoveFolder,
+    onRenameFolder,
+    onDeleteFolder,
     onViewHistory,
   }) => {
     const { t } = useTranslation();
     const [query, setQuery] = useState('');
     const [showTrash, setShowTrash] = useState(false);
-    const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(
-      () => new Set(folders.map((folder) => folder.id)),
+    const [selectedFolderId, setSelectedFolderId] = useState<string | undefined>();
+    const [dragFeedback, setDragFeedback] = useState<{
+      type: 'success' | 'blocked' | 'error';
+      message: string;
+    } | null>(null);
+    const dragFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const { expandedFolders, toggleFolder, expandFolder } = useFolderExpansion(
+      folders.map((folder) => folder.id),
+    );
+    const sensors = useSensors(
+      useSensor(PointerSensor, {
+        activationConstraint: { distance: 6 },
+      }),
     );
 
     const normalizedQuery = query.trim().toLowerCase();
@@ -131,10 +162,11 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
           : draftItems,
       [draftItems, normalizedQuery],
     );
-    const { folders: groupedFolders, rootTables } = useMemo(
-      () => buildFolderTree(folders, visibleItems),
-      [folders, visibleItems],
-    );
+    const { foldersWithCount, filteredItems, ungroupedItems, isSearching } = useSavedTablesFilter({
+      items,
+      folders,
+      searchQuery: query,
+    });
     const flatFolders = useMemo(() => {
       const result: Array<{ id: string; name: string; depth: number }> = [];
       const walk = (nodes: FolderTreeNode[], depth: number) => {
@@ -146,89 +178,168 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
       walk(folders, 0);
       return result;
     }, [folders]);
-
-    const toggleFolder = (folderId: string) => {
-      setExpandedFolderIds((prev) => {
-        const next = new Set(prev);
-        if (next.has(folderId)) {
-          next.delete(folderId);
-        } else {
-          next.add(folderId);
+    const itemMap = useMemo(
+      () => new Map(items.map((item) => [item.normalizedName, item])),
+      [items],
+    );
+    const tableFolderMap = useMemo(
+      () =>
+        items.reduce<Record<string, string | undefined>>((acc, item) => {
+          acc[item.normalizedName] = item.folderId;
+          return acc;
+        }, {}),
+      [items],
+    );
+    const folderParentMap = useMemo(
+      () => buildFolderParentMap(foldersWithCount),
+      [foldersWithCount],
+    );
+    const folderNodeMap = useMemo(() => {
+      const map = new Map<string, FolderTreeNode>();
+      const walk = (nodes: FolderTreeNode[]) => {
+        for (const node of nodes) {
+          map.set(node.id, node);
+          walk(node.children);
         }
-        return next;
-      });
-    };
+      };
+      walk(foldersWithCount);
+      return map;
+    }, [foldersWithCount]);
 
-    const renderTable = (item: SavedTableSummary, depth = 0) => {
-      const isActive = activeNormalizedName === item.normalizedName;
-      return (
-        <div
-          key={item.normalizedName}
-          className={cn(
-            'group flex items-center gap-1 rounded-md px-2 py-1.5 text-sm hover:bg-accent',
-            isActive && 'bg-primary/10 text-primary',
-          )}
-          style={{ paddingLeft: `${depth * 14 + 8}px` }}
-        >
-          <Table2 className="h-4 w-4 shrink-0" />
-          <button
-            type="button"
-            className="min-w-0 flex-1 truncate text-left font-medium"
-            onClick={() => onSelect(item)}
-          >
-            {item.name}
-          </button>
-          {isActive && activeDirty && (
-            <span className="rounded bg-amber-500/10 px-1 py-0 text-[10px] text-amber-600">
-              {t('savedTables.dirty')}
-            </span>
-          )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 opacity-0 group-hover:opacity-100"
-              >
-                <MoreHorizontal className="h-3.5 w-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-32">
-              {onViewHistory && (
-                <DropdownMenuItem onClick={() => onViewHistory(item)}>
-                  <History className="mr-2 h-4 w-4" />
-                  {t('savedTables.history')}
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onClick={() => onRename(item)}>
-                {t('savedTables.rename')}
-              </DropdownMenuItem>
-              {onMoveToFolder && (
-                <>
-                  <DropdownMenuItem onClick={() => onMoveToFolder(item, undefined)}>
-                    {t('savedTables.moveToRoot')}
-                  </DropdownMenuItem>
-                  {flatFolders.map((folder) => (
-                    <DropdownMenuItem
-                      key={folder.id}
-                      onClick={() => onMoveToFolder(item, folder.id)}
-                    >
-                      <span style={{ paddingLeft: `${folder.depth * 10}px` }}>{folder.name}</span>
-                    </DropdownMenuItem>
-                  ))}
-                </>
-              )}
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={() => onDelete(item)}
-              >
-                {t('savedTables.moveToTrash')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+    useEffect(
+      () => () => {
+        if (dragFeedbackTimerRef.current) {
+          clearTimeout(dragFeedbackTimerRef.current);
+        }
+      },
+      [],
+    );
+
+    const showDragFeedback = useCallback(
+      (type: 'success' | 'blocked' | 'error', message: string) => {
+        setDragFeedback({ type, message });
+        if (dragFeedbackTimerRef.current) {
+          clearTimeout(dragFeedbackTimerRef.current);
+        }
+        dragFeedbackTimerRef.current = setTimeout(() => setDragFeedback(null), 2400);
+      },
+      [],
+    );
+
+    const renderTableList = useCallback(
+      (tableItems: SavedTableSummary[], depth = 0) => (
+        <div className="space-y-1">
+          {tableItems.map((item) => (
+            <TableItem
+              key={item.normalizedName}
+              item={item}
+              isActive={activeNormalizedName === item.normalizedName}
+              activeDirty={activeDirty}
+              depth={depth}
+              onSelect={() => onSelect(item)}
+              onRename={() => onRename(item)}
+              onDelete={() => onDelete(item)}
+              onViewHistory={onViewHistory ? () => onViewHistory(item) : undefined}
+              dragDisabled={isSearching}
+            />
+          ))}
         </div>
-      );
-    };
+      ),
+      [activeDirty, activeNormalizedName, isSearching, onDelete, onRename, onSelect, onViewHistory],
+    );
+
+    const renderTables = useCallback(
+      (folderId?: string, depth = 0) => {
+        const folderItems = folderId
+          ? filteredItems.filter((item) => item.folderId === folderId)
+          : ungroupedItems;
+        if (folderItems.length === 0 || isSearching) return null;
+        if (!folderId) return renderTableList(folderItems, 0);
+        return (
+          <div style={{ marginLeft: `${(depth + 1) * 16}px` }}>{renderTableList(folderItems)}</div>
+        );
+      },
+      [filteredItems, isSearching, renderTableList, ungroupedItems],
+    );
+
+    const handleDragEnd = useCallback(
+      async (event: DragEndEvent) => {
+        const action = resolveDropAction({
+          activeId: event.active.id,
+          overId: event.over?.id ?? null,
+          isSearching,
+          tableFolderMap,
+          folderParentMap,
+        });
+
+        if (action.kind === 'none') return;
+        if (action.kind === 'invalid_folder_cycle') {
+          showDragFeedback('blocked', t('savedTables.dragFeedback.folderCycle'));
+          return;
+        }
+        if (action.kind === 'move_table') {
+          if (!onMoveToFolder) return;
+          const item = itemMap.get(action.normalizedName);
+          if (!item) return;
+          try {
+            const result = await Promise.resolve(onMoveToFolder(item, action.folderId));
+            if (result && result.ok === false) {
+              showDragFeedback('error', result.message ?? t('savedTables.dragFeedback.moveFailed'));
+              return;
+            }
+            if (action.folderId) expandFolder(action.folderId);
+            showDragFeedback(
+              'success',
+              action.folderId
+                ? t('savedTables.dragFeedback.tableMovedToFolder', {
+                    name:
+                      folderNodeMap.get(action.folderId)?.name ??
+                      t('savedTables.dragFeedback.unknownFolder'),
+                  })
+                : t('savedTables.dragFeedback.tableMovedToRoot'),
+            );
+          } catch {
+            showDragFeedback('error', t('savedTables.dragFeedback.moveFailed'));
+          }
+          return;
+        }
+        if (!onMoveFolder) return;
+        const folder = folderNodeMap.get(action.folderId);
+        if (!folder) return;
+        try {
+          const result = await Promise.resolve(onMoveFolder(folder, action.parentId));
+          if (result && result.ok === false) {
+            showDragFeedback('error', result.message ?? t('savedTables.dragFeedback.moveFailed'));
+            return;
+          }
+          if (action.parentId) expandFolder(action.parentId);
+          showDragFeedback(
+            'success',
+            action.parentId
+              ? t('savedTables.dragFeedback.folderMovedToFolder', {
+                  name:
+                    folderNodeMap.get(action.parentId)?.name ??
+                    t('savedTables.dragFeedback.unknownFolder'),
+                })
+              : t('savedTables.dragFeedback.folderMovedToRoot'),
+          );
+        } catch {
+          showDragFeedback('error', t('savedTables.dragFeedback.moveFailed'));
+        }
+      },
+      [
+        expandFolder,
+        folderNodeMap,
+        folderParentMap,
+        isSearching,
+        itemMap,
+        onMoveFolder,
+        onMoveToFolder,
+        showDragFeedback,
+        tableFolderMap,
+        t,
+      ],
+    );
 
     const renderTrashTable = (item: SavedTableSummary) => (
       <div
@@ -267,37 +378,6 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
         </DropdownMenu>
       </div>
     );
-
-    const renderFolder = (folder: FolderWithTables, depth = 0): React.ReactNode => {
-      const expanded = expandedFolderIds.has(folder.id);
-      const FolderIcon = expanded ? FolderOpen : Folder;
-      const childCount = folder.tables.length + folder.children.length;
-      return (
-        <div key={folder.id}>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
-            style={{ paddingLeft: `${depth * 14 + 8}px` }}
-            onClick={() => toggleFolder(folder.id)}
-          >
-            {expanded ? (
-              <ChevronRight className="h-3.5 w-3.5 rotate-90 text-muted-foreground" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-            )}
-            <FolderIcon className="h-4 w-4 text-amber-500" />
-            <span className="min-w-0 flex-1 truncate font-medium">{folder.name}</span>
-            {childCount > 0 && <span className="text-xs text-muted-foreground">{childCount}</span>}
-          </button>
-          {expanded && (
-            <div>
-              {folder.children.map((child) => renderFolder(child, depth + 1))}
-              {folder.tables.map((table) => renderTable(table, depth + 1))}
-            </div>
-          )}
-        </div>
-      );
-    };
 
     return (
       <aside
@@ -460,8 +540,46 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                   <div className="px-2 text-xs font-medium text-muted-foreground">
                     {t('savedTables.projectsSection')}
                   </div>
-                  {groupedFolders.map((folder) => renderFolder(folder))}
-                  {rootTables.map((table) => renderTable(table))}
+                  {visibleItems.length > 0 && (
+                    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+                      <RootDropZone disabled={isSearching} />
+                      {dragFeedback && (
+                        <div
+                          className={cn(
+                            'mb-2 rounded-md border px-2 py-1.5 text-[11px]',
+                            dragFeedback.type === 'success' &&
+                              'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+                            dragFeedback.type === 'blocked' &&
+                              'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+                            dragFeedback.type === 'error' &&
+                              'border-destructive/30 bg-destructive/10 text-destructive',
+                          )}
+                        >
+                          {dragFeedback.message}
+                        </div>
+                      )}
+                      {isSearching ? (
+                        renderTableList(filteredItems)
+                      ) : foldersWithCount.length > 0 &&
+                        onCreateFolder &&
+                        onRenameFolder &&
+                        onDeleteFolder ? (
+                        <FolderTree
+                          folders={foldersWithCount}
+                          expandedFolders={expandedFolders}
+                          selectedFolderId={selectedFolderId}
+                          onToggleFolder={toggleFolder}
+                          onSelectFolder={setSelectedFolderId}
+                          onCreateFolder={onCreateFolder}
+                          onRenameFolder={onRenameFolder}
+                          onDeleteFolder={onDeleteFolder}
+                          renderTables={renderTables}
+                        />
+                      ) : (
+                        renderTableList(filteredItems)
+                      )}
+                    </DndContext>
+                  )}
                   {visibleItems.length === 0 && (
                     <div className="px-2 py-2 text-xs text-muted-foreground">
                       {normalizedQuery ? t('savedTables.noMatch') : t('savedTables.empty')}
