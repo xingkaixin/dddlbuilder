@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useFolders } from '@/hooks/useFolders';
+import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import { flushPromises } from '@/__tests__/utils/test-utils';
 import * as tableFolders from '@/utils/tableFolders';
 
@@ -47,6 +48,30 @@ describe('useFolders', () => {
     expect(result.current.loading).toBe(false);
     expect(result.current.folders).toHaveLength(1);
     expect(result.current.folderTree).toHaveLength(1);
+  });
+
+  it('should reload folders when a workspace snapshot is applied', async () => {
+    mockListFolders
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: '1', name: 'Root', order: 1 } as any]);
+    mockBuildFolderTree
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: '1', name: 'Root', order: 1, children: [] } as any]);
+
+    const { result } = renderHook(() => useFolders());
+
+    await act(async () => {
+      await flushPromises();
+    });
+
+    expect(result.current.folders).toHaveLength(0);
+
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent(WORKSPACE_SNAPSHOT_APPLIED_EVENT));
+      await flushPromises();
+    });
+
+    expect(result.current.folders).toHaveLength(1);
   });
 
   it('should handle load error', async () => {

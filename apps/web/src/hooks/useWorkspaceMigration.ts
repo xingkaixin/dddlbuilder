@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { WorkspaceMigrationResponse } from '@ddlbuilder/shared-types/api';
 import {
   analyzeWorkspaceMigration,
+  applyWorkspaceMigrationPayloadToLocal,
   clearWorkspaceMigrationDismissed,
   commitWorkspaceMigration,
   dismissWorkspaceMigration,
@@ -54,6 +55,10 @@ export const useWorkspaceMigration = (authState: {
           setOpen(false);
           return;
         }
+        await applyWorkspaceMigrationPayloadToLocal(analysis.payload, {
+          kind: 'user',
+          userId: authState.userId,
+        });
         if (isWorkspaceMigrationDismissed(authState.userId, analysis.payload.localFingerprint)) {
           return;
         }
@@ -92,6 +97,10 @@ export const useWorkspaceMigration = (authState: {
     clearWorkspaceMigrationDismissed(authState.userId, pending.payload.localFingerprint);
     try {
       const result = await commitWorkspaceMigration(pending.payload);
+      await applyWorkspaceMigrationPayloadToLocal(pending.payload, {
+        kind: 'user',
+        userId: authState.userId,
+      });
       setPending(null);
       setOpen(false);
       return result;

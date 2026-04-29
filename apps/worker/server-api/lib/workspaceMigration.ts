@@ -2,7 +2,8 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 import type { ApiEnv } from './context.js';
 
-type SnapshotKind = 'draft' | 'saved_table' | 'saved_draft';
+type SnapshotKind = 'global_draft' | 'draft' | 'saved_table' | 'saved_draft' | 'folder';
+type ConflictKind = 'draft' | 'saved_table' | 'saved_draft';
 
 type SnapshotRecord = {
   id: string;
@@ -31,6 +32,13 @@ export type WorkspaceMigrationPayload = {
       name: string;
       state: PersistedState;
       updatedAt: number;
+      folderId?: string;
+    }>;
+    drafts?: Array<{
+      draftId: string;
+      state: PersistedState;
+      updatedAt: number;
+      folderId?: string;
     }>;
     savedDrafts: Array<{
       normalizedName: string;
@@ -39,11 +47,18 @@ export type WorkspaceMigrationPayload = {
       updatedAt: number;
       baseSignature: string;
     }>;
+    folders?: Array<{
+      id: string;
+      name: string;
+      parentId?: string;
+      order: number;
+      createdAt: number;
+    }>;
   };
 };
 
 export type WorkspaceMigrationConflict = {
-  kind: SnapshotKind;
+  kind: ConflictKind;
   normalizedName: string | null;
   displayName: string;
 };
@@ -77,6 +92,9 @@ const buildSnapshotRecord = (
   payloadJson: JSON.stringify(payload),
   sourceUpdatedAt,
 });
+
+const toConflictKind = (kind: SnapshotKind): ConflictKind =>
+  kind === 'global_draft' || kind === 'folder' ? 'draft' : kind;
 
 const normalizeName = (value: string) => value.trim().toLowerCase();
 
@@ -266,11 +284,24 @@ const buildSnapshotRecords = (
     records.push(
       buildSnapshotRecord(
         userId,
-        'draft',
+        'global_draft',
         null,
         'Global Draft',
         { state: globalDraft.state },
         globalDraft.updatedAt,
+      ),
+    );
+  }
+
+  for (const item of payload.snapshot.drafts ?? []) {
+    records.push(
+      buildSnapshotRecord(
+        userId,
+        'draft',
+        item.draftId,
+        item.draftId,
+        { state: item.state, folderId: item.folderId },
+        item.updatedAt,
       ),
     );
   }
@@ -282,7 +313,7 @@ const buildSnapshotRecords = (
         'saved_table',
         item.normalizedName,
         item.name,
-        { name: item.name, state: item.state },
+        { name: item.name, state: item.state, folderId: item.folderId },
         item.updatedAt,
       ),
     );
@@ -301,6 +332,25 @@ const buildSnapshotRecords = (
           state: item.state,
         },
         item.updatedAt,
+      ),
+    );
+  }
+
+  for (const item of payload.snapshot.folders ?? []) {
+    records.push(
+      buildSnapshotRecord(
+        userId,
+        'folder',
+        item.id,
+        item.name,
+        {
+          id: item.id,
+          name: item.name,
+          parentId: item.parentId,
+          order: item.order,
+          createdAt: item.createdAt,
+        },
+        item.createdAt,
       ),
     );
   }
@@ -354,7 +404,7 @@ export const analyzeWorkspaceMigration = async (
     }
 
     conflicts.push({
-      kind: record.kind,
+      kind: toConflictKind(record.kind),
       normalizedName: record.normalizedName,
       displayName: record.displayName,
     });
@@ -412,7 +462,7 @@ export const commitWorkspaceMigration = async (
         continue;
       }
 
-      if (record.kind === 'draft') {
+      if (record.kind === 'global_draft') {
         const copyName = await resolveUniqueName(env, userId, 'saved_draft', 'Migrated draft');
         await writeSnapshot(
           env,

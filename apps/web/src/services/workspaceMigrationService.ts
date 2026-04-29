@@ -1,8 +1,15 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { ApiErrorPayload, WorkspaceMigrationResponse } from '@ddlbuilder/shared-types/api';
 import type { WorkspaceScope, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
+import { applyCloudSnapshotToLocal } from '@/services/workspaceSyncService';
 import { listSavedTables } from '@/utils/savedTablesDb';
-import { listSavedDrafts, readGlobalDraft, readWorkspaceSession } from '@/utils/workspaceStateDb';
+import { listFolders } from '@/utils/tableFolders';
+import {
+  listDrafts,
+  listSavedDrafts,
+  readGlobalDraft,
+  readWorkspaceSession,
+} from '@/utils/workspaceStateDb';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 
 export type WorkspaceMigrationSnapshot = {
@@ -20,6 +27,13 @@ export type WorkspaceMigrationSnapshot = {
     name: string;
     state: PersistedState;
     updatedAt: number;
+    folderId?: string;
+  }>;
+  drafts: Array<{
+    draftId: string;
+    state: PersistedState;
+    updatedAt: number;
+    folderId?: string;
   }>;
   savedDrafts: Array<{
     normalizedName: string;
@@ -27,6 +41,13 @@ export type WorkspaceMigrationSnapshot = {
     state: PersistedState;
     updatedAt: number;
     baseSignature: string;
+  }>;
+  folders: Array<{
+    id: string;
+    name: string;
+    parentId?: string;
+    order: number;
+    createdAt: number;
   }>;
 };
 
@@ -45,8 +66,10 @@ export const hasMeaningfulWorkspaceSnapshotData = (snapshot: WorkspaceMigrationS
     snapshot?.activeSession?.activeState &&
     !isPersistedStateTrivial(snapshot.activeSession.activeState),
   ) ||
+  Boolean(snapshot && snapshot.drafts.length > 0) ||
   Boolean(snapshot && snapshot.savedTables.length > 0) ||
-  Boolean(snapshot && snapshot.savedDrafts.length > 0);
+  Boolean(snapshot && snapshot.savedDrafts.length > 0) ||
+  Boolean(snapshot && snapshot.folders.length > 0);
 
 const stripUpdatedAtFromSnapshot = (snapshot: WorkspaceMigrationSnapshot) => ({
   globalDraft: snapshot.globalDraft ? { state: snapshot.globalDraft.state } : null,
@@ -56,8 +79,10 @@ const stripUpdatedAtFromSnapshot = (snapshot: WorkspaceMigrationSnapshot) => ({
         activeState: snapshot.activeSession.activeState,
       }
     : null,
+  drafts: snapshot.drafts.map(({ updatedAt: _, ...rest }) => rest),
   savedTables: snapshot.savedTables.map(({ updatedAt: _, ...rest }) => rest),
   savedDrafts: snapshot.savedDrafts.map(({ updatedAt: _, ...rest }) => rest),
+  folders: snapshot.folders,
 });
 
 const WORKSPACE_MIGRATION_DISMISS_PREFIX = 'ddlbuilder:workspace-migration:dismissed';
@@ -107,12 +132,15 @@ const requestWorkspaceMigration = async (
 export const collectWorkspaceMigrationPayload = async (
   scope: WorkspaceScope = getAnonymousWorkspaceScope(),
 ): Promise<WorkspaceMigrationPayload | null> => {
-  const [globalDraft, activeSession, savedTables, savedDraftMap] = await Promise.all([
-    readGlobalDraft(scope),
-    readWorkspaceSession(scope),
-    listSavedTables(scope),
-    listSavedDrafts(scope),
-  ]);
+  const [globalDraft, activeSession, drafts, savedTables, savedDraftMap, folders] =
+    await Promise.all([
+      readGlobalDraft(scope),
+      readWorkspaceSession(scope),
+      listDrafts(scope),
+      listSavedTables(scope),
+      listSavedDrafts(scope),
+      listFolders(),
+    ]);
 
   const savedDrafts = Object.entries(savedDraftMap).map(([normalizedName, item]) => ({
     normalizedName,
@@ -132,8 +160,10 @@ export const collectWorkspaceMigrationPayload = async (
   const hasData =
     Boolean(meaningfulGlobalDraft) ||
     Boolean(meaningfulActiveState) ||
+    drafts.some((item) => item.draftId !== 'default') ||
     savedTables.length > 0 ||
-    savedDrafts.length > 0;
+    savedDrafts.length > 0 ||
+    folders.length > 0;
 
   if (!hasData) {
     return null;
@@ -142,13 +172,18 @@ export const collectWorkspaceMigrationPayload = async (
   const snapshot: WorkspaceMigrationSnapshot = {
     globalDraft: meaningfulGlobalDraft,
     activeSession: activeSession ? { ...activeSession, activeState: meaningfulActiveState } : null,
+    drafts: drafts
+      .filter((item) => item.draftId !== 'default')
+      .map(({ draftId, record }) => ({ draftId, ...record })),
     savedTables: savedTables.map((item) => ({
       normalizedName: item.normalizedName,
       name: item.name,
       state: item.state,
       updatedAt: item.updatedAt,
+      folderId: item.folderId,
     })),
     savedDrafts,
+    folders,
   };
 
   const contentForHash = stripUpdatedAtFromSnapshot(snapshot);
@@ -184,6 +219,25 @@ export const hasMeaningfulWorkspaceData = async (
 
 export const commitWorkspaceMigration = async (payload: WorkspaceMigrationPayload) =>
   requestWorkspaceMigration('commit', payload);
+
+export const applyWorkspaceMigrationPayloadToLocal = async (
+  payload: WorkspaceMigrationPayload,
+  scope: WorkspaceScope,
+) => {
+  await applyCloudSnapshotToLocal(
+    {
+      globalDraft: payload.snapshot.globalDraft,
+      drafts: payload.snapshot.drafts,
+      savedTables: payload.snapshot.savedTables,
+      savedDrafts: payload.snapshot.savedDrafts,
+      folders: payload.snapshot.folders,
+    },
+    {
+      overwrite: true,
+      scope,
+    },
+  );
+};
 
 export const dismissWorkspaceMigration = (appUserId: string, fingerprint: string) => {
   localStorage.setItem(buildDismissKey(appUserId, fingerprint), '1');

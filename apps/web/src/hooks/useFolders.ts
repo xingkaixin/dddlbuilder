@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import type { TableFolder } from '@/utils/savedTablesDb';
 import {
   listFolders,
@@ -51,6 +52,17 @@ export function useFolders() {
   // 初始加载
   useEffect(() => {
     void loadFolders();
+  }, [loadFolders]);
+
+  useEffect(() => {
+    const handleSnapshotApplied = () => {
+      void loadFolders();
+    };
+
+    window.addEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);
+    return () => {
+      window.removeEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);
+    };
   }, [loadFolders]);
 
   // 创建文件夹
