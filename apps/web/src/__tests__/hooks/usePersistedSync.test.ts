@@ -35,6 +35,7 @@ function createBaseParams(overrides?: {
 }) {
   return {
     hydrated: overrides?.hydrated ?? true,
+    hasOpenTab: true,
     persistedState: overrides?.persistedState ?? null,
     activeSource: overrides?.activeSource ?? { kind: 'draft', draftId: 'default' },
     saveState: overrides?.saveState ?? vi.fn(),
@@ -84,6 +85,25 @@ describe('usePersistedSync debounce save', () => {
       vi.advanceTimersByTime(1000);
     });
 
+    expect(saveState).not.toHaveBeenCalled();
+  });
+
+  it('没有打开标签页时不会保存', () => {
+    const saveState = vi.fn();
+    const buildPersistedState = vi.fn(() => createState('ghost_draft'));
+    const params = createBaseParams({
+      saveState,
+      buildPersistedState,
+    });
+    params.hasOpenTab = false;
+
+    renderHook(() => usePersistedSync(params));
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(buildPersistedState).not.toHaveBeenCalled();
     expect(saveState).not.toHaveBeenCalled();
   });
 

@@ -7,6 +7,7 @@ const PERSIST_DEBOUNCE_MS = 500;
 
 interface UsePersistedSyncParams {
   hydrated: boolean;
+  hasOpenTab: boolean;
   persistedState: Partial<PersistedState> | null;
   activeSource: WorkspaceSource;
   saveState: (payload: WorkspaceSavePayload) => void;
@@ -43,6 +44,7 @@ interface UsePersistedSyncParams {
 
 export function usePersistedSync({
   hydrated,
+  hasOpenTab,
   persistedState,
   activeSource,
   saveState,
@@ -148,6 +150,7 @@ export function usePersistedSync({
   useDebouncedEffect(
     () => {
       if (!hydrated) return;
+      if (!hasOpenTab) return;
       const source = activeSourceRef.current;
       if (!source) return;
 
@@ -183,7 +186,14 @@ export function usePersistedSync({
         // ignore quota errors
       }
     },
-    [hydrated, buildPersistedState, saveState, loadedTableNormalizedName, updateActiveTabSnapshot],
+    [
+      hydrated,
+      hasOpenTab,
+      buildPersistedState,
+      saveState,
+      loadedTableNormalizedName,
+      updateActiveTabSnapshot,
+    ],
     PERSIST_DEBOUNCE_MS,
   );
 }

@@ -610,6 +610,7 @@ function App() {
 
   usePersistedSync({
     hydrated,
+    hasOpenTab: tabs.length > 0,
     persistedState,
     activeSource,
     saveState,
