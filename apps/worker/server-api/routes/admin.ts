@@ -357,7 +357,7 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
       100,
     );
 
-    const items = await listCreditLedger(c.env, userId, limit);
+    const items = await listCreditLedger(c.env, userId, { limit, offset: 0 });
     return c.json(withMeta(c, { items }));
   });
 
