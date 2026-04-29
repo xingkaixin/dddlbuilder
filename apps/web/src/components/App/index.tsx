@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AICommentMode, DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
 import { createEmptyRow } from '@/utils/helpers';
 import { isTabAvailable } from '@/utils/tabUtils';
@@ -477,8 +477,10 @@ function App() {
   }, [isShareView, showToast, t]);
 
   // ─── 初始化第一个标签页 ─────────────────────────────────────────
+  const hasInitializedTabRef = useRef(false);
   useEffect(() => {
-    if (!hydrated || isShareView || tabs.length > 0) return;
+    if (!hydrated || isShareView || tabs.length > 0 || hasInitializedTabRef.current) return;
+    hasInitializedTabRef.current = true;
 
     const initialState = persistedState ?? createEmptyGlobalDraftState();
     const isDirty =
