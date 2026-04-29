@@ -1,7 +1,13 @@
-import { memo } from 'react';
-import { Plus, X, Loader2 } from 'lucide-react';
+import { memo, useMemo } from 'react';
+import { Plus, X, Loader2, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { WorkspaceTab } from '@/stores';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface TabBarProps {
   tabs: WorkspaceTab[];
@@ -10,6 +16,8 @@ interface TabBarProps {
   onCloseTab: (id: string) => void;
   onCreateTab: () => void;
 }
+
+const MAX_VISIBLE_TABS = 6;
 
 const TabItem = memo(
   ({
@@ -49,16 +57,14 @@ const TabItem = memo(
         />
 
         {/* 标题 */}
-        <span className="min-w-0 flex-1 truncate select-none">{tab.title}</span>
+        <span className="min-w-0 flex-1 truncate select-none">
+          {tab.title}
+          {tab.isDirty ? ' *' : ''}
+        </span>
 
         {/* 加载指示器 */}
         {tab.isLoading && (
           <Loader2 className="h-3 w-3 shrink-0 animate-spin text-muted-foreground" />
-        )}
-
-        {/* dirty 红点 */}
-        {tab.isDirty && !tab.isLoading && (
-          <span className="h-2 w-2 shrink-0 rounded-full bg-destructive" />
         )}
 
         {/* 关闭按钮 */}
@@ -84,10 +90,20 @@ export const TabBar = memo(
   ({ tabs, activeTabId, onActivateTab, onCloseTab, onCreateTab }: TabBarProps) => {
     if (tabs.length === 0) return null;
 
+    const { visibleTabs, hiddenTabs } = useMemo(() => {
+      if (tabs.length <= MAX_VISIBLE_TABS) {
+        return { visibleTabs: tabs, hiddenTabs: [] as WorkspaceTab[] };
+      }
+      return {
+        visibleTabs: tabs.slice(0, MAX_VISIBLE_TABS),
+        hiddenTabs: tabs.slice(MAX_VISIBLE_TABS),
+      };
+    }, [tabs]);
+
     return (
       <div className="flex items-end gap-1 border-b bg-muted/20 px-2 pt-1">
-        <div className="flex min-w-0 flex-1 items-end gap-1 overflow-x-auto scrollbar-hide">
-          {tabs.map((tab) => (
+        <div className="flex min-w-0 flex-1 items-end gap-1">
+          {visibleTabs.map((tab) => (
             <TabItem
               key={tab.id}
               tab={tab}
@@ -99,16 +115,75 @@ export const TabBar = memo(
               }}
             />
           ))}
-        </div>
 
-        <button
-          type="button"
-          onClick={onCreateTab}
-          className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          aria-label="新建草稿"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
+          {hiddenTabs.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    'flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-t-md border-t border-x px-3 text-sm transition-colors',
+                    hiddenTabs.some((t) => t.id === activeTabId)
+                      ? 'border-border bg-background text-foreground'
+                      : 'border-transparent bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground',
+                  )}
+                >
+                  <span className="select-none">更多</span>
+                  <ChevronDown className="h-3 w-3" />
+                  {hiddenTabs.some((t) => t.id === activeTabId && t.isDirty) && (
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-destructive" />
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="max-h-64 overflow-y-auto">
+                {hiddenTabs.map((tab) => (
+                  <DropdownMenuItem
+                    key={tab.id}
+                    className={cn('flex items-center gap-2', tab.id === activeTabId && 'bg-accent')}
+                    onClick={() => onActivateTab(tab.id)}
+                  >
+                    <span
+                      className={cn(
+                        'h-2 w-2 shrink-0 rounded-full',
+                        tab.source.kind === 'draft' ? 'bg-amber-500' : 'bg-primary',
+                      )}
+                    />
+                    <span className="min-w-0 flex-1 truncate">
+                      {tab.title}
+                      {tab.isDirty ? ' *' : ''}
+                    </span>
+                    {tab.isLoading && (
+                      <Loader2 className="h-3 w-3 shrink-0 animate-spin text-muted-foreground" />
+                    )}
+                    {tab.isDirty && !tab.isLoading && (
+                      <span className="h-2 w-2 shrink-0 rounded-full bg-destructive" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCloseTab(tab.id);
+                      }}
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm hover:bg-accent"
+                      aria-label="关闭标签页"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          <button
+            type="button"
+            onClick={onCreateTab}
+            className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            aria-label="新建草稿"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
       </div>
     );
   },

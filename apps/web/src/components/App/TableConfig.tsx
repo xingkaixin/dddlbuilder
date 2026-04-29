@@ -29,7 +29,6 @@ interface TableConfigProps {
   saveDisabledHint?: string;
   showDiffButton?: boolean;
   showHistoryButton?: boolean;
-  loadedStatus?: string | null;
   loadedTableName?: string | null;
   workspaceLabel?: string | null;
   fieldCount?: number;
@@ -57,20 +56,12 @@ export const TableConfig = memo<TableConfigProps>(
     saveDisabledHint,
     showDiffButton = false,
     showHistoryButton = false,
-    loadedStatus = null,
     loadedTableName = null,
     workspaceLabel = null,
     fieldCount = 0,
     indexCount = 0,
   }) => {
     const { t } = useTranslation();
-    const statusLabel =
-      loadedStatus === 'dirty'
-        ? t('tableConfig.statusDirty')
-        : loadedStatus === 'clean'
-          ? t('tableConfig.statusClean')
-          : '';
-    const statusClass = loadedStatus === 'dirty' ? 'text-amber-600' : 'text-muted-foreground';
     const selectedDbOption = DATABASE_OPTIONS.find((option) => option.value === dbType);
 
     return (
@@ -82,7 +73,6 @@ export const TableConfig = memo<TableConfigProps>(
                 {workspaceLabel || loadedTableName}
               </span>
             )}
-            {statusLabel && <span className={`text-xs ${statusClass}`}>{statusLabel}</span>}
             <div className="w-40">
               <SearchableSelect
                 value={dbType}

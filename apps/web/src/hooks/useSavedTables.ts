@@ -11,7 +11,6 @@ import {
   listTrashedSavedTableMetadata,
   moveSavedTableToTrash,
   normalizeSavedTableName,
-  restoreSavedTableFromTrash,
   updateSavedTable,
   type SavedTableMetadata,
   type SavedTableRecord,
@@ -158,11 +157,56 @@ export function useSavedTables() {
   );
 
   const restoreTable = useCallback(
-    async (normalizedName: string): Promise<SaveTableResult> => {
+    async (
+      normalizedName: string,
+      options?: { existingFolderIds?: Set<string> },
+    ): Promise<SaveTableResult> => {
       try {
-        await restoreSavedTableFromTrash(normalizedName);
+        const record = await getSavedTable(normalizedName);
+        if (!record) {
+          return { ok: false, reason: 'not_found' };
+        }
+
+        // 命名冲突解决
+        const existingNormalizedNames = new Set(savedTables.map((t) => t.normalizedName));
+        let targetNormalizedName = normalizedName;
+        let targetName = record.name;
+
+        if (existingNormalizedNames.has(normalizedName)) {
+          let counter = 1;
+          const baseName = record.name;
+          const baseNormalized = normalizeSavedTableName(baseName);
+          while (existingNormalizedNames.has(`${baseNormalized}_${counter}`)) {
+            counter++;
+          }
+          targetNormalizedName = `${baseNormalized}_${counter}`;
+          targetName = `${baseName}_${counter}`;
+        }
+
+        // 文件夹回退：原文件夹不存在则恢复到根目录
+        const folderId =
+          record.folderId && options?.existingFolderIds?.has(record.folderId)
+            ? record.folderId
+            : undefined;
+
+        const restoredRecord: SavedTableRecord = {
+          ...record,
+          normalizedName: targetNormalizedName,
+          name: targetName,
+          folderId,
+          trashedAt: undefined,
+          updatedAt: Date.now(),
+        };
+
+        if (targetNormalizedName !== normalizedName) {
+          await addSavedTable(restoredRecord);
+          await deleteSavedTable(normalizedName);
+        } else {
+          await updateSavedTable(restoredRecord);
+        }
+
         await refresh();
-        return { ok: true, normalizedName };
+        return { ok: true, normalizedName: targetNormalizedName };
       } catch (err) {
         return {
           ok: false,
@@ -171,7 +215,7 @@ export function useSavedTables() {
         };
       }
     },
-    [refresh],
+    [refresh, savedTables],
   );
 
   const deleteTablePermanently = useCallback(

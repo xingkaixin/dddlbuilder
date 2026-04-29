@@ -148,11 +148,6 @@ export const SavedTablesSidebar = memo<SavedTablesSidebarProps>(
             <div className="space-y-2">
               {items.map((item) => {
                 const isActive = activeNormalizedName === item.normalizedName;
-                const statusLabel = isActive
-                  ? activeDirty
-                    ? t('savedTables.dirty')
-                    : t('savedTables.loaded')
-                  : '';
                 return (
                   <div
                     key={item.normalizedName}
@@ -178,8 +173,8 @@ export const SavedTablesSidebar = memo<SavedTablesSidebarProps>(
                         >
                           {item.name}
                         </span>
-                        {statusLabel && (
-                          <span className="text-xs text-muted-foreground">{statusLabel}</span>
+                        {isActive && activeDirty && (
+                          <span className="text-xs text-amber-600">*</span>
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground">

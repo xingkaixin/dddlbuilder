@@ -33,6 +33,7 @@ type WorkspaceDraftEntity = {
   state: PersistedState;
   updatedAt: number;
   folderId?: string;
+  trashedAt?: number;
 };
 
 type WorkspaceSavedDraftEntity = SavedTableDraftRecord & {
@@ -207,7 +208,7 @@ export const listDrafts = async (
   const results: Array<{ draftId: string; record: WorkspaceDraftRecord }> = [];
   for (const entity of entities) {
     const decoded = decodeScopedEntity(entity, scope);
-    if (!decoded) continue;
+    if (!decoded || decoded.trashedAt != null) continue;
     const rawKey = decoded.id;
     const prefix = `${getWorkspaceScopeStorageKey(scope)}::`;
     const draftId = rawKey.startsWith(prefix) ? rawKey.slice(prefix.length) : rawKey;
@@ -221,6 +222,44 @@ export const listDrafts = async (
     });
   }
   return results;
+};
+
+export const listTrashedDrafts = async (
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<Array<{ draftId: string; record: WorkspaceDraftRecord }>> => {
+  const entities = await runWithStore<WorkspaceDraftEntity[]>(
+    WORKSPACE_GLOBAL_DRAFT_STORE_NAME,
+    'readonly',
+    (store) => store.getAll(),
+  );
+  if (!Array.isArray(entities)) return [];
+
+  const results: Array<{ draftId: string; record: WorkspaceDraftRecord }> = [];
+  for (const entity of entities) {
+    const decoded = decodeScopedEntity(entity, scope);
+    if (!decoded || decoded.trashedAt == null) continue;
+    const rawKey = decoded.id;
+    const prefix = `${getWorkspaceScopeStorageKey(scope)}::`;
+    const draftId = rawKey.startsWith(prefix) ? rawKey.slice(prefix.length) : rawKey;
+    results.push({
+      draftId,
+      record: {
+        state: decoded.state,
+        updatedAt: decoded.updatedAt,
+        folderId: decoded.folderId,
+        trashedAt: decoded.trashedAt,
+      },
+    });
+  }
+  return results.sort((a, b) => (b.record.trashedAt ?? 0) - (a.record.trashedAt ?? 0));
+};
+
+export const restoreDraft = async (
+  draftId: string,
+  record: WorkspaceDraftRecord,
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<void> => {
+  await writeDraft(draftId, { ...record, trashedAt: undefined }, scope);
 };
 
 /** @deprecated 使用 readDraft(DEFAULT_DRAFT_ID, scope) */

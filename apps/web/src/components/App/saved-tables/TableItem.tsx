@@ -34,7 +34,7 @@ export const TableItem = memo<TableItemProps>(
   ({
     item,
     isActive,
-    activeDirty,
+    _activeDirty,
     isDraft = false,
     depth = 0,
     onSelect,
@@ -47,8 +47,6 @@ export const TableItem = memo<TableItemProps>(
       id: toTableDragId(item.normalizedName),
       disabled: dragDisabled,
     });
-    const statusLabel = isActive && activeDirty ? t('savedTables.dirty') : '';
-
     return (
       <div
         ref={setNodeRef}
@@ -115,7 +113,6 @@ export const TableItem = memo<TableItemProps>(
                 {t('savedTables.draftLabel')}
               </span>
             )}
-            {statusLabel && <span className="text-xs text-muted-foreground">{statusLabel}</span>}
           </div>
         </button>
         <div

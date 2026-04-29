@@ -161,6 +161,7 @@ export const buildDraftSummary = (
   state: PersistedState,
   updatedAt: number,
   folderId?: string,
+  trashedAt?: number,
 ): DraftSummary => {
   const fieldCount = state.rows.filter((row) => row.fieldName?.trim()).length;
   const name = state.tableName.trim() || '未命名草稿';
@@ -171,6 +172,7 @@ export const buildDraftSummary = (
     fieldCount,
     updatedAt,
     folderId,
+    trashedAt,
   };
 };
 

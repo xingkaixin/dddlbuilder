@@ -36,6 +36,7 @@ export type DraftSummary = {
   fieldCount: number;
   updatedAt: number;
   folderId?: string;
+  trashedAt?: number;
 };
 
 export type TableFolderSnapshot = {

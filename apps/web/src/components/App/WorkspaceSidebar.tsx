@@ -43,6 +43,7 @@ interface WorkspaceSidebarProps {
   error?: string | null;
   items: SavedTableSummary[];
   trashedItems?: SavedTableSummary[];
+  trashedDraftItems?: DraftSummary[];
   draftItems?: DraftSummary[];
   folders: FolderTreeNode[];
   activeNormalizedName?: string | null;
@@ -50,7 +51,6 @@ interface WorkspaceSidebarProps {
   activeDirty?: boolean;
   onToggle: () => void;
   onOpenWorkspace: () => void;
-  onCreateDraft?: () => void;
   onCreateFolder?: () => void;
   onSelectDraft?: (draftId: string) => void;
   onDeleteDraft?: (draftId: string) => void;
@@ -60,6 +60,8 @@ interface WorkspaceSidebarProps {
   onDelete: (item: SavedTableSummary) => void;
   onRestore?: (item: SavedTableSummary) => void;
   onDeletePermanently?: (item: SavedTableSummary) => void;
+  onRestoreDraft?: (draftId: string) => void;
+  onDeleteDraftPermanently?: (draftId: string) => void;
   onMoveToFolder?: (
     item: SavedTableSummary,
     folderId?: string,
@@ -106,6 +108,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
     error,
     items,
     trashedItems = [],
+    trashedDraftItems = [],
     draftItems = [],
     folders,
     activeNormalizedName,
@@ -113,11 +116,10 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
     activeDirty = false,
     onToggle,
     onOpenWorkspace,
-    onCreateDraft,
     onCreateFolder,
     onSelectDraft,
     onDeleteDraft,
-    onMoveDraftToFolder,
+    _onMoveDraftToFolder,
     onSelect,
     onRename,
     onDelete,
@@ -167,7 +169,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
       folders,
       searchQuery: query,
     });
-    const flatFolders = useMemo(() => {
+    const _flatFolders = useMemo(() => {
       const result: Array<{ id: string; name: string; depth: number }> = [];
       const walk = (nodes: FolderTreeNode[], depth: number) => {
         for (const folder of nodes) {
@@ -379,6 +381,46 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
       </div>
     );
 
+    const renderTrashDraft = (draft: DraftSummary) => (
+      <div
+        key={draft.draftId}
+        className="group flex items-center gap-1 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
+      >
+        <Trash2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 flex-1 truncate font-medium">{draft.name}</span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 opacity-0 group-hover:opacity-100"
+            >
+              <MoreHorizontal className="h-3.5 w-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-36">
+            {onRestoreDraft && (
+              <DropdownMenuItem onClick={() => onRestoreDraft(draft.draftId)}>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                {t('savedTables.restore')}
+              </DropdownMenuItem>
+            )}
+            {onDeleteDraftPermanently && (
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => onDeleteDraftPermanently(draft.draftId)}
+              >
+                <X className="mr-2 h-4 w-4" />
+                {t('savedTables.deletePermanently')}
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
+
+    const totalTrashedCount = trashedItems.length + trashedDraftItems.length;
+
     return (
       <aside
         className={cn(
@@ -441,13 +483,8 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
           {!loading && !error && (
             <div className="space-y-4">
               <section className="space-y-1">
-                <div className="flex items-center justify-between px-2 text-xs font-medium text-muted-foreground">
+                <div className="flex items-center px-2 text-xs font-medium text-muted-foreground">
                   <span>{t('savedTables.draftsSection')}</span>
-                  {onCreateDraft && (
-                    <button type="button" onClick={onCreateDraft} className="text-primary">
-                      {t('savedTables.createDraft')}
-                    </button>
-                  )}
                 </div>
                 {visibleDrafts.map((draft) => {
                   const isActive = activeDraftId === draft.draftId;
@@ -467,7 +504,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                       >
                         {draft.name}
                       </button>
-                      {(onDeleteDraft || onMoveDraftToFolder) && (
+                      {onDeleteDraft && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -479,34 +516,13 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-36">
-                            {onMoveDraftToFolder && (
-                              <>
-                                <DropdownMenuItem
-                                  onClick={() => onMoveDraftToFolder(draft.draftId, undefined)}
-                                >
-                                  {t('savedTables.moveToRoot')}
-                                </DropdownMenuItem>
-                                {flatFolders.map((folder) => (
-                                  <DropdownMenuItem
-                                    key={folder.id}
-                                    onClick={() => onMoveDraftToFolder(draft.draftId, folder.id)}
-                                  >
-                                    <span style={{ paddingLeft: `${folder.depth * 10}px` }}>
-                                      {folder.name}
-                                    </span>
-                                  </DropdownMenuItem>
-                                ))}
-                              </>
-                            )}
-                            {onDeleteDraft && (
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => onDeleteDraft(draft.draftId)}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                {t('savedTables.deleteDraft')}
-                              </DropdownMenuItem>
-                            )}
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => onDeleteDraft(draft.draftId)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              {t('savedTables.deleteDraft')}
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       )}
@@ -527,8 +543,11 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                       {t('savedTables.backToProjects')}
                     </button>
                   </div>
-                  {trashedItems.length > 0 ? (
-                    trashedItems.map((item) => renderTrashTable(item))
+                  {totalTrashedCount > 0 ? (
+                    <>
+                      {trashedItems.map((item) => renderTrashTable(item))}
+                      {trashedDraftItems.map((draft) => renderTrashDraft(draft))}
+                    </>
                   ) : (
                     <div className="px-2 py-2 text-xs text-muted-foreground">
                       {t('savedTables.trashEmpty')}
@@ -598,7 +617,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                   {t('savedTables.trash')}
                 </span>
                 <span className="rounded-full bg-muted px-2 py-0.5 text-xs">
-                  {trashedItems.length}
+                  {totalTrashedCount}
                 </span>
               </button>
             </div>

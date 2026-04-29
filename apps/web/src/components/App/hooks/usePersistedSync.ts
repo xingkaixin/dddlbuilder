@@ -37,6 +37,8 @@ interface UsePersistedSyncParams {
   setLoadedTableSignature: (signature: string | null) => void;
   // 新增：用于一致性检查
   loadedTableNormalizedName: string | null;
+  // 新增：同步更新标签页快照的 dirty 状态
+  updateActiveTabSnapshot?: (state: PersistedState, isDirty: boolean) => void;
 }
 
 export function usePersistedSync({
@@ -64,6 +66,7 @@ export function usePersistedSync({
   setLoadedTableName,
   setLoadedTableSignature,
   loadedTableNormalizedName,
+  updateActiveTabSnapshot,
 }: UsePersistedSyncParams) {
   const activeSourceRef = useRef(activeSource);
   activeSourceRef.current = activeSource;
@@ -175,11 +178,12 @@ export function usePersistedSync({
           source,
           isDirty,
         });
+        updateActiveTabSnapshot?.(state, isDirty);
       } catch {
         // ignore quota errors
       }
     },
-    [hydrated, buildPersistedState, saveState, loadedTableNormalizedName],
+    [hydrated, buildPersistedState, saveState, loadedTableNormalizedName, updateActiveTabSnapshot],
     PERSIST_DEBOUNCE_MS,
   );
 }

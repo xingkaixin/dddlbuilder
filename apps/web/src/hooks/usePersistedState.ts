@@ -18,7 +18,10 @@ import {
   deleteDraft,
   deleteSavedDraft,
   listSavedDrafts,
+  listTrashedDrafts,
+  readDraft,
   renameSavedDraftKey,
+  restoreDraft,
   upsertSavedDraft,
   writeDraft,
   writeWorkspaceSession,
@@ -61,7 +64,7 @@ export interface UsePersistedStateReturn {
   getGlobalDraftState: () => PersistedState | null;
   getDraftState: (draftId: string) => PersistedState | null;
   setWorkspaceSnapshot: (source: WorkspaceSource, state: PersistedState) => void;
-  createDraft: (draftId: string, state: PersistedState) => void;
+  createDraft: (draftId: string, state: PersistedState) => string;
   deleteDraftById: (draftId: string) => void;
   moveDraftToFolder: (draftId: string, folderId?: string) => void;
   getSavedTableDraft: (normalizedName: string) => SavedTableDraftRecord | null;
@@ -71,6 +74,9 @@ export interface UsePersistedStateReturn {
     toNormalizedName: string,
     nextTableName: string,
   ) => void;
+  trashedDrafts: DraftSummary[];
+  restoreDraftById: (draftId: string) => Promise<void>;
+  permanentlyDeleteDraftById: (draftId: string) => void;
 }
 
 export function usePersistedState(): UsePersistedStateReturn {
@@ -87,6 +93,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     draftId: DEFAULT_DRAFT_ID,
   });
   const [draftSummaries, setDraftSummaries] = useState<DraftSummary[]>([]);
+  const [trashedDrafts, setTrashedDrafts] = useState<DraftSummary[]>([]);
 
   const activeSourceRef = useRef<WorkspaceSource>({
     kind: 'draft',
@@ -256,19 +263,35 @@ export function usePersistedState(): UsePersistedStateReturn {
   }, [activeSource, currentScope, shareStorageKey, syncActiveSource]);
 
   const createDraft = useCallback(
-    (draftId: string, state: PersistedState) => {
-      if (shareId) return;
+    (draftId: string, state: PersistedState): string => {
+      if (shareId) return state.tableName.trim() || '未命名草稿';
+
+      const existingNames = new Set(
+        Array.from(draftsRef.current.values()).map((r) => r.state.tableName.trim() || '未命名草稿'),
+      );
+      const baseName = state.tableName.trim() || '未命名草稿';
+      let uniqueName = baseName;
+      if (existingNames.has(uniqueName)) {
+        let counter = 1;
+        while (existingNames.has(`${uniqueName}_${counter}`)) {
+          counter++;
+        }
+        uniqueName = `${uniqueName}_${counter}`;
+      }
+
+      const finalState = uniqueName !== baseName ? { ...state, tableName: uniqueName } : state;
       const draftRecord: GlobalDraftRecord = {
         updatedAt: Date.now(),
-        state,
+        state: finalState,
       };
       draftsRef.current.set(draftId, draftRecord);
       setDraftSummaries((prev) => {
         const next = prev.filter((d) => d.draftId !== draftId);
-        next.push(buildDraftSummary(draftId, state, Date.now()));
+        next.push(buildDraftSummary(draftId, finalState, Date.now()));
         return next;
       });
       fireAndForget(writeDraft(draftId, draftRecord, currentScope));
+      return uniqueName;
     },
     [currentScope, shareId],
   );
@@ -276,9 +299,27 @@ export function usePersistedState(): UsePersistedStateReturn {
   const deleteDraftById = useCallback(
     (draftId: string) => {
       if (shareId) return;
+      const record = draftsRef.current.get(draftId);
+      if (!record) return;
+
+      const trashedRecord: GlobalDraftRecord = {
+        ...record,
+        updatedAt: Date.now(),
+        trashedAt: Date.now(),
+      };
       draftsRef.current.delete(draftId);
       setDraftSummaries((prev) => prev.filter((d) => d.draftId !== draftId));
-      fireAndForget(deleteDraft(draftId, currentScope));
+      setTrashedDrafts((prev) => [
+        buildDraftSummary(
+          draftId,
+          trashedRecord.state,
+          trashedRecord.updatedAt,
+          trashedRecord.folderId,
+          trashedRecord.trashedAt,
+        ),
+        ...prev,
+      ]);
+      fireAndForget(writeDraft(draftId, trashedRecord, currentScope));
 
       if (activeSourceRef.current.kind === 'draft' && activeSourceRef.current.draftId === draftId) {
         syncActiveSource({ kind: 'draft', draftId: DEFAULT_DRAFT_ID });
@@ -287,6 +328,60 @@ export function usePersistedState(): UsePersistedStateReturn {
       }
     },
     [currentScope, shareId, syncActiveSource],
+  );
+
+  const restoreDraftById = useCallback(
+    async (draftId: string) => {
+      if (shareId) return;
+      const record = await readDraft(draftId, currentScope);
+      if (!record) return;
+
+      // 命名冲突解决
+      const existingNames = new Set(
+        Array.from(draftsRef.current.values()).map((r) => r.state.tableName.trim() || '未命名草稿'),
+      );
+      const baseName = record.state.tableName.trim() || '未命名草稿';
+      let uniqueName = baseName;
+      if (existingNames.has(uniqueName)) {
+        let counter = 1;
+        while (existingNames.has(`${uniqueName}_${counter}`)) {
+          counter++;
+        }
+        uniqueName = `${uniqueName}_${counter}`;
+      }
+
+      const restoredRecord: GlobalDraftRecord = {
+        ...record,
+        updatedAt: Date.now(),
+        trashedAt: undefined,
+      };
+      if (uniqueName !== baseName) {
+        restoredRecord.state = { ...restoredRecord.state, tableName: uniqueName };
+      }
+
+      setTrashedDrafts((prev) => prev.filter((d) => d.draftId !== draftId));
+      setDraftSummaries((prev) => [
+        ...prev,
+        buildDraftSummary(
+          draftId,
+          restoredRecord.state,
+          restoredRecord.updatedAt,
+          restoredRecord.folderId,
+        ),
+      ]);
+      draftsRef.current.set(draftId, restoredRecord);
+      await restoreDraft(draftId, restoredRecord, currentScope);
+    },
+    [currentScope, shareId],
+  );
+
+  const permanentlyDeleteDraftById = useCallback(
+    (draftId: string) => {
+      if (shareId) return;
+      setTrashedDrafts((prev) => prev.filter((d) => d.draftId !== draftId));
+      fireAndForget(deleteDraft(draftId, currentScope));
+    },
+    [currentScope, shareId],
   );
 
   const moveDraftToFolder = useCallback(
@@ -386,6 +481,19 @@ export function usePersistedState(): UsePersistedStateReturn {
         }
       }
       updateDrafts(allDrafts);
+
+      const trashed = await listTrashedDrafts(currentScope);
+      setTrashedDrafts(
+        trashed.map(({ draftId, record }) =>
+          buildDraftSummary(
+            draftId,
+            record.state,
+            record.updatedAt,
+            record.folderId,
+            record.trashedAt,
+          ),
+        ),
+      );
 
       const session = normalizeWorkspaceSession(sessionRaw);
 
@@ -601,5 +709,8 @@ export function usePersistedState(): UsePersistedStateReturn {
     getSavedTableDraft,
     removeSavedTableDraft,
     renameSavedTableDraft,
+    trashedDrafts,
+    restoreDraftById,
+    permanentlyDeleteDraftById,
   };
 }

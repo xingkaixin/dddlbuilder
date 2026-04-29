@@ -209,6 +209,9 @@ function App() {
     getSavedTableDraft,
     removeSavedTableDraft,
     renameSavedTableDraft,
+    trashedDrafts,
+    restoreDraftById,
+    permanentlyDeleteDraftById,
   } = usePersistedState();
 
   // ─── Tab store ─────────────────────────────────────────────────
@@ -219,6 +222,7 @@ function App() {
     activateTab,
     closeTab: closeTabStore,
     updateActiveTabSnapshot,
+    updateActiveTabTitle,
     updateActiveTabSource,
     findTabBySource,
     getActiveTab,
@@ -305,7 +309,6 @@ function App() {
     hasLoadedTable,
     isLoadedDirty,
     canSaveCurrent,
-    loadedStatus,
     saveDialogTitle,
     saveDialogDescription,
     saveInputDisabled,
@@ -640,6 +643,7 @@ function App() {
     setLoadedTableName,
     setLoadedTableSignature,
     loadedTableNormalizedName,
+    updateActiveTabSnapshot,
   });
 
   const { handleClearAll, cancelClearAll, confirmClearAll } = useClearAllActions({
@@ -909,14 +913,24 @@ function App() {
       activateTab(newTabId);
 
       const result = await handleLoadSavedTable(item);
-      if (result) {
-        updateActiveTabSource({
-          kind: 'saved_table',
-          normalizedName: item.normalizedName,
-          tableName: item.name,
-          baseSignature: result.signature,
-        });
-        updateActiveTabSnapshot(result.state, false);
+      // 加载完成后，检查用户是否仍然在该标签页
+      if (useTabStore.getState().activeTabId === newTabId) {
+        if (result) {
+          updateActiveTabSource({
+            kind: 'saved_table',
+            normalizedName: item.normalizedName,
+            tableName: item.name,
+            baseSignature: result.signature,
+          });
+          updateActiveTabSnapshot(result.state, false);
+        }
+      } else {
+        // 用户已切换到其他标签页，恢复当前激活标签页的状态
+        const currentTab = getActiveTab();
+        if (currentTab) {
+          applySavedState(currentTab.stateSnapshot);
+          setWorkspaceSnapshot(currentTab.source, currentTab.stateSnapshot);
+        }
       }
       setTabLoading(newTabId, false);
     },
@@ -933,6 +947,7 @@ function App() {
       updateActiveTabSource,
       updateActiveTabSnapshot,
       setTabLoading,
+      getActiveTab,
     ],
   );
 
@@ -996,17 +1011,19 @@ function App() {
     flushCurrentWorkspace();
     const draftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const emptyState = createEmptyGlobalDraftState();
-    createDraft(draftId, emptyState);
+    const uniqueName = createDraft(draftId, emptyState);
+    const finalState =
+      uniqueName !== emptyState.tableName ? { ...emptyState, tableName: uniqueName } : emptyState;
 
     const newTabId = addTab({
-      title: t('app.workspace.globalDraft'),
+      title: uniqueName,
       source: { kind: 'draft', draftId },
-      stateSnapshot: emptyState,
+      stateSnapshot: finalState,
       isDirty: false,
     });
     activateTab(newTabId);
-    applySavedState(emptyState);
-    setWorkspaceSnapshot({ kind: 'draft', draftId }, emptyState);
+    applySavedState(finalState);
+    setWorkspaceSnapshot({ kind: 'draft', draftId }, finalState);
     setLoadedTableNormalizedName(null);
     setLoadedTableName(null);
     setLoadedTableSignature(null);
@@ -1021,12 +1038,10 @@ function App() {
     setLoadedTableNormalizedName,
     setLoadedTableName,
     setLoadedTableSignature,
-    t,
   ]);
 
   const handleCloseTab = useCallback(
     (tabId: string) => {
-      const tabToClose = tabs.find((t) => t.id === tabId);
       closeTabStore(tabId);
 
       const nextActive = getActiveTab();
@@ -1037,29 +1052,27 @@ function App() {
         // 没有标签页了，新建空草稿
         const newDraftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const emptyState = createEmptyGlobalDraftState();
-        createDraft(newDraftId, emptyState);
+        const uniqueName = createDraft(newDraftId, emptyState);
+        const finalState =
+          uniqueName !== emptyState.tableName
+            ? { ...emptyState, tableName: uniqueName }
+            : emptyState;
         const newTabId = addTab({
-          title: t('app.workspace.globalDraft'),
+          title: uniqueName,
           source: { kind: 'draft', draftId: newDraftId },
-          stateSnapshot: emptyState,
+          stateSnapshot: finalState,
           isDirty: false,
         });
         activateTab(newTabId);
-        applySavedState(emptyState);
-        setWorkspaceSnapshot({ kind: 'draft', draftId: newDraftId }, emptyState);
+        applySavedState(finalState);
+        setWorkspaceSnapshot({ kind: 'draft', draftId: newDraftId }, finalState);
         setLoadedTableNormalizedName(null);
         setLoadedTableName(null);
         setLoadedTableSignature(null);
         setLoadedTableVersion(0);
       }
-
-      // 如果关闭的是草稿标签页，清理草稿数据
-      if (tabToClose?.source.kind === 'draft') {
-        deleteDraftById(tabToClose.source.draftId);
-      }
     },
     [
-      tabs,
       closeTabStore,
       getActiveTab,
       applySavedState,
@@ -1070,14 +1083,13 @@ function App() {
       setLoadedTableNormalizedName,
       setLoadedTableName,
       setLoadedTableSignature,
-      deleteDraftById,
-      t,
     ],
   );
 
   const handleRestoreTable = useCallback(
     (item: SavedTableSummary) => {
-      void restoreTable(item.normalizedName).then((result) => {
+      const existingFolderIds = new Set(folderTree.map((f) => f.id));
+      void restoreTable(item.normalizedName, { existingFolderIds }).then((result) => {
         showToast(
           result.ok
             ? t('savedTables.restore')
@@ -1085,7 +1097,24 @@ function App() {
         );
       });
     },
-    [restoreTable, showToast, t],
+    [restoreTable, showToast, t, folderTree],
+  );
+
+  const handleRestoreDraft = useCallback(
+    (draftId: string) => {
+      void restoreDraftById(draftId).then(() => {
+        showToast(t('savedTables.restore'));
+      });
+    },
+    [restoreDraftById, showToast, t],
+  );
+
+  const handleDeleteDraftPermanently = useCallback(
+    (draftId: string) => {
+      permanentlyDeleteDraftById(draftId);
+      showToast(t('savedTables.deletePermanently'));
+    },
+    [permanentlyDeleteDraftById, showToast, t],
   );
 
   const handleDeleteTablePermanently = useCallback(
@@ -1236,6 +1265,18 @@ function App() {
     [setDbType, activeTab, setActiveTab],
   );
 
+  const handleTableNameChange = useCallback(
+    (value: string) => {
+      setTableName(value);
+      const activeTab = getActiveTab();
+      if (activeTab?.source.kind === 'draft') {
+        const newTitle = value.trim() || t('app.workspace.globalDraft');
+        updateActiveTabTitle(newTitle);
+      }
+    },
+    [setTableName, getActiveTab, updateActiveTabTitle, t],
+  );
+
   const dataTableToolbarLeft = useTemplateToolbarLeft({
     templates,
     templatesLoading,
@@ -1296,23 +1337,6 @@ function App() {
           </Suspense>
         )}
 
-        {!isShareView && (
-          <TabBar
-            tabs={tabs}
-            activeTabId={activeTabId}
-            onActivateTab={(id) => {
-              const tab = tabs.find((t) => t.id === id);
-              if (!tab || tab.id === activeTabId) return;
-              flushCurrentWorkspace();
-              activateTab(id);
-              applySavedState(tab.stateSnapshot);
-              setWorkspaceSnapshot(tab.source, tab.stateSnapshot);
-            }}
-            onCloseTab={handleCloseTab}
-            onCreateTab={handleCreateDraft}
-          />
-        )}
-
         <SavedTablesContainer
           drawerProps={{
             open: savedTablesDrawerOpen,
@@ -1328,7 +1352,6 @@ function App() {
             activeNormalizedName: loadedTableNormalizedName,
             activeDirty: isLoadedDirty,
             onSelectDraft: handleSelectDraft,
-            onCreateDraft: handleCreateDraft,
             onDeleteDraft: handleDeleteDraft,
             onSelect: handleSelectSavedTable,
             onRename: handleOpenRenameDialog,
@@ -1350,6 +1373,7 @@ function App() {
               error={savedTablesError}
               items={savedTables}
               trashedItems={trashedTables}
+              trashedDraftItems={trashedDrafts}
               draftItems={drawerDraftItems}
               folders={folderTree}
               activeNormalizedName={loadedTableNormalizedName}
@@ -1357,7 +1381,6 @@ function App() {
               activeDirty={isLoadedDirty}
               onToggle={() => setWorkspaceSidebarOpen((open) => !open)}
               onOpenWorkspace={handleOpenSavedTablesDrawer}
-              onCreateDraft={handleCreateDraft}
               onCreateFolder={() => handleOpenCreateFolderDialog()}
               onSelectDraft={handleSelectDraft}
               onDeleteDraft={handleDeleteDraft}
@@ -1367,6 +1390,8 @@ function App() {
               onDelete={handleOpenDeleteDialog}
               onRestore={handleRestoreTable}
               onDeletePermanently={handleDeleteTablePermanently}
+              onRestoreDraft={handleRestoreDraft}
+              onDeleteDraftPermanently={handleDeleteDraftPermanently}
               onMoveToFolder={handleMoveTableToFolder}
               onMoveFolder={handleMoveFolderToFolder}
               onRenameFolder={handleOpenRenameFolderDialog}
@@ -1375,198 +1400,217 @@ function App() {
             />
           )}
 
-          <div className="min-w-0 flex-1 p-3 sm:p-4">
-            {isMainWorkspaceLoading ? (
-              <MainWorkspaceSkeleton />
-            ) : (
-              <div className="flex flex-col gap-4 xl:flex-row">
-                <div
-                  className={`min-w-0 flex-1 ${
-                    isShareView ? 'pointer-events-none select-none opacity-80' : ''
-                  }`}
-                >
-                  <TableBuilderContainer
-                    tableConfigProps={{
-                      schemaName,
-                      tableName,
-                      tableComment,
-                      objectType,
+          <div className="min-w-0 flex-1">
+            {!isShareView && (
+              <TabBar
+                tabs={tabs}
+                activeTabId={activeTabId}
+                onActivateTab={(id) => {
+                  const tab = tabs.find((t) => t.id === id);
+                  if (!tab || tab.id === activeTabId) return;
+                  flushCurrentWorkspace();
+                  activateTab(id);
+                  applySavedState(tab.stateSnapshot);
+                  setWorkspaceSnapshot(tab.source, tab.stateSnapshot);
+                }}
+                onCloseTab={handleCloseTab}
+                onCreateTab={handleCreateDraft}
+              />
+            )}
+            <div className="p-3 sm:p-4">
+              {isMainWorkspaceLoading ? (
+                <MainWorkspaceSkeleton />
+              ) : (
+                <div className="flex flex-col gap-4 xl:flex-row">
+                  <div
+                    className={`min-w-0 flex-1 ${
+                      isShareView ? 'pointer-events-none select-none opacity-80' : ''
+                    }`}
+                  >
+                    <TableBuilderContainer
+                      tableConfigProps={{
+                        schemaName,
+                        tableName,
+                        tableComment,
+                        objectType,
+                        dbType,
+                        onSchemaNameChange: setSchemaName,
+                        onTableNameChange: handleTableNameChange,
+                        onTableCommentChange: setTableComment,
+                        onObjectTypeChange: (value) => {
+                          setObjectType(value);
+                          setActiveTab('fields');
+                        },
+                        onDbTypeChange: handleDbTypeChange,
+                        onClearAll: handleClearAll,
+                        onSaveCurrent: handleSaveCurrent,
+                        onViewDiff: handleOpenDiffDialog,
+                        onViewHistory: handleViewCurrentVersionHistory,
+                        onOpenErDiagram: handleOpenErDiagram,
+                        saveDisabled: !canSaveCurrent,
+                        saveDisabledHint: t('dialogs.save.disabledTip'),
+                        showDiffButton: isLoadedDirty && tableDiff?.hasChanges,
+                        showHistoryButton: Boolean(loadedTableNormalizedName),
+                        loadedTableName,
+                        workspaceLabel,
+                        fieldCount: filledRowCount,
+                        indexCount: indexes.length,
+                      }}
+                      objectType={objectType}
+                      tabsValue={activeTab}
+                      onTabsValueChange={handleTabValueChange}
+                      filledRowCount={filledRowCount}
+                      indexesLength={indexes.length}
+                      indexStats={indexStats}
+                      authObjectsLength={authObjects.length}
+                      miscEnabled={tableMiscConfig.enabled}
+                      showIndexTab={dbType !== 'hive'}
+                      showForeignKeyTab={dbType !== 'hive'}
+                      foreignKeysLength={foreignKeys.length}
+                      showShardingTab={dbType === 'postgresql-citus'}
+                      shardingBadgeText={
+                        citusShardingConfig.mode === 'distributed'
+                          ? citusShardingConfig.distributionColumn
+                          : null
+                      }
+                      showPartitionTab={supportsMysqlPartition}
+                      partitionBadgeText={
+                        mysqlPartitionConfig.enabled ? mysqlPartitionConfig.type : null
+                      }
+                      showHivePartitionTab={dbType === 'hive'}
+                      hivePartitionBadgeText={
+                        tableMiscConfig.partitions?.enabled
+                          ? `${tableMiscConfig.partitions.columns.length}`
+                          : null
+                      }
+                      dataTableProps={{
+                        isHighlighted: isFieldTableHighlighted,
+                        highlightedRowIndex: highlightedRowIndex,
+                        onOpenStorageEstimator: handleOpenStorageEstimator,
+                        onOpenMockDataGenerator: handleOpenMockDataGenerator,
+                        onGenerateComments: handleGenerateComments,
+                        isGeneratingComments,
+                        toolbarLeft: dataTableToolbarLeft,
+                      }}
+                      viewDefinitionPanelProps={{
+                        definition: viewDefinition,
+                        createOrReplace: viewCreateOrReplace,
+                        onDefinitionChange: setViewDefinition,
+                        onCreateOrReplaceChange: setViewCreateOrReplace,
+                      }}
+                      indexPanelProps={{
+                        animatingIndexIds: animatingIndexIds,
+                        removingIndexIds: removingIndexIds,
+                      }}
+                      foreignKeyPanelProps={{
+                        availableFields,
+                      }}
+                      authPanelProps={{
+                        authInput,
+                        authObjects,
+                        onAuthInputChange: setAuthInput,
+                        onAddAuthObject: addAuthObject,
+                        onRemoveAuthObject: removeAuthObject,
+                      }}
+                      tableOptionsPanelProps={{
+                        dbType,
+                        config: tableMiscConfig,
+                        onEnabledChange: setMiscEnabled,
+                        onEngineChange: setEngine,
+                        onCharsetChange: setCharset,
+                        onCollationChange: setCollation,
+                        onTablespaceChange: setTablespace,
+                        onFillfactorChange: setFillfactor,
+                        onPctfreeChange: setPctfree,
+                        onInitransChange: setInitrans,
+                        onStoredAsChange: setStoredAs,
+                        onExternalChange: setExternal,
+                        onLocationChange: setLocation,
+                      }}
+                      shardingPanelProps={{
+                        config: citusShardingConfig,
+                        availableFields,
+                        onModeChange: setCitusMode,
+                        onDistributionColumnChange: setDistributionColumn,
+                      }}
+                      partitionPanelProps={{
+                        config: mysqlPartitionConfig,
+                        availableFields,
+                        onEnabledChange: setPartitionEnabled,
+                        onTypeChange: setPartitionType,
+                        onColumnsChange: setPartitionColumns,
+                        onExpressionChange: setPartitionExpression,
+                        onPartitionCountChange: setPartitionCount,
+                        onAddPartition: addPartition,
+                        onRemovePartition: removePartition,
+                        onUpdatePartition: updatePartition,
+                        onGeneratePartitions: generateRangePartitions,
+                      }}
+                      hivePartitionPanelProps={{
+                        config: tableMiscConfig.partitions || {
+                          enabled: false,
+                          columns: [],
+                        },
+                        onEnabledChange: (enabled) =>
+                          setHivePartitionConfig((prev) => ({
+                            ...(prev || { enabled: false, columns: [] }),
+                            enabled,
+                          })),
+                        onAddColumn: (column) =>
+                          setHivePartitionConfig((prev) => ({
+                            ...(prev || { enabled: true, columns: [] }),
+                            columns: [...(prev?.columns || []), column],
+                          })),
+                        onRemoveColumn: (index) =>
+                          setHivePartitionConfig((prev) => ({
+                            ...(prev || { enabled: false, columns: [] }),
+                            columns: (prev?.columns || []).filter((_, i) => i !== index),
+                          })),
+                        onUpdateColumn: (index, column) =>
+                          setHivePartitionConfig((prev) => ({
+                            ...(prev || { enabled: false, columns: [] }),
+                            columns: (prev?.columns || []).map((c, i) =>
+                              i === index ? column : c,
+                            ),
+                          })),
+                        onClusteringChange: (clustering) =>
+                          setHivePartitionConfig((prev) => ({
+                            ...(prev || { enabled: false, columns: [] }),
+                            clustering,
+                          })),
+                      }}
+                    />
+                  </div>
+
+                  <OutputContainer
+                    open={outputPanelOpen}
+                    onOpenChange={setOutputPanelOpen}
+                    ddlOutputProps={{
+                      generatedSql,
+                      generatedDcl,
                       dbType,
-                      onSchemaNameChange: setSchemaName,
-                      onTableNameChange: setTableName,
-                      onTableCommentChange: setTableComment,
-                      onObjectTypeChange: (value) => {
-                        setObjectType(value);
-                        setActiveTab('fields');
-                      },
-                      onDbTypeChange: handleDbTypeChange,
-                      onClearAll: handleClearAll,
-                      onSaveCurrent: handleSaveCurrent,
-                      onViewDiff: handleOpenDiffDialog,
-                      onViewHistory: handleViewCurrentVersionHistory,
-                      onOpenErDiagram: handleOpenErDiagram,
-                      saveDisabled: !canSaveCurrent,
-                      saveDisabledHint: t('dialogs.save.disabledTip'),
-                      showDiffButton: isLoadedDirty && tableDiff?.hasChanges,
-                      showHistoryButton: Boolean(loadedTableNormalizedName),
-                      loadedStatus,
-                      loadedTableName,
-                      workspaceLabel,
-                      fieldCount: filledRowCount,
-                      indexCount: indexes.length,
-                    }}
-                    objectType={objectType}
-                    tabsValue={activeTab}
-                    onTabsValueChange={handleTabValueChange}
-                    filledRowCount={filledRowCount}
-                    indexesLength={indexes.length}
-                    indexStats={indexStats}
-                    authObjectsLength={authObjects.length}
-                    miscEnabled={tableMiscConfig.enabled}
-                    showIndexTab={dbType !== 'hive'}
-                    showForeignKeyTab={dbType !== 'hive'}
-                    foreignKeysLength={foreignKeys.length}
-                    showShardingTab={dbType === 'postgresql-citus'}
-                    shardingBadgeText={
-                      citusShardingConfig.mode === 'distributed'
-                        ? citusShardingConfig.distributionColumn
-                        : null
-                    }
-                    showPartitionTab={supportsMysqlPartition}
-                    partitionBadgeText={
-                      mysqlPartitionConfig.enabled ? mysqlPartitionConfig.type : null
-                    }
-                    showHivePartitionTab={dbType === 'hive'}
-                    hivePartitionBadgeText={
-                      tableMiscConfig.partitions?.enabled
-                        ? `${tableMiscConfig.partitions.columns.length}`
-                        : null
-                    }
-                    dataTableProps={{
-                      isHighlighted: isFieldTableHighlighted,
-                      highlightedRowIndex: highlightedRowIndex,
-                      onOpenStorageEstimator: handleOpenStorageEstimator,
-                      onOpenMockDataGenerator: handleOpenMockDataGenerator,
-                      onGenerateComments: handleGenerateComments,
-                      isGeneratingComments,
-                      toolbarLeft: dataTableToolbarLeft,
-                    }}
-                    viewDefinitionPanelProps={{
-                      definition: viewDefinition,
-                      createOrReplace: viewCreateOrReplace,
-                      onDefinitionChange: setViewDefinition,
-                      onCreateOrReplaceChange: setViewCreateOrReplace,
-                    }}
-                    indexPanelProps={{
-                      animatingIndexIds: animatingIndexIds,
-                      removingIndexIds: removingIndexIds,
-                    }}
-                    foreignKeyPanelProps={{
-                      availableFields,
-                    }}
-                    authPanelProps={{
-                      authInput,
-                      authObjects,
-                      onAuthInputChange: setAuthInput,
-                      onAddAuthObject: addAuthObject,
-                      onRemoveAuthObject: removeAuthObject,
-                    }}
-                    tableOptionsPanelProps={{
-                      dbType,
-                      config: tableMiscConfig,
-                      onEnabledChange: setMiscEnabled,
-                      onEngineChange: setEngine,
-                      onCharsetChange: setCharset,
-                      onCollationChange: setCollation,
-                      onTablespaceChange: setTablespace,
-                      onFillfactorChange: setFillfactor,
-                      onPctfreeChange: setPctfree,
-                      onInitransChange: setInitrans,
-                      onStoredAsChange: setStoredAs,
-                      onExternalChange: setExternal,
-                      onLocationChange: setLocation,
-                    }}
-                    shardingPanelProps={{
-                      config: citusShardingConfig,
-                      availableFields,
-                      onModeChange: setCitusMode,
-                      onDistributionColumnChange: setDistributionColumn,
-                    }}
-                    partitionPanelProps={{
-                      config: mysqlPartitionConfig,
-                      availableFields,
-                      onEnabledChange: setPartitionEnabled,
-                      onTypeChange: setPartitionType,
-                      onColumnsChange: setPartitionColumns,
-                      onExpressionChange: setPartitionExpression,
-                      onPartitionCountChange: setPartitionCount,
-                      onAddPartition: addPartition,
-                      onRemovePartition: removePartition,
-                      onUpdatePartition: updatePartition,
-                      onGeneratePartitions: generateRangePartitions,
-                    }}
-                    hivePartitionPanelProps={{
-                      config: tableMiscConfig.partitions || {
-                        enabled: false,
-                        columns: [],
-                      },
-                      onEnabledChange: (enabled) =>
-                        setHivePartitionConfig((prev) => ({
-                          ...(prev || { enabled: false, columns: [] }),
-                          enabled,
-                        })),
-                      onAddColumn: (column) =>
-                        setHivePartitionConfig((prev) => ({
-                          ...(prev || { enabled: true, columns: [] }),
-                          columns: [...(prev?.columns || []), column],
-                        })),
-                      onRemoveColumn: (index) =>
-                        setHivePartitionConfig((prev) => ({
-                          ...(prev || { enabled: false, columns: [] }),
-                          columns: (prev?.columns || []).filter((_, i) => i !== index),
-                        })),
-                      onUpdateColumn: (index, column) =>
-                        setHivePartitionConfig((prev) => ({
-                          ...(prev || { enabled: false, columns: [] }),
-                          columns: (prev?.columns || []).map((c, i) => (i === index ? column : c)),
-                        })),
-                      onClusteringChange: (clustering) =>
-                        setHivePartitionConfig((prev) => ({
-                          ...(prev || { enabled: false, columns: [] }),
-                          clustering,
-                        })),
+                      routineTableNameDefault,
+                      sqlFormatMode,
+                      onSqlFormatModeChange: setSqlFormatMode,
+                      onCopySql: copySql,
+                      onCopyDcl: copyDcl,
+                      generatedOrm,
+                      ormTarget,
+                      onOrmTargetChange: setOrmTarget,
+                      onCopyOrm: copyOrm,
+                      isReviewing,
+                      reviewPartialResult,
+                      reviewResult,
+                      reviewError,
+                      schemaLintIssues,
+                      onStartReview: handleStartReview,
+                      onViewReviewHistory: handleViewReviewHistory,
+                      onApplySuggestion: handleApplySuggestion,
                     }}
                   />
                 </div>
-
-                <OutputContainer
-                  open={outputPanelOpen}
-                  onOpenChange={setOutputPanelOpen}
-                  ddlOutputProps={{
-                    generatedSql,
-                    generatedDcl,
-                    dbType,
-                    routineTableNameDefault,
-                    sqlFormatMode,
-                    onSqlFormatModeChange: setSqlFormatMode,
-                    onCopySql: copySql,
-                    onCopyDcl: copyDcl,
-                    generatedOrm,
-                    ormTarget,
-                    onOrmTargetChange: setOrmTarget,
-                    onCopyOrm: copyOrm,
-                    isReviewing,
-                    reviewPartialResult,
-                    reviewResult,
-                    reviewError,
-                    schemaLintIssues,
-                    onStartReview: handleStartReview,
-                    onViewReviewHistory: handleViewReviewHistory,
-                    onApplySuggestion: handleApplySuggestion,
-                  }}
-                />
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
