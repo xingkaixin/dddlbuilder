@@ -89,6 +89,12 @@ test.describe('核心 UI 交互功能测试 @core', () => {
     // 填写表名以激活 SQL 生成
     await page.locator('#table-name').fill('tab_test');
 
+    // 收起侧边栏避免遮挡标签页
+    const collapseBtn = page.getByRole('button', { name: /收起侧边栏/i });
+    if (await collapseBtn.isVisible().catch(() => false)) {
+      await collapseBtn.click();
+    }
+
     // 测试标签页切换
     const tabs = [
       { name: /字段/i, panel: 'fields' },
@@ -101,7 +107,7 @@ test.describe('核心 UI 交互功能测试 @core', () => {
       const tabElement = page.getByRole('tab', { name: tab.name });
       // 检查标签是否存在（某些标签只在特定数据库下显示）
       if ((await tabElement.count()) > 0) {
-        await tabElement.click();
+        await tabElement.click({ force: true });
         await expect(tabElement).toHaveAttribute('aria-selected', 'true');
       }
     }

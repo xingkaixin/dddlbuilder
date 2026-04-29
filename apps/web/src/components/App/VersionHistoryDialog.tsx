@@ -398,7 +398,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                 onClick={handleDelete}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                {t('dialogs.delete.confirm')}
+                {t('versionHistory.deleteConfirmAction')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

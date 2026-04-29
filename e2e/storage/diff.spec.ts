@@ -40,13 +40,13 @@ test.describe('变更对比验证 @storage', () => {
     await fillBasicField(page, 'f1');
 
     await page.getByRole('button', { name: /保存当前表/i }).click();
-    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeVisible();
     await page.getByLabel('保存名称').fill(tableName);
     await page.getByRole('button', { name: /^保存$/ }).click();
-    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
+    await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeHidden();
 
-    await page.getByRole('button', { name: /查看已保存表/i, exact: true }).click();
-    await expect(page.getByRole('heading', { name: '已保存的表' })).toBeVisible();
+    await page.getByRole('button', { name: '工作区' }).click();
+    await expect(page.getByRole('heading', { name: '工作区' })).toBeVisible();
     await clickSavedTable(page, new RegExp(tableName, 'i'));
     await expect(page.getByText(new RegExp(`当前：${tableName}`))).toBeVisible();
 

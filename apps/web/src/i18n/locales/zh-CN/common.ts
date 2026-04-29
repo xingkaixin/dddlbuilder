@@ -1033,6 +1033,7 @@ export const zhCNCommon = {
     playTimeline: '播放回放',
     deleteConfirmTitle: '删除此版本？',
     deleteConfirmDescription: '该版本将被永久删除，且无法恢复。',
+    deleteConfirmAction: '删除',
   },
   timelinePlayer: {
     title: 'Schema 变更回放',

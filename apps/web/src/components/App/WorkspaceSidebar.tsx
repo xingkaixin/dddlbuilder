@@ -317,7 +317,13 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
               {t('savedTables.workspaceTitle')}
             </span>
           </button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggle}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onToggle}
+            aria-label={open ? t('savedTables.collapse') : t('savedTables.expand')}
+          >
             {open ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </Button>
         </div>

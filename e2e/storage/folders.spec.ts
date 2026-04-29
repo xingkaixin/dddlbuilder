@@ -16,18 +16,22 @@ const saveTable = async (page: any, name: string) => {
   await page.locator('#table-name').fill(name);
   await fillBasicField(page);
   await page.getByRole('button', { name: /保存当前表/i }).click();
-  await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeVisible();
+  await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeVisible();
   const nameInput = page.getByLabel('保存名称');
   if (await nameInput.isEnabled()) {
     await nameInput.fill(name);
   }
   await page.getByRole('button', { name: /^保存$/ }).click();
-  await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
+  await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeHidden();
 };
 
 const openSavedTables = async (page: any) => {
-  await page.getByRole('button', { name: /查看已保存表/i }).click();
-  await expect(page.getByRole('heading', { name: '已保存的表' })).toBeVisible();
+  const heading = page.getByRole('heading', { name: '工作区' });
+  if (await heading.isVisible().catch(() => false)) {
+    return;
+  }
+  await page.getByRole('button', { name: '工作区' }).click();
+  await expect(heading).toBeVisible();
 };
 
 const dragToTarget = async (page: any, source: any, target: any) => {

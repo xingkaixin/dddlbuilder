@@ -93,7 +93,7 @@ export const useAppStore = create<AppStoreState>((set) => ({
   dbType: 'mysql',
   sqlFormatMode: 'compact',
   addCount: 10,
-  fieldTableFreezeEnabled: true,
+  fieldTableFreezeEnabled: false,
   fieldTableFreezeColumns: 3,
   activeTab: 'fields',
   savedTablesDrawerOpen: false,
@@ -139,7 +139,7 @@ export const useAppStore = create<AppStoreState>((set) => ({
   resetTableViewConfig: () =>
     set({
       addCount: 10,
-      fieldTableFreezeEnabled: true,
+      fieldTableFreezeEnabled: false,
       fieldTableFreezeColumns: 3,
       activeTab: 'fields',
       sqlFormatMode: 'compact',

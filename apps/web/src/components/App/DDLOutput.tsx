@@ -229,7 +229,7 @@ export const DDLOutput = memo<DDLOutputProps>(
     const canReview = generatedSql && !generatedSql.startsWith('--');
 
     return (
-      <div className="relative flex w-full flex-col rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5 xl:w-[34rem] xl:shrink-0 2xl:w-[38rem]">
+      <div className="relative flex w-full flex-col rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-shadow duration-300 hover:shadow-xl hover:shadow-primary/10 xl:w-[34rem] xl:shrink-0 2xl:w-[38rem]">
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent rounded-lg" />
         <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-primary/30 to-transparent rounded-t-lg" />
 

@@ -28,14 +28,14 @@ test.describe('存储管理验证 @storage @smoke', () => {
 
     // 点击保存按钮 (在 TableConfig 中)
     await page.getByRole('button', { name: /保存当前表/i }).click();
-    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeVisible();
     await page.getByLabel('保存名称').fill('save_test_table');
     await page.getByRole('button', { name: /^保存$/ }).click();
-    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
+    await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeHidden();
 
-    // 点击“查看已保存表”
-    await page.getByRole('button', { name: /查看已保存表/i }).click();
-    await expect(page.getByRole('heading', { name: '已保存的表' })).toBeVisible();
+    // 打开工作区抽屉
+    await page.getByRole('button', { name: '工作区' }).click();
+    await expect(page.getByRole('heading', { name: '工作区' })).toBeVisible();
 
     // 在侧边栏/对话框中应该能看到
     await expect(page.getByRole('button', { name: /save_test_table/i })).toBeVisible();

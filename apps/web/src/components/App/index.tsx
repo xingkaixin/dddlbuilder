@@ -53,7 +53,7 @@ import { isCnyFireworksEnabled } from '@/config/featureFlags';
 const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
 
 const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) => createEmptyRow(index));
-const DEFAULT_FIELD_TABLE_FREEZE_ENABLED = true;
+const DEFAULT_FIELD_TABLE_FREEZE_ENABLED = false;
 const DEFAULT_FIELD_TABLE_FREEZE_COLUMNS = 3;
 const SHARE_COPY_SAVED_TOAST_KEY = 'ddlbuilder:share:copy-saved:v1';
 

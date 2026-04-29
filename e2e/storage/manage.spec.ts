@@ -12,50 +12,59 @@ const fillBasicField = async (page: any, name = 'id') => {
   await page.keyboard.press('Enter');
 };
 
-const selectFirstDraft = async (page: any) => {
-  await openSavedTables(page);
-  const row = page.locator('[data-testid="saved-table-row:default"]');
-  await expect(row).toBeVisible();
-  await row.locator('[data-testid="table-select:default"]').click();
-};
-
-const saveTable = async (page: any, name: string, comment = '') => {
-  await selectFirstDraft(page);
+// 保存新表（弹对话框）
+const saveNewTable = async (page: any, name: string, comment = '') => {
   await page.locator('#table-name').fill(name);
   if (comment) {
     await page.locator('#table-comment').fill(comment);
   }
   await fillBasicField(page);
   await page.getByRole('button', { name: /保存当前表/i }).click();
-  await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeVisible();
+  await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeVisible();
   const nameInput = page.getByLabel('保存名称');
   if (await nameInput.isEnabled()) {
     await nameInput.fill(name);
   }
   await page.getByRole('button', { name: /^保存$/ }).click();
-  await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
+  await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeHidden();
 };
 
-const openSavedTables = async (page: any) => {
-  const heading = page.getByRole('heading', { name: '已保存的表' });
-  if (await heading.isVisible().catch(() => false)) {
+// 在侧边栏中点击保存的表
+const clickSidebarTable = async (page: any, pattern: RegExp) => {
+  const sidebar = page.locator('aside');
+  const tableBtn = sidebar.locator('button').filter({ hasText: pattern }).first();
+  await tableBtn.click();
+};
+
+// 获取侧边栏中的保存的表项
+const getSidebarTableItem = (page: any, pattern: RegExp) => {
+  const sidebar = page.locator('aside');
+  return sidebar.locator('div.group').filter({ hasText: pattern }).first();
+};
+
+// 在侧边栏中对表项执行下拉菜单操作
+const sidebarTableAction = async (page: any, pattern: RegExp, action: RegExp) => {
+  const item = getSidebarTableItem(page, pattern);
+  await item.hover();
+  const moreBtn = item.locator('button').last();
+  await moreBtn.click();
+  await page.getByRole('menuitem').filter({ hasText: action }).click();
+};
+
+// 点击侧边栏中的第一个草稿
+const clickFirstDraft = async (page: any) => {
+  const sidebar = page.locator('aside');
+  const draftSection = sidebar.locator('section').filter({ hasText: /^草稿/ });
+  const createDraftButton = draftSection.getByRole('button', { name: /新建草稿|new draft/i });
+  const draftButtons = draftSection
+    .locator('button')
+    .filter({ hasNotText: /新建草稿|new draft/i })
+    .filter({ hasText: /草稿|draft/i });
+  if ((await draftButtons.count()) === 0) {
+    await createDraftButton.click();
     return;
   }
-  await page.getByRole('button', { name: /查看已保存表/i }).click();
-  await expect(heading).toBeVisible();
-};
-
-const getSavedTableRow = (page: any, pattern: RegExp) => {
-  return page
-    .locator('[data-testid^="saved-table-row:"]')
-    .filter({ hasText: pattern })
-    .filter({ hasNot: page.locator('[data-testid^="draft-badge:"]') });
-};
-
-const clickSavedTable = async (page: any, pattern: RegExp) => {
-  const row = getSavedTableRow(page, pattern);
-  const selectBtn = row.locator('button[data-testid^="table-select:"]');
-  await selectBtn.click();
+  await draftButtons.first().click();
 };
 
 test.describe('保存表管理补充 @storage', () => {
@@ -73,56 +82,56 @@ test.describe('保存表管理补充 @storage', () => {
     const baseName = `e2e_rename_${Date.now()}`;
     const nextName = `${baseName}_renamed`;
 
-    await saveTable(page, baseName);
-    await openSavedTables(page);
-    await clickSavedTable(page, new RegExp(baseName, 'i'));
+    await saveNewTable(page, baseName);
 
-    await openSavedTables(page);
-    const row = getSavedTableRow(page, new RegExp(baseName, 'i'));
-    await row.hover();
-    await row.getByRole('button', { name: /重命名/i }).click();
+    await sidebarTableAction(page, new RegExp(baseName, 'i'), /重命名/);
 
     await expect(page.getByText('重命名保存的表')).toBeVisible();
     await page.getByLabel('新名称').fill(nextName);
     await page.getByRole('button', { name: /确认/i }).click();
 
-    await expect(page.getByRole('button', { name: new RegExp(nextName, 'i') })).toBeVisible();
     await expect(page.getByText(new RegExp(`当前：${nextName}`))).toBeVisible();
   });
 
   test('场景：删除保存表', async ({ page }) => {
     const tableName = `e2e_delete_${Date.now()}`;
 
-    await saveTable(page, tableName);
-    await openSavedTables(page);
+    await saveNewTable(page, tableName);
 
-    const row = getSavedTableRow(page, new RegExp(tableName, 'i'));
-    await row.hover();
-    await row.getByRole('button', { name: /删除/i }).click();
+    await sidebarTableAction(page, new RegExp(tableName, 'i'), /移入回收站/);
 
-    const deleteConfirmDialog = page.getByRole('dialog').filter({ hasText: '确认删除保存的表？' });
+    const deleteConfirmDialog = page.getByRole('dialog').filter({ hasText: /移入回收站/ });
     await expect(deleteConfirmDialog).toBeVisible();
-    await deleteConfirmDialog.getByRole('button', { name: /确认删除|删除/i }).click();
+    await deleteConfirmDialog.getByRole('button', { name: /移入回收站/i }).click();
+    await expect(deleteConfirmDialog).toBeHidden();
 
-    await expect(getSavedTableRow(page, new RegExp(tableName, 'i'))).toHaveCount(0);
+    // 表被移到回收站，不应在项目列表中显示
+    const sidebar = page.locator('aside');
+    const projectsSection = sidebar.locator('section').filter({ hasText: /^项目/ });
+    await expect(
+      projectsSection.locator('button').filter({ hasText: new RegExp(tableName, 'i') }),
+    ).toHaveCount(0);
   });
 
   test('场景：未保存修改加载确认', async ({ page }) => {
     const tableA = `e2e_load_a_${Date.now()}`;
     const tableB = `e2e_load_b_${Date.now()}`;
 
-    await saveTable(page, tableA);
-    await saveTable(page, tableB);
+    // 保存两个表（需要先切换到草稿状态以重置 hasLoadedTable）
+    await saveNewTable(page, tableA);
+    await clickFirstDraft(page);
+    await saveNewTable(page, tableB);
 
-    await openSavedTables(page);
-    await clickSavedTable(page, new RegExp(tableA, 'i'));
+    // 加载表 A
+    await clickSidebarTable(page, new RegExp(tableA, 'i'));
     await expect(page.getByText(new RegExp(`当前：${tableA}`))).toBeVisible();
 
-    await page.locator('#table-comment').fill('dirty load check');
-    await expect(page.getByText('已修改')).toBeVisible();
+    // 修改表 A（触发 dirty 状态）
+    await page.locator('#table-name').fill(`${tableA}_modified`);
+    await page.waitForTimeout(300);
 
-    await openSavedTables(page);
-    await clickSavedTable(page, new RegExp(tableB, 'i'));
+    // 尝试加载表 B，应弹出确认对话框
+    await clickSidebarTable(page, new RegExp(tableB, 'i'));
 
     await expect(page.getByText('加载保存的表')).toBeVisible();
     await page.getByRole('button', { name: /取消/i }).click();
@@ -133,14 +142,15 @@ test.describe('保存表管理补充 @storage', () => {
     const tableA = `e2e_search_a_${Date.now()}`;
     const tableB = `e2e_search_b_${Date.now()}`;
 
-    await saveTable(page, tableA);
-    await saveTable(page, tableB);
+    await saveNewTable(page, tableA);
+    await clickFirstDraft(page);
+    await saveNewTable(page, tableB);
 
-    await openSavedTables(page);
-    await page.getByPlaceholder(/搜索表名或数据库类型/i).fill(tableA);
+    const sidebar = page.locator('aside');
+    await sidebar.getByPlaceholder(/搜索表名/).fill(tableA);
 
-    await expect(getSavedTableRow(page, new RegExp(tableA, 'i'))).toBeVisible();
-    await expect(getSavedTableRow(page, new RegExp(tableB, 'i'))).toHaveCount(0);
+    await expect(getSidebarTableItem(page, new RegExp(tableA, 'i'))).toBeVisible();
+    await expect(getSidebarTableItem(page, new RegExp(tableB, 'i'))).toHaveCount(0);
   });
 
   test('场景：全局草稿与保存表草稿应隔离', async ({ page }) => {
@@ -149,33 +159,38 @@ test.describe('保存表管理补充 @storage', () => {
     const globalDraftComment = '全局草稿注释';
     const savedEditedComment = '保存表草稿注释';
 
+    // 保存表
     await page.locator('#table-name').fill(tableName);
     await page.locator('#table-comment').fill(savedComment);
     await fillBasicField(page, 'isolation_id');
     await page.getByRole('button', { name: /保存当前表/i }).click();
-    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeVisible();
     await page.getByLabel('保存名称').fill(tableName);
     await page.getByRole('button', { name: /^保存$/ }).click();
-    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
+    await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeHidden();
 
-    await selectFirstDraft(page);
+    // 切换到草稿并修改
+    await clickFirstDraft(page);
     await page.locator('#table-comment').fill(globalDraftComment);
+    // 等待草稿持久化（debounce 500ms）
+    await page.waitForTimeout(700);
 
-    await openSavedTables(page);
-    await clickSavedTable(page, new RegExp(tableName, 'i'));
+    // 加载保存的表，应显示保存的注释
+    await clickSidebarTable(page, new RegExp(tableName, 'i'));
     await expect(page.locator('#table-comment')).toHaveValue(savedComment);
 
+    // 修改并保存（已加载表直接覆盖）
     await page.locator('#table-comment').fill(savedEditedComment);
     await page.getByRole('button', { name: /保存当前表/i }).click();
-    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeVisible();
-    await page.getByRole('button', { name: /^保存$/ }).click();
-    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
+    // 已加载表直接保存，不弹对话框
+    await page.waitForTimeout(500);
 
-    await selectFirstDraft(page);
+    // 切换到草稿，应显示草稿注释
+    await clickFirstDraft(page);
     await expect(page.locator('#table-comment')).toHaveValue(globalDraftComment);
 
-    await openSavedTables(page);
-    await clickSavedTable(page, new RegExp(tableName, 'i'));
+    // 再次加载保存的表，应显示更新后的注释
+    await clickSidebarTable(page, new RegExp(tableName, 'i'));
     await expect(page.locator('#table-comment')).toHaveValue(savedEditedComment);
   });
 
@@ -183,50 +198,49 @@ test.describe('保存表管理补充 @storage', () => {
     const originalName = `e2e_draft_lifecycle_${Date.now()}`;
     const renamedName = `${originalName}_renamed`;
     const initialSavedComment = 'initial_saved_comment';
-    const draftComment = 'rename_after_draft_comment';
     const freshSavedComment = 'fresh_saved_after_delete';
     const globalComment = 'global_after_lifecycle';
 
+    // 保存表
     await page.locator('#table-name').fill(originalName);
     await page.locator('#table-comment').fill(initialSavedComment);
     await fillBasicField(page, 'draft_lifecycle_id');
     await page.getByRole('button', { name: /保存当前表/i }).click();
-    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeVisible();
     await page.getByLabel('保存名称').fill(originalName);
     await page.getByRole('button', { name: /^保存$/ }).click();
-    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
+    await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeHidden();
 
-    await page.locator('#table-comment').fill(draftComment);
-
-    await openSavedTables(page);
-    const row = getSavedTableRow(page, new RegExp(originalName, 'i'));
-    await row.hover();
-    await row.getByRole('button', { name: /重命名/i }).click();
+    // 重命名
+    await sidebarTableAction(page, new RegExp(originalName, 'i'), /重命名/);
     await expect(page.getByText('重命名保存的表')).toBeVisible();
     await page.getByLabel('新名称').fill(renamedName);
     await page.getByRole('button', { name: /确认/i }).click();
     await expect(page.getByText('重命名保存的表')).toBeHidden();
 
-    await selectFirstDraft(page);
+    // 切换到草稿并修改
+    await clickFirstDraft(page);
     await page.locator('#table-comment').fill(globalComment);
+    // 等待草稿持久化
+    await page.waitForTimeout(700);
 
-    await openSavedTables(page);
-    await clickSavedTable(page, new RegExp(renamedName, 'i'));
+    // 加载重命名后的表，应显示原始注释
+    await clickSidebarTable(page, new RegExp(renamedName, 'i'));
     await expect(page.locator('#table-comment')).toHaveValue(initialSavedComment);
 
-    await openSavedTables(page);
-    const renamedRow = getSavedTableRow(page, new RegExp(renamedName, 'i'));
-    await renamedRow.hover();
-    await renamedRow.getByRole('button', { name: /删除/i }).click();
-    const deleteConfirmDialog = page.getByRole('dialog').filter({ hasText: '确认删除保存的表？' });
+    // 删除表
+    await sidebarTableAction(page, new RegExp(renamedName, 'i'), /移入回收站/);
+    const deleteConfirmDialog = page.getByRole('dialog').filter({ hasText: /移入回收站/ });
     await expect(deleteConfirmDialog).toBeVisible();
-    await deleteConfirmDialog.getByRole('button', { name: /确认删除|删除/i }).click();
+    await deleteConfirmDialog.getByRole('button', { name: /移入回收站/i }).click();
     await expect(deleteConfirmDialog).toBeHidden();
 
-    await saveTable(page, renamedName, freshSavedComment);
+    // 重新保存同名表
+    await clickFirstDraft(page);
+    await saveNewTable(page, renamedName, freshSavedComment);
 
-    await openSavedTables(page);
-    await clickSavedTable(page, new RegExp(renamedName, 'i'));
+    // 加载并验证
+    await clickSidebarTable(page, new RegExp(renamedName, 'i'));
     await expect(page.locator('#table-comment')).toHaveValue(freshSavedComment);
   });
 });

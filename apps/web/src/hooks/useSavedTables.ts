@@ -80,17 +80,27 @@ export function useSavedTables() {
         const displayName = ensureSavedTableName(name);
         const normalizedName = normalizeSavedTableName(displayName);
         const existing = await getSavedTable(normalizedName);
-        if (existing) {
+        if (existing && !existing.trashedAt) {
           return { ok: false, reason: 'duplicate' };
         }
         const now = Date.now();
-        await addSavedTable({
-          normalizedName,
-          name: displayName,
-          state,
-          createdAt: now,
-          updatedAt: now,
-        });
+        if (existing?.trashedAt) {
+          await updateSavedTable({
+            ...existing,
+            name: displayName,
+            state,
+            trashedAt: undefined,
+            updatedAt: now,
+          });
+        } else {
+          await addSavedTable({
+            normalizedName,
+            name: displayName,
+            state,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
         await refresh();
         return { ok: true, normalizedName };
       } catch (err) {

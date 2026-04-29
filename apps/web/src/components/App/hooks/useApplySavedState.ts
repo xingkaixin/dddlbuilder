@@ -110,7 +110,7 @@ export function useApplySavedState({
       }
 
       if (state.fieldTableViewConfig) {
-        setFieldTableFreezeEnabled(state.fieldTableViewConfig.freezeEnabled);
+        setFieldTableFreezeEnabled(state.fieldTableViewConfig.freezeEnabled === true);
         const freezeColumns = state.fieldTableViewConfig.freezeColumns;
         setFieldTableFreezeColumns(
           typeof freezeColumns === 'number' && Number.isFinite(freezeColumns)

@@ -398,7 +398,8 @@ export const DataTable = memo<DataTableProps>(
           >
             <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
               <table
-                className="w-full border-collapse text-sm"
+                className="border-separate border-spacing-0 table-fixed text-sm"
+                style={{ minWidth: Object.values(columnWidths).reduce((a, b) => a + b, 0) }}
                 data-testid="data-table"
                 aria-label={t('dataTable.ariaLabel')}
                 aria-describedby="field-config-table-description"

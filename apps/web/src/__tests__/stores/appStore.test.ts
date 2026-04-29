@@ -72,7 +72,7 @@ describe('appStore', () => {
     current.resetTableViewConfig();
     current = useAppStore.getState();
     expect(current.addCount).toBe(10);
-    expect(current.fieldTableFreezeEnabled).toBe(true);
+    expect(current.fieldTableFreezeEnabled).toBe(false);
     expect(current.fieldTableFreezeColumns).toBe(3);
     expect(current.activeTab).toBe('fields');
   });

@@ -1058,6 +1058,7 @@ export const enUSCommon = {
     playTimeline: 'Play timeline',
     deleteConfirmTitle: 'Delete this version?',
     deleteConfirmDescription: 'This version will be permanently deleted and cannot be recovered.',
+    deleteConfirmAction: 'Delete',
   },
   timelinePlayer: {
     title: 'Schema Change Replay',

@@ -274,8 +274,8 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
         </div>
       </div>
 
-      <div className="grid min-h-[360px] gap-0 lg:grid-cols-[minmax(420px,1.05fr)_minmax(360px,1fr)]">
-        <div className="border-b p-4 lg:border-r lg:border-b-0">
+      <div className="grid min-h-[360px] gap-0 2xl:grid-cols-[minmax(320px,1.05fr)_minmax(300px,1fr)]">
+        <div className="border-b p-4 2xl:border-r 2xl:border-b-0">
           <div className="space-y-2">
             {mode === 'edit' && !draft.id && (
               <button

@@ -100,7 +100,7 @@ export function usePersistedSync({
 
     const persistedFieldTableViewConfig = persistedState.fieldTableViewConfig;
     if (persistedFieldTableViewConfig) {
-      setFieldTableFreezeEnabled(persistedFieldTableViewConfig.freezeEnabled !== false);
+      setFieldTableFreezeEnabled(persistedFieldTableViewConfig.freezeEnabled === true);
       const freezeColumns = persistedFieldTableViewConfig.freezeColumns;
       setFieldTableFreezeColumns(
         typeof freezeColumns === 'number' && Number.isFinite(freezeColumns)

@@ -25,14 +25,30 @@ const clickSavedTable = async (page: any, pattern: RegExp) => {
 };
 
 const openHistoryDialog = async (page: any, tableName: string) => {
-  await page.getByRole('button', { name: /查看已保存表/i, exact: true }).click();
-  await expect(page.getByRole('heading', { name: '已保存的表' })).toBeVisible();
+  await page.getByRole('button', { name: '工作区' }).click();
+  await expect(page.getByRole('heading', { name: '工作区' })).toBeVisible();
   const savedRow = getSavedTableRow(page, new RegExp(tableName, 'i'));
   await savedRow.hover();
   await savedRow.getByRole('button', { name: /历史版本/i }).click();
   const dialog = page.getByRole('dialog', { name: /版本历史/i });
   await expect(dialog).toBeVisible();
   return dialog;
+};
+
+// 保存新表（弹对话框）
+const saveNewTable = async (page: any, tableName: string) => {
+  await page.getByRole('button', { name: /保存当前表/i }).click();
+  await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeVisible();
+  await page.getByLabel('保存名称').fill(tableName);
+  await page.getByRole('button', { name: /^保存$/ }).click();
+  await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeHidden();
+};
+
+// 保存已加载的表（直接覆盖，无对话框）
+const saveLoadedTable = async (page: any) => {
+  await page.getByRole('button', { name: /保存当前表/i }).click();
+  // 已加载的表直接保存，不弹对话框
+  await page.waitForTimeout(500);
 };
 
 test.describe('版本管理验证 @storage', () => {
@@ -52,20 +68,15 @@ test.describe('版本管理验证 @storage', () => {
 
     // 1. 保存初始版本
     await fillBasicField(page, 'f1');
-
-    await page.getByRole('button', { name: /保存当前表/i }).click();
-    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeVisible();
-    await page.getByLabel('保存名称').fill(tableName);
-    await page.getByRole('button', { name: /^保存$/ }).click();
-    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
+    await saveNewTable(page, tableName);
 
     // 1.5 加载保存的表，进入更新流程
-    await page.getByRole('button', { name: /查看已保存表/i, exact: true }).click();
-    await expect(page.getByRole('heading', { name: '已保存的表' })).toBeVisible();
+    await page.getByRole('button', { name: '工作区' }).click();
+    await expect(page.getByRole('heading', { name: '工作区' })).toBeVisible();
     await clickSavedTable(page, new RegExp(tableName, 'i'));
     await expect(page.getByText(new RegExp(`当前：${tableName}`))).toBeVisible();
 
-    // 2. 修改并保存为新版本
+    // 2. 修改并保存为新版本（已加载表直接覆盖）
     const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
     await cell.click();
     await page.keyboard.press('Control+A');
@@ -73,10 +84,7 @@ test.describe('版本管理验证 @storage', () => {
     await page.keyboard.type('f1_updated', { delay: 50 });
     await page.keyboard.press('Tab');
 
-    await page.getByRole('button', { name: /保存当前表/i }).click();
-    // 此时应该是更新逻辑
-    await page.getByRole('button', { name: /^保存$/ }).click();
-    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
+    await saveLoadedTable(page);
 
     // 3. 查看版本历史 (在已保存表抽屉中)
     const dialog = await openHistoryDialog(page, tableName);
@@ -88,15 +96,11 @@ test.describe('版本管理验证 @storage', () => {
     await page.locator('#table-name').fill(tableName);
     await fillBasicField(page, 'f1');
 
-    await page.getByRole('button', { name: /保存当前表/i }).click();
-    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeVisible();
-    await page.getByLabel('保存名称').fill(tableName);
-    await page.getByRole('button', { name: /^保存$/ }).click();
-    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
+    await saveNewTable(page, tableName);
     await page.waitForTimeout(300);
 
-    await page.getByRole('button', { name: /查看已保存表/i, exact: true }).click();
-    await expect(page.getByRole('heading', { name: '已保存的表' })).toBeVisible();
+    await page.getByRole('button', { name: '工作区' }).click();
+    await expect(page.getByRole('heading', { name: '工作区' })).toBeVisible();
     await clickSavedTable(page, new RegExp(tableName, 'i'));
     await expect(page.getByText(new RegExp(`当前：${tableName}`))).toBeVisible();
 
@@ -110,11 +114,8 @@ test.describe('版本管理验证 @storage', () => {
     await page.keyboard.press('Enter');
     await page.waitForTimeout(200);
 
-    // 保存修改
-    await page.getByRole('button', { name: /保存当前表/i }).click();
-    await page.getByRole('button', { name: /^保存$/ }).click();
-    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
-    await page.waitForTimeout(300);
+    // 保存修改（已加载表直接覆盖）
+    await saveLoadedTable(page);
 
     // 确认字段名已更新
     await expect(cell).toHaveText('f1_updated', { timeout: 5000 });
@@ -136,14 +137,10 @@ test.describe('版本管理验证 @storage', () => {
     await page.locator('#table-name').fill(tableName);
     await fillBasicField(page, 'f1');
 
-    await page.getByRole('button', { name: /保存当前表/i }).click();
-    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeVisible();
-    await page.getByLabel('保存名称').fill(tableName);
-    await page.getByRole('button', { name: /^保存$/ }).click();
-    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
+    await saveNewTable(page, tableName);
 
-    await page.getByRole('button', { name: /查看已保存表/i, exact: true }).click();
-    await expect(page.getByRole('heading', { name: '已保存的表' })).toBeVisible();
+    await page.getByRole('button', { name: '工作区' }).click();
+    await expect(page.getByRole('heading', { name: '工作区' })).toBeVisible();
     await clickSavedTable(page, new RegExp(tableName, 'i'));
 
     const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
@@ -153,9 +150,7 @@ test.describe('版本管理验证 @storage', () => {
     await page.keyboard.type('f1_updated', { delay: 50 });
     await page.keyboard.press('Tab');
 
-    await page.getByRole('button', { name: /保存当前表/i }).click();
-    await page.getByRole('button', { name: /^保存$/ }).click();
-    await expect(page.getByText(/保存当前表|更新保存的表/i)).toBeHidden();
+    await saveLoadedTable(page);
 
     const dialog = await openHistoryDialog(page, tableName);
     const versionItems = dialog.locator('button').filter({ hasText: /最新|初始版本/ });
