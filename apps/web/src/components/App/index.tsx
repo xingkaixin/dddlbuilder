@@ -8,6 +8,7 @@ import { OutputContainer } from './containers/OutputContainer';
 import { SavedTablesContainer } from './containers/SavedTablesContainer';
 import { TableBuilderContainer } from './containers/TableBuilderContainer';
 import { MainWorkspaceSkeleton } from './MainWorkspaceSkeleton';
+import { WorkspaceSidebar } from './WorkspaceSidebar';
 import { DEFAULT_DRAFT_ID } from '@/utils/workspaceStateDb';
 import { useAppSelectors } from './hooks/useAppSelectors';
 import { useDialogStates } from './hooks/useDialogStates';
@@ -688,6 +689,7 @@ function App() {
   const [loadedTableVersion, setLoadedTableVersion] = useState<number>(0);
   const [isSavedTableLoading, setIsSavedTableLoading] = useState(false);
   const [isErDialogOpen, setIsErDialogOpen] = useState(false);
+  const [workspaceSidebarOpen, setWorkspaceSidebarOpen] = useState(true);
 
   useEffect(() => {
     if (!hydrated || isShareView) return;
@@ -967,6 +969,10 @@ function App() {
           saveTable={saveTable}
           overwriteTable={overwriteTable}
           moveTableToFolder={moveTableToFolder}
+          onSaveCurrent={handleOpenSaveDialog}
+          saveCurrentDisabled={!canSaveCurrent}
+          saveCurrentDisabledHint={t('dialogs.save.disabledTip')}
+          onOpenAIGenerate={handleOpenAIGenerateDialog}
         />
 
         {isShareView && (
@@ -1017,194 +1023,215 @@ function App() {
           }}
         />
 
-        <div className="flex flex-col gap-3 p-3 sm:gap-4 sm:p-4">
-          {isMainWorkspaceLoading ? (
-            <MainWorkspaceSkeleton />
-          ) : (
-            <div className="flex flex-col gap-4 xl:flex-row">
-              <div
-                className={`min-w-0 flex-1 ${
-                  isShareView ? 'pointer-events-none select-none opacity-80' : ''
-                }`}
-              >
-                <TableBuilderContainer
-                  tableConfigProps={{
-                    schemaName,
-                    tableName,
-                    tableComment,
-                    objectType,
+        <div className="flex flex-col sm:flex-row">
+          {!isShareView && (
+            <WorkspaceSidebar
+              open={workspaceSidebarOpen}
+              loading={savedTablesLoading || foldersLoading}
+              error={savedTablesError}
+              items={savedTables}
+              draftItems={drawerDraftItems}
+              folders={folderTree}
+              activeNormalizedName={loadedTableNormalizedName}
+              activeDraftId={activeSource.kind === 'draft' ? activeSource.draftId : null}
+              activeDirty={isLoadedDirty}
+              onToggle={() => setWorkspaceSidebarOpen((open) => !open)}
+              onOpenWorkspace={handleOpenSavedTablesDrawer}
+              onCreateDraft={handleCreateDraft}
+              onCreateFolder={() => handleOpenCreateFolderDialog()}
+              onSelectDraft={handleSelectDraft}
+              onSelect={handleSelectSavedTable}
+              onRename={handleOpenRenameDialog}
+              onDelete={handleOpenDeleteDialog}
+            />
+          )}
+
+          <div className="min-w-0 flex-1 p-3 sm:p-4">
+            {isMainWorkspaceLoading ? (
+              <MainWorkspaceSkeleton />
+            ) : (
+              <div className="flex flex-col gap-4 xl:flex-row">
+                <div
+                  className={`min-w-0 flex-1 ${
+                    isShareView ? 'pointer-events-none select-none opacity-80' : ''
+                  }`}
+                >
+                  <TableBuilderContainer
+                    tableConfigProps={{
+                      schemaName,
+                      tableName,
+                      tableComment,
+                      objectType,
+                      dbType,
+                      onSchemaNameChange: setSchemaName,
+                      onTableNameChange: setTableName,
+                      onTableCommentChange: setTableComment,
+                      onObjectTypeChange: (value) => {
+                        setObjectType(value);
+                        setActiveTab('fields');
+                      },
+                      onDbTypeChange: handleDbTypeChange,
+                      onClearAll: handleClearAll,
+                      onViewDiff: handleOpenDiffDialog,
+                      onOpenErDiagram: handleOpenErDiagram,
+                      showDiffButton: isLoadedDirty && tableDiff?.hasChanges,
+                      loadedStatus,
+                      loadedTableName,
+                      workspaceLabel,
+                      fieldCount: filledRowCount,
+                      indexCount: indexes.length,
+                    }}
+                    objectType={objectType}
+                    tabsValue={activeTab}
+                    onTabsValueChange={handleTabValueChange}
+                    filledRowCount={filledRowCount}
+                    indexesLength={indexes.length}
+                    indexStats={indexStats}
+                    authObjectsLength={authObjects.length}
+                    miscEnabled={tableMiscConfig.enabled}
+                    showIndexTab={dbType !== 'hive'}
+                    showForeignKeyTab={dbType !== 'hive'}
+                    foreignKeysLength={foreignKeys.length}
+                    showShardingTab={dbType === 'postgresql-citus'}
+                    shardingBadgeText={
+                      citusShardingConfig.mode === 'distributed'
+                        ? citusShardingConfig.distributionColumn
+                        : null
+                    }
+                    showPartitionTab={supportsMysqlPartition}
+                    partitionBadgeText={
+                      mysqlPartitionConfig.enabled ? mysqlPartitionConfig.type : null
+                    }
+                    showHivePartitionTab={dbType === 'hive'}
+                    hivePartitionBadgeText={
+                      tableMiscConfig.partitions?.enabled
+                        ? `${tableMiscConfig.partitions.columns.length}`
+                        : null
+                    }
+                    dataTableProps={{
+                      isHighlighted: isFieldTableHighlighted,
+                      highlightedRowIndex: highlightedRowIndex,
+                      onOpenStorageEstimator: handleOpenStorageEstimator,
+                      onOpenMockDataGenerator: handleOpenMockDataGenerator,
+                      onGenerateComments: handleGenerateComments,
+                      isGeneratingComments,
+                      toolbarLeft: dataTableToolbarLeft,
+                    }}
+                    viewDefinitionPanelProps={{
+                      definition: viewDefinition,
+                      createOrReplace: viewCreateOrReplace,
+                      onDefinitionChange: setViewDefinition,
+                      onCreateOrReplaceChange: setViewCreateOrReplace,
+                    }}
+                    indexPanelProps={{
+                      animatingIndexIds: animatingIndexIds,
+                      removingIndexIds: removingIndexIds,
+                    }}
+                    foreignKeyPanelProps={{
+                      availableFields,
+                    }}
+                    authPanelProps={{
+                      authInput,
+                      authObjects,
+                      onAuthInputChange: setAuthInput,
+                      onAddAuthObject: addAuthObject,
+                      onRemoveAuthObject: removeAuthObject,
+                    }}
+                    tableOptionsPanelProps={{
+                      dbType,
+                      config: tableMiscConfig,
+                      onEnabledChange: setMiscEnabled,
+                      onEngineChange: setEngine,
+                      onCharsetChange: setCharset,
+                      onCollationChange: setCollation,
+                      onTablespaceChange: setTablespace,
+                      onFillfactorChange: setFillfactor,
+                      onPctfreeChange: setPctfree,
+                      onInitransChange: setInitrans,
+                      onStoredAsChange: setStoredAs,
+                      onExternalChange: setExternal,
+                      onLocationChange: setLocation,
+                    }}
+                    shardingPanelProps={{
+                      config: citusShardingConfig,
+                      availableFields,
+                      onModeChange: setCitusMode,
+                      onDistributionColumnChange: setDistributionColumn,
+                    }}
+                    partitionPanelProps={{
+                      config: mysqlPartitionConfig,
+                      availableFields,
+                      onEnabledChange: setPartitionEnabled,
+                      onTypeChange: setPartitionType,
+                      onColumnsChange: setPartitionColumns,
+                      onExpressionChange: setPartitionExpression,
+                      onPartitionCountChange: setPartitionCount,
+                      onAddPartition: addPartition,
+                      onRemovePartition: removePartition,
+                      onUpdatePartition: updatePartition,
+                      onGeneratePartitions: generateRangePartitions,
+                    }}
+                    hivePartitionPanelProps={{
+                      config: tableMiscConfig.partitions || {
+                        enabled: false,
+                        columns: [],
+                      },
+                      onEnabledChange: (enabled) =>
+                        setHivePartitionConfig((prev) => ({
+                          ...(prev || { enabled: false, columns: [] }),
+                          enabled,
+                        })),
+                      onAddColumn: (column) =>
+                        setHivePartitionConfig((prev) => ({
+                          ...(prev || { enabled: true, columns: [] }),
+                          columns: [...(prev?.columns || []), column],
+                        })),
+                      onRemoveColumn: (index) =>
+                        setHivePartitionConfig((prev) => ({
+                          ...(prev || { enabled: false, columns: [] }),
+                          columns: (prev?.columns || []).filter((_, i) => i !== index),
+                        })),
+                      onUpdateColumn: (index, column) =>
+                        setHivePartitionConfig((prev) => ({
+                          ...(prev || { enabled: false, columns: [] }),
+                          columns: (prev?.columns || []).map((c, i) => (i === index ? column : c)),
+                        })),
+                      onClusteringChange: (clustering) =>
+                        setHivePartitionConfig((prev) => ({
+                          ...(prev || { enabled: false, columns: [] }),
+                          clustering,
+                        })),
+                    }}
+                  />
+                </div>
+
+                <OutputContainer
+                  ddlOutputProps={{
+                    generatedSql,
+                    generatedDcl,
                     dbType,
-                    onSchemaNameChange: setSchemaName,
-                    onTableNameChange: setTableName,
-                    onTableCommentChange: setTableComment,
-                    onObjectTypeChange: (value) => {
-                      setObjectType(value);
-                      setActiveTab('fields');
-                    },
-                    onDbTypeChange: handleDbTypeChange,
-                    onClearAll: handleClearAll,
-                    onSaveTable: handleOpenSaveDialog,
-                    onOpenSavedTables: handleOpenSavedTablesDrawer,
-                    onViewDiff: handleOpenDiffDialog,
-                    onOpenAIGenerate: handleOpenAIGenerateDialog,
-                    onOpenErDiagram: handleOpenErDiagram,
-                    saveDisabled: !canSaveCurrent,
-                    saveDisabledHint: t('dialogs.save.disabledTip'),
-                    showDiffButton: isLoadedDirty && tableDiff?.hasChanges,
-                    loadedStatus,
-                    loadedTableName,
-                    workspaceLabel,
-                  }}
-                  objectType={objectType}
-                  tabsValue={activeTab}
-                  onTabsValueChange={handleTabValueChange}
-                  filledRowCount={filledRowCount}
-                  indexesLength={indexes.length}
-                  indexStats={indexStats}
-                  authObjectsLength={authObjects.length}
-                  miscEnabled={tableMiscConfig.enabled}
-                  showIndexTab={dbType !== 'hive'}
-                  showForeignKeyTab={dbType !== 'hive'}
-                  foreignKeysLength={foreignKeys.length}
-                  showShardingTab={dbType === 'postgresql-citus'}
-                  shardingBadgeText={
-                    citusShardingConfig.mode === 'distributed'
-                      ? citusShardingConfig.distributionColumn
-                      : null
-                  }
-                  showPartitionTab={supportsMysqlPartition}
-                  partitionBadgeText={
-                    mysqlPartitionConfig.enabled ? mysqlPartitionConfig.type : null
-                  }
-                  showHivePartitionTab={dbType === 'hive'}
-                  hivePartitionBadgeText={
-                    tableMiscConfig.partitions?.enabled
-                      ? `${tableMiscConfig.partitions.columns.length}`
-                      : null
-                  }
-                  dataTableProps={{
-                    isHighlighted: isFieldTableHighlighted,
-                    highlightedRowIndex: highlightedRowIndex,
-                    onOpenStorageEstimator: handleOpenStorageEstimator,
-                    onOpenMockDataGenerator: handleOpenMockDataGenerator,
-                    onGenerateComments: handleGenerateComments,
-                    isGeneratingComments,
-                    toolbarLeft: dataTableToolbarLeft,
-                  }}
-                  viewDefinitionPanelProps={{
-                    definition: viewDefinition,
-                    createOrReplace: viewCreateOrReplace,
-                    onDefinitionChange: setViewDefinition,
-                    onCreateOrReplaceChange: setViewCreateOrReplace,
-                  }}
-                  indexPanelProps={{
-                    animatingIndexIds: animatingIndexIds,
-                    removingIndexIds: removingIndexIds,
-                  }}
-                  foreignKeyPanelProps={{
-                    availableFields,
-                  }}
-                  authPanelProps={{
-                    authInput,
-                    authObjects,
-                    onAuthInputChange: setAuthInput,
-                    onAddAuthObject: addAuthObject,
-                    onRemoveAuthObject: removeAuthObject,
-                  }}
-                  tableOptionsPanelProps={{
-                    dbType,
-                    config: tableMiscConfig,
-                    onEnabledChange: setMiscEnabled,
-                    onEngineChange: setEngine,
-                    onCharsetChange: setCharset,
-                    onCollationChange: setCollation,
-                    onTablespaceChange: setTablespace,
-                    onFillfactorChange: setFillfactor,
-                    onPctfreeChange: setPctfree,
-                    onInitransChange: setInitrans,
-                    onStoredAsChange: setStoredAs,
-                    onExternalChange: setExternal,
-                    onLocationChange: setLocation,
-                  }}
-                  shardingPanelProps={{
-                    config: citusShardingConfig,
-                    availableFields,
-                    onModeChange: setCitusMode,
-                    onDistributionColumnChange: setDistributionColumn,
-                  }}
-                  partitionPanelProps={{
-                    config: mysqlPartitionConfig,
-                    availableFields,
-                    onEnabledChange: setPartitionEnabled,
-                    onTypeChange: setPartitionType,
-                    onColumnsChange: setPartitionColumns,
-                    onExpressionChange: setPartitionExpression,
-                    onPartitionCountChange: setPartitionCount,
-                    onAddPartition: addPartition,
-                    onRemovePartition: removePartition,
-                    onUpdatePartition: updatePartition,
-                    onGeneratePartitions: generateRangePartitions,
-                  }}
-                  hivePartitionPanelProps={{
-                    config: tableMiscConfig.partitions || {
-                      enabled: false,
-                      columns: [],
-                    },
-                    onEnabledChange: (enabled) =>
-                      setHivePartitionConfig((prev) => ({
-                        ...(prev || { enabled: false, columns: [] }),
-                        enabled,
-                      })),
-                    onAddColumn: (column) =>
-                      setHivePartitionConfig((prev) => ({
-                        ...(prev || { enabled: true, columns: [] }),
-                        columns: [...(prev?.columns || []), column],
-                      })),
-                    onRemoveColumn: (index) =>
-                      setHivePartitionConfig((prev) => ({
-                        ...(prev || { enabled: false, columns: [] }),
-                        columns: (prev?.columns || []).filter((_, i) => i !== index),
-                      })),
-                    onUpdateColumn: (index, column) =>
-                      setHivePartitionConfig((prev) => ({
-                        ...(prev || { enabled: false, columns: [] }),
-                        columns: (prev?.columns || []).map((c, i) => (i === index ? column : c)),
-                      })),
-                    onClusteringChange: (clustering) =>
-                      setHivePartitionConfig((prev) => ({
-                        ...(prev || { enabled: false, columns: [] }),
-                        clustering,
-                      })),
+                    routineTableNameDefault,
+                    sqlFormatMode,
+                    onSqlFormatModeChange: setSqlFormatMode,
+                    onCopySql: copySql,
+                    onCopyDcl: copyDcl,
+                    generatedOrm,
+                    ormTarget,
+                    onOrmTargetChange: setOrmTarget,
+                    onCopyOrm: copyOrm,
+                    isReviewing,
+                    reviewPartialResult,
+                    reviewResult,
+                    reviewError,
+                    schemaLintIssues,
+                    onStartReview: handleStartReview,
+                    onViewReviewHistory: handleViewReviewHistory,
+                    onApplySuggestion: handleApplySuggestion,
                   }}
                 />
               </div>
-
-              <OutputContainer
-                ddlOutputProps={{
-                  generatedSql,
-                  generatedDcl,
-                  dbType,
-                  routineTableNameDefault,
-                  sqlFormatMode,
-                  onSqlFormatModeChange: setSqlFormatMode,
-                  onCopySql: copySql,
-                  onCopyDcl: copyDcl,
-                  generatedOrm,
-                  ormTarget,
-                  onOrmTargetChange: setOrmTarget,
-                  onCopyOrm: copyOrm,
-                  isReviewing,
-                  reviewPartialResult,
-                  reviewResult,
-                  reviewError,
-                  schemaLintIssues,
-                  onStartReview: handleStartReview,
-                  onViewReviewHistory: handleViewReviewHistory,
-                  onApplySuggestion: handleApplySuggestion,
-                }}
-              />
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <GlobalDialogs
