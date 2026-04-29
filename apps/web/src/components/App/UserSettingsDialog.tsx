@@ -57,6 +57,9 @@ const parseLedgerDate = (value: string) => {
 
 const toLedgerBoundary = (value: string, endOfDay = false) => {
   const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
   if (endOfDay) {
     date.setDate(date.getDate() + 1);
   }
@@ -145,8 +148,10 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
           limit: String(LEDGER_PAGE_SIZE),
           offset: String((ledgerPage - 1) * LEDGER_PAGE_SIZE),
         });
-        if (ledgerStartDate) params.set('startAt', toLedgerBoundary(ledgerStartDate));
-        if (ledgerEndDate) params.set('endAt', toLedgerBoundary(ledgerEndDate, true));
+        const startAt = ledgerStartDate ? toLedgerBoundary(ledgerStartDate) : null;
+        const endAt = ledgerEndDate ? toLedgerBoundary(ledgerEndDate, true) : null;
+        if (startAt) params.set('startAt', startAt);
+        if (endAt) params.set('endAt', endAt);
 
         const response = await fetch(`/api/credits/ledger?${params.toString()}`, {
           credentials: 'include',
