@@ -231,29 +231,44 @@ export const TableConfig = memo<TableConfigProps>(
               />
             </div>
             <div className="space-y-3 group/field">
-              <Label className="text-sm font-medium transition-colors duration-200 group-hover/field:text-primary">
+              <Label
+                htmlFor="object-type-select"
+                className="text-sm font-medium transition-colors duration-200 group-hover/field:text-primary"
+              >
                 {t('tableConfig.objectType')}
               </Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant={objectType === 'table' ? 'default' : 'outline'}
-                  className="h-9 gap-2"
-                  onClick={() => onObjectTypeChange('table')}
-                >
-                  <Table className="h-4 w-4" />
-                  {t('tableConfig.objectTable')}
-                </Button>
-                <Button
-                  type="button"
-                  variant={objectType === 'view' ? 'default' : 'outline'}
-                  className="h-9 gap-2"
-                  onClick={() => onObjectTypeChange('view')}
-                >
-                  <Eye className="h-4 w-4" />
-                  {t('tableConfig.objectView')}
-                </Button>
-              </div>
+              <SearchableSelect
+                value={objectType}
+                onValueChange={(value) => onObjectTypeChange(value as SchemaObjectType)}
+                options={[
+                  { value: 'table', label: t('tableConfig.objectTable') },
+                  { value: 'view', label: t('tableConfig.objectView') },
+                ]}
+                id="object-type-select"
+                emptyMessage={t('searchableSelect.empty')}
+                renderTrigger={() => {
+                  const Icon = objectType === 'view' ? Eye : Table;
+                  return (
+                    <div className="flex items-center gap-3">
+                      <Icon className="h-5 w-5 text-primary" />
+                      <span className="font-medium">
+                        {objectType === 'view'
+                          ? t('tableConfig.objectView')
+                          : t('tableConfig.objectTable')}
+                      </span>
+                    </div>
+                  );
+                }}
+                renderItem={(option) => {
+                  const Icon = option.value === 'view' ? Eye : Table;
+                  return (
+                    <div className="flex items-center gap-3">
+                      <Icon className="h-5 w-5 text-primary" />
+                      <span className="font-medium">{option.label}</span>
+                    </div>
+                  );
+                }}
+              />
             </div>
           </div>
         </div>

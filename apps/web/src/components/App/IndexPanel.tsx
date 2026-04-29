@@ -1,38 +1,50 @@
-import { memo, useMemo, useRef, useState, useEffect } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
+import type { IndexDefinition, IndexField } from '@ddlbuilder/shared-types';
+import { buildPrimaryKeyName } from '@ddlbuilder/ddl-core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ChevronUp, ChevronDown, X, Key, Lock, Hash, Pencil } from 'lucide-react';
+import { Key, Lock, Hash, Pencil, Trash2, GripVertical, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { buildNormalizedFields, useAppStore, useFieldStore, useIndexStore } from '@/stores';
+import {
+  MAX_INDEX_NAME_LENGTH,
+  ORACLE_INDEX_NAME_LENGTH,
+  buildIndexName,
+  truncateIndexName,
+} from '@/utils/indexNameUtils';
 import { useTranslation } from 'react-i18next';
 
 interface IndexPanelProps {
-  // Animation props
   animatingIndexIds?: Set<string>;
   removingIndexIds?: Set<string>;
 }
+
+type IndexType = 'normal' | 'unique' | 'primary';
+type PanelMode = 'view' | 'edit';
+
+type DraftIndex = {
+  id: string | null;
+  name: string;
+  type: IndexType;
+  fields: IndexField[];
+};
+
+const getIndexType = (index: IndexDefinition): IndexType => {
+  if (index.isPrimary) return 'primary';
+  return index.unique ? 'unique' : 'normal';
+};
+
+const getIndexNameMaxLength = (dbType: string) =>
+  dbType === 'oracle' ? ORACLE_INDEX_NAME_LENGTH : MAX_INDEX_NAME_LENGTH;
 
 export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIndexIds }) => {
   const { t } = useTranslation();
   const rows = useFieldStore((state) => state.rows);
   const tableName = useAppStore((state) => state.tableName);
   const dbType = useAppStore((state) => state.dbType);
-  const indexInput = useIndexStore((state) => state.indexInput);
-  const currentIndexFields = useIndexStore((state) => state.currentIndexFields);
   const indexes = useIndexStore((state) => state.indexes);
-  const showFieldSuggestions = useIndexStore((state) => state.showFieldSuggestions);
-  const selectedSuggestionIndex = useIndexStore((state) => state.selectedSuggestionIndex);
-  const onIndexInputChange = useIndexStore((state) => state.setIndexInput);
-  const onSetShowFieldSuggestions = useIndexStore((state) => state.setShowFieldSuggestions);
-  const onSetSelectedSuggestionIndex = useIndexStore((state) => state.setSelectedSuggestionIndex);
-  const onAddFieldToIndex = useIndexStore((state) => state.addFieldToIndex);
-  const onSetCurrentIndexFields = useIndexStore((state) => state.setCurrentIndexFields);
-  const onRemoveFieldFromIndex = useIndexStore((state) => state.removeFieldFromIndex);
-  const onToggleFieldDirection = useIndexStore((state) => state.toggleFieldDirection);
-  const onAddIndex = useIndexStore((state) => state.addIndex);
-  const onRemoveIndex = useIndexStore((state) => state.removeIndex);
-  const onUpdateIndexName = useIndexStore((state) => state.updateIndexName);
+  const setIndexes = useIndexStore((state) => state.setIndexes);
+  const removeIndex = useIndexStore((state) => state.removeIndex);
 
   const availableFields = useMemo(
     () =>
@@ -42,386 +54,494 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
     [rows],
   );
 
+  const [selectedIndexId, setSelectedIndexId] = useState<string | null>(indexes[0]?.id ?? null);
+  const [mode, setMode] = useState<PanelMode>(indexes.length ? 'view' : 'edit');
+  const [draft, setDraft] = useState<DraftIndex>({
+    id: null,
+    name: '',
+    type: 'normal',
+    fields: [],
+  });
+  const [fieldQuery, setFieldQuery] = useState('');
+  const [draggedFieldIndex, setDraggedFieldIndex] = useState<number | null>(null);
+
+  const selectedIndex = useMemo(
+    () => indexes.find((index) => index.id === selectedIndexId) ?? null,
+    [indexes, selectedIndexId],
+  );
+
   const fieldSuggestions = useMemo(() => {
-    if (!indexInput.trim()) return [];
-    const input = indexInput.toLowerCase().trim();
+    const query = fieldQuery.trim().toLowerCase();
+    if (!query) return [];
     return availableFields.filter(
       (field) =>
-        field.toLowerCase().includes(input) &&
-        !currentIndexFields.some((item) => item.name === field),
+        field.toLowerCase().includes(query) &&
+        !draft.fields.some((selected) => selected.name === field),
     );
-  }, [indexInput, availableFields, currentIndexFields]);
+  }, [availableFields, draft.fields, fieldQuery]);
 
-  const [editingIndexId, setEditingIndexId] = useState<string | null>(null);
-  const [editingName, setEditingName] = useState('');
-  const [pendingIndexType, setPendingIndexType] = useState<'normal' | 'unique' | 'primary' | null>(
-    null,
-  );
-  const editInputRef = useRef<HTMLInputElement>(null);
-  const suggestionsListId = 'index-field-suggestions-listbox';
-  const hasSuggestions = showFieldSuggestions && fieldSuggestions.length > 0;
-  const activeSuggestionId =
-    hasSuggestions && selectedSuggestionIndex >= 0
-      ? `index-field-suggestion-${selectedSuggestionIndex}`
-      : undefined;
-
-  // Focus input when entering edit mode
   useEffect(() => {
-    if (editingIndexId && editInputRef.current) {
-      editInputRef.current.focus();
-      editInputRef.current.select();
+    if (mode === 'edit' && !draft.id) {
+      return;
     }
-  }, [editingIndexId]);
 
-  const handleStartEdit = (index: (typeof indexes)[number]) => {
-    setEditingIndexId(index.id);
-    setEditingName(index.name);
-  };
-
-  const handleConfirmEdit = () => {
-    if (editingIndexId && editingName.trim()) {
-      onUpdateIndexName(editingIndexId, editingName, dbType);
+    if (!indexes.length) {
+      setSelectedIndexId(null);
+      setMode('edit');
+      return;
     }
-    setEditingIndexId(null);
-    setEditingName('');
+
+    if (!selectedIndexId || !indexes.some((index) => index.id === selectedIndexId)) {
+      setSelectedIndexId(indexes[0].id);
+      setMode('view');
+    }
+  }, [draft.id, indexes, mode, selectedIndexId]);
+
+  const startCreate = (type: IndexType) => {
+    setDraft({
+      id: null,
+      name: '',
+      type,
+      fields: [],
+    });
+    setSelectedIndexId(null);
+    setMode('edit');
+    setFieldQuery('');
   };
 
-  const handleCancelEdit = () => {
-    setEditingIndexId(null);
-    setEditingName('');
+  const startEdit = (index: IndexDefinition) => {
+    setDraft({
+      id: index.id,
+      name: index.name,
+      type: getIndexType(index),
+      fields: [...index.fields],
+    });
+    setSelectedIndexId(index.id);
+    setMode('edit');
+    setFieldQuery('');
   };
 
-  const handleStartCreate = (type: 'normal' | 'unique' | 'primary') => {
-    setPendingIndexType(type);
-    onIndexInputChange('');
-    onSetCurrentIndexFields([]);
+  const selectIndex = (index: IndexDefinition) => {
+    setSelectedIndexId(index.id);
+    setMode('view');
   };
 
-  const handleSavePendingIndex = () => {
-    if (!pendingIndexType || currentIndexFields.length === 0) return;
-    onAddIndex(pendingIndexType !== 'normal', pendingIndexType === 'primary', tableName, dbType);
-    setPendingIndexType(null);
+  const buildDraftName = () => {
+    const trimmedName = draft.name.trim();
+    const maxLength = getIndexNameMaxLength(dbType);
+    if (trimmedName) return truncateIndexName(trimmedName, maxLength);
+    if (draft.type === 'primary') return buildPrimaryKeyName(tableName);
+    return buildIndexName(
+      draft.type === 'unique' ? 'uk' : 'idx',
+      tableName || 'table',
+      draft.fields.map((field) => field.name),
+      maxLength,
+    );
   };
 
-  const handleCancelPendingIndex = () => {
-    setPendingIndexType(null);
-    onIndexInputChange('');
-    onSetCurrentIndexFields([]);
+  const saveDraft = () => {
+    if (draft.fields.length === 0) return;
+    if (!draft.id && draft.type === 'primary' && indexes.some((index) => index.isPrimary)) return;
+
+    const nextIndex: IndexDefinition = {
+      id: draft.id ?? Date.now().toString(),
+      name: buildDraftName(),
+      fields: [...draft.fields],
+      unique: draft.type !== 'normal',
+      isPrimary: draft.type === 'primary',
+    };
+
+    setIndexes((prev) =>
+      draft.id
+        ? prev.map((index) => (index.id === draft.id ? nextIndex : index))
+        : [...prev, nextIndex],
+    );
+    setSelectedIndexId(nextIndex.id);
+    setMode('view');
+    setFieldQuery('');
   };
+
+  const addField = (fieldName: string) => {
+    setDraft((prev) => ({
+      ...prev,
+      fields: [...prev.fields, { name: fieldName, direction: 'ASC' }],
+    }));
+    setFieldQuery('');
+  };
+
+  const removeField = (fieldIndex: number) => {
+    setDraft((prev) => ({
+      ...prev,
+      fields: prev.fields.filter((_, index) => index !== fieldIndex),
+    }));
+  };
+
+  const moveField = (from: number, to: number) => {
+    if (from === to) return;
+    setDraft((prev) => {
+      const nextFields = [...prev.fields];
+      const [moved] = nextFields.splice(from, 1);
+      nextFields.splice(to, 0, moved);
+      return { ...prev, fields: nextFields };
+    });
+  };
+
+  const toggleFieldDirection = (fieldIndex: number) => {
+    setDraft((prev) => ({
+      ...prev,
+      fields: prev.fields.map((field, index) =>
+        index === fieldIndex
+          ? {
+              ...field,
+              direction: field.direction === 'ASC' ? 'DESC' : 'ASC',
+            }
+          : field,
+      ),
+    }));
+  };
+
+  const renderTypeBadge = (type: IndexType) => {
+    const Icon = type === 'primary' ? Key : type === 'unique' ? Lock : Hash;
+    return (
+      <span
+        className={cn(
+          'inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-semibold',
+          type === 'primary' && 'bg-orange-100 text-orange-700 dark:bg-orange-900/40',
+          type === 'unique' && 'bg-blue-100 text-blue-700 dark:bg-blue-900/40',
+          type === 'normal' && 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40',
+        )}
+      >
+        <Icon className="h-3.5 w-3.5" />
+        {t(`indexPanel.type.${type}`)}
+      </span>
+    );
+  };
+
+  const detailIndex =
+    mode === 'edit'
+      ? ({
+          id: draft.id ?? 'draft',
+          name: draft.name,
+          fields: draft.fields,
+          unique: draft.type !== 'normal',
+          isPrimary: draft.type === 'primary',
+        } satisfies IndexDefinition)
+      : selectedIndex;
 
   return (
-    <div className="relative group rounded-lg border bg-card/95 backdrop-blur-sm shadow-lg shadow-primary/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5">
-      {/* Decorative gradient overlay */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent rounded-lg" />
-
-      {/* Top gradient bar */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/30 to-transparent rounded-t-lg" />
-
-      <div className="relative p-4">
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
+    <div className="rounded-lg border bg-card/95 shadow-sm">
+      <div className="border-b px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-base font-semibold">{t('indexPanel.configTitle')}</h3>
+            <p className="text-sm text-muted-foreground">{t('indexPanel.configDescription')}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
-              variant={pendingIndexType === 'normal' ? 'default' : 'outline'}
-              className="h-8 gap-1.5 px-3 text-xs font-medium"
-              onClick={() => handleStartCreate('normal')}
+              variant="outline"
+              className="h-8 text-xs"
+              onClick={() => startCreate('normal')}
             >
               <Hash className="h-3.5 w-3.5" />
               {t('indexPanel.addIndex')}
             </Button>
             <Button
               size="sm"
-              variant={pendingIndexType === 'unique' ? 'default' : 'outline'}
-              className="h-8 gap-1.5 px-3 text-xs font-medium"
-              onClick={() => handleStartCreate('unique')}
+              variant="outline"
+              className="h-8 text-xs"
+              onClick={() => startCreate('unique')}
             >
               <Lock className="h-3.5 w-3.5" />
               {t('indexPanel.addUnique')}
             </Button>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span
-                  className="inline-flex"
-                  tabIndex={indexes.some((index) => index.isPrimary) ? 0 : -1}
-                >
-                  <Button
-                    size="sm"
-                    variant={pendingIndexType === 'primary' ? 'default' : 'outline'}
-                    className="h-8 gap-1.5 px-3 text-xs font-medium"
-                    onClick={() => handleStartCreate('primary')}
-                    disabled={indexes.some((index) => index.isPrimary)}
-                  >
-                    <Key className="h-3.5 w-3.5" />
-                    {t('indexPanel.addPrimary')}
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>
-                  {indexes.some((index) => index.isPrimary)
-                    ? t('indexPanel.primaryExists')
-                    : t('indexPanel.addPrimaryTip')}
-                </p>
-              </TooltipContent>
-            </Tooltip>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs"
+              onClick={() => startCreate('primary')}
+              disabled={indexes.some((index) => index.isPrimary)}
+            >
+              <Key className="h-3.5 w-3.5" />
+              {t('indexPanel.addPrimary')}
+            </Button>
           </div>
+        </div>
+      </div>
 
-          {pendingIndexType ? (
-            <div className="rounded-lg border bg-background p-3">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold">{t('indexPanel.createTitle')}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {t('indexPanel.createDescription')}
+      <div className="grid min-h-[360px] gap-0 lg:grid-cols-[minmax(420px,1.05fr)_minmax(360px,1fr)]">
+        <div className="border-b p-4 lg:border-r lg:border-b-0">
+          <div className="space-y-2">
+            {mode === 'edit' && !draft.id && (
+              <button
+                type="button"
+                className="relative flex w-full items-start gap-3 rounded-lg border border-primary bg-primary/5 px-4 py-3.5 pr-28 text-left shadow-sm"
+              >
+                <GripVertical className="mt-1 h-4 w-4 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-base font-semibold leading-snug">
+                    {t('indexPanel.draftTitle')}
+                  </div>
+                  <div className="mt-2 break-words text-sm leading-relaxed text-muted-foreground">
+                    {draft.fields.length
+                      ? t('indexPanel.fieldsMeta', {
+                          fields: draft.fields.map((field) => field.name).join(', '),
+                        })
+                      : t('indexPanel.emptyDraftMeta')}
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="absolute top-3.5 right-4">{renderTypeBadge(draft.type)}</div>
+              </button>
+            )}
+
+            {indexes.map((index) => {
+              const type = getIndexType(index);
+              const active = selectedIndexId === index.id;
+              return (
+                <div
+                  key={index.id}
+                  role="button"
+                  tabIndex={0}
+                  className={cn(
+                    'group relative cursor-pointer rounded-lg border px-4 py-3.5 pr-28 transition-colors hover:bg-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                    active && 'border-primary bg-primary/5 shadow-sm',
+                    animatingIndexIds?.has(index.id) && 'animate-suggestion-add',
+                    removingIndexIds?.has(index.id) && 'animate-suggestion-remove',
+                  )}
+                  onClick={() => selectIndex(index)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      selectIndex(index);
+                    }
+                  }}
+                >
+                  <div className="flex min-w-0 gap-3 text-left">
+                    <GripVertical className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0 flex-1">
+                      <div className="break-all pr-2 text-base font-semibold leading-snug">
+                        {index.name}
+                      </div>
+                      <div className="mt-2 break-words text-sm leading-relaxed text-muted-foreground">
+                        {t('indexPanel.fieldsMeta', {
+                          fields: index.fields.map((field) => field.name).join(', '),
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="absolute top-3.5 right-4">{renderTypeBadge(type)}</div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-12 bottom-3 h-7 w-7 opacity-0 group-hover:opacity-100"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      startEdit(index);
+                    }}
+                    aria-label={t('indexPanel.edit')}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-4 bottom-3 h-7 w-7 text-destructive opacity-0 hover:text-destructive group-hover:opacity-100"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      removeIndex(index.id);
+                    }}
+                    aria-label={t('indexPanel.deleteIndexTip')}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              );
+            })}
+
+            {indexes.length === 0 && mode !== 'edit' && (
+              <div className="rounded-lg border border-dashed px-3 py-8 text-center text-sm text-muted-foreground">
+                {t('indexPanel.emptyList')}
+              </div>
+            )}
+          </div>
+          {indexes.length > 0 && (
+            <div className="mt-4 text-center text-xs text-muted-foreground">
+              {t('indexPanel.total', { count: indexes.length })}
+            </div>
+          )}
+        </div>
+
+        <div className="p-4">
+          {detailIndex ? (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between gap-3">
+                <h4 className="text-base font-semibold">
+                  {mode === 'edit' ? t('indexPanel.editTitle') : t('indexPanel.detailTitle')}
+                </h4>
+                {mode === 'view' && selectedIndex && (
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-8 px-3 text-xs"
-                    onClick={handleCancelPendingIndex}
+                    className="h-8 text-xs"
+                    onClick={() => startEdit(selectedIndex)}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    {t('indexPanel.edit')}
+                  </Button>
+                )}
+              </div>
+
+              <div className="grid gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-muted-foreground">
+                    {t('indexPanel.nameLabel')}
+                  </label>
+                  {mode === 'edit' ? (
+                    <Input
+                      value={draft.name}
+                      onChange={(event) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          name: event.target.value,
+                        }))
+                      }
+                      placeholder={t('indexPanel.namePlaceholder')}
+                    />
+                  ) : (
+                    <div className="break-all rounded-md border bg-muted/20 px-3 py-2.5 text-sm">
+                      {detailIndex.name}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold text-muted-foreground">
+                    {t('indexPanel.typeLabel')}
+                  </div>
+                  <div className="rounded-md border bg-muted/20 px-3 py-2.5">
+                    {renderTypeBadge(getIndexType(detailIndex))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold text-muted-foreground">
+                    {t('indexPanel.methodLabel')}
+                  </div>
+                  <div className="rounded-md border bg-muted/20 px-3 py-2.5 text-sm text-muted-foreground">
+                    {t('indexPanel.methodAuto')}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold text-muted-foreground">
+                    {t('indexPanel.fieldsLabel')}
+                  </div>
+                  {mode === 'edit' ? (
+                    <div className="rounded-md border bg-muted/10 p-3">
+                      <div className="relative">
+                        <Input
+                          value={fieldQuery}
+                          onChange={(event) => setFieldQuery(event.target.value)}
+                          placeholder={t('indexPanel.inputPlaceholder')}
+                        />
+                        {fieldSuggestions.length > 0 && (
+                          <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-lg">
+                            {fieldSuggestions.map((field) => (
+                              <button
+                                key={field}
+                                type="button"
+                                className="block w-full px-3 py-2 text-left text-sm hover:bg-accent"
+                                onClick={() => addField(field)}
+                              >
+                                {field}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {draft.fields.map((field, index) => (
+                          <div
+                            key={`${field.name}-${index}`}
+                            draggable
+                            onDragStart={() => setDraggedFieldIndex(index)}
+                            onDragEnter={() => {
+                              if (draggedFieldIndex == null || draggedFieldIndex === index) return;
+                              moveField(draggedFieldIndex, index);
+                              setDraggedFieldIndex(index);
+                            }}
+                            onDragOver={(event) => event.preventDefault()}
+                            onDrop={() => {
+                              setDraggedFieldIndex(null);
+                            }}
+                            onDragEnd={() => setDraggedFieldIndex(null)}
+                            className="inline-flex cursor-grab items-center gap-1.5 rounded-md border bg-background px-2.5 py-1.5 text-sm shadow-sm active:cursor-grabbing"
+                          >
+                            <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>{field.name}</span>
+                            <button
+                              type="button"
+                              className="rounded border bg-background px-1 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground"
+                              onClick={() => toggleFieldDirection(index)}
+                            >
+                              {field.direction}
+                            </button>
+                            <button type="button" onClick={() => removeField(index)}>
+                              <X className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                            </button>
+                          </div>
+                        ))}
+                        {draft.fields.length === 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            {t('indexPanel.emptyFields')}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2 rounded-md border bg-muted/20 p-3">
+                      {detailIndex.fields.map((field) => (
+                        <span
+                          key={`${field.name}-${field.direction}`}
+                          className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2.5 py-1.5 text-sm shadow-sm"
+                        >
+                          {field.name}
+                          <span className="rounded bg-muted px-1 py-0.5 text-[10px] text-muted-foreground">
+                            {field.direction}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {mode === 'edit' && (
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (selectedIndex) {
+                        setMode('view');
+                        return;
+                      }
+                      const nextIndex = indexes[0] ?? null;
+                      setSelectedIndexId(nextIndex?.id ?? null);
+                      setMode(nextIndex ? 'view' : 'edit');
+                      setDraft({ id: null, name: '', type: draft.type, fields: [] });
+                    }}
                   >
                     {t('indexPanel.cancel')}
                   </Button>
-                  <Button
-                    size="sm"
-                    className="h-8 px-3 text-xs"
-                    onClick={handleSavePendingIndex}
-                    disabled={currentIndexFields.length === 0}
-                  >
+                  <Button onClick={saveDraft} disabled={draft.fields.length === 0}>
                     {t('indexPanel.saveIndex')}
                   </Button>
                 </div>
-              </div>
-
-              <div className="relative group/input">
-                <div className="w-full max-w-sm">
-                  <Input
-                    placeholder={t('indexPanel.inputPlaceholder')}
-                    value={indexInput}
-                    onChange={(e) => {
-                      onIndexInputChange(e.target.value);
-                      onSetShowFieldSuggestions(e.target.value.trim().length > 0);
-                      onSetSelectedSuggestionIndex(0);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && fieldSuggestions.length > 0) {
-                        e.preventDefault();
-                        onAddFieldToIndex(fieldSuggestions[selectedSuggestionIndex]);
-                      } else if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        onSetSelectedSuggestionIndex((prev) =>
-                          prev < fieldSuggestions.length - 1 ? prev + 1 : prev,
-                        );
-                      } else if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        onSetSelectedSuggestionIndex((prev) => (prev > 0 ? prev - 1 : 0));
-                      } else if (e.key === 'Escape') {
-                        onSetShowFieldSuggestions(false);
-                      } else if (
-                        e.key === 'Backspace' &&
-                        indexInput === '' &&
-                        currentIndexFields.length > 0
-                      ) {
-                        e.preventDefault();
-                        onRemoveFieldFromIndex(currentIndexFields.length - 1);
-                      }
-                    }}
-                    role="combobox"
-                    aria-autocomplete="list"
-                    aria-expanded={hasSuggestions}
-                    aria-controls={hasSuggestions ? suggestionsListId : undefined}
-                    aria-activedescendant={activeSuggestionId}
-                    className="pr-4 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
-
-                {showFieldSuggestions && fieldSuggestions.length > 0 ? (
-                  <div
-                    id={suggestionsListId}
-                    role="listbox"
-                    aria-label={t('indexPanel.suggestionAria')}
-                    className="absolute z-10 mt-2 w-full overflow-hidden rounded-lg border bg-popover shadow-xl"
-                  >
-                    <div className="max-h-32 overflow-auto">
-                      {fieldSuggestions.map((field, index) => (
-                        <div
-                          key={field}
-                          id={`index-field-suggestion-${index}`}
-                          role="option"
-                          aria-selected={index === selectedSuggestionIndex}
-                          tabIndex={-1}
-                          className={`flex cursor-pointer items-center px-3 py-2 text-sm transition-all duration-150 ${
-                            index === selectedSuggestionIndex
-                              ? 'bg-accent text-accent-foreground pl-4'
-                              : 'hover:bg-accent hover:text-accent-foreground hover:pl-4'
-                          }`}
-                          onClick={() => onAddFieldToIndex(field)}
-                          onMouseEnter={() => onSetSelectedSuggestionIndex(index)}
-                        >
-                          <span className="mr-2 text-primary transition-transform duration-200 group-hover/input:scale-110">
-                            ›
-                          </span>
-                          {field}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-
-              {currentIndexFields.length > 0 ? (
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {currentIndexFields.map((field, index) => (
-                    <div
-                      key={index}
-                      className="group inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-2.5 text-xs transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/10 hover:shadow-md"
-                      onClick={() => onToggleFieldDirection(index)}
-                    >
-                      <span className="font-medium text-foreground transition-colors hover:text-primary">
-                        {field.name}
-                      </span>
-                      {field.direction === 'ASC' ? (
-                        <ChevronUp className="h-3 w-3 text-primary transition-transform duration-200 group-hover:scale-110" />
-                      ) : (
-                        <ChevronDown className="h-3 w-3 text-primary transition-transform duration-200 group-hover:scale-110" />
-                      )}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onRemoveFieldFromIndex(index);
-                            }}
-                            className="rounded-full p-0.5 text-muted-foreground transition-all duration-200 hover:rotate-90 hover:bg-destructive hover:text-destructive-foreground"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{t('indexPanel.removeFieldTip')}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
+              )}
             </div>
-          ) : null}
-
-          {/* Added Indexes */}
-          {indexes.length > 0 && (
-            <div className="space-y-3">
-              <div className="text-sm font-semibold relative pb-2">
-                {t('indexPanel.addedTitle')}
-                <div className="absolute bottom-0 left-0 w-10 h-0.5 bg-gradient-to-r from-primary to-transparent rounded" />
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {indexes.map((index) => {
-                  const badge = index.isPrimary
-                    ? {
-                        label: t('indexPanel.badgePrimary'),
-                        className:
-                          'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200',
-                        Icon: Key,
-                      }
-                    : index.unique
-                      ? {
-                          label: t('indexPanel.badgeUnique'),
-                          className:
-                            'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
-                          Icon: Lock,
-                        }
-                      : {
-                          label: t('indexPanel.badgeNormal'),
-                          className:
-                            'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200',
-                          Icon: Hash,
-                        };
-
-                  const isAnimatingAdd = animatingIndexIds?.has(index.id);
-                  const isAnimatingRemove = removingIndexIds?.has(index.id);
-
-                  return (
-                    <div
-                      key={index.id}
-                      className={cn(
-                        'group/item relative flex items-start justify-between gap-4 rounded-xl border bg-muted/50 px-5 py-4 transition-all duration-300 hover:bg-muted/70 hover:-translate-y-1 hover:shadow-lg overflow-hidden',
-                        isAnimatingAdd && 'animate-suggestion-add',
-                        isAnimatingRemove && 'animate-suggestion-remove',
-                      )}
-                    >
-                      {/* Left gradient bar */}
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/30 to-transparent transition-all duration-300 group-hover/item:w-2" />
-
-                      <div className="relative flex flex-1 flex-wrap items-center gap-3 pl-2">
-                        <span
-                          className={`inline-flex items-center gap-2 rounded-md px-3 py-1 text-sm font-semibold transition-transform duration-200 ${badge.className} group-hover/item:scale-105`}
-                        >
-                          <badge.Icon className="h-4 w-4" />
-                          {badge.label}
-                        </span>
-                        {editingIndexId === index.id ? (
-                          <Input
-                            ref={editInputRef}
-                            value={editingName}
-                            onChange={(e) => setEditingName(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleConfirmEdit();
-                              } else if (e.key === 'Escape') {
-                                e.preventDefault();
-                                handleCancelEdit();
-                              }
-                            }}
-                            onBlur={handleConfirmEdit}
-                            className="h-7 text-base font-semibold px-2 py-0"
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        ) : (
-                          <>
-                            <span
-                              className="break-all text-base font-semibold leading-snug transition-colors duration-200 group-hover/item:text-primary cursor-pointer hover:underline hover:decoration-dashed hover:underline-offset-4"
-                              onDoubleClick={() => handleStartEdit(index)}
-                              title={t('indexPanel.editNameTitle')}
-                            >
-                              {index.name}
-                              <Pencil className="inline-block ml-1.5 h-3 w-3 opacity-0 group-hover/item:opacity-50 transition-opacity" />
-                            </span>
-                            <span className="sr-only">{t('indexPanel.editNameSrHint')}</span>
-                          </>
-                        )}
-                        <div className="w-full pl-1">
-                          <span className="break-words text-sm leading-relaxed text-muted-foreground transition-colors duration-200 group-hover/item:text-muted-foreground/80">
-                            (
-                            {index.fields
-                              .map((f) => `${f.name}${f.direction === 'DESC' ? ' DESC' : ''}`)
-                              .join(', ')}
-                            )
-                          </span>
-                        </div>
-                      </div>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="transition-all duration-200 hover:scale-110 hover:bg-destructive/10"
-                            onClick={() => onRemoveIndex(index.id)}
-                          >
-                            <X className="h-4 w-4 transition-transform duration-200 group-hover/item:rotate-90" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{t('indexPanel.deleteIndexTip')}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                  );
-                })}
-              </div>
+          ) : (
+            <div className="flex h-full min-h-64 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+              {t('indexPanel.emptyDetail')}
             </div>
           )}
         </div>
@@ -429,3 +549,5 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
     </div>
   );
 });
+
+IndexPanel.displayName = 'IndexPanel';
