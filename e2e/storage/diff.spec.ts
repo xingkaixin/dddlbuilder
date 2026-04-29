@@ -14,12 +14,13 @@ const fillBasicField = async (page: any, name = 'id') => {
 };
 
 const getSavedTableRow = (page: any, pattern: RegExp) => {
-  return page.locator('[data-testid^="saved-table-row:"]').filter({ hasText: pattern });
+  const drawer = page.getByRole('dialog', { name: /工作区/i });
+  return drawer.locator('[data-testid^="saved-table-row:"]').filter({ hasText: pattern });
 };
 
 const clickSavedTable = async (page: any, pattern: RegExp) => {
   const row = getSavedTableRow(page, pattern);
-  const selectBtn = row.locator('button[data-testid^="table-select:"]');
+  const selectBtn = row.locator('button[data-testid^="table-select:"]').first();
   await selectBtn.click();
 };
 

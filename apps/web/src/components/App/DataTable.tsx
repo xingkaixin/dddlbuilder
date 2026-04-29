@@ -316,7 +316,7 @@ export const DataTable = memo<DataTableProps>(
       [t],
     );
 
-    const { sensors, rowIds, handleDragEnd } = useSortableFieldRows({
+    const { sensors, rowIds, handleDragMove, handleDragEnd } = useSortableFieldRows({
       rows,
       setRows,
       onDragResult: handleDragResult,
@@ -394,6 +394,7 @@ export const DataTable = memo<DataTableProps>(
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
+            onDragMove={handleDragMove}
             onDragEnd={handleDragEnd}
           >
             <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>

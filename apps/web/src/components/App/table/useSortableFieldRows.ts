@@ -1,10 +1,11 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import {
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragMoveEvent,
 } from '@dnd-kit/core';
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import type { FieldRow } from '@ddlbuilder/shared-types';
@@ -38,6 +39,8 @@ export const reorderFieldRowsByIds = (
 };
 
 export function useSortableFieldRows({ rows, setRows, onDragResult }: UseSortableFieldRowsParams) {
+  const lastOverIdRef = useRef<string | null>(null);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -51,11 +54,17 @@ export function useSortableFieldRows({ rows, setRows, onDragResult }: UseSortabl
 
   const rowIds = useMemo(() => rows.map((row) => String(row.order)), [rows]);
 
+  const handleDragMove = useCallback((event: DragMoveEvent) => {
+    if (event.over) {
+      lastOverIdRef.current = String(event.over.id);
+    }
+  }, []);
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
       const activeId = String(active.id);
-      const overId = over ? String(over.id) : null;
+      const overId = over ? String(over.id) : lastOverIdRef.current;
       const moved =
         Boolean(overId) &&
         activeId !== overId &&
@@ -68,6 +77,7 @@ export function useSortableFieldRows({ rows, setRows, onDragResult }: UseSortabl
         activeId,
         overId,
       });
+      lastOverIdRef.current = null;
     },
     [onDragResult, rows, setRows],
   );
@@ -75,6 +85,7 @@ export function useSortableFieldRows({ rows, setRows, onDragResult }: UseSortabl
   return {
     sensors,
     rowIds,
+    handleDragMove,
     handleDragEnd,
   };
 }

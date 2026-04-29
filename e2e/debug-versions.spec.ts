@@ -33,10 +33,11 @@ test('debug version rollback', async ({ context, page }) => {
   await page.getByRole('button', { name: '工作区' }).click();
   await expect(page.getByRole('heading', { name: '工作区' })).toBeVisible();
 
-  const row = page
+  const drawer = page.getByRole('dialog', { name: /工作区/i });
+  const row = drawer
     .locator('[data-testid^="saved-table-row:"]')
     .filter({ hasText: new RegExp(tableName, 'i') });
-  const selectBtn = row.locator('button[data-testid^="table-select:"]');
+  const selectBtn = row.locator('button[data-testid^="table-select:"]').first();
   await selectBtn.click();
   await expect(page.getByText(new RegExp(`当前：${tableName}`))).toBeVisible();
 

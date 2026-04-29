@@ -63,17 +63,17 @@ const dragToTarget = async (page: any, source: any, target: any) => {
   throw lastError;
 };
 
-const getTableRowByName = (page: any, name: RegExp) =>
-  page
-    .locator('[data-testid^="saved-table-row:"]')
-    .filter({ has: page.getByRole('button', { name }) })
-    .first();
+const getDrawer = (page: any) => page.getByRole('dialog', { name: /工作区/i });
 
-const getFolderRowByName = (page: any, name: RegExp) =>
-  page
-    .locator('[data-testid^="folder-row:"]')
-    .filter({ has: page.getByRole('button', { name }) })
-    .first();
+const getTableRowByName = (page: any, name: RegExp) => {
+  const drawer = getDrawer(page);
+  return drawer.locator('[data-testid^="saved-table-row:"]').filter({ hasText: name }).first();
+};
+
+const getFolderRowByName = (page: any, name: RegExp) => {
+  const drawer = getDrawer(page);
+  return drawer.locator('[data-testid^="folder-row:"]').filter({ hasText: name }).first();
+};
 
 const ensureFolderExpanded = async (page: any, folderName: string) => {
   const expandButton = page
@@ -82,7 +82,7 @@ const ensureFolderExpanded = async (page: any, folderName: string) => {
     })
     .first();
   if (await expandButton.isVisible().catch(() => false)) {
-    await expandButton.click();
+    await expandButton.click({ force: true });
   }
 };
 
@@ -131,10 +131,11 @@ test.describe('文件夹管理验证 @storage', () => {
     await page.getByLabel('文件夹名称').fill('AlignFolder');
     await page.getByRole('button', { name: /确定/i }).click();
 
+    const drawer = getDrawer(page);
     const folderRow = getFolderRowByName(page, /AlignFolder/i);
     const folderIcon = folderRow.locator('button').nth(2).locator('svg').first();
-    const tableIconA = page.getByTestId(`table-icon:${tableNameA}`);
-    const tableIconB = page.getByTestId(`table-icon:${tableNameB}`);
+    const tableIconA = drawer.getByTestId(`table-icon:${tableNameA}`).first();
+    const tableIconB = drawer.getByTestId(`table-icon:${tableNameB}`).first();
 
     const folderIconX = await getLeftX(folderIcon);
     const tableIconAX = await getLeftX(tableIconA);
@@ -152,16 +153,17 @@ test.describe('文件夹管理验证 @storage', () => {
     await page.getByLabel('文件夹名称').fill('FolderA');
     await page.getByRole('button', { name: /确定/i }).click();
 
-    const folderButton = page.getByRole('button', { name: /FolderA/i });
-    await folderButton.hover();
-    await folderButton.locator('..').getByRole('button').last().click();
+    const folderRow = getFolderRowByName(page, /FolderA/i);
+    await folderRow.hover();
+    await folderRow.locator('button').last().click();
     await page.getByRole('menuitem', { name: /重命名/i }).click();
 
     await page.getByLabel('文件夹名称').fill('FolderB');
     await page.getByRole('button', { name: /确定/i }).click();
 
-    await expect(page.getByRole('button', { name: /FolderB/i })).toBeVisible();
-    await expect(page.getByText('FolderA')).toHaveCount(0);
+    const drawerAfter = getDrawer(page);
+    await expect(drawerAfter.getByRole('button', { name: /FolderB/i }).first()).toBeVisible();
+    await expect(drawerAfter.getByText('FolderA')).toHaveCount(0);
   });
 
   test('场景：删除文件夹', async ({ page }) => {
@@ -172,9 +174,9 @@ test.describe('文件夹管理验证 @storage', () => {
     await page.getByLabel('文件夹名称').fill('DeleteFolder');
     await page.getByRole('button', { name: /确定/i }).click();
 
-    const folderButton = page.getByRole('button', { name: /DeleteFolder/i });
-    await folderButton.hover();
-    await folderButton.locator('..').getByRole('button').last().click();
+    const folderRow = getFolderRowByName(page, /DeleteFolder/i);
+    await folderRow.hover();
+    await folderRow.locator('button').last().click();
     await page.getByRole('menuitem', { name: /删除/i }).click();
 
     await expect(page.getByRole('heading', { name: '删除文件夹' })).toBeVisible();

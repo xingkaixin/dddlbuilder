@@ -302,11 +302,22 @@ export function useSaveLoadActions({
 
   const handleSelectSavedTable = useCallback(
     (item: SavedTableSummary) => {
+      if (hasLoadedTable && canSaveCurrent) {
+        openSaveDialog(item);
+        return;
+      }
       flushCurrentWorkspace?.();
       setSavedTablesDrawerOpen(false);
       void handleLoadSavedTable(item);
     },
-    [setSavedTablesDrawerOpen, flushCurrentWorkspace, handleLoadSavedTable],
+    [
+      hasLoadedTable,
+      canSaveCurrent,
+      openSaveDialog,
+      flushCurrentWorkspace,
+      setSavedTablesDrawerOpen,
+      handleLoadSavedTable,
+    ],
   );
 
   const handleOpenSaveDialog = useCallback(() => {

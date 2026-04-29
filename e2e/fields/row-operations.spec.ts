@@ -64,6 +64,10 @@ test.describe('字段行操作验证 @fields', () => {
     );
     const thirdRow = page.locator('[data-testid="data-table"] tbody tr:nth-child(3)');
 
+    // 确保元素在视口内，避免 elementFromPoint 返回 null
+    await firstHandle.scrollIntoViewIfNeeded();
+    await thirdRow.scrollIntoViewIfNeeded();
+
     const handleBox = await firstHandle.boundingBox();
     const targetBox = await thirdRow.boundingBox();
 
@@ -76,9 +80,13 @@ test.describe('字段行操作验证 @fields', () => {
 
     await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
     await page.mouse.down();
-    await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, {
-      steps: 12,
-    });
+    await page.waitForTimeout(200);
+    // 先移动一小段距离以激活 dnd-kit 拖拽传感器 (distance: 6)
+    await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2 + 30, { steps: 5 });
+    await page.waitForTimeout(200);
+    // 目标移动到第三行中心
+    await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 5 });
+    await page.waitForTimeout(200);
     await page.mouse.up();
 
     const firstFieldName = page.locator(

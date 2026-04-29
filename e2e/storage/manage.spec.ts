@@ -98,7 +98,7 @@ test.describe('保存表管理补充 @storage', () => {
 
     await saveNewTable(page, tableName);
 
-    await sidebarTableAction(page, new RegExp(tableName, 'i'), /移入回收站/);
+    await sidebarTableAction(page, new RegExp(tableName, 'i'), /删除/);
 
     const deleteConfirmDialog = page.getByRole('dialog').filter({ hasText: /移入回收站/ });
     await expect(deleteConfirmDialog).toBeVisible();
@@ -133,7 +133,7 @@ test.describe('保存表管理补充 @storage', () => {
     // 尝试加载表 B，应弹出确认对话框
     await clickSidebarTable(page, new RegExp(tableB, 'i'));
 
-    await expect(page.getByText('加载保存的表')).toBeVisible();
+    await expect(page.getByRole('heading', { name: '加载保存的表' })).toBeVisible();
     await page.getByRole('button', { name: /取消/i }).click();
     await expect(page.getByText(new RegExp(`当前：${tableA}`))).toBeVisible();
   });
@@ -229,7 +229,7 @@ test.describe('保存表管理补充 @storage', () => {
     await expect(page.locator('#table-comment')).toHaveValue(initialSavedComment);
 
     // 删除表
-    await sidebarTableAction(page, new RegExp(renamedName, 'i'), /移入回收站/);
+    await sidebarTableAction(page, new RegExp(renamedName, 'i'), /删除/);
     const deleteConfirmDialog = page.getByRole('dialog').filter({ hasText: /移入回收站/ });
     await expect(deleteConfirmDialog).toBeVisible();
     await deleteConfirmDialog.getByRole('button', { name: /移入回收站/i }).click();

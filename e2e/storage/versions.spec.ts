@@ -12,24 +12,21 @@ const fillBasicField = async (page: any, name = 'f1') => {
 };
 
 const getSavedTableRow = (page: any, pattern: RegExp) => {
-  return page
+  const drawer = page.getByRole('dialog', { name: /工作区/i });
+  return drawer
     .locator('[data-testid^="saved-table-row:"]')
     .filter({ hasText: pattern })
-    .filter({ hasNot: page.locator('[data-testid^="draft-badge:"]') });
+    .filter({ hasNot: drawer.locator('[data-testid^="draft-badge:"]') });
 };
 
 const clickSavedTable = async (page: any, pattern: RegExp) => {
   const row = getSavedTableRow(page, pattern);
-  const selectBtn = row.locator('button[data-testid^="table-select:"]');
+  const selectBtn = row.locator('button[data-testid^="table-select:"]').first();
   await selectBtn.click();
 };
 
-const openHistoryDialog = async (page: any, tableName: string) => {
-  await page.getByRole('button', { name: '工作区' }).click();
-  await expect(page.getByRole('heading', { name: '工作区' })).toBeVisible();
-  const savedRow = getSavedTableRow(page, new RegExp(tableName, 'i'));
-  await savedRow.hover();
-  await savedRow.getByRole('button', { name: /历史版本/i }).click();
+const openHistoryDialog = async (page: any) => {
+  await page.getByRole('button', { name: /历史版本/i }).click();
   const dialog = page.getByRole('dialog', { name: /版本历史/i });
   await expect(dialog).toBeVisible();
   return dialog;
@@ -86,8 +83,8 @@ test.describe('版本管理验证 @storage', () => {
 
     await saveLoadedTable(page);
 
-    // 3. 查看版本历史 (在已保存表抽屉中)
-    const dialog = await openHistoryDialog(page, tableName);
+    // 3. 查看版本历史
+    const dialog = await openHistoryDialog(page);
     await expect(dialog.locator('button').filter({ hasText: /最新|初始版本/ })).toHaveCount(2);
   });
 
@@ -121,7 +118,7 @@ test.describe('版本管理验证 @storage', () => {
     await expect(cell).toHaveText('f1_updated', { timeout: 5000 });
 
     // 回滚到初始版本
-    const dialog = await openHistoryDialog(page, tableName);
+    const dialog = await openHistoryDialog(page);
     await dialog.getByRole('button', { name: /初始版本/i }).click();
     await page.getByRole('button', { name: /回滚到(该|此)版本/i }).click();
 
@@ -152,7 +149,7 @@ test.describe('版本管理验证 @storage', () => {
 
     await saveLoadedTable(page);
 
-    const dialog = await openHistoryDialog(page, tableName);
+    const dialog = await openHistoryDialog(page);
     const versionItems = dialog.locator('button').filter({ hasText: /最新|初始版本/ });
     await expect(versionItems).toHaveCount(2);
 
