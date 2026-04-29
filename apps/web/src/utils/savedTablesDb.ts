@@ -23,6 +23,7 @@ export type SavedTableRecord = {
   state: PersistedState;
   scope?: string;
   folderId?: string; // 关联的文件夹ID，null/undefined 表示未分组
+  trashedAt?: number;
   createdAt: number;
   updatedAt: number;
 };
@@ -35,6 +36,7 @@ export type SavedTableMetadata = {
   fieldCount: number;
   scope?: string;
   folderId?: string;
+  trashedAt?: number;
   createdAt: number;
   updatedAt: number;
 };
@@ -350,7 +352,17 @@ export const listSavedTables = async (
   if (!Array.isArray(records)) return [];
   return records
     .map((record) => decodeScopedTableRecord(record, scope))
-    .filter((record): record is SavedTableRecord => record != null);
+    .filter((record): record is SavedTableRecord => record != null && !record.trashedAt);
+};
+
+export const listTrashedSavedTables = async (
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<SavedTableRecord[]> => {
+  const records = await runWithStore<SavedTableRecord[]>('readonly', (store) => store.getAll());
+  if (!Array.isArray(records)) return [];
+  return records
+    .map((record) => decodeScopedTableRecord(record, scope))
+    .filter((record): record is SavedTableRecord => record != null && Boolean(record.trashedAt));
 };
 
 // 仅获取元数据（性能优化）
@@ -365,6 +377,23 @@ export const listSavedTableMetadata = async (
     dbType: record.state.dbType,
     fieldCount: record.state.rows?.filter((row) => row.fieldName?.trim()).length || 0,
     folderId: record.folderId,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+  }));
+};
+
+export const listTrashedSavedTableMetadata = async (
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<SavedTableMetadata[]> => {
+  const records = await listTrashedSavedTables(scope);
+
+  return records.map((record) => ({
+    normalizedName: record.normalizedName,
+    name: record.name,
+    dbType: record.state.dbType,
+    fieldCount: record.state.rows?.filter((row) => row.fieldName?.trim()).length || 0,
+    folderId: record.folderId,
+    trashedAt: record.trashedAt,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
   }));
@@ -415,5 +444,39 @@ export const deleteSavedTable = async (
 ): Promise<void> => {
   await runWithStore<undefined>('readwrite', (store) =>
     store.delete(withScopeKey(scope, normalizedName)),
+  );
+};
+
+export const moveSavedTableToTrash = async (
+  normalizedName: string,
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<void> => {
+  const record = await getSavedTable(normalizedName, scope);
+  if (!record) return;
+  await updateSavedTable(
+    {
+      ...record,
+      folderId: undefined,
+      trashedAt: Date.now(),
+      updatedAt: Date.now(),
+    },
+    scope,
+  );
+};
+
+export const restoreSavedTableFromTrash = async (
+  normalizedName: string,
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<void> => {
+  const records = await listTrashedSavedTables(scope);
+  const record = records.find((item) => item.normalizedName === normalizedName);
+  if (!record) return;
+  await updateSavedTable(
+    {
+      ...record,
+      trashedAt: undefined,
+      updatedAt: Date.now(),
+    },
+    scope,
   );
 };

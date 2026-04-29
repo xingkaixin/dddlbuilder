@@ -1,12 +1,13 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
+import type { TableFolder } from '@/utils/savedTablesDb';
 import i18n from '@/i18n';
 
 interface UseFolderActionsParams {
   folderTree: FolderTreeNode[];
   savedTables: SavedTableSummary[];
-  createFolder: (name: string, parentId?: string) => Promise<FolderTreeNode>;
+  createFolder: (name: string, parentId?: string) => Promise<TableFolder>;
   renameFolder: (id: string, name: string) => Promise<void>;
   moveFolder: (id: string, parentId?: string) => Promise<void>;
   deleteFolderAction: (id: string) => Promise<string[]>;

@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Eye, GitCompare, Table, Trash2, Waypoints } from 'lucide-react';
+import { Eye, GitCompare, History, Save, Table, Trash2, Waypoints } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/select';
@@ -21,9 +21,14 @@ interface TableConfigProps {
   onObjectTypeChange: (value: SchemaObjectType) => void;
   onDbTypeChange: (value: DatabaseType) => void;
   onClearAll: () => void;
+  onSaveCurrent?: () => void;
   onViewDiff?: () => void;
+  onViewHistory?: () => void;
   onOpenErDiagram?: () => void;
+  saveDisabled?: boolean;
+  saveDisabledHint?: string;
   showDiffButton?: boolean;
+  showHistoryButton?: boolean;
   loadedStatus?: string | null;
   loadedTableName?: string | null;
   workspaceLabel?: string | null;
@@ -44,9 +49,14 @@ export const TableConfig = memo<TableConfigProps>(
     onObjectTypeChange,
     onDbTypeChange,
     onClearAll,
+    onSaveCurrent,
     onViewDiff,
+    onViewHistory,
     onOpenErDiagram,
+    saveDisabled = false,
+    saveDisabledHint,
     showDiffButton = false,
+    showHistoryButton = false,
     loadedStatus = null,
     loadedTableName = null,
     workspaceLabel = null,
@@ -98,6 +108,25 @@ export const TableConfig = memo<TableConfigProps>(
             )}
           </div>
           <div className="flex items-center gap-1">
+            {showHistoryButton && onViewHistory && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 gap-1.5 px-2 text-xs"
+                    onClick={onViewHistory}
+                  >
+                    <History className="h-3.5 w-3.5" />
+                    {t('savedTables.history')}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t('savedTables.history')}</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
             {showDiffButton && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -114,6 +143,36 @@ export const TableConfig = memo<TableConfigProps>(
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>{t('tableConfig.viewDiff')}</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {onSaveCurrent && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex" tabIndex={saveDisabled ? 0 : -1}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 gap-1.5 px-2 text-xs"
+                      onClick={onSaveCurrent}
+                      disabled={saveDisabled}
+                    >
+                      <Save className="h-3.5 w-3.5" />
+                      {objectType === 'view'
+                        ? t('tableConfig.saveCurrentView')
+                        : t('tableConfig.saveCurrent')}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>
+                    {saveDisabled
+                      ? (saveDisabledHint ?? t('dialogs.save.disabledTip'))
+                      : objectType === 'view'
+                        ? t('tableConfig.saveCurrentView')
+                        : t('tableConfig.saveCurrent')}
+                  </p>
                 </TooltipContent>
               </Tooltip>
             )}

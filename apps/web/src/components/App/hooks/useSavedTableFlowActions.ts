@@ -52,7 +52,7 @@ interface UseSavedTableFlowActionsParams {
   trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void> | void;
   flushCurrentWorkspace?: () => void;
   getSavedTableDraft?: (normalizedName: string) => SavedTableDraftRecord | null;
-  setWorkspaceSnapshot?: (source: WorkspaceSource, state: PersistedState | null) => void;
+  setWorkspaceSnapshot?: (source: WorkspaceSource, state: PersistedState) => void;
   renameSavedTableDraft?: (
     fromNormalizedName: string,
     toNormalizedName: string,

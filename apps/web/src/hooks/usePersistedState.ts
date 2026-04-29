@@ -58,6 +58,7 @@ export interface UsePersistedStateReturn {
   setWorkspaceSnapshot: (source: WorkspaceSource, state: PersistedState) => void;
   createDraft: (draftId: string, state: PersistedState) => void;
   deleteDraftById: (draftId: string) => void;
+  moveDraftToFolder: (draftId: string, folderId?: string) => void;
 }
 
 export function usePersistedState(): UsePersistedStateReturn {
@@ -252,6 +253,25 @@ export function usePersistedState(): UsePersistedStateReturn {
       }
     },
     [currentScope, shareId, syncActiveSource],
+  );
+
+  const moveDraftToFolder = useCallback(
+    (draftId: string, folderId?: string) => {
+      if (shareId) return;
+      const record = draftsRef.current.get(draftId);
+      if (!record) return;
+      const nextRecord: GlobalDraftRecord = {
+        ...record,
+        folderId,
+        updatedAt: Date.now(),
+      };
+      draftsRef.current.set(draftId, nextRecord);
+      setDraftSummaries((prev) =>
+        prev.map((draft) => (draft.draftId === draftId ? { ...draft, folderId } : draft)),
+      );
+      fireAndForget(writeDraft(draftId, nextRecord, currentScope));
+    },
+    [currentScope, shareId],
   );
 
   useEffect(() => {
@@ -508,5 +528,6 @@ export function usePersistedState(): UsePersistedStateReturn {
     setWorkspaceSnapshot,
     createDraft,
     deleteDraftById,
+    moveDraftToFolder,
   };
 }

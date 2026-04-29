@@ -38,7 +38,7 @@ interface UseSaveLoadActionsParams {
   showToast: (message: string) => void;
   trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void> | void;
   flushCurrentWorkspace?: () => void;
-  setWorkspaceSnapshot?: (source: WorkspaceSource, state: PersistedState | null) => void;
+  setWorkspaceSnapshot?: (source: WorkspaceSource, state: PersistedState) => void;
   onSaveSuccess?: (payload: {
     normalizedName: string;
     displayName: string;

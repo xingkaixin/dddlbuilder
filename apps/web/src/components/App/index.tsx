@@ -9,7 +9,6 @@ import { SavedTablesContainer } from './containers/SavedTablesContainer';
 import { TableBuilderContainer } from './containers/TableBuilderContainer';
 import { MainWorkspaceSkeleton } from './MainWorkspaceSkeleton';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
-import { DEFAULT_DRAFT_ID } from '@/utils/workspaceStateDb';
 import { useAppSelectors } from './hooks/useAppSelectors';
 import { useDialogStates } from './hooks/useDialogStates';
 import { useDerivedTableState } from './hooks/useDerivedTableState';
@@ -38,6 +37,7 @@ import { useDDLReview } from '@/hooks/useDDLReview';
 import { useAIComments } from '@/hooks/useAIComments';
 import { useSuggestionAnimation } from '@/hooks/useSuggestionAnimation';
 import { useSavedTables } from '@/hooks/useSavedTables';
+import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import { useFolders } from '@/hooks/useFolders';
 import { useFieldTemplates } from '@/hooks/useFieldTemplates';
 import { useTableTemplates } from '@/hooks/useTableTemplates';
@@ -203,6 +203,7 @@ function App() {
     setWorkspaceSnapshot,
     createDraft,
     deleteDraftById,
+    moveDraftToFolder,
   } = usePersistedState();
 
   const {
@@ -442,15 +443,19 @@ function App() {
 
   const {
     savedTables,
+    trashedTables,
     loading: savedTablesLoading,
     error: savedTablesError,
     saveTable,
     overwriteTable,
     deleteTable,
+    restoreTable,
+    deleteTablePermanently,
     renameTable,
     loadTable,
     moveTableToFolder,
     clearTablesFromFolders,
+    refresh: refreshSavedTables,
   } = useSavedTables();
 
   const {
@@ -779,6 +784,14 @@ function App() {
     },
   });
 
+  const handleSaveCurrent = useCallback(() => {
+    if (hasLoadedTable) {
+      void handleConfirmSave();
+      return;
+    }
+    handleOpenSaveDialog();
+  }, [hasLoadedTable, handleConfirmSave, handleOpenSaveDialog]);
+
   const handleSelectDraft = useCallback(
     (draftId: string) => {
       flushCurrentWorkspace();
@@ -817,12 +830,62 @@ function App() {
     handleSelectDraft(draftId);
   }, [createDraft, handleSelectDraft]);
 
+  const handleMoveWorkspaceTableToFolder = useCallback(
+    (item: SavedTableSummary, folderId?: string) => {
+      void handleMoveTableToFolder(item, folderId);
+    },
+    [handleMoveTableToFolder],
+  );
+
+  const handleRestoreTable = useCallback(
+    (item: SavedTableSummary) => {
+      void restoreTable(item.normalizedName).then((result) => {
+        showToast(
+          result.ok
+            ? t('savedTables.restore')
+            : (result.message ?? t('savedTables.toast.moveFailed')),
+        );
+      });
+    },
+    [restoreTable, showToast, t],
+  );
+
+  const handleDeleteTablePermanently = useCallback(
+    (item: SavedTableSummary) => {
+      void deleteTablePermanently(item.normalizedName).then((result) => {
+        showToast(
+          result.ok
+            ? t('savedTables.deletePermanently')
+            : (result.message ?? t('savedTables.toast.deleteFolderFailed')),
+        );
+      });
+    },
+    [deleteTablePermanently, showToast, t],
+  );
+
   const handleDeleteDraft = useCallback(
     (draftId: string) => {
       deleteDraftById(draftId);
+      if (activeSource.kind === 'draft' && activeSource.draftId === draftId) {
+        const emptyState = createEmptyGlobalDraftState();
+        applySavedState(emptyState);
+        setLoadedTableNormalizedName(null);
+        setLoadedTableName(null);
+        setLoadedTableSignature(null);
+        setLoadedTableVersion(0);
+      }
       showToast(t('app.draftDeleted'));
     },
-    [deleteDraftById, showToast, t],
+    [
+      activeSource,
+      deleteDraftById,
+      applySavedState,
+      setLoadedTableNormalizedName,
+      setLoadedTableName,
+      setLoadedTableSignature,
+      showToast,
+      t,
+    ],
   );
 
   const workspaceLabel = useMemo(() => {
@@ -885,6 +948,24 @@ function App() {
     trackEvent,
   });
 
+  const handleViewCurrentVersionHistory = useCallback(() => {
+    if (!loadedTableNormalizedName || !loadedTableName) return;
+    handleViewVersionHistory({
+      normalizedName: loadedTableNormalizedName,
+      name: loadedTableName,
+      dbType,
+      fieldCount: filledRowCount,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  }, [
+    loadedTableNormalizedName,
+    loadedTableName,
+    handleViewVersionHistory,
+    dbType,
+    filledRowCount,
+  ]);
+
   const handleSelectTableFromEr = useCallback(
     (state: PersistedState) => {
       applySavedState(state);
@@ -936,17 +1017,8 @@ function App() {
   });
 
   const drawerDraftItems = useMemo(() => {
-    if (draftSummaries.length > 0) return draftSummaries;
-    return [
-      {
-        draftId: DEFAULT_DRAFT_ID,
-        name: t('app.workspace.unnamedDraft'),
-        dbType: 'mysql' as const,
-        fieldCount: 0,
-        updatedAt: Date.now(),
-      },
-    ];
-  }, [draftSummaries, t]);
+    return draftSummaries;
+  }, [draftSummaries]);
 
   const isMainWorkspaceLoading = !hydrated || isSavedTableLoading;
 
@@ -963,15 +1035,12 @@ function App() {
           savedTables={savedTables}
           folderTree={folderTree}
           onBatchImportComplete={() => {
-            void savedTables.refresh();
+            void refreshSavedTables();
             setSavedTablesDrawerOpen(true);
           }}
           saveTable={saveTable}
           overwriteTable={overwriteTable}
           moveTableToFolder={moveTableToFolder}
-          onSaveCurrent={handleOpenSaveDialog}
-          saveCurrentDisabled={!canSaveCurrent}
-          saveCurrentDisabledHint={t('dialogs.save.disabledTip')}
           onOpenAIGenerate={handleOpenAIGenerateDialog}
         />
 
@@ -1030,6 +1099,7 @@ function App() {
               loading={savedTablesLoading || foldersLoading}
               error={savedTablesError}
               items={savedTables}
+              trashedItems={trashedTables}
               draftItems={drawerDraftItems}
               folders={folderTree}
               activeNormalizedName={loadedTableNormalizedName}
@@ -1040,9 +1110,15 @@ function App() {
               onCreateDraft={handleCreateDraft}
               onCreateFolder={() => handleOpenCreateFolderDialog()}
               onSelectDraft={handleSelectDraft}
+              onDeleteDraft={handleDeleteDraft}
+              onMoveDraftToFolder={moveDraftToFolder}
               onSelect={handleSelectSavedTable}
               onRename={handleOpenRenameDialog}
               onDelete={handleOpenDeleteDialog}
+              onRestore={handleRestoreTable}
+              onDeletePermanently={handleDeleteTablePermanently}
+              onMoveToFolder={handleMoveWorkspaceTableToFolder}
+              onViewHistory={handleViewVersionHistory}
             />
           )}
 
@@ -1072,9 +1148,14 @@ function App() {
                       },
                       onDbTypeChange: handleDbTypeChange,
                       onClearAll: handleClearAll,
+                      onSaveCurrent: handleSaveCurrent,
                       onViewDiff: handleOpenDiffDialog,
+                      onViewHistory: handleViewCurrentVersionHistory,
                       onOpenErDiagram: handleOpenErDiagram,
+                      saveDisabled: !canSaveCurrent,
+                      saveDisabledHint: t('dialogs.save.disabledTip'),
                       showDiffButton: isLoadedDirty && tableDiff?.hasChanges,
+                      showHistoryButton: Boolean(loadedTableNormalizedName),
                       loadedStatus,
                       loadedTableName,
                       workspaceLabel,

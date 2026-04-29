@@ -12,7 +12,6 @@ import {
   LogOut,
   MailCheck,
   Settings,
-  Save,
   Sparkles,
 } from 'lucide-react';
 import { ThemeSwitcher } from './ThemeSwitcher';
@@ -63,9 +62,6 @@ interface HeaderProps {
   saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
   overwriteTable: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
   moveTableToFolder: (normalizedName: string, folderId?: string) => Promise<SaveTableResult>;
-  onSaveCurrent?: () => void;
-  saveCurrentDisabled?: boolean;
-  saveCurrentDisabledHint?: string;
   onOpenAIGenerate?: () => void;
 }
 
@@ -82,9 +78,6 @@ export const Header = memo<HeaderProps>(
     saveTable,
     overwriteTable,
     moveTableToFolder,
-    onSaveCurrent = () => {},
-    saveCurrentDisabled = false,
-    saveCurrentDisabledHint,
     onOpenAIGenerate = () => {},
   }) => {
     const { t } = useTranslation();
@@ -408,39 +401,13 @@ export const Header = memo<HeaderProps>(
                   </Suspense>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={onOpenAIGenerate}
-                        className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      >
+                      <button type="button" onClick={onOpenAIGenerate} className={actionBtnClass}>
                         <Sparkles className="h-4 w-4" aria-hidden />
                         {t('tableConfig.aiGenerate')}
                       </button>
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>{t('tableConfig.aiGenerateTip')}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="inline-flex" tabIndex={saveCurrentDisabled ? 0 : -1}>
-                        <button
-                          type="button"
-                          onClick={onSaveCurrent}
-                          disabled={saveCurrentDisabled}
-                          className="inline-flex h-9 items-center gap-2 rounded-md px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-                        >
-                          <Save className="h-4 w-4" aria-hidden />
-                          {t('header.save')}
-                        </button>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>
-                        {saveCurrentDisabled
-                          ? saveCurrentDisabledHint
-                          : t('tableConfig.saveCurrent')}
-                      </p>
                     </TooltipContent>
                   </Tooltip>
                   <Tooltip>

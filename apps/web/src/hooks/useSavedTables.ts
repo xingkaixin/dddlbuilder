@@ -8,7 +8,10 @@ import {
   ensureSavedTableName,
   getSavedTable,
   listSavedTableMetadata,
+  listTrashedSavedTableMetadata,
+  moveSavedTableToTrash,
   normalizeSavedTableName,
+  restoreSavedTableFromTrash,
   updateSavedTable,
   type SavedTableMetadata,
   type SavedTableRecord,
@@ -28,15 +31,21 @@ export type SaveTableResult =
 export function useSavedTables() {
   const authSession = useAuthSession();
   const [savedTables, setSavedTables] = useState<SavedTableSummary[]>([]);
+  const [trashedTables, setTrashedTables] = useState<SavedTableSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
       setLoading(true);
-      const metadata = await listSavedTableMetadata();
+      const [metadata, trashedMetadata] = await Promise.all([
+        listSavedTableMetadata(),
+        listTrashedSavedTableMetadata(),
+      ]);
       const sorted = metadata.sort((a, b) => b.updatedAt - a.updatedAt);
+      const sortedTrashed = trashedMetadata.sort((a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0));
       setSavedTables(sorted);
+      setTrashedTables(sortedTrashed);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : '读取失败');
@@ -122,6 +131,40 @@ export function useSavedTables() {
   );
 
   const deleteTable = useCallback(
+    async (normalizedName: string): Promise<SaveTableResult> => {
+      try {
+        await moveSavedTableToTrash(normalizedName);
+        await refresh();
+        return { ok: true, normalizedName };
+      } catch (err) {
+        return {
+          ok: false,
+          reason: 'error',
+          message: err instanceof Error ? err.message : '删除失败',
+        };
+      }
+    },
+    [refresh],
+  );
+
+  const restoreTable = useCallback(
+    async (normalizedName: string): Promise<SaveTableResult> => {
+      try {
+        await restoreSavedTableFromTrash(normalizedName);
+        await refresh();
+        return { ok: true, normalizedName };
+      } catch (err) {
+        return {
+          ok: false,
+          reason: 'error',
+          message: err instanceof Error ? err.message : '恢复失败',
+        };
+      }
+    },
+    [refresh],
+  );
+
+  const deleteTablePermanently = useCallback(
     async (normalizedName: string): Promise<SaveTableResult> => {
       try {
         await deleteSavedTable(normalizedName);
@@ -230,12 +273,15 @@ export function useSavedTables() {
 
   return {
     savedTables,
+    trashedTables,
     loading,
     error,
     refresh,
     saveTable,
     overwriteTable,
     deleteTable,
+    restoreTable,
+    deleteTablePermanently,
     renameTable,
     loadTable,
     moveTableToFolder,

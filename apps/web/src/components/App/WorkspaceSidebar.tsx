@@ -6,11 +6,14 @@ import {
   FileEdit,
   Folder,
   FolderOpen,
+  History,
   Plus,
   Search,
   Table2,
   Trash2,
   MoreHorizontal,
+  RotateCcw,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +34,7 @@ interface WorkspaceSidebarProps {
   loading: boolean;
   error?: string | null;
   items: SavedTableSummary[];
+  trashedItems?: SavedTableSummary[];
   draftItems?: DraftSummary[];
   folders: FolderTreeNode[];
   activeNormalizedName?: string | null;
@@ -41,9 +45,15 @@ interface WorkspaceSidebarProps {
   onCreateDraft?: () => void;
   onCreateFolder?: () => void;
   onSelectDraft?: (draftId: string) => void;
+  onDeleteDraft?: (draftId: string) => void;
+  onMoveDraftToFolder?: (draftId: string, folderId?: string) => void;
   onSelect: (item: SavedTableSummary) => void;
   onRename: (item: SavedTableSummary) => void;
   onDelete: (item: SavedTableSummary) => void;
+  onRestore?: (item: SavedTableSummary) => void;
+  onDeletePermanently?: (item: SavedTableSummary) => void;
+  onMoveToFolder?: (item: SavedTableSummary, folderId?: string) => void;
+  onViewHistory?: (item: SavedTableSummary) => void;
 }
 
 type FolderWithTables = Omit<FolderTreeNode, 'children'> & {
@@ -78,6 +88,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
     loading,
     error,
     items,
+    trashedItems = [],
     draftItems = [],
     folders,
     activeNormalizedName,
@@ -88,12 +99,19 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
     onCreateDraft,
     onCreateFolder,
     onSelectDraft,
+    onDeleteDraft,
+    onMoveDraftToFolder,
     onSelect,
     onRename,
     onDelete,
+    onRestore,
+    onDeletePermanently,
+    onMoveToFolder,
+    onViewHistory,
   }) => {
     const { t } = useTranslation();
     const [query, setQuery] = useState('');
+    const [showTrash, setShowTrash] = useState(false);
     const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(
       () => new Set(folders.map((folder) => folder.id)),
     );
@@ -117,6 +135,17 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
       () => buildFolderTree(folders, visibleItems),
       [folders, visibleItems],
     );
+    const flatFolders = useMemo(() => {
+      const result: Array<{ id: string; name: string; depth: number }> = [];
+      const walk = (nodes: FolderTreeNode[], depth: number) => {
+        for (const folder of nodes) {
+          result.push({ id: folder.id, name: folder.name, depth });
+          walk(folder.children, depth + 1);
+        }
+      };
+      walk(folders, 0);
+      return result;
+    }, [folders]);
 
     const toggleFolder = (folderId: string) => {
       setExpandedFolderIds((prev) => {
@@ -165,9 +194,30 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-32">
+              {onViewHistory && (
+                <DropdownMenuItem onClick={() => onViewHistory(item)}>
+                  <History className="mr-2 h-4 w-4" />
+                  {t('savedTables.history')}
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={() => onRename(item)}>
                 {t('savedTables.rename')}
               </DropdownMenuItem>
+              {onMoveToFolder && (
+                <>
+                  <DropdownMenuItem onClick={() => onMoveToFolder(item, undefined)}>
+                    {t('savedTables.moveToRoot')}
+                  </DropdownMenuItem>
+                  {flatFolders.map((folder) => (
+                    <DropdownMenuItem
+                      key={folder.id}
+                      onClick={() => onMoveToFolder(item, folder.id)}
+                    >
+                      <span style={{ paddingLeft: `${folder.depth * 10}px` }}>{folder.name}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onClick={() => onDelete(item)}
@@ -179,6 +229,44 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
         </div>
       );
     };
+
+    const renderTrashTable = (item: SavedTableSummary) => (
+      <div
+        key={item.normalizedName}
+        className="group flex items-center gap-1 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
+      >
+        <Trash2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 flex-1 truncate font-medium">{item.name}</span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 opacity-0 group-hover:opacity-100"
+            >
+              <MoreHorizontal className="h-3.5 w-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-36">
+            {onRestore && (
+              <DropdownMenuItem onClick={() => onRestore(item)}>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                {t('savedTables.restore')}
+              </DropdownMenuItem>
+            )}
+            {onDeletePermanently && (
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => onDeletePermanently(item)}
+              >
+                <X className="mr-2 h-4 w-4" />
+                {t('savedTables.deletePermanently')}
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
 
     const renderFolder = (folder: FolderWithTables, depth = 0): React.ReactNode => {
       const expanded = expandedFolderIds.has(folder.id);
@@ -278,44 +366,116 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                 {visibleDrafts.map((draft) => {
                   const isActive = activeDraftId === draft.draftId;
                   return (
-                    <button
+                    <div
                       key={draft.draftId}
-                      type="button"
                       className={cn(
-                        'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent',
+                        'group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent',
                         isActive && 'bg-primary/10 text-primary',
                       )}
-                      onClick={() => onSelectDraft?.(draft.draftId)}
                     >
                       <FileEdit className="h-4 w-4 text-amber-600" />
-                      <span className="min-w-0 flex-1 truncate font-medium">{draft.name}</span>
-                    </button>
+                      <button
+                        type="button"
+                        className="min-w-0 flex-1 truncate text-left font-medium"
+                        onClick={() => onSelectDraft?.(draft.draftId)}
+                      >
+                        {draft.name}
+                      </button>
+                      {(onDeleteDraft || onMoveDraftToFolder) && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                            >
+                              <MoreHorizontal className="h-3.5 w-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-36">
+                            {onMoveDraftToFolder && (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => onMoveDraftToFolder(draft.draftId, undefined)}
+                                >
+                                  {t('savedTables.moveToRoot')}
+                                </DropdownMenuItem>
+                                {flatFolders.map((folder) => (
+                                  <DropdownMenuItem
+                                    key={folder.id}
+                                    onClick={() => onMoveDraftToFolder(draft.draftId, folder.id)}
+                                  >
+                                    <span style={{ paddingLeft: `${folder.depth * 10}px` }}>
+                                      {folder.name}
+                                    </span>
+                                  </DropdownMenuItem>
+                                ))}
+                              </>
+                            )}
+                            {onDeleteDraft && (
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => onDeleteDraft(draft.draftId)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                {t('savedTables.deleteDraft')}
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
                   );
                 })}
               </section>
 
-              <section className="space-y-1">
-                <div className="px-2 text-xs font-medium text-muted-foreground">
-                  {t('savedTables.projectsSection')}
-                </div>
-                {groupedFolders.map((folder) => renderFolder(folder))}
-                {rootTables.map((table) => renderTable(table))}
-                {visibleItems.length === 0 && (
-                  <div className="px-2 py-2 text-xs text-muted-foreground">
-                    {normalizedQuery ? t('savedTables.noMatch') : t('savedTables.empty')}
+              {showTrash ? (
+                <section className="space-y-1">
+                  <div className="flex items-center justify-between px-2 text-xs font-medium text-muted-foreground">
+                    <span>{t('savedTables.trash')}</span>
+                    <button
+                      type="button"
+                      className="text-primary"
+                      onClick={() => setShowTrash(false)}
+                    >
+                      {t('savedTables.backToProjects')}
+                    </button>
                   </div>
-                )}
-              </section>
+                  {trashedItems.length > 0 ? (
+                    trashedItems.map((item) => renderTrashTable(item))
+                  ) : (
+                    <div className="px-2 py-2 text-xs text-muted-foreground">
+                      {t('savedTables.trashEmpty')}
+                    </div>
+                  )}
+                </section>
+              ) : (
+                <section className="space-y-1">
+                  <div className="px-2 text-xs font-medium text-muted-foreground">
+                    {t('savedTables.projectsSection')}
+                  </div>
+                  {groupedFolders.map((folder) => renderFolder(folder))}
+                  {rootTables.map((table) => renderTable(table))}
+                  {visibleItems.length === 0 && (
+                    <div className="px-2 py-2 text-xs text-muted-foreground">
+                      {normalizedQuery ? t('savedTables.noMatch') : t('savedTables.empty')}
+                    </div>
+                  )}
+                </section>
+              )}
 
               <button
                 type="button"
                 className="flex w-full items-center justify-between rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent"
+                onClick={() => setShowTrash((value) => !value)}
               >
                 <span className="inline-flex items-center gap-2">
                   <Trash2 className="h-4 w-4" />
                   {t('savedTables.trash')}
                 </span>
-                <span className="rounded-full bg-muted px-2 py-0.5 text-xs">0</span>
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs">
+                  {trashedItems.length}
+                </span>
               </button>
             </div>
           )}

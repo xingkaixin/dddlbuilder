@@ -30,7 +30,7 @@ interface UseRenameDeleteActionsParams {
   deleteTable: (normalizedName: string) => Promise<SaveTableResult>;
   showToast: (message: string) => void;
   trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void> | void;
-  setWorkspaceSnapshot?: (source: WorkspaceSource, state: PersistedState | null) => void;
+  setWorkspaceSnapshot?: (source: WorkspaceSource, state: PersistedState) => void;
   renameSavedTableDraft?: (
     fromNormalizedName: string,
     toNormalizedName: string,
@@ -155,7 +155,7 @@ export function useRenameDeleteActions({
     } else {
       removeSavedTableDraft?.(deleteTarget.normalizedName);
       void trackEvent('table_delete', { tableName: deleteTarget.name });
-      showToast(`已删除：${deleteTarget.name}`);
+      showToast(`已移入回收站：${deleteTarget.name}`);
       if (deleteTarget.normalizedName === loadedTableNormalizedName) {
         setLoadedTableNormalizedName(null);
         setLoadedTableName(null);
