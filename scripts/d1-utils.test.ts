@@ -8,6 +8,7 @@ import {
   migrationDir,
   resolveD1Mode,
   runD1Execute,
+  runPendingMigrations,
 } from './d1-utils';
 
 vi.mock('node:child_process', () => ({
@@ -154,5 +155,30 @@ describe('d1-utils', () => {
     vi.mocked(spawnSync).mockReturnValue({ status: 1 } as ReturnType<typeof spawnSync>);
     runD1Execute('local', { command: 'SELECT 1' });
     expect(process.exit).toHaveBeenCalledWith(1);
+  });
+
+  it('baselines existing databases and applies only the newest migration', () => {
+    vi.mocked(spawnSync)
+      .mockReturnValueOnce({ status: 0 } as ReturnType<typeof spawnSync>)
+      .mockReturnValueOnce({
+        status: 0,
+        stdout: JSON.stringify([{ results: [] }]),
+      } as ReturnType<typeof spawnSync>)
+      .mockReturnValueOnce({
+        status: 0,
+        stdout: JSON.stringify([{ results: [{ name: 'user' }] }]),
+      } as ReturnType<typeof spawnSync>)
+      .mockReturnValue({ status: 0 } as ReturnType<typeof spawnSync>);
+
+    runPendingMigrations('local');
+
+    const fileArgs = (
+      spawnSync as unknown as { mock: { calls: Array<[string, string[]]> } }
+    ).mock.calls
+      .map((call) => call[1])
+      .filter((args): args is string[] => Array.isArray(args) && args.includes('--file'));
+
+    expect(fileArgs).toHaveLength(1);
+    expect(fileArgs[0]).toContain(path.join(migrationDir, '0005_workspace_drafts.sql'));
   });
 });

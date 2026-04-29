@@ -73,9 +73,100 @@ export const runD1Execute = (
   }
 };
 
+const runD1ExecuteJson = <T>(mode: D1Mode, input: { file?: string; command?: string }): T => {
+  const result = spawnSync('pnpm', buildD1ExecuteArgs(mode, { ...input, json: true }), {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+
+  if ((result.status ?? 1) !== 0) {
+    process.stderr.write(result.stderr ?? '');
+    process.exit(result.status ?? 1);
+  }
+
+  return JSON.parse(result.stdout) as T;
+};
+
+const queryD1Rows = <T>(mode: D1Mode, command: string): T[] => {
+  const payload = runD1ExecuteJson<Array<{ results?: T[] }>>(mode, { command });
+  return payload[0]?.results ?? [];
+};
+
+const ensureMigrationLedger = (mode: D1Mode): void => {
+  runD1Execute(mode, {
+    command: `
+      CREATE TABLE IF NOT EXISTS __ddlbuilder_migrations (
+        name TEXT PRIMARY KEY,
+        applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `,
+  });
+};
+
+const listAppliedMigrations = (mode: D1Mode): Set<string> => {
+  const rows = queryD1Rows<{ name: string }>(
+    mode,
+    'SELECT name FROM __ddlbuilder_migrations ORDER BY name',
+  );
+  return new Set(rows.map((row) => row.name));
+};
+
+const hasExistingAppSchema = (mode: D1Mode): boolean => {
+  const rows = queryD1Rows<{ name: string }>(
+    mode,
+    `
+      SELECT name
+      FROM sqlite_master
+      WHERE type = 'table' AND name IN ('user', 'workspace_snapshots')
+      LIMIT 1
+    `,
+  );
+  return rows.length > 0;
+};
+
+const recordMigration = (mode: D1Mode, name: string): void => {
+  runD1Execute(mode, {
+    command: `INSERT OR IGNORE INTO __ddlbuilder_migrations (name) VALUES (${JSON.stringify(name)})`,
+  });
+};
+
+const baselineExistingSchema = (mode: D1Mode, migrations: string[]): Set<string> => {
+  if (!hasExistingAppSchema(mode) || migrations.length === 0) {
+    return new Set();
+  }
+
+  const baseline = migrations.slice(0, -1);
+  for (const file of baseline) {
+    recordMigration(mode, path.basename(file));
+  }
+
+  return new Set(baseline.map((file) => path.basename(file)));
+};
+
 export const runAllMigrations = (mode: D1Mode): void => {
   for (const file of listMigrationFiles()) {
     console.log(`[d1] applying ${path.relative(repoRoot, file)} (${mode})`);
     runD1Execute(mode, { file });
+  }
+};
+
+export const runPendingMigrations = (mode: D1Mode): void => {
+  ensureMigrationLedger(mode);
+
+  const migrations = listMigrationFiles();
+  let applied = listAppliedMigrations(mode);
+  if (applied.size === 0) {
+    applied = baselineExistingSchema(mode, migrations);
+  }
+
+  for (const file of migrations) {
+    const name = path.basename(file);
+    if (applied.has(name)) {
+      continue;
+    }
+
+    console.log(`[d1] applying ${path.relative(repoRoot, file)} (${mode})`);
+    runD1Execute(mode, { file });
+    recordMigration(mode, name);
   }
 };

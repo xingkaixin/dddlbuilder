@@ -1,3 +1,3 @@
-import { resolveD1Mode, runAllMigrations } from './d1-utils';
+import { resolveD1Mode, runPendingMigrations } from './d1-utils';
 
-runAllMigrations(resolveD1Mode(process.argv.slice(2)));
+runPendingMigrations(resolveD1Mode(process.argv.slice(2)));
