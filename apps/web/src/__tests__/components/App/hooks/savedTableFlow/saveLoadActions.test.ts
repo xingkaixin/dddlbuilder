@@ -366,8 +366,13 @@ describe('useSaveLoadActions', () => {
     expect(loadTable).toHaveBeenCalledWith('pending_norm');
   });
 
-  it('handleSelectSavedTable opens save dialog when loaded table is dirty', async () => {
+  it('handleSelectSavedTable flushes and loads directly when loaded table is dirty (tabs mode)', async () => {
     const target = { normalizedName: 'pending_norm', name: 'pending' };
+    loadTable.mockResolvedValue({
+      normalizedName: 'pending_norm',
+      name: 'pending',
+      state: { rows: [] },
+    });
 
     const { result } = getHook({ hasLoadedTable: true, canSaveCurrent: true });
 
@@ -375,12 +380,9 @@ describe('useSaveLoadActions', () => {
       result.current.handleSelectSavedTable(target as any);
     });
 
-    expect(saveDialog.openDialog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queuedLoadAfterSave: target,
-      }),
-    );
-    expect(flushCurrentWorkspace).not.toHaveBeenCalled();
-    expect(loadTable).not.toHaveBeenCalled();
+    expect(flushCurrentWorkspace).toHaveBeenCalled();
+    expect(setSavedTablesDrawerOpen).toHaveBeenCalledWith(false);
+    expect(saveDialog.openDialog).not.toHaveBeenCalled();
+    expect(loadTable).toHaveBeenCalledWith('pending_norm');
   });
 });

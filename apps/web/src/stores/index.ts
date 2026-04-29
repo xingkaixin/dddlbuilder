@@ -6,3 +6,4 @@ export { useForeignKeyStore } from './foreignKeyStore';
 export { usePartitionStore } from './partitionStore';
 export { useShardingStore } from './shardingStore';
 export { useTableOptionsStore } from './tableOptionsStore';
+export { useTabStore, type WorkspaceTab } from './tabStore';

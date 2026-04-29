@@ -66,6 +66,8 @@ interface UseSavedTableFlowActionsParams {
     mode: 'create' | 'update';
   }) => Promise<void> | void;
   onTableLoadStateChange?: (loading: boolean) => void;
+  onTabRename?: (fromNormalizedName: string, toNormalizedName: string, newTitle: string) => void;
+  onTabRemove?: (normalizedName: string) => void;
 }
 
 export function useSavedTableFlowActions({
@@ -100,6 +102,8 @@ export function useSavedTableFlowActions({
   removeSavedTableDraft,
   onSaveSuccess,
   onTableLoadStateChange,
+  onTabRename,
+  onTabRemove,
 }: UseSavedTableFlowActionsParams) {
   const saveLoadActions = useSaveLoadActions({
     tableName,
@@ -145,6 +149,8 @@ export function useSavedTableFlowActions({
     setWorkspaceSnapshot,
     renameSavedTableDraft,
     removeSavedTableDraft,
+    onTabRename,
+    onTabRemove,
   });
 
   return {

@@ -9,6 +9,8 @@ import { SavedTablesContainer } from './containers/SavedTablesContainer';
 import { TableBuilderContainer } from './containers/TableBuilderContainer';
 import { MainWorkspaceSkeleton } from './MainWorkspaceSkeleton';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
+import { TabBar } from './TabBar';
+import { useTabStore } from '@/stores';
 import { useAppSelectors } from './hooks/useAppSelectors';
 import { useDialogStates } from './hooks/useDialogStates';
 import { useDerivedTableState } from './hooks/useDerivedTableState';
@@ -208,6 +210,22 @@ function App() {
     removeSavedTableDraft,
     renameSavedTableDraft,
   } = usePersistedState();
+
+  // ─── Tab store ─────────────────────────────────────────────────
+  const {
+    tabs,
+    activeTabId,
+    addTab,
+    activateTab,
+    closeTab: closeTabStore,
+    updateActiveTabSnapshot,
+    updateActiveTabSource,
+    findTabBySource,
+    getActiveTab,
+    setTabLoading,
+    removeTabBySource,
+    updateTabTitleBySource,
+  } = useTabStore();
 
   const {
     authInput,
@@ -443,6 +461,27 @@ function App() {
       // ignore sessionStorage errors
     }
   }, [isShareView, showToast, t]);
+
+  // ─── 初始化第一个标签页 ─────────────────────────────────────────
+  useEffect(() => {
+    if (!hydrated || isShareView || tabs.length > 0) return;
+
+    const initialState = persistedState ?? createEmptyGlobalDraftState();
+    const isDirty =
+      activeSource.kind === 'saved_table'
+        ? JSON.stringify(initialState) !== activeSource.baseSignature
+        : false;
+    const title =
+      activeSource.kind === 'saved_table' ? activeSource.tableName : t('app.workspace.globalDraft');
+
+    addTab({
+      title,
+      source: activeSource,
+      stateSnapshot: initialState,
+      isDirty,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, isShareView, tabs.length]);
 
   const {
     savedTables,
@@ -685,6 +724,11 @@ function App() {
       source.kind === 'saved_table'
         ? serializePersistedState(state) !== source.baseSignature
         : false;
+
+    // 保存到当前激活标签页的快照
+    updateActiveTabSnapshot(state, isDirty);
+
+    // 保持原有的 IndexedDB 保存
     saveState({ state, source, isDirty });
   }, [
     hydrated,
@@ -692,6 +736,7 @@ function App() {
     activeSource,
     buildPersistedState,
     serializePersistedState,
+    updateActiveTabSnapshot,
     saveState,
   ]);
 
@@ -728,7 +773,7 @@ function App() {
     handleOpenSaveDialog,
     handleConfirmSave,
     handleSaveDialogOpenChange,
-    handleSelectSavedTable,
+    handleLoadSavedTable,
     handleOpenRenameDialog,
     handleRenameDialogOpenChange,
     handleConfirmRename,
@@ -790,6 +835,35 @@ function App() {
         deleteDraftById(activeSource.draftId);
       }
       removeSavedTableDraft(normalizedName);
+
+      // 更新标签页 title 和 source
+      updateActiveTabTitle(displayName);
+      updateActiveTabSource({
+        kind: 'saved_table',
+        normalizedName,
+        tableName: displayName,
+        baseSignature,
+      });
+      updateActiveTabSnapshot(buildPersistedState(), false);
+    },
+    onTabRename: (fromNormalizedName, toNormalizedName, newTitle) => {
+      updateTabTitleBySource(
+        {
+          kind: 'saved_table',
+          normalizedName: fromNormalizedName,
+          tableName: '',
+          baseSignature: '',
+        },
+        newTitle,
+      );
+    },
+    onTabRemove: (normalizedName) => {
+      removeTabBySource({
+        kind: 'saved_table',
+        normalizedName,
+        tableName: '',
+        baseSignature: '',
+      });
     },
   });
 
@@ -801,16 +875,98 @@ function App() {
     handleOpenSaveDialog();
   }, [hasLoadedTable, handleConfirmSave, handleOpenSaveDialog]);
 
+  const handleSelectSavedTable = useCallback(
+    async (item: SavedTableSummary) => {
+      flushCurrentWorkspace();
+      setSavedTablesDrawerOpen(false);
+
+      const existingTab = findTabBySource({
+        kind: 'saved_table',
+        normalizedName: item.normalizedName,
+        tableName: item.name,
+        baseSignature: '',
+      });
+      if (existingTab) {
+        activateTab(existingTab.id);
+        applySavedState(existingTab.stateSnapshot);
+        setWorkspaceSnapshot(existingTab.source, existingTab.stateSnapshot);
+        return;
+      }
+
+      const currentState = buildPersistedState();
+      const newTabId = addTab({
+        title: item.name,
+        source: {
+          kind: 'saved_table',
+          normalizedName: item.normalizedName,
+          tableName: item.name,
+          baseSignature: '',
+        },
+        stateSnapshot: currentState,
+        isDirty: false,
+        isLoading: true,
+      });
+      activateTab(newTabId);
+
+      const result = await handleLoadSavedTable(item);
+      if (result) {
+        updateActiveTabSource({
+          kind: 'saved_table',
+          normalizedName: item.normalizedName,
+          tableName: item.name,
+          baseSignature: result.signature,
+        });
+        updateActiveTabSnapshot(result.state, false);
+      }
+      setTabLoading(newTabId, false);
+    },
+    [
+      flushCurrentWorkspace,
+      setSavedTablesDrawerOpen,
+      findTabBySource,
+      activateTab,
+      applySavedState,
+      setWorkspaceSnapshot,
+      buildPersistedState,
+      addTab,
+      handleLoadSavedTable,
+      updateActiveTabSource,
+      updateActiveTabSnapshot,
+      setTabLoading,
+    ],
+  );
+
   const handleSelectDraft = useCallback(
     (draftId: string) => {
       flushCurrentWorkspace();
       setSavedTablesDrawerOpen(false);
+
+      const existingTab = findTabBySource({ kind: 'draft', draftId });
+      if (existingTab) {
+        activateTab(existingTab.id);
+        applySavedState(existingTab.stateSnapshot);
+        setWorkspaceSnapshot(existingTab.source, existingTab.stateSnapshot);
+        setLoadedTableNormalizedName(null);
+        setLoadedTableName(null);
+        setLoadedTableSignature(null);
+        setLoadedTableVersion(0);
+        return;
+      }
+
       const existedDraftState = getDraftState(draftId);
       const nextState = existedDraftState ?? createEmptyGlobalDraftState();
+      const draftName =
+        draftSummaries.find((d) => d.draftId === draftId)?.name ?? t('app.workspace.globalDraft');
 
-      setWorkspaceSnapshot?.({ kind: 'draft', draftId }, nextState);
+      const newTabId = addTab({
+        title: draftName,
+        source: { kind: 'draft', draftId },
+        stateSnapshot: nextState,
+        isDirty: false,
+      });
+      activateTab(newTabId);
       applySavedState(nextState);
-
+      setWorkspaceSnapshot({ kind: 'draft', draftId }, nextState);
       setLoadedTableNormalizedName(null);
       setLoadedTableName(null);
       setLoadedTableSignature(null);
@@ -821,9 +977,13 @@ function App() {
     [
       flushCurrentWorkspace,
       setSavedTablesDrawerOpen,
-      getDraftState,
-      setWorkspaceSnapshot,
+      findTabBySource,
+      activateTab,
       applySavedState,
+      setWorkspaceSnapshot,
+      getDraftState,
+      draftSummaries,
+      addTab,
       setLoadedTableNormalizedName,
       setLoadedTableName,
       setLoadedTableSignature,
@@ -833,11 +993,87 @@ function App() {
   );
 
   const handleCreateDraft = useCallback(() => {
+    flushCurrentWorkspace();
     const draftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const emptyState = createEmptyGlobalDraftState();
     createDraft(draftId, emptyState);
-    handleSelectDraft(draftId);
-  }, [createDraft, handleSelectDraft]);
+
+    const newTabId = addTab({
+      title: t('app.workspace.globalDraft'),
+      source: { kind: 'draft', draftId },
+      stateSnapshot: emptyState,
+      isDirty: false,
+    });
+    activateTab(newTabId);
+    applySavedState(emptyState);
+    setWorkspaceSnapshot({ kind: 'draft', draftId }, emptyState);
+    setLoadedTableNormalizedName(null);
+    setLoadedTableName(null);
+    setLoadedTableSignature(null);
+    setLoadedTableVersion(0);
+  }, [
+    flushCurrentWorkspace,
+    createDraft,
+    addTab,
+    activateTab,
+    applySavedState,
+    setWorkspaceSnapshot,
+    setLoadedTableNormalizedName,
+    setLoadedTableName,
+    setLoadedTableSignature,
+    t,
+  ]);
+
+  const handleCloseTab = useCallback(
+    (tabId: string) => {
+      const tabToClose = tabs.find((t) => t.id === tabId);
+      closeTabStore(tabId);
+
+      const nextActive = getActiveTab();
+      if (nextActive) {
+        applySavedState(nextActive.stateSnapshot);
+        setWorkspaceSnapshot(nextActive.source, nextActive.stateSnapshot);
+      } else {
+        // 没有标签页了，新建空草稿
+        const newDraftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const emptyState = createEmptyGlobalDraftState();
+        createDraft(newDraftId, emptyState);
+        const newTabId = addTab({
+          title: t('app.workspace.globalDraft'),
+          source: { kind: 'draft', draftId: newDraftId },
+          stateSnapshot: emptyState,
+          isDirty: false,
+        });
+        activateTab(newTabId);
+        applySavedState(emptyState);
+        setWorkspaceSnapshot({ kind: 'draft', draftId: newDraftId }, emptyState);
+        setLoadedTableNormalizedName(null);
+        setLoadedTableName(null);
+        setLoadedTableSignature(null);
+        setLoadedTableVersion(0);
+      }
+
+      // 如果关闭的是草稿标签页，清理草稿数据
+      if (tabToClose?.source.kind === 'draft') {
+        deleteDraftById(tabToClose.source.draftId);
+      }
+    },
+    [
+      tabs,
+      closeTabStore,
+      getActiveTab,
+      applySavedState,
+      setWorkspaceSnapshot,
+      createDraft,
+      addTab,
+      activateTab,
+      setLoadedTableNormalizedName,
+      setLoadedTableName,
+      setLoadedTableSignature,
+      deleteDraftById,
+      t,
+    ],
+  );
 
   const handleRestoreTable = useCallback(
     (item: SavedTableSummary) => {
@@ -868,26 +1104,21 @@ function App() {
   const handleDeleteDraft = useCallback(
     (draftId: string) => {
       deleteDraftById(draftId);
-      if (activeSource.kind === 'draft' && activeSource.draftId === draftId) {
-        const emptyState = createEmptyGlobalDraftState();
-        applySavedState(emptyState);
-        setLoadedTableNormalizedName(null);
-        setLoadedTableName(null);
-        setLoadedTableSignature(null);
-        setLoadedTableVersion(0);
+
+      const tab = findTabBySource({ kind: 'draft', draftId });
+      if (tab) {
+        if (tab.id === activeTabId) {
+          // 关闭激活标签页会自动创建新草稿
+          handleCloseTab(tab.id);
+        } else {
+          // 非激活标签页直接移除
+          closeTabStore(tab.id);
+        }
       }
+
       showToast(t('app.draftDeleted'));
     },
-    [
-      activeSource,
-      deleteDraftById,
-      applySavedState,
-      setLoadedTableNormalizedName,
-      setLoadedTableName,
-      setLoadedTableSignature,
-      showToast,
-      t,
-    ],
+    [deleteDraftById, findTabBySource, activeTabId, handleCloseTab, closeTabStore, showToast, t],
   );
 
   const workspaceLabel = useMemo(() => {
@@ -1063,6 +1294,23 @@ function App() {
           <Suspense fallback={<div className="fixed inset-0 z-[100] bg-black/70" />}>
             <FireworksOverlay onComplete={handleFireworksComplete} />
           </Suspense>
+        )}
+
+        {!isShareView && (
+          <TabBar
+            tabs={tabs}
+            activeTabId={activeTabId}
+            onActivateTab={(id) => {
+              const tab = tabs.find((t) => t.id === id);
+              if (!tab || tab.id === activeTabId) return;
+              flushCurrentWorkspace();
+              activateTab(id);
+              applySavedState(tab.stateSnapshot);
+              setWorkspaceSnapshot(tab.source, tab.stateSnapshot);
+            }}
+            onCloseTab={handleCloseTab}
+            onCreateTab={handleCreateDraft}
+          />
         )}
 
         <SavedTablesContainer

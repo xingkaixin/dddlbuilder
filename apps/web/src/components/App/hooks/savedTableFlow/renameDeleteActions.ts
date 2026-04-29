@@ -37,6 +37,8 @@ interface UseRenameDeleteActionsParams {
     nextTableName: string,
   ) => void;
   removeSavedTableDraft?: (normalizedName: string) => void;
+  onTabRename?: (fromNormalizedName: string, toNormalizedName: string, newTitle: string) => void;
+  onTabRemove?: (normalizedName: string) => void;
 }
 
 export function useRenameDeleteActions({
@@ -56,6 +58,8 @@ export function useRenameDeleteActions({
   setWorkspaceSnapshot,
   renameSavedTableDraft,
   removeSavedTableDraft,
+  onTabRename,
+  onTabRemove,
 }: UseRenameDeleteActionsParams) {
   const renameName = renameDialog.data.name;
   const renameTarget = renameDialog.data.target;
@@ -98,6 +102,7 @@ export function useRenameDeleteActions({
     });
     showToast(`已重命名为：${displayName}`);
     renameSavedTableDraft?.(renameTarget.normalizedName, result.normalizedName, displayName);
+    onTabRename?.(renameTarget.normalizedName, result.normalizedName, displayName);
     if (loadedTableNormalizedName && renameTarget.normalizedName === loadedTableNormalizedName) {
       setLoadedTableNormalizedName(result.normalizedName);
       setLoadedTableName(displayName);
@@ -129,6 +134,7 @@ export function useRenameDeleteActions({
     setWorkspaceSnapshot,
     buildPersistedState,
     renameSavedTableDraft,
+    onTabRename,
   ]);
 
   const handleOpenDeleteDialog = useCallback(
@@ -156,6 +162,7 @@ export function useRenameDeleteActions({
       removeSavedTableDraft?.(deleteTarget.normalizedName);
       void trackEvent('table_delete', { tableName: deleteTarget.name });
       showToast(`已移入回收站：${deleteTarget.name}`);
+      onTabRemove?.(deleteTarget.normalizedName);
       if (deleteTarget.normalizedName === loadedTableNormalizedName) {
         setLoadedTableNormalizedName(null);
         setLoadedTableName(null);
@@ -177,6 +184,7 @@ export function useRenameDeleteActions({
     buildPersistedState,
     removeSavedTableDraft,
     deleteDialog,
+    onTabRemove,
   ]);
 
   return {

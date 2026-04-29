@@ -90,7 +90,7 @@ export function useSaveLoadActions({
         const record = await loadTable(target.normalizedName);
         if (!record) {
           showToast('未找到保存的表');
-          return;
+          return null;
         }
 
         console.log('[DEBUG] 加载已保存的表 - 从数据库读取:', {
@@ -141,8 +141,11 @@ export function useSaveLoadActions({
         setLoadedTableVersion(resolvedVersion);
         void trackEvent('table_load', { tableName: record.name });
         showToast(`已加载：${record.name} (v${resolvedVersion})`);
+
+        return { state: stateToApply, signature: savedBaseSignature };
       } catch (error) {
         showToast(error instanceof Error ? error.message : '加载失败');
+        return null;
       } finally {
         onTableLoadStateChange?.(false);
       }
@@ -302,22 +305,11 @@ export function useSaveLoadActions({
 
   const handleSelectSavedTable = useCallback(
     (item: SavedTableSummary) => {
-      if (hasLoadedTable && canSaveCurrent) {
-        openSaveDialog(item);
-        return;
-      }
       flushCurrentWorkspace?.();
       setSavedTablesDrawerOpen(false);
       void handleLoadSavedTable(item);
     },
-    [
-      hasLoadedTable,
-      canSaveCurrent,
-      openSaveDialog,
-      flushCurrentWorkspace,
-      setSavedTablesDrawerOpen,
-      handleLoadSavedTable,
-    ],
+    [flushCurrentWorkspace, setSavedTablesDrawerOpen, handleLoadSavedTable],
   );
 
   const handleOpenSaveDialog = useCallback(() => {
@@ -329,5 +321,6 @@ export function useSaveLoadActions({
     handleConfirmSave,
     handleSaveDialogOpenChange,
     handleSelectSavedTable,
+    handleLoadSavedTable,
   };
 }
