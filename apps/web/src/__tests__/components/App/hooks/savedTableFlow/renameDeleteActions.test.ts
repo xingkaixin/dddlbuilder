@@ -299,7 +299,7 @@ describe('useRenameDeleteActions', () => {
     });
 
     expect(removeSavedTableDraft).toHaveBeenCalledWith('test_table');
-    expect(showToast).toHaveBeenCalledWith('已删除：old');
+    expect(showToast).toHaveBeenCalledWith('已移入回收站：old');
     expect(trackEvent).toHaveBeenCalledWith('table_delete', {
       tableName: 'old',
     });

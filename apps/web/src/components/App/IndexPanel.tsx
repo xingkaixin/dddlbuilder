@@ -63,6 +63,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
     fields: [],
   });
   const [fieldQuery, setFieldQuery] = useState('');
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<number>(-1);
   const [draggedFieldIndex, setDraggedFieldIndex] = useState<number | null>(null);
 
   const selectedIndex = useMemo(
@@ -79,6 +80,10 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
         !draft.fields.some((selected) => selected.name === field),
     );
   }, [availableFields, draft.fields, fieldQuery]);
+
+  useEffect(() => {
+    setActiveSuggestionIndex(fieldSuggestions.length > 0 ? 0 : -1);
+  }, [fieldSuggestions]);
 
   useEffect(() => {
     if (mode === 'edit' && !draft.id) {
@@ -442,15 +447,55 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
                         <Input
                           value={fieldQuery}
                           onChange={(event) => setFieldQuery(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (fieldSuggestions.length === 0) return;
+                            if (event.key === 'ArrowDown') {
+                              event.preventDefault();
+                              setActiveSuggestionIndex((prev) =>
+                                prev < fieldSuggestions.length - 1 ? prev + 1 : 0,
+                              );
+                            } else if (event.key === 'ArrowUp') {
+                              event.preventDefault();
+                              setActiveSuggestionIndex((prev) =>
+                                prev > 0 ? prev - 1 : fieldSuggestions.length - 1,
+                              );
+                            } else if (event.key === 'Enter') {
+                              event.preventDefault();
+                              const idx = activeSuggestionIndex >= 0 ? activeSuggestionIndex : 0;
+                              addField(fieldSuggestions[idx]);
+                            } else if (event.key === 'Escape') {
+                              setFieldQuery('');
+                            }
+                          }}
                           placeholder={t('indexPanel.inputPlaceholder')}
+                          role="combobox"
+                          aria-autocomplete="list"
+                          aria-expanded={fieldSuggestions.length > 0}
+                          aria-controls="index-field-suggestions-listbox"
+                          aria-activedescendant={
+                            activeSuggestionIndex >= 0
+                              ? `index-field-suggestion-${activeSuggestionIndex}`
+                              : undefined
+                          }
                         />
                         {fieldSuggestions.length > 0 && (
-                          <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-lg">
-                            {fieldSuggestions.map((field) => (
+                          <div
+                            id="index-field-suggestions-listbox"
+                            role="listbox"
+                            aria-label={t('indexPanel.fieldSuggestionsLabel', '字段建议')}
+                            className="absolute z-20 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-lg"
+                          >
+                            {fieldSuggestions.map((field, idx) => (
                               <button
                                 key={field}
+                                id={`index-field-suggestion-${idx}`}
                                 type="button"
-                                className="block w-full px-3 py-2 text-left text-sm hover:bg-accent"
+                                role="option"
+                                aria-selected={idx === activeSuggestionIndex}
+                                className={cn(
+                                  'block w-full px-3 py-2 text-left text-sm hover:bg-accent',
+                                  idx === activeSuggestionIndex && 'bg-accent',
+                                )}
                                 onClick={() => addField(field)}
                               >
                                 {field}

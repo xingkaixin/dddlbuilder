@@ -215,9 +215,9 @@ describe('GlobalDialogs a11y', () => {
 
     expect(
       screen.getByRole('button', {
-        name: '确认删除',
+        name: '移入回收站',
       }),
     ).toHaveAttribute('aria-describedby', 'delete-warning');
-    expect(screen.getByText('此操作无法撤销。')).toBeInTheDocument();
+    expect(screen.getByText('表会先进入回收站。')).toBeInTheDocument();
   });
 });
