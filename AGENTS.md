@@ -31,8 +31,8 @@
 
 ## 测试
 - lint 使用`pnpm lint`
+- format 使用 `pnpm format`
 - test 使用`pnpm test`
-- test coverage 使用`pnpm test:coverage`
 
 ## E2E测试
 - 如果设计到影响界面UI交互逻辑调整等，需要执行`pnpm run test:e2e`验证
