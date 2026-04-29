@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ensureBuilderVisible } from '../utils';
 
 const fillBasicField = async (page: any, name = 'id') => {
   const nameCell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
@@ -51,20 +52,19 @@ const sidebarTableAction = async (page: any, pattern: RegExp, action: RegExp) =>
   await page.getByRole('menuitem').filter({ hasText: action }).click();
 };
 
-// 点击侧边栏中的第一个草稿
+// 点击侧边栏中的第一个草稿（若无则通过 TabBar 新建）
 const clickFirstDraft = async (page: any) => {
   const sidebar = page.locator('aside');
   const draftSection = sidebar.locator('section').filter({ hasText: /^草稿/ });
-  const createDraftButton = draftSection.getByRole('button', { name: /新建草稿|new draft/i });
-  const draftButtons = draftSection
-    .locator('button')
-    .filter({ hasNotText: /新建草稿|new draft/i })
-    .filter({ hasText: /草稿|draft/i });
-  if ((await draftButtons.count()) === 0) {
-    await createDraftButton.click();
+  // 草稿 section 中每个草稿项包含一个名称 button 和一个 dropdown trigger button
+  const draftButtons = draftSection.locator('button');
+  const count = await draftButtons.count();
+  if (count > 0) {
+    await draftButtons.first().click();
     return;
   }
-  await draftButtons.first().click();
+  // 侧边栏无草稿时，通过 TabBar 新建
+  await page.getByRole('button', { name: /新建草稿|new draft/i }).click();
 };
 
 test.describe('保存表管理补充 @storage', () => {
@@ -75,7 +75,7 @@ test.describe('保存表管理补充 @storage', () => {
       sessionStorage.clear();
     });
     await page.goto('/');
-    await expect(page.locator('#table-name')).toBeVisible();
+    await ensureBuilderVisible(page);
   });
 
   test('场景：重命名保存表', async ({ page }) => {
@@ -130,12 +130,9 @@ test.describe('保存表管理补充 @storage', () => {
     await page.locator('#table-name').fill(`${tableA}_modified`);
     await page.waitForTimeout(300);
 
-    // 尝试加载表 B，应弹出确认对话框
+    // tabs 模式下，dirty 状态不会阻止加载其他保存的表，直接切换/激活对应标签页
     await clickSidebarTable(page, new RegExp(tableB, 'i'));
-
-    await expect(page.getByRole('heading', { name: '加载保存的表' })).toBeVisible();
-    await page.getByRole('button', { name: /取消/i }).click();
-    await expect(page.getByText(new RegExp(`当前：${tableA}`))).toBeVisible();
+    await expect(page.getByText(new RegExp(`当前：${tableB}`))).toBeVisible();
   });
 
   test('场景：搜索过滤', async ({ page }) => {

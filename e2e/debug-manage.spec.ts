@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ensureBuilderVisible } from './utils';
 
 test('debug rename', async ({ context, page }) => {
   await context.addInitScript(() => {
@@ -7,7 +8,7 @@ test('debug rename', async ({ context, page }) => {
     sessionStorage.clear();
   });
   await page.goto('/');
-  await expect(page.locator('#table-name')).toBeVisible();
+  await ensureBuilderVisible(page);
 
   const tableName = `e2e_rename_${Date.now()}`;
   await page.locator('#table-name').fill(tableName);

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { confirmFieldTypeChangeIfNeeded } from '../utils';
+import { confirmFieldTypeChangeIfNeeded, ensureBuilderVisible } from '../utils';
 
 const fillBasicField = async (page: any, name = 'id') => {
   const nameCell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
@@ -32,7 +32,7 @@ test.describe('变更对比验证 @storage', () => {
       sessionStorage.clear();
     });
     await page.goto('/');
-    await expect(page.locator('#table-name')).toBeVisible({ timeout: 10000 });
+    await ensureBuilderVisible(page);
   });
 
   test('场景：打开变更对比弹窗', async ({ page }) => {

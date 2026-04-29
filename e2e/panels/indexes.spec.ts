@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ensureBuilderVisible } from '../utils';
 
 const selectIndexField = async (page: any) => {
   const indexInput = page.getByPlaceholder(/输入字段名进行匹配/i);
@@ -11,6 +12,7 @@ const selectIndexField = async (page: any) => {
 test.describe('索引管理验证 @panels', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    await ensureBuilderVisible(page);
     await page.locator('#table-name').fill('index_test');
 
     // 添加一个字段

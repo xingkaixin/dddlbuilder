@@ -1,16 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { confirmFieldTypeChangeIfNeeded } from '../utils';
+import { confirmFieldTypeChangeIfNeeded, setupHydratedState } from '../utils';
 
 test.describe('SQL 自动生成流程 @core @smoke', () => {
   test.beforeEach(async ({ context }) => {
     await context.addInitScript(() => {
-      window.localStorage.setItem(
-        'ddlbuilder:state:v1',
-        JSON.stringify({
-          tableName: 'HYDRATION_CHECK',
-          rows: [{ order: 1, fieldName: 'HYDRATED_FIELD', fieldType: 'INT' }],
-        }),
-      );
       Object.defineProperty(navigator, 'clipboard', {
         value: { writeText: async () => {} },
         configurable: true,
@@ -22,12 +15,7 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
   test('场景：填写表信息和字段后，应正确生成建表 SQL', async ({ page }) => {
     // 1. 访问首页
     await page.goto('/');
-    await expect(page.locator('#table-name')).toHaveValue('HYDRATION_CHECK', {
-      timeout: 10000,
-    });
-    await expect(
-      page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)'),
-    ).toHaveText('HYDRATED_FIELD', { timeout: 10000 });
+    await setupHydratedState(page);
     await expect(page).toHaveTitle(/筑表师/);
 
     // 2. 填写表信息
@@ -90,9 +78,7 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
 
   test('场景：复制 DDL', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('#table-name')).toHaveValue('HYDRATION_CHECK', {
-      timeout: 10000,
-    });
+    await setupHydratedState(page);
 
     await page.locator('#table-name').fill('copy_test');
 

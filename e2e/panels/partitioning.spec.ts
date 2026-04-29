@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ensureBuilderVisible } from '../utils';
 
 const openPartitionPanel = async (page: any) => {
   await page.getByRole('tab', { name: /分区配置/i }).click();
@@ -17,7 +18,7 @@ const selectPartitionType = async (page: any, panel: any, type: string) => {
 test.describe('MySQL 分区配置验证 @panels', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('#table-name')).toBeVisible({ timeout: 10000 });
+    await ensureBuilderVisible(page);
 
     await page.locator('#table-name').fill('partition_test');
 

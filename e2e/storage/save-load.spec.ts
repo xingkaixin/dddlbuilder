@@ -1,20 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { setupHydratedState } from '../utils';
 
 test.describe('存储管理验证 @storage @smoke', () => {
-  test.beforeEach(async ({ context, page }) => {
-    await context.addInitScript(() => {
-      window.localStorage.setItem(
-        'ddlbuilder:state:v1',
-        JSON.stringify({
-          tableName: 'HYDRATION_CHECK',
-          rows: [{ order: 1, fieldName: 'HYDRATED_FIELD', fieldType: 'INT' }],
-        }),
-      );
-    });
+  test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('#table-name')).toHaveValue('HYDRATION_CHECK', {
-      timeout: 10000,
-    });
+    await setupHydratedState(page);
   });
 
   test('场景：保存表并在列表中查看', async ({ page }) => {

@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { ensureBuilderVisible } from '../utils';
 
 test.describe('分享功能验证 @tools @smoke', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('#table-name')).toBeVisible({ timeout: 10000 });
+    await ensureBuilderVisible(page);
   });
 
   test('场景：生成分享链接并保存到剪贴板', async ({ page, context }) => {

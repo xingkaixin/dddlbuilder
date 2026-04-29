@@ -1,25 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { ensureBuilderVisible } from '../utils';
 
 test.describe('字段行操作验证 @fields', () => {
-  test('场景：添加多行字段并验证 SQL', async ({ context, page }) => {
-    await context.addInitScript(() => {
-      const rows = Array.from({ length: 6 }, (_, i) => ({
-        order: i + 1,
-        fieldName: `field_${i + 1}`,
-        fieldType: 'INT',
-      }));
-      window.localStorage.setItem(
-        'ddlbuilder:state:v1',
-        JSON.stringify({
-          tableName: 'multi_fields',
-          rows,
-        }),
-      );
-    });
+  test('场景：添加多行字段并验证 SQL', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('#table-name')).toHaveValue('multi_fields', {
-      timeout: 10000,
-    });
+    await ensureBuilderVisible(page);
+    await page.locator('#table-name').fill('multi_fields');
 
     const sqlOutput = page.locator('[data-state="active"] pre');
 
@@ -28,6 +14,10 @@ test.describe('字段行操作验证 @fields', () => {
     await cell1.dblclick();
     await page.locator('[data-testid="data-table"] input').fill('f1');
     await page.keyboard.press('Enter');
+    const typeCell1 = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)');
+    await typeCell1.dblclick();
+    await page.locator('[data-testid="data-table"] input').fill('INT');
+    await page.keyboard.press('Enter');
     await expect(sqlOutput).toContainText(/f1/i, { timeout: 10000 });
 
     // 填写第二行并确保 SQL 更新
@@ -35,29 +25,29 @@ test.describe('字段行操作验证 @fields', () => {
     await cell2.dblclick();
     await page.locator('[data-testid="data-table"] input').fill('f2');
     await page.keyboard.press('Enter');
+    const typeCell2 = page.locator('[data-testid="data-table"] tbody tr:nth-child(2) td:nth-child(4)');
+    await typeCell2.dblclick();
+    await page.locator('[data-testid="data-table"] input').fill('INT');
+    await page.keyboard.press('Enter');
     await expect(sqlOutput).toContainText(/f2/i, { timeout: 10000 });
   });
 
-  test('场景：拖拽排序后字段顺序与 SQL 同步', async ({ context, page }) => {
-    await context.addInitScript(() => {
-      const rows = [
-        { order: 1, fieldName: 'field_1', fieldType: 'INT' },
-        { order: 2, fieldName: 'field_2', fieldType: 'INT' },
-        { order: 3, fieldName: 'field_3', fieldType: 'INT' },
-      ];
-      window.localStorage.setItem(
-        'ddlbuilder:state:v1',
-        JSON.stringify({
-          tableName: 'drag_sort_test',
-          rows,
-        }),
-      );
-    });
-
+  test('场景：拖拽排序后字段顺序与 SQL 同步', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('#table-name')).toHaveValue('drag_sort_test', {
-      timeout: 10000,
-    });
+    await ensureBuilderVisible(page);
+    await page.locator('#table-name').fill('drag_sort_test');
+
+    // 填入 3 个初始字段（名称 + 类型）
+    for (let i = 1; i <= 3; i += 1) {
+      const cell = page.locator(`[data-testid="data-table"] tbody tr:nth-child(${i}) td:nth-child(2)`);
+      await cell.dblclick();
+      await page.locator('[data-testid="data-table"] input').fill(`field_${i}`);
+      await page.keyboard.press('Enter');
+      const typeCell = page.locator(`[data-testid="data-table"] tbody tr:nth-child(${i}) td:nth-child(4)`);
+      await typeCell.dblclick();
+      await page.locator('[data-testid="data-table"] input').fill('INT');
+      await page.keyboard.press('Enter');
+    }
 
     const firstHandle = page.locator(
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(1) button',
@@ -117,7 +107,7 @@ test.describe('字段行操作验证 @fields', () => {
 
   test('场景：清空所有字段', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('#table-name')).toBeVisible({ timeout: 10000 });
+    await ensureBuilderVisible(page);
     await page.locator('#table-name').fill('clear_test');
 
     const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');

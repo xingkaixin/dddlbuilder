@@ -1,20 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { setupHydratedState } from '../utils';
 
 test.describe('SQL 导入功能验证 @tools', () => {
-  test.beforeEach(async ({ context, page }) => {
-    await context.addInitScript(() => {
-      window.localStorage.setItem(
-        'ddlbuilder:state:v1',
-        JSON.stringify({
-          tableName: 'HYDRATION_CHECK',
-          rows: [{ order: 1, fieldName: 'HYDRATED_FIELD', fieldType: 'INT' }],
-        }),
-      );
-    });
+  test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('#table-name')).toHaveValue('HYDRATION_CHECK', {
-      timeout: 10000,
-    });
+    await setupHydratedState(page);
   });
 
   test('场景：导入建表 SQL 并回填 UI', async ({ page }) => {

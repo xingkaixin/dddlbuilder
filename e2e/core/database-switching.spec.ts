@@ -1,28 +1,10 @@
 import { test, expect, type Page } from '@playwright/test';
-import { confirmFieldTypeChangeIfNeeded } from '../utils';
+import { confirmFieldTypeChangeIfNeeded, setupHydratedState } from '../utils';
 
 test.describe('数据库切换与方言验证 @core', () => {
-  test.beforeEach(async ({ context, page }) => {
-    await context.addInitScript(() => {
-      // 设置完全的水合标记以确保 initialized 状态
-      window.localStorage.setItem(
-        'ddlbuilder:state:v1',
-        JSON.stringify({
-          tableName: 'HYDRATION_CHECK',
-          rows: [{ order: 1, fieldName: 'HYDRATED_FIELD', fieldType: 'INT' }],
-        }),
-      );
-    });
-
+  test.beforeEach(async ({ page }) => {
     await page.goto('/');
-
-    // 等待水合完成 (表名和单元格都加载了标记值)
-    await expect(page.locator('#table-name')).toHaveValue('HYDRATION_CHECK', {
-      timeout: 10000,
-    });
-    await expect(
-      page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)'),
-    ).toHaveText('HYDRATED_FIELD', { timeout: 10000 });
+    await setupHydratedState(page);
 
     // 1. 填写表名
     await page.locator('#table-name').fill('test_table');

@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { ensureBuilderVisible } from '../utils';
 
 test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('#table-name')).toBeVisible({ timeout: 10000 });
+    await ensureBuilderVisible(page);
   });
 
   test('场景：配置为分布式表', async ({ page }) => {

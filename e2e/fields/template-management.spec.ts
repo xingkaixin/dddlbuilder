@@ -1,23 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { setupHydratedState } from '../utils';
 
 test.describe('模板管理功能测试 @fields', () => {
-  test.beforeEach(async ({ context, page }) => {
-    await context.addInitScript(() => {
-      window.localStorage.setItem(
-        'ddlbuilder:state:v1',
-        JSON.stringify({
-          tableName: 'HYDRATION_CHECK',
-          rows: [{ order: 1, fieldName: 'HYDRATED_FIELD', fieldType: 'INT' }],
-        }),
-      );
-    });
+  test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('#table-name')).toHaveValue('HYDRATION_CHECK', {
-      timeout: 10000,
-    });
-    await expect(
-      page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)'),
-    ).toHaveText('HYDRATED_FIELD', { timeout: 10000 });
+    await setupHydratedState(page);
   });
 
   test('场景：应用模板按钮应能正常打开', async ({ page }) => {

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ensureBuilderVisible } from './utils';
 
 test('debug version rollback', async ({ context, page }) => {
   await context.addInitScript(() => {
@@ -7,7 +8,7 @@ test('debug version rollback', async ({ context, page }) => {
     sessionStorage.clear();
   });
   await page.goto('/');
-  await expect(page.locator('#table-name')).toBeVisible({ timeout: 10000 });
+  await ensureBuilderVisible(page);
 
   const tableName = 'version_rollback_' + Date.now();
   await page.locator('#table-name').fill(tableName);

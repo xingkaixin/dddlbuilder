@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { ensureBuilderVisible } from '../utils';
 
 test.describe('单元格深度交互验证 @fields', () => {
-  test.beforeEach(async ({ context: _context, page }) => {
+  test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('#table-name')).toBeVisible({ timeout: 10000 });
+    await ensureBuilderVisible(page);
   });
 
   test('场景：操作"可为空"复选框', async ({ page }) => {

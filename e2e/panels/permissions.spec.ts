@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ensureBuilderVisible } from '../utils';
 
 test.describe('权限管理验证 @panels', () => {
   test.beforeEach(async ({ context, page }) => {
@@ -10,6 +11,7 @@ test.describe('权限管理验证 @panels', () => {
     });
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     await page.goto('/');
+    await ensureBuilderVisible(page);
     await page.locator('#table-name').fill('perm_test');
 
     // 添加一个字段

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ensureBuilderVisible } from '../utils';
 
 const fillBasicField = async (page: any, name = 'f1') => {
   const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
@@ -56,7 +57,7 @@ test.describe('版本管理验证 @storage', () => {
       sessionStorage.clear();
     });
     await page.goto('/');
-    await expect(page.locator('#table-name')).toBeVisible({ timeout: 10000 });
+    await ensureBuilderVisible(page);
   });
 
   test('场景：版本列表展示', async ({ page }) => {
