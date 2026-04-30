@@ -337,12 +337,18 @@ export const zhCNCommon = {
     empty: '暂无外键约束',
   },
   authPanel: {
+    title: '授权配置',
+    description: '仅支持手动输入用户名或用户 ID 添加授权对象',
+    manualTitle: '手动添加授权对象',
     inputPlaceholder: '输入授权对象名称...',
     add: '添加',
     addTip: '添加授权对象',
     addedTitle: '已添加的授权对象',
+    addedCount: '已授权对象（{{count}}）',
     objectTag: '授权对象',
     removeTip: '移除授权对象',
+    helpText: '请输入准确的用户名或用户 ID，添加后生效',
+    empty: '暂无授权对象',
   },
   tableOptionsPanel: {
     title: '表级杂项配置',

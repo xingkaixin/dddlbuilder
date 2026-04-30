@@ -348,12 +348,18 @@ export const enUSCommon = {
     empty: 'No foreign keys yet',
   },
   authPanel: {
+    title: 'Privileges',
+    description: 'Manually enter a username or user ID to add a grantee',
+    manualTitle: 'Add grantee manually',
     inputPlaceholder: 'Enter grantee name...',
     add: 'Add',
     addTip: 'Add grantee',
     addedTitle: 'Added grantees',
+    addedCount: 'Authorized grantees ({{count}})',
     objectTag: 'Grantee',
     removeTip: 'Remove grantee',
+    helpText: 'Enter an exact username or user ID. Grants take effect after adding.',
+    empty: 'No grantees yet',
   },
   tableOptionsPanel: {
     title: 'Table-level miscellaneous options',
