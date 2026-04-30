@@ -186,6 +186,8 @@ export function useSchemaApplyActions({
             setRows((prev) => [...prev, newRow]);
             appliedCount = 1;
             triggerFieldTableHighlight(rows.length);
+          } else {
+            showToast('该建议缺少字段信息，无法自动应用');
           }
           break;
 
@@ -215,7 +217,11 @@ export function useSchemaApplyActions({
               });
               appliedCount = 1;
               triggerFieldTableHighlight(rowIndex);
+            } else {
+              showToast(`未找到字段 "${fieldName}"，无法应用修改`);
             }
+          } else {
+            showToast('该建议缺少字段修改信息，无法自动应用');
           }
           break;
 
@@ -234,7 +240,11 @@ export function useSchemaApplyActions({
                 });
               }, 500);
               appliedCount = 1;
+            } else {
+              showToast(`未找到字段 "${suggestion.fieldName}"，无法删除`);
             }
+          } else {
+            showToast('该建议缺少字段名，无法自动应用');
           }
           break;
 
@@ -254,6 +264,8 @@ export function useSchemaApplyActions({
                 triggerIndexAnimation(newIndexId, 'add');
               }
             }, 50);
+          } else {
+            showToast('该建议缺少索引信息，无法自动应用');
           }
           break;
 
@@ -266,11 +278,21 @@ export function useSchemaApplyActions({
                 setIndexes((prev) => prev.filter((index) => index.name !== suggestion.indexName));
               }, 500);
               appliedCount = 1;
+            } else {
+              showToast(`未找到索引 "${suggestion.indexName}"，无法删除`);
             }
+          } else {
+            showToast('该建议缺少索引名，无法自动应用');
           }
           break;
 
+        case 'performance_warning':
+        case 'general':
+          showToast('该类型建议不支持自动应用，请手动调整');
+          break;
+
         default:
+          showToast('该建议无法自动应用，请手动调整');
           break;
       }
 

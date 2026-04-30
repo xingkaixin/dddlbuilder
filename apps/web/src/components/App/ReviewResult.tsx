@@ -97,7 +97,13 @@ const SuggestionItem = memo<{
 
   const isApplied = suggestion.applied;
   // Disable apply button during streaming to prevent state inconsistency
-  const isActionable = suggestion.actionable && !isApplied && !isStreaming;
+  // performance_warning and general suggestions cannot be auto-applied
+  const isActionable =
+    suggestion.actionable &&
+    !isApplied &&
+    !isStreaming &&
+    suggestion.type !== 'performance_warning' &&
+    suggestion.type !== 'general';
 
   // Normalize type for compatibility - fallback unknown types to 'general'
   const normalizedType = KNOWN_SUGGESTION_TYPES.has(suggestion.type) ? suggestion.type : 'general';
@@ -186,7 +192,7 @@ const SuggestionItem = memo<{
         <Button
           size="sm"
           variant="outline"
-          className="h-7 px-2 text-xs gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background"
+          className="h-7 px-2 text-xs gap-1 opacity-60 group-hover:opacity-100 transition-opacity bg-background"
           onClick={() => onApply(suggestion)}
         >
           {t('review.apply')}
