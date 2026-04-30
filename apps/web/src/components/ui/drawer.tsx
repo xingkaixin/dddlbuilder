@@ -44,7 +44,7 @@ const DrawerOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:pointer-events-none data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+      't-radix-overlay fixed inset-0 z-50 bg-black/60 data-[state=closed]:pointer-events-none',
       className,
     )}
     {...props}
@@ -61,7 +61,7 @@ const DrawerContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed inset-y-0 left-0 z-50 w-[90vw] max-w-sm border bg-background shadow-lg transition-transform duration-300 data-[state=closed]:-translate-x-full data-[state=open]:translate-x-0',
+        't-drawer-panel fixed inset-y-0 left-0 z-50 w-[90vw] max-w-sm border bg-background shadow-lg',
         className,
       )}
       {...props}

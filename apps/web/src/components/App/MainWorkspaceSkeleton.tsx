@@ -7,7 +7,7 @@ export function MainWorkspaceSkeleton() {
   const { t } = useTranslation();
 
   return (
-    <div className="flex flex-col gap-4 xl:flex-row" aria-busy="true">
+    <div className="t-loading-surface flex flex-col gap-4 xl:flex-row" aria-busy="true">
       <output className="sr-only" aria-live="polite">
         {t('app.loadingWorkspace')}
       </output>
