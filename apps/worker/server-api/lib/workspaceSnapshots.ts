@@ -14,6 +14,13 @@ type SnapshotRow = {
 type SavedTablePayload = {
   name: string;
   state: PersistedState;
+  createdAt?: number;
+  folderId?: string;
+};
+
+type DraftPayload = {
+  state: PersistedState;
+  createdAt?: number;
   folderId?: string;
 };
 
@@ -167,12 +174,13 @@ export const getWorkspaceSnapshot = async (
     }
 
     if (row.kind === 'draft') {
-      const payload = JSON.parse(row.payloadJson) as { state: PersistedState; folderId?: string };
+      const payload = JSON.parse(row.payloadJson) as DraftPayload;
       snapshot.drafts.push({
         draftId: row.normalizedName,
         state: payload.state,
+        createdAt: payload.createdAt ?? row.sourceUpdatedAt,
         updatedAt: row.sourceUpdatedAt,
-        folderId: payload.folderId,
+        ...(payload.folderId ? { folderId: payload.folderId } : {}),
       });
       continue;
     }
@@ -183,8 +191,9 @@ export const getWorkspaceSnapshot = async (
         normalizedName: row.normalizedName,
         name: payload.name,
         state: payload.state,
+        createdAt: payload.createdAt ?? row.sourceUpdatedAt,
         updatedAt: row.sourceUpdatedAt,
-        folderId: payload.folderId,
+        ...(payload.folderId ? { folderId: payload.folderId } : {}),
       });
       continue;
     }
@@ -211,8 +220,8 @@ export const getWorkspaceSnapshot = async (
     });
   }
 
-  snapshot.drafts.sort((a, b) => b.updatedAt - a.updatedAt);
-  snapshot.savedTables.sort((a, b) => b.updatedAt - a.updatedAt);
+  snapshot.drafts.sort((a, b) => (b.createdAt ?? b.updatedAt) - (a.createdAt ?? a.updatedAt));
+  snapshot.savedTables.sort((a, b) => (b.createdAt ?? b.updatedAt) - (a.createdAt ?? a.updatedAt));
   snapshot.savedDrafts.sort((a, b) => b.updatedAt - a.updatedAt);
 
   return snapshot;
@@ -244,6 +253,7 @@ export const putWorkspaceSnapshot = async (
       normalizedName: item.draftId,
       payload: {
         state: item.state,
+        createdAt: item.createdAt,
         folderId: item.folderId,
       },
       sourceUpdatedAt: item.updatedAt,
@@ -258,6 +268,7 @@ export const putWorkspaceSnapshot = async (
       payload: {
         name: item.name,
         state: item.state,
+        createdAt: item.createdAt,
         folderId: item.folderId,
       },
       sourceUpdatedAt: item.updatedAt,

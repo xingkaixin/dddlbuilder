@@ -81,6 +81,7 @@ describe('workspaceStateDb', () => {
     await writeGlobalDraft({ state: createState('global'), updatedAt: 100 });
     expect(await readGlobalDraft()).toEqual({
       state: createState('global'),
+      createdAt: 100,
       updatedAt: 100,
     });
 

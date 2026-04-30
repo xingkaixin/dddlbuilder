@@ -47,6 +47,7 @@ const upsertLocalSavedTable = async (input: {
   normalizedName: string;
   name: string;
   state: PersistedState;
+  createdAt?: number;
   updatedAt: number;
   folderId?: string;
 }) => {
@@ -61,6 +62,7 @@ const upsertLocalSavedTable = async (input: {
         ...existing,
         name: input.name,
         state: input.state,
+        createdAt: existing.createdAt ?? input.createdAt ?? input.updatedAt,
         updatedAt: input.updatedAt,
         folderId: input.folderId,
       },
@@ -74,7 +76,7 @@ const upsertLocalSavedTable = async (input: {
       normalizedName: input.normalizedName,
       name: input.name,
       state: input.state,
-      createdAt: input.updatedAt,
+      createdAt: input.createdAt ?? input.updatedAt,
       updatedAt: input.updatedAt,
       folderId: input.folderId,
     },
@@ -103,6 +105,7 @@ export const pullWorkspaceSnapshot = async (): Promise<WorkspaceSnapshot> => {
     drafts: (snapshot?.drafts ?? []).map((item) => ({
       draftId: item.draftId,
       state: normalizeState(item.state),
+      createdAt: item.createdAt ?? item.updatedAt,
       updatedAt: item.updatedAt,
       folderId: item.folderId,
     })),
@@ -110,6 +113,7 @@ export const pullWorkspaceSnapshot = async (): Promise<WorkspaceSnapshot> => {
       normalizedName: item.normalizedName,
       name: item.name,
       state: normalizeState(item.state),
+      createdAt: item.createdAt ?? item.updatedAt,
       updatedAt: item.updatedAt,
       folderId: item.folderId,
     })),
@@ -209,6 +213,7 @@ const replaceLocalWorkspaceSnapshot = async (
       item.draftId,
       {
         state: item.state,
+        createdAt: item.createdAt ?? item.updatedAt,
         updatedAt: item.updatedAt,
         folderId: item.folderId,
       },
@@ -222,7 +227,7 @@ const replaceLocalWorkspaceSnapshot = async (
         normalizedName: item.normalizedName,
         name: item.name,
         state: item.state,
-        createdAt: item.updatedAt,
+        createdAt: item.createdAt ?? item.updatedAt,
         updatedAt: item.updatedAt,
         folderId: item.folderId,
       },
@@ -278,6 +283,7 @@ export const applyCloudSnapshotToLocal = async (
       item.draftId,
       {
         state: item.state,
+        createdAt: item.createdAt ?? item.updatedAt,
         updatedAt: item.updatedAt,
         folderId: item.folderId,
       },

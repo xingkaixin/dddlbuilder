@@ -60,6 +60,7 @@ export type WorkspaceSnapshotItem = {
   normalizedName: string;
   name: string;
   state: Record<string, unknown>;
+  createdAt?: number;
   updatedAt: number;
   folderId?: string;
 };
@@ -75,6 +76,7 @@ export type WorkspaceSavedDraftSnapshotItem = {
 export type WorkspaceDraftSnapshotItem = {
   draftId: string;
   state: Record<string, unknown>;
+  createdAt?: number;
   updatedAt: number;
   folderId?: string;
 };

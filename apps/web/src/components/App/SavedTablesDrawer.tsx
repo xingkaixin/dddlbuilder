@@ -152,7 +152,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
           fieldCount: d.fieldCount,
           updatedAt: d.updatedAt,
           folderId: d.folderId,
-          createdAt: d.updatedAt,
+          createdAt: d.createdAt,
         })),
       [draftItems],
     );

@@ -251,6 +251,7 @@ describe('workspacePersistence/normalize', () => {
         authObjects: [],
       },
       123,
+      456,
     );
 
     expect(summary).toEqual({
@@ -258,7 +259,8 @@ describe('workspacePersistence/normalize', () => {
       name: '未命名草稿',
       dbType: 'mysql',
       fieldCount: 1,
-      updatedAt: 123,
+      createdAt: 123,
+      updatedAt: 456,
     });
   });
 

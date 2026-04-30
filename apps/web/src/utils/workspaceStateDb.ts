@@ -31,6 +31,7 @@ type WorkspaceDraftEntity = {
   id: string;
   scope?: string;
   state: PersistedState;
+  createdAt?: number;
   updatedAt: number;
   folderId?: string;
   trashedAt?: number;
@@ -167,6 +168,7 @@ export const readDraft = async (
   if (!decoded) return null;
   return {
     state: decoded.state,
+    createdAt: decoded.createdAt ?? decoded.updatedAt,
     updatedAt: decoded.updatedAt,
     folderId: decoded.folderId,
   };
@@ -216,6 +218,7 @@ export const listDrafts = async (
       draftId,
       record: {
         state: decoded.state,
+        createdAt: decoded.createdAt ?? decoded.updatedAt,
         updatedAt: decoded.updatedAt,
         folderId: decoded.folderId,
       },
@@ -245,6 +248,7 @@ export const listTrashedDrafts = async (
       draftId,
       record: {
         state: decoded.state,
+        createdAt: decoded.createdAt ?? decoded.updatedAt,
         updatedAt: decoded.updatedAt,
         folderId: decoded.folderId,
         trashedAt: decoded.trashedAt,
@@ -440,7 +444,12 @@ export const readWorkspaceBootstrap = async (
       const draftId = decoded.id.startsWith(prefix) ? decoded.id.slice(prefix.length) : decoded.id;
       drafts.push({
         draftId,
-        record: { state: decoded.state, updatedAt: decoded.updatedAt, folderId: decoded.folderId },
+        record: {
+          state: decoded.state,
+          createdAt: decoded.createdAt ?? decoded.updatedAt,
+          updatedAt: decoded.updatedAt,
+          folderId: decoded.folderId,
+        },
       });
     }
 

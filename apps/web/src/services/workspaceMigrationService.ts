@@ -26,12 +26,14 @@ export type WorkspaceMigrationSnapshot = {
     normalizedName: string;
     name: string;
     state: PersistedState;
+    createdAt?: number;
     updatedAt: number;
     folderId?: string;
   }>;
   drafts: Array<{
     draftId: string;
     state: PersistedState;
+    createdAt?: number;
     updatedAt: number;
     folderId?: string;
   }>;

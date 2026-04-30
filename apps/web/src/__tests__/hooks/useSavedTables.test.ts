@@ -113,4 +113,30 @@ describe('useSavedTables', () => {
     const updated = await result.current.loadTable(saved.normalizedName);
     expect(updated?.state.tableName).toBe('gamma-updated');
   });
+
+  it('should keep saved table order stable after overwrite', async () => {
+    vi.spyOn(Date, 'now')
+      .mockReturnValueOnce(100)
+      .mockReturnValueOnce(200)
+      .mockReturnValueOnce(300);
+    const { result } = renderHook(() => useSavedTables());
+
+    await act(async () => {
+      await result.current.saveTable('Alpha', createState('alpha'));
+      await result.current.saveTable('Beta', createState('beta'));
+      await flushPromises();
+    });
+
+    expect(result.current.savedTables.map((table) => table.name)).toEqual(['Beta', 'Alpha']);
+
+    await act(async () => {
+      const alpha = result.current.savedTables.find((table) => table.name === 'Alpha');
+      expect(alpha).toBeDefined();
+      if (!alpha) return;
+      await result.current.overwriteTable(alpha.normalizedName, createState('alpha-updated'));
+      await flushPromises();
+    });
+
+    expect(result.current.savedTables.map((table) => table.name)).toEqual(['Beta', 'Alpha']);
+  });
 });

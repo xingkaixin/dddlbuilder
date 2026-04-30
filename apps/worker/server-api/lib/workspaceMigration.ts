@@ -31,12 +31,14 @@ export type WorkspaceMigrationPayload = {
       normalizedName: string;
       name: string;
       state: PersistedState;
+      createdAt?: number;
       updatedAt: number;
       folderId?: string;
     }>;
     drafts?: Array<{
       draftId: string;
       state: PersistedState;
+      createdAt?: number;
       updatedAt: number;
       folderId?: string;
     }>;
@@ -300,7 +302,7 @@ const buildSnapshotRecords = (
         'draft',
         item.draftId,
         item.draftId,
-        { state: item.state, folderId: item.folderId },
+        { state: item.state, createdAt: item.createdAt, folderId: item.folderId },
         item.updatedAt,
       ),
     );
@@ -313,7 +315,7 @@ const buildSnapshotRecords = (
         'saved_table',
         item.normalizedName,
         item.name,
-        { name: item.name, state: item.state, folderId: item.folderId },
+        { name: item.name, state: item.state, createdAt: item.createdAt, folderId: item.folderId },
         item.updatedAt,
       ),
     );

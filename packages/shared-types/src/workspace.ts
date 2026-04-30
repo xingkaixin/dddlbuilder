@@ -34,6 +34,7 @@ export type DraftSummary = {
   name: string;
   dbType: string;
   fieldCount: number;
+  createdAt: number;
   updatedAt: number;
   folderId?: string;
   trashedAt?: number;
@@ -55,6 +56,7 @@ export type WorkspaceSnapshot = {
   drafts: Array<{
     draftId: string;
     state: PersistedState;
+    createdAt?: number;
     updatedAt: number;
     folderId?: string;
   }>;
@@ -62,6 +64,7 @@ export type WorkspaceSnapshot = {
     normalizedName: string;
     name: string;
     state: PersistedState;
+    createdAt?: number;
     updatedAt: number;
     folderId?: string;
   }>;

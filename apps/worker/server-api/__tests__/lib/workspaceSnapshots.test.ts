@@ -150,12 +150,14 @@ describe('workspaceSnapshots', () => {
         {
           draftId: 'draft-1',
           state: createState('draft_one'),
+          createdAt: 50,
           updatedAt: 100,
           folderId: 'folder_1',
         },
         {
           draftId: 'draft-2',
           state: createState('draft_two'),
+          createdAt: 40,
           updatedAt: 200,
         },
       ],
@@ -168,15 +170,17 @@ describe('workspaceSnapshots', () => {
 
     expect(snapshot.drafts).toEqual([
       {
-        draftId: 'draft-2',
-        state: createState('draft_two'),
-        updatedAt: 200,
-      },
-      {
         draftId: 'draft-1',
         state: createState('draft_one'),
+        createdAt: 50,
         updatedAt: 100,
         folderId: 'folder_1',
+      },
+      {
+        draftId: 'draft-2',
+        state: createState('draft_two'),
+        createdAt: 40,
+        updatedAt: 200,
       },
     ]);
   });

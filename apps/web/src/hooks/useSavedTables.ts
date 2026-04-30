@@ -27,6 +27,11 @@ export type SaveTableResult =
       message?: string;
     };
 
+const sortSavedTablesByCreatedAt = (tables: SavedTableSummary[]) =>
+  [...tables].sort(
+    (a, b) => b.createdAt - a.createdAt || a.normalizedName.localeCompare(b.normalizedName),
+  );
+
 export function useSavedTables() {
   const authSession = useAuthSession();
   const [savedTables, setSavedTables] = useState<SavedTableSummary[]>([]);
@@ -41,7 +46,7 @@ export function useSavedTables() {
         listSavedTableMetadata(),
         listTrashedSavedTableMetadata(),
       ]);
-      const sorted = metadata.sort((a, b) => b.updatedAt - a.updatedAt);
+      const sorted = sortSavedTablesByCreatedAt(metadata);
       const sortedTrashed = trashedMetadata.sort((a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0));
       setSavedTables(sorted);
       setTrashedTables(sortedTrashed);

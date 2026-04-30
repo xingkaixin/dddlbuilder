@@ -49,6 +49,9 @@ import {
 
 const SHARE_CACHE_GC_TIME_MS = 15 * 60 * 1000;
 
+const sortDraftSummaries = (drafts: DraftSummary[]) =>
+  [...drafts].sort((a, b) => b.createdAt - a.createdAt || a.draftId.localeCompare(b.draftId));
+
 type ShareLoadStatus = 'idle' | 'not_found' | 'error';
 
 export interface UsePersistedStateReturn {
@@ -121,10 +124,18 @@ export function usePersistedState(): UsePersistedStateReturn {
       const summaries: DraftSummary[] = [];
       for (const { draftId, record } of drafts) {
         map.set(draftId, record);
-        summaries.push(buildDraftSummary(draftId, record.state, record.updatedAt, record.folderId));
+        summaries.push(
+          buildDraftSummary(
+            draftId,
+            record.state,
+            record.createdAt ?? record.updatedAt,
+            record.updatedAt,
+            record.folderId,
+          ),
+        );
       }
       draftsRef.current = map;
-      setDraftSummaries(summaries);
+      setDraftSummaries(sortDraftSummaries(summaries));
     },
     [],
   );
@@ -150,16 +161,26 @@ export function usePersistedState(): UsePersistedStateReturn {
       setPersistedState(state);
 
       if (source.kind === 'draft') {
+        const existingRecord = draftsRef.current.get(source.draftId);
         const draftRecord: GlobalDraftRecord = {
+          createdAt: existingRecord?.createdAt ?? Date.now(),
           updatedAt: Date.now(),
           state,
         };
         draftsRef.current.set(source.draftId, draftRecord);
         setDraftSummaries((prev) => {
           const next = prev.filter((d) => d.draftId !== source.draftId);
-          const folderId = prev.find((d) => d.draftId === source.draftId)?.folderId;
-          next.push(buildDraftSummary(source.draftId, state, Date.now(), folderId));
-          return next;
+          const previousSummary = prev.find((d) => d.draftId === source.draftId);
+          next.push(
+            buildDraftSummary(
+              source.draftId,
+              state,
+              previousSummary?.createdAt ?? draftRecord.createdAt ?? draftRecord.updatedAt,
+              draftRecord.updatedAt,
+              previousSummary?.folderId,
+            ),
+          );
+          return sortDraftSummaries(next);
         });
         fireAndForget(writeDraft(source.draftId, draftRecord, currentScope));
       }
@@ -196,16 +217,26 @@ export function usePersistedState(): UsePersistedStateReturn {
 
       if (payload.source.kind === 'draft') {
         const { draftId } = payload.source;
+        const existingRecord = draftsRef.current.get(draftId);
         const draftRecord: GlobalDraftRecord = {
+          createdAt: existingRecord?.createdAt ?? Date.now(),
           updatedAt: Date.now(),
           state: payload.state,
         };
         draftsRef.current.set(draftId, draftRecord);
         setDraftSummaries((prev) => {
           const next = prev.filter((d) => d.draftId !== draftId);
-          const folderId = prev.find((d) => d.draftId === draftId)?.folderId;
-          next.push(buildDraftSummary(draftId, payload.state, Date.now(), folderId));
-          return next;
+          const previousSummary = prev.find((d) => d.draftId === draftId);
+          next.push(
+            buildDraftSummary(
+              draftId,
+              payload.state,
+              previousSummary?.createdAt ?? draftRecord.createdAt ?? draftRecord.updatedAt,
+              draftRecord.updatedAt,
+              previousSummary?.folderId,
+            ),
+          );
+          return sortDraftSummaries(next);
         });
         fireAndForget(writeDraft(draftId, draftRecord, currentScope));
       }
@@ -280,15 +311,17 @@ export function usePersistedState(): UsePersistedStateReturn {
       }
 
       const finalState = uniqueName !== baseName ? { ...state, tableName: uniqueName } : state;
+      const now = Date.now();
       const draftRecord: GlobalDraftRecord = {
-        updatedAt: Date.now(),
+        createdAt: now,
+        updatedAt: now,
         state: finalState,
       };
       draftsRef.current.set(draftId, draftRecord);
       setDraftSummaries((prev) => {
         const next = prev.filter((d) => d.draftId !== draftId);
-        next.push(buildDraftSummary(draftId, finalState, Date.now()));
-        return next;
+        next.push(buildDraftSummary(draftId, finalState, now, now));
+        return sortDraftSummaries(next);
       });
       fireAndForget(writeDraft(draftId, draftRecord, currentScope));
       return uniqueName;
@@ -313,6 +346,7 @@ export function usePersistedState(): UsePersistedStateReturn {
         buildDraftSummary(
           draftId,
           trashedRecord.state,
+          trashedRecord.createdAt ?? trashedRecord.updatedAt,
           trashedRecord.updatedAt,
           trashedRecord.folderId,
           trashedRecord.trashedAt,
@@ -360,15 +394,18 @@ export function usePersistedState(): UsePersistedStateReturn {
       }
 
       setTrashedDrafts((prev) => prev.filter((d) => d.draftId !== draftId));
-      setDraftSummaries((prev) => [
-        ...prev,
-        buildDraftSummary(
-          draftId,
-          restoredRecord.state,
-          restoredRecord.updatedAt,
-          restoredRecord.folderId,
-        ),
-      ]);
+      setDraftSummaries((prev) =>
+        sortDraftSummaries([
+          ...prev,
+          buildDraftSummary(
+            draftId,
+            restoredRecord.state,
+            restoredRecord.createdAt ?? restoredRecord.updatedAt,
+            restoredRecord.updatedAt,
+            restoredRecord.folderId,
+          ),
+        ]),
+      );
       draftsRef.current.set(draftId, restoredRecord);
       await restoreDraft(draftId, restoredRecord, currentScope);
     },
@@ -488,6 +525,7 @@ export function usePersistedState(): UsePersistedStateReturn {
           buildDraftSummary(
             draftId,
             record.state,
+            record.createdAt ?? record.updatedAt,
             record.updatedAt,
             record.folderId,
             record.trashedAt,

@@ -159,6 +159,7 @@ export const isSameWorkspaceSource = (a: WorkspaceSource, b: WorkspaceSource) =>
 export const buildDraftSummary = (
   draftId: string,
   state: PersistedState,
+  createdAt: number,
   updatedAt: number,
   folderId?: string,
   trashedAt?: number,
@@ -170,6 +171,7 @@ export const buildDraftSummary = (
     name,
     dbType: state.dbType,
     fieldCount,
+    createdAt,
     updatedAt,
     folderId,
     trashedAt,
@@ -185,6 +187,7 @@ export const normalizeGlobalDraftRecord = (value: unknown): GlobalDraftRecord | 
   if (!state) return null;
 
   return {
+    createdAt: toNumber(value.createdAt, toNumber(value.updatedAt, Date.now())),
     updatedAt: toNumber(value.updatedAt, Date.now()),
     state,
   };

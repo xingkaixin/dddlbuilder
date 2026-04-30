@@ -28,6 +28,7 @@ const isWorkspaceSnapshot = (value: unknown): value is WorkspaceSnapshot => {
         isRecord(item) &&
         typeof item.normalizedName === 'string' &&
         typeof item.name === 'string' &&
+        (item.createdAt === undefined || typeof item.createdAt === 'number') &&
         typeof item.updatedAt === 'number' &&
         isPersistedState(item.state),
     );
@@ -37,6 +38,7 @@ const isWorkspaceSnapshot = (value: unknown): value is WorkspaceSnapshot => {
       (item) =>
         isRecord(item) &&
         typeof item.draftId === 'string' &&
+        (item.createdAt === undefined || typeof item.createdAt === 'number') &&
         typeof item.updatedAt === 'number' &&
         isPersistedState(item.state) &&
         (item.folderId === undefined || typeof item.folderId === 'string'),
