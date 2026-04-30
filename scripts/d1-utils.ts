@@ -117,7 +117,7 @@ const hasExistingAppSchema = (mode: D1Mode): boolean => {
     `
       SELECT name
       FROM sqlite_master
-      WHERE type = 'table' AND name IN ('user', 'workspace_snapshots')
+      WHERE type = 'table' AND name IN ('users', 'workspace_snapshots')
       LIMIT 1
     `,
   );
