@@ -1,0 +1,324 @@
+import { beforeEach, describe, expect, it } from 'vitest';
+import { useTabStore } from '@/stores/tabStore';
+import type { PersistedState } from '@ddlbuilder/shared-types';
+
+function resetTabStore() {
+  useTabStore.setState({
+    tabs: [],
+    activeTabId: null,
+  });
+}
+
+const createSnapshot = (name: string): PersistedState => ({
+  tableName: name,
+  tableComment: '',
+  rows: [],
+  indexes: [],
+  foreignKeys: [],
+});
+
+describe('tabStore', () => {
+  beforeEach(() => {
+    resetTabStore();
+  });
+
+  it('adds a tab and activates it', () => {
+    const state = useTabStore.getState();
+    const id = state.addTab({
+      title: '草稿 1',
+      source: { kind: 'draft', draftId: 'draft-1' },
+      stateSnapshot: createSnapshot('t1'),
+      isDirty: false,
+    });
+
+    const current = useTabStore.getState();
+    expect(current.tabs).toHaveLength(1);
+    expect(current.tabs[0].title).toBe('草稿 1');
+    expect(current.activeTabId).toBe(id);
+  });
+
+  it('activates a tab', () => {
+    const state = useTabStore.getState();
+    const id1 = state.addTab({
+      title: 'Tab 1',
+      source: { kind: 'draft', draftId: 'd1' },
+      stateSnapshot: createSnapshot('t1'),
+      isDirty: false,
+    });
+    state.addTab({
+      title: 'Tab 2',
+      source: { kind: 'draft', draftId: 'd2' },
+      stateSnapshot: createSnapshot('t2'),
+      isDirty: false,
+    });
+
+    useTabStore.getState().activateTab(id1);
+    expect(useTabStore.getState().activeTabId).toBe(id1);
+  });
+
+  it('closes a tab and activates the right neighbor', () => {
+    const state = useTabStore.getState();
+    state.addTab({
+      title: 'Tab 1',
+      source: { kind: 'draft', draftId: 'd1' },
+      stateSnapshot: createSnapshot('t1'),
+      isDirty: false,
+    });
+    const id2 = state.addTab({
+      title: 'Tab 2',
+      source: { kind: 'draft', draftId: 'd2' },
+      stateSnapshot: createSnapshot('t2'),
+      isDirty: false,
+    });
+    const id3 = state.addTab({
+      title: 'Tab 3',
+      source: { kind: 'draft', draftId: 'd3' },
+      stateSnapshot: createSnapshot('t3'),
+      isDirty: false,
+    });
+
+    useTabStore.getState().closeTab(id2);
+    const current = useTabStore.getState();
+    expect(current.tabs).toHaveLength(2);
+    expect(current.activeTabId).toBe(id3);
+  });
+
+  it('closes the last tab and activates the left neighbor', () => {
+    const state = useTabStore.getState();
+    const id1 = state.addTab({
+      title: 'Tab 1',
+      source: { kind: 'draft', draftId: 'd1' },
+      stateSnapshot: createSnapshot('t1'),
+      isDirty: false,
+    });
+    state.addTab({
+      title: 'Tab 2',
+      source: { kind: 'draft', draftId: 'd2' },
+      stateSnapshot: createSnapshot('t2'),
+      isDirty: false,
+    });
+
+    useTabStore.getState().closeTab(id1);
+    const current = useTabStore.getState();
+    expect(current.tabs).toHaveLength(1);
+    expect(current.activeTabId).toBe(current.tabs[0].id);
+  });
+
+  it('closing inactive tab does not change active tab', () => {
+    const state = useTabStore.getState();
+    const id1 = state.addTab({
+      title: 'Tab 1',
+      source: { kind: 'draft', draftId: 'd1' },
+      stateSnapshot: createSnapshot('t1'),
+      isDirty: false,
+    });
+    state.addTab({
+      title: 'Tab 2',
+      source: { kind: 'draft', draftId: 'd2' },
+      stateSnapshot: createSnapshot('t2'),
+      isDirty: false,
+    });
+
+    useTabStore.getState().closeTab(id1);
+    const current = useTabStore.getState();
+    expect(current.activeTabId).not.toBe(id1);
+    expect(current.tabs).toHaveLength(1);
+  });
+
+  it('updates active tab snapshot and dirty state', () => {
+    const state = useTabStore.getState();
+    const id = state.addTab({
+      title: 'Tab 1',
+      source: { kind: 'draft', draftId: 'd1' },
+      stateSnapshot: createSnapshot('old'),
+      isDirty: false,
+    });
+
+    useTabStore.getState().updateActiveTabSnapshot(createSnapshot('new'), true);
+    const current = useTabStore.getState();
+    const tab = current.tabs.find((t) => t.id === id);
+    expect(tab).toBeDefined();
+    expect(tab?.stateSnapshot.tableName).toBe('new');
+    expect(tab?.isDirty).toBe(true);
+  });
+
+  it('does nothing when updating snapshot with no active tab', () => {
+    useTabStore.setState({ tabs: [], activeTabId: null });
+    useTabStore.getState().updateActiveTabSnapshot(createSnapshot('new'), true);
+    expect(useTabStore.getState().tabs).toHaveLength(0);
+  });
+
+  it('updates active tab title', () => {
+    const state = useTabStore.getState();
+    const id = state.addTab({
+      title: 'Old',
+      source: { kind: 'draft', draftId: 'd1' },
+      stateSnapshot: createSnapshot('t1'),
+      isDirty: false,
+    });
+
+    useTabStore.getState().updateActiveTabTitle('New');
+    const tab = useTabStore.getState().tabs.find((t) => t.id === id);
+    expect(tab).toBeDefined();
+    expect(tab?.title).toBe('New');
+  });
+
+  it('updates active tab source', () => {
+    const state = useTabStore.getState();
+    const id = state.addTab({
+      title: 'Tab 1',
+      source: { kind: 'draft', draftId: 'd1' },
+      stateSnapshot: createSnapshot('t1'),
+      isDirty: false,
+    });
+
+    const newSource = { kind: 'saved' as const, normalizedName: 'users' };
+    useTabStore.getState().updateActiveTabSource(newSource);
+    const tab = useTabStore.getState().tabs.find((t) => t.id === id);
+    expect(tab).toBeDefined();
+    expect(tab?.source).toEqual(newSource);
+  });
+
+  it('finds tab by source (draft)', () => {
+    const state = useTabStore.getState();
+    const id = state.addTab({
+      title: 'Tab 1',
+      source: { kind: 'draft', draftId: 'd1' },
+      stateSnapshot: createSnapshot('t1'),
+      isDirty: false,
+    });
+
+    const found = useTabStore.getState().findTabBySource({ kind: 'draft', draftId: 'd1' });
+    expect(found?.id).toBe(id);
+
+    const notFound = useTabStore.getState().findTabBySource({ kind: 'draft', draftId: 'd2' });
+    expect(notFound).toBeUndefined();
+  });
+
+  it('finds tab by source (saved)', () => {
+    const state = useTabStore.getState();
+    state.addTab({
+      title: 'Tab 1',
+      source: { kind: 'saved', normalizedName: 'users' },
+      stateSnapshot: createSnapshot('t1'),
+      isDirty: false,
+    });
+
+    const found = useTabStore
+      .getState()
+      .findTabBySource({ kind: 'saved', normalizedName: 'users' });
+    expect(found).toBeDefined();
+
+    const notFound = useTabStore
+      .getState()
+      .findTabBySource({ kind: 'saved', normalizedName: 'orders' });
+    expect(notFound).toBeUndefined();
+  });
+
+  it('getActiveTab returns the active tab', () => {
+    const state = useTabStore.getState();
+    const id = state.addTab({
+      title: 'Tab 1',
+      source: { kind: 'draft', draftId: 'd1' },
+      stateSnapshot: createSnapshot('t1'),
+      isDirty: false,
+    });
+
+    expect(useTabStore.getState().getActiveTab()?.id).toBe(id);
+  });
+
+  it('getActiveTab returns undefined when no active tab', () => {
+    useTabStore.setState({ tabs: [], activeTabId: null });
+    expect(useTabStore.getState().getActiveTab()).toBeUndefined();
+  });
+
+  it('sets tab loading state', () => {
+    const state = useTabStore.getState();
+    const id = state.addTab({
+      title: 'Tab 1',
+      source: { kind: 'draft', draftId: 'd1' },
+      stateSnapshot: createSnapshot('t1'),
+      isDirty: false,
+    });
+
+    useTabStore.getState().setTabLoading(id, true);
+    const tab = useTabStore.getState().tabs.find((t) => t.id === id);
+    expect(tab).toBeDefined();
+    expect(tab?.isLoading).toBe(true);
+
+    useTabStore.getState().setTabLoading(id, false);
+    const tab2 = useTabStore.getState().tabs.find((t) => t.id === id);
+    expect(tab2).toBeDefined();
+    expect(tab2?.isLoading).toBe(false);
+  });
+
+  it('removes tab by source', () => {
+    const state = useTabStore.getState();
+    state.addTab({
+      title: 'Tab 1',
+      source: { kind: 'draft', draftId: 'd1' },
+      stateSnapshot: createSnapshot('t1'),
+      isDirty: false,
+    });
+    state.addTab({
+      title: 'Tab 2',
+      source: { kind: 'draft', draftId: 'd2' },
+      stateSnapshot: createSnapshot('t2'),
+      isDirty: false,
+    });
+
+    useTabStore.getState().removeTabBySource({ kind: 'draft', draftId: 'd1' });
+    const current = useTabStore.getState();
+    expect(current.tabs).toHaveLength(1);
+    expect(current.tabs[0].title).toBe('Tab 2');
+  });
+
+  it('removing by source adjusts active tab', () => {
+    const state = useTabStore.getState();
+    const id1 = state.addTab({
+      title: 'Tab 1',
+      source: { kind: 'draft', draftId: 'd1' },
+      stateSnapshot: createSnapshot('t1'),
+      isDirty: false,
+    });
+    const id2 = state.addTab({
+      title: 'Tab 2',
+      source: { kind: 'draft', draftId: 'd2' },
+      stateSnapshot: createSnapshot('t2'),
+      isDirty: false,
+    });
+
+    useTabStore.getState().activateTab(id1);
+    useTabStore.getState().removeTabBySource({ kind: 'draft', draftId: 'd1' });
+    const current = useTabStore.getState();
+    expect(current.activeTabId).toBe(id2);
+  });
+
+  it('updateTabTitleBySource updates matching tab', () => {
+    const state = useTabStore.getState();
+    state.addTab({
+      title: 'Old',
+      source: { kind: 'draft', draftId: 'd1' },
+      stateSnapshot: createSnapshot('t1'),
+      isDirty: false,
+    });
+
+    useTabStore.getState().updateTabTitleBySource({ kind: 'draft', draftId: 'd1' }, 'New');
+    const tab = useTabStore.getState().tabs[0];
+    expect(tab.title).toBe('New');
+  });
+
+  it('updateTabTitleBySource does not affect non-matching tabs', () => {
+    const state = useTabStore.getState();
+    state.addTab({
+      title: 'Old',
+      source: { kind: 'draft', draftId: 'd1' },
+      stateSnapshot: createSnapshot('t1'),
+      isDirty: false,
+    });
+
+    useTabStore.getState().updateTabTitleBySource({ kind: 'draft', draftId: 'd2' }, 'New');
+    const tab = useTabStore.getState().tabs[0];
+    expect(tab.title).toBe('Old');
+  });
+});

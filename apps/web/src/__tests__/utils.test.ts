@@ -13,6 +13,12 @@ import {
   getCanonicalBaseType,
   getUiDefaultKindOptions,
   getUiOnUpdateOptions,
+  toStringSafe,
+  isReservedKeyword,
+  normalizeBoolean,
+  normalizeDefaultKind,
+  normalizeOnUpdate,
+  normalizeFields,
 } from '@/App';
 
 describe('Utils', () => {
@@ -895,6 +901,215 @@ describe('Utils', () => {
     it('应该对未知数据库类型不支持当前时间更新', () => {
       const result = getUiOnUpdateOptions('unknown_db' as any, 'timestamp');
       expect(result).toEqual(['无']); // 不包含 '当前时间'
+    });
+  });
+
+  describe('toStringSafe', () => {
+    it('returns string as-is', () => {
+      expect(toStringSafe('hello')).toBe('hello');
+      expect(toStringSafe('')).toBe('');
+    });
+
+    it('returns empty string for null and undefined', () => {
+      expect(toStringSafe(null)).toBe('');
+      expect(toStringSafe(undefined)).toBe('');
+    });
+
+    it('converts numbers to string', () => {
+      expect(toStringSafe(42)).toBe('42');
+      expect(toStringSafe(0)).toBe('0');
+    });
+
+    it('converts booleans to string', () => {
+      expect(toStringSafe(true)).toBe('true');
+      expect(toStringSafe(false)).toBe('false');
+    });
+  });
+
+  describe('isReservedKeyword', () => {
+    it('returns true for MySQL reserved keywords', () => {
+      expect(isReservedKeyword('mysql', 'select')).toBe(true);
+      expect(isReservedKeyword('mysql', 'INSERT')).toBe(true);
+      expect(isReservedKeyword('mysql', 'from')).toBe(true);
+    });
+
+    it('returns false for non-reserved words', () => {
+      expect(isReservedKeyword('mysql', 'username')).toBe(false);
+      expect(isReservedKeyword('mysql', 'my_field')).toBe(false);
+    });
+
+    it('returns false for empty string', () => {
+      expect(isReservedKeyword('mysql', '')).toBe(false);
+    });
+
+    it('returns false for unknown database', () => {
+      expect(isReservedKeyword('unknown' as any, 'select')).toBe(false);
+    });
+
+    it('handles whitespace in keyword', () => {
+      expect(isReservedKeyword('mysql', '  select  ')).toBe(true);
+    });
+  });
+
+  describe('normalizeBoolean', () => {
+    it('returns true for yes-like values', () => {
+      expect(normalizeBoolean('是')).toBe(true);
+      expect(normalizeBoolean('yes')).toBe(true);
+      expect(normalizeBoolean('YES')).toBe(true);
+      expect(normalizeBoolean('true')).toBe(true);
+      expect(normalizeBoolean('1')).toBe(true);
+    });
+
+    it('returns false for no-like values', () => {
+      expect(normalizeBoolean('否')).toBe(false);
+      expect(normalizeBoolean('no')).toBe(false);
+      expect(normalizeBoolean('false')).toBe(false);
+      expect(normalizeBoolean('0')).toBe(false);
+    });
+
+    it('returns false for null and undefined', () => {
+      expect(normalizeBoolean(null as any)).toBe(false);
+      expect(normalizeBoolean(undefined as any)).toBe(false);
+    });
+
+    it('returns false for empty string', () => {
+      expect(normalizeBoolean('')).toBe(false);
+    });
+  });
+
+  describe('normalizeDefaultKind', () => {
+    it('maps Chinese labels to canonical values', () => {
+      expect(normalizeDefaultKind('自增')).toBe('auto_increment');
+      expect(normalizeDefaultKind('常量')).toBe('constant');
+      expect(normalizeDefaultKind('当前时间')).toBe('current_timestamp');
+      expect(normalizeDefaultKind('uuid')).toBe('uuid');
+    });
+
+    it('returns none for unknown values', () => {
+      expect(normalizeDefaultKind('unknown')).toBe('none');
+      expect(normalizeDefaultKind('')).toBe('none');
+      expect(normalizeDefaultKind(undefined)).toBe('none');
+    });
+  });
+
+  describe('normalizeOnUpdate', () => {
+    it('maps current time label to canonical value', () => {
+      expect(normalizeOnUpdate('当前时间')).toBe('current_timestamp');
+    });
+
+    it('returns none for other values', () => {
+      expect(normalizeOnUpdate('无')).toBe('none');
+      expect(normalizeOnUpdate('')).toBe('none');
+      expect(normalizeOnUpdate(undefined)).toBe('none');
+    });
+  });
+
+  describe('normalizeFields', () => {
+    it('normalizes field rows to NormalizedField', () => {
+      const rows: FieldRow[] = [
+        {
+          order: 1,
+          fieldName: '  id  ',
+          fieldType: '  bigint  ',
+          fieldComment: '  PK  ',
+          nullable: '否',
+          defaultKind: '自增',
+          defaultValue: '',
+          onUpdate: '无',
+        },
+        {
+          order: 2,
+          fieldName: 'name',
+          fieldType: 'varchar(255)',
+          fieldComment: '',
+          nullable: '是',
+          defaultKind: '无',
+          defaultValue: '',
+          onUpdate: '无',
+        },
+      ];
+
+      const result = normalizeFields(rows);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({
+        name: 'id',
+        type: 'bigint',
+        comment: 'PK',
+        nullable: false,
+        defaultKind: 'auto_increment',
+        defaultValue: '',
+        onUpdate: 'none',
+        enumMeta: undefined,
+      });
+      expect(result[1]).toEqual({
+        name: 'name',
+        type: 'varchar(255)',
+        comment: '',
+        nullable: true,
+        defaultKind: 'none',
+        defaultValue: '',
+        onUpdate: 'none',
+        enumMeta: undefined,
+      });
+    });
+
+    it('filters out rows without name or type', () => {
+      const rows: FieldRow[] = [
+        {
+          order: 1,
+          fieldName: '',
+          fieldType: 'int',
+          fieldComment: '',
+          nullable: '否',
+          defaultKind: '无',
+          defaultValue: '',
+          onUpdate: '无',
+        },
+        {
+          order: 2,
+          fieldName: 'valid',
+          fieldType: '',
+          fieldComment: '',
+          nullable: '否',
+          defaultKind: '无',
+          defaultValue: '',
+          onUpdate: '无',
+        },
+        {
+          order: 3,
+          fieldName: 'good',
+          fieldType: 'text',
+          fieldComment: '',
+          nullable: '否',
+          defaultKind: '无',
+          defaultValue: '',
+          onUpdate: '无',
+        },
+      ];
+
+      const result = normalizeFields(rows);
+      expect(result).toHaveLength(1);
+      expect(result[0].name).toBe('good');
+    });
+
+    it('preserves enumMeta if present', () => {
+      const rows: FieldRow[] = [
+        {
+          order: 1,
+          fieldName: 'status',
+          fieldType: 'char(1)',
+          fieldComment: '状态',
+          nullable: '否',
+          defaultKind: '无',
+          defaultValue: '',
+          onUpdate: '无',
+          enumMeta: [{ value: '0', color: '#ef4444' }],
+        },
+      ];
+
+      const result = normalizeFields(rows);
+      expect(result[0].enumMeta).toEqual([{ value: '0', color: '#ef4444' }]);
     });
   });
 });
