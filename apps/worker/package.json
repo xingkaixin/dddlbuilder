@@ -17,19 +17,19 @@
     "@ddlbuilder/db": "workspace:*",
     "@ddlbuilder/shared-types": "workspace:*",
     "better-auth": "*",
-    "hono": "*",
     "drizzle-orm": "*",
+    "hono": "*",
+    "jose": "*",
     "openai": "*",
     "resend": "*",
-    "jose": "*",
     "uuid": "*"
   },
   "devDependencies": {
-    "@ddlbuilder/tsconfig": "workspace:*",
+    "@better-auth/drizzle-adapter": "*",
     "@cloudflare/workers-types": "*",
+    "@ddlbuilder/tsconfig": "workspace:*",
     "typescript": "*",
     "vite": "*",
-    "wrangler": "*",
-    "@better-auth/drizzle-adapter": "*"
+    "wrangler": "^4.86.0"
   }
 }
