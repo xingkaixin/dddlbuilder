@@ -1,0 +1,77 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@/__tests__/utils/test-utils';
+import { AdminUserDetailView } from '@/admin/AdminUserDetail';
+
+const mocks = vi.hoisted(() => ({
+  getUserDetail: vi.fn(),
+  getUserCreditLedger: vi.fn(),
+  getUserUsageEvents: vi.fn(),
+  resetUserPassword: vi.fn(),
+  disableUser: vi.fn(),
+  enableUser: vi.fn(),
+  updateUserEmailVerification: vi.fn(),
+  grantUserCredits: vi.fn(),
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
+}));
+
+vi.mock('@/admin/lib/adminApi', () => ({
+  getUserDetail: mocks.getUserDetail,
+  getUserCreditLedger: mocks.getUserCreditLedger,
+  getUserUsageEvents: mocks.getUserUsageEvents,
+  resetUserPassword: mocks.resetUserPassword,
+  disableUser: mocks.disableUser,
+  enableUser: mocks.enableUser,
+  updateUserEmailVerification: mocks.updateUserEmailVerification,
+  grantUserCredits: mocks.grantUserCredits,
+}));
+
+vi.mock('sonner', () => ({
+  toast: {
+    success: mocks.toastSuccess,
+    error: mocks.toastError,
+  },
+}));
+
+const userDetail = {
+  id: 'user-1',
+  name: 'User One',
+  email: 'user@example.com',
+  emailVerified: true,
+  balance: 100,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+  lastActiveAt: null,
+  disabled: false,
+};
+
+describe('AdminUserDetailView', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getUserDetail.mockResolvedValue(userDetail);
+    mocks.getUserCreditLedger.mockResolvedValue([]);
+    mocks.getUserUsageEvents.mockResolvedValue({ items: [], total: 0 });
+    mocks.grantUserCredits.mockResolvedValue(600);
+  });
+
+  it('输入额度后点击确认会提交增加额度请求', async () => {
+    render(<AdminUserDetailView userId="user-1" onBack={vi.fn()} />);
+
+    await screen.findByText('user@example.com');
+    fireEvent.click(screen.getByRole('button', { name: '增加额度' }));
+    fireEvent.change(screen.getByPlaceholderText('100'), {
+      target: { value: '500' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('可选备注'), {
+      target: { value: 'manual bonus' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '确认' }));
+
+    await waitFor(() => {
+      expect(mocks.grantUserCredits).toHaveBeenCalledWith('user-1', 500, 'manual bonus');
+    });
+    expect(mocks.getUserDetail).toHaveBeenCalledTimes(2);
+    expect(mocks.getUserCreditLedger).toHaveBeenCalledTimes(2);
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('已成功增加 500 额度');
+  });
+});

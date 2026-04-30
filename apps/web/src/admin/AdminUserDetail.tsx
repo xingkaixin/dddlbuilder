@@ -160,6 +160,7 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
       setCreditAmount('');
       setCreditNote('');
       await fetchUser();
+      await loadCredits();
     } catch {
       toast.error('Failed to grant credits');
     }
@@ -460,12 +461,9 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
             </div>
             <AlertDialogFooter>
               <AlertDialogCancel type="button">{t('common.cancel', '取消')}</AlertDialogCancel>
-              <AlertDialogAction
-                type="submit"
-                disabled={!creditAmount || Number(creditAmount) <= 0}
-              >
+              <Button type="submit" disabled={!creditAmount || Number(creditAmount) <= 0}>
                 {t('admin.detail.addCreditsSubmit')}
-              </AlertDialogAction>
+              </Button>
             </AlertDialogFooter>
           </form>
         </AlertDialogContent>
