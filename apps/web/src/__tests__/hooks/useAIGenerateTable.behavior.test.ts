@@ -53,11 +53,14 @@ function renderAIGenerateTableWithLocaleHook() {
   );
 }
 
-function createResult(tableName: string): GenerateTableServiceResult {
+function createResult(
+  tableName: string,
+  fields: GenerateTableServiceResult['result']['fields'] = [],
+): GenerateTableServiceResult {
   const result = {
     tableName,
     tableComment: `${tableName} 注释`,
-    fields: [],
+    fields,
     indexes: [],
   };
   return {
@@ -82,8 +85,17 @@ describe('useAIGenerateTable behaviors', () => {
   });
 
   it('should support continueConversation and clear actions', async () => {
+    const firstFields = [
+      {
+        fieldName: 'id',
+        fieldType: 'bigint',
+        fieldComment: '主键',
+        nullable: '否',
+        defaultKind: '自增',
+      } as const,
+    ];
     aiServiceMocks.requestGenerateTable
-      .mockResolvedValueOnce(createResult('users'))
+      .mockResolvedValueOnce(createResult('users', firstFields))
       .mockResolvedValueOnce(createResult('orders'));
 
     const { result } = renderAIGenerateTableHook();
@@ -100,7 +112,9 @@ describe('useAIGenerateTable behaviors', () => {
 
     const secondCallPayload = aiServiceMocks.requestGenerateTable.mock.calls[1][0];
     expect(secondCallPayload.options.conversationHistory).toHaveLength(2);
+    expect(secondCallPayload.options.previousSchema?.fields).toEqual(firstFields);
     expect(result.current.conversationHistory).toHaveLength(4);
+    expect(result.current.previousResult?.tableName).toBe('users');
     expect(result.current.result?.tableName).toBe('orders');
 
     act(() => {

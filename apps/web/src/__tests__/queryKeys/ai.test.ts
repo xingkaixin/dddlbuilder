@@ -33,6 +33,7 @@ describe('queryKeys/ai', () => {
       const expectedPayload = JSON.stringify({
         templates: [],
         existingConfig: null,
+        previousSchema: null,
         conversationHistory: [],
       });
 
@@ -43,6 +44,7 @@ describe('queryKeys/ai', () => {
       const payloadObj = {
         templates: ['tpl1'],
         existingConfig: { tableName: 'test' },
+        previousSchema: { tableName: 'old', tableComment: 'old', fields: [] },
         conversationHistory: [{ role: 'user', content: 'hi' }] as any,
       };
 

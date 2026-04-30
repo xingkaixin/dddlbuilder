@@ -27,6 +27,7 @@ interface GenerateState {
   isLoading: boolean;
   streamingText: string;
   result: GeneratedTableSchema | null;
+  previousResult: GeneratedTableSchema | null;
   error: string | null;
 }
 
@@ -59,11 +60,13 @@ export function useAIGenerateTable() {
     isLoading: false,
     streamingText: '',
     result: null,
+    previousResult: null,
     error: null,
   });
   const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
   const queryClient = useQueryClient();
   const conversationHistoryRef = useRef<ConversationMessage[]>([]);
+  const previousSchemaRef = useRef<GeneratedTableSchema | null>(null);
   const activeRequestRef = useRef<{
     key: string;
     controller: AbortController;
@@ -105,10 +108,12 @@ export function useAIGenerateTable() {
       }
 
       const baseConversation = options?.continueConversation ? conversationHistoryRef.current : [];
+      const previousSchema = options?.continueConversation ? previousSchemaRef.current : null;
       const normalizedDescription = description.trim();
       const requestOptions = {
         templates: options?.templates,
         existingConfig: options?.existingConfig,
+        previousSchema: previousSchema ?? undefined,
         conversationHistory: baseConversation,
       };
       const queryKey = buildAIGenerateQueryKey({
@@ -117,6 +122,7 @@ export function useAIGenerateTable() {
         locale: resolvedLocale,
         templates: requestOptions.templates,
         existingConfig: requestOptions.existingConfig,
+        previousSchema: requestOptions.previousSchema,
         conversationHistory: requestOptions.conversationHistory,
       });
       const requestKey = JSON.stringify(queryKey);
@@ -138,6 +144,7 @@ export function useAIGenerateTable() {
         isLoading: true,
         streamingText: '',
         result: null,
+        previousResult: null,
         error: null,
       });
 
@@ -170,8 +177,10 @@ export function useAIGenerateTable() {
           isLoading: false,
           streamingText: '',
           result,
+          previousResult: previousSchema,
           error: null,
         });
+        previousSchemaRef.current = result;
 
         setConversationHistory(() =>
           appendConversation(baseConversation, normalizedDescription, fullText),
@@ -188,6 +197,7 @@ export function useAIGenerateTable() {
           isLoading: false,
           streamingText: '',
           result: null,
+          previousResult: null,
           error: (err as Error).message || i18n.t('services.generationFailed'),
         });
       } finally {
@@ -204,12 +214,14 @@ export function useAIGenerateTable() {
       isLoading: false,
       streamingText: '',
       result: null,
+      previousResult: null,
       error: null,
     });
   }, []);
 
   const clearConversation = useCallback(() => {
     setConversationHistory([]);
+    previousSchemaRef.current = null;
   }, []);
 
   const cancelGeneration = useCallback(() => {
@@ -228,6 +240,7 @@ export function useAIGenerateTable() {
     streamingText: state.streamingText,
     error: state.error,
     result: state.result,
+    previousResult: state.previousResult,
     partialResult,
     conversationHistory,
     generateTable,

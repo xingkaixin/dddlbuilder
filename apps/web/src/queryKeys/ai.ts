@@ -1,4 +1,7 @@
-import type { ConversationMessage } from '@ddlbuilder/shared-types/ai-generate';
+import type {
+  ConversationMessage,
+  GeneratedTableSchema,
+} from '@ddlbuilder/shared-types/ai-generate';
 import type { FieldRow, IndexDefinition } from '@ddlbuilder/shared-types';
 
 interface DDLReviewKeyParams {
@@ -18,6 +21,7 @@ interface AIGenerateKeyParams {
     rows: FieldRow[];
     indexes: IndexDefinition[];
   }>;
+  previousSchema?: GeneratedTableSchema;
   conversationHistory?: ConversationMessage[];
 }
 
@@ -35,6 +39,7 @@ export function buildAIGenerateQueryKey({
   locale,
   templates,
   existingConfig,
+  previousSchema,
   conversationHistory,
 }: AIGenerateKeyParams) {
   return [
@@ -45,6 +50,7 @@ export function buildAIGenerateQueryKey({
     serializeKeyPayload({
       templates: templates ?? [],
       existingConfig: existingConfig ?? null,
+      previousSchema: previousSchema ?? null,
       conversationHistory: conversationHistory ?? [],
     }),
   ] as const;

@@ -39,6 +39,7 @@ function createHookState(overrides: Partial<ReturnType<typeof useAIGenerateTable
     streamingText: '',
     error: null,
     result: null,
+    previousResult: null,
     partialResult: null,
     conversationHistory: [],
     generateTable: vi.fn(),
@@ -102,5 +103,41 @@ describe('AIGenerateDialog a11y', () => {
     const alert = screen.getByRole('alert');
     expect(alert).toHaveTextContent('生成失败');
     expect(alert).toHaveAttribute('aria-live', 'assertive');
+  });
+
+  it('结果态输入新需求后应继续迭代', () => {
+    const generateTable = vi.fn();
+    mockedUseAIGenerateTable.mockReturnValue(
+      createHookState({
+        result: {
+          tableName: 'orders',
+          tableComment: '订单表',
+          fields: [],
+          indexes: [],
+        },
+        conversationHistory: [
+          { role: 'user', content: '生成订单表' },
+          { role: 'assistant', content: '{}' },
+        ],
+        generateTable,
+      }),
+    );
+
+    render(
+      <AIGenerateDialog open={true} onOpenChange={vi.fn()} dbType="mysql" onApply={vi.fn()} />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText(/继续描述你的需求/), {
+      target: { value: '把状态字段改成 varchar' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /发送修改/ }));
+
+    expect(generateTable).toHaveBeenCalledWith(
+      '把状态字段改成 varchar',
+      'mysql',
+      expect.objectContaining({
+        continueConversation: true,
+      }),
+    );
   });
 });

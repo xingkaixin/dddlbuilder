@@ -108,6 +108,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
       locale?: unknown;
       templates?: unknown;
       existingConfig?: unknown;
+      previousSchema?: unknown;
       conversationHistory?: unknown;
     };
 
@@ -123,6 +124,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
     const locale: AppLocale = isAppLocale(body.locale) ? body.locale : 'zh-CN';
     const templates = Array.isArray(body.templates) ? body.templates : [];
     const existingConfig = body.existingConfig;
+    const previousSchema = body.previousSchema;
     const conversationHistory = Array.isArray(body.conversationHistory)
       ? body.conversationHistory
       : [];
@@ -152,6 +154,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
         locale,
         templates,
         existingConfig,
+        previousSchema,
         conversationHistory,
       },
       MAX_OUTPUT_TOKENS,
@@ -205,6 +208,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
       locale,
       templates,
       existingConfig,
+      previousSchema,
     });
 
     const messages = buildGenerateTableMessages({
@@ -225,6 +229,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
         locale,
         templateCount: templates.length,
         hasExistingConfig: existingConfig != null,
+        hasPreviousSchema: previousSchema != null,
         conversationTurnCount: conversationHistory.length,
       },
     });

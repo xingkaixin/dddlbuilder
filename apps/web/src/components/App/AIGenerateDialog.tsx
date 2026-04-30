@@ -1,4 +1,4 @@
-import { memo, useState, useCallback, useEffect } from 'react';
+import { memo, useState, useCallback, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,12 +16,38 @@ import {
   type PartialTableSchema,
 } from '@/hooks/useAIGenerateTable';
 import type { FieldRow, IndexDefinition, DatabaseType } from '@ddlbuilder/shared-types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
+import { diffPersistedState, type FieldDiff } from '@ddlbuilder/ddl-core';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
 import type { TableTemplate } from '@/hooks/useTableTemplates';
 import { useTranslation } from 'react-i18next';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 
 const MAX_INPUT_LENGTH = 500;
+
+function toPersistedState(schema: GeneratedTableSchema): PersistedState {
+  return {
+    schemaName: schema.schemaName ?? '',
+    tableName: schema.tableName,
+    tableComment: schema.tableComment,
+    rows: schema.fields.map((field, index) => ({
+      id: `ai-preview-${index}`,
+      fieldName: field.fieldName,
+      fieldType: field.fieldType,
+      fieldComment: field.fieldComment,
+      nullable: field.nullable,
+      defaultKind: field.defaultKind,
+      defaultValue: field.defaultValue ?? '',
+      onUpdate: field.onUpdate ?? '无',
+    })),
+    indexes: schema.indexes ?? [],
+    foreignKeys: [],
+  } as PersistedState;
+}
+
+function getFieldChangeKey(diff: FieldDiff) {
+  return `${diff.type}:${diff.fieldName}:${diff.oldFieldName ?? ''}:${diff.newFieldName ?? ''}`;
+}
 
 interface AIGenerateDialogProps {
   open: boolean;
@@ -48,6 +74,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
       isLoading,
       error,
       result,
+      previousResult,
       partialResult,
       conversationHistory,
       generateTable,
@@ -149,6 +176,41 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
     }, []);
 
     const generatedFieldCount = displayResult?.fields?.length ?? 0;
+    const fieldChanges = useMemo(() => {
+      if (!previousResult || !result) {
+        return [];
+      }
+      return diffPersistedState(toPersistedState(previousResult), toPersistedState(result)).fields;
+    }, [previousResult, result]);
+
+    const describeFieldChange = useCallback(
+      (change: FieldDiff) => {
+        if (change.type === 'add') {
+          return t('aiGenerate.fieldChangeAdd', {
+            field: change.newField?.name ?? change.fieldName,
+            type: change.newField?.type ?? '',
+          });
+        }
+        if (change.type === 'remove') {
+          return t('aiGenerate.fieldChangeRemove', {
+            field: change.oldField?.name ?? change.fieldName,
+          });
+        }
+        if (change.type === 'rename') {
+          return t('aiGenerate.fieldChangeRename', {
+            oldField: change.oldFieldName,
+            newField: change.newFieldName,
+          });
+        }
+        return t('aiGenerate.fieldChangeModify', {
+          field: change.fieldName,
+          changes: (change.changes ?? [])
+            .map((item) => t(`aiGenerate.fieldChangeType.${item}`))
+            .join('、'),
+        });
+      },
+      [t],
+    );
 
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -226,6 +288,25 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                     </span>
                   )}
                 </div>
+
+                {/* Field changes preview */}
+                {fieldChanges.length > 0 && (
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {t('aiGenerate.fieldChanges')}
+                    </span>
+                    <div className="grid gap-1 text-xs">
+                      {fieldChanges.map((change) => (
+                        <div
+                          key={getFieldChangeKey(change)}
+                          className="rounded bg-primary/5 px-2 py-1 text-primary"
+                        >
+                          {describeFieldChange(change)}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Fields preview */}
                 {displayResult.fields && displayResult.fields.length > 0 && (
@@ -426,7 +507,7 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                 </span>
               )}
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-end gap-2">
                 <span
                   id="ai-generate-input-counter"
                   className="text-xs text-muted-foreground"
@@ -451,8 +532,18 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
                       size="sm"
                       className="h-7 px-2 text-xs font-medium"
                     >
-                      {t('aiGenerate.regenerate')}
+                      {t('aiGenerate.restart')}
                     </Button>
+                    {input.trim() && (
+                      <Button
+                        onClick={handleGenerate}
+                        className="h-7 gap-1.5 px-2 text-xs font-medium"
+                        size="sm"
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                        {t('aiGenerate.continueGenerate')}
+                      </Button>
+                    )}
                     <Button
                       onClick={handleApply}
                       className="h-7 gap-1.5 px-2 text-xs font-medium"

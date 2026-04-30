@@ -19,6 +19,7 @@ export interface GenerateTableRequestOptions {
     rows: FieldRow[];
     indexes: IndexDefinition[];
   }>;
+  previousSchema?: GeneratedTableSchema;
   conversationHistory?: ConversationMessage[];
 }
 
@@ -53,6 +54,7 @@ export async function requestGenerateTable(
       locale: payload.locale,
       templates: payload.options?.templates,
       existingConfig: payload.options?.existingConfig,
+      previousSchema: payload.options?.previousSchema,
       conversationHistory: payload.options?.conversationHistory ?? [],
     }),
     signal: options.signal,
