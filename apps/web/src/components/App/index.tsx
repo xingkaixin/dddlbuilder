@@ -1201,6 +1201,45 @@ function App() {
     return t('app.workspace.globalDraft');
   }, [isShareView, loadedTableName, isLoadedDirty, loadedTableVersion, t]);
 
+  const handleApplyAIGeneratedStateToDraft = useCallback(
+    (state: PersistedState) => {
+      if (tabs.length > 0) {
+        flushCurrentWorkspace();
+      }
+
+      const draftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const baseName = state.tableName.trim() || '未命名草稿';
+      const uniqueName = createDraft(draftId, state);
+      const finalState = uniqueName !== baseName ? { ...state, tableName: uniqueName } : state;
+
+      const newTabId = addTab({
+        title: uniqueName,
+        source: { kind: 'draft', draftId },
+        stateSnapshot: finalState,
+        isDirty: false,
+      });
+      activateTab(newTabId);
+      applySavedState(finalState);
+      setWorkspaceSnapshot({ kind: 'draft', draftId }, finalState);
+      setLoadedTableNormalizedName(null);
+      setLoadedTableName(null);
+      setLoadedTableSignature(null);
+      setLoadedTableVersion(0);
+    },
+    [
+      tabs.length,
+      flushCurrentWorkspace,
+      createDraft,
+      addTab,
+      activateTab,
+      applySavedState,
+      setWorkspaceSnapshot,
+      setLoadedTableNormalizedName,
+      setLoadedTableName,
+      setLoadedTableSignature,
+    ],
+  );
+
   const { handleApplySuggestion, handleImport, handleApplyAIGeneratedSchema } =
     useSchemaApplyActions({
       rows,
@@ -1217,6 +1256,8 @@ function App() {
       setTableName,
       setTableComment,
       setDbType,
+      dbType,
+      sqlFormatMode,
       setTableMiscConfig,
       setMysqlPartitionConfig,
       setActiveTab,
@@ -1224,6 +1265,7 @@ function App() {
       triggerFieldTableHighlight,
       showToast,
       trackEvent,
+      onApplyAIGeneratedState: handleApplyAIGeneratedStateToDraft,
     });
 
   const {

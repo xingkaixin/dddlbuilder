@@ -31,6 +31,8 @@ function createHook(initialState: Partial<Parameters<typeof useSchemaApplyAction
         rows: [],
         indexes: [],
         reviewResult: null,
+        dbType: 'mysql',
+        sqlFormatMode: 'compact',
         ...initialState,
         ...props,
         ...spies,
@@ -456,6 +458,47 @@ describe('useSchemaApplyActions', () => {
       expect(spies.trackEvent).toHaveBeenCalledWith('ai_generate_apply', {
         tableName: 'ai_table',
       });
+    });
+
+    it('should hand generated state to draft creator when provided', () => {
+      const onApplyAIGeneratedState = vi.fn();
+      const { hook } = createHook({ onApplyAIGeneratedState });
+
+      act(() => {
+        hook.result.current.handleApplyAIGeneratedSchema({
+          tableName: 'ai_table',
+          tableComment: 'AI Generated',
+          fields: [
+            {
+              fieldName: 'id',
+              fieldType: 'INT',
+              fieldComment: '',
+              nullable: '否',
+              defaultKind: '无',
+              isPrimaryKey: true,
+            },
+          ],
+          indexes: [
+            {
+              name: 'idx_id',
+              fields: [{ name: 'id', direction: 'ASC' }],
+              unique: false,
+            },
+          ],
+        });
+      });
+
+      expect(onApplyAIGeneratedState).toHaveBeenCalledWith(
+        expect.objectContaining({
+          objectType: 'table',
+          tableName: 'ai_table',
+          tableComment: 'AI Generated',
+          dbType: 'mysql',
+          sqlFormatMode: 'compact',
+          rows: [expect.objectContaining({ fieldName: 'id' })],
+          indexes: expect.arrayContaining([expect.objectContaining({ name: 'PRIMARY' })]),
+        }),
+      );
     });
   });
 });

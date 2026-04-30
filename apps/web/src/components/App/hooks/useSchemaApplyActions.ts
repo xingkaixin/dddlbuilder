@@ -7,6 +7,8 @@ import type {
   FieldRow,
   IndexDefinition,
   MysqlPartitionConfig,
+  PersistedState,
+  SqlFormatMode,
   TableMiscConfig,
   ForeignKeyDefinition,
 } from '@ddlbuilder/shared-types';
@@ -30,6 +32,8 @@ interface UseSchemaApplyActionsParams {
   setTableName: (value: string) => void;
   setTableComment: (value: string) => void;
   setDbType: (value: DatabaseType) => void;
+  dbType: DatabaseType;
+  sqlFormatMode: SqlFormatMode;
   setTableMiscConfig: Dispatch<SetStateAction<TableMiscConfig>>;
   setMysqlPartitionConfig: Dispatch<SetStateAction<MysqlPartitionConfig>>;
   setActiveTab: (value: string) => void;
@@ -37,6 +41,7 @@ interface UseSchemaApplyActionsParams {
   triggerFieldTableHighlight: (rowIndex: number) => void;
   showToast: (message: string) => void;
   trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void>;
+  onApplyAIGeneratedState?: (state: PersistedState) => void;
 }
 
 const DEFAULT_TABLE_MISC_CONFIG: TableMiscConfig = {
@@ -55,6 +60,73 @@ const DEFAULT_MYSQL_PARTITION_CONFIG: MysqlPartitionConfig = {
   partitions: [],
 };
 
+function buildAIGeneratedRows(schema: GeneratedTableSchema): FieldRow[] {
+  return schema.fields.map((field, index) => ({
+    order: index + 1,
+    fieldName: field.fieldName,
+    fieldType: field.fieldType,
+    fieldComment: field.fieldComment,
+    nullable: field.nullable,
+    defaultKind: field.defaultKind,
+    defaultValue: field.defaultValue || '',
+    onUpdate: field.onUpdate || '无',
+  })) as FieldRow[];
+}
+
+function buildAIGeneratedIndexes(schema: GeneratedTableSchema): IndexDefinition[] {
+  if (!schema.indexes || schema.indexes.length === 0) {
+    return [];
+  }
+
+  const now = Date.now();
+  const newIndexes = schema.indexes.map((index, i) => ({
+    id: `ai-${now}-${i}`,
+    name: index.name,
+    fields: index.fields,
+    unique: index.unique,
+    isPrimary: false,
+  }));
+
+  const pkFields = schema.fields
+    ?.filter((field) => field.isPrimaryKey)
+    .map((field) => ({
+      name: field.fieldName,
+      direction: 'ASC' as const,
+    }));
+
+  if (pkFields && pkFields.length > 0) {
+    newIndexes.unshift({
+      id: `pk-${now}`,
+      name: 'PRIMARY',
+      fields: pkFields,
+      unique: true,
+      isPrimary: true,
+    });
+  }
+
+  return newIndexes as IndexDefinition[];
+}
+
+function resolveGeneratedTableIdentity(schema: GeneratedTableSchema) {
+  if (schema.schemaName) {
+    return {
+      schemaName: schema.schemaName,
+      tableName: schema.tableName?.includes('.')
+        ? getSchemaAndTable(schema.tableName).table
+        : schema.tableName,
+    };
+  }
+
+  if (schema.tableName?.includes('.')) {
+    return getSchemaAndTable(schema.tableName);
+  }
+
+  return {
+    schemaName: '',
+    tableName: schema.tableName,
+  };
+}
+
 export function useSchemaApplyActions({
   rows,
   indexes,
@@ -70,6 +142,8 @@ export function useSchemaApplyActions({
   setTableName,
   setTableComment,
   setDbType,
+  dbType,
+  sqlFormatMode,
   setTableMiscConfig,
   setMysqlPartitionConfig,
   setActiveTab,
@@ -77,6 +151,7 @@ export function useSchemaApplyActions({
   triggerFieldTableHighlight,
   showToast,
   trackEvent,
+  onApplyAIGeneratedState,
 }: UseSchemaApplyActionsParams) {
   const handleApplySuggestion = useCallback(
     (suggestion: StructuredSuggestion) => {
@@ -266,70 +341,58 @@ export function useSchemaApplyActions({
 
   const handleApplyAIGeneratedSchema = useCallback(
     (schema: GeneratedTableSchema) => {
-      if (schema.schemaName) {
-        setSchemaName(schema.schemaName);
-      } else if (schema.tableName?.includes('.')) {
-        const parsedName = getSchemaAndTable(schema.tableName);
-        setSchemaName(parsedName.schema);
-        setTableName(parsedName.table);
+      const identity = resolveGeneratedTableIdentity(schema);
+      const generatedRows =
+        schema.fields && schema.fields.length > 0 ? buildAIGeneratedRows(schema) : [];
+      const generatedIndexes = buildAIGeneratedIndexes(schema);
+      const nextState: PersistedState = {
+        objectType: 'table',
+        schemaName: identity.schemaName,
+        tableName: identity.tableName,
+        tableComment: schema.tableComment || '',
+        dbType,
+        sqlFormatMode,
+        rows: generatedRows,
+        addCount: 10,
+        indexInput: '',
+        currentIndexFields: [],
+        indexes: generatedIndexes,
+        authInput: '',
+        authObjects: [],
+        tableMiscConfig: DEFAULT_TABLE_MISC_CONFIG,
+        mysqlPartitionConfig: DEFAULT_MYSQL_PARTITION_CONFIG,
+        foreignKeys: [],
+      };
+
+      if (onApplyAIGeneratedState) {
+        onApplyAIGeneratedState(nextState);
       } else {
-        setSchemaName('');
-      }
-
-      if (schema.tableName && !schema.tableName.includes('.')) {
-        setTableName(schema.tableName);
-      }
-      if (schema.tableComment) {
-        setTableComment(schema.tableComment);
-      }
-
-      if (schema.fields && schema.fields.length > 0) {
-        const newRows = schema.fields.map((field, index) => ({
-          order: index + 1,
-          fieldName: field.fieldName,
-          fieldType: field.fieldType,
-          fieldComment: field.fieldComment,
-          nullable: field.nullable,
-          defaultKind: field.defaultKind,
-          defaultValue: field.defaultValue || '',
-          onUpdate: field.onUpdate || '无',
-        }));
-        setRows(newRows as FieldRow[]);
-      }
-
-      if (schema.indexes && schema.indexes.length > 0) {
-        const newIndexes = schema.indexes.map((index, i) => ({
-          id: `ai-${Date.now()}-${i}`,
-          name: index.name,
-          fields: index.fields,
-          unique: index.unique,
-          isPrimary: false,
-        }));
-
-        const pkFields = schema.fields
-          ?.filter((field) => field.isPrimaryKey)
-          .map((field) => ({
-            name: field.fieldName,
-            direction: 'ASC' as const,
-          }));
-
-        if (pkFields && pkFields.length > 0) {
-          newIndexes.unshift({
-            id: `pk-${Date.now()}`,
-            name: 'PRIMARY',
-            fields: pkFields,
-            unique: true,
-            isPrimary: true,
-          });
+        setSchemaName(nextState.schemaName);
+        setTableName(nextState.tableName);
+        setTableComment(nextState.tableComment);
+        if (generatedRows.length > 0) {
+          setRows(generatedRows);
         }
-
-        setIndexes(newIndexes as IndexDefinition[]);
+        if (generatedIndexes.length > 0) {
+          setIndexes(generatedIndexes);
+        }
       }
 
       void trackEvent('ai_generate_apply', { tableName: schema.tableName });
       showToast('大师建表工坊的表结构已应用');
     },
-    [setSchemaName, setTableName, setTableComment, setRows, setIndexes, trackEvent, showToast],
+    [
+      dbType,
+      sqlFormatMode,
+      onApplyAIGeneratedState,
+      setSchemaName,
+      setTableName,
+      setTableComment,
+      setRows,
+      setIndexes,
+      trackEvent,
+      showToast,
+    ],
   );
 
   return {
