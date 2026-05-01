@@ -1,4 +1,49 @@
 import { openDb, FOLDER_STORE_NAME, type TableFolder } from './savedTablesDb';
+import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
+import {
+  buildScopedWorkspaceKey,
+  getAnonymousWorkspaceScope,
+  getCurrentWorkspaceScope,
+  getWorkspaceScopeStorageKey,
+} from './workspaceScope';
+
+const LEGACY_SCOPE = getWorkspaceScopeStorageKey(getAnonymousWorkspaceScope());
+
+const withScopeKey = (scope: WorkspaceScope, id: string) => buildScopedWorkspaceKey(scope, id);
+
+const decodeScopedFolder = (folder: TableFolder, scope: WorkspaceScope): TableFolder | null => {
+  const scopeKey = getWorkspaceScopeStorageKey(scope);
+  if (folder.scope && folder.scope !== scopeKey) {
+    return null;
+  }
+
+  if (folder.id.includes('::')) {
+    const prefix = `${scopeKey}::`;
+    if (!folder.id.startsWith(prefix)) {
+      return null;
+    }
+    return {
+      ...folder,
+      id: folder.id.slice(prefix.length),
+      scope: scopeKey,
+    };
+  }
+
+  if (scope.kind !== 'anonymous') {
+    return null;
+  }
+
+  return {
+    ...folder,
+    scope: LEGACY_SCOPE,
+  };
+};
+
+const encodeFolder = (folder: TableFolder, scope: WorkspaceScope): TableFolder => ({
+  ...folder,
+  id: withScopeKey(scope, folder.id),
+  scope: getWorkspaceScopeStorageKey(scope),
+});
 
 /**
  * 生成唯一 ID
@@ -40,37 +85,60 @@ async function runWithFolderStore<T>(
 /**
  * 获取所有文件夹
  */
-export async function listFolders(): Promise<TableFolder[]> {
+export async function listFolders(
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<TableFolder[]> {
   const folders = await runWithFolderStore<TableFolder[]>('readonly', (store) => store.getAll());
   if (!Array.isArray(folders)) return [];
-  // 按 order 排序
-  return folders.sort((a, b) => a.order - b.order);
+  return folders
+    .map((folder) => decodeScopedFolder(folder, scope))
+    .filter((folder): folder is TableFolder => folder != null)
+    .sort((a, b) => a.order - b.order);
 }
 
 /**
  * 获取指定父文件夹下的子文件夹
  */
-export async function listChildFolders(parentId?: string): Promise<TableFolder[]> {
-  const allFolders = await listFolders();
+export async function listChildFolders(
+  parentId?: string,
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<TableFolder[]> {
+  const allFolders = await listFolders(scope);
   return allFolders.filter((f) => (parentId ? f.parentId === parentId : !f.parentId));
 }
 
 /**
  * 获取单个文件夹
  */
-export async function getFolder(id: string): Promise<TableFolder | null> {
+export async function getFolder(
+  id: string,
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<TableFolder | null> {
   const folder = await runWithFolderStore<TableFolder | undefined>('readonly', (store) =>
-    store.get(id),
+    store.get(withScopeKey(scope, id)),
   );
-  return folder ?? null;
+  if (folder) {
+    return decodeScopedFolder(folder, scope);
+  }
+  if (scope.kind === 'anonymous') {
+    const legacyFolder = await runWithFolderStore<TableFolder | undefined>('readonly', (store) =>
+      store.get(id),
+    );
+    return legacyFolder ? decodeScopedFolder(legacyFolder, scope) : null;
+  }
+  return null;
 }
 
 /**
  * 创建文件夹
  */
-export async function createFolder(name: string, parentId?: string): Promise<TableFolder> {
+export async function createFolder(
+  name: string,
+  parentId?: string,
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<TableFolder> {
   // 获取同级文件夹以确定 order
-  const siblings = await listChildFolders(parentId);
+  const siblings = await listChildFolders(parentId, scope);
   const maxOrder = siblings.reduce((max, f) => Math.max(max, f.order), 0);
 
   const folder: TableFolder = {
@@ -81,60 +149,81 @@ export async function createFolder(name: string, parentId?: string): Promise<Tab
     createdAt: Date.now(),
   };
 
-  await runWithFolderStore<IDBValidKey>('readwrite', (store) => store.add(folder));
+  await runWithFolderStore<IDBValidKey>('readwrite', (store) =>
+    store.add(encodeFolder(folder, scope)),
+  );
   return folder;
 }
 
 /**
  * 更新文件夹
  */
-export async function updateFolder(folder: TableFolder): Promise<void> {
-  await runWithFolderStore<IDBValidKey>('readwrite', (store) => store.put(folder));
+export async function updateFolder(
+  folder: TableFolder,
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<void> {
+  await runWithFolderStore<IDBValidKey>('readwrite', (store) =>
+    store.put(encodeFolder(folder, scope)),
+  );
+  if (scope.kind === 'anonymous') {
+    await runWithFolderStore<undefined>('readwrite', (store) => store.delete(folder.id));
+  }
 }
 
 /**
  * 重命名文件夹
  */
-export async function renameFolder(id: string, newName: string): Promise<void> {
-  const folder = await getFolder(id);
+export async function renameFolder(
+  id: string,
+  newName: string,
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<void> {
+  const folder = await getFolder(id, scope);
   if (!folder) {
     throw new Error('文件夹不存在');
   }
   folder.name = newName.trim();
-  await updateFolder(folder);
+  await updateFolder(folder, scope);
 }
 
 /**
  * 移动文件夹到新的父文件夹
  */
-export async function moveFolder(id: string, newParentId?: string): Promise<void> {
-  const folder = await getFolder(id);
+export async function moveFolder(
+  id: string,
+  newParentId?: string,
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<void> {
+  const folder = await getFolder(id, scope);
   if (!folder) {
     throw new Error('文件夹不存在');
   }
 
   // 防止移动到自身或子文件夹下
   if (newParentId) {
-    const descendants = await getDescendantFolderIds(id);
+    const descendants = await getDescendantFolderIds(id, scope);
     if (newParentId === id || descendants.includes(newParentId)) {
       throw new Error('不能将文件夹移动到自身或其子文件夹下');
     }
   }
 
   // 获取目标位置的同级文件夹以确定 order
-  const siblings = await listChildFolders(newParentId);
+  const siblings = await listChildFolders(newParentId, scope);
   const maxOrder = siblings.reduce((max, f) => Math.max(max, f.order), 0);
 
   folder.parentId = newParentId;
   folder.order = maxOrder + 1;
-  await updateFolder(folder);
+  await updateFolder(folder, scope);
 }
 
 /**
  * 获取文件夹的所有后代文件夹 ID
  */
-export async function getDescendantFolderIds(folderId: string): Promise<string[]> {
-  const allFolders = await listFolders();
+export async function getDescendantFolderIds(
+  folderId: string,
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<string[]> {
+  const allFolders = await listFolders(scope);
   const descendants: string[] = [];
 
   function collectDescendants(parentId: string) {
@@ -153,14 +242,20 @@ export async function getDescendantFolderIds(folderId: string): Promise<string[]
 /**
  * 删除文件夹（子表移回未分组，子文件夹及其表也移回未分组）
  */
-export async function deleteFolder(id: string): Promise<void> {
+export async function deleteFolder(
+  id: string,
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<void> {
   // 获取所有后代文件夹
-  const descendantIds = await getDescendantFolderIds(id);
+  const descendantIds = await getDescendantFolderIds(id, scope);
   const allFolderIds = [id, ...descendantIds];
 
   // 先删除所有涉及的文件夹
   for (const folderId of allFolderIds) {
     await runWithFolderStore<undefined>('readwrite', (store) => store.delete(folderId));
+    await runWithFolderStore<undefined>('readwrite', (store) =>
+      store.delete(withScopeKey(scope, folderId)),
+    );
   }
 
   // 注意：表的 folderId 清理需要在调用处处理
@@ -171,28 +266,42 @@ export async function deleteFolder(id: string): Promise<void> {
 /**
  * 清空所有文件夹
  */
-export async function clearFolders(): Promise<void> {
-  await runWithFolderStore<undefined>('readwrite', (store) => store.clear());
+export async function clearFolders(
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<void> {
+  const folders = await listFolders(scope);
+  for (const folder of folders) {
+    await runWithFolderStore<undefined>('readwrite', (store) => store.delete(folder.id));
+    await runWithFolderStore<undefined>('readwrite', (store) =>
+      store.delete(withScopeKey(scope, folder.id)),
+    );
+  }
 }
 
 /**
  * 批量写入文件夹（覆盖式）
  */
-export async function bulkPutFolders(folders: TableFolder[]): Promise<void> {
+export async function bulkPutFolders(
+  folders: TableFolder[],
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<void> {
   if (folders.length === 0) return;
   await runWithFolderStore<IDBValidKey>('readwrite', (store) => {
     for (let i = 0; i < folders.length - 1; i++) {
-      store.put(folders[i]);
+      store.put(encodeFolder(folders[i], scope));
     }
-    return store.put(folders[folders.length - 1]);
+    return store.put(encodeFolder(folders[folders.length - 1], scope));
   });
 }
 
 /**
  * 获取文件夹路径（从根到当前）
  */
-export async function getFolderPath(folderId: string): Promise<TableFolder[]> {
-  const allFolders = await listFolders();
+export async function getFolderPath(
+  folderId: string,
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<TableFolder[]> {
+  const allFolders = await listFolders(scope);
   const folderMap = new Map(allFolders.map((f) => [f.id, f]));
 
   const path: TableFolder[] = [];
@@ -216,8 +325,10 @@ export type FolderTreeNode = TableFolder & {
   tableCount?: number;
 };
 
-export async function buildFolderTree(): Promise<FolderTreeNode[]> {
-  const allFolders = await listFolders();
+export async function buildFolderTree(
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<FolderTreeNode[]> {
+  const allFolders = await listFolders(scope);
   const folderMap = new Map<string, FolderTreeNode>();
 
   // 初始化所有节点

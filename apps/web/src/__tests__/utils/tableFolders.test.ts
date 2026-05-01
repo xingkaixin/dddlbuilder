@@ -6,6 +6,8 @@ import {
   renameFolder,
   moveFolder,
   deleteFolder,
+  bulkPutFolders,
+  clearFolders,
   getDescendantFolderIds,
   getFolder,
   buildFolderTree,
@@ -114,6 +116,22 @@ describe('tableFolders', () => {
   it('should throw when folder not found', async () => {
     await expect(renameFolder('missing', 'x')).rejects.toThrow('文件夹不存在');
     await expect(moveFolder('missing', undefined)).rejects.toThrow('文件夹不存在');
+  });
+
+  it('should isolate folders by workspace scope', async () => {
+    const workspaceA = { kind: 'user' as const, userId: 'u1', workspaceId: 'ws-a' };
+    const workspaceB = { kind: 'user' as const, userId: 'u1', workspaceId: 'ws-b' };
+
+    await bulkPutFolders([{ id: 'folder-1', name: 'A', order: 1, createdAt: 1 }], workspaceA);
+    await bulkPutFolders([{ id: 'folder-1', name: 'B', order: 1, createdAt: 1 }], workspaceB);
+
+    expect((await listFolders(workspaceA)).map((item) => item.name)).toEqual(['A']);
+    expect((await listFolders(workspaceB)).map((item) => item.name)).toEqual(['B']);
+
+    await clearFolders(workspaceA);
+
+    expect(await listFolders(workspaceA)).toEqual([]);
+    expect((await listFolders(workspaceB)).map((item) => item.name)).toEqual(['B']);
   });
 
   it('should handle request.onerror and tx.onabort in runWithFolderStore', async () => {

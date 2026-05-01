@@ -3,6 +3,7 @@ import {
   migrateLegacyWorkspaceFromLocalStorage,
   readWorkspaceBootstrap,
 } from '@/utils/workspaceStateDb';
+import { getAnonymousWorkspaceScope, getWorkspaceScopeStorageKey } from '@/utils/workspaceScope';
 
 export type WorkspaceBootstrapRaw = {
   globalDraft: unknown;
@@ -49,7 +50,7 @@ export const resetWorkspaceBootstrapCache = () => {
 };
 
 export const getWorkspaceBootstrap = (scope: WorkspaceScope = getAnonymousWorkspaceScope()) => {
-  const scopeKey = scope.kind === 'anonymous' ? 'anonymous' : `user:${scope.userId}`;
+  const scopeKey = getWorkspaceScopeStorageKey(scope);
   if (
     workspaceBootstrapCache &&
     workspaceBootstrapCacheScopeKey === scopeKey &&
@@ -72,4 +73,3 @@ export const getWorkspaceBootstrap = (scope: WorkspaceScope = getAnonymousWorksp
   }
   return workspaceBootstrapPromise;
 };
-import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';

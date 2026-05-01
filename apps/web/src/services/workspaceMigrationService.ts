@@ -141,7 +141,7 @@ export const collectWorkspaceMigrationPayload = async (
       listDrafts(scope),
       listSavedTables(scope),
       listSavedDrafts(scope),
-      listFolders(),
+      listFolders(scope),
     ]);
 
   const savedDrafts = Object.entries(savedDraftMap).map(([normalizedName, item]) => ({

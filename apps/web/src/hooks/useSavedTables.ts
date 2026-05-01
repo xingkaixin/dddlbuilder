@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { buildWorkspaceContentHash } from '@/services/workspaceIncrementalSyncService';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import {
   addSavedTable,
@@ -15,6 +16,7 @@ import {
   type SavedTableMetadata,
   type SavedTableRecord,
 } from '@/utils/savedTablesDb';
+import { enqueueWorkspaceOutboxItem } from '@/utils/workspaceSyncStateDb';
 import { getAnonymousWorkspaceScope, setCurrentWorkspaceScope } from '@/utils/workspaceScope';
 
 export type SavedTableSummary = SavedTableMetadata;
@@ -39,6 +41,30 @@ export function useSavedTables() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const queueSavedTableChange = useCallback(
+    async (record: SavedTableRecord, op: 'upsert' | 'delete' = 'upsert') => {
+      if (authSession.status !== 'signed_in' || !authSession.workspaceId) return;
+      const payload =
+        op === 'upsert'
+          ? {
+              name: record.name,
+              state: record.state,
+              createdAt: record.createdAt,
+              folderId: record.folderId,
+            }
+          : null;
+      await enqueueWorkspaceOutboxItem({
+        workspaceId: authSession.workspaceId,
+        entityType: 'saved_table',
+        entityId: record.normalizedName,
+        op,
+        payload,
+        contentHash: op === 'upsert' ? await buildWorkspaceContentHash(payload) : null,
+      });
+    },
+    [authSession.status, authSession.workspaceId],
+  );
+
   const refresh = useCallback(async () => {
     try {
       setLoading(true);
@@ -61,11 +87,15 @@ export function useSavedTables() {
   useEffect(() => {
     const nextScope =
       authSession.status === 'signed_in' && authSession.userId
-        ? { kind: 'user' as const, userId: authSession.userId }
+        ? {
+            kind: 'user' as const,
+            userId: authSession.userId,
+            ...(authSession.workspaceId ? { workspaceId: authSession.workspaceId } : {}),
+          }
         : getAnonymousWorkspaceScope();
     setCurrentWorkspaceScope(nextScope);
     void refresh();
-  }, [authSession.status, authSession.userId, refresh]);
+  }, [authSession.status, authSession.userId, authSession.workspaceId, refresh]);
 
   useEffect(() => {
     const handleSnapshotApplied = () => {
@@ -105,6 +135,13 @@ export function useSavedTables() {
             updatedAt: now,
           });
         }
+        await queueSavedTableChange({
+          normalizedName,
+          name: displayName,
+          state,
+          createdAt: existing?.createdAt ?? now,
+          updatedAt: now,
+        });
         await refresh();
         return { ok: true, normalizedName };
       } catch (err) {
@@ -115,7 +152,7 @@ export function useSavedTables() {
         };
       }
     },
-    [refresh],
+    [queueSavedTableChange, refresh],
   );
 
   const overwriteTable = useCallback(
@@ -131,6 +168,7 @@ export function useSavedTables() {
           updatedAt: Date.now(),
         };
         await updateSavedTable(updatedRecord);
+        await queueSavedTableChange(updatedRecord);
         await refresh();
         return { ok: true, normalizedName };
       } catch (err) {
@@ -141,13 +179,17 @@ export function useSavedTables() {
         };
       }
     },
-    [refresh],
+    [queueSavedTableChange, refresh],
   );
 
   const deleteTable = useCallback(
     async (normalizedName: string): Promise<SaveTableResult> => {
       try {
+        const record = await getSavedTable(normalizedName);
         await moveSavedTableToTrash(normalizedName);
+        if (record) {
+          await queueSavedTableChange(record, 'delete');
+        }
         await refresh();
         return { ok: true, normalizedName };
       } catch (err) {
@@ -158,7 +200,7 @@ export function useSavedTables() {
         };
       }
     },
-    [refresh],
+    [queueSavedTableChange, refresh],
   );
 
   const restoreTable = useCallback(
@@ -210,6 +252,10 @@ export function useSavedTables() {
           await updateSavedTable(restoredRecord);
         }
 
+        await queueSavedTableChange(restoredRecord);
+        if (targetNormalizedName !== normalizedName) {
+          await queueSavedTableChange(record, 'delete');
+        }
         await refresh();
         return { ok: true, normalizedName: targetNormalizedName };
       } catch (err) {
@@ -220,13 +266,17 @@ export function useSavedTables() {
         };
       }
     },
-    [refresh, savedTables],
+    [queueSavedTableChange, refresh, savedTables],
   );
 
   const deleteTablePermanently = useCallback(
     async (normalizedName: string): Promise<SaveTableResult> => {
       try {
+        const record = await getSavedTable(normalizedName);
         await deleteSavedTable(normalizedName);
+        if (record) {
+          await queueSavedTableChange(record, 'delete');
+        }
         await refresh();
         return { ok: true, normalizedName };
       } catch (err) {
@@ -237,7 +287,7 @@ export function useSavedTables() {
         };
       }
     },
-    [refresh],
+    [queueSavedTableChange, refresh],
   );
 
   const renameTable = useCallback(
@@ -265,6 +315,10 @@ export function useSavedTables() {
           await addSavedTable(updatedRecord);
           await deleteSavedTable(normalizedName);
         }
+        await queueSavedTableChange(updatedRecord);
+        if (nextNormalizedName !== normalizedName) {
+          await queueSavedTableChange(record, 'delete');
+        }
         await refresh();
         return { ok: true, normalizedName: nextNormalizedName };
       } catch (err) {
@@ -275,7 +329,7 @@ export function useSavedTables() {
         };
       }
     },
-    [refresh],
+    [queueSavedTableChange, refresh],
   );
 
   const loadTable = useCallback(async (normalizedName: string) => {
@@ -296,6 +350,7 @@ export function useSavedTables() {
           updatedAt: Date.now(),
         };
         await updateSavedTable(updatedRecord);
+        await queueSavedTableChange(updatedRecord);
         await refresh();
         return { ok: true, normalizedName };
       } catch (err) {
@@ -306,7 +361,7 @@ export function useSavedTables() {
         };
       }
     },
-    [refresh],
+    [queueSavedTableChange, refresh],
   );
 
   // 清理指定文件夹ID关联的表（将它们移回未分组）
@@ -323,11 +378,12 @@ export function useSavedTables() {
             updatedAt: Date.now(),
           };
           await updateSavedTable(updatedRecord);
+          await queueSavedTableChange(updatedRecord);
         }),
       );
       await refresh();
     },
-    [savedTables, refresh],
+    [queueSavedTableChange, savedTables, refresh],
   );
 
   return {

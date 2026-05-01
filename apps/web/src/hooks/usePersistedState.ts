@@ -4,6 +4,7 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { buildShareStateQueryKey } from '@/queryKeys/share';
 import { ShareApiError, getShareState } from '@/services/shareService';
+import { buildWorkspaceContentHash } from '@/services/workspaceIncrementalSyncService';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import type {
   DraftSummary,
@@ -26,6 +27,7 @@ import {
   writeDraft,
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
+import { enqueueWorkspaceOutboxItem } from '@/utils/workspaceSyncStateDb';
 import type { SavedTableRecord } from '@/utils/savedTablesDb';
 import { getWorkspaceBootstrap } from './workspacePersistence/bootstrap';
 import { resetWorkspaceBootstrapCache } from './workspacePersistence/bootstrap';
@@ -51,6 +53,9 @@ const SHARE_CACHE_GC_TIME_MS = 15 * 60 * 1000;
 
 const sortDraftSummaries = (drafts: DraftSummary[]) =>
   [...drafts].sort((a, b) => b.createdAt - a.createdAt || a.draftId.localeCompare(b.draftId));
+
+const isSamePersistedState = (left: PersistedState, right: PersistedState) =>
+  JSON.stringify(left) === JSON.stringify(right);
 
 type ShareLoadStatus = 'idle' | 'not_found' | 'error';
 
@@ -108,9 +113,13 @@ export function usePersistedState(): UsePersistedStateReturn {
   const currentScope = useMemo<WorkspaceScope>(
     () =>
       authSession.status === 'signed_in' && authSession.userId
-        ? { kind: 'user', userId: authSession.userId }
+        ? {
+            kind: 'user',
+            userId: authSession.userId,
+            ...(authSession.workspaceId ? { workspaceId: authSession.workspaceId } : {}),
+          }
         : getAnonymousWorkspaceScope(),
-    [authSession.status, authSession.userId],
+    [authSession.status, authSession.userId, authSession.workspaceId],
   );
 
   const syncActiveSource = useCallback((source: WorkspaceSource) => {
@@ -153,6 +162,39 @@ export function usePersistedState(): UsePersistedStateReturn {
     return getDraftState(DEFAULT_DRAFT_ID);
   }, [getDraftState]);
 
+  const enqueueEntityChange = useCallback(
+    (
+      input:
+        | {
+            entityType: 'draft' | 'saved_table' | 'saved_draft' | 'folder';
+            entityId: string;
+            op: 'upsert';
+            payload: unknown;
+          }
+        | {
+            entityType: 'draft' | 'saved_table' | 'saved_draft' | 'folder';
+            entityId: string;
+            op: 'delete';
+          },
+    ) => {
+      if (currentScope.kind !== 'user' || !currentScope.workspaceId) return;
+      fireAndForget(
+        (async () => {
+          const payload = input.op === 'upsert' ? input.payload : null;
+          await enqueueWorkspaceOutboxItem({
+            workspaceId: currentScope.workspaceId,
+            entityType: input.entityType,
+            entityId: input.entityId,
+            op: input.op,
+            payload,
+            contentHash: input.op === 'upsert' ? await buildWorkspaceContentHash(payload) : null,
+          });
+        })(),
+      );
+    },
+    [currentScope],
+  );
+
   const setWorkspaceSnapshot = useCallback(
     (source: WorkspaceSource, state: PersistedState) => {
       if (shareId) return;
@@ -162,27 +204,42 @@ export function usePersistedState(): UsePersistedStateReturn {
 
       if (source.kind === 'draft') {
         const existingRecord = draftsRef.current.get(source.draftId);
+        const contentChanged =
+          !existingRecord || !isSamePersistedState(existingRecord.state, state);
         const draftRecord: GlobalDraftRecord = {
           createdAt: existingRecord?.createdAt ?? Date.now(),
-          updatedAt: Date.now(),
+          updatedAt: contentChanged ? Date.now() : existingRecord.updatedAt,
           state,
+          folderId: existingRecord?.folderId,
         };
-        draftsRef.current.set(source.draftId, draftRecord);
-        setDraftSummaries((prev) => {
-          const next = prev.filter((d) => d.draftId !== source.draftId);
-          const previousSummary = prev.find((d) => d.draftId === source.draftId);
-          next.push(
-            buildDraftSummary(
-              source.draftId,
+        if (contentChanged) {
+          draftsRef.current.set(source.draftId, draftRecord);
+          setDraftSummaries((prev) => {
+            const next = prev.filter((d) => d.draftId !== source.draftId);
+            const previousSummary = prev.find((d) => d.draftId === source.draftId);
+            next.push(
+              buildDraftSummary(
+                source.draftId,
+                state,
+                previousSummary?.createdAt ?? draftRecord.createdAt ?? draftRecord.updatedAt,
+                draftRecord.updatedAt,
+                previousSummary?.folderId,
+              ),
+            );
+            return sortDraftSummaries(next);
+          });
+          fireAndForget(writeDraft(source.draftId, draftRecord, currentScope));
+          enqueueEntityChange({
+            entityType: 'draft',
+            entityId: source.draftId,
+            op: 'upsert',
+            payload: {
               state,
-              previousSummary?.createdAt ?? draftRecord.createdAt ?? draftRecord.updatedAt,
-              draftRecord.updatedAt,
-              previousSummary?.folderId,
-            ),
-          );
-          return sortDraftSummaries(next);
-        });
-        fireAndForget(writeDraft(source.draftId, draftRecord, currentScope));
+              createdAt: draftRecord.createdAt,
+              folderId: draftRecord.folderId,
+            },
+          });
+        }
       }
 
       fireAndForget(
@@ -196,7 +253,7 @@ export function usePersistedState(): UsePersistedStateReturn {
         ),
       );
     },
-    [currentScope, shareId, syncActiveSource],
+    [currentScope, enqueueEntityChange, shareId, syncActiveSource],
   );
 
   const saveState = useCallback(
@@ -218,43 +275,80 @@ export function usePersistedState(): UsePersistedStateReturn {
       if (payload.source.kind === 'draft') {
         const { draftId } = payload.source;
         const existingRecord = draftsRef.current.get(draftId);
+        const contentChanged =
+          !existingRecord || !isSamePersistedState(existingRecord.state, payload.state);
         const draftRecord: GlobalDraftRecord = {
           createdAt: existingRecord?.createdAt ?? Date.now(),
-          updatedAt: Date.now(),
+          updatedAt: contentChanged ? Date.now() : existingRecord.updatedAt,
           state: payload.state,
+          folderId: existingRecord?.folderId,
         };
-        draftsRef.current.set(draftId, draftRecord);
-        setDraftSummaries((prev) => {
-          const next = prev.filter((d) => d.draftId !== draftId);
-          const previousSummary = prev.find((d) => d.draftId === draftId);
-          next.push(
-            buildDraftSummary(
-              draftId,
-              payload.state,
-              previousSummary?.createdAt ?? draftRecord.createdAt ?? draftRecord.updatedAt,
-              draftRecord.updatedAt,
-              previousSummary?.folderId,
-            ),
-          );
-          return sortDraftSummaries(next);
-        });
-        fireAndForget(writeDraft(draftId, draftRecord, currentScope));
+        if (contentChanged) {
+          draftsRef.current.set(draftId, draftRecord);
+          setDraftSummaries((prev) => {
+            const next = prev.filter((d) => d.draftId !== draftId);
+            const previousSummary = prev.find((d) => d.draftId === draftId);
+            next.push(
+              buildDraftSummary(
+                draftId,
+                payload.state,
+                previousSummary?.createdAt ?? draftRecord.createdAt ?? draftRecord.updatedAt,
+                draftRecord.updatedAt,
+                previousSummary?.folderId,
+              ),
+            );
+            return sortDraftSummaries(next);
+          });
+          fireAndForget(writeDraft(draftId, draftRecord, currentScope));
+          enqueueEntityChange({
+            entityType: 'draft',
+            entityId: draftId,
+            op: 'upsert',
+            payload: {
+              state: payload.state,
+              createdAt: draftRecord.createdAt,
+              folderId: draftRecord.folderId,
+            },
+          });
+        }
       }
 
       if (payload.source.kind === 'saved_table') {
         const { normalizedName, tableName, baseSignature } = payload.source;
         if (payload.isDirty) {
+          const existingDraft = savedTableDraftsRef.current.get(normalizedName);
+          const contentChanged =
+            !existingDraft || !isSamePersistedState(existingDraft.state, payload.state);
           const record: SavedTableDraftRecord = {
             state: payload.state,
             tableName,
             baseSignature,
-            updatedAt: Date.now(),
+            updatedAt: contentChanged ? Date.now() : existingDraft.updatedAt,
           };
-          savedTableDraftsRef.current.set(normalizedName, record);
-          fireAndForget(upsertSavedDraft(normalizedName, record, currentScope));
+          if (contentChanged) {
+            savedTableDraftsRef.current.set(normalizedName, record);
+            fireAndForget(upsertSavedDraft(normalizedName, record, currentScope));
+            enqueueEntityChange({
+              entityType: 'saved_draft',
+              entityId: normalizedName,
+              op: 'upsert',
+              payload: {
+                tableName,
+                state: payload.state,
+                baseSignature,
+              },
+            });
+          }
         } else {
-          savedTableDraftsRef.current.delete(normalizedName);
-          fireAndForget(deleteSavedDraft(normalizedName, currentScope));
+          if (savedTableDraftsRef.current.has(normalizedName)) {
+            savedTableDraftsRef.current.delete(normalizedName);
+            fireAndForget(deleteSavedDraft(normalizedName, currentScope));
+            enqueueEntityChange({
+              entityType: 'saved_draft',
+              entityId: normalizedName,
+              op: 'delete',
+            });
+          }
         }
       }
 
@@ -272,7 +366,7 @@ export function usePersistedState(): UsePersistedStateReturn {
       );
       syncActiveSource(payload.source);
     },
-    [currentScope, hydrated, shareStorageKey, syncActiveSource],
+    [currentScope, enqueueEntityChange, hydrated, shareStorageKey, syncActiveSource],
   );
 
   const clearState = useCallback(() => {
@@ -324,9 +418,18 @@ export function usePersistedState(): UsePersistedStateReturn {
         return sortDraftSummaries(next);
       });
       fireAndForget(writeDraft(draftId, draftRecord, currentScope));
+      enqueueEntityChange({
+        entityType: 'draft',
+        entityId: draftId,
+        op: 'upsert',
+        payload: {
+          state: finalState,
+          createdAt: now,
+        },
+      });
       return uniqueName;
     },
-    [currentScope, shareId],
+    [currentScope, enqueueEntityChange, shareId],
   );
 
   const deleteDraftById = useCallback(
@@ -354,6 +457,11 @@ export function usePersistedState(): UsePersistedStateReturn {
         ...prev,
       ]);
       fireAndForget(writeDraft(draftId, trashedRecord, currentScope));
+      enqueueEntityChange({
+        entityType: 'draft',
+        entityId: draftId,
+        op: 'delete',
+      });
 
       if (activeSourceRef.current.kind === 'draft' && activeSourceRef.current.draftId === draftId) {
         syncActiveSource({ kind: 'draft', draftId: DEFAULT_DRAFT_ID });
@@ -361,7 +469,7 @@ export function usePersistedState(): UsePersistedStateReturn {
         setPersistedState(null);
       }
     },
-    [currentScope, shareId, syncActiveSource],
+    [currentScope, enqueueEntityChange, shareId, syncActiveSource],
   );
 
   const restoreDraftById = useCallback(
@@ -408,8 +516,18 @@ export function usePersistedState(): UsePersistedStateReturn {
       );
       draftsRef.current.set(draftId, restoredRecord);
       await restoreDraft(draftId, restoredRecord, currentScope);
+      enqueueEntityChange({
+        entityType: 'draft',
+        entityId: draftId,
+        op: 'upsert',
+        payload: {
+          state: restoredRecord.state,
+          createdAt: restoredRecord.createdAt,
+          folderId: restoredRecord.folderId,
+        },
+      });
     },
-    [currentScope, shareId],
+    [currentScope, enqueueEntityChange, shareId],
   );
 
   const permanentlyDeleteDraftById = useCallback(
@@ -417,8 +535,13 @@ export function usePersistedState(): UsePersistedStateReturn {
       if (shareId) return;
       setTrashedDrafts((prev) => prev.filter((d) => d.draftId !== draftId));
       fireAndForget(deleteDraft(draftId, currentScope));
+      enqueueEntityChange({
+        entityType: 'draft',
+        entityId: draftId,
+        op: 'delete',
+      });
     },
-    [currentScope, shareId],
+    [currentScope, enqueueEntityChange, shareId],
   );
 
   const moveDraftToFolder = useCallback(
@@ -436,8 +559,18 @@ export function usePersistedState(): UsePersistedStateReturn {
         prev.map((draft) => (draft.draftId === draftId ? { ...draft, folderId } : draft)),
       );
       fireAndForget(writeDraft(draftId, nextRecord, currentScope));
+      enqueueEntityChange({
+        entityType: 'draft',
+        entityId: draftId,
+        op: 'upsert',
+        payload: {
+          state: nextRecord.state,
+          createdAt: nextRecord.createdAt,
+          folderId,
+        },
+      });
     },
-    [currentScope, shareId],
+    [currentScope, enqueueEntityChange, shareId],
   );
 
   const removeSavedTableDraft = useCallback(
@@ -445,8 +578,13 @@ export function usePersistedState(): UsePersistedStateReturn {
       if (shareId) return;
       savedTableDraftsRef.current.delete(normalizedName);
       fireAndForget(deleteSavedDraft(normalizedName, currentScope));
+      enqueueEntityChange({
+        entityType: 'saved_draft',
+        entityId: normalizedName,
+        op: 'delete',
+      });
     },
-    [currentScope, shareId],
+    [currentScope, enqueueEntityChange, shareId],
   );
 
   const renameSavedTableDraft = useCallback(
@@ -467,8 +605,27 @@ export function usePersistedState(): UsePersistedStateReturn {
       fireAndForget(
         renameSavedDraftKey(fromNormalizedName, toNormalizedName, nextTableName, currentScope),
       );
+      if (record) {
+        enqueueEntityChange({
+          entityType: 'saved_draft',
+          entityId: toNormalizedName,
+          op: 'upsert',
+          payload: {
+            tableName: nextTableName,
+            state: record.state,
+            baseSignature: record.baseSignature,
+          },
+        });
+        if (fromNormalizedName !== toNormalizedName) {
+          enqueueEntityChange({
+            entityType: 'saved_draft',
+            entityId: fromNormalizedName,
+            op: 'delete',
+          });
+        }
+      }
     },
-    [currentScope, shareId],
+    [currentScope, enqueueEntityChange, shareId],
   );
 
   useEffect(() => {
@@ -637,6 +794,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     shareStorageKey,
     authSession.status,
     authSession.userId,
+    authSession.workspaceId,
     currentScope,
     syncActiveSource,
     updateDrafts,

@@ -44,6 +44,7 @@ export type SavedTableMetadata = {
 // 文件夹类型（支持多级嵌套）
 export type TableFolder = {
   id: string;
+  scope?: string;
   name: string;
   parentId?: string; // 父文件夹ID，null/undefined 表示根级
   order: number; // 同级排序权重
@@ -109,7 +110,7 @@ export type TableVersionMetadata = {
 };
 
 export const DB_NAME = 'ddlbuilder';
-export const DB_VERSION = 10;
+export const DB_VERSION = 12;
 export const STORE_NAME = 'saved_tables';
 export const VERSION_STORE_NAME = 'table_versions';
 export const REVIEW_STORE_NAME = 'review_history';
@@ -119,6 +120,10 @@ export const TABLE_TEMPLATE_STORE_NAME = 'table_templates';
 export const WORKSPACE_GLOBAL_DRAFT_STORE_NAME = 'workspace_global_draft';
 export const WORKSPACE_SAVED_DRAFTS_STORE_NAME = 'workspace_saved_drafts';
 export const WORKSPACE_SESSION_STORE_NAME = 'workspace_session';
+export const WORKSPACE_SYNC_META_STORE_NAME = 'workspace_sync_meta';
+export const WORKSPACE_SYNC_OUTBOX_STORE_NAME = 'workspace_sync_outbox';
+export const WORKSPACE_ENTITY_META_STORE_NAME = 'workspace_entity_meta';
+export const WORKSPACE_SYNC_CONFLICT_STORE_NAME = 'workspace_sync_conflicts';
 
 const ensureIndexedDb = () => {
   if (typeof indexedDB === 'undefined') {
@@ -253,6 +258,26 @@ export const openDb = (): Promise<IDBDatabase> =>
         }
         if (!db.objectStoreNames.contains(WORKSPACE_SESSION_STORE_NAME)) {
           db.createObjectStore(WORKSPACE_SESSION_STORE_NAME, {
+            keyPath: 'id',
+          });
+        }
+        if (!db.objectStoreNames.contains(WORKSPACE_SYNC_META_STORE_NAME)) {
+          db.createObjectStore(WORKSPACE_SYNC_META_STORE_NAME, {
+            keyPath: 'id',
+          });
+        }
+        if (!db.objectStoreNames.contains(WORKSPACE_SYNC_OUTBOX_STORE_NAME)) {
+          db.createObjectStore(WORKSPACE_SYNC_OUTBOX_STORE_NAME, {
+            keyPath: 'id',
+          });
+        }
+        if (!db.objectStoreNames.contains(WORKSPACE_ENTITY_META_STORE_NAME)) {
+          db.createObjectStore(WORKSPACE_ENTITY_META_STORE_NAME, {
+            keyPath: 'id',
+          });
+        }
+        if (!db.objectStoreNames.contains(WORKSPACE_SYNC_CONFLICT_STORE_NAME)) {
+          db.createObjectStore(WORKSPACE_SYNC_CONFLICT_STORE_NAME, {
             keyPath: 'id',
           });
         }

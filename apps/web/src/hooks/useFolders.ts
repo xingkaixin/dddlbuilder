@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
+import { buildWorkspaceContentHash } from '@/services/workspaceIncrementalSyncService';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
+import { fireAndForget } from '@/hooks/workspacePersistence/storage';
 import type { TableFolder } from '@/utils/savedTablesDb';
 import {
   listFolders,
@@ -9,8 +11,11 @@ import {
   moveFolder,
   buildFolderTree,
   getDescendantFolderIds,
+  getFolder,
   type FolderTreeNode,
 } from '@/utils/tableFolders';
+import { getCurrentWorkspaceScope } from '@/utils/workspaceScope';
+import { enqueueWorkspaceOutboxItem } from '@/utils/workspaceSyncStateDb';
 
 export type { FolderTreeNode };
 
@@ -28,6 +33,27 @@ export function useFolders() {
     loading: true,
     error: null,
   });
+
+  const queueFolderChange = useCallback(
+    (input: { folder: TableFolder; op: 'upsert' } | { folderId: string; op: 'delete' }) => {
+      const scope = getCurrentWorkspaceScope();
+      if (scope.kind !== 'user' || !scope.workspaceId) return;
+      fireAndForget(
+        (async () => {
+          const payload = input.op === 'upsert' ? input.folder : null;
+          await enqueueWorkspaceOutboxItem({
+            workspaceId: scope.workspaceId,
+            entityType: 'folder',
+            entityId: input.op === 'upsert' ? input.folder.id : input.folderId,
+            op: input.op,
+            payload,
+            contentHash: input.op === 'upsert' ? await buildWorkspaceContentHash(payload) : null,
+          });
+        })(),
+      );
+    },
+    [],
+  );
 
   // 加载文件夹列表
   const loadFolders = useCallback(async () => {
@@ -70,13 +96,14 @@ export function useFolders() {
     async (name: string, parentId?: string) => {
       try {
         const folder = await createFolder(name, parentId);
+        queueFolderChange({ op: 'upsert', folder });
         await loadFolders();
         return folder;
       } catch (err) {
         throw err instanceof Error ? err : new Error('创建文件夹失败');
       }
     },
-    [loadFolders],
+    [loadFolders, queueFolderChange],
   );
 
   // 重命名文件夹
@@ -84,12 +111,16 @@ export function useFolders() {
     async (id: string, newName: string) => {
       try {
         await renameFolder(id, newName);
+        const folder = await getFolder(id);
+        if (folder) {
+          queueFolderChange({ op: 'upsert', folder });
+        }
         await loadFolders();
       } catch (err) {
         throw err instanceof Error ? err : new Error('重命名文件夹失败');
       }
     },
-    [loadFolders],
+    [loadFolders, queueFolderChange],
   );
 
   // 删除文件夹
@@ -101,6 +132,9 @@ export function useFolders() {
         const allFolderIds = [id, ...descendantIds];
 
         await deleteFolder(id);
+        for (const folderId of allFolderIds) {
+          queueFolderChange({ op: 'delete', folderId });
+        }
         await loadFolders();
 
         // 返回受影响的文件夹 ID，供调用方清理表的 folderId
@@ -109,7 +143,7 @@ export function useFolders() {
         throw err instanceof Error ? err : new Error('删除文件夹失败');
       }
     },
-    [loadFolders],
+    [loadFolders, queueFolderChange],
   );
 
   // 移动文件夹
@@ -117,12 +151,16 @@ export function useFolders() {
     async (id: string, newParentId?: string) => {
       try {
         await moveFolder(id, newParentId);
+        const folder = await getFolder(id);
+        if (folder) {
+          queueFolderChange({ op: 'upsert', folder });
+        }
         await loadFolders();
       } catch (err) {
         throw err instanceof Error ? err : new Error('移动文件夹失败');
       }
     },
-    [loadFolders],
+    [loadFolders, queueFolderChange],
   );
 
   return {

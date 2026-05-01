@@ -14,6 +14,7 @@ vi.mock('@/utils/tableFolders', () => ({
   moveFolder: vi.fn(),
   buildFolderTree: vi.fn(),
   getDescendantFolderIds: vi.fn(),
+  getFolder: vi.fn(),
 }));
 
 describe('useFolders', () => {
@@ -24,6 +25,7 @@ describe('useFolders', () => {
   const mockMoveFolder = vi.mocked(tableFolders.moveFolder);
   const mockBuildFolderTree = vi.mocked(tableFolders.buildFolderTree);
   const mockGetDescendantFolderIds = vi.mocked(tableFolders.getDescendantFolderIds);
+  const mockGetFolder = vi.mocked(tableFolders.getFolder);
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -180,6 +182,7 @@ describe('useFolders', () => {
       .mockResolvedValueOnce([{ id: '1', name: 'Renamed', order: 1, children: [] } as any]);
     mockRenameFolder.mockResolvedValue(undefined);
     mockMoveFolder.mockResolvedValue(undefined);
+    mockGetFolder.mockResolvedValue({ id: '1', name: 'Renamed', order: 1 } as any);
 
     const { result } = renderHook(() => useFolders());
 

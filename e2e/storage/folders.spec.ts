@@ -77,13 +77,24 @@ const getFolderRowByName = (page: any, name: RegExp) => {
 };
 
 const ensureFolderExpanded = async (page: any, folderName: string) => {
-  const expandButton = page
-    .getByRole('button', {
-      name: new RegExp(`展开\\s*${folderName}`, 'i'),
-    })
-    .first();
-  if (await expandButton.isVisible().catch(() => false)) {
-    await expandButton.click({ force: true });
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const expandButton = page
+      .getByRole('button', {
+        name: new RegExp(`展开\\s*${folderName}`, 'i'),
+      })
+      .first();
+    if (!(await expandButton.isVisible().catch(() => false))) {
+      return;
+    }
+    try {
+      await expandButton.click({ force: true, timeout: 2000 });
+      return;
+    } catch (error) {
+      if (attempt === 2) {
+        throw error;
+      }
+      await page.waitForTimeout(120);
+    }
   }
 };
 

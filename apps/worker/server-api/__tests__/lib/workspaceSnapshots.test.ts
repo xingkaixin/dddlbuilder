@@ -4,11 +4,24 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 
 type StoredRow = {
+  workspaceId: string;
   userId: string;
-  kind: string;
-  normalizedName: string | null;
-  payloadJson: string;
-  sourceUpdatedAt: number;
+  entityType: string;
+  entityId: string;
+  payloadJson: string | null;
+  contentHash: string | null;
+  version: number;
+  deletedAt: number | null;
+  updatedAt: number;
+};
+
+type StoredWorkspace = {
+  id: string;
+  userId: string;
+  name: string;
+  isDefault: number;
+  activeAt: number | null;
+  updatedAt: number;
 };
 
 const createEnv = (userDb: D1Database): ApiEnv['Bindings'] => ({
@@ -26,6 +39,8 @@ const createEnv = (userDb: D1Database): ApiEnv['Bindings'] => ({
 });
 
 const createWorkspaceSnapshotDb = () => {
+  const workspaces: StoredWorkspace[] = [];
+  const clocks = new Map<string, number>();
   const rows: StoredRow[] = [];
 
   return {
@@ -34,58 +49,112 @@ const createWorkspaceSnapshotDb = () => {
         bind(...args: unknown[]) {
           return {
             async all() {
-              const [userId] = args;
+              if (sql.includes('FROM workspace_entities')) {
+                const [workspaceId] = args;
+                return {
+                  results: rows
+                    .filter((row) => row.workspaceId === workspaceId && row.deletedAt === null)
+                    .sort((a, b) => a.version - b.version)
+                    .map((row) => ({
+                      entityType: row.entityType,
+                      entityId: row.entityId,
+                      payloadJson: row.payloadJson,
+                      contentHash: row.contentHash,
+                      version: row.version,
+                      deletedAt: row.deletedAt,
+                      updatedAt: row.updatedAt,
+                    })),
+                };
+              }
+
               return {
-                results: rows
-                  .filter((row) => row.userId === userId)
-                  .map((row) => ({
-                    kind: row.kind,
-                    normalizedName: row.normalizedName,
-                    payloadJson: row.payloadJson,
-                    sourceUpdatedAt: row.sourceUpdatedAt,
-                  })),
+                results: [],
               };
             },
             async first() {
-              const [userId, kind, normalizedName] = args;
-              const row = rows.find(
-                (item) =>
-                  item.userId === userId &&
-                  item.kind === kind &&
-                  item.normalizedName === normalizedName,
-              );
-              return row ? { sourceUpdatedAt: row.sourceUpdatedAt } : null;
+              if (sql.includes('FROM workspaces')) {
+                const [userId] = args;
+                const workspace = workspaces.find(
+                  (item) => item.userId === userId && item.isDefault === 1,
+                );
+                return workspace
+                  ? {
+                      id: workspace.id,
+                      name: workspace.name,
+                      isDefault: workspace.isDefault,
+                      activeAt: workspace.activeAt,
+                      updatedAt: workspace.updatedAt,
+                    }
+                  : null;
+              }
+
+              if (sql.includes('UPDATE workspace_clocks')) {
+                const [workspaceId] = args;
+                const next = (clocks.get(String(workspaceId)) ?? 0) + 1;
+                clocks.set(String(workspaceId), next);
+                return { version: next };
+              }
+
+              return null;
             },
             async run() {
-              if (sql.includes('DELETE FROM workspace_snapshots')) {
-                const [userId] = args;
-                for (let index = rows.length - 1; index >= 0; index -= 1) {
-                  if (rows[index]?.userId === userId) {
-                    rows.splice(index, 1);
-                  }
-                }
+              if (sql.includes('INSERT INTO workspaces')) {
+                const [id, userId, name, activeAt, , updatedAt] = args;
+                workspaces.push({
+                  id: String(id),
+                  userId: String(userId),
+                  name: String(name),
+                  isDefault: 1,
+                  activeAt: Number(activeAt),
+                  updatedAt: Number(updatedAt),
+                });
                 return { success: true };
               }
 
-              const [, userId, kind, normalizedName, payloadJson, sourceUpdatedAt] = args;
-              const index = rows.findIndex(
-                (item) =>
-                  item.userId === userId &&
-                  item.kind === kind &&
-                  item.normalizedName === normalizedName,
-              );
-              const nextRow = {
-                userId: String(userId),
-                kind: String(kind),
-                normalizedName: normalizedName === null ? null : String(normalizedName),
-                payloadJson: String(payloadJson),
-                sourceUpdatedAt: Number(sourceUpdatedAt),
-              };
+              if (sql.includes('INSERT INTO workspace_clocks')) {
+                const [workspaceId] = args;
+                clocks.set(String(workspaceId), 0);
+                return { success: true };
+              }
 
-              if (index >= 0) {
-                rows[index] = nextRow;
-              } else {
-                rows.push(nextRow);
+              if (sql.includes('INSERT INTO workspace_entities')) {
+                const [
+                  ,
+                  workspaceId,
+                  userId,
+                  entityType,
+                  entityId,
+                  payloadJson,
+                  contentHash,
+                  version,
+                  deletedAt,
+                  ,
+                  updatedAt,
+                ] = args;
+                const index = rows.findIndex(
+                  (item) =>
+                    item.workspaceId === workspaceId &&
+                    item.entityType === entityType &&
+                    item.entityId === entityId,
+                );
+                const nextRow = {
+                  workspaceId: String(workspaceId),
+                  userId: String(userId),
+                  entityType: String(entityType),
+                  entityId: String(entityId),
+                  payloadJson: payloadJson == null ? null : String(payloadJson),
+                  contentHash: contentHash == null ? null : String(contentHash),
+                  version: Number(version),
+                  deletedAt: deletedAt == null ? null : Number(deletedAt),
+                  updatedAt: Number(updatedAt),
+                };
+
+                if (index >= 0) {
+                  rows[index] = nextRow;
+                } else {
+                  rows.push(nextRow);
+                }
+                return { success: true };
               }
 
               return { success: true };

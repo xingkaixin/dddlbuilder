@@ -1,6 +1,7 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 import type { ApiEnv } from './context.js';
+import { upsertWorkspaceSnapshotEntity } from './workspaceEntities.js';
 
 type SnapshotKind = 'global_draft' | 'draft' | 'saved_table' | 'saved_draft' | 'folder';
 type ConflictKind = 'draft' | 'saved_table' | 'saved_draft';
@@ -236,6 +237,14 @@ const writeSnapshot = async (env: ApiEnv['Bindings'], userId: string, record: Sn
       record.sourceUpdatedAt,
     )
     .run();
+
+  await upsertWorkspaceSnapshotEntity(env, {
+    userId,
+    kind: record.kind,
+    normalizedName: record.normalizedName,
+    payload: JSON.parse(record.payloadJson) as Record<string, unknown>,
+    sourceUpdatedAt: record.sourceUpdatedAt,
+  });
 };
 
 const resolveUniqueName = async (
@@ -460,6 +469,13 @@ export const commitWorkspaceMigration = async (
       }
 
       if (existing.payloadJson === record.payloadJson) {
+        await upsertWorkspaceSnapshotEntity(env, {
+          userId,
+          kind: record.kind,
+          normalizedName: record.normalizedName,
+          payload: JSON.parse(record.payloadJson) as Record<string, unknown>,
+          sourceUpdatedAt: record.sourceUpdatedAt,
+        });
         skippedCount += 1;
         continue;
       }

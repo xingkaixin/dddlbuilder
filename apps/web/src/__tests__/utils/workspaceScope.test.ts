@@ -32,6 +32,11 @@ describe('workspaceScope', () => {
       const scope: WorkspaceScope = { kind: 'user', userId: 'user-123' };
       expect(getWorkspaceScopeStorageKey(scope)).toBe('user:user-123');
     });
+
+    it('includes workspace id for workspace scoped user data', () => {
+      const scope: WorkspaceScope = { kind: 'user', userId: 'user-123', workspaceId: 'ws-1' };
+      expect(getWorkspaceScopeStorageKey(scope)).toBe('user:user-123:workspace:ws-1');
+    });
   });
 
   describe('buildScopedWorkspaceKey', () => {
@@ -43,6 +48,13 @@ describe('workspaceScope', () => {
     it('builds key for user scope', () => {
       const scope: WorkspaceScope = { kind: 'user', userId: 'user-123' };
       expect(buildScopedWorkspaceKey(scope, 'workspace')).toBe('user:user-123::workspace');
+    });
+
+    it('builds key for workspace scoped user data', () => {
+      const scope: WorkspaceScope = { kind: 'user', userId: 'user-123', workspaceId: 'ws-1' };
+      expect(buildScopedWorkspaceKey(scope, 'workspace')).toBe(
+        'user:user-123:workspace:ws-1::workspace',
+      );
     });
 
     it('builds key with empty key string', () => {

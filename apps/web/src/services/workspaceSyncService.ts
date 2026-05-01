@@ -139,7 +139,7 @@ export const collectWorkspaceSnapshot = async (
       listDrafts(scope),
       listSavedTables(scope),
       listSavedDrafts(scope),
-      listFolders(),
+      listFolders(scope),
     ]);
 
   const savedDrafts = Object.entries(localSavedDraftMap).map(([normalizedName, item]) => ({
@@ -194,7 +194,7 @@ const replaceLocalWorkspaceSnapshot = async (
 
   await clearGlobalDraft(scope);
   await clearWorkspaceSession(scope);
-  await clearFolders();
+  await clearFolders(scope);
 
   await Promise.all([
     ...localDrafts.map((item) => deleteDraft(item.draftId, scope)),
@@ -246,7 +246,7 @@ const replaceLocalWorkspaceSnapshot = async (
   }
 
   if (snapshot.folders.length > 0) {
-    await bulkPutFolders(snapshot.folders);
+    await bulkPutFolders(snapshot.folders, scope);
   }
 };
 
@@ -314,9 +314,9 @@ export const applyCloudSnapshotToLocal = async (
     );
   }
 
-  await clearFolders();
+  await clearFolders(scope);
   if (snapshot.folders.length > 0) {
-    await bulkPutFolders(snapshot.folders);
+    await bulkPutFolders(snapshot.folders, scope);
   }
 
   dispatchWorkspaceSnapshotApplied();

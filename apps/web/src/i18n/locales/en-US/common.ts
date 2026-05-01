@@ -159,7 +159,13 @@ export const enUSCommon = {
     syncUploading: 'Uploading...',
     syncRequiresLogin: 'Sign in to sync your workspace.',
     workspaceSyncHint:
-      'Workspace sync is manual. Upload replaces the cloud copy with this device’s local workspace, and download replaces this device’s local workspace with the cloud copy.',
+      'Signed-in workspaces sync automatically. Manual upload and download remain available as recovery tools and replace the full workspace in the selected direction.',
+    syncNow: 'Sync now',
+    syncNowRunning: 'Syncing...',
+    syncNowSuccess: 'Workspace synced',
+    syncNowDescription:
+      'Pull cloud changes, push pending local edits, and refresh local sync state.',
+    syncConflictNotice: '{{count}} sync conflicts need attention',
     syncUploadDescription:
       'Upload this device’s complete global draft, saved tables, and saved drafts to the cloud.',
     syncDownloadDescription:

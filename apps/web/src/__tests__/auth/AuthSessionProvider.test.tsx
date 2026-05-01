@@ -149,6 +149,7 @@ describe('AuthSessionProvider', () => {
         status: 'signed_out',
         configured: true,
         userId: null,
+        workspaceId: null,
         email: null,
         name: null,
         emailVerified: false,
@@ -449,6 +450,9 @@ describe('AuthSessionProvider', () => {
           ),
         )
         .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 100 })))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ activeWorkspaceId: 'ws-1', workspaces: [] })),
+        )
         .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 200 })));
 
       render(

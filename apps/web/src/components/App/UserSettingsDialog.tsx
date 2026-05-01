@@ -22,9 +22,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/useToast';
+import { syncWorkspaceOnce } from '@/services/workspaceIncrementalSyncService';
 import { exportWorkspaceToCloud, importWorkspaceFromCloud } from '@/services/workspaceSyncService';
 import type { ApiErrorPayload } from '@ddlbuilder/shared-types/api';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
+import { listWorkspaceConflicts } from '@/utils/workspaceSyncStateDb';
 
 type CreditLedgerItem = {
   id: string;
@@ -126,6 +128,8 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
   const [rechargeOpen, setRechargeOpen] = useState(false);
   const [pendingSyncAction, setPendingSyncAction] = useState<WorkspaceSyncAction | null>(null);
   const [runningSyncAction, setRunningSyncAction] = useState<WorkspaceSyncAction | null>(null);
+  const [runningIncrementalSync, setRunningIncrementalSync] = useState(false);
+  const [workspaceConflictCount, setWorkspaceConflictCount] = useState(0);
 
   useEffect(() => {
     if (!open) {
@@ -241,10 +245,55 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
     }
   };
 
-  const currentScope =
-    authSession.status === 'signed_in' && authSession.userId
-      ? { kind: 'user' as const, userId: authSession.userId }
-      : getAnonymousWorkspaceScope();
+  const currentScope = useMemo(
+    () =>
+      authSession.status === 'signed_in' && authSession.userId
+        ? {
+            kind: 'user' as const,
+            userId: authSession.userId,
+            ...(authSession.workspaceId ? { workspaceId: authSession.workspaceId } : {}),
+          }
+        : getAnonymousWorkspaceScope(),
+    [authSession.status, authSession.userId, authSession.workspaceId],
+  );
+
+  const refreshWorkspaceConflictCount = useCallback(async () => {
+    if (currentScope.kind !== 'user' || !currentScope.workspaceId) {
+      setWorkspaceConflictCount(0);
+      return;
+    }
+    const conflicts = await listWorkspaceConflicts(currentScope.workspaceId);
+    setWorkspaceConflictCount(conflicts.length);
+  }, [currentScope]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    void refreshWorkspaceConflictCount();
+  }, [open, refreshWorkspaceConflictCount]);
+
+  const handleRunIncrementalSync = async () => {
+    if (currentScope.kind !== 'user' || !currentScope.workspaceId) {
+      error(t('settings.syncRequiresLogin'));
+      return;
+    }
+
+    try {
+      setRunningIncrementalSync(true);
+      const result = await syncWorkspaceOnce(currentScope);
+      await refreshWorkspaceConflictCount();
+      if (result.status === 'conflict') {
+        error(t('settings.syncConflictNotice', { count: result.conflictCount }));
+        return;
+      }
+      success(t('settings.syncNowSuccess'));
+    } catch (err) {
+      error(err instanceof Error ? err.message : t('settings.syncFailed'));
+    } finally {
+      setRunningIncrementalSync(false);
+    }
+  };
 
   const handleConfirmWorkspaceSync = async () => {
     if (!pendingSyncAction) {
@@ -349,6 +398,37 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                   <h3 className="text-sm font-semibold">{t('settings.workspaceTab')}</h3>
                   <div className="rounded-lg border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
                     {t('settings.workspaceSyncHint')}
+                  </div>
+                  <div className="flex flex-col gap-3 rounded-lg border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="text-sm">
+                      <div className="font-medium">{t('settings.syncNow')}</div>
+                      {workspaceConflictCount > 0 ? (
+                        <div className="mt-1 text-xs text-destructive">
+                          {t('settings.syncConflictNotice', {
+                            count: workspaceConflictCount,
+                          })}
+                        </div>
+                      ) : (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {t('settings.syncNowDescription')}
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleRunIncrementalSync}
+                      disabled={
+                        runningIncrementalSync ||
+                        runningSyncAction != null ||
+                        authSession.status !== 'signed_in' ||
+                        !authSession.workspaceId
+                      }
+                    >
+                      {runningIncrementalSync
+                        ? t('settings.syncNowRunning')
+                        : t('settings.syncNow')}
+                    </Button>
                   </div>
                 </section>
                 <section className="grid gap-4 md:grid-cols-2">

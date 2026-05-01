@@ -154,7 +154,12 @@ export const zhCNCommon = {
     syncUploading: '同步中...',
     syncRequiresLogin: '登录后才可以执行工作区同步。',
     workspaceSyncHint:
-      '工作区同步采用手动模式。上传会用当前设备本地工作区覆盖云端版本，下载会用云端版本覆盖当前设备本地工作区。',
+      '登录后工作区会自动增量同步。手动上传/下载保留为恢复工具，会覆盖对应方向的完整工作区。',
+    syncNow: '立即同步',
+    syncNowRunning: '同步中...',
+    syncNowSuccess: '工作区已同步',
+    syncNowDescription: '拉取云端变更、推送本机待同步内容，并刷新本地同步状态。',
+    syncConflictNotice: '有 {{count}} 个同步冲突需要处理',
     syncUploadDescription: '把当前设备的 global draft、已保存表和已保存草稿完整上传到云端。',
     syncDownloadDescription: '把云端保存的完整工作区下载到当前设备，并覆盖当前本地版本。',
     syncUploadConfirmTitle: '确认同步到云端？',

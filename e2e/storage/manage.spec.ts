@@ -57,13 +57,26 @@ const clickFirstDraft = async (page: any) => {
   const sidebar = page.locator('aside');
   const draftSection = sidebar.locator('section').filter({ hasText: /^草稿/ });
   // 草稿 section 中每个草稿项包含一个名称 button 和一个 dropdown trigger button
-  const draftButtons = draftSection.locator('button');
+  const draftButtons = draftSection.locator('button:visible');
   const count = await draftButtons.count();
   if (count > 0) {
-    await draftButtons.first().click();
-    return;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        await draftButtons.first().click({ timeout: 2000 });
+        return;
+      } catch (error) {
+        if (attempt === 2) {
+          throw error;
+        }
+        await page.waitForTimeout(120);
+      }
+    }
   }
   // 侧边栏无草稿时，通过 TabBar 新建
+  await page.getByRole('button', { name: /新建草稿|new draft/i }).click();
+};
+
+const createNewDraft = async (page: any) => {
   await page.getByRole('button', { name: /新建草稿|new draft/i }).click();
 };
 
@@ -119,7 +132,7 @@ test.describe('保存表管理补充 @storage', () => {
 
     // 保存两个表（需要先切换到草稿状态以重置 hasLoadedTable）
     await saveNewTable(page, tableA);
-    await clickFirstDraft(page);
+    await createNewDraft(page);
     await saveNewTable(page, tableB);
 
     // 加载表 A
@@ -140,7 +153,7 @@ test.describe('保存表管理补充 @storage', () => {
     const tableB = `e2e_search_b_${Date.now()}`;
 
     await saveNewTable(page, tableA);
-    await clickFirstDraft(page);
+    await createNewDraft(page);
     await saveNewTable(page, tableB);
 
     const sidebar = page.locator('aside');

@@ -112,6 +112,69 @@ export type WorkspaceSnapshotPushRequest = {
   folders: WorkspaceFolderSnapshotItem[];
 };
 
+export type WorkspaceEntityType = 'draft' | 'saved_table' | 'saved_draft' | 'folder';
+
+export type WorkspaceEntityEnvelope<TPayload = unknown> = {
+  workspaceId: string;
+  entityType: WorkspaceEntityType;
+  entityId: string;
+  version: number;
+  contentHash: string | null;
+  payload: TPayload | null;
+  deletedAt?: number;
+  updatedAt: number;
+};
+
+export type WorkspaceListResponse = {
+  workspaces: Array<{
+    id: string;
+    name: string;
+    isDefault: boolean;
+    activeAt?: number;
+    updatedAt: number;
+  }>;
+  activeWorkspaceId: string;
+  meta?: ApiMeta;
+};
+
+export type WorkspaceChangesResponse = {
+  workspaceId: string;
+  cursor: number;
+  entities: Array<WorkspaceEntityEnvelope<unknown>>;
+  meta?: ApiMeta;
+};
+
+export type WorkspaceChangesPushRequest = {
+  changes: Array<{
+    clientMutationId: string;
+    entityType: WorkspaceEntityType;
+    entityId: string;
+    op: 'upsert' | 'delete';
+    baseVersion: number | null;
+    contentHash: string | null;
+    payload: unknown;
+  }>;
+};
+
+export type WorkspaceChangesPushResponse = {
+  cursor: number;
+  accepted: Array<{
+    clientMutationId: string;
+    entityType: WorkspaceEntityType;
+    entityId: string;
+    version: number;
+  }>;
+  conflicts: Array<{
+    clientMutationId: string;
+    entityType: WorkspaceEntityType;
+    entityId: string;
+    serverVersion: number;
+    serverContentHash: string | null;
+    serverPayload: unknown;
+  }>;
+  meta?: ApiMeta;
+};
+
 export type MeApiResponse =
   | {
       signedIn: false;

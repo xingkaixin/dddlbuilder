@@ -84,7 +84,7 @@ describe('workspaceSyncService', () => {
       },
       scope,
     );
-    await createFolder('我的文件夹');
+    await createFolder('我的文件夹', undefined, scope);
 
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
@@ -239,7 +239,7 @@ describe('workspaceSyncService', () => {
     const savedTables = await listSavedTables(scope);
     const savedDrafts = await listSavedDrafts(scope);
     const session = await readWorkspaceSession(scope);
-    const folders = await listFolders();
+    const folders = await listFolders(scope);
 
     expect(globalDraft?.state.tableName).toBe('cloud_draft');
     expect(drafts.map((item) => item.draftId)).toEqual(['default', 'cloud-draft']);

@@ -11,13 +11,20 @@ import {
 import { toast } from 'sonner';
 import type { MeApiResponse } from '@ddlbuilder/shared-types/api';
 import i18n from '@/i18n';
+import {
+  clearLocalWorkspaceData,
+  resolveDefaultWorkspaceScope,
+  syncWorkspaceOnce,
+} from '@/services/workspaceIncrementalSyncService';
 import { getBetterAuthClient, isBetterAuthConfigured } from './betterAuthClient';
 import { getAnonymousWorkspaceScope, setCurrentWorkspaceScope } from '@/utils/workspaceScope';
+import { WORKSPACE_OUTBOX_ENQUEUED_EVENT } from '@/utils/workspaceSyncStateDb';
 
 export type UserSessionState = {
   status: 'loading' | 'signed_out' | 'signed_in';
   configured: boolean;
   userId: string | null;
+  workspaceId: string | null;
   email: string | null;
   name: string | null;
   emailVerified: boolean;
@@ -88,6 +95,7 @@ export const signedOutState = (configured: boolean): UserSessionState => ({
   status: 'signed_out',
   configured,
   userId: null,
+  workspaceId: null,
   email: null,
   name: null,
   emailVerified: false,
@@ -144,6 +152,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     status: configured ? 'loading' : 'signed_out',
     configured,
     userId: null,
+    workspaceId: null,
     email: null,
     name: null,
     emailVerified: false,
@@ -161,6 +170,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
 
     const me = await fetchCurrentUser();
     if (!me.signedIn) {
+      setCurrentWorkspaceScope(getAnonymousWorkspaceScope());
       setState(signedOutState(true));
       return;
     }
@@ -170,6 +180,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       status: 'signed_in',
       configured: true,
       userId: me.user.userId,
+      workspaceId: null,
       email: me.user.email,
       name: me.user.name,
       emailVerified: me.user.emailVerified,
@@ -183,6 +194,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
         status: 'signed_in',
         configured: true,
         userId: me.user.userId,
+        workspaceId: prev.workspaceId,
         email: me.user.email,
         name: me.user.name,
         emailVerified: me.user.emailVerified,
@@ -196,12 +208,27 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
         status: 'signed_in',
         configured: true,
         userId: me.user.userId,
+        workspaceId: prev.workspaceId,
         email: me.user.email,
         name: me.user.name,
         emailVerified: me.user.emailVerified,
         creditBalance: null,
         creditsStatus: 'error',
       }));
+    }
+
+    try {
+      const workspaceScope = await resolveDefaultWorkspaceScope(me.user.userId);
+      const workspaceId =
+        workspaceScope.kind === 'user' ? (workspaceScope.workspaceId ?? null) : null;
+      setCurrentWorkspaceScope(workspaceScope);
+      if (workspaceId) {
+        setState((prev) => ({ ...prev, workspaceId }));
+        await syncWorkspaceOnce(workspaceScope);
+      }
+    } catch (error) {
+      console.error('[auth] failed to sync workspace', error);
+      setCurrentWorkspaceScope({ kind: 'user', userId: me.user.userId });
     }
   }, [configured]);
 
@@ -360,6 +387,23 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
           return;
         }
 
+        const scope =
+          state.status === 'signed_in' && state.userId && state.workspaceId
+            ? {
+                kind: 'user' as const,
+                userId: state.userId,
+                workspaceId: state.workspaceId,
+              }
+            : null;
+        if (scope) {
+          try {
+            await syncWorkspaceOnce(scope);
+          } catch (error) {
+            console.error('[auth] failed to flush workspace before sign out', error);
+            throw new Error('工作区同步失败，已取消退出登录');
+          }
+        }
+
         const result = await client.signOut();
         if (result.error) {
           throw new Error(
@@ -367,6 +411,9 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
           );
         }
 
+        if (scope) {
+          await clearLocalWorkspaceData(scope);
+        }
         setCurrentWorkspaceScope(getAnonymousWorkspaceScope());
         setState(signedOutState(configured));
       },
@@ -410,6 +457,55 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       toast.error(i18n.t('header.auth.verifyEmailFailed'));
     }
   }, []);
+
+  useEffect(() => {
+    if (state.status !== 'signed_in' || !state.userId || !state.workspaceId) {
+      return;
+    }
+
+    const scope = {
+      kind: 'user' as const,
+      userId: state.userId,
+      workspaceId: state.workspaceId,
+    };
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const run = () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+      timer = setTimeout(() => {
+        void syncWorkspaceOnce(scope).catch((error) => {
+          console.error('[auth] background workspace sync failed', error);
+        });
+      }, 1000);
+    };
+    const runImmediately = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      void syncWorkspaceOnce(scope).catch((error) => {
+        console.error('[auth] background workspace sync failed', error);
+      });
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        runImmediately();
+      }
+    };
+
+    window.addEventListener(WORKSPACE_OUTBOX_ENQUEUED_EVENT, run);
+    window.addEventListener('online', runImmediately);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+      window.removeEventListener(WORKSPACE_OUTBOX_ENQUEUED_EVENT, run);
+      window.removeEventListener('online', runImmediately);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [state.status, state.userId, state.workspaceId]);
 
   return <AuthSessionContext.Provider value={value}>{children}</AuthSessionContext.Provider>;
 }
