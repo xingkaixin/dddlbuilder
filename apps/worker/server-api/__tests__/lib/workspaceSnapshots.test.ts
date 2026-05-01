@@ -24,6 +24,14 @@ type StoredWorkspace = {
   updatedAt: number;
 };
 
+type StoredLegacySnapshotRow = {
+  userId: string;
+  kind: string;
+  normalizedName: string | null;
+  payloadJson: string;
+  sourceUpdatedAt: number;
+};
+
 const createEnv = (userDb: D1Database): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
   SHARE_KV: {} as KVNamespace,
@@ -38,7 +46,7 @@ const createEnv = (userDb: D1Database): ApiEnv['Bindings'] => ({
   SIGNUP_BONUS_CREDITS: '100000',
 });
 
-const createWorkspaceSnapshotDb = () => {
+const createWorkspaceSnapshotDb = (legacyRows: StoredLegacySnapshotRow[] = []) => {
   const workspaces: StoredWorkspace[] = [];
   const clocks = new Map<string, number>();
   const rows: StoredRow[] = [];
@@ -51,6 +59,35 @@ const createWorkspaceSnapshotDb = () => {
             async all() {
               if (sql.includes('FROM workspace_entities')) {
                 const [workspaceId] = args;
+                if (!sql.includes('payload_json')) {
+                  return {
+                    results: rows
+                      .filter((row) => row.workspaceId === workspaceId)
+                      .map((row) => ({
+                        entityType: row.entityType,
+                        entityId: row.entityId,
+                      })),
+                  };
+                }
+                if (sql.includes('version >')) {
+                  const [, since] = args;
+                  return {
+                    results: rows
+                      .filter(
+                        (row) => row.workspaceId === workspaceId && row.version > Number(since),
+                      )
+                      .sort((a, b) => a.version - b.version)
+                      .map((row) => ({
+                        entityType: row.entityType,
+                        entityId: row.entityId,
+                        payloadJson: row.payloadJson,
+                        contentHash: row.contentHash,
+                        version: row.version,
+                        deletedAt: row.deletedAt,
+                        updatedAt: row.updatedAt,
+                      })),
+                  };
+                }
                 return {
                   results: rows
                     .filter((row) => row.workspaceId === workspaceId && row.deletedAt === null)
@@ -67,11 +104,33 @@ const createWorkspaceSnapshotDb = () => {
                 };
               }
 
+              if (sql.includes('FROM workspace_snapshots')) {
+                const [userId] = args;
+                return {
+                  results: legacyRows
+                    .filter((row) => row.userId === userId)
+                    .map((row) => ({
+                      kind: row.kind,
+                      normalizedName: row.normalizedName,
+                      payloadJson: row.payloadJson,
+                      sourceUpdatedAt: row.sourceUpdatedAt,
+                    })),
+                };
+              }
+
               return {
                 results: [],
               };
             },
             async first() {
+              if (sql.includes('WHERE id = ? AND user_id = ?')) {
+                const [workspaceId, userId] = args;
+                const workspace = workspaces.find(
+                  (item) => item.id === workspaceId && item.userId === userId,
+                );
+                return workspace ? { id: workspace.id } : null;
+              }
+
               if (sql.includes('FROM workspaces')) {
                 const [userId] = args;
                 const workspace = workspaces.find(
@@ -86,6 +145,11 @@ const createWorkspaceSnapshotDb = () => {
                       updatedAt: workspace.updatedAt,
                     }
                   : null;
+              }
+
+              if (sql.includes('SELECT next_version AS cursor')) {
+                const [workspaceId] = args;
+                return { cursor: clocks.get(String(workspaceId)) ?? 0 };
               }
 
               if (sql.includes('UPDATE workspace_clocks')) {
@@ -194,8 +258,23 @@ const createSnapshot = (tableNames: string[]): WorkspaceSnapshot => ({
   folders: [],
 });
 
+const createLegacySavedTableRow = (
+  userId: string,
+  tableName: string,
+  sourceUpdatedAt: number,
+): StoredLegacySnapshotRow => ({
+  userId,
+  kind: 'saved_table',
+  normalizedName: tableName,
+  payloadJson: JSON.stringify({
+    name: tableName,
+    state: createState(tableName),
+  }),
+  sourceUpdatedAt,
+});
+
 describe('workspaceSnapshots', () => {
-  it('上传快照时应替换用户云端工作区', async () => {
+  it('上传快照时应保留云端已有实体', async () => {
     const { getWorkspaceSnapshot, putWorkspaceSnapshot } =
       await import('../../lib/workspaceSnapshots.js');
     const env = createEnv(createWorkspaceSnapshotDb());
@@ -205,7 +284,70 @@ describe('workspaceSnapshots', () => {
 
     const snapshot = await getWorkspaceSnapshot(env, 'user-1');
 
-    expect(snapshot.savedTables.map((item) => item.normalizedName)).toEqual(['orders']);
+    expect(snapshot.savedTables.map((item) => item.normalizedName).sort()).toEqual([
+      'legacy',
+      'orders',
+      'users',
+    ]);
+  });
+
+  it('读取快照时应从旧快照补齐缺失实体', async () => {
+    const { getWorkspaceSnapshot, putWorkspaceSnapshot } =
+      await import('../../lib/workspaceSnapshots.js');
+    const env = createEnv(
+      createWorkspaceSnapshotDb([
+        createLegacySavedTableRow('user-1', 'legacy', 100),
+        createLegacySavedTableRow('user-1', 'users', 101),
+      ]),
+    );
+
+    await putWorkspaceSnapshot(env, 'user-1', createSnapshot(['orders']));
+
+    const snapshot = await getWorkspaceSnapshot(env, 'user-1');
+    const persistedSnapshot = await getWorkspaceSnapshot(env, 'user-1');
+
+    expect(snapshot.savedTables.map((item) => item.normalizedName).sort()).toEqual([
+      'legacy',
+      'orders',
+      'users',
+    ]);
+    expect(persistedSnapshot.savedTables.map((item) => item.normalizedName).sort()).toEqual([
+      'legacy',
+      'orders',
+      'users',
+    ]);
+  });
+
+  it('拉取增量时应先从旧快照补齐缺失实体', async () => {
+    const { getWorkspaceChanges } = await import('../../lib/workspaceEntities.js');
+    const { putWorkspaceSnapshot } = await import('../../lib/workspaceSnapshots.js');
+    const env = createEnv(
+      createWorkspaceSnapshotDb([
+        createLegacySavedTableRow('user-1', 'legacy', 100),
+        createLegacySavedTableRow('user-1', 'users', 101),
+      ]),
+    );
+
+    await putWorkspaceSnapshot(env, 'user-1', createSnapshot(['orders']));
+    const workspace = await env.USER_DB.prepare(
+      `
+        SELECT id
+        FROM workspaces
+        WHERE user_id = ? AND is_default = 1
+        LIMIT 1
+      `,
+    )
+      .bind('user-1')
+      .first<{ id: string }>();
+
+    const changes = await getWorkspaceChanges(env, 'user-1', workspace?.id ?? '', 0);
+
+    expect(changes.entities.map((item) => item.entityId).sort()).toEqual([
+      'legacy',
+      'orders',
+      'users',
+    ]);
+    expect(changes.cursor).toBe(3);
   });
 
   it('应同步多份普通草稿', async () => {

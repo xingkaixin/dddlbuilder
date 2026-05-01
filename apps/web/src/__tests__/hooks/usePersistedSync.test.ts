@@ -32,6 +32,7 @@ function createBaseParams(overrides?: {
   }) => void;
   activeSource?: WorkspaceSource;
   loadedTableNormalizedName?: string | null;
+  activeTabSnapshot?: PersistedState | null;
 }) {
   return {
     hydrated: overrides?.hydrated ?? true,
@@ -59,6 +60,7 @@ function createBaseParams(overrides?: {
     setLoadedTableName: vi.fn(),
     setLoadedTableSignature: vi.fn(),
     loadedTableNormalizedName: overrides?.loadedTableNormalizedName ?? null,
+    activeTabSnapshot: overrides?.activeTabSnapshot,
   };
 }
 
@@ -179,6 +181,43 @@ describe('usePersistedSync debounce save', () => {
     });
     expect(firstBuild).not.toHaveBeenCalled();
     expect(secondBuild).toHaveBeenCalledTimes(1);
+  });
+
+  it('当前状态与 active tab 快照一致时应跳过保存', () => {
+    const saveState = vi.fn();
+    const payload = createState('users');
+    const params = createBaseParams({
+      saveState,
+      buildPersistedState: () => payload,
+      activeTabSnapshot: payload,
+    });
+
+    renderHook(() => usePersistedSync(params));
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(saveState).not.toHaveBeenCalled();
+  });
+
+  it('刚应用远端状态且 UI 仍未追上时应跳过本轮保存', () => {
+    const saveState = vi.fn();
+    const remoteState = createState('remote_state');
+    const staleState = createState('stale_state');
+    const params = createBaseParams({
+      saveState,
+      persistedState: remoteState,
+      buildPersistedState: () => staleState,
+    });
+
+    renderHook(() => usePersistedSync(params));
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(saveState).not.toHaveBeenCalled();
   });
 
   it('当来源为保存表时应计算 dirty 状态', () => {

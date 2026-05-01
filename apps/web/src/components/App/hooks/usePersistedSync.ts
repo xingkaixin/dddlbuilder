@@ -40,6 +40,7 @@ interface UsePersistedSyncParams {
   loadedTableNormalizedName: string | null;
   // 新增：同步更新标签页快照的 dirty 状态
   updateActiveTabSnapshot?: (state: PersistedState, isDirty: boolean) => void;
+  activeTabSnapshot?: PersistedState | null;
 }
 
 export function usePersistedSync({
@@ -69,12 +70,15 @@ export function usePersistedSync({
   setLoadedTableSignature,
   loadedTableNormalizedName,
   updateActiveTabSnapshot,
+  activeTabSnapshot,
 }: UsePersistedSyncParams) {
   const activeSourceRef = useRef(activeSource);
   activeSourceRef.current = activeSource;
+  const lastAppliedPersistedSignatureRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!hydrated || !persistedState) return;
+    lastAppliedPersistedSignatureRef.current = JSON.stringify(persistedState);
 
     if (typeof persistedState.schemaName === 'string') {
       setSchemaName(persistedState.schemaName);
@@ -174,6 +178,16 @@ export function usePersistedSync({
       try {
         const state = buildPersistedState();
         const currentSignature = JSON.stringify(state);
+        const lastAppliedSignature = lastAppliedPersistedSignatureRef.current;
+        if (lastAppliedSignature) {
+          lastAppliedPersistedSignatureRef.current = null;
+          if (currentSignature !== lastAppliedSignature) {
+            return;
+          }
+        }
+        if (activeTabSnapshot && currentSignature === JSON.stringify(activeTabSnapshot)) {
+          return;
+        }
         const isDirty =
           source.kind === 'saved_table' ? currentSignature !== source.baseSignature : false;
         saveState({
@@ -193,6 +207,7 @@ export function usePersistedSync({
       saveState,
       loadedTableNormalizedName,
       updateActiveTabSnapshot,
+      activeTabSnapshot,
     ],
     PERSIST_DEBOUNCE_MS,
   );

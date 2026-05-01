@@ -18,7 +18,7 @@ import {
   type SavedTableRecord,
   type TableFolder,
 } from '@/utils/savedTablesDb';
-import { bulkPutFolders, clearFolders, deleteFolder } from '@/utils/tableFolders';
+import { bulkPutFolders, clearFolders, deleteFolder, listFolders } from '@/utils/tableFolders';
 import {
   DEFAULT_DRAFT_ID,
   clearWorkspaceSession,
@@ -27,11 +27,14 @@ import {
   listDrafts,
   listSavedDrafts,
   listTrashedDrafts,
+  readWorkspaceSession,
   writeDraft,
+  writeWorkspaceSession,
   upsertSavedDraft,
 } from '@/utils/workspaceStateDb';
 import {
   clearWorkspaceSyncState,
+  enqueueWorkspaceOutboxItem,
   incrementWorkspaceOutboxAttempts,
   listWorkspaceOutboxItems,
   readWorkspaceSyncMeta,
@@ -266,6 +269,127 @@ const applyPulledChanges = async (response: WorkspaceChangesResponse, scope: Wor
   for (const entity of response.entities) {
     await applyWorkspaceEntity(entity, scope);
   }
+};
+
+const hasWorkspaceContent = async (scope: WorkspaceScope) => {
+  const [drafts, savedTables, savedDrafts, folders] = await Promise.all([
+    listDrafts(scope),
+    listSavedTables(scope),
+    listSavedDrafts(scope),
+    listFolders(scope),
+  ]);
+
+  return (
+    drafts.length > 0 ||
+    savedTables.length > 0 ||
+    Object.keys(savedDrafts).length > 0 ||
+    folders.length > 0
+  );
+};
+
+export const promoteLegacyUserWorkspaceData = async (scope: WorkspaceScope): Promise<boolean> => {
+  if (scope.kind !== 'user' || !scope.workspaceId) {
+    return false;
+  }
+
+  const legacyScope: WorkspaceScope = {
+    kind: 'user',
+    userId: scope.userId,
+  };
+  const [targetHasContent, legacyHasContent] = await Promise.all([
+    hasWorkspaceContent(scope),
+    hasWorkspaceContent(legacyScope),
+  ]);
+
+  if (targetHasContent || !legacyHasContent) {
+    return false;
+  }
+
+  const [drafts, savedTables, savedDrafts, folders, session] = await Promise.all([
+    listDrafts(legacyScope),
+    listSavedTables(legacyScope),
+    listSavedDrafts(legacyScope),
+    listFolders(legacyScope),
+    readWorkspaceSession(legacyScope),
+  ]);
+
+  for (const { draftId, record } of drafts) {
+    await writeDraft(draftId, record, scope);
+    const payload = {
+      state: record.state,
+      createdAt: record.createdAt,
+      folderId: record.folderId,
+    };
+    await enqueueWorkspaceOutboxItem({
+      workspaceId: scope.workspaceId,
+      entityType: 'draft',
+      entityId: draftId,
+      op: 'upsert',
+      payload,
+      contentHash: await buildWorkspaceContentHash(payload),
+    });
+  }
+
+  for (const table of savedTables) {
+    const existing = await getSavedTable(table.normalizedName, scope);
+    if (existing) {
+      await updateSavedTable(table, scope);
+    } else {
+      await addSavedTable(table, scope);
+    }
+    const payload = {
+      name: table.name,
+      state: table.state,
+      createdAt: table.createdAt,
+      folderId: table.folderId,
+    };
+    await enqueueWorkspaceOutboxItem({
+      workspaceId: scope.workspaceId,
+      entityType: 'saved_table',
+      entityId: table.normalizedName,
+      op: 'upsert',
+      payload,
+      contentHash: await buildWorkspaceContentHash(payload),
+    });
+  }
+
+  for (const [normalizedName, draft] of Object.entries(savedDrafts)) {
+    await upsertSavedDraft(normalizedName, draft, scope);
+    const payload = {
+      tableName: draft.tableName,
+      state: draft.state,
+      baseSignature: draft.baseSignature,
+    };
+    await enqueueWorkspaceOutboxItem({
+      workspaceId: scope.workspaceId,
+      entityType: 'saved_draft',
+      entityId: normalizedName,
+      op: 'upsert',
+      payload,
+      contentHash: await buildWorkspaceContentHash(payload),
+    });
+  }
+
+  if (folders.length > 0) {
+    await bulkPutFolders(folders, scope);
+  }
+  for (const folder of folders) {
+    await enqueueWorkspaceOutboxItem({
+      workspaceId: scope.workspaceId,
+      entityType: 'folder',
+      entityId: folder.id,
+      op: 'upsert',
+      payload: folder,
+      contentHash: await buildWorkspaceContentHash(folder),
+    });
+  }
+
+  if (session) {
+    await writeWorkspaceSession(session, scope);
+  }
+
+  dispatchWorkspaceSnapshotApplied();
+  return true;
 };
 
 export const clearLocalWorkspaceData = async (scope: WorkspaceScope): Promise<void> => {

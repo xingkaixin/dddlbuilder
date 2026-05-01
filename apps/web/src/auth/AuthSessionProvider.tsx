@@ -10,9 +10,11 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 import type { MeApiResponse } from '@ddlbuilder/shared-types/api';
+import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import i18n from '@/i18n';
 import {
   clearLocalWorkspaceData,
+  promoteLegacyUserWorkspaceData,
   resolveDefaultWorkspaceScope,
   syncWorkspaceOnce,
 } from '@/services/workspaceIncrementalSyncService';
@@ -39,7 +41,35 @@ type SignUpInput = {
   password: string;
 };
 
+type WorkspaceSyncQueue = {
+  running: Promise<void> | null;
+  next: WorkspaceScope | null;
+};
+
 const verifyEmailCallbackURL = () => `${window.location.origin}/?auth_action=verify-email`;
+
+const runQueuedWorkspaceSync = (queue: WorkspaceSyncQueue, scope: WorkspaceScope) => {
+  queue.next = scope;
+  if (queue.running) {
+    return queue.running;
+  }
+
+  const task = (async () => {
+    while (queue.next) {
+      const nextScope = queue.next;
+      queue.next = null;
+      await syncWorkspaceOnce(nextScope);
+    }
+  })().finally(() => {
+    queue.running = null;
+    if (queue.next) {
+      void runQueuedWorkspaceSync(queue, queue.next);
+    }
+  });
+
+  queue.running = task;
+  return task;
+};
 
 type AuthSessionContextValue = UserSessionState & {
   signInWithEmail: (email: string, password: string) => Promise<void>;
@@ -161,6 +191,10 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     authDialogOpen: false,
   });
   const syncPromiseRef = useRef<Promise<void> | null>(null);
+  const workspaceSyncQueueRef = useRef<WorkspaceSyncQueue>({
+    running: null,
+    next: null,
+  });
 
   const syncSessionState = useCallback(async () => {
     if (!configured) {
@@ -217,18 +251,27 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       }));
     }
 
+    let workspaceScope: WorkspaceScope;
     try {
-      const workspaceScope = await resolveDefaultWorkspaceScope(me.user.userId);
-      const workspaceId =
-        workspaceScope.kind === 'user' ? (workspaceScope.workspaceId ?? null) : null;
-      setCurrentWorkspaceScope(workspaceScope);
-      if (workspaceId) {
-        setState((prev) => ({ ...prev, workspaceId }));
-        await syncWorkspaceOnce(workspaceScope);
-      }
+      workspaceScope = await resolveDefaultWorkspaceScope(me.user.userId);
     } catch (error) {
-      console.error('[auth] failed to sync workspace', error);
+      console.error('[auth] failed to resolve workspace', error);
       setCurrentWorkspaceScope({ kind: 'user', userId: me.user.userId });
+      return;
+    }
+
+    const workspaceId =
+      workspaceScope.kind === 'user' ? (workspaceScope.workspaceId ?? null) : null;
+    setCurrentWorkspaceScope(workspaceScope);
+    if (workspaceId) {
+      try {
+        await promoteLegacyUserWorkspaceData(workspaceScope);
+        await runQueuedWorkspaceSync(workspaceSyncQueueRef.current, workspaceScope);
+      } catch (error) {
+        console.error('[auth] failed to sync workspace', error);
+      } finally {
+        setState((prev) => ({ ...prev, workspaceId }));
+      }
     }
   }, [configured]);
 
@@ -397,7 +440,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
             : null;
         if (scope) {
           try {
-            await syncWorkspaceOnce(scope);
+            await runQueuedWorkspaceSync(workspaceSyncQueueRef.current, scope);
           } catch (error) {
             console.error('[auth] failed to flush workspace before sign out', error);
             throw new Error('工作区同步失败，已取消退出登录');
@@ -474,7 +517,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
         clearTimeout(timer);
       }
       timer = setTimeout(() => {
-        void syncWorkspaceOnce(scope).catch((error) => {
+        void runQueuedWorkspaceSync(workspaceSyncQueueRef.current, scope).catch((error) => {
           console.error('[auth] background workspace sync failed', error);
         });
       }, 1000);
@@ -484,7 +527,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
         clearTimeout(timer);
         timer = null;
       }
-      void syncWorkspaceOnce(scope).catch((error) => {
+      void runQueuedWorkspaceSync(workspaceSyncQueueRef.current, scope).catch((error) => {
         console.error('[auth] background workspace sync failed', error);
       });
     };

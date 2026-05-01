@@ -11,6 +11,7 @@ import type { WorkspaceSavePayload } from '@ddlbuilder/shared-types/workspace';
 import {
   readGlobalDraft,
   readWorkspaceSession,
+  writeDraft,
   writeGlobalDraft,
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
@@ -248,6 +249,53 @@ describe('usePersistedState', () => {
     });
 
     expect(result.current.persistedState).toBeNull();
+  });
+
+  it('登录 workspace 无会话时应恢复最新普通草稿', async () => {
+    const scope = { kind: 'user' as const, userId: 'user-1', workspaceId: 'ws-1' };
+    await writeDraft(
+      'draft_old',
+      { state: createState('old_draft'), createdAt: 1, updatedAt: 1 },
+      scope,
+    );
+    await writeDraft(
+      'draft_new',
+      { state: createState('new_draft'), createdAt: 2, updatedAt: 2 },
+      scope,
+    );
+    vi.mocked(useAuthSession).mockReturnValue({
+      status: 'signed_in',
+      configured: true,
+      userId: 'user-1',
+      workspaceId: 'ws-1',
+      email: 'user@example.com',
+      name: 'User One',
+      emailVerified: true,
+      creditBalance: 100,
+      creditsStatus: 'ready',
+      authDialogOpen: false,
+      signInWithEmail: vi.fn(),
+      signUpWithEmail: vi.fn(),
+      updateUserName: vi.fn(),
+      changePassword: vi.fn(),
+      requestPasswordReset: vi.fn(),
+      resetPassword: vi.fn(),
+      sendVerificationEmail: vi.fn(),
+      signOut: vi.fn(),
+      refreshSession: vi.fn(),
+      refreshCredits: vi.fn(),
+      openAuthDialog: vi.fn(),
+      closeAuthDialog: vi.fn(),
+    });
+
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+      expect(result.current.activeSource).toEqual({ kind: 'draft', draftId: 'draft_new' });
+      expect(result.current.persistedState?.tableName).toBe('new_draft');
+    });
   });
 
   it('登录用户编辑全局草稿后不应被重复 hydrate 回滚', async () => {
@@ -706,7 +754,7 @@ describe('usePersistedState', () => {
     });
   });
 
-  it('会话为 default draft 且存在 activeState 时应优先恢复 activeState', async () => {
+  it('会话为 default draft 且存在草稿实体时应优先恢复实体状态', async () => {
     const sessionState = createState('session_active_state');
     const globalState = createState('global_backup_state');
     await writeGlobalDraft({ state: globalState, updatedAt: Date.now() });
@@ -722,7 +770,7 @@ describe('usePersistedState', () => {
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
       expect(result.current.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
-      expect(result.current.persistedState).toEqual(sessionState);
+      expect(result.current.persistedState).toEqual(globalState);
     });
   });
 

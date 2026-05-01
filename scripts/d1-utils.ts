@@ -8,6 +8,8 @@ export type D1Mode = 'local' | 'remote';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 export const D1_BINDING = 'USER_DB';
+export const getWranglerConfigPath = (mode: D1Mode) =>
+  mode === 'remote' ? 'apps/worker/wrangler.deploy.toml' : 'apps/worker/wrangler.toml';
 export const migrationDir = path.join(repoRoot, 'packages', 'db', 'migrations');
 export const resetSqlPath = path.join(repoRoot, 'sql', 'reset-user-system.sql');
 export const seedSqlPath = path.join(repoRoot, 'packages', 'db', 'seeds', 'user-system.local.sql');
@@ -38,7 +40,7 @@ export const buildD1ExecuteArgs = (
     'exec',
     'wrangler',
     '--config',
-    'apps/worker/wrangler.toml',
+    getWranglerConfigPath(mode),
     'd1',
     'execute',
     D1_BINDING,

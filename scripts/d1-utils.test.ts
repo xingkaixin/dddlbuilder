@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildD1ExecuteArgs,
   getD1Flag,
+  getWranglerConfigPath,
   listMigrationFiles,
   migrationDir,
   resolveD1Mode,
@@ -28,6 +29,7 @@ describe('d1-utils', () => {
   it('switches to remote mode when requested', () => {
     expect(resolveD1Mode(['--remote'])).toBe('remote');
     expect(getD1Flag('remote')).toBe('--remote');
+    expect(getWranglerConfigPath('remote')).toBe('apps/worker/wrangler.deploy.toml');
   });
 
   it('builds wrangler execute args from sql file', () => {
@@ -93,7 +95,7 @@ describe('d1-utils', () => {
       'exec',
       'wrangler',
       '--config',
-      'apps/worker/wrangler.toml',
+      'apps/worker/wrangler.deploy.toml',
       'd1',
       'execute',
       'USER_DB',
@@ -131,7 +133,7 @@ describe('d1-utils', () => {
       'exec',
       'wrangler',
       '--config',
-      'apps/worker/wrangler.toml',
+      'apps/worker/wrangler.deploy.toml',
       'd1',
       'execute',
       'USER_DB',
@@ -179,6 +181,7 @@ describe('d1-utils', () => {
       .filter((args): args is string[] => Array.isArray(args) && args.includes('--file'));
 
     expect(fileArgs).toHaveLength(1);
-    expect(fileArgs[0]).toContain(path.join(migrationDir, '0005_workspace_drafts.sql'));
+    const newestMigration = listMigrationFiles().at(-1);
+    expect(fileArgs[0]).toContain(newestMigration);
   });
 });

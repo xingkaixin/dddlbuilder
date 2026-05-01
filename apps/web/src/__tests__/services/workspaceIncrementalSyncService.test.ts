@@ -2,10 +2,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 import {
   clearLocalWorkspaceData,
+  promoteLegacyUserWorkspaceData,
   syncWorkspaceOnce,
 } from '@/services/workspaceIncrementalSyncService';
-import { readDraft, writeDraft } from '@/utils/workspaceStateDb';
-import { addSavedTable } from '@/utils/savedTablesDb';
+import {
+  readDraft,
+  upsertSavedDraft,
+  writeDraft,
+  writeWorkspaceSession,
+} from '@/utils/workspaceStateDb';
+import { addSavedTable, listSavedTables } from '@/utils/savedTablesDb';
 import { bulkPutFolders, listFolders } from '@/utils/tableFolders';
 import {
   enqueueWorkspaceOutboxItem,
@@ -223,5 +229,60 @@ describe('workspaceIncrementalSyncService', () => {
     expect(await listFolders(scope)).toEqual([]);
     expect(await listWorkspaceOutboxItems('ws-1')).toEqual([]);
     expect(await readWorkspaceSyncMeta('ws-1')).toBeNull();
+  });
+
+  it('应将旧 user scope 工作区数据迁移到默认 workspace scope 并排队上传', async () => {
+    const legacyScope = { kind: 'user' as const, userId: 'user-1' };
+    await writeDraft(
+      'draft-legacy',
+      { state: createState('legacy_draft'), createdAt: 1, updatedAt: 2 },
+      legacyScope,
+    );
+    await addSavedTable(
+      {
+        normalizedName: 'legacy_table',
+        name: 'legacy_table',
+        state: createState('legacy_table'),
+        createdAt: 3,
+        updatedAt: 4,
+      },
+      legacyScope,
+    );
+    await upsertSavedDraft(
+      'legacy_table',
+      {
+        tableName: 'legacy_table',
+        state: createState('legacy_draft_for_table'),
+        baseSignature: '{}',
+        updatedAt: 5,
+      },
+      legacyScope,
+    );
+    await bulkPutFolders([{ id: 'folder-1', name: 'Folder', order: 1, createdAt: 6 }], legacyScope);
+    await writeWorkspaceSession(
+      {
+        activeSource: { kind: 'draft', draftId: 'draft-legacy' },
+        activeState: createState('legacy_draft'),
+        updatedAt: 7,
+      },
+      legacyScope,
+    );
+
+    const migrated = await promoteLegacyUserWorkspaceData(scope);
+
+    const draft = await readDraft('draft-legacy', scope);
+    const tables = await listSavedTables(scope);
+    const folders = await listFolders(scope);
+    const outbox = await listWorkspaceOutboxItems('ws-1');
+    expect(migrated).toBe(true);
+    expect(draft?.state.tableName).toBe('legacy_draft');
+    expect(tables.map((item) => item.normalizedName)).toEqual(['legacy_table']);
+    expect(folders.map((item) => item.id)).toEqual(['folder-1']);
+    expect(outbox.map((item) => item.entityType).sort()).toEqual([
+      'draft',
+      'folder',
+      'saved_draft',
+      'saved_table',
+    ]);
   });
 });

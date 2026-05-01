@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 
 type MockBootstrap = {
   globalDraft: unknown | null;
+  drafts: Array<{ draftId: string; record: unknown }>;
   session: unknown | null;
   savedTable: unknown | null;
 };
 
 const createBootstrapMock = async (options?: {
-  readImpl?: () => Promise<MockBootstrap>;
+  readImpl?: (scope?: WorkspaceScope) => Promise<MockBootstrap>;
   migrateImpl?: () => Promise<void>;
 }) => {
   const readWorkspaceBootstrap = vi.fn(
@@ -46,6 +48,7 @@ describe('workspacePersistence/bootstrap', () => {
     } = await createBootstrapMock({
       readImpl: async () => ({
         globalDraft: { state: { tableName: 'users' }, updatedAt: 1 },
+        drafts: [],
         session: null,
         savedTable: null,
       }),
@@ -71,11 +74,13 @@ describe('workspacePersistence/bootstrap', () => {
         .fn()
         .mockResolvedValueOnce({
           globalDraft: null,
+          drafts: [],
           session: null,
           savedTable: null,
         })
         .mockResolvedValueOnce({
           globalDraft: null,
+          drafts: [],
           session: {
             activeSource: { kind: 'draft', draftId: 'default' },
             activeState: null,
@@ -154,11 +159,13 @@ describe('workspacePersistence/bootstrap', () => {
         .fn()
         .mockResolvedValueOnce({
           globalDraft: { v: 1 },
+          drafts: [],
           session: null,
           savedTable: null,
         })
         .mockResolvedValueOnce({
           globalDraft: { v: 2 },
+          drafts: [],
           session: null,
           savedTable: null,
         }),
@@ -169,11 +176,13 @@ describe('workspacePersistence/bootstrap', () => {
 
     expect(first).toEqual({
       globalDraft: { v: 1 },
+      drafts: [],
       session: null,
       savedTable: null,
     });
     expect(second).toEqual({
       globalDraft: { v: 1 },
+      drafts: [],
       session: null,
       savedTable: null,
     });
@@ -183,6 +192,7 @@ describe('workspacePersistence/bootstrap', () => {
     const third = await getWorkspaceBootstrap();
     expect(third).toEqual({
       globalDraft: { v: 2 },
+      drafts: [],
       session: null,
       savedTable: null,
     });
@@ -196,11 +206,13 @@ describe('workspacePersistence/bootstrap', () => {
           .fn()
           .mockResolvedValueOnce({
             globalDraft: { v: 1 },
+            drafts: [],
             session: null,
             savedTable: null,
           })
           .mockResolvedValueOnce({
             globalDraft: { v: 2 },
+            drafts: [],
             session: null,
             savedTable: null,
           }),
@@ -212,14 +224,62 @@ describe('workspacePersistence/bootstrap', () => {
 
     expect(first).toEqual({
       globalDraft: { v: 1 },
+      drafts: [],
       session: null,
       savedTable: null,
     });
     expect(second).toEqual({
       globalDraft: { v: 2 },
+      drafts: [],
       session: null,
       savedTable: null,
     });
     expect(readWorkspaceBootstrap).toHaveBeenCalledTimes(2);
+  });
+
+  it('不同 scope 并发调用应分别读取', async () => {
+    const userScope: WorkspaceScope = {
+      kind: 'user',
+      userId: 'user-1',
+      workspaceId: 'ws-1',
+    };
+    let resolveAnonymous: (value: MockBootstrap) => void = () => undefined;
+    let resolveUser: (value: MockBootstrap) => void = () => undefined;
+    const anonymousRead = new Promise<MockBootstrap>((resolve) => {
+      resolveAnonymous = resolve;
+    });
+    const userRead = new Promise<MockBootstrap>((resolve) => {
+      resolveUser = resolve;
+    });
+
+    const { getWorkspaceBootstrap, readWorkspaceBootstrap } = await createBootstrapMock({
+      readImpl: (scope) => (scope?.kind === 'user' ? userRead : anonymousRead),
+    });
+
+    const anonymousPromise = getWorkspaceBootstrap();
+    const userPromise = getWorkspaceBootstrap(userScope);
+
+    expect(anonymousPromise).not.toBe(userPromise);
+    expect(readWorkspaceBootstrap).toHaveBeenCalledTimes(2);
+
+    resolveUser({
+      globalDraft: { state: { tableName: 'user' }, updatedAt: 2 },
+      drafts: [],
+      session: null,
+      savedTable: null,
+    });
+    resolveAnonymous({
+      globalDraft: { state: { tableName: 'anonymous' }, updatedAt: 1 },
+      drafts: [],
+      session: null,
+      savedTable: null,
+    });
+
+    await expect(anonymousPromise).resolves.toMatchObject({
+      globalDraft: { state: { tableName: 'anonymous' }, updatedAt: 1 },
+    });
+    await expect(userPromise).resolves.toMatchObject({
+      globalDraft: { state: { tableName: 'user' }, updatedAt: 2 },
+    });
   });
 });

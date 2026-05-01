@@ -54,6 +54,14 @@ const SHARE_CACHE_GC_TIME_MS = 15 * 60 * 1000;
 const sortDraftSummaries = (drafts: DraftSummary[]) =>
   [...drafts].sort((a, b) => b.createdAt - a.createdAt || a.draftId.localeCompare(b.draftId));
 
+const pickInitialDraft = (drafts: Array<{ draftId: string; record: GlobalDraftRecord }>) =>
+  drafts.find((draft) => draft.draftId === DEFAULT_DRAFT_ID) ??
+  [...drafts].sort(
+    (a, b) =>
+      (b.record.createdAt ?? b.record.updatedAt) - (a.record.createdAt ?? a.record.updatedAt),
+  )[0] ??
+  null;
+
 const isSamePersistedState = (left: PersistedState, right: PersistedState) =>
   JSON.stringify(left) === JSON.stringify(right);
 
@@ -127,6 +135,15 @@ export function usePersistedState(): UsePersistedStateReturn {
     setActiveSource((prev) => (isSameWorkspaceSource(prev, source) ? prev : source));
   }, []);
 
+  const setPersistedStateIfChanged = useCallback((nextState: PersistedState | null) => {
+    setPersistedState((prevState) => {
+      if (!prevState || !nextState) {
+        return prevState === nextState ? prevState : nextState;
+      }
+      return isSamePersistedState(prevState, nextState) ? prevState : nextState;
+    });
+  }, []);
+
   const updateDrafts = useCallback(
     (drafts: Array<{ draftId: string; record: GlobalDraftRecord }>) => {
       const map = new Map<string, GlobalDraftRecord>();
@@ -178,11 +195,12 @@ export function usePersistedState(): UsePersistedStateReturn {
           },
     ) => {
       if (currentScope.kind !== 'user' || !currentScope.workspaceId) return;
+      const workspaceId = currentScope.workspaceId;
       fireAndForget(
         (async () => {
           const payload = input.op === 'upsert' ? input.payload : null;
           await enqueueWorkspaceOutboxItem({
-            workspaceId: currentScope.workspaceId,
+            workspaceId,
             entityType: input.entityType,
             entityId: input.entityId,
             op: input.op,
@@ -649,8 +667,8 @@ export function usePersistedState(): UsePersistedStateReturn {
       const savedDrafts = await listSavedDrafts(currentScope);
       savedTableDraftsRef.current = new Map(Object.entries(savedDrafts));
 
-      const defaultDraftRecord = normalizeGlobalDraftRecord(globalDraftRaw);
       const allDrafts: Array<{ draftId: string; record: GlobalDraftRecord }> = [];
+      const defaultDraftRecord = normalizeGlobalDraftRecord(globalDraftRaw);
       if (defaultDraftRecord) {
         allDrafts.push({
           draftId: DEFAULT_DRAFT_ID,
@@ -675,6 +693,7 @@ export function usePersistedState(): UsePersistedStateReturn {
         }
       }
       updateDrafts(allDrafts);
+      const initialDraft = pickInitialDraft(allDrafts);
 
       const trashed = await listTrashedDrafts(currentScope);
       setTrashedDrafts(
@@ -693,8 +712,8 @@ export function usePersistedState(): UsePersistedStateReturn {
       const session = normalizeWorkspaceSession(sessionRaw);
 
       if (!session) {
-        syncActiveSource({ kind: 'draft', draftId: DEFAULT_DRAFT_ID });
-        hydrateWithState(defaultDraftRecord?.state ?? null);
+        syncActiveSource({ kind: 'draft', draftId: initialDraft?.draftId ?? DEFAULT_DRAFT_ID });
+        hydrateWithState(initialDraft?.record.state ?? null);
         return;
       }
 
@@ -717,19 +736,21 @@ export function usePersistedState(): UsePersistedStateReturn {
           return;
         }
 
-        syncActiveSource({ kind: 'draft', draftId: DEFAULT_DRAFT_ID });
-        hydrateWithState(defaultDraftRecord?.state ?? null);
+        syncActiveSource({ kind: 'draft', draftId: initialDraft?.draftId ?? DEFAULT_DRAFT_ID });
+        hydrateWithState(initialDraft?.record.state ?? null);
         return;
       }
 
       // 兼容旧 global_draft session，迁移为 draft
       const draftId =
         session.activeSource.kind === 'draft' ? session.activeSource.draftId : DEFAULT_DRAFT_ID;
-      syncActiveSource({ kind: 'draft', draftId });
+      const sessionDraft = allDrafts.find((draft) => draft.draftId === draftId);
+      const resolvedDraft = sessionDraft ?? initialDraft;
+      syncActiveSource({ kind: 'draft', draftId: resolvedDraft?.draftId ?? draftId });
       if (session.activeState) {
-        hydrateWithState(session.activeState);
+        hydrateWithState(resolvedDraft?.record.state ?? session.activeState);
       } else {
-        hydrateWithState(defaultDraftRecord?.state ?? null);
+        hydrateWithState(resolvedDraft?.record.state ?? null);
       }
     };
 
@@ -820,8 +841,8 @@ export function usePersistedState(): UsePersistedStateReturn {
         if (cancelled) return;
         savedTableDraftsRef.current = new Map(Object.entries(savedDrafts));
 
-        const defaultDraftRecord = normalizeGlobalDraftRecord(globalDraftRaw);
         const allDrafts: Array<{ draftId: string; record: GlobalDraftRecord }> = [];
+        const defaultDraftRecord = normalizeGlobalDraftRecord(globalDraftRaw);
         if (defaultDraftRecord) {
           allDrafts.push({
             draftId: DEFAULT_DRAFT_ID,
@@ -845,11 +866,12 @@ export function usePersistedState(): UsePersistedStateReturn {
           }
         }
         updateDrafts(allDrafts);
+        const initialDraft = pickInitialDraft(allDrafts);
         const session = normalizeWorkspaceSession(sessionRaw);
 
         if (!session) {
-          syncActiveSource({ kind: 'draft', draftId: DEFAULT_DRAFT_ID });
-          setPersistedState(defaultDraftRecord?.state ?? null);
+          syncActiveSource({ kind: 'draft', draftId: initialDraft?.draftId ?? DEFAULT_DRAFT_ID });
+          setPersistedStateIfChanged(initialDraft?.record.state ?? null);
           setHydrated(true);
           return;
         }
@@ -867,15 +889,17 @@ export function usePersistedState(): UsePersistedStateReturn {
                 : JSON.stringify(st.state)) ||
               '',
           });
-          setPersistedState(session.activeState ?? st.state);
+          setPersistedStateIfChanged(session.activeState ?? st.state);
           setHydrated(true);
           return;
         }
 
         const draftId =
           session.activeSource.kind === 'draft' ? session.activeSource.draftId : DEFAULT_DRAFT_ID;
-        syncActiveSource({ kind: 'draft', draftId });
-        setPersistedState(session.activeState ?? defaultDraftRecord?.state ?? null);
+        const sessionDraft = allDrafts.find((draft) => draft.draftId === draftId);
+        const resolvedDraft = sessionDraft ?? initialDraft;
+        syncActiveSource({ kind: 'draft', draftId: resolvedDraft?.draftId ?? draftId });
+        setPersistedStateIfChanged(resolvedDraft?.record.state ?? session.activeState ?? null);
         setHydrated(true);
       })();
     };
@@ -885,7 +909,14 @@ export function usePersistedState(): UsePersistedStateReturn {
       cancelled = true;
       window.removeEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);
     };
-  }, [shareId, authSession.status, currentScope, syncActiveSource, updateDrafts]);
+  }, [
+    shareId,
+    authSession.status,
+    currentScope,
+    setPersistedStateIfChanged,
+    syncActiveSource,
+    updateDrafts,
+  ]);
 
   return {
     persistedState,

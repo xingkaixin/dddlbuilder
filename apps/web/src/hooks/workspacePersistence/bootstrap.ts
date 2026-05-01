@@ -37,13 +37,13 @@ const loadWorkspaceBootstrap = async (scope: WorkspaceScope): Promise<WorkspaceB
   }));
 };
 
-let workspaceBootstrapPromise: Promise<WorkspaceBootstrapRaw> | null = null;
+const workspaceBootstrapPromises = new Map<string, Promise<WorkspaceBootstrapRaw>>();
 let workspaceBootstrapCache: WorkspaceBootstrapRaw | null = null;
 let workspaceBootstrapCacheAt = 0;
 let workspaceBootstrapCacheScopeKey = '';
 
 export const resetWorkspaceBootstrapCache = () => {
-  workspaceBootstrapPromise = null;
+  workspaceBootstrapPromises.clear();
   workspaceBootstrapCache = null;
   workspaceBootstrapCacheAt = 0;
   workspaceBootstrapCacheScopeKey = '';
@@ -59,17 +59,21 @@ export const getWorkspaceBootstrap = (scope: WorkspaceScope = getAnonymousWorksp
     return Promise.resolve(workspaceBootstrapCache);
   }
 
-  if (!workspaceBootstrapPromise) {
-    workspaceBootstrapPromise = loadWorkspaceBootstrap(scope)
-      .then((value) => {
-        workspaceBootstrapCache = value;
-        workspaceBootstrapCacheAt = Date.now();
-        workspaceBootstrapCacheScopeKey = scopeKey;
-        return value;
-      })
-      .finally(() => {
-        workspaceBootstrapPromise = null;
-      });
+  const existingPromise = workspaceBootstrapPromises.get(scopeKey);
+  if (existingPromise) {
+    return existingPromise;
   }
-  return workspaceBootstrapPromise;
+
+  const promise = loadWorkspaceBootstrap(scope)
+    .then((value) => {
+      workspaceBootstrapCache = value;
+      workspaceBootstrapCacheAt = Date.now();
+      workspaceBootstrapCacheScopeKey = scopeKey;
+      return value;
+    })
+    .finally(() => {
+      workspaceBootstrapPromises.delete(scopeKey);
+    });
+  workspaceBootstrapPromises.set(scopeKey, promise);
+  return promise;
 };

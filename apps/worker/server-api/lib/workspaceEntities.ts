@@ -29,6 +29,11 @@ type EntityRow = {
   updatedAt: number;
 };
 
+type EntityKeyRow = {
+  entityType: WorkspaceEntityType;
+  entityId: string;
+};
+
 type MutationRow = {
   entityType: WorkspaceEntityType;
   entityId: string;
@@ -473,6 +478,22 @@ const listActiveEntities = async (env: ApiEnv['Bindings'], workspaceId: string) 
   return result.results ?? [];
 };
 
+const listEntityKeys = async (env: ApiEnv['Bindings'], workspaceId: string) => {
+  const result = await env.USER_DB.prepare(
+    `
+      SELECT
+        entity_type AS entityType,
+        entity_id AS entityId
+      FROM workspace_entities
+      WHERE workspace_id = ?
+    `,
+  )
+    .bind(workspaceId)
+    .all<EntityKeyRow>();
+
+  return result.results ?? [];
+};
+
 export const getWorkspaceChanges = async (
   env: ApiEnv['Bindings'],
   userId: string,
@@ -480,6 +501,7 @@ export const getWorkspaceChanges = async (
   since: number,
 ): Promise<WorkspaceChangesResponse> => {
   await assertWorkspaceOwner(env, userId, workspaceId);
+  await backfillLegacySnapshotEntities(env, userId, workspaceId);
   const result = await env.USER_DB.prepare(
     `
       SELECT
@@ -806,21 +828,32 @@ export const upsertWorkspaceSnapshotEntity = async (
   });
 };
 
-export const getWorkspaceSnapshotFromEntities = async (
-  env: ApiEnv['Bindings'],
-  userId: string,
-): Promise<WorkspaceSnapshot> => {
-  const workspace = await getOrCreateDefaultWorkspace(env, userId);
-  const rows = await listActiveEntities(env, workspace.id);
-  if (rows.length === 0) {
-    const legacyRows = await listLegacySnapshotRows(env, userId);
-    if (legacyRows.length > 0) {
-      const legacySnapshot = legacyRowsToSnapshot(legacyRows);
-      await putWorkspaceSnapshotAsEntities(env, userId, legacySnapshot);
-      return legacySnapshot;
-    }
-  }
+const buildEntityKey = (entityType: WorkspaceEntityType, entityId: string) =>
+  `${entityType}:${entityId}`;
 
+const writeEntityInputs = async (
+  env: ApiEnv['Bindings'],
+  input: {
+    userId: string;
+    workspaceId: string;
+    entities: EntityInput[];
+  },
+) => {
+  for (const entity of input.entities) {
+    await writeEntityVersion(env, {
+      userId: input.userId,
+      workspaceId: input.workspaceId,
+      entityType: entity.entityType,
+      entityId: entity.entityId,
+      op: 'upsert',
+      payload: entity.payload,
+      contentHash: await buildWorkspaceContentHash(entity.payload),
+      updatedAt: entity.sourceUpdatedAt,
+    });
+  }
+};
+
+const entityRowsToSnapshot = (rows: EntityRow[]): WorkspaceSnapshot => {
   const snapshot: WorkspaceSnapshot = {
     globalDraft: null,
     drafts: [],
@@ -906,43 +939,53 @@ export const getWorkspaceSnapshotFromEntities = async (
   return snapshot;
 };
 
+const backfillLegacySnapshotEntities = async (
+  env: ApiEnv['Bindings'],
+  userId: string,
+  workspaceId: string,
+) => {
+  const legacyRows = await listLegacySnapshotRows(env, userId);
+  if (legacyRows.length === 0) {
+    return false;
+  }
+
+  const existingRows = await listEntityKeys(env, workspaceId);
+  const existingKeys = new Set(
+    existingRows.map((row) => buildEntityKey(row.entityType, row.entityId)),
+  );
+  const missingLegacyEntities = snapshotToEntities(legacyRowsToSnapshot(legacyRows)).filter(
+    (entity) => !existingKeys.has(buildEntityKey(entity.entityType, entity.entityId)),
+  );
+  if (missingLegacyEntities.length === 0) {
+    return false;
+  }
+
+  await writeEntityInputs(env, {
+    userId,
+    workspaceId,
+    entities: missingLegacyEntities,
+  });
+  return true;
+};
+
+export const getWorkspaceSnapshotFromEntities = async (
+  env: ApiEnv['Bindings'],
+  userId: string,
+): Promise<WorkspaceSnapshot> => {
+  const workspace = await getOrCreateDefaultWorkspace(env, userId);
+  await backfillLegacySnapshotEntities(env, userId, workspace.id);
+  return entityRowsToSnapshot(await listActiveEntities(env, workspace.id));
+};
+
 export const putWorkspaceSnapshotAsEntities = async (
   env: ApiEnv['Bindings'],
   userId: string,
   snapshot: WorkspaceSnapshot,
 ) => {
   const workspace = await getOrCreateDefaultWorkspace(env, userId);
-  const entities = snapshotToEntities(snapshot);
-  const nextKeys = new Set(entities.map((item) => `${item.entityType}:${item.entityId}`));
-  const currentRows = await listActiveEntities(env, workspace.id);
-
-  for (const entity of entities) {
-    await writeEntityVersion(env, {
-      userId,
-      workspaceId: workspace.id,
-      entityType: entity.entityType,
-      entityId: entity.entityId,
-      op: 'upsert',
-      payload: entity.payload,
-      contentHash: await buildWorkspaceContentHash(entity.payload),
-      updatedAt: entity.sourceUpdatedAt,
-    });
-  }
-
-  for (const row of currentRows) {
-    if (nextKeys.has(`${row.entityType}:${row.entityId}`)) {
-      continue;
-    }
-
-    await writeEntityVersion(env, {
-      userId,
-      workspaceId: workspace.id,
-      entityType: row.entityType,
-      entityId: row.entityId,
-      op: 'delete',
-      payload: null,
-      contentHash: null,
-      updatedAt: now(),
-    });
-  }
+  await writeEntityInputs(env, {
+    userId,
+    workspaceId: workspace.id,
+    entities: snapshotToEntities(snapshot),
+  });
 };

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   AICommentMode,
   AIIndexAdvisorRecommendation,
@@ -63,6 +63,7 @@ import { buildIndexName } from '@/utils/indexNameUtils';
 import { EXAMPLE_USER_PROFILE_TABLE } from '@/utils/exampleTable';
 import { useTranslation } from 'react-i18next';
 import type { AISchemaChange } from '@/utils/aiSchemaChanges';
+import type { WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -79,6 +80,9 @@ const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) => createEmptyRow(ind
 const DEFAULT_FIELD_TABLE_FREEZE_ENABLED = false;
 const DEFAULT_FIELD_TABLE_FREEZE_COLUMNS = 3;
 const SHARE_COPY_SAVED_TOAST_KEY = 'ddlbuilder:share:copy-saved:v1';
+
+const buildWorkspaceSourceKey = (source: WorkspaceSource) =>
+  source.kind === 'draft' ? `draft:${source.draftId}` : `saved_table:${source.normalizedName}`;
 
 const hasSameIndexFields = (left: IndexField[], right: IndexField[]) =>
   left.length === right.length &&
@@ -281,6 +285,10 @@ function App() {
     removeTabBySource,
     updateTabTitleBySource,
   } = useTabStore();
+  const lastClosedAutoOpenRef = useRef<{
+    sourceKey: string;
+    state: PersistedState | null;
+  } | null>(null);
 
   const {
     authInput,
@@ -291,6 +299,10 @@ function App() {
     resetAuthState,
     setAuthObjects,
   } = useAuthManagement(persistedState || undefined);
+  const activeTabSnapshot = useMemo(
+    () => tabs.find((tab) => tab.id === activeTabId)?.stateSnapshot ?? null,
+    [activeTabId, tabs],
+  );
 
   const {
     citusShardingConfig,
@@ -793,6 +805,7 @@ function App() {
     setLoadedTableSignature,
     loadedTableNormalizedName,
     updateActiveTabSnapshot,
+    activeTabSnapshot,
   });
 
   const { handleClearAll, cancelClearAll, confirmClearAll } = useClearAllActions({
@@ -1243,16 +1256,26 @@ function App() {
 
   const handleCloseTab = useCallback(
     (tabId: string) => {
+      const closingTab = tabs.find((tab) => tab.id === tabId);
+      const closesLastTab = tabs.length === 1 && closingTab;
       closeTabStore(tabId);
 
       const nextActive = getActiveTab();
       if (nextActive) {
+        lastClosedAutoOpenRef.current = null;
         applySavedState(nextActive.stateSnapshot);
         setWorkspaceSnapshot(nextActive.source, nextActive.stateSnapshot);
+        return;
       }
-      // 没有标签页了，不做额外操作，渲染逻辑会显示空状态
+
+      if (closesLastTab) {
+        lastClosedAutoOpenRef.current = {
+          sourceKey: buildWorkspaceSourceKey(closingTab.source),
+          state: persistedState,
+        };
+      }
     },
-    [closeTabStore, getActiveTab, applySavedState, setWorkspaceSnapshot],
+    [tabs, closeTabStore, getActiveTab, applySavedState, setWorkspaceSnapshot, persistedState],
   );
 
   const handleRestoreTable = useCallback(
@@ -1682,6 +1705,47 @@ function App() {
   }, [tabs]);
 
   const isMainWorkspaceLoading = !hydrated || isSavedTableLoading;
+
+  useEffect(() => {
+    if (!hydrated || isShareView || tabs.length > 0 || !persistedState) {
+      return;
+    }
+    const sourceKey = buildWorkspaceSourceKey(activeSource);
+    const lastClosed = lastClosedAutoOpenRef.current;
+    if (lastClosed?.sourceKey === sourceKey && lastClosed.state === persistedState) {
+      return;
+    }
+
+    const title =
+      activeSource.kind === 'draft'
+        ? draftSummaries.find((draft) => draft.draftId === activeSource.draftId)?.name ||
+          persistedState.tableName.trim() ||
+          t('app.workspace.globalDraft')
+        : activeSource.tableName ||
+          persistedState.tableName.trim() ||
+          t('app.workspace.globalDraft');
+
+    const tabId = addTab({
+      title,
+      source: activeSource,
+      stateSnapshot: persistedState,
+      isDirty: false,
+    });
+    activateTab(tabId);
+    applySavedState(persistedState);
+    lastClosedAutoOpenRef.current = null;
+  }, [
+    activeSource,
+    addTab,
+    applySavedState,
+    activateTab,
+    draftSummaries,
+    hydrated,
+    isShareView,
+    persistedState,
+    t,
+    tabs.length,
+  ]);
 
   // ─── 7. Render ─────────────────────────────────────────────────
   return (
