@@ -14,6 +14,7 @@ import {
   ChevronDown,
   HardDrive,
   Languages,
+  WandSparkles,
   Minus,
   Plus,
   Pin,
@@ -29,6 +30,7 @@ interface DataTableToolbarProps {
   toolbarLeft?: ReactNode;
   onOpenStorageEstimator?: () => void;
   onOpenMockDataGenerator?: () => void;
+  onOpenAISchemaPatch?: () => void;
   onGenerateComments?: (mode: AICommentMode, targetLocale?: 'zh-CN' | 'en-US') => void;
   isGeneratingComments?: boolean;
   freezeEnabled: boolean;
@@ -44,6 +46,7 @@ export function DataTableToolbar({
   toolbarLeft,
   onOpenStorageEstimator,
   onOpenMockDataGenerator,
+  onOpenAISchemaPatch,
   onGenerateComments,
   isGeneratingComments = false,
   freezeEnabled,
@@ -93,6 +96,24 @@ export function DataTableToolbar({
               </TooltipTrigger>
               <TooltipContent>
                 <p>{t('dataTable.toolbar.mockDataTip')}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {onOpenAISchemaPatch && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onOpenAISchemaPatch}
+                  className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md border-primary/20 hover:border-primary/50 text-muted-foreground hover:text-primary"
+                >
+                  <WandSparkles className="h-3.5 w-3.5" />
+                  {t('dataTable.toolbar.aiPatch')}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{t('dataTable.toolbar.aiPatchTip')}</p>
               </TooltipContent>
             </Tooltip>
           )}

@@ -27,11 +27,14 @@ const MAX_INPUT_LENGTH = 500;
 
 function toPersistedState(schema: GeneratedTableSchema): PersistedState {
   return {
+    objectType: 'table',
     schemaName: schema.schemaName ?? '',
     tableName: schema.tableName,
     tableComment: schema.tableComment,
+    dbType: 'mysql',
+    sqlFormatMode: 'compact',
     rows: schema.fields.map((field, index) => ({
-      id: `ai-preview-${index}`,
+      order: index + 1,
       fieldName: field.fieldName,
       fieldType: field.fieldType,
       fieldComment: field.fieldComment,
@@ -40,9 +43,17 @@ function toPersistedState(schema: GeneratedTableSchema): PersistedState {
       defaultValue: field.defaultValue ?? '',
       onUpdate: field.onUpdate ?? '无',
     })),
-    indexes: schema.indexes ?? [],
+    addCount: 10,
+    indexInput: '',
+    currentIndexFields: [],
+    indexes: (schema.indexes ?? []).map((index, i) => ({
+      id: `ai-preview-index-${i}`,
+      ...index,
+    })),
+    authInput: '',
+    authObjects: [],
     foreignKeys: [],
-  } as PersistedState;
+  };
 }
 
 function getFieldChangeKey(diff: FieldDiff) {
@@ -56,6 +67,7 @@ interface AIGenerateDialogProps {
   existingConfig?: {
     schemaName?: string;
     tableName?: string;
+    tableComment?: string;
     rows?: FieldRow[];
     indexes?: IndexDefinition[];
   };

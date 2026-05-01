@@ -36,6 +36,7 @@ interface DataTableProps {
   highlightedRowIndex?: number | null;
   onOpenStorageEstimator?: () => void;
   onOpenMockDataGenerator?: () => void;
+  onOpenAISchemaPatch?: () => void;
   onGenerateComments?: (mode: AICommentMode, targetLocale?: 'zh-CN' | 'en-US') => void;
   isGeneratingComments?: boolean;
 }
@@ -146,6 +147,7 @@ export const DataTable = memo<DataTableProps>(
     highlightedRowIndex,
     onOpenStorageEstimator,
     onOpenMockDataGenerator,
+    onOpenAISchemaPatch,
     onGenerateComments,
     isGeneratingComments,
   }) => {
@@ -356,6 +358,7 @@ export const DataTable = memo<DataTableProps>(
           toolbarLeft={toolbarLeft}
           onOpenStorageEstimator={onOpenStorageEstimator}
           onOpenMockDataGenerator={onOpenMockDataGenerator}
+          onOpenAISchemaPatch={onOpenAISchemaPatch}
           onGenerateComments={onGenerateComments}
           isGeneratingComments={isGeneratingComments}
           freezeEnabled={freezeEnabled}

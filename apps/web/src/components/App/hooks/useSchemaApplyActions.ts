@@ -108,17 +108,22 @@ function buildAIGeneratedIndexes(schema: GeneratedTableSchema): IndexDefinition[
 }
 
 function resolveGeneratedTableIdentity(schema: GeneratedTableSchema) {
+  const qualifiedIdentity = schema.tableName?.includes('.')
+    ? getSchemaAndTable(schema.tableName)
+    : null;
+
   if (schema.schemaName) {
     return {
       schemaName: schema.schemaName,
-      tableName: schema.tableName?.includes('.')
-        ? getSchemaAndTable(schema.tableName).table
-        : schema.tableName,
+      tableName: qualifiedIdentity ? qualifiedIdentity.table : schema.tableName,
     };
   }
 
-  if (schema.tableName?.includes('.')) {
-    return getSchemaAndTable(schema.tableName);
+  if (qualifiedIdentity) {
+    return {
+      schemaName: qualifiedIdentity.schema,
+      tableName: qualifiedIdentity.table,
+    };
   }
 
   return {
@@ -194,14 +199,7 @@ export function useSchemaApplyActions({
         case 'modify_field':
           if (suggestion.fieldModification) {
             const { fieldName } = suggestion.fieldModification;
-            const changes = suggestion.fieldModification.changes || {
-              fieldType: suggestion.fieldModification.fieldType,
-              fieldComment: suggestion.fieldModification.fieldComment,
-              nullable: suggestion.fieldModification.nullable,
-              defaultKind: suggestion.fieldModification.defaultKind,
-              defaultValue: suggestion.fieldModification.defaultValue,
-              onUpdate: suggestion.fieldModification.onUpdate,
-            };
+            const changes = suggestion.fieldModification.changes;
             const rowIndex = rows.findIndex((row) => row.fieldName === fieldName);
             if (rowIndex !== -1) {
               const filteredChanges = Object.fromEntries(

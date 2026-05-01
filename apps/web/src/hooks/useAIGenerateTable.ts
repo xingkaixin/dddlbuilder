@@ -111,6 +111,7 @@ export function useAIGenerateTable() {
       const previousSchema = options?.continueConversation ? previousSchemaRef.current : null;
       const normalizedDescription = description.trim();
       const requestOptions = {
+        mode: options?.mode,
         templates: options?.templates,
         existingConfig: options?.existingConfig,
         previousSchema: previousSchema ?? undefined,
@@ -121,6 +122,7 @@ export function useAIGenerateTable() {
         dbType,
         locale: resolvedLocale,
         templates: requestOptions.templates,
+        mode: requestOptions.mode,
         existingConfig: requestOptions.existingConfig,
         previousSchema: requestOptions.previousSchema,
         conversationHistory: requestOptions.conversationHistory,

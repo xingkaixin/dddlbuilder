@@ -106,6 +106,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
       description?: unknown;
       dbType?: unknown;
       locale?: unknown;
+      mode?: unknown;
       templates?: unknown;
       existingConfig?: unknown;
       previousSchema?: unknown;
@@ -122,6 +123,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
     const description = typeof body.description === 'string' ? body.description : '';
     const dbType = typeof body.dbType === 'string' ? body.dbType : '';
     const locale: AppLocale = isAppLocale(body.locale) ? body.locale : 'zh-CN';
+    const mode = body.mode === 'patch' ? 'patch' : 'generate';
     const templates = Array.isArray(body.templates) ? body.templates : [];
     const existingConfig = body.existingConfig;
     const previousSchema = body.previousSchema;
@@ -152,6 +154,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
         description,
         dbType,
         locale,
+        mode,
         templates,
         existingConfig,
         previousSchema,
@@ -206,6 +209,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
     const systemPrompt = buildGenerateTableSystemPrompt({
       dbType,
       locale,
+      mode,
       templates,
       existingConfig,
       previousSchema,
@@ -227,6 +231,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
         descriptionLength: description.length,
         dbType,
         locale,
+        mode,
         templateCount: templates.length,
         hasExistingConfig: existingConfig != null,
         hasPreviousSchema: previousSchema != null,

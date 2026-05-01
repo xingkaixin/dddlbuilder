@@ -12,10 +12,12 @@ import { normalizeGeneratedTableSchema } from '@/utils/normalizeAiEnumValue';
 const AI_GENERATE_API_ENDPOINT = '/api/generate-table';
 
 export interface GenerateTableRequestOptions {
+  mode?: 'generate' | 'patch';
   templates?: unknown[];
   existingConfig?: Partial<{
     schemaName: string;
     tableName: string;
+    tableComment: string;
     rows: FieldRow[];
     indexes: IndexDefinition[];
   }>;
@@ -52,6 +54,7 @@ export async function requestGenerateTable(
       description: payload.description,
       dbType: payload.dbType,
       locale: payload.locale,
+      mode: payload.options?.mode,
       templates: payload.options?.templates,
       existingConfig: payload.options?.existingConfig,
       previousSchema: payload.options?.previousSchema,

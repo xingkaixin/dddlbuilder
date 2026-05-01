@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import type { AICommentMode, DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
-import { createEmptyRow } from '@/utils/helpers';
+import { createEmptyRow, ensureOrder } from '@/utils/helpers';
 import { isTabAvailable } from '@/utils/tabUtils';
 import { Upload } from 'lucide-react';
 import { Header } from './Header';
@@ -8,6 +8,7 @@ import { GlobalDialogs } from './containers/GlobalDialogs';
 import { OutputContainer } from './containers/OutputContainer';
 import { SavedTablesContainer } from './containers/SavedTablesContainer';
 import { TableBuilderContainer } from './containers/TableBuilderContainer';
+import { AISchemaPatchPanel } from './AISchemaPatchPanel';
 import { MainWorkspaceSkeleton } from './MainWorkspaceSkeleton';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
 import { TabBar } from './TabBar';
@@ -52,7 +53,9 @@ import { lintSchema } from '@/utils/schemaLint';
 import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
 import { EXAMPLE_USER_PROFILE_TABLE } from '@/utils/exampleTable';
 import { useTranslation } from 'react-i18next';
+import type { AISchemaChange } from '@/utils/aiSchemaChanges';
 
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { isCnyFireworksEnabled } from '@/config/featureFlags';
 
@@ -740,6 +743,7 @@ function App() {
   const [isErDialogOpen, setIsErDialogOpen] = useState(false);
   const [workspaceSidebarOpen, setWorkspaceSidebarOpen] = useState(true);
   const [outputPanelOpen, setOutputPanelOpen] = useState(true);
+  const [isAISchemaPatchOpen, setIsAISchemaPatchOpen] = useState(false);
   const [isEmptyTrashDialogOpen, setIsEmptyTrashDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -1240,6 +1244,133 @@ function App() {
     ],
   );
 
+  const handleApplyAISchemaChange = useCallback(
+    (change: AISchemaChange, candidateState: PersistedState) => {
+      if (change.kind === 'table') {
+        if (change.type === 'schema_name') {
+          setSchemaName(change.newValue);
+        } else if (change.type === 'table_name') {
+          setTableName(change.newValue);
+        } else {
+          setTableComment(change.newValue);
+        }
+      }
+
+      if (change.kind === 'field') {
+        setActiveTab('fields');
+        setRows((prev) => {
+          if (change.type === 'add' && change.newRow) {
+            const candidateIndex = candidateState.rows.findIndex(
+              (row) => row.fieldName === change.newRow?.fieldName,
+            );
+            const insertIndex =
+              candidateIndex >= 0 ? Math.min(candidateIndex, prev.length) : prev.length;
+            const next = prev.slice();
+            next.splice(insertIndex, 0, change.newRow);
+            return ensureOrder(next);
+          }
+
+          if ((change.type === 'modify' || change.type === 'rename') && change.newRow) {
+            const nextRow = change.newRow;
+            const targetName = change.oldFieldName || change.oldRow?.fieldName || change.fieldName;
+            return ensureOrder(
+              prev.map((row) =>
+                row.fieldName.trim().toLowerCase() === targetName.trim().toLowerCase()
+                  ? nextRow
+                  : row,
+              ),
+            );
+          }
+
+          if (change.type === 'remove') {
+            const targetName = change.oldRow?.fieldName || change.fieldName;
+            return ensureOrder(
+              prev.filter(
+                (row) => row.fieldName.trim().toLowerCase() !== targetName.trim().toLowerCase(),
+              ),
+            );
+          }
+
+          return prev;
+        });
+
+        const candidateIndex = change.newRow
+          ? candidateState.rows.findIndex((row) => row.fieldName === change.newRow?.fieldName)
+          : rows.findIndex((row) => row.fieldName === change.oldRow?.fieldName);
+        if (candidateIndex >= 0) {
+          triggerFieldTableHighlight(candidateIndex);
+        }
+      }
+
+      if (change.kind === 'index') {
+        setActiveTab('indexes');
+        if (change.type === 'add' && change.newIndex) {
+          const nextIndex = change.newIndex;
+          setIndexes((prev) => [...prev, nextIndex]);
+          setTimeout(() => void triggerIndexAnimation(nextIndex.id, 'add'), 50);
+        } else if (change.type === 'modify' && change.newIndex) {
+          const nextIndex = change.newIndex;
+          setIndexes((prev) =>
+            prev.map((index) =>
+              index.name.toLowerCase() === change.indexName.toLowerCase()
+                ? { ...nextIndex, id: index.id }
+                : index,
+            ),
+          );
+          setTimeout(() => void triggerIndexAnimation(nextIndex.id, 'add'), 50);
+        } else if (change.type === 'remove' && change.oldIndex) {
+          void triggerIndexAnimation(change.oldIndex.id, 'remove');
+          setTimeout(() => {
+            setIndexes((prev) =>
+              prev.filter((index) => index.name.toLowerCase() !== change.indexName.toLowerCase()),
+            );
+          }, 500);
+        }
+      }
+
+      void trackEvent('ai_schema_patch_apply', {
+        type: `${change.kind}:${change.type}`,
+      });
+    },
+    [
+      rows,
+      setActiveTab,
+      setIndexes,
+      setRows,
+      setSchemaName,
+      setTableName,
+      setTableComment,
+      trackEvent,
+      triggerFieldTableHighlight,
+      triggerIndexAnimation,
+    ],
+  );
+
+  const handleFocusAISchemaChange = useCallback(
+    (change: AISchemaChange) => {
+      if (change.kind === 'field') {
+        setActiveTab('fields');
+        const targetName = change.oldRow?.fieldName || change.newRow?.fieldName || change.fieldName;
+        const rowIndex = rows.findIndex(
+          (row) => row.fieldName.trim().toLowerCase() === targetName.trim().toLowerCase(),
+        );
+        if (rowIndex >= 0) {
+          triggerFieldTableHighlight(rowIndex);
+        }
+      } else if (change.kind === 'index') {
+        setActiveTab('indexes');
+        const targetIndex =
+          indexes.find((index) => index.name.toLowerCase() === change.indexName.toLowerCase()) ||
+          change.newIndex ||
+          change.oldIndex;
+        if (targetIndex) {
+          void triggerIndexAnimation(targetIndex.id, change.type === 'remove' ? 'remove' : 'add');
+        }
+      }
+    },
+    [indexes, rows, setActiveTab, triggerFieldTableHighlight, triggerIndexAnimation],
+  );
+
   const { handleApplySuggestion, handleImport, handleApplyAIGeneratedSchema } =
     useSchemaApplyActions({
       rows,
@@ -1289,6 +1420,14 @@ function App() {
     setIsErDialogOpen,
     trackEvent,
   });
+
+  const handleOpenAISchemaPatchPanel = useCallback(() => {
+    if (tabs.length === 0 && !isShareView) {
+      handleOpenAIGenerateDialog();
+      return;
+    }
+    setIsAISchemaPatchOpen(true);
+  }, [handleOpenAIGenerateDialog, isShareView, tabs.length]);
 
   const handleViewCurrentVersionHistory = useCallback(() => {
     if (!loadedTableNormalizedName || !loadedTableName) return;
@@ -1610,6 +1749,7 @@ function App() {
                         highlightedRowIndex: highlightedRowIndex,
                         onOpenStorageEstimator: handleOpenStorageEstimator,
                         onOpenMockDataGenerator: handleOpenMockDataGenerator,
+                        onOpenAISchemaPatch: handleOpenAISchemaPatchPanel,
                         onGenerateComments: handleGenerateComments,
                         isGeneratingComments,
                         toolbarLeft: dataTableToolbarLeft,
@@ -1870,6 +2010,7 @@ function App() {
             existingConfig: {
               schemaName,
               tableName,
+              tableComment,
               rows,
               indexes,
             },
@@ -1904,6 +2045,19 @@ function App() {
             onConfirm: handleConfirmEmptyTrash,
           }}
         />
+
+        <Dialog open={isAISchemaPatchOpen} onOpenChange={setIsAISchemaPatchOpen}>
+          <DialogContent className="flex max-h-[86vh] w-[min(720px,calc(100vw-2rem))] max-w-none flex-col overflow-hidden p-0">
+            <DialogTitle className="sr-only">{t('aiPatch.title')}</DialogTitle>
+            <AISchemaPatchPanel
+              dbType={dbType}
+              currentState={currentPersistedState}
+              templates={[...templates, ...tableTemplates]}
+              onApplyChange={handleApplyAISchemaChange}
+              onFocusChange={handleFocusAISchemaChange}
+            />
+          </DialogContent>
+        </Dialog>
 
         {!isShareView && (
           <Suspense fallback={null}>

@@ -15,9 +15,12 @@ interface AIGenerateKeyParams {
   description: string;
   dbType: string;
   locale?: string;
+  mode?: 'generate' | 'patch';
   templates?: unknown[];
   existingConfig?: Partial<{
+    schemaName: string;
     tableName: string;
+    tableComment: string;
     rows: FieldRow[];
     indexes: IndexDefinition[];
   }>;
@@ -37,6 +40,7 @@ export function buildAIGenerateQueryKey({
   description,
   dbType,
   locale,
+  mode,
   templates,
   existingConfig,
   previousSchema,
@@ -49,6 +53,7 @@ export function buildAIGenerateQueryKey({
     description,
     serializeKeyPayload({
       templates: templates ?? [],
+      ...(mode === 'patch' ? { mode } : {}),
       existingConfig: existingConfig ?? null,
       previousSchema: previousSchema ?? null,
       conversationHistory: conversationHistory ?? [],

@@ -611,11 +611,26 @@ export const DDLOutput = memo<DDLOutputProps>(
                     value={routineKind}
                     onValueChange={(value) => setRoutineKind(value as RoutineTemplateKind)}
                     options={[
-                      { value: 'updated_at_trigger', label: t('ddlOutput.routineKinds.updatedAt') },
-                      { value: 'audit_trigger', label: t('ddlOutput.routineKinds.audit') },
-                      { value: 'procedure', label: t('ddlOutput.routineKinds.procedure') },
-                      { value: 'function', label: t('ddlOutput.routineKinds.function') },
-                      { value: 'custom_trigger', label: t('ddlOutput.routineKinds.trigger') },
+                      {
+                        value: 'updated_at_trigger',
+                        label: t('ddlOutput.routineKinds.updatedAt'),
+                      },
+                      {
+                        value: 'audit_trigger',
+                        label: t('ddlOutput.routineKinds.audit'),
+                      },
+                      {
+                        value: 'procedure',
+                        label: t('ddlOutput.routineKinds.procedure'),
+                      },
+                      {
+                        value: 'function',
+                        label: t('ddlOutput.routineKinds.function'),
+                      },
+                      {
+                        value: 'custom_trigger',
+                        label: t('ddlOutput.routineKinds.trigger'),
+                      },
                     ]}
                     triggerClassName="h-9 rounded-md px-3 py-2 text-sm"
                     emptyMessage={t('searchableSelect.empty')}
