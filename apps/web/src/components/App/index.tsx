@@ -2204,7 +2204,7 @@ function App() {
         />
 
         <Dialog open={isAISchemaPatchOpen} onOpenChange={setIsAISchemaPatchOpen}>
-          <DialogContent className="flex max-h-[86vh] w-[min(720px,calc(100vw-2rem))] max-w-none flex-col overflow-hidden p-0">
+          <DialogContent className="flex max-h-[88vh] w-[min(1080px,calc(100vw-2rem))] max-w-none flex-col overflow-hidden p-0">
             <DialogTitle className="sr-only">{t('aiPatch.title')}</DialogTitle>
             <AISchemaPatchPanel
               dbType={dbType}

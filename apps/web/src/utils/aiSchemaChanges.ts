@@ -74,17 +74,27 @@ function buildGeneratedIndexes(
 ): IndexDefinition[] {
   const now = Date.now();
   const existingIds = new Map(baseIndexes.map((index) => [index.name.toLowerCase(), index.id]));
-  const indexes = (schema.indexes || []).map((index, i) => ({
-    id: existingIds.get(index.name.toLowerCase()) ?? `ai-index-${now}-${i}`,
-    name: index.name,
-    fields: index.fields,
-    unique: index.unique,
-    isPrimary: false,
-  }));
-
   const pkFields = schema.fields
     .filter((field) => field.isPrimaryKey)
     .map((field) => ({ name: field.fieldName, direction: 'ASC' as const }));
+  const hasSameFields = (fields: IndexDefinition['fields']) =>
+    pkFields.length > 0 &&
+    fields.length === pkFields.length &&
+    fields.every(
+      (field, index) =>
+        field.name.trim().toLowerCase() === pkFields[index]?.name.trim().toLowerCase() &&
+        field.direction === pkFields[index]?.direction,
+    );
+  const indexes = (schema.indexes || []).map((index, i) => {
+    const isPrimary = /^primary$|^pk_/i.test(index.name) && hasSameFields(index.fields);
+    return {
+      id: existingIds.get(index.name.toLowerCase()) ?? `ai-index-${now}-${i}`,
+      name: index.name,
+      fields: index.fields,
+      unique: isPrimary ? true : index.unique,
+      isPrimary,
+    };
+  });
 
   if (pkFields.length > 0 && !indexes.some((index) => index.isPrimary)) {
     const oldPrimary = baseIndexes.find((index) => index.isPrimary);

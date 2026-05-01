@@ -1,0 +1,26 @@
+import { describe, expect, it } from 'vitest';
+import { buildGenerateTableSystemPrompt } from '../prompts/generateTable.js';
+
+describe('buildGenerateTableSystemPrompt', () => {
+  it('constrains patch mode to the current user instruction', () => {
+    const prompt = buildGenerateTableSystemPrompt({
+      dbType: 'mysql',
+      locale: 'zh-CN',
+      mode: 'patch',
+      existingConfig: {
+        tableName: 'user_profile',
+        rows: [{ fieldName: 'email', fieldType: 'VARCHAR', fieldComment: '邮箱' }],
+        indexes: [
+          { name: 'uk_email', fields: [{ name: 'email', direction: 'ASC' }], unique: true },
+        ],
+      },
+    });
+
+    expect(prompt).toContain('只执行用户本轮指令明确要求的表信息、字段、索引变化');
+    expect(prompt).toContain('用户要求新增字段时，只追加用户要求的字段');
+    expect(prompt).toContain('用户没有要求审查、评审、优化、规范化、全面调整、重构时');
+    expect(prompt).toContain(
+      '未被本轮指令覆盖的字段、字段类型、字段注释、可空、默认值、更新策略、主键、索引、表名、schema 和表注释必须逐值保留当前已有表配置',
+    );
+  });
+});

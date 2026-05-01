@@ -4,7 +4,7 @@ import type {
   ConversationMessage,
   GeneratedTableSchema,
 } from '@ddlbuilder/shared-types/ai-generate';
-import type { FieldRow, IndexDefinition } from '@ddlbuilder/shared-types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 import i18n from '@/i18n';
 import { normalizeGeneratedTableSchema } from '@/utils/normalizeAiEnumValue';
@@ -14,13 +14,7 @@ const AI_GENERATE_API_ENDPOINT = '/api/generate-table';
 export interface GenerateTableRequestOptions {
   mode?: 'generate' | 'patch';
   templates?: unknown[];
-  existingConfig?: Partial<{
-    schemaName: string;
-    tableName: string;
-    tableComment: string;
-    rows: FieldRow[];
-    indexes: IndexDefinition[];
-  }>;
+  existingConfig?: Partial<PersistedState>;
   previousSchema?: GeneratedTableSchema;
   conversationHistory?: ConversationMessage[];
 }

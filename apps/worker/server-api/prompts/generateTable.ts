@@ -43,9 +43,9 @@ const SYSTEM_PROMPT_TEMPLATES: Record<AppLocale, string> = {
 2. 如果用户提供了字段模板或整表蓝本，优先使用其中的字段、索引和结构约束
 3. 字段类型应符合 {{DB}} 数据库语法
 4. 主键字段的 isPrimaryKey 设为 true
-5. 建议包含 created_at 和 updated_at 审计字段
+5. 创建全新表时建议包含 created_at 和 updated_at 审计字段；修改现有表时按用户指令决定是否增删审计字段
 6. schemaName 为可选字段，没有时返回空字符串或省略
-7. designDecisions 应解释关键建模决策和相对上一版的变更原因，例如新增字段、删除字段、字段类型调整、字段命名调整和索引调整
+7. designDecisions 应解释本次生成或修改涉及的关键建模决策
 8. 只返回 JSON，不要有其他描述文字`,
   'en-US': `You are a senior database architect. Generate a table schema that follows {{DB}} syntax based on the user's natural-language request.
 {{TEMPLATE_CONTEXT}}{{EXISTING_CONTEXT}}{{PATCH_CONTEXT}}
@@ -88,9 +88,9 @@ Notes:
 2. If field templates or table blueprints are provided, prioritize their fields, indexes, and structural constraints.
 3. Field types must be valid for {{DB}}.
 4. Set isPrimaryKey=true for primary-key fields.
-5. Prefer including created_at and updated_at audit fields.
+5. For a new table, prefer including created_at and updated_at audit fields. For an existing table edit, add or remove audit fields only when requested by the user.
 6. schemaName is optional; return an empty string or omit it when not needed.
-7. designDecisions should explain key modeling choices and changes from the previous schema, such as added fields, removed fields, type changes, renames, and index changes.
+7. designDecisions should explain the key modeling decisions involved in this generation or edit.
 8. Return JSON only, with no extra text.`,
 };
 
@@ -118,8 +118,8 @@ export const buildGenerateTableSystemPrompt = (params: {
   const patchContext =
     mode === 'patch'
       ? locale === 'zh-CN'
-        ? `\n\n本次任务类型：对现有表做指令式修改。\n执行规则：\n1. 只处理用户本轮指令明确提到的表说明、字段、索引变化\n2. 未被用户提到的字段、字段类型、字段注释、可空、默认值、更新策略、索引必须逐值保留当前已有表配置\n3. 用户要求新增字段时，返回完整表结构时只追加这些字段，并保持已有字段和索引原值\n4. 只有当用户明确要求“审查”、“优化”、“评审”或“全面调整”时，才输出全表优化调整\n5. designDecisions 只解释本轮指令对应的变更`
-        : `\n\nTask type: instruction-based edit on an existing table.\nRules:\n1. Only apply table-info, field, and index changes explicitly requested in the current user instruction.\n2. Fields, field types, comments, nullability, defaults, on-update rules, and indexes not mentioned by the user must keep the exact values from the current table config.\n3. When the user asks to add fields, return the full schema with only those fields appended and keep existing fields and indexes unchanged.\n4. Full-table optimization changes are allowed only when the user explicitly asks for review, optimization, or comprehensive adjustment.\n5. designDecisions should explain only the changes requested in this turn.`
+        ? `\n\n本次任务类型：对现有表做指令式修改。\n这些规则优先级高于通用建表建议：\n1. 以当前已有表配置作为完整基线，返回完整表结构 JSON\n2. 只执行用户本轮指令明确要求的表信息、字段、索引变化\n3. 当用户指令是明确动作，例如“增加 A、B 字段”“删除 A 字段”“把 A 改为 B”时，本轮只能产生这些点名对象的变更\n4. 用户要求新增字段时，只追加用户要求的字段；字段类型、可空、默认值和注释按用户给定信息与数据库语法补齐\n5. 用户要求删除字段时，只删除用户点名的字段\n6. 用户要求调整字段时，只调整用户点名字段的指定属性\n7. 用户要求调整索引时，只调整用户点名或直接相关的索引\n8. 用户没有明确要求修改某个已有字段时，禁止改变该字段的 fieldType、nullable、defaultKind、defaultValue、onUpdate、fieldComment、isPrimaryKey 或顺序\n9. 用户没有要求审查、评审、优化、规范化、全面调整、重构时，不输出额外的质量评审、字段批评、索引建议、命名建议、审计字段建议或全表改造\n10. 未被本轮指令覆盖的字段、字段类型、字段注释、可空、默认值、更新策略、主键、索引、表名、schema 和表注释必须逐值保留当前已有表配置；复制原值，不要做类型同义词转换、默认值补全、大小写归一、字段顺序整理\n11. designDecisions 只说明本轮实际执行的变更原因，避免对保留项做评价`
+        : `\n\nTask type: instruction-based edit on an existing table.\nThese rules have higher priority than general table-design recommendations:\n1. Use the current table config as the complete baseline and return a full schema JSON.\n2. Apply only table-info, field, and index changes explicitly requested in the current user instruction.\n3. When the instruction is explicit, such as "add fields A and B", "remove field A", or "change A to B", this turn may produce changes only for those named objects.\n4. When the user asks to add fields, append only the requested fields; infer type, nullability, defaults, and comments from the user-provided details and database syntax.\n5. When the user asks to remove fields, remove only the named fields.\n6. When the user asks to update fields, update only the named properties of the named fields.\n7. When the user asks to update indexes, update only the named or directly related indexes.\n8. Unless the user explicitly asks to modify an existing field, do not change that field's fieldType, nullable, defaultKind, defaultValue, onUpdate, fieldComment, isPrimaryKey, or order.\n9. Unless the user asks for review, optimization, audit, normalization, comprehensive adjustment, or refactoring, do not output extra quality reviews, field criticism, index suggestions, naming suggestions, audit-field suggestions, or full-table redesigns.\n10. Fields, field types, comments, nullability, defaults, on-update rules, primary keys, indexes, table name, schema, and table comment outside the current instruction must keep the exact values from the current table config. Copy original values and do not apply type synonym conversion, default completion, case normalization, or field reordering.\n11. designDecisions should explain only the changes actually made in this turn and avoid evaluating preserved items.`
       : '';
   const previousSchemaContext = previousSchema
     ? locale === 'zh-CN'

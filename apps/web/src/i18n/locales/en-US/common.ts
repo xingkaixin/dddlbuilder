@@ -833,10 +833,27 @@ export const enUSCommon = {
     tableGenerating: 'Generating...',
   },
   aiPatch: {
-    title: 'AI Conversational Edit',
-    description: 'Generate candidate changes from the current schema and apply them one by one.',
+    title: 'AI Edit Current Table',
+    description:
+      'Generate reviewable schema changes from the current table, fields, indexes, and database type.',
     inputPlaceholder:
       'Describe the schema change, e.g. add deleted_at for soft delete and change the phone unique index to phone plus tenant_id',
+    inputHint:
+      'Supports explicit add/remove/update requests and broader edit directions. Press Command/Ctrl + Enter to send.',
+    contextTitle: 'AI will edit from this context',
+    intentTitle: 'How should this table change?',
+    directionTitle: 'Edit direction',
+    changeDetailTitle: 'Change details',
+    emptyResult: 'After you enter an edit direction, AI will return the direction here.',
+    emptyChanges: 'Generated selectable changes will appear here.',
+    noDirection: 'Concrete changes were returned for this request.',
+    oldValue: 'Old',
+    newValue: 'New',
+    selectAll: 'Accept all',
+    unselectAll: 'Reject all',
+    applySelected: 'Apply {{count}} changes',
+    applyHint: '{{pending}} pending, {{accepted}} applied',
+    toggleChange: 'Toggle change selection',
     generating: 'Analyzing current schema... ({{count}} fields generated)',
     noChanges: 'No applicable schema changes were found this time',
     changeCount: '{{count}} pending',
@@ -876,6 +893,15 @@ export const enUSCommon = {
       nullable: 'nullable',
       default: 'default',
       comment: 'comment',
+    },
+    context: {
+      database: 'Database',
+      table: 'Table',
+      fields: 'Fields',
+      indexes: 'Indexes',
+      moreConfig: 'Other config',
+      moreConfigValue:
+        'Foreign keys {{foreignKeys}} · grants {{authObjects}} · partitions {{partitions}}',
     },
   },
   importSql: {
