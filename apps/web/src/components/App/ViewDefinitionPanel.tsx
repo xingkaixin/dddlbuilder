@@ -20,8 +20,10 @@ export function ViewDefinitionPanel({
   const { t } = useTranslation();
 
   return (
-    <div className="rounded-lg border bg-card shadow-sm">
-      <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
+    <div className="relative overflow-hidden rounded-lg border bg-card shadow-sm">
+      <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
+
+      <div className="relative flex items-center justify-between gap-3 border-b px-4 py-3">
         <div className="flex items-center gap-2 text-sm font-semibold">
           <Code2 className="h-4 w-4 text-primary" />
           {t('viewDefinition.title')}
@@ -34,7 +36,7 @@ export function ViewDefinitionPanel({
           {t('viewDefinition.createOrReplace')}
         </Label>
       </div>
-      <div className="space-y-3 p-4">
+      <div className="relative space-y-3 p-4">
         <Label htmlFor="view-definition">{t('viewDefinition.sql')}</Label>
         <Textarea
           id="view-definition"

@@ -18,31 +18,31 @@ export const AuthPanel = memo<AuthPanelProps>(
     const { t } = useTranslation();
 
     return (
-      <div className="relative rounded-lg border bg-card/95 shadow-lg shadow-primary/5">
+      <div className="relative rounded-lg border bg-card/95 shadow-sm">
         <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
 
-        <div className="relative space-y-6 p-5 sm:p-6">
-          <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-inner">
-              <ShieldUser className="h-7 w-7" />
+        <div className="relative border-b px-3 py-2.5">
+          <div className="flex items-start gap-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary shadow-inner">
+              <ShieldUser className="h-5 w-5" />
             </div>
-            <div className="min-w-0 pt-1">
-              <h3 className="text-xl font-semibold tracking-normal text-foreground">
-                {t('authPanel.title')}
-              </h3>
-              <p className="mt-1 text-sm text-muted-foreground">{t('authPanel.description')}</p>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-foreground">{t('authPanel.title')}</h3>
+              <p className="text-xs text-muted-foreground">{t('authPanel.description')}</p>
             </div>
           </div>
+        </div>
 
-          <section className="rounded-lg border bg-background/65 p-4 shadow-sm">
-            <div className="mb-4 flex items-center gap-3">
-              <span className="h-5 w-1 rounded-full bg-primary" />
+        <div className="relative space-y-3 p-3">
+          <section className="rounded-lg border bg-background/65 p-3 shadow-sm">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="h-4 w-1 rounded-full bg-primary" />
               <h4 className="text-sm font-semibold text-foreground">
                 {t('authPanel.manualTitle')}
               </h4>
             </div>
 
-            <div className="flex flex-col gap-3 lg:flex-row">
+            <div className="flex flex-col gap-2 lg:flex-row">
               <Input
                 placeholder={t('authPanel.inputPlaceholder')}
                 value={authInput}
@@ -58,12 +58,13 @@ export const AuthPanel = memo<AuthPanelProps>(
                     onRemoveAuthObject(authObjects.length - 1);
                   }
                 }}
-                className="h-12 flex-1 bg-card text-base transition-all duration-200 focus-visible:ring-primary/30"
+                className="h-8 flex-1 bg-card text-sm transition-all duration-200 focus-visible:ring-primary/30"
               />
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    className="h-12 min-w-28 rounded-md text-base font-semibold shadow-md shadow-primary/20"
+                    size="sm"
+                    className="h-8 min-w-20 rounded-md px-3 text-sm font-semibold shadow-sm shadow-primary/20"
                     disabled={!authInput.trim()}
                     onClick={() => onAddAuthObject(authInput.trim())}
                   >
@@ -76,30 +77,30 @@ export const AuthPanel = memo<AuthPanelProps>(
               </Tooltip>
             </div>
 
-            <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-              <Info className="h-4 w-4" />
+            <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Info className="h-3.5 w-3.5" />
               {t('authPanel.helpText')}
             </p>
           </section>
 
-          <section className="rounded-lg border bg-background/65 p-4 shadow-sm">
-            <div className="mb-4 flex items-center gap-3">
-              <span className="h-5 w-1 rounded-full bg-primary" />
+          <section className="rounded-lg border bg-background/65 p-3 shadow-sm">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="h-4 w-1 rounded-full bg-primary" />
               <h4 className="text-sm font-semibold text-foreground">
                 {t('authPanel.addedCount', { count: authObjects.length })}
               </h4>
             </div>
 
             {authObjects.length > 0 ? (
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 {authObjects.map((authObj, index) => (
                   <div
                     key={index}
-                    className="group/item flex min-h-16 items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm transition-all duration-200 hover:border-primary/40 hover:shadow-md hover:shadow-primary/5"
+                    className="group/item flex min-h-11 items-center justify-between gap-2 rounded-md border bg-card px-3 py-2 shadow-sm transition-all duration-200 hover:border-primary/40 hover:shadow-md hover:shadow-primary/5"
                   >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                        <UserRound className="h-4.5 w-4.5" />
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <UserRound className="h-3.5 w-3.5" />
                       </span>
                       <span className="truncate text-sm font-semibold text-foreground">
                         {authObj}
@@ -110,10 +111,10 @@ export const AuthPanel = memo<AuthPanelProps>(
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                          className="h-7 w-7 shrink-0 text-muted-foreground hover:bg-primary/10 hover:text-primary"
                           onClick={() => onRemoveAuthObject(index)}
                         >
-                          <X className="h-4 w-4" />
+                          <X className="h-3.5 w-3.5" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -124,7 +125,7 @@ export const AuthPanel = memo<AuthPanelProps>(
                 ))}
               </div>
             ) : (
-              <div className="rounded-lg border border-dashed bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
+              <div className="rounded-lg border border-dashed bg-muted/30 px-3 py-8 text-center text-sm text-muted-foreground">
                 {t('authPanel.empty')}
               </div>
             )}
