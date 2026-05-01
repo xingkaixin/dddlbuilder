@@ -545,10 +545,7 @@ describe('usePersistedState', () => {
     });
 
     act(() => {
-      result.current.selectWorkspaceSnapshot(
-        { kind: 'draft', draftId: 'default' },
-        tabSnapshot,
-      );
+      result.current.selectWorkspaceSnapshot({ kind: 'draft', draftId: 'default' }, tabSnapshot);
     });
 
     await waitFor(async () => {

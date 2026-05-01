@@ -376,7 +376,11 @@ describe('workspaceIncrementalSyncService', () => {
   });
 
   it('推送后拉回已接受版本时应保留本地继续编辑的内容', async () => {
-    await writeDraft('draft-1', { state: createState('latest_local_draft'), updatedAt: 200 }, scope);
+    await writeDraft(
+      'draft-1',
+      { state: createState('latest_local_draft'), updatedAt: 200 },
+      scope,
+    );
     await enqueueWorkspaceOutboxItem({
       workspaceId: 'ws-1',
       entityType: 'draft',

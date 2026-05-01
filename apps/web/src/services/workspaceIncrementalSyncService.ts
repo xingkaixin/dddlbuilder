@@ -64,8 +64,7 @@ const normalizeDraftEntityId = (entityId: string) =>
 const buildWorkspaceEntityKey = (
   entityType: WorkspaceEntityEnvelope['entityType'],
   entityId: string,
-) =>
-  `${entityType}:${entityType === 'draft' ? normalizeDraftEntityId(entityId) : entityId}`;
+) => `${entityType}:${entityType === 'draft' ? normalizeDraftEntityId(entityId) : entityId}`;
 
 const buildWorkspaceEntityVersionKey = (
   entityType: WorkspaceEntityEnvelope['entityType'],
