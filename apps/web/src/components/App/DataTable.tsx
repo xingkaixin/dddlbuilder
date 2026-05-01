@@ -39,6 +39,7 @@ interface DataTableProps {
   onOpenAISchemaPatch?: () => void;
   onGenerateComments?: (mode: AICommentMode, targetLocale?: 'zh-CN' | 'en-US') => void;
   isGeneratingComments?: boolean;
+  onOpenAIIndexAdvisor?: () => void;
 }
 
 interface SortableDataRowProps {
@@ -150,6 +151,7 @@ export const DataTable = memo<DataTableProps>(
     onOpenAISchemaPatch,
     onGenerateComments,
     isGeneratingComments,
+    onOpenAIIndexAdvisor,
   }) => {
     const { t } = useTranslation();
     const rows = useFieldStore((state) => state.rows);
@@ -361,6 +363,7 @@ export const DataTable = memo<DataTableProps>(
           onOpenAISchemaPatch={onOpenAISchemaPatch}
           onGenerateComments={onGenerateComments}
           isGeneratingComments={isGeneratingComments}
+          onOpenAIIndexAdvisor={onOpenAIIndexAdvisor}
           freezeEnabled={freezeEnabled}
           onFreezeEnabledChange={onFreezeEnabledChange}
           effectiveFreezeColumns={effectiveFreezeColumns}

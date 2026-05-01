@@ -515,6 +515,8 @@ export const enUSCommon = {
       aiCommentsFillMissing: 'Fill Missing Comments',
       aiCommentsTranslateZh: 'Translate to Chinese',
       aiCommentsTranslateEn: 'Translate to English',
+      aiIndexAdvisor: 'AI Index Advisor',
+      aiIndexAdvisorTip: 'Recommend index changes from typical query SQL',
       freeze: 'Freeze',
       freezeTip: 'Keep leading columns visible while scrolling horizontally',
       freezeAria: 'Enable frozen columns in field table',
@@ -1250,6 +1252,39 @@ export const enUSCommon = {
   aiComments: {
     done: 'AI comments updated',
     schemaRequired: 'Enter field names first',
+  },
+  aiIndexAdvisor: {
+    title: 'AI Index Advisor',
+    description:
+      'Enter typical query SQL for this table. AI will review fields and existing indexes.',
+    queryLabel: 'Typical query SQL',
+    placeholder: 'One query per line, or paste slow query snippets.',
+    placeholderExample:
+      'SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 20;\nSELECT status, COUNT(*) FROM orders WHERE created_at >= ? GROUP BY status;',
+    analyze: 'Analyze Indexes',
+    running: 'Analyzing',
+    summaryFallback: 'Index recommendations generated.',
+    empty: 'No clear index recommendation for these query patterns.',
+    applyIndex: 'Add Index',
+    targetIndex: 'Related index: {{name}}',
+    tableNameRequired:
+      'Enter a table name first. AI Index Advisor needs a target table to analyze query patterns.',
+    schemaRequired: 'Enter field names first',
+    queryRequired: 'Enter typical query SQL',
+    indexExists: 'An index with the same field order already exists',
+    indexApplied: 'Index recommendation added',
+    category: {
+      missing_index: 'Missing Index',
+      redundant_index: 'Redundant Index',
+      order_optimization: 'Order Optimization',
+      query_rewrite: 'Query Rewrite',
+      general: 'General',
+    },
+    confidence: {
+      high: 'High confidence',
+      medium: 'Medium confidence',
+      low: 'Low confidence',
+    },
   },
   fieldEnums: {
     nullable: {

@@ -69,3 +69,50 @@ export interface AICommentResult {
   tableComment: string;
   fields: AICommentFieldResult[];
 }
+
+export interface AIIndexAdvisorFieldInput {
+  fieldName: string;
+  fieldType: string;
+  fieldComment: string;
+  nullable: boolean;
+}
+
+export interface AIIndexAdvisorIndexInput {
+  name: string;
+  fields: Array<{ name: string; direction: 'ASC' | 'DESC' }>;
+  unique: boolean;
+  isPrimary?: boolean;
+}
+
+export interface AIIndexAdvisorRequest {
+  dbType: string;
+  schemaName?: string;
+  tableName: string;
+  tableComment: string;
+  fields: AIIndexAdvisorFieldInput[];
+  indexes: AIIndexAdvisorIndexInput[];
+  queryPatterns: string;
+}
+
+export type AIIndexAdvisorRecommendationCategory =
+  | 'missing_index'
+  | 'redundant_index'
+  | 'order_optimization'
+  | 'query_rewrite'
+  | 'general';
+
+export interface AIIndexAdvisorRecommendation {
+  id: string;
+  category: AIIndexAdvisorRecommendationCategory;
+  title: string;
+  rationale: string;
+  confidence: 'high' | 'medium' | 'low';
+  index?: AIIndexAdvisorIndexInput;
+  targetIndexName?: string;
+  affectedQueries?: string[];
+}
+
+export interface AIIndexAdvisorResult {
+  summary: string;
+  recommendations: AIIndexAdvisorRecommendation[];
+}

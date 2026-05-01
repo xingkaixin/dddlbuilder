@@ -19,6 +19,7 @@ import {
   Plus,
   Pin,
   ListPlus,
+  SearchCheck,
   TableProperties,
 } from 'lucide-react';
 import { COLUMN_HEADERS } from '@/utils/constants';
@@ -33,6 +34,7 @@ interface DataTableToolbarProps {
   onOpenAISchemaPatch?: () => void;
   onGenerateComments?: (mode: AICommentMode, targetLocale?: 'zh-CN' | 'en-US') => void;
   isGeneratingComments?: boolean;
+  onOpenAIIndexAdvisor?: () => void;
   freezeEnabled: boolean;
   onFreezeEnabledChange: (value: boolean) => void;
   effectiveFreezeColumns: number;
@@ -49,6 +51,7 @@ export function DataTableToolbar({
   onOpenAISchemaPatch,
   onGenerateComments,
   isGeneratingComments = false,
+  onOpenAIIndexAdvisor,
   freezeEnabled,
   onFreezeEnabledChange,
   effectiveFreezeColumns,
@@ -152,6 +155,24 @@ export function DataTableToolbar({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          )}
+          {onOpenAIIndexAdvisor && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onOpenAIIndexAdvisor}
+                  className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md border-primary/20 hover:border-primary/50 text-muted-foreground hover:text-primary"
+                >
+                  <SearchCheck className="h-3.5 w-3.5" />
+                  {t('dataTable.toolbar.aiIndexAdvisor')}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{t('dataTable.toolbar.aiIndexAdvisorTip')}</p>
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
 

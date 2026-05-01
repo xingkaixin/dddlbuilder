@@ -498,6 +498,8 @@ export const zhCNCommon = {
       aiCommentsFillMissing: '补全缺失注释',
       aiCommentsTranslateZh: '翻译为中文',
       aiCommentsTranslateEn: '翻译为英文',
+      aiIndexAdvisor: 'AI 索引顾问',
+      aiIndexAdvisorTip: '根据典型查询 SQL 推荐索引优化方案',
       freeze: '冻结',
       freezeTip: '锁定前几列，使其在横向滚动时保持可见',
       freezeAria: '启用字段表格列冻结',
@@ -1223,6 +1225,37 @@ export const zhCNCommon = {
   aiComments: {
     done: 'AI 注释已更新',
     schemaRequired: '请先填写字段名',
+  },
+  aiIndexAdvisor: {
+    title: 'AI 索引优化顾问',
+    description: '输入当前表的典型查询 SQL，AI 会结合字段和现有索引给出优化建议。',
+    queryLabel: '典型查询 SQL',
+    placeholder: '每行一个查询 SQL，或粘贴慢查询片段。',
+    placeholderExample:
+      'SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 20;\nSELECT status, COUNT(*) FROM orders WHERE created_at >= ? GROUP BY status;',
+    analyze: '分析索引',
+    running: '分析中',
+    summaryFallback: '已生成索引建议。',
+    empty: '当前查询模式下暂无明确索引建议。',
+    applyIndex: '添加索引',
+    targetIndex: '相关索引：{{name}}',
+    tableNameRequired: '请先填写表名，AI 索引顾问需要明确的目标表才能分析查询模式。',
+    schemaRequired: '请先填写字段名',
+    queryRequired: '请输入典型查询 SQL',
+    indexExists: '相同字段顺序的索引已存在',
+    indexApplied: '索引建议已添加',
+    category: {
+      missing_index: '缺失索引',
+      redundant_index: '冗余索引',
+      order_optimization: '顺序优化',
+      query_rewrite: '查询改写',
+      general: '通用建议',
+    },
+    confidence: {
+      high: '高置信',
+      medium: '中置信',
+      low: '低置信',
+    },
   },
   fieldEnums: {
     nullable: {

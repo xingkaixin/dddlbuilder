@@ -3,7 +3,12 @@ import { authenticateRequest } from './auth.js';
 import { applyCreditMutation, type CreditLedgerSource } from './credits.js';
 import type { ApiEnv } from './context.js';
 
-export type AIRouteKey = 'explain' | 'review' | 'generate-table' | 'generate-comments';
+export type AIRouteKey =
+  | 'explain'
+  | 'review'
+  | 'generate-table'
+  | 'generate-comments'
+  | 'index-advisor';
 
 export type AIUsageReservation = {
   usageEventId: string;
@@ -18,6 +23,7 @@ const ROUTE_SOURCES: Record<AIRouteKey, CreditLedgerSource> = {
   review: 'ai_review',
   'generate-table': 'ai_generate',
   'generate-comments': 'ai_generate',
+  'index-advisor': 'ai_generate',
 };
 
 const buildUsageEventId = (requestId: string) => `usage:${requestId}`;

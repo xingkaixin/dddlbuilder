@@ -222,5 +222,11 @@ export type {
   AICommentResult,
   AICommentFieldInput,
   AICommentFieldResult,
+  AIIndexAdvisorFieldInput,
+  AIIndexAdvisorIndexInput,
+  AIIndexAdvisorRequest,
+  AIIndexAdvisorRecommendation,
+  AIIndexAdvisorRecommendationCategory,
+  AIIndexAdvisorResult,
 } from './aiGenerate.js';
 export type { ErNodeData, ErEdgeData } from './erDiagram.js';
