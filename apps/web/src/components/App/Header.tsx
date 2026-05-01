@@ -13,6 +13,7 @@ import {
   MailCheck,
   Settings,
   Sparkles,
+  MessageCircle,
 } from 'lucide-react';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { LocaleSwitcher } from './LocaleSwitcher';
@@ -49,6 +50,8 @@ const ImportSqlDialog = lazy(() =>
     default: module.ImportSqlDialog,
   })),
 );
+
+const FEEDBACK_URL = 'https://my.feishu.cn/share/base/form/shrcnqGnCdcvgRomQ5syagGW2He';
 
 interface HeaderProps {
   onShare: () => void;
@@ -451,6 +454,22 @@ export const Header = memo<HeaderProps>(
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>{t('header.viewDocs')}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <a
+                        href={FEEDBACK_URL}
+                        className={actionBtnClass}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <MessageCircle className="h-4 w-4" aria-hidden />
+                        {t('header.feedback')}
+                      </a>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{t('header.viewFeedback')}</p>
                     </TooltipContent>
                   </Tooltip>
                   {authSession.status === 'signed_in' ? (

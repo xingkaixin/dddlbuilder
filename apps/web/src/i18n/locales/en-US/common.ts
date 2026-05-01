@@ -21,6 +21,8 @@ export const enUSCommon = {
     importSql: 'Import Schema',
     docs: 'Docs',
     viewDocs: 'Open documentation',
+    feedback: 'Feedback',
+    viewFeedback: 'Open feedback',
     shareLink: 'Share',
     generateShareLink: 'Generate share link',
     generatingShareLink: 'Generating...',

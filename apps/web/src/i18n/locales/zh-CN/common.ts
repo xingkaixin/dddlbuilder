@@ -21,6 +21,8 @@ export const zhCNCommon = {
     importSql: '导入结构',
     docs: '帮助文档',
     viewDocs: '查看使用文档',
+    feedback: '问题反馈',
+    viewFeedback: '打开问题反馈',
     shareLink: '分享链接',
     generateShareLink: '生成分享链接',
     generatingShareLink: '生成中...',

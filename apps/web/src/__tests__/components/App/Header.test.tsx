@@ -151,6 +151,19 @@ describe('Header', () => {
     expect(onPlayFireworks).toHaveBeenCalledTimes(1);
   });
 
+  it('应展示问题反馈入口并在新标签页打开', () => {
+    render(<Header {...baseProps} />);
+
+    const feedbackLink = screen.getByRole('link', { name: '问题反馈' });
+
+    expect(feedbackLink).toHaveAttribute(
+      'href',
+      'https://my.feishu.cn/share/base/form/shrcnqGnCdcvgRomQ5syagGW2He',
+    );
+    expect(feedbackLink).toHaveAttribute('target', '_blank');
+    expect(feedbackLink).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+
   it('未登录时应展示登录入口并可提交邮箱密码登录', async () => {
     const { useAuthSession } = await import('@/auth/AuthSessionProvider');
     vi.mocked(useAuthSession).mockReturnValue({
