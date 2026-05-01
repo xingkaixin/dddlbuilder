@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { buildWorkspaceContentHash } from '@/services/workspaceIncrementalSyncService';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
+import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import {
   addSavedTable,
   deleteSavedTable,
@@ -40,6 +41,24 @@ export function useSavedTables() {
   const [trashedTables, setTrashedTables] = useState<SavedTableSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const refreshRequestRef = useRef(0);
+
+  const currentScope = useMemo<WorkspaceScope | null>(() => {
+    if (authSession.status === 'loading') {
+      return null;
+    }
+    if (authSession.status === 'signed_in') {
+      if (!authSession.userId || !authSession.workspaceId) {
+        return null;
+      }
+      return {
+        kind: 'user',
+        userId: authSession.userId,
+        workspaceId: authSession.workspaceId,
+      };
+    }
+    return getAnonymousWorkspaceScope();
+  }, [authSession.status, authSession.userId, authSession.workspaceId]);
 
   const queueSavedTableChange = useCallback(
     async (record: SavedTableRecord, op: 'upsert' | 'delete' = 'upsert') => {
@@ -66,36 +85,38 @@ export function useSavedTables() {
   );
 
   const refresh = useCallback(async () => {
+    const requestId = ++refreshRequestRef.current;
+    if (!currentScope) {
+      setLoading(true);
+      return;
+    }
+
+    setCurrentWorkspaceScope(currentScope);
     try {
       setLoading(true);
       const [metadata, trashedMetadata] = await Promise.all([
-        listSavedTableMetadata(),
-        listTrashedSavedTableMetadata(),
+        listSavedTableMetadata(currentScope),
+        listTrashedSavedTableMetadata(currentScope),
       ]);
+      if (refreshRequestRef.current !== requestId) return;
       const sorted = sortSavedTablesByCreatedAt(metadata);
       const sortedTrashed = trashedMetadata.sort((a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0));
       setSavedTables(sorted);
       setTrashedTables(sortedTrashed);
       setError(null);
     } catch (err) {
+      if (refreshRequestRef.current !== requestId) return;
       setError(err instanceof Error ? err.message : '读取失败');
     } finally {
-      setLoading(false);
+      if (refreshRequestRef.current === requestId) {
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [currentScope]);
 
   useEffect(() => {
-    const nextScope =
-      authSession.status === 'signed_in' && authSession.userId
-        ? {
-            kind: 'user' as const,
-            userId: authSession.userId,
-            ...(authSession.workspaceId ? { workspaceId: authSession.workspaceId } : {}),
-          }
-        : getAnonymousWorkspaceScope();
-    setCurrentWorkspaceScope(nextScope);
     void refresh();
-  }, [authSession.status, authSession.userId, authSession.workspaceId, refresh]);
+  }, [refresh]);
 
   useEffect(() => {
     const handleSnapshotApplied = () => {

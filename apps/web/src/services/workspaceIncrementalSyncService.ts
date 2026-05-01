@@ -38,6 +38,7 @@ import {
   incrementWorkspaceOutboxAttempts,
   listWorkspaceOutboxItems,
   readWorkspaceSyncMeta,
+  rebaseWorkspaceOutboxItems,
   removeWorkspaceConflicts,
   removeWorkspaceOutboxItems,
   writeWorkspaceEntityMeta,
@@ -59,6 +60,23 @@ const toErrorMessage = (payload: ApiErrorPayload | null, fallback: string) =>
 
 const normalizeDraftEntityId = (entityId: string) =>
   entityId === GLOBAL_DRAFT_ENTITY_ID ? DEFAULT_DRAFT_ID : entityId;
+
+const buildWorkspaceEntityKey = (
+  entityType: WorkspaceEntityEnvelope['entityType'],
+  entityId: string,
+) =>
+  `${entityType}:${entityType === 'draft' ? normalizeDraftEntityId(entityId) : entityId}`;
+
+const buildWorkspaceEntityVersionKey = (
+  entityType: WorkspaceEntityEnvelope['entityType'],
+  entityId: string,
+  version: number,
+) => `${buildWorkspaceEntityKey(entityType, entityId)}:${version}`;
+
+const listPendingEntityKeys = async (workspaceId: string) => {
+  const outbox = await listWorkspaceOutboxItems(workspaceId);
+  return new Set(outbox.map((item) => buildWorkspaceEntityKey(item.entityType, item.entityId)));
+};
 
 const dispatchWorkspaceSnapshotApplied = () => {
   if (typeof window !== 'undefined') {
@@ -265,10 +283,27 @@ const applyWorkspaceEntity = async (
   });
 };
 
-const applyPulledChanges = async (response: WorkspaceChangesResponse, scope: WorkspaceScope) => {
+const applyPulledChanges = async (
+  response: WorkspaceChangesResponse,
+  scope: WorkspaceScope,
+  pendingEntityKeys: Set<string>,
+  skippedEntityVersionKeys = new Set<string>(),
+) => {
+  let appliedCount = 0;
   for (const entity of response.entities) {
+    const entityKey = buildWorkspaceEntityKey(entity.entityType, entity.entityId);
+    const entityVersionKey = buildWorkspaceEntityVersionKey(
+      entity.entityType,
+      entity.entityId,
+      entity.version,
+    );
+    if (pendingEntityKeys.has(entityKey) || skippedEntityVersionKeys.has(entityVersionKey)) {
+      continue;
+    }
     await applyWorkspaceEntity(entity, scope);
+    appliedCount++;
   }
+  return appliedCount;
 };
 
 const hasWorkspaceContent = async (scope: WorkspaceScope) => {
@@ -431,8 +466,9 @@ export const syncWorkspaceOnce = async (
   }
 
   const existingMeta = await readWorkspaceSyncMeta(scope.workspaceId);
+  const pendingEntityKeys = await listPendingEntityKeys(scope.workspaceId);
   const pulled = await pullWorkspaceChanges(scope.workspaceId, existingMeta?.cursor ?? 0);
-  await applyPulledChanges(pulled, scope);
+  const appliedCount = await applyPulledChanges(pulled, scope, pendingEntityKeys);
   await writeWorkspaceSyncMeta({
     id: scope.workspaceId,
     userId: scope.userId,
@@ -443,7 +479,7 @@ export const syncWorkspaceOnce = async (
 
   const outbox = await listWorkspaceOutboxItems(scope.workspaceId);
   if (outbox.length === 0) {
-    if (pulled.entities.length > 0) {
+    if (appliedCount > 0) {
       dispatchWorkspaceSnapshotApplied();
     }
     return { status: 'synced', cursor: pulled.cursor, conflictCount: 0 };
@@ -480,6 +516,14 @@ export const syncWorkspaceOnce = async (
   await removeWorkspaceConflicts(
     [...acceptedIds].map((clientMutationId) => `${scope.workspaceId}:${clientMutationId}`),
   );
+  for (const accepted of pushed.accepted) {
+    await rebaseWorkspaceOutboxItems({
+      workspaceId: scope.workspaceId,
+      entityType: accepted.entityType,
+      entityId: accepted.entityId,
+      baseVersion: accepted.version,
+    });
+  }
 
   const rejectedItems = outbox.filter((item) => !acceptedIds.has(item.id));
   if (rejectedItems.length > 0) {
@@ -490,7 +534,17 @@ export const syncWorkspaceOnce = async (
   }
 
   const nextPulled = await pullWorkspaceChanges(scope.workspaceId, pulled.cursor);
-  await applyPulledChanges(nextPulled, scope);
+  const acceptedEntityVersionKeys = new Set(
+    pushed.accepted.map((item) =>
+      buildWorkspaceEntityVersionKey(item.entityType, item.entityId, item.version),
+    ),
+  );
+  const nextAppliedCount = await applyPulledChanges(
+    nextPulled,
+    scope,
+    await listPendingEntityKeys(scope.workspaceId),
+    acceptedEntityVersionKeys,
+  );
   await writeWorkspaceSyncMeta({
     id: scope.workspaceId,
     userId: scope.userId,
@@ -498,7 +552,9 @@ export const syncWorkspaceOnce = async (
     lastPulledAt: Date.now(),
     lastPushedAt: Date.now(),
   });
-  dispatchWorkspaceSnapshotApplied();
+  if (appliedCount + nextAppliedCount > 0) {
+    dispatchWorkspaceSnapshotApplied();
+  }
 
   return {
     status: pushed.conflicts.length > 0 ? 'conflict' : 'synced',

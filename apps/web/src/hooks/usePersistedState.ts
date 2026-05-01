@@ -130,6 +130,9 @@ export function usePersistedState(): UsePersistedStateReturn {
         : getAnonymousWorkspaceScope(),
     [authSession.status, authSession.userId, authSession.workspaceId],
   );
+  const workspaceScopeReady =
+    authSession.status !== 'loading' &&
+    (authSession.status !== 'signed_in' || Boolean(authSession.workspaceId));
 
   const syncActiveSource = useCallback((source: WorkspaceSource) => {
     activeSourceRef.current = source;
@@ -789,7 +792,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     }
 
     if (!shareId || !shareStorageKey) {
-      if (authSession.status === 'loading') {
+      if (!workspaceScopeReady) {
         return () => {
           cancelled = true;
         };
@@ -834,16 +837,14 @@ export function usePersistedState(): UsePersistedStateReturn {
     queryClient,
     shareId,
     shareStorageKey,
-    authSession.status,
-    authSession.userId,
-    authSession.workspaceId,
     currentScope,
     syncActiveSource,
     updateDrafts,
+    workspaceScopeReady,
   ]);
 
   useEffect(() => {
-    if (shareId || authSession.status === 'loading') {
+    if (shareId || !workspaceScopeReady) {
       return;
     }
 
@@ -932,11 +933,11 @@ export function usePersistedState(): UsePersistedStateReturn {
     };
   }, [
     shareId,
-    authSession.status,
     currentScope,
     setPersistedStateIfChanged,
     syncActiveSource,
     updateDrafts,
+    workspaceScopeReady,
   ]);
 
   return {

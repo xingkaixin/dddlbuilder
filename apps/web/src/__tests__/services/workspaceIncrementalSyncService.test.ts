@@ -18,6 +18,7 @@ import {
   listWorkspaceConflicts,
   listWorkspaceOutboxItems,
   readWorkspaceSyncMeta,
+  writeWorkspaceEntityMeta,
   writeWorkspaceSyncMeta,
 } from '@/utils/workspaceSyncStateDb';
 
@@ -143,6 +144,50 @@ describe('workspaceIncrementalSyncService', () => {
     expect(outbox).toHaveLength(0);
   });
 
+  it('同一 entity 多次排队时应只保留最新 snapshot', async () => {
+    await writeWorkspaceEntityMeta({
+      workspaceId: 'ws-1',
+      entityType: 'draft',
+      entityId: 'draft-1',
+      version: 7,
+      contentHash: 'sha256:server',
+    });
+    await enqueueWorkspaceOutboxItem({
+      workspaceId: 'ws-1',
+      entityType: 'draft',
+      entityId: 'draft-1',
+      op: 'upsert',
+      contentHash: 'sha256:first',
+      payload: {
+        state: createState('first_local_draft'),
+        createdAt: 100,
+      },
+    });
+    const [firstQueued] = await listWorkspaceOutboxItems('ws-1');
+
+    await enqueueWorkspaceOutboxItem({
+      workspaceId: 'ws-1',
+      entityType: 'draft',
+      entityId: 'draft-1',
+      op: 'upsert',
+      contentHash: 'sha256:latest',
+      payload: {
+        state: createState('latest_local_draft'),
+        createdAt: 100,
+      },
+    });
+
+    const outbox = await listWorkspaceOutboxItems('ws-1');
+
+    expect(outbox).toHaveLength(1);
+    expect(outbox[0]?.id).not.toBe(firstQueued?.id);
+    expect(outbox[0]?.baseVersion).toBe(7);
+    expect(outbox[0]?.contentHash).toBe('sha256:latest');
+    expect((outbox[0]?.payload as { state: { tableName: string } }).state.tableName).toBe(
+      'latest_local_draft',
+    );
+  });
+
   it('推送冲突时应保留 outbox 并记录冲突', async () => {
     await enqueueWorkspaceOutboxItem({
       workspaceId: 'ws-1',
@@ -195,6 +240,202 @@ describe('workspaceIncrementalSyncService', () => {
       entityId: 'draft-1',
       serverVersion: 2,
     });
+  });
+
+  it('拉取遇到本地 pending mutation 时应保留本地实体', async () => {
+    await writeDraft('draft-1', { state: createState('local_draft'), updatedAt: 200 }, scope);
+    await enqueueWorkspaceOutboxItem({
+      workspaceId: 'ws-1',
+      entityType: 'draft',
+      entityId: 'draft-1',
+      op: 'upsert',
+      contentHash: 'sha256:local',
+      payload: {
+        state: createState('local_draft'),
+      },
+    });
+    const [queued] = await listWorkspaceOutboxItems('ws-1');
+    const serverEntity = {
+      workspaceId: 'ws-1',
+      entityType: 'draft',
+      entityId: 'draft-1',
+      version: 2,
+      contentHash: 'sha256:server',
+      payload: {
+        state: createState('server_draft'),
+      },
+      updatedAt: 120,
+    };
+
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ workspaceId: 'ws-1', cursor: 2, entities: [serverEntity] })),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            cursor: 2,
+            accepted: [],
+            conflicts: [
+              {
+                clientMutationId: queued?.id,
+                entityType: 'draft',
+                entityId: 'draft-1',
+                serverVersion: 2,
+                serverContentHash: 'sha256:server',
+                serverPayload: serverEntity.payload,
+              },
+            ],
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ workspaceId: 'ws-1', cursor: 2, entities: [serverEntity] })),
+      );
+
+    const result = await syncWorkspaceOnce(scope);
+    const draft = await readDraft('draft-1', scope);
+    const outbox = await listWorkspaceOutboxItems('ws-1');
+
+    expect(result).toMatchObject({ status: 'conflict', cursor: 2, conflictCount: 1 });
+    expect(draft?.state.tableName).toBe('local_draft');
+    expect(outbox).toHaveLength(1);
+  });
+
+  it('同步中继续编辑同一 entity 时应把剩余 outbox 基于已接受版本', async () => {
+    await enqueueWorkspaceOutboxItem({
+      workspaceId: 'ws-1',
+      entityType: 'draft',
+      entityId: 'draft-1',
+      op: 'upsert',
+      contentHash: 'sha256:first',
+      payload: {
+        state: createState('first_local_draft'),
+      },
+    });
+    const [queued] = await listWorkspaceOutboxItems('ws-1');
+
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ workspaceId: 'ws-1', cursor: 0, entities: [] })),
+      )
+      .mockImplementationOnce(async () => {
+        await enqueueWorkspaceOutboxItem({
+          workspaceId: 'ws-1',
+          entityType: 'draft',
+          entityId: 'draft-1',
+          op: 'upsert',
+          contentHash: 'sha256:latest',
+          payload: {
+            state: createState('latest_local_draft'),
+          },
+        });
+        return new Response(
+          JSON.stringify({
+            cursor: 1,
+            accepted: [
+              {
+                clientMutationId: queued?.id,
+                entityType: 'draft',
+                entityId: 'draft-1',
+                version: 1,
+              },
+            ],
+            conflicts: [],
+          }),
+        );
+      })
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            workspaceId: 'ws-1',
+            cursor: 1,
+            entities: [
+              {
+                workspaceId: 'ws-1',
+                entityType: 'draft',
+                entityId: 'draft-1',
+                version: 1,
+                contentHash: 'sha256:first',
+                payload: {
+                  state: createState('first_local_draft'),
+                },
+                updatedAt: 120,
+              },
+            ],
+          }),
+        ),
+      );
+
+    await syncWorkspaceOnce(scope);
+    const outbox = await listWorkspaceOutboxItems('ws-1');
+
+    expect(outbox).toHaveLength(1);
+    expect(outbox[0]?.baseVersion).toBe(1);
+    expect(outbox[0]?.contentHash).toBe('sha256:latest');
+  });
+
+  it('推送后拉回已接受版本时应保留本地继续编辑的内容', async () => {
+    await writeDraft('draft-1', { state: createState('latest_local_draft'), updatedAt: 200 }, scope);
+    await enqueueWorkspaceOutboxItem({
+      workspaceId: 'ws-1',
+      entityType: 'draft',
+      entityId: 'draft-1',
+      op: 'upsert',
+      contentHash: 'sha256:first',
+      payload: {
+        state: createState('first_local_draft'),
+      },
+    });
+    const [queued] = await listWorkspaceOutboxItems('ws-1');
+
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ workspaceId: 'ws-1', cursor: 0, entities: [] })),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            cursor: 1,
+            accepted: [
+              {
+                clientMutationId: queued?.id,
+                entityType: 'draft',
+                entityId: 'draft-1',
+                version: 1,
+              },
+            ],
+            conflicts: [],
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            workspaceId: 'ws-1',
+            cursor: 1,
+            entities: [
+              {
+                workspaceId: 'ws-1',
+                entityType: 'draft',
+                entityId: 'draft-1',
+                version: 1,
+                contentHash: 'sha256:first',
+                payload: {
+                  state: createState('first_local_draft'),
+                },
+                updatedAt: 120,
+              },
+            ],
+          }),
+        ),
+      );
+
+    const result = await syncWorkspaceOnce(scope);
+    const draft = await readDraft('draft-1', scope);
+
+    expect(result).toMatchObject({ status: 'synced', cursor: 1, conflictCount: 0 });
+    expect(draft?.state.tableName).toBe('latest_local_draft');
   });
 
   it('清理本地 workspace 数据时应只删除当前 workspace scope', async () => {

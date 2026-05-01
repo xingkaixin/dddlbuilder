@@ -64,6 +64,14 @@ export const buildWorkspaceEntityMetaId = (
   entityId: string,
 ) => `${workspaceId}:${entityType}:${entityId}`;
 
+const isSameWorkspaceEntity = (
+  item: LocalWorkspaceOutboxItem,
+  input: Pick<LocalWorkspaceOutboxItem, 'workspaceId' | 'entityType' | 'entityId'>,
+) =>
+  item.workspaceId === input.workspaceId &&
+  item.entityType === input.entityType &&
+  item.entityId === input.entityId;
+
 const runWithStore = async <T>(
   storeName: StoreName,
   mode: IDBTransactionMode,
@@ -134,20 +142,57 @@ export const enqueueWorkspaceOutboxItem = async (
     input.entityType,
     input.entityId,
   );
-  const item: LocalWorkspaceOutboxItem = {
-    id: crypto.randomUUID(),
-    ...input,
-    baseVersion: entityMeta?.version ?? null,
-    createdAt: Date.now(),
-    attemptCount: 0,
-  };
-  await runWithStore<IDBValidKey>(WORKSPACE_SYNC_OUTBOX_STORE_NAME, 'readwrite', (store) =>
-    store.put(item),
-  );
+  const item = await replacePendingOutboxItem(input, entityMeta?.version ?? null);
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(WORKSPACE_OUTBOX_ENQUEUED_EVENT));
   }
   return item;
+};
+
+const replacePendingOutboxItem = async (
+  input: Omit<LocalWorkspaceOutboxItem, 'id' | 'baseVersion' | 'createdAt' | 'attemptCount'>,
+  baseVersion: number | null,
+): Promise<LocalWorkspaceOutboxItem> => {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(WORKSPACE_SYNC_OUTBOX_STORE_NAME, 'readwrite');
+    const store = tx.objectStore(WORKSPACE_SYNC_OUTBOX_STORE_NAME);
+    const timestamp = Date.now();
+    let item: LocalWorkspaceOutboxItem = {
+      id: crypto.randomUUID(),
+      ...input,
+      baseVersion,
+      createdAt: timestamp,
+      attemptCount: 0,
+    };
+    const request = store.getAll();
+
+    request.onsuccess = () => {
+      const existingItems = Array.isArray(request.result)
+        ? (request.result as LocalWorkspaceOutboxItem[])
+        : [];
+      const pendingItems = existingItems
+        .filter((existingItem) => isSameWorkspaceEntity(existingItem, input))
+        .sort((a, b) => a.createdAt - b.createdAt);
+      const firstPendingItem = pendingItems[0];
+      item = {
+        ...item,
+        baseVersion: firstPendingItem?.baseVersion ?? baseVersion,
+        createdAt: firstPendingItem?.createdAt ?? timestamp,
+      };
+      for (const pendingItem of pendingItems) {
+        store.delete(pendingItem.id);
+      }
+      store.put(item);
+    };
+    request.onerror = () => reject(request.error ?? new Error('IndexedDB 请求失败'));
+    tx.onerror = () => reject(tx.error ?? new Error('事务失败'));
+    tx.onabort = () => reject(tx.error ?? new Error('事务被中止'));
+    tx.oncomplete = () => {
+      db.close();
+      resolve(item);
+    };
+  });
 };
 
 export const listWorkspaceOutboxItems = async (
@@ -183,6 +228,41 @@ export const incrementWorkspaceOutboxAttempts = async (
       }),
     );
   }
+};
+
+export const rebaseWorkspaceOutboxItems = async (input: {
+  workspaceId: string;
+  entityType: WorkspaceEntityType;
+  entityId: string;
+  baseVersion: number;
+}): Promise<void> => {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(WORKSPACE_SYNC_OUTBOX_STORE_NAME, 'readwrite');
+    const store = tx.objectStore(WORKSPACE_SYNC_OUTBOX_STORE_NAME);
+    const request = store.getAll();
+
+    request.onsuccess = () => {
+      const items = Array.isArray(request.result)
+        ? (request.result as LocalWorkspaceOutboxItem[])
+        : [];
+      for (const item of items) {
+        if (isSameWorkspaceEntity(item, input)) {
+          store.put({
+            ...item,
+            baseVersion: input.baseVersion,
+          });
+        }
+      }
+    };
+    request.onerror = () => reject(request.error ?? new Error('IndexedDB 请求失败'));
+    tx.onerror = () => reject(tx.error ?? new Error('事务失败'));
+    tx.onabort = () => reject(tx.error ?? new Error('事务被中止'));
+    tx.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+  });
 };
 
 export const writeWorkspaceConflicts = async (

@@ -17,6 +17,14 @@ vi.mock('@/utils/tableFolders', () => ({
   getFolder: vi.fn(),
 }));
 
+vi.mock('@/auth/AuthSessionProvider', () => ({
+  useAuthSession: () => ({
+    status: 'signed_out',
+    userId: null,
+    workspaceId: null,
+  }),
+}));
+
 describe('useFolders', () => {
   const mockListFolders = vi.mocked(tableFolders.listFolders);
   const mockCreateFolder = vi.mocked(tableFolders.createFolder);
@@ -199,8 +207,8 @@ describe('useFolders', () => {
       await flushPromises();
     });
 
-    expect(mockRenameFolder).toHaveBeenCalledWith('1', 'Renamed');
-    expect(mockMoveFolder).toHaveBeenCalledWith('1', undefined);
+    expect(mockRenameFolder).toHaveBeenCalledWith('1', 'Renamed', { kind: 'anonymous' });
+    expect(mockMoveFolder).toHaveBeenCalledWith('1', undefined, { kind: 'anonymous' });
   });
 
   it('should throw default messages when operations fail with non-error', async () => {
