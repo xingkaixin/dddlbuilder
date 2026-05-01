@@ -11,7 +11,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const isPersistedState = (value: unknown): value is PersistedState => isRecord(value);
 
-const isWorkspaceSnapshot = (value: unknown): value is WorkspaceSnapshot => {
+export const isWorkspaceSnapshot = (value: unknown): value is WorkspaceSnapshot => {
   if (!isRecord(value)) {
     return false;
   }

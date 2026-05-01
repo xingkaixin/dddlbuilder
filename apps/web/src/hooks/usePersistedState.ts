@@ -2,10 +2,23 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 import { buildShareStateQueryKey } from '@/queryKeys/share';
 import { ShareApiError, getShareState } from '@/services/shareService';
 import { buildWorkspaceContentHash } from '@/services/workspaceIncrementalSyncService';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
+import {
+  deleteDraftFromYDoc,
+  deleteSavedDraftFromYDoc,
+  getSavedDraftFromYDoc,
+  getSavedTableFromYDoc,
+  getStateForWorkspaceSource,
+  listDraftRecordsFromYDoc,
+  listSavedDraftsFromYDoc,
+  subscribeWorkspaceYDoc,
+  upsertDraftInYDoc,
+  upsertSavedDraftInYDoc,
+} from '@/services/workspaceYDocAdapter';
 import type {
   DraftSummary,
   SavedTableDraftRecord,
@@ -98,6 +111,7 @@ export interface UsePersistedStateReturn {
 
 export function usePersistedState(): UsePersistedStateReturn {
   const authSession = useAuthSession();
+  const workspaceYDoc = useWorkspaceYDoc();
   const queryClient = useQueryClient();
   const pathInfo = parseSharePath(window.location.pathname);
   const shareId = pathInfo.shareId;
@@ -116,6 +130,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     kind: 'draft',
     draftId: DEFAULT_DRAFT_ID,
   });
+  const persistedStateRef = useRef<PersistedState | null>(null);
   const draftsRef = useRef<Map<string, GlobalDraftRecord>>(new Map());
   const savedTableDraftsRef = useRef<Map<string, SavedTableDraftRecord>>(new Map());
 
@@ -133,6 +148,19 @@ export function usePersistedState(): UsePersistedStateReturn {
   const workspaceScopeReady =
     authSession.status !== 'loading' &&
     (authSession.status !== 'signed_in' || Boolean(authSession.workspaceId));
+  const yDocReady = Boolean(
+    !shareId &&
+    workspaceYDoc.doc &&
+    workspaceYDoc.localSynced &&
+    currentScope.kind === 'user' &&
+    currentScope.workspaceId,
+  );
+  const shouldWaitForYDocHydration = Boolean(
+    !shareId &&
+      currentScope.kind === 'user' &&
+      currentScope.workspaceId &&
+      !workspaceYDoc.localSynced,
+  );
 
   const syncActiveSource = useCallback((source: WorkspaceSource) => {
     activeSourceRef.current = source;
@@ -147,6 +175,10 @@ export function usePersistedState(): UsePersistedStateReturn {
       return isSamePersistedState(prevState, nextState) ? prevState : nextState;
     });
   }, []);
+
+  useEffect(() => {
+    persistedStateRef.current = persistedState;
+  }, [persistedState]);
 
   const updateDrafts = useCallback(
     (drafts: Array<{ draftId: string; record: GlobalDraftRecord }>) => {
@@ -198,6 +230,7 @@ export function usePersistedState(): UsePersistedStateReturn {
             op: 'delete';
           },
     ) => {
+      if (yDocReady) return;
       if (currentScope.kind !== 'user' || !currentScope.workspaceId) return;
       const workspaceId = currentScope.workspaceId;
       fireAndForget(
@@ -214,7 +247,7 @@ export function usePersistedState(): UsePersistedStateReturn {
         })(),
       );
     },
-    [currentScope],
+    [currentScope, yDocReady],
   );
 
   const setWorkspaceSnapshot = useCallback(
@@ -251,6 +284,12 @@ export function usePersistedState(): UsePersistedStateReturn {
             return sortDraftSummaries(next);
           });
           fireAndForget(writeDraft(source.draftId, draftRecord, currentScope));
+          if (yDocReady && workspaceYDoc.doc) {
+            const doc = workspaceYDoc.doc;
+            doc.transact(() => {
+              upsertDraftInYDoc(doc, source.draftId, draftRecord);
+            });
+          }
           enqueueEntityChange({
             entityType: 'draft',
             entityId: source.draftId,
@@ -275,7 +314,7 @@ export function usePersistedState(): UsePersistedStateReturn {
         ),
       );
     },
-    [currentScope, enqueueEntityChange, shareId, syncActiveSource],
+    [currentScope, enqueueEntityChange, shareId, syncActiveSource, workspaceYDoc.doc, yDocReady],
   );
 
   const selectWorkspaceSnapshot = useCallback(
@@ -310,7 +349,6 @@ export function usePersistedState(): UsePersistedStateReturn {
 
       const currentSource = activeSourceRef.current;
       if (!isSameWorkspaceSource(payload.source, currentSource)) {
-        console.log('[DEBUG] saveState - 源不匹配，跳过保存');
         return;
       }
 
@@ -342,6 +380,12 @@ export function usePersistedState(): UsePersistedStateReturn {
             return sortDraftSummaries(next);
           });
           fireAndForget(writeDraft(draftId, draftRecord, currentScope));
+          if (yDocReady && workspaceYDoc.doc) {
+            const doc = workspaceYDoc.doc;
+            doc.transact(() => {
+              upsertDraftInYDoc(doc, draftId, draftRecord);
+            });
+          }
           enqueueEntityChange({
             entityType: 'draft',
             entityId: draftId,
@@ -370,6 +414,12 @@ export function usePersistedState(): UsePersistedStateReturn {
           if (contentChanged) {
             savedTableDraftsRef.current.set(normalizedName, record);
             fireAndForget(upsertSavedDraft(normalizedName, record, currentScope));
+            if (yDocReady && workspaceYDoc.doc) {
+              const doc = workspaceYDoc.doc;
+              doc.transact(() => {
+                upsertSavedDraftInYDoc(doc, normalizedName, record);
+              });
+            }
             enqueueEntityChange({
               entityType: 'saved_draft',
               entityId: normalizedName,
@@ -385,6 +435,12 @@ export function usePersistedState(): UsePersistedStateReturn {
           if (savedTableDraftsRef.current.has(normalizedName)) {
             savedTableDraftsRef.current.delete(normalizedName);
             fireAndForget(deleteSavedDraft(normalizedName, currentScope));
+            if (yDocReady && workspaceYDoc.doc) {
+              const doc = workspaceYDoc.doc;
+              doc.transact(() => {
+                deleteSavedDraftFromYDoc(doc, normalizedName);
+              });
+            }
             enqueueEntityChange({
               entityType: 'saved_draft',
               entityId: normalizedName,
@@ -408,7 +464,15 @@ export function usePersistedState(): UsePersistedStateReturn {
       );
       syncActiveSource(payload.source);
     },
-    [currentScope, enqueueEntityChange, hydrated, shareStorageKey, syncActiveSource],
+    [
+      currentScope,
+      enqueueEntityChange,
+      hydrated,
+      shareStorageKey,
+      syncActiveSource,
+      workspaceYDoc.doc,
+      yDocReady,
+    ],
   );
 
   const clearState = useCallback(() => {
@@ -422,12 +486,18 @@ export function usePersistedState(): UsePersistedStateReturn {
       draftsRef.current.delete(activeSource.draftId);
       setDraftSummaries((prev) => prev.filter((d) => d.draftId !== activeSource.draftId));
       fireAndForget(deleteDraft(activeSource.draftId, currentScope));
+      if (yDocReady && workspaceYDoc.doc) {
+        const doc = workspaceYDoc.doc;
+        doc.transact(() => {
+          deleteDraftFromYDoc(doc, activeSource.draftId);
+        });
+      }
     }
 
     syncActiveSource({ kind: 'draft', draftId: DEFAULT_DRAFT_ID });
     fireAndForget(clearWorkspaceSession(currentScope));
     setPersistedState(null);
-  }, [activeSource, currentScope, shareStorageKey, syncActiveSource]);
+  }, [activeSource, currentScope, shareStorageKey, syncActiveSource, workspaceYDoc.doc, yDocReady]);
 
   const createDraft = useCallback(
     (draftId: string, state: PersistedState): string => {
@@ -460,6 +530,12 @@ export function usePersistedState(): UsePersistedStateReturn {
         return sortDraftSummaries(next);
       });
       fireAndForget(writeDraft(draftId, draftRecord, currentScope));
+      if (yDocReady && workspaceYDoc.doc) {
+        const doc = workspaceYDoc.doc;
+        doc.transact(() => {
+          upsertDraftInYDoc(doc, draftId, draftRecord);
+        });
+      }
       enqueueEntityChange({
         entityType: 'draft',
         entityId: draftId,
@@ -471,7 +547,7 @@ export function usePersistedState(): UsePersistedStateReturn {
       });
       return uniqueName;
     },
-    [currentScope, enqueueEntityChange, shareId],
+    [currentScope, enqueueEntityChange, shareId, workspaceYDoc.doc, yDocReady],
   );
 
   const deleteDraftById = useCallback(
@@ -499,6 +575,12 @@ export function usePersistedState(): UsePersistedStateReturn {
         ...prev,
       ]);
       fireAndForget(writeDraft(draftId, trashedRecord, currentScope));
+      if (yDocReady && workspaceYDoc.doc) {
+        const doc = workspaceYDoc.doc;
+        doc.transact(() => {
+          deleteDraftFromYDoc(doc, draftId);
+        });
+      }
       enqueueEntityChange({
         entityType: 'draft',
         entityId: draftId,
@@ -511,7 +593,7 @@ export function usePersistedState(): UsePersistedStateReturn {
         setPersistedState(null);
       }
     },
-    [currentScope, enqueueEntityChange, shareId, syncActiveSource],
+    [currentScope, enqueueEntityChange, shareId, syncActiveSource, workspaceYDoc.doc, yDocReady],
   );
 
   const restoreDraftById = useCallback(
@@ -558,6 +640,12 @@ export function usePersistedState(): UsePersistedStateReturn {
       );
       draftsRef.current.set(draftId, restoredRecord);
       await restoreDraft(draftId, restoredRecord, currentScope);
+      if (yDocReady && workspaceYDoc.doc) {
+        const doc = workspaceYDoc.doc;
+        doc.transact(() => {
+          upsertDraftInYDoc(doc, draftId, restoredRecord);
+        });
+      }
       enqueueEntityChange({
         entityType: 'draft',
         entityId: draftId,
@@ -569,7 +657,7 @@ export function usePersistedState(): UsePersistedStateReturn {
         },
       });
     },
-    [currentScope, enqueueEntityChange, shareId],
+    [currentScope, enqueueEntityChange, shareId, workspaceYDoc.doc, yDocReady],
   );
 
   const permanentlyDeleteDraftById = useCallback(
@@ -577,13 +665,19 @@ export function usePersistedState(): UsePersistedStateReturn {
       if (shareId) return;
       setTrashedDrafts((prev) => prev.filter((d) => d.draftId !== draftId));
       fireAndForget(deleteDraft(draftId, currentScope));
+      if (yDocReady && workspaceYDoc.doc) {
+        const doc = workspaceYDoc.doc;
+        doc.transact(() => {
+          deleteDraftFromYDoc(doc, draftId);
+        });
+      }
       enqueueEntityChange({
         entityType: 'draft',
         entityId: draftId,
         op: 'delete',
       });
     },
-    [currentScope, enqueueEntityChange, shareId],
+    [currentScope, enqueueEntityChange, shareId, workspaceYDoc.doc, yDocReady],
   );
 
   const moveDraftToFolder = useCallback(
@@ -601,6 +695,12 @@ export function usePersistedState(): UsePersistedStateReturn {
         prev.map((draft) => (draft.draftId === draftId ? { ...draft, folderId } : draft)),
       );
       fireAndForget(writeDraft(draftId, nextRecord, currentScope));
+      if (yDocReady && workspaceYDoc.doc) {
+        const doc = workspaceYDoc.doc;
+        doc.transact(() => {
+          upsertDraftInYDoc(doc, draftId, nextRecord);
+        });
+      }
       enqueueEntityChange({
         entityType: 'draft',
         entityId: draftId,
@@ -612,7 +712,7 @@ export function usePersistedState(): UsePersistedStateReturn {
         },
       });
     },
-    [currentScope, enqueueEntityChange, shareId],
+    [currentScope, enqueueEntityChange, shareId, workspaceYDoc.doc, yDocReady],
   );
 
   const removeSavedTableDraft = useCallback(
@@ -620,13 +720,19 @@ export function usePersistedState(): UsePersistedStateReturn {
       if (shareId) return;
       savedTableDraftsRef.current.delete(normalizedName);
       fireAndForget(deleteSavedDraft(normalizedName, currentScope));
+      if (yDocReady && workspaceYDoc.doc) {
+        const doc = workspaceYDoc.doc;
+        doc.transact(() => {
+          deleteSavedDraftFromYDoc(doc, normalizedName);
+        });
+      }
       enqueueEntityChange({
         entityType: 'saved_draft',
         entityId: normalizedName,
         op: 'delete',
       });
     },
-    [currentScope, enqueueEntityChange, shareId],
+    [currentScope, enqueueEntityChange, shareId, workspaceYDoc.doc, yDocReady],
   );
 
   const renameSavedTableDraft = useCallback(
@@ -642,6 +748,15 @@ export function usePersistedState(): UsePersistedStateReturn {
         savedTableDraftsRef.current.set(toNormalizedName, nextRecord);
         if (fromNormalizedName !== toNormalizedName) {
           savedTableDraftsRef.current.delete(fromNormalizedName);
+        }
+        if (yDocReady && workspaceYDoc.doc) {
+          const doc = workspaceYDoc.doc;
+          doc.transact(() => {
+            upsertSavedDraftInYDoc(doc, toNormalizedName, nextRecord);
+            if (fromNormalizedName !== toNormalizedName) {
+              deleteSavedDraftFromYDoc(doc, fromNormalizedName);
+            }
+          });
         }
       }
       fireAndForget(
@@ -667,7 +782,7 @@ export function usePersistedState(): UsePersistedStateReturn {
         }
       }
     },
-    [currentScope, enqueueEntityChange, shareId],
+    [currentScope, enqueueEntityChange, shareId, workspaceYDoc.doc, yDocReady],
   );
 
   useEffect(() => {
@@ -679,7 +794,77 @@ export function usePersistedState(): UsePersistedStateReturn {
       setHydrated(true);
     };
 
+    const hydrateYDocWorkspace = async () => {
+      if (!workspaceYDoc.doc) return false;
+      const doc = workspaceYDoc.doc;
+      setCurrentWorkspaceScope(currentScope);
+
+      savedTableDraftsRef.current = listSavedDraftsFromYDoc(doc);
+      const allDrafts = listDraftRecordsFromYDoc(doc).map(({ draftId, record }) => ({
+        draftId,
+        record,
+      }));
+      updateDrafts(allDrafts);
+      const initialDraft = pickInitialDraft(allDrafts);
+
+      const trashed = await listTrashedDrafts(currentScope);
+      if (cancelled) return true;
+      setTrashedDrafts(
+        trashed.map(({ draftId, record }) =>
+          buildDraftSummary(
+            draftId,
+            record.state,
+            record.createdAt ?? record.updatedAt,
+            record.updatedAt,
+            record.folderId,
+            record.trashedAt,
+          ),
+        ),
+      );
+
+      const { session: sessionRaw } = await getWorkspaceBootstrap(currentScope);
+      if (cancelled) return true;
+      const session = normalizeWorkspaceSession(sessionRaw);
+      if (!session) {
+        syncActiveSource({ kind: 'draft', draftId: initialDraft?.draftId ?? DEFAULT_DRAFT_ID });
+        hydrateWithState(initialDraft?.record.state ?? null);
+        return true;
+      }
+
+      if (session.activeSource.kind === 'saved_table') {
+        const savedTable = getSavedTableFromYDoc(doc, session.activeSource.normalizedName);
+        if (savedTable) {
+          const savedDraft = getSavedDraftFromYDoc(doc, savedTable.normalizedName);
+          const baseSignature =
+            session.activeSource.baseSignature || JSON.stringify(savedTable.state) || '';
+          syncActiveSource({
+            kind: 'saved_table',
+            normalizedName: savedTable.normalizedName,
+            tableName: savedTable.name,
+            baseSignature,
+          });
+          hydrateWithState(savedDraft?.state ?? session.activeState ?? savedTable.state);
+          return true;
+        }
+
+        syncActiveSource({ kind: 'draft', draftId: initialDraft?.draftId ?? DEFAULT_DRAFT_ID });
+        hydrateWithState(initialDraft?.record.state ?? null);
+        return true;
+      }
+
+      const draftId = session.activeSource.draftId;
+      const sessionDraft = allDrafts.find((draft) => draft.draftId === draftId);
+      const resolvedDraft = sessionDraft ?? initialDraft;
+      syncActiveSource({ kind: 'draft', draftId: resolvedDraft?.draftId ?? draftId });
+      hydrateWithState(resolvedDraft?.record.state ?? session.activeState ?? null);
+      return true;
+    };
+
     const hydrateMainWorkspace = async () => {
+      if (yDocReady && (await hydrateYDocWorkspace())) {
+        return;
+      }
+
       setCurrentWorkspaceScope(currentScope);
 
       const {
@@ -792,7 +977,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     }
 
     if (!shareId || !shareStorageKey) {
-      if (!workspaceScopeReady) {
+      if (!workspaceScopeReady || shouldWaitForYDocHydration) {
         return () => {
           cancelled = true;
         };
@@ -840,11 +1025,71 @@ export function usePersistedState(): UsePersistedStateReturn {
     currentScope,
     syncActiveSource,
     updateDrafts,
+    shouldWaitForYDocHydration,
     workspaceScopeReady,
+    workspaceYDoc.doc,
+    yDocReady,
   ]);
 
   useEffect(() => {
-    if (shareId || !workspaceScopeReady) {
+    if (!yDocReady || !workspaceYDoc.doc) {
+      return;
+    }
+
+    const doc = workspaceYDoc.doc;
+    const refreshFromYDoc = () => {
+      const allDrafts = listDraftRecordsFromYDoc(doc).map(({ draftId, record }) => ({
+        draftId,
+        record,
+      }));
+      updateDrafts(allDrafts);
+      savedTableDraftsRef.current = listSavedDraftsFromYDoc(doc);
+
+      const source = activeSourceRef.current;
+      if (source.kind === 'saved_table') {
+        const savedDraft = getSavedDraftFromYDoc(doc, source.normalizedName);
+        const savedTable = getSavedTableFromYDoc(doc, source.normalizedName);
+        const nextState = savedDraft?.state ?? savedTable?.state ?? null;
+        if (nextState) {
+          setPersistedStateIfChanged(nextState);
+          return;
+        }
+      } else {
+        const nextState = getStateForWorkspaceSource(doc, source);
+        if (nextState) {
+          setPersistedStateIfChanged(nextState);
+          return;
+        }
+      }
+
+      if (!persistedStateRef.current) {
+        const initialDraft = pickInitialDraft(allDrafts);
+        if (initialDraft) {
+          syncActiveSource({ kind: 'draft', draftId: initialDraft.draftId });
+          setPersistedStateIfChanged(initialDraft.record.state);
+          return;
+        }
+      }
+
+      if (source.kind === 'draft') {
+        setPersistedStateIfChanged(null);
+        return;
+      }
+    };
+
+    const unsubscribe = subscribeWorkspaceYDoc(doc, refreshFromYDoc);
+    refreshFromYDoc();
+    return unsubscribe;
+  }, [
+    setPersistedStateIfChanged,
+    syncActiveSource,
+    updateDrafts,
+    workspaceYDoc.doc,
+    yDocReady,
+  ]);
+
+  useEffect(() => {
+    if (shareId || !workspaceScopeReady || yDocReady) {
       return;
     }
 
@@ -938,6 +1183,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     syncActiveSource,
     updateDrafts,
     workspaceScopeReady,
+    yDocReady,
   ]);
 
   return {

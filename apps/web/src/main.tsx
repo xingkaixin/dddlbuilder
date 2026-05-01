@@ -9,6 +9,7 @@ import { appQueryClient } from './lib/queryClient';
 import { Toaster } from './components/ui/sonner';
 import { LocaleProvider } from './i18n/LocaleContext';
 import { AuthSessionProvider } from './auth/AuthSessionProvider';
+import { WorkspaceYDocProvider } from './providers/WorkspaceYDocProvider';
 import { isAdminPath } from './admin/lib/adminPath';
 import './i18n';
 
@@ -38,7 +39,9 @@ createRoot(rootElement).render(
               <AdminApp />
             ) : (
               <AuthSessionProvider>
-                <App />
+                <WorkspaceYDocProvider>
+                  <App />
+                </WorkspaceYDocProvider>
               </AuthSessionProvider>
             )}
             <Toaster />

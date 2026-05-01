@@ -10,6 +10,7 @@ export type ApiEnv = {
     SHARE_KV: KVNamespace;
     RATE_LIMIT_KV: KVNamespace;
     USER_DB: D1Database;
+    WORKSPACE_YDOC?: DurableObjectNamespace;
     // Environment variables
     CORS_ALLOWED_ORIGINS?: string;
     BETTER_AUTH_SECRET?: string;

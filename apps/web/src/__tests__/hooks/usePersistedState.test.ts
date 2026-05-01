@@ -85,6 +85,15 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
   })),
 }));
 
+vi.mock('@/providers/WorkspaceYDocProvider', () => ({
+  useWorkspaceYDoc: vi.fn(() => ({
+    doc: null,
+    synced: false,
+    localSynced: true,
+    connectionState: 'idle',
+  })),
+}));
+
 const mockedGetShareState = vi.mocked(getShareState);
 const VALID_SHARE_ID = '8c6afce1-2a39-47aa-a14f-f3450c3ad7dd';
 const SHARE_STORAGE_KEY = `${STORAGE_KEY}:share:${VALID_SHARE_ID}`;

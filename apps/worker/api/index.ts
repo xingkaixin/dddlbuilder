@@ -15,7 +15,9 @@ import { registerCreditRoutes } from '../server-api/routes/credits.js';
 import { registerWorkspaceMigrationRoutes } from '../server-api/routes/workspaceMigration.js';
 import { registerWorkspaceSnapshotRoutes } from '../server-api/routes/workspaceSnapshot.js';
 import { registerWorkspaceRoutes } from '../server-api/routes/workspaces.js';
+import { registerWorkspaceYDocRoutes } from '../server-api/routes/workspaceYDoc.js';
 import { registerAdminRoutes } from '../server-api/routes/admin.js';
+export { WorkspaceYDocDurableObject } from '../server-api/lib/workspaceYDocDurableObject.js';
 
 const DOCS_DEV_ORIGIN = 'http://127.0.0.1:5174';
 const LOCAL_DEV_HOSTS = new Set(['localhost', '127.0.0.1']);
@@ -93,6 +95,7 @@ registerCreditRoutes(api);
 registerWorkspaceMigrationRoutes(api);
 registerWorkspaceSnapshotRoutes(api);
 registerWorkspaceRoutes(api);
+registerWorkspaceYDocRoutes(api);
 registerAdminRoutes(api);
 
 const isLocalDevRequest = (url: URL) => LOCAL_DEV_HOSTS.has(url.hostname);

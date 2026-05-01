@@ -251,7 +251,7 @@ export const listWorkspaces = async (
   };
 };
 
-const assertWorkspaceOwner = async (
+export const assertWorkspaceOwner = async (
   env: ApiEnv['Bindings'],
   userId: string,
   workspaceId: string,

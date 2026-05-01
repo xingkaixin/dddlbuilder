@@ -1,7 +1,15 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 import { buildWorkspaceContentHash } from '@/services/workspaceIncrementalSyncService';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
+import {
+  buildFolderTreeFromYDoc,
+  deleteFolderFromYDoc,
+  listFoldersFromYDoc,
+  subscribeWorkspaceYDoc,
+  upsertFolderInYDoc,
+} from '@/services/workspaceYDocAdapter';
 import { fireAndForget } from '@/hooks/workspacePersistence/storage';
 import type { TableFolder } from '@/utils/savedTablesDb';
 import {
@@ -10,6 +18,7 @@ import {
   renameFolder,
   deleteFolder,
   moveFolder,
+  updateFolder,
   buildFolderTree,
   getDescendantFolderIds,
   getFolder,
@@ -30,6 +39,7 @@ interface UseFoldersState {
 
 export function useFolders() {
   const authSession = useAuthSession();
+  const workspaceYDoc = useWorkspaceYDoc();
   const [state, setState] = useState<UseFoldersState>({
     folders: [],
     folderTree: [],
@@ -54,9 +64,16 @@ export function useFolders() {
     }
     return getAnonymousWorkspaceScope();
   }, [authSession.status, authSession.userId, authSession.workspaceId]);
+  const yDocReady = Boolean(
+    workspaceYDoc.doc &&
+    workspaceYDoc.localSynced &&
+    currentScope?.kind === 'user' &&
+    currentScope.workspaceId,
+  );
 
   const queueFolderChange = useCallback(
     (input: { folder: TableFolder; op: 'upsert' } | { folderId: string; op: 'delete' }) => {
+      if (yDocReady) return;
       if (!currentScope || currentScope.kind !== 'user' || !currentScope.workspaceId) return;
       const workspaceId = currentScope.workspaceId;
       fireAndForget(
@@ -75,7 +92,7 @@ export function useFolders() {
         })(),
       );
     },
-    [currentScope],
+    [currentScope, yDocReady],
   );
 
   // 加载文件夹列表
@@ -89,10 +106,10 @@ export function useFolders() {
     setCurrentWorkspaceScope(currentScope);
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      const [folders, folderTree] = await Promise.all([
-        listFolders(currentScope),
-        buildFolderTree(currentScope),
-      ]);
+      const [folders, folderTree] =
+        yDocReady && workspaceYDoc.doc
+          ? [listFoldersFromYDoc(workspaceYDoc.doc), buildFolderTreeFromYDoc(workspaceYDoc.doc)]
+          : await Promise.all([listFolders(currentScope), buildFolderTree(currentScope)]);
       if (loadRequestRef.current !== requestId) return;
       setState({
         folders,
@@ -108,12 +125,19 @@ export function useFolders() {
         error: err instanceof Error ? err.message : '加载文件夹失败',
       }));
     }
-  }, [currentScope]);
+  }, [currentScope, workspaceYDoc.doc, yDocReady]);
 
   // 初始加载
   useEffect(() => {
     void loadFolders();
   }, [loadFolders]);
+
+  useEffect(() => {
+    if (!yDocReady || !workspaceYDoc.doc) return;
+    return subscribeWorkspaceYDoc(workspaceYDoc.doc, () => {
+      void loadFolders();
+    });
+  }, [loadFolders, workspaceYDoc.doc, yDocReady]);
 
   useEffect(() => {
     const handleSnapshotApplied = () => {
@@ -132,6 +156,12 @@ export function useFolders() {
       if (!currentScope) throw new Error('工作区未就绪');
       try {
         const folder = await createFolder(name, parentId, currentScope);
+        if (yDocReady && workspaceYDoc.doc) {
+          const doc = workspaceYDoc.doc;
+          doc.transact(() => {
+            upsertFolderInYDoc(doc, folder);
+          });
+        }
         queueFolderChange({ op: 'upsert', folder });
         await loadFolders();
         return folder;
@@ -139,7 +169,7 @@ export function useFolders() {
         throw err instanceof Error ? err : new Error('创建文件夹失败');
       }
     },
-    [currentScope, loadFolders, queueFolderChange],
+    [currentScope, loadFolders, queueFolderChange, workspaceYDoc.doc, yDocReady],
   );
 
   // 重命名文件夹
@@ -147,17 +177,35 @@ export function useFolders() {
     async (id: string, newName: string) => {
       if (!currentScope) throw new Error('工作区未就绪');
       try {
-        await renameFolder(id, newName, currentScope);
-        const folder = await getFolder(id, currentScope);
-        if (folder) {
-          queueFolderChange({ op: 'upsert', folder });
+        if (!yDocReady || !workspaceYDoc.doc) {
+          await renameFolder(id, newName, currentScope);
+          const folder = await getFolder(id, currentScope);
+          if (folder) {
+            queueFolderChange({ op: 'upsert', folder });
+          }
+          await loadFolders();
+          return;
         }
+
+        const folder =
+          listFoldersFromYDoc(workspaceYDoc.doc).find((item) => item.id === id) ??
+          (await getFolder(id, currentScope));
+        if (!folder) {
+          throw new Error('文件夹不存在');
+        }
+        const nextFolder = { ...folder, name: newName.trim() };
+        await updateFolder(nextFolder, currentScope);
+        const doc = workspaceYDoc.doc;
+        doc.transact(() => {
+          upsertFolderInYDoc(doc, nextFolder);
+        });
+        queueFolderChange({ op: 'upsert', folder: nextFolder });
         await loadFolders();
       } catch (err) {
         throw err instanceof Error ? err : new Error('重命名文件夹失败');
       }
     },
-    [currentScope, loadFolders, queueFolderChange],
+    [currentScope, loadFolders, queueFolderChange, workspaceYDoc.doc, yDocReady],
   );
 
   // 删除文件夹
@@ -165,12 +213,33 @@ export function useFolders() {
     async (id: string) => {
       if (!currentScope) throw new Error('工作区未就绪');
       try {
-        // 获取所有受影响的文件夹 ID（包括子文件夹）
-        const descendantIds = await getDescendantFolderIds(id, currentScope);
+        const descendantIds =
+          yDocReady && workspaceYDoc.doc
+            ? (() => {
+                const folders = listFoldersFromYDoc(workspaceYDoc.doc);
+                const result: string[] = [];
+                const collect = (parentId: string) => {
+                  for (const folder of folders) {
+                    if (folder.parentId === parentId) {
+                      result.push(folder.id);
+                      collect(folder.id);
+                    }
+                  }
+                };
+                collect(id);
+                return result;
+              })()
+            : await getDescendantFolderIds(id, currentScope);
         const allFolderIds = [id, ...descendantIds];
 
         await deleteFolder(id, currentScope);
         for (const folderId of allFolderIds) {
+          if (yDocReady && workspaceYDoc.doc) {
+            const doc = workspaceYDoc.doc;
+            doc.transact(() => {
+              deleteFolderFromYDoc(doc, folderId);
+            });
+          }
           queueFolderChange({ op: 'delete', folderId });
         }
         await loadFolders();
@@ -181,7 +250,7 @@ export function useFolders() {
         throw err instanceof Error ? err : new Error('删除文件夹失败');
       }
     },
-    [currentScope, loadFolders, queueFolderChange],
+    [currentScope, loadFolders, queueFolderChange, workspaceYDoc.doc, yDocReady],
   );
 
   // 移动文件夹
@@ -189,17 +258,39 @@ export function useFolders() {
     async (id: string, newParentId?: string) => {
       if (!currentScope) throw new Error('工作区未就绪');
       try {
-        await moveFolder(id, newParentId, currentScope);
-        const folder = await getFolder(id, currentScope);
-        if (folder) {
-          queueFolderChange({ op: 'upsert', folder });
+        if (!yDocReady || !workspaceYDoc.doc) {
+          await moveFolder(id, newParentId, currentScope);
+          const folder = await getFolder(id, currentScope);
+          if (folder) {
+            queueFolderChange({ op: 'upsert', folder });
+          }
+          await loadFolders();
+          return;
         }
+
+        const folder =
+          listFoldersFromYDoc(workspaceYDoc.doc).find((item) => item.id === id) ??
+          (await getFolder(id, currentScope));
+        if (!folder) {
+          throw new Error('文件夹不存在');
+        }
+        const siblings = listFoldersFromYDoc(workspaceYDoc.doc).filter(
+          (item) => item.parentId === newParentId && item.id !== id,
+        );
+        const maxOrder = siblings.reduce((max, item) => Math.max(max, item.order), 0);
+        const nextFolder = { ...folder, parentId: newParentId, order: maxOrder + 1 };
+        await updateFolder(nextFolder, currentScope);
+        const doc = workspaceYDoc.doc;
+        doc.transact(() => {
+          upsertFolderInYDoc(doc, nextFolder);
+        });
+        queueFolderChange({ op: 'upsert', folder: nextFolder });
         await loadFolders();
       } catch (err) {
         throw err instanceof Error ? err : new Error('移动文件夹失败');
       }
     },
-    [currentScope, loadFolders, queueFolderChange],
+    [currentScope, loadFolders, queueFolderChange, workspaceYDoc.doc, yDocReady],
   );
 
   return {

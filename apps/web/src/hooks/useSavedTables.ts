@@ -1,8 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 import { buildWorkspaceContentHash } from '@/services/workspaceIncrementalSyncService';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
+import {
+  deleteSavedTableFromYDoc,
+  getSavedTableFromYDoc,
+  listSavedTableMetadataFromYDoc,
+  subscribeWorkspaceYDoc,
+  upsertSavedTableInYDoc,
+} from '@/services/workspaceYDocAdapter';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import {
   addSavedTable,
@@ -37,6 +45,7 @@ const sortSavedTablesByCreatedAt = (tables: SavedTableSummary[]) =>
 
 export function useSavedTables() {
   const authSession = useAuthSession();
+  const workspaceYDoc = useWorkspaceYDoc();
   const [savedTables, setSavedTables] = useState<SavedTableSummary[]>([]);
   const [trashedTables, setTrashedTables] = useState<SavedTableSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,9 +68,16 @@ export function useSavedTables() {
     }
     return getAnonymousWorkspaceScope();
   }, [authSession.status, authSession.userId, authSession.workspaceId]);
+  const yDocReady = Boolean(
+    workspaceYDoc.doc &&
+    workspaceYDoc.localSynced &&
+    currentScope?.kind === 'user' &&
+    currentScope.workspaceId,
+  );
 
   const queueSavedTableChange = useCallback(
     async (record: SavedTableRecord, op: 'upsert' | 'delete' = 'upsert') => {
+      if (yDocReady) return;
       if (authSession.status !== 'signed_in' || !authSession.workspaceId) return;
       const payload =
         op === 'upsert'
@@ -81,7 +97,7 @@ export function useSavedTables() {
         contentHash: op === 'upsert' ? await buildWorkspaceContentHash(payload) : null,
       });
     },
-    [authSession.status, authSession.workspaceId],
+    [authSession.status, authSession.workspaceId, yDocReady],
   );
 
   const refresh = useCallback(async () => {
@@ -94,10 +110,16 @@ export function useSavedTables() {
     setCurrentWorkspaceScope(currentScope);
     try {
       setLoading(true);
-      const [metadata, trashedMetadata] = await Promise.all([
-        listSavedTableMetadata(currentScope),
-        listTrashedSavedTableMetadata(currentScope),
-      ]);
+      const [metadata, trashedMetadata] =
+        yDocReady && workspaceYDoc.doc
+          ? [
+              listSavedTableMetadataFromYDoc(workspaceYDoc.doc),
+              await listTrashedSavedTableMetadata(currentScope),
+            ]
+          : await Promise.all([
+              listSavedTableMetadata(currentScope),
+              listTrashedSavedTableMetadata(currentScope),
+            ]);
       if (refreshRequestRef.current !== requestId) return;
       const sorted = sortSavedTablesByCreatedAt(metadata);
       const sortedTrashed = trashedMetadata.sort((a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0));
@@ -112,11 +134,18 @@ export function useSavedTables() {
         setLoading(false);
       }
     }
-  }, [currentScope]);
+  }, [currentScope, workspaceYDoc.doc, yDocReady]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!yDocReady || !workspaceYDoc.doc) return;
+    return subscribeWorkspaceYDoc(workspaceYDoc.doc, () => {
+      void refresh();
+    });
+  }, [refresh, workspaceYDoc.doc, yDocReady]);
 
   useEffect(() => {
     const handleSnapshotApplied = () => {
@@ -134,7 +163,10 @@ export function useSavedTables() {
       try {
         const displayName = ensureSavedTableName(name);
         const normalizedName = normalizeSavedTableName(displayName);
-        const existing = await getSavedTable(normalizedName);
+        const existing =
+          yDocReady && workspaceYDoc.doc
+            ? getSavedTableFromYDoc(workspaceYDoc.doc, normalizedName)
+            : await getSavedTable(normalizedName);
         if (existing && !existing.trashedAt) {
           return { ok: false, reason: 'duplicate' };
         }
@@ -163,6 +195,18 @@ export function useSavedTables() {
           createdAt: existing?.createdAt ?? now,
           updatedAt: now,
         });
+        if (yDocReady && workspaceYDoc.doc) {
+          const doc = workspaceYDoc.doc;
+          doc.transact(() => {
+            upsertSavedTableInYDoc(doc, {
+              normalizedName,
+              name: displayName,
+              state,
+              createdAt: existing?.createdAt ?? now,
+              updatedAt: now,
+            });
+          });
+        }
         await refresh();
         return { ok: true, normalizedName };
       } catch (err) {
@@ -173,13 +217,16 @@ export function useSavedTables() {
         };
       }
     },
-    [queueSavedTableChange, refresh],
+    [queueSavedTableChange, refresh, workspaceYDoc.doc, yDocReady],
   );
 
   const overwriteTable = useCallback(
     async (normalizedName: string, state: PersistedState): Promise<SaveTableResult> => {
       try {
-        const record = await getSavedTable(normalizedName);
+        const record =
+          yDocReady && workspaceYDoc.doc
+            ? getSavedTableFromYDoc(workspaceYDoc.doc, normalizedName)
+            : await getSavedTable(normalizedName);
         if (!record) {
           return { ok: false, reason: 'not_found' };
         }
@@ -190,6 +237,12 @@ export function useSavedTables() {
         };
         await updateSavedTable(updatedRecord);
         await queueSavedTableChange(updatedRecord);
+        if (yDocReady && workspaceYDoc.doc) {
+          const doc = workspaceYDoc.doc;
+          doc.transact(() => {
+            upsertSavedTableInYDoc(doc, updatedRecord);
+          });
+        }
         await refresh();
         return { ok: true, normalizedName };
       } catch (err) {
@@ -200,14 +253,23 @@ export function useSavedTables() {
         };
       }
     },
-    [queueSavedTableChange, refresh],
+    [queueSavedTableChange, refresh, workspaceYDoc.doc, yDocReady],
   );
 
   const deleteTable = useCallback(
     async (normalizedName: string): Promise<SaveTableResult> => {
       try {
-        const record = await getSavedTable(normalizedName);
+        const record =
+          yDocReady && workspaceYDoc.doc
+            ? getSavedTableFromYDoc(workspaceYDoc.doc, normalizedName)
+            : await getSavedTable(normalizedName);
         await moveSavedTableToTrash(normalizedName);
+        if (yDocReady && workspaceYDoc.doc) {
+          const doc = workspaceYDoc.doc;
+          doc.transact(() => {
+            deleteSavedTableFromYDoc(doc, normalizedName);
+          });
+        }
         if (record) {
           await queueSavedTableChange(record, 'delete');
         }
@@ -221,7 +283,7 @@ export function useSavedTables() {
         };
       }
     },
-    [queueSavedTableChange, refresh],
+    [queueSavedTableChange, refresh, workspaceYDoc.doc, yDocReady],
   );
 
   const restoreTable = useCallback(
@@ -230,7 +292,10 @@ export function useSavedTables() {
       options?: { existingFolderIds?: Set<string> },
     ): Promise<SaveTableResult> => {
       try {
-        const record = await getSavedTable(normalizedName);
+        const record =
+          yDocReady && workspaceYDoc.doc
+            ? getSavedTableFromYDoc(workspaceYDoc.doc, normalizedName)
+            : await getSavedTable(normalizedName);
         if (!record) {
           return { ok: false, reason: 'not_found' };
         }
@@ -274,8 +339,20 @@ export function useSavedTables() {
         }
 
         await queueSavedTableChange(restoredRecord);
+        if (yDocReady && workspaceYDoc.doc) {
+          const doc = workspaceYDoc.doc;
+          doc.transact(() => {
+            upsertSavedTableInYDoc(doc, restoredRecord);
+          });
+        }
         if (targetNormalizedName !== normalizedName) {
           await queueSavedTableChange(record, 'delete');
+          if (yDocReady && workspaceYDoc.doc) {
+            const doc = workspaceYDoc.doc;
+            doc.transact(() => {
+              deleteSavedTableFromYDoc(doc, normalizedName);
+            });
+          }
         }
         await refresh();
         return { ok: true, normalizedName: targetNormalizedName };
@@ -287,14 +364,23 @@ export function useSavedTables() {
         };
       }
     },
-    [queueSavedTableChange, refresh, savedTables],
+    [queueSavedTableChange, refresh, savedTables, workspaceYDoc.doc, yDocReady],
   );
 
   const deleteTablePermanently = useCallback(
     async (normalizedName: string): Promise<SaveTableResult> => {
       try {
-        const record = await getSavedTable(normalizedName);
+        const record =
+          yDocReady && workspaceYDoc.doc
+            ? getSavedTableFromYDoc(workspaceYDoc.doc, normalizedName)
+            : await getSavedTable(normalizedName);
         await deleteSavedTable(normalizedName);
+        if (yDocReady && workspaceYDoc.doc) {
+          const doc = workspaceYDoc.doc;
+          doc.transact(() => {
+            deleteSavedTableFromYDoc(doc, normalizedName);
+          });
+        }
         if (record) {
           await queueSavedTableChange(record, 'delete');
         }
@@ -308,19 +394,25 @@ export function useSavedTables() {
         };
       }
     },
-    [queueSavedTableChange, refresh],
+    [queueSavedTableChange, refresh, workspaceYDoc.doc, yDocReady],
   );
 
   const renameTable = useCallback(
     async (normalizedName: string, newName: string): Promise<SaveTableResult> => {
       try {
-        const record = await getSavedTable(normalizedName);
+        const record =
+          yDocReady && workspaceYDoc.doc
+            ? getSavedTableFromYDoc(workspaceYDoc.doc, normalizedName)
+            : await getSavedTable(normalizedName);
         if (!record) {
           return { ok: false, reason: 'not_found' };
         }
         const displayName = ensureSavedTableName(newName);
         const nextNormalizedName = normalizeSavedTableName(displayName);
-        const existing = await getSavedTable(nextNormalizedName);
+        const existing =
+          yDocReady && workspaceYDoc.doc
+            ? getSavedTableFromYDoc(workspaceYDoc.doc, nextNormalizedName)
+            : await getSavedTable(nextNormalizedName);
         if (existing && existing.normalizedName !== normalizedName) {
           return { ok: false, reason: 'duplicate' };
         }
@@ -337,6 +429,15 @@ export function useSavedTables() {
           await deleteSavedTable(normalizedName);
         }
         await queueSavedTableChange(updatedRecord);
+        if (yDocReady && workspaceYDoc.doc) {
+          const doc = workspaceYDoc.doc;
+          doc.transact(() => {
+            upsertSavedTableInYDoc(doc, updatedRecord);
+            if (nextNormalizedName !== normalizedName) {
+              deleteSavedTableFromYDoc(doc, normalizedName);
+            }
+          });
+        }
         if (nextNormalizedName !== normalizedName) {
           await queueSavedTableChange(record, 'delete');
         }
@@ -350,18 +451,27 @@ export function useSavedTables() {
         };
       }
     },
-    [queueSavedTableChange, refresh],
+    [queueSavedTableChange, refresh, workspaceYDoc.doc, yDocReady],
   );
 
-  const loadTable = useCallback(async (normalizedName: string) => {
-    return getSavedTable(normalizedName);
-  }, []);
+  const loadTable = useCallback(
+    async (normalizedName: string) => {
+      if (yDocReady && workspaceYDoc.doc) {
+        return getSavedTableFromYDoc(workspaceYDoc.doc, normalizedName);
+      }
+      return getSavedTable(normalizedName);
+    },
+    [workspaceYDoc.doc, yDocReady],
+  );
 
   // 移动表到指定文件夹
   const moveTableToFolder = useCallback(
     async (normalizedName: string, folderId?: string): Promise<SaveTableResult> => {
       try {
-        const record = await getSavedTable(normalizedName);
+        const record =
+          yDocReady && workspaceYDoc.doc
+            ? getSavedTableFromYDoc(workspaceYDoc.doc, normalizedName)
+            : await getSavedTable(normalizedName);
         if (!record) {
           return { ok: false, reason: 'not_found' };
         }
@@ -372,6 +482,12 @@ export function useSavedTables() {
         };
         await updateSavedTable(updatedRecord);
         await queueSavedTableChange(updatedRecord);
+        if (yDocReady && workspaceYDoc.doc) {
+          const doc = workspaceYDoc.doc;
+          doc.transact(() => {
+            upsertSavedTableInYDoc(doc, updatedRecord);
+          });
+        }
         await refresh();
         return { ok: true, normalizedName };
       } catch (err) {
@@ -382,7 +498,7 @@ export function useSavedTables() {
         };
       }
     },
-    [queueSavedTableChange, refresh],
+    [queueSavedTableChange, refresh, workspaceYDoc.doc, yDocReady],
   );
 
   // 清理指定文件夹ID关联的表（将它们移回未分组）
@@ -391,7 +507,10 @@ export function useSavedTables() {
       const tables = savedTables.filter((t) => t.folderId && folderIds.includes(t.folderId));
       await Promise.all(
         tables.map(async (table) => {
-          const record = await getSavedTable(table.normalizedName);
+          const record =
+            yDocReady && workspaceYDoc.doc
+              ? getSavedTableFromYDoc(workspaceYDoc.doc, table.normalizedName)
+              : await getSavedTable(table.normalizedName);
           if (!record) return;
           const updatedRecord: SavedTableRecord = {
             ...record,
@@ -400,11 +519,17 @@ export function useSavedTables() {
           };
           await updateSavedTable(updatedRecord);
           await queueSavedTableChange(updatedRecord);
+          if (yDocReady && workspaceYDoc.doc) {
+            const doc = workspaceYDoc.doc;
+            doc.transact(() => {
+              upsertSavedTableInYDoc(doc, updatedRecord);
+            });
+          }
         }),
       );
       await refresh();
     },
-    [queueSavedTableChange, savedTables, refresh],
+    [queueSavedTableChange, savedTables, refresh, workspaceYDoc.doc, yDocReady],
   );
 
   return {
