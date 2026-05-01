@@ -258,6 +258,7 @@ function App() {
     draftSummaries,
     getDraftState,
     setWorkspaceSnapshot,
+    selectWorkspaceSnapshot,
     createDraft,
     deleteDraftById,
     moveDraftToFolder,
@@ -907,7 +908,7 @@ function App() {
   ]);
 
   const [loadedTableVersion, setLoadedTableVersion] = useState<number>(0);
-  const [isSavedTableLoading, setIsSavedTableLoading] = useState(false);
+  const [, setIsSavedTableLoading] = useState(false);
   const [isErDialogOpen, setIsErDialogOpen] = useState(false);
   const [workspaceSidebarOpen, setWorkspaceSidebarOpen] = useState(true);
   const [outputPanelOpen, setOutputPanelOpen] = useState(true);
@@ -1059,7 +1060,7 @@ function App() {
       if (existingTab) {
         activateTab(existingTab.id);
         applySavedState(existingTab.stateSnapshot);
-        setWorkspaceSnapshot(existingTab.source, existingTab.stateSnapshot);
+        selectWorkspaceSnapshot(existingTab.source, existingTab.stateSnapshot);
         return;
       }
 
@@ -1095,7 +1096,7 @@ function App() {
         const currentTab = getActiveTab();
         if (currentTab) {
           applySavedState(currentTab.stateSnapshot);
-          setWorkspaceSnapshot(currentTab.source, currentTab.stateSnapshot);
+          selectWorkspaceSnapshot(currentTab.source, currentTab.stateSnapshot);
         }
       }
       setTabLoading(newTabId, false);
@@ -1106,7 +1107,7 @@ function App() {
       findTabBySource,
       activateTab,
       applySavedState,
-      setWorkspaceSnapshot,
+      selectWorkspaceSnapshot,
       buildPersistedState,
       addTab,
       handleLoadSavedTable,
@@ -1129,7 +1130,7 @@ function App() {
       if (existingTab) {
         activateTab(existingTab.id);
         applySavedState(existingTab.stateSnapshot);
-        setWorkspaceSnapshot(existingTab.source, existingTab.stateSnapshot);
+        selectWorkspaceSnapshot(existingTab.source, existingTab.stateSnapshot);
         setLoadedTableNormalizedName(null);
         setLoadedTableName(null);
         setLoadedTableSignature(null);
@@ -1150,7 +1151,7 @@ function App() {
       });
       activateTab(newTabId);
       applySavedState(nextState);
-      setWorkspaceSnapshot({ kind: 'draft', draftId }, nextState);
+      selectWorkspaceSnapshot({ kind: 'draft', draftId }, nextState);
       setLoadedTableNormalizedName(null);
       setLoadedTableName(null);
       setLoadedTableSignature(null);
@@ -1164,7 +1165,7 @@ function App() {
       findTabBySource,
       activateTab,
       applySavedState,
-      setWorkspaceSnapshot,
+      selectWorkspaceSnapshot,
       getDraftState,
       draftSummaries,
       addTab,
@@ -1264,7 +1265,7 @@ function App() {
       if (nextActive) {
         lastClosedAutoOpenRef.current = null;
         applySavedState(nextActive.stateSnapshot);
-        setWorkspaceSnapshot(nextActive.source, nextActive.stateSnapshot);
+        selectWorkspaceSnapshot(nextActive.source, nextActive.stateSnapshot);
         return;
       }
 
@@ -1275,7 +1276,7 @@ function App() {
         };
       }
     },
-    [tabs, closeTabStore, getActiveTab, applySavedState, setWorkspaceSnapshot, persistedState],
+    [tabs, closeTabStore, getActiveTab, applySavedState, selectWorkspaceSnapshot, persistedState],
   );
 
   const handleRestoreTable = useCallback(
@@ -1704,7 +1705,7 @@ function App() {
     return presentations;
   }, [tabs]);
 
-  const isMainWorkspaceLoading = !hydrated || isSavedTableLoading;
+  const isMainWorkspaceLoading = !hydrated;
 
   useEffect(() => {
     if (!hydrated || isShareView || tabs.length > 0 || !persistedState) {
@@ -1733,6 +1734,7 @@ function App() {
     });
     activateTab(tabId);
     applySavedState(persistedState);
+    selectWorkspaceSnapshot(activeSource, persistedState);
     lastClosedAutoOpenRef.current = null;
   }, [
     activeSource,
@@ -1743,6 +1745,7 @@ function App() {
     hydrated,
     isShareView,
     persistedState,
+    selectWorkspaceSnapshot,
     t,
     tabs.length,
   ]);
@@ -1865,7 +1868,7 @@ function App() {
                   flushCurrentWorkspace();
                   activateTab(id);
                   applySavedState(tab.stateSnapshot);
-                  setWorkspaceSnapshot(tab.source, tab.stateSnapshot);
+                  selectWorkspaceSnapshot(tab.source, tab.stateSnapshot);
                 }}
                 onCloseTab={handleCloseTab}
                 onCreateTab={handleCreateDraft}

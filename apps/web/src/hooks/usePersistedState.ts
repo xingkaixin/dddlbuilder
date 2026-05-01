@@ -80,6 +80,7 @@ export interface UsePersistedStateReturn {
   getGlobalDraftState: () => PersistedState | null;
   getDraftState: (draftId: string) => PersistedState | null;
   setWorkspaceSnapshot: (source: WorkspaceSource, state: PersistedState) => void;
+  selectWorkspaceSnapshot: (source: WorkspaceSource, state: PersistedState) => void;
   createDraft: (draftId: string, state: PersistedState) => string;
   deleteDraftById: (draftId: string) => void;
   moveDraftToFolder: (draftId: string, folderId?: string) => void;
@@ -272,6 +273,26 @@ export function usePersistedState(): UsePersistedStateReturn {
       );
     },
     [currentScope, enqueueEntityChange, shareId, syncActiveSource],
+  );
+
+  const selectWorkspaceSnapshot = useCallback(
+    (source: WorkspaceSource, state: PersistedState) => {
+      if (shareId) return;
+
+      syncActiveSource(source);
+      setPersistedStateIfChanged(state);
+      fireAndForget(
+        writeWorkspaceSession(
+          {
+            activeSource: source,
+            activeState: state,
+            updatedAt: Date.now(),
+          },
+          currentScope,
+        ),
+      );
+    },
+    [currentScope, setPersistedStateIfChanged, shareId, syncActiveSource],
   );
 
   const saveState = useCallback(
@@ -930,6 +951,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     getGlobalDraftState,
     getDraftState,
     setWorkspaceSnapshot,
+    selectWorkspaceSnapshot,
     createDraft,
     deleteDraftById,
     moveDraftToFolder,

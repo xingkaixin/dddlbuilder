@@ -522,6 +522,41 @@ describe('usePersistedState', () => {
     });
   });
 
+  it('selectWorkspaceSnapshot 切到草稿标签时应只写入会话', async () => {
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    const savedDraftState = createState('saved_draft_state');
+    const tabSnapshot = createState('tab_snapshot_state');
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+    });
+
+    act(() => {
+      result.current.setWorkspaceSnapshot({ kind: 'draft', draftId: 'default' }, savedDraftState);
+    });
+
+    await waitFor(async () => {
+      const draft = await readGlobalDraft();
+      expect(draft?.state.tableName).toBe(savedDraftState.tableName);
+    });
+
+    act(() => {
+      result.current.selectWorkspaceSnapshot(
+        { kind: 'draft', draftId: 'default' },
+        tabSnapshot,
+      );
+    });
+
+    await waitFor(async () => {
+      const draft = await readGlobalDraft();
+      const session = await readWorkspaceSession();
+      expect(draft?.state.tableName).toBe(savedDraftState.tableName);
+      expect(session?.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
+      expect(session?.activeState?.tableName).toBe(tabSnapshot.tableName);
+    });
+  });
+
   it('主工作区 clearState 在 default draft 下应清空草稿与会话', async () => {
     const { wrapper } = createQueryClientWrapper();
     const { result } = renderHook(() => usePersistedState(), { wrapper });
