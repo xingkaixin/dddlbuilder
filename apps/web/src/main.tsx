@@ -41,7 +41,7 @@ createRoot(rootElement).render(
                 <App />
               </AuthSessionProvider>
             )}
-            <Toaster position="top-center" />
+            <Toaster />
           </AppErrorBoundary>
         </QueryClientProvider>
       </ThemeProvider>

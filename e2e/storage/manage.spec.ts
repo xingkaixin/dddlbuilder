@@ -56,21 +56,10 @@ const sidebarTableAction = async (page: any, pattern: RegExp, action: RegExp) =>
 const clickFirstDraft = async (page: any) => {
   const sidebar = page.locator('aside');
   const draftSection = sidebar.locator('section').filter({ hasText: /^草稿/ });
-  // 草稿 section 中每个草稿项包含一个名称 button 和一个 dropdown trigger button
-  const draftButtons = draftSection.locator('button:visible');
-  const count = await draftButtons.count();
-  if (count > 0) {
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      try {
-        await draftButtons.first().click({ timeout: 2000 });
-        return;
-      } catch (error) {
-        if (attempt === 2) {
-          throw error;
-        }
-        await page.waitForTimeout(120);
-      }
-    }
+  const firstDraftButton = draftSection.getByRole('button').first();
+  if (await firstDraftButton.isVisible({ timeout: 300 }).catch(() => false)) {
+    await firstDraftButton.click();
+    return;
   }
   // 侧边栏无草稿时，通过 TabBar 新建
   await page.getByRole('button', { name: /新建草稿|new draft/i }).click();
