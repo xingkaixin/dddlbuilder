@@ -1,4 +1,37 @@
+import { readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { defineConfig } from 'vitepress';
+
+const siteUrl = 'https://ddl.xingkaixin.me';
+const docsBase = '/docs/';
+
+const withDocsBase = (url: string) =>
+  `${docsBase}${url}`.replace(/\/+/g, '/');
+
+const canonicalDocsPath = (url: string) =>
+  url.replace(/^\/?(?:en|zh)\//, '').replace(/^\/?$/, '');
+
+const formatSitemapLastmod = (xml: string) =>
+  xml.replace(
+    /<lastmod>(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\.\d{3}Z<\/lastmod>/g,
+    '<lastmod>$1+00:00</lastmod>'
+  );
+
+const readGeneratedSitemap = async (path: string) => {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    try {
+      return await readFile(path, 'utf8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  }
+
+  return readFile(path, 'utf8');
+};
 
 const zhSidebar = [
   {
@@ -147,17 +180,56 @@ export default defineConfig({
   outDir: '.vitepress/dist',
   srcExclude: ['AGENTS.md'],
   sitemap: {
-    hostname: 'https://ddl.xingkaixin.me',
-    transformItems(items) {
-      return items.map((item) => ({
-        ...item,
-        url: `/docs/${item.url}`.replace(/\/+/g, '/'),
-        links: item.links?.map((link) => ({
-          ...link,
-          url: `/docs/${link.url}`.replace(/\/+/g, '/'),
-        })),
-      }));
+    hostname: siteUrl,
+    xmlns: {
+      news: false,
+      video: false,
+      image: false,
+      xhtml: true,
     },
+    transformItems(items) {
+      const byPath = new Map<string, { en?: string; zh?: string }>();
+
+      for (const item of items) {
+        const key = canonicalDocsPath(item.url);
+        const group = byPath.get(key) ?? {};
+
+        if (item.url.startsWith('en/')) {
+          group.en = withDocsBase(item.url);
+        }
+
+        if (item.url.startsWith('zh/')) {
+          group.zh = withDocsBase(item.url);
+        }
+
+        byPath.set(key, group);
+      }
+
+      return items.map((item) => {
+        const key = canonicalDocsPath(item.url);
+        const group = byPath.get(key);
+        const links =
+          group?.en && group.zh
+            ? [
+                { lang: 'zh-CN', url: group.zh },
+                { lang: 'en-US', url: group.en },
+                { lang: 'x-default', url: group.zh },
+              ]
+            : undefined;
+
+        return {
+          ...item,
+          url: withDocsBase(item.url),
+          links,
+        };
+      });
+    },
+  },
+  async buildEnd(siteConfig) {
+    const sitemapPath = join(siteConfig.outDir, 'sitemap.xml');
+    const sitemap = await readGeneratedSitemap(sitemapPath);
+
+    await writeFile(sitemapPath, formatSitemapLastmod(sitemap));
   },
   head: [
     ['meta', { name: 'theme-color', content: '#E07A5F' }],
