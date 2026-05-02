@@ -96,36 +96,41 @@ export function useFolders() {
   );
 
   // 加载文件夹列表
-  const loadFolders = useCallback(async () => {
-    const requestId = ++loadRequestRef.current;
-    if (!currentScope) {
-      setState((prev) => ({ ...prev, loading: true, error: null }));
-      return;
-    }
+  const loadFolders = useCallback(
+    async (options?: { showLoading?: boolean }) => {
+      const requestId = ++loadRequestRef.current;
+      if (!currentScope) {
+        setState((prev) => ({ ...prev, loading: true, error: null }));
+        return;
+      }
 
-    setCurrentWorkspaceScope(currentScope);
-    setState((prev) => ({ ...prev, loading: true, error: null }));
-    try {
-      const [folders, folderTree] =
-        yDocReady && workspaceYDoc.doc
-          ? [listFoldersFromYDoc(workspaceYDoc.doc), buildFolderTreeFromYDoc(workspaceYDoc.doc)]
-          : await Promise.all([listFolders(currentScope), buildFolderTree(currentScope)]);
-      if (loadRequestRef.current !== requestId) return;
-      setState({
-        folders,
-        folderTree,
-        loading: false,
-        error: null,
-      });
-    } catch (err) {
-      if (loadRequestRef.current !== requestId) return;
-      setState((prev) => ({
-        ...prev,
-        loading: false,
-        error: err instanceof Error ? err.message : '加载文件夹失败',
-      }));
-    }
-  }, [currentScope, workspaceYDoc.doc, yDocReady]);
+      setCurrentWorkspaceScope(currentScope);
+      if (options?.showLoading !== false) {
+        setState((prev) => ({ ...prev, loading: true, error: null }));
+      }
+      try {
+        const [folders, folderTree] =
+          yDocReady && workspaceYDoc.doc
+            ? [listFoldersFromYDoc(workspaceYDoc.doc), buildFolderTreeFromYDoc(workspaceYDoc.doc)]
+            : await Promise.all([listFolders(currentScope), buildFolderTree(currentScope)]);
+        if (loadRequestRef.current !== requestId) return;
+        setState({
+          folders,
+          folderTree,
+          loading: false,
+          error: null,
+        });
+      } catch (err) {
+        if (loadRequestRef.current !== requestId) return;
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          error: err instanceof Error ? err.message : '加载文件夹失败',
+        }));
+      }
+    },
+    [currentScope, workspaceYDoc.doc, yDocReady],
+  );
 
   // 初始加载
   useEffect(() => {
@@ -135,7 +140,7 @@ export function useFolders() {
   useEffect(() => {
     if (!yDocReady || !workspaceYDoc.doc) return;
     return subscribeWorkspaceYDoc(workspaceYDoc.doc, () => {
-      void loadFolders();
+      void loadFolders({ showLoading: false });
     });
   }, [loadFolders, workspaceYDoc.doc, yDocReady]);
 

@@ -100,41 +100,48 @@ export function useSavedTables() {
     [authSession.status, authSession.workspaceId, yDocReady],
   );
 
-  const refresh = useCallback(async () => {
-    const requestId = ++refreshRequestRef.current;
-    if (!currentScope) {
-      setLoading(true);
-      return;
-    }
-
-    setCurrentWorkspaceScope(currentScope);
-    try {
-      setLoading(true);
-      const [metadata, trashedMetadata] =
-        yDocReady && workspaceYDoc.doc
-          ? [
-              listSavedTableMetadataFromYDoc(workspaceYDoc.doc),
-              await listTrashedSavedTableMetadata(currentScope),
-            ]
-          : await Promise.all([
-              listSavedTableMetadata(currentScope),
-              listTrashedSavedTableMetadata(currentScope),
-            ]);
-      if (refreshRequestRef.current !== requestId) return;
-      const sorted = sortSavedTablesByCreatedAt(metadata);
-      const sortedTrashed = trashedMetadata.sort((a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0));
-      setSavedTables(sorted);
-      setTrashedTables(sortedTrashed);
-      setError(null);
-    } catch (err) {
-      if (refreshRequestRef.current !== requestId) return;
-      setError(err instanceof Error ? err.message : '读取失败');
-    } finally {
-      if (refreshRequestRef.current === requestId) {
-        setLoading(false);
+  const refresh = useCallback(
+    async (options?: { showLoading?: boolean }) => {
+      const requestId = ++refreshRequestRef.current;
+      if (!currentScope) {
+        setLoading(true);
+        return;
       }
-    }
-  }, [currentScope, workspaceYDoc.doc, yDocReady]);
+
+      setCurrentWorkspaceScope(currentScope);
+      try {
+        if (options?.showLoading !== false) {
+          setLoading(true);
+        }
+        const [metadata, trashedMetadata] =
+          yDocReady && workspaceYDoc.doc
+            ? [
+                listSavedTableMetadataFromYDoc(workspaceYDoc.doc),
+                await listTrashedSavedTableMetadata(currentScope),
+              ]
+            : await Promise.all([
+                listSavedTableMetadata(currentScope),
+                listTrashedSavedTableMetadata(currentScope),
+              ]);
+        if (refreshRequestRef.current !== requestId) return;
+        const sorted = sortSavedTablesByCreatedAt(metadata);
+        const sortedTrashed = trashedMetadata.sort(
+          (a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0),
+        );
+        setSavedTables(sorted);
+        setTrashedTables(sortedTrashed);
+        setError(null);
+      } catch (err) {
+        if (refreshRequestRef.current !== requestId) return;
+        setError(err instanceof Error ? err.message : '读取失败');
+      } finally {
+        if (refreshRequestRef.current === requestId) {
+          setLoading(false);
+        }
+      }
+    },
+    [currentScope, workspaceYDoc.doc, yDocReady],
+  );
 
   useEffect(() => {
     void refresh();
@@ -143,7 +150,7 @@ export function useSavedTables() {
   useEffect(() => {
     if (!yDocReady || !workspaceYDoc.doc) return;
     return subscribeWorkspaceYDoc(workspaceYDoc.doc, () => {
-      void refresh();
+      void refresh({ showLoading: false });
     });
   }, [refresh, workspaceYDoc.doc, yDocReady]);
 

@@ -5,12 +5,44 @@ import { setupFakeIndexedDB, teardownFakeIndexedDB } from '../utils/fakeIndexedD
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { flushPromises } from '@/__tests__/utils/test-utils';
 
-vi.mock('@/auth/AuthSessionProvider', () => ({
-  useAuthSession: vi.fn(() => ({
+const mockUseAuthSession = vi.hoisted(() =>
+  vi.fn(() => ({
     status: 'signed_out',
     configured: true,
     userId: null,
+    workspaceId: null,
   })),
+);
+const mockWorkspaceYDoc = vi.hoisted(() => ({
+  value: {
+    doc: null as unknown,
+    synced: false,
+    localSynced: false,
+    connectionState: 'idle',
+  },
+}));
+const mockYDocAdapter = vi.hoisted(() => ({
+  deleteSavedTableFromYDoc: vi.fn(),
+  getSavedTableFromYDoc: vi.fn(),
+  listSavedTableMetadataFromYDoc: vi.fn(),
+  subscribeWorkspaceYDoc: vi.fn(),
+  upsertSavedTableInYDoc: vi.fn(),
+}));
+
+vi.mock('@/auth/AuthSessionProvider', () => ({
+  useAuthSession: mockUseAuthSession,
+}));
+
+vi.mock('@/providers/WorkspaceYDocProvider', () => ({
+  useWorkspaceYDoc: () => mockWorkspaceYDoc.value,
+}));
+
+vi.mock('@/services/workspaceYDocAdapter', () => ({
+  deleteSavedTableFromYDoc: mockYDocAdapter.deleteSavedTableFromYDoc,
+  getSavedTableFromYDoc: mockYDocAdapter.getSavedTableFromYDoc,
+  listSavedTableMetadataFromYDoc: mockYDocAdapter.listSavedTableMetadataFromYDoc,
+  subscribeWorkspaceYDoc: mockYDocAdapter.subscribeWorkspaceYDoc,
+  upsertSavedTableInYDoc: mockYDocAdapter.upsertSavedTableInYDoc,
 }));
 
 const createState = (name: string): PersistedState => ({
@@ -31,6 +63,23 @@ const createState = (name: string): PersistedState => ({
 describe('useSavedTables', () => {
   beforeEach(() => {
     setupFakeIndexedDB();
+    mockUseAuthSession.mockReturnValue({
+      status: 'signed_out',
+      configured: true,
+      userId: null,
+      workspaceId: null,
+    } as any);
+    mockWorkspaceYDoc.value = {
+      doc: null,
+      synced: false,
+      localSynced: false,
+      connectionState: 'idle',
+    };
+    mockYDocAdapter.deleteSavedTableFromYDoc.mockReset();
+    mockYDocAdapter.getSavedTableFromYDoc.mockReset();
+    mockYDocAdapter.listSavedTableMetadataFromYDoc.mockReset();
+    mockYDocAdapter.subscribeWorkspaceYDoc.mockReset();
+    mockYDocAdapter.upsertSavedTableInYDoc.mockReset();
   });
 
   afterEach(() => {
@@ -138,5 +187,69 @@ describe('useSavedTables', () => {
     });
 
     expect(result.current.savedTables.map((table) => table.name)).toEqual(['Beta', 'Alpha']);
+  });
+
+  it('should refresh ydoc updates without showing loading again', async () => {
+    let notifyYDocChanged: (() => void) | null = null;
+    const doc = {};
+    mockUseAuthSession.mockReturnValue({
+      status: 'signed_in',
+      configured: true,
+      userId: 'user_1',
+      workspaceId: 'workspace_1',
+    } as any);
+    mockWorkspaceYDoc.value = {
+      doc,
+      synced: true,
+      localSynced: true,
+      connectionState: 'connected',
+    };
+    mockYDocAdapter.subscribeWorkspaceYDoc.mockImplementation((_doc, notify) => {
+      notifyYDocChanged = notify;
+      return vi.fn();
+    });
+    mockYDocAdapter.listSavedTableMetadataFromYDoc
+      .mockReturnValueOnce([
+        {
+          normalizedName: 'alpha',
+          name: 'Alpha',
+          dbType: 'mysql',
+          fieldCount: 1,
+          createdAt: 100,
+          updatedAt: 100,
+        },
+      ])
+      .mockReturnValueOnce([
+        {
+          normalizedName: 'beta',
+          name: 'Beta',
+          dbType: 'mysql',
+          fieldCount: 2,
+          createdAt: 200,
+          updatedAt: 200,
+        },
+      ]);
+
+    const { result } = renderHook(() => useSavedTables());
+
+    await act(async () => {
+      await flushPromises();
+    });
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.savedTables.map((table) => table.name)).toEqual(['Alpha']);
+
+    act(() => {
+      notifyYDocChanged?.();
+    });
+
+    expect(result.current.loading).toBe(false);
+
+    await act(async () => {
+      await flushPromises();
+    });
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.savedTables.map((table) => table.name)).toEqual(['Beta']);
   });
 });
