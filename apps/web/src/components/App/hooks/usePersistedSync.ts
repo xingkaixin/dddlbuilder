@@ -181,6 +181,9 @@ export function usePersistedSync({
         const lastAppliedSignature = lastAppliedPersistedSignatureRef.current;
         if (lastAppliedSignature) {
           lastAppliedPersistedSignatureRef.current = null;
+          if (currentSignature !== lastAppliedSignature) {
+            return;
+          }
         }
         if (activeTabSnapshot && currentSignature === JSON.stringify(activeTabSnapshot)) {
           return;

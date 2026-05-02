@@ -157,9 +157,9 @@ export function usePersistedState(): UsePersistedStateReturn {
   );
   const shouldWaitForYDocHydration = Boolean(
     !shareId &&
-      currentScope.kind === 'user' &&
-      currentScope.workspaceId &&
-      !workspaceYDoc.localSynced,
+    currentScope.kind === 'user' &&
+    currentScope.workspaceId &&
+    !workspaceYDoc.localSynced,
   );
 
   const syncActiveSource = useCallback((source: WorkspaceSource) => {
@@ -1080,13 +1080,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     const unsubscribe = subscribeWorkspaceYDoc(doc, refreshFromYDoc);
     refreshFromYDoc();
     return unsubscribe;
-  }, [
-    setPersistedStateIfChanged,
-    syncActiveSource,
-    updateDrafts,
-    workspaceYDoc.doc,
-    yDocReady,
-  ]);
+  }, [setPersistedStateIfChanged, syncActiveSource, updateDrafts, workspaceYDoc.doc, yDocReady]);
 
   useEffect(() => {
     if (shareId || !workspaceScopeReady || yDocReady) {
