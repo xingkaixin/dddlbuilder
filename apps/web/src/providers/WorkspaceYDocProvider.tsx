@@ -144,7 +144,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     return () => {
       cancelled = true;
       client?.destroy();
-      persistence.destroy();
+      void persistence.destroy();
       doc.destroy();
     };
   }, [authSession.status, authSession.userId, authSession.workspaceId]);

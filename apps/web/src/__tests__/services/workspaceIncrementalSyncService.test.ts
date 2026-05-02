@@ -178,12 +178,17 @@ describe('workspaceIncrementalSyncService', () => {
     });
 
     const outbox = await listWorkspaceOutboxItems('ws-1');
+    const [latestQueued] = outbox;
 
     expect(outbox).toHaveLength(1);
-    expect(outbox[0]?.id).not.toBe(firstQueued?.id);
-    expect(outbox[0]?.baseVersion).toBe(7);
-    expect(outbox[0]?.contentHash).toBe('sha256:latest');
-    expect((outbox[0]?.payload as { state: { tableName: string } }).state.tableName).toBe(
+    expect(latestQueued).toBeDefined();
+    if (!latestQueued) {
+      throw new Error('Expected latest outbox item');
+    }
+    expect(latestQueued.id).not.toBe(firstQueued?.id);
+    expect(latestQueued.baseVersion).toBe(7);
+    expect(latestQueued.contentHash).toBe('sha256:latest');
+    expect((latestQueued.payload as { state: { tableName: string } }).state.tableName).toBe(
       'latest_local_draft',
     );
   });
