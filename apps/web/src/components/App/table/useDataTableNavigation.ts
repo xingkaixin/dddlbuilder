@@ -85,6 +85,7 @@ export function useDataTableNavigation({
   return {
     selectedCell,
     setSelectedCell,
+    focusEditableCell,
     focusFirstInteractiveInCell,
     handleCellActivate,
     handleTabNavigation,

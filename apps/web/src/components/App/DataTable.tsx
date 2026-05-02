@@ -46,6 +46,7 @@ interface SortableDataRowProps {
   row: Row<FieldRow>;
   selectedCell: { row: number; col: number } | null;
   handleCellActivate: (rowIndex: number, colIndex: number) => void;
+  focusEditableCell: (rowIndex: number, editableColIndex: number) => void;
   focusFirstInteractiveInCell: (cellElement: HTMLTableCellElement | null) => void;
   freezeEnabled: boolean;
   effectiveFreezeColumns: number;
@@ -59,6 +60,7 @@ const SortableDataRow = memo<SortableDataRowProps>(
     row,
     selectedCell,
     handleCellActivate,
+    focusEditableCell,
     focusFirstInteractiveInCell,
     freezeEnabled,
     effectiveFreezeColumns,
@@ -108,6 +110,14 @@ const SortableDataRow = memo<SortableDataRowProps>(
                 width: cell.column.getSize(),
                 minWidth: cell.column.getSize(),
                 left: isFrozen ? getStickyLeft(colIndex) : undefined,
+              }}
+              onPointerDown={(event) => {
+                if (event.button !== 0) return;
+                handleCellActivate(row.index, colIndex);
+                focusFirstInteractiveInCell(event.currentTarget);
+                setTimeout(() => {
+                  focusEditableCell(row.index, colIndex - 1);
+                }, 0);
               }}
               onClick={(event) => {
                 handleCellActivate(row.index, colIndex);
@@ -267,6 +277,7 @@ export const DataTable = memo<DataTableProps>(
     const {
       selectedCell,
       setSelectedCell,
+      focusEditableCell,
       focusFirstInteractiveInCell,
       handleCellActivate,
       handleTabNavigation,
@@ -451,6 +462,7 @@ export const DataTable = memo<DataTableProps>(
                       row={row}
                       selectedCell={selectedCell}
                       handleCellActivate={handleCellActivate}
+                      focusEditableCell={focusEditableCell}
                       focusFirstInteractiveInCell={focusFirstInteractiveInCell}
                       freezeEnabled={freezeEnabled}
                       effectiveFreezeColumns={effectiveFreezeColumns}

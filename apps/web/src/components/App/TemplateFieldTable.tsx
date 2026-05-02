@@ -28,12 +28,20 @@ interface SortableTemplateRowProps {
   row: Row<FieldRow>;
   selectedCell: { row: number; col: number } | null;
   handleCellActivate: (rowIndex: number, colIndex: number) => void;
+  focusEditableCell: (rowIndex: number, editableColIndex: number) => void;
   focusFirstInteractiveInCell: (cellElement: HTMLTableCellElement | null) => void;
   t: (key: string) => string;
 }
 
 const SortableTemplateRow = memo<SortableTemplateRowProps>(
-  ({ row, selectedCell, handleCellActivate, focusFirstInteractiveInCell, t }) => {
+  ({
+    row,
+    selectedCell,
+    handleCellActivate,
+    focusEditableCell,
+    focusFirstInteractiveInCell,
+    t,
+  }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
       id: row.id,
     });
@@ -68,6 +76,14 @@ const SortableTemplateRow = memo<SortableTemplateRowProps>(
               style={{
                 width: cell.column.getSize(),
                 minWidth: cell.column.getSize(),
+              }}
+              onPointerDown={(event) => {
+                if (event.button !== 0) return;
+                handleCellActivate(row.index, colIndex);
+                focusFirstInteractiveInCell(event.currentTarget);
+                setTimeout(() => {
+                  focusEditableCell(row.index, colIndex - 1);
+                }, 0);
               }}
               onClick={(event) => {
                 handleCellActivate(row.index, colIndex);
@@ -166,6 +182,7 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
   const {
     selectedCell,
     setSelectedCell,
+    focusEditableCell,
     focusFirstInteractiveInCell,
     handleCellActivate,
     handleTabNavigation,
@@ -262,6 +279,7 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
                     row={row}
                     selectedCell={selectedCell}
                     handleCellActivate={handleCellActivate}
+                    focusEditableCell={focusEditableCell}
                     focusFirstInteractiveInCell={focusFirstInteractiveInCell}
                     t={t}
                   />
