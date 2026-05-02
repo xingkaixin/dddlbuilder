@@ -55,13 +55,17 @@ const sidebarTableAction = async (page: any, pattern: RegExp, action: RegExp) =>
 // 点击侧边栏中的第一个草稿（若无则通过 TabBar 新建）
 const clickFirstDraft = async (page: any) => {
   const sidebar = page.locator('aside');
-  const draftSection = sidebar.locator('section').filter({ hasText: /^草稿/ });
+  const draftSection = sidebar.locator('section').first();
   const firstDraftButton = draftSection.getByRole('button').first();
-  if (await firstDraftButton.isVisible({ timeout: 300 }).catch(() => false)) {
-    await firstDraftButton.click();
-    return;
+  if ((await firstDraftButton.count()) > 0) {
+    const clicked = await firstDraftButton
+      .click({ timeout: 1000 })
+      .then(() => true)
+      .catch(() => false);
+    if (clicked) {
+      return;
+    }
   }
-  // 侧边栏无草稿时，通过 TabBar 新建
   await page.getByRole('button', { name: /新建草稿|new draft/i }).click();
 };
 
