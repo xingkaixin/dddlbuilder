@@ -71,6 +71,7 @@ export function useSavedTables() {
   const yDocReady = Boolean(
     workspaceYDoc.doc &&
     workspaceYDoc.localSynced &&
+    workspaceYDoc.synced &&
     currentScope?.kind === 'user' &&
     currentScope.workspaceId,
   );
@@ -156,7 +157,7 @@ export function useSavedTables() {
 
   useEffect(() => {
     const handleSnapshotApplied = () => {
-      void refresh();
+      void refresh({ showLoading: false });
     };
 
     window.addEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);

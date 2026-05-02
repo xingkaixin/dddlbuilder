@@ -152,6 +152,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     !shareId &&
     workspaceYDoc.doc &&
     workspaceYDoc.localSynced &&
+    workspaceYDoc.synced &&
     currentScope.kind === 'user' &&
     currentScope.workspaceId,
   );

@@ -6,6 +6,7 @@ import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fak
 import { resetWorkspaceBootstrapCache } from '@/hooks/workspacePersistence/bootstrap';
 import { STORAGE_KEY } from '@/utils/constants';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 import { getShareState, ShareApiError } from '@/services/shareService';
 import type { WorkspaceSavePayload } from '@ddlbuilder/shared-types/workspace';
 import {
@@ -15,6 +16,7 @@ import {
   writeGlobalDraft,
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
+import { listWorkspaceOutboxItems } from '@/utils/workspaceSyncStateDb';
 import { addSavedTable } from '@/utils/savedTablesDb';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 
@@ -152,6 +154,12 @@ describe('usePersistedState', () => {
       openAuthDialog: vi.fn(),
       closeAuthDialog: vi.fn(),
     });
+    vi.mocked(useWorkspaceYDoc).mockReturnValue({
+      doc: null,
+      synced: false,
+      localSynced: true,
+      connectionState: 'idle',
+    } as any);
     window.history.replaceState({}, '', '/');
   });
 
@@ -383,6 +391,65 @@ describe('usePersistedState', () => {
       expect(dbDraft?.state.tableName).toBe('next_global');
       const session = await readWorkspaceSession();
       expect(session?.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
+    });
+  });
+
+  it('远端 YDoc 未连接时应将草稿写入工作区 outbox', async () => {
+    vi.mocked(useAuthSession).mockReturnValue({
+      status: 'signed_in',
+      configured: true,
+      userId: 'user-1',
+      workspaceId: 'ws-1',
+      email: 'user@example.com',
+      name: 'User One',
+      emailVerified: true,
+      creditBalance: 100,
+      creditsStatus: 'ready',
+      authDialogOpen: false,
+      signInWithEmail: vi.fn(),
+      signUpWithEmail: vi.fn(),
+      updateUserName: vi.fn(),
+      changePassword: vi.fn(),
+      requestPasswordReset: vi.fn(),
+      resetPassword: vi.fn(),
+      sendVerificationEmail: vi.fn(),
+      signOut: vi.fn(),
+      refreshSession: vi.fn(),
+      refreshCredits: vi.fn(),
+      openAuthDialog: vi.fn(),
+      closeAuthDialog: vi.fn(),
+    });
+    vi.mocked(useWorkspaceYDoc).mockReturnValue({
+      doc: {},
+      synced: false,
+      localSynced: true,
+      connectionState: 'connecting',
+    } as any);
+
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+    });
+
+    act(() => {
+      result.current.saveState({
+        state: createState('pending_remote_draft'),
+        source: { kind: 'draft', draftId: 'default' },
+        isDirty: false,
+      });
+    });
+
+    await waitFor(async () => {
+      const items = await listWorkspaceOutboxItems('ws-1');
+      expect(items).toHaveLength(1);
+      expect(items[0]).toMatchObject({
+        workspaceId: 'ws-1',
+        entityType: 'draft',
+        entityId: 'default',
+        op: 'upsert',
+      });
     });
   });
 

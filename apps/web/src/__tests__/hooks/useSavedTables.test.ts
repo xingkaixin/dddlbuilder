@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { useSavedTables } from '@/hooks/useSavedTables';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '../utils/fakeIndexedDb';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { flushPromises } from '@/__tests__/utils/test-utils';
+import { listWorkspaceOutboxItems } from '@/utils/workspaceSyncStateDb';
 
 const mockUseAuthSession = vi.hoisted(() =>
   vi.fn(() => ({
@@ -161,6 +162,44 @@ describe('useSavedTables', () => {
 
     const updated = await result.current.loadTable(saved.normalizedName);
     expect(updated?.state.tableName).toBe('gamma-updated');
+  });
+
+  it('should queue saved table changes when remote ydoc is disconnected', async () => {
+    mockUseAuthSession.mockReturnValue({
+      status: 'signed_in',
+      configured: true,
+      userId: 'user_1',
+      workspaceId: 'workspace_1',
+    } as any);
+    mockWorkspaceYDoc.value = {
+      doc: {},
+      synced: false,
+      localSynced: true,
+      connectionState: 'connecting',
+    };
+    const { result } = renderHook(() => useSavedTables());
+
+    await act(async () => {
+      await flushPromises();
+    });
+
+    await act(async () => {
+      const saveResult = await result.current.saveTable('Pending', createState('pending'));
+      expect(saveResult.ok).toBe(true);
+      await flushPromises();
+    });
+
+    await waitFor(async () => {
+      const items = await listWorkspaceOutboxItems('workspace_1');
+      expect(items).toHaveLength(1);
+      expect(items[0]).toMatchObject({
+        workspaceId: 'workspace_1',
+        entityType: 'saved_table',
+        entityId: 'pending',
+        op: 'upsert',
+      });
+    });
+    expect(mockYDocAdapter.upsertSavedTableInYDoc).not.toHaveBeenCalled();
   });
 
   it('should keep saved table order stable after overwrite', async () => {

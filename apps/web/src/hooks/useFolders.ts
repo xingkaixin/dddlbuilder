@@ -67,6 +67,7 @@ export function useFolders() {
   const yDocReady = Boolean(
     workspaceYDoc.doc &&
     workspaceYDoc.localSynced &&
+    workspaceYDoc.synced &&
     currentScope?.kind === 'user' &&
     currentScope.workspaceId,
   );
@@ -146,7 +147,7 @@ export function useFolders() {
 
   useEffect(() => {
     const handleSnapshotApplied = () => {
-      void loadFolders();
+      void loadFolders({ showLoading: false });
     };
 
     window.addEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);

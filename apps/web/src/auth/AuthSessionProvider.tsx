@@ -532,13 +532,14 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       });
     };
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
+      if (document.visibilityState === 'hidden' || document.visibilityState === 'visible') {
         runImmediately();
       }
     };
 
     window.addEventListener(WORKSPACE_OUTBOX_ENQUEUED_EVENT, run);
     window.addEventListener('online', runImmediately);
+    window.addEventListener('focus', runImmediately);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
       if (timer) {
@@ -546,6 +547,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       }
       window.removeEventListener(WORKSPACE_OUTBOX_ENQUEUED_EVENT, run);
       window.removeEventListener('online', runImmediately);
+      window.removeEventListener('focus', runImmediately);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [state.status, state.userId, state.workspaceId]);
