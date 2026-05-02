@@ -147,7 +147,24 @@ describe('workspaceYDocAdapter', () => {
     expect(getDraftRecordFromYDoc(doc, DEFAULT_DRAFT_ID)?.state.rows[0].fieldName).toBe('user_id');
   });
 
-  it('converges concurrent edits to different properties on the same field', () => {
+  it('reads full state snapshots instead of reconstructed field maps', () => {
+    const doc = new Y.Doc();
+    const state = createState({
+      schemaName: 'tenant_1',
+      tableName: 'orders',
+      tableComment: '订单表',
+      rows: [
+        { ...createState().rows[0], fieldName: 'order_id', fieldComment: '订单 ID' },
+        { ...createState().rows[1], fieldName: 'buyer_email', fieldComment: '买家邮箱' },
+      ],
+    });
+
+    upsertDraftInYDoc(doc, DEFAULT_DRAFT_ID, { state, updatedAt: 1 });
+
+    expect(getDraftRecordFromYDoc(doc, DEFAULT_DRAFT_ID)?.state).toEqual(state);
+  });
+
+  it('converges concurrent full-state writes', () => {
     const seed = new Y.Doc();
     const state = createState();
     upsertDraftInYDoc(seed, DEFAULT_DRAFT_ID, { state, updatedAt: 1 });
@@ -181,10 +198,8 @@ describe('workspaceYDocAdapter', () => {
 
     const leftState = getDraftRecordFromYDoc(left, DEFAULT_DRAFT_ID)?.state;
     const rightState = getDraftRecordFromYDoc(right, DEFAULT_DRAFT_ID)?.state;
-    expect(leftState?.rows[0]).toMatchObject({
-      fieldName: 'user_id',
-      fieldComment: '用户 ID',
-    });
     expect(rightState).toEqual(leftState);
+    expect([state.rows[0].fieldName, 'user_id']).toContain(leftState?.rows[0].fieldName);
+    expect([state.rows[0].fieldComment, '用户 ID']).toContain(leftState?.rows[0].fieldComment);
   });
 });

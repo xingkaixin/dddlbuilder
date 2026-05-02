@@ -40,7 +40,6 @@ interface UsePersistedSyncParams {
   loadedTableNormalizedName: string | null;
   // 新增：同步更新标签页快照的 dirty 状态
   updateActiveTabSnapshot?: (state: PersistedState, isDirty: boolean) => void;
-  activeTabSnapshot?: PersistedState | null;
 }
 
 export function usePersistedSync({
@@ -70,7 +69,6 @@ export function usePersistedSync({
   setLoadedTableSignature,
   loadedTableNormalizedName,
   updateActiveTabSnapshot,
-  activeTabSnapshot,
 }: UsePersistedSyncParams) {
   const activeSourceRef = useRef(activeSource);
   activeSourceRef.current = activeSource;
@@ -185,9 +183,6 @@ export function usePersistedSync({
             return;
           }
         }
-        if (activeTabSnapshot && currentSignature === JSON.stringify(activeTabSnapshot)) {
-          return;
-        }
         const isDirty =
           source.kind === 'saved_table' ? currentSignature !== source.baseSignature : false;
         saveState({
@@ -207,7 +202,6 @@ export function usePersistedSync({
       saveState,
       loadedTableNormalizedName,
       updateActiveTabSnapshot,
-      activeTabSnapshot,
     ],
     PERSIST_DEBOUNCE_MS,
   );

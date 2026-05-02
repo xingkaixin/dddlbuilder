@@ -99,6 +99,18 @@ const writeJsonMap = (map: Y.Map<unknown>, values: JsonRecord) => {
   }
 };
 
+const writeStateSnapshot = (tableDoc: Y.Map<unknown>, state: PersistedState) => {
+  tableDoc.set('stateSnapshot', JSON.parse(JSON.stringify(state)));
+};
+
+const readStateSnapshot = (tableDoc: Y.Map<unknown>): PersistedState | null => {
+  const snapshot = tableDoc.get('stateSnapshot');
+  if (!snapshot || typeof snapshot !== 'object') return null;
+  const state = snapshot as Partial<PersistedState>;
+  if (!Array.isArray(state.rows)) return null;
+  return state as PersistedState;
+};
+
 const readJsonMap = (map: Y.Map<unknown> | undefined): JsonRecord => {
   if (!map) return {};
   const record: JsonRecord = {};
@@ -262,6 +274,8 @@ export const ensureWorkspaceYDocMeta = (doc: Y.Doc) => {
 };
 
 export const applyPersistedStateToTableDoc = (tableDoc: Y.Map<unknown>, state: PersistedState) => {
+  writeStateSnapshot(tableDoc, state);
+
   const scalar = ensureMap(tableDoc, 'scalar');
   const scalarValues: JsonRecord = {};
   for (const key of TABLE_SCALAR_KEYS) {
@@ -293,6 +307,9 @@ export const applyPersistedStateToTableDoc = (tableDoc: Y.Map<unknown>, state: P
 };
 
 export const tableDocToPersistedState = (tableDoc: Y.Map<unknown>): PersistedState => {
+  const stateSnapshot = readStateSnapshot(tableDoc);
+  if (stateSnapshot) return stateSnapshot;
+
   const scalar = ensureMap(tableDoc, 'scalar');
   const state = readJsonMap(scalar) as Partial<PersistedState>;
   const fields = ensureMap(tableDoc, 'fields') as Y.Map<Y.Map<unknown>>;

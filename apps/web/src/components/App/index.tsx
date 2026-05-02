@@ -808,7 +808,6 @@ function App() {
     setLoadedTableSignature,
     loadedTableNormalizedName,
     updateActiveTabSnapshot,
-    activeTabSnapshot,
   });
 
   const { handleClearAll, cancelClearAll, confirmClearAll } = useClearAllActions({

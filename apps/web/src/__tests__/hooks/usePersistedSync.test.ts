@@ -32,7 +32,6 @@ function createBaseParams(overrides?: {
   }) => void;
   activeSource?: WorkspaceSource;
   loadedTableNormalizedName?: string | null;
-  activeTabSnapshot?: PersistedState | null;
 }) {
   return {
     hydrated: overrides?.hydrated ?? true,
@@ -60,7 +59,6 @@ function createBaseParams(overrides?: {
     setLoadedTableName: vi.fn(),
     setLoadedTableSignature: vi.fn(),
     loadedTableNormalizedName: overrides?.loadedTableNormalizedName ?? null,
-    activeTabSnapshot: overrides?.activeTabSnapshot,
   };
 }
 
@@ -183,13 +181,12 @@ describe('usePersistedSync debounce save', () => {
     expect(secondBuild).toHaveBeenCalledTimes(1);
   });
 
-  it('当前状态与 active tab 快照一致时应跳过保存', () => {
+  it('当前状态与 active tab 快照一致时仍应保存到工作区', () => {
     const saveState = vi.fn();
     const payload = createState('users');
     const params = createBaseParams({
       saveState,
       buildPersistedState: () => payload,
-      activeTabSnapshot: payload,
     });
 
     renderHook(() => usePersistedSync(params));
@@ -198,7 +195,11 @@ describe('usePersistedSync debounce save', () => {
       vi.advanceTimersByTime(500);
     });
 
-    expect(saveState).not.toHaveBeenCalled();
+    expect(saveState).toHaveBeenCalledWith({
+      state: payload,
+      source: { kind: 'draft', draftId: 'default' },
+      isDirty: false,
+    });
   });
 
   it('刚应用远端状态且 UI 仍未追上时应跳过本轮保存', () => {
@@ -467,7 +468,7 @@ describe('usePersistedSync useEffect synchronization', () => {
     expect(setLoadedTableSignature).toHaveBeenCalledWith('sig');
   });
 
-  it('如果 activeSource 为 default draft，应重置 loadedTable', () => {
+  it('如果 activeSource 为草稿，应重置 loadedTable', () => {
     const setLoadedTableNormalizedName = vi.fn();
     const setLoadedTableName = vi.fn();
     const setLoadedTableSignature = vi.fn();
@@ -476,7 +477,8 @@ describe('usePersistedSync useEffect synchronization', () => {
       hydrated: true,
       persistedState: createState('test'),
       activeSource: {
-        kind: 'default draft',
+        kind: 'draft',
+        draftId: 'default',
       },
     });
     params.setLoadedTableNormalizedName = setLoadedTableNormalizedName;
