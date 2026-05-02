@@ -300,10 +300,12 @@ function App() {
     resetAuthState,
     setAuthObjects,
   } = useAuthManagement(persistedState || undefined);
-  const activeTabSnapshot = useMemo(
-    () => tabs.find((tab) => tab.id === activeTabId)?.stateSnapshot ?? null,
+  const activeWorkspaceTab = useMemo(
+    () => tabs.find((tab) => tab.id === activeTabId) ?? null,
     [activeTabId, tabs],
   );
+  const activeTabSnapshot = activeWorkspaceTab?.stateSnapshot ?? null;
+  const activeTabDirty = activeWorkspaceTab?.isDirty ?? false;
 
   const {
     citusShardingConfig,
@@ -880,17 +882,15 @@ function App() {
     if (!hydrated || isShareView) return;
     const state = buildPersistedState();
     const source = activeSource;
-
-    console.log('[DEBUG] flushCurrentWorkspace - 保存当前工作区:', {
-      sourceKind: source.kind,
-      sourceDetails: source,
-      currentUITableName: state.tableName,
-    });
+    const currentSignature = serializePersistedState(state);
 
     const isDirty =
-      source.kind === 'saved_table'
-        ? serializePersistedState(state) !== source.baseSignature
-        : false;
+      source.kind === 'saved_table' ? currentSignature !== source.baseSignature : false;
+    const tabSnapshotSignature = activeTabSnapshot
+      ? serializePersistedState(activeTabSnapshot)
+      : null;
+
+    if (tabSnapshotSignature === currentSignature && activeTabDirty === isDirty) return;
 
     // 保存到当前激活标签页的快照
     updateActiveTabSnapshot(state, isDirty);
@@ -903,6 +903,8 @@ function App() {
     activeSource,
     buildPersistedState,
     serializePersistedState,
+    activeTabSnapshot,
+    activeTabDirty,
     updateActiveTabSnapshot,
     saveState,
   ]);
