@@ -103,15 +103,20 @@ describe('generateMockData', () => {
   });
 
   it('handles nullable fields', () => {
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.05);
     const fields = [
       createField({ name: 'id', type: 'bigint', defaultKind: 'auto_increment', nullable: false }),
       createField({ name: 'deleted_at', type: 'timestamp', defaultKind: 'none', nullable: true }),
     ];
-    const result = generateMockData('users', '', fields, 'mysql', { rowCount: 20 });
-    const parsed = JSON.parse(result.json);
-    const hasNull = parsed.some((row: any) => row.deleted_at === null);
-    const hasValue = parsed.some((row: any) => row.deleted_at !== null);
-    expect(hasNull || !hasValue).toBe(true);
+    try {
+      const result = generateMockData('users', '', fields, 'mysql', { rowCount: 20 });
+      const parsed = JSON.parse(result.json);
+      const hasNull = parsed.some((row: any) => row.deleted_at === null);
+      const hasValue = parsed.some((row: any) => row.deleted_at !== null);
+      expect(hasNull || !hasValue).toBe(true);
+    } finally {
+      randomSpy.mockRestore();
+    }
   });
 
   it('generates uuid default values', () => {
