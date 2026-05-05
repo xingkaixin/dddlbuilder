@@ -17,7 +17,9 @@ test.describe('核心 UI 交互功能测试 @core', () => {
 
     await page.getByRole('button', { name: /功能菜单|Menu/i }).click();
     await page.getByRole('menuitem', { name: /主题|Theme/i }).click();
-    await page.getByRole('menuitemradio', { name }).click();
+    const themeOption = page.getByRole('menuitemradio', { name });
+    await expect(themeOption).toBeVisible();
+    await themeOption.click({ force: true });
   };
 
   test('场景：清空所有功能应正确重置表单', async ({ page }) => {
