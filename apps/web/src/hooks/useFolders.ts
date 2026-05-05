@@ -3,6 +3,7 @@ import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 import { buildWorkspaceContentHash } from '@/services/workspaceIncrementalSyncService';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
+import { shouldQueueWorkspaceEntityOutbox } from '@/services/workspaceYDocAuthority';
 import {
   buildFolderTreeFromYDoc,
   deleteFolderFromYDoc,
@@ -73,9 +74,9 @@ export function useFolders() {
 
   const queueFolderChange = useCallback(
     (input: { folder: TableFolder; op: 'upsert' } | { folderId: string; op: 'delete' }) => {
-      if (yDocReady) return;
-      if (!currentScope || currentScope.kind !== 'user' || !currentScope.workspaceId) return;
-      const workspaceId = currentScope.workspaceId;
+      const outboxPolicy = { scope: currentScope, yDocReady };
+      if (!shouldQueueWorkspaceEntityOutbox(outboxPolicy)) return;
+      const workspaceId = outboxPolicy.scope.workspaceId;
       fireAndForget(
         (async () => {
           const payload = input.op === 'upsert' ? input.folder : null;

@@ -4,6 +4,7 @@ import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 import { buildWorkspaceContentHash } from '@/services/workspaceIncrementalSyncService';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
+import { shouldQueueWorkspaceEntityOutbox } from '@/services/workspaceYDocAuthority';
 import {
   deleteSavedTableFromYDoc,
   getSavedTableFromYDoc,
@@ -77,8 +78,8 @@ export function useSavedTables() {
 
   const queueSavedTableChange = useCallback(
     async (record: SavedTableRecord, op: 'upsert' | 'delete' = 'upsert') => {
-      if (yDocReady) return;
-      if (authSession.status !== 'signed_in' || !authSession.workspaceId) return;
+      const outboxPolicy = { scope: currentScope, yDocReady };
+      if (!shouldQueueWorkspaceEntityOutbox(outboxPolicy)) return;
       const payload =
         op === 'upsert'
           ? {
@@ -89,7 +90,7 @@ export function useSavedTables() {
             }
           : null;
       await enqueueWorkspaceOutboxItem({
-        workspaceId: authSession.workspaceId,
+        workspaceId: outboxPolicy.scope.workspaceId,
         entityType: 'saved_table',
         entityId: record.normalizedName,
         op,
@@ -97,7 +98,7 @@ export function useSavedTables() {
         contentHash: op === 'upsert' ? await buildWorkspaceContentHash(payload) : null,
       });
     },
-    [authSession.status, authSession.workspaceId, yDocReady],
+    [currentScope, yDocReady],
   );
 
   const refresh = useCallback(

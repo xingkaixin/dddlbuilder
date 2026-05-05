@@ -5,8 +5,11 @@ import {
   exportWorkspaceYDocToSnapshot,
   getDraftRecordFromYDoc,
   importWorkspaceSnapshotToYDoc,
+  deleteDraftFromYDoc,
   mergeWorkspaceSnapshotIntoYDoc,
+  listFoldersFromYDoc,
   upsertDraftInYDoc,
+  upsertFolderInYDoc,
 } from '@/services/workspaceYDocAdapter';
 import { DEFAULT_DRAFT_ID } from '@/utils/workspaceStateDb';
 
@@ -232,5 +235,54 @@ describe('workspaceYDocAdapter', () => {
     expect(rightState).toEqual(leftState);
     expect([state.rows[0].fieldName, 'user_id']).toContain(leftState?.rows[0].fieldName);
     expect([state.rows[0].fieldComment, '用户 ID']).toContain(leftState?.rows[0].fieldComment);
+  });
+
+  it('converges sequential create, delete, field update, and folder move updates', () => {
+    const left = new Y.Doc();
+    const right = new Y.Doc();
+    const leftUpdates: Uint8Array[] = [];
+    const rightUpdates: Uint8Array[] = [];
+
+    left.on('update', (update) => leftUpdates.push(update));
+    right.on('update', (update) => rightUpdates.push(update));
+
+    upsertDraftInYDoc(left, DEFAULT_DRAFT_ID, {
+      state: createState({ tableName: 'users_v1' }),
+      updatedAt: 1,
+    });
+    for (const update of leftUpdates.splice(0)) Y.applyUpdate(right, update);
+
+    upsertDraftInYDoc(right, DEFAULT_DRAFT_ID, {
+      state: createState({
+        tableName: 'users_v2',
+        rows: [{ ...createState().rows[0], fieldName: 'user_id' }, createState().rows[1]],
+      }),
+      updatedAt: 2,
+    });
+    upsertFolderInYDoc(right, { id: 'folder-1', name: 'Core', order: 1, createdAt: 3 });
+    for (const update of rightUpdates.splice(0)) Y.applyUpdate(left, update);
+
+    upsertFolderInYDoc(left, {
+      id: 'folder-1',
+      name: 'Core',
+      parentId: 'folder-root',
+      order: 2,
+      createdAt: 3,
+    });
+    deleteDraftFromYDoc(left, DEFAULT_DRAFT_ID);
+    for (const update of leftUpdates.splice(0)) Y.applyUpdate(right, update);
+
+    expect(getDraftRecordFromYDoc(left, DEFAULT_DRAFT_ID)).toBeNull();
+    expect(getDraftRecordFromYDoc(right, DEFAULT_DRAFT_ID)).toBeNull();
+    expect(listFoldersFromYDoc(left)).toEqual(listFoldersFromYDoc(right));
+    expect(listFoldersFromYDoc(right)).toEqual([
+      {
+        id: 'folder-1',
+        name: 'Core',
+        parentId: 'folder-root',
+        order: 2,
+        createdAt: 3,
+      },
+    ]);
   });
 });

@@ -23,6 +23,7 @@ import {
   type WorkspaceYDocConnectionState,
 } from '@/services/workspaceYDocSyncClient';
 import { buildWorkspaceYDocName } from '@/services/workspaceYDocStorage';
+import { resolveWorkspaceYDocStartupPlan } from '@/services/workspaceYDocAuthority';
 
 type WorkspaceYDocContextValue = {
   doc: Y.Doc | null;
@@ -77,7 +78,13 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
   });
 
   useEffect(() => {
-    if (authSession.status !== 'signed_in' || !authSession.userId || !authSession.workspaceId) {
+    const startupPlan = resolveWorkspaceYDocStartupPlan({
+      authStatus: authSession.status,
+      userId: authSession.userId,
+      workspaceId: authSession.workspaceId,
+    });
+
+    if (!startupPlan.enabled) {
       setValue({
         doc: null,
         synced: false,
@@ -88,12 +95,8 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     }
 
     let cancelled = false;
-    const workspaceId = authSession.workspaceId;
-    const scope: WorkspaceScope = {
-      kind: 'user',
-      userId: authSession.userId,
-      workspaceId,
-    };
+    const workspaceId = startupPlan.scope.workspaceId;
+    const scope: WorkspaceScope = startupPlan.scope;
     const doc = new Y.Doc();
     ensureWorkspaceYDocMeta(doc);
     const persistence = new IndexeddbPersistence(buildWorkspaceYDocName(workspaceId), doc);
@@ -110,22 +113,29 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       await persistence.whenSynced;
       if (cancelled) return;
 
-      const payload = await collectWorkspaceMigrationPayload(scope);
-      if (payload && !cancelled) {
-        mergeWorkspaceSnapshotIntoYDoc(doc, migrationSnapshotToWorkspaceSnapshot(payload.snapshot));
+      if (startupPlan.steps.includes('merge-legacy-indexeddb-snapshot')) {
+        const payload = await collectWorkspaceMigrationPayload(scope);
+        if (payload && !cancelled) {
+          mergeWorkspaceSnapshotIntoYDoc(
+            doc,
+            migrationSnapshotToWorkspaceSnapshot(payload.snapshot),
+          );
+        }
       }
 
       if (cancelled) return;
       setValue((prev) => ({ ...prev, doc, localSynced: true }));
-      client = new WorkspaceYDocSyncClient(workspaceId, doc, (connectionState) => {
-        if (cancelled) return;
-        setValue((prev) => ({
-          ...prev,
-          connectionState,
-          synced: connectionState === 'connected',
-        }));
-      });
-      client.connect();
+      if (startupPlan.steps.includes('connect-durable-object')) {
+        client = new WorkspaceYDocSyncClient(workspaceId, doc, (connectionState) => {
+          if (cancelled) return;
+          setValue((prev) => ({
+            ...prev,
+            connectionState,
+            synced: connectionState === 'connected',
+          }));
+        });
+        client.connect();
+      }
     };
 
     void initialize().catch((error) => {

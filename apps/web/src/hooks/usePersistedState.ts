@@ -5,6 +5,7 @@ import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 import { buildShareStateQueryKey } from '@/queryKeys/share';
 import { ShareApiError, getShareState } from '@/services/shareService';
+import { shouldQueueWorkspaceEntityOutbox } from '@/services/workspaceYDocAuthority';
 import { buildWorkspaceContentHash } from '@/services/workspaceIncrementalSyncService';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import {
@@ -230,9 +231,9 @@ export function usePersistedState(): UsePersistedStateReturn {
             op: 'delete';
           },
     ) => {
-      if (yDocReady) return;
-      if (currentScope.kind !== 'user' || !currentScope.workspaceId) return;
-      const workspaceId = currentScope.workspaceId;
+      const outboxPolicy = { scope: currentScope, yDocReady };
+      if (!shouldQueueWorkspaceEntityOutbox(outboxPolicy)) return;
+      const workspaceId = outboxPolicy.scope.workspaceId;
       fireAndForget(
         (async () => {
           const payload = input.op === 'upsert' ? input.payload : null;
