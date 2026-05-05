@@ -95,6 +95,15 @@ const readStateSnapshot = (tableDoc: Y.Map<unknown>): PersistedState | null => {
   return state as PersistedState;
 };
 
+const hasFineGrainedTableDoc = (tableDoc: Y.Map<unknown>) =>
+  tableDoc.get('scalar') instanceof Y.Map ||
+  tableDoc.get('fields') instanceof Y.Map ||
+  tableDoc.get('fieldOrder') instanceof Y.Array ||
+  tableDoc.get('indexes') instanceof Y.Map ||
+  tableDoc.get('indexOrder') instanceof Y.Array ||
+  tableDoc.get('foreignKeys') instanceof Y.Map ||
+  tableDoc.get('foreignKeyOrder') instanceof Y.Array;
+
 const stableStringify = (value: unknown): string => {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
@@ -191,8 +200,10 @@ const applyPersistedStateToTableDoc = (tableDoc: Y.Map<unknown>, state: Persiste
 };
 
 const tableDocToPersistedState = (tableDoc: Y.Map<unknown>): PersistedState => {
-  const stateSnapshot = readStateSnapshot(tableDoc);
-  if (stateSnapshot) return stateSnapshot;
+  if (!hasFineGrainedTableDoc(tableDoc)) {
+    const stateSnapshot = readStateSnapshot(tableDoc);
+    if (stateSnapshot) return stateSnapshot;
+  }
 
   const scalar = ensureMap(tableDoc, 'scalar');
   const state = readJsonMap(scalar) as Partial<PersistedState>;

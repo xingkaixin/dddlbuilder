@@ -1,7 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { toast } from 'sonner';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
+import i18n from '@/i18n';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 import { buildShareStateQueryKey } from '@/queryKeys/share';
 import { ShareApiError, getShareState } from '@/services/shareService';
@@ -14,6 +16,8 @@ import {
   getSavedDraftFromYDoc,
   getSavedTableFromYDoc,
   getStateForWorkspaceSource,
+  getWorkspaceYDocStructureConflictDetail,
+  getWorkspaceYDocStructureSignature,
   listDraftRecordsFromYDoc,
   listSavedDraftsFromYDoc,
   subscribeWorkspaceYDoc,
@@ -131,6 +135,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     kind: 'draft',
     draftId: DEFAULT_DRAFT_ID,
   });
+  const lastStructureConflictSignatureRef = useRef<string | null>(null);
   const persistedStateRef = useRef<PersistedState | null>(null);
   const draftsRef = useRef<Map<string, GlobalDraftRecord>>(new Map());
   const savedTableDraftsRef = useRef<Map<string, SavedTableDraftRecord>>(new Map());
@@ -176,6 +181,25 @@ export function usePersistedState(): UsePersistedStateReturn {
       return isSamePersistedState(prevState, nextState) ? prevState : nextState;
     });
   }, []);
+
+  const applyYDocState = useCallback(
+    (nextState: PersistedState) => {
+      const detail = getWorkspaceYDocStructureConflictDetail(persistedStateRef.current, nextState);
+      if (detail) {
+        const signature = JSON.stringify({
+          source: activeSourceRef.current,
+          detail,
+          state: getWorkspaceYDocStructureSignature(nextState),
+        });
+        if (lastStructureConflictSignatureRef.current !== signature) {
+          lastStructureConflictSignatureRef.current = signature;
+          toast.info(i18n.t('workspaceYDoc.structureConflictNotice'));
+        }
+      }
+      setPersistedStateIfChanged(nextState);
+    },
+    [setPersistedStateIfChanged],
+  );
 
   useEffect(() => {
     persistedStateRef.current = persistedState;
@@ -1052,13 +1076,13 @@ export function usePersistedState(): UsePersistedStateReturn {
         const savedTable = getSavedTableFromYDoc(doc, source.normalizedName);
         const nextState = savedDraft?.state ?? savedTable?.state ?? null;
         if (nextState) {
-          setPersistedStateIfChanged(nextState);
+          applyYDocState(nextState);
           return;
         }
       } else {
         const nextState = getStateForWorkspaceSource(doc, source);
         if (nextState) {
-          setPersistedStateIfChanged(nextState);
+          applyYDocState(nextState);
           return;
         }
       }
@@ -1067,7 +1091,7 @@ export function usePersistedState(): UsePersistedStateReturn {
         const initialDraft = pickInitialDraft(allDrafts);
         if (initialDraft) {
           syncActiveSource({ kind: 'draft', draftId: initialDraft.draftId });
-          setPersistedStateIfChanged(initialDraft.record.state);
+          applyYDocState(initialDraft.record.state);
           return;
         }
       }
@@ -1081,7 +1105,14 @@ export function usePersistedState(): UsePersistedStateReturn {
     const unsubscribe = subscribeWorkspaceYDoc(doc, refreshFromYDoc);
     refreshFromYDoc();
     return unsubscribe;
-  }, [setPersistedStateIfChanged, syncActiveSource, updateDrafts, workspaceYDoc.doc, yDocReady]);
+  }, [
+    applyYDocState,
+    setPersistedStateIfChanged,
+    syncActiveSource,
+    updateDrafts,
+    workspaceYDoc.doc,
+    yDocReady,
+  ]);
 
   useEffect(() => {
     if (shareId || !workspaceScopeReady || yDocReady) {

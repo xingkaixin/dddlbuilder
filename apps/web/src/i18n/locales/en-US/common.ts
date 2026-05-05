@@ -206,6 +206,10 @@ export const enUSCommon = {
       manual_adjustment: 'Manual Adjustment',
     },
   },
+  workspaceYDoc: {
+    structureConflictNotice:
+      'Remote table-structure changes were merged. Review fields, indexes, and foreign keys.',
+  },
   emptyState: {
     noTabOpenTitle: 'No table opened yet',
     completelyEmptyTitle: 'No tables or drafts yet',

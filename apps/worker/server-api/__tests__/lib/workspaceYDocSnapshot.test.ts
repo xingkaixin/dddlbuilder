@@ -80,6 +80,16 @@ describe('workspaceYDocSnapshot', () => {
     expect(isWorkspaceYDocEmpty(doc)).toBe(false);
   });
 
+  it('exports fine-grained table data when stateSnapshot is stale', () => {
+    const doc = new Y.Doc();
+    Y.applyUpdate(doc, createWorkspaceYDocUpdateFromSnapshot(createSnapshot()));
+    const tableDoc = doc.getMap<Y.Map<unknown>>('drafts').get('draft-1');
+    expect(tableDoc).toBeInstanceOf(Y.Map);
+    (tableDoc as Y.Map<unknown>).set('stateSnapshot', createState('stale'));
+
+    expect(exportWorkspaceYDocToSnapshot(doc).drafts[0]?.state.tableName).toBe('draft_users');
+  });
+
   it('detects empty workspace Y.Doc content', () => {
     expect(isWorkspaceYDocEmpty(new Y.Doc())).toBe(true);
   });

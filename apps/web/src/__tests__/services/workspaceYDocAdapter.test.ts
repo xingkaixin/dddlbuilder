@@ -4,6 +4,7 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 import {
   exportWorkspaceYDocToSnapshot,
   getDraftRecordFromYDoc,
+  getWorkspaceYDocStructureConflictDetail,
   importWorkspaceSnapshotToYDoc,
   deleteDraftFromYDoc,
   mergeWorkspaceSnapshotIntoYDoc,
@@ -91,6 +92,26 @@ const getFirstFieldId = (doc: Y.Doc) => {
   return fieldOrder instanceof Y.Array ? fieldOrder.get(0) : null;
 };
 
+const createSyncedDocs = () => {
+  const seed = new Y.Doc();
+  upsertDraftInYDoc(seed, DEFAULT_DRAFT_ID, { state: createState(), updatedAt: 1 });
+  const seedUpdate = Y.encodeStateAsUpdate(seed);
+  const left = new Y.Doc();
+  const right = new Y.Doc();
+  Y.applyUpdate(left, seedUpdate);
+  Y.applyUpdate(right, seedUpdate);
+  return { left, right };
+};
+
+const mergeDocs = (left: Y.Doc, right: Y.Doc) => {
+  const leftUpdate = Y.encodeStateAsUpdate(left);
+  const rightUpdate = Y.encodeStateAsUpdate(right);
+  Y.applyUpdate(left, rightUpdate);
+  Y.applyUpdate(right, leftUpdate);
+};
+
+const readDefaultDraftState = (doc: Y.Doc) => getDraftRecordFromYDoc(doc, DEFAULT_DRAFT_ID)?.state;
+
 describe('workspaceYDocAdapter', () => {
   it('imports and exports workspace content without losing table data', () => {
     const doc = new Y.Doc();
@@ -166,6 +187,156 @@ describe('workspaceYDocAdapter', () => {
     upsertDraftInYDoc(doc, DEFAULT_DRAFT_ID, { state, updatedAt: 1 });
 
     expect(getDraftRecordFromYDoc(doc, DEFAULT_DRAFT_ID)?.state).toEqual(state);
+  });
+
+  it('prefers fine-grained table data over stale state snapshots', () => {
+    const doc = new Y.Doc();
+    const state = createState({ tableName: 'fine_grained' });
+
+    upsertDraftInYDoc(doc, DEFAULT_DRAFT_ID, { state, updatedAt: 1 });
+    const tableDoc = doc.getMap<Y.Map<unknown>>('drafts').get(DEFAULT_DRAFT_ID);
+    expect(tableDoc).toBeInstanceOf(Y.Map);
+    (tableDoc as Y.Map<unknown>).set('stateSnapshot', createState({ tableName: 'stale' }));
+
+    expect(getDraftRecordFromYDoc(doc, DEFAULT_DRAFT_ID)?.state.tableName).toBe('fine_grained');
+  });
+
+  it('merges concurrent edits to different properties of the same field', () => {
+    const { left, right } = createSyncedDocs();
+    const state = createState();
+
+    upsertDraftInYDoc(left, DEFAULT_DRAFT_ID, {
+      state: createState({
+        rows: [{ ...state.rows[0], fieldName: 'user_id' }, state.rows[1]],
+      }),
+      updatedAt: 2,
+    });
+    upsertDraftInYDoc(right, DEFAULT_DRAFT_ID, {
+      state: createState({
+        rows: [{ ...state.rows[0], fieldType: 'varchar(32)' }, state.rows[1]],
+      }),
+      updatedAt: 3,
+    });
+
+    mergeDocs(left, right);
+
+    expect(readDefaultDraftState(left)?.rows[0]).toMatchObject({
+      fieldName: 'user_id',
+      fieldType: 'varchar(32)',
+    });
+    expect(readDefaultDraftState(right)).toEqual(readDefaultDraftState(left));
+  });
+
+  it('keeps field deletion visible when another client edits the deleted field', () => {
+    const { left, right } = createSyncedDocs();
+    const state = createState();
+
+    upsertDraftInYDoc(left, DEFAULT_DRAFT_ID, {
+      state: createState({
+        rows: [{ ...state.rows[1], order: 1 }],
+      }),
+      updatedAt: 2,
+    });
+    upsertDraftInYDoc(right, DEFAULT_DRAFT_ID, {
+      state: createState({
+        rows: [{ ...state.rows[0], fieldType: 'uuid' }, state.rows[1]],
+      }),
+      updatedAt: 3,
+    });
+
+    mergeDocs(left, right);
+
+    expect(readDefaultDraftState(left)?.rows.map((row) => row.fieldName)).toEqual(['email']);
+    expect(readDefaultDraftState(right)).toEqual(readDefaultDraftState(left));
+  });
+
+  it('merges field reorder with a concurrent field property edit', () => {
+    const { left, right } = createSyncedDocs();
+    const state = createState();
+
+    upsertDraftInYDoc(left, DEFAULT_DRAFT_ID, {
+      state: createState({
+        rows: [
+          { ...state.rows[1], order: 1 },
+          { ...state.rows[0], order: 2 },
+        ],
+      }),
+      updatedAt: 2,
+    });
+    upsertDraftInYDoc(right, DEFAULT_DRAFT_ID, {
+      state: createState({
+        rows: [{ ...state.rows[0], fieldComment: '用户 ID' }, state.rows[1]],
+      }),
+      updatedAt: 3,
+    });
+
+    mergeDocs(left, right);
+
+    const rows = readDefaultDraftState(left)?.rows;
+    expect(rows?.map((row) => row.fieldName)).toEqual(['email', 'id']);
+    expect(rows?.[1]?.fieldComment).toBe('用户 ID');
+    expect(readDefaultDraftState(right)).toEqual(readDefaultDraftState(left));
+  });
+
+  it('merges index and foreign key edits independently from fields', () => {
+    const { left, right } = createSyncedDocs();
+    const state = createState();
+
+    upsertDraftInYDoc(left, DEFAULT_DRAFT_ID, {
+      state: createState({
+        indexes: [
+          ...state.indexes,
+          {
+            id: 'idx_id',
+            name: 'idx_users_id',
+            fields: [{ name: 'id', direction: 'ASC' }],
+            unique: false,
+          },
+        ],
+      }),
+      updatedAt: 2,
+    });
+    upsertDraftInYDoc(right, DEFAULT_DRAFT_ID, {
+      state: createState({
+        foreignKeys: [
+          ...(state.foreignKeys ?? []),
+          {
+            id: 'fk_user_parent',
+            name: 'fk_user_parent',
+            fields: ['id'],
+            refTable: 'users',
+            refFields: ['id'],
+          },
+        ],
+      }),
+      updatedAt: 3,
+    });
+
+    mergeDocs(left, right);
+
+    expect(readDefaultDraftState(left)?.indexes.map((index) => index.id)).toEqual([
+      'idx_email',
+      'idx_id',
+    ]);
+    expect(readDefaultDraftState(left)?.foreignKeys?.map((foreignKey) => foreignKey.id)).toEqual([
+      'fk_user_org',
+      'fk_user_parent',
+    ]);
+    expect(readDefaultDraftState(right)).toEqual(readDefaultDraftState(left));
+  });
+
+  it('describes structure-level changes for UI feedback', () => {
+    const previous = createState();
+    const next = createState({
+      rows: [{ ...previous.rows[0], fieldType: 'uuid' }, previous.rows[1]],
+      indexes: [],
+    });
+
+    expect(getWorkspaceYDocStructureConflictDetail(previous, next)).toEqual({
+      fieldsChanged: true,
+      indexesChanged: true,
+      foreignKeysChanged: false,
+    });
   });
 
   it('merges local snapshot records missing from an existing ydoc', () => {

@@ -25,6 +25,12 @@ export type WorkspaceYDocDraftRecord = {
   folderId?: string;
 };
 
+export type WorkspaceYDocStructureConflictDetail = {
+  fieldsChanged: boolean;
+  indexesChanged: boolean;
+  foreignKeysChanged: boolean;
+};
+
 const TABLE_SCALAR_KEYS = [
   'objectType',
   'schemaName',
@@ -110,6 +116,15 @@ const readStateSnapshot = (tableDoc: Y.Map<unknown>): PersistedState | null => {
   if (!Array.isArray(state.rows)) return null;
   return state as PersistedState;
 };
+
+const hasFineGrainedTableDoc = (tableDoc: Y.Map<unknown>) =>
+  tableDoc.get('scalar') instanceof Y.Map ||
+  tableDoc.get('fields') instanceof Y.Map ||
+  tableDoc.get('fieldOrder') instanceof Y.Array ||
+  tableDoc.get('indexes') instanceof Y.Map ||
+  tableDoc.get('indexOrder') instanceof Y.Array ||
+  tableDoc.get('foreignKeys') instanceof Y.Map ||
+  tableDoc.get('foreignKeyOrder') instanceof Y.Array;
 
 const readJsonMap = (map: Y.Map<unknown> | undefined): JsonRecord => {
   if (!map) return {};
@@ -266,6 +281,52 @@ const readOrderedMap = <T>(parent: Y.Map<any>, mapKey: string, orderKey: string)
     .filter((item): item is T => item != null);
 };
 
+const structureSignature = (state: PersistedState) =>
+  JSON.stringify({
+    rows: state.rows.map((row) => ({
+      order: row.order,
+      fieldName: row.fieldName,
+      fieldType: row.fieldType,
+      nullable: row.nullable,
+      defaultKind: row.defaultKind,
+      defaultValue: row.defaultValue,
+      onUpdate: row.onUpdate,
+      enumMeta: row.enumMeta,
+    })),
+    indexes: state.indexes ?? [],
+    foreignKeys: state.foreignKeys ?? [],
+  });
+
+const fieldStructureSignature = (state: PersistedState) =>
+  JSON.stringify(
+    state.rows.map((row) => ({
+      order: row.order,
+      fieldName: row.fieldName,
+      fieldType: row.fieldType,
+      nullable: row.nullable,
+      defaultKind: row.defaultKind,
+      defaultValue: row.defaultValue,
+      onUpdate: row.onUpdate,
+      enumMeta: row.enumMeta,
+    })),
+  );
+
+export const getWorkspaceYDocStructureConflictDetail = (
+  previous: PersistedState | null,
+  next: PersistedState,
+): WorkspaceYDocStructureConflictDetail | null => {
+  if (!previous) return null;
+  const detail = {
+    fieldsChanged: fieldStructureSignature(previous) !== fieldStructureSignature(next),
+    indexesChanged: JSON.stringify(previous.indexes ?? []) !== JSON.stringify(next.indexes ?? []),
+    foreignKeysChanged:
+      JSON.stringify(previous.foreignKeys ?? []) !== JSON.stringify(next.foreignKeys ?? []),
+  };
+  return detail.fieldsChanged || detail.indexesChanged || detail.foreignKeysChanged ? detail : null;
+};
+
+export const getWorkspaceYDocStructureSignature = structureSignature;
+
 export const ensureWorkspaceYDocMeta = (doc: Y.Doc) => {
   const { meta } = getWorkspaceRoot(doc);
   if (meta.get('schemaVersion') !== WORKSPACE_YDOC_SCHEMA_VERSION) {
@@ -307,8 +368,10 @@ export const applyPersistedStateToTableDoc = (tableDoc: Y.Map<unknown>, state: P
 };
 
 export const tableDocToPersistedState = (tableDoc: Y.Map<unknown>): PersistedState => {
-  const stateSnapshot = readStateSnapshot(tableDoc);
-  if (stateSnapshot) return stateSnapshot;
+  if (!hasFineGrainedTableDoc(tableDoc)) {
+    const stateSnapshot = readStateSnapshot(tableDoc);
+    if (stateSnapshot) return stateSnapshot;
+  }
 
   const scalar = ensureMap(tableDoc, 'scalar');
   const state = readJsonMap(scalar) as Partial<PersistedState>;

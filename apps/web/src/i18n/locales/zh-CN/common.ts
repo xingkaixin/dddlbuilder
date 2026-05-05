@@ -199,6 +199,9 @@ export const zhCNCommon = {
       manual_adjustment: '手动调整',
     },
   },
+  workspaceYDoc: {
+    structureConflictNotice: '已合并远端表结构变更，请检查字段、索引和外键。',
+  },
   emptyState: {
     noTabOpenTitle: '还没有打开任何表',
     completelyEmptyTitle: '还没有任何表或草稿',
