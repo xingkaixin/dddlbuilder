@@ -214,7 +214,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       status: 'signed_in',
       configured: true,
       userId: me.user.userId,
-      workspaceId: null,
+      workspaceId: prev.userId === me.user.userId ? prev.workspaceId : null,
       email: me.user.email,
       name: me.user.name,
       emailVerified: me.user.emailVerified,
@@ -264,14 +264,13 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       workspaceScope.kind === 'user' ? (workspaceScope.workspaceId ?? null) : null;
     setCurrentWorkspaceScope(workspaceScope);
     if (workspaceId) {
-      try {
+      setState((prev) => ({ ...prev, workspaceId }));
+      void (async () => {
         await promoteLegacyUserWorkspaceData(workspaceScope);
         await runQueuedWorkspaceSync(workspaceSyncQueueRef.current, workspaceScope);
-      } catch (error) {
+      })().catch((error) => {
         console.error('[auth] failed to sync workspace', error);
-      } finally {
-        setState((prev) => ({ ...prev, workspaceId }));
-      }
+      });
     }
   }, [configured]);
 

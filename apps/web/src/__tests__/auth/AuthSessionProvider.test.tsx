@@ -43,6 +43,7 @@ const SessionProbe = () => {
       <span data-testid="status">{session.status}</span>
       <span data-testid="email">{session.email ?? ''}</span>
       <span data-testid="user-id">{session.userId ?? ''}</span>
+      <span data-testid="workspace-id">{session.workspaceId ?? ''}</span>
       <span data-testid="credits">{session.creditBalance ?? ''}</span>
       <span data-testid="credits-status">{session.creditsStatus}</span>
       <span data-testid="auth-dialog">{session.authDialogOpen ? 'open' : 'closed'}</span>
@@ -288,6 +289,40 @@ describe('AuthSessionProvider', () => {
       expect(screen.getByTestId('email')).toHaveTextContent('user@example.com');
       expect(screen.getByTestId('user-id')).toHaveTextContent('user-1');
       expect(screen.getByTestId('credits')).toHaveTextContent('8800');
+    });
+
+    it('publishes workspace id before background sync finishes', async () => {
+      const never = new Promise<Response>(() => {});
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              signedIn: true,
+              user: {
+                userId: 'user-1',
+                email: 'user@example.com',
+                emailVerified: true,
+                name: 'User One',
+              },
+            }),
+          ),
+        )
+        .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 8800 })))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ activeWorkspaceId: 'ws-1', workspaces: [] })),
+        )
+        .mockReturnValue(never);
+
+      render(
+        <AuthSessionProvider>
+          <SessionProbe />
+        </AuthSessionProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('workspace-id')).toHaveTextContent('ws-1');
+      });
+      expect(screen.getByTestId('status')).toHaveTextContent('signed_in');
     });
 
     it('falls back to signed out when no session exists', async () => {
