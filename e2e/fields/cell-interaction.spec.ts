@@ -85,4 +85,33 @@ test.describe('单元格深度交互验证 @fields', () => {
     await expect(sqlOutput).toContainText(/id\s+BIGINT/i, { timeout: 10000 });
     await expect(sqlOutput).toContainText(/COMMENT\s+'primary_key'/i);
   });
+
+  test('场景：从编辑中的单元格点击到下一单元格后可直接输入', async ({ page }) => {
+    await page.locator('#table-name').fill('cell_focus_test');
+
+    const fieldNameCell = page.locator(
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
+    );
+    await fieldNameCell.click();
+    await page.keyboard.type('fast_name');
+    await expect(fieldNameCell.locator('input')).toHaveValue('fast_name');
+
+    const commentCell = page.locator(
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(3)',
+    );
+    await commentCell.click();
+    const commentInput = commentCell.locator('input');
+    await expect(commentInput).toBeFocused();
+    await page.keyboard.type('fast_comment');
+    await expect(commentInput).toHaveValue('fast_comment');
+
+    const typeCell = page.locator(
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
+    );
+    await typeCell.click();
+    const typeInput = typeCell.locator('input');
+    await expect(typeInput).toBeFocused();
+    await page.keyboard.type('int');
+    await expect(typeInput).toHaveValue('int');
+  });
 });

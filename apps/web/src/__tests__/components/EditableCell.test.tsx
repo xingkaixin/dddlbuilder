@@ -3,21 +3,22 @@ import { fireEvent, render, screen, userEvent } from '@/__tests__/utils/test-uti
 import { EditableCell } from '@/components/App/table/EditableCell';
 
 describe('EditableCell', () => {
-  it('单击选中后输入不应丢失首字符', async () => {
+  it('聚焦后输入不应丢失首字符', async () => {
     const onChange = vi.fn();
 
     render(<EditableCell value="old-value" onChange={onChange} />);
 
     const cell = screen.getByTitle('old-value');
-    await userEvent.click(cell);
-    fireEvent.keyDown(cell, { key: 'a' });
+    fireEvent.focus(cell);
 
-    const input = await screen.findByDisplayValue('a');
-    await userEvent.type(input, 'bcde');
+    const input = screen.getByRole('textbox');
+    expect(input).toHaveFocus();
+    await userEvent.keyboard('abcde');
 
     expect(input).toHaveValue('abcde');
-
+    expect(onChange).not.toHaveBeenCalled();
     fireEvent.blur(input);
     expect(onChange).toHaveBeenCalledWith('abcde');
+    expect(onChange).toHaveBeenCalledTimes(1);
   });
 });

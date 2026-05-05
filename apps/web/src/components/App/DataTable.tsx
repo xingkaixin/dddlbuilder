@@ -45,6 +45,8 @@ interface DataTableProps {
 interface SortableDataRowProps {
   row: Row<FieldRow>;
   selectedCell: { row: number; col: number } | null;
+  editingCell: { row: number; col: number } | null;
+  setEditingCell: (cell: { row: number; col: number } | null) => void;
   handleCellActivate: (rowIndex: number, colIndex: number) => void;
   focusEditableCell: (rowIndex: number, editableColIndex: number) => void;
   focusFirstInteractiveInCell: (cellElement: HTMLTableCellElement | null) => void;
@@ -55,99 +57,138 @@ interface SortableDataRowProps {
   dragFieldLabel: string;
 }
 
-const SortableDataRow = memo<SortableDataRowProps>(
-  ({
-    row,
-    selectedCell,
-    handleCellActivate,
-    focusEditableCell,
-    focusFirstInteractiveInCell,
-    freezeEnabled,
-    effectiveFreezeColumns,
-    getStickyLeft,
-    isRowHighlighted,
-    dragFieldLabel,
-  }) => {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-      id: row.id,
-    });
+const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
+  row,
+  selectedCell,
+  setEditingCell,
+  handleCellActivate,
+  focusEditableCell,
+  focusFirstInteractiveInCell,
+  freezeEnabled,
+  effectiveFreezeColumns,
+  getStickyLeft,
+  isRowHighlighted,
+  dragFieldLabel,
+}: SortableDataRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: row.id,
+  });
 
-    return (
-      <tr
-        ref={setNodeRef}
-        style={{
-          transform: CSS.Transform.toString(transform),
-          transition,
-        }}
-        data-row-index={row.index}
-        className={cn(
-          'group/row border-b border-border/30 transition-colors hover:bg-muted/30',
-          isRowHighlighted && 'bg-blue-500/10',
-          isDragging && 'opacity-80',
-        )}
-      >
-        {row.getVisibleCells().map((cell, colIndex) => {
-          const isFrozen = freezeEnabled && colIndex < effectiveFreezeColumns;
-          const isLastFrozen = freezeEnabled && colIndex === effectiveFreezeColumns - 1;
-          const isSelected =
-            selectedCell && selectedCell.row === row.index && selectedCell.col === colIndex - 1;
-          const isOrderColumn = cell.column.id === 'order';
+  const commitActiveInputOutsideCell = useCallback((cellElement: HTMLTableCellElement) => {
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLInputElement && !cellElement.contains(activeElement)) {
+      activeElement.blur();
+    }
+  }, []);
 
-          return (
-            <td
-              key={cell.id}
-              data-row-index={row.index}
-              data-col-index={colIndex}
-              className={cn(
-                'h-9 px-1 bg-background text-xs transition-colors group-hover/row:bg-muted/30',
-                isFrozen && 'relative sticky z-20 supports-[backdrop-filter]:backdrop-blur-[2px]',
-                isLastFrozen &&
-                  'border-r border-primary/30 shadow-[8px_0_18px_-12px_hsl(var(--foreground)_/_0.22)] after:pointer-events-none after:absolute after:-right-3 after:top-0 after:h-full after:w-3 after:bg-gradient-to-r after:from-primary/20 after:to-transparent',
-                isRowHighlighted && 'bg-blue-500/10',
-                isSelected && 'ring-2 ring-primary ring-inset',
-              )}
-              style={{
-                width: cell.column.getSize(),
-                minWidth: cell.column.getSize(),
-                left: isFrozen ? getStickyLeft(colIndex) : undefined,
-              }}
-              onPointerDown={(event) => {
-                if (event.button !== 0) return;
+  return (
+    <tr
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
+      data-row-index={row.index}
+      className={cn(
+        'group/row border-b border-border/30 transition-colors hover:bg-muted/30',
+        isRowHighlighted && 'bg-blue-500/10',
+        isDragging && 'opacity-80',
+      )}
+    >
+      {row.getVisibleCells().map((cell, colIndex) => {
+        const isFrozen = freezeEnabled && colIndex < effectiveFreezeColumns;
+        const isLastFrozen = freezeEnabled && colIndex === effectiveFreezeColumns - 1;
+        const isSelected =
+          selectedCell && selectedCell.row === row.index && selectedCell.col === colIndex - 1;
+        const isOrderColumn = cell.column.id === 'order';
+
+        return (
+          <td
+            key={cell.id}
+            data-row-index={row.index}
+            data-col-index={colIndex}
+            className={cn(
+              'h-9 px-1 bg-background text-xs transition-colors group-hover/row:bg-muted/30',
+              isFrozen && 'relative sticky z-20 supports-[backdrop-filter]:backdrop-blur-[2px]',
+              isLastFrozen &&
+                'border-r border-primary/30 shadow-[8px_0_18px_-12px_hsl(var(--foreground)_/_0.22)] after:pointer-events-none after:absolute after:-right-3 after:top-0 after:h-full after:w-3 after:bg-gradient-to-r after:from-primary/20 after:to-transparent',
+              isRowHighlighted && 'bg-blue-500/10',
+              isSelected && 'ring-2 ring-primary ring-inset',
+            )}
+            style={{
+              width: cell.column.getSize(),
+              minWidth: cell.column.getSize(),
+              left: isFrozen ? getStickyLeft(colIndex) : undefined,
+            }}
+            onPointerDown={(event) => {
+              if (event.button !== 0) return;
+              if (event.target instanceof HTMLInputElement) return;
+              const isTextEditableCell =
+                colIndex === 1 ||
+                colIndex === 2 ||
+                colIndex === 3 ||
+                (colIndex === 6 &&
+                  event.currentTarget.querySelector('[data-editable-cell-trigger="true"]'));
+              if (isTextEditableCell) {
+                commitActiveInputOutsideCell(event.currentTarget);
+                event.preventDefault();
+                setEditingCell({ row: row.index, col: colIndex - 1 });
                 handleCellActivate(row.index, colIndex);
-                focusFirstInteractiveInCell(event.currentTarget);
                 setTimeout(() => {
                   focusEditableCell(row.index, colIndex - 1);
                 }, 0);
-              }}
-              onClick={(event) => {
+                return;
+              }
+              handleCellActivate(row.index, colIndex);
+              focusFirstInteractiveInCell(event.currentTarget);
+              setTimeout(() => {
+                focusEditableCell(row.index, colIndex - 1);
+              }, 0);
+            }}
+            onClick={(event) => {
+              if (event.target instanceof HTMLInputElement) return;
+              const isTextEditableCell =
+                colIndex === 1 ||
+                colIndex === 2 ||
+                colIndex === 3 ||
+                (colIndex === 6 &&
+                  event.currentTarget.querySelector('[data-editable-cell-trigger="true"]'));
+              if (isTextEditableCell) {
+                event.preventDefault();
+                setEditingCell({ row: row.index, col: colIndex - 1 });
                 handleCellActivate(row.index, colIndex);
-                focusFirstInteractiveInCell(event.currentTarget);
-              }}
-              onFocusCapture={() => handleCellActivate(row.index, colIndex)}
-            >
-              {isOrderColumn ? (
-                <div className="flex items-center justify-center gap-1.5">
-                  <button
-                    type="button"
-                    className="inline-flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    aria-label={dragFieldLabel}
-                    {...attributes}
-                    {...listeners}
-                  >
-                    <GripVertical className="h-3.5 w-3.5" />
-                  </button>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </div>
-              ) : (
-                flexRender(cell.column.columnDef.cell, cell.getContext())
-              )}
-            </td>
-          );
-        })}
-      </tr>
-    );
-  },
-);
+                setTimeout(() => {
+                  focusEditableCell(row.index, colIndex - 1);
+                }, 0);
+                return;
+              }
+              handleCellActivate(row.index, colIndex);
+              focusFirstInteractiveInCell(event.currentTarget);
+            }}
+            onFocusCapture={() => handleCellActivate(row.index, colIndex)}
+          >
+            {isOrderColumn ? (
+              <div className="flex items-center justify-center gap-1.5">
+                <button
+                  type="button"
+                  className="inline-flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  aria-label={dragFieldLabel}
+                  {...attributes}
+                  {...listeners}
+                >
+                  <GripVertical className="h-3.5 w-3.5" />
+                </button>
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </div>
+            ) : (
+              flexRender(cell.column.columnDef.cell, cell.getContext())
+            )}
+          </td>
+        );
+      })}
+    </tr>
+  );
+});
 
 SortableDataRow.displayName = 'SortableDataRow';
 
@@ -184,6 +225,7 @@ export const DataTable = memo<DataTableProps>(
     const tableRef = useRef<HTMLDivElement>(null);
     const dragFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [dragFeedback, setDragFeedback] = useState<string | null>(null);
+    const [editingCell, setEditingCell] = useState<{ row: number; col: number } | null>(null);
 
     const [columnWidths] = useState<Record<string, number>>({
       order: 72,
@@ -303,6 +345,8 @@ export const DataTable = memo<DataTableProps>(
     const columns = useFieldColumns({
       columnWidths,
       rowWarnings,
+      editingCell,
+      onEditingCellChange: setEditingCell,
       dbType,
       updateCellValue: guardedUpdateCellValue,
       updateEnumValues,
@@ -461,6 +505,8 @@ export const DataTable = memo<DataTableProps>(
                       key={row.id}
                       row={row}
                       selectedCell={selectedCell}
+                      editingCell={editingCell}
+                      setEditingCell={setEditingCell}
                       handleCellActivate={handleCellActivate}
                       focusEditableCell={focusEditableCell}
                       focusFirstInteractiveInCell={focusFirstInteractiveInCell}
