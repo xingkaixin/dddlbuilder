@@ -1,4 +1,5 @@
 import type * as Y from 'yjs';
+import { mergeUpdates } from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
 import * as encoding from 'lib0/encoding';
@@ -12,6 +13,7 @@ export type WorkspaceYDocConnectionState =
 
 const MESSAGE_SYNC = 0;
 const MAX_RECONNECT_DELAY_MS = 10_000;
+export const WORKSPACE_YDOC_UPDATE_BATCH_MS = 25;
 
 const buildWorkspaceYDocUrl = (workspaceId: string) => {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -29,6 +31,8 @@ export class WorkspaceYDocSyncClient {
   private socket: WebSocket | null = null;
   private destroyed = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private flushTimer: ReturnType<typeof setTimeout> | null = null;
+  private pendingUpdates: Uint8Array[] = [];
   private reconnectDelayMs = 1000;
   private readonly workspaceId: string;
   private readonly doc: Y.Doc;
@@ -66,7 +70,9 @@ export class WorkspaceYDocSyncClient {
     socket.onopen = () => {
       this.reconnectDelayMs = 1000;
       this.onConnectionStateChange('connected');
-      this.send(encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, this.doc)));
+      this.sendImmediate(
+        encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, this.doc)),
+      );
     };
     socket.onmessage = (event) => {
       void this.handleMessage(event.data);
@@ -93,13 +99,18 @@ export class WorkspaceYDocSyncClient {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+    this.flushPendingUpdates();
     this.socket?.close();
     this.socket = null;
   }
 
   private readonly handleDocUpdate = (update: Uint8Array, origin: unknown) => {
     if (origin === this) return;
-    this.send(encodeSyncMessage((encoder) => syncProtocol.writeUpdate(encoder, update)));
+    this.queueUpdate(update);
   };
 
   private readonly handleOnline = () => {
@@ -126,7 +137,26 @@ export class WorkspaceYDocSyncClient {
     }, this.reconnectDelayMs);
   }
 
-  private send(message: Uint8Array) {
+  private queueUpdate(update: Uint8Array) {
+    if (this.socket?.readyState !== WebSocket.OPEN) return;
+    this.pendingUpdates.push(update);
+    if (this.flushTimer) return;
+
+    this.flushTimer = setTimeout(() => {
+      this.flushTimer = null;
+      this.flushPendingUpdates();
+    }, WORKSPACE_YDOC_UPDATE_BATCH_MS);
+  }
+
+  private flushPendingUpdates() {
+    if (this.pendingUpdates.length === 0) return;
+    const updates = this.pendingUpdates;
+    this.pendingUpdates = [];
+    const update = updates.length === 1 ? updates[0] : mergeUpdates(updates);
+    this.sendImmediate(encodeSyncMessage((encoder) => syncProtocol.writeUpdate(encoder, update)));
+  }
+
+  private sendImmediate(message: Uint8Array) {
     if (this.socket?.readyState === WebSocket.OPEN) {
       const payload = new Uint8Array(message.byteLength);
       payload.set(message);
@@ -151,7 +181,7 @@ export class WorkspaceYDocSyncClient {
     encoding.writeVarUint(encoder, MESSAGE_SYNC);
     syncProtocol.readSyncMessage(decoder, encoder, this.doc, this);
     if (encoding.length(encoder) > 1) {
-      this.send(encoding.toUint8Array(encoder));
+      this.sendImmediate(encoding.toUint8Array(encoder));
     }
   }
 }

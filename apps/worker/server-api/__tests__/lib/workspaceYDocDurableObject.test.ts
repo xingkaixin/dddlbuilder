@@ -1,8 +1,22 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
+import * as syncProtocol from 'y-protocols/sync';
+import * as encoding from 'lib0/encoding';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import type { ApiEnv } from '../../lib/context.js';
+
+const MESSAGE_SYNC = 0;
+
+const encodeSyncMessage = (write: (encoder: encoding.Encoder) => void) => {
+  const encoder = encoding.createEncoder();
+  encoding.writeVarUint(encoder, MESSAGE_SYNC);
+  write(encoder);
+  return encoding.toUint8Array(encoder);
+};
+
+const toArrayBuffer = (bytes: Uint8Array) =>
+  bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 
 const createState = (tableName: string): PersistedState => ({
   schemaName: '',
@@ -89,6 +103,10 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('checkpoints imported snapshots during compact', async () => {
     const checkpointWorkspaceSnapshotEntities = vi.fn().mockResolvedValue({
       cursor: 1,
@@ -135,6 +153,45 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
         drafts: [expect.objectContaining({ draftId: 'default' })],
       }),
     );
+  });
+
+  it('broadcasts one message for one merged update batch', async () => {
+    vi.doMock('../../lib/workspaceEntities.js', () => ({
+      checkpointWorkspaceSnapshotEntities: vi.fn(),
+      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
+        globalDraft: null,
+        drafts: [],
+        savedTables: [],
+        savedDrafts: [],
+        folders: [],
+      }),
+    }));
+    vi.stubGlobal('WebSocket', { OPEN: 1 });
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state } = createDurableObjectState();
+    const origin = { readyState: 1, send: vi.fn() } as unknown as WebSocket;
+    const peer = { readyState: 1, send: vi.fn() } as unknown as WebSocket;
+    vi.mocked(state.getWebSockets).mockReturnValue([origin, peer]);
+    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
+    const sourceDoc = new Y.Doc();
+    const updates: Uint8Array[] = [];
+    sourceDoc.on('update', (update) => updates.push(update));
+
+    const fields = sourceDoc.getMap('fields');
+    for (let index = 0; index < 50; index += 1) {
+      fields.set(`field-${index}`, `value-${index}`);
+    }
+    const mergedUpdate = Y.mergeUpdates(updates);
+
+    await durableObject.webSocketMessage(
+      origin,
+      toArrayBuffer(
+        encodeSyncMessage((encoder) => syncProtocol.writeUpdate(encoder, mergedUpdate)),
+      ),
+    );
+
+    expect(peer.send).toHaveBeenCalledTimes(1);
+    expect(origin.send).not.toHaveBeenCalled();
   });
 
   it('restores an empty Durable Object from D1 snapshot on cold start', async () => {
