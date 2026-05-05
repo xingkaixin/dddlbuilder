@@ -10,6 +10,12 @@ import type {
   WorkspaceSnapshot,
 } from '@ddlbuilder/shared-types/workspace';
 import type { ApiEnv } from './context.js';
+import {
+  createWorkspaceD1Metrics,
+  logWorkspaceD1Metrics,
+  recordWorkspaceD1Result,
+  type WorkspaceD1Metrics,
+} from './workspaceSyncMetrics.js';
 
 type WorkspaceRow = {
   id: string;
@@ -342,6 +348,7 @@ const writeEntityVersion = async (
     contentHash: string | null;
     updatedAt: number;
   },
+  metrics?: WorkspaceD1Metrics,
 ) => {
   const version = await allocateWorkspaceVersion(env, input.workspaceId);
   const deletedAt = input.op === 'delete' ? input.updatedAt : null;
@@ -385,6 +392,7 @@ const writeEntityVersion = async (
       input.updatedAt,
     )
     .run();
+  recordWorkspaceD1Result(metrics, result);
 
   if (!result.success) {
     throw new Error(result.error ?? 'D1 execution failed');
@@ -403,6 +411,7 @@ const writeMutation = async (
     entityId: string;
     version: number;
   },
+  metrics?: WorkspaceD1Metrics,
 ) => {
   const result = await env.USER_DB.prepare(
     `
@@ -431,6 +440,7 @@ const writeMutation = async (
       now(),
     )
     .run();
+  recordWorkspaceD1Result(metrics, result);
 
   if (!result.success) {
     throw new Error(result.error ?? 'D1 execution failed');
@@ -456,7 +466,11 @@ const readMutation = async (
     .bind(workspaceId, clientMutationId)
     .first<MutationRow>();
 
-const listActiveEntities = async (env: ApiEnv['Bindings'], workspaceId: string) => {
+const listActiveEntities = async (
+  env: ApiEnv['Bindings'],
+  workspaceId: string,
+  metrics?: WorkspaceD1Metrics,
+) => {
   const result = await env.USER_DB.prepare(
     `
       SELECT
@@ -474,6 +488,7 @@ const listActiveEntities = async (env: ApiEnv['Bindings'], workspaceId: string) 
   )
     .bind(workspaceId)
     .all<EntityRow>();
+  recordWorkspaceD1Result(metrics, result);
 
   return result.results ?? [];
 };
@@ -500,6 +515,7 @@ export const getWorkspaceChanges = async (
   workspaceId: string,
   since: number,
 ): Promise<WorkspaceChangesResponse> => {
+  const metrics = createWorkspaceD1Metrics();
   await assertWorkspaceOwner(env, userId, workspaceId);
   await backfillLegacySnapshotEntities(env, userId, workspaceId);
   const result = await env.USER_DB.prepare(
@@ -519,12 +535,24 @@ export const getWorkspaceChanges = async (
   )
     .bind(workspaceId, since)
     .all<EntityRow>();
+  recordWorkspaceD1Result(metrics, result);
 
-  return {
+  const response = {
     workspaceId,
     cursor: await readWorkspaceCursor(env, workspaceId),
     entities: (result.results ?? []).map((row) => toEnvelope(workspaceId, row)),
   };
+  logWorkspaceD1Metrics(
+    'changes_pull',
+    {
+      userId,
+      workspaceId,
+      since,
+      entityCount: response.entities.length,
+    },
+    metrics,
+  );
+  return response;
 };
 
 export const pushWorkspaceChanges = async (
@@ -533,6 +561,7 @@ export const pushWorkspaceChanges = async (
   workspaceId: string,
   request: WorkspaceChangesPushRequest,
 ): Promise<WorkspaceChangesPushResponse> => {
+  const metrics = createWorkspaceD1Metrics();
   await assertWorkspaceOwner(env, userId, workspaceId);
   const accepted: WorkspaceChangesPushResponse['accepted'] = [];
   const conflicts: WorkspaceChangesPushResponse['conflicts'] = [];
@@ -558,14 +587,18 @@ export const pushWorkspaceChanges = async (
           existing.contentHash === change.contentHash));
 
     if (sameContent) {
-      await writeMutation(env, {
-        userId,
-        workspaceId,
-        clientMutationId: change.clientMutationId,
-        entityType: change.entityType,
-        entityId: change.entityId,
-        version: existing.version,
-      });
+      await writeMutation(
+        env,
+        {
+          userId,
+          workspaceId,
+          clientMutationId: change.clientMutationId,
+          entityType: change.entityType,
+          entityId: change.entityId,
+          version: existing.version,
+        },
+        metrics,
+      );
       accepted.push({
         clientMutationId: change.clientMutationId,
         entityType: change.entityType,
@@ -591,24 +624,32 @@ export const pushWorkspaceChanges = async (
       continue;
     }
 
-    const version = await writeEntityVersion(env, {
-      userId,
-      workspaceId,
-      entityType: change.entityType,
-      entityId: change.entityId,
-      op: change.op,
-      payload: change.payload,
-      contentHash: change.contentHash,
-      updatedAt: now(),
-    });
-    await writeMutation(env, {
-      userId,
-      workspaceId,
-      clientMutationId: change.clientMutationId,
-      entityType: change.entityType,
-      entityId: change.entityId,
-      version,
-    });
+    const version = await writeEntityVersion(
+      env,
+      {
+        userId,
+        workspaceId,
+        entityType: change.entityType,
+        entityId: change.entityId,
+        op: change.op,
+        payload: change.payload,
+        contentHash: change.contentHash,
+        updatedAt: now(),
+      },
+      metrics,
+    );
+    await writeMutation(
+      env,
+      {
+        userId,
+        workspaceId,
+        clientMutationId: change.clientMutationId,
+        entityType: change.entityType,
+        entityId: change.entityId,
+        version,
+      },
+      metrics,
+    );
     accepted.push({
       clientMutationId: change.clientMutationId,
       entityType: change.entityType,
@@ -617,11 +658,23 @@ export const pushWorkspaceChanges = async (
     });
   }
 
-  return {
+  const response = {
     cursor: await readWorkspaceCursor(env, workspaceId),
     accepted,
     conflicts,
   };
+  logWorkspaceD1Metrics(
+    'changes_push',
+    {
+      userId,
+      workspaceId,
+      changeCount: request.changes.length,
+      acceptedCount: accepted.length,
+      conflictCount: conflicts.length,
+    },
+    metrics,
+  );
+  return response;
 };
 
 const snapshotToEntities = (snapshot: WorkspaceSnapshot): EntityInput[] => {
@@ -1006,6 +1059,7 @@ export const checkpointWorkspaceSnapshotEntities = async (
   workspaceId: string,
   snapshot: WorkspaceSnapshot,
 ) => {
+  const metrics = createWorkspaceD1Metrics();
   await assertWorkspaceOwner(env, userId, workspaceId);
   const entities = snapshotToEntities(snapshot);
   const nextKeys = new Set(
@@ -1023,43 +1077,64 @@ export const checkpointWorkspaceSnapshotEntities = async (
       continue;
     }
 
-    await writeEntityVersion(env, {
-      userId,
-      workspaceId,
-      entityType: entity.entityType,
-      entityId: entity.entityId,
-      op: 'upsert',
-      payload: entity.payload,
-      contentHash,
-      updatedAt: entity.sourceUpdatedAt,
-    });
+    await writeEntityVersion(
+      env,
+      {
+        userId,
+        workspaceId,
+        entityType: entity.entityType,
+        entityId: entity.entityId,
+        op: 'upsert',
+        payload: entity.payload,
+        contentHash,
+        updatedAt: entity.sourceUpdatedAt,
+      },
+      metrics,
+    );
     upserted++;
   }
 
-  const activeRows = await listActiveEntities(env, workspaceId);
+  const activeRows = await listActiveEntities(env, workspaceId, metrics);
   const checkpointedAt = now();
   for (const row of activeRows) {
     if (nextKeys.has(buildEntityKey(row.entityType, row.entityId))) {
       continue;
     }
 
-    await writeEntityVersion(env, {
-      userId,
-      workspaceId,
-      entityType: row.entityType,
-      entityId: row.entityId,
-      op: 'delete',
-      payload: null,
-      contentHash: null,
-      updatedAt: checkpointedAt,
-    });
+    await writeEntityVersion(
+      env,
+      {
+        userId,
+        workspaceId,
+        entityType: row.entityType,
+        entityId: row.entityId,
+        op: 'delete',
+        payload: null,
+        contentHash: null,
+        updatedAt: checkpointedAt,
+      },
+      metrics,
+    );
     deleted++;
   }
 
-  return {
+  const response = {
     cursor: await readWorkspaceCursor(env, workspaceId),
     upserted,
     deleted,
     skipped,
   };
+  logWorkspaceD1Metrics(
+    'checkpoint',
+    {
+      userId,
+      workspaceId,
+      entityCount: entities.length,
+      upserted,
+      deleted,
+      skipped,
+    },
+    metrics,
+  );
+  return response;
 };

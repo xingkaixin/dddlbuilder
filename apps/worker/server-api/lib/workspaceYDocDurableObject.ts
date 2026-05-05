@@ -13,6 +13,7 @@ import {
   exportWorkspaceYDocToSnapshot,
   isWorkspaceYDocEmpty,
 } from './workspaceYDocSnapshot.js';
+import { logWorkspaceYDocHealth } from './workspaceSyncMetrics.js';
 
 type WorkspaceYDocStoredMeta = {
   workspaceId?: string;
@@ -24,6 +25,7 @@ type WorkspaceYDocStoredMeta = {
   updatedAt: number;
   lastCompactedSeq: number;
   lastCheckpointSeq: number;
+  compactCount?: number;
   checkpointFailedAt?: number;
 };
 
@@ -59,6 +61,7 @@ export class WorkspaceYDocDurableObject {
   private updateBytes = 0;
   private lastCompactedSeq = 0;
   private lastCheckpointSeq = 0;
+  private compactCount = 0;
   private checkpointFailedAt: number | undefined;
   private workspaceId: string | undefined;
   private userId: string | undefined;
@@ -86,6 +89,14 @@ export class WorkspaceYDocDurableObject {
       const [client, server] = Object.values(pair);
       this.state.acceptWebSocket(server);
       server.send(encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, doc)));
+      logWorkspaceYDocHealth('connect', {
+        workspaceId: this.workspaceId,
+        userId: this.userId,
+        connectedSockets: this.connectedSocketCount(),
+        updateCount: this.updateCount,
+        updateBytes: this.updateBytes,
+        compactCount: this.compactCount,
+      });
       await this.ensureAlarm();
       return new Response(null, {
         status: 101,
@@ -149,6 +160,7 @@ export class WorkspaceYDocDurableObject {
     if (this.loadPromise) return this.loadPromise;
 
     this.loadPromise = (async () => {
+      const startedAt = Date.now();
       const doc = new Y.Doc();
       const [meta, snapshot] = await Promise.all([
         this.state.storage.get<WorkspaceYDocStoredMeta>(META_KEY),
@@ -161,6 +173,7 @@ export class WorkspaceYDocDurableObject {
         this.updateBytes = meta.updateBytes;
         this.lastCompactedSeq = meta.lastCompactedSeq;
         this.lastCheckpointSeq = meta.lastCheckpointSeq ?? 0;
+        this.compactCount = meta.compactCount ?? 0;
         this.checkpointFailedAt = meta.checkpointFailedAt;
         this.userId = meta.userId ?? this.userId;
       }
@@ -173,19 +186,34 @@ export class WorkspaceYDocDurableObject {
       const updates = await this.state.storage.list<Uint8Array | ArrayBuffer>({
         prefix: UPDATE_PREFIX,
       });
+      let storedUpdateBytes = 0;
       for (const value of updates.values()) {
         const update = toUint8Array(value);
         if (update) {
+          storedUpdateBytes += update.byteLength;
           Y.applyUpdate(doc, update, this);
         }
       }
 
+      let restoredFromD1 = false;
       if (isWorkspaceYDocEmpty(doc)) {
-        await this.restoreFromD1(doc);
+        restoredFromD1 = await this.restoreFromD1(doc);
       }
 
       doc.on('update', this.handleDocUpdate);
       this.doc = doc;
+      logWorkspaceYDocHealth('load', {
+        workspaceId: this.workspaceId,
+        userId: this.userId,
+        loadDurationMs: Date.now() - startedAt,
+        storedUpdateCount: updates.size,
+        storedUpdateBytes,
+        updateCount: this.updateCount,
+        updateBytes: this.updateBytes,
+        compactCount: this.compactCount,
+        connectedSockets: this.connectedSocketCount(),
+        restoredFromD1,
+      });
       return doc;
     })();
 
@@ -202,6 +230,15 @@ export class WorkspaceYDocDurableObject {
     this.nextSeq = seq;
     this.updateCount += 1;
     this.updateBytes += update.byteLength;
+    logWorkspaceYDocHealth('update', {
+      workspaceId: this.workspaceId,
+      userId: this.userId,
+      updateCount: this.updateCount,
+      updateBytes: update.byteLength,
+      pendingUpdateBytes: this.updateBytes,
+      connectedSockets: this.connectedSocketCount(),
+      compactCount: this.compactCount,
+    });
 
     this.persistQueue = this.persistQueue
       .then(async () => {
@@ -227,6 +264,7 @@ export class WorkspaceYDocDurableObject {
 
   private async compact(options: { checkpoint?: boolean } = {}) {
     if (!this.doc) return;
+    const startedAt = Date.now();
     const snapshot = Y.encodeStateAsUpdate(this.doc);
     const updateKeys = await this.state.storage.list({ prefix: UPDATE_PREFIX });
     await this.state.storage.put(SNAPSHOT_KEY, snapshot);
@@ -234,14 +272,27 @@ export class WorkspaceYDocDurableObject {
     this.updateCount = 0;
     this.updateBytes = 0;
     this.lastCompactedSeq = this.nextSeq;
+    this.compactCount += 1;
     if (options.checkpoint !== false) {
       await this.checkpointD1();
     }
     await this.writeMeta();
+    logWorkspaceYDocHealth('compact', {
+      workspaceId: this.workspaceId,
+      userId: this.userId,
+      compactDurationMs: Date.now() - startedAt,
+      compactCount: this.compactCount,
+      compactedUpdateCount: updateKeys.size,
+      snapshotBytes: snapshot.byteLength,
+      connectedSockets: this.connectedSocketCount(),
+      checkpointed: options.checkpoint !== false,
+      lastCompactedSeq: this.lastCompactedSeq,
+      lastCheckpointSeq: this.lastCheckpointSeq,
+    });
   }
 
   private async restoreFromD1(doc: Y.Doc) {
-    if (!this.workspaceId || !this.userId) return;
+    if (!this.workspaceId || !this.userId) return false;
     const snapshot = await getWorkspaceSnapshotForWorkspace(
       this.env,
       this.userId,
@@ -254,12 +305,13 @@ export class WorkspaceYDocDurableObject {
       snapshot.savedDrafts.length === 0 &&
       snapshot.folders.length === 0
     ) {
-      return;
+      return false;
     }
 
     Y.applyUpdate(doc, createWorkspaceYDocUpdateFromSnapshot(snapshot), this);
     this.doc = doc;
     await this.compact({ checkpoint: false });
+    return true;
   }
 
   private async checkpointD1() {
@@ -290,6 +342,7 @@ export class WorkspaceYDocDurableObject {
       updatedAt: Date.now(),
       lastCompactedSeq: this.lastCompactedSeq,
       lastCheckpointSeq: this.lastCheckpointSeq,
+      compactCount: this.compactCount,
       checkpointFailedAt: this.checkpointFailedAt,
     });
   }
@@ -299,5 +352,10 @@ export class WorkspaceYDocDurableObject {
     if (existing == null) {
       await this.state.storage.setAlarm(Date.now() + ALARM_DELAY_MS);
     }
+  }
+
+  private connectedSocketCount() {
+    const openState = typeof WebSocket === 'undefined' ? 1 : WebSocket.OPEN;
+    return this.state.getWebSockets().filter((socket) => socket.readyState === openState).length;
   }
 }

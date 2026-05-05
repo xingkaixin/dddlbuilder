@@ -101,10 +101,12 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    vi.spyOn(console, 'info').mockImplementation(() => {});
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it('checkpoints imported snapshots during compact', async () => {
@@ -151,6 +153,60 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       'ws-1',
       expect.objectContaining({
         drafts: [expect.objectContaining({ draftId: 'default' })],
+      }),
+    );
+  });
+
+  it('logs update and compact health metrics', async () => {
+    vi.doMock('../../lib/workspaceEntities.js', () => ({
+      checkpointWorkspaceSnapshotEntities: vi.fn().mockResolvedValue({
+        cursor: 1,
+        upserted: 1,
+        deleted: 0,
+        skipped: 0,
+      }),
+      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
+        globalDraft: null,
+        drafts: [],
+        savedTables: [],
+        savedDrafts: [],
+        folders: [],
+      }),
+    }));
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state } = createDurableObjectState();
+    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
+
+    const response = await durableObject.fetch(
+      createRequest('/api/workspaces/ws-1/yjs/import', {
+        method: 'POST',
+        body: JSON.stringify(createSnapshot('users')),
+      }),
+    );
+
+    const logs = (
+      console.info as unknown as { mock: { calls: Array<[unknown, ...unknown[]]> } }
+    ).mock.calls.map((call) => JSON.parse(String(call[0])) as Record<string, unknown>);
+    expect(response.status).toBe(200);
+    expect(logs).toContainEqual(
+      expect.objectContaining({
+        event: 'workspace_yjs_do_health',
+        operation: 'update',
+        workspaceId: 'ws-1',
+        userId: 'user-1',
+        updateCount: 1,
+        connectedSockets: 0,
+      }),
+    );
+    expect(logs).toContainEqual(
+      expect.objectContaining({
+        event: 'workspace_yjs_do_health',
+        operation: 'compact',
+        workspaceId: 'ws-1',
+        userId: 'user-1',
+        compactCount: 1,
+        compactedUpdateCount: 1,
+        checkpointed: true,
       }),
     );
   });
