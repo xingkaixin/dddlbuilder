@@ -209,6 +209,17 @@ export const enUSCommon = {
   workspaceYDoc: {
     structureConflictNotice:
       'Remote table-structure changes were merged. Review fields, indexes, and foreign keys.',
+    status: {
+      localSaved: 'Saved locally',
+      syncing: 'Syncing',
+      offlineLocalSaved: 'Offline, saved locally',
+      cloudSynced: 'Synced to cloud',
+      syncFailed: 'Sync failed',
+      authFailed: 'Sign-in expired',
+      networkFailed: 'Network issue',
+      serviceUnavailable: 'Sync service unavailable',
+      retry: 'Retry sync',
+    },
   },
   emptyState: {
     noTabOpenTitle: 'No table opened yet',

@@ -95,6 +95,7 @@ vi.mock('@/providers/WorkspaceYDocProvider', () => ({
     synced: false,
     localSynced: true,
     connectionState: 'idle',
+    retry: vi.fn(),
   })),
 }));
 
@@ -161,6 +162,7 @@ describe('usePersistedState', () => {
       synced: false,
       localSynced: true,
       connectionState: 'idle',
+      retry: vi.fn(),
     } as any);
     window.history.replaceState({}, '', '/');
   });
@@ -427,6 +429,7 @@ describe('usePersistedState', () => {
       synced: false,
       localSynced: true,
       connectionState: 'connecting',
+      retry: vi.fn(),
     });
 
     const { wrapper } = createQueryClientWrapper();

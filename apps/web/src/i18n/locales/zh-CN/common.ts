@@ -201,6 +201,17 @@ export const zhCNCommon = {
   },
   workspaceYDoc: {
     structureConflictNotice: '已合并远端表结构变更，请检查字段、索引和外键。',
+    status: {
+      localSaved: '本地已保存',
+      syncing: '同步中',
+      offlineLocalSaved: '离线，本地已保存',
+      cloudSynced: '云端已同步',
+      syncFailed: '同步失败',
+      authFailed: '登录状态失效',
+      networkFailed: '网络异常',
+      serviceUnavailable: '同步服务不可用',
+      retry: '重试同步',
+    },
   },
   emptyState: {
     noTabOpenTitle: '还没有打开任何表',

@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type PropsWithChildren,
 } from 'react';
@@ -21,6 +22,7 @@ import {
 import {
   WorkspaceYDocSyncClient,
   type WorkspaceYDocConnectionState,
+  type WorkspaceYDocFailureReason,
 } from '@/services/workspaceYDocSyncClient';
 import { buildWorkspaceYDocName } from '@/services/workspaceYDocStorage';
 import { resolveWorkspaceYDocStartupPlan } from '@/services/workspaceYDocAuthority';
@@ -30,13 +32,18 @@ type WorkspaceYDocContextValue = {
   synced: boolean;
   localSynced: boolean;
   connectionState: WorkspaceYDocConnectionState;
+  failureReason?: WorkspaceYDocFailureReason;
+  retry: () => void;
 };
+
+const noop = () => {};
 
 const WorkspaceYDocContext = createContext<WorkspaceYDocContextValue>({
   doc: null,
   synced: false,
   localSynced: false,
   connectionState: 'idle',
+  retry: noop,
 });
 
 const migrationSnapshotToWorkspaceSnapshot = (
@@ -70,11 +77,14 @@ const migrationSnapshotToWorkspaceSnapshot = (
 
 export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
   const authSession = useAuthSession();
+  const clientRef = useRef<WorkspaceYDocSyncClient | null>(null);
+  const retry = useMemo(() => () => clientRef.current?.retry(), []);
   const [value, setValue] = useState<WorkspaceYDocContextValue>({
     doc: null,
     synced: false,
     localSynced: false,
     connectionState: 'idle',
+    retry,
   });
 
   useEffect(() => {
@@ -90,6 +100,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
         synced: false,
         localSynced: false,
         connectionState: 'idle',
+        retry,
       });
       return;
     }
@@ -107,6 +118,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       synced: false,
       localSynced: false,
       connectionState: 'idle',
+      retry,
     });
 
     const initialize = async () => {
@@ -126,32 +138,35 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       if (cancelled) return;
       setValue((prev) => ({ ...prev, doc, localSynced: true }));
       if (startupPlan.steps.includes('connect-durable-object')) {
-        client = new WorkspaceYDocSyncClient(workspaceId, doc, (connectionState) => {
+        client = new WorkspaceYDocSyncClient(workspaceId, doc, (connectionStatus) => {
           if (cancelled) return;
           setValue((prev) => ({
             ...prev,
-            connectionState,
-            synced: connectionState === 'connected',
+            connectionState: connectionStatus.state,
+            failureReason: connectionStatus.failureReason,
+            synced: connectionStatus.state === 'connected',
           }));
         });
-        client.connect();
+        clientRef.current = client;
+        void client.connect();
       }
     };
 
     void initialize().catch((error) => {
       console.error('[workspace-yjs] initialize failed', error);
       if (!cancelled) {
-        setValue((prev) => ({ ...prev, connectionState: 'error' }));
+        setValue((prev) => ({ ...prev, connectionState: 'error', failureReason: 'unknown' }));
       }
     });
 
     return () => {
       cancelled = true;
+      clientRef.current = null;
       client?.destroy();
       void persistence.destroy();
       doc.destroy();
     };
-  }, [authSession.status, authSession.userId, authSession.workspaceId]);
+  }, [authSession.status, authSession.userId, authSession.workspaceId, retry]);
 
   const memoizedValue = useMemo(() => value, [value]);
 

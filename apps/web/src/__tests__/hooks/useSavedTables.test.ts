@@ -15,12 +15,7 @@ const mockUseAuthSession = vi.hoisted(() =>
   })),
 );
 const mockWorkspaceYDoc = vi.hoisted(() => ({
-  value: {
-    doc: null as unknown,
-    synced: false,
-    localSynced: false,
-    connectionState: 'idle',
-  },
+  value: {} as any,
 }));
 const mockYDocAdapter = vi.hoisted(() => ({
   deleteSavedTableFromYDoc: vi.fn(),
@@ -75,6 +70,7 @@ describe('useSavedTables', () => {
       synced: false,
       localSynced: false,
       connectionState: 'idle',
+      retry: vi.fn(),
     };
     mockYDocAdapter.deleteSavedTableFromYDoc.mockReset();
     mockYDocAdapter.getSavedTableFromYDoc.mockReset();
@@ -177,6 +173,7 @@ describe('useSavedTables', () => {
       synced: false,
       localSynced: true,
       connectionState: 'connecting',
+      retry: vi.fn(),
     };
     mockYDocAdapter.getSavedTableFromYDoc.mockReturnValue(null);
     mockYDocAdapter.listSavedTableMetadataFromYDoc.mockReturnValue([]);
@@ -239,6 +236,7 @@ describe('useSavedTables', () => {
       synced: true,
       localSynced: true,
       connectionState: 'connected',
+      retry: vi.fn(),
     };
     mockYDocAdapter.subscribeWorkspaceYDoc.mockImplementation((_doc, notify) => {
       notifyYDocChanged = notify;

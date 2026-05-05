@@ -11,13 +11,23 @@ export type WorkspaceYDocConnectionState =
   | 'offline'
   | 'error';
 
+export type WorkspaceYDocFailureReason = 'auth' | 'network' | 'service_unavailable' | 'unknown';
+
+export type WorkspaceYDocConnectionStatus = {
+  state: WorkspaceYDocConnectionState;
+  failureReason?: WorkspaceYDocFailureReason;
+};
+
 const MESSAGE_SYNC = 0;
 const MAX_RECONNECT_DELAY_MS = 10_000;
 export const WORKSPACE_YDOC_UPDATE_BATCH_MS = 25;
 
+const buildWorkspaceYDocPath = (workspaceId: string) =>
+  `/api/workspaces/${encodeURIComponent(workspaceId)}/yjs`;
+
 const buildWorkspaceYDocUrl = (workspaceId: string) => {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${protocol}//${window.location.host}/api/workspaces/${encodeURIComponent(workspaceId)}/yjs`;
+  return `${protocol}//${window.location.host}${buildWorkspaceYDocPath(workspaceId)}`;
 };
 
 const encodeSyncMessage = (write: (encoder: encoding.Encoder) => void) => {
@@ -30,18 +40,20 @@ const encodeSyncMessage = (write: (encoder: encoding.Encoder) => void) => {
 export class WorkspaceYDocSyncClient {
   private socket: WebSocket | null = null;
   private destroyed = false;
+  private connecting = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private pendingUpdates: Uint8Array[] = [];
   private reconnectDelayMs = 1000;
+  private readonly ignoredSockets = new WeakSet<WebSocket>();
   private readonly workspaceId: string;
   private readonly doc: Y.Doc;
-  private readonly onConnectionStateChange: (state: WorkspaceYDocConnectionState) => void;
+  private readonly onConnectionStateChange: (status: WorkspaceYDocConnectionStatus) => void;
 
   constructor(
     workspaceId: string,
     doc: Y.Doc,
-    onConnectionStateChange: (state: WorkspaceYDocConnectionState) => void,
+    onConnectionStateChange: (status: WorkspaceYDocConnectionStatus) => void,
   ) {
     this.workspaceId = workspaceId;
     this.doc = doc;
@@ -51,43 +63,89 @@ export class WorkspaceYDocSyncClient {
     window.addEventListener('offline', this.handleOffline);
   }
 
-  connect() {
-    if (this.destroyed || this.socket) return;
+  async connect() {
+    if (this.destroyed || this.socket || this.connecting) return;
     if (typeof WebSocket === 'undefined') {
-      this.onConnectionStateChange('error');
+      this.notify('error', 'unknown');
       return;
     }
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      this.onConnectionStateChange('offline');
+      this.notify('offline');
       return;
     }
 
-    this.onConnectionStateChange('connecting');
+    this.connecting = true;
+    this.notify('connecting');
+    const failureReason = await this.checkAvailability();
+    this.connecting = false;
+    if (this.destroyed || this.socket) return;
+    if (this.isOffline()) {
+      this.notify('offline');
+      return;
+    }
+    if (failureReason) {
+      this.notify('error', failureReason);
+      if (failureReason !== 'auth') {
+        this.scheduleReconnect();
+      }
+      return;
+    }
+
     const socket = new WebSocket(buildWorkspaceYDocUrl(this.workspaceId));
     socket.binaryType = 'arraybuffer';
     this.socket = socket;
 
     socket.onopen = () => {
       this.reconnectDelayMs = 1000;
-      this.onConnectionStateChange('connected');
-      this.sendImmediate(
-        encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, this.doc)),
-      );
+      this.notify('connected');
+      this.sendSyncState();
+      this.sendFullState();
     };
     socket.onmessage = (event) => {
       void this.handleMessage(event.data);
     };
     socket.onerror = () => {
-      this.onConnectionStateChange('error');
+      if (this.isOffline()) {
+        this.notify('offline');
+        return;
+      }
+      this.notify('error', 'unknown');
     };
     socket.onclose = () => {
+      if (this.ignoredSockets.has(socket)) return;
       if (this.socket === socket) {
         this.socket = null;
       }
       if (!this.destroyed) {
+        if (this.isOffline()) {
+          this.notify('offline');
+        } else {
+          this.notify('error', 'network');
+        }
         this.scheduleReconnect();
       }
     };
+  }
+
+  retry() {
+    if (this.destroyed) return;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      this.notify('connected');
+      this.sendSyncState();
+      this.sendFullState();
+      return;
+    }
+    if (this.socket) {
+      const socket = this.socket;
+      this.ignoredSockets.add(socket);
+      this.socket = null;
+      socket.close();
+    }
+    void this.connect();
   }
 
   destroy() {
@@ -115,37 +173,30 @@ export class WorkspaceYDocSyncClient {
 
   private readonly handleOnline = () => {
     if (this.socket?.readyState === WebSocket.OPEN) {
-      this.onConnectionStateChange('connected');
-      this.sendImmediate(
-        encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, this.doc)),
-      );
-      this.sendImmediate(
-        encodeSyncMessage((encoder) =>
-          syncProtocol.writeUpdate(encoder, encodeStateAsUpdate(this.doc)),
-        ),
-      );
+      this.notify('connected');
+      this.sendSyncState();
+      this.sendFullState();
       return;
     }
     if (this.socket) {
       this.socket = null;
     }
-    this.connect();
+    void this.connect();
   };
 
   private readonly handleOffline = () => {
-    this.onConnectionStateChange('offline');
+    this.notify('offline');
   };
 
   private scheduleReconnect() {
     if (this.reconnectTimer) return;
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      this.onConnectionStateChange('offline');
+    if (this.isOffline()) {
+      this.notify('offline');
       return;
     }
-    this.onConnectionStateChange('connecting');
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
-      this.connect();
+      void this.connect();
       this.reconnectDelayMs = Math.min(this.reconnectDelayMs * 2, MAX_RECONNECT_DELAY_MS);
     }, this.reconnectDelayMs);
   }
@@ -174,6 +225,40 @@ export class WorkspaceYDocSyncClient {
       const payload = new Uint8Array(message.byteLength);
       payload.set(message);
       this.socket.send(payload.buffer);
+    }
+  }
+
+  private sendSyncState() {
+    this.sendImmediate(
+      encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, this.doc)),
+    );
+  }
+
+  private sendFullState() {
+    this.sendImmediate(
+      encodeSyncMessage((encoder) =>
+        syncProtocol.writeUpdate(encoder, encodeStateAsUpdate(this.doc)),
+      ),
+    );
+  }
+
+  private notify(state: WorkspaceYDocConnectionState, failureReason?: WorkspaceYDocFailureReason) {
+    this.onConnectionStateChange({ state, failureReason });
+  }
+
+  private isOffline() {
+    return typeof navigator !== 'undefined' && !navigator.onLine;
+  }
+
+  private async checkAvailability(): Promise<WorkspaceYDocFailureReason | null> {
+    try {
+      const response = await fetch(buildWorkspaceYDocPath(this.workspaceId), { method: 'HEAD' });
+      if (response.ok) return null;
+      if (response.status === 401 || response.status === 403) return 'auth';
+      if (response.status === 503) return 'service_unavailable';
+      return 'unknown';
+    } catch {
+      return 'network';
     }
   }
 

@@ -91,6 +91,10 @@ export function registerWorkspaceYDocRoutes(app: Hono<ApiEnv>) {
     }
     if ('response' in authenticated) return authenticated.response;
 
+    if (c.req.raw.method === 'HEAD') {
+      return new Response(null, { status: 204 });
+    }
+
     return authenticated.stub.fetch(
       buildForwardedRequest(c.req.raw, authenticated.workspaceId, authenticated.userId),
     );

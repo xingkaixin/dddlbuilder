@@ -148,6 +148,10 @@ const mockSignedInWorkspace = async (
       });
       return;
     }
+    if (url.pathname === `/api/workspaces/${workspaceId}/yjs` && request.method() === 'HEAD') {
+      await route.fulfill({ status: 204 });
+      return;
+    }
     if (url.pathname === `/api/workspaces/${workspaceId}/changes`) {
       if (request.method() === 'POST') {
         await route.fulfill({ json: { cursor: 0, accepted: [], conflicts: [] } });
@@ -169,6 +173,11 @@ const editFirstFieldName = async (page: Page, fieldName: string) => {
 };
 
 const tableNameInput = (page: Page) => page.getByPlaceholder('例如: order_info');
+
+const readDefaultDraftState = (doc: Y.Doc) => {
+  const draft = doc.getMap<Y.Map<unknown>>('drafts').get(DEFAULT_DRAFT_ID);
+  return draft?.get('stateSnapshot') as ReturnType<typeof createState> | undefined;
+};
 
 const openDraftByName = async (page: Page, name: string) => {
   try {
@@ -219,4 +228,36 @@ test('workspace yjs sync converges realtime edits and IndexedDB restore', async 
   await restoreContext.close();
   await contextA.close();
   await contextB.close();
+});
+
+test('workspace yjs sync preserves offline edits locally and converges after reconnect', async ({
+  browser,
+}) => {
+  const workspaceId = `ws-offline-e2e-${Date.now()}`;
+  const server = new MockWorkspaceYjsServer();
+  seedDefaultDraft(server.doc, 'cloud_seed', 'id');
+  const context = await browser.newContext({ locale: 'zh-CN' });
+  await mockSignedInWorkspace(context, server, workspaceId);
+  const page = await context.newPage();
+
+  await page.goto('/');
+  await openDraftByName(page, 'cloud_seed');
+  await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
+
+  await context.setOffline(true);
+  await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+  await tableNameInput(page).fill('offline_local');
+  await editFirstFieldName(page, 'offline_id');
+  await expect(page.getByTestId('workspace-yjs-status')).toContainText('离线，本地已保存');
+  await expect(tableNameInput(page)).toHaveValue('offline_local');
+  await page.waitForTimeout(700);
+
+  await context.setOffline(false);
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+
+  await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
+  await expect.poll(() => readDefaultDraftState(server.doc)?.tableName).toBe('offline_local');
+  expect(readDefaultDraftState(server.doc)?.rows[0]?.fieldName).toBe('offline_id');
+
+  await context.close();
 });

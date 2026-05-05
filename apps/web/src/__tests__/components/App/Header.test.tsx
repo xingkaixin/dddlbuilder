@@ -14,6 +14,10 @@ const openAuthDialogMock = vi.fn();
 const closeAuthDialogMock = vi.fn();
 const successMock = vi.fn();
 const errorMock = vi.fn();
+const retryWorkspaceYDocMock = vi.fn();
+const mockWorkspaceYDoc = vi.hoisted(() => ({
+  value: {} as any,
+}));
 
 vi.mock('@/i18n/LocaleContext', () => ({
   useLocale: () => ({
@@ -104,6 +108,10 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
   })),
 }));
 
+vi.mock('@/providers/WorkspaceYDocProvider', () => ({
+  useWorkspaceYDoc: () => mockWorkspaceYDoc.value,
+}));
+
 vi.mock('@/hooks/useWorkspaceMigration', () => ({
   useWorkspaceMigration: vi.fn(() => ({
     checking: false,
@@ -134,6 +142,14 @@ describe('Header', () => {
     closeAuthDialogMock.mockReset();
     successMock.mockReset();
     errorMock.mockReset();
+    retryWorkspaceYDocMock.mockReset();
+    mockWorkspaceYDoc.value = {
+      doc: null,
+      synced: false,
+      localSynced: false,
+      connectionState: 'idle',
+      retry: retryWorkspaceYDocMock,
+    };
     window.history.replaceState({}, '', '/');
   });
 
@@ -265,6 +281,67 @@ describe('Header', () => {
     await waitFor(() => {
       expect(signOutMock).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('登录后应展示工作区同步状态并支持失败重试', async () => {
+    const { useAuthSession } = await import('@/auth/AuthSessionProvider');
+    vi.mocked(useAuthSession).mockReturnValue({
+      status: 'signed_in',
+      configured: true,
+      userId: 'user-1',
+      workspaceId: 'workspace-1',
+      email: 'user@example.com',
+      name: 'User One',
+      emailVerified: true,
+      creditBalance: 8800,
+      creditsStatus: 'ready',
+      authDialogOpen: false,
+      signInWithEmail: signInWithEmailMock,
+      signUpWithEmail: signUpWithEmailMock,
+      updateUserName: vi.fn(),
+      changePassword: vi.fn(),
+      requestPasswordReset: requestPasswordResetMock,
+      resetPassword: resetPasswordMock,
+      sendVerificationEmail: sendVerificationEmailMock,
+      signOut: signOutMock,
+      refreshSession: refreshSessionMock,
+      refreshCredits: vi.fn(),
+      openAuthDialog: openAuthDialogMock,
+      closeAuthDialog: closeAuthDialogMock,
+    });
+    mockWorkspaceYDoc.value = {
+      doc: null,
+      synced: false,
+      localSynced: true,
+      connectionState: 'idle',
+      retry: retryWorkspaceYDocMock,
+    };
+
+    const { rerender } = render(<Header {...baseProps} />);
+    expect(screen.getByTestId('workspace-yjs-status')).toHaveTextContent('本地已保存');
+
+    mockWorkspaceYDoc.value = {
+      doc: null,
+      synced: true,
+      localSynced: true,
+      connectionState: 'connected',
+      retry: retryWorkspaceYDocMock,
+    };
+    rerender(<Header {...baseProps} onShare={vi.fn()} />);
+    expect(screen.getByTestId('workspace-yjs-status')).toHaveTextContent('云端已同步');
+
+    mockWorkspaceYDoc.value = {
+      doc: null,
+      synced: false,
+      localSynced: true,
+      connectionState: 'error',
+      failureReason: 'service_unavailable',
+      retry: retryWorkspaceYDocMock,
+    };
+    rerender(<Header {...baseProps} onShare={vi.fn()} />);
+    expect(screen.getByTestId('workspace-yjs-status')).toHaveTextContent('同步服务不可用');
+    fireEvent.click(screen.getByRole('button', { name: '重试同步' }));
+    expect(retryWorkspaceYDocMock).toHaveBeenCalledTimes(1);
   });
 
   it('存在待迁移工作区时应展示迁移对话框并可执行迁移', async () => {

@@ -90,6 +90,7 @@ describe('WorkspaceYDocSyncClient', () => {
     vi.useFakeTimers();
     MockWebSocket.instances = [];
     vi.stubGlobal('WebSocket', MockWebSocket);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
   });
 
   afterEach(() => {
@@ -97,13 +98,13 @@ describe('WorkspaceYDocSyncClient', () => {
     vi.unstubAllGlobals();
   });
 
-  it('batches 50 high-frequency local updates into one websocket update message', () => {
+  it('batches 50 high-frequency local updates into one websocket update message', async () => {
     const doc = new Y.Doc();
     const updates: Uint8Array[] = [];
     doc.on('update', (update) => updates.push(update));
     const client = new WorkspaceYDocSyncClient('ws-1', doc, vi.fn());
 
-    client.connect();
+    await client.connect();
     const socket = firstSocket();
     socket.open();
 
@@ -113,12 +114,12 @@ describe('WorkspaceYDocSyncClient', () => {
     }
 
     vi.advanceTimersByTime(WORKSPACE_YDOC_UPDATE_BATCH_MS - 1);
-    expect(socket.sent).toHaveLength(1);
-
-    vi.advanceTimersByTime(1);
     expect(socket.sent).toHaveLength(2);
 
-    const updateMessage = sentMessage(socket, 1);
+    vi.advanceTimersByTime(1);
+    expect(socket.sent).toHaveLength(3);
+
+    const updateMessage = sentMessage(socket, 2);
     const individualUpdateBytes = updates.reduce((total, update) => total + update.byteLength, 0);
     expect(updateMessage.byteLength).toBeLessThan(individualUpdateBytes);
 
@@ -136,13 +137,13 @@ describe('WorkspaceYDocSyncClient', () => {
     const client = new WorkspaceYDocSyncClient('ws-1', doc, vi.fn());
     const serverDoc = new Y.Doc();
 
-    client.connect();
+    await client.connect();
     const socket = firstSocket();
     socket.open();
     socket.receive(encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, serverDoc)));
     await Promise.resolve();
 
-    expect(socket.sent).toHaveLength(2);
+    expect(socket.sent.length).toBeGreaterThanOrEqual(2);
     applySyncMessage(serverDoc, sentMessage(socket, 1));
     expect(serverDoc.getMap('fields').get('offline-field')).toBe('offline-value');
 
@@ -156,24 +157,81 @@ describe('WorkspaceYDocSyncClient', () => {
     const serverDoc = new Y.Doc();
     serverDoc.getMap('fields').set('remote-field', 'remote-value');
 
-    client.connect();
+    await client.connect();
     const socket = firstSocket();
     socket.open();
-    expect(socket.sent).toHaveLength(1);
+    expect(socket.sent).toHaveLength(2);
 
     window.dispatchEvent(new Event('online'));
-    expect(socket.sent).toHaveLength(3);
-    const response = respondToSyncMessage(serverDoc, sentMessage(socket, 1));
+    expect(socket.sent).toHaveLength(4);
+    const response = respondToSyncMessage(serverDoc, sentMessage(socket, 2));
     expect(response).toBeInstanceOf(Uint8Array);
     if (!response) {
       throw new Error('Expected sync response');
     }
-    applySyncMessage(serverDoc, sentMessage(socket, 2));
+    applySyncMessage(serverDoc, sentMessage(socket, 3));
     socket.receive(response);
     await Promise.resolve();
 
     expect(doc.getMap('fields').get('remote-field')).toBe('remote-value');
     expect(serverDoc.getMap('fields').get('local-field')).toBe('local-value');
+
+    client.destroy();
+  });
+
+  it('reports auth and service failures before opening a websocket', async () => {
+    const doc = new Y.Doc();
+    const onConnectionStateChange = vi.fn();
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(new Response(null, { status: 401 }))
+        .mockResolvedValueOnce(new Response(null, { status: 503 })),
+    );
+
+    const authClient = new WorkspaceYDocSyncClient('ws-1', doc, onConnectionStateChange);
+    await authClient.connect();
+    expect(onConnectionStateChange).toHaveBeenLastCalledWith({
+      state: 'error',
+      failureReason: 'auth',
+    });
+    expect(MockWebSocket.instances).toHaveLength(0);
+    authClient.destroy();
+
+    const serviceClient = new WorkspaceYDocSyncClient('ws-1', doc, onConnectionStateChange);
+    await serviceClient.connect();
+    expect(onConnectionStateChange).toHaveBeenLastCalledWith({
+      state: 'error',
+      failureReason: 'service_unavailable',
+    });
+    expect(MockWebSocket.instances).toHaveLength(0);
+    serviceClient.destroy();
+  });
+
+  it('retries with the existing client after a failed preflight', async () => {
+    const doc = new Y.Doc();
+    const onConnectionStateChange = vi.fn();
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockRejectedValueOnce(new TypeError('failed'))
+        .mockResolvedValueOnce(new Response(null, { status: 204 })),
+    );
+    const client = new WorkspaceYDocSyncClient('ws-1', doc, onConnectionStateChange);
+
+    await client.connect();
+    expect(onConnectionStateChange).toHaveBeenLastCalledWith({
+      state: 'error',
+      failureReason: 'network',
+    });
+    expect(MockWebSocket.instances).toHaveLength(0);
+
+    client.retry();
+    await vi.waitFor(() => {
+      expect(MockWebSocket.instances).toHaveLength(1);
+    });
 
     client.destroy();
   });

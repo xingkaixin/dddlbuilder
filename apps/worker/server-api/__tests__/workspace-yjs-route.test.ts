@@ -107,6 +107,34 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
     expect(forwarded.headers.get('x-ddlbuilder-user-id')).toBe('user-1');
   });
 
+  it('returns 204 for authorized websocket health preflight', async () => {
+    const stubFetch = vi.fn().mockResolvedValue(new Response('state'));
+    vi.doMock('../lib/auth.js', () => ({
+      authenticateRequest: vi.fn().mockResolvedValue({
+        userId: 'user-1',
+        email: 'user@example.com',
+        emailVerified: true,
+        name: 'User One',
+      }),
+    }));
+    vi.doMock('../lib/workspaceEntities.js', async (importOriginal) => {
+      const actual = await importOriginal<typeof WorkspaceEntitiesModule>();
+      return {
+        ...actual,
+        assertWorkspaceOwner: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+
+    const { default: app } = await import('../../api/index');
+    const response = await app.fetch(
+      createRequest('/api/workspaces/ws-1/yjs', { method: 'HEAD' }),
+      createEnv({ WORKSPACE_YDOC: createYDocNamespace(stubFetch) }),
+    );
+
+    expect(response.status).toBe(204);
+    expect(stubFetch).not.toHaveBeenCalled();
+  });
+
   it('validates import payload before forwarding', async () => {
     const stubFetch = vi.fn().mockResolvedValue(new Response('imported'));
     vi.doMock('../lib/auth.js', () => ({
