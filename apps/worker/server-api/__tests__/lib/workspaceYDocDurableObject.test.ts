@@ -96,6 +96,29 @@ const createRequest = (path: string, init: RequestInit = {}) => {
   });
 };
 
+const createWebSocket = (
+  attachment?: unknown,
+): WebSocket & {
+  send: ReturnType<typeof vi.fn>;
+  serializeAttachment: ReturnType<typeof vi.fn>;
+  deserializeAttachment: ReturnType<typeof vi.fn>;
+} => {
+  let storedAttachment = attachment;
+  return {
+    readyState: 1,
+    send: vi.fn(),
+    close: vi.fn(),
+    serializeAttachment: vi.fn((nextAttachment: unknown) => {
+      storedAttachment = nextAttachment;
+    }),
+    deserializeAttachment: vi.fn(() => storedAttachment),
+  } as unknown as WebSocket & {
+    send: ReturnType<typeof vi.fn>;
+    serializeAttachment: ReturnType<typeof vi.fn>;
+    deserializeAttachment: ReturnType<typeof vi.fn>;
+  };
+};
+
 describe('WorkspaceYDocDurableObject checkpoint', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -154,6 +177,27 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
         drafts: [expect.objectContaining({ draftId: 'default' })],
       }),
     );
+  });
+
+  it('keeps constructor light and defers storage reads until an event', async () => {
+    vi.doMock('../../lib/workspaceEntities.js', () => ({
+      checkpointWorkspaceSnapshotEntities: vi.fn(),
+      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
+        globalDraft: null,
+        drafts: [],
+        savedTables: [],
+        savedDrafts: [],
+        folders: [],
+      }),
+    }));
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state } = createDurableObjectState();
+
+    new WorkspaceYDocDurableObject(state, createEnv());
+
+    expect(state.storage.get).not.toHaveBeenCalled();
+    expect(state.storage.list).not.toHaveBeenCalled();
+    expect(state.storage.put).not.toHaveBeenCalled();
   });
 
   it('logs update and compact health metrics', async () => {
@@ -330,5 +374,146 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     syncProtocol.readSyncMessage(decoder, encoder, clientDoc, null);
 
     expect(exportWorkspaceYDocToSnapshot(clientDoc).drafts[0]?.state.tableName).toBe('compacted');
+  });
+
+  it('restores workspace identity from hibernated websocket attachments', async () => {
+    const getWorkspaceSnapshotForWorkspace = vi.fn().mockResolvedValue(createSnapshot('attached'));
+    vi.doMock('../../lib/workspaceEntities.js', () => ({
+      checkpointWorkspaceSnapshotEntities: vi.fn(),
+      getWorkspaceSnapshotForWorkspace,
+    }));
+    vi.stubGlobal('WebSocket', { OPEN: 1 });
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { exportWorkspaceYDocToSnapshot } = await import('../../lib/workspaceYDocSnapshot.js');
+    const { state } = createDurableObjectState();
+    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
+    const clientDoc = new Y.Doc();
+    const socket = createWebSocket({
+      schemaVersion: 1,
+      socketId: 'socket-1',
+      workspaceId: 'ws-1',
+      userId: 'user-1',
+      connectedAt: 1,
+    });
+
+    await durableObject.webSocketMessage(
+      socket,
+      toArrayBuffer(
+        encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, clientDoc)),
+      ),
+    );
+
+    const sent = socket.send.mock.calls[0]?.[0] as Uint8Array | undefined;
+    expect(sent).toBeDefined();
+    if (!sent) {
+      throw new Error('Expected sync response');
+    }
+    const decoder = decoding.createDecoder(sent);
+    expect(decoding.readVarUint(decoder)).toBe(MESSAGE_SYNC);
+    const encoder = encoding.createEncoder();
+    encoding.writeVarUint(encoder, MESSAGE_SYNC);
+    syncProtocol.readSyncMessage(decoder, encoder, clientDoc, null);
+
+    expect(getWorkspaceSnapshotForWorkspace).toHaveBeenCalledWith(
+      expect.anything(),
+      'user-1',
+      'ws-1',
+    );
+    expect(exportWorkspaceYDocToSnapshot(clientDoc).drafts[0]?.state.tableName).toBe('attached');
+  });
+
+  it('keeps compact alarm idempotent across repeated calls and cold start', async () => {
+    vi.doMock('../../lib/workspaceEntities.js', () => ({
+      checkpointWorkspaceSnapshotEntities: vi.fn().mockResolvedValue({
+        cursor: 1,
+        upserted: 1,
+        deleted: 0,
+        skipped: 0,
+      }),
+      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
+        globalDraft: null,
+        drafts: [],
+        savedTables: [],
+        savedDrafts: [],
+        folders: [],
+      }),
+    }));
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { exportWorkspaceYDocToSnapshot } = await import('../../lib/workspaceYDocSnapshot.js');
+    const sharedStore = new Map<string, unknown>();
+    const firstObject = new WorkspaceYDocDurableObject(
+      createDurableObjectState(sharedStore).state,
+      createEnv(),
+    );
+    await firstObject.fetch(
+      createRequest('/api/workspaces/ws-1/yjs/import', {
+        method: 'POST',
+        body: JSON.stringify(createSnapshot('alarm_safe')),
+      }),
+    );
+
+    await firstObject.alarm();
+    await firstObject.alarm();
+    const secondObject = new WorkspaceYDocDurableObject(
+      createDurableObjectState(sharedStore).state,
+      createEnv(),
+    );
+    await secondObject.alarm();
+
+    const response = await secondObject.fetch(createRequest('/api/workspaces/ws-1/yjs/state'));
+    const doc = new Y.Doc();
+    Y.applyUpdate(doc, new Uint8Array(await response.arrayBuffer()));
+    expect(exportWorkspaceYDocToSnapshot(doc).drafts[0]?.state.tableName).toBe('alarm_safe');
+  });
+
+  it('logs websocket close and error with attachment identity', async () => {
+    vi.doMock('../../lib/workspaceEntities.js', () => ({
+      checkpointWorkspaceSnapshotEntities: vi.fn(),
+      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
+        globalDraft: null,
+        drafts: [],
+        savedTables: [],
+        savedDrafts: [],
+        folders: [],
+      }),
+    }));
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const durableObject = new WorkspaceYDocDurableObject(
+      createDurableObjectState().state,
+      createEnv(),
+    );
+    const socket = createWebSocket({
+      schemaVersion: 1,
+      socketId: 'socket-1',
+      workspaceId: 'ws-1',
+      userId: 'user-1',
+      connectedAt: 1,
+    });
+
+    await durableObject.webSocketClose(socket, 1000, 'done', true);
+    await durableObject.webSocketError(socket, new Error('network failed'));
+
+    const logs = (
+      console.info as unknown as { mock: { calls: Array<[unknown, ...unknown[]]> } }
+    ).mock.calls.map((call) => JSON.parse(String(call[0])) as Record<string, unknown>);
+    expect(logs).toContainEqual(
+      expect.objectContaining({
+        event: 'workspace_yjs_do_health',
+        operation: 'close',
+        workspaceId: 'ws-1',
+        userId: 'user-1',
+        closeCode: 1000,
+        wasClean: true,
+      }),
+    );
+    expect(logs).toContainEqual(
+      expect.objectContaining({
+        event: 'workspace_yjs_do_health',
+        operation: 'error',
+        workspaceId: 'ws-1',
+        userId: 'user-1',
+        errorMessage: 'network failed',
+      }),
+    );
   });
 });

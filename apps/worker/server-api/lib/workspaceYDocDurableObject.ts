@@ -29,6 +29,14 @@ type WorkspaceYDocStoredMeta = {
   checkpointFailedAt?: number;
 };
 
+type WorkspaceYDocSocketAttachment = {
+  schemaVersion: 1;
+  socketId: string;
+  workspaceId?: string;
+  userId?: string;
+  connectedAt: number;
+};
+
 const MESSAGE_SYNC = 0;
 const SNAPSHOT_KEY = 'snapshot';
 const META_KEY = 'meta';
@@ -51,6 +59,13 @@ const toUint8Array = (value: unknown) => {
   if (value instanceof ArrayBuffer) return new Uint8Array(value);
   return null;
 };
+
+const isSocketAttachment = (value: unknown): value is WorkspaceYDocSocketAttachment => {
+  const record = value as Partial<WorkspaceYDocSocketAttachment> | null;
+  return Boolean(record && record.schemaVersion === 1 && typeof record.socketId === 'string');
+};
+
+const createSocketId = () => crypto.randomUUID();
 
 export class WorkspaceYDocDurableObject {
   private doc: Y.Doc | null = null;
@@ -87,7 +102,10 @@ export class WorkspaceYDocDurableObject {
     if (request.headers.get('upgrade')?.toLowerCase() === 'websocket') {
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
-      this.state.acceptWebSocket(server);
+      const attachment = this.createSocketAttachment();
+      server.serializeAttachment?.(attachment);
+      this.state.acceptWebSocket(server, attachment.workspaceId ? [attachment.workspaceId] : []);
+      await this.writeMeta();
       server.send(encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, doc)));
       logWorkspaceYDocHealth('connect', {
         workspaceId: this.workspaceId,
@@ -136,6 +154,7 @@ export class WorkspaceYDocDurableObject {
 
   async webSocketMessage(ws: WebSocket, message: ArrayBuffer | string) {
     if (typeof message === 'string') return;
+    this.restoreSocketAttachment(ws);
     const doc = await this.loadDoc();
     const decoder = decoding.createDecoder(new Uint8Array(message));
     const messageType = decoding.readVarUint(decoder);
@@ -147,6 +166,30 @@ export class WorkspaceYDocDurableObject {
     if (encoding.length(encoder) > 1) {
       ws.send(encoding.toUint8Array(encoder));
     }
+  }
+
+  async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
+    this.restoreSocketAttachment(ws);
+    logWorkspaceYDocHealth('close', {
+      workspaceId: this.workspaceId,
+      userId: this.userId,
+      connectedSockets: this.connectedSocketCount(),
+      compactCount: this.compactCount,
+      closeCode: code,
+      closeReason: reason,
+      wasClean,
+    });
+  }
+
+  async webSocketError(ws: WebSocket, error: unknown) {
+    this.restoreSocketAttachment(ws);
+    logWorkspaceYDocHealth('error', {
+      workspaceId: this.workspaceId,
+      userId: this.userId,
+      connectedSockets: this.connectedSocketCount(),
+      compactCount: this.compactCount,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
   }
 
   async alarm() {
@@ -357,5 +400,23 @@ export class WorkspaceYDocDurableObject {
   private connectedSocketCount() {
     const openState = typeof WebSocket === 'undefined' ? 1 : WebSocket.OPEN;
     return this.state.getWebSockets().filter((socket) => socket.readyState === openState).length;
+  }
+
+  private createSocketAttachment(): WorkspaceYDocSocketAttachment {
+    return {
+      schemaVersion: 1,
+      socketId: createSocketId(),
+      workspaceId: this.workspaceId,
+      userId: this.userId,
+      connectedAt: Date.now(),
+    };
+  }
+
+  private restoreSocketAttachment(ws: WebSocket) {
+    // Hibernation restarts the constructor, so socket-scoped identity must come from attachment.
+    const attachment = ws.deserializeAttachment?.();
+    if (!isSocketAttachment(attachment)) return;
+    this.workspaceId = attachment.workspaceId ?? this.workspaceId;
+    this.userId = attachment.userId ?? this.userId;
   }
 }
