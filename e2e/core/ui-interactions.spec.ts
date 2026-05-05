@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { setupHydratedState } from '../utils';
 
 test.describe('核心 UI 交互功能测试 @core', () => {
@@ -6,6 +6,19 @@ test.describe('核心 UI 交互功能测试 @core', () => {
     await page.goto('/');
     await setupHydratedState(page);
   });
+
+  const selectTheme = async (page: Page, name: RegExp, legacyTestId: string) => {
+    const legacyTrigger = page.getByTestId('theme-switcher-trigger');
+    if (await legacyTrigger.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await legacyTrigger.click();
+      await page.getByTestId(legacyTestId).click();
+      return;
+    }
+
+    await page.getByRole('button', { name: /功能菜单|Menu/i }).click();
+    await page.getByRole('menuitem', { name: /主题|Theme/i }).click();
+    await page.getByRole('menuitemradio', { name }).click();
+  };
 
   test('场景：清空所有功能应正确重置表单', async ({ page }) => {
     // 填写一些数据
@@ -53,17 +66,14 @@ test.describe('核心 UI 交互功能测试 @core', () => {
 
   test('场景：主题可切换并支持系统跟随', async ({ page }) => {
     const html = page.locator('html');
-    const themeTrigger = page.getByTestId('theme-switcher-trigger');
 
-    await themeTrigger.click();
-    await page.getByTestId('theme-option-dark').click();
+    await selectTheme(page, /暗色|Dark/i, 'theme-option-dark');
     await expect(html).toHaveClass(/dark/);
 
     await page.reload();
     await expect(html).toHaveClass(/dark/);
 
-    await themeTrigger.click();
-    await page.getByTestId('theme-option-system').click();
+    await selectTheme(page, /跟随系统|System/i, 'theme-option-system');
 
     await page.emulateMedia({ colorScheme: 'light' });
     await expect(html).not.toHaveClass(/dark/);
