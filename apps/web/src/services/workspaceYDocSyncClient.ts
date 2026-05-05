@@ -1,5 +1,5 @@
 import type * as Y from 'yjs';
-import { mergeUpdates } from 'yjs';
+import { encodeStateAsUpdate, mergeUpdates } from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
 import * as encoding from 'lib0/encoding';
@@ -114,9 +114,22 @@ export class WorkspaceYDocSyncClient {
   };
 
   private readonly handleOnline = () => {
-    if (!this.socket) {
-      this.connect();
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      this.onConnectionStateChange('connected');
+      this.sendImmediate(
+        encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, this.doc)),
+      );
+      this.sendImmediate(
+        encodeSyncMessage((encoder) =>
+          syncProtocol.writeUpdate(encoder, encodeStateAsUpdate(this.doc)),
+        ),
+      );
+      return;
     }
+    if (this.socket) {
+      this.socket = null;
+    }
+    this.connect();
   };
 
   private readonly handleOffline = () => {

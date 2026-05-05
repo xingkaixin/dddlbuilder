@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';
+import * as decoding from 'lib0/decoding';
 import * as encoding from 'lib0/encoding';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
@@ -52,9 +53,7 @@ const createSnapshot = (tableName: string): WorkspaceSnapshot => ({
   folders: [],
 });
 
-const createDurableObjectState = () => {
-  const store = new Map<string, unknown>();
-
+const createDurableObjectState = (store = new Map<string, unknown>()) => {
   return {
     state: {
       storage: {
@@ -273,5 +272,63 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     );
     expect(exportWorkspaceYDocToSnapshot(doc).drafts[0]?.state.tableName).toBe('restored');
     expect(checkpointWorkspaceSnapshotEntities).not.toHaveBeenCalled();
+  });
+
+  it('serves compacted state through a sync step after Durable Object cold start', async () => {
+    vi.doMock('../../lib/workspaceEntities.js', () => ({
+      checkpointWorkspaceSnapshotEntities: vi.fn().mockResolvedValue({
+        cursor: 1,
+        upserted: 1,
+        deleted: 0,
+        skipped: 0,
+      }),
+      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
+        globalDraft: null,
+        drafts: [],
+        savedTables: [],
+        savedDrafts: [],
+        folders: [],
+      }),
+    }));
+    vi.stubGlobal('WebSocket', { OPEN: 1 });
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { exportWorkspaceYDocToSnapshot } = await import('../../lib/workspaceYDocSnapshot.js');
+    const sharedStore = new Map<string, unknown>();
+    const firstState = createDurableObjectState(sharedStore).state;
+    const firstObject = new WorkspaceYDocDurableObject(firstState, createEnv());
+    await firstObject.fetch(
+      createRequest('/api/workspaces/ws-1/yjs/import', {
+        method: 'POST',
+        body: JSON.stringify(createSnapshot('compacted')),
+      }),
+    );
+
+    const secondState = createDurableObjectState(sharedStore).state;
+    const secondObject = new WorkspaceYDocDurableObject(secondState, createEnv());
+    const clientDoc = new Y.Doc();
+    const sent: Uint8Array[] = [];
+    const clientSocket = {
+      readyState: 1,
+      send: vi.fn((message: Uint8Array) => {
+        sent.push(message);
+      }),
+    } as unknown as WebSocket;
+
+    await secondObject.webSocketMessage(
+      clientSocket,
+      toArrayBuffer(
+        encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, clientDoc)),
+      ),
+    );
+
+    const response = sent[0];
+    expect(response).toBeDefined();
+    const decoder = decoding.createDecoder(response);
+    expect(decoding.readVarUint(decoder)).toBe(MESSAGE_SYNC);
+    const encoder = encoding.createEncoder();
+    encoding.writeVarUint(encoder, MESSAGE_SYNC);
+    syncProtocol.readSyncMessage(decoder, encoder, clientDoc, null);
+
+    expect(exportWorkspaceYDocToSnapshot(clientDoc).drafts[0]?.state.tableName).toBe('compacted');
   });
 });

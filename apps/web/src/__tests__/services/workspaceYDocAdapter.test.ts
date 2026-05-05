@@ -7,10 +7,13 @@ import {
   getWorkspaceYDocStructureConflictDetail,
   importWorkspaceSnapshotToYDoc,
   deleteDraftFromYDoc,
+  deleteSavedTableFromYDoc,
+  getSavedTableFromYDoc,
   mergeWorkspaceSnapshotIntoYDoc,
   listFoldersFromYDoc,
   upsertDraftInYDoc,
   upsertFolderInYDoc,
+  upsertSavedTableInYDoc,
 } from '@/services/workspaceYDocAdapter';
 import { DEFAULT_DRAFT_ID } from '@/utils/workspaceStateDb';
 
@@ -455,5 +458,81 @@ describe('workspaceYDocAdapter', () => {
         createdAt: 3,
       },
     ]);
+  });
+
+  it('converges saved table deletion after a realtime update', () => {
+    const seed = new Y.Doc();
+    upsertSavedTableInYDoc(seed, {
+      normalizedName: 'users',
+      name: 'Users',
+      state: createState({ tableName: 'users' }),
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    const seedUpdate = Y.encodeStateAsUpdate(seed);
+    const left = new Y.Doc();
+    const right = new Y.Doc();
+    Y.applyUpdate(left, seedUpdate);
+    Y.applyUpdate(right, seedUpdate);
+
+    upsertSavedTableInYDoc(right, {
+      normalizedName: 'users',
+      name: 'Users',
+      state: createState({
+        tableName: 'users',
+        rows: [{ ...createState().rows[0], fieldName: 'user_id' }, createState().rows[1]],
+      }),
+      createdAt: 1,
+      updatedAt: 2,
+    });
+    Y.applyUpdate(left, Y.encodeStateAsUpdate(right));
+    deleteSavedTableFromYDoc(left, 'users');
+    Y.applyUpdate(right, Y.encodeStateAsUpdate(left));
+
+    expect(getSavedTableFromYDoc(left, 'users')).toBeNull();
+    expect(getSavedTableFromYDoc(right, 'users')).toBeNull();
+  });
+
+  it('converges saved table field edits with a folder move', () => {
+    const { left, right } = createSyncedDocs();
+    const state = createState();
+    upsertSavedTableInYDoc(left, {
+      normalizedName: 'users',
+      name: 'Users',
+      state,
+      folderId: 'folder-a',
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    upsertFolderInYDoc(left, { id: 'folder-a', name: 'Core', order: 1, createdAt: 1 });
+    upsertFolderInYDoc(left, { id: 'folder-b', name: 'Archive', order: 2, createdAt: 1 });
+    Y.applyUpdate(right, Y.encodeStateAsUpdate(left));
+
+    upsertSavedTableInYDoc(left, {
+      normalizedName: 'users',
+      name: 'Users',
+      state: createState({
+        rows: [{ ...state.rows[0], fieldName: 'user_id' }, state.rows[1]],
+      }),
+      folderId: 'folder-a',
+      createdAt: 1,
+      updatedAt: 2,
+    });
+    upsertFolderInYDoc(right, {
+      id: 'folder-a',
+      name: 'Core',
+      parentId: 'folder-b',
+      order: 1,
+      createdAt: 1,
+    });
+
+    mergeDocs(left, right);
+
+    expect(getSavedTableFromYDoc(left, 'users')?.state.rows[0].fieldName).toBe('user_id');
+    expect(listFoldersFromYDoc(left).find((folder) => folder.id === 'folder-a')?.parentId).toBe(
+      'folder-b',
+    );
+    expect(getSavedTableFromYDoc(right, 'users')).toEqual(getSavedTableFromYDoc(left, 'users'));
+    expect(listFoldersFromYDoc(right)).toEqual(listFoldersFromYDoc(left));
   });
 });

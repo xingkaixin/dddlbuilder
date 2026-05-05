@@ -481,6 +481,90 @@ describe('workspaceIncrementalSyncService', () => {
     expect(await readWorkspaceSyncMeta('ws-1')).toBeNull();
   });
 
+  it('清理 IndexedDB 后登录应从云端恢复最新 workspace 内容', async () => {
+    await writeDraft('draft-1', { state: createState('local_draft'), updatedAt: 1 }, scope);
+    await addSavedTable(
+      {
+        normalizedName: 'local_table',
+        name: 'local_table',
+        state: createState('local_table'),
+        createdAt: 1,
+        updatedAt: 1,
+      },
+      scope,
+    );
+    await bulkPutFolders([{ id: 'local-folder', name: 'Local', order: 1, createdAt: 1 }], scope);
+    await clearLocalWorkspaceData(scope);
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          workspaceId: 'ws-1',
+          cursor: 8,
+          entities: [
+            {
+              workspaceId: 'ws-1',
+              entityType: 'draft',
+              entityId: 'draft-1',
+              version: 4,
+              contentHash: 'sha256:cloud-draft',
+              payload: {
+                state: createState('cloud_draft'),
+                createdAt: 10,
+              },
+              updatedAt: 40,
+            },
+            {
+              workspaceId: 'ws-1',
+              entityType: 'folder',
+              entityId: 'folder-1',
+              version: 5,
+              contentHash: 'sha256:cloud-folder',
+              payload: {
+                id: 'folder-1',
+                name: 'Cloud',
+                order: 1,
+                createdAt: 20,
+              },
+              updatedAt: 50,
+            },
+            {
+              workspaceId: 'ws-1',
+              entityType: 'saved_table',
+              entityId: 'cloud_table',
+              version: 6,
+              contentHash: 'sha256:cloud-table',
+              payload: {
+                name: 'cloud_table',
+                state: createState('cloud_table'),
+                createdAt: 30,
+                folderId: 'folder-1',
+              },
+              updatedAt: 60,
+            },
+          ],
+        }),
+      ),
+    );
+
+    const result = await syncWorkspaceOnce(scope);
+    const draft = await readDraft('draft-1', scope);
+    const tables = await listSavedTables(scope);
+    const folders = await listFolders(scope);
+    const meta = await readWorkspaceSyncMeta('ws-1');
+
+    expect(result).toMatchObject({ status: 'synced', cursor: 8, conflictCount: 0 });
+    expect(draft?.state.tableName).toBe('cloud_draft');
+    expect(tables).toEqual([
+      expect.objectContaining({
+        normalizedName: 'cloud_table',
+        folderId: 'folder-1',
+      }),
+    ]);
+    expect(folders).toEqual([expect.objectContaining({ id: 'folder-1', name: 'Cloud' })]);
+    expect(meta?.cursor).toBe(8);
+  });
+
   it('应将旧 user scope 工作区数据迁移到默认 workspace scope 并排队上传', async () => {
     const legacyScope = { kind: 'user' as const, userId: 'user-1' };
     await writeDraft(

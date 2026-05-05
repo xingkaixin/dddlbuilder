@@ -25,6 +25,15 @@ const applySyncMessage = (doc: Y.Doc, message: ArrayBuffer) => {
   syncProtocol.readSyncMessage(decoder, encoder, doc, null);
 };
 
+const respondToSyncMessage = (doc: Y.Doc, message: ArrayBuffer) => {
+  const decoder = decoding.createDecoder(new Uint8Array(message));
+  expect(decoding.readVarUint(decoder)).toBe(MESSAGE_SYNC);
+  const encoder = encoding.createEncoder();
+  encoding.writeVarUint(encoder, MESSAGE_SYNC);
+  syncProtocol.readSyncMessage(decoder, encoder, doc, null);
+  return encoding.length(encoder) > 1 ? encoding.toUint8Array(encoder) : null;
+};
+
 class MockWebSocket {
   static readonly CONNECTING = 0;
   static readonly OPEN = 1;
@@ -136,6 +145,35 @@ describe('WorkspaceYDocSyncClient', () => {
     expect(socket.sent).toHaveLength(2);
     applySyncMessage(serverDoc, sentMessage(socket, 1));
     expect(serverDoc.getMap('fields').get('offline-field')).toBe('offline-value');
+
+    client.destroy();
+  });
+
+  it('requests a fresh sync step when the browser returns online with an open socket', async () => {
+    const doc = new Y.Doc();
+    doc.getMap('fields').set('local-field', 'local-value');
+    const client = new WorkspaceYDocSyncClient('ws-1', doc, vi.fn());
+    const serverDoc = new Y.Doc();
+    serverDoc.getMap('fields').set('remote-field', 'remote-value');
+
+    client.connect();
+    const socket = firstSocket();
+    socket.open();
+    expect(socket.sent).toHaveLength(1);
+
+    window.dispatchEvent(new Event('online'));
+    expect(socket.sent).toHaveLength(3);
+    const response = respondToSyncMessage(serverDoc, sentMessage(socket, 1));
+    expect(response).toBeInstanceOf(Uint8Array);
+    if (!response) {
+      throw new Error('Expected sync response');
+    }
+    applySyncMessage(serverDoc, sentMessage(socket, 2));
+    socket.receive(response);
+    await Promise.resolve();
+
+    expect(doc.getMap('fields').get('remote-field')).toBe('remote-value');
+    expect(serverDoc.getMap('fields').get('local-field')).toBe('local-value');
 
     client.destroy();
   });
