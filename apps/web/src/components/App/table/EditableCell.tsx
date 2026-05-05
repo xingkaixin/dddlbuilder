@@ -204,6 +204,9 @@ export const EditableCell = memo<EditableCellProps>(
             'h-7 w-full border-primary/50 bg-background px-2 py-1 text-xs focus:ring-1 focus:ring-primary/30',
             className,
           )}
+          autoComplete="off"
+          data-1p-ignore="true"
+          data-op-ignore="true"
           placeholder={placeholder}
           title={editValue || placeholder}
         />
