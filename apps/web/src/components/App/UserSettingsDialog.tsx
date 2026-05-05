@@ -139,6 +139,9 @@ const formatCompactCredits = (value: number | null | undefined, locale: 'zh-CN' 
     : `${sign}${scaled.toFixed(decimals)}${unit.label}`;
 };
 
+const settingsTabContentClass =
+  'mt-0 h-full overflow-y-auto pr-1 data-[state=active]:animate-none data-[state=inactive]:animate-none';
+
 const parseMetadata = (value?: string | null) => {
   if (!value) return null;
   try {
@@ -391,7 +394,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="w-[min(72rem,calc(100vw-2rem))] max-w-none overflow-hidden p-0 sm:min-h-[46rem]"
+          className="grid h-[min(46rem,calc(100vh-2rem))] w-[min(72rem,calc(100vw-2rem))] max-w-none grid-rows-[auto_1fr] gap-0 overflow-hidden p-0"
           onOpenAutoFocus={(event) => event.preventDefault()}
         >
           <DialogHeader className="gap-1 border-b px-6 py-3">
@@ -401,12 +404,12 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
           <Tabs
             value={settingsTab}
             onValueChange={(value) => setSettingsTab(value as SettingsTab)}
-            className="flex min-h-[38rem] overflow-hidden"
+            className="flex min-h-0 overflow-hidden"
           >
-            <TabsList className="h-auto w-56 shrink-0 flex-col justify-start gap-1 rounded-none border-r border-border/70 bg-transparent px-3 py-5">
+            <TabsList className="w-56 shrink-0 self-stretch flex-col justify-start gap-1 rounded-none border-r border-border/70 bg-transparent px-3 py-5">
               <TabsTrigger
                 value="account"
-                className="w-full justify-start gap-2 px-2.5 py-2 text-xs"
+                className="w-full justify-start gap-2 px-2.5 py-2 text-xs transition-colors"
               >
                 <User2 className="h-3.5 w-3.5" />
                 <span className="min-w-0 flex-1 truncate text-left">
@@ -415,7 +418,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
               </TabsTrigger>
               <TabsTrigger
                 value="workspace"
-                className="w-full justify-start gap-2 px-2.5 py-2 text-xs"
+                className="w-full justify-start gap-2 px-2.5 py-2 text-xs transition-colors"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 <span className="min-w-0 flex-1 truncate text-left">
@@ -429,7 +432,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
               </TabsTrigger>
               <TabsTrigger
                 value="credits"
-                className="w-full justify-start gap-2 px-2.5 py-2 text-xs"
+                className="w-full justify-start gap-2 px-2.5 py-2 text-xs transition-colors"
               >
                 <Coins className="h-3.5 w-3.5" />
                 <span className="min-w-0 flex-1 truncate text-left">{t('settings.creditTab')}</span>
@@ -438,8 +441,8 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                 </span>
               </TabsTrigger>
             </TabsList>
-            <div className="min-w-0 flex-1 overflow-y-auto px-6 py-5">
-              <TabsContent value="account" className="mt-0 space-y-6">
+            <div className="min-w-0 flex-1 overflow-hidden px-6 py-5">
+              <TabsContent value="account" className={`${settingsTabContentClass} space-y-6`}>
                 <section className="space-y-3">
                   <h3 className="text-sm font-semibold">{t('settings.email')}</h3>
                   <div className="rounded-lg border bg-muted/20 px-4 py-3 text-sm">
@@ -500,7 +503,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                   </div>
                 </section>
               </TabsContent>
-              <TabsContent value="workspace" className="mt-0 space-y-5">
+              <TabsContent value="workspace" className={`${settingsTabContentClass} space-y-5`}>
                 <section className="space-y-3">
                   <div className="rounded-md border bg-muted/30 px-3 py-2.5 text-sm leading-6 text-muted-foreground">
                     {t('settings.workspaceSyncHint')}
@@ -644,7 +647,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                   <p className="text-sm text-muted-foreground">{t('settings.syncRequiresLogin')}</p>
                 ) : null}
               </TabsContent>
-              <TabsContent value="credits" className="mt-0 space-y-4">
+              <TabsContent value="credits" className={`${settingsTabContentClass} space-y-4`}>
                 <section className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-3">
                   <div>
                     <div className="text-sm text-muted-foreground">
