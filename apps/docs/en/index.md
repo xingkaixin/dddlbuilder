@@ -22,7 +22,7 @@ This guide is for real DDLBuilder users. It focuses on two questions: what the p
 
 - Supports multi-database table DDL and privilege DCL generation.
 - Supports saving table structures, folder management, share links, and changelog viewing.
-- Supports user system (email sign-up / sign-in), workspace cloud sync, and cross-device folder sync.
-- Supports AI credit center: AI generation, review, and explanation consume credits based on actual usage.
-- Supports advanced capabilities such as SQL import, AI workshop, and partitioning/sharding (see "Advanced Guide").
+- Supports user system (email sign-up / sign-in), real-time workspace sync, incremental sync, and cross-device folder sync.
+- Supports AI credit center: AI generation, AI modification, AI index advisor, review, and explanation consume credits based on actual usage.
+- Supports advanced capabilities such as SQL import, AI workshop, AI current-table modification, AI index optimization, and partitioning/sharding (see "Advanced Guide").
 - The English docs path is reserved, and content will be synced after the Chinese docs are stable.

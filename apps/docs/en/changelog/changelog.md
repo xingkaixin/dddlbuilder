@@ -4,6 +4,27 @@ outline: [2, 2]
 
 # Changelog
 
+## [0.18.0] - 2026-05-05
+### Added
+- **AI modify current table**: Supports adjusting the current table structure with natural language. AI generates reviewable table-level, field, and index changes based on the table name, fields, indexes, and database type; each change can be accepted or rejected before applying selected changes to the workspace.
+- **AI index optimization advisor**: Supports pasting typical query SQL or slow query snippets. AI recommends missing indexes, redundant indexes, field order optimizations, and query rewrites based on current fields and existing indexes; recommended indexes can be added directly to index configuration.
+- **Real-time workspace sync**: After signing in, drafts, saved tables, folders, and trash stay consistent through the real-time sync channel, making the latest workspace easier to recover after refresh, reopen, or sign-in on another device.
+- **Incremental workspace sync and conflict notices**: The Settings page adds "Sync now" and conflict notices, allowing cloud changes to be pulled, local pending changes to be pushed, and version conflicts to be inspected.
+- **Feedback entry**: Adds a feedback entry in the header toolbar for submitting issues and suggestions during use.
+- **Multilingual sitemap**: Adds a documentation sitemap with hreflang metadata to help search engines identify Chinese and English documentation versions.
+
+### Improved
+- **AI schema editing experience**: AI generation is converted into a change list first and written into table configuration only after confirmation, making small-step edits safer on existing structures.
+- **Workspace empty state**: When no tab is open, recent items and quick actions are shown for creating, importing, or loading an example table directly.
+- **Settings layout**: Account, credits, and workspace sync content now scroll reliably in high-content scenarios, narrow screens, and full-height dialogs.
+- **Table editing commit behavior**: Field table cells commit current edits when selection changes, reducing extra confirmation steps after editing.
+- **Workspace loading feedback**: Shows a skeleton while tabs are loading to reduce visual jumps during sync or switching.
+
+### Fixed
+- **Workspace state sync stability**: Fixes stale synchronization that could occur after tab signatures changed, reducing incorrect state writes during save and switch flows.
+- **Workspace snapshot writes**: Avoids repeated snapshot updates when state has not changed, reducing unnecessary local and cloud sync pressure.
+- **Persistence cleanup flow**: Waits for persistence resources to be released during sign-out and scope changes, reducing errors caused by leftover connections.
+
 ## [0.17.0] - 2026-04-29
 ### Added
 - **Multi-tab workspace**: Supports opening multiple tabs within the same workspace, each managing an independent table and draft state. Tabs support create, close, switch, and dirty-state indicators, with a save confirmation before closing unsaved changes.

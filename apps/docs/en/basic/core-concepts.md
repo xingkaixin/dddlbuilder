@@ -16,8 +16,8 @@ After understanding these concepts, you can tell where current changes are store
 4. Understand "Shared copy (read-only)": pages opened by share links are not directly editable by default. Result: you know you must click "Save as copy and edit" before making changes.
 5. Understand "DDL / DCL": DDL is table creation SQL, and DCL is privilege SQL. Result: you can copy the correct output by scenario and avoid mixing them.
 6. Understand "ORM / View / Routine": ORM is model code generated for the target framework; View is the CREATE VIEW statement; Routine is skeleton code for stored procedures, functions, and triggers. Result: you can select the output type based on delivery target.
-7. Understand "User account and cloud sync": after signing in, data is bound to your account. You can manually upload or download workspace snapshots via Settings to recover across devices. Result: you know to sign in first when switching devices, then run a sync or wait for the migration prompt.
-8. Understand "AI credits": AI table generation, DDL review, SQL explanation, and AI comment generation consume credits based on actual token usage. Result: you know you need sufficient credits to continue using AI features, and anonymous users must sign in first to use AI.
+7. Understand "User account and workspace sync": after signing in, data is bound to your account. Drafts, saved tables, folders, and trash sync incrementally, while Settings still provides "Sync now", "Upload to cloud", and "Download from cloud" as recovery tools. Result: when switching devices, you know to sign in first and then wait for automatic sync or trigger a manual sync.
+8. Understand "AI credits": AI table generation, AI modify current table, AI index advisor, DDL review, SQL explanation, and AI comment generation consume credits based on actual token usage. Result: you know you need sufficient credits to continue using AI features, and anonymous users must sign in first to use AI.
 9. Understand "Trash": deleted saved tables do not disappear immediately but enter the trash for a retention period. Result: accidentally deleted tables can be recovered from trash; bulk emptying trash should be confirmed first.
 
 ## Done when
@@ -26,7 +26,7 @@ After understanding these concepts, you can tell where current changes are store
 - You know tables in multi-tab mode are independent, and switching tabs won't lose unsaved content (but closing tabs will prompt).
 - You know shared pages cannot be edited directly and must be converted to a copy first.
 - You know structure changes are in DDL, privilege grants are in DCL, and business models look at ORM.
-- You know you can sync your workspace to the cloud via Settings after signing in.
+- You know the workspace syncs automatically after signing in, and that Settings can run a manual sync or recovery action.
 - You know AI features require credits and are unavailable without signing in.
 - You know deleted saved tables can be recovered from trash.
 
@@ -36,5 +36,6 @@ After understanding these concepts, you can tell where current changes are store
 - Editing directly in a shared page has no effect because the shared view is read-only.
 - Looking only at DDL and not DCL can cause missed privilege grants.
 - AI features prompt you to sign in when anonymous, and are restricted when credits are insufficient after signing in.
+- When editing the same workspace across devices, Settings may show sync conflict notices; inspect the conflict items first, then decide whether to use manual upload or download to overwrite the full workspace.
 - Without signing in, clearing browser data will erase local drafts and saved tables. Important data should be synced to the cloud after signing in.
 - Closing a tab with unsaved changes without saving will lose those changes (draft auto-save only applies to the currently active tab).

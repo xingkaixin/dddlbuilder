@@ -18,9 +18,10 @@ You can manage temporary designs and formally saved versions separately, reduce 
 6. For thorough cleanup, enter trash and execute `Empty Trash`. Result: tables in trash are permanently deleted and cannot be recovered; please confirm before proceeding.
 7. Use `Create folder`, drag table items, and drag folders to organize structure. Result: tables in the same business domain can be grouped and the list becomes clearer.
 8. To return to temporary work, switch to `Draft box` or a draft in the left workspace sidebar. Result: you can continue unnamed drafts without affecting saved tables; draft `Schema Name` is also preserved with the workspace. Multiple drafts can coexist and be quickly switched via the sidebar.
-9. After signing in, folder structure, trash state, and drafts automatically sync with saved tables. Result: when you sign in on another device, your saved tables, folder groupings, trash, and drafts are restored automatically without manual rebuilding.
-10. When you need to manually back up or restore, click your profile in the header and open `Settings`, then go to the `Workspace Sync` tab. Result: you can upload the full workspace (saved tables, drafts, folders, and trash) from this device to the cloud, or download from the cloud to overwrite the current device; both actions require confirmation to avoid accidental overwrite.
-11. When signing in for the first time, if anonymous local data exists in the browser, a migration prompt appears. Result: after starting the migration, saved tables, drafts, and folders from the anonymous workspace are bound to your account; if there are naming conflicts, the system automatically saves copies without overwriting existing cloud content.
+9. After signing in, folder structure, trash state, and drafts sync incrementally with saved tables. Result: when you sign in on another device, saved tables, folder groupings, trash, and drafts are restored automatically.
+10. When you need to check sync status, click your profile in the header, open `Settings`, go to the `Workspace Sync` tab, and click `Sync now`. Result: the system pulls cloud changes, pushes local pending changes, and refreshes local sync state; if conflicts appear, Settings shows the pending count and conflict details.
+11. When you need to manually back up or restore, use `Upload to cloud` or `Download from cloud` in the `Workspace Sync` tab. Result: you can upload the full workspace (saved tables, drafts, folders, and trash) from this device to the cloud, or download from the cloud to overwrite the current device; both actions require confirmation to avoid accidental overwrite.
+12. When signing in for the first time, if anonymous local data exists in the browser, a migration prompt appears. Result: after starting the migration, saved tables, drafts, and folders from the anonymous workspace are bound to your account; if there are naming conflicts, the system automatically saves copies without overwriting existing cloud content.
 
 ## Done when
 
@@ -28,7 +29,7 @@ You can manage temporary designs and formally saved versions separately, reduce 
 - Folder hierarchy is organized by project or business domain.
 - After switching between Draft box and saved tables, workspace state matches expectation.
 - If the table uses a schema, the combination of `Schema Name` and table name remains consistent after reload.
-- After signing in, folders, drafts, and saved tables stay consistent across devices.
+- After signing in, folders, drafts, and saved tables stay consistent across devices; `Sync now` in Settings refreshes sync state.
 - Deleted tables can be found in trash and restored as needed.
 
 ## Common pitfalls
@@ -39,3 +40,4 @@ You can manage temporary designs and formally saved versions separately, reduce 
 - If you mistake a draft for a saved table, the named record may look missing after refresh. Manually save at key milestones.
 - Without signing in, folders, drafts, and saved tables are kept only in the current browser's local storage. They cannot be recovered after switching devices or clearing browser data. Sign in first if you want cross-device access.
 - In multi-tab mode, loading a new table while the current tab has unsaved changes will prompt to save, preventing accidental loss.
+- Manual `Upload to cloud` and `Download from cloud` overwrite the full workspace in the selected direction, so confirm which version is the target before running them.

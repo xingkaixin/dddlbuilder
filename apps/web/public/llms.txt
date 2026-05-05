@@ -19,10 +19,12 @@
 - Configure fields, indexes, constraints, and table-level options.
 - Import SQL and parse schema-related statements back into editable config.
 - Use AI-assisted table design to produce draft schemas from natural language.
+- Use AI Modify to adjust the current table with reviewable field, index, and table-level changes.
+- Use AI Index Advisor to analyze typical query SQL and add recommended indexes.
 - Run AI review on generated DDL and apply selected suggestions.
 - Explain selected SQL snippets for review and communication.
 - Manage drafts and saved tables for iterative design.
-- Sync saved tables and folder organization across devices when signed in.
+- Sync drafts, saved tables, folders, and trash across devices when signed in, with real-time and incremental sync support.
 - Share schema views with read-only links and continue via editable copy.
 - Compare schema changes and generate alter/rollback-related outputs.
 - Configure partitioning (supported dialects) and sharding (PostgreSQL Citus flow).
@@ -43,7 +45,7 @@
 - [Table and Field Configuration](https://ddl.xingkaixin.me/docs/en/basic/table-and-fields.html)
   How to model table metadata and field-level configuration.
 - [Indexes, Privileges, and Misc](https://ddl.xingkaixin.me/docs/en/basic/index-auth-misc.html)
-  How to configure indexes, access control, and table-level options.
+  How to configure indexes, use AI Index Advisor for query-based index recommendations, manage access control, and set table-level options.
 - [DDL Output and Sharing](https://ddl.xingkaixin.me/docs/en/basic/ddl-and-share.html)
   How to copy SQL outputs and collaborate through share links.
 - [Saved Tables and Draft box](https://ddl.xingkaixin.me/docs/en/basic/saved-tables.html)
@@ -51,7 +53,7 @@
 - [Import and Parse SQL](https://ddl.xingkaixin.me/docs/en/advanced/import-and-parse.html)
   How to import existing SQL and convert it into editable configuration.
 - [AI-Assisted Table Design Workflow](https://ddl.xingkaixin.me/docs/en/advanced/ai-workflow.html)
-  How to generate and refine schema drafts through AI conversation.
+  How to generate schema drafts through AI conversation and refine existing tables through reviewable AI changes.
 - [Review and Explain SQL](https://ddl.xingkaixin.me/docs/en/advanced/review-and-explain.html)
   How to use AI review and SQL explanation for quality checks.
 - [Partitioning and Sharding Configuration](https://ddl.xingkaixin.me/docs/en/advanced/partition-and-sharding.html)
@@ -93,10 +95,12 @@
 - 配置字段、索引、约束以及表级选项。
 - 导入 SQL，并将结构相关语句解析回可编辑配置。
 - 通过 AI 辅助建表，用自然语言生成表结构草稿。
+- 通过 AI 修改当前表，生成可审阅的字段、索引与表级变更。
+- 通过 AI 索引顾问分析典型查询 SQL，并添加推荐索引。
 - 对生成的 DDL 执行 AI 评审，并应用选中的建议。
 - 对选中的 SQL 片段进行解释，便于评审和沟通。
 - 管理草稿和已保存表，支持迭代式设计。
-- 登录后支持已保存表与文件夹结构在多设备间同步。
+- 登录后支持草稿、已保存表、文件夹和回收站在多设备间同步，并支持实时同步与增量同步。
 - 通过只读分享链接共享结构视图，并基于可编辑副本继续修改。
 - 对比结构变更，并生成 alter / rollback 相关输出。
 - 配置分区能力（支持的数据库方言）和分片能力（PostgreSQL Citus 流程）。
@@ -117,7 +121,7 @@
 - [表与字段配置](https://ddl.xingkaixin.me/docs/zh/basic/table-and-fields.html)
   说明如何配置表元信息和字段级属性。
 - [索引、权限与杂项](https://ddl.xingkaixin.me/docs/zh/basic/index-auth-misc.html)
-  说明如何配置索引、权限控制和表级选项。
+  说明如何配置索引、使用 AI 索引顾问获取基于查询的索引建议、配置权限控制和表级选项。
 - [DDL 输出与分享](https://ddl.xingkaixin.me/docs/zh/basic/ddl-and-share.html)
   说明如何复制 SQL 输出，以及如何通过分享链接协作。
 - [已保存表与草稿箱](https://ddl.xingkaixin.me/docs/zh/basic/saved-tables.html)
@@ -125,7 +129,7 @@
 - [导入与解析 SQL](https://ddl.xingkaixin.me/docs/zh/advanced/import-and-parse.html)
   说明如何导入已有 SQL，并转换为可编辑配置。
 - [AI 辅助建表流程](https://ddl.xingkaixin.me/docs/zh/advanced/ai-workflow.html)
-  说明如何通过 AI 对话生成并细化表结构草稿。
+  说明如何通过 AI 对话生成表结构草稿，并通过可审阅的 AI 变更细化已有表。
 - [评审与解释 SQL](https://ddl.xingkaixin.me/docs/zh/advanced/review-and-explain.html)
   说明如何使用 AI 评审和 SQL 解释能力做质量检查。
 - [分区与分片配置](https://ddl.xingkaixin.me/docs/zh/advanced/partition-and-sharding.html)

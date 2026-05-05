@@ -4,7 +4,7 @@
 
 ## 功能特性
 
-- 支持数据库：MySQL、PostgreSQL、PostgreSQL Citus、SQL Server、Oracle、MariaDB、TiDB、达梦 (Dameng)、OceanBase (MySQL/Oracle 模式)
+- 支持数据库：MySQL、PostgreSQL、PostgreSQL Citus、SQL Server、Oracle、MariaDB、TiDB、达梦 (Dameng)、OceanBase (MySQL/Oracle 模式)、Kingbase、GBase、PolarDB、GaussDB、Hive
 - **多标签页工作区**：同一工作区支持多个标签页，每张表独立管理草稿与保存状态；标签支持脏状态提示与关闭确认
 - **MySQL 分区配置**：支持 MySQL、MariaDB、TiDB 的分区表配置
   - 分区类型：RANGE、RANGE COLUMNS、LIST、LIST COLUMNS、HASH、KEY
@@ -25,9 +25,12 @@
 - 字段类型变更风险提示：修改已有字段类型时，若存在数据兼容性风险会弹出确认提示
 - **批量数据导入**：支持 SQL（CREATE TABLE / INDEX / ALTER / GRANT）解析，以及 CSV、Excel、JSON Schema 文件导入，自动识别字段名与类型
 - **表蓝图模板**：提供常见业务场景（如用户、订单、日志）的 CRUD 表结构模板，一键生成并应用
-- AI 智能注释：AI 建表与评审时自动为表与字段生成中文业务注释
+- AI 辅助建模：支持 AI 建表、AI 修改当前表、AI 索引优化顾问、AI 智能注释、DDL 评审与 SQL 解释
+- AI 修改当前表：用自然语言描述改表方向，逐项确认字段、索引和表级变更后再应用
+- AI 索引优化顾问：粘贴典型查询 SQL 或慢查询片段，生成缺失索引、冗余索引、顺序优化和查询改写建议
 - Mock 数据生成：按字段类型与约束自动生成测试数据，支持批量导出
 - 已保存表回收站：支持软删除、单条恢复与批量清空，减少误删风险
+- 登录后工作区实时同步：草稿、已保存表、文件夹和回收站会随账号自动同步，设置页提供立即同步、手动上传和下载恢复工具
 - 一键清空与便捷操作按钮
 - 一键复制 SQL，白底代码主题，便于文档或评审拷贝
 - 帮助文档入口，按语言跳转对应文档并查看更新说明

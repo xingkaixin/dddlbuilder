@@ -211,11 +211,54 @@ Whether valid SQL has been generated in "Table DDL" on the right, rather than pl
 
 Check whether a review task is already running. The button is temporarily disabled during processing.
 
-## Why AI features are unavailable (generate, review, explain)
+## Why the "AI Modify" entry is missing
 
 ### Symptoms
 
-Clicking AI table generation, AI Review, or SQL explanation shows a sign-in prompt or an insufficient-credits message.
+The header toolbar does not show "AI Modify", or clicking it shows that the feature cannot be used.
+
+### Quick checks
+
+- Whether you are currently signed in.
+- Whether the current table has a table name or fields that can be used as modification context.
+
+### Steps
+
+1. Register or sign in first. Result: "AI Modify" can send requests.
+2. Complete the table name and at least one field in the current table. Result: AI can use current table context.
+3. Click "AI Modify" and enter a clear target change. Result: the system returns a reviewable change list.
+
+### If still unresolved
+
+Confirm whether the current deployment has AI service and credit system enabled.
+
+## Why the "AI Index Advisor" entry is missing
+
+### Symptoms
+
+The header toolbar does not show "AI Index Advisor", or analysis reports missing context.
+
+### Quick checks
+
+- Whether you are currently signed in.
+- Whether the current table has a table name and fields.
+- Whether typical query SQL or slow query snippets are prepared.
+
+### Steps
+
+1. Register or sign in first. Result: "AI Index Advisor" can send requests.
+2. Complete table name and field configuration. Result: AI can identify the target table and available fields.
+3. Paste typical query SQL and click "Analyze indexes". Result: the system returns index recommendations and confidence.
+
+### If still unresolved
+
+Confirm whether the current deployment has AI service and credit system enabled.
+
+## Why AI features are unavailable (generate, modify, index advisor, review, explain)
+
+### Symptoms
+
+Clicking AI table generation, AI Modify, AI Index Advisor, AI Review, or SQL explanation shows a sign-in prompt or an insufficient-credits message.
 
 ### Quick checks
 
