@@ -325,6 +325,50 @@ describe('AuthSessionProvider', () => {
       expect(screen.getByTestId('status')).toHaveTextContent('signed_in');
     });
 
+    it('publishes workspace id while initial credit request is still pending', async () => {
+      let resolveCredit!: (response: Response) => void;
+      const slowCredit = new Promise<Response>((resolve) => {
+        resolveCredit = resolve;
+      });
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              signedIn: true,
+              user: {
+                userId: 'user-1',
+                email: 'user@example.com',
+                emailVerified: true,
+                name: 'User One',
+              },
+            }),
+          ),
+        )
+        .mockReturnValueOnce(slowCredit)
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ activeWorkspaceId: 'ws-1', workspaces: [] })),
+        )
+        .mockResolvedValue(
+          new Response(JSON.stringify({ workspaceId: 'ws-1', cursor: 0, entities: [] })),
+        );
+
+      render(
+        <AuthSessionProvider>
+          <SessionProbe />
+        </AuthSessionProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('workspace-id')).toHaveTextContent('ws-1');
+      });
+      expect(screen.getByTestId('credits-status')).toHaveTextContent('loading');
+
+      resolveCredit(new Response(JSON.stringify({ balance: 8800 })));
+      await waitFor(() => {
+        expect(screen.getByTestId('credits')).toHaveTextContent('8800');
+      });
+    });
+
     it('falls back to signed out when no session exists', async () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(
         new Response(

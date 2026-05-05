@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
+import * as Y from 'yjs';
 import { usePersistedState } from '@/hooks';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
@@ -19,6 +20,7 @@ import {
 import { listWorkspaceOutboxItems } from '@/utils/workspaceSyncStateDb';
 import { addSavedTable } from '@/utils/savedTablesDb';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
+import { getDraftRecordFromYDoc } from '@/services/workspaceYDocAdapter';
 
 const GLOBAL_DRAFT_STORAGE_KEY = `${STORAGE_KEY}:draft:global:v1`;
 const WORKSPACE_SESSION_STORAGE_KEY = `${STORAGE_KEY}:workspace:v1`;
@@ -394,7 +396,8 @@ describe('usePersistedState', () => {
     });
   });
 
-  it('远端 YDoc 未连接时应将草稿写入工作区 outbox', async () => {
+  it('本地 YDoc 已加载时应在远端连接前写入 YDoc', async () => {
+    const doc = new Y.Doc();
     vi.mocked(useAuthSession).mockReturnValue({
       status: 'signed_in',
       configured: true,
@@ -420,11 +423,11 @@ describe('usePersistedState', () => {
       closeAuthDialog: vi.fn(),
     });
     vi.mocked(useWorkspaceYDoc).mockReturnValue({
-      doc: {},
+      doc,
       synced: false,
       localSynced: true,
       connectionState: 'connecting',
-    } as any);
+    });
 
     const { wrapper } = createQueryClientWrapper();
     const { result } = renderHook(() => usePersistedState(), { wrapper });
@@ -441,16 +444,10 @@ describe('usePersistedState', () => {
       });
     });
 
-    await waitFor(async () => {
-      const items = await listWorkspaceOutboxItems('ws-1');
-      expect(items).toHaveLength(1);
-      expect(items[0]).toMatchObject({
-        workspaceId: 'ws-1',
-        entityType: 'draft',
-        entityId: 'default',
-        op: 'upsert',
-      });
+    await waitFor(() => {
+      expect(getDraftRecordFromYDoc(doc, 'default')?.state.tableName).toBe('pending_remote_draft');
     });
+    expect(await listWorkspaceOutboxItems('ws-1')).toHaveLength(0);
   });
 
   it('保存已保存表状态时应同时记录来源与 activeState 以保留未保存修改', async () => {

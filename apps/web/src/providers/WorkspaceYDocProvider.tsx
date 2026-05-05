@@ -16,8 +16,7 @@ import {
 } from '@/services/workspaceMigrationService';
 import {
   ensureWorkspaceYDocMeta,
-  importWorkspaceSnapshotToYDoc,
-  isWorkspaceYDocEmpty,
+  mergeWorkspaceSnapshotIntoYDoc,
 } from '@/services/workspaceYDocAdapter';
 import {
   WorkspaceYDocSyncClient,
@@ -111,14 +110,9 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       await persistence.whenSynced;
       if (cancelled) return;
 
-      if (isWorkspaceYDocEmpty(doc)) {
-        const payload = await collectWorkspaceMigrationPayload(scope);
-        if (payload && !cancelled) {
-          importWorkspaceSnapshotToYDoc(
-            doc,
-            migrationSnapshotToWorkspaceSnapshot(payload.snapshot),
-          );
-        }
+      const payload = await collectWorkspaceMigrationPayload(scope);
+      if (payload && !cancelled) {
+        mergeWorkspaceSnapshotIntoYDoc(doc, migrationSnapshotToWorkspaceSnapshot(payload.snapshot));
       }
 
       if (cancelled) return;

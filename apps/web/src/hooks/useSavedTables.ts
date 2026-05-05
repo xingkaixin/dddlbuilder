@@ -71,7 +71,6 @@ export function useSavedTables() {
   const yDocReady = Boolean(
     workspaceYDoc.doc &&
     workspaceYDoc.localSynced &&
-    workspaceYDoc.synced &&
     currentScope?.kind === 'user' &&
     currentScope.workspaceId,
   );

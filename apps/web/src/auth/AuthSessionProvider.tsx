@@ -221,35 +221,36 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       creditsStatus: 'loading',
     }));
 
-    try {
-      const creditBalance = await fetchCreditBalance();
-      setState((prev) => ({
-        ...prev,
-        status: 'signed_in',
-        configured: true,
-        userId: me.user.userId,
-        workspaceId: prev.workspaceId,
-        email: me.user.email,
-        name: me.user.name,
-        emailVerified: me.user.emailVerified,
-        creditBalance,
-        creditsStatus: 'ready',
-      }));
-    } catch (error) {
-      console.error('[auth] failed to load credit balance', error);
-      setState((prev) => ({
-        ...prev,
-        status: 'signed_in',
-        configured: true,
-        userId: me.user.userId,
-        workspaceId: prev.workspaceId,
-        email: me.user.email,
-        name: me.user.name,
-        emailVerified: me.user.emailVerified,
-        creditBalance: null,
-        creditsStatus: 'error',
-      }));
-    }
+    const creditBalancePromise = fetchCreditBalance()
+      .then((creditBalance) => {
+        setState((prev) => ({
+          ...prev,
+          status: 'signed_in',
+          configured: true,
+          userId: me.user.userId,
+          workspaceId: prev.workspaceId,
+          email: me.user.email,
+          name: me.user.name,
+          emailVerified: me.user.emailVerified,
+          creditBalance,
+          creditsStatus: 'ready',
+        }));
+      })
+      .catch((error) => {
+        console.error('[auth] failed to load credit balance', error);
+        setState((prev) => ({
+          ...prev,
+          status: 'signed_in',
+          configured: true,
+          userId: me.user.userId,
+          workspaceId: prev.workspaceId,
+          email: me.user.email,
+          name: me.user.name,
+          emailVerified: me.user.emailVerified,
+          creditBalance: null,
+          creditsStatus: 'error',
+        }));
+      });
 
     let workspaceScope: WorkspaceScope;
     try {
@@ -257,6 +258,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     } catch (error) {
       console.error('[auth] failed to resolve workspace', error);
       setCurrentWorkspaceScope({ kind: 'user', userId: me.user.userId });
+      await creditBalancePromise;
       return;
     }
 
@@ -272,6 +274,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
         console.error('[auth] failed to sync workspace', error);
       });
     }
+    await creditBalancePromise;
   }, [configured]);
 
   const refreshSession = useCallback(async () => {

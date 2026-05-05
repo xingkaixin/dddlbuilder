@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useSavedTables } from '@/hooks/useSavedTables';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '../utils/fakeIndexedDb';
 import type { PersistedState } from '@ddlbuilder/shared-types';
@@ -164,7 +164,8 @@ describe('useSavedTables', () => {
     expect(updated?.state.tableName).toBe('gamma-updated');
   });
 
-  it('should queue saved table changes when remote ydoc is disconnected', async () => {
+  it('should write saved table changes to local ydoc before remote connects', async () => {
+    const doc = { transact: (callback: () => void) => callback() };
     mockUseAuthSession.mockReturnValue({
       status: 'signed_in',
       configured: true,
@@ -172,11 +173,13 @@ describe('useSavedTables', () => {
       workspaceId: 'workspace_1',
     } as any);
     mockWorkspaceYDoc.value = {
-      doc: {},
+      doc,
       synced: false,
       localSynced: true,
       connectionState: 'connecting',
     };
+    mockYDocAdapter.getSavedTableFromYDoc.mockReturnValue(null);
+    mockYDocAdapter.listSavedTableMetadataFromYDoc.mockReturnValue([]);
     const { result } = renderHook(() => useSavedTables());
 
     await act(async () => {
@@ -189,17 +192,11 @@ describe('useSavedTables', () => {
       await flushPromises();
     });
 
-    await waitFor(async () => {
-      const items = await listWorkspaceOutboxItems('workspace_1');
-      expect(items).toHaveLength(1);
-      expect(items[0]).toMatchObject({
-        workspaceId: 'workspace_1',
-        entityType: 'saved_table',
-        entityId: 'pending',
-        op: 'upsert',
-      });
-    });
-    expect(mockYDocAdapter.upsertSavedTableInYDoc).not.toHaveBeenCalled();
+    expect(mockYDocAdapter.upsertSavedTableInYDoc).toHaveBeenCalledWith(
+      doc,
+      expect.objectContaining({ normalizedName: 'pending' }),
+    );
+    expect(await listWorkspaceOutboxItems('workspace_1')).toHaveLength(0);
   });
 
   it('should keep saved table order stable after overwrite', async () => {

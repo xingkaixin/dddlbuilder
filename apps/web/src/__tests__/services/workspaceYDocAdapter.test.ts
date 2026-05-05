@@ -5,6 +5,7 @@ import {
   exportWorkspaceYDocToSnapshot,
   getDraftRecordFromYDoc,
   importWorkspaceSnapshotToYDoc,
+  mergeWorkspaceSnapshotIntoYDoc,
   upsertDraftInYDoc,
 } from '@/services/workspaceYDocAdapter';
 import { DEFAULT_DRAFT_ID } from '@/utils/workspaceStateDb';
@@ -162,6 +163,36 @@ describe('workspaceYDocAdapter', () => {
     upsertDraftInYDoc(doc, DEFAULT_DRAFT_ID, { state, updatedAt: 1 });
 
     expect(getDraftRecordFromYDoc(doc, DEFAULT_DRAFT_ID)?.state).toEqual(state);
+  });
+
+  it('merges local snapshot records missing from an existing ydoc', () => {
+    const doc = new Y.Doc();
+    upsertDraftInYDoc(doc, 'local_existing', {
+      state: createState({ tableName: 'existing_remote' }),
+      updatedAt: 200,
+    });
+
+    mergeWorkspaceSnapshotIntoYDoc(doc, {
+      globalDraft: null,
+      drafts: [
+        {
+          draftId: 'local_existing',
+          state: createState({ tableName: 'stale_local' }),
+          updatedAt: 100,
+        },
+        {
+          draftId: 'local_missing',
+          state: createState({ tableName: 'missing_local' }),
+          updatedAt: 150,
+        },
+      ],
+      savedTables: [],
+      savedDrafts: [],
+      folders: [],
+    });
+
+    expect(getDraftRecordFromYDoc(doc, 'local_existing')?.state.tableName).toBe('existing_remote');
+    expect(getDraftRecordFromYDoc(doc, 'local_missing')?.state.tableName).toBe('missing_local');
   });
 
   it('converges concurrent full-state writes', () => {
