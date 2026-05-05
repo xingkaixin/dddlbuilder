@@ -22,9 +22,15 @@ const getWorkspaceYDocStub = (env: ApiEnv['Bindings'], workspaceId: string) => {
   return namespace.get(namespace.idFromName(workspaceId));
 };
 
-const buildForwardedRequest = (request: Request, workspaceId: string, body?: BodyInit) => {
+const buildForwardedRequest = (
+  request: Request,
+  workspaceId: string,
+  userId: string,
+  body?: BodyInit,
+) => {
   const headers = new Headers(request.headers);
   headers.set('x-ddlbuilder-workspace-id', workspaceId);
+  headers.set('x-ddlbuilder-user-id', userId);
   return new Request(request.url, {
     method: request.method,
     headers,
@@ -33,7 +39,7 @@ const buildForwardedRequest = (request: Request, workspaceId: string, body?: Bod
 };
 
 type WorkspaceYDocAuthResult =
-  | { workspaceId: string; stub: DurableObjectStub }
+  | { userId: string; workspaceId: string; stub: DurableObjectStub }
   | { response: Response };
 
 const authenticateWorkspaceRequest = async (
@@ -71,7 +77,7 @@ const authenticateWorkspaceRequest = async (
     };
   }
 
-  return { workspaceId, stub };
+  return { userId: user.userId, workspaceId, stub };
 };
 
 export function registerWorkspaceYDocRoutes(app: Hono<ApiEnv>) {
@@ -85,7 +91,9 @@ export function registerWorkspaceYDocRoutes(app: Hono<ApiEnv>) {
     }
     if ('response' in authenticated) return authenticated.response;
 
-    return authenticated.stub.fetch(buildForwardedRequest(c.req.raw, authenticated.workspaceId));
+    return authenticated.stub.fetch(
+      buildForwardedRequest(c.req.raw, authenticated.workspaceId, authenticated.userId),
+    );
   });
 
   app.get('/workspaces/:workspaceId/yjs/state', async (c) => {
@@ -98,7 +106,9 @@ export function registerWorkspaceYDocRoutes(app: Hono<ApiEnv>) {
     }
     if ('response' in authenticated) return authenticated.response;
 
-    return authenticated.stub.fetch(buildForwardedRequest(c.req.raw, authenticated.workspaceId));
+    return authenticated.stub.fetch(
+      buildForwardedRequest(c.req.raw, authenticated.workspaceId, authenticated.userId),
+    );
   });
 
   app.post('/workspaces/:workspaceId/yjs/import', async (c) => {
@@ -124,7 +134,7 @@ export function registerWorkspaceYDocRoutes(app: Hono<ApiEnv>) {
     }
 
     return authenticated.stub.fetch(
-      buildForwardedRequest(c.req.raw, authenticated.workspaceId, rawBody),
+      buildForwardedRequest(c.req.raw, authenticated.workspaceId, authenticated.userId, rawBody),
     );
   });
 }

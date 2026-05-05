@@ -104,6 +104,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
     expect(response.status).toBe(200);
     const [forwarded] = stubFetch.mock.calls[0] as [Request];
     expect(forwarded.headers.get('x-ddlbuilder-workspace-id')).toBe('ws-1');
+    expect(forwarded.headers.get('x-ddlbuilder-user-id')).toBe('user-1');
   });
 
   it('validates import payload before forwarding', async () => {

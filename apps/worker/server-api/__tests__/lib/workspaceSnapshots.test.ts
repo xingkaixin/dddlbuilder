@@ -123,6 +123,31 @@ const createWorkspaceSnapshotDb = (legacyRows: StoredLegacySnapshotRow[] = []) =
               };
             },
             async first() {
+              if (
+                sql.includes('FROM workspace_entities') &&
+                sql.includes('entity_type = ?') &&
+                sql.includes('entity_id = ?')
+              ) {
+                const [workspaceId, entityType, entityId] = args;
+                const row = rows.find(
+                  (item) =>
+                    item.workspaceId === workspaceId &&
+                    item.entityType === entityType &&
+                    item.entityId === entityId,
+                );
+                return row
+                  ? {
+                      entityType: row.entityType,
+                      entityId: row.entityId,
+                      payloadJson: row.payloadJson,
+                      contentHash: row.contentHash,
+                      version: row.version,
+                      deletedAt: row.deletedAt,
+                      updatedAt: row.updatedAt,
+                    }
+                  : null;
+              }
+
               if (sql.includes('WHERE id = ? AND user_id = ?')) {
                 const [workspaceId, userId] = args;
                 const workspace = workspaces.find(
@@ -394,5 +419,38 @@ describe('workspaceSnapshots', () => {
         updatedAt: 200,
       },
     ]);
+  });
+
+  it('checkpoint 应把 workspace_entities 收敛到当前 Y.Doc snapshot', async () => {
+    const {
+      checkpointWorkspaceSnapshotEntities,
+      getWorkspaceSnapshotForWorkspace,
+      putWorkspaceSnapshotAsEntities,
+    } = await import('../../lib/workspaceEntities.js');
+    const env = createEnv(createWorkspaceSnapshotDb());
+
+    await putWorkspaceSnapshotAsEntities(env, 'user-1', createSnapshot(['legacy', 'users']));
+    const workspace = await env.USER_DB.prepare(
+      `
+        SELECT id
+        FROM workspaces
+        WHERE user_id = ? AND is_default = 1
+        LIMIT 1
+      `,
+    )
+      .bind('user-1')
+      .first<{ id: string }>();
+
+    const result = await checkpointWorkspaceSnapshotEntities(
+      env,
+      'user-1',
+      workspace?.id ?? '',
+      createSnapshot(['orders']),
+    );
+    const snapshot = await getWorkspaceSnapshotForWorkspace(env, 'user-1', workspace?.id ?? '');
+
+    expect(result.upserted).toBe(1);
+    expect(result.deleted).toBe(2);
+    expect(snapshot.savedTables.map((item) => item.normalizedName)).toEqual(['orders']);
   });
 });

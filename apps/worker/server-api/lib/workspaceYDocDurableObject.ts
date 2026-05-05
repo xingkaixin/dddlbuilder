@@ -3,16 +3,28 @@ import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
 import * as encoding from 'lib0/encoding';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
-import { createWorkspaceYDocUpdateFromSnapshot } from './workspaceYDocSnapshot.js';
+import type { ApiEnv } from './context.js';
+import {
+  checkpointWorkspaceSnapshotEntities,
+  getWorkspaceSnapshotForWorkspace,
+} from './workspaceEntities.js';
+import {
+  createWorkspaceYDocUpdateFromSnapshot,
+  exportWorkspaceYDocToSnapshot,
+  isWorkspaceYDocEmpty,
+} from './workspaceYDocSnapshot.js';
 
 type WorkspaceYDocStoredMeta = {
   workspaceId?: string;
+  userId?: string;
   schemaVersion: number;
   nextSeq: number;
   updateCount: number;
   updateBytes: number;
   updatedAt: number;
   lastCompactedSeq: number;
+  lastCheckpointSeq: number;
+  checkpointFailedAt?: number;
 };
 
 const MESSAGE_SYNC = 0;
@@ -46,19 +58,28 @@ export class WorkspaceYDocDurableObject {
   private updateCount = 0;
   private updateBytes = 0;
   private lastCompactedSeq = 0;
+  private lastCheckpointSeq = 0;
+  private checkpointFailedAt: number | undefined;
   private workspaceId: string | undefined;
+  private userId: string | undefined;
   private readonly state: DurableObjectState;
+  private readonly env: ApiEnv['Bindings'];
 
-  constructor(state: DurableObjectState) {
+  constructor(state: DurableObjectState, env: ApiEnv['Bindings']) {
     this.state = state;
+    this.env = env;
   }
 
   async fetch(request: Request): Promise<Response> {
-    const doc = await this.loadDoc();
     const workspaceId = request.headers.get('x-ddlbuilder-workspace-id') ?? undefined;
     if (workspaceId) {
       this.workspaceId = workspaceId;
     }
+    const userId = request.headers.get('x-ddlbuilder-user-id') ?? undefined;
+    if (userId) {
+      this.userId = userId;
+    }
+    const doc = await this.loadDoc();
 
     if (request.headers.get('upgrade')?.toLowerCase() === 'websocket') {
       const pair = new WebSocketPair();
@@ -87,6 +108,7 @@ export class WorkspaceYDocDurableObject {
       const update = createWorkspaceYDocUpdateFromSnapshot(snapshot);
       Y.applyUpdate(doc, update, this);
       await this.persistQueue;
+      await this.compact();
       return Response.json({
         ok: true,
         stateVectorBytes: Y.encodeStateVector(doc).byteLength,
@@ -133,11 +155,14 @@ export class WorkspaceYDocDurableObject {
         this.state.storage.get<Uint8Array | ArrayBuffer>(SNAPSHOT_KEY),
       ]);
       if (meta) {
-        this.workspaceId = meta.workspaceId;
+        this.workspaceId = meta.workspaceId ?? this.workspaceId;
         this.nextSeq = meta.nextSeq;
         this.updateCount = meta.updateCount;
         this.updateBytes = meta.updateBytes;
         this.lastCompactedSeq = meta.lastCompactedSeq;
+        this.lastCheckpointSeq = meta.lastCheckpointSeq ?? 0;
+        this.checkpointFailedAt = meta.checkpointFailedAt;
+        this.userId = meta.userId ?? this.userId;
       }
 
       const snapshotBytes = toUint8Array(snapshot);
@@ -153,6 +178,10 @@ export class WorkspaceYDocDurableObject {
         if (update) {
           Y.applyUpdate(doc, update, this);
         }
+      }
+
+      if (isWorkspaceYDocEmpty(doc)) {
+        await this.restoreFromD1(doc);
       }
 
       doc.on('update', this.handleDocUpdate);
@@ -196,7 +225,7 @@ export class WorkspaceYDocDurableObject {
     }
   }
 
-  private async compact() {
+  private async compact(options: { checkpoint?: boolean } = {}) {
     if (!this.doc) return;
     const snapshot = Y.encodeStateAsUpdate(this.doc);
     const updateKeys = await this.state.storage.list({ prefix: UPDATE_PREFIX });
@@ -205,18 +234,63 @@ export class WorkspaceYDocDurableObject {
     this.updateCount = 0;
     this.updateBytes = 0;
     this.lastCompactedSeq = this.nextSeq;
+    if (options.checkpoint !== false) {
+      await this.checkpointD1();
+    }
     await this.writeMeta();
+  }
+
+  private async restoreFromD1(doc: Y.Doc) {
+    if (!this.workspaceId || !this.userId) return;
+    const snapshot = await getWorkspaceSnapshotForWorkspace(
+      this.env,
+      this.userId,
+      this.workspaceId,
+    );
+    if (
+      !snapshot.globalDraft &&
+      snapshot.drafts.length === 0 &&
+      snapshot.savedTables.length === 0 &&
+      snapshot.savedDrafts.length === 0 &&
+      snapshot.folders.length === 0
+    ) {
+      return;
+    }
+
+    Y.applyUpdate(doc, createWorkspaceYDocUpdateFromSnapshot(snapshot), this);
+    this.doc = doc;
+    await this.compact({ checkpoint: false });
+  }
+
+  private async checkpointD1() {
+    if (!this.doc || !this.workspaceId || !this.userId) return;
+    try {
+      await checkpointWorkspaceSnapshotEntities(
+        this.env,
+        this.userId,
+        this.workspaceId,
+        exportWorkspaceYDocToSnapshot(this.doc),
+      );
+      this.lastCheckpointSeq = this.nextSeq;
+      this.checkpointFailedAt = undefined;
+    } catch (error) {
+      this.checkpointFailedAt = Date.now();
+      console.error('[workspace-yjs-do] checkpoint failed', error);
+    }
   }
 
   private async writeMeta() {
     await this.state.storage.put<WorkspaceYDocStoredMeta>(META_KEY, {
       workspaceId: this.workspaceId,
+      userId: this.userId,
       schemaVersion: 1,
       nextSeq: this.nextSeq,
       updateCount: this.updateCount,
       updateBytes: this.updateBytes,
       updatedAt: Date.now(),
       lastCompactedSeq: this.lastCompactedSeq,
+      lastCheckpointSeq: this.lastCheckpointSeq,
+      checkpointFailedAt: this.checkpointFailedAt,
     });
   }
 

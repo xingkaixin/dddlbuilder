@@ -977,6 +977,16 @@ export const getWorkspaceSnapshotFromEntities = async (
   return entityRowsToSnapshot(await listActiveEntities(env, workspace.id));
 };
 
+export const getWorkspaceSnapshotForWorkspace = async (
+  env: ApiEnv['Bindings'],
+  userId: string,
+  workspaceId: string,
+): Promise<WorkspaceSnapshot> => {
+  await assertWorkspaceOwner(env, userId, workspaceId);
+  await backfillLegacySnapshotEntities(env, userId, workspaceId);
+  return entityRowsToSnapshot(await listActiveEntities(env, workspaceId));
+};
+
 export const putWorkspaceSnapshotAsEntities = async (
   env: ApiEnv['Bindings'],
   userId: string,
@@ -988,4 +998,68 @@ export const putWorkspaceSnapshotAsEntities = async (
     workspaceId: workspace.id,
     entities: snapshotToEntities(snapshot),
   });
+};
+
+export const checkpointWorkspaceSnapshotEntities = async (
+  env: ApiEnv['Bindings'],
+  userId: string,
+  workspaceId: string,
+  snapshot: WorkspaceSnapshot,
+) => {
+  await assertWorkspaceOwner(env, userId, workspaceId);
+  const entities = snapshotToEntities(snapshot);
+  const nextKeys = new Set(
+    entities.map((entity) => buildEntityKey(entity.entityType, entity.entityId)),
+  );
+  let upserted = 0;
+  let deleted = 0;
+  let skipped = 0;
+
+  for (const entity of entities) {
+    const contentHash = await buildWorkspaceContentHash(entity.payload);
+    const existing = await readEntity(env, workspaceId, entity.entityType, entity.entityId);
+    if (existing && existing.deletedAt == null && existing.contentHash === contentHash) {
+      skipped++;
+      continue;
+    }
+
+    await writeEntityVersion(env, {
+      userId,
+      workspaceId,
+      entityType: entity.entityType,
+      entityId: entity.entityId,
+      op: 'upsert',
+      payload: entity.payload,
+      contentHash,
+      updatedAt: entity.sourceUpdatedAt,
+    });
+    upserted++;
+  }
+
+  const activeRows = await listActiveEntities(env, workspaceId);
+  const checkpointedAt = now();
+  for (const row of activeRows) {
+    if (nextKeys.has(buildEntityKey(row.entityType, row.entityId))) {
+      continue;
+    }
+
+    await writeEntityVersion(env, {
+      userId,
+      workspaceId,
+      entityType: row.entityType,
+      entityId: row.entityId,
+      op: 'delete',
+      payload: null,
+      contentHash: null,
+      updatedAt: checkpointedAt,
+    });
+    deleted++;
+  }
+
+  return {
+    cursor: await readWorkspaceCursor(env, workspaceId),
+    upserted,
+    deleted,
+    skipped,
+  };
 };
