@@ -1699,7 +1699,8 @@ function App() {
     return presentations;
   }, [tabs]);
 
-  const isMainWorkspaceLoading = !hydrated;
+  const shouldShowWorkspaceSkeleton =
+    activeWorkspaceTab?.isLoading === true || (isShareView && !hydrated);
 
   // ─── 7. Render ─────────────────────────────────────────────────
   return (
@@ -1826,7 +1827,7 @@ function App() {
               />
             )}
             <div className="p-3 sm:p-4">
-              {isMainWorkspaceLoading ? (
+              {shouldShowWorkspaceSkeleton ? (
                 <MainWorkspaceSkeleton />
               ) : tabs.length === 0 && !isShareView ? (
                 <WorkspaceEmptyState
