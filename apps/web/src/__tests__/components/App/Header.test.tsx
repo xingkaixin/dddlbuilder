@@ -18,6 +18,7 @@ const errorMock = vi.fn();
 vi.mock('@/i18n/LocaleContext', () => ({
   useLocale: () => ({
     locale: 'zh-CN',
+    setLocale: vi.fn(),
   }),
 }));
 
@@ -25,12 +26,21 @@ vi.mock('@/utils/docsLink', () => ({
   getDocsUrl: () => '/docs/zh/',
 }));
 
-vi.mock('@/components/App/ThemeSwitcher', () => ({
-  ThemeSwitcher: () => <button type="button">主题</button>,
+vi.mock('next-themes', () => ({
+  useTheme: () => ({
+    theme: 'system',
+    resolvedTheme: 'light',
+    setTheme: vi.fn(),
+  }),
 }));
 
-vi.mock('@/components/App/LocaleSwitcher', () => ({
-  LocaleSwitcher: () => <button type="button">语言</button>,
+vi.mock('@/components/App/hooks/useThemeTransition', () => ({
+  useThemeTransition: () => ({
+    phase: 'idle',
+    isTransitioning: false,
+    targetEffectiveTheme: null,
+    runThemeTransition: vi.fn(),
+  }),
 }));
 
 vi.mock('@/components/ImportSqlDialog', () => ({
@@ -43,6 +53,13 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: { children: any }) => <div>{children}</div>,
   DropdownMenuTrigger: ({ children }: { children: any }) => <div>{children}</div>,
   DropdownMenuContent: ({ children }: { children: any }) => <div>{children}</div>,
+  DropdownMenuSub: ({ children }: { children: any }) => <div>{children}</div>,
+  DropdownMenuSubTrigger: ({ children }: { children: any }) => <div>{children}</div>,
+  DropdownMenuSubContent: ({ children }: { children: any }) => <div>{children}</div>,
+  DropdownMenuRadioGroup: ({ children }: { children: any }) => <div>{children}</div>,
+  DropdownMenuRadioItem: ({ children }: { children: any }) => (
+    <button type="button">{children}</button>
+  ),
   DropdownMenuLabel: ({ children }: { children: any }) => <div>{children}</div>,
   DropdownMenuSeparator: () => <div />,
   DropdownMenuItem: ({
@@ -65,6 +82,7 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
     status: 'signed_out',
     configured: true,
     userId: null,
+    workspaceId: null,
     email: null,
     name: null,
     emailVerified: false,
@@ -170,6 +188,7 @@ describe('Header', () => {
       status: 'signed_out',
       configured: true,
       userId: null,
+      workspaceId: null,
       email: null,
       name: null,
       emailVerified: false,
@@ -215,6 +234,7 @@ describe('Header', () => {
       status: 'signed_in',
       configured: true,
       userId: 'user-1',
+      workspaceId: 'workspace-1',
       email: 'user@example.com',
       name: 'User One',
       emailVerified: true,
@@ -255,6 +275,7 @@ describe('Header', () => {
       status: 'signed_in',
       configured: true,
       userId: 'user-1',
+      workspaceId: 'workspace-1',
       email: 'user@example.com',
       name: 'User One',
       emailVerified: true,
@@ -285,7 +306,11 @@ describe('Header', () => {
           snapshot: {
             globalDraft: null,
             activeSession: null,
-            savedTables: [{ normalizedName: 'users', name: 'users', state: {}, updatedAt: 1 }],
+            drafts: [],
+            folders: [],
+            savedTables: [
+              { normalizedName: 'users', name: 'users', state: {} as any, updatedAt: 1 },
+            ],
             savedDrafts: [],
           },
         },

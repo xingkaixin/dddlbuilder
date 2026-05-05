@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import type {
   AICommentMode,
   AIIndexAdvisorRecommendation,
@@ -63,7 +63,6 @@ import { buildIndexName } from '@/utils/indexNameUtils';
 import { EXAMPLE_USER_PROFILE_TABLE } from '@/utils/exampleTable';
 import { useTranslation } from 'react-i18next';
 import type { AISchemaChange } from '@/utils/aiSchemaChanges';
-import type { WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -80,9 +79,6 @@ const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) => createEmptyRow(ind
 const DEFAULT_FIELD_TABLE_FREEZE_ENABLED = false;
 const DEFAULT_FIELD_TABLE_FREEZE_COLUMNS = 3;
 const SHARE_COPY_SAVED_TOAST_KEY = 'ddlbuilder:share:copy-saved:v1';
-
-const buildWorkspaceSourceKey = (source: WorkspaceSource) =>
-  source.kind === 'draft' ? `draft:${source.draftId}` : `saved_table:${source.normalizedName}`;
 
 const hasSameIndexFields = (left: IndexField[], right: IndexField[]) =>
   left.length === right.length &&
@@ -286,10 +282,6 @@ function App() {
     removeTabBySource,
     updateTabTitleBySource,
   } = useTabStore();
-  const lastClosedAutoOpenRef = useRef<{
-    sourceKey: string;
-    state: PersistedState | null;
-  } | null>(null);
 
   const {
     authInput,
@@ -553,7 +545,9 @@ function App() {
       setIndexes((prev) => [...prev, nextIndex]);
       setActiveTab('indexes');
       showToast(t('aiIndexAdvisor.indexApplied'));
-      void trackEvent('ai_index_advisor_apply', { category: recommendation.category });
+      void trackEvent('ai_index_advisor_apply', {
+        category: recommendation.category,
+      });
     },
     [indexes, normalizedFields, setActiveTab, setIndexes, showToast, t, tableName, trackEvent],
   );
@@ -1258,26 +1252,15 @@ function App() {
 
   const handleCloseTab = useCallback(
     (tabId: string) => {
-      const closingTab = tabs.find((tab) => tab.id === tabId);
-      const closesLastTab = tabs.length === 1 && closingTab;
       closeTabStore(tabId);
 
       const nextActive = getActiveTab();
       if (nextActive) {
-        lastClosedAutoOpenRef.current = null;
         applySavedState(nextActive.stateSnapshot);
         selectWorkspaceSnapshot(nextActive.source, nextActive.stateSnapshot);
-        return;
-      }
-
-      if (closesLastTab) {
-        lastClosedAutoOpenRef.current = {
-          sourceKey: buildWorkspaceSourceKey(closingTab.source),
-          state: persistedState,
-        };
       }
     },
-    [tabs, closeTabStore, getActiveTab, applySavedState, selectWorkspaceSnapshot, persistedState],
+    [closeTabStore, getActiveTab, applySavedState, selectWorkspaceSnapshot],
   );
 
   const handleRestoreTable = useCallback(
@@ -1693,6 +1676,16 @@ function App() {
     return draftSummaries;
   }, [draftSummaries]);
 
+  const recentDrafts = useMemo(
+    () => [...draftSummaries].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 3),
+    [draftSummaries],
+  );
+
+  const recentTables = useMemo(
+    () => [...savedTables].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 3),
+    [savedTables],
+  );
+
   const tablePresentations = useMemo(() => {
     const presentations = new Map<string, { title: string; isDirty: boolean }>();
     for (const tab of tabs) {
@@ -1707,49 +1700,6 @@ function App() {
   }, [tabs]);
 
   const isMainWorkspaceLoading = !hydrated;
-
-  useEffect(() => {
-    if (!hydrated || isShareView || tabs.length > 0 || !persistedState) {
-      return;
-    }
-    const sourceKey = buildWorkspaceSourceKey(activeSource);
-    const lastClosed = lastClosedAutoOpenRef.current;
-    if (lastClosed?.sourceKey === sourceKey && lastClosed.state === persistedState) {
-      return;
-    }
-
-    const title =
-      activeSource.kind === 'draft'
-        ? draftSummaries.find((draft) => draft.draftId === activeSource.draftId)?.name ||
-          persistedState.tableName.trim() ||
-          t('app.workspace.globalDraft')
-        : activeSource.tableName ||
-          persistedState.tableName.trim() ||
-          t('app.workspace.globalDraft');
-
-    const tabId = addTab({
-      title,
-      source: activeSource,
-      stateSnapshot: persistedState,
-      isDirty: false,
-    });
-    activateTab(tabId);
-    applySavedState(persistedState);
-    selectWorkspaceSnapshot(activeSource, persistedState);
-    lastClosedAutoOpenRef.current = null;
-  }, [
-    activeSource,
-    addTab,
-    applySavedState,
-    activateTab,
-    draftSummaries,
-    hydrated,
-    isShareView,
-    persistedState,
-    selectWorkspaceSnapshot,
-    t,
-    tabs.length,
-  ]);
 
   // ─── 7. Render ─────────────────────────────────────────────────
   return (
@@ -1881,13 +1831,17 @@ function App() {
               ) : tabs.length === 0 && !isShareView ? (
                 <WorkspaceEmptyState
                   hasContent={draftSummaries.length > 0 || savedTables.length > 0}
+                  recentDrafts={recentDrafts}
+                  recentTables={recentTables}
                   onCreateNewTable={handleCreateDraft}
+                  onOpenDraft={handleSelectDraft}
+                  onOpenTable={handleSelectSavedTable}
                   onLoadExample={handleLoadExample}
                   importButton={
                     <button
                       type="button"
                       onClick={() => setIsImportDialogOpen(true)}
-                      className="flex items-center justify-center gap-2 rounded-lg border bg-background px-4 py-3 text-sm font-medium transition-colors hover:bg-accent"
+                      className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-card px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                     >
                       <Upload className="h-4 w-4" />
                       {t('emptyState.importDDL')}
@@ -1900,7 +1854,7 @@ function App() {
                       onApplyTemplate={handleApplyTableTemplate}
                       onManageTemplates={handleManageTableTemplates}
                       onSaveAsTemplate={handleSaveAsTableTemplate}
-                      triggerClassName="flex h-auto w-full items-center justify-center gap-2 rounded-lg border bg-background px-4 py-3 text-sm font-medium transition-colors hover:bg-accent"
+                      triggerClassName="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-card px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                     />
                   }
                 />

@@ -1,4 +1,13 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  CloudUpload,
+  Coins,
+  Download,
+  RefreshCw,
+  User2,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
@@ -22,11 +31,16 @@ import {
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/useToast';
+import { useLocale } from '@/i18n/LocaleContext';
 import { syncWorkspaceOnce } from '@/services/workspaceIncrementalSyncService';
 import { exportWorkspaceToCloud, importWorkspaceFromCloud } from '@/services/workspaceSyncService';
 import type { ApiErrorPayload } from '@ddlbuilder/shared-types/api';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
-import { listWorkspaceConflicts } from '@/utils/workspaceSyncStateDb';
+import {
+  pruneResolvedWorkspaceConflicts,
+  removeWorkspaceConflicts,
+  type LocalWorkspaceConflictItem,
+} from '@/utils/workspaceSyncStateDb';
 
 type CreditLedgerItem = {
   id: string;
@@ -44,6 +58,7 @@ interface UserSettingsDialogProps {
 }
 
 type WorkspaceSyncAction = 'upload' | 'download';
+type SettingsTab = 'account' | 'workspace' | 'credits';
 const LEDGER_PAGE_SIZE = 20;
 
 const getErrorMessage = (payload: ApiErrorPayload | null, fallback: string) =>
@@ -82,6 +97,48 @@ const formatLedgerTime = (value: string) => {
   }).format(date);
 };
 
+const formatSyncConflictTime = (value: number) =>
+  new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
+
+const formatCompactCredits = (value: number | null | undefined, locale: 'zh-CN' | 'en-US') => {
+  const amount = Number(value ?? 0);
+  if (!Number.isFinite(amount)) {
+    return '0';
+  }
+
+  const sign = amount < 0 ? '-' : '';
+  const absolute = Math.abs(amount);
+  const units =
+    locale === 'zh-CN'
+      ? [
+          { value: 1_000_000_000_000, label: '万亿' },
+          { value: 100_000_000, label: '亿' },
+          { value: 10_000, label: '万' },
+        ]
+      : [
+          { value: 1_000_000_000, label: 'B' },
+          { value: 1_000_000, label: 'M' },
+          { value: 1_000, label: 'K' },
+        ];
+
+  const unit = units.find((item) => absolute >= item.value);
+  if (!unit) {
+    return `${amount}`;
+  }
+
+  const scaled = absolute / unit.value;
+  const decimals = locale === 'zh-CN' && scaled < 10 ? 1 : 2;
+  return locale === 'zh-CN'
+    ? `${sign}${scaled.toFixed(decimals)} ${unit.label}`
+    : `${sign}${scaled.toFixed(decimals)}${unit.label}`;
+};
+
 const parseMetadata = (value?: string | null) => {
   if (!value) return null;
   try {
@@ -110,6 +167,7 @@ const resolveLedgerTypeLabel = (
 
 export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogProps) {
   const { t } = useTranslation();
+  const { locale } = useLocale();
   const authSession = useAuthSession();
   const { success, error } = useToast();
   const [name, setName] = useState('');
@@ -130,6 +188,10 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
   const [runningSyncAction, setRunningSyncAction] = useState<WorkspaceSyncAction | null>(null);
   const [runningIncrementalSync, setRunningIncrementalSync] = useState(false);
   const [workspaceConflictCount, setWorkspaceConflictCount] = useState(0);
+  const [workspaceConflicts, setWorkspaceConflicts] = useState<LocalWorkspaceConflictItem[]>([]);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>('account');
+  const [conflictDetailsOpen, setConflictDetailsOpen] = useState(false);
+  const compactCreditBalance = formatCompactCredits(authSession.creditBalance, locale);
 
   useEffect(() => {
     if (!open) {
@@ -259,10 +321,12 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
 
   const refreshWorkspaceConflictCount = useCallback(async () => {
     if (currentScope.kind !== 'user' || !currentScope.workspaceId) {
+      setWorkspaceConflicts([]);
       setWorkspaceConflictCount(0);
       return;
     }
-    const conflicts = await listWorkspaceConflicts(currentScope.workspaceId);
+    const conflicts = await pruneResolvedWorkspaceConflicts(currentScope.workspaceId);
+    setWorkspaceConflicts(conflicts);
     setWorkspaceConflictCount(conflicts.length);
   }, [currentScope]);
 
@@ -295,6 +359,12 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
     }
   };
 
+  const handleRemoveWorkspaceConflict = async (id: string) => {
+    await removeWorkspaceConflicts([id]);
+    await refreshWorkspaceConflictCount();
+    success(t('settings.syncConflictCleared'));
+  };
+
   const handleConfirmWorkspaceSync = async () => {
     if (!pendingSyncAction) {
       return;
@@ -320,18 +390,55 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl sm:min-h-[42rem]">
-          <DialogHeader>
-            <DialogTitle>{t('settings.title')}</DialogTitle>
-            <DialogDescription>{t('settings.description')}</DialogDescription>
+        <DialogContent
+          className="w-[min(72rem,calc(100vw-2rem))] max-w-none overflow-hidden p-0 sm:min-h-[46rem]"
+          onOpenAutoFocus={(event) => event.preventDefault()}
+        >
+          <DialogHeader className="gap-1 border-b px-6 py-3">
+            <DialogTitle className="text-lg">{t('settings.title')}</DialogTitle>
+            <DialogDescription className="text-xs">{t('settings.description')}</DialogDescription>
           </DialogHeader>
-          <Tabs defaultValue="account" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="account">{t('settings.accountTab')}</TabsTrigger>
-              <TabsTrigger value="workspace">{t('settings.workspaceTab')}</TabsTrigger>
-              <TabsTrigger value="credits">{t('settings.creditTab')}</TabsTrigger>
+          <Tabs
+            value={settingsTab}
+            onValueChange={(value) => setSettingsTab(value as SettingsTab)}
+            className="flex min-h-[38rem] overflow-hidden"
+          >
+            <TabsList className="h-auto w-56 shrink-0 flex-col justify-start gap-1 rounded-none border-r border-border/70 bg-transparent px-3 py-5">
+              <TabsTrigger
+                value="account"
+                className="w-full justify-start gap-2 px-2.5 py-2 text-xs"
+              >
+                <User2 className="h-3.5 w-3.5" />
+                <span className="min-w-0 flex-1 truncate text-left">
+                  {t('settings.accountTab')}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="workspace"
+                className="w-full justify-start gap-2 px-2.5 py-2 text-xs"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                <span className="min-w-0 flex-1 truncate text-left">
+                  {t('settings.workspaceTab')}
+                </span>
+                {workspaceConflictCount > 0 ? (
+                  <span className="shrink-0 rounded-full bg-primary px-1.5 py-0.5 text-[10px] text-primary-foreground">
+                    {workspaceConflictCount}
+                  </span>
+                ) : null}
+              </TabsTrigger>
+              <TabsTrigger
+                value="credits"
+                className="w-full justify-start gap-2 px-2.5 py-2 text-xs"
+              >
+                <Coins className="h-3.5 w-3.5" />
+                <span className="min-w-0 flex-1 truncate text-left">{t('settings.creditTab')}</span>
+                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                  {compactCreditBalance}
+                </span>
+              </TabsTrigger>
             </TabsList>
-            <div className="min-h-[30rem]">
+            <div className="min-w-0 flex-1 overflow-y-auto px-6 py-5">
               <TabsContent value="account" className="mt-0 space-y-6">
                 <section className="space-y-3">
                   <h3 className="text-sm font-semibold">{t('settings.email')}</h3>
@@ -393,48 +500,110 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                   </div>
                 </section>
               </TabsContent>
-              <TabsContent value="workspace" className="mt-0 space-y-6">
+              <TabsContent value="workspace" className="mt-0 space-y-5">
                 <section className="space-y-3">
-                  <h3 className="text-sm font-semibold">{t('settings.workspaceTab')}</h3>
-                  <div className="rounded-lg border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+                  <div className="rounded-md border bg-muted/30 px-3 py-2.5 text-sm leading-6 text-muted-foreground">
                     {t('settings.workspaceSyncHint')}
                   </div>
-                  <div className="flex flex-col gap-3 rounded-lg border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="text-sm">
-                      <div className="font-medium">{t('settings.syncNow')}</div>
-                      {workspaceConflictCount > 0 ? (
-                        <div className="mt-1 text-xs text-destructive">
-                          {t('settings.syncConflictNotice', {
-                            count: workspaceConflictCount,
-                          })}
+                  <div
+                    className={`rounded-md border px-3 py-2.5 ${
+                      workspaceConflictCount > 0
+                        ? 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200'
+                        : 'bg-card'
+                    }`}
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="text-sm">
+                        <div className="flex items-center gap-2 font-medium">
+                          {workspaceConflictCount > 0 ? (
+                            <AlertTriangle className="h-4 w-4" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4" />
+                          )}
+                          {t('settings.syncNow')}
                         </div>
-                      ) : (
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          {t('settings.syncNowDescription')}
-                        </div>
-                      )}
+                        {workspaceConflictCount > 0 ? (
+                          <div className="mt-1 text-xs">
+                            {t('settings.syncConflictNotice', {
+                              count: workspaceConflictCount,
+                            })}
+                          </div>
+                        ) : (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {t('settings.syncNowDescription')}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        {workspaceConflictCount > 0 ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setConflictDetailsOpen((value) => !value)}
+                          >
+                            {t('settings.viewSyncConflicts')}
+                          </Button>
+                        ) : null}
+                        <Button
+                          type="button"
+                          variant={workspaceConflictCount > 0 ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={handleRunIncrementalSync}
+                          disabled={
+                            runningIncrementalSync ||
+                            runningSyncAction != null ||
+                            authSession.status !== 'signed_in' ||
+                            !authSession.workspaceId
+                          }
+                        >
+                          {runningIncrementalSync
+                            ? t('settings.syncNowRunning')
+                            : t('settings.syncNow')}
+                        </Button>
+                      </div>
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleRunIncrementalSync}
-                      disabled={
-                        runningIncrementalSync ||
-                        runningSyncAction != null ||
-                        authSession.status !== 'signed_in' ||
-                        !authSession.workspaceId
-                      }
-                    >
-                      {runningIncrementalSync
-                        ? t('settings.syncNowRunning')
-                        : t('settings.syncNow')}
-                    </Button>
+                    {conflictDetailsOpen && workspaceConflicts.length > 0 ? (
+                      <div className="mt-3 max-h-72 overflow-auto rounded-md border bg-background">
+                        {workspaceConflicts.map((conflict) => (
+                          <div
+                            key={conflict.id}
+                            className="flex gap-3 border-b px-3 py-2.5 text-xs last:border-b-0"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium text-foreground">
+                                {t(`settings.workspaceEntityType.${conflict.entityType}`)} ·{' '}
+                                {conflict.entityId}
+                              </div>
+                              <div className="mt-1 text-muted-foreground">
+                                {t('settings.syncConflictDetail', {
+                                  version: conflict.serverVersion,
+                                  time: formatSyncConflictTime(conflict.updatedAt),
+                                })}
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => void handleRemoveWorkspaceConflict(conflict.id)}
+                            >
+                              {t('settings.clearSyncConflict')}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </section>
-                <section className="grid gap-4 md:grid-cols-2">
+                <section className="grid gap-3 md:grid-cols-2">
                   <div className="space-y-3 rounded-lg border p-4">
                     <div>
-                      <h4 className="text-sm font-semibold">{t('settings.syncUpload')}</h4>
+                      <h4 className="flex items-center gap-2 text-sm font-semibold">
+                        <CloudUpload className="h-4 w-4" />
+                        {t('settings.syncUpload')}
+                      </h4>
                       <p className="mt-1 text-sm text-muted-foreground">
                         {t('settings.syncUploadDescription')}
                       </p>
@@ -451,7 +620,10 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                   </div>
                   <div className="space-y-3 rounded-lg border p-4">
                     <div>
-                      <h4 className="text-sm font-semibold">{t('settings.syncDownload')}</h4>
+                      <h4 className="flex items-center gap-2 text-sm font-semibold">
+                        <Download className="h-4 w-4" />
+                        {t('settings.syncDownload')}
+                      </h4>
                       <p className="mt-1 text-sm text-muted-foreground">
                         {t('settings.syncDownloadDescription')}
                       </p>

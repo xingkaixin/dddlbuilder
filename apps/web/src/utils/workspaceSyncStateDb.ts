@@ -313,6 +313,23 @@ export const removeWorkspaceConflicts = async (ids: string[]): Promise<void> => 
   }
 };
 
+export const pruneResolvedWorkspaceConflicts = async (
+  workspaceId: string,
+): Promise<LocalWorkspaceConflictItem[]> => {
+  const [conflicts, outboxItems] = await Promise.all([
+    listWorkspaceConflicts(workspaceId),
+    listWorkspaceOutboxItems(workspaceId),
+  ]);
+  const pendingMutationIds = new Set(outboxItems.map((item) => item.id));
+  const resolvedConflictIds = conflicts
+    .filter((conflict) => !pendingMutationIds.has(conflict.clientMutationId))
+    .map((conflict) => conflict.id);
+  if (resolvedConflictIds.length > 0) {
+    await removeWorkspaceConflicts(resolvedConflictIds);
+  }
+  return conflicts.filter((conflict) => pendingMutationIds.has(conflict.clientMutationId));
+};
+
 export const clearWorkspaceSyncState = async (workspaceId: string): Promise<void> => {
   await runWithStore<undefined>(WORKSPACE_SYNC_META_STORE_NAME, 'readwrite', (store) =>
     store.delete(workspaceId),

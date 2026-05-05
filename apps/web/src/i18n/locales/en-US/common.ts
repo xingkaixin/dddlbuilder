@@ -29,6 +29,7 @@ export const enUSCommon = {
     save: 'Save',
     changeLanguage: 'Switch language',
     changeTheme: 'Switch theme',
+    moreActions: 'Menu',
     auth: {
       signIn: 'Sign in',
       signedIn: 'Signed in',
@@ -112,9 +113,9 @@ export const enUSCommon = {
     accountTab: 'Account',
     workspaceTab: 'Workspace Sync',
     creditTab: 'Credits',
+    accountInfo: 'Account Info',
     email: 'Email',
-    emailReadonly:
-      'This email is used for sign-in and password recovery. It cannot be changed here.',
+    emailReadonly: 'This email is used for sign-in and password recovery.',
     username: 'Username',
     usernamePlaceholder: 'Enter a new username',
     usernameRequired: 'Username is required',
@@ -159,13 +160,23 @@ export const enUSCommon = {
     syncUploading: 'Uploading...',
     syncRequiresLogin: 'Sign in to sync your workspace.',
     workspaceSyncHint:
-      'Signed-in workspaces sync automatically. Manual upload and download remain available as recovery tools and replace the full workspace in the selected direction.',
+      'Workspaces sync incrementally. Manual upload and download remain available as recovery tools and replace the full workspace in the selected direction.',
     syncNow: 'Sync now',
     syncNowRunning: 'Syncing...',
     syncNowSuccess: 'Workspace synced',
     syncNowDescription:
       'Pull cloud changes, push pending local edits, and refresh local sync state.',
     syncConflictNotice: '{{count}} sync conflicts need attention',
+    viewSyncConflicts: 'View details',
+    clearSyncConflict: 'Remove record',
+    syncConflictCleared: 'Sync conflict record removed',
+    syncConflictDetail: 'Server version v{{version}} · {{time}}',
+    workspaceEntityType: {
+      draft: 'Draft',
+      saved_table: 'Project Table',
+      saved_draft: 'Table Draft',
+      folder: 'Folder',
+    },
     syncUploadDescription:
       'Upload this device’s complete global draft, saved tables, and saved drafts to the cloud.',
     syncDownloadDescription:
@@ -208,6 +219,10 @@ export const enUSCommon = {
     exampleDescription:
       'Includes common field types, indexes, and constraints to help you get started quickly.',
     loadExample: 'Load Example',
+    recentDrafts: 'Recent Drafts',
+    recentTables: 'Recent Projects',
+    draftMeta: 'Draft · {{count}} fields',
+    tableMeta: 'Project · {{count}} fields',
     tip: 'Click an existing table on the left to view and edit its structure here.',
     exampleLoaded: 'Example table loaded',
   },

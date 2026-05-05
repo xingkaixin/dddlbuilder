@@ -37,6 +37,7 @@ import {
   enqueueWorkspaceOutboxItem,
   incrementWorkspaceOutboxAttempts,
   listWorkspaceOutboxItems,
+  pruneResolvedWorkspaceConflicts,
   readWorkspaceSyncMeta,
   rebaseWorkspaceOutboxItems,
   removeWorkspaceConflicts,
@@ -478,6 +479,7 @@ export const syncWorkspaceOnce = async (
 
   const outbox = await listWorkspaceOutboxItems(scope.workspaceId);
   if (outbox.length === 0) {
+    await pruneResolvedWorkspaceConflicts(scope.workspaceId);
     if (appliedCount > 0) {
       dispatchWorkspaceSnapshotApplied();
     }
@@ -531,6 +533,7 @@ export const syncWorkspaceOnce = async (
   if (pushed.conflicts.length > 0) {
     await writeWorkspaceConflicts(scope.workspaceId, pushed.conflicts);
   }
+  const unresolvedConflicts = await pruneResolvedWorkspaceConflicts(scope.workspaceId);
 
   const nextPulled = await pullWorkspaceChanges(scope.workspaceId, pulled.cursor);
   const acceptedEntityVersionKeys = new Set(
@@ -556,8 +559,8 @@ export const syncWorkspaceOnce = async (
   }
 
   return {
-    status: pushed.conflicts.length > 0 ? 'conflict' : 'synced',
+    status: unresolvedConflicts.length > 0 ? 'conflict' : 'synced',
     cursor: nextPulled.cursor,
-    conflictCount: pushed.conflicts.length,
+    conflictCount: unresolvedConflicts.length,
   };
 };
