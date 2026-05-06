@@ -203,6 +203,71 @@ describe('usePersistedSync debounce save', () => {
     });
   });
 
+  it('恢复在线时应立即保存当前状态', () => {
+    const saveState = vi.fn();
+    const payload = createState('online_flush');
+    const buildPersistedState = vi.fn(() => payload);
+    const params = createBaseParams({
+      saveState,
+      buildPersistedState,
+    });
+
+    renderHook(() => usePersistedSync(params));
+
+    act(() => {
+      window.dispatchEvent(new Event('online'));
+    });
+
+    expect(buildPersistedState).toHaveBeenCalledTimes(1);
+    expect(saveState).toHaveBeenCalledWith({
+      state: payload,
+      source: { kind: 'draft', draftId: 'default' },
+      isDirty: false,
+    });
+  });
+
+  it('离线状态变化时应立即保存到本地同步源', () => {
+    const onlineSpy = vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(true);
+    const saveState = vi.fn();
+    const firstPayload = createState('offline_first');
+    const secondPayload = createState('offline_second');
+    const firstBuild = vi.fn(() => firstPayload);
+    const secondBuild = vi.fn(() => secondPayload);
+
+    const { rerender } = renderHook(
+      (params: ReturnType<typeof createBaseParams>) => usePersistedSync(params),
+      {
+        initialProps: createBaseParams({
+          saveState,
+          buildPersistedState: firstBuild,
+        }),
+      },
+    );
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+    saveState.mockClear();
+
+    rerender(
+      createBaseParams({
+        saveState,
+        buildPersistedState: secondBuild,
+      }),
+    );
+
+    expect(secondBuild).toHaveBeenCalledTimes(1);
+    expect(saveState).toHaveBeenCalledWith({
+      state: secondPayload,
+      source: { kind: 'draft', draftId: 'default' },
+      isDirty: false,
+    });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(saveState).toHaveBeenCalledTimes(1);
+    onlineSpy.mockRestore();
+  });
+
   it('刚应用远端状态且 UI 仍未追上时应跳过本轮保存', () => {
     const saveState = vi.fn();
     const remoteState = createState('remote_state');

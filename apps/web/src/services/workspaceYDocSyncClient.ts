@@ -3,6 +3,10 @@ import { encodeStateAsUpdate, mergeUpdates } from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
 import * as encoding from 'lib0/encoding';
+import {
+  materializeWorkspaceYDoc,
+  WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN,
+} from '@/services/workspaceYDocAdapter';
 
 export type WorkspaceYDocConnectionState =
   | 'idle'
@@ -22,7 +26,9 @@ export type WorkspaceYDocConnectionStatus = {
 const MESSAGE_SYNC = 0;
 const MAX_RECONNECT_DELAY_MS = 10_000;
 export const WORKSPACE_YDOC_CONNECT_TIMEOUT_MS = 8_000;
-export const WORKSPACE_YDOC_UPDATE_BATCH_MS = 25;
+export const WORKSPACE_YDOC_UPDATE_IDLE_MS = 2_000;
+export const WORKSPACE_YDOC_UPDATE_MAX_WAIT_MS = 12_000;
+export const WORKSPACE_YDOC_UPDATE_BATCH_MS = WORKSPACE_YDOC_UPDATE_IDLE_MS;
 
 const buildWorkspaceYDocPath = (workspaceId: string) =>
   `/api/workspaces/${encodeURIComponent(workspaceId)}/yjs`;
@@ -45,6 +51,7 @@ export class WorkspaceYDocSyncClient {
   private connecting = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
+  private maxFlushTimer: ReturnType<typeof setTimeout> | null = null;
   private socketOpenTimer: ReturnType<typeof setTimeout> | null = null;
   private pendingUpdates: Uint8Array[] = [];
   private pendingUpdatesStartedAt: number | null = null;
@@ -67,6 +74,9 @@ export class WorkspaceYDocSyncClient {
     this.doc.on('update', this.handleDocUpdate);
     window.addEventListener('online', this.handleOnline);
     window.addEventListener('offline', this.handleOffline);
+    window.addEventListener('blur', this.handleImmediateFlush);
+    window.addEventListener('pagehide', this.handleImmediateFlush);
+    document.addEventListener('visibilitychange', this.handleVisibilityChange);
   }
 
   async connect() {
@@ -178,14 +188,14 @@ export class WorkspaceYDocSyncClient {
     this.doc.off('update', this.handleDocUpdate);
     window.removeEventListener('online', this.handleOnline);
     window.removeEventListener('offline', this.handleOffline);
+    window.removeEventListener('blur', this.handleImmediateFlush);
+    window.removeEventListener('pagehide', this.handleImmediateFlush);
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    if (this.flushTimer) {
-      clearTimeout(this.flushTimer);
-      this.flushTimer = null;
-    }
+    this.clearFlushTimers();
     this.clearSocketOpenTimer();
     this.flushPendingUpdates();
     this.pendingUpdatesStartedAt = null;
@@ -220,6 +230,16 @@ export class WorkspaceYDocSyncClient {
     this.notify('offline');
   };
 
+  private readonly handleImmediateFlush = () => {
+    this.flushPendingUpdates();
+  };
+
+  private readonly handleVisibilityChange = () => {
+    if (document.visibilityState === 'hidden') {
+      this.flushPendingUpdates();
+    }
+  };
+
   private scheduleReconnect() {
     if (this.reconnectTimer) return;
     if (this.isOffline()) {
@@ -242,12 +262,22 @@ export class WorkspaceYDocSyncClient {
     this.pendingUpdates.push(update);
     this.pendingUpdatesStartedAt ??= Date.now();
     this.notify('connected');
-    if (this.flushTimer) return;
+    this.schedulePendingFlush();
+  }
 
+  private schedulePendingFlush() {
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer);
+    }
     this.flushTimer = setTimeout(() => {
       this.flushTimer = null;
       this.flushPendingUpdates();
-    }, WORKSPACE_YDOC_UPDATE_BATCH_MS);
+    }, WORKSPACE_YDOC_UPDATE_IDLE_MS);
+    if (this.maxFlushTimer) return;
+    this.maxFlushTimer = setTimeout(() => {
+      this.maxFlushTimer = null;
+      this.flushPendingUpdates();
+    }, WORKSPACE_YDOC_UPDATE_MAX_WAIT_MS);
   }
 
   private flushPendingUpdates() {
@@ -257,6 +287,7 @@ export class WorkspaceYDocSyncClient {
       this.notify('offline');
       return;
     }
+    this.clearFlushTimers();
     const updates = this.pendingUpdates;
     const startedAt = this.pendingUpdatesStartedAt;
     this.pendingUpdates = [];
@@ -280,12 +311,20 @@ export class WorkspaceYDocSyncClient {
   }
 
   private clearPendingUpdates() {
+    this.clearFlushTimers();
+    this.pendingUpdates = [];
+    this.pendingUpdatesStartedAt = null;
+  }
+
+  private clearFlushTimers() {
     if (this.flushTimer) {
       clearTimeout(this.flushTimer);
       this.flushTimer = null;
     }
-    this.pendingUpdates = [];
-    this.pendingUpdatesStartedAt = null;
+    if (this.maxFlushTimer) {
+      clearTimeout(this.maxFlushTimer);
+      this.maxFlushTimer = null;
+    }
   }
 
   private clearSocketOpenTimer() {
@@ -325,7 +364,8 @@ export class WorkspaceYDocSyncClient {
         state === 'connected' &&
         this.syncRoundTripComplete &&
         this.pendingUpdates.length === 0 &&
-        this.flushTimer == null,
+        this.flushTimer == null &&
+        this.maxFlushTimer == null,
     });
   }
 
@@ -379,10 +419,21 @@ export class WorkspaceYDocSyncClient {
     const encoder = encoding.createEncoder();
     encoding.writeVarUint(encoder, MESSAGE_SYNC);
     syncProtocol.readSyncMessage(decoder, encoder, this.doc, this);
-    this.syncRoundTripComplete = true;
     if (encoding.length(encoder) > 1) {
       this.sendImmediate(encoding.toUint8Array(encoder));
     }
+    let materialized = false;
+    this.doc.transact(() => {
+      materialized = materializeWorkspaceYDoc(this.doc);
+    }, WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN);
+    if (materialized) {
+      this.flushPendingUpdates();
+      this.syncRoundTripComplete = false;
+      this.sendSyncState();
+      this.notify('connected');
+      return;
+    }
+    this.syncRoundTripComplete = true;
     if (this.socket?.readyState === WebSocket.OPEN) {
       this.notify('connected');
     }

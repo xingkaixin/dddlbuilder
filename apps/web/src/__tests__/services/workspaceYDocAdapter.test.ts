@@ -105,6 +105,22 @@ const createSyncedDocs = () => {
   return { left, right };
 };
 
+const createSnapshotOnlySyncedDocs = () => {
+  const seed = new Y.Doc();
+  const draft = new Y.Map<unknown>();
+  const metadata = new Y.Map<unknown>();
+  metadata.set('updatedAt', 1);
+  draft.set('metadata', metadata);
+  draft.set('stateSnapshot', createState());
+  seed.getMap<Y.Map<unknown>>('drafts').set(DEFAULT_DRAFT_ID, draft);
+  const seedUpdate = Y.encodeStateAsUpdate(seed);
+  const left = new Y.Doc();
+  const right = new Y.Doc();
+  Y.applyUpdate(left, seedUpdate);
+  Y.applyUpdate(right, seedUpdate);
+  return { left, right };
+};
+
 const mergeDocs = (left: Y.Doc, right: Y.Doc) => {
   const leftUpdate = Y.encodeStateAsUpdate(left);
   const rightUpdate = Y.encodeStateAsUpdate(right);
@@ -172,6 +188,30 @@ describe('workspaceYDocAdapter', () => {
 
     expect(getFirstFieldId(doc)).toBe(firstFieldId);
     expect(getDraftRecordFromYDoc(doc, DEFAULT_DRAFT_ID)?.state.rows[0].fieldName).toBe('user_id');
+  });
+
+  it('merges unrelated edits when the remote seed only has a snapshot', () => {
+    const { left, right } = createSnapshotOnlySyncedDocs();
+    const state = createState();
+
+    upsertDraftInYDoc(left, DEFAULT_DRAFT_ID, {
+      state: createState({
+        rows: [{ ...state.rows[0], fieldName: 'user_id' }, state.rows[1]],
+      }),
+      updatedAt: 2,
+    });
+    upsertDraftInYDoc(right, DEFAULT_DRAFT_ID, {
+      state: createState({ tableName: 'accounts' }),
+      updatedAt: 3,
+    });
+    mergeDocs(left, right);
+
+    expect(readDefaultDraftState(left)?.tableName).toBe('accounts');
+    expect(readDefaultDraftState(left)?.rows.map((row) => row.fieldName)).toEqual([
+      'user_id',
+      'email',
+    ]);
+    expect(readDefaultDraftState(right)).toEqual(readDefaultDraftState(left));
   });
 
   it('does not emit updates when applying the same table state', () => {
@@ -246,6 +286,32 @@ describe('workspaceYDocAdapter', () => {
     expect(readDefaultDraftState(left)?.rows[0]).toMatchObject({
       fieldName: 'user_id',
       fieldType: 'varchar(32)',
+    });
+    expect(readDefaultDraftState(right)).toEqual(readDefaultDraftState(left));
+  });
+
+  it('merges concurrent table name and field name edits', () => {
+    const { left, right } = createSyncedDocs();
+    const state = createState();
+
+    upsertDraftInYDoc(left, DEFAULT_DRAFT_ID, {
+      state: createState({
+        tableName: 'accounts',
+      }),
+      updatedAt: 2,
+    });
+    upsertDraftInYDoc(right, DEFAULT_DRAFT_ID, {
+      state: createState({
+        rows: [{ ...state.rows[0], fieldName: 'user_id' }, state.rows[1]],
+      }),
+      updatedAt: 3,
+    });
+
+    mergeDocs(left, right);
+
+    expect(readDefaultDraftState(left)).toMatchObject({
+      tableName: 'accounts',
+      rows: [expect.objectContaining({ fieldName: 'user_id' }), state.rows[1]],
     });
     expect(readDefaultDraftState(right)).toEqual(readDefaultDraftState(left));
   });

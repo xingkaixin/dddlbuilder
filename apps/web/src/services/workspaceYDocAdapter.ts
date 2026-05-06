@@ -15,8 +15,12 @@ import type { FolderTreeNode } from '@/utils/tableFolders';
 import { DEFAULT_DRAFT_ID } from '@/utils/workspaceStateDb';
 
 export const WORKSPACE_YDOC_SCHEMA_VERSION = 1;
+export const WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN = { source: 'workspace-local-edit' } as const;
 
 type JsonRecord = Record<string, unknown>;
+type ApplyPersistedStateOptions = {
+  compactSnapshotBase?: boolean;
+};
 
 export type WorkspaceYDocDraftRecord = {
   state: PersistedState;
@@ -114,6 +118,18 @@ const writeJsonMap = (map: Y.Map<unknown>, values: JsonRecord) => {
   }
 };
 
+const writeJsonMapPatch = (map: Y.Map<unknown>, values: JsonRecord) => {
+  for (const [key, value] of Object.entries(values)) {
+    if (value === undefined) {
+      map.delete(key);
+      continue;
+    }
+    if (stableStringify(map.get(key)) !== stableStringify(value)) {
+      map.set(key, value);
+    }
+  }
+};
+
 const writeStateSnapshot = (tableDoc: Y.Map<unknown>, state: PersistedState) => {
   const nextSnapshot = JSON.parse(JSON.stringify(state));
   if (stableStringify(tableDoc.get('stateSnapshot')) !== stableStringify(nextSnapshot)) {
@@ -145,6 +161,18 @@ const readJsonMap = (map: Y.Map<unknown> | undefined): JsonRecord => {
     record[key] = value;
   }
   return record;
+};
+
+const uniqueValues = <T>(values: T[]) => Array.from(new Set(values));
+
+const getFieldOrder = (tableDoc: Y.Map<unknown>) => {
+  const fieldOrder = tableDoc.get('fieldOrder');
+  return fieldOrder instanceof Y.Array ? uniqueValues(fieldOrder.toArray()) : [];
+};
+
+const getFields = (tableDoc: Y.Map<unknown>) => {
+  const fields = tableDoc.get('fields');
+  return fields instanceof Y.Map ? (fields as Y.Map<Y.Map<unknown>>) : null;
 };
 
 const syncStringArray = (array: Y.Array<string>, values: string[]) => {
@@ -186,34 +214,112 @@ const uniqueFieldId = (baseId: string, used: Set<string>) => {
   return `${baseId}_${suffix}`;
 };
 
-const readFieldRow = (fieldMap: Y.Map<unknown>, fallbackOrder: number): FieldRow => {
+const fallbackFieldIds = (rows: FieldRow[]) => {
+  const used = new Set<string>();
+  return rows.map((row, index) => {
+    const fieldId = uniqueFieldId(fieldIdForRow(row, index), used);
+    used.add(fieldId);
+    return fieldId;
+  });
+};
+
+const readFieldRow = (
+  fieldMap: Y.Map<unknown>,
+  fallbackOrder: number,
+  fallbackRow?: FieldRow,
+): FieldRow => {
   const row = readJsonMap(fieldMap) as Partial<FieldRow>;
+  const fallback: Partial<FieldRow> = fallbackRow ?? {};
   return {
-    order: typeof row.order === 'number' ? row.order : fallbackOrder,
-    fieldName: typeof row.fieldName === 'string' ? row.fieldName : '',
-    fieldType: typeof row.fieldType === 'string' ? row.fieldType : '',
-    fieldComment: typeof row.fieldComment === 'string' ? row.fieldComment : '',
-    nullable: typeof row.nullable === 'string' ? row.nullable : '是',
-    ...(typeof row.defaultKind === 'string' ? { defaultKind: row.defaultKind } : {}),
-    ...(typeof row.defaultValue === 'string' ? { defaultValue: row.defaultValue } : {}),
-    ...(typeof row.onUpdate === 'string' ? { onUpdate: row.onUpdate } : {}),
-    ...(Array.isArray(row.enumMeta) ? { enumMeta: row.enumMeta } : {}),
+    order:
+      typeof row.order === 'number'
+        ? row.order
+        : typeof fallback.order === 'number'
+          ? fallback.order
+          : fallbackOrder,
+    fieldName:
+      typeof row.fieldName === 'string'
+        ? row.fieldName
+        : typeof fallback.fieldName === 'string'
+          ? fallback.fieldName
+          : '',
+    fieldType:
+      typeof row.fieldType === 'string'
+        ? row.fieldType
+        : typeof fallback.fieldType === 'string'
+          ? fallback.fieldType
+          : '',
+    fieldComment:
+      typeof row.fieldComment === 'string'
+        ? row.fieldComment
+        : typeof fallback.fieldComment === 'string'
+          ? fallback.fieldComment
+          : '',
+    nullable:
+      typeof row.nullable === 'string'
+        ? row.nullable
+        : typeof fallback.nullable === 'string'
+          ? fallback.nullable
+          : '是',
+    ...(typeof row.defaultKind === 'string'
+      ? { defaultKind: row.defaultKind }
+      : typeof fallback.defaultKind === 'string'
+        ? { defaultKind: fallback.defaultKind }
+        : {}),
+    ...(typeof row.defaultValue === 'string'
+      ? { defaultValue: row.defaultValue }
+      : typeof fallback.defaultValue === 'string'
+        ? { defaultValue: fallback.defaultValue }
+        : {}),
+    ...(typeof row.onUpdate === 'string'
+      ? { onUpdate: row.onUpdate }
+      : typeof fallback.onUpdate === 'string'
+        ? { onUpdate: fallback.onUpdate }
+        : {}),
+    ...(Array.isArray(row.enumMeta)
+      ? { enumMeta: row.enumMeta }
+      : Array.isArray(fallback.enumMeta)
+        ? { enumMeta: fallback.enumMeta }
+        : {}),
   };
 };
 
-const chooseFieldIds = (tableDoc: Y.Map<unknown>, rows: FieldRow[]) => {
-  const fieldOrder = ensureArray(tableDoc, 'fieldOrder').toArray();
-  const fields = ensureMap(tableDoc, 'fields') as Y.Map<Y.Map<unknown>>;
+const addFieldIdCandidate = (
+  byIdentity: Map<string, string[]>,
+  byOrder: Map<number, string[]>,
+  row: FieldRow,
+  fieldId: string,
+) => {
+  const identity = rowIdentity(row);
+  byIdentity.set(identity, [...(byIdentity.get(identity) ?? []), fieldId]);
+  byOrder.set(row.order, [...(byOrder.get(row.order) ?? []), fieldId]);
+};
+
+const chooseFieldIds = (
+  tableDoc: Y.Map<unknown>,
+  rows: FieldRow[],
+  fallbackRows: FieldRow[] = [],
+) => {
+  const fieldOrder = getFieldOrder(tableDoc);
+  const fields = getFields(tableDoc);
   const existingByIdentity = new Map<string, string[]>();
   const existingByOrder = new Map<number, string[]>();
 
   fieldOrder.forEach((fieldId, index) => {
-    const fieldMap = fields.get(fieldId);
+    const fieldMap = fields?.get(fieldId);
     if (!fieldMap) return;
-    const row = readFieldRow(fieldMap, index + 1);
-    const identity = rowIdentity(row);
-    existingByIdentity.set(identity, [...(existingByIdentity.get(identity) ?? []), fieldId]);
-    existingByOrder.set(row.order, [...(existingByOrder.get(row.order) ?? []), fieldId]);
+    addFieldIdCandidate(
+      existingByIdentity,
+      existingByOrder,
+      readFieldRow(fieldMap, index + 1),
+      fieldId,
+    );
+  });
+
+  const fieldIds = fallbackFieldIds(fallbackRows);
+  fallbackRows.forEach((row, index) => {
+    const fieldId = fieldIds[index];
+    addFieldIdCandidate(existingByIdentity, existingByOrder, row, fieldId);
   });
 
   const used = new Set<string>();
@@ -270,8 +376,7 @@ const readOrderedMap = <T>(parent: Y.Map<any>, mapKey: string, orderKey: string)
   const map = parent.get(mapKey);
   const order = parent.get(orderKey);
   if (!(map instanceof Y.Map) || !(order instanceof Y.Array)) return [];
-  return order
-    .toArray()
+  return uniqueValues(order.toArray())
     .map((id) => {
       const itemMap = map.get(String(id));
       return itemMap instanceof Y.Map ? (readJsonMap(itemMap) as T) : null;
@@ -286,56 +391,190 @@ export const ensureWorkspaceYDocMeta = (doc: Y.Doc) => {
   }
 };
 
-export const applyPersistedStateToTableDoc = (tableDoc: Y.Map<unknown>, state: PersistedState) => {
-  writeStateSnapshot(tableDoc, state);
+export const applyPersistedStateToTableDoc = (
+  tableDoc: Y.Map<unknown>,
+  state: PersistedState,
+  options: ApplyPersistedStateOptions = {},
+) => {
+  const previousSnapshot = readStateSnapshot(tableDoc);
+  const compactSnapshotBase = options.compactSnapshotBase === true;
+  const existingScalar = tableDoc.get('scalar');
+  const scalarMap = existingScalar instanceof Y.Map ? existingScalar : null;
+  if (!compactSnapshotBase || !previousSnapshot) {
+    writeStateSnapshot(tableDoc, state);
+  }
 
-  const scalar = ensureMap(tableDoc, 'scalar');
   const scalarValues: JsonRecord = {};
   for (const key of TABLE_SCALAR_KEYS) {
+    if (
+      previousSnapshot &&
+      stableStringify(previousSnapshot[key]) === stableStringify(state[key])
+    ) {
+      if (
+        compactSnapshotBase &&
+        scalarMap?.has(key) &&
+        stableStringify(scalarMap.get(key)) === stableStringify(state[key])
+      ) {
+        scalarValues[key] = undefined;
+      }
+      if (!scalarMap?.has(key) || compactSnapshotBase) {
+        continue;
+      }
+    }
     scalarValues[key] = state[key];
   }
-  writeJsonMap(scalar, scalarValues);
-
-  const fields = ensureMap(tableDoc, 'fields') as Y.Map<Y.Map<unknown>>;
-  const fieldOrder = ensureArray(tableDoc, 'fieldOrder');
-  const fieldIds = chooseFieldIds(tableDoc, state.rows ?? []);
-  const activeFieldIds = new Set(fieldIds);
-  for (const fieldId of Array.from(fields.keys())) {
-    if (!activeFieldIds.has(fieldId)) {
-      fields.delete(fieldId);
-    }
+  if (!previousSnapshot) {
+    const scalar = ensureMap(tableDoc, 'scalar');
+    writeJsonMap(scalar, scalarValues);
+  } else if (Object.keys(scalarValues).length > 0) {
+    const scalar = ensureMap(tableDoc, 'scalar');
+    writeJsonMapPatch(scalar, scalarValues);
   }
-  (state.rows ?? []).forEach((row, index) => {
-    const fieldMap = ensureMap(fields, fieldIds[index]);
+
+  const previousRows = previousSnapshot?.rows ?? [];
+  const fieldIds = chooseFieldIds(tableDoc, state.rows ?? [], previousRows);
+  const previousFieldIds = fallbackFieldIds(previousRows);
+  const existingFields = getFields(tableDoc);
+  const fieldPatches = (state.rows ?? []).map((row, index) => {
+    const fieldMap = existingFields?.get(fieldIds[index]);
     const values: JsonRecord = {};
     for (const key of FIELD_KEYS) {
+      if (
+        previousRows[index] &&
+        stableStringify(previousRows[index][key]) === stableStringify(row[key])
+      ) {
+        if (
+          compactSnapshotBase &&
+          fieldMap?.has(key) &&
+          stableStringify(fieldMap.get(key)) === stableStringify(row[key])
+        ) {
+          values[key] = undefined;
+        }
+        if (!fieldMap?.has(key) || compactSnapshotBase) {
+          continue;
+        }
+      }
       values[key] = row[key];
     }
-    writeJsonMap(fieldMap, values);
+    return values;
   });
-  syncStringArray(fieldOrder, fieldIds);
+  const hasFieldValueChanges = fieldPatches.some((values) =>
+    Object.values(values).some((value) => value !== undefined),
+  );
+  const hasFieldStructuralChanges =
+    previousRows.length !== (state.rows ?? []).length ||
+    fieldIds.some((fieldId, index) => fieldId !== previousFieldIds[index]);
+  if (
+    compactSnapshotBase &&
+    previousSnapshot &&
+    !hasFieldValueChanges &&
+    !hasFieldStructuralChanges
+  ) {
+    if (existingFields || tableDoc.get('fieldOrder') instanceof Y.Array) {
+      tableDoc.delete('fields');
+      tableDoc.delete('fieldOrder');
+    }
+  }
+  const shouldWriteFields =
+    !previousSnapshot ||
+    hasFieldValueChanges ||
+    hasFieldStructuralChanges ||
+    (!compactSnapshotBase && fieldPatches.some((values) => Object.keys(values).length > 0));
 
-  writeOrderedMap(tableDoc, 'indexes', 'indexOrder', state.indexes ?? []);
-  writeOrderedMap(tableDoc, 'foreignKeys', 'foreignKeyOrder', state.foreignKeys ?? []);
+  if (shouldWriteFields) {
+    const fields = ensureMap(tableDoc, 'fields') as Y.Map<Y.Map<unknown>>;
+    const fieldOrder = ensureArray(tableDoc, 'fieldOrder');
+    const activeFieldIds = new Set(fieldIds);
+    for (const fieldId of Array.from(fields.keys())) {
+      if (!activeFieldIds.has(fieldId)) {
+        fields.delete(fieldId);
+      }
+    }
+    (state.rows ?? []).forEach((_, index) => {
+      const fieldMap = ensureMap(fields, fieldIds[index]);
+      const values = fieldPatches[index];
+      if (!previousRows[index]) {
+        writeJsonMap(fieldMap, values);
+      } else if (Object.keys(values).length > 0) {
+        writeJsonMapPatch(fieldMap, values);
+      }
+    });
+    syncStringArray(fieldOrder, fieldIds);
+  }
+
+  const hasIndexDoc =
+    tableDoc.get('indexes') instanceof Y.Map || tableDoc.get('indexOrder') instanceof Y.Array;
+  if (
+    !previousSnapshot ||
+    hasIndexDoc ||
+    stableStringify(previousSnapshot.indexes ?? []) !== stableStringify(state.indexes ?? [])
+  ) {
+    writeOrderedMap(tableDoc, 'indexes', 'indexOrder', state.indexes ?? []);
+  }
+  const hasForeignKeyDoc =
+    tableDoc.get('foreignKeys') instanceof Y.Map ||
+    tableDoc.get('foreignKeyOrder') instanceof Y.Array;
+  if (
+    !previousSnapshot ||
+    hasForeignKeyDoc ||
+    stableStringify(previousSnapshot.foreignKeys ?? []) !== stableStringify(state.foreignKeys ?? [])
+  ) {
+    writeOrderedMap(tableDoc, 'foreignKeys', 'foreignKeyOrder', state.foreignKeys ?? []);
+  }
+};
+
+const materializeTableDoc = (tableDoc: Y.Map<unknown>) => {
+  if (hasFineGrainedTableDoc(tableDoc)) return false;
+  const stateSnapshot = readStateSnapshot(tableDoc);
+  if (!stateSnapshot) return false;
+  applyPersistedStateToTableDoc(tableDoc, stateSnapshot);
+  return true;
+};
+
+export const materializeWorkspaceYDoc = (doc: Y.Doc) => {
+  const { drafts, savedTables, savedDrafts } = getWorkspaceRoot(doc);
+  let materialized = false;
+  for (const tableDoc of drafts.values()) {
+    materialized = materializeTableDoc(tableDoc) || materialized;
+  }
+  for (const tableDoc of savedTables.values()) {
+    materialized = materializeTableDoc(tableDoc) || materialized;
+  }
+  for (const tableDoc of savedDrafts.values()) {
+    materialized = materializeTableDoc(tableDoc) || materialized;
+  }
+  return materialized;
 };
 
 export const tableDocToPersistedState = (tableDoc: Y.Map<unknown>): PersistedState => {
+  const stateSnapshot = readStateSnapshot(tableDoc);
   if (!hasFineGrainedTableDoc(tableDoc)) {
-    const stateSnapshot = readStateSnapshot(tableDoc);
     if (stateSnapshot) return stateSnapshot;
   }
 
-  const scalar = ensureMap(tableDoc, 'scalar');
-  const state = readJsonMap(scalar) as Partial<PersistedState>;
-  const fields = ensureMap(tableDoc, 'fields') as Y.Map<Y.Map<unknown>>;
-  const fieldOrder = ensureArray(tableDoc, 'fieldOrder').toArray();
-  const rows = fieldOrder
-    .map((fieldId, index) => {
-      const fieldMap = fields.get(fieldId);
-      return fieldMap ? readFieldRow(fieldMap, index + 1) : null;
-    })
-    .filter((row): row is FieldRow => row != null)
-    .map((row, index) => ({ ...row, order: index + 1 }));
+  const scalarValue = tableDoc.get('scalar');
+  const state = {
+    ...stateSnapshot,
+    ...(scalarValue instanceof Y.Map ? readJsonMap(scalarValue) : {}),
+  } as Partial<PersistedState>;
+  const fields = getFields(tableDoc);
+  const fieldOrder = getFieldOrder(tableDoc);
+  const rows =
+    fields && fieldOrder.length > 0
+      ? fieldOrder
+          .map((fieldId, index) => {
+            const fieldMap = fields.get(fieldId);
+            return fieldMap ? readFieldRow(fieldMap, index + 1, stateSnapshot?.rows[index]) : null;
+          })
+          .filter((row): row is FieldRow => row != null)
+          .map((row, index) => ({ ...row, order: index + 1 }))
+      : (stateSnapshot?.rows ?? []);
+  const indexes = readOrderedMap<IndexDefinition>(tableDoc, 'indexes', 'indexOrder');
+  const foreignKeys = readOrderedMap<ForeignKeyDefinition>(
+    tableDoc,
+    'foreignKeys',
+    'foreignKeyOrder',
+  );
 
   return {
     objectType: state.objectType === 'view' ? 'view' : 'table',
@@ -350,7 +589,7 @@ export const tableDocToPersistedState = (tableDoc: Y.Map<unknown>): PersistedSta
     addCount: typeof state.addCount === 'number' ? state.addCount : 12,
     indexInput: typeof state.indexInput === 'string' ? state.indexInput : '',
     currentIndexFields: Array.isArray(state.currentIndexFields) ? state.currentIndexFields : [],
-    indexes: readOrderedMap<IndexDefinition>(tableDoc, 'indexes', 'indexOrder'),
+    indexes: indexes.length > 0 ? indexes : (state.indexes ?? []),
     authInput: typeof state.authInput === 'string' ? state.authInput : '',
     authObjects: Array.isArray(state.authObjects) ? state.authObjects : [],
     ...(state.citusShardingConfig ? { citusShardingConfig: state.citusShardingConfig } : {}),
@@ -358,12 +597,11 @@ export const tableDocToPersistedState = (tableDoc: Y.Map<unknown>): PersistedSta
     ...(state.tableMiscConfig ? { tableMiscConfig: state.tableMiscConfig } : {}),
     ...(state.fieldTableViewConfig ? { fieldTableViewConfig: state.fieldTableViewConfig } : {}),
     ...(() => {
-      const foreignKeys = readOrderedMap<ForeignKeyDefinition>(
-        tableDoc,
-        'foreignKeys',
-        'foreignKeyOrder',
-      );
-      return foreignKeys.length > 0 ? { foreignKeys } : {};
+      return foreignKeys.length > 0
+        ? { foreignKeys }
+        : state.foreignKeys && state.foreignKeys.length > 0
+          ? { foreignKeys: state.foreignKeys }
+          : {};
     })(),
   } as PersistedState;
 };
@@ -373,9 +611,10 @@ const upsertTableRecord = (
   key: string,
   state: PersistedState,
   metadata: JsonRecord,
+  options?: ApplyPersistedStateOptions,
 ) => {
   const tableDoc = ensureMap(collection, key);
-  applyPersistedStateToTableDoc(tableDoc, state);
+  applyPersistedStateToTableDoc(tableDoc, state, options);
   writeJsonMap(ensureMap(tableDoc, 'metadata'), metadata);
 };
 
@@ -385,13 +624,20 @@ export const upsertDraftInYDoc = (
   doc: Y.Doc,
   draftId: string,
   record: WorkspaceYDocDraftRecord,
+  options?: ApplyPersistedStateOptions,
 ) => {
   const { drafts } = getWorkspaceRoot(doc);
-  upsertTableRecord(drafts, draftId, record.state, {
-    createdAt: record.createdAt,
-    updatedAt: record.updatedAt,
-    folderId: record.folderId,
-  });
+  upsertTableRecord(
+    drafts,
+    draftId,
+    record.state,
+    {
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+      folderId: record.folderId,
+    },
+    options,
+  );
 };
 
 export const deleteDraftFromYDoc = (doc: Y.Doc, draftId: string) => {
@@ -422,15 +668,25 @@ export const listDraftRecordsFromYDoc = (doc: Y.Doc) =>
     },
   }));
 
-export const upsertSavedTableInYDoc = (doc: Y.Doc, record: SavedTableRecord) => {
+export const upsertSavedTableInYDoc = (
+  doc: Y.Doc,
+  record: SavedTableRecord,
+  options?: ApplyPersistedStateOptions,
+) => {
   const { savedTables } = getWorkspaceRoot(doc);
-  upsertTableRecord(savedTables, record.normalizedName, record.state, {
-    normalizedName: record.normalizedName,
-    name: record.name,
-    createdAt: record.createdAt,
-    updatedAt: record.updatedAt,
-    folderId: record.folderId,
-  });
+  upsertTableRecord(
+    savedTables,
+    record.normalizedName,
+    record.state,
+    {
+      normalizedName: record.normalizedName,
+      name: record.name,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+      folderId: record.folderId,
+    },
+    options,
+  );
 };
 
 export const deleteSavedTableFromYDoc = (doc: Y.Doc, normalizedName: string) => {
@@ -473,14 +729,21 @@ export const upsertSavedDraftInYDoc = (
   doc: Y.Doc,
   normalizedName: string,
   record: SavedTableDraftRecord,
+  options?: ApplyPersistedStateOptions,
 ) => {
   const { savedDrafts } = getWorkspaceRoot(doc);
-  upsertTableRecord(savedDrafts, normalizedName, record.state, {
+  upsertTableRecord(
+    savedDrafts,
     normalizedName,
-    tableName: record.tableName,
-    baseSignature: record.baseSignature,
-    updatedAt: record.updatedAt,
-  });
+    record.state,
+    {
+      normalizedName,
+      tableName: record.tableName,
+      baseSignature: record.baseSignature,
+      updatedAt: record.updatedAt,
+    },
+    options,
+  );
 };
 
 export const deleteSavedDraftFromYDoc = (doc: Y.Doc, normalizedName: string) => {
@@ -713,10 +976,13 @@ export const getStateForWorkspaceSource = (
   return getSavedTableFromYDoc(doc, source.normalizedName)?.state ?? null;
 };
 
-export const subscribeWorkspaceYDoc = (doc: Y.Doc, notify: () => void) => {
+export const subscribeWorkspaceYDoc = (doc: Y.Doc, notify: (origin: unknown) => void) => {
   const roots = Object.values(getWorkspaceRoot(doc));
-  roots.forEach((root) => root.observeDeep(notify));
+  const handleChange = (_events: unknown, transaction: Y.Transaction) => {
+    notify(transaction.origin);
+  };
+  roots.forEach((root) => root.observeDeep(handleChange));
   return () => {
-    roots.forEach((root) => root.unobserveDeep(notify));
+    roots.forEach((root) => root.unobserveDeep(handleChange));
   };
 };

@@ -457,6 +457,37 @@ describe('usePersistedState', () => {
     expect(await listWorkspaceOutboxItems('ws-1')).toHaveLength(0);
   });
 
+  it('本地 YDoc 保存回声应保留当前编辑态入口', async () => {
+    const doc = new Y.Doc();
+    mockSignedInWorkspaceYDoc(doc);
+    const initialState = createState('initial_from_ydoc');
+    const localSavedState = createState('local_saved_echo');
+    upsertDraftInYDoc(doc, 'default', { state: initialState, updatedAt: 100 });
+
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+      expect(result.current.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
+      expect(result.current.persistedState?.tableName).toBe('initial_from_ydoc');
+    });
+
+    act(() => {
+      result.current.saveState({
+        state: localSavedState,
+        source: { kind: 'draft', draftId: 'default' },
+        isDirty: false,
+      });
+    });
+
+    await waitFor(() => {
+      expect(getDraftRecordFromYDoc(doc, 'default')?.state.tableName).toBe('local_saved_echo');
+    });
+    expect(result.current.getDraftState('default')?.tableName).toBe('local_saved_echo');
+    expect(result.current.persistedState?.tableName).toBe('initial_from_ydoc');
+  });
+
   it('YDoc 结构变更合入时应静默应用最新状态', async () => {
     const doc = new Y.Doc();
     mockSignedInWorkspaceYDoc(doc);

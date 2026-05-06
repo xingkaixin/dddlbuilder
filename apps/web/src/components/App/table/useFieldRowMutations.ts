@@ -50,6 +50,12 @@ export function useFieldRowMutations({ rows, setRows, onFieldRename }: UseFieldR
         newRows[rowIndex] = row;
         return newRows;
       });
+      window.setTimeout(() => {
+        window.dispatchEvent(new Event('ddlbuilder:field-rows-committed'));
+      }, 0);
+      window.setTimeout(() => {
+        window.dispatchEvent(new Event('ddlbuilder:field-rows-committed'));
+      }, 250);
     },
     [rows, setRows, onFieldRename],
   );

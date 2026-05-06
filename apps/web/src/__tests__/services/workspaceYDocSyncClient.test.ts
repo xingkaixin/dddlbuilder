@@ -172,6 +172,35 @@ describe('WorkspaceYDocSyncClient', () => {
     client.destroy();
   });
 
+  it('waits for an idle window before sending queued local updates', async () => {
+    const doc = new Y.Doc();
+    const client = new WorkspaceYDocSyncClient('ws-1', doc, vi.fn());
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    await client.connect();
+    const socket = firstSocket();
+    socket.open();
+
+    const fields = doc.getMap('fields');
+    fields.set('field-1', 'value-1');
+    vi.advanceTimersByTime(WORKSPACE_YDOC_UPDATE_BATCH_MS - 1);
+    expect(socket.sent).toHaveLength(2);
+
+    fields.set('field-2', 'value-2');
+    vi.advanceTimersByTime(1);
+    expect(socket.sent).toHaveLength(2);
+
+    vi.advanceTimersByTime(WORKSPACE_YDOC_UPDATE_BATCH_MS);
+    expect(socket.sent).toHaveLength(3);
+
+    const peer = new Y.Doc();
+    applySyncMessage(peer, sentMessage(socket, 2));
+    expect(peer.getMap('fields').get('field-1')).toBe('value-1');
+    expect(peer.getMap('fields').get('field-2')).toBe('value-2');
+
+    client.destroy();
+  });
+
   it('keeps offline status and waits for full-state sync when the socket remains open offline', async () => {
     const doc = new Y.Doc();
     const statuses: WorkspaceYDocConnectionStatus[] = [];

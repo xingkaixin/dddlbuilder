@@ -60,6 +60,17 @@ const ensureArray = (parent: Y.Map<any>, key: string) => {
   return next;
 };
 
+const stableStringify = (value: unknown): string => {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  const record = value as JsonRecord;
+  return `{${Object.keys(record)
+    .filter((key) => record[key] !== undefined)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+    .join(',')}}`;
+};
+
 const writeJsonMap = (map: Y.Map<unknown>, values: JsonRecord) => {
   const keys = new Set(Object.keys(values));
   for (const key of Array.from(map.keys())) {
@@ -68,7 +79,7 @@ const writeJsonMap = (map: Y.Map<unknown>, values: JsonRecord) => {
   for (const [key, value] of Object.entries(values)) {
     if (value === undefined) {
       map.delete(key);
-    } else {
+    } else if (stableStringify(map.get(key)) !== stableStringify(value)) {
       map.set(key, value);
     }
   }
@@ -104,16 +115,6 @@ const hasFineGrainedTableDoc = (tableDoc: Y.Map<unknown>) =>
   tableDoc.get('foreignKeys') instanceof Y.Map ||
   tableDoc.get('foreignKeyOrder') instanceof Y.Array;
 
-const stableStringify = (value: unknown): string => {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
-  const record = value as JsonRecord;
-  return `{${Object.keys(record)
-    .sort()
-    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
-    .join(',')}}`;
-};
-
 const hashString = (value: string) => {
   let hash = 5381;
   for (let index = 0; index < value.length; index += 1) {
@@ -122,14 +123,92 @@ const hashString = (value: string) => {
   return (hash >>> 0).toString(36);
 };
 
-const fieldIdForRow = (row: FieldRow, index: number) => {
+const rowIdentity = (row: FieldRow) => {
   const { order: _order, ...rest } = row;
-  return `field_${index + 1}_${hashString(stableStringify(rest))}`;
+  return stableStringify(rest);
+};
+
+const fieldIdForRow = (row: FieldRow, index: number) => {
+  return `field_${index + 1}_${hashString(rowIdentity(row))}`;
+};
+
+const uniqueFieldId = (baseId: string, used: Set<string>) => {
+  if (!used.has(baseId)) return baseId;
+  let suffix = 2;
+  while (used.has(`${baseId}_${suffix}`)) {
+    suffix += 1;
+  }
+  return `${baseId}_${suffix}`;
 };
 
 const syncStringArray = (array: Y.Array<string>, values: string[]) => {
+  const current = array.toArray();
+  if (
+    current.length === values.length &&
+    current.every((value, index) => value === values[index])
+  ) {
+    return;
+  }
   array.delete(0, array.length);
   if (values.length > 0) array.insert(0, values);
+};
+
+const readFieldRow = (fieldMap: Y.Map<unknown>, fallbackOrder: number): FieldRow => {
+  const row = readJsonMap(fieldMap) as Partial<FieldRow>;
+  return {
+    order: typeof row.order === 'number' ? row.order : fallbackOrder,
+    fieldName: typeof row.fieldName === 'string' ? row.fieldName : '',
+    fieldType: typeof row.fieldType === 'string' ? row.fieldType : '',
+    fieldComment: typeof row.fieldComment === 'string' ? row.fieldComment : '',
+    nullable: typeof row.nullable === 'string' ? row.nullable : '是',
+    ...(typeof row.defaultKind === 'string' ? { defaultKind: row.defaultKind } : {}),
+    ...(typeof row.defaultValue === 'string' ? { defaultValue: row.defaultValue } : {}),
+    ...(typeof row.onUpdate === 'string' ? { onUpdate: row.onUpdate } : {}),
+    ...(Array.isArray(row.enumMeta) ? { enumMeta: row.enumMeta } : {}),
+  };
+};
+
+const chooseFieldIds = (tableDoc: Y.Map<unknown>, rows: FieldRow[]) => {
+  const fieldOrder = ensureArray(tableDoc, 'fieldOrder').toArray();
+  const fields = ensureMap(tableDoc, 'fields') as Y.Map<Y.Map<unknown>>;
+  const existingByIdentity = new Map<string, string[]>();
+  const existingByOrder = new Map<number, string[]>();
+
+  fieldOrder.forEach((fieldId, index) => {
+    const fieldMap = fields.get(fieldId);
+    if (!fieldMap) return;
+    const row = readFieldRow(fieldMap, index + 1);
+    const identity = rowIdentity(row);
+    existingByIdentity.set(identity, [...(existingByIdentity.get(identity) ?? []), fieldId]);
+    existingByOrder.set(row.order, [...(existingByOrder.get(row.order) ?? []), fieldId]);
+  });
+
+  const used = new Set<string>();
+  return rows.map((row, index) => {
+    const identityCandidates = existingByIdentity.get(rowIdentity(row)) ?? [];
+    const byIdentity = identityCandidates.find((fieldId) => !used.has(fieldId));
+    if (byIdentity) {
+      used.add(byIdentity);
+      return byIdentity;
+    }
+
+    const orderCandidates = existingByOrder.get(row.order) ?? [];
+    const byOrder = orderCandidates.find((fieldId) => !used.has(fieldId));
+    if (byOrder) {
+      used.add(byOrder);
+      return byOrder;
+    }
+
+    const byPosition = fieldOrder[index];
+    if (byPosition && !used.has(byPosition)) {
+      used.add(byPosition);
+      return byPosition;
+    }
+
+    const generated = uniqueFieldId(fieldIdForRow(row, index), used);
+    used.add(generated);
+    return generated;
+  });
 };
 
 const writeOrderedMap = <T extends { id: string }>(
@@ -141,6 +220,12 @@ const writeOrderedMap = <T extends { id: string }>(
   const map = ensureMap(parent, mapKey);
   const order = ensureArray(parent, orderKey);
   const ids = values.map((value) => value.id);
+  const idSet = new Set(ids);
+  for (const key of Array.from(map.keys())) {
+    if (!idSet.has(key)) {
+      map.delete(key);
+    }
+  }
   for (const value of values) {
     writeJsonMap(ensureMap(map, value.id), value as JsonRecord);
   }
@@ -160,21 +245,6 @@ const readOrderedMap = <T>(parent: Y.Map<any>, mapKey: string, orderKey: string)
     .filter((item): item is T => item != null);
 };
 
-const readFieldRow = (fieldMap: Y.Map<unknown>, fallbackOrder: number): FieldRow => {
-  const row = readJsonMap(fieldMap) as Partial<FieldRow>;
-  return {
-    order: typeof row.order === 'number' ? row.order : fallbackOrder,
-    fieldName: typeof row.fieldName === 'string' ? row.fieldName : '',
-    fieldType: typeof row.fieldType === 'string' ? row.fieldType : '',
-    fieldComment: typeof row.fieldComment === 'string' ? row.fieldComment : '',
-    nullable: typeof row.nullable === 'string' ? row.nullable : '是',
-    ...(typeof row.defaultKind === 'string' ? { defaultKind: row.defaultKind } : {}),
-    ...(typeof row.defaultValue === 'string' ? { defaultValue: row.defaultValue } : {}),
-    ...(typeof row.onUpdate === 'string' ? { onUpdate: row.onUpdate } : {}),
-    ...(Array.isArray(row.enumMeta) ? { enumMeta: row.enumMeta } : {}),
-  };
-};
-
 const applyPersistedStateToTableDoc = (tableDoc: Y.Map<unknown>, state: PersistedState) => {
   writeStateSnapshot(tableDoc, state);
 
@@ -185,7 +255,13 @@ const applyPersistedStateToTableDoc = (tableDoc: Y.Map<unknown>, state: Persiste
   writeJsonMap(ensureMap(tableDoc, 'scalar'), scalarValues);
 
   const fields = ensureMap(tableDoc, 'fields');
-  const fieldIds = (state.rows ?? []).map(fieldIdForRow);
+  const fieldIds = chooseFieldIds(tableDoc, state.rows ?? []);
+  const activeFieldIds = new Set(fieldIds);
+  for (const fieldId of Array.from(fields.keys())) {
+    if (!activeFieldIds.has(fieldId)) {
+      fields.delete(fieldId);
+    }
+  }
   (state.rows ?? []).forEach((row, index) => {
     const values: JsonRecord = {};
     for (const key of FIELD_KEYS) {
