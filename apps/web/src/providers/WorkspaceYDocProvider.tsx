@@ -144,7 +144,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
             ...prev,
             connectionState: connectionStatus.state,
             failureReason: connectionStatus.failureReason,
-            synced: connectionStatus.state === 'connected',
+            synced: connectionStatus.synced,
           }));
         });
         clientRef.current = client;

@@ -6,6 +6,7 @@ import * as encoding from 'lib0/encoding';
 import {
   WORKSPACE_YDOC_UPDATE_BATCH_MS,
   WorkspaceYDocSyncClient,
+  type WorkspaceYDocConnectionStatus,
 } from '@/services/workspaceYDocSyncClient';
 
 const MESSAGE_SYNC = 0;
@@ -144,6 +145,67 @@ describe('WorkspaceYDocSyncClient', () => {
     client.destroy();
   });
 
+  it('reports cloud sync after an initial server message and an empty outbound batch', async () => {
+    const doc = new Y.Doc();
+    const statuses: WorkspaceYDocConnectionStatus[] = [];
+    const onConnectionStateChange = vi.fn((status) => statuses.push(status));
+    const client = new WorkspaceYDocSyncClient('ws-1', doc, onConnectionStateChange);
+    const serverDoc = new Y.Doc();
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    await client.connect();
+    const socket = firstSocket();
+    socket.open();
+    expect(statuses.at(-1)).toMatchObject({ state: 'connected', synced: false });
+
+    socket.receive(encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, serverDoc)));
+    await Promise.resolve();
+    expect(statuses.at(-1)).toMatchObject({ state: 'connected', synced: true });
+
+    doc.getMap('fields').set('field-1', 'value-1');
+    expect(statuses.at(-1)).toMatchObject({ state: 'connected', synced: false });
+
+    vi.advanceTimersByTime(WORKSPACE_YDOC_UPDATE_BATCH_MS);
+    expect(statuses.at(-1)).toMatchObject({ state: 'connected', synced: true });
+
+    client.destroy();
+  });
+
+  it('keeps offline status and waits for full-state sync when the socket remains open offline', async () => {
+    const doc = new Y.Doc();
+    const statuses: WorkspaceYDocConnectionStatus[] = [];
+    const onConnectionStateChange = vi.fn((status) => statuses.push(status));
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const client = new WorkspaceYDocSyncClient('ws-1', doc, onConnectionStateChange);
+    const serverDoc = new Y.Doc();
+
+    await client.connect();
+    const socket = firstSocket();
+    socket.open();
+    socket.receive(encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, serverDoc)));
+    await Promise.resolve();
+    expect(statuses.at(-1)).toMatchObject({ state: 'connected', synced: true });
+    const syncedMessageCount = socket.sent.length;
+
+    const onLine = vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);
+    window.dispatchEvent(new Event('offline'));
+    doc.getMap('fields').set('offline-field', 'offline-value');
+    vi.advanceTimersByTime(WORKSPACE_YDOC_UPDATE_BATCH_MS);
+
+    expect(statuses.at(-1)).toMatchObject({ state: 'offline', synced: false });
+    expect(socket.sent).toHaveLength(syncedMessageCount);
+    expect(info).not.toHaveBeenCalled();
+
+    onLine.mockReturnValue(true);
+    window.dispatchEvent(new Event('online'));
+
+    expect(socket.sent).toHaveLength(syncedMessageCount + 2);
+    applySyncMessage(serverDoc, sentMessage(socket, syncedMessageCount + 1));
+    expect(serverDoc.getMap('fields').get('offline-field')).toBe('offline-value');
+
+    client.destroy();
+  });
+
   it('uses sync state vectors to converge local offline changes after reconnect', async () => {
     const doc = new Y.Doc();
     doc.getMap('fields').set('offline-field', 'offline-value');
@@ -208,6 +270,7 @@ describe('WorkspaceYDocSyncClient', () => {
     expect(onConnectionStateChange).toHaveBeenLastCalledWith({
       state: 'error',
       failureReason: 'auth',
+      synced: false,
     });
     expect(MockWebSocket.instances).toHaveLength(0);
     authClient.destroy();
@@ -217,6 +280,7 @@ describe('WorkspaceYDocSyncClient', () => {
     expect(onConnectionStateChange).toHaveBeenLastCalledWith({
       state: 'error',
       failureReason: 'service_unavailable',
+      synced: false,
     });
     expect(MockWebSocket.instances).toHaveLength(0);
     serviceClient.destroy();
@@ -238,6 +302,7 @@ describe('WorkspaceYDocSyncClient', () => {
     expect(onConnectionStateChange).toHaveBeenLastCalledWith({
       state: 'error',
       failureReason: 'network',
+      synced: false,
     });
     expect(MockWebSocket.instances).toHaveLength(0);
 

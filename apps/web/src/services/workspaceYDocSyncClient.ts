@@ -16,6 +16,7 @@ export type WorkspaceYDocFailureReason = 'auth' | 'network' | 'service_unavailab
 export type WorkspaceYDocConnectionStatus = {
   state: WorkspaceYDocConnectionState;
   failureReason?: WorkspaceYDocFailureReason;
+  synced: boolean;
 };
 
 const MESSAGE_SYNC = 0;
@@ -46,6 +47,8 @@ export class WorkspaceYDocSyncClient {
   private pendingUpdates: Uint8Array[] = [];
   private pendingUpdatesStartedAt: number | null = null;
   private reconnectDelayMs = 1000;
+  private syncRoundTripComplete = false;
+  private browserOffline = false;
   private readonly ignoredSockets = new WeakSet<WebSocket>();
   private readonly workspaceId: string;
   private readonly doc: Y.Doc;
@@ -98,6 +101,11 @@ export class WorkspaceYDocSyncClient {
 
     socket.onopen = () => {
       this.reconnectDelayMs = 1000;
+      this.syncRoundTripComplete = false;
+      if (this.isOffline()) {
+        this.notify('offline');
+        return;
+      }
       this.notify('connected');
       this.sendSyncState();
       this.sendFullState();
@@ -135,6 +143,7 @@ export class WorkspaceYDocSyncClient {
       this.reconnectTimer = null;
     }
     if (this.socket?.readyState === WebSocket.OPEN) {
+      this.syncRoundTripComplete = false;
       this.notify('connected');
       this.sendSyncState();
       this.sendFullState();
@@ -174,7 +183,10 @@ export class WorkspaceYDocSyncClient {
   };
 
   private readonly handleOnline = () => {
+    this.browserOffline = false;
+    this.clearPendingUpdates();
     if (this.socket?.readyState === WebSocket.OPEN) {
+      this.syncRoundTripComplete = false;
       this.notify('connected');
       this.sendSyncState();
       this.sendFullState();
@@ -187,6 +199,8 @@ export class WorkspaceYDocSyncClient {
   };
 
   private readonly handleOffline = () => {
+    this.browserOffline = true;
+    this.clearPendingUpdates();
     this.notify('offline');
   };
 
@@ -204,6 +218,10 @@ export class WorkspaceYDocSyncClient {
   }
 
   private queueUpdate(update: Uint8Array) {
+    if (this.isOffline()) {
+      this.notify('offline');
+      return;
+    }
     if (this.socket?.readyState !== WebSocket.OPEN) return;
     this.pendingUpdates.push(update);
     this.pendingUpdatesStartedAt ??= Date.now();
@@ -218,6 +236,11 @@ export class WorkspaceYDocSyncClient {
 
   private flushPendingUpdates() {
     if (this.pendingUpdates.length === 0) return;
+    if (this.isOffline()) {
+      this.clearPendingUpdates();
+      this.notify('offline');
+      return;
+    }
     const updates = this.pendingUpdates;
     const startedAt = this.pendingUpdatesStartedAt;
     this.pendingUpdates = [];
@@ -250,7 +273,7 @@ export class WorkspaceYDocSyncClient {
   }
 
   private sendImmediate(message: Uint8Array) {
-    if (this.socket?.readyState === WebSocket.OPEN) {
+    if (!this.isOffline() && this.socket?.readyState === WebSocket.OPEN) {
       const payload = new Uint8Array(message.byteLength);
       payload.set(message);
       this.socket.send(payload.buffer);
@@ -272,11 +295,19 @@ export class WorkspaceYDocSyncClient {
   }
 
   private notify(state: WorkspaceYDocConnectionState, failureReason?: WorkspaceYDocFailureReason) {
-    this.onConnectionStateChange({ state, failureReason });
+    this.onConnectionStateChange({
+      state,
+      failureReason,
+      synced:
+        state === 'connected' &&
+        this.syncRoundTripComplete &&
+        this.pendingUpdates.length === 0 &&
+        this.flushTimer == null,
+    });
   }
 
   private isOffline() {
-    return typeof navigator !== 'undefined' && !navigator.onLine;
+    return this.browserOffline || (typeof navigator !== 'undefined' && !navigator.onLine);
   }
 
   private async checkAvailability(): Promise<WorkspaceYDocFailureReason | null> {
@@ -307,8 +338,12 @@ export class WorkspaceYDocSyncClient {
     const encoder = encoding.createEncoder();
     encoding.writeVarUint(encoder, MESSAGE_SYNC);
     syncProtocol.readSyncMessage(decoder, encoder, this.doc, this);
+    this.syncRoundTripComplete = true;
     if (encoding.length(encoder) > 1) {
       this.sendImmediate(encoding.toUint8Array(encoder));
+    }
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      this.notify('connected');
     }
   }
 }
