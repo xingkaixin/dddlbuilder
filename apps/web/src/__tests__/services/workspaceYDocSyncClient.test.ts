@@ -96,13 +96,15 @@ describe('WorkspaceYDocSyncClient', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
-  it('batches 50 high-frequency local updates into one websocket update message', async () => {
+  it('records the 50-field batch sync envelope in one websocket update message', async () => {
     const doc = new Y.Doc();
     const updates: Uint8Array[] = [];
     doc.on('update', (update) => updates.push(update));
     const client = new WorkspaceYDocSyncClient('ws-1', doc, vi.fn());
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     await client.connect();
     const socket = firstSocket();
@@ -121,7 +123,18 @@ describe('WorkspaceYDocSyncClient', () => {
 
     const updateMessage = sentMessage(socket, 2);
     const individualUpdateBytes = updates.reduce((total, update) => total + update.byteLength, 0);
+    const metric = JSON.parse(String(info.mock.calls[0]?.[0])) as Record<string, unknown>;
+
+    expect(metric).toMatchObject({
+      event: 'workspace_yjs_client_batch',
+      workspaceId: 'ws-1',
+      updateCount: 50,
+      messageBytes: updateMessage.byteLength,
+      durationMs: WORKSPACE_YDOC_UPDATE_BATCH_MS,
+    });
+    expect(socket.sent).toHaveLength(3);
     expect(updateMessage.byteLength).toBeLessThan(individualUpdateBytes);
+    expect(metric.updateBytes).toBeLessThan(individualUpdateBytes);
 
     const peer = new Y.Doc();
     applySyncMessage(peer, updateMessage);

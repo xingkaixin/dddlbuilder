@@ -44,6 +44,7 @@ export class WorkspaceYDocSyncClient {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private pendingUpdates: Uint8Array[] = [];
+  private pendingUpdatesStartedAt: number | null = null;
   private reconnectDelayMs = 1000;
   private readonly ignoredSockets = new WeakSet<WebSocket>();
   private readonly workspaceId: string;
@@ -162,6 +163,7 @@ export class WorkspaceYDocSyncClient {
       this.flushTimer = null;
     }
     this.flushPendingUpdates();
+    this.pendingUpdatesStartedAt = null;
     this.socket?.close();
     this.socket = null;
   }
@@ -204,6 +206,8 @@ export class WorkspaceYDocSyncClient {
   private queueUpdate(update: Uint8Array) {
     if (this.socket?.readyState !== WebSocket.OPEN) return;
     this.pendingUpdates.push(update);
+    this.pendingUpdatesStartedAt ??= Date.now();
+    this.notify('connected');
     if (this.flushTimer) return;
 
     this.flushTimer = setTimeout(() => {
@@ -215,9 +219,34 @@ export class WorkspaceYDocSyncClient {
   private flushPendingUpdates() {
     if (this.pendingUpdates.length === 0) return;
     const updates = this.pendingUpdates;
+    const startedAt = this.pendingUpdatesStartedAt;
     this.pendingUpdates = [];
+    this.pendingUpdatesStartedAt = null;
     const update = updates.length === 1 ? updates[0] : mergeUpdates(updates);
-    this.sendImmediate(encodeSyncMessage((encoder) => syncProtocol.writeUpdate(encoder, update)));
+    const message = encodeSyncMessage((encoder) => syncProtocol.writeUpdate(encoder, update));
+    console.info(
+      JSON.stringify({
+        event: 'workspace_yjs_client_batch',
+        workspaceId: this.workspaceId,
+        updateCount: updates.length,
+        updateBytes: update.byteLength,
+        messageBytes: message.byteLength,
+        durationMs: startedAt == null ? 0 : Date.now() - startedAt,
+      }),
+    );
+    this.sendImmediate(message);
+    if (!this.destroyed && this.socket?.readyState === WebSocket.OPEN) {
+      this.notify('connected');
+    }
+  }
+
+  private clearPendingUpdates() {
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+    this.pendingUpdates = [];
+    this.pendingUpdatesStartedAt = null;
   }
 
   private sendImmediate(message: Uint8Array) {
