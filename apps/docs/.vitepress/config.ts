@@ -5,11 +5,83 @@ import { defineConfig } from 'vitepress';
 const siteUrl = 'https://ddl.xingkaixin.me';
 const docsBase = '/docs/';
 
+const cleanDocsPath = (url: string) =>
+  url.replace(/(^|\/)index(?:\.html)?$/, '$1').replace(/\.html$/, '');
+
 const withDocsBase = (url: string) =>
-  `${docsBase}${url}`.replace(/\/+/g, '/');
+  `${docsBase}${cleanDocsPath(url)}`.replace(/\/+/g, '/');
 
 const canonicalDocsPath = (url: string) =>
-  url.replace(/^\/?(?:en|zh)\//, '').replace(/^\/?$/, '');
+  cleanDocsPath(url).replace(/^\/?(?:en|zh)\//, '').replace(/^\/?$/, '');
+
+const pageToDocsPath = (page: string) =>
+  cleanDocsPath(page.replace(/\.md$/, ''));
+
+const docsPathToPage = (path: string) =>
+  path.endsWith('/') ? `${path}index.md` : `${path}.md`;
+
+const docsPageExists = (pages: string[], path: string) =>
+  pages.includes(docsPathToPage(path));
+
+const alternateLinksFor = (path: string, pages: string[]) => {
+  const key = canonicalDocsPath(path);
+  const zhPath = key ? `zh/${key}` : 'zh/';
+  const enPath = key ? `en/${key}` : 'en/';
+
+  if (!docsPageExists(pages, zhPath) || !docsPageExists(pages, enPath)) {
+    return [];
+  }
+
+  return [
+    [
+      'link',
+      {
+        rel: 'alternate',
+        hreflang: 'zh-CN',
+        href: `${siteUrl}${withDocsBase(zhPath)}`,
+      },
+    ],
+    [
+      'link',
+      {
+        rel: 'alternate',
+        hreflang: 'en-US',
+        href: `${siteUrl}${withDocsBase(enPath)}`,
+      },
+    ],
+    [
+      'link',
+      {
+        rel: 'alternate',
+        hreflang: 'x-default',
+        href: `${siteUrl}${withDocsBase(zhPath)}`,
+      },
+    ],
+  ] as const;
+};
+
+const canonicalHeadForPage = (page: string, pages: string[]) => {
+  if (page === '404.md') {
+    return [];
+  }
+
+  const path = pageToDocsPath(page);
+
+  if (!path) {
+    return [
+      ['meta', { name: 'robots', content: 'noindex,follow' }],
+      [
+        'link',
+        { rel: 'canonical', href: `${siteUrl}${withDocsBase('zh/')}` },
+      ],
+    ] as const;
+  }
+
+  return [
+    ['link', { rel: 'canonical', href: `${siteUrl}${withDocsBase(path)}` }],
+    ...alternateLinksFor(path, pages),
+  ] as const;
+};
 
 const formatSitemapLastmod = (xml: string) =>
   xml.replace(
@@ -177,6 +249,7 @@ export default defineConfig({
   title: '筑表师文档',
   description: '筑表师使用文档与常见问题',
   base: '/docs/',
+  cleanUrls: true,
   outDir: '.vitepress/dist',
   srcExclude: ['AGENTS.md'],
   sitemap: {
@@ -188,9 +261,12 @@ export default defineConfig({
       xhtml: true,
     },
     transformItems(items) {
+      const indexableItems = items.filter(
+        (item) => cleanDocsPath(item.url) !== ''
+      );
       const byPath = new Map<string, { en?: string; zh?: string }>();
 
-      for (const item of items) {
+      for (const item of indexableItems) {
         const key = canonicalDocsPath(item.url);
         const group = byPath.get(key) ?? {};
 
@@ -205,7 +281,7 @@ export default defineConfig({
         byPath.set(key, group);
       }
 
-      return items.map((item) => {
+      return indexableItems.map((item) => {
         const key = canonicalDocsPath(item.url);
         const group = byPath.get(key);
         const links =
@@ -224,6 +300,9 @@ export default defineConfig({
         };
       });
     },
+  },
+  transformHead({ page, siteConfig }) {
+    return canonicalHeadForPage(page, siteConfig.pages);
   },
   async buildEnd(siteConfig) {
     const sitemapPath = join(siteConfig.outDir, 'sitemap.xml');
