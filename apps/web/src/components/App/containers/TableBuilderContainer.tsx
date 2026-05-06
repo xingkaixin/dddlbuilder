@@ -207,12 +207,7 @@ export function TableBuilderContainer({
             </TabsTrigger>
           )}
         </TabsList>
-        <TabsContent
-          value="fields"
-          className="mt-4"
-          tabIndex={-1}
-          data-workspace-yjs-conflict-target="fields"
-        >
+        <TabsContent value="fields" className="mt-4">
           {objectType === 'view' && viewDefinitionPanelProps ? (
             <ViewDefinitionPanel {...viewDefinitionPanelProps} />
           ) : (
@@ -220,22 +215,12 @@ export function TableBuilderContainer({
           )}
         </TabsContent>
         {objectType === 'table' && showIndexTab && (
-          <TabsContent
-            value="indexes"
-            className="mt-4"
-            tabIndex={-1}
-            data-workspace-yjs-conflict-target="indexes"
-          >
+          <TabsContent value="indexes" className="mt-4">
             <IndexPanel {...indexPanelProps} />
           </TabsContent>
         )}
         {objectType === 'table' && showForeignKeyTab && (
-          <TabsContent
-            value="foreignKeys"
-            className="mt-4"
-            tabIndex={-1}
-            data-workspace-yjs-conflict-target="foreignKeys"
-          >
+          <TabsContent value="foreignKeys" className="mt-4">
             <ForeignKeyPanel {...foreignKeyPanelProps} />
           </TabsContent>
         )}

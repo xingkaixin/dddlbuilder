@@ -4,6 +4,7 @@ import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
 import * as encoding from 'lib0/encoding';
 import {
+  WORKSPACE_YDOC_CONNECT_TIMEOUT_MS,
   WORKSPACE_YDOC_UPDATE_BATCH_MS,
   WorkspaceYDocSyncClient,
   type WorkspaceYDocConnectionStatus,
@@ -310,6 +311,51 @@ describe('WorkspaceYDocSyncClient', () => {
     await vi.waitFor(() => {
       expect(MockWebSocket.instances).toHaveLength(1);
     });
+
+    client.destroy();
+  });
+
+  it('fails fast when the availability preflight hangs', async () => {
+    const doc = new Y.Doc();
+    const statuses: WorkspaceYDocConnectionStatus[] = [];
+    const onConnectionStateChange = vi.fn((status) => statuses.push(status));
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
+    const client = new WorkspaceYDocSyncClient('ws-1', doc, onConnectionStateChange);
+
+    const connectPromise = client.connect();
+    expect(statuses.at(-1)).toMatchObject({ state: 'connecting', synced: false });
+
+    await vi.advanceTimersByTimeAsync(WORKSPACE_YDOC_CONNECT_TIMEOUT_MS);
+    await connectPromise;
+
+    expect(statuses.at(-1)).toMatchObject({
+      state: 'error',
+      failureReason: 'network',
+      synced: false,
+    });
+    expect(MockWebSocket.instances).toHaveLength(0);
+
+    client.destroy();
+  });
+
+  it('fails fast when the websocket handshake hangs', async () => {
+    const doc = new Y.Doc();
+    const statuses: WorkspaceYDocConnectionStatus[] = [];
+    const onConnectionStateChange = vi.fn((status) => statuses.push(status));
+    const client = new WorkspaceYDocSyncClient('ws-1', doc, onConnectionStateChange);
+
+    await client.connect();
+    const socket = firstSocket();
+    expect(statuses.at(-1)).toMatchObject({ state: 'connecting', synced: false });
+
+    await vi.advanceTimersByTimeAsync(WORKSPACE_YDOC_CONNECT_TIMEOUT_MS);
+
+    expect(statuses.at(-1)).toMatchObject({
+      state: 'error',
+      failureReason: 'network',
+      synced: false,
+    });
+    expect(socket.readyState).toBe(MockWebSocket.CLOSED);
 
     client.destroy();
   });

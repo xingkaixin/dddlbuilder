@@ -4,7 +4,6 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 import {
   exportWorkspaceYDocToSnapshot,
   getDraftRecordFromYDoc,
-  getWorkspaceYDocStructureConflictDetail,
   importWorkspaceSnapshotToYDoc,
   deleteDraftFromYDoc,
   deleteSavedTableFromYDoc,
@@ -326,26 +325,6 @@ describe('workspaceYDocAdapter', () => {
       'fk_user_parent',
     ]);
     expect(readDefaultDraftState(right)).toEqual(readDefaultDraftState(left));
-  });
-
-  it('describes structure-level changes for UI feedback', () => {
-    const previous = createState();
-    const next = createState({
-      rows: [{ ...previous.rows[0], fieldType: 'uuid' }, previous.rows[1]],
-      indexes: [],
-    });
-
-    expect(getWorkspaceYDocStructureConflictDetail(previous, next)).toEqual({
-      fieldsChanged: true,
-      indexesChanged: true,
-      foreignKeysChanged: false,
-      fieldChangeCount: 1,
-      indexChangeCount: 1,
-      foreignKeyChangeCount: 0,
-      changedFields: ['id'],
-      changedIndexes: ['idx_users_email'],
-      changedForeignKeys: [],
-    });
   });
 
   it('merges local snapshot records missing from an existing ydoc', () => {

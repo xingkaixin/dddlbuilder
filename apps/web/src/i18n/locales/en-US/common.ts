@@ -207,13 +207,6 @@ export const enUSCommon = {
     },
   },
   workspaceYDoc: {
-    structureConflictNotice:
-      'Remote table-structure changes were merged: {{summary}}. Review fields, indexes, and foreign keys.',
-    structureConflictFields: '{{count}} fields ({{items}})',
-    structureConflictIndexes: '{{count}} indexes ({{items}})',
-    structureConflictForeignKeys: '{{count}} foreign keys ({{items}})',
-    structureConflictSeparator: ', ',
-    structureConflictAction: 'Review structure',
     status: {
       localSaved: 'Saved locally',
       syncing: 'Syncing',

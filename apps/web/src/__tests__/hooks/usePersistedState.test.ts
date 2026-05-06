@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import * as Y from 'yjs';
-import { toast } from 'sonner';
 import { usePersistedState } from '@/hooks';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
@@ -21,11 +20,7 @@ import {
 import { listWorkspaceOutboxItems } from '@/utils/workspaceSyncStateDb';
 import { addSavedTable } from '@/utils/savedTablesDb';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
-import {
-  getDraftRecordFromYDoc,
-  upsertDraftInYDoc,
-  WORKSPACE_YDOC_STRUCTURE_CONFLICT_FOCUS_EVENT,
-} from '@/services/workspaceYDocAdapter';
+import { getDraftRecordFromYDoc, upsertDraftInYDoc } from '@/services/workspaceYDocAdapter';
 
 const GLOBAL_DRAFT_STORAGE_KEY = `${STORAGE_KEY}:draft:global:v1`;
 const WORKSPACE_SESSION_STORAGE_KEY = `${STORAGE_KEY}:workspace:v1`;
@@ -102,12 +97,6 @@ vi.mock('@/providers/WorkspaceYDocProvider', () => ({
     connectionState: 'idle',
     retry: vi.fn(),
   })),
-}));
-
-vi.mock('sonner', () => ({
-  toast: {
-    info: vi.fn(),
-  },
 }));
 
 const mockedGetShareState = vi.mocked(getShareState);
@@ -468,7 +457,7 @@ describe('usePersistedState', () => {
     expect(await listWorkspaceOutboxItems('ws-1')).toHaveLength(0);
   });
 
-  it('YDoc 结构变更合入时应提示具体变更数量并提供检查动作', async () => {
+  it('YDoc 结构变更合入时应静默应用最新状态', async () => {
     const doc = new Y.Doc();
     mockSignedInWorkspaceYDoc(doc);
     const initialState = {
@@ -500,7 +489,6 @@ describe('usePersistedState', () => {
     await waitFor(() => {
       expect(result.current.persistedState?.tableName).toBe('users');
     });
-    expect(toast.info).not.toHaveBeenCalled();
 
     act(() => {
       upsertDraftInYDoc(doc, 'default', {
@@ -514,32 +502,9 @@ describe('usePersistedState', () => {
     });
 
     await waitFor(() => {
-      expect(toast.info).toHaveBeenCalledWith(
-        expect.stringContaining('字段 1 项（id）'),
-        expect.objectContaining({
-          action: expect.objectContaining({
-            label: '查看表结构',
-            onClick: expect.any(Function),
-          }),
-        }),
-      );
+      expect(result.current.persistedState?.rows[0]?.fieldType).toBe('uuid');
     });
-    expect(toast.info).toHaveBeenCalledWith(
-      expect.stringContaining('索引 1 项（idx_users_id）'),
-      expect.anything(),
-    );
-
-    const focusListener = vi.fn();
-    window.addEventListener(WORKSPACE_YDOC_STRUCTURE_CONFLICT_FOCUS_EVENT, focusListener);
-    const toastOptions = vi.mocked(toast.info).mock.calls[0]?.[1] as
-      | { action?: { onClick?: () => void } }
-      | undefined;
-    act(() => {
-      toastOptions?.action?.onClick?.();
-    });
-    const event = focusListener.mock.calls[0]?.[0] as CustomEvent | undefined;
-    expect(event?.detail).toMatchObject({ target: 'fields' });
-    window.removeEventListener(WORKSPACE_YDOC_STRUCTURE_CONFLICT_FOCUS_EVENT, focusListener);
+    expect(result.current.persistedState?.indexes).toEqual([]);
   });
 
   it('保存已保存表状态时应同时记录来源与 activeState 以保留未保存修改', async () => {

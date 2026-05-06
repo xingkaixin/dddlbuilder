@@ -28,7 +28,7 @@ const Toaster = ({ position = 'bottom-right', ...props }: ToasterProps) => {
           success: '!border-l-emerald-500 !bg-emerald-100 dark:!bg-emerald-950',
           error: '!border-l-destructive !bg-red-100 dark:!bg-red-950',
           warning: '!border-l-amber-500 !bg-amber-100 dark:!bg-amber-950',
-          info: '!border-l-primary !bg-primary/10',
+          info: '!border-l-primary !bg-[hsl(var(--popover))]',
           loader: '!text-primary',
         },
       }}

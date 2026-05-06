@@ -1,9 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { toast } from 'sonner';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
-import i18n from '@/i18n';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 import { buildShareStateQueryKey } from '@/queryKeys/share';
 import { ShareApiError, getShareState } from '@/services/shareService';
@@ -16,17 +14,11 @@ import {
   getSavedDraftFromYDoc,
   getSavedTableFromYDoc,
   getStateForWorkspaceSource,
-  getWorkspaceYDocStructureConflictDetail,
-  getWorkspaceYDocStructureSignature,
-  getWorkspaceYDocStructureConflictTarget,
   listDraftRecordsFromYDoc,
   listSavedDraftsFromYDoc,
   subscribeWorkspaceYDoc,
   upsertDraftInYDoc,
   upsertSavedDraftInYDoc,
-  WORKSPACE_YDOC_STRUCTURE_CONFLICT_FOCUS_EVENT,
-  type WorkspaceYDocStructureConflictDetail,
-  type WorkspaceYDocStructureConflictFocusEventDetail,
 } from '@/services/workspaceYDocAdapter';
 import type {
   DraftSummary,
@@ -87,45 +79,6 @@ const pickInitialDraft = (drafts: Array<{ draftId: string; record: GlobalDraftRe
 const isSamePersistedState = (left: PersistedState, right: PersistedState) =>
   JSON.stringify(left) === JSON.stringify(right);
 
-const buildStructureConflictSummary = (detail: WorkspaceYDocStructureConflictDetail) => {
-  const formatItems = (items: string[]) => items.slice(0, 3).join(', ');
-  const parts = [
-    detail.fieldChangeCount > 0
-      ? i18n.t('workspaceYDoc.structureConflictFields', {
-          count: detail.fieldChangeCount,
-          items: formatItems(detail.changedFields),
-        })
-      : null,
-    detail.indexChangeCount > 0
-      ? i18n.t('workspaceYDoc.structureConflictIndexes', {
-          count: detail.indexChangeCount,
-          items: formatItems(detail.changedIndexes),
-        })
-      : null,
-    detail.foreignKeyChangeCount > 0
-      ? i18n.t('workspaceYDoc.structureConflictForeignKeys', {
-          count: detail.foreignKeyChangeCount,
-          items: formatItems(detail.changedForeignKeys),
-        })
-      : null,
-  ].filter((part): part is string => Boolean(part));
-  return parts.join(i18n.t('workspaceYDoc.structureConflictSeparator'));
-};
-
-const focusTableStructure = (detail: WorkspaceYDocStructureConflictDetail) => {
-  window.dispatchEvent(
-    new CustomEvent<WorkspaceYDocStructureConflictFocusEventDetail>(
-      WORKSPACE_YDOC_STRUCTURE_CONFLICT_FOCUS_EVENT,
-      {
-        detail: {
-          target: getWorkspaceYDocStructureConflictTarget(detail),
-          detail,
-        },
-      },
-    ),
-  );
-};
-
 type ShareLoadStatus = 'idle' | 'not_found' | 'error';
 
 export interface UsePersistedStateReturn {
@@ -178,7 +131,6 @@ export function usePersistedState(): UsePersistedStateReturn {
     kind: 'draft',
     draftId: DEFAULT_DRAFT_ID,
   });
-  const lastStructureConflictSignatureRef = useRef<string | null>(null);
   const persistedStateRef = useRef<PersistedState | null>(null);
   const draftsRef = useRef<Map<string, GlobalDraftRecord>>(new Map());
   const savedTableDraftsRef = useRef<Map<string, SavedTableDraftRecord>>(new Map());
@@ -227,28 +179,6 @@ export function usePersistedState(): UsePersistedStateReturn {
 
   const applyYDocState = useCallback(
     (nextState: PersistedState) => {
-      const detail = getWorkspaceYDocStructureConflictDetail(persistedStateRef.current, nextState);
-      if (detail) {
-        const signature = JSON.stringify({
-          source: activeSourceRef.current,
-          detail,
-          state: getWorkspaceYDocStructureSignature(nextState),
-        });
-        if (lastStructureConflictSignatureRef.current !== signature) {
-          lastStructureConflictSignatureRef.current = signature;
-          toast.info(
-            i18n.t('workspaceYDoc.structureConflictNotice', {
-              summary: buildStructureConflictSummary(detail),
-            }),
-            {
-              action: {
-                label: i18n.t('workspaceYDoc.structureConflictAction'),
-                onClick: () => focusTableStructure(detail),
-              },
-            },
-          );
-        }
-      }
       setPersistedStateIfChanged(nextState);
     },
     [setPersistedStateIfChanged],

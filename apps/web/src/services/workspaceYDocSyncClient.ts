@@ -21,6 +21,7 @@ export type WorkspaceYDocConnectionStatus = {
 
 const MESSAGE_SYNC = 0;
 const MAX_RECONNECT_DELAY_MS = 10_000;
+export const WORKSPACE_YDOC_CONNECT_TIMEOUT_MS = 8_000;
 export const WORKSPACE_YDOC_UPDATE_BATCH_MS = 25;
 
 const buildWorkspaceYDocPath = (workspaceId: string) =>
@@ -44,6 +45,7 @@ export class WorkspaceYDocSyncClient {
   private connecting = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
+  private socketOpenTimer: ReturnType<typeof setTimeout> | null = null;
   private pendingUpdates: Uint8Array[] = [];
   private pendingUpdatesStartedAt: number | null = null;
   private reconnectDelayMs = 1000;
@@ -98,8 +100,19 @@ export class WorkspaceYDocSyncClient {
     const socket = new WebSocket(buildWorkspaceYDocUrl(this.workspaceId));
     socket.binaryType = 'arraybuffer';
     this.socket = socket;
+    this.socketOpenTimer = setTimeout(() => {
+      if (this.destroyed || this.socket !== socket || socket.readyState === WebSocket.OPEN) {
+        return;
+      }
+      this.ignoredSockets.add(socket);
+      this.socket = null;
+      this.notify('error', 'network');
+      this.scheduleReconnect();
+      socket.close();
+    }, WORKSPACE_YDOC_CONNECT_TIMEOUT_MS);
 
     socket.onopen = () => {
+      this.clearSocketOpenTimer();
       this.reconnectDelayMs = 1000;
       this.syncRoundTripComplete = false;
       if (this.isOffline()) {
@@ -114,6 +127,7 @@ export class WorkspaceYDocSyncClient {
       void this.handleMessage(event.data);
     };
     socket.onerror = () => {
+      this.clearSocketOpenTimer();
       if (this.isOffline()) {
         this.notify('offline');
         return;
@@ -121,6 +135,7 @@ export class WorkspaceYDocSyncClient {
       this.notify('error', 'unknown');
     };
     socket.onclose = () => {
+      this.clearSocketOpenTimer();
       if (this.ignoredSockets.has(socket)) return;
       if (this.socket === socket) {
         this.socket = null;
@@ -171,6 +186,7 @@ export class WorkspaceYDocSyncClient {
       clearTimeout(this.flushTimer);
       this.flushTimer = null;
     }
+    this.clearSocketOpenTimer();
     this.flushPendingUpdates();
     this.pendingUpdatesStartedAt = null;
     this.socket?.close();
@@ -272,6 +288,13 @@ export class WorkspaceYDocSyncClient {
     this.pendingUpdatesStartedAt = null;
   }
 
+  private clearSocketOpenTimer() {
+    if (this.socketOpenTimer) {
+      clearTimeout(this.socketOpenTimer);
+      this.socketOpenTimer = null;
+    }
+  }
+
   private sendImmediate(message: Uint8Array) {
     if (!this.isOffline() && this.socket?.readyState === WebSocket.OPEN) {
       const payload = new Uint8Array(message.byteLength);
@@ -311,14 +334,32 @@ export class WorkspaceYDocSyncClient {
   }
 
   private async checkAvailability(): Promise<WorkspaceYDocFailureReason | null> {
+    const controller = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     try {
-      const response = await fetch(buildWorkspaceYDocPath(this.workspaceId), { method: 'HEAD' });
+      const response = await Promise.race<Response | null>([
+        fetch(buildWorkspaceYDocPath(this.workspaceId), {
+          method: 'HEAD',
+          signal: controller.signal,
+        }),
+        new Promise<null>((resolve) => {
+          timeoutId = setTimeout(() => resolve(null), WORKSPACE_YDOC_CONNECT_TIMEOUT_MS);
+        }),
+      ]);
+      if (!response) {
+        controller.abort();
+        return 'network';
+      }
       if (response.ok) return null;
       if (response.status === 401 || response.status === 403) return 'auth';
       if (response.status === 503) return 'service_unavailable';
       return 'unknown';
     } catch {
       return 'network';
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     }
   }
 

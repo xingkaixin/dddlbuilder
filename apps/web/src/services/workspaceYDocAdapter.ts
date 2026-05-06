@@ -25,36 +25,6 @@ export type WorkspaceYDocDraftRecord = {
   folderId?: string;
 };
 
-export type WorkspaceYDocStructureConflictDetail = {
-  fieldsChanged: boolean;
-  indexesChanged: boolean;
-  foreignKeysChanged: boolean;
-  fieldChangeCount: number;
-  indexChangeCount: number;
-  foreignKeyChangeCount: number;
-  changedFields: string[];
-  changedIndexes: string[];
-  changedForeignKeys: string[];
-};
-
-export type WorkspaceYDocStructureConflictTarget = 'fields' | 'indexes' | 'foreignKeys';
-
-export type WorkspaceYDocStructureConflictFocusEventDetail = {
-  target: WorkspaceYDocStructureConflictTarget;
-  detail: WorkspaceYDocStructureConflictDetail;
-};
-
-export const WORKSPACE_YDOC_STRUCTURE_CONFLICT_FOCUS_EVENT =
-  'workspace-yjs-structure-conflict-focus';
-
-export const getWorkspaceYDocStructureConflictTarget = (
-  detail: WorkspaceYDocStructureConflictDetail,
-): WorkspaceYDocStructureConflictTarget => {
-  if (detail.fieldsChanged) return 'fields';
-  if (detail.indexesChanged) return 'indexes';
-  return 'foreignKeys';
-};
-
 const TABLE_SCALAR_KEYS = [
   'objectType',
   'schemaName',
@@ -304,82 +274,6 @@ const readOrderedMap = <T>(parent: Y.Map<any>, mapKey: string, orderKey: string)
     })
     .filter((item): item is T => item != null);
 };
-
-const structureSignature = (state: PersistedState) =>
-  JSON.stringify({
-    rows: state.rows.map((row) => ({
-      order: row.order,
-      fieldName: row.fieldName,
-      fieldType: row.fieldType,
-      nullable: row.nullable,
-      defaultKind: row.defaultKind,
-      defaultValue: row.defaultValue,
-      onUpdate: row.onUpdate,
-      enumMeta: row.enumMeta,
-    })),
-    indexes: state.indexes ?? [],
-    foreignKeys: state.foreignKeys ?? [],
-  });
-
-const fieldLabel = (row: FieldRow | undefined, index: number) => row?.fieldName || `#${index + 1}`;
-
-const fieldChangeLabels = (previousRows: FieldRow[], nextRows: FieldRow[]) => {
-  const labels: string[] = [];
-  const count = Math.max(previousRows.length, nextRows.length);
-  for (let index = 0; index < count; index += 1) {
-    const previous = previousRows[index];
-    const next = nextRows[index];
-    if (stableStringify(previous ?? null) !== stableStringify(next ?? null)) {
-      labels.push(fieldLabel(next ?? previous, index));
-    }
-  }
-  return Array.from(new Set(labels));
-};
-
-const changedDefinitionLabels = <T extends { id: string; name: string }>(
-  previousItems: T[],
-  nextItems: T[],
-) => {
-  const labels: string[] = [];
-  const previousById = new Map(previousItems.map((item) => [item.id, item]));
-  const nextById = new Map(nextItems.map((item) => [item.id, item]));
-  const ids = new Set([...previousById.keys(), ...nextById.keys()]);
-  for (const id of ids) {
-    const previous = previousById.get(id);
-    const next = nextById.get(id);
-    if (stableStringify(previous ?? null) !== stableStringify(next ?? null)) {
-      labels.push(next?.name || previous?.name || id);
-    }
-  }
-  return Array.from(new Set(labels));
-};
-
-export const getWorkspaceYDocStructureConflictDetail = (
-  previous: PersistedState | null,
-  next: PersistedState,
-): WorkspaceYDocStructureConflictDetail | null => {
-  if (!previous) return null;
-  const changedFields = fieldChangeLabels(previous.rows, next.rows);
-  const changedIndexes = changedDefinitionLabels(previous.indexes ?? [], next.indexes ?? []);
-  const changedForeignKeys = changedDefinitionLabels(
-    previous.foreignKeys ?? [],
-    next.foreignKeys ?? [],
-  );
-  const detail = {
-    fieldsChanged: changedFields.length > 0,
-    indexesChanged: changedIndexes.length > 0,
-    foreignKeysChanged: changedForeignKeys.length > 0,
-    fieldChangeCount: changedFields.length,
-    indexChangeCount: changedIndexes.length,
-    foreignKeyChangeCount: changedForeignKeys.length,
-    changedFields,
-    changedIndexes,
-    changedForeignKeys,
-  };
-  return detail.fieldsChanged || detail.indexesChanged || detail.foreignKeysChanged ? detail : null;
-};
-
-export const getWorkspaceYDocStructureSignature = structureSignature;
 
 export const ensureWorkspaceYDocMeta = (doc: Y.Doc) => {
   const { meta } = getWorkspaceRoot(doc);
