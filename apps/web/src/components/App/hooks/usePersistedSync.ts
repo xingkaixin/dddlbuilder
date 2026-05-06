@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSavePayload, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 import { useDebouncedEffect } from '@/hooks/useDebouncedEffect';
+import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 
 const PERSIST_DEBOUNCE_MS = 500;
 
@@ -191,7 +192,7 @@ export function usePersistedSync({
           lastAppliedBuildPersistedStateRef.current = null;
         }
         const state = buildPersistedState();
-        const currentSignature = JSON.stringify(state);
+        const currentSignature = serializePersistedStateForComparison(state);
         const isDirty =
           source.kind === 'saved_table' ? currentSignature !== source.baseSignature : false;
         saveState({

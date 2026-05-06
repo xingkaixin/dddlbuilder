@@ -81,6 +81,21 @@ const ensureArray = (parent: Y.Map<any>, key: string) => {
   return next;
 };
 
+const stableStringify = (value: unknown): string => {
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(',')}]`;
+  }
+  const record = value as JsonRecord;
+  return `{${Object.keys(record)
+    .filter((key) => record[key] !== undefined)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+    .join(',')}}`;
+};
+
 const writeJsonMap = (map: Y.Map<unknown>, values: JsonRecord) => {
   const nextKeys = new Set(Object.keys(values));
   for (const key of Array.from(map.keys())) {
@@ -93,14 +108,17 @@ const writeJsonMap = (map: Y.Map<unknown>, values: JsonRecord) => {
       map.delete(key);
       continue;
     }
-    if (JSON.stringify(map.get(key)) !== JSON.stringify(value)) {
+    if (stableStringify(map.get(key)) !== stableStringify(value)) {
       map.set(key, value);
     }
   }
 };
 
 const writeStateSnapshot = (tableDoc: Y.Map<unknown>, state: PersistedState) => {
-  tableDoc.set('stateSnapshot', JSON.parse(JSON.stringify(state)));
+  const nextSnapshot = JSON.parse(JSON.stringify(state));
+  if (stableStringify(tableDoc.get('stateSnapshot')) !== stableStringify(nextSnapshot)) {
+    tableDoc.set('stateSnapshot', nextSnapshot);
+  }
 };
 
 const readStateSnapshot = (tableDoc: Y.Map<unknown>): PersistedState | null => {
@@ -141,20 +159,6 @@ const syncStringArray = (array: Y.Array<string>, values: string[]) => {
   if (values.length > 0) {
     array.insert(0, values);
   }
-};
-
-const stableStringify = (value: unknown): string => {
-  if (value === null || typeof value !== 'object') {
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map(stableStringify).join(',')}]`;
-  }
-  const record = value as JsonRecord;
-  return `{${Object.keys(record)
-    .sort()
-    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
-    .join(',')}}`;
 };
 
 const hashString = (value: string) => {
@@ -353,7 +357,14 @@ export const tableDocToPersistedState = (tableDoc: Y.Map<unknown>): PersistedSta
     ...(state.mysqlPartitionConfig ? { mysqlPartitionConfig: state.mysqlPartitionConfig } : {}),
     ...(state.tableMiscConfig ? { tableMiscConfig: state.tableMiscConfig } : {}),
     ...(state.fieldTableViewConfig ? { fieldTableViewConfig: state.fieldTableViewConfig } : {}),
-    foreignKeys: readOrderedMap<ForeignKeyDefinition>(tableDoc, 'foreignKeys', 'foreignKeyOrder'),
+    ...(() => {
+      const foreignKeys = readOrderedMap<ForeignKeyDefinition>(
+        tableDoc,
+        'foreignKeys',
+        'foreignKeyOrder',
+      );
+      return foreignKeys.length > 0 ? { foreignKeys } : {};
+    })(),
   } as PersistedState;
 };
 

@@ -174,6 +174,27 @@ describe('workspaceYDocAdapter', () => {
     expect(getDraftRecordFromYDoc(doc, DEFAULT_DRAFT_ID)?.state.rows[0].fieldName).toBe('user_id');
   });
 
+  it('does not emit updates when applying the same table state', () => {
+    const doc = new Y.Doc();
+    const state = createState();
+    upsertDraftInYDoc(doc, DEFAULT_DRAFT_ID, { state, updatedAt: 1 });
+    const updates: Uint8Array[] = [];
+    doc.on('update', (update) => updates.push(update));
+
+    upsertDraftInYDoc(doc, DEFAULT_DRAFT_ID, { state: createState(), updatedAt: 1 });
+
+    expect(updates).toHaveLength(0);
+  });
+
+  it('omits empty foreign keys when reading fine-grained table state', () => {
+    const doc = new Y.Doc();
+    const state = createState({ foreignKeys: undefined });
+
+    upsertDraftInYDoc(doc, DEFAULT_DRAFT_ID, { state, updatedAt: 1 });
+
+    expect(getDraftRecordFromYDoc(doc, DEFAULT_DRAFT_ID)?.state.foreignKeys).toBeUndefined();
+  });
+
   it('reads full state snapshots instead of reconstructed field maps', () => {
     const doc = new Y.Doc();
     const state = createState({

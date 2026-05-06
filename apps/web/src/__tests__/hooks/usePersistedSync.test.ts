@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { usePersistedSync } from '@/components/App/hooks/usePersistedSync';
 import type { WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
+import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 
 function createState(name: string): PersistedState {
   return {
@@ -283,6 +284,59 @@ describe('usePersistedSync debounce save', () => {
       state: dirtyState,
       source: params.activeSource,
       isDirty: true,
+    });
+  });
+
+  it('保存表只补齐 UI 默认值时应保持 clean', () => {
+    const saveState = vi.fn();
+    const baseState = createState('users');
+    const currentState = {
+      ...baseState,
+      objectType: 'table' as const,
+      viewDefinition: '',
+      viewCreateOrReplace: true,
+      foreignKeys: [],
+      mysqlPartitionConfig: {
+        enabled: false,
+        type: 'RANGE' as const,
+        columns: [],
+        partitionCount: 4,
+        partitions: [],
+      },
+      tableMiscConfig: {
+        enabled: false,
+        engine: '',
+        charset: '',
+        collation: '',
+        tablespace: '',
+      },
+      fieldTableViewConfig: {
+        freezeEnabled: false,
+        freezeColumns: 3,
+      },
+    };
+    const params = createBaseParams({
+      saveState,
+      buildPersistedState: () => currentState,
+      activeSource: {
+        kind: 'saved_table',
+        normalizedName: 'users',
+        tableName: 'Users',
+        baseSignature: serializePersistedStateForComparison(baseState),
+      },
+      loadedTableNormalizedName: 'users',
+    });
+
+    renderHook(() => usePersistedSync(params));
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(saveState).toHaveBeenCalledWith({
+      state: currentState,
+      source: params.activeSource,
+      isDirty: false,
     });
   });
 

@@ -103,8 +103,19 @@ export function useSaveLoadActions({
 
         const savedBaseSignature = serializePersistedState(record.state);
         const savedDraft = getSavedTableDraft?.(record.normalizedName);
+        const savedDraftBaseSignature = savedDraft
+          ? (() => {
+              try {
+                return serializePersistedState(JSON.parse(savedDraft.baseSignature));
+              } catch {
+                return savedDraft.baseSignature;
+              }
+            })()
+          : null;
         const stateToApply =
-          savedDraft?.baseSignature === savedBaseSignature ? savedDraft.state : record.state;
+          savedDraft && savedDraftBaseSignature === savedBaseSignature
+            ? savedDraft.state
+            : record.state;
 
         let versionCount = 0;
         try {

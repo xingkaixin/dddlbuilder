@@ -43,6 +43,7 @@ import {
 } from '@/utils/workspaceStateDb';
 import { enqueueWorkspaceOutboxItem } from '@/utils/workspaceSyncStateDb';
 import type { SavedTableRecord } from '@/utils/savedTablesDb';
+import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 import { getWorkspaceBootstrap } from './workspacePersistence/bootstrap';
 import { resetWorkspaceBootstrapCache } from './workspacePersistence/bootstrap';
 import { getAnonymousWorkspaceScope, setCurrentWorkspaceScope } from '@/utils/workspaceScope';
@@ -77,7 +78,7 @@ const pickInitialDraft = (drafts: Array<{ draftId: string; record: GlobalDraftRe
   null;
 
 const isSamePersistedState = (left: PersistedState, right: PersistedState) =>
-  JSON.stringify(left) === JSON.stringify(right);
+  serializePersistedStateForComparison(left) === serializePersistedStateForComparison(right);
 
 type ShareLoadStatus = 'idle' | 'not_found' | 'error';
 
@@ -843,8 +844,7 @@ export function usePersistedState(): UsePersistedStateReturn {
         const savedTable = getSavedTableFromYDoc(doc, session.activeSource.normalizedName);
         if (savedTable) {
           const savedDraft = getSavedDraftFromYDoc(doc, savedTable.normalizedName);
-          const baseSignature =
-            session.activeSource.baseSignature || JSON.stringify(savedTable.state) || '';
+          const baseSignature = serializePersistedStateForComparison(savedTable.state);
           syncActiveSource({
             kind: 'saved_table',
             normalizedName: savedTable.normalizedName,
@@ -937,12 +937,7 @@ export function usePersistedState(): UsePersistedStateReturn {
       if (session.activeSource.kind === 'saved_table') {
         if (savedTable) {
           const st = savedTable as SavedTableRecord;
-          const baseSignature =
-            session.activeSource.baseSignature ||
-            (typeof (st as { stateSignature?: unknown }).stateSignature === 'string'
-              ? (st as { stateSignature?: string }).stateSignature
-              : JSON.stringify(st.state)) ||
-            '';
+          const baseSignature = serializePersistedStateForComparison(st.state);
           syncActiveSource({
             kind: 'saved_table',
             normalizedName: st.normalizedName,
@@ -1158,12 +1153,7 @@ export function usePersistedState(): UsePersistedStateReturn {
             kind: 'saved_table',
             normalizedName: st.normalizedName,
             tableName: st.name ?? '',
-            baseSignature:
-              session.activeSource.baseSignature ||
-              (typeof (st as { stateSignature?: unknown }).stateSignature === 'string'
-                ? (st as { stateSignature?: string }).stateSignature
-                : JSON.stringify(st.state)) ||
-              '',
+            baseSignature: serializePersistedStateForComparison(st.state),
           });
           setPersistedStateIfChanged(session.activeState ?? st.state);
           setHydrated(true);
