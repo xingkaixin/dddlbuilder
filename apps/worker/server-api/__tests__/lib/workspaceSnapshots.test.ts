@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../../lib/context.js';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
@@ -32,6 +32,26 @@ type StoredLegacySnapshotRow = {
   sourceUpdatedAt: number;
 };
 
+type StoredMutation = {
+  workspaceId: string;
+  clientMutationId: string;
+  entityType: string;
+  entityId: string;
+  version: number;
+};
+
+type WorkspaceD1Log = {
+  event: string;
+  operation: string;
+  d1: {
+    queries: number;
+    rowsRead: number;
+    rowsWritten: number;
+    durationMs: number;
+  };
+  [key: string]: unknown;
+};
+
 const createEnv = (userDb: D1Database): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
   SHARE_KV: {} as KVNamespace,
@@ -46,10 +66,34 @@ const createEnv = (userDb: D1Database): ApiEnv['Bindings'] => ({
   SIGNUP_BONUS_CREDITS: '100000',
 });
 
-const createWorkspaceSnapshotDb = (legacyRows: StoredLegacySnapshotRow[] = []) => {
+const createWorkspaceSnapshotDb = (
+  legacyRows: StoredLegacySnapshotRow[] = [],
+  options: { includeMeta?: boolean } = {},
+) => {
   const workspaces: StoredWorkspace[] = [];
   const clocks = new Map<string, number>();
   const rows: StoredRow[] = [];
+  const mutations: StoredMutation[] = [];
+
+  const withMeta = <T extends Record<string, unknown>>(
+    result: T,
+    rowsRead: number,
+    rowsWritten: number,
+  ) =>
+    options.includeMeta
+      ? {
+          ...result,
+          meta: {
+            rows_read: rowsRead,
+            rows_written: rowsWritten,
+            duration: 1,
+          },
+        }
+      : result;
+  const allResult = <T>(results: T[], rowsWritten = 0) =>
+    withMeta({ results }, results.length, rowsWritten);
+  const writeReturningResult = <T>(results: T[]) => withMeta({ results }, 0, 1);
+  const runResult = () => withMeta({ success: true }, 0, 1);
 
   return {
     prepare(sql: string) {
@@ -57,22 +101,90 @@ const createWorkspaceSnapshotDb = (legacyRows: StoredLegacySnapshotRow[] = []) =
         bind(...args: unknown[]) {
           return {
             async all() {
+              if (sql.includes('UPDATE workspace_clocks')) {
+                const [workspaceId] = args;
+                const next = (clocks.get(String(workspaceId)) ?? 0) + 1;
+                clocks.set(String(workspaceId), next);
+                return writeReturningResult([{ version: next }]);
+              }
+
+              if (sql.includes('SELECT next_version AS cursor')) {
+                const [workspaceId] = args;
+                return allResult([{ cursor: clocks.get(String(workspaceId)) ?? 0 }]);
+              }
+
+              if (sql.includes('WHERE id = ? AND user_id = ?')) {
+                const [workspaceId, userId] = args;
+                const workspace = workspaces.find(
+                  (item) => item.id === workspaceId && item.userId === userId,
+                );
+                return allResult(workspace ? [{ id: workspace.id }] : []);
+              }
+
+              if (sql.includes('FROM workspace_mutations')) {
+                const [workspaceId, clientMutationId] = args;
+                const mutation = mutations.find(
+                  (item) =>
+                    item.workspaceId === workspaceId && item.clientMutationId === clientMutationId,
+                );
+                return allResult(
+                  mutation
+                    ? [
+                        {
+                          entityType: mutation.entityType,
+                          entityId: mutation.entityId,
+                          version: mutation.version,
+                        },
+                      ]
+                    : [],
+                );
+              }
+
+              if (
+                sql.includes('FROM workspace_entities') &&
+                sql.includes('entity_type = ?') &&
+                sql.includes('entity_id = ?')
+              ) {
+                const [workspaceId, entityType, entityId] = args;
+                const row = rows.find(
+                  (item) =>
+                    item.workspaceId === workspaceId &&
+                    item.entityType === entityType &&
+                    item.entityId === entityId,
+                );
+                return allResult(
+                  row
+                    ? [
+                        {
+                          entityType: row.entityType,
+                          entityId: row.entityId,
+                          payloadJson: row.payloadJson,
+                          contentHash: row.contentHash,
+                          version: row.version,
+                          deletedAt: row.deletedAt,
+                          updatedAt: row.updatedAt,
+                        },
+                      ]
+                    : [],
+                );
+              }
+
               if (sql.includes('FROM workspace_entities')) {
                 const [workspaceId] = args;
                 if (!sql.includes('payload_json')) {
-                  return {
-                    results: rows
+                  return allResult(
+                    rows
                       .filter((row) => row.workspaceId === workspaceId)
                       .map((row) => ({
                         entityType: row.entityType,
                         entityId: row.entityId,
                       })),
-                  };
+                  );
                 }
                 if (sql.includes('version >')) {
                   const [, since] = args;
-                  return {
-                    results: rows
+                  return allResult(
+                    rows
                       .filter(
                         (row) => row.workspaceId === workspaceId && row.version > Number(since),
                       )
@@ -86,10 +198,10 @@ const createWorkspaceSnapshotDb = (legacyRows: StoredLegacySnapshotRow[] = []) =
                         deletedAt: row.deletedAt,
                         updatedAt: row.updatedAt,
                       })),
-                  };
+                  );
                 }
-                return {
-                  results: rows
+                return allResult(
+                  rows
                     .filter((row) => row.workspaceId === workspaceId && row.deletedAt === null)
                     .sort((a, b) => a.version - b.version)
                     .map((row) => ({
@@ -101,13 +213,13 @@ const createWorkspaceSnapshotDb = (legacyRows: StoredLegacySnapshotRow[] = []) =
                       deletedAt: row.deletedAt,
                       updatedAt: row.updatedAt,
                     })),
-                };
+                );
               }
 
               if (sql.includes('FROM workspace_snapshots')) {
                 const [userId] = args;
-                return {
-                  results: legacyRows
+                return allResult(
+                  legacyRows
                     .filter((row) => row.userId === userId)
                     .map((row) => ({
                       kind: row.kind,
@@ -115,12 +227,10 @@ const createWorkspaceSnapshotDb = (legacyRows: StoredLegacySnapshotRow[] = []) =
                       payloadJson: row.payloadJson,
                       sourceUpdatedAt: row.sourceUpdatedAt,
                     })),
-                };
+                );
               }
 
-              return {
-                results: [],
-              };
+              return allResult([]);
             },
             async first() {
               if (
@@ -197,13 +307,13 @@ const createWorkspaceSnapshotDb = (legacyRows: StoredLegacySnapshotRow[] = []) =
                   activeAt: Number(activeAt),
                   updatedAt: Number(updatedAt),
                 });
-                return { success: true };
+                return runResult();
               }
 
               if (sql.includes('INSERT INTO workspace_clocks')) {
                 const [workspaceId] = args;
                 clocks.set(String(workspaceId), 0);
-                return { success: true };
+                return runResult();
               }
 
               if (sql.includes('INSERT INTO workspace_entities')) {
@@ -243,10 +353,28 @@ const createWorkspaceSnapshotDb = (legacyRows: StoredLegacySnapshotRow[] = []) =
                 } else {
                   rows.push(nextRow);
                 }
-                return { success: true };
+                return runResult();
               }
 
-              return { success: true };
+              if (sql.includes('INSERT INTO workspace_mutations')) {
+                const [, workspaceId, , clientMutationId, entityType, entityId, version] = args;
+                const index = mutations.findIndex(
+                  (item) =>
+                    item.workspaceId === workspaceId && item.clientMutationId === clientMutationId,
+                );
+                if (index < 0) {
+                  mutations.push({
+                    workspaceId: String(workspaceId),
+                    clientMutationId: String(clientMutationId),
+                    entityType: String(entityType),
+                    entityId: String(entityId),
+                    version: Number(version),
+                  });
+                }
+                return runResult();
+              }
+
+              return runResult();
             },
           };
         },
@@ -298,7 +426,14 @@ const createLegacySavedTableRow = (
   sourceUpdatedAt,
 });
 
+const readWorkspaceD1Log = (calls: unknown[][]) =>
+  JSON.parse(String(calls[0]?.[0])) as WorkspaceD1Log;
+
 describe('workspaceSnapshots', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('上传快照时应保留云端已有实体', async () => {
     const { getWorkspaceSnapshot, putWorkspaceSnapshot } =
       await import('../../lib/workspaceSnapshots.js');
@@ -452,5 +587,140 @@ describe('workspaceSnapshots', () => {
     expect(result.upserted).toBe(1);
     expect(result.deleted).toBe(2);
     expect(snapshot.savedTables.map((item) => item.normalizedName)).toEqual(['orders']);
+  });
+
+  it('changes_pull 日志应覆盖 owner、backfill、changes 和 cursor 查询', async () => {
+    const { getWorkspaceChanges, putWorkspaceSnapshotAsEntities } =
+      await import('../../lib/workspaceEntities.js');
+    const env = createEnv(createWorkspaceSnapshotDb([], { includeMeta: true }));
+
+    await putWorkspaceSnapshotAsEntities(env, 'user-1', createSnapshot(['orders']));
+    const workspace = await env.USER_DB.prepare(
+      `
+        SELECT id
+        FROM workspaces
+        WHERE user_id = ? AND is_default = 1
+        LIMIT 1
+      `,
+    )
+      .bind('user-1')
+      .first<{ id: string }>();
+    const workspaceId = workspace?.id ?? '';
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    await getWorkspaceChanges(env, 'user-1', workspaceId, 0);
+
+    expect(readWorkspaceD1Log(info.mock.calls)).toMatchObject({
+      event: 'workspace_sync_d1',
+      operation: 'changes_pull',
+      userId: 'user-1',
+      workspaceId,
+      since: 0,
+      entityCount: 1,
+      d1: {
+        queries: 4,
+        rowsRead: 3,
+        rowsWritten: 0,
+        durationMs: 4,
+      },
+    });
+  });
+
+  it('changes_push 日志应覆盖去重、实体读取、写入和 cursor 查询', async () => {
+    const { buildWorkspaceContentHash, pushWorkspaceChanges, putWorkspaceSnapshotAsEntities } =
+      await import('../../lib/workspaceEntities.js');
+    const env = createEnv(createWorkspaceSnapshotDb([], { includeMeta: true }));
+
+    await putWorkspaceSnapshotAsEntities(env, 'user-1', createSnapshot([]));
+    const workspace = await env.USER_DB.prepare(
+      `
+        SELECT id
+        FROM workspaces
+        WHERE user_id = ? AND is_default = 1
+        LIMIT 1
+      `,
+    )
+      .bind('user-1')
+      .first<{ id: string }>();
+    const workspaceId = workspace?.id ?? '';
+    const payload = {
+      name: 'orders',
+      state: createState('orders'),
+    };
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    await pushWorkspaceChanges(env, 'user-1', workspaceId, {
+      changes: [
+        {
+          clientMutationId: 'mutation-1',
+          entityType: 'saved_table',
+          entityId: 'orders',
+          op: 'upsert',
+          baseVersion: null,
+          contentHash: await buildWorkspaceContentHash(payload),
+          payload,
+        },
+      ],
+    });
+
+    expect(readWorkspaceD1Log(info.mock.calls)).toMatchObject({
+      event: 'workspace_sync_d1',
+      operation: 'changes_push',
+      userId: 'user-1',
+      workspaceId,
+      changeCount: 1,
+      acceptedCount: 1,
+      conflictCount: 0,
+      d1: {
+        queries: 7,
+        rowsRead: 2,
+        rowsWritten: 3,
+        durationMs: 7,
+      },
+    });
+  });
+
+  it('checkpoint 日志应覆盖实体读取、写入、active 列表和 cursor 查询', async () => {
+    const { checkpointWorkspaceSnapshotEntities, putWorkspaceSnapshotAsEntities } =
+      await import('../../lib/workspaceEntities.js');
+    const env = createEnv(createWorkspaceSnapshotDb([], { includeMeta: true }));
+
+    await putWorkspaceSnapshotAsEntities(env, 'user-1', createSnapshot([]));
+    const workspace = await env.USER_DB.prepare(
+      `
+        SELECT id
+        FROM workspaces
+        WHERE user_id = ? AND is_default = 1
+        LIMIT 1
+      `,
+    )
+      .bind('user-1')
+      .first<{ id: string }>();
+    const workspaceId = workspace?.id ?? '';
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    await checkpointWorkspaceSnapshotEntities(
+      env,
+      'user-1',
+      workspaceId,
+      createSnapshot(['orders']),
+    );
+
+    expect(readWorkspaceD1Log(info.mock.calls)).toMatchObject({
+      event: 'workspace_sync_d1',
+      operation: 'checkpoint',
+      userId: 'user-1',
+      workspaceId,
+      entityCount: 1,
+      upserted: 1,
+      deleted: 0,
+      skipped: 0,
+      d1: {
+        queries: 6,
+        rowsRead: 3,
+        rowsWritten: 2,
+        durationMs: 6,
+      },
+    });
   });
 });

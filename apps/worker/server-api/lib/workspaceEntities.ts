@@ -11,9 +11,11 @@ import type {
 } from '@ddlbuilder/shared-types/workspace';
 import type { ApiEnv } from './context.js';
 import {
+  allWorkspaceD1Result,
   createWorkspaceD1Metrics,
+  firstWorkspaceD1Result,
   logWorkspaceD1Metrics,
-  recordWorkspaceD1Result,
+  runWorkspaceD1Result,
   type WorkspaceD1Metrics,
 } from './workspaceSyncMetrics.js';
 
@@ -161,8 +163,9 @@ const toEnvelope = (workspaceId: string, row: EntityRow): WorkspaceEntityEnvelop
 });
 
 const readDefaultWorkspace = async (env: ApiEnv['Bindings'], userId: string) =>
-  env.USER_DB.prepare(
-    `
+  firstWorkspaceD1Result<WorkspaceRow>(
+    env.USER_DB.prepare(
+      `
       SELECT
         id,
         name,
@@ -173,9 +176,8 @@ const readDefaultWorkspace = async (env: ApiEnv['Bindings'], userId: string) =>
       WHERE user_id = ? AND is_default = 1
       LIMIT 1
     `,
-  )
-    .bind(userId)
-    .first<WorkspaceRow>();
+    ).bind(userId),
+  );
 
 export const getOrCreateDefaultWorkspace = async (
   env: ApiEnv['Bindings'],
@@ -261,49 +263,61 @@ export const assertWorkspaceOwner = async (
   env: ApiEnv['Bindings'],
   userId: string,
   workspaceId: string,
+  metrics?: WorkspaceD1Metrics,
 ) => {
-  const row = await env.USER_DB.prepare(
-    `
+  const row = await firstWorkspaceD1Result<{ id: string }>(
+    env.USER_DB.prepare(
+      `
       SELECT id
       FROM workspaces
       WHERE id = ? AND user_id = ?
       LIMIT 1
     `,
-  )
-    .bind(workspaceId, userId)
-    .first<{ id: string }>();
+    ).bind(workspaceId, userId),
+    metrics,
+  );
 
   if (!row) {
     throw new WorkspaceNotFoundError();
   }
 };
 
-const readWorkspaceCursor = async (env: ApiEnv['Bindings'], workspaceId: string) => {
-  const row = await env.USER_DB.prepare(
-    `
+const readWorkspaceCursor = async (
+  env: ApiEnv['Bindings'],
+  workspaceId: string,
+  metrics?: WorkspaceD1Metrics,
+) => {
+  const row = await firstWorkspaceD1Result<{ cursor: number }>(
+    env.USER_DB.prepare(
+      `
       SELECT next_version AS cursor
       FROM workspace_clocks
       WHERE workspace_id = ?
       LIMIT 1
     `,
-  )
-    .bind(workspaceId)
-    .first<{ cursor: number }>();
+    ).bind(workspaceId),
+    metrics,
+  );
 
   return row?.cursor ?? 0;
 };
 
-const allocateWorkspaceVersion = async (env: ApiEnv['Bindings'], workspaceId: string) => {
-  const row = await env.USER_DB.prepare(
-    `
+const allocateWorkspaceVersion = async (
+  env: ApiEnv['Bindings'],
+  workspaceId: string,
+  metrics?: WorkspaceD1Metrics,
+) => {
+  const row = await firstWorkspaceD1Result<{ version: number }>(
+    env.USER_DB.prepare(
+      `
       UPDATE workspace_clocks
       SET next_version = next_version + 1
       WHERE workspace_id = ?
       RETURNING next_version AS version
     `,
-  )
-    .bind(workspaceId)
-    .first<{ version: number }>();
+    ).bind(workspaceId),
+    metrics,
+  );
 
   if (!row) {
     throw new Error('Workspace clock missing');
@@ -317,9 +331,11 @@ const readEntity = async (
   workspaceId: string,
   entityType: WorkspaceEntityType,
   entityId: string,
+  metrics?: WorkspaceD1Metrics,
 ) =>
-  env.USER_DB.prepare(
-    `
+  firstWorkspaceD1Result<EntityRow>(
+    env.USER_DB.prepare(
+      `
       SELECT
         entity_type AS entityType,
         entity_id AS entityId,
@@ -332,9 +348,9 @@ const readEntity = async (
       WHERE workspace_id = ? AND entity_type = ? AND entity_id = ?
       LIMIT 1
     `,
-  )
-    .bind(workspaceId, entityType, entityId)
-    .first<EntityRow>();
+    ).bind(workspaceId, entityType, entityId),
+    metrics,
+  );
 
 const writeEntityVersion = async (
   env: ApiEnv['Bindings'],
@@ -350,12 +366,13 @@ const writeEntityVersion = async (
   },
   metrics?: WorkspaceD1Metrics,
 ) => {
-  const version = await allocateWorkspaceVersion(env, input.workspaceId);
+  const version = await allocateWorkspaceVersion(env, input.workspaceId, metrics);
   const deletedAt = input.op === 'delete' ? input.updatedAt : null;
   const payloadJson = input.op === 'delete' ? null : JSON.stringify(input.payload);
   const contentHash = input.op === 'delete' ? null : input.contentHash;
-  const result = await env.USER_DB.prepare(
-    `
+  const result = await runWorkspaceD1Result(
+    env.USER_DB.prepare(
+      `
       INSERT INTO workspace_entities (
         id,
         workspace_id,
@@ -377,8 +394,7 @@ const writeEntityVersion = async (
         deleted_at = excluded.deleted_at,
         updated_at = excluded.updated_at
     `,
-  )
-    .bind(
+    ).bind(
       buildEntityRowId(input.workspaceId, input.entityType, input.entityId),
       input.workspaceId,
       input.userId,
@@ -390,9 +406,9 @@ const writeEntityVersion = async (
       deletedAt,
       input.updatedAt,
       input.updatedAt,
-    )
-    .run();
-  recordWorkspaceD1Result(metrics, result);
+    ),
+    metrics,
+  );
 
   if (!result.success) {
     throw new Error(result.error ?? 'D1 execution failed');
@@ -413,8 +429,9 @@ const writeMutation = async (
   },
   metrics?: WorkspaceD1Metrics,
 ) => {
-  const result = await env.USER_DB.prepare(
-    `
+  const result = await runWorkspaceD1Result(
+    env.USER_DB.prepare(
+      `
       INSERT INTO workspace_mutations (
         id,
         workspace_id,
@@ -428,8 +445,7 @@ const writeMutation = async (
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(workspace_id, client_mutation_id) DO NOTHING
     `,
-  )
-    .bind(
+    ).bind(
       buildMutationRowId(input.workspaceId, input.clientMutationId),
       input.workspaceId,
       input.userId,
@@ -438,9 +454,9 @@ const writeMutation = async (
       input.entityId,
       input.version,
       now(),
-    )
-    .run();
-  recordWorkspaceD1Result(metrics, result);
+    ),
+    metrics,
+  );
 
   if (!result.success) {
     throw new Error(result.error ?? 'D1 execution failed');
@@ -451,9 +467,11 @@ const readMutation = async (
   env: ApiEnv['Bindings'],
   workspaceId: string,
   clientMutationId: string,
+  metrics?: WorkspaceD1Metrics,
 ) =>
-  env.USER_DB.prepare(
-    `
+  firstWorkspaceD1Result<MutationRow>(
+    env.USER_DB.prepare(
+      `
       SELECT
         entity_type AS entityType,
         entity_id AS entityId,
@@ -462,17 +480,18 @@ const readMutation = async (
       WHERE workspace_id = ? AND client_mutation_id = ?
       LIMIT 1
     `,
-  )
-    .bind(workspaceId, clientMutationId)
-    .first<MutationRow>();
+    ).bind(workspaceId, clientMutationId),
+    metrics,
+  );
 
 const listActiveEntities = async (
   env: ApiEnv['Bindings'],
   workspaceId: string,
   metrics?: WorkspaceD1Metrics,
 ) => {
-  const result = await env.USER_DB.prepare(
-    `
+  const result = await allWorkspaceD1Result<EntityRow>(
+    env.USER_DB.prepare(
+      `
       SELECT
         entity_type AS entityType,
         entity_id AS entityId,
@@ -485,26 +504,30 @@ const listActiveEntities = async (
       WHERE workspace_id = ? AND deleted_at IS NULL
       ORDER BY version ASC
     `,
-  )
-    .bind(workspaceId)
-    .all<EntityRow>();
-  recordWorkspaceD1Result(metrics, result);
+    ).bind(workspaceId),
+    metrics,
+  );
 
   return result.results ?? [];
 };
 
-const listEntityKeys = async (env: ApiEnv['Bindings'], workspaceId: string) => {
-  const result = await env.USER_DB.prepare(
-    `
+const listEntityKeys = async (
+  env: ApiEnv['Bindings'],
+  workspaceId: string,
+  metrics?: WorkspaceD1Metrics,
+) => {
+  const result = await allWorkspaceD1Result<EntityKeyRow>(
+    env.USER_DB.prepare(
+      `
       SELECT
         entity_type AS entityType,
         entity_id AS entityId
       FROM workspace_entities
       WHERE workspace_id = ?
     `,
-  )
-    .bind(workspaceId)
-    .all<EntityKeyRow>();
+    ).bind(workspaceId),
+    metrics,
+  );
 
   return result.results ?? [];
 };
@@ -516,10 +539,11 @@ export const getWorkspaceChanges = async (
   since: number,
 ): Promise<WorkspaceChangesResponse> => {
   const metrics = createWorkspaceD1Metrics();
-  await assertWorkspaceOwner(env, userId, workspaceId);
-  await backfillLegacySnapshotEntities(env, userId, workspaceId);
-  const result = await env.USER_DB.prepare(
-    `
+  await assertWorkspaceOwner(env, userId, workspaceId, metrics);
+  await backfillLegacySnapshotEntities(env, userId, workspaceId, metrics);
+  const result = await allWorkspaceD1Result<EntityRow>(
+    env.USER_DB.prepare(
+      `
       SELECT
         entity_type AS entityType,
         entity_id AS entityId,
@@ -532,14 +556,13 @@ export const getWorkspaceChanges = async (
       WHERE workspace_id = ? AND version > ?
       ORDER BY version ASC
     `,
-  )
-    .bind(workspaceId, since)
-    .all<EntityRow>();
-  recordWorkspaceD1Result(metrics, result);
+    ).bind(workspaceId, since),
+    metrics,
+  );
 
   const response = {
     workspaceId,
-    cursor: await readWorkspaceCursor(env, workspaceId),
+    cursor: await readWorkspaceCursor(env, workspaceId, metrics),
     entities: (result.results ?? []).map((row) => toEnvelope(workspaceId, row)),
   };
   logWorkspaceD1Metrics(
@@ -562,12 +585,12 @@ export const pushWorkspaceChanges = async (
   request: WorkspaceChangesPushRequest,
 ): Promise<WorkspaceChangesPushResponse> => {
   const metrics = createWorkspaceD1Metrics();
-  await assertWorkspaceOwner(env, userId, workspaceId);
+  await assertWorkspaceOwner(env, userId, workspaceId, metrics);
   const accepted: WorkspaceChangesPushResponse['accepted'] = [];
   const conflicts: WorkspaceChangesPushResponse['conflicts'] = [];
 
   for (const change of request.changes) {
-    const mutation = await readMutation(env, workspaceId, change.clientMutationId);
+    const mutation = await readMutation(env, workspaceId, change.clientMutationId, metrics);
     if (mutation) {
       accepted.push({
         clientMutationId: change.clientMutationId,
@@ -578,7 +601,13 @@ export const pushWorkspaceChanges = async (
       continue;
     }
 
-    const existing = await readEntity(env, workspaceId, change.entityType, change.entityId);
+    const existing = await readEntity(
+      env,
+      workspaceId,
+      change.entityType,
+      change.entityId,
+      metrics,
+    );
     const sameContent =
       existing &&
       ((change.op === 'delete' && existing.deletedAt != null) ||
@@ -659,7 +688,7 @@ export const pushWorkspaceChanges = async (
   }
 
   const response = {
-    cursor: await readWorkspaceCursor(env, workspaceId),
+    cursor: await readWorkspaceCursor(env, workspaceId, metrics),
     accepted,
     conflicts,
   };
@@ -747,9 +776,14 @@ const snapshotToEntities = (snapshot: WorkspaceSnapshot): EntityInput[] => {
   return entities;
 };
 
-const listLegacySnapshotRows = async (env: ApiEnv['Bindings'], userId: string) => {
-  const result = await env.USER_DB.prepare(
-    `
+const listLegacySnapshotRows = async (
+  env: ApiEnv['Bindings'],
+  userId: string,
+  metrics?: WorkspaceD1Metrics,
+) => {
+  const result = await allWorkspaceD1Result<LegacySnapshotRow>(
+    env.USER_DB.prepare(
+      `
       SELECT
         kind,
         normalized_name AS normalizedName,
@@ -758,9 +792,9 @@ const listLegacySnapshotRows = async (env: ApiEnv['Bindings'], userId: string) =
       FROM workspace_snapshots
       WHERE user_id = ?
     `,
-  )
-    .bind(userId)
-    .all<LegacySnapshotRow>();
+    ).bind(userId),
+    metrics,
+  );
 
   return result.results ?? [];
 };
@@ -891,18 +925,23 @@ const writeEntityInputs = async (
     workspaceId: string;
     entities: EntityInput[];
   },
+  metrics?: WorkspaceD1Metrics,
 ) => {
   for (const entity of input.entities) {
-    await writeEntityVersion(env, {
-      userId: input.userId,
-      workspaceId: input.workspaceId,
-      entityType: entity.entityType,
-      entityId: entity.entityId,
-      op: 'upsert',
-      payload: entity.payload,
-      contentHash: await buildWorkspaceContentHash(entity.payload),
-      updatedAt: entity.sourceUpdatedAt,
-    });
+    await writeEntityVersion(
+      env,
+      {
+        userId: input.userId,
+        workspaceId: input.workspaceId,
+        entityType: entity.entityType,
+        entityId: entity.entityId,
+        op: 'upsert',
+        payload: entity.payload,
+        contentHash: await buildWorkspaceContentHash(entity.payload),
+        updatedAt: entity.sourceUpdatedAt,
+      },
+      metrics,
+    );
   }
 };
 
@@ -996,13 +1035,14 @@ const backfillLegacySnapshotEntities = async (
   env: ApiEnv['Bindings'],
   userId: string,
   workspaceId: string,
+  metrics?: WorkspaceD1Metrics,
 ) => {
-  const legacyRows = await listLegacySnapshotRows(env, userId);
+  const legacyRows = await listLegacySnapshotRows(env, userId, metrics);
   if (legacyRows.length === 0) {
     return false;
   }
 
-  const existingRows = await listEntityKeys(env, workspaceId);
+  const existingRows = await listEntityKeys(env, workspaceId, metrics);
   const existingKeys = new Set(
     existingRows.map((row) => buildEntityKey(row.entityType, row.entityId)),
   );
@@ -1013,11 +1053,15 @@ const backfillLegacySnapshotEntities = async (
     return false;
   }
 
-  await writeEntityInputs(env, {
-    userId,
-    workspaceId,
-    entities: missingLegacyEntities,
-  });
+  await writeEntityInputs(
+    env,
+    {
+      userId,
+      workspaceId,
+      entities: missingLegacyEntities,
+    },
+    metrics,
+  );
   return true;
 };
 
@@ -1060,7 +1104,7 @@ export const checkpointWorkspaceSnapshotEntities = async (
   snapshot: WorkspaceSnapshot,
 ) => {
   const metrics = createWorkspaceD1Metrics();
-  await assertWorkspaceOwner(env, userId, workspaceId);
+  await assertWorkspaceOwner(env, userId, workspaceId, metrics);
   const entities = snapshotToEntities(snapshot);
   const nextKeys = new Set(
     entities.map((entity) => buildEntityKey(entity.entityType, entity.entityId)),
@@ -1071,7 +1115,13 @@ export const checkpointWorkspaceSnapshotEntities = async (
 
   for (const entity of entities) {
     const contentHash = await buildWorkspaceContentHash(entity.payload);
-    const existing = await readEntity(env, workspaceId, entity.entityType, entity.entityId);
+    const existing = await readEntity(
+      env,
+      workspaceId,
+      entity.entityType,
+      entity.entityId,
+      metrics,
+    );
     if (existing && existing.deletedAt == null && existing.contentHash === contentHash) {
       skipped++;
       continue;
@@ -1119,7 +1169,7 @@ export const checkpointWorkspaceSnapshotEntities = async (
   }
 
   const response = {
-    cursor: await readWorkspaceCursor(env, workspaceId),
+    cursor: await readWorkspaceCursor(env, workspaceId, metrics),
     upserted,
     deleted,
     skipped,
