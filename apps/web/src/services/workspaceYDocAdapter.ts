@@ -20,6 +20,7 @@ export const WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN = { source: 'workspace-local-edit'
 type JsonRecord = Record<string, unknown>;
 type ApplyPersistedStateOptions = {
   compactSnapshotBase?: boolean;
+  forceFineGrained?: boolean;
 };
 
 export type WorkspaceYDocDraftRecord = {
@@ -398,6 +399,7 @@ export const applyPersistedStateToTableDoc = (
 ) => {
   const previousSnapshot = readStateSnapshot(tableDoc);
   const compactSnapshotBase = options.compactSnapshotBase === true;
+  const forceFineGrained = options.forceFineGrained === true;
   const existingScalar = tableDoc.get('scalar');
   const scalarMap = existingScalar instanceof Y.Map ? existingScalar : null;
   if (!compactSnapshotBase || !previousSnapshot) {
@@ -407,17 +409,14 @@ export const applyPersistedStateToTableDoc = (
   const scalarValues: JsonRecord = {};
   for (const key of TABLE_SCALAR_KEYS) {
     if (
+      !forceFineGrained &&
       previousSnapshot &&
       stableStringify(previousSnapshot[key]) === stableStringify(state[key])
     ) {
       if (
-        compactSnapshotBase &&
-        scalarMap?.has(key) &&
+        !scalarMap?.has(key) ||
         stableStringify(scalarMap.get(key)) === stableStringify(state[key])
       ) {
-        scalarValues[key] = undefined;
-      }
-      if (!scalarMap?.has(key) || compactSnapshotBase) {
         continue;
       }
     }
@@ -440,17 +439,14 @@ export const applyPersistedStateToTableDoc = (
     const values: JsonRecord = {};
     for (const key of FIELD_KEYS) {
       if (
+        !forceFineGrained &&
         previousRows[index] &&
         stableStringify(previousRows[index][key]) === stableStringify(row[key])
       ) {
         if (
-          compactSnapshotBase &&
-          fieldMap?.has(key) &&
+          !fieldMap?.has(key) ||
           stableStringify(fieldMap.get(key)) === stableStringify(row[key])
         ) {
-          values[key] = undefined;
-        }
-        if (!fieldMap?.has(key) || compactSnapshotBase) {
           continue;
         }
       }
@@ -464,17 +460,6 @@ export const applyPersistedStateToTableDoc = (
   const hasFieldStructuralChanges =
     previousRows.length !== (state.rows ?? []).length ||
     fieldIds.some((fieldId, index) => fieldId !== previousFieldIds[index]);
-  if (
-    compactSnapshotBase &&
-    previousSnapshot &&
-    !hasFieldValueChanges &&
-    !hasFieldStructuralChanges
-  ) {
-    if (existingFields || tableDoc.get('fieldOrder') instanceof Y.Array) {
-      tableDoc.delete('fields');
-      tableDoc.delete('fieldOrder');
-    }
-  }
   const shouldWriteFields =
     !previousSnapshot ||
     hasFieldValueChanges ||
@@ -505,6 +490,7 @@ export const applyPersistedStateToTableDoc = (
   const hasIndexDoc =
     tableDoc.get('indexes') instanceof Y.Map || tableDoc.get('indexOrder') instanceof Y.Array;
   if (
+    forceFineGrained ||
     !previousSnapshot ||
     hasIndexDoc ||
     stableStringify(previousSnapshot.indexes ?? []) !== stableStringify(state.indexes ?? [])
@@ -515,6 +501,7 @@ export const applyPersistedStateToTableDoc = (
     tableDoc.get('foreignKeys') instanceof Y.Map ||
     tableDoc.get('foreignKeyOrder') instanceof Y.Array;
   if (
+    forceFineGrained ||
     !previousSnapshot ||
     hasForeignKeyDoc ||
     stableStringify(previousSnapshot.foreignKeys ?? []) !== stableStringify(state.foreignKeys ?? [])
@@ -527,7 +514,7 @@ const materializeTableDoc = (tableDoc: Y.Map<unknown>) => {
   if (hasFineGrainedTableDoc(tableDoc)) return false;
   const stateSnapshot = readStateSnapshot(tableDoc);
   if (!stateSnapshot) return false;
-  applyPersistedStateToTableDoc(tableDoc, stateSnapshot);
+  applyPersistedStateToTableDoc(tableDoc, stateSnapshot, { forceFineGrained: true });
   return true;
 };
 

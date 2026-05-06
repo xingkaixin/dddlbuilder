@@ -187,8 +187,11 @@ const mockSignedInWorkspace = async (
 const editFirstFieldName = async (page: Page, fieldName: string) => {
   const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
   await cell.dblclick();
-  await page.locator('[data-testid="data-table"] input').fill(fieldName);
-  await page.keyboard.press('Enter');
+  const input = cell.locator('input');
+  await expect(input).toBeVisible();
+  await input.fill(fieldName);
+  await input.press('Enter');
+  await expect(cell).toHaveText(fieldName);
 };
 
 const editFirstFieldType = async (page: Page, fieldType: string) => {

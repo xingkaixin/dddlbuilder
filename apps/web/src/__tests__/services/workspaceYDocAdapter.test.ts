@@ -9,6 +9,7 @@ import {
   deleteSavedTableFromYDoc,
   getSavedTableFromYDoc,
   mergeWorkspaceSnapshotIntoYDoc,
+  materializeWorkspaceYDoc,
   listFoldersFromYDoc,
   upsertDraftInYDoc,
   upsertFolderInYDoc,
@@ -212,6 +213,71 @@ describe('workspaceYDocAdapter', () => {
       'email',
     ]);
     expect(readDefaultDraftState(right)).toEqual(readDefaultDraftState(left));
+  });
+
+  it('materializes snapshot-only drafts into fine-grained table data', () => {
+    const { left } = createSnapshotOnlySyncedDocs();
+    const tableDoc = left.getMap<Y.Map<unknown>>('drafts').get(DEFAULT_DRAFT_ID);
+
+    expect(materializeWorkspaceYDoc(left)).toBe(true);
+
+    expect(tableDoc?.get('scalar')).toBeInstanceOf(Y.Map);
+    expect(tableDoc?.get('fields')).toBeInstanceOf(Y.Map);
+    expect(tableDoc?.get('fieldOrder')).toBeInstanceOf(Y.Array);
+    expect(readDefaultDraftState(left)).toEqual(createState());
+  });
+
+  it('keeps field docs when compact writes only change table scalars', () => {
+    const doc = new Y.Doc();
+    const state = createState();
+
+    upsertDraftInYDoc(doc, DEFAULT_DRAFT_ID, { state, updatedAt: 1 });
+    upsertDraftInYDoc(
+      doc,
+      DEFAULT_DRAFT_ID,
+      {
+        state: createState({ tableName: 'accounts' }),
+        updatedAt: 2,
+      },
+      { compactSnapshotBase: true },
+    );
+
+    const tableDoc = doc.getMap<Y.Map<unknown>>('drafts').get(DEFAULT_DRAFT_ID);
+    expect(tableDoc?.get('fields')).toBeInstanceOf(Y.Map);
+    expect(tableDoc?.get('fieldOrder')).toBeInstanceOf(Y.Array);
+    expect(readDefaultDraftState(doc)).toMatchObject({
+      tableName: 'accounts',
+      rows: state.rows,
+    });
+  });
+
+  it('can compact-save a field value back to the snapshot value', () => {
+    const doc = new Y.Doc();
+    const state = createState();
+
+    upsertDraftInYDoc(doc, DEFAULT_DRAFT_ID, { state, updatedAt: 1 });
+    upsertDraftInYDoc(
+      doc,
+      DEFAULT_DRAFT_ID,
+      {
+        state: createState({
+          rows: [{ ...state.rows[0], fieldName: 'user_id' }, state.rows[1]],
+        }),
+        updatedAt: 2,
+      },
+      { compactSnapshotBase: true },
+    );
+    upsertDraftInYDoc(
+      doc,
+      DEFAULT_DRAFT_ID,
+      {
+        state,
+        updatedAt: 3,
+      },
+      { compactSnapshotBase: true },
+    );
+
+    expect(readDefaultDraftState(doc)?.rows[0].fieldName).toBe('id');
   });
 
   it('does not emit updates when applying the same table state', () => {
