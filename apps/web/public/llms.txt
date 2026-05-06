@@ -38,35 +38,35 @@
 ## Official Documentation (English)
 - [Documentation Home](https://ddl.xingkaixin.me/docs/en/)
   Start here for the complete English documentation index.
-- [Quick Start](https://ddl.xingkaixin.me/docs/en/basic/getting-started.html)
+- [Quick Start](https://ddl.xingkaixin.me/docs/en/basic/getting-started)
   First-run workflow to build and copy your first DDL/DCL output.
-- [Core Concepts](https://ddl.xingkaixin.me/docs/en/basic/core-concepts.html)
+- [Core Concepts](https://ddl.xingkaixin.me/docs/en/basic/core-concepts)
   Definitions of workspace, draft, saved table, share copy, DDL, and DCL.
-- [Table and Field Configuration](https://ddl.xingkaixin.me/docs/en/basic/table-and-fields.html)
+- [Table and Field Configuration](https://ddl.xingkaixin.me/docs/en/basic/table-and-fields)
   How to model table metadata and field-level configuration.
-- [Indexes, Privileges, and Misc](https://ddl.xingkaixin.me/docs/en/basic/index-auth-misc.html)
+- [Indexes, Privileges, and Misc](https://ddl.xingkaixin.me/docs/en/basic/index-auth-misc)
   How to configure indexes, use AI Index Advisor for query-based index recommendations, manage access control, and set table-level options.
-- [DDL Output and Sharing](https://ddl.xingkaixin.me/docs/en/basic/ddl-and-share.html)
+- [DDL Output and Sharing](https://ddl.xingkaixin.me/docs/en/basic/ddl-and-share)
   How to copy SQL outputs and collaborate through share links.
-- [Saved Tables and Draft box](https://ddl.xingkaixin.me/docs/en/basic/saved-tables.html)
+- [Saved Tables and Draft box](https://ddl.xingkaixin.me/docs/en/basic/saved-tables)
   How to persist, reload, and organize schema versions.
-- [Import and Parse SQL](https://ddl.xingkaixin.me/docs/en/advanced/import-and-parse.html)
+- [Import and Parse SQL](https://ddl.xingkaixin.me/docs/en/advanced/import-and-parse)
   How to import existing SQL and convert it into editable configuration.
-- [AI-Assisted Table Design Workflow](https://ddl.xingkaixin.me/docs/en/advanced/ai-workflow.html)
+- [AI-Assisted Table Design Workflow](https://ddl.xingkaixin.me/docs/en/advanced/ai-workflow)
   How to generate schema drafts through AI conversation and refine existing tables through reviewable AI changes.
-- [Review and Explain SQL](https://ddl.xingkaixin.me/docs/en/advanced/review-and-explain.html)
+- [Review and Explain SQL](https://ddl.xingkaixin.me/docs/en/advanced/review-and-explain)
   How to use AI review and SQL explanation for quality checks.
-- [Partitioning and Sharding Configuration](https://ddl.xingkaixin.me/docs/en/advanced/partition-and-sharding.html)
+- [Partitioning and Sharding Configuration](https://ddl.xingkaixin.me/docs/en/advanced/partition-and-sharding)
   How to use partition and sharding related features by database type.
-- [Change Diff and Rollback](https://ddl.xingkaixin.me/docs/en/advanced/diff-and-rollback.html)
+- [Change Diff and Rollback](https://ddl.xingkaixin.me/docs/en/advanced/diff-and-rollback)
   How to inspect schema differences and rollback-related SQL outputs.
-- [Errors and Failure Handling](https://ddl.xingkaixin.me/docs/en/faq/common-errors.html)
+- [Errors and Failure Handling](https://ddl.xingkaixin.me/docs/en/faq/common-errors)
   Troubleshooting guide for common failures and recovery paths.
-- [Feature Entry and Visibility](https://ddl.xingkaixin.me/docs/en/faq/feature-visibility.html)
+- [Feature Entry and Visibility](https://ddl.xingkaixin.me/docs/en/faq/feature-visibility)
   Why specific tabs or buttons may appear or be hidden.
-- [Sharing and Collaboration](https://ddl.xingkaixin.me/docs/en/faq/sharing-and-collaboration.html)
+- [Sharing and Collaboration](https://ddl.xingkaixin.me/docs/en/faq/sharing-and-collaboration)
   Collaboration expectations and behavior around share links.
-- [Changelog](https://ddl.xingkaixin.me/docs/en/changelog/changelog.html)
+- [Changelog](https://ddl.xingkaixin.me/docs/en/changelog/changelog)
   Release history and feature evolution reference.
 
 ## How an LLM Should Use This File
@@ -114,35 +114,35 @@
 ## 官方文档（中文）
 - [文档首页](https://ddl.xingkaixin.me/docs/zh/)
   从这里进入完整的中文文档目录。
-- [快速开始](https://ddl.xingkaixin.me/docs/zh/basic/getting-started.html)
+- [快速开始](https://ddl.xingkaixin.me/docs/zh/basic/getting-started)
   首次使用流程，帮助你完成第一份 DDL / DCL 的配置与复制。
-- [核心概念](https://ddl.xingkaixin.me/docs/zh/basic/core-concepts.html)
+- [核心概念](https://ddl.xingkaixin.me/docs/zh/basic/core-concepts)
   了解工作区、草稿、已保存表、分享副本、DDL、DCL 等核心概念。
-- [表与字段配置](https://ddl.xingkaixin.me/docs/zh/basic/table-and-fields.html)
+- [表与字段配置](https://ddl.xingkaixin.me/docs/zh/basic/table-and-fields)
   说明如何配置表元信息和字段级属性。
-- [索引、权限与杂项](https://ddl.xingkaixin.me/docs/zh/basic/index-auth-misc.html)
+- [索引、权限与杂项](https://ddl.xingkaixin.me/docs/zh/basic/index-auth-misc)
   说明如何配置索引、使用 AI 索引顾问获取基于查询的索引建议、配置权限控制和表级选项。
-- [DDL 输出与分享](https://ddl.xingkaixin.me/docs/zh/basic/ddl-and-share.html)
+- [DDL 输出与分享](https://ddl.xingkaixin.me/docs/zh/basic/ddl-and-share)
   说明如何复制 SQL 输出，以及如何通过分享链接协作。
-- [已保存表与草稿箱](https://ddl.xingkaixin.me/docs/zh/basic/saved-tables.html)
+- [已保存表与草稿箱](https://ddl.xingkaixin.me/docs/zh/basic/saved-tables)
   说明如何持久化、重新加载和整理不同版本的表结构。
-- [导入与解析 SQL](https://ddl.xingkaixin.me/docs/zh/advanced/import-and-parse.html)
+- [导入与解析 SQL](https://ddl.xingkaixin.me/docs/zh/advanced/import-and-parse)
   说明如何导入已有 SQL，并转换为可编辑配置。
-- [AI 辅助建表流程](https://ddl.xingkaixin.me/docs/zh/advanced/ai-workflow.html)
+- [AI 辅助建表流程](https://ddl.xingkaixin.me/docs/zh/advanced/ai-workflow)
   说明如何通过 AI 对话生成表结构草稿，并通过可审阅的 AI 变更细化已有表。
-- [评审与解释 SQL](https://ddl.xingkaixin.me/docs/zh/advanced/review-and-explain.html)
+- [评审与解释 SQL](https://ddl.xingkaixin.me/docs/zh/advanced/review-and-explain)
   说明如何使用 AI 评审和 SQL 解释能力做质量检查。
-- [分区与分片配置](https://ddl.xingkaixin.me/docs/zh/advanced/partition-and-sharding.html)
+- [分区与分片配置](https://ddl.xingkaixin.me/docs/zh/advanced/partition-and-sharding)
   说明如何按数据库类型使用分区与分片相关能力。
-- [变更对比与回滚](https://ddl.xingkaixin.me/docs/zh/advanced/diff-and-rollback.html)
+- [变更对比与回滚](https://ddl.xingkaixin.me/docs/zh/advanced/diff-and-rollback)
   说明如何查看结构差异以及回滚相关 SQL 输出。
-- [常见错误与失败处理](https://ddl.xingkaixin.me/docs/zh/faq/common-errors.html)
+- [常见错误与失败处理](https://ddl.xingkaixin.me/docs/zh/faq/common-errors)
   常见失败场景和恢复路径的排查说明。
-- [功能入口与显示规则](https://ddl.xingkaixin.me/docs/zh/faq/feature-visibility.html)
+- [功能入口与显示规则](https://ddl.xingkaixin.me/docs/zh/faq/feature-visibility)
   说明为什么某些标签页或按钮会显示或隐藏。
-- [分享与协作](https://ddl.xingkaixin.me/docs/zh/faq/sharing-and-collaboration.html)
+- [分享与协作](https://ddl.xingkaixin.me/docs/zh/faq/sharing-and-collaboration)
   说明分享链接场景下的协作方式与行为边界。
-- [更新日志](https://ddl.xingkaixin.me/docs/zh/changelog/changelog.html)
+- [更新日志](https://ddl.xingkaixin.me/docs/zh/changelog/changelog)
   用于查看版本演进和功能变更记录。
 
 ## LLM 应如何使用这份文件
