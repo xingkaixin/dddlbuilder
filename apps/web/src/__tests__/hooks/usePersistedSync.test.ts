@@ -221,6 +221,42 @@ describe('usePersistedSync debounce save', () => {
     expect(saveState).not.toHaveBeenCalled();
   });
 
+  it('远端状态已应用后首个本地编辑应保存', () => {
+    const saveState = vi.fn();
+    const remoteState = createState('remote_state');
+    const localEditState = createState('local_edit');
+    const remoteBuild = vi.fn(() => remoteState);
+    const localEditBuild = vi.fn(() => localEditState);
+    const params = createBaseParams({
+      saveState,
+      persistedState: remoteState,
+      buildPersistedState: remoteBuild,
+    });
+
+    const { rerender } = renderHook(
+      (params: ReturnType<typeof createBaseParams>) => usePersistedSync(params),
+      {
+        initialProps: params,
+      },
+    );
+
+    rerender({
+      ...params,
+      buildPersistedState: localEditBuild,
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(saveState).toHaveBeenCalledTimes(1);
+    expect(saveState).toHaveBeenCalledWith({
+      state: localEditState,
+      source: { kind: 'draft', draftId: 'default' },
+      isDirty: false,
+    });
+  });
+
   it('当来源为保存表时应计算 dirty 状态', () => {
     const saveState = vi.fn();
     const baseState = createState('users');

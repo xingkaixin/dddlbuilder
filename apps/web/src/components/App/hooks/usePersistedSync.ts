@@ -72,11 +72,13 @@ export function usePersistedSync({
 }: UsePersistedSyncParams) {
   const activeSourceRef = useRef(activeSource);
   activeSourceRef.current = activeSource;
-  const lastAppliedPersistedSignatureRef = useRef<string | null>(null);
+  const buildPersistedStateRef = useRef(buildPersistedState);
+  buildPersistedStateRef.current = buildPersistedState;
+  const lastAppliedBuildPersistedStateRef = useRef<(() => PersistedState) | null>(null);
 
   useEffect(() => {
     if (!hydrated || !persistedState) return;
-    lastAppliedPersistedSignatureRef.current = JSON.stringify(persistedState);
+    lastAppliedBuildPersistedStateRef.current = buildPersistedStateRef.current;
 
     if (typeof persistedState.schemaName === 'string') {
       setSchemaName(persistedState.schemaName);
@@ -149,6 +151,13 @@ export function usePersistedSync({
     setLoadedTableSignature,
   ]);
 
+  useEffect(() => {
+    if (!hydrated || !hasOpenTab) return;
+    if (!lastAppliedBuildPersistedStateRef.current) return;
+    if (lastAppliedBuildPersistedStateRef.current === buildPersistedState) return;
+    lastAppliedBuildPersistedStateRef.current = null;
+  }, [buildPersistedState, hasOpenTab, hydrated]);
+
   useDebouncedEffect(
     () => {
       if (!hydrated) return;
@@ -174,15 +183,15 @@ export function usePersistedSync({
       }
 
       try {
-        const state = buildPersistedState();
-        const currentSignature = JSON.stringify(state);
-        const lastAppliedSignature = lastAppliedPersistedSignatureRef.current;
-        if (lastAppliedSignature) {
-          lastAppliedPersistedSignatureRef.current = null;
-          if (currentSignature !== lastAppliedSignature) {
+        const lastAppliedBuildPersistedState = lastAppliedBuildPersistedStateRef.current;
+        if (lastAppliedBuildPersistedState) {
+          if (lastAppliedBuildPersistedState === buildPersistedState) {
             return;
           }
+          lastAppliedBuildPersistedStateRef.current = null;
         }
+        const state = buildPersistedState();
+        const currentSignature = JSON.stringify(state);
         const isDirty =
           source.kind === 'saved_table' ? currentSignature !== source.baseSignature : false;
         saveState({
