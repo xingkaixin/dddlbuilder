@@ -200,7 +200,12 @@ export const zhCNCommon = {
     },
   },
   workspaceYDoc: {
-    structureConflictNotice: '已合并远端表结构变更，请检查字段、索引和外键。',
+    structureConflictNotice: '已合并远端表结构变更：{{summary}}。请检查字段、索引和外键。',
+    structureConflictFields: '字段 {{count}} 项（{{items}}）',
+    structureConflictIndexes: '索引 {{count}} 项（{{items}}）',
+    structureConflictForeignKeys: '外键 {{count}} 项（{{items}}）',
+    structureConflictSeparator: '，',
+    structureConflictAction: '查看表结构',
     status: {
       localSaved: '本地已保存',
       syncing: '同步中',

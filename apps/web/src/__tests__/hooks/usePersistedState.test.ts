@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import * as Y from 'yjs';
+import { toast } from 'sonner';
 import { usePersistedState } from '@/hooks';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
@@ -20,7 +21,11 @@ import {
 import { listWorkspaceOutboxItems } from '@/utils/workspaceSyncStateDb';
 import { addSavedTable } from '@/utils/savedTablesDb';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
-import { getDraftRecordFromYDoc } from '@/services/workspaceYDocAdapter';
+import {
+  getDraftRecordFromYDoc,
+  upsertDraftInYDoc,
+  WORKSPACE_YDOC_STRUCTURE_CONFLICT_FOCUS_EVENT,
+} from '@/services/workspaceYDocAdapter';
 
 const GLOBAL_DRAFT_STORAGE_KEY = `${STORAGE_KEY}:draft:global:v1`;
 const WORKSPACE_SESSION_STORAGE_KEY = `${STORAGE_KEY}:workspace:v1`;
@@ -99,6 +104,12 @@ vi.mock('@/providers/WorkspaceYDocProvider', () => ({
   })),
 }));
 
+vi.mock('sonner', () => ({
+  toast: {
+    info: vi.fn(),
+  },
+}));
+
 const mockedGetShareState = vi.mocked(getShareState);
 const VALID_SHARE_ID = '8c6afce1-2a39-47aa-a14f-f3450c3ad7dd';
 const SHARE_STORAGE_KEY = `${STORAGE_KEY}:share:${VALID_SHARE_ID}`;
@@ -127,6 +138,40 @@ const createState = (tableName: string) => ({
   authInput: '',
   authObjects: [],
 });
+
+const mockSignedInWorkspaceYDoc = (doc: Y.Doc) => {
+  vi.mocked(useAuthSession).mockReturnValue({
+    status: 'signed_in',
+    configured: true,
+    userId: 'user-1',
+    workspaceId: 'ws-1',
+    email: 'user@example.com',
+    name: 'User One',
+    emailVerified: true,
+    creditBalance: 100,
+    creditsStatus: 'ready',
+    authDialogOpen: false,
+    signInWithEmail: vi.fn(),
+    signUpWithEmail: vi.fn(),
+    updateUserName: vi.fn(),
+    changePassword: vi.fn(),
+    requestPasswordReset: vi.fn(),
+    resetPassword: vi.fn(),
+    sendVerificationEmail: vi.fn(),
+    signOut: vi.fn(),
+    refreshSession: vi.fn(),
+    refreshCredits: vi.fn(),
+    openAuthDialog: vi.fn(),
+    closeAuthDialog: vi.fn(),
+  });
+  vi.mocked(useWorkspaceYDoc).mockReturnValue({
+    doc,
+    synced: false,
+    localSynced: true,
+    connectionState: 'connecting',
+    retry: vi.fn(),
+  });
+};
 
 describe('usePersistedState', () => {
   beforeEach(() => {
@@ -400,37 +445,7 @@ describe('usePersistedState', () => {
 
   it('本地 YDoc 已加载时应在远端连接前写入 YDoc', async () => {
     const doc = new Y.Doc();
-    vi.mocked(useAuthSession).mockReturnValue({
-      status: 'signed_in',
-      configured: true,
-      userId: 'user-1',
-      workspaceId: 'ws-1',
-      email: 'user@example.com',
-      name: 'User One',
-      emailVerified: true,
-      creditBalance: 100,
-      creditsStatus: 'ready',
-      authDialogOpen: false,
-      signInWithEmail: vi.fn(),
-      signUpWithEmail: vi.fn(),
-      updateUserName: vi.fn(),
-      changePassword: vi.fn(),
-      requestPasswordReset: vi.fn(),
-      resetPassword: vi.fn(),
-      sendVerificationEmail: vi.fn(),
-      signOut: vi.fn(),
-      refreshSession: vi.fn(),
-      refreshCredits: vi.fn(),
-      openAuthDialog: vi.fn(),
-      closeAuthDialog: vi.fn(),
-    });
-    vi.mocked(useWorkspaceYDoc).mockReturnValue({
-      doc,
-      synced: false,
-      localSynced: true,
-      connectionState: 'connecting',
-      retry: vi.fn(),
-    });
+    mockSignedInWorkspaceYDoc(doc);
 
     const { wrapper } = createQueryClientWrapper();
     const { result } = renderHook(() => usePersistedState(), { wrapper });
@@ -451,6 +466,80 @@ describe('usePersistedState', () => {
       expect(getDraftRecordFromYDoc(doc, 'default')?.state.tableName).toBe('pending_remote_draft');
     });
     expect(await listWorkspaceOutboxItems('ws-1')).toHaveLength(0);
+  });
+
+  it('YDoc 结构变更合入时应提示具体变更数量并提供检查动作', async () => {
+    const doc = new Y.Doc();
+    mockSignedInWorkspaceYDoc(doc);
+    const initialState = {
+      ...createState('users'),
+      rows: [
+        {
+          order: 1,
+          fieldName: 'id',
+          fieldType: 'bigint',
+          fieldComment: '主键',
+          nullable: '否',
+        },
+      ],
+      indexes: [
+        {
+          id: 'idx_id',
+          name: 'idx_users_id',
+          fields: [{ name: 'id', direction: 'ASC' as const }],
+          unique: true,
+        },
+      ],
+      foreignKeys: [],
+    };
+    upsertDraftInYDoc(doc, 'default', { state: initialState, updatedAt: 100 });
+
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.persistedState?.tableName).toBe('users');
+    });
+    expect(toast.info).not.toHaveBeenCalled();
+
+    act(() => {
+      upsertDraftInYDoc(doc, 'default', {
+        state: {
+          ...initialState,
+          rows: [{ ...initialState.rows[0], fieldType: 'uuid' }],
+          indexes: [],
+        },
+        updatedAt: 200,
+      });
+    });
+
+    await waitFor(() => {
+      expect(toast.info).toHaveBeenCalledWith(
+        expect.stringContaining('字段 1 项（id）'),
+        expect.objectContaining({
+          action: expect.objectContaining({
+            label: '查看表结构',
+            onClick: expect.any(Function),
+          }),
+        }),
+      );
+    });
+    expect(toast.info).toHaveBeenCalledWith(
+      expect.stringContaining('索引 1 项（idx_users_id）'),
+      expect.anything(),
+    );
+
+    const focusListener = vi.fn();
+    window.addEventListener(WORKSPACE_YDOC_STRUCTURE_CONFLICT_FOCUS_EVENT, focusListener);
+    const toastOptions = vi.mocked(toast.info).mock.calls[0]?.[1] as
+      | { action?: { onClick?: () => void } }
+      | undefined;
+    act(() => {
+      toastOptions?.action?.onClick?.();
+    });
+    const event = focusListener.mock.calls[0]?.[0] as CustomEvent | undefined;
+    expect(event?.detail).toMatchObject({ target: 'fields' });
+    window.removeEventListener(WORKSPACE_YDOC_STRUCTURE_CONFLICT_FOCUS_EVENT, focusListener);
   });
 
   it('保存已保存表状态时应同时记录来源与 activeState 以保留未保存修改', async () => {

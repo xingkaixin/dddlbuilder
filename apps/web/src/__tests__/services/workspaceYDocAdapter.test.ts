@@ -339,6 +339,12 @@ describe('workspaceYDocAdapter', () => {
       fieldsChanged: true,
       indexesChanged: true,
       foreignKeysChanged: false,
+      fieldChangeCount: 1,
+      indexChangeCount: 1,
+      foreignKeyChangeCount: 0,
+      changedFields: ['id'],
+      changedIndexes: ['idx_users_email'],
+      changedForeignKeys: [],
     });
   });
 

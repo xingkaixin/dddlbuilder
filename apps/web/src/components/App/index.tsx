@@ -39,6 +39,10 @@ import { useNavigationActions } from './hooks/useNavigationActions';
 import { useTemplateToolbarLeft } from './hooks/useTemplateToolbarLeft';
 import { useFireworksIntro } from './hooks/useFireworksIntro';
 import { usePersistedState } from '@/hooks/usePersistedState';
+import {
+  WORKSPACE_YDOC_STRUCTURE_CONFLICT_FOCUS_EVENT,
+  type WorkspaceYDocStructureConflictFocusEventDetail,
+} from '@/services/workspaceYDocAdapter';
 import { useAuthManagement } from '@/hooks/useAuthManagement';
 import { useSqlGeneration } from '@/hooks/useSqlGeneration';
 import { useOrmGeneration } from '@/hooks/useOrmGeneration';
@@ -1533,6 +1537,32 @@ function App() {
     },
     [indexes, rows, setActiveTab, triggerFieldTableHighlight, triggerIndexAnimation],
   );
+
+  useEffect(() => {
+    const handleStructureConflictFocus = (event: Event) => {
+      const detail = (event as CustomEvent<WorkspaceYDocStructureConflictFocusEventDetail>).detail;
+      const target = detail?.target ?? 'fields';
+      setActiveTab(target);
+      window.requestAnimationFrame(() => {
+        const element = document.querySelector<HTMLElement>(
+          `[data-workspace-yjs-conflict-target="${target}"]`,
+        );
+        element?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        element?.focus({ preventScroll: true });
+      });
+    };
+
+    window.addEventListener(
+      WORKSPACE_YDOC_STRUCTURE_CONFLICT_FOCUS_EVENT,
+      handleStructureConflictFocus,
+    );
+    return () => {
+      window.removeEventListener(
+        WORKSPACE_YDOC_STRUCTURE_CONFLICT_FOCUS_EVENT,
+        handleStructureConflictFocus,
+      );
+    };
+  }, [setActiveTab]);
 
   const { handleApplySuggestion, handleImport, handleApplyAIGeneratedSchema } =
     useSchemaApplyActions({
