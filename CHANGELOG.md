@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.19.0] - 2026-05-06
+### Added
+- **Workspace Yjs checkpointing**: Real-time sync now compacts Yjs updates into server-side checkpoints, helping Durable Objects recover from a fuller workspace snapshot after cold starts or reconnects and reducing recovery cost after long editing sessions.
+- **Sync status indicator**: The header now shows local saved, syncing, cloud synced, offline local saved, and sync failed states, with a retry action when sync fails.
+- **Sync cost and health observability**: Worker structured logs now include D1 reads and writes, checkpoints, Durable Object connections, updates, and compaction metrics for tracking sync cost and health after release.
+
+### Improved
+- **Workspace real-time sync reliability**: WebSocket updates now support batching, connection timeout detection, online recovery refresh, and flush before leaving the page, helping weak-network and multi-device editing converge to the latest state.
+- **Structured merge semantics**: Workspace Y.Doc now writes tables, fields, indexes, and folders as fine-grained structures. Applying remote snapshots preserves local edits and reduces the risk of field-level changes being overwritten by full-table snapshots.
+- **Duplicate save control**: Table state comparison ignores default configuration and meaningless differences, reducing repeated local and cloud saves when state has not changed.
+- **Documentation search visibility**: Documentation pages now include canonical and alternate hreflang links, and `llms.txt` uses extensionless documentation paths so search engines and AI tools can identify Chinese and English docs more reliably.
+
+### Fixed
+- **Local edit protection**: Fixes an issue where applying a remote Y.Doc snapshot could overwrite local edits that had not been flushed yet. Offline recovery and reconnect now refresh pending sync content proactively.
+- **Development WebSocket sync**: The Vite dev server proxy now supports WebSocket, so workspace real-time sync can be verified directly in development and E2E environments.
+
 ## [0.18.0] - 2026-05-05
 ### Added
 - **AI modify current table**: Supports adjusting the current table structure with natural language. AI generates reviewable table-level, field, and index changes based on the table name, fields, indexes, and database type; each change can be accepted or rejected before applying selected changes to the workspace.
