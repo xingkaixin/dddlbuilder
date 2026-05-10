@@ -58,3 +58,7 @@ skills-lock.json
 !.agents/skills/gen-changelog/**
 !.agents/skills/gen-docs/
 !.agents/skills/translate-docs/
+
+
+# temp
+.temp
