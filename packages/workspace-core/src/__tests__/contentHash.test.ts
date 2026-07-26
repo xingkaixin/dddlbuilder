@@ -13,4 +13,22 @@ describe('buildWorkspaceContentHash', () => {
       await buildWorkspaceContentHash({}),
     );
   });
+
+  it('serializes every supported canonical value', async () => {
+    const values = [
+      null,
+      'value',
+      1,
+      true,
+      1n,
+      Symbol('value'),
+      Symbol(),
+      () => undefined,
+      [1, undefined],
+    ];
+
+    const hashes = await Promise.all(values.map((value) => buildWorkspaceContentHash(value)));
+
+    expect(new Set(hashes).size).toBe(values.length);
+  });
 });

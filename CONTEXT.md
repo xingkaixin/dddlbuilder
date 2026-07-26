@@ -15,6 +15,15 @@ _Avoid_: Snapshot record, Yjs item
 The monotonically increasing commit position of a successfully stored Workspace Entity change.
 _Avoid_: Sequence allocation, tentative version
 
+**Workspace Document**:
+The Yjs representation of a Workspace used for collaborative persistence and transport.
+_Avoid_: Snapshot
+
+**Initialized Workspace Document**:
+A Workspace Document whose schema version has been established, even when all entity collections
+are empty. An initialized empty document is authoritative and must not be replaced by legacy data.
+_Avoid_: Non-empty document
+
 **Client Mutation**:
 A user's requested Workspace Entity change, identified so that retrying the same change has one observable result.
 _Avoid_: Request, update

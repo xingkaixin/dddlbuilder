@@ -328,52 +328,57 @@ const upsertTableRecord = (
   writeJsonMap(ensureMap(tableDoc, 'metadata'), metadata);
 };
 
+export const importWorkspaceSnapshotToYDoc = (doc: Y.Doc, snapshot: WorkspaceSnapshot) => {
+  doc.transact(() => {
+    const meta = doc.getMap('meta');
+    meta.set('schemaVersion', WORKSPACE_YDOC_SCHEMA_VERSION);
+    const drafts = doc.getMap<Y.Map<unknown>>('drafts');
+    const savedTables = doc.getMap<Y.Map<unknown>>('savedTables');
+    const savedDrafts = doc.getMap<Y.Map<unknown>>('savedDrafts');
+    const folders = doc.getMap<Y.Map<unknown>>('folders');
+
+    if (snapshot.globalDraft) {
+      upsertTableRecord(drafts, DEFAULT_DRAFT_ID, snapshot.globalDraft.state, {
+        updatedAt: snapshot.globalDraft.updatedAt,
+      });
+    }
+
+    for (const draft of snapshot.drafts) {
+      upsertTableRecord(drafts, draft.draftId, draft.state, {
+        createdAt: draft.createdAt,
+        updatedAt: draft.updatedAt,
+        folderId: draft.folderId,
+      });
+    }
+
+    for (const table of snapshot.savedTables) {
+      upsertTableRecord(savedTables, table.normalizedName, table.state, {
+        normalizedName: table.normalizedName,
+        name: table.name,
+        createdAt: table.createdAt ?? table.updatedAt,
+        updatedAt: table.updatedAt,
+        folderId: table.folderId,
+      });
+    }
+
+    for (const draft of snapshot.savedDrafts) {
+      upsertTableRecord(savedDrafts, draft.normalizedName, draft.state, {
+        normalizedName: draft.normalizedName,
+        tableName: draft.tableName,
+        baseSignature: draft.baseSignature,
+        updatedAt: draft.updatedAt,
+      });
+    }
+
+    for (const folder of snapshot.folders) {
+      writeJsonMap(ensureMap(folders, folder.id), folder as JsonRecord);
+    }
+  });
+};
+
 export const createWorkspaceYDocUpdateFromSnapshot = (snapshot: WorkspaceSnapshot) => {
   const doc = new Y.Doc();
-  const meta = doc.getMap('meta');
-  meta.set('schemaVersion', WORKSPACE_YDOC_SCHEMA_VERSION);
-  const drafts = doc.getMap<Y.Map<unknown>>('drafts');
-  const savedTables = doc.getMap<Y.Map<unknown>>('savedTables');
-  const savedDrafts = doc.getMap<Y.Map<unknown>>('savedDrafts');
-  const folders = doc.getMap<Y.Map<unknown>>('folders');
-
-  if (snapshot.globalDraft) {
-    upsertTableRecord(drafts, DEFAULT_DRAFT_ID, snapshot.globalDraft.state, {
-      updatedAt: snapshot.globalDraft.updatedAt,
-    });
-  }
-
-  for (const draft of snapshot.drafts) {
-    upsertTableRecord(drafts, draft.draftId, draft.state, {
-      createdAt: draft.createdAt,
-      updatedAt: draft.updatedAt,
-      folderId: draft.folderId,
-    });
-  }
-
-  for (const table of snapshot.savedTables) {
-    upsertTableRecord(savedTables, table.normalizedName, table.state, {
-      normalizedName: table.normalizedName,
-      name: table.name,
-      createdAt: table.createdAt,
-      updatedAt: table.updatedAt,
-      folderId: table.folderId,
-    });
-  }
-
-  for (const draft of snapshot.savedDrafts) {
-    upsertTableRecord(savedDrafts, draft.normalizedName, draft.state, {
-      normalizedName: draft.normalizedName,
-      tableName: draft.tableName,
-      baseSignature: draft.baseSignature,
-      updatedAt: draft.updatedAt,
-    });
-  }
-
-  for (const folder of snapshot.folders) {
-    writeJsonMap(ensureMap(folders, folder.id), folder as JsonRecord);
-  }
-
+  importWorkspaceSnapshotToYDoc(doc, snapshot);
   return Y.encodeStateAsUpdate(doc);
 };
 
@@ -448,4 +453,5 @@ export const exportWorkspaceYDocToSnapshot = (doc: Y.Doc): WorkspaceSnapshot => 
   };
 };
 
-export const isWorkspaceYDocEmpty = (doc: Y.Doc) => doc.getMap('meta').get('schemaVersion') == null;
+export const isWorkspaceYDocInitialized = (doc: Y.Doc) =>
+  doc.getMap('meta').get('schemaVersion') != null;

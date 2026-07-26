@@ -10,6 +10,10 @@ import type {
   WorkspaceSnapshot,
   WorkspaceSource,
 } from '@ddlbuilder/shared-types/workspace';
+import {
+  exportWorkspaceYDocToSnapshot as encodeWorkspaceSnapshot,
+  importWorkspaceSnapshotToYDoc as decodeWorkspaceSnapshot,
+} from '@ddlbuilder/workspace-core';
 import type { SavedTableMetadata, SavedTableRecord, TableFolder } from '@/utils/savedTablesDb';
 import type { FolderTreeNode } from '@/utils/tableFolders';
 import { DEFAULT_DRAFT_ID } from '@/utils/workspaceStateDb';
@@ -825,67 +829,11 @@ export const buildFolderTreeFromYDoc = (doc: Y.Doc): FolderTreeNode[] => {
 };
 
 export const importWorkspaceSnapshotToYDoc = (doc: Y.Doc, snapshot: WorkspaceSnapshot) => {
-  doc.transact(() => {
-    ensureWorkspaceYDocMeta(doc);
-    if (snapshot.globalDraft) {
-      upsertDraftInYDoc(doc, DEFAULT_DRAFT_ID, snapshot.globalDraft);
-    }
-    for (const draft of snapshot.drafts) {
-      upsertDraftInYDoc(doc, draft.draftId, draft);
-    }
-    for (const table of snapshot.savedTables) {
-      upsertSavedTableInYDoc(doc, {
-        normalizedName: table.normalizedName,
-        name: table.name,
-        state: table.state,
-        createdAt: table.createdAt ?? table.updatedAt,
-        updatedAt: table.updatedAt,
-        folderId: table.folderId,
-      });
-    }
-    for (const draft of snapshot.savedDrafts) {
-      upsertSavedDraftInYDoc(doc, draft.normalizedName, draft);
-    }
-    for (const folder of snapshot.folders) {
-      upsertFolderInYDoc(doc, folder);
-    }
-  });
+  decodeWorkspaceSnapshot(doc, snapshot);
 };
 
-export const exportWorkspaceYDocToSnapshot = (doc: Y.Doc): WorkspaceSnapshot => {
-  const draftRecords = listDraftRecordsFromYDoc(doc);
-  return {
-    globalDraft: null,
-    drafts: draftRecords.map(({ draftId, record }) => ({
-      draftId,
-      state: record.state,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
-      folderId: record.folderId,
-    })),
-    savedTables: Array.from(getWorkspaceRoot(doc).savedTables.keys())
-      .map((normalizedName) => getSavedTableFromYDoc(doc, normalizedName))
-      .filter((record): record is SavedTableRecord => record != null)
-      .map((record) => ({
-        normalizedName: record.normalizedName,
-        name: record.name,
-        state: record.state,
-        createdAt: record.createdAt,
-        updatedAt: record.updatedAt,
-        folderId: record.folderId,
-      })),
-    savedDrafts: Array.from(listSavedDraftsFromYDoc(doc).entries()).map(
-      ([normalizedName, record]) => ({
-        normalizedName,
-        tableName: record.tableName,
-        state: record.state,
-        updatedAt: record.updatedAt,
-        baseSignature: record.baseSignature,
-      }),
-    ),
-    folders: listFoldersFromYDoc(doc),
-  };
-};
+export const exportWorkspaceYDocToSnapshot = (doc: Y.Doc): WorkspaceSnapshot =>
+  encodeWorkspaceSnapshot(doc);
 
 const shouldApplySnapshotRecord = (
   localUpdatedAt: number | undefined,

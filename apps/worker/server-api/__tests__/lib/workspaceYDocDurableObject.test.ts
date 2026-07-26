@@ -367,7 +367,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       getWorkspaceSnapshotForWorkspace,
     }));
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-    const { exportWorkspaceYDocToSnapshot } = await import('../../lib/workspaceYDocSnapshot.js');
+    const { exportWorkspaceYDocToSnapshot } = await import('@ddlbuilder/workspace-core');
     const { state } = createDurableObjectState();
     const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
 
@@ -402,7 +402,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     }));
     vi.stubGlobal('WebSocket', { OPEN: 1 });
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-    const { exportWorkspaceYDocToSnapshot } = await import('../../lib/workspaceYDocSnapshot.js');
+    const { exportWorkspaceYDocToSnapshot } = await import('@ddlbuilder/workspace-core');
     const sharedStore = new Map<string, unknown>();
     const firstState = createDurableObjectState(sharedStore).state;
     const firstObject = new WorkspaceYDocDurableObject(firstState, createEnv());
@@ -450,7 +450,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     }));
     vi.stubGlobal('WebSocket', { OPEN: 1 });
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-    const { exportWorkspaceYDocToSnapshot } = await import('../../lib/workspaceYDocSnapshot.js');
+    const { exportWorkspaceYDocToSnapshot } = await import('@ddlbuilder/workspace-core');
     const { state } = createDurableObjectState();
     const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
     const clientDoc = new Y.Doc();
@@ -505,7 +505,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       }),
     }));
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-    const { exportWorkspaceYDocToSnapshot } = await import('../../lib/workspaceYDocSnapshot.js');
+    const { exportWorkspaceYDocToSnapshot } = await import('@ddlbuilder/workspace-core');
     const sharedStore = new Map<string, unknown>();
     const firstObject = new WorkspaceYDocDurableObject(
       createDurableObjectState(sharedStore).state,

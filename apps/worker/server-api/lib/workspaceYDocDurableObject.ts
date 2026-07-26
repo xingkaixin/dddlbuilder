@@ -11,8 +11,8 @@ import {
 import {
   createWorkspaceYDocUpdateFromSnapshot,
   exportWorkspaceYDocToSnapshot,
-  isWorkspaceYDocEmpty,
-} from './workspaceYDocSnapshot.js';
+  isWorkspaceYDocInitialized,
+} from '@ddlbuilder/workspace-core';
 import { logWorkspaceYDocHealth } from './workspaceSyncMetrics.js';
 
 type WorkspaceYDocStoredMeta = {
@@ -244,7 +244,7 @@ export class WorkspaceYDocDurableObject {
       }
 
       let restoredFromD1 = false;
-      if (isWorkspaceYDocEmpty(doc)) {
+      if (!isWorkspaceYDocInitialized(doc)) {
         restoredFromD1 = await this.restoreFromD1(doc);
       }
 
