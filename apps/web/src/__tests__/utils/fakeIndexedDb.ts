@@ -214,12 +214,12 @@ class FakeTransaction {
   oncomplete: ((event: { target: FakeTransaction }) => void) | null = null;
   error: Error | null = null;
 
-  private store: FakeObjectStore;
+  private stores: Map<string, FakeObjectStore>;
   private pendingRequests = 0;
   private completed = false;
 
-  constructor(store: FakeObjectStore) {
-    this.store = store;
+  constructor(stores: Map<string, FakeObjectStore>) {
+    this.stores = stores;
   }
 
   addPendingRequest() {
@@ -234,16 +234,20 @@ class FakeTransaction {
     }
   }
 
-  objectStore() {
+  objectStore(name?: string) {
+    const store = name ? this.stores.get(name) : this.stores.values().next().value;
+    if (!store) {
+      throw new Error('Store not found');
+    }
     return {
-      getAll: () => this.store.getAll(this),
-      get: (key: string) => this.store.get(this, key),
-      add: (value: any) => this.store.add(this, value),
-      put: (value: any) => this.store.put(this, value),
-      delete: (key: string) => this.store.delete(this, key),
-      clear: () => this.store.clear(this),
-      count: (query?: IDBValidKey) => this.store.count(this, query),
-      index: (name: string) => this.store.index(this, name),
+      getAll: () => store.getAll(this),
+      get: (key: string) => store.get(this, key),
+      add: (value: any) => store.add(this, value),
+      put: (value: any) => store.put(this, value),
+      delete: (key: string) => store.delete(this, key),
+      clear: () => store.clear(this),
+      count: (query?: IDBValidKey) => store.count(this, query),
+      index: (indexName: string) => store.index(this, indexName),
     };
   }
 }
@@ -268,12 +272,17 @@ class FakeDatabase {
     return store;
   }
 
-  transaction(storeName: string) {
-    const store = this.stores.get(storeName);
-    if (!store) {
-      throw new Error('Store not found');
+  transaction(storeNames: string | string[]) {
+    const names = Array.isArray(storeNames) ? storeNames : [storeNames];
+    const transactionStores = new Map<string, FakeObjectStore>();
+    for (const name of names) {
+      const store = this.stores.get(name);
+      if (!store) {
+        throw new Error('Store not found');
+      }
+      transactionStores.set(name, store);
     }
-    return new FakeTransaction(store);
+    return new FakeTransaction(transactionStores);
   }
 
   close() {

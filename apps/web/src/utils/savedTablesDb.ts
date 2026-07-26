@@ -463,6 +463,31 @@ export const updateSavedTable = async (
   );
 };
 
+export const updateSavedTables = async (
+  records: SavedTableRecord[],
+  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+): Promise<void> => {
+  if (records.length === 0) return;
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    for (const record of records) {
+      store.put({
+        ...record,
+        normalizedName: withScopeKey(scope, record.normalizedName),
+        scope: getWorkspaceScopeStorageKey(scope),
+      } satisfies SavedTableRecord);
+    }
+    tx.onerror = () => reject(tx.error ?? new Error('事务失败'));
+    tx.onabort = () => reject(tx.error ?? new Error('事务被中止'));
+    tx.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+  });
+};
+
 export const deleteSavedTable = async (
   normalizedName: string,
   scope: WorkspaceScope = getCurrentWorkspaceScope(),

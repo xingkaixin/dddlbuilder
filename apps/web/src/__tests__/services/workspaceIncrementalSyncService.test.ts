@@ -15,6 +15,7 @@ import { addSavedTable, listSavedTables } from '@/utils/savedTablesDb';
 import { bulkPutFolders, listFolders } from '@/utils/tableFolders';
 import {
   enqueueWorkspaceOutboxItem,
+  enqueueWorkspaceOutboxItems,
   listWorkspaceConflicts,
   listWorkspaceOutboxItems,
   readWorkspaceSyncMeta,
@@ -52,6 +53,47 @@ describe('workspaceIncrementalSyncService', () => {
   afterEach(() => {
     teardownFakeIndexedDB();
     vi.restoreAllMocks();
+  });
+
+  it('批量 outbox 应在同一事务中保留每个实体的版本基线', async () => {
+    await writeWorkspaceEntityMeta({
+      workspaceId: 'ws-1',
+      entityType: 'saved_table',
+      entityId: 'first',
+      version: 3,
+      contentHash: 'sha256:first',
+    });
+    await writeWorkspaceEntityMeta({
+      workspaceId: 'ws-1',
+      entityType: 'saved_table',
+      entityId: 'second',
+      version: 5,
+      contentHash: 'sha256:second',
+    });
+
+    await enqueueWorkspaceOutboxItems([
+      {
+        workspaceId: 'ws-1',
+        entityType: 'saved_table',
+        entityId: 'first',
+        op: 'upsert',
+        contentHash: 'sha256:first-next',
+        payload: { name: 'First' },
+      },
+      {
+        workspaceId: 'ws-1',
+        entityType: 'saved_table',
+        entityId: 'second',
+        op: 'upsert',
+        contentHash: 'sha256:second-next',
+        payload: { name: 'Second' },
+      },
+    ]);
+
+    expect(await listWorkspaceOutboxItems('ws-1')).toEqual([
+      expect.objectContaining({ entityId: 'first', baseVersion: 3 }),
+      expect.objectContaining({ entityId: 'second', baseVersion: 5 }),
+    ]);
   });
 
   it('拉取增量时应写入本地草稿并推进 cursor', async () => {

@@ -134,65 +134,85 @@ export const writeWorkspaceEntityMeta = async (
   );
 };
 
-export const enqueueWorkspaceOutboxItem = async (
-  input: Omit<LocalWorkspaceOutboxItem, 'id' | 'baseVersion' | 'createdAt' | 'attemptCount'>,
-): Promise<LocalWorkspaceOutboxItem> => {
-  const entityMeta = await readWorkspaceEntityMeta(
-    input.workspaceId,
-    input.entityType,
-    input.entityId,
-  );
-  const item = await replacePendingOutboxItem(input, entityMeta?.version ?? null);
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent(WORKSPACE_OUTBOX_ENQUEUED_EVENT));
+type WorkspaceOutboxInput = Omit<
+  LocalWorkspaceOutboxItem,
+  'id' | 'baseVersion' | 'createdAt' | 'attemptCount'
+>;
+
+export const enqueueWorkspaceOutboxItems = async (
+  inputs: WorkspaceOutboxInput[],
+): Promise<LocalWorkspaceOutboxItem[]> => {
+  const latestInputs = new Map<string, WorkspaceOutboxInput>();
+  for (const input of inputs) {
+    latestInputs.set(
+      buildWorkspaceEntityMetaId(input.workspaceId, input.entityType, input.entityId),
+      input,
+    );
   }
-  return item;
-};
+  if (latestInputs.size === 0) return [];
 
-const replacePendingOutboxItem = async (
-  input: Omit<LocalWorkspaceOutboxItem, 'id' | 'baseVersion' | 'createdAt' | 'attemptCount'>,
-  baseVersion: number | null,
-): Promise<LocalWorkspaceOutboxItem> => {
   const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(WORKSPACE_SYNC_OUTBOX_STORE_NAME, 'readwrite');
-    const store = tx.objectStore(WORKSPACE_SYNC_OUTBOX_STORE_NAME);
+  const items = await new Promise<LocalWorkspaceOutboxItem[]>((resolve, reject) => {
+    const tx = db.transaction(
+      [WORKSPACE_SYNC_OUTBOX_STORE_NAME, WORKSPACE_ENTITY_META_STORE_NAME],
+      'readwrite',
+    );
+    const outboxStore = tx.objectStore(WORKSPACE_SYNC_OUTBOX_STORE_NAME);
+    const metaStore = tx.objectStore(WORKSPACE_ENTITY_META_STORE_NAME);
+    const outboxRequest = outboxStore.getAll();
+    const metaRequest = metaStore.getAll();
     const timestamp = Date.now();
-    let item: LocalWorkspaceOutboxItem = {
-      id: crypto.randomUUID(),
-      ...input,
-      baseVersion,
-      createdAt: timestamp,
-      attemptCount: 0,
-    };
-    const request = store.getAll();
+    let nextItems: LocalWorkspaceOutboxItem[] = [];
+    let readsCompleted = 0;
 
-    request.onsuccess = () => {
-      const existingItems = Array.isArray(request.result)
-        ? (request.result as LocalWorkspaceOutboxItem[])
-        : [];
-      const pendingItems = existingItems
-        .filter((existingItem) => isSameWorkspaceEntity(existingItem, input))
-        .sort((a, b) => a.createdAt - b.createdAt);
-      const firstPendingItem = pendingItems[0];
-      item = {
-        ...item,
-        baseVersion: firstPendingItem?.baseVersion ?? baseVersion,
-        createdAt: firstPendingItem?.createdAt ?? timestamp,
-      };
-      for (const pendingItem of pendingItems) {
-        store.delete(pendingItem.id);
-      }
-      store.put(item);
+    const writeItems = () => {
+      readsCompleted++;
+      if (readsCompleted !== 2) return;
+      const existingItems = (outboxRequest.result ?? []) as LocalWorkspaceOutboxItem[];
+      const entityMetas = new Map(
+        ((metaRequest.result ?? []) as LocalWorkspaceEntityMeta[]).map((meta) => [meta.id, meta]),
+      );
+      nextItems = Array.from(latestInputs, ([entityKey, input]) => {
+        const pendingItems = existingItems
+          .filter((existingItem) => isSameWorkspaceEntity(existingItem, input))
+          .sort((a, b) => a.createdAt - b.createdAt);
+        const firstPendingItem = pendingItems[0];
+        for (const pendingItem of pendingItems) {
+          outboxStore.delete(pendingItem.id);
+        }
+        const item: LocalWorkspaceOutboxItem = {
+          id: crypto.randomUUID(),
+          ...input,
+          baseVersion: firstPendingItem?.baseVersion ?? entityMetas.get(entityKey)?.version ?? null,
+          createdAt: firstPendingItem?.createdAt ?? timestamp,
+          attemptCount: 0,
+        };
+        outboxStore.put(item);
+        return item;
+      });
     };
-    request.onerror = () => reject(request.error ?? new Error('IndexedDB 请求失败'));
+    outboxRequest.onsuccess = writeItems;
+    metaRequest.onsuccess = writeItems;
+    outboxRequest.onerror = () => reject(outboxRequest.error ?? new Error('IndexedDB 请求失败'));
+    metaRequest.onerror = () => reject(metaRequest.error ?? new Error('IndexedDB 请求失败'));
     tx.onerror = () => reject(tx.error ?? new Error('事务失败'));
     tx.onabort = () => reject(tx.error ?? new Error('事务被中止'));
     tx.oncomplete = () => {
       db.close();
-      resolve(item);
+      resolve(nextItems);
     };
   });
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(WORKSPACE_OUTBOX_ENQUEUED_EVENT));
+  }
+  return items;
+};
+
+export const enqueueWorkspaceOutboxItem = async (
+  input: WorkspaceOutboxInput,
+): Promise<LocalWorkspaceOutboxItem> => {
+  const [item] = await enqueueWorkspaceOutboxItems([input]);
+  return item;
 };
 
 export const listWorkspaceOutboxItems = async (

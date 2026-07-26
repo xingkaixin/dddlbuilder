@@ -22,6 +22,7 @@ const savedTableMocks = vi.hoisted(() => ({
   restoreSavedTableFromTrash: vi.fn(),
   normalizeSavedTableName: vi.fn((name: string) => name.trim().toLowerCase()),
   updateSavedTable: vi.fn(),
+  updateSavedTables: vi.fn(),
 }));
 
 vi.mock('@/utils/savedTablesDb', () => ({
@@ -35,6 +36,7 @@ vi.mock('@/utils/savedTablesDb', () => ({
   restoreSavedTableFromTrash: savedTableMocks.restoreSavedTableFromTrash,
   normalizeSavedTableName: savedTableMocks.normalizeSavedTableName,
   updateSavedTable: savedTableMocks.updateSavedTable,
+  updateSavedTables: savedTableMocks.updateSavedTables,
 }));
 
 const createState = (name: string) => ({
@@ -285,11 +287,11 @@ describe('useSavedTables failure states', () => {
       await result.current.clearTablesFromFolders(['folder-a', 'folder-b']);
     });
 
-    expect(savedTableMocks.updateSavedTable).toHaveBeenCalledWith(
+    expect(savedTableMocks.updateSavedTables).toHaveBeenCalledWith([
       expect.objectContaining({
         normalizedName: 'a',
         folderId: undefined,
       }),
-    );
+    ]);
   });
 });

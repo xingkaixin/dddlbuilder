@@ -23,10 +23,14 @@ import {
   moveSavedTableToTrash,
   normalizeSavedTableName,
   updateSavedTable,
+  updateSavedTables,
   type SavedTableMetadata,
   type SavedTableRecord,
 } from '@/utils/savedTablesDb';
-import { enqueueWorkspaceOutboxItem } from '@/utils/workspaceSyncStateDb';
+import {
+  enqueueWorkspaceOutboxItem,
+  enqueueWorkspaceOutboxItems,
+} from '@/utils/workspaceSyncStateDb';
 import { getAnonymousWorkspaceScope, setCurrentWorkspaceScope } from '@/utils/workspaceScope';
 
 export type SavedTableSummary = SavedTableMetadata;
@@ -97,6 +101,33 @@ export function useSavedTables() {
         payload,
         contentHash: op === 'upsert' ? await buildWorkspaceContentHash(payload) : null,
       });
+    },
+    [currentScope, yDocReady],
+  );
+
+  const queueSavedTableChanges = useCallback(
+    async (records: SavedTableRecord[]) => {
+      const outboxPolicy = { scope: currentScope, yDocReady };
+      if (!shouldQueueWorkspaceEntityOutbox(outboxPolicy)) return;
+      const inputs = await Promise.all(
+        records.map(async (record) => {
+          const payload = {
+            name: record.name,
+            state: record.state,
+            createdAt: record.createdAt,
+            folderId: record.folderId,
+          };
+          return {
+            workspaceId: outboxPolicy.scope.workspaceId,
+            entityType: 'saved_table' as const,
+            entityId: record.normalizedName,
+            op: 'upsert' as const,
+            payload,
+            contentHash: await buildWorkspaceContentHash(payload),
+          };
+        }),
+      );
+      await enqueueWorkspaceOutboxItems(inputs);
     },
     [currentScope, yDocReady],
   );
@@ -510,32 +541,39 @@ export function useSavedTables() {
   // 清理指定文件夹ID关联的表（将它们移回未分组）
   const clearTablesFromFolders = useCallback(
     async (folderIds: string[]): Promise<void> => {
-      const tables = savedTables.filter((t) => t.folderId && folderIds.includes(t.folderId));
-      await Promise.all(
-        tables.map(async (table) => {
-          const record =
-            yDocReady && workspaceYDoc.doc
-              ? getSavedTableFromYDoc(workspaceYDoc.doc, table.normalizedName)
-              : await getSavedTable(table.normalizedName);
-          if (!record) return;
-          const updatedRecord: SavedTableRecord = {
-            ...record,
-            folderId: undefined,
-            updatedAt: Date.now(),
-          };
-          await updateSavedTable(updatedRecord);
-          await queueSavedTableChange(updatedRecord);
-          if (yDocReady && workspaceYDoc.doc) {
-            const doc = workspaceYDoc.doc;
-            doc.transact(() => {
-              upsertSavedTableInYDoc(doc, updatedRecord);
-            });
-          }
-        }),
+      const folderIdSet = new Set(folderIds);
+      const tables = savedTables.filter(
+        (table) => table.folderId && folderIdSet.has(table.folderId),
       );
+      const updatedRecords = (
+        await Promise.all(
+          tables.map(async (table) => {
+            const record =
+              yDocReady && workspaceYDoc.doc
+                ? getSavedTableFromYDoc(workspaceYDoc.doc, table.normalizedName)
+                : await getSavedTable(table.normalizedName);
+            if (!record) return null;
+            return {
+              ...record,
+              folderId: undefined,
+              updatedAt: Date.now(),
+            } satisfies SavedTableRecord;
+          }),
+        )
+      ).filter((record): record is SavedTableRecord => record != null);
+      await updateSavedTables(updatedRecords);
+      await queueSavedTableChanges(updatedRecords);
+      if (yDocReady && workspaceYDoc.doc) {
+        const doc = workspaceYDoc.doc;
+        doc.transact(() => {
+          for (const record of updatedRecords) {
+            upsertSavedTableInYDoc(doc, record);
+          }
+        });
+      }
       await refresh();
     },
-    [queueSavedTableChange, savedTables, refresh, workspaceYDoc.doc, yDocReady],
+    [queueSavedTableChanges, savedTables, refresh, workspaceYDoc.doc, yDocReady],
   );
 
   return {

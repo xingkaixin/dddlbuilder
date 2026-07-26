@@ -9,6 +9,7 @@ import {
   normalizeSavedTableName,
   openDb,
   updateSavedTable,
+  updateSavedTables,
   DEFAULT_SAVED_TABLE_NAME,
   STORE_NAME,
 } from '@/utils/savedTablesDb';
@@ -77,6 +78,33 @@ describe('savedTablesDb', () => {
     await deleteSavedTable('demo');
     const afterDelete = await listSavedTables();
     expect(afterDelete).toHaveLength(0);
+  });
+
+  it('updates multiple saved tables in one batch', async () => {
+    const first = {
+      normalizedName: 'first',
+      name: 'First',
+      state: createState({ tableName: 'first' }),
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    const second = {
+      normalizedName: 'second',
+      name: 'Second',
+      state: createState({ tableName: 'second' }),
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    await addSavedTable(first);
+    await addSavedTable(second);
+
+    await updateSavedTables([
+      { ...first, folderId: 'folder-1', updatedAt: 2 },
+      { ...second, folderId: 'folder-1', updatedAt: 2 },
+    ]);
+
+    expect(await getSavedTable('first')).toMatchObject({ folderId: 'folder-1', updatedAt: 2 });
+    expect(await getSavedTable('second')).toMatchObject({ folderId: 'folder-1', updatedAt: 2 });
   });
 
   it('should reject duplicate add', async () => {
