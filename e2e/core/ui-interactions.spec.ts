@@ -134,4 +134,21 @@ test.describe('核心 UI 交互功能测试 @core', () => {
     await page.getByRole('button', { name: /展开侧边栏|Expand sidebar/i }).click();
     await expect(sidebar).toBeVisible();
   });
+
+  test('场景：收起输出面板后应释放全部横向空间', async ({ page }) => {
+    const outputPanel = page.getByTestId('output-panel');
+
+    await expect(outputPanel).toBeVisible();
+    await page.getByRole('button', { name: /收起输出面板|Collapse output panel/i }).click();
+
+    await expect(outputPanel).toHaveCount(0);
+    const tableActions = page.getByTestId('table-config-actions');
+    const expandButton = tableActions.getByRole('button', {
+      name: /展开输出面板|Expand output panel/i,
+    });
+    await expect(expandButton).toBeVisible();
+
+    await expandButton.click();
+    await expect(outputPanel).toBeVisible();
+  });
 });

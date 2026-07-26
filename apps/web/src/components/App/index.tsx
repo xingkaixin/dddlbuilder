@@ -1652,6 +1652,10 @@ function App() {
                         onViewDiff: handleOpenDiffDialog,
                         onViewHistory: handleViewCurrentVersionHistory,
                         onOpenErDiagram: handleOpenErDiagram,
+                        onExpandOutputPanel:
+                          !isShareView && !outputPanelOpen
+                            ? () => setOutputPanelOpen(true)
+                            : undefined,
                         saveDisabled: !canSaveCurrent,
                         saveDisabledHint: t('dialogs.save.disabledTip'),
                         showDiffButton: isLoadedDirty && tableDiff?.hasChanges,
@@ -1790,32 +1794,33 @@ function App() {
                     />
                   </div>
 
-                  <OutputContainer
-                    open={outputPanelOpen}
-                    onOpenChange={setOutputPanelOpen}
-                    ddlOutputProps={{
-                      generatedSql,
-                      generatedDcl,
-                      dbType,
-                      routineTableNameDefault,
-                      sqlFormatMode,
-                      onSqlFormatModeChange: setSqlFormatMode,
-                      onCopySql: copySql,
-                      onCopyDcl: copyDcl,
-                      generatedOrm,
-                      ormTarget,
-                      onOrmTargetChange: setOrmTarget,
-                      onCopyOrm: copyOrm,
-                      isReviewing,
-                      reviewPartialResult,
-                      reviewResult,
-                      reviewError,
-                      schemaLintIssues,
-                      onStartReview: handleStartReview,
-                      onViewReviewHistory: handleViewReviewHistory,
-                      onApplySuggestion: handleApplySuggestion,
-                    }}
-                  />
+                  {(isShareView || outputPanelOpen) && (
+                    <OutputContainer
+                      onCollapse={isShareView ? undefined : () => setOutputPanelOpen(false)}
+                      ddlOutputProps={{
+                        generatedSql,
+                        generatedDcl,
+                        dbType,
+                        routineTableNameDefault,
+                        sqlFormatMode,
+                        onSqlFormatModeChange: setSqlFormatMode,
+                        onCopySql: copySql,
+                        onCopyDcl: copyDcl,
+                        generatedOrm,
+                        ormTarget,
+                        onOrmTargetChange: setOrmTarget,
+                        onCopyOrm: copyOrm,
+                        isReviewing,
+                        reviewPartialResult,
+                        reviewResult,
+                        reviewError,
+                        schemaLintIssues,
+                        onStartReview: handleStartReview,
+                        onViewReviewHistory: handleViewReviewHistory,
+                        onApplySuggestion: handleApplySuggestion,
+                      }}
+                    />
+                  )}
                 </div>
               )}
             </div>

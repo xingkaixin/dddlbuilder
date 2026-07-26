@@ -1,7 +1,16 @@
 import { memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Eye, GitCompare, History, Save, Table, Trash2, Waypoints } from 'lucide-react';
+import {
+  Eye,
+  GitCompare,
+  History,
+  PanelRightOpen,
+  Save,
+  Table,
+  Trash2,
+  Waypoints,
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/select';
@@ -25,6 +34,7 @@ interface TableConfigProps {
   onViewDiff?: () => void;
   onViewHistory?: () => void;
   onOpenErDiagram?: () => void;
+  onExpandOutputPanel?: () => void;
   saveDisabled?: boolean;
   saveDisabledHint?: string;
   showDiffButton?: boolean;
@@ -52,6 +62,7 @@ export const TableConfig = memo<TableConfigProps>(
     onViewDiff,
     onViewHistory,
     onOpenErDiagram,
+    onExpandOutputPanel,
     saveDisabled = false,
     saveDisabledHint,
     showDiffButton = false,
@@ -134,7 +145,7 @@ export const TableConfig = memo<TableConfigProps>(
               </Tooltip>
             )}
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1" data-testid="table-config-actions">
             {showHistoryButton && onViewHistory && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -200,6 +211,25 @@ export const TableConfig = memo<TableConfigProps>(
                         ? t('tableConfig.saveCurrentView')
                         : t('tableConfig.saveCurrent')}
                   </p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {onExpandOutputPanel && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                    onClick={onExpandOutputPanel}
+                    aria-label={t('ddlOutput.expandPanel')}
+                  >
+                    <PanelRightOpen className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t('ddlOutput.expandPanel')}</p>
                 </TooltipContent>
               </Tooltip>
             )}
