@@ -1,7 +1,14 @@
 import { memo } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { FileEdit, GripVertical, MoreHorizontal, Pencil, Table2, Trash2 } from '@/components/icons';
+import {
+  DragDropVerticalIcon,
+  FileEdit,
+  MoreHorizontal,
+  Pencil,
+  Table2,
+  Trash2,
+} from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -79,7 +86,7 @@ export const TableItem = memo<TableItemProps>(
           {...listeners}
           data-testid={`drag-handle-table:${item.normalizedName}`}
         >
-          <GripVertical className="h-3.5 w-3.5" />
+          <DragDropVerticalIcon className="h-3.5 w-3.5" />
         </button>
         <span
           aria-hidden="true"

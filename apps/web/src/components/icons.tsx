@@ -27,6 +27,7 @@ import {
   Copy as CopyData,
   Database as DatabaseData,
   Download as DownloadData,
+  DragDropVerticalIcon as DragDropVerticalIconData,
   Eye as EyeData,
   FileEditIcon as FileEditData,
   FileInput as FileInputData,
@@ -39,7 +40,6 @@ import {
   GitCompare as GitCompareData,
   GraduationCap as GraduationCapData,
   Grid3x3 as Grid3x3Data,
-  GripVertical as GripVerticalData,
   HardDrive as HardDriveData,
   Hash as HashData,
   History as HistoryData,
@@ -152,6 +152,7 @@ export const Columns3Cog = createAppIcon(Columns3CogData, 'Columns3Cog');
 export const Copy = createAppIcon(CopyData, 'Copy');
 export const Database = createAppIcon(DatabaseData, 'Database');
 export const Download = createAppIcon(DownloadData, 'Download');
+export const DragDropVerticalIcon = createAppIcon(DragDropVerticalIconData, 'DragDropVerticalIcon');
 export const Eye = createAppIcon(EyeData, 'Eye');
 export const FileEdit = createAppIcon(FileEditData, 'FileEdit');
 export const FileInput = createAppIcon(FileInputData, 'FileInput');
@@ -164,7 +165,6 @@ export const GitBranch = createAppIcon(GitBranchData, 'GitBranch');
 export const GitCompare = createAppIcon(GitCompareData, 'GitCompare');
 export const GraduationCap = createAppIcon(GraduationCapData, 'GraduationCap');
 export const Grid3x3 = createAppIcon(Grid3x3Data, 'Grid3x3');
-export const GripVertical = createAppIcon(GripVerticalData, 'GripVertical');
 export const HardDrive = createAppIcon(HardDriveData, 'HardDrive');
 export const Hash = createAppIcon(HashData, 'Hash');
 export const History = createAppIcon(HistoryData, 'History');

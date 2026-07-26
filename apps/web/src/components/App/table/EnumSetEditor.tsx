@@ -16,7 +16,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Plus, Trash2 } from '@/components/icons';
+import { DragDropVerticalIcon, Plus, Trash2 } from '@/components/icons';
 import {
   Dialog,
   DialogContent,
@@ -188,7 +188,7 @@ const SortableItem = memo<SortableItemProps>(({ item, onUpdate, onDelete, duplic
         {...listeners}
         aria-label="拖拽排序"
       >
-        <GripVertical className="h-4 w-4" />
+        <DragDropVerticalIcon className="h-4 w-4" />
       </button>
 
       <ColorPicker color={item.color} onChange={(c) => onUpdate(item.id, { color: c })} />

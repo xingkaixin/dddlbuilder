@@ -7,7 +7,7 @@ import {
   Folder,
   FolderOpen,
   FolderPlus,
-  GripVertical,
+  DragDropVerticalIcon,
   Pencil,
   Trash2,
   MoreHorizontal,
@@ -131,7 +131,7 @@ const FolderNode = memo<FolderNodeProps>(
             {...listeners}
             data-testid={`drag-handle-folder:${folder.id}`}
           >
-            <GripVertical className="h-3.5 w-3.5" />
+            <DragDropVerticalIcon className="h-3.5 w-3.5" />
           </button>
           {/* 展开/折叠按钮 */}
           <button

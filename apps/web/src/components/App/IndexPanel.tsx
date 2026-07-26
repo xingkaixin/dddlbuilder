@@ -3,7 +3,7 @@ import type { DatabaseType, IndexDefinition, IndexField } from '@ddlbuilder/shar
 import { buildPrimaryKeyName } from '@ddlbuilder/ddl-core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Key, Lock, Hash, Pencil, Trash2, GripVertical, X } from '@/components/icons';
+import { DragDropVerticalIcon, Hash, Key, Lock, Pencil, Trash2, X } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { buildNormalizedFields, useAppStore, useFieldStore, useIndexStore } from '@/stores';
 import { buildIndexName, getIndexNameMaxLength, truncateIndexName } from '@/utils/indexNameUtils';
@@ -278,7 +278,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
                 type="button"
                 className="relative flex w-full items-start gap-2 rounded-md border border-primary bg-primary/5 px-3 py-2.5 pr-24 text-left shadow-sm"
               >
-                <GripVertical className="mt-1 h-4 w-4 text-muted-foreground" />
+                <DragDropVerticalIcon className="mt-1 h-4 w-4 text-muted-foreground" />
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold leading-snug">
                     {t('indexPanel.draftTitle')}
@@ -318,7 +318,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
                   }}
                 >
                   <div className="flex min-w-0 gap-3 text-left">
-                    <GripVertical className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <DragDropVerticalIcon className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
                     <div className="min-w-0 flex-1">
                       <div className="break-all pr-2 text-sm font-semibold leading-snug">
                         {index.name}
@@ -521,7 +521,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
                             onDragEnd={() => setDraggedFieldIndex(null)}
                             className="inline-flex cursor-grab items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs shadow-sm active:cursor-grabbing"
                           >
-                            <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                            <DragDropVerticalIcon className="h-3.5 w-3.5 text-muted-foreground" />
                             <span>{field.name}</span>
                             <button
                               type="button"
