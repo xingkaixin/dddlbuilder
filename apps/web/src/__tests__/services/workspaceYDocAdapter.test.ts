@@ -331,6 +331,27 @@ describe('workspaceYDocAdapter', () => {
     expect(getDraftRecordFromYDoc(doc, DEFAULT_DRAFT_ID)?.state.foreignKeys).toBeUndefined();
   });
 
+  it('preserves cleared fine-grained collections instead of reviving snapshot data', () => {
+    const doc = new Y.Doc();
+    const state = createState();
+    upsertDraftInYDoc(doc, DEFAULT_DRAFT_ID, { state, updatedAt: 1 });
+
+    upsertDraftInYDoc(
+      doc,
+      DEFAULT_DRAFT_ID,
+      {
+        state: createState({ rows: [], indexes: [], foreignKeys: [] }),
+        updatedAt: 2,
+      },
+      { compactSnapshotBase: true },
+    );
+
+    const restored = getDraftRecordFromYDoc(doc, DEFAULT_DRAFT_ID)?.state;
+    expect(restored?.rows).toEqual([]);
+    expect(restored?.indexes).toEqual([]);
+    expect(restored?.foreignKeys ?? []).toEqual([]);
+  });
+
   it('reads full state snapshots instead of reconstructed field maps', () => {
     const doc = new Y.Doc();
     const state = createState({

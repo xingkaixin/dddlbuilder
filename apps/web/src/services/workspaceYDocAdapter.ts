@@ -554,8 +554,9 @@ export const tableDocToPersistedState = (tableDoc: Y.Map<unknown>): PersistedSta
   } as Partial<PersistedState>;
   const fields = getFields(tableDoc);
   const fieldOrder = getFieldOrder(tableDoc);
-  const rows =
-    fields && fieldOrder.length > 0
+  const hasFieldDoc = fields != null || tableDoc.get('fieldOrder') instanceof Y.Array;
+  const rows = hasFieldDoc
+    ? fields
       ? fieldOrder
           .map((fieldId, index) => {
             const fieldMap = fields.get(fieldId);
@@ -563,8 +564,14 @@ export const tableDocToPersistedState = (tableDoc: Y.Map<unknown>): PersistedSta
           })
           .filter((row): row is FieldRow => row != null)
           .map((row, index) => ({ ...row, order: index + 1 }))
-      : (stateSnapshot?.rows ?? []);
+      : []
+    : (stateSnapshot?.rows ?? []);
+  const hasIndexDoc =
+    tableDoc.get('indexes') instanceof Y.Map || tableDoc.get('indexOrder') instanceof Y.Array;
   const indexes = readOrderedMap<IndexDefinition>(tableDoc, 'indexes', 'indexOrder');
+  const hasForeignKeyDoc =
+    tableDoc.get('foreignKeys') instanceof Y.Map ||
+    tableDoc.get('foreignKeyOrder') instanceof Y.Array;
   const foreignKeys = readOrderedMap<ForeignKeyDefinition>(
     tableDoc,
     'foreignKeys',
@@ -584,7 +591,7 @@ export const tableDocToPersistedState = (tableDoc: Y.Map<unknown>): PersistedSta
     addCount: typeof state.addCount === 'number' ? state.addCount : 12,
     indexInput: typeof state.indexInput === 'string' ? state.indexInput : '',
     currentIndexFields: Array.isArray(state.currentIndexFields) ? state.currentIndexFields : [],
-    indexes: indexes.length > 0 ? indexes : (state.indexes ?? []),
+    indexes: hasIndexDoc ? indexes : (state.indexes ?? []),
     authInput: typeof state.authInput === 'string' ? state.authInput : '',
     authObjects: Array.isArray(state.authObjects) ? state.authObjects : [],
     ...(state.citusShardingConfig ? { citusShardingConfig: state.citusShardingConfig } : {}),
@@ -592,11 +599,10 @@ export const tableDocToPersistedState = (tableDoc: Y.Map<unknown>): PersistedSta
     ...(state.tableMiscConfig ? { tableMiscConfig: state.tableMiscConfig } : {}),
     ...(state.fieldTableViewConfig ? { fieldTableViewConfig: state.fieldTableViewConfig } : {}),
     ...(() => {
-      return foreignKeys.length > 0
-        ? { foreignKeys }
-        : state.foreignKeys && state.foreignKeys.length > 0
-          ? { foreignKeys: state.foreignKeys }
-          : {};
+      const resolvedForeignKeys = hasForeignKeyDoc ? foreignKeys : state.foreignKeys;
+      return resolvedForeignKeys && resolvedForeignKeys.length > 0
+        ? { foreignKeys: resolvedForeignKeys }
+        : {};
     })(),
   } as PersistedState;
 };
