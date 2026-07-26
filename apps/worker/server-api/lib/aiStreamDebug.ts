@@ -15,13 +15,7 @@ type ChunkSnapshot = {
   totalChars: number;
   elapsedMs: number;
   firstChunkLatencyMs: number | null;
-  preview: string;
 };
-
-const CHUNK_PREVIEW_LIMIT = 80;
-
-const sanitizePreview = (text: string) =>
-  text.replace(/\s+/g, ' ').trim().slice(0, CHUNK_PREVIEW_LIMIT);
 
 const logEvent = (enabled: boolean, event: string, payload: Record<string, unknown>) => {
   if (!enabled) {
@@ -66,7 +60,6 @@ export const createOpenAIStreamDebugLogger = ({
     totalChars,
     elapsedMs: getElapsedMs(),
     firstChunkLatencyMs: firstChunkAt === null ? null : firstChunkAt - startedAt,
-    preview: sanitizePreview(content),
   });
 
   return {

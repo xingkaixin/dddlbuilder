@@ -21,7 +21,7 @@ describe('createOpenAIStreamDebugLogger', () => {
     expect(consoleInfoSpy).not.toHaveBeenCalled();
   });
 
-  it('启用时应输出结构化事件并截断预览', () => {
+  it('启用时应输出结构化事件但不记录模型内容', () => {
     const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
     const logger = createOpenAIStreamDebugLogger({
       enabled: true,
@@ -47,7 +47,12 @@ describe('createOpenAIStreamDebugLogger', () => {
       'ai_stream_first_chunk',
       'ai_stream_complete',
     ]);
-    expect(payloads[2]?.preview).toBe(`first ${'x'.repeat(74)}`);
+    expect(payloads[2]).toMatchObject({
+      chunkIndex: 1,
+      chunkSize: 126,
+      totalChars: 126,
+    });
+    expect(payloads[2]).not.toHaveProperty('preview');
   });
 
   it('连接后出错时应标记为 during_stream', () => {
