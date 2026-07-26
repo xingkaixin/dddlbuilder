@@ -1,9 +1,11 @@
 import type { Context, Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { authenticateRequest } from '../lib/auth.js';
-import { errorResponse } from '../lib/http.js';
+import { errorResponse, parseJsonBodyWithLimit } from '../lib/http.js';
 import { assertWorkspaceOwner, WorkspaceNotFoundError } from '../lib/workspaceEntities.js';
 import { isWorkspaceSnapshot } from './workspaceSnapshot.js';
+
+const IMPORT_BODY_MAX_BYTES = 5 * 1024 * 1024;
 
 const readUser = async (c: Context<ApiEnv>) => {
   try {
@@ -125,20 +127,21 @@ export function registerWorkspaceYDocRoutes(app: Hono<ApiEnv>) {
     }
     if ('response' in authenticated) return authenticated.response;
 
-    const rawBody = await c.req.text();
-    let body: unknown;
-    try {
-      body = JSON.parse(rawBody);
-    } catch {
-      return errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON');
-    }
+    const parsedBody = await parseJsonBodyWithLimit<unknown>(c, IMPORT_BODY_MAX_BYTES);
+    if (parsedBody.errorResponse) return parsedBody.errorResponse;
+    const body = parsedBody.data;
 
     if (!isWorkspaceSnapshot(body)) {
       return errorResponse(c, 400, 'Invalid workspace snapshot payload', 'INVALID_JSON');
     }
 
     return authenticated.stub.fetch(
-      buildForwardedRequest(c.req.raw, authenticated.workspaceId, authenticated.userId, rawBody),
+      buildForwardedRequest(
+        c.req.raw,
+        authenticated.workspaceId,
+        authenticated.userId,
+        JSON.stringify(body),
+      ),
     );
   });
 }

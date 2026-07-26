@@ -19,7 +19,13 @@ import {
   withOpenAIRetry,
   buildOpenAIConfig,
 } from '../openaiControl.js';
-import { errorResponse, getRequestId, streamErrorPayload, type ApiErrorCode } from '../lib/http.js';
+import {
+  errorResponse,
+  getRequestId,
+  parseJsonBodyWithLimit,
+  streamErrorPayload,
+  type ApiErrorCode,
+} from '../lib/http.js';
 import {
   buildGenerateTableMessages,
   buildGenerateTableSystemPrompt,
@@ -27,6 +33,7 @@ import {
 import { isAppLocale, type AppLocale } from '@ddlbuilder/shared-types/locale';
 
 const MAX_OUTPUT_TOKENS = 4000;
+const REQUEST_BODY_MAX_BYTES = 1024 * 1024;
 
 export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
   app.post('/generate-table', async (c) => {
@@ -102,7 +109,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
       return rateLimit.response;
     }
 
-    let body: {
+    const parsedBody = await parseJsonBodyWithLimit<{
       description?: unknown;
       dbType?: unknown;
       locale?: unknown;
@@ -111,14 +118,18 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
       existingConfig?: unknown;
       previousSchema?: unknown;
       conversationHistory?: unknown;
-    };
-
-    try {
-      body = await c.req.json();
-    } catch {
-      audit(400, 0, false, false, 'INVALID_JSON');
-      return errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON');
+    }>(c, REQUEST_BODY_MAX_BYTES);
+    if (parsedBody.errorResponse) {
+      audit(
+        parsedBody.errorResponse.status,
+        0,
+        false,
+        false,
+        parsedBody.errorResponse.status === 413 ? 'PAYLOAD_TOO_LARGE' : 'INVALID_JSON',
+      );
+      return parsedBody.errorResponse;
     }
+    const body = parsedBody.data ?? {};
 
     const description = typeof body.description === 'string' ? body.description : '';
     const dbType = typeof body.dbType === 'string' ? body.dbType : '';

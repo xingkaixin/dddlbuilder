@@ -16,7 +16,13 @@ import {
   logOpenAIAudit,
   withOpenAIRetry,
 } from '../openaiControl.js';
-import { errorResponse, getRequestId, withMeta, type ApiErrorCode } from '../lib/http.js';
+import {
+  errorResponse,
+  getRequestId,
+  parseJsonBodyWithLimit,
+  withMeta,
+  type ApiErrorCode,
+} from '../lib/http.js';
 import {
   GENERATE_COMMENTS_SYSTEM_PROMPT,
   buildGenerateCommentsUserPrompt,
@@ -27,6 +33,8 @@ import type {
   AICommentRequest,
   AICommentResult,
 } from '@ddlbuilder/shared-types/ai-generate';
+
+const REQUEST_BODY_MAX_BYTES = 1024 * 1024;
 
 const MAX_OUTPUT_TOKENS = 1800;
 
@@ -142,13 +150,20 @@ export function registerGenerateCommentsRoute(app: Hono<ApiEnv>) {
       return rateLimit.response;
     }
 
-    let body: Record<string, unknown>;
-    try {
-      body = await c.req.json();
-    } catch {
-      audit(400, false, false, 'INVALID_JSON');
-      return errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON');
+    const parsedBody = await parseJsonBodyWithLimit<Record<string, unknown>>(
+      c,
+      REQUEST_BODY_MAX_BYTES,
+    );
+    if (parsedBody.errorResponse) {
+      audit(
+        parsedBody.errorResponse.status,
+        false,
+        false,
+        parsedBody.errorResponse.status === 413 ? 'PAYLOAD_TOO_LARGE' : 'INVALID_JSON',
+      );
+      return parsedBody.errorResponse;
     }
+    const body = parsedBody.data ?? {};
 
     const fields = normalizeFields(body.fields);
     const tableName = typeof body.tableName === 'string' ? body.tableName.trim() : '';

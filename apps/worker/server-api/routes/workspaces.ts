@@ -2,7 +2,7 @@ import type { Context, Hono } from 'hono';
 import type { WorkspaceChangesPushRequest } from '@ddlbuilder/shared-types/workspace';
 import type { ApiEnv } from '../lib/context.js';
 import { authenticateRequest } from '../lib/auth.js';
-import { errorResponse, withMeta } from '../lib/http.js';
+import { errorResponse, parseJsonBodyWithLimit, withMeta } from '../lib/http.js';
 import {
   getWorkspaceChanges,
   isWorkspaceEntityOperation,
@@ -11,6 +11,8 @@ import {
   pushWorkspaceChanges,
   WorkspaceNotFoundError,
 } from '../lib/workspaceEntities.js';
+
+const REQUEST_BODY_MAX_BYTES = 2 * 1024 * 1024;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -125,12 +127,9 @@ export function registerWorkspaceRoutes(app: Hono<ApiEnv>) {
       return errorResponse(c, 401, 'Authentication required', 'AUTH_REQUIRED');
     }
 
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON');
-    }
+    const parsedBody = await parseJsonBodyWithLimit<unknown>(c, REQUEST_BODY_MAX_BYTES);
+    if (parsedBody.errorResponse) return parsedBody.errorResponse;
+    const body = parsedBody.data;
 
     if (!isWorkspaceChangesPushRequest(body)) {
       return errorResponse(c, 400, 'Invalid workspace changes payload', 'INVALID_JSON');

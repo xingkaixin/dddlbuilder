@@ -53,7 +53,7 @@ export const getRequestId = (c: Context<ApiEnv>): string | undefined => {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 };
 
-export const withMeta = <T extends Record<string, unknown>>(
+export const withMeta = <T extends object>(
   c: Context<ApiEnv>,
   payload: T,
 ): T & { meta?: ApiMeta } => {
@@ -94,7 +94,7 @@ export const parseJsonBodyWithLimit = async <T>(
   maxBytes: number,
 ): Promise<{ data: T | null; errorResponse: Response | null }> => {
   const contentLength = Number(c.req.header('content-length'));
-  if (!Number.isNaN(contentLength) && contentLength > maxBytes) {
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) {
     return {
       data: null,
       errorResponse: errorResponse(
@@ -106,9 +106,36 @@ export const parseJsonBodyWithLimit = async <T>(
     };
   }
 
-  let raw = '';
+  const body = c.req.raw.body;
+  if (!body) {
+    return {
+      data: null,
+      errorResponse: errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON'),
+    };
+  }
+
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
   try {
-    raw = await c.req.text();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > maxBytes) {
+        await reader.cancel();
+        return {
+          data: null,
+          errorResponse: errorResponse(
+            c,
+            413,
+            `Payload too large, maximum ${maxBytes} bytes`,
+            'PAYLOAD_TOO_LARGE',
+          ),
+        };
+      }
+      chunks.push(value);
+    }
   } catch {
     return {
       data: null,
@@ -116,19 +143,15 @@ export const parseJsonBodyWithLimit = async <T>(
     };
   }
 
-  if (new TextEncoder().encode(raw).length > maxBytes) {
-    return {
-      data: null,
-      errorResponse: errorResponse(
-        c,
-        413,
-        `Payload too large, maximum ${maxBytes} bytes`,
-        'PAYLOAD_TOO_LARGE',
-      ),
-    };
+  const bytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
   }
 
   try {
+    const raw = new TextDecoder().decode(bytes);
     return { data: JSON.parse(raw) as T, errorResponse: null };
   } catch {
     return {

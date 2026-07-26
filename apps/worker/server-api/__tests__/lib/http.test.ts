@@ -21,10 +21,10 @@ describe('http lib utilities', () => {
       },
       json: (data: any, status: number) => ({ data, status }),
       req: {
-        text: async () => {
-          if (bodyText === undefined) throw new Error('Cannot read body');
-          return bodyText;
-        },
+        raw: new Request('http://localhost/test', {
+          method: 'POST',
+          ...(bodyText === undefined ? {} : { body: bodyText }),
+        }),
         header: (name: string) => headers[name],
       },
     } as unknown as Context;
@@ -106,8 +106,7 @@ describe('http lib utilities', () => {
       expect((errorResponse as any).data.code).toBe('PAYLOAD_TOO_LARGE');
     });
 
-    it('rejects if body text reading throws', async () => {
-      // Body reading mocked to throw if bodyText is undefined
+    it('rejects a request without a body', async () => {
       const c = mockContext('');
       const { data, errorResponse } = await parseJsonBodyWithLimit(c, 500);
       expect(data).toBeNull();

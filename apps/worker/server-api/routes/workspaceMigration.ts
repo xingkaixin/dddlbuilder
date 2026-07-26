@@ -1,12 +1,14 @@
 import type { Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { authenticateRequest } from '../lib/auth.js';
-import { errorResponse, withMeta } from '../lib/http.js';
+import { errorResponse, parseJsonBodyWithLimit, withMeta } from '../lib/http.js';
 import {
   analyzeWorkspaceMigration,
   commitWorkspaceMigration,
   type WorkspaceMigrationPayload,
 } from '../lib/workspaceMigration.js';
+
+const REQUEST_BODY_MAX_BYTES = 5 * 1024 * 1024;
 
 const isPersistedStateRecord = (value: unknown) =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -40,12 +42,12 @@ export function registerWorkspaceMigrationRoutes(app: Hono<ApiEnv>) {
       return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
     }
 
-    let body: { mode?: unknown; payload?: unknown };
-    try {
-      body = await c.req.json();
-    } catch {
-      return errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON');
-    }
+    const parsedBody = await parseJsonBodyWithLimit<{ mode?: unknown; payload?: unknown }>(
+      c,
+      REQUEST_BODY_MAX_BYTES,
+    );
+    if (parsedBody.errorResponse) return parsedBody.errorResponse;
+    const body = parsedBody.data ?? {};
 
     const mode = body.mode === 'commit' ? 'commit' : body.mode === 'analyze' ? 'analyze' : null;
     if (!mode) {

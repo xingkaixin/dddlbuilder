@@ -3,8 +3,10 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import type { ApiEnv } from '../lib/context.js';
 import { authenticateRequest } from '../lib/auth.js';
-import { errorResponse, withMeta } from '../lib/http.js';
+import { errorResponse, parseJsonBodyWithLimit, withMeta } from '../lib/http.js';
 import { getWorkspaceSnapshot, putWorkspaceSnapshot } from '../lib/workspaceSnapshots.js';
+
+const REQUEST_BODY_MAX_BYTES = 5 * 1024 * 1024;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -103,12 +105,9 @@ export function registerWorkspaceSnapshotRoutes(app: Hono<ApiEnv>) {
       return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
     }
 
-    let body: unknown;
-    try {
-      body = await c.req.json();
-    } catch {
-      return errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON');
-    }
+    const parsedBody = await parseJsonBodyWithLimit<unknown>(c, REQUEST_BODY_MAX_BYTES);
+    if (parsedBody.errorResponse) return parsedBody.errorResponse;
+    const body = parsedBody.data;
 
     if (!isWorkspaceSnapshot(body)) {
       return errorResponse(c, 400, 'Invalid workspace snapshot payload', 'INVALID_JSON');

@@ -19,11 +19,18 @@ import {
   withOpenAIRetry,
   buildOpenAIConfig,
 } from '../openaiControl.js';
-import { errorResponse, getRequestId, streamErrorPayload, type ApiErrorCode } from '../lib/http.js';
+import {
+  errorResponse,
+  getRequestId,
+  parseJsonBodyWithLimit,
+  streamErrorPayload,
+  type ApiErrorCode,
+} from '../lib/http.js';
 import { EXPLAIN_SYSTEM_PROMPT, buildExplainUserPrompt } from '../prompts/explain.js';
 import { isAppLocale, type AppLocale } from '@ddlbuilder/shared-types/locale';
 
 const MAX_OUTPUT_TOKENS = 1000;
+const REQUEST_BODY_MAX_BYTES = 256 * 1024;
 
 export function registerExplainRoute(app: Hono<ApiEnv>) {
   app.post('/explain', async (c) => {
@@ -99,13 +106,22 @@ export function registerExplainRoute(app: Hono<ApiEnv>) {
       return rateLimit.response;
     }
 
-    let body: { sql?: unknown; context?: unknown; locale?: unknown };
-    try {
-      body = await c.req.json();
-    } catch {
-      audit(400, 0, false, false, 'INVALID_JSON');
-      return errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON');
+    const parsedBody = await parseJsonBodyWithLimit<{
+      sql?: unknown;
+      context?: unknown;
+      locale?: unknown;
+    }>(c, REQUEST_BODY_MAX_BYTES);
+    if (parsedBody.errorResponse) {
+      audit(
+        parsedBody.errorResponse.status,
+        0,
+        false,
+        false,
+        parsedBody.errorResponse.status === 413 ? 'PAYLOAD_TOO_LARGE' : 'INVALID_JSON',
+      );
+      return parsedBody.errorResponse;
     }
+    const body = parsedBody.data ?? {};
 
     const sql = typeof body.sql === 'string' ? body.sql : '';
     const context = typeof body.context === 'string' ? body.context : '';
