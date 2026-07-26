@@ -8,6 +8,8 @@
     "dev:worker": "pnpm exec tsx scripts/dev-worker.ts",
     "db:migrate:local": "pnpm exec tsx scripts/d1-migrate.ts",
     "db:migrate:remote": "pnpm exec tsx scripts/d1-migrate.ts --remote",
+    "db:baseline:local": "pnpm exec tsx scripts/d1-baseline.ts",
+    "db:baseline:remote": "pnpm exec tsx scripts/d1-baseline.ts --remote",
     "db:seed:local": "pnpm exec tsx scripts/d1-seed.ts",
     "db:seed:remote": "pnpm exec tsx scripts/d1-seed.ts --remote",
     "db:reset:local": "pnpm exec tsx scripts/d1-reset.ts",

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildD1ExecuteArgs,
+  baselineExistingMigrations,
   getD1Flag,
   getWranglerConfigPath,
   listMigrationFiles,
@@ -159,7 +160,7 @@ describe('d1-utils', () => {
     expect(process.exit).toHaveBeenCalledWith(1);
   });
 
-  it('baselines existing databases and applies only the newest migration', () => {
+  it('refuses to guess a baseline for an existing database', () => {
     vi.mocked(spawnSync)
       .mockReturnValueOnce({ status: 0 } as ReturnType<typeof spawnSync>)
       .mockReturnValueOnce({
@@ -172,7 +173,7 @@ describe('d1-utils', () => {
       } as ReturnType<typeof spawnSync>)
       .mockReturnValue({ status: 0 } as ReturnType<typeof spawnSync>);
 
-    runPendingMigrations('local');
+    expect(() => runPendingMigrations('local')).toThrow('迁移账本为空');
 
     const fileArgs = (
       spawnSync as unknown as { mock: { calls: Array<[string, string[]]> } }
@@ -180,8 +181,37 @@ describe('d1-utils', () => {
       .map((call) => call[1])
       .filter((args): args is string[] => Array.isArray(args) && args.includes('--file'));
 
-    expect(fileArgs).toHaveLength(1);
-    const newestMigration = listMigrationFiles().at(-1);
-    expect(fileArgs[0]).toContain(newestMigration);
+    expect(fileArgs).toHaveLength(0);
+  });
+
+  it('records only an explicitly selected baseline range', () => {
+    vi.mocked(spawnSync)
+      .mockReturnValueOnce({ status: 0 } as ReturnType<typeof spawnSync>)
+      .mockReturnValueOnce({
+        status: 0,
+        stdout: JSON.stringify([{ results: [] }]),
+      } as ReturnType<typeof spawnSync>)
+      .mockReturnValueOnce({
+        status: 0,
+        stdout: JSON.stringify([{ results: [{ name: 'users' }] }]),
+      } as ReturnType<typeof spawnSync>)
+      .mockReturnValue({ status: 0 } as ReturnType<typeof spawnSync>);
+
+    baselineExistingMigrations('local', '0002_better_auth_hard_cut.sql');
+
+    const commands = (
+      spawnSync as unknown as { mock: { calls: Array<[string, string[]]> } }
+    ).mock.calls
+      .map((call) => call[1])
+      .filter((args): args is string[] => Array.isArray(args))
+      .flatMap((args) => {
+        const commandIndex = args.indexOf('--command');
+        return commandIndex >= 0 ? [args[commandIndex + 1]] : [];
+      })
+      .filter((command) => command.startsWith('INSERT OR IGNORE'));
+
+    expect(commands).toHaveLength(2);
+    expect(commands[0]).toContain('0001_user_system_init.sql');
+    expect(commands[1]).toContain('0002_better_auth_hard_cut.sql');
   });
 });

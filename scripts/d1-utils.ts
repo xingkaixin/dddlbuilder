@@ -132,17 +132,22 @@ const recordMigration = (mode: D1Mode, name: string): void => {
   });
 };
 
-const baselineExistingSchema = (mode: D1Mode, migrations: string[]): Set<string> => {
-  if (!hasExistingAppSchema(mode) || migrations.length === 0) {
-    return new Set();
+export const baselineExistingMigrations = (mode: D1Mode, throughName: string): void => {
+  ensureMigrationLedger(mode);
+  if (listAppliedMigrations(mode).size > 0) {
+    throw new Error('迁移账本不为空，拒绝重复 baseline');
   }
-
-  const baseline = migrations.slice(0, -1);
-  for (const file of baseline) {
+  if (!hasExistingAppSchema(mode)) {
+    throw new Error('未检测到既有业务表，无需 baseline；请直接运行迁移');
+  }
+  const migrations = listMigrationFiles();
+  const throughIndex = migrations.findIndex((file) => path.basename(file) === throughName);
+  if (throughIndex < 0) {
+    throw new Error(`未知迁移：${throughName}`);
+  }
+  for (const file of migrations.slice(0, throughIndex + 1)) {
     recordMigration(mode, path.basename(file));
   }
-
-  return new Set(baseline.map((file) => path.basename(file)));
 };
 
 export const runAllMigrations = (mode: D1Mode): void => {
@@ -156,9 +161,11 @@ export const runPendingMigrations = (mode: D1Mode): void => {
   ensureMigrationLedger(mode);
 
   const migrations = listMigrationFiles();
-  let applied = listAppliedMigrations(mode);
-  if (applied.size === 0) {
-    applied = baselineExistingSchema(mode, migrations);
+  const applied = listAppliedMigrations(mode);
+  if (applied.size === 0 && hasExistingAppSchema(mode)) {
+    throw new Error(
+      '检测到既有业务表但迁移账本为空。请先显式运行 db:baseline:* -- --through <migration.sql>',
+    );
   }
 
   for (const file of migrations) {
