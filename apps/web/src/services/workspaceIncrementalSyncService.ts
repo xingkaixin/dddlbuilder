@@ -1,4 +1,5 @@
 import type { PersistedState, WorkspaceScope } from '@ddlbuilder/shared-types';
+import { buildWorkspaceContentHash } from '@ddlbuilder/workspace-core';
 import type {
   ApiErrorPayload,
   WorkspaceChangesPushRequest,
@@ -84,29 +85,7 @@ const dispatchWorkspaceSnapshotApplied = () => {
   }
 };
 
-const stableStringify = (value: unknown): string => {
-  if (value === undefined) return 'undefined';
-  if (value === null) return 'null';
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map((item) => stableStringify(item)).join(',')}]`;
-  }
-  const record = value as Record<string, unknown>;
-  return `{${Object.keys(record)
-    .sort()
-    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
-    .join(',')}}`;
-};
-
-export const buildWorkspaceContentHash = async (payload: unknown) => {
-  const bytes = new TextEncoder().encode(stableStringify(payload));
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  return `sha256:${Array.from(new Uint8Array(digest))
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('')}`;
-};
+export { buildWorkspaceContentHash };
 
 export const fetchWorkspaceList = async (): Promise<WorkspaceListResponse> => {
   const response = await fetch('/api/workspaces', {

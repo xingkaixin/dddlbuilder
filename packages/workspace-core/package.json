@@ -1,0 +1,25 @@
+{
+  "name": "@ddlbuilder/workspace-core",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json src/ && oxfmt --config ../../.oxfmtrc.json --check src/",
+    "lint:fix": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json --fix src/ && oxfmt --config ../../.oxfmtrc.json --write src/",
+    "format": "oxfmt --config ../../.oxfmtrc.json --write src/"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@ddlbuilder/shared-types": "workspace:*",
+    "yjs": "^13.6.31"
+  },
+  "devDependencies": {
+    "@ddlbuilder/tsconfig": "workspace:*",
+    "@vitest/coverage-v8": "^4.1.10",
+    "vitest": "^4.1.10"
+  }
+}
