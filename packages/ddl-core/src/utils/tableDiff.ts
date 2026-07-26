@@ -137,6 +137,10 @@ function fieldsEqual(a: NormalizedField, b: NormalizedField): boolean {
   );
 }
 
+function getFieldRenameSignature(field: NormalizedField): string {
+  return JSON.stringify([field.type, field.comment]);
+}
+
 /**
  * 获取两个字段之间的差异
  */
@@ -169,7 +173,7 @@ function getFieldChanges(oldField: NormalizedField, newField: NormalizedField): 
 function getIndexSignature(index: IndexDefinition): string {
   const fieldsSig = index.fields.map((f) => `${f.name}:${f.direction}`).join(',');
   const prefix = index.isPrimary ? 'PK' : index.unique ? 'UQ' : 'IX';
-  return `${prefix}:${fieldsSig}`;
+  return `${prefix}:${index.name}:${fieldsSig}`;
 }
 
 /**
@@ -296,75 +300,46 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
     }
   }
 
-  // 5. 重命名检测：将匹配的 remove + add 合并为 rename
-  // 规则：相同类型 + 相同注释 视为重命名
+  // 5. 重命名检测：仅将结构签名唯一的 remove + add 合并为 rename
   const removedFields = result.fields.filter((f) => f.type === 'remove');
   const addedFields = result.fields.filter((f) => f.type === 'add');
-
-  const renamedPairs: Array<{ removeIdx: number; addIdx: number }> = [];
-
-  for (let i = 0; i < removedFields.length; i++) {
-    const removed = removedFields[i];
-    if (!removed.oldField) continue;
-
-    for (let j = 0; j < addedFields.length; j++) {
-      const added = addedFields[j];
-      if (!added.newField) continue;
-
-      // 检查是否已被配对
-      if (renamedPairs.some((p) => p.addIdx === j)) continue;
-
-      // 匹配规则：类型相同且注释相同
-      if (
-        removed.oldField.type === added.newField.type &&
-        removed.oldField.comment === added.newField.comment
-      ) {
-        renamedPairs.push({ removeIdx: i, addIdx: j });
-        break; // 每个 remove 只能配对一个 add
-      }
-    }
+  const removedByStructure = new Map<string, FieldDiff[]>();
+  const addedByStructure = new Map<string, FieldDiff[]>();
+  for (const field of removedFields) {
+    if (!field.oldField) continue;
+    const signature = getFieldRenameSignature(field.oldField);
+    removedByStructure.set(signature, [...(removedByStructure.get(signature) ?? []), field]);
+  }
+  for (const field of addedFields) {
+    if (!field.newField) continue;
+    const signature = getFieldRenameSignature(field.newField);
+    addedByStructure.set(signature, [...(addedByStructure.get(signature) ?? []), field]);
   }
 
-  // 如果有重命名配对，需要更新 result.fields
-  if (renamedPairs.length > 0) {
-    const removeIndexes = new Set(
-      renamedPairs.map((p) => result.fields.indexOf(removedFields[p.removeIdx])),
-    );
-    const addIndexes = new Set(
-      renamedPairs.map((p) => result.fields.indexOf(addedFields[p.addIdx])),
-    );
-
-    // 过滤掉已配对的 add 和 remove
-    const filteredFields = result.fields.filter(
-      (_, idx) => !removeIndexes.has(idx) && !addIndexes.has(idx),
-    );
-
-    // 添加 rename 类型
-    for (const pair of renamedPairs) {
-      const removed = removedFields[pair.removeIdx];
-      const added = addedFields[pair.addIdx];
-
-      // 检查除了名称之外是否有其他变更
-      const changes =
-        removed.oldField && added.newField
-          ? getFieldChanges(removed.oldField, added.newField).filter(
-              (c) => c !== 'comment', // 注释相同是匹配条件，不算变更
-            )
-          : [];
-
-      filteredFields.push({
-        type: 'rename',
-        fieldName: added.newField?.name || '',
-        oldField: removed.oldField,
-        newField: added.newField,
-        oldFieldName: removed.oldField?.name,
-        newFieldName: added.newField?.name,
-        changes: changes.length > 0 ? changes : undefined,
-      });
-    }
-
-    result.fields = filteredFields;
+  const renamedFields = new Set<FieldDiff>();
+  const renames: FieldDiff[] = [];
+  for (const [signature, removed] of removedByStructure) {
+    const added = addedByStructure.get(signature);
+    if (removed.length !== 1 || added?.length !== 1) continue;
+    const oldField = removed[0].oldField;
+    const newField = added[0].newField;
+    if (!oldField || !newField) continue;
+    renamedFields.add(removed[0]);
+    renamedFields.add(added[0]);
+    renames.push({
+      type: 'rename',
+      fieldName: newField.name,
+      oldField,
+      newField,
+      oldFieldName: oldField.name,
+      newFieldName: newField.name,
+      changes: (() => {
+        const changes = getFieldChanges(oldField, newField);
+        return changes.length > 0 ? changes : undefined;
+      })(),
+    });
   }
+  result.fields = [...result.fields.filter((field) => !renamedFields.has(field)), ...renames];
 
   // 4. 索引变更
   const oldIndexes = oldState.indexes || [];

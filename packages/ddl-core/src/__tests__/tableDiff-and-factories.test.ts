@@ -172,6 +172,47 @@ describe('diffPersistedState', () => {
     expect(diff.fields).toHaveLength(2); // one remove, one add
   });
 
+  it('does not guess renames when multiple fields share the same structure', () => {
+    const oldState = createPersistedState({
+      rows: [
+        createRow({ fieldName: 'first_name', fieldType: 'varchar', fieldComment: '名称' }),
+        createRow({ fieldName: 'last_name', fieldType: 'varchar', fieldComment: '名称' }),
+      ],
+    });
+    const newState = createPersistedState({
+      rows: [
+        createRow({ fieldName: 'given_name', fieldType: 'varchar', fieldComment: '名称' }),
+        createRow({ fieldName: 'family_name', fieldType: 'varchar', fieldComment: '名称' }),
+      ],
+    });
+
+    const diff = diffPersistedState(oldState, newState);
+
+    expect(diff.fields.filter((field) => field.type === 'rename')).toHaveLength(0);
+    expect(diff.fields.filter((field) => field.type === 'remove')).toHaveLength(2);
+    expect(diff.fields.filter((field) => field.type === 'add')).toHaveLength(2);
+  });
+
+  it('detects an index name change', () => {
+    const index = {
+      name: 'idx_users_email',
+      fields: [{ name: 'email', direction: 'ASC' as const }],
+      unique: false,
+      isPrimary: false,
+    };
+    const oldState = createPersistedState({ indexes: [index] });
+    const newState = createPersistedState({
+      indexes: [{ ...index, name: 'idx_accounts_email' }],
+    });
+
+    const diff = diffPersistedState(oldState, newState);
+
+    expect(diff.indexes).toEqual([
+      { type: 'remove', index },
+      { type: 'add', index: { ...index, name: 'idx_accounts_email' } },
+    ]);
+  });
+
   it('detects added index', () => {
     const oldState = createPersistedState({ indexes: [] });
     const newState = createPersistedState({
