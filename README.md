@@ -63,7 +63,7 @@ pnpm deploy:cf
 
 - `pnpm dev`：启动前端开发服务、Worker 运行时与文档开发服务，入口为 `http://localhost:3000`，修改页面代码会通过 Vite 自动热更新。
 - `pnpm dev:app`：仅启动前端开发服务（Vite）。
-- `pnpm dev:worker`：先构建一次 Worker 产物，再用 `wrangler dev` 在 `http://localhost:8787` 启动运行时调试服务。
+- `pnpm dev:worker`：先应用本地 D1 pending migrations、构建 Worker 产物，再用 `wrangler dev` 在 `http://localhost:8787` 启动运行时调试服务。
 - `pnpm db:migrate:local`：初始化或升级本地 D1 用户系统 schema。
 - `pnpm db:seed:local`：写入本地 D1 最小种子数据。
 - `pnpm db:reset:local`：清空并重建本地 D1 schema，再重新 seed。
@@ -164,7 +164,7 @@ localStorage.setItem('ddlbuilder:ai-stream-debug', 'true');
 
 ### 用户系统本地联调
 
-首次拉起用户系统底座时，按下面顺序执行：
+`pnpm dev` 和 `pnpm dev:worker` 会在 Worker 启动前自动应用本地 pending migrations。若需要预置最小种子数据，按下面顺序执行：
 
 ```bash
 pnpm db:migrate:local
@@ -183,6 +183,7 @@ pnpm db:reset:local
 - 默认所有 D1 命令都操作 local simulation。
 - remote D1 只允许通过显式的 `:remote` 命令访问。
 - `pnpm dev:worker` 和 `pnpm db:*:local` 共享同一份本地 D1，持久化目录都是 `.wrangler/state/dev`。
+- 自动迁移仅作用于本地 D1；remote D1 仍必须显式执行 `pnpm db:migrate:remote`。
 
 ## 使用说明
 

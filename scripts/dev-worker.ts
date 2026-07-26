@@ -7,14 +7,24 @@ const persistDir = process.env.WRANGLER_PERSIST_DIR ?? '.wrangler/state/dev';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const workerDir = path.join(repoRoot, 'apps', 'worker');
 
-const build = spawnSync('pnpm', ['run', 'build:wrangler-dev'], {
-  stdio: 'inherit',
-  cwd: repoRoot,
-});
+const runPreflight = (label: string, args: string[]) => {
+  console.log(`[dev:worker] ${label}`);
+  const result = spawnSync('pnpm', args, {
+    stdio: 'inherit',
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      WRANGLER_PERSIST_DIR: persistDir,
+    },
+  });
 
-if (build.status !== 0) {
-  process.exit(build.status ?? 1);
-}
+  if (result.status !== 0) {
+    process.exit(result.status ?? 1);
+  }
+};
+
+runPreflight('applying pending D1 migrations', ['run', 'db:migrate:local']);
+runPreflight('building Worker runtime assets', ['run', 'build:wrangler-dev']);
 
 const child = spawn(
   'pnpm',
