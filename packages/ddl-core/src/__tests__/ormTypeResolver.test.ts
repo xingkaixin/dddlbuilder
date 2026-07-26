@@ -155,4 +155,11 @@ describe('buildPrimaryKeyName', () => {
   it('returns pk for whitespace-only table name', () => {
     expect(buildPrimaryKeyName('   ')).toBe('pk');
   });
+
+  it('truncates generated names to the requested dialect limit', () => {
+    const name = buildPrimaryKeyName(`schema.${'long_table_name_'.repeat(4)}`, 30);
+
+    expect(name).toHaveLength(30);
+    expect(name).toMatch(/_[a-z0-9]{4}$/);
+  });
 });

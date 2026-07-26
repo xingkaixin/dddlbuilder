@@ -59,7 +59,7 @@ import { countVersions } from '@/utils/tableVersions';
 import { writeWorkspaceSession } from '@/utils/workspaceStateDb';
 import { lintSchema } from '@/utils/schemaLint';
 import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
-import { buildIndexName } from '@/utils/indexNameUtils';
+import { buildIndexName, getIndexNameMaxLength } from '@/utils/indexNameUtils';
 import { EXAMPLE_USER_PROFILE_TABLE } from '@/utils/exampleTable';
 import { useTranslation } from 'react-i18next';
 import type { AISchemaChange } from '@/utils/aiSchemaChanges';
@@ -536,6 +536,7 @@ function App() {
           recommendation.index.unique ? 'uk' : 'idx',
           tableName.trim() || 'current_table',
           fields.map((field) => field.name),
+          getIndexNameMaxLength(dbType),
         ),
         fields,
         unique: recommendation.index.unique,
@@ -549,7 +550,17 @@ function App() {
         category: recommendation.category,
       });
     },
-    [indexes, normalizedFields, setActiveTab, setIndexes, showToast, t, tableName, trackEvent],
+    [
+      dbType,
+      indexes,
+      normalizedFields,
+      setActiveTab,
+      setIndexes,
+      showToast,
+      t,
+      tableName,
+      trackEvent,
+    ],
   );
 
   const handleGenerateComments = useCallback(

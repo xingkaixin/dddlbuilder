@@ -107,6 +107,30 @@ describe('AbstractDDLStrategy', () => {
     expect(ddl).toBe('ALTER TABLE users ADD CONSTRAINT pk_users PRIMARY KEY (id, created_at);');
   });
 
+  it('应该保留用户配置的主键约束名', () => {
+    const strategy = new TestStrategy();
+    const ddl = strategy.exposeGeneratePrimaryKeyDDL('users', {
+      ...primaryIndex,
+      name: 'users_identity_key',
+    });
+
+    expect(ddl).toBe(
+      'ALTER TABLE users ADD CONSTRAINT users_identity_key PRIMARY KEY (id, created_at);',
+    );
+  });
+
+  it('应该按数据库限制截断主键约束名', () => {
+    const strategy = new TestStrategy('oracle');
+    const ddl = strategy.exposeGeneratePrimaryKeyDDL('users', {
+      ...primaryIndex,
+      name: `pk_${'very_long_name_'.repeat(4)}`,
+    });
+    const constraintName = ddl.match(/ADD CONSTRAINT (\S+) PRIMARY KEY/)?.[1];
+
+    expect(constraintName).toHaveLength(30);
+    expect(constraintName).toMatch(/_[a-z0-9]{4}$/);
+  });
+
   it('应该格式化索引字段列表', () => {
     const strategy = new TestStrategy();
     expect(strategy.exposeFormatIndexFieldList(normalIndex)).toBe('name ASC');

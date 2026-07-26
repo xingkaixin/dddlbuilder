@@ -2,16 +2,7 @@ import { create } from 'zustand';
 import type { DatabaseType, IndexDefinition, IndexField } from '@ddlbuilder/shared-types';
 import { buildPrimaryKeyName } from '@ddlbuilder/ddl-core';
 import { isSameIdentifierToken, replaceIdentifierToken } from '@/utils/fieldRenameUtils';
-import {
-  MAX_INDEX_NAME_LENGTH,
-  ORACLE_INDEX_NAME_LENGTH,
-  buildIndexName,
-  truncateIndexName,
-} from '@/utils/indexNameUtils';
-
-function getIndexNameMaxLength(dbType: DatabaseType): number {
-  return dbType === 'oracle' ? ORACLE_INDEX_NAME_LENGTH : MAX_INDEX_NAME_LENGTH;
-}
+import { buildIndexName, getIndexNameMaxLength, truncateIndexName } from '@/utils/indexNameUtils';
 
 interface IndexStoreState {
   indexInput: string;
@@ -124,7 +115,7 @@ export const useIndexStore = create<IndexStoreState>((set, get) => ({
     const indexNameMaxLength = getIndexNameMaxLength(dbType);
 
     const indexName = isPrimary
-      ? buildPrimaryKeyName(tableName)
+      ? buildPrimaryKeyName(tableName, indexNameMaxLength)
       : buildIndexName(
           unique ? 'uk' : 'idx',
           tableName,
@@ -183,7 +174,7 @@ export const useIndexStore = create<IndexStoreState>((set, get) => ({
         if (index.isPrimary) {
           return {
             ...index,
-            name: buildPrimaryKeyName(tableName),
+            name: buildPrimaryKeyName(tableName, indexNameMaxLength),
           };
         }
 

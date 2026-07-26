@@ -1,12 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { DatabaseType, IndexField, IndexDefinition } from '@ddlbuilder/shared-types';
 import { buildPrimaryKeyName } from '@ddlbuilder/ddl-core';
-import {
-  buildIndexName,
-  truncateIndexName,
-  MAX_INDEX_NAME_LENGTH,
-  ORACLE_INDEX_NAME_LENGTH,
-} from '@/utils/indexNameUtils';
+import { buildIndexName, getIndexNameMaxLength, truncateIndexName } from '@/utils/indexNameUtils';
 
 export interface UseIndexManagementReturn {
   indexInput: string;
@@ -46,7 +41,7 @@ export function useIndexManagement(
   const [showFieldSuggestions, setShowFieldSuggestions] = useState(false);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
   const [initialized, setInitialized] = useState(false);
-  const indexNameMaxLength = dbType === 'oracle' ? ORACLE_INDEX_NAME_LENGTH : MAX_INDEX_NAME_LENGTH;
+  const indexNameMaxLength = getIndexNameMaxLength(dbType ?? 'mysql');
 
   // Update state when persisted data becomes available
   useEffect(() => {
@@ -99,7 +94,7 @@ export function useIndexManagement(
       }
 
       const indexName = isPrimary
-        ? buildPrimaryKeyName(tableName)
+        ? buildPrimaryKeyName(tableName, indexNameMaxLength)
         : buildIndexName(
             unique ? 'uk' : 'idx',
             tableName,
@@ -159,7 +154,7 @@ export function useIndexManagement(
       if (!currentTableName) return index.name;
 
       if (index.isPrimary) {
-        return buildPrimaryKeyName(currentTableName);
+        return buildPrimaryKeyName(currentTableName, indexNameMaxLength);
       }
 
       const prefix = index.unique ? 'uk' : 'idx';

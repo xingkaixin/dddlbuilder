@@ -1,17 +1,12 @@
 import { memo, useEffect, useMemo, useState } from 'react';
-import type { IndexDefinition, IndexField } from '@ddlbuilder/shared-types';
+import type { DatabaseType, IndexDefinition, IndexField } from '@ddlbuilder/shared-types';
 import { buildPrimaryKeyName } from '@ddlbuilder/ddl-core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Key, Lock, Hash, Pencil, Trash2, GripVertical, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { buildNormalizedFields, useAppStore, useFieldStore, useIndexStore } from '@/stores';
-import {
-  MAX_INDEX_NAME_LENGTH,
-  ORACLE_INDEX_NAME_LENGTH,
-  buildIndexName,
-  truncateIndexName,
-} from '@/utils/indexNameUtils';
+import { buildIndexName, getIndexNameMaxLength, truncateIndexName } from '@/utils/indexNameUtils';
 import { useTranslation } from 'react-i18next';
 
 interface IndexPanelProps {
@@ -33,9 +28,6 @@ const getIndexType = (index: IndexDefinition): IndexType => {
   if (index.isPrimary) return 'primary';
   return index.unique ? 'unique' : 'normal';
 };
-
-const getIndexNameMaxLength = (dbType: string) =>
-  dbType === 'oracle' ? ORACLE_INDEX_NAME_LENGTH : MAX_INDEX_NAME_LENGTH;
 
 export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIndexIds }) => {
   const { t } = useTranslation();
@@ -133,9 +125,9 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
 
   const buildDraftName = () => {
     const trimmedName = draft.name.trim();
-    const maxLength = getIndexNameMaxLength(dbType);
+    const maxLength = getIndexNameMaxLength(dbType as DatabaseType);
     if (trimmedName) return truncateIndexName(trimmedName, maxLength);
-    if (draft.type === 'primary') return buildPrimaryKeyName(tableName);
+    if (draft.type === 'primary') return buildPrimaryKeyName(tableName, maxLength);
     return buildIndexName(
       draft.type === 'unique' ? 'uk' : 'idx',
       tableName || 'table',

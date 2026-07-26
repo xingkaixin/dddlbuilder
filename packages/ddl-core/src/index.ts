@@ -35,6 +35,13 @@ export {
   buildQualifiedTableName,
 } from './utils/databaseTypeMapping.js';
 export { buildPrimaryKeyName } from './utils/primaryKeyNaming.js';
+export {
+  buildIndexName,
+  truncateIdentifierName,
+  getIdentifierNameMaxLength,
+  DEFAULT_IDENTIFIER_NAME_MAX_LENGTH,
+  ORACLE_IDENTIFIER_NAME_MAX_LENGTH,
+} from './utils/identifierNaming.js';
 export { TypeMapper } from './utils/TypeMapper.js';
 export {
   generateAlterDDL,

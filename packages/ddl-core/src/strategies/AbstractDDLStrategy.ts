@@ -10,6 +10,7 @@ import type { DDLStrategy } from '../interfaces/DDLStrategy';
 import { escapeSingleQuotes, splitQualifiedName } from '../utils/databaseTypeMapping';
 import { TypeMapper } from '../utils/TypeMapper';
 import { buildPrimaryKeyName } from '../utils/primaryKeyNaming';
+import { getIdentifierNameMaxLength, truncateIdentifierName } from '../utils/identifierNaming';
 
 export interface ColumnDefinitionSegments {
   name: string;
@@ -50,7 +51,11 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
    */
   protected generatePrimaryKeyDDL(tableName: string, index: IndexDefinition): string {
     const fieldList = index.fields.map((f) => f.name).join(', ');
-    const constraintName = buildPrimaryKeyName(tableName);
+    const maxLength = getIdentifierNameMaxLength(this.getDatabaseType());
+    const constraintName = truncateIdentifierName(
+      index.name.trim() || buildPrimaryKeyName(tableName, maxLength),
+      maxLength,
+    );
 
     return `ALTER TABLE ${this.formatTableName(tableName)} ADD CONSTRAINT ${constraintName} PRIMARY KEY (${fieldList});`;
   }
