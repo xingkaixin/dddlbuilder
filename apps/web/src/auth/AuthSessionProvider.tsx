@@ -39,6 +39,7 @@ type SignUpInput = {
   name: string;
   email: string;
   password: string;
+  turnstileToken: string;
 };
 
 type WorkspaceSyncQueue = {
@@ -337,12 +338,19 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
           throw new Error(i18n.t('services.authConfigMissing'));
         }
 
-        const result = await client.signUp.email({
-          email: input.email,
-          password: input.password,
-          name: input.name,
-          callbackURL: verifyEmailCallbackURL(),
-        });
+        const result = await client.signUp.email(
+          {
+            email: input.email,
+            password: input.password,
+            name: input.name,
+            callbackURL: verifyEmailCallbackURL(),
+          },
+          {
+            headers: {
+              'x-turnstile-token': input.turnstileToken,
+            },
+          },
+        );
         if (result.error) {
           throw new Error(
             translateAuthError(result.error.message || '', 'header.auth.signInFailed'),

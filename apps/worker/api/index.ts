@@ -61,7 +61,7 @@ api.use(
       return allowed.includes(origin) ? origin : null;
     },
     allowMethods: ['GET', 'POST', 'PUT', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'X-Turnstile-Token'],
     credentials: true,
     exposeHeaders: [
       'X-Request-Id',
@@ -76,7 +76,7 @@ api.use(
   }),
 );
 
-api.use('/*', async (c, next) => {
+app.use('*', async (c, next) => {
   await next();
   applyCspHeaders(c);
 });

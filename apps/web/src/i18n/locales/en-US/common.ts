@@ -59,6 +59,8 @@ export const enUSCommon = {
       nameRequired: 'Name is required',
       emailRequired: 'Email is required',
       passwordRequired: 'Password is required',
+      turnstileRequired: 'Complete the verification challenge first',
+      turnstileNotConfigured: 'Verification is not configured; sign-up is unavailable',
       createAccount: 'Create account',
       resendVerification: 'Resend verification',
       sendResetPassword: 'Send reset email',

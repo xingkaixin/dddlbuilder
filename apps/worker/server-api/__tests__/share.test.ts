@@ -4,6 +4,15 @@ import { Hono } from 'hono';
 import { registerShareRoutes } from '../routes/share';
 import type { ApiEnv } from '../lib/context';
 
+vi.mock('../lib/requestRateLimit', () => ({
+  enforceRequestRateLimit: vi.fn().mockResolvedValue({
+    allowed: true,
+    limit: 10,
+    remaining: 9,
+    retryAfterSeconds: 3600,
+  }),
+}));
+
 const VALID_SHARE_ID = '8c6afce1-2a39-47aa-a14f-f3450c3ad7dd';
 
 const buildState = () => ({

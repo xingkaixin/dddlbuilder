@@ -1,11 +1,63 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../../lib/context.js';
 
+const createAdminSessionDb = () => {
+  const sessions = new Map<
+    string,
+    { expiresAt: number; createdAt: number; revokedAt: number | null }
+  >();
+  return {
+    prepare(sql: string) {
+      return {
+        bind(...args: unknown[]) {
+          return {
+            async run() {
+              if (sql.startsWith('DELETE FROM admin_sessions')) {
+                const [now] = args;
+                for (const [id, session] of sessions) {
+                  if (session.expiresAt <= Number(now)) sessions.delete(id);
+                }
+              } else if (sql.startsWith('INSERT INTO admin_sessions')) {
+                const [id, expiresAt, createdAt] = args;
+                sessions.set(String(id), {
+                  expiresAt: Number(expiresAt),
+                  createdAt: Number(createdAt),
+                  revokedAt: null,
+                });
+              } else if (sql.startsWith('UPDATE admin_sessions')) {
+                const [revokedAt, id] = args;
+                const session = sessions.get(String(id));
+                if (session && session.revokedAt === null) {
+                  session.revokedAt = Number(revokedAt);
+                }
+              }
+              return { success: true };
+            },
+            async first() {
+              const [id, expiresAt, now] = args;
+              const session = sessions.get(String(id));
+              return session &&
+                session.expiresAt === Number(expiresAt) &&
+                session.expiresAt > Number(now) &&
+                session.revokedAt === null
+                ? { id }
+                : null;
+            },
+          };
+        },
+      };
+    },
+    async batch(statements: D1PreparedStatement[]) {
+      return Promise.all(statements.map((statement) => statement.run()));
+    },
+  } as unknown as D1Database;
+};
+
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
   SHARE_KV: {} as KVNamespace,
   RATE_LIMIT_KV: {} as KVNamespace,
-  USER_DB: {} as D1Database,
+  USER_DB: createAdminSessionDb(),
   BETTER_AUTH_SECRET: 'better-auth-secret',
   BETTER_AUTH_URL: 'http://localhost:3000',
   RESEND_API_KEY: 're_test_key',
@@ -58,6 +110,7 @@ describe('adminAuth', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     Object.defineProperty(globalThis, 'crypto', {
       value: originalCrypto,
       writable: true,
@@ -268,12 +321,39 @@ describe('adminAuth', () => {
         expect(isValid).toBe(true);
       }
     });
+
+    it('rejects a session after its signed server expiry', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+      const { createAdminSession, resolveAdminSession } = await import('../../lib/adminAuth.js');
+      const env = createEnv({ ADMIN_CONSOLE_PASSWORD: 'secret' });
+      const session = await createAdminSession(env, 'secret');
+      expect(session.success).toBe(true);
+      vi.setSystemTime(new Date('2026-01-01T05:00:00Z'));
+
+      if (session.success) {
+        await expect(resolveAdminSession(env, session.setCookie)).resolves.toBe(false);
+      }
+    });
+
+    it('rejects a server-revoked session', async () => {
+      const { createAdminSession, deleteAdminSession, resolveAdminSession } =
+        await import('../../lib/adminAuth.js');
+      const env = createEnv({ ADMIN_CONSOLE_PASSWORD: 'secret' });
+      const session = await createAdminSession(env, 'secret');
+      expect(session.success).toBe(true);
+
+      if (session.success) {
+        await deleteAdminSession(env, session.setCookie);
+        await expect(resolveAdminSession(env, session.setCookie)).resolves.toBe(false);
+      }
+    });
   });
 
   describe('deleteAdminSession', () => {
     it('returns a cookie that clears the session', async () => {
       const { deleteAdminSession } = await import('../../lib/adminAuth.js');
-      const cookie = deleteAdminSession();
+      const cookie = await deleteAdminSession(createEnv(), null);
 
       expect(cookie).toContain('ddlbuilder_admin_session=');
       expect(cookie).toContain('Path=/api/admin');
@@ -285,7 +365,7 @@ describe('adminAuth', () => {
 
     it('has empty value for the cookie', async () => {
       const { deleteAdminSession } = await import('../../lib/adminAuth.js');
-      const cookie = deleteAdminSession();
+      const cookie = await deleteAdminSession(createEnv(), null);
 
       const match = cookie.match(/ddlbuilder_admin_session=([^;]*)/);
       expect(match).toBeTruthy();

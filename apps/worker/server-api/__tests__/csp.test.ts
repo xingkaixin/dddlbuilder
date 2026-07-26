@@ -67,4 +67,23 @@ describe('csp headers', () => {
     expect(response.headers.get('content-security-policy')).toBeNull();
     expect(response.headers.get('content-security-policy-report-only')).toBeNull();
   });
+
+  it('对 SPA 页面应用默认 CSP 且不允许 unsafe script', async () => {
+    const env = createEnv({
+      CSP_ENABLE: 'true',
+      CSP_MODE: 'enforce',
+      ASSETS: {
+        fetch: async () =>
+          new Response('<!doctype html><html></html>', {
+            headers: { 'content-type': 'text/html' },
+          }),
+      },
+    });
+
+    const response = await app.fetch(new Request('http://localhost/'), env);
+    const policy = response.headers.get('content-security-policy');
+    expect(policy).toContain("script-src 'self' https://challenges.cloudflare.com");
+    expect(policy).not.toContain("'unsafe-eval'");
+    expect(policy).not.toContain("script-src 'self' 'unsafe-inline'");
+  });
 });

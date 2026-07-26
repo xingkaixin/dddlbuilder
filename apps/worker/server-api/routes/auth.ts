@@ -1,56 +1,94 @@
-import type { Hono } from 'hono';
+import type { Context, Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { resolveAuthenticatedUser } from '../lib/auth.js';
 import { createBetterAuth } from '../lib/betterAuth.js';
-import { errorResponse, withMeta } from '../lib/http.js';
+import { errorResponse, parseJsonBodyWithLimit, withMeta } from '../lib/http.js';
+import { enforceRequestRateLimit } from '../lib/requestRateLimit.js';
 import { getUserSystemConfig } from '../lib/userSystemConfig.js';
 
 type TurnstileVerifyResponse = {
   success: boolean;
+  action?: string;
   'error-codes'?: string[];
 };
 
-export function registerAuthRoutes(app: Hono<ApiEnv>) {
-  app.post('/auth/turnstile/verify', async (c) => {
-    let body: { token?: unknown };
-    try {
-      body = await c.req.json();
-    } catch {
-      return errorResponse(c, 400, 'Invalid JSON body', 'INVALID_JSON');
-    }
+const AUTH_BODY_MAX_BYTES = 16 * 1024;
+const SIGNUP_RATE_LIMIT = {
+  scope: 'auth:signup',
+  limit: 5,
+  windowMs: 15 * 60 * 1000,
+} as const;
 
-    const token = typeof body.token === 'string' ? body.token.trim() : '';
-    if (!token) {
-      return errorResponse(c, 400, 'Turnstile token is required', 'TURNSTILE_REQUIRED');
-    }
+const verifyTurnstile = async (c: Context<ApiEnv>, token: string) => {
+  const config = getUserSystemConfig(c.env);
+  const formData = new URLSearchParams();
+  formData.set('secret', config.turnstileSecretKey);
+  formData.set('response', token);
+  const remoteIp = c.req.header('cf-connecting-ip');
+  if (remoteIp) {
+    formData.set('remoteip', remoteIp);
+  }
 
-    const config = getUserSystemConfig(c.env);
-    const formData = new URLSearchParams();
-    formData.set('secret', config.turnstileSecretKey);
-    formData.set('response', token);
-    const remoteIp = c.req.header('cf-connecting-ip');
-    if (remoteIp) {
-      formData.set('remoteip', remoteIp);
-    }
-
-    const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+  let response: Response;
+  try {
+    response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
       headers: {
         'content-type': 'application/x-www-form-urlencoded',
       },
       body: formData.toString(),
     });
+  } catch {
+    return errorResponse(c, 503, 'Turnstile service unavailable', 'SERVICE_UNAVAILABLE');
+  }
 
-    if (!response.ok) {
-      return errorResponse(c, 503, 'Turnstile service unavailable', 'SERVICE_UNAVAILABLE');
+  if (!response.ok) {
+    return errorResponse(c, 503, 'Turnstile service unavailable', 'SERVICE_UNAVAILABLE');
+  }
+
+  const result = (await response.json()) as TurnstileVerifyResponse;
+  if (!result.success || result.action !== 'signup') {
+    return errorResponse(c, 403, 'Turnstile verification failed', 'TURNSTILE_FAILED');
+  }
+  return null;
+};
+
+export function registerAuthRoutes(app: Hono<ApiEnv>) {
+  app.post('/auth/sign-up/email', async (c) => {
+    const rateLimit = await enforceRequestRateLimit(c, SIGNUP_RATE_LIMIT);
+    c.header('X-RateLimit-Limit', String(rateLimit.limit));
+    c.header('X-RateLimit-Remaining', String(rateLimit.remaining));
+    if (!rateLimit.allowed) {
+      c.header('Retry-After', String(rateLimit.retryAfterSeconds));
+      return errorResponse(c, 429, 'Too many signup attempts', 'RATE_LIMIT_EXCEEDED');
     }
 
-    const result = (await response.json()) as TurnstileVerifyResponse;
-    if (!result.success) {
-      return errorResponse(c, 403, 'Turnstile verification failed', 'TURNSTILE_FAILED');
+    const parsedBody = await parseJsonBodyWithLimit<Record<string, unknown>>(
+      c,
+      AUTH_BODY_MAX_BYTES,
+    );
+    if (parsedBody.errorResponse) return parsedBody.errorResponse;
+    const body = parsedBody.data ?? {};
+    const bodyToken = typeof body.turnstileToken === 'string' ? body.turnstileToken.trim() : '';
+    const token = c.req.header('x-turnstile-token')?.trim() || bodyToken;
+    if (!token) {
+      return errorResponse(c, 400, 'Turnstile token is required', 'TURNSTILE_REQUIRED');
     }
 
-    return c.json(withMeta(c, { success: true as const }));
+    const verificationError = await verifyTurnstile(c, token);
+    if (verificationError) return verificationError;
+
+    delete body.turnstileToken;
+    const headers = new Headers(c.req.raw.headers);
+    headers.set('content-type', 'application/json');
+    headers.delete('content-length');
+    return createBetterAuth(c.env).handler(
+      new Request(c.req.raw.url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      }),
+    );
   });
 
   app.all('/auth/*', async (c) => createBetterAuth(c.env).handler(c.req.raw));

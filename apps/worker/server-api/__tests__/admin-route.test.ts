@@ -35,11 +35,43 @@ describe('/api/admin/*', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    vi.doMock('../lib/requestRateLimit.js', () => ({
+      enforceRequestRateLimit: vi.fn().mockResolvedValue({
+        allowed: true,
+        limit: 5,
+        remaining: 4,
+        retryAfterSeconds: 900,
+      }),
+    }));
   });
 
   // ─── Session management ──────────────────────────────────────────
 
   describe('POST /api/admin/session', () => {
+    it('returns 429 after the admin login limit is exhausted', async () => {
+      vi.doMock('../lib/requestRateLimit.js', () => ({
+        enforceRequestRateLimit: vi.fn().mockResolvedValue({
+          allowed: false,
+          limit: 5,
+          remaining: 0,
+          retryAfterSeconds: 600,
+        }),
+      }));
+      const { default: app } = await import('../../api/index');
+      const response = await app.fetch(
+        createRequest('/api/admin/session', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ password: 'admin-secret' }),
+        }),
+        createEnv(),
+      );
+
+      expect(response.status).toBe(429);
+      expect(response.headers.get('retry-after')).toBe('600');
+      expect(await response.json()).toMatchObject({ code: 'RATE_LIMIT_EXCEEDED' });
+    });
+
     it('creates session with valid password', async () => {
       vi.doMock('../lib/adminAuth.js', () => ({
         createAdminSession: vi.fn().mockResolvedValue({
@@ -146,7 +178,7 @@ describe('/api/admin/*', () => {
         resolveAdminSession: vi.fn(),
         deleteAdminSession: vi
           .fn()
-          .mockReturnValue(
+          .mockResolvedValue(
             'ddlbuilder_admin_session=; Path=/api/admin; HttpOnly; SameSite=Lax; Max-Age=0; Secure',
           ),
       }));
@@ -480,6 +512,39 @@ describe('/api/admin/*', () => {
       );
 
       expect(response.status).toBe(500);
+      expect(await response.json()).toMatchObject({
+        error: 'Failed to send reset email',
+        code: 'SERVICE_UNAVAILABLE',
+      });
+    });
+
+    it('returns 502 when better-auth rejects the reset request', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.doMock('../lib/adminAuth.js', () => ({
+        createAdminSession: vi.fn(),
+        resolveAdminSession: vi.fn().mockResolvedValue(true),
+        deleteAdminSession: vi.fn(),
+      }));
+      vi.doMock('../lib/betterAuth.js', () => ({
+        createBetterAuth: vi.fn().mockReturnValue({
+          handler: vi.fn().mockResolvedValue(new Response('rejected', { status: 400 })),
+        }),
+      }));
+
+      const { default: app } = await import('../../api/index');
+      const response = await app.fetch(
+        createRequest('/api/admin/users/user-1/reset-password', {
+          method: 'POST',
+          headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
+        }),
+        createEnv({
+          USER_DB: mockD1Results([
+            { email: 'user1@example.com', name: 'User One' },
+          ]) as unknown as D1Database,
+        }),
+      );
+
+      expect(response.status).toBe(502);
       expect(await response.json()).toMatchObject({
         error: 'Failed to send reset email',
         code: 'SERVICE_UNAVAILABLE',

@@ -59,6 +59,7 @@ import { useTheme } from 'next-themes';
 import { useThemeTransition } from './hooks/useThemeTransition';
 import { UserSettingsDialog } from './UserSettingsDialog';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
+import { TurnstileWidget } from '@/auth/TurnstileWidget';
 import type { SavedTableSummary, SaveTableResult } from '@/hooks/useSavedTables';
 import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { PersistedState } from '@ddlbuilder/shared-types';
@@ -70,6 +71,7 @@ const ImportSqlDialog = lazy(() =>
 );
 
 const FEEDBACK_URL = 'https://my.feishu.cn/share/base/form/shrcnqGnCdcvgRomQ5syagGW2He';
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY?.trim() ?? '';
 
 interface HeaderProps {
   onShare: () => void;
@@ -217,6 +219,7 @@ export const Header = memo<HeaderProps>(
     const [userSettingsOpen, setUserSettingsOpen] = useState(false);
     const [resetToken, setResetToken] = useState<string | null>(null);
     const [verifyEmailDialogOpen, setVerifyEmailDialogOpen] = useState(false);
+    const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
     const actionBtnClass =
       'group inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-primary transition-all duration-200 hover:translate-x-0.5 hover:bg-primary/10 hover:text-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60';
     const primaryActionBtnClass =
@@ -320,11 +323,17 @@ export const Header = memo<HeaderProps>(
             error(t('header.auth.passwordRequired'));
             return;
           }
+          if (!turnstileToken) {
+            error(t('header.auth.turnstileRequired'));
+            return;
+          }
           await authSession.signUpWithEmail({
             name: name.trim(),
             email: trimmedEmail,
             password,
+            turnstileToken,
           });
+          setTurnstileToken(null);
           success(t('header.auth.verifyEmailSent', { email: trimmedEmail }));
           setAuthMode('sign_in');
           setPassword('');
@@ -807,12 +816,24 @@ export const Header = memo<HeaderProps>(
                 />
               </div>
             ) : null}
+            {authMode === 'sign_up' ? (
+              TURNSTILE_SITE_KEY ? (
+                <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} onTokenChange={setTurnstileToken} />
+              ) : (
+                <p className="text-sm text-destructive">
+                  {t('header.auth.turnstileNotConfigured')}
+                </p>
+              )
+            ) : null}
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               {authMode !== 'reset_password' ? (
                 <button
                   type="button"
                   className="underline-offset-4 hover:underline"
-                  onClick={() => setAuthMode(authMode === 'sign_up' ? 'sign_in' : 'sign_up')}
+                  onClick={() => {
+                    setTurnstileToken(null);
+                    setAuthMode(authMode === 'sign_up' ? 'sign_in' : 'sign_up');
+                  }}
                 >
                   {authMode === 'sign_up'
                     ? t('header.auth.switchToSignIn')

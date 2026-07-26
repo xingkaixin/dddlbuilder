@@ -5,6 +5,13 @@ import { errorResponse, withMeta, parseJsonBodyWithLimit } from '../lib/http.js'
 import { createBetterAuth } from '../lib/betterAuth.js';
 import { getUserSystemConfig } from '../lib/userSystemConfig.js';
 import { applyCreditMutation, listCreditLedger } from '../lib/credits.js';
+import { enforceRequestRateLimit } from '../lib/requestRateLimit.js';
+
+const ADMIN_LOGIN_RATE_LIMIT = {
+  scope: 'admin:login',
+  limit: 5,
+  windowMs: 15 * 60 * 1000,
+} as const;
 
 type AdminUserSummary = {
   id: string;
@@ -70,6 +77,14 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
   // ─── Session management ──────────────────────────────────────────
 
   app.post('/admin/session', async (c) => {
+    const rateLimit = await enforceRequestRateLimit(c, ADMIN_LOGIN_RATE_LIMIT);
+    c.header('X-RateLimit-Limit', String(rateLimit.limit));
+    c.header('X-RateLimit-Remaining', String(rateLimit.remaining));
+    if (!rateLimit.allowed) {
+      c.header('Retry-After', String(rateLimit.retryAfterSeconds));
+      return errorResponse(c, 429, 'Too many admin login attempts', 'RATE_LIMIT_EXCEEDED');
+    }
+
     const { data: body, errorResponse: err } = await parseJsonBodyWithLimit<{
       password?: string;
     }>(c, 1024);
@@ -89,7 +104,8 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
   });
 
   app.delete('/admin/session', async (c) => {
-    return c.json({ ok: true as const }, 200, { 'Set-Cookie': deleteAdminSession() });
+    const setCookie = await deleteAdminSession(c.env, c.req.header('cookie'));
+    return c.json({ ok: true as const }, 200, { 'Set-Cookie': setCookie });
   });
 
   app.get('/admin/session', async (c) => {
@@ -195,13 +211,21 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
       const config = getUserSystemConfig(c.env);
       const baseUrl = new URL(config.betterAuthUrl).origin;
 
-      await auth.handler(
+      const response = await auth.handler(
         new Request(`${baseUrl}/api/auth/forget-password`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ email: userRow.email }),
         }),
       );
+      if (!response.ok) {
+        const detail = await response.text().catch(() => '');
+        console.error('[admin] reset-password rejected', {
+          status: response.status,
+          detail: detail.slice(0, 256),
+        });
+        return errorResponse(c, 502, 'Failed to send reset email', 'SERVICE_UNAVAILABLE');
+      }
     } catch (error) {
       console.error('[admin] reset-password failed', error);
       return errorResponse(c, 500, 'Failed to send reset email', 'SERVICE_UNAVAILABLE');

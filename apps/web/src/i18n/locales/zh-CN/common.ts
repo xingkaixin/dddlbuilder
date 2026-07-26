@@ -56,6 +56,8 @@ export const zhCNCommon = {
       nameRequired: '请输入昵称',
       emailRequired: '请输入邮箱地址',
       passwordRequired: '请输入密码',
+      turnstileRequired: '请先完成人机验证',
+      turnstileNotConfigured: '当前环境未配置人机验证，暂时无法注册',
       createAccount: '创建账号',
       resendVerification: '重发验证邮件',
       sendResetPassword: '发送重置邮件',
