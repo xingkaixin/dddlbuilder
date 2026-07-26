@@ -394,7 +394,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
           className="grid h-[min(46rem,calc(100vh-2rem))] w-[min(72rem,calc(100vw-2rem))] max-w-none grid-rows-[auto_1fr] gap-0 overflow-hidden p-0"
-          onOpenAutoFocus={(event) => event.preventDefault()}
+          initialFocus={false}
         >
           <DialogHeader className="gap-1 border-b px-6 py-3">
             <DialogTitle className="text-lg">{t('settings.title')}</DialogTitle>

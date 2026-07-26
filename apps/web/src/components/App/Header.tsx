@@ -627,11 +627,7 @@ export const Header = memo<HeaderProps>(
                       <p>{t('header.moreActions')}</p>
                     </TooltipContent>
                   </Tooltip>
-                  <DropdownMenuContent
-                    align="end"
-                    className="w-52"
-                    onCloseAutoFocus={(event) => event.preventDefault()}
-                  >
+                  <DropdownMenuContent align="end" className="w-52" finalFocus={false}>
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger>
                         <Languages className="h-4 w-4" aria-hidden />

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen } from '@/__tests__/utils/test-utils';
+import { act, fireEvent, render, screen, waitFor } from '@/__tests__/utils/test-utils';
 import { ThemeSwitcher } from '@/components/App/ThemeSwitcher';
 
 const setThemeMock = vi.fn();
@@ -70,7 +70,7 @@ describe('ThemeSwitcher', () => {
   it('应展示三种主题选项', async () => {
     render(<ThemeSwitcher />);
 
-    fireEvent.pointerDown(screen.getByTestId('theme-switcher-trigger'));
+    fireEvent.click(screen.getByTestId('theme-switcher-trigger'));
 
     expect(screen.getByTestId('theme-option-system')).toBeInTheDocument();
     expect(screen.getByTestId('theme-option-light')).toBeInTheDocument();
@@ -87,15 +87,21 @@ describe('ThemeSwitcher', () => {
     });
     render(<ThemeSwitcher />);
 
-    fireEvent.pointerDown(screen.getByTestId('theme-switcher-trigger'));
+    fireEvent.click(screen.getByTestId('theme-switcher-trigger'));
     fireEvent.click(screen.getByTestId('theme-option-light'));
     expect(setThemeMock).toHaveBeenCalledWith('light');
+    await waitFor(() => {
+      expect(screen.queryByTestId('theme-option-light')).not.toBeInTheDocument();
+    });
 
-    fireEvent.pointerDown(screen.getByTestId('theme-switcher-trigger'));
+    fireEvent.click(screen.getByTestId('theme-switcher-trigger'));
     fireEvent.click(screen.getByTestId('theme-option-dark'));
     expect(setThemeMock).toHaveBeenCalledWith('dark');
+    await waitFor(() => {
+      expect(screen.queryByTestId('theme-option-dark')).not.toBeInTheDocument();
+    });
 
-    fireEvent.pointerDown(screen.getByTestId('theme-switcher-trigger'));
+    fireEvent.click(screen.getByTestId('theme-switcher-trigger'));
     fireEvent.click(screen.getByTestId('theme-option-system'));
     expect(setThemeMock).toHaveBeenCalledWith('system');
   });
@@ -104,7 +110,7 @@ describe('ThemeSwitcher', () => {
     vi.useFakeTimers();
     render(<ThemeSwitcher />);
 
-    fireEvent.pointerDown(screen.getByTestId('theme-switcher-trigger'));
+    fireEvent.click(screen.getByTestId('theme-switcher-trigger'));
     fireEvent.click(screen.getByTestId('theme-option-light'));
 
     const trigger = screen.getByTestId('theme-switcher-trigger');
@@ -151,7 +157,7 @@ describe('ThemeSwitcher', () => {
     });
     render(<ThemeSwitcher />);
 
-    fireEvent.pointerDown(screen.getByTestId('theme-switcher-trigger'));
+    fireEvent.click(screen.getByTestId('theme-switcher-trigger'));
     fireEvent.click(screen.getByTestId('theme-option-light'));
 
     expect(setThemeMock).toHaveBeenCalledWith('light');
@@ -174,7 +180,7 @@ describe('ThemeSwitcher', () => {
     });
     render(<ThemeSwitcher />);
 
-    fireEvent.pointerDown(screen.getByTestId('theme-switcher-trigger'));
+    fireEvent.click(screen.getByTestId('theme-switcher-trigger'));
     fireEvent.click(screen.getByTestId('theme-option-system'));
 
     expect(setThemeMock).toHaveBeenCalledWith('system');
