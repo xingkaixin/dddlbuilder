@@ -111,7 +111,6 @@ export class WorkspaceYDocDurableObject {
       server.send(encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, doc)));
       logWorkspaceYDocHealth('connect', {
         workspaceId: this.workspaceId,
-        userId: this.userId,
         connectedSockets: this.connectedSocketCount(),
         updateCount: this.updateCount,
         updateBytes: this.updateBytes,
@@ -173,15 +172,13 @@ export class WorkspaceYDocDurableObject {
     }
   }
 
-  async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
+  async webSocketClose(ws: WebSocket, code: number, _reason: string, wasClean: boolean) {
     this.restoreSocketAttachment(ws);
     logWorkspaceYDocHealth('close', {
       workspaceId: this.workspaceId,
-      userId: this.userId,
       connectedSockets: this.connectedSocketCount(),
       compactCount: this.compactCount,
       closeCode: code,
-      closeReason: reason,
       wasClean,
     });
   }
@@ -190,7 +187,6 @@ export class WorkspaceYDocDurableObject {
     this.restoreSocketAttachment(ws);
     logWorkspaceYDocHealth('error', {
       workspaceId: this.workspaceId,
-      userId: this.userId,
       connectedSockets: this.connectedSocketCount(),
       compactCount: this.compactCount,
       errorMessage: error instanceof Error ? error.message : String(error),
@@ -260,7 +256,6 @@ export class WorkspaceYDocDurableObject {
       this.doc = doc;
       logWorkspaceYDocHealth('load', {
         workspaceId: this.workspaceId,
-        userId: this.userId,
         loadDurationMs: Date.now() - startedAt,
         storedUpdateCount: updates.size,
         storedUpdateBytes,
@@ -286,15 +281,6 @@ export class WorkspaceYDocDurableObject {
     this.nextSeq = seq;
     this.updateCount += 1;
     this.updateBytes += update.byteLength;
-    logWorkspaceYDocHealth('update', {
-      workspaceId: this.workspaceId,
-      userId: this.userId,
-      updateCount: this.updateCount,
-      updateBytes: update.byteLength,
-      pendingUpdateBytes: this.updateBytes,
-      connectedSockets: this.connectedSocketCount(),
-      compactCount: this.compactCount,
-    });
 
     const persist = this.persistQueue
       .then(async () => {
@@ -312,7 +298,6 @@ export class WorkspaceYDocDurableObject {
       this.persistFailure = error instanceof Error ? error : new Error(String(error));
       logWorkspaceYDocHealth('persist_failed', {
         workspaceId: this.workspaceId,
-        userId: this.userId,
         seq,
         errorMessage: this.persistFailure.message,
       });
@@ -357,7 +342,6 @@ export class WorkspaceYDocDurableObject {
     await this.writeMeta();
     logWorkspaceYDocHealth('compact', {
       workspaceId: this.workspaceId,
-      userId: this.userId,
       compactDurationMs: Date.now() - startedAt,
       compactCount: this.compactCount,
       compactedUpdateCount: updateKeys.size,

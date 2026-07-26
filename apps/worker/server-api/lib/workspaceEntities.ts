@@ -650,7 +650,6 @@ export const getWorkspaceChanges = async (
   logWorkspaceD1Metrics(
     'changes_pull',
     {
-      userId,
       workspaceId,
       since,
       entityCount: response.entities.length,
@@ -788,7 +787,6 @@ export const pushWorkspaceChanges = async (
   logWorkspaceD1Metrics(
     'changes_push',
     {
-      userId,
       workspaceId,
       changeCount: request.changes.length,
       acceptedCount: accepted.length,
@@ -1027,7 +1025,6 @@ export const checkpointWorkspaceSnapshotEntities = async (
   logWorkspaceD1Metrics(
     'checkpoint',
     {
-      userId,
       workspaceId,
       entityCount: entities.length,
       upserted,

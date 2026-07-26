@@ -672,7 +672,6 @@ describe('workspaceSnapshots', () => {
     expect(readWorkspaceD1Log(info.mock.calls)).toMatchObject({
       event: 'workspace_sync_d1',
       operation: 'changes_pull',
-      userId: 'user-1',
       workspaceId,
       since: 0,
       entityCount: 1,
@@ -725,7 +724,6 @@ describe('workspaceSnapshots', () => {
     expect(readWorkspaceD1Log(info.mock.calls)).toMatchObject({
       event: 'workspace_sync_d1',
       operation: 'changes_push',
-      userId: 'user-1',
       workspaceId,
       changeCount: 1,
       acceptedCount: 1,
@@ -768,7 +766,6 @@ describe('workspaceSnapshots', () => {
     expect(readWorkspaceD1Log(info.mock.calls)).toMatchObject({
       event: 'workspace_sync_d1',
       operation: 'checkpoint',
-      userId: 'user-1',
       workspaceId,
       entityCount: 1,
       upserted: 1,

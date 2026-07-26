@@ -271,7 +271,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     expect(state.storage.put).not.toHaveBeenCalled();
   });
 
-  it('logs update and compact health metrics', async () => {
+  it('logs compact health metrics without per-update events or user identity', async () => {
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn().mockResolvedValue({
         cursor: 1,
@@ -302,27 +302,18 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       console.info as unknown as { mock: { calls: Array<[unknown, ...unknown[]]> } }
     ).mock.calls.map((call) => JSON.parse(String(call[0])) as Record<string, unknown>);
     expect(response.status).toBe(200);
-    expect(logs).toContainEqual(
-      expect.objectContaining({
-        event: 'workspace_yjs_do_health',
-        operation: 'update',
-        workspaceId: 'ws-1',
-        userId: 'user-1',
-        updateCount: 1,
-        connectedSockets: 0,
-      }),
-    );
+    expect(logs).not.toContainEqual(expect.objectContaining({ operation: 'update' }));
     expect(logs).toContainEqual(
       expect.objectContaining({
         event: 'workspace_yjs_do_health',
         operation: 'compact',
         workspaceId: 'ws-1',
-        userId: 'user-1',
         compactCount: 1,
         compactedUpdateCount: 1,
         checkpointed: true,
       }),
     );
+    expect(logs.some((payload) => 'userId' in payload)).toBe(false);
   });
 
   it('broadcasts one message for one merged update batch', async () => {
@@ -640,7 +631,6 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
         event: 'workspace_yjs_do_health',
         operation: 'close',
         workspaceId: 'ws-1',
-        userId: 'user-1',
         closeCode: 1000,
         wasClean: true,
       }),
@@ -650,9 +640,9 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
         event: 'workspace_yjs_do_health',
         operation: 'error',
         workspaceId: 'ws-1',
-        userId: 'user-1',
         errorMessage: 'network failed',
       }),
     );
+    expect(logs.some((payload) => 'userId' in payload)).toBe(false);
   });
 });
