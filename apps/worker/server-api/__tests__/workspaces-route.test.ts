@@ -5,7 +5,6 @@ import type * as WorkspaceEntitiesModule from '../lib/workspaceEntities.js';
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
   SHARE_KV: {} as KVNamespace,
-  RATE_LIMIT_KV: {} as KVNamespace,
   USER_DB: {} as D1Database,
   BETTER_AUTH_SECRET: 'better-auth-secret',
   BETTER_AUTH_URL: 'http://localhost:3000',

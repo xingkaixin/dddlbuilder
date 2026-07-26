@@ -8,7 +8,6 @@ export type ApiEnv = {
   Bindings: {
     ASSETS: { fetch: typeof fetch };
     SHARE_KV: KVNamespace;
-    RATE_LIMIT_KV: KVNamespace;
     USER_DB: D1Database;
     WORKSPACE_YDOC?: DurableObjectNamespace;
     // Environment variables
@@ -21,7 +20,6 @@ export type ApiEnv = {
     RESEND_FROM_NAME?: string;
     TURNSTILE_SECRET_KEY?: string;
     SIGNUP_BONUS_CREDITS?: string;
-    OPENAI_RATELIMIT_STORE?: string;
     OPENAI_RATELIMIT_ENABLED?: string;
     OPENAI_RATELIMIT_WINDOW_MS?: string;
     OPENAI_RATELIMIT_EXPLAIN_MAX?: string;

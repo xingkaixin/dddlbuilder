@@ -51,16 +51,13 @@ const createMockKV = (): MockKV => {
 describe('share api', () => {
   let app: Hono<ApiEnv>;
   let mockKV: MockKV;
-  let mockRateLimitKV: MockKV;
 
   beforeEach(() => {
     mockKV = createMockKV();
-    mockRateLimitKV = createMockKV();
     app = new Hono<ApiEnv>().basePath('/api');
     app.use('*', async (c, next) => {
       c.env = {
         SHARE_KV: mockKV as unknown as KVNamespace,
-        RATE_LIMIT_KV: mockRateLimitKV as unknown as KVNamespace,
       };
       await next();
     });

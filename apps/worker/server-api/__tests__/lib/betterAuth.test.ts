@@ -4,7 +4,6 @@ import type { ApiEnv } from '../../lib/context.js';
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
   SHARE_KV: {} as KVNamespace,
-  RATE_LIMIT_KV: {} as KVNamespace,
   USER_DB: {
     prepare: vi.fn().mockReturnValue({
       bind: vi.fn().mockReturnValue({

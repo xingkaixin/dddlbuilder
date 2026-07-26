@@ -79,9 +79,10 @@ pnpm deploy:cf
 
 项目现在的部署方式是：
 
-1. 复制 `.deploy.secrets.example` 为 `.deploy.secrets`
-2. 在 `.deploy.secrets` 中填写生产 secrets
-3. 执行 `pnpm deploy:cf`
+1. 复制 `apps/worker/wrangler.deploy.example.toml` 为 `apps/worker/wrangler.deploy.toml`，填写生产资源 ID 和公开配置
+2. 复制 `.deploy.secrets.example` 为 `.deploy.secrets`
+3. 在 `.deploy.secrets` 中填写生产 secrets
+4. 执行 `pnpm deploy:cf`
 
 `pnpm deploy:cf` 会在构建后记录 D1 Time Travel 恢复点、执行 remote pending migrations、验证运行时必需表，再调用 `wrangler deploy --config apps/worker/wrangler.deploy.toml`。如果检测到 `.deploy.secrets`，会额外带上 `--secrets-file .deploy.secrets`，不需要再一个个手动 `wrangler secret put`。
 
@@ -121,7 +122,6 @@ WRANGLER_SECRETS_FILE=/absolute/path/to/prod.secrets pnpm deploy:cf
 - `OPENAI_RATELIMIT_ENABLED`：是否启用 AI 接口限流
 - `OPENAI_RATELIMIT_WINDOW_MS`：限流窗口时长（毫秒）
 - `OPENAI_RATELIMIT_EXPLAIN_MAX` / `OPENAI_RATELIMIT_REVIEW_MAX` / `OPENAI_RATELIMIT_GENERATE_MAX`：各 AI 路由窗口内最大请求数
-- `OPENAI_RATELIMIT_STORE`：计数存储（`kv` 或 `memory`，默认 `kv`，失败自动降级）
 - `OPENAI_DAILY_BUDGET_ENABLED`：是否启用每日预算控制
 - `OPENAI_DAILY_BUDGET_MAX_TOKENS`：每日预算上限（估算 token）
 - `OPENAI_STREAM_DEBUG`：是否启用后端 AI streaming 调试日志（默认 `false`）

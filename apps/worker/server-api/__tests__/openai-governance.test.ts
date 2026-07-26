@@ -51,7 +51,6 @@ const createCounterDatabase = (): D1Database => {
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
   SHARE_KV: {} as KVNamespace,
-  RATE_LIMIT_KV: {} as KVNamespace,
   USER_DB: createCounterDatabase(),
   ...overrides,
 });
@@ -208,7 +207,6 @@ describe.sequential('openai governance', () => {
   it('应基于 IP 和路由限流且不允许通过更换 UA 绕过', async () => {
     const app = await loadAuthenticatedApp({
       OPENAI_RATELIMIT_ENABLED: 'true',
-      OPENAI_RATELIMIT_STORE: 'memory',
       OPENAI_RATELIMIT_WINDOW_MS: '60000',
       OPENAI_RATELIMIT_EXPLAIN_MAX: '1',
       OPENAI_DAILY_BUDGET_ENABLED: 'false',
@@ -247,7 +245,6 @@ describe.sequential('openai governance', () => {
   it('应在 D1 原子计数模式下命中限流并在窗口后恢复', async () => {
     const app = await loadAuthenticatedApp({
       OPENAI_RATELIMIT_ENABLED: 'true',
-      OPENAI_RATELIMIT_STORE: 'kv',
       OPENAI_RATELIMIT_WINDOW_MS: '200',
       OPENAI_RATELIMIT_EXPLAIN_MAX: '1',
       OPENAI_DAILY_BUDGET_ENABLED: 'false',
@@ -283,7 +280,6 @@ describe.sequential('openai governance', () => {
   it('应在预算超限时返回统一错误格式', async () => {
     const app = await loadAuthenticatedApp({
       OPENAI_RATELIMIT_ENABLED: 'true',
-      OPENAI_RATELIMIT_STORE: 'memory',
       OPENAI_RATELIMIT_WINDOW_MS: '60000',
       OPENAI_RATELIMIT_GENERATE_MAX: '20',
       OPENAI_DAILY_BUDGET_ENABLED: 'true',
@@ -321,7 +317,6 @@ describe.sequential('openai governance', () => {
 
     const app = await loadAuthenticatedApp({
       OPENAI_RATELIMIT_ENABLED: 'true',
-      OPENAI_RATELIMIT_STORE: 'memory',
       OPENAI_RATELIMIT_WINDOW_MS: '60000',
       OPENAI_RATELIMIT_REVIEW_MAX: '20',
       OPENAI_DAILY_BUDGET_ENABLED: 'false',
@@ -373,7 +368,6 @@ describe.sequential('openai governance', () => {
 
     const app = await loadAuthenticatedApp({
       OPENAI_RATELIMIT_ENABLED: 'true',
-      OPENAI_RATELIMIT_STORE: 'memory',
       OPENAI_RATELIMIT_WINDOW_MS: '60000',
       OPENAI_RATELIMIT_REVIEW_MAX: '20',
       OPENAI_DAILY_BUDGET_ENABLED: 'false',
@@ -418,7 +412,6 @@ describe.sequential('openai governance', () => {
 
     const app = await loadAuthenticatedApp({
       OPENAI_RATELIMIT_ENABLED: 'true',
-      OPENAI_RATELIMIT_STORE: 'memory',
       OPENAI_RATELIMIT_WINDOW_MS: '60000',
       OPENAI_RATELIMIT_EXPLAIN_MAX: '20',
       OPENAI_DAILY_BUDGET_ENABLED: 'false',
@@ -453,7 +446,6 @@ describe.sequential('openai governance', () => {
     const app = await loadAuthenticatedApp(
       {
         OPENAI_RATELIMIT_ENABLED: 'true',
-        OPENAI_RATELIMIT_STORE: 'memory',
         OPENAI_RATELIMIT_WINDOW_MS: '60000',
         OPENAI_RATELIMIT_EXPLAIN_MAX: '20',
         OPENAI_DAILY_BUDGET_ENABLED: 'false',
@@ -485,7 +477,6 @@ describe.sequential('openai governance', () => {
     const app = await loadAuthenticatedApp(
       {
         OPENAI_RATELIMIT_ENABLED: 'true',
-        OPENAI_RATELIMIT_STORE: 'memory',
         OPENAI_RATELIMIT_WINDOW_MS: '60000',
         OPENAI_RATELIMIT_REVIEW_MAX: '20',
         OPENAI_DAILY_BUDGET_ENABLED: 'false',
@@ -593,7 +584,6 @@ describe.sequential('openai governance', () => {
     const app = await loadAppWithOpenAIMock(
       {
         OPENAI_RATELIMIT_ENABLED: 'true',
-        OPENAI_RATELIMIT_STORE: 'memory',
         OPENAI_RATELIMIT_WINDOW_MS: '60000',
         OPENAI_RATELIMIT_REVIEW_MAX: '20',
         OPENAI_DAILY_BUDGET_ENABLED: 'false',
