@@ -47,6 +47,19 @@ export function generateAlterDDL(
   // 3. 处理重命名的字段（在删除之后、新增之前）
   for (const fieldDiff of diff.fields.filter((f) => f.type === 'rename')) {
     statements.push(generateRenameColumn(tableName, fieldDiff, dbType));
+    if (fieldDiff.changes?.length && fieldDiff.newField) {
+      statements.push(
+        generateModifyColumn(
+          tableName,
+          {
+            ...fieldDiff,
+            type: 'modify',
+            fieldName: fieldDiff.newField.name,
+          },
+          dbType,
+        ),
+      );
+    }
   }
 
   // 4. 处理新增的字段

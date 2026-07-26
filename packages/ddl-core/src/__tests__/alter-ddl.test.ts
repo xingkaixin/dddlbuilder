@@ -110,6 +110,29 @@ describe('generateAlterDDL', () => {
     expect(sql).toBe('ALTER TABLE users RENAME COLUMN age TO new_age;');
   });
 
+  it('applies field property changes after a rename', () => {
+    const diff = createTableDiff({
+      fields: [
+        {
+          type: 'rename',
+          fieldName: 'new_age',
+          oldFieldName: 'age',
+          newFieldName: 'new_age',
+          oldField: createField({ name: 'age', type: 'int', nullable: true }),
+          newField: createField({ name: 'new_age', type: 'int', nullable: false }),
+          changes: ['nullable'],
+        },
+      ],
+    });
+
+    const sql = generateAlterDDL('users', diff, [], 'mysql');
+
+    expect(sql).toBe(
+      'ALTER TABLE users RENAME COLUMN age TO new_age;\n\n' +
+        'ALTER TABLE users MODIFY COLUMN new_age INT NOT NULL;',
+    );
+  });
+
   it('generates modify column statement for mysql', () => {
     const diff = createTableDiff({
       fields: [
@@ -319,6 +342,29 @@ describe('generateRollbackDDL', () => {
     });
     const sql = generateRollbackDDL('users', diff, [], 'mysql');
     expect(sql).toBe('ALTER TABLE users RENAME COLUMN new_age TO age;');
+  });
+
+  it('rollback: restores field properties before reversing a rename', () => {
+    const diff = createTableDiff({
+      fields: [
+        {
+          type: 'rename',
+          fieldName: 'new_age',
+          oldFieldName: 'age',
+          newFieldName: 'new_age',
+          oldField: createField({ name: 'age', type: 'int', nullable: true }),
+          newField: createField({ name: 'new_age', type: 'int', nullable: false }),
+          changes: ['nullable'],
+        },
+      ],
+    });
+
+    const sql = generateRollbackDDL('users', diff, [], 'mysql');
+
+    expect(sql).toBe(
+      'ALTER TABLE users MODIFY COLUMN new_age INT NULL;\n\n' +
+        'ALTER TABLE users RENAME COLUMN new_age TO age;',
+    );
   });
 
   it('rollback: restore removed field', () => {

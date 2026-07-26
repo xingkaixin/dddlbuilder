@@ -53,6 +53,21 @@ export function generateRollbackDDL(
 
   // 4. 恢复重命名的字段（反向重命名）
   for (const fieldDiff of diff.fields.filter((f) => f.type === 'rename')) {
+    if (fieldDiff.changes?.length && fieldDiff.oldField && fieldDiff.newFieldName) {
+      statements.push(
+        generateModifyColumn(
+          tableName,
+          {
+            type: 'modify',
+            fieldName: fieldDiff.newFieldName,
+            oldField: fieldDiff.newField,
+            newField: { ...fieldDiff.oldField, name: fieldDiff.newFieldName },
+            changes: fieldDiff.changes,
+          },
+          dbType,
+        ),
+      );
+    }
     const rollbackDiff: FieldDiff = {
       type: 'rename',
       fieldName: fieldDiff.oldFieldName || '',
