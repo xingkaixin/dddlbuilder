@@ -40,6 +40,11 @@ _Avoid_: Snapshot
 Uncommitted edits derived from a Saved Table while preserving the Saved Table as the comparison base.
 _Avoid_: Saved draft
 
+**Table Relationship**:
+A dependency from one table's local fields to a referenced key. Its cardinality and optionality are
+derived from uniqueness and field nullability rather than stored independently.
+_Avoid_: ER edge, connector
+
 **Trash Entry**:
 A locally retained Saved Table that is no longer active but can still be restored during its retention period.
 _Avoid_: Deleted Y.Doc entity
