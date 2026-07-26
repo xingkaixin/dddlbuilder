@@ -99,10 +99,11 @@ test.describe('保存表管理补充 @storage', () => {
     await expect(page.getByText(new RegExp(`当前：${nextName}`))).toBeVisible();
   });
 
-  test('场景：删除保存表', async ({ page }) => {
+  test('场景：删除并恢复保存表', async ({ page }) => {
     const tableName = `e2e_delete_${Date.now()}`;
+    const tableComment = 'restored_table_comment';
 
-    await saveNewTable(page, tableName);
+    await saveNewTable(page, tableName, tableComment);
 
     await sidebarTableAction(page, new RegExp(tableName, 'i'), /删除/);
 
@@ -117,6 +118,24 @@ test.describe('保存表管理补充 @storage', () => {
     await expect(
       projectsSection.locator('button').filter({ hasText: new RegExp(tableName, 'i') }),
     ).toHaveCount(0);
+
+    await sidebar.getByRole('button', { name: /回收站/ }).last().click();
+    const trashSection = sidebar.locator('section').filter({ hasText: /^回收站/ });
+    const trashItem = trashSection
+      .locator('div.group')
+      .filter({
+        hasText: new RegExp(tableName, 'i'),
+      })
+      .first();
+    await expect(trashItem).toBeVisible();
+    await trashItem.hover();
+    await trashItem.locator('button').last().click();
+    await page.getByRole('menuitem', { name: /恢复/ }).click();
+
+    await sidebar.getByRole('button', { name: /回收站/ }).last().click();
+    await expect(getSidebarTableItem(page, new RegExp(tableName, 'i'))).toBeVisible();
+    await clickSidebarTable(page, new RegExp(tableName, 'i'));
+    await expect(page.locator('#table-comment')).toHaveValue(tableComment);
   });
 
   test('场景：未保存修改加载确认', async ({ page }) => {
