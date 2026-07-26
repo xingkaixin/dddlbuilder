@@ -267,10 +267,7 @@ export function useSavedTables() {
   const deleteTable = useCallback(
     async (normalizedName: string): Promise<SaveTableResult> => {
       try {
-        const record =
-          yDocReady && workspaceYDoc.doc
-            ? getSavedTableFromYDoc(workspaceYDoc.doc, normalizedName)
-            : await getSavedTable(normalizedName);
+        const record = await getSavedTable(normalizedName);
         await moveSavedTableToTrash(normalizedName);
         if (yDocReady && workspaceYDoc.doc) {
           const doc = workspaceYDoc.doc;
@@ -300,10 +297,7 @@ export function useSavedTables() {
       options?: { existingFolderIds?: Set<string> },
     ): Promise<SaveTableResult> => {
       try {
-        const record =
-          yDocReady && workspaceYDoc.doc
-            ? getSavedTableFromYDoc(workspaceYDoc.doc, normalizedName)
-            : await getSavedTable(normalizedName);
+        const record = await getSavedTable(normalizedName);
         if (!record) {
           return { ok: false, reason: 'not_found' };
         }

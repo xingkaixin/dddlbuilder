@@ -481,7 +481,6 @@ export const moveSavedTableToTrash = async (
   await updateSavedTable(
     {
       ...record,
-      folderId: undefined,
       trashedAt: Date.now(),
       updatedAt: Date.now(),
     },

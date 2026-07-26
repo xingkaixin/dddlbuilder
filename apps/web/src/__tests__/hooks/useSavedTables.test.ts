@@ -5,6 +5,7 @@ import { setupFakeIndexedDB, teardownFakeIndexedDB } from '../utils/fakeIndexedD
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { flushPromises } from '@/__tests__/utils/test-utils';
 import { listWorkspaceOutboxItems } from '@/utils/workspaceSyncStateDb';
+import { addSavedTable, moveSavedTableToTrash } from '@/utils/savedTablesDb';
 
 const mockUseAuthSession = vi.hoisted(() =>
   vi.fn(() => ({
@@ -285,5 +286,62 @@ describe('useSavedTables', () => {
 
     expect(result.current.loading).toBe(false);
     expect(result.current.savedTables.map((table) => table.name)).toEqual(['Beta']);
+  });
+
+  it('restores trashed local data when the authoritative YDoc no longer contains it', async () => {
+    const scope = {
+      kind: 'user' as const,
+      userId: 'user_1',
+      workspaceId: 'workspace_1',
+    };
+    await addSavedTable(
+      {
+        normalizedName: 'archived',
+        name: 'Archived',
+        state: createState('archived'),
+        folderId: 'folder-1',
+        createdAt: 100,
+        updatedAt: 100,
+      },
+      scope,
+    );
+    await moveSavedTableToTrash('archived', scope);
+    const doc = { transact: (callback: () => void) => callback() };
+    mockUseAuthSession.mockReturnValue({
+      status: 'signed_in',
+      configured: true,
+      userId: 'user_1',
+      workspaceId: 'workspace_1',
+    } as any);
+    mockWorkspaceYDoc.value = {
+      doc,
+      synced: true,
+      localSynced: true,
+      connectionState: 'connected',
+      retry: vi.fn(),
+    };
+    mockYDocAdapter.listSavedTableMetadataFromYDoc.mockReturnValue([]);
+    mockYDocAdapter.getSavedTableFromYDoc.mockReturnValue(null);
+    const { result } = renderHook(() => useSavedTables());
+    await act(async () => {
+      await flushPromises();
+    });
+
+    await act(async () => {
+      const restored = await result.current.restoreTable('archived', {
+        existingFolderIds: new Set(['folder-1']),
+      });
+      expect(restored).toEqual({ ok: true, normalizedName: 'archived' });
+      await flushPromises();
+    });
+
+    expect(mockYDocAdapter.upsertSavedTableInYDoc).toHaveBeenCalledWith(
+      doc,
+      expect.objectContaining({
+        normalizedName: 'archived',
+        folderId: 'folder-1',
+        trashedAt: undefined,
+      }),
+    );
   });
 });
