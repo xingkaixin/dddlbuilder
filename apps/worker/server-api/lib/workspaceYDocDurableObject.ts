@@ -71,6 +71,7 @@ export class WorkspaceYDocDurableObject {
   private doc: Y.Doc | null = null;
   private loadPromise: Promise<Y.Doc> | null = null;
   private persistQueue: Promise<void> = Promise.resolve();
+  private persistFailure: Error | null = null;
   private nextSeq = 0;
   private updateCount = 0;
   private updateBytes = 0;
@@ -136,7 +137,7 @@ export class WorkspaceYDocDurableObject {
       const snapshot = (await request.json()) as WorkspaceSnapshot;
       const update = createWorkspaceYDocUpdateFromSnapshot(snapshot);
       Y.applyUpdate(doc, update, this);
-      await this.persistQueue;
+      await this.awaitPersisted();
       await this.compact();
       return Response.json({
         ok: true,
@@ -163,6 +164,7 @@ export class WorkspaceYDocDurableObject {
     const encoder = encoding.createEncoder();
     encoding.writeVarUint(encoder, MESSAGE_SYNC);
     syncProtocol.readSyncMessage(decoder, encoder, doc, ws);
+    await this.awaitPersisted();
     if (encoding.length(encoder) > 1) {
       ws.send(encoding.toUint8Array(encoder));
     }
@@ -283,7 +285,7 @@ export class WorkspaceYDocDurableObject {
       compactCount: this.compactCount,
     });
 
-    this.persistQueue = this.persistQueue
+    const persist = this.persistQueue
       .then(async () => {
         await this.state.storage.put(encodeUpdateKey(seq), update);
         await this.writeMeta();
@@ -292,9 +294,26 @@ export class WorkspaceYDocDurableObject {
         }
         await this.ensureAlarm();
       })
-      .catch((error) => {
-        console.error('[workspace-yjs-do] persist failed', error);
+      .then(() => {
+        this.persistFailure = null;
       });
+    this.persistQueue = persist.catch((error: unknown) => {
+      this.persistFailure = error instanceof Error ? error : new Error(String(error));
+      logWorkspaceYDocHealth('persist_failed', {
+        workspaceId: this.workspaceId,
+        userId: this.userId,
+        seq,
+        errorMessage: this.persistFailure.message,
+      });
+      console.error('[workspace-yjs-do] persist failed', error);
+    });
+  }
+
+  private async awaitPersisted() {
+    await this.persistQueue;
+    if (this.persistFailure) {
+      throw this.persistFailure;
+    }
   }
 
   private broadcastUpdate(update: Uint8Array, origin: unknown) {
@@ -353,6 +372,7 @@ export class WorkspaceYDocDurableObject {
 
     Y.applyUpdate(doc, createWorkspaceYDocUpdateFromSnapshot(snapshot), this);
     this.doc = doc;
+    await this.awaitPersisted();
     await this.compact({ checkpoint: false });
     return true;
   }
@@ -371,6 +391,7 @@ export class WorkspaceYDocDurableObject {
     } catch (error) {
       this.checkpointFailedAt = Date.now();
       console.error('[workspace-yjs-do] checkpoint failed', error);
+      throw error;
     }
   }
 

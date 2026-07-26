@@ -179,6 +179,72 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     );
   });
 
+  it('rejects an import when Durable Object storage cannot persist its update', async () => {
+    vi.doMock('../../lib/workspaceEntities.js', () => ({
+      checkpointWorkspaceSnapshotEntities: vi.fn(),
+      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
+        globalDraft: null,
+        drafts: [],
+        savedTables: [],
+        savedDrafts: [],
+        folders: [],
+      }),
+    }));
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state, store } = createDurableObjectState();
+    vi.mocked(
+      state.storage.put as (key: string, value: unknown) => Promise<void>,
+    ).mockImplementation(async (key, value) => {
+      if (key.startsWith('update:')) {
+        throw new Error('storage unavailable');
+      }
+      store.set(key, value);
+    });
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
+
+    await expect(
+      durableObject.fetch(
+        createRequest('/api/workspaces/ws-1/yjs/import', {
+          method: 'POST',
+          body: JSON.stringify(createSnapshot('users')),
+        }),
+      ),
+    ).rejects.toThrow('storage unavailable');
+    expect(error).toHaveBeenCalledWith(
+      '[workspace-yjs-do] persist failed',
+      expect.objectContaining({ message: 'storage unavailable' }),
+    );
+  });
+
+  it('rejects an import when its D1 checkpoint fails', async () => {
+    vi.doMock('../../lib/workspaceEntities.js', () => ({
+      checkpointWorkspaceSnapshotEntities: vi
+        .fn()
+        .mockRejectedValue(new Error('checkpoint unavailable')),
+      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
+        globalDraft: null,
+        drafts: [],
+        savedTables: [],
+        savedDrafts: [],
+        folders: [],
+      }),
+    }));
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state } = createDurableObjectState();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
+
+    await expect(
+      durableObject.fetch(
+        createRequest('/api/workspaces/ws-1/yjs/import', {
+          method: 'POST',
+          body: JSON.stringify(createSnapshot('users')),
+        }),
+      ),
+    ).rejects.toThrow('checkpoint unavailable');
+  });
+
   it('keeps constructor light and defers storage reads until an event', async () => {
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn(),
