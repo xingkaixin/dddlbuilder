@@ -201,7 +201,7 @@ export const EditableCell = memo<EditableCellProps>(
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           className={cn(
-            'h-7 w-full border-primary/50 bg-background px-2 py-1 text-xs focus:ring-1 focus:ring-primary/30',
+            'h-7 w-full border-transparent bg-transparent px-2 py-1 text-xs shadow-none focus-visible:ring-0 focus-visible:ring-offset-0',
             className,
           )}
           autoComplete="off"

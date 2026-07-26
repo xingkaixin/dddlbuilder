@@ -32,4 +32,17 @@ describe('EditableCell', () => {
     expect(input).toHaveAttribute('data-1p-ignore', 'true');
     expect(input).toHaveAttribute('data-op-ignore', 'true');
   });
+
+  it('编辑输入框不应叠加单元格焦点边框', () => {
+    render(<EditableCell value="field_name" onChange={vi.fn()} />);
+
+    fireEvent.focus(screen.getByTitle('field_name'));
+
+    expect(screen.getByRole('textbox')).toHaveClass(
+      'border-transparent',
+      'shadow-none',
+      'focus-visible:ring-0',
+      'focus-visible:ring-offset-0',
+    );
+  });
 });
