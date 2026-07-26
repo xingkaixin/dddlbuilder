@@ -1,6 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../lib/context.js';
 
+const betterAuthMocks = vi.hoisted(() => ({
+  createBetterAuth: vi.fn(),
+  handler: vi.fn(),
+}));
+
+vi.mock('../lib/betterAuth.js', () => ({
+  createBetterAuth: betterAuthMocks.createBetterAuth,
+}));
+
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
   SHARE_KV: {} as KVNamespace,
@@ -23,21 +32,20 @@ describe('/api/auth/*', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    betterAuthMocks.handler.mockResolvedValue(
+      Response.json({
+        created: true,
+      }),
+    );
+    betterAuthMocks.createBetterAuth.mockReturnValue({
+      handler: betterAuthMocks.handler,
+    });
     vi.doMock('../lib/requestRateLimit.js', () => ({
       enforceRequestRateLimit: vi.fn().mockResolvedValue({
         allowed: true,
         limit: 5,
         remaining: 4,
         retryAfterSeconds: 900,
-      }),
-    }));
-    vi.doMock('../lib/betterAuth.js', () => ({
-      createBetterAuth: vi.fn().mockReturnValue({
-        handler: vi.fn().mockResolvedValue(
-          Response.json({
-            created: true,
-          }),
-        ),
       }),
     }));
   });
@@ -303,15 +311,12 @@ describe('/api/auth/*', () => {
 
   describe('/api/auth/* (better-auth proxy)', () => {
     it('proxies requests to better-auth handler', async () => {
-      const mockHandler = vi.fn().mockResolvedValue(
+      betterAuthMocks.handler.mockResolvedValue(
         new Response(JSON.stringify({ ok: true }), {
           status: 200,
           headers: { 'content-type': 'application/json' },
         }),
       );
-      vi.doMock('../lib/betterAuth.js', () => ({
-        createBetterAuth: vi.fn().mockReturnValue({ handler: mockHandler }),
-      }));
 
       const { default: app } = await import('../../api/index');
       const response = await app.fetch(
@@ -324,25 +329,22 @@ describe('/api/auth/*', () => {
       );
 
       expect(response.status).toBe(200);
-      expect(mockHandler).toHaveBeenCalled();
+      expect(betterAuthMocks.handler).toHaveBeenCalled();
     });
 
     it('proxies GET requests to better-auth handler', async () => {
-      const mockHandler = vi.fn().mockResolvedValue(
+      betterAuthMocks.handler.mockResolvedValue(
         new Response(JSON.stringify({ providers: [] }), {
           status: 200,
           headers: { 'content-type': 'application/json' },
         }),
       );
-      vi.doMock('../lib/betterAuth.js', () => ({
-        createBetterAuth: vi.fn().mockReturnValue({ handler: mockHandler }),
-      }));
 
       const { default: app } = await import('../../api/index');
       const response = await app.fetch(createRequest('/api/auth/providers'), createEnv());
 
       expect(response.status).toBe(200);
-      expect(mockHandler).toHaveBeenCalled();
+      expect(betterAuthMocks.handler).toHaveBeenCalled();
     });
   });
 });
