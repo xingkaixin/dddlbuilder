@@ -60,7 +60,6 @@ test.describe('AI 功能 UI 测试 @tools @ai', () => {
       await reviewButton.first().click();
 
       // 检查是否有加载状态或评审结果区域
-      const _loadingText = page.getByText(/生成中/i).or(page.getByText(/评审中/i));
       // 只检查按钮点击是否有反应，不等待实际 API 响应
       await expect(page.locator('[data-state="active"] pre')).toBeVisible();
     }

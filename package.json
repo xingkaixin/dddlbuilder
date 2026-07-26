@@ -35,7 +35,8 @@
     "test:scripts": "vitest run --project scripts",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "deploy:cf": "pnpm run build && pnpm exec tsx scripts/deploy.ts"
+    "deploy:cf": "pnpm run build && pnpm exec tsx scripts/deploy.ts",
+    "typecheck": "turbo run typecheck && tsc --noEmit -p tsconfig.node.json"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.15",
