@@ -9,6 +9,7 @@ export default defineConfig({
       include: ['scripts/**/*.{ts,tsx}'],
       exclude: [
         'scripts/**/*.{test,spec}.{ts,tsx}',
+        'scripts/d1-baseline.ts',
         'scripts/d1-inspect.ts',
         'scripts/d1-migrate.ts',
         'scripts/d1-runtime.ts',

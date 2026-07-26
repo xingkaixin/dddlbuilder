@@ -119,7 +119,10 @@ test.describe('保存表管理补充 @storage', () => {
       projectsSection.locator('button').filter({ hasText: new RegExp(tableName, 'i') }),
     ).toHaveCount(0);
 
-    await sidebar.getByRole('button', { name: /回收站/ }).last().click();
+    await sidebar
+      .getByRole('button', { name: /回收站/ })
+      .last()
+      .click();
     const trashSection = sidebar.locator('section').filter({ hasText: /^回收站/ });
     const trashItem = trashSection
       .locator('div.group')
@@ -132,7 +135,10 @@ test.describe('保存表管理补充 @storage', () => {
     await trashItem.locator('button').last().click();
     await page.getByRole('menuitem', { name: /恢复/ }).click();
 
-    await sidebar.getByRole('button', { name: /回收站/ }).last().click();
+    await sidebar
+      .getByRole('button', { name: /回收站/ })
+      .last()
+      .click();
     await expect(getSidebarTableItem(page, new RegExp(tableName, 'i'))).toBeVisible();
     await clickSidebarTable(page, new RegExp(tableName, 'i'));
     await expect(page.locator('#table-comment')).toHaveValue(tableComment);

@@ -9,6 +9,7 @@ import {
   listMigrationFiles,
   migrationDir,
   resolveD1Mode,
+  runAllMigrations,
   runD1Execute,
   runPendingMigrations,
 } from './d1-utils';
@@ -213,5 +214,105 @@ describe('d1-utils', () => {
     expect(commands).toHaveLength(2);
     expect(commands[0]).toContain('0001_user_system_init.sql');
     expect(commands[1]).toContain('0002_better_auth_hard_cut.sql');
+  });
+
+  it('rejects baselining a non-empty migration ledger', () => {
+    vi.mocked(spawnSync)
+      .mockReturnValueOnce({ status: 0 } as ReturnType<typeof spawnSync>)
+      .mockReturnValueOnce({
+        status: 0,
+        stdout: JSON.stringify([{ results: [{ name: '0001_user_system_init.sql' }] }]),
+      } as ReturnType<typeof spawnSync>);
+
+    expect(() => baselineExistingMigrations('local', '0001_user_system_init.sql')).toThrow(
+      '迁移账本不为空',
+    );
+  });
+
+  it('rejects baselining a database without an existing app schema', () => {
+    vi.mocked(spawnSync)
+      .mockReturnValueOnce({ status: 0 } as ReturnType<typeof spawnSync>)
+      .mockReturnValueOnce({
+        status: 0,
+        stdout: JSON.stringify([{ results: [] }]),
+      } as ReturnType<typeof spawnSync>)
+      .mockReturnValueOnce({
+        status: 0,
+        stdout: JSON.stringify([{ results: [] }]),
+      } as ReturnType<typeof spawnSync>);
+
+    expect(() => baselineExistingMigrations('local', '0001_user_system_init.sql')).toThrow(
+      '未检测到既有业务表',
+    );
+  });
+
+  it('rejects an unknown baseline endpoint', () => {
+    vi.mocked(spawnSync)
+      .mockReturnValueOnce({ status: 0 } as ReturnType<typeof spawnSync>)
+      .mockReturnValueOnce({
+        status: 0,
+        stdout: JSON.stringify([{ results: [] }]),
+      } as ReturnType<typeof spawnSync>)
+      .mockReturnValueOnce({
+        status: 0,
+        stdout: JSON.stringify([{ results: [{ name: 'users' }] }]),
+      } as ReturnType<typeof spawnSync>);
+
+    expect(() => baselineExistingMigrations('local', '9999_unknown.sql')).toThrow('未知迁移');
+  });
+
+  it('applies every migration for a fresh database', () => {
+    vi.mocked(spawnSync)
+      .mockReturnValueOnce({ status: 0 } as ReturnType<typeof spawnSync>)
+      .mockReturnValueOnce({
+        status: 0,
+        stdout: JSON.stringify([{ results: [] }]),
+      } as ReturnType<typeof spawnSync>)
+      .mockReturnValueOnce({
+        status: 0,
+        stdout: JSON.stringify([{ results: [] }]),
+      } as ReturnType<typeof spawnSync>)
+      .mockReturnValue({ status: 0 } as ReturnType<typeof spawnSync>);
+
+    runPendingMigrations('local');
+
+    const fileCalls = vi
+      .mocked(spawnSync)
+      .mock.calls.map((call) => call[1])
+      .filter((args) => Array.isArray(args) && args.includes('--file'));
+    expect(fileCalls).toHaveLength(listMigrationFiles().length);
+  });
+
+  it('skips migrations already recorded in the ledger', () => {
+    const firstMigration = path.basename(listMigrationFiles()[0]);
+    vi.mocked(spawnSync)
+      .mockReturnValueOnce({ status: 0 } as ReturnType<typeof spawnSync>)
+      .mockReturnValueOnce({
+        status: 0,
+        stdout: JSON.stringify([{ results: [{ name: firstMigration }] }]),
+      } as ReturnType<typeof spawnSync>)
+      .mockReturnValue({ status: 0 } as ReturnType<typeof spawnSync>);
+
+    runPendingMigrations('local');
+
+    const fileCalls = vi
+      .mocked(spawnSync)
+      .mock.calls.map((call) => call[1])
+      .filter((args) => Array.isArray(args) && args.includes('--file'));
+    expect(fileCalls).toHaveLength(listMigrationFiles().length - 1);
+    expect(fileCalls.some((args) => args.includes(listMigrationFiles()[0]))).toBe(false);
+  });
+
+  it('runs all migrations without consulting the ledger', () => {
+    vi.mocked(spawnSync).mockReturnValue({ status: 0 } as ReturnType<typeof spawnSync>);
+
+    runAllMigrations('remote');
+
+    expect(spawnSync).toHaveBeenCalledTimes(listMigrationFiles().length);
+    expect(spawnSync).toHaveBeenCalledWith(
+      'pnpm',
+      expect.arrayContaining(['--remote', '--file']),
+      expect.objectContaining({ stdio: 'inherit' }),
+    );
   });
 });
