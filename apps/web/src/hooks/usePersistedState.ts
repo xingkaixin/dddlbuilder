@@ -940,7 +940,9 @@ export function usePersistedState(): UsePersistedStateReturn {
         session: sessionRaw,
         savedTable,
       } = await getWorkspaceBootstrap(currentScope);
+      if (cancelled) return;
       const savedDrafts = await listSavedDrafts(currentScope);
+      if (cancelled) return;
       savedTableDraftsRef.current = new Map(Object.entries(savedDrafts));
 
       const allDrafts: Array<{ draftId: string; record: GlobalDraftRecord }> = [];
@@ -972,6 +974,7 @@ export function usePersistedState(): UsePersistedStateReturn {
       const initialDraft = pickInitialDraft(allDrafts);
 
       const trashed = await listTrashedDrafts(currentScope);
+      if (cancelled) return;
       setTrashedDrafts(
         trashed.map(({ draftId, record }) =>
           buildDraftSummary(
@@ -1063,10 +1066,12 @@ export function usePersistedState(): UsePersistedStateReturn {
         queryFn: () => getShareState(shareId),
       })
       .then((state) => {
+        if (cancelled) return;
         hydrateWithState(state);
         writeStorageJson(shareStorageKey, state);
       })
       .catch((error) => {
+        if (cancelled) return;
         if (error instanceof ShareApiError && error.code === 'SHARE_NOT_FOUND') {
           setShareLoadStatus('not_found');
         } else {

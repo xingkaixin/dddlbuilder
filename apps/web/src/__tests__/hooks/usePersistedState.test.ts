@@ -908,6 +908,36 @@ describe('usePersistedState', () => {
     });
   });
 
+  it('离开分享路径后应忽略尚未完成的远端加载', async () => {
+    const cachedState = createState('cached_share_state');
+    const remoteState = createState('stale_remote_state');
+    const deferred = createDeferred<any>();
+    localStorageMock.setItem(SHARE_STORAGE_KEY, JSON.stringify(cachedState));
+    mockedGetShareState.mockReturnValueOnce(deferred.promise);
+    window.history.replaceState({}, '', `/share/${VALID_SHARE_ID}`);
+
+    const { wrapper } = createQueryClientWrapper();
+    const { result, rerender } = renderHook(() => usePersistedState(), { wrapper });
+    await waitFor(() => {
+      expect(result.current.persistedState).toEqual(cachedState);
+    });
+
+    window.history.replaceState({}, '', '/');
+    rerender();
+    localStorageMock.setItem.mockClear();
+    await act(async () => {
+      deferred.resolve(remoteState);
+      await deferred.promise;
+      await Promise.resolve();
+    });
+
+    expect(result.current.persistedState).not.toEqual(remoteState);
+    expect(localStorageMock.setItem).not.toHaveBeenCalledWith(
+      SHARE_STORAGE_KEY,
+      JSON.stringify(remoteState),
+    );
+  });
+
   it('分享加载出现通用错误时应标记 error 并回退主工作区', async () => {
     const fallbackState = createState('global_after_share_error');
     await writeGlobalDraft({ state: fallbackState, updatedAt: Date.now() });
