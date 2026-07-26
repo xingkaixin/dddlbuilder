@@ -1,4 +1,3 @@
-import type { PersistedState } from '@ddlbuilder/shared-types';
 import type {
   WorkspaceChangesPushRequest,
   WorkspaceChangesPushResponse,
@@ -20,6 +19,14 @@ import {
   runWorkspaceD1Result,
   type WorkspaceD1Metrics,
 } from './workspaceSyncMetrics.js';
+import {
+  GLOBAL_DRAFT_ENTITY_ID,
+  legacyRowsToWorkspaceSnapshot,
+  storedEntitiesToWorkspaceSnapshot,
+  workspaceSnapshotToEntities,
+  type LegacyWorkspaceSnapshotRow,
+  type WorkspaceEntityInput,
+} from './workspaceEntitySnapshot.js';
 
 type WorkspaceRow = {
   id: string;
@@ -50,24 +57,7 @@ type MutationRow = {
   version: number;
 };
 
-type EntityInput = {
-  entityType: WorkspaceEntityType;
-  entityId: string;
-  payload: unknown;
-  sourceUpdatedAt: number;
-};
-
-type LegacySnapshotKind = 'global_draft' | WorkspaceEntityType;
-
-type LegacySnapshotRow = {
-  kind: LegacySnapshotKind;
-  normalizedName: string | null;
-  payloadJson: string;
-  sourceUpdatedAt: number;
-};
-
 const DEFAULT_WORKSPACE_NAME = 'Default Workspace';
-const GLOBAL_DRAFT_ENTITY_ID = '__global_draft__';
 
 const ENTITY_TYPES = new Set<WorkspaceEntityType>([
   'draft',
@@ -809,82 +799,12 @@ export const pushWorkspaceChanges = async (
   return response;
 };
 
-const snapshotToEntities = (snapshot: WorkspaceSnapshot): EntityInput[] => {
-  const entities: EntityInput[] = [];
-
-  if (snapshot.globalDraft) {
-    entities.push({
-      entityType: 'draft',
-      entityId: GLOBAL_DRAFT_ENTITY_ID,
-      payload: { state: snapshot.globalDraft.state },
-      sourceUpdatedAt: snapshot.globalDraft.updatedAt,
-    });
-  }
-
-  for (const item of snapshot.drafts) {
-    entities.push({
-      entityType: 'draft',
-      entityId: item.draftId,
-      payload: {
-        state: item.state,
-        createdAt: item.createdAt,
-        folderId: item.folderId,
-      },
-      sourceUpdatedAt: item.updatedAt,
-    });
-  }
-
-  for (const item of snapshot.savedTables) {
-    entities.push({
-      entityType: 'saved_table',
-      entityId: item.normalizedName,
-      payload: {
-        name: item.name,
-        state: item.state,
-        createdAt: item.createdAt,
-        folderId: item.folderId,
-      },
-      sourceUpdatedAt: item.updatedAt,
-    });
-  }
-
-  for (const item of snapshot.savedDrafts) {
-    entities.push({
-      entityType: 'saved_draft',
-      entityId: item.normalizedName,
-      payload: {
-        tableName: item.tableName,
-        state: item.state,
-        baseSignature: item.baseSignature,
-      },
-      sourceUpdatedAt: item.updatedAt,
-    });
-  }
-
-  for (const item of snapshot.folders) {
-    entities.push({
-      entityType: 'folder',
-      entityId: item.id,
-      payload: {
-        id: item.id,
-        name: item.name,
-        parentId: item.parentId,
-        order: item.order,
-        createdAt: item.createdAt,
-      },
-      sourceUpdatedAt: item.createdAt,
-    });
-  }
-
-  return entities;
-};
-
 const listLegacySnapshotRows = async (
   env: ApiEnv['Bindings'],
   userId: string,
   metrics?: WorkspaceD1Metrics,
 ) => {
-  const result = await allWorkspaceD1Result<LegacySnapshotRow>(
+  const result = await allWorkspaceD1Result<LegacyWorkspaceSnapshotRow>(
     env.USER_DB.prepare(
       `
       SELECT
@@ -900,93 +820,6 @@ const listLegacySnapshotRows = async (
   );
 
   return result.results ?? [];
-};
-
-const legacyRowsToSnapshot = (rows: LegacySnapshotRow[]): WorkspaceSnapshot => {
-  const snapshot: WorkspaceSnapshot = {
-    globalDraft: null,
-    drafts: [],
-    savedTables: [],
-    savedDrafts: [],
-    folders: [],
-  };
-
-  for (const row of rows) {
-    const payload = JSON.parse(row.payloadJson) as Record<string, unknown>;
-
-    if (row.kind === 'global_draft') {
-      if (payload.state) {
-        snapshot.globalDraft = {
-          state: payload.state as PersistedState,
-          updatedAt: row.sourceUpdatedAt,
-        };
-      }
-      continue;
-    }
-
-    if (!row.normalizedName) {
-      continue;
-    }
-
-    if (row.kind === 'draft') {
-      if (payload.state) {
-        snapshot.drafts.push({
-          draftId: row.normalizedName,
-          state: payload.state as WorkspaceSnapshot['drafts'][number]['state'],
-          createdAt:
-            typeof payload.createdAt === 'number' ? payload.createdAt : row.sourceUpdatedAt,
-          updatedAt: row.sourceUpdatedAt,
-          ...(typeof payload.folderId === 'string' ? { folderId: payload.folderId } : {}),
-        });
-      }
-      continue;
-    }
-
-    if (row.kind === 'saved_table') {
-      if (payload.state && typeof payload.name === 'string') {
-        snapshot.savedTables.push({
-          normalizedName: row.normalizedName,
-          name: payload.name,
-          state: payload.state as WorkspaceSnapshot['savedTables'][number]['state'],
-          createdAt:
-            typeof payload.createdAt === 'number' ? payload.createdAt : row.sourceUpdatedAt,
-          updatedAt: row.sourceUpdatedAt,
-          ...(typeof payload.folderId === 'string' ? { folderId: payload.folderId } : {}),
-        });
-      }
-      continue;
-    }
-
-    if (row.kind === 'folder') {
-      if (typeof payload.id === 'string' && typeof payload.name === 'string') {
-        snapshot.folders.push({
-          id: payload.id,
-          name: payload.name,
-          ...(typeof payload.parentId === 'string' ? { parentId: payload.parentId } : {}),
-          order: typeof payload.order === 'number' ? payload.order : 0,
-          createdAt:
-            typeof payload.createdAt === 'number' ? payload.createdAt : row.sourceUpdatedAt,
-        });
-      }
-      continue;
-    }
-
-    if (
-      typeof payload.tableName === 'string' &&
-      typeof payload.baseSignature === 'string' &&
-      payload.state
-    ) {
-      snapshot.savedDrafts.push({
-        normalizedName: row.normalizedName,
-        tableName: payload.tableName,
-        state: payload.state as WorkspaceSnapshot['savedDrafts'][number]['state'],
-        updatedAt: row.sourceUpdatedAt,
-        baseSignature: payload.baseSignature,
-      });
-    }
-  }
-
-  return snapshot;
 };
 
 export const upsertWorkspaceSnapshotEntity = async (
@@ -1026,7 +859,7 @@ const writeEntityInputs = async (
   input: {
     userId: string;
     workspaceId: string;
-    entities: EntityInput[];
+    entities: WorkspaceEntityInput[];
   },
   metrics?: WorkspaceD1Metrics,
 ) => {
@@ -1048,92 +881,6 @@ const writeEntityInputs = async (
   }
 };
 
-const entityRowsToSnapshot = (rows: EntityRow[]): WorkspaceSnapshot => {
-  const snapshot: WorkspaceSnapshot = {
-    globalDraft: null,
-    drafts: [],
-    savedTables: [],
-    savedDrafts: [],
-    folders: [],
-  };
-
-  for (const row of rows) {
-    const payload = parseEntityPayload(row) as Record<string, unknown> | null;
-    if (!payload) continue;
-
-    if (row.entityType === 'draft' && row.entityId === GLOBAL_DRAFT_ENTITY_ID) {
-      if (payload.state) {
-        snapshot.globalDraft = {
-          state: payload.state as PersistedState,
-          updatedAt: row.updatedAt,
-        };
-      }
-      continue;
-    }
-
-    if (row.entityType === 'draft') {
-      if (payload.state) {
-        snapshot.drafts.push({
-          draftId: row.entityId,
-          state: payload.state as WorkspaceSnapshot['drafts'][number]['state'],
-          createdAt: typeof payload.createdAt === 'number' ? payload.createdAt : row.updatedAt,
-          updatedAt: row.updatedAt,
-          ...(typeof payload.folderId === 'string' ? { folderId: payload.folderId } : {}),
-        });
-      }
-      continue;
-    }
-
-    if (row.entityType === 'saved_table') {
-      if (payload.state && typeof payload.name === 'string') {
-        snapshot.savedTables.push({
-          normalizedName: row.entityId,
-          name: payload.name,
-          state: payload.state as WorkspaceSnapshot['savedTables'][number]['state'],
-          createdAt: typeof payload.createdAt === 'number' ? payload.createdAt : row.updatedAt,
-          updatedAt: row.updatedAt,
-          ...(typeof payload.folderId === 'string' ? { folderId: payload.folderId } : {}),
-        });
-      }
-      continue;
-    }
-
-    if (row.entityType === 'folder') {
-      if (typeof payload.id === 'string' && typeof payload.name === 'string') {
-        snapshot.folders.push({
-          id: payload.id,
-          name: payload.name,
-          ...(typeof payload.parentId === 'string' ? { parentId: payload.parentId } : {}),
-          order: typeof payload.order === 'number' ? payload.order : 0,
-          createdAt: typeof payload.createdAt === 'number' ? payload.createdAt : row.updatedAt,
-        });
-      }
-      continue;
-    }
-
-    if (
-      typeof payload.tableName === 'string' &&
-      typeof payload.baseSignature === 'string' &&
-      payload.state
-    ) {
-      snapshot.savedDrafts.push({
-        normalizedName: row.entityId,
-        tableName: payload.tableName,
-        state: payload.state as WorkspaceSnapshot['savedDrafts'][number]['state'],
-        updatedAt: row.updatedAt,
-        baseSignature: payload.baseSignature,
-      });
-    }
-  }
-
-  snapshot.drafts.sort((a, b) => (b.createdAt ?? b.updatedAt) - (a.createdAt ?? a.updatedAt));
-  snapshot.savedTables.sort((a, b) => (b.createdAt ?? b.updatedAt) - (a.createdAt ?? a.updatedAt));
-  snapshot.savedDrafts.sort((a, b) => b.updatedAt - a.updatedAt);
-  snapshot.folders.sort((a, b) => a.order - b.order);
-
-  return snapshot;
-};
-
 const backfillLegacySnapshotEntities = async (
   env: ApiEnv['Bindings'],
   userId: string,
@@ -1149,9 +896,9 @@ const backfillLegacySnapshotEntities = async (
   const existingKeys = new Set(
     existingRows.map((row) => buildEntityKey(row.entityType, row.entityId)),
   );
-  const missingLegacyEntities = snapshotToEntities(legacyRowsToSnapshot(legacyRows)).filter(
-    (entity) => !existingKeys.has(buildEntityKey(entity.entityType, entity.entityId)),
-  );
+  const missingLegacyEntities = workspaceSnapshotToEntities(
+    legacyRowsToWorkspaceSnapshot(legacyRows),
+  ).filter((entity) => !existingKeys.has(buildEntityKey(entity.entityType, entity.entityId)));
   if (missingLegacyEntities.length === 0) {
     return false;
   }
@@ -1174,7 +921,7 @@ export const getWorkspaceSnapshotFromEntities = async (
 ): Promise<WorkspaceSnapshot> => {
   const workspace = await getOrCreateDefaultWorkspace(env, userId);
   await backfillLegacySnapshotEntities(env, userId, workspace.id);
-  return entityRowsToSnapshot(await listActiveEntities(env, workspace.id));
+  return storedEntitiesToWorkspaceSnapshot(await listActiveEntities(env, workspace.id));
 };
 
 export const getWorkspaceSnapshotForWorkspace = async (
@@ -1184,7 +931,7 @@ export const getWorkspaceSnapshotForWorkspace = async (
 ): Promise<WorkspaceSnapshot> => {
   await assertWorkspaceOwner(env, userId, workspaceId);
   await backfillLegacySnapshotEntities(env, userId, workspaceId);
-  return entityRowsToSnapshot(await listActiveEntities(env, workspaceId));
+  return storedEntitiesToWorkspaceSnapshot(await listActiveEntities(env, workspaceId));
 };
 
 export const putWorkspaceSnapshotAsEntities = async (
@@ -1196,7 +943,7 @@ export const putWorkspaceSnapshotAsEntities = async (
   await writeEntityInputs(env, {
     userId,
     workspaceId: workspace.id,
-    entities: snapshotToEntities(snapshot),
+    entities: workspaceSnapshotToEntities(snapshot),
   });
 };
 
@@ -1208,7 +955,7 @@ export const checkpointWorkspaceSnapshotEntities = async (
 ) => {
   const metrics = createWorkspaceD1Metrics();
   await assertWorkspaceOwner(env, userId, workspaceId, metrics);
-  const entities = snapshotToEntities(snapshot);
+  const entities = workspaceSnapshotToEntities(snapshot);
   const nextKeys = new Set(
     entities.map((entity) => buildEntityKey(entity.entityType, entity.entityId)),
   );
