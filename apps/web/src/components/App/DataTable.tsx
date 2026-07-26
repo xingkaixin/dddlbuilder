@@ -44,8 +44,8 @@ interface DataTableProps {
 
 interface SortableDataRowProps {
   row: Row<FieldRow>;
-  selectedCell: { row: number; col: number } | null;
-  editingCell: { row: number; col: number } | null;
+  selectedColumn: number | null;
+  editingColumn: number | null;
   setEditingCell: (cell: { row: number; col: number } | null) => void;
   handleCellActivate: (rowIndex: number, colIndex: number) => void;
   focusEditableCell: (rowIndex: number, editableColIndex: number) => void;
@@ -59,7 +59,8 @@ interface SortableDataRowProps {
 
 const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
   row,
-  selectedCell,
+  selectedColumn,
+  editingColumn: _editingColumn,
   setEditingCell,
   handleCellActivate,
   focusEditableCell,
@@ -98,8 +99,7 @@ const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
       {row.getVisibleCells().map((cell, colIndex) => {
         const isFrozen = freezeEnabled && colIndex < effectiveFreezeColumns;
         const isLastFrozen = freezeEnabled && colIndex === effectiveFreezeColumns - 1;
-        const isSelected =
-          selectedCell && selectedCell.row === row.index && selectedCell.col === colIndex - 1;
+        const isSelected = selectedColumn === colIndex - 1;
         const isOrderColumn = cell.column.id === 'order';
 
         return (
@@ -504,8 +504,8 @@ export const DataTable = memo<DataTableProps>(
                     <SortableDataRow
                       key={row.id}
                       row={row}
-                      selectedCell={selectedCell}
-                      editingCell={editingCell}
+                      selectedColumn={selectedCell?.row === row.index ? selectedCell.col : null}
+                      editingColumn={editingCell?.row === row.index ? editingCell.col : null}
                       setEditingCell={setEditingCell}
                       handleCellActivate={handleCellActivate}
                       focusEditableCell={focusEditableCell}
