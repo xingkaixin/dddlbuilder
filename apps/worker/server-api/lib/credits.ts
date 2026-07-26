@@ -64,6 +64,7 @@ const toLedgerRow = (row: Record<string, unknown>): CreditLedgerRow => ({
 
 const readExistingLedger = async (
   env: ApiEnv['Bindings'],
+  userId: string,
   idempotencyKey: string,
 ): Promise<CreditLedgerRow | null> => {
   const existing = await env.USER_DB.prepare(
@@ -80,11 +81,11 @@ const readExistingLedger = async (
         metadata_json AS metadataJson,
         created_at AS createdAt
       FROM credit_ledger
-      WHERE idempotency_key = ?
+      WHERE user_id = ? AND idempotency_key = ?
       LIMIT 1
     `,
   )
-    .bind(idempotencyKey)
+    .bind(userId, idempotencyKey)
     .first<Record<string, unknown>>();
 
   return existing ? toLedgerRow(existing) : null;
@@ -210,6 +211,22 @@ const computeNextBalance = (currentBalance: number, input: CreditMutationInput) 
   return currentBalance + input.amount;
 };
 
+const validateExistingLedger = (existing: CreditLedgerRow, input: CreditMutationInput) => {
+  if (
+    existing.userId !== input.userId ||
+    existing.kind !== input.kind ||
+    existing.source !== input.source ||
+    existing.amount !== input.amount ||
+    existing.relatedUsageId !== (input.relatedUsageId ?? null)
+  ) {
+    throw new Error('CREDIT_IDEMPOTENCY_CONFLICT');
+  }
+  return existing;
+};
+
+const isRetryableCreditConflict = (error: unknown) =>
+  error instanceof Error && error.message.includes('CREDIT_CONFLICT');
+
 export const applyCreditMutation = async (
   env: ApiEnv['Bindings'],
   input: CreditMutationInput,
@@ -218,9 +235,9 @@ export const applyCreditMutation = async (
     throw new Error('INVALID_CREDIT_AMOUNT');
   }
 
-  const existing = await readExistingLedger(env, input.idempotencyKey);
+  const existing = await readExistingLedger(env, input.userId, input.idempotencyKey);
   if (existing) {
-    return existing;
+    return validateExistingLedger(existing, input);
   }
 
   await ensureCreditAccount(env, input.userId);
@@ -232,60 +249,64 @@ export const applyCreditMutation = async (
     }
 
     const nextBalance = computeNextBalance(account.balance, input);
-    const updated = await env.USER_DB.prepare(
-      `
-        UPDATE credit_accounts
-        SET balance = ?, version = version + 1, updated_at = CURRENT_TIMESTAMP
-        WHERE user_id = ? AND version = ?
-      `,
-    )
-      .bind(nextBalance, input.userId, account.version)
-      .run();
-
-    if (!updated.success || Number(updated.meta.changes ?? 0) === 0) {
-      continue;
+    const ledgerId = input.ledgerId ?? `${input.kind}:${input.idempotencyKey}`;
+    try {
+      const inserted = await env.USER_DB.prepare(
+        `
+          INSERT INTO credit_ledger (
+            id,
+            user_id,
+            kind,
+            source,
+            amount,
+            balance_after,
+            idempotency_key,
+            related_usage_id,
+            metadata_json
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+      )
+        .bind(
+          ledgerId,
+          input.userId,
+          input.kind,
+          input.source,
+          input.amount,
+          nextBalance,
+          input.idempotencyKey,
+          input.relatedUsageId ?? null,
+          input.metadata ? JSON.stringify(input.metadata) : null,
+        )
+        .run();
+      if (!inserted.success || Number(inserted.meta.changes ?? 0) === 0) {
+        const concurrent = await readExistingLedger(env, input.userId, input.idempotencyKey);
+        if (concurrent) {
+          return validateExistingLedger(concurrent, input);
+        }
+        continue;
+      }
+    } catch (error) {
+      const concurrent = await readExistingLedger(env, input.userId, input.idempotencyKey);
+      if (concurrent) {
+        return validateExistingLedger(concurrent, input);
+      }
+      if (isRetryableCreditConflict(error)) {
+        continue;
+      }
+      throw error;
     }
 
-    const ledgerId = input.ledgerId ?? `${input.kind}:${input.idempotencyKey}`;
-    await env.USER_DB.prepare(
-      `
-        INSERT INTO credit_ledger (
-          id,
-          user_id,
-          kind,
-          source,
-          amount,
-          balance_after,
-          idempotency_key,
-          related_usage_id,
-          metadata_json
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-    )
-      .bind(
-        ledgerId,
-        input.userId,
-        input.kind,
-        input.source,
-        input.amount,
-        nextBalance,
-        input.idempotencyKey,
-        input.relatedUsageId ?? null,
-        input.metadata ? JSON.stringify(input.metadata) : null,
-      )
-      .run();
-
-    const created = await readExistingLedger(env, input.idempotencyKey);
+    const created = await readExistingLedger(env, input.userId, input.idempotencyKey);
     if (!created) {
       throw new Error('CREDIT_LEDGER_WRITE_FAILED');
     }
-    return created;
+    return validateExistingLedger(created, input);
   }
 
-  const retryExisting = await readExistingLedger(env, input.idempotencyKey);
+  const retryExisting = await readExistingLedger(env, input.userId, input.idempotencyKey);
   if (retryExisting) {
-    return retryExisting;
+    return validateExistingLedger(retryExisting, input);
   }
 
   throw new Error('CREDIT_CONFLICT');

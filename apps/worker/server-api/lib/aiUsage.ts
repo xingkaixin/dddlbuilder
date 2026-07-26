@@ -10,13 +10,15 @@ export type AIRouteKey =
   | 'generate-comments'
   | 'index-advisor';
 
-export type AIUsageReservation = {
+export type AIUsageReservation<RouteKey extends AIRouteKey = AIRouteKey> = {
   usageEventId: string;
   userId: string;
-  routeKey: AIRouteKey;
+  routeKey: RouteKey;
   requestId: string;
   reservedTokens: number;
 };
+
+type AIUsageTerminalStatus = 'succeeded' | 'failed';
 
 const ROUTE_SOURCES: Record<AIRouteKey, CreditLedgerSource> = {
   explain: 'ai_explain',
@@ -26,7 +28,13 @@ const ROUTE_SOURCES: Record<AIRouteKey, CreditLedgerSource> = {
   'index-advisor': 'ai_generate',
 };
 
-const buildUsageEventId = (requestId: string) => `usage:${requestId}`;
+const encodeIdentityPart = (value: string) => `${value.length}:${value}`;
+
+const buildUsageEventId = (userId: string, routeKey: AIRouteKey, requestId: string) =>
+  `usage:${encodeIdentityPart(userId)}:${encodeIdentityPart(routeKey)}:${encodeIdentityPart(requestId)}`;
+
+const buildLedgerIdentity = (reservation: AIUsageReservation, phase: 'reserve' | 'settlement') =>
+  `${reservation.usageEventId}:${phase}`;
 
 const normalizeTokenAmount = (value: number) => {
   if (!Number.isFinite(value) || value <= 0) {
@@ -35,14 +43,8 @@ const normalizeTokenAmount = (value: number) => {
   return Math.max(1, Math.round(value));
 };
 
-const writeUsageEvent = async (
-  env: ApiEnv['Bindings'],
-  reservation: AIUsageReservation,
-  status: string,
-  actualTotalTokens: number | null,
-  errorCode: string | null,
-) => {
-  await env.USER_DB.prepare(
+const createUsageEvent = async (env: ApiEnv['Bindings'], reservation: AIUsageReservation) => {
+  const result = await env.USER_DB.prepare(
     `
       INSERT INTO usage_events (
         id,
@@ -54,14 +56,8 @@ const writeUsageEvent = async (
         status,
         error_code
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(request_id) DO UPDATE SET
-        user_id = excluded.user_id,
-        route_key = excluded.route_key,
-        estimated_tokens = excluded.estimated_tokens,
-        actual_total_tokens = excluded.actual_total_tokens,
-        status = excluded.status,
-        error_code = excluded.error_code
+      VALUES (?, ?, ?, ?, ?, NULL, 'pending', NULL)
+      ON CONFLICT(user_id, route_key, request_id) DO NOTHING
     `,
   )
     .bind(
@@ -70,56 +66,106 @@ const writeUsageEvent = async (
       reservation.routeKey,
       reservation.requestId,
       reservation.reservedTokens,
-      actualTotalTokens,
-      status,
-      errorCode,
     )
     .run();
+
+  if (!result.success || Number(result.meta.changes ?? 0) === 0) {
+    throw new Error('AI_USAGE_REPLAYED');
+  }
+};
+
+const updateUsageStatus = async (
+  env: ApiEnv['Bindings'],
+  reservation: AIUsageReservation,
+  input: {
+    from: string;
+    to: string;
+    actualTotalTokens?: number | null;
+    errorCode?: string | null;
+  },
+) =>
+  env.USER_DB.prepare(
+    `
+      UPDATE usage_events
+      SET status = ?, actual_total_tokens = ?, error_code = ?
+      WHERE id = ? AND status = ?
+    `,
+  )
+    .bind(
+      input.to,
+      input.actualTotalTokens ?? null,
+      input.errorCode ?? null,
+      reservation.usageEventId,
+      input.from,
+    )
+    .run();
+
+const claimSettlement = async (
+  env: ApiEnv['Bindings'],
+  reservation: AIUsageReservation,
+  terminalStatus: AIUsageTerminalStatus,
+) => {
+  const settlingStatus = `settling_${terminalStatus}`;
+  const result = await env.USER_DB.prepare(
+    `
+      UPDATE usage_events
+      SET status = ?
+      WHERE id = ? AND status IN ('reserved', ?)
+    `,
+  )
+    .bind(settlingStatus, reservation.usageEventId, settlingStatus)
+    .run();
+  return result.success && Number(result.meta.changes ?? 0) > 0;
 };
 
 export const authenticateAIUser = async (c: Context<ApiEnv>) => {
   return authenticateRequest(c);
 };
 
-export const reserveAIUsage = async (
+export const reserveAIUsage = async <RouteKey extends AIRouteKey>(
   env: ApiEnv['Bindings'],
   input: {
     userId: string;
-    routeKey: AIRouteKey;
+    routeKey: RouteKey;
     requestId: string;
     estimatedTokens: number;
   },
-): Promise<AIUsageReservation> => {
-  const reservation: AIUsageReservation = {
-    usageEventId: buildUsageEventId(input.requestId),
+): Promise<AIUsageReservation<RouteKey>> => {
+  const reservation: AIUsageReservation<RouteKey> = {
+    usageEventId: buildUsageEventId(input.userId, input.routeKey, input.requestId),
     userId: input.userId,
     routeKey: input.routeKey,
     requestId: input.requestId,
     reservedTokens: normalizeTokenAmount(input.estimatedTokens),
   };
 
-  await writeUsageEvent(env, reservation, 'pending', null, null);
+  await createUsageEvent(env, reservation);
 
   try {
+    const ledgerIdentity = buildLedgerIdentity(reservation, 'reserve');
     await applyCreditMutation(env, {
       userId: input.userId,
       kind: 'consume',
       source: ROUTE_SOURCES[input.routeKey],
       amount: reservation.reservedTokens,
-      idempotencyKey: `${input.requestId}:reserve`,
+      idempotencyKey: ledgerIdentity,
       relatedUsageId: reservation.usageEventId,
       metadata: {
         routeKey: input.routeKey,
         requestId: input.requestId,
       },
-      ledgerId: `consume:${input.requestId}:reserve`,
+      ledgerId: `consume:${ledgerIdentity}`,
     });
 
-    await writeUsageEvent(env, reservation, 'reserved', null, null);
+    await updateUsageStatus(env, reservation, { from: 'pending', to: 'reserved' });
     return reservation;
   } catch (error) {
     const errorCode = error instanceof Error ? error.message : 'SERVICE_UNAVAILABLE';
-    await writeUsageEvent(env, reservation, 'failed', null, errorCode);
+    await updateUsageStatus(env, reservation, {
+      from: 'pending',
+      to: 'failed',
+      errorCode,
+    });
     throw error;
   }
 };
@@ -129,30 +175,41 @@ export const completeAIUsage = async (
   reservation: AIUsageReservation,
   actualTotalTokens: number | null,
 ) => {
+  if (!(await claimSettlement(env, reservation, 'succeeded'))) {
+    return;
+  }
+
   const actualTokens =
     actualTotalTokens == null
       ? reservation.reservedTokens
       : Math.max(0, Math.round(actualTotalTokens));
-  const refundAmount = Math.max(reservation.reservedTokens - actualTokens, 0);
+  const tokenDelta = reservation.reservedTokens - actualTokens;
 
-  if (refundAmount > 0) {
+  if (tokenDelta !== 0) {
+    const kind = tokenDelta > 0 ? 'refund' : 'consume';
+    const amount = Math.abs(tokenDelta);
+    const ledgerIdentity = buildLedgerIdentity(reservation, 'settlement');
     await applyCreditMutation(env, {
       userId: reservation.userId,
-      kind: 'refund',
+      kind,
       source: ROUTE_SOURCES[reservation.routeKey],
-      amount: refundAmount,
-      idempotencyKey: `${reservation.requestId}:refund-success`,
+      amount,
+      idempotencyKey: ledgerIdentity,
       relatedUsageId: reservation.usageEventId,
       metadata: {
         routeKey: reservation.routeKey,
         requestId: reservation.requestId,
-        reason: 'actual_less_than_reserved',
+        reason: tokenDelta > 0 ? 'actual_less_than_reserved' : 'actual_exceeded_reserved',
       },
-      ledgerId: `refund:${reservation.requestId}:success`,
+      ledgerId: `${kind}:${ledgerIdentity}`,
     });
   }
 
-  await writeUsageEvent(env, reservation, 'succeeded', actualTokens, null);
+  await updateUsageStatus(env, reservation, {
+    from: 'settling_succeeded',
+    to: 'succeeded',
+    actualTotalTokens: actualTokens,
+  });
 };
 
 export const failAIUsage = async (
@@ -160,12 +217,17 @@ export const failAIUsage = async (
   reservation: AIUsageReservation,
   errorCode: string,
 ) => {
+  if (!(await claimSettlement(env, reservation, 'failed'))) {
+    return;
+  }
+
+  const ledgerIdentity = buildLedgerIdentity(reservation, 'settlement');
   await applyCreditMutation(env, {
     userId: reservation.userId,
     kind: 'refund',
     source: ROUTE_SOURCES[reservation.routeKey],
     amount: reservation.reservedTokens,
-    idempotencyKey: `${reservation.requestId}:refund-failed`,
+    idempotencyKey: ledgerIdentity,
     relatedUsageId: reservation.usageEventId,
     metadata: {
       routeKey: reservation.routeKey,
@@ -173,8 +235,12 @@ export const failAIUsage = async (
       reason: 'request_failed',
       errorCode,
     },
-    ledgerId: `refund:${reservation.requestId}:failed`,
+    ledgerId: `refund:${ledgerIdentity}`,
   });
 
-  await writeUsageEvent(env, reservation, 'failed', null, errorCode);
+  await updateUsageStatus(env, reservation, {
+    from: 'settling_failed',
+    to: 'failed',
+    errorCode,
+  });
 };

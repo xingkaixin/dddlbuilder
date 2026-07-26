@@ -98,7 +98,7 @@ describe('aiUsage', () => {
         estimatedTokens: 100,
       });
 
-      expect(result.usageEventId).toBe('usage:req-1');
+      expect(result.usageEventId).toBe('usage:6:user-1:7:explain:5:req-1');
       expect(result.reservedTokens).toBe(100);
       expect(result.routeKey).toBe('explain');
       expect(mockApplyCreditMutation).toHaveBeenCalledWith(
@@ -108,8 +108,8 @@ describe('aiUsage', () => {
           kind: 'consume',
           source: 'ai_explain',
           amount: 100,
-          idempotencyKey: 'req-1:reserve',
-          ledgerId: 'consume:req-1:reserve',
+          idempotencyKey: 'usage:6:user-1:7:explain:5:req-1:reserve',
+          ledgerId: 'consume:usage:6:user-1:7:explain:5:req-1:reserve',
         }),
       );
     });
@@ -368,8 +368,8 @@ describe('aiUsage', () => {
         expect.objectContaining({
           kind: 'refund',
           amount: 30,
-          idempotencyKey: 'req-1:refund-success',
-          ledgerId: 'refund:req-1:success',
+          idempotencyKey: 'usage:req-1:settlement',
+          ledgerId: 'refund:usage:req-1:settlement',
         }),
       );
     });
@@ -400,7 +400,7 @@ describe('aiUsage', () => {
       expect(applyCreditMutation).not.toHaveBeenCalled();
     });
 
-    it('does not refund when actual tokens exceed reserved', async () => {
+    it('charges when actual tokens exceed reserved', async () => {
       vi.doMock('../../lib/credits.js', () => ({
         applyCreditMutation: vi.fn().mockResolvedValue({}),
       }));
@@ -422,7 +422,13 @@ describe('aiUsage', () => {
       );
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
-      expect(applyCreditMutation).not.toHaveBeenCalled();
+      expect(applyCreditMutation).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          kind: 'consume',
+          amount: 50,
+        }),
+      );
     });
 
     it('uses reserved tokens when actualTotalTokens is null', async () => {
@@ -579,8 +585,8 @@ describe('aiUsage', () => {
         expect.objectContaining({
           kind: 'refund',
           amount: 100,
-          idempotencyKey: 'req-1:refund-failed',
-          ledgerId: 'refund:req-1:failed',
+          idempotencyKey: 'usage:req-1:settlement',
+          ledgerId: 'refund:usage:req-1:settlement',
           metadata: expect.objectContaining({
             reason: 'request_failed',
             errorCode: 'OPENAI_ERROR',

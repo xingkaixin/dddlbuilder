@@ -362,26 +362,24 @@ describe('credits', () => {
       ).rejects.toThrow('CREDIT_EXHAUSTED');
     });
 
-    it('retries on optimistic lock conflict and succeeds', async () => {
+    it('retries when the ledger trigger reports a balance conflict', async () => {
       const db = createMockDb();
       db.first
-        .mockResolvedValueOnce(null) // readExistingLedger - null
+        .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({
-          // getCreditAccount attempt 1
           userId: 'user-1',
           balance: 100,
           version: 1,
           updatedAt: '2026-04-11T00:00:00Z',
         })
+        .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({
-          // getCreditAccount attempt 2
           userId: 'user-1',
           balance: 100,
           version: 2,
           updatedAt: '2026-04-11T00:00:01Z',
         })
         .mockResolvedValueOnce({
-          // readExistingLedger after success
           id: 'consume:test-key',
           userId: 'user-1',
           kind: 'consume',
@@ -393,17 +391,10 @@ describe('credits', () => {
           metadataJson: null,
           createdAt: '2026-04-11T00:00:00Z',
         });
-      // run #1: ensureCreditAccount (before loop)
-      // run #2: ensureCreditAccount (inside getCreditAccount attempt 1)
-      // run #3: UPDATE attempt 1 fails
-      // run #4: ensureCreditAccount (inside getCreditAccount attempt 2)
-      // run #5: UPDATE attempt 2 succeeds
-      // run #6: INSERT ledger
       db.run
         .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
         .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
-        .mockResolvedValueOnce({ success: true, meta: { changes: 0 } })
-        .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
+        .mockRejectedValueOnce(new Error('CREDIT_CONFLICT'))
         .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
         .mockResolvedValueOnce({ success: true, meta: { changes: 1 } });
 
@@ -416,7 +407,7 @@ describe('credits', () => {
       expect(result.balanceAfter).toBe(90);
     });
 
-    it('retries and returns existing ledger if written by concurrent request', async () => {
+    it('returns an equivalent ledger written by a concurrent request', async () => {
       const db = createMockDb();
       const existingRow = {
         id: 'consume:test-key',
@@ -431,45 +422,18 @@ describe('credits', () => {
         createdAt: '2026-04-11T00:00:00Z',
       };
       db.first
-        .mockResolvedValueOnce(null) // readExistingLedger - null
+        .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({
-          // getCreditAccount attempt 1
           userId: 'user-1',
           balance: 100,
           version: 1,
           updatedAt: '2026-04-11T00:00:00Z',
         })
-        .mockResolvedValueOnce({
-          // getCreditAccount attempt 2
-          userId: 'user-1',
-          balance: 100,
-          version: 1,
-          updatedAt: '2026-04-11T00:00:00Z',
-        })
-        .mockResolvedValueOnce({
-          // getCreditAccount attempt 3
-          userId: 'user-1',
-          balance: 100,
-          version: 1,
-          updatedAt: '2026-04-11T00:00:00Z',
-        })
-        .mockResolvedValueOnce(existingRow); // retryExisting after all retries fail
-
-      // run #1: ensureCreditAccount (before loop)
-      // run #2: ensureCreditAccount (attempt 1)
-      // run #3: UPDATE attempt 1 fails
-      // run #4: ensureCreditAccount (attempt 2)
-      // run #5: UPDATE attempt 2 fails
-      // run #6: ensureCreditAccount (attempt 3)
-      // run #7: UPDATE attempt 3 fails
+        .mockResolvedValueOnce(existingRow);
       db.run
         .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
         .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
-        .mockResolvedValueOnce({ success: true, meta: { changes: 0 } })
-        .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
-        .mockResolvedValueOnce({ success: true, meta: { changes: 0 } })
-        .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
-        .mockResolvedValueOnce({ success: true, meta: { changes: 0 } });
+        .mockRejectedValueOnce(new Error('UNIQUE constraint failed'));
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
       const result = await applyCreditMutation(
@@ -484,45 +448,37 @@ describe('credits', () => {
     it('throws CREDIT_CONFLICT after max retries', async () => {
       const db = createMockDb();
       db.first
-        .mockResolvedValueOnce(null) // readExistingLedger - null
+        .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({
-          // getCreditAccount attempt 1
           userId: 'user-1',
           balance: 100,
           version: 1,
           updatedAt: '2026-04-11T00:00:00Z',
         })
+        .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({
-          // getCreditAccount attempt 2
           userId: 'user-1',
           balance: 100,
           version: 1,
           updatedAt: '2026-04-11T00:00:00Z',
         })
+        .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({
-          // getCreditAccount attempt 3
           userId: 'user-1',
           balance: 100,
           version: 1,
           updatedAt: '2026-04-11T00:00:00Z',
         })
-        .mockResolvedValueOnce(null); // retryExisting - still null
-
-      // run #1: ensureCreditAccount (before loop)
-      // run #2: ensureCreditAccount (attempt 1)
-      // run #3: UPDATE attempt 1 fails
-      // run #4: ensureCreditAccount (attempt 2)
-      // run #5: UPDATE attempt 2 fails
-      // run #6: ensureCreditAccount (attempt 3)
-      // run #7: UPDATE attempt 3 fails
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null);
       db.run
         .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
         .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
-        .mockResolvedValueOnce({ success: true, meta: { changes: 0 } })
+        .mockRejectedValueOnce(new Error('CREDIT_CONFLICT'))
         .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
-        .mockResolvedValueOnce({ success: true, meta: { changes: 0 } })
+        .mockRejectedValueOnce(new Error('CREDIT_CONFLICT'))
         .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
-        .mockResolvedValueOnce({ success: true, meta: { changes: 0 } });
+        .mockRejectedValueOnce(new Error('CREDIT_CONFLICT'));
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
       await expect(
