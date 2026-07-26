@@ -40,12 +40,14 @@ export async function setupHydratedState(page: Page): Promise<void> {
 
   const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
   await cell.dblclick();
-  await page.locator('[data-testid="data-table"] input').fill('HYDRATED_FIELD');
+  await page
+    .locator('[data-testid="data-table"] input:not([aria-hidden="true"])')
+    .fill('HYDRATED_FIELD');
   await page.keyboard.press('Enter');
 
   const typeCell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)');
   await typeCell.dblclick();
-  await page.locator('[data-testid="data-table"] input').fill('INT');
+  await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('INT');
   await page.keyboard.press('Enter');
 
   await expect(tableNameInput).toHaveValue('HYDRATION_CHECK');

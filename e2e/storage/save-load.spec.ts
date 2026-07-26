@@ -13,7 +13,7 @@ test.describe('存储管理验证 @storage @smoke', () => {
     // 添加一个字段以确保可以保存（如果有校验的话）
     const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
     await cell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('id');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('id');
     await page.keyboard.press('Enter');
 
     // 点击保存按钮 (在 TableConfig 中)

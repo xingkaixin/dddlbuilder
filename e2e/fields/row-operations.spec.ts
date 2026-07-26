@@ -7,31 +7,31 @@ test.describe('字段行操作验证 @fields', () => {
     await ensureBuilderVisible(page);
     await page.locator('#table-name').fill('multi_fields');
 
-    const sqlOutput = page.locator('[data-state="active"] pre');
+    const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
 
     // 填写第一行并确保 SQL 更新
     const cell1 = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
     await cell1.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('f1');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('f1');
     await page.keyboard.press('Enter');
     const typeCell1 = page.locator(
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
     await typeCell1.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('INT');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('INT');
     await page.keyboard.press('Enter');
     await expect(sqlOutput).toContainText(/f1/i, { timeout: 10000 });
 
     // 填写第二行并确保 SQL 更新
     const cell2 = page.locator('[data-testid="data-table"] tbody tr:nth-child(2) td:nth-child(2)');
     await cell2.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('f2');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('f2');
     await page.keyboard.press('Enter');
     const typeCell2 = page.locator(
       '[data-testid="data-table"] tbody tr:nth-child(2) td:nth-child(4)',
     );
     await typeCell2.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('INT');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('INT');
     await page.keyboard.press('Enter');
     await expect(sqlOutput).toContainText(/f2/i, { timeout: 10000 });
   });
@@ -47,13 +47,15 @@ test.describe('字段行操作验证 @fields', () => {
         `[data-testid="data-table"] tbody tr:nth-child(${i}) td:nth-child(2)`,
       );
       await cell.dblclick();
-      await page.locator('[data-testid="data-table"] input').fill(`field_${i}`);
+      await page
+        .locator('[data-testid="data-table"] input:not([aria-hidden="true"])')
+        .fill(`field_${i}`);
       await page.keyboard.press('Enter');
       const typeCell = page.locator(
         `[data-testid="data-table"] tbody tr:nth-child(${i}) td:nth-child(4)`,
       );
       await typeCell.dblclick();
-      await page.locator('[data-testid="data-table"] input').fill('INT');
+      await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('INT');
       await page.keyboard.press('Enter');
     }
 
@@ -103,7 +105,7 @@ test.describe('字段行操作验证 @fields', () => {
     await expect(firstFieldName).toHaveText('field_2', { timeout: 10000 });
     await expect(thirdFieldName).toHaveText('field_1', { timeout: 10000 });
 
-    const sqlOutput = page.locator('[data-state="active"] pre');
+    const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
     const sqlText = await sqlOutput.innerText();
 
     expect(sqlText.indexOf('field_1')).toBeGreaterThan(-1);
@@ -120,7 +122,9 @@ test.describe('字段行操作验证 @fields', () => {
 
     const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
     await cell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('to_be_cleared');
+    await page
+      .locator('[data-testid="data-table"] input:not([aria-hidden="true"])')
+      .fill('to_be_cleared');
     await page.keyboard.press('Enter');
     await expect(cell).toHaveText('to_be_cleared', { timeout: 5000 });
 
@@ -128,11 +132,11 @@ test.describe('字段行操作验证 @fields', () => {
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
     await typeCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('int');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('int');
     await page.keyboard.press('Enter');
     await expect(typeCell).toHaveText(/int/i);
 
-    const sqlOutput = page.locator('[data-state="active"] pre');
+    const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
     await expect(sqlOutput).toContainText(/to_be_cleared/i, { timeout: 10000 });
 
     // 点击“清空所有”

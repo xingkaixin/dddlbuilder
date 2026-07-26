@@ -32,7 +32,9 @@ test.describe('核心 UI 交互功能测试 @core', () => {
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await firstFieldNameCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('field_to_clear');
+    await page
+      .locator('[data-testid="data-table"] input:not([aria-hidden="true"])')
+      .fill('field_to_clear');
     await page.keyboard.press('Enter');
 
     // 验证数据已填写

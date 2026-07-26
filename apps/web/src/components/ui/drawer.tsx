@@ -1,55 +1,55 @@
 import * as React from 'react';
-import { Drawer as DrawerPrimitive } from '@base-ui/react/drawer';
+import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 
 import { cn } from '@/lib/utils';
 
-function Drawer({ swipeDirection = 'left', ...props }: DrawerPrimitive.Root.Props) {
-  return <DrawerPrimitive.Root data-slot="drawer" swipeDirection={swipeDirection} {...props} />;
+function Drawer(props: DialogPrimitive.Root.Props) {
+  return <DialogPrimitive.Root data-slot="drawer" {...props} />;
 }
 
-function DrawerTrigger(props: DrawerPrimitive.Trigger.Props) {
-  return <DrawerPrimitive.Trigger data-slot="drawer-trigger" {...props} />;
+function DrawerTrigger(props: DialogPrimitive.Trigger.Props) {
+  return <DialogPrimitive.Trigger data-slot="drawer-trigger" {...props} />;
 }
 
-function DrawerPortal(props: DrawerPrimitive.Portal.Props) {
-  return <DrawerPrimitive.Portal data-slot="drawer-portal" {...props} />;
+function DrawerPortal(props: DialogPrimitive.Portal.Props) {
+  return <DialogPrimitive.Portal data-slot="drawer-portal" {...props} />;
 }
 
-type DrawerCloseProps = DrawerPrimitive.Close.Props & { asChild?: boolean };
+type DrawerCloseProps = DialogPrimitive.Close.Props & { asChild?: boolean };
 
 function DrawerClose({ asChild, children, ...props }: DrawerCloseProps) {
   return (
-    <DrawerPrimitive.Close
+    <DialogPrimitive.Close
       data-slot="drawer-close"
       render={asChild && React.isValidElement(children) ? children : undefined}
       {...props}
     >
       {asChild ? undefined : children}
-    </DrawerPrimitive.Close>
+    </DialogPrimitive.Close>
   );
 }
 
-function DrawerTitle({ className, ...props }: DrawerPrimitive.Title.Props) {
+function DrawerTitle({ className, ...props }: DialogPrimitive.Title.Props) {
   return (
-    <DrawerPrimitive.Title
+    <DialogPrimitive.Title
       className={cn('text-lg font-semibold leading-none tracking-tight', className)}
       {...props}
     />
   );
 }
 
-function DrawerDescription({ className, ...props }: DrawerPrimitive.Description.Props) {
+function DrawerDescription({ className, ...props }: DialogPrimitive.Description.Props) {
   return (
-    <DrawerPrimitive.Description
+    <DialogPrimitive.Description
       className={cn('text-sm text-muted-foreground', className)}
       {...props}
     />
   );
 }
 
-function DrawerOverlay({ className, ...props }: DrawerPrimitive.Backdrop.Props) {
+function DrawerOverlay({ className, ...props }: DialogPrimitive.Backdrop.Props) {
   return (
-    <DrawerPrimitive.Backdrop
+    <DialogPrimitive.Backdrop
       data-slot="drawer-overlay"
       className={cn('t-base-overlay fixed inset-0 z-50 bg-black/60', className)}
       {...props}
@@ -57,24 +57,20 @@ function DrawerOverlay({ className, ...props }: DrawerPrimitive.Backdrop.Props) 
   );
 }
 
-function DrawerContent({ className, children, ...props }: DrawerPrimitive.Popup.Props) {
+function DrawerContent({ className, children, ...props }: DialogPrimitive.Popup.Props) {
   return (
     <DrawerPortal>
       <DrawerOverlay />
-      <DrawerPrimitive.Viewport className="pointer-events-none fixed inset-0 z-50">
-        <DrawerPrimitive.Popup
-          data-slot="drawer-popup"
-          className={cn(
-            'pointer-events-auto fixed inset-y-0 left-0 z-50 flex w-[90vw] max-w-sm flex-col border bg-background shadow-lg outline-none transition-transform duration-300 data-ending-style:-translate-x-full data-starting-style:-translate-x-full',
-            className,
-          )}
-          {...props}
-        >
-          <DrawerPrimitive.Content className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            {children}
-          </DrawerPrimitive.Content>
-        </DrawerPrimitive.Popup>
-      </DrawerPrimitive.Viewport>
+      <DialogPrimitive.Popup
+        data-slot="drawer-popup"
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 flex w-[90vw] max-w-sm flex-col border bg-background shadow-lg outline-none transition-transform duration-300 data-ending-style:pointer-events-none data-ending-style:-translate-x-full data-starting-style:-translate-x-full',
+          className,
+        )}
+        {...props}
+      >
+        {children}
+      </DialogPrimitive.Popup>
     </DrawerPortal>
   );
 }

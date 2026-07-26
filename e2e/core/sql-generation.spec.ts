@@ -31,7 +31,7 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await firstFieldNameCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('id');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('id');
     await page.keyboard.press('Enter');
 
     // 填写字段注释 (第三列)
@@ -39,7 +39,9 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(3)',
     );
     await firstFieldCommentCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('用户编号');
+    await page
+      .locator('[data-testid="data-table"] input:not([aria-hidden="true"])')
+      .fill('用户编号');
     await page.keyboard.press('Enter');
 
     // 填写字段类型 (第四列)
@@ -47,7 +49,9 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
     await firstFieldTypeCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('varchar(255)');
+    await page
+      .locator('[data-testid="data-table"] input:not([aria-hidden="true"])')
+      .fill('varchar(255)');
     await page.keyboard.press('Enter');
     await confirmFieldTypeChangeIfNeeded(page);
 
@@ -57,7 +61,7 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
     await expect(firstFieldTypeCell).toHaveText('varchar(255)');
 
     // 4. 验证生成的 SQL
-    const sqlOutput = page.locator('[data-state="active"] pre');
+    const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
 
     // 等待状态同步
     await expect(sqlOutput).toContainText(/CREATE TABLE\s+`?user_profile`?/i, {
@@ -69,7 +73,7 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
 
     // 5. 点击第五列的 checkbox 切换为 '否' (NOT NULL)
     const firstNullableCheckbox = page.locator(
-      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(5) button[role="checkbox"]',
+      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(5) [data-slot="checkbox"]',
     );
     await firstNullableCheckbox.click();
     await page.waitForTimeout(1000); // 等待状态更新和 SQL 重新生成
@@ -86,14 +90,14 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await nameCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('id');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('id');
     await page.keyboard.press('Enter');
 
     const typeCell = page.locator(
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
     await typeCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('int');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('int');
     await page.keyboard.press('Enter');
 
     await page.evaluate(() => {

@@ -19,7 +19,7 @@ test.describe('字段模板应用验证 @fields', () => {
     if ((await auditTemplate.count()) > 0) {
       await auditTemplate.first().click();
 
-      const sqlOutput = page.locator('[data-state="active"] pre');
+      const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
       await expect(sqlOutput).toContainText(/created_at/i);
       await expect(sqlOutput).toContainText(/updated_at/i);
     } else {
@@ -31,7 +31,9 @@ test.describe('字段模板应用验证 @fields', () => {
       const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
       await expect(cell).toBeVisible();
       await cell.dblclick();
-      await page.locator('[data-testid="data-table"] input').fill('custom_f1');
+      await page
+        .locator('[data-testid="data-table"] input:not([aria-hidden="true"])')
+        .fill('custom_f1');
       await page.keyboard.press('Enter');
 
       await templateBtn.click();

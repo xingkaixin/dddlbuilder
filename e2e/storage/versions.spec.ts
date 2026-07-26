@@ -4,11 +4,11 @@ import { ensureBuilderVisible } from '../utils';
 const fillBasicField = async (page: any, name = 'f1') => {
   const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
   await cell.dblclick();
-  await page.locator('[data-testid="data-table"] input').fill(name);
+  await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill(name);
 
   const typeCell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)');
   await typeCell.dblclick();
-  await page.locator('[data-testid="data-table"] input').fill('int');
+  await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('int');
   await page.keyboard.press('Enter');
 };
 
@@ -108,7 +108,9 @@ test.describe('版本管理验证 @storage', () => {
 
     // 修改字段名
     await cell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('f1_updated');
+    await page
+      .locator('[data-testid="data-table"] input:not([aria-hidden="true"])')
+      .fill('f1_updated');
     await page.keyboard.press('Enter');
     await page.waitForTimeout(200);
 

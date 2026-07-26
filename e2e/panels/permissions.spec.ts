@@ -17,7 +17,7 @@ test.describe('权限管理验证 @panels', () => {
     // 添加一个字段
     const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
     await cell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('id');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('id');
     await page.keyboard.press('Enter');
   });
 
@@ -36,11 +36,11 @@ test.describe('权限管理验证 @panels', () => {
     const dclTab = page.getByRole('tab', { name: /授权 DCL/i });
     if (await dclTab.isVisible()) {
       await dclTab.click();
-      const dclOutput = page.locator('[data-state="active"] pre');
+      const dclOutput = page.locator('[role="tabpanel"]:visible pre');
       await expect(dclOutput).toContainText(/GRANT SELECT ON perm_test TO admin_role/i);
     } else {
       // 如果没有特定 Tab，可能就在同一个面板下
-      const sqlOutput = page.locator('[data-state="active"] pre');
+      const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
       await expect(sqlOutput).toContainText(/GRANT SELECT ON perm_test TO admin_role/i);
     }
   });

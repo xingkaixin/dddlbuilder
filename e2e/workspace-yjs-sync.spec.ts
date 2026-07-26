@@ -197,7 +197,7 @@ const editFirstFieldName = async (page: Page, fieldName: string) => {
 const editFirstFieldType = async (page: Page, fieldType: string) => {
   const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)');
   await cell.dblclick();
-  await page.locator('[data-testid="data-table"] input').fill(fieldType);
+  await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill(fieldType);
   await page.keyboard.press('Enter');
   await confirmFieldTypeChangeIfNeeded(page);
 };
@@ -523,7 +523,7 @@ test('workspace yjs sync preserves offline edits locally and converges after rec
   await page.goto('/');
   await openDraftByName(page, 'cloud_seed');
   await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
-  await expect(page.locator('[data-state="active"] pre code')).toBeVisible();
+  await expect(page.locator('[role="tabpanel"]:visible pre code')).toBeVisible();
 
   await context.setOffline(true);
   await page.evaluate(() => window.dispatchEvent(new Event('offline')));

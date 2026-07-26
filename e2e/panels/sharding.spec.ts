@@ -17,7 +17,9 @@ test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
     // 添加字段
     const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
     await cell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('user_id');
+    await page
+      .locator('[data-testid="data-table"] input:not([aria-hidden="true"])')
+      .fill('user_id');
     await page.keyboard.press('Enter');
     await expect(cell).toHaveText('user_id');
 
@@ -25,7 +27,7 @@ test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
     await typeCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('int');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('int');
     await page.keyboard.press('Enter');
 
     // 切换到“PostgreSQL Citus”面板 (如果已显示)
@@ -41,7 +43,7 @@ test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
     await panel.getByRole('combobox').click();
     await page.getByRole('option', { name: /user_id/i }).click();
 
-    const sqlOutput = page.locator('[data-state="active"] pre');
+    const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
     await expect(sqlOutput).toContainText(
       /SELECT create_distributed_table\('sharded_table', 'user_id'\)/i,
     );
@@ -55,20 +57,20 @@ test.describe('PostgreSQL Citus 分片配置验证 @panels', () => {
 
     const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
     await cell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('id');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('id');
     await page.keyboard.press('Enter');
 
     const typeCell = page.locator(
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
     await typeCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('int');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('int');
     await page.keyboard.press('Enter');
 
     await page.getByText('分片配置').click();
     await page.getByRole('button', { name: /副本表/i }).click();
 
-    const sqlOutput = page.locator('[data-state="active"] pre');
+    const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
     await expect(sqlOutput).toContainText(/SELECT create_reference_table\('reference_table'\)/i);
   });
 

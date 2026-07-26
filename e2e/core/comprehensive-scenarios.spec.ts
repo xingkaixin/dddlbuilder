@@ -27,18 +27,18 @@ test.describe('综合场景测试 @core @smoke', () => {
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await firstFieldNameCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('id');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('id');
     await page.keyboard.press('Enter');
 
     const firstFieldTypeCell = page.locator(
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
     await firstFieldTypeCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('bigint');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('bigint');
     await page.keyboard.press('Enter');
 
     // 4. 验证 SQL 已生成
-    const sqlOutput = page.locator('[data-state="active"] pre');
+    const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
     await expect(sqlOutput).toContainText(/CREATE TABLE\s+`?user_order`?/i, {
       timeout: 10000,
     });
@@ -54,7 +54,9 @@ test.describe('综合场景测试 @core @smoke', () => {
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await firstFieldNameCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('test_field');
+    await page
+      .locator('[data-testid="data-table"] input:not([aria-hidden="true"])')
+      .fill('test_field');
     await page.keyboard.press('Enter');
 
     // 验证字段存在

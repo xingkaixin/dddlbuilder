@@ -14,7 +14,7 @@ test.describe('数据库切换与方言验证 @core', () => {
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await firstFieldNameCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('id');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('id');
     await page.keyboard.press('Enter');
 
     // 3. 填写第一个字段类型 (VARCHAR255)
@@ -22,7 +22,9 @@ test.describe('数据库切换与方言验证 @core', () => {
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
     await firstFieldTypeCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('varchar(255)');
+    await page
+      .locator('[data-testid="data-table"] input:not([aria-hidden="true"])')
+      .fill('varchar(255)');
     await page.keyboard.press('Enter');
     await confirmFieldTypeChangeIfNeeded(page);
 
@@ -70,5 +72,5 @@ test.describe('数据库切换与方言验证 @core', () => {
 });
 
 function sqlOutput(page: Page) {
-  return page.locator('[data-state="active"] pre');
+  return page.locator('[role="tabpanel"]:visible pre');
 }

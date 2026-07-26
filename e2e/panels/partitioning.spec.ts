@@ -25,7 +25,7 @@ test.describe('MySQL 分区配置验证 @panels', () => {
     // 添加字段
     const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
     await cell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('id');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('id');
     await page.keyboard.press('Enter');
     await expect(cell).toHaveText('id');
 
@@ -33,7 +33,7 @@ test.describe('MySQL 分区配置验证 @panels', () => {
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
     await typeCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('int');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('int');
     await page.keyboard.press('Enter');
   });
 
@@ -46,7 +46,7 @@ test.describe('MySQL 分区配置验证 @panels', () => {
     // 输入分区表达式
     await page.getByPlaceholder(/输入表达式/i).fill('id');
 
-    const sqlOutput = page.locator('[data-state="active"] pre');
+    const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
     await expect(sqlOutput).toContainText(/PARTITION BY HASH\(id\)/i);
   });
 
@@ -57,7 +57,7 @@ test.describe('MySQL 分区配置验证 @panels', () => {
     await page.getByPlaceholder(/输入表达式/i).fill('id');
     await partitionPanel.getByRole('spinbutton').fill('8');
 
-    const sqlOutput = page.locator('[data-state="active"] pre');
+    const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
     await expect(sqlOutput).toContainText(/PARTITION BY KEY\(id\)/i);
     await expect(sqlOutput).toContainText(/PARTITIONS 8/i);
   });
@@ -69,7 +69,7 @@ test.describe('MySQL 分区配置验证 @panels', () => {
     await page.getByPlaceholder(/输入表达式/i).fill('id');
     await page.getByRole('button', { name: /按年/i }).click();
 
-    const sqlOutput = page.locator('[data-state="active"] pre');
+    const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
     await expect(sqlOutput).toContainText(/PARTITION BY RANGE\(id\)/i);
   });
 
@@ -83,7 +83,7 @@ test.describe('MySQL 分区配置验证 @panels', () => {
     await page.getByPlaceholder('分区名').fill('p1');
     await page.getByPlaceholder(/\(1, 2, 3\)/).fill('(1, 2)');
 
-    const sqlOutput = page.locator('[data-state="active"] pre');
+    const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
     await expect(sqlOutput).toContainText(/PARTITION BY LIST\(id\)/i);
   });
 });

@@ -18,7 +18,7 @@ test.describe('索引管理验证 @panels', () => {
     // 添加一个字段
     const cell = page.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)');
     await cell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('id');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('id');
     await page.keyboard.press('Enter');
     await expect(cell).toHaveText('id');
 
@@ -26,7 +26,7 @@ test.describe('索引管理验证 @panels', () => {
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
     await typeCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('int');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('int');
     await page.keyboard.press('Enter');
     await expect(typeCell).toHaveText(/int/i);
   });

@@ -60,7 +60,7 @@ test.describe('SQL 导入功能验证 @tools', () => {
     await expect(cell1).toHaveText('id');
 
     // 验证 SQL 生成面板同步更新
-    const sqlOutput = page.locator('[data-state="active"] pre');
+    const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
     await expect(sqlOutput).toContainText(/CREATE TABLE import_test/i);
     await expect(sqlOutput).toContainText(/id\s+INT/i);
   });

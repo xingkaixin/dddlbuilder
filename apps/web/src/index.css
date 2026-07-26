@@ -290,6 +290,12 @@
     opacity var(--dropdown-close-dur) var(--dropdown-ease);
 }
 
+.t-base-popup[data-ending-style] {
+  transform: scale(var(--dropdown-closing-scale));
+  opacity: 0;
+  pointer-events: none;
+}
+
 .t-base-popup[data-side='top'] {
   transform-origin: bottom center;
 }
@@ -321,6 +327,12 @@
     opacity var(--modal-close-dur) var(--modal-ease);
 }
 
+.t-base-modal[data-ending-style] {
+  transform: translate(-50%, -50%) scale(var(--modal-scale-close));
+  opacity: 0;
+  pointer-events: none;
+}
+
 .t-base-overlay {
   opacity: 0;
   transition: opacity var(--modal-open-dur) var(--modal-ease);
@@ -333,7 +345,13 @@
 
 .t-base-overlay[data-closed] {
   opacity: 0;
+  pointer-events: none;
   transition-duration: var(--modal-close-dur);
+}
+
+.t-base-overlay[data-ending-style] {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .t-ui-button {

@@ -40,14 +40,14 @@ test.describe('AI 功能 UI 测试 @tools @ai', () => {
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await firstFieldNameCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('id');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('id');
     await page.keyboard.press('Enter');
 
     const firstFieldTypeCell = page.locator(
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
     await firstFieldTypeCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('int');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('int');
     await page.keyboard.press('Enter');
 
     // 查找评审按钮
@@ -61,7 +61,7 @@ test.describe('AI 功能 UI 测试 @tools @ai', () => {
 
       // 检查是否有加载状态或评审结果区域
       // 只检查按钮点击是否有反应，不等待实际 API 响应
-      await expect(page.locator('[data-state="active"] pre')).toBeVisible();
+      await expect(page.locator('[role="tabpanel"]:visible pre')).toBeVisible();
     }
   });
 
@@ -73,12 +73,14 @@ test.describe('AI 功能 UI 测试 @tools @ai', () => {
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await firstFieldNameCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('test_field');
+    await page
+      .locator('[data-testid="data-table"] input:not([aria-hidden="true"])')
+      .fill('test_field');
     await page.keyboard.press('Enter');
 
     // 查找解释按钮或图标
     // 解释功能通常在 SQL 输出区域附近
-    const sqlOutput = page.locator('[data-state="active"] pre');
+    const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
     await expect(sqlOutput).toBeVisible({ timeout: 10000 });
 
     // 查找可能的"解释"按钮

@@ -20,14 +20,14 @@ test.describe('表选项面板功能测试 @panels', () => {
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await firstFieldNameCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('id');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('id');
     await page.keyboard.press('Enter');
 
     const firstFieldTypeCell = page.locator(
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
     await firstFieldTypeCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('int');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('int');
     await page.keyboard.press('Enter');
 
     // 切换到"表选项"标签页
@@ -57,7 +57,7 @@ test.describe('表选项面板功能测试 @panels', () => {
             await page.getByRole('option', { name: 'MyISAM' }).click();
 
             // 验证生成的 SQL 包含表选项
-            const sqlOutput = page.locator('[data-state="active"] pre');
+            const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
             await expect(sqlOutput).toContainText(/ENGINE=MyISAM/i, {
               timeout: 10000,
             });
@@ -77,14 +77,14 @@ test.describe('表选项面板功能测试 @panels', () => {
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)',
     );
     await firstFieldNameCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('id');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('id');
     await page.keyboard.press('Enter');
 
     const firstFieldTypeCell = page.locator(
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
     );
     await firstFieldTypeCell.dblclick();
-    await page.locator('[data-testid="data-table"] input').fill('int');
+    await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('int');
     await page.keyboard.press('Enter');
 
     // 切换到"表选项"标签页
@@ -103,7 +103,7 @@ test.describe('表选项面板功能测试 @panels', () => {
         await expect(enableSwitch).not.toBeChecked();
 
         // 验证 SQL 可见
-        const sqlOutput = page.locator('[data-state="active"] pre');
+        const sqlOutput = page.locator('[role="tabpanel"]:visible pre');
         await page.waitForTimeout(500);
         await expect(sqlOutput).toBeVisible();
       }
