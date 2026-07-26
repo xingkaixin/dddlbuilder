@@ -192,24 +192,6 @@ const findExistingSnapshot = async (
     }>();
 };
 
-const listSnapshotNames = async (env: ApiEnv['Bindings'], userId: string, kind: SnapshotKind) => {
-  const result = await env.USER_DB.prepare(
-    `
-      SELECT normalized_name AS normalizedName
-      FROM workspace_snapshots
-      WHERE user_id = ? AND kind = ? AND normalized_name IS NOT NULL
-    `,
-  )
-    .bind(userId, kind)
-    .all<{ normalizedName: string }>();
-
-  return new Set(
-    (result.results ?? [])
-      .map((item) => item.normalizedName)
-      .filter((value): value is string => typeof value === 'string' && value.length > 0),
-  );
-};
-
 const writeSnapshot = async (env: ApiEnv['Bindings'], userId: string, record: SnapshotRecord) => {
   await env.USER_DB.prepare(
     `
@@ -247,25 +229,44 @@ const writeSnapshot = async (env: ApiEnv['Bindings'], userId: string, record: Sn
   });
 };
 
-const resolveUniqueName = async (
+const resolveCopyRecord = async (
   env: ApiEnv['Bindings'],
   userId: string,
-  kind: SnapshotKind,
-  baseName: string,
+  source: SnapshotRecord,
 ) => {
-  const existing = await listSnapshotNames(env, userId, kind);
+  const targetKind = source.kind === 'global_draft' ? 'saved_draft' : source.kind;
+  const baseName = source.kind === 'global_draft' ? 'Migrated draft' : source.displayName;
+  const sourcePayload = JSON.parse(source.payloadJson) as Record<string, unknown>;
   let counter = 0;
-  let candidate = buildLocalCopyName(baseName, counter);
-  let normalizedCandidate = normalizeName(candidate);
-  while (existing.has(normalizedCandidate)) {
+  while (true) {
+    const displayName = buildLocalCopyName(baseName, counter);
+    const normalizedName = normalizeName(displayName);
+    const payload =
+      source.kind === 'global_draft'
+        ? {
+            tableName: displayName,
+            baseSignature: '',
+            state: sourcePayload.state,
+          }
+        : {
+            ...sourcePayload,
+            name: displayName,
+            tableName: displayName,
+          };
+    const candidate = buildSnapshotRecord(
+      userId,
+      targetKind,
+      normalizedName,
+      displayName,
+      payload,
+      source.sourceUpdatedAt,
+    );
+    const existing = await findExistingSnapshot(env, userId, targetKind, normalizedName);
+    if (!existing || existing.payloadJson === candidate.payloadJson) {
+      return { record: candidate, alreadyExists: Boolean(existing) };
+    }
     counter += 1;
-    candidate = buildLocalCopyName(baseName, counter);
-    normalizedCandidate = normalizeName(candidate);
   }
-  return {
-    displayName: candidate,
-    normalizedName: normalizedCandidate,
-  };
 };
 
 const mergeGlobalDraft = (payload: WorkspaceMigrationPayload['snapshot']) => {
@@ -448,6 +449,18 @@ export const commitWorkspaceMigration = async (
     };
   }
 
+  const existingLink = await readWorkspaceLink(env, userId, payload.localFingerprint);
+  if (existingLink?.migrationStatus === 'completed') {
+    return {
+      status: 'completed',
+      createdCount: 0,
+      copiedCount: 0,
+      skippedCount: records.length,
+      conflictCount: 0,
+      conflicts: [],
+    };
+  }
+
   await upsertWorkspaceLink(env, {
     userId,
     localFingerprint: payload.localFingerprint,
@@ -480,42 +493,13 @@ export const commitWorkspaceMigration = async (
         continue;
       }
 
-      if (record.kind === 'global_draft') {
-        const copyName = await resolveUniqueName(env, userId, 'saved_draft', 'Migrated draft');
-        await writeSnapshot(
-          env,
-          userId,
-          buildSnapshotRecord(
-            userId,
-            'saved_draft',
-            copyName.normalizedName,
-            copyName.displayName,
-            {
-              tableName: copyName.displayName,
-              baseSignature: '',
-              state: JSON.parse(record.payloadJson).state,
-            },
-            record.sourceUpdatedAt,
-          ),
-        );
+      const copy = await resolveCopyRecord(env, userId, record);
+      await writeSnapshot(env, userId, copy.record);
+      if (copy.alreadyExists) {
+        skippedCount += 1;
+      } else {
         copiedCount += 1;
-        continue;
       }
-
-      const copyName = await resolveUniqueName(env, userId, record.kind, record.displayName);
-      const payloadJson = JSON.stringify({
-        ...JSON.parse(record.payloadJson),
-        name: copyName.displayName,
-        tableName: copyName.displayName,
-      });
-      await writeSnapshot(env, userId, {
-        ...record,
-        id: buildSnapshotId(userId, record.kind, copyName.normalizedName),
-        normalizedName: copyName.normalizedName,
-        displayName: copyName.displayName,
-        payloadJson,
-      });
-      copiedCount += 1;
     }
 
     await upsertWorkspaceLink(env, {
