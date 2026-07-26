@@ -62,16 +62,18 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
     () => indexes.find((index) => index.id === selectedIndexId) ?? null,
     [indexes, selectedIndexId],
   );
+  const selectedFieldNames = useMemo(
+    () => new Set(draft.fields.map((field) => field.name)),
+    [draft.fields],
+  );
 
   const fieldSuggestions = useMemo(() => {
     const query = fieldQuery.trim().toLowerCase();
     if (!query) return [];
     return availableFields.filter(
-      (field) =>
-        field.toLowerCase().includes(query) &&
-        !draft.fields.some((selected) => selected.name === field),
+      (field) => field.toLowerCase().includes(query) && !selectedFieldNames.has(field),
     );
-  }, [availableFields, draft.fields, fieldQuery]);
+  }, [availableFields, fieldQuery, selectedFieldNames]);
 
   useEffect(() => {
     setActiveSuggestionIndex(fieldSuggestions.length > 0 ? 0 : -1);
