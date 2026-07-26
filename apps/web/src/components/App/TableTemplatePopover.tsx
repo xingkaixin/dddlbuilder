@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useState } from 'react';
-import { ChevronDown, LayoutTemplate, Plus, Search, Settings } from 'lucide-react';
+import { ChevronDown, LayoutTemplate, Plus, Search, Settings } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

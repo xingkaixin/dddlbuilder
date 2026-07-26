@@ -8,7 +8,7 @@ import {
   SkipForward,
   Clock,
   Loader2,
-} from 'lucide-react';
+} from '@/components/icons';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';

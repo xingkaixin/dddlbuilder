@@ -4,7 +4,7 @@
  */
 
 import { memo, useState, useCallback, useEffect, useMemo } from 'react';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search } from '@/components/icons';
 import {
   Dialog,
   DialogContent,

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ForeignKeyAction } from '@ddlbuilder/shared-types';
-import { AlertTriangle, ArrowRight, KeyRound, Link2 } from 'lucide-react';
+import { AlertTriangle, ArrowRight, KeyRound, Link2 } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';

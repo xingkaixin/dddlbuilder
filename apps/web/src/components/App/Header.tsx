@@ -25,7 +25,7 @@ import {
   HardDrive,
   RefreshCw,
   WifiOff,
-} from 'lucide-react';
+} from '@/components/icons';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useLocale } from '@/i18n/LocaleContext';
 import { getDocsUrl } from '@/utils/docsLink';

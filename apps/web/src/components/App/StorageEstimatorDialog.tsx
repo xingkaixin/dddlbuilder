@@ -11,7 +11,15 @@ import { Input } from '@/components/ui/input';
 import { AnimatedNumber } from '@/components/ui/animated-number';
 import type { DatabaseType, IndexDefinition, NormalizedField } from '@ddlbuilder/shared-types';
 import { useStorageEstimation } from '@/hooks/useStorageEstimation';
-import { Database, HardDrive, InfoIcon, BarChart3, Layers, GitBranch, Zap } from 'lucide-react';
+import {
+  Database,
+  HardDrive,
+  InfoIcon,
+  BarChart3,
+  Layers,
+  GitBranch,
+  Zap,
+} from '@/components/icons';
 
 interface StorageEstimatorDialogProps {
   open: boolean;

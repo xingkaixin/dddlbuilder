@@ -4,7 +4,7 @@
  */
 
 import { memo, useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { FileText, ChevronDown, Settings, Plus, Search } from 'lucide-react';
+import { FileText, ChevronDown, Settings, Plus, Search } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';

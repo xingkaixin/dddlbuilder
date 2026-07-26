@@ -6,7 +6,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { CheckCircle2, AlertCircle, Download } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Download } from '@/components/icons';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 import type { ImportMode, ImportSourceType, ValidationResult } from './types';
 import { useTranslation } from 'react-i18next';

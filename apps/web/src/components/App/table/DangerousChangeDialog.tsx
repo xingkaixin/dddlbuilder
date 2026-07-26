@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from '@/components/icons';
 import {
   AlertDialog,
   AlertDialogAction,

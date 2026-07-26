@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useState } from 'react';
-import { Copy, Pencil, Search, Trash2 } from 'lucide-react';
+import { Copy, Pencil, Search, Trash2 } from '@/components/icons';
 import {
   AlertDialog,
   AlertDialogAction,

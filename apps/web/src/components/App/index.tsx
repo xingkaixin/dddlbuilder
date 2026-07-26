@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react
 import type { AICommentMode, DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
 import { createEmptyRow } from '@/utils/helpers';
 import { isTabAvailable } from '@/utils/tabUtils';
-import { ChevronRight, Upload } from 'lucide-react';
+import { ChevronRight, Upload } from '@/components/icons';
 import { Header } from './Header';
 import { GlobalDialogs } from './containers/GlobalDialogs';
 import { OutputContainer } from './containers/OutputContainer';

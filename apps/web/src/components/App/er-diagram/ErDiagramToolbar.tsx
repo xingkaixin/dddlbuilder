@@ -1,6 +1,6 @@
 import { memo, useCallback, useState } from 'react';
 import { Panel, useReactFlow } from '@xyflow/react';
-import { ZoomIn, ZoomOut, Maximize, Plus, LayoutGrid } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize, Plus, LayoutGrid } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
 

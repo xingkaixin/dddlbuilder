@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { FileEdit, GripVertical, MoreHorizontal, Pencil, Table2, Trash2 } from 'lucide-react';
+import { FileEdit, GripVertical, MoreHorizontal, Pencil, Table2, Trash2 } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,

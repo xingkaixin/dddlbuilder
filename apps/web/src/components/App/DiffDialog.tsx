@@ -1,5 +1,13 @@
 import { memo, useMemo, useCallback, useState, lazy, Suspense } from 'react';
-import { Copy, Plus, Minus, RefreshCw, RotateCcw, ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  Copy,
+  Plus,
+  Minus,
+  RefreshCw,
+  RotateCcw,
+  ChevronDown,
+  ChevronRight,
+} from '@/components/icons';
 import {
   Dialog,
   DialogContent,

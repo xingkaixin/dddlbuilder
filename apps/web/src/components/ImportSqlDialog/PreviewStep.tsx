@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Eye, ArrowLeft, ArrowRight, Trash2 } from 'lucide-react';
+import { Eye, ArrowLeft, ArrowRight, Trash2 } from '@/components/icons';
 import type { ParsedResult } from '@/utils/SqlParser';
 import type { PreviewField } from './types';
 import { useTranslation } from 'react-i18next';

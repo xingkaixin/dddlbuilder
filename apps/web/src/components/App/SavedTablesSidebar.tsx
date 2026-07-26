@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useRef } from 'react';
-import { Database, ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react';
+import { Database, ChevronLeft, ChevronRight, Pencil, Trash2 } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';

@@ -1,5 +1,5 @@
 import { memo, useMemo, type ReactNode } from 'react';
-import { Plus, X, Loader2, ChevronDown } from 'lucide-react';
+import { Plus, X, Loader2, ChevronDown } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import type { WorkspaceTab } from '@/stores';
 import {

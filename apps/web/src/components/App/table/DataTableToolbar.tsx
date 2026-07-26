@@ -21,7 +21,7 @@ import {
   ListPlus,
   SearchCheck,
   TableProperties,
-} from 'lucide-react';
+} from '@/components/icons';
 import { COLUMN_HEADERS } from '@/utils/constants';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';

@@ -1,7 +1,7 @@
 import type React from 'react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Lightbulb, Loader2, X, Check } from 'lucide-react';
+import { Lightbulb, Loader2, X, Check } from '@/components/icons';
 import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';

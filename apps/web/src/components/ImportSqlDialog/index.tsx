@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/useToast';
 import { requestSqlParse, requestMultiSqlParse } from '@/services/sqlParseService';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
 import { parseExcelImport, parseStructuredImportText } from '@/utils/structuredImportParser';
-import { ArrowRight, Check } from 'lucide-react';
+import { ArrowRight, Check } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import type { SavedTableSummary, SaveTableResult } from '@/hooks/useSavedTables';
 import type { FolderTreeNode } from '@/hooks/useFolders';

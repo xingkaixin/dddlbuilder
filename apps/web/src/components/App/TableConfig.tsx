@@ -10,7 +10,7 @@ import {
   Table,
   Trash2,
   Waypoints,
-} from 'lucide-react';
+} from '@/components/icons';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/select';

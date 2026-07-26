@@ -23,7 +23,7 @@ import {
   Workflow,
   Code,
   PanelRightClose,
-} from 'lucide-react';
+} from '@/components/icons';
 import { DATABASE_OPTIONS } from '@/utils/constants';
 import { ReviewResultPanel } from './ReviewResult';
 import { SchemaLintPanel } from './SchemaLintPanel';

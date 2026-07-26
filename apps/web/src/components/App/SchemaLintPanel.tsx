@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { AlertCircle, AlertTriangle, CheckCircle2, Info, ShieldCheck } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle2, Info, ShieldCheck } from '@/components/icons';
 import type { SchemaLintIssue, SchemaLintSeverity } from '@/utils/schemaLint';
 import { useTranslation } from 'react-i18next';
 

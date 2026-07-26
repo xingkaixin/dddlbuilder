@@ -1,5 +1,5 @@
 import { memo, useState, useCallback } from 'react';
-import { Pencil } from 'lucide-react';
+import { Pencil } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import type { EnumValueMeta } from '@ddlbuilder/shared-types';
 import { useTranslation } from 'react-i18next';

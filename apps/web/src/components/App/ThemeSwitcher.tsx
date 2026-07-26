@@ -1,4 +1,4 @@
-import { Laptop, Moon, Sun } from 'lucide-react';
+import { Laptop, Moon, Sun } from '@/components/icons';
 import { useTheme } from 'next-themes';
 import { memo } from 'react';
 import { createPortal } from 'react-dom';

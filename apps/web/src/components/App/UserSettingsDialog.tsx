@@ -7,7 +7,7 @@ import {
   Download,
   RefreshCw,
   User2,
-} from 'lucide-react';
+} from '@/components/icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuthSession } from '@/auth/AuthSessionProvider';

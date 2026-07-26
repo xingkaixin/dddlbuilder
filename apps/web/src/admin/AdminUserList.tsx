@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { listUsers, type AdminUserSummary } from './lib/adminApi';
 import { Button } from '@/components/ui/button';
-import { Eye } from 'lucide-react';
+import { Eye } from '@/components/icons';
 
 type AdminUserListProps = {
   onSelectUser: (userId: string) => void;

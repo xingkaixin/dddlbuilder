@@ -3,7 +3,7 @@ import type { DatabaseType, IndexDefinition, IndexField } from '@ddlbuilder/shar
 import { buildPrimaryKeyName } from '@ddlbuilder/ddl-core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Key, Lock, Hash, Pencil, Trash2, GripVertical, X } from 'lucide-react';
+import { Key, Lock, Hash, Pencil, Trash2, GripVertical, X } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { buildNormalizedFields, useAppStore, useFieldStore, useIndexStore } from '@/stores';
 import { buildIndexName, getIndexNameMaxLength, truncateIndexName } from '@/utils/indexNameUtils';

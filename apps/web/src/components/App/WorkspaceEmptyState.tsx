@@ -1,5 +1,5 @@
 import { memo, type ReactNode } from 'react';
-import { FileEdit, Lightbulb, Plus, Table2 } from 'lucide-react';
+import { FileEdit, Lightbulb, Plus, Table2 } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import type { DraftSummary } from '@ddlbuilder/shared-types/workspace';

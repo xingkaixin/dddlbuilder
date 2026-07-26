@@ -17,7 +17,7 @@ import type {
   AIIndexAdvisorRecommendationCategory,
   AIIndexAdvisorResult,
 } from '@ddlbuilder/shared-types';
-import { ListChecks, Loader2, Sparkles } from 'lucide-react';
+import { ListChecks, Loader2, Sparkles } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 interface AIIndexAdvisorDialogProps {

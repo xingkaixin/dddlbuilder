@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { Key } from 'lucide-react';
+import { Key } from '@/components/icons';
 import type { ErNodeData } from '@ddlbuilder/shared-types';
 
 function ErTableNode(props: NodeProps) {

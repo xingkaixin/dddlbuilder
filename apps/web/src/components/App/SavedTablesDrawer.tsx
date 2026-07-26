@@ -7,7 +7,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
-import { Database, FilePlus, FolderPlus, Search, X } from 'lucide-react';
+import { Database, FilePlus, FolderPlus, Search, X } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import {
   Drawer,

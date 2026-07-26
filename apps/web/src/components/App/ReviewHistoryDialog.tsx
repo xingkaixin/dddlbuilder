@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useState } from 'react';
-import { History, Trash2, Loader2, Star, ChevronDown, ChevronUp } from 'lucide-react';
+import { History, Trash2, Loader2, Star, ChevronDown, ChevronUp } from '@/components/icons';
 import {
   Dialog,
   DialogContent,

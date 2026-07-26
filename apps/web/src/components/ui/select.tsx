@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Combobox as ComboboxPrimitive } from '@base-ui/react/combobox';
 import { Select as SelectPrimitive } from '@base-ui/react/select';
-import { Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import { cn } from '@/lib/utils';

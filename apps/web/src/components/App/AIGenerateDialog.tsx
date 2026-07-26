@@ -9,7 +9,15 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Sparkles, Check, RotateCcw, Send, ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  Loader2,
+  Sparkles,
+  Check,
+  RotateCcw,
+  Send,
+  ChevronDown,
+  ChevronRight,
+} from '@/components/icons';
 import {
   useAIGenerateTable,
   type GeneratedTableSchema,

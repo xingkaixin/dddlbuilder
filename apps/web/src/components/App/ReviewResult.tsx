@@ -9,7 +9,7 @@ import {
   Plus,
   ArrowRight,
   Minus,
-} from 'lucide-react';
+} from '@/components/icons';
 import type { ReviewResult, StructuredSuggestion } from '@/hooks/useDDLReview';
 import type { PartialReviewResult } from '@/utils/parsePartialJson';
 import { Button } from '@/components/ui/button';

@@ -1,7 +1,7 @@
 import { memo, useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { X, Pencil, Link2, Plus } from 'lucide-react';
+import { X, Pencil, Link2, Plus } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useForeignKeyStore, useAppStore } from '@/stores';

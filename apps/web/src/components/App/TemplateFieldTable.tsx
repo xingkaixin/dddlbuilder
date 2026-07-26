@@ -4,7 +4,7 @@ import { DndContext, closestCenter } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useReactTable, getCoreRowModel, flexRender, type Row } from '@tanstack/react-table';
-import { GripVertical } from 'lucide-react';
+import { GripVertical } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import type { DatabaseType, EnumValueMeta, FieldRow } from '@ddlbuilder/shared-types';
 import { buildDuplicateNameSet } from '@/stores';

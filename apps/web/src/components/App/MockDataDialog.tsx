@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Copy, Download, Check, TableProperties, Minus, Plus, RefreshCw } from 'lucide-react';
+import { Copy, Download, Check, TableProperties, Minus, Plus, RefreshCw } from '@/components/icons';
 import type { DatabaseType, NormalizedField } from '@ddlbuilder/shared-types';
 import { generateMockData, downloadFile, type MockExportFormat } from '@/utils/mockDataGenerator';
 import { useTranslation } from 'react-i18next';

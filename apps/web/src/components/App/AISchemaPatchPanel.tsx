@@ -12,7 +12,7 @@ import {
   Sparkles,
   Table2,
   X,
-} from 'lucide-react';
+} from '@/components/icons';
 import type { DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
 import type { TableTemplate } from '@/hooks/useTableTemplates';

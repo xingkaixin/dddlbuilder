@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react';
-import { Settings2, Info } from 'lucide-react';
+import { Settings2, Info } from '@/components/icons';
 import type { DatabaseType, TableMiscConfig } from '@ddlbuilder/shared-types';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';

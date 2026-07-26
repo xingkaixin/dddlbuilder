@@ -1,4 +1,4 @@
-import { Code2 } from 'lucide-react';
+import { Code2 } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';

@@ -11,7 +11,7 @@ import {
   SlidersHorizontal,
   Link2,
   Code2,
-} from 'lucide-react';
+} from '@/components/icons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTranslation } from 'react-i18next';
 import { AuthPanel } from '../AuthPanel';

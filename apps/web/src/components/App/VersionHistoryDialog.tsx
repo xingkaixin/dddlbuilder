@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { History, RotateCcw, GitCompare, Trash2, Loader2, Play } from 'lucide-react';
+import { History, RotateCcw, GitCompare, Trash2, Loader2, Play } from '@/components/icons';
 import {
   Dialog,
   DialogContent,

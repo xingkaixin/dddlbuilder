@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { X } from '@/components/icons';
 import {
   COLOR_PALETTES,
   Firework,

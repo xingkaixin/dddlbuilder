@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Menu as MenuPrimitive } from '@base-ui/react/menu';
-import { Check, ChevronRight, Circle } from 'lucide-react';
+import { Check, ChevronRight, Circle } from '@/components/icons';
 
 import { cn } from '@/lib/utils';
 

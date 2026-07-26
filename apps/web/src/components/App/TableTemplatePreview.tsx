@@ -1,4 +1,4 @@
-import { Database, KeyRound, ListTree, Settings2 } from 'lucide-react';
+import { Database, KeyRound, ListTree, Settings2 } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import type { TableBlueprint } from '@/hooks/useTableTemplates';
 import { useTranslation } from 'react-i18next';

@@ -1,6 +1,6 @@
 import { memo, useCallback } from 'react';
 import { BaseEdge, EdgeLabelRenderer, type EdgeProps, getBezierPath } from '@xyflow/react';
-import { X } from 'lucide-react';
+import { X } from '@/components/icons';
 import type { ErEdgeData } from '@ddlbuilder/shared-types';
 
 function ErRelationEdge(props: EdgeProps) {

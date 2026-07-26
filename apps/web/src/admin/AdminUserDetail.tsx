@@ -15,7 +15,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Mail, Ban, PlusCircle } from 'lucide-react';
+import { ArrowLeft, Mail, Ban, PlusCircle } from '@/components/icons';
 import {
   getUserDetail,
   getUserCreditLedger,

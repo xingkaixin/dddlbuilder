@@ -1,5 +1,5 @@
 import type React from 'react';
-import { Database, GitBranch, HardDrive, Layers, Share2 } from 'lucide-react';
+import { Database, GitBranch, HardDrive, Layers, Share2 } from '@/components/icons';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 
 export const DATABASE_OPTIONS: Array<{

@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Share2, Database, GitBranch } from 'lucide-react';
+import { Share2, Database, GitBranch } from '@/components/icons';
 import type { CitusTableMode, CitusShardingConfig } from '@ddlbuilder/shared-types';
 import { useTranslation } from 'react-i18next';
 

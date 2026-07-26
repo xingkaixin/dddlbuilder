@@ -11,7 +11,7 @@ import {
   Pencil,
   Trash2,
   MoreHorizontal,
-} from 'lucide-react';
+} from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {

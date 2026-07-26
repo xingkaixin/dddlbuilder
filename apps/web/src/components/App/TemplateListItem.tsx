@@ -4,7 +4,7 @@
  */
 
 import { memo } from 'react';
-import { Pencil, Trash2, Copy, FileText } from 'lucide-react';
+import { Pencil, Trash2, Copy, FileText } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
 import { useTranslation } from 'react-i18next';
