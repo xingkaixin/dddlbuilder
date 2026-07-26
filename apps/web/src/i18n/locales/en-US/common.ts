@@ -443,6 +443,7 @@ export const enUSCommon = {
     columnName: 'Column Name',
     columnType: 'Type',
     columnComment: 'Comment',
+    removeTip: 'Remove this partition column',
     clustering: {
       title: 'Bucketing Configuration',
       description:
