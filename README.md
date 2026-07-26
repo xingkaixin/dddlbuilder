@@ -11,7 +11,7 @@
   - 支持分区表达式（如 `YEAR(col)`、`dayofmonth(col)`）
   - RANGE 分区快捷生成：按年/月/日一键生成分区定义
 - **PostgreSQL Citus 分片配置**：支持副本表 (Reference Table) 和分片表 (Distributed Table) 模式，自动生成对应 DDL
-- **外键管理与 ER 图**：可视化配置表间外键关联、级联规则与约束名；ER 图支持节点拖拽、画布缩放与关联线展示
+- **外键管理与 ER 图**：可视化配置表间外键关联、级联规则与约束名；在 ER 图中拖动字段连接点后，可通过关系向导确认基数、可选性和必要索引
 - **ORM 模型代码生成**：除 DDL 外，支持生成 Prisma、TypeORM、SQLAlchemy、GORM、JPA 五种主流 ORM 模型代码
 - 实时生成建表语句；支持表注释与列注释
 - 视图与 Routine DDL 生成：支持 CREATE VIEW 配置，以及存储过程、函数、触发器的骨架代码生成
@@ -214,8 +214,8 @@ pnpm db:reset:local
 
 ## 技术栈
 
-- React 19、TypeScript 6、Vite 8
-- UI 与交互：Tanstack Table 表格、Radix UI、Lucide 图标、Tailwind CSS
+- React 19、TypeScript 7、Vite 8
+- UI 与交互：TanStack Table、Base UI、Hugeicons、Tailwind CSS
 - 代码高亮：react-syntax-highlighter（白底主题）
 
 ---

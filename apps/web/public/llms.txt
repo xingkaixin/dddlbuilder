@@ -17,6 +17,7 @@
 - Generate privilege DCL for authorization scenarios.
 - Support multiple database dialects: MySQL, PostgreSQL, PostgreSQL (Citus), SQL Server, Oracle, MariaDB, TiDB, Dameng, OceanBase (MySQL), OceanBase (Oracle), Kingbase, GBase, PolarDB, and GaussDB.
 - Configure fields, indexes, constraints, and table-level options.
+- Create table relationships by dragging between fields in the ER diagram, then confirm cardinality, optionality, referential actions, and indexes in the relationship wizard.
 - Import SQL and parse schema-related statements back into editable config.
 - Use AI-assisted table design to produce draft schemas from natural language.
 - Use AI Modify to adjust the current table with reviewable field, index, and table-level changes.
@@ -58,6 +59,8 @@
   How to use AI review and SQL explanation for quality checks.
 - [Partitioning and Sharding Configuration](https://ddl.xingkaixin.me/docs/en/advanced/partition-and-sharding)
   How to use partition and sharding related features by database type.
+- [Foreign Key Configuration and ER Diagram](https://ddl.xingkaixin.me/docs/en/advanced/foreign-key-and-er)
+  How to create foreign keys manually or through the ER relationship wizard and validate relationship semantics.
 - [Change Diff and Rollback](https://ddl.xingkaixin.me/docs/en/advanced/diff-and-rollback)
   How to inspect schema differences and rollback-related SQL outputs.
 - [Errors and Failure Handling](https://ddl.xingkaixin.me/docs/en/faq/common-errors)
@@ -93,6 +96,7 @@
 - 针对授权场景生成权限 DCL。
 - 支持多种数据库方言：MySQL、PostgreSQL、PostgreSQL (Citus)、SQL Server、Oracle、MariaDB、TiDB、Dameng、OceanBase (MySQL)、OceanBase (Oracle)、Kingbase、GBase、PolarDB 和 GaussDB。
 - 配置字段、索引、约束以及表级选项。
+- 在 ER 图中拖动字段连接点创建表关系，并通过关系向导确认基数、可选性、引用动作和索引。
 - 导入 SQL，并将结构相关语句解析回可编辑配置。
 - 通过 AI 辅助建表，用自然语言生成表结构草稿。
 - 通过 AI 修改当前表，生成可审阅的字段、索引与表级变更。
@@ -134,6 +138,8 @@
   说明如何使用 AI 评审和 SQL 解释能力做质量检查。
 - [分区与分片配置](https://ddl.xingkaixin.me/docs/zh/advanced/partition-and-sharding)
   说明如何按数据库类型使用分区与分片相关能力。
+- [外键配置与 ER 图](https://ddl.xingkaixin.me/docs/zh/advanced/foreign-key-and-er)
+  说明如何手工配置外键，或通过 ER 关系向导创建关系并校验关系语义。
 - [变更对比与回滚](https://ddl.xingkaixin.me/docs/zh/advanced/diff-and-rollback)
   说明如何查看结构差异以及回滚相关 SQL 输出。
 - [常见错误与失败处理](https://ddl.xingkaixin.me/docs/zh/faq/common-errors)

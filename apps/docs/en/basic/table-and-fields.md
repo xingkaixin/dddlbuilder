@@ -19,7 +19,7 @@ You can complete table-level and field-level input in one screen and quickly pro
 7. To estimate volume, click `Estimate Size` and adjust expected row count. Result: you get per-row and total-size estimates that now include index volume, closer to actual physical usage.
 8. To check design standards, open the `Schema Lint` panel. Result: the system scans current table structure against built-in naming conventions and type rules, highlighting potential issues.
 9. To quickly fill test data, click `Mock Data` to generate sample data by field type and export. Result: development and testing phases can quickly obtain data conforming to the structure.
-10. To establish table relationships, switch to the `Foreign Key Configuration` tab, select the related table, related field, and cascade rules. Result: the system generates foreign key constraint DDL and can visualize relationships in the ER diagram.
+10. To establish table relationships, either enter one manually in `Foreign Key Configuration`, or save the source and target tables first and drag between field handles in `ER Diagram` to confirm cardinality, optionality, referential actions, and indexes in the wizard. Result: the system generates foreign key constraint DDL and displays the relationship in the ER diagram.
 
 ## Done when
 
@@ -38,3 +38,4 @@ You can complete table-level and field-level input in one screen and quickly pro
 - After large paste operations, spot-check "Default Kind" and "On Update" by column to avoid misalignment.
 - When modifying existing field types, if the system warns of data compatibility risks (e.g., truncation, precision loss), confirm whether the current database already has data before proceeding.
 - When configuring foreign keys, associated field types must be compatible; otherwise generated foreign key DDL may fail on the target database.
+- In the ER relationship wizard, the target field must be a single-column primary or unique key; one-to-one relationships also require a unique constraint on the source field.
