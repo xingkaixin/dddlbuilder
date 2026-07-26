@@ -139,8 +139,7 @@ const formatCompactCredits = (value: number | null | undefined, locale: 'zh-CN' 
     : `${sign}${scaled.toFixed(decimals)}${unit.label}`;
 };
 
-const settingsTabContentClass =
-  'mt-0 h-full overflow-y-auto pr-1 data-[state=active]:animate-none data-[state=inactive]:animate-none';
+const settingsTabContentClass = 'mt-0 h-full overflow-y-auto pr-1';
 
 const parseMetadata = (value?: string | null) => {
   if (!value) return null;

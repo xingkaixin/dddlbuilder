@@ -197,7 +197,7 @@ export function DataTableToolbar({
                 id="field-freeze-switch"
                 checked={freezeEnabled}
                 onCheckedChange={onFreezeEnabledChange}
-                className="scale-75 data-[state=checked]:bg-primary"
+                className="scale-75 data-checked:bg-primary"
                 aria-label={t('dataTable.toolbar.freezeAria')}
               />
             </div>

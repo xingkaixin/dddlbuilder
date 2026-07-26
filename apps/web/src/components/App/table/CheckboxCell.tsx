@@ -32,7 +32,7 @@ export const CheckboxCell = memo<CheckboxCellProps>(
           checked={checked}
           onCheckedChange={handleChange}
           disabled={disabled}
-          className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+          className="data-checked:border-primary data-checked:bg-primary"
         />
       </div>
     );

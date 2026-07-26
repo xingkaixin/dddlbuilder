@@ -16,6 +16,7 @@
     "format": "oxfmt --config ../../.oxfmtrc.json --write src/"
   },
   "dependencies": {
+    "@base-ui/react": "^1.6.0",
     "@ddlbuilder/ddl-core": "workspace:*",
     "@ddlbuilder/shared-types": "workspace:*",
     "@ddlbuilder/workspace-core": "workspace:*",
