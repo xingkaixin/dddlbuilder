@@ -1,7 +1,7 @@
 ---
 Author: "Codex"
-Updated: 2026-05-02
-Status: Draft
+Updated: 2026-07-26
+Status: Complete
 Origin: "KLIP-37 后续"
 ---
 
@@ -15,7 +15,7 @@ Origin: "KLIP-37 后续"
 - 服务端冲突边界是 entity。`pushWorkspaceChanges()` 对比 `baseVersion`、`existing.version`、`contentHash`，冲突时返回 `serverPayload`。证据：`apps/worker/server-api/lib/workspaceEntities.ts`
 - UI 仍以 `PersistedState` snapshot 为核心。`usePersistedState()` 通过 `setWorkspaceSnapshot()` 写入当前 source 的完整 state，并在 `WORKSPACE_SNAPSHOT_APPLIED_EVENT` 后重新 hydrate。证据：`apps/web/src/hooks/usePersistedState.ts`
 - 表字段模型缺少稳定字段 ID。`FieldRow` 包含 `order`、`fieldName`、`fieldType`、`fieldComment` 等属性，行身份主要依赖数组顺序。证据：`packages/shared-types/src/index.ts`
-- Worker 当前配置包含 D1 与 KV 绑定，Durable Object 绑定待新增。证据：`apps/worker/wrangler.toml`、`apps/worker/wrangler.e2e.toml`
+- Worker 已配置 workspace Durable Object binding；DO 持久化 update log、压缩 snapshot，并将 checkpoint 投影到 D1。证据：`apps/worker/wrangler.toml`、`apps/worker/server-api/lib/workspaceYDocDurableObject.ts`
 
 ## 背景
 

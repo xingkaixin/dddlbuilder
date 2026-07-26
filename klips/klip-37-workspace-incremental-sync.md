@@ -1,22 +1,18 @@
 ---
 Author: "Codex"
-Updated: 2026-05-01
-Status: Draft
+Updated: 2026-07-26
+Status: Complete
 Origin: "KLIP-33 后续"
+Superseded-By: "KLIP-38"
 ---
 
 # klip-37-workspace-incremental-sync
 
 ## 现状结论（代码校准）
 
-- **云端同步当前是手动全量快照**：前端通过 `exportWorkspaceToCloud()` / `importWorkspaceFromCloud()` 调用 `PUT /api/workspace/snapshot` 与 `GET /api/workspace/snapshot`，入口位于设置页。证据：`apps/web/src/services/workspaceSyncService.ts`、`apps/web/src/components/App/UserSettingsDialog.tsx`
-- **服务端 `PUT /workspace/snapshot` 使用全量替换语义**：`putWorkspaceSnapshot()` 先执行 `clearWorkspaceSnapshots()` 删除该用户全部 `workspace_snapshots`，再逐个 `upsertSnapshot()` 写回。证据：`apps/worker/server-api/lib/workspaceSnapshots.ts`（`putWorkspaceSnapshot()`）
-- **云端实体缺少 workspace 维度与版本维度**：`workspace_snapshots` 当前以 `user_id + kind + normalized_name` 组织数据，字段包含 `payload_json` 与 `source_updated_at`，没有 `workspace_id`、`entity_id`、`version`、`deleted_at`。证据：`packages/db/migrations/0005_workspace_drafts.sql`
-- **本地状态已具备用户 scope，但 folder 仍是全局 store**：`workspaceScope.ts` 定义 `anonymous` 与 `user:{userId}` scope；`savedTablesDb.ts` 与 `workspaceStateDb.ts` 会将 scope 写入 key；`tableFolders.ts` 直接读取 `table_folders` 全量数据。证据：`apps/web/src/utils/workspaceScope.ts`、`apps/web/src/utils/savedTablesDb.ts`、`apps/web/src/utils/workspaceStateDb.ts`、`apps/web/src/utils/tableFolders.ts`
-- **草稿切换会写入内容更新时间**：`setWorkspaceSnapshot()` 在 `source.kind === 'draft'` 时写入 `updatedAt: Date.now()`，`handleSelectDraft()` 在切换草稿时调用 `setWorkspaceSnapshot()`。证据：`apps/web/src/hooks/usePersistedState.ts`（`setWorkspaceSnapshot()`）、`apps/web/src/components/App/index.tsx`（`handleSelectDraft()`）
-- **saved table 切换会写入 session 状态**：`setWorkspaceSnapshot()` 对所有 source 写入 `workspace_session.activeState`，`handleSelectSavedTable()` 和 tab 激活路径都会调用该函数。证据：`apps/web/src/hooks/usePersistedState.ts`、`apps/web/src/components/App/index.tsx`
-- **登出只切换到 anonymous scope**：`signOut()` 成功后调用 `setCurrentWorkspaceScope(getAnonymousWorkspaceScope())` 并设置 signed out state，当前没有清理用户 scope 的 IndexedDB 内容或 tabs。证据：`apps/web/src/auth/AuthSessionProvider.tsx`（`signOut()`）
-- **首次登录迁移与手动云同步已有基础设施**：`workspace_links` 记录匿名工作区迁移状态，`workspace_snapshots` 存储迁移后的云端快照；KLIP-29 与 KLIP-33 已覆盖一次性迁移和手动全量同步。证据：`apps/web/src/services/workspaceMigrationService.ts`、`apps/worker/server-api/lib/workspaceMigration.ts`、`klips/klip-29-anonymous-workspace-migration.md`、`klips/klip-33-workspace-cloud-sync.md`
+- 实体级 HTTP pull/push、workspace version、mutation 去重、冲突记录与本地 outbox 已完成。
+- 该路径目前作为 Y.Doc 尚未激活时的兼容 fallback；登录态长期 runtime 权威已由 KLIP-38/39 的 Yjs + Durable Object 路径接管。
+- D1 `workspace_entities` 继续承接 checkpoint projection 与恢复兼容，不再承担每次字段输入。
 
 ## 背景
 

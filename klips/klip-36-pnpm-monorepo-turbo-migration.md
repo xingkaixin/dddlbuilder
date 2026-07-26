@@ -1,28 +1,17 @@
 ---
 Author: "@xingkaixin"
-Updated: 2026-04-15
-Status: Draft
+Updated: 2026-07-26
+Status: Complete
 ---
 
 # klip-36-pnpm-monorepo-turbo-migration
 
 ## 现状结论（代码校准）
 
-- **单 package 架构**：项目根只有一个 `package.json`（`name: "ddlbuilder"`, `version: "0.15.7"`），所有依赖混在一起，前端的 React、后端的 Hono、文档的 VitePress 全部共用同一份 node_modules。证据：[`package.json`](../package.json)
-
-- **两套 Vite 构建**：`vite.config.ts` 输出前端产物至 `dist/client`，`vite.config.server.ts` 以 library 模式输出后端产物至 `dist/server.js`。两个配置都声明了 `@/*` → `./src/*` 的 path alias，worker bundle 因此依赖 `src/` 目录存在。证据：[`vite.config.ts`](../vite.config.ts)、[`vite.config.server.ts`](../vite.config.server.ts)
-
-- **构建流程为单行串联脚本**：`build` script 是 `tsc -b ... && vite build --config server ... && verify && vite build && docs:build && cp -r`，无缓存、无并行、无增量。证据：[`package.json`](../package.json#L19)
-
-- **DDL 策略引擎全部在前端目录**：`src/strategies/` 含 15 个文件（`AbstractDDLStrategy.ts` + 14 个具体策略），仅使用 `../types`、`../interfaces`、`../utils` 中的纯 TypeScript 类型和工具函数，无任何 DOM/React 依赖。但目前 `server-api/` 中的 AI 路由（explain、review、generateTable）也涉及 DDL 相关参数，两侧共享了 `DatabaseType` 类型。证据：[`src/strategies/AbstractDDLStrategy.ts`](../src/strategies/AbstractDDLStrategy.ts)
-
-- **前后端共享类型**：`src/types/api.ts` 定义了 `ApiErrorCode`、`WorkspaceSnapshotResponse`、`MeApiResponse` 等前后端共用的 API 契约类型；`src/types/index.ts` 定义了 `DatabaseType`、`FieldRow`、`PersistedState` 等核心领域类型，同时被前端和 `server-api/` 路由引用。证据：[`src/types/api.ts`](../src/types/api.ts)、[`src/types/index.ts`](../src/types/index.ts)
-
-- **Drizzle schema 分散**：DB schema 目前在 `server-api/lib/authSchema.ts`（Better Auth 表），用户系统相关表（credit_accounts、workspace_snapshots 等）也在 `server-api/lib/` 下不同文件中。迁移文件在根目录 `migrations/`（3 个 SQL 文件）。无独立的 `drizzle.config.ts`。证据：[`server-api/lib/authSchema.ts`](../server-api/lib/authSchema.ts)、[`migrations/`](../migrations/)
-
-- **wrangler.toml 当前路径依赖**：`main = "dist/server.js"`，`[assets] directory = "dist/client"`，两者都相对根目录，迁移后需重新定位。证据：[`wrangler.toml`](../wrangler.toml)
-
-- **docs 已有独立构建边界**：`docs:build` 用 `pnpm run --dir apps/docs docs:build`，VitePress 子项目实际上已经是半独立的。证据：[`package.json`](../package.json)
+- pnpm workspace 已按 `apps/web`、`apps/worker`、`apps/docs` 和 `packages/*` 拆分，Turbo 负责 build、test、lint 与缓存边界。证据：[`pnpm-workspace.yaml`](../pnpm-workspace.yaml)、[`turbo.json`](../turbo.json)
+- DDL 引擎、共享类型、数据库 schema 和共享 tsconfig 已分别进入 `@ddlbuilder/ddl-core`、`@ddlbuilder/shared-types`、`@ddlbuilder/db`、`@ddlbuilder/tsconfig`。
+- Worker 与 Web 产物分别位于 `apps/worker/dist` 与 `apps/web/dist/client`，Wrangler、部署和根 Node 启动入口均使用 monorepo 路径。
+- 本 KLIP 的目录迁移与构建边界已完成；依赖所有权和全仓 typecheck gate 作为后续架构治理继续收敛。
 
 ---
 

@@ -56,7 +56,7 @@ pnpm dev:worker
 pnpm build
 
 # 部署（自动读取 .deploy.secrets）
-pnpm deploy
+pnpm deploy:cf
 ```
 
 开发命令说明：
@@ -81,9 +81,9 @@ pnpm deploy
 
 1. 复制 `.deploy.secrets.example` 为 `.deploy.secrets`
 2. 在 `.deploy.secrets` 中填写生产 secrets
-3. 执行 `pnpm deploy`
+3. 执行 `pnpm deploy:cf`
 
-`pnpm deploy` 会在构建后自动调用 `wrangler deploy --config wrangler.deploy.toml`，如果检测到 `.deploy.secrets`，会额外带上 `--secrets-file .deploy.secrets`，不需要再一个个手动 `wrangler secret put`。
+`pnpm deploy:cf` 会在构建后自动调用 `wrangler deploy --config apps/worker/wrangler.deploy.toml`，如果检测到 `.deploy.secrets`，会额外带上 `--secrets-file .deploy.secrets`，不需要再一个个手动 `wrangler secret put`。
 
 `.deploy.secrets` 使用标准 `.env` 格式，例如：
 
@@ -98,12 +98,12 @@ TURNSTILE_SECRET_KEY=xxx
 如果你想把 secrets 文件放在别处，部署时可通过环境变量覆盖：
 
 ```bash
-WRANGLER_SECRETS_FILE=/absolute/path/to/prod.secrets pnpm deploy
+WRANGLER_SECRETS_FILE=/absolute/path/to/prod.secrets pnpm deploy:cf
 ```
 
 ### 环境变量
 
-可通过 `.env` 配置后端行为（示例见 `.env.sample`）：
+本地 Worker 变量示例见 `.env.vars.example`；复制为 `.dev.vars` 后按需填写：
 
 - `OPENAI_BASE_URL`：OpenAI 兼容接口地址
 - `OPENAI_API_KEY`：模型服务密钥
@@ -212,7 +212,7 @@ pnpm db:reset:local
 
 ## 技术栈
 
-- React 19、TypeScript、Vite 7
+- React 19、TypeScript 6、Vite 8
 - UI 与交互：Tanstack Table 表格、Radix UI、Lucide 图标、Tailwind CSS
 - 代码高亮：react-syntax-highlighter（白底主题）
 
