@@ -163,13 +163,6 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
       MAX_OUTPUT_TOKENS,
     );
 
-    const budget = await enforceOpenAIDailyBudget(c, estimatedTokens, config);
-    budgetUsedTokens = budget.usedTokens;
-    if (budget.response) {
-      audit(429, 0, false, true, 'BUDGET_EXCEEDED');
-      return budget.response;
-    }
-
     const baseURL = c.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
     const apiKey = c.env.OPENAI_API_KEY;
     const model = c.env.OPENAI_MODEL_NAME || 'gpt-4o-mini';
@@ -199,6 +192,21 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
       console.error('[generate-table] credit reservation failed', error);
       audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
       return errorResponse(c, 503, 'Credit service unavailable', 'SERVICE_UNAVAILABLE');
+    }
+
+    try {
+      const budget = await enforceOpenAIDailyBudget(c, estimatedTokens, config);
+      budgetUsedTokens = budget.usedTokens;
+      if (budget.response) {
+        await failAIUsage(c.env, reservation, 'BUDGET_EXCEEDED');
+        audit(429, 0, false, true, 'BUDGET_EXCEEDED');
+        return budget.response;
+      }
+    } catch (error) {
+      await failAIUsage(c.env, reservation, 'SERVICE_UNAVAILABLE');
+      console.error('[generate-table] budget reservation failed', error);
+      audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
+      return errorResponse(c, 503, 'AI governance unavailable', 'SERVICE_UNAVAILABLE');
     }
 
     const openai = new OpenAI({

@@ -20,12 +20,39 @@ const restoreEnv = () => {
   }
 };
 
-// Helper to create env object for tests
+const createCounterDatabase = (): D1Database => {
+  const counters = new Map<string, { windowId: string; value: number }>();
+  return {
+    prepare: vi.fn().mockReturnValue({
+      bind: (
+        scope: string,
+        subject: string,
+        windowId: string,
+        amount: number,
+        _expiresAt: number,
+        _safeAmount: number,
+        limit: number,
+      ) => ({
+        first: async () => {
+          const key = `${scope}:${subject}`;
+          const current = counters.get(key);
+          const nextValue = current?.windowId === windowId ? current.value + amount : amount;
+          if (nextValue > limit) {
+            return null;
+          }
+          counters.set(key, { windowId, value: nextValue });
+          return { value: nextValue };
+        },
+      }),
+    }),
+  } as unknown as D1Database;
+};
+
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
   SHARE_KV: {} as KVNamespace,
   RATE_LIMIT_KV: {} as KVNamespace,
-  USER_DB: {} as D1Database,
+  USER_DB: createCounterDatabase(),
   ...overrides,
 });
 
@@ -178,7 +205,7 @@ afterEach(() => {
 });
 
 describe.sequential('openai governance', () => {
-  it('应基于 IP + UA + 路由进行匿名限流', async () => {
+  it('应基于 IP 和路由限流且不允许通过更换 UA 绕过', async () => {
     const app = await loadAuthenticatedApp({
       OPENAI_RATELIMIT_ENABLED: 'true',
       OPENAI_RATELIMIT_STORE: 'memory',
@@ -214,10 +241,10 @@ describe.sequential('openai governance', () => {
     });
 
     const third = await request('test-ua-B');
-    expect(third.status).toBe(503);
+    expect(third.status).toBe(429);
   });
 
-  it('应在 kv 计数模式下命中限流并在窗口后恢复', async () => {
+  it('应在 D1 原子计数模式下命中限流并在窗口后恢复', async () => {
     const app = await loadAuthenticatedApp({
       OPENAI_RATELIMIT_ENABLED: 'true',
       OPENAI_RATELIMIT_STORE: 'kv',
@@ -261,7 +288,7 @@ describe.sequential('openai governance', () => {
       OPENAI_RATELIMIT_GENERATE_MAX: '20',
       OPENAI_DAILY_BUDGET_ENABLED: 'true',
       OPENAI_DAILY_BUDGET_MAX_TOKENS: '5',
-      OPENAI_API_KEY: undefined,
+      OPENAI_API_KEY: 'test-key',
     });
 
     const response = await app.request('https://ddlbuilder.test/api/generate-table', {
@@ -333,7 +360,7 @@ describe.sequential('openai governance', () => {
       model: expect.any(String),
       maxOutputTokens: expect.any(Number),
       rateLimitEnabled: expect.any(Boolean),
-      rateLimitStore: expect.stringMatching(/^(memory|kv)$/),
+      rateLimitStore: 'd1',
       budgetEnabled: expect.any(Boolean),
     });
     expect(auditPayload).toHaveProperty('budgetLimitTokens');
@@ -485,6 +512,60 @@ describe.sequential('openai governance', () => {
     expect(await response.json()).toMatchObject({
       code: 'CREDIT_EXHAUSTED',
     });
+  });
+
+  it('额度不足的请求不应占用全局预算', async () => {
+    const createCompletionMock = vi.fn().mockResolvedValue(
+      createMockStream([
+        {
+          choices: [{ delta: { content: '{"ok":true}' } }],
+        },
+        {
+          choices: [],
+          usage: {
+            prompt_tokens: 10,
+            completion_tokens: 10,
+            total_tokens: 20,
+          },
+        },
+      ]),
+    );
+    const app = await loadAppWithOpenAIMock(
+      {
+        OPENAI_RATELIMIT_ENABLED: 'true',
+        OPENAI_RATELIMIT_REVIEW_MAX: '20',
+        OPENAI_DAILY_BUDGET_ENABLED: 'true',
+        OPENAI_DAILY_BUDGET_MAX_TOKENS: '3000',
+        OPENAI_API_KEY: 'test-key',
+      },
+      createCompletionMock,
+    );
+    reserveAIUsageMock
+      .mockRejectedValueOnce(new Error('CREDIT_EXHAUSTED'))
+      .mockImplementationOnce(async (_env, input) => ({
+        usageEventId: `usage:${input.requestId}`,
+        userId: input.userId,
+        routeKey: input.routeKey,
+        requestId: input.requestId,
+        reservedTokens: input.estimatedTokens,
+      }));
+    const request = () =>
+      app.request('https://ddlbuilder.test/api/review', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-forwarded-for': '10.10.10.10',
+        },
+        body: JSON.stringify({
+          ddl: 'CREATE TABLE t1(id bigint);',
+          tableName: 't1',
+          dbType: 'mysql',
+        }),
+      });
+
+    expect((await request()).status).toBe(402);
+    expect((await request()).status).toBe(200);
+    expect(createCompletionMock).toHaveBeenCalledTimes(1);
   });
 
   it('流式响应应请求真实 usage，且不透传 usage chunk', async () => {

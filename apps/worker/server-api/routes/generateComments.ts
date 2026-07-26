@@ -181,13 +181,6 @@ export function registerGenerateCommentsRoute(app: Hono<ApiEnv>) {
     };
 
     estimatedTokens = estimateRequestTokens(request, MAX_OUTPUT_TOKENS);
-    const budget = await enforceOpenAIDailyBudget(c, estimatedTokens, config);
-    budgetUsedTokens = budget.usedTokens;
-    if (budget.response) {
-      audit(429, false, true, 'BUDGET_EXCEEDED');
-      return budget.response;
-    }
-
     const apiKey = c.env.OPENAI_API_KEY;
     if (!apiKey) {
       audit(503, false, false, 'SERVICE_UNAVAILABLE');
@@ -209,6 +202,21 @@ export function registerGenerateCommentsRoute(app: Hono<ApiEnv>) {
       console.error('[generate-comments] credit reservation failed', error);
       audit(503, false, false, 'SERVICE_UNAVAILABLE');
       return errorResponse(c, 503, 'Credit service unavailable', 'SERVICE_UNAVAILABLE');
+    }
+
+    try {
+      const budget = await enforceOpenAIDailyBudget(c, estimatedTokens, config);
+      budgetUsedTokens = budget.usedTokens;
+      if (budget.response) {
+        await failAIUsage(c.env, reservation, 'BUDGET_EXCEEDED');
+        audit(429, false, true, 'BUDGET_EXCEEDED');
+        return budget.response;
+      }
+    } catch (error) {
+      await failAIUsage(c.env, reservation, 'SERVICE_UNAVAILABLE');
+      console.error('[generate-comments] budget reservation failed', error);
+      audit(503, false, false, 'SERVICE_UNAVAILABLE');
+      return errorResponse(c, 503, 'AI governance unavailable', 'SERVICE_UNAVAILABLE');
     }
 
     const openai = new OpenAI({

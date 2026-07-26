@@ -22,11 +22,6 @@ type RetryOptions = {
   maxDelayMs?: number;
 };
 
-type CounterBucket = {
-  count: number;
-  expiresAt: number;
-};
-
 export type AuditLogPayload = {
   requestId: string;
   route: OpenAIRouteKey;
@@ -41,7 +36,7 @@ export type AuditLogPayload = {
   model?: string;
   maxOutputTokens?: number;
   rateLimitEnabled: boolean;
-  rateLimitStore: 'memory' | 'kv';
+  rateLimitStore: 'd1';
   rateLimitLimit: number | null;
   rateLimitRemaining: number | null;
   rateLimitWindowMs: number | null;
@@ -91,7 +86,6 @@ export type OpenAIConfig = {
   dailyBudgetEnabled: boolean;
   dailyBudgetMaxTokens: number;
   streamDebugEnabled: boolean;
-  counterStoreMode: 'memory' | 'kv';
   rateLimitRules: Record<OpenAIRouteKey, RateLimitRule>;
 };
 
@@ -104,8 +98,6 @@ export const buildOpenAIConfig = (env: ApiEnv['Bindings']): OpenAIConfig => {
   const dailyBudgetEnabled = readEnvBool(env.OPENAI_DAILY_BUDGET_ENABLED, false);
   const dailyBudgetMaxTokens = readEnvInt(env.OPENAI_DAILY_BUDGET_MAX_TOKENS, 0);
   const streamDebugEnabled = readEnvBool(env.OPENAI_STREAM_DEBUG, false);
-  const counterStoreMode =
-    env.OPENAI_RATELIMIT_STORE?.trim().toLowerCase() === 'memory' ? 'memory' : 'kv';
 
   return {
     defaultWindowMs,
@@ -116,7 +108,6 @@ export const buildOpenAIConfig = (env: ApiEnv['Bindings']): OpenAIConfig => {
     dailyBudgetEnabled,
     dailyBudgetMaxTokens,
     streamDebugEnabled,
-    counterStoreMode,
     rateLimitRules: {
       explain: {
         maxRequests: readEnvInt(env.OPENAI_RATELIMIT_EXPLAIN_MAX, 15),
@@ -146,15 +137,12 @@ const RETRYABLE_STATUS_CODES = new Set([408, 409, 425, 429, 500, 502, 503, 504])
 
 export type GovernanceSnapshot = {
   rateLimitEnabled: boolean;
-  rateLimitStore: 'memory' | 'kv';
+  rateLimitStore: 'd1';
   rateLimitLimit: number | null;
   rateLimitWindowMs: number | null;
   budgetEnabled: boolean;
   budgetLimitTokens: number | null;
 };
-
-const MEMORY_COUNTERS = new Map<string, CounterBucket>();
-let hasWarnedKVUnavailable = false;
 
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => {
@@ -256,8 +244,7 @@ const getClientIp = (c: Context<ApiEnv>): string => {
 
 const getClientFingerprint = (c: Context<ApiEnv>, routeKey: OpenAIRouteKey): string => {
   const ip = getClientIp(c);
-  const ua = c.req.header('user-agent')?.slice(0, 256) ?? 'unknown';
-  return hashFNV1a(`${routeKey}|${ip}|${ua}`);
+  return hashFNV1a(`${routeKey}|${ip}`);
 };
 
 const toUtf8Bytes = (input: string) => new TextEncoder().encode(input).length;
@@ -294,7 +281,7 @@ export const getOpenAIGovernanceSnapshot = (
   const rule = config.rateLimitRules[routeKey];
   return {
     rateLimitEnabled: config.rateLimitEnabled,
-    rateLimitStore: config.counterStoreMode,
+    rateLimitStore: 'd1',
     rateLimitLimit: config.rateLimitEnabled ? rule.maxRequests : null,
     rateLimitWindowMs: config.rateLimitEnabled ? rule.windowMs : null,
     budgetEnabled: config.dailyBudgetEnabled,
@@ -305,64 +292,48 @@ export const getOpenAIGovernanceSnapshot = (
   };
 };
 
-// KV-based counter implementation using CF KV
-const runKVIncrCounter = async (
-  kv: KVNamespace,
-  key: string,
-  ttlSeconds: number,
+const reserveCounterCapacity = async (
+  env: ApiEnv['Bindings'],
+  scope: string,
+  subject: string,
+  windowId: string,
   amount: number,
-): Promise<number> => {
-  const currentValue = await kv.get(key);
-  const currentCount = currentValue ? parseInt(currentValue, 10) : 0;
-  if (Number.isNaN(currentCount)) {
-    throw new Error('KV_COUNTER_INVALID');
-  }
-
-  const newCount = currentCount + Math.max(1, amount);
-  await kv.put(key, String(newCount), { expirationTtl: ttlSeconds });
-  return newCount;
-};
-
-const incrMemoryCounter = (key: string, ttlMs: number, amount: number) => {
-  const now = Date.now();
-  const existing = MEMORY_COUNTERS.get(key);
-  if (!existing || existing.expiresAt <= now) {
-    const next: CounterBucket = {
-      count: Math.max(1, amount),
-      expiresAt: now + ttlMs,
-    };
-    MEMORY_COUNTERS.set(key, next);
-    return next.count;
-  }
-
-  existing.count += Math.max(1, amount);
-  existing.expiresAt = now + ttlMs;
-  MEMORY_COUNTERS.set(key, existing);
-  return existing.count;
-};
-
-const incrCounter = async (
-  kv: KVNamespace | undefined,
-  key: string,
-  ttlMs: number,
-  amount: number,
-  storeMode: 'memory' | 'kv',
-): Promise<number> => {
-  if (storeMode === 'memory' || !kv) {
-    return incrMemoryCounter(key, ttlMs, amount);
-  }
-
-  try {
-    return await runKVIncrCounter(kv, key, Math.ceil(ttlMs / 1000), amount);
-  } catch {
-    if (!hasWarnedKVUnavailable) {
-      hasWarnedKVUnavailable = true;
-      console.warn(
-        '[OpenAIControl] KV unavailable, rate limiting and budget control fell back to memory',
-      );
-    }
-    return incrMemoryCounter(key, ttlMs, amount);
-  }
+  limit: number,
+  expiresAt: number,
+): Promise<number | null> => {
+  const safeAmount = Math.max(1, Math.floor(amount));
+  const row = await env.USER_DB.prepare(
+    `
+      INSERT INTO ai_governance_counters (
+        scope,
+        subject,
+        window_id,
+        value,
+        expires_at
+      )
+      SELECT ?, ?, ?, ?, ?
+      WHERE ? <= ?
+      ON CONFLICT(scope, subject) DO UPDATE SET
+        window_id = excluded.window_id,
+        value = CASE
+          WHEN ai_governance_counters.window_id = excluded.window_id
+            THEN ai_governance_counters.value + excluded.value
+          ELSE excluded.value
+        END,
+        expires_at = excluded.expires_at
+      WHERE (
+        CASE
+          WHEN ai_governance_counters.window_id = excluded.window_id
+            THEN ai_governance_counters.value + excluded.value
+          ELSE excluded.value
+        END
+      ) <= ?
+      RETURNING value
+    `,
+  )
+    .bind(scope, subject, windowId, safeAmount, expiresAt, safeAmount, limit, limit)
+    .first<{ value: number }>();
+  return row ? Number(row.value) : null;
 };
 
 const getCurrentUtcDateKey = () => {
@@ -412,18 +383,22 @@ export async function enforceOpenAIRateLimit(
   const now = Date.now();
   const windowBucket = Math.floor(now / rule.windowMs);
   const clientFingerprint = getClientFingerprint(c, routeKey);
-  const counterKey = `openai:rl:${routeKey}:${clientFingerprint}:${windowBucket}`;
-  const ttlMs = rule.windowMs + 5_000;
-
-  const kv = c.env?.RATE_LIMIT_KV;
-  const count = await incrCounter(kv, counterKey, ttlMs, 1, config.counterStoreMode);
-  const remaining = Math.max(rule.maxRequests - count, 0);
+  const count = await reserveCounterCapacity(
+    c.env,
+    `rate:${routeKey}`,
+    clientFingerprint,
+    String(windowBucket),
+    1,
+    rule.maxRequests,
+    now + rule.windowMs + 5_000,
+  );
+  const remaining = count === null ? 0 : Math.max(rule.maxRequests - count, 0);
 
   c.header('X-RateLimit-Limit', String(rule.maxRequests));
   c.header('X-RateLimit-Remaining', String(remaining));
   c.header('X-RateLimit-Window-Ms', String(rule.windowMs));
 
-  if (count <= rule.maxRequests) {
+  if (count !== null) {
     return {
       response: null,
       rateLimitHit: false,
@@ -467,22 +442,22 @@ export async function enforceOpenAIDailyBudget(
 
   const safeEstimatedTokens = Math.max(1, Math.floor(estimatedTokens));
   const dayKey = getCurrentUtcDateKey();
-  const counterKey = `openai:budget:tokens:${dayKey}`;
   const ttlMs = getMsUntilUtcTomorrow() + 60 * 60 * 1000;
 
-  const kv = c.env?.RATE_LIMIT_KV;
-  const usedTokens = await incrCounter(
-    kv,
-    counterKey,
-    ttlMs,
+  const usedTokens = await reserveCounterCapacity(
+    c.env,
+    'daily-budget',
+    'global',
+    dayKey,
     safeEstimatedTokens,
-    config.counterStoreMode,
+    config.dailyBudgetMaxTokens,
+    Date.now() + ttlMs,
   );
 
   c.header('X-Budget-Limit-Tokens', String(config.dailyBudgetMaxTokens));
-  c.header('X-Budget-Used-Tokens', String(usedTokens));
+  c.header('X-Budget-Used-Tokens', String(usedTokens ?? config.dailyBudgetMaxTokens));
 
-  if (usedTokens <= config.dailyBudgetMaxTokens) {
+  if (usedTokens !== null) {
     return {
       response: null,
       budgetHit: false,
@@ -495,7 +470,7 @@ export async function enforceOpenAIDailyBudget(
     response: errorResponse(c, 429, '服务预算已达上限，请稍后再试', 'BUDGET_EXCEEDED'),
     budgetHit: true,
     limitTokens: config.dailyBudgetMaxTokens,
-    usedTokens,
+    usedTokens: config.dailyBudgetMaxTokens,
   };
 }
 
