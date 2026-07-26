@@ -193,7 +193,7 @@ export const createBetterAuth = (env: ApiEnv['Bindings']) => {
     }),
     emailAndPassword: {
       enabled: true,
-      requireEmailVerification: true,
+      requireEmailVerification: config.authRequireEmailVerification,
       sendResetPassword: async ({ user, url }) => {
         const normalizedUrl = normalizeAuthActionUrl(url, authBaseUrl);
         const content = renderResetPasswordEmail(normalizedUrl, user.name || user.email);
@@ -205,7 +205,7 @@ export const createBetterAuth = (env: ApiEnv['Bindings']) => {
       revokeSessionsOnPasswordReset: true,
     },
     emailVerification: {
-      sendOnSignUp: true,
+      sendOnSignUp: config.authRequireEmailVerification,
       sendOnSignIn: false,
       autoSignInAfterVerification: true,
       sendVerificationEmail: async ({ user, url }) => {

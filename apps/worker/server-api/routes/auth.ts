@@ -18,9 +18,14 @@ const SIGNUP_RATE_LIMIT = {
   limit: 5,
   windowMs: 15 * 60 * 1000,
 } as const;
+const TURNSTILE_ALWAYS_PASS_TEST_SECRET = '1x0000000000000000000000000000000AA';
 
 const verifyTurnstile = async (c: Context<ApiEnv>, token: string) => {
   const config = getUserSystemConfig(c.env);
+  if (config.turnstileSecretKey === TURNSTILE_ALWAYS_PASS_TEST_SECRET) {
+    return null;
+  }
+
   const formData = new URLSearchParams();
   formData.set('secret', config.turnstileSecretKey);
   formData.set('response', token);

@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches:
-      - "**"
+      - '**'
 
 permissions:
   contents: read
@@ -86,6 +86,57 @@ jobs:
       - name: Run unit tests
         run: pnpm run test
 
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Enforce coverage thresholds
+        run: pnpm run test:coverage
+
+  runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify D1 migrations in Workerd
+        run: pnpm run test:runtime
+
+      - name: Audit production dependencies
+        run: pnpm audit --prod
+
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -126,6 +177,8 @@ jobs:
       - typecheck
       - lint
       - test
+      - coverage
+      - runtime
       - build
     steps:
       - name: Checkout

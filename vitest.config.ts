@@ -11,6 +11,7 @@ export default defineConfig({
         'scripts/**/*.{test,spec}.{ts,tsx}',
         'scripts/d1-inspect.ts',
         'scripts/d1-migrate.ts',
+        'scripts/d1-runtime.ts',
         'scripts/d1-reset.ts',
         'scripts/d1-seed.ts',
         'scripts/deploy.ts',
@@ -18,6 +19,8 @@ export default defineConfig({
         'scripts/dev.ts',
         'scripts/generate-favicon.ts',
         'scripts/generate-logos.ts',
+        'scripts/prepare-e2e-runtime.ts',
+        'scripts/verify-d1-runtime.ts',
         'scripts/verify-server-bundle.ts',
       ],
       thresholds: {

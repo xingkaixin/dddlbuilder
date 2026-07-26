@@ -17,9 +17,18 @@ const requirePositiveInt = (value: string | undefined, key: string): number => {
   return parsed;
 };
 
+const readEmailVerificationRequirement = (value: string | undefined): boolean => {
+  const normalized = value?.trim().toLowerCase();
+  if (!normalized) return true;
+  if (normalized === 'true') return true;
+  if (normalized === 'false') return false;
+  throw new Error('AUTH_REQUIRE_EMAIL_VERIFICATION must be true or false');
+};
+
 export type UserSystemConfig = {
   betterAuthSecret: string;
   betterAuthUrl: string;
+  authRequireEmailVerification: boolean;
   resendApiKey: string;
   resendFromEmail: string;
   resendFromName: string;
@@ -35,6 +44,9 @@ export const getUserSystemConfig = (env: ApiEnv['Bindings']): UserSystemConfig =
   return {
     betterAuthSecret: requireEnv(env.BETTER_AUTH_SECRET, 'BETTER_AUTH_SECRET'),
     betterAuthUrl: requireEnv(env.BETTER_AUTH_URL, 'BETTER_AUTH_URL'),
+    authRequireEmailVerification: readEmailVerificationRequirement(
+      env.AUTH_REQUIRE_EMAIL_VERIFICATION,
+    ),
     resendApiKey: requireEnv(env.RESEND_API_KEY, 'RESEND_API_KEY'),
     resendFromEmail: requireEnv(env.RESEND_FROM_EMAIL, 'RESEND_FROM_EMAIL'),
     resendFromName: env.RESEND_FROM_NAME?.trim() || 'DDLBuilder',

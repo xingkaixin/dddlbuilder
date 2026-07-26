@@ -111,6 +111,7 @@ WRANGLER_SECRETS_FILE=/absolute/path/to/prod.secrets pnpm deploy:cf
 - `CORS_ALLOWED_ORIGINS`：允许跨域来源，多个来源用逗号分隔
 - `BETTER_AUTH_SECRET`：Better Auth 签名密钥
 - `BETTER_AUTH_URL`：Better Auth 对外基址，必须填写用户浏览器实际访问的公开站点。Vite + Worker 本地联调时应使用 `http://localhost:3000`，不要填 Worker 内部端口如 `http://127.0.0.1:8787`
+- `AUTH_REQUIRE_EMAIL_VERIFICATION`：是否要求邮箱验证，默认 `true`；生产环境应保持开启，隔离的自动化测试运行时可设为 `false`
 - `RESEND_API_KEY`：Resend API key
 - `RESEND_FROM_EMAIL`：认证邮件发件地址
 - `RESEND_FROM_NAME`：认证邮件发件名

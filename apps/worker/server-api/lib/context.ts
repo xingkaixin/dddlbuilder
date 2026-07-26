@@ -15,6 +15,7 @@ export type ApiEnv = {
     CORS_ALLOWED_ORIGINS?: string;
     BETTER_AUTH_SECRET?: string;
     BETTER_AUTH_URL?: string;
+    AUTH_REQUIRE_EMAIL_VERIFICATION?: string;
     RESEND_API_KEY?: string;
     RESEND_FROM_EMAIL?: string;
     RESEND_FROM_NAME?: string;

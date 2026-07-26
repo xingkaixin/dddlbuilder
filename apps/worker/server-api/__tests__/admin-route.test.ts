@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../lib/context.js';
 
+const requestRateLimitMocks = vi.hoisted(() => ({
+  enforceRequestRateLimit: vi.fn(),
+}));
+
+vi.mock('../lib/requestRateLimit.js', () => requestRateLimitMocks);
+
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
   SHARE_KV: {} as KVNamespace,
@@ -35,28 +41,24 @@ describe('/api/admin/*', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    vi.doMock('../lib/requestRateLimit.js', () => ({
-      enforceRequestRateLimit: vi.fn().mockResolvedValue({
-        allowed: true,
-        limit: 5,
-        remaining: 4,
-        retryAfterSeconds: 900,
-      }),
-    }));
+    requestRateLimitMocks.enforceRequestRateLimit.mockResolvedValue({
+      allowed: true,
+      limit: 5,
+      remaining: 4,
+      retryAfterSeconds: 900,
+    });
   });
 
   // ─── Session management ──────────────────────────────────────────
 
   describe('POST /api/admin/session', () => {
     it('returns 429 after the admin login limit is exhausted', async () => {
-      vi.doMock('../lib/requestRateLimit.js', () => ({
-        enforceRequestRateLimit: vi.fn().mockResolvedValue({
-          allowed: false,
-          limit: 5,
-          remaining: 0,
-          retryAfterSeconds: 600,
-        }),
-      }));
+      requestRateLimitMocks.enforceRequestRateLimit.mockResolvedValue({
+        allowed: false,
+        limit: 5,
+        remaining: 0,
+        retryAfterSeconds: 600,
+      });
       const { default: app } = await import('../../api/index');
       const response = await app.fetch(
         createRequest('/api/admin/session', {

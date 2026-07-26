@@ -5,10 +5,14 @@ const betterAuthMocks = vi.hoisted(() => ({
   createBetterAuth: vi.fn(),
   handler: vi.fn(),
 }));
+const requestRateLimitMocks = vi.hoisted(() => ({
+  enforceRequestRateLimit: vi.fn(),
+}));
 
 vi.mock('../lib/betterAuth.js', () => ({
   createBetterAuth: betterAuthMocks.createBetterAuth,
 }));
+vi.mock('../lib/requestRateLimit.js', () => requestRateLimitMocks);
 
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
@@ -40,26 +44,22 @@ describe('/api/auth/*', () => {
     betterAuthMocks.createBetterAuth.mockReturnValue({
       handler: betterAuthMocks.handler,
     });
-    vi.doMock('../lib/requestRateLimit.js', () => ({
-      enforceRequestRateLimit: vi.fn().mockResolvedValue({
-        allowed: true,
-        limit: 5,
-        remaining: 4,
-        retryAfterSeconds: 900,
-      }),
-    }));
+    requestRateLimitMocks.enforceRequestRateLimit.mockResolvedValue({
+      allowed: true,
+      limit: 5,
+      remaining: 4,
+      retryAfterSeconds: 900,
+    });
   });
 
   describe('POST /api/auth/sign-up/email', () => {
     it('returns 429 when signup attempts are rate limited', async () => {
-      vi.doMock('../lib/requestRateLimit.js', () => ({
-        enforceRequestRateLimit: vi.fn().mockResolvedValue({
-          allowed: false,
-          limit: 5,
-          remaining: 0,
-          retryAfterSeconds: 300,
-        }),
-      }));
+      requestRateLimitMocks.enforceRequestRateLimit.mockResolvedValue({
+        allowed: false,
+        limit: 5,
+        remaining: 0,
+        retryAfterSeconds: 300,
+      });
       const { default: app } = await import('../../api/index');
       const response = await app.fetch(
         createRequest('/api/auth/sign-up/email', {
@@ -248,6 +248,27 @@ describe('/api/auth/*', () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toMatchObject({ created: true });
 
+      vi.unstubAllGlobals();
+    });
+
+    it('accepts the official always-pass Turnstile test secret without an action', async () => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal('fetch', fetchMock);
+
+      const { default: app } = await import('../../api/index');
+      const response = await app.fetch(
+        createRequest('/api/auth/sign-up/email', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ turnstileToken: 'dummy-token' }),
+        }),
+        createEnv({
+          TURNSTILE_SECRET_KEY: '1x0000000000000000000000000000000AA',
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(fetchMock).not.toHaveBeenCalled();
       vi.unstubAllGlobals();
     });
 

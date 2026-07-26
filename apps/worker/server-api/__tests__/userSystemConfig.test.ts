@@ -22,6 +22,7 @@ describe('getUserSystemConfig', () => {
     expect(config.signupBonusCredits).toBe(100000);
     expect(config.betterAuthUrl).toContain('localhost');
     expect(config.resendFromEmail).toBe('noreply@example.com');
+    expect(config.authRequireEmailVerification).toBe(true);
   });
 
   it('fails when USER_DB binding is missing', () => {
@@ -35,6 +36,24 @@ describe('getUserSystemConfig', () => {
     env.SIGNUP_BONUS_CREDITS = '0';
     expect(() => getUserSystemConfig(env as never)).toThrow(
       'SIGNUP_BONUS_CREDITS must be a positive integer',
+    );
+  });
+
+  it('supports disabling email verification in isolated runtimes', () => {
+    const env = {
+      ...buildEnv(),
+      AUTH_REQUIRE_EMAIL_VERIFICATION: 'false',
+    };
+    expect(getUserSystemConfig(env as never).authRequireEmailVerification).toBe(false);
+  });
+
+  it('rejects an invalid email verification setting', () => {
+    const env = {
+      ...buildEnv(),
+      AUTH_REQUIRE_EMAIL_VERIFICATION: 'sometimes',
+    };
+    expect(() => getUserSystemConfig(env as never)).toThrow(
+      'AUTH_REQUIRE_EMAIL_VERIFICATION must be true or false',
     );
   });
 });
