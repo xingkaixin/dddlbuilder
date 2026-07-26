@@ -16,20 +16,21 @@
   "dependencies": {
     "@ddlbuilder/db": "workspace:*",
     "@ddlbuilder/shared-types": "workspace:*",
-    "better-auth": "*",
-    "drizzle-orm": "*",
-    "hono": "*",
-    "jose": "*",
-    "openai": "*",
-    "resend": "*",
-    "uuid": "*"
+    "better-auth": "^1.6.2",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.12.9",
+    "lib0": "^0.2.117",
+    "openai": "^6.33.0",
+    "resend": "^6.10.0",
+    "y-protocols": "^1.0.7",
+    "yjs": "^13.6.30"
   },
   "devDependencies": {
-    "@better-auth/drizzle-adapter": "*",
-    "@cloudflare/workers-types": "*",
+    "@cloudflare/workers-types": "^4.20250317.0",
     "@ddlbuilder/tsconfig": "workspace:*",
-    "typescript": "*",
-    "vite": "*",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.3",
+    "vitest": "^4.1.4",
     "wrangler": "^4.86.0"
   }
 }
