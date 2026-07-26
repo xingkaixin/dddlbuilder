@@ -1,12 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import type {
-  AICommentMode,
-  AIIndexAdvisorRecommendation,
-  DatabaseType,
-  IndexField,
-  PersistedState,
-} from '@ddlbuilder/shared-types';
-import { createEmptyRow, ensureOrder } from '@/utils/helpers';
+import type { AICommentMode, DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
+import { createEmptyRow } from '@/utils/helpers';
 import { isTabAvailable } from '@/utils/tabUtils';
 import { Upload } from 'lucide-react';
 import { Header } from './Header';
@@ -38,6 +32,8 @@ import { useShareAction } from './hooks/useShareAction';
 import { useNavigationActions } from './hooks/useNavigationActions';
 import { useTemplateToolbarLeft } from './hooks/useTemplateToolbarLeft';
 import { useFireworksIntro } from './hooks/useFireworksIntro';
+import { useIndexAdvisorFlow } from './hooks/useIndexAdvisorFlow';
+import { useAISchemaPatchFlow } from './hooks/useAISchemaPatchFlow';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { useAuthManagement } from '@/hooks/useAuthManagement';
 import { useSqlGeneration } from '@/hooks/useSqlGeneration';
@@ -48,7 +44,6 @@ import { useMysqlPartition } from '@/hooks/useMysqlPartition';
 import { useTableOptions } from '@/hooks/useTableOptions';
 import { useDDLReview } from '@/hooks/useDDLReview';
 import { useAIComments } from '@/hooks/useAIComments';
-import { useAIIndexAdvisor } from '@/hooks/useAIIndexAdvisor';
 import { useSuggestionAnimation } from '@/hooks/useSuggestionAnimation';
 import { useSavedTables } from '@/hooks/useSavedTables';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
@@ -59,10 +54,8 @@ import { countVersions } from '@/utils/tableVersions';
 import { writeWorkspaceSession } from '@/utils/workspaceStateDb';
 import { lintSchema } from '@/utils/schemaLint';
 import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
-import { buildIndexName, getIndexNameMaxLength } from '@/utils/indexNameUtils';
 import { EXAMPLE_USER_PROFILE_TABLE } from '@/utils/exampleTable';
 import { useTranslation } from 'react-i18next';
-import type { AISchemaChange } from '@/utils/aiSchemaChanges';
 
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -79,34 +72,6 @@ const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) => createEmptyRow(ind
 const DEFAULT_FIELD_TABLE_FREEZE_ENABLED = false;
 const DEFAULT_FIELD_TABLE_FREEZE_COLUMNS = 3;
 const SHARE_COPY_SAVED_TOAST_KEY = 'ddlbuilder:share:copy-saved:v1';
-
-const hasSameIndexFields = (left: IndexField[], right: IndexField[]) =>
-  left.length === right.length &&
-  left.every(
-    (field, index) =>
-      field.name.trim().toLowerCase() === right[index]?.name.trim().toLowerCase() &&
-      field.direction === right[index]?.direction,
-  );
-
-const buildSuggestedIndexQuery = (
-  schemaName: string,
-  tableName: string,
-  fields: { name: string }[],
-) => {
-  const table = tableName.trim();
-  if (!table || fields.length === 0) return '';
-
-  const qualifiedTable = schemaName.trim() ? `${schemaName.trim()}.${table}` : table;
-  const selectFields = fields.slice(0, Math.min(fields.length, 6)).map((field) => field.name);
-  const filterField =
-    fields.find((field) => /(^|_)(tenant|user|account|org)_?id$/i.test(field.name)) ?? fields[0];
-  const orderField = fields.find((field) =>
-    /(^|_)(created|updated)_?(at|time)$|(^|_)id$/i.test(field.name),
-  );
-  const orderClause = orderField ? `\nORDER BY ${orderField.name} DESC` : '';
-
-  return `SELECT ${selectFields.join(', ')}\nFROM ${qualifiedTable}\nWHERE ${filterField.name} = ?${orderClause}\nLIMIT 20;`;
-};
 
 const createEmptyGlobalDraftState = (): PersistedState => ({
   schemaName: '',
@@ -432,136 +397,27 @@ function App() {
   const { showToast } = useToast();
   const { isLoading: isGeneratingComments, generateComments } = useAIComments();
   const {
+    open: isAIIndexAdvisorOpen,
+    setDialogOpen: handleAIIndexAdvisorOpenChange,
+    openDialog: handleOpenAIIndexAdvisor,
     isLoading: isAnalyzingIndexes,
     result: indexAdvice,
     error: indexAdviceError,
-    analyzeIndexes,
-    clearAdvice: clearIndexAdvice,
-  } = useAIIndexAdvisor();
-  const [isAIIndexAdvisorOpen, setIsAIIndexAdvisorOpen] = useState(false);
-  const indexAdvisorBlockingMessage = useMemo(() => {
-    if (!tableName.trim()) return t('aiIndexAdvisor.tableNameRequired');
-    if (normalizedFields.length === 0) return t('aiIndexAdvisor.schemaRequired');
-    return null;
-  }, [normalizedFields.length, t, tableName]);
-  const suggestedIndexQuery = useMemo(
-    () => buildSuggestedIndexQuery(schemaName, tableName, normalizedFields),
-    [normalizedFields, schemaName, tableName],
-  );
-
-  const handleAIIndexAdvisorOpenChange = useCallback(
-    (open: boolean) => {
-      setIsAIIndexAdvisorOpen(open);
-      if (!open) {
-        clearIndexAdvice();
-      }
-    },
-    [clearIndexAdvice],
-  );
-
-  const handleOpenAIIndexAdvisor = useCallback(() => {
-    setIsAIIndexAdvisorOpen(true);
-  }, []);
-
-  const handleAnalyzeIndexes = useCallback(
-    (queryPatterns: string) => {
-      void (async () => {
-        try {
-          if (indexAdvisorBlockingMessage) {
-            showToast(indexAdvisorBlockingMessage);
-            return;
-          }
-
-          await analyzeIndexes({
-            dbType,
-            schemaName,
-            tableName: tableName.trim(),
-            tableComment,
-            fields: normalizedFields.map((field) => ({
-              fieldName: field.name,
-              fieldType: field.type,
-              fieldComment: field.comment,
-              nullable: field.nullable,
-            })),
-            indexes: indexes.map((index) => ({
-              name: index.name,
-              fields: index.fields,
-              unique: index.unique,
-              isPrimary: index.isPrimary,
-            })),
-            queryPatterns,
-          });
-          void trackEvent('ai_index_advisor_run', { dbType });
-        } catch (error) {
-          showToast((error as Error).message || t('services.generationFailed'));
-        }
-      })();
-    },
-    [
-      analyzeIndexes,
-      dbType,
-      indexAdvisorBlockingMessage,
-      indexes,
-      normalizedFields,
-      schemaName,
-      showToast,
-      t,
-      tableComment,
-      tableName,
-      trackEvent,
-    ],
-  );
-
-  const handleApplyIndexAdvice = useCallback(
-    (recommendation: AIIndexAdvisorRecommendation) => {
-      if (!recommendation.index) return;
-
-      const availableFieldNames = new Set(normalizedFields.map((field) => field.name));
-      const fields = recommendation.index.fields.filter((field) =>
-        availableFieldNames.has(field.name),
-      );
-      if (fields.length === 0) {
-        showToast(t('aiIndexAdvisor.schemaRequired'));
-        return;
-      }
-
-      if (indexes.some((index) => hasSameIndexFields(index.fields, fields))) {
-        showToast(t('aiIndexAdvisor.indexExists'));
-        return;
-      }
-
-      const nextIndex = {
-        id: `${Date.now()}_${recommendation.id}`,
-        name: buildIndexName(
-          recommendation.index.unique ? 'uk' : 'idx',
-          tableName.trim() || 'current_table',
-          fields.map((field) => field.name),
-          getIndexNameMaxLength(dbType),
-        ),
-        fields,
-        unique: recommendation.index.unique,
-        isPrimary: false,
-      };
-
-      setIndexes((prev) => [...prev, nextIndex]);
-      setActiveTab('indexes');
-      showToast(t('aiIndexAdvisor.indexApplied'));
-      void trackEvent('ai_index_advisor_apply', {
-        category: recommendation.category,
-      });
-    },
-    [
-      dbType,
-      indexes,
-      normalizedFields,
-      setActiveTab,
-      setIndexes,
-      showToast,
-      t,
-      tableName,
-      trackEvent,
-    ],
-  );
+    suggestedQuery: suggestedIndexQuery,
+    blockingMessage: indexAdvisorBlockingMessage,
+    analyze: handleAnalyzeIndexes,
+    applyRecommendation: handleApplyIndexAdvice,
+  } = useIndexAdvisorFlow({
+    dbType,
+    schemaName,
+    tableName,
+    tableComment,
+    fields: normalizedFields,
+    indexes,
+    setIndexes,
+    setActiveTab,
+    trackEvent,
+  });
 
   const handleGenerateComments = useCallback(
     (mode: AICommentMode, targetLocale?: 'zh-CN' | 'en-US') => {
@@ -1418,132 +1274,20 @@ function App() {
     ],
   );
 
-  const handleApplyAISchemaChange = useCallback(
-    (change: AISchemaChange, candidateState: PersistedState) => {
-      if (change.kind === 'table') {
-        if (change.type === 'schema_name') {
-          setSchemaName(change.newValue);
-        } else if (change.type === 'table_name') {
-          setTableName(change.newValue);
-        } else {
-          setTableComment(change.newValue);
-        }
-      }
-
-      if (change.kind === 'field') {
-        setActiveTab('fields');
-        setRows((prev) => {
-          if (change.type === 'add' && change.newRow) {
-            const candidateIndex = candidateState.rows.findIndex(
-              (row) => row.fieldName === change.newRow?.fieldName,
-            );
-            const insertIndex =
-              candidateIndex >= 0 ? Math.min(candidateIndex, prev.length) : prev.length;
-            const next = prev.slice();
-            next.splice(insertIndex, 0, change.newRow);
-            return ensureOrder(next);
-          }
-
-          if ((change.type === 'modify' || change.type === 'rename') && change.newRow) {
-            const nextRow = change.newRow;
-            const targetName = change.oldFieldName || change.oldRow?.fieldName || change.fieldName;
-            return ensureOrder(
-              prev.map((row) =>
-                row.fieldName.trim().toLowerCase() === targetName.trim().toLowerCase()
-                  ? nextRow
-                  : row,
-              ),
-            );
-          }
-
-          if (change.type === 'remove') {
-            const targetName = change.oldRow?.fieldName || change.fieldName;
-            return ensureOrder(
-              prev.filter(
-                (row) => row.fieldName.trim().toLowerCase() !== targetName.trim().toLowerCase(),
-              ),
-            );
-          }
-
-          return prev;
-        });
-
-        const candidateIndex = change.newRow
-          ? candidateState.rows.findIndex((row) => row.fieldName === change.newRow?.fieldName)
-          : rows.findIndex((row) => row.fieldName === change.oldRow?.fieldName);
-        if (candidateIndex >= 0) {
-          triggerFieldTableHighlight(candidateIndex);
-        }
-      }
-
-      if (change.kind === 'index') {
-        setActiveTab('indexes');
-        if (change.type === 'add' && change.newIndex) {
-          const nextIndex = change.newIndex;
-          setIndexes((prev) => [...prev, nextIndex]);
-          setTimeout(() => void triggerIndexAnimation(nextIndex.id, 'add'), 50);
-        } else if (change.type === 'modify' && change.newIndex) {
-          const nextIndex = change.newIndex;
-          setIndexes((prev) =>
-            prev.map((index) =>
-              index.name.toLowerCase() === change.indexName.toLowerCase()
-                ? { ...nextIndex, id: index.id }
-                : index,
-            ),
-          );
-          setTimeout(() => void triggerIndexAnimation(nextIndex.id, 'add'), 50);
-        } else if (change.type === 'remove' && change.oldIndex) {
-          void triggerIndexAnimation(change.oldIndex.id, 'remove');
-          setTimeout(() => {
-            setIndexes((prev) =>
-              prev.filter((index) => index.name.toLowerCase() !== change.indexName.toLowerCase()),
-            );
-          }, 500);
-        }
-      }
-
-      void trackEvent('ai_schema_patch_apply', {
-        type: `${change.kind}:${change.type}`,
-      });
-    },
-    [
+  const { applyChange: handleApplyAISchemaChange, focusChange: handleFocusAISchemaChange } =
+    useAISchemaPatchFlow({
       rows,
-      setActiveTab,
-      setIndexes,
+      indexes,
       setRows,
+      setIndexes,
       setSchemaName,
       setTableName,
       setTableComment,
+      setActiveTab,
+      highlightField: triggerFieldTableHighlight,
+      animateIndex: triggerIndexAnimation,
       trackEvent,
-      triggerFieldTableHighlight,
-      triggerIndexAnimation,
-    ],
-  );
-
-  const handleFocusAISchemaChange = useCallback(
-    (change: AISchemaChange) => {
-      if (change.kind === 'field') {
-        setActiveTab('fields');
-        const targetName = change.oldRow?.fieldName || change.newRow?.fieldName || change.fieldName;
-        const rowIndex = rows.findIndex(
-          (row) => row.fieldName.trim().toLowerCase() === targetName.trim().toLowerCase(),
-        );
-        if (rowIndex >= 0) {
-          triggerFieldTableHighlight(rowIndex);
-        }
-      } else if (change.kind === 'index') {
-        setActiveTab('indexes');
-        const targetIndex =
-          indexes.find((index) => index.name.toLowerCase() === change.indexName.toLowerCase()) ||
-          change.newIndex ||
-          change.oldIndex;
-        if (targetIndex) {
-          void triggerIndexAnimation(targetIndex.id, change.type === 'remove' ? 'remove' : 'add');
-        }
-      }
-    },
-    [indexes, rows, setActiveTab, triggerFieldTableHighlight, triggerIndexAnimation],
-  );
+    });
 
   const { handleApplySuggestion, handleImport, handleApplyAIGeneratedSchema } =
     useSchemaApplyActions({
