@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, type ReactNode } from 'react';
 import { Plus, X, Loader2, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { WorkspaceTab } from '@/stores';
@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 interface TabBarProps {
+  leadingAction?: ReactNode;
   tabs: WorkspaceTab[];
   activeTabId: string | null;
   onActivateTab: (id: string) => void;
@@ -87,7 +88,7 @@ const TabItem = memo(
 TabItem.displayName = 'TabItem';
 
 export const TabBar = memo(
-  ({ tabs, activeTabId, onActivateTab, onCloseTab, onCreateTab }: TabBarProps) => {
+  ({ leadingAction, tabs, activeTabId, onActivateTab, onCloseTab, onCreateTab }: TabBarProps) => {
     const { visibleTabs, hiddenTabs } = useMemo(() => {
       if (tabs.length <= MAX_VISIBLE_TABS) {
         return { visibleTabs: tabs, hiddenTabs: [] as WorkspaceTab[] };
@@ -100,6 +101,7 @@ export const TabBar = memo(
 
     return (
       <div className="flex items-end gap-1 border-b bg-muted/20 px-2 pt-1">
+        {leadingAction}
         <div className="flex min-w-0 flex-1 items-end gap-1">
           {visibleTabs.map((tab) => (
             <TabItem

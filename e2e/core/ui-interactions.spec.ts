@@ -115,4 +115,23 @@ test.describe('核心 UI 交互功能测试 @core', () => {
     await page.getByRole('tab', { name: /字段/i }).click();
     await expect(page.getByRole('tab', { name: /字段/i })).toHaveAttribute('aria-selected', 'true');
   });
+
+  test('场景：收起工作区侧栏后应释放全部横向空间', async ({ page }) => {
+    const sidebar = page.getByTestId('workspace-sidebar');
+    const content = page.getByTestId('workspace-content');
+
+    await expect(sidebar).toBeVisible();
+    const expandedContentBox = await content.boundingBox();
+    expect(expandedContentBox?.x).toBeGreaterThan(0);
+
+    await page.getByRole('button', { name: /收起侧边栏|Collapse sidebar/i }).click();
+
+    await expect(sidebar).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /展开侧边栏|Expand sidebar/i })).toBeVisible();
+    const collapsedContentBox = await content.boundingBox();
+    expect(collapsedContentBox?.x).toBe(0);
+
+    await page.getByRole('button', { name: /展开侧边栏|Expand sidebar/i }).click();
+    await expect(sidebar).toBeVisible();
+  });
 });

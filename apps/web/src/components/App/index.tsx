@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react
 import type { AICommentMode, DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
 import { createEmptyRow } from '@/utils/helpers';
 import { isTabAvailable } from '@/utils/tabUtils';
-import { Upload } from 'lucide-react';
+import { ChevronRight, Upload } from 'lucide-react';
 import { Header } from './Header';
 import { GlobalDialogs } from './containers/GlobalDialogs';
 import { OutputContainer } from './containers/OutputContainer';
@@ -1528,9 +1528,8 @@ function App() {
         />
 
         <div className="flex flex-col sm:flex-row">
-          {!isShareView && (
+          {!isShareView && workspaceSidebarOpen && (
             <WorkspaceSidebar
-              open={workspaceSidebarOpen}
               loading={savedTablesLoading || foldersLoading}
               error={savedTablesError}
               items={savedTables}
@@ -1542,7 +1541,7 @@ function App() {
               activeDraftId={activeSource.kind === 'draft' ? activeSource.draftId : null}
               activeDirty={isLoadedDirty}
               tablePresentations={tablePresentations}
-              onToggle={() => setWorkspaceSidebarOpen((open) => !open)}
+              onCollapse={() => setWorkspaceSidebarOpen(false)}
               onOpenWorkspace={handleOpenSavedTablesDrawer}
               onCreateFolder={() => handleOpenCreateFolderDialog()}
               onSelectDraft={handleSelectDraft}
@@ -1564,9 +1563,21 @@ function App() {
             />
           )}
 
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1" data-testid="workspace-content">
             {!isShareView && (
               <TabBar
+                leadingAction={
+                  !workspaceSidebarOpen ? (
+                    <button
+                      type="button"
+                      className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      onClick={() => setWorkspaceSidebarOpen(true)}
+                      aria-label={t('savedTables.expand')}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  ) : undefined
+                }
                 tabs={tabs}
                 activeTabId={activeTabId}
                 onActivateTab={(id) => {

@@ -9,7 +9,6 @@ import {
 } from '@dnd-kit/core';
 import {
   ChevronLeft,
-  ChevronRight,
   FileEdit,
   FolderOpen,
   Plus,
@@ -46,7 +45,6 @@ type TablePresentation = {
 };
 
 interface WorkspaceSidebarProps {
-  open: boolean;
   loading: boolean;
   error?: string | null;
   items: SavedTableSummary[];
@@ -58,7 +56,7 @@ interface WorkspaceSidebarProps {
   activeDraftId?: string | null;
   activeDirty?: boolean;
   tablePresentations?: ReadonlyMap<string, TablePresentation>;
-  onToggle: () => void;
+  onCollapse: () => void;
   onOpenWorkspace: () => void;
   onCreateFolder?: () => void;
   onSelectDraft?: (draftId: string) => void;
@@ -113,7 +111,6 @@ RootDropZone.displayName = 'WorkspaceRootDropZone';
 
 export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
   ({
-    open,
     loading,
     error,
     items,
@@ -125,7 +122,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
     activeDraftId,
     activeDirty = false,
     tablePresentations,
-    onToggle,
+    onCollapse,
     onOpenWorkspace,
     onCreateFolder,
     onSelectDraft,
@@ -448,15 +445,13 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
 
     return (
       <aside
-        className={cn(
-          'flex min-h-[calc(100vh-7.5rem)] shrink-0 flex-col border-r bg-card/80 transition-all duration-200',
-          open ? 'w-full sm:w-72' : 'w-full sm:w-14',
-        )}
+        className="flex min-h-[calc(100vh-7.5rem)] w-full shrink-0 flex-col border-r bg-card/80 sm:w-72"
+        data-testid="workspace-sidebar"
       >
         <div className="flex items-center justify-between border-b px-3 py-3">
           <button
             type="button"
-            className={cn('flex min-w-0 items-center gap-2', open ? 'flex' : 'sm:hidden')}
+            className="flex min-w-0 items-center gap-2"
             onClick={onOpenWorkspace}
           >
             <FolderOpen className="h-4 w-4 text-primary" />
@@ -468,14 +463,14 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={onToggle}
-            aria-label={open ? t('savedTables.collapse') : t('savedTables.expand')}
+            onClick={onCollapse}
+            aria-label={t('savedTables.collapse')}
           >
-            {open ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            <ChevronLeft className="h-4 w-4" />
           </Button>
         </div>
 
-        <div className={cn('min-h-0 flex-1 overflow-y-auto p-3', open ? 'block' : 'sm:hidden')}>
+        <div className="min-h-0 flex-1 overflow-y-auto p-3">
           <div className="mb-3 flex gap-2">
             <div className="relative min-w-0 flex-1">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
