@@ -12,6 +12,7 @@ import {
   runAllMigrations,
   runD1Execute,
   runPendingMigrations,
+  verifyRequiredD1Tables,
 } from './d1-utils';
 
 vi.mock('node:child_process', () => ({
@@ -313,6 +314,26 @@ describe('d1-utils', () => {
       'pnpm',
       expect.arrayContaining(['--remote', '--file']),
       expect.objectContaining({ stdio: 'inherit' }),
+    );
+  });
+
+  it('verifies all required runtime tables', () => {
+    vi.mocked(spawnSync).mockReturnValue({
+      status: 0,
+      stdout: JSON.stringify([{ results: [{ name: 'user' }, { name: 'session' }] }]),
+    } as ReturnType<typeof spawnSync>);
+
+    expect(() => verifyRequiredD1Tables('remote', ['user', 'session'])).not.toThrow();
+  });
+
+  it('rejects a database with missing runtime tables', () => {
+    vi.mocked(spawnSync).mockReturnValue({
+      status: 0,
+      stdout: JSON.stringify([{ results: [{ name: 'user' }] }]),
+    } as ReturnType<typeof spawnSync>);
+
+    expect(() => verifyRequiredD1Tables('remote', ['user', 'session'])).toThrow(
+      'D1 缺少运行时必需表：session',
     );
   });
 });

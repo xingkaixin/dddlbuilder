@@ -83,7 +83,7 @@ pnpm deploy:cf
 2. 在 `.deploy.secrets` 中填写生产 secrets
 3. 执行 `pnpm deploy:cf`
 
-`pnpm deploy:cf` 会在构建后自动调用 `wrangler deploy --config apps/worker/wrangler.deploy.toml`，如果检测到 `.deploy.secrets`，会额外带上 `--secrets-file .deploy.secrets`，不需要再一个个手动 `wrangler secret put`。
+`pnpm deploy:cf` 会在构建后记录 D1 Time Travel 恢复点、执行 remote pending migrations、验证运行时必需表，再调用 `wrangler deploy --config apps/worker/wrangler.deploy.toml`。如果检测到 `.deploy.secrets`，会额外带上 `--secrets-file .deploy.secrets`，不需要再一个个手动 `wrangler secret put`。
 
 `.deploy.secrets` 使用标准 `.env` 格式，例如：
 
@@ -183,7 +183,7 @@ pnpm db:reset:local
 - 默认所有 D1 命令都操作 local simulation。
 - remote D1 只允许通过显式的 `:remote` 命令访问。
 - `pnpm dev:worker` 和 `pnpm db:*:local` 共享同一份本地 D1，持久化目录都是 `.wrangler/state/dev`。
-- 自动迁移仅作用于本地 D1；remote D1 仍必须显式执行 `pnpm db:migrate:remote`。
+- `pnpm deploy:cf` 会在部署 Worker 前自动执行 remote pending migrations 并验证必需表；也可以通过 `pnpm db:migrate:remote` 单独执行远程迁移。
 
 ## 使用说明
 

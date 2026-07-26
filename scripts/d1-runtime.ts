@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { D1_BINDING, listMigrationFiles } from './d1-utils';
+export { REQUIRED_RUNTIME_TABLES } from './d1-utils';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -83,23 +84,3 @@ export const e2eD1RuntimeOptions = {
   configPath: 'apps/worker/wrangler.e2e.toml',
   persistDir: path.join(repoRoot, '.wrangler', 'state', 'e2e'),
 } satisfies D1RuntimeOptions;
-
-export const REQUIRED_RUNTIME_TABLES = [
-  'account',
-  'admin_sessions',
-  'admin_user_flags',
-  'ai_governance_counters',
-  'credit_accounts',
-  'credit_ledger',
-  'request_rate_limits',
-  'session',
-  'usage_events',
-  'user',
-  'verification',
-  'workspace_clocks',
-  'workspace_entities',
-  'workspace_links',
-  'workspace_mutations',
-  'workspace_snapshots',
-  'workspaces',
-] as const;

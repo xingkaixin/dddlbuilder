@@ -8,6 +8,25 @@ export type D1Mode = 'local' | 'remote';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 export const D1_BINDING = 'USER_DB';
+export const REQUIRED_RUNTIME_TABLES = [
+  'account',
+  'admin_sessions',
+  'admin_user_flags',
+  'ai_governance_counters',
+  'credit_accounts',
+  'credit_ledger',
+  'request_rate_limits',
+  'session',
+  'usage_events',
+  'user',
+  'verification',
+  'workspace_clocks',
+  'workspace_entities',
+  'workspace_links',
+  'workspace_mutations',
+  'workspace_snapshots',
+  'workspaces',
+] as const;
 export const getWranglerConfigPath = (mode: D1Mode) =>
   mode === 'remote' ? 'apps/worker/wrangler.deploy.toml' : 'apps/worker/wrangler.toml';
 export const migrationDir = path.join(repoRoot, 'packages', 'db', 'migrations');
@@ -177,5 +196,20 @@ export const runPendingMigrations = (mode: D1Mode): void => {
     console.log(`[d1] applying ${path.relative(repoRoot, file)} (${mode})`);
     runD1Execute(mode, { file });
     recordMigration(mode, name);
+  }
+};
+
+export const verifyRequiredD1Tables = (
+  mode: D1Mode,
+  requiredTables: readonly string[] = REQUIRED_RUNTIME_TABLES,
+): void => {
+  const rows = queryD1Rows<{ name: string }>(
+    mode,
+    "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
+  );
+  const actualTables = new Set(rows.map((row) => row.name));
+  const missingTables = requiredTables.filter((table) => !actualTables.has(table));
+  if (missingTables.length > 0) {
+    throw new Error(`D1 缺少运行时必需表：${missingTables.join(', ')}`);
   }
 };
