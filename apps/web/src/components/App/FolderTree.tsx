@@ -83,7 +83,6 @@ const FolderNode = memo<FolderNodeProps>(
       listeners,
       setNodeRef: setDragRef,
       transform,
-      transition,
     } = useDraggable({
       id: dragId,
       disabled: dragDisabled,
@@ -116,7 +115,6 @@ const FolderNode = memo<FolderNodeProps>(
           style={{
             paddingLeft: `${depth * 16 + 8}px`,
             transform: CSS.Transform.toString(transform),
-            transition,
           }}
           data-testid={`folder-row:${folder.id}`}
         >

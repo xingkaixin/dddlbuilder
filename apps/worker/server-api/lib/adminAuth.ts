@@ -8,6 +8,15 @@ const SEPARATOR = '.';
 
 const encode = (value: string) => new TextEncoder().encode(value);
 
+const timingSafeEqual = (a: Uint8Array, b: Uint8Array): boolean => {
+  let mismatch = a.length ^ b.length;
+  const length = Math.max(a.length, b.length);
+  for (let index = 0; index < length; index += 1) {
+    mismatch |= (a[index] ?? 0) ^ (b[index] ?? 0);
+  }
+  return mismatch === 0;
+};
+
 const hmacSign = async (key: string, data: string): Promise<string> => {
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
@@ -33,7 +42,7 @@ export const createAdminSession = async (
 
   const a = encode(password);
   const b = encode(configured);
-  if (a.length !== b.length || !crypto.subtle.timingSafeEqual(a, b)) {
+  if (!timingSafeEqual(a, b)) {
     return { success: false };
   }
 
@@ -89,10 +98,7 @@ export const resolveAdminSession = async (
   const expected = await hmacSign(configured, payload);
   const actualBytes = encode(mac);
   const expectedBytes = encode(expected);
-  if (
-    actualBytes.length !== expectedBytes.length ||
-    !crypto.subtle.timingSafeEqual(actualBytes, expectedBytes)
-  ) {
+  if (!timingSafeEqual(actualBytes, expectedBytes)) {
     return false;
   }
 

@@ -1,4 +1,4 @@
-import type { NormalizedField, SqlFormatMode } from '@ddlbuilder/shared-types';
+import type { DatabaseType, NormalizedField, SqlFormatMode } from '@ddlbuilder/shared-types';
 import {
   getCanonicalBaseType,
   supportsAutoIncrement,
@@ -12,7 +12,7 @@ import {
 import { AbstractDDLStrategy } from './AbstractDDLStrategy';
 
 export class MySqlStrategy extends AbstractDDLStrategy {
-  getDatabaseType(): 'mysql' {
+  getDatabaseType(): DatabaseType {
     return 'mysql';
   }
 

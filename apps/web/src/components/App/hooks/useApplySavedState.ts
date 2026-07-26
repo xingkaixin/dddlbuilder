@@ -9,7 +9,7 @@ interface UseApplySavedStateParams {
   setIndexes: (indexes: PersistedState['indexes']) => void;
   setIndexInput: (value: PersistedState['indexInput']) => void;
   setCurrentIndexFields: (fields: PersistedState['currentIndexFields']) => void;
-  setForeignKeys: (foreignKeys: PersistedState['foreignKeys']) => void;
+  setForeignKeys: (foreignKeys: NonNullable<PersistedState['foreignKeys']>) => void;
   resetForeignKeys: () => void;
   setAuthObjects: (objects: PersistedState['authObjects']) => void;
   setAuthInput: (input: PersistedState['authInput']) => void;

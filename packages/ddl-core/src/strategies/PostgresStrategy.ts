@@ -11,8 +11,11 @@ import {
 import { AbstractDDLStrategy } from './AbstractDDLStrategy';
 
 export class PostgresStrategy extends AbstractDDLStrategy {
-  constructor(private readonly databaseType: DatabaseType = 'postgresql') {
+  private readonly databaseType: DatabaseType;
+
+  constructor(databaseType: DatabaseType = 'postgresql') {
     super();
+    this.databaseType = databaseType;
   }
 
   getDatabaseType(): DatabaseType {

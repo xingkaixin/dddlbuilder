@@ -16,7 +16,7 @@ describe('betterAuthClient', () => {
       signIn: { email: vi.fn() },
       signUp: { email: vi.fn() },
       signOut: vi.fn(),
-      forgetPassword: vi.fn(),
+      requestPasswordReset: vi.fn(),
       resetPassword: vi.fn(),
       sendVerificationEmail: vi.fn(),
       updateUser: vi.fn(),

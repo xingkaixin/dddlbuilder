@@ -1,17 +1,14 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import type Handsontable from 'handsontable';
 import type { FieldRow, NormalizedField } from '@ddlbuilder/shared-types';
 import { toStringSafe, createEmptyRow, ensureOrder, normalizeFields } from '@/utils/helpers';
+import type { TableCellChange, TableChangeSource } from '@/types/tableChanges';
 
 export interface UseTableDataReturn {
   rows: FieldRow[];
   duplicateNameSet: Set<string>;
   normalizedFields: NormalizedField[];
   resetTableRows: () => void;
-  handleRowsChange: (
-    changes: Handsontable.CellChange[] | null,
-    source: Handsontable.ChangeSource,
-  ) => void;
+  handleRowsChange: (changes: TableCellChange[] | null, source: TableChangeSource) => void;
   handleCreateRow: (index: number, amount: number) => void;
   handleRemoveRow: (index: number, amount: number) => void;
   handleAddRows: (count: number) => void;
@@ -57,8 +54,8 @@ export function useTableData(
   const validateChanges = useCallback(
     (
       // rows: FieldRow[],
-      changes: Handsontable.CellChange[] | null,
-    ): { isValid: boolean; changes: Handsontable.CellChange[] } => {
+      changes: TableCellChange[] | null,
+    ): { isValid: boolean; changes: TableCellChange[] } => {
       if (!changes) {
         return { isValid: false, changes: [] };
       }
@@ -69,7 +66,7 @@ export function useTableData(
 
   // 处理器函数：确保行存在
   const ensureRowExists = useCallback(
-    (rows: FieldRow[], changes: Handsontable.CellChange[]): FieldRow[] => {
+    (rows: FieldRow[], changes: TableCellChange[]): FieldRow[] => {
       const next = rows.map((row) => ({ ...row }));
       changes.forEach(([rowIndex]) => {
         while (next.length <= rowIndex) {
@@ -83,7 +80,7 @@ export function useTableData(
 
   // 处理器函数：更新字段值
   const updateFieldValue = useCallback(
-    (rows: FieldRow[], changes: Handsontable.CellChange[]): FieldRow[] => {
+    (rows: FieldRow[], changes: TableCellChange[]): FieldRow[] => {
       const next = rows.map((row) => ({ ...row }));
       changes.forEach(([rowIndex, prop, , value]) => {
         if (typeof prop !== 'string' || prop === 'order') {
@@ -91,7 +88,7 @@ export function useTableData(
         }
         next[rowIndex] = {
           ...next[rowIndex],
-          [prop]: value == null ? '' : String(value),
+          [prop]: toStringSafe(value),
         };
       });
       return next;
@@ -101,13 +98,13 @@ export function useTableData(
 
   // 处理器函数：处理特殊字段逻辑
   const handleSpecialFieldLogic = useCallback(
-    (rows: FieldRow[], changes: Handsontable.CellChange[]): FieldRow[] => {
+    (rows: FieldRow[], changes: TableCellChange[]): FieldRow[] => {
       const next = rows.map((row) => ({ ...row }));
       changes.forEach(([rowIndex, prop, , value]) => {
         if (typeof prop !== 'string' || prop !== 'defaultKind') {
           return;
         }
-        const kind = String(value ?? '');
+        const kind = toStringSafe(value);
         if (kind !== '常量') {
           next[rowIndex].defaultValue = '';
         }
@@ -127,7 +124,7 @@ export function useTableData(
 
   // 责任链：按顺序处理变更
   const handleChangeChain = useCallback(
-    (rows: FieldRow[], changes: Handsontable.CellChange[]): FieldRow[] => {
+    (rows: FieldRow[], changes: TableCellChange[]): FieldRow[] => {
       const processors = [
         (r: FieldRow[]) => r, // 占位符，实际处理在下面
         (r: FieldRow[]) => ensureRowExists(r, changes),
@@ -142,7 +139,7 @@ export function useTableData(
   );
 
   const handleRowsChange = useCallback(
-    (changes: Handsontable.CellChange[] | null, source: Handsontable.ChangeSource) => {
+    (changes: TableCellChange[] | null, source: TableChangeSource) => {
       // 验证变更
       const { isValid, changes: validChanges } = validateChanges(changes);
 

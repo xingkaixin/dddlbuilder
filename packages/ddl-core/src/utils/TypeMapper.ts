@@ -3,7 +3,11 @@ import { TYPE_MAPPINGS } from '../configs/typeMappings.js';
 import { canonicalizeBaseType } from './databaseTypeMapping.js';
 
 export class TypeMapper {
-  private constructor(private databaseType: DatabaseType) {}
+  private readonly databaseType: DatabaseType;
+
+  private constructor(databaseType: DatabaseType) {
+    this.databaseType = databaseType;
+  }
 
   static create(databaseType: DatabaseType): TypeMapper {
     return new TypeMapper(databaseType);

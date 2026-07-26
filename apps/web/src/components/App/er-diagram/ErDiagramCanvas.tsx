@@ -105,13 +105,13 @@ function CanvasInner({ tables, loading, onSelectTable, onRefresh, onAddTable }: 
   );
   const initialEdges = useMemo(() => buildEdgesFromTables(tables), [tables]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
 
   useEffect(() => {
-    setNodes((prev) => {
-      const prevPositions = new Map(prev.map((n) => [n.id, n.position]));
-      return initialNodes.map((n) => {
+    setNodes((prev: Node[]) => {
+      const prevPositions = new Map(prev.map((n: Node) => [n.id, n.position]));
+      return initialNodes.map((n: Node) => {
         const pos = prevPositions.get(n.id);
         if (pos) {
           return { ...n, position: pos };
@@ -155,8 +155,8 @@ function CanvasInner({ tables, loading, onSelectTable, onRefresh, onAddTable }: 
   );
 
   useEffect(() => {
-    setEdges((prev) =>
-      prev.map((e) => {
+    setEdges((prev: Edge[]) =>
+      prev.map((e: Edge) => {
         if (!e.data) return e;
         return {
           ...e,
@@ -218,9 +218,9 @@ function CanvasInner({ tables, loading, onSelectTable, onRefresh, onAddTable }: 
   );
 
   const handleAutoLayout = useCallback(() => {
-    setNodes((prev) => {
+    setNodes((prev: Node[]) => {
       const cols = Math.ceil(Math.sqrt(prev.length));
-      return prev.map((node, index) => {
+      return prev.map((node: Node, index: number) => {
         const col = index % cols;
         const row = Math.floor(index / cols);
         return {

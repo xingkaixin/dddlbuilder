@@ -1,4 +1,4 @@
-import type { DatabaseType } from '../../types';
+import type { DatabaseType } from '@ddlbuilder/shared-types';
 
 const POSTGRESQL_KEYWORDS = new Set([
   'all',
@@ -826,4 +826,5 @@ export const RESERVED_KEYWORDS: Record<DatabaseType, Set<string>> = {
     'where',
   ]),
   gaussdb: POSTGRESQL_KEYWORDS,
+  hive: new Set(),
 };

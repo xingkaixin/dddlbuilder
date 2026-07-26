@@ -48,6 +48,18 @@ function getScoreBgColor(score: number): string {
 
 const SUGGESTION_SKELETON_COUNT = 3;
 
+function isRenderableSuggestion(
+  suggestion: string | Record<string, unknown> | StructuredSuggestion,
+): suggestion is string | StructuredSuggestion {
+  if (typeof suggestion === 'string') return true;
+  return (
+    typeof suggestion.id === 'string' &&
+    typeof suggestion.description === 'string' &&
+    typeof suggestion.type === 'string' &&
+    typeof suggestion.actionable === 'boolean'
+  );
+}
+
 // Component for rendering score
 function ScoreDisplay({ score, isStreaming }: { score: number; isStreaming?: boolean }) {
   return (
@@ -285,7 +297,7 @@ export const ReviewResultPanel = memo<ReviewResultPanelProps>(
     const isStreaming = isLoading && !result;
     // Determine what to show: final result or partial result during streaming
     const displayResult = result || (isLoading ? partialResult : null);
-    const suggestions = displayResult?.suggestions ?? [];
+    const suggestions = (displayResult?.suggestions ?? []).filter(isRenderableSuggestion);
     const missingSuggestionCount = isStreaming
       ? Math.max(1, SUGGESTION_SKELETON_COUNT - suggestions.length)
       : 0;

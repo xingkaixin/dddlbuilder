@@ -1,4 +1,4 @@
-import { lazy, StrictMode } from 'react';
+import { lazy, StrictMode, type ComponentType, type PropsWithChildren } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
@@ -14,6 +14,9 @@ import { isAdminPath } from './admin/lib/adminPath';
 import './i18n';
 
 const AdminApp = lazy(() => import('./admin/AdminApp').then((m) => ({ default: m.AdminApp })));
+const AppThemeProvider = ThemeProvider as ComponentType<
+  PropsWithChildren<React.ComponentProps<typeof ThemeProvider>>
+>;
 
 const rootElement = document.getElementById('root');
 
@@ -26,7 +29,7 @@ const isAdmin = isAdminPath();
 createRoot(rootElement).render(
   <StrictMode>
     <LocaleProvider>
-      <ThemeProvider
+      <AppThemeProvider
         attribute="class"
         defaultTheme="system"
         enableSystem
@@ -47,7 +50,7 @@ createRoot(rootElement).render(
             <Toaster />
           </AppErrorBoundary>
         </QueryClientProvider>
-      </ThemeProvider>
+      </AppThemeProvider>
     </LocaleProvider>
   </StrictMode>,
 );

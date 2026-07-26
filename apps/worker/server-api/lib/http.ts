@@ -89,10 +89,14 @@ export const streamErrorPayload = (error: string, code?: ApiErrorCode, requestId
     ...(requestId ? { requestId } : {}),
   } satisfies ApiErrorPayload);
 
+export type JsonBodyResult<T> =
+  | { data: T; errorResponse: null }
+  | { data: null; errorResponse: Response };
+
 export const parseJsonBodyWithLimit = async <T>(
   c: Context<ApiEnv>,
   maxBytes: number,
-): Promise<{ data: T | null; errorResponse: Response | null }> => {
+): Promise<JsonBodyResult<T>> => {
   const contentLength = Number(c.req.header('content-length'));
   if (Number.isFinite(contentLength) && contentLength > maxBytes) {
     return {

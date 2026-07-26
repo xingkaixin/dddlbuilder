@@ -33,6 +33,7 @@ export const useWorkspaceMigration = (authState: {
       setError(null);
       return;
     }
+    const userId = authState.userId;
 
     let cancelled = false;
     setChecking(true);
@@ -48,7 +49,7 @@ export const useWorkspaceMigration = (authState: {
         }
         const userScopeHasLocalData = await hasMeaningfulWorkspaceData({
           kind: 'user',
-          userId: authState.userId,
+          userId,
         });
         if (userScopeHasLocalData) {
           setPending(null);
@@ -57,9 +58,9 @@ export const useWorkspaceMigration = (authState: {
         }
         await applyWorkspaceMigrationPayloadToLocal(analysis.payload, {
           kind: 'user',
-          userId: authState.userId,
+          userId,
         });
-        if (isWorkspaceMigrationDismissed(authState.userId, analysis.payload.localFingerprint)) {
+        if (isWorkspaceMigrationDismissed(userId, analysis.payload.localFingerprint)) {
           return;
         }
         setPending(analysis);

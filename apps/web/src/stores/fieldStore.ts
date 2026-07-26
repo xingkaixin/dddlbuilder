@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import type Handsontable from 'handsontable';
 import type { FieldRow } from '@ddlbuilder/shared-types';
 import { createEmptyRow, ensureOrder, toStringSafe, normalizeFields } from '@/utils/helpers';
+import type { TableCellChange, TableChangeSource } from '@/types/tableChanges';
 
 function createInitialRows(count: number): FieldRow[] {
   return Array.from({ length: count }, (_, index) => createEmptyRow(index));
@@ -15,8 +15,6 @@ function normalizeNullableValue(value: unknown): '是' | '否' {
   if (value === false) return '否';
   return toStringSafe(value).trim() === '否' ? '否' : '是';
 }
-
-type FieldStoreCellChange = [number, string | number, unknown, unknown];
 
 function normalizePersistedRows(rows: FieldRow[]): FieldRow[] {
   return rows.map((row, index) => ({
@@ -39,10 +37,7 @@ interface FieldStoreState {
   setRows: (next: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => void;
   initializeRows: (persistedRows?: FieldRow[]) => void;
   resetRows: (count?: number) => void;
-  handleRowsChange: (
-    changes: (FieldStoreCellChange | null)[] | null,
-    source: Handsontable.ChangeSource,
-  ) => void;
+  handleRowsChange: (changes: (TableCellChange | null)[] | null, source: TableChangeSource) => void;
   handleCreateRow: (index: number, amount: number) => void;
   handleRemoveRow: (index: number, amount: number) => void;
   handleAddRows: (count: number) => void;
@@ -66,7 +61,7 @@ export const useFieldStore = create<FieldStoreState>((set) => ({
       return;
     }
 
-    const validChanges = changes.filter((change): change is FieldStoreCellChange =>
+    const validChanges = changes.filter((change): change is TableCellChange =>
       Array.isArray(change),
     );
 

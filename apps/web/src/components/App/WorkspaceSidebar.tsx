@@ -25,6 +25,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
@@ -127,7 +130,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
     onCreateFolder,
     onSelectDraft,
     onDeleteDraft,
-    _onMoveDraftToFolder,
+    onMoveDraftToFolder,
     onSelect,
     onRename,
     onDelete,
@@ -180,7 +183,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
       folders,
       searchQuery: query,
     });
-    const _flatFolders = useMemo(() => {
+    const flatFolders = useMemo(() => {
       const result: Array<{ id: string; name: string; depth: number }> = [];
       const walk = (nodes: FolderTreeNode[], depth: number) => {
         for (const folder of nodes) {
@@ -538,6 +541,30 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-36">
+                            {onMoveDraftToFolder && (
+                              <DropdownMenuSub>
+                                <DropdownMenuSubTrigger>
+                                  <FolderOpen className="mr-2 h-4 w-4" />
+                                  {t('savedTables.moveToFolder')}
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuSubContent className="w-44">
+                                  <DropdownMenuItem
+                                    onClick={() => onMoveDraftToFolder(draft.draftId)}
+                                  >
+                                    {t('savedTables.moveToRoot')}
+                                  </DropdownMenuItem>
+                                  {flatFolders.map((folder) => (
+                                    <DropdownMenuItem
+                                      key={folder.id}
+                                      onClick={() => onMoveDraftToFolder(draft.draftId, folder.id)}
+                                      style={{ paddingLeft: `${folder.depth * 12 + 8}px` }}
+                                    >
+                                      {folder.name}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuSubContent>
+                              </DropdownMenuSub>
+                            )}
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive"
                               onClick={() => onDeleteDraft(draft.draftId)}

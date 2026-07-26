@@ -4,7 +4,7 @@ export function useDebouncedEffect(effect: EffectCallback, deps: DependencyList,
   useEffect(() => {
     let cleanup: undefined | (() => void);
     const timer = window.setTimeout(() => {
-      cleanup = effect();
+      cleanup = effect() || undefined;
     }, delay);
 
     return () => {

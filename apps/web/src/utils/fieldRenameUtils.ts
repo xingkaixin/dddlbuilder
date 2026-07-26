@@ -17,7 +17,7 @@ export function replaceIdentifierToken(source: string, oldToken: string, newToke
   const escapedOldToken = escapeRegExp(oldToken);
   const pattern = new RegExp(`(^|[^\\p{L}\\p{N}])${escapedOldToken}(?=[^\\p{L}\\p{N}]|$)`, 'giu');
 
-  return source.replace(pattern, (match, prefix: string) => {
+  return source.replace(pattern, (_match, prefix: string) => {
     const safePrefix = typeof prefix === 'string' ? prefix : '';
     return `${safePrefix}${newToken}`;
   });

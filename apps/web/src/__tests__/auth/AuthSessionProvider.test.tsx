@@ -11,7 +11,7 @@ import {
 
 const signInEmailMock = vi.fn();
 const signUpEmailMock = vi.fn();
-const forgetPasswordMock = vi.fn();
+const requestPasswordResetMock = vi.fn();
 const resetPasswordMock = vi.fn();
 const sendVerificationEmailMock = vi.fn();
 const signOutMock = vi.fn();
@@ -27,7 +27,7 @@ vi.mock('@/auth/betterAuthClient', () => ({
     signUp: {
       email: signUpEmailMock,
     },
-    forgetPassword: forgetPasswordMock,
+    requestPasswordReset: requestPasswordResetMock,
     resetPassword: resetPasswordMock,
     sendVerificationEmail: sendVerificationEmailMock,
     signOut: signOutMock,
@@ -65,7 +65,7 @@ describe('AuthSessionProvider', () => {
     vi.restoreAllMocks();
     signInEmailMock.mockReset();
     signUpEmailMock.mockReset();
-    forgetPasswordMock.mockReset();
+    requestPasswordResetMock.mockReset();
     resetPasswordMock.mockReset();
     sendVerificationEmailMock.mockReset();
     signOutMock.mockReset();

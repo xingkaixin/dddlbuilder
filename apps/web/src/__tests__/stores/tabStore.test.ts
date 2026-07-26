@@ -172,7 +172,12 @@ describe('tabStore', () => {
       isDirty: false,
     });
 
-    const newSource = { kind: 'saved' as const, normalizedName: 'users' };
+    const newSource = {
+      kind: 'saved_table' as const,
+      normalizedName: 'users',
+      tableName: 'users',
+      baseSignature: 'users-signature',
+    };
     useTabStore.getState().updateActiveTabSource(newSource);
     const tab = useTabStore.getState().tabs.find((t) => t.id === id);
     expect(tab).toBeDefined();
@@ -199,19 +204,34 @@ describe('tabStore', () => {
     const state = useTabStore.getState();
     state.addTab({
       title: 'Tab 1',
-      source: { kind: 'saved', normalizedName: 'users' },
+      source: {
+        kind: 'saved_table',
+        normalizedName: 'users',
+        tableName: 'users',
+        baseSignature: 'users-signature',
+      },
       stateSnapshot: createSnapshot('t1'),
       isDirty: false,
     });
 
     const found = useTabStore
       .getState()
-      .findTabBySource({ kind: 'saved', normalizedName: 'users' });
+      .findTabBySource({
+        kind: 'saved_table',
+        normalizedName: 'users',
+        tableName: 'users',
+        baseSignature: 'users-signature',
+      });
     expect(found).toBeDefined();
 
     const notFound = useTabStore
       .getState()
-      .findTabBySource({ kind: 'saved', normalizedName: 'orders' });
+      .findTabBySource({
+        kind: 'saved_table',
+        normalizedName: 'orders',
+        tableName: 'orders',
+        baseSignature: 'orders-signature',
+      });
     expect(notFound).toBeUndefined();
   });
 

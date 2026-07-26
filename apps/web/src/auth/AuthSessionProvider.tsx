@@ -394,7 +394,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
           throw new Error(i18n.t('services.authConfigMissing'));
         }
 
-        const result = await client.forgetPassword({
+        const result = await client.requestPasswordReset({
           email,
           redirectTo: `${window.location.origin}/?auth_action=reset-password`,
         });

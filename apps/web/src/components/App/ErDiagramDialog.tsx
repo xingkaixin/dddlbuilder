@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useState } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { SavedTableRecord, SaveTableResult } from '@/utils/savedTablesDb';
+import type { SaveTableResult } from '@/hooks/useSavedTables';
+import type { SavedTableRecord } from '@/utils/savedTablesDb';
 import { listSavedTables } from '@/utils/savedTablesDb';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useTranslation } from 'react-i18next';

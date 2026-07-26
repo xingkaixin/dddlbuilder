@@ -1021,7 +1021,7 @@ function App() {
       });
       updateActiveTabSnapshot(buildPersistedState(), false);
     },
-    onTabRename: (fromNormalizedName, toNormalizedName, newTitle) => {
+    onTabRename: (fromNormalizedName, _toNormalizedName, newTitle) => {
       updateTabTitleBySource(
         {
           kind: 'saved_table',

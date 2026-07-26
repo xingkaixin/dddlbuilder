@@ -13,8 +13,11 @@ export interface WorkspaceTab {
 
 function isSameSourceId(a: WorkspaceSource, b: WorkspaceSource): boolean {
   if (a.kind !== b.kind) return false;
-  if (a.kind === 'draft') return a.draftId === b.draftId;
-  return a.normalizedName === b.normalizedName;
+  if (a.kind === 'draft' && b.kind === 'draft') return a.draftId === b.draftId;
+  if (a.kind === 'saved_table' && b.kind === 'saved_table') {
+    return a.normalizedName === b.normalizedName;
+  }
+  return false;
 }
 
 interface TabStoreState {

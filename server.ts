@@ -2,9 +2,10 @@ import { Hono } from 'hono';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { serve } from '@hono/node-server';
 import { applyCspHeaders } from './apps/worker/server-api/lib/csp';
+import type { ApiEnv } from './apps/worker/server-api/lib/context';
 import api from './apps/worker/api/index';
 
-const app = new Hono();
+const app = new Hono<ApiEnv>();
 
 // Local dev: bridge process.env to c.env so Hono routes can use c.env.VARIABLE_NAME
 app.use('/api/*', async (c, next) => {

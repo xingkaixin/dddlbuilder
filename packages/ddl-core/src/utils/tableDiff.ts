@@ -211,8 +211,11 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
   }
 
   // 2.5 杂项设置变更
-  const normalizeMiscConfig = (config?: TableMiscConfig): Required<TableMiscConfig> => {
-    const normalized: Required<TableMiscConfig> = {
+  type NormalizedMiscConfig = TableMiscConfig &
+    Required<Pick<TableMiscConfig, 'enabled' | 'engine' | 'charset' | 'collation' | 'tablespace'>>;
+
+  const normalizeMiscConfig = (config?: TableMiscConfig): NormalizedMiscConfig => {
+    const normalized: NormalizedMiscConfig = {
       enabled: false,
       engine: '',
       charset: '',

@@ -175,8 +175,9 @@ export const openDb = (): Promise<IDBDatabase> =>
       request.onerror = () => {
         reject(request.error ?? new Error('打开 IndexedDB 失败'));
       };
-      request.onupgradeneeded = () => {
+      request.onupgradeneeded = (event) => {
         const db = request.result;
+        const oldVersion = event.oldVersion;
 
         // Version 1: saved_tables store
         if (!db.objectStoreNames.contains(STORE_NAME)) {
@@ -282,7 +283,7 @@ export const openDb = (): Promise<IDBDatabase> =>
           });
         }
 
-        if (request.transaction && request.oldVersion < 8) {
+        if (request.transaction && oldVersion < 8) {
           if (db.objectStoreNames.contains(STORE_NAME)) {
             const store = request.transaction.objectStore(STORE_NAME);
             const cursorRequest = store.openCursor();
@@ -304,7 +305,7 @@ export const openDb = (): Promise<IDBDatabase> =>
         }
 
         // Version 9: Migrate global draft keys from "::global" to "::default"
-        if (request.transaction && request.oldVersion < 9) {
+        if (request.transaction && oldVersion < 9) {
           if (db.objectStoreNames.contains(WORKSPACE_GLOBAL_DRAFT_STORE_NAME)) {
             const draftStore = request.transaction.objectStore(WORKSPACE_GLOBAL_DRAFT_STORE_NAME);
             const cursorRequest = draftStore.openCursor();

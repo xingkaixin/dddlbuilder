@@ -174,7 +174,7 @@ describe('savedTablesDb', () => {
       error: unknown;
       onsuccess: null | (() => void);
       onerror: null | (() => void);
-      onupgradeneeded: null | (() => void);
+      onupgradeneeded: null | ((event: IDBVersionChangeEvent) => void);
       transaction?: unknown;
     } = {
       error: null,
@@ -235,7 +235,7 @@ describe('savedTablesDb', () => {
       value: {
         open: vi.fn(() => {
           queueMicrotask(() => {
-            request.onupgradeneeded?.();
+            request.onupgradeneeded?.({ oldVersion: 9 } as IDBVersionChangeEvent);
             request.onsuccess?.();
           });
           return request;

@@ -1,5 +1,7 @@
 import { isAppLocale, type AppLocale } from '@ddlbuilder/shared-types/locale';
 
+export type { AppLocale } from '@ddlbuilder/shared-types/locale';
+
 export const LOCAL_STORAGE_KEY = 'ddlbuilder:locale:v1';
 
 export const DEFAULT_LOCALE: AppLocale = 'zh-CN';

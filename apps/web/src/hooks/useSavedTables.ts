@@ -547,7 +547,7 @@ export function useSavedTables() {
       );
       const updatedRecords = (
         await Promise.all(
-          tables.map(async (table) => {
+          tables.map(async (table): Promise<SavedTableRecord | null> => {
             const record =
               yDocReady && workspaceYDoc.doc
                 ? getSavedTableFromYDoc(workspaceYDoc.doc, table.normalizedName)

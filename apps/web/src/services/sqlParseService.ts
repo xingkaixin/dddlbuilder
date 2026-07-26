@@ -1,5 +1,5 @@
 import type { DatabaseType } from '@ddlbuilder/shared-types';
-import type { ParsedResult, MultiParsedResult } from '@/utils/SqlParser';
+import type { MultiParsedResult, ParsedResult } from '@/utils/sql-parser/types';
 import i18n from '@/i18n';
 
 const SQL_PARSE_API_ENDPOINT = '/api/parse-sql';

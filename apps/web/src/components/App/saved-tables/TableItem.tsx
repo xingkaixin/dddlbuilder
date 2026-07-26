@@ -47,7 +47,7 @@ export const TableItem = memo<TableItemProps>(
     dragDisabled = false,
   }) => {
     const { t } = useTranslation();
-    const { attributes, listeners, setNodeRef, transform, transition } = useDraggable({
+    const { attributes, listeners, setNodeRef, transform } = useDraggable({
       id: toTableDragId(item.normalizedName),
       disabled: dragDisabled,
     });
@@ -63,7 +63,6 @@ export const TableItem = memo<TableItemProps>(
         style={{
           paddingLeft: `${depth * 16 + 8}px`,
           transform: CSS.Transform.toString(transform),
-          transition,
         }}
         data-testid={`saved-table-row:${item.normalizedName}`}
       >

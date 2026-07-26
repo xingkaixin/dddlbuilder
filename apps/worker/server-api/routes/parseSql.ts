@@ -1,7 +1,12 @@
 import type { Hono } from 'hono';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 import type { ApiEnv } from '../lib/context.js';
-import { errorResponse, parseJsonBodyWithLimit, withMeta } from '../lib/http.js';
+import {
+  errorResponse,
+  parseJsonBodyWithLimit,
+  withMeta,
+  type JsonBodyResult,
+} from '../lib/http.js';
 
 const MAX_SQL_LENGTH = 50_000;
 const MAX_PARSE_SQL_BODY_BYTES = 131_072;
@@ -28,10 +33,7 @@ function isValidDatabaseType(value: unknown): value is DatabaseType {
 }
 
 function validateSqlPayload(
-  parsed: {
-    errorResponse?: Response;
-    data?: { sql?: unknown; dbType?: unknown };
-  },
+  parsed: JsonBodyResult<{ sql: unknown; dbType: unknown }>,
   c: Parameters<typeof errorResponse>[0],
 ) {
   if (parsed.errorResponse) return { errorResponse: parsed.errorResponse };

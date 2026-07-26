@@ -1,4 +1,4 @@
-import type { NormalizedField, SqlFormatMode } from '@ddlbuilder/shared-types';
+import type { DatabaseType, NormalizedField, SqlFormatMode } from '@ddlbuilder/shared-types';
 import {
   getCanonicalBaseType,
   getOracleTimestampDefault,
@@ -12,7 +12,7 @@ import {
 import { AbstractDDLStrategy } from './AbstractDDLStrategy';
 
 export class OracleStrategy extends AbstractDDLStrategy {
-  getDatabaseType(): 'oracle' {
+  getDatabaseType(): DatabaseType {
     return 'oracle';
   }
 

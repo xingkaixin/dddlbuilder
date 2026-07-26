@@ -61,14 +61,6 @@ function resolveTargetEffectiveTheme(
   return null;
 }
 
-interface ViewTransitionLike {
-  finished: Promise<void>;
-}
-
-interface DocumentWithViewTransition extends Document {
-  startViewTransition?: (callback: () => void | Promise<void>) => ViewTransitionLike;
-}
-
 export function useThemeTransition({
   theme,
   resolvedTheme,
@@ -124,14 +116,14 @@ export function useThemeTransition({
         return;
       }
 
-      const doc = document as DocumentWithViewTransition;
-      if (typeof doc.startViewTransition === 'function') {
+      const startViewTransition = document.startViewTransition?.bind(document);
+      if (startViewTransition) {
         clearTimers();
         setPhase('view');
         const root = document.documentElement;
         root.classList.add('theme-view-transition-active');
 
-        const transition = doc.startViewTransition(() => {
+        const transition = startViewTransition(() => {
           setTheme(nextTheme);
         });
 

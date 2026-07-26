@@ -125,7 +125,10 @@ export class WorkspaceYDocDurableObject {
 
     const url = new URL(request.url);
     if (request.method === 'GET' && url.pathname.endsWith('/state')) {
-      return new Response(Y.encodeStateAsUpdate(doc), {
+      const update = Y.encodeStateAsUpdate(doc);
+      const body = new Uint8Array(update.byteLength);
+      body.set(update);
+      return new Response(body.buffer, {
         headers: {
           'content-type': 'application/octet-stream',
           'cache-control': 'no-store',
