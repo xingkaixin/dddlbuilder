@@ -97,15 +97,14 @@ describe('shareService', () => {
       }),
     );
 
-    try {
-      await createShare(createState());
-      throw new Error('should not reach');
-    } catch (error) {
-      expect(error).toBeInstanceOf(ShareApiError);
-      expect((error as ShareApiError).status).toBe(429);
-      expect((error as ShareApiError).code).toBe('RATE_LIMIT_EXCEEDED');
-      expect((error as Error).message).toBe('rate limited');
-    }
+    await expect(createShare(createState())).rejects.toEqual(
+      expect.objectContaining({
+        status: 429,
+        code: 'RATE_LIMIT_EXCEEDED',
+        message: 'rate limited',
+      }),
+    );
+    await expect(createShare(createState())).rejects.toBeInstanceOf(ShareApiError);
   });
 
   it('createShare 在错误响应缺失 payload 时应回退到 requestFailed 文案', async () => {

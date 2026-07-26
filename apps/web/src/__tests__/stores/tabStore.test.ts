@@ -214,24 +214,20 @@ describe('tabStore', () => {
       isDirty: false,
     });
 
-    const found = useTabStore
-      .getState()
-      .findTabBySource({
-        kind: 'saved_table',
-        normalizedName: 'users',
-        tableName: 'users',
-        baseSignature: 'users-signature',
-      });
+    const found = useTabStore.getState().findTabBySource({
+      kind: 'saved_table',
+      normalizedName: 'users',
+      tableName: 'users',
+      baseSignature: 'users-signature',
+    });
     expect(found).toBeDefined();
 
-    const notFound = useTabStore
-      .getState()
-      .findTabBySource({
-        kind: 'saved_table',
-        normalizedName: 'orders',
-        tableName: 'orders',
-        baseSignature: 'orders-signature',
-      });
+    const notFound = useTabStore.getState().findTabBySource({
+      kind: 'saved_table',
+      normalizedName: 'orders',
+      tableName: 'orders',
+      baseSignature: 'orders-signature',
+    });
     expect(notFound).toBeUndefined();
   });
 

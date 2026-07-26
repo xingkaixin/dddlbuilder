@@ -467,6 +467,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
                           placeholder={t('indexPanel.inputPlaceholder')}
                           className="h-8 text-sm"
                           role="combobox"
+                          tabIndex={0}
                           aria-autocomplete="list"
                           aria-expanded={fieldSuggestions.length > 0}
                           aria-controls="index-field-suggestions-listbox"

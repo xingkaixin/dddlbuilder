@@ -1,3 +1,6 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+overrides:
+  mdast-util-to-hast: ^13.2.1
+  esbuild: ^0.28.1

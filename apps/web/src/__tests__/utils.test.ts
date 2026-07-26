@@ -380,7 +380,9 @@ describe('Utils', () => {
         },
       ];
 
-      expect(() => sanitizeIndexesForPersist(indexes)).toThrow();
+      expect(() => sanitizeIndexesForPersist(indexes)).toThrow(
+        "Cannot read properties of null (reading 'map')",
+      );
     });
 
     it('应该处理复杂的边界情况', () => {

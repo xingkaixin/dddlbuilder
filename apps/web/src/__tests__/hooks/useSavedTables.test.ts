@@ -94,10 +94,7 @@ describe('useSavedTables', () => {
 
     await act(async () => {
       const duplicate = await result.current.saveTable(' demo ', createState('t2'));
-      expect(duplicate.ok).toBe(false);
-      if (!duplicate.ok) {
-        expect(duplicate.reason).toBe('duplicate');
-      }
+      expect(duplicate).toEqual({ ok: false, reason: 'duplicate' });
     });
 
     await act(async () => {

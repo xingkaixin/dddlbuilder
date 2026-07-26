@@ -68,6 +68,14 @@ const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Binding
   ...overrides,
 });
 
+type AdminSessionResult = { success: true; setCookie: string } | { success: false };
+
+const requireSetCookie = (result: AdminSessionResult): string => {
+  expect(result).toMatchObject({ success: true });
+  if (!result.success) throw new Error('Expected admin session creation to succeed');
+  return result.setCookie;
+};
+
 describe('adminAuth', () => {
   let originalCrypto: Crypto;
 
@@ -87,13 +95,6 @@ describe('adminAuth', () => {
           // Return a deterministic "signature" based on data length
           return new Uint8Array(32).fill(0xab).buffer;
         }),
-      timingSafeEqual: vi.fn().mockImplementation((a: Uint8Array, b: Uint8Array) => {
-        if (a.length !== b.length) return false;
-        for (let i = 0; i < a.length; i++) {
-          if (a[i] !== b[i]) return false;
-        }
-        return true;
-      }),
     };
 
     // Mock crypto.randomUUID
@@ -126,15 +127,13 @@ describe('adminAuth', () => {
         'correct-password',
       );
 
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.setCookie).toContain('ddlbuilder_admin_session=');
-        expect(result.setCookie).toContain('Path=/api/admin');
-        expect(result.setCookie).toContain('HttpOnly');
-        expect(result.setCookie).toContain('SameSite=Lax');
-        expect(result.setCookie).toContain('Max-Age=14400');
-        expect(result.setCookie).toContain('Secure');
-      }
+      const setCookie = requireSetCookie(result);
+      expect(setCookie).toContain('ddlbuilder_admin_session=');
+      expect(setCookie).toContain('Path=/api/admin');
+      expect(setCookie).toContain('HttpOnly');
+      expect(setCookie).toContain('SameSite=Lax');
+      expect(setCookie).toContain('Max-Age=14400');
+      expect(setCookie).toContain('Secure');
     });
 
     it('returns failure when password does not match', async () => {
@@ -181,15 +180,12 @@ describe('adminAuth', () => {
         'secret',
       );
 
-      expect(result.success).toBe(true);
-      if (result.success) {
-        // Token format: uuid.signature
-        const match = result.setCookie.match(/ddlbuilder_admin_session=([^;]+)/);
-        expect(match).toBeTruthy();
-        const token = match?.[1] ?? '';
-        expect(token).toContain('test-uuid-1234');
-        expect(token).toContain('.');
-      }
+      const setCookie = requireSetCookie(result);
+      const match = setCookie.match(/ddlbuilder_admin_session=([^;]+)/);
+      expect(match).toBeTruthy();
+      const token = match?.[1] ?? '';
+      expect(token).toContain('test-uuid-1234');
+      expect(token).toContain('.');
     });
   });
 
@@ -199,12 +195,9 @@ describe('adminAuth', () => {
       const env = createEnv({ ADMIN_CONSOLE_PASSWORD: 'secret' });
       const session = await createAdminSession(env, 'secret');
 
-      expect(session.success).toBe(true);
-      if (session.success) {
-        const cookie = session.setCookie;
-        const isValid = await resolveAdminSession(env, cookie);
-        expect(isValid).toBe(true);
-      }
+      const setCookie = requireSetCookie(session);
+      const isValid = await resolveAdminSession(env, setCookie);
+      expect(isValid).toBe(true);
     });
 
     it('returns false when cookie header is null', async () => {
@@ -268,13 +261,6 @@ describe('adminAuth', () => {
           subtle: {
             importKey: vi.fn().mockResolvedValue({}),
             sign: mockSign,
-            timingSafeEqual: vi.fn().mockImplementation((a: Uint8Array, b: Uint8Array) => {
-              if (a.length !== b.length) return false;
-              for (let i = 0; i < a.length; i++) {
-                if (a[i] !== b[i]) return false;
-              }
-              return true;
-            }),
           },
           randomUUID: vi.fn().mockReturnValue('test-uuid-1234'),
         },
@@ -292,11 +278,9 @@ describe('adminAuth', () => {
 
       // Now verify with different HMAC
       const { resolveAdminSession: resolveAdminSession2 } = await import('../../lib/adminAuth.js');
-      expect(session.success).toBe(true);
-      if (session.success) {
-        const result = await resolveAdminSession2(env, session.setCookie);
-        expect(result).toBe(false);
-      }
+      const setCookie = requireSetCookie(session);
+      const result = await resolveAdminSession2(env, setCookie);
+      expect(result).toBe(false);
     });
 
     it('returns false when ADMIN_CONSOLE_PASSWORD is not set', async () => {
@@ -314,12 +298,10 @@ describe('adminAuth', () => {
       const env = createEnv({ ADMIN_CONSOLE_PASSWORD: 'secret' });
       const session = await createAdminSession(env, 'secret');
 
-      expect(session.success).toBe(true);
-      if (session.success) {
-        const multiCookie = `other_cookie=foo; ${session.setCookie}; another=bar`;
-        const isValid = await resolveAdminSession(env, multiCookie);
-        expect(isValid).toBe(true);
-      }
+      const setCookie = requireSetCookie(session);
+      const multiCookie = `other_cookie=foo; ${setCookie}; another=bar`;
+      const isValid = await resolveAdminSession(env, multiCookie);
+      expect(isValid).toBe(true);
     });
 
     it('rejects a session after its signed server expiry', async () => {
@@ -328,12 +310,10 @@ describe('adminAuth', () => {
       const { createAdminSession, resolveAdminSession } = await import('../../lib/adminAuth.js');
       const env = createEnv({ ADMIN_CONSOLE_PASSWORD: 'secret' });
       const session = await createAdminSession(env, 'secret');
-      expect(session.success).toBe(true);
+      const setCookie = requireSetCookie(session);
       vi.setSystemTime(new Date('2026-01-01T05:00:00Z'));
 
-      if (session.success) {
-        await expect(resolveAdminSession(env, session.setCookie)).resolves.toBe(false);
-      }
+      await expect(resolveAdminSession(env, setCookie)).resolves.toBe(false);
     });
 
     it('rejects a server-revoked session', async () => {
@@ -341,12 +321,9 @@ describe('adminAuth', () => {
         await import('../../lib/adminAuth.js');
       const env = createEnv({ ADMIN_CONSOLE_PASSWORD: 'secret' });
       const session = await createAdminSession(env, 'secret');
-      expect(session.success).toBe(true);
-
-      if (session.success) {
-        await deleteAdminSession(env, session.setCookie);
-        await expect(resolveAdminSession(env, session.setCookie)).resolves.toBe(false);
-      }
+      const setCookie = requireSetCookie(session);
+      await deleteAdminSession(env, setCookie);
+      await expect(resolveAdminSession(env, setCookie)).resolves.toBe(false);
     });
   });
 

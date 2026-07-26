@@ -63,17 +63,5 @@ describe('queryKeys/ai', () => {
         JSON.stringify(payloadObj),
       ]);
     });
-
-    it('处理模板参数中的 null 值 (serializeKeyPayload)', () => {
-      // simulate fallback of payload stringification wrapper
-      // if someone bypasses typescript
-      // Though buildAIGenerateQueryKey never passes null to serializeKeyPayload,
-      // it always passes an object { templates: ..., ... }
-      // To get 100% on serializeKeyPayload(payload ?? null), since we can't export serializeKeyPayload directly,
-      // wait, `serializeKeyPayload` is not exported. But `buildAIGenerateQueryKey` calls it with `{...}` which is never null.
-      // Why does line 25 have: `return JSON.stringify(payload ?? null);`?
-      // payload ?? null is impossible to reach the null fallback if payload is an object literal.
-      // So maybe "payload ?? null" branch is hit implicitly if undefined is passed somewhere, but let's test it anyway.
-    });
   });
 });

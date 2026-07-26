@@ -82,11 +82,8 @@ describe('generateMockData', () => {
     const result = generateMockData('users', '', fields, 'mysql', { rowCount: 5 });
     const lines = result.csv.split('\n');
     expect(lines[0]).toBe('address');
-    for (let i = 1; i < lines.length; i++) {
-      if (lines[i].includes(',')) {
-        expect(lines[i]).toMatch(/^".*"$/);
-      }
-    }
+    const valuesWithCommas = lines.slice(1).filter((line) => line.includes(','));
+    expect(valuesWithCommas.every((line) => /^".*"$/.test(line))).toBe(true);
   });
 
   it('generates JSON output', () => {

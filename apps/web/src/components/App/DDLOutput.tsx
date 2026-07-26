@@ -343,7 +343,7 @@ export const DDLOutput = memo<DDLOutputProps>(
                     </div>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="inline-flex" tabIndex={!canReview || isReviewing ? 0 : -1}>
+                        <span className="inline-flex">
                           <Button
                             variant="outline"
                             size="sm"

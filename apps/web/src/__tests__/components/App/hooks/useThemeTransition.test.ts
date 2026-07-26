@@ -185,7 +185,7 @@ describe('useThemeTransition', () => {
 
   it('should use ViewTransition when available', async () => {
     const setTheme = vi.fn();
-    let transitionCallback: any;
+    let transitionCallback: (() => void) | undefined;
 
     const mockFinished = Promise.resolve();
     (document as any).startViewTransition = vi.fn((cb: any) => {
@@ -206,12 +206,11 @@ describe('useThemeTransition', () => {
     expect(document.documentElement.classList.contains('theme-view-transition-active')).toBe(true);
 
     // Simulate callback inside startViewTransition
-    if (transitionCallback) {
-      act(() => {
-        transitionCallback();
-      });
-      expect(setTheme).toHaveBeenCalledWith('dark');
-    }
+    expect(transitionCallback).toBeTypeOf('function');
+    act(() => {
+      transitionCallback?.();
+    });
+    expect(setTheme).toHaveBeenCalledWith('dark');
 
     // Wait for promise resolution
     await act(async () => {

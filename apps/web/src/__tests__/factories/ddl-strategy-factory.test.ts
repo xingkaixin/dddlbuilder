@@ -24,7 +24,9 @@ describe('DDLStrategyFactory', () => {
   });
 
   it('不支持的数据库类型应抛出异常', () => {
-    expect(() => DDLStrategyFactory.create('invalid' as DatabaseType)).toThrowError();
+    expect(() => DDLStrategyFactory.create('invalid' as DatabaseType)).toThrowError(
+      'Unsupported database type: invalid',
+    );
   });
 
   it('应该返回支持的数据库类型列表', () => {

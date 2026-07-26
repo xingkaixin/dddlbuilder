@@ -88,7 +88,9 @@ describe('SqlParser.parseMultiAsync', () => {
 
     // The invalid statement should cause the whole parse to throw,
     // because astify fails on malformed input.
-    await expect(parser.parseMultiAsync(sql, 'mysql')).rejects.toThrow();
+    await expect(parser.parseMultiAsync(sql, 'mysql')).rejects.toThrow(
+      '无法解析 SQL，请检查语法或数据库类型是否正确。',
+    );
   });
 
   it('空 SQL → 返回空 results 和 failed', async () => {

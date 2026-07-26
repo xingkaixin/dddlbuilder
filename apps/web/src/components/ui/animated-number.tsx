@@ -1,9 +1,9 @@
-import NumberFlow, { usePrefersReducedMotion } from '@number-flow/react';
+import NumberFlow, { usePrefersReducedMotion, type Format } from '@number-flow/react';
 import { cn } from '@/lib/utils';
 
 interface AnimatedNumberProps {
   value: number;
-  format?: Intl.NumberFormatOptions;
+  format?: Format;
   className?: string;
   locales?: Intl.LocalesArgument;
 }

@@ -176,7 +176,7 @@ export const TableConfig = memo<TableConfigProps>(
             {onSaveCurrent && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="inline-flex" tabIndex={saveDisabled ? 0 : -1}>
+                  <span className="inline-flex">
                     <Button
                       type="button"
                       variant="outline"

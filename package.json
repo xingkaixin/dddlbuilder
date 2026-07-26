@@ -39,33 +39,29 @@
     "typecheck": "turbo run typecheck && tsc --noEmit -p tsconfig.node.json"
   },
   "dependencies": {
-    "@hono/node-server": "^1.19.15",
-    "hono": "^4.12.9"
+    "@hono/node-server": "^2.0.12",
+    "hono": "^4.12.32"
   },
   "devDependencies": {
-    "@better-auth/cli": "^1.4.21",
     "@ddlbuilder/tsconfig": "workspace:*",
-    "@playwright/test": "^1.58.2",
-    "@types/node": "^25.5.0",
-    "@vitest/coverage-v8": "^4.1.2",
-    "@vitest/ui": "^4.1.2",
+    "@playwright/test": "^1.62.0",
+    "@types/node": "^26.1.1",
+    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/ui": "^4.1.10",
     "drizzle-kit": "^0.31.10",
     "lib0": "^0.2.117",
-    "oxfmt": "^0.43.0",
-    "oxlint": "^1.58.0",
-    "oxlint-tsgolint": "^0.18.1",
-    "png-to-ico": "^3.0.1",
-    "sharp": "^0.34.5",
-    "tsx": "^4.19.0",
-    "turbo": "^2.5.4",
-    "typescript": "~6.0.2",
-    "vitest": "^4.1.2",
-    "wrangler": "^4.86.0",
+    "oxfmt": "^0.60.0",
+    "oxlint": "^1.75.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "png-to-ico": "^3.0.2",
+    "sharp": "^0.35.3",
+    "tsx": "^4.23.1",
+    "turbo": "^2.10.7",
+    "typescript": "~7.0.2",
+    "vitest": "^4.1.10",
+    "wrangler": "^4.114.0",
     "y-protocols": "^1.0.7",
-    "yjs": "^13.6.30"
-  },
-  "overrides": {
-    "mdast-util-to-hast": "^13.2.1"
+    "yjs": "^13.6.31"
   },
   "packageManager": "pnpm@10.33.0"
 }
