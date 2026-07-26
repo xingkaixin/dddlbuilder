@@ -448,8 +448,4 @@ export const exportWorkspaceYDocToSnapshot = (doc: Y.Doc): WorkspaceSnapshot => 
   };
 };
 
-export const isWorkspaceYDocEmpty = (doc: Y.Doc) =>
-  doc.getMap('drafts').size === 0 &&
-  doc.getMap('savedTables').size === 0 &&
-  doc.getMap('savedDrafts').size === 0 &&
-  doc.getMap('folders').size === 0;
+export const isWorkspaceYDocEmpty = (doc: Y.Doc) => doc.getMap('meta').get('schemaVersion') == null;

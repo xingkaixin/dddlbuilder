@@ -93,4 +93,20 @@ describe('workspaceYDocSnapshot', () => {
   it('detects empty workspace Y.Doc content', () => {
     expect(isWorkspaceYDocEmpty(new Y.Doc())).toBe(true);
   });
+
+  it('treats an initialized document with empty collections as authoritative', () => {
+    const doc = new Y.Doc();
+    Y.applyUpdate(
+      doc,
+      createWorkspaceYDocUpdateFromSnapshot({
+        globalDraft: null,
+        drafts: [],
+        savedTables: [],
+        savedDrafts: [],
+        folders: [],
+      }),
+    );
+
+    expect(isWorkspaceYDocEmpty(doc)).toBe(false);
+  });
 });
