@@ -4,6 +4,28 @@ outline: [2, 2]
 
 # Changelog
 
+## [0.20.0] - 2026-07-26
+### Added
+- **ER relationship creation wizard**: Drag from a source field to a target field in the ER diagram, then confirm many-to-one or one-to-one cardinality, required or optional participation, update/delete actions, and index strategy. The system creates the foreign key, updates field nullability, and adds required indexes together.
+- **Relationship safety validation**: The wizard references only single-column primary or unique keys on the target table and blocks duplicate relationships, duplicate constraint names, and invalid `SET NULL` configurations. A type mismatch is reported before creation.
+- **Human verification for authentication**: When a deployment configures Cloudflare Turnstile, sign-in and sign-up validate a human-verification token to reduce automated registration and account API abuse.
+
+### Improved
+- **Full-width collapsed layout**: Collapsing the workspace sidebar or DDL output panel no longer leaves an empty rail. Expand controls move into the content area so table editing can use the full horizontal space.
+- **Consistent form and overlay interactions**: Buttons, selects, checkboxes, tabs, dialogs, and menus now share a consistent interaction foundation, including reliable focus and pointer transitions between overlays. Drag handles and application icons also use one visual system.
+- **Large-table and workspace performance**: Field editing avoids unrelated row renders, while index filtering and folder cleanup perform fewer repeated scans and writes. Editing remains steadier with many fields, indexes, or folders.
+- **Workspace sync convergence**: Entity changes commit atomically, imports can be retried safely, and stale hydration work is cancelled, helping multi-device and weak-network sessions recover to a consistent state.
+
+### Fixed
+- **Empty-state and trash recovery**: Fixes cleared fields, indexes, or folders reappearing from stale state and local trash entries being lost during synchronization recovery.
+- **Schema diff and change DDL**: Field renames are applied together with their property changes, duplicate or similar fields match deterministically, and dialect-specific constraint names and rollback statements are generated more accurately.
+- **Field editing focus**: Fixes a double border around focused field inputs so selection and editing use one clear focus treatment.
+- **Atomic AI credit settlement**: AI credit reservation, settlement, and refund operations are atomic, reducing duplicate charges or balance inconsistencies under concurrent requests.
+
+### Deployment and security
+- **D1 migration preflight**: Local Worker startup applies pending migrations automatically. Cloudflare deployment records a D1 recovery point, runs remote migrations, and verifies required tables before publishing to prevent missing-table failures after startup.
+- **Request and session protection**: Account, admin, sharing, and AI endpoints enforce stronger request-size, rate, and session validation. AI response bodies are no longer written to logs, reducing exposure of sensitive content.
+
 ## [0.19.0] - 2026-05-06
 ### Added
 - **Workspace Yjs checkpointing**: Real-time sync now compacts Yjs updates into server-side checkpoints, helping Durable Objects recover from a fuller workspace snapshot after cold starts or reconnects and reducing recovery cost after long editing sessions.
