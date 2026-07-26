@@ -95,7 +95,14 @@ const createWorkspaceSnapshotDb = (
   const writeReturningResult = <T>(results: T[]) => withMeta({ results }, 0, 1);
   const runResult = () => withMeta({ success: true }, 0, 1);
 
-  return {
+  const database = {
+    async batch(statements: D1PreparedStatement[]) {
+      const results = [];
+      for (const statement of statements) {
+        results.push(await statement.run());
+      }
+      return results;
+    },
     prepare(sql: string) {
       return {
         bind(...args: unknown[]) {
@@ -297,39 +304,67 @@ const createWorkspaceSnapshotDb = (
               return null;
             },
             async run() {
+              if (sql.includes('UPDATE workspace_clocks')) {
+                const [workspaceId, mutationId] = args;
+                const shouldIncrement =
+                  mutationId === undefined ||
+                  mutations.some(
+                    (item) =>
+                      `${item.workspaceId}:${item.clientMutationId}` === mutationId &&
+                      item.version === 0,
+                  );
+                if (shouldIncrement) {
+                  clocks.set(String(workspaceId), (clocks.get(String(workspaceId)) ?? 0) + 1);
+                }
+                return runResult();
+              }
+
               if (sql.includes('INSERT INTO workspaces')) {
                 const [id, userId, name, activeAt, , updatedAt] = args;
-                workspaces.push({
-                  id: String(id),
-                  userId: String(userId),
-                  name: String(name),
-                  isDefault: 1,
-                  activeAt: Number(activeAt),
-                  updatedAt: Number(updatedAt),
-                });
+                if (!workspaces.some((item) => item.userId === userId && item.isDefault === 1)) {
+                  workspaces.push({
+                    id: String(id),
+                    userId: String(userId),
+                    name: String(name),
+                    isDefault: 1,
+                    activeAt: Number(activeAt),
+                    updatedAt: Number(updatedAt),
+                  });
+                }
                 return runResult();
               }
 
               if (sql.includes('INSERT INTO workspace_clocks')) {
-                const [workspaceId] = args;
-                clocks.set(String(workspaceId), 0);
+                const [userId] = args;
+                const workspace = workspaces.find(
+                  (item) => item.userId === userId && item.isDefault === 1,
+                );
+                if (workspace && !clocks.has(workspace.id)) {
+                  clocks.set(workspace.id, 0);
+                }
                 return runResult();
               }
 
               if (sql.includes('INSERT INTO workspace_entities')) {
-                const [
-                  ,
-                  workspaceId,
-                  userId,
-                  entityType,
-                  entityId,
-                  payloadJson,
-                  contentHash,
-                  version,
-                  deletedAt,
-                  ,
-                  updatedAt,
-                ] = args;
+                const [, workspaceId, userId, entityType, entityId, payloadJson, contentHash] =
+                  args;
+                const usesClockVersion = sql.includes('workspace_clocks.next_version');
+                const version = usesClockVersion
+                  ? clocks.get(String(workspaceId))
+                  : clocks.get(String(args[10]));
+                const deletedAt = args[7];
+                const updatedAt = args[9];
+                const mutationId = usesClockVersion ? args[11] : undefined;
+                if (
+                  mutationId !== undefined &&
+                  !mutations.some(
+                    (item) =>
+                      `${item.workspaceId}:${item.clientMutationId}` === mutationId &&
+                      item.version === 0,
+                  )
+                ) {
+                  return runResult();
+                }
                 const index = rows.findIndex(
                   (item) =>
                     item.workspaceId === workspaceId &&
@@ -353,23 +388,46 @@ const createWorkspaceSnapshotDb = (
                 } else {
                   rows.push(nextRow);
                 }
-                return runResult();
+                return withMeta({ success: true, results: [{ version }] }, 0, 1);
               }
 
               if (sql.includes('INSERT INTO workspace_mutations')) {
-                const [, workspaceId, , clientMutationId, entityType, entityId, version] = args;
+                const [, workspaceId, , clientMutationId, entityType, entityId] = args;
                 const index = mutations.findIndex(
                   (item) =>
                     item.workspaceId === workspaceId && item.clientMutationId === clientMutationId,
                 );
                 if (index < 0) {
+                  const baseVersion = sql.includes('SELECT') ? args[16] : undefined;
+                  const existing = rows.find(
+                    (item) =>
+                      item.workspaceId === workspaceId &&
+                      item.entityType === entityType &&
+                      item.entityId === entityId,
+                  );
+                  if (existing && existing.version !== baseVersion) {
+                    return runResult();
+                  }
                   mutations.push({
                     workspaceId: String(workspaceId),
                     clientMutationId: String(clientMutationId),
                     entityType: String(entityType),
                     entityId: String(entityId),
-                    version: Number(version),
+                    version: sql.includes('SELECT') ? 0 : Number(args[6]),
                   });
+                }
+                return runResult();
+              }
+
+              if (sql.includes('UPDATE workspace_mutations')) {
+                const [workspaceId, mutationId] = args;
+                const mutation = mutations.find(
+                  (item) =>
+                    `${item.workspaceId}:${item.clientMutationId}` === mutationId &&
+                    item.version === 0,
+                );
+                if (mutation) {
+                  mutation.version = clocks.get(String(workspaceId)) ?? 0;
                 }
                 return runResult();
               }
@@ -380,7 +438,8 @@ const createWorkspaceSnapshotDb = (
         },
       };
     },
-  } as unknown as D1Database;
+  };
+  return database as unknown as D1Database;
 };
 
 const createState = (tableName: string): PersistedState => ({
@@ -672,10 +731,10 @@ describe('workspaceSnapshots', () => {
       acceptedCount: 1,
       conflictCount: 0,
       d1: {
-        queries: 7,
-        rowsRead: 2,
-        rowsWritten: 3,
-        durationMs: 7,
+        queries: 9,
+        rowsRead: 3,
+        rowsWritten: 4,
+        durationMs: 9,
       },
     });
   });

@@ -61,6 +61,18 @@ export const runWorkspaceD1Result = async <T = Record<string, unknown>>(
   return result;
 };
 
+export const batchWorkspaceD1Results = async <T = Record<string, unknown>>(
+  database: D1Database,
+  statements: D1PreparedStatement[],
+  metrics?: WorkspaceD1Metrics,
+) => {
+  const results = await database.batch<T>(statements);
+  for (const result of results) {
+    recordWorkspaceD1Result(metrics, result);
+  }
+  return results;
+};
+
 export const logWorkspaceD1Metrics = (
   operation: string,
   payload: Record<string, unknown>,

@@ -12,6 +12,7 @@ import type {
 import type { ApiEnv } from './context.js';
 import {
   allWorkspaceD1Result,
+  batchWorkspaceD1Results,
   createWorkspaceD1Metrics,
   firstWorkspaceD1Result,
   logWorkspaceD1Metrics,
@@ -190,8 +191,9 @@ export const getOrCreateDefaultWorkspace = async (
 
   const timestamp = now();
   const workspaceId = buildWorkspaceId();
-  const workspaceResult = await env.USER_DB.prepare(
-    `
+  await batchWorkspaceD1Results(env.USER_DB, [
+    env.USER_DB.prepare(
+      `
       INSERT INTO workspaces (
         id,
         user_id,
@@ -202,27 +204,19 @@ export const getOrCreateDefaultWorkspace = async (
         updated_at
       )
       VALUES (?, ?, ?, 1, ?, ?, ?)
+      ON CONFLICT DO NOTHING
     `,
-  )
-    .bind(workspaceId, userId, DEFAULT_WORKSPACE_NAME, timestamp, timestamp, timestamp)
-    .run();
-
-  if (!workspaceResult.success) {
-    throw new Error(workspaceResult.error ?? 'D1 execution failed');
-  }
-
-  const clockResult = await env.USER_DB.prepare(
-    `
-      INSERT INTO workspace_clocks (workspace_id, next_version)
-      VALUES (?, 0)
-    `,
-  )
-    .bind(workspaceId)
-    .run();
-
-  if (!clockResult.success) {
-    throw new Error(clockResult.error ?? 'D1 execution failed');
-  }
+    ).bind(workspaceId, userId, DEFAULT_WORKSPACE_NAME, timestamp, timestamp, timestamp),
+    env.USER_DB.prepare(
+      `
+        INSERT INTO workspace_clocks (workspace_id, next_version)
+        SELECT id, 0
+        FROM workspaces
+        WHERE user_id = ? AND is_default = 1
+        ON CONFLICT(workspace_id) DO NOTHING
+      `,
+    ).bind(userId),
+  ]);
 
   const created = await readDefaultWorkspace(env, userId);
   if (!created) {
@@ -302,30 +296,6 @@ const readWorkspaceCursor = async (
   return row?.cursor ?? 0;
 };
 
-const allocateWorkspaceVersion = async (
-  env: ApiEnv['Bindings'],
-  workspaceId: string,
-  metrics?: WorkspaceD1Metrics,
-) => {
-  const row = await firstWorkspaceD1Result<{ version: number }>(
-    env.USER_DB.prepare(
-      `
-      UPDATE workspace_clocks
-      SET next_version = next_version + 1
-      WHERE workspace_id = ?
-      RETURNING next_version AS version
-    `,
-    ).bind(workspaceId),
-    metrics,
-  );
-
-  if (!row) {
-    throw new Error('Workspace clock missing');
-  }
-
-  return row.version;
-};
-
 const readEntity = async (
   env: ApiEnv['Bindings'],
   workspaceId: string,
@@ -366,13 +336,21 @@ const writeEntityVersion = async (
   },
   metrics?: WorkspaceD1Metrics,
 ) => {
-  const version = await allocateWorkspaceVersion(env, input.workspaceId, metrics);
   const deletedAt = input.op === 'delete' ? input.updatedAt : null;
   const payloadJson = input.op === 'delete' ? null : JSON.stringify(input.payload);
   const contentHash = input.op === 'delete' ? null : input.contentHash;
-  const result = await runWorkspaceD1Result(
-    env.USER_DB.prepare(
-      `
+  const results = await batchWorkspaceD1Results<{ version: number }>(
+    env.USER_DB,
+    [
+      env.USER_DB.prepare(
+        `
+          UPDATE workspace_clocks
+          SET next_version = next_version + 1
+          WHERE workspace_id = ?
+        `,
+      ).bind(input.workspaceId),
+      env.USER_DB.prepare(
+        `
       INSERT INTO workspace_entities (
         id,
         workspace_id,
@@ -386,35 +364,38 @@ const writeEntityVersion = async (
         created_at,
         updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      SELECT ?, ?, ?, ?, ?, ?, ?, next_version, ?, ?, ?
+      FROM workspace_clocks
+      WHERE workspace_id = ?
       ON CONFLICT(workspace_id, entity_type, entity_id) DO UPDATE SET
         payload_json = excluded.payload_json,
         content_hash = excluded.content_hash,
         version = excluded.version,
         deleted_at = excluded.deleted_at,
         updated_at = excluded.updated_at
+      RETURNING version
     `,
-    ).bind(
-      buildEntityRowId(input.workspaceId, input.entityType, input.entityId),
-      input.workspaceId,
-      input.userId,
-      input.entityType,
-      input.entityId,
-      payloadJson,
-      contentHash,
-      version,
-      deletedAt,
-      input.updatedAt,
-      input.updatedAt,
-    ),
+      ).bind(
+        buildEntityRowId(input.workspaceId, input.entityType, input.entityId),
+        input.workspaceId,
+        input.userId,
+        input.entityType,
+        input.entityId,
+        payloadJson,
+        contentHash,
+        deletedAt,
+        input.updatedAt,
+        input.updatedAt,
+        input.workspaceId,
+      ),
+    ],
     metrics,
   );
-
-  if (!result.success) {
-    throw new Error(result.error ?? 'D1 execution failed');
+  const row = results[1]?.results?.[0];
+  if (!row) {
+    throw new Error('Workspace entity write failed');
   }
-
-  return version;
+  return Number(row.version);
 };
 
 const writeMutation = async (
@@ -461,6 +442,11 @@ const writeMutation = async (
   if (!result.success) {
     throw new Error(result.error ?? 'D1 execution failed');
   }
+  const mutation = await readMutation(env, input.workspaceId, input.clientMutationId, metrics);
+  if (!mutation) {
+    throw new Error('Workspace mutation write failed');
+  }
+  return mutation;
 };
 
 const readMutation = async (
@@ -483,6 +469,153 @@ const readMutation = async (
     ).bind(workspaceId, clientMutationId),
     metrics,
   );
+
+const commitWorkspaceChange = async (
+  env: ApiEnv['Bindings'],
+  input: {
+    userId: string;
+    workspaceId: string;
+    clientMutationId: string;
+    entityType: WorkspaceEntityType;
+    entityId: string;
+    op: WorkspaceEntityOperation;
+    baseVersion: number | null;
+    payload: unknown;
+    contentHash: string | null;
+    updatedAt: number;
+  },
+  metrics?: WorkspaceD1Metrics,
+) => {
+  const deletedAt = input.op === 'delete' ? input.updatedAt : null;
+  const payloadJson = input.op === 'delete' ? null : JSON.stringify(input.payload);
+  const contentHash = input.op === 'delete' ? null : input.contentHash;
+  const mutationId = buildMutationRowId(input.workspaceId, input.clientMutationId);
+
+  await batchWorkspaceD1Results(
+    env.USER_DB,
+    [
+      env.USER_DB.prepare(
+        `
+          INSERT INTO workspace_mutations (
+            id,
+            workspace_id,
+            user_id,
+            client_mutation_id,
+            entity_type,
+            entity_id,
+            version,
+            created_at
+          )
+          SELECT ?, ?, ?, ?, ?, ?, 0, ?
+          WHERE NOT EXISTS (
+            SELECT 1
+            FROM workspace_mutations
+            WHERE workspace_id = ? AND client_mutation_id = ?
+          )
+          AND (
+            NOT EXISTS (
+              SELECT 1
+              FROM workspace_entities
+              WHERE workspace_id = ? AND entity_type = ? AND entity_id = ?
+            )
+            OR EXISTS (
+              SELECT 1
+              FROM workspace_entities
+              WHERE workspace_id = ? AND entity_type = ? AND entity_id = ? AND version IS ?
+            )
+          )
+        `,
+      ).bind(
+        mutationId,
+        input.workspaceId,
+        input.userId,
+        input.clientMutationId,
+        input.entityType,
+        input.entityId,
+        input.updatedAt,
+        input.workspaceId,
+        input.clientMutationId,
+        input.workspaceId,
+        input.entityType,
+        input.entityId,
+        input.workspaceId,
+        input.entityType,
+        input.entityId,
+        input.baseVersion,
+      ),
+      env.USER_DB.prepare(
+        `
+          UPDATE workspace_clocks
+          SET next_version = next_version + 1
+          WHERE workspace_id = ?
+            AND EXISTS (
+              SELECT 1
+              FROM workspace_mutations
+              WHERE id = ? AND version = 0
+            )
+        `,
+      ).bind(input.workspaceId, mutationId),
+      env.USER_DB.prepare(
+        `
+          INSERT INTO workspace_entities (
+            id,
+            workspace_id,
+            user_id,
+            entity_type,
+            entity_id,
+            payload_json,
+            content_hash,
+            version,
+            deleted_at,
+            created_at,
+            updated_at
+          )
+          SELECT ?, ?, ?, ?, ?, ?, ?, workspace_clocks.next_version, ?, ?, ?
+          FROM workspace_clocks
+          WHERE workspace_id = ?
+            AND EXISTS (
+              SELECT 1
+              FROM workspace_mutations
+              WHERE id = ? AND version = 0
+            )
+          ON CONFLICT(workspace_id, entity_type, entity_id) DO UPDATE SET
+            payload_json = excluded.payload_json,
+            content_hash = excluded.content_hash,
+            version = excluded.version,
+            deleted_at = excluded.deleted_at,
+            updated_at = excluded.updated_at
+        `,
+      ).bind(
+        buildEntityRowId(input.workspaceId, input.entityType, input.entityId),
+        input.workspaceId,
+        input.userId,
+        input.entityType,
+        input.entityId,
+        payloadJson,
+        contentHash,
+        deletedAt,
+        input.updatedAt,
+        input.updatedAt,
+        input.workspaceId,
+        mutationId,
+      ),
+      env.USER_DB.prepare(
+        `
+          UPDATE workspace_mutations
+          SET version = (
+            SELECT next_version
+            FROM workspace_clocks
+            WHERE workspace_id = ?
+          )
+          WHERE id = ? AND version = 0
+        `,
+      ).bind(input.workspaceId, mutationId),
+    ],
+    metrics,
+  );
+
+  return readMutation(env, input.workspaceId, input.clientMutationId, metrics);
+};
 
 const listActiveEntities = async (
   env: ApiEnv['Bindings'],
@@ -616,7 +749,7 @@ export const pushWorkspaceChanges = async (
           existing.contentHash === change.contentHash));
 
     if (sameContent) {
-      await writeMutation(
+      const committedMutation = await writeMutation(
         env,
         {
           userId,
@@ -630,9 +763,9 @@ export const pushWorkspaceChanges = async (
       );
       accepted.push({
         clientMutationId: change.clientMutationId,
-        entityType: change.entityType,
-        entityId: change.entityId,
-        version: existing.version,
+        entityType: committedMutation.entityType,
+        entityId: committedMutation.entityId,
+        version: committedMutation.version,
       });
       continue;
     }
@@ -653,21 +786,7 @@ export const pushWorkspaceChanges = async (
       continue;
     }
 
-    const version = await writeEntityVersion(
-      env,
-      {
-        userId,
-        workspaceId,
-        entityType: change.entityType,
-        entityId: change.entityId,
-        op: change.op,
-        payload: change.payload,
-        contentHash: change.contentHash,
-        updatedAt: now(),
-      },
-      metrics,
-    );
-    await writeMutation(
+    const committedMutation = await commitWorkspaceChange(
       env,
       {
         userId,
@@ -675,15 +794,40 @@ export const pushWorkspaceChanges = async (
         clientMutationId: change.clientMutationId,
         entityType: change.entityType,
         entityId: change.entityId,
-        version,
+        op: change.op,
+        baseVersion: change.baseVersion,
+        payload: change.payload,
+        contentHash: change.contentHash,
+        updatedAt: now(),
       },
       metrics,
     );
+    if (!committedMutation) {
+      const current = await readEntity(
+        env,
+        workspaceId,
+        change.entityType,
+        change.entityId,
+        metrics,
+      );
+      if (!current) {
+        throw new Error('Workspace change was not committed');
+      }
+      conflicts.push({
+        clientMutationId: change.clientMutationId,
+        entityType: change.entityType,
+        entityId: change.entityId,
+        serverVersion: current.version,
+        serverContentHash: current.contentHash,
+        serverPayload: parseEntityPayload(current),
+      });
+      continue;
+    }
     accepted.push({
       clientMutationId: change.clientMutationId,
-      entityType: change.entityType,
-      entityId: change.entityId,
-      version,
+      entityType: committedMutation.entityType,
+      entityId: committedMutation.entityId,
+      version: committedMutation.version,
     });
   }
 
