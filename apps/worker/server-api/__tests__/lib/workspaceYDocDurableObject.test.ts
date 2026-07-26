@@ -231,7 +231,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       }),
     }));
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-    const { state } = createDurableObjectState();
+    const { state, store } = createDurableObjectState();
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
 
@@ -243,6 +243,11 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
         }),
       ),
     ).rejects.toThrow('checkpoint unavailable');
+    expect(store.get('meta')).toEqual(
+      expect.objectContaining({
+        checkpointFailedAt: expect.any(Number),
+      }),
+    );
   });
 
   it('keeps constructor light and defers storage reads until an event', async () => {
@@ -530,6 +535,74 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const doc = new Y.Doc();
     Y.applyUpdate(doc, new Uint8Array(await response.arrayBuffer()));
     expect(exportWorkspaceYDocToSnapshot(doc).drafts[0]?.state.tableName).toBe('alarm_safe');
+  });
+
+  it('does not reschedule an alarm after all updates are checkpointed', async () => {
+    vi.doMock('../../lib/workspaceEntities.js', () => ({
+      checkpointWorkspaceSnapshotEntities: vi.fn().mockResolvedValue({
+        cursor: 1,
+        upserted: 1,
+        deleted: 0,
+        skipped: 0,
+      }),
+      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
+        globalDraft: null,
+        drafts: [],
+        savedTables: [],
+        savedDrafts: [],
+        folders: [],
+      }),
+    }));
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state } = createDurableObjectState();
+    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
+    await durableObject.fetch(
+      createRequest('/api/workspaces/ws-1/yjs/import', {
+        method: 'POST',
+        body: JSON.stringify(createSnapshot('alarm_done')),
+      }),
+    );
+    vi.mocked(state.storage.setAlarm).mockClear();
+
+    await durableObject.alarm();
+
+    expect(state.storage.setAlarm).not.toHaveBeenCalled();
+  });
+
+  it('schedules a durable retry when automatic alarm retries are exhausted', async () => {
+    vi.doMock('../../lib/workspaceEntities.js', () => ({
+      checkpointWorkspaceSnapshotEntities: vi
+        .fn()
+        .mockRejectedValue(new Error('checkpoint unavailable')),
+      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
+        globalDraft: null,
+        drafts: [],
+        savedTables: [],
+        savedDrafts: [],
+        folders: [],
+      }),
+    }));
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state } = createDurableObjectState();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
+    await expect(
+      durableObject.fetch(
+        createRequest('/api/workspaces/ws-1/yjs/import', {
+          method: 'POST',
+          body: JSON.stringify(createSnapshot('alarm_retry')),
+        }),
+      ),
+    ).rejects.toThrow('checkpoint unavailable');
+    vi.mocked(state.storage.setAlarm).mockClear();
+
+    await durableObject.alarm({
+      isRetry: true,
+      retryCount: 5,
+      scheduledTime: Date.now(),
+    });
+
+    expect(state.storage.setAlarm).toHaveBeenCalledTimes(1);
   });
 
   it('logs websocket close and error with attachment identity', async () => {

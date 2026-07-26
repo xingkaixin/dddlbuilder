@@ -44,6 +44,7 @@ const UPDATE_PREFIX = 'update:';
 const COMPACT_UPDATE_COUNT = 100;
 const COMPACT_UPDATE_BYTES = 512 * 1024;
 const ALARM_DELAY_MS = 60 * 60 * 1000;
+const LAST_AUTOMATIC_ALARM_RETRY = 5;
 
 const encodeUpdateKey = (seq: number) => `${UPDATE_PREFIX}${seq.toString().padStart(16, '0')}`;
 
@@ -116,7 +117,6 @@ export class WorkspaceYDocDurableObject {
         updateBytes: this.updateBytes,
         compactCount: this.compactCount,
       });
-      await this.ensureAlarm();
       return new Response(null, {
         status: 101,
         webSocket: client,
@@ -197,10 +197,18 @@ export class WorkspaceYDocDurableObject {
     });
   }
 
-  async alarm() {
+  async alarm(alarmInfo?: AlarmInvocationInfo) {
     await this.loadDoc();
-    await this.compact();
-    await this.ensureAlarm();
+    if (!this.hasPendingCheckpoint()) return;
+
+    try {
+      await this.compact();
+    } catch (error) {
+      if (!alarmInfo?.isRetry || alarmInfo.retryCount < LAST_AUTOMATIC_ALARM_RETRY) {
+        throw error;
+      }
+      await this.ensureAlarm();
+    }
   }
 
   private async loadDoc() {
@@ -338,8 +346,13 @@ export class WorkspaceYDocDurableObject {
     this.updateBytes = 0;
     this.lastCompactedSeq = this.nextSeq;
     this.compactCount += 1;
+    let checkpointError: unknown;
     if (options.checkpoint !== false) {
-      await this.checkpointD1();
+      try {
+        await this.checkpointD1();
+      } catch (error) {
+        checkpointError = error;
+      }
     }
     await this.writeMeta();
     logWorkspaceYDocHealth('compact', {
@@ -350,10 +363,13 @@ export class WorkspaceYDocDurableObject {
       compactedUpdateCount: updateKeys.size,
       snapshotBytes: snapshot.byteLength,
       connectedSockets: this.connectedSocketCount(),
-      checkpointed: options.checkpoint !== false,
+      checkpointed: options.checkpoint !== false && checkpointError === undefined,
       lastCompactedSeq: this.lastCompactedSeq,
       lastCheckpointSeq: this.lastCheckpointSeq,
     });
+    if (checkpointError !== undefined) {
+      throw checkpointError;
+    }
   }
 
   private async restoreFromD1(doc: Y.Doc) {
@@ -382,14 +398,11 @@ export class WorkspaceYDocDurableObject {
 
   private async checkpointD1() {
     if (!this.doc || !this.workspaceId || !this.userId) return;
+    const checkpointSeq = this.nextSeq;
+    const snapshot = exportWorkspaceYDocToSnapshot(this.doc);
     try {
-      await checkpointWorkspaceSnapshotEntities(
-        this.env,
-        this.userId,
-        this.workspaceId,
-        exportWorkspaceYDocToSnapshot(this.doc),
-      );
-      this.lastCheckpointSeq = this.nextSeq;
+      await checkpointWorkspaceSnapshotEntities(this.env, this.userId, this.workspaceId, snapshot);
+      this.lastCheckpointSeq = checkpointSeq;
       this.checkpointFailedAt = undefined;
     } catch (error) {
       this.checkpointFailedAt = Date.now();
@@ -419,6 +432,14 @@ export class WorkspaceYDocDurableObject {
     if (existing == null) {
       await this.state.storage.setAlarm(Date.now() + ALARM_DELAY_MS);
     }
+  }
+
+  private hasPendingCheckpoint() {
+    return (
+      this.updateCount > 0 ||
+      this.lastCheckpointSeq < this.nextSeq ||
+      this.checkpointFailedAt !== undefined
+    );
   }
 
   private connectedSocketCount() {
