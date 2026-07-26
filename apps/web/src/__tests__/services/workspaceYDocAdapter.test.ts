@@ -11,6 +11,7 @@ import {
   mergeWorkspaceSnapshotIntoYDoc,
   materializeWorkspaceYDoc,
   listFoldersFromYDoc,
+  subscribeWorkspaceYDoc,
   upsertDraftInYDoc,
   upsertFolderInYDoc,
   upsertSavedTableInYDoc,
@@ -132,6 +133,35 @@ const mergeDocs = (left: Y.Doc, right: Y.Doc) => {
 const readDefaultDraftState = (doc: Y.Doc) => getDraftRecordFromYDoc(doc, DEFAULT_DRAFT_ID)?.state;
 
 describe('workspaceYDocAdapter', () => {
+  it('subscribes only to requested collections and reports changed entity ids', () => {
+    const doc = new Y.Doc();
+    const changes: Array<{ collection: string; entityIds: ReadonlySet<string> }> = [];
+    const unsubscribe = subscribeWorkspaceYDoc(doc, (change) => changes.push(change), [
+      'savedTables',
+    ]);
+
+    upsertFolderInYDoc(doc, {
+      id: 'folder-1',
+      name: 'Folder',
+      order: 0,
+      createdAt: 1,
+    });
+    doc.transact(() => {
+      upsertSavedTableInYDoc(doc, {
+        normalizedName: 'users',
+        name: 'Users',
+        state: createState(),
+        createdAt: 1,
+        updatedAt: 1,
+      });
+    });
+    unsubscribe();
+
+    expect(changes).toHaveLength(1);
+    expect(changes[0].collection).toBe('savedTables');
+    expect([...changes[0].entityIds]).toEqual(['users']);
+  });
+
   it('imports and exports workspace content without losing table data', () => {
     const doc = new Y.Doc();
     const state = createState();

@@ -150,9 +150,13 @@ export function useSavedTables() {
 
   useEffect(() => {
     if (!yDocReady || !workspaceYDoc.doc) return;
-    return subscribeWorkspaceYDoc(workspaceYDoc.doc, () => {
-      void refresh({ showLoading: false });
-    });
+    return subscribeWorkspaceYDoc(
+      workspaceYDoc.doc,
+      () => {
+        void refresh({ showLoading: false });
+      },
+      ['savedTables'],
+    );
   }, [refresh, workspaceYDoc.doc, yDocReady]);
 
   useEffect(() => {

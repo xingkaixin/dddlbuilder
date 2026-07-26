@@ -30,6 +30,14 @@ export type WorkspaceYDocDraftRecord = {
   folderId?: string;
 };
 
+export type WorkspaceYDocCollection = 'drafts' | 'savedTables' | 'savedDrafts' | 'folders';
+
+export type WorkspaceYDocChange = {
+  collection: WorkspaceYDocCollection;
+  entityIds: ReadonlySet<string>;
+  origin: unknown;
+};
+
 const TABLE_SCALAR_KEYS = [
   'objectType',
   'schemaName',
@@ -963,13 +971,44 @@ export const getStateForWorkspaceSource = (
   return getSavedTableFromYDoc(doc, source.normalizedName)?.state ?? null;
 };
 
-export const subscribeWorkspaceYDoc = (doc: Y.Doc, notify: (origin: unknown) => void) => {
-  const roots = Object.values(getWorkspaceRoot(doc));
-  const handleChange = (_events: unknown, transaction: Y.Transaction) => {
-    notify(transaction.origin);
-  };
-  roots.forEach((root) => root.observeDeep(handleChange));
+export const subscribeWorkspaceYDoc = (
+  doc: Y.Doc,
+  notify: (change: WorkspaceYDocChange) => void,
+  collections: readonly WorkspaceYDocCollection[] = [
+    'drafts',
+    'savedTables',
+    'savedDrafts',
+    'folders',
+  ],
+) => {
+  const roots = getWorkspaceRoot(doc);
+  const subscriptions = collections.map((collection) => {
+    const root = roots[collection];
+    const handleChange = (
+      events: Y.YEvent<Y.AbstractType<unknown>>[],
+      transaction: Y.Transaction,
+    ) => {
+      const entityIds = new Set<string>();
+      for (const event of events) {
+        const entityId = event.path[0];
+        if (typeof entityId === 'string') {
+          entityIds.add(entityId);
+          continue;
+        }
+        if (event instanceof Y.YMapEvent) {
+          for (const key of event.changes.keys.keys()) {
+            entityIds.add(key);
+          }
+        }
+      }
+      notify({ collection, entityIds, origin: transaction.origin });
+    };
+    root.observeDeep(handleChange);
+    return { root, handleChange };
+  });
   return () => {
-    roots.forEach((root) => root.unobserveDeep(handleChange));
+    for (const { root, handleChange } of subscriptions) {
+      root.unobserveDeep(handleChange);
+    }
   };
 };

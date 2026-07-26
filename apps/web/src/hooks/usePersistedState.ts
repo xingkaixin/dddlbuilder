@@ -18,6 +18,7 @@ import {
   listDraftRecordsFromYDoc,
   listSavedDraftsFromYDoc,
   subscribeWorkspaceYDoc,
+  type WorkspaceYDocChange,
   WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN,
   upsertDraftInYDoc,
   upsertSavedDraftInYDoc,
@@ -1098,16 +1099,33 @@ export function usePersistedState(): UsePersistedStateReturn {
     }
 
     const doc = workspaceYDoc.doc;
-    const refreshFromYDoc = (origin?: unknown) => {
-      const allDrafts = listDraftRecordsFromYDoc(doc).map(({ draftId, record }) => ({
-        draftId,
-        record,
-      }));
-      updateDrafts(allDrafts);
-      savedTableDraftsRef.current = listSavedDraftsFromYDoc(doc);
-      if (origin === WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN) return;
-
+    const refreshFromYDoc = (change?: WorkspaceYDocChange) => {
+      let allDrafts = Array.from(draftsRef.current, ([draftId, record]) => ({ draftId, record }));
+      if (!change || change.collection === 'drafts') {
+        allDrafts = listDraftRecordsFromYDoc(doc).map(({ draftId, record }) => ({
+          draftId,
+          record,
+        }));
+        updateDrafts(allDrafts);
+      }
+      if (!change || change.collection === 'savedDrafts') {
+        savedTableDraftsRef.current = listSavedDraftsFromYDoc(doc);
+      }
+      if (change?.origin === WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN) return;
       const source = activeSourceRef.current;
+      if (change) {
+        const sourceId = source.kind === 'draft' ? source.draftId : source.normalizedName;
+        const sourceCollectionChanged =
+          source.kind === 'draft'
+            ? change.collection === 'drafts'
+            : change.collection === 'savedTables' || change.collection === 'savedDrafts';
+        if (
+          !sourceCollectionChanged ||
+          (change.entityIds.size > 0 && !change.entityIds.has(sourceId))
+        ) {
+          return;
+        }
+      }
       const reconcileDraftState = (nextState: PersistedState) => {
         const lastLocalSave = lastLocalSaveRef.current;
         if (
@@ -1180,7 +1198,11 @@ export function usePersistedState(): UsePersistedStateReturn {
       }
     };
 
-    const unsubscribe = subscribeWorkspaceYDoc(doc, refreshFromYDoc);
+    const unsubscribe = subscribeWorkspaceYDoc(doc, refreshFromYDoc, [
+      'drafts',
+      'savedTables',
+      'savedDrafts',
+    ]);
     refreshFromYDoc();
     return unsubscribe;
   }, [

@@ -140,9 +140,13 @@ export function useFolders() {
 
   useEffect(() => {
     if (!yDocReady || !workspaceYDoc.doc) return;
-    return subscribeWorkspaceYDoc(workspaceYDoc.doc, () => {
-      void loadFolders({ showLoading: false });
-    });
+    return subscribeWorkspaceYDoc(
+      workspaceYDoc.doc,
+      () => {
+        void loadFolders({ showLoading: false });
+      },
+      ['folders'],
+    );
   }, [loadFolders, workspaceYDoc.doc, yDocReady]);
 
   useEffect(() => {
