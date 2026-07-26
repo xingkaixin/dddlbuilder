@@ -22,5 +22,12 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["scripts", "server.ts", "vitest.config.ts", "playwright.config.ts", "e2e"]
+  "include": [
+    "scripts",
+    "server.ts",
+    "vitest.config.ts",
+    "playwright*.ts",
+    "apps/web/vite*.config.ts",
+    "e2e"
+  ]
 }

@@ -106,7 +106,7 @@ test.describe('核心 UI 交互功能测试 @core', () => {
       const tabElement = page.getByRole('tab', { name: tab.name });
       // 检查标签是否存在（某些标签只在特定数据库下显示）
       if ((await tabElement.count()) > 0) {
-        await tabElement.click({ force: true });
+        await tabElement.click();
         await expect(tabElement).toHaveAttribute('aria-selected', 'true');
       }
     }

@@ -24,9 +24,9 @@
     "start": "pnpm exec tsx server.ts",
     "e2e:serve": "pnpm exec tsx scripts/prepare-e2e-runtime.ts && mkdir -p .wrangler-home/Library/Preferences/.wrangler/logs && HOME=\"$PWD/.wrangler-home\" ./node_modules/.bin/wrangler dev --config apps/worker/wrangler.e2e.toml --local --no-bundle --show-interactive-dev-session=false --persist-to .wrangler/state/e2e --var TURNSTILE_SECRET_KEY:1x0000000000000000000000000000000AA --var AUTH_REQUIRE_EMAIL_VERIFICATION:false --ip 127.0.0.1 --port 3000 --inspector-port 0 --log-level error",
     "logo": "pnpm exec tsx scripts/generate-logos.ts && pnpm exec tsx scripts/generate-favicon.ts",
-    "lint": "turbo run lint && oxlint --type-aware --tsconfig tsconfig.oxlint.json scripts e2e server.ts apps/web/vite.config.ts vitest.config.ts playwright.config.ts package.json tsconfig.json tsconfig.node.json tsconfig.oxlint.json .oxlintrc.json .oxfmtrc.json && oxfmt --check scripts e2e server.ts apps/web/vite.config.ts vitest.config.ts playwright.config.ts package.json tsconfig.json tsconfig.node.json tsconfig.oxlint.json .oxlintrc.json .oxfmtrc.json",
-    "lint:fix": "turbo run lint:fix && oxlint --type-aware --tsconfig tsconfig.oxlint.json --fix scripts e2e server.ts apps/web/vite.config.ts vitest.config.ts playwright.config.ts package.json tsconfig.json tsconfig.node.json tsconfig.oxlint.json .oxlintrc.json .oxfmtrc.json && oxfmt --write scripts e2e server.ts apps/web/vite.config.ts vitest.config.ts playwright.config.ts package.json tsconfig.json tsconfig.node.json tsconfig.oxlint.json .oxlintrc.json .oxfmtrc.json",
-    "format": "turbo run format && oxfmt --write scripts e2e server.ts apps/web/vite.config.ts vitest.config.ts playwright.config.ts package.json tsconfig.json tsconfig.node.json tsconfig.oxlint.json .oxlintrc.json .oxfmtrc.json",
+    "lint": "turbo run lint && oxlint --type-aware --tsconfig tsconfig.oxlint.json scripts e2e server.ts apps/web/vite*.config.ts vitest.config.ts playwright*.ts package.json tsconfig.json tsconfig.node.json tsconfig.oxlint.json .oxlintrc.json .oxfmtrc.json && oxfmt --check scripts e2e server.ts apps/web/vite*.config.ts vitest.config.ts playwright*.ts package.json tsconfig.json tsconfig.node.json tsconfig.oxlint.json .oxlintrc.json .oxfmtrc.json",
+    "lint:fix": "turbo run lint:fix && oxlint --type-aware --tsconfig tsconfig.oxlint.json --fix scripts e2e server.ts apps/web/vite*.config.ts vitest.config.ts playwright*.ts package.json tsconfig.json tsconfig.node.json tsconfig.oxlint.json .oxlintrc.json .oxfmtrc.json && oxfmt --write scripts e2e server.ts apps/web/vite*.config.ts vitest.config.ts playwright*.ts package.json tsconfig.json tsconfig.node.json tsconfig.oxlint.json .oxlintrc.json .oxfmtrc.json",
+    "format": "turbo run format && oxfmt --write scripts e2e server.ts apps/web/vite*.config.ts vitest.config.ts playwright*.ts package.json tsconfig.json tsconfig.node.json tsconfig.oxlint.json .oxlintrc.json .oxfmtrc.json",
     "preview": "pnpm run --dir apps/web preview",
     "test": "turbo run test",
     "test:web": "pnpm --filter @ddlbuilder/web test",
@@ -34,10 +34,11 @@
     "test:ddl-core": "pnpm --filter @ddlbuilder/ddl-core test",
     "test:scripts": "vitest run --project scripts",
     "test:coverage": "turbo run test:coverage && vitest run --coverage --project scripts",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test && playwright test --config playwright.runtime.config.ts",
     "deploy:cf": "pnpm run build && pnpm exec tsx scripts/deploy.ts",
     "typecheck": "turbo run typecheck && tsc --noEmit -p tsconfig.node.json",
-    "test:runtime": "pnpm exec tsx scripts/verify-d1-runtime.ts"
+    "test:runtime": "pnpm exec tsx scripts/verify-d1-runtime.ts",
+    "test:e2e:runtime": "playwright test --config playwright.runtime.config.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.12",

@@ -24,9 +24,9 @@
     "scripts",
     "e2e",
     "server.ts",
-    "apps/web/vite.config.ts",
+    "apps/web/vite*.config.ts",
     "apps/web/vitest.config.ts",
     "vitest.config.ts",
-    "playwright.config.ts"
+    "playwright*.ts"
   ]
 }

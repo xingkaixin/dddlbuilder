@@ -523,6 +523,7 @@ test('workspace yjs sync preserves offline edits locally and converges after rec
   await page.goto('/');
   await openDraftByName(page, 'cloud_seed');
   await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
+  await expect(page.locator('[data-state="active"] pre code')).toBeVisible();
 
   await context.setOffline(true);
   await page.evaluate(() => window.dispatchEvent(new Event('offline')));

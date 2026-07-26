@@ -3,6 +3,39 @@ import { setupHydratedState } from '../utils';
 
 test.describe('SQL 导入功能验证 @tools', () => {
   test.beforeEach(async ({ page }) => {
+    await page.route('**/api/parse-sql', async (route) => {
+      await route.fulfill({
+        json: {
+          result: {
+            tableName: 'import_test',
+            tableComment: '',
+            fields: [
+              {
+                name: 'id',
+                type: 'int',
+                comment: '编号',
+                nullable: true,
+                defaultKind: 'none',
+                defaultValue: '',
+                onUpdate: 'none',
+              },
+              {
+                name: 'name',
+                type: 'varchar(50)',
+                comment: '',
+                nullable: true,
+                defaultKind: 'none',
+                defaultValue: '',
+                onUpdate: 'none',
+              },
+            ],
+            indexes: [],
+            foreignKeys: [],
+            authObjects: [],
+          },
+        },
+      });
+    });
     await page.goto('/');
     await setupHydratedState(page);
   });

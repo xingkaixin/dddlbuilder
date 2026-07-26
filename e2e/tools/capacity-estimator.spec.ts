@@ -18,20 +18,14 @@ test.describe('容量估算工具验证 @tools', () => {
   });
 
   test('场景：打开容量估算器并查看结果', async ({ page }) => {
-    // 找到容量估算入口 (假设在 TableConfig 或某个工具按钮中)
-    // 检查 TableConfig.tsx 发现有一个 Calculate 相关的按钮或入口
-    // 搜索 "容量估算"
-    const estimatorBtn = page.getByRole('button', { name: /容量估算/i });
-    if (await estimatorBtn.isVisible()) {
-      await estimatorBtn.click();
+    await page.getByRole('button', { name: /估算容量/i }).click();
 
-      await expect(page.getByText(/估算设置/i)).toBeVisible();
-      await expect(page.getByText(/单行大小/i)).toBeVisible();
-
-      // 验证 bigint 是否显示为 8 字节
-      // 这是业务逻辑验证
-    } else {
-      test.skip(true, '容量估算按钮未找到');
-    }
+    const dialog = page.getByRole('dialog', { name: /存储容量估算器/i });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText(/预估承载数据量/i)).toBeVisible();
+    await expect(dialog.getByText('裸数据', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('索引占用', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('冗余开销', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('磁盘占用合计', { exact: true })).toBeVisible();
   });
 });

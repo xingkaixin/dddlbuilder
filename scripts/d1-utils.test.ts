@@ -300,7 +300,7 @@ describe('d1-utils', () => {
       .mock.calls.map((call) => call[1])
       .filter((args) => Array.isArray(args) && args.includes('--file'));
     expect(fileCalls).toHaveLength(listMigrationFiles().length - 1);
-    expect(fileCalls.some((args) => args.includes(listMigrationFiles()[0]))).toBe(false);
+    expect(fileCalls.some((args) => args?.includes(listMigrationFiles()[0]) === true)).toBe(false);
   });
 
   it('runs all migrations without consulting the ledger', () => {
