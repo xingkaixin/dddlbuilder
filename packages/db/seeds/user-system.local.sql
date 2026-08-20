@@ -17,6 +17,7 @@ INSERT OR IGNORE INTO user (
 INSERT OR IGNORE INTO account (
   id,
   account_id,
+  issuer,
   provider_id,
   user_id,
   created_at,
@@ -24,6 +25,7 @@ INSERT OR IGNORE INTO account (
 ) VALUES (
   'acct_local_seed_credential',
   'usr_local_seed',
+  'local:credential',
   'credential',
   'usr_local_seed',
   CAST(strftime('%s', 'now') AS INTEGER) * 1000,

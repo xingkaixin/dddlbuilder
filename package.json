@@ -41,29 +41,29 @@
     "test:e2e:runtime": "playwright test --config playwright.runtime.config.ts"
   },
   "dependencies": {
-    "@hono/node-server": "^2.0.12",
+    "@hono/node-server": "^2.1.1",
     "hono": "^4.13.3"
   },
   "devDependencies": {
     "@ddlbuilder/tsconfig": "workspace:*",
-    "@playwright/test": "^1.62.0",
-    "@types/node": "^26.1.1",
-    "@vitest/coverage-v8": "^4.1.10",
-    "@vitest/ui": "^4.1.10",
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^26.2.0",
+    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/ui": "^4.1.11",
     "drizzle-kit": "^0.31.10",
     "lib0": "^0.2.117",
-    "oxfmt": "^0.60.0",
-    "oxlint": "^1.75.0",
+    "oxfmt": "^0.64.0",
+    "oxlint": "^1.79.0",
     "oxlint-tsgolint": "^7.0.2001",
     "png-to-ico": "^3.0.2",
     "sharp": "^0.35.3",
-    "tsx": "^4.23.1",
-    "turbo": "^2.10.7",
+    "tsx": "^4.23.12",
+    "turbo": "^2.10.11",
     "typescript": "~7.0.2",
-    "vitest": "^4.1.10",
-    "wrangler": "^4.114.0",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.124.0",
     "y-protocols": "^1.0.7",
-    "yjs": "^13.6.31"
+    "yjs": "^13.6.32"
   },
   "packageManager": "pnpm@10.33.0"
 }

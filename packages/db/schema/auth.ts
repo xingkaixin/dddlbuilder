@@ -26,6 +26,7 @@ export const authSession = sqliteTable('session', {
 export const authAccount = sqliteTable('account', {
   id: text('id').primaryKey(),
   accountId: text('account_id').notNull(),
+  issuer: text('issuer').notNull(),
   providerId: text('provider_id').notNull(),
   userId: text('user_id')
     .notNull()

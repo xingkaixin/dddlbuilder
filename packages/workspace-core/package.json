@@ -15,11 +15,11 @@
   },
   "dependencies": {
     "@ddlbuilder/shared-types": "workspace:*",
-    "yjs": "^13.6.31"
+    "yjs": "^13.6.32"
   },
   "devDependencies": {
     "@ddlbuilder/tsconfig": "workspace:*",
-    "@vitest/coverage-v8": "^4.1.10",
-    "vitest": "^4.1.10"
+    "@vitest/coverage-v8": "^4.1.11",
+    "vitest": "^4.1.11"
   }
 }
