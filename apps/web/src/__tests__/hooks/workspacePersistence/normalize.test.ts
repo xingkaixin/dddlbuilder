@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildDraftSummary,
+  getDraftDisplayName,
   isSameWorkspaceSource,
   isWorkspaceSource,
   normalizeGlobalDraftRecord,
   normalizePersistedState,
   normalizeWorkspaceSession,
+  resolveUniqueDraftName,
+  UNTITLED_DRAFT_NAME,
 } from '@/hooks/workspacePersistence/normalize';
 
 describe('workspacePersistence/normalize', () => {
@@ -324,5 +327,19 @@ describe('workspacePersistence/normalize', () => {
 
     expect(normalizeWorkspaceSession({ activeSource: { kind: 'x' } })).toBeNull();
     expect(normalizeWorkspaceSession(null)).toBeNull();
+  });
+
+  it('resolveUniqueDraftName 应在冲突时追加自增后缀', () => {
+    expect(resolveUniqueDraftName('users', new Set())).toBe('users');
+    expect(resolveUniqueDraftName('users', new Set(['other']))).toBe('users');
+    expect(resolveUniqueDraftName('users', new Set(['users']))).toBe('users_1');
+    expect(resolveUniqueDraftName('users', new Set(['users', 'users_1', 'users_2']))).toBe(
+      'users_3',
+    );
+  });
+
+  it('getDraftDisplayName 应在表名为空时回落到默认草稿名', () => {
+    const state = normalizePersistedState({ tableName: '   ' });
+    expect(state && getDraftDisplayName(state)).toBe(UNTITLED_DRAFT_NAME);
   });
 });

@@ -156,6 +156,21 @@ export const isSameWorkspaceSource = (a: WorkspaceSource, b: WorkspaceSource) =>
   return false;
 };
 
+/** 持久化数据里的默认草稿名，随界面语言变化会污染已存数据，因此不接入 i18n */
+export const UNTITLED_DRAFT_NAME = '未命名草稿';
+
+export const getDraftDisplayName = (state: PersistedState) =>
+  state.tableName.trim() || UNTITLED_DRAFT_NAME;
+
+export const resolveUniqueDraftName = (baseName: string, takenNames: ReadonlySet<string>) => {
+  if (!takenNames.has(baseName)) return baseName;
+  let counter = 1;
+  while (takenNames.has(`${baseName}_${counter}`)) {
+    counter++;
+  }
+  return `${baseName}_${counter}`;
+};
+
 export const buildDraftSummary = (
   draftId: string,
   state: PersistedState,
@@ -163,23 +178,16 @@ export const buildDraftSummary = (
   updatedAt: number,
   folderId?: string,
   trashedAt?: number,
-): DraftSummary => {
-  const fieldCount = state.rows.filter((row) => row.fieldName?.trim()).length;
-  const name = state.tableName.trim() || '未命名草稿';
-  return {
-    draftId,
-    name,
-    dbType: state.dbType,
-    fieldCount,
-    createdAt,
-    updatedAt,
-    folderId,
-    trashedAt,
-  };
-};
-
-/** @deprecated 使用 buildDraftSummary */
-export const buildGlobalDraftSummary = buildDraftSummary;
+): DraftSummary => ({
+  draftId,
+  name: getDraftDisplayName(state),
+  dbType: state.dbType,
+  fieldCount: state.rows.filter((row) => row.fieldName?.trim()).length,
+  createdAt,
+  updatedAt,
+  folderId,
+  trashedAt,
+});
 
 export const normalizeGlobalDraftRecord = (value: unknown): GlobalDraftRecord | null => {
   if (!isRecord(value)) return null;

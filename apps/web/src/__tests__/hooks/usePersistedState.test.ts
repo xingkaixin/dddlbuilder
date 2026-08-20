@@ -11,6 +11,7 @@ import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 import { getShareState, ShareApiError } from '@/services/shareService';
 import type { WorkspaceSavePayload } from '@ddlbuilder/shared-types/workspace';
 import {
+  DEFAULT_DRAFT_ID,
   readGlobalDraft,
   readWorkspaceSession,
   writeDraft,
@@ -422,7 +423,7 @@ describe('usePersistedState', () => {
       result.current.saveState(payload);
     });
 
-    expect(result.current.getGlobalDraftState()?.tableName).toBe('next_global');
+    expect(result.current.getDraftState(DEFAULT_DRAFT_ID)?.tableName).toBe('next_global');
 
     await waitFor(async () => {
       const dbDraft = await readGlobalDraft();
@@ -621,7 +622,7 @@ describe('usePersistedState', () => {
     });
 
     expect(result.current.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
-    expect(result.current.getGlobalDraftState()?.tableName).toBe(globalState.tableName);
+    expect(result.current.getDraftState(DEFAULT_DRAFT_ID)?.tableName).toBe(globalState.tableName);
 
     await waitFor(async () => {
       const session = await readWorkspaceSession();
@@ -749,7 +750,7 @@ describe('usePersistedState', () => {
       expect(session).toBeNull();
       expect(result.current.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
       expect(result.current.persistedState).toBeNull();
-      expect(result.current.getGlobalDraftState()).toBeNull();
+      expect(result.current.getDraftState(DEFAULT_DRAFT_ID)).toBeNull();
     });
   });
 
