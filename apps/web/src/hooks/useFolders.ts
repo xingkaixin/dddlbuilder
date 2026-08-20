@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import type * as Y from 'yjs';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 import {
@@ -73,6 +74,15 @@ export function useFolders() {
     workspaceYDoc.localSynced &&
     currentScope?.kind === 'user' &&
     currentScope.workspaceId,
+  );
+
+  const runInYDoc = useCallback(
+    (mutate: (doc: Y.Doc) => void) => {
+      if (!yDocReady || !workspaceYDoc.doc) return;
+      const doc = workspaceYDoc.doc;
+      doc.transact(() => mutate(doc));
+    },
+    [workspaceYDoc.doc, yDocReady],
   );
 
   const queueFolderChange = useCallback(
@@ -169,12 +179,7 @@ export function useFolders() {
       if (!currentScope) throw new Error('工作区未就绪');
       try {
         const folder = await createFolder(name, parentId, currentScope);
-        if (yDocReady && workspaceYDoc.doc) {
-          const doc = workspaceYDoc.doc;
-          doc.transact(() => {
-            upsertFolderInYDoc(doc, folder);
-          });
-        }
+        runInYDoc((doc) => upsertFolderInYDoc(doc, folder));
         queueFolderChange({ op: 'upsert', folder });
         await loadFolders();
         return folder;
@@ -182,7 +187,7 @@ export function useFolders() {
         throw err instanceof Error ? err : new Error('创建文件夹失败');
       }
     },
-    [currentScope, loadFolders, queueFolderChange, workspaceYDoc.doc, yDocReady],
+    [currentScope, loadFolders, queueFolderChange, runInYDoc],
   );
 
   // 重命名文件夹
@@ -208,17 +213,14 @@ export function useFolders() {
         }
         const nextFolder = { ...folder, name: newName.trim() };
         await updateFolder(nextFolder, currentScope);
-        const doc = workspaceYDoc.doc;
-        doc.transact(() => {
-          upsertFolderInYDoc(doc, nextFolder);
-        });
+        runInYDoc((doc) => upsertFolderInYDoc(doc, nextFolder));
         queueFolderChange({ op: 'upsert', folder: nextFolder });
         await loadFolders();
       } catch (err) {
         throw err instanceof Error ? err : new Error('重命名文件夹失败');
       }
     },
-    [currentScope, loadFolders, queueFolderChange, workspaceYDoc.doc, yDocReady],
+    [currentScope, loadFolders, queueFolderChange, runInYDoc, workspaceYDoc.doc, yDocReady],
   );
 
   // 删除文件夹
@@ -247,12 +249,7 @@ export function useFolders() {
 
         await deleteFolder(id, currentScope);
         for (const folderId of allFolderIds) {
-          if (yDocReady && workspaceYDoc.doc) {
-            const doc = workspaceYDoc.doc;
-            doc.transact(() => {
-              deleteFolderFromYDoc(doc, folderId);
-            });
-          }
+          runInYDoc((doc) => deleteFolderFromYDoc(doc, folderId));
           queueFolderChange({ op: 'delete', folderId });
         }
         await loadFolders();
@@ -263,7 +260,7 @@ export function useFolders() {
         throw err instanceof Error ? err : new Error('删除文件夹失败');
       }
     },
-    [currentScope, loadFolders, queueFolderChange, workspaceYDoc.doc, yDocReady],
+    [currentScope, loadFolders, queueFolderChange, runInYDoc, workspaceYDoc.doc, yDocReady],
   );
 
   // 移动文件夹
@@ -293,17 +290,14 @@ export function useFolders() {
         const maxOrder = siblings.reduce((max, item) => Math.max(max, item.order), 0);
         const nextFolder = { ...folder, parentId: newParentId, order: maxOrder + 1 };
         await updateFolder(nextFolder, currentScope);
-        const doc = workspaceYDoc.doc;
-        doc.transact(() => {
-          upsertFolderInYDoc(doc, nextFolder);
-        });
+        runInYDoc((doc) => upsertFolderInYDoc(doc, nextFolder));
         queueFolderChange({ op: 'upsert', folder: nextFolder });
         await loadFolders();
       } catch (err) {
         throw err instanceof Error ? err : new Error('移动文件夹失败');
       }
     },
-    [currentScope, loadFolders, queueFolderChange, workspaceYDoc.doc, yDocReady],
+    [currentScope, loadFolders, queueFolderChange, runInYDoc, workspaceYDoc.doc, yDocReady],
   );
 
   return {

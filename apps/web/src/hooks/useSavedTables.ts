@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type * as Y from 'yjs';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
@@ -78,6 +79,15 @@ export function useSavedTables() {
     workspaceYDoc.localSynced &&
     currentScope?.kind === 'user' &&
     currentScope.workspaceId,
+  );
+
+  const runInYDoc = useCallback(
+    (mutate: (doc: Y.Doc) => void) => {
+      if (!yDocReady || !workspaceYDoc.doc) return;
+      const doc = workspaceYDoc.doc;
+      doc.transact(() => mutate(doc));
+    },
+    [workspaceYDoc.doc, yDocReady],
   );
 
   const queueSavedTableChange = useCallback(
@@ -238,18 +248,15 @@ export function useSavedTables() {
           createdAt: existing?.createdAt ?? now,
           updatedAt: now,
         });
-        if (yDocReady && workspaceYDoc.doc) {
-          const doc = workspaceYDoc.doc;
-          doc.transact(() => {
-            upsertSavedTableInYDoc(doc, {
-              normalizedName,
-              name: displayName,
-              state,
-              createdAt: existing?.createdAt ?? now,
-              updatedAt: now,
-            });
-          });
-        }
+        runInYDoc((doc) =>
+          upsertSavedTableInYDoc(doc, {
+            normalizedName,
+            name: displayName,
+            state,
+            createdAt: existing?.createdAt ?? now,
+            updatedAt: now,
+          }),
+        );
         await refresh();
         return { ok: true, normalizedName };
       } catch (err) {
@@ -260,7 +267,7 @@ export function useSavedTables() {
         };
       }
     },
-    [queueSavedTableChange, refresh, workspaceYDoc.doc, yDocReady],
+    [queueSavedTableChange, refresh, runInYDoc, workspaceYDoc.doc, yDocReady],
   );
 
   const overwriteTable = useCallback(
@@ -280,12 +287,7 @@ export function useSavedTables() {
         };
         await updateSavedTable(updatedRecord);
         await queueSavedTableChange(updatedRecord);
-        if (yDocReady && workspaceYDoc.doc) {
-          const doc = workspaceYDoc.doc;
-          doc.transact(() => {
-            upsertSavedTableInYDoc(doc, updatedRecord);
-          });
-        }
+        runInYDoc((doc) => upsertSavedTableInYDoc(doc, updatedRecord));
         await refresh();
         return { ok: true, normalizedName };
       } catch (err) {
@@ -296,7 +298,7 @@ export function useSavedTables() {
         };
       }
     },
-    [queueSavedTableChange, refresh, workspaceYDoc.doc, yDocReady],
+    [queueSavedTableChange, refresh, runInYDoc, workspaceYDoc.doc, yDocReady],
   );
 
   const deleteTable = useCallback(
@@ -304,12 +306,7 @@ export function useSavedTables() {
       try {
         const record = await getSavedTable(normalizedName);
         await moveSavedTableToTrash(normalizedName);
-        if (yDocReady && workspaceYDoc.doc) {
-          const doc = workspaceYDoc.doc;
-          doc.transact(() => {
-            deleteSavedTableFromYDoc(doc, normalizedName);
-          });
-        }
+        runInYDoc((doc) => deleteSavedTableFromYDoc(doc, normalizedName));
         if (record) {
           await queueSavedTableChange(record, 'delete');
         }
@@ -323,7 +320,7 @@ export function useSavedTables() {
         };
       }
     },
-    [queueSavedTableChange, refresh, workspaceYDoc.doc, yDocReady],
+    [queueSavedTableChange, refresh, runInYDoc],
   );
 
   const restoreTable = useCallback(
@@ -376,20 +373,10 @@ export function useSavedTables() {
         }
 
         await queueSavedTableChange(restoredRecord);
-        if (yDocReady && workspaceYDoc.doc) {
-          const doc = workspaceYDoc.doc;
-          doc.transact(() => {
-            upsertSavedTableInYDoc(doc, restoredRecord);
-          });
-        }
+        runInYDoc((doc) => upsertSavedTableInYDoc(doc, restoredRecord));
         if (targetNormalizedName !== normalizedName) {
           await queueSavedTableChange(record, 'delete');
-          if (yDocReady && workspaceYDoc.doc) {
-            const doc = workspaceYDoc.doc;
-            doc.transact(() => {
-              deleteSavedTableFromYDoc(doc, normalizedName);
-            });
-          }
+          runInYDoc((doc) => deleteSavedTableFromYDoc(doc, normalizedName));
         }
         await refresh();
         return { ok: true, normalizedName: targetNormalizedName };
@@ -401,7 +388,7 @@ export function useSavedTables() {
         };
       }
     },
-    [queueSavedTableChange, refresh, savedTables, workspaceYDoc.doc, yDocReady],
+    [queueSavedTableChange, refresh, runInYDoc, savedTables],
   );
 
   const deleteTablePermanently = useCallback(
@@ -412,12 +399,7 @@ export function useSavedTables() {
             ? getSavedTableFromYDoc(workspaceYDoc.doc, normalizedName)
             : await getSavedTable(normalizedName);
         await deleteSavedTable(normalizedName);
-        if (yDocReady && workspaceYDoc.doc) {
-          const doc = workspaceYDoc.doc;
-          doc.transact(() => {
-            deleteSavedTableFromYDoc(doc, normalizedName);
-          });
-        }
+        runInYDoc((doc) => deleteSavedTableFromYDoc(doc, normalizedName));
         if (record) {
           await queueSavedTableChange(record, 'delete');
         }
@@ -431,7 +413,7 @@ export function useSavedTables() {
         };
       }
     },
-    [queueSavedTableChange, refresh, workspaceYDoc.doc, yDocReady],
+    [queueSavedTableChange, refresh, runInYDoc, workspaceYDoc.doc, yDocReady],
   );
 
   const renameTable = useCallback(
@@ -466,15 +448,12 @@ export function useSavedTables() {
           await deleteSavedTable(normalizedName);
         }
         await queueSavedTableChange(updatedRecord);
-        if (yDocReady && workspaceYDoc.doc) {
-          const doc = workspaceYDoc.doc;
-          doc.transact(() => {
-            upsertSavedTableInYDoc(doc, updatedRecord);
-            if (nextNormalizedName !== normalizedName) {
-              deleteSavedTableFromYDoc(doc, normalizedName);
-            }
-          });
-        }
+        runInYDoc((doc) => {
+          upsertSavedTableInYDoc(doc, updatedRecord);
+          if (nextNormalizedName !== normalizedName) {
+            deleteSavedTableFromYDoc(doc, normalizedName);
+          }
+        });
         if (nextNormalizedName !== normalizedName) {
           await queueSavedTableChange(record, 'delete');
         }
@@ -488,7 +467,7 @@ export function useSavedTables() {
         };
       }
     },
-    [queueSavedTableChange, refresh, workspaceYDoc.doc, yDocReady],
+    [queueSavedTableChange, refresh, runInYDoc, workspaceYDoc.doc, yDocReady],
   );
 
   const loadTable = useCallback(
@@ -519,12 +498,7 @@ export function useSavedTables() {
         };
         await updateSavedTable(updatedRecord);
         await queueSavedTableChange(updatedRecord);
-        if (yDocReady && workspaceYDoc.doc) {
-          const doc = workspaceYDoc.doc;
-          doc.transact(() => {
-            upsertSavedTableInYDoc(doc, updatedRecord);
-          });
-        }
+        runInYDoc((doc) => upsertSavedTableInYDoc(doc, updatedRecord));
         await refresh();
         return { ok: true, normalizedName };
       } catch (err) {
@@ -535,7 +509,7 @@ export function useSavedTables() {
         };
       }
     },
-    [queueSavedTableChange, refresh, workspaceYDoc.doc, yDocReady],
+    [queueSavedTableChange, refresh, runInYDoc, workspaceYDoc.doc, yDocReady],
   );
 
   // 清理指定文件夹ID关联的表（将它们移回未分组）
@@ -563,17 +537,14 @@ export function useSavedTables() {
       ).filter((record): record is SavedTableRecord => record != null);
       await updateSavedTables(updatedRecords);
       await queueSavedTableChanges(updatedRecords);
-      if (yDocReady && workspaceYDoc.doc) {
-        const doc = workspaceYDoc.doc;
-        doc.transact(() => {
-          for (const record of updatedRecords) {
-            upsertSavedTableInYDoc(doc, record);
-          }
-        });
-      }
+      runInYDoc((doc) => {
+        for (const record of updatedRecords) {
+          upsertSavedTableInYDoc(doc, record);
+        }
+      });
       await refresh();
     },
-    [queueSavedTableChanges, savedTables, refresh, workspaceYDoc.doc, yDocReady],
+    [queueSavedTableChanges, refresh, runInYDoc, savedTables, workspaceYDoc.doc, yDocReady],
   );
 
   return {
