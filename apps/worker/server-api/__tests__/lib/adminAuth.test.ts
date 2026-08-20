@@ -75,6 +75,23 @@ const requireSetCookie = (result: AdminSessionResult): string => {
   return result.setCookie;
 };
 
+const readToken = (setCookie: string): [payload: string, mac: string] => {
+  const token = setCookie.match(/ddlbuilder_admin_session=([^;]+)/)?.[1] ?? '';
+  const [uuid, expiresAt, mac] = token.split('.');
+  return [`${uuid}.${expiresAt}`, mac ?? ''];
+};
+
+const hmacHex = async (key: BufferSource, data: string): Promise<string> => {
+  const { subtle } = globalThis.crypto;
+  const cryptoKey = await subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, [
+    'sign',
+  ]);
+  const signature = await subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(data));
+  return Array.from(new Uint8Array(signature))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+};
+
 describe('adminAuth', () => {
   let originalCrypto: Crypto;
 
@@ -85,24 +102,11 @@ describe('adminAuth', () => {
     // Save original crypto
     originalCrypto = globalThis.crypto;
 
-    // Mock crypto.subtle
-    const mockSubtle = {
-      importKey: vi.fn().mockResolvedValue({} as CryptoKey),
-      sign: vi
-        .fn()
-        .mockImplementation(async (_algorithm: string, _key: CryptoKey, _data: ArrayBuffer) => {
-          // Return a deterministic "signature" based on data length
-          return new Uint8Array(32).fill(0xab).buffer;
-        }),
-    };
-
-    // Mock crypto.randomUUID
-    const mockRandomUUID = vi.fn().mockReturnValue('test-uuid-1234');
-
+    // Real subtle crypto so key-derivation behaviour is exercised, only randomUUID is pinned.
     Object.defineProperty(globalThis, 'crypto', {
       value: {
-        subtle: mockSubtle,
-        randomUUID: mockRandomUUID,
+        subtle: originalCrypto.subtle,
+        randomUUID: vi.fn().mockReturnValue('test-uuid-1234'),
       },
       writable: true,
       configurable: true,
@@ -247,39 +251,44 @@ describe('adminAuth', () => {
     });
 
     it('returns false when HMAC does not match', async () => {
-      await import('../../lib/adminAuth.js');
-
-      // Override sign to return different values on subsequent calls
-      const mockSign = vi
-        .fn()
-        .mockResolvedValueOnce(new Uint8Array(32).fill(0xab).buffer)
-        .mockResolvedValueOnce(new Uint8Array(32).fill(0xcd).buffer);
-
-      Object.defineProperty(globalThis, 'crypto', {
-        value: {
-          subtle: {
-            importKey: vi.fn().mockResolvedValue({}),
-            sign: mockSign,
-          },
-          randomUUID: vi.fn().mockReturnValue('test-uuid-1234'),
-        },
-        writable: true,
-        configurable: true,
-      });
-
-      // First create a session with one HMAC
-      const { createAdminSession } = await import('../../lib/adminAuth.js');
+      const { createAdminSession, resolveAdminSession } = await import('../../lib/adminAuth.js');
       const env = createEnv({ ADMIN_CONSOLE_PASSWORD: 'secret' });
-      const session = await createAdminSession(env, 'secret');
+      const setCookie = requireSetCookie(await createAdminSession(env, 'secret'));
+      const [payload, mac] = readToken(setCookie);
+      const forged = `ddlbuilder_admin_session=${payload}.${'0'.repeat(mac.length)}`;
 
-      // Reset modules so resolveAdminSession gets the new mock
-      vi.resetModules();
+      await expect(resolveAdminSession(env, forged)).resolves.toBe(false);
+    });
 
-      // Now verify with different HMAC
-      const { resolveAdminSession: resolveAdminSession2 } = await import('../../lib/adminAuth.js');
-      const setCookie = requireSetCookie(session);
-      const result = await resolveAdminSession2(env, setCookie);
-      expect(result).toBe(false);
+    it('signs with ADMIN_SESSION_SECRET when configured', async () => {
+      const { createAdminSession, resolveAdminSession } = await import('../../lib/adminAuth.js');
+      const env = createEnv({
+        ADMIN_CONSOLE_PASSWORD: 'secret',
+        ADMIN_SESSION_SECRET: 'session-signing-key',
+      });
+      const setCookie = requireSetCookie(await createAdminSession(env, 'secret'));
+      const [payload, mac] = readToken(setCookie);
+
+      expect(mac).toBe(await hmacHex(new TextEncoder().encode('session-signing-key'), payload));
+      await expect(resolveAdminSession(env, setCookie)).resolves.toBe(true);
+      await expect(
+        resolveAdminSession({ ...env, ADMIN_SESSION_SECRET: 'rotated-key' }, setCookie),
+      ).resolves.toBe(false);
+    });
+
+    it('derives the signing key from the password when ADMIN_SESSION_SECRET is absent', async () => {
+      const { createAdminSession, resolveAdminSession } = await import('../../lib/adminAuth.js');
+      const env = createEnv({ ADMIN_CONSOLE_PASSWORD: 'secret' });
+      const setCookie = requireSetCookie(await createAdminSession(env, 'secret'));
+      const [payload, mac] = readToken(setCookie);
+      const derivedKey = await globalThis.crypto.subtle.digest(
+        'SHA-256',
+        new TextEncoder().encode('secretddlbuilder:admin-session:v1'),
+      );
+
+      expect(mac).toBe(await hmacHex(derivedKey, payload));
+      expect(mac).not.toBe(await hmacHex(new TextEncoder().encode('secret'), payload));
+      await expect(resolveAdminSession(env, setCookie)).resolves.toBe(true);
     });
 
     it('returns false when ADMIN_CONSOLE_PASSWORD is not set', async () => {

@@ -43,5 +43,6 @@ export type ApiEnv = {
     CSP_MODE?: string;
     CSP_POLICY?: string;
     ADMIN_CONSOLE_PASSWORD?: string;
+    ADMIN_SESSION_SECRET?: string;
   };
 };

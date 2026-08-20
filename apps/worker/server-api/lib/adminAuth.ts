@@ -5,6 +5,8 @@ const ADMIN_COOKIE_PATH = '/api/admin';
 const ADMIN_SESSION_MAX_AGE = 14400; // 4 hours
 const ADMIN_SESSION_MAX_AGE_MS = ADMIN_SESSION_MAX_AGE * 1000;
 const SEPARATOR = '.';
+// Domain separation so a password-derived key can never collide with the password itself.
+const SESSION_KEY_DOMAIN = 'ddlbuilder:admin-session:v1';
 
 const encode = (value: string) => new TextEncoder().encode(value);
 
@@ -17,10 +19,18 @@ const timingSafeEqual = (a: Uint8Array, b: Uint8Array): boolean => {
   return mismatch === 0;
 };
 
-const hmacSign = async (key: string, data: string): Promise<string> => {
+const sessionKeyMaterial = async (
+  sessionSecret: string | undefined,
+  password: string,
+): Promise<BufferSource> =>
+  sessionSecret
+    ? encode(sessionSecret)
+    : crypto.subtle.digest('SHA-256', encode(`${password}${SESSION_KEY_DOMAIN}`));
+
+const hmacSign = async (key: BufferSource, data: string): Promise<string> => {
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
-    encode(key),
+    key,
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign'],
@@ -50,7 +60,10 @@ export const createAdminSession = async (
   const createdAt = Date.now();
   const expiresAt = createdAt + ADMIN_SESSION_MAX_AGE_MS;
   const payload = `${uuid}${SEPARATOR}${expiresAt}`;
-  const mac = await hmacSign(configured, payload);
+  const mac = await hmacSign(
+    await sessionKeyMaterial(env.ADMIN_SESSION_SECRET, configured),
+    payload,
+  );
   const token = `${payload}${SEPARATOR}${mac}`;
   await env.USER_DB.batch([
     env.USER_DB.prepare('DELETE FROM admin_sessions WHERE expires_at <= ?').bind(createdAt),
@@ -95,7 +108,10 @@ export const resolveAdminSession = async (
   if (!Number.isSafeInteger(expiresAt) || expiresAt <= Date.now()) return false;
 
   const payload = `${uuid}${SEPARATOR}${expiresAtRaw}`;
-  const expected = await hmacSign(configured, payload);
+  const expected = await hmacSign(
+    await sessionKeyMaterial(env.ADMIN_SESSION_SECRET, configured),
+    payload,
+  );
   const actualBytes = encode(mac);
   const expectedBytes = encode(expected);
   if (!timingSafeEqual(actualBytes, expectedBytes)) {
