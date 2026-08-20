@@ -2,31 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   resolveWorkspaceYDocStartupPlan,
   shouldQueueWorkspaceEntityOutbox,
-  WORKSPACE_SYNC_AUTHORITY_MATRIX,
 } from '@/services/workspaceYDocAuthority';
 
 describe('workspaceYDocAuthority', () => {
-  it('defines the sync authority boundary', () => {
-    expect(WORKSPACE_SYNC_AUTHORITY_MATRIX).toEqual([
-      {
-        store: 'IndexedDB',
-        responsibility: 'browser-local cache and offline startup copy',
-      },
-      {
-        store: 'Y.Doc',
-        responsibility: 'workspace content CRDT and client runtime source',
-      },
-      {
-        store: 'Durable Object storage',
-        responsibility: 'server-side realtime Yjs update log and compacted snapshot',
-      },
-      {
-        store: 'D1 workspace_entities',
-        responsibility: 'legacy HTTP recovery projection until Yjs checkpoints own the projection',
-      },
-    ]);
-  });
-
   it('builds one startup plan for signed-in workspaces', () => {
     const plan = resolveWorkspaceYDocStartupPlan({
       authStatus: 'signed_in',

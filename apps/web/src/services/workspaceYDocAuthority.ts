@@ -1,23 +1,10 @@
+/**
+ * Workspace sync authority: Y.Doc is the client runtime source of truth for workspace content,
+ * IndexedDB is its browser-local cache and offline startup copy, Durable Object storage holds the
+ * server-side Yjs update log plus compacted snapshot, and D1 `workspace_entities` remains a legacy
+ * HTTP recovery projection until Yjs checkpoints own that projection.
+ */
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
-
-export const WORKSPACE_SYNC_AUTHORITY_MATRIX = [
-  {
-    store: 'IndexedDB',
-    responsibility: 'browser-local cache and offline startup copy',
-  },
-  {
-    store: 'Y.Doc',
-    responsibility: 'workspace content CRDT and client runtime source',
-  },
-  {
-    store: 'Durable Object storage',
-    responsibility: 'server-side realtime Yjs update log and compacted snapshot',
-  },
-  {
-    store: 'D1 workspace_entities',
-    responsibility: 'legacy HTTP recovery projection until Yjs checkpoints own the projection',
-  },
-] as const;
 
 export type WorkspaceYDocStartupStep =
   | 'load-indexeddb-ydoc'
