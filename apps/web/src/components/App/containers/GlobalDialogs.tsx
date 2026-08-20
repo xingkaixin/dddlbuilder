@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ComponentProps } from 'react';
+import type { ComponentProps } from 'react';
 import { AlertTriangle, Trash2 } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,8 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { NamePromptDialog } from './NamePromptDialog';
 import { AIGenerateDialog } from '../AIGenerateDialog';
 import { DiffDialog } from '../DiffDialog';
 import { DeleteFolderDialog, FolderDialog } from '../FolderDialogs';
@@ -102,39 +101,6 @@ export function GlobalDialogs({
   emptyTrashDialog,
 }: GlobalDialogsProps) {
   const { t } = useTranslation();
-  const saveInputRef = useRef<HTMLInputElement>(null);
-  const saveErrorRef = useRef<HTMLParagraphElement>(null);
-  const renameInputRef = useRef<HTMLInputElement>(null);
-  const renameErrorRef = useRef<HTMLParagraphElement>(null);
-
-  useEffect(() => {
-    if (saveDialog.open && saveDialog.error) {
-      const timer = window.setTimeout(() => {
-        saveErrorRef.current?.focus();
-      }, 0);
-      return () => window.clearTimeout(timer);
-    }
-  }, [saveDialog.open, saveDialog.error]);
-
-  useEffect(() => {
-    if (renameDialog.open && renameDialog.error) {
-      const timer = window.setTimeout(() => {
-        renameErrorRef.current?.focus();
-      }, 0);
-      return () => window.clearTimeout(timer);
-    }
-  }, [renameDialog.open, renameDialog.error]);
-
-  const saveDescriptionIds = [
-    saveDialog.inputDisabled ? 'save-table-name-hint' : null,
-    saveDialog.error ? 'save-table-name-error' : null,
-  ]
-    .filter(Boolean)
-    .join(' ');
-
-  const renameDescriptionIds = [renameDialog.error ? 'rename-table-name-error' : null]
-    .filter(Boolean)
-    .join(' ');
 
   return (
     <>
@@ -167,93 +133,39 @@ export function GlobalDialogs({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={saveDialog.open} onOpenChange={saveDialog.onOpenChange}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{saveDialog.title}</DialogTitle>
-            <DialogDescription>{saveDialog.description}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Label htmlFor="save-table-name">{t('dialogs.save.name')}</Label>
-            <Input
-              ref={saveInputRef}
-              id="save-table-name"
-              value={saveDialog.name}
-              onChange={(event) => {
-                saveDialog.onNameChange(event.target.value);
-              }}
-              placeholder={t('dialogs.save.placeholder')}
-              disabled={saveDialog.inputDisabled}
-              aria-describedby={saveDescriptionIds || undefined}
-            />
-            {saveDialog.inputDisabled && (
-              <p id="save-table-name-hint" className="text-xs text-muted-foreground">
-                {t('dialogs.save.loadedHint')}
-              </p>
-            )}
-            {saveDialog.error && (
-              <p
-                id="save-table-name-error"
-                ref={saveErrorRef}
-                tabIndex={-1}
-                role="alert"
-                aria-live="assertive"
-                className="text-xs text-destructive"
-              >
-                {saveDialog.error}
-              </p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => saveDialog.onOpenChange(false)}>
-              {t('dialogs.save.cancel')}
-            </Button>
-            <Button onClick={saveDialog.onConfirm} disabled={!saveDialog.canSaveCurrent}>
-              {t('dialogs.save.confirm')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <NamePromptDialog
+        open={saveDialog.open}
+        onOpenChange={saveDialog.onOpenChange}
+        idPrefix="save-table"
+        title={saveDialog.title}
+        description={saveDialog.description}
+        label={t('dialogs.save.name')}
+        placeholder={t('dialogs.save.placeholder')}
+        value={saveDialog.name}
+        onValueChange={saveDialog.onNameChange}
+        error={saveDialog.error}
+        disabledHint={saveDialog.inputDisabled ? t('dialogs.save.loadedHint') : null}
+        cancelLabel={t('dialogs.save.cancel')}
+        confirmLabel={t('dialogs.save.confirm')}
+        confirmDisabled={!saveDialog.canSaveCurrent}
+        onConfirm={saveDialog.onConfirm}
+      />
 
-      <Dialog open={renameDialog.open} onOpenChange={renameDialog.onOpenChange}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t('dialogs.rename.title')}</DialogTitle>
-            <DialogDescription>{t('dialogs.rename.description')}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Label htmlFor="rename-table-name">{t('dialogs.rename.newName')}</Label>
-            <Input
-              ref={renameInputRef}
-              id="rename-table-name"
-              value={renameDialog.name}
-              onChange={(event) => {
-                renameDialog.onNameChange(event.target.value);
-              }}
-              placeholder={t('dialogs.rename.placeholder')}
-              aria-describedby={renameDescriptionIds || undefined}
-            />
-            {renameDialog.error && (
-              <p
-                id="rename-table-name-error"
-                ref={renameErrorRef}
-                tabIndex={-1}
-                role="alert"
-                aria-live="assertive"
-                className="text-xs text-destructive"
-              >
-                {renameDialog.error}
-              </p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => renameDialog.onOpenChange(false)}>
-              {t('dialogs.rename.cancel')}
-            </Button>
-            <Button onClick={renameDialog.onConfirm}>{t('dialogs.rename.confirm')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <NamePromptDialog
+        open={renameDialog.open}
+        onOpenChange={renameDialog.onOpenChange}
+        idPrefix="rename-table"
+        title={t('dialogs.rename.title')}
+        description={t('dialogs.rename.description')}
+        label={t('dialogs.rename.newName')}
+        placeholder={t('dialogs.rename.placeholder')}
+        value={renameDialog.name}
+        onValueChange={renameDialog.onNameChange}
+        error={renameDialog.error}
+        cancelLabel={t('dialogs.rename.cancel')}
+        confirmLabel={t('dialogs.rename.confirm')}
+        onConfirm={renameDialog.onConfirm}
+      />
 
       <Dialog open={deleteDialog.open} onOpenChange={deleteDialog.onOpenChange}>
         <DialogContent className="max-w-sm">
