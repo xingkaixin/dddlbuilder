@@ -5,9 +5,10 @@ import { applyCloudSnapshotToLocal } from '@/services/workspaceSyncService';
 import { listSavedTables } from '@/utils/savedTablesDb';
 import { listFolders } from '@/utils/tableFolders';
 import {
+  DEFAULT_DRAFT_ID,
   listDrafts,
   listSavedDrafts,
-  readGlobalDraft,
+  readDraft,
   readWorkspaceSession,
 } from '@/utils/workspaceStateDb';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
@@ -136,7 +137,7 @@ export const collectWorkspaceMigrationPayload = async (
 ): Promise<WorkspaceMigrationPayload | null> => {
   const [globalDraft, activeSession, drafts, savedTables, savedDraftMap, folders] =
     await Promise.all([
-      readGlobalDraft(scope),
+      readDraft(DEFAULT_DRAFT_ID, scope),
       readWorkspaceSession(scope),
       listDrafts(scope),
       listSavedTables(scope),
@@ -162,7 +163,7 @@ export const collectWorkspaceMigrationPayload = async (
   const hasData =
     Boolean(meaningfulGlobalDraft) ||
     Boolean(meaningfulActiveState) ||
-    drafts.some((item) => item.draftId !== 'default') ||
+    drafts.some((item) => item.draftId !== DEFAULT_DRAFT_ID) ||
     savedTables.length > 0 ||
     savedDrafts.length > 0 ||
     folders.length > 0;
@@ -175,7 +176,7 @@ export const collectWorkspaceMigrationPayload = async (
     globalDraft: meaningfulGlobalDraft,
     activeSession: activeSession ? { ...activeSession, activeState: meaningfulActiveState } : null,
     drafts: drafts
-      .filter((item) => item.draftId !== 'default')
+      .filter((item) => item.draftId !== DEFAULT_DRAFT_ID)
       .map(({ draftId, record }) => ({ draftId, ...record })),
     savedTables: savedTables.map((item) => ({
       normalizedName: item.normalizedName,

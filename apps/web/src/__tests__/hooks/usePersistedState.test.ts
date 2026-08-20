@@ -12,10 +12,9 @@ import { getShareState, ShareApiError } from '@/services/shareService';
 import type { WorkspaceSavePayload } from '@ddlbuilder/shared-types/workspace';
 import {
   DEFAULT_DRAFT_ID,
-  readGlobalDraft,
+  readDraft,
   readWorkspaceSession,
   writeDraft,
-  writeGlobalDraft,
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
 import { listWorkspaceOutboxItems } from '@/utils/workspaceSyncStateDb';
@@ -224,7 +223,7 @@ describe('usePersistedState', () => {
       expect(result.current.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
     });
 
-    const dbDraft = await readGlobalDraft();
+    const dbDraft = await readDraft(DEFAULT_DRAFT_ID);
     expect(dbDraft?.state.tableName).toBe('global_from_legacy');
     expect(localStorageMock.removeItem).toHaveBeenCalledWith(GLOBAL_DRAFT_STORAGE_KEY);
   });
@@ -268,7 +267,8 @@ describe('usePersistedState', () => {
   });
 
   it('登录用户不应把匿名 scope 全局草稿当作自己的主工作区', async () => {
-    await writeGlobalDraft(
+    await writeDraft(
+      DEFAULT_DRAFT_ID,
       {
         state: createState('anonymous_local'),
         updatedAt: 999,
@@ -426,7 +426,7 @@ describe('usePersistedState', () => {
     expect(result.current.getDraftState(DEFAULT_DRAFT_ID)?.tableName).toBe('next_global');
 
     await waitFor(async () => {
-      const dbDraft = await readGlobalDraft();
+      const dbDraft = await readDraft(DEFAULT_DRAFT_ID);
       expect(dbDraft?.state.tableName).toBe('next_global');
       const session = await readWorkspaceSession();
       expect(session?.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
@@ -679,7 +679,7 @@ describe('usePersistedState', () => {
     });
 
     await waitFor(async () => {
-      const draft = await readGlobalDraft();
+      const draft = await readDraft(DEFAULT_DRAFT_ID);
       const session = await readWorkspaceSession();
       expect(draft?.state.tableName).toBe(globalState.tableName);
       expect(session?.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
@@ -702,7 +702,7 @@ describe('usePersistedState', () => {
     });
 
     await waitFor(async () => {
-      const draft = await readGlobalDraft();
+      const draft = await readDraft(DEFAULT_DRAFT_ID);
       expect(draft?.state.tableName).toBe(savedDraftState.tableName);
     });
 
@@ -711,7 +711,7 @@ describe('usePersistedState', () => {
     });
 
     await waitFor(async () => {
-      const draft = await readGlobalDraft();
+      const draft = await readDraft(DEFAULT_DRAFT_ID);
       const session = await readWorkspaceSession();
       expect(draft?.state.tableName).toBe(savedDraftState.tableName);
       expect(session?.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
@@ -733,7 +733,7 @@ describe('usePersistedState', () => {
     });
 
     await waitFor(async () => {
-      const draft = await readGlobalDraft();
+      const draft = await readDraft(DEFAULT_DRAFT_ID);
       const session = await readWorkspaceSession();
       expect(draft?.state.tableName).toBe(globalState.tableName);
       expect(session?.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
@@ -744,7 +744,7 @@ describe('usePersistedState', () => {
     });
 
     await waitFor(async () => {
-      const draft = await readGlobalDraft();
+      const draft = await readDraft(DEFAULT_DRAFT_ID);
       const session = await readWorkspaceSession();
       expect(draft).toBeNull();
       expect(session).toBeNull();
@@ -756,7 +756,7 @@ describe('usePersistedState', () => {
 
   it('主工作区 clearState 在 saved_table 下不应清空全局草稿', async () => {
     const existingGlobal = createState('existing_global');
-    await writeGlobalDraft({ state: existingGlobal, updatedAt: Date.now() });
+    await writeDraft(DEFAULT_DRAFT_ID, { state: existingGlobal, updatedAt: Date.now() });
 
     const { wrapper } = createQueryClientWrapper();
     const { result } = renderHook(() => usePersistedState(), { wrapper });
@@ -787,7 +787,7 @@ describe('usePersistedState', () => {
     });
 
     await waitFor(async () => {
-      const draft = await readGlobalDraft();
+      const draft = await readDraft(DEFAULT_DRAFT_ID);
       const session = await readWorkspaceSession();
       expect(draft?.state.tableName).toBe(existingGlobal.tableName);
       expect(session).toBeNull();
@@ -849,7 +849,7 @@ describe('usePersistedState', () => {
   });
 
   it('分享不存在时应回跳首页并恢复主工作区', async () => {
-    await writeGlobalDraft({
+    await writeDraft(DEFAULT_DRAFT_ID, {
       state: createState('global_after_share_fail'),
       updatedAt: Date.now(),
     });
@@ -871,7 +871,7 @@ describe('usePersistedState', () => {
 
   it('非法分享路径应标记错误并回退主工作区', async () => {
     const fallbackState = createState('fallback_from_invalid_share');
-    await writeGlobalDraft({ state: fallbackState, updatedAt: Date.now() });
+    await writeDraft(DEFAULT_DRAFT_ID, { state: fallbackState, updatedAt: Date.now() });
     window.history.replaceState({}, '', '/share/not-uuid');
 
     const { wrapper } = createQueryClientWrapper();
@@ -941,7 +941,7 @@ describe('usePersistedState', () => {
 
   it('分享加载出现通用错误时应标记 error 并回退主工作区', async () => {
     const fallbackState = createState('global_after_share_error');
-    await writeGlobalDraft({ state: fallbackState, updatedAt: Date.now() });
+    await writeDraft(DEFAULT_DRAFT_ID, { state: fallbackState, updatedAt: Date.now() });
     mockedGetShareState.mockRejectedValue(new Error('network failed'));
     window.history.replaceState({}, '', `/share/${VALID_SHARE_ID}`);
 
@@ -959,7 +959,7 @@ describe('usePersistedState', () => {
 
   it('会话为 saved_table 但实体缺失时应回退到 default draft', async () => {
     const fallbackState = createState('global_fallback_when_saved_missing');
-    await writeGlobalDraft({ state: fallbackState, updatedAt: Date.now() });
+    await writeDraft(DEFAULT_DRAFT_ID, { state: fallbackState, updatedAt: Date.now() });
     await writeWorkspaceSession({
       activeSource: {
         kind: 'saved_table',
@@ -984,7 +984,7 @@ describe('usePersistedState', () => {
   it('会话为 default draft 且存在草稿实体时应优先恢复实体状态', async () => {
     const sessionState = createState('session_active_state');
     const globalState = createState('global_backup_state');
-    await writeGlobalDraft({ state: globalState, updatedAt: Date.now() });
+    await writeDraft(DEFAULT_DRAFT_ID, { state: globalState, updatedAt: Date.now() });
     await writeWorkspaceSession({
       activeSource: { kind: 'draft', draftId: 'default' },
       activeState: sessionState,
@@ -1003,7 +1003,7 @@ describe('usePersistedState', () => {
 
   it('会话为 default draft 且无 activeState 时应回退到 globalDraft', async () => {
     const globalState = createState('global_fallback_state');
-    await writeGlobalDraft({ state: globalState, updatedAt: Date.now() });
+    await writeDraft(DEFAULT_DRAFT_ID, { state: globalState, updatedAt: Date.now() });
     await writeWorkspaceSession({
       activeSource: { kind: 'draft', draftId: 'default' },
       activeState: null,

@@ -3,18 +3,19 @@ import { STORAGE_KEY } from '@/utils/constants';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { addSavedTable, type SavedTableRecord } from '@/utils/savedTablesDb';
 import {
-  clearGlobalDraft,
+  DEFAULT_DRAFT_ID,
   clearWorkspaceSession,
+  deleteDraft,
   deleteSavedDraft,
   listSavedDrafts,
   migrateLegacyWorkspaceFromLocalStorage,
-  readGlobalDraft,
+  readDraft,
   readSavedDraft,
   readWorkspaceBootstrap,
   readWorkspaceSession,
   renameSavedDraftKey,
   upsertSavedDraft,
-  writeGlobalDraft,
+  writeDraft,
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
@@ -76,17 +77,17 @@ describe('workspaceStateDb', () => {
   });
 
   it('全局草稿应支持读写清理', async () => {
-    expect(await readGlobalDraft()).toBeNull();
+    expect(await readDraft(DEFAULT_DRAFT_ID)).toBeNull();
 
-    await writeGlobalDraft({ state: createState('global'), updatedAt: 100 });
-    expect(await readGlobalDraft()).toEqual({
+    await writeDraft(DEFAULT_DRAFT_ID, { state: createState('global'), updatedAt: 100 });
+    expect(await readDraft(DEFAULT_DRAFT_ID)).toEqual({
       state: createState('global'),
       createdAt: 100,
       updatedAt: 100,
     });
 
-    await clearGlobalDraft();
-    expect(await readGlobalDraft()).toBeNull();
+    await deleteDraft(DEFAULT_DRAFT_ID);
+    expect(await readDraft(DEFAULT_DRAFT_ID)).toBeNull();
   });
 
   it('已保存草稿应支持 CRUD 与重命名', async () => {
@@ -149,8 +150,12 @@ describe('workspaceStateDb', () => {
     const userAScope = { kind: 'user' as const, userId: 'user-a' };
     const userBScope = { kind: 'user' as const, userId: 'user-b' };
 
-    await writeGlobalDraft({ state: createState('anon'), updatedAt: 1 }, anonymousScope);
-    await writeGlobalDraft({ state: createState('userA'), updatedAt: 2 }, userAScope);
+    await writeDraft(
+      DEFAULT_DRAFT_ID,
+      { state: createState('anon'), updatedAt: 1 },
+      anonymousScope,
+    );
+    await writeDraft(DEFAULT_DRAFT_ID, { state: createState('userA'), updatedAt: 2 }, userAScope);
     await upsertSavedDraft(
       'users',
       {
@@ -162,9 +167,9 @@ describe('workspaceStateDb', () => {
       userAScope,
     );
 
-    expect((await readGlobalDraft(anonymousScope))?.state.tableName).toBe('anon');
-    expect((await readGlobalDraft(userAScope))?.state.tableName).toBe('userA');
-    expect(await readGlobalDraft(userBScope)).toBeNull();
+    expect((await readDraft(DEFAULT_DRAFT_ID, anonymousScope))?.state.tableName).toBe('anon');
+    expect((await readDraft(DEFAULT_DRAFT_ID, userAScope))?.state.tableName).toBe('userA');
+    expect(await readDraft(DEFAULT_DRAFT_ID, userBScope)).toBeNull();
     expect(await readSavedDraft('users', userAScope)).toMatchObject({
       tableName: 'Users',
       baseSignature: 'sig-a',
@@ -232,7 +237,7 @@ describe('workspaceStateDb', () => {
 
     await migrateLegacyWorkspaceFromLocalStorage();
 
-    expect(await readGlobalDraft()).toMatchObject({
+    expect(await readDraft(DEFAULT_DRAFT_ID)).toMatchObject({
       state: createState('global_legacy'),
       updatedAt: 101,
     });
@@ -259,7 +264,7 @@ describe('workspaceStateDb', () => {
 
     await migrateLegacyWorkspaceFromLocalStorage();
 
-    expect(await readGlobalDraft()).toMatchObject({
+    expect(await readDraft(DEFAULT_DRAFT_ID)).toMatchObject({
       state: createState('legacy_v0'),
     });
   });
@@ -274,7 +279,7 @@ describe('workspaceStateDb', () => {
 
     await migrateLegacyWorkspaceFromLocalStorage();
 
-    expect(await readGlobalDraft()).toBeNull();
+    expect(await readDraft(DEFAULT_DRAFT_ID)).toBeNull();
     expect(await readWorkspaceSession()).toBeNull();
     expect(await listSavedDrafts()).toEqual({});
     expect(localStorageMock.removeItem).not.toHaveBeenCalled();
@@ -320,7 +325,7 @@ describe('workspaceStateDb', () => {
       ([key]) => key === GLOBAL_DRAFT_STORAGE_KEY,
     );
     expect(globalDraftRemoveCalls).toHaveLength(1);
-    expect(await readGlobalDraft()).toMatchObject({
+    expect(await readDraft(DEFAULT_DRAFT_ID)).toMatchObject({
       state: createState('legacy_once'),
     });
   });

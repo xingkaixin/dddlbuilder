@@ -51,8 +51,6 @@ type WorkspaceSessionEntity = {
 };
 
 export type WorkspaceDraftRecord = Omit<WorkspaceDraftEntity, 'id'>;
-/** @deprecated 使用 WorkspaceDraftRecord */
-export type WorkspaceGlobalDraftRecord = WorkspaceDraftRecord;
 
 export type WorkspaceSessionRecord = Omit<WorkspaceSessionEntity, 'id'>;
 
@@ -112,6 +110,29 @@ const decodeScopedEntity = <T extends { id?: string; normalizedName?: string; sc
   };
 };
 
+const stripScopePrefix = (rawKey: string, scope: WorkspaceScope) => {
+  const prefix = `${getWorkspaceScopeStorageKey(scope)}::`;
+  return rawKey.startsWith(prefix) ? rawKey.slice(prefix.length) : rawKey;
+};
+
+const decodeDrafts = (
+  entities: WorkspaceDraftEntity[] | undefined,
+  scope: WorkspaceScope,
+): WorkspaceDraftEntity[] => {
+  if (!Array.isArray(entities)) return [];
+  return entities.flatMap((entity) => {
+    const decoded = decodeScopedEntity(entity, scope);
+    return decoded ? [{ ...decoded, id: stripScopePrefix(decoded.id, scope) }] : [];
+  });
+};
+
+const toDraftRecord = (entity: WorkspaceDraftEntity): WorkspaceDraftRecord => ({
+  state: entity.state,
+  createdAt: entity.createdAt ?? entity.updatedAt,
+  updatedAt: entity.updatedAt,
+  folderId: entity.folderId,
+});
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -165,13 +186,7 @@ export const readDraft = async (
   );
   if (!entity) return null;
   const decoded = decodeScopedEntity(entity, scope);
-  if (!decoded) return null;
-  return {
-    state: decoded.state,
-    createdAt: decoded.createdAt ?? decoded.updatedAt,
-    updatedAt: decoded.updatedAt,
-    folderId: decoded.folderId,
-  };
+  return decoded ? toDraftRecord(decoded) : null;
 };
 
 export const writeDraft = async (
@@ -197,90 +212,28 @@ export const deleteDraft = async (
   );
 };
 
+const readAllDraftEntities = () =>
+  runWithStore<WorkspaceDraftEntity[]>(WORKSPACE_GLOBAL_DRAFT_STORE_NAME, 'readonly', (store) =>
+    store.getAll(),
+  );
+
 export const listDrafts = async (
   scope: WorkspaceScope = getCurrentWorkspaceScope(),
-): Promise<Array<{ draftId: string; record: WorkspaceDraftRecord }>> => {
-  const entities = await runWithStore<WorkspaceDraftEntity[]>(
-    WORKSPACE_GLOBAL_DRAFT_STORE_NAME,
-    'readonly',
-    (store) => store.getAll(),
-  );
-  if (!Array.isArray(entities)) return [];
-
-  const results: Array<{ draftId: string; record: WorkspaceDraftRecord }> = [];
-  for (const entity of entities) {
-    const decoded = decodeScopedEntity(entity, scope);
-    if (!decoded || decoded.trashedAt != null) continue;
-    const rawKey = decoded.id;
-    const prefix = `${getWorkspaceScopeStorageKey(scope)}::`;
-    const draftId = rawKey.startsWith(prefix) ? rawKey.slice(prefix.length) : rawKey;
-    results.push({
-      draftId,
-      record: {
-        state: decoded.state,
-        createdAt: decoded.createdAt ?? decoded.updatedAt,
-        updatedAt: decoded.updatedAt,
-        folderId: decoded.folderId,
-      },
-    });
-  }
-  return results;
-};
+): Promise<Array<{ draftId: string; record: WorkspaceDraftRecord }>> =>
+  decodeDrafts(await readAllDraftEntities(), scope)
+    .filter((entity) => entity.trashedAt == null)
+    .map((entity) => ({ draftId: entity.id, record: toDraftRecord(entity) }));
 
 export const listTrashedDrafts = async (
   scope: WorkspaceScope = getCurrentWorkspaceScope(),
-): Promise<Array<{ draftId: string; record: WorkspaceDraftRecord }>> => {
-  const entities = await runWithStore<WorkspaceDraftEntity[]>(
-    WORKSPACE_GLOBAL_DRAFT_STORE_NAME,
-    'readonly',
-    (store) => store.getAll(),
-  );
-  if (!Array.isArray(entities)) return [];
-
-  const results: Array<{ draftId: string; record: WorkspaceDraftRecord }> = [];
-  for (const entity of entities) {
-    const decoded = decodeScopedEntity(entity, scope);
-    if (!decoded || decoded.trashedAt == null) continue;
-    const rawKey = decoded.id;
-    const prefix = `${getWorkspaceScopeStorageKey(scope)}::`;
-    const draftId = rawKey.startsWith(prefix) ? rawKey.slice(prefix.length) : rawKey;
-    results.push({
-      draftId,
-      record: {
-        state: decoded.state,
-        createdAt: decoded.createdAt ?? decoded.updatedAt,
-        updatedAt: decoded.updatedAt,
-        folderId: decoded.folderId,
-        trashedAt: decoded.trashedAt,
-      },
-    });
-  }
-  return results.sort((a, b) => (b.record.trashedAt ?? 0) - (a.record.trashedAt ?? 0));
-};
-
-export const restoreDraft = async (
-  draftId: string,
-  record: WorkspaceDraftRecord,
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
-): Promise<void> => {
-  await writeDraft(draftId, { ...record, trashedAt: undefined }, scope);
-};
-
-/** @deprecated 使用 readDraft(DEFAULT_DRAFT_ID, scope) */
-export const readGlobalDraft = async (
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
-): Promise<WorkspaceDraftRecord | null> => readDraft(DEFAULT_DRAFT_ID, scope);
-
-/** @deprecated 使用 writeDraft(DEFAULT_DRAFT_ID, record, scope) */
-export const writeGlobalDraft = async (
-  record: WorkspaceDraftRecord,
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
-): Promise<void> => writeDraft(DEFAULT_DRAFT_ID, record, scope);
-
-/** @deprecated 使用 deleteDraft(DEFAULT_DRAFT_ID, scope) */
-export const clearGlobalDraft = async (
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
-): Promise<void> => deleteDraft(DEFAULT_DRAFT_ID, scope);
+): Promise<Array<{ draftId: string; record: WorkspaceDraftRecord }>> =>
+  decodeDrafts(await readAllDraftEntities(), scope)
+    .filter((entity) => entity.trashedAt != null)
+    .map((entity) => ({
+      draftId: entity.id,
+      record: { ...toDraftRecord(entity), trashedAt: entity.trashedAt },
+    }))
+    .sort((a, b) => (b.record.trashedAt ?? 0) - (a.record.trashedAt ?? 0));
 
 export const listSavedDrafts = async (
   scope: WorkspaceScope = getCurrentWorkspaceScope(),
@@ -399,73 +352,47 @@ export const readWorkspaceBootstrap = async (
   savedTable: SavedTableRecord | null;
 }> => {
   const db = await openDb();
-  const readEntity = <T>(
+  const readStore = <T>(
     storeName: BootstrapReadableStoreName,
-    key: string,
-  ): Promise<T | undefined> =>
+    runner: (store: IDBObjectStore) => IDBRequest<T>,
+  ): Promise<T> =>
     new Promise((resolve, reject) => {
       const tx = db.transaction(storeName, 'readonly');
-      const store = tx.objectStore(storeName);
-      const request = store.get(key);
+      const request = runner(tx.objectStore(storeName));
 
-      request.onsuccess = () => resolve(request.result as T | undefined);
+      request.onsuccess = () => resolve(request.result as T);
       request.onerror = () => reject(request.error ?? new Error('IndexedDB 请求失败'));
       tx.onerror = () => reject(tx.error ?? new Error('事务失败'));
       tx.onabort = () => reject(tx.error ?? new Error('事务被中止'));
     });
 
   try {
-    const [allDraftEntities, sessionEntity] = await Promise.all([
-      readEntity<WorkspaceDraftEntity[]>(
-        WORKSPACE_GLOBAL_DRAFT_STORE_NAME,
-        withScopeKey(scope, ''),
-      ).then(async () => {
-        // 用 getAll 读取所有草稿
-        return new Promise<WorkspaceDraftEntity[]>((resolve, reject) => {
-          const tx = db.transaction(WORKSPACE_GLOBAL_DRAFT_STORE_NAME, 'readonly');
-          const store = tx.objectStore(WORKSPACE_GLOBAL_DRAFT_STORE_NAME);
-          const request = store.getAll();
-          request.onsuccess = () => resolve(request.result as WorkspaceDraftEntity[]);
-          request.onerror = () => reject(request.error ?? new Error('IndexedDB 请求失败'));
-        });
-      }),
-      readEntity<WorkspaceSessionEntity>(
-        WORKSPACE_SESSION_STORE_NAME,
-        withScopeKey(scope, WORKSPACE_SESSION_ROW_ID),
+    const [draftEntities, sessionEntity] = await Promise.all([
+      readStore<WorkspaceDraftEntity[]>(WORKSPACE_GLOBAL_DRAFT_STORE_NAME, (store) =>
+        store.getAll(),
+      ),
+      readStore<WorkspaceSessionEntity | undefined>(WORKSPACE_SESSION_STORE_NAME, (store) =>
+        store.get(withScopeKey(scope, WORKSPACE_SESSION_ROW_ID)),
       ),
     ]);
 
-    const scopeKey = getWorkspaceScopeStorageKey(scope);
-    const prefix = `${scopeKey}::`;
-    const drafts: Array<{ draftId: string; record: WorkspaceDraftRecord }> = [];
-    for (const entity of allDraftEntities ?? []) {
-      const decoded = decodeScopedEntity(entity, scope);
-      if (!decoded || decoded.trashedAt != null) continue;
-      const draftId = decoded.id.startsWith(prefix) ? decoded.id.slice(prefix.length) : decoded.id;
-      drafts.push({
-        draftId,
-        record: {
-          state: decoded.state,
-          createdAt: decoded.createdAt ?? decoded.updatedAt,
-          updatedAt: decoded.updatedAt,
-          folderId: decoded.folderId,
-        },
-      });
-    }
+    const drafts = decodeDrafts(draftEntities, scope)
+      .filter((entity) => entity.trashedAt == null)
+      .map((entity) => ({ draftId: entity.id, record: toDraftRecord(entity) }));
 
-    const defaultDraft = drafts.find((d) => d.draftId === DEFAULT_DRAFT_ID)?.record ?? null;
-
-    const savedTableEntity =
+    const activeSavedTableName =
       sessionEntity?.activeSource.kind === 'saved_table'
-        ? await readEntity<SavedTableRecord>(
-            STORE_NAME,
-            withScopeKey(scope, sessionEntity.activeSource.normalizedName),
-          )
-        : undefined;
+        ? sessionEntity.activeSource.normalizedName
+        : null;
+    const savedTableEntity = activeSavedTableName
+      ? await readStore<SavedTableRecord | undefined>(STORE_NAME, (store) =>
+          store.get(withScopeKey(scope, activeSavedTableName)),
+        )
+      : undefined;
     const decodedSession = sessionEntity ? decodeScopedEntity(sessionEntity, scope) : null;
 
     return {
-      globalDraft: defaultDraft,
+      globalDraft: drafts.find((item) => item.draftId === DEFAULT_DRAFT_ID)?.record ?? null,
       drafts,
       session: decodedSession
         ? {
@@ -578,7 +505,7 @@ export const migrateLegacyWorkspaceFromLocalStorage = async (): Promise<void> =>
 
     try {
       if (globalDraftRecord) {
-        await writeGlobalDraft(globalDraftRecord, getAnonymousWorkspaceScope());
+        await writeDraft(DEFAULT_DRAFT_ID, globalDraftRecord, getAnonymousWorkspaceScope());
       }
 
       for (const [normalizedName, draft] of Object.entries(savedDraftMap)) {

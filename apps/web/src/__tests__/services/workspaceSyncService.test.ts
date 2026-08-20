@@ -7,13 +7,13 @@ import {
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 import { addSavedTable, listSavedTables } from '@/utils/savedTablesDb';
 import {
+  DEFAULT_DRAFT_ID,
   listSavedDrafts,
-  readGlobalDraft,
+  readDraft,
   readWorkspaceSession,
   listDrafts,
   upsertSavedDraft,
   writeDraft,
-  writeGlobalDraft,
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
 import { createFolder, listFolders } from '@/utils/tableFolders';
@@ -47,7 +47,8 @@ describe('workspaceSyncService', () => {
   });
 
   it('上传到云端时应发送当前 scope 的完整工作区快照', async () => {
-    await writeGlobalDraft(
+    await writeDraft(
+      DEFAULT_DRAFT_ID,
       {
         state: createState('local_draft'),
         updatedAt: 100,
@@ -148,7 +149,8 @@ describe('workspaceSyncService', () => {
   });
 
   it('从云端下载时应强覆盖当前 scope 的本地工作区', async () => {
-    await writeGlobalDraft(
+    await writeDraft(
+      DEFAULT_DRAFT_ID,
       {
         state: createState('old_local'),
         updatedAt: 10,
@@ -234,7 +236,7 @@ describe('workspaceSyncService', () => {
 
     await importWorkspaceFromCloud(scope);
 
-    const globalDraft = await readGlobalDraft(scope);
+    const globalDraft = await readDraft(DEFAULT_DRAFT_ID, scope);
     const drafts = await listDrafts(scope);
     const savedTables = await listSavedTables(scope);
     const savedDrafts = await listSavedDrafts(scope);
