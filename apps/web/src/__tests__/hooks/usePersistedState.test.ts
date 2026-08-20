@@ -19,7 +19,7 @@ import {
 } from '@/utils/workspaceStateDb';
 import { listWorkspaceOutboxItems } from '@/utils/workspaceSyncStateDb';
 import { addSavedTable } from '@/utils/savedTablesDb';
-import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
+import { getAnonymousWorkspaceScope, setCurrentWorkspaceScope } from '@/utils/workspaceScope';
 import { getDraftRecordFromYDoc, upsertDraftInYDoc } from '@/services/workspaceYDocAdapter';
 
 const GLOBAL_DRAFT_STORAGE_KEY = `${STORAGE_KEY}:draft:global:v1`;
@@ -128,7 +128,7 @@ const createState = (tableName: string) => ({
   authObjects: [],
 });
 
-const mockSignedInWorkspaceYDoc = (doc: Y.Doc) => {
+const mockSignedInWorkspaceYDoc = (doc: Y.Doc, localSynced = true) => {
   vi.mocked(useAuthSession).mockReturnValue({
     status: 'signed_in',
     configured: true,
@@ -156,7 +156,7 @@ const mockSignedInWorkspaceYDoc = (doc: Y.Doc) => {
   vi.mocked(useWorkspaceYDoc).mockReturnValue({
     doc,
     synced: false,
-    localSynced: true,
+    localSynced,
     connectionState: 'connecting',
     retry: vi.fn(),
   });
@@ -198,6 +198,8 @@ describe('usePersistedState', () => {
       connectionState: 'idle',
       retry: vi.fn(),
     } as any);
+    // 当前分区是模块级单例，上一条用例水合到 user 分区后会让默认 scope 的读写错位
+    setCurrentWorkspaceScope(getAnonymousWorkspaceScope());
     window.history.replaceState({}, '', '/');
   });
 
@@ -866,6 +868,46 @@ describe('usePersistedState', () => {
       expect(result.current.shareLoadStatus).toBe('not_found');
       expect(result.current.persistedState).toEqual(createState('global_after_share_fail'));
       expect(result.current.isShareView).toBe(false);
+    });
+  });
+
+  it('分享失效时若 Y.Doc 还没加载完，必须回到等待而不是就地水合旧分区', async () => {
+    const doc = new Y.Doc();
+    mockSignedInWorkspaceYDoc(doc, false);
+    await writeDraft(
+      DEFAULT_DRAFT_ID,
+      { state: createState('legacy_partition_draft'), updatedAt: Date.now() },
+      { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' },
+    );
+    mockedGetShareState.mockRejectedValue(
+      new ShareApiError('Share not found', 404, 'SHARE_NOT_FOUND'),
+    );
+    window.history.replaceState({}, '', `/share/${VALID_SHARE_ID}`);
+
+    const { wrapper } = createQueryClientWrapper();
+    const { result, rerender } = renderHook(() => usePersistedState(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.shareLoadStatus).toBe('not_found');
+      expect(window.location.pathname).toBe('/');
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(result.current.hydrated).toBe(false);
+    expect(result.current.persistedState).toBeNull();
+
+    upsertDraftInYDoc(doc, DEFAULT_DRAFT_ID, {
+      state: createState('ydoc_draft'),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    mockSignedInWorkspaceYDoc(doc, true);
+    rerender();
+
+    await waitFor(() => {
+      expect(result.current.hydrated).toBe(true);
+      expect(result.current.persistedState).toMatchObject({ tableName: 'ydoc_draft' });
     });
   });
 

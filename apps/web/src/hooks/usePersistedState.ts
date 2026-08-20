@@ -67,10 +67,10 @@ import {
   type DraftEntry,
   type WorkspaceHydration,
 } from './workspacePersistence/hydration';
+import { leaveShareRoute, useShareRoute } from './workspacePersistence/shareRoute';
 import {
   buildShareStorageKey,
   fireAndForget,
-  parseSharePath,
   readStorageJson,
   removeStorage,
   writeStorageJson,
@@ -155,7 +155,7 @@ export function usePersistedState(): UsePersistedStateReturn {
   const authSession = useAuthSession();
   const workspaceYDoc = useWorkspaceYDoc();
   const queryClient = useQueryClient();
-  const pathInfo = parseSharePath(window.location.pathname);
+  const pathInfo = useShareRoute();
   const shareId = pathInfo.shareId;
   const shareStorageKey = shareId ? buildShareStorageKey(shareId) : null;
   const [hydrated, setHydrated] = useState(false);
@@ -728,14 +728,11 @@ export function usePersistedState(): UsePersistedStateReturn {
       );
     };
 
-    const redirectHome = () => {
-      window.history.replaceState({}, '', '/');
-    };
-
+    // 分享链接失效后不能就地水合主工作区：那会绕过下面的等待条件，在 Y.Doc 还没加载完时
+    // 写到错误的分区。离开分享路径会让本 effect 重新走一遍正常分支。
     if (pathInfo.invalid) {
       setShareLoadStatus('error');
-      redirectHome();
-      void hydrateMainWorkspace();
+      leaveShareRoute();
       return () => {
         cancelled = true;
       };
@@ -777,8 +774,7 @@ export function usePersistedState(): UsePersistedStateReturn {
         } else {
           setShareLoadStatus('error');
         }
-        redirectHome();
-        void hydrateMainWorkspace();
+        leaveShareRoute();
       });
 
     return () => {
