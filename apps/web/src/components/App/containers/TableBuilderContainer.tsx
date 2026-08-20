@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ComponentType, ReactNode } from 'react';
 import {
   Columns3Cog,
   Network,
@@ -11,8 +11,11 @@ import {
   SlidersHorizontal,
   Link2,
   Code2,
+  type AppIconProps,
 } from '@/components/icons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useFieldStore, useForeignKeyStore, useIndexStore } from '@/stores';
+import { isTabAvailable } from '@/utils/tabUtils';
 import { useTranslation } from 'react-i18next';
 import { AuthPanel } from '../AuthPanel';
 import { DataTable } from '../DataTable';
@@ -27,68 +30,186 @@ import { ViewDefinitionPanel } from '../ViewDefinitionPanel';
 
 interface TableBuilderContainerProps {
   tableConfigProps: ComponentProps<typeof TableConfig>;
-  objectType?: 'table' | 'view';
   tabsValue: string;
   onTabsValueChange: (value: string) => void;
-  filledRowCount: number;
-  indexesLength: number;
-  indexStats: {
-    primary: number;
-    unique: number;
-    normal: number;
-  };
-  authObjectsLength: number;
-  miscEnabled: boolean;
-  showIndexTab: boolean;
-  showForeignKeyTab: boolean;
-  foreignKeysLength: number;
-  showShardingTab: boolean;
-  shardingBadgeText?: string | null;
-  showPartitionTab: boolean;
-  partitionBadgeText?: string | null;
-  showHivePartitionTab: boolean;
-  hivePartitionBadgeText?: string | null;
   dataTableProps: ComponentProps<typeof DataTable>;
+  viewDefinitionPanelProps: ComponentProps<typeof ViewDefinitionPanel>;
   indexPanelProps: ComponentProps<typeof IndexPanel>;
   foreignKeyPanelProps: ComponentProps<typeof ForeignKeyPanel>;
   authPanelProps: ComponentProps<typeof AuthPanel>;
   tableOptionsPanelProps: ComponentProps<typeof TableOptionsPanel>;
-  viewDefinitionPanelProps?: ComponentProps<typeof ViewDefinitionPanel>;
-  shardingPanelProps?: ComponentProps<typeof ShardingPanel>;
-  partitionPanelProps?: ComponentProps<typeof PartitionPanel>;
-  hivePartitionPanelProps?: ComponentProps<typeof HivePartitionPanel>;
+  shardingPanelProps: ComponentProps<typeof ShardingPanel>;
+  partitionPanelProps: ComponentProps<typeof PartitionPanel>;
+  hivePartitionPanelProps: ComponentProps<typeof HivePartitionPanel>;
+}
+
+interface BuilderTab {
+  value: string;
+  icon: ComponentType<AppIconProps>;
+  label: string;
+  badge?: ReactNode;
+  panel: ReactNode;
+}
+
+const INDEX_STAT_BADGES = [
+  {
+    key: 'primary',
+    icon: Key,
+    className: 'bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-200',
+  },
+  {
+    key: 'unique',
+    icon: Lock,
+    className: 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-200',
+  },
+  {
+    key: 'normal',
+    icon: Hash,
+    className: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-200',
+  },
+] as const;
+
+type IndexStats = Record<(typeof INDEX_STAT_BADGES)[number]['key'], number>;
+
+function TabBadge({ children }: { children: ReactNode }) {
+  return (
+    <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
+      {children}
+    </span>
+  );
+}
+
+function tabBadge(value: number | string | null | undefined) {
+  return value ? <TabBadge>{value}</TabBadge> : null;
+}
+
+function IndexStatsBadge({ stats }: { stats: IndexStats }) {
+  return (
+    <div className="ml-2 hidden items-center gap-2 2xl:flex">
+      {INDEX_STAT_BADGES.map(({ key, icon: Icon, className }) =>
+        stats[key] > 0 ? (
+          <span
+            key={key}
+            className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs ${className}`}
+          >
+            <Icon className="h-3 w-3" />
+            {stats[key]}
+          </span>
+        ) : null,
+      )}
+    </div>
+  );
 }
 
 export function TableBuilderContainer({
   tableConfigProps,
-  objectType = 'table',
   tabsValue,
   onTabsValueChange,
-  filledRowCount,
-  indexesLength,
-  indexStats,
-  authObjectsLength,
-  miscEnabled,
-  showIndexTab,
-  showForeignKeyTab,
-  foreignKeysLength,
-  showShardingTab,
-  shardingBadgeText,
-  showPartitionTab,
-  partitionBadgeText,
-  showHivePartitionTab,
-  hivePartitionBadgeText,
   dataTableProps,
+  viewDefinitionPanelProps,
   indexPanelProps,
   foreignKeyPanelProps,
   authPanelProps,
   tableOptionsPanelProps,
-  viewDefinitionPanelProps,
   shardingPanelProps,
   partitionPanelProps,
   hivePartitionPanelProps,
 }: TableBuilderContainerProps) {
   const { t } = useTranslation();
+  const { objectType, dbType } = tableConfigProps;
+
+  const fieldCount = useFieldStore(
+    (state) => state.rows.filter((row) => row.fieldName?.trim()).length,
+  );
+  const foreignKeyCount = useForeignKeyStore((state) => state.foreignKeys.length);
+  const indexes = useIndexStore((state) => state.indexes);
+  const indexStats = indexes.reduce<IndexStats>(
+    (acc, index) => {
+      if (index.isPrimary) acc.primary += 1;
+      else if (index.unique) acc.unique += 1;
+      else acc.normal += 1;
+      return acc;
+    },
+    { primary: 0, unique: 0, normal: 0 },
+  );
+
+  const isTable = objectType === 'table';
+  const showTab = (tab: string) => isTable && isTabAvailable(tab, dbType);
+
+  const tabCandidates: Array<BuilderTab | false> = [
+    objectType === 'view'
+      ? {
+          value: 'fields',
+          icon: Code2,
+          label: t('builderTabs.viewSql'),
+          panel: <ViewDefinitionPanel {...viewDefinitionPanelProps} />,
+        }
+      : {
+          value: 'fields',
+          icon: Columns3Cog,
+          label: t('builderTabs.fields'),
+          badge: tabBadge(fieldCount),
+          panel: <DataTable {...dataTableProps} />,
+        },
+    showTab('indexes') && {
+      value: 'indexes',
+      icon: Network,
+      label: t('builderTabs.indexes'),
+      badge: indexes.length > 0 && <IndexStatsBadge stats={indexStats} />,
+      panel: <IndexPanel {...indexPanelProps} />,
+    },
+    showTab('foreignKeys') && {
+      value: 'foreignKeys',
+      icon: Link2,
+      label: t('builderTabs.foreignKeys'),
+      badge: tabBadge(foreignKeyCount),
+      panel: <ForeignKeyPanel {...foreignKeyPanelProps} />,
+    },
+    {
+      value: 'auth',
+      icon: ShieldUser,
+      label: t('builderTabs.auth'),
+      badge: tabBadge(authPanelProps.authObjects.length),
+      panel: <AuthPanel {...authPanelProps} />,
+    },
+    showTab('misc') && {
+      value: 'misc',
+      icon: SlidersHorizontal,
+      label: t('builderTabs.misc'),
+      badge: tabBadge(tableOptionsPanelProps.config.enabled ? t('builderTabs.enabled') : null),
+      panel: <TableOptionsPanel {...tableOptionsPanelProps} />,
+    },
+    showTab('sharding') && {
+      value: 'sharding',
+      icon: Share2,
+      label: t('builderTabs.sharding'),
+      badge: tabBadge(
+        shardingPanelProps.config.mode === 'distributed'
+          ? shardingPanelProps.config.distributionColumn
+          : null,
+      ),
+      panel: <ShardingPanel {...shardingPanelProps} />,
+    },
+    showTab('partition') && {
+      value: 'partition',
+      icon: Layers,
+      label: t('builderTabs.partition'),
+      badge: tabBadge(partitionPanelProps.config.enabled ? partitionPanelProps.config.type : null),
+      panel: <PartitionPanel {...partitionPanelProps} />,
+    },
+    showTab('hive-partition') && {
+      value: 'hive-partition',
+      icon: Layers,
+      label: t('builderTabs.hivePartition'),
+      badge: tabBadge(
+        hivePartitionPanelProps.config.enabled
+          ? `${hivePartitionPanelProps.config.columns.length}`
+          : null,
+      ),
+      panel: <HivePartitionPanel {...hivePartitionPanelProps} />,
+    },
+  ];
+  const tabs = tabCandidates.filter((tab): tab is BuilderTab => tab !== false);
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-4">
@@ -96,157 +217,19 @@ export function TableBuilderContainer({
 
       <Tabs value={tabsValue} onValueChange={onTabsValueChange} className="w-full">
         <TabsList className="inline-flex h-auto max-w-full flex-wrap justify-start gap-1 [&>*]:after:hidden sm:flex-nowrap sm:gap-0 sm:overflow-x-auto sm:whitespace-nowrap sm:[&>*]:after:block [&>*]:shrink-0">
-          <TabsTrigger value="fields" className="gap-1.5 px-2.5 text-xs">
-            {objectType === 'view' ? (
-              <>
-                <Code2 className="h-3.5 w-3.5" />
-                {t('builderTabs.viewSql')}
-              </>
-            ) : (
-              <>
-                <Columns3Cog className="h-3.5 w-3.5" />
-                {t('builderTabs.fields')}
-                {filledRowCount > 0 && (
-                  <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
-                    {filledRowCount}
-                  </span>
-                )}
-              </>
-            )}
-          </TabsTrigger>
-          {objectType === 'table' && showIndexTab && (
-            <TabsTrigger value="indexes" className="gap-1.5 px-2.5 text-xs">
-              <Network className="h-3.5 w-3.5" />
-              {t('builderTabs.indexes')}
-              {indexesLength > 0 && (
-                <div className="ml-2 hidden items-center gap-2 2xl:flex">
-                  {indexStats.primary > 0 && (
-                    <span className="inline-flex items-center gap-1 rounded bg-orange-100 px-1.5 py-0.5 text-xs text-orange-600 dark:bg-orange-900/40 dark:text-orange-200">
-                      <Key className="h-3 w-3" />
-                      {indexStats.primary}
-                    </span>
-                  )}
-                  {indexStats.unique > 0 && (
-                    <span className="inline-flex items-center gap-1 rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-600 dark:bg-blue-900/40 dark:text-blue-200">
-                      <Lock className="h-3 w-3" />
-                      {indexStats.unique}
-                    </span>
-                  )}
-                  {indexStats.normal > 0 && (
-                    <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-200">
-                      <Hash className="h-3 w-3" />
-                      {indexStats.normal}
-                    </span>
-                  )}
-                </div>
-              )}
+          {tabs.map(({ value, icon: Icon, label, badge }) => (
+            <TabsTrigger key={value} value={value} className="gap-1.5 px-2.5 text-xs">
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+              {badge}
             </TabsTrigger>
-          )}
-          {objectType === 'table' && showForeignKeyTab && (
-            <TabsTrigger value="foreignKeys" className="gap-1.5 px-2.5 text-xs">
-              <Link2 className="h-3.5 w-3.5" />
-              {t('builderTabs.foreignKeys')}
-              {foreignKeysLength > 0 && (
-                <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
-                  {foreignKeysLength}
-                </span>
-              )}
-            </TabsTrigger>
-          )}
-          <TabsTrigger value="auth" className="gap-1.5 px-2.5 text-xs">
-            <ShieldUser className="h-3.5 w-3.5" />
-            {t('builderTabs.auth')}
-            {authObjectsLength > 0 && (
-              <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
-                {authObjectsLength}
-              </span>
-            )}
-          </TabsTrigger>
-          {objectType === 'table' && (
-            <TabsTrigger value="misc" className="gap-1.5 px-2.5 text-xs">
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              {t('builderTabs.misc')}
-              {miscEnabled && (
-                <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
-                  {t('builderTabs.enabled')}
-                </span>
-              )}
-            </TabsTrigger>
-          )}
-          {objectType === 'table' && showShardingTab && (
-            <TabsTrigger value="sharding" className="gap-1.5 px-2.5 text-xs">
-              <Share2 className="h-3.5 w-3.5" />
-              {t('builderTabs.sharding')}
-              {shardingBadgeText && (
-                <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
-                  {shardingBadgeText}
-                </span>
-              )}
-            </TabsTrigger>
-          )}
-          {objectType === 'table' && showPartitionTab && (
-            <TabsTrigger value="partition" className="gap-1.5 px-2.5 text-xs">
-              <Layers className="h-3.5 w-3.5" />
-              {t('builderTabs.partition')}
-              {partitionBadgeText && (
-                <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
-                  {partitionBadgeText}
-                </span>
-              )}
-            </TabsTrigger>
-          )}
-          {objectType === 'table' && showHivePartitionTab && (
-            <TabsTrigger value="hive-partition" className="gap-1.5 px-2.5 text-xs">
-              <Layers className="h-3.5 w-3.5" />
-              {t('builderTabs.hivePartition')}
-              {hivePartitionBadgeText && (
-                <span className="ml-1 hidden items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary 2xl:inline-flex">
-                  {hivePartitionBadgeText}
-                </span>
-              )}
-            </TabsTrigger>
-          )}
+          ))}
         </TabsList>
-        <TabsContent value="fields" className="mt-4">
-          {objectType === 'view' && viewDefinitionPanelProps ? (
-            <ViewDefinitionPanel {...viewDefinitionPanelProps} />
-          ) : (
-            <DataTable {...dataTableProps} />
-          )}
-        </TabsContent>
-        {objectType === 'table' && showIndexTab && (
-          <TabsContent value="indexes" className="mt-4">
-            <IndexPanel {...indexPanelProps} />
+        {tabs.map(({ value, panel }) => (
+          <TabsContent key={value} value={value} className="mt-4">
+            {panel}
           </TabsContent>
-        )}
-        {objectType === 'table' && showForeignKeyTab && (
-          <TabsContent value="foreignKeys" className="mt-4">
-            <ForeignKeyPanel {...foreignKeyPanelProps} />
-          </TabsContent>
-        )}
-        <TabsContent value="auth" className="mt-4">
-          <AuthPanel {...authPanelProps} />
-        </TabsContent>
-        {objectType === 'table' && (
-          <TabsContent value="misc" className="mt-4">
-            <TableOptionsPanel {...tableOptionsPanelProps} />
-          </TabsContent>
-        )}
-        {objectType === 'table' && showShardingTab && shardingPanelProps && (
-          <TabsContent value="sharding" className="mt-4">
-            <ShardingPanel {...shardingPanelProps} />
-          </TabsContent>
-        )}
-        {objectType === 'table' && showPartitionTab && partitionPanelProps && (
-          <TabsContent value="partition" className="mt-4">
-            <PartitionPanel {...partitionPanelProps} />
-          </TabsContent>
-        )}
-        {objectType === 'table' && showHivePartitionTab && hivePartitionPanelProps && (
-          <TabsContent value="hive-partition" className="mt-4">
-            <HivePartitionPanel {...hivePartitionPanelProps} />
-          </TabsContent>
-        )}
+        ))}
       </Tabs>
     </div>
   );

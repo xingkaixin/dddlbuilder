@@ -326,7 +326,6 @@ function App() {
     normalizedFields,
     availableFields,
     filledRowCount,
-    indexStats,
     supportsMysqlPartition,
     currentPersistedState,
     buildPersistedState,
@@ -1577,33 +1576,8 @@ function App() {
                         fieldCount: filledRowCount,
                         indexCount: indexes.length,
                       }}
-                      objectType={objectType}
                       tabsValue={activeTab}
                       onTabsValueChange={handleTabValueChange}
-                      filledRowCount={filledRowCount}
-                      indexesLength={indexes.length}
-                      indexStats={indexStats}
-                      authObjectsLength={authObjects.length}
-                      miscEnabled={tableMiscConfig.enabled}
-                      showIndexTab={dbType !== 'hive'}
-                      showForeignKeyTab={dbType !== 'hive'}
-                      foreignKeysLength={foreignKeys.length}
-                      showShardingTab={dbType === 'postgresql-citus'}
-                      shardingBadgeText={
-                        citusShardingConfig.mode === 'distributed'
-                          ? citusShardingConfig.distributionColumn
-                          : null
-                      }
-                      showPartitionTab={supportsMysqlPartition}
-                      partitionBadgeText={
-                        mysqlPartitionConfig.enabled ? mysqlPartitionConfig.type : null
-                      }
-                      showHivePartitionTab={dbType === 'hive'}
-                      hivePartitionBadgeText={
-                        tableMiscConfig.partitions?.enabled
-                          ? `${tableMiscConfig.partitions.columns.length}`
-                          : null
-                      }
                       dataTableProps={{
                         isHighlighted: isFieldTableHighlighted,
                         highlightedRowIndex: highlightedRowIndex,
