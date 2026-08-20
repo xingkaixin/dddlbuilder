@@ -336,12 +336,6 @@ describe('DDLStrategyFactory', () => {
     expect(types).toContain('sqlserver');
     expect(types.length).toBeGreaterThan(10);
   });
-
-  it('allows registering custom strategy', () => {
-    const mockStrategy = DDLStrategyFactory.create('mysql');
-    DDLStrategyFactory.registerStrategy('custom-db' as any, mockStrategy);
-    expect(DDLStrategyFactory.create('custom-db' as any)).toBe(mockStrategy);
-  });
 });
 
 describe('ORMGeneratorFactory', () => {

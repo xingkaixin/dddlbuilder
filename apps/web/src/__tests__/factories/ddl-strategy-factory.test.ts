@@ -1,16 +1,6 @@
-import { describe, it, expect, afterEach } from 'vitest';
-import { DDLStrategyFactory } from '@ddlbuilder/ddl-core';
-import { MySqlStrategy } from '@ddlbuilder/ddl-core';
-import type { DDLStrategy } from '@ddlbuilder/ddl-core';
+import { describe, it, expect } from 'vitest';
+import { DDLStrategyFactory, MySqlStrategy } from '@ddlbuilder/ddl-core';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
-
-class StubStrategy extends MySqlStrategy {}
-
-const originalMysqlStrategy = DDLStrategyFactory.create('mysql');
-
-afterEach(() => {
-  DDLStrategyFactory.registerStrategy('mysql', originalMysqlStrategy);
-});
 
 describe('DDLStrategyFactory', () => {
   it('应该根据数据库类型返回对应策略', () => {
@@ -50,11 +40,7 @@ describe('DDLStrategyFactory', () => {
     ]);
   });
 
-  it('registerStrategy 应允许覆盖已有策略', () => {
-    const stub: DDLStrategy = new StubStrategy();
-    DDLStrategyFactory.registerStrategy('mysql', stub);
-
-    const result = DDLStrategyFactory.create('mysql');
-    expect(result).toBe(stub);
+  it('应该返回与数据库类型匹配的策略实现', () => {
+    expect(DDLStrategyFactory.create('mysql')).toBeInstanceOf(MySqlStrategy);
   });
 });
