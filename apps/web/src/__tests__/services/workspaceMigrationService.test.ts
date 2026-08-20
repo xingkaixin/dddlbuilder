@@ -1,7 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
+import { setupMemoryLocalStorage } from '@/__tests__/utils/memoryLocalStorage';
+import { clearLocalWorkspaceData } from '@/services/workspaceIncrementalSyncService';
+import {
+  beginLegacyWorkspaceMigration,
+  completeLegacyWorkspaceMigration,
+  isLegacyWorkspaceMigrationCompleted,
+} from '@/services/workspaceLegacyMigrationMarker';
 import {
   prepareLegacyWorkspaceSnapshot,
   promoteLegacyUserWorkspaceData,
@@ -125,12 +132,40 @@ describe('workspaceMigrationService legacy promotion', () => {
     expect(await listWorkspaceOutboxItems('ws-1')).toEqual([]);
   });
 
-  it('目标分区已有内容时不应覆盖', async () => {
+  it('上次提升中途失败后重跑应补齐剩余数据', async () => {
     await seedLegacyWorkspace();
-    await writeDraft('draft-current', { state: createState('current'), updatedAt: 10 }, scope);
+    // 只提升到 draft 就失败了：目标分区“有内容”不能再当作“已提升过”。
+    await writeDraft(
+      'draft-legacy',
+      { state: createState('legacy_draft'), createdAt: 1, updatedAt: 2 },
+      scope,
+    );
 
-    expect(await promoteLegacyUserWorkspaceData(scope)).toBe(false);
-    expect(await readDraft('draft-legacy', scope)).toBeNull();
+    expect(await promoteLegacyUserWorkspaceData(scope)).toBe(true);
+    expect((await listSavedTables(scope)).map((item) => item.normalizedName)).toEqual([
+      'legacy_table',
+    ]);
+    expect(Object.keys(await listSavedDrafts(scope))).toEqual(['legacy_table']);
+    expect((await listFolders(scope)).map((item) => item.id)).toEqual(['folder-1']);
+  });
+
+  it('目标分区里更新的记录不应被 legacy 覆盖', async () => {
+    await seedLegacyWorkspace();
+    // 模拟提升期间云端拉取先把更新的同名表写进了目标分区。
+    await addSavedTable(
+      {
+        normalizedName: 'legacy_table',
+        name: 'legacy_table',
+        state: createState('pulled_table'),
+        createdAt: 3,
+        updatedAt: 999,
+      },
+      scope,
+    );
+
+    expect(await promoteLegacyUserWorkspaceData(scope)).toBe(true);
+    expect((await listSavedTables(scope))[0]?.state.tableName).toBe('pulled_table');
+    expect((await readDraft('draft-legacy', scope))?.state.tableName).toBe('legacy_draft');
   });
 
   it('legacy 数据应提升后被读到并完整合并进 Y.Doc', async () => {
@@ -238,5 +273,21 @@ describe('workspaceMigrationService legacy promotion', () => {
 
   it('没有 legacy 数据时应返回 null', async () => {
     expect(await prepareLegacyWorkspaceSnapshot(scope)).toBeNull();
+  });
+
+  it('退出登录清空目标分区后不应重新提升陈旧 legacy 快照', async () => {
+    vi.clearAllMocks();
+    setupMemoryLocalStorage();
+    await seedLegacyWorkspace();
+
+    const migrationToken = beginLegacyWorkspaceMigration(scope);
+    await prepareLegacyWorkspaceSnapshot(scope);
+    completeLegacyWorkspaceMigration(scope, migrationToken);
+
+    await clearLocalWorkspaceData(scope);
+
+    expect(await listSavedTables(scope)).toEqual([]);
+    // 完成标记不在被清空的分区里，下次启动仍然跳过整段 legacy 步骤。
+    expect(isLegacyWorkspaceMigrationCompleted(scope)).toBe(true);
   });
 });

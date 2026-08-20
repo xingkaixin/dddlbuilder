@@ -21,6 +21,7 @@ import {
   listDrafts,
   listSavedDrafts,
   readDraft,
+  readSavedDraft,
   readWorkspaceSession,
   upsertSavedDraft,
   writeDraft,
@@ -216,21 +217,10 @@ export const collectWorkspaceMigrationPayload = async (
   };
 };
 
-const hasWorkspaceContent = async (scope: WorkspaceScope) => {
-  const [drafts, savedTables, savedDrafts, folders] = await Promise.all([
-    listDrafts(scope),
-    listSavedTables(scope),
-    listSavedDrafts(scope),
-    listFolders(scope),
-  ]);
-
-  return (
-    drafts.length > 0 ||
-    savedTables.length > 0 ||
-    Object.keys(savedDrafts).length > 0 ||
-    folders.length > 0
-  );
-};
+// 提升可能重跑（上次中途失败），也可能与云端拉取并发，所以逐条按 updatedAt 判断：
+// 目标分区缺失或更旧才写入。用“目标分区是否为空”当作“是否已提升过”会漏提升剩余数据。
+const shouldPromoteRecord = (legacyUpdatedAt: number, targetUpdatedAt: number | undefined) =>
+  targetUpdatedAt == null || targetUpdatedAt < legacyUpdatedAt;
 
 export const promoteLegacyUserWorkspaceData = async (scope: WorkspaceScope): Promise<boolean> => {
   if (scope.kind !== 'user' || !scope.workspaceId) {
@@ -241,15 +231,6 @@ export const promoteLegacyUserWorkspaceData = async (scope: WorkspaceScope): Pro
     kind: 'user',
     userId: scope.userId,
   };
-  const [targetHasContent, legacyHasContent] = await Promise.all([
-    hasWorkspaceContent(scope),
-    hasWorkspaceContent(legacyScope),
-  ]);
-
-  if (targetHasContent || !legacyHasContent) {
-    return false;
-  }
-
   const [drafts, savedTables, savedDrafts, folders, session] = await Promise.all([
     listDrafts(legacyScope),
     listSavedTables(legacyScope),
@@ -258,28 +239,46 @@ export const promoteLegacyUserWorkspaceData = async (scope: WorkspaceScope): Pro
     readWorkspaceSession(legacyScope),
   ]);
 
+  if (
+    drafts.length === 0 &&
+    savedTables.length === 0 &&
+    Object.keys(savedDrafts).length === 0 &&
+    folders.length === 0
+  ) {
+    return false;
+  }
+
   for (const { draftId, record } of drafts) {
-    await writeDraft(draftId, record, scope);
+    const existing = await readDraft(draftId, scope);
+    if (shouldPromoteRecord(record.updatedAt, existing?.updatedAt)) {
+      await writeDraft(draftId, record, scope);
+    }
   }
 
   for (const table of savedTables) {
     const existing = await getSavedTable(table.normalizedName, scope);
-    if (existing) {
-      await updateSavedTable(table, scope);
-    } else {
+    if (!existing) {
       await addSavedTable(table, scope);
+    } else if (shouldPromoteRecord(table.updatedAt, existing.updatedAt)) {
+      await updateSavedTable(table, scope);
     }
   }
 
   for (const [normalizedName, draft] of Object.entries(savedDrafts)) {
-    await upsertSavedDraft(normalizedName, draft, scope);
+    const existing = await readSavedDraft(normalizedName, scope);
+    if (shouldPromoteRecord(draft.updatedAt, existing?.updatedAt)) {
+      await upsertSavedDraft(normalizedName, draft, scope);
+    }
   }
 
-  if (folders.length > 0) {
-    await bulkPutFolders(folders, scope);
+  const targetFolderIds = new Set((await listFolders(scope)).map((folder) => folder.id));
+  const newFolders = folders.filter((folder) => !targetFolderIds.has(folder.id));
+  if (newFolders.length > 0) {
+    await bulkPutFolders(newFolders, scope);
   }
 
-  if (session) {
+  const targetSession = await readWorkspaceSession(scope);
+  if (session && shouldPromoteRecord(session.updatedAt, targetSession?.updatedAt)) {
     await writeWorkspaceSession(session, scope);
   }
 
