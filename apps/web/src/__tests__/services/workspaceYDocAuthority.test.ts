@@ -10,6 +10,7 @@ describe('workspaceYDocAuthority', () => {
       authStatus: 'signed_in',
       userId: 'user-1',
       workspaceId: 'ws-1',
+      legacyMigrationCompleted: false,
     });
 
     expect(plan).toEqual({
@@ -23,6 +24,17 @@ describe('workspaceYDocAuthority', () => {
       d1Persistence: 'durable-object-checkpoint',
       queueEntityOutbox: false,
     });
+  });
+
+  it('drops the legacy merge step once the migration has completed', () => {
+    const plan = resolveWorkspaceYDocStartupPlan({
+      authStatus: 'signed_in',
+      userId: 'user-1',
+      workspaceId: 'ws-1',
+      legacyMigrationCompleted: true,
+    });
+
+    expect(plan.enabled && plan.steps).toEqual(['load-indexeddb-ydoc', 'connect-durable-object']);
   });
 
   it('queues entity outbox only before the Y.Doc runtime path is active', () => {

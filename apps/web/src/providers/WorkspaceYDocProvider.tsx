@@ -11,6 +11,11 @@ import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
+import {
+  beginLegacyWorkspaceMigration,
+  completeLegacyWorkspaceMigration,
+  isLegacyWorkspaceMigrationCompleted,
+} from '@/services/workspaceLegacyMigrationMarker';
 import { prepareLegacyWorkspaceSnapshot } from '@/services/workspaceMigrationService';
 import {
   ensureWorkspaceYDocMeta,
@@ -34,6 +39,13 @@ type WorkspaceYDocContextValue = {
 };
 
 const noop = () => {};
+
+const hasCompletedLegacyMigration = (userId: string | null, workspaceId: string | null) =>
+  Boolean(
+    userId &&
+    workspaceId &&
+    isLegacyWorkspaceMigrationCompleted({ kind: 'user', userId, workspaceId }),
+  );
 
 const WorkspaceYDocContext = createContext<WorkspaceYDocContextValue>({
   doc: null,
@@ -60,6 +72,10 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       authStatus: authSession.status,
       userId: authSession.userId,
       workspaceId: authSession.workspaceId,
+      legacyMigrationCompleted: hasCompletedLegacyMigration(
+        authSession.userId,
+        authSession.workspaceId,
+      ),
     });
 
     if (!startupPlan.enabled) {
@@ -96,13 +112,15 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       if (startupPlan.steps.includes('merge-legacy-indexeddb-snapshot')) {
         // legacy 合并是尽力而为的补充步骤，失败不能阻断后续启动：localSynced 卡在 false 会让
         // usePersistedState 永不水合，用户之后的编辑被静默丢弃。
-        // 已知限制：中途失败（例如提升到第 4 张表时 IndexedDB 报错）会让目标分区变成“有内容”，
-        // promoteLegacyUserWorkspaceData 的守卫下次启动即判定“已提升过”，剩余 legacy 数据不再提升。
-        // legacy 分区全程只读、数据仍在，根治需要显式的“提升完成标记”，留待后续。
+        // 失败/中断时不写完成标记，下次启动整段重来；提升是按 updatedAt 的 upsert，重跑安全。
         try {
+          const token = beginLegacyWorkspaceMigration(scope);
           const snapshot = await prepareLegacyWorkspaceSnapshot(scope);
-          if (snapshot && !cancelled) {
-            mergeWorkspaceSnapshotIntoYDoc(doc, snapshot);
+          if (!cancelled) {
+            if (snapshot) {
+              mergeWorkspaceSnapshotIntoYDoc(doc, snapshot);
+            }
+            completeLegacyWorkspaceMigration(scope, token);
           }
         } catch (error) {
           console.error('[workspace-yjs] legacy snapshot merge failed', error);

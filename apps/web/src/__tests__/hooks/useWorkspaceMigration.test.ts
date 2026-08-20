@@ -1,6 +1,11 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useWorkspaceMigration } from '@/hooks/useWorkspaceMigration';
+import { invalidateLegacyWorkspaceMigration } from '@/services/workspaceLegacyMigrationMarker';
+
+vi.mock('@/services/workspaceLegacyMigrationMarker', () => ({
+  invalidateLegacyWorkspaceMigration: vi.fn(),
+}));
 
 vi.mock('@/services/workspaceMigrationService', () => ({
   analyzeWorkspaceMigration: vi.fn(),
@@ -50,6 +55,7 @@ describe('useWorkspaceMigration', () => {
       useWorkspaceMigration({
         status: 'signed_in',
         userId: 'user-1',
+        workspaceId: 'ws-1',
       }),
     );
 
@@ -102,6 +108,7 @@ describe('useWorkspaceMigration', () => {
       useWorkspaceMigration({
         status: 'signed_in',
         userId: 'user-1',
+        workspaceId: 'ws-1',
       }),
     );
 
@@ -113,5 +120,29 @@ describe('useWorkspaceMigration', () => {
       kind: 'user',
       userId: 'user-1',
     });
+    // 写进 legacy 分区的数据只能靠启动迁移进 Y.Doc，必须让它重跑一次。
+    expect(invalidateLegacyWorkspaceMigration).toHaveBeenCalledWith({
+      kind: 'user',
+      userId: 'user-1',
+      workspaceId: 'ws-1',
+    });
+  });
+
+  it('workspace 未解析出来之前不应采纳匿名工作区', async () => {
+    const { analyzeWorkspaceMigration } = await import('@/services/workspaceMigrationService');
+
+    const { result } = renderHook(() =>
+      useWorkspaceMigration({
+        status: 'signed_in',
+        userId: 'user-1',
+        workspaceId: null,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.checking).toBe(false);
+    });
+
+    expect(analyzeWorkspaceMigration).not.toHaveBeenCalled();
   });
 });

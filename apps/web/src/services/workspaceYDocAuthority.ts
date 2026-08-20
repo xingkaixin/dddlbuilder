@@ -30,6 +30,7 @@ export const resolveWorkspaceYDocStartupPlan = (input: {
   authStatus: 'loading' | 'signed_in' | 'signed_out';
   userId?: string | null;
   workspaceId?: string | null;
+  legacyMigrationCompleted: boolean;
 }): WorkspaceYDocStartupPlan => {
   if (input.authStatus !== 'signed_in') {
     return { enabled: false, reason: 'signed-out' };
@@ -46,7 +47,13 @@ export const resolveWorkspaceYDocStartupPlan = (input: {
       userId: input.userId,
       workspaceId: input.workspaceId,
     },
-    steps: ['load-indexeddb-ydoc', 'merge-legacy-indexeddb-snapshot', 'connect-durable-object'],
+    // legacy 迁移完成后必须彻底跳过：本地分区仍在被 HTTP 拉取写入，重复折叠会把 Y.Doc 里
+    // 已删除的实体推回去（合并按 updatedAt 比较，没有墓碑语义）。
+    steps: [
+      'load-indexeddb-ydoc',
+      ...(input.legacyMigrationCompleted ? [] : (['merge-legacy-indexeddb-snapshot'] as const)),
+      'connect-durable-object',
+    ],
     d1Persistence: 'durable-object-checkpoint',
     queueEntityOutbox: false,
   };
