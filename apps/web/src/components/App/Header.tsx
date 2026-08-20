@@ -1,4 +1,4 @@
-import { memo, lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { memo, lazy, Suspense, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
@@ -11,7 +11,6 @@ import {
   BookOpen,
   LogIn,
   LogOut,
-  MailCheck,
   Settings,
   Sparkles,
   MessageCircle,
@@ -20,11 +19,6 @@ import {
   Laptop,
   Moon,
   Sun,
-  AlertCircle,
-  CheckCircle2,
-  HardDrive,
-  RefreshCw,
-  WifiOff,
 } from '@/components/icons';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useLocale } from '@/i18n/LocaleContext';
@@ -32,17 +26,6 @@ import { getDocsUrl } from '@/utils/docsLink';
 import { useTranslation } from 'react-i18next';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { useToast } from '@/hooks/useToast';
-import { useWorkspaceMigration } from '@/hooks/useWorkspaceMigration';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,8 +41,9 @@ import {
 import { useTheme } from 'next-themes';
 import { useThemeTransition } from './hooks/useThemeTransition';
 import { UserSettingsDialog } from './UserSettingsDialog';
-import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
-import { TurnstileWidget } from '@/auth/TurnstileWidget';
+import { WorkspaceYDocStatus } from './WorkspaceYDocStatus';
+import { WorkspaceMigrationDialog } from './WorkspaceMigrationDialog';
+import { AuthDialogs } from '@/auth/AuthDialogs';
 import type { SavedTableSummary, SaveTableResult } from '@/hooks/useSavedTables';
 import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { PersistedState } from '@ddlbuilder/shared-types';
@@ -71,7 +55,6 @@ const ImportSqlDialog = lazy(() =>
 );
 
 const FEEDBACK_URL = 'https://my.feishu.cn/share/base/form/shrcnqGnCdcvgRomQ5syagGW2He';
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY?.trim() ?? '';
 
 interface HeaderProps {
   onShare: () => void;
@@ -86,95 +69,6 @@ interface HeaderProps {
   overwriteTable: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
   moveTableToFolder: (normalizedName: string, folderId?: string) => Promise<SaveTableResult>;
   onOpenAIGenerate?: () => void;
-}
-
-function WorkspaceYDocStatus() {
-  const { t } = useTranslation();
-  const workspaceYDoc = useWorkspaceYDoc();
-  const status = useMemo(() => {
-    if (!workspaceYDoc.localSynced) {
-      return {
-        icon: Loader2,
-        label: t('workspaceYDoc.status.syncing'),
-        className: 'border-border bg-muted/60 text-muted-foreground',
-        iconClassName: 'animate-spin',
-      };
-    }
-    if (workspaceYDoc.connectionState === 'connected' && workspaceYDoc.synced) {
-      return {
-        icon: CheckCircle2,
-        label: t('workspaceYDoc.status.cloudSynced'),
-        className: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-        iconClassName: '',
-      };
-    }
-    if (workspaceYDoc.connectionState === 'connecting') {
-      return {
-        icon: Loader2,
-        label: t('workspaceYDoc.status.syncing'),
-        className: 'border-primary/20 bg-primary/10 text-primary',
-        iconClassName: 'animate-spin',
-      };
-    }
-    if (workspaceYDoc.connectionState === 'offline') {
-      return {
-        icon: WifiOff,
-        label: t('workspaceYDoc.status.offlineLocalSaved'),
-        className: 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300',
-        iconClassName: '',
-      };
-    }
-    if (workspaceYDoc.connectionState === 'error') {
-      const label =
-        workspaceYDoc.failureReason === 'auth'
-          ? t('workspaceYDoc.status.authFailed')
-          : workspaceYDoc.failureReason === 'service_unavailable'
-            ? t('workspaceYDoc.status.serviceUnavailable')
-            : workspaceYDoc.failureReason === 'network'
-              ? t('workspaceYDoc.status.networkFailed')
-              : t('workspaceYDoc.status.syncFailed');
-      return {
-        icon: AlertCircle,
-        label,
-        className: 'border-destructive/20 bg-destructive/10 text-destructive',
-        iconClassName: '',
-      };
-    }
-    return {
-      icon: HardDrive,
-      label: t('workspaceYDoc.status.localSaved'),
-      className: 'border-border bg-muted/60 text-muted-foreground',
-      iconClassName: '',
-    };
-  }, [
-    t,
-    workspaceYDoc.connectionState,
-    workspaceYDoc.failureReason,
-    workspaceYDoc.localSynced,
-    workspaceYDoc.synced,
-  ]);
-  const StatusIcon = status.icon;
-
-  return (
-    <div
-      role="status"
-      data-testid="workspace-yjs-status"
-      className={`inline-flex h-8 max-w-[16rem] items-center gap-1.5 rounded-md border px-2 text-xs font-medium ${status.className}`}
-    >
-      <StatusIcon className={`h-3.5 w-3.5 shrink-0 ${status.iconClassName}`} aria-hidden />
-      <span className="min-w-0 truncate">{status.label}</span>
-      {workspaceYDoc.connectionState === 'error' ? (
-        <button
-          type="button"
-          className="ml-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label={t('workspaceYDoc.status.retry')}
-          onClick={workspaceYDoc.retry}
-        >
-          <RefreshCw className="h-3 w-3" aria-hidden />
-        </button>
-      ) : null}
-    </div>
-  );
 }
 
 export const Header = memo<HeaderProps>(
@@ -197,7 +91,6 @@ export const Header = memo<HeaderProps>(
     const { success, error } = useToast();
     const docsUrl = getDocsUrl(locale);
     const authSession = useAuthSession();
-    const workspaceMigration = useWorkspaceMigration(authSession);
     const { theme, resolvedTheme, setTheme } = useTheme();
     const selectedTheme: 'system' | 'light' | 'dark' =
       theme === 'light' || theme === 'dark' || theme === 'system' ? theme : 'system';
@@ -208,18 +101,7 @@ export const Header = memo<HeaderProps>(
         setTheme,
       },
     );
-    const [authMode, setAuthMode] = useState<
-      'sign_in' | 'sign_up' | 'forgot_password' | 'reset_password'
-    >('sign_in');
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [resetPassword, setResetPassword] = useState('');
-    const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
     const [userSettingsOpen, setUserSettingsOpen] = useState(false);
-    const [resetToken, setResetToken] = useState<string | null>(null);
-    const [verifyEmailDialogOpen, setVerifyEmailDialogOpen] = useState(false);
-    const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
     const actionBtnClass =
       'group inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-primary transition-all duration-200 hover:translate-x-0.5 hover:bg-primary/10 hover:text-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60';
     const primaryActionBtnClass =
@@ -254,163 +136,12 @@ export const Header = memo<HeaderProps>(
         />
       ) : null;
 
-    const clearAuthQuery = () => {
-      const nextUrl = `${window.location.pathname}${window.location.hash}`;
-      window.history.replaceState({}, document.title, nextUrl);
-    };
-
-    useEffect(() => {
-      const query = new URLSearchParams(window.location.search);
-      const authAction = query.get('auth_action');
-      if (authAction === 'verify-email') {
-        void authSession.refreshSession().finally(() => {
-          success(t('header.auth.verifyEmailSucceeded'));
-          setVerifyEmailDialogOpen(true);
-          clearAuthQuery();
-        });
-        return;
-      }
-
-      if (authAction !== 'reset-password') {
-        return;
-      }
-
-      const token = query.get('token');
-      if (!token) {
-        error(t('header.auth.resetTokenInvalid'));
-        clearAuthQuery();
-        return;
-      }
-
-      setResetToken(token);
-      setAuthMode('reset_password');
-      authSession.openAuthDialog();
-    }, [authSession, error, success, t]);
-
-    const authDialogDescription = useMemo(() => {
-      if (authMode === 'sign_up') return t('header.auth.dialogDescriptionSignUp');
-      if (authMode === 'forgot_password') return t('header.auth.dialogDescriptionForgotPassword');
-      if (authMode === 'reset_password') return t('header.auth.dialogDescriptionResetPassword');
-      return t('header.auth.dialogDescriptionSignIn');
-    }, [authMode, t]);
-
-    const handleSubmitAuth = async () => {
-      const trimmedEmail = email.trim();
-      if (!trimmedEmail) {
-        error(t('header.auth.emailRequired'));
-        return;
-      }
-
-      try {
-        setIsSubmittingAuth(true);
-        if (authMode === 'sign_in') {
-          if (!password.trim()) {
-            error(t('header.auth.passwordRequired'));
-            return;
-          }
-          await authSession.signInWithEmail(trimmedEmail, password);
-          success(t('header.auth.signedIn'));
-          authSession.closeAuthDialog();
-          return;
-        }
-
-        if (authMode === 'sign_up') {
-          if (!name.trim()) {
-            error(t('header.auth.nameRequired'));
-            return;
-          }
-          if (!password.trim()) {
-            error(t('header.auth.passwordRequired'));
-            return;
-          }
-          if (!turnstileToken) {
-            error(t('header.auth.turnstileRequired'));
-            return;
-          }
-          await authSession.signUpWithEmail({
-            name: name.trim(),
-            email: trimmedEmail,
-            password,
-            turnstileToken,
-          });
-          setTurnstileToken(null);
-          success(t('header.auth.verifyEmailSent', { email: trimmedEmail }));
-          setAuthMode('sign_in');
-          setPassword('');
-          return;
-        }
-
-        if (authMode === 'forgot_password') {
-          await authSession.requestPasswordReset(trimmedEmail);
-          success(t('header.auth.resetEmailSent', { email: trimmedEmail }));
-          setAuthMode('sign_in');
-          return;
-        }
-
-        if (!resetToken) {
-          error(t('header.auth.resetTokenInvalid'));
-          return;
-        }
-
-        if (!resetPassword.trim()) {
-          error(t('header.auth.passwordRequired'));
-          return;
-        }
-
-        await authSession.resetPassword(resetToken, resetPassword);
-        success(t('header.auth.passwordResetSucceeded'));
-        setResetPassword('');
-        setResetToken(null);
-        clearAuthQuery();
-        setAuthMode('sign_in');
-        authSession.closeAuthDialog();
-      } catch (err) {
-        error(err instanceof Error ? err.message : t('header.auth.signInFailed'));
-      } finally {
-        setIsSubmittingAuth(false);
-      }
-    };
-
-    const handleResendVerification = async () => {
-      const trimmedEmail = email.trim();
-      if (!trimmedEmail) {
-        error(t('header.auth.emailRequired'));
-        return;
-      }
-
-      try {
-        setIsSubmittingAuth(true);
-        await authSession.sendVerificationEmail(trimmedEmail);
-        success(t('header.auth.verifyEmailSent', { email: trimmedEmail }));
-      } catch (err) {
-        error(err instanceof Error ? err.message : t('header.auth.signInFailed'));
-      } finally {
-        setIsSubmittingAuth(false);
-      }
-    };
-
     const handleSignOut = async () => {
       try {
         await authSession.signOut();
         success(t('header.auth.signedOut'));
       } catch (err) {
         error(err instanceof Error ? err.message : t('header.auth.signOutFailed'));
-      }
-    };
-
-    const handleRunWorkspaceMigration = async () => {
-      try {
-        const result = await workspaceMigration.runMigration();
-        if (!result) return;
-        success(
-          t('header.workspaceMigration.completed', {
-            created: result.createdCount,
-            copied: result.copiedCount,
-            skipped: result.skippedCount,
-          }),
-        );
-      } catch (err) {
-        error(err instanceof Error ? err.message : t('header.workspaceMigration.failed'));
       }
     };
 
@@ -744,232 +475,8 @@ export const Header = memo<HeaderProps>(
           ? createPortal(themeOverlay, document.body)
           : null}
         <UserSettingsDialog open={userSettingsOpen} onOpenChange={setUserSettingsOpen} />
-        <Dialog
-          open={authSession.authDialogOpen}
-          onOpenChange={(open) =>
-            open ? authSession.openAuthDialog() : authSession.closeAuthDialog()
-          }
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{t('header.auth.dialogTitle')}</DialogTitle>
-              <DialogDescription>{authDialogDescription}</DialogDescription>
-            </DialogHeader>
-            {authMode === 'sign_up' ? (
-              <div className="space-y-2">
-                <label htmlFor="auth-name" className="text-sm font-medium text-foreground">
-                  {t('header.auth.nameLabel')}
-                </label>
-                <Input
-                  id="auth-name"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder={t('header.auth.namePlaceholder')}
-                  autoComplete="name"
-                />
-              </div>
-            ) : null}
-            <div className="space-y-2">
-              <label htmlFor="auth-email" className="text-sm font-medium text-foreground">
-                {t('header.auth.emailLabel')}
-              </label>
-              <Input
-                id="auth-email"
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder={t('header.auth.emailPlaceholder')}
-                autoComplete="email"
-              />
-            </div>
-            {authMode === 'sign_in' || authMode === 'sign_up' ? (
-              <div className="space-y-2">
-                <label htmlFor="auth-password" className="text-sm font-medium text-foreground">
-                  {t('header.auth.passwordLabel')}
-                </label>
-                <Input
-                  id="auth-password"
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder={t('header.auth.passwordPlaceholder')}
-                  autoComplete={authMode === 'sign_in' ? 'current-password' : 'new-password'}
-                />
-              </div>
-            ) : null}
-            {authMode === 'reset_password' ? (
-              <div className="space-y-2">
-                <label htmlFor="reset-password" className="text-sm font-medium text-foreground">
-                  {t('header.auth.newPasswordLabel')}
-                </label>
-                <Input
-                  id="reset-password"
-                  type="password"
-                  value={resetPassword}
-                  onChange={(event) => setResetPassword(event.target.value)}
-                  placeholder={t('header.auth.passwordPlaceholder')}
-                  autoComplete="new-password"
-                />
-              </div>
-            ) : null}
-            {authMode === 'sign_up' ? (
-              TURNSTILE_SITE_KEY ? (
-                <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} onTokenChange={setTurnstileToken} />
-              ) : (
-                <p className="text-sm text-destructive">
-                  {t('header.auth.turnstileNotConfigured')}
-                </p>
-              )
-            ) : null}
-            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-              {authMode !== 'reset_password' ? (
-                <button
-                  type="button"
-                  className="underline-offset-4 hover:underline"
-                  onClick={() => {
-                    setTurnstileToken(null);
-                    setAuthMode(authMode === 'sign_up' ? 'sign_in' : 'sign_up');
-                  }}
-                >
-                  {authMode === 'sign_up'
-                    ? t('header.auth.switchToSignIn')
-                    : t('header.auth.switchToSignUp')}
-                </button>
-              ) : null}
-              {authMode === 'sign_in' ? (
-                <button
-                  type="button"
-                  className="underline-offset-4 hover:underline"
-                  onClick={() => setAuthMode('forgot_password')}
-                >
-                  {t('header.auth.switchToForgotPassword')}
-                </button>
-              ) : null}
-              {authMode === 'forgot_password' ? (
-                <button
-                  type="button"
-                  className="underline-offset-4 hover:underline"
-                  onClick={() => setAuthMode('sign_in')}
-                >
-                  {t('header.auth.switchBackToSignIn')}
-                </button>
-              ) : null}
-            </div>
-            <DialogFooter>
-              {authMode === 'sign_in' ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={handleResendVerification}
-                  disabled={isSubmittingAuth}
-                >
-                  <MailCheck className="h-4 w-4" aria-hidden />
-                  {t('header.auth.resendVerification')}
-                </Button>
-              ) : null}
-              <Button type="button" variant="outline" onClick={authSession.closeAuthDialog}>
-                {t('header.auth.cancel')}
-              </Button>
-              <Button type="button" onClick={handleSubmitAuth} disabled={isSubmittingAuth}>
-                {isSubmittingAuth ? (
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                ) : (
-                  <LogIn className="h-4 w-4" aria-hidden />
-                )}
-                {authMode === 'sign_up'
-                  ? t('header.auth.createAccount')
-                  : authMode === 'forgot_password'
-                    ? t('header.auth.sendResetPassword')
-                    : authMode === 'reset_password'
-                      ? t('header.auth.resetPassword')
-                      : t('header.auth.signIn')}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <Dialog open={verifyEmailDialogOpen} onOpenChange={setVerifyEmailDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{t('header.auth.verifyEmailDialogTitle')}</DialogTitle>
-              <DialogDescription>{t('header.auth.verifyEmailSucceeded')}</DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button type="button" onClick={() => setVerifyEmailDialogOpen(false)}>
-                {t('header.auth.verifyEmailDialogConfirm')}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <Dialog
-          open={workspaceMigration.open}
-          onOpenChange={(nextOpen) => {
-            if (!nextOpen) {
-              workspaceMigration.dismiss();
-              return;
-            }
-            workspaceMigration.setOpen(nextOpen);
-          }}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{t('header.workspaceMigration.title')}</DialogTitle>
-              <DialogDescription>
-                {workspaceMigration.pending?.result.conflictCount
-                  ? t('header.workspaceMigration.descriptionWithConflicts', {
-                      conflicts: workspaceMigration.pending.result.conflictCount,
-                    })
-                  : t('header.workspaceMigration.description')}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <p>
-                {t('header.workspaceMigration.summary', {
-                  savedTables: workspaceMigration.pending?.payload.snapshot.savedTables.length ?? 0,
-                  savedDrafts: workspaceMigration.pending?.payload.snapshot.savedDrafts.length ?? 0,
-                  hasGlobalDraft:
-                    workspaceMigration.pending?.payload.snapshot.globalDraft ||
-                    workspaceMigration.pending?.payload.snapshot.activeSession?.activeState
-                      ? t('header.workspaceMigration.yes')
-                      : t('header.workspaceMigration.no'),
-                })}
-              </p>
-              {workspaceMigration.pending?.result.conflicts.length ? (
-                <p>
-                  {t('header.workspaceMigration.conflicts', {
-                    names: workspaceMigration.pending.result.conflicts
-                      .map((item) => item.displayName)
-                      .slice(0, 3)
-                      .join('、'),
-                  })}
-                </p>
-              ) : null}
-              {workspaceMigration.error ? (
-                <p className="text-destructive">{workspaceMigration.error}</p>
-              ) : null}
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={workspaceMigration.dismiss}
-                disabled={workspaceMigration.running}
-              >
-                {t('header.workspaceMigration.later')}
-              </Button>
-              <Button
-                type="button"
-                onClick={handleRunWorkspaceMigration}
-                disabled={workspaceMigration.running || workspaceMigration.checking}
-              >
-                {workspaceMigration.running
-                  ? t('header.workspaceMigration.running')
-                  : workspaceMigration.pending?.result.conflictCount
-                    ? t('header.workspaceMigration.runWithCopies')
-                    : t('header.workspaceMigration.run')}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <AuthDialogs />
+        <WorkspaceMigrationDialog />
       </>
     );
   },
