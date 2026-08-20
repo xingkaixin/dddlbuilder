@@ -7,22 +7,23 @@
 | Package | 路径 | 说明 |
 |---------|------|------|
 | `@ddlbuilder/web` | `apps/web/` | 前端 Web 应用（React + Vite），主产品 UI |
-| `@ddlbuilder/worker` | `apps/worker/` | Cloudflare Worker 后端 API，处理认证、AI 生成、邮件和数据持久化 |
+| `@ddlbuilder/worker` | `apps/worker/` | Cloudflare Worker 后端 API，处理认证、AI 生成、邮件、数据持久化，并用 Durable Object（`WorkspaceYDocDurableObject`）承载 workspace 实时同步 |
 | `@ddlbuilder/docs` | `apps/docs/` | VitePress 文档站点 |
 
 ### Packages
 
 | Package | 路径 | 说明 |
 |---------|------|------|
-| `@ddlbuilder/ddl-core` | `packages/ddl-core/` | DDL 生成核心逻辑，数据库无关的表/字段建模和 SQL 输出 |
-| `@ddlbuilder/db` | `packages/db/` | Drizzle ORM schema 和数据库工具，供 `worker` 和根目录脚本共用 |
+| `@ddlbuilder/ddl-core` | `packages/ddl-core/` | DDL/DCL 生成核心逻辑，按数据库方言分策略实现，另含表结构 diff 和 ORM 模型输出 |
+| `@ddlbuilder/workspace-core` | `packages/workspace-core/` | workspace Y.Doc 的 CRDT 编解码（快照 ↔ Y.Doc 互转、初始化判定）和内容哈希，前后端共用同一份实现 |
+| `@ddlbuilder/db` | `packages/db/` | Drizzle ORM schema、D1 迁移与种子 SQL，供 `worker` 和根目录 `scripts/d1-*` 共用 |
 | `@ddlbuilder/shared-types` | `packages/shared-types/` | 跨 monorepo 共享的 TypeScript 类型定义 |
 | `@ddlbuilder/tsconfig` | `packages/tsconfig/` | 共享的 TypeScript 配置预设 |
 
 **依赖流向：**
-- `apps/web` → `@ddlbuilder/ddl-core`、`@ddlbuilder/shared-types`
-- `apps/worker` → `@ddlbuilder/db`、`@ddlbuilder/shared-types`
-- `packages/ddl-core` → `@ddlbuilder/shared-types`
+- `apps/web` → `@ddlbuilder/ddl-core`、`@ddlbuilder/workspace-core`、`@ddlbuilder/shared-types`
+- `apps/worker` → `@ddlbuilder/db`、`@ddlbuilder/workspace-core`、`@ddlbuilder/shared-types`
+- `packages/ddl-core`、`packages/workspace-core` → `@ddlbuilder/shared-types`
 - 多数 package dev 依赖 `@ddlbuilder/tsconfig`
 
 ## 开发
