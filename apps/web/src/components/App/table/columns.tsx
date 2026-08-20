@@ -1,6 +1,7 @@
 import { useMemo, type Dispatch, type ReactNode, type SetStateAction } from 'react';
-import { createColumnHelper, type ColumnDef, type Row } from '@tanstack/react-table';
+import { createColumnHelper } from '@tanstack/react-table';
 import { EditableCell, SelectCell, CheckboxCell, OrderCell } from './index';
+import type { FieldTableColumnDef, FieldTableFeatures, FieldTableRow } from './tableFeatures';
 import { RowActions } from './RowActions';
 import { EnumSetCell } from './EnumSetCell';
 import { LogicalEnumCell } from './LogicalEnumCell';
@@ -10,7 +11,7 @@ import { getCanonicalBaseType } from '@ddlbuilder/ddl-core';
 import { getDefaultKindLabel, getOnUpdateLabel } from '@/i18n/fieldEnums';
 import { useTranslation } from 'react-i18next';
 
-const columnHelper = createColumnHelper<FieldRow>();
+const columnHelper = createColumnHelper<FieldTableFeatures, FieldRow>();
 
 const LOGICAL_ENUM_BASES = new Set(['tinyint', 'smallint', 'int', 'bigint', 'char', 'varchar']);
 type EditingCell = { row: number; col: number };
@@ -26,11 +27,10 @@ interface UseFieldColumnsParams {
   updateEnumValues?: (rowIndex: number, fieldType: string, enumMeta: EnumValueMeta[]) => void;
   handleTabNavigation: (rowIndex: number, editableColIndex: number, direction: 1 | -1) => void;
   onRemoveRow: (rowIndex: number, count: number) => void;
-  renderOrderCell?: (params: { row: Row<FieldRow>; warnings: string[] }) => ReactNode;
+  renderOrderCell?: (params: { row: FieldTableRow; warnings: string[] }) => ReactNode;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function useFieldColumns(params: UseFieldColumnsParams): ColumnDef<FieldRow, any>[] {
+export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumnDef[] {
   const { t } = useTranslation();
   const {
     mode = 'table',
@@ -46,8 +46,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): ColumnDef<FieldR
     renderOrderCell,
   } = params;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return useMemo<ColumnDef<FieldRow, any>[]>(
+  return useMemo<FieldTableColumnDef[]>(
     () => [
       columnHelper.accessor('order', {
         header: () => t('dataTable.headers.order'),

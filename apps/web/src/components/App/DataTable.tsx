@@ -3,11 +3,11 @@ import type { ReactNode } from 'react';
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useReactTable, getCoreRowModel, flexRender, type Row } from '@tanstack/react-table';
+import { useTable, flexRender } from '@tanstack/react-table';
 import { DragDropVerticalIcon } from '@/components/icons';
 import { toStringSafe, isReservedKeyword } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
-import type { EnumValueMeta, FieldRow } from '@ddlbuilder/shared-types';
+import type { EnumValueMeta } from '@ddlbuilder/shared-types';
 import {
   buildDuplicateNameSet,
   useAppStore,
@@ -18,6 +18,7 @@ import {
   useForeignKeyStore,
 } from '@/stores';
 import { useFieldColumns } from './table/columns';
+import { fieldTableFeatures, type FieldTableRow } from './table/tableFeatures';
 import { useFreezeColumns } from './table/useFreezeColumns';
 import { useRowHighlight } from './table/useRowHighlight';
 import { DataTableToolbar } from './table/DataTableToolbar';
@@ -43,7 +44,7 @@ interface DataTableProps {
 }
 
 interface SortableDataRowProps {
-  row: Row<FieldRow>;
+  row: FieldTableRow;
   selectedColumn: number | null;
   editingColumn: number | null;
   setEditingCell: (cell: { row: number; col: number } | null) => void;
@@ -96,7 +97,7 @@ const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
         isDragging && 'opacity-80',
       )}
     >
-      {row.getVisibleCells().map((cell, colIndex) => {
+      {row.getAllCells().map((cell, colIndex) => {
         const isFrozen = freezeEnabled && colIndex < effectiveFreezeColumns;
         const isLastFrozen = freezeEnabled && colIndex === effectiveFreezeColumns - 1;
         const isSelected = selectedColumn === colIndex - 1;
@@ -354,10 +355,10 @@ export const DataTable = memo<DataTableProps>(
       onRemoveRow,
     });
 
-    const table = useReactTable({
+    const table = useTable({
+      features: fieldTableFeatures,
       data: rows,
       columns,
-      getCoreRowModel: getCoreRowModel(),
       getRowId: (row) => String(row.order),
     });
 

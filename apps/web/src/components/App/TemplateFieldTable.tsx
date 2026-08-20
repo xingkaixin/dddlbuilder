@@ -3,13 +3,14 @@ import type { Dispatch, SetStateAction } from 'react';
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useReactTable, getCoreRowModel, flexRender, type Row } from '@tanstack/react-table';
+import { useTable, flexRender } from '@tanstack/react-table';
 import { DragDropVerticalIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import type { DatabaseType, EnumValueMeta, FieldRow } from '@ddlbuilder/shared-types';
 import { buildDuplicateNameSet } from '@/stores';
 import { isReservedKeyword, createEmptyRow, ensureOrder, toStringSafe } from '@/utils/helpers';
 import { useFieldColumns } from './table/columns';
+import { fieldTableFeatures, type FieldTableRow } from './table/tableFeatures';
 import { useDataTableNavigation } from './table/useDataTableNavigation';
 import { useDataTableClipboard } from './table/useDataTableClipboard';
 import { useFieldRowMutations } from './table/useFieldRowMutations';
@@ -25,7 +26,7 @@ interface TemplateFieldTableProps {
 }
 
 interface SortableTemplateRowProps {
-  row: Row<FieldRow>;
+  row: FieldTableRow;
   selectedCell: { row: number; col: number } | null;
   handleCellActivate: (rowIndex: number, colIndex: number) => void;
   focusEditableCell: (rowIndex: number, editableColIndex: number) => void;
@@ -59,7 +60,7 @@ const SortableTemplateRow = memo<SortableTemplateRowProps>(
           isDragging && 'opacity-80',
         )}
       >
-        {row.getVisibleCells().map((cell, colIndex) => {
+        {row.getAllCells().map((cell, colIndex) => {
           const isSelected =
             selectedCell && selectedCell.row === row.index && selectedCell.col === colIndex - 1;
           const isOrderColumn = cell.column.id === 'order';
@@ -230,10 +231,10 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
     onRemoveRow: handleRemoveRow,
   });
 
-  const table = useReactTable({
+  const table = useTable({
+    features: fieldTableFeatures,
     data: rows,
     columns,
-    getCoreRowModel: getCoreRowModel(),
     getRowId: (row) => String(row.order),
   });
 
