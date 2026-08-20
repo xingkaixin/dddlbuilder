@@ -220,6 +220,12 @@ export const enUSCommon = {
       serviceUnavailable: 'Sync service unavailable',
       retry: 'Retry sync',
     },
+    bootstrap: {
+      errorTitle: 'Could not load your workspace',
+      errorDescription:
+        'Local workspace data or workspace info could not be loaded — usually private browsing, a full storage quota, or a network problem. Loading was paused so new and edited content is not written to the wrong place.',
+      retry: 'Retry loading',
+    },
   },
   emptyState: {
     noTabOpenTitle: 'No table opened yet',

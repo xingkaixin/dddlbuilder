@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -11,6 +12,8 @@ import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { WorkspaceBootstrapScreen } from '@/components/WorkspaceBootstrapScreen';
+import { useShareRoute } from '@/hooks/workspacePersistence/shareRoute';
 import {
   beginLegacyWorkspaceMigration,
   completeLegacyWorkspaceMigration,
@@ -27,7 +30,10 @@ import {
   type WorkspaceYDocFailureReason,
 } from '@/services/workspaceYDocSyncClient';
 import { buildWorkspaceYDocName } from '@/services/workspaceYDocStorage';
-import { resolveWorkspaceYDocStartupPlan } from '@/services/workspaceYDocAuthority';
+import {
+  isWorkspaceWriteTargetPending,
+  resolveWorkspaceYDocStartupPlan,
+} from '@/services/workspaceYDocAuthority';
 
 type WorkspaceYDocContextValue = {
   doc: Y.Doc | null;
@@ -39,6 +45,16 @@ type WorkspaceYDocContextValue = {
 };
 
 const noop = () => {};
+
+/**
+ * 门禁期间 children 不渲染，任何一段可能永不结束的等待都必须有逃生口，否则用户永久白屏。
+ * 覆盖两条：whenSynced 只 resolve 从不 reject（IndexedDB 打不开时永远 pending），
+ * 以及 /api/workspaces 失败后 workspaceId 一直是 null。
+ * 取值依据：y-indexeddb 把 updates store 裁剪到 ~500 条，本地读取是有界的（正常几十毫秒，
+ * 慢设备冷启动 1s 量级），余下耗时几乎都在 indexedDB.open()；10s 留了一个数量级的余量，
+ * 与 WORKSPACE_YDOC_CONNECT_TIMEOUT_MS(8s) 同量级。
+ */
+const WORKSPACE_BOOTSTRAP_TIMEOUT_MS = 10_000;
 
 const hasCompletedLegacyMigration = (userId: string | null, workspaceId: string | null) =>
   Boolean(
@@ -57,7 +73,11 @@ const WorkspaceYDocContext = createContext<WorkspaceYDocContextValue>({
 
 export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
   const authSession = useAuthSession();
+  const { refreshSession } = authSession;
+  const { shareId } = useShareRoute();
   const clientRef = useRef<WorkspaceYDocSyncClient | null>(null);
+  const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
+  const [bootstrapTimedOut, setBootstrapTimedOut] = useState(false);
   const retry = useMemo(() => () => clientRef.current?.retry(), []);
   const [value, setValue] = useState<WorkspaceYDocContextValue>({
     doc: null,
@@ -67,15 +87,18 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     retry,
   });
 
+  // 只有"是否登出"和身份本身该触发重建。refreshSession 期间 status 会短暂退回 loading，
+  // 把它纳入依赖会拆掉一个健康的 Y.Doc，连带把整个界面退回启动态。
+  const signedOut = authSession.status === 'signed_out';
+  const authUserId = authSession.userId;
+  const authWorkspaceId = authSession.workspaceId;
+
   useEffect(() => {
     const startupPlan = resolveWorkspaceYDocStartupPlan({
-      authStatus: authSession.status,
-      userId: authSession.userId,
-      workspaceId: authSession.workspaceId,
-      legacyMigrationCompleted: hasCompletedLegacyMigration(
-        authSession.userId,
-        authSession.workspaceId,
-      ),
+      authStatus: signedOut ? 'signed_out' : 'signed_in',
+      userId: authUserId,
+      workspaceId: authWorkspaceId,
+      legacyMigrationCompleted: hasCompletedLegacyMigration(authUserId, authWorkspaceId),
     });
 
     if (!startupPlan.enabled) {
@@ -155,15 +178,44 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       cancelled = true;
       clientRef.current = null;
       client?.destroy();
-      void persistence.destroy();
+      // IndexedDB 打不开时 destroy() 会 reject，每次 cleanup/重试都会留下一条 unhandled rejection。
+      persistence.destroy().catch(() => {});
       doc.destroy();
     };
-  }, [authSession.status, authSession.userId, authSession.workspaceId, retry]);
+  }, [signedOut, authUserId, authWorkspaceId, retry, bootstrapAttempt]);
 
   const memoizedValue = useMemo(() => value, [value]);
+  // 分享页读的是分享快照而非 Y.Doc，工作区写入入口全部关闭，挡住它只会让本可展示的页面白屏。
+  const blocked =
+    !shareId &&
+    isWorkspaceWriteTargetPending({
+      authStatus: authSession.status,
+      userId: authSession.userId,
+      localSynced: value.localSynced,
+    });
+
+  useEffect(() => {
+    setBootstrapTimedOut(false);
+    if (!blocked) return;
+    const timer = setTimeout(() => setBootstrapTimedOut(true), WORKSPACE_BOOTSTRAP_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [blocked, bootstrapAttempt]);
+
+  // 门禁期可能卡在两处：Y.Doc 本地加载，或 workspaceId 还没落地。前者要重跑启动流程，
+  // 后者只有重新解析会话才能拿到 workspaceId，所以两件事都做。
+  const retryBootstrap = useCallback(() => {
+    setBootstrapAttempt((attempt) => attempt + 1);
+    void refreshSession();
+  }, [refreshSession]);
 
   return (
-    <WorkspaceYDocContext.Provider value={memoizedValue}>{children}</WorkspaceYDocContext.Provider>
+    <WorkspaceYDocContext.Provider value={memoizedValue}>
+      {blocked ? (
+        <WorkspaceBootstrapScreen failed={bootstrapTimedOut} onRetry={retryBootstrap} />
+      ) : (
+        children
+      )}
+    </WorkspaceYDocContext.Provider>
   );
 }
 

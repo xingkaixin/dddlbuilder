@@ -213,6 +213,12 @@ export const zhCNCommon = {
       serviceUnavailable: '同步服务不可用',
       retry: '重试同步',
     },
+    bootstrap: {
+      errorTitle: '工作区加载失败',
+      errorDescription:
+        '本地工作区数据或工作区信息没能加载出来，常见原因是浏览器隐私模式、本地存储空间不足或网络异常。为避免新建和编辑的内容写错位置，工作区已暂停加载。',
+      retry: '重试加载',
+    },
   },
   emptyState: {
     noTabOpenTitle: '还没有打开任何表',

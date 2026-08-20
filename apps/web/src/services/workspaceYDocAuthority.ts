@@ -32,7 +32,10 @@ export const resolveWorkspaceYDocStartupPlan = (input: {
   workspaceId?: string | null;
   legacyMigrationCompleted: boolean;
 }): WorkspaceYDocStartupPlan => {
-  if (input.authStatus !== 'signed_in') {
+  // refreshSession 会把 status 打回 loading 但保留 userId/workspaceId。身份没变时不能判成
+  // signed-out：那会拆掉一个健康的 Y.Doc，连带把整个界面退回启动态。
+  const identityKnown = Boolean(input.userId && input.workspaceId);
+  if (input.authStatus === 'signed_out' || (input.authStatus === 'loading' && !identityKnown)) {
     return { enabled: false, reason: 'signed-out' };
   }
 
@@ -58,6 +61,19 @@ export const resolveWorkspaceYDocStartupPlan = (input: {
     queueEntityOutbox: false,
   };
 };
+
+/**
+ * 只要浏览器已经确定持有登录会话，匿名分区就不是正确的写入目标；而在该 workspace 的 Y.Doc
+ * 本地加载完成之前，写入只会落到 `user:<id>` 或 anonymous 分区，之后不会被合并回来
+ * （legacy 提升是一次性的，完成标记写下后不再重跑）。这段窗口必须整段挡住。
+ * 判据同时看 userId 而不只看 status：refreshSession 期间 status 会退回 loading 但 userId 保留，
+ * 放行那一段会在重试时闪出一个可写的空工作区。
+ */
+export const isWorkspaceWriteTargetPending = (input: {
+  authStatus: 'loading' | 'signed_in' | 'signed_out';
+  userId?: string | null;
+  localSynced: boolean;
+}) => (input.authStatus === 'signed_in' || Boolean(input.userId)) && !input.localSynced;
 
 export const shouldQueueWorkspaceEntityOutbox = (input: {
   scope: WorkspaceScope | null | undefined;
