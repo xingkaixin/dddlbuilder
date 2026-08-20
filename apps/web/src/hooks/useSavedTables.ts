@@ -5,6 +5,7 @@ import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 import { buildWorkspaceContentHash } from '@/services/workspaceIncrementalSyncService';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
+import { invalidateLegacyWorkspaceMigration } from '@/services/workspaceLegacyMigrationMarker';
 import { shouldQueueWorkspaceEntityOutbox } from '@/services/workspaceYDocAuthority';
 import {
   deleteSavedTableFromYDoc,
@@ -83,11 +84,19 @@ export function useSavedTables() {
 
   const runInYDoc = useCallback(
     (mutate: (doc: Y.Doc) => void) => {
-      if (!yDocReady || !workspaceYDoc.doc) return;
-      const doc = workspaceYDoc.doc;
-      doc.transact(() => mutate(doc));
+      if (yDocReady && workspaceYDoc.doc) {
+        const doc = workspaceYDoc.doc;
+        doc.transact(() => mutate(doc));
+        return;
+      }
+      // Y.Doc 还不可写（分享页在本地加载完成前仍然放行「另存为副本」），这次改动只落在本地
+      // 分区。legacy 迁移的一次性标记会让它永远留在那里，所以按既有契约重开迁移：谁写了本地
+      // 分区，谁负责让下次启动把它带进 Y.Doc。
+      if (currentScope?.kind === 'user' && currentScope.workspaceId) {
+        invalidateLegacyWorkspaceMigration(currentScope);
+      }
     },
-    [workspaceYDoc.doc, yDocReady],
+    [currentScope, workspaceYDoc.doc, yDocReady],
   );
 
   const queueSavedTableChange = useCallback(

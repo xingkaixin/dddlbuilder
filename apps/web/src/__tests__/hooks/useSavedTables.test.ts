@@ -18,6 +18,9 @@ const mockUseAuthSession = vi.hoisted(() =>
 const mockWorkspaceYDoc = vi.hoisted(() => ({
   value: {} as any,
 }));
+const mockMigrationMarker = vi.hoisted(() => ({
+  invalidateLegacyWorkspaceMigration: vi.fn(),
+}));
 const mockYDocAdapter = vi.hoisted(() => ({
   deleteSavedTableFromYDoc: vi.fn(),
   getSavedTableFromYDoc: vi.fn(),
@@ -32,6 +35,10 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
 
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({
   useWorkspaceYDoc: () => mockWorkspaceYDoc.value,
+}));
+
+vi.mock('@/services/workspaceLegacyMigrationMarker', () => ({
+  invalidateLegacyWorkspaceMigration: mockMigrationMarker.invalidateLegacyWorkspaceMigration,
 }));
 
 vi.mock('@/services/workspaceYDocAdapter', () => ({
@@ -73,6 +80,7 @@ describe('useSavedTables', () => {
       connectionState: 'idle',
       retry: vi.fn(),
     };
+    mockMigrationMarker.invalidateLegacyWorkspaceMigration.mockReset();
     mockYDocAdapter.deleteSavedTableFromYDoc.mockReset();
     mockYDocAdapter.getSavedTableFromYDoc.mockReset();
     mockYDocAdapter.listSavedTableMetadataFromYDoc.mockReset();
@@ -192,6 +200,73 @@ describe('useSavedTables', () => {
       expect.objectContaining({ normalizedName: 'pending' }),
     );
     expect(await listWorkspaceOutboxItems('workspace_1')).toHaveLength(0);
+  });
+
+  // 分享页在本地 Y.Doc 加载完成前仍然放行「另存为副本」，那次写入只落本地分区；
+  // legacy 迁移的一次性标记会让它永远留在那里，所以写入方要负责重开迁移。
+  it('本地 Y.Doc 未就绪时保存，应重开 legacy 迁移', async () => {
+    mockUseAuthSession.mockReturnValue({
+      status: 'signed_in',
+      configured: true,
+      userId: 'user_1',
+      workspaceId: 'workspace_1',
+    } as any);
+    mockWorkspaceYDoc.value = {
+      doc: { transact: (callback: () => void) => callback() },
+      synced: false,
+      localSynced: false,
+      connectionState: 'idle',
+      retry: vi.fn(),
+    };
+    const { result } = renderHook(() => useSavedTables());
+
+    await act(async () => {
+      await flushPromises();
+    });
+
+    await act(async () => {
+      const saveResult = await result.current.saveTable('Shared copy', createState('shared_copy'));
+      expect(saveResult.ok).toBe(true);
+      await flushPromises();
+    });
+
+    expect(mockYDocAdapter.upsertSavedTableInYDoc).not.toHaveBeenCalled();
+    expect(mockMigrationMarker.invalidateLegacyWorkspaceMigration).toHaveBeenCalledWith({
+      kind: 'user',
+      userId: 'user_1',
+      workspaceId: 'workspace_1',
+    });
+  });
+
+  it('本地 Y.Doc 就绪时保存，不应重开 legacy 迁移', async () => {
+    mockUseAuthSession.mockReturnValue({
+      status: 'signed_in',
+      configured: true,
+      userId: 'user_1',
+      workspaceId: 'workspace_1',
+    } as any);
+    mockWorkspaceYDoc.value = {
+      doc: { transact: (callback: () => void) => callback() },
+      synced: false,
+      localSynced: true,
+      connectionState: 'connecting',
+      retry: vi.fn(),
+    };
+    mockYDocAdapter.getSavedTableFromYDoc.mockReturnValue(null);
+    mockYDocAdapter.listSavedTableMetadataFromYDoc.mockReturnValue([]);
+    const { result } = renderHook(() => useSavedTables());
+
+    await act(async () => {
+      await flushPromises();
+    });
+
+    await act(async () => {
+      await result.current.saveTable('Normal', createState('normal'));
+      await flushPromises();
+    });
+
+    expect(mockYDocAdapter.upsertSavedTableInYDoc).toHaveBeenCalled();
+    expect(mockMigrationMarker.invalidateLegacyWorkspaceMigration).not.toHaveBeenCalled();
   });
 
   it('should keep saved table order stable after overwrite', async () => {
