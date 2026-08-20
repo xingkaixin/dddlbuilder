@@ -87,6 +87,15 @@ const dispatchWorkspaceSnapshotApplied = () => {
 
 export { buildWorkspaceContentHash };
 
+// scope 是本地 workspace 分区字段，不属于云端 payload；带上它会让 client/server contentHash 恒不等
+export const toFolderSyncPayload = ({ id, name, parentId, order, createdAt }: TableFolder) => ({
+  id,
+  name,
+  parentId,
+  order,
+  createdAt,
+});
+
 export const fetchWorkspaceList = async (): Promise<WorkspaceListResponse> => {
   const response = await fetch('/api/workspaces', {
     credentials: 'include',
@@ -388,13 +397,14 @@ export const promoteLegacyUserWorkspaceData = async (scope: WorkspaceScope): Pro
     await bulkPutFolders(folders, scope);
   }
   for (const folder of folders) {
+    const payload = toFolderSyncPayload(folder);
     await enqueueWorkspaceOutboxItem({
       workspaceId: scope.workspaceId,
       entityType: 'folder',
       entityId: folder.id,
       op: 'upsert',
-      payload: folder,
-      contentHash: await buildWorkspaceContentHash(folder),
+      payload,
+      contentHash: await buildWorkspaceContentHash(payload),
     });
   }
 

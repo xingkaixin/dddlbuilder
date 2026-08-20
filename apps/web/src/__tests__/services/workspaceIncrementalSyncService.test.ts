@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 import {
+  buildWorkspaceContentHash,
   clearLocalWorkspaceData,
   promoteLegacyUserWorkspaceData,
   syncWorkspaceOnce,
+  toFolderSyncPayload,
 } from '@/services/workspaceIncrementalSyncService';
 import {
   readDraft,
@@ -660,5 +662,24 @@ describe('workspaceIncrementalSyncService', () => {
       'saved_draft',
       'saved_table',
     ]);
+    const folderItem = outbox.find((item) => item.entityType === 'folder');
+    expect(folderItem?.payload).not.toHaveProperty('scope');
+    expect(folderItem?.contentHash).toBe(
+      await buildWorkspaceContentHash({ id: 'folder-1', name: 'Folder', order: 1, createdAt: 6 }),
+    );
+  });
+
+  // 服务端形状见 apps/worker/server-api/lib/workspaceEntitySnapshot.ts 的 folder 实体
+  it('folder 同步 payload 应剔除本地 scope 字段以匹配服务端形状', () => {
+    const payload = toFolderSyncPayload({
+      id: 'folder-1',
+      scope: 'user:user-1:ws-1',
+      name: 'Folder',
+      parentId: 'root',
+      order: 2,
+      createdAt: 9,
+    });
+
+    expect(Object.keys(payload).sort()).toEqual(['createdAt', 'id', 'name', 'order', 'parentId']);
   });
 });

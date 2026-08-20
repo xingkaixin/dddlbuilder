@@ -1,7 +1,10 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
-import { buildWorkspaceContentHash } from '@/services/workspaceIncrementalSyncService';
+import {
+  buildWorkspaceContentHash,
+  toFolderSyncPayload,
+} from '@/services/workspaceIncrementalSyncService';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import { shouldQueueWorkspaceEntityOutbox } from '@/services/workspaceYDocAuthority';
 import {
@@ -79,7 +82,7 @@ export function useFolders() {
       const workspaceId = outboxPolicy.scope.workspaceId;
       fireAndForget(
         (async () => {
-          const payload = input.op === 'upsert' ? input.folder : null;
+          const payload = input.op === 'upsert' ? toFolderSyncPayload(input.folder) : null;
           const entityId = input.op === 'upsert' ? input.folder.id : input.folderId;
           if (!entityId) return;
           await enqueueWorkspaceOutboxItem({
