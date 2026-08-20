@@ -359,12 +359,6 @@ describe('ORMGeneratorFactory', () => {
     expect(targets).toContain('gorm');
     expect(targets).toContain('jpa');
   });
-
-  it('allows registering custom generator', () => {
-    const mockGenerator = ORMGeneratorFactory.create('prisma');
-    ORMGeneratorFactory.registerGenerator('custom' as any, mockGenerator);
-    expect(ORMGeneratorFactory.create('custom' as any)).toBe(mockGenerator);
-  });
 });
 
 describe('buildDDL', () => {

@@ -27,8 +27,4 @@ export class ORMGeneratorFactory {
   static getSupportedTargets(): ORMTarget[] {
     return Array.from(generators.keys());
   }
-
-  static registerGenerator(target: ORMTarget, generator: ORMGenerator): void {
-    generators.set(target, generator);
-  }
 }
