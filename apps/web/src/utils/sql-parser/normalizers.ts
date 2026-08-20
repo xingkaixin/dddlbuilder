@@ -1,26 +1,36 @@
 import type { IndexField } from '@ddlbuilder/shared-types';
+import {
+  readField,
+  stringifyAstValue,
+  type ColumnListNode,
+  type ColumnTypeNode,
+} from './astTypes.js';
 
-export function normalizeColumnName(column: any): string {
+export function normalizeColumnName(column: unknown): string {
   if (column === undefined || column === null) return '';
   if (typeof column === 'string') return column;
   if (typeof column === 'object') {
-    if (column.column !== undefined) {
-      return normalizeColumnName(column.column);
+    const nested = readField(column, 'column');
+    if (nested !== undefined) {
+      return normalizeColumnName(nested);
     }
-    if (column.expr && column.expr.value !== undefined) {
-      return normalizeColumnName(column.expr.value);
+    const exprValue = readField(readField(column, 'expr'), 'value');
+    if (exprValue !== undefined) {
+      return normalizeColumnName(exprValue);
     }
-    if (column.value !== undefined) {
-      return normalizeColumnName(column.value);
+    const value = readField(column, 'value');
+    if (value !== undefined) {
+      return normalizeColumnName(value);
     }
   }
-  return String(column);
+  return stringifyAstValue(column);
 }
 
-export function buildTypeString(definition: any): string {
+export function buildTypeString(definition: ColumnTypeNode | undefined): string {
   const baseType = definition?.dataType || '';
   const length = definition?.length;
   const scale = definition?.scale;
+  const suffix = definition?.suffix;
   const normalizedScale =
     scale === null || scale === undefined || scale === 'null' ? undefined : scale;
 
@@ -30,9 +40,9 @@ export function buildTypeString(definition: any): string {
   if (length) {
     return `${baseType}(${length})`;
   }
-  if (Array.isArray(definition?.suffix) && definition.suffix.length > 0) {
-    const suffixValues = definition.suffix.filter(
-      (v: any) => v !== null && v !== undefined && String(v).toLowerCase() !== 'null',
+  if (Array.isArray(suffix) && suffix.length > 0) {
+    const suffixValues = suffix.filter(
+      (v) => v !== null && v !== undefined && stringifyAstValue(v).toLowerCase() !== 'null',
     );
     if (suffixValues.length > 0) {
       return `${baseType}(${suffixValues.join(',')})`;
@@ -42,19 +52,23 @@ export function buildTypeString(definition: any): string {
   return baseType;
 }
 
-export function extractFunctionName(val: any): string | null {
+export function extractFunctionName(val: unknown): string | null {
   if (!val) return null;
-  if (val.keyword) {
-    return String(val.keyword).toLowerCase();
+  const keyword = readField(val, 'keyword');
+  if (keyword) {
+    return stringifyAstValue(keyword).toLowerCase();
   }
-  if (val.type === 'function' && val.name) {
-    if (Array.isArray(val.name.name) && val.name.name[0]) {
-      const nameNode = val.name.name[0];
-      const rawName = nameNode?.value ?? nameNode?.expr?.value ?? val.name.name[0];
-      return rawName ? String(rawName).toLowerCase() : null;
+  const name = readField(val, 'name');
+  if (readField(val, 'type') === 'function' && name) {
+    const nameParts = readField(name, 'name');
+    if (Array.isArray(nameParts) && nameParts[0]) {
+      const nameNode: unknown = nameParts[0];
+      const rawName =
+        readField(nameNode, 'value') ?? readField(readField(nameNode, 'expr'), 'value') ?? nameNode;
+      return rawName ? stringifyAstValue(rawName).toLowerCase() : null;
     }
-    if (typeof val.name === 'string') {
-      return val.name.toLowerCase();
+    if (typeof name === 'string') {
+      return name.toLowerCase();
     }
   }
   if (typeof val === 'string') {
@@ -63,35 +77,31 @@ export function extractFunctionName(val: any): string | null {
   return null;
 }
 
-export function normalizeLiteral(val: any): string {
+export function normalizeLiteral(val: unknown): string {
   if (val === undefined || val === null) return '';
   if (typeof val === 'object') {
-    if (val.value !== undefined) {
-      return normalizeLiteral(val.value);
+    const value = readField(val, 'value');
+    if (value !== undefined) {
+      return normalizeLiteral(value);
     }
-    if (val.expr !== undefined) {
-      return normalizeLiteral(val.expr);
+    const expr = readField(val, 'expr');
+    if (expr !== undefined) {
+      return normalizeLiteral(expr);
     }
   }
-  return String(val).replace(/^'|'$/g, '');
+  return stringifyAstValue(val).replace(/^'|'$/g, '');
 }
 
-export function buildIndexFields(columns: any[]): IndexField[] {
+export function buildIndexFields(columns: ColumnListNode[] | undefined): IndexField[] {
   if (!Array.isArray(columns)) return [];
 
   return columns
-    .map((col: any) => {
+    .map((col) => {
       const name = normalizeColumnName(col?.column ?? col);
       if (!name) return null;
-      const direction =
-        col?.order_by || col?.order_by_expr || col?.order
-          ? String(col.order_by || col.order_by_expr || col.order)
-              .toUpperCase()
-              .includes('DESC')
-            ? 'DESC'
-            : 'ASC'
-          : 'ASC';
-      return { name, direction } as IndexField;
+      const order = col?.order_by || col?.order_by_expr || col?.order;
+      const direction = order && String(order).toUpperCase().includes('DESC') ? 'DESC' : 'ASC';
+      return { name, direction };
     })
-    .filter(Boolean) as IndexField[];
+    .filter((field): field is IndexField => field !== null);
 }

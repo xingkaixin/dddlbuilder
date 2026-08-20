@@ -9,6 +9,19 @@ import type {
 import { buildPrimaryKeyName } from '@ddlbuilder/ddl-core';
 import type { ParsedResult } from './types.js';
 import {
+  isTransactAssignList,
+  readField,
+  stringifyAstValue,
+  type AlterTableStmt,
+  type ColumnDefNode,
+  type ColumnListNode,
+  type CreateIndexStmt,
+  type CreateTableStmt,
+  type ForeignKeyNode,
+  type GrantStmt,
+  type OnActionNode,
+} from './astTypes.js';
+import {
   buildIndexFields,
   buildTypeString,
   extractFunctionName,
@@ -43,7 +56,7 @@ function pushIndex(
   });
 }
 
-function parseOnAction(actionList: any[]): {
+function parseOnAction(actionList: OnActionNode[]): {
   onDelete?: ForeignKeyAction;
   onUpdate?: ForeignKeyAction;
 } {
@@ -53,7 +66,9 @@ function parseOnAction(actionList: any[]): {
   for (const action of actionList) {
     if (!action.type || !action.value) continue;
     const actionType = action.type.toLowerCase();
-    const actionValue = action.value.value?.toUpperCase() || action.value.toUpperCase?.() || '';
+    const nestedValue = readField(action.value, 'value');
+    const rawValue = typeof nestedValue === 'string' ? nestedValue : action.value;
+    const actionValue = typeof rawValue === 'string' ? rawValue.toUpperCase() : '';
 
     if (actionType === 'on delete') {
       result.onDelete = actionValue as ForeignKeyAction;
@@ -65,26 +80,27 @@ function parseOnAction(actionList: any[]): {
   return result;
 }
 
-function pushForeignKey(result: ParsedResult, def: any) {
-  if (!def.definition || !Array.isArray(def.definition) || def.definition.length === 0) return;
-  if (!def.reference_definition) return;
-
-  const fieldNames: string[] = [];
-  for (const col of def.definition) {
-    const colName = col.column || (typeof col === 'string' ? col : null);
-    if (colName) fieldNames.push(colName);
+function collectColumnNames(columns: Array<ColumnListNode | string> | undefined): string[] {
+  if (!Array.isArray(columns)) return [];
+  const names: string[] = [];
+  for (const col of columns) {
+    // pg 等方言下 column 是嵌套节点而非字符串，这里沿用既有实现直接当作列名使用
+    const colName = typeof col === 'string' ? col : (col.column as string | undefined);
+    if (colName) names.push(colName);
   }
+  return names;
+}
+
+function pushForeignKey(result: ParsedResult, def: ForeignKeyNode) {
+  const fieldNames = collectColumnNames(def.definition);
   if (fieldNames.length === 0) return;
+  if (!def.reference_definition) return;
 
   const refDef = def.reference_definition;
   const refTableInfo = refDef.table?.[0];
   if (!refTableInfo) return;
 
-  const refFieldNames: string[] = [];
-  for (const col of refDef.definition || []) {
-    const colName = col.column || (typeof col === 'string' ? col : null);
-    if (colName) refFieldNames.push(colName);
-  }
+  const refFieldNames = collectColumnNames(refDef.definition);
   if (refFieldNames.length === 0) return;
 
   const constraintName = def.constraint || `fk_${result.tableName}_${fieldNames.join('_')}`;
@@ -132,7 +148,7 @@ function normalizeEngineName(engine: string): string {
   return MYSQL_ENGINE_NAME_MAP[normalized.toLowerCase()] ?? normalized;
 }
 
-function mapColumnToField(colDef: any, _dbType: DatabaseType): NormalizedField {
+function mapColumnToField(colDef: ColumnDefNode, _dbType: DatabaseType): NormalizedField {
   const name = normalizeColumnName(colDef.column);
   const typeStr = buildTypeString(colDef.definition);
 
@@ -187,11 +203,7 @@ function mapColumnToField(colDef: any, _dbType: DatabaseType): NormalizedField {
   // On Update
   let onUpdate: NormalizedField['onUpdate'] = 'none';
   const onUpdateSource =
-    colDef.on_update?.value ||
-    colDef.on_update ||
-    (colDef.default_val?.value && typeof colDef.default_val.value === 'object'
-      ? colDef.default_val.value.over
-      : undefined);
+    colDef.on_update?.value || colDef.on_update || readField(colDef.default_val?.value, 'over');
   const onUpdateFuncName = extractFunctionName(onUpdateSource);
   if (onUpdateFuncName && ['now', 'current_timestamp', 'sysdate'].includes(onUpdateFuncName)) {
     onUpdate = 'current_timestamp';
@@ -208,7 +220,11 @@ function mapColumnToField(colDef: any, _dbType: DatabaseType): NormalizedField {
   };
 }
 
-export function parseCreateTable(stmt: any, result: ParsedResult, dbType: DatabaseType) {
+export function parseCreateTable(
+  stmt: CreateTableStmt,
+  result: ParsedResult,
+  dbType: DatabaseType,
+) {
   // 1. Table Name
   if (stmt.table && stmt.table.length > 0) {
     const schema = stmt.table[0].db || stmt.table[0].schema || '';
@@ -228,7 +244,7 @@ export function parseCreateTable(stmt: any, result: ParsedResult, dbType: Databa
       tablespace: '',
     };
 
-    stmt.table_options.forEach((option: any) => {
+    stmt.table_options.forEach((option) => {
       const keyword = String(option.keyword || '')
         .toLowerCase()
         .trim();
@@ -275,7 +291,7 @@ export function parseCreateTable(stmt: any, result: ParsedResult, dbType: Databa
 
   // 3. Columns & Inline Indexes
   if (stmt.create_definitions) {
-    stmt.create_definitions.forEach((def: any) => {
+    stmt.create_definitions.forEach((def) => {
       if (def.resource === 'column') {
         const field = mapColumnToField(def, dbType);
         result.fields.push(field);
@@ -306,7 +322,7 @@ export function parseCreateTable(stmt: any, result: ParsedResult, dbType: Databa
         } else if (def.constraint_type === 'unique key' || def.constraint_type === 'unique') {
           const fields = buildIndexFields(def.definition || []);
           const indexName =
-            def.constraint || def.index || `uk_${fields.map((f: any) => f.name).join('_')}`;
+            def.constraint || def.index || `uk_${fields.map((f) => f.name).join('_')}`;
           pushIndex(result, indexName, fields, true, false);
         } else if (def.constraint_type?.toLowerCase() === 'foreign key') {
           pushForeignKey(result, def);
@@ -315,7 +331,8 @@ export function parseCreateTable(stmt: any, result: ParsedResult, dbType: Databa
         const fields = buildIndexFields(def.definition || []);
         pushIndex(
           result,
-          def.index,
+          // 匿名 KEY 的 index 为 null，沿用既有行为直接透传
+          def.index as string,
           fields,
           def.index_type === 'unique' || def.keyword === 'unique',
           false,
@@ -325,7 +342,11 @@ export function parseCreateTable(stmt: any, result: ParsedResult, dbType: Databa
   }
 }
 
-export function parseCreateIndex(stmt: any, result: ParsedResult, targetTableName?: string) {
+export function parseCreateIndex(
+  stmt: CreateIndexStmt,
+  result: ParsedResult,
+  targetTableName?: string,
+) {
   const indexName = stmt.index;
   const tableName = stmt.table.table;
 
@@ -351,16 +372,20 @@ export function parseCreateIndex(stmt: any, result: ParsedResult, targetTableNam
   );
 }
 
-export function parseAlterTable(stmt: any, result: ParsedResult, targetTableName?: string) {
+export function parseAlterTable(
+  stmt: AlterTableStmt,
+  result: ParsedResult,
+  targetTableName?: string,
+) {
   // Basic support for ALTER TABLE ADD PRIMARY KEY / INDEX / FOREIGN KEY
   if (!stmt.expr || !Array.isArray(stmt.expr)) return;
 
-  const alterTargetTable = stmt.table?.table;
+  const alterTargetTable = Array.isArray(stmt.table) ? undefined : stmt.table?.table;
   if (targetTableName && alterTargetTable && alterTargetTable !== targetTableName) {
     return;
   }
 
-  stmt.expr.forEach((expr: any) => {
+  stmt.expr.forEach((expr) => {
     const defs = expr.create_definitions;
     if (expr.action === 'add' && defs) {
       const constraintType = defs.constraint_type?.toLowerCase?.() || '';
@@ -396,13 +421,13 @@ export function parseAlterTable(stmt: any, result: ParsedResult, targetTableName
   });
 }
 
-export function parseDCL(stmt: any, result: ParsedResult) {
+export function parseDCL(stmt: GrantStmt, result: ParsedResult) {
   // Handle GRANT statements
   // Example: GRANT SELECT ON table TO user
   const users = stmt.user_or_roles || stmt.to;
   if (users && Array.isArray(users)) {
-    users.forEach((user: any) => {
-      const userName = user.name ? user.name.value : user.user || String(user);
+    users.forEach((user) => {
+      const userName = user.name ? user.name.value : user.user || stringifyAstValue(user);
       if (userName && !result.authObjects.includes(userName)) {
         result.authObjects.push(userName);
       }
@@ -410,12 +435,12 @@ export function parseDCL(stmt: any, result: ParsedResult) {
   }
 }
 
-export function parseTransactGrant(stmt: any, result: ParsedResult) {
-  if (!Array.isArray(stmt)) return;
-  const toPart = stmt.find((s: any) => s?.stmt?.left?.name === 'TO');
+export function parseTransactGrant(stmt: unknown, result: ParsedResult) {
+  if (!isTransactAssignList(stmt)) return;
+  const toPart = stmt.find((s) => s?.stmt?.left?.name === 'TO');
   const nameNode = toPart?.stmt?.right?.name?.[0];
   const value = nameNode?.value ?? nameNode;
-  const userName = value ? String(value) : '';
+  const userName = value ? stringifyAstValue(value) : '';
   if (userName && !result.authObjects.includes(userName)) {
     result.authObjects.push(userName);
   }

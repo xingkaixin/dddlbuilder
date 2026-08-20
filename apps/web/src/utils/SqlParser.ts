@@ -14,6 +14,13 @@ import {
   parseDCL,
   parseTransactGrant,
 } from './sql-parser/astHandlers.js';
+import {
+  isAlterTableStmt,
+  isCreateIndexStmt,
+  isCreateTableStmt,
+  isGrantStmt,
+  type AstStatement,
+} from './sql-parser/astTypes.js';
 import { loadParserConstructor } from './sql-parser/parserLoader.js';
 import { preprocessMysql } from './sql-parser/preprocessMysql.js';
 import type { ParsedResult, ParserInstance, MultiParsedResult } from './sql-parser/types.js';
@@ -163,7 +170,7 @@ export class SqlParser {
 
     const opt = this.buildAstifyOpt(dbType);
 
-    let ast: any;
+    let ast: AstStatement | AstStatement[];
     try {
       ast = parser.astify(sqlToParse, opt);
     } catch (e) {
@@ -175,9 +182,7 @@ export class SqlParser {
       throw new Error('无法解析 SQL，请检查语法或数据库类型是否正确。');
     }
 
-    if (!Array.isArray(ast)) {
-      ast = [ast];
-    }
+    const statements = Array.isArray(ast) ? ast : [ast];
 
     const result: ParsedResult = {
       tableName: '',
@@ -188,14 +193,14 @@ export class SqlParser {
       authObjects: [],
     };
 
-    for (const stmt of ast) {
-      if (stmt.type === 'create' && stmt.keyword === 'table') {
+    for (const stmt of statements) {
+      if (isCreateTableStmt(stmt)) {
         parseCreateTable(stmt, result, dbType);
-      } else if (stmt.type === 'create' && stmt.keyword === 'index') {
+      } else if (isCreateIndexStmt(stmt)) {
         parseCreateIndex(stmt, result);
-      } else if (stmt.type === 'alter' && (!stmt.keyword || stmt.keyword === 'table')) {
+      } else if (isAlterTableStmt(stmt)) {
         parseAlterTable(stmt, result);
-      } else if (stmt.type === 'grant') {
+      } else if (isGrantStmt(stmt)) {
         parseDCL(stmt, result);
       } else if (dbType === 'sqlserver') {
         parseTransactGrant(stmt, result);
@@ -223,7 +228,7 @@ export class SqlParser {
 
     const opt = this.buildAstifyOpt(dbType);
 
-    let ast: any;
+    let ast: AstStatement | AstStatement[];
     try {
       ast = parser.astify(sqlToParse, opt);
     } catch (e) {
@@ -239,9 +244,7 @@ export class SqlParser {
       return { results: [], failed: [] };
     }
 
-    if (!Array.isArray(ast)) {
-      ast = [ast];
-    }
+    const statements = Array.isArray(ast) ? ast : [ast];
 
     // Collect all extracted comments info for per-table matching
     const globalColumnComments = extractedComments?.columnComments ?? {};
@@ -252,8 +255,8 @@ export class SqlParser {
     const results: ParsedResult[] = [];
     const failed: Array<{ statement: string; error: string }> = [];
 
-    for (const stmt of ast) {
-      if (stmt.type === 'create' && stmt.keyword === 'table') {
+    for (const stmt of statements) {
+      if (isCreateTableStmt(stmt)) {
         const tableResult: ParsedResult = {
           tableName: '',
           tableComment: '',
@@ -284,20 +287,20 @@ export class SqlParser {
     }
 
     // Phase 2: Associate CREATE INDEX / ALTER TABLE / GRANT to matching tables
-    for (const stmt of ast) {
-      if (stmt.type === 'create' && stmt.keyword === 'index') {
+    for (const stmt of statements) {
+      if (isCreateIndexStmt(stmt)) {
         const indexTableName = stmt.table?.table;
         const targetResult = indexTableName ? tableMap.get(indexTableName) : undefined;
         if (targetResult) {
           parseCreateIndex(stmt, targetResult, indexTableName);
         }
-      } else if (stmt.type === 'alter' && (!stmt.keyword || stmt.keyword === 'table')) {
-        const alterTableName = stmt.table?.[0]?.table;
+      } else if (isAlterTableStmt(stmt)) {
+        const alterTableName = Array.isArray(stmt.table) ? stmt.table[0]?.table : undefined;
         const targetResult = alterTableName ? tableMap.get(alterTableName) : undefined;
         if (targetResult) {
           parseAlterTable(stmt, targetResult, alterTableName);
         }
-      } else if (stmt.type === 'grant') {
+      } else if (isGrantStmt(stmt)) {
         for (const result of results) {
           parseDCL(stmt, result);
         }

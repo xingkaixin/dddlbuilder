@@ -5,6 +5,7 @@ import type {
   TableMiscConfig,
   ForeignKeyDefinition,
 } from '@ddlbuilder/shared-types';
+import type { AstStatement } from './astTypes.js';
 
 export type ParsedResult = {
   schemaName?: string;
@@ -19,7 +20,7 @@ export type ParsedResult = {
 };
 
 export type ParserInstance = {
-  astify: (sql: string, opt: { database: string }) => any;
+  astify: (sql: string, opt: { database: string }) => AstStatement | AstStatement[];
 };
 
 export type ParserConstructor = new () => ParserInstance;
