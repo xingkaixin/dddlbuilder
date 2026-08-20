@@ -46,10 +46,10 @@ const toFieldRows = (fields: TemplateField[]): FieldRow[] => {
     fieldName: field.fieldName,
     fieldComment: field.fieldComment || '',
     fieldType: field.fieldType,
-    nullable: field.nullable === '否' ? '否' : '是',
-    defaultKind: field.defaultKind || '无',
+    nullable: field.nullable,
+    defaultKind: field.defaultKind ?? 'none',
     defaultValue: field.defaultValue || '',
-    onUpdate: field.onUpdate || '无',
+    onUpdate: field.onUpdate ?? 'none',
   }));
 };
 
@@ -60,10 +60,10 @@ const toTemplateFields = (rows: FieldRow[]): TemplateField[] => {
       fieldName: row.fieldName.trim(),
       fieldType: row.fieldType.trim(),
       fieldComment: row.fieldComment?.trim() || undefined,
-      nullable: row.nullable === '否' ? '否' : '是',
-      defaultKind: row.defaultKind || '无',
+      nullable: row.nullable,
+      defaultKind: row.defaultKind ?? 'none',
       defaultValue: row.defaultValue || '',
-      onUpdate: row.onUpdate || '无',
+      onUpdate: row.onUpdate ?? 'none',
     }));
 };
 

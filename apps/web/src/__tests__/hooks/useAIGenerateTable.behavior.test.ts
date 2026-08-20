@@ -90,8 +90,8 @@ describe('useAIGenerateTable behaviors', () => {
         fieldName: 'id',
         fieldType: 'bigint',
         fieldComment: '主键',
-        nullable: '否',
-        defaultKind: '自增',
+        nullable: false,
+        defaultKind: 'auto_increment',
       } as const,
     ];
     aiServiceMocks.requestGenerateTable

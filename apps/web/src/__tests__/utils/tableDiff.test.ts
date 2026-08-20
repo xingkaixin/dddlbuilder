@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { diffPersistedState } from '@ddlbuilder/ddl-core';
-import type { PersistedState, IndexDefinition } from '@ddlbuilder/shared-types';
+import type {
+  FieldDefaultKind,
+  FieldOnUpdate,
+  PersistedState,
+  IndexDefinition,
+} from '@ddlbuilder/shared-types';
 
 function createState(overrides: Partial<PersistedState> = {}): PersistedState {
   return {
@@ -22,18 +27,18 @@ function createRow({
   name,
   type = 'VARCHAR(100)',
   comment = '',
-  nullable = '是',
-  defaultKind = '无',
+  nullable = true,
+  defaultKind = 'none',
   defaultValue = '',
-  onUpdate = '无',
+  onUpdate = 'none',
 }: {
   name: string;
   type?: string;
   comment?: string;
-  nullable?: string;
-  defaultKind?: string;
+  nullable?: boolean;
+  defaultKind?: FieldDefaultKind;
   defaultValue?: string;
-  onUpdate?: string;
+  onUpdate?: FieldOnUpdate;
 }) {
   return {
     order: 1,
@@ -156,10 +161,10 @@ describe('diffPersistedState', () => {
 
     it('检测字段 nullable 修改', () => {
       const old = createState({
-        rows: [createRow({ name: 'name', nullable: '是' })],
+        rows: [createRow({ name: 'name', nullable: true })],
       });
       const newState = createState({
-        rows: [createRow({ name: 'name', nullable: '否' })],
+        rows: [createRow({ name: 'name', nullable: false })],
       });
       const result = diffPersistedState(old, newState);
       expect(result.hasChanges).toBe(true);
@@ -276,18 +281,18 @@ describe('diffPersistedState', () => {
     it('处理不同 defaultKind(uuid) 与 onUpdate(当前时间/current_timestamp) 变更', () => {
       const old = createState({
         rows: [
-          createRow({ name: 'f1', defaultKind: 'uuid', onUpdate: '当前时间' }),
+          createRow({ name: 'f1', defaultKind: 'uuid', onUpdate: 'current_timestamp' }),
           createRow({
             name: 'f2',
-            defaultKind: '无',
+            defaultKind: 'none',
             onUpdate: 'current_timestamp',
           }),
         ],
       });
       const newState = createState({
         rows: [
-          createRow({ name: 'f1', defaultKind: 'uuid', onUpdate: '无' }),
-          createRow({ name: 'f2', defaultKind: '常量', onUpdate: '无' }),
+          createRow({ name: 'f1', defaultKind: 'uuid', onUpdate: 'none' }),
+          createRow({ name: 'f2', defaultKind: 'constant', onUpdate: 'none' }),
         ],
       });
       const result = diffPersistedState(old, newState);
@@ -303,7 +308,7 @@ describe('diffPersistedState', () => {
             name: 'old_name',
             type: 'INT',
             comment: '测试',
-            nullable: '是',
+            nullable: true,
           }),
         ],
       });
@@ -313,7 +318,7 @@ describe('diffPersistedState', () => {
             name: 'new_name',
             type: 'INT',
             comment: '测试',
-            nullable: '否',
+            nullable: false,
           }),
         ],
       });

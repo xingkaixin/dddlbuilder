@@ -1,3 +1,4 @@
+import type { FieldDefaultKind } from '@ddlbuilder/shared-types';
 import type { ParsedResult } from '@/utils/SqlParser';
 
 export type ImportMode = 'workspace' | 'saved';
@@ -21,8 +22,8 @@ export interface PreviewField {
   fieldName: string;
   fieldType: string;
   fieldComment: string;
-  nullable: string;
-  defaultKind: string;
+  nullable: boolean;
+  defaultKind: FieldDefaultKind;
   defaultValue: string;
 }
 

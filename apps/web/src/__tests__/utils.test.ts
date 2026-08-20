@@ -6,7 +6,6 @@ import type { FieldRow } from '@/App';
 import {
   createEmptyRow,
   ensureOrder,
-  sanitizeRowsForPersist,
   isIntegerType,
   isCharacterType,
   supportsUuidDefault,
@@ -15,11 +14,13 @@ import {
   getUiOnUpdateOptions,
   toStringSafe,
   isReservedKeyword,
-  normalizeBoolean,
-  normalizeDefaultKind,
-  normalizeOnUpdate,
   normalizeFields,
 } from '@/App';
+import {
+  normalizeFieldDefaultKind,
+  normalizeFieldNullable,
+  normalizeFieldOnUpdate,
+} from '@ddlbuilder/shared-types';
 
 describe('Utils', () => {
   describe('cn function', () => {
@@ -450,10 +451,10 @@ describe('Utils', () => {
         fieldName: '',
         fieldType: '',
         fieldComment: '',
-        nullable: '是',
-        defaultKind: '无',
+        nullable: true,
+        defaultKind: 'none',
         defaultValue: '',
-        onUpdate: '无',
+        onUpdate: 'none',
       });
     });
 
@@ -474,30 +475,30 @@ describe('Utils', () => {
           fieldName: 'name1',
           fieldType: 'text',
           fieldComment: '',
-          nullable: '是',
-          defaultKind: '无',
+          nullable: true,
+          defaultKind: 'none',
           defaultValue: '',
-          onUpdate: '无',
+          onUpdate: 'none',
         },
         {
           order: 3,
           fieldName: 'name2',
           fieldType: 'int',
           fieldComment: '',
-          nullable: '否',
-          defaultKind: '无',
+          nullable: false,
+          defaultKind: 'none',
           defaultValue: '',
-          onUpdate: '无',
+          onUpdate: 'none',
         },
         {
           order: 2,
           fieldName: 'name3',
           fieldType: 'varchar',
           fieldComment: '',
-          nullable: '是',
-          defaultKind: '无',
+          nullable: true,
+          defaultKind: 'none',
           defaultValue: '',
-          onUpdate: '无',
+          onUpdate: 'none',
         },
       ];
 
@@ -519,10 +520,10 @@ describe('Utils', () => {
           fieldName: 'test',
           fieldType: 'int',
           fieldComment: 'comment',
-          nullable: '否',
-          defaultKind: '自增',
+          nullable: false,
+          defaultKind: 'auto_increment',
           defaultValue: '1',
-          onUpdate: '无',
+          onUpdate: 'none',
         },
       ];
 
@@ -533,144 +534,11 @@ describe('Utils', () => {
         fieldName: 'test',
         fieldType: 'int',
         fieldComment: 'comment',
-        nullable: '否',
-        defaultKind: '自增',
+        nullable: false,
+        defaultKind: 'auto_increment',
         defaultValue: '1',
-        onUpdate: '无',
+        onUpdate: 'none',
       });
-    });
-  });
-
-  describe('sanitizeRowsForPersist function', () => {
-    it('应该正确清理行数据用于持久化', () => {
-      const rows: FieldRow[] = [
-        {
-          order: 1,
-          fieldName: 'id',
-          fieldType: 'int',
-          fieldComment: 'Primary key',
-          nullable: '否',
-          defaultKind: '自增',
-          defaultValue: '',
-          onUpdate: '无',
-        },
-        {
-          order: 2,
-          fieldName: 'name',
-          fieldType: 'varchar(255)',
-          fieldComment: 'Name field',
-          nullable: '是',
-          defaultKind: '常量',
-          defaultValue: 'test',
-          onUpdate: '无',
-        },
-      ];
-
-      const result = sanitizeRowsForPersist(rows);
-
-      expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({
-        order: 1,
-        fieldName: 'id',
-        fieldType: 'int',
-        fieldComment: 'Primary key',
-        nullable: '否',
-        defaultKind: '自增',
-        defaultValue: '',
-        onUpdate: '无',
-        enumMeta: undefined,
-      });
-    });
-
-    it('应该修正无效的 nullable 值', () => {
-      const rows: FieldRow[] = [
-        {
-          order: 1,
-          fieldName: 'test',
-          fieldType: 'text',
-          fieldComment: '',
-          nullable: 'yes' as any, // 无效值
-          defaultKind: '无',
-          defaultValue: '',
-          onUpdate: '无',
-        },
-      ];
-
-      const result = sanitizeRowsForPersist(rows);
-
-      expect(result[0].nullable).toBe('否');
-    });
-
-    it('应该修正无效的 defaultKind 和 onUpdate 值', () => {
-      const rows: FieldRow[] = [
-        {
-          order: 1,
-          fieldName: 'test',
-          fieldType: 'text',
-          fieldComment: '',
-          nullable: '是',
-          defaultKind: 'invalid' as any, // 无效值
-          defaultValue: '',
-          onUpdate: 'invalid' as any, // 无效值
-        },
-      ];
-
-      const result = sanitizeRowsForPersist(rows);
-
-      expect(result[0].defaultKind).toBe('无');
-      expect(result[0].onUpdate).toBe('无');
-    });
-
-    it('应该处理 null/undefined 值', () => {
-      const rows: FieldRow[] = [
-        {
-          order: 1,
-          fieldName: null as any,
-          fieldType: undefined as any,
-          fieldComment: null as any,
-          nullable: null as any,
-          defaultKind: null as any,
-          defaultValue: null as any,
-          onUpdate: null as any,
-        },
-      ];
-
-      const result = sanitizeRowsForPersist(rows);
-
-      expect(result[0]).toEqual({
-        order: 1,
-        fieldName: '',
-        fieldType: '',
-        fieldComment: '',
-        nullable: '否',
-        defaultKind: null, // null 值会被保留，因为不在 DEFAULT_KIND_OPTIONS 中
-        defaultValue: '',
-        onUpdate: null, // null 值会被保留，因为不在 ON_UPDATE_OPTIONS 中
-        enumMeta: undefined,
-      });
-    });
-
-    it('应该保留 enumMeta 用于持久化', () => {
-      const rows: FieldRow[] = [
-        {
-          order: 1,
-          fieldName: 'status',
-          fieldType: 'char(1)',
-          fieldComment: '状态',
-          nullable: '否',
-          defaultKind: '无',
-          defaultValue: '',
-          onUpdate: '无',
-          enumMeta: [
-            { value: '0', color: '#ef4444', i18n: { 'zh-CN': '删除', 'en-US': 'Deleted' } },
-            { value: '1', color: '#22c55e', i18n: { 'zh-CN': '正常', 'en-US': 'Normal' } },
-          ],
-        },
-      ];
-
-      const result = sanitizeRowsForPersist(rows);
-
-      expect(result[0].enumMeta).toEqual(rows[0].enumMeta);
     });
   });
 
@@ -733,35 +601,35 @@ describe('Utils', () => {
   describe('getUiDefaultKindOptions function', () => {
     it('应该为支持自增的整数类型返回正确的选项', () => {
       const result = getUiDefaultKindOptions('mysql', 'int');
-      expect(result).toContain('无');
-      expect(result).toContain('自增');
-      expect(result).toContain('常量');
+      expect(result).toContain('none');
+      expect(result).toContain('auto_increment');
+      expect(result).toContain('constant');
       expect(result.length).toBeGreaterThanOrEqual(3);
     });
 
     it('应该为字符类型包含 uuid 选项', () => {
       const result = getUiDefaultKindOptions('mysql', 'varchar');
-      expect(result).toContain('无');
-      expect(result).toContain('常量');
+      expect(result).toContain('none');
+      expect(result).toContain('constant');
       expect(result).toContain('uuid');
     });
 
     it('应该为支持时间戳的类型包含当前时间选项', () => {
       const result = getUiDefaultKindOptions('mysql', 'timestamp');
-      expect(result).toContain('无');
-      expect(result).toContain('常量');
-      expect(result).toContain('当前时间');
+      expect(result).toContain('none');
+      expect(result).toContain('constant');
+      expect(result).toContain('current_timestamp');
     });
 
     it('应该为不支持的类型只返回基本选项', () => {
       const result = getUiDefaultKindOptions('mysql', 'float');
-      expect(result).toEqual(['无', '常量']);
+      expect(result).toEqual(['none', 'constant']);
     });
 
     it('应该正确组合多个支持的选项', () => {
       const result = getUiDefaultKindOptions('postgresql', 'varchar');
-      expect(result).toContain('无');
-      expect(result).toContain('常量');
+      expect(result).toContain('none');
+      expect(result).toContain('constant');
       expect(result).toContain('uuid');
       // PostgreSQL 的 varchar 类型不支持 "当前时间"，只有 timestamp 类型才支持
     });
@@ -770,28 +638,28 @@ describe('Utils', () => {
   describe('getUiOnUpdateOptions function', () => {
     it('应该为 MySQL timestamp 类型返回当前时间选项', () => {
       const result = getUiOnUpdateOptions('mysql', 'timestamp');
-      expect(result).toEqual(['无', '当前时间']);
+      expect(result).toEqual(['none', 'current_timestamp']);
     });
 
     it('应兼容附带约束的时间戳类型', () => {
       const base = getCanonicalBaseType('timestamp(6) not null');
       const result = getUiOnUpdateOptions('mysql', base);
-      expect(result).toEqual(['无', '当前时间']);
+      expect(result).toEqual(['none', 'current_timestamp']);
     });
 
     it('应该为 MySQL datetime 类型返回当前时间选项', () => {
       const result = getUiOnUpdateOptions('mysql', 'datetime');
-      expect(result).toEqual(['无', '当前时间']);
+      expect(result).toEqual(['none', 'current_timestamp']);
     });
 
     it('应该为非 MySQL 数据库只返回无选项', () => {
       const result = getUiOnUpdateOptions('postgresql', 'timestamp');
-      expect(result).toEqual(['无']);
+      expect(result).toEqual(['none']);
     });
 
     it('应该为不支持的字段类型只返回无选项', () => {
       const result = getUiOnUpdateOptions('mysql', 'int');
-      expect(result).toEqual(['无']);
+      expect(result).toEqual(['none']);
     });
   });
 
@@ -799,92 +667,92 @@ describe('Utils', () => {
     describe('MariaDB', () => {
       it('应该支持整数类型的自增', () => {
         const result = getUiDefaultKindOptions('mariadb', 'int');
-        expect(result).toContain('自增');
+        expect(result).toContain('auto_increment');
       });
 
       it('应该支持 timestamp 和 datetime 的当前时间默认值', () => {
         const result1 = getUiDefaultKindOptions('mariadb', 'timestamp');
-        expect(result1).toContain('当前时间');
+        expect(result1).toContain('current_timestamp');
 
         const result2 = getUiDefaultKindOptions('mariadb', 'datetime');
-        expect(result2).toContain('当前时间');
+        expect(result2).toContain('current_timestamp');
       });
 
       it('应该支持 timestamp 和 datetime 的 ON UPDATE CURRENT_TIMESTAMP', () => {
         const result1 = getUiOnUpdateOptions('mariadb', 'timestamp');
-        expect(result1).toEqual(['无', '当前时间']);
+        expect(result1).toEqual(['none', 'current_timestamp']);
 
         const result2 = getUiOnUpdateOptions('mariadb', 'datetime');
-        expect(result2).toEqual(['无', '当前时间']);
+        expect(result2).toEqual(['none', 'current_timestamp']);
       });
     });
 
     describe('TiDB', () => {
       it('应该支持整数类型的自增', () => {
         const result = getUiDefaultKindOptions('tidb', 'int');
-        expect(result).toContain('自增');
+        expect(result).toContain('auto_increment');
       });
 
       it('应该支持 timestamp 和 datetime 的当前时间默认值', () => {
         const result1 = getUiDefaultKindOptions('tidb', 'timestamp');
-        expect(result1).toContain('当前时间');
+        expect(result1).toContain('current_timestamp');
 
         const result2 = getUiDefaultKindOptions('tidb', 'datetime');
-        expect(result2).toContain('当前时间');
+        expect(result2).toContain('current_timestamp');
       });
 
       it('应该支持 timestamp 和 datetime 的 ON UPDATE CURRENT_TIMESTAMP', () => {
         const result1 = getUiOnUpdateOptions('tidb', 'timestamp');
-        expect(result1).toEqual(['无', '当前时间']);
+        expect(result1).toEqual(['none', 'current_timestamp']);
 
         const result2 = getUiOnUpdateOptions('tidb', 'datetime');
-        expect(result2).toEqual(['无', '当前时间']);
+        expect(result2).toEqual(['none', 'current_timestamp']);
       });
     });
 
     describe('OceanBase MySQL 模式', () => {
       it('应该支持整数类型的自增', () => {
         const result = getUiDefaultKindOptions('oceanbase', 'int');
-        expect(result).toContain('自增');
+        expect(result).toContain('auto_increment');
       });
 
       it('应该支持 timestamp 和 datetime 的当前时间默认值', () => {
         const result1 = getUiDefaultKindOptions('oceanbase', 'timestamp');
-        expect(result1).toContain('当前时间');
+        expect(result1).toContain('current_timestamp');
 
         const result2 = getUiDefaultKindOptions('oceanbase', 'datetime');
-        expect(result2).toContain('当前时间');
+        expect(result2).toContain('current_timestamp');
       });
 
       it('应该支持 timestamp 和 datetime 的 ON UPDATE CURRENT_TIMESTAMP', () => {
         const result1 = getUiOnUpdateOptions('oceanbase', 'timestamp');
-        expect(result1).toEqual(['无', '当前时间']);
+        expect(result1).toEqual(['none', 'current_timestamp']);
 
         const result2 = getUiOnUpdateOptions('oceanbase', 'datetime');
-        expect(result2).toEqual(['无', '当前时间']);
+        expect(result2).toEqual(['none', 'current_timestamp']);
       });
     });
 
     describe('OceanBase Oracle 模式', () => {
       it('应该支持数值类型的自增', () => {
         const result1 = getUiDefaultKindOptions('oceanbase-oracle', 'int');
-        expect(result1).toContain('自增');
+        expect(result1).toContain('auto_increment');
 
         const result2 = getUiDefaultKindOptions('oceanbase-oracle', 'decimal');
-        expect(result2).toContain('自增');
+        expect(result2).toContain('auto_increment');
       });
 
       it('应该支持 timestamp 和 date 的当前时间默认值', () => {
         const result1 = getUiDefaultKindOptions('oceanbase-oracle', 'timestamp');
-        expect(result1).toContain('当前时间');
+        expect(result1).toContain('current_timestamp');
 
         const result2 = getUiDefaultKindOptions('oceanbase-oracle', 'date');
-        expect(result2).toContain('当前时间');
+        expect(result2).toContain('current_timestamp');
       });
 
       it('不应该支持 ON UPDATE CURRENT_TIMESTAMP', () => {
         const result = getUiOnUpdateOptions('oceanbase-oracle', 'timestamp');
-        expect(result).toEqual(['无']);
+        expect(result).toEqual(['none']);
       });
     });
   });
@@ -892,17 +760,17 @@ describe('Utils', () => {
   describe('Unknown database types', () => {
     it('应该对未知数据库类型不支持自增', () => {
       const result = getUiDefaultKindOptions('unknown_db' as any, 'int');
-      expect(result).toEqual(['无', '常量']); // 不包含 '自增'
+      expect(result).toEqual(['none', 'constant']); // 不包含 auto_increment
     });
 
     it('应该对未知数据库类型不支持当前时间默认值', () => {
       const result = getUiDefaultKindOptions('unknown_db' as any, 'timestamp');
-      expect(result).toEqual(['无', '常量']); // 不包含 '当前时间'
+      expect(result).toEqual(['none', 'constant']); // 不包含 current_timestamp
     });
 
     it('应该对未知数据库类型不支持当前时间更新', () => {
       const result = getUiOnUpdateOptions('unknown_db' as any, 'timestamp');
-      expect(result).toEqual(['无']); // 不包含 '当前时间'
+      expect(result).toEqual(['none']); // 不包含 current_timestamp
     });
   });
 
@@ -953,56 +821,77 @@ describe('Utils', () => {
     });
   });
 
-  describe('normalizeBoolean', () => {
-    it('returns true for yes-like values', () => {
-      expect(normalizeBoolean('是')).toBe(true);
-      expect(normalizeBoolean('yes')).toBe(true);
-      expect(normalizeBoolean('YES')).toBe(true);
-      expect(normalizeBoolean('true')).toBe(true);
-      expect(normalizeBoolean('1')).toBe(true);
+  describe('normalizeFieldNullable', () => {
+    it('keeps booleans written by the current format', () => {
+      expect(normalizeFieldNullable(true)).toBe(true);
+      expect(normalizeFieldNullable(false)).toBe(false);
+    });
+
+    it('reads legacy Chinese values', () => {
+      expect(normalizeFieldNullable('是')).toBe(true);
+      expect(normalizeFieldNullable('否')).toBe(false);
     });
 
     it('returns false for no-like values', () => {
-      expect(normalizeBoolean('否')).toBe(false);
-      expect(normalizeBoolean('no')).toBe(false);
-      expect(normalizeBoolean('false')).toBe(false);
-      expect(normalizeBoolean('0')).toBe(false);
+      expect(normalizeFieldNullable('no')).toBe(false);
+      expect(normalizeFieldNullable('NO')).toBe(false);
+      expect(normalizeFieldNullable('false')).toBe(false);
+      expect(normalizeFieldNullable('0')).toBe(false);
+      expect(normalizeFieldNullable('not null')).toBe(false);
     });
 
-    it('returns false for null and undefined', () => {
-      expect(normalizeBoolean(null as any)).toBe(false);
-      expect(normalizeBoolean(undefined as any)).toBe(false);
-    });
-
-    it('returns false for empty string', () => {
-      expect(normalizeBoolean('')).toBe(false);
-    });
-  });
-
-  describe('normalizeDefaultKind', () => {
-    it('maps Chinese labels to canonical values', () => {
-      expect(normalizeDefaultKind('自增')).toBe('auto_increment');
-      expect(normalizeDefaultKind('常量')).toBe('constant');
-      expect(normalizeDefaultKind('当前时间')).toBe('current_timestamp');
-      expect(normalizeDefaultKind('uuid')).toBe('uuid');
-    });
-
-    it('returns none for unknown values', () => {
-      expect(normalizeDefaultKind('unknown')).toBe('none');
-      expect(normalizeDefaultKind('')).toBe('none');
-      expect(normalizeDefaultKind(undefined)).toBe('none');
+    // 只有明确表达「非空」的取值才算非空，其余按 SQL 惯例视为可空
+    it('returns true for unknown and missing values', () => {
+      expect(normalizeFieldNullable('unknown')).toBe(true);
+      expect(normalizeFieldNullable('')).toBe(true);
+      expect(normalizeFieldNullable(null)).toBe(true);
+      expect(normalizeFieldNullable(undefined)).toBe(true);
+      expect(normalizeFieldNullable({})).toBe(true);
     });
   });
 
-  describe('normalizeOnUpdate', () => {
-    it('maps current time label to canonical value', () => {
-      expect(normalizeOnUpdate('当前时间')).toBe('current_timestamp');
+  describe('normalizeFieldDefaultKind', () => {
+    it('keeps tokens written by the current format', () => {
+      expect(normalizeFieldDefaultKind('none')).toBe('none');
+      expect(normalizeFieldDefaultKind('auto_increment')).toBe('auto_increment');
+      expect(normalizeFieldDefaultKind('constant')).toBe('constant');
+      expect(normalizeFieldDefaultKind('current_timestamp')).toBe('current_timestamp');
+      expect(normalizeFieldDefaultKind('uuid')).toBe('uuid');
     });
 
-    it('returns none for other values', () => {
-      expect(normalizeOnUpdate('无')).toBe('none');
-      expect(normalizeOnUpdate('')).toBe('none');
-      expect(normalizeOnUpdate(undefined)).toBe('none');
+    it('maps legacy Chinese labels to canonical values', () => {
+      expect(normalizeFieldDefaultKind('无')).toBe('none');
+      expect(normalizeFieldDefaultKind('自增')).toBe('auto_increment');
+      expect(normalizeFieldDefaultKind('常量')).toBe('constant');
+      expect(normalizeFieldDefaultKind('当前时间')).toBe('current_timestamp');
+    });
+
+    it('returns none for unknown and missing values', () => {
+      expect(normalizeFieldDefaultKind('unknown')).toBe('none');
+      expect(normalizeFieldDefaultKind('')).toBe('none');
+      expect(normalizeFieldDefaultKind(undefined)).toBe('none');
+      expect(normalizeFieldDefaultKind(null)).toBe('none');
+      expect(normalizeFieldDefaultKind('constructor')).toBe('none');
+    });
+  });
+
+  describe('normalizeFieldOnUpdate', () => {
+    it('keeps tokens written by the current format', () => {
+      expect(normalizeFieldOnUpdate('none')).toBe('none');
+      expect(normalizeFieldOnUpdate('current_timestamp')).toBe('current_timestamp');
+    });
+
+    it('maps legacy Chinese labels to canonical values', () => {
+      expect(normalizeFieldOnUpdate('无')).toBe('none');
+      expect(normalizeFieldOnUpdate('当前时间')).toBe('current_timestamp');
+    });
+
+    it('returns none for unknown and missing values', () => {
+      expect(normalizeFieldOnUpdate('unknown')).toBe('none');
+      expect(normalizeFieldOnUpdate('')).toBe('none');
+      expect(normalizeFieldOnUpdate(undefined)).toBe('none');
+      expect(normalizeFieldOnUpdate(null)).toBe('none');
+      expect(normalizeFieldOnUpdate('constructor')).toBe('none');
     });
   });
 
@@ -1014,20 +903,20 @@ describe('Utils', () => {
           fieldName: '  id  ',
           fieldType: '  bigint  ',
           fieldComment: '  PK  ',
-          nullable: '否',
-          defaultKind: '自增',
+          nullable: false,
+          defaultKind: 'auto_increment',
           defaultValue: '',
-          onUpdate: '无',
+          onUpdate: 'none',
         },
         {
           order: 2,
           fieldName: 'name',
           fieldType: 'varchar(255)',
           fieldComment: '',
-          nullable: '是',
-          defaultKind: '无',
+          nullable: true,
+          defaultKind: 'none',
           defaultValue: '',
-          onUpdate: '无',
+          onUpdate: 'none',
         },
       ];
 
@@ -1063,30 +952,30 @@ describe('Utils', () => {
           fieldName: '',
           fieldType: 'int',
           fieldComment: '',
-          nullable: '否',
-          defaultKind: '无',
+          nullable: false,
+          defaultKind: 'none',
           defaultValue: '',
-          onUpdate: '无',
+          onUpdate: 'none',
         },
         {
           order: 2,
           fieldName: 'valid',
           fieldType: '',
           fieldComment: '',
-          nullable: '否',
-          defaultKind: '无',
+          nullable: false,
+          defaultKind: 'none',
           defaultValue: '',
-          onUpdate: '无',
+          onUpdate: 'none',
         },
         {
           order: 3,
           fieldName: 'good',
           fieldType: 'text',
           fieldComment: '',
-          nullable: '否',
-          defaultKind: '无',
+          nullable: false,
+          defaultKind: 'none',
           defaultValue: '',
-          onUpdate: '无',
+          onUpdate: 'none',
         },
       ];
 
@@ -1102,10 +991,10 @@ describe('Utils', () => {
           fieldName: 'status',
           fieldType: 'char(1)',
           fieldComment: '状态',
-          nullable: '否',
-          defaultKind: '无',
+          nullable: false,
+          defaultKind: 'none',
           defaultValue: '',
-          onUpdate: '无',
+          onUpdate: 'none',
           enumMeta: [{ value: '0', color: '#ef4444' }],
         },
       ];

@@ -16,10 +16,10 @@ const SYSTEM_PROMPT_TEMPLATES: Record<AppLocale, string> = {
       "fieldName": "字段名",
       "fieldType": "数据类型",
       "fieldComment": "字段注释",
-      "nullable": "是" | "否",
-      "defaultKind": "无" | "自增" | "常量" | "当前时间" | "uuid",
-      "defaultValue": "默认值（仅当 defaultKind 为常量时填写）",
-      "onUpdate": "无" | "当前时间",
+      "nullable": true | false,
+      "defaultKind": "none" | "auto_increment" | "constant" | "current_timestamp" | "uuid",
+      "defaultValue": "默认值（仅当 defaultKind 为 constant 时填写）",
+      "onUpdate": "none" | "current_timestamp",
       "isPrimaryKey": true | false
     }
   ],
@@ -61,7 +61,7 @@ Return JSON only, in this format:
       "fieldName": "field name",
       "fieldType": "data type",
       "fieldComment": "field comment",
-      "nullable": "yes" | "no",
+      "nullable": true | false,
       "defaultKind": "none" | "auto_increment" | "constant" | "current_timestamp" | "uuid",
       "defaultValue": "default value (only when defaultKind is constant)",
       "onUpdate": "none" | "current_timestamp",

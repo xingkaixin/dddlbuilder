@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type {
+  FieldRow,
   PersistedState,
   NormalizedField,
   IndexDefinition,
@@ -31,14 +32,15 @@ const createPersistedState = (overrides: Partial<PersistedState> = {}): Persiste
   ...overrides,
 });
 
-const createRow = (overrides: Partial<Record<string, string>> = {}): Record<string, string> => ({
+const createRow = (overrides: Partial<FieldRow> = {}): FieldRow => ({
+  order: 1,
   fieldName: 'id',
   fieldType: 'int',
   fieldComment: '',
-  nullable: '否',
-  defaultKind: '',
+  nullable: false,
+  defaultKind: 'none',
   defaultValue: '',
-  onUpdate: '',
+  onUpdate: 'none',
   ...overrides,
 });
 
@@ -50,6 +52,39 @@ describe('diffPersistedState', () => {
     expect(diff.fields).toHaveLength(0);
     expect(diff.indexes).toHaveLength(0);
     expect(diff.foreignKeys).toHaveLength(0);
+  });
+
+  it('returns no changes when only the field enum encoding differs', () => {
+    const legacyRows = [
+      { fieldName: 'id', nullable: '否', defaultKind: '自增', onUpdate: '无' },
+      {
+        order: 2,
+        fieldName: 'created_at',
+        fieldType: 'timestamp',
+        nullable: '否',
+        defaultKind: '当前时间',
+        onUpdate: '当前时间',
+      },
+    ].map((row) => createRow(row as Partial<FieldRow>));
+    const currentRows = [
+      createRow({ nullable: false, defaultKind: 'auto_increment', onUpdate: 'none' }),
+      createRow({
+        order: 2,
+        fieldName: 'created_at',
+        fieldType: 'timestamp',
+        nullable: false,
+        defaultKind: 'current_timestamp',
+        onUpdate: 'current_timestamp',
+      }),
+    ];
+
+    const diff = diffPersistedState(
+      createPersistedState({ rows: legacyRows }),
+      createPersistedState({ rows: currentRows }),
+    );
+
+    expect(diff.fields).toHaveLength(0);
+    expect(diff.hasChanges).toBe(false);
   });
 
   it('detects table name change', () => {
@@ -111,10 +146,10 @@ describe('diffPersistedState', () => {
 
   it('detects modified field nullable', () => {
     const oldState = createPersistedState({
-      rows: [createRow({ fieldName: 'age', nullable: '否' })],
+      rows: [createRow({ fieldName: 'age', nullable: false })],
     });
     const newState = createPersistedState({
-      rows: [createRow({ fieldName: 'age', nullable: '是' })],
+      rows: [createRow({ fieldName: 'age', nullable: true })],
     });
     const diff = diffPersistedState(oldState, newState);
     expect(diff.fields[0].type).toBe('modify');
@@ -123,10 +158,10 @@ describe('diffPersistedState', () => {
 
   it('detects modified field default', () => {
     const oldState = createPersistedState({
-      rows: [createRow({ fieldName: 'status', defaultKind: '', defaultValue: '' })],
+      rows: [createRow({ fieldName: 'status', defaultKind: 'none', defaultValue: '' })],
     });
     const newState = createPersistedState({
-      rows: [createRow({ fieldName: 'status', defaultKind: '常量', defaultValue: 'active' })],
+      rows: [createRow({ fieldName: 'status', defaultKind: 'constant', defaultValue: 'active' })],
     });
     const diff = diffPersistedState(oldState, newState);
     expect(diff.fields[0].type).toBe('modify');

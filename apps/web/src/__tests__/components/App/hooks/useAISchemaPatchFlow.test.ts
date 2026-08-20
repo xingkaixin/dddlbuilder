@@ -8,7 +8,7 @@ const row = (fieldName: string, order: number): FieldRow => ({
   fieldName,
   fieldType: 'bigint',
   fieldComment: '',
-  nullable: '否',
+  nullable: false,
 });
 
 const oldIndex: IndexDefinition = {

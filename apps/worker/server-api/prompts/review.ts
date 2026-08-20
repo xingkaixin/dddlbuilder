@@ -28,17 +28,17 @@ export const REVIEW_SYSTEM_PROMPT: Record<AppLocale, string> = {
         "fieldName": "string",
         "fieldType": "string",
         "fieldComment": "string",
-        "nullable": "是" | "否",
-        "defaultKind": "无" | "自增" | "常量" | "当前时间" | "uuid",
+        "nullable": true | false,
+        "defaultKind": "none" | "auto_increment" | "constant" | "current_timestamp" | "uuid",
         "defaultValue": "string",
-        "onUpdate": "无" | "当前时间"
+        "onUpdate": "none" | "current_timestamp"
       },
       "fieldModification": {
         "fieldName": "string",
         "changes": {
           "fieldType": "string",
           "fieldComment": "string",
-          "nullable": "是" | "否",
+          "nullable": true | false,
           "defaultKind": "string",
           "defaultValue": "string",
           "onUpdate": "string"
@@ -84,7 +84,7 @@ Return JSON only:
         "fieldName": "string",
         "fieldType": "string",
         "fieldComment": "string",
-        "nullable": "yes" | "no",
+        "nullable": true | false,
         "defaultKind": "none" | "auto_increment" | "constant" | "current_timestamp" | "uuid",
         "defaultValue": "string",
         "onUpdate": "none" | "current_timestamp"
@@ -94,7 +94,7 @@ Return JSON only:
         "changes": {
           "fieldType": "string",
           "fieldComment": "string",
-          "nullable": "yes" | "no",
+          "nullable": true | false,
           "defaultKind": "string",
           "defaultValue": "string",
           "onUpdate": "string"

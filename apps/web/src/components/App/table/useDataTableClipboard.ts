@@ -1,16 +1,7 @@
 import { useCallback } from 'react';
 import type { ClipboardEvent } from 'react';
 import type { FieldRow } from '@ddlbuilder/shared-types';
-
-const parseNullable = (value: string): string => {
-  if (!value) return '是';
-  const v = value.trim().toLowerCase();
-  const notNullableValues = new Set(['n', 'no', '否', 'false', '0', 'not null', 'notnull']);
-  if (notNullableValues.has(v)) {
-    return '否';
-  }
-  return '是';
-};
+import { createEmptyRow, normalizeFieldCellValue } from '@/utils/helpers';
 
 interface UseDataTableClipboardParams {
   rows: FieldRow[];
@@ -65,16 +56,7 @@ export function useDataTableClipboard({
         const targetRowIndex = startRow + rowOffset;
 
         while (newRows.length <= targetRowIndex) {
-          newRows.push({
-            order: newRows.length + 1,
-            fieldName: '',
-            fieldComment: '',
-            fieldType: '',
-            nullable: '是',
-            defaultKind: '无',
-            defaultValue: '',
-            onUpdate: '无',
-          });
+          newRows.push(createEmptyRow(newRows.length));
         }
 
         const row = { ...newRows[targetRowIndex] };
@@ -93,12 +75,7 @@ export function useDataTableClipboard({
             }
           }
 
-          if (key === 'nullable') {
-            row.nullable = parseNullable(value);
-          } else {
-            (row as Record<string, unknown>)[key] =
-              value || (key === 'defaultKind' || key === 'onUpdate' ? '无' : '');
-          }
+          (row as Record<string, unknown>)[key] = normalizeFieldCellValue(key, value);
         });
         newRows[targetRowIndex] = row;
       });

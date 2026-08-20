@@ -16,30 +16,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTranslation } from 'react-i18next';
+import type { FieldRow } from '@ddlbuilder/shared-types';
 
 interface CreateTemplateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  selectedFields: Array<{
-    fieldName?: string;
-    fieldType?: string;
-    fieldComment?: string;
-    nullable?: string;
-    defaultKind?: string;
-    defaultValue?: string;
-    onUpdate?: string;
-  }>;
+  selectedFields: Array<Partial<FieldRow>>;
   onConfirm: (
     name: string,
-    fields: Array<{
-      fieldName?: string;
-      fieldType?: string;
-      fieldComment?: string;
-      nullable?: string;
-      defaultKind?: string;
-      defaultValue?: string;
-      onUpdate?: string;
-    }>,
+    fields: Array<Partial<FieldRow>>,
     description?: string,
   ) => Promise<{ ok: boolean }>;
 }

@@ -89,10 +89,10 @@ const createState = (tableName: string, fieldName: string) => ({
       fieldName,
       fieldType: 'BIGINT',
       fieldComment: '',
-      nullable: '否',
-      defaultKind: '无',
+      nullable: false,
+      defaultKind: 'none',
       defaultValue: '',
-      onUpdate: '无',
+      onUpdate: 'none',
     },
   ],
   addCount: 12,
@@ -249,13 +249,13 @@ const readTableDocState = (tableDoc: Y.Map<unknown> | undefined) => {
               ? String(field.get('fieldComment'))
               : (fallback?.fieldComment ?? ''),
           nullable:
-            typeof field.get('nullable') === 'string'
-              ? String(field.get('nullable'))
-              : (fallback?.nullable ?? '是'),
+            typeof field.get('nullable') === 'boolean'
+              ? Boolean(field.get('nullable'))
+              : (fallback?.nullable ?? true),
           defaultKind:
             typeof field.get('defaultKind') === 'string'
               ? String(field.get('defaultKind'))
-              : (fallback?.defaultKind ?? '无'),
+              : (fallback?.defaultKind ?? 'none'),
           defaultValue:
             typeof field.get('defaultValue') === 'string'
               ? String(field.get('defaultValue'))
@@ -263,7 +263,7 @@ const readTableDocState = (tableDoc: Y.Map<unknown> | undefined) => {
           onUpdate:
             typeof field.get('onUpdate') === 'string'
               ? String(field.get('onUpdate'))
-              : (fallback?.onUpdate ?? '无'),
+              : (fallback?.onUpdate ?? 'none'),
         };
       })
       .filter((row): row is ReturnType<typeof createState>['rows'][number] => row != null),

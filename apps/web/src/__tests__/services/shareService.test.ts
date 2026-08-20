@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '@/i18n';
 import { ShareApiError, createShare, getShareState } from '@/services/shareService';
 import type { PersistedState } from '@ddlbuilder/shared-types';
+import { buildDDL } from '@ddlbuilder/ddl-core';
+import { normalizeFields } from '@/utils/helpers';
 
 const createState = (): PersistedState => ({
   schemaName: '',
@@ -158,6 +160,60 @@ describe('shareService', () => {
 
     expect(result).toEqual(state);
     expect(fetchMock).toHaveBeenCalledWith(`/api/share/${encodeURIComponent(shareId)}`);
+  });
+
+  it('getShareState 应归一化服务端 KV 里迁移前写入的字段枚举值', async () => {
+    const legacyState = {
+      ...createState(),
+      rows: [
+        {
+          order: 1,
+          fieldName: 'id',
+          fieldType: 'BIGINT',
+          fieldComment: '主键',
+          nullable: '否',
+          defaultKind: '自增',
+          defaultValue: '',
+          onUpdate: '无',
+        },
+        {
+          order: 2,
+          fieldName: 'created_at',
+          fieldType: 'TIMESTAMP',
+          fieldComment: '创建时间',
+          nullable: '否',
+          defaultKind: '当前时间',
+          defaultValue: '',
+          onUpdate: '当前时间',
+        },
+      ],
+    } as unknown as PersistedState;
+
+    vi.mocked(fetch).mockResolvedValue(
+      mockResponse({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 's1', state: legacyState }),
+      }),
+    );
+
+    const result = await getShareState('s1');
+
+    expect(result.rows).toEqual([
+      { ...legacyState.rows[0], nullable: false, defaultKind: 'auto_increment', onUpdate: 'none' },
+      {
+        ...legacyState.rows[1],
+        nullable: false,
+        defaultKind: 'current_timestamp',
+        onUpdate: 'current_timestamp',
+      },
+    ]);
+
+    const ddl = buildDDL('mysql', result.tableName, '', normalizeFields(result.rows));
+    expect(ddl).toContain('AUTO_INCREMENT');
+    expect(ddl).toContain('NOT NULL');
+    expect(ddl).toContain('DEFAULT CURRENT_TIMESTAMP');
+    expect(ddl).toContain('ON UPDATE CURRENT_TIMESTAMP');
   });
 
   it('getShareState 在 state 非对象时应抛出业务错误', async () => {

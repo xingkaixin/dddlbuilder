@@ -1,3 +1,5 @@
+import type { FieldRow } from './fieldRow.js';
+
 export type DatabaseType =
   | 'mysql'
   | 'postgresql'
@@ -15,34 +17,22 @@ export type DatabaseType =
   | 'gaussdb'
   | 'hive';
 
-export type EnumValueMeta = {
-  value: string;
-  color?: string;
-  i18n?: Record<string, string>;
-};
-
-export type FieldRow = {
-  order: number;
-  fieldName: string;
-  fieldType: string;
-  fieldComment: string;
-  nullable: string;
-  defaultKind?: string;
-  defaultValue?: string;
-  onUpdate?: string;
-  enumMeta?: EnumValueMeta[];
-};
-
-export type NormalizedField = {
-  name: string;
-  type: string;
-  comment: string;
-  nullable: boolean;
-  defaultKind: 'none' | 'auto_increment' | 'constant' | 'current_timestamp' | 'uuid';
-  defaultValue: string;
-  onUpdate: 'none' | 'current_timestamp';
-  enumMeta?: EnumValueMeta[];
-};
+export type {
+  EnumValueMeta,
+  FieldDefaultKind,
+  FieldOnUpdate,
+  FieldRow,
+  NormalizedField,
+} from './fieldRow.js';
+export {
+  FIELD_DEFAULT_KINDS,
+  FIELD_ON_UPDATES,
+  normalizeFieldDefaultKind,
+  normalizeFieldEnums,
+  normalizeFieldNullable,
+  normalizeFieldOnUpdate,
+  normalizePersistedRows,
+} from './fieldRow.js';
 
 export type IndexField = {
   name: string;
@@ -96,9 +86,6 @@ export type RoutineTemplateConfig = {
   timestampColumn?: string;
   auditTableName?: string;
 };
-
-export type UiDefaultKind = '无' | '自增' | '常量' | '当前时间' | 'uuid';
-export type UiOnUpdate = '无' | '当前时间';
 
 // Citus 分片模式
 export type CitusTableMode = 'reference' | 'distributed';

@@ -1,4 +1,9 @@
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import {
+  type PersistedState,
+  normalizeFieldDefaultKind,
+  normalizeFieldNullable,
+  normalizeFieldOnUpdate,
+} from '@ddlbuilder/shared-types';
 import type { DraftSummary, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 import type { WorkspaceDraftRecord, WorkspaceSessionRecord } from '@/utils/workspaceStateDb';
 import { getSchemaAndTable } from '@ddlbuilder/ddl-core';
@@ -45,10 +50,10 @@ export const normalizePersistedState = (value: unknown): PersistedState | null =
           fieldName: '',
           fieldType: '',
           fieldComment: '',
-          nullable: '是',
-          defaultKind: '无',
+          nullable: true,
+          defaultKind: 'none',
           defaultValue: '',
-          onUpdate: '无',
+          onUpdate: 'none',
         };
       }
 
@@ -57,10 +62,10 @@ export const normalizePersistedState = (value: unknown): PersistedState | null =
         fieldName: toText(row.fieldName),
         fieldType: toText(row.fieldType),
         fieldComment: toText(row.fieldComment),
-        nullable: row.nullable === '否' ? '否' : '是',
-        defaultKind: toText(row.defaultKind, '无'),
+        nullable: normalizeFieldNullable(row.nullable),
+        defaultKind: normalizeFieldDefaultKind(row.defaultKind),
         defaultValue: toText(row.defaultValue),
-        onUpdate: toText(row.onUpdate, '无'),
+        onUpdate: normalizeFieldOnUpdate(row.onUpdate),
         enumMeta: Array.isArray(row.enumMeta)
           ? (row.enumMeta as PersistedState['rows'][number]['enumMeta'])
           : undefined,

@@ -500,7 +500,7 @@ describe('usePersistedState', () => {
           fieldName: 'id',
           fieldType: 'bigint',
           fieldComment: '主键',
-          nullable: '否',
+          nullable: false,
         },
       ],
       indexes: [

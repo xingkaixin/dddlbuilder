@@ -1,6 +1,12 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { FieldRow, NormalizedField } from '@ddlbuilder/shared-types';
-import { toStringSafe, createEmptyRow, ensureOrder, normalizeFields } from '@/utils/helpers';
+import {
+  toStringSafe,
+  createEmptyRow,
+  ensureOrder,
+  normalizeFieldCellValue,
+  normalizeFields,
+} from '@/utils/helpers';
 import type { TableCellChange, TableChangeSource } from '@/types/tableChanges';
 
 export interface UseTableDataReturn {
@@ -88,7 +94,7 @@ export function useTableData(
         }
         next[rowIndex] = {
           ...next[rowIndex],
-          [prop]: toStringSafe(value),
+          [prop]: normalizeFieldCellValue(prop, value),
         };
       });
       return next;
@@ -104,12 +110,11 @@ export function useTableData(
         if (typeof prop !== 'string' || prop !== 'defaultKind') {
           return;
         }
-        const kind = toStringSafe(value);
-        if (kind !== '常量') {
+        if (value !== 'constant') {
           next[rowIndex].defaultValue = '';
         }
-        if (kind === '自增') {
-          next[rowIndex].nullable = '否';
+        if (value === 'auto_increment') {
+          next[rowIndex].nullable = false;
         }
       });
       return next;

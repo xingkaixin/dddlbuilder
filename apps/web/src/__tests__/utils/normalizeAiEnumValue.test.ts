@@ -1,48 +1,54 @@
 import { describe, expect, it } from 'vitest';
 import {
-  normalizeAiDefaultKind,
-  normalizeAiNullable,
-  normalizeAiOnUpdate,
   normalizeGeneratedTableSchema,
   normalizeReviewSuggestions,
 } from '@/utils/normalizeAiEnumValue';
+import {
+  normalizeFieldDefaultKind,
+  normalizeFieldNullable,
+  normalizeFieldOnUpdate,
+} from '@ddlbuilder/shared-types';
 
 describe('normalizeAiEnumValue', () => {
-  it('normalizeAiNullable 应识别中英文同义词与默认值', () => {
-    expect(normalizeAiNullable('否')).toBe('否');
-    expect(normalizeAiNullable(' no ')).toBe('否');
-    expect(normalizeAiNullable('not null')).toBe('否');
-    expect(normalizeAiNullable('not_null')).toBe('否');
-    expect(normalizeAiNullable('false')).toBe('否');
-    expect(normalizeAiNullable('0')).toBe('否');
+  it('normalizeFieldNullable 应识别中英文同义词与默认值', () => {
+    expect(normalizeFieldNullable('否')).toBe(false);
+    expect(normalizeFieldNullable(' no ')).toBe(false);
+    expect(normalizeFieldNullable('not null')).toBe(false);
+    expect(normalizeFieldNullable('not_null')).toBe(false);
+    expect(normalizeFieldNullable('false')).toBe(false);
+    expect(normalizeFieldNullable('0')).toBe(false);
 
-    expect(normalizeAiNullable('是')).toBe('是');
-    expect(normalizeAiNullable('yes')).toBe('是');
-    expect(normalizeAiNullable(undefined)).toBe('是');
+    expect(normalizeFieldNullable('是')).toBe(true);
+    expect(normalizeFieldNullable('yes')).toBe(true);
+
+    // 模型没给或给出无法识别的表述时按可空处理，与迁移前的 normalizeAiNullable 一致
+    expect(normalizeFieldNullable(undefined)).toBe(true);
+    expect(normalizeFieldNullable('NULL')).toBe(true);
+    expect(normalizeFieldNullable('可空')).toBe(true);
   });
 
-  it('normalizeAiDefaultKind 应识别默认类型并在未知值回退为无', () => {
-    expect(normalizeAiDefaultKind('自增')).toBe('自增');
-    expect(normalizeAiDefaultKind('auto increment')).toBe('自增');
-    expect(normalizeAiDefaultKind('identity')).toBe('自增');
+  it('normalizeFieldDefaultKind 应识别默认类型并在未知值回退为 none', () => {
+    expect(normalizeFieldDefaultKind('自增')).toBe('auto_increment');
+    expect(normalizeFieldDefaultKind('auto increment')).toBe('auto_increment');
+    expect(normalizeFieldDefaultKind('identity')).toBe('auto_increment');
 
-    expect(normalizeAiDefaultKind('const')).toBe('常量');
-    expect(normalizeAiDefaultKind('literal')).toBe('常量');
+    expect(normalizeFieldDefaultKind('const')).toBe('constant');
+    expect(normalizeFieldDefaultKind('literal')).toBe('constant');
 
-    expect(normalizeAiDefaultKind('current timestamp')).toBe('当前时间');
-    expect(normalizeAiDefaultKind('now()')).toBe('当前时间');
+    expect(normalizeFieldDefaultKind('current timestamp')).toBe('current_timestamp');
+    expect(normalizeFieldDefaultKind('now()')).toBe('current_timestamp');
 
-    expect(normalizeAiDefaultKind('uuid')).toBe('uuid');
-    expect(normalizeAiDefaultKind('anything else')).toBe('无');
-    expect(normalizeAiDefaultKind(null)).toBe('无');
+    expect(normalizeFieldDefaultKind('uuid')).toBe('uuid');
+    expect(normalizeFieldDefaultKind('anything else')).toBe('none');
+    expect(normalizeFieldDefaultKind(null)).toBe('none');
   });
 
-  it('normalizeAiOnUpdate 应识别当前时间并在未知值回退为无', () => {
-    expect(normalizeAiOnUpdate('当前时间')).toBe('当前时间');
-    expect(normalizeAiOnUpdate('current_time')).toBe('当前时间');
-    expect(normalizeAiOnUpdate('current timestamp')).toBe('当前时间');
-    expect(normalizeAiOnUpdate('later')).toBe('无');
-    expect(normalizeAiOnUpdate(undefined)).toBe('无');
+  it('normalizeFieldOnUpdate 应识别当前时间并在未知值回退为 none', () => {
+    expect(normalizeFieldOnUpdate('当前时间')).toBe('current_timestamp');
+    expect(normalizeFieldOnUpdate('current_time')).toBe('current_timestamp');
+    expect(normalizeFieldOnUpdate('current timestamp')).toBe('current_timestamp');
+    expect(normalizeFieldOnUpdate('later')).toBe('none');
+    expect(normalizeFieldOnUpdate(undefined)).toBe('none');
   });
 
   it('normalizeGeneratedTableSchema 应处理 fields 数组与非数组输入', () => {
@@ -65,9 +71,9 @@ describe('normalizeAiEnumValue', () => {
     } as any);
 
     expect(normalized.fields[0]).toMatchObject({
-      nullable: '否',
-      defaultKind: '自增',
-      onUpdate: '无',
+      nullable: false,
+      defaultKind: 'auto_increment',
+      onUpdate: 'none',
     });
     expect(normalized.designDecisions).toEqual([{ title: '主键策略', rationale: '使用自增主键' }]);
 
@@ -105,9 +111,9 @@ describe('normalizeAiEnumValue', () => {
     expect(result[2]).toBe('text');
     expect(result[3]).toEqual({ foo: 'bar' });
     expect((result[4] as any).field).toMatchObject({
-      nullable: '否',
-      defaultKind: '当前时间',
-      onUpdate: '当前时间',
+      nullable: false,
+      defaultKind: 'current_timestamp',
+      onUpdate: 'current_timestamp',
     });
   });
 
@@ -130,9 +136,9 @@ describe('normalizeAiEnumValue', () => {
     const result = normalizeReviewSuggestions(input as any);
 
     expect((result[0] as any).fieldModification.changes).toMatchObject({
-      nullable: '是',
-      defaultKind: '常量',
-      onUpdate: '当前时间',
+      nullable: true,
+      defaultKind: 'constant',
+      onUpdate: 'current_timestamp',
     });
   });
 });

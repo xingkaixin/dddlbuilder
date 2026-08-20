@@ -202,7 +202,7 @@ export function planTableRelationship(
   const addedIndex = needsIndex
     ? buildRelationshipIndex(draft.source, intent.sourceField, requiresUniqueIndex)
     : undefined;
-  const expectedNullable = intent.optionality === 'optional' ? '是' : '否';
+  const expectedNullable = intent.optionality === 'optional';
   const changedNullability = sourceField.nullable !== expectedNullable;
   const warnings: TableRelationshipWarning[] = [];
 

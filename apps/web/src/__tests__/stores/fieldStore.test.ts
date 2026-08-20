@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import type { FieldRow } from '@ddlbuilder/shared-types';
 import { useFieldStore } from '@/stores';
 import { createEmptyRow } from '@/utils/helpers';
 import { buildDuplicateNameSet, buildNormalizedFields } from '@/stores/fieldStore';
@@ -35,15 +36,15 @@ describe('fieldStore', () => {
     state.handleRowsChange(
       [
         [0, 'fieldName', '', 'id'],
-        [0, 'defaultKind', '无', '自增'],
+        [0, 'defaultKind', 'none', 'auto_increment'],
       ],
       'edit',
     );
 
     const current = useFieldStore.getState();
     expect(current.rows[0].fieldName).toBe('id');
-    expect(current.rows[0].defaultKind).toBe('自增');
-    expect(current.rows[0].nullable).toBe('否');
+    expect(current.rows[0].defaultKind).toBe('auto_increment');
+    expect(current.rows[0].nullable).toBe(false);
     expect(current.rows[0].defaultValue).toBe('');
   });
 
@@ -57,9 +58,9 @@ describe('fieldStore', () => {
         fieldType: 'varchar(20)',
         fieldComment: null as unknown as string,
         nullable: false as unknown as string,
-        defaultKind: '',
+        defaultKind: 'none',
         defaultValue: undefined as unknown as string,
-        onUpdate: '',
+        onUpdate: 'none',
       },
     ]);
 
@@ -70,12 +71,33 @@ describe('fieldStore', () => {
         fieldName: '123',
         fieldType: 'varchar(20)',
         fieldComment: '',
-        nullable: '否',
-        defaultKind: '无',
+        nullable: false,
+        defaultKind: 'none',
         defaultValue: '',
-        onUpdate: '无',
+        onUpdate: 'none',
       },
     ]);
+  });
+
+  it('初始化历史格式的行时应归一化而不是丢弃枚举值', () => {
+    useFieldStore.getState().initializeRows([
+      {
+        order: 1,
+        fieldName: 'id',
+        fieldType: 'bigint',
+        fieldComment: '主键',
+        nullable: '否',
+        defaultKind: '自增',
+        defaultValue: '',
+        onUpdate: '当前时间',
+      },
+    ] as unknown as FieldRow[]);
+
+    expect(useFieldStore.getState().rows[0]).toMatchObject({
+      nullable: false,
+      defaultKind: 'auto_increment',
+      onUpdate: 'current_timestamp',
+    });
   });
 
   it('空初始化与无效变更应保持数据不变', () => {
@@ -100,7 +122,7 @@ describe('fieldStore', () => {
       [
         [2, 'fieldName', '', 'status'],
         [2, 'defaultValue', '', '1'],
-        [2, 'defaultKind', '无', 'uuid'],
+        [2, 'defaultKind', 'none', 'uuid'],
       ],
       'edit',
     );
@@ -146,7 +168,7 @@ describe('fieldStore', () => {
 
     state.initializeRows([{ ...createEmptyRow(0), nullable: false as any }]);
 
-    expect(useFieldStore.getState().rows[0].nullable).toBe('否');
+    expect(useFieldStore.getState().rows[0].nullable).toBe(false);
 
     useFieldStore.getState().handleRowsChange(
       [
@@ -167,14 +189,14 @@ describe('fieldStore helpers', () => {
         ...createEmptyRow(0),
         fieldName: ' id ',
         fieldType: 'int',
-        nullable: '否',
+        nullable: false,
       },
       {
         ...createEmptyRow(1),
         fieldName: 'id',
         fieldType: 'varchar(20)',
-        nullable: '是',
-        defaultKind: '常量',
+        nullable: true,
+        defaultKind: 'constant',
         defaultValue: 'abc',
       },
       {

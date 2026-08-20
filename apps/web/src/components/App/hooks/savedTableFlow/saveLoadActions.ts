@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import { type PersistedState, normalizePersistedRows } from '@ddlbuilder/shared-types';
 import type { SavedTableDraftRecord, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
 import type { UseDialogStateReturn } from '@/hooks/useDialogState';
@@ -9,6 +9,21 @@ import { createVersion, countVersions, INITIAL_VERSION_MESSAGE_KEY } from '@/uti
 type SaveDialogData = {
   name: string;
   queuedLoadAfterSave: SavedTableSummary | null;
+};
+
+/**
+ * baseSignature 是历史写入的原始快照 JSON，而它的比较对象来自已归一化的读取入口，
+ * 因此必须先归一化再重新签名，否则跨版本升级后草稿会被误判为过期而丢弃。
+ */
+const resignBaseSignature = (
+  baseSignature: string,
+  serialize: (state: PersistedState) => string,
+) => {
+  try {
+    return serialize(normalizePersistedRows(JSON.parse(baseSignature) as PersistedState));
+  } catch {
+    return baseSignature;
+  }
 };
 
 interface UseSaveLoadActionsParams {
@@ -99,17 +114,10 @@ export function useSaveLoadActions({
 
         const savedBaseSignature = serializePersistedState(record.state);
         const savedDraft = getSavedTableDraft?.(record.normalizedName);
-        const savedDraftBaseSignature = savedDraft
-          ? (() => {
-              try {
-                return serializePersistedState(JSON.parse(savedDraft.baseSignature));
-              } catch {
-                return savedDraft.baseSignature;
-              }
-            })()
-          : null;
         const stateToApply =
-          savedDraft && savedDraftBaseSignature === savedBaseSignature
+          savedDraft &&
+          resignBaseSignature(savedDraft.baseSignature, serializePersistedState) ===
+            savedBaseSignature
             ? savedDraft.state
             : record.state;
 

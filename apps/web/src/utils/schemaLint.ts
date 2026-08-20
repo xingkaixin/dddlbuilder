@@ -59,7 +59,7 @@ function findField(rows: FieldRow[], name: string): FieldRow | undefined {
 
 function hasCurrentTimestampDefault(field: FieldRow): boolean {
   return (
-    field.defaultKind === '当前时间' ||
+    field.defaultKind === 'current_timestamp' ||
     /current_timestamp|now\(\)/i.test(field.defaultValue?.trim() ?? '')
   );
 }
@@ -178,7 +178,7 @@ export function lintSchema({ tableName, rows, indexes }: SchemaLintInput): Schem
       );
     }
 
-    if (auditFieldName === 'updated_at' && auditField.onUpdate !== '当前时间') {
+    if (auditFieldName === 'updated_at' && auditField.onUpdate !== 'current_timestamp') {
       issues.push(
         createIssue(
           'updated-at-on-update',

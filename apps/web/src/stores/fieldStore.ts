@@ -1,33 +1,27 @@
 import { create } from 'zustand';
 import type { FieldRow } from '@ddlbuilder/shared-types';
-import { createEmptyRow, ensureOrder, toStringSafe, normalizeFields } from '@/utils/helpers';
+import {
+  createEmptyRow,
+  ensureOrder,
+  normalizeFieldCellValue,
+  normalizeFieldEnums,
+  normalizeFields,
+  toStringSafe,
+} from '@/utils/helpers';
 import type { TableCellChange, TableChangeSource } from '@/types/tableChanges';
 
 function createInitialRows(count: number): FieldRow[] {
   return Array.from({ length: count }, (_, index) => createEmptyRow(index));
 }
 
-function normalizeRowValue(value: unknown): string {
-  return toStringSafe(value);
-}
-
-function normalizeNullableValue(value: unknown): '是' | '否' {
-  if (value === false) return '否';
-  return toStringSafe(value).trim() === '否' ? '否' : '是';
-}
-
 function normalizePersistedRows(rows: FieldRow[]): FieldRow[] {
   return rows.map((row, index) => ({
-    ...createEmptyRow(index),
-    ...row,
+    ...normalizeFieldEnums({ ...createEmptyRow(index), ...row }),
     order: index + 1,
-    fieldName: normalizeRowValue(row.fieldName),
-    fieldType: normalizeRowValue(row.fieldType),
-    fieldComment: normalizeRowValue(row.fieldComment),
-    nullable: normalizeNullableValue(row.nullable),
-    defaultKind: normalizeRowValue(row.defaultKind) || '无',
-    defaultValue: normalizeRowValue(row.defaultValue),
-    onUpdate: normalizeRowValue(row.onUpdate) || '无',
+    fieldName: toStringSafe(row.fieldName),
+    fieldType: toStringSafe(row.fieldType),
+    fieldComment: toStringSafe(row.fieldComment),
+    defaultValue: toStringSafe(row.defaultValue),
     enumMeta: row.enumMeta,
   }));
 }
@@ -85,7 +79,7 @@ export const useFieldStore = create<FieldStoreState>((set) => ({
 
         nextRows[rowIndex] = {
           ...nextRows[rowIndex],
-          [prop]: normalizeRowValue(value),
+          [prop]: normalizeFieldCellValue(prop, value),
         };
       });
 
@@ -94,12 +88,11 @@ export const useFieldStore = create<FieldStoreState>((set) => ({
           return;
         }
 
-        const kind = normalizeRowValue(value);
-        if (kind !== '常量') {
+        if (value !== 'constant') {
           nextRows[rowIndex].defaultValue = '';
         }
-        if (kind === '自增') {
-          nextRows[rowIndex].nullable = '否';
+        if (value === 'auto_increment') {
+          nextRows[rowIndex].nullable = false;
         }
       });
 

@@ -19,6 +19,7 @@ import {
   getCurrentWorkspaceScope,
   getWorkspaceScopeStorageKey,
 } from './workspaceScope';
+import { normalizePersistedRows } from './helpers';
 
 export const DEFAULT_DRAFT_ID = 'default';
 const WORKSPACE_SESSION_ROW_ID = 'active';
@@ -126,8 +127,22 @@ const decodeDrafts = (
   });
 };
 
+const decodeSavedTableEntity = (
+  entity: SavedTableRecord,
+  scope: WorkspaceScope,
+): SavedTableRecord | null => {
+  const decoded = decodeScopedEntity(entity, scope);
+  return decoded ? { ...decoded, state: normalizePersistedRows(decoded.state) } : null;
+};
+
+const toSessionRecord = (entity: WorkspaceSessionEntity): WorkspaceSessionRecord => ({
+  activeSource: entity.activeSource,
+  activeState: entity.activeState && normalizePersistedRows(entity.activeState),
+  updatedAt: entity.updatedAt,
+});
+
 const toDraftRecord = (entity: WorkspaceDraftEntity): WorkspaceDraftRecord => ({
-  state: entity.state,
+  state: normalizePersistedRows(entity.state),
   createdAt: entity.createdAt ?? entity.updatedAt,
   updatedAt: entity.updatedAt,
   folderId: entity.folderId,
@@ -249,7 +264,7 @@ export const listSavedDrafts = async (
     const decoded = decodeScopedEntity(record, scope);
     if (!decoded?.normalizedName) continue;
     map[decoded.normalizedName] = {
-      state: decoded.state,
+      state: normalizePersistedRows(decoded.state),
       tableName: decoded.tableName,
       baseSignature: decoded.baseSignature,
       updatedAt: decoded.updatedAt,
@@ -271,7 +286,7 @@ export const readSavedDraft = async (
   const decoded = decodeScopedEntity(record, scope);
   if (!decoded) return null;
   return {
-    state: decoded.state,
+    state: normalizePersistedRows(decoded.state),
     tableName: decoded.tableName,
     baseSignature: decoded.baseSignature,
     updatedAt: decoded.updatedAt,
@@ -335,12 +350,7 @@ export const readWorkspaceSession = async (
   );
   if (!entity) return null;
   const decoded = decodeScopedEntity(entity, scope);
-  if (!decoded) return null;
-  return {
-    activeSource: decoded.activeSource,
-    activeState: decoded.activeState,
-    updatedAt: decoded.updatedAt,
-  };
+  return decoded ? toSessionRecord(decoded) : null;
 };
 
 export const readWorkspaceBootstrap = async (
@@ -394,14 +404,8 @@ export const readWorkspaceBootstrap = async (
     return {
       globalDraft: drafts.find((item) => item.draftId === DEFAULT_DRAFT_ID)?.record ?? null,
       drafts,
-      session: decodedSession
-        ? {
-            activeSource: decodedSession.activeSource,
-            activeState: decodedSession.activeState,
-            updatedAt: decodedSession.updatedAt,
-          }
-        : null,
-      savedTable: savedTableEntity ? decodeScopedEntity(savedTableEntity, scope) : null,
+      session: decodedSession ? toSessionRecord(decodedSession) : null,
+      savedTable: savedTableEntity ? decodeSavedTableEntity(savedTableEntity, scope) : null,
     };
   } finally {
     db.close();

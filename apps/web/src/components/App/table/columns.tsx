@@ -4,18 +4,8 @@ import { EditableCell, SelectCell, CheckboxCell, OrderCell } from './index';
 import { RowActions } from './RowActions';
 import { EnumSetCell } from './EnumSetCell';
 import { LogicalEnumCell } from './LogicalEnumCell';
-import type {
-  DatabaseType,
-  EnumValueMeta,
-  FieldRow,
-  UiDefaultKind,
-} from '@ddlbuilder/shared-types';
-import {
-  toStringSafe,
-  normalizeDefaultKind,
-  getUiDefaultKindOptions,
-  getUiOnUpdateOptions,
-} from '@/utils/helpers';
+import type { DatabaseType, EnumValueMeta, FieldRow } from '@ddlbuilder/shared-types';
+import { toStringSafe, getUiDefaultKindOptions, getUiOnUpdateOptions } from '@/utils/helpers';
 import { getCanonicalBaseType } from '@ddlbuilder/ddl-core';
 import { getDefaultKindLabel, getOnUpdateLabel } from '@/i18n/fieldEnums';
 import { useTranslation } from 'react-i18next';
@@ -215,7 +205,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): ColumnDef<FieldR
         size: columnWidths.nullable,
         cell: ({ row, getValue }) => (
           <CheckboxCell
-            checked={getValue() === '是'}
+            checked={getValue()}
             onChange={(v) => updateCellValue(row.index, 'nullable', v)}
           />
         ),
@@ -229,7 +219,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): ColumnDef<FieldR
           const options = getUiDefaultKindOptions(dbType, base);
           return (
             <SelectCell
-              value={(getValue() as string) || '无'}
+              value={getValue() ?? 'none'}
               options={options.map((option) => ({
                 value: option,
                 label: getDefaultKindLabel(option, t),
@@ -243,8 +233,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): ColumnDef<FieldR
         header: () => t('dataTable.headers.defaultValue'),
         size: columnWidths.defaultValue,
         cell: ({ row, getValue }) => {
-          const kind = normalizeDefaultKind(row.original.defaultKind as UiDefaultKind);
-          const disabled = kind !== 'constant';
+          const disabled = row.original.defaultKind !== 'constant';
           return (
             <EditableCell
               value={(getValue() as string) || ''}
@@ -277,26 +266,14 @@ export function useFieldColumns(params: UseFieldColumnsParams): ColumnDef<FieldR
         cell: ({ row, getValue }) => {
           const fieldType = toStringSafe(row.original.fieldType);
           const base = getCanonicalBaseType(fieldType);
-          const defaultKind = normalizeDefaultKind(row.original.defaultKind as UiDefaultKind);
-
-          // Disable if defaultKind is uuid
-          if (defaultKind === 'uuid') {
-            return (
-              <SelectCell
-                value={(getValue() as string) || '无'}
-                options={[{ value: '无', label: getOnUpdateLabel('无', t) }]}
-                onChange={() => {}}
-                disabled
-              />
-            );
-          }
-
           const options = getUiOnUpdateOptions(dbType, base);
-          if (options.length <= 1) {
+
+          // uuid 默认值与 ON UPDATE 互斥
+          if (row.original.defaultKind === 'uuid' || options.length <= 1) {
             return (
               <SelectCell
-                value={(getValue() as string) || '无'}
-                options={[{ value: '无', label: getOnUpdateLabel('无', t) }]}
+                value={getValue() ?? 'none'}
+                options={[{ value: 'none', label: getOnUpdateLabel('none', t) }]}
                 onChange={() => {}}
                 disabled
               />
@@ -305,7 +282,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): ColumnDef<FieldR
 
           return (
             <SelectCell
-              value={(getValue() as string) || '无'}
+              value={getValue() ?? 'none'}
               options={options.map((option) => ({
                 value: option,
                 label: getOnUpdateLabel(option, t),

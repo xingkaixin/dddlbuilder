@@ -16,7 +16,11 @@ import { getNullableLabel } from '@/i18n/fieldEnums';
 interface PreviewStepProps {
   parsedResult: ParsedResult;
   previewFields: PreviewField[];
-  onFieldChange: (index: number, field: keyof PreviewField, value: string | number) => void;
+  onFieldChange: (
+    index: number,
+    field: keyof PreviewField,
+    value: string | number | boolean,
+  ) => void;
   onMoveField: (index: number, direction: 'up' | 'down') => void;
   onDeleteField: (index: number) => void;
 }
@@ -99,8 +103,8 @@ export function PreviewStep({
                 </td>
                 <td className="px-2 py-2 text-center">
                   <Select
-                    value={field.nullable}
-                    onValueChange={(value) => onFieldChange(index, 'nullable', value)}
+                    value={field.nullable ? 'yes' : 'no'}
+                    onValueChange={(value) => onFieldChange(index, 'nullable', value === 'yes')}
                   >
                     <SelectTrigger
                       className="h-7 w-16 mx-auto"
@@ -109,8 +113,8 @@ export function PreviewStep({
                       <SelectValue placeholder={getNullableLabel(field.nullable, t)} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="是">{t('importSql.preview.yes')}</SelectItem>
-                      <SelectItem value="否">{t('importSql.preview.no')}</SelectItem>
+                      <SelectItem value="yes">{t('importSql.preview.yes')}</SelectItem>
+                      <SelectItem value="no">{t('importSql.preview.no')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </td>

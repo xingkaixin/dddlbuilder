@@ -169,17 +169,8 @@ export function ImportSqlDialog({
       fieldName: field.name,
       fieldType: field.type,
       fieldComment: field.comment,
-      nullable: field.nullable ? '是' : '否',
-      defaultKind:
-        field.defaultKind === 'none'
-          ? '无'
-          : field.defaultKind === 'auto_increment'
-            ? '自增'
-            : field.defaultKind === 'constant'
-              ? '常量'
-              : field.defaultKind === 'current_timestamp'
-                ? '当前时间'
-                : 'uuid',
+      nullable: field.nullable,
+      defaultKind: field.defaultKind,
       defaultValue: field.defaultValue || '-',
     }));
   }, []);
@@ -342,7 +333,11 @@ export function ImportSqlDialog({
     );
   };
 
-  const handleFieldChange = (index: number, field: keyof PreviewField, value: string | number) => {
+  const handleFieldChange = (
+    index: number,
+    field: keyof PreviewField,
+    value: string | number | boolean,
+  ) => {
     setPreviewFields((prev) => {
       const newFields = [...prev];
       newFields[index] = { ...newFields[index], [field]: value };

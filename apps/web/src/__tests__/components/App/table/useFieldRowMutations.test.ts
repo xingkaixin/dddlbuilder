@@ -8,10 +8,10 @@ const createRow = (overrides: Partial<FieldRow> = {}): FieldRow => ({
   fieldName: 'id',
   fieldComment: '主键',
   fieldType: 'bigint',
-  nullable: '是',
-  defaultKind: '常量',
+  nullable: true,
+  defaultKind: 'constant',
   defaultValue: '1',
-  onUpdate: '当前时间',
+  onUpdate: 'current_timestamp',
   ...overrides,
 });
 
@@ -37,13 +37,20 @@ describe('useFieldRowMutations', () => {
       result.current.updateCellValue(0, 'nullable', false);
     });
     rerender({ currentRows: rows });
-    expect(rows[0].nullable).toBe('否');
+    expect(rows[0].nullable).toBe(false);
 
     act(() => {
       result.current.updateCellValue(0, 'nullable', true);
     });
     rerender({ currentRows: rows });
-    expect(rows[0].nullable).toBe('是');
+    expect(rows[0].nullable).toBe(true);
+
+    // 粘贴/历史数据可能带来非布尔值，可空性判定必须走共享白名单而不是 JS 真值
+    act(() => {
+      result.current.updateCellValue(0, 'nullable', '否');
+    });
+    rerender({ currentRows: rows });
+    expect(rows[0].nullable).toBe(false);
   });
 
   it('应该处理 defaultKind 联动逻辑', () => {
@@ -64,18 +71,18 @@ describe('useFieldRowMutations', () => {
     );
 
     act(() => {
-      result.current.updateCellValue(0, 'defaultKind', '自增');
+      result.current.updateCellValue(0, 'defaultKind', 'auto_increment');
     });
     rerender({ currentRows: rows });
-    expect(rows[0].defaultKind).toBe('自增');
-    expect(rows[0].nullable).toBe('否');
+    expect(rows[0].defaultKind).toBe('auto_increment');
+    expect(rows[0].nullable).toBe(false);
     expect(rows[0].defaultValue).toBe('');
 
     act(() => {
       result.current.updateCellValue(0, 'defaultKind', 'uuid');
     });
     rerender({ currentRows: rows });
-    expect(rows[0].onUpdate).toBe('无');
+    expect(rows[0].onUpdate).toBe('none');
     expect(rows[0].defaultValue).toBe('');
   });
 

@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { FieldRow } from '@ddlbuilder/shared-types';
+import { type FieldRow, normalizeFieldNullable } from '@ddlbuilder/shared-types';
 
 type SetRows = (value: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => void;
 
@@ -11,7 +11,6 @@ interface UseFieldRowMutationsParams {
 
 /**
  * 字段表格通用联动逻辑：
- * - nullable 使用勾选框时统一映射为“是/否”
  * - defaultKind 变化时同步清理 defaultValue/nullable
  * - 可选触发字段改名联动回调（索引/分区/分片依赖）
  */
@@ -29,21 +28,20 @@ export function useFieldRowMutations({ rows, setRows, onFieldRename }: UseFieldR
         const row = { ...newRows[rowIndex] };
 
         if (columnId === 'nullable') {
-          row.nullable = value ? '是' : '否';
+          row.nullable = normalizeFieldNullable(value);
         } else {
           (row as Record<string, unknown>)[columnId] = value;
         }
 
         if (columnId === 'defaultKind') {
-          const kind = String(value ?? '');
-          if (kind !== '常量') {
+          if (value !== 'constant') {
             row.defaultValue = '';
           }
-          if (kind === '自增') {
-            row.nullable = '否';
+          if (value === 'auto_increment') {
+            row.nullable = false;
           }
-          if (kind === 'uuid') {
-            row.onUpdate = '无';
+          if (value === 'uuid') {
+            row.onUpdate = 'none';
           }
         }
 

@@ -13,15 +13,7 @@ interface UseTemplateActionsParams {
   setRows: Dispatch<SetStateAction<FieldRow[]>>;
   createTemplateFromFields: (
     name: string,
-    fields: Array<{
-      fieldName?: string;
-      fieldType?: string;
-      fieldComment?: string;
-      nullable?: string;
-      defaultKind?: string;
-      defaultValue?: string;
-      onUpdate?: string;
-    }>,
+    fields: Array<Partial<FieldRow>>,
     description?: string,
   ) => Promise<CreateTemplateResult>;
   showToast: (message: string) => void;
@@ -63,9 +55,9 @@ export function useTemplateActions({
           fieldComment: field.fieldComment || '',
           fieldType: field.fieldType,
           nullable: field.nullable,
-          defaultKind: field.defaultKind || '无',
+          defaultKind: field.defaultKind ?? 'none',
           defaultValue: field.defaultValue || '',
-          onUpdate: field.onUpdate || '无',
+          onUpdate: field.onUpdate ?? 'none',
         }));
 
         return [...before, ...newRows, ...after].map((row, idx) => ({
@@ -85,19 +77,7 @@ export function useTemplateActions({
   );
 
   const handleCreateTemplateFromFields = useCallback(
-    async (
-      name: string,
-      fields: Array<{
-        fieldName?: string;
-        fieldType?: string;
-        fieldComment?: string;
-        nullable?: string;
-        defaultKind?: string;
-        defaultValue?: string;
-        onUpdate?: string;
-      }>,
-      description?: string,
-    ) => {
+    async (name: string, fields: Array<Partial<FieldRow>>, description?: string) => {
       const result = await createTemplateFromFields(name, fields, description);
       if (result.ok) {
         showToast(i18n.t('templateManager.toast.created', { name }));

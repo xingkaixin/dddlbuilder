@@ -33,7 +33,7 @@ describe('useFieldTemplates', () => {
 
     await act(async () => {
       const res = await result.current.create('User Fields', [
-        { fieldName: 'id', fieldType: 'bigint', nullable: '否', defaultKind: '自增' },
+        { fieldName: 'id', fieldType: 'bigint', nullable: false, defaultKind: 'auto_increment' },
       ]);
       expect(res.ok).toBe(true);
     });
@@ -56,7 +56,7 @@ describe('useFieldTemplates', () => {
 
     await act(async () => {
       const res = await result.current.createFromFields('From Fields', [
-        { fieldName: 'name', fieldType: 'varchar(50)', nullable: '是' },
+        { fieldName: 'name', fieldType: 'varchar(50)', nullable: true },
       ]);
       expect(res.ok).toBe(true);
     });
@@ -164,7 +164,7 @@ describe('useFieldTemplates', () => {
     let templateId: string;
     await act(async () => {
       const res = await result.current.create('Original', [
-        { fieldName: 'id', fieldType: 'bigint', nullable: '否' },
+        { fieldName: 'id', fieldType: 'bigint', nullable: false },
       ]);
       templateId = res.template?.id ?? '';
     });
@@ -196,7 +196,7 @@ describe('useFieldTemplates', () => {
     let templateId: string;
     await act(async () => {
       const res = await result.current.create('Single', [
-        { fieldName: 'email', fieldType: 'varchar(100)', nullable: '是' },
+        { fieldName: 'email', fieldType: 'varchar(100)', nullable: true },
       ]);
       templateId = res.template?.id ?? '';
     });

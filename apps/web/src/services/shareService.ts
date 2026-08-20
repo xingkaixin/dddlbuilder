@@ -1,4 +1,4 @@
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import { type PersistedState, normalizePersistedRows } from '@ddlbuilder/shared-types';
 import i18n from '@/i18n';
 
 const SHARE_API_ENDPOINT = '/api/share';
@@ -83,5 +83,6 @@ export async function getShareState(shareId: string): Promise<PersistedState> {
     throw new Error(i18n.t('services.shareDataInvalid'));
   }
 
-  return data.state as PersistedState;
+  // 分享内容存活于服务端 KV，升级后仍会读到迁移前写入的历史枚举值。
+  return normalizePersistedRows(data.state as PersistedState);
 }

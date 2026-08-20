@@ -9,10 +9,10 @@ const createRow = (index: number, overrides: Partial<FieldRow> = {}): FieldRow =
   fieldName: `f${index}`,
   fieldType: 'varchar(64)',
   fieldComment: '',
-  nullable: '是',
-  defaultKind: '',
+  nullable: true,
+  defaultKind: 'none',
   defaultValue: '',
-  onUpdate: '',
+  onUpdate: 'none',
   ...overrides,
 });
 
@@ -184,7 +184,7 @@ const OPTIONAL_SCALAR_VALUES = {
 
 // 取值池刻意很小且含各槽位的初始值，这样「改走再改回」会频繁出现——增量写的缺陷正藏在回退里
 const FIELD_NAMES = ['f0', 'f1', 'f2', 'f3', 'col_a', 'col_b'] as const;
-const DEFAULT_KINDS = ['', '自增', undefined] as const;
+const DEFAULT_KINDS = ['none', 'auto_increment', undefined] as const;
 const TABLE_NAMES = ['users', 'accounts'] as const;
 
 // 每个变异只改一处：若一步就重掷所有可选键，patch 恒非空，会绕开「跳过写入」的分支从而假绿

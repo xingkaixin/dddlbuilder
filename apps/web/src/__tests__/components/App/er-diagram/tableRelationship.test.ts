@@ -12,7 +12,7 @@ function createTable(
   options: {
     fieldName?: string;
     fieldType?: string;
-    nullable?: '是' | '否';
+    nullable?: boolean;
     isPrimary?: boolean;
     isUnique?: boolean;
   } = {},
@@ -30,7 +30,7 @@ function createTable(
         fieldName,
         fieldType: options.fieldType ?? 'BIGINT',
         fieldComment: '',
-        nullable: options.nullable ?? '否',
+        nullable: options.nullable ?? false,
       },
     ],
     addCount: 1,
@@ -71,7 +71,7 @@ function createDraft() {
   return {
     source: createTable('orders', {
       fieldName: 'user_id',
-      nullable: '否',
+      nullable: false,
     }),
     target: createTable('users', { isPrimary: true }),
   };
@@ -118,7 +118,7 @@ describe('tableRelationship', () => {
       onDelete: 'NO ACTION',
       onUpdate: 'NO ACTION',
     });
-    expect(result.plan.sourceState.rows[0]?.nullable).toBe('是');
+    expect(result.plan.sourceState.rows[0]?.nullable).toBe(true);
     expect(result.plan.addedIndex).toMatchObject({
       name: 'idx_orders_user_id',
       unique: false,
@@ -271,7 +271,7 @@ describe('tableRelationship', () => {
       fieldName: 'manager_id',
       fieldType: 'BIGINT',
       fieldComment: '',
-      nullable: '是',
+      nullable: true,
     });
 
     const result = planTableRelationship(

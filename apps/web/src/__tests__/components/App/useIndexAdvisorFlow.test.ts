@@ -37,7 +37,7 @@ const fields: NormalizedField[] = [
     comment: '',
     nullable: false,
     defaultValue: '',
-    onUpdate: '',
+    onUpdate: 'none',
   },
   {
     name: 'email',
@@ -45,7 +45,7 @@ const fields: NormalizedField[] = [
     comment: '',
     nullable: false,
     defaultValue: '',
-    onUpdate: '',
+    onUpdate: 'none',
   },
 ];
 

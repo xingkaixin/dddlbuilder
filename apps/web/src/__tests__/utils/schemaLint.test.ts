@@ -7,10 +7,10 @@ const field = (fieldName: string, overrides: Partial<FieldRow> = {}): FieldRow =
   fieldName,
   fieldType: 'varchar(255)',
   fieldComment: '',
-  nullable: '是',
-  defaultKind: '无',
+  nullable: true,
+  defaultKind: 'none',
   defaultValue: '',
-  onUpdate: '无',
+  onUpdate: 'none',
   ...overrides,
 });
 
@@ -27,18 +27,18 @@ describe('lintSchema', () => {
     const issues = lintSchema({
       tableName: 'users',
       rows: [
-        field('id', { fieldType: 'bigint', nullable: '否', defaultKind: '自增' }),
+        field('id', { fieldType: 'bigint', nullable: false, defaultKind: 'auto_increment' }),
         field('name'),
         field('created_at', {
           fieldType: 'timestamp',
-          nullable: '否',
-          defaultKind: '当前时间',
+          nullable: false,
+          defaultKind: 'current_timestamp',
         }),
         field('updated_at', {
           fieldType: 'timestamp',
-          nullable: '否',
-          defaultKind: '当前时间',
-          onUpdate: '当前时间',
+          nullable: false,
+          defaultKind: 'current_timestamp',
+          onUpdate: 'current_timestamp',
         }),
       ],
       indexes: [
@@ -64,7 +64,7 @@ describe('lintSchema', () => {
         field('name', { fieldType: 'varchar' }),
         field('deleted_at', {
           fieldType: 'datetime',
-          defaultKind: '常量',
+          defaultKind: 'constant',
           defaultValue: '0000-00-00',
         }),
       ],
@@ -97,9 +97,9 @@ describe('lintSchema', () => {
     const issues = lintSchema({
       tableName: 'users',
       rows: [
-        field('id', { fieldType: 'bigint', nullable: '否' }),
+        field('id', { fieldType: 'bigint', nullable: false }),
         field('created_at', { fieldType: 'varchar(30)' }),
-        field('updated_at', { fieldType: 'datetime', defaultKind: '当前时间' }),
+        field('updated_at', { fieldType: 'datetime', defaultKind: 'current_timestamp' }),
       ],
       indexes: [primaryIndex],
     });
@@ -113,13 +113,13 @@ describe('lintSchema', () => {
     const issues = lintSchema({
       tableName: 'events',
       rows: [
-        field('id', { fieldType: 'bigint', nullable: '否' }),
+        field('id', { fieldType: 'bigint', nullable: false }),
         field('payload', { fieldType: 'json' }),
-        field('created_at', { fieldType: 'timestamp', defaultKind: '当前时间' }),
+        field('created_at', { fieldType: 'timestamp', defaultKind: 'current_timestamp' }),
         field('updated_at', {
           fieldType: 'timestamp',
-          defaultKind: '当前时间',
-          onUpdate: '当前时间',
+          defaultKind: 'current_timestamp',
+          onUpdate: 'current_timestamp',
         }),
       ],
       indexes: [

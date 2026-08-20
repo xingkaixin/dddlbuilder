@@ -47,9 +47,9 @@ export const mockHandsontableEvents = {
 
 // Default test data for Handsontable
 export const mockTableData = [
-  [1, 'id', 'int', '主键ID', '否', '自增', '', '无'],
-  [2, 'name', 'varchar(255)', '名称', '是', '无', '', '无'],
-  [3, 'created_at', 'timestamp', '创建时间', '否', '当前时间', '', '无'],
+  [1, 'id', 'int', '主键ID', false, 'auto_increment', '', 'none'],
+  [2, 'name', 'varchar(255)', '名称', true, 'none', '', 'none'],
+  [3, 'created_at', 'timestamp', '创建时间', false, 'current_timestamp', '', 'none'],
 ];
 
 // Mock column settings

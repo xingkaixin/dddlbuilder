@@ -71,7 +71,7 @@ test.describe('SQL 自动生成流程 @core @smoke', () => {
     await expect(sqlOutput).toContainText(/`?id`?\s+VARCHAR\(255\)/i);
     await expect(sqlOutput).toContainText(/COMMENT\s+'用户编号'/i);
 
-    // 5. 点击第五列的 checkbox 切换为 '否' (NOT NULL)
+    // 5. 点击第五列的 checkbox 取消可空 (NOT NULL)
     const firstNullableCheckbox = page.locator(
       '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(5) [data-slot="checkbox"]',
     );

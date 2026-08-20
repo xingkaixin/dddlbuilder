@@ -66,8 +66,8 @@ function buildAIGeneratedRows(schema: GeneratedTableSchema): FieldRow[] {
     nullable: field.nullable,
     defaultKind: field.defaultKind,
     defaultValue: field.defaultValue || '',
-    onUpdate: field.onUpdate || '无',
-  })) as FieldRow[];
+    onUpdate: field.onUpdate ?? 'none',
+  }));
 }
 
 function buildAIGeneratedIndexes(schema: GeneratedTableSchema): IndexDefinition[] {
@@ -179,10 +179,10 @@ export function useSchemaApplyActions({
               fieldName: suggestion.field.fieldName,
               fieldType: suggestion.field.fieldType,
               fieldComment: suggestion.field.fieldComment || '',
-              nullable: suggestion.field.nullable || '是',
-              defaultKind: suggestion.field.defaultKind || '无',
+              nullable: suggestion.field.nullable ?? true,
+              defaultKind: suggestion.field.defaultKind ?? 'none',
               defaultValue: suggestion.field.defaultValue || '',
-              onUpdate: suggestion.field.onUpdate || '无',
+              onUpdate: suggestion.field.onUpdate ?? 'none',
             };
             setRows((prev) => [...prev, newRow]);
             appliedCount = 1;

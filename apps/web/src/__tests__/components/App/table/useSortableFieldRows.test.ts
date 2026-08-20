@@ -12,10 +12,10 @@ function createRows(names: string[]): FieldRow[] {
     fieldName: name,
     fieldType: 'int',
     fieldComment: '',
-    nullable: '是',
-    defaultKind: '无',
+    nullable: true,
+    defaultKind: 'none',
     defaultValue: '',
-    onUpdate: '无',
+    onUpdate: 'none',
   }));
 }
 

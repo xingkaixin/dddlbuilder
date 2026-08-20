@@ -58,10 +58,10 @@ function setupStores() {
       fieldName: 'id',
       fieldComment: '主键',
       fieldType: 'bigint',
-      nullable: '否',
-      defaultKind: '无',
+      nullable: false,
+      defaultKind: 'none',
       defaultValue: '',
-      onUpdate: '无',
+      onUpdate: 'none',
     },
   ]);
 

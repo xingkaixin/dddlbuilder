@@ -1,5 +1,7 @@
 import type {
   DatabaseType,
+  FieldDefaultKind,
+  FieldOnUpdate,
   IndexDefinition,
   PersistedState,
   FieldRow,
@@ -14,6 +16,7 @@ import {
   getCurrentWorkspaceScope,
   getWorkspaceScopeStorageKey,
 } from './workspaceScope';
+import { normalizePersistedRows } from './helpers';
 
 export const DEFAULT_SAVED_TABLE_NAME = '未命名表';
 
@@ -56,10 +59,10 @@ export type TemplateField = {
   fieldName: string;
   fieldType: string;
   fieldComment?: string;
-  nullable: '是' | '否';
-  defaultKind?: string;
+  nullable: boolean;
+  defaultKind?: FieldDefaultKind;
   defaultValue?: string;
-  onUpdate?: string;
+  onUpdate?: FieldOnUpdate;
 };
 
 export type FieldTemplate = {
@@ -154,6 +157,7 @@ const decodeScopedTableRecord = (
       ...record,
       normalizedName: record.normalizedName.slice(prefix.length),
       scope: scopeKey,
+      state: normalizePersistedRows(record.state),
     };
   }
 
@@ -164,6 +168,7 @@ const decodeScopedTableRecord = (
   return {
     ...record,
     scope: LEGACY_SCOPE,
+    state: normalizePersistedRows(record.state),
   };
 };
 

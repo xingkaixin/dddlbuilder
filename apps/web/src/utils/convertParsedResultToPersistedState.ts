@@ -27,8 +27,6 @@ const DEFAULT_MYSQL_PARTITION_CONFIG: MysqlPartitionConfig = {
   partitions: [],
 };
 
-type UiDefaultValue = '无' | '自增' | '常量' | '当前时间' | 'uuid';
-
 export function convertParsedResultToPersistedState(
   result: ParsedResult,
   importDbType: DatabaseType,
@@ -38,45 +36,16 @@ export function convertParsedResultToPersistedState(
       ? { schema: result.schemaName || '', table: result.tableName }
       : getSchemaAndTable(result.tableName);
 
-  const newRows: FieldRow[] = result.fields.map((field, index) => {
-    let uiNullable = '是';
-    if (field.nullable === false) uiNullable = '否';
-
-    let uiDefaultKind: UiDefaultValue = '无';
-    switch (field.defaultKind) {
-      case 'auto_increment':
-        uiDefaultKind = '自增';
-        break;
-      case 'constant':
-        uiDefaultKind = '常量';
-        break;
-      case 'current_timestamp':
-        uiDefaultKind = '当前时间';
-        break;
-      case 'uuid':
-        uiDefaultKind = 'uuid';
-        break;
-      default:
-        uiDefaultKind = '无';
-        break;
-    }
-
-    let uiOnUpdate: '无' | '当前时间' = '无';
-    if (field.onUpdate === 'current_timestamp') {
-      uiOnUpdate = '当前时间';
-    }
-
-    return {
-      order: index + 1,
-      fieldName: field.name,
-      fieldType: field.type,
-      fieldComment: field.comment,
-      nullable: uiNullable,
-      defaultKind: uiDefaultKind,
-      defaultValue: field.defaultValue,
-      onUpdate: uiOnUpdate,
-    };
-  });
+  const newRows: FieldRow[] = result.fields.map((field, index) => ({
+    order: index + 1,
+    fieldName: field.name,
+    fieldType: field.type,
+    fieldComment: field.comment,
+    nullable: field.nullable !== false,
+    defaultKind: field.defaultKind,
+    defaultValue: field.defaultValue,
+    onUpdate: field.onUpdate,
+  }));
 
   const minRows = 12;
   if (newRows.length < minRows) {

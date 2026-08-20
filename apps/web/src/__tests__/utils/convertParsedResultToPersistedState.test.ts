@@ -60,20 +60,20 @@ describe('convertParsedResultToPersistedState', () => {
       fieldName: 'id',
       fieldType: 'INT',
       fieldComment: '主键',
-      nullable: '否',
-      defaultKind: '自增',
+      nullable: false,
+      defaultKind: 'auto_increment',
       defaultValue: '',
-      onUpdate: '无',
+      onUpdate: 'none',
     });
     expect(state.rows[1]).toEqual({
       order: 2,
       fieldName: 'name',
       fieldType: 'VARCHAR(50)',
       fieldComment: '姓名',
-      nullable: '是',
-      defaultKind: '无',
+      nullable: true,
+      defaultKind: 'none',
       defaultValue: '',
-      onUpdate: '无',
+      onUpdate: 'none',
     });
   });
 
@@ -184,10 +184,10 @@ describe('convertParsedResultToPersistedState', () => {
     });
     const state = convertParsedResultToPersistedState(result, 'mysql');
 
-    expect(state.rows[0].defaultKind).toBe('当前时间');
-    expect(state.rows[0].onUpdate).toBe('当前时间');
+    expect(state.rows[0].defaultKind).toBe('current_timestamp');
+    expect(state.rows[0].onUpdate).toBe('current_timestamp');
     expect(state.rows[1].defaultKind).toBe('uuid');
-    expect(state.rows[2].defaultKind).toBe('常量');
+    expect(state.rows[2].defaultKind).toBe('constant');
     expect(state.rows[2].defaultValue).toBe('active');
   });
 

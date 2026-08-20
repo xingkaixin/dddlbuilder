@@ -6,6 +6,7 @@ import { buildDDLReviewQueryKey } from '@/queryKeys/ai';
 import { useLocale } from '@/i18n/LocaleContext';
 import i18n from '@/i18n';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
+import type { FieldDefaultKind, FieldOnUpdate } from '@ddlbuilder/shared-types';
 
 export interface StructuredSuggestion {
   id: string;
@@ -30,10 +31,10 @@ export interface StructuredSuggestion {
     fieldName: string;
     fieldType: string;
     fieldComment?: string;
-    nullable?: '是' | '否';
-    defaultKind?: string;
+    nullable?: boolean;
+    defaultKind?: FieldDefaultKind;
     defaultValue?: string;
-    onUpdate?: string;
+    onUpdate?: FieldOnUpdate;
   };
 
   fieldModification?: {
@@ -41,10 +42,10 @@ export interface StructuredSuggestion {
     changes: {
       fieldType?: string;
       fieldComment?: string;
-      nullable?: '是' | '否';
-      defaultKind?: string;
+      nullable?: boolean;
+      defaultKind?: FieldDefaultKind;
       defaultValue?: string;
-      onUpdate?: string;
+      onUpdate?: FieldOnUpdate;
     };
   };
 

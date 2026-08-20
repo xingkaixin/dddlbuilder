@@ -27,12 +27,8 @@ export {
 export {
   normalizeFields,
   toStringSafe,
-  normalizeBoolean,
-  normalizeDefaultKind,
-  normalizeOnUpdate,
   createEmptyRow,
   ensureOrder,
-  sanitizeRowsForPersist,
   getUiDefaultKindOptions,
   getUiOnUpdateOptions,
   isIntegerType,
@@ -50,9 +46,6 @@ export { sanitizeIndexesForPersist } from './utils/indexUtils';
 
 export {
   DATABASE_OPTIONS,
-  YES_VALUES,
-  DEFAULT_KIND_OPTIONS,
-  ON_UPDATE_OPTIONS,
   COLUMN_HEADERS,
   STORAGE_KEY,
   RESERVED_KEYWORDS,
@@ -67,8 +60,8 @@ export type {
   NormalizedField,
   IndexField,
   IndexDefinition,
-  UiDefaultKind,
-  UiOnUpdate,
+  FieldDefaultKind,
+  FieldOnUpdate,
   ParsedFieldType,
   PersistedState,
   SqlFormatMode,

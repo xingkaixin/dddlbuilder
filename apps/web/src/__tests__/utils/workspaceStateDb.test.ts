@@ -145,6 +145,37 @@ describe('workspaceStateDb', () => {
     expect(await readWorkspaceSession()).toBeNull();
   });
 
+  it('工作区会话的 activeState 在两个读取入口都应归一化历史枚举值', async () => {
+    const legacyRow = {
+      order: 1,
+      fieldName: 'id',
+      fieldType: 'bigint',
+      fieldComment: '主键',
+      nullable: '否',
+      defaultKind: '自增',
+      defaultValue: '',
+      onUpdate: '当前时间',
+    };
+    const expectedRow = {
+      ...legacyRow,
+      nullable: false,
+      defaultKind: 'auto_increment',
+      onUpdate: 'current_timestamp',
+    };
+
+    await writeWorkspaceSession({
+      activeSource: { kind: 'draft', draftId: 'default' },
+      activeState: {
+        ...createState('active'),
+        rows: [legacyRow],
+      } as unknown as PersistedState,
+      updatedAt: 44,
+    });
+
+    expect((await readWorkspaceSession())?.activeState?.rows).toEqual([expectedRow]);
+    expect((await readWorkspaceBootstrap()).session?.activeState?.rows).toEqual([expectedRow]);
+  });
+
   it('workspace 数据应按账号 scope 隔离', async () => {
     const anonymousScope = getAnonymousWorkspaceScope();
     const userAScope = { kind: 'user' as const, userId: 'user-a' };

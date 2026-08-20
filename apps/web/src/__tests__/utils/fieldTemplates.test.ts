@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import type { FieldRow } from '@ddlbuilder/shared-types';
 import {
   listTemplates,
   getTemplate,
@@ -40,7 +41,7 @@ describe('fieldTemplates', () => {
       {
         fieldName: 'id',
         fieldType: 'int',
-        nullable: '否',
+        nullable: false,
       },
     ]);
 
@@ -83,15 +84,15 @@ describe('fieldTemplates', () => {
           fieldName: '  name  ',
           fieldType: ' varchar(20) ',
           fieldComment: '  comment ',
-          nullable: '是',
+          nullable: true,
           defaultKind: 'none',
           defaultValue: 'x',
-          onUpdate: 'now',
+          onUpdate: 'current_timestamp',
         },
         {
           fieldName: '   ',
           fieldType: 'int',
-          nullable: '否',
+          nullable: false,
         },
       ],
       '  desc ',
@@ -103,23 +104,25 @@ describe('fieldTemplates', () => {
       fieldName: 'name',
       fieldType: 'varchar(20)',
       fieldComment: 'comment',
-      nullable: '是',
+      nullable: true,
       defaultKind: 'none',
       defaultValue: 'x',
-      onUpdate: 'now',
+      onUpdate: 'current_timestamp',
     });
   });
 
-  it('should normalize nullable field to 否 when value is not 是', async () => {
+  it('should normalize nullable through the shared normalizer', async () => {
+    // 迁移前存的是中文枚举值，套用旧模板时要能正确读回
+    const legacyField = (fieldName: string, nullable: unknown) =>
+      ({ fieldName, fieldType: 'varchar(20)', nullable }) as Partial<FieldRow>;
+
     const template = await createTemplateFromFields('Nullable Fallback', [
-      {
-        fieldName: 'status',
-        fieldType: 'varchar(20)',
-        nullable: 'unknown',
-      },
+      legacyField('status', '否'),
+      legacyField('remark', '是'),
+      legacyField('note', 'unknown'),
     ]);
 
-    expect(template.fields[0].nullable).toBe('否');
+    expect(template.fields.map((field) => field.nullable)).toEqual([false, true, true]);
   });
 
   it('should return null when duplicating missing template', async () => {

@@ -1,3 +1,5 @@
+import type { FieldDefaultKind, FieldOnUpdate } from './fieldRow.js';
+
 export interface GeneratedTableSchema {
   schemaName?: string;
   tableName: string;
@@ -11,10 +13,10 @@ export interface GeneratedField {
   fieldName: string;
   fieldType: string;
   fieldComment: string;
-  nullable: '是' | '否';
-  defaultKind: '无' | '自增' | '常量' | '当前时间' | 'uuid';
+  nullable: boolean;
+  defaultKind: FieldDefaultKind;
   defaultValue?: string;
-  onUpdate?: '无' | '当前时间';
+  onUpdate?: FieldOnUpdate;
   isPrimaryKey?: boolean;
 }
 

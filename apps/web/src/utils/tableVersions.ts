@@ -1,6 +1,12 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { TableVersion, TableVersionMetadata } from './savedTablesDb';
 import { openDb, VERSION_STORE_NAME } from './savedTablesDb';
+import { normalizePersistedRows } from './helpers';
+
+const decodeVersion = (version: TableVersion): TableVersion => ({
+  ...version,
+  state: normalizePersistedRows(version.state),
+});
 
 /** 每个表最多保留的版本数量 */
 export const MAX_VERSIONS_PER_TABLE = 20;
@@ -72,7 +78,7 @@ export async function listVersions(tableNormalizedName: string): Promise<TableVe
       const versions = (request.result as TableVersion[]) || [];
       // 按创建时间倒序
       versions.sort((a, b) => b.createdAt - a.createdAt);
-      resolve(versions);
+      resolve(versions.map(decodeVersion));
     };
     request.onerror = () => reject(request.error);
     tx.oncomplete = () => db.close();
@@ -101,7 +107,7 @@ export async function listVersionMetadata(
  */
 export async function getVersion(id: string): Promise<TableVersion | null> {
   const result = await runWithStore<TableVersion | undefined>('readonly', (store) => store.get(id));
-  return result ?? null;
+  return result ? decodeVersion(result) : null;
 }
 
 /**

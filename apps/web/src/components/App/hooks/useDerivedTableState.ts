@@ -128,10 +128,10 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
         fieldName: row.fieldName || '',
         fieldComment: row.fieldComment || '',
         fieldType: row.fieldType || '',
-        nullable: row.nullable === '否' ? '否' : '是',
-        defaultKind: row.defaultKind || '',
+        nullable: row.nullable !== false,
+        defaultKind: row.defaultKind ?? 'none',
         defaultValue: row.defaultValue || '',
-        onUpdate: row.onUpdate || '',
+        onUpdate: row.onUpdate ?? 'none',
       })),
     [rows],
   );

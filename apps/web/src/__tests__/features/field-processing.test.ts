@@ -2,9 +2,6 @@ import { describe, it, expect } from 'vitest';
 import type { FieldRow } from '@/App';
 import {
   normalizeFields,
-  normalizeBoolean,
-  normalizeDefaultKind,
-  normalizeOnUpdate,
   supportsAutoIncrement,
   supportsDefaultCurrentTimestamp,
   supportsOnUpdateCurrentTimestamp,
@@ -19,9 +16,13 @@ import {
   getSchemaAndTable,
   formatMysqlTableName,
   formatPostgresTableName,
-  YES_VALUES,
   RESERVED_KEYWORDS,
 } from '@/App';
+import {
+  normalizeFieldDefaultKind,
+  normalizeFieldNullable,
+  normalizeFieldOnUpdate,
+} from '@ddlbuilder/shared-types';
 
 describe('Field Processing Functions', () => {
   describe('normalizeFields', () => {
@@ -32,20 +33,20 @@ describe('Field Processing Functions', () => {
           fieldName: 'id',
           fieldType: 'int',
           fieldComment: 'Primary key',
-          nullable: '否',
-          defaultKind: '自增',
+          nullable: false,
+          defaultKind: 'auto_increment',
           defaultValue: '',
-          onUpdate: '无',
+          onUpdate: 'none',
         },
         {
           order: 2,
           fieldName: 'name',
           fieldType: 'varchar(255)',
           fieldComment: 'Name field',
-          nullable: '是',
-          defaultKind: '无',
+          nullable: true,
+          defaultKind: 'none',
           defaultValue: '',
-          onUpdate: '无',
+          onUpdate: 'none',
         },
       ];
 
@@ -79,40 +80,40 @@ describe('Field Processing Functions', () => {
           fieldName: 'id',
           fieldType: 'int',
           fieldComment: 'Valid field',
-          nullable: '否',
-          defaultKind: '无',
+          nullable: false,
+          defaultKind: 'none',
           defaultValue: '',
-          onUpdate: '无',
+          onUpdate: 'none',
         },
         {
           order: 2,
           fieldName: '',
           fieldType: 'varchar(255)',
           fieldComment: 'Empty name',
-          nullable: '是',
-          defaultKind: '无',
+          nullable: true,
+          defaultKind: 'none',
           defaultValue: '',
-          onUpdate: '无',
+          onUpdate: 'none',
         },
         {
           order: 3,
           fieldName: 'invalid',
           fieldType: '',
           fieldComment: 'Empty type',
-          nullable: '是',
-          defaultKind: '无',
+          nullable: true,
+          defaultKind: 'none',
           defaultValue: '',
-          onUpdate: '无',
+          onUpdate: 'none',
         },
         {
           order: 4,
           fieldName: 'valid',
           fieldType: 'text',
           fieldComment: 'Another valid field',
-          nullable: '是',
-          defaultKind: '无',
+          nullable: true,
+          defaultKind: 'none',
           defaultValue: '',
-          onUpdate: '无',
+          onUpdate: 'none',
         },
       ];
 
@@ -129,10 +130,10 @@ describe('Field Processing Functions', () => {
           fieldName: '  name  ',
           fieldType: '  varchar(255)  ',
           fieldComment: '  comment  ',
-          nullable: ' 是 ',
-          defaultKind: ' 无 ',
+          nullable: true,
+          defaultKind: 'none',
           defaultValue: '  default  ',
-          onUpdate: ' 无 ',
+          onUpdate: 'none',
         },
       ];
 
@@ -150,50 +151,49 @@ describe('Field Processing Functions', () => {
     });
   });
 
-  describe('normalizeBoolean', () => {
-    it('should normalize yes-like values to true', () => {
-      expect(normalizeBoolean('y')).toBe(true);
-      expect(normalizeBoolean('yes')).toBe(true);
-      expect(normalizeBoolean('true')).toBe(true);
-      expect(normalizeBoolean('1')).toBe(true);
-      expect(normalizeBoolean('是')).toBe(true);
-      expect(normalizeBoolean('√')).toBe(true);
-      expect(normalizeBoolean('Y')).toBe(true);
-      expect(normalizeBoolean('YES')).toBe(true);
-      expect(normalizeBoolean('TRUE')).toBe(true);
+  describe('normalizeFieldNullable', () => {
+    it('should treat yes-like values as nullable', () => {
+      expect(normalizeFieldNullable(true)).toBe(true);
+      expect(normalizeFieldNullable('yes')).toBe(true);
+      expect(normalizeFieldNullable('true')).toBe(true);
+      expect(normalizeFieldNullable('1')).toBe(true);
+      expect(normalizeFieldNullable('是')).toBe(true);
+      expect(normalizeFieldNullable('√')).toBe(true);
+      expect(normalizeFieldNullable('YES')).toBe(true);
     });
 
-    it('should normalize no-like values to false', () => {
-      expect(normalizeBoolean('n')).toBe(false);
-      expect(normalizeBoolean('no')).toBe(false);
-      expect(normalizeBoolean('false')).toBe(false);
-      expect(normalizeBoolean('0')).toBe(false);
-      expect(normalizeBoolean('否')).toBe(false);
-      expect(normalizeBoolean('')).toBe(false);
-      expect(normalizeBoolean(null as any)).toBe(false);
-      expect(normalizeBoolean(undefined as any)).toBe(false);
+    it('should treat no-like values as not nullable', () => {
+      expect(normalizeFieldNullable(false)).toBe(false);
+      expect(normalizeFieldNullable('n')).toBe(false);
+      expect(normalizeFieldNullable('no')).toBe(false);
+      expect(normalizeFieldNullable('false')).toBe(false);
+      expect(normalizeFieldNullable('0')).toBe(false);
+      expect(normalizeFieldNullable('否')).toBe(false);
+      expect(normalizeFieldNullable('NOT NULL')).toBe(false);
     });
   });
 
-  describe('normalizeDefaultKind', () => {
-    it('should normalize UI default kinds to internal values', () => {
-      expect(normalizeDefaultKind('自增')).toBe('auto_increment');
-      expect(normalizeDefaultKind('常量')).toBe('constant');
-      expect(normalizeDefaultKind('当前时间')).toBe('current_timestamp');
-      expect(normalizeDefaultKind('无')).toBe('none');
-      expect(normalizeDefaultKind('')).toBe('none');
-      expect(normalizeDefaultKind(undefined)).toBe('none');
-      expect(normalizeDefaultKind('invalid')).toBe('none');
+  describe('normalizeFieldDefaultKind', () => {
+    it('should normalize legacy and current default kinds to canonical tokens', () => {
+      expect(normalizeFieldDefaultKind('自增')).toBe('auto_increment');
+      expect(normalizeFieldDefaultKind('常量')).toBe('constant');
+      expect(normalizeFieldDefaultKind('当前时间')).toBe('current_timestamp');
+      expect(normalizeFieldDefaultKind('无')).toBe('none');
+      expect(normalizeFieldDefaultKind('auto_increment')).toBe('auto_increment');
+      expect(normalizeFieldDefaultKind('')).toBe('none');
+      expect(normalizeFieldDefaultKind(undefined)).toBe('none');
+      expect(normalizeFieldDefaultKind('invalid')).toBe('none');
     });
   });
 
-  describe('normalizeOnUpdate', () => {
-    it('should normalize UI update kinds to internal values', () => {
-      expect(normalizeOnUpdate('当前时间')).toBe('current_timestamp');
-      expect(normalizeOnUpdate('无')).toBe('none');
-      expect(normalizeOnUpdate('')).toBe('none');
-      expect(normalizeOnUpdate(undefined)).toBe('none');
-      expect(normalizeOnUpdate('invalid')).toBe('none');
+  describe('normalizeFieldOnUpdate', () => {
+    it('should normalize legacy and current update kinds to canonical tokens', () => {
+      expect(normalizeFieldOnUpdate('当前时间')).toBe('current_timestamp');
+      expect(normalizeFieldOnUpdate('无')).toBe('none');
+      expect(normalizeFieldOnUpdate('current_timestamp')).toBe('current_timestamp');
+      expect(normalizeFieldOnUpdate('')).toBe('none');
+      expect(normalizeFieldOnUpdate(undefined)).toBe('none');
+      expect(normalizeFieldOnUpdate('invalid')).toBe('none');
     });
   });
 
@@ -482,19 +482,6 @@ describe('Field Processing Functions', () => {
   });
 
   describe('Constants', () => {
-    describe('YES_VALUES', () => {
-      it('should contain all expected yes-like values', () => {
-        expect(YES_VALUES.has('y')).toBe(true);
-        expect(YES_VALUES.has('yes')).toBe(true);
-        expect(YES_VALUES.has('true')).toBe(true);
-        expect(YES_VALUES.has('1')).toBe(true);
-        expect(YES_VALUES.has('是')).toBe(true);
-        expect(YES_VALUES.has('√')).toBe(true);
-        expect(YES_VALUES.has('no')).toBe(false);
-        expect(YES_VALUES.has('false')).toBe(false);
-      });
-    });
-
     describe('RESERVED_KEYWORDS', () => {
       it('should contain keywords for all databases', () => {
         expect(RESERVED_KEYWORDS.mysql).toBeInstanceOf(Set);

@@ -1,10 +1,13 @@
-import type { DatabaseType, FieldRow, UiDefaultKind, UiOnUpdate } from '@ddlbuilder/shared-types';
 import {
-  DEFAULT_KIND_OPTIONS,
-  ON_UPDATE_OPTIONS,
-  YES_VALUES,
-  RESERVED_KEYWORDS,
-} from './constants';
+  type DatabaseType,
+  type FieldDefaultKind,
+  type FieldOnUpdate,
+  type FieldRow,
+  normalizeFieldDefaultKind,
+  normalizeFieldNullable,
+  normalizeFieldOnUpdate,
+} from '@ddlbuilder/shared-types';
+import { RESERVED_KEYWORDS } from './constants';
 import {
   supportsAutoIncrement,
   supportsDefaultCurrentTimestamp,
@@ -30,44 +33,31 @@ export const isReservedKeyword = (db: DatabaseType, name: string) => {
   return RESERVED_KEYWORDS[db]?.has(lower) ?? false;
 };
 
-export const normalizeBoolean = (value: string) => {
-  if (value == null) {
-    return false;
-  }
-  const normalized = String(value).trim().toLowerCase();
-  return YES_VALUES.has(normalized);
-};
-
-export const normalizeDefaultKind = (
-  v: string | undefined,
-): 'none' | 'auto_increment' | 'constant' | 'current_timestamp' | 'uuid' => {
-  const s = toStringSafe(v).trim();
-  if (s === '自增') return 'auto_increment';
-  if (s === '常量') return 'constant';
-  if (s === '当前时间') return 'current_timestamp';
-  if (s === 'uuid') return 'uuid';
-  return 'none';
-};
-
-export const normalizeOnUpdate = (v: string | undefined): 'none' | 'current_timestamp' => {
-  const s = toStringSafe(v).trim();
-  if (s === '当前时间') return 'current_timestamp';
-  return 'none';
-};
-
 export const createEmptyRow = (index: number): FieldRow => ({
   order: index + 1,
   fieldName: '',
   fieldType: '',
   fieldComment: '',
-  nullable: '是',
-  defaultKind: '无',
+  nullable: true,
+  defaultKind: 'none',
   defaultValue: '',
-  onUpdate: '无',
+  onUpdate: 'none',
 });
 
 export const ensureOrder = (rows: FieldRow[]) =>
   rows.map((row, index) => ({ ...row, order: index + 1 }));
+
+const FIELD_CELL_NORMALIZERS = new Map<string, (value: unknown) => unknown>([
+  ['nullable', normalizeFieldNullable],
+  ['defaultKind', normalizeFieldDefaultKind],
+  ['onUpdate', normalizeFieldOnUpdate],
+]);
+
+/** 表格单元格的输入可能来自勾选框、下拉框或粘贴的文本，按列收敛成该列的存储类型。 */
+export const normalizeFieldCellValue = (prop: string, value: unknown): unknown =>
+  (FIELD_CELL_NORMALIZERS.get(prop) ?? toStringSafe)(value);
+
+export { normalizeFieldEnums, normalizePersistedRows } from '@ddlbuilder/shared-types';
 
 export const normalizeFields = (rows: FieldRow[]) =>
   rows
@@ -75,32 +65,13 @@ export const normalizeFields = (rows: FieldRow[]) =>
       name: toStringSafe(row.fieldName).trim(),
       type: toStringSafe(row.fieldType).trim(),
       comment: toStringSafe(row.fieldComment).trim(),
-      nullable: normalizeBoolean(toStringSafe(row.nullable)),
-      defaultKind: normalizeDefaultKind(row.defaultKind as UiDefaultKind),
+      nullable: row.nullable,
+      defaultKind: row.defaultKind ?? 'none',
       defaultValue: toStringSafe(row.defaultValue).trim(),
-      onUpdate: normalizeOnUpdate(row.onUpdate as UiOnUpdate),
+      onUpdate: row.onUpdate ?? 'none',
       enumMeta: row.enumMeta,
     }))
     .filter((field) => field.name && field.type);
-
-export const sanitizeRowsForPersist = (rows: FieldRow[]) =>
-  ensureOrder(
-    rows.map((r, i) => ({
-      order: i + 1,
-      fieldName: toStringSafe(r.fieldName),
-      fieldType: toStringSafe(r.fieldType),
-      fieldComment: toStringSafe(r.fieldComment),
-      nullable: r?.nullable === '是' ? '是' : '否',
-      defaultKind: DEFAULT_KIND_OPTIONS.includes((r?.defaultKind as UiDefaultKind) ?? '无')
-        ? (r?.defaultKind as UiDefaultKind)
-        : '无',
-      defaultValue: toStringSafe(r.defaultValue),
-      onUpdate: ON_UPDATE_OPTIONS.includes((r?.onUpdate as UiOnUpdate) ?? '无')
-        ? (r?.onUpdate as UiOnUpdate)
-        : '无',
-      enumMeta: r.enumMeta,
-    })),
-  );
 
 export const isIntegerType = (canonical: string) =>
   new Set(['tinyint', 'smallint', 'int', 'integer', 'bigint']).has(canonical);
@@ -129,17 +100,20 @@ export {
   supportsUuidDefault,
 } from '@ddlbuilder/ddl-core';
 
-export const getUiDefaultKindOptions = (db: DatabaseType, canonical: string): UiDefaultKind[] => {
-  const opts: UiDefaultKind[] = ['无', '常量'];
-  if (supportsAutoIncrement(db, canonical)) opts.splice(1, 0, '自增');
+export const getUiDefaultKindOptions = (
+  db: DatabaseType,
+  canonical: string,
+): FieldDefaultKind[] => {
+  const opts: FieldDefaultKind[] = ['none', 'constant'];
+  if (supportsAutoIncrement(db, canonical)) opts.splice(1, 0, 'auto_increment');
   if (supportsUuidDefault(canonical)) opts.push('uuid');
-  if (supportsDefaultCurrentTimestamp(db, canonical)) opts.push('当前时间');
+  if (supportsDefaultCurrentTimestamp(db, canonical)) opts.push('current_timestamp');
   return opts;
 };
 
-export const getUiOnUpdateOptions = (db: DatabaseType, canonical: string): UiOnUpdate[] => {
-  const opts: UiOnUpdate[] = ['无'];
-  if (supportsOnUpdateCurrentTimestamp(db, canonical)) opts.push('当前时间');
+export const getUiOnUpdateOptions = (db: DatabaseType, canonical: string): FieldOnUpdate[] => {
+  const opts: FieldOnUpdate[] = ['none'];
+  if (supportsOnUpdateCurrentTimestamp(db, canonical)) opts.push('current_timestamp');
   return opts;
 };
 

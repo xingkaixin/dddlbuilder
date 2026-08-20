@@ -1,6 +1,8 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { type PersistedState, normalizePersistedRows } from '@ddlbuilder/shared-types';
 import { useSaveLoadActions } from '@/components/App/hooks/savedTableFlow/saveLoadActions';
+import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 
 // Mocks for DB utils so we don't depend on indexedDB environment in these unit tests
 vi.mock('@/utils/tableVersions', () => ({
@@ -183,6 +185,74 @@ describe('useSaveLoadActions', () => {
       },
       draftState,
     );
+  });
+
+  describe('跨版本升级后的已保存表草稿', () => {
+    const legacySavedState = {
+      tableName: 'orders',
+      dbType: 'mysql',
+      rows: [
+        {
+          order: 1,
+          fieldName: 'id',
+          fieldType: 'bigint',
+          fieldComment: '主键',
+          nullable: '否',
+          defaultKind: '自增',
+          defaultValue: '',
+          onUpdate: '无',
+        },
+      ],
+    } as unknown as PersistedState;
+
+    // 升级后已保存表经 savedTablesDb 读取入口归一化，baseSignature 仍是迁移前写入的原始 JSON
+    const loadWithDraft = (draftState: PersistedState, baseSignature: string) => {
+      const recordState = normalizePersistedRows(legacySavedState);
+      loadTable.mockResolvedValue({
+        normalizedName: 'orders',
+        name: 'orders',
+        state: recordState,
+      });
+
+      return getHook({
+        serializePersistedState: serializePersistedStateForComparison,
+        getSavedTableDraft: vi.fn().mockReturnValue({
+          state: draftState,
+          tableName: 'orders',
+          baseSignature,
+          updatedAt: Date.now(),
+        }),
+      });
+    };
+
+    it('保留未保存的编辑，而不是回落到已保存版本', async () => {
+      const draftState = {
+        ...normalizePersistedRows(legacySavedState),
+        tableComment: '尚未保存的编辑',
+      } as PersistedState;
+      const { result } = loadWithDraft(draftState, JSON.stringify(legacySavedState));
+
+      await act(async () => {
+        result.current.handleSelectSavedTable({ normalizedName: 'orders' } as any);
+      });
+
+      expect(applySavedState).toHaveBeenCalledWith(draftState);
+    });
+
+    it('基线确实变化时仍回落到已保存版本', async () => {
+      const draftState = { ...normalizePersistedRows(legacySavedState) } as PersistedState;
+      const staleBase = JSON.stringify({
+        ...legacySavedState,
+        rows: [{ ...legacySavedState.rows[0], fieldType: 'int' }],
+      });
+      const { result } = loadWithDraft(draftState, staleBase);
+
+      await act(async () => {
+        result.current.handleSelectSavedTable({ normalizedName: 'orders' } as any);
+      });
+
+      expect(applySavedState).toHaveBeenCalledWith(normalizePersistedRows(legacySavedState));
+    });
   });
 
   it('handleOpenSaveDialog fallback name uses defaults', () => {

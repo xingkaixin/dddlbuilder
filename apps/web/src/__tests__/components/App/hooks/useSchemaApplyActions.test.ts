@@ -164,8 +164,8 @@ describe('useSchemaApplyActions', () => {
       const newRows = setRowsUpdater([]);
       expect(newRows).toHaveLength(1);
       expect(newRows[0].fieldName).toBe('new_col');
-      expect(newRows[0].nullable).toBe('是');
-      expect(newRows[0].defaultKind).toBe('无');
+      expect(newRows[0].nullable).toBe(true);
+      expect(newRows[0].defaultKind).toBe('none');
 
       expect(spies.triggerFieldTableHighlight).toHaveBeenCalledWith(0);
       expect(spies.showToast).toHaveBeenCalledWith('已应用建议：Add field');
@@ -189,10 +189,10 @@ describe('useSchemaApplyActions', () => {
             fieldName: 'col1',
             fieldType: 'VARCHAR',
             fieldComment: '',
-            nullable: '是',
-            defaultKind: '无',
+            nullable: true,
+            defaultKind: 'none',
             defaultValue: '',
-            onUpdate: '无',
+            onUpdate: 'none',
           },
         ],
         reviewResult: { suggestions: [{ id: 's2' }] } as any,
@@ -226,10 +226,10 @@ describe('useSchemaApplyActions', () => {
             fieldName: 'col1',
             fieldType: 'VARCHAR',
             fieldComment: '',
-            nullable: '是',
-            defaultKind: '无',
+            nullable: true,
+            defaultKind: 'none',
             defaultValue: '',
-            onUpdate: '无',
+            onUpdate: 'none',
           },
         ],
       });
@@ -453,18 +453,18 @@ describe('useSchemaApplyActions', () => {
       });
 
       const rows = spies.setRows.mock.calls[0][0];
-      expect(rows[0].nullable).toBe('否');
-      expect(rows[0].defaultKind).toBe('自增');
+      expect(rows[0].nullable).toBe(false);
+      expect(rows[0].defaultKind).toBe('auto_increment');
 
-      expect(rows[1].nullable).toBe('是');
-      expect(rows[1].defaultKind).toBe('常量');
+      expect(rows[1].nullable).toBe(true);
+      expect(rows[1].defaultKind).toBe('constant');
 
-      expect(rows[2].defaultKind).toBe('当前时间');
-      expect(rows[2].onUpdate).toBe('当前时间');
+      expect(rows[2].defaultKind).toBe('current_timestamp');
+      expect(rows[2].onUpdate).toBe('current_timestamp');
 
       expect(rows[3].defaultKind).toBe('uuid');
 
-      expect(rows[4].defaultKind).toBe('无');
+      expect(rows[4].defaultKind).toBe('none');
       expect(rows.length).toBe(12); // padded to 12
     });
   });
@@ -481,16 +481,16 @@ describe('useSchemaApplyActions', () => {
               fieldName: 'id',
               fieldType: 'INT',
               fieldComment: '',
-              nullable: '否',
-              defaultKind: '无',
+              nullable: false,
+              defaultKind: 'none',
               isPrimaryKey: true,
             },
             {
               fieldName: 'name',
               fieldType: 'VARCHAR',
               fieldComment: '',
-              nullable: '是',
-              defaultKind: '无',
+              nullable: true,
+              defaultKind: 'none',
               isPrimaryKey: false,
             },
           ],
@@ -512,20 +512,20 @@ describe('useSchemaApplyActions', () => {
           fieldName: 'id',
           fieldType: 'INT',
           fieldComment: '',
-          nullable: '否',
-          defaultKind: '无',
+          nullable: false,
+          defaultKind: 'none',
           defaultValue: '',
-          onUpdate: '无',
+          onUpdate: 'none',
         },
         {
           order: 2,
           fieldName: 'name',
           fieldType: 'VARCHAR',
           fieldComment: '',
-          nullable: '是',
-          defaultKind: '无',
+          nullable: true,
+          defaultKind: 'none',
           defaultValue: '',
-          onUpdate: '无',
+          onUpdate: 'none',
         },
       ]);
       const indexes = spies.setIndexes.mock.calls[0][0];
@@ -548,8 +548,8 @@ describe('useSchemaApplyActions', () => {
               fieldName: 'id',
               fieldType: 'INT',
               fieldComment: '',
-              nullable: '否',
-              defaultKind: '无',
+              nullable: false,
+              defaultKind: 'none',
               isPrimaryKey: true,
             },
           ],

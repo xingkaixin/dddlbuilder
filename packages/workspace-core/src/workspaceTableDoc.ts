@@ -1,9 +1,13 @@
 import * as Y from 'yjs';
-import type {
-  FieldRow,
-  ForeignKeyDefinition,
-  IndexDefinition,
-  PersistedState,
+import {
+  type FieldRow,
+  type ForeignKeyDefinition,
+  type IndexDefinition,
+  type PersistedState,
+  normalizeFieldDefaultKind,
+  normalizeFieldNullable,
+  normalizeFieldOnUpdate,
+  normalizePersistedRows,
 } from '@ddlbuilder/shared-types';
 import {
   ensureArray,
@@ -126,24 +130,19 @@ const uniqueFieldId = (baseId: string, used: Set<string>) => {
   return `${baseId}_${suffix}`;
 };
 
-type FieldTextKey =
-  | 'fieldName'
-  | 'fieldType'
-  | 'fieldComment'
-  | 'nullable'
-  | 'defaultKind'
-  | 'defaultValue'
-  | 'onUpdate';
-
 const readFieldRow = (
   fieldMap: Y.Map<unknown>,
   fallbackOrder: number,
   fallbackRow?: FieldRow,
 ): FieldRow => {
-  const row = readJsonMap(fieldMap) as Partial<FieldRow>;
-  const fallback: Partial<FieldRow> = fallbackRow ?? {};
-  const text = (key: FieldTextKey) =>
+  const row: JsonRecord = readJsonMap(fieldMap);
+  const fallback: JsonRecord = (fallbackRow ?? {}) as unknown as JsonRecord;
+  const text = (key: string) =>
     [row[key], fallback[key]].find((value) => typeof value === 'string');
+  // nullable 迁移前存中文字符串、迁移后存布尔，两种都算合法值，其余类型继续回落
+  const nullable = [row.nullable, fallback.nullable].find(
+    (value) => typeof value === 'boolean' || typeof value === 'string',
+  );
   const order = [row.order, fallback.order].find((value) => typeof value === 'number');
   const defaultKind = text('defaultKind');
   const defaultValue = text('defaultValue');
@@ -155,11 +154,11 @@ const readFieldRow = (
     fieldName: text('fieldName') ?? '',
     fieldType: text('fieldType') ?? '',
     fieldComment: text('fieldComment') ?? '',
-    nullable: text('nullable') ?? '是',
-    ...(defaultKind === undefined ? {} : { defaultKind }),
+    nullable: normalizeFieldNullable(nullable),
+    ...(defaultKind === undefined ? {} : { defaultKind: normalizeFieldDefaultKind(defaultKind) }),
     ...(defaultValue === undefined ? {} : { defaultValue }),
-    ...(onUpdate === undefined ? {} : { onUpdate }),
-    ...(enumMeta === undefined ? {} : { enumMeta }),
+    ...(onUpdate === undefined ? {} : { onUpdate: normalizeFieldOnUpdate(onUpdate) }),
+    ...(enumMeta === undefined ? {} : { enumMeta: enumMeta as FieldRow['enumMeta'] }),
   };
 };
 
@@ -312,7 +311,9 @@ export const applyPersistedStateToTableDoc = (
 };
 
 export const tableDocToPersistedState = (tableDoc: Y.Map<unknown>): PersistedState => {
-  const stateSnapshot = readStateSnapshot(tableDoc);
+  const rawSnapshot = readStateSnapshot(tableDoc);
+  // 快照可能是历史格式，且下面有绕过 readFieldRow 直接取快照 rows 的分支，先归一化。
+  const stateSnapshot = rawSnapshot && normalizePersistedRows(rawSnapshot);
   if (!hasFineGrainedTableDoc(tableDoc) && stateSnapshot) return stateSnapshot;
 
   const state = {

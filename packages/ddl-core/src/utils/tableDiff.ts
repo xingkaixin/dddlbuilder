@@ -1,10 +1,13 @@
-import type {
-  PersistedState,
-  NormalizedField,
-  IndexDefinition,
-  FieldRow,
-  TableMiscConfig,
-  ForeignKeyDefinition,
+import {
+  type PersistedState,
+  type NormalizedField,
+  type IndexDefinition,
+  type FieldRow,
+  type TableMiscConfig,
+  type ForeignKeyDefinition,
+  normalizeFieldDefaultKind,
+  normalizeFieldNullable,
+  normalizeFieldOnUpdate,
 } from '@ddlbuilder/shared-types';
 
 /**
@@ -78,40 +81,21 @@ export type TableDiff = {
 
 /**
  * 将 FieldRow 转换为 NormalizedField
+ *
+ * 作为共享包不能假设调用方已把历史中文枚举值归一化，这里重新收敛一次。
  */
 function normalizeFieldRow(row: FieldRow): NormalizedField | null {
   const name = row.fieldName?.trim();
   if (!name) return null;
 
-  const nullableStr = (row.nullable || '').toLowerCase();
-  const nullable = ['是', 'y', 'yes', 'true', '1', '√'].includes(nullableStr);
-
-  let defaultKind: NormalizedField['defaultKind'] = 'none';
-  const defaultKindStr = (row.defaultKind || '').toLowerCase();
-  if (defaultKindStr === '自增' || defaultKindStr === 'auto_increment') {
-    defaultKind = 'auto_increment';
-  } else if (defaultKindStr === '常量' || defaultKindStr === 'constant') {
-    defaultKind = 'constant';
-  } else if (defaultKindStr === '当前时间' || defaultKindStr === 'current_timestamp') {
-    defaultKind = 'current_timestamp';
-  } else if (defaultKindStr === 'uuid') {
-    defaultKind = 'uuid';
-  }
-
-  let onUpdate: NormalizedField['onUpdate'] = 'none';
-  const onUpdateStr = (row.onUpdate || '').toLowerCase();
-  if (onUpdateStr === '当前时间' || onUpdateStr === 'current_timestamp') {
-    onUpdate = 'current_timestamp';
-  }
-
   return {
     name,
     type: row.fieldType?.trim() || '',
     comment: row.fieldComment?.trim() || '',
-    nullable,
-    defaultKind,
+    nullable: normalizeFieldNullable(row.nullable),
+    defaultKind: normalizeFieldDefaultKind(row.defaultKind),
     defaultValue: row.defaultValue?.trim() || '',
-    onUpdate,
+    onUpdate: normalizeFieldOnUpdate(row.onUpdate),
   };
 }
 

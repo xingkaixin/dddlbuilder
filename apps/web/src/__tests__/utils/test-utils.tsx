@@ -67,10 +67,10 @@ export const createTestField = (overrides = {}) => ({
   fieldName: 'test_field',
   fieldType: 'varchar(255)',
   fieldComment: 'Test field',
-  nullable: '是',
-  defaultKind: '无',
+  nullable: true,
+  defaultKind: 'none',
   defaultValue: '',
-  onUpdate: '无',
+  onUpdate: 'none',
   ...overrides,
 });
 

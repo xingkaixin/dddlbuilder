@@ -4,6 +4,11 @@
  */
 
 import {
+  type FieldRow,
+  normalizeFieldEnums,
+  normalizeFieldNullable,
+} from '@ddlbuilder/shared-types';
+import {
   openDb,
   TEMPLATE_STORE_NAME,
   type FieldTemplate,
@@ -11,6 +16,11 @@ import {
 } from './savedTablesDb';
 
 export type { FieldTemplate, TemplateField };
+
+const decodeTemplate = (template: FieldTemplate): FieldTemplate => ({
+  ...template,
+  fields: Array.isArray(template.fields) ? template.fields.map(normalizeFieldEnums) : [],
+});
 
 // 生成唯一 ID
 const generateId = (): string => {
@@ -58,14 +68,17 @@ export const listTemplates = async (): Promise<FieldTemplate[]> => {
     store.getAll(),
   );
   // 按更新时间降序排列
-  return templates.sort((a, b) => b.updatedAt - a.updatedAt);
+  return templates.map(decodeTemplate).sort((a, b) => b.updatedAt - a.updatedAt);
 };
 
 /**
  * 获取单个模板
  */
 export const getTemplate = async (id: string): Promise<FieldTemplate | undefined> => {
-  return runWithTemplateStore<FieldTemplate | undefined>('readonly', (store) => store.get(id));
+  const template = await runWithTemplateStore<FieldTemplate | undefined>('readonly', (store) =>
+    store.get(id),
+  );
+  return template ? decodeTemplate(template) : undefined;
 };
 
 /**
@@ -142,15 +155,7 @@ export const deleteTemplate = async (id: string): Promise<void> => {
  */
 export const createTemplateFromFields = async (
   name: string,
-  fields: Array<{
-    fieldName?: string;
-    fieldType?: string;
-    fieldComment?: string;
-    nullable?: string;
-    defaultKind?: string;
-    defaultValue?: string;
-    onUpdate?: string;
-  }>,
+  fields: Array<Partial<FieldRow>>,
   description?: string,
 ): Promise<FieldTemplate> => {
   // 过滤掉空行并转换格式
@@ -160,7 +165,7 @@ export const createTemplateFromFields = async (
       fieldName: f.fieldName?.trim() || '',
       fieldType: f.fieldType?.trim() || '',
       fieldComment: f.fieldComment?.trim(),
-      nullable: f.nullable === '是' ? '是' : '否',
+      nullable: normalizeFieldNullable(f.nullable),
       defaultKind: f.defaultKind,
       defaultValue: f.defaultValue,
       onUpdate: f.onUpdate,

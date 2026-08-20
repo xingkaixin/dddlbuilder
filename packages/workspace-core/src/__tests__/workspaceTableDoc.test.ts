@@ -25,20 +25,20 @@ const createClientState = (overrides: Partial<PersistedState> = {}): PersistedSt
       fieldName: 'id',
       fieldType: 'bigint',
       fieldComment: '主键',
-      nullable: '否',
-      defaultKind: '自增',
+      nullable: false,
+      defaultKind: 'auto_increment',
       defaultValue: '',
-      onUpdate: '',
+      onUpdate: 'none',
     },
     {
       order: 2,
       fieldName: 'email',
       fieldType: 'varchar(255)',
       fieldComment: '邮箱',
-      nullable: '是',
-      defaultKind: '',
+      nullable: true,
+      defaultKind: 'none',
       defaultValue: '',
-      onUpdate: '',
+      onUpdate: 'none',
     },
   ],
   addCount: 12,
@@ -136,6 +136,47 @@ describe('workspace table doc', () => {
     expect(decoded.tableName).toBe('renamed');
     expect(decoded.tableComment).toBe(clientState.tableComment);
     expect(decoded.rows).toEqual(clientState.rows);
+  });
+
+  it('normalizes legacy snapshot rows on both branches that bypass readFieldRow', () => {
+    const legacyRows = [
+      {
+        order: 1,
+        fieldName: 'id',
+        fieldType: 'bigint',
+        fieldComment: '主键',
+        nullable: '否',
+        defaultKind: '自增',
+        defaultValue: '',
+        onUpdate: '无',
+      },
+      {
+        order: 2,
+        fieldName: 'created_at',
+        fieldType: 'timestamp',
+        fieldComment: '创建时间',
+        nullable: '否',
+        defaultKind: '当前时间',
+        defaultValue: '',
+        onUpdate: '当前时间',
+      },
+    ] as unknown as PersistedState['rows'];
+    const expectedRows = [
+      { ...legacyRows[0], nullable: false, defaultKind: 'auto_increment', onUpdate: 'none' },
+      {
+        ...legacyRows[1],
+        nullable: false,
+        defaultKind: 'current_timestamp',
+        onUpdate: 'current_timestamp',
+      },
+    ];
+
+    const snapshotOnly = createLegacyTableDoc(createClientState({ rows: legacyRows }));
+    expect(tableDocToPersistedState(snapshotOnly).rows).toEqual(expectedRows);
+
+    const withoutFieldDoc = createLegacyTableDoc(createClientState({ rows: legacyRows }));
+    withoutFieldDoc.set('scalar', new Y.Map<unknown>());
+    expect(tableDocToPersistedState(withoutFieldDoc).rows).toEqual(expectedRows);
   });
 
   it('fills missing field values from the matching snapshot row', () => {
@@ -300,7 +341,12 @@ describe('workspace table doc key removals', () => {
     tableMiscConfig: { engine: 'InnoDB' },
   });
   const rowsWithOptionalKeys = [
-    { ...createClientState().rows[0], defaultKind: '自增', onUpdate: 'now()', enumMeta },
+    {
+      ...createClientState().rows[0],
+      defaultKind: 'auto_increment',
+      onUpdate: 'current_timestamp',
+      enumMeta,
+    },
     createClientState().rows[1],
   ];
 

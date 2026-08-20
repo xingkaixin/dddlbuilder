@@ -1,4 +1,5 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
+import { normalizeFieldEnums } from './helpers';
 import {
   openDb,
   TABLE_TEMPLATE_STORE_NAME,
@@ -7,6 +8,16 @@ import {
 } from './savedTablesDb';
 
 export type { TableBlueprint, TableTemplate };
+
+const decodeTableTemplate = (template: TableTemplate): TableTemplate => ({
+  ...template,
+  blueprint: {
+    ...template.blueprint,
+    rows: Array.isArray(template.blueprint?.rows)
+      ? template.blueprint.rows.map(normalizeFieldEnums)
+      : [],
+  },
+});
 
 const generateId = (): string => `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
@@ -84,11 +95,14 @@ export const listTableTemplates = async (): Promise<TableTemplate[]> => {
   const templates = await runWithTableTemplateStore<TableTemplate[]>('readonly', (store) =>
     store.getAll(),
   );
-  return templates.sort((a, b) => b.updatedAt - a.updatedAt);
+  return templates.map(decodeTableTemplate).sort((a, b) => b.updatedAt - a.updatedAt);
 };
 
 export const getTableTemplate = async (id: string): Promise<TableTemplate | undefined> => {
-  return runWithTableTemplateStore<TableTemplate | undefined>('readonly', (store) => store.get(id));
+  const template = await runWithTableTemplateStore<TableTemplate | undefined>('readonly', (store) =>
+    store.get(id),
+  );
+  return template ? decodeTableTemplate(template) : undefined;
 };
 
 export const createTableTemplate = async (

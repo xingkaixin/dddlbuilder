@@ -4,6 +4,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
+import type { FieldRow } from '@ddlbuilder/shared-types';
 import {
   listTemplates,
   getTemplate,
@@ -80,15 +81,7 @@ export function useFieldTemplates() {
   const createFromFields = useCallback(
     async (
       name: string,
-      fields: Array<{
-        fieldName?: string;
-        fieldType?: string;
-        fieldComment?: string;
-        nullable?: string;
-        defaultKind?: string;
-        defaultValue?: string;
-        onUpdate?: string;
-      }>,
+      fields: Array<Partial<FieldRow>>,
       description?: string,
     ): Promise<OperationResult & { template?: FieldTemplate }> => {
       try {

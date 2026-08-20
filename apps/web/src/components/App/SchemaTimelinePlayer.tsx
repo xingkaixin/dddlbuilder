@@ -18,6 +18,7 @@ import type { TableDiff, FieldDiff, FieldChangeType } from '@ddlbuilder/ddl-core
 import { diffPersistedState } from '@ddlbuilder/ddl-core';
 import { listVersions } from '@/utils/tableVersions';
 import { useTranslation } from 'react-i18next';
+import { getDefaultKindLabel, getNullableLabel, getOnUpdateLabel } from '@/i18n/fieldEnums';
 import { useLocale } from '@/i18n/LocaleContext';
 
 interface SchemaTimelinePlayerProps {
@@ -400,10 +401,10 @@ export const SchemaTimelinePlayer = memo<SchemaTimelinePlayerProps>(
                           </td>
                           <td className="px-2 py-2">{row.fieldType}</td>
                           <td className="px-2 py-2 text-muted-foreground">{row.fieldComment}</td>
-                          <td className="px-2 py-2">{row.nullable}</td>
-                          <td className="px-2 py-2">{row.defaultKind}</td>
+                          <td className="px-2 py-2">{getNullableLabel(row.nullable, t)}</td>
+                          <td className="px-2 py-2">{getDefaultKindLabel(row.defaultKind, t)}</td>
                           <td className="px-2 py-2">{row.defaultValue}</td>
-                          <td className="px-2 py-2">{row.onUpdate}</td>
+                          <td className="px-2 py-2">{getOnUpdateLabel(row.onUpdate, t)}</td>
                         </tr>
                       );
                     })}

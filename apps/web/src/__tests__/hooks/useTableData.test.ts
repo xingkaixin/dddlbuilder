@@ -9,10 +9,10 @@ describe('useTableData', () => {
     fieldName: '',
     fieldType: '',
     fieldComment: '',
-    nullable: '是',
-    defaultKind: '无',
+    nullable: true,
+    defaultKind: 'none',
     defaultValue: '',
-    onUpdate: '无',
+    onUpdate: 'none',
     ...overrides,
   });
 
@@ -21,19 +21,19 @@ describe('useTableData', () => {
       order: 1,
       fieldName: 'id',
       fieldType: 'int',
-      nullable: '否',
+      nullable: false,
     }),
     createTestRow({
       order: 2,
       fieldName: 'name',
       fieldType: 'varchar(255)',
-      nullable: '否',
+      nullable: false,
     }),
     createTestRow({
       order: 3,
       fieldName: 'email',
       fieldType: 'varchar(255)',
-      nullable: '是',
+      nullable: true,
     }),
   ];
 
@@ -57,13 +57,13 @@ describe('useTableData', () => {
         order: 1,
         fieldName: 'user_id',
         fieldType: 'uuid',
-        nullable: '否',
+        nullable: false,
       }),
       createTestRow({
         order: 2,
         fieldName: 'username',
         fieldType: 'varchar(50)',
-        nullable: '否',
+        nullable: false,
       }),
     ];
 
@@ -190,12 +190,12 @@ describe('useTableData', () => {
 
     // 将第一行改为自增
     act(() => {
-      result.current.handleRowsChange([[0, 'defaultKind', '无', '自增']], 'edit');
+      result.current.handleRowsChange([[0, 'defaultKind', 'none', 'auto_increment']], 'edit');
     });
 
     const updatedRow = result.current.rows[0];
-    expect(updatedRow.defaultKind).toBe('自增');
-    expect(updatedRow.nullable).toBe('否'); // 自增字段应该为 NOT NULL
+    expect(updatedRow.defaultKind).toBe('auto_increment');
+    expect(updatedRow.nullable).toBe(false); // 自增字段应该为 NOT NULL
   });
 
   it('应该处理常量字段的默认值逻辑', () => {
@@ -204,19 +204,19 @@ describe('useTableData', () => {
 
     // 设置默认值为常量
     act(() => {
-      result.current.handleRowsChange([[0, 'defaultKind', '无', '常量']], 'edit');
+      result.current.handleRowsChange([[0, 'defaultKind', 'none', 'constant']], 'edit');
       result.current.handleRowsChange([[0, 'defaultValue', '', 'test_value']], 'edit');
     });
 
-    expect(result.current.rows[0].defaultKind).toBe('常量');
+    expect(result.current.rows[0].defaultKind).toBe('constant');
     expect(result.current.rows[0].defaultValue).toBe('test_value');
 
     // 切换为其他类型
     act(() => {
-      result.current.handleRowsChange([[0, 'defaultKind', '常量', '无']], 'edit');
+      result.current.handleRowsChange([[0, 'defaultKind', 'constant', 'none']], 'edit');
     });
 
-    expect(result.current.rows[0].defaultKind).toBe('无');
+    expect(result.current.rows[0].defaultKind).toBe('none');
     expect(result.current.rows[0].defaultValue).toBe(''); // 非常量时清空默认值
   });
 
@@ -284,7 +284,7 @@ describe('useTableData', () => {
         fieldName: '  id  ',
         fieldType: '  int  ',
         fieldComment: '  Primary key  ',
-        nullable: ' 否 ',
+        nullable: false,
       }),
     ];
 
@@ -320,9 +320,9 @@ describe('useTableData', () => {
       result.current.handleRowsChange(
         [
           [0, 'fieldName', 'id', 'user_id'],
-          [0, 'defaultKind', '无', '自增'],
+          [0, 'defaultKind', 'none', 'auto_increment'],
           [1, 'fieldType', 'varchar(255)', 'varchar(100)'],
-          [1, 'nullable', '否', '是'],
+          [1, 'nullable', false, true],
           [0, 'fieldComment', '', 'User ID'],
           [0, 'defaultValue', '', 'uuid_generate_v4()'],
         ],
@@ -334,13 +334,13 @@ describe('useTableData', () => {
     const secondRow = result.current.rows[1];
 
     expect(firstRow.fieldName).toBe('user_id');
-    expect(firstRow.defaultKind).toBe('自增');
-    expect(firstRow.nullable).toBe('否'); // 自增字段自动设为 NOT NULL
+    expect(firstRow.defaultKind).toBe('auto_increment');
+    expect(firstRow.nullable).toBe(false); // 自增字段自动设为 NOT NULL
     expect(firstRow.defaultValue).toBe(''); // 自增字段默认值清空
     expect(firstRow.fieldComment).toBe('User ID');
 
     expect(secondRow.fieldType).toBe('varchar(100)');
-    expect(secondRow.nullable).toBe('是');
+    expect(secondRow.nullable).toBe(true);
   });
 
   it('应该处理批量操作', () => {

@@ -49,7 +49,7 @@ function toPersistedState(schema: GeneratedTableSchema): PersistedState {
       nullable: field.nullable,
       defaultKind: field.defaultKind,
       defaultValue: field.defaultValue ?? '',
-      onUpdate: field.onUpdate ?? '无',
+      onUpdate: field.onUpdate ?? 'none',
     })),
     addCount: 10,
     indexInput: '',
