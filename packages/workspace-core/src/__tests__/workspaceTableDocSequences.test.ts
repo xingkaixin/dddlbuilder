@@ -259,6 +259,7 @@ describe.each([true, false])(
       }
 
       expect(mismatches).toEqual([]);
-    });
+      // 300 轮随机序列单独跑约 300ms，但 turbo 满载时 CPU 争抢会把它推过默认的 5s
+    }, 30_000);
   },
 );
