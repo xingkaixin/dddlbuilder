@@ -8,9 +8,15 @@ describe('buildWorkspaceContentHash', () => {
     );
   });
 
-  it('distinguishes undefined properties from missing properties', async () => {
-    await expect(buildWorkspaceContentHash({ value: undefined })).resolves.not.toBe(
+  it('treats undefined properties as missing properties', async () => {
+    await expect(buildWorkspaceContentHash({ value: undefined })).resolves.toBe(
       await buildWorkspaceContentHash({}),
+    );
+  });
+
+  it('keeps undefined array elements distinguishable', async () => {
+    await expect(buildWorkspaceContentHash([undefined, 1])).resolves.not.toBe(
+      await buildWorkspaceContentHash([1]),
     );
   });
 
