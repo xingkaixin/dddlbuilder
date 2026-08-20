@@ -1,15 +1,30 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { ApiErrorPayload, WorkspaceMigrationResponse } from '@ddlbuilder/shared-types/api';
-import type { WorkspaceScope, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
-import { applyCloudSnapshotToLocal } from '@/services/workspaceSyncService';
-import { listSavedTables } from '@/utils/savedTablesDb';
-import { listFolders } from '@/utils/tableFolders';
+import type {
+  WorkspaceScope,
+  WorkspaceSnapshot,
+  WorkspaceSource,
+} from '@ddlbuilder/shared-types/workspace';
+import {
+  applyCloudSnapshotToLocal,
+  dispatchWorkspaceSnapshotApplied,
+} from '@/services/workspaceSyncService';
+import {
+  addSavedTable,
+  getSavedTable,
+  listSavedTables,
+  updateSavedTable,
+} from '@/utils/savedTablesDb';
+import { bulkPutFolders, listFolders } from '@/utils/tableFolders';
 import {
   DEFAULT_DRAFT_ID,
   listDrafts,
   listSavedDrafts,
   readDraft,
   readWorkspaceSession,
+  upsertSavedDraft,
+  writeDraft,
+  writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 
@@ -182,6 +197,7 @@ export const collectWorkspaceMigrationPayload = async (
       normalizedName: item.normalizedName,
       name: item.name,
       state: item.state,
+      createdAt: item.createdAt,
       updatedAt: item.updatedAt,
       folderId: item.folderId,
     })),
@@ -198,6 +214,115 @@ export const collectWorkspaceMigrationPayload = async (
     idempotencyKey: crypto.randomUUID(),
     snapshot,
   };
+};
+
+const hasWorkspaceContent = async (scope: WorkspaceScope) => {
+  const [drafts, savedTables, savedDrafts, folders] = await Promise.all([
+    listDrafts(scope),
+    listSavedTables(scope),
+    listSavedDrafts(scope),
+    listFolders(scope),
+  ]);
+
+  return (
+    drafts.length > 0 ||
+    savedTables.length > 0 ||
+    Object.keys(savedDrafts).length > 0 ||
+    folders.length > 0
+  );
+};
+
+export const promoteLegacyUserWorkspaceData = async (scope: WorkspaceScope): Promise<boolean> => {
+  if (scope.kind !== 'user' || !scope.workspaceId) {
+    return false;
+  }
+
+  const legacyScope: WorkspaceScope = {
+    kind: 'user',
+    userId: scope.userId,
+  };
+  const [targetHasContent, legacyHasContent] = await Promise.all([
+    hasWorkspaceContent(scope),
+    hasWorkspaceContent(legacyScope),
+  ]);
+
+  if (targetHasContent || !legacyHasContent) {
+    return false;
+  }
+
+  const [drafts, savedTables, savedDrafts, folders, session] = await Promise.all([
+    listDrafts(legacyScope),
+    listSavedTables(legacyScope),
+    listSavedDrafts(legacyScope),
+    listFolders(legacyScope),
+    readWorkspaceSession(legacyScope),
+  ]);
+
+  for (const { draftId, record } of drafts) {
+    await writeDraft(draftId, record, scope);
+  }
+
+  for (const table of savedTables) {
+    const existing = await getSavedTable(table.normalizedName, scope);
+    if (existing) {
+      await updateSavedTable(table, scope);
+    } else {
+      await addSavedTable(table, scope);
+    }
+  }
+
+  for (const [normalizedName, draft] of Object.entries(savedDrafts)) {
+    await upsertSavedDraft(normalizedName, draft, scope);
+  }
+
+  if (folders.length > 0) {
+    await bulkPutFolders(folders, scope);
+  }
+
+  if (session) {
+    await writeWorkspaceSession(session, scope);
+  }
+
+  dispatchWorkspaceSnapshotApplied();
+  return true;
+};
+
+const migrationSnapshotToWorkspaceSnapshot = (
+  snapshot: WorkspaceMigrationSnapshot,
+): WorkspaceSnapshot => {
+  const drafts = [...snapshot.drafts];
+  const activeSession = snapshot.activeSession;
+  const activeSource = activeSession?.activeSource;
+  if (activeSession?.activeState && activeSource?.kind === 'draft') {
+    const existingIndex = drafts.findIndex((draft) => draft.draftId === activeSource.draftId);
+    const draft = {
+      draftId: activeSource.draftId,
+      state: activeSession.activeState,
+      updatedAt: activeSession.updatedAt,
+    };
+    if (existingIndex >= 0) {
+      drafts[existingIndex] = { ...drafts[existingIndex], ...draft };
+    } else {
+      drafts.push(draft);
+    }
+  }
+
+  return {
+    globalDraft: snapshot.globalDraft,
+    drafts,
+    savedTables: snapshot.savedTables,
+    savedDrafts: snapshot.savedDrafts,
+    folders: snapshot.folders,
+  };
+};
+
+// 先把 legacy `user:U` 分区提升到目标分区，再读取；顺序颠倒会让本次会话漏掉刚提升的数据。
+export const prepareLegacyWorkspaceSnapshot = async (
+  scope: WorkspaceScope,
+): Promise<WorkspaceSnapshot | null> => {
+  await promoteLegacyUserWorkspaceData(scope);
+  const payload = await collectWorkspaceMigrationPayload(scope);
+  return payload ? migrationSnapshotToWorkspaceSnapshot(payload.snapshot) : null;
 };
 
 export const analyzeWorkspaceMigration = async () => {

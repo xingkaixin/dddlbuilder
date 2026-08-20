@@ -1,18 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 import {
-  buildWorkspaceContentHash,
   clearLocalWorkspaceData,
-  promoteLegacyUserWorkspaceData,
   syncWorkspaceOnce,
   toFolderSyncPayload,
 } from '@/services/workspaceIncrementalSyncService';
-import {
-  readDraft,
-  upsertSavedDraft,
-  writeDraft,
-  writeWorkspaceSession,
-} from '@/utils/workspaceStateDb';
+import { readDraft, writeDraft } from '@/utils/workspaceStateDb';
 import { addSavedTable, listSavedTables } from '@/utils/savedTablesDb';
 import { bulkPutFolders, listFolders } from '@/utils/tableFolders';
 import {
@@ -607,66 +600,6 @@ describe('workspaceIncrementalSyncService', () => {
     ]);
     expect(folders).toEqual([expect.objectContaining({ id: 'folder-1', name: 'Cloud' })]);
     expect(meta?.cursor).toBe(8);
-  });
-
-  it('应将旧 user scope 工作区数据迁移到默认 workspace scope 并排队上传', async () => {
-    const legacyScope = { kind: 'user' as const, userId: 'user-1' };
-    await writeDraft(
-      'draft-legacy',
-      { state: createState('legacy_draft'), createdAt: 1, updatedAt: 2 },
-      legacyScope,
-    );
-    await addSavedTable(
-      {
-        normalizedName: 'legacy_table',
-        name: 'legacy_table',
-        state: createState('legacy_table'),
-        createdAt: 3,
-        updatedAt: 4,
-      },
-      legacyScope,
-    );
-    await upsertSavedDraft(
-      'legacy_table',
-      {
-        tableName: 'legacy_table',
-        state: createState('legacy_draft_for_table'),
-        baseSignature: '{}',
-        updatedAt: 5,
-      },
-      legacyScope,
-    );
-    await bulkPutFolders([{ id: 'folder-1', name: 'Folder', order: 1, createdAt: 6 }], legacyScope);
-    await writeWorkspaceSession(
-      {
-        activeSource: { kind: 'draft', draftId: 'draft-legacy' },
-        activeState: createState('legacy_draft'),
-        updatedAt: 7,
-      },
-      legacyScope,
-    );
-
-    const migrated = await promoteLegacyUserWorkspaceData(scope);
-
-    const draft = await readDraft('draft-legacy', scope);
-    const tables = await listSavedTables(scope);
-    const folders = await listFolders(scope);
-    const outbox = await listWorkspaceOutboxItems('ws-1');
-    expect(migrated).toBe(true);
-    expect(draft?.state.tableName).toBe('legacy_draft');
-    expect(tables.map((item) => item.normalizedName)).toEqual(['legacy_table']);
-    expect(folders.map((item) => item.id)).toEqual(['folder-1']);
-    expect(outbox.map((item) => item.entityType).sort()).toEqual([
-      'draft',
-      'folder',
-      'saved_draft',
-      'saved_table',
-    ]);
-    const folderItem = outbox.find((item) => item.entityType === 'folder');
-    expect(folderItem?.payload).not.toHaveProperty('scope');
-    expect(folderItem?.contentHash).toBe(
-      await buildWorkspaceContentHash({ id: 'folder-1', name: 'Folder', order: 1, createdAt: 6 }),
-    );
   });
 
   // 服务端形状见 apps/worker/server-api/lib/workspaceEntitySnapshot.ts 的 folder 实体

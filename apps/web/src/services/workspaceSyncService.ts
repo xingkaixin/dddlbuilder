@@ -174,7 +174,7 @@ export const pushWorkspaceSnapshot = async (snapshot?: WorkspaceSnapshotPushRequ
   }
 };
 
-const dispatchWorkspaceSnapshotApplied = () => {
+export const dispatchWorkspaceSnapshotApplied = () => {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(WORKSPACE_SNAPSHOT_APPLIED_EVENT));
   }

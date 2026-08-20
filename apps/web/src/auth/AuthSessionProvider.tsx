@@ -14,7 +14,6 @@ import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import i18n from '@/i18n';
 import {
   clearLocalWorkspaceData,
-  promoteLegacyUserWorkspaceData,
   resolveDefaultWorkspaceScope,
   syncWorkspaceOnce,
 } from '@/services/workspaceIncrementalSyncService';
@@ -268,10 +267,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     setCurrentWorkspaceScope(workspaceScope);
     if (workspaceId) {
       setState((prev) => ({ ...prev, workspaceId }));
-      void (async () => {
-        await promoteLegacyUserWorkspaceData(workspaceScope);
-        await runQueuedWorkspaceSync(workspaceSyncQueueRef.current, workspaceScope);
-      })().catch((error) => {
+      void runQueuedWorkspaceSync(workspaceSyncQueueRef.current, workspaceScope).catch((error) => {
         console.error('[auth] failed to sync workspace', error);
       });
     }
