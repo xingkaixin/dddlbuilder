@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../lib/context.js';
 import type { Hono } from 'hono';
 
@@ -203,7 +203,20 @@ afterEach(() => {
   vi.resetModules();
 });
 
+// 限流窗口按 Date.now() 对齐分桶，真实时钟下相邻两次请求可能落到不同窗口，必须固定时间
+const FIXED_NOW = new Date('2026-01-01T00:00:00.000Z');
+const SHORT_WINDOW_MS = 200;
+
 describe.sequential('openai governance', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(FIXED_NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('应基于 IP 和路由限流且不允许通过更换 UA 绕过', async () => {
     const app = await loadAuthenticatedApp({
       OPENAI_RATELIMIT_ENABLED: 'true',
@@ -245,7 +258,7 @@ describe.sequential('openai governance', () => {
   it('应在 D1 原子计数模式下命中限流并在窗口后恢复', async () => {
     const app = await loadAuthenticatedApp({
       OPENAI_RATELIMIT_ENABLED: 'true',
-      OPENAI_RATELIMIT_WINDOW_MS: '200',
+      OPENAI_RATELIMIT_WINDOW_MS: String(SHORT_WINDOW_MS),
       OPENAI_RATELIMIT_EXPLAIN_MAX: '1',
       OPENAI_DAILY_BUDGET_ENABLED: 'false',
       OPENAI_API_KEY: undefined,
@@ -271,7 +284,7 @@ describe.sequential('openai governance', () => {
     const second = await request();
     expect(second.status).toBe(429);
 
-    await new Promise((resolve) => setTimeout(resolve, 260));
+    vi.setSystemTime(FIXED_NOW.getTime() + SHORT_WINDOW_MS);
 
     const third = await request();
     expect(third.status).toBe(503);
