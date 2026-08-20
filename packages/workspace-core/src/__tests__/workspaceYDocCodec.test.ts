@@ -184,14 +184,12 @@ describe('workspace YDoc codec', () => {
       firstOrder[1],
       firstOrder[0],
     ]);
-    expect(exportWorkspaceYDocToSnapshot(doc).drafts[1]?.state).toMatchObject({
-      tableName: 'renamed',
-      indexes: [],
-      foreignKeys: [],
-    });
+    const exported = exportWorkspaceYDocToSnapshot(doc).drafts[1]?.state;
+    expect(exported).toMatchObject({ tableName: 'renamed', indexes: [] });
+    expect(exported).not.toHaveProperty('foreignKeys');
   });
 
-  it('reads legacy snapshots and normalizes malformed fine-grained values', () => {
+  it('reads legacy snapshots and falls back to them for malformed fine-grained values', () => {
     const doc = new Y.Doc();
     const legacy = new Y.Map<unknown>();
     legacy.set('stateSnapshot', createState('legacy'));
@@ -216,20 +214,63 @@ describe('workspace YDoc codec', () => {
 
     expect(exportWorkspaceYDocToSnapshot(doc).drafts[0]?.state).toMatchObject({
       objectType: 'table',
-      schemaName: '',
-      tableName: '',
+      schemaName: 'public',
+      tableName: 'legacy',
       dbType: 'mysql',
       rows: [
         {
           order: 1,
-          fieldName: '',
-          nullable: '是',
+          fieldName: 'id',
+          nullable: '否',
         },
       ],
     });
   });
 
+  it('falls back to defaults for saved entries without metadata', () => {
+    const doc = new Y.Doc();
+    const snapshot = createSnapshot();
+    snapshot.savedTables[0] = { ...snapshot.savedTables[0], createdAt: undefined };
+    importWorkspaceSnapshotToYDoc(doc, snapshot);
+    const bare = new Y.Map<unknown>();
+    bare.set('stateSnapshot', createState('bare'));
+    doc.getMap<Y.Map<unknown>>('savedTables').set('bare', bare);
+    doc.getMap<Y.Map<unknown>>('savedDrafts').set('bare', bare.clone());
+
+    const exported = exportWorkspaceYDocToSnapshot(doc);
+
+    expect(exported.savedTables[0]).toMatchObject({ createdAt: 40, updatedAt: 40 });
+    const bareTable = exported.savedTables.find((table) => table.normalizedName === 'bare');
+    expect(bareTable).toMatchObject({ name: 'bare' });
+    expect(bareTable?.createdAt).toBe(bareTable?.updatedAt);
+    expect(exported.savedDrafts.find((draft) => draft.normalizedName === 'bare')).toMatchObject({
+      tableName: 'bare',
+      baseSignature: '',
+    });
+  });
+
   it('reports an untouched document as uninitialized', () => {
     expect(isWorkspaceYDocInitialized(new Y.Doc())).toBe(false);
+  });
+
+  it('exports without emitting document updates', () => {
+    const empty = new Y.Doc();
+    const emptyBefore = Y.encodeStateAsUpdate(empty);
+    exportWorkspaceYDocToSnapshot(empty);
+    expect(Y.encodeStateAsUpdate(empty)).toEqual(emptyBefore);
+
+    const doc = new Y.Doc();
+    importWorkspaceSnapshotToYDoc(doc, createSnapshot());
+    const legacy = new Y.Map<unknown>();
+    legacy.set('stateSnapshot', createState('legacy'));
+    doc.getMap<Y.Map<unknown>>('savedDrafts').set('legacy', legacy);
+    const updates: Uint8Array[] = [];
+    doc.on('update', (update: Uint8Array) => updates.push(update));
+
+    const before = Y.encodeStateAsUpdate(doc);
+    exportWorkspaceYDocToSnapshot(doc);
+
+    expect(updates).toEqual([]);
+    expect(Y.encodeStateAsUpdate(doc)).toEqual(before);
   });
 });
