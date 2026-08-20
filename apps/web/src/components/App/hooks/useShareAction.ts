@@ -4,7 +4,6 @@ import { ShareApiError, createShare } from '@/services/shareService';
 import { reportError } from '@/utils/errorReporter';
 import i18n from '@/i18n';
 
-type AnalyticsValue = string | number | boolean | null | undefined;
 type ShareLinkCacheRecord = {
   signature: string;
   url: string;
@@ -60,14 +59,9 @@ const writeShareLinkCache = (record: ShareLinkCacheRecord) => {
 interface UseShareActionParams {
   buildPersistedState: () => PersistedState;
   showToast: (message: string) => void;
-  trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void> | void;
 }
 
-export function useShareAction({
-  buildPersistedState,
-  showToast,
-  trackEvent,
-}: UseShareActionParams) {
+export function useShareAction({ buildPersistedState, showToast }: UseShareActionParams) {
   const [isSharing, setIsSharing] = useState(false);
   const inFlightRef = useRef(false);
 
@@ -92,7 +86,6 @@ export function useShareAction({
         cached.url.length > 0
       ) {
         await navigator.clipboard.writeText(cached.url);
-        void trackEvent('share_link_reuse');
         showToast(i18n.t('services.shareCopiedReused'));
         return;
       }
@@ -104,7 +97,6 @@ export function useShareAction({
         url: share.url,
         expiresAt: now + share.expiresInSeconds * 1000,
       });
-      void trackEvent('share_link_create');
       showToast(i18n.t('services.shareCopied'));
     } catch (e) {
       reportError(e, {
@@ -120,7 +112,7 @@ export function useShareAction({
       inFlightRef.current = false;
       setIsSharing(false);
     }
-  }, [buildPersistedState, showToast, trackEvent]);
+  }, [buildPersistedState, showToast]);
 
   return {
     handleShare,

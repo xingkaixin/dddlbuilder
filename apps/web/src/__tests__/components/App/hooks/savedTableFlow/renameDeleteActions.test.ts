@@ -11,7 +11,6 @@ describe('useRenameDeleteActions', () => {
   let setLoadedTableName: any;
   let setLoadedTableSignature: any;
   let showToast: any;
-  let trackEvent: any;
   let setWorkspaceSnapshot: any;
   let renameSavedTableDraft: any;
   let removeSavedTableDraft: any;
@@ -45,7 +44,6 @@ describe('useRenameDeleteActions', () => {
     setLoadedTableName = vi.fn();
     setLoadedTableSignature = vi.fn();
     showToast = vi.fn();
-    trackEvent = vi.fn().mockResolvedValue(undefined);
     setWorkspaceSnapshot = vi.fn();
     renameSavedTableDraft = vi.fn();
     removeSavedTableDraft = vi.fn();
@@ -68,7 +66,6 @@ describe('useRenameDeleteActions', () => {
         renameTable,
         deleteTable,
         showToast,
-        trackEvent,
         setWorkspaceSnapshot,
         renameSavedTableDraft,
         removeSavedTableDraft,
@@ -183,10 +180,6 @@ describe('useRenameDeleteActions', () => {
     });
 
     expect(showToast).toHaveBeenCalledWith('已重命名为：new_name');
-    expect(trackEvent).toHaveBeenCalledWith('table_rename', {
-      oldName: 'old',
-      newName: 'new_name',
-    });
     expect(renameSavedTableDraft).toHaveBeenCalledWith('test_table', 'new_name_norm', 'new_name');
 
     // Loaded table updates matched the target
@@ -300,9 +293,6 @@ describe('useRenameDeleteActions', () => {
 
     expect(removeSavedTableDraft).toHaveBeenCalledWith('test_table');
     expect(showToast).toHaveBeenCalledWith('已移入回收站：old');
-    expect(trackEvent).toHaveBeenCalledWith('table_delete', {
-      tableName: 'old',
-    });
     expect(setLoadedTableNormalizedName).toHaveBeenCalledWith(null);
     expect(setLoadedTableName).toHaveBeenCalledWith(null);
     expect(setLoadedTableSignature).toHaveBeenCalledWith(null);

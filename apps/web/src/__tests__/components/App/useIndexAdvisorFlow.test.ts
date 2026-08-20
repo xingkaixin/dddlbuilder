@@ -59,7 +59,6 @@ const index: IndexDefinition = {
 const renderFlow = (overrides: Partial<Parameters<typeof useIndexAdvisorFlow>[0]> = {}) => {
   const setIndexes = vi.fn();
   const setActiveTab = vi.fn();
-  const trackEvent = vi.fn();
   const hook = renderHook(() =>
     useIndexAdvisorFlow({
       dbType: 'mysql',
@@ -70,11 +69,10 @@ const renderFlow = (overrides: Partial<Parameters<typeof useIndexAdvisorFlow>[0]
       indexes: [],
       setIndexes,
       setActiveTab,
-      trackEvent,
       ...overrides,
     }),
   );
-  return { ...hook, setIndexes, setActiveTab, trackEvent };
+  return { ...hook, setIndexes, setActiveTab };
 };
 
 describe('buildSuggestedIndexQuery', () => {
@@ -122,8 +120,8 @@ describe('useIndexAdvisorFlow', () => {
     expect(mocks.analyzeIndexes).not.toHaveBeenCalled();
   });
 
-  it('submits normalized schema context and tracks successful analysis', async () => {
-    const { result, trackEvent } = renderFlow();
+  it('submits normalized schema context', async () => {
+    const { result } = renderFlow();
 
     await act(async () => {
       result.current.analyze('SELECT * FROM users WHERE email = ?');
@@ -139,7 +137,6 @@ describe('useIndexAdvisorFlow', () => {
         ],
       }),
     );
-    expect(trackEvent).toHaveBeenCalledWith('ai_index_advisor_run', { dbType: 'mysql' });
   });
 
   it('surfaces analysis errors', async () => {
@@ -189,7 +186,7 @@ describe('useIndexAdvisorFlow', () => {
   });
 
   it('applies a valid recommendation and opens the index tab', () => {
-    const { result, setIndexes, setActiveTab, trackEvent } = renderFlow();
+    const { result, setIndexes, setActiveTab } = renderFlow();
 
     act(() =>
       result.current.applyRecommendation({
@@ -213,8 +210,5 @@ describe('useIndexAdvisorFlow', () => {
       unique: true,
     });
     expect(setActiveTab).toHaveBeenCalledWith('indexes');
-    expect(trackEvent).toHaveBeenCalledWith('ai_index_advisor_apply', {
-      category: 'performance',
-    });
   });
 });

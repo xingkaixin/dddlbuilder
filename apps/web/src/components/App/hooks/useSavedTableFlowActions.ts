@@ -5,8 +5,6 @@ import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { useRenameDeleteActions } from './savedTableFlow/renameDeleteActions';
 import { useSaveLoadActions } from './savedTableFlow/saveLoadActions';
 
-type AnalyticsValue = string | number | boolean | null | undefined;
-
 type SaveDialogData = {
   name: string;
   queuedLoadAfterSave: SavedTableSummary | null;
@@ -49,7 +47,6 @@ interface UseSavedTableFlowActionsParams {
   saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
   overwriteTable: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
   showToast: (message: string) => void;
-  trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void> | void;
   flushCurrentWorkspace?: () => void;
   getSavedTableDraft?: (normalizedName: string) => SavedTableDraftRecord | null;
   setWorkspaceSnapshot?: (source: WorkspaceSource, state: PersistedState) => void;
@@ -94,7 +91,6 @@ export function useSavedTableFlowActions({
   saveTable,
   overwriteTable,
   showToast,
-  trackEvent,
   flushCurrentWorkspace,
   getSavedTableDraft,
   setWorkspaceSnapshot,
@@ -124,7 +120,6 @@ export function useSavedTableFlowActions({
     saveTable,
     overwriteTable,
     showToast,
-    trackEvent,
     flushCurrentWorkspace,
     getSavedTableDraft,
     setWorkspaceSnapshot,
@@ -145,7 +140,6 @@ export function useSavedTableFlowActions({
     renameTable,
     deleteTable,
     showToast,
-    trackEvent,
     setWorkspaceSnapshot,
     renameSavedTableDraft,
     removeSavedTableDraft,

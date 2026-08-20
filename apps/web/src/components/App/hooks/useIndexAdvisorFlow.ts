@@ -11,8 +11,6 @@ import { useToast } from '@/hooks/useToast';
 import { buildIndexName, getIndexNameMaxLength } from '@/utils/indexNameUtils';
 import { useTranslation } from 'react-i18next';
 
-type AnalyticsValue = string | number | boolean | null | undefined;
-
 interface UseIndexAdvisorFlowParams {
   dbType: DatabaseType;
   schemaName: string;
@@ -24,7 +22,6 @@ interface UseIndexAdvisorFlowParams {
     indexes: IndexDefinition[] | ((current: IndexDefinition[]) => IndexDefinition[]),
   ) => void;
   setActiveTab: (tab: string) => void;
-  trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void> | void;
 }
 
 const hasSameIndexFields = (left: IndexField[], right: IndexField[]) =>
@@ -64,7 +61,6 @@ export function useIndexAdvisorFlow({
   indexes,
   setIndexes,
   setActiveTab,
-  trackEvent,
 }: UseIndexAdvisorFlowParams) {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -118,7 +114,6 @@ export function useIndexAdvisorFlow({
             })),
             queryPatterns,
           });
-          void trackEvent('ai_index_advisor_run', { dbType });
         } catch (caught) {
           showToast((caught as Error).message || t('services.generationFailed'));
         }
@@ -135,7 +130,6 @@ export function useIndexAdvisorFlow({
       t,
       tableComment,
       tableName,
-      trackEvent,
     ],
   );
 
@@ -173,11 +167,8 @@ export function useIndexAdvisorFlow({
       setIndexes((current) => [...current, nextIndex]);
       setActiveTab('indexes');
       showToast(t('aiIndexAdvisor.indexApplied'));
-      void trackEvent('ai_index_advisor_apply', {
-        category: recommendation.category,
-      });
     },
-    [dbType, fields, indexes, setActiveTab, setIndexes, showToast, t, tableName, trackEvent],
+    [dbType, fields, indexes, setActiveTab, setIndexes, showToast, t, tableName],
   );
 
   return {

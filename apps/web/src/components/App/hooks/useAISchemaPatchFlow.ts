@@ -3,8 +3,6 @@ import type { FieldRow, IndexDefinition, PersistedState } from '@ddlbuilder/shar
 import type { AISchemaChange } from '@/utils/aiSchemaChanges';
 import { applyFieldSchemaChange } from '../aiSchemaPatchTransition';
 
-type AnalyticsValue = string | number | boolean | null | undefined;
-
 interface UseAISchemaPatchFlowParams {
   rows: FieldRow[];
   indexes: IndexDefinition[];
@@ -18,7 +16,6 @@ interface UseAISchemaPatchFlowParams {
   setActiveTab: (tab: string) => void;
   highlightField: (rowIndex?: number) => void;
   animateIndex: (indexId: string, type: 'add' | 'remove') => Promise<void>;
-  trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void> | void;
 }
 
 export function useAISchemaPatchFlow({
@@ -32,7 +29,6 @@ export function useAISchemaPatchFlow({
   setActiveTab,
   highlightField,
   animateIndex,
-  trackEvent,
 }: UseAISchemaPatchFlowParams) {
   const applyChange = useCallback(
     (change: AISchemaChange, candidateState: PersistedState) => {
@@ -80,10 +76,6 @@ export function useAISchemaPatchFlow({
           }, 500);
         }
       }
-
-      void trackEvent('ai_schema_patch_apply', {
-        type: `${change.kind}:${change.type}`,
-      });
     },
     [
       animateIndex,
@@ -94,7 +86,6 @@ export function useAISchemaPatchFlow({
       setTableComment,
       setTableName,
       setActiveTab,
-      trackEvent,
     ],
   );
 

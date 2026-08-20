@@ -128,7 +128,6 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     onDeleteFolder,
   }) => {
     const { t } = useTranslation();
-    const trackEvent = useCallback((..._args: unknown[]) => {}, []);
     const [searchQuery, setSearchQuery] = useState('');
     const [dragFeedback, setDragFeedback] = useState<{
       type: 'success' | 'blocked' | 'error';
@@ -294,20 +293,11 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
           folderParentMap,
         });
 
-        trackEvent('saved_tables_drag_attempt', {
-          action: action.kind,
-          reason: action.reason,
-          hasTarget: Boolean(event.over?.id),
-        });
-
         switch (action.kind) {
           case 'none':
             return;
           case 'invalid_folder_cycle': {
             showDragFeedback('blocked', t('savedTables.dragFeedback.folderCycle'));
-            trackEvent('saved_tables_drag_blocked', {
-              reason: action.reason,
-            });
             return;
           }
           case 'move_table': {
@@ -336,11 +326,6 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                     })
                   : t('savedTables.dragFeedback.tableMovedToRoot'),
               );
-              trackEvent('saved_tables_drag_success', {
-                entity: 'table',
-                reason: action.reason,
-                target: action.folderId ?? 'root',
-              });
             } catch {
               showDragFeedback('error', t('savedTables.dragFeedback.moveFailed'));
             }
@@ -372,11 +357,6 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                     })
                   : t('savedTables.dragFeedback.folderMovedToRoot'),
               );
-              trackEvent('saved_tables_drag_success', {
-                entity: 'folder',
-                reason: action.reason,
-                target: action.parentId ?? 'root',
-              });
             } catch {
               showDragFeedback('error', t('savedTables.dragFeedback.moveFailed'));
             }
@@ -399,7 +379,6 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
         showDragFeedback,
         tableFolderMap,
         t,
-        trackEvent,
       ],
     );
 

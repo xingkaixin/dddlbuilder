@@ -8,8 +8,6 @@ interface CreateTemplateResult {
   message?: string;
 }
 
-type AnalyticsValue = string | number | boolean | null | undefined;
-
 interface UseTemplateActionsParams {
   rows: FieldRow[];
   setRows: Dispatch<SetStateAction<FieldRow[]>>;
@@ -27,7 +25,6 @@ interface UseTemplateActionsParams {
     description?: string,
   ) => Promise<CreateTemplateResult>;
   showToast: (message: string) => void;
-  trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void>;
 }
 
 export function useTemplateActions({
@@ -35,7 +32,6 @@ export function useTemplateActions({
   setRows,
   createTemplateFromFields,
   showToast,
-  trackEvent,
 }: UseTemplateActionsParams) {
   const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
   const [isCreateTemplateDialogOpen, setIsCreateTemplateDialogOpen] = useState(false);
@@ -78,7 +74,6 @@ export function useTemplateActions({
         }));
       });
 
-      void trackEvent('template_apply', { templateName: template.name });
       showToast(
         i18n.t('templateManager.toast.applied', {
           name: template.name,
@@ -86,7 +81,7 @@ export function useTemplateActions({
         }),
       );
     },
-    [setRows, showToast, trackEvent],
+    [setRows, showToast],
   );
 
   const handleCreateTemplateFromFields = useCallback(
@@ -105,14 +100,13 @@ export function useTemplateActions({
     ) => {
       const result = await createTemplateFromFields(name, fields, description);
       if (result.ok) {
-        void trackEvent('template_create', { templateName: name });
         showToast(i18n.t('templateManager.toast.created', { name }));
       } else {
         showToast(result.message ?? i18n.t('templateManager.toast.createFromFieldsFailed'));
       }
       return result;
     },
-    [createTemplateFromFields, showToast, trackEvent],
+    [createTemplateFromFields, showToast],
   );
 
   const handleSaveAsTemplate = useCallback(() => {

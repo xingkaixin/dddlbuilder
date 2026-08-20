@@ -77,13 +77,11 @@ describe('useShareAction', () => {
   it('首次分享应创建链接并缓存', async () => {
     mockedCreateShare.mockResolvedValue(createShareResponse());
     const showToast = vi.fn();
-    const trackEvent = vi.fn();
 
     const { result } = renderHook(() =>
       useShareAction({
         buildPersistedState,
         showToast,
-        trackEvent,
       }),
     );
 
@@ -94,7 +92,6 @@ describe('useShareAction', () => {
     expect(mockedCreateShare).toHaveBeenCalledTimes(1);
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('https://example.com/share/id-1');
     expect(localStorage.setItem).toHaveBeenCalledWith(SHARE_LINK_CACHE_KEY, expect.any(String));
-    expect(trackEvent).toHaveBeenCalledWith('share_link_create');
     expect(showToast).toHaveBeenCalledWith('链接已复制到剪贴板（7天后失效）');
   });
 
@@ -107,13 +104,11 @@ describe('useShareAction', () => {
         }),
     );
     const showToast = vi.fn();
-    const trackEvent = vi.fn();
 
     const { result } = renderHook(() =>
       useShareAction({
         buildPersistedState,
         showToast,
-        trackEvent,
       }),
     );
 
@@ -141,13 +136,11 @@ describe('useShareAction', () => {
         }),
     );
     const showToast = vi.fn();
-    const trackEvent = vi.fn();
 
     const { result } = renderHook(() =>
       useShareAction({
         buildPersistedState,
         showToast,
-        trackEvent,
       }),
     );
 
@@ -173,13 +166,11 @@ describe('useShareAction', () => {
   it('状态未变化且缓存未过期时应复用链接', async () => {
     mockedCreateShare.mockResolvedValue(createShareResponse());
     const showToast = vi.fn();
-    const trackEvent = vi.fn();
 
     const { result } = renderHook(() =>
       useShareAction({
         buildPersistedState,
         showToast,
-        trackEvent,
       }),
     );
 
@@ -191,8 +182,6 @@ describe('useShareAction', () => {
     });
 
     expect(mockedCreateShare).toHaveBeenCalledTimes(1);
-    expect(trackEvent).toHaveBeenNthCalledWith(1, 'share_link_create');
-    expect(trackEvent).toHaveBeenNthCalledWith(2, 'share_link_reuse');
     expect(showToast).toHaveBeenNthCalledWith(2, '链接已复制到剪贴板（复用已有链接，7天后失效）');
   });
 
@@ -201,13 +190,11 @@ describe('useShareAction', () => {
       new ShareApiError('Redis config missing', 500, 'REDIS_CONFIG_MISSING'),
     );
     const showToast = vi.fn();
-    const trackEvent = vi.fn();
 
     const { result } = renderHook(() =>
       useShareAction({
         buildPersistedState,
         showToast,
-        trackEvent,
       }),
     );
 

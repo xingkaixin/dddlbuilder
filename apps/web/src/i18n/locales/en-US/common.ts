@@ -807,6 +807,9 @@ export const enUSCommon = {
       loadedHint:
         'Loaded tables can only be overwritten. Rename from the left saved list if needed.',
       disabledTip: 'Loaded table is not modified, cannot save',
+      queuedLoadTitle: 'Load saved table',
+      queuedLoadDescription:
+        'The current table has unsaved changes. The selected table will be loaded after saving.',
       cancel: 'Cancel',
       confirm: 'Save',
     },

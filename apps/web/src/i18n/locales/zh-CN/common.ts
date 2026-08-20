@@ -786,6 +786,8 @@ export const zhCNCommon = {
       placeholder: '例如：用户表',
       loadedHint: '已加载表仅支持覆盖保存，如需更名请在左侧列表重命名。',
       disabledTip: '加载的表未修改，无法保存',
+      queuedLoadTitle: '加载保存的表',
+      queuedLoadDescription: '当前表有未保存修改。保存后会继续加载选中的表。',
       cancel: '取消',
       confirm: '保存',
     },

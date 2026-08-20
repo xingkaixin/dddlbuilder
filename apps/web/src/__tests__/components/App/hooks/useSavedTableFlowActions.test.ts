@@ -84,7 +84,6 @@ describe('useSavedTableFlowActions', () => {
         saveTable: vi.fn().mockResolvedValue({ ok: true, normalizedName: 'users' }),
         overwriteTable: vi.fn(),
         showToast: vi.fn(),
-        trackEvent: vi.fn(),
         setWorkspaceSnapshot,
       }),
     );
@@ -137,7 +136,6 @@ describe('useSavedTableFlowActions', () => {
         saveTable: vi.fn(),
         overwriteTable: vi.fn(),
         showToast: vi.fn(),
-        trackEvent: vi.fn(),
         renameSavedTableDraft,
       }),
     );
@@ -178,7 +176,6 @@ describe('useSavedTableFlowActions', () => {
         saveTable: vi.fn(),
         overwriteTable: vi.fn(),
         showToast: vi.fn(),
-        trackEvent: vi.fn(),
         removeSavedTableDraft,
       }),
     );
@@ -197,7 +194,6 @@ describe('useSavedTableFlowActions', () => {
     const setWorkspaceSnapshot = vi.fn();
     const applySavedState = vi.fn();
     const removeSavedTableDraft = vi.fn();
-    const trackEvent = vi.fn();
     const showToast = vi.fn();
     const onTableLoadStateChange = vi.fn();
     const loadTable = vi.fn().mockResolvedValue({
@@ -231,7 +227,6 @@ describe('useSavedTableFlowActions', () => {
         saveTable: vi.fn(),
         overwriteTable: vi.fn(),
         showToast,
-        trackEvent,
         getSavedTableDraft: () => ({
           state: staleDraftState,
           tableName: 'Users',
@@ -251,9 +246,6 @@ describe('useSavedTableFlowActions', () => {
 
     expect(loadTable).toHaveBeenCalledWith('users');
     expect(applySavedState).toHaveBeenCalledWith(savedState);
-    expect(trackEvent).toHaveBeenCalledWith('table_load', {
-      tableName: 'Users',
-    });
     expect(showToast).toHaveBeenCalledWith('已加载：Users (v1)');
     expect(onTableLoadStateChange).toHaveBeenNthCalledWith(1, true);
     expect(onTableLoadStateChange).toHaveBeenLastCalledWith(false);
@@ -293,7 +285,6 @@ describe('useSavedTableFlowActions', () => {
         saveTable: vi.fn(),
         overwriteTable: vi.fn(),
         showToast,
-        trackEvent: vi.fn(),
         onTableLoadStateChange,
       }),
     );

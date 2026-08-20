@@ -5,8 +5,6 @@ import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables'
 import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
 
-type AnalyticsValue = string | number | boolean | null | undefined;
-
 type RenameDialogData = {
   name: string;
   target: SavedTableSummary | null;
@@ -29,7 +27,6 @@ interface UseRenameDeleteActionsParams {
   renameTable: (normalizedName: string, newName: string) => Promise<SaveTableResult>;
   deleteTable: (normalizedName: string) => Promise<SaveTableResult>;
   showToast: (message: string) => void;
-  trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void> | void;
   setWorkspaceSnapshot?: (source: WorkspaceSource, state: PersistedState) => void;
   renameSavedTableDraft?: (
     fromNormalizedName: string,
@@ -54,7 +51,6 @@ export function useRenameDeleteActions({
   renameTable,
   deleteTable,
   showToast,
-  trackEvent,
   setWorkspaceSnapshot,
   renameSavedTableDraft,
   removeSavedTableDraft,
@@ -96,10 +92,6 @@ export function useRenameDeleteActions({
       return;
     }
     const displayName = renameName.trim() || DEFAULT_SAVED_TABLE_NAME;
-    void trackEvent('table_rename', {
-      oldName: renameTarget.name,
-      newName: displayName,
-    });
     showToast(`已重命名为：${displayName}`);
     renameSavedTableDraft?.(renameTarget.normalizedName, result.normalizedName, displayName);
     onTabRename?.(renameTarget.normalizedName, result.normalizedName, displayName);
@@ -125,7 +117,6 @@ export function useRenameDeleteActions({
     renameName,
     renameDialog,
     showToast,
-    trackEvent,
     loadedTableNormalizedName,
     setLoadedTableNormalizedName,
     setLoadedTableName,
@@ -160,7 +151,6 @@ export function useRenameDeleteActions({
       showToast(result.message ?? '删除失败');
     } else {
       removeSavedTableDraft?.(deleteTarget.normalizedName);
-      void trackEvent('table_delete', { tableName: deleteTarget.name });
       showToast(`已移入回收站：${deleteTarget.name}`);
       onTabRemove?.(deleteTarget.normalizedName);
       if (deleteTarget.normalizedName === loadedTableNormalizedName) {
@@ -175,7 +165,6 @@ export function useRenameDeleteActions({
     deleteTarget,
     deleteTable,
     showToast,
-    trackEvent,
     loadedTableNormalizedName,
     setLoadedTableNormalizedName,
     setLoadedTableName,

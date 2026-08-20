@@ -21,7 +21,6 @@ describe('useSaveLoadActions', () => {
   let saveTable: any;
   let overwriteTable: any;
   let showToast: any;
-  let trackEvent: any;
   let flushCurrentWorkspace: any;
   let setWorkspaceSnapshot: any;
   let onSaveSuccess: any;
@@ -50,7 +49,6 @@ describe('useSaveLoadActions', () => {
     saveTable = vi.fn();
     overwriteTable = vi.fn();
     showToast = vi.fn();
-    trackEvent = vi.fn().mockResolvedValue(undefined);
     flushCurrentWorkspace = vi.fn();
     setWorkspaceSnapshot = vi.fn();
     onSaveSuccess = vi.fn();
@@ -80,7 +78,6 @@ describe('useSaveLoadActions', () => {
         saveTable,
         overwriteTable,
         showToast,
-        trackEvent,
         flushCurrentWorkspace,
         setWorkspaceSnapshot,
         onSaveSuccess,
@@ -140,9 +137,6 @@ describe('useSaveLoadActions', () => {
     expect(setLoadedTableNormalizedName).toHaveBeenCalledWith('norm_test');
     expect(setLoadedTableName).toHaveBeenCalledWith('test_table');
     expect(setLoadedTableSignature).toHaveBeenCalledWith('mock-sig');
-    expect(trackEvent).toHaveBeenCalledWith('table_load', {
-      tableName: 'test_table',
-    });
     expect(showToast).toHaveBeenCalledWith(expect.stringContaining('已加载：test_table'));
     expect(onTableLoadStateChange).toHaveBeenCalledWith(false);
   });
@@ -265,9 +259,6 @@ describe('useSaveLoadActions', () => {
 
     expect(setLoadedTableSignature).toHaveBeenCalledWith('mock-sig');
     expect(setWorkspaceSnapshot).toHaveBeenCalled();
-    expect(trackEvent).toHaveBeenCalledWith('table_update', {
-      tableName: 'orig_name',
-    });
     expect(showToast).toHaveBeenCalledWith('已更新：orig_name');
     expect(saveDialog.closeDialog).toHaveBeenCalled();
     expect(onSaveSuccess).toHaveBeenCalledWith({
@@ -318,9 +309,6 @@ describe('useSaveLoadActions', () => {
     expect(setLoadedTableName).toHaveBeenCalledWith('new_name');
     expect(setLoadedTableSignature).toHaveBeenCalledWith('mock-sig');
     expect(setWorkspaceSnapshot).toHaveBeenCalled();
-    expect(trackEvent).toHaveBeenCalledWith('table_save', {
-      tableName: 'new_name',
-    });
     expect(showToast).toHaveBeenCalledWith('已保存：new_name');
     expect(setLoadedTableVersion).toHaveBeenCalledWith(1);
     expect(saveDialog.closeDialog).toHaveBeenCalled();

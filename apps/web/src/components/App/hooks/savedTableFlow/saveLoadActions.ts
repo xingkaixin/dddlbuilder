@@ -6,8 +6,6 @@ import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
 import { createVersion, countVersions, INITIAL_VERSION_MESSAGE_KEY } from '@/utils/tableVersions';
 
-type AnalyticsValue = string | number | boolean | null | undefined;
-
 type SaveDialogData = {
   name: string;
   queuedLoadAfterSave: SavedTableSummary | null;
@@ -36,7 +34,6 @@ interface UseSaveLoadActionsParams {
   saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
   overwriteTable: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
   showToast: (message: string) => void;
-  trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void> | void;
   flushCurrentWorkspace?: () => void;
   getSavedTableDraft?: (normalizedName: string) => SavedTableDraftRecord | null;
   setWorkspaceSnapshot?: (source: WorkspaceSource, state: PersistedState) => void;
@@ -68,7 +65,6 @@ export function useSaveLoadActions({
   saveTable,
   overwriteTable,
   showToast,
-  trackEvent,
   flushCurrentWorkspace,
   getSavedTableDraft,
   setWorkspaceSnapshot,
@@ -150,7 +146,6 @@ export function useSaveLoadActions({
         setLoadedTableName(record.name);
         setLoadedTableSignature(savedBaseSignature);
         setLoadedTableVersion(resolvedVersion);
-        void trackEvent('table_load', { tableName: record.name });
         showToast(`已加载：${record.name} (v${resolvedVersion})`);
 
         return { state: stateToApply, signature: savedBaseSignature };
@@ -172,7 +167,6 @@ export function useSaveLoadActions({
       serializePersistedState,
       getSavedTableDraft,
       setWorkspaceSnapshot,
-      trackEvent,
       onTableLoadStateChange,
     ],
   );
@@ -223,7 +217,6 @@ export function useSaveLoadActions({
         },
         nextState,
       );
-      void trackEvent('table_update', { tableName: loadedTableName });
       showToast(`已更新：${loadedTableName ?? saveName}`);
     } else {
       const result = await saveTable(saveName, nextState);
@@ -252,7 +245,6 @@ export function useSaveLoadActions({
         },
         nextState,
       );
-      void trackEvent('table_save', { tableName: displayName });
       showToast(`已保存：${displayName}`);
     }
     saveDialog.closeDialog();
@@ -292,7 +284,6 @@ export function useSaveLoadActions({
     overwriteTable,
     setLoadedTableSignature,
     setWorkspaceSnapshot,
-    trackEvent,
     loadedTableName,
     saveName,
     setLoadedTableVersion,

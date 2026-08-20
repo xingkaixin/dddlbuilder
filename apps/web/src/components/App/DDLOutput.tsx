@@ -96,7 +96,6 @@ export const DDLOutput = memo<DDLOutputProps>(
   }) => {
     const { t } = useTranslation();
     const authSession = useAuthSession();
-    const trackEvent = useCallback((..._args: unknown[]) => {}, []);
     const { showToast } = useToast();
     const databaseOption = useMemo(
       () => DATABASE_OPTIONS.find((option) => option.value === dbType),
@@ -175,11 +174,10 @@ export const DDLOutput = memo<DDLOutputProps>(
         showToast(t('ddlOutput.copyFailed'));
         return;
       }
-      trackEvent('sql_copy_ddl', { dbType });
       if (sqlTimerRef.current) window.clearTimeout(sqlTimerRef.current);
       setIsSqlCopied(true);
       sqlTimerRef.current = window.setTimeout(() => setIsSqlCopied(false), 3000);
-    }, [onCopySql, dbType, trackEvent, showToast, t]);
+    }, [onCopySql, showToast, t]);
 
     const handleCopyDcl = useCallback(async () => {
       const success = await onCopyDcl();
@@ -187,11 +185,10 @@ export const DDLOutput = memo<DDLOutputProps>(
         showToast(t('ddlOutput.copyFailed'));
         return;
       }
-      trackEvent('sql_copy_dcl', { dbType });
       if (dclTimerRef.current) window.clearTimeout(dclTimerRef.current);
       setIsDclCopied(true);
       dclTimerRef.current = window.setTimeout(() => setIsDclCopied(false), 3000);
-    }, [onCopyDcl, dbType, trackEvent, showToast, t]);
+    }, [onCopyDcl, showToast, t]);
 
     const handleCopyOrm = useCallback(async () => {
       const success = await onCopyOrm();
@@ -199,11 +196,10 @@ export const DDLOutput = memo<DDLOutputProps>(
         showToast(t('ddlOutput.copyFailed'));
         return;
       }
-      trackEvent('orm_copy', { ormTarget });
       if (ormTimerRef.current) window.clearTimeout(ormTimerRef.current);
       setIsOrmCopied(true);
       ormTimerRef.current = window.setTimeout(() => setIsOrmCopied(false), 3000);
-    }, [onCopyOrm, ormTarget, trackEvent, showToast, t]);
+    }, [onCopyOrm, showToast, t]);
 
     const handleCopyRoutine = useCallback(async () => {
       try {
@@ -223,11 +219,10 @@ export const DDLOutput = memo<DDLOutputProps>(
           return;
         }
       }
-      trackEvent('sql_copy_routine', { dbType, routineKind });
       if (routineTimerRef.current) window.clearTimeout(routineTimerRef.current);
       setIsRoutineCopied(true);
       routineTimerRef.current = window.setTimeout(() => setIsRoutineCopied(false), 3000);
-    }, [routineSql, dbType, routineKind, trackEvent, showToast, t]);
+    }, [routineSql, showToast, t]);
 
     const canReview = generatedSql && !generatedSql.startsWith('--');
 

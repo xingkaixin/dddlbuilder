@@ -22,7 +22,6 @@ function createHook(initialState: Partial<Parameters<typeof useSchemaApplyAction
     triggerIndexAnimation: vi.fn(),
     triggerFieldTableHighlight: vi.fn(),
     showToast: vi.fn(),
-    trackEvent: vi.fn().mockResolvedValue(undefined),
   };
 
   const hook = renderHook(
@@ -170,10 +169,6 @@ describe('useSchemaApplyActions', () => {
 
       expect(spies.triggerFieldTableHighlight).toHaveBeenCalledWith(0);
       expect(spies.showToast).toHaveBeenCalledWith('已应用建议：Add field');
-      expect(spies.trackEvent).toHaveBeenCalledWith('sql_suggestion_apply', {
-        type: 'add_field',
-        description: 'Add field',
-      });
       expect(spies.setReviewResult).toHaveBeenCalledWith({
         suggestions: [
           {
@@ -538,9 +533,6 @@ describe('useSchemaApplyActions', () => {
       expect(indexes[0].name).toBe('PRIMARY');
       expect(indexes[0].fields[0].name).toBe('id');
       expect(indexes[1].name).toBe('idx_name');
-      expect(spies.trackEvent).toHaveBeenCalledWith('ai_generate_apply', {
-        tableName: 'ai_table',
-      });
     });
 
     it('should hand generated state to draft creator when provided', () => {

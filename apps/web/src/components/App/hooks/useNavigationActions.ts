@@ -1,8 +1,6 @@
 import { useCallback } from 'react';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 
-type AnalyticsValue = string | number | boolean | null | undefined;
-
 interface UseNavigationActionsParams {
   setSavedTablesDrawerOpen: (open: boolean) => void;
   setIsDiffDialogOpen: (open: boolean) => void;
@@ -18,7 +16,6 @@ interface UseNavigationActionsParams {
   setIsAIGenerateDialogOpen: (open: boolean) => void;
   setIsMockDataDialogOpen: (open: boolean) => void;
   setIsErDialogOpen: (open: boolean) => void;
-  trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void> | void;
 }
 
 export function useNavigationActions({
@@ -31,30 +28,18 @@ export function useNavigationActions({
   setIsAIGenerateDialogOpen,
   setIsMockDataDialogOpen,
   setIsErDialogOpen,
-  trackEvent,
 }: UseNavigationActionsParams) {
   const handleOpenSavedTablesDrawer = useCallback(() => {
-    void trackEvent('sidebar_open');
     setSavedTablesDrawerOpen(true);
-  }, [trackEvent, setSavedTablesDrawerOpen]);
+  }, [setSavedTablesDrawerOpen]);
 
   const handleOpenDiffDialog = useCallback(() => {
-    void trackEvent('diff_view_open');
     setIsDiffDialogOpen(true);
-  }, [trackEvent, setIsDiffDialogOpen]);
-
-  const handleTabValueChange = useCallback(
-    (value: string) => {
-      setActiveTab(value);
-      void trackEvent('tab_switch', { tab: value });
-    },
-    [setActiveTab, trackEvent],
-  );
+  }, [setIsDiffDialogOpen]);
 
   const handleOpenStorageEstimator = useCallback(() => {
-    void trackEvent('storage_estimator_open');
     setIsStorageEstimatorOpen(true);
-  }, [trackEvent, setIsStorageEstimatorOpen]);
+  }, [setIsStorageEstimatorOpen]);
 
   const handleViewVersionHistory = useCallback(
     (item: SavedTableSummary) => {
@@ -76,14 +61,13 @@ export function useNavigationActions({
   }, [setIsMockDataDialogOpen]);
 
   const handleOpenErDiagram = useCallback(() => {
-    void trackEvent('er_diagram_open');
     setIsErDialogOpen(true);
-  }, [trackEvent, setIsErDialogOpen]);
+  }, [setIsErDialogOpen]);
 
   return {
     handleOpenSavedTablesDrawer,
     handleOpenDiffDialog,
-    handleTabValueChange,
+    handleTabValueChange: setActiveTab,
     handleOpenStorageEstimator,
     handleViewVersionHistory,
     handleOpenAIGenerateDialog,

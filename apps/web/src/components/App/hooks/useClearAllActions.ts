@@ -1,7 +1,5 @@
 import { useCallback } from 'react';
 
-type AnalyticsValue = string | number | boolean | null | undefined;
-
 interface UseClearAllActionsParams {
   setIsClearDialogOpen: (open: boolean) => void;
   clearState: () => void;
@@ -16,7 +14,6 @@ interface UseClearAllActionsParams {
   setLoadedTableNormalizedName: (name: string | null) => void;
   setLoadedTableName: (name: string | null) => void;
   setLoadedTableSignature: (signature: string | null) => void;
-  trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void> | void;
 }
 
 export function useClearAllActions({
@@ -33,7 +30,6 @@ export function useClearAllActions({
   setLoadedTableNormalizedName,
   setLoadedTableName,
   setLoadedTableSignature,
-  trackEvent,
 }: UseClearAllActionsParams) {
   const handleClearAll = useCallback(() => {
     setIsClearDialogOpen(true);
@@ -57,7 +53,6 @@ export function useClearAllActions({
     setLoadedTableSignature(null);
 
     clearState();
-    void trackEvent('table_clear_all');
     cancelClearAll();
   }, [
     resetTableConfig,
@@ -72,7 +67,6 @@ export function useClearAllActions({
     setLoadedTableName,
     setLoadedTableSignature,
     clearState,
-    trackEvent,
     cancelClearAll,
   ]);
 

@@ -68,7 +68,10 @@ const ImportSqlDialog = lazy(() =>
   })),
 );
 
-const INITIAL_ROWS = Array.from({ length: 12 }, (_, index) => createEmptyRow(index));
+const createInitialRows = () => Array.from({ length: 12 }, (_, index) => createEmptyRow(index));
+
+// 模块级共享引用，仅用作 applySavedState 的兜底默认值；新建草稿必须用独立数组。
+const INITIAL_ROWS = createInitialRows();
 const DEFAULT_FIELD_TABLE_FREEZE_ENABLED = false;
 const DEFAULT_FIELD_TABLE_FREEZE_COLUMNS = 3;
 const SHARE_COPY_SAVED_TOAST_KEY = 'ddlbuilder:share:copy-saved:v1';
@@ -79,7 +82,7 @@ const createEmptyGlobalDraftState = (): PersistedState => ({
   tableComment: '',
   dbType: 'mysql',
   sqlFormatMode: 'compact',
-  rows: Array.from({ length: 12 }, (_, index) => createEmptyRow(index)),
+  rows: createInitialRows(),
   addCount: 10,
   indexInput: '',
   currentIndexFields: [],
@@ -89,7 +92,6 @@ const createEmptyGlobalDraftState = (): PersistedState => ({
 });
 
 function App() {
-  const trackEvent = useCallback(async (..._args: unknown[]) => {}, []);
   const { t } = useTranslation();
 
   // ─── 1. Zustand selectors (aggregated) ─────────────────────────
@@ -389,11 +391,6 @@ function App() {
     foreignKeys,
   );
 
-  const routineTableNameDefault = useMemo(
-    () => buildQualifiedTableName(schemaName, tableName),
-    [schemaName, tableName],
-  );
-
   const { showToast } = useToast();
   const { isLoading: isGeneratingComments, generateComments } = useAIComments();
   const {
@@ -416,7 +413,6 @@ function App() {
     indexes,
     setIndexes,
     setActiveTab,
-    trackEvent,
   });
 
   const handleGenerateComments = useCallback(
@@ -459,7 +455,6 @@ function App() {
           );
 
           showToast(t('aiComments.done'));
-          void trackEvent('ai_comments_apply', { mode, targetLocale });
         } catch (error) {
           showToast((error as Error).message || t('services.generationFailed'));
         }
@@ -475,7 +470,6 @@ function App() {
       setRows,
       showToast,
       t,
-      trackEvent,
     ],
   );
 
@@ -601,7 +595,6 @@ function App() {
     setRows,
     createTemplateFromFields,
     showToast,
-    trackEvent,
   });
 
   const clearLoadedTable = useCallback(() => {
@@ -628,7 +621,6 @@ function App() {
     reviewResult,
     startReview,
     setIsReviewHistoryOpen,
-    trackEvent,
   });
 
   const schemaLintIssues = useMemo(
@@ -639,7 +631,6 @@ function App() {
   const { handleShare, isSharing } = useShareAction({
     buildPersistedState,
     showToast,
-    trackEvent,
   });
 
   usePersistedSync({
@@ -685,7 +676,6 @@ function App() {
     setLoadedTableNormalizedName,
     setLoadedTableName,
     setLoadedTableSignature,
-    trackEvent,
   });
 
   const applySavedState = useApplySavedState({
@@ -735,7 +725,6 @@ function App() {
     createTemplate: createTableTemplate,
     clearLoadedTable,
     showToast,
-    trackEvent,
   });
 
   const flushCurrentWorkspace = useCallback(() => {
@@ -770,7 +759,6 @@ function App() {
   ]);
 
   const [loadedTableVersion, setLoadedTableVersion] = useState<number>(0);
-  const [, setIsSavedTableLoading] = useState(false);
   const [isErDialogOpen, setIsErDialogOpen] = useState(false);
   const [workspaceSidebarOpen, setWorkspaceSidebarOpen] = useState(true);
   const [outputPanelOpen, setOutputPanelOpen] = useState(true);
@@ -835,13 +823,11 @@ function App() {
     saveTable,
     overwriteTable,
     showToast,
-    trackEvent,
     flushCurrentWorkspace,
     getSavedTableDraft,
     setWorkspaceSnapshot,
     renameSavedTableDraft,
     removeSavedTableDraft,
-    onTableLoadStateChange: setIsSavedTableLoading,
     onSaveSuccess: async ({ normalizedName, displayName, baseSignature, mode }) => {
       if (isShareView) {
         try {
@@ -1040,82 +1026,54 @@ function App() {
     ],
   );
 
-  const handleCreateDraft = useCallback(() => {
-    if (tabs.length > 0) {
-      flushCurrentWorkspace();
-    }
-    const draftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const emptyState = createEmptyGlobalDraftState();
-    const uniqueName = createDraft(draftId, emptyState);
-    const finalState =
-      uniqueName !== emptyState.tableName ? { ...emptyState, tableName: uniqueName } : emptyState;
+  const openStateInNewDraftTab = useCallback(
+    (initialState: PersistedState) => {
+      if (tabs.length > 0) {
+        flushCurrentWorkspace();
+      }
+      const draftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const uniqueName = createDraft(draftId, initialState);
+      const finalState =
+        uniqueName === initialState.tableName
+          ? initialState
+          : { ...initialState, tableName: uniqueName };
 
-    const newTabId = addTab({
-      title: uniqueName,
-      source: { kind: 'draft', draftId },
-      stateSnapshot: finalState,
-      isDirty: false,
-    });
-    activateTab(newTabId);
-    applySavedState(finalState);
-    setWorkspaceSnapshot({ kind: 'draft', draftId }, finalState);
-    setLoadedTableNormalizedName(null);
-    setLoadedTableName(null);
-    setLoadedTableSignature(null);
-    setLoadedTableVersion(0);
-  }, [
-    flushCurrentWorkspace,
-    createDraft,
-    addTab,
-    activateTab,
-    applySavedState,
-    setWorkspaceSnapshot,
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
-    setLoadedTableSignature,
-    tabs,
-  ]);
+      const newTabId = addTab({
+        title: uniqueName,
+        source: { kind: 'draft', draftId },
+        stateSnapshot: finalState,
+        isDirty: false,
+      });
+      activateTab(newTabId);
+      applySavedState(finalState);
+      setWorkspaceSnapshot({ kind: 'draft', draftId }, finalState);
+      setLoadedTableNormalizedName(null);
+      setLoadedTableName(null);
+      setLoadedTableSignature(null);
+      setLoadedTableVersion(0);
+    },
+    [
+      tabs.length,
+      flushCurrentWorkspace,
+      createDraft,
+      addTab,
+      activateTab,
+      applySavedState,
+      setWorkspaceSnapshot,
+      setLoadedTableNormalizedName,
+      setLoadedTableName,
+      setLoadedTableSignature,
+    ],
+  );
+
+  const handleCreateDraft = useCallback(() => {
+    openStateInNewDraftTab(createEmptyGlobalDraftState());
+  }, [openStateInNewDraftTab]);
 
   const handleLoadExample = useCallback(() => {
-    if (tabs.length > 0) {
-      flushCurrentWorkspace();
-    }
-    const draftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const exampleState = EXAMPLE_USER_PROFILE_TABLE;
-    const uniqueName = createDraft(draftId, exampleState);
-    const finalState =
-      uniqueName !== exampleState.tableName
-        ? { ...exampleState, tableName: uniqueName }
-        : exampleState;
-
-    const newTabId = addTab({
-      title: uniqueName,
-      source: { kind: 'draft', draftId },
-      stateSnapshot: finalState,
-      isDirty: false,
-    });
-    activateTab(newTabId);
-    applySavedState(finalState);
-    setWorkspaceSnapshot({ kind: 'draft', draftId }, finalState);
-    setLoadedTableNormalizedName(null);
-    setLoadedTableName(null);
-    setLoadedTableSignature(null);
-    setLoadedTableVersion(0);
+    openStateInNewDraftTab(EXAMPLE_USER_PROFILE_TABLE);
     showToast(t('emptyState.exampleLoaded'));
-  }, [
-    flushCurrentWorkspace,
-    createDraft,
-    addTab,
-    activateTab,
-    applySavedState,
-    setWorkspaceSnapshot,
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
-    setLoadedTableSignature,
-    showToast,
-    t,
-    tabs,
-  ]);
+  }, [openStateInNewDraftTab, showToast, t]);
 
   const handleCloseTab = useCallback(
     (tabId: string) => {
@@ -1235,45 +1193,6 @@ function App() {
     return t('app.workspace.globalDraft');
   }, [isShareView, loadedTableName, isLoadedDirty, loadedTableVersion, t]);
 
-  const handleApplyAIGeneratedStateToDraft = useCallback(
-    (state: PersistedState) => {
-      if (tabs.length > 0) {
-        flushCurrentWorkspace();
-      }
-
-      const draftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      const baseName = state.tableName.trim() || '未命名草稿';
-      const uniqueName = createDraft(draftId, state);
-      const finalState = uniqueName !== baseName ? { ...state, tableName: uniqueName } : state;
-
-      const newTabId = addTab({
-        title: uniqueName,
-        source: { kind: 'draft', draftId },
-        stateSnapshot: finalState,
-        isDirty: false,
-      });
-      activateTab(newTabId);
-      applySavedState(finalState);
-      setWorkspaceSnapshot({ kind: 'draft', draftId }, finalState);
-      setLoadedTableNormalizedName(null);
-      setLoadedTableName(null);
-      setLoadedTableSignature(null);
-      setLoadedTableVersion(0);
-    },
-    [
-      tabs.length,
-      flushCurrentWorkspace,
-      createDraft,
-      addTab,
-      activateTab,
-      applySavedState,
-      setWorkspaceSnapshot,
-      setLoadedTableNormalizedName,
-      setLoadedTableName,
-      setLoadedTableSignature,
-    ],
-  );
-
   const { applyChange: handleApplyAISchemaChange, focusChange: handleFocusAISchemaChange } =
     useAISchemaPatchFlow({
       rows,
@@ -1286,7 +1205,6 @@ function App() {
       setActiveTab,
       highlightField: triggerFieldTableHighlight,
       animateIndex: triggerIndexAnimation,
-      trackEvent,
     });
 
   const { handleApplySuggestion, handleImport, handleApplyAIGeneratedSchema } =
@@ -1313,8 +1231,7 @@ function App() {
       triggerIndexAnimation,
       triggerFieldTableHighlight,
       showToast,
-      trackEvent,
-      onApplyAIGeneratedState: handleApplyAIGeneratedStateToDraft,
+      onApplyAIGeneratedState: openStateInNewDraftTab,
     });
 
   const {
@@ -1336,7 +1253,6 @@ function App() {
     setIsAIGenerateDialogOpen,
     setIsMockDataDialogOpen,
     setIsErDialogOpen,
-    trackEvent,
   });
 
   const handleOpenAISchemaPatchPanel = useCallback(() => {
@@ -1405,8 +1321,8 @@ function App() {
   const handleTableNameChange = useCallback(
     (value: string) => {
       setTableName(value);
-      const activeTab = getActiveTab();
-      if (activeTab?.source.kind === 'draft') {
+      const currentTab = getActiveTab();
+      if (currentTab?.source.kind === 'draft') {
         const newTitle = value.trim() || t('app.workspace.globalDraft');
         updateActiveTabTitle(newTitle);
       }
@@ -1426,10 +1342,6 @@ function App() {
     handleManageTableTemplates,
     handleSaveAsTableTemplate,
   });
-
-  const drawerDraftItems = useMemo(() => {
-    return draftSummaries;
-  }, [draftSummaries]);
 
   const recentDrafts = useMemo(
     () => [...draftSummaries].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 3),
@@ -1505,7 +1417,7 @@ function App() {
             loading: savedTablesLoading,
             error: savedTablesError,
             items: savedTables,
-            draftItems: drawerDraftItems,
+            draftItems: draftSummaries,
             activeDraftId:
               !isShareView && activeSource.kind === 'draft' ? activeSource.draftId : null,
             folders: folderTree,
@@ -1535,7 +1447,7 @@ function App() {
               items={savedTables}
               trashedItems={trashedTables}
               trashedDraftItems={trashedDrafts}
-              draftItems={drawerDraftItems}
+              draftItems={draftSummaries}
               folders={folderTree}
               activeNormalizedName={loadedTableNormalizedName}
               activeDraftId={activeSource.kind === 'draft' ? activeSource.draftId : null}
@@ -1801,7 +1713,7 @@ function App() {
                         generatedSql,
                         generatedDcl,
                         dbType,
-                        routineTableNameDefault,
+                        routineTableNameDefault: qualifiedTableName,
                         sqlFormatMode,
                         onSqlFormatModeChange: setSqlFormatMode,
                         onCopySql: copySql,
@@ -1837,9 +1749,11 @@ function App() {
           saveDialog={{
             open: isSaveDialogOpen,
             onOpenChange: handleSaveDialogOpenChange,
-            title: saveDialog.data.queuedLoadAfterSave ? '加载保存的表' : saveDialogTitle,
+            title: saveDialog.data.queuedLoadAfterSave
+              ? t('dialogs.save.queuedLoadTitle')
+              : saveDialogTitle,
             description: saveDialog.data.queuedLoadAfterSave
-              ? '当前表有未保存修改。保存后会继续加载选中的表。'
+              ? t('dialogs.save.queuedLoadDescription')
               : saveDialogDescription,
             name: saveName,
             onNameChange: (value) => {
@@ -1938,7 +1852,6 @@ function App() {
             onRollback: (state: PersistedState) => {
               applySavedState(state);
               setSavedTablesDrawerOpen(false);
-              void trackEvent('table_version_rollback');
               showToast(t('app.rollbackDone'));
             },
             onPlayTimeline: handlePlayTimeline,

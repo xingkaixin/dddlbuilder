@@ -4,8 +4,6 @@ import type { TableBlueprint, TableTemplate } from '@/hooks/useTableTemplates';
 import { applyBlueprintToState, createBlueprintFromState } from '@/utils/tableTemplates';
 import i18n from '@/i18n';
 
-type AnalyticsValue = string | number | boolean | null | undefined;
-
 interface UseTableTemplateActionsParams {
   currentState: PersistedState;
   applyState: (state: PersistedState) => void;
@@ -16,7 +14,6 @@ interface UseTableTemplateActionsParams {
   ) => Promise<{ ok: boolean; message?: string }>;
   clearLoadedTable: () => void;
   showToast: (message: string) => void;
-  trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void>;
 }
 
 export function useTableTemplateActions({
@@ -25,7 +22,6 @@ export function useTableTemplateActions({
   createTemplate,
   clearLoadedTable,
   showToast,
-  trackEvent,
 }: UseTableTemplateActionsParams) {
   const [isManagerOpen, setIsManagerOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -49,22 +45,18 @@ export function useTableTemplateActions({
           ? i18n.t('tableTemplate.toast.created', { name })
           : (result.message ?? i18n.t('tableTemplate.toast.createFailed')),
       );
-      if (result.ok) {
-        void trackEvent('table_template_create', { templateName: name });
-      }
       return result;
     },
-    [createTemplate, showToast, trackEvent],
+    [createTemplate, showToast],
   );
 
   const handleApplyTemplate = useCallback(
     (template: TableTemplate) => {
       applyState(applyBlueprintToState(currentState, template.blueprint));
       clearLoadedTable();
-      void trackEvent('table_template_apply', { templateName: template.name });
       showToast(i18n.t('tableTemplate.toast.applied', { name: template.name }));
     },
-    [applyState, clearLoadedTable, currentState, showToast, trackEvent],
+    [applyState, clearLoadedTable, currentState, showToast],
   );
 
   return {

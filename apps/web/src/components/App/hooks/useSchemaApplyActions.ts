@@ -15,8 +15,6 @@ import type {
 import type { ReviewResult, StructuredSuggestion } from '@/hooks/useDDLReview';
 import type { GeneratedTableSchema } from '@/hooks/useAIGenerateTable';
 
-type AnalyticsValue = string | number | boolean | null | undefined;
-
 interface UseSchemaApplyActionsParams {
   rows: FieldRow[];
   indexes: IndexDefinition[];
@@ -40,7 +38,6 @@ interface UseSchemaApplyActionsParams {
   triggerIndexAnimation: (indexId: string, mode: 'add' | 'remove') => void;
   triggerFieldTableHighlight: (rowIndex: number) => void;
   showToast: (message: string) => void;
-  trackEvent: (event: string, data?: Record<string, AnalyticsValue>) => Promise<void>;
   onApplyAIGeneratedState?: (state: PersistedState) => void;
 }
 
@@ -155,7 +152,6 @@ export function useSchemaApplyActions({
   triggerIndexAnimation,
   triggerFieldTableHighlight,
   showToast,
-  trackEvent,
   onApplyAIGeneratedState,
 }: UseSchemaApplyActionsParams) {
   const handleApplySuggestion = useCallback(
@@ -302,10 +298,6 @@ export function useSchemaApplyActions({
           return item;
         });
         setReviewResult({ ...reviewResult, suggestions: newSuggestions });
-        void trackEvent('sql_suggestion_apply', {
-          type: suggestion.type,
-          description: suggestion.description,
-        });
         showToast(`已应用建议：${suggestion.description}`);
       }
     },
@@ -317,7 +309,6 @@ export function useSchemaApplyActions({
       setIndexes,
       setReviewResult,
       showToast,
-      trackEvent,
       triggerIndexAnimation,
       triggerFieldTableHighlight,
       setActiveTab,
@@ -340,7 +331,6 @@ export function useSchemaApplyActions({
       setForeignKeys(state.foreignKeys ?? []);
       setAuthObjects(state.authObjects);
       setAuthInput('');
-      void trackEvent('sql_import', { dbType: importDbType });
     },
     [
       setRows,
@@ -355,7 +345,6 @@ export function useSchemaApplyActions({
       setDbType,
       setTableMiscConfig,
       setMysqlPartitionConfig,
-      trackEvent,
     ],
   );
 
@@ -398,7 +387,6 @@ export function useSchemaApplyActions({
         }
       }
 
-      void trackEvent('ai_generate_apply', { tableName: schema.tableName });
       showToast('大师建表工坊的表结构已应用');
     },
     [
@@ -410,7 +398,6 @@ export function useSchemaApplyActions({
       setTableComment,
       setRows,
       setIndexes,
-      trackEvent,
       showToast,
     ],
   );

@@ -18,7 +18,6 @@ interface ExplainPopoverProps {
 export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) {
   const { t } = useTranslation();
   const authSession = useAuthSession();
-  const trackEvent = useCallback((..._args: unknown[]) => {}, []);
   const [selection, setSelection] = useState<{
     text: string;
     x: number;
@@ -88,9 +87,6 @@ export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) 
     e.preventDefault();
     e.stopPropagation();
     if (selection) {
-      trackEvent('sql_explain_start', {
-        textLength: selection.text.length,
-      });
       void startExplain(selection.text);
       setShowResult(true);
     }
@@ -106,12 +102,6 @@ export function ExplainPopover({ children, containerRef }: ExplainPopoverProps) 
     },
     [clearExplain],
   );
-
-  useEffect(() => {
-    if (isComplete && !isStreaming && showResult) {
-      trackEvent('sql_explain_complete');
-    }
-  }, [isComplete, isStreaming, showResult, trackEvent]);
 
   useEffect(() => {
     if (!showResult || explanation === null) {

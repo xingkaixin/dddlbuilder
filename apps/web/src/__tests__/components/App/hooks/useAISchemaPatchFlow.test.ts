@@ -31,7 +31,6 @@ const createDependencies = () => ({
   setActiveTab: vi.fn(),
   highlightField: vi.fn(),
   animateIndex: vi.fn().mockResolvedValue(undefined),
-  trackEvent: vi.fn(),
 });
 
 describe('useAISchemaPatchFlow', () => {

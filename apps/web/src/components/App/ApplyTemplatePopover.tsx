@@ -3,7 +3,7 @@
  * 在字段表格上方显示，用于快速应用模板字段
  */
 
-import { memo, useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { memo, useState, useMemo, useCallback } from 'react';
 import { FileText, ChevronDown, Settings, Plus, Search } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -55,10 +55,8 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
     onSaveAsTemplate,
   }) => {
     const { t } = useTranslation();
-    const trackEvent = useCallback((..._args: unknown[]) => {}, []);
     const [open, setOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const hasTrackedSearchRef = useRef(false);
 
     const normalizedQuery = useMemo(() => searchQuery.trim().toLowerCase(), [searchQuery]);
 
@@ -90,7 +88,6 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
     const handleOpenChange = useCallback((nextOpen: boolean) => {
       setOpen(nextOpen);
       if (!nextOpen) {
-        hasTrackedSearchRef.current = false;
         setSearchQuery('');
       }
     }, []);
@@ -112,17 +109,6 @@ export const ApplyTemplatePopover = memo<ApplyTemplatePopoverProps>(
       onSaveAsTemplate();
       handleOpenChange(false);
     }, [handleOpenChange, onSaveAsTemplate]);
-
-    useEffect(() => {
-      if (!enableSearch || !normalizedQuery || hasTrackedSearchRef.current) {
-        return;
-      }
-      hasTrackedSearchRef.current = true;
-      trackEvent('template_quick_apply_search_used', {
-        queryLength: normalizedQuery.length,
-        templateCount: templates.length,
-      });
-    }, [enableSearch, normalizedQuery, templates.length, trackEvent]);
 
     const renderTemplateButton = useCallback(
       (template: FieldTemplate) => (
