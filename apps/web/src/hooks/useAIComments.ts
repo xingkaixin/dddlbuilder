@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import type { AICommentMode, AICommentRequest, AICommentResult } from '@ddlbuilder/shared-types';
 import { requestAIComments, assertAICommentTarget } from '@/services/aiCommentService';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
@@ -6,7 +7,6 @@ import { useLocale } from '@/i18n/LocaleContext';
 import i18n from '@/i18n';
 
 interface AICommentState {
-  isLoading: boolean;
   error: string | null;
 }
 
@@ -19,26 +19,27 @@ export function useAIComments() {
   const authSession = useAuthSession();
   const { resolvedLocale } = useLocale();
   const [state, setState] = useState<AICommentState>({
-    isLoading: false,
     error: null,
   });
   const activeRequestRef = useRef<AbortController | null>(null);
+  const commentsMutation = useMutation({
+    mutationFn: ({ payload, signal }: { payload: AICommentRequest; signal: AbortSignal }) =>
+      requestAIComments(payload, signal),
+    retry: false,
+  });
 
   const generateComments = useCallback(
     async (input: GenerateCommentsInput): Promise<AICommentResult | null> => {
       if (authSession.status !== 'signed_in' || !authSession.userId) {
         authSession.openAuthDialog();
         const message = i18n.t('services.authRequired');
-        setState({ isLoading: false, error: message });
+        setState({ error: message });
         throw new Error(message);
       }
 
       if (authSession.creditsStatus === 'ready' && (authSession.creditBalance ?? 0) <= 0) {
         const message = i18n.t('services.creditExhausted');
-        setState({
-          isLoading: false,
-          error: message,
-        });
+        setState({ error: message });
         throw new Error(message);
       }
 
@@ -51,18 +52,21 @@ export function useAIComments() {
         assertAICommentTarget(payload);
       } catch (error) {
         const message = (error as Error).message;
-        setState({ isLoading: false, error: message });
+        setState({ error: message });
         throw new Error(message);
       }
 
       activeRequestRef.current?.abort();
       const abortController = new AbortController();
       activeRequestRef.current = abortController;
-      setState({ isLoading: true, error: null });
+      setState({ error: null });
 
       try {
-        const result = await requestAIComments(payload, abortController.signal);
-        setState({ isLoading: false, error: null });
+        const result = await commentsMutation.mutateAsync({
+          payload,
+          signal: abortController.signal,
+        });
+        setState({ error: null });
         void authSession.refreshCredits();
         return result;
       } catch (error) {
@@ -73,10 +77,7 @@ export function useAIComments() {
           authSession.openAuthDialog();
         }
         const message = (error as Error).message || i18n.t('services.generationFailed');
-        setState({
-          isLoading: false,
-          error: message,
-        });
+        setState({ error: message });
         throw new Error(message);
       } finally {
         if (activeRequestRef.current === abortController) {
@@ -84,17 +85,18 @@ export function useAIComments() {
         }
       }
     },
-    [authSession, resolvedLocale],
+    [authSession, commentsMutation, resolvedLocale],
   );
 
   const cancelComments = useCallback(() => {
     activeRequestRef.current?.abort();
     activeRequestRef.current = null;
-    setState((prev) => ({ ...prev, isLoading: false }));
-  }, []);
+    commentsMutation.reset();
+    setState((previous) => ({ ...previous }));
+  }, [commentsMutation]);
 
   return {
-    isLoading: state.isLoading,
+    isLoading: commentsMutation.isPending,
     error: state.error,
     generateComments,
     cancelComments,

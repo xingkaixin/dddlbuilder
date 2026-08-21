@@ -66,8 +66,8 @@ describe('useAIGenerateTable failure states', () => {
     expect(result.current.isLoading).toBe(false);
   });
 
-  it('should reuse cached generation result for same params', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
+  it('should execute completed generation again for same params', async () => {
+    const fetchMock = vi.fn().mockImplementation(() => ({
       ok: true,
       body: new ReadableStream({
         start(controller) {
@@ -86,7 +86,7 @@ describe('useAIGenerateTable failure states', () => {
           controller.close();
         },
       }),
-    });
+    }));
     vi.stubGlobal('fetch', fetchMock);
 
     const { result } = renderAIGenerateTableHook();
@@ -99,7 +99,7 @@ describe('useAIGenerateTable failure states', () => {
       await result.current.generateTable('生成用户表', 'mysql');
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(result.current.result?.tableName).toBe('users');
   });
 });

@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { ShareApiError, createShare } from '@/services/shareService';
 import { reportError } from '@/utils/errorReporter';
@@ -62,8 +63,11 @@ interface UseShareActionParams {
 }
 
 export function useShareAction({ buildPersistedState, showToast }: UseShareActionParams) {
-  const [isSharing, setIsSharing] = useState(false);
   const inFlightRef = useRef(false);
+  const createShareMutation = useMutation({
+    mutationFn: (state: PersistedState) => createShare(state),
+    retry: false,
+  });
 
   const handleShare = useCallback(async () => {
     if (inFlightRef.current) {
@@ -71,7 +75,6 @@ export function useShareAction({ buildPersistedState, showToast }: UseShareActio
     }
 
     inFlightRef.current = true;
-    setIsSharing(true);
 
     try {
       const currentState = buildPersistedState();
@@ -90,7 +93,7 @@ export function useShareAction({ buildPersistedState, showToast }: UseShareActio
         return;
       }
 
-      const share = await createShare(currentState);
+      const share = await createShareMutation.mutateAsync(currentState);
       await navigator.clipboard.writeText(share.url);
       writeShareLinkCache({
         signature,
@@ -110,12 +113,11 @@ export function useShareAction({ buildPersistedState, showToast }: UseShareActio
       showToast(i18n.t('services.shareCreateFailed'));
     } finally {
       inFlightRef.current = false;
-      setIsSharing(false);
     }
-  }, [buildPersistedState, showToast]);
+  }, [buildPersistedState, createShareMutation, showToast]);
 
   return {
     handleShare,
-    isSharing,
+    isSharing: createShareMutation.isPending,
   };
 }

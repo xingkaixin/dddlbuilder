@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import {
   requestGenerateTable,
   type GenerateTableRequestOptions,
@@ -10,7 +10,6 @@ import type {
   PartialTableSchema,
 } from '@ddlbuilder/shared-types/ai-generate';
 import { parsePartialTableSchema } from '@/utils/parsePartialTableSchema';
-import { buildAIGenerateQueryKey } from '@/queryKeys/ai';
 import { useLocale } from '@/i18n/LocaleContext';
 import i18n from '@/i18n';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
@@ -24,7 +23,6 @@ export type {
 } from '@ddlbuilder/shared-types/ai-generate';
 
 interface GenerateState {
-  isLoading: boolean;
   streamingText: string;
   result: GeneratedTableSchema | null;
   previousResult: GeneratedTableSchema | null;
@@ -34,9 +32,6 @@ interface GenerateState {
 interface GenerateTableOptions extends Omit<GenerateTableRequestOptions, 'conversationHistory'> {
   continueConversation?: boolean;
 }
-
-const AI_GENERATE_CACHE_STALE_TIME_MS = 5 * 60 * 1000;
-const AI_GENERATE_CACHE_GC_TIME_MS = 15 * 60 * 1000;
 
 function appendConversation(
   baseHistory: ConversationMessage[],
@@ -57,28 +52,35 @@ export function useAIGenerateTable() {
   const { resolvedLocale } = useLocale();
   const authSession = useAuthSession();
   const [state, setState] = useState<GenerateState>({
-    isLoading: false,
     streamingText: '',
     result: null,
     previousResult: null,
     error: null,
   });
   const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
-  const queryClient = useQueryClient();
-  const conversationHistoryRef = useRef<ConversationMessage[]>([]);
   const previousSchemaRef = useRef<GeneratedTableSchema | null>(null);
   const activeRequestRef = useRef<{
     key: string;
     controller: AbortController;
   } | null>(null);
-  conversationHistoryRef.current = conversationHistory;
-
+  const generateMutation = useMutation({
+    mutationFn: ({
+      payload,
+      signal,
+      onStreamingText,
+    }: {
+      payload: Parameters<typeof requestGenerateTable>[0];
+      signal: AbortSignal;
+      onStreamingText: (streamingText: string) => void;
+    }) => requestGenerateTable(payload, { signal, onStreamingText }),
+    retry: false,
+  });
   const partialResult = useMemo<PartialTableSchema | null>(() => {
-    if (!state.isLoading || !state.streamingText) {
+    if (!generateMutation.isPending || !state.streamingText) {
       return null;
     }
     return parsePartialTableSchema(state.streamingText);
-  }, [state.isLoading, state.streamingText]);
+  }, [generateMutation.isPending, state.streamingText]);
 
   const generateTable = useCallback(
     async (description: string, dbType: string, options?: GenerateTableOptions) => {
@@ -107,7 +109,7 @@ export function useAIGenerateTable() {
         return;
       }
 
-      const baseConversation = options?.continueConversation ? conversationHistoryRef.current : [];
+      const baseConversation = options?.continueConversation ? conversationHistory : [];
       const previousSchema = options?.continueConversation ? previousSchemaRef.current : null;
       const normalizedDescription = description.trim();
       const requestOptions = {
@@ -117,17 +119,13 @@ export function useAIGenerateTable() {
         previousSchema: previousSchema ?? undefined,
         conversationHistory: baseConversation,
       };
-      const queryKey = buildAIGenerateQueryKey({
+      const requestPayload = {
         description: normalizedDescription,
         dbType,
         locale: resolvedLocale,
-        templates: requestOptions.templates,
-        mode: requestOptions.mode,
-        existingConfig: requestOptions.existingConfig,
-        previousSchema: requestOptions.previousSchema,
-        conversationHistory: requestOptions.conversationHistory,
-      });
-      const requestKey = JSON.stringify(queryKey);
+        options: requestOptions,
+      };
+      const requestKey = JSON.stringify(requestPayload);
 
       if (activeRequestRef.current) {
         if (activeRequestRef.current.key === requestKey) {
@@ -143,7 +141,6 @@ export function useAIGenerateTable() {
       };
 
       setState({
-        isLoading: true,
         streamingText: '',
         result: null,
         previousResult: null,
@@ -151,32 +148,18 @@ export function useAIGenerateTable() {
       });
 
       try {
-        const { fullText, result } = await queryClient.fetchQuery({
-          queryKey,
-          staleTime: AI_GENERATE_CACHE_STALE_TIME_MS,
-          gcTime: AI_GENERATE_CACHE_GC_TIME_MS,
-          queryFn: () =>
-            requestGenerateTable(
-              {
-                description: normalizedDescription,
-                dbType,
-                locale: resolvedLocale,
-                options: requestOptions,
-              },
-              {
-                signal: abortController.signal,
-                onStreamingText: (streamingText) => {
-                  setState((prev) => ({
-                    ...prev,
-                    streamingText,
-                  }));
-                },
-              },
-            ),
+        const { fullText, result } = await generateMutation.mutateAsync({
+          payload: requestPayload,
+          signal: abortController.signal,
+          onStreamingText: (streamingText) => {
+            setState((prev) => ({
+              ...prev,
+              streamingText,
+            }));
+          },
         });
 
         setState({
-          isLoading: false,
           streamingText: '',
           result,
           previousResult: previousSchema,
@@ -196,7 +179,6 @@ export function useAIGenerateTable() {
           authSession.openAuthDialog();
         }
         setState({
-          isLoading: false,
           streamingText: '',
           result: null,
           previousResult: null,
@@ -208,12 +190,11 @@ export function useAIGenerateTable() {
         }
       }
     },
-    [authSession, queryClient, resolvedLocale],
+    [authSession, conversationHistory, generateMutation, resolvedLocale],
   );
 
   const clearResult = useCallback(() => {
     setState({
-      isLoading: false,
       streamingText: '',
       result: null,
       previousResult: null,
@@ -230,15 +211,13 @@ export function useAIGenerateTable() {
     if (activeRequestRef.current) {
       activeRequestRef.current.controller.abort();
       activeRequestRef.current = null;
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-      }));
+      generateMutation.reset();
+      setState((previous) => ({ ...previous, streamingText: '' }));
     }
-  }, []);
+  }, [generateMutation]);
 
   return {
-    isLoading: state.isLoading,
+    isLoading: generateMutation.isPending,
     streamingText: state.streamingText,
     error: state.error,
     result: state.result,

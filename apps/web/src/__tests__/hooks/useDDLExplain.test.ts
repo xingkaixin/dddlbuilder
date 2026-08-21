@@ -1,8 +1,8 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { createElement, type PropsWithChildren } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useDDLExplain } from '@/hooks/useDDLExplain';
-import { LocaleProvider, useLocale } from '@/i18n/LocaleContext';
+import { useLocale } from '@/i18n/LocaleContext';
+import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
 vi.mock('@/auth/AuthSessionProvider', () => ({
   useAuthSession: () => ({
@@ -43,24 +43,18 @@ function createAbortError() {
 }
 
 function renderDDLExplainHook() {
-  function Wrapper({ children }: PropsWithChildren) {
-    return createElement(LocaleProvider, null, children);
-  }
-
-  return renderHook(() => useDDLExplain(), { wrapper: Wrapper });
+  const { wrapper } = createQueryClientWrapper();
+  return renderHook(() => useDDLExplain(), { wrapper });
 }
 
 function renderDDLExplainWithLocaleHook() {
-  function Wrapper({ children }: PropsWithChildren) {
-    return createElement(LocaleProvider, null, children);
-  }
-
+  const { wrapper } = createQueryClientWrapper();
   return renderHook(
     () => ({
       explain: useDDLExplain(),
       locale: useLocale(),
     }),
-    { wrapper: Wrapper },
+    { wrapper },
   );
 }
 

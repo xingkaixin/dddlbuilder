@@ -1,8 +1,9 @@
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useShareAction } from '@/components/App/hooks/useShareAction';
 import { ShareApiError, createShare } from '@/services/shareService';
 import { reportError } from '@/utils/errorReporter';
+import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
 vi.mock('@/services/shareService', () => ({
   createShare: vi.fn(),
@@ -68,6 +69,18 @@ const createShareResponse = () => ({
   expiresInSeconds: 604800,
 });
 
+function renderShareAction(showToast: (message: string) => void) {
+  const { wrapper } = createQueryClientWrapper();
+  return renderHook(
+    () =>
+      useShareAction({
+        buildPersistedState,
+        showToast,
+      }),
+    { wrapper },
+  );
+}
+
 describe('useShareAction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -78,12 +91,7 @@ describe('useShareAction', () => {
     mockedCreateShare.mockResolvedValue(createShareResponse());
     const showToast = vi.fn();
 
-    const { result } = renderHook(() =>
-      useShareAction({
-        buildPersistedState,
-        showToast,
-      }),
-    );
+    const { result } = renderShareAction(showToast);
 
     await act(async () => {
       await result.current.handleShare();
@@ -105,26 +113,21 @@ describe('useShareAction', () => {
     );
     const showToast = vi.fn();
 
-    const { result } = renderHook(() =>
-      useShareAction({
-        buildPersistedState,
-        showToast,
-      }),
-    );
+    const { result } = renderShareAction(showToast);
 
     let sharePromise: Promise<void> | null = null;
     act(() => {
       sharePromise = result.current.handleShare();
     });
 
-    expect(result.current.isSharing).toBe(true);
+    await waitFor(() => expect(result.current.isSharing).toBe(true));
 
     await act(async () => {
       resolveCreateShare?.(createShareResponse());
       await sharePromise;
     });
 
-    expect(result.current.isSharing).toBe(false);
+    await waitFor(() => expect(result.current.isSharing).toBe(false));
   });
 
   it('并发触发分享时应防重入，只发送一次请求', async () => {
@@ -137,12 +140,7 @@ describe('useShareAction', () => {
     );
     const showToast = vi.fn();
 
-    const { result } = renderHook(() =>
-      useShareAction({
-        buildPersistedState,
-        showToast,
-      }),
-    );
+    const { result } = renderShareAction(showToast);
 
     let firstSharePromise: Promise<void> | null = null;
     let secondSharePromise: Promise<void> | null = null;
@@ -151,7 +149,7 @@ describe('useShareAction', () => {
       secondSharePromise = result.current.handleShare();
     });
 
-    expect(mockedCreateShare).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(mockedCreateShare).toHaveBeenCalledTimes(1));
     expect(result.current.isSharing).toBe(true);
 
     await act(async () => {
@@ -159,7 +157,7 @@ describe('useShareAction', () => {
       await Promise.all([firstSharePromise, secondSharePromise]);
     });
 
-    expect(result.current.isSharing).toBe(false);
+    await waitFor(() => expect(result.current.isSharing).toBe(false));
     expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(1);
   });
 
@@ -167,12 +165,7 @@ describe('useShareAction', () => {
     mockedCreateShare.mockResolvedValue(createShareResponse());
     const showToast = vi.fn();
 
-    const { result } = renderHook(() =>
-      useShareAction({
-        buildPersistedState,
-        showToast,
-      }),
-    );
+    const { result } = renderShareAction(showToast);
 
     await act(async () => {
       await result.current.handleShare();
@@ -191,12 +184,7 @@ describe('useShareAction', () => {
     );
     const showToast = vi.fn();
 
-    const { result } = renderHook(() =>
-      useShareAction({
-        buildPersistedState,
-        showToast,
-      }),
-    );
+    const { result } = renderShareAction(showToast);
 
     await act(async () => {
       await result.current.handleShare();

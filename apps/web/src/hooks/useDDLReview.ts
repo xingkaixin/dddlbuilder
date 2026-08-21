@@ -1,8 +1,7 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { parsePartialJson, type PartialReviewResult } from '@/utils/parsePartialJson';
 import { requestDDLReview } from '@/services/reviewService';
-import { buildDDLReviewQueryKey } from '@/queryKeys/ai';
 import { useLocale } from '@/i18n/LocaleContext';
 import i18n from '@/i18n';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
@@ -15,37 +14,43 @@ export type StructuredSuggestion = DDLReviewStructuredSuggestion;
 export type ReviewResult = DDLReviewResult;
 
 interface ReviewState {
-  isLoading: boolean;
   streamingText: string;
   result: ReviewResult | null;
   error: string | null;
 }
 
-const REVIEW_CACHE_STALE_TIME_MS = 5 * 60 * 1000;
-const REVIEW_CACHE_GC_TIME_MS = 15 * 60 * 1000;
-
 export function useDDLReview() {
   const { resolvedLocale } = useLocale();
   const authSession = useAuthSession();
   const [state, setState] = useState<ReviewState>({
-    isLoading: false,
     streamingText: '',
     result: null,
     error: null,
   });
-  const queryClient = useQueryClient();
   const activeRequestRef = useRef<{
     key: string;
     controller: AbortController;
   } | null>(null);
+  const reviewMutation = useMutation({
+    mutationFn: ({
+      payload,
+      signal,
+      onStreamingText,
+    }: {
+      payload: Parameters<typeof requestDDLReview>[0];
+      signal: AbortSignal;
+      onStreamingText: (streamingText: string) => void;
+    }) => requestDDLReview(payload, { signal, onStreamingText }),
+    retry: false,
+  });
 
   // Parse partial result from streaming text for progressive rendering
   const partialResult: PartialReviewResult | null = useMemo(() => {
-    if (!state.isLoading || !state.streamingText) {
+    if (!reviewMutation.isPending || !state.streamingText) {
       return null;
     }
     return parsePartialJson(state.streamingText);
-  }, [state.isLoading, state.streamingText]);
+  }, [reviewMutation.isPending, state.streamingText]);
 
   const startReview = useCallback(
     async (ddl: string, tableName: string, dbType: string) => {
@@ -74,13 +79,13 @@ export function useDDLReview() {
         return;
       }
 
-      const queryKey = buildDDLReviewQueryKey({
+      const requestPayload = {
         ddl,
         tableName,
         dbType,
         locale: resolvedLocale,
-      });
-      const requestKey = JSON.stringify(queryKey);
+      };
+      const requestKey = JSON.stringify(requestPayload);
 
       if (activeRequestRef.current) {
         if (activeRequestRef.current.key === requestKey) {
@@ -96,34 +101,24 @@ export function useDDLReview() {
       };
 
       setState({
-        isLoading: true,
         streamingText: '',
         result: null,
         error: null,
       });
 
       try {
-        const result = await queryClient.fetchQuery({
-          queryKey,
-          staleTime: REVIEW_CACHE_STALE_TIME_MS,
-          gcTime: REVIEW_CACHE_GC_TIME_MS,
-          queryFn: () =>
-            requestDDLReview(
-              { ddl, tableName, dbType, locale: resolvedLocale },
-              {
-                signal: abortController.signal,
-                onStreamingText: (streamingText) => {
-                  setState((prev) => ({
-                    ...prev,
-                    streamingText,
-                  }));
-                },
-              },
-            ),
+        const result = await reviewMutation.mutateAsync({
+          payload: requestPayload,
+          signal: abortController.signal,
+          onStreamingText: (streamingText) => {
+            setState((prev) => ({
+              ...prev,
+              streamingText,
+            }));
+          },
         });
 
         setState({
-          isLoading: false,
           streamingText: '',
           result,
           error: null,
@@ -137,7 +132,6 @@ export function useDDLReview() {
           authSession.openAuthDialog();
         }
         setState({
-          isLoading: false,
           streamingText: '',
           result: null,
           error: error instanceof Error ? error.message : i18n.t('services.reviewFailed'),
@@ -148,7 +142,7 @@ export function useDDLReview() {
         }
       }
     },
-    [authSession, queryClient, resolvedLocale],
+    [authSession, resolvedLocale, reviewMutation],
   );
 
   const clearReview = useCallback(() => {
@@ -157,19 +151,19 @@ export function useDDLReview() {
       activeRequestRef.current = null;
     }
     setState({
-      isLoading: false,
       streamingText: '',
       result: null,
       error: null,
     });
-  }, []);
+    reviewMutation.reset();
+  }, [reviewMutation]);
 
   const setReviewResult = useCallback((result: ReviewResult | null) => {
     setState((prev) => ({ ...prev, result }));
   }, []);
 
   return {
-    isLoading: state.isLoading,
+    isLoading: reviewMutation.isPending,
     streamingText: state.streamingText,
     partialResult,
     result: state.result,

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { useDDLReview } from '@/hooks/useDDLReview';
 import { flushPromises } from '@/__tests__/utils/test-utils';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
@@ -411,30 +411,31 @@ describe('useDDLReview', () => {
     expect(suggestion2.severity).toBe('error');
   });
 
-  it('should reuse cached result for same request params', async () => {
+  it('should execute a completed review again for the same params', async () => {
     const { result } = renderDDLReviewHook();
 
-    const stream = createStream(['{"score": 9, "summary": "cached", "suggestions": []}']);
-
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      body: stream,
-      json: vi.fn(),
-    } as unknown as Response);
-
-    await act(async () => {
-      await result.current.startReview('ddl', 'table', 'mysql');
-      await flushPromises();
-    });
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () =>
+        ({
+          ok: true,
+          status: 200,
+          body: createStream(['{"score": 9, "summary": "fresh", "suggestions": []}']),
+          json: vi.fn(),
+        }) as unknown as Response,
+    );
 
     await act(async () => {
       await result.current.startReview('ddl', 'table', 'mysql');
       await flushPromises();
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(result.current.result?.summary).toBe('cached');
+    await act(async () => {
+      await result.current.startReview('ddl', 'table', 'mysql');
+      await flushPromises();
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.current.result?.summary).toBe('fresh');
   });
 
   it('should ignore duplicate concurrent review requests', async () => {
@@ -465,7 +466,7 @@ describe('useDDLReview', () => {
       result.current.startReview('ddl_dup', 'table', 'mysql'); // Same params
     });
 
-    expect(fetchCount).toBe(1); // Should only be called once
+    await waitFor(() => expect(fetchCount).toBe(1));
   });
 
   it('should set review result directly', () => {

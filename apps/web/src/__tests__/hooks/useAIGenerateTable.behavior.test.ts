@@ -234,7 +234,7 @@ describe('useAIGenerateTable behaviors', () => {
     });
 
     expect(activeSignal?.aborted).toBe(true);
-    expect(result.current.isLoading).toBe(false);
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.error).toBeNull();
   });
 

@@ -5,6 +5,7 @@ import { requestSqlParse } from '@/services/sqlParseService';
 
 vi.mock('@/services/sqlParseService', () => ({
   requestSqlParse: vi.fn(),
+  requestMultiSqlParse: vi.fn(),
 }));
 
 vi.mock('@/hooks/useToast', () => ({

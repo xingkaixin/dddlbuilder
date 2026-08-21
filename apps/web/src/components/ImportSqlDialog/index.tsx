@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode, useCallback, useMemo } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -78,6 +79,15 @@ export function ImportSqlDialog({
   onOpenChange,
   hideTrigger,
 }: ImportSqlDialogProps) {
+  const sqlParseMutation = useMutation({
+    mutationFn: (payload: Parameters<typeof requestSqlParse>[0]) => requestSqlParse(payload),
+    retry: false,
+  });
+  const multiSqlParseMutation = useMutation({
+    mutationFn: (payload: Parameters<typeof requestMultiSqlParse>[0]) =>
+      requestMultiSqlParse(payload),
+    retry: false,
+  });
   const { t } = useTranslation();
   const { showToast } = useToast();
 
@@ -182,7 +192,7 @@ export function ImportSqlDialog({
     try {
       const result =
         sourceType === 'sql'
-          ? await requestSqlParse({
+          ? await sqlParseMutation.mutateAsync({
               sql: sql.trim(),
               dbType: selectedDbType,
             })
@@ -213,7 +223,15 @@ export function ImportSqlDialog({
     } finally {
       setIsValidating(false);
     }
-  }, [sourceType, sql, selectedDbType, buildStructuredTables, buildPreviewFields, t]);
+  }, [
+    sourceType,
+    sql,
+    selectedDbType,
+    buildStructuredTables,
+    buildPreviewFields,
+    sqlParseMutation,
+    t,
+  ]);
 
   const validateForSaved = useCallback(async () => {
     setIsValidating(true);
@@ -222,7 +240,7 @@ export function ImportSqlDialog({
     try {
       const { results, failed } =
         sourceType === 'sql'
-          ? await requestMultiSqlParse({
+          ? await multiSqlParseMutation.mutateAsync({
               sql: sql.trim(),
               dbType: selectedDbType,
             })
@@ -253,7 +271,15 @@ export function ImportSqlDialog({
     } finally {
       setIsValidating(false);
     }
-  }, [sourceType, sql, selectedDbType, buildStructuredTables, savedTableNames, t]);
+  }, [
+    sourceType,
+    sql,
+    selectedDbType,
+    buildStructuredTables,
+    multiSqlParseMutation,
+    savedTableNames,
+    t,
+  ]);
 
   const validateAndAdvance = useCallback(() => {
     const trimmedSql = sql.trim();

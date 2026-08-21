@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { readTextStream } from '@/services/streamingText';
 import { logAiStreamDebug } from '@/services/aiStreamDebug';
 import i18n from '@/i18n';
@@ -29,6 +30,27 @@ export function useDDLExplain() {
     debugEnabled: false,
   });
   const abortControllerRef = useRef<AbortController | null>(null);
+  const explainRequestMutation = useMutation({
+    mutationFn: ({
+      sql,
+      context,
+      locale,
+      signal,
+    }: {
+      sql: string;
+      context?: string;
+      locale: string;
+      signal: AbortSignal;
+    }) =>
+      fetch('/api/explain', {
+        method: 'POST',
+        headers: buildAuthenticatedJsonHeaders(),
+        credentials: 'include',
+        body: JSON.stringify({ sql, context, locale }),
+        signal,
+      }),
+    retry: false,
+  });
 
   const startExplain = useCallback(
     async (sql: string, context?: string) => {
@@ -85,11 +107,10 @@ export function useDDLExplain() {
       });
 
       try {
-        const response = await fetch('/api/explain', {
-          method: 'POST',
-          headers: buildAuthenticatedJsonHeaders(),
-          credentials: 'include',
-          body: JSON.stringify({ sql, context, locale: resolvedLocale }),
+        const response = await explainRequestMutation.mutateAsync({
+          sql,
+          context,
+          locale: resolvedLocale,
           signal: abortControllerRef.current.signal,
         });
         const requestId = response.headers?.get?.('x-request-id') ?? null;
@@ -205,13 +226,14 @@ export function useDDLExplain() {
         });
       }
     },
-    [authSession, resolvedLocale],
+    [authSession, explainRequestMutation, resolvedLocale],
   );
 
   const clearExplain = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
+    explainRequestMutation.reset();
     setState({
       isLoading: false,
       isStreaming: false,
@@ -225,7 +247,7 @@ export function useDDLExplain() {
       route: 'explain',
       phase: 'cleared',
     });
-  }, []);
+  }, [explainRequestMutation]);
 
   return {
     ...state,
