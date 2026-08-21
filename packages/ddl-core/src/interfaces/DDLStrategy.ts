@@ -5,8 +5,20 @@ import type {
   SqlFormatMode,
   TableMiscConfig,
   ForeignKeyDefinition,
+  CitusShardingConfig,
+  MysqlPartitionConfig,
 } from '@ddlbuilder/shared-types';
-import type { TableDiff } from '../utils/tableDiff';
+
+export interface TableFeatureConfig {
+  tableMiscConfig?: TableMiscConfig;
+  mysqlPartitionConfig?: MysqlPartitionConfig;
+  citusShardingConfig?: CitusShardingConfig;
+}
+
+export interface ConfiguredTableDDL {
+  tableDDL: string;
+  trailingStatements: string[];
+}
 
 export interface DDLStrategy {
   /**
@@ -30,10 +42,11 @@ export interface DDLStrategy {
    */
   generateForeignKeyDDL(tableName: string, fk: ForeignKeyDefinition): string;
 
-  /**
-   * 生成ALTER TABLE变更DDL语句
-   */
-  generateAlterDDL?(tableName: string, diff: TableDiff, fields: NormalizedField[]): string;
+  applyTableFeatures(
+    tableName: string,
+    tableDDL: string,
+    config: TableFeatureConfig,
+  ): ConfiguredTableDDL;
 
   /**
    * 格式化表名（处理schema、引号等）

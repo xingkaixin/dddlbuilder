@@ -10,10 +10,33 @@ import {
   parseFieldType,
 } from '../utils/databaseTypeMapping';
 import { AbstractDDLStrategy } from './AbstractDDLStrategy';
+import type { ConfiguredTableDDL, TableFeatureConfig } from '../interfaces/DDLStrategy';
+import { buildMysqlPartitionClause } from '../utils/tableFeatures';
+
+const PARTITION_DATABASES = new Set<DatabaseType>(['mysql', 'mariadb', 'tidb']);
 
 export class MySqlStrategy extends AbstractDDLStrategy {
   getDatabaseType(): DatabaseType {
     return 'mysql';
+  }
+
+  override applyTableFeatures(
+    tableName: string,
+    tableDDL: string,
+    config: TableFeatureConfig,
+  ): ConfiguredTableDDL {
+    const configured = super.applyTableFeatures(tableName, tableDDL, config);
+    if (!PARTITION_DATABASES.has(this.getDatabaseType()) || !config.mysqlPartitionConfig?.enabled) {
+      return configured;
+    }
+
+    const partitionClause = buildMysqlPartitionClause(config.mysqlPartitionConfig);
+    return {
+      ...configured,
+      tableDDL: partitionClause
+        ? configured.tableDDL.replace(/;$/, `${partitionClause};`)
+        : configured.tableDDL,
+    };
   }
 
   generateTableDDL(

@@ -6,11 +6,17 @@ import type {
   TableMiscConfig,
   ForeignKeyDefinition,
 } from '@ddlbuilder/shared-types';
-import type { DDLStrategy } from '../interfaces/DDLStrategy';
+import type {
+  ConfiguredTableDDL,
+  DDLStrategy,
+  TableFeatureConfig,
+} from '../interfaces/DDLStrategy';
 import { escapeSingleQuotes, splitQualifiedName } from '../utils/databaseTypeMapping';
 import { TypeMapper } from '../utils/TypeMapper';
 import { buildPrimaryKeyName } from '../utils/primaryKeyNaming';
 import { getIdentifierNameMaxLength, truncateIdentifierName } from '../utils/identifierNaming';
+import { buildTableOptionsClause } from '../utils/tableOptions';
+import { insertTableOptions } from '../utils/tableFeatures';
 
 export interface ColumnDefinitionSegments {
   name: string;
@@ -139,6 +145,18 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
     tableMiscConfig?: TableMiscConfig,
     sqlFormatMode?: SqlFormatMode,
   ): string;
+
+  applyTableFeatures(
+    _tableName: string,
+    tableDDL: string,
+    config: TableFeatureConfig,
+  ): ConfiguredTableDDL {
+    const tableOptions = buildTableOptionsClause(this.getDatabaseType(), config.tableMiscConfig);
+    return {
+      tableDDL: insertTableOptions(tableDDL, tableOptions),
+      trailingStatements: [],
+    };
+  }
 
   /**
    * 默认索引DDL生成实现，子类可以重写

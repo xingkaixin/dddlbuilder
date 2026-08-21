@@ -10,10 +10,25 @@ import {
   parseFieldType,
 } from '../utils/databaseTypeMapping';
 import { AbstractDDLStrategy } from './AbstractDDLStrategy';
+import type { ConfiguredTableDDL, TableFeatureConfig } from '../interfaces/DDLStrategy';
+import { buildOracleSynonyms } from '../utils/tableFeatures';
 
 export class OracleStrategy extends AbstractDDLStrategy {
   getDatabaseType(): DatabaseType {
     return 'oracle';
+  }
+
+  override applyTableFeatures(
+    tableName: string,
+    tableDDL: string,
+    config: TableFeatureConfig,
+  ): ConfiguredTableDDL {
+    const configured = super.applyTableFeatures(tableName, tableDDL, config);
+    if (this.getDatabaseType() !== 'oracle') return configured;
+    return {
+      ...configured,
+      trailingStatements: [...configured.trailingStatements, buildOracleSynonyms(tableName)],
+    };
   }
 
   generateTableDDL(

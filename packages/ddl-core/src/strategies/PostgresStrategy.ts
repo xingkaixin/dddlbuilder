@@ -9,6 +9,8 @@ import {
   parseFieldType,
 } from '../utils/databaseTypeMapping';
 import { AbstractDDLStrategy } from './AbstractDDLStrategy';
+import type { ConfiguredTableDDL, TableFeatureConfig } from '../interfaces/DDLStrategy';
+import { buildCitusShardingDDL } from '../utils/tableFeatures';
 
 export class PostgresStrategy extends AbstractDDLStrategy {
   private readonly databaseType: DatabaseType;
@@ -20,6 +22,24 @@ export class PostgresStrategy extends AbstractDDLStrategy {
 
   getDatabaseType(): DatabaseType {
     return this.databaseType;
+  }
+
+  override applyTableFeatures(
+    tableName: string,
+    tableDDL: string,
+    config: TableFeatureConfig,
+  ): ConfiguredTableDDL {
+    const configured = super.applyTableFeatures(tableName, tableDDL, config);
+    if (this.databaseType !== 'postgresql-citus' || !config.citusShardingConfig) {
+      return configured;
+    }
+    return {
+      ...configured,
+      trailingStatements: [
+        ...configured.trailingStatements,
+        buildCitusShardingDDL(tableName, config.citusShardingConfig),
+      ],
+    };
   }
 
   generateTableDDL(
