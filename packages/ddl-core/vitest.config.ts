@@ -15,9 +15,6 @@ export default defineConfig({
         'src/__tests__/**/*',
         'src/**/index.ts',
         'src/interfaces/**/*',
-        'src/factories/**/*',
-        'src/strategies/**/*',
-        'src/utils/**/*',
       ],
       thresholds: {
         branches: 80,
