@@ -86,10 +86,6 @@ export function useSaveLoadActions({
   const handleLoadSavedTable = useCallback(
     async (target: SavedTableSummary) => {
       onTableLoadStateChange?.(true);
-      console.log('[DEBUG] 加载已保存的表 - 开始:', {
-        targetName: target.name,
-        targetNormalizedName: target.normalizedName,
-      });
 
       try {
         const record = await loadTable(target.normalizedName);
@@ -97,14 +93,6 @@ export function useSaveLoadActions({
           showToast('未找到保存的表');
           return null;
         }
-
-        console.log('[DEBUG] 加载已保存的表 - 从数据库读取:', {
-          normalizedName: record.normalizedName,
-          name: record.name,
-          savedTableSignature: record.state.tableName,
-          dbType: record.state.dbType,
-          fieldCount: record.state.rows.filter((r) => r.fieldName?.trim()).length,
-        });
 
         const savedBaseSignature = serializePersistedState(record.state);
         const savedDraft = getSavedTableDraft?.(record.normalizedName);
@@ -118,21 +106,10 @@ export function useSaveLoadActions({
         let versionCount = 0;
         try {
           versionCount = await countVersions(record.normalizedName);
-        } catch (e) {
-          console.error('获取版本号失败', e);
+        } catch (error) {
+          console.error('[saved-table] failed to count versions', error);
         }
         const resolvedVersion = versionCount > 0 ? versionCount : 1;
-
-        console.log('[DEBUG] 加载已保存的表 - 加载原始保存版本:', {
-          source: {
-            kind: 'saved_table',
-            normalizedName: record.normalizedName,
-            tableName: record.name,
-            baseSignature: savedBaseSignature,
-          },
-          tableName: stateToApply.tableName,
-          version: versionCount,
-        });
 
         setWorkspaceSnapshot?.(
           {
@@ -251,7 +228,7 @@ export function useSaveLoadActions({
         setLoadedTableVersion(1);
       }
     } catch (versionError) {
-      console.error('[DEBUG] 版本创建失败:', versionError);
+      console.error('[saved-table] failed to create version', versionError);
     }
 
     if (onSaveSuccess) {
