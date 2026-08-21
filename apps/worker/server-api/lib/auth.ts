@@ -2,6 +2,7 @@ import type { Context } from 'hono';
 import { applyCreditMutation, ensureCreditAccount } from './credits.js';
 import type { ApiEnv } from './context.js';
 import { createBetterAuth } from './betterAuth.js';
+import { DomainError } from './http.js';
 import { getUserSystemConfig } from './userSystemConfig.js';
 
 export type AuthenticatedAppUser = {
@@ -73,7 +74,7 @@ export const resolveAuthenticatedUser = async (
   );
 
   if (!response.ok) {
-    throw new Error('FAILED_TO_GET_SESSION');
+    throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'FAILED_TO_GET_SESSION');
   }
 
   const session = (await response.json().catch(() => null)) as BetterAuthSession | null;
@@ -87,7 +88,7 @@ export const resolveAuthenticatedUser = async (
     .first();
 
   if (flags) {
-    throw new Error('USER_DISABLED');
+    throw new DomainError(403, 'USER_DISABLED', 'USER_DISABLED');
   }
 
   return ensureBusinessUser(env, session.user);
@@ -96,7 +97,7 @@ export const resolveAuthenticatedUser = async (
 export const authenticateRequest = async (c: Context<ApiEnv>) => {
   const user = await resolveAuthenticatedUser(c.env, c.req.raw.headers);
   if (!user) {
-    throw new Error('AUTH_REQUIRED');
+    throw new DomainError(401, 'AUTH_REQUIRED', 'AUTH_REQUIRED');
   }
 
   c.set('currentUserId', user.userId);

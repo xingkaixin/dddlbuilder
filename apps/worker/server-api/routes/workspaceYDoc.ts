@@ -7,17 +7,6 @@ import { decodeWorkspaceSnapshot } from '../lib/workspaceSnapshotValidation.js';
 
 const IMPORT_BODY_MAX_BYTES = 5 * 1024 * 1024;
 
-const readUser = async (c: Context<ApiEnv>) => {
-  try {
-    return await authenticateRequest(c);
-  } catch (error) {
-    if (error instanceof Error && error.message === 'AUTH_REQUIRED') {
-      return null;
-    }
-    throw error;
-  }
-};
-
 const getWorkspaceYDocStub = (env: ApiEnv['Bindings'], workspaceId: string) => {
   const namespace = env.WORKSPACE_YDOC;
   if (!namespace) return null;
@@ -47,12 +36,7 @@ type WorkspaceYDocAuthResult =
 const authenticateWorkspaceRequest = async (
   c: Context<ApiEnv>,
 ): Promise<WorkspaceYDocAuthResult> => {
-  const user = await readUser(c);
-  if (!user) {
-    return {
-      response: errorResponse(c, 401, 'Authentication required', 'AUTH_REQUIRED'),
-    };
-  }
+  const user = await authenticateRequest(c);
 
   const workspaceId = c.req.param('workspaceId');
   if (!workspaceId) {
@@ -82,67 +66,58 @@ const authenticateWorkspaceRequest = async (
   return { userId: user.userId, workspaceId, stub };
 };
 
+const withAuthenticatedWorkspace = async (
+  c: Context<ApiEnv>,
+  handle: (auth: {
+    userId: string;
+    workspaceId: string;
+    stub: DurableObjectStub;
+  }) => Promise<Response>,
+) => {
+  const authenticated = await authenticateWorkspaceRequest(c);
+  if ('response' in authenticated) return authenticated.response;
+  return handle(authenticated);
+};
+
 export function registerWorkspaceYDocRoutes(app: Hono<ApiEnv>) {
-  app.get('/workspaces/:workspaceId/yjs', async (c) => {
-    let authenticated;
-    try {
-      authenticated = await authenticateWorkspaceRequest(c);
-    } catch (error) {
-      console.error('[workspace-yjs] auth failed', error);
-      return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
-    }
-    if ('response' in authenticated) return authenticated.response;
+  app.get('/workspaces/:workspaceId/yjs', async (c) =>
+    withAuthenticatedWorkspace(c, async (authenticated) => {
+      if (c.req.raw.method === 'HEAD') {
+        return new Response(null, { status: 204 });
+      }
+      return authenticated.stub.fetch(
+        buildForwardedRequest(c.req.raw, authenticated.workspaceId, authenticated.userId),
+      );
+    }),
+  );
 
-    if (c.req.raw.method === 'HEAD') {
-      return new Response(null, { status: 204 });
-    }
-
-    return authenticated.stub.fetch(
-      buildForwardedRequest(c.req.raw, authenticated.workspaceId, authenticated.userId),
-    );
-  });
-
-  app.get('/workspaces/:workspaceId/yjs/state', async (c) => {
-    let authenticated;
-    try {
-      authenticated = await authenticateWorkspaceRequest(c);
-    } catch (error) {
-      console.error('[workspace-yjs] state auth failed', error);
-      return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
-    }
-    if ('response' in authenticated) return authenticated.response;
-
-    return authenticated.stub.fetch(
-      buildForwardedRequest(c.req.raw, authenticated.workspaceId, authenticated.userId),
-    );
-  });
-
-  app.post('/workspaces/:workspaceId/yjs/import', async (c) => {
-    let authenticated;
-    try {
-      authenticated = await authenticateWorkspaceRequest(c);
-    } catch (error) {
-      console.error('[workspace-yjs] import auth failed', error);
-      return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
-    }
-    if ('response' in authenticated) return authenticated.response;
-
-    const parsedBody = await parseJsonBodyWithLimit<unknown>(c, IMPORT_BODY_MAX_BYTES);
-    if (parsedBody.errorResponse) return parsedBody.errorResponse;
-    const body = parsedBody.data;
-
-    const snapshot = decodeWorkspaceSnapshot(body);
-    if (!snapshot) {
-      return errorResponse(c, 400, 'Invalid workspace snapshot payload', 'INVALID_JSON');
-    }
-
-    return authenticated.stub.fetch(
-      buildForwardedRequest(
-        c.req.raw,
-        authenticated.workspaceId,
-        authenticated.userId,
-        JSON.stringify(snapshot),
+  app.get('/workspaces/:workspaceId/yjs/state', async (c) =>
+    withAuthenticatedWorkspace(c, async (authenticated) =>
+      authenticated.stub.fetch(
+        buildForwardedRequest(c.req.raw, authenticated.workspaceId, authenticated.userId),
       ),
-    );
-  });
+    ),
+  );
+
+  app.post('/workspaces/:workspaceId/yjs/import', async (c) =>
+    withAuthenticatedWorkspace(c, async (authenticated) => {
+      const parsedBody = await parseJsonBodyWithLimit<unknown>(c, IMPORT_BODY_MAX_BYTES);
+      if (parsedBody.errorResponse) return parsedBody.errorResponse;
+      const body = parsedBody.data;
+
+      const snapshot = decodeWorkspaceSnapshot(body);
+      if (!snapshot) {
+        return errorResponse(c, 400, 'Invalid workspace snapshot payload', 'INVALID_JSON');
+      }
+
+      return authenticated.stub.fetch(
+        buildForwardedRequest(
+          c.req.raw,
+          authenticated.workspaceId,
+          authenticated.userId,
+          JSON.stringify(snapshot),
+        ),
+      );
+    }),
+  );
 }

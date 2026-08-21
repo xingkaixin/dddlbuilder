@@ -6,16 +6,7 @@ import { listWorkspaces } from '../lib/workspaceEntities.js';
 
 export function registerWorkspaceRoutes(app: Hono<ApiEnv>) {
   app.get('/workspaces', async (c) => {
-    let user;
-    try {
-      user = await authenticateRequest(c);
-    } catch (error) {
-      if (error instanceof Error && error.message === 'AUTH_REQUIRED') {
-        return errorResponse(c, 401, 'Authentication required', 'AUTH_REQUIRED');
-      }
-      console.error('[workspaces] auth failed', error);
-      return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
-    }
+    const user = await authenticateRequest(c);
 
     try {
       return c.json(withMeta(c, await listWorkspaces(c.env, user.userId)));

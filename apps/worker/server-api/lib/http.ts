@@ -52,6 +52,22 @@ export type JsonBodyResult<T> =
   | { data: T; errorResponse: null }
   | { data: null; errorResponse: Response };
 
+/**
+ * 领域层用错误表达可预期的失败，全局 onError 负责渲染成响应；
+ * status 和 code 在抛出点确定，路由层不再各自翻译错误字符串。
+ */
+export class DomainError extends Error {
+  readonly status: ContentfulStatusCode;
+  readonly code: ApiErrorCode;
+
+  constructor(status: ContentfulStatusCode, code: ApiErrorCode, message: string) {
+    super(message);
+    this.name = 'DomainError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
 export const parseJsonBodyWithLimit = async <T>(
   c: Context<ApiEnv>,
   maxBytes: number,

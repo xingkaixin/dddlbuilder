@@ -348,25 +348,19 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
       return errorResponse(c, 404, 'User not found');
     }
 
-    try {
-      const ledger = await applyCreditMutation(c.env, {
-        userId,
-        kind: 'grant',
-        source: 'manual_adjustment',
-        amount,
-        idempotencyKey: `admin_grant:${userId}:${crypto.randomUUID()}`,
-        metadata: {
-          adminAction: 'manual_credit_grant',
-          ...(body.note ? { adminNote: body.note } : {}),
-        },
-      });
+    const ledger = await applyCreditMutation(c.env, {
+      userId,
+      kind: 'grant',
+      source: 'manual_adjustment',
+      amount,
+      idempotencyKey: `admin_grant:${userId}:${crypto.randomUUID()}`,
+      metadata: {
+        adminAction: 'manual_credit_grant',
+        ...(body.note ? { adminNote: body.note } : {}),
+      },
+    });
 
-      return c.json(withMeta(c, { ok: true, newBalance: ledger.balanceAfter }));
-    } catch (error) {
-      console.error('[admin] grant credits failed', error);
-      const message = error instanceof Error ? error.message : 'Credit operation failed';
-      return errorResponse(c, 500, message);
-    }
+    return c.json(withMeta(c, { ok: true, newBalance: ledger.balanceAfter }));
   });
 
   app.get('/admin/users/:userId/credits/ledger', async (c) => {

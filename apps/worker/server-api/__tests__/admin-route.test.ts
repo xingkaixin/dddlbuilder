@@ -962,7 +962,7 @@ describe('/api/admin/*', () => {
       });
     });
 
-    it('returns 500 when credit operation fails', async () => {
+    it('returns 503 without leaking internal error when credit operation fails', async () => {
       vi.doMock('../lib/adminAuth.js', () => ({
         createAdminSession: vi.fn(),
         resolveAdminSession: vi.fn().mockResolvedValue(true),
@@ -988,9 +988,9 @@ describe('/api/admin/*', () => {
         }),
       );
 
-      expect(response.status).toBe(500);
+      expect(response.status).toBe(503);
       expect(await response.json()).toMatchObject({
-        error: 'Insufficient balance',
+        error: 'Service unavailable',
       });
     });
   });

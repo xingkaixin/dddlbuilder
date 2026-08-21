@@ -43,9 +43,16 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
   });
 
   it('returns 401 for anonymous websocket requests', async () => {
-    vi.doMock('../lib/auth.js', () => ({
-      authenticateRequest: vi.fn().mockRejectedValue(new Error('AUTH_REQUIRED')),
-    }));
+    vi.doMock('../lib/auth.js', async (importOriginal) => {
+      const actual = await importOriginal<Record<string, unknown>>();
+      const { DomainError } = await import('../lib/http.js');
+      return {
+        ...actual,
+        authenticateRequest: vi
+          .fn()
+          .mockRejectedValue(new DomainError(401, 'AUTH_REQUIRED', 'AUTH_REQUIRED')),
+      };
+    });
 
     const { default: app } = await import('../../api/index');
     const response = await app.fetch(createRequest('/api/workspaces/ws-1/yjs'), createEnv());

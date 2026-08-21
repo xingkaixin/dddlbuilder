@@ -95,9 +95,28 @@ let reserveAIUsageMock = vi.fn().mockImplementation(async (_env, input) => ({
 let completeAIUsageMock = vi.fn().mockResolvedValue(undefined);
 let failAIUsageMock = vi.fn().mockResolvedValue(undefined);
 
-const mockAIUsageModule = (options?: { authenticateError?: string; reserveError?: string }) => {
+const mockAIUsageModule = async (options?: {
+  authenticateError?: string;
+  reserveError?: string;
+}) => {
+  // DomainError 必须在 resetModules 之后的模块图里构造，否则 instanceof 跨实例失效
+  const domainError = async (
+    status: 401 | 402,
+    code: 'AUTH_REQUIRED' | 'CREDIT_EXHAUSTED',
+    message: string,
+  ) => {
+    const { DomainError } = await import('../lib/http.js');
+    return new DomainError(status, code, message);
+  };
+
   authenticateAIUserMock = options?.authenticateError
-    ? vi.fn().mockRejectedValue(new Error(options.authenticateError))
+    ? vi
+        .fn()
+        .mockRejectedValue(
+          options.authenticateError === 'AUTH_REQUIRED'
+            ? await domainError(401, 'AUTH_REQUIRED', 'Authentication required')
+            : new Error(options.authenticateError),
+        )
     : vi.fn().mockResolvedValue({
         userId: 'user-1',
         email: 'user@example.com',
@@ -106,7 +125,13 @@ const mockAIUsageModule = (options?: { authenticateError?: string; reserveError?
       });
 
   reserveAIUsageMock = options?.reserveError
-    ? vi.fn().mockRejectedValue(new Error(options.reserveError))
+    ? vi
+        .fn()
+        .mockRejectedValue(
+          options.reserveError === 'CREDIT_EXHAUSTED'
+            ? await domainError(402, 'CREDIT_EXHAUSTED', 'Insufficient credits')
+            : new Error(options.reserveError),
+        )
     : vi.fn().mockImplementation(async (_env, input) => ({
         usageEventId: `usage:${input.requestId}`,
         userId: input.userId,
@@ -144,7 +169,7 @@ const loadAppWithOpenAIMock = async (
   }
 
   vi.resetModules();
-  mockAIUsageModule(aiUsageOptions);
+  await mockAIUsageModule(aiUsageOptions);
   vi.doMock('openai', () => ({
     default: class OpenAI {
       chat = {
@@ -183,7 +208,7 @@ const loadAuthenticatedApp = async (
   }
 
   vi.resetModules();
-  mockAIUsageModule(aiUsageOptions);
+  await mockAIUsageModule(aiUsageOptions);
   const module = await import('../../api/index');
   const app = module.default as Hono<ApiEnv>;
   const env = createEnv(
@@ -544,8 +569,9 @@ describe.sequential('openai governance', () => {
       },
       createCompletionMock,
     );
+    const { DomainError } = await import('../lib/http.js');
     reserveAIUsageMock
-      .mockRejectedValueOnce(new Error('CREDIT_EXHAUSTED'))
+      .mockRejectedValueOnce(new DomainError(402, 'CREDIT_EXHAUSTED', 'Insufficient credits'))
       .mockImplementationOnce(async (_env, input) => ({
         usageEventId: `usage:${input.requestId}`,
         userId: input.userId,

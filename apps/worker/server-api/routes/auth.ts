@@ -2,7 +2,7 @@ import type { Context, Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { resolveAuthenticatedUser } from '../lib/auth.js';
 import { createBetterAuth } from '../lib/betterAuth.js';
-import { errorResponse, parseJsonBodyWithLimit, withMeta } from '../lib/http.js';
+import { DomainError, errorResponse, parseJsonBodyWithLimit, withMeta } from '../lib/http.js';
 import { enforceRequestRateLimit } from '../lib/requestRateLimit.js';
 import { getUserSystemConfig } from '../lib/userSystemConfig.js';
 
@@ -118,6 +118,10 @@ export function registerAuthRoutes(app: Hono<ApiEnv>) {
         }),
       );
     } catch (error) {
+      // USER_DISABLED 是明确的账号状态，要原样告诉前端；其余按服务故障处理
+      if (error instanceof DomainError && error.code === 'USER_DISABLED') {
+        return errorResponse(c, error.status, error.message, error.code);
+      }
       console.error('[auth] /me failed', error);
       return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
     }

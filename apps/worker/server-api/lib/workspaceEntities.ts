@@ -5,6 +5,7 @@ import type {
 } from '@ddlbuilder/shared-types/workspace';
 import { buildWorkspaceContentHash } from '@ddlbuilder/workspace-core';
 import type { ApiEnv } from './context.js';
+import { DomainError } from './http.js';
 import {
   allWorkspaceD1Result,
   batchWorkspaceD1Results,
@@ -58,9 +59,11 @@ type EntityVersionInput = {
 
 const DEFAULT_WORKSPACE_NAME = 'Default Workspace';
 
-export class WorkspaceNotFoundError extends Error {
+// 归属校验失败对外一律 403：不区分"不存在"和"不属于你"，避免探测他人 workspace id
+export class WorkspaceNotFoundError extends DomainError {
   constructor() {
-    super('WORKSPACE_NOT_FOUND');
+    super(403, 'WORKSPACE_ACCESS_DENIED', 'WORKSPACE_NOT_FOUND');
+    this.name = 'WorkspaceNotFoundError';
   }
 }
 

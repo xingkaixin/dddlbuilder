@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { applyCspHeaders } from '../server-api/lib/csp.js';
 import type { ApiEnv } from '../server-api/lib/context.js';
-import { withMeta } from '../server-api/lib/http.js';
+import { DomainError, errorResponse, withMeta } from '../server-api/lib/http.js';
 import { registerParseSqlRoute } from '../server-api/routes/parseSql.js';
 import { registerExplainRoute } from '../server-api/routes/explain.js';
 import { registerReviewRoute } from '../server-api/routes/review.js';
@@ -84,6 +84,15 @@ app.use('*', async (c, next) => {
 });
 
 api.get('/health', (c) => c.json(withMeta(c, { status: 'ok' })));
+
+// 领域错误在抛出点已带状态码；其余一律按基础设施故障处理，原始 message 只进日志
+api.onError((error, c) => {
+  if (error instanceof DomainError) {
+    return errorResponse(c, error.status, error.message, error.code);
+  }
+  console.error('[api] unhandled error', error);
+  return errorResponse(c, 503, 'Service unavailable', 'SERVICE_UNAVAILABLE');
+});
 
 registerParseSqlRoute(api);
 registerExplainRoute(api);

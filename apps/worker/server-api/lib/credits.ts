@@ -1,4 +1,5 @@
 import type { ApiEnv } from './context.js';
+import { DomainError } from './http.js';
 
 export type CreditLedgerKind = 'grant' | 'consume' | 'refund';
 
@@ -206,7 +207,7 @@ const validateExistingLedger = (existing: CreditLedgerRow, input: CreditMutation
     existing.amount !== input.amount ||
     existing.relatedUsageId !== (input.relatedUsageId ?? null)
   ) {
-    throw new Error('CREDIT_IDEMPOTENCY_CONFLICT');
+    throw new DomainError(409, 'SERVICE_UNAVAILABLE', 'CREDIT_IDEMPOTENCY_CONFLICT');
   }
   return existing;
 };
@@ -216,8 +217,14 @@ const LEDGER_ABORT_CODES = ['CREDIT_ACCOUNT_MISSING', 'CREDIT_EXHAUSTED'] as con
 // 余额不变量由触发器执法（ADR-0001）；TS 只负责把 ABORT 消息还原成领域错误。
 const mapLedgerAbort = (error: unknown): Error => {
   const message = error instanceof Error ? error.message : String(error);
-  const code = LEDGER_ABORT_CODES.find((abortCode) => message.includes(abortCode));
-  return new Error(code ?? message);
+  const abortCode = LEDGER_ABORT_CODES.find((code) => message.includes(code));
+  if (abortCode === 'CREDIT_EXHAUSTED') {
+    return new DomainError(402, 'CREDIT_EXHAUSTED', 'CREDIT_EXHAUSTED');
+  }
+  if (abortCode === 'CREDIT_ACCOUNT_MISSING') {
+    return new DomainError(503, 'SERVICE_UNAVAILABLE', 'CREDIT_ACCOUNT_MISSING');
+  }
+  return new Error(message);
 };
 
 export const applyCreditMutation = async (
@@ -225,7 +232,7 @@ export const applyCreditMutation = async (
   input: CreditMutationInput,
 ): Promise<CreditLedgerRow> => {
   if (!Number.isFinite(input.amount) || input.amount <= 0) {
-    throw new Error('INVALID_CREDIT_AMOUNT');
+    throw new DomainError(500, 'SERVICE_UNAVAILABLE', 'INVALID_CREDIT_AMOUNT');
   }
 
   const existing = await readCreditLedgerEntry(env, input.userId, input.idempotencyKey);
@@ -276,7 +283,7 @@ export const applyCreditMutation = async (
       .run();
 
     if (!inserted.success || Number(inserted.meta.changes ?? 0) === 0) {
-      throw new Error('CREDIT_ACCOUNT_MISSING');
+      throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'CREDIT_ACCOUNT_MISSING');
     }
   } catch (error) {
     const concurrent = await readCreditLedgerEntry(env, input.userId, input.idempotencyKey);
@@ -288,7 +295,7 @@ export const applyCreditMutation = async (
 
   const created = await readCreditLedgerEntry(env, input.userId, input.idempotencyKey);
   if (!created) {
-    throw new Error('CREDIT_LEDGER_WRITE_FAILED');
+    throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'CREDIT_LEDGER_WRITE_FAILED');
   }
   return created;
 };

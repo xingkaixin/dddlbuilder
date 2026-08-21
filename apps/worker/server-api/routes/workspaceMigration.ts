@@ -31,16 +31,7 @@ const isWorkspaceMigrationPayload = (value: unknown): value is WorkspaceMigratio
 
 export function registerWorkspaceMigrationRoutes(app: Hono<ApiEnv>) {
   app.post('/workspace/migrations', async (c) => {
-    let user;
-    try {
-      user = await authenticateRequest(c);
-    } catch (error) {
-      if (error instanceof Error && error.message === 'AUTH_REQUIRED') {
-        return errorResponse(c, 401, 'Authentication required', 'AUTH_REQUIRED');
-      }
-      console.error('[workspace-migration] auth failed', error);
-      return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
-    }
+    const user = await authenticateRequest(c);
 
     const parsedBody = await parseJsonBodyWithLimit<{ mode?: unknown; payload?: unknown }>(
       c,

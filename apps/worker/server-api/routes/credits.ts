@@ -2,7 +2,7 @@ import type { Context, Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { resolveAuthenticatedUser as resolveSessionUser } from '../lib/auth.js';
 import { countCreditLedger, getCreditAccount, listCreditLedger } from '../lib/credits.js';
-import { errorResponse, withMeta } from '../lib/http.js';
+import { DomainError, withMeta } from '../lib/http.js';
 
 const parseLedgerLimit = (value: string | undefined) => {
   const parsed = Number.parseInt(value ?? '20', 10);
@@ -36,17 +36,28 @@ const parseLedgerDateTime = (value: string | undefined) => {
 };
 
 const resolveAuthenticatedUser = async (c: Context<ApiEnv>) => {
-  return resolveSessionUser(c.env, c.req.raw.headers);
+  const user = await resolveSessionUser(c.env, c.req.raw.headers);
+  if (!user) {
+    throw new DomainError(401, 'AUTH_REQUIRED', 'Authentication required');
+  }
+  return user;
+};
+
+// 查询路径的意外故障统一按额度服务不可用处理；领域错误（401/402 等）直接冒泡给全局 onError
+const wrapCreditService = async (handler: () => Promise<Response>) => {
+  try {
+    return await handler();
+  } catch (error) {
+    if (error instanceof DomainError) throw error;
+    console.error('[credits] query failed', error);
+    throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'Credit service unavailable');
+  }
 };
 
 export function registerCreditRoutes(app: Hono<ApiEnv>) {
   app.get('/credits/balance', async (c) => {
-    try {
-      const user = await resolveAuthenticatedUser(c);
-      if (!user) {
-        return errorResponse(c, 401, 'Authentication required', 'AUTH_REQUIRED');
-      }
-
+    const user = await resolveAuthenticatedUser(c);
+    return wrapCreditService(async () => {
       const account = await getCreditAccount(c.env, user.userId);
       return c.json(
         withMeta(c, {
@@ -55,19 +66,12 @@ export function registerCreditRoutes(app: Hono<ApiEnv>) {
           userId: user.userId,
         }),
       );
-    } catch (error) {
-      console.error('[credits] balance failed', error);
-      return errorResponse(c, 503, 'Credit service unavailable', 'SERVICE_UNAVAILABLE');
-    }
+    });
   });
 
   app.get('/credits/ledger', async (c) => {
-    try {
-      const user = await resolveAuthenticatedUser(c);
-      if (!user) {
-        return errorResponse(c, 401, 'Authentication required', 'AUTH_REQUIRED');
-      }
-
+    const user = await resolveAuthenticatedUser(c);
+    return wrapCreditService(async () => {
       const limit = parseLedgerLimit(c.req.query('limit'));
       const offset = parseLedgerOffset(c.req.query('offset'));
       const filters = {
@@ -90,9 +94,6 @@ export function registerCreditRoutes(app: Hono<ApiEnv>) {
           offset,
         }),
       );
-    } catch (error) {
-      console.error('[credits] ledger failed', error);
-      return errorResponse(c, 503, 'Credit service unavailable', 'SERVICE_UNAVAILABLE');
-    }
+    });
   });
 }

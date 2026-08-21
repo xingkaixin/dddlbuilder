@@ -117,8 +117,11 @@ describe('withAIGovernance', () => {
 
   it('额度不足时返回 402 且不调用 run', async () => {
     const run = vi.fn();
+    const { DomainError } = await import('../../lib/http.js');
     const shell = await loadShell({
-      reserveAIUsage: vi.fn().mockRejectedValue(new Error('CREDIT_EXHAUSTED')),
+      reserveAIUsage: vi
+        .fn()
+        .mockRejectedValue(new DomainError(402, 'CREDIT_EXHAUSTED', 'Insufficient credits')),
     });
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
