@@ -91,25 +91,6 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
 
   const filledRowCount = useMemo(() => rows.filter((row) => row.fieldName?.trim()).length, [rows]);
 
-  // --- 索引统计 ---
-  const indexStats = useMemo(
-    () =>
-      indexes.reduce(
-        (acc, index) => {
-          if (index.isPrimary) {
-            acc.primary += 1;
-          } else if (index.unique) {
-            acc.unique += 1;
-          } else {
-            acc.normal += 1;
-          }
-          return acc;
-        },
-        { primary: 0, unique: 0, normal: 0 },
-      ),
-    [indexes],
-  );
-
   useEffect(() => {
     if (indexes.length > 0 && tableName) {
       updateIndexNames(tableName, dbType);
@@ -234,8 +215,6 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     normalizedFields,
     availableFields,
     filledRowCount,
-    // 索引
-    indexStats,
     // Tab
     supportsMysqlPartition,
     // 持久化

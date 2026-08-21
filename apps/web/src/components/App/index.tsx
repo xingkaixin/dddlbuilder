@@ -7,7 +7,7 @@ import { Header } from './Header';
 import { GlobalDialogs } from './containers/GlobalDialogs';
 import { DialogRenderGuard } from './containers/DialogRenderGuard';
 import { OutputContainer } from './containers/OutputContainer';
-import { SavedTablesContainer } from './containers/SavedTablesContainer';
+import { SavedTablesDrawer } from './SavedTablesDrawer';
 import { TableBuilderContainer } from './containers/TableBuilderContainer';
 import { AISchemaPatchPanel } from './AISchemaPatchPanel';
 import { AIIndexAdvisorDialog } from './AIIndexAdvisorDialog';
@@ -1323,33 +1323,32 @@ function App() {
           </Suspense>
         )}
 
-        <SavedTablesContainer
-          drawerProps={{
-            open: savedTablesDrawerOpen,
-            onOpenChange: setSavedTablesDrawerOpen,
-            loading: savedTablesLoading,
-            error: savedTablesError,
-            items: savedTables,
-            draftItems: draftSummaries,
-            activeDraftId:
-              !isShareView && activeSource.kind === 'draft' ? activeSource.draftId : null,
-            folders: folderTree,
-            foldersLoading: foldersLoading,
-            activeNormalizedName: loadedTableNormalizedName,
-            activeDirty: isLoadedDirty,
-            tablePresentations,
-            onSelectDraft: handleSelectDraft,
-            onDeleteDraft: handleDeleteDraft,
-            onSelect: handleSelectSavedTable,
-            onRename: handleOpenRenameDialog,
-            onDelete: handleOpenDeleteDialog,
-            onViewHistory: handleViewVersionHistory,
-            onMoveToFolder: handleMoveTableToFolder,
-            onMoveFolder: handleMoveFolderToFolder,
-            onCreateFolder: handleOpenCreateFolderDialog,
-            onRenameFolder: handleOpenRenameFolderDialog,
-            onDeleteFolder: handleOpenDeleteFolderDialog,
-          }}
+        <SavedTablesDrawer
+          open={savedTablesDrawerOpen}
+          onOpenChange={setSavedTablesDrawerOpen}
+          loading={savedTablesLoading}
+          error={savedTablesError}
+          items={savedTables}
+          draftItems={draftSummaries}
+          activeDraftId={
+            !isShareView && activeSource.kind === 'draft' ? activeSource.draftId : null
+          }
+          folders={folderTree}
+          foldersLoading={foldersLoading}
+          activeNormalizedName={loadedTableNormalizedName}
+          activeDirty={isLoadedDirty}
+          tablePresentations={tablePresentations}
+          onSelectDraft={handleSelectDraft}
+          onDeleteDraft={handleDeleteDraft}
+          onSelect={handleSelectSavedTable}
+          onRename={handleOpenRenameDialog}
+          onDelete={handleOpenDeleteDialog}
+          onViewHistory={handleViewVersionHistory}
+          onMoveToFolder={handleMoveTableToFolder}
+          onMoveFolder={handleMoveFolderToFolder}
+          onCreateFolder={handleOpenCreateFolderDialog}
+          onRenameFolder={handleOpenRenameFolderDialog}
+          onDeleteFolder={handleOpenDeleteFolderDialog}
         />
 
         <div className="flex flex-col sm:flex-row">
