@@ -3,8 +3,6 @@ import {
   getAnonymousWorkspaceScope,
   getWorkspaceScopeStorageKey,
   buildScopedWorkspaceKey,
-  getCurrentWorkspaceScope,
-  setCurrentWorkspaceScope,
 } from '@/utils/workspaceScope';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 
@@ -60,28 +58,6 @@ describe('workspaceScope', () => {
     it('builds key with empty key string', () => {
       const scope: WorkspaceScope = { kind: 'anonymous' };
       expect(buildScopedWorkspaceKey(scope, '')).toBe('anonymous::');
-    });
-  });
-
-  describe('getCurrentWorkspaceScope / setCurrentWorkspaceScope', () => {
-    it('returns anonymous scope by default', () => {
-      const scope = getCurrentWorkspaceScope();
-      expect(scope).toEqual({ kind: 'anonymous' });
-    });
-
-    it('sets and gets user scope', () => {
-      const userScope: WorkspaceScope = { kind: 'user', userId: 'user-456' };
-      setCurrentWorkspaceScope(userScope);
-      expect(getCurrentWorkspaceScope()).toBe(userScope);
-    });
-
-    it('can switch back to anonymous', () => {
-      const userScope: WorkspaceScope = { kind: 'user', userId: 'user-789' };
-      setCurrentWorkspaceScope(userScope);
-      expect(getCurrentWorkspaceScope()).toBe(userScope);
-
-      setCurrentWorkspaceScope(getAnonymousWorkspaceScope());
-      expect(getCurrentWorkspaceScope()).toEqual({ kind: 'anonymous' });
     });
   });
 });

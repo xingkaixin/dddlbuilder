@@ -45,7 +45,7 @@ import {
 import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 import { getWorkspaceBootstrap } from './workspacePersistence/bootstrap';
 import { resetWorkspaceBootstrapCache } from './workspacePersistence/bootstrap';
-import { getAnonymousWorkspaceScope, setCurrentWorkspaceScope } from '@/utils/workspaceScope';
+import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 import {
   buildDraftSummary,
   getDraftDisplayName,
@@ -554,7 +554,6 @@ export function usePersistedState(): UsePersistedStateReturn {
     const hydrateYDocWorkspace = async () => {
       if (!workspaceYDoc.doc) return false;
       const doc = workspaceYDoc.doc;
-      setCurrentWorkspaceScope(currentScope);
 
       savedTableDraftsRef.current = listSavedDraftsFromYDoc(doc);
       const drafts: DraftEntry[] = listDraftRecordsFromYDoc(doc);
@@ -588,8 +587,6 @@ export function usePersistedState(): UsePersistedStateReturn {
       if (yDocReady && (await hydrateYDocWorkspace())) {
         return;
       }
-
-      setCurrentWorkspaceScope(currentScope);
 
       const bootstrap = await getWorkspaceBootstrap(currentScope);
       if (cancelled) return;
@@ -806,7 +803,6 @@ export function usePersistedState(): UsePersistedStateReturn {
     let cancelled = false;
     const handleSnapshotApplied = () => {
       void (async () => {
-        setCurrentWorkspaceScope(currentScope);
         resetWorkspaceBootstrapCache();
         const bootstrap = await getWorkspaceBootstrap(currentScope);
         const savedDrafts = await listSavedDrafts(currentScope);

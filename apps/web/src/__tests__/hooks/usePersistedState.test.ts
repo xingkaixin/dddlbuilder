@@ -12,17 +12,35 @@ import { getShareState, ShareApiError } from '@/services/shareService';
 import type { WorkspaceSavePayload } from '@ddlbuilder/shared-types/workspace';
 import {
   DEFAULT_DRAFT_ID,
-  readDraft,
-  readWorkspaceSession,
-  writeDraft,
-  writeWorkspaceSession,
+  readDraft as readDraftInScope,
+  readWorkspaceSession as readWorkspaceSessionInScope,
+  writeDraft as writeDraftInScope,
+  writeWorkspaceSession as writeWorkspaceSessionInScope,
 } from '@/utils/workspaceStateDb';
-import { addSavedTable } from '@/utils/savedTablesDb';
-import { getAnonymousWorkspaceScope, setCurrentWorkspaceScope } from '@/utils/workspaceScope';
+import { addSavedTable as addSavedTableInScope } from '@/utils/savedTablesDb';
+import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 import { getDraftRecordFromYDoc, upsertDraftInYDoc } from '@/services/workspaceYDocAdapter';
 
 const GLOBAL_DRAFT_STORAGE_KEY = `${STORAGE_KEY}:draft:global:v1`;
 const WORKSPACE_SESSION_STORAGE_KEY = `${STORAGE_KEY}:workspace:v1`;
+const anonymousScope = getAnonymousWorkspaceScope();
+
+const addSavedTable = (
+  record: Parameters<typeof addSavedTableInScope>[0],
+  scope = anonymousScope,
+) => addSavedTableInScope(record, scope);
+const readDraft = (draftId: Parameters<typeof readDraftInScope>[0], scope = anonymousScope) =>
+  readDraftInScope(draftId, scope);
+const readWorkspaceSession = (scope = anonymousScope) => readWorkspaceSessionInScope(scope);
+const writeDraft = (
+  draftId: Parameters<typeof writeDraftInScope>[0],
+  record: Parameters<typeof writeDraftInScope>[1],
+  scope = anonymousScope,
+) => writeDraftInScope(draftId, record, scope);
+const writeWorkspaceSession = (
+  record: Parameters<typeof writeWorkspaceSessionInScope>[0],
+  scope = anonymousScope,
+) => writeWorkspaceSessionInScope(record, scope);
 
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
@@ -197,8 +215,6 @@ describe('usePersistedState', () => {
       connectionState: 'idle',
       retry: vi.fn(),
     } as any);
-    // 当前分区是模块级单例，上一条用例水合到 user 分区后会让默认 scope 的读写错位
-    setCurrentWorkspaceScope(getAnonymousWorkspaceScope());
     window.history.replaceState({}, '', '/');
   });
 

@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useState } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import type { SaveTableResult } from '@/hooks/useSavedTables';
 import type { SavedTableRecord } from '@/utils/savedTablesDb';
 import { listSavedTables } from '@/utils/savedTablesDb';
@@ -14,29 +15,31 @@ interface ErDiagramDialogProps {
   onOpenChange: (open: boolean) => void;
   onSelectTable: (state: PersistedState) => void;
   saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
+  workspaceScope: WorkspaceScope | null;
 }
 
 const INITIAL_ROWS = Array.from({ length: 4 }, (_, index) => createEmptyRow(index));
 
 export const ErDiagramDialog = memo<ErDiagramDialogProps>(
-  ({ open, onOpenChange, onSelectTable, saveTable }) => {
+  ({ open, onOpenChange, onSelectTable, saveTable, workspaceScope }) => {
     const { t } = useTranslation();
     const { showToast } = useToast();
     const [tables, setTables] = useState<SavedTableRecord[]>([]);
     const [loading, setLoading] = useState(false);
 
     const refresh = useCallback(async () => {
-      const records = await listSavedTables();
+      if (!workspaceScope) return;
+      const records = await listSavedTables(workspaceScope);
       setTables(records);
-    }, []);
+    }, [workspaceScope]);
 
     useEffect(() => {
-      if (!open) return;
+      if (!open || !workspaceScope) return;
       setLoading(true);
-      void listSavedTables()
+      void listSavedTables(workspaceScope)
         .then((records) => setTables(records))
         .finally(() => setLoading(false));
-    }, [open]);
+    }, [open, workspaceScope]);
 
     const handleSelectTable = useCallback(
       (state: PersistedState) => {
@@ -91,6 +94,7 @@ export const ErDiagramDialog = memo<ErDiagramDialogProps>(
               onSelectTable={handleSelectTable}
               onRefresh={refresh}
               onAddTable={handleAddTable}
+              workspaceScope={workspaceScope}
             />
           </div>
         </DialogContent>

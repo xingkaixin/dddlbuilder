@@ -208,7 +208,7 @@ describe('useFolders', () => {
     });
 
     expect(mockRenameFolder).toHaveBeenCalledWith('1', 'Renamed', { kind: 'anonymous' });
-    expect(mockMoveFolder).toHaveBeenCalledWith('1', undefined, { kind: 'anonymous' });
+    expect(mockMoveFolder).toHaveBeenCalledWith('1', { kind: 'anonymous' }, undefined);
   });
 
   it('should throw default messages when operations fail with non-error', async () => {

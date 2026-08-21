@@ -1,20 +1,37 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
-  listFolders,
-  listChildFolders,
-  createFolder,
-  renameFolder,
-  moveFolder,
-  deleteFolder,
+  listFolders as listFoldersInScope,
+  listChildFolders as listChildFoldersInScope,
+  createFolder as createFolderInScope,
+  renameFolder as renameFolderInScope,
+  moveFolder as moveFolderInScope,
+  deleteFolder as deleteFolderInScope,
   bulkPutFolders,
   clearFolders,
-  getDescendantFolderIds,
-  getFolder,
-  buildFolderTree,
-  getFolderPath,
+  getDescendantFolderIds as getDescendantFolderIdsInScope,
+  getFolder as getFolderInScope,
+  buildFolderTree as buildFolderTreeInScope,
+  getFolderPath as getFolderPathInScope,
 } from '@/utils/tableFolders';
 import * as dbUtils from '@/utils/savedTablesDb';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
+import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
+
+const anonymousScope = getAnonymousWorkspaceScope();
+const listFolders = (scope = anonymousScope) => listFoldersInScope(scope);
+const listChildFolders = (parentId?: string) => listChildFoldersInScope(anonymousScope, parentId);
+const createFolder = (name: string, parentId?: string) =>
+  createFolderInScope(name, anonymousScope, parentId);
+const renameFolder = (id: string, newName: string) =>
+  renameFolderInScope(id, newName, anonymousScope);
+const moveFolder = (id: string, newParentId?: string) =>
+  moveFolderInScope(id, anonymousScope, newParentId);
+const deleteFolder = (id: string) => deleteFolderInScope(id, anonymousScope);
+const getDescendantFolderIds = (folderId: string) =>
+  getDescendantFolderIdsInScope(folderId, anonymousScope);
+const getFolder = (id: string) => getFolderInScope(id, anonymousScope);
+const buildFolderTree = () => buildFolderTreeInScope(anonymousScope);
+const getFolderPath = (folderId: string) => getFolderPathInScope(folderId, anonymousScope);
 
 describe('tableFolders', () => {
   beforeEach(() => {

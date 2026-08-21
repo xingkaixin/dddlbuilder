@@ -16,7 +16,6 @@ import {
 import {
   buildScopedWorkspaceKey,
   getAnonymousWorkspaceScope,
-  getCurrentWorkspaceScope,
   getWorkspaceScopeStorageKey,
 } from './workspaceScope';
 import { normalizePersistedRows } from './helpers';
@@ -181,7 +180,7 @@ const runWithStore = async <T>(
 
 export const readDraft = async (
   draftId: string,
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<WorkspaceDraftRecord | null> => {
   const entity = await runWithStore<WorkspaceDraftEntity | undefined>(
     WORKSPACE_GLOBAL_DRAFT_STORE_NAME,
@@ -196,7 +195,7 @@ export const readDraft = async (
 export const writeDraft = async (
   draftId: string,
   record: WorkspaceDraftRecord,
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<void> => {
   await runWithStore<IDBValidKey>(WORKSPACE_GLOBAL_DRAFT_STORE_NAME, 'readwrite', (store) =>
     store.put({
@@ -207,10 +206,7 @@ export const writeDraft = async (
   );
 };
 
-export const deleteDraft = async (
-  draftId: string,
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
-): Promise<void> => {
+export const deleteDraft = async (draftId: string, scope: WorkspaceScope): Promise<void> => {
   await runWithStore<undefined>(WORKSPACE_GLOBAL_DRAFT_STORE_NAME, 'readwrite', (store) =>
     store.delete(withScopeKey(scope, draftId)),
   );
@@ -222,14 +218,14 @@ const readAllDraftEntities = () =>
   );
 
 export const listDrafts = async (
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<Array<{ draftId: string; record: WorkspaceDraftRecord }>> =>
   decodeDrafts(await readAllDraftEntities(), scope)
     .filter((entity) => entity.trashedAt == null)
     .map((entity) => ({ draftId: entity.id, record: toDraftRecord(entity) }));
 
 export const listTrashedDrafts = async (
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<Array<{ draftId: string; record: WorkspaceDraftRecord }>> =>
   decodeDrafts(await readAllDraftEntities(), scope)
     .filter((entity) => entity.trashedAt != null)
@@ -240,7 +236,7 @@ export const listTrashedDrafts = async (
     .sort((a, b) => (b.record.trashedAt ?? 0) - (a.record.trashedAt ?? 0));
 
 export const listSavedDrafts = async (
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<Record<string, SavedTableDraftRecord>> => {
   const records = await runWithStore<WorkspaceSavedDraftEntity[]>(
     WORKSPACE_SAVED_DRAFTS_STORE_NAME,
@@ -264,7 +260,7 @@ export const listSavedDrafts = async (
 
 export const readSavedDraft = async (
   normalizedName: string,
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<SavedTableDraftRecord | null> => {
   const record = await runWithStore<WorkspaceSavedDraftEntity | undefined>(
     WORKSPACE_SAVED_DRAFTS_STORE_NAME,
@@ -285,7 +281,7 @@ export const readSavedDraft = async (
 export const upsertSavedDraft = async (
   normalizedName: string,
   record: SavedTableDraftRecord,
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<void> => {
   await runWithStore<IDBValidKey>(WORKSPACE_SAVED_DRAFTS_STORE_NAME, 'readwrite', (store) =>
     store.put({
@@ -298,7 +294,7 @@ export const upsertSavedDraft = async (
 
 export const deleteSavedDraft = async (
   normalizedName: string,
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<void> => {
   await runWithStore<undefined>(WORKSPACE_SAVED_DRAFTS_STORE_NAME, 'readwrite', (store) =>
     store.delete(withScopeKey(scope, normalizedName)),
@@ -309,7 +305,7 @@ export const renameSavedDraftKey = async (
   fromNormalizedName: string,
   toNormalizedName: string,
   nextTableName: string,
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<void> => {
   const record = await readSavedDraft(fromNormalizedName, scope);
   if (!record) return;
@@ -330,7 +326,7 @@ export const renameSavedDraftKey = async (
 };
 
 export const readWorkspaceSession = async (
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<WorkspaceSessionRecord | null> => {
   const entity = await runWithStore<WorkspaceSessionEntity | undefined>(
     WORKSPACE_SESSION_STORE_NAME,
@@ -343,7 +339,7 @@ export const readWorkspaceSession = async (
 };
 
 export const readWorkspaceBootstrap = async (
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<{
   globalDraft: WorkspaceDraftRecord | null;
   drafts: Array<{ draftId: string; record: WorkspaceDraftRecord }>;
@@ -394,7 +390,7 @@ export const readWorkspaceBootstrap = async (
 
 export const writeWorkspaceSession = async (
   record: WorkspaceSessionRecord,
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<void> => {
   await runWithStore<IDBValidKey>(WORKSPACE_SESSION_STORE_NAME, 'readwrite', (store) =>
     store.put({
@@ -405,9 +401,7 @@ export const writeWorkspaceSession = async (
   );
 };
 
-export const clearWorkspaceSession = async (
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
-): Promise<void> => {
+export const clearWorkspaceSession = async (scope: WorkspaceScope): Promise<void> => {
   await runWithStore<undefined>(WORKSPACE_SESSION_STORE_NAME, 'readwrite', (store) =>
     store.delete(withScopeKey(scope, WORKSPACE_SESSION_ROW_ID)),
   );

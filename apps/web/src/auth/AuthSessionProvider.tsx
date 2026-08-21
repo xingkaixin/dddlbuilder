@@ -17,7 +17,6 @@ import {
   resolveDefaultWorkspaceScope,
 } from '@/services/workspaceAccountService';
 import { getBetterAuthClient, isBetterAuthConfigured } from './betterAuthClient';
-import { getAnonymousWorkspaceScope, setCurrentWorkspaceScope } from '@/utils/workspaceScope';
 
 export type UserSessionState = {
   status: 'loading' | 'signed_out' | 'signed_in';
@@ -170,7 +169,6 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
 
     const me = await fetchCurrentUser();
     if (!me.signedIn) {
-      setCurrentWorkspaceScope(getAnonymousWorkspaceScope());
       setState(signedOutState(true));
       return;
     }
@@ -223,14 +221,12 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       workspaceScope = await resolveDefaultWorkspaceScope(me.user.userId);
     } catch (error) {
       console.error('[auth] failed to resolve workspace', error);
-      setCurrentWorkspaceScope({ kind: 'user', userId: me.user.userId });
       await creditBalancePromise;
       return;
     }
 
     const workspaceId =
       workspaceScope.kind === 'user' ? (workspaceScope.workspaceId ?? null) : null;
-    setCurrentWorkspaceScope(workspaceScope);
     if (workspaceId) {
       setState((prev) => ({ ...prev, workspaceId }));
     }
@@ -417,7 +413,6 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
         if (scope) {
           await clearLocalWorkspaceData(scope);
         }
-        setCurrentWorkspaceScope(getAnonymousWorkspaceScope());
         setState(signedOutState(configured));
       },
       refreshSession,

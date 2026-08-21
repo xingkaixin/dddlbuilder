@@ -15,6 +15,9 @@ import {
 } from '@/utils/savedTablesDb';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from './fakeIndexedDb';
 import type { PersistedState } from '@ddlbuilder/shared-types';
+import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
+
+const anonymousScope = getAnonymousWorkspaceScope();
 
 const createState = (overrides: Partial<PersistedState> = {}): PersistedState => ({
   schemaName: '',
@@ -56,13 +59,13 @@ describe('savedTablesDb', () => {
       updatedAt: Date.now(),
     };
 
-    await addSavedTable(record);
+    await addSavedTable(record, anonymousScope);
 
-    const list = await listSavedTables();
+    const list = await listSavedTables(anonymousScope);
     expect(list).toHaveLength(1);
     expect(list[0].name).toBe('Demo');
 
-    const fetched = await getSavedTable('demo');
+    const fetched = await getSavedTable('demo', anonymousScope);
     expect(fetched?.state.tableName).toBe('test_table');
 
     const updated = {
@@ -71,12 +74,12 @@ describe('savedTablesDb', () => {
       state: createState({ tableName: 'updated_table' }),
     };
 
-    await updateSavedTable(updated);
-    const fetchedUpdated = await getSavedTable('demo');
+    await updateSavedTable(updated, anonymousScope);
+    const fetchedUpdated = await getSavedTable('demo', anonymousScope);
     expect(fetchedUpdated?.state.tableName).toBe('updated_table');
 
-    await deleteSavedTable('demo');
-    const afterDelete = await listSavedTables();
+    await deleteSavedTable('demo', anonymousScope);
+    const afterDelete = await listSavedTables(anonymousScope);
     expect(afterDelete).toHaveLength(0);
   });
 
@@ -95,16 +98,25 @@ describe('savedTablesDb', () => {
       createdAt: 1,
       updatedAt: 1,
     };
-    await addSavedTable(first);
-    await addSavedTable(second);
+    await addSavedTable(first, anonymousScope);
+    await addSavedTable(second, anonymousScope);
 
-    await updateSavedTables([
-      { ...first, folderId: 'folder-1', updatedAt: 2 },
-      { ...second, folderId: 'folder-1', updatedAt: 2 },
-    ]);
+    await updateSavedTables(
+      [
+        { ...first, folderId: 'folder-1', updatedAt: 2 },
+        { ...second, folderId: 'folder-1', updatedAt: 2 },
+      ],
+      anonymousScope,
+    );
 
-    expect(await getSavedTable('first')).toMatchObject({ folderId: 'folder-1', updatedAt: 2 });
-    expect(await getSavedTable('second')).toMatchObject({ folderId: 'folder-1', updatedAt: 2 });
+    expect(await getSavedTable('first', anonymousScope)).toMatchObject({
+      folderId: 'folder-1',
+      updatedAt: 2,
+    });
+    expect(await getSavedTable('second', anonymousScope)).toMatchObject({
+      folderId: 'folder-1',
+      updatedAt: 2,
+    });
   });
 
   it('should reject duplicate add', async () => {
@@ -116,8 +128,8 @@ describe('savedTablesDb', () => {
       updatedAt: Date.now(),
     };
 
-    await addSavedTable(record);
-    await expect(addSavedTable(record)).rejects.toThrow('ConstraintError');
+    await addSavedTable(record, anonymousScope);
+    await expect(addSavedTable(record, anonymousScope)).rejects.toThrow('ConstraintError');
   });
 
   it('should list metadata without loading full state', async () => {
@@ -147,9 +159,9 @@ describe('savedTablesDb', () => {
       updatedAt: Date.now(),
     };
 
-    await addSavedTable(record);
+    await addSavedTable(record, anonymousScope);
 
-    const metadata = await listSavedTableMetadata();
+    const metadata = await listSavedTableMetadata(anonymousScope);
     expect(metadata).toHaveLength(1);
     expect(metadata[0].normalizedName).toBe('meta-test');
     expect(metadata[0].name).toBe('Meta Test');
@@ -307,7 +319,7 @@ describe('savedTablesDb', () => {
       oncomplete: null,
     };
 
-    const p1 = listSavedTables();
+    const p1 = listSavedTables(anonymousScope);
     await flushMicrotasks(); // yield to let openDb resolve
     mockRequest.onerror();
     await expect(p1).rejects.toThrow('IndexedDB 请求失败');
@@ -322,7 +334,7 @@ describe('savedTablesDb', () => {
       error: null,
     };
 
-    const p2 = listSavedTables();
+    const p2 = listSavedTables(anonymousScope);
     await flushMicrotasks();
     mockTx.onabort();
     await expect(p2).rejects.toThrow('事务被中止');
@@ -335,7 +347,7 @@ describe('savedTablesDb', () => {
       oncomplete: null,
       error: new Error('tx error'),
     };
-    const p3 = listSavedTables();
+    const p3 = listSavedTables(anonymousScope);
     await flushMicrotasks();
     mockTx.onerror();
     await expect(p3).rejects.toThrow('tx error');
@@ -380,13 +392,13 @@ describe('savedTablesDb', () => {
       oncomplete: null,
     };
 
-    const p1 = listSavedTables();
+    const p1 = listSavedTables(anonymousScope);
     await flushMicrotasks();
     mockRequest.onsuccess();
     mockTx.oncomplete();
     expect(await p1).toEqual([]);
 
-    const p2 = listSavedTableMetadata();
+    const p2 = listSavedTableMetadata(anonymousScope);
     await flushMicrotasks();
     mockRequest.onsuccess();
     mockTx.oncomplete();

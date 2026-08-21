@@ -1,29 +1,68 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { STORAGE_KEY } from '@/utils/constants';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import { addSavedTable, type SavedTableRecord } from '@/utils/savedTablesDb';
+import {
+  addSavedTable as addSavedTableInScope,
+  type SavedTableRecord,
+} from '@/utils/savedTablesDb';
 import {
   DEFAULT_DRAFT_ID,
-  clearWorkspaceSession,
-  deleteDraft,
-  deleteSavedDraft,
-  listSavedDrafts,
+  clearWorkspaceSession as clearWorkspaceSessionInScope,
+  deleteDraft as deleteDraftInScope,
+  deleteSavedDraft as deleteSavedDraftInScope,
+  listSavedDrafts as listSavedDraftsInScope,
   migrateLegacyWorkspaceFromLocalStorage,
-  readDraft,
-  readSavedDraft,
-  readWorkspaceBootstrap,
-  readWorkspaceSession,
-  renameSavedDraftKey,
-  upsertSavedDraft,
-  writeDraft,
-  writeWorkspaceSession,
+  readDraft as readDraftInScope,
+  readSavedDraft as readSavedDraftInScope,
+  readWorkspaceBootstrap as readWorkspaceBootstrapInScope,
+  readWorkspaceSession as readWorkspaceSessionInScope,
+  renameSavedDraftKey as renameSavedDraftKeyInScope,
+  upsertSavedDraft as upsertSavedDraftInScope,
+  writeDraft as writeDraftInScope,
+  writeWorkspaceSession as writeWorkspaceSessionInScope,
 } from '@/utils/workspaceStateDb';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
-import { getAnonymousWorkspaceScope, setCurrentWorkspaceScope } from '@/utils/workspaceScope';
+import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 
 const GLOBAL_DRAFT_STORAGE_KEY = `${STORAGE_KEY}:draft:global:v1`;
 const SAVED_TABLE_DRAFTS_STORAGE_KEY = `${STORAGE_KEY}:draft:saved:v1`;
 const WORKSPACE_SESSION_STORAGE_KEY = `${STORAGE_KEY}:workspace:v1`;
+const anonymousScope = getAnonymousWorkspaceScope();
+
+const addSavedTable = (record: Parameters<typeof addSavedTableInScope>[0]) =>
+  addSavedTableInScope(record, anonymousScope);
+const clearWorkspaceSession = () => clearWorkspaceSessionInScope(anonymousScope);
+const deleteDraft = (draftId: Parameters<typeof deleteDraftInScope>[0]) =>
+  deleteDraftInScope(draftId, anonymousScope);
+const deleteSavedDraft = (normalizedName: Parameters<typeof deleteSavedDraftInScope>[0]) =>
+  deleteSavedDraftInScope(normalizedName, anonymousScope);
+const listSavedDrafts = () => listSavedDraftsInScope(anonymousScope);
+const readDraft = (draftId: Parameters<typeof readDraftInScope>[0], scope = anonymousScope) =>
+  readDraftInScope(draftId, scope);
+const readSavedDraft = (
+  normalizedName: Parameters<typeof readSavedDraftInScope>[0],
+  scope = anonymousScope,
+) => readSavedDraftInScope(normalizedName, scope);
+const readWorkspaceBootstrap = () => readWorkspaceBootstrapInScope(anonymousScope);
+const readWorkspaceSession = () => readWorkspaceSessionInScope(anonymousScope);
+const renameSavedDraftKey = (
+  fromNormalizedName: Parameters<typeof renameSavedDraftKeyInScope>[0],
+  toNormalizedName: Parameters<typeof renameSavedDraftKeyInScope>[1],
+  nextTableName: Parameters<typeof renameSavedDraftKeyInScope>[2],
+) =>
+  renameSavedDraftKeyInScope(fromNormalizedName, toNormalizedName, nextTableName, anonymousScope);
+const upsertSavedDraft = (
+  normalizedName: Parameters<typeof upsertSavedDraftInScope>[0],
+  record: Parameters<typeof upsertSavedDraftInScope>[1],
+  scope = anonymousScope,
+) => upsertSavedDraftInScope(normalizedName, record, scope);
+const writeDraft = (
+  draftId: Parameters<typeof writeDraftInScope>[0],
+  record: Parameters<typeof writeDraftInScope>[1],
+  scope = anonymousScope,
+) => writeDraftInScope(draftId, record, scope);
+const writeWorkspaceSession = (record: Parameters<typeof writeWorkspaceSessionInScope>[0]) =>
+  writeWorkspaceSessionInScope(record, anonymousScope);
 
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
@@ -66,7 +105,6 @@ const createState = (tableName = 'users'): PersistedState => ({
 describe('workspaceStateDb', () => {
   beforeEach(() => {
     setupFakeIndexedDB();
-    setCurrentWorkspaceScope(getAnonymousWorkspaceScope());
     localStorageMock.clear();
     vi.clearAllMocks();
   });

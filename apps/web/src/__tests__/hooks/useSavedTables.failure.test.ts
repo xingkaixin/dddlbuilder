@@ -287,11 +287,14 @@ describe('useSavedTables failure states', () => {
       await result.current.clearTablesFromFolders(['folder-a', 'folder-b']);
     });
 
-    expect(savedTableMocks.updateSavedTables).toHaveBeenCalledWith([
-      expect.objectContaining({
-        normalizedName: 'a',
-        folderId: undefined,
-      }),
-    ]);
+    expect(savedTableMocks.updateSavedTables).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          normalizedName: 'a',
+          folderId: undefined,
+        }),
+      ],
+      { kind: 'anonymous' },
+    );
   });
 });

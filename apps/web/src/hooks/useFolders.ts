@@ -1,6 +1,5 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type * as Y from 'yjs';
-import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import {
@@ -23,8 +22,7 @@ import {
   getFolder,
   type FolderTreeNode,
 } from '@/utils/tableFolders';
-import { getAnonymousWorkspaceScope, setCurrentWorkspaceScope } from '@/utils/workspaceScope';
-import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
+import { useWorkspaceScope } from '@/hooks/useWorkspaceScope';
 
 export type { FolderTreeNode };
 
@@ -36,7 +34,6 @@ interface UseFoldersState {
 }
 
 export function useFolders() {
-  const authSession = useAuthSession();
   const workspaceYDoc = useWorkspaceYDoc();
   const [state, setState] = useState<UseFoldersState>({
     folders: [],
@@ -46,22 +43,7 @@ export function useFolders() {
   });
   const loadRequestRef = useRef(0);
 
-  const currentScope = useMemo<WorkspaceScope | null>(() => {
-    if (authSession.status === 'loading') {
-      return null;
-    }
-    if (authSession.status === 'signed_in') {
-      if (!authSession.userId || !authSession.workspaceId) {
-        return null;
-      }
-      return {
-        kind: 'user',
-        userId: authSession.userId,
-        workspaceId: authSession.workspaceId,
-      };
-    }
-    return getAnonymousWorkspaceScope();
-  }, [authSession.status, authSession.userId, authSession.workspaceId]);
+  const currentScope = useWorkspaceScope();
   const yDocReady = Boolean(
     workspaceYDoc.doc &&
     workspaceYDoc.localSynced &&
@@ -87,7 +69,6 @@ export function useFolders() {
         return;
       }
 
-      setCurrentWorkspaceScope(currentScope);
       if (options?.showLoading !== false) {
         setState((prev) => ({ ...prev, loading: true, error: null }));
       }
@@ -147,7 +128,7 @@ export function useFolders() {
     async (name: string, parentId?: string) => {
       if (!currentScope) throw new Error('工作区未就绪');
       try {
-        const folder = await createFolder(name, parentId, currentScope);
+        const folder = await createFolder(name, currentScope, parentId);
         runInYDoc((doc) => upsertFolderInYDoc(doc, folder));
         await loadFolders();
         return folder;
@@ -231,7 +212,7 @@ export function useFolders() {
       if (!currentScope) throw new Error('工作区未就绪');
       try {
         if (!yDocReady || !workspaceYDoc.doc) {
-          await moveFolder(id, newParentId, currentScope);
+          await moveFolder(id, currentScope, newParentId);
           await loadFolders();
           return;
         }

@@ -13,7 +13,6 @@ import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import {
   buildScopedWorkspaceKey,
   getAnonymousWorkspaceScope,
-  getCurrentWorkspaceScope,
   getWorkspaceScopeStorageKey,
 } from './workspaceScope';
 import { normalizePersistedRows } from './helpers';
@@ -358,9 +357,7 @@ export const ensureSavedTableName = (name: string): string => {
   return trimmed || DEFAULT_SAVED_TABLE_NAME;
 };
 
-export const listSavedTables = async (
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
-): Promise<SavedTableRecord[]> => {
+export const listSavedTables = async (scope: WorkspaceScope): Promise<SavedTableRecord[]> => {
   const records = await runWithStore<SavedTableRecord[]>('readonly', (store) => store.getAll());
   if (!Array.isArray(records)) return [];
   return records
@@ -369,7 +366,7 @@ export const listSavedTables = async (
 };
 
 export const listTrashedSavedTables = async (
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<SavedTableRecord[]> => {
   const records = await runWithStore<SavedTableRecord[]>('readonly', (store) => store.getAll());
   if (!Array.isArray(records)) return [];
@@ -380,7 +377,7 @@ export const listTrashedSavedTables = async (
 
 // 仅获取元数据（性能优化）
 export const listSavedTableMetadata = async (
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<SavedTableMetadata[]> => {
   const records = await listSavedTables(scope);
 
@@ -396,7 +393,7 @@ export const listSavedTableMetadata = async (
 };
 
 export const listTrashedSavedTableMetadata = async (
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<SavedTableMetadata[]> => {
   const records = await listTrashedSavedTables(scope);
 
@@ -414,7 +411,7 @@ export const listTrashedSavedTableMetadata = async (
 
 export const getSavedTable = async (
   normalizedName: string,
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<SavedTableRecord | null> => {
   const record = await runWithStore<SavedTableRecord | undefined>('readonly', (store) =>
     store.get(withScopeKey(scope, normalizedName)),
@@ -427,7 +424,7 @@ export const getSavedTable = async (
 
 export const addSavedTable = async (
   record: SavedTableRecord,
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<void> => {
   await runWithStore<IDBValidKey>('readwrite', (store) =>
     store.add({
@@ -440,7 +437,7 @@ export const addSavedTable = async (
 
 export const updateSavedTable = async (
   record: SavedTableRecord,
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<void> => {
   await runWithStore<IDBValidKey>('readwrite', (store) =>
     store.put({
@@ -453,7 +450,7 @@ export const updateSavedTable = async (
 
 export const updateSavedTables = async (
   records: SavedTableRecord[],
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<void> => {
   if (records.length === 0) return;
   const db = await openDb();
@@ -478,7 +475,7 @@ export const updateSavedTables = async (
 
 export const deleteSavedTable = async (
   normalizedName: string,
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<void> => {
   await runWithStore<undefined>('readwrite', (store) =>
     store.delete(withScopeKey(scope, normalizedName)),
@@ -487,7 +484,7 @@ export const deleteSavedTable = async (
 
 export const moveSavedTableToTrash = async (
   normalizedName: string,
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<void> => {
   const record = await getSavedTable(normalizedName, scope);
   if (!record) return;
@@ -503,7 +500,7 @@ export const moveSavedTableToTrash = async (
 
 export const restoreSavedTableFromTrash = async (
   normalizedName: string,
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
+  scope: WorkspaceScope,
 ): Promise<void> => {
   const records = await listTrashedSavedTables(scope);
   const record = records.find((item) => item.normalizedName === normalizedName);

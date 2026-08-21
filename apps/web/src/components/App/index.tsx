@@ -48,6 +48,7 @@ import { useSuggestionAnimation } from '@/hooks/useSuggestionAnimation';
 import { useSavedTables } from '@/hooks/useSavedTables';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import { useFolders } from '@/hooks/useFolders';
+import { useWorkspaceScope } from '@/hooks/useWorkspaceScope';
 import { useFieldTemplates } from '@/hooks/useFieldTemplates';
 import { useTableTemplates } from '@/hooks/useTableTemplates';
 import { countVersions } from '@/utils/tableVersions';
@@ -93,6 +94,7 @@ const createEmptyGlobalDraftState = (): PersistedState => ({
 
 function App() {
   const { t } = useTranslation();
+  const workspaceScope = useWorkspaceScope();
 
   // ─── 1. Zustand selectors (aggregated) ─────────────────────────
   const {
@@ -771,16 +773,20 @@ function App() {
     onSaveSuccess: async ({ normalizedName, displayName, baseSignature, mode }) => {
       if (isShareView) {
         try {
-          await writeWorkspaceSession({
-            activeSource: {
-              kind: 'saved_table',
-              normalizedName,
-              tableName: displayName,
-              baseSignature,
+          if (!workspaceScope) throw new Error('工作区未就绪');
+          await writeWorkspaceSession(
+            {
+              activeSource: {
+                kind: 'saved_table',
+                normalizedName,
+                tableName: displayName,
+                baseSignature,
+              },
+              activeState: null,
+              updatedAt: Date.now(),
             },
-            activeState: null,
-            updatedAt: Date.now(),
-          });
+            workspaceScope,
+          );
           sessionStorage.setItem(SHARE_COPY_SAVED_TOAST_KEY, displayName);
         } catch {
           // ignore persistence errors
@@ -1835,6 +1841,7 @@ function App() {
             onOpenChange: setIsErDialogOpen,
             onSelectTable: handleSelectTableFromEr,
             saveTable,
+            workspaceScope,
           }}
           emptyTrashDialog={{
             open: isEmptyTrashDialogOpen,

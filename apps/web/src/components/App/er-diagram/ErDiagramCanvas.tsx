@@ -17,6 +17,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { ErNodeData, ErEdgeData } from '@ddlbuilder/shared-types';
+import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { updateSavedTable, type SavedTableRecord } from '@/utils/savedTablesDb';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
@@ -113,6 +114,7 @@ interface CanvasInnerProps {
   onSelectTable: (state: PersistedState) => void;
   onRefresh: () => Promise<void>;
   onAddTable: () => void;
+  workspaceScope: WorkspaceScope | null;
 }
 
 type PendingRelationship = {
@@ -122,7 +124,14 @@ type PendingRelationship = {
   targetField: string;
 };
 
-function CanvasInner({ tables, loading, onSelectTable, onRefresh, onAddTable }: CanvasInnerProps) {
+function CanvasInner({
+  tables,
+  loading,
+  onSelectTable,
+  onRefresh,
+  onAddTable,
+  workspaceScope,
+}: CanvasInnerProps) {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const { fitView } = useReactFlow();
@@ -163,6 +172,7 @@ function CanvasInner({ tables, loading, onSelectTable, onRefresh, onAddTable }: 
 
   const handleDeleteForeignKey = useCallback(
     async (fkId: string) => {
+      if (!workspaceScope) return;
       const sourceRecord = tables.find((t) => t.state.foreignKeys?.some((fk) => fk.id === fkId));
       if (!sourceRecord) return;
 
@@ -171,16 +181,19 @@ function CanvasInner({ tables, loading, onSelectTable, onRefresh, onAddTable }: 
         foreignKeys: sourceRecord.state.foreignKeys?.filter((fk) => fk.id !== fkId) || [],
       };
 
-      await updateSavedTable({
-        ...sourceRecord,
-        state: updatedState,
-        updatedAt: Date.now(),
-      });
+      await updateSavedTable(
+        {
+          ...sourceRecord,
+          state: updatedState,
+          updatedAt: Date.now(),
+        },
+        workspaceScope,
+      );
 
       await onRefresh();
       showToast(t('erDiagram.toast.fkDeleted'));
     },
-    [tables, onRefresh, showToast, t],
+    [onRefresh, showToast, t, tables, workspaceScope],
   );
 
   useEffect(() => {
@@ -229,14 +242,17 @@ function CanvasInner({ tables, loading, onSelectTable, onRefresh, onAddTable }: 
 
   const handleCreateRelationship = useCallback(
     async (plan: TableRelationshipPlan) => {
-      if (!pendingRelationship) return;
+      if (!pendingRelationship || !workspaceScope) return;
 
       try {
-        await updateSavedTable({
-          ...pendingRelationship.sourceRecord,
-          state: plan.sourceState,
-          updatedAt: Date.now(),
-        });
+        await updateSavedTable(
+          {
+            ...pendingRelationship.sourceRecord,
+            state: plan.sourceState,
+            updatedAt: Date.now(),
+          },
+          workspaceScope,
+        );
         await onRefresh();
         setPendingRelationship(null);
         showToast(t('erDiagram.relationship.success'));
@@ -244,7 +260,7 @@ function CanvasInner({ tables, loading, onSelectTable, onRefresh, onAddTable }: 
         showToast(t('erDiagram.relationship.saveFailed'));
       }
     },
-    [onRefresh, pendingRelationship, showToast, t],
+    [onRefresh, pendingRelationship, showToast, t, workspaceScope],
   );
 
   const handleAutoLayout = useCallback(() => {
@@ -326,6 +342,7 @@ interface ErDiagramCanvasProps {
   onSelectTable: (state: PersistedState) => void;
   onRefresh: () => Promise<void>;
   onAddTable: () => void;
+  workspaceScope: WorkspaceScope | null;
 }
 
 function ErDiagramCanvas({
@@ -334,6 +351,7 @@ function ErDiagramCanvas({
   onSelectTable,
   onRefresh,
   onAddTable,
+  workspaceScope,
 }: ErDiagramCanvasProps) {
   return (
     <ReactFlowProvider>
@@ -343,6 +361,7 @@ function ErDiagramCanvas({
         onSelectTable={onSelectTable}
         onRefresh={onRefresh}
         onAddTable={onAddTable}
+        workspaceScope={workspaceScope}
       />
     </ReactFlowProvider>
   );

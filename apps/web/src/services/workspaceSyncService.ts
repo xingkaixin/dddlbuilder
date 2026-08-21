@@ -23,19 +23,20 @@ import {
   upsertSavedDraft,
   writeDraft,
 } from '@/utils/workspaceStateDb';
-import { getCurrentWorkspaceScope } from '@/utils/workspaceScope';
 
 export const WORKSPACE_SNAPSHOT_APPLIED_EVENT = 'ddlbuilder:workspace-snapshot-applied';
 
-const upsertLocalSavedTable = async (input: {
-  normalizedName: string;
-  name: string;
-  state: PersistedState;
-  createdAt?: number;
-  updatedAt: number;
-  folderId?: string;
-}) => {
-  const scope = getCurrentWorkspaceScope();
+const upsertLocalSavedTable = async (
+  input: {
+    normalizedName: string;
+    name: string;
+    state: PersistedState;
+    createdAt?: number;
+    updatedAt: number;
+    folderId?: string;
+  },
+  scope: WorkspaceScope,
+) => {
   const existing = await getSavedTable(input.normalizedName, scope);
   if (existing) {
     if (existing.updatedAt > input.updatedAt) {
@@ -146,10 +147,10 @@ export const applyCloudSnapshotToLocal = async (
   snapshot: WorkspaceSnapshot,
   options: {
     overwrite?: boolean;
-    scope?: WorkspaceScope;
-  } = {},
+    scope: WorkspaceScope;
+  },
 ) => {
-  const scope = options.scope ?? getCurrentWorkspaceScope();
+  const { scope } = options;
 
   if (options.overwrite) {
     await replaceLocalWorkspaceSnapshot(snapshot, scope);
@@ -184,7 +185,7 @@ export const applyCloudSnapshotToLocal = async (
   }
 
   for (const item of snapshot.savedTables) {
-    await upsertLocalSavedTable({ ...item });
+    await upsertLocalSavedTable({ ...item }, scope);
   }
 
   const localSavedDrafts = await listSavedDrafts(scope);
