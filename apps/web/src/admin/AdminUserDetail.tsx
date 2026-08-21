@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -17,18 +18,18 @@ import {
 } from '@/components/ui/alert-dialog';
 import { ArrowLeft, Mail, Ban, PlusCircle } from '@/components/icons';
 import {
-  getUserDetail,
-  getUserCreditLedger,
-  getUserUsageEvents,
   resetUserPassword,
   disableUser,
   enableUser,
   updateUserEmailVerification,
   grantUserCredits,
-  type AdminUserDetail as AdminUserDetailType,
-  type CreditLedgerItem,
-  type UsageEventItem,
 } from './lib/adminApi';
+import {
+  adminLedgerOptions,
+  adminQueryKeys,
+  adminUsageOptions,
+  adminUserOptions,
+} from '@/queries/admin';
 
 type AdminUserDetailProps = {
   userId: string;
@@ -37,17 +38,14 @@ type AdminUserDetailProps = {
 
 export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
   const { t } = useTranslation();
-  const [user, setUser] = useState<AdminUserDetailType | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Credit ledger
-  const [ledger, setLedger] = useState<CreditLedgerItem[]>([]);
-  const [ledgerLoading, setLedgerLoading] = useState(false);
-
-  // Usage events
-  const [usageEvents, setUsageEvents] = useState<UsageEventItem[]>([]);
-  const [usageTotal, setUsageTotal] = useState(0);
-  const [usageLoading, setUsageLoading] = useState(false);
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState('credits');
+  const userQuery = useQuery(adminUserOptions(userId));
+  const ledgerQuery = useQuery(adminLedgerOptions(userId, 50));
+  const usageQuery = useQuery({
+    ...adminUsageOptions(userId, 50, 0),
+    enabled: activeTab === 'usage',
+  });
 
   // Dialogs
   const [disableDialogOpen, setDisableDialogOpen] = useState(false);
@@ -57,55 +55,31 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
   const [disableReason, setDisableReason] = useState('');
   const [creditAmount, setCreditAmount] = useState('');
   const [creditNote, setCreditNote] = useState('');
-
-  const fetchUser = useCallback(async () => {
-    setLoading(true);
-    try {
-      const detail = await getUserDetail(userId);
-      setUser(detail);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to load user');
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    void fetchUser();
-  }, [fetchUser]);
-
-  const loadCredits = useCallback(async () => {
-    setLedgerLoading(true);
-    try {
-      const items = await getUserCreditLedger(userId, 50);
-      setLedger(items);
-    } catch {
-      toast.error('Failed to load credit ledger');
-    } finally {
-      setLedgerLoading(false);
-    }
-  }, [userId]);
-
-  const loadUsage = useCallback(async () => {
-    setUsageLoading(true);
-    try {
-      const result = await getUserUsageEvents(userId, 50, 0);
-      setUsageEvents(result.items);
-      setUsageTotal(result.total);
-    } catch {
-      toast.error('Failed to load usage events');
-    } finally {
-      setUsageLoading(false);
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    void loadCredits();
-  }, [loadCredits]);
+  const resetPasswordMutation = useMutation({
+    mutationFn: () => resetUserPassword(userId),
+    retry: false,
+  });
+  const disableMutation = useMutation({
+    mutationFn: (reason?: string) => disableUser(userId, reason),
+    retry: false,
+  });
+  const enableMutation = useMutation({
+    mutationFn: () => enableUser(userId),
+    retry: false,
+  });
+  const emailVerificationMutation = useMutation({
+    mutationFn: (verified: boolean) => updateUserEmailVerification(userId, verified),
+    retry: false,
+  });
+  const grantCreditsMutation = useMutation({
+    mutationFn: ({ amount, note }: { amount: number; note?: string }) =>
+      grantUserCredits(userId, amount, note),
+    retry: false,
+  });
 
   const handleResetPassword = async () => {
     try {
-      await resetUserPassword(userId);
+      await resetPasswordMutation.mutateAsync();
       toast.success(t('admin.detail.resetEmailSent'));
     } catch {
       toast.error('Failed to send reset email');
@@ -114,11 +88,11 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
 
   const handleDisable = async () => {
     try {
-      await disableUser(userId, disableReason || undefined);
+      await disableMutation.mutateAsync(disableReason || undefined);
       toast.success(t('admin.detail.disableSuccess'));
       setDisableDialogOpen(false);
       setDisableReason('');
-      await fetchUser();
+      await queryClient.invalidateQueries({ queryKey: adminQueryKeys.usersRoot });
     } catch {
       toast.error('Failed to disable user');
     }
@@ -126,9 +100,9 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
 
   const handleEnable = async () => {
     try {
-      await enableUser(userId);
+      await enableMutation.mutateAsync();
       toast.success(t('admin.detail.enableSuccess'));
-      await fetchUser();
+      await queryClient.invalidateQueries({ queryKey: adminQueryKeys.usersRoot });
     } catch {
       toast.error('Failed to enable user');
     }
@@ -136,13 +110,13 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
 
   const handleEmailVerification = async (verified: boolean) => {
     try {
-      await updateUserEmailVerification(userId, verified);
+      await emailVerificationMutation.mutateAsync(verified);
       toast.success(
         verified
           ? t('admin.detail.markEmailVerifiedSuccess')
           : t('admin.detail.markEmailUnverifiedSuccess'),
       );
-      await fetchUser();
+      await queryClient.invalidateQueries({ queryKey: adminQueryKeys.usersRoot });
     } catch {
       toast.error('Failed to update email verification');
     }
@@ -154,21 +128,38 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
     if (!Number.isFinite(amount) || amount <= 0) return;
 
     try {
-      await grantUserCredits(userId, amount, creditNote || undefined);
+      await grantCreditsMutation.mutateAsync({ amount, note: creditNote || undefined });
       toast.success(t('admin.detail.creditsAdded', { amount }));
       setCreditsDialogOpen(false);
       setCreditAmount('');
       setCreditNote('');
-      await fetchUser();
-      await loadCredits();
+      await queryClient.invalidateQueries({ queryKey: adminQueryKeys.usersRoot });
     } catch {
       toast.error('Failed to grant credits');
     }
   };
 
-  if (loading || !user) {
+  if (userQuery.isPending) {
     return <div className="flex items-center justify-center py-20 text-muted-foreground">...</div>;
   }
+
+  if (userQuery.isError) {
+    return (
+      <div className="py-20 text-center">
+        <p className="text-destructive">
+          {userQuery.error instanceof Error ? userQuery.error.message : 'Failed to load user'}
+        </p>
+        <Button variant="outline" className="mt-4" onClick={() => void userQuery.refetch()}>
+          {t('common.retry', '重试')}
+        </Button>
+      </div>
+    );
+  }
+
+  const user = userQuery.data;
+  const ledger = ledgerQuery.data ?? [];
+  const usageEvents = usageQuery.data?.items ?? [];
+  const usageTotal = usageQuery.data?.total ?? 0;
 
   const formatKind = (kind: string) => {
     switch (kind) {
@@ -262,21 +253,17 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
       </div>
 
       {/* Tabs: Credits + Usage */}
-      <Tabs
-        defaultValue="credits"
-        onValueChange={(tab) => {
-          if (tab === 'credits' && ledger.length === 0) void loadCredits();
-          if (tab === 'usage' && usageEvents.length === 0) void loadUsage();
-        }}
-      >
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="credits">{t('admin.detail.tabs.credits')}</TabsTrigger>
           <TabsTrigger value="usage">{t('admin.detail.tabs.usage')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="credits" className="mt-4">
-          {ledgerLoading ? (
+          {ledgerQuery.isPending ? (
             <div className="py-8 text-center text-muted-foreground">...</div>
+          ) : ledgerQuery.isError ? (
+            <div className="py-8 text-center text-destructive">Failed to load credit ledger</div>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <table className="w-full text-sm">
@@ -338,8 +325,10 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
         </TabsContent>
 
         <TabsContent value="usage" className="mt-4">
-          {usageLoading ? (
+          {usageQuery.isPending ? (
             <div className="py-8 text-center text-muted-foreground">...</div>
+          ) : usageQuery.isError ? (
+            <div className="py-8 text-center text-destructive">Failed to load usage events</div>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <table className="w-full text-sm">

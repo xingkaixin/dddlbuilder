@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
-import { listUsers, type AdminUserSummary } from './lib/adminApi';
 import { Button } from '@/components/ui/button';
 import { Eye } from '@/components/icons';
+import { adminUsersOptions } from '@/queries/admin';
 
 type AdminUserListProps = {
   onSelectUser: (userId: string) => void;
@@ -13,45 +12,26 @@ const PAGE_SIZE = 50;
 
 export function AdminUserList({ onSelectUser }: AdminUserListProps) {
   const { t } = useTranslation();
-  const [users, setUsers] = useState<AdminUserSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const usersQuery = useQuery(adminUsersOptions(PAGE_SIZE, 0));
 
-  const fetchUsers = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await listUsers(PAGE_SIZE, 0);
-      setUsers(data);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load users';
-      setError(message);
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void fetchUsers();
-  }, [fetchUsers]);
-
-  if (loading) {
+  if (usersQuery.isPending) {
     return <div className="flex items-center justify-center py-20 text-muted-foreground">...</div>;
   }
 
-  if (error) {
+  if (usersQuery.isError) {
+    const message =
+      usersQuery.error instanceof Error ? usersQuery.error.message : 'Failed to load users';
     return (
       <div className="text-center py-20">
-        <p className="text-destructive">{error}</p>
-        <Button variant="outline" className="mt-4" onClick={fetchUsers}>
+        <p className="text-destructive">{message}</p>
+        <Button variant="outline" className="mt-4" onClick={() => void usersQuery.refetch()}>
           {t('common.retry', '重试')}
         </Button>
       </div>
     );
   }
 
-  if (users.length === 0) {
+  if (usersQuery.data.length === 0) {
     return (
       <div className="text-center py-20 text-muted-foreground">{t('admin.users.noUsers')}</div>
     );
@@ -75,7 +55,7 @@ export function AdminUserList({ onSelectUser }: AdminUserListProps) {
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
+            {usersQuery.data.map((user) => (
               <tr
                 key={user.id}
                 className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"

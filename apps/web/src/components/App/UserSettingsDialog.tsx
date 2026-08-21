@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, Coins, RefreshCw, User2 } from '@/components/icons';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 import {
@@ -23,18 +24,9 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/useToast';
 import { useLocale } from '@/i18n/LocaleContext';
-import type { ApiErrorPayload } from '@ddlbuilder/shared-types/api';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
-
-type CreditLedgerItem = {
-  id: string;
-  kind: 'grant' | 'consume' | 'refund';
-  source: 'signup_bonus' | 'ai_generate' | 'ai_review' | 'ai_explain' | 'manual_adjustment';
-  amount: number;
-  balanceAfter: number;
-  createdAt: string;
-  metadataJson?: string | null;
-};
+import { creditLedgerOptions } from '@/queries/credits';
+import type { CreditLedgerItem } from '@/services/creditService';
 
 interface UserSettingsDialogProps {
   open: boolean;
@@ -43,9 +35,6 @@ interface UserSettingsDialogProps {
 
 type SettingsTab = 'account' | 'workspace' | 'credits';
 const LEDGER_PAGE_SIZE = 20;
-
-const getErrorMessage = (payload: ApiErrorPayload | null, fallback: string) =>
-  payload && typeof payload.error === 'string' ? payload.error : fallback;
 
 const parseLedgerDate = (value: string) => {
   const normalized =
@@ -153,16 +142,34 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
   const [confirmPassword, setConfirmPassword] = useState('');
   const [savingName, setSavingName] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
-  const [loadingLedger, setLoadingLedger] = useState(false);
-  const [ledgerError, setLedgerError] = useState<string | null>(null);
-  const [ledgerItems, setLedgerItems] = useState<CreditLedgerItem[]>([]);
-  const [ledgerTotal, setLedgerTotal] = useState(0);
   const [ledgerPage, setLedgerPage] = useState(1);
   const [ledgerStartDate, setLedgerStartDate] = useState('');
   const [ledgerEndDate, setLedgerEndDate] = useState('');
   const [rechargeOpen, setRechargeOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('account');
   const compactCreditBalance = formatCompactCredits(authSession.creditBalance, locale);
+  const ledgerFilters = useMemo(() => {
+    const startAt = ledgerStartDate ? toLedgerBoundary(ledgerStartDate) : null;
+    const endAt = ledgerEndDate ? toLedgerBoundary(ledgerEndDate, true) : null;
+    return {
+      limit: LEDGER_PAGE_SIZE,
+      offset: (ledgerPage - 1) * LEDGER_PAGE_SIZE,
+      ...(startAt ? { startAt } : {}),
+      ...(endAt ? { endAt } : {}),
+    };
+  }, [ledgerEndDate, ledgerPage, ledgerStartDate]);
+  const ledgerQuery = useQuery({
+    ...creditLedgerOptions(authSession.userId ?? '', ledgerFilters),
+    enabled: open && authSession.status === 'signed_in' && Boolean(authSession.userId),
+  });
+  const ledgerItems = ledgerQuery.data?.items ?? [];
+  const ledgerTotal = ledgerQuery.data?.total ?? 0;
+  const loadingLedger = ledgerQuery.isFetching;
+  const ledgerError = ledgerQuery.isError
+    ? ledgerQuery.error instanceof Error
+      ? ledgerQuery.error.message
+      : t('settings.loadFailed')
+    : null;
 
   useEffect(() => {
     if (!open) {
@@ -175,66 +182,6 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
     () => Math.max(1, Math.ceil(ledgerTotal / LEDGER_PAGE_SIZE)),
     [ledgerTotal],
   );
-
-  const loadLedger = useCallback(
-    async (signal: AbortSignal) => {
-      try {
-        setLoadingLedger(true);
-        setLedgerError(null);
-        const params = new URLSearchParams({
-          limit: String(LEDGER_PAGE_SIZE),
-          offset: String((ledgerPage - 1) * LEDGER_PAGE_SIZE),
-        });
-        const startAt = ledgerStartDate ? toLedgerBoundary(ledgerStartDate) : null;
-        const endAt = ledgerEndDate ? toLedgerBoundary(ledgerEndDate, true) : null;
-        if (startAt) params.set('startAt', startAt);
-        if (endAt) params.set('endAt', endAt);
-
-        const response = await fetch(`/api/credits/ledger?${params.toString()}`, {
-          credentials: 'include',
-          signal,
-        });
-        const payload = (await response.json().catch(() => null)) as {
-          items?: CreditLedgerItem[];
-          total?: number;
-          error?: string;
-        } | null;
-        if (!response.ok) {
-          throw new Error(
-            getErrorMessage(payload as ApiErrorPayload | null, t('settings.loadFailed')),
-          );
-        }
-        setLedgerItems(Array.isArray(payload?.items) ? payload.items : []);
-        setLedgerTotal(Number.isFinite(payload?.total) ? Number(payload?.total) : 0);
-      } catch (err) {
-        if (!(err instanceof DOMException && err.name === 'AbortError')) {
-          setLedgerError(err instanceof Error ? err.message : t('settings.loadFailed'));
-        }
-      } finally {
-        if (!signal.aborted) {
-          setLoadingLedger(false);
-        }
-      }
-    },
-    [ledgerEndDate, ledgerPage, ledgerStartDate, t],
-  );
-
-  useEffect(() => {
-    setLedgerPage(1);
-  }, [ledgerEndDate, ledgerStartDate]);
-
-  useEffect(() => {
-    if (!open || authSession.status !== 'signed_in') {
-      return;
-    }
-
-    const controller = new AbortController();
-    void loadLedger(controller.signal);
-
-    return () => {
-      controller.abort();
-    };
-  }, [authSession.status, loadLedger, open]);
 
   const handleUpdateName = async () => {
     const trimmedName = name.trim();
@@ -455,7 +402,10 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                           type="date"
                           value={ledgerStartDate}
                           max={ledgerEndDate || undefined}
-                          onChange={(event) => setLedgerStartDate(event.target.value)}
+                          onChange={(event) => {
+                            setLedgerStartDate(event.target.value);
+                            setLedgerPage(1);
+                          }}
                           className="h-8 text-xs"
                         />
                       </label>
@@ -465,7 +415,10 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                           type="date"
                           value={ledgerEndDate}
                           min={ledgerStartDate || undefined}
-                          onChange={(event) => setLedgerEndDate(event.target.value)}
+                          onChange={(event) => {
+                            setLedgerEndDate(event.target.value);
+                            setLedgerPage(1);
+                          }}
                           className="h-8 text-xs"
                         />
                       </label>
@@ -478,6 +431,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                         onClick={() => {
                           setLedgerStartDate('');
                           setLedgerEndDate('');
+                          setLedgerPage(1);
                         }}
                       >
                         {t('settings.clearFilter')}

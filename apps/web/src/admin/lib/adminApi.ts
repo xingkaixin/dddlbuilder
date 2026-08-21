@@ -47,7 +47,7 @@ const adminFetch = async <T>(path: string, options?: RequestInit): Promise<T> =>
   });
   const json = (await res.json()) as ApiErrorResponse & T;
   if (!res.ok) {
-    throw new Error(json.error ?? `Request failed: ${res.status}`);
+    throw new ApiError(json.error ?? `Request failed: ${res.status}`, res.status);
   }
   return json as T;
 };
@@ -154,3 +154,4 @@ export const getUserUsageEvents = async (
 ): Promise<{ items: UsageEventItem[]; total: number }> => {
   return adminFetch(`/users/${userId}/usage-events?limit=${limit}&offset=${offset}`);
 };
+import { ApiError } from '@/services/apiError';

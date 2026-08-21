@@ -1,11 +1,11 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type * as Y from 'yjs';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
-import { buildShareStateQueryKey } from '@/queryKeys/share';
-import { ShareApiError, getShareState } from '@/services/shareService';
+import { shareStateOptions } from '@/queries/share';
+import { ShareApiError } from '@/services/shareService';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import {
   deleteDraftFromYDoc,
@@ -76,8 +76,6 @@ import {
   writeStorageJson,
 } from './workspacePersistence/storage';
 
-const SHARE_CACHE_GC_TIME_MS = 15 * 60 * 1000;
-
 const sortDraftSummaries = (drafts: DraftSummary[]) =>
   [...drafts].sort((a, b) => b.createdAt - a.createdAt || a.draftId.localeCompare(b.draftId));
 
@@ -116,10 +114,13 @@ export interface UsePersistedStateReturn {
 export function usePersistedState(): UsePersistedStateReturn {
   const authSession = useAuthSession();
   const workspaceYDoc = useWorkspaceYDoc();
-  const queryClient = useQueryClient();
   const pathInfo = useShareRoute();
   const shareId = pathInfo.shareId;
   const shareStorageKey = shareId ? buildShareStorageKey(shareId) : null;
+  const shareQuery = useQuery({
+    ...shareStateOptions(shareId ?? ''),
+    enabled: Boolean(shareId && shareStorageKey && !pathInfo.invalid),
+  });
   const [hydrated, setHydrated] = useState(false);
   const [persistedState, setPersistedState] = useState<PersistedState | null>(null);
   const [shareLoadStatus, setShareLoadStatus] = useState<ShareLoadStatus>('idle');
@@ -640,35 +641,31 @@ export function usePersistedState(): UsePersistedStateReturn {
       hydrateWithState(cachedShareState);
     }
 
-    queryClient
-      .fetchQuery({
-        queryKey: buildShareStateQueryKey(shareId),
-        staleTime: Number.POSITIVE_INFINITY,
-        gcTime: SHARE_CACHE_GC_TIME_MS,
-        queryFn: () => getShareState(shareId),
-      })
-      .then((state) => {
-        if (cancelled) return;
-        hydrateWithState(state);
-        writeStorageJson(shareStorageKey, state);
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        if (error instanceof ShareApiError && error.code === 'SHARE_NOT_FOUND') {
-          setShareLoadStatus('not_found');
-        } else {
-          setShareLoadStatus('error');
-        }
-        leaveShareRoute();
-      });
+    if (shareQuery.isSuccess) {
+      hydrateWithState(shareQuery.data);
+      writeStorageJson(shareStorageKey, shareQuery.data);
+    } else if (shareQuery.isError) {
+      if (
+        shareQuery.error instanceof ShareApiError &&
+        shareQuery.error.code === 'SHARE_NOT_FOUND'
+      ) {
+        setShareLoadStatus('not_found');
+      } else {
+        setShareLoadStatus('error');
+      }
+      leaveShareRoute();
+    }
 
     return () => {
       cancelled = true;
     };
   }, [
     pathInfo.invalid,
-    queryClient,
     shareId,
+    shareQuery.data,
+    shareQuery.error,
+    shareQuery.isError,
+    shareQuery.isSuccess,
     shareStorageKey,
     currentScope,
     syncActiveSource,

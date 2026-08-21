@@ -1,6 +1,7 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { decodePersistedState } from '@ddlbuilder/workspace-core';
 import i18n from '@/i18n';
+import { ApiError } from '@/services/apiError';
 
 const SHARE_API_ENDPOINT = '/api/share';
 
@@ -20,15 +21,10 @@ export interface GetShareResponse {
   state: PersistedState;
 }
 
-export class ShareApiError extends Error {
-  code?: string;
-  status: number;
-
+export class ShareApiError extends ApiError {
   constructor(message: string, status: number, code?: string) {
-    super(message);
+    super(message, status, code);
     this.name = 'ShareApiError';
-    this.status = status;
-    this.code = code;
   }
 }
 
