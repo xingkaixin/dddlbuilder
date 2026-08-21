@@ -11,9 +11,6 @@ interface UseClearAllActionsParams {
   resetCitusSharding: () => void;
   resetPartition: () => void;
   resetTableMiscConfig: () => void;
-  setLoadedTableNormalizedName: (name: string | null) => void;
-  setLoadedTableName: (name: string | null) => void;
-  setLoadedTableSignature: (signature: string | null) => void;
 }
 
 export function useClearAllActions({
@@ -27,9 +24,6 @@ export function useClearAllActions({
   resetCitusSharding,
   resetPartition,
   resetTableMiscConfig,
-  setLoadedTableNormalizedName,
-  setLoadedTableName,
-  setLoadedTableSignature,
 }: UseClearAllActionsParams) {
   const handleClearAll = useCallback(() => {
     setIsClearDialogOpen(true);
@@ -48,10 +42,6 @@ export function useClearAllActions({
     resetCitusSharding();
     resetPartition();
     resetTableMiscConfig();
-    setLoadedTableNormalizedName(null);
-    setLoadedTableName(null);
-    setLoadedTableSignature(null);
-
     clearState();
     cancelClearAll();
   }, [
@@ -63,9 +53,6 @@ export function useClearAllActions({
     resetCitusSharding,
     resetPartition,
     resetTableMiscConfig,
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
-    setLoadedTableSignature,
     clearState,
     cancelClearAll,
   ]);

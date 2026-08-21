@@ -23,12 +23,7 @@ interface UseSavedTableFlowActionsParams {
   tableName: string;
   hasLoadedTable: boolean;
   canSaveCurrent: boolean;
-  loadedTableNormalizedName: string | null;
-  loadedTableName: string | null;
-  loadedTableSignature: string | null;
-  setLoadedTableNormalizedName: (value: string | null) => void;
-  setLoadedTableName: (value: string | null) => void;
-  setLoadedTableSignature: (value: string | null) => void;
+  loadedTableSource: Extract<WorkspaceSource, { kind: 'saved_table' }> | null;
   setLoadedTableVersion: (version: number) => void;
   setSavedTablesDrawerOpen: (open: boolean) => void;
   saveDialog: UseDialogStateReturn<SaveDialogData>;
@@ -71,12 +66,7 @@ export function useSavedTableFlowActions({
   tableName,
   hasLoadedTable,
   canSaveCurrent,
-  loadedTableNormalizedName,
-  loadedTableName,
-  loadedTableSignature,
-  setLoadedTableNormalizedName,
-  setLoadedTableName,
-  setLoadedTableSignature,
+  loadedTableSource,
   setLoadedTableVersion,
   setSavedTablesDrawerOpen,
   saveDialog,
@@ -105,11 +95,7 @@ export function useSavedTableFlowActions({
     tableName,
     hasLoadedTable,
     canSaveCurrent,
-    loadedTableNormalizedName,
-    loadedTableName,
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
-    setLoadedTableSignature,
+    loadedTableSource,
     setLoadedTableVersion,
     setSavedTablesDrawerOpen,
     saveDialog,
@@ -128,11 +114,7 @@ export function useSavedTableFlowActions({
   });
 
   const renameDeleteActions = useRenameDeleteActions({
-    loadedTableNormalizedName,
-    loadedTableSignature,
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
-    setLoadedTableSignature,
+    loadedTableSource,
     renameDialog,
     deleteDialog,
     buildPersistedState,

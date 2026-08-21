@@ -30,11 +30,7 @@ interface UseSaveLoadActionsParams {
   tableName: string;
   hasLoadedTable: boolean;
   canSaveCurrent: boolean;
-  loadedTableNormalizedName: string | null;
-  loadedTableName: string | null;
-  setLoadedTableNormalizedName: (value: string | null) => void;
-  setLoadedTableName: (value: string | null) => void;
-  setLoadedTableSignature: (value: string | null) => void;
+  loadedTableSource: Extract<WorkspaceSource, { kind: 'saved_table' }> | null;
   setLoadedTableVersion: (version: number) => void;
   setSavedTablesDrawerOpen: (open: boolean) => void;
   saveDialog: UseDialogStateReturn<SaveDialogData>;
@@ -65,11 +61,7 @@ export function useSaveLoadActions({
   tableName,
   hasLoadedTable,
   canSaveCurrent,
-  loadedTableNormalizedName,
-  loadedTableName,
-  setLoadedTableNormalizedName,
-  setLoadedTableName,
-  setLoadedTableSignature,
+  loadedTableSource,
   setLoadedTableVersion,
   setSavedTablesDrawerOpen,
   saveDialog,
@@ -86,6 +78,8 @@ export function useSaveLoadActions({
   onSaveSuccess,
   onTableLoadStateChange,
 }: UseSaveLoadActionsParams) {
+  const loadedTableNormalizedName = loadedTableSource?.normalizedName ?? null;
+  const loadedTableName = loadedTableSource?.tableName ?? null;
   const saveName = saveDialog.data.name;
   const queuedLoadAfterSave = saveDialog.data.queuedLoadAfterSave;
 
@@ -150,9 +144,6 @@ export function useSaveLoadActions({
           stateToApply,
         );
         applySavedState(stateToApply);
-        setLoadedTableNormalizedName(record.normalizedName);
-        setLoadedTableName(record.name);
-        setLoadedTableSignature(savedBaseSignature);
         setLoadedTableVersion(resolvedVersion);
         showToast(`已加载：${record.name} (v${resolvedVersion})`);
 
@@ -168,9 +159,6 @@ export function useSaveLoadActions({
       loadTable,
       showToast,
       applySavedState,
-      setLoadedTableNormalizedName,
-      setLoadedTableName,
-      setLoadedTableSignature,
       setLoadedTableVersion,
       serializePersistedState,
       getSavedTableDraft,
@@ -215,7 +203,6 @@ export function useSaveLoadActions({
       savedNormalizedName = loadedTableNormalizedName;
       savedDisplayName = loadedTableName ?? saveName;
       saveMode = 'update';
-      setLoadedTableSignature(nextSignature);
       setWorkspaceSnapshot?.(
         {
           kind: 'saved_table',
@@ -241,9 +228,6 @@ export function useSaveLoadActions({
       savedNormalizedName = normalizedName;
       savedDisplayName = displayName;
       saveMode = 'create';
-      setLoadedTableNormalizedName(normalizedName);
-      setLoadedTableName(displayName);
-      setLoadedTableSignature(nextSignature);
       setWorkspaceSnapshot?.(
         {
           kind: 'saved_table',
@@ -290,14 +274,11 @@ export function useSaveLoadActions({
     hasLoadedTable,
     loadedTableNormalizedName,
     overwriteTable,
-    setLoadedTableSignature,
     setWorkspaceSnapshot,
     loadedTableName,
     saveName,
     setLoadedTableVersion,
     saveTable,
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
     saveDialog,
     onSaveSuccess,
     queuedLoadAfterSave,

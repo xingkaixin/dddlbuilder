@@ -25,9 +25,6 @@ export function useAppSelectors() {
     setIsClearDialogOpen,
     setShowFireworks,
     setSavedTablesDrawerOpen,
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
-    setLoadedTableSignature,
     setIsSaveDialogOpen,
     setIsRenameDialogOpen,
     setIsDeleteDialogOpen,
@@ -83,9 +80,6 @@ export function useAppSelectors() {
 
   // --- 保存表相关 ---
   const savedTablesDrawerOpen = useAppStore((s) => s.savedTablesDrawerOpen);
-  const loadedTableNormalizedName = useAppStore((s) => s.loadedTableNormalizedName);
-  const loadedTableName = useAppStore((s) => s.loadedTableName);
-  const loadedTableSignature = useAppStore((s) => s.loadedTableSignature);
 
   // --- 对话框开关 ---
   const isSaveDialogOpen = useAppStore((s) => s.dialogs.save);
@@ -143,12 +137,6 @@ export function useAppSelectors() {
     // 保存表
     savedTablesDrawerOpen,
     setSavedTablesDrawerOpen,
-    loadedTableNormalizedName,
-    setLoadedTableNormalizedName,
-    loadedTableName,
-    setLoadedTableName,
-    loadedTableSignature,
-    setLoadedTableSignature,
     // 对话框
     isSaveDialogOpen,
     setIsSaveDialogOpen,

@@ -13,9 +13,6 @@ function resetAppStore() {
   state.setIsDeleteDialogOpen(false);
   state.setIsClearDialogOpen(false);
   state.setShowFireworks(false);
-  state.setLoadedTableNormalizedName(null);
-  state.setLoadedTableName(null);
-  state.setLoadedTableSignature(null);
   state.setIsDiffDialogOpen(false);
   state.setVersionHistoryTarget(null);
   state.setIsReviewHistoryOpen(false);

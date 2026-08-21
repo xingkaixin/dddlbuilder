@@ -128,12 +128,6 @@ function App() {
     setShowFireworks,
     savedTablesDrawerOpen,
     setSavedTablesDrawerOpen,
-    loadedTableNormalizedName,
-    setLoadedTableNormalizedName,
-    loadedTableName,
-    setLoadedTableName,
-    loadedTableSignature,
-    setLoadedTableSignature,
     isSaveDialogOpen,
     setIsSaveDialogOpen,
     isRenameDialogOpen,
@@ -225,6 +219,10 @@ function App() {
     restoreDraftById,
     permanentlyDeleteDraftById,
   } = usePersistedState();
+  const loadedTableSource = activeSource.kind === 'saved_table' ? activeSource : null;
+  const loadedTableNormalizedName = loadedTableSource?.normalizedName ?? null;
+  const loadedTableName = loadedTableSource?.tableName ?? null;
+  const loadedTableSignature = loadedTableSource?.baseSignature ?? null;
 
   // ─── Tab store ─────────────────────────────────────────────────
   const {
@@ -589,12 +587,6 @@ function App() {
     showToast,
   });
 
-  const clearLoadedTable = useCallback(() => {
-    setLoadedTableNormalizedName(null);
-    setLoadedTableName(null);
-    setLoadedTableSignature(null);
-  }, [setLoadedTableName, setLoadedTableNormalizedName, setLoadedTableSignature]);
-
   const {
     isLoading: isReviewing,
     partialResult: reviewPartialResult,
@@ -664,10 +656,6 @@ function App() {
     saveState,
     buildPersistedState,
     applyPersistedState: applySavedState,
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
-    setLoadedTableSignature,
-    loadedTableNormalizedName,
     updateActiveTabSnapshot,
   });
 
@@ -682,27 +670,6 @@ function App() {
     resetCitusSharding,
     resetPartition,
     resetTableMiscConfig,
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
-    setLoadedTableSignature,
-  });
-
-  const {
-    isManagerOpen: isTableTemplateManagerOpen,
-    setIsManagerOpen: setIsTableTemplateManagerOpen,
-    isCreateDialogOpen: isCreateTableTemplateDialogOpen,
-    setIsCreateDialogOpen: setIsCreateTableTemplateDialogOpen,
-    pendingBlueprint: pendingTableTemplateBlueprint,
-    handleManageTemplates: handleManageTableTemplates,
-    handleSaveAsTemplate: handleSaveAsTableTemplate,
-    handleCreateTemplate: handleCreateTableTemplate,
-    handleApplyTemplate: handleApplyTableTemplate,
-  } = useTableTemplateActions({
-    currentState: currentPersistedState,
-    applyState: applySavedState,
-    createTemplate: createTableTemplate,
-    clearLoadedTable,
-    showToast,
   });
 
   const flushCurrentWorkspace = useCallback(() => {
@@ -781,12 +748,7 @@ function App() {
     tableName,
     hasLoadedTable,
     canSaveCurrent,
-    loadedTableNormalizedName,
-    loadedTableName,
-    loadedTableSignature,
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
-    setLoadedTableSignature,
+    loadedTableSource,
     setLoadedTableVersion,
     setSavedTablesDrawerOpen,
     saveDialog,
@@ -957,10 +919,6 @@ function App() {
         activateTab(existingTab.id);
         applySavedState(existingTab.stateSnapshot);
         selectWorkspaceSnapshot(existingTab.source, existingTab.stateSnapshot);
-        setLoadedTableNormalizedName(null);
-        setLoadedTableName(null);
-        setLoadedTableSignature(null);
-        setLoadedTableVersion(0);
         return;
       }
 
@@ -978,10 +936,6 @@ function App() {
       activateTab(newTabId);
       applySavedState(nextState);
       selectWorkspaceSnapshot({ kind: 'draft', draftId }, nextState);
-      setLoadedTableNormalizedName(null);
-      setLoadedTableName(null);
-      setLoadedTableSignature(null);
-      setLoadedTableVersion(0);
 
       showToast(existedDraftState ? t('app.loadedDraft') : t('app.emptyDraftCreated'));
     },
@@ -995,9 +949,6 @@ function App() {
       getDraftState,
       draftSummaries,
       addTab,
-      setLoadedTableNormalizedName,
-      setLoadedTableName,
-      setLoadedTableSignature,
       showToast,
       t,
       tabs,
@@ -1025,10 +976,6 @@ function App() {
       activateTab(newTabId);
       applySavedState(finalState);
       setWorkspaceSnapshot({ kind: 'draft', draftId }, finalState);
-      setLoadedTableNormalizedName(null);
-      setLoadedTableName(null);
-      setLoadedTableSignature(null);
-      setLoadedTableVersion(0);
     },
     [
       tabs.length,
@@ -1038,11 +985,25 @@ function App() {
       activateTab,
       applySavedState,
       setWorkspaceSnapshot,
-      setLoadedTableNormalizedName,
-      setLoadedTableName,
-      setLoadedTableSignature,
     ],
   );
+
+  const {
+    isManagerOpen: isTableTemplateManagerOpen,
+    setIsManagerOpen: setIsTableTemplateManagerOpen,
+    isCreateDialogOpen: isCreateTableTemplateDialogOpen,
+    setIsCreateDialogOpen: setIsCreateTableTemplateDialogOpen,
+    pendingBlueprint: pendingTableTemplateBlueprint,
+    handleManageTemplates: handleManageTableTemplates,
+    handleSaveAsTemplate: handleSaveAsTableTemplate,
+    handleCreateTemplate: handleCreateTableTemplate,
+    handleApplyTemplate: handleApplyTableTemplate,
+  } = useTableTemplateActions({
+    currentState: currentPersistedState,
+    applyState: openStateInNewDraftTab,
+    createTemplate: createTableTemplate,
+    showToast,
+  });
 
   const handleCreateDraft = useCallback(() => {
     openStateInNewDraftTab(createEmptyGlobalDraftState());
@@ -1260,22 +1221,10 @@ function App() {
 
   const handleSelectTableFromEr = useCallback(
     (state: PersistedState) => {
-      applySavedState(state);
-      setLoadedTableNormalizedName(null);
-      setLoadedTableName(null);
-      setLoadedTableSignature(null);
-      setLoadedTableVersion(0);
+      openStateInNewDraftTab(state);
       showToast(t('erDiagram.tableLoaded'));
     },
-    [
-      applySavedState,
-      setLoadedTableNormalizedName,
-      setLoadedTableName,
-      setLoadedTableSignature,
-      setLoadedTableVersion,
-      showToast,
-      t,
-    ],
+    [openStateInNewDraftTab, showToast, t],
   );
 
   // 下面这些回调与派生值原先写在 GlobalDialogs 的 props 字面量里，每次渲染都是新引用，

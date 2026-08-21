@@ -12,7 +12,6 @@ interface UseTableTemplateActionsParams {
     blueprint: TableBlueprint,
     description?: string,
   ) => Promise<{ ok: boolean; message?: string }>;
-  clearLoadedTable: () => void;
   showToast: (message: string) => void;
 }
 
@@ -20,7 +19,6 @@ export function useTableTemplateActions({
   currentState,
   applyState,
   createTemplate,
-  clearLoadedTable,
   showToast,
 }: UseTableTemplateActionsParams) {
   const [isManagerOpen, setIsManagerOpen] = useState(false);
@@ -53,10 +51,9 @@ export function useTableTemplateActions({
   const handleApplyTemplate = useCallback(
     (template: TableTemplate) => {
       applyState(applyBlueprintToState(currentState, template.blueprint));
-      clearLoadedTable();
       showToast(i18n.t('tableTemplate.toast.applied', { name: template.name }));
     },
-    [applyState, clearLoadedTable, currentState, showToast],
+    [applyState, currentState, showToast],
   );
 
   return {

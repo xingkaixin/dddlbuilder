@@ -32,7 +32,6 @@ function createBaseParams(overrides?: {
     isDirty: boolean;
   }) => void;
   activeSource?: WorkspaceSource;
-  loadedTableNormalizedName?: string | null;
 }) {
   return {
     hydrated: overrides?.hydrated ?? true,
@@ -42,10 +41,6 @@ function createBaseParams(overrides?: {
     saveState: overrides?.saveState ?? vi.fn(),
     buildPersistedState: overrides?.buildPersistedState ?? (() => createState('a')),
     applyPersistedState: vi.fn(),
-    setLoadedTableNormalizedName: vi.fn(),
-    setLoadedTableName: vi.fn(),
-    setLoadedTableSignature: vi.fn(),
-    loadedTableNormalizedName: overrides?.loadedTableNormalizedName ?? null,
   };
 }
 
@@ -322,7 +317,6 @@ describe('usePersistedSync debounce save', () => {
         tableName: 'Users',
         baseSignature: JSON.stringify(baseState),
       },
-      loadedTableNormalizedName: 'users',
     });
 
     renderHook(() => usePersistedSync(params));
@@ -375,7 +369,6 @@ describe('usePersistedSync debounce save', () => {
         tableName: 'Users',
         baseSignature: serializePersistedStateForComparison(baseState),
       },
-      loadedTableNormalizedName: 'users',
     });
 
     renderHook(() => usePersistedSync(params));
@@ -403,7 +396,6 @@ describe('usePersistedSync debounce save', () => {
         tableName: 'Users',
         baseSignature: JSON.stringify(createState('users')),
       },
-      loadedTableNormalizedName: 'users',
     });
 
     renderHook(() => usePersistedSync(params));
@@ -424,30 +416,7 @@ describe('usePersistedSync debounce save', () => {
     });
   });
 
-  it('应在 ActiveSource 与 LoadedName 不匹配时跳过保存（防止竞态条件）', () => {
-    const saveState = vi.fn();
-    const savedState = createState('saved_table_content');
-
-    // 模拟竞态条件：
-    // Source 仍为 Global Draft (旧)，但 Store 已更新为 Saved Table (新数据 + 新Name)
-    const params = createBaseParams({
-      saveState,
-      activeSource: { kind: 'draft', draftId: 'default' },
-      buildPersistedState: () => savedState, // 构建出的 State 是 SavedTable 的内容
-      loadedTableNormalizedName: 'users', // Store 认为当前加载的是 users 表
-    });
-
-    renderHook(() => usePersistedSync(params));
-
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
-
-    // 期望：因为 Source(Global) != LoadedName(users)，所以跳过保存
-    expect(saveState).not.toHaveBeenCalled();
-  });
-
-  it('应在 ActiveSource 与 LoadedName 匹配时正常保存', () => {
+  it('保存时应使用 activeSource', () => {
     const saveState = vi.fn();
     const savedState = createState('saved_table_content');
     const source: WorkspaceSource = {
@@ -461,7 +430,6 @@ describe('usePersistedSync debounce save', () => {
       saveState,
       activeSource: source,
       buildPersistedState: () => savedState,
-      loadedTableNormalizedName: 'users', // 匹配
     });
 
     renderHook(() => usePersistedSync(params));
@@ -475,32 +443,6 @@ describe('usePersistedSync debounce save', () => {
       source: source,
       isDirty: true,
     });
-  });
-
-  it('应在 source.kind 为 saved_table 且当 loadedTableNormalizedName 不匹配时跳过保存', () => {
-    const saveState = vi.fn();
-    const savedState = createState('saved_table_content');
-    const source: WorkspaceSource = {
-      kind: 'saved_table',
-      normalizedName: 'users',
-      tableName: 'Users',
-      baseSignature: '{"table":"users"}',
-    };
-
-    const params = createBaseParams({
-      saveState,
-      activeSource: source,
-      buildPersistedState: () => savedState,
-      loadedTableNormalizedName: 'other_table', // 不匹配
-    });
-
-    renderHook(() => usePersistedSync(params));
-
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
-
-    expect(saveState).not.toHaveBeenCalled();
   });
 });
 
@@ -522,55 +464,5 @@ describe('usePersistedSync useEffect synchronization', () => {
 
     expect(applyPersistedState).toHaveBeenCalledOnce();
     expect(applyPersistedState).toHaveBeenCalledWith(persistedState);
-  });
-
-  it('如果 activeSource 为 saved_table，应设置 loadedTable', () => {
-    const setLoadedTableNormalizedName = vi.fn();
-    const setLoadedTableName = vi.fn();
-    const setLoadedTableSignature = vi.fn();
-
-    const params = createBaseParams({
-      hydrated: true,
-      persistedState: createState('test'),
-      activeSource: {
-        kind: 'saved_table',
-        normalizedName: 'norm_test',
-        tableName: 'test',
-        baseSignature: 'sig',
-      },
-    });
-    params.setLoadedTableNormalizedName = setLoadedTableNormalizedName;
-    params.setLoadedTableName = setLoadedTableName;
-    params.setLoadedTableSignature = setLoadedTableSignature;
-
-    renderHook(() => usePersistedSync(params));
-
-    expect(setLoadedTableNormalizedName).toHaveBeenCalledWith('norm_test');
-    expect(setLoadedTableName).toHaveBeenCalledWith('test');
-    expect(setLoadedTableSignature).toHaveBeenCalledWith('sig');
-  });
-
-  it('如果 activeSource 为草稿，应重置 loadedTable', () => {
-    const setLoadedTableNormalizedName = vi.fn();
-    const setLoadedTableName = vi.fn();
-    const setLoadedTableSignature = vi.fn();
-
-    const params = createBaseParams({
-      hydrated: true,
-      persistedState: createState('test'),
-      activeSource: {
-        kind: 'draft',
-        draftId: 'default',
-      },
-    });
-    params.setLoadedTableNormalizedName = setLoadedTableNormalizedName;
-    params.setLoadedTableName = setLoadedTableName;
-    params.setLoadedTableSignature = setLoadedTableSignature;
-
-    renderHook(() => usePersistedSync(params));
-
-    expect(setLoadedTableNormalizedName).toHaveBeenCalledWith(null);
-    expect(setLoadedTableName).toHaveBeenCalledWith(null);
-    expect(setLoadedTableSignature).toHaveBeenCalledWith(null);
   });
 });

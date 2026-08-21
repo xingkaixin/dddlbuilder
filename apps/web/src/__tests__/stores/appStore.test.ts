@@ -11,9 +11,6 @@ function resetAppStore() {
   state.setIsDeleteDialogOpen(false);
   state.setIsClearDialogOpen(false);
   state.setShowFireworks(false);
-  state.setLoadedTableNormalizedName(null);
-  state.setLoadedTableName(null);
-  state.setLoadedTableSignature(null);
   state.setIsDiffDialogOpen(false);
   state.setVersionHistoryTarget(null);
   state.setIsReviewHistoryOpen(false);
@@ -102,14 +99,11 @@ describe('appStore', () => {
     expect(current.dialogs.delete).toBe(false);
   });
 
-  it('应该管理批次4迁移的全局 UI 与加载上下文状态', () => {
+  it('应该管理批次4迁移的全局 UI 状态', () => {
     const state = useAppStore.getState();
 
     state.setIsClearDialogOpen(true);
     state.setShowFireworks(true);
-    state.setLoadedTableNormalizedName('users');
-    state.setLoadedTableName('Users');
-    state.setLoadedTableSignature('{"table":"users"}');
     state.setIsDiffDialogOpen(true);
     state.setVersionHistoryTarget({
       normalizedName: 'users',
@@ -122,9 +116,6 @@ describe('appStore', () => {
     let current = useAppStore.getState();
     expect(current.isClearDialogOpen).toBe(true);
     expect(current.showFireworks).toBe(true);
-    expect(current.loadedTableNormalizedName).toBe('users');
-    expect(current.loadedTableName).toBe('Users');
-    expect(current.loadedTableSignature).toBe('{"table":"users"}');
     expect(current.isDiffDialogOpen).toBe(true);
     expect(current.versionHistoryTarget).toEqual({
       normalizedName: 'users',
@@ -136,9 +127,6 @@ describe('appStore', () => {
 
     current.setIsClearDialogOpen(false);
     current.setShowFireworks(false);
-    current.setLoadedTableNormalizedName(null);
-    current.setLoadedTableName(null);
-    current.setLoadedTableSignature(null);
     current.setIsDiffDialogOpen(false);
     current.setVersionHistoryTarget(null);
     current.setIsReviewHistoryOpen(false);
@@ -148,9 +136,6 @@ describe('appStore', () => {
     current = useAppStore.getState();
     expect(current.isClearDialogOpen).toBe(false);
     expect(current.showFireworks).toBe(false);
-    expect(current.loadedTableNormalizedName).toBeNull();
-    expect(current.loadedTableName).toBeNull();
-    expect(current.loadedTableSignature).toBeNull();
     expect(current.isDiffDialogOpen).toBe(false);
     expect(current.versionHistoryTarget).toBeNull();
     expect(current.isReviewHistoryOpen).toBe(false);

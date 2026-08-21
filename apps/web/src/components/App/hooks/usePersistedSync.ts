@@ -14,12 +14,6 @@ interface UsePersistedSyncParams {
   saveState: (payload: WorkspaceSavePayload) => void;
   buildPersistedState: () => PersistedState;
   applyPersistedState: (state: PersistedState) => void;
-  setLoadedTableNormalizedName: (name: string | null) => void;
-  setLoadedTableName: (name: string | null) => void;
-  setLoadedTableSignature: (signature: string | null) => void;
-  // 新增：用于一致性检查
-  loadedTableNormalizedName: string | null;
-  // 新增：同步更新标签页快照的 dirty 状态
   updateActiveTabSnapshot?: (state: PersistedState, isDirty: boolean) => void;
 }
 
@@ -31,10 +25,6 @@ export function usePersistedSync({
   saveState,
   buildPersistedState,
   applyPersistedState,
-  setLoadedTableNormalizedName,
-  setLoadedTableName,
-  setLoadedTableSignature,
-  loadedTableNormalizedName,
   updateActiveTabSnapshot,
 }: UsePersistedSyncParams) {
   const activeSourceRef = useRef(activeSource);
@@ -45,7 +35,6 @@ export function usePersistedSync({
   const latestSaveInputsRef = useRef({
     hydrated,
     hasOpenTab,
-    loadedTableNormalizedName,
     persistedState,
     saveState,
     updateActiveTabSnapshot,
@@ -53,7 +42,6 @@ export function usePersistedSync({
   latestSaveInputsRef.current = {
     hydrated,
     hasOpenTab,
-    loadedTableNormalizedName,
     persistedState,
     saveState,
     updateActiveTabSnapshot,
@@ -65,14 +53,12 @@ export function usePersistedSync({
     const {
       hydrated: latestHydrated,
       hasOpenTab: latestHasOpenTab,
-      loadedTableNormalizedName: latestLoadedTableNormalizedName,
       saveState: latestSaveState,
       updateActiveTabSnapshot: latestUpdateActiveTabSnapshot,
     } = latestSaveInputsRef.current;
     if (!latestHydrated) return;
     if (!latestHasOpenTab) return;
     const source = activeSourceRef.current;
-    if (!source) return;
     if (lastSavedBuildPersistedStateRef.current === buildPersistedStateRef.current) return;
     const lastAppliedBuildPersistedState = lastAppliedBuildPersistedStateRef.current;
     if (lastAppliedBuildPersistedState) {
@@ -80,14 +66,6 @@ export function usePersistedSync({
         return;
       }
       lastAppliedBuildPersistedStateRef.current = null;
-    }
-
-    if (source.kind === 'saved_table') {
-      if (source.normalizedName !== latestLoadedTableNormalizedName) {
-        return;
-      }
-    } else if (latestLoadedTableNormalizedName != null) {
-      return;
     }
 
     try {
@@ -111,25 +89,7 @@ export function usePersistedSync({
     if (!hydrated || !persistedState) return;
     lastAppliedBuildPersistedStateRef.current = buildPersistedStateRef.current;
     applyPersistedState(persistedState);
-
-    if (activeSource.kind === 'saved_table') {
-      setLoadedTableNormalizedName(activeSource.normalizedName);
-      setLoadedTableName(activeSource.tableName);
-      setLoadedTableSignature(activeSource.baseSignature);
-    } else {
-      setLoadedTableNormalizedName(null);
-      setLoadedTableName(null);
-      setLoadedTableSignature(null);
-    }
-  }, [
-    hydrated,
-    persistedState,
-    activeSource,
-    applyPersistedState,
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
-    setLoadedTableSignature,
-  ]);
+  }, [hydrated, persistedState, applyPersistedState]);
 
   useEffect(() => {
     if (!hydrated || !hasOpenTab) return;
@@ -166,7 +126,6 @@ export function usePersistedSync({
       hasOpenTab,
       buildPersistedState,
       saveState,
-      loadedTableNormalizedName,
       updateActiveTabSnapshot,
       saveCurrentState,
     ],

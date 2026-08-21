@@ -7,9 +7,6 @@ describe('useRenameDeleteActions', () => {
   let deleteDialog: any;
   let renameTable: any;
   let deleteTable: any;
-  let setLoadedTableNormalizedName: any;
-  let setLoadedTableName: any;
-  let setLoadedTableSignature: any;
   let showToast: any;
   let setWorkspaceSnapshot: any;
   let renameSavedTableDraft: any;
@@ -40,9 +37,6 @@ describe('useRenameDeleteActions', () => {
     };
     renameTable = vi.fn();
     deleteTable = vi.fn();
-    setLoadedTableNormalizedName = vi.fn();
-    setLoadedTableName = vi.fn();
-    setLoadedTableSignature = vi.fn();
     showToast = vi.fn();
     setWorkspaceSnapshot = vi.fn();
     renameSavedTableDraft = vi.fn();
@@ -54,11 +48,12 @@ describe('useRenameDeleteActions', () => {
   const getHook = (overrides = {}) =>
     renderHook(() =>
       useRenameDeleteActions({
-        loadedTableNormalizedName: 'test_table',
-        loadedTableSignature: 'sig',
-        setLoadedTableNormalizedName,
-        setLoadedTableName,
-        setLoadedTableSignature,
+        loadedTableSource: {
+          kind: 'saved_table',
+          normalizedName: 'test_table',
+          tableName: 'test table',
+          baseSignature: 'sig',
+        },
         renameDialog,
         deleteDialog,
         buildPersistedState,
@@ -182,10 +177,15 @@ describe('useRenameDeleteActions', () => {
     expect(showToast).toHaveBeenCalledWith('已重命名为：new_name');
     expect(renameSavedTableDraft).toHaveBeenCalledWith('test_table', 'new_name_norm', 'new_name');
 
-    // Loaded table updates matched the target
-    expect(setLoadedTableNormalizedName).toHaveBeenCalledWith('new_name_norm');
-    expect(setLoadedTableName).toHaveBeenCalledWith('new_name');
-    expect(setWorkspaceSnapshot).toHaveBeenCalled();
+    expect(setWorkspaceSnapshot).toHaveBeenCalledWith(
+      {
+        kind: 'saved_table',
+        normalizedName: 'new_name_norm',
+        tableName: 'new_name',
+        baseSignature: 'sig',
+      },
+      { test: 1 },
+    );
     expect(renameDialog.closeDialog).toHaveBeenCalled();
   });
 
@@ -198,15 +198,14 @@ describe('useRenameDeleteActions', () => {
       ok: true,
       normalizedName: 'new_name_norm',
     });
-    const { result } = getHook({ loadedTableNormalizedName: 'test_table' });
+    const { result } = getHook();
 
     await act(async () => {
       await result.current.handleConfirmRename();
     });
 
     expect(showToast).toHaveBeenCalledWith('已重命名为：未命名表');
-    // since it renamed 'other_table' and not 'test_table', loadedTable state should NOT change
-    expect(setLoadedTableNormalizedName).not.toHaveBeenCalled();
+    expect(setWorkspaceSnapshot).not.toHaveBeenCalled();
   });
 
   it('handleOpenDeleteDialog sets delete dialog data', () => {
@@ -285,7 +284,7 @@ describe('useRenameDeleteActions', () => {
       target: { name: 'old', normalizedName: 'test_table' },
     };
     deleteTable.mockResolvedValue({ ok: true });
-    const { result } = getHook({ loadedTableNormalizedName: 'test_table' });
+    const { result } = getHook();
 
     await act(async () => {
       await result.current.handleConfirmDelete();
@@ -293,9 +292,6 @@ describe('useRenameDeleteActions', () => {
 
     expect(removeSavedTableDraft).toHaveBeenCalledWith('test_table');
     expect(showToast).toHaveBeenCalledWith('已移入回收站：old');
-    expect(setLoadedTableNormalizedName).toHaveBeenCalledWith(null);
-    expect(setLoadedTableName).toHaveBeenCalledWith(null);
-    expect(setLoadedTableSignature).toHaveBeenCalledWith(null);
     expect(setWorkspaceSnapshot).toHaveBeenCalledWith(
       { kind: 'draft', draftId: 'default' },
       { test: 1 },
@@ -308,14 +304,14 @@ describe('useRenameDeleteActions', () => {
       target: { name: 'old', normalizedName: 'other_table' },
     };
     deleteTable.mockResolvedValue({ ok: true });
-    const { result } = getHook({ loadedTableNormalizedName: 'test_table' });
+    const { result } = getHook();
 
     await act(async () => {
       await result.current.handleConfirmDelete();
     });
 
     expect(removeSavedTableDraft).toHaveBeenCalledWith('other_table');
-    expect(setLoadedTableNormalizedName).not.toHaveBeenCalled();
+    expect(setWorkspaceSnapshot).not.toHaveBeenCalled();
     expect(deleteDialog.closeDialog).toHaveBeenCalled();
   });
 });

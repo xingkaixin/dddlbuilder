@@ -15,11 +15,7 @@ type DeleteDialogData = {
 };
 
 interface UseRenameDeleteActionsParams {
-  loadedTableNormalizedName: string | null;
-  loadedTableSignature: string | null;
-  setLoadedTableNormalizedName: (value: string | null) => void;
-  setLoadedTableName: (value: string | null) => void;
-  setLoadedTableSignature: (value: string | null) => void;
+  loadedTableSource: Extract<WorkspaceSource, { kind: 'saved_table' }> | null;
   renameDialog: UseDialogStateReturn<RenameDialogData>;
   deleteDialog: UseDialogStateReturn<DeleteDialogData>;
   buildPersistedState: () => PersistedState;
@@ -39,11 +35,7 @@ interface UseRenameDeleteActionsParams {
 }
 
 export function useRenameDeleteActions({
-  loadedTableNormalizedName,
-  loadedTableSignature,
-  setLoadedTableNormalizedName,
-  setLoadedTableName,
-  setLoadedTableSignature,
+  loadedTableSource,
   renameDialog,
   deleteDialog,
   buildPersistedState,
@@ -57,6 +49,8 @@ export function useRenameDeleteActions({
   onTabRename,
   onTabRemove,
 }: UseRenameDeleteActionsParams) {
+  const loadedTableNormalizedName = loadedTableSource?.normalizedName ?? null;
+  const loadedTableSignature = loadedTableSource?.baseSignature ?? null;
   const renameName = renameDialog.data.name;
   const renameTarget = renameDialog.data.target;
   const deleteTarget = deleteDialog.data.target;
@@ -96,8 +90,6 @@ export function useRenameDeleteActions({
     renameSavedTableDraft?.(renameTarget.normalizedName, result.normalizedName, displayName);
     onTabRename?.(renameTarget.normalizedName, result.normalizedName, displayName);
     if (loadedTableNormalizedName && renameTarget.normalizedName === loadedTableNormalizedName) {
-      setLoadedTableNormalizedName(result.normalizedName);
-      setLoadedTableName(displayName);
       const currentState = buildPersistedState();
       const nextSignature = loadedTableSignature ?? serializePersistedState(currentState);
       setWorkspaceSnapshot?.(
@@ -118,8 +110,6 @@ export function useRenameDeleteActions({
     renameDialog,
     showToast,
     loadedTableNormalizedName,
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
     loadedTableSignature,
     serializePersistedState,
     setWorkspaceSnapshot,
@@ -154,9 +144,6 @@ export function useRenameDeleteActions({
       showToast(`已移入回收站：${deleteTarget.name}`);
       onTabRemove?.(deleteTarget.normalizedName);
       if (deleteTarget.normalizedName === loadedTableNormalizedName) {
-        setLoadedTableNormalizedName(null);
-        setLoadedTableName(null);
-        setLoadedTableSignature(null);
         setWorkspaceSnapshot?.({ kind: 'draft', draftId: 'default' }, buildPersistedState());
       }
     }
@@ -166,9 +153,6 @@ export function useRenameDeleteActions({
     deleteTable,
     showToast,
     loadedTableNormalizedName,
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
-    setLoadedTableSignature,
     setWorkspaceSnapshot,
     buildPersistedState,
     removeSavedTableDraft,

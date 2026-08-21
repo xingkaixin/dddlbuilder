@@ -54,9 +54,6 @@ describe('useSavedTableFlowActions', () => {
       queuedLoadAfterSave: null,
     });
 
-    const setLoadedTableNormalizedName = vi.fn();
-    const setLoadedTableName = vi.fn();
-    const setLoadedTableSignature = vi.fn();
     const setWorkspaceSnapshot = vi.fn();
 
     const { result } = renderHook(() =>
@@ -64,12 +61,7 @@ describe('useSavedTableFlowActions', () => {
         tableName: 'Users',
         hasLoadedTable: false,
         canSaveCurrent: true,
-        loadedTableNormalizedName: null,
-        loadedTableName: null,
-        loadedTableSignature: null,
-        setLoadedTableNormalizedName,
-        setLoadedTableName,
-        setLoadedTableSignature,
+        loadedTableSource: null,
         setLoadedTableVersion: vi.fn(),
         setSavedTablesDrawerOpen: vi.fn(),
         saveDialog,
@@ -93,9 +85,6 @@ describe('useSavedTableFlowActions', () => {
     });
 
     const signature = JSON.stringify(state);
-    expect(setLoadedTableNormalizedName).toHaveBeenCalledWith('users');
-    expect(setLoadedTableName).toHaveBeenCalledWith('Users');
-    expect(setLoadedTableSignature).toHaveBeenCalledWith(signature);
     expect(setWorkspaceSnapshot).toHaveBeenCalledWith(
       {
         kind: 'saved_table',
@@ -116,12 +105,12 @@ describe('useSavedTableFlowActions', () => {
         tableName: 'Users',
         hasLoadedTable: true,
         canSaveCurrent: true,
-        loadedTableNormalizedName: 'users',
-        loadedTableName: 'Users',
-        loadedTableSignature: JSON.stringify(createState('Users')),
-        setLoadedTableNormalizedName: vi.fn(),
-        setLoadedTableName: vi.fn(),
-        setLoadedTableSignature: vi.fn(),
+        loadedTableSource: {
+          kind: 'saved_table',
+          normalizedName: 'users',
+          tableName: 'Users',
+          baseSignature: JSON.stringify(createState('Users')),
+        },
         setLoadedTableVersion: vi.fn(),
         setSavedTablesDrawerOpen: vi.fn(),
         saveDialog: createDialog({ name: 'Users', queuedLoadAfterSave: null }),
@@ -156,12 +145,12 @@ describe('useSavedTableFlowActions', () => {
         tableName: 'Users',
         hasLoadedTable: true,
         canSaveCurrent: true,
-        loadedTableNormalizedName: 'users',
-        loadedTableName: 'Users',
-        loadedTableSignature: JSON.stringify(createState('Users')),
-        setLoadedTableNormalizedName: vi.fn(),
-        setLoadedTableName: vi.fn(),
-        setLoadedTableSignature: vi.fn(),
+        loadedTableSource: {
+          kind: 'saved_table',
+          normalizedName: 'users',
+          tableName: 'Users',
+          baseSignature: JSON.stringify(createState('Users')),
+        },
         setLoadedTableVersion: vi.fn(),
         setSavedTablesDrawerOpen: vi.fn(),
         saveDialog: createDialog({ name: 'Users', queuedLoadAfterSave: null }),
@@ -207,12 +196,7 @@ describe('useSavedTableFlowActions', () => {
         tableName: 'Users',
         hasLoadedTable: false,
         canSaveCurrent: true,
-        loadedTableNormalizedName: null,
-        loadedTableName: null,
-        loadedTableSignature: null,
-        setLoadedTableNormalizedName: vi.fn(),
-        setLoadedTableName: vi.fn(),
-        setLoadedTableSignature: vi.fn(),
+        loadedTableSource: null,
         setLoadedTableVersion: vi.fn(),
         setSavedTablesDrawerOpen: vi.fn(),
         saveDialog: createDialog({ name: 'Users', queuedLoadAfterSave: null }),
@@ -265,12 +249,7 @@ describe('useSavedTableFlowActions', () => {
         tableName: 'Users',
         hasLoadedTable: false,
         canSaveCurrent: true,
-        loadedTableNormalizedName: null,
-        loadedTableName: null,
-        loadedTableSignature: null,
-        setLoadedTableNormalizedName: vi.fn(),
-        setLoadedTableName: vi.fn(),
-        setLoadedTableSignature: vi.fn(),
+        loadedTableSource: null,
         setLoadedTableVersion: vi.fn(),
         setSavedTablesDrawerOpen: vi.fn(),
         saveDialog: createDialog({ name: 'Users', queuedLoadAfterSave: null }),

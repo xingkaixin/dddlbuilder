@@ -13,9 +13,6 @@ vi.mock('@/utils/tableVersions', () => ({
 
 describe('useSaveLoadActions', () => {
   let saveDialog: any;
-  let setLoadedTableNormalizedName: any;
-  let setLoadedTableName: any;
-  let setLoadedTableSignature: any;
   let setLoadedTableVersion: any;
   let setSavedTablesDrawerOpen: any;
   let applySavedState: any;
@@ -41,9 +38,6 @@ describe('useSaveLoadActions', () => {
       closeDialog: vi.fn(),
       setError: vi.fn(),
     };
-    setLoadedTableNormalizedName = vi.fn();
-    setLoadedTableName = vi.fn();
-    setLoadedTableSignature = vi.fn();
     setLoadedTableVersion = vi.fn();
     setSavedTablesDrawerOpen = vi.fn();
     applySavedState = vi.fn();
@@ -65,11 +59,7 @@ describe('useSaveLoadActions', () => {
         tableName: 'default_name',
         hasLoadedTable: false,
         canSaveCurrent: true,
-        loadedTableNormalizedName: null,
-        loadedTableName: null,
-        setLoadedTableNormalizedName,
-        setLoadedTableName,
-        setLoadedTableSignature,
+        loadedTableSource: null,
         setLoadedTableVersion,
         setSavedTablesDrawerOpen,
         saveDialog,
@@ -136,9 +126,6 @@ describe('useSaveLoadActions', () => {
     expect(onTableLoadStateChange).toHaveBeenCalledWith(true);
     expect(setWorkspaceSnapshot).toHaveBeenCalled();
     expect(applySavedState).toHaveBeenCalledWith(mockRecord.state);
-    expect(setLoadedTableNormalizedName).toHaveBeenCalledWith('norm_test');
-    expect(setLoadedTableName).toHaveBeenCalledWith('test_table');
-    expect(setLoadedTableSignature).toHaveBeenCalledWith('mock-sig');
     expect(showToast).toHaveBeenCalledWith(expect.stringContaining('已加载：test_table'));
     expect(onTableLoadStateChange).toHaveBeenCalledWith(false);
   });
@@ -280,7 +267,12 @@ describe('useSaveLoadActions', () => {
     overwriteTable.mockResolvedValue({ ok: false, reason: 'not_found' });
     const { result } = getHook({
       hasLoadedTable: true,
-      loadedTableNormalizedName: 'norm',
+      loadedTableSource: {
+        kind: 'saved_table',
+        normalizedName: 'norm',
+        tableName: 'orig_name',
+        baseSignature: 'old-sig',
+      },
     });
     await act(async () => {
       await result.current.handleConfirmSave();
@@ -295,7 +287,12 @@ describe('useSaveLoadActions', () => {
     });
     const { result } = getHook({
       hasLoadedTable: true,
-      loadedTableNormalizedName: 'norm',
+      loadedTableSource: {
+        kind: 'saved_table',
+        normalizedName: 'norm',
+        tableName: 'orig_name',
+        baseSignature: 'old-sig',
+      },
     });
     await act(async () => {
       await result.current.handleConfirmSave();
@@ -319,15 +316,18 @@ describe('useSaveLoadActions', () => {
 
     const { result } = getHook({
       hasLoadedTable: true,
-      loadedTableNormalizedName: 'norm',
-      loadedTableName: 'orig_name',
+      loadedTableSource: {
+        kind: 'saved_table',
+        normalizedName: 'norm',
+        tableName: 'orig_name',
+        baseSignature: 'old-sig',
+      },
     });
 
     await act(async () => {
       await result.current.handleConfirmSave();
     });
 
-    expect(setLoadedTableSignature).toHaveBeenCalledWith('mock-sig');
     expect(setWorkspaceSnapshot).toHaveBeenCalled();
     expect(showToast).toHaveBeenCalledWith('已更新：orig_name');
     expect(saveDialog.closeDialog).toHaveBeenCalled();
@@ -375,9 +375,6 @@ describe('useSaveLoadActions', () => {
       await result.current.handleConfirmSave();
     });
 
-    expect(setLoadedTableNormalizedName).toHaveBeenCalledWith('new_norm');
-    expect(setLoadedTableName).toHaveBeenCalledWith('new_name');
-    expect(setLoadedTableSignature).toHaveBeenCalledWith('mock-sig');
     expect(setWorkspaceSnapshot).toHaveBeenCalled();
     expect(showToast).toHaveBeenCalledWith('已保存：new_name');
     expect(setLoadedTableVersion).toHaveBeenCalledWith(1);

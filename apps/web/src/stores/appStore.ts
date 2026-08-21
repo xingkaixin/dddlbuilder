@@ -36,9 +36,6 @@ interface AppStoreState {
   dialogs: CoreDialogState;
   isClearDialogOpen: boolean;
   showFireworks: boolean;
-  loadedTableNormalizedName: string | null;
-  loadedTableName: string | null;
-  loadedTableSignature: string | null;
   isDiffDialogOpen: boolean;
   versionHistoryTarget: VersionHistoryTarget | null;
   isReviewHistoryOpen: boolean;
@@ -68,9 +65,6 @@ interface AppStoreState {
   setIsDeleteDialogOpen: (open: boolean) => void;
   setIsClearDialogOpen: (open: boolean) => void;
   setShowFireworks: (show: boolean) => void;
-  setLoadedTableNormalizedName: (name: string | null) => void;
-  setLoadedTableName: (name: string | null) => void;
-  setLoadedTableSignature: (signature: string | null) => void;
   setIsDiffDialogOpen: (open: boolean) => void;
   setVersionHistoryTarget: (target: VersionHistoryTarget | null) => void;
   setIsReviewHistoryOpen: (open: boolean) => void;
@@ -97,9 +91,6 @@ export const useAppStore = create<AppStoreState>((set) => ({
   dialogs: createInitialDialogs(),
   isClearDialogOpen: false,
   showFireworks: false,
-  loadedTableNormalizedName: null,
-  loadedTableName: null,
-  loadedTableSignature: null,
   isDiffDialogOpen: false,
   versionHistoryTarget: null,
   isReviewHistoryOpen: false,
@@ -155,9 +146,6 @@ export const useAppStore = create<AppStoreState>((set) => ({
     })),
   setIsClearDialogOpen: (isClearDialogOpen) => set({ isClearDialogOpen }),
   setShowFireworks: (showFireworks) => set({ showFireworks }),
-  setLoadedTableNormalizedName: (loadedTableNormalizedName) => set({ loadedTableNormalizedName }),
-  setLoadedTableName: (loadedTableName) => set({ loadedTableName }),
-  setLoadedTableSignature: (loadedTableSignature) => set({ loadedTableSignature }),
   setIsDiffDialogOpen: (isDiffDialogOpen) => set({ isDiffDialogOpen }),
   setVersionHistoryTarget: (versionHistoryTarget) => set({ versionHistoryTarget }),
   setIsReviewHistoryOpen: (isReviewHistoryOpen) => set({ isReviewHistoryOpen }),
