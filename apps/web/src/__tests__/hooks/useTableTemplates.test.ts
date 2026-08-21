@@ -1,9 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook as renderTestingHook, act, waitFor } from '@testing-library/react';
 import { useTableTemplates } from '@/hooks/useTableTemplates';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '../utils/fakeIndexedDb';
 import { flushPromises } from '@/__tests__/utils/test-utils';
 import type { PersistedState } from '@ddlbuilder/shared-types';
+import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
+
+function renderHook<Result>(callback: () => Result) {
+  const { wrapper } = createQueryClientWrapper();
+  return renderTestingHook(callback, { wrapper });
+}
 
 const createState = (name: string): PersistedState => ({
   schemaName: '',
@@ -42,10 +48,7 @@ describe('useTableTemplates', () => {
     const { result } = renderHook(() => useTableTemplates());
 
     expect(result.current.loading).toBe(true);
-    await act(async () => {
-      await flushPromises();
-    });
-    expect(result.current.loading).toBe(false);
+    await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.templates).toEqual([]);
   });
 

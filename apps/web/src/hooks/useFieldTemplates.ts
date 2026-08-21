@@ -1,62 +1,97 @@
-/**
- * 字段模板管理 Hook
- * 提供模板的状态管理和操作方法
- */
-
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { FieldRow } from '@ddlbuilder/shared-types';
 import {
-  listTemplates,
-  getTemplate,
   createTemplate,
-  updateTemplate,
-  renameTemplate,
+  createTemplateFromFields,
   deleteTemplate,
   duplicateTemplate,
-  createTemplateFromFields,
+  updateTemplate,
   type FieldTemplate,
   type TemplateField,
 } from '@/utils/fieldTemplates';
+import {
+  fieldTemplateListOptions,
+  fieldTemplateOptions,
+  templateQueryKeys,
+} from '@/queries/templates';
 
 export type { FieldTemplate, TemplateField };
 
 type OperationResult = { ok: true } | { ok: false; reason?: string; message?: string };
 
+const failure = (error: unknown, fallback: string): OperationResult => ({
+  ok: false,
+  message: error instanceof Error ? error.message : fallback,
+});
+
 export function useFieldTemplates() {
-  const [templates, setTemplates] = useState<FieldTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const templatesQuery = useQuery(fieldTemplateListOptions());
+  const invalidateTemplates = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: templateQueryKeys.fieldRoot }),
+    [queryClient],
+  );
+  const createMutation = useMutation({
+    mutationFn: ({
+      name,
+      fields,
+      description,
+    }: {
+      name: string;
+      fields: TemplateField[];
+      description?: string;
+    }) => createTemplate(name, fields, description),
+    onSuccess: invalidateTemplates,
+    retry: false,
+  });
+  const createFromFieldsMutation = useMutation({
+    mutationFn: ({
+      name,
+      fields,
+      description,
+    }: {
+      name: string;
+      fields: Array<Partial<FieldRow>>;
+      description?: string;
+    }) => createTemplateFromFields(name, fields, description),
+    onSuccess: invalidateTemplates,
+    retry: false,
+  });
+  const updateMutation = useMutation({
+    mutationFn: ({
+      id,
+      updates,
+    }: {
+      id: string;
+      updates: Partial<Pick<FieldTemplate, 'name' | 'description' | 'keywords' | 'fields'>>;
+    }) => updateTemplate(id, updates),
+    onSuccess: invalidateTemplates,
+    retry: false,
+  });
+  const removeMutation = useMutation({
+    mutationFn: deleteTemplate,
+    onSuccess: invalidateTemplates,
+    retry: false,
+  });
+  const duplicateMutation = useMutation({
+    mutationFn: ({ id, newName }: { id: string; newName?: string }) =>
+      duplicateTemplate(id, newName),
+    onSuccess: invalidateTemplates,
+    retry: false,
+  });
 
-  // 刷新模板列表
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const list = await listTemplates();
-      setTemplates(list);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '加载模板失败');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const fetchTemplate = useCallback(
+    async (id: string): Promise<FieldTemplate | null> => {
+      try {
+        return (await queryClient.fetchQuery(fieldTemplateOptions(id))) ?? null;
+      } catch {
+        return null;
+      }
+    },
+    [queryClient],
+  );
 
-  // 初始加载
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  // 获取单个模板
-  const fetchTemplate = useCallback(async (id: string): Promise<FieldTemplate | null> => {
-    try {
-      const template = await getTemplate(id);
-      return template ?? null;
-    } catch {
-      return null;
-    }
-  }, []);
-
-  // 创建模板
   const create = useCallback(
     async (
       name: string,
@@ -64,20 +99,15 @@ export function useFieldTemplates() {
       description?: string,
     ): Promise<OperationResult & { template?: FieldTemplate }> => {
       try {
-        const template = await createTemplate(name, fields, description);
-        await refresh();
+        const template = await createMutation.mutateAsync({ name, fields, description });
         return { ok: true, template };
-      } catch (err) {
-        return {
-          ok: false,
-          message: err instanceof Error ? err.message : '创建失败',
-        };
+      } catch (error) {
+        return failure(error, '创建失败');
       }
     },
-    [refresh],
+    [createMutation],
   );
 
-  // 从当前字段创建模板
   const createFromFields = useCallback(
     async (
       name: string,
@@ -85,107 +115,75 @@ export function useFieldTemplates() {
       description?: string,
     ): Promise<OperationResult & { template?: FieldTemplate }> => {
       try {
-        const template = await createTemplateFromFields(name, fields, description);
-        await refresh();
+        const template = await createFromFieldsMutation.mutateAsync({
+          name,
+          fields,
+          description,
+        });
         return { ok: true, template };
-      } catch (err) {
-        return {
-          ok: false,
-          message: err instanceof Error ? err.message : '创建失败',
-        };
+      } catch (error) {
+        return failure(error, '创建失败');
       }
     },
-    [refresh],
+    [createFromFieldsMutation],
   );
 
-  // 更新模板
   const update = useCallback(
     async (
       id: string,
       updates: Partial<Pick<FieldTemplate, 'name' | 'description' | 'keywords' | 'fields'>>,
     ): Promise<OperationResult> => {
       try {
-        const result = await updateTemplate(id, updates);
-        if (!result) {
-          return { ok: false, reason: 'not_found', message: '模板不存在' };
-        }
-        await refresh();
-        return { ok: true };
-      } catch (err) {
-        return {
-          ok: false,
-          message: err instanceof Error ? err.message : '更新失败',
-        };
+        const template = await updateMutation.mutateAsync({ id, updates });
+        return template ? { ok: true } : { ok: false, reason: 'not_found', message: '模板不存在' };
+      } catch (error) {
+        return failure(error, '更新失败');
       }
     },
-    [refresh],
+    [updateMutation],
   );
 
-  // 重命名模板
   const rename = useCallback(
-    async (id: string, newName: string): Promise<OperationResult> => {
-      try {
-        const result = await renameTemplate(id, newName);
-        if (!result) {
-          return { ok: false, reason: 'not_found', message: '模板不存在' };
-        }
-        await refresh();
-        return { ok: true };
-      } catch (err) {
-        return {
-          ok: false,
-          message: err instanceof Error ? err.message : '重命名失败',
-        };
-      }
-    },
-    [refresh],
+    (id: string, newName: string) => update(id, { name: newName }),
+    [update],
   );
 
-  // 删除模板
   const remove = useCallback(
     async (id: string): Promise<OperationResult> => {
       try {
-        await deleteTemplate(id);
-        await refresh();
+        await removeMutation.mutateAsync(id);
         return { ok: true };
-      } catch (err) {
-        return {
-          ok: false,
-          message: err instanceof Error ? err.message : '删除失败',
-        };
+      } catch (error) {
+        return failure(error, '删除失败');
       }
     },
-    [refresh],
+    [removeMutation],
   );
 
-  // 复制模板
   const duplicate = useCallback(
     async (
       id: string,
       newName?: string,
     ): Promise<OperationResult & { template?: FieldTemplate }> => {
       try {
-        const template = await duplicateTemplate(id, newName);
-        if (!template) {
-          return { ok: false, reason: 'not_found', message: '模板不存在' };
-        }
-        await refresh();
-        return { ok: true, template };
-      } catch (err) {
-        return {
-          ok: false,
-          message: err instanceof Error ? err.message : '复制失败',
-        };
+        const template = await duplicateMutation.mutateAsync({ id, newName });
+        return template
+          ? { ok: true, template }
+          : { ok: false, reason: 'not_found', message: '模板不存在' };
+      } catch (error) {
+        return failure(error, '复制失败');
       }
     },
-    [refresh],
+    [duplicateMutation],
   );
 
   return {
-    templates,
-    loading,
-    error,
-    refresh,
+    templates: templatesQuery.data ?? [],
+    loading: templatesQuery.isPending,
+    error: templatesQuery.error instanceof Error ? templatesQuery.error.message : null,
+    refresh: async () => {
+      await templatesQuery.refetch();
+    },
     fetchTemplate,
     create,
     createFromFields,
