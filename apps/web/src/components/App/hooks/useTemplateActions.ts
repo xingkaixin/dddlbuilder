@@ -1,6 +1,6 @@
 import { useCallback, useState, type Dispatch, type SetStateAction } from 'react';
 import type { FieldRow } from '@ddlbuilder/shared-types';
-import { createFieldId } from '@ddlbuilder/shared-types';
+import { createFieldId } from '@ddlbuilder/workspace-core';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
 import i18n from '@/i18n';
 

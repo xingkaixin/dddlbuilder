@@ -25,7 +25,6 @@ export type {
   NormalizedField,
 } from './fieldRow.js';
 export {
-  createFieldId,
   ensureFieldId,
   FIELD_DEFAULT_KINDS,
   FIELD_ON_UPDATES,

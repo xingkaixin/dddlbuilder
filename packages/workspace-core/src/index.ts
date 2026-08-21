@@ -1,4 +1,5 @@
 export { buildWorkspaceContentHash } from './contentHash';
+export { createFieldId } from './fieldId';
 export { stableStringify } from './yMapJson';
 export {
   type ApplyPersistedStateOptions,

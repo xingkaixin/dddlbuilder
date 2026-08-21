@@ -15,7 +15,7 @@ import type {
 import type { ReviewResult, StructuredSuggestion } from '@/hooks/useDDLReview';
 import type { GeneratedTableSchema } from '@/hooks/useAIGenerateTable';
 import { buildGeneratedRows } from '@/utils/aiSchemaChanges';
-import { createFieldId } from '@ddlbuilder/shared-types';
+import { createFieldId } from '@ddlbuilder/workspace-core';
 
 interface UseSchemaApplyActionsParams {
   rows: FieldRow[];

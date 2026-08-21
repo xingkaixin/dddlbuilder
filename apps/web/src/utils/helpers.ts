@@ -7,7 +7,7 @@ import {
   normalizeFieldNullable,
   normalizeFieldOnUpdate,
 } from '@ddlbuilder/shared-types';
-import { createFieldId } from '@ddlbuilder/shared-types';
+import { createFieldId } from '@ddlbuilder/workspace-core';
 import { RESERVED_KEYWORDS } from './constants';
 import {
   supportsAutoIncrement,

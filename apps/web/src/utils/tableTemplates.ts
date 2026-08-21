@@ -1,5 +1,5 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import { createFieldId } from '@ddlbuilder/shared-types';
+import { createFieldId } from '@ddlbuilder/workspace-core';
 import { normalizeFieldEnums } from './helpers';
 import {
   openDb,

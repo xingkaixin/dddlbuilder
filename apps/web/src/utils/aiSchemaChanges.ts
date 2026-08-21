@@ -4,7 +4,7 @@ import type {
   PersistedState,
   NormalizedField,
 } from '@ddlbuilder/shared-types';
-import { createFieldId } from '@ddlbuilder/shared-types';
+import { createFieldId } from '@ddlbuilder/workspace-core';
 import type { GeneratedTableSchema } from '@ddlbuilder/shared-types/ai-generate';
 import { diffPersistedState, getSchemaAndTable, type FieldDiff } from '@ddlbuilder/ddl-core';
 

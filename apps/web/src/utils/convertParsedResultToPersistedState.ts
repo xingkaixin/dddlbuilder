@@ -6,7 +6,7 @@ import type {
   TableMiscConfig,
   MysqlPartitionConfig,
 } from '@ddlbuilder/shared-types';
-import { createFieldId } from '@ddlbuilder/shared-types';
+import { createFieldId } from '@ddlbuilder/workspace-core';
 import { createEmptyRow } from './helpers';
 import type { ParsedResult } from './SqlParser';
 
