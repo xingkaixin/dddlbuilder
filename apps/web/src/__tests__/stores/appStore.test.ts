@@ -15,7 +15,6 @@ function resetAppStore() {
   state.setLoadedTableName(null);
   state.setLoadedTableSignature(null);
   state.setIsDiffDialogOpen(false);
-  state.setIsVersionHistoryOpen(false);
   state.setVersionHistoryTarget(null);
   state.setIsReviewHistoryOpen(false);
   state.setIsStorageEstimatorOpen(false);
@@ -112,7 +111,6 @@ describe('appStore', () => {
     state.setLoadedTableName('Users');
     state.setLoadedTableSignature('{"table":"users"}');
     state.setIsDiffDialogOpen(true);
-    state.setIsVersionHistoryOpen(true);
     state.setVersionHistoryTarget({
       normalizedName: 'users',
       name: 'Users',
@@ -128,7 +126,6 @@ describe('appStore', () => {
     expect(current.loadedTableName).toBe('Users');
     expect(current.loadedTableSignature).toBe('{"table":"users"}');
     expect(current.isDiffDialogOpen).toBe(true);
-    expect(current.isVersionHistoryOpen).toBe(true);
     expect(current.versionHistoryTarget).toEqual({
       normalizedName: 'users',
       name: 'Users',
@@ -143,7 +140,6 @@ describe('appStore', () => {
     current.setLoadedTableName(null);
     current.setLoadedTableSignature(null);
     current.setIsDiffDialogOpen(false);
-    current.setIsVersionHistoryOpen(false);
     current.setVersionHistoryTarget(null);
     current.setIsReviewHistoryOpen(false);
     current.setIsStorageEstimatorOpen(false);
@@ -156,7 +152,6 @@ describe('appStore', () => {
     expect(current.loadedTableName).toBeNull();
     expect(current.loadedTableSignature).toBeNull();
     expect(current.isDiffDialogOpen).toBe(false);
-    expect(current.isVersionHistoryOpen).toBe(false);
     expect(current.versionHistoryTarget).toBeNull();
     expect(current.isReviewHistoryOpen).toBe(false);
     expect(current.isStorageEstimatorOpen).toBe(false);

@@ -17,7 +17,6 @@ function resetAppStore() {
   state.setLoadedTableName(null);
   state.setLoadedTableSignature(null);
   state.setIsDiffDialogOpen(false);
-  state.setIsVersionHistoryOpen(false);
   state.setVersionHistoryTarget(null);
   state.setIsReviewHistoryOpen(false);
   state.setIsStorageEstimatorOpen(false);

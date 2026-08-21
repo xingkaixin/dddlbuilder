@@ -142,8 +142,6 @@ function App() {
     setIsDeleteDialogOpen,
     isDiffDialogOpen,
     setIsDiffDialogOpen,
-    isVersionHistoryOpen,
-    setIsVersionHistoryOpen,
     versionHistoryTarget,
     setVersionHistoryTarget,
     isReviewHistoryOpen,
@@ -154,8 +152,6 @@ function App() {
     setIsAIGenerateDialogOpen,
     isMockDataDialogOpen,
     setIsMockDataDialogOpen,
-    isTimelinePlayerOpen,
-    setIsTimelinePlayerOpen,
     timelinePlayerTarget,
     setTimelinePlayerTarget,
     rows,
@@ -1248,7 +1244,6 @@ function App() {
     setActiveTab,
     setIsStorageEstimatorOpen,
     setVersionHistoryTarget,
-    setIsVersionHistoryOpen,
     setIsAIGenerateDialogOpen,
     setIsMockDataDialogOpen,
     setIsErDialogOpen,
@@ -1300,12 +1295,66 @@ function App() {
     ],
   );
 
+  // 下面这些回调与派生值原先写在 GlobalDialogs 的 props 字面量里，每次渲染都是新引用，
+  // 让各对话框的 memo 全部失配——关闭状态下也要跑完整个组件体（合计约 80 个 hook）。
+  const handleSaveNameChange = useCallback(
+    (value: string) => {
+      saveDialog.updateData((prev) => ({ ...prev, name: value }));
+      if (saveError) saveDialog.clearError();
+    },
+    [saveDialog, saveError],
+  );
+
+  const handleRenameNameChange = useCallback(
+    (value: string) => {
+      renameDialog.updateData((prev) => ({ ...prev, name: value }));
+      if (renameError) renameDialog.clearError();
+    },
+    [renameDialog, renameError],
+  );
+
+  const handleCopyDiff = useCallback(() => {
+    showToast(t('app.copyDiffDone'));
+  }, [showToast, t]);
+
+  const handleRollbackVersion = useCallback(
+    (state: PersistedState) => {
+      applySavedState(state);
+      setSavedTablesDrawerOpen(false);
+      showToast(t('app.rollbackDone'));
+    },
+    [applySavedState, setSavedTablesDrawerOpen, showToast, t],
+  );
+
+  const aiGenerateExistingConfig = useMemo(
+    () => ({ schemaName, tableName, tableComment, rows, indexes }),
+    [schemaName, tableName, tableComment, rows, indexes],
+  );
+
+  const aiGenerateTemplates = useMemo(
+    () => [...templates, ...tableTemplates],
+    [templates, tableTemplates],
+  );
+
   const handlePlayTimeline = useCallback(() => {
     if (versionHistoryTarget) {
       setTimelinePlayerTarget(versionHistoryTarget);
-      setIsTimelinePlayerOpen(true);
     }
-  }, [versionHistoryTarget, setTimelinePlayerTarget, setIsTimelinePlayerOpen]);
+  }, [versionHistoryTarget, setTimelinePlayerTarget]);
+
+  const handleVersionHistoryOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) setVersionHistoryTarget(null);
+    },
+    [setVersionHistoryTarget],
+  );
+
+  const handleTimelinePlayerOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) setTimelinePlayerTarget(null);
+    },
+    [setTimelinePlayerTarget],
+  );
 
   const handleDbTypeChange = useCallback(
     (newDbType: DatabaseType) => {
@@ -1730,13 +1779,7 @@ function App() {
               ? t('dialogs.save.queuedLoadDescription')
               : saveDialogDescription,
             name: saveName,
-            onNameChange: (value) => {
-              saveDialog.updateData((prev) => ({
-                ...prev,
-                name: value,
-              }));
-              if (saveError) saveDialog.clearError();
-            },
+            onNameChange: handleSaveNameChange,
             error: saveError,
             inputDisabled: saveInputDisabled,
             canSaveCurrent,
@@ -1746,13 +1789,7 @@ function App() {
             open: isRenameDialogOpen,
             onOpenChange: handleRenameDialogOpenChange,
             name: renameName,
-            onNameChange: (value) => {
-              renameDialog.updateData((prev) => ({
-                ...prev,
-                name: value,
-              }));
-              if (renameError) renameDialog.clearError();
-            },
+            onNameChange: handleRenameNameChange,
             error: renameError,
             onConfirm: handleConfirmRename,
           }}
@@ -1815,24 +1852,20 @@ function App() {
             dbType,
             diff: tableDiff,
             fields: normalizedFields,
-            onCopy: () => showToast(t('app.copyDiffDone')),
+            onCopy: handleCopyDiff,
           }}
           versionHistoryDialogProps={{
-            open: isVersionHistoryOpen,
-            onOpenChange: setIsVersionHistoryOpen,
+            open: versionHistoryTarget !== null,
+            onOpenChange: handleVersionHistoryOpenChange,
             tableNormalizedName: versionHistoryTarget?.normalizedName ?? null,
             tableName: versionHistoryTarget?.name ?? null,
             currentState: currentPersistedState,
-            onRollback: (state: PersistedState) => {
-              applySavedState(state);
-              setSavedTablesDrawerOpen(false);
-              showToast(t('app.rollbackDone'));
-            },
+            onRollback: handleRollbackVersion,
             onPlayTimeline: handlePlayTimeline,
           }}
           timelinePlayerProps={{
-            open: isTimelinePlayerOpen,
-            onOpenChange: setIsTimelinePlayerOpen,
+            open: timelinePlayerTarget !== null,
+            onOpenChange: handleTimelinePlayerOpenChange,
             tableNormalizedName: timelinePlayerTarget?.normalizedName ?? null,
             tableName: timelinePlayerTarget?.name ?? null,
           }}
@@ -1845,14 +1878,8 @@ function App() {
             open: isAIGenerateDialogOpen,
             onOpenChange: setIsAIGenerateDialogOpen,
             dbType,
-            existingConfig: {
-              schemaName,
-              tableName,
-              tableComment,
-              rows,
-              indexes,
-            },
-            templates: [...templates, ...tableTemplates],
+            existingConfig: aiGenerateExistingConfig,
+            templates: aiGenerateTemplates,
             onApply: handleApplyAIGeneratedSchema,
           }}
           storageEstimatorDialogProps={{

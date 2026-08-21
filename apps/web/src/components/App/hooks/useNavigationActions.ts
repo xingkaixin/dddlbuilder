@@ -12,7 +12,6 @@ interface UseNavigationActionsParams {
       name: string;
     } | null,
   ) => void;
-  setIsVersionHistoryOpen: (open: boolean) => void;
   setIsAIGenerateDialogOpen: (open: boolean) => void;
   setIsMockDataDialogOpen: (open: boolean) => void;
   setIsErDialogOpen: (open: boolean) => void;
@@ -24,7 +23,6 @@ export function useNavigationActions({
   setActiveTab,
   setIsStorageEstimatorOpen,
   setVersionHistoryTarget,
-  setIsVersionHistoryOpen,
   setIsAIGenerateDialogOpen,
   setIsMockDataDialogOpen,
   setIsErDialogOpen,
@@ -47,9 +45,8 @@ export function useNavigationActions({
         normalizedName: item.normalizedName,
         name: item.name,
       });
-      setIsVersionHistoryOpen(true);
     },
-    [setVersionHistoryTarget, setIsVersionHistoryOpen],
+    [setVersionHistoryTarget],
   );
 
   const handleOpenAIGenerateDialog = useCallback(() => {

@@ -20,8 +20,6 @@ export type WorkspaceYDocStartupPlan =
       enabled: true;
       scope: Extract<WorkspaceScope, { kind: 'user' }> & { workspaceId: string };
       steps: WorkspaceYDocStartupStep[];
-      d1Persistence: 'durable-object-checkpoint';
-      queueEntityOutbox: false;
     };
 
 type UserWorkspaceScope = Extract<WorkspaceScope, { kind: 'user' }> & { workspaceId: string };
@@ -57,8 +55,6 @@ export const resolveWorkspaceYDocStartupPlan = (input: {
       ...(input.legacyMigrationCompleted ? [] : (['merge-legacy-indexeddb-snapshot'] as const)),
       'connect-durable-object',
     ],
-    d1Persistence: 'durable-object-checkpoint',
-    queueEntityOutbox: false,
   };
 };
 

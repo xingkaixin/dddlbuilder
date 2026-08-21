@@ -5,6 +5,7 @@ type CoreDialogKey = 'save' | 'rename' | 'delete';
 
 type CoreDialogState = Record<CoreDialogKey, boolean>;
 
+/** target 即开关：为 null 就是关闭状态，不再另存一个必然同步的布尔。 */
 interface VersionHistoryTarget {
   normalizedName: string;
   name: string;
@@ -39,13 +40,11 @@ interface AppStoreState {
   loadedTableName: string | null;
   loadedTableSignature: string | null;
   isDiffDialogOpen: boolean;
-  isVersionHistoryOpen: boolean;
   versionHistoryTarget: VersionHistoryTarget | null;
   isReviewHistoryOpen: boolean;
   isStorageEstimatorOpen: boolean;
   isAIGenerateDialogOpen: boolean;
   isMockDataDialogOpen: boolean;
-  isTimelinePlayerOpen: boolean;
   timelinePlayerTarget: VersionHistoryTarget | null;
 
   setSchemaName: (schemaName: string) => void;
@@ -73,13 +72,11 @@ interface AppStoreState {
   setLoadedTableName: (name: string | null) => void;
   setLoadedTableSignature: (signature: string | null) => void;
   setIsDiffDialogOpen: (open: boolean) => void;
-  setIsVersionHistoryOpen: (open: boolean) => void;
   setVersionHistoryTarget: (target: VersionHistoryTarget | null) => void;
   setIsReviewHistoryOpen: (open: boolean) => void;
   setIsStorageEstimatorOpen: (open: boolean) => void;
   setIsAIGenerateDialogOpen: (open: boolean) => void;
   setIsMockDataDialogOpen: (open: boolean) => void;
-  setIsTimelinePlayerOpen: (open: boolean) => void;
   setTimelinePlayerTarget: (target: VersionHistoryTarget | null) => void;
 }
 
@@ -104,13 +101,11 @@ export const useAppStore = create<AppStoreState>((set) => ({
   loadedTableName: null,
   loadedTableSignature: null,
   isDiffDialogOpen: false,
-  isVersionHistoryOpen: false,
   versionHistoryTarget: null,
   isReviewHistoryOpen: false,
   isStorageEstimatorOpen: false,
   isAIGenerateDialogOpen: false,
   isMockDataDialogOpen: false,
-  isTimelinePlayerOpen: false,
   timelinePlayerTarget: null,
 
   setSchemaName: (schemaName) => set({ schemaName }),
@@ -164,12 +159,10 @@ export const useAppStore = create<AppStoreState>((set) => ({
   setLoadedTableName: (loadedTableName) => set({ loadedTableName }),
   setLoadedTableSignature: (loadedTableSignature) => set({ loadedTableSignature }),
   setIsDiffDialogOpen: (isDiffDialogOpen) => set({ isDiffDialogOpen }),
-  setIsVersionHistoryOpen: (isVersionHistoryOpen) => set({ isVersionHistoryOpen }),
   setVersionHistoryTarget: (versionHistoryTarget) => set({ versionHistoryTarget }),
   setIsReviewHistoryOpen: (isReviewHistoryOpen) => set({ isReviewHistoryOpen }),
   setIsStorageEstimatorOpen: (isStorageEstimatorOpen) => set({ isStorageEstimatorOpen }),
   setIsAIGenerateDialogOpen: (isAIGenerateDialogOpen) => set({ isAIGenerateDialogOpen }),
   setIsMockDataDialogOpen: (isMockDataDialogOpen) => set({ isMockDataDialogOpen }),
-  setIsTimelinePlayerOpen: (isTimelinePlayerOpen) => set({ isTimelinePlayerOpen }),
   setTimelinePlayerTarget: (timelinePlayerTarget) => set({ timelinePlayerTarget }),
 }));

@@ -22,8 +22,6 @@ describe('workspaceYDocAuthority', () => {
         workspaceId: 'ws-1',
       },
       steps: ['load-indexeddb-ydoc', 'merge-legacy-indexeddb-snapshot', 'connect-durable-object'],
-      d1Persistence: 'durable-object-checkpoint',
-      queueEntityOutbox: false,
     });
   });
 
