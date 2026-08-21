@@ -1,4 +1,5 @@
 export { buildWorkspaceContentHash } from './contentHash';
+export { stableStringify } from './yMapJson';
 export {
   type ApplyPersistedStateOptions,
   applyPersistedStateToTableDoc,

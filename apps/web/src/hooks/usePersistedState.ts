@@ -67,6 +67,7 @@ import {
   type DraftEntry,
   type WorkspaceHydration,
 } from './workspacePersistence/hydration';
+import { mergeLocalDraftChanges } from './workspacePersistence/mergeLocalEdits';
 import { leaveShareRoute, useShareRoute } from './workspacePersistence/shareRoute';
 import {
   buildShareStorageKey,
@@ -83,44 +84,6 @@ const sortDraftSummaries = (drafts: DraftSummary[]) =>
 
 const isSamePersistedState = (left: PersistedState, right: PersistedState) =>
   serializePersistedStateForComparison(left) === serializePersistedStateForComparison(right);
-
-const mergeLocalDraftChanges = (
-  baseState: PersistedState,
-  localState: PersistedState,
-  remoteState: PersistedState,
-) => {
-  const merged: PersistedState = { ...remoteState };
-  if (
-    baseState.tableName !== localState.tableName &&
-    remoteState.tableName === baseState.tableName
-  ) {
-    merged.tableName = localState.tableName;
-  }
-
-  const rows = remoteState.rows.map((remoteRow, index) => {
-    const baseRow = baseState.rows[index];
-    const localRow = localState.rows[index];
-    if (!baseRow || !localRow) return remoteRow;
-    return {
-      ...remoteRow,
-      ...(baseRow.fieldName !== localRow.fieldName && remoteRow.fieldName === baseRow.fieldName
-        ? { fieldName: localRow.fieldName }
-        : {}),
-      ...(baseRow.fieldType !== localRow.fieldType && remoteRow.fieldType === baseRow.fieldType
-        ? { fieldType: localRow.fieldType }
-        : {}),
-      ...(baseRow.fieldComment !== localRow.fieldComment &&
-      remoteRow.fieldComment === baseRow.fieldComment
-        ? { fieldComment: localRow.fieldComment }
-        : {}),
-      ...(baseRow.nullable !== localRow.nullable && remoteRow.nullable === baseRow.nullable
-        ? { nullable: localRow.nullable }
-        : {}),
-    };
-  });
-  merged.rows = rows;
-  return merged;
-};
 
 type ShareLoadStatus = 'idle' | 'not_found' | 'error';
 
