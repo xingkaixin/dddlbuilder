@@ -24,6 +24,10 @@ database_name = "ddlbuilder-user-local"
 database_id = "00000000-0000-0000-0000-000000000001"
 preview_database_id = "00000000-0000-0000-0000-000000000001"
 
+# 回收在预留与结算之间丢失的 AI 额度
+[triggers]
+crons = ["*/10 * * * *"]
+
 [[durable_objects.bindings]]
 name = "WORKSPACE_YDOC"
 class_name = "WorkspaceYDocDurableObject"

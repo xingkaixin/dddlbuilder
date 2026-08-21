@@ -17,6 +17,7 @@ import { registerWorkspaceSnapshotRoutes } from '../server-api/routes/workspaceS
 import { registerWorkspaceRoutes } from '../server-api/routes/workspaces.js';
 import { registerWorkspaceYDocRoutes } from '../server-api/routes/workspaceYDoc.js';
 import { registerAdminRoutes } from '../server-api/routes/admin.js';
+import { reclaimStaleAIUsage } from '../server-api/lib/aiUsage.js';
 export { WorkspaceYDocDurableObject } from '../server-api/lib/workspaceYDocDurableObject.js';
 
 const DOCS_DEV_ORIGIN = 'http://127.0.0.1:5174';
@@ -134,4 +135,15 @@ app.get('*', async (c) => {
   });
 });
 
-export default app;
+export default {
+  fetch: app.fetch,
+  async scheduled(_event: ScheduledEvent, env: ApiEnv['Bindings'], ctx: ExecutionContext) {
+    ctx.waitUntil(
+      reclaimStaleAIUsage(env).then(({ scanned, reclaimed }) => {
+        if (scanned > 0) {
+          console.log(`[ai-usage] reclaim scanned=${scanned} reclaimed=${reclaimed}`);
+        }
+      }),
+    );
+  },
+};

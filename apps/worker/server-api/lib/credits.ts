@@ -62,7 +62,7 @@ const toLedgerRow = (row: Record<string, unknown>): CreditLedgerRow => ({
   createdAt: String(row.createdAt),
 });
 
-const readExistingLedger = async (
+export const readCreditLedgerEntry = async (
   env: ApiEnv['Bindings'],
   userId: string,
   idempotencyKey: string,
@@ -235,7 +235,7 @@ export const applyCreditMutation = async (
     throw new Error('INVALID_CREDIT_AMOUNT');
   }
 
-  const existing = await readExistingLedger(env, input.userId, input.idempotencyKey);
+  const existing = await readCreditLedgerEntry(env, input.userId, input.idempotencyKey);
   if (existing) {
     return validateExistingLedger(existing, input);
   }
@@ -280,14 +280,14 @@ export const applyCreditMutation = async (
         )
         .run();
       if (!inserted.success || Number(inserted.meta.changes ?? 0) === 0) {
-        const concurrent = await readExistingLedger(env, input.userId, input.idempotencyKey);
+        const concurrent = await readCreditLedgerEntry(env, input.userId, input.idempotencyKey);
         if (concurrent) {
           return validateExistingLedger(concurrent, input);
         }
         continue;
       }
     } catch (error) {
-      const concurrent = await readExistingLedger(env, input.userId, input.idempotencyKey);
+      const concurrent = await readCreditLedgerEntry(env, input.userId, input.idempotencyKey);
       if (concurrent) {
         return validateExistingLedger(concurrent, input);
       }
@@ -297,14 +297,14 @@ export const applyCreditMutation = async (
       throw error;
     }
 
-    const created = await readExistingLedger(env, input.userId, input.idempotencyKey);
+    const created = await readCreditLedgerEntry(env, input.userId, input.idempotencyKey);
     if (!created) {
       throw new Error('CREDIT_LEDGER_WRITE_FAILED');
     }
     return validateExistingLedger(created, input);
   }
 
-  const retryExisting = await readExistingLedger(env, input.userId, input.idempotencyKey);
+  const retryExisting = await readCreditLedgerEntry(env, input.userId, input.idempotencyKey);
   if (retryExisting) {
     return validateExistingLedger(retryExisting, input);
   }

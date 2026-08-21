@@ -1,6 +1,6 @@
 import type { Context } from 'hono';
 import { authenticateRequest } from './auth.js';
-import { applyCreditMutation, type CreditLedgerSource } from './credits.js';
+import { applyCreditMutation, readCreditLedgerEntry, type CreditLedgerSource } from './credits.js';
 import type { ApiEnv } from './context.js';
 
 export type AIRouteKey =
@@ -243,4 +243,136 @@ export const failAIUsage = async (
     to: 'failed',
     errorCode,
   });
+};
+
+/**
+ * Worker 可能在预留和结算之间消失（isolate 回收、CPU 超限、流式请求中断），
+ * 此时额度已扣但 usage_event 停在非终态，用户余额被永久占用且没有任何请求会再碰它。
+ * 这里按 ledger 里的事实——而不是状态列——决定是否退款，然后把记录推到终态。
+ */
+const STALE_AI_USAGE_TTL_MS = 15 * 60 * 1000;
+
+// 含 reclaiming：上一轮抢占后中途失败的记录必须能被下一轮重新捡起，否则会永久卡住。
+// 重复捡起是安全的——退款走 settlement 幂等键，第二次只会读回已有分录。
+const RECLAIMABLE_STATUSES = [
+  'pending',
+  'reserved',
+  'reclaiming',
+  'settling_succeeded',
+  'settling_failed',
+] as const;
+
+type StaleUsageRow = {
+  id: string;
+  userId: string;
+  routeKey: string;
+  requestId: string;
+  estimatedTokens: number;
+  status: string;
+};
+
+const isAIRouteKey = (value: string): value is AIRouteKey => value in ROUTE_SOURCES;
+
+/**
+ * 抢占先于退款：正常结算路径的 claimSettlement 只认 reserved/settling_*，
+ * 状态一旦变成 reclaiming 它就会直接放弃，两条路径不会同时动同一笔额度。
+ */
+const claimStaleUsage = async (env: ApiEnv['Bindings'], row: StaleUsageRow) => {
+  const result = await env.USER_DB.prepare(
+    `
+      UPDATE usage_events
+      SET status = 'reclaiming'
+      WHERE id = ? AND status = ?
+    `,
+  )
+    .bind(row.id, row.status)
+    .run();
+  return result.success && Number(result.meta.changes ?? 0) > 0;
+};
+
+const reclaimOne = async (env: ApiEnv['Bindings'], row: StaleUsageRow) => {
+  if (!isAIRouteKey(row.routeKey)) return false;
+  if (!(await claimStaleUsage(env, row))) return false;
+
+  const reservation: AIUsageReservation = {
+    usageEventId: row.id,
+    userId: row.userId,
+    routeKey: row.routeKey,
+    requestId: row.requestId,
+    reservedTokens: normalizeTokenAmount(row.estimatedTokens),
+  };
+
+  // pending 记录的扣款未必发生过，退款前必须先确认预留分录真的存在
+  const reserved = await readCreditLedgerEntry(
+    env,
+    row.userId,
+    buildLedgerIdentity(reservation, 'reserve'),
+  );
+  if (reserved) {
+    await applyCreditMutation(env, {
+      userId: row.userId,
+      kind: 'refund',
+      source: ROUTE_SOURCES[row.routeKey],
+      amount: reservation.reservedTokens,
+      idempotencyKey: buildLedgerIdentity(reservation, 'settlement'),
+      relatedUsageId: row.id,
+      metadata: {
+        routeKey: row.routeKey,
+        requestId: row.requestId,
+        reason: 'reservation_abandoned',
+        reclaimedFrom: row.status,
+      },
+      ledgerId: `refund:${buildLedgerIdentity(reservation, 'settlement')}`,
+    });
+  }
+
+  await env.USER_DB.prepare(
+    `
+      UPDATE usage_events
+      SET status = 'failed', error_code = 'RESERVATION_ABANDONED'
+      WHERE id = ? AND status = 'reclaiming'
+    `,
+  )
+    .bind(row.id)
+    .run();
+  return true;
+};
+
+export const reclaimStaleAIUsage = async (
+  env: ApiEnv['Bindings'],
+  options: { now?: number; ttlMs?: number; limit?: number } = {},
+) => {
+  const ttlMs = options.ttlMs ?? STALE_AI_USAGE_TTL_MS;
+  const cutoff = new Date((options.now ?? Date.now()) - ttlMs).toISOString();
+  const placeholders = RECLAIMABLE_STATUSES.map(() => '?').join(', ');
+
+  const stale = await env.USER_DB.prepare(
+    `
+      SELECT
+        id,
+        user_id AS userId,
+        route_key AS routeKey,
+        request_id AS requestId,
+        estimated_tokens AS estimatedTokens,
+        status
+      FROM usage_events
+      WHERE status IN (${placeholders}) AND created_at < ?
+      ORDER BY created_at
+      LIMIT ?
+    `,
+  )
+    .bind(...RECLAIMABLE_STATUSES, cutoff, options.limit ?? 200)
+    .all<StaleUsageRow>();
+
+  const rows = stale.results ?? [];
+  let reclaimed = 0;
+  for (const row of rows) {
+    try {
+      if (await reclaimOne(env, row)) reclaimed += 1;
+    } catch (error) {
+      // 单条失败不拖垮整批，记录留在 reclaiming 等下一轮重试
+      console.error('[ai-usage] failed to reclaim abandoned reservation', row.id, error);
+    }
+  }
+  return { scanned: rows.length, reclaimed };
 };
