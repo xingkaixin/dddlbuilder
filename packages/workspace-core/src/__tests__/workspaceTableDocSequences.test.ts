@@ -5,6 +5,7 @@ import { buildWorkspaceContentHash } from '../contentHash';
 import { applyPersistedStateToTableDoc, tableDocToPersistedState } from '../workspaceTableDoc';
 
 const createRow = (index: number, overrides: Partial<FieldRow> = {}): FieldRow => ({
+  id: `f${index}`,
   order: index + 1,
   fieldName: `f${index}`,
   fieldType: 'varchar(64)',
@@ -182,6 +183,12 @@ const OPTIONAL_SCALAR_VALUES = {
   tableMiscConfig: { engine: 'InnoDB' },
 } as const;
 
+let rowCounter = 0;
+const nextRowIndex = () => {
+  rowCounter += 1;
+  return rowCounter;
+};
+
 // 取值池刻意很小且含各槽位的初始值，这样「改走再改回」会频繁出现——增量写的缺陷正藏在回退里
 const FIELD_NAMES = ['f0', 'f1', 'f2', 'f3', 'col_a', 'col_b'] as const;
 const DEFAULT_KINDS = ['none', 'auto_increment', undefined] as const;
@@ -212,7 +219,7 @@ const MUTATIONS: readonly ((state: PersistedState, random: Random) => PersistedS
     const next = pick(DEFAULT_KINDS, random);
     return replaceRow(state, index, next === undefined ? row : { ...row, defaultKind: next });
   },
-  (state) => withRows(state, [...state.rows, createRow(state.rows.length)]),
+  (state) => withRows(state, [...state.rows, createRow(nextRowIndex())]),
   (state, random) => {
     if (state.rows.length < 2) return state;
     const index = Math.floor(random() * state.rows.length);

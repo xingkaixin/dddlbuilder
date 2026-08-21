@@ -28,8 +28,8 @@ export const reorderFieldRowsByIds = (
     return rows;
   }
 
-  const oldIndex = rows.findIndex((row) => String(row.order) === activeId);
-  const newIndex = rows.findIndex((row) => String(row.order) === overId);
+  const oldIndex = rows.findIndex((row) => row.id === activeId);
+  const newIndex = rows.findIndex((row) => row.id === overId);
 
   if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) {
     return rows;
@@ -52,7 +52,7 @@ export function useSortableFieldRows({ rows, setRows, onDragResult }: UseSortabl
     }),
   );
 
-  const rowIds = useMemo(() => rows.map((row) => String(row.order)), [rows]);
+  const rowIds = useMemo(() => rows.map((row) => row.id), [rows]);
 
   const handleDragMove = useCallback((event: DragMoveEvent) => {
     if (event.over) {
@@ -68,8 +68,8 @@ export function useSortableFieldRows({ rows, setRows, onDragResult }: UseSortabl
       const moved =
         Boolean(overId) &&
         activeId !== overId &&
-        rows.findIndex((row) => String(row.order) === activeId) >= 0 &&
-        rows.findIndex((row) => String(row.order) === overId) >= 0;
+        rows.findIndex((row) => row.id === activeId) >= 0 &&
+        rows.findIndex((row) => row.id === overId) >= 0;
 
       setRows((prev) => reorderFieldRowsByIds(prev, activeId, overId));
       onDragResult?.({

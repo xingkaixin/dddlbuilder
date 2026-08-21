@@ -19,6 +19,8 @@ export const FIELD_ON_UPDATES = ['none', 'current_timestamp'] as const;
 export type FieldOnUpdate = (typeof FIELD_ON_UPDATES)[number];
 
 export type FieldRow = {
+  /** 创建时一次性分配、之后永不改变。CRDT 合并靠它对齐行，不能由内容或位置推导。 */
+  id: string;
   order: number;
   fieldName: string;
   fieldType: string;
@@ -110,4 +112,23 @@ export const normalizeFieldEnums = <T extends FieldEnumValues>(field: T): T =>
   }) as T;
 
 export const normalizePersistedRows = <T extends { rows?: FieldRow[] }>(state: T): T =>
-  Array.isArray(state?.rows) ? { ...state, rows: state.rows.map(normalizeFieldEnums) } : state;
+  Array.isArray(state?.rows)
+    ? {
+        ...state,
+        rows: state.rows.map((row, index) => ({
+          ...normalizeFieldEnums(row),
+          id: ensureFieldId(row, index),
+        })),
+      }
+    : state;
+
+export const createFieldId = (): string => crypto.randomUUID();
+
+/**
+ * 早于稳定 id 的持久化数据只能按位置对齐，补 id 时必须沿用位置且保持确定性：
+ * 同一份旧数据在多端加载要得到同一组 id，否则合并时会分裂成两套行。
+ */
+const legacyFieldId = (index: number) => `legacy-field-${index}`;
+
+export const ensureFieldId = (field: Partial<FieldRow>, index: number): string =>
+  typeof field.id === 'string' && field.id.length > 0 ? field.id : legacyFieldId(index);

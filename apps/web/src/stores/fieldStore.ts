@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { FieldRow } from '@ddlbuilder/shared-types';
+import { ensureFieldId, type FieldRow } from '@ddlbuilder/shared-types';
 import {
   createEmptyRow,
   ensureOrder,
@@ -17,6 +17,8 @@ function createInitialRows(count: number): FieldRow[] {
 function normalizePersistedRows(rows: FieldRow[]): FieldRow[] {
   return rows.map((row, index) => ({
     ...normalizeFieldEnums({ ...createEmptyRow(index), ...row }),
+    // 持久化数据缺 id 时必须按位置确定性补齐，随机 id 会让多端加载同一份旧数据分裂成两套行
+    id: ensureFieldId(row, index),
     order: index + 1,
     fieldName: toStringSafe(row.fieldName),
     fieldType: toStringSafe(row.fieldType),

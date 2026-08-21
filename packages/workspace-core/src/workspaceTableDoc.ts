@@ -4,6 +4,7 @@ import {
   type ForeignKeyDefinition,
   type IndexDefinition,
   type PersistedState,
+  ensureFieldId,
   normalizeFieldDefaultKind,
   normalizeFieldNullable,
   normalizeFieldOnUpdate,
@@ -44,8 +45,8 @@ const TABLE_SCALAR_KEYS = [
   'fieldTableViewConfig',
 ] as const;
 
+// order 不入库：顺序由 fieldOrder 数组表达，再存一份必然与之分叉。
 const FIELD_KEYS = [
-  'order',
   'fieldName',
   'fieldType',
   'fieldComment',
@@ -105,34 +106,11 @@ const getFields = (tableDoc: Y.Map<unknown>) =>
 
 const getFieldOrder = (tableDoc: Y.Map<unknown>) => readStringArray(tableDoc, 'fieldOrder');
 
-const hashString = (value: string) => {
-  let hash = 5381;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 33) ^ value.charCodeAt(index);
-  }
-  return (hash >>> 0).toString(36);
-};
-
-const rowIdentity = (row: FieldRow) => {
-  const { order: _order, ...rest } = row;
-  return stableStringify(rest);
-};
-
-const fieldIdForRow = (row: FieldRow, index: number) =>
-  `field_${index + 1}_${hashString(rowIdentity(row))}`;
-
-const uniqueFieldId = (baseId: string, used: Set<string>) => {
-  if (!used.has(baseId)) return baseId;
-  let suffix = 2;
-  while (used.has(`${baseId}_${suffix}`)) {
-    suffix += 1;
-  }
-  return `${baseId}_${suffix}`;
-};
-
+// fieldId 即行身份：Y.Map 的键本身就是稳定 id，旧文档的 `field_N_hash` 键也照此沿用。
 const readFieldRow = (
+  fieldId: string,
   fieldMap: Y.Map<unknown>,
-  fallbackOrder: number,
+  order: number,
   fallbackRow?: FieldRow,
 ): FieldRow => {
   const row: JsonRecord = readJsonMap(fieldMap);
@@ -143,14 +121,14 @@ const readFieldRow = (
   const nullable = [row.nullable, fallback.nullable].find(
     (value) => typeof value === 'boolean' || typeof value === 'string',
   );
-  const order = [row.order, fallback.order].find((value) => typeof value === 'number');
   const defaultKind = text('defaultKind');
   const defaultValue = text('defaultValue');
   const onUpdate = text('onUpdate');
   const enumMeta = [row.enumMeta, fallback.enumMeta].find((value) => Array.isArray(value));
 
   return {
-    order: order ?? fallbackOrder,
+    id: fieldId,
+    order,
     fieldName: text('fieldName') ?? '',
     fieldType: text('fieldType') ?? '',
     fieldComment: text('fieldComment') ?? '',
@@ -160,62 +138,6 @@ const readFieldRow = (
     ...(onUpdate === undefined ? {} : { onUpdate: normalizeFieldOnUpdate(onUpdate) }),
     ...(enumMeta === undefined ? {} : { enumMeta: enumMeta as FieldRow['enumMeta'] }),
   };
-};
-
-const addFieldIdCandidate = (
-  byIdentity: Map<string, string[]>,
-  byOrder: Map<number, string[]>,
-  row: FieldRow,
-  fieldId: string,
-) => {
-  const identity = rowIdentity(row);
-  byIdentity.set(identity, [...(byIdentity.get(identity) ?? []), fieldId]);
-  byOrder.set(row.order, [...(byOrder.get(row.order) ?? []), fieldId]);
-};
-
-const chooseFieldIds = (tableDoc: Y.Map<unknown>, rows: FieldRow[], baseRows: FieldRow[]) => {
-  const fieldOrder = getFieldOrder(tableDoc);
-  const fields = getFields(tableDoc);
-  const existingByIdentity = new Map<string, string[]>();
-  const existingByOrder = new Map<number, string[]>();
-
-  fieldOrder.forEach((fieldId, index) => {
-    const fieldMap = fields?.get(fieldId);
-    if (!fieldMap) return;
-    addFieldIdCandidate(
-      existingByIdentity,
-      existingByOrder,
-      readFieldRow(fieldMap, index + 1, baseRows[index]),
-      fieldId,
-    );
-  });
-
-  const used = new Set<string>();
-  return rows.map((row, index) => {
-    const identityCandidates = existingByIdentity.get(rowIdentity(row)) ?? [];
-    const byIdentity = identityCandidates.find((fieldId) => !used.has(fieldId));
-    if (byIdentity) {
-      used.add(byIdentity);
-      return byIdentity;
-    }
-
-    const orderCandidates = existingByOrder.get(row.order) ?? [];
-    const byOrder = orderCandidates.find((fieldId) => !used.has(fieldId));
-    if (byOrder) {
-      used.add(byOrder);
-      return byOrder;
-    }
-
-    const byPosition = fieldOrder[index];
-    if (byPosition && !used.has(byPosition)) {
-      used.add(byPosition);
-      return byPosition;
-    }
-
-    const generated = uniqueFieldId(fieldIdForRow(row, index), used);
-    used.add(generated);
-    return generated;
-  });
 };
 
 // 写入基线只能是文档自身的现值：map 里有的键以 map 为准，缺失的键解码时会回落到 stateSnapshot。
@@ -264,7 +186,7 @@ export const applyPersistedStateToTableDoc = (
 
   const snapshotRows = previousSnapshot?.rows ?? [];
   const nextRows = state.rows ?? [];
-  const fieldIds = chooseFieldIds(tableDoc, nextRows, snapshotRows);
+  const fieldIds = nextRows.map((row, index) => ensureFieldId(row, index));
   if (
     writeAllKeys ||
     hasFieldDoc(tableDoc) ||
@@ -327,10 +249,11 @@ export const tableDocToPersistedState = (tableDoc: Y.Map<unknown>): PersistedSta
       ? getFieldOrder(tableDoc)
           .map((fieldId, index) => {
             const fieldMap = fields.get(fieldId);
-            return fieldMap ? readFieldRow(fieldMap, index + 1, stateSnapshot?.rows[index]) : null;
+            return fieldMap
+              ? readFieldRow(fieldId, fieldMap, index + 1, stateSnapshot?.rows[index])
+              : null;
           })
           .filter((row): row is FieldRow => row != null)
-          .map((row, index) => ({ ...row, order: index + 1 }))
       : [];
   const indexes = hasIndexDoc(tableDoc)
     ? readOrderedMap<IndexDefinition>(tableDoc, 'indexes', 'indexOrder')

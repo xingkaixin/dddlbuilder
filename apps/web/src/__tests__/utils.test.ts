@@ -447,6 +447,7 @@ describe('Utils', () => {
       const result = createEmptyRow(1);
 
       expect(result).toEqual({
+        id: expect.any(String),
         order: 2,
         fieldName: '',
         fieldType: '',

@@ -167,6 +167,7 @@ describe('shareService', () => {
       ...createState(),
       rows: [
         {
+          id: 'field-id',
           order: 1,
           fieldName: 'id',
           fieldType: 'BIGINT',
@@ -177,6 +178,7 @@ describe('shareService', () => {
           onUpdate: '无',
         },
         {
+          id: 'field-created_at',
           order: 2,
           fieldName: 'created_at',
           fieldType: 'TIMESTAMP',

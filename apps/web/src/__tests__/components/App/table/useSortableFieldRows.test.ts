@@ -8,6 +8,7 @@ import type { FieldRow } from '@ddlbuilder/shared-types';
 
 function createRows(names: string[]): FieldRow[] {
   return names.map((name, index) => ({
+    id: String(index + 1),
     order: index + 1,
     fieldName: name,
     fieldType: 'int',

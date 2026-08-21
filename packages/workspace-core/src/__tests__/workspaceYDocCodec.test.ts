@@ -20,6 +20,7 @@ const createState = (tableName: string): PersistedState => ({
   viewCreateOrReplace: true,
   rows: [
     {
+      id: 'field-id',
       order: 1,
       fieldName: 'id',
       fieldType: 'bigint',
@@ -30,6 +31,7 @@ const createState = (tableName: string): PersistedState => ({
       onUpdate: 'none',
     },
     {
+      id: 'field-email',
       order: 2,
       fieldName: 'email',
       fieldType: 'varchar(255)',
@@ -219,6 +221,7 @@ describe('workspace YDoc codec', () => {
       dbType: 'mysql',
       rows: [
         {
+          id: 'field-1',
           order: 1,
           fieldName: 'id',
           nullable: false,

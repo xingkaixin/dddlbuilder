@@ -6,6 +6,7 @@ import type {
   TableMiscConfig,
   MysqlPartitionConfig,
 } from '@ddlbuilder/shared-types';
+import { createFieldId } from '@ddlbuilder/shared-types';
 import { createEmptyRow } from './helpers';
 import type { ParsedResult } from './SqlParser';
 
@@ -37,6 +38,7 @@ export function convertParsedResultToPersistedState(
       : getSchemaAndTable(result.tableName);
 
   const newRows: FieldRow[] = result.fields.map((field, index) => ({
+    id: createFieldId(),
     order: index + 1,
     fieldName: field.name,
     fieldType: field.type,

@@ -67,6 +67,7 @@ describe('fieldStore', () => {
     const current = useFieldStore.getState();
     expect(current.rows).toEqual([
       {
+        id: 'legacy-field-0',
         order: 1,
         fieldName: '123',
         fieldType: 'varchar(20)',
@@ -82,6 +83,7 @@ describe('fieldStore', () => {
   it('初始化历史格式的行时应归一化而不是丢弃枚举值', () => {
     useFieldStore.getState().initializeRows([
       {
+        id: 'field-id',
         order: 1,
         fieldName: 'id',
         fieldType: 'bigint',
@@ -102,7 +104,8 @@ describe('fieldStore', () => {
 
   it('空初始化与无效变更应保持数据不变', () => {
     const state = useFieldStore.getState();
-    state.setRows([createEmptyRow(0)]);
+    const emptyRow = createEmptyRow(0);
+    state.setRows([emptyRow]);
 
     state.initializeRows([]);
     state.initializeRows(undefined);
@@ -111,7 +114,7 @@ describe('fieldStore', () => {
     state.handleRowsChange([null], 'edit');
 
     const current = useFieldStore.getState();
-    expect(current.rows).toEqual([createEmptyRow(0)]);
+    expect(current.rows).toEqual([emptyRow]);
   });
 
   it('应该扩容到目标行并处理默认值规则', () => {

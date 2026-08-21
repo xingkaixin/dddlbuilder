@@ -25,6 +25,7 @@ const createState = (tableName: string): PersistedState => ({
   viewCreateOrReplace: true,
   rows: [
     {
+      id: 'field-id',
       order: 1,
       fieldName: 'id',
       fieldType: 'bigint',

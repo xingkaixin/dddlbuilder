@@ -84,6 +84,7 @@ describe('workspacePersistence/normalize', () => {
 
     expect(result?.rows).toEqual([
       {
+        id: 'legacy-field-0',
         order: 1,
         fieldName: '',
         fieldType: '',
@@ -94,6 +95,7 @@ describe('workspacePersistence/normalize', () => {
         onUpdate: 'none',
       },
       {
+        id: 'legacy-field-1',
         order: 2,
         fieldName: '',
         fieldType: '',
@@ -118,6 +120,7 @@ describe('workspacePersistence/normalize', () => {
       dbType: 'mysql',
       rows: [
         {
+          id: 'field-status',
           order: 1,
           fieldName: 'status',
           fieldType: 'char(1)',
@@ -128,6 +131,7 @@ describe('workspacePersistence/normalize', () => {
           ],
         },
         {
+          id: 'field-type',
           order: 2,
           fieldName: 'type',
           fieldType: 'int',
@@ -226,6 +230,7 @@ describe('workspacePersistence/normalize', () => {
         dbType: 'mysql',
         rows: [
           {
+            id: 'field-id',
             order: 1,
             fieldName: 'id',
             fieldType: 'int',
@@ -236,6 +241,7 @@ describe('workspacePersistence/normalize', () => {
             onUpdate: 'none',
           },
           {
+            id: 'field-   ',
             order: 2,
             fieldName: '   ',
             fieldType: 'varchar(20)',

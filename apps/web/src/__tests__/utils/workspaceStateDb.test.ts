@@ -147,6 +147,7 @@ describe('workspaceStateDb', () => {
 
   it('工作区会话的 activeState 在两个读取入口都应归一化历史枚举值', async () => {
     const legacyRow = {
+      id: 'field-id',
       order: 1,
       fieldName: 'id',
       fieldType: 'bigint',

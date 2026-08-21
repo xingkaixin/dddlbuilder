@@ -29,6 +29,7 @@ const createState = (overrides: Partial<PersistedState> = {}): PersistedState =>
   viewCreateOrReplace: true,
   rows: [
     {
+      id: 'field-id',
       order: 1,
       fieldName: 'id',
       fieldType: 'bigint',
@@ -39,6 +40,7 @@ const createState = (overrides: Partial<PersistedState> = {}): PersistedState =>
       onUpdate: 'none',
     },
     {
+      id: 'field-email',
       order: 2,
       fieldName: 'email',
       fieldType: 'varchar(255)',

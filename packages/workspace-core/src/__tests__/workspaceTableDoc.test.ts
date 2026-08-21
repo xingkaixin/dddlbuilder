@@ -21,6 +21,7 @@ const createClientState = (overrides: Partial<PersistedState> = {}): PersistedSt
   viewCreateOrReplace: true,
   rows: [
     {
+      id: 'field-id',
       order: 1,
       fieldName: 'id',
       fieldType: 'bigint',
@@ -31,6 +32,7 @@ const createClientState = (overrides: Partial<PersistedState> = {}): PersistedSt
       onUpdate: 'none',
     },
     {
+      id: 'field-email',
       order: 2,
       fieldName: 'email',
       fieldType: 'varchar(255)',
@@ -141,6 +143,7 @@ describe('workspace table doc', () => {
   it('normalizes legacy snapshot rows on both branches that bypass readFieldRow', () => {
     const legacyRows = [
       {
+        id: 'field-id',
         order: 1,
         fieldName: 'id',
         fieldType: 'bigint',
@@ -151,6 +154,7 @@ describe('workspace table doc', () => {
         onUpdate: '无',
       },
       {
+        id: 'field-created_at',
         order: 2,
         fieldName: 'created_at',
         fieldType: 'timestamp',
@@ -194,8 +198,9 @@ describe('workspace table doc', () => {
     fieldOrder.insert(0, ['field-1']);
     tableDoc.set('fieldOrder', fieldOrder);
 
+    // fields 的键就是行身份，快照只补该键缺失的值
     expect(tableDocToPersistedState(tableDoc).rows).toEqual([
-      { ...clientState.rows[0], fieldName: 'renamed_id' },
+      { ...clientState.rows[0], id: 'field-1', fieldName: 'renamed_id' },
     ]);
   });
 

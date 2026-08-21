@@ -7,6 +7,7 @@ import {
   normalizeFieldNullable,
   normalizeFieldOnUpdate,
 } from '@ddlbuilder/shared-types';
+import { createFieldId } from '@ddlbuilder/shared-types';
 import { RESERVED_KEYWORDS } from './constants';
 import {
   supportsAutoIncrement,
@@ -34,6 +35,7 @@ export const isReservedKeyword = (db: DatabaseType, name: string) => {
 };
 
 export const createEmptyRow = (index: number): FieldRow => ({
+  id: createFieldId(),
   order: index + 1,
   fieldName: '',
   fieldType: '',

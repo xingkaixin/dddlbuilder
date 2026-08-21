@@ -4,6 +4,7 @@ import type {
   PersistedState,
   NormalizedField,
 } from '@ddlbuilder/shared-types';
+import { createFieldId } from '@ddlbuilder/shared-types';
 import type { GeneratedTableSchema } from '@ddlbuilder/shared-types/ai-generate';
 import { diffPersistedState, getSchemaAndTable, type FieldDiff } from '@ddlbuilder/ddl-core';
 
@@ -42,8 +43,9 @@ export type AISchemaChange =
       status?: AISchemaChangeStatus;
     };
 
-function buildGeneratedRows(schema: GeneratedTableSchema): FieldRow[] {
+export function buildGeneratedRows(schema: GeneratedTableSchema): FieldRow[] {
   return schema.fields.map((field, index) => ({
+    id: createFieldId(),
     order: index + 1,
     fieldName: field.fieldName,
     fieldType: field.fieldType,

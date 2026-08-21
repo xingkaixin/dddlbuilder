@@ -56,6 +56,7 @@ describe('convertParsedResultToPersistedState', () => {
 
     expect(state.rows).toHaveLength(12); // 填充到最少 12 行
     expect(state.rows[0]).toEqual({
+      id: expect.any(String),
       order: 1,
       fieldName: 'id',
       fieldType: 'INT',
@@ -66,6 +67,7 @@ describe('convertParsedResultToPersistedState', () => {
       onUpdate: 'none',
     });
     expect(state.rows[1]).toEqual({
+      id: expect.any(String),
       order: 2,
       fieldName: 'name',
       fieldType: 'VARCHAR(50)',

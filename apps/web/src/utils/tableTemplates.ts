@@ -1,4 +1,5 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
+import { createFieldId } from '@ddlbuilder/shared-types';
 import { normalizeFieldEnums } from './helpers';
 import {
   openDb,
@@ -76,6 +77,7 @@ export const applyBlueprintToState = (
   dbType: blueprint.dbType,
   rows: clone(blueprint.rows).map((row, index) => ({
     ...row,
+    id: createFieldId(),
     order: index + 1,
   })),
   indexes: clone(blueprint.indexes),

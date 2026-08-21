@@ -359,7 +359,7 @@ export const DataTable = memo<DataTableProps>(
       features: fieldTableFeatures,
       data: rows,
       columns,
-      getRowId: (row) => String(row.order),
+      getRowId: (row) => row.id,
     });
 
     const handleDragResult = useCallback(

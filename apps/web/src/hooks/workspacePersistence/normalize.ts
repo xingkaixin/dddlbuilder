@@ -1,3 +1,4 @@
+import { ensureFieldId, type FieldRow } from '@ddlbuilder/shared-types';
 import {
   type PersistedState,
   normalizeFieldDefaultKind,
@@ -46,6 +47,7 @@ export const normalizePersistedState = (value: unknown): PersistedState | null =
     rows: rows.map((row, index) => {
       if (!isRecord(row)) {
         return {
+          id: ensureFieldId({}, index),
           order: index + 1,
           fieldName: '',
           fieldType: '',
@@ -58,6 +60,7 @@ export const normalizePersistedState = (value: unknown): PersistedState | null =
       }
 
       return {
+        id: ensureFieldId(row as Partial<FieldRow>, index),
         order: toNumber(row.order, index + 1),
         fieldName: toText(row.fieldName),
         fieldType: toText(row.fieldType),

@@ -24,6 +24,7 @@ import {
   type PartialTableSchema,
 } from '@/hooks/useAIGenerateTable';
 import type { FieldRow, IndexDefinition, DatabaseType } from '@ddlbuilder/shared-types';
+import { buildGeneratedRows } from '@/utils/aiSchemaChanges';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { diffPersistedState, type FieldDiff } from '@ddlbuilder/ddl-core';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
@@ -41,16 +42,7 @@ function toPersistedState(schema: GeneratedTableSchema): PersistedState {
     tableComment: schema.tableComment,
     dbType: 'mysql',
     sqlFormatMode: 'compact',
-    rows: schema.fields.map((field, index) => ({
-      order: index + 1,
-      fieldName: field.fieldName,
-      fieldType: field.fieldType,
-      fieldComment: field.fieldComment,
-      nullable: field.nullable,
-      defaultKind: field.defaultKind,
-      defaultValue: field.defaultValue ?? '',
-      onUpdate: field.onUpdate ?? 'none',
-    })),
+    rows: buildGeneratedRows(schema),
     addCount: 10,
     indexInput: '',
     currentIndexFields: [],

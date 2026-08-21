@@ -508,6 +508,7 @@ describe('useSchemaApplyActions', () => {
       expect(spies.setTableComment).toHaveBeenCalledWith('AI Generated');
       expect(spies.setRows).toHaveBeenCalledWith([
         {
+          id: expect.any(String),
           order: 1,
           fieldName: 'id',
           fieldType: 'INT',
@@ -518,6 +519,7 @@ describe('useSchemaApplyActions', () => {
           onUpdate: 'none',
         },
         {
+          id: expect.any(String),
           order: 2,
           fieldName: 'name',
           fieldType: 'VARCHAR',

@@ -14,6 +14,8 @@ import type {
 } from '@ddlbuilder/shared-types';
 import type { ReviewResult, StructuredSuggestion } from '@/hooks/useDDLReview';
 import type { GeneratedTableSchema } from '@/hooks/useAIGenerateTable';
+import { buildGeneratedRows } from '@/utils/aiSchemaChanges';
+import { createFieldId } from '@ddlbuilder/shared-types';
 
 interface UseSchemaApplyActionsParams {
   rows: FieldRow[];
@@ -56,19 +58,6 @@ const DEFAULT_MYSQL_PARTITION_CONFIG: MysqlPartitionConfig = {
   partitionCount: 4,
   partitions: [],
 };
-
-function buildAIGeneratedRows(schema: GeneratedTableSchema): FieldRow[] {
-  return schema.fields.map((field, index) => ({
-    order: index + 1,
-    fieldName: field.fieldName,
-    fieldType: field.fieldType,
-    fieldComment: field.fieldComment,
-    nullable: field.nullable,
-    defaultKind: field.defaultKind,
-    defaultValue: field.defaultValue || '',
-    onUpdate: field.onUpdate ?? 'none',
-  }));
-}
 
 function buildAIGeneratedIndexes(schema: GeneratedTableSchema): IndexDefinition[] {
   if (!schema.indexes || schema.indexes.length === 0) {
@@ -175,6 +164,7 @@ export function useSchemaApplyActions({
         case 'add_field':
           if (suggestion.field) {
             const newRow: FieldRow = {
+              id: createFieldId(),
               order: rows.length + 1,
               fieldName: suggestion.field.fieldName,
               fieldType: suggestion.field.fieldType,
@@ -352,7 +342,7 @@ export function useSchemaApplyActions({
     (schema: GeneratedTableSchema) => {
       const identity = resolveGeneratedTableIdentity(schema);
       const generatedRows =
-        schema.fields && schema.fields.length > 0 ? buildAIGeneratedRows(schema) : [];
+        schema.fields && schema.fields.length > 0 ? buildGeneratedRows(schema) : [];
       const generatedIndexes = buildAIGeneratedIndexes(schema);
       const nextState: PersistedState = {
         objectType: 'table',
