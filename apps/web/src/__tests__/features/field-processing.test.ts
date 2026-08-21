@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { FieldRow } from '@/App';
+import type { FieldRow } from '@ddlbuilder/shared-types';
 import {
   normalizeFields,
   supportsAutoIncrement,
@@ -7,6 +7,10 @@ import {
   supportsOnUpdateCurrentTimestamp,
   isReservedKeyword,
   toStringSafe,
+  formatMysqlTableName,
+  formatPostgresTableName,
+} from '@/utils/helpers';
+import {
   escapeSingleQuotes,
   formatConstantDefault,
   shouldQuoteDefault,
@@ -14,10 +18,8 @@ import {
   getCanonicalBaseType,
   splitQualifiedName,
   getSchemaAndTable,
-  formatMysqlTableName,
-  formatPostgresTableName,
-  RESERVED_KEYWORDS,
-} from '@/App';
+} from '@ddlbuilder/ddl-core';
+import { RESERVED_KEYWORDS } from '@/utils/constants';
 import {
   normalizeFieldDefaultKind,
   normalizeFieldNullable,

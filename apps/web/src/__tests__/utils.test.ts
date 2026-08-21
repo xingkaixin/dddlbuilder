@@ -1,21 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import { cn } from '@/lib/utils';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
-import type { IndexDefinition } from '@ddlbuilder/shared-types';
-import type { FieldRow } from '@/App';
+import type { FieldRow, IndexDefinition } from '@ddlbuilder/shared-types';
 import {
   createEmptyRow,
   ensureOrder,
   isIntegerType,
   isCharacterType,
   supportsUuidDefault,
-  getCanonicalBaseType,
   getUiDefaultKindOptions,
   getUiOnUpdateOptions,
   toStringSafe,
   isReservedKeyword,
   normalizeFields,
-} from '@/App';
+} from '@/utils/helpers';
+import { getCanonicalBaseType } from '@ddlbuilder/ddl-core';
 import {
   normalizeFieldDefaultKind,
   normalizeFieldNullable,

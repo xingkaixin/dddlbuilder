@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { parseFieldType, canonicalizeBaseType, getFieldTypeForDatabase, TYPE_ALIASES } from '@/App';
+import {
+  parseFieldType,
+  canonicalizeBaseType,
+  getFieldTypeForDatabase,
+  TYPE_ALIASES,
+} from '@ddlbuilder/ddl-core';
 
 describe('Type Mapping Functions', () => {
   describe('parseFieldType', () => {

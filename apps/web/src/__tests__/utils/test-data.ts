@@ -1,4 +1,9 @@
-import type { FieldRow, NormalizedField, IndexField, IndexDefinition } from '@/App';
+import type {
+  FieldRow,
+  NormalizedField,
+  IndexField,
+  IndexDefinition,
+} from '@ddlbuilder/shared-types';
 
 // Sample test data for fields
 export const sampleFieldRows: FieldRow[] = [

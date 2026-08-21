@@ -1,12 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import {
-  buildDDL,
-  buildDCL,
-  buildOracleSynonyms,
-  buildViewDDL,
-  type NormalizedField,
-  type IndexDefinition,
-} from '@/App';
+import { buildDDL, buildDCL, buildOracleSynonyms, buildViewDDL } from '@ddlbuilder/ddl-core';
+import type { NormalizedField, IndexDefinition } from '@ddlbuilder/shared-types';
 
 describe('DDL Generation Functions', () => {
   const sampleFields: NormalizedField[] = [
