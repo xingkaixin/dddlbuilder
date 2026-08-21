@@ -26,6 +26,7 @@ import { useTemplateActions } from './hooks/useTemplateActions';
 import { useTableTemplateActions } from './hooks/useTableTemplateActions';
 import { useSchemaApplyActions } from './hooks/useSchemaApplyActions';
 import { useSavedTableFlowActions } from './hooks/useSavedTableFlowActions';
+import { useTabLifecycle } from './hooks/useTabLifecycle';
 import { usePersistedSync } from './hooks/usePersistedSync';
 import { applySavedState } from './applySavedState';
 import { useClearAllActions } from './hooks/useClearAllActions';
@@ -212,23 +213,6 @@ function App() {
   const loadedTableName = loadedTableSource?.tableName ?? null;
   const loadedTableSignature = loadedTableSource?.baseSignature ?? null;
 
-  // ─── Tab store ─────────────────────────────────────────────────
-  const {
-    tabs,
-    activeTabId,
-    addTab,
-    activateTab,
-    closeTab: closeTabStore,
-    updateActiveTabSnapshot,
-    updateActiveTabTitle,
-    updateActiveTabSource,
-    findTabBySource,
-    getActiveTab,
-    setTabLoading,
-    removeTabBySource,
-    updateTabTitleBySource,
-  } = useTabStore();
-
   const {
     authInput,
     authObjects,
@@ -238,11 +222,6 @@ function App() {
     resetAuthState,
     setAuthObjects,
   } = useAuthManagement();
-  const activeWorkspaceTab = useMemo(
-    () => tabs.find((tab) => tab.id === activeTabId) ?? null,
-    [activeTabId, tabs],
-  );
-  const activeTabSnapshot = activeWorkspaceTab?.stateSnapshot ?? null;
 
   const { citusShardingConfig, setCitusMode, setDistributionColumn, resetCitusSharding } =
     useCitusSharding();
@@ -335,6 +314,35 @@ function App() {
     loadedTableNormalizedName,
     loadedTableSignature,
     updateIndexNames,
+  });
+
+  // ─── Tab lifecycle ─────────────────────────────────────────────
+  const {
+    tabs,
+    activeTabId,
+    activeWorkspaceTab,
+    addTab,
+    activateTab,
+    findTabBySource,
+    getActiveTab,
+    setTabLoading,
+    removeTabBySource,
+    updateTabTitleBySource,
+    updateActiveTabTitle,
+    updateActiveTabSource,
+    updateActiveTabSnapshot,
+    flushActiveTab,
+    showTab,
+    switchToTab,
+    switchToTabById,
+    closeTab: handleCloseTab,
+  } = useTabLifecycle({
+    enabled: hydrated && !isShareView,
+    currentState: currentPersistedState,
+    activeSource,
+    serializePersistedState,
+    saveState,
+    selectWorkspaceSnapshot,
   });
 
   // ─── 5. SQL generation & data hooks ────────────────────────────
@@ -633,31 +641,6 @@ function App() {
     resetTableMiscConfig,
   });
 
-  const flushCurrentWorkspace = useCallback(() => {
-    if (!hydrated || isShareView) return;
-    const state = currentPersistedState;
-    const source = activeSource;
-    const currentSignature = serializePersistedState(state);
-
-    const tabSnapshotSignature = activeTabSnapshot
-      ? serializePersistedState(activeTabSnapshot)
-      : null;
-
-    if (tabSnapshotSignature === currentSignature) return;
-
-    updateActiveTabSnapshot(state);
-    saveState({ state, source });
-  }, [
-    hydrated,
-    isShareView,
-    activeSource,
-    currentPersistedState,
-    serializePersistedState,
-    activeTabSnapshot,
-    updateActiveTabSnapshot,
-    saveState,
-  ]);
-
   const [loadedTableVersion, setLoadedTableVersion] = useState<number>(0);
   const [isErDialogOpen, setIsErDialogOpen] = useState(false);
   const [workspaceSidebarOpen, setWorkspaceSidebarOpen] = useState(true);
@@ -705,7 +688,6 @@ function App() {
     canSaveCurrent,
     loadedTableSource,
     setLoadedTableVersion,
-    setSavedTablesDrawerOpen,
     saveDialog,
     renameDialog,
     deleteDialog,
@@ -718,7 +700,6 @@ function App() {
     saveTable,
     overwriteTable,
     showToast,
-    flushCurrentWorkspace,
     getSavedTableDraft,
     setWorkspaceSnapshot,
     renameSavedTableDraft,
@@ -787,7 +768,7 @@ function App() {
   const handleSelectSavedTable = useCallback(
     async (item: SavedTableSummary) => {
       if (tabs.length > 0) {
-        flushCurrentWorkspace();
+        flushActiveTab();
       }
       setSavedTablesDrawerOpen(false);
 
@@ -796,9 +777,7 @@ function App() {
         normalizedName: item.normalizedName,
       });
       if (existingTab) {
-        activateTab(existingTab.id);
-        applySavedState(existingTab.stateSnapshot);
-        selectWorkspaceSnapshot(existingTab.source, existingTab.stateSnapshot);
+        switchToTab(existingTab);
         return;
       }
 
@@ -832,25 +811,25 @@ function App() {
         // 用户已切换到其他标签页，恢复当前激活标签页的状态
         const currentTab = getActiveTab();
         if (currentTab) {
-          applySavedState(currentTab.stateSnapshot);
-          selectWorkspaceSnapshot(currentTab.source, currentTab.stateSnapshot);
+          showTab(currentTab);
         }
       }
       setTabLoading(newTabId, false);
     },
     [
-      flushCurrentWorkspace,
+      flushActiveTab,
       setSavedTablesDrawerOpen,
       findTabBySource,
-      activateTab,
-      selectWorkspaceSnapshot,
+      switchToTab,
       buildPersistedState,
       addTab,
+      activateTab,
       handleLoadSavedTable,
       updateActiveTabSource,
       updateActiveTabSnapshot,
       setTabLoading,
       getActiveTab,
+      showTab,
       tabs,
     ],
   );
@@ -858,15 +837,13 @@ function App() {
   const handleSelectDraft = useCallback(
     (draftId: string) => {
       if (tabs.length > 0) {
-        flushCurrentWorkspace();
+        flushActiveTab();
       }
       setSavedTablesDrawerOpen(false);
 
       const existingTab = findTabBySource({ kind: 'draft', draftId });
       if (existingTab) {
-        activateTab(existingTab.id);
-        applySavedState(existingTab.stateSnapshot);
-        selectWorkspaceSnapshot(existingTab.source, existingTab.stateSnapshot);
+        switchToTab(existingTab);
         return;
       }
 
@@ -887,14 +864,15 @@ function App() {
       showToast(existedDraftState ? t('app.loadedDraft') : t('app.emptyDraftCreated'));
     },
     [
-      flushCurrentWorkspace,
+      flushActiveTab,
       setSavedTablesDrawerOpen,
       findTabBySource,
-      activateTab,
-      selectWorkspaceSnapshot,
+      switchToTab,
       getDraftState,
       draftSummaries,
       addTab,
+      activateTab,
+      selectWorkspaceSnapshot,
       showToast,
       t,
       tabs,
@@ -904,7 +882,7 @@ function App() {
   const openStateInNewDraftTab = useCallback(
     (initialState: PersistedState) => {
       if (tabs.length > 0) {
-        flushCurrentWorkspace();
+        flushActiveTab();
       }
       const draftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       const uniqueName = createDraft(draftId, initialState);
@@ -922,7 +900,7 @@ function App() {
       applySavedState(finalState);
       setWorkspaceSnapshot({ kind: 'draft', draftId }, finalState);
     },
-    [tabs.length, flushCurrentWorkspace, createDraft, addTab, activateTab, setWorkspaceSnapshot],
+    [tabs.length, flushActiveTab, createDraft, addTab, activateTab, setWorkspaceSnapshot],
   );
 
   const {
@@ -950,25 +928,6 @@ function App() {
     openStateInNewDraftTab(EXAMPLE_USER_PROFILE_TABLE);
     showToast(t('emptyState.exampleLoaded'));
   }, [openStateInNewDraftTab, showToast, t]);
-
-  const handleCloseTab = useCallback(
-    (tabId: string) => {
-      const closingActiveTab = tabId === activeTabId;
-      if (closingActiveTab) {
-        flushCurrentWorkspace();
-      }
-      closeTabStore(tabId);
-
-      // 关闭后台标签时激活对象没变，重放旧快照会把尚未冲刷的编辑回滚掉。
-      if (!closingActiveTab) return;
-      const nextActive = getActiveTab();
-      if (nextActive) {
-        applySavedState(nextActive.stateSnapshot);
-        selectWorkspaceSnapshot(nextActive.source, nextActive.stateSnapshot);
-      }
-    },
-    [activeTabId, closeTabStore, flushCurrentWorkspace, getActiveTab, selectWorkspaceSnapshot],
-  );
 
   const handleRestoreTable = useCallback(
     (item: SavedTableSummary) => {
@@ -1048,18 +1007,13 @@ function App() {
 
       const tab = findTabBySource({ kind: 'draft', draftId });
       if (tab) {
-        if (tab.id === activeTabId) {
-          // 关闭激活标签页会自动创建新草稿
-          handleCloseTab(tab.id);
-        } else {
-          // 非激活标签页直接移除
-          closeTabStore(tab.id);
-        }
+        // 关闭激活标签页会自动创建新草稿
+        handleCloseTab(tab.id);
       }
 
       showToast(t('app.draftDeleted'));
     },
-    [deleteDraftById, findTabBySource, activeTabId, handleCloseTab, closeTabStore, showToast, t],
+    [deleteDraftById, findTabBySource, handleCloseTab, showToast, t],
   );
 
   const workspaceLabel = useMemo(() => {
@@ -1407,14 +1361,7 @@ function App() {
                 }
                 tabs={presentedTabs}
                 activeTabId={activeTabId}
-                onActivateTab={(id) => {
-                  const tab = tabs.find((t) => t.id === id);
-                  if (!tab || tab.id === activeTabId) return;
-                  flushCurrentWorkspace();
-                  activateTab(id);
-                  applySavedState(tab.stateSnapshot);
-                  selectWorkspaceSnapshot(tab.source, tab.stateSnapshot);
-                }}
+                onActivateTab={switchToTabById}
                 onCloseTab={handleCloseTab}
                 onCreateTab={handleCreateDraft}
               />

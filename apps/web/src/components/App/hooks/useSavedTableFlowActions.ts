@@ -25,7 +25,6 @@ interface UseSavedTableFlowActionsParams {
   canSaveCurrent: boolean;
   loadedTableSource: Extract<WorkspaceSelection, { kind: 'saved_table' }> | null;
   setLoadedTableVersion: (version: number) => void;
-  setSavedTablesDrawerOpen: (open: boolean) => void;
   saveDialog: UseDialogStateReturn<SaveDialogData>;
   renameDialog: UseDialogStateReturn<RenameDialogData>;
   deleteDialog: UseDialogStateReturn<DeleteDialogData>;
@@ -42,7 +41,6 @@ interface UseSavedTableFlowActionsParams {
   saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
   overwriteTable: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
   showToast: (message: string) => void;
-  flushCurrentWorkspace?: () => void;
   getSavedTableDraft?: (normalizedName: string) => SavedTableDraftRecord | null;
   setWorkspaceSnapshot?: (source: WorkspaceSelection, state: PersistedState) => void;
   renameSavedTableDraft?: (
@@ -68,7 +66,6 @@ export function useSavedTableFlowActions({
   canSaveCurrent,
   loadedTableSource,
   setLoadedTableVersion,
-  setSavedTablesDrawerOpen,
   saveDialog,
   renameDialog,
   deleteDialog,
@@ -81,7 +78,6 @@ export function useSavedTableFlowActions({
   saveTable,
   overwriteTable,
   showToast,
-  flushCurrentWorkspace,
   getSavedTableDraft,
   setWorkspaceSnapshot,
   renameSavedTableDraft,
@@ -97,7 +93,6 @@ export function useSavedTableFlowActions({
     canSaveCurrent,
     loadedTableSource,
     setLoadedTableVersion,
-    setSavedTablesDrawerOpen,
     saveDialog,
     buildPersistedState,
     serializePersistedState,
@@ -106,7 +101,6 @@ export function useSavedTableFlowActions({
     saveTable,
     overwriteTable,
     showToast,
-    flushCurrentWorkspace,
     getSavedTableDraft,
     setWorkspaceSnapshot,
     onSaveSuccess,

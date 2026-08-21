@@ -32,7 +32,6 @@ interface UseSaveLoadActionsParams {
   canSaveCurrent: boolean;
   loadedTableSource: Extract<WorkspaceSelection, { kind: 'saved_table' }> | null;
   setLoadedTableVersion: (version: number) => void;
-  setSavedTablesDrawerOpen: (open: boolean) => void;
   saveDialog: UseDialogStateReturn<SaveDialogData>;
   buildPersistedState: () => PersistedState;
   serializePersistedState: (state: PersistedState) => string;
@@ -45,7 +44,6 @@ interface UseSaveLoadActionsParams {
   saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
   overwriteTable: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
   showToast: (message: string) => void;
-  flushCurrentWorkspace?: () => void;
   getSavedTableDraft?: (normalizedName: string) => SavedTableDraftRecord | null;
   setWorkspaceSnapshot?: (source: WorkspaceSelection, state: PersistedState) => void;
   onSaveSuccess?: (payload: {
@@ -63,7 +61,6 @@ export function useSaveLoadActions({
   canSaveCurrent,
   loadedTableSource,
   setLoadedTableVersion,
-  setSavedTablesDrawerOpen,
   saveDialog,
   buildPersistedState,
   serializePersistedState,
@@ -72,7 +69,6 @@ export function useSaveLoadActions({
   saveTable,
   overwriteTable,
   showToast,
-  flushCurrentWorkspace,
   getSavedTableDraft,
   setWorkspaceSnapshot,
   onSaveSuccess,
@@ -271,15 +267,6 @@ export function useSaveLoadActions({
     [saveDialog],
   );
 
-  const handleSelectSavedTable = useCallback(
-    (item: SavedTableSummary) => {
-      flushCurrentWorkspace?.();
-      setSavedTablesDrawerOpen(false);
-      void handleLoadSavedTable(item);
-    },
-    [flushCurrentWorkspace, setSavedTablesDrawerOpen, handleLoadSavedTable],
-  );
-
   const handleOpenSaveDialog = useCallback(() => {
     openSaveDialog(null);
   }, [openSaveDialog]);
@@ -288,7 +275,6 @@ export function useSaveLoadActions({
     handleOpenSaveDialog,
     handleConfirmSave,
     handleSaveDialogOpenChange,
-    handleSelectSavedTable,
     handleLoadSavedTable,
   };
 }

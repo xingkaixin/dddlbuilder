@@ -224,7 +224,7 @@ describe('useSavedTableFlowActions', () => {
     );
 
     await act(async () => {
-      result.current.handleSelectSavedTable(target);
+      result.current.handleLoadSavedTable(target);
       await Promise.resolve();
     });
 
@@ -269,7 +269,7 @@ describe('useSavedTableFlowActions', () => {
     );
 
     await act(async () => {
-      result.current.handleSelectSavedTable(target);
+      result.current.handleLoadSavedTable(target);
       await Promise.resolve();
     });
 

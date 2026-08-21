@@ -14,13 +14,11 @@ vi.mock('@/utils/tableVersions', () => ({
 describe('useSaveLoadActions', () => {
   let saveDialog: any;
   let setLoadedTableVersion: any;
-  let setSavedTablesDrawerOpen: any;
   let applySavedState: any;
   let loadTable: any;
   let saveTable: any;
   let overwriteTable: any;
   let showToast: any;
-  let flushCurrentWorkspace: any;
   let setWorkspaceSnapshot: any;
   let onSaveSuccess: any;
   let onTableLoadStateChange: any;
@@ -39,13 +37,11 @@ describe('useSaveLoadActions', () => {
       setError: vi.fn(),
     };
     setLoadedTableVersion = vi.fn();
-    setSavedTablesDrawerOpen = vi.fn();
     applySavedState = vi.fn();
     loadTable = vi.fn();
     saveTable = vi.fn();
     overwriteTable = vi.fn();
     showToast = vi.fn();
-    flushCurrentWorkspace = vi.fn();
     setWorkspaceSnapshot = vi.fn();
     onSaveSuccess = vi.fn();
     onTableLoadStateChange = vi.fn();
@@ -61,7 +57,6 @@ describe('useSaveLoadActions', () => {
         canSaveCurrent: true,
         loadedTableSource: null,
         setLoadedTableVersion,
-        setSavedTablesDrawerOpen,
         saveDialog,
         buildPersistedState,
         serializePersistedState,
@@ -70,7 +65,6 @@ describe('useSaveLoadActions', () => {
         saveTable,
         overwriteTable,
         showToast,
-        flushCurrentWorkspace,
         setWorkspaceSnapshot,
         onSaveSuccess,
         onTableLoadStateChange,
@@ -83,8 +77,7 @@ describe('useSaveLoadActions', () => {
     const { result } = getHook();
 
     await act(async () => {
-      // It is not exposed directly, but can be triggered by handleSelectSavedTable if not dirty
-      result.current.handleSelectSavedTable({
+      result.current.handleLoadSavedTable({
         normalizedName: 'missing',
       } as any);
     });
@@ -97,7 +90,7 @@ describe('useSaveLoadActions', () => {
     const { result } = getHook();
 
     await act(async () => {
-      result.current.handleSelectSavedTable({
+      result.current.handleLoadSavedTable({
         normalizedName: 'error_table',
       } as any);
     });
@@ -120,7 +113,7 @@ describe('useSaveLoadActions', () => {
     const { result } = getHook();
 
     await act(async () => {
-      result.current.handleSelectSavedTable(mockRecord as any);
+      result.current.handleLoadSavedTable(mockRecord as any);
     });
 
     expect(onTableLoadStateChange).toHaveBeenCalledWith(true);
@@ -156,7 +149,7 @@ describe('useSaveLoadActions', () => {
     });
 
     await act(async () => {
-      result.current.handleSelectSavedTable({
+      result.current.handleLoadSavedTable({
         normalizedName: 'norm_test',
         name: 'test_table',
       } as any);
@@ -220,7 +213,7 @@ describe('useSaveLoadActions', () => {
       const { result } = loadWithDraft(draftState, JSON.stringify(legacySavedState));
 
       await act(async () => {
-        result.current.handleSelectSavedTable({ normalizedName: 'orders' } as any);
+        result.current.handleLoadSavedTable({ normalizedName: 'orders' } as any);
       });
 
       expect(applySavedState).toHaveBeenCalledWith(draftState);
@@ -235,7 +228,7 @@ describe('useSaveLoadActions', () => {
       const { result } = loadWithDraft(draftState, staleBase);
 
       await act(async () => {
-        result.current.handleSelectSavedTable({ normalizedName: 'orders' } as any);
+        result.current.handleLoadSavedTable({ normalizedName: 'orders' } as any);
       });
 
       expect(applySavedState).toHaveBeenCalledWith(normalizePersistedRows(legacySavedState));
@@ -399,45 +392,5 @@ describe('useSaveLoadActions', () => {
       result.current.handleSaveDialogOpenChange(true);
     });
     expect(saveDialog.closeDialog).toHaveBeenCalledTimes(1);
-  });
-
-  it('handleSelectSavedTable flushes clean loaded table before loading target', async () => {
-    const target = { normalizedName: 'pending_norm', name: 'pending' };
-    loadTable.mockResolvedValue({
-      normalizedName: 'pending_norm',
-      name: 'pending',
-      state: { rows: [] },
-    });
-
-    const { result } = getHook({ hasLoadedTable: true, canSaveCurrent: false });
-
-    await act(async () => {
-      result.current.handleSelectSavedTable(target as any);
-    });
-
-    expect(flushCurrentWorkspace).toHaveBeenCalled();
-    expect(setSavedTablesDrawerOpen).toHaveBeenCalledWith(false);
-    expect(saveDialog.openDialog).not.toHaveBeenCalled();
-    expect(loadTable).toHaveBeenCalledWith('pending_norm');
-  });
-
-  it('handleSelectSavedTable flushes and loads directly when loaded table is dirty (tabs mode)', async () => {
-    const target = { normalizedName: 'pending_norm', name: 'pending' };
-    loadTable.mockResolvedValue({
-      normalizedName: 'pending_norm',
-      name: 'pending',
-      state: { rows: [] },
-    });
-
-    const { result } = getHook({ hasLoadedTable: true, canSaveCurrent: true });
-
-    await act(async () => {
-      result.current.handleSelectSavedTable(target as any);
-    });
-
-    expect(flushCurrentWorkspace).toHaveBeenCalled();
-    expect(setSavedTablesDrawerOpen).toHaveBeenCalledWith(false);
-    expect(saveDialog.openDialog).not.toHaveBeenCalled();
-    expect(loadTable).toHaveBeenCalledWith('pending_norm');
   });
 });
