@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { DDLStrategyFactory } from '../factories/DDLStrategyFactory.js';
-import { MySqlStrategy } from '../strategies/MySqlStrategy.js';
+import { ProfiledDDLStrategy } from '../strategies/ProfiledDDLStrategy.js';
+import { HiveStrategy } from '../strategies/HiveStrategy.js';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 
 describe('DDLStrategyFactory', () => {
@@ -41,7 +42,8 @@ describe('DDLStrategyFactory', () => {
     ]);
   });
 
-  it('应该返回与数据库类型匹配的策略实现', () => {
-    expect(DDLStrategyFactory.create('mysql')).toBeInstanceOf(MySqlStrategy);
+  it('应该为 Hive 使用独立实现，其余方言走通用生成器', () => {
+    expect(DDLStrategyFactory.create('hive')).toBeInstanceOf(HiveStrategy);
+    expect(DDLStrategyFactory.create('mysql')).toBeInstanceOf(ProfiledDDLStrategy);
   });
 });

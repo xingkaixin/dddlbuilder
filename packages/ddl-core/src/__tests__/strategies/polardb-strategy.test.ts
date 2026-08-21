@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { PolarDbStrategy } from '../../strategies/PolarDbStrategy.js';
+import { ProfiledDDLStrategy } from '../../strategies/ProfiledDDLStrategy.js';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('PolarDbStrategy', () => {
-  const strategy = new PolarDbStrategy();
+  const strategy = new ProfiledDDLStrategy('polardb');
 
   it('应该返回 polardb 数据库类型', () => {
     expect(strategy.getDatabaseType()).toBe('polardb');

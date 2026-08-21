@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { TiDbStrategy } from '../../strategies/TiDbStrategy.js';
+import { ProfiledDDLStrategy } from '../../strategies/ProfiledDDLStrategy.js';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('TiDbStrategy', () => {
-  const strategy = new TiDbStrategy();
+  const strategy = new ProfiledDDLStrategy('tidb');
 
   it('应该返回 tidb 数据库类型', () => {
     expect(strategy.getDatabaseType()).toBe('tidb');

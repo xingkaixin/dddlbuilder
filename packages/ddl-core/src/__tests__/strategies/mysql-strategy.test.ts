@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { MySqlStrategy } from '../../strategies/MySqlStrategy.js';
+import { ProfiledDDLStrategy } from '../../strategies/ProfiledDDLStrategy.js';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('MySqlStrategy', () => {
-  const strategy = new MySqlStrategy();
+  const strategy = new ProfiledDDLStrategy('mysql');
 
   it('应返回 mysql 数据库类型', () => {
     expect(strategy.getDatabaseType()).toBe('mysql');

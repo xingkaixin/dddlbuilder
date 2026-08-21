@@ -1,12 +1,13 @@
-import type {
-  HiveClusteringConfig,
-  NormalizedField,
-  SqlFormatMode,
-  TableMiscConfig,
-} from '@ddlbuilder/shared-types';
+import type { NormalizedField, SqlFormatMode } from '@ddlbuilder/shared-types';
 import { escapeSingleQuotes, parseFieldType } from '../utils/databaseTypeMapping';
 import { AbstractDDLStrategy } from './AbstractDDLStrategy';
+import type { TableMiscConfig } from '@ddlbuilder/shared-types';
+import type { HiveClusteringConfig } from '@ddlbuilder/shared-types';
 
+/**
+ * Hive 的建表语句结构与关系型方言差异过大（EXTERNAL / PARTITIONED BY /
+ * CLUSTERED BY / STORED AS / LOCATION），不适合塞进通用骨架，保留独立实现。
+ */
 export class HiveStrategy extends AbstractDDLStrategy {
   getDatabaseType(): 'hive' {
     return 'hive';

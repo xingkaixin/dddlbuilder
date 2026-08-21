@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { GBaseStrategy } from '../../strategies/GBaseStrategy.js';
+import { ProfiledDDLStrategy } from '../../strategies/ProfiledDDLStrategy.js';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('GBaseStrategy', () => {
-  const strategy = new GBaseStrategy();
+  const strategy = new ProfiledDDLStrategy('gbase');
 
   it('应该返回 gbase 数据库类型', () => {
     expect(strategy.getDatabaseType()).toBe('gbase');

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { KingbaseStrategy } from '../../strategies/KingbaseStrategy.js';
+import { ProfiledDDLStrategy } from '../../strategies/ProfiledDDLStrategy.js';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('KingbaseStrategy', () => {
-  const strategy = new KingbaseStrategy();
+  const strategy = new ProfiledDDLStrategy('kingbase');
 
   it('应该返回 kingbase 数据库类型', () => {
     expect(strategy.getDatabaseType()).toBe('kingbase');

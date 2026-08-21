@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { DmStrategy } from '../../strategies/DmStrategy.js';
+import { ProfiledDDLStrategy } from '../../strategies/ProfiledDDLStrategy.js';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('DmStrategy', () => {
-  const strategy = new DmStrategy();
+  const strategy = new ProfiledDDLStrategy('dm');
 
   it('应该返回 dm 数据库类型', () => {
     expect(strategy.getDatabaseType()).toBe('dm');

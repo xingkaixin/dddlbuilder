@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { OracleStrategy } from '../../strategies/OracleStrategy.js';
+import { ProfiledDDLStrategy } from '../../strategies/ProfiledDDLStrategy.js';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('OracleStrategy', () => {
-  const strategy = new OracleStrategy();
+  const strategy = new ProfiledDDLStrategy('oracle');
 
   it('应返回 oracle 数据库类型', () => {
     expect(strategy.getDatabaseType()).toBe('oracle');

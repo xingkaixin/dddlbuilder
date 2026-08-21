@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { GaussDbStrategy } from '../../strategies/GaussDbStrategy.js';
+import { ProfiledDDLStrategy } from '../../strategies/ProfiledDDLStrategy.js';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('GaussDbStrategy', () => {
-  const strategy = new GaussDbStrategy();
+  const strategy = new ProfiledDDLStrategy('gaussdb');
 
   it('应该返回 gaussdb 数据库类型', () => {
     expect(strategy.getDatabaseType()).toBe('gaussdb');

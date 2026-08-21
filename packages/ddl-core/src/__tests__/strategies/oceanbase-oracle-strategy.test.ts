@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { OceanBaseOracleStrategy } from '../../strategies/OceanBaseOracleStrategy.js';
+import { ProfiledDDLStrategy } from '../../strategies/ProfiledDDLStrategy.js';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('OceanBaseOracleStrategy', () => {
-  const strategy = new OceanBaseOracleStrategy();
+  const strategy = new ProfiledDDLStrategy('oceanbase-oracle');
 
   it('应该返回 oceanbase-oracle 数据库类型', () => {
     expect(strategy.getDatabaseType()).toBe('oceanbase-oracle');

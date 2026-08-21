@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SqlServerStrategy } from '../../strategies/SqlServerStrategy.js';
+import { ProfiledDDLStrategy } from '../../strategies/ProfiledDDLStrategy.js';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 const baseFields: NormalizedField[] = [
@@ -15,7 +15,7 @@ const baseFields: NormalizedField[] = [
 ];
 
 describe('SqlServerStrategy', () => {
-  const strategy = new SqlServerStrategy();
+  const strategy = new ProfiledDDLStrategy('sqlserver');
 
   it('应返回 sqlserver 数据库类型', () => {
     expect(strategy.getDatabaseType()).toBe('sqlserver');

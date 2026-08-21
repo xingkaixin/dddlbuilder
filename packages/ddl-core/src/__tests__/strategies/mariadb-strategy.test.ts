@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { MariaDbStrategy } from '../../strategies/MariaDbStrategy.js';
+import { ProfiledDDLStrategy } from '../../strategies/ProfiledDDLStrategy.js';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('MariaDbStrategy', () => {
-  const strategy = new MariaDbStrategy();
+  const strategy = new ProfiledDDLStrategy('mariadb');
 
   it('应该返回 mariadb 数据库类型', () => {
     expect(strategy.getDatabaseType()).toBe('mariadb');
