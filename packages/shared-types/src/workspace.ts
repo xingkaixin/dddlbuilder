@@ -2,12 +2,14 @@ import type { PersistedState } from './index.js';
 
 export type WorkspaceSource =
   | { kind: 'draft'; draftId: string }
-  | {
-      kind: 'saved_table';
-      normalizedName: string;
+  | { kind: 'saved_table'; normalizedName: string };
+
+export type WorkspaceSelection =
+  | Extract<WorkspaceSource, { kind: 'draft' }>
+  | (Extract<WorkspaceSource, { kind: 'saved_table' }> & {
       tableName: string;
       baseSignature: string;
-    };
+    });
 
 export type WorkspaceScope =
   | { kind: 'anonymous' }
@@ -34,7 +36,7 @@ export type WorkspaceListResponse = {
 
 export type WorkspaceSavePayload = {
   state: PersistedState;
-  source: WorkspaceSource;
+  source: WorkspaceSelection;
   isDirty: boolean;
 };
 

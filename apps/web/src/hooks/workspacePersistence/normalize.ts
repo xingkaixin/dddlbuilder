@@ -1,5 +1,9 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { DraftSummary, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
+import type {
+  DraftSummary,
+  WorkspaceSelection,
+  WorkspaceSource,
+} from '@ddlbuilder/shared-types/workspace';
 import { decodePersistedState } from '@ddlbuilder/workspace-core';
 import type { WorkspaceDraftRecord, WorkspaceSessionRecord } from '@/utils/workspaceStateDb';
 
@@ -16,12 +20,10 @@ export const normalizePersistedState = (value: unknown) => decodePersistedState(
 export const isWorkspaceSource = (value: unknown): value is WorkspaceSource => {
   if (!isRecord(value) || typeof value.kind !== 'string') return false;
   if (value.kind === 'draft') return typeof value.draftId === 'string' && value.draftId.length > 0;
-  if (value.kind !== 'saved_table') return false;
   return (
+    value.kind === 'saved_table' &&
     typeof value.normalizedName === 'string' &&
-    value.normalizedName.length > 0 &&
-    typeof value.tableName === 'string' &&
-    typeof value.baseSignature === 'string'
+    value.normalizedName.length > 0
   );
 };
 
@@ -31,14 +33,22 @@ export const isSameWorkspaceSource = (a: WorkspaceSource, b: WorkspaceSource) =>
     return a.draftId === b.draftId;
   }
   if (a.kind === 'saved_table' && b.kind === 'saved_table') {
-    return (
-      a.normalizedName === b.normalizedName &&
-      a.tableName === b.tableName &&
-      a.baseSignature === b.baseSignature
-    );
+    return a.normalizedName === b.normalizedName;
   }
   return false;
 };
+
+export const isSameWorkspaceSelection = (a: WorkspaceSelection, b: WorkspaceSelection) =>
+  isSameWorkspaceSource(a, b) &&
+  (a.kind === 'draft' ||
+    (b.kind === 'saved_table' &&
+      a.tableName === b.tableName &&
+      a.baseSignature === b.baseSignature));
+
+export const toWorkspaceSource = (selection: WorkspaceSelection): WorkspaceSource =>
+  selection.kind === 'draft'
+    ? selection
+    : { kind: 'saved_table', normalizedName: selection.normalizedName };
 
 /** 持久化数据里的默认草稿名，随界面语言变化会污染已存数据，因此不接入 i18n */
 export const UNTITLED_DRAFT_NAME = '未命名草稿';
@@ -88,10 +98,11 @@ export const normalizeGlobalDraftRecord = (value: unknown): GlobalDraftRecord | 
 export const normalizeWorkspaceSession = (value: unknown): WorkspaceSessionRecord | null => {
   if (!isRecord(value)) return null;
   if (!isWorkspaceSource(value.activeSource)) return null;
+  const activeState = normalizePersistedState(value.activeState);
 
   return {
     activeSource: value.activeSource,
-    activeState: normalizePersistedState(value.activeState),
+    ...(activeState ? { activeState } : {}),
     updatedAt: toNumber(value.updatedAt, Date.now()),
   };
 };

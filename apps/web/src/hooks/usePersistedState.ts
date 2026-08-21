@@ -26,8 +26,8 @@ import type {
   DraftSummary,
   SavedTableDraftRecord,
   WorkspaceSavePayload,
+  WorkspaceSelection,
   WorkspaceScope,
-  WorkspaceSource,
 } from '@ddlbuilder/shared-types/workspace';
 import {
   clearWorkspaceSession,
@@ -50,9 +50,11 @@ import {
   buildDraftSummary,
   getDraftDisplayName,
   isSameWorkspaceSource,
+  isSameWorkspaceSelection,
   normalizePersistedState,
   normalizeWorkspaceSession,
   resolveUniqueDraftName,
+  toWorkspaceSource,
   type GlobalDraftRecord,
 } from './workspacePersistence/normalize';
 import {
@@ -91,11 +93,11 @@ export interface UsePersistedStateReturn {
   clearState: () => void;
   shareLoadStatus: ShareLoadStatus;
   isShareView: boolean;
-  activeSource: WorkspaceSource;
+  activeSource: WorkspaceSelection;
   draftSummaries: DraftSummary[];
   getDraftState: (draftId: string) => PersistedState | null;
-  setWorkspaceSnapshot: (source: WorkspaceSource, state: PersistedState) => void;
-  selectWorkspaceSnapshot: (source: WorkspaceSource, state: PersistedState) => void;
+  setWorkspaceSnapshot: (source: WorkspaceSelection, state: PersistedState) => void;
+  selectWorkspaceSnapshot: (source: WorkspaceSelection, state: PersistedState) => void;
   createDraft: (draftId: string, state: PersistedState) => string;
   deleteDraftById: (draftId: string) => void;
   moveDraftToFolder: (draftId: string, folderId?: string) => void;
@@ -121,20 +123,20 @@ export function usePersistedState(): UsePersistedStateReturn {
   const [hydrated, setHydrated] = useState(false);
   const [persistedState, setPersistedState] = useState<PersistedState | null>(null);
   const [shareLoadStatus, setShareLoadStatus] = useState<ShareLoadStatus>('idle');
-  const [activeSource, setActiveSource] = useState<WorkspaceSource>({
+  const [activeSource, setActiveSource] = useState<WorkspaceSelection>({
     kind: 'draft',
     draftId: DEFAULT_DRAFT_ID,
   });
   const [draftSummaries, setDraftSummaries] = useState<DraftSummary[]>([]);
   const [trashedDrafts, setTrashedDrafts] = useState<DraftSummary[]>([]);
 
-  const activeSourceRef = useRef<WorkspaceSource>({
+  const activeSourceRef = useRef<WorkspaceSelection>({
     kind: 'draft',
     draftId: DEFAULT_DRAFT_ID,
   });
   const persistedStateRef = useRef<PersistedState | null>(null);
   const lastLocalSaveRef = useRef<{
-    source: WorkspaceSource;
+    source: WorkspaceSelection;
     baseState: PersistedState;
     localState: PersistedState;
   } | null>(null);
@@ -169,9 +171,9 @@ export function usePersistedState(): UsePersistedStateReturn {
     !workspaceYDoc.localSynced,
   );
 
-  const syncActiveSource = useCallback((source: WorkspaceSource) => {
+  const syncActiveSource = useCallback((source: WorkspaceSelection) => {
     activeSourceRef.current = source;
-    setActiveSource((prev) => (isSameWorkspaceSource(prev, source) ? prev : source));
+    setActiveSource((prev) => (isSameWorkspaceSelection(prev, source) ? prev : source));
   }, []);
 
   const setPersistedStateIfChanged = useCallback((nextState: PersistedState | null) => {
@@ -288,10 +290,10 @@ export function usePersistedState(): UsePersistedStateReturn {
   );
 
   const writeSession = useCallback(
-    (source: WorkspaceSource, state: PersistedState) => {
+    (source: WorkspaceSelection) => {
       fireAndForget(
         writeWorkspaceSession(
-          { activeSource: source, activeState: state, updatedAt: Date.now() },
+          { activeSource: toWorkspaceSource(source), updatedAt: Date.now() },
           currentScope,
         ),
       );
@@ -306,7 +308,7 @@ export function usePersistedState(): UsePersistedStateReturn {
   }, [currentScope, syncActiveSource]);
 
   const setWorkspaceSnapshot = useCallback(
-    (source: WorkspaceSource, state: PersistedState) => {
+    (source: WorkspaceSelection, state: PersistedState) => {
       if (shareId) return;
 
       syncActiveSource(source);
@@ -316,18 +318,18 @@ export function usePersistedState(): UsePersistedStateReturn {
         saveDraftState(source.draftId, state);
       }
 
-      writeSession(source, state);
+      writeSession(source);
     },
     [saveDraftState, shareId, syncActiveSource, writeSession],
   );
 
   const selectWorkspaceSnapshot = useCallback(
-    (source: WorkspaceSource, state: PersistedState) => {
+    (source: WorkspaceSelection, state: PersistedState) => {
       if (shareId) return;
 
       syncActiveSource(source);
       setPersistedStateIfChanged(state);
-      writeSession(source, state);
+      writeSession(source);
     },
     [setPersistedStateIfChanged, shareId, syncActiveSource, writeSession],
   );
@@ -371,7 +373,7 @@ export function usePersistedState(): UsePersistedStateReturn {
         }
       }
 
-      writeSession(payload.source, payload.state);
+      writeSession(payload.source);
       syncActiveSource(payload.source);
     },
     [

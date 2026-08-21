@@ -13,6 +13,7 @@ import type { WorkspaceSavePayload } from '@ddlbuilder/shared-types/workspace';
 import {
   DEFAULT_DRAFT_ID,
   readDraft as readDraftInScope,
+  readSavedDraft as readSavedDraftInScope,
   readWorkspaceSession as readWorkspaceSessionInScope,
   writeDraft as writeDraftInScope,
   writeWorkspaceSession as writeWorkspaceSessionInScope,
@@ -32,6 +33,8 @@ const addSavedTable = (
 const readDraft = (draftId: Parameters<typeof readDraftInScope>[0], scope = anonymousScope) =>
   readDraftInScope(draftId, scope);
 const readWorkspaceSession = (scope = anonymousScope) => readWorkspaceSessionInScope(scope);
+const readSavedDraft = (normalizedName: string, scope = anonymousScope) =>
+  readSavedDraftInScope(normalizedName, scope);
 const writeDraft = (
   draftId: Parameters<typeof writeDraftInScope>[0],
   record: Parameters<typeof writeDraftInScope>[1],
@@ -555,7 +558,7 @@ describe('usePersistedState', () => {
     expect(result.current.persistedState?.indexes).toEqual([]);
   });
 
-  it('保存已保存表状态时应同时记录来源与 activeState 以保留未保存修改', async () => {
+  it('保存已保存表状态时应记录来源并把未保存修改写入 saved draft', async () => {
     const { wrapper } = createQueryClientWrapper();
     const { result } = renderHook(() => usePersistedState(), { wrapper });
     const savedSource: WorkspaceSavePayload['source'] = {
@@ -584,7 +587,8 @@ describe('usePersistedState', () => {
         kind: 'saved_table',
         normalizedName: 'users',
       });
-      expect(session?.activeState?.tableName).toBe('users_draft');
+      expect(session?.activeState).toBeUndefined();
+      expect((await readSavedDraft('users'))?.state.tableName).toBe('users_draft');
     });
   });
 
@@ -643,7 +647,7 @@ describe('usePersistedState', () => {
     await waitFor(async () => {
       const session = await readWorkspaceSession();
       expect(session?.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
-      expect(session?.activeState?.tableName).toBe(globalState.tableName);
+      expect(session?.activeState).toBeUndefined();
     });
   });
 
@@ -699,7 +703,7 @@ describe('usePersistedState', () => {
       const session = await readWorkspaceSession();
       expect(draft?.state.tableName).toBe(globalState.tableName);
       expect(session?.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
-      expect(session?.activeState?.tableName).toBe(globalState.tableName);
+      expect(session?.activeState).toBeUndefined();
     });
   });
 
@@ -731,7 +735,7 @@ describe('usePersistedState', () => {
       const session = await readWorkspaceSession();
       expect(draft?.state.tableName).toBe(savedDraftState.tableName);
       expect(session?.activeSource).toEqual({ kind: 'draft', draftId: 'default' });
-      expect(session?.activeState?.tableName).toBe(tabSnapshot.tableName);
+      expect(session?.activeState).toBeUndefined();
     });
   });
 

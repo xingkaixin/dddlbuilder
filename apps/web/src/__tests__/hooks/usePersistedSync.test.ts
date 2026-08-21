@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { WorkspaceSavePayload, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
+import type { WorkspaceSavePayload, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
 import { usePersistedSync } from '@/components/App/hooks/usePersistedSync';
 import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 
@@ -26,7 +26,7 @@ interface PersistedSyncParams {
   hydrated: boolean;
   hasOpenTab: boolean;
   persistedState: PersistedState | null;
-  activeSource: WorkspaceSource;
+  activeSource: WorkspaceSelection;
   saveState: (payload: WorkspaceSavePayload) => void;
   currentState: PersistedState;
   applyPersistedState: (state: PersistedState) => void;
@@ -189,7 +189,7 @@ describe('usePersistedSync', () => {
     const saveState = vi.fn();
     const baseState = createState('users');
     const currentState = createState('users_v2');
-    const activeSource: WorkspaceSource = {
+    const activeSource: WorkspaceSelection = {
       kind: 'saved_table',
       normalizedName: 'users',
       tableName: 'Users',
@@ -231,7 +231,7 @@ describe('usePersistedSync', () => {
       },
       fieldTableViewConfig: { freezeEnabled: false, freezeColumns: 3 },
     };
-    const activeSource: WorkspaceSource = {
+    const activeSource: WorkspaceSelection = {
       kind: 'saved_table',
       normalizedName: 'users',
       tableName: 'Users',
@@ -251,13 +251,13 @@ describe('usePersistedSync', () => {
   it('基线更新后用同一编辑态写入 clean 状态', () => {
     const saveState = vi.fn();
     const currentState = createState('users_v2');
-    const dirtySource: WorkspaceSource = {
+    const dirtySource: WorkspaceSelection = {
       kind: 'saved_table',
       normalizedName: 'users',
       tableName: 'Users',
       baseSignature: serializePersistedStateForComparison(createState('users')),
     };
-    const cleanSource: WorkspaceSource = {
+    const cleanSource: WorkspaceSelection = {
       ...dirtySource,
       baseSignature: serializePersistedStateForComparison(currentState),
     };

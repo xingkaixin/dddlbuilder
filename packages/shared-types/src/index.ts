@@ -190,6 +190,7 @@ export type PersistedState = {
 export type { ApiErrorCode, ApiMeta, ApiErrorPayload } from './api.js';
 export type {
   WorkspaceSource,
+  WorkspaceSelection,
   WorkspaceScope,
   WorkspaceEntityType,
   WorkspaceListItem,

@@ -767,10 +767,7 @@ function App() {
               activeSource: {
                 kind: 'saved_table',
                 normalizedName,
-                tableName: displayName,
-                baseSignature,
               },
-              activeState: null,
               updatedAt: Date.now(),
             },
             workspaceScope,
@@ -802,8 +799,6 @@ function App() {
         {
           kind: 'saved_table',
           normalizedName: fromNormalizedName,
-          tableName: '',
-          baseSignature: '',
         },
         newTitle,
       );
@@ -812,8 +807,6 @@ function App() {
       removeTabBySource({
         kind: 'saved_table',
         normalizedName,
-        tableName: '',
-        baseSignature: '',
       });
     },
   });
@@ -836,8 +829,6 @@ function App() {
       const existingTab = findTabBySource({
         kind: 'saved_table',
         normalizedName: item.normalizedName,
-        tableName: item.name,
-        baseSignature: '',
       });
       if (existingTab) {
         activateTab(existingTab.id);

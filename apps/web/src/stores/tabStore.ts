@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
+import type { WorkspaceSelection, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 
 export interface WorkspaceTab {
   id: string;
   title: string;
-  source: WorkspaceSource;
+  source: WorkspaceSelection;
   stateSnapshot: PersistedState;
   isDirty: boolean;
   isLoading?: boolean;
@@ -29,7 +29,7 @@ interface TabStoreState {
   closeTab: (id: string) => void;
   updateActiveTabSnapshot: (state: PersistedState, isDirty: boolean) => void;
   updateActiveTabTitle: (title: string) => void;
-  updateActiveTabSource: (source: WorkspaceSource) => void;
+  updateActiveTabSource: (source: WorkspaceSelection) => void;
   findTabBySource: (source: WorkspaceSource) => WorkspaceTab | undefined;
   getActiveTab: () => WorkspaceTab | undefined;
   setTabLoading: (id: string, isLoading: boolean) => void;

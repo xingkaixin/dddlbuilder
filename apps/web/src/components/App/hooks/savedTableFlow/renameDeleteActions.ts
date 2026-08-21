@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
+import type { WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
 import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
@@ -15,7 +15,7 @@ type DeleteDialogData = {
 };
 
 interface UseRenameDeleteActionsParams {
-  loadedTableSource: Extract<WorkspaceSource, { kind: 'saved_table' }> | null;
+  loadedTableSource: Extract<WorkspaceSelection, { kind: 'saved_table' }> | null;
   renameDialog: UseDialogStateReturn<RenameDialogData>;
   deleteDialog: UseDialogStateReturn<DeleteDialogData>;
   buildPersistedState: () => PersistedState;
@@ -23,7 +23,7 @@ interface UseRenameDeleteActionsParams {
   renameTable: (normalizedName: string, newName: string) => Promise<SaveTableResult>;
   deleteTable: (normalizedName: string) => Promise<SaveTableResult>;
   showToast: (message: string) => void;
-  setWorkspaceSnapshot?: (source: WorkspaceSource, state: PersistedState) => void;
+  setWorkspaceSnapshot?: (source: WorkspaceSelection, state: PersistedState) => void;
   renameSavedTableDraft?: (
     fromNormalizedName: string,
     toNormalizedName: string,

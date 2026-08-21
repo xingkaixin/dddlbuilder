@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { type PersistedState, normalizePersistedRows } from '@ddlbuilder/shared-types';
-import type { SavedTableDraftRecord, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
+import type { SavedTableDraftRecord, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
 import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
@@ -30,7 +30,7 @@ interface UseSaveLoadActionsParams {
   tableName: string;
   hasLoadedTable: boolean;
   canSaveCurrent: boolean;
-  loadedTableSource: Extract<WorkspaceSource, { kind: 'saved_table' }> | null;
+  loadedTableSource: Extract<WorkspaceSelection, { kind: 'saved_table' }> | null;
   setLoadedTableVersion: (version: number) => void;
   setSavedTablesDrawerOpen: (open: boolean) => void;
   saveDialog: UseDialogStateReturn<SaveDialogData>;
@@ -47,7 +47,7 @@ interface UseSaveLoadActionsParams {
   showToast: (message: string) => void;
   flushCurrentWorkspace?: () => void;
   getSavedTableDraft?: (normalizedName: string) => SavedTableDraftRecord | null;
-  setWorkspaceSnapshot?: (source: WorkspaceSource, state: PersistedState) => void;
+  setWorkspaceSnapshot?: (source: WorkspaceSelection, state: PersistedState) => void;
   onSaveSuccess?: (payload: {
     normalizedName: string;
     displayName: string;

@@ -4,6 +4,7 @@ import type {
   WorkspaceScope,
   WorkspaceSource,
 } from '@ddlbuilder/shared-types/workspace';
+import { decodePersistedState } from '@ddlbuilder/workspace-core';
 import { STORAGE_KEY } from '@/utils/constants';
 import {
   STORE_NAME,
@@ -18,7 +19,6 @@ import {
   getAnonymousWorkspaceScope,
   getWorkspaceScopeStorageKey,
 } from './workspaceScope';
-import { normalizePersistedRows } from './helpers';
 import { runIndexedDbRequest } from './indexedDbTransaction';
 
 export const DEFAULT_DRAFT_ID = 'default';
@@ -47,7 +47,7 @@ type WorkspaceSessionEntity = {
   id: string;
   scope?: string;
   activeSource: WorkspaceSource;
-  activeState: PersistedState | null;
+  activeState?: PersistedState | null;
   updatedAt: number;
 };
 
@@ -132,21 +132,30 @@ const decodeSavedTableEntity = (
   scope: WorkspaceScope,
 ): SavedTableRecord | null => {
   const decoded = decodeScopedEntity(entity, scope);
-  return decoded ? { ...decoded, state: normalizePersistedRows(decoded.state) } : null;
+  const state = decodePersistedState(decoded?.state);
+  return decoded && state ? { ...decoded, state } : null;
 };
 
-const toSessionRecord = (entity: WorkspaceSessionEntity): WorkspaceSessionRecord => ({
-  activeSource: entity.activeSource,
-  activeState: entity.activeState && normalizePersistedRows(entity.activeState),
-  updatedAt: entity.updatedAt,
-});
+const toSessionRecord = (entity: WorkspaceSessionEntity): WorkspaceSessionRecord => {
+  const activeState = decodePersistedState(entity.activeState);
+  return {
+    activeSource: entity.activeSource,
+    ...(activeState ? { activeState } : {}),
+    updatedAt: entity.updatedAt,
+  };
+};
 
-const toDraftRecord = (entity: WorkspaceDraftEntity): WorkspaceDraftRecord => ({
-  state: normalizePersistedRows(entity.state),
-  createdAt: entity.createdAt ?? entity.updatedAt,
-  updatedAt: entity.updatedAt,
-  folderId: entity.folderId,
-});
+const toDraftRecord = (entity: WorkspaceDraftEntity): WorkspaceDraftRecord | null => {
+  const state = decodePersistedState(entity.state);
+  return state
+    ? {
+        state,
+        createdAt: entity.createdAt ?? entity.updatedAt,
+        updatedAt: entity.updatedAt,
+        folderId: entity.folderId,
+      }
+    : null;
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -222,17 +231,22 @@ export const listDrafts = async (
 ): Promise<Array<{ draftId: string; record: WorkspaceDraftRecord }>> =>
   decodeDrafts(await readAllDraftEntities(), scope)
     .filter((entity) => entity.trashedAt == null)
-    .map((entity) => ({ draftId: entity.id, record: toDraftRecord(entity) }));
+    .flatMap((entity) => {
+      const record = toDraftRecord(entity);
+      return record ? [{ draftId: entity.id, record }] : [];
+    });
 
 export const listTrashedDrafts = async (
   scope: WorkspaceScope,
 ): Promise<Array<{ draftId: string; record: WorkspaceDraftRecord }>> =>
   decodeDrafts(await readAllDraftEntities(), scope)
     .filter((entity) => entity.trashedAt != null)
-    .map((entity) => ({
-      draftId: entity.id,
-      record: { ...toDraftRecord(entity), trashedAt: entity.trashedAt },
-    }))
+    .flatMap((entity) => {
+      const record = toDraftRecord(entity);
+      return record
+        ? [{ draftId: entity.id, record: { ...record, trashedAt: entity.trashedAt } }]
+        : [];
+    })
     .sort((a, b) => (b.record.trashedAt ?? 0) - (a.record.trashedAt ?? 0));
 
 export const listSavedDrafts = async (
@@ -248,8 +262,10 @@ export const listSavedDrafts = async (
   for (const record of records) {
     const decoded = decodeScopedEntity(record, scope);
     if (!decoded?.normalizedName) continue;
+    const state = decodePersistedState(decoded.state);
+    if (!state) continue;
     map[decoded.normalizedName] = {
-      state: normalizePersistedRows(decoded.state),
+      state,
       tableName: decoded.tableName,
       baseSignature: decoded.baseSignature,
       updatedAt: decoded.updatedAt,
@@ -270,8 +286,10 @@ export const readSavedDraft = async (
   if (!record) return null;
   const decoded = decodeScopedEntity(record, scope);
   if (!decoded) return null;
+  const state = decodePersistedState(decoded.state);
+  if (!state) return null;
   return {
-    state: normalizePersistedRows(decoded.state),
+    state,
     tableName: decoded.tableName,
     baseSignature: decoded.baseSignature,
     updatedAt: decoded.updatedAt,
@@ -364,7 +382,10 @@ export const readWorkspaceBootstrap = async (
 
     const drafts = decodeDrafts(draftEntities, scope)
       .filter((entity) => entity.trashedAt == null)
-      .map((entity) => ({ draftId: entity.id, record: toDraftRecord(entity) }));
+      .flatMap((entity) => {
+        const record = toDraftRecord(entity);
+        return record ? [{ draftId: entity.id, record }] : [];
+      });
 
     const activeSavedTableName =
       sessionEntity?.activeSource.kind === 'saved_table'
@@ -410,23 +431,27 @@ export const clearWorkspaceSession = async (scope: WorkspaceScope): Promise<void
 const readLegacyGlobalDraftRecord = (): WorkspaceDraftRecord | null => {
   const parsed = parseStorageJson<unknown>(GLOBAL_DRAFT_STORAGE_KEY);
   if (isRecord(parsed) && parsed.state && typeof parsed.updatedAt === 'number') {
+    const state = decodePersistedState(parsed.state);
+    if (!state) return null;
     return {
-      state: parsed.state as PersistedState,
+      state,
       updatedAt: parsed.updatedAt,
     };
   }
 
-  if (isRecord(parsed)) {
+  const parsedState = decodePersistedState(parsed);
+  if (parsedState) {
     return {
-      state: parsed as PersistedState,
+      state: parsedState,
       updatedAt: Date.now(),
     };
   }
 
   const legacy = parseStorageJson<unknown>(STORAGE_KEY);
-  if (!isRecord(legacy)) return null;
+  const legacyState = decodePersistedState(legacy);
+  if (!legacyState) return null;
   return {
-    state: legacy as PersistedState,
+    state: legacyState,
     updatedAt: Date.now(),
   };
 };
@@ -440,9 +465,11 @@ const readLegacySavedDraftMap = (): Record<string, SavedTableDraftRecord> => {
     if (!isRecord(value)) continue;
     if (typeof value.tableName !== 'string') continue;
     if (typeof value.baseSignature !== 'string') continue;
+    const state = decodePersistedState(value.state);
+    if (!state) continue;
     const updatedAt = typeof value.updatedAt === 'number' ? value.updatedAt : Date.now();
     next[normalizedName] = {
-      state: value.state as PersistedState,
+      state,
       tableName: value.tableName,
       baseSignature: value.baseSignature,
       updatedAt,
@@ -454,10 +481,11 @@ const readLegacySavedDraftMap = (): Record<string, SavedTableDraftRecord> => {
 const readLegacyWorkspaceSession = (): WorkspaceSessionRecord | null => {
   const parsed = parseStorageJson<unknown>(WORKSPACE_SESSION_STORAGE_KEY);
   if (!isRecord(parsed) || !parsed.activeSource) return null;
+  const activeState = decodePersistedState(parsed.activeState);
 
   return {
     activeSource: parsed.activeSource as WorkspaceSource,
-    activeState: (parsed.activeState as PersistedState | null) ?? null,
+    ...(activeState ? { activeState } : {}),
     updatedAt: typeof parsed.updatedAt === 'number' ? parsed.updatedAt : Date.now(),
   };
 };

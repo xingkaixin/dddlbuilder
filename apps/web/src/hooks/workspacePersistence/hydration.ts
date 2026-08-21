@@ -1,5 +1,5 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { DraftSummary, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
+import type { DraftSummary, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
 import type { SavedTableRecord } from '@/utils/savedTablesDb';
 import { DEFAULT_DRAFT_ID, type WorkspaceSessionRecord } from '@/utils/workspaceStateDb';
 import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
@@ -16,7 +16,7 @@ export type HydrationSavedTable = {
 };
 
 export type WorkspaceHydration = {
-  activeSource: WorkspaceSource;
+  activeSource: WorkspaceSelection;
   state: PersistedState | null;
 };
 

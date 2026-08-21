@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildDraftSummary,
   getDraftDisplayName,
+  isSameWorkspaceSelection,
   isSameWorkspaceSource,
   isWorkspaceSource,
   normalizeGlobalDraftRecord,
@@ -212,7 +213,8 @@ describe('workspacePersistence/normalize', () => {
 
     expect(isSameWorkspaceSource(globalA, globalB)).toBe(true);
     expect(isSameWorkspaceSource(savedA, savedB)).toBe(true);
-    expect(isSameWorkspaceSource(savedA, savedC)).toBe(false);
+    expect(isSameWorkspaceSource(savedA, savedC)).toBe(true);
+    expect(isSameWorkspaceSelection(savedA, savedC)).toBe(false);
     expect(isSameWorkspaceSource(globalA, savedA)).toBe(false);
   });
 

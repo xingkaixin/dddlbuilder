@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { WorkspaceSavePayload, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
+import type { WorkspaceSavePayload, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
 import { useDebouncedEffect } from '@/hooks/useDebouncedEffect';
 import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 
@@ -10,7 +10,7 @@ interface UsePersistedSyncParams {
   hydrated: boolean;
   hasOpenTab: boolean;
   persistedState: PersistedState | null;
-  activeSource: WorkspaceSource;
+  activeSource: WorkspaceSelection;
   saveState: (payload: WorkspaceSavePayload) => void;
   currentState: PersistedState;
   applyPersistedState: (state: PersistedState) => void;
