@@ -23,6 +23,10 @@ describe('TYPE_MAPPINGS', () => {
         'oceanbase',
         'oceanbase-oracle',
         'postgresql-citus',
+        'kingbase',
+        'gbase',
+        'polardb',
+        'gaussdb',
         'hive',
       ]),
     );
@@ -406,6 +410,13 @@ describe('TYPE_MAPPINGS', () => {
     it('reuses postgresql mappings', () => {
       expect(TYPE_MAPPINGS['postgresql-citus']).toBe(TYPE_MAPPINGS.postgresql);
     });
+  });
+
+  it('reuses mappings for compatible database families', () => {
+    expect(TYPE_MAPPINGS.gbase).toBe(TYPE_MAPPINGS.mysql);
+    expect(TYPE_MAPPINGS.polardb).toBe(TYPE_MAPPINGS.mysql);
+    expect(TYPE_MAPPINGS.kingbase).toBe(TYPE_MAPPINGS.postgresql);
+    expect(TYPE_MAPPINGS.gaussdb).toBe(TYPE_MAPPINGS.postgresql);
   });
 
   describe('hive', () => {

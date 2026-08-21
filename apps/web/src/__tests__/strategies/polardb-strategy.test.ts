@@ -44,8 +44,8 @@ describe('PolarDbStrategy', () => {
 
     expect(sql).toContain('CREATE TABLE audit_logs');
     expect(sql).toContain("COMMENT='审计日志'");
-    expect(sql).toContain("id int NOT NULL COMMENT '主键'");
-    expect(sql).toContain('created_at timestamp NOT NULL');
-    expect(sql).toContain('trace_id uuid NOT NULL DEFAULT (UUID())');
+    expect(sql).toContain("id INT AUTO_INCREMENT NOT NULL COMMENT '主键'");
+    expect(sql).toContain('created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP');
+    expect(sql).toContain('trace_id CHAR(36) NOT NULL DEFAULT (UUID())');
   });
 });

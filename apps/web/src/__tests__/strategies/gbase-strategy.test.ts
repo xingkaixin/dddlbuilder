@@ -44,9 +44,11 @@ describe('GBaseStrategy', () => {
 
     expect(sql).toContain('CREATE TABLE orders');
     expect(sql).toContain("COMMENT='订单表'");
-    expect(sql).toContain("id int NOT NULL COMMENT '主键'");
-    expect(sql).toContain('trace_id uuid NOT NULL DEFAULT (UUID())');
-    expect(sql).toContain('updated_at timestamp NOT NULL');
+    expect(sql).toContain("id INT AUTO_INCREMENT NOT NULL COMMENT '主键'");
+    expect(sql).toContain('trace_id CHAR(36) NOT NULL DEFAULT (UUID())');
+    expect(sql).toContain(
+      'updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+    );
   });
 
   it('应该转义注释中的单引号', () => {
@@ -91,12 +93,7 @@ describe('GBaseStrategy', () => {
 
     const sql = strategy.generateTableDDL('logs', '', fields);
 
-    // Constant
-    expect(sql).toContain('status int');
-
-    // CURRENT_TIMESTAMP (if supported by datetime in mapping, it should be included,
-    // otherwise it correctly falls through without crashing)
-    // We just want to ensure branches in GBaseStrategy are executed!
-    expect(sql).toContain('created_at datetime NOT NULL');
+    expect(sql).toContain('status INT');
+    expect(sql).toContain('created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP');
   });
 });

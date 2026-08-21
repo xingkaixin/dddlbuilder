@@ -225,6 +225,11 @@ describe('Field Processing Functions', () => {
       expect(supportsAutoIncrement('oracle', 'decimal')).toBe(true);
       expect(supportsAutoIncrement('oracle', 'number')).toBe(true);
       expect(supportsAutoIncrement('oracle', 'varchar')).toBe(false);
+
+      expect(supportsAutoIncrement('gbase', 'int')).toBe(true);
+      expect(supportsAutoIncrement('polardb', 'bigint')).toBe(true);
+      expect(supportsAutoIncrement('kingbase', 'int')).toBe(true);
+      expect(supportsAutoIncrement('gaussdb', 'bigint')).toBe(true);
     });
   });
 
@@ -248,6 +253,11 @@ describe('Field Processing Functions', () => {
       // Oracle
       expect(supportsDefaultCurrentTimestamp('oracle', 'timestamp')).toBe(true);
       expect(supportsDefaultCurrentTimestamp('oracle', 'varchar')).toBe(false);
+
+      expect(supportsDefaultCurrentTimestamp('gbase', 'datetime')).toBe(true);
+      expect(supportsDefaultCurrentTimestamp('polardb', 'timestamp')).toBe(true);
+      expect(supportsDefaultCurrentTimestamp('kingbase', 'timestamptz')).toBe(true);
+      expect(supportsDefaultCurrentTimestamp('gaussdb', 'timestamp')).toBe(true);
     });
   });
 
@@ -258,6 +268,10 @@ describe('Field Processing Functions', () => {
       expect(supportsOnUpdateCurrentTimestamp('postgresql', 'timestamp')).toBe(false);
       expect(supportsOnUpdateCurrentTimestamp('sqlserver', 'datetime')).toBe(false);
       expect(supportsOnUpdateCurrentTimestamp('oracle', 'timestamp')).toBe(false);
+      expect(supportsOnUpdateCurrentTimestamp('gbase', 'timestamp')).toBe(true);
+      expect(supportsOnUpdateCurrentTimestamp('polardb', 'datetime')).toBe(true);
+      expect(supportsOnUpdateCurrentTimestamp('kingbase', 'timestamp')).toBe(false);
+      expect(supportsOnUpdateCurrentTimestamp('gaussdb', 'timestamp')).toBe(false);
     });
   });
 

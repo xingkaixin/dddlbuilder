@@ -1,4 +1,5 @@
 import type { ParsedFieldType } from '@ddlbuilder/shared-types';
+import { expandDatabaseFamilies } from '../utils/databaseFamily.js';
 
 export interface TypeMappingRule {
   defaultArgs?: string[];
@@ -11,7 +12,7 @@ export interface DatabaseTypeMapping {
   [canonicalType: string]: TypeMappingRule;
 }
 
-export const TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
+const FAMILY_TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
   mysql: {
     varchar: { mapping: 'varchar', defaultArgs: ['255'] },
     nvarchar: { mapping: 'varchar', defaultArgs: ['255'] },
@@ -48,79 +49,6 @@ export const TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
       transform: (_parsed) => 'BIGINT UNSIGNED AUTO_INCREMENT',
     },
   },
-  mariadb: {
-    varchar: { mapping: 'varchar', defaultArgs: ['255'] },
-    nvarchar: { mapping: 'varchar', defaultArgs: ['255'] },
-    char: { mapping: 'char', defaultArgs: ['1'] },
-    nchar: { mapping: 'char', defaultArgs: ['1'] },
-    text: { mapping: 'text' },
-    mediumtext: { mapping: 'mediumtext' },
-    longtext: { mapping: 'longtext' },
-    int: { mapping: 'int' },
-    tinyint: { mapping: 'tinyint', defaultArgs: ['1'] },
-    smallint: { mapping: 'smallint' },
-    bigint: { mapping: 'bigint' },
-    decimal: { mapping: 'decimal', defaultArgs: ['10', '3'] },
-    numeric: { mapping: 'decimal', defaultArgs: ['10', '3'] },
-    float: { mapping: 'float', defaultArgs: ['10', '2'] },
-    double: { mapping: 'double' },
-    real: { mapping: 'double' },
-    date: { mapping: 'date' },
-    datetime: { mapping: 'datetime' },
-    datetime2: { mapping: 'datetime' },
-    timestamp: {
-      transform: () => 'TIMESTAMP',
-    },
-    time: { mapping: 'time' },
-    boolean: { mapping: 'tinyint', defaultArgs: ['1'] },
-    bool: { mapping: 'tinyint', defaultArgs: ['1'] },
-    bit: { mapping: 'bit', defaultArgs: ['1'] },
-    json: { mapping: 'json' },
-    jsonb: { mapping: 'json' },
-    blob: { mapping: 'blob' },
-    varbinary: { mapping: 'varbinary' },
-    uuid: { mapping: 'char', defaultArgs: ['36'] },
-    serial: {
-      transform: (_parsed) => 'BIGINT UNSIGNED AUTO_INCREMENT',
-    },
-  },
-  tidb: {
-    varchar: { mapping: 'varchar', defaultArgs: ['255'] },
-    nvarchar: { mapping: 'varchar', defaultArgs: ['255'] },
-    char: { mapping: 'char', defaultArgs: ['1'] },
-    nchar: { mapping: 'char', defaultArgs: ['1'] },
-    text: { mapping: 'text' },
-    mediumtext: { mapping: 'mediumtext' },
-    longtext: { mapping: 'longtext' },
-    int: { mapping: 'int' },
-    tinyint: { mapping: 'tinyint', defaultArgs: ['1'] },
-    smallint: { mapping: 'smallint' },
-    bigint: { mapping: 'bigint' },
-    decimal: { mapping: 'decimal', defaultArgs: ['10', '3'] },
-    numeric: { mapping: 'decimal', defaultArgs: ['10', '3'] },
-    float: { mapping: 'float', defaultArgs: ['10', '2'] },
-    double: { mapping: 'double' },
-    real: { mapping: 'double' },
-    date: { mapping: 'date' },
-    datetime: { mapping: 'datetime' },
-    datetime2: { mapping: 'datetime' },
-    timestamp: {
-      transform: () => 'TIMESTAMP',
-    },
-    time: { mapping: 'time' },
-    boolean: { mapping: 'tinyint', defaultArgs: ['1'] },
-    bool: { mapping: 'tinyint', defaultArgs: ['1'] },
-    bit: { mapping: 'bit', defaultArgs: ['1'] },
-    json: { mapping: 'json' },
-    jsonb: { mapping: 'json' },
-    blob: { mapping: 'blob' },
-    varbinary: { mapping: 'varbinary' },
-    uuid: { mapping: 'char', defaultArgs: ['36'] },
-    serial: {
-      transform: (_parsed) => 'BIGINT UNSIGNED AUTO_INCREMENT',
-    },
-  },
-
   postgresql: {
     varchar: { mapping: 'varchar' },
     nvarchar: { mapping: 'varchar' },
@@ -294,93 +222,10 @@ export const TYPE_MAPPINGS: Record<string, DatabaseTypeMapping> = {
     json: { mapping: 'json' },
     jsonb: { mapping: 'json' },
   },
-
-  // OceanBase MySQL 模式 - 完全复用 MySQL 配置
-  oceanbase: {
-    varchar: { mapping: 'varchar', defaultArgs: ['255'] },
-    nvarchar: { mapping: 'varchar', defaultArgs: ['255'] },
-    char: { mapping: 'char', defaultArgs: ['1'] },
-    nchar: { mapping: 'char', defaultArgs: ['1'] },
-    text: { mapping: 'text' },
-    mediumtext: { mapping: 'mediumtext' },
-    longtext: { mapping: 'longtext' },
-    int: { mapping: 'int' },
-    tinyint: { mapping: 'tinyint', defaultArgs: ['1'] },
-    smallint: { mapping: 'smallint' },
-    bigint: { mapping: 'bigint' },
-    decimal: { mapping: 'decimal', defaultArgs: ['10', '3'] },
-    numeric: { mapping: 'decimal', defaultArgs: ['10', '3'] },
-    float: { mapping: 'float', defaultArgs: ['10', '2'] },
-    double: { mapping: 'double' },
-    real: { mapping: 'double' },
-    date: { mapping: 'date' },
-    datetime: { mapping: 'datetime' },
-    datetime2: { mapping: 'datetime' },
-    timestamp: {
-      transform: () => 'TIMESTAMP',
-    },
-    time: { mapping: 'time' },
-    boolean: { mapping: 'tinyint', defaultArgs: ['1'] },
-    bool: { mapping: 'tinyint', defaultArgs: ['1'] },
-    bit: { mapping: 'bit', defaultArgs: ['1'] },
-    json: { mapping: 'json' },
-    jsonb: { mapping: 'json' },
-    blob: { mapping: 'blob' },
-    varbinary: { mapping: 'varbinary' },
-    uuid: { mapping: 'char', defaultArgs: ['36'] },
-    serial: {
-      transform: (_parsed) => 'BIGINT UNSIGNED AUTO_INCREMENT',
-    },
-  },
-
-  // OceanBase Oracle 模式 - 完全复用 Oracle 配置
-  'oceanbase-oracle': {
-    varchar: { mapping: 'varchar2', defaultArgs: ['100'] },
-    nvarchar: { mapping: 'nvarchar2', defaultArgs: ['100'] },
-    char: { mapping: 'char', defaultArgs: ['1'] },
-    nchar: { mapping: 'nchar', defaultArgs: ['1'] },
-    text: { mapping: 'clob' },
-    mediumtext: { mapping: 'clob' },
-    longtext: { mapping: 'clob' },
-    clob: { mapping: 'clob' },
-    int: { mapping: 'number', defaultArgs: ['10'] },
-    integer: { mapping: 'number', defaultArgs: ['10'] },
-    smallint: { mapping: 'number', defaultArgs: ['5'] },
-    tinyint: { mapping: 'number', defaultArgs: ['3'] },
-    bigint: { mapping: 'number', defaultArgs: ['19'] },
-    decimal: { mapping: 'number', defaultArgs: ['10', '2'] },
-    numeric: { mapping: 'number', defaultArgs: ['10', '2'] },
-    number: { mapping: 'number', defaultArgs: ['10', '2'] },
-    float: { mapping: 'float' },
-    double: { mapping: 'binary_double' },
-    real: { mapping: 'binary_float' },
-    date: { mapping: 'date' },
-    datetime: { mapping: 'timestamp' },
-    datetime2: { mapping: 'timestamp' },
-    timestamp: { mapping: 'timestamp' },
-    timestamptz: { mapping: 'timestamp', suffix: 'WITH TIME ZONE' },
-    time: { mapping: 'timestamp' },
-    timetz: { mapping: 'timestamp' },
-    boolean: { mapping: 'number', defaultArgs: ['1'] },
-    bool: { mapping: 'number', defaultArgs: ['1'] },
-    bit: { mapping: 'number', defaultArgs: ['1'] },
-    json: { mapping: 'clob' },
-    jsonb: { mapping: 'clob' },
-    blob: { mapping: 'blob' },
-    varbinary: { mapping: 'raw', defaultArgs: ['100'] },
-    uuid: { mapping: 'char', defaultArgs: ['36'] },
-    xml: { mapping: 'xmltype' },
-    serial: {
-      transform: (_parsed) => 'NUMBER GENERATED ALWAYS AS IDENTITY',
-    },
-  },
 };
 
-// PostgreSQL (Citus) reuses PostgreSQL type mappings.
-TYPE_MAPPINGS['postgresql-citus'] = TYPE_MAPPINGS.postgresql;
-
 // Hive 数据仓库类型映射
-TYPE_MAPPINGS.hive = {
+FAMILY_TYPE_MAPPINGS.hive = {
   string: { mapping: 'STRING' },
   varchar: { transform: () => 'STRING' },
   nvarchar: { transform: () => 'STRING' },
@@ -414,3 +259,12 @@ TYPE_MAPPINGS.hive = {
   uuid: { transform: () => 'STRING' },
   serial: { mapping: 'INT' },
 };
+
+export const TYPE_MAPPINGS = expandDatabaseFamilies({
+  mysql: FAMILY_TYPE_MAPPINGS.mysql,
+  postgresql: FAMILY_TYPE_MAPPINGS.postgresql,
+  sqlserver: FAMILY_TYPE_MAPPINGS.sqlserver,
+  oracle: FAMILY_TYPE_MAPPINGS.oracle,
+  dm: FAMILY_TYPE_MAPPINGS.dm,
+  hive: FAMILY_TYPE_MAPPINGS.hive,
+});

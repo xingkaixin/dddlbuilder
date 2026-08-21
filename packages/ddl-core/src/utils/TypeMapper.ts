@@ -1,6 +1,7 @@
 import type { DatabaseType, ParsedFieldType } from '@ddlbuilder/shared-types';
 import { TYPE_MAPPINGS } from '../configs/typeMappings.js';
 import { canonicalizeBaseType } from './databaseTypeMapping.js';
+import { getDatabaseFamily } from './databaseFamily.js';
 
 export class TypeMapper {
   private readonly databaseType: DatabaseType;
@@ -18,11 +19,7 @@ export class TypeMapper {
     const mapping = TYPE_MAPPINGS[this.databaseType]?.[canonical];
 
     // 检查当前数据库是否支持 UNSIGNED（MySQL 兼容的数据库）
-    const supportsUnsigned =
-      this.databaseType === 'mysql' ||
-      this.databaseType === 'mariadb' ||
-      this.databaseType === 'tidb' ||
-      this.databaseType === 'oceanbase';
+    const supportsUnsigned = getDatabaseFamily(this.databaseType) === 'mysql';
 
     if (!mapping) {
       // 如果没有找到映射，返回原始类型
