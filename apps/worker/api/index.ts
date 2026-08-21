@@ -25,6 +25,8 @@ const LOCAL_DEV_HOSTS = new Set(['localhost', '127.0.0.1']);
 const api = new Hono<ApiEnv>();
 const app = new Hono<ApiEnv>();
 
+export { api as apiRouter };
+
 const DEFAULT_ALLOWED_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173'];
 
 const REQUEST_ID_PATTERN = /^[a-zA-Z0-9._:-]{1,128}$/;

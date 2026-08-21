@@ -3,7 +3,7 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { serve } from '@hono/node-server';
 import { applyCspHeaders } from './apps/worker/server-api/lib/csp';
 import type { ApiEnv } from './apps/worker/server-api/lib/context';
-import api from './apps/worker/api/index';
+import { apiRouter } from './apps/worker/api/index';
 
 const app = new Hono<ApiEnv>();
 
@@ -43,7 +43,7 @@ app.use('/api/*', async (c, next) => {
 });
 
 // Mount API routes
-app.route('/', api);
+app.route('/api', apiRouter);
 
 // Keep docs base path canonical for VitePress
 app.get('/docs', (c) => c.redirect('/docs/', 301));
