@@ -14,6 +14,7 @@ import { clearLocalWorkspaceData } from '@/services/workspaceAccountService';
 import { currentUserOptions, authQueryKeys } from '@/queries/auth';
 import { creditBalanceOptions, creditQueryKeys } from '@/queries/credits';
 import { workspaceListOptions, workspaceQueryKeys } from '@/queries/workspaces';
+import { workspaceMigrationQueryKeys } from '@/queries/workspaceMigration';
 import { fetchCurrentUser } from '@/services/authService';
 import { fetchCreditBalance } from '@/services/creditService';
 import { getBetterAuthClient, isBetterAuthConfigured } from './betterAuthClient';
@@ -337,6 +338,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
         if (state.userId) {
           queryClient.removeQueries({ queryKey: creditQueryKeys.all(state.userId) });
           queryClient.removeQueries({ queryKey: workspaceQueryKeys.all(state.userId) });
+          queryClient.removeQueries({ queryKey: workspaceMigrationQueryKeys.all(state.userId) });
         }
         queryClient.setQueryData(authQueryKeys.me, { signedIn: false, user: null });
         setAuthDialogOpen(false);

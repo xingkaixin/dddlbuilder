@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type * as Y from 'yjs';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
@@ -8,7 +9,6 @@ import {
   deleteSavedTableFromYDoc,
   getSavedTableFromYDoc,
   listSavedTableMetadataFromYDoc,
-  subscribeWorkspaceYDoc,
   upsertSavedTableInYDoc,
 } from '@/services/workspaceYDocAdapter';
 import {
@@ -16,8 +16,6 @@ import {
   deleteSavedTable,
   ensureSavedTableName,
   getSavedTable,
-  listSavedTableMetadata,
-  listTrashedSavedTableMetadata,
   moveSavedTableToTrash,
   normalizeSavedTableName,
   updateSavedTable,
@@ -26,6 +24,12 @@ import {
   type SavedTableRecord,
 } from '@/utils/savedTablesDb';
 import { useWorkspaceScope } from '@/hooks/useWorkspaceScope';
+import { useWorkspaceYDocProjection } from '@/hooks/useWorkspaceYDocProjection';
+import {
+  localSavedTablesOptions,
+  localTrashedTablesOptions,
+  workspaceLocalQueryKeys,
+} from '@/queries/workspaceLocal';
 
 export type SavedTableSummary = SavedTableMetadata;
 
@@ -42,21 +46,46 @@ const sortSavedTablesByCreatedAt = (tables: SavedTableSummary[]) =>
     (a, b) => b.createdAt - a.createdAt || a.normalizedName.localeCompare(b.normalizedName),
   );
 
+const SAVED_TABLE_COLLECTIONS = ['savedTables'] as const;
+const EMPTY_SAVED_TABLES: SavedTableSummary[] = [];
+const readSavedTablesProjection = (doc: Y.Doc) => listSavedTableMetadataFromYDoc(doc);
+
 export function useSavedTables() {
   const workspaceYDoc = useWorkspaceYDoc();
-  const [savedTables, setSavedTables] = useState<SavedTableSummary[]>([]);
-  const [trashedTables, setTrashedTables] = useState<SavedTableSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const refreshRequestRef = useRef(0);
-
   const currentScope = useWorkspaceScope();
+  const queryClient = useQueryClient();
   const yDocReady = Boolean(
     workspaceYDoc.doc &&
     workspaceYDoc.localSynced &&
     currentScope?.kind === 'user' &&
     currentScope.workspaceId,
   );
+  const yDocSavedTables = useWorkspaceYDocProjection(
+    yDocReady ? workspaceYDoc.doc : null,
+    SAVED_TABLE_COLLECTIONS,
+    readSavedTablesProjection,
+    EMPTY_SAVED_TABLES,
+  );
+  const localSavedTablesQuery = useQuery({
+    ...localSavedTablesOptions(currentScope),
+    enabled: Boolean(currentScope && !yDocReady),
+  });
+  const trashedTablesQuery = useQuery({
+    ...localTrashedTablesOptions(currentScope),
+    enabled: Boolean(currentScope),
+  });
+  const savedTables = sortSavedTablesByCreatedAt(
+    yDocReady ? yDocSavedTables : (localSavedTablesQuery.data ?? []),
+  );
+  const trashedTables = [...(trashedTablesQuery.data ?? [])].sort(
+    (a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0),
+  );
+  const loading =
+    !currentScope ||
+    trashedTablesQuery.isPending ||
+    (!yDocReady && localSavedTablesQuery.isPending);
+  const queryError = localSavedTablesQuery.error ?? trashedTablesQuery.error;
+  const error = queryError ? (queryError instanceof Error ? queryError.message : '读取失败') : null;
 
   const runInYDoc = useCallback(
     (mutate: (doc: Y.Doc) => void) => {
@@ -75,66 +104,16 @@ export function useSavedTables() {
     [currentScope, workspaceYDoc.doc, yDocReady],
   );
 
-  const refresh = useCallback(
-    async (options?: { showLoading?: boolean }) => {
-      const requestId = ++refreshRequestRef.current;
-      if (!currentScope) {
-        setLoading(true);
-        return;
-      }
-
-      try {
-        if (options?.showLoading !== false) {
-          setLoading(true);
-        }
-        const [metadata, trashedMetadata] =
-          yDocReady && workspaceYDoc.doc
-            ? [
-                listSavedTableMetadataFromYDoc(workspaceYDoc.doc),
-                await listTrashedSavedTableMetadata(currentScope),
-              ]
-            : await Promise.all([
-                listSavedTableMetadata(currentScope),
-                listTrashedSavedTableMetadata(currentScope),
-              ]);
-        if (refreshRequestRef.current !== requestId) return;
-        const sorted = sortSavedTablesByCreatedAt(metadata);
-        const sortedTrashed = trashedMetadata.sort(
-          (a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0),
-        );
-        setSavedTables(sorted);
-        setTrashedTables(sortedTrashed);
-        setError(null);
-      } catch (err) {
-        if (refreshRequestRef.current !== requestId) return;
-        setError(err instanceof Error ? err.message : '读取失败');
-      } finally {
-        if (refreshRequestRef.current === requestId) {
-          setLoading(false);
-        }
-      }
-    },
-    [currentScope, workspaceYDoc.doc, yDocReady],
-  );
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  useEffect(() => {
-    if (!yDocReady || !workspaceYDoc.doc) return;
-    return subscribeWorkspaceYDoc(
-      workspaceYDoc.doc,
-      () => {
-        void refresh({ showLoading: false });
-      },
-      ['savedTables'],
-    );
-  }, [refresh, workspaceYDoc.doc, yDocReady]);
+  const refresh = useCallback(async () => {
+    if (!currentScope) return;
+    await queryClient.invalidateQueries({
+      queryKey: workspaceLocalQueryKeys.scope(currentScope),
+    });
+  }, [currentScope, queryClient]);
 
   useEffect(() => {
     const handleSnapshotApplied = () => {
-      void refresh({ showLoading: false });
+      void refresh();
     };
 
     window.addEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);

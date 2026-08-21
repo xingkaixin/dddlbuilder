@@ -1,7 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook as testingLibraryRenderHook, act, waitFor } from '@testing-library/react';
 import { useSavedTables } from '@/hooks/useSavedTables';
 import type { SavedTableRecord } from '@/utils/savedTablesDb';
+import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
+
+const renderHook = <Result, Props>(render: (initialProps: Props) => Result) => {
+  const { wrapper } = createQueryClientWrapper();
+  return testingLibraryRenderHook(render, { wrapper });
+};
 
 vi.mock('@/auth/AuthSessionProvider', () => ({
   useAuthSession: vi.fn(() => ({

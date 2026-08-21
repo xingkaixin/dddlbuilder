@@ -1,9 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook as testingLibraryRenderHook, act, waitFor } from '@testing-library/react';
 import { useFolders } from '@/hooks/useFolders';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import { flushPromises } from '@/__tests__/utils/test-utils';
 import * as tableFolders from '@/utils/tableFolders';
+import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
+
+const renderHook = <Result, Props>(render: (initialProps: Props) => Result) => {
+  const { wrapper } = createQueryClientWrapper();
+  return testingLibraryRenderHook(render, { wrapper });
+};
 
 vi.mock('@/utils/tableFolders', () => ({
   __esModule: true,
@@ -15,6 +21,7 @@ vi.mock('@/utils/tableFolders', () => ({
   buildFolderTree: vi.fn(),
   getDescendantFolderIds: vi.fn(),
   getFolder: vi.fn(),
+  updateFolder: vi.fn(),
 }));
 
 vi.mock('@/auth/AuthSessionProvider', () => ({
@@ -51,11 +58,7 @@ describe('useFolders', () => {
 
     const { result } = renderHook(() => useFolders());
 
-    await act(async () => {
-      await flushPromises();
-    });
-
-    expect(result.current.loading).toBe(false);
+    await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.folders).toHaveLength(1);
     expect(result.current.folderTree).toHaveLength(1);
   });
@@ -78,10 +81,9 @@ describe('useFolders', () => {
 
     await act(async () => {
       window.dispatchEvent(new CustomEvent(WORKSPACE_SNAPSHOT_APPLIED_EVENT));
-      await flushPromises();
     });
 
-    expect(result.current.folders).toHaveLength(1);
+    await waitFor(() => expect(result.current.folders).toHaveLength(1));
   });
 
   it('should handle load error', async () => {
@@ -90,11 +92,7 @@ describe('useFolders', () => {
 
     const { result } = renderHook(() => useFolders());
 
-    await act(async () => {
-      await flushPromises();
-    });
-
-    expect(result.current.loading).toBe(false);
+    await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toBe('load error');
   });
 
@@ -104,11 +102,7 @@ describe('useFolders', () => {
 
     const { result } = renderHook(() => useFolders());
 
-    await act(async () => {
-      await flushPromises();
-    });
-
-    expect(result.current.loading).toBe(false);
+    await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toBe('加载文件夹失败');
   });
 

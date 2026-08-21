@@ -1,7 +1,13 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook as testingLibraryRenderHook, act, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useWorkspaceMigration } from '@/hooks/useWorkspaceMigration';
 import { invalidateLegacyWorkspaceMigration } from '@/services/workspaceLegacyMigrationMarker';
+import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
+
+const renderHook = <Result, Props>(render: (initialProps: Props) => Result) => {
+  const { wrapper } = createQueryClientWrapper();
+  return testingLibraryRenderHook(render, { wrapper });
+};
 
 vi.mock('@/services/workspaceLegacyMigrationMarker', () => ({
   invalidateLegacyWorkspaceMigration: vi.fn(),
@@ -144,5 +150,64 @@ describe('useWorkspaceMigration', () => {
     });
 
     expect(analyzeWorkspaceMigration).not.toHaveBeenCalled();
+  });
+
+  it('提交迁移应作为命令执行并清除当前提案', async () => {
+    const {
+      analyzeWorkspaceMigration,
+      applyWorkspaceMigrationPayloadToLocal,
+      commitWorkspaceMigration,
+      hasMeaningfulWorkspaceData,
+    } = await import('@/services/workspaceMigrationService');
+    const payload = {
+      localFingerprint: 'fingerprint',
+      idempotencyKey: 'idempotency',
+      snapshot: {
+        globalDraft: null,
+        activeSession: null,
+        drafts: [],
+        savedTables: [],
+        savedDrafts: [],
+        folders: [],
+      },
+    };
+    vi.mocked(analyzeWorkspaceMigration).mockResolvedValue({
+      payload,
+      result: {
+        status: 'ready',
+        createdCount: 0,
+        copiedCount: 0,
+        skippedCount: 0,
+        conflictCount: 0,
+        conflicts: [],
+      },
+    } as any);
+    vi.mocked(hasMeaningfulWorkspaceData).mockResolvedValue(false);
+    vi.mocked(applyWorkspaceMigrationPayloadToLocal).mockResolvedValue(undefined);
+    vi.mocked(commitWorkspaceMigration).mockResolvedValue({
+      status: 'completed',
+      createdCount: 1,
+      copiedCount: 0,
+      skippedCount: 0,
+      conflictCount: 0,
+      conflicts: [],
+    });
+
+    const { result } = renderHook(() =>
+      useWorkspaceMigration({
+        status: 'signed_in',
+        userId: 'user-1',
+        workspaceId: 'ws-1',
+      }),
+    );
+    await waitFor(() => expect(result.current.open).toBe(true));
+
+    await act(async () => {
+      await result.current.runMigration();
+    });
+
+    expect(commitWorkspaceMigration).toHaveBeenCalledWith(payload);
+    expect(result.current.pending).toBeNull();
+    expect(result.current.open).toBe(false);
   });
 });

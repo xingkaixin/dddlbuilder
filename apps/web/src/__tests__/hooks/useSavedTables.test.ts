@@ -1,10 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook as testingLibraryRenderHook, act } from '@testing-library/react';
 import { useSavedTables } from '@/hooks/useSavedTables';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '../utils/fakeIndexedDb';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { flushPromises } from '@/__tests__/utils/test-utils';
 import { addSavedTable, moveSavedTableToTrash } from '@/utils/savedTablesDb';
+import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
+
+const renderHook = <Result, Props>(render: (initialProps: Props) => Result) => {
+  const { wrapper } = createQueryClientWrapper();
+  return testingLibraryRenderHook(render, { wrapper });
+};
 
 const mockUseAuthSession = vi.hoisted(() =>
   vi.fn(() => ({
@@ -83,7 +89,7 @@ describe('useSavedTables', () => {
     mockYDocAdapter.deleteSavedTableFromYDoc.mockReset();
     mockYDocAdapter.getSavedTableFromYDoc.mockReset();
     mockYDocAdapter.listSavedTableMetadataFromYDoc.mockReset();
-    mockYDocAdapter.subscribeWorkspaceYDoc.mockReset();
+    mockYDocAdapter.subscribeWorkspaceYDoc.mockReset().mockReturnValue(vi.fn());
     mockYDocAdapter.upsertSavedTableInYDoc.mockReset();
   });
 
