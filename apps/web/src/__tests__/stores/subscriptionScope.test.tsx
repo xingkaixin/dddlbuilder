@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createEmptyRow } from '@/utils/helpers';
 import { useAppStore, useFieldStore, useIndexStore } from '@/stores';
+import { useAppSelectors } from '@/components/App/hooks/useAppSelectors';
 
 function resetAppStore() {
   const state = useAppStore.getState();
@@ -18,6 +19,8 @@ function resetAppStore() {
   state.setIsReviewHistoryOpen(false);
   state.setIsStorageEstimatorOpen(false);
   state.setIsAIGenerateDialogOpen(false);
+  state.setIsMockDataDialogOpen(false);
+  state.setTimelinePlayerTarget(null);
 }
 
 function resetFieldStore() {
@@ -118,5 +121,37 @@ describe('store selector subscription scope', () => {
 
     expect(renderCount).toBe(initialRenderCount + 1);
     expect(result.current.indexInput).toBe('id');
+  });
+
+  it('App 编辑器 selector 不订阅纯弹窗可见状态', () => {
+    let renderCount = 0;
+    const { result } = renderHook(() => {
+      renderCount += 1;
+      return useAppSelectors();
+    });
+    const initialRenderCount = renderCount;
+
+    act(() => {
+      const state = useAppStore.getState();
+      state.setIsDiffDialogOpen(true);
+      state.setIsStorageEstimatorOpen(true);
+      state.setVersionHistoryTarget({
+        normalizedName: 'orders',
+        name: 'orders',
+        dbType: 'mysql',
+        fieldCount: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+    });
+
+    expect(renderCount).toBe(initialRenderCount);
+
+    act(() => {
+      useAppStore.getState().setTableName('orders');
+    });
+
+    expect(renderCount).toBe(initialRenderCount + 1);
+    expect(result.current.tableName).toBe('orders');
   });
 });

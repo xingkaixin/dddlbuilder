@@ -5,6 +5,7 @@ import { isTabAvailable } from '@/utils/tabUtils';
 import { ChevronRight, Upload } from '@/components/icons';
 import { Header } from './Header';
 import { GlobalDialogs } from './containers/GlobalDialogs';
+import { DialogRenderGuard } from './containers/DialogRenderGuard';
 import { OutputContainer } from './containers/OutputContainer';
 import { SavedTablesContainer } from './containers/SavedTablesContainer';
 import { TableBuilderContainer } from './containers/TableBuilderContainer';
@@ -124,7 +125,6 @@ function App() {
     setFieldTableFreezeEnabled,
     fieldTableFreezeColumns,
     setFieldTableFreezeColumns,
-    isClearDialogOpen,
     setIsClearDialogOpen,
     showFireworks,
     setShowFireworks,
@@ -136,20 +136,12 @@ function App() {
     setIsRenameDialogOpen,
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
-    isDiffDialogOpen,
     setIsDiffDialogOpen,
-    versionHistoryTarget,
     setVersionHistoryTarget,
-    isReviewHistoryOpen,
     setIsReviewHistoryOpen,
-    isStorageEstimatorOpen,
     setIsStorageEstimatorOpen,
-    isAIGenerateDialogOpen,
     setIsAIGenerateDialogOpen,
-    isMockDataDialogOpen,
     setIsMockDataDialogOpen,
-    timelinePlayerTarget,
-    setTimelinePlayerTarget,
     rows,
     setRows,
     resetTableRows,
@@ -1280,26 +1272,6 @@ function App() {
     [templates, tableTemplates],
   );
 
-  const handlePlayTimeline = useCallback(() => {
-    if (versionHistoryTarget) {
-      setTimelinePlayerTarget(versionHistoryTarget);
-    }
-  }, [versionHistoryTarget, setTimelinePlayerTarget]);
-
-  const handleVersionHistoryOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) setVersionHistoryTarget(null);
-    },
-    [setVersionHistoryTarget],
-  );
-
-  const handleTimelinePlayerOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) setTimelinePlayerTarget(null);
-    },
-    [setTimelinePlayerTarget],
-  );
-
   const handleDbTypeChange = useCallback(
     (newDbType: DatabaseType) => {
       setDbType(newDbType);
@@ -1721,8 +1693,6 @@ function App() {
 
         <GlobalDialogs
           clearDialog={{
-            open: isClearDialogOpen,
-            onOpenChange: setIsClearDialogOpen,
             onCancel: cancelClearAll,
             onConfirm: confirmClearAll,
           }}
@@ -1803,8 +1773,6 @@ function App() {
             onConfirm: handleCreateTableTemplate,
           }}
           diffDialogProps={{
-            open: isDiffDialogOpen,
-            onOpenChange: setIsDiffDialogOpen,
             tableName,
             dbType,
             diff: tableDiff,
@@ -1812,44 +1780,25 @@ function App() {
             onCopy: handleCopyDiff,
           }}
           versionHistoryDialogProps={{
-            open: versionHistoryTarget !== null,
-            onOpenChange: handleVersionHistoryOpenChange,
-            tableNormalizedName: versionHistoryTarget?.normalizedName ?? null,
-            tableName: versionHistoryTarget?.name ?? null,
             currentState: currentPersistedState,
             onRollback: handleRollbackVersion,
-            onPlayTimeline: handlePlayTimeline,
-          }}
-          timelinePlayerProps={{
-            open: timelinePlayerTarget !== null,
-            onOpenChange: handleTimelinePlayerOpenChange,
-            tableNormalizedName: timelinePlayerTarget?.normalizedName ?? null,
-            tableName: timelinePlayerTarget?.name ?? null,
           }}
           reviewHistoryDialogProps={{
-            open: isReviewHistoryOpen,
-            onOpenChange: setIsReviewHistoryOpen,
             tableNormalizedName: loadedTableNormalizedName,
           }}
           aiGenerateDialogProps={{
-            open: isAIGenerateDialogOpen,
-            onOpenChange: setIsAIGenerateDialogOpen,
             dbType,
             existingConfig: aiGenerateExistingConfig,
             templates: aiGenerateTemplates,
             onApply: handleApplyAIGeneratedSchema,
           }}
           storageEstimatorDialogProps={{
-            open: isStorageEstimatorOpen,
-            onOpenChange: setIsStorageEstimatorOpen,
             dbType,
             fields: normalizedFields,
             indexes,
             storageFormat: tableMiscConfig.storedAs || undefined,
           }}
           mockDataDialogProps={{
-            open: isMockDataDialogOpen,
-            onOpenChange: setIsMockDataDialogOpen,
             tableName,
             schemaName,
             dbType,
@@ -1869,46 +1818,52 @@ function App() {
           }}
         />
 
-        <Dialog open={isAISchemaPatchOpen} onOpenChange={setIsAISchemaPatchOpen}>
-          <DialogContent className="flex max-h-[88vh] w-[min(1080px,calc(100vw-2rem))] max-w-none flex-col overflow-hidden p-0">
-            <DialogTitle className="sr-only">{t('aiPatch.title')}</DialogTitle>
-            <AISchemaPatchPanel
-              dbType={dbType}
-              currentState={currentPersistedState}
-              templates={[...templates, ...tableTemplates]}
-              onApplyChange={handleApplyAISchemaChange}
-              onFocusChange={handleFocusAISchemaChange}
-            />
-          </DialogContent>
-        </Dialog>
+        <DialogRenderGuard open={isAISchemaPatchOpen}>
+          <Dialog open={isAISchemaPatchOpen} onOpenChange={setIsAISchemaPatchOpen}>
+            <DialogContent className="flex max-h-[88vh] w-[min(1080px,calc(100vw-2rem))] max-w-none flex-col overflow-hidden p-0">
+              <DialogTitle className="sr-only">{t('aiPatch.title')}</DialogTitle>
+              <AISchemaPatchPanel
+                dbType={dbType}
+                currentState={currentPersistedState}
+                templates={[...templates, ...tableTemplates]}
+                onApplyChange={handleApplyAISchemaChange}
+                onFocusChange={handleFocusAISchemaChange}
+              />
+            </DialogContent>
+          </Dialog>
+        </DialogRenderGuard>
 
-        <AIIndexAdvisorDialog
-          open={isAIIndexAdvisorOpen}
-          onOpenChange={handleAIIndexAdvisorOpenChange}
-          isLoading={isAnalyzingIndexes}
-          result={indexAdvice}
-          error={indexAdviceError}
-          suggestedQuery={suggestedIndexQuery}
-          blockingMessage={indexAdvisorBlockingMessage}
-          onAnalyze={handleAnalyzeIndexes}
-          onApplyIndex={handleApplyIndexAdvice}
-        />
+        <DialogRenderGuard open={isAIIndexAdvisorOpen}>
+          <AIIndexAdvisorDialog
+            open={isAIIndexAdvisorOpen}
+            onOpenChange={handleAIIndexAdvisorOpenChange}
+            isLoading={isAnalyzingIndexes}
+            result={indexAdvice}
+            error={indexAdviceError}
+            suggestedQuery={suggestedIndexQuery}
+            blockingMessage={indexAdvisorBlockingMessage}
+            onAnalyze={handleAnalyzeIndexes}
+            onApplyIndex={handleApplyIndexAdvice}
+          />
+        </DialogRenderGuard>
 
         {!isShareView && (
           <Suspense fallback={null}>
-            <ImportSqlDialog
-              currentDbType={dbType}
-              onImport={handleImport}
-              open={isImportDialogOpen}
-              onOpenChange={setIsImportDialogOpen}
-              hideTrigger
-              savedTables={savedTables}
-              folderTree={folderTree}
-              saveTable={saveTable}
-              overwriteTable={overwriteTable}
-              moveTableToFolder={moveTableToFolder}
-              onBatchImportComplete={refreshSavedTables}
-            />
+            <DialogRenderGuard open={isImportDialogOpen}>
+              <ImportSqlDialog
+                currentDbType={dbType}
+                onImport={handleImport}
+                open={isImportDialogOpen}
+                onOpenChange={setIsImportDialogOpen}
+                hideTrigger
+                savedTables={savedTables}
+                folderTree={folderTree}
+                saveTable={saveTable}
+                overwriteTable={overwriteTable}
+                moveTableToFolder={moveTableToFolder}
+                onBatchImportComplete={refreshSavedTables}
+              />
+            </DialogRenderGuard>
           </Suspense>
         )}
       </div>

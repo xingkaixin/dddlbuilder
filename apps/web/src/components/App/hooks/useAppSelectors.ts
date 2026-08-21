@@ -75,7 +75,6 @@ export function useAppSelectors() {
   const fieldTableFreezeColumns = useAppStore((s) => s.fieldTableFreezeColumns);
 
   // --- 全局 UI 状态 ---
-  const isClearDialogOpen = useAppStore((s) => s.isClearDialogOpen);
   const showFireworks = useAppStore((s) => s.showFireworks);
 
   // --- 保存表相关 ---
@@ -85,13 +84,6 @@ export function useAppSelectors() {
   const isSaveDialogOpen = useAppStore((s) => s.dialogs.save);
   const isRenameDialogOpen = useAppStore((s) => s.dialogs.rename);
   const isDeleteDialogOpen = useAppStore((s) => s.dialogs.delete);
-  const isDiffDialogOpen = useAppStore((s) => s.isDiffDialogOpen);
-  const versionHistoryTarget = useAppStore((s) => s.versionHistoryTarget);
-  const isReviewHistoryOpen = useAppStore((s) => s.isReviewHistoryOpen);
-  const isStorageEstimatorOpen = useAppStore((s) => s.isStorageEstimatorOpen);
-  const isAIGenerateDialogOpen = useAppStore((s) => s.isAIGenerateDialogOpen);
-  const isMockDataDialogOpen = useAppStore((s) => s.isMockDataDialogOpen);
-  const timelinePlayerTarget = useAppStore((s) => s.timelinePlayerTarget);
 
   // --- 其余 store 的状态值 ---
   const rows = useFieldStore((s) => s.rows);
@@ -130,7 +122,6 @@ export function useAppSelectors() {
     fieldTableFreezeColumns,
     setFieldTableFreezeColumns,
     // 全局 UI
-    isClearDialogOpen,
     setIsClearDialogOpen,
     showFireworks,
     setShowFireworks,
@@ -144,19 +135,12 @@ export function useAppSelectors() {
     setIsRenameDialogOpen,
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
-    isDiffDialogOpen,
     setIsDiffDialogOpen,
-    versionHistoryTarget,
     setVersionHistoryTarget,
-    isReviewHistoryOpen,
     setIsReviewHistoryOpen,
-    isStorageEstimatorOpen,
     setIsStorageEstimatorOpen,
-    isAIGenerateDialogOpen,
     setIsAIGenerateDialogOpen,
-    isMockDataDialogOpen,
     setIsMockDataDialogOpen,
-    timelinePlayerTarget,
     setTimelinePlayerTarget,
     // Field store
     rows,

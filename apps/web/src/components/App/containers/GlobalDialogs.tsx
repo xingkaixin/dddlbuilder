@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react';
+import { useCallback, type ComponentProps, type ElementType } from 'react';
 import { AlertTriangle, Trash2 } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,11 +24,16 @@ import { CreateTemplateDialog } from '../CreateTemplateDialog';
 import { VersionHistoryDialog } from '../VersionHistoryDialog';
 import { SchemaTimelinePlayer } from '../SchemaTimelinePlayer';
 import { useTranslation } from 'react-i18next';
+import { DialogRenderGuard } from './DialogRenderGuard';
+import { useAppStore } from '@/stores';
+
+type ControlledDialogProps<T extends ElementType> = Omit<
+  ComponentProps<T>,
+  'open' | 'onOpenChange'
+>;
 
 interface GlobalDialogsProps {
   clearDialog: {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
     onCancel: () => void;
     onConfirm: () => void;
   };
@@ -64,13 +69,15 @@ interface GlobalDialogsProps {
   createTemplateDialogProps: ComponentProps<typeof CreateTemplateDialog>;
   tableTemplateManagerDialogProps: ComponentProps<typeof TableTemplateManagerDialog>;
   createTableTemplateDialogProps: ComponentProps<typeof CreateTableTemplateDialog>;
-  diffDialogProps: ComponentProps<typeof DiffDialog>;
-  versionHistoryDialogProps: ComponentProps<typeof VersionHistoryDialog>;
-  timelinePlayerProps: ComponentProps<typeof SchemaTimelinePlayer>;
-  reviewHistoryDialogProps: ComponentProps<typeof ReviewHistoryDialog>;
-  aiGenerateDialogProps: ComponentProps<typeof AIGenerateDialog>;
-  storageEstimatorDialogProps: ComponentProps<typeof StorageEstimatorDialog>;
-  mockDataDialogProps: ComponentProps<typeof MockDataDialog>;
+  diffDialogProps: ControlledDialogProps<typeof DiffDialog>;
+  versionHistoryDialogProps: Omit<
+    ControlledDialogProps<typeof VersionHistoryDialog>,
+    'tableNormalizedName' | 'tableName' | 'onPlayTimeline'
+  >;
+  reviewHistoryDialogProps: ControlledDialogProps<typeof ReviewHistoryDialog>;
+  aiGenerateDialogProps: ControlledDialogProps<typeof AIGenerateDialog>;
+  storageEstimatorDialogProps: ControlledDialogProps<typeof StorageEstimatorDialog>;
+  mockDataDialogProps: ControlledDialogProps<typeof MockDataDialog>;
   erDiagramDialogProps: ComponentProps<typeof ErDiagramDialog>;
   emptyTrashDialog: {
     open: boolean;
@@ -92,7 +99,6 @@ export function GlobalDialogs({
   createTableTemplateDialogProps,
   diffDialogProps,
   versionHistoryDialogProps,
-  timelinePlayerProps,
   reviewHistoryDialogProps,
   aiGenerateDialogProps,
   storageEstimatorDialogProps,
@@ -101,22 +107,110 @@ export function GlobalDialogs({
   emptyTrashDialog,
 }: GlobalDialogsProps) {
   const { t } = useTranslation();
+  const isClearDialogOpen = useAppStore((state) => state.isClearDialogOpen);
+  const isDiffDialogOpen = useAppStore((state) => state.isDiffDialogOpen);
+  const versionHistoryTarget = useAppStore((state) => state.versionHistoryTarget);
+  const timelinePlayerTarget = useAppStore((state) => state.timelinePlayerTarget);
+  const isReviewHistoryOpen = useAppStore((state) => state.isReviewHistoryOpen);
+  const isAIGenerateDialogOpen = useAppStore((state) => state.isAIGenerateDialogOpen);
+  const isStorageEstimatorOpen = useAppStore((state) => state.isStorageEstimatorOpen);
+  const isMockDataDialogOpen = useAppStore((state) => state.isMockDataDialogOpen);
+  const {
+    setIsClearDialogOpen,
+    setIsDiffDialogOpen,
+    setVersionHistoryTarget,
+    setTimelinePlayerTarget,
+    setIsReviewHistoryOpen,
+    setIsAIGenerateDialogOpen,
+    setIsStorageEstimatorOpen,
+    setIsMockDataDialogOpen,
+  } = useAppStore.getState();
+
+  const handlePlayTimeline = useCallback(() => {
+    if (versionHistoryTarget) {
+      setTimelinePlayerTarget(versionHistoryTarget);
+    }
+  }, [setTimelinePlayerTarget, versionHistoryTarget]);
+
+  const handleVersionHistoryOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        setVersionHistoryTarget(null);
+      }
+    },
+    [setVersionHistoryTarget],
+  );
+
+  const handleTimelinePlayerOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        setTimelinePlayerTarget(null);
+      }
+    },
+    [setTimelinePlayerTarget],
+  );
 
   return (
     <>
-      <FolderDialog {...folderDialogProps} />
-      <DeleteFolderDialog {...deleteFolderDialogProps} />
-      <TemplateManagerDialog {...templateManagerDialogProps} />
-      <CreateTemplateDialog {...createTemplateDialogProps} />
-      <TableTemplateManagerDialog {...tableTemplateManagerDialogProps} />
-      <CreateTableTemplateDialog {...createTableTemplateDialogProps} />
-      <DiffDialog {...diffDialogProps} />
-      <VersionHistoryDialog {...versionHistoryDialogProps} />
-      <SchemaTimelinePlayer {...timelinePlayerProps} />
-      <ReviewHistoryDialog {...reviewHistoryDialogProps} />
-      <AIGenerateDialog {...aiGenerateDialogProps} />
+      <DialogRenderGuard open={folderDialogProps.open}>
+        <FolderDialog {...folderDialogProps} />
+      </DialogRenderGuard>
+      <DialogRenderGuard open={deleteFolderDialogProps.open}>
+        <DeleteFolderDialog {...deleteFolderDialogProps} />
+      </DialogRenderGuard>
+      <DialogRenderGuard open={templateManagerDialogProps.open}>
+        <TemplateManagerDialog {...templateManagerDialogProps} />
+      </DialogRenderGuard>
+      <DialogRenderGuard open={createTemplateDialogProps.open}>
+        <CreateTemplateDialog {...createTemplateDialogProps} />
+      </DialogRenderGuard>
+      <DialogRenderGuard open={tableTemplateManagerDialogProps.open}>
+        <TableTemplateManagerDialog {...tableTemplateManagerDialogProps} />
+      </DialogRenderGuard>
+      <DialogRenderGuard open={createTableTemplateDialogProps.open}>
+        <CreateTableTemplateDialog {...createTableTemplateDialogProps} />
+      </DialogRenderGuard>
+      <DialogRenderGuard open={isDiffDialogOpen}>
+        <DiffDialog
+          {...diffDialogProps}
+          open={isDiffDialogOpen}
+          onOpenChange={setIsDiffDialogOpen}
+        />
+      </DialogRenderGuard>
+      <DialogRenderGuard open={versionHistoryTarget !== null}>
+        <VersionHistoryDialog
+          {...versionHistoryDialogProps}
+          open={versionHistoryTarget !== null}
+          onOpenChange={handleVersionHistoryOpenChange}
+          tableNormalizedName={versionHistoryTarget?.normalizedName ?? null}
+          tableName={versionHistoryTarget?.name ?? null}
+          onPlayTimeline={handlePlayTimeline}
+        />
+      </DialogRenderGuard>
+      <DialogRenderGuard open={timelinePlayerTarget !== null}>
+        <SchemaTimelinePlayer
+          open={timelinePlayerTarget !== null}
+          onOpenChange={handleTimelinePlayerOpenChange}
+          tableNormalizedName={timelinePlayerTarget?.normalizedName ?? null}
+          tableName={timelinePlayerTarget?.name ?? null}
+        />
+      </DialogRenderGuard>
+      <DialogRenderGuard open={isReviewHistoryOpen}>
+        <ReviewHistoryDialog
+          {...reviewHistoryDialogProps}
+          open={isReviewHistoryOpen}
+          onOpenChange={setIsReviewHistoryOpen}
+        />
+      </DialogRenderGuard>
+      <DialogRenderGuard open={isAIGenerateDialogOpen}>
+        <AIGenerateDialog
+          {...aiGenerateDialogProps}
+          open={isAIGenerateDialogOpen}
+          onOpenChange={setIsAIGenerateDialogOpen}
+        />
+      </DialogRenderGuard>
 
-      <Dialog open={clearDialog.open} onOpenChange={clearDialog.onOpenChange}>
+      <Dialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{t('dialogs.clear.title')}</DialogTitle>
@@ -222,9 +316,23 @@ export function GlobalDialogs({
         </DialogContent>
       </Dialog>
 
-      <StorageEstimatorDialog {...storageEstimatorDialogProps} />
-      <MockDataDialog {...mockDataDialogProps} />
-      <ErDiagramDialog {...erDiagramDialogProps} />
+      <DialogRenderGuard open={isStorageEstimatorOpen}>
+        <StorageEstimatorDialog
+          {...storageEstimatorDialogProps}
+          open={isStorageEstimatorOpen}
+          onOpenChange={setIsStorageEstimatorOpen}
+        />
+      </DialogRenderGuard>
+      <DialogRenderGuard open={isMockDataDialogOpen}>
+        <MockDataDialog
+          {...mockDataDialogProps}
+          open={isMockDataDialogOpen}
+          onOpenChange={setIsMockDataDialogOpen}
+        />
+      </DialogRenderGuard>
+      <DialogRenderGuard open={erDiagramDialogProps.open}>
+        <ErDiagramDialog {...erDiagramDialogProps} />
+      </DialogRenderGuard>
     </>
   );
 }

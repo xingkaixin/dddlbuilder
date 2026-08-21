@@ -54,8 +54,6 @@ vi.mock('@/components/App/MockDataDialog', () => ({
 function createProps(): Parameters<typeof GlobalDialogs>[0] {
   return {
     clearDialog: {
-      open: false,
-      onOpenChange: vi.fn(),
       onCancel: vi.fn(),
       onConfirm: vi.fn(),
     },
@@ -110,50 +108,41 @@ function createProps(): Parameters<typeof GlobalDialogs>[0] {
       onOpenChange: vi.fn(),
       onCreate: vi.fn(),
     } as any,
-    diffDialogProps: {
+    tableTemplateManagerDialogProps: {
       open: false,
       onOpenChange: vi.fn(),
+      templates: [],
     } as any,
-    versionHistoryDialogProps: {
+    createTableTemplateDialogProps: {
       open: false,
       onOpenChange: vi.fn(),
+      onConfirm: vi.fn(),
+    } as any,
+    diffDialogProps: {} as any,
+    versionHistoryDialogProps: {
       versions: [],
       onRestore: vi.fn(),
       onDelete: vi.fn(),
     } as any,
     reviewHistoryDialogProps: {
-      open: false,
-      onOpenChange: vi.fn(),
       records: [],
       onDelete: vi.fn(),
       onRestore: vi.fn(),
     } as any,
     aiGenerateDialogProps: {
-      open: false,
-      onOpenChange: vi.fn(),
       dbType: 'mysql',
       onApply: vi.fn(),
     } as any,
     storageEstimatorDialogProps: {
-      open: false,
-      onOpenChange: vi.fn(),
       totalBytes: 0,
       rows: [],
       dbType: 'mysql',
     } as any,
     mockDataDialogProps: {
-      open: false,
-      onOpenChange: vi.fn(),
       tableName: '',
       schemaName: '',
       dbType: 'mysql',
       fields: [],
-    } as any,
-    timelinePlayerProps: {
-      open: false,
-      onOpenChange: vi.fn(),
-      tableNormalizedName: null,
-      tableName: null,
     } as any,
     erDiagramDialogProps: {
       open: false,
