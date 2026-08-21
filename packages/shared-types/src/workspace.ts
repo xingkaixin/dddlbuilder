@@ -37,7 +37,6 @@ export type WorkspaceListResponse = {
 export type WorkspaceSavePayload = {
   state: PersistedState;
   source: WorkspaceSelection;
-  isDirty: boolean;
 };
 
 export type SavedTableDraftRecord = {

@@ -124,7 +124,6 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     () =>
       rows.map((row) => ({
         ...row,
-        order: row.order || 0,
         fieldName: row.fieldName || '',
         fieldComment: row.fieldComment || '',
         fieldType: row.fieldType || '',

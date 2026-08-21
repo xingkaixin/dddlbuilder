@@ -168,7 +168,6 @@ describe('shareService', () => {
       rows: [
         {
           id: 'field-id',
-          order: 1,
           fieldName: 'id',
           fieldType: 'BIGINT',
           fieldComment: '主键',
@@ -179,7 +178,6 @@ describe('shareService', () => {
         },
         {
           id: 'field-created_at',
-          order: 2,
           fieldName: 'created_at',
           fieldType: 'TIMESTAMP',
           fieldComment: '创建时间',

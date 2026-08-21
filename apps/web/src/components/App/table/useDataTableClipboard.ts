@@ -56,7 +56,7 @@ export function useDataTableClipboard({
         const targetRowIndex = startRow + rowOffset;
 
         while (newRows.length <= targetRowIndex) {
-          newRows.push(createEmptyRow(newRows.length));
+          newRows.push(createEmptyRow());
         }
 
         const row = { ...newRows[targetRowIndex] };
@@ -80,7 +80,7 @@ export function useDataTableClipboard({
         newRows[targetRowIndex] = row;
       });
 
-      setRows(newRows.map((row, idx) => ({ ...row, order: idx + 1 })));
+      setRows(newRows);
 
       renamePairs.forEach(({ oldName, newName }) => {
         syncFieldRenameDependencies(oldName, newName);

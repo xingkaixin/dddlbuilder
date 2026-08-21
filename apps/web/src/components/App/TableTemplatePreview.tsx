@@ -53,7 +53,7 @@ export function TableTemplatePreview({ blueprint }: TableTemplatePreviewProps) {
         <div className="max-h-40 overflow-y-auto rounded-md border">
           {blueprint.rows.map((row) => (
             <div
-              key={`${row.order}-${row.fieldName}`}
+              key={row.id}
               className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 border-b px-3 py-2 text-sm last:border-b-0"
             >
               <div className="truncate font-medium">{row.fieldName}</div>

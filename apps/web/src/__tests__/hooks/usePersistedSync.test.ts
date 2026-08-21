@@ -84,7 +84,6 @@ describe('usePersistedSync', () => {
     expect(saveState).toHaveBeenCalledWith({
       state: currentState,
       source: { kind: 'draft', draftId: 'default' },
-      isDirty: false,
     });
   });
 
@@ -106,7 +105,6 @@ describe('usePersistedSync', () => {
     expect(saveState).toHaveBeenCalledWith({
       state: secondState,
       source: { kind: 'draft', draftId: 'default' },
-      isDirty: false,
     });
   });
 
@@ -120,7 +118,6 @@ describe('usePersistedSync', () => {
     expect(saveState).toHaveBeenCalledWith({
       state: currentState,
       source: { kind: 'draft', draftId: 'default' },
-      isDirty: false,
     });
   });
 
@@ -137,7 +134,6 @@ describe('usePersistedSync', () => {
     expect(saveState).toHaveBeenCalledWith({
       state: createState('second'),
       source: { kind: 'draft', draftId: 'default' },
-      isDirty: false,
     });
     act(() => vi.advanceTimersByTime(500));
     expect(saveState).toHaveBeenCalledOnce();
@@ -181,7 +177,6 @@ describe('usePersistedSync', () => {
     expect(saveState).toHaveBeenCalledWith({
       state: createState('local_edit'),
       source: { kind: 'draft', draftId: 'default' },
-      isDirty: false,
     });
   });
 
@@ -202,7 +197,6 @@ describe('usePersistedSync', () => {
     expect(saveState).toHaveBeenCalledWith({
       state: currentState,
       source: activeSource,
-      isDirty: true,
     });
   });
 
@@ -244,7 +238,6 @@ describe('usePersistedSync', () => {
     expect(saveState).toHaveBeenCalledWith({
       state: currentState,
       source: activeSource,
-      isDirty: false,
     });
   });
 
@@ -272,7 +265,6 @@ describe('usePersistedSync', () => {
     expect(saveState).toHaveBeenLastCalledWith({
       state: currentState,
       source: cleanSource,
-      isDirty: false,
     });
   });
 

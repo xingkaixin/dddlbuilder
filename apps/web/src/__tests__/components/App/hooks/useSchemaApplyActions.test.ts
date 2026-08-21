@@ -494,7 +494,6 @@ describe('useSchemaApplyActions', () => {
       expect(spies.setRows).toHaveBeenCalledWith([
         {
           id: expect.any(String),
-          order: 1,
           fieldName: 'id',
           fieldType: 'INT',
           fieldComment: '',
@@ -505,7 +504,6 @@ describe('useSchemaApplyActions', () => {
         },
         {
           id: expect.any(String),
-          order: 2,
           fieldName: 'name',
           fieldType: 'VARCHAR',
           fieldComment: '',

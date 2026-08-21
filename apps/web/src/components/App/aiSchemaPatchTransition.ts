@@ -1,6 +1,5 @@
 import type { FieldRow } from '@ddlbuilder/shared-types';
 import type { AISchemaChange } from '@/utils/aiSchemaChanges';
-import { ensureOrder } from '@/utils/helpers';
 
 type FieldChange = Extract<AISchemaChange, { kind: 'field' }>;
 
@@ -18,7 +17,7 @@ export const applyFieldSchemaChange = (
     const insertIndex = candidateIndex >= 0 ? Math.min(candidateIndex, rows.length) : rows.length;
     const nextRows = rows.slice();
     nextRows.splice(insertIndex, 0, change.newRow);
-    return { rows: ensureOrder(nextRows), focusIndex: candidateIndex };
+    return { rows: nextRows, focusIndex: candidateIndex };
   }
 
   if ((change.type === 'modify' || change.type === 'rename') && change.newRow) {
@@ -26,10 +25,8 @@ export const applyFieldSchemaChange = (
     const targetName = change.oldFieldName || change.oldRow?.fieldName || change.fieldName;
     const focusIndex = candidateRows.findIndex((row) => row.fieldName === nextRow.fieldName);
     return {
-      rows: ensureOrder(
-        rows.map((row) =>
-          normalizedName(row.fieldName) === normalizedName(targetName) ? nextRow : row,
-        ),
+      rows: rows.map((row) =>
+        normalizedName(row.fieldName) === normalizedName(targetName) ? nextRow : row,
       ),
       focusIndex,
     };
@@ -41,9 +38,7 @@ export const applyFieldSchemaChange = (
       (row) => normalizedName(row.fieldName) === normalizedName(targetName),
     );
     return {
-      rows: ensureOrder(
-        rows.filter((row) => normalizedName(row.fieldName) !== normalizedName(targetName)),
-      ),
+      rows: rows.filter((row) => normalizedName(row.fieldName) !== normalizedName(targetName)),
       focusIndex,
     };
   }

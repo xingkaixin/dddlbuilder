@@ -21,7 +21,6 @@ const createState = (tableName: string): PersistedState => ({
   rows: [
     {
       id: 'field-id',
-      order: 1,
       fieldName: 'id',
       fieldType: 'bigint',
       fieldComment: '主键',
@@ -32,7 +31,6 @@ const createState = (tableName: string): PersistedState => ({
     },
     {
       id: 'field-email',
-      order: 2,
       fieldName: 'email',
       fieldType: 'varchar(255)',
       fieldComment: '邮箱',
@@ -222,7 +220,6 @@ describe('workspace YDoc codec', () => {
       rows: [
         {
           id: 'field-1',
-          order: 1,
           fieldName: 'id',
           nullable: false,
         },

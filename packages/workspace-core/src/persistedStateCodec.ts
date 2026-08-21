@@ -105,7 +105,6 @@ const decodeRows = (value: unknown): FieldRow[] =>
     const row = isRecord(item) ? item : {};
     return {
       id: ensureFieldId(row as Partial<FieldRow>, index),
-      order: toFiniteNumber(row.order, index + 1),
       fieldName: toText(row.fieldName),
       fieldType: toText(row.fieldType),
       fieldComment: toText(row.fieldComment),

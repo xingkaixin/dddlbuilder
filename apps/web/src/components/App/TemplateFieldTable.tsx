@@ -8,7 +8,7 @@ import { DragDropVerticalIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import type { DatabaseType, EnumValueMeta, FieldRow } from '@ddlbuilder/shared-types';
 import { buildDuplicateNameSet } from '@/stores';
-import { isReservedKeyword, createEmptyRow, ensureOrder, toStringSafe } from '@/utils/helpers';
+import { isReservedKeyword, createEmptyRow, toStringSafe } from '@/utils/helpers';
 import { useFieldColumns } from './table/columns';
 import { fieldTableFeatures, type FieldTableRow } from './table/tableFeatures';
 import { useDataTableNavigation } from './table/useDataTableNavigation';
@@ -212,9 +212,9 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
         const next = prev.slice();
         next.splice(index, amount);
         if (next.length === 0) {
-          next.push(createEmptyRow(0));
+          next.push(createEmptyRow());
         }
-        return ensureOrder(next);
+        return next;
       });
     },
     [setRows],
@@ -235,7 +235,7 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
     features: fieldTableFeatures,
     data: rows,
     columns,
-    getRowId: (row) => String(row.order),
+    getRowId: (row) => row.id,
   });
 
   const { sensors, rowIds, handleDragEnd } = useSortableFieldRows({

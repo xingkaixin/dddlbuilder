@@ -44,9 +44,8 @@ export type AISchemaChange =
     };
 
 export function buildGeneratedRows(schema: GeneratedTableSchema): FieldRow[] {
-  return schema.fields.map((field, index) => ({
+  return schema.fields.map((field) => ({
     id: createFieldId(),
-    order: index + 1,
     fieldName: field.fieldName,
     fieldType: field.fieldType,
     fieldComment: field.fieldComment,

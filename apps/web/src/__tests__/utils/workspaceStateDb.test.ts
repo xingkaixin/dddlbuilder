@@ -196,9 +196,13 @@ describe('workspaceStateDb', () => {
       onUpdate: '当前时间',
     };
     const expectedRow = {
-      ...legacyRow,
+      id: 'field-id',
+      fieldName: 'id',
+      fieldType: 'bigint',
+      fieldComment: '主键',
       nullable: false,
       defaultKind: 'auto_increment',
+      defaultValue: '',
       onUpdate: 'current_timestamp',
     };
 

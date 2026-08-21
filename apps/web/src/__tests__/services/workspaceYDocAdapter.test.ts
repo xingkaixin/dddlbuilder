@@ -30,7 +30,6 @@ const createState = (overrides: Partial<PersistedState> = {}): PersistedState =>
   rows: [
     {
       id: 'field-id',
-      order: 1,
       fieldName: 'id',
       fieldType: 'bigint',
       fieldComment: '主键',
@@ -41,7 +40,6 @@ const createState = (overrides: Partial<PersistedState> = {}): PersistedState =>
     },
     {
       id: 'field-email',
-      order: 2,
       fieldName: 'email',
       fieldType: 'varchar(255)',
       fieldComment: '邮箱',
@@ -441,7 +439,7 @@ describe('workspaceYDocAdapter', () => {
 
     upsertDraftInYDoc(left, DEFAULT_DRAFT_ID, {
       state: createState({
-        rows: [{ ...state.rows[1], order: 1 }],
+        rows: [state.rows[1]],
       }),
       updatedAt: 2,
     });
@@ -464,10 +462,7 @@ describe('workspaceYDocAdapter', () => {
 
     upsertDraftInYDoc(left, DEFAULT_DRAFT_ID, {
       state: createState({
-        rows: [
-          { ...state.rows[1], order: 1 },
-          { ...state.rows[0], order: 2 },
-        ],
+        rows: [state.rows[1], state.rows[0]],
       }),
       updatedAt: 2,
     });

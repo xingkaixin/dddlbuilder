@@ -26,7 +26,6 @@ const createState = (tableName: string): PersistedState => ({
   rows: [
     {
       id: 'field-id',
-      order: 1,
       fieldName: 'id',
       fieldType: 'bigint',
       fieldComment: '',

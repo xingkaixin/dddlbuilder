@@ -28,7 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { FieldTemplate, TemplateField } from '@/hooks/useFieldTemplates';
 import type { DatabaseType, FieldRow } from '@ddlbuilder/shared-types';
-import { createEmptyRow, ensureOrder } from '@/utils/helpers';
+import { createEmptyRow } from '@/utils/helpers';
 import { useAppStore } from '@/stores';
 import { TemplateListItem } from './TemplateListItem';
 import { TemplateFieldTable } from './TemplateFieldTable';
@@ -37,12 +37,11 @@ import { useTranslation } from 'react-i18next';
 
 const toFieldRows = (fields: TemplateField[]): FieldRow[] => {
   if (fields.length === 0) {
-    return [createEmptyRow(0)];
+    return [createEmptyRow()];
   }
 
-  return fields.map((field, index) => ({
-    ...createEmptyRow(index),
-    order: index + 1,
+  return fields.map((field) => ({
+    ...createEmptyRow(),
     fieldName: field.fieldName,
     fieldComment: field.fieldComment || '',
     fieldType: field.fieldType,
@@ -133,7 +132,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
         setEditName('');
         setEditDescription('');
         // 新建时提供一个空字段
-        setEditRows([createEmptyRow(0)]);
+        setEditRows([createEmptyRow()]);
       }
       setEditError('');
       setIsSaving(false);
@@ -142,7 +141,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
 
     // 添加字段
     const handleAddField = useCallback(() => {
-      setEditRows((prev) => [...prev, createEmptyRow(prev.length)]);
+      setEditRows((prev) => [...prev, createEmptyRow()]);
     }, []);
 
     // 保存模板
@@ -356,9 +355,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
                 <TemplateFieldTable
                   rows={editRows}
                   setRows={(next) => {
-                    setEditRows((prev) =>
-                      ensureOrder(typeof next === 'function' ? next(prev) : next),
-                    );
+                    setEditRows((prev) => (typeof next === 'function' ? next(prev) : next));
                   }}
                   dbType={dbType}
                 />

@@ -48,7 +48,8 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
 
   return useMemo<FieldTableColumnDef[]>(
     () => [
-      columnHelper.accessor('order', {
+      columnHelper.display({
+        id: 'order',
         header: () => t('dataTable.headers.order'),
         size: columnWidths.order,
         cell: ({ row }) =>
@@ -58,7 +59,7 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
               warnings: rowWarnings[row.index] || [],
             })
           ) : (
-            <OrderCell order={row.original.order} warnings={rowWarnings[row.index] || []} />
+            <OrderCell order={row.index + 1} warnings={rowWarnings[row.index] || []} />
           ),
       }),
       columnHelper.accessor('fieldName', {

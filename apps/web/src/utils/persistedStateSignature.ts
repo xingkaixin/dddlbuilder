@@ -65,7 +65,13 @@ const isDefaultCitusShardingConfig = (config: CitusShardingConfig | undefined) =
   !config || (config.mode === 'reference' && !config.distributionColumn);
 
 export const normalizePersistedStateForSignature = (state: PersistedState) => {
-  const normalized: PersistedState = { ...state };
+  const normalized: PersistedState = {
+    ...state,
+    rows: state.rows.map((row) => {
+      const { order: _legacyOrder, ...content } = row as typeof row & { order?: unknown };
+      return content;
+    }),
+  };
 
   if (!normalized.objectType || normalized.objectType === 'table') {
     delete normalized.objectType;

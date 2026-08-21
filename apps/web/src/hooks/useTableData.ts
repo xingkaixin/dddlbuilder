@@ -3,7 +3,6 @@ import type { FieldRow, NormalizedField } from '@ddlbuilder/shared-types';
 import {
   toStringSafe,
   createEmptyRow,
-  ensureOrder,
   normalizeFieldCellValue,
   normalizeFields,
 } from '@/utils/helpers';
@@ -53,7 +52,7 @@ export function useTableData(
   const normalizedFields = useMemo(() => normalizeFields(rows), [rows]);
 
   const resetTableRows = useCallback(() => {
-    setRows(() => Array.from({ length: initialRows.length }, (_, index) => createEmptyRow(index)));
+    setRows(() => Array.from({ length: initialRows.length }, () => createEmptyRow()));
   }, [initialRows]);
 
   // 处理器函数：验证变更数据
@@ -76,7 +75,7 @@ export function useTableData(
       const next = rows.map((row) => ({ ...row }));
       changes.forEach(([rowIndex]) => {
         while (next.length <= rowIndex) {
-          next.push(createEmptyRow(next.length));
+          next.push(createEmptyRow());
         }
       });
       return next;
@@ -122,11 +121,6 @@ export function useTableData(
     [],
   );
 
-  // 处理器函数：确保顺序
-  const ensureOrderProcessor = useCallback((rows: FieldRow[]): FieldRow[] => {
-    return ensureOrder(rows);
-  }, []);
-
   // 责任链：按顺序处理变更
   const handleChangeChain = useCallback(
     (rows: FieldRow[], changes: TableCellChange[]): FieldRow[] => {
@@ -135,12 +129,11 @@ export function useTableData(
         (r: FieldRow[]) => ensureRowExists(r, changes),
         (r: FieldRow[]) => updateFieldValue(r, changes),
         (r: FieldRow[]) => handleSpecialFieldLogic(r, changes),
-        ensureOrderProcessor,
       ];
 
       return processors.reduce((acc, processor) => processor(acc), rows);
     },
-    [ensureRowExists, updateFieldValue, handleSpecialFieldLogic, ensureOrderProcessor],
+    [ensureRowExists, updateFieldValue, handleSpecialFieldLogic],
   );
 
   const handleRowsChange = useCallback(
@@ -165,9 +158,9 @@ export function useTableData(
     setRows((prev) => {
       const next = prev.slice();
       for (let i = 0; i < amount; i += 1) {
-        next.splice(index + i, 0, createEmptyRow(index + i));
+        next.splice(index + i, 0, createEmptyRow());
       }
-      return ensureOrder(next);
+      return next;
     });
   }, []);
 
@@ -176,9 +169,9 @@ export function useTableData(
       const next = prev.slice();
       next.splice(index, amount);
       if (next.length === 0) {
-        next.push(createEmptyRow(0));
+        next.push(createEmptyRow());
       }
-      return ensureOrder(next);
+      return next;
     });
   }, []);
 
@@ -189,9 +182,9 @@ export function useTableData(
       const index = prev.length;
       const next = prev.slice();
       for (let i = 0; i < amount; i += 1) {
-        next.splice(index + i, 0, createEmptyRow(index + i));
+        next.splice(index + i, 0, createEmptyRow());
       }
-      return ensureOrder(next);
+      return next;
     });
   }, []);
 

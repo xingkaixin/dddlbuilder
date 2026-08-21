@@ -21,7 +21,6 @@ export type FieldOnUpdate = (typeof FIELD_ON_UPDATES)[number];
 export type FieldRow = {
   /** 创建时一次性分配、之后永不改变。CRDT 合并靠它对齐行，不能由内容或位置推导。 */
   id: string;
-  order: number;
   fieldName: string;
   fieldType: string;
   fieldComment: string;
@@ -111,16 +110,19 @@ export const normalizeFieldEnums = <T extends FieldEnumValues>(field: T): T =>
     ...(field.onUpdate === undefined ? {} : { onUpdate: normalizeFieldOnUpdate(field.onUpdate) }),
   }) as T;
 
-export const normalizePersistedRows = <T extends { rows?: FieldRow[] }>(state: T): T =>
-  Array.isArray(state?.rows)
-    ? {
-        ...state,
-        rows: state.rows.map((row, index) => ({
-          ...normalizeFieldEnums(row),
-          id: ensureFieldId(row, index),
-        })),
-      }
-    : state;
+export const normalizePersistedRows = <T extends { rows?: FieldRow[] }>(state: T): T => {
+  if (!Array.isArray(state?.rows)) return state;
+  return {
+    ...state,
+    rows: state.rows.map((row, index) => {
+      const { order: _legacyOrder, ...content } = row as FieldRow & { order?: unknown };
+      return {
+        ...normalizeFieldEnums(content),
+        id: ensureFieldId(row, index),
+      };
+    }),
+  };
+};
 
 /**
  * 早于稳定 id 的持久化数据只能按位置对齐，补 id 时必须沿用位置且保持确定性：

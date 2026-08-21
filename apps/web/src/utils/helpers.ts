@@ -34,9 +34,8 @@ export const isReservedKeyword = (db: DatabaseType, name: string) => {
   return RESERVED_KEYWORDS[db]?.has(lower) ?? false;
 };
 
-export const createEmptyRow = (index: number): FieldRow => ({
+export const createEmptyRow = (): FieldRow => ({
   id: createFieldId(),
-  order: index + 1,
   fieldName: '',
   fieldType: '',
   fieldComment: '',
@@ -45,9 +44,6 @@ export const createEmptyRow = (index: number): FieldRow => ({
   defaultValue: '',
   onUpdate: 'none',
 });
-
-export const ensureOrder = (rows: FieldRow[]) =>
-  rows.map((row, index) => ({ ...row, order: index + 1 }));
 
 const FIELD_CELL_NORMALIZERS = new Map<string, (value: unknown) => unknown>([
   ['nullable', normalizeFieldNullable],

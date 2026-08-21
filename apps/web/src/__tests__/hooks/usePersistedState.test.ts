@@ -436,7 +436,6 @@ describe('usePersistedState', () => {
     const payload: WorkspaceSavePayload = {
       state: createState('next_global'),
       source: { kind: 'draft', draftId: 'default' },
-      isDirty: false,
     };
 
     act(() => {
@@ -468,7 +467,6 @@ describe('usePersistedState', () => {
       result.current.saveState({
         state: createState('pending_remote_draft'),
         source: { kind: 'draft', draftId: 'default' },
-        isDirty: false,
       });
     });
 
@@ -497,7 +495,6 @@ describe('usePersistedState', () => {
       result.current.saveState({
         state: localSavedState,
         source: { kind: 'draft', draftId: 'default' },
-        isDirty: false,
       });
     });
 
@@ -577,7 +574,6 @@ describe('usePersistedState', () => {
       result.current.saveState({
         state: createState('users_draft'),
         source: savedSource,
-        isDirty: true,
       });
     });
 
@@ -613,7 +609,6 @@ describe('usePersistedState', () => {
       result.current.saveState({
         state: createState('users_saved'),
         source: savedSource,
-        isDirty: true,
       });
     });
 
@@ -637,7 +632,6 @@ describe('usePersistedState', () => {
       result.current.saveState({
         state: staleState,
         source: savedSource,
-        isDirty: true,
       });
     });
 
@@ -850,7 +844,6 @@ describe('usePersistedState', () => {
       result.current.saveState({
         state: nextState,
         source: { kind: 'draft', draftId: 'default' },
-        isDirty: true,
       });
     });
 

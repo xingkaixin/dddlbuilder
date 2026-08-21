@@ -110,7 +110,6 @@ const getFieldOrder = (tableDoc: Y.Map<unknown>) => readStringArray(tableDoc, 'f
 const readFieldRow = (
   fieldId: string,
   fieldMap: Y.Map<unknown>,
-  order: number,
   fallbackRow?: FieldRow,
 ): FieldRow => {
   const row: JsonRecord = readJsonMap(fieldMap);
@@ -128,7 +127,6 @@ const readFieldRow = (
 
   return {
     id: fieldId,
-    order,
     fieldName: text('fieldName') ?? '',
     fieldType: text('fieldType') ?? '',
     fieldComment: text('fieldComment') ?? '',
@@ -249,9 +247,7 @@ export const tableDocToPersistedState = (tableDoc: Y.Map<unknown>): PersistedSta
       ? getFieldOrder(tableDoc)
           .map((fieldId, index) => {
             const fieldMap = fields.get(fieldId);
-            return fieldMap
-              ? readFieldRow(fieldId, fieldMap, index + 1, stateSnapshot?.rows[index])
-              : null;
+            return fieldMap ? readFieldRow(fieldId, fieldMap, stateSnapshot?.rows[index]) : null;
           })
           .filter((row): row is FieldRow => row != null)
       : [];

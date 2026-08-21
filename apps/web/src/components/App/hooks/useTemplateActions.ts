@@ -50,9 +50,8 @@ export function useTemplateActions({
         const before = prevRows.slice(0, insertAt);
         const after = prevRows.slice(insertAt);
 
-        const newRows: FieldRow[] = template.fields.map((field, index) => ({
+        const newRows: FieldRow[] = template.fields.map((field) => ({
           id: createFieldId(),
-          order: insertAt + index + 1,
           fieldName: field.fieldName,
           fieldComment: field.fieldComment || '',
           fieldType: field.fieldType,
@@ -62,10 +61,7 @@ export function useTemplateActions({
           onUpdate: field.onUpdate ?? 'none',
         }));
 
-        return [...before, ...newRows, ...after].map((row, idx) => ({
-          ...row,
-          order: idx + 1,
-        }));
+        return [...before, ...newRows, ...after];
       });
 
       showToast(

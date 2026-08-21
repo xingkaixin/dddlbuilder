@@ -51,10 +51,9 @@ export const applyBlueprintToState = (
 ): PersistedState => ({
   ...state,
   dbType: blueprint.dbType,
-  rows: clone(blueprint.rows).map((row, index) => ({
+  rows: clone(blueprint.rows).map((row) => ({
     ...row,
     id: createFieldId(),
-    order: index + 1,
   })),
   indexes: clone(blueprint.indexes),
   currentIndexFields: [],

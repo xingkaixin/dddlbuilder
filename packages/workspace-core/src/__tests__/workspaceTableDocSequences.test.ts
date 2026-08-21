@@ -6,7 +6,6 @@ import { applyPersistedStateToTableDoc, tableDocToPersistedState } from '../work
 
 const createRow = (index: number, overrides: Partial<FieldRow> = {}): FieldRow => ({
   id: `f${index}`,
-  order: index + 1,
   fieldName: `f${index}`,
   fieldType: 'varchar(64)',
   fieldComment: '',
@@ -18,29 +17,32 @@ const createRow = (index: number, overrides: Partial<FieldRow> = {}): FieldRow =
 });
 
 // 复刻客户端 buildPersistedState 的形状：空集合以 undefined 表示，而不是省略键
-const createClientState = (overrides: Partial<PersistedState> = {}): PersistedState => ({
-  objectType: 'table',
-  schemaName: 'public',
-  tableName: 'users',
-  tableComment: '用户表',
-  dbType: 'mysql',
-  sqlFormatMode: 'compact',
-  viewDefinition: '',
-  viewCreateOrReplace: true,
-  rows: [createRow(0), createRow(1), createRow(2)],
-  addCount: 12,
-  indexInput: '',
-  currentIndexFields: [],
-  indexes: [],
-  authInput: '',
-  authObjects: [],
-  citusShardingConfig: undefined,
-  mysqlPartitionConfig: undefined,
-  tableMiscConfig: undefined,
-  fieldTableViewConfig: { freezeEnabled: false, freezeColumns: 0 },
-  foreignKeys: undefined,
-  ...overrides,
-});
+const createClientState = (overrides: Partial<PersistedState> = {}): PersistedState =>
+  JSON.parse(
+    JSON.stringify({
+      objectType: 'table',
+      schemaName: 'public',
+      tableName: 'users',
+      tableComment: '用户表',
+      dbType: 'mysql',
+      sqlFormatMode: 'compact',
+      viewDefinition: '',
+      viewCreateOrReplace: true,
+      rows: [createRow(0), createRow(1), createRow(2)],
+      addCount: 12,
+      indexInput: '',
+      currentIndexFields: [],
+      indexes: [],
+      authInput: '',
+      authObjects: [],
+      citusShardingConfig: undefined,
+      mysqlPartitionConfig: undefined,
+      tableMiscConfig: undefined,
+      fieldTableViewConfig: { freezeEnabled: false, freezeColumns: 0 },
+      foreignKeys: undefined,
+      ...overrides,
+    }),
+  ) as PersistedState;
 
 const createTableDoc = () => {
   const doc = new Y.Doc();
@@ -49,10 +51,7 @@ const createTableDoc = () => {
   return tableDoc;
 };
 
-const normalize = (state: PersistedState) => ({
-  ...state,
-  rows: state.rows.map((row, index) => ({ ...row, order: index + 1 })),
-});
+const normalize = (state: PersistedState) => state;
 
 const runSequence = (states: PersistedState[], compactSnapshotBase: boolean) => {
   const tableDoc = createTableDoc();
@@ -168,7 +167,7 @@ const pick = <T>(items: readonly T[], random: Random) => items[Math.floor(random
 
 const withRows = (state: PersistedState, rows: FieldRow[]): PersistedState => ({
   ...state,
-  rows: rows.map((row, index) => ({ ...row, order: index + 1 })),
+  rows,
 });
 
 const replaceRow = (state: PersistedState, index: number, row: FieldRow) =>

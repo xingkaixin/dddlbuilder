@@ -18,7 +18,7 @@ interface ErDiagramDialogProps {
   workspaceScope: WorkspaceScope | null;
 }
 
-const INITIAL_ROWS = Array.from({ length: 4 }, (_, index) => createEmptyRow(index));
+const INITIAL_ROWS = Array.from({ length: 4 }, () => createEmptyRow());
 
 export const ErDiagramDialog = memo<ErDiagramDialogProps>(
   ({ open, onOpenChange, onSelectTable, saveTable, workspaceScope }) => {

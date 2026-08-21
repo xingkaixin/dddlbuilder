@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { ensureFieldId, type FieldRow } from '@ddlbuilder/shared-types';
 import {
   createEmptyRow,
-  ensureOrder,
   normalizeFieldCellValue,
   normalizeFieldEnums,
   normalizeFields,
@@ -11,20 +10,22 @@ import {
 import type { TableCellChange, TableChangeSource } from '@/types/tableChanges';
 
 function createInitialRows(count: number): FieldRow[] {
-  return Array.from({ length: count }, (_, index) => createEmptyRow(index));
+  return Array.from({ length: count }, () => createEmptyRow());
 }
 
 function normalizePersistedRows(rows: FieldRow[]): FieldRow[] {
   return rows.map((row, index) => ({
-    ...normalizeFieldEnums({ ...createEmptyRow(index), ...row }),
-    // 持久化数据缺 id 时必须按位置确定性补齐，随机 id 会让多端加载同一份旧数据分裂成两套行
+    ...normalizeFieldEnums({
+      nullable: row.nullable,
+      defaultKind: row.defaultKind,
+      onUpdate: row.onUpdate,
+    }),
     id: ensureFieldId(row, index),
-    order: index + 1,
     fieldName: toStringSafe(row.fieldName),
     fieldType: toStringSafe(row.fieldType),
     fieldComment: toStringSafe(row.fieldComment),
     defaultValue: toStringSafe(row.defaultValue),
-    enumMeta: row.enumMeta,
+    ...(row.enumMeta === undefined ? {} : { enumMeta: row.enumMeta }),
   }));
 }
 
@@ -70,7 +71,7 @@ export const useFieldStore = create<FieldStoreState>((set) => ({
 
       validChanges.forEach(([rowIndex]) => {
         while (nextRows.length <= rowIndex) {
-          nextRows.push(createEmptyRow(nextRows.length));
+          nextRows.push(createEmptyRow());
         }
       });
 
@@ -99,7 +100,7 @@ export const useFieldStore = create<FieldStoreState>((set) => ({
       });
 
       return {
-        rows: ensureOrder(nextRows),
+        rows: nextRows,
       };
     });
   },
@@ -107,9 +108,9 @@ export const useFieldStore = create<FieldStoreState>((set) => ({
     set((state) => {
       const nextRows = state.rows.slice();
       for (let i = 0; i < amount; i += 1) {
-        nextRows.splice(index + i, 0, createEmptyRow(index + i));
+        nextRows.splice(index + i, 0, createEmptyRow());
       }
-      return { rows: ensureOrder(nextRows) };
+      return { rows: nextRows };
     });
   },
   handleRemoveRow: (index, amount) => {
@@ -117,9 +118,9 @@ export const useFieldStore = create<FieldStoreState>((set) => ({
       const nextRows = state.rows.slice();
       nextRows.splice(index, amount);
       if (nextRows.length === 0) {
-        nextRows.push(createEmptyRow(0));
+        nextRows.push(createEmptyRow());
       }
-      return { rows: ensureOrder(nextRows) };
+      return { rows: nextRows };
     });
   },
   handleAddRows: (count) => {
@@ -130,9 +131,9 @@ export const useFieldStore = create<FieldStoreState>((set) => ({
       const index = state.rows.length;
       const nextRows = state.rows.slice();
       for (let i = 0; i < amount; i += 1) {
-        nextRows.splice(index + i, 0, createEmptyRow(index + i));
+        nextRows.splice(index + i, 0, createEmptyRow());
       }
-      return { rows: ensureOrder(nextRows) };
+      return { rows: nextRows };
     });
   },
 }));

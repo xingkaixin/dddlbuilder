@@ -37,9 +37,8 @@ export function convertParsedResultToPersistedState(
       ? { schema: result.schemaName || '', table: result.tableName }
       : getSchemaAndTable(result.tableName);
 
-  const newRows: FieldRow[] = result.fields.map((field, index) => ({
+  const newRows: FieldRow[] = result.fields.map((field) => ({
     id: createFieldId(),
-    order: index + 1,
     fieldName: field.name,
     fieldType: field.type,
     fieldComment: field.comment,
@@ -52,7 +51,7 @@ export function convertParsedResultToPersistedState(
   const minRows = 12;
   if (newRows.length < minRows) {
     for (let i = newRows.length; i < minRows; i += 1) {
-      newRows.push(createEmptyRow(i));
+      newRows.push(createEmptyRow());
     }
   }
 

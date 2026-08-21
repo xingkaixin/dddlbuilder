@@ -13,20 +13,18 @@ describe('fieldStore', () => {
     resetFieldStore();
   });
 
-  it('应该支持增删行并保持顺序', () => {
+  it('应该支持增删行并保持数组顺序', () => {
     const state = useFieldStore.getState();
 
     state.handleAddRows(2);
     let current = useFieldStore.getState();
     expect(current.rows.length).toBe(14);
-    expect(current.rows[0].order).toBe(1);
-    expect(current.rows[13].order).toBe(14);
+    const fourthRowId = current.rows[3].id;
 
     state.handleRemoveRow(0, 3);
     current = useFieldStore.getState();
     expect(current.rows.length).toBe(11);
-    expect(current.rows[0].order).toBe(1);
-    expect(current.rows[10].order).toBe(11);
+    expect(current.rows[0].id).toBe(fourthRowId);
   });
 
   it('应该处理单元格变更并应用 defaultKind 规则', () => {
@@ -48,7 +46,7 @@ describe('fieldStore', () => {
     expect(current.rows[0].defaultValue).toBe('');
   });
 
-  it('应该标准化持久化行并重新编号', () => {
+  it('应该标准化持久化行并移除历史顺序字段', () => {
     const state = useFieldStore.getState();
 
     state.initializeRows([
@@ -68,7 +66,6 @@ describe('fieldStore', () => {
     expect(current.rows).toEqual([
       {
         id: 'legacy-field-0',
-        order: 1,
         fieldName: '123',
         fieldType: 'varchar(20)',
         fieldComment: '',
@@ -132,7 +129,7 @@ describe('fieldStore', () => {
 
     const current = useFieldStore.getState();
     expect(current.rows.length).toBe(3);
-    expect(current.rows[2].order).toBe(3);
+    expect(current.rows[2].id).toEqual(expect.any(String));
     expect(current.rows[2].fieldName).toBe('status');
     expect(current.rows[2].defaultKind).toBe('uuid');
     expect(current.rows[2].defaultValue).toBe('');
@@ -145,7 +142,7 @@ describe('fieldStore', () => {
     state.handleRemoveRow(0, 1);
     let current = useFieldStore.getState();
     expect(current.rows.length).toBe(1);
-    expect(current.rows[0].order).toBe(1);
+    expect(current.rows[0].id).toEqual(expect.any(String));
 
     state.handleAddRows(0);
     current = useFieldStore.getState();
@@ -162,8 +159,7 @@ describe('fieldStore', () => {
     state.handleCreateRow(1, 2);
     current = useFieldStore.getState();
     expect(current.rows.length).toBe(4);
-    expect(current.rows[1].order).toBe(2);
-    expect(current.rows[2].order).toBe(3);
+    expect(current.rows[1].id).not.toBe(current.rows[2].id);
   });
 
   it('应该处理 normalizeNullableValue 与 handleRowsChange 异常 prop 边界', () => {
@@ -181,7 +177,7 @@ describe('fieldStore', () => {
       'edit',
     );
 
-    expect(useFieldStore.getState().rows[0].order).toBe(1);
+    expect(useFieldStore.getState().rows[0]).not.toHaveProperty('order');
   });
 });
 

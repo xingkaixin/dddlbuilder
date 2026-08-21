@@ -361,7 +361,9 @@ export function usePersistedState(): UsePersistedStateReturn {
       } else {
         const { normalizedName, tableName, baseSignature } = payload.source;
         const existingDraft = savedTableDraftsRef.current.get(normalizedName);
-        if (!payload.isDirty) {
+        const isDirty =
+          serializePersistedStateForComparison(payload.state) !== payload.source.baseSignature;
+        if (!isDirty) {
           if (existingDraft) dropSavedDraftRecord(normalizedName);
         } else if (!existingDraft || !isSamePersistedState(existingDraft.state, payload.state)) {
           persistSavedDraftRecord(normalizedName, {

@@ -9,7 +9,7 @@ export const EXAMPLE_USER_PROFILE_TABLE: PersistedState = {
   sqlFormatMode: 'compact',
   rows: [
     {
-      ...createEmptyRow(0),
+      ...createEmptyRow(),
       fieldName: 'id',
       fieldType: 'BIGINT',
       fieldComment: '主键ID',
@@ -18,7 +18,7 @@ export const EXAMPLE_USER_PROFILE_TABLE: PersistedState = {
       defaultValue: '',
     },
     {
-      ...createEmptyRow(1),
+      ...createEmptyRow(),
       fieldName: 'username',
       fieldType: 'VARCHAR(50)',
       fieldComment: '用户名',
@@ -27,7 +27,7 @@ export const EXAMPLE_USER_PROFILE_TABLE: PersistedState = {
       defaultValue: '',
     },
     {
-      ...createEmptyRow(2),
+      ...createEmptyRow(),
       fieldName: 'email',
       fieldType: 'VARCHAR(100)',
       fieldComment: '邮箱',
@@ -36,7 +36,7 @@ export const EXAMPLE_USER_PROFILE_TABLE: PersistedState = {
       defaultValue: '',
     },
     {
-      ...createEmptyRow(3),
+      ...createEmptyRow(),
       fieldName: 'phone',
       fieldType: 'VARCHAR(20)',
       fieldComment: '手机号',
@@ -45,7 +45,7 @@ export const EXAMPLE_USER_PROFILE_TABLE: PersistedState = {
       defaultValue: '',
     },
     {
-      ...createEmptyRow(4),
+      ...createEmptyRow(),
       fieldName: 'avatar_url',
       fieldType: 'VARCHAR(255)',
       fieldComment: '头像URL',
@@ -54,7 +54,7 @@ export const EXAMPLE_USER_PROFILE_TABLE: PersistedState = {
       defaultValue: '',
     },
     {
-      ...createEmptyRow(5),
+      ...createEmptyRow(),
       fieldName: 'gender',
       fieldType: 'TINYINT',
       fieldComment: '性别：0-未知，1-男，2-女',
@@ -63,7 +63,7 @@ export const EXAMPLE_USER_PROFILE_TABLE: PersistedState = {
       defaultValue: '0',
     },
     {
-      ...createEmptyRow(6),
+      ...createEmptyRow(),
       fieldName: 'birth_date',
       fieldType: 'DATE',
       fieldComment: '出生日期',
@@ -72,7 +72,7 @@ export const EXAMPLE_USER_PROFILE_TABLE: PersistedState = {
       defaultValue: '',
     },
     {
-      ...createEmptyRow(7),
+      ...createEmptyRow(),
       fieldName: 'status',
       fieldType: 'TINYINT',
       fieldComment: '状态：0-禁用，1-启用',
@@ -81,7 +81,7 @@ export const EXAMPLE_USER_PROFILE_TABLE: PersistedState = {
       defaultValue: '1',
     },
     {
-      ...createEmptyRow(8),
+      ...createEmptyRow(),
       fieldName: 'created_at',
       fieldType: 'TIMESTAMP',
       fieldComment: '创建时间',
@@ -90,7 +90,7 @@ export const EXAMPLE_USER_PROFILE_TABLE: PersistedState = {
       defaultValue: '',
     },
     {
-      ...createEmptyRow(9),
+      ...createEmptyRow(),
       fieldName: 'updated_at',
       fieldType: 'TIMESTAMP',
       fieldComment: '更新时间',
@@ -99,7 +99,7 @@ export const EXAMPLE_USER_PROFILE_TABLE: PersistedState = {
       defaultValue: '',
       onUpdate: 'current_timestamp',
     },
-    ...Array.from({ length: 2 }, (_, index) => createEmptyRow(index + 10)),
+    ...Array.from({ length: 2 }, () => createEmptyRow()),
   ],
   addCount: 10,
   indexInput: '',

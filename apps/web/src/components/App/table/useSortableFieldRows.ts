@@ -9,7 +9,6 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import type { FieldRow } from '@ddlbuilder/shared-types';
-import { ensureOrder } from '@/utils/helpers';
 
 type SetRows = (next: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => void;
 
@@ -35,7 +34,7 @@ export const reorderFieldRowsByIds = (
     return rows;
   }
 
-  return ensureOrder(arrayMove(rows, oldIndex, newIndex));
+  return arrayMove(rows, oldIndex, newIndex);
 };
 
 export function useSortableFieldRows({ rows, setRows, onDragResult }: UseSortableFieldRowsParams) {

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useTabStore } from '@/stores/tabStore';
+import { isWorkspaceTabDirty, useTabStore } from '@/stores/tabStore';
+import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 
 function resetTabStore() {
@@ -28,7 +29,6 @@ describe('tabStore', () => {
       title: '草稿 1',
       source: { kind: 'draft', draftId: 'draft-1' },
       stateSnapshot: createSnapshot('t1'),
-      isDirty: false,
     });
 
     const current = useTabStore.getState();
@@ -43,13 +43,11 @@ describe('tabStore', () => {
       title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
-      isDirty: false,
     });
     state.addTab({
       title: 'Tab 2',
       source: { kind: 'draft', draftId: 'd2' },
       stateSnapshot: createSnapshot('t2'),
-      isDirty: false,
     });
 
     useTabStore.getState().activateTab(id1);
@@ -62,19 +60,16 @@ describe('tabStore', () => {
       title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
-      isDirty: false,
     });
     const id2 = state.addTab({
       title: 'Tab 2',
       source: { kind: 'draft', draftId: 'd2' },
       stateSnapshot: createSnapshot('t2'),
-      isDirty: false,
     });
     const id3 = state.addTab({
       title: 'Tab 3',
       source: { kind: 'draft', draftId: 'd3' },
       stateSnapshot: createSnapshot('t3'),
-      isDirty: false,
     });
 
     useTabStore.getState().closeTab(id2);
@@ -89,13 +84,11 @@ describe('tabStore', () => {
       title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
-      isDirty: false,
     });
     state.addTab({
       title: 'Tab 2',
       source: { kind: 'draft', draftId: 'd2' },
       stateSnapshot: createSnapshot('t2'),
-      isDirty: false,
     });
 
     useTabStore.getState().closeTab(id1);
@@ -110,13 +103,11 @@ describe('tabStore', () => {
       title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
-      isDirty: false,
     });
     state.addTab({
       title: 'Tab 2',
       source: { kind: 'draft', draftId: 'd2' },
       stateSnapshot: createSnapshot('t2'),
-      isDirty: false,
     });
 
     useTabStore.getState().closeTab(id1);
@@ -125,26 +116,30 @@ describe('tabStore', () => {
     expect(current.tabs).toHaveLength(1);
   });
 
-  it('updates active tab snapshot and dirty state', () => {
+  it('updates active tab snapshot and derives dirty state', () => {
     const state = useTabStore.getState();
     const id = state.addTab({
       title: 'Tab 1',
-      source: { kind: 'draft', draftId: 'd1' },
+      source: {
+        kind: 'saved_table',
+        normalizedName: 'old',
+        tableName: 'Old',
+        baseSignature: serializePersistedStateForComparison(createSnapshot('old')),
+      },
       stateSnapshot: createSnapshot('old'),
-      isDirty: false,
     });
 
-    useTabStore.getState().updateActiveTabSnapshot(createSnapshot('new'), true);
+    useTabStore.getState().updateActiveTabSnapshot(createSnapshot('new'));
     const current = useTabStore.getState();
     const tab = current.tabs.find((t) => t.id === id);
     expect(tab).toBeDefined();
     expect(tab?.stateSnapshot.tableName).toBe('new');
-    expect(tab?.isDirty).toBe(true);
+    expect(tab && isWorkspaceTabDirty(tab)).toBe(true);
   });
 
   it('does nothing when updating snapshot with no active tab', () => {
     useTabStore.setState({ tabs: [], activeTabId: null });
-    useTabStore.getState().updateActiveTabSnapshot(createSnapshot('new'), true);
+    useTabStore.getState().updateActiveTabSnapshot(createSnapshot('new'));
     expect(useTabStore.getState().tabs).toHaveLength(0);
   });
 
@@ -154,7 +149,6 @@ describe('tabStore', () => {
       title: 'Old',
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
-      isDirty: false,
     });
 
     useTabStore.getState().updateActiveTabTitle('New');
@@ -169,7 +163,6 @@ describe('tabStore', () => {
       title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
-      isDirty: false,
     });
 
     const newSource = {
@@ -190,7 +183,6 @@ describe('tabStore', () => {
       title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
-      isDirty: false,
     });
 
     const found = useTabStore.getState().findTabBySource({ kind: 'draft', draftId: 'd1' });
@@ -211,7 +203,6 @@ describe('tabStore', () => {
         baseSignature: 'users-signature',
       },
       stateSnapshot: createSnapshot('t1'),
-      isDirty: false,
     });
 
     const found = useTabStore.getState().findTabBySource({
@@ -237,7 +228,6 @@ describe('tabStore', () => {
       title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
-      isDirty: false,
     });
 
     expect(useTabStore.getState().getActiveTab()?.id).toBe(id);
@@ -254,7 +244,6 @@ describe('tabStore', () => {
       title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
-      isDirty: false,
     });
 
     useTabStore.getState().setTabLoading(id, true);
@@ -274,13 +263,11 @@ describe('tabStore', () => {
       title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
-      isDirty: false,
     });
     state.addTab({
       title: 'Tab 2',
       source: { kind: 'draft', draftId: 'd2' },
       stateSnapshot: createSnapshot('t2'),
-      isDirty: false,
     });
 
     useTabStore.getState().removeTabBySource({ kind: 'draft', draftId: 'd1' });
@@ -295,13 +282,11 @@ describe('tabStore', () => {
       title: 'Tab 1',
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
-      isDirty: false,
     });
     const id2 = state.addTab({
       title: 'Tab 2',
       source: { kind: 'draft', draftId: 'd2' },
       stateSnapshot: createSnapshot('t2'),
-      isDirty: false,
     });
 
     useTabStore.getState().activateTab(id1);
@@ -316,7 +301,6 @@ describe('tabStore', () => {
       title: 'Old',
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
-      isDirty: false,
     });
 
     useTabStore.getState().updateTabTitleBySource({ kind: 'draft', draftId: 'd1' }, 'New');
@@ -330,7 +314,6 @@ describe('tabStore', () => {
       title: 'Old',
       source: { kind: 'draft', draftId: 'd1' },
       stateSnapshot: createSnapshot('t1'),
-      isDirty: false,
     });
 
     useTabStore.getState().updateTabTitleBySource({ kind: 'draft', draftId: 'd2' }, 'New');

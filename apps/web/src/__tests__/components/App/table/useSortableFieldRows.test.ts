@@ -9,7 +9,6 @@ import type { FieldRow } from '@ddlbuilder/shared-types';
 function createRows(names: string[]): FieldRow[] {
   return names.map((name, index) => ({
     id: String(index + 1),
-    order: index + 1,
     fieldName: name,
     fieldType: 'int',
     fieldComment: '',
@@ -21,13 +20,13 @@ function createRows(names: string[]): FieldRow[] {
 }
 
 describe('reorderFieldRowsByIds', () => {
-  it('应按 active/over 重排并重新编号', () => {
+  it('应按 active/over 重排数组', () => {
     const rows = createRows(['f1', 'f2', 'f3']);
 
     const reordered = reorderFieldRowsByIds(rows, '1', '3');
 
     expect(reordered.map((row) => row.fieldName)).toEqual(['f2', 'f3', 'f1']);
-    expect(reordered.map((row) => row.order)).toEqual([1, 2, 3]);
+    expect(reordered.map((row) => row.id)).toEqual(['2', '3', '1']);
   });
 
   it('over 为空时应返回原数组引用', () => {

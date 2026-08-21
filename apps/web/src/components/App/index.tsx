@@ -17,6 +17,7 @@ import { TabBar } from './TabBar';
 import { WorkspaceEmptyState } from './WorkspaceEmptyState';
 import { TableTemplatePopover } from './TableTemplatePopover';
 import { useTabStore } from '@/stores';
+import { isWorkspaceTabDirty } from '@/stores/tabStore';
 import { useAppSelectors } from './hooks/useAppSelectors';
 import { useDialogStates } from './hooks/useDialogStates';
 import { useDerivedTableState } from './hooks/useDerivedTableState';
@@ -70,7 +71,7 @@ const ImportSqlDialog = lazy(() =>
   })),
 );
 
-const createInitialRows = () => Array.from({ length: 12 }, (_, index) => createEmptyRow(index));
+const createInitialRows = () => Array.from({ length: 12 }, () => createEmptyRow());
 
 // 模块级共享引用，仅用作 applySavedState 的兜底默认值；新建草稿必须用独立数组。
 const INITIAL_ROWS = createInitialRows();
@@ -249,7 +250,6 @@ function App() {
     [activeTabId, tabs],
   );
   const activeTabSnapshot = activeWorkspaceTab?.stateSnapshot ?? null;
-  const activeTabDirty = activeWorkspaceTab?.isDirty ?? false;
 
   const {
     citusShardingConfig,
@@ -671,16 +671,14 @@ function App() {
     const source = activeSource;
     const currentSignature = serializePersistedState(state);
 
-    const isDirty =
-      source.kind === 'saved_table' ? currentSignature !== source.baseSignature : false;
     const tabSnapshotSignature = activeTabSnapshot
       ? serializePersistedState(activeTabSnapshot)
       : null;
 
-    if (tabSnapshotSignature === currentSignature && activeTabDirty === isDirty) return;
+    if (tabSnapshotSignature === currentSignature) return;
 
-    updateActiveTabSnapshot(state, isDirty);
-    saveState({ state, source, isDirty });
+    updateActiveTabSnapshot(state);
+    saveState({ state, source });
   }, [
     hydrated,
     isShareView,
@@ -688,7 +686,6 @@ function App() {
     currentPersistedState,
     serializePersistedState,
     activeTabSnapshot,
-    activeTabDirty,
     updateActiveTabSnapshot,
     saveState,
   ]);
@@ -792,7 +789,7 @@ function App() {
         tableName: displayName,
         baseSignature,
       });
-      updateActiveTabSnapshot(buildPersistedState(), false);
+      updateActiveTabSnapshot(buildPersistedState());
     },
     onTabRename: (fromNormalizedName, _toNormalizedName, newTitle) => {
       updateTabTitleBySource(
@@ -847,7 +844,6 @@ function App() {
           baseSignature: '',
         },
         stateSnapshot: currentState,
-        isDirty: false,
         isLoading: true,
       });
       activateTab(newTabId);
@@ -862,7 +858,7 @@ function App() {
             tableName: item.name,
             baseSignature: result.signature,
           });
-          updateActiveTabSnapshot(result.state, false);
+          updateActiveTabSnapshot(result.state);
         }
       } else {
         // 用户已切换到其他标签页，恢复当前激活标签页的状态
@@ -916,7 +912,6 @@ function App() {
         title: draftName,
         source: { kind: 'draft', draftId },
         stateSnapshot: nextState,
-        isDirty: false,
       });
       activateTab(newTabId);
       applySavedState(nextState);
@@ -956,7 +951,6 @@ function App() {
         title: uniqueName,
         source: { kind: 'draft', draftId },
         stateSnapshot: finalState,
-        isDirty: false,
       });
       activateTab(newTabId);
       applySavedState(finalState);
@@ -1327,7 +1321,7 @@ function App() {
       if (tab.source.kind === 'saved_table') {
         presentations.set(tab.source.normalizedName, {
           title: tab.title,
-          isDirty: tab.isDirty,
+          isDirty: isWorkspaceTabDirty(tab),
         });
       }
     }

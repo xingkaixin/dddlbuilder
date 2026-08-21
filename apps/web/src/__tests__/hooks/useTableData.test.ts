@@ -5,7 +5,7 @@ import type { FieldRow } from '@ddlbuilder/shared-types';
 
 describe('useTableData', () => {
   const createTestRow = (overrides: Partial<FieldRow> = {}): FieldRow => ({
-    order: 1,
+    id: crypto.randomUUID(),
     fieldName: '',
     fieldType: '',
     fieldComment: '',
@@ -136,8 +136,8 @@ describe('useTableData', () => {
     });
 
     expect(result.current.rows.length).toBe(originalLength + 1);
-    const newRow = result.current.rows[result.current.rows.length - 1];
-    expect(newRow.order).toBe(result.current.rows.length);
+    const newRow = result.current.rows[1];
+    expect(newRow.id).toEqual(expect.any(String));
     // 新行会从现有数据复制，所以可能不是空的
     expect(newRow).toBeDefined();
   });
@@ -170,7 +170,7 @@ describe('useTableData', () => {
     expect(result.current.rows.length).toBe(originalLength + 3);
   });
 
-  it('应该确保行顺序正确', () => {
+  it('应该用数组位置表达行顺序', () => {
     const initialRows = createInitialRows();
     const { result } = renderHook(() => useTableData(initialRows));
 
@@ -179,9 +179,7 @@ describe('useTableData', () => {
       result.current.handleRemoveRow(1, 1);
     });
 
-    // 检查顺序是否重新排列
-    expect(result.current.rows[0].order).toBe(1);
-    expect(result.current.rows[1].order).toBe(2); // 原来的第三行变成第二行
+    expect(result.current.rows.map((row) => row.fieldName)).toEqual(['id', 'email']);
   });
 
   it('应该处理自增字段的特殊逻辑', () => {
@@ -431,7 +429,7 @@ describe('useTableData', () => {
       result.current.handleRemoveRow(0, 3);
     });
     expect(result.current.rows.length).toBe(1);
-    expect(result.current.rows[0].order).toBe(1);
+    expect(result.current.rows[0].id).toEqual(expect.any(String));
     expect(result.current.rows[0].fieldName).toBe('');
   });
 });

@@ -46,24 +46,12 @@ export function usePersistedSync({
     if (pendingAppliedState?.sourceId === sourceId) return;
     if (lastSavedKeyRef.current === currentSaveKey) return;
 
-    const isDirty =
-      activeSource.kind === 'saved_table' ? currentSignature !== activeSource.baseSignature : false;
     saveState({
       state: currentState,
       source: activeSource,
-      isDirty,
     });
     lastSavedKeyRef.current = currentSaveKey;
-  }, [
-    activeSource,
-    currentSaveKey,
-    currentSignature,
-    currentState,
-    hasOpenTab,
-    hydrated,
-    saveState,
-    sourceId,
-  ]);
+  }, [activeSource, currentSaveKey, currentState, hasOpenTab, hydrated, saveState, sourceId]);
 
   useEffect(() => {
     if (!hydrated || !persistedState) return;

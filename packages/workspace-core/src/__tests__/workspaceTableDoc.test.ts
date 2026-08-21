@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import { normalizePersistedRows, type PersistedState } from '@ddlbuilder/shared-types';
 import { buildWorkspaceContentHash } from '../contentHash';
 import { applyPersistedStateToTableDoc, tableDocToPersistedState } from '../workspaceTableDoc';
 import { getWorkspaceRoot } from '../workspaceYDoc';
@@ -10,52 +10,53 @@ import {
 } from '../workspaceYDocCodec';
 
 // 复刻客户端 buildPersistedState 的形状：空集合以 undefined 表示，而不是省略键
-const createClientState = (overrides: Partial<PersistedState> = {}): PersistedState => ({
-  objectType: 'table',
-  schemaName: 'public',
-  tableName: 'users',
-  tableComment: '用户表',
-  dbType: 'mysql',
-  sqlFormatMode: 'compact',
-  viewDefinition: '',
-  viewCreateOrReplace: true,
-  rows: [
-    {
-      id: 'field-id',
-      order: 1,
-      fieldName: 'id',
-      fieldType: 'bigint',
-      fieldComment: '主键',
-      nullable: false,
-      defaultKind: 'auto_increment',
-      defaultValue: '',
-      onUpdate: 'none',
-    },
-    {
-      id: 'field-email',
-      order: 2,
-      fieldName: 'email',
-      fieldType: 'varchar(255)',
-      fieldComment: '邮箱',
-      nullable: true,
-      defaultKind: 'none',
-      defaultValue: '',
-      onUpdate: 'none',
-    },
-  ],
-  addCount: 12,
-  indexInput: '',
-  currentIndexFields: [],
-  indexes: [],
-  authInput: '',
-  authObjects: [],
-  citusShardingConfig: undefined,
-  mysqlPartitionConfig: undefined,
-  tableMiscConfig: undefined,
-  fieldTableViewConfig: { freezeEnabled: false, freezeColumns: 0 },
-  foreignKeys: undefined,
-  ...overrides,
-});
+const createClientState = (overrides: Partial<PersistedState> = {}): PersistedState =>
+  JSON.parse(
+    JSON.stringify({
+      objectType: 'table',
+      schemaName: 'public',
+      tableName: 'users',
+      tableComment: '用户表',
+      dbType: 'mysql',
+      sqlFormatMode: 'compact',
+      viewDefinition: '',
+      viewCreateOrReplace: true,
+      rows: [
+        {
+          id: 'field-id',
+          fieldName: 'id',
+          fieldType: 'bigint',
+          fieldComment: '主键',
+          nullable: false,
+          defaultKind: 'auto_increment',
+          defaultValue: '',
+          onUpdate: 'none',
+        },
+        {
+          id: 'field-email',
+          fieldName: 'email',
+          fieldType: 'varchar(255)',
+          fieldComment: '邮箱',
+          nullable: true,
+          defaultKind: 'none',
+          defaultValue: '',
+          onUpdate: 'none',
+        },
+      ],
+      addCount: 12,
+      indexInput: '',
+      currentIndexFields: [],
+      indexes: [],
+      authInput: '',
+      authObjects: [],
+      citusShardingConfig: undefined,
+      mysqlPartitionConfig: undefined,
+      tableMiscConfig: undefined,
+      fieldTableViewConfig: { freezeEnabled: false, freezeColumns: 0 },
+      foreignKeys: undefined,
+      ...overrides,
+    }),
+  ) as PersistedState;
 
 const createTableDoc = (state: PersistedState) => {
   const doc = new Y.Doc();
@@ -165,15 +166,7 @@ describe('workspace table doc', () => {
         onUpdate: '当前时间',
       },
     ] as unknown as PersistedState['rows'];
-    const expectedRows = [
-      { ...legacyRows[0], nullable: false, defaultKind: 'auto_increment', onUpdate: 'none' },
-      {
-        ...legacyRows[1],
-        nullable: false,
-        defaultKind: 'current_timestamp',
-        onUpdate: 'current_timestamp',
-      },
-    ];
+    const expectedRows = normalizePersistedRows({ rows: legacyRows }).rows;
 
     const snapshotOnly = createLegacyTableDoc(createClientState({ rows: legacyRows }));
     expect(tableDocToPersistedState(snapshotOnly).rows).toEqual(expectedRows);
@@ -300,14 +293,11 @@ describe('workspace table doc writes', () => {
     const tableDoc = createTableDoc(clientState);
     const fieldIds = (tableDoc.get('fieldOrder') as Y.Array<string>).toArray();
 
-    applyPersistedStateToTableDoc(
-      tableDoc,
-      createClientState({ rows: [{ ...clientState.rows[1], order: 1 }] }),
-    );
+    applyPersistedStateToTableDoc(tableDoc, createClientState({ rows: [clientState.rows[1]] }));
 
     expect((tableDoc.get('fieldOrder') as Y.Array<string>).toArray()).toEqual([fieldIds[1]]);
     expect(Array.from((tableDoc.get('fields') as Y.Map<unknown>).keys())).toEqual([fieldIds[1]]);
-    expect(tableDocToPersistedState(tableDoc).rows).toEqual([{ ...clientState.rows[1], order: 1 }]);
+    expect(tableDocToPersistedState(tableDoc).rows).toEqual([clientState.rows[1]]);
   });
 
   it('rewrites indexes and foreign keys when they change', () => {
@@ -420,13 +410,9 @@ describe('workspace table doc key removals', () => {
     const tableDoc = createCompactedTableDoc(sequence[0]);
     for (const state of sequence) {
       applyCompacted(tableDoc, state);
-      const normalized = {
-        ...state,
-        rows: state.rows.map((row, index) => ({ ...row, order: index + 1 })),
-      };
       await expect(
         buildWorkspaceContentHash({ state: tableDocToPersistedState(tableDoc) }),
-      ).resolves.toBe(await buildWorkspaceContentHash({ state: normalized }));
+      ).resolves.toBe(await buildWorkspaceContentHash({ state }));
     }
   });
 });

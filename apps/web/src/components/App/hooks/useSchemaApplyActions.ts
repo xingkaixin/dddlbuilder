@@ -169,7 +169,6 @@ export function useSchemaApplyActions({
             ...prev,
             {
               id: createFieldId(),
-              order: rows.length + 1,
               fieldName: suggestion.field.fieldName,
               fieldType: suggestion.field.fieldType,
               fieldComment: suggestion.field.fieldComment || '',
@@ -205,11 +204,7 @@ export function useSchemaApplyActions({
           if (rowIndex !== -1) {
             triggerFieldTableHighlight(rowIndex);
             setTimeout(() => {
-              setRows((prev) =>
-                prev
-                  .filter((row) => row.fieldName !== suggestion.fieldName)
-                  .map((row, index) => ({ ...row, order: index + 1 })),
-              );
+              setRows((prev) => prev.filter((row) => row.fieldName !== suggestion.fieldName));
             }, 500);
             appliedCount = 1;
           } else {

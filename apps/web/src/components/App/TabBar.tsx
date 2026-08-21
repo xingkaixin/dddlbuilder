@@ -2,6 +2,7 @@ import { memo, useMemo, type ReactNode } from 'react';
 import { Plus, X, Loader2, ChevronDown } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import type { WorkspaceTab } from '@/stores';
+import { isWorkspaceTabDirty } from '@/stores/tabStore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +34,7 @@ const TabItem = memo(
     onClose: (e: React.MouseEvent) => void;
   }) => {
     const isDraft = tab.source.kind === 'draft';
+    const isDirty = isWorkspaceTabDirty(tab);
 
     return (
       <div
@@ -60,7 +62,7 @@ const TabItem = memo(
         {/* 标题 */}
         <span className="min-w-0 flex-1 truncate select-none">
           {tab.title}
-          {tab.isDirty ? ' *' : ''}
+          {isDirty ? ' *' : ''}
         </span>
 
         {/* 加载指示器 */}
@@ -130,7 +132,7 @@ export const TabBar = memo(
                 >
                   <span className="select-none">更多</span>
                   <ChevronDown className="h-3 w-3" />
-                  {hiddenTabs.some((t) => t.id === activeTabId && t.isDirty) && (
+                  {hiddenTabs.some((t) => t.id === activeTabId && isWorkspaceTabDirty(t)) && (
                     <span className="h-2 w-2 shrink-0 rounded-full bg-destructive" />
                   )}
                 </button>
@@ -150,12 +152,12 @@ export const TabBar = memo(
                     />
                     <span className="min-w-0 flex-1 truncate">
                       {tab.title}
-                      {tab.isDirty ? ' *' : ''}
+                      {isWorkspaceTabDirty(tab) ? ' *' : ''}
                     </span>
                     {tab.isLoading && (
                       <Loader2 className="h-3 w-3 shrink-0 animate-spin text-muted-foreground" />
                     )}
-                    {tab.isDirty && !tab.isLoading && (
+                    {isWorkspaceTabDirty(tab) && !tab.isLoading && (
                       <span className="h-2 w-2 shrink-0 rounded-full bg-destructive" />
                     )}
                     <button

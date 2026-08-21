@@ -1,10 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { cn } from '@/lib/utils';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
-import type { FieldRow, IndexDefinition } from '@ddlbuilder/shared-types';
+import type { IndexDefinition } from '@ddlbuilder/shared-types';
 import {
   createEmptyRow,
-  ensureOrder,
   isIntegerType,
   isCharacterType,
   supportsUuidDefault,
@@ -443,11 +442,10 @@ describe('Utils', () => {
 
   describe('createEmptyRow function', () => {
     it('应该创建正确结构的空行', () => {
-      const result = createEmptyRow(1);
+      const result = createEmptyRow();
 
       expect(result).toEqual({
         id: expect.any(String),
-        order: 2,
         fieldName: '',
         fieldType: '',
         fieldComment: '',
@@ -458,87 +456,11 @@ describe('Utils', () => {
       });
     });
 
-    it('应该根据索引设置正确的 order', () => {
-      const row1 = createEmptyRow(0);
-      const row2 = createEmptyRow(5);
+    it('应该为不同空行生成不同 ID', () => {
+      const row1 = createEmptyRow();
+      const row2 = createEmptyRow();
 
-      expect(row1.order).toBe(1);
-      expect(row2.order).toBe(6);
-    });
-  });
-
-  describe('ensureOrder function', () => {
-    it('应该确保所有行的 order 值是连续的', () => {
-      const rows: FieldRow[] = [
-        {
-          order: 1,
-          fieldName: 'name1',
-          fieldType: 'text',
-          fieldComment: '',
-          nullable: true,
-          defaultKind: 'none',
-          defaultValue: '',
-          onUpdate: 'none',
-        },
-        {
-          order: 3,
-          fieldName: 'name2',
-          fieldType: 'int',
-          fieldComment: '',
-          nullable: false,
-          defaultKind: 'none',
-          defaultValue: '',
-          onUpdate: 'none',
-        },
-        {
-          order: 2,
-          fieldName: 'name3',
-          fieldType: 'varchar',
-          fieldComment: '',
-          nullable: true,
-          defaultKind: 'none',
-          defaultValue: '',
-          onUpdate: 'none',
-        },
-      ];
-
-      const result = ensureOrder(rows);
-
-      expect(result).toHaveLength(3);
-      expect(result[0].order).toBe(1);
-      expect(result[1].order).toBe(2);
-      expect(result[2].order).toBe(3);
-      expect(result[0].fieldName).toBe('name1');
-      expect(result[1].fieldName).toBe('name2');
-      expect(result[2].fieldName).toBe('name3');
-    });
-
-    it('应该保持其他字段不变', () => {
-      const rows: FieldRow[] = [
-        {
-          order: 1,
-          fieldName: 'test',
-          fieldType: 'int',
-          fieldComment: 'comment',
-          nullable: false,
-          defaultKind: 'auto_increment',
-          defaultValue: '1',
-          onUpdate: 'none',
-        },
-      ];
-
-      const result = ensureOrder(rows);
-
-      expect(result[0]).toEqual({
-        order: 1,
-        fieldName: 'test',
-        fieldType: 'int',
-        fieldComment: 'comment',
-        nullable: false,
-        defaultKind: 'auto_increment',
-        defaultValue: '1',
-        onUpdate: 'none',
-      });
+      expect(row1.id).not.toBe(row2.id);
     });
   });
 

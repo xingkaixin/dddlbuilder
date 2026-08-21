@@ -82,7 +82,6 @@ describe('workspacePersistence/normalize', () => {
     expect(result?.rows).toEqual([
       {
         id: 'legacy-field-0',
-        order: 1,
         fieldName: '',
         fieldType: '',
         fieldComment: '',
@@ -93,7 +92,6 @@ describe('workspacePersistence/normalize', () => {
       },
       {
         id: 'legacy-field-1',
-        order: 2,
         fieldName: '',
         fieldType: '',
         fieldComment: '',

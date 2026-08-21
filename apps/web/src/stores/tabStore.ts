@@ -1,15 +1,19 @@
 import { create } from 'zustand';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSelection, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
+import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 
 export interface WorkspaceTab {
   id: string;
   title: string;
   source: WorkspaceSelection;
   stateSnapshot: PersistedState;
-  isDirty: boolean;
   isLoading?: boolean;
 }
+
+export const isWorkspaceTabDirty = (tab: WorkspaceTab) =>
+  tab.source.kind === 'saved_table' &&
+  serializePersistedStateForComparison(tab.stateSnapshot) !== tab.source.baseSignature;
 
 function isSameSourceId(a: WorkspaceSource, b: WorkspaceSource): boolean {
   if (a.kind !== b.kind) return false;
@@ -27,7 +31,7 @@ interface TabStoreState {
   addTab: (params: Omit<WorkspaceTab, 'id'>) => string;
   activateTab: (id: string) => void;
   closeTab: (id: string) => void;
-  updateActiveTabSnapshot: (state: PersistedState, isDirty: boolean) => void;
+  updateActiveTabSnapshot: (state: PersistedState) => void;
   updateActiveTabTitle: (title: string) => void;
   updateActiveTabSource: (source: WorkspaceSelection) => void;
   findTabBySource: (source: WorkspaceSource) => WorkspaceTab | undefined;
@@ -73,11 +77,11 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
     });
   },
 
-  updateActiveTabSnapshot: (stateSnapshot, isDirty) => {
+  updateActiveTabSnapshot: (stateSnapshot) => {
     set((s) => {
       if (!s.activeTabId) return s;
       return {
-        tabs: s.tabs.map((t) => (t.id === s.activeTabId ? { ...t, stateSnapshot, isDirty } : t)),
+        tabs: s.tabs.map((t) => (t.id === s.activeTabId ? { ...t, stateSnapshot } : t)),
       };
     });
   },
