@@ -208,7 +208,11 @@ const createWorkspaceSnapshotDb = (
                 }
                 return allResult(
                   rows
-                    .filter((row) => row.workspaceId === workspaceId && row.deletedAt === null)
+                    .filter(
+                      (row) =>
+                        row.workspaceId === workspaceId &&
+                        (!sql.includes('deleted_at IS NULL') || row.deletedAt === null),
+                    )
                     .sort((a, b) => a.version - b.version)
                     .map((row) => ({
                       entityType: row.entityType,
@@ -304,7 +308,9 @@ const createWorkspaceSnapshotDb = (
             },
             async run() {
               if (sql.includes('UPDATE workspace_clocks')) {
-                const [workspaceId, mutationId] = args;
+                const allocatesBatch = sql.includes('next_version = next_version + ?');
+                const workspaceId = allocatesBatch ? args[1] : args[0];
+                const mutationId = allocatesBatch ? undefined : args[1];
                 const shouldIncrement =
                   mutationId === undefined ||
                   mutations.some(
@@ -313,9 +319,22 @@ const createWorkspaceSnapshotDb = (
                       item.version === 0,
                   );
                 if (shouldIncrement) {
-                  clocks.set(String(workspaceId), (clocks.get(String(workspaceId)) ?? 0) + 1);
+                  const increment = allocatesBatch ? Number(args[0]) : 1;
+                  clocks.set(
+                    String(workspaceId),
+                    (clocks.get(String(workspaceId)) ?? 0) + increment,
+                  );
                 }
-                return runResult();
+                return allocatesBatch
+                  ? withMeta(
+                      {
+                        success: true,
+                        results: [{ cursor: clocks.get(String(workspaceId)) ?? 0 }],
+                      },
+                      0,
+                      1,
+                    )
+                  : runResult();
               }
 
               if (sql.includes('INSERT INTO workspaces')) {
@@ -348,12 +367,15 @@ const createWorkspaceSnapshotDb = (
                 const [, workspaceId, userId, entityType, entityId, payloadJson, contentHash] =
                   args;
                 const usesClockVersion = sql.includes('workspace_clocks.next_version');
-                const version = usesClockVersion
-                  ? clocks.get(String(workspaceId))
-                  : clocks.get(String(args[10]));
-                const deletedAt = args[7];
-                const updatedAt = args[9];
-                const mutationId = usesClockVersion ? args[11] : undefined;
+                const usesVersionOffset = sql.includes('next_version - ?');
+                const version = usesVersionOffset
+                  ? (clocks.get(String(workspaceId)) ?? 0) - Number(args[7])
+                  : usesClockVersion
+                    ? clocks.get(String(workspaceId))
+                    : clocks.get(String(args[10]));
+                const deletedAt = usesVersionOffset ? args[8] : args[7];
+                const updatedAt = usesVersionOffset ? args[10] : args[9];
+                const mutationId = usesClockVersion && !usesVersionOffset ? args[11] : undefined;
                 if (
                   mutationId !== undefined &&
                   !mutations.some(
@@ -621,7 +643,7 @@ describe('workspace entity checkpoints', () => {
     expect(snapshot.savedTables.map((item) => item.normalizedName)).toEqual(['orders']);
   });
 
-  it('checkpoint 日志应覆盖实体读取、写入、active 列表和 cursor 查询', async () => {
+  it('checkpoint 日志应覆盖单次实体列表读取和批量写入', async () => {
     const { checkpointWorkspaceSnapshotEntities, putWorkspaceSnapshotAsEntities } =
       await import('../../lib/workspaceEntities.js');
     const env = createEnv(createWorkspaceSnapshotDb([], { includeMeta: true }));
@@ -656,10 +678,47 @@ describe('workspace entity checkpoints', () => {
       deleted: 0,
       skipped: 0,
       d1: {
-        queries: 6,
-        rowsRead: 3,
+        queries: 4,
+        rowsRead: 1,
         rowsWritten: 2,
-        durationMs: 6,
+        durationMs: 4,
+      },
+    });
+  });
+
+  it('未变化实体数量增加时不应增加 checkpoint 查询次数', async () => {
+    const { checkpointWorkspaceSnapshotEntities, putWorkspaceSnapshotAsEntities } =
+      await import('../../lib/workspaceEntities.js');
+    const env = createEnv(createWorkspaceSnapshotDb([], { includeMeta: true }));
+    const snapshot = createSnapshot(['orders', 'users', 'products']);
+
+    await putWorkspaceSnapshotAsEntities(env, 'user-1', snapshot);
+    const workspace = await env.USER_DB.prepare(
+      `
+        SELECT id
+        FROM workspaces
+        WHERE user_id = ? AND is_default = 1
+        LIMIT 1
+      `,
+    )
+      .bind('user-1')
+      .first<{ id: string }>();
+    const workspaceId = workspace?.id ?? '';
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    const result = await checkpointWorkspaceSnapshotEntities(env, 'user-1', workspaceId, snapshot);
+
+    expect(result).toMatchObject({ upserted: 0, deleted: 0, skipped: 3 });
+    expect(readWorkspaceD1Log(info.mock.calls)).toMatchObject({
+      event: 'workspace_sync_d1',
+      operation: 'checkpoint',
+      workspaceId,
+      entityCount: 3,
+      d1: {
+        queries: 3,
+        rowsRead: 5,
+        rowsWritten: 0,
+        durationMs: 3,
       },
     });
   });

@@ -45,6 +45,17 @@ type EntityKeyRow = {
   entityId: string;
 };
 
+type EntityVersionInput = {
+  userId: string;
+  workspaceId: string;
+  entityType: WorkspaceEntityType;
+  entityId: string;
+  op: 'upsert' | 'delete';
+  payload: unknown;
+  contentHash: string | null;
+  updatedAt: number;
+};
+
 const DEFAULT_WORKSPACE_NAME = 'Default Workspace';
 
 export class WorkspaceNotFoundError extends Error {
@@ -203,61 +214,38 @@ const readWorkspaceCursor = async (
   return row?.cursor ?? 0;
 };
 
-const readEntity = async (
+const writeEntityVersions = async (
   env: ApiEnv['Bindings'],
-  workspaceId: string,
-  entityType: WorkspaceEntityType,
-  entityId: string,
-  metrics?: WorkspaceD1Metrics,
-) =>
-  firstWorkspaceD1Result<EntityRow>(
-    env.USER_DB.prepare(
-      `
-      SELECT
-        entity_type AS entityType,
-        entity_id AS entityId,
-        payload_json AS payloadJson,
-        content_hash AS contentHash,
-        version,
-        deleted_at AS deletedAt,
-        updated_at AS updatedAt
-      FROM workspace_entities
-      WHERE workspace_id = ? AND entity_type = ? AND entity_id = ?
-      LIMIT 1
-    `,
-    ).bind(workspaceId, entityType, entityId),
-    metrics,
-  );
-
-const writeEntityVersion = async (
-  env: ApiEnv['Bindings'],
-  input: {
-    userId: string;
-    workspaceId: string;
-    entityType: WorkspaceEntityType;
-    entityId: string;
-    op: 'upsert' | 'delete';
-    payload: unknown;
-    contentHash: string | null;
-    updatedAt: number;
-  },
+  inputs: EntityVersionInput[],
   metrics?: WorkspaceD1Metrics,
 ) => {
-  const deletedAt = input.op === 'delete' ? input.updatedAt : null;
-  const payloadJson = input.op === 'delete' ? null : JSON.stringify(input.payload);
-  const contentHash = input.op === 'delete' ? null : input.contentHash;
-  const results = await batchWorkspaceD1Results<{ version: number }>(
+  if (inputs.length === 0) {
+    return null;
+  }
+
+  const workspaceId = inputs[0].workspaceId;
+  if (inputs.some((input) => input.workspaceId !== workspaceId)) {
+    throw new Error('Workspace entity batch must target one workspace');
+  }
+
+  const results = await batchWorkspaceD1Results<{ cursor?: number; version?: number }>(
     env.USER_DB,
     [
       env.USER_DB.prepare(
         `
           UPDATE workspace_clocks
-          SET next_version = next_version + 1
+          SET next_version = next_version + ?
           WHERE workspace_id = ?
+          RETURNING next_version AS cursor
         `,
-      ).bind(input.workspaceId),
-      env.USER_DB.prepare(
-        `
+      ).bind(inputs.length, workspaceId),
+      ...inputs.map((input, index) => {
+        const deletedAt = input.op === 'delete' ? input.updatedAt : null;
+        const payloadJson = input.op === 'delete' ? null : JSON.stringify(input.payload);
+        const contentHash = input.op === 'delete' ? null : input.contentHash;
+        const versionOffset = inputs.length - index - 1;
+        return env.USER_DB.prepare(
+          `
       INSERT INTO workspace_entities (
         id,
         workspace_id,
@@ -271,7 +259,7 @@ const writeEntityVersion = async (
         created_at,
         updated_at
       )
-      SELECT ?, ?, ?, ?, ?, ?, ?, next_version, ?, ?, ?
+      SELECT ?, ?, ?, ?, ?, ?, ?, next_version - ?, ?, ?, ?
       FROM workspace_clocks
       WHERE workspace_id = ?
       ON CONFLICT(workspace_id, entity_type, entity_id) DO UPDATE SET
@@ -282,27 +270,70 @@ const writeEntityVersion = async (
         updated_at = excluded.updated_at
       RETURNING version
     `,
-      ).bind(
-        buildEntityRowId(input.workspaceId, input.entityType, input.entityId),
-        input.workspaceId,
-        input.userId,
-        input.entityType,
-        input.entityId,
-        payloadJson,
-        contentHash,
-        deletedAt,
-        input.updatedAt,
-        input.updatedAt,
-        input.workspaceId,
-      ),
+        ).bind(
+          buildEntityRowId(input.workspaceId, input.entityType, input.entityId),
+          input.workspaceId,
+          input.userId,
+          input.entityType,
+          input.entityId,
+          payloadJson,
+          contentHash,
+          versionOffset,
+          deletedAt,
+          input.updatedAt,
+          input.updatedAt,
+          input.workspaceId,
+        );
+      }),
     ],
     metrics,
   );
-  const row = results[1]?.results?.[0];
-  if (!row) {
+
+  const cursor = Number(results[0]?.results?.[0]?.cursor);
+  const versions = results.slice(1).map((result) => Number(result.results?.[0]?.version));
+  if (!Number.isFinite(cursor) || versions.some((version) => !Number.isFinite(version))) {
+    throw new Error('Workspace entity batch write failed');
+  }
+  return { cursor, versions };
+};
+
+const writeEntityVersion = async (
+  env: ApiEnv['Bindings'],
+  input: EntityVersionInput,
+  metrics?: WorkspaceD1Metrics,
+) => {
+  const result = await writeEntityVersions(env, [input], metrics);
+  if (!result) {
     throw new Error('Workspace entity write failed');
   }
-  return Number(row.version);
+  return result.versions[0];
+};
+
+const listEntities = async (
+  env: ApiEnv['Bindings'],
+  workspaceId: string,
+  metrics?: WorkspaceD1Metrics,
+) => {
+  const result = await allWorkspaceD1Result<EntityRow>(
+    env.USER_DB.prepare(
+      `
+      SELECT
+        entity_type AS entityType,
+        entity_id AS entityId,
+        payload_json AS payloadJson,
+        content_hash AS contentHash,
+        version,
+        deleted_at AS deletedAt,
+        updated_at AS updatedAt
+      FROM workspace_entities
+      WHERE workspace_id = ?
+      ORDER BY version ASC
+    `,
+    ).bind(workspaceId),
+    metrics,
+  );
+
+  return result.results ?? [];
 };
 
 const listActiveEntities = async (
@@ -417,22 +448,19 @@ const writeEntityInputs = async (
   },
   metrics?: WorkspaceD1Metrics,
 ) => {
-  for (const entity of input.entities) {
-    await writeEntityVersion(
-      env,
-      {
-        userId: input.userId,
-        workspaceId: input.workspaceId,
-        entityType: entity.entityType,
-        entityId: entity.entityId,
-        op: 'upsert',
-        payload: entity.payload,
-        contentHash: await buildWorkspaceContentHash(entity.payload),
-        updatedAt: entity.sourceUpdatedAt,
-      },
-      metrics,
-    );
-  }
+  const entities = await Promise.all(
+    input.entities.map(async (entity) => ({
+      userId: input.userId,
+      workspaceId: input.workspaceId,
+      entityType: entity.entityType,
+      entityId: entity.entityId,
+      op: 'upsert' as const,
+      payload: entity.payload,
+      contentHash: await buildWorkspaceContentHash(entity.payload),
+      updatedAt: entity.sourceUpdatedAt,
+    })),
+  );
+  await writeEntityVersions(env, entities, metrics);
 };
 
 const backfillLegacySnapshotEntities = async (
@@ -510,70 +538,68 @@ export const checkpointWorkspaceSnapshotEntities = async (
   const metrics = createWorkspaceD1Metrics();
   await assertWorkspaceOwner(env, userId, workspaceId, metrics);
   const entities = workspaceSnapshotToEntities(snapshot);
-  const nextKeys = new Set(
-    entities.map((entity) => buildEntityKey(entity.entityType, entity.entityId)),
+  const [hashedEntities, existingRows] = await Promise.all([
+    Promise.all(
+      entities.map(async (entity) => ({
+        ...entity,
+        contentHash: await buildWorkspaceContentHash(entity.payload),
+      })),
+    ),
+    listEntities(env, workspaceId, metrics),
+  ]);
+  const existingByKey = new Map(
+    existingRows.map((row) => [buildEntityKey(row.entityType, row.entityId), row]),
   );
+  const nextKeys = new Set(
+    hashedEntities.map((entity) => buildEntityKey(entity.entityType, entity.entityId)),
+  );
+  const writes: EntityVersionInput[] = [];
   let upserted = 0;
   let deleted = 0;
   let skipped = 0;
 
-  for (const entity of entities) {
-    const contentHash = await buildWorkspaceContentHash(entity.payload);
-    const existing = await readEntity(
-      env,
-      workspaceId,
-      entity.entityType,
-      entity.entityId,
-      metrics,
-    );
-    if (existing && existing.deletedAt == null && existing.contentHash === contentHash) {
+  for (const entity of hashedEntities) {
+    const existing = existingByKey.get(buildEntityKey(entity.entityType, entity.entityId));
+    if (existing && existing.deletedAt == null && existing.contentHash === entity.contentHash) {
       skipped++;
       continue;
     }
 
-    await writeEntityVersion(
-      env,
-      {
-        userId,
-        workspaceId,
-        entityType: entity.entityType,
-        entityId: entity.entityId,
-        op: 'upsert',
-        payload: entity.payload,
-        contentHash,
-        updatedAt: entity.sourceUpdatedAt,
-      },
-      metrics,
-    );
+    writes.push({
+      userId,
+      workspaceId,
+      entityType: entity.entityType,
+      entityId: entity.entityId,
+      op: 'upsert',
+      payload: entity.payload,
+      contentHash: entity.contentHash,
+      updatedAt: entity.sourceUpdatedAt,
+    });
     upserted++;
   }
 
-  const activeRows = await listActiveEntities(env, workspaceId, metrics);
   const checkpointedAt = now();
-  for (const row of activeRows) {
-    if (nextKeys.has(buildEntityKey(row.entityType, row.entityId))) {
+  for (const row of existingRows) {
+    if (row.deletedAt != null || nextKeys.has(buildEntityKey(row.entityType, row.entityId))) {
       continue;
     }
 
-    await writeEntityVersion(
-      env,
-      {
-        userId,
-        workspaceId,
-        entityType: row.entityType,
-        entityId: row.entityId,
-        op: 'delete',
-        payload: null,
-        contentHash: null,
-        updatedAt: checkpointedAt,
-      },
-      metrics,
-    );
+    writes.push({
+      userId,
+      workspaceId,
+      entityType: row.entityType,
+      entityId: row.entityId,
+      op: 'delete',
+      payload: null,
+      contentHash: null,
+      updatedAt: checkpointedAt,
+    });
     deleted++;
   }
 
+  const writeResult = await writeEntityVersions(env, writes, metrics);
   const response = {
-    cursor: await readWorkspaceCursor(env, workspaceId, metrics),
+    cursor: writeResult?.cursor ?? (await readWorkspaceCursor(env, workspaceId, metrics)),
     upserted,
     deleted,
     skipped,
