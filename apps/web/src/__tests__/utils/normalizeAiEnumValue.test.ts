@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  normalizeGeneratedTableSchema,
-  normalizeReviewSuggestions,
-} from '@/utils/normalizeAiEnumValue';
+import { normalizeGeneratedTableSchema } from '@/utils/normalizeAiEnumValue';
 import {
   normalizeFieldDefaultKind,
   normalizeFieldNullable,
@@ -85,60 +82,5 @@ describe('normalizeAiEnumValue', () => {
     } as any);
 
     expect(noFields.fields).toEqual([]);
-  });
-
-  it('normalizeReviewSuggestions 应跳过非对象或无 type 项', () => {
-    const input = [
-      null,
-      1,
-      'text',
-      { foo: 'bar' },
-      {
-        type: 'add_field',
-        field: {
-          fieldName: 'created_at',
-          nullable: 'n',
-          defaultKind: 'current_timestamp',
-          onUpdate: 'now()',
-        },
-      },
-    ];
-
-    const result = normalizeReviewSuggestions(input as any);
-
-    expect(result[0]).toBeNull();
-    expect(result[1]).toBe(1);
-    expect(result[2]).toBe('text');
-    expect(result[3]).toEqual({ foo: 'bar' });
-    expect((result[4] as any).field).toMatchObject({
-      nullable: false,
-      defaultKind: 'current_timestamp',
-      onUpdate: 'current_timestamp',
-    });
-  });
-
-  it('normalizeReviewSuggestions 应处理 fieldModification.changes 分支', () => {
-    const input = [
-      {
-        type: 'modify_field',
-        fieldModification: {
-          from: 'status',
-          to: 'status',
-          changes: {
-            nullable: 'yes',
-            defaultKind: 'const',
-            onUpdate: 'CURRENT_TIMESTAMP',
-          },
-        },
-      },
-    ];
-
-    const result = normalizeReviewSuggestions(input as any);
-
-    expect((result[0] as any).fieldModification.changes).toMatchObject({
-      nullable: true,
-      defaultKind: 'constant',
-      onUpdate: 'current_timestamp',
-    });
   });
 });

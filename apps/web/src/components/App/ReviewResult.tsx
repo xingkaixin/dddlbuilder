@@ -10,7 +10,10 @@ import {
   ArrowRight,
   Minus,
 } from '@/components/icons';
-import type { ReviewResult, StructuredSuggestion } from '@/hooks/useDDLReview';
+import type {
+  DDLReviewResult as ReviewResult,
+  DDLReviewStructuredSuggestion as StructuredSuggestion,
+} from '@ddlbuilder/shared-types/ddl-review';
 import type { PartialReviewResult } from '@/utils/parsePartialJson';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
@@ -56,6 +59,7 @@ function isRenderableSuggestion(
     typeof suggestion.id === 'string' &&
     typeof suggestion.description === 'string' &&
     typeof suggestion.type === 'string' &&
+    KNOWN_SUGGESTION_TYPES.has(suggestion.type) &&
     typeof suggestion.actionable === 'boolean'
   );
 }
@@ -109,29 +113,20 @@ const SuggestionItem = memo<{
 
   const isApplied = suggestion.applied;
   // Disable apply button during streaming to prevent state inconsistency
-  // performance_warning and general suggestions cannot be auto-applied
-  const isActionable =
-    suggestion.actionable &&
-    !isApplied &&
-    !isStreaming &&
-    suggestion.type !== 'performance_warning' &&
-    suggestion.type !== 'general';
-
-  // Normalize type for compatibility - fallback unknown types to 'general'
-  const normalizedType = KNOWN_SUGGESTION_TYPES.has(suggestion.type) ? suggestion.type : 'general';
+  const isActionable = suggestion.actionable && !isApplied && !isStreaming;
 
   return (
     <li className="group flex items-start gap-3 rounded-md border border-transparent p-2 transition-all hover:bg-muted/50 hover:border-border">
       <div className="mt-1 flex-shrink-0">
         {suggestion.applied ? (
           <Check className="h-4 w-4 text-emerald-500" />
-        ) : normalizedType === 'remove_field' || normalizedType === 'remove_index' ? (
+        ) : suggestion.type === 'remove_field' || suggestion.type === 'remove_index' ? (
           <Minus className="h-4 w-4 text-red-400" />
-        ) : normalizedType === 'add_field' || normalizedType === 'add_index' ? (
+        ) : suggestion.type === 'add_field' || suggestion.type === 'add_index' ? (
           <Plus className="h-4 w-4 text-emerald-400" />
-        ) : normalizedType === 'modify_field' ? (
+        ) : suggestion.type === 'modify_field' ? (
           <ArrowRight className="h-4 w-4 text-amber-400" />
-        ) : normalizedType === 'performance_warning' ? (
+        ) : suggestion.type === 'performance_warning' ? (
           <AlertTriangle
             className={`h-4 w-4 ${suggestion.severity === 'error' ? 'text-red-500' : 'text-amber-500'}`}
           />
@@ -146,7 +141,7 @@ const SuggestionItem = memo<{
         </div>
 
         {/* Performance warning severity badge */}
-        {normalizedType === 'performance_warning' && suggestion.severity && (
+        {suggestion.type === 'performance_warning' && suggestion.severity && (
           <span
             className={`mt-1 inline-block text-[10px] font-medium px-1.5 py-0.5 rounded ${
               suggestion.severity === 'error'
@@ -159,23 +154,21 @@ const SuggestionItem = memo<{
         )}
 
         {/* Detail view based on type */}
-        {!isApplied && normalizedType === 'modify_field' && suggestion.fieldModification && (
+        {!isApplied && suggestion.type === 'modify_field' && suggestion.fieldModification && (
           <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
             <span className="font-mono bg-muted px-1 rounded truncate max-w-[100px]">
               {suggestion.fieldModification.fieldName}
             </span>
             <ArrowRight className="h-3 w-3" />
             <span className="text-amber-600 font-medium">
-              {suggestion.fieldModification.changes?.fieldType ||
-                suggestion.fieldModification.changes?.fieldComment ||
-                (suggestion.fieldModification as any).fieldType ||
-                (suggestion.fieldModification as any).fieldComment ||
+              {suggestion.fieldModification.changes.fieldType ||
+                suggestion.fieldModification.changes.fieldComment ||
                 t('review.details')}
             </span>
           </div>
         )}
 
-        {!isApplied && normalizedType === 'add_field' && suggestion.field && (
+        {!isApplied && suggestion.type === 'add_field' && suggestion.field && (
           <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
             <span className="text-emerald-600 font-medium px-1 rounded bg-emerald-50 border border-emerald-100">
               + {suggestion.field.fieldName} ({suggestion.field.fieldType})
@@ -183,7 +176,7 @@ const SuggestionItem = memo<{
           </div>
         )}
 
-        {!isApplied && normalizedType === 'add_index' && suggestion.index && (
+        {!isApplied && suggestion.type === 'add_index' && suggestion.index && (
           <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
             <span className="text-emerald-600 font-medium px-1 rounded bg-emerald-50 border border-emerald-100">
               + INDEX {suggestion.index.name}
@@ -191,7 +184,7 @@ const SuggestionItem = memo<{
           </div>
         )}
 
-        {!isApplied && normalizedType === 'remove_index' && suggestion.indexName && (
+        {!isApplied && suggestion.type === 'remove_index' && suggestion.indexName && (
           <div className="mt-1 text-xs text-muted-foreground flex items-center gap-2">
             <span className="text-red-600 font-medium px-1 rounded bg-red-50 border border-red-100">
               - INDEX {suggestion.indexName}
@@ -297,7 +290,9 @@ export const ReviewResultPanel = memo<ReviewResultPanelProps>(
     const isStreaming = isLoading && !result;
     // Determine what to show: final result or partial result during streaming
     const displayResult = result || (isLoading ? partialResult : null);
-    const suggestions = (displayResult?.suggestions ?? []).filter(isRenderableSuggestion);
+    const suggestions: (string | StructuredSuggestion)[] = result
+      ? result.suggestions
+      : (partialResult?.suggestions ?? []).filter(isRenderableSuggestion);
     const missingSuggestionCount = isStreaming
       ? Math.max(1, SUGGESTION_SKELETON_COUNT - suggestions.length)
       : 0;

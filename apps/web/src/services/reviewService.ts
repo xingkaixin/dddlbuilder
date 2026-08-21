@@ -1,8 +1,11 @@
 import { readTextStream } from '@/services/streamingText';
 import { buildAuthenticatedJsonHeaders, readAIErrorMessage } from '@/services/aiApi';
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
+import {
+  normalizeDDLReviewResult,
+  type DDLReviewResult,
+} from '@ddlbuilder/shared-types/ddl-review';
 import i18n from '@/i18n';
-import { normalizeReviewSuggestions } from '@/utils/normalizeAiEnumValue';
 
 const REVIEW_API_ENDPOINT = '/api/review';
 
@@ -13,11 +16,7 @@ export interface ReviewRequestPayload {
   locale?: AppLocale;
 }
 
-export interface ReviewServiceResult {
-  score: number;
-  summary: string;
-  suggestions: unknown[];
-}
+export type ReviewServiceResult = DDLReviewResult;
 
 interface RequestDDLReviewOptions {
   signal: AbortSignal;
@@ -25,22 +24,7 @@ interface RequestDDLReviewOptions {
 }
 
 function normalizeReviewPayload(payload: unknown): ReviewServiceResult {
-  if (!payload || typeof payload !== 'object') {
-    return {
-      score: 5,
-      summary: i18n.t('services.reviewDone'),
-      suggestions: [],
-    };
-  }
-
-  const data = payload as Record<string, unknown>;
-  return {
-    score: Math.min(10, Math.max(1, Number(data.score) || 5)),
-    summary: typeof data.summary === 'string' ? data.summary : i18n.t('services.reviewDone'),
-    suggestions: Array.isArray(data.suggestions)
-      ? normalizeReviewSuggestions(data.suggestions)
-      : [],
-  };
+  return normalizeDDLReviewResult(payload, i18n.t('services.reviewDone'));
 }
 
 function extractJsonObject(text: string): string {

@@ -136,4 +136,40 @@ describe('requestDDLReview', () => {
 
     parseSpy.mockRestore();
   });
+
+  it('downgrades malformed actionable suggestions at the service boundary', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: createTextStream([
+        JSON.stringify({
+          score: 8,
+          summary: 'ok',
+          suggestions: [
+            {
+              id: 'broken-modify',
+              type: 'modify_field',
+              description: 'modify status',
+              actionable: true,
+              fieldModification: { fieldName: 'status' },
+            },
+          ],
+        }),
+      ]),
+    } as unknown as Response);
+
+    const result = await requestDDLReview(
+      { ddl: 'ddl', tableName: 'users', dbType: 'mysql' },
+      { signal: new AbortController().signal },
+    );
+
+    expect(result.suggestions).toEqual([
+      {
+        id: 'broken-modify',
+        type: 'general',
+        description: 'modify status',
+        actionable: false,
+      },
+    ]);
+  });
 });

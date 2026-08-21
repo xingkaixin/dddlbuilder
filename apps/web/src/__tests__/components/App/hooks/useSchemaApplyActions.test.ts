@@ -311,21 +311,6 @@ describe('useSchemaApplyActions', () => {
       expect(newIndexes).toHaveLength(0);
     });
 
-    it('should show toast when add_field is missing field data', () => {
-      const { hook, spies } = createHook();
-
-      act(() => {
-        hook.result.current.handleApplySuggestion({
-          id: 's1',
-          type: 'add_field',
-          description: 'Add field',
-        } as any);
-      });
-
-      expect(spies.showToast).toHaveBeenCalledWith('该建议缺少字段信息，无法自动应用');
-      expect(spies.setRows).not.toHaveBeenCalled();
-    });
-
     it('should show toast when modify_field target is not found', () => {
       const { hook, spies } = createHook({
         rows: [{ order: 1, fieldName: 'col1', fieldType: 'VARCHAR' }],

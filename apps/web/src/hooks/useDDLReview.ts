@@ -6,61 +6,13 @@ import { buildDDLReviewQueryKey } from '@/queryKeys/ai';
 import { useLocale } from '@/i18n/LocaleContext';
 import i18n from '@/i18n';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
-import type { FieldDefaultKind, FieldOnUpdate } from '@ddlbuilder/shared-types';
+import type {
+  DDLReviewResult,
+  DDLReviewStructuredSuggestion,
+} from '@ddlbuilder/shared-types/ddl-review';
 
-export interface StructuredSuggestion {
-  id: string;
-  description: string;
-  type:
-    | 'add_field'
-    | 'modify_field'
-    | 'remove_field'
-    | 'add_index'
-    | 'remove_index'
-    | 'performance_warning'
-    | 'general';
-  actionable: boolean;
-  applied?: boolean; // 是否已应用
-  severity?: 'warning' | 'error'; // 仅用于 performance_warning 类型
-
-  // 根据 type 填充
-  fieldName?: string; // 用于 remove_field
-  indexName?: string; // 用于 remove_index
-
-  field?: {
-    fieldName: string;
-    fieldType: string;
-    fieldComment?: string;
-    nullable?: boolean;
-    defaultKind?: FieldDefaultKind;
-    defaultValue?: string;
-    onUpdate?: FieldOnUpdate;
-  };
-
-  fieldModification?: {
-    fieldName: string;
-    changes: {
-      fieldType?: string;
-      fieldComment?: string;
-      nullable?: boolean;
-      defaultKind?: FieldDefaultKind;
-      defaultValue?: string;
-      onUpdate?: FieldOnUpdate;
-    };
-  };
-
-  index?: {
-    name: string;
-    fields: { name: string; direction: 'ASC' | 'DESC' }[];
-    unique?: boolean;
-  };
-}
-
-export interface ReviewResult {
-  score: number;
-  summary: string;
-  suggestions: (string | StructuredSuggestion)[];
-}
+export type StructuredSuggestion = DDLReviewStructuredSuggestion;
+export type ReviewResult = DDLReviewResult;
 
 interface ReviewState {
   isLoading: boolean;
@@ -173,11 +125,7 @@ export function useDDLReview() {
         setState({
           isLoading: false,
           streamingText: '',
-          result: {
-            score: result.score,
-            summary: result.summary,
-            suggestions: result.suggestions as (string | StructuredSuggestion)[],
-          },
+          result,
           error: null,
         });
         void authSession.refreshCredits();

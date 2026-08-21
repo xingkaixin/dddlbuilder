@@ -1,4 +1,7 @@
-import type { ReviewResult } from '@/hooks/useDDLReview';
+import {
+  normalizeDDLReviewResult,
+  type DDLReviewResult as ReviewResult,
+} from '@ddlbuilder/shared-types/ddl-review';
 import { openDb, REVIEW_STORE_NAME } from './savedTablesDb';
 import { runIndexedDbRequest } from './indexedDbTransaction';
 
@@ -30,6 +33,14 @@ export type ReviewRecordMetadata = {
 
 /** 每个表最多保留的评审记录数量 */
 export const MAX_REVIEWS_PER_TABLE = 50;
+
+const normalizeReviewRecord = (record: ReviewRecord): ReviewRecord => ({
+  ...record,
+  result: normalizeDDLReviewResult(
+    record.result,
+    typeof record.result?.summary === 'string' ? record.result.summary : '',
+  ),
+});
 
 /**
  * 生成唯一 ID
@@ -91,7 +102,7 @@ export async function listReviews(tableNormalizedName?: string): Promise<ReviewR
         ? store.index('tableNormalizedName').getAll(tableNormalizedName)
         : store.getAll(),
   );
-  return (records ?? []).sort((a, b) => b.createdAt - a.createdAt);
+  return (records ?? []).map(normalizeReviewRecord).sort((a, b) => b.createdAt - a.createdAt);
 }
 
 /**
@@ -117,7 +128,7 @@ export async function listReviewMetadata(
  */
 export async function getReview(id: string): Promise<ReviewRecord | null> {
   const result = await runWithStore<ReviewRecord | undefined>('readonly', (store) => store.get(id));
-  return result ?? null;
+  return result ? normalizeReviewRecord(result) : null;
 }
 
 /**

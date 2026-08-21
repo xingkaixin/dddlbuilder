@@ -1,4 +1,7 @@
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
+import { DDL_REVIEW_SUGGESTION_TYPES } from '@ddlbuilder/shared-types/ddl-review';
+
+const suggestionTypes = DDL_REVIEW_SUGGESTION_TYPES.join(' | ');
 
 export const REVIEW_SYSTEM_PROMPT: Record<AppLocale, string> = {
   'zh-CN': `你是一位资深的数据库架构师和DDL评审专家。你的任务是评审用户提供的DDL语句，给出专业的评分和改进建议。
@@ -14,44 +17,55 @@ export const REVIEW_SYSTEM_PROMPT: Record<AppLocale, string> = {
    - 索引效率：高频查询字段缺少索引
    - 字段设计：过多可 NULL 字段、超长 VARCHAR（如 VARCHAR(4000) 可能应该是 TEXT）
 
-请以JSON格式返回评审结果：
+请以 JSON 格式返回评审结果。每条建议必须严格匹配 type 对应的结构，不要混入其他 type 的字段：
+- add_field: 必须包含 field，且 field 必须包含 fieldName、fieldType
+- modify_field: 必须包含 fieldModification.fieldName 和非空 changes
+- remove_field: 必须包含 fieldName
+- add_index: 必须包含 index.name 和至少一个 index.fields
+- remove_index: 必须包含 indexName
+- performance_warning: actionable 必须为 false，可包含 severity
+- general: actionable 必须为 false
+
+type 只能是：${suggestionTypes}
+
 {
   "score": 8,
   "summary": "简要评价，约50字以内",
   "suggestions": [
     {
       "id": "sug_1",
-      "description": "建议描述",
-      "type": "add_field" | "modify_field" | "remove_field" | "add_index" | "remove_index" | "performance_warning" | "general",
+      "description": "新增审计字段",
+      "type": "add_field",
       "actionable": true,
       "field": {
-        "fieldName": "string",
-        "fieldType": "string",
-        "fieldComment": "string",
-        "nullable": true | false,
-        "defaultKind": "none" | "auto_increment" | "constant" | "current_timestamp" | "uuid",
-        "defaultValue": "string",
-        "onUpdate": "none" | "current_timestamp"
-      },
+        "fieldName": "created_at",
+        "fieldType": "timestamp",
+        "nullable": false,
+        "defaultKind": "current_timestamp"
+      }
+    },
+    {
+      "id": "sug_2",
+      "description": "调整状态字段类型",
+      "type": "modify_field",
+      "actionable": true,
       "fieldModification": {
-        "fieldName": "string",
+        "fieldName": "status",
         "changes": {
-          "fieldType": "string",
-          "fieldComment": "string",
-          "nullable": true | false,
-          "defaultKind": "string",
-          "defaultValue": "string",
-          "onUpdate": "string"
+          "fieldType": "varchar(32)"
         }
-      },
-      "fieldName": "string",
+      }
+    },
+    {
+      "id": "sug_3",
+      "description": "为查询字段增加索引",
+      "type": "add_index",
+      "actionable": true,
       "index": {
-        "name": "string",
-        "fields": [{ "name": "string", "direction": "ASC" | "DESC" }],
-        "unique": boolean
-      },
-      "indexName": "string",
-      "severity": "warning" | "error"
+        "name": "idx_status",
+        "fields": [{ "name": "status", "direction": "ASC" }],
+        "unique": false
+      }
     }
   ]
 }
@@ -70,44 +84,55 @@ Review dimensions:
 5. Extensibility (audit/version fields)
 6. Performance considerations
 
-Return JSON only:
+Return JSON only. Every suggestion must match exactly one type-specific shape:
+- add_field requires field.fieldName and field.fieldType
+- modify_field requires fieldModification.fieldName and non-empty changes
+- remove_field requires fieldName
+- add_index requires index.name and at least one index.fields entry
+- remove_index requires indexName
+- performance_warning must set actionable=false and may include severity
+- general must set actionable=false
+
+Allowed types: ${suggestionTypes}
+
 {
   "score": 8,
   "summary": "brief summary",
   "suggestions": [
     {
       "id": "sug_1",
-      "description": "suggestion",
-      "type": "add_field" | "modify_field" | "remove_field" | "add_index" | "remove_index" | "performance_warning" | "general",
+      "description": "add an audit field",
+      "type": "add_field",
       "actionable": true,
       "field": {
-        "fieldName": "string",
-        "fieldType": "string",
-        "fieldComment": "string",
-        "nullable": true | false,
-        "defaultKind": "none" | "auto_increment" | "constant" | "current_timestamp" | "uuid",
-        "defaultValue": "string",
-        "onUpdate": "none" | "current_timestamp"
-      },
+        "fieldName": "created_at",
+        "fieldType": "timestamp",
+        "nullable": false,
+        "defaultKind": "current_timestamp"
+      }
+    },
+    {
+      "id": "sug_2",
+      "description": "change the status type",
+      "type": "modify_field",
+      "actionable": true,
       "fieldModification": {
-        "fieldName": "string",
+        "fieldName": "status",
         "changes": {
-          "fieldType": "string",
-          "fieldComment": "string",
-          "nullable": true | false,
-          "defaultKind": "string",
-          "defaultValue": "string",
-          "onUpdate": "string"
+          "fieldType": "varchar(32)"
         }
-      },
-      "fieldName": "string",
+      }
+    },
+    {
+      "id": "sug_3",
+      "description": "add an index for a query field",
+      "type": "add_index",
+      "actionable": true,
       "index": {
-        "name": "string",
-        "fields": [{ "name": "string", "direction": "ASC" | "DESC" }],
-        "unique": boolean
-      },
-      "indexName": "string",
-      "severity": "warning" | "error"
+        "name": "idx_status",
+        "fields": [{ "name": "status", "direction": "ASC" }],
+        "unique": false
+      }
     }
   ]
 }

@@ -1,6 +1,6 @@
 import type { DatabaseType, RoutineTemplateKind, SqlFormatMode } from '@ddlbuilder/shared-types';
 import type { CSSProperties } from 'react';
-import type { ReviewResult } from '@/hooks/useDDLReview';
+import type { DDLReviewResult as ReviewResult } from '@ddlbuilder/shared-types/ddl-review';
 import type { PartialReviewResult } from '@/utils/parsePartialJson';
 import type { SchemaLintIssue } from '@/utils/schemaLint';
 import { memo, useMemo, useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';

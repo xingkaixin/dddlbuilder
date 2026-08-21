@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import type { ReviewResult } from '@/hooks/useDDLReview';
+import type { DDLReviewResult as ReviewResult } from '@ddlbuilder/shared-types/ddl-review';
 import { saveReview } from '@/utils/reviewHistory';
 import { normalizeSavedTableName } from '@/utils/savedTablesDb';
 import { reportError } from '@/utils/errorReporter';

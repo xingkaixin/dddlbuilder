@@ -12,7 +12,10 @@ import type {
   TableMiscConfig,
   ForeignKeyDefinition,
 } from '@ddlbuilder/shared-types';
-import type { ReviewResult, StructuredSuggestion } from '@/hooks/useDDLReview';
+import type {
+  DDLReviewResult as ReviewResult,
+  DDLReviewStructuredSuggestion as StructuredSuggestion,
+} from '@ddlbuilder/shared-types/ddl-review';
 import type { GeneratedTableSchema } from '@/hooks/useAIGenerateTable';
 import { buildGeneratedRows } from '@/utils/aiSchemaChanges';
 import { createFieldId } from '@ddlbuilder/workspace-core';
@@ -162,8 +165,9 @@ export function useSchemaApplyActions({
 
       switch (suggestion.type) {
         case 'add_field':
-          if (suggestion.field) {
-            const newRow: FieldRow = {
+          setRows((prev) => [
+            ...prev,
+            {
               id: createFieldId(),
               order: rows.length + 1,
               fieldName: suggestion.field.fieldName,
@@ -173,110 +177,83 @@ export function useSchemaApplyActions({
               defaultKind: suggestion.field.defaultKind ?? 'none',
               defaultValue: suggestion.field.defaultValue || '',
               onUpdate: suggestion.field.onUpdate ?? 'none',
-            };
-            setRows((prev) => [...prev, newRow]);
+            },
+          ]);
+          appliedCount = 1;
+          triggerFieldTableHighlight(rows.length);
+          break;
+
+        case 'modify_field': {
+          const { fieldName, changes } = suggestion.fieldModification;
+          const rowIndex = rows.findIndex((row) => row.fieldName === fieldName);
+          if (rowIndex !== -1) {
+            setRows((prev) => {
+              const updatedRows = [...prev];
+              updatedRows[rowIndex] = { ...updatedRows[rowIndex], ...changes };
+              return updatedRows;
+            });
             appliedCount = 1;
-            triggerFieldTableHighlight(rows.length);
+            triggerFieldTableHighlight(rowIndex);
           } else {
-            showToast('该建议缺少字段信息，无法自动应用');
+            showToast(`未找到字段 "${fieldName}"，无法应用修改`);
           }
           break;
+        }
 
-        case 'modify_field':
-          if (suggestion.fieldModification) {
-            const { fieldName } = suggestion.fieldModification;
-            const changes = suggestion.fieldModification.changes;
-            const rowIndex = rows.findIndex((row) => row.fieldName === fieldName);
-            if (rowIndex !== -1) {
-              const filteredChanges = Object.fromEntries(
-                Object.entries(changes).filter(([, value]) => value !== undefined),
+        case 'remove_field': {
+          const rowIndex = rows.findIndex((row) => row.fieldName === suggestion.fieldName);
+          if (rowIndex !== -1) {
+            triggerFieldTableHighlight(rowIndex);
+            setTimeout(() => {
+              setRows((prev) =>
+                prev
+                  .filter((row) => row.fieldName !== suggestion.fieldName)
+                  .map((row, index) => ({ ...row, order: index + 1 })),
               );
-              setRows((prev) => {
-                const updatedRows = [...prev];
-                updatedRows[rowIndex] = {
-                  ...updatedRows[rowIndex],
-                  ...filteredChanges,
-                };
-                return updatedRows;
-              });
-              appliedCount = 1;
-              triggerFieldTableHighlight(rowIndex);
-            } else {
-              showToast(`未找到字段 "${fieldName}"，无法应用修改`);
-            }
+            }, 500);
+            appliedCount = 1;
           } else {
-            showToast('该建议缺少字段修改信息，无法自动应用');
+            showToast(`未找到字段 "${suggestion.fieldName}"，无法删除`);
           }
           break;
+        }
 
-        case 'remove_field':
-          if (suggestion.fieldName) {
-            const rowIndex = rows.findIndex((row) => row.fieldName === suggestion.fieldName);
-            if (rowIndex !== -1) {
-              triggerFieldTableHighlight(rowIndex);
-              setTimeout(() => {
-                setRows((prev) => {
-                  const newRows = prev.filter((row) => row.fieldName !== suggestion.fieldName);
-                  return newRows.map((row, index) => ({
-                    ...row,
-                    order: index + 1,
-                  }));
-                });
-              }, 500);
-              appliedCount = 1;
-            } else {
-              showToast(`未找到字段 "${suggestion.fieldName}"，无法删除`);
-            }
-          } else {
-            showToast('该建议缺少字段名，无法自动应用');
-          }
-          break;
-
-        case 'add_index':
-          if (suggestion.index) {
-            newIndexId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-            const newIndex: IndexDefinition = {
-              id: newIndexId,
+        case 'add_index': {
+          const indexId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+          newIndexId = indexId;
+          setIndexes((prev) => [
+            ...prev,
+            {
+              id: indexId,
               name: suggestion.index.name,
               fields: suggestion.index.fields,
-              unique: !!suggestion.index.unique,
-            };
-            setIndexes((prev) => [...prev, newIndex]);
-            appliedCount = 1;
-            setTimeout(() => {
-              if (newIndexId) {
-                triggerIndexAnimation(newIndexId, 'add');
-              }
-            }, 50);
-          } else {
-            showToast('该建议缺少索引信息，无法自动应用');
-          }
+              unique: suggestion.index.unique === true,
+            },
+          ]);
+          appliedCount = 1;
+          setTimeout(() => {
+            if (newIndexId) triggerIndexAnimation(newIndexId, 'add');
+          }, 50);
           break;
+        }
 
-        case 'remove_index':
-          if (suggestion.indexName) {
-            const targetIndex = indexes.find((index) => index.name === suggestion.indexName);
-            if (targetIndex) {
-              triggerIndexAnimation(targetIndex.id, 'remove');
-              setTimeout(() => {
-                setIndexes((prev) => prev.filter((index) => index.name !== suggestion.indexName));
-              }, 500);
-              appliedCount = 1;
-            } else {
-              showToast(`未找到索引 "${suggestion.indexName}"，无法删除`);
-            }
+        case 'remove_index': {
+          const targetIndex = indexes.find((index) => index.name === suggestion.indexName);
+          if (targetIndex) {
+            triggerIndexAnimation(targetIndex.id, 'remove');
+            setTimeout(() => {
+              setIndexes((prev) => prev.filter((index) => index.name !== suggestion.indexName));
+            }, 500);
+            appliedCount = 1;
           } else {
-            showToast('该建议缺少索引名，无法自动应用');
+            showToast(`未找到索引 "${suggestion.indexName}"，无法删除`);
           }
           break;
+        }
 
         case 'performance_warning':
         case 'general':
           showToast('该类型建议不支持自动应用，请手动调整');
-          break;
-
-        default:
-          showToast('该建议无法自动应用，请手动调整');
           break;
       }
 
