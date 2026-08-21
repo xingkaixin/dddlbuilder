@@ -163,9 +163,11 @@ describe('useTableTemplates', () => {
       await flushPromises();
     });
 
+    let duplicatedId = '';
     await act(async () => {
       const res = await result.current.duplicate(templateId);
       expect(res.ok).toBe(true);
+      duplicatedId = res.template?.id ?? '';
     });
 
     await act(async () => {
@@ -173,7 +175,9 @@ describe('useTableTemplates', () => {
     });
 
     expect(result.current.templates).toHaveLength(2);
-    expect(result.current.templates[0].name).toBe('Original (副本)');
+    expect(result.current.templates.find((template) => template.id === duplicatedId)?.name).toBe(
+      'Original (副本)',
+    );
   });
 
   it('fetches a single template', async () => {
