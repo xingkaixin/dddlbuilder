@@ -156,42 +156,11 @@ export const enUSCommon = {
     updatePassword: 'Update password',
     cancel: 'Cancel',
     acknowledge: 'OK',
-    syncUpload: 'Upload to Cloud',
-    syncDownloading: 'Downloading...',
-    syncDownload: 'Download from Cloud',
-    syncUploading: 'Uploading...',
     syncRequiresLogin: 'Sign in to sync your workspace.',
     workspaceSyncHint:
-      'Workspaces sync incrementally. Manual upload and download remain available as recovery tools and replace the full workspace in the selected direction.',
-    syncNow: 'Sync now',
-    syncNowRunning: 'Syncing...',
-    syncNowSuccess: 'Workspace synced',
-    syncNowDescription:
-      'Pull cloud changes, push pending local edits, and refresh local sync state.',
-    syncConflictNotice: '{{count}} sync conflicts need attention',
-    viewSyncConflicts: 'View details',
-    clearSyncConflict: 'Remove record',
-    syncConflictCleared: 'Sync conflict record removed',
-    syncConflictDetail: 'Server version v{{version}} · {{time}}',
-    workspaceEntityType: {
-      draft: 'Draft',
-      saved_table: 'Project Table',
-      saved_draft: 'Table Draft',
-      folder: 'Folder',
-    },
-    syncUploadDescription:
-      'Upload this device’s complete global draft, saved tables, and saved drafts to the cloud.',
-    syncDownloadDescription:
-      'Download the complete cloud workspace to this device and overwrite the current local copy.',
-    syncUploadConfirmTitle: 'Upload this workspace to the cloud?',
-    syncUploadConfirmDescription:
-      'This will replace the current cloud workspace with the local workspace from this device.',
-    syncDownloadConfirmTitle: 'Download the cloud workspace?',
-    syncDownloadConfirmDescription:
-      'This will replace the current local workspace on this device with the cloud workspace.',
-    syncUploadSuccess: 'Workspace uploaded to the cloud',
-    syncDownloadSuccess: 'Workspace downloaded from the cloud',
-    syncFailed: 'Workspace sync failed',
+      'Workspace edits are saved locally first and synchronized to the cloud through a live connection.',
+    workspaceSyncDescription:
+      'No manual upload or download is needed. Offline edits resume syncing when the network returns.',
     kind: {
       grant: 'Grant',
       consume: 'Consume',

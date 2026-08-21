@@ -1,13 +1,4 @@
-import {
-  AlertTriangle,
-  ChevronLeft,
-  ChevronRight,
-  CloudUpload,
-  Coins,
-  Download,
-  RefreshCw,
-  User2,
-} from '@/components/icons';
+import { ChevronLeft, ChevronRight, Coins, RefreshCw, User2 } from '@/components/icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
@@ -32,15 +23,8 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/useToast';
 import { useLocale } from '@/i18n/LocaleContext';
-import { syncWorkspaceOnce } from '@/services/workspaceIncrementalSyncService';
-import { exportWorkspaceToCloud, importWorkspaceFromCloud } from '@/services/workspaceSyncService';
 import type { ApiErrorPayload } from '@ddlbuilder/shared-types/api';
-import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
-import {
-  pruneResolvedWorkspaceConflicts,
-  removeWorkspaceConflicts,
-  type LocalWorkspaceConflictItem,
-} from '@/utils/workspaceSyncStateDb';
+import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 
 type CreditLedgerItem = {
   id: string;
@@ -57,7 +41,6 @@ interface UserSettingsDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type WorkspaceSyncAction = 'upload' | 'download';
 type SettingsTab = 'account' | 'workspace' | 'credits';
 const LEDGER_PAGE_SIZE = 20;
 
@@ -96,15 +79,6 @@ const formatLedgerTime = (value: string) => {
     minute: '2-digit',
   }).format(date);
 };
-
-const formatSyncConflictTime = (value: number) =>
-  new Intl.DateTimeFormat(undefined, {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value));
 
 const formatCompactCredits = (value: number | null | undefined, locale: 'zh-CN' | 'en-US') => {
   const amount = Number(value ?? 0);
@@ -171,6 +145,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
   const { t } = useTranslation();
   const { locale } = useLocale();
   const authSession = useAuthSession();
+  const workspaceYDoc = useWorkspaceYDoc();
   const { success, error } = useToast();
   const [name, setName] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -186,13 +161,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
   const [ledgerStartDate, setLedgerStartDate] = useState('');
   const [ledgerEndDate, setLedgerEndDate] = useState('');
   const [rechargeOpen, setRechargeOpen] = useState(false);
-  const [pendingSyncAction, setPendingSyncAction] = useState<WorkspaceSyncAction | null>(null);
-  const [runningSyncAction, setRunningSyncAction] = useState<WorkspaceSyncAction | null>(null);
-  const [runningIncrementalSync, setRunningIncrementalSync] = useState(false);
-  const [workspaceConflictCount, setWorkspaceConflictCount] = useState(0);
-  const [workspaceConflicts, setWorkspaceConflicts] = useState<LocalWorkspaceConflictItem[]>([]);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('account');
-  const [conflictDetailsOpen, setConflictDetailsOpen] = useState(false);
   const compactCreditBalance = formatCompactCredits(authSession.creditBalance, locale);
 
   useEffect(() => {
@@ -309,85 +278,16 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
     }
   };
 
-  const currentScope = useMemo(
-    () =>
-      authSession.status === 'signed_in' && authSession.userId
-        ? {
-            kind: 'user' as const,
-            userId: authSession.userId,
-            ...(authSession.workspaceId ? { workspaceId: authSession.workspaceId } : {}),
-          }
-        : getAnonymousWorkspaceScope(),
-    [authSession.status, authSession.userId, authSession.workspaceId],
-  );
-
-  const refreshWorkspaceConflictCount = useCallback(async () => {
-    if (currentScope.kind !== 'user' || !currentScope.workspaceId) {
-      setWorkspaceConflicts([]);
-      setWorkspaceConflictCount(0);
-      return;
-    }
-    const conflicts = await pruneResolvedWorkspaceConflicts(currentScope.workspaceId);
-    setWorkspaceConflicts(conflicts);
-    setWorkspaceConflictCount(conflicts.length);
-  }, [currentScope]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    void refreshWorkspaceConflictCount();
-  }, [open, refreshWorkspaceConflictCount]);
-
-  const handleRunIncrementalSync = async () => {
-    if (currentScope.kind !== 'user' || !currentScope.workspaceId) {
-      error(t('settings.syncRequiresLogin'));
-      return;
-    }
-
-    try {
-      setRunningIncrementalSync(true);
-      const result = await syncWorkspaceOnce(currentScope);
-      await refreshWorkspaceConflictCount();
-      if (result.status === 'conflict') {
-        error(t('settings.syncConflictNotice', { count: result.conflictCount }));
-        return;
-      }
-      success(t('settings.syncNowSuccess'));
-    } catch (err) {
-      error(err instanceof Error ? err.message : t('settings.syncFailed'));
-    } finally {
-      setRunningIncrementalSync(false);
-    }
-  };
-
-  const handleRemoveWorkspaceConflict = async (id: string) => {
-    await removeWorkspaceConflicts([id]);
-    await refreshWorkspaceConflictCount();
-    success(t('settings.syncConflictCleared'));
-  };
-
-  const handleConfirmWorkspaceSync = async () => {
-    if (!pendingSyncAction) {
-      return;
-    }
-
-    try {
-      setRunningSyncAction(pendingSyncAction);
-      if (pendingSyncAction === 'upload') {
-        await exportWorkspaceToCloud(currentScope);
-        success(t('settings.syncUploadSuccess'));
-      } else {
-        await importWorkspaceFromCloud(currentScope);
-        success(t('settings.syncDownloadSuccess'));
-      }
-      setPendingSyncAction(null);
-    } catch (err) {
-      error(err instanceof Error ? err.message : t('settings.syncFailed'));
-    } finally {
-      setRunningSyncAction(null);
-    }
-  };
+  const workspaceStatusKey =
+    workspaceYDoc.connectionState === 'offline'
+      ? 'offlineLocalSaved'
+      : workspaceYDoc.connectionState === 'error'
+        ? 'syncFailed'
+        : workspaceYDoc.synced
+          ? 'cloudSynced'
+          : workspaceYDoc.connectionState === 'connecting'
+            ? 'syncing'
+            : 'localSaved';
 
   return (
     <>
@@ -423,11 +323,6 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                 <span className="min-w-0 flex-1 truncate text-left">
                   {t('settings.workspaceTab')}
                 </span>
-                {workspaceConflictCount > 0 ? (
-                  <span className="shrink-0 rounded-full bg-primary px-1.5 py-0.5 text-[10px] text-primary-foreground">
-                    {workspaceConflictCount}
-                  </span>
-                ) : null}
               </TabsTrigger>
               <TabsTrigger
                 value="credits"
@@ -507,139 +402,28 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                   <div className="rounded-md border bg-muted/30 px-3 py-2.5 text-sm leading-6 text-muted-foreground">
                     {t('settings.workspaceSyncHint')}
                   </div>
-                  <div
-                    className={`rounded-md border px-3 py-2.5 ${
-                      workspaceConflictCount > 0
-                        ? 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200'
-                        : 'bg-card'
-                    }`}
-                  >
+                  <div className="rounded-md border bg-card px-3 py-2.5">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="text-sm">
                         <div className="flex items-center gap-2 font-medium">
-                          {workspaceConflictCount > 0 ? (
-                            <AlertTriangle className="h-4 w-4" />
-                          ) : (
-                            <RefreshCw className="h-4 w-4" />
-                          )}
-                          {t('settings.syncNow')}
+                          <RefreshCw className="h-4 w-4" />
+                          {t(`workspaceYDoc.status.${workspaceStatusKey}`)}
                         </div>
-                        {workspaceConflictCount > 0 ? (
-                          <div className="mt-1 text-xs">
-                            {t('settings.syncConflictNotice', {
-                              count: workspaceConflictCount,
-                            })}
-                          </div>
-                        ) : (
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            {t('settings.syncNowDescription')}
-                          </div>
-                        )}
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {t('settings.workspaceSyncDescription')}
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        {workspaceConflictCount > 0 ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setConflictDetailsOpen((value) => !value)}
-                          >
-                            {t('settings.viewSyncConflicts')}
-                          </Button>
-                        ) : null}
+                      {workspaceYDoc.connectionState === 'error' ? (
                         <Button
                           type="button"
-                          variant={workspaceConflictCount > 0 ? 'default' : 'outline'}
+                          variant="outline"
                           size="sm"
-                          onClick={handleRunIncrementalSync}
-                          disabled={
-                            runningIncrementalSync ||
-                            runningSyncAction != null ||
-                            authSession.status !== 'signed_in' ||
-                            !authSession.workspaceId
-                          }
+                          onClick={workspaceYDoc.retry}
                         >
-                          {runningIncrementalSync
-                            ? t('settings.syncNowRunning')
-                            : t('settings.syncNow')}
+                          {t('workspaceYDoc.status.retry')}
                         </Button>
-                      </div>
+                      ) : null}
                     </div>
-                    {conflictDetailsOpen && workspaceConflicts.length > 0 ? (
-                      <div className="mt-3 max-h-72 overflow-auto rounded-md border bg-background">
-                        {workspaceConflicts.map((conflict) => (
-                          <div
-                            key={conflict.id}
-                            className="flex gap-3 border-b px-3 py-2.5 text-xs last:border-b-0"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="font-medium text-foreground">
-                                {t(`settings.workspaceEntityType.${conflict.entityType}`)} ·{' '}
-                                {conflict.entityId}
-                              </div>
-                              <div className="mt-1 text-muted-foreground">
-                                {t('settings.syncConflictDetail', {
-                                  version: conflict.serverVersion,
-                                  time: formatSyncConflictTime(conflict.updatedAt),
-                                })}
-                              </div>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => void handleRemoveWorkspaceConflict(conflict.id)}
-                            >
-                              {t('settings.clearSyncConflict')}
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                </section>
-                <section className="grid gap-3 md:grid-cols-2">
-                  <div className="space-y-3 rounded-lg border p-4">
-                    <div>
-                      <h4 className="flex items-center gap-2 text-sm font-semibold">
-                        <CloudUpload className="h-4 w-4" />
-                        {t('settings.syncUpload')}
-                      </h4>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {t('settings.syncUploadDescription')}
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      onClick={() => setPendingSyncAction('upload')}
-                      disabled={runningSyncAction != null || authSession.status !== 'signed_in'}
-                    >
-                      {runningSyncAction === 'upload'
-                        ? t('settings.syncUploading')
-                        : t('settings.syncUpload')}
-                    </Button>
-                  </div>
-                  <div className="space-y-3 rounded-lg border p-4">
-                    <div>
-                      <h4 className="flex items-center gap-2 text-sm font-semibold">
-                        <Download className="h-4 w-4" />
-                        {t('settings.syncDownload')}
-                      </h4>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {t('settings.syncDownloadDescription')}
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setPendingSyncAction('download')}
-                      disabled={runningSyncAction != null || authSession.status !== 'signed_in'}
-                    >
-                      {runningSyncAction === 'download'
-                        ? t('settings.syncDownloading')
-                        : t('settings.syncDownload')}
-                    </Button>
                   </div>
                 </section>
                 {authSession.status !== 'signed_in' ? (
@@ -788,51 +572,6 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogAction>{t('settings.acknowledge')}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      <AlertDialog
-        open={pendingSyncAction != null}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen && runningSyncAction == null) {
-            setPendingSyncAction(null);
-          }
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {pendingSyncAction === 'upload'
-                ? t('settings.syncUploadConfirmTitle')
-                : t('settings.syncDownloadConfirmTitle')}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingSyncAction === 'upload'
-                ? t('settings.syncUploadConfirmDescription')
-                : t('settings.syncDownloadConfirmDescription')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setPendingSyncAction(null)}
-              disabled={runningSyncAction != null}
-            >
-              {t('settings.cancel')}
-            </Button>
-            <AlertDialogAction
-              onClick={(event) => {
-                event.preventDefault();
-                void handleConfirmWorkspaceSync();
-              }}
-            >
-              {runningSyncAction != null
-                ? t('settings.saving')
-                : pendingSyncAction === 'upload'
-                  ? t('settings.syncUpload')
-                  : t('settings.syncDownload')}
-            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

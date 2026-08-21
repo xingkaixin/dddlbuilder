@@ -6,8 +6,6 @@ import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 import { buildShareStateQueryKey } from '@/queryKeys/share';
 import { ShareApiError, getShareState } from '@/services/shareService';
-import { shouldQueueWorkspaceEntityOutbox } from '@/services/workspaceYDocAuthority';
-import { buildWorkspaceContentHash } from '@/services/workspaceIncrementalSyncService';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import {
   deleteDraftFromYDoc,
@@ -44,7 +42,6 @@ import {
   writeDraft,
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
-import { enqueueWorkspaceOutboxItem } from '@/utils/workspaceSyncStateDb';
 import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 import { getWorkspaceBootstrap } from './workspacePersistence/bootstrap';
 import { resetWorkspaceBootstrapCache } from './workspacePersistence/bootstrap';
@@ -212,41 +209,6 @@ export function usePersistedState(): UsePersistedStateReturn {
     return savedTableDraftsRef.current.get(normalizedName) ?? null;
   }, []);
 
-  const enqueueEntityChange = useCallback(
-    (
-      input:
-        | {
-            entityType: 'draft' | 'saved_table' | 'saved_draft' | 'folder';
-            entityId: string;
-            op: 'upsert';
-            payload: unknown;
-          }
-        | {
-            entityType: 'draft' | 'saved_table' | 'saved_draft' | 'folder';
-            entityId: string;
-            op: 'delete';
-          },
-    ) => {
-      const outboxPolicy = { scope: currentScope, yDocReady };
-      if (!shouldQueueWorkspaceEntityOutbox(outboxPolicy)) return;
-      const workspaceId = outboxPolicy.scope.workspaceId;
-      fireAndForget(
-        (async () => {
-          const payload = input.op === 'upsert' ? input.payload : null;
-          await enqueueWorkspaceOutboxItem({
-            workspaceId,
-            entityType: input.entityType,
-            entityId: input.entityId,
-            op: input.op,
-            payload,
-            contentHash: input.op === 'upsert' ? await buildWorkspaceContentHash(payload) : null,
-          });
-        })(),
-      );
-    },
-    [currentScope, yDocReady],
-  );
-
   const runInYDoc = useCallback(
     (mutate: (doc: Y.Doc) => void) => {
       if (!yDocReady || !workspaceYDoc.doc) return;
@@ -277,23 +239,16 @@ export function usePersistedState(): UsePersistedStateReturn {
       draftsRef.current.set(draftId, record);
       const written = writeDraft(draftId, record, currentScope);
       runInYDoc((doc) => upsertDraftInYDoc(doc, draftId, record, { compactSnapshotBase: true }));
-      enqueueEntityChange({
-        entityType: 'draft',
-        entityId: draftId,
-        op: 'upsert',
-        payload: { state: record.state, createdAt: record.createdAt, folderId: record.folderId },
-      });
       return written;
     },
-    [currentScope, enqueueEntityChange, runInYDoc],
+    [currentScope, runInYDoc],
   );
 
   const dropDraftRecord = useCallback(
     (draftId: string) => {
       runInYDoc((doc) => deleteDraftFromYDoc(doc, draftId));
-      enqueueEntityChange({ entityType: 'draft', entityId: draftId, op: 'delete' });
     },
-    [enqueueEntityChange, runInYDoc],
+    [runInYDoc],
   );
 
   const persistSavedDraftRecord = useCallback(
@@ -303,18 +258,8 @@ export function usePersistedState(): UsePersistedStateReturn {
       runInYDoc((doc) =>
         upsertSavedDraftInYDoc(doc, normalizedName, record, { compactSnapshotBase: true }),
       );
-      enqueueEntityChange({
-        entityType: 'saved_draft',
-        entityId: normalizedName,
-        op: 'upsert',
-        payload: {
-          tableName: record.tableName,
-          state: record.state,
-          baseSignature: record.baseSignature,
-        },
-      });
     },
-    [currentScope, enqueueEntityChange, runInYDoc],
+    [currentScope, runInYDoc],
   );
 
   const dropSavedDraftRecord = useCallback(
@@ -322,13 +267,8 @@ export function usePersistedState(): UsePersistedStateReturn {
       savedTableDraftsRef.current.delete(normalizedName);
       fireAndForget(deleteSavedDraft(normalizedName, currentScope));
       runInYDoc((doc) => deleteSavedDraftFromYDoc(doc, normalizedName));
-      enqueueEntityChange({
-        entityType: 'saved_draft',
-        entityId: normalizedName,
-        op: 'delete',
-      });
     },
-    [currentScope, enqueueEntityChange, runInYDoc],
+    [currentScope, runInYDoc],
   );
 
   const saveDraftState = useCallback(
@@ -587,27 +527,8 @@ export function usePersistedState(): UsePersistedStateReturn {
       fireAndForget(
         renameSavedDraftKey(fromNormalizedName, toNormalizedName, nextTableName, currentScope),
       );
-      if (record) {
-        enqueueEntityChange({
-          entityType: 'saved_draft',
-          entityId: toNormalizedName,
-          op: 'upsert',
-          payload: {
-            tableName: nextTableName,
-            state: record.state,
-            baseSignature: record.baseSignature,
-          },
-        });
-        if (keyChanged) {
-          enqueueEntityChange({
-            entityType: 'saved_draft',
-            entityId: fromNormalizedName,
-            op: 'delete',
-          });
-        }
-      }
     },
-    [currentScope, enqueueEntityChange, runInYDoc, shareId],
+    [currentScope, runInYDoc, shareId],
   );
 
   useEffect(() => {

@@ -1,10 +1,5 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type {
-  ApiErrorPayload,
-  WorkspaceSnapshotPushRequest,
-  WorkspaceSnapshotResponse,
-} from '@ddlbuilder/shared-types/api';
-import type {
   SavedTableDraftRecord,
   WorkspaceScope,
   WorkspaceSnapshot,
@@ -16,7 +11,7 @@ import {
   listSavedTables,
   updateSavedTable,
 } from '@/utils/savedTablesDb';
-import { listFolders, clearFolders, bulkPutFolders } from '@/utils/tableFolders';
+import { clearFolders, bulkPutFolders } from '@/utils/tableFolders';
 import {
   DEFAULT_DRAFT_ID,
   clearWorkspaceSession,
@@ -31,15 +26,6 @@ import {
 import { getCurrentWorkspaceScope } from '@/utils/workspaceScope';
 
 export const WORKSPACE_SNAPSHOT_APPLIED_EVENT = 'ddlbuilder:workspace-snapshot-applied';
-
-const toErrorMessage = (payload: ApiErrorPayload | null, fallback: string) =>
-  payload && typeof payload.error === 'string' ? payload.error : fallback;
-
-const readJsonSafely = async <T>(response: Response): Promise<T | null> => {
-  return (await response.json().catch(() => null)) as T | null;
-};
-
-const normalizeState = (value: Record<string, unknown>): PersistedState => value as PersistedState;
 
 const upsertLocalSavedTable = async (input: {
   normalizedName: string;
@@ -80,98 +66,6 @@ const upsertLocalSavedTable = async (input: {
     },
     scope,
   );
-};
-
-export const pullWorkspaceSnapshot = async (): Promise<WorkspaceSnapshot> => {
-  const response = await fetch('/api/workspace/snapshot', {
-    credentials: 'include',
-  });
-
-  const payload = await readJsonSafely<WorkspaceSnapshotResponse | ApiErrorPayload>(response);
-  if (!response.ok) {
-    throw new Error(toErrorMessage(payload as ApiErrorPayload | null, '工作区云端拉取失败'));
-  }
-
-  const snapshot = payload as WorkspaceSnapshotResponse | null;
-  const result = {
-    globalDraft: snapshot?.globalDraft
-      ? {
-          state: normalizeState(snapshot.globalDraft.state),
-          updatedAt: snapshot.globalDraft.updatedAt,
-        }
-      : null,
-    drafts: (snapshot?.drafts ?? []).map((item) => ({
-      draftId: item.draftId,
-      state: normalizeState(item.state),
-      createdAt: item.createdAt ?? item.updatedAt,
-      updatedAt: item.updatedAt,
-      folderId: item.folderId,
-    })),
-    savedTables: (snapshot?.savedTables ?? []).map((item) => ({
-      normalizedName: item.normalizedName,
-      name: item.name,
-      state: normalizeState(item.state),
-      createdAt: item.createdAt ?? item.updatedAt,
-      updatedAt: item.updatedAt,
-      folderId: item.folderId,
-    })),
-    savedDrafts: (snapshot?.savedDrafts ?? []).map((item) => ({
-      normalizedName: item.normalizedName,
-      tableName: item.tableName,
-      state: normalizeState(item.state),
-      updatedAt: item.updatedAt,
-      baseSignature: item.baseSignature,
-    })),
-    folders: snapshot?.folders ?? [],
-  };
-  return result;
-};
-
-export const collectWorkspaceSnapshot = async (
-  overrides?: Partial<WorkspaceSnapshot>,
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
-): Promise<WorkspaceSnapshotPushRequest> => {
-  const [localGlobalDraft, localDrafts, localSavedTables, localSavedDraftMap, localFolders] =
-    await Promise.all([
-      readDraft(DEFAULT_DRAFT_ID, scope),
-      listDrafts(scope),
-      listSavedTables(scope),
-      listSavedDrafts(scope),
-      listFolders(scope),
-    ]);
-
-  const savedDrafts = Object.entries(localSavedDraftMap).map(([normalizedName, item]) => ({
-    normalizedName,
-    tableName: item.tableName,
-    state: item.state,
-    updatedAt: item.updatedAt,
-    baseSignature: item.baseSignature,
-  }));
-
-  return {
-    globalDraft: overrides?.globalDraft ?? localGlobalDraft,
-    drafts: overrides?.drafts ?? localDrafts.map(({ draftId, record }) => ({ draftId, ...record })),
-    savedTables: overrides?.savedTables ?? localSavedTables,
-    savedDrafts: overrides?.savedDrafts ?? savedDrafts,
-    folders: overrides?.folders ?? localFolders,
-  };
-};
-
-export const pushWorkspaceSnapshot = async (snapshot?: WorkspaceSnapshotPushRequest) => {
-  const body = snapshot ?? (await collectWorkspaceSnapshot());
-  const response = await fetch('/api/workspace/snapshot', {
-    method: 'PUT',
-    headers: {
-      'content-type': 'application/json',
-    },
-    credentials: 'include',
-    body: JSON.stringify(body),
-  });
-
-  const payload = await readJsonSafely<ApiErrorPayload>(response);
-  if (!response.ok) {
-    throw new Error(toErrorMessage(payload, '工作区云端同步失败'));
-  }
 };
 
 export const dispatchWorkspaceSnapshotApplied = () => {
@@ -318,21 +212,4 @@ export const applyCloudSnapshotToLocal = async (
   }
 
   dispatchWorkspaceSnapshotApplied();
-};
-
-export const exportWorkspaceToCloud = async (
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
-) => {
-  const snapshot = await collectWorkspaceSnapshot(undefined, scope);
-  await pushWorkspaceSnapshot(snapshot);
-};
-
-export const importWorkspaceFromCloud = async (
-  scope: WorkspaceScope = getCurrentWorkspaceScope(),
-) => {
-  const snapshot = await pullWorkspaceSnapshot();
-  await applyCloudSnapshotToLocal(snapshot, {
-    overwrite: true,
-    scope,
-  });
 };

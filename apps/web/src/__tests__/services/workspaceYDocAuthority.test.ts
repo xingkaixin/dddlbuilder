@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   isWorkspaceWriteTargetPending,
   resolveWorkspaceYDocStartupPlan,
-  shouldQueueWorkspaceEntityOutbox,
 } from '@/services/workspaceYDocAuthority';
 
 describe('workspaceYDocAuthority', () => {
@@ -64,20 +63,6 @@ describe('workspaceYDocAuthority', () => {
         userId: 'user-1',
         localSynced: true,
       }),
-    ).toBe(false);
-  });
-
-  it('queues entity outbox only before the Y.Doc runtime path is active', () => {
-    const scope = {
-      kind: 'user' as const,
-      userId: 'user-1',
-      workspaceId: 'ws-1',
-    };
-
-    expect(shouldQueueWorkspaceEntityOutbox({ scope, yDocReady: false })).toBe(true);
-    expect(shouldQueueWorkspaceEntityOutbox({ scope, yDocReady: true })).toBe(false);
-    expect(
-      shouldQueueWorkspaceEntityOutbox({ scope: { kind: 'anonymous' }, yDocReady: false }),
     ).toBe(false);
   });
 });

@@ -1,8 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   WORKSPACE_SNAPSHOT_APPLIED_EVENT,
-  exportWorkspaceToCloud,
-  importWorkspaceFromCloud,
+  applyCloudSnapshotToLocal,
 } from '@/services/workspaceSyncService';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 import { addSavedTable, listSavedTables } from '@/utils/savedTablesDb';
@@ -16,7 +15,7 @@ import {
   writeDraft,
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
-import { createFolder, listFolders } from '@/utils/tableFolders';
+import { listFolders } from '@/utils/tableFolders';
 
 const createState = (tableName: string) => ({
   schemaName: '',
@@ -46,109 +45,7 @@ describe('workspaceSyncService', () => {
     vi.restoreAllMocks();
   });
 
-  it('上传到云端时应发送当前 scope 的完整工作区快照', async () => {
-    await writeDraft(
-      DEFAULT_DRAFT_ID,
-      {
-        state: createState('local_draft'),
-        updatedAt: 100,
-      },
-      scope,
-    );
-    await writeDraft(
-      'draft-2',
-      {
-        state: createState('draft_2'),
-        updatedAt: 110,
-        folderId: 'folder_1',
-      },
-      scope,
-    );
-    await addSavedTable(
-      {
-        normalizedName: 'users',
-        name: 'Users',
-        state: createState('users'),
-        folderId: 'folder_1',
-        createdAt: 100,
-        updatedAt: 120,
-      },
-      scope,
-    );
-    await upsertSavedDraft(
-      'users',
-      {
-        tableName: 'Users',
-        state: createState('users_draft'),
-        updatedAt: 130,
-        baseSignature: 'base-signature',
-      },
-      scope,
-    );
-    await createFolder('我的文件夹', undefined, scope);
-
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(new Response(JSON.stringify({ ok: true })));
-
-    await exportWorkspaceToCloud(scope);
-
-    expect(fetchSpy).toHaveBeenCalledWith(
-      '/api/workspace/snapshot',
-      expect.objectContaining({
-        method: 'PUT',
-        credentials: 'include',
-      }),
-    );
-
-    const requestInit = fetchSpy.mock.calls[0]?.[1] as RequestInit;
-    expect(JSON.parse(String(requestInit.body))).toMatchObject({
-      globalDraft: {
-        state: {
-          tableName: 'local_draft',
-        },
-        updatedAt: 100,
-      },
-      drafts: [
-        {
-          draftId: 'default',
-          state: {
-            tableName: 'local_draft',
-          },
-          updatedAt: 100,
-        },
-        {
-          draftId: 'draft-2',
-          state: {
-            tableName: 'draft_2',
-          },
-          updatedAt: 110,
-          folderId: 'folder_1',
-        },
-      ],
-      savedTables: [
-        {
-          normalizedName: 'users',
-          name: 'Users',
-          folderId: 'folder_1',
-        },
-      ],
-      savedDrafts: [
-        {
-          normalizedName: 'users',
-          tableName: 'Users',
-          baseSignature: 'base-signature',
-        },
-      ],
-      folders: [
-        {
-          name: '我的文件夹',
-        },
-      ],
-    });
-  });
-
-  it('从云端下载时应强覆盖当前 scope 的本地工作区', async () => {
+  it('应用迁移快照时应强覆盖当前 scope 的本地工作区', async () => {
     await writeDraft(
       DEFAULT_DRAFT_ID,
       {
@@ -189,52 +86,49 @@ describe('workspaceSyncService', () => {
     const eventListener = vi.fn();
     window.addEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, eventListener);
 
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({
-          globalDraft: {
-            state: createState('cloud_draft'),
-            updatedAt: 200,
+    await applyCloudSnapshotToLocal(
+      {
+        globalDraft: {
+          state: createState('cloud_draft'),
+          updatedAt: 200,
+        },
+        drafts: [
+          {
+            draftId: 'cloud-draft',
+            state: createState('cloud_draft_2'),
+            updatedAt: 205,
+            folderId: 'folder_1',
           },
-          drafts: [
-            {
-              draftId: 'cloud-draft',
-              state: createState('cloud_draft_2'),
-              updatedAt: 205,
-              folderId: 'folder_1',
-            },
-          ],
-          savedTables: [
-            {
-              normalizedName: 'users',
-              name: 'Users',
-              state: createState('users'),
-              updatedAt: 210,
-              folderId: 'folder_1',
-            },
-          ],
-          savedDrafts: [
-            {
-              normalizedName: 'users',
-              tableName: 'Users',
-              state: createState('users_draft'),
-              updatedAt: 220,
-              baseSignature: 'cloud-signature',
-            },
-          ],
-          folders: [
-            {
-              id: 'folder_1',
-              name: '云端文件夹',
-              order: 1,
-              createdAt: 230,
-            },
-          ],
-        }),
-      ),
+        ],
+        savedTables: [
+          {
+            normalizedName: 'users',
+            name: 'Users',
+            state: createState('users'),
+            updatedAt: 210,
+            folderId: 'folder_1',
+          },
+        ],
+        savedDrafts: [
+          {
+            normalizedName: 'users',
+            tableName: 'Users',
+            state: createState('users_draft'),
+            updatedAt: 220,
+            baseSignature: 'cloud-signature',
+          },
+        ],
+        folders: [
+          {
+            id: 'folder_1',
+            name: '云端文件夹',
+            order: 1,
+            createdAt: 230,
+          },
+        ],
+      },
+      { overwrite: true, scope },
     );
-
-    await importWorkspaceFromCloud(scope);
 
     const globalDraft = await readDraft(DEFAULT_DRAFT_ID, scope);
     const drafts = await listDrafts(scope);

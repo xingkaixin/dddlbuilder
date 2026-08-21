@@ -3,7 +3,7 @@ import * as Y from 'yjs';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 import { setupMemoryLocalStorage } from '@/__tests__/utils/memoryLocalStorage';
-import { clearLocalWorkspaceData } from '@/services/workspaceIncrementalSyncService';
+import { clearLocalWorkspaceData } from '@/services/workspaceAccountService';
 import {
   beginLegacyWorkspaceMigration,
   completeLegacyWorkspaceMigration,
@@ -29,7 +29,6 @@ import {
   writeDraft,
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
-import { listWorkspaceOutboxItems } from '@/utils/workspaceSyncStateDb';
 
 const scope = {
   kind: 'user' as const,
@@ -106,7 +105,7 @@ describe('workspaceMigrationService legacy promotion', () => {
     teardownFakeIndexedDB();
   });
 
-  it('应将旧 user scope 工作区数据写入默认 workspace scope 且不入队 outbox', async () => {
+  it('应将旧 user scope 工作区数据写入默认 workspace scope', async () => {
     await seedLegacyWorkspace();
     await writeWorkspaceSession(
       {
@@ -129,7 +128,6 @@ describe('workspaceMigrationService legacy promotion', () => {
     expect(await readWorkspaceSession(scope)).toMatchObject({
       activeSource: { kind: 'draft', draftId: 'draft-legacy' },
     });
-    expect(await listWorkspaceOutboxItems('ws-1')).toEqual([]);
   });
 
   it('上次提升中途失败后重跑应补齐剩余数据', async () => {
@@ -151,7 +149,7 @@ describe('workspaceMigrationService legacy promotion', () => {
 
   it('目标分区里更新的记录不应被 legacy 覆盖', async () => {
     await seedLegacyWorkspace();
-    // 模拟提升期间云端拉取先把更新的同名表写进了目标分区。
+    // 模拟提升期间目标分区已存在更新的同名表。
     await addSavedTable(
       {
         normalizedName: 'legacy_table',
@@ -207,7 +205,6 @@ describe('workspaceMigrationService legacy promotion', () => {
     ]);
     expect(merged.savedDrafts[0]?.state.tableName).toBe('legacy_draft_for_table');
     expect(merged.folders).toEqual([expect.objectContaining({ id: 'folder-1', name: 'Folder' })]);
-    expect(await listWorkspaceOutboxItems('ws-1')).toEqual([]);
 
     doc.destroy();
   });

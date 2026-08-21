@@ -4,7 +4,6 @@ import { useSavedTables } from '@/hooks/useSavedTables';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '../utils/fakeIndexedDb';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { flushPromises } from '@/__tests__/utils/test-utils';
-import { listWorkspaceOutboxItems } from '@/utils/workspaceSyncStateDb';
 import { addSavedTable, moveSavedTableToTrash } from '@/utils/savedTablesDb';
 
 const mockUseAuthSession = vi.hoisted(() =>
@@ -199,7 +198,6 @@ describe('useSavedTables', () => {
       doc,
       expect.objectContaining({ normalizedName: 'pending' }),
     );
-    expect(await listWorkspaceOutboxItems('workspace_1')).toHaveLength(0);
   });
 
   // 分享页在本地 Y.Doc 加载完成前仍然放行「另存为副本」，那次写入只落本地分区；

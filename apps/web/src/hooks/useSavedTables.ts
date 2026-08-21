@@ -3,10 +3,8 @@ import type * as Y from 'yjs';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
-import { buildWorkspaceContentHash } from '@/services/workspaceIncrementalSyncService';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import { invalidateLegacyWorkspaceMigration } from '@/services/workspaceLegacyMigrationMarker';
-import { shouldQueueWorkspaceEntityOutbox } from '@/services/workspaceYDocAuthority';
 import {
   deleteSavedTableFromYDoc,
   getSavedTableFromYDoc,
@@ -29,10 +27,6 @@ import {
   type SavedTableMetadata,
   type SavedTableRecord,
 } from '@/utils/savedTablesDb';
-import {
-  enqueueWorkspaceOutboxItem,
-  enqueueWorkspaceOutboxItems,
-} from '@/utils/workspaceSyncStateDb';
 import { getAnonymousWorkspaceScope, setCurrentWorkspaceScope } from '@/utils/workspaceScope';
 
 export type SavedTableSummary = SavedTableMetadata;
@@ -97,58 +91,6 @@ export function useSavedTables() {
       }
     },
     [currentScope, workspaceYDoc.doc, yDocReady],
-  );
-
-  const queueSavedTableChange = useCallback(
-    async (record: SavedTableRecord, op: 'upsert' | 'delete' = 'upsert') => {
-      const outboxPolicy = { scope: currentScope, yDocReady };
-      if (!shouldQueueWorkspaceEntityOutbox(outboxPolicy)) return;
-      const payload =
-        op === 'upsert'
-          ? {
-              name: record.name,
-              state: record.state,
-              createdAt: record.createdAt,
-              folderId: record.folderId,
-            }
-          : null;
-      await enqueueWorkspaceOutboxItem({
-        workspaceId: outboxPolicy.scope.workspaceId,
-        entityType: 'saved_table',
-        entityId: record.normalizedName,
-        op,
-        payload,
-        contentHash: op === 'upsert' ? await buildWorkspaceContentHash(payload) : null,
-      });
-    },
-    [currentScope, yDocReady],
-  );
-
-  const queueSavedTableChanges = useCallback(
-    async (records: SavedTableRecord[]) => {
-      const outboxPolicy = { scope: currentScope, yDocReady };
-      if (!shouldQueueWorkspaceEntityOutbox(outboxPolicy)) return;
-      const inputs = await Promise.all(
-        records.map(async (record) => {
-          const payload = {
-            name: record.name,
-            state: record.state,
-            createdAt: record.createdAt,
-            folderId: record.folderId,
-          };
-          return {
-            workspaceId: outboxPolicy.scope.workspaceId,
-            entityType: 'saved_table' as const,
-            entityId: record.normalizedName,
-            op: 'upsert' as const,
-            payload,
-            contentHash: await buildWorkspaceContentHash(payload),
-          };
-        }),
-      );
-      await enqueueWorkspaceOutboxItems(inputs);
-    },
-    [currentScope, yDocReady],
   );
 
   const refresh = useCallback(
@@ -250,13 +192,6 @@ export function useSavedTables() {
             updatedAt: now,
           });
         }
-        await queueSavedTableChange({
-          normalizedName,
-          name: displayName,
-          state,
-          createdAt: existing?.createdAt ?? now,
-          updatedAt: now,
-        });
         runInYDoc((doc) =>
           upsertSavedTableInYDoc(doc, {
             normalizedName,
@@ -276,7 +211,7 @@ export function useSavedTables() {
         };
       }
     },
-    [queueSavedTableChange, refresh, runInYDoc, workspaceYDoc.doc, yDocReady],
+    [refresh, runInYDoc, workspaceYDoc.doc, yDocReady],
   );
 
   const overwriteTable = useCallback(
@@ -295,7 +230,6 @@ export function useSavedTables() {
           updatedAt: Date.now(),
         };
         await updateSavedTable(updatedRecord);
-        await queueSavedTableChange(updatedRecord);
         runInYDoc((doc) => upsertSavedTableInYDoc(doc, updatedRecord));
         await refresh();
         return { ok: true, normalizedName };
@@ -307,18 +241,14 @@ export function useSavedTables() {
         };
       }
     },
-    [queueSavedTableChange, refresh, runInYDoc, workspaceYDoc.doc, yDocReady],
+    [refresh, runInYDoc, workspaceYDoc.doc, yDocReady],
   );
 
   const deleteTable = useCallback(
     async (normalizedName: string): Promise<SaveTableResult> => {
       try {
-        const record = await getSavedTable(normalizedName);
         await moveSavedTableToTrash(normalizedName);
         runInYDoc((doc) => deleteSavedTableFromYDoc(doc, normalizedName));
-        if (record) {
-          await queueSavedTableChange(record, 'delete');
-        }
         await refresh();
         return { ok: true, normalizedName };
       } catch (err) {
@@ -329,7 +259,7 @@ export function useSavedTables() {
         };
       }
     },
-    [queueSavedTableChange, refresh, runInYDoc],
+    [refresh, runInYDoc],
   );
 
   const restoreTable = useCallback(
@@ -381,10 +311,8 @@ export function useSavedTables() {
           await updateSavedTable(restoredRecord);
         }
 
-        await queueSavedTableChange(restoredRecord);
         runInYDoc((doc) => upsertSavedTableInYDoc(doc, restoredRecord));
         if (targetNormalizedName !== normalizedName) {
-          await queueSavedTableChange(record, 'delete');
           runInYDoc((doc) => deleteSavedTableFromYDoc(doc, normalizedName));
         }
         await refresh();
@@ -397,21 +325,14 @@ export function useSavedTables() {
         };
       }
     },
-    [queueSavedTableChange, refresh, runInYDoc, savedTables],
+    [refresh, runInYDoc, savedTables],
   );
 
   const deleteTablePermanently = useCallback(
     async (normalizedName: string): Promise<SaveTableResult> => {
       try {
-        const record =
-          yDocReady && workspaceYDoc.doc
-            ? getSavedTableFromYDoc(workspaceYDoc.doc, normalizedName)
-            : await getSavedTable(normalizedName);
         await deleteSavedTable(normalizedName);
         runInYDoc((doc) => deleteSavedTableFromYDoc(doc, normalizedName));
-        if (record) {
-          await queueSavedTableChange(record, 'delete');
-        }
         await refresh();
         return { ok: true, normalizedName };
       } catch (err) {
@@ -422,7 +343,7 @@ export function useSavedTables() {
         };
       }
     },
-    [queueSavedTableChange, refresh, runInYDoc, workspaceYDoc.doc, yDocReady],
+    [refresh, runInYDoc],
   );
 
   const renameTable = useCallback(
@@ -456,16 +377,12 @@ export function useSavedTables() {
           await addSavedTable(updatedRecord);
           await deleteSavedTable(normalizedName);
         }
-        await queueSavedTableChange(updatedRecord);
         runInYDoc((doc) => {
           upsertSavedTableInYDoc(doc, updatedRecord);
           if (nextNormalizedName !== normalizedName) {
             deleteSavedTableFromYDoc(doc, normalizedName);
           }
         });
-        if (nextNormalizedName !== normalizedName) {
-          await queueSavedTableChange(record, 'delete');
-        }
         await refresh();
         return { ok: true, normalizedName: nextNormalizedName };
       } catch (err) {
@@ -476,7 +393,7 @@ export function useSavedTables() {
         };
       }
     },
-    [queueSavedTableChange, refresh, runInYDoc, workspaceYDoc.doc, yDocReady],
+    [refresh, runInYDoc, workspaceYDoc.doc, yDocReady],
   );
 
   const loadTable = useCallback(
@@ -506,7 +423,6 @@ export function useSavedTables() {
           updatedAt: Date.now(),
         };
         await updateSavedTable(updatedRecord);
-        await queueSavedTableChange(updatedRecord);
         runInYDoc((doc) => upsertSavedTableInYDoc(doc, updatedRecord));
         await refresh();
         return { ok: true, normalizedName };
@@ -518,7 +434,7 @@ export function useSavedTables() {
         };
       }
     },
-    [queueSavedTableChange, refresh, runInYDoc, workspaceYDoc.doc, yDocReady],
+    [refresh, runInYDoc, workspaceYDoc.doc, yDocReady],
   );
 
   // 清理指定文件夹ID关联的表（将它们移回未分组）
@@ -545,7 +461,6 @@ export function useSavedTables() {
         )
       ).filter((record): record is SavedTableRecord => record != null);
       await updateSavedTables(updatedRecords);
-      await queueSavedTableChanges(updatedRecords);
       runInYDoc((doc) => {
         for (const record of updatedRecords) {
           upsertSavedTableInYDoc(doc, record);
@@ -553,7 +468,7 @@ export function useSavedTables() {
       });
       await refresh();
     },
-    [queueSavedTableChanges, refresh, runInYDoc, savedTables, workspaceYDoc.doc, yDocReady],
+    [refresh, runInYDoc, savedTables, workspaceYDoc.doc, yDocReady],
   );
 
   return {

@@ -17,7 +17,6 @@ import {
   writeDraft,
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
-import { listWorkspaceOutboxItems } from '@/utils/workspaceSyncStateDb';
 import { addSavedTable } from '@/utils/savedTablesDb';
 import { getAnonymousWorkspaceScope, setCurrentWorkspaceScope } from '@/utils/workspaceScope';
 import { getDraftRecordFromYDoc, upsertDraftInYDoc } from '@/services/workspaceYDocAdapter';
@@ -457,7 +456,6 @@ describe('usePersistedState', () => {
     await waitFor(() => {
       expect(getDraftRecordFromYDoc(doc, 'default')?.state.tableName).toBe('pending_remote_draft');
     });
-    expect(await listWorkspaceOutboxItems('ws-1')).toHaveLength(0);
   });
 
   it('本地 YDoc 保存回声应保留当前编辑态入口', async () => {

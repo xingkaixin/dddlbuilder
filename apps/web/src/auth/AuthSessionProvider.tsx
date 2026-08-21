@@ -15,11 +15,9 @@ import i18n from '@/i18n';
 import {
   clearLocalWorkspaceData,
   resolveDefaultWorkspaceScope,
-  syncWorkspaceOnce,
-} from '@/services/workspaceIncrementalSyncService';
+} from '@/services/workspaceAccountService';
 import { getBetterAuthClient, isBetterAuthConfigured } from './betterAuthClient';
 import { getAnonymousWorkspaceScope, setCurrentWorkspaceScope } from '@/utils/workspaceScope';
-import { WORKSPACE_OUTBOX_ENQUEUED_EVENT } from '@/utils/workspaceSyncStateDb';
 
 export type UserSessionState = {
   status: 'loading' | 'signed_out' | 'signed_in';
@@ -41,35 +39,7 @@ type SignUpInput = {
   turnstileToken: string;
 };
 
-type WorkspaceSyncQueue = {
-  running: Promise<void> | null;
-  next: WorkspaceScope | null;
-};
-
 const verifyEmailCallbackURL = () => `${window.location.origin}/?auth_action=verify-email`;
-
-const runQueuedWorkspaceSync = (queue: WorkspaceSyncQueue, scope: WorkspaceScope) => {
-  queue.next = scope;
-  if (queue.running) {
-    return queue.running;
-  }
-
-  const task = (async () => {
-    while (queue.next) {
-      const nextScope = queue.next;
-      queue.next = null;
-      await syncWorkspaceOnce(nextScope);
-    }
-  })().finally(() => {
-    queue.running = null;
-    if (queue.next) {
-      void runQueuedWorkspaceSync(queue, queue.next);
-    }
-  });
-
-  queue.running = task;
-  return task;
-};
 
 type AuthSessionContextValue = UserSessionState & {
   signInWithEmail: (email: string, password: string) => Promise<void>;
@@ -191,10 +161,6 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     authDialogOpen: false,
   });
   const syncPromiseRef = useRef<Promise<void> | null>(null);
-  const workspaceSyncQueueRef = useRef<WorkspaceSyncQueue>({
-    running: null,
-    next: null,
-  });
 
   const syncSessionState = useCallback(async () => {
     if (!configured) {
@@ -267,9 +233,6 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     setCurrentWorkspaceScope(workspaceScope);
     if (workspaceId) {
       setState((prev) => ({ ...prev, workspaceId }));
-      void runQueuedWorkspaceSync(workspaceSyncQueueRef.current, workspaceScope).catch((error) => {
-        console.error('[auth] failed to sync workspace', error);
-      });
     }
     await creditBalancePromise;
   }, [configured]);
@@ -444,15 +407,6 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
                 workspaceId: state.workspaceId,
               }
             : null;
-        if (scope) {
-          try {
-            await runQueuedWorkspaceSync(workspaceSyncQueueRef.current, scope);
-          } catch (error) {
-            console.error('[auth] failed to flush workspace before sign out', error);
-            throw new Error('工作区同步失败，已取消退出登录');
-          }
-        }
-
         const result = await client.signOut();
         if (result.error) {
           throw new Error(
@@ -506,57 +460,6 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       toast.error(i18n.t('header.auth.verifyEmailFailed'));
     }
   }, []);
-
-  useEffect(() => {
-    if (state.status !== 'signed_in' || !state.userId || !state.workspaceId) {
-      return;
-    }
-
-    const scope = {
-      kind: 'user' as const,
-      userId: state.userId,
-      workspaceId: state.workspaceId,
-    };
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const run = () => {
-      if (timer) {
-        clearTimeout(timer);
-      }
-      timer = setTimeout(() => {
-        void runQueuedWorkspaceSync(workspaceSyncQueueRef.current, scope).catch((error) => {
-          console.error('[auth] background workspace sync failed', error);
-        });
-      }, 1000);
-    };
-    const runImmediately = () => {
-      if (timer) {
-        clearTimeout(timer);
-        timer = null;
-      }
-      void runQueuedWorkspaceSync(workspaceSyncQueueRef.current, scope).catch((error) => {
-        console.error('[auth] background workspace sync failed', error);
-      });
-    };
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden' || document.visibilityState === 'visible') {
-        runImmediately();
-      }
-    };
-
-    window.addEventListener(WORKSPACE_OUTBOX_ENQUEUED_EVENT, run);
-    window.addEventListener('online', runImmediately);
-    window.addEventListener('focus', runImmediately);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      if (timer) {
-        clearTimeout(timer);
-      }
-      window.removeEventListener(WORKSPACE_OUTBOX_ENQUEUED_EVENT, run);
-      window.removeEventListener('online', runImmediately);
-      window.removeEventListener('focus', runImmediately);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [state.status, state.userId, state.workspaceId]);
 
   return <AuthSessionContext.Provider value={value}>{children}</AuthSessionContext.Provider>;
 }
