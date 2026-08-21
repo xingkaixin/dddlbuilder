@@ -383,11 +383,13 @@ describe('savedTablesDb', () => {
     const p1 = listSavedTables();
     await flushMicrotasks();
     mockRequest.onsuccess();
+    mockTx.oncomplete();
     expect(await p1).toEqual([]);
 
     const p2 = listSavedTableMetadata();
     await flushMicrotasks();
     mockRequest.onsuccess();
+    mockTx.oncomplete();
     expect(await p2).toEqual([]);
   });
 });

@@ -6,6 +6,7 @@ import {
   WORKSPACE_SYNC_META_STORE_NAME,
   WORKSPACE_SYNC_OUTBOX_STORE_NAME,
 } from './savedTablesDb';
+import { runIndexedDbRequest } from './indexedDbTransaction';
 
 export const WORKSPACE_OUTBOX_ENQUEUED_EVENT = 'ddlbuilder:workspace-outbox-enqueued';
 
@@ -78,19 +79,7 @@ const runWithStore = async <T>(
   runner: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> => {
   const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, mode);
-    const store = tx.objectStore(storeName);
-    const request = runner(store);
-
-    request.onsuccess = () => resolve(request.result as T);
-    request.onerror = () => reject(request.error ?? new Error('IndexedDB 请求失败'));
-    tx.onerror = () => reject(tx.error ?? new Error('事务失败'));
-    tx.onabort = () => reject(tx.error ?? new Error('事务被中止'));
-    tx.oncomplete = () => {
-      db.close();
-    };
-  });
+  return runIndexedDbRequest(db, storeName, mode, runner);
 };
 
 export const readWorkspaceSyncMeta = async (

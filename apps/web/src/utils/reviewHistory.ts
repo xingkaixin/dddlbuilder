@@ -1,5 +1,6 @@
 import type { ReviewResult } from '@/hooks/useDDLReview';
 import { openDb, REVIEW_STORE_NAME } from './savedTablesDb';
+import { runIndexedDbRequest } from './indexedDbTransaction';
 
 /**
  * 评审记录类型
@@ -45,16 +46,7 @@ async function runWithStore<T>(
   runner: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> {
   const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(REVIEW_STORE_NAME, mode);
-    const store = tx.objectStore(REVIEW_STORE_NAME);
-    const request = runner(store);
-
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error('IndexedDB 请求失败'));
-    tx.onerror = () => reject(tx.error ?? new Error('事务失败'));
-    tx.onabort = () => reject(tx.error ?? new Error('事务被中止'));
-  });
+  return runIndexedDbRequest(db, REVIEW_STORE_NAME, mode, runner);
 }
 
 /**
@@ -90,25 +82,16 @@ export async function saveReview(
  */
 export async function listReviews(tableNormalizedName?: string): Promise<ReviewRecord[]> {
   const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(REVIEW_STORE_NAME, 'readonly');
-    const store = tx.objectStore(REVIEW_STORE_NAME);
-
-    let request: IDBRequest<ReviewRecord[]>;
-    if (tableNormalizedName) {
-      const index = store.index('tableNormalizedName');
-      request = index.getAll(tableNormalizedName);
-    } else {
-      request = store.getAll();
-    }
-
-    request.onsuccess = () => {
-      const records = request.result || [];
-      records.sort((a, b) => b.createdAt - a.createdAt);
-      resolve(records);
-    };
-    request.onerror = () => reject(request.error);
-  });
+  const records = await runIndexedDbRequest<ReviewRecord[]>(
+    db,
+    REVIEW_STORE_NAME,
+    'readonly',
+    (store) =>
+      tableNormalizedName
+        ? store.index('tableNormalizedName').getAll(tableNormalizedName)
+        : store.getAll(),
+  );
+  return (records ?? []).sort((a, b) => b.createdAt - a.createdAt);
 }
 
 /**
@@ -180,19 +163,9 @@ export async function pruneOldReviews(
  */
 export async function countReviews(tableNormalizedName?: string): Promise<number> {
   const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(REVIEW_STORE_NAME, 'readonly');
-    const store = tx.objectStore(REVIEW_STORE_NAME);
-
-    let request: IDBRequest<number>;
-    if (tableNormalizedName) {
-      const index = store.index('tableNormalizedName');
-      request = index.count(tableNormalizedName);
-    } else {
-      request = store.count();
-    }
-
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
+  return runIndexedDbRequest(db, REVIEW_STORE_NAME, 'readonly', (store) =>
+    tableNormalizedName
+      ? store.index('tableNormalizedName').count(tableNormalizedName)
+      : store.count(),
+  );
 }

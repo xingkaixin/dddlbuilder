@@ -6,6 +6,7 @@ import {
   getCurrentWorkspaceScope,
   getWorkspaceScopeStorageKey,
 } from './workspaceScope';
+import { runIndexedDbRequest } from './indexedDbTransaction';
 
 const LEGACY_SCOPE = getWorkspaceScopeStorageKey(getAnonymousWorkspaceScope());
 
@@ -60,26 +61,7 @@ async function runWithFolderStore<T>(
   runner: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> {
   const db = await openDb();
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    const finish = (fn: (value: T) => void) => (value: T) => {
-      if (settled) return;
-      settled = true;
-      fn(value);
-    };
-
-    const tx = db.transaction(FOLDER_STORE_NAME, mode);
-    const store = tx.objectStore(FOLDER_STORE_NAME);
-    const request = runner(store);
-
-    request.onsuccess = () => finish(resolve)(request.result as T);
-    request.onerror = () => reject(request.error ?? new Error('IndexedDB 请求失败'));
-    tx.onerror = () => reject(tx.error ?? new Error('事务失败'));
-    tx.onabort = () => reject(tx.error ?? new Error('事务被中止'));
-    tx.oncomplete = () => {
-      db.close();
-    };
-  });
+  return runIndexedDbRequest(db, FOLDER_STORE_NAME, mode, runner);
 }
 
 /**

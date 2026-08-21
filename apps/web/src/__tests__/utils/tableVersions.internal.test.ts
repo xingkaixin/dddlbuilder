@@ -87,12 +87,12 @@ import { getVersion, listVersionMetadata, listVersions } from '@/utils/tableVers
 describe('tableVersions internal branches', () => {
   it('should fallback to default request error when request.error is null', async () => {
     mocks.behavior = 'get_request_error_null';
-    await expect(getVersion('v1')).rejects.toThrow('请求失败');
+    await expect(getVersion('v1')).rejects.toThrow('IndexedDB 请求失败');
   });
 
   it('should fallback to default tx error when tx.error is null', async () => {
     mocks.behavior = 'get_tx_error_null';
-    await expect(getVersion('v1')).rejects.toThrow('事务失败');
+    await expect(getVersion('v1')).rejects.toThrow('IndexedDB 事务失败');
   });
 
   it('should fallback listVersions result to empty array', async () => {

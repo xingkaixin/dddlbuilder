@@ -2,6 +2,7 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { TableVersion, TableVersionMetadata } from './savedTablesDb';
 import { openDb, VERSION_STORE_NAME } from './savedTablesDb';
 import { normalizePersistedRows } from './helpers';
+import { runIndexedDbRequest } from './indexedDbTransaction';
 
 const decodeVersion = (version: TableVersion): TableVersion => ({
   ...version,
@@ -27,16 +28,7 @@ async function runWithStore<T>(
   runner: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> {
   const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(VERSION_STORE_NAME, mode);
-    const store = tx.objectStore(VERSION_STORE_NAME);
-    const request = runner(store);
-
-    request.onsuccess = () => resolve(request.result as T);
-    request.onerror = () => reject(request.error ?? new Error('请求失败'));
-    tx.onerror = () => reject(tx.error ?? new Error('事务失败'));
-    tx.oncomplete = () => db.close();
-  });
+  return runIndexedDbRequest(db, VERSION_STORE_NAME, mode, runner);
 }
 
 /**
@@ -68,21 +60,13 @@ export async function createVersion(
  */
 export async function listVersions(tableNormalizedName: string): Promise<TableVersion[]> {
   const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(VERSION_STORE_NAME, 'readonly');
-    const store = tx.objectStore(VERSION_STORE_NAME);
-    const index = store.index('tableNormalizedName');
-    const request = index.getAll(tableNormalizedName);
-
-    request.onsuccess = () => {
-      const versions = (request.result as TableVersion[]) || [];
-      // 按创建时间倒序
-      versions.sort((a, b) => b.createdAt - a.createdAt);
-      resolve(versions.map(decodeVersion));
-    };
-    request.onerror = () => reject(request.error);
-    tx.oncomplete = () => db.close();
-  });
+  const versions = await runIndexedDbRequest<TableVersion[]>(
+    db,
+    VERSION_STORE_NAME,
+    'readonly',
+    (store) => store.index('tableNormalizedName').getAll(tableNormalizedName),
+  );
+  return (versions ?? []).sort((a, b) => b.createdAt - a.createdAt).map(decodeVersion);
 }
 
 /**
@@ -178,14 +162,7 @@ export async function pruneOldVersions(
  */
 export async function countVersions(tableNormalizedName: string): Promise<number> {
   const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(VERSION_STORE_NAME, 'readonly');
-    const store = tx.objectStore(VERSION_STORE_NAME);
-    const index = store.index('tableNormalizedName');
-    const request = index.count(tableNormalizedName);
-
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-    tx.oncomplete = () => db.close();
-  });
+  return runIndexedDbRequest(db, VERSION_STORE_NAME, 'readonly', (store) =>
+    store.index('tableNormalizedName').count(tableNormalizedName),
+  );
 }

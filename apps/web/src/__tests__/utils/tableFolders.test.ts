@@ -215,6 +215,7 @@ describe('tableFolders', () => {
     const p1 = listFolders();
     await Promise.resolve();
     mockRequest.onsuccess();
+    mockTx.oncomplete();
     expect(await p1).toEqual([]);
 
     vi.restoreAllMocks();

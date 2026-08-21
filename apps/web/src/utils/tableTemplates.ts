@@ -7,6 +7,7 @@ import {
   type TableBlueprint,
   type TableTemplate,
 } from './savedTablesDb';
+import { runIndexedDbRequest } from './indexedDbTransaction';
 
 export type { TableBlueprint, TableTemplate };
 
@@ -29,32 +30,7 @@ const runWithTableTemplateStore = async <T>(
   runner: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> => {
   const db = await openDb();
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    const finish =
-      (fn: (value: T) => void) =>
-      (value: T): void => {
-        if (settled) return;
-        settled = true;
-        db.close();
-        fn(value);
-      };
-
-    try {
-      const tx = db.transaction(TABLE_TEMPLATE_STORE_NAME, mode);
-      const store = tx.objectStore(TABLE_TEMPLATE_STORE_NAME);
-      const request = runner(store);
-      request.onsuccess = () => finish(resolve)(request.result);
-      request.onerror = () => finish(reject)(request.error as unknown as T);
-      tx.onerror = () => finish(reject)(tx.error as unknown as T);
-    } catch (err) {
-      if (!settled) {
-        settled = true;
-        db.close();
-        reject(err);
-      }
-    }
-  });
+  return runIndexedDbRequest(db, TABLE_TEMPLATE_STORE_NAME, mode, runner);
 };
 
 export const createBlueprintFromState = (state: PersistedState): TableBlueprint => ({

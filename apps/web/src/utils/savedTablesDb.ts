@@ -17,6 +17,7 @@ import {
   getWorkspaceScopeStorageKey,
 } from './workspaceScope';
 import { normalizePersistedRows } from './helpers';
+import { runIndexedDbRequest } from './indexedDbTransaction';
 
 export const DEFAULT_SAVED_TABLE_NAME = '未命名表';
 
@@ -347,26 +348,7 @@ const runWithStore = async <T>(
   runner: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> => {
   const db = await openDb();
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    const finish = (fn: (value: T) => void) => (value: T) => {
-      if (settled) return;
-      settled = true;
-      fn(value);
-    };
-
-    const tx = db.transaction(STORE_NAME, mode);
-    const store = tx.objectStore(STORE_NAME);
-    const request = runner(store);
-
-    request.onsuccess = () => finish(resolve)(request.result as T);
-    request.onerror = () => reject(request.error ?? new Error('IndexedDB 请求失败'));
-    tx.onerror = () => reject(tx.error ?? new Error('事务失败'));
-    tx.onabort = () => reject(tx.error ?? new Error('事务被中止'));
-    tx.oncomplete = () => {
-      db.close();
-    };
-  });
+  return runIndexedDbRequest(db, STORE_NAME, mode, runner);
 };
 
 export const normalizeSavedTableName = (name: string): string => name.trim().toLowerCase();

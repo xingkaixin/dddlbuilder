@@ -20,6 +20,7 @@ import {
   getWorkspaceScopeStorageKey,
 } from './workspaceScope';
 import { normalizePersistedRows } from './helpers';
+import { runIndexedDbRequest } from './indexedDbTransaction';
 
 export const DEFAULT_DRAFT_ID = 'default';
 const WORKSPACE_SESSION_ROW_ID = 'active';
@@ -175,19 +176,7 @@ const runWithStore = async <T>(
   runner: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> => {
   const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, mode);
-    const store = tx.objectStore(storeName);
-    const request = runner(store);
-
-    request.onsuccess = () => resolve(request.result as T);
-    request.onerror = () => reject(request.error ?? new Error('IndexedDB 请求失败'));
-    tx.onerror = () => reject(tx.error ?? new Error('事务失败'));
-    tx.onabort = () => reject(tx.error ?? new Error('事务被中止'));
-    tx.oncomplete = () => {
-      db.close();
-    };
-  });
+  return runIndexedDbRequest(db, storeName, mode, runner);
 };
 
 export const readDraft = async (
@@ -365,16 +354,7 @@ export const readWorkspaceBootstrap = async (
   const readStore = <T>(
     storeName: BootstrapReadableStoreName,
     runner: (store: IDBObjectStore) => IDBRequest<T>,
-  ): Promise<T> =>
-    new Promise((resolve, reject) => {
-      const tx = db.transaction(storeName, 'readonly');
-      const request = runner(tx.objectStore(storeName));
-
-      request.onsuccess = () => resolve(request.result as T);
-      request.onerror = () => reject(request.error ?? new Error('IndexedDB 请求失败'));
-      tx.onerror = () => reject(tx.error ?? new Error('事务失败'));
-      tx.onabort = () => reject(tx.error ?? new Error('事务被中止'));
-    });
+  ): Promise<T> => runIndexedDbRequest(db, storeName, 'readonly', runner, { closeDatabase: false });
 
   try {
     const [draftEntities, sessionEntity] = await Promise.all([
