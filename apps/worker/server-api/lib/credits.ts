@@ -47,8 +47,6 @@ type CreditMutationInput = {
   ledgerId?: string;
 };
 
-const MAX_RETRIES = 3;
-
 const toLedgerRow = (row: Record<string, unknown>): CreditLedgerRow => ({
   id: String(row.id),
   userId: String(row.userId),
@@ -200,17 +198,6 @@ export const countCreditLedger = async (
   return Number(row?.total ?? 0);
 };
 
-const computeNextBalance = (currentBalance: number, input: CreditMutationInput) => {
-  if (input.kind === 'consume') {
-    if (currentBalance < input.amount) {
-      throw new Error('CREDIT_EXHAUSTED');
-    }
-    return currentBalance - input.amount;
-  }
-
-  return currentBalance + input.amount;
-};
-
 const validateExistingLedger = (existing: CreditLedgerRow, input: CreditMutationInput) => {
   if (
     existing.userId !== input.userId ||
@@ -224,8 +211,14 @@ const validateExistingLedger = (existing: CreditLedgerRow, input: CreditMutation
   return existing;
 };
 
-const isRetryableCreditConflict = (error: unknown) =>
-  error instanceof Error && error.message.includes('CREDIT_CONFLICT');
+const LEDGER_ABORT_CODES = ['CREDIT_ACCOUNT_MISSING', 'CREDIT_EXHAUSTED'] as const;
+
+// 余额不变量由触发器执法（ADR-0001）；TS 只负责把 ABORT 消息还原成领域错误。
+const mapLedgerAbort = (error: unknown): Error => {
+  const message = error instanceof Error ? error.message : String(error);
+  const code = LEDGER_ABORT_CODES.find((abortCode) => message.includes(abortCode));
+  return new Error(code ?? message);
+};
 
 export const applyCreditMutation = async (
   env: ApiEnv['Bindings'],
@@ -242,72 +235,60 @@ export const applyCreditMutation = async (
 
   await ensureCreditAccount(env, input.userId);
 
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
-    const account = await getCreditAccount(env, input.userId);
-    if (!account) {
+  const ledgerId = input.ledgerId ?? `${input.kind}:${input.idempotencyKey}`;
+  try {
+    // 余额读取与插入必须在同一条语句里：语句内快照一致，触发器的余额校验不会因并发读到过期值而误报
+    const inserted = await env.USER_DB.prepare(
+      `
+        INSERT INTO credit_ledger (
+          id,
+          user_id,
+          kind,
+          source,
+          amount,
+          balance_after,
+          idempotency_key,
+          related_usage_id,
+          metadata_json
+        )
+        SELECT
+          ?, ?, ?, ?, ?,
+          CASE WHEN ? = 'consume' THEN balance - ? ELSE balance + ? END,
+          ?, ?, ?
+        FROM credit_accounts
+        WHERE user_id = ?
+      `,
+    )
+      .bind(
+        ledgerId,
+        input.userId,
+        input.kind,
+        input.source,
+        input.amount,
+        input.kind,
+        input.amount,
+        input.amount,
+        input.idempotencyKey,
+        input.relatedUsageId ?? null,
+        input.metadata ? JSON.stringify(input.metadata) : null,
+        input.userId,
+      )
+      .run();
+
+    if (!inserted.success || Number(inserted.meta.changes ?? 0) === 0) {
       throw new Error('CREDIT_ACCOUNT_MISSING');
     }
-
-    const nextBalance = computeNextBalance(account.balance, input);
-    const ledgerId = input.ledgerId ?? `${input.kind}:${input.idempotencyKey}`;
-    try {
-      const inserted = await env.USER_DB.prepare(
-        `
-          INSERT INTO credit_ledger (
-            id,
-            user_id,
-            kind,
-            source,
-            amount,
-            balance_after,
-            idempotency_key,
-            related_usage_id,
-            metadata_json
-          )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `,
-      )
-        .bind(
-          ledgerId,
-          input.userId,
-          input.kind,
-          input.source,
-          input.amount,
-          nextBalance,
-          input.idempotencyKey,
-          input.relatedUsageId ?? null,
-          input.metadata ? JSON.stringify(input.metadata) : null,
-        )
-        .run();
-      if (!inserted.success || Number(inserted.meta.changes ?? 0) === 0) {
-        const concurrent = await readCreditLedgerEntry(env, input.userId, input.idempotencyKey);
-        if (concurrent) {
-          return validateExistingLedger(concurrent, input);
-        }
-        continue;
-      }
-    } catch (error) {
-      const concurrent = await readCreditLedgerEntry(env, input.userId, input.idempotencyKey);
-      if (concurrent) {
-        return validateExistingLedger(concurrent, input);
-      }
-      if (isRetryableCreditConflict(error)) {
-        continue;
-      }
-      throw error;
+  } catch (error) {
+    const concurrent = await readCreditLedgerEntry(env, input.userId, input.idempotencyKey);
+    if (concurrent) {
+      return validateExistingLedger(concurrent, input);
     }
-
-    const created = await readCreditLedgerEntry(env, input.userId, input.idempotencyKey);
-    if (!created) {
-      throw new Error('CREDIT_LEDGER_WRITE_FAILED');
-    }
-    return validateExistingLedger(created, input);
+    throw mapLedgerAbort(error);
   }
 
-  const retryExisting = await readCreditLedgerEntry(env, input.userId, input.idempotencyKey);
-  if (retryExisting) {
-    return validateExistingLedger(retryExisting, input);
+  const created = await readCreditLedgerEntry(env, input.userId, input.idempotencyKey);
+  if (!created) {
+    throw new Error('CREDIT_LEDGER_WRITE_FAILED');
   }
-
-  throw new Error('CREDIT_CONFLICT');
+  return created;
 };

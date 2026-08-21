@@ -203,6 +203,20 @@ describe('credits', () => {
       ...overrides,
     });
 
+    const ledgerRow = (overrides: Record<string, unknown> = {}) => ({
+      id: 'consume:test-key',
+      userId: 'user-1',
+      kind: 'consume',
+      source: 'ai_generate',
+      amount: 10,
+      balanceAfter: 90,
+      idempotencyKey: 'test-key',
+      relatedUsageId: null,
+      metadataJson: null,
+      createdAt: '2026-04-11T00:00:00Z',
+      ...overrides,
+    });
+
     it('throws INVALID_CREDIT_AMOUNT for non-positive amount', async () => {
       const db = createMockDb();
       const { applyCreditMutation } = await import('../../lib/credits.js');
@@ -243,19 +257,7 @@ describe('credits', () => {
 
     it('returns existing ledger row when idempotency key matches', async () => {
       const db = createMockDb();
-      const existingRow = {
-        id: 'existing-ledger',
-        userId: 'user-1',
-        kind: 'consume',
-        source: 'ai_generate',
-        amount: 10,
-        balanceAfter: 990,
-        idempotencyKey: 'test-key',
-        relatedUsageId: null,
-        metadataJson: null,
-        createdAt: '2026-04-11T00:00:00Z',
-      };
-      db.first.mockResolvedValue(existingRow);
+      db.first.mockResolvedValue(ledgerRow());
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
       const result = await applyCreditMutation(
@@ -263,38 +265,29 @@ describe('credits', () => {
         createMutationInput(),
       );
 
-      expect(result.id).toBe('existing-ledger');
+      expect(result.id).toBe('consume:test-key');
       expect(result.idempotencyKey).toBe('test-key');
       expect(db.run).not.toHaveBeenCalled();
     });
 
-    it('processes a normal consume mutation', async () => {
+    it('detects idempotency conflicts on a replayed key with different payload', async () => {
       const db = createMockDb();
-      // First call: readExistingLedger returns null
-      // Second call: getCreditAccount ensureCreditAccount run
-      // Third call: getCreditAccount select
-      // Fourth call: insert ledger
-      // Fifth call: readExistingLedger returns created row
       db.first
         .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          userId: 'user-1',
-          balance: 100,
-          version: 1,
-          updatedAt: '2026-04-11T00:00:00Z',
-        })
-        .mockResolvedValueOnce({
-          id: 'consume:test-key',
-          userId: 'user-1',
-          kind: 'consume',
-          source: 'ai_generate',
-          amount: 10,
-          balanceAfter: 90,
-          idempotencyKey: 'test-key',
-          relatedUsageId: null,
-          metadataJson: null,
-          createdAt: '2026-04-11T00:00:00Z',
-        });
+        .mockResolvedValueOnce(ledgerRow({ kind: 'refund', amount: 50 }));
+
+      const { applyCreditMutation } = await import('../../lib/credits.js');
+      await expect(
+        applyCreditMutation(
+          createEnv({ USER_DB: db as unknown as D1Database }),
+          createMutationInput(),
+        ),
+      ).rejects.toThrow('CREDIT_IDEMPOTENCY_CONFLICT');
+    });
+
+    it('inserts balance arithmetic in one statement and reads back the row', async () => {
+      const db = createMockDb();
+      db.first.mockResolvedValueOnce(null).mockResolvedValueOnce(ledgerRow());
       db.run.mockResolvedValue({ success: true, meta: { changes: 1 } });
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
@@ -305,31 +298,21 @@ describe('credits', () => {
 
       expect(result.kind).toBe('consume');
       expect(result.balanceAfter).toBe(90);
-      expect(result.amount).toBe(10);
+      expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO credit_ledger'));
+      expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('FROM credit_accounts'));
     });
 
-    it('processes a normal grant/refund mutation', async () => {
+    it('binds refund amounts without computing balance in TS', async () => {
       const db = createMockDb();
-      db.first
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          userId: 'user-1',
-          balance: 100,
-          version: 1,
-          updatedAt: '2026-04-11T00:00:00Z',
-        })
-        .mockResolvedValueOnce({
+      db.first.mockResolvedValueOnce(null).mockResolvedValueOnce(
+        ledgerRow({
           id: 'refund:test-key',
-          userId: 'user-1',
           kind: 'refund',
           source: 'manual_adjustment',
           amount: 50,
           balanceAfter: 150,
-          idempotencyKey: 'test-key',
-          relatedUsageId: null,
-          metadataJson: null,
-          createdAt: '2026-04-11T00:00:00Z',
-        });
+        }),
+      );
       db.run.mockResolvedValue({ success: true, meta: { changes: 1 } });
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
@@ -342,15 +325,12 @@ describe('credits', () => {
       expect(result.balanceAfter).toBe(150);
     });
 
-    it('throws CREDIT_EXHAUSTED when balance is insufficient', async () => {
+    it('surfaces CREDIT_EXHAUSTED raised by the balance trigger', async () => {
       const db = createMockDb();
-      db.first.mockResolvedValueOnce(null).mockResolvedValueOnce({
-        userId: 'user-1',
-        balance: 5,
-        version: 1,
-        updatedAt: '2026-04-11T00:00:00Z',
-      });
-      db.run.mockResolvedValue({ success: true, meta: { changes: 1 } });
+      db.first.mockResolvedValueOnce(null);
+      db.run
+        .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
+        .mockRejectedValueOnce(new Error('D1_ERROR: CREDIT_EXHAUSTED'));
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
       await expect(
@@ -361,76 +341,10 @@ describe('credits', () => {
       ).rejects.toThrow('CREDIT_EXHAUSTED');
     });
 
-    it('retries when the ledger trigger reports a balance conflict', async () => {
-      const db = createMockDb();
-      db.first
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          userId: 'user-1',
-          balance: 100,
-          version: 1,
-          updatedAt: '2026-04-11T00:00:00Z',
-        })
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          userId: 'user-1',
-          balance: 100,
-          version: 2,
-          updatedAt: '2026-04-11T00:00:01Z',
-        })
-        .mockResolvedValueOnce({
-          id: 'consume:test-key',
-          userId: 'user-1',
-          kind: 'consume',
-          source: 'ai_generate',
-          amount: 10,
-          balanceAfter: 90,
-          idempotencyKey: 'test-key',
-          relatedUsageId: null,
-          metadataJson: null,
-          createdAt: '2026-04-11T00:00:00Z',
-        });
-      db.run
-        .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
-        .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
-        .mockRejectedValueOnce(new Error('CREDIT_CONFLICT'))
-        .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
-        .mockResolvedValueOnce({ success: true, meta: { changes: 1 } });
-
-      const { applyCreditMutation } = await import('../../lib/credits.js');
-      const result = await applyCreditMutation(
-        createEnv({ USER_DB: db as unknown as D1Database }),
-        createMutationInput(),
-      );
-
-      expect(result.balanceAfter).toBe(90);
-    });
-
     it('returns an equivalent ledger written by a concurrent request', async () => {
       const db = createMockDb();
-      const existingRow = {
-        id: 'consume:test-key',
-        userId: 'user-1',
-        kind: 'consume',
-        source: 'ai_generate',
-        amount: 10,
-        balanceAfter: 90,
-        idempotencyKey: 'test-key',
-        relatedUsageId: null,
-        metadataJson: null,
-        createdAt: '2026-04-11T00:00:00Z',
-      };
-      db.first
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          userId: 'user-1',
-          balance: 100,
-          version: 1,
-          updatedAt: '2026-04-11T00:00:00Z',
-        })
-        .mockResolvedValueOnce(existingRow);
+      db.first.mockResolvedValueOnce(null).mockResolvedValueOnce(ledgerRow());
       db.run
-        .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
         .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
         .mockRejectedValueOnce(new Error('UNIQUE constraint failed'));
 
@@ -444,40 +358,12 @@ describe('credits', () => {
       expect(result.balanceAfter).toBe(90);
     });
 
-    it('throws CREDIT_CONFLICT after max retries', async () => {
+    it('maps an unknown insert failure to its original error', async () => {
       const db = createMockDb();
-      db.first
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          userId: 'user-1',
-          balance: 100,
-          version: 1,
-          updatedAt: '2026-04-11T00:00:00Z',
-        })
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          userId: 'user-1',
-          balance: 100,
-          version: 1,
-          updatedAt: '2026-04-11T00:00:00Z',
-        })
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          userId: 'user-1',
-          balance: 100,
-          version: 1,
-          updatedAt: '2026-04-11T00:00:00Z',
-        })
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(null);
+      db.first.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
       db.run
         .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
-        .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
-        .mockRejectedValueOnce(new Error('CREDIT_CONFLICT'))
-        .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
-        .mockRejectedValueOnce(new Error('CREDIT_CONFLICT'))
-        .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
-        .mockRejectedValueOnce(new Error('CREDIT_CONFLICT'));
+        .mockRejectedValueOnce(new Error('D1_ERROR: storage exploded'));
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
       await expect(
@@ -485,15 +371,13 @@ describe('credits', () => {
           createEnv({ USER_DB: db as unknown as D1Database }),
           createMutationInput(),
         ),
-      ).rejects.toThrow('CREDIT_CONFLICT');
+      ).rejects.toThrow('storage exploded');
     });
 
-    it('throws CREDIT_ACCOUNT_MISSING when account cannot be found', async () => {
+    it('throws CREDIT_ACCOUNT_MISSING when no account row matched', async () => {
       const db = createMockDb();
-      // first #1: readExistingLedger - null
-      // first #2: getCreditAccount returns null (no row after insert)
-      db.first.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
-      db.run.mockResolvedValue({ success: true, meta: { changes: 1 } });
+      db.first.mockResolvedValueOnce(null);
+      db.run.mockResolvedValue({ success: true, meta: { changes: 0 } });
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
       await expect(
@@ -507,14 +391,8 @@ describe('credits', () => {
     it('throws CREDIT_LEDGER_WRITE_FAILED when created ledger cannot be read back', async () => {
       const db = createMockDb();
       db.first
-        .mockResolvedValueOnce(null) // readExistingLedger - null
-        .mockResolvedValueOnce({
-          userId: 'user-1',
-          balance: 100,
-          version: 1,
-          updatedAt: '2026-04-11T00:00:00Z',
-        })
-        .mockResolvedValueOnce(null); // read back after insert returns null
+        .mockResolvedValueOnce(null) // idempotency pre-check
+        .mockResolvedValueOnce(null); // read back after insert
       db.run.mockResolvedValue({ success: true, meta: { changes: 1 } });
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
@@ -530,24 +408,7 @@ describe('credits', () => {
       const db = createMockDb();
       db.first
         .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          userId: 'user-1',
-          balance: 100,
-          version: 1,
-          updatedAt: '2026-04-11T00:00:00Z',
-        })
-        .mockResolvedValueOnce({
-          id: 'custom-ledger-id',
-          userId: 'user-1',
-          kind: 'consume',
-          source: 'ai_generate',
-          amount: 10,
-          balanceAfter: 90,
-          idempotencyKey: 'test-key',
-          relatedUsageId: null,
-          metadataJson: null,
-          createdAt: '2026-04-11T00:00:00Z',
-        });
+        .mockResolvedValueOnce(ledgerRow({ id: 'custom-ledger-id' }));
       db.run.mockResolvedValue({ success: true, meta: { changes: 1 } });
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
@@ -563,26 +424,12 @@ describe('credits', () => {
 
     it('stores metadata_json when metadata is provided', async () => {
       const db = createMockDb();
-      db.first
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          userId: 'user-1',
-          balance: 100,
-          version: 1,
-          updatedAt: '2026-04-11T00:00:00Z',
-        })
-        .mockResolvedValueOnce({
-          id: 'consume:test-key',
-          userId: 'user-1',
-          kind: 'consume',
-          source: 'ai_generate',
-          amount: 10,
-          balanceAfter: 90,
-          idempotencyKey: 'test-key',
+      db.first.mockResolvedValueOnce(null).mockResolvedValueOnce(
+        ledgerRow({
           relatedUsageId: 'usage-123',
           metadataJson: '{"routeKey":"generate-table"}',
-          createdAt: '2026-04-11T00:00:00Z',
-        });
+        }),
+      );
       db.run.mockResolvedValue({ success: true, meta: { changes: 1 } });
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
