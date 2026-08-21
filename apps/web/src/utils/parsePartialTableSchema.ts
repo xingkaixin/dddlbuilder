@@ -4,6 +4,10 @@ import type {
   GeneratedIndex,
   PartialTableSchema,
 } from '@ddlbuilder/shared-types/ai-generate';
+import { FIELD_DEFAULT_KINDS, FIELD_ON_UPDATES } from '@ddlbuilder/shared-types';
+
+const DEFAULT_KINDS = new Set<string>(FIELD_DEFAULT_KINDS);
+const ON_UPDATE_VALUES = new Set<string>(FIELD_ON_UPDATES);
 
 /**
  * Parse partial JSON for GeneratedTableSchema structure.
@@ -41,42 +45,13 @@ export function parsePartialTableSchema(text: string): PartialTableSchema | null
     result.tableComment = unescapeJsonString(tableCommentMatch[1]);
   }
 
-  // Extract fields array
-  const fieldsStart = text.indexOf('"fields"');
-  if (fieldsStart !== -1) {
-    const afterFields = text.slice(fieldsStart);
-    const arrayStart = afterFields.indexOf('[');
-
-    if (arrayStart !== -1) {
-      const arrayContent = afterFields.slice(arrayStart + 1);
-      result.fields = extractArrayObjects(arrayContent) as unknown as GeneratedField[];
-    }
-  }
-
-  // Extract indexes array
-  const indexesStart = text.indexOf('"indexes"');
-  if (indexesStart !== -1) {
-    const afterIndexes = text.slice(indexesStart);
-    const arrayStart = afterIndexes.indexOf('[');
-
-    if (arrayStart !== -1) {
-      const arrayContent = afterIndexes.slice(arrayStart + 1);
-      result.indexes = extractArrayObjects(arrayContent) as unknown as GeneratedIndex[];
-    }
-  }
-
-  const designDecisionsStart = text.indexOf('"designDecisions"');
-  if (designDecisionsStart !== -1) {
-    const afterDesignDecisions = text.slice(designDecisionsStart);
-    const arrayStart = afterDesignDecisions.indexOf('[');
-
-    if (arrayStart !== -1) {
-      const arrayContent = afterDesignDecisions.slice(arrayStart + 1);
-      result.designDecisions = extractArrayObjects(
-        arrayContent,
-      ) as unknown as GeneratedDesignDecision[];
-    }
-  }
+  result.fields = extractValidatedArray(text, 'fields', isGeneratedField);
+  result.indexes = extractValidatedArray(text, 'indexes', isGeneratedIndex);
+  result.designDecisions = extractValidatedArray(
+    text,
+    'designDecisions',
+    isGeneratedDesignDecision,
+  );
 
   // Return null if nothing was extracted
   if (
@@ -96,8 +71,8 @@ export function parsePartialTableSchema(text: string): PartialTableSchema | null
  * Extract complete objects from a partial array content.
  * Only returns fully parseable objects - incomplete objects are skipped.
  */
-function extractArrayObjects(content: string): Record<string, unknown>[] {
-  const items: Record<string, unknown>[] = [];
+function extractArrayObjects(content: string): unknown[] {
+  const items: unknown[] = [];
   let depth = 0;
   let inString = false;
   let escaped = false;
@@ -193,6 +168,61 @@ function extractArrayObjects(content: string): Record<string, unknown>[] {
   return items;
 }
 
+function extractValidatedArray<T>(
+  text: string,
+  key: string,
+  isValid: (value: unknown) => value is T,
+): T[] | undefined {
+  const keyStart = text.indexOf(`"${key}"`);
+  if (keyStart === -1) return undefined;
+
+  const afterKey = text.slice(keyStart);
+  const arrayStart = afterKey.indexOf('[');
+  if (arrayStart === -1) return undefined;
+
+  return extractArrayObjects(afterKey.slice(arrayStart + 1)).filter(isValid);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isGeneratedField(value: unknown): value is GeneratedField {
+  if (!isRecord(value)) return false;
+
+  return (
+    typeof value.fieldName === 'string' &&
+    typeof value.fieldType === 'string' &&
+    typeof value.fieldComment === 'string' &&
+    typeof value.nullable === 'boolean' &&
+    typeof value.defaultKind === 'string' &&
+    DEFAULT_KINDS.has(value.defaultKind) &&
+    (value.defaultValue === undefined || typeof value.defaultValue === 'string') &&
+    (value.onUpdate === undefined ||
+      (typeof value.onUpdate === 'string' && ON_UPDATE_VALUES.has(value.onUpdate))) &&
+    (value.isPrimaryKey === undefined || typeof value.isPrimaryKey === 'boolean')
+  );
+}
+
+function isGeneratedIndex(value: unknown): value is GeneratedIndex {
+  if (!isRecord(value) || !Array.isArray(value.fields)) return false;
+
+  return (
+    typeof value.name === 'string' &&
+    typeof value.unique === 'boolean' &&
+    value.fields.every(
+      (field) =>
+        isRecord(field) &&
+        typeof field.name === 'string' &&
+        (field.direction === 'ASC' || field.direction === 'DESC'),
+    )
+  );
+}
+
+function isGeneratedDesignDecision(value: unknown): value is GeneratedDesignDecision {
+  return isRecord(value) && typeof value.title === 'string' && typeof value.rationale === 'string';
+}
+
 /**
  * Unescape JSON string escape sequences.
  */
@@ -229,31 +259,15 @@ function normalizeTableSchema(result: unknown): PartialTableSchema | null {
   }
 
   if (Array.isArray(obj.fields)) {
-    normalized.fields = obj.fields.filter(
-      (f): f is GeneratedField =>
-        typeof f === 'object' &&
-        f !== null &&
-        typeof (f as Record<string, unknown>).fieldName === 'string',
-    );
+    normalized.fields = obj.fields.filter(isGeneratedField);
   }
 
   if (Array.isArray(obj.indexes)) {
-    normalized.indexes = obj.indexes.filter(
-      (idx): idx is GeneratedIndex =>
-        typeof idx === 'object' &&
-        idx !== null &&
-        typeof (idx as Record<string, unknown>).name === 'string',
-    );
+    normalized.indexes = obj.indexes.filter(isGeneratedIndex);
   }
 
   if (Array.isArray(obj.designDecisions)) {
-    normalized.designDecisions = obj.designDecisions.filter(
-      (decision): decision is GeneratedDesignDecision =>
-        typeof decision === 'object' &&
-        decision !== null &&
-        typeof (decision as Record<string, unknown>).title === 'string' &&
-        typeof (decision as Record<string, unknown>).rationale === 'string',
-    );
+    normalized.designDecisions = obj.designDecisions.filter(isGeneratedDesignDecision);
   }
 
   return normalized;
