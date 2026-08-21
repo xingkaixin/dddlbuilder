@@ -953,11 +953,14 @@ function App() {
 
   const handleCloseTab = useCallback(
     (tabId: string) => {
-      if (tabId === activeTabId) {
+      const closingActiveTab = tabId === activeTabId;
+      if (closingActiveTab) {
         flushCurrentWorkspace();
       }
       closeTabStore(tabId);
 
+      // 关闭后台标签时激活对象没变，重放旧快照会把尚未冲刷的编辑回滚掉。
+      if (!closingActiveTab) return;
       const nextActive = getActiveTab();
       if (nextActive) {
         applySavedState(nextActive.stateSnapshot);
