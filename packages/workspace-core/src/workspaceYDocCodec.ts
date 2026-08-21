@@ -9,8 +9,7 @@ import {
   upsertTableRecord,
   writeFolderRecord,
 } from './workspaceYDoc';
-
-const DEFAULT_DRAFT_ID = 'default';
+import { DEFAULT_DRAFT_ID } from './snapshotMergePolicy';
 
 export const importWorkspaceSnapshotToYDoc = (doc: Y.Doc, snapshot: WorkspaceSnapshot) => {
   doc.transact(() => {
