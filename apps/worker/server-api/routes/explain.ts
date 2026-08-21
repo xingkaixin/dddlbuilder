@@ -1,291 +1,50 @@
 import type { Hono } from 'hono';
-import { streamText } from 'hono/streaming';
-import OpenAI from 'openai';
-import {
-  authenticateAIUser,
-  completeAIUsage,
-  failAIUsage,
-  reserveAIUsage,
-} from '../lib/aiUsage.js';
 import type { ApiEnv } from '../lib/context.js';
-import { createOpenAIStreamDebugLogger } from '../lib/aiStreamDebug.js';
-import {
-  enforceOpenAIDailyBudget,
-  enforceOpenAIRateLimit,
-  getOpenAIGovernanceSnapshot,
-  estimateRequestTokens,
-  logOpenAIAudit,
-  readUsageFromStreamChunk,
-  withOpenAIRetry,
-  buildOpenAIConfig,
-} from '../openaiControl.js';
-import {
-  errorResponse,
-  getRequestId,
-  parseJsonBodyWithLimit,
-  streamErrorPayload,
-  type ApiErrorCode,
-} from '../lib/http.js';
+import { rejectAIRequest, withAIGovernance } from '../lib/aiRoute.js';
 import { EXPLAIN_SYSTEM_PROMPT, buildExplainUserPrompt } from '../prompts/explain.js';
 import { isAppLocale, type AppLocale } from '@ddlbuilder/shared-types/locale';
 
 const MAX_OUTPUT_TOKENS = 1000;
 const REQUEST_BODY_MAX_BYTES = 256 * 1024;
 
+type ExplainRequest = {
+  sql: string;
+  context: string;
+  locale: AppLocale;
+};
+
 export function registerExplainRoute(app: Hono<ApiEnv>) {
-  app.post('/explain', async (c) => {
-    const route = 'explain' as const;
-    const config = buildOpenAIConfig(c.env);
-    const requestId = getRequestId(c) ?? 'unknown';
-    const startedAt = Date.now();
-    const governance = getOpenAIGovernanceSnapshot(route, config);
-
-    let estimatedTokens = 0;
-    let actualPromptTokens: number | null = null;
-    let actualCompletionTokens: number | null = null;
-    let actualTotalTokens: number | null = null;
-    let rateLimitRemaining: number | null = governance.rateLimitLimit;
-    let budgetUsedTokens: number | null = null;
-    let reservation: {
-      usageEventId: string;
-      userId: string;
-      routeKey: 'explain';
-      requestId: string;
-      reservedTokens: number;
-    } | null = null;
-    let currentUserId: string | null = null;
-    let waitUntil: ((promise: Promise<unknown>) => void) | undefined;
-
-    try {
-      waitUntil = c.executionCtx.waitUntil.bind(c.executionCtx);
-    } catch {
-      waitUntil = undefined;
-    }
-
-    const audit = (
-      status: number,
-      retryCount: number,
-      rateLimitHit: boolean,
-      budgetHit: boolean,
-      errorCode?: ApiErrorCode,
-    ) => {
-      logOpenAIAudit(
-        c.env,
-        {
-          requestId,
-          route,
-          status,
-          latencyMs: Date.now() - startedAt,
-          retryCount,
-          rateLimitHit,
-          estimatedTokens,
-          actualPromptTokens,
-          actualCompletionTokens,
-          actualTotalTokens,
-          model: c.env.OPENAI_MODEL_NAME || 'gpt-4o-mini',
-          maxOutputTokens: MAX_OUTPUT_TOKENS,
-          rateLimitEnabled: governance.rateLimitEnabled,
-          rateLimitStore: governance.rateLimitStore,
-          rateLimitLimit: governance.rateLimitLimit,
-          rateLimitRemaining,
-          rateLimitWindowMs: governance.rateLimitWindowMs,
-          budgetHit,
-          budgetEnabled: governance.budgetEnabled,
-          budgetLimitTokens: governance.budgetLimitTokens,
-          budgetUsedTokens,
-          errorCode,
-        },
-        waitUntil,
-      );
-    };
-
-    const rateLimit = await enforceOpenAIRateLimit(c, route, config);
-    rateLimitRemaining = rateLimit.remaining;
-    if (rateLimit.response) {
-      audit(429, 0, true, false, 'RATE_LIMIT_EXCEEDED');
-      return rateLimit.response;
-    }
-
-    const parsedBody = await parseJsonBodyWithLimit<{
-      sql?: unknown;
-      context?: unknown;
-      locale?: unknown;
-    }>(c, REQUEST_BODY_MAX_BYTES);
-    if (parsedBody.errorResponse) {
-      audit(
-        parsedBody.errorResponse.status,
-        0,
-        false,
-        false,
-        parsedBody.errorResponse.status === 413 ? 'PAYLOAD_TOO_LARGE' : 'INVALID_JSON',
-      );
-      return parsedBody.errorResponse;
-    }
-    const body = parsedBody.data ?? {};
-
-    const sql = typeof body.sql === 'string' ? body.sql : '';
-    const context = typeof body.context === 'string' ? body.context : '';
-    const locale: AppLocale = isAppLocale(body.locale) ? body.locale : 'zh-CN';
-
-    if (sql.trim().length === 0) {
-      audit(400, 0, false, false, 'SQL_REQUIRED');
-      return errorResponse(c, 400, 'SQL is required', 'SQL_REQUIRED');
-    }
-
-    try {
-      const user = await authenticateAIUser(c);
-      currentUserId = user.userId;
-    } catch (error) {
-      if (error instanceof Error && error.message === 'AUTH_REQUIRED') {
-        audit(401, 0, false, false, 'AUTH_REQUIRED');
-        return errorResponse(c, 401, 'Authentication required', 'AUTH_REQUIRED');
-      }
-      console.error('[explain] authentication failed', error);
-      audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
-      return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
-    }
-
-    estimatedTokens = estimateRequestTokens(
+  app.post('/explain', (c) =>
+    withAIGovernance<ExplainRequest>(
+      c,
       {
-        sql,
-        context,
+        route: 'explain',
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+        bodyMaxBytes: REQUEST_BODY_MAX_BYTES,
+        parseRequest: (body) => {
+          const sql = typeof body.sql === 'string' ? body.sql : '';
+          if (sql.trim().length === 0) {
+            return rejectAIRequest('SQL_REQUIRED', 'SQL is required');
+          }
+          return {
+            sql,
+            context: typeof body.context === 'string' ? body.context : '',
+            locale: isAppLocale(body.locale) ? body.locale : 'zh-CN',
+          };
+        },
       },
-      MAX_OUTPUT_TOKENS,
-    );
-
-    const baseURL = c.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
-    const apiKey = c.env.OPENAI_API_KEY;
-    const model = c.env.OPENAI_MODEL_NAME || 'gpt-4o-mini';
-
-    if (!apiKey) {
-      audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
-      return errorResponse(c, 503, 'OpenAI service unavailable', 'SERVICE_UNAVAILABLE');
-    }
-
-    if (!currentUserId) {
-      audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
-      return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
-    }
-
-    try {
-      reservation = await reserveAIUsage(c.env, {
-        userId: currentUserId,
-        routeKey: route,
-        requestId,
-        estimatedTokens,
-      });
-    } catch (error) {
-      if (error instanceof Error && error.message === 'CREDIT_EXHAUSTED') {
-        audit(402, 0, false, false, 'CREDIT_EXHAUSTED');
-        return errorResponse(c, 402, 'Insufficient credits', 'CREDIT_EXHAUSTED');
-      }
-      console.error('[explain] credit reservation failed', error);
-      audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
-      return errorResponse(c, 503, 'Credit service unavailable', 'SERVICE_UNAVAILABLE');
-    }
-
-    try {
-      const budget = await enforceOpenAIDailyBudget(c, estimatedTokens, config);
-      budgetUsedTokens = budget.usedTokens;
-      if (budget.response) {
-        await failAIUsage(c.env, reservation, 'BUDGET_EXCEEDED');
-        audit(429, 0, false, true, 'BUDGET_EXCEEDED');
-        return budget.response;
-      }
-    } catch (error) {
-      await failAIUsage(c.env, reservation, 'SERVICE_UNAVAILABLE');
-      console.error('[explain] budget reservation failed', error);
-      audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
-      return errorResponse(c, 503, 'AI governance unavailable', 'SERVICE_UNAVAILABLE');
-    }
-
-    const openai = new OpenAI({
-      baseURL,
-      apiKey,
-    });
-
-    const userPrompt = buildExplainUserPrompt(sql, context, locale);
-    const systemPrompt = EXPLAIN_SYSTEM_PROMPT[locale];
-    c.header('X-AI-Stream-Debug', config.streamDebugEnabled ? '1' : '0');
-    const streamDebug = createOpenAIStreamDebugLogger({
-      enabled: config.streamDebugEnabled,
-      requestId,
-      route,
-      model,
-      startedAt,
-      input: {
-        sqlLength: sql.length,
-        contextLength: context.length,
-        locale,
+      async (session) => {
+        const { sql, context, locale } = session.request;
+        return session.streamCompletion({
+          messages: [
+            { role: 'system', content: EXPLAIN_SYSTEM_PROMPT[locale] },
+            { role: 'user', content: buildExplainUserPrompt(sql, context, locale) },
+          ],
+          scope: 'Explain',
+          temperature: 0.3,
+          debugInput: { sqlLength: sql.length, contextLength: context.length, locale },
+        });
       },
-    });
-
-    return streamText(c, async (stream) => {
-      let retryCount = 0;
-      streamDebug.start();
-      try {
-        const { data: response, attempts } = await withOpenAIRetry(
-          async () =>
-            (await openai.chat.completions.create({
-              model,
-              messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt },
-              ],
-              temperature: 0.3,
-              max_tokens: MAX_OUTPUT_TOKENS,
-              stream: true,
-              stream_options: {
-                include_usage: true,
-              },
-              ...({
-                thinking: {
-                  type: 'disabled',
-                },
-                enable_thinking: false,
-              } as any),
-            })) as any,
-          { scope: 'Explain' },
-          config,
-        );
-
-        retryCount = attempts;
-        streamDebug.connected();
-
-        for await (const chunk of response) {
-          const usage = readUsageFromStreamChunk(chunk);
-          if (usage) {
-            actualPromptTokens = usage.promptTokens;
-            actualCompletionTokens = usage.completionTokens;
-            actualTotalTokens = usage.totalTokens;
-          }
-
-          const content = chunk.choices[0]?.delta?.content || '';
-          if (content) {
-            streamDebug.chunk(content);
-            await stream.write(content);
-          }
-        }
-
-        streamDebug.complete();
-        if (reservation) {
-          await completeAIUsage(c.env, reservation, actualTotalTokens);
-        }
-        audit(200, retryCount, false, false);
-      } catch (error) {
-        streamDebug.error(error);
-        if (reservation) {
-          try {
-            await failAIUsage(c.env, reservation, 'UPSTREAM_OPENAI_ERROR');
-          } catch (refundError) {
-            console.error('[explain] failed to refund credits after upstream error', refundError);
-          }
-        }
-        audit(502, retryCount, false, false, 'UPSTREAM_OPENAI_ERROR');
-        await stream.write(
-          streamErrorPayload('Upstream OpenAI error', 'UPSTREAM_OPENAI_ERROR', requestId),
-        );
-      }
-    });
-  });
+    ),
+  );
 }

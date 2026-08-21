@@ -1,296 +1,58 @@
 import type { Hono } from 'hono';
-import { streamText } from 'hono/streaming';
-import OpenAI from 'openai';
-import {
-  authenticateAIUser,
-  completeAIUsage,
-  failAIUsage,
-  reserveAIUsage,
-} from '../lib/aiUsage.js';
 import type { ApiEnv } from '../lib/context.js';
-import { createOpenAIStreamDebugLogger } from '../lib/aiStreamDebug.js';
-import {
-  enforceOpenAIDailyBudget,
-  enforceOpenAIRateLimit,
-  getOpenAIGovernanceSnapshot,
-  estimateRequestTokens,
-  logOpenAIAudit,
-  readUsageFromStreamChunk,
-  withOpenAIRetry,
-  buildOpenAIConfig,
-} from '../openaiControl.js';
-import {
-  errorResponse,
-  getRequestId,
-  parseJsonBodyWithLimit,
-  streamErrorPayload,
-  type ApiErrorCode,
-} from '../lib/http.js';
+import { rejectAIRequest, withAIGovernance } from '../lib/aiRoute.js';
 import { REVIEW_SYSTEM_PROMPT, buildReviewUserPrompt } from '../prompts/review.js';
 import { isAppLocale, type AppLocale } from '@ddlbuilder/shared-types/locale';
 
 const MAX_OUTPUT_TOKENS = 2000;
 const REQUEST_BODY_MAX_BYTES = 512 * 1024;
 
+type ReviewRequest = {
+  ddl: string;
+  tableName: string;
+  dbType: string;
+  locale: AppLocale;
+};
+
 export function registerReviewRoute(app: Hono<ApiEnv>) {
-  app.post('/review', async (c) => {
-    const route = 'review' as const;
-    const config = buildOpenAIConfig(c.env);
-    const requestId = getRequestId(c) ?? 'unknown';
-    const startedAt = Date.now();
-    const governance = getOpenAIGovernanceSnapshot(route, config);
-
-    let estimatedTokens = 0;
-    let actualPromptTokens: number | null = null;
-    let actualCompletionTokens: number | null = null;
-    let actualTotalTokens: number | null = null;
-    let rateLimitRemaining: number | null = governance.rateLimitLimit;
-    let budgetUsedTokens: number | null = null;
-    let reservation: {
-      usageEventId: string;
-      userId: string;
-      routeKey: 'review';
-      requestId: string;
-      reservedTokens: number;
-    } | null = null;
-    let currentUserId: string | null = null;
-    let waitUntil: ((promise: Promise<unknown>) => void) | undefined;
-
-    try {
-      waitUntil = c.executionCtx.waitUntil.bind(c.executionCtx);
-    } catch {
-      waitUntil = undefined;
-    }
-
-    const audit = (
-      status: number,
-      retryCount: number,
-      rateLimitHit: boolean,
-      budgetHit: boolean,
-      errorCode?: ApiErrorCode,
-    ) => {
-      logOpenAIAudit(
-        c.env,
-        {
-          requestId,
-          route,
-          status,
-          latencyMs: Date.now() - startedAt,
-          retryCount,
-          rateLimitHit,
-          estimatedTokens,
-          actualPromptTokens,
-          actualCompletionTokens,
-          actualTotalTokens,
-          model: c.env.OPENAI_MODEL_NAME || 'gpt-4o-mini',
-          maxOutputTokens: MAX_OUTPUT_TOKENS,
-          rateLimitEnabled: governance.rateLimitEnabled,
-          rateLimitStore: governance.rateLimitStore,
-          rateLimitLimit: governance.rateLimitLimit,
-          rateLimitRemaining,
-          rateLimitWindowMs: governance.rateLimitWindowMs,
-          budgetHit,
-          budgetEnabled: governance.budgetEnabled,
-          budgetLimitTokens: governance.budgetLimitTokens,
-          budgetUsedTokens,
-          errorCode,
-        },
-        waitUntil,
-      );
-    };
-
-    const rateLimit = await enforceOpenAIRateLimit(c, route, config);
-    rateLimitRemaining = rateLimit.remaining;
-    if (rateLimit.response) {
-      audit(429, 0, true, false, 'RATE_LIMIT_EXCEEDED');
-      return rateLimit.response;
-    }
-
-    const parsedBody = await parseJsonBodyWithLimit<{
-      ddl?: unknown;
-      tableName?: unknown;
-      dbType?: unknown;
-      locale?: unknown;
-    }>(c, REQUEST_BODY_MAX_BYTES);
-    if (parsedBody.errorResponse) {
-      audit(
-        parsedBody.errorResponse.status,
-        0,
-        false,
-        false,
-        parsedBody.errorResponse.status === 413 ? 'PAYLOAD_TOO_LARGE' : 'INVALID_JSON',
-      );
-      return parsedBody.errorResponse;
-    }
-    const body = parsedBody.data ?? {};
-
-    const ddl = typeof body.ddl === 'string' ? body.ddl : '';
-    const tableName = typeof body.tableName === 'string' ? body.tableName : '';
-    const dbType = typeof body.dbType === 'string' ? body.dbType : '';
-    const locale: AppLocale = isAppLocale(body.locale) ? body.locale : 'zh-CN';
-
-    if (ddl.trim().length === 0) {
-      audit(400, 0, false, false, 'DDL_REQUIRED');
-      return errorResponse(c, 400, 'DDL is required', 'DDL_REQUIRED');
-    }
-
-    try {
-      const user = await authenticateAIUser(c);
-      currentUserId = user.userId;
-    } catch (error) {
-      if (error instanceof Error && error.message === 'AUTH_REQUIRED') {
-        audit(401, 0, false, false, 'AUTH_REQUIRED');
-        return errorResponse(c, 401, 'Authentication required', 'AUTH_REQUIRED');
-      }
-      console.error('[review] authentication failed', error);
-      audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
-      return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
-    }
-
-    estimatedTokens = estimateRequestTokens(
+  app.post('/review', (c) =>
+    withAIGovernance<ReviewRequest>(
+      c,
       {
-        ddl,
-        tableName,
-        dbType,
+        route: 'review',
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+        bodyMaxBytes: REQUEST_BODY_MAX_BYTES,
+        parseRequest: (body) => {
+          const ddl = typeof body.ddl === 'string' ? body.ddl : '';
+          if (ddl.trim().length === 0) {
+            return rejectAIRequest('DDL_REQUIRED', 'DDL is required');
+          }
+          return {
+            ddl,
+            tableName: typeof body.tableName === 'string' ? body.tableName : '',
+            dbType: typeof body.dbType === 'string' ? body.dbType : '',
+            locale: isAppLocale(body.locale) ? body.locale : 'zh-CN',
+          };
+        },
       },
-      MAX_OUTPUT_TOKENS,
-    );
-
-    const baseURL = c.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
-    const apiKey = c.env.OPENAI_API_KEY;
-    const model = c.env.OPENAI_MODEL_NAME || 'gpt-4o-mini';
-
-    if (!apiKey) {
-      audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
-      return errorResponse(c, 503, 'OpenAI service unavailable', 'SERVICE_UNAVAILABLE');
-    }
-
-    if (!currentUserId) {
-      audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
-      return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
-    }
-
-    try {
-      reservation = await reserveAIUsage(c.env, {
-        userId: currentUserId,
-        routeKey: route,
-        requestId,
-        estimatedTokens,
-      });
-    } catch (error) {
-      if (error instanceof Error && error.message === 'CREDIT_EXHAUSTED') {
-        audit(402, 0, false, false, 'CREDIT_EXHAUSTED');
-        return errorResponse(c, 402, 'Insufficient credits', 'CREDIT_EXHAUSTED');
-      }
-      console.error('[review] credit reservation failed', error);
-      audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
-      return errorResponse(c, 503, 'Credit service unavailable', 'SERVICE_UNAVAILABLE');
-    }
-
-    try {
-      const budget = await enforceOpenAIDailyBudget(c, estimatedTokens, config);
-      budgetUsedTokens = budget.usedTokens;
-      if (budget.response) {
-        await failAIUsage(c.env, reservation, 'BUDGET_EXCEEDED');
-        audit(429, 0, false, true, 'BUDGET_EXCEEDED');
-        return budget.response;
-      }
-    } catch (error) {
-      await failAIUsage(c.env, reservation, 'SERVICE_UNAVAILABLE');
-      console.error('[review] budget reservation failed', error);
-      audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
-      return errorResponse(c, 503, 'AI governance unavailable', 'SERVICE_UNAVAILABLE');
-    }
-
-    const openai = new OpenAI({
-      baseURL,
-      apiKey,
-    });
-
-    const userPrompt = buildReviewUserPrompt(ddl, tableName, dbType, locale);
-    const systemPrompt = REVIEW_SYSTEM_PROMPT[locale];
-    c.header('X-AI-Stream-Debug', config.streamDebugEnabled ? '1' : '0');
-    const streamDebug = createOpenAIStreamDebugLogger({
-      enabled: config.streamDebugEnabled,
-      requestId,
-      route,
-      model,
-      startedAt,
-      input: {
-        ddlLength: ddl.length,
-        tableNameLength: tableName.length,
-        dbType,
-        locale,
+      async (session) => {
+        const { ddl, tableName, dbType, locale } = session.request;
+        return session.streamCompletion({
+          messages: [
+            { role: 'system', content: REVIEW_SYSTEM_PROMPT[locale] },
+            { role: 'user', content: buildReviewUserPrompt(ddl, tableName, dbType, locale) },
+          ],
+          scope: 'Review',
+          temperature: 0.3,
+          jsonResponse: true,
+          debugInput: {
+            ddlLength: ddl.length,
+            tableNameLength: tableName.length,
+            dbType,
+            locale,
+          },
+        });
       },
-    });
-
-    return streamText(c, async (stream) => {
-      let retryCount = 0;
-      streamDebug.start();
-      try {
-        const { data: response, attempts } = await withOpenAIRetry(
-          async () =>
-            (await openai.chat.completions.create({
-              model,
-              messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt },
-              ],
-              response_format: { type: 'json_object' },
-              temperature: 0.3,
-              max_tokens: MAX_OUTPUT_TOKENS,
-              stream: true,
-              stream_options: {
-                include_usage: true,
-              },
-              ...({
-                thinking: {
-                  type: 'disabled',
-                },
-                enable_thinking: false,
-              } as any),
-            })) as any,
-          { scope: 'Review' },
-          config,
-        );
-
-        retryCount = attempts;
-        streamDebug.connected();
-
-        for await (const chunk of response) {
-          const usage = readUsageFromStreamChunk(chunk);
-          if (usage) {
-            actualPromptTokens = usage.promptTokens;
-            actualCompletionTokens = usage.completionTokens;
-            actualTotalTokens = usage.totalTokens;
-          }
-
-          const content = chunk.choices[0]?.delta?.content || '';
-          if (content) {
-            streamDebug.chunk(content);
-            await stream.write(content);
-          }
-        }
-
-        streamDebug.complete();
-        if (reservation) {
-          await completeAIUsage(c.env, reservation, actualTotalTokens);
-        }
-        audit(200, retryCount, false, false);
-      } catch (error) {
-        streamDebug.error(error);
-        if (reservation) {
-          try {
-            await failAIUsage(c.env, reservation, 'UPSTREAM_OPENAI_ERROR');
-          } catch (refundError) {
-            console.error('[review] failed to refund credits after upstream error', refundError);
-          }
-        }
-        audit(502, retryCount, false, false, 'UPSTREAM_OPENAI_ERROR');
-        await stream.write(
-          streamErrorPayload('Upstream OpenAI error', 'UPSTREAM_OPENAI_ERROR', requestId),
-        );
-      }
-    });
-  });
+    ),
+  );
 }
