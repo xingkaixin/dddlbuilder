@@ -70,11 +70,14 @@ import { mergeLocalDraftChanges } from './workspacePersistence/mergeLocalEdits';
 import { leaveShareRoute, useShareRoute } from './workspacePersistence/shareRoute';
 import {
   buildShareStorageKey,
-  fireAndForget,
   readStorageJson,
   removeStorage,
   writeStorageJson,
 } from './workspacePersistence/storage';
+import {
+  usePersistenceQueue,
+  type PersistenceFailure,
+} from './workspacePersistence/usePersistenceQueue';
 
 const sortDraftSummaries = (drafts: DraftSummary[]) =>
   [...drafts].sort((a, b) => b.createdAt - a.createdAt || a.draftId.localeCompare(b.draftId));
@@ -109,6 +112,8 @@ export interface UsePersistedStateReturn {
   trashedDrafts: DraftSummary[];
   restoreDraftById: (draftId: string) => Promise<void>;
   permanentlyDeleteDraftById: (draftId: string) => void;
+  persistenceFailure: PersistenceFailure | null;
+  retryPersistence: () => void;
 }
 
 export function usePersistedState(): UsePersistedStateReturn {
@@ -130,6 +135,11 @@ export function usePersistedState(): UsePersistedStateReturn {
   });
   const [draftSummaries, setDraftSummaries] = useState<DraftSummary[]>([]);
   const [trashedDrafts, setTrashedDrafts] = useState<DraftSummary[]>([]);
+  const {
+    enqueue: enqueuePersistence,
+    failure: persistenceFailure,
+    retryFailed: retryPersistence,
+  } = usePersistenceQueue();
 
   const activeSourceRef = useRef<WorkspaceSelection>({
     kind: 'draft',
@@ -257,21 +267,25 @@ export function usePersistedState(): UsePersistedStateReturn {
   const persistSavedDraftRecord = useCallback(
     (normalizedName: string, record: SavedTableDraftRecord) => {
       savedTableDraftsRef.current.set(normalizedName, record);
-      fireAndForget(upsertSavedDraft(normalizedName, record, currentScope));
+      enqueuePersistence(`saved-draft:${normalizedName}`, 'save saved-table draft', () =>
+        upsertSavedDraft(normalizedName, record, currentScope),
+      );
       runInYDoc((doc) =>
         upsertSavedDraftInYDoc(doc, normalizedName, record, { compactSnapshotBase: true }),
       );
     },
-    [currentScope, runInYDoc],
+    [currentScope, enqueuePersistence, runInYDoc],
   );
 
   const dropSavedDraftRecord = useCallback(
     (normalizedName: string) => {
       savedTableDraftsRef.current.delete(normalizedName);
-      fireAndForget(deleteSavedDraft(normalizedName, currentScope));
+      enqueuePersistence(`saved-draft:${normalizedName}`, 'delete saved-table draft', () =>
+        deleteSavedDraft(normalizedName, currentScope),
+      );
       runInYDoc((doc) => deleteSavedDraftFromYDoc(doc, normalizedName));
     },
-    [currentScope, runInYDoc],
+    [currentScope, enqueuePersistence, runInYDoc],
   );
 
   const saveDraftState = useCallback(
@@ -284,29 +298,34 @@ export function usePersistedState(): UsePersistedStateReturn {
         state,
         folderId: existingRecord?.folderId,
       };
+      draftsRef.current.set(draftId, record);
       upsertDraftSummary(draftId, record);
-      fireAndForget(persistDraftRecord(draftId, record));
+      enqueuePersistence(`draft:${draftId}`, 'save draft', () =>
+        persistDraftRecord(draftId, record),
+      );
     },
-    [persistDraftRecord, upsertDraftSummary],
+    [enqueuePersistence, persistDraftRecord, upsertDraftSummary],
   );
 
   const writeSession = useCallback(
     (source: WorkspaceSelection) => {
-      fireAndForget(
+      enqueuePersistence('workspace-session', 'save workspace session', () =>
         writeWorkspaceSession(
           { activeSource: toWorkspaceSource(source), updatedAt: Date.now() },
           currentScope,
         ),
       );
     },
-    [currentScope],
+    [currentScope, enqueuePersistence],
   );
 
   const resetToDefaultDraft = useCallback(() => {
     syncActiveSource({ kind: 'draft', draftId: DEFAULT_DRAFT_ID });
-    fireAndForget(clearWorkspaceSession(currentScope));
+    enqueuePersistence('workspace-session', 'clear workspace session', () =>
+      clearWorkspaceSession(currentScope),
+    );
     setPersistedState(null);
-  }, [currentScope, syncActiveSource]);
+  }, [currentScope, enqueuePersistence, syncActiveSource]);
 
   const setWorkspaceSnapshot = useCallback(
     (source: WorkspaceSelection, state: PersistedState) => {
@@ -401,12 +420,21 @@ export function usePersistedState(): UsePersistedStateReturn {
       const { draftId } = activeSource;
       draftsRef.current.delete(draftId);
       setDraftSummaries((prev) => prev.filter((d) => d.draftId !== draftId));
-      fireAndForget(deleteDraft(draftId, currentScope));
+      enqueuePersistence(`draft:${draftId}`, 'delete draft', () =>
+        deleteDraft(draftId, currentScope),
+      );
       runInYDoc((doc) => deleteDraftFromYDoc(doc, draftId));
     }
 
     resetToDefaultDraft();
-  }, [activeSource, currentScope, resetToDefaultDraft, runInYDoc, shareStorageKey]);
+  }, [
+    activeSource,
+    currentScope,
+    enqueuePersistence,
+    resetToDefaultDraft,
+    runInYDoc,
+    shareStorageKey,
+  ]);
 
   const resolveDraftNameConflict = useCallback((state: PersistedState) => {
     const takenNames = new Set(
@@ -431,11 +459,14 @@ export function usePersistedState(): UsePersistedStateReturn {
         updatedAt: now,
         state: resolved.state,
       };
+      draftsRef.current.set(draftId, record);
       upsertDraftSummary(draftId, record);
-      fireAndForget(persistDraftRecord(draftId, record));
+      enqueuePersistence(`draft:${draftId}`, 'create draft', () =>
+        persistDraftRecord(draftId, record),
+      );
       return resolved.uniqueName;
     },
-    [persistDraftRecord, resolveDraftNameConflict, shareId, upsertDraftSummary],
+    [enqueuePersistence, persistDraftRecord, resolveDraftNameConflict, shareId, upsertDraftSummary],
   );
 
   const deleteDraftById = useCallback(
@@ -449,14 +480,16 @@ export function usePersistedState(): UsePersistedStateReturn {
       draftsRef.current.delete(draftId);
       setDraftSummaries((prev) => prev.filter((d) => d.draftId !== draftId));
       setTrashedDrafts((prev) => [toDraftSummary(draftId, trashedRecord), ...prev]);
-      fireAndForget(writeDraft(draftId, trashedRecord, currentScope));
+      enqueuePersistence(`draft:${draftId}`, 'move draft to trash', () =>
+        writeDraft(draftId, trashedRecord, currentScope),
+      );
       dropDraftRecord(draftId);
 
       if (activeSourceRef.current.kind === 'draft' && activeSourceRef.current.draftId === draftId) {
         resetToDefaultDraft();
       }
     },
-    [currentScope, dropDraftRecord, resetToDefaultDraft, shareId],
+    [currentScope, dropDraftRecord, enqueuePersistence, resetToDefaultDraft, shareId],
   );
 
   const restoreDraftById = useCallback(
@@ -482,10 +515,12 @@ export function usePersistedState(): UsePersistedStateReturn {
     (draftId: string) => {
       if (shareId) return;
       setTrashedDrafts((prev) => prev.filter((d) => d.draftId !== draftId));
-      fireAndForget(deleteDraft(draftId, currentScope));
+      enqueuePersistence(`draft:${draftId}`, 'permanently delete draft', () =>
+        deleteDraft(draftId, currentScope),
+      );
       dropDraftRecord(draftId);
     },
-    [currentScope, dropDraftRecord, shareId],
+    [currentScope, dropDraftRecord, enqueuePersistence, shareId],
   );
 
   const moveDraftToFolder = useCallback(
@@ -497,9 +532,13 @@ export function usePersistedState(): UsePersistedStateReturn {
       setDraftSummaries((prev) =>
         prev.map((draft) => (draft.draftId === draftId ? { ...draft, folderId } : draft)),
       );
-      fireAndForget(persistDraftRecord(draftId, { ...record, folderId, updatedAt: Date.now() }));
+      const updatedRecord = { ...record, folderId, updatedAt: Date.now() };
+      draftsRef.current.set(draftId, updatedRecord);
+      enqueuePersistence(`draft:${draftId}`, 'move draft to folder', () =>
+        persistDraftRecord(draftId, updatedRecord),
+      );
     },
-    [persistDraftRecord, shareId],
+    [enqueuePersistence, persistDraftRecord, shareId],
   );
 
   const removeSavedTableDraft = useCallback(
@@ -529,11 +568,11 @@ export function usePersistedState(): UsePersistedStateReturn {
           }
         });
       }
-      fireAndForget(
+      enqueuePersistence(`saved-draft:${fromNormalizedName}`, 'rename saved-table draft', () =>
         renameSavedDraftKey(fromNormalizedName, toNormalizedName, nextTableName, currentScope),
       );
     },
-    [currentScope, runInYDoc, shareId],
+    [currentScope, enqueuePersistence, runInYDoc, shareId],
   );
 
   useEffect(() => {
@@ -876,5 +915,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     trashedDrafts,
     restoreDraftById,
     permanentlyDeleteDraftById,
+    persistenceFailure,
+    retryPersistence,
   };
 }

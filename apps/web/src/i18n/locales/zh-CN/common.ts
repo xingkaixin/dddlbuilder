@@ -230,6 +230,8 @@ export const zhCNCommon = {
     loadedDraft: '已加载草稿箱',
     emptyDraftCreated: '草稿箱为空，已创建新的草稿',
     draftDeleted: '草稿已删除',
+    persistenceFailed: '工作区内容未能保存，请重试',
+    retryPersistence: '重试保存',
   },
   tableConfig: {
     title: '表配置',

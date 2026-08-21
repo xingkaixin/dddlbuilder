@@ -29,12 +29,6 @@ export const removeStorage = (key: string) => {
   }
 };
 
-export const fireAndForget = (task: Promise<unknown>) => {
-  void task.catch(() => {
-    // ignore persistence errors
-  });
-};
-
 export const buildShareStorageKey = (shareId: string) => `${STORAGE_KEY}:share:${shareId}`;
 
 export const parseSharePath = (pathname: string): { shareId: string | null; invalid: boolean } => {

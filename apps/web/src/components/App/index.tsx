@@ -213,6 +213,8 @@ function App() {
     trashedDrafts,
     restoreDraftById,
     permanentlyDeleteDraftById,
+    persistenceFailure,
+    retryPersistence,
   } = usePersistedState();
   const loadedTableSource = activeSource.kind === 'saved_table' ? activeSource : null;
   const loadedTableNormalizedName = loadedTableSource?.normalizedName ?? null;
@@ -375,7 +377,7 @@ function App() {
     foreignKeys,
   );
 
-  const { showToast } = useToast();
+  const { showToast, error: showErrorToast } = useToast();
   const { isLoading: isGeneratingComments, generateComments } = useAIComments();
   const {
     open: isAIIndexAdvisorOpen,
@@ -487,6 +489,17 @@ function App() {
       // ignore sessionStorage errors
     }
   }, [isShareView, showToast, t]);
+
+  useEffect(() => {
+    if (!persistenceFailure) return;
+    showErrorToast(t('app.persistenceFailed'), {
+      id: 'workspace-persistence-failure',
+      action: {
+        label: t('app.retryPersistence'),
+        onClick: retryPersistence,
+      },
+    });
+  }, [persistenceFailure, retryPersistence, showErrorToast, t]);
 
   const {
     savedTables,

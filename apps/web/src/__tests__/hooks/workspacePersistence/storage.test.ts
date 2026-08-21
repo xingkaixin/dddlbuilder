@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   buildShareStorageKey,
-  fireAndForget,
   parseSharePath,
   readStorageJson,
   removeStorage,
@@ -45,12 +44,6 @@ describe('workspacePersistence/storage', () => {
 
     expect(() => removeStorage('k1')).not.toThrow();
     expect(removeSpy).toHaveBeenCalledWith('k1');
-  });
-
-  it('fireAndForget 应吞掉 rejection', async () => {
-    fireAndForget(Promise.reject(new Error('x')));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(true).toBe(true);
   });
 
   it('buildShareStorageKey 应生成固定前缀 key', () => {

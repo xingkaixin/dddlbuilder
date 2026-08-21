@@ -239,6 +239,8 @@ export const enUSCommon = {
     loadedDraft: 'Draft box loaded',
     emptyDraftCreated: 'Draft box was empty. A new draft has been created.',
     draftDeleted: 'Draft deleted',
+    persistenceFailed: 'Workspace changes could not be saved. Please retry.',
+    retryPersistence: 'Retry saving',
   },
   tableConfig: {
     title: 'Table Config',
