@@ -27,6 +27,7 @@ import {
   getRequestId,
   parseJsonBodyWithLimit,
   streamErrorPayload,
+  DomainError,
   type ApiErrorCode,
 } from './http.js';
 import { createOpenAIStreamDebugLogger } from './aiStreamDebug.js';
@@ -195,9 +196,10 @@ export const withAIGovernance = async <Request>(
   try {
     userId = (await authenticateAIUser(c)).userId;
   } catch (error) {
-    if (error instanceof Error && error.message === 'AUTH_REQUIRED') {
-      audit(401, 0, false, false, 'AUTH_REQUIRED');
-      return errorResponse(c, 401, 'Authentication required', 'AUTH_REQUIRED');
+    // 鉴权失败也要落审计日志，所以这里不能直接把 DomainError 交给全局 onError
+    if (error instanceof DomainError) {
+      audit(error.status, 0, false, false, error.code);
+      return errorResponse(c, error.status, error.message, error.code);
     }
     console.error(`[${route}] authentication failed`, error);
     audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
@@ -221,9 +223,9 @@ export const withAIGovernance = async <Request>(
       estimatedTokens,
     });
   } catch (error) {
-    if (error instanceof Error && error.message === 'CREDIT_EXHAUSTED') {
-      audit(402, 0, false, false, 'CREDIT_EXHAUSTED');
-      return errorResponse(c, 402, 'Insufficient credits', 'CREDIT_EXHAUSTED');
+    if (error instanceof DomainError) {
+      audit(error.status, 0, false, false, error.code);
+      return errorResponse(c, error.status, error.message, error.code);
     }
     console.error(`[${route}] credit reservation failed`, error);
     audit(503, 0, false, false, 'SERVICE_UNAVAILABLE');
