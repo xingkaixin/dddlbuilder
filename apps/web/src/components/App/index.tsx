@@ -156,20 +156,17 @@ function App() {
     setTimelinePlayerTarget,
     rows,
     setRows,
-    initializeRows,
     resetTableRows,
     indexInput,
     currentIndexFields,
     indexes,
     setIndexInput,
     setCurrentIndexFields,
-    initializeIndexState,
     updateIndexNames,
     resetIndexState,
     setIndexes,
     foreignKeys,
     setForeignKeys,
-    initializeForeignKeyState,
     resetForeignKeyState,
   } = useAppSelectors();
 
@@ -628,51 +625,6 @@ function App() {
     showToast,
   });
 
-  usePersistedSync({
-    hydrated,
-    hasOpenTab: tabs.length > 0,
-    persistedState,
-    activeSource,
-    saveState,
-    buildPersistedState,
-    setSchemaName,
-    setTableName,
-    setTableComment,
-    setObjectType,
-    setViewDefinition,
-    setViewCreateOrReplace,
-    setDbType,
-    setSqlFormatMode,
-    setAddCount,
-    initializeRows,
-    initializeIndexState,
-    initializeForeignKeyState,
-    setFieldTableFreezeEnabled,
-    setFieldTableFreezeColumns,
-    defaultFieldTableFreezeColumns: DEFAULT_FIELD_TABLE_FREEZE_COLUMNS,
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
-    setLoadedTableSignature,
-    loadedTableNormalizedName,
-    updateActiveTabSnapshot,
-  });
-
-  const { handleClearAll, cancelClearAll, confirmClearAll } = useClearAllActions({
-    setIsClearDialogOpen,
-    clearState,
-    resetTableConfig,
-    resetTableViewConfig,
-    resetTableRows,
-    resetIndexState,
-    resetAuthState,
-    resetCitusSharding,
-    resetPartition,
-    resetTableMiscConfig,
-    setLoadedTableNormalizedName,
-    setLoadedTableName,
-    setLoadedTableSignature,
-  });
-
   const applySavedState = useApplySavedState({
     initialRows: INITIAL_ROWS,
     defaultFieldTableFreezeEnabled: DEFAULT_FIELD_TABLE_FREEZE_ENABLED,
@@ -702,6 +654,37 @@ function App() {
     setAddCount,
     setFieldTableFreezeEnabled,
     setFieldTableFreezeColumns,
+  });
+
+  usePersistedSync({
+    hydrated,
+    hasOpenTab: tabs.length > 0,
+    persistedState,
+    activeSource,
+    saveState,
+    buildPersistedState,
+    applyPersistedState: applySavedState,
+    setLoadedTableNormalizedName,
+    setLoadedTableName,
+    setLoadedTableSignature,
+    loadedTableNormalizedName,
+    updateActiveTabSnapshot,
+  });
+
+  const { handleClearAll, cancelClearAll, confirmClearAll } = useClearAllActions({
+    setIsClearDialogOpen,
+    clearState,
+    resetTableConfig,
+    resetTableViewConfig,
+    resetTableRows,
+    resetIndexState,
+    resetAuthState,
+    resetCitusSharding,
+    resetPartition,
+    resetTableMiscConfig,
+    setLoadedTableNormalizedName,
+    setLoadedTableName,
+    setLoadedTableSignature,
   });
 
   const {

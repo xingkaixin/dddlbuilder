@@ -41,21 +41,7 @@ function createBaseParams(overrides?: {
     activeSource: overrides?.activeSource ?? { kind: 'draft', draftId: 'default' },
     saveState: overrides?.saveState ?? vi.fn(),
     buildPersistedState: overrides?.buildPersistedState ?? (() => createState('a')),
-    setSchemaName: vi.fn(),
-    setTableName: vi.fn(),
-    setTableComment: vi.fn(),
-    setObjectType: vi.fn(),
-    setViewDefinition: vi.fn(),
-    setViewCreateOrReplace: vi.fn(),
-    setDbType: vi.fn(),
-    setSqlFormatMode: vi.fn(),
-    setAddCount: vi.fn(),
-    initializeRows: vi.fn(),
-    initializeIndexState: vi.fn(),
-    initializeForeignKeyState: vi.fn(),
-    setFieldTableFreezeEnabled: vi.fn(),
-    setFieldTableFreezeColumns: vi.fn(),
-    defaultFieldTableFreezeColumns: 3,
+    applyPersistedState: vi.fn(),
     setLoadedTableNormalizedName: vi.fn(),
     setLoadedTableName: vi.fn(),
     setLoadedTableSignature: vi.fn(),
@@ -519,14 +505,8 @@ describe('usePersistedSync debounce save', () => {
 });
 
 describe('usePersistedSync useEffect synchronization', () => {
-  it('应在 hydrated 和 persistedState 都在时同步数据', () => {
-    const setTableName = vi.fn();
-    const setTableComment = vi.fn();
-    const setDbType = vi.fn();
-    const setAddCount = vi.fn();
-    const initializeRows = vi.fn();
-    const initializeIndexState = vi.fn();
-
+  it('应在 hydrated 和 persistedState 都在时通过统一入口应用数据', () => {
+    const applyPersistedState = vi.fn();
     const persistedState = createState('test_table');
     persistedState.tableComment = 'test comment';
     persistedState.dbType = 'postgresql';
@@ -536,65 +516,12 @@ describe('usePersistedSync useEffect synchronization', () => {
       hydrated: true,
       persistedState,
     });
-    params.setTableName = setTableName;
-    params.setTableComment = setTableComment;
-    params.setDbType = setDbType;
-    params.setAddCount = setAddCount;
-    params.initializeRows = initializeRows;
-    params.initializeIndexState = initializeIndexState;
+    params.applyPersistedState = applyPersistedState;
 
     renderHook(() => usePersistedSync(params));
 
-    expect(setTableName).toHaveBeenCalledWith('test_table');
-    expect(setTableComment).toHaveBeenCalledWith('test comment');
-    expect(setDbType).toHaveBeenCalledWith('postgresql');
-    expect(setAddCount).toHaveBeenCalledWith(5);
-    expect(initializeRows).toHaveBeenCalledWith([]);
-    expect(initializeIndexState).toHaveBeenCalledWith(persistedState);
-  });
-
-  it('应同步 fieldTableViewConfig', () => {
-    const setFieldTableFreezeEnabled = vi.fn();
-    const setFieldTableFreezeColumns = vi.fn();
-
-    const persistedState = createState('test_table');
-    persistedState.fieldTableViewConfig = {
-      freezeEnabled: false,
-      freezeColumns: 5,
-    };
-
-    const params = createBaseParams({
-      hydrated: true,
-      persistedState,
-    });
-    params.setFieldTableFreezeEnabled = setFieldTableFreezeEnabled;
-    params.setFieldTableFreezeColumns = setFieldTableFreezeColumns;
-
-    renderHook(() => usePersistedSync(params));
-
-    expect(setFieldTableFreezeEnabled).toHaveBeenCalledWith(false);
-    expect(setFieldTableFreezeColumns).toHaveBeenCalledWith(5);
-  });
-
-  it('如果 freezeColumns 不是有效数字，应使用默认值', () => {
-    const setFieldTableFreezeColumns = vi.fn();
-
-    const persistedState = createState('test_table');
-    persistedState.fieldTableViewConfig = {
-      freezeEnabled: true,
-      freezeColumns: NaN,
-    };
-
-    const params = createBaseParams({
-      hydrated: true,
-      persistedState,
-    });
-    params.setFieldTableFreezeColumns = setFieldTableFreezeColumns;
-    params.defaultFieldTableFreezeColumns = 4;
-
-    renderHook(() => usePersistedSync(params));
-
-    expect(setFieldTableFreezeColumns).toHaveBeenCalledWith(4);
+    expect(applyPersistedState).toHaveBeenCalledOnce();
+    expect(applyPersistedState).toHaveBeenCalledWith(persistedState);
   });
 
   it('如果 activeSource 为 saved_table，应设置 loadedTable', () => {

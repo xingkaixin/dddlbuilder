@@ -9,31 +9,11 @@ const PERSIST_DEBOUNCE_MS = 500;
 interface UsePersistedSyncParams {
   hydrated: boolean;
   hasOpenTab: boolean;
-  persistedState: Partial<PersistedState> | null;
+  persistedState: PersistedState | null;
   activeSource: WorkspaceSource;
   saveState: (payload: WorkspaceSavePayload) => void;
   buildPersistedState: () => PersistedState;
-  setSchemaName: (name: string) => void;
-  setTableName: (name: string) => void;
-  setTableComment: (comment: string) => void;
-  setObjectType: (objectType: NonNullable<PersistedState['objectType']>) => void;
-  setViewDefinition: (definition: string) => void;
-  setViewCreateOrReplace: (enabled: boolean) => void;
-  setDbType: (dbType: PersistedState['dbType']) => void;
-  setSqlFormatMode: (mode: PersistedState['sqlFormatMode']) => void;
-  setAddCount: (count: number) => void;
-  initializeRows: (rows: PersistedState['rows']) => void;
-  initializeIndexState: (persistedState?: {
-    indexInput?: PersistedState['indexInput'];
-    currentIndexFields?: PersistedState['currentIndexFields'];
-    indexes?: PersistedState['indexes'];
-  }) => void;
-  initializeForeignKeyState: (persistedState?: {
-    foreignKeys?: PersistedState['foreignKeys'];
-  }) => void;
-  setFieldTableFreezeEnabled: (enabled: boolean) => void;
-  setFieldTableFreezeColumns: (columns: number) => void;
-  defaultFieldTableFreezeColumns: number;
+  applyPersistedState: (state: PersistedState) => void;
   setLoadedTableNormalizedName: (name: string | null) => void;
   setLoadedTableName: (name: string | null) => void;
   setLoadedTableSignature: (signature: string | null) => void;
@@ -50,21 +30,7 @@ export function usePersistedSync({
   activeSource,
   saveState,
   buildPersistedState,
-  setSchemaName,
-  setTableName,
-  setTableComment,
-  setObjectType,
-  setViewDefinition,
-  setViewCreateOrReplace,
-  setDbType,
-  setSqlFormatMode,
-  setAddCount,
-  initializeRows,
-  initializeIndexState,
-  initializeForeignKeyState,
-  setFieldTableFreezeEnabled,
-  setFieldTableFreezeColumns,
-  defaultFieldTableFreezeColumns,
+  applyPersistedState,
   setLoadedTableNormalizedName,
   setLoadedTableName,
   setLoadedTableSignature,
@@ -144,44 +110,7 @@ export function usePersistedSync({
   useEffect(() => {
     if (!hydrated || !persistedState) return;
     lastAppliedBuildPersistedStateRef.current = buildPersistedStateRef.current;
-
-    if (typeof persistedState.schemaName === 'string') {
-      setSchemaName(persistedState.schemaName);
-    }
-    if (typeof persistedState.tableName === 'string') {
-      setTableName(persistedState.tableName);
-    }
-    if (typeof persistedState.tableComment === 'string') {
-      setTableComment(persistedState.tableComment);
-    }
-    setObjectType(persistedState.objectType === 'view' ? 'view' : 'table');
-    setViewDefinition(
-      typeof persistedState.viewDefinition === 'string' ? persistedState.viewDefinition : '',
-    );
-    setViewCreateOrReplace(persistedState.viewCreateOrReplace !== false);
-    if (typeof persistedState.dbType === 'string') {
-      setDbType(persistedState.dbType);
-    }
-    if (persistedState.sqlFormatMode === 'aligned' || persistedState.sqlFormatMode === 'compact') {
-      setSqlFormatMode(persistedState.sqlFormatMode);
-    }
-    if (typeof persistedState.addCount === 'number' && Number.isFinite(persistedState.addCount)) {
-      setAddCount(Math.max(1, Math.floor(persistedState.addCount)));
-    }
-    initializeRows(persistedState.rows ?? []);
-    initializeIndexState(persistedState);
-    initializeForeignKeyState(persistedState);
-
-    const persistedFieldTableViewConfig = persistedState.fieldTableViewConfig;
-    if (persistedFieldTableViewConfig) {
-      setFieldTableFreezeEnabled(persistedFieldTableViewConfig.freezeEnabled === true);
-      const freezeColumns = persistedFieldTableViewConfig.freezeColumns;
-      setFieldTableFreezeColumns(
-        typeof freezeColumns === 'number' && Number.isFinite(freezeColumns)
-          ? Math.max(1, Math.floor(freezeColumns))
-          : defaultFieldTableFreezeColumns,
-      );
-    }
+    applyPersistedState(persistedState);
 
     if (activeSource.kind === 'saved_table') {
       setLoadedTableNormalizedName(activeSource.normalizedName);
@@ -196,21 +125,7 @@ export function usePersistedSync({
     hydrated,
     persistedState,
     activeSource,
-    setSchemaName,
-    setTableName,
-    setTableComment,
-    setObjectType,
-    setViewDefinition,
-    setViewCreateOrReplace,
-    setDbType,
-    setSqlFormatMode,
-    setAddCount,
-    initializeRows,
-    initializeIndexState,
-    initializeForeignKeyState,
-    setFieldTableFreezeEnabled,
-    setFieldTableFreezeColumns,
-    defaultFieldTableFreezeColumns,
+    applyPersistedState,
     setLoadedTableNormalizedName,
     setLoadedTableName,
     setLoadedTableSignature,

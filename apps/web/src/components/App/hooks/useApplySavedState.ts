@@ -79,7 +79,7 @@ export function useApplySavedState({
         setAddCount(10);
       }
 
-      setRows(state.rows ?? initialRows);
+      setRows(state.rows?.length ? state.rows : initialRows);
       setIndexes(state.indexes ?? []);
       setIndexInput(state.indexInput ?? '');
       setCurrentIndexFields(state.currentIndexFields ?? []);
