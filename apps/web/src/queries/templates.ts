@@ -22,7 +22,7 @@ export function fieldTemplateListOptions() {
 export function fieldTemplateOptions(id: string) {
   return queryOptions({
     queryKey: templateQueryKeys.field(id),
-    queryFn: () => getTemplate(id),
+    queryFn: async () => (await getTemplate(id)) ?? null,
     staleTime: Number.POSITIVE_INFINITY,
   });
 }
@@ -38,7 +38,7 @@ export function tableTemplateListOptions() {
 export function tableTemplateOptions(id: string) {
   return queryOptions({
     queryKey: templateQueryKeys.table(id),
-    queryFn: () => getTableTemplate(id),
+    queryFn: async () => (await getTableTemplate(id)) ?? null,
     staleTime: Number.POSITIVE_INFINITY,
   });
 }
