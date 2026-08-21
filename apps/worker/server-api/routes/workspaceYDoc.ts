@@ -3,7 +3,7 @@ import type { ApiEnv } from '../lib/context.js';
 import { authenticateRequest } from '../lib/auth.js';
 import { errorResponse, parseJsonBodyWithLimit } from '../lib/http.js';
 import { assertWorkspaceOwner, WorkspaceNotFoundError } from '../lib/workspaceEntities.js';
-import { isWorkspaceSnapshot } from '../lib/workspaceSnapshotValidation.js';
+import { decodeWorkspaceSnapshot } from '../lib/workspaceSnapshotValidation.js';
 
 const IMPORT_BODY_MAX_BYTES = 5 * 1024 * 1024;
 
@@ -131,7 +131,8 @@ export function registerWorkspaceYDocRoutes(app: Hono<ApiEnv>) {
     if (parsedBody.errorResponse) return parsedBody.errorResponse;
     const body = parsedBody.data;
 
-    if (!isWorkspaceSnapshot(body)) {
+    const snapshot = decodeWorkspaceSnapshot(body);
+    if (!snapshot) {
       return errorResponse(c, 400, 'Invalid workspace snapshot payload', 'INVALID_JSON');
     }
 
@@ -140,7 +141,7 @@ export function registerWorkspaceYDocRoutes(app: Hono<ApiEnv>) {
         c.req.raw,
         authenticated.workspaceId,
         authenticated.userId,
-        JSON.stringify(body),
+        JSON.stringify(snapshot),
       ),
     );
   });

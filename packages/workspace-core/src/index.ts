@@ -1,5 +1,10 @@
 export { buildWorkspaceContentHash } from './contentHash';
 export { createFieldId } from './fieldId';
+export {
+  decodePersistedState,
+  decodeWorkspaceSnapshot,
+  type PersistedStateDecodeMode,
+} from './persistedStateCodec';
 export { stableStringify } from './yMapJson';
 export {
   type ApplyPersistedStateOptions,

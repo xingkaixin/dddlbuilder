@@ -1,5 +1,6 @@
 import type { Hono } from 'hono';
 import type { PersistedState } from '@ddlbuilder/shared-types';
+import { decodePersistedState } from '@ddlbuilder/workspace-core';
 import type { ApiEnv } from '../lib/context.js';
 import { errorResponse, parseJsonBodyWithLimit, withMeta } from '../lib/http.js';
 import { enforceRequestRateLimit } from '../lib/requestRateLimit.js';
@@ -15,32 +16,7 @@ const SHARE_CREATE_RATE_LIMIT = {
   windowMs: 60 * 60 * 1000,
 } as const;
 
-type ShareCreateBody = {
-  state?: unknown;
-};
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const isValidPersistedState = (value: unknown): value is PersistedState => {
-  if (!isRecord(value)) return false;
-
-  const rows = value.rows;
-  const indexes = value.indexes;
-
-  return (
-    typeof value.tableName === 'string' &&
-    typeof value.tableComment === 'string' &&
-    typeof value.dbType === 'string' &&
-    Array.isArray(rows) &&
-    Array.isArray(indexes) &&
-    typeof value.addCount === 'number' &&
-    typeof value.indexInput === 'string' &&
-    Array.isArray(value.currentIndexFields) &&
-    typeof value.authInput === 'string' &&
-    Array.isArray(value.authObjects)
-  );
-};
+type ShareCreateBody = { state?: unknown };
 
 const isValidShareUuid = (value: string) => SHARE_UUID_REGEX.test(value);
 
@@ -64,11 +40,7 @@ async function getShareState(kv: KVNamespace, key: string): Promise<PersistedSta
     const value = await kv.get(key);
     if (!value) return null;
 
-    const parsed = JSON.parse(value);
-    if (!isValidPersistedState(parsed)) {
-      return null;
-    }
-    return parsed;
+    return decodePersistedState(JSON.parse(value), 'external');
   } catch {
     return null;
   }
@@ -99,14 +71,15 @@ export function registerShareRoutes(app: Hono<ApiEnv>) {
       return errorResponse(c, 400, 'State is required', 'SHARE_STATE_REQUIRED');
     }
 
-    if (!isValidPersistedState(state)) {
+    const decodedState = decodePersistedState(state, 'external');
+    if (!decodedState) {
       return errorResponse(c, 400, 'Invalid state', 'SHARE_STATE_INVALID');
     }
 
     const shareId = crypto.randomUUID();
     const key = `${SHARE_KEY_PREFIX}${shareId}`;
 
-    const ok = await setShareState(kv, key, state);
+    const ok = await setShareState(kv, key, decodedState);
 
     if (!ok) {
       return errorResponse(c, 502, 'Share store failed', 'SHARE_STORE_FAILED');

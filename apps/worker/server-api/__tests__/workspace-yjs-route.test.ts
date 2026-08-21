@@ -166,6 +166,23 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
     expect(invalid.status).toBe(400);
     expect(stubFetch).not.toHaveBeenCalled();
 
+    const invalidState = await app.fetch(
+      createRequest('/api/workspaces/ws-1/yjs/import', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          globalDraft: { state: {}, updatedAt: 1 },
+          drafts: [],
+          savedTables: [],
+          savedDrafts: [],
+          folders: [],
+        }),
+      }),
+      env,
+    );
+    expect(invalidState.status).toBe(400);
+    expect(stubFetch).not.toHaveBeenCalled();
+
     const valid = await app.fetch(
       createRequest('/api/workspaces/ws-1/yjs/import', {
         method: 'POST',

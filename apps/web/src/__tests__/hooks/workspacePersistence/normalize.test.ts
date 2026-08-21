@@ -23,9 +23,6 @@ describe('workspacePersistence/normalize', () => {
   });
 
   it('normalizePersistedState 应应用默认值并过滤非法项', () => {
-    vi.spyOn(Date, 'now').mockReturnValue(1700000000000);
-    vi.spyOn(Math, 'random').mockReturnValue(0.123456789);
-
     const result = normalizePersistedState({
       tableName: 1,
       tableComment: null,
@@ -77,7 +74,6 @@ describe('workspacePersistence/normalize', () => {
       authInput: '',
       authObjects: ['u1', 'u2'],
       citusShardingConfig: { mode: 'reference' },
-      mysqlPartitionConfig: { enabled: true },
       tableMiscConfig: { enabled: true },
       fieldTableViewConfig: { freezeEnabled: true, freezeColumns: 2 },
     });
@@ -110,7 +106,7 @@ describe('workspacePersistence/normalize', () => {
     expect(result?.currentIndexFields).toEqual([{ name: 'id', direction: 'DESC' }]);
     expect(result?.indexes).toHaveLength(1);
     expect(result?.indexes[0].name).toBe('idx_users_id');
-    expect(result?.indexes[0].id).toContain('idx_1700000000000_');
+    expect(result?.indexes[0].id).toBe('legacy-index-0');
     expect(result?.indexes[0].fields).toEqual([{ name: 'id', direction: 'DESC' }]);
   });
 

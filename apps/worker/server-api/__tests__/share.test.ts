@@ -144,6 +144,17 @@ describe('share api', () => {
     expect(mockKV.put).not.toHaveBeenCalled();
   });
 
+  it('未知数据库类型应返回 400', async () => {
+    const response = await app.request('https://ddlbuilder.test/api/share', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ state: { ...buildState(), dbType: 'unknown' } }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(mockKV.put).not.toHaveBeenCalled();
+  });
+
   it('缺少 KV 配置时应返回 500', async () => {
     // 创建没有 KV 绑定的 app
     const appNoKV = new Hono<ApiEnv>().basePath('/api');
