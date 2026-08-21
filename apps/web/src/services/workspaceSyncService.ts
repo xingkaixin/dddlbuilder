@@ -1,16 +1,9 @@
-import type { PersistedState } from '@ddlbuilder/shared-types';
 import type {
   SavedTableDraftRecord,
   WorkspaceScope,
   WorkspaceSnapshot,
 } from '@ddlbuilder/shared-types/workspace';
-import {
-  addSavedTable,
-  deleteSavedTable,
-  getSavedTable,
-  listSavedTables,
-  updateSavedTable,
-} from '@/utils/savedTablesDb';
+import { addSavedTable, deleteSavedTable, listSavedTables } from '@/utils/savedTablesDb';
 import { clearFolders, bulkPutFolders } from '@/utils/tableFolders';
 import {
   DEFAULT_DRAFT_ID,
@@ -19,55 +12,11 @@ import {
   deleteSavedDraft,
   listDrafts,
   listSavedDrafts,
-  readDraft,
   upsertSavedDraft,
   writeDraft,
 } from '@/utils/workspaceStateDb';
 
 export const WORKSPACE_SNAPSHOT_APPLIED_EVENT = 'ddlbuilder:workspace-snapshot-applied';
-
-const upsertLocalSavedTable = async (
-  input: {
-    normalizedName: string;
-    name: string;
-    state: PersistedState;
-    createdAt?: number;
-    updatedAt: number;
-    folderId?: string;
-  },
-  scope: WorkspaceScope,
-) => {
-  const existing = await getSavedTable(input.normalizedName, scope);
-  if (existing) {
-    if (existing.updatedAt > input.updatedAt) {
-      return;
-    }
-    await updateSavedTable(
-      {
-        ...existing,
-        name: input.name,
-        state: input.state,
-        createdAt: existing.createdAt ?? input.createdAt ?? input.updatedAt,
-        updatedAt: input.updatedAt,
-        folderId: input.folderId,
-      },
-      scope,
-    );
-    return;
-  }
-
-  await addSavedTable(
-    {
-      normalizedName: input.normalizedName,
-      name: input.name,
-      state: input.state,
-      createdAt: input.createdAt ?? input.updatedAt,
-      updatedAt: input.updatedAt,
-      folderId: input.folderId,
-    },
-    scope,
-  );
-};
 
 export const dispatchWorkspaceSnapshotApplied = () => {
   if (typeof window !== 'undefined') {
@@ -75,6 +24,7 @@ export const dispatchWorkspaceSnapshotApplied = () => {
   }
 };
 
+// 迁移快照是“本地无有意义数据”前提下的整体恢复，直接清空当前 scope 后重放云端记录。
 const replaceLocalWorkspaceSnapshot = async (
   snapshot: WorkspaceSnapshot,
   scope: WorkspaceScope,
@@ -146,71 +96,9 @@ const replaceLocalWorkspaceSnapshot = async (
 export const applyCloudSnapshotToLocal = async (
   snapshot: WorkspaceSnapshot,
   options: {
-    overwrite?: boolean;
     scope: WorkspaceScope;
   },
 ) => {
-  const { scope } = options;
-
-  if (options.overwrite) {
-    await replaceLocalWorkspaceSnapshot(snapshot, scope);
-    dispatchWorkspaceSnapshotApplied();
-    return;
-  }
-
-  const localGlobalDraft = await readDraft(DEFAULT_DRAFT_ID, scope);
-  if (
-    snapshot.globalDraft &&
-    (!localGlobalDraft || localGlobalDraft.updatedAt < snapshot.globalDraft.updatedAt)
-  ) {
-    await writeDraft(DEFAULT_DRAFT_ID, snapshot.globalDraft, scope);
-  }
-
-  for (const item of snapshot.drafts) {
-    const existing = await readDraft(item.draftId, scope);
-    if (existing && existing.updatedAt > item.updatedAt) {
-      continue;
-    }
-
-    await writeDraft(
-      item.draftId,
-      {
-        state: item.state,
-        createdAt: item.createdAt ?? item.updatedAt,
-        updatedAt: item.updatedAt,
-        folderId: item.folderId,
-      },
-      scope,
-    );
-  }
-
-  for (const item of snapshot.savedTables) {
-    await upsertLocalSavedTable({ ...item }, scope);
-  }
-
-  const localSavedDrafts = await listSavedDrafts(scope);
-  for (const item of snapshot.savedDrafts) {
-    const existing = localSavedDrafts[item.normalizedName];
-    if (existing && existing.updatedAt > item.updatedAt) {
-      continue;
-    }
-
-    await upsertSavedDraft(
-      item.normalizedName,
-      {
-        tableName: item.tableName,
-        state: item.state,
-        updatedAt: item.updatedAt,
-        baseSignature: item.baseSignature,
-      },
-      scope,
-    );
-  }
-
-  await clearFolders(scope);
-  if (snapshot.folders.length > 0) {
-    await bulkPutFolders(snapshot.folders, scope);
-  }
-
+  await replaceLocalWorkspaceSnapshot(snapshot, options.scope);
   dispatchWorkspaceSnapshotApplied();
 };

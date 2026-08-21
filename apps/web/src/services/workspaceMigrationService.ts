@@ -5,6 +5,7 @@ import type {
   WorkspaceSnapshot,
   WorkspaceSource,
 } from '@ddlbuilder/shared-types/workspace';
+import { shouldAcceptSnapshotRecord } from '@ddlbuilder/workspace-core';
 import {
   applyCloudSnapshotToLocal,
   dispatchWorkspaceSnapshotApplied,
@@ -219,8 +220,7 @@ export const collectWorkspaceMigrationPayload = async (
 
 // 提升可能重跑（上次中途失败），也可能与云端拉取并发，所以逐条按 updatedAt 判断：
 // 目标分区缺失或更旧才写入。用“目标分区是否为空”当作“是否已提升过”会漏提升剩余数据。
-const shouldPromoteRecord = (legacyUpdatedAt: number, targetUpdatedAt: number | undefined) =>
-  targetUpdatedAt == null || targetUpdatedAt < legacyUpdatedAt;
+const shouldPromoteRecord = shouldAcceptSnapshotRecord;
 
 export const promoteLegacyUserWorkspaceData = async (scope: WorkspaceScope): Promise<boolean> => {
   if (scope.kind !== 'user' || !scope.workspaceId) {
@@ -359,10 +359,7 @@ export const applyWorkspaceMigrationPayloadToLocal = async (
       savedDrafts: payload.snapshot.savedDrafts,
       folders: payload.snapshot.folders,
     },
-    {
-      overwrite: true,
-      scope,
-    },
+    { scope },
   );
 };
 

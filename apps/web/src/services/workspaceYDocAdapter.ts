@@ -8,6 +8,7 @@ import type {
 import {
   type ApplyPersistedStateOptions,
   applyPersistedStateToTableDoc,
+  DEFAULT_DRAFT_ID,
   ensureWorkspaceYDocMeta,
   exportWorkspaceYDocToSnapshot as encodeWorkspaceSnapshot,
   getDraftRecordFromYDoc,
@@ -16,6 +17,7 @@ import {
   isWorkspaceYDocEmpty,
   materializeWorkspaceYDoc,
   readFolderRecords,
+  shouldAcceptSnapshotRecord,
   tableDocToPersistedState,
   tableMetadata,
   upsertTableRecord,
@@ -25,7 +27,6 @@ import {
 } from '@ddlbuilder/workspace-core';
 import type { SavedTableMetadata, SavedTableRecord, TableFolder } from '@/utils/savedTablesDb';
 import type { FolderTreeNode } from '@/utils/tableFolders';
-import { DEFAULT_DRAFT_ID } from '@/utils/workspaceStateDb';
 
 export {
   applyPersistedStateToTableDoc,
@@ -225,11 +226,6 @@ export const importWorkspaceSnapshotToYDoc = (doc: Y.Doc, snapshot: WorkspaceSna
 export const exportWorkspaceYDocToSnapshot = (doc: Y.Doc): WorkspaceSnapshot =>
   encodeWorkspaceSnapshot(doc);
 
-const shouldApplySnapshotRecord = (
-  localUpdatedAt: number | undefined,
-  currentUpdatedAt: number | undefined,
-) => currentUpdatedAt == null || (localUpdatedAt ?? 0) >= currentUpdatedAt;
-
 export const mergeWorkspaceSnapshotIntoYDoc = (doc: Y.Doc, snapshot: WorkspaceSnapshot) => {
   const current = exportWorkspaceYDocToSnapshot(doc);
   const currentDrafts = new Map(current.drafts.map((draft) => [draft.draftId, draft]));
@@ -248,7 +244,7 @@ export const mergeWorkspaceSnapshotIntoYDoc = (doc: Y.Doc, snapshot: WorkspaceSn
 
   if (
     snapshot.globalDraft &&
-    shouldApplySnapshotRecord(
+    shouldAcceptSnapshotRecord(
       snapshot.globalDraft.updatedAt,
       currentDrafts.get(DEFAULT_DRAFT_ID)?.updatedAt,
     )
@@ -257,14 +253,17 @@ export const mergeWorkspaceSnapshotIntoYDoc = (doc: Y.Doc, snapshot: WorkspaceSn
   }
 
   for (const draft of snapshot.drafts) {
-    if (shouldApplySnapshotRecord(draft.updatedAt, currentDrafts.get(draft.draftId)?.updatedAt)) {
+    if (shouldAcceptSnapshotRecord(draft.updatedAt, currentDrafts.get(draft.draftId)?.updatedAt)) {
       merged.drafts.push(draft);
     }
   }
 
   for (const table of snapshot.savedTables) {
     if (
-      shouldApplySnapshotRecord(table.updatedAt, currentTables.get(table.normalizedName)?.updatedAt)
+      shouldAcceptSnapshotRecord(
+        table.updatedAt,
+        currentTables.get(table.normalizedName)?.updatedAt,
+      )
     ) {
       merged.savedTables.push(table);
     }
@@ -272,7 +271,7 @@ export const mergeWorkspaceSnapshotIntoYDoc = (doc: Y.Doc, snapshot: WorkspaceSn
 
   for (const draft of snapshot.savedDrafts) {
     if (
-      shouldApplySnapshotRecord(
+      shouldAcceptSnapshotRecord(
         draft.updatedAt,
         currentSavedDrafts.get(draft.normalizedName)?.updatedAt,
       )

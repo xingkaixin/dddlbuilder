@@ -4,7 +4,7 @@ import type {
   WorkspaceScope,
   WorkspaceSource,
 } from '@ddlbuilder/shared-types/workspace';
-import { decodePersistedState } from '@ddlbuilder/workspace-core';
+import { DEFAULT_DRAFT_ID, decodePersistedState } from '@ddlbuilder/workspace-core';
 import { STORAGE_KEY } from '@/utils/constants';
 import {
   STORE_NAME,
@@ -21,7 +21,7 @@ import {
 } from './workspaceScope';
 import { runIndexedDbRequest } from './indexedDbTransaction';
 
-export const DEFAULT_DRAFT_ID = 'default';
+export { DEFAULT_DRAFT_ID };
 const WORKSPACE_SESSION_ROW_ID = 'active';
 
 const GLOBAL_DRAFT_STORAGE_KEY = `${STORAGE_KEY}:draft:global:v1`;
