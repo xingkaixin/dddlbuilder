@@ -98,6 +98,33 @@ describe('/api/workspaces', () => {
     expect(getWorkspaceChanges).toHaveBeenCalledWith(expect.anything(), 'user-1', 'ws-1', 1);
   });
 
+  it('returns a specific code when the requested workspace does not exist', async () => {
+    vi.doMock('../lib/auth.js', () => ({
+      authenticateRequest: vi.fn().mockResolvedValue({
+        userId: 'user-1',
+        email: 'user@example.com',
+        emailVerified: true,
+        name: 'User One',
+      }),
+    }));
+    vi.doMock('../lib/workspaceEntities.js', async (importOriginal) => {
+      const actual = await importOriginal<typeof WorkspaceEntitiesModule>();
+      return {
+        ...actual,
+        getWorkspaceChanges: vi.fn().mockRejectedValue(new actual.WorkspaceNotFoundError()),
+      };
+    });
+
+    const { default: app } = await import('../../api/index');
+    const response = await app.fetch(
+      createRequest('/api/workspaces/missing/changes?since=0'),
+      createEnv(),
+    );
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({ code: 'WORKSPACE_NOT_FOUND' });
+  });
+
   it('rejects invalid change push payloads', async () => {
     vi.doMock('../lib/auth.js', () => ({
       authenticateRequest: vi.fn().mockResolvedValue({

@@ -66,7 +66,7 @@ const authenticateWorkspaceRequest = async (
   } catch (error) {
     if (error instanceof WorkspaceNotFoundError) {
       return {
-        response: errorResponse(c, 403, 'Workspace access denied', 'SERVICE_UNAVAILABLE'),
+        response: errorResponse(c, 403, 'Workspace access denied', 'WORKSPACE_ACCESS_DENIED'),
       };
     }
     throw error;

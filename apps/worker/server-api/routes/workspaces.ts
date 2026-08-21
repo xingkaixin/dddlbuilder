@@ -124,7 +124,7 @@ export function registerWorkspaceRoutes(app: Hono<ApiEnv>) {
       );
     } catch (error) {
       if (error instanceof WorkspaceNotFoundError) {
-        return errorResponse(c, 404, 'Workspace not found', 'SERVICE_UNAVAILABLE');
+        return errorResponse(c, 404, 'Workspace not found', 'WORKSPACE_NOT_FOUND');
       }
       console.error('[workspaces] changes pull failed', error);
       return errorResponse(c, 503, 'Workspace changes unavailable', 'SERVICE_UNAVAILABLE');
@@ -161,7 +161,7 @@ export function registerWorkspaceRoutes(app: Hono<ApiEnv>) {
       );
     } catch (error) {
       if (error instanceof WorkspaceNotFoundError) {
-        return errorResponse(c, 404, 'Workspace not found', 'SERVICE_UNAVAILABLE');
+        return errorResponse(c, 404, 'Workspace not found', 'WORKSPACE_NOT_FOUND');
       }
       console.error('[workspaces] changes push failed', error);
       return errorResponse(c, 503, 'Workspace changes unavailable', 'SERVICE_UNAVAILABLE');

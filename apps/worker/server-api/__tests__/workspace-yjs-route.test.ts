@@ -74,6 +74,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
     const response = await app.fetch(createRequest('/api/workspaces/ws-1/yjs'), createEnv());
 
     expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: 'WORKSPACE_ACCESS_DENIED' });
   });
 
   it('forwards authorized state requests to the durable object', async () => {
