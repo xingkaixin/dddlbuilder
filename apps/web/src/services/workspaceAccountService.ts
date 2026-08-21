@@ -11,26 +11,22 @@ import {
   listTrashedDrafts,
 } from '@/utils/workspaceStateDb';
 import { dispatchWorkspaceSnapshotApplied } from './workspaceSyncService';
+import { ApiError } from '@/services/apiError';
 
 const readJsonSafely = async <T>(response: Response): Promise<T | null> =>
   (await response.json().catch(() => null)) as T | null;
 
-export const fetchWorkspaceList = async (): Promise<WorkspaceListResponse> => {
-  const response = await fetch('/api/workspaces', { credentials: 'include' });
+export const fetchWorkspaceList = async (signal?: AbortSignal): Promise<WorkspaceListResponse> => {
+  const response = await fetch('/api/workspaces', { credentials: 'include', signal });
   const payload = await readJsonSafely<WorkspaceListResponse | ApiErrorPayload>(response);
   if (!response.ok) {
     const message = payload && 'error' in payload ? payload.error : '工作区列表拉取失败';
-    throw new Error(message);
+    throw new ApiError(message, response.status);
   }
   if (!payload || !('activeWorkspaceId' in payload)) {
     throw new Error('工作区列表响应为空');
   }
   return payload;
-};
-
-export const resolveDefaultWorkspaceScope = async (userId: string): Promise<WorkspaceScope> => {
-  const result = await fetchWorkspaceList();
-  return { kind: 'user', userId, workspaceId: result.activeWorkspaceId };
 };
 
 export const clearLocalWorkspaceData = async (scope: WorkspaceScope): Promise<void> => {

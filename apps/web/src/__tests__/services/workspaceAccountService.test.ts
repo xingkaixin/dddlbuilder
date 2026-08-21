@@ -1,9 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
-import {
-  clearLocalWorkspaceData,
-  resolveDefaultWorkspaceScope,
-} from '@/services/workspaceAccountService';
+import { clearLocalWorkspaceData } from '@/services/workspaceAccountService';
 import { addSavedTable, listSavedTables } from '@/utils/savedTablesDb';
 import { bulkPutFolders, listFolders } from '@/utils/tableFolders';
 import { readDraft, writeDraft } from '@/utils/workspaceStateDb';
@@ -33,14 +30,6 @@ describe('workspaceAccountService', () => {
   afterEach(() => {
     teardownFakeIndexedDB();
     vi.restoreAllMocks();
-  });
-
-  it('resolves the active workspace for the signed-in user', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ activeWorkspaceId: 'ws-1', workspaces: [] })),
-    );
-
-    await expect(resolveDefaultWorkspaceScope('user-1')).resolves.toEqual(scope);
   });
 
   it('clears only the selected local workspace partition', async () => {

@@ -288,7 +288,9 @@ describe('AuthSessionProvider', () => {
       });
       expect(screen.getByTestId('email')).toHaveTextContent('user@example.com');
       expect(screen.getByTestId('user-id')).toHaveTextContent('user-1');
-      expect(screen.getByTestId('credits')).toHaveTextContent('8800');
+      await waitFor(() => {
+        expect(screen.getByTestId('credits')).toHaveTextContent('8800');
+      });
     });
 
     it('publishes workspace id before background sync finishes', async () => {
@@ -543,7 +545,9 @@ describe('AuthSessionProvider', () => {
       await waitFor(() => {
         expect(screen.getByTestId('status')).toHaveTextContent('signed_in');
       });
-      expect(screen.getByTestId('credits')).toHaveTextContent('100');
+      await waitFor(() => {
+        expect(screen.getByTestId('credits')).toHaveTextContent('100');
+      });
 
       screen.getByTestId('refresh-credits').click();
       await waitFor(() => {
@@ -619,6 +623,39 @@ describe('AuthSessionProvider', () => {
       await waitFor(() => {
         expect(screen.getByTestId('credits-status')).toHaveTextContent('error');
       });
+    });
+
+    it('keeps the session signed in when workspace loading fails', async () => {
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              signedIn: true,
+              user: {
+                userId: 'user-1',
+                email: 'user@example.com',
+                emailVerified: true,
+                name: 'User One',
+              },
+            }),
+          ),
+        )
+        .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 100 })))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ error: 'Workspace load failed' }), { status: 500 }),
+        );
+
+      render(
+        <AuthSessionProvider>
+          <SessionProbe />
+        </AuthSessionProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('credits')).toHaveTextContent('100');
+      });
+      expect(screen.getByTestId('status')).toHaveTextContent('signed_in');
+      expect(screen.getByTestId('workspace-id')).toHaveTextContent('');
     });
 
     it('does nothing when refreshing credits while not signed in', async () => {

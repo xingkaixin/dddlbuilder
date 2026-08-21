@@ -23,6 +23,25 @@ export type CreditLedgerFilters = {
   endAt?: string;
 };
 
+export async function fetchCreditBalance(signal?: AbortSignal): Promise<number> {
+  const response = await fetch('/api/credits/balance', {
+    credentials: 'include',
+    signal,
+  });
+  const payload = (await response.json().catch(() => null)) as {
+    balance?: unknown;
+    error?: unknown;
+  } | null;
+  if (!response.ok) {
+    const message =
+      payload && typeof payload.error === 'string'
+        ? payload.error
+        : 'Failed to load credit balance';
+    throw new ApiError(message, response.status);
+  }
+  return typeof payload?.balance === 'number' ? payload.balance : 0;
+}
+
 export async function fetchCreditLedger(
   filters: CreditLedgerFilters,
   signal?: AbortSignal,

@@ -4,19 +4,21 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type PropsWithChildren,
 } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import type { MeApiResponse } from '@ddlbuilder/shared-types/api';
-import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import i18n from '@/i18n';
-import {
-  clearLocalWorkspaceData,
-  resolveDefaultWorkspaceScope,
-} from '@/services/workspaceAccountService';
+import { clearLocalWorkspaceData } from '@/services/workspaceAccountService';
+import { currentUserOptions, authQueryKeys } from '@/queries/auth';
+import { creditBalanceOptions, creditQueryKeys } from '@/queries/credits';
+import { workspaceListOptions, workspaceQueryKeys } from '@/queries/workspaces';
+import { fetchCurrentUser } from '@/services/authService';
+import { fetchCreditBalance } from '@/services/creditService';
 import { getBetterAuthClient, isBetterAuthConfigured } from './betterAuthClient';
+
+export { fetchCurrentUser, fetchCreditBalance };
 
 export type UserSessionState = {
   status: 'loading' | 'signed_out' | 'signed_in';
@@ -103,170 +105,89 @@ export const signedOutState = (configured: boolean): UserSessionState => ({
   authDialogOpen: false,
 });
 
-export const fetchCurrentUser = async (): Promise<MeApiResponse> => {
-  const response = await fetch('/api/me', {
-    credentials: 'include',
-  });
-
-  const payload = (await response.json().catch(() => null)) as MeApiResponse | null;
-  if (!response.ok) {
-    throw new Error(
-      payload && 'error' in payload && typeof payload.error === 'string'
-        ? payload.error
-        : 'Failed to load current user',
-    );
-  }
-
-  if (!payload) {
-    throw new Error('Empty user response');
-  }
-
-  return payload;
-};
-
-export const fetchCreditBalance = async (): Promise<number> => {
-  const response = await fetch('/api/credits/balance', {
-    credentials: 'include',
-  });
-
-  const payload = (await response.json().catch(() => null)) as {
-    balance?: unknown;
-    error?: unknown;
-  } | null;
-  if (!response.ok) {
-    throw new Error(
-      payload && typeof payload.error === 'string'
-        ? payload.error
-        : 'Failed to load credit balance',
-    );
-  }
-
-  return typeof payload?.balance === 'number' ? payload.balance : 0;
-};
-
 export function AuthSessionProvider({ children }: PropsWithChildren) {
   const configured = isBetterAuthConfigured();
   const client = getBetterAuthClient();
-  const [state, setState] = useState<UserSessionState>({
-    status: configured ? 'loading' : 'signed_out',
-    configured,
-    userId: null,
-    workspaceId: null,
-    email: null,
-    name: null,
-    emailVerified: false,
-    creditBalance: null,
-    creditsStatus: 'idle',
-    authDialogOpen: false,
+  const queryClient = useQueryClient();
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const currentUserQuery = useQuery({
+    ...currentUserOptions(),
+    enabled: configured,
   });
-  const syncPromiseRef = useRef<Promise<void> | null>(null);
+  const currentUser = currentUserQuery.data?.signedIn ? currentUserQuery.data.user : null;
+  const userId = currentUser?.userId ?? null;
+  const creditBalanceQuery = useQuery({
+    ...creditBalanceOptions(userId ?? ''),
+    enabled: Boolean(userId),
+  });
+  const workspaceListQuery = useQuery({
+    ...workspaceListOptions(userId ?? ''),
+    enabled: Boolean(userId),
+  });
+  const refetchCurrentUser = currentUserQuery.refetch;
+  const state = useMemo<UserSessionState>(() => {
+    if (!configured) return signedOutState(false);
 
-  const syncSessionState = useCallback(async () => {
-    if (!configured) {
-      setState(signedOutState(false));
-      return;
-    }
-
-    const me = await fetchCurrentUser();
-    if (!me.signedIn) {
-      setState(signedOutState(true));
-      return;
-    }
-
-    setState((prev) => ({
-      ...prev,
-      status: 'signed_in',
+    const status = currentUser
+      ? 'signed_in'
+      : currentUserQuery.isPending || currentUserQuery.isFetching
+        ? 'loading'
+        : 'signed_out';
+    return {
+      status,
       configured: true,
-      userId: me.user.userId,
-      workspaceId: prev.userId === me.user.userId ? prev.workspaceId : null,
-      email: me.user.email,
-      name: me.user.name,
-      emailVerified: me.user.emailVerified,
-      creditsStatus: 'loading',
-    }));
-
-    const creditBalancePromise = fetchCreditBalance()
-      .then((creditBalance) => {
-        setState((prev) => ({
-          ...prev,
-          status: 'signed_in',
-          configured: true,
-          userId: me.user.userId,
-          workspaceId: prev.workspaceId,
-          email: me.user.email,
-          name: me.user.name,
-          emailVerified: me.user.emailVerified,
-          creditBalance,
-          creditsStatus: 'ready',
-        }));
-      })
-      .catch((error) => {
-        console.error('[auth] failed to load credit balance', error);
-        setState((prev) => ({
-          ...prev,
-          status: 'signed_in',
-          configured: true,
-          userId: me.user.userId,
-          workspaceId: prev.workspaceId,
-          email: me.user.email,
-          name: me.user.name,
-          emailVerified: me.user.emailVerified,
-          creditBalance: null,
-          creditsStatus: 'error',
-        }));
-      });
-
-    let workspaceScope: WorkspaceScope;
-    try {
-      workspaceScope = await resolveDefaultWorkspaceScope(me.user.userId);
-    } catch (error) {
-      console.error('[auth] failed to resolve workspace', error);
-      await creditBalancePromise;
-      return;
-    }
-
-    const workspaceId =
-      workspaceScope.kind === 'user' ? (workspaceScope.workspaceId ?? null) : null;
-    if (workspaceId) {
-      setState((prev) => ({ ...prev, workspaceId }));
-    }
-    await creditBalancePromise;
-  }, [configured]);
+      userId,
+      workspaceId: workspaceListQuery.data?.activeWorkspaceId ?? null,
+      email: currentUser?.email ?? null,
+      name: currentUser?.name ?? null,
+      emailVerified: currentUser?.emailVerified ?? false,
+      creditBalance: creditBalanceQuery.data ?? null,
+      creditsStatus: !userId
+        ? 'idle'
+        : creditBalanceQuery.isPending
+          ? 'loading'
+          : creditBalanceQuery.isError
+            ? 'error'
+            : 'ready',
+      authDialogOpen,
+    };
+  }, [
+    authDialogOpen,
+    configured,
+    creditBalanceQuery.data,
+    creditBalanceQuery.isError,
+    creditBalanceQuery.isPending,
+    currentUser,
+    currentUserQuery.isFetching,
+    currentUserQuery.isPending,
+    userId,
+    workspaceListQuery.data?.activeWorkspaceId,
+  ]);
 
   const refreshSession = useCallback(async () => {
-    if (!configured) {
-      setState(signedOutState(false));
-      return;
+    if (!configured) return;
+    const result = await refetchCurrentUser();
+    if (result.error) {
+      console.error('[auth] failed to refresh session', result.error);
     }
+  }, [configured, refetchCurrentUser]);
 
-    if (syncPromiseRef.current) {
-      return syncPromiseRef.current;
-    }
-
-    const task = (async () => {
-      setState((prev) => ({ ...prev, status: 'loading' }));
-      await syncSessionState();
-    })()
-      .catch((error) => {
-        console.error('[auth] failed to refresh session', error);
-        setState(signedOutState(configured));
-      })
-      .finally(() => {
-        syncPromiseRef.current = null;
-      });
-
-    syncPromiseRef.current = task;
-    return task;
-  }, [configured, syncSessionState]);
+  const refreshCredits = useCallback(async () => {
+    if (!userId) return;
+    await queryClient.invalidateQueries({ queryKey: creditQueryKeys.all(userId) });
+  }, [queryClient, userId]);
 
   useEffect(() => {
-    if (!configured) {
-      setState(signedOutState(false));
-      return;
+    if (creditBalanceQuery.error) {
+      console.error('[auth] failed to load credit balance', creditBalanceQuery.error);
     }
+  }, [creditBalanceQuery.error]);
 
-    void refreshSession();
-  }, [configured, refreshSession]);
+  useEffect(() => {
+    if (workspaceListQuery.error) {
+      console.error('[auth] failed to resolve workspace', workspaceListQuery.error);
+    }
+  }, [workspaceListQuery.error]);
 
   const value = useMemo<AuthSessionContextValue>(
     () => ({
@@ -391,7 +312,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       },
       signOut: async () => {
         if (!client || !configured) {
-          setState(signedOutState(configured));
+          setAuthDialogOpen(false);
           return;
         }
 
@@ -413,40 +334,19 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
         if (scope) {
           await clearLocalWorkspaceData(scope);
         }
-        setState(signedOutState(configured));
+        if (state.userId) {
+          queryClient.removeQueries({ queryKey: creditQueryKeys.all(state.userId) });
+          queryClient.removeQueries({ queryKey: workspaceQueryKeys.all(state.userId) });
+        }
+        queryClient.setQueryData(authQueryKeys.me, { signedIn: false, user: null });
+        setAuthDialogOpen(false);
       },
       refreshSession,
-      refreshCredits: async () => {
-        if (state.status !== 'signed_in' || !state.userId) {
-          setState((prev) => ({ ...prev, creditBalance: null, creditsStatus: 'idle' }));
-          return;
-        }
-
-        setState((prev) => ({ ...prev, creditsStatus: 'loading' }));
-        try {
-          const creditBalance = await fetchCreditBalance();
-          setState((prev) => ({
-            ...prev,
-            creditBalance,
-            creditsStatus: 'ready',
-          }));
-        } catch (error) {
-          console.error('[auth] failed to refresh credits', error);
-          setState((prev) => ({
-            ...prev,
-            creditBalance: null,
-            creditsStatus: 'error',
-          }));
-        }
-      },
-      openAuthDialog: () => {
-        setState((prev) => ({ ...prev, authDialogOpen: true }));
-      },
-      closeAuthDialog: () => {
-        setState((prev) => ({ ...prev, authDialogOpen: false }));
-      },
+      refreshCredits,
+      openAuthDialog: () => setAuthDialogOpen(true),
+      closeAuthDialog: () => setAuthDialogOpen(false),
     }),
-    [client, configured, refreshSession, state],
+    [client, configured, queryClient, refreshCredits, refreshSession, state],
   );
 
   useEffect(() => {
