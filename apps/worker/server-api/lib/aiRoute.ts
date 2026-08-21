@@ -52,8 +52,9 @@ export const rejectAIRequest = (code: ApiErrorCode, message: string): AIRequestR
 });
 
 /**
- * 一次 AI 请求的治理句柄。额度在 reserve 时已经从账户扣走，所以每条退出路径都必须
- * 落到 succeed 或 fail 之一，否则那笔额度要等回收任务才还得回去。
+ * 一次 AI 请求的治理句柄。额度在 reserve 时已经从账户扣走，终态结算由包装器保证：
+ * 非流式路径在 run 返回后 succeed，流式路径在流结束/出错的回调里 settle，
+ * run 抛异常则 fail——调用方没有任何需要记住的结算义务。
  */
 export type AISession<Request> = {
   request: Request;
@@ -64,12 +65,10 @@ export type AISession<Request> = {
   config: OpenAIConfig;
   startedAt: number;
   reportUsage: (usage: OpenAIUsageSnapshot | null | undefined) => void;
-  /** 非流式补全：重试、usage 上报和 JSON 解析都在里面，调用方只拿结果和重试次数。 */
-  completeJson: (input: AICompletionInput) => Promise<{ data: unknown; attempts: number }>;
+  /** 非流式补全：重试、usage 上报、JSON 解析和成功结算都在里面，调用方只拿结果。 */
+  completeJson: (input: AICompletionInput) => Promise<unknown>;
   /** 流式补全：把增量直接写进响应，结算和审计在流结束或出错时完成。 */
   streamCompletion: (input: AIStreamInput) => Response;
-  succeed: (retryCount: number) => Promise<void>;
-  fail: (code: ApiErrorCode, status: number, retryCount: number) => Promise<void>;
 };
 
 export type AIChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
@@ -254,6 +253,25 @@ export const withAIGovernance = async <Request>(
     return errorResponse(c, 503, 'AI governance unavailable', 'SERVICE_UNAVAILABLE');
   }
 
+  let settled = false;
+  // 流式响应在流结束前就会从 run 返回，包装器看到 streamed 就不能代为结算——那时 usage 还没读到
+  let streamed = false;
+  const settleSuccess = (retryCount: number) => {
+    if (settled) return;
+    settled = true;
+    // 结算晚于响应返回，必须挂 waitUntil，否则线上 isolate 提前结束会丢账
+    const settlement = completeAIUsage(c.env, reservation, usage?.totalTokens ?? null)
+      .then(() => audit(200, retryCount, false, false))
+      .catch((error) => console.error(`[${route}] settlement failed`, error));
+    waitUntil?.(settlement);
+  };
+  const settleFailure = (code: ApiErrorCode, status: number, retryCount: number) => {
+    if (settled) return;
+    settled = true;
+    const settlement = refund(code).then(() => audit(status, retryCount, false, false, code));
+    waitUntil?.(settlement);
+  };
+
   const session: AISession<Request> = {
     request: parsed,
     requestId,
@@ -266,36 +284,43 @@ export const withAIGovernance = async <Request>(
       if (next) usage = next;
     },
     completeJson: async ({ system, user, scope, temperature }) => {
-      const { data: response, attempts } = await withOpenAIRetry(
-        async () =>
-          session.openai.chat.completions.create({
-            model,
-            messages: [
-              { role: 'system', content: system },
-              { role: 'user', content: user },
-            ],
-            response_format: { type: 'json_object' },
-            temperature,
-            max_tokens: maxOutputTokens,
-            ...(THINKING_DISABLED as Record<string, unknown>),
-          }),
-        { scope },
-        config,
-      );
-      const usageSnapshot = response.usage;
-      session.reportUsage(
-        usageSnapshot
-          ? {
-              promptTokens: usageSnapshot.prompt_tokens,
-              completionTokens: usageSnapshot.completion_tokens,
-              totalTokens: usageSnapshot.total_tokens,
-            }
-          : null,
-      );
-      return { data: JSON.parse(response.choices[0]?.message?.content || '{}'), attempts };
+      try {
+        const { data: response } = await withOpenAIRetry(
+          async () =>
+            session.openai.chat.completions.create({
+              model,
+              messages: [
+                { role: 'system', content: system },
+                { role: 'user', content: user },
+              ],
+              response_format: { type: 'json_object' },
+              temperature,
+              max_tokens: maxOutputTokens,
+              ...(THINKING_DISABLED as Record<string, unknown>),
+            }),
+          { scope },
+          config,
+        );
+        const usageSnapshot = response.usage;
+        session.reportUsage(
+          usageSnapshot
+            ? {
+                promptTokens: usageSnapshot.prompt_tokens,
+                completionTokens: usageSnapshot.completion_tokens,
+                totalTokens: usageSnapshot.total_tokens,
+              }
+            : null,
+        );
+        settleSuccess(0);
+        return JSON.parse(response.choices[0]?.message?.content || '{}');
+      } catch (error) {
+        settleFailure('UPSTREAM_OPENAI_ERROR', 502, 0);
+        throw error;
+      }
     },
     streamCompletion: ({ messages, scope, temperature, jsonResponse, debugInput }) => {
       c.header('X-AI-Stream-Debug', config.streamDebugEnabled ? '1' : '0');
+      streamed = true;
       const streamDebug = createOpenAIStreamDebugLogger({
         enabled: config.streamDebugEnabled,
         requestId,
@@ -337,32 +362,26 @@ export const withAIGovernance = async <Request>(
           }
 
           streamDebug.complete();
-          await session.succeed(retryCount);
+          settleSuccess(retryCount);
         } catch (error) {
           streamDebug.error(error);
           console.error(`[${route}] stream failed`, error);
-          await session.fail('UPSTREAM_OPENAI_ERROR', 502, retryCount);
+          settleFailure('UPSTREAM_OPENAI_ERROR', 502, retryCount);
           await stream.write(
             streamErrorPayload('Upstream OpenAI error', 'UPSTREAM_OPENAI_ERROR', requestId),
           );
         }
       });
     },
-    succeed: async (retryCount) => {
-      await completeAIUsage(c.env, reservation, usage?.totalTokens ?? null);
-      audit(200, retryCount, false, false);
-    },
-    fail: async (code, status, retryCount) => {
-      await refund(code);
-      audit(status, retryCount, false, false, code);
-    },
   };
 
   try {
-    return await run(session);
+    const response = await run(session);
+    if (!streamed) settleSuccess(0);
+    return response;
   } catch (error) {
     console.error(`[${route}] failed`, error);
-    await session.fail('UPSTREAM_OPENAI_ERROR', 502, 0);
+    settleFailure('UPSTREAM_OPENAI_ERROR', 502, 0);
     return errorResponse(c, 502, 'Upstream OpenAI error', 'UPSTREAM_OPENAI_ERROR');
   }
 };

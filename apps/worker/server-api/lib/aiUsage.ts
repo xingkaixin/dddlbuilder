@@ -20,6 +20,32 @@ export type AIUsageReservation<RouteKey extends AIRouteKey = AIRouteKey> = {
 
 type AIUsageTerminalStatus = 'succeeded' | 'failed';
 
+/**
+ * usage_events.status 的显式状态机。
+ * pending → reserved：预留分录落账后；
+ * reserved/settling_* → settling_{terminal}：正常结算抢占（幂等，只允许一个终态）；
+ * 任何非终态 → reclaiming：回收器抢占；reclaiming → failed：退款完成。
+ */
+export const AI_USAGE_STATUS = {
+  pending: 'pending',
+  reserved: 'reserved',
+  settlingSucceeded: 'settling_succeeded',
+  settlingFailed: 'settling_failed',
+  succeeded: 'succeeded',
+  failed: 'failed',
+  reclaiming: 'reclaiming',
+} as const;
+
+export type AIUsageStatus = (typeof AI_USAGE_STATUS)[keyof typeof AI_USAGE_STATUS];
+
+const TERMINAL_STATUSES: readonly AIUsageStatus[] = [
+  AI_USAGE_STATUS.succeeded,
+  AI_USAGE_STATUS.failed,
+];
+
+export const isTerminalAIUsageStatus = (status: string): status is AIUsageStatus =>
+  TERMINAL_STATUSES.includes(status as AIUsageStatus);
+
 const ROUTE_SOURCES: Record<AIRouteKey, CreditLedgerSource> = {
   explain: 'ai_explain',
   review: 'ai_review',
@@ -78,8 +104,8 @@ const updateUsageStatus = async (
   env: ApiEnv['Bindings'],
   reservation: AIUsageReservation,
   input: {
-    from: string;
-    to: string;
+    from: AIUsageStatus;
+    to: AIUsageStatus;
     actualTotalTokens?: number | null;
     errorCode?: string | null;
   },
@@ -105,15 +131,18 @@ const claimSettlement = async (
   reservation: AIUsageReservation,
   terminalStatus: AIUsageTerminalStatus,
 ) => {
-  const settlingStatus = `settling_${terminalStatus}`;
+  const settlingStatus =
+    terminalStatus === 'succeeded'
+      ? AI_USAGE_STATUS.settlingSucceeded
+      : AI_USAGE_STATUS.settlingFailed;
   const result = await env.USER_DB.prepare(
     `
       UPDATE usage_events
       SET status = ?
-      WHERE id = ? AND status IN ('reserved', ?)
+      WHERE id = ? AND status IN (?, ?)
     `,
   )
-    .bind(settlingStatus, reservation.usageEventId, settlingStatus)
+    .bind(settlingStatus, reservation.usageEventId, AI_USAGE_STATUS.reserved, settlingStatus)
     .run();
   return result.success && Number(result.meta.changes ?? 0) > 0;
 };
@@ -157,13 +186,16 @@ export const reserveAIUsage = async <RouteKey extends AIRouteKey>(
       ledgerId: `consume:${ledgerIdentity}`,
     });
 
-    await updateUsageStatus(env, reservation, { from: 'pending', to: 'reserved' });
+    await updateUsageStatus(env, reservation, {
+      from: AI_USAGE_STATUS.pending,
+      to: AI_USAGE_STATUS.reserved,
+    });
     return reservation;
   } catch (error) {
     const errorCode = error instanceof Error ? error.message : 'SERVICE_UNAVAILABLE';
     await updateUsageStatus(env, reservation, {
-      from: 'pending',
-      to: 'failed',
+      from: AI_USAGE_STATUS.pending,
+      to: AI_USAGE_STATUS.failed,
       errorCode,
     });
     throw error;
@@ -206,8 +238,8 @@ export const completeAIUsage = async (
   }
 
   await updateUsageStatus(env, reservation, {
-    from: 'settling_succeeded',
-    to: 'succeeded',
+    from: AI_USAGE_STATUS.settlingSucceeded,
+    to: AI_USAGE_STATUS.succeeded,
     actualTotalTokens: actualTokens,
   });
 };
@@ -239,8 +271,8 @@ export const failAIUsage = async (
   });
 
   await updateUsageStatus(env, reservation, {
-    from: 'settling_failed',
-    to: 'failed',
+    from: AI_USAGE_STATUS.settlingFailed,
+    to: AI_USAGE_STATUS.failed,
     errorCode,
   });
 };
@@ -254,13 +286,13 @@ const STALE_AI_USAGE_TTL_MS = 15 * 60 * 1000;
 
 // 含 reclaiming：上一轮抢占后中途失败的记录必须能被下一轮重新捡起，否则会永久卡住。
 // 重复捡起是安全的——退款走 settlement 幂等键，第二次只会读回已有分录。
-const RECLAIMABLE_STATUSES = [
-  'pending',
-  'reserved',
-  'reclaiming',
-  'settling_succeeded',
-  'settling_failed',
-] as const;
+const RECLAIMABLE_STATUSES: readonly AIUsageStatus[] = [
+  AI_USAGE_STATUS.pending,
+  AI_USAGE_STATUS.reserved,
+  AI_USAGE_STATUS.reclaiming,
+  AI_USAGE_STATUS.settlingSucceeded,
+  AI_USAGE_STATUS.settlingFailed,
+];
 
 type StaleUsageRow = {
   id: string;

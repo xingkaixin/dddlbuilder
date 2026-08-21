@@ -191,14 +191,13 @@ export function registerIndexAdvisorRoute(app: Hono<ApiEnv>) {
         },
       },
       async (session) => {
-        const { data, attempts } = await session.completeJson({
+        const data = await session.completeJson({
           system: INDEX_ADVISOR_SYSTEM_PROMPT,
           user: buildIndexAdvisorUserPrompt(session.request),
           scope: 'IndexAdvisor',
           temperature: 0.2,
         });
         const result = normalizeResult(data, session.request.fields);
-        await session.succeed(attempts);
         return c.json(
           withMeta(c, { summary: result.summary, recommendations: result.recommendations }),
         );

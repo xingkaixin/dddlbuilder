@@ -65,16 +65,15 @@ describe('withAIGovernance', () => {
     const shell = await loadShell();
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
-      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async (session) => {
-        await session.succeed(0);
-        return c.json({ ok: true });
-      }),
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async () =>
+        c.json({ ok: true }),
+      ),
     );
 
     const response = await post(app, { sql: 'select 1' });
 
     expect(response.status).toBe(200);
-    expect(shell.completeAIUsage).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(shell.completeAIUsage).toHaveBeenCalledTimes(1));
     expect(shell.failAIUsage).not.toHaveBeenCalled();
   });
 
@@ -105,10 +104,7 @@ describe('withAIGovernance', () => {
       shell.withAIGovernance(
         c,
         { ...spec, parseRequest: () => shell.rejectAIRequest('SQL_REQUIRED', 'SQL is required') },
-        async (session) => {
-          await session.succeed(0);
-          return c.json({ ok: true });
-        },
+        async () => c.json({ ok: true }),
       ),
     );
 

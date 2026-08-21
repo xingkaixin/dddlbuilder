@@ -83,14 +83,13 @@ export function registerGenerateCommentsRoute(app: Hono<ApiEnv>) {
         },
       },
       async (session) => {
-        const { data, attempts } = await session.completeJson({
+        const data = await session.completeJson({
           system: GENERATE_COMMENTS_SYSTEM_PROMPT,
           user: buildGenerateCommentsUserPrompt(session.request),
           scope: 'GenerateComments',
           temperature: 0.2,
         });
         const result = normalizeResult(data, session.request.fields);
-        await session.succeed(attempts);
         return c.json(withMeta(c, result));
       },
     ),
