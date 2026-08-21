@@ -55,42 +55,22 @@ test.describe('Cloudflare runtime bindings', () => {
     );
 
     const state = createState(`runtime_${Date.now()}`);
-    const mutationId = crypto.randomUUID();
-    const changesResponse = await context.request.post(`/api/workspaces/${workspaceId}/changes`, {
+    const importResponse = await context.request.post(`/api/workspaces/${workspaceId}/yjs/import`, {
       data: {
-        changes: [
+        globalDraft: null,
+        drafts: [
           {
-            clientMutationId: mutationId,
-            entityType: 'draft',
-            entityId: 'runtime-draft',
-            op: 'upsert',
-            baseVersion: null,
-            contentHash: null,
-            payload: state,
+            draftId: 'runtime-draft',
+            state,
+            updatedAt: Date.now(),
           },
         ],
+        savedTables: [],
+        savedDrafts: [],
+        folders: [],
       },
     });
-    expect(changesResponse.ok(), await changesResponse.text()).toBe(true);
-    expect(await changesResponse.json()).toMatchObject({
-      accepted: [{ clientMutationId: mutationId, entityId: 'runtime-draft' }],
-      conflicts: [],
-    });
-
-    const pullResponse = await context.request.get(
-      `/api/workspaces/${workspaceId}/changes?since=0`,
-    );
-    expect(pullResponse.ok()).toBe(true);
-    expect(await pullResponse.json()).toMatchObject({
-      workspaceId,
-      entities: [
-        expect.objectContaining({
-          entityType: 'draft',
-          entityId: 'runtime-draft',
-          payload: state,
-        }),
-      ],
-    });
+    expect(importResponse.ok(), await importResponse.text()).toBe(true);
 
     const shareResponse = await context.request.post('/api/share', {
       data: { state },

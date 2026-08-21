@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../lib/context.js';
 import type * as WorkspaceEntitiesModule from '../lib/workspaceEntities.js';
-import { WORKSPACE_CHANGE_BATCH_LIMIT } from '@ddlbuilder/shared-types/workspace';
 
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
@@ -31,19 +30,12 @@ describe('/api/workspaces', () => {
     const response = await app.fetch(createRequest('/api/workspaces'), createEnv());
 
     expect(response.status).toBe(401);
-    expect(await response.json()).toMatchObject({
-      code: 'AUTH_REQUIRED',
-    });
+    expect(await response.json()).toMatchObject({ code: 'AUTH_REQUIRED' });
   });
 
-  it('returns workspace list for authenticated users', async () => {
+  it('returns the active workspace for authenticated users', async () => {
     vi.doMock('../lib/auth.js', () => ({
-      authenticateRequest: vi.fn().mockResolvedValue({
-        userId: 'user-1',
-        email: 'user@example.com',
-        emailVerified: true,
-        name: 'User One',
-      }),
+      authenticateRequest: vi.fn().mockResolvedValue({ userId: 'user-1' }),
     }));
     vi.doMock('../lib/workspaceEntities.js', async (importOriginal) => {
       const actual = await importOriginal<typeof WorkspaceEntitiesModule>();
@@ -66,174 +58,13 @@ describe('/api/workspaces', () => {
     });
   });
 
-  it('pulls workspace changes with a cursor', async () => {
-    const getWorkspaceChanges = vi.fn().mockResolvedValue({
-      workspaceId: 'ws-1',
-      cursor: 2,
-      entities: [],
-    });
-    vi.doMock('../lib/auth.js', () => ({
-      authenticateRequest: vi.fn().mockResolvedValue({
-        userId: 'user-1',
-        email: 'user@example.com',
-        emailVerified: true,
-        name: 'User One',
-      }),
-    }));
-    vi.doMock('../lib/workspaceEntities.js', async (importOriginal) => {
-      const actual = await importOriginal<typeof WorkspaceEntitiesModule>();
-      return {
-        ...actual,
-        getWorkspaceChanges,
-      };
-    });
-
+  it('does not expose the retired entity change protocol', async () => {
     const { default: app } = await import('../../api/index');
     const response = await app.fetch(
-      createRequest('/api/workspaces/ws-1/changes?since=1'),
-      createEnv(),
-    );
-
-    expect(response.status).toBe(200);
-    expect(getWorkspaceChanges).toHaveBeenCalledWith(expect.anything(), 'user-1', 'ws-1', 1);
-  });
-
-  it('returns a specific code when the requested workspace does not exist', async () => {
-    vi.doMock('../lib/auth.js', () => ({
-      authenticateRequest: vi.fn().mockResolvedValue({
-        userId: 'user-1',
-        email: 'user@example.com',
-        emailVerified: true,
-        name: 'User One',
-      }),
-    }));
-    vi.doMock('../lib/workspaceEntities.js', async (importOriginal) => {
-      const actual = await importOriginal<typeof WorkspaceEntitiesModule>();
-      return {
-        ...actual,
-        getWorkspaceChanges: vi.fn().mockRejectedValue(new actual.WorkspaceNotFoundError()),
-      };
-    });
-
-    const { default: app } = await import('../../api/index');
-    const response = await app.fetch(
-      createRequest('/api/workspaces/missing/changes?since=0'),
+      createRequest('/api/workspaces/ws-1/changes', { method: 'POST' }),
       createEnv(),
     );
 
     expect(response.status).toBe(404);
-    expect(await response.json()).toMatchObject({ code: 'WORKSPACE_NOT_FOUND' });
-  });
-
-  it('rejects invalid change push payloads', async () => {
-    vi.doMock('../lib/auth.js', () => ({
-      authenticateRequest: vi.fn().mockResolvedValue({
-        userId: 'user-1',
-        email: 'user@example.com',
-        emailVerified: true,
-        name: 'User One',
-      }),
-    }));
-
-    const { default: app } = await import('../../api/index');
-    const response = await app.fetch(
-      createRequest('/api/workspaces/ws-1/changes', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ changes: [{ entityType: 'bad' }] }),
-      }),
-      createEnv(),
-    );
-
-    expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({
-      code: 'INVALID_JSON',
-    });
-  });
-
-  it('rejects change batches above the protocol limit', async () => {
-    vi.doMock('../lib/auth.js', () => ({
-      authenticateRequest: vi.fn().mockResolvedValue({
-        userId: 'user-1',
-        email: 'user@example.com',
-        emailVerified: true,
-        name: 'User One',
-      }),
-    }));
-
-    const { default: app } = await import('../../api/index');
-    const response = await app.fetch(
-      createRequest('/api/workspaces/ws-1/changes', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          changes: Array.from({ length: WORKSPACE_CHANGE_BATCH_LIMIT + 1 }, (_, index) => ({
-            clientMutationId: `m-${index}`,
-            entityType: 'draft',
-            entityId: `d-${index}`,
-            op: 'upsert',
-            baseVersion: null,
-            contentHash: `hash-${index}`,
-            payload: {},
-          })),
-        }),
-      }),
-      createEnv(),
-    );
-
-    expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({ code: 'INVALID_JSON' });
-  });
-
-  it('pushes valid workspace changes', async () => {
-    const pushWorkspaceChanges = vi.fn().mockResolvedValue({
-      cursor: 1,
-      accepted: [{ clientMutationId: 'm-1', entityType: 'draft', entityId: 'd-1', version: 1 }],
-      conflicts: [],
-    });
-    vi.doMock('../lib/auth.js', () => ({
-      authenticateRequest: vi.fn().mockResolvedValue({
-        userId: 'user-1',
-        email: 'user@example.com',
-        emailVerified: true,
-        name: 'User One',
-      }),
-    }));
-    vi.doMock('../lib/workspaceEntities.js', async (importOriginal) => {
-      const actual = await importOriginal<typeof WorkspaceEntitiesModule>();
-      return {
-        ...actual,
-        pushWorkspaceChanges,
-      };
-    });
-
-    const { default: app } = await import('../../api/index');
-    const response = await app.fetch(
-      createRequest('/api/workspaces/ws-1/changes', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          changes: [
-            {
-              clientMutationId: 'm-1',
-              entityType: 'draft',
-              entityId: 'd-1',
-              op: 'upsert',
-              baseVersion: null,
-              contentHash: 'sha256:1',
-              payload: { state: { tableName: 'users' } },
-            },
-          ],
-        }),
-      }),
-      createEnv(),
-    );
-
-    expect(response.status).toBe(200);
-    expect(pushWorkspaceChanges).toHaveBeenCalledTimes(1);
-    expect(await response.json()).toMatchObject({
-      cursor: 1,
-      accepted: [{ clientMutationId: 'm-1', version: 1 }],
-    });
   });
 });

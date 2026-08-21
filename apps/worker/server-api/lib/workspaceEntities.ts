@@ -1,9 +1,4 @@
 import type {
-  WorkspaceChangesPushRequest,
-  WorkspaceChangesPushResponse,
-  WorkspaceChangesResponse,
-  WorkspaceEntityEnvelope,
-  WorkspaceEntityOperation,
   WorkspaceEntityType,
   WorkspaceListResponse,
   WorkspaceSnapshot,
@@ -16,7 +11,6 @@ import {
   createWorkspaceD1Metrics,
   firstWorkspaceD1Result,
   logWorkspaceD1Metrics,
-  runWorkspaceD1Result,
   type WorkspaceD1Metrics,
 } from './workspaceSyncMetrics.js';
 import {
@@ -51,20 +45,7 @@ type EntityKeyRow = {
   entityId: string;
 };
 
-type MutationRow = {
-  entityType: WorkspaceEntityType;
-  entityId: string;
-  version: number;
-};
-
 const DEFAULT_WORKSPACE_NAME = 'Default Workspace';
-
-const ENTITY_TYPES = new Set<WorkspaceEntityType>([
-  'draft',
-  'saved_table',
-  'saved_draft',
-  'folder',
-]);
 
 export class WorkspaceNotFoundError extends Error {
   constructor() {
@@ -72,21 +53,12 @@ export class WorkspaceNotFoundError extends Error {
   }
 }
 
-export const isWorkspaceEntityType = (value: unknown): value is WorkspaceEntityType =>
-  typeof value === 'string' && ENTITY_TYPES.has(value as WorkspaceEntityType);
-
-export const isWorkspaceEntityOperation = (value: unknown): value is WorkspaceEntityOperation =>
-  value === 'upsert' || value === 'delete';
-
 const now = () => Date.now();
 
 const buildWorkspaceId = () => `ws_${crypto.randomUUID()}`;
 
 const buildEntityRowId = (workspaceId: string, entityType: WorkspaceEntityType, entityId: string) =>
   `${workspaceId}:${entityType}:${entityId}`;
-
-const buildMutationRowId = (workspaceId: string, clientMutationId: string) =>
-  `${workspaceId}:${clientMutationId}`;
 
 const normalizeWorkspace = (row: WorkspaceRow) => ({
   id: row.id,
@@ -97,20 +69,6 @@ const normalizeWorkspace = (row: WorkspaceRow) => ({
 });
 
 export { buildWorkspaceContentHash };
-
-const parseEntityPayload = (row: EntityRow) =>
-  row.payloadJson == null ? null : (JSON.parse(row.payloadJson) as unknown);
-
-const toEnvelope = (workspaceId: string, row: EntityRow): WorkspaceEntityEnvelope<unknown> => ({
-  workspaceId,
-  entityType: row.entityType,
-  entityId: row.entityId,
-  version: row.version,
-  contentHash: row.contentHash,
-  payload: parseEntityPayload(row),
-  ...(row.deletedAt == null ? {} : { deletedAt: row.deletedAt }),
-  updatedAt: row.updatedAt,
-});
 
 const readDefaultWorkspace = async (env: ApiEnv['Bindings'], userId: string) =>
   firstWorkspaceD1Result<WorkspaceRow>(
@@ -278,7 +236,7 @@ const writeEntityVersion = async (
     workspaceId: string;
     entityType: WorkspaceEntityType;
     entityId: string;
-    op: WorkspaceEntityOperation;
+    op: 'upsert' | 'delete';
     payload: unknown;
     contentHash: string | null;
     updatedAt: number;
@@ -347,225 +305,6 @@ const writeEntityVersion = async (
   return Number(row.version);
 };
 
-const writeMutation = async (
-  env: ApiEnv['Bindings'],
-  input: {
-    userId: string;
-    workspaceId: string;
-    clientMutationId: string;
-    entityType: WorkspaceEntityType;
-    entityId: string;
-    version: number;
-  },
-  metrics?: WorkspaceD1Metrics,
-) => {
-  const result = await runWorkspaceD1Result(
-    env.USER_DB.prepare(
-      `
-      INSERT INTO workspace_mutations (
-        id,
-        workspace_id,
-        user_id,
-        client_mutation_id,
-        entity_type,
-        entity_id,
-        version,
-        created_at
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(workspace_id, client_mutation_id) DO NOTHING
-    `,
-    ).bind(
-      buildMutationRowId(input.workspaceId, input.clientMutationId),
-      input.workspaceId,
-      input.userId,
-      input.clientMutationId,
-      input.entityType,
-      input.entityId,
-      input.version,
-      now(),
-    ),
-    metrics,
-  );
-
-  if (!result.success) {
-    throw new Error(result.error ?? 'D1 execution failed');
-  }
-  const mutation = await readMutation(env, input.workspaceId, input.clientMutationId, metrics);
-  if (!mutation) {
-    throw new Error('Workspace mutation write failed');
-  }
-  return mutation;
-};
-
-const readMutation = async (
-  env: ApiEnv['Bindings'],
-  workspaceId: string,
-  clientMutationId: string,
-  metrics?: WorkspaceD1Metrics,
-) =>
-  firstWorkspaceD1Result<MutationRow>(
-    env.USER_DB.prepare(
-      `
-      SELECT
-        entity_type AS entityType,
-        entity_id AS entityId,
-        version
-      FROM workspace_mutations
-      WHERE workspace_id = ? AND client_mutation_id = ?
-      LIMIT 1
-    `,
-    ).bind(workspaceId, clientMutationId),
-    metrics,
-  );
-
-const commitWorkspaceChange = async (
-  env: ApiEnv['Bindings'],
-  input: {
-    userId: string;
-    workspaceId: string;
-    clientMutationId: string;
-    entityType: WorkspaceEntityType;
-    entityId: string;
-    op: WorkspaceEntityOperation;
-    baseVersion: number | null;
-    payload: unknown;
-    contentHash: string | null;
-    updatedAt: number;
-  },
-  metrics?: WorkspaceD1Metrics,
-) => {
-  const deletedAt = input.op === 'delete' ? input.updatedAt : null;
-  const payloadJson = input.op === 'delete' ? null : JSON.stringify(input.payload);
-  const contentHash = input.op === 'delete' ? null : input.contentHash;
-  const mutationId = buildMutationRowId(input.workspaceId, input.clientMutationId);
-
-  await batchWorkspaceD1Results(
-    env.USER_DB,
-    [
-      env.USER_DB.prepare(
-        `
-          INSERT INTO workspace_mutations (
-            id,
-            workspace_id,
-            user_id,
-            client_mutation_id,
-            entity_type,
-            entity_id,
-            version,
-            created_at
-          )
-          SELECT ?, ?, ?, ?, ?, ?, 0, ?
-          WHERE NOT EXISTS (
-            SELECT 1
-            FROM workspace_mutations
-            WHERE workspace_id = ? AND client_mutation_id = ?
-          )
-          AND (
-            NOT EXISTS (
-              SELECT 1
-              FROM workspace_entities
-              WHERE workspace_id = ? AND entity_type = ? AND entity_id = ?
-            )
-            OR EXISTS (
-              SELECT 1
-              FROM workspace_entities
-              WHERE workspace_id = ? AND entity_type = ? AND entity_id = ? AND version IS ?
-            )
-          )
-        `,
-      ).bind(
-        mutationId,
-        input.workspaceId,
-        input.userId,
-        input.clientMutationId,
-        input.entityType,
-        input.entityId,
-        input.updatedAt,
-        input.workspaceId,
-        input.clientMutationId,
-        input.workspaceId,
-        input.entityType,
-        input.entityId,
-        input.workspaceId,
-        input.entityType,
-        input.entityId,
-        input.baseVersion,
-      ),
-      env.USER_DB.prepare(
-        `
-          UPDATE workspace_clocks
-          SET next_version = next_version + 1
-          WHERE workspace_id = ?
-            AND EXISTS (
-              SELECT 1
-              FROM workspace_mutations
-              WHERE id = ? AND version = 0
-            )
-        `,
-      ).bind(input.workspaceId, mutationId),
-      env.USER_DB.prepare(
-        `
-          INSERT INTO workspace_entities (
-            id,
-            workspace_id,
-            user_id,
-            entity_type,
-            entity_id,
-            payload_json,
-            content_hash,
-            version,
-            deleted_at,
-            created_at,
-            updated_at
-          )
-          SELECT ?, ?, ?, ?, ?, ?, ?, workspace_clocks.next_version, ?, ?, ?
-          FROM workspace_clocks
-          WHERE workspace_id = ?
-            AND EXISTS (
-              SELECT 1
-              FROM workspace_mutations
-              WHERE id = ? AND version = 0
-            )
-          ON CONFLICT(workspace_id, entity_type, entity_id) DO UPDATE SET
-            payload_json = excluded.payload_json,
-            content_hash = excluded.content_hash,
-            version = excluded.version,
-            deleted_at = excluded.deleted_at,
-            updated_at = excluded.updated_at
-        `,
-      ).bind(
-        buildEntityRowId(input.workspaceId, input.entityType, input.entityId),
-        input.workspaceId,
-        input.userId,
-        input.entityType,
-        input.entityId,
-        payloadJson,
-        contentHash,
-        deletedAt,
-        input.updatedAt,
-        input.updatedAt,
-        input.workspaceId,
-        mutationId,
-      ),
-      env.USER_DB.prepare(
-        `
-          UPDATE workspace_mutations
-          SET version = (
-            SELECT next_version
-            FROM workspace_clocks
-            WHERE workspace_id = ?
-          )
-          WHERE id = ? AND version = 0
-        `,
-      ).bind(input.workspaceId, mutationId),
-    ],
-    metrics,
-  );
-
-  return readMutation(env, input.workspaceId, input.clientMutationId, metrics);
-};
-
 const listActiveEntities = async (
   env: ApiEnv['Bindings'],
   workspaceId: string,
@@ -612,189 +351,6 @@ const listEntityKeys = async (
   );
 
   return result.results ?? [];
-};
-
-export const getWorkspaceChanges = async (
-  env: ApiEnv['Bindings'],
-  userId: string,
-  workspaceId: string,
-  since: number,
-): Promise<WorkspaceChangesResponse> => {
-  const metrics = createWorkspaceD1Metrics();
-  await assertWorkspaceOwner(env, userId, workspaceId, metrics);
-  await backfillLegacySnapshotEntities(env, userId, workspaceId, metrics);
-  const result = await allWorkspaceD1Result<EntityRow>(
-    env.USER_DB.prepare(
-      `
-      SELECT
-        entity_type AS entityType,
-        entity_id AS entityId,
-        payload_json AS payloadJson,
-        content_hash AS contentHash,
-        version,
-        deleted_at AS deletedAt,
-        updated_at AS updatedAt
-      FROM workspace_entities
-      WHERE workspace_id = ? AND version > ?
-      ORDER BY version ASC
-    `,
-    ).bind(workspaceId, since),
-    metrics,
-  );
-
-  const response = {
-    workspaceId,
-    cursor: await readWorkspaceCursor(env, workspaceId, metrics),
-    entities: (result.results ?? []).map((row) => toEnvelope(workspaceId, row)),
-  };
-  logWorkspaceD1Metrics(
-    'changes_pull',
-    {
-      workspaceId,
-      since,
-      entityCount: response.entities.length,
-    },
-    metrics,
-  );
-  return response;
-};
-
-export const pushWorkspaceChanges = async (
-  env: ApiEnv['Bindings'],
-  userId: string,
-  workspaceId: string,
-  request: WorkspaceChangesPushRequest,
-): Promise<WorkspaceChangesPushResponse> => {
-  const metrics = createWorkspaceD1Metrics();
-  await assertWorkspaceOwner(env, userId, workspaceId, metrics);
-  const accepted: WorkspaceChangesPushResponse['accepted'] = [];
-  const conflicts: WorkspaceChangesPushResponse['conflicts'] = [];
-
-  for (const change of request.changes) {
-    const mutation = await readMutation(env, workspaceId, change.clientMutationId, metrics);
-    if (mutation) {
-      accepted.push({
-        clientMutationId: change.clientMutationId,
-        entityType: mutation.entityType,
-        entityId: mutation.entityId,
-        version: mutation.version,
-      });
-      continue;
-    }
-
-    const existing = await readEntity(
-      env,
-      workspaceId,
-      change.entityType,
-      change.entityId,
-      metrics,
-    );
-    const sameContent =
-      existing &&
-      ((change.op === 'delete' && existing.deletedAt != null) ||
-        (change.op === 'upsert' &&
-          existing.deletedAt == null &&
-          existing.contentHash === change.contentHash));
-
-    if (sameContent) {
-      const committedMutation = await writeMutation(
-        env,
-        {
-          userId,
-          workspaceId,
-          clientMutationId: change.clientMutationId,
-          entityType: change.entityType,
-          entityId: change.entityId,
-          version: existing.version,
-        },
-        metrics,
-      );
-      accepted.push({
-        clientMutationId: change.clientMutationId,
-        entityType: committedMutation.entityType,
-        entityId: committedMutation.entityId,
-        version: committedMutation.version,
-      });
-      continue;
-    }
-
-    if (
-      existing &&
-      change.baseVersion !== existing.version &&
-      existing.contentHash !== change.contentHash
-    ) {
-      conflicts.push({
-        clientMutationId: change.clientMutationId,
-        entityType: change.entityType,
-        entityId: change.entityId,
-        serverVersion: existing.version,
-        serverContentHash: existing.contentHash,
-        serverPayload: parseEntityPayload(existing),
-      });
-      continue;
-    }
-
-    const committedMutation = await commitWorkspaceChange(
-      env,
-      {
-        userId,
-        workspaceId,
-        clientMutationId: change.clientMutationId,
-        entityType: change.entityType,
-        entityId: change.entityId,
-        op: change.op,
-        baseVersion: change.baseVersion,
-        payload: change.payload,
-        contentHash: change.contentHash,
-        updatedAt: now(),
-      },
-      metrics,
-    );
-    if (!committedMutation) {
-      const current = await readEntity(
-        env,
-        workspaceId,
-        change.entityType,
-        change.entityId,
-        metrics,
-      );
-      if (!current) {
-        throw new Error('Workspace change was not committed');
-      }
-      conflicts.push({
-        clientMutationId: change.clientMutationId,
-        entityType: change.entityType,
-        entityId: change.entityId,
-        serverVersion: current.version,
-        serverContentHash: current.contentHash,
-        serverPayload: parseEntityPayload(current),
-      });
-      continue;
-    }
-    accepted.push({
-      clientMutationId: change.clientMutationId,
-      entityType: committedMutation.entityType,
-      entityId: committedMutation.entityId,
-      version: committedMutation.version,
-    });
-  }
-
-  const response = {
-    cursor: await readWorkspaceCursor(env, workspaceId, metrics),
-    accepted,
-    conflicts,
-  };
-  logWorkspaceD1Metrics(
-    'changes_push',
-    {
-      workspaceId,
-      changeCount: request.changes.length,
-      acceptedCount: accepted.length,
-      conflictCount: conflicts.length,
-    },
-    metrics,
-  );
-  return response;
 };
 
 const listLegacySnapshotRows = async (

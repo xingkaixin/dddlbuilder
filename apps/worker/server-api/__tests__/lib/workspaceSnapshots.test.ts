@@ -487,14 +487,16 @@ const createLegacySavedTableRow = (
 const readWorkspaceD1Log = (calls: unknown[][]) =>
   JSON.parse(String(calls[0]?.[0])) as WorkspaceD1Log;
 
-describe('workspaceSnapshots', () => {
+describe('workspace entity checkpoints', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   it('上传快照时应保留云端已有实体', async () => {
-    const { getWorkspaceSnapshot, putWorkspaceSnapshot } =
-      await import('../../lib/workspaceSnapshots.js');
+    const {
+      getWorkspaceSnapshotFromEntities: getWorkspaceSnapshot,
+      putWorkspaceSnapshotAsEntities: putWorkspaceSnapshot,
+    } = await import('../../lib/workspaceEntities.js');
     const env = createEnv(createWorkspaceSnapshotDb());
 
     await putWorkspaceSnapshot(env, 'user-1', createSnapshot(['legacy', 'users']));
@@ -510,8 +512,10 @@ describe('workspaceSnapshots', () => {
   });
 
   it('读取快照时应从旧快照补齐缺失实体', async () => {
-    const { getWorkspaceSnapshot, putWorkspaceSnapshot } =
-      await import('../../lib/workspaceSnapshots.js');
+    const {
+      getWorkspaceSnapshotFromEntities: getWorkspaceSnapshot,
+      putWorkspaceSnapshotAsEntities: putWorkspaceSnapshot,
+    } = await import('../../lib/workspaceEntities.js');
     const env = createEnv(
       createWorkspaceSnapshotDb([
         createLegacySavedTableRow('user-1', 'legacy', 100),
@@ -536,41 +540,11 @@ describe('workspaceSnapshots', () => {
     ]);
   });
 
-  it('拉取增量时应先从旧快照补齐缺失实体', async () => {
-    const { getWorkspaceChanges } = await import('../../lib/workspaceEntities.js');
-    const { putWorkspaceSnapshot } = await import('../../lib/workspaceSnapshots.js');
-    const env = createEnv(
-      createWorkspaceSnapshotDb([
-        createLegacySavedTableRow('user-1', 'legacy', 100),
-        createLegacySavedTableRow('user-1', 'users', 101),
-      ]),
-    );
-
-    await putWorkspaceSnapshot(env, 'user-1', createSnapshot(['orders']));
-    const workspace = await env.USER_DB.prepare(
-      `
-        SELECT id
-        FROM workspaces
-        WHERE user_id = ? AND is_default = 1
-        LIMIT 1
-      `,
-    )
-      .bind('user-1')
-      .first<{ id: string }>();
-
-    const changes = await getWorkspaceChanges(env, 'user-1', workspace?.id ?? '', 0);
-
-    expect(changes.entities.map((item) => item.entityId).sort()).toEqual([
-      'legacy',
-      'orders',
-      'users',
-    ]);
-    expect(changes.cursor).toBe(3);
-  });
-
   it('应同步多份普通草稿', async () => {
-    const { getWorkspaceSnapshot, putWorkspaceSnapshot } =
-      await import('../../lib/workspaceSnapshots.js');
+    const {
+      getWorkspaceSnapshotFromEntities: getWorkspaceSnapshot,
+      putWorkspaceSnapshotAsEntities: putWorkspaceSnapshot,
+    } = await import('../../lib/workspaceEntities.js');
     const env = createEnv(createWorkspaceSnapshotDb());
 
     await putWorkspaceSnapshot(env, 'user-1', {
@@ -645,95 +619,6 @@ describe('workspaceSnapshots', () => {
     expect(result.upserted).toBe(1);
     expect(result.deleted).toBe(2);
     expect(snapshot.savedTables.map((item) => item.normalizedName)).toEqual(['orders']);
-  });
-
-  it('changes_pull 日志应覆盖 owner、backfill、changes 和 cursor 查询', async () => {
-    const { getWorkspaceChanges, putWorkspaceSnapshotAsEntities } =
-      await import('../../lib/workspaceEntities.js');
-    const env = createEnv(createWorkspaceSnapshotDb([], { includeMeta: true }));
-
-    await putWorkspaceSnapshotAsEntities(env, 'user-1', createSnapshot(['orders']));
-    const workspace = await env.USER_DB.prepare(
-      `
-        SELECT id
-        FROM workspaces
-        WHERE user_id = ? AND is_default = 1
-        LIMIT 1
-      `,
-    )
-      .bind('user-1')
-      .first<{ id: string }>();
-    const workspaceId = workspace?.id ?? '';
-    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
-
-    await getWorkspaceChanges(env, 'user-1', workspaceId, 0);
-
-    expect(readWorkspaceD1Log(info.mock.calls)).toMatchObject({
-      event: 'workspace_sync_d1',
-      operation: 'changes_pull',
-      workspaceId,
-      since: 0,
-      entityCount: 1,
-      d1: {
-        queries: 4,
-        rowsRead: 3,
-        rowsWritten: 0,
-        durationMs: 4,
-      },
-    });
-  });
-
-  it('changes_push 日志应覆盖去重、实体读取、写入和 cursor 查询', async () => {
-    const { buildWorkspaceContentHash, pushWorkspaceChanges, putWorkspaceSnapshotAsEntities } =
-      await import('../../lib/workspaceEntities.js');
-    const env = createEnv(createWorkspaceSnapshotDb([], { includeMeta: true }));
-
-    await putWorkspaceSnapshotAsEntities(env, 'user-1', createSnapshot([]));
-    const workspace = await env.USER_DB.prepare(
-      `
-        SELECT id
-        FROM workspaces
-        WHERE user_id = ? AND is_default = 1
-        LIMIT 1
-      `,
-    )
-      .bind('user-1')
-      .first<{ id: string }>();
-    const workspaceId = workspace?.id ?? '';
-    const payload = {
-      name: 'orders',
-      state: createState('orders'),
-    };
-    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
-
-    await pushWorkspaceChanges(env, 'user-1', workspaceId, {
-      changes: [
-        {
-          clientMutationId: 'mutation-1',
-          entityType: 'saved_table',
-          entityId: 'orders',
-          op: 'upsert',
-          baseVersion: null,
-          contentHash: await buildWorkspaceContentHash(payload),
-          payload,
-        },
-      ],
-    });
-
-    expect(readWorkspaceD1Log(info.mock.calls)).toMatchObject({
-      event: 'workspace_sync_d1',
-      operation: 'changes_push',
-      workspaceId,
-      changeCount: 1,
-      acceptedCount: 1,
-      conflictCount: 0,
-      d1: {
-        queries: 9,
-        rowsRead: 3,
-        rowsWritten: 4,
-        durationMs: 9,
-      },
-    });
   });
 
   it('checkpoint 日志应覆盖实体读取、写入、active 列表和 cursor 查询', async () => {

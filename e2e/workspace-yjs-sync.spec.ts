@@ -171,14 +171,6 @@ const mockSignedInWorkspace = async (
       await route.fulfill({ status: 204 });
       return;
     }
-    if (url.pathname === `/api/workspaces/${workspaceId}/changes`) {
-      if (request.method() === 'POST') {
-        await route.fulfill({ json: { cursor: 0, accepted: [], conflicts: [] } });
-        return;
-      }
-      await route.fulfill({ json: { workspaceId, cursor: 0, entities: [] } });
-      return;
-    }
     await route.fallback();
   });
   await context.routeWebSocket(`**/api/workspaces/${workspaceId}/yjs`, server.route(clientId));

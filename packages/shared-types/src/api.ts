@@ -1,12 +1,4 @@
-import type {
-  WorkspaceChangesPushRequest as WorkspaceChangesPushRequestBody,
-  WorkspaceChangesPushResponse as WorkspaceChangesPushResponseBody,
-  WorkspaceChangesResponse as WorkspaceChangesResponseBody,
-  WorkspaceEntityEnvelope as WorkspaceEntityEnvelopeBody,
-  WorkspaceEntityType as WorkspaceEntityTypeValue,
-  WorkspaceListResponse as WorkspaceListResponseBody,
-  WorkspaceSnapshot,
-} from './workspace.js';
+import type { WorkspaceListResponse as WorkspaceListResponseBody } from './workspace.js';
 
 export type ApiErrorCode =
   | 'AUTH_REQUIRED'
@@ -41,7 +33,6 @@ export type ApiErrorCode =
   | 'UPSTREAM_OPENAI_ERROR'
   | 'SERVICE_UNAVAILABLE'
   | 'ADMIN_REQUIRED'
-  | 'WORKSPACE_NOT_FOUND'
   | 'WORKSPACE_ACCESS_DENIED';
 
 export type ApiMeta = {
@@ -70,14 +61,7 @@ export type WorkspaceMigrationResponse = {
   meta?: ApiMeta;
 };
 
-export type WorkspaceSnapshotResponse = WorkspaceSnapshot & { meta?: ApiMeta };
-export type WorkspaceSnapshotPushRequest = WorkspaceSnapshot;
-export type WorkspaceEntityType = WorkspaceEntityTypeValue;
-export type WorkspaceEntityEnvelope<TPayload = unknown> = WorkspaceEntityEnvelopeBody<TPayload>;
 export type WorkspaceListResponse = WorkspaceListResponseBody & { meta?: ApiMeta };
-export type WorkspaceChangesResponse = WorkspaceChangesResponseBody & { meta?: ApiMeta };
-export type WorkspaceChangesPushRequest = WorkspaceChangesPushRequestBody;
-export type WorkspaceChangesPushResponse = WorkspaceChangesPushResponseBody & { meta?: ApiMeta };
 
 export type MeApiResponse =
   | {

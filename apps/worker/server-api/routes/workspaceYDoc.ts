@@ -3,7 +3,7 @@ import type { ApiEnv } from '../lib/context.js';
 import { authenticateRequest } from '../lib/auth.js';
 import { errorResponse, parseJsonBodyWithLimit } from '../lib/http.js';
 import { assertWorkspaceOwner, WorkspaceNotFoundError } from '../lib/workspaceEntities.js';
-import { isWorkspaceSnapshot } from './workspaceSnapshot.js';
+import { isWorkspaceSnapshot } from '../lib/workspaceSnapshotValidation.js';
 
 const IMPORT_BODY_MAX_BYTES = 5 * 1024 * 1024;
 

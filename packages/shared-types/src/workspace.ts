@@ -19,23 +19,6 @@ export type WorkspaceScope =
 
 export type WorkspaceEntityType = 'draft' | 'saved_table' | 'saved_draft' | 'folder';
 
-export type WorkspaceEntityOperation = 'upsert' | 'delete';
-
-export const WORKSPACE_CHANGE_BATCH_LIMIT = 100;
-export const WORKSPACE_CHANGE_ID_MAX_LENGTH = 512;
-export const WORKSPACE_CONTENT_HASH_MAX_LENGTH = 128;
-
-export type WorkspaceEntityEnvelope<TPayload = unknown> = {
-  workspaceId: string;
-  entityType: WorkspaceEntityType;
-  entityId: string;
-  version: number;
-  contentHash: string | null;
-  payload: TPayload | null;
-  deletedAt?: number;
-  updatedAt: number;
-};
-
 export type WorkspaceListItem = {
   id: string;
   name: string;
@@ -47,42 +30,6 @@ export type WorkspaceListItem = {
 export type WorkspaceListResponse = {
   workspaces: WorkspaceListItem[];
   activeWorkspaceId: string;
-};
-
-export type WorkspaceChangesResponse = {
-  workspaceId: string;
-  cursor: number;
-  entities: Array<WorkspaceEntityEnvelope<unknown>>;
-};
-
-export type WorkspaceChangesPushRequest = {
-  changes: Array<{
-    clientMutationId: string;
-    entityType: WorkspaceEntityType;
-    entityId: string;
-    op: WorkspaceEntityOperation;
-    baseVersion: number | null;
-    contentHash: string | null;
-    payload: unknown;
-  }>;
-};
-
-export type WorkspaceChangesPushResponse = {
-  cursor: number;
-  accepted: Array<{
-    clientMutationId: string;
-    entityType: WorkspaceEntityType;
-    entityId: string;
-    version: number;
-  }>;
-  conflicts: Array<{
-    clientMutationId: string;
-    entityType: WorkspaceEntityType;
-    entityId: string;
-    serverVersion: number;
-    serverContentHash: string | null;
-    serverPayload: unknown;
-  }>;
 };
 
 export type WorkspaceSavePayload = {
