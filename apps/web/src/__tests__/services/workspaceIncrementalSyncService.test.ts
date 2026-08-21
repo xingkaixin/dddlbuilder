@@ -8,6 +8,7 @@ import {
 import { readDraft, writeDraft } from '@/utils/workspaceStateDb';
 import { addSavedTable, listSavedTables } from '@/utils/savedTablesDb';
 import { bulkPutFolders, listFolders } from '@/utils/tableFolders';
+import { WORKSPACE_CHANGE_BATCH_LIMIT } from '@ddlbuilder/shared-types/workspace';
 import {
   enqueueWorkspaceOutboxItem,
   enqueueWorkspaceOutboxItems,
@@ -600,6 +601,51 @@ describe('workspaceIncrementalSyncService', () => {
     ]);
     expect(folders).toEqual([expect.objectContaining({ id: 'folder-1', name: 'Cloud' })]);
     expect(meta?.cursor).toBe(8);
+  });
+
+  it('outbox 超过协议上限时应分批推送', async () => {
+    await enqueueWorkspaceOutboxItems(
+      Array.from({ length: WORKSPACE_CHANGE_BATCH_LIMIT + 1 }, (_, index) => ({
+        workspaceId: 'ws-1',
+        entityType: 'draft' as const,
+        entityId: `draft-${index}`,
+        op: 'upsert' as const,
+        contentHash: `hash-${index}`,
+        payload: { state: createState(`draft-${index}`) },
+      })),
+    );
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) => {
+      if (init?.method === 'POST') {
+        const request = JSON.parse(String(init.body));
+        return new Response(
+          JSON.stringify({
+            cursor: 1,
+            accepted: request.changes.map(
+              (change: { clientMutationId: string; entityId: string }) => ({
+                clientMutationId: change.clientMutationId,
+                entityType: 'draft',
+                entityId: change.entityId,
+                version: 1,
+              }),
+            ),
+            conflicts: [],
+          }),
+        );
+      }
+      return new Response(JSON.stringify({ workspaceId: 'ws-1', cursor: 1, entities: [] }));
+    });
+
+    await syncWorkspaceOnce(scope);
+
+    const pushBodies = fetchSpy.mock.calls
+      .filter(([, init]) => init?.method === 'POST')
+      .map(([, init]) => JSON.parse(String(init?.body)) as { changes: unknown[] });
+    expect(pushBodies.map((body) => body.changes.length)).toEqual([
+      WORKSPACE_CHANGE_BATCH_LIMIT,
+      1,
+    ]);
+    expect(await listWorkspaceOutboxItems('ws-1')).toEqual([]);
   });
 
   // 服务端形状见 apps/worker/server-api/lib/workspaceEntitySnapshot.ts 的 folder 实体

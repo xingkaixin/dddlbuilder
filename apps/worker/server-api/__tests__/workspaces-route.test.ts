@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../lib/context.js';
 import type * as WorkspaceEntitiesModule from '../lib/workspaceEntities.js';
+import { WORKSPACE_CHANGE_BATCH_LIMIT } from '@ddlbuilder/shared-types/workspace';
 
 const createEnv = (overrides: Partial<ApiEnv['Bindings']> = {}): ApiEnv['Bindings'] => ({
   ASSETS: { fetch: globalThis.fetch },
@@ -121,6 +122,40 @@ describe('/api/workspaces', () => {
     expect(await response.json()).toMatchObject({
       code: 'INVALID_JSON',
     });
+  });
+
+  it('rejects change batches above the protocol limit', async () => {
+    vi.doMock('../lib/auth.js', () => ({
+      authenticateRequest: vi.fn().mockResolvedValue({
+        userId: 'user-1',
+        email: 'user@example.com',
+        emailVerified: true,
+        name: 'User One',
+      }),
+    }));
+
+    const { default: app } = await import('../../api/index');
+    const response = await app.fetch(
+      createRequest('/api/workspaces/ws-1/changes', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          changes: Array.from({ length: WORKSPACE_CHANGE_BATCH_LIMIT + 1 }, (_, index) => ({
+            clientMutationId: `m-${index}`,
+            entityType: 'draft',
+            entityId: `d-${index}`,
+            op: 'upsert',
+            baseVersion: null,
+            contentHash: `hash-${index}`,
+            payload: {},
+          })),
+        }),
+      }),
+      createEnv(),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: 'INVALID_JSON' });
   });
 
   it('pushes valid workspace changes', async () => {

@@ -1,5 +1,10 @@
 import type { Context, Hono } from 'hono';
-import type { WorkspaceChangesPushRequest } from '@ddlbuilder/shared-types/workspace';
+import {
+  WORKSPACE_CHANGE_BATCH_LIMIT,
+  WORKSPACE_CHANGE_ID_MAX_LENGTH,
+  WORKSPACE_CONTENT_HASH_MAX_LENGTH,
+  type WorkspaceChangesPushRequest,
+} from '@ddlbuilder/shared-types/workspace';
 import type { ApiEnv } from '../lib/context.js';
 import { authenticateRequest } from '../lib/auth.js';
 import { errorResponse, parseJsonBodyWithLimit, withMeta } from '../lib/http.js';
@@ -18,7 +23,12 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const isWorkspaceChangesPushRequest = (value: unknown): value is WorkspaceChangesPushRequest => {
-  if (!isRecord(value) || !Array.isArray(value.changes)) {
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.changes) ||
+    value.changes.length === 0 ||
+    value.changes.length > WORKSPACE_CHANGE_BATCH_LIMIT
+  ) {
     return false;
   }
 
@@ -30,12 +40,19 @@ const isWorkspaceChangesPushRequest = (value: unknown): value is WorkspaceChange
     return (
       typeof item.clientMutationId === 'string' &&
       item.clientMutationId.trim().length > 0 &&
+      item.clientMutationId.length <= WORKSPACE_CHANGE_ID_MAX_LENGTH &&
       isWorkspaceEntityType(item.entityType) &&
       typeof item.entityId === 'string' &&
       item.entityId.trim().length > 0 &&
+      item.entityId.length <= WORKSPACE_CHANGE_ID_MAX_LENGTH &&
       isWorkspaceEntityOperation(item.op) &&
-      (item.baseVersion === null || typeof item.baseVersion === 'number') &&
-      (item.contentHash === null || typeof item.contentHash === 'string') &&
+      (item.baseVersion === null ||
+        (typeof item.baseVersion === 'number' &&
+          Number.isSafeInteger(item.baseVersion) &&
+          item.baseVersion >= 0)) &&
+      (item.contentHash === null ||
+        (typeof item.contentHash === 'string' &&
+          item.contentHash.length <= WORKSPACE_CONTENT_HASH_MAX_LENGTH)) &&
       Object.hasOwn(item, 'payload')
     );
   });

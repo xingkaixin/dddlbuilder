@@ -8,7 +8,10 @@ import type {
   WorkspaceEntityEnvelope,
   WorkspaceListResponse,
 } from '@ddlbuilder/shared-types/api';
-import type { SavedTableDraftRecord } from '@ddlbuilder/shared-types/workspace';
+import {
+  WORKSPACE_CHANGE_BATCH_LIMIT,
+  type SavedTableDraftRecord,
+} from '@ddlbuilder/shared-types/workspace';
 import {
   addSavedTable,
   deleteSavedTable,
@@ -344,17 +347,28 @@ export const syncWorkspaceOnce = async (
     return { status: 'synced', cursor: pulled.cursor, conflictCount: 0 };
   }
 
-  const pushed = await pushWorkspaceChanges(scope.workspaceId, {
-    changes: outbox.map((item) => ({
-      clientMutationId: item.id,
-      entityType: item.entityType,
-      entityId: item.entityId,
-      op: item.op,
-      baseVersion: item.baseVersion,
-      contentHash: item.contentHash,
-      payload: item.payload,
-    })),
-  });
+  const changes: WorkspaceChangesPushRequest['changes'] = outbox.map((item) => ({
+    clientMutationId: item.id,
+    entityType: item.entityType,
+    entityId: item.entityId,
+    op: item.op,
+    baseVersion: item.baseVersion,
+    contentHash: item.contentHash,
+    payload: item.payload,
+  }));
+  const pushed: WorkspaceChangesPushResponse = {
+    cursor: pulled.cursor,
+    accepted: [],
+    conflicts: [],
+  };
+  for (let offset = 0; offset < changes.length; offset += WORKSPACE_CHANGE_BATCH_LIMIT) {
+    const response = await pushWorkspaceChanges(scope.workspaceId, {
+      changes: changes.slice(offset, offset + WORKSPACE_CHANGE_BATCH_LIMIT),
+    });
+    pushed.cursor = Math.max(pushed.cursor, response.cursor);
+    pushed.accepted.push(...response.accepted);
+    pushed.conflicts.push(...response.conflicts);
+  }
 
   const acceptedIds = new Set(pushed.accepted.map((item) => item.clientMutationId));
   const acceptedItems = outbox.filter((item) => acceptedIds.has(item.id));

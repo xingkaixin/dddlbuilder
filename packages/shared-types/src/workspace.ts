@@ -21,6 +21,10 @@ export type WorkspaceEntityType = 'draft' | 'saved_table' | 'saved_draft' | 'fol
 
 export type WorkspaceEntityOperation = 'upsert' | 'delete';
 
+export const WORKSPACE_CHANGE_BATCH_LIMIT = 100;
+export const WORKSPACE_CHANGE_ID_MAX_LENGTH = 512;
+export const WORKSPACE_CONTENT_HASH_MAX_LENGTH = 128;
+
 export type WorkspaceEntityEnvelope<TPayload = unknown> = {
   workspaceId: string;
   entityType: WorkspaceEntityType;
