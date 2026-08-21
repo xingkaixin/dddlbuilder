@@ -134,4 +134,44 @@ describe('SavedTablesDrawer', () => {
       screen.getByText('不能将文件夹移动到自身或子文件夹，请选择其他目标目录。'),
     ).toBeInTheDocument();
   });
+
+  it('应将表拖拽移动交给共享树控制逻辑', async () => {
+    const onMoveToFolder = vi.fn().mockResolvedValue({ ok: true });
+    const folder: FolderTreeNode = {
+      id: 'folder-a',
+      name: 'A',
+      parentId: undefined,
+      order: 1,
+      createdAt: Date.now(),
+      children: [],
+    };
+    const item: SavedTableSummary = {
+      normalizedName: 'users',
+      name: 'Users',
+      dbType: 'mysql',
+      fieldCount: 3,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    render(
+      <LocaleProvider>
+        <SavedTablesDrawer
+          {...createBaseProps()}
+          folders={[folder]}
+          items={[item]}
+          onMoveToFolder={onMoveToFolder}
+        />
+      </LocaleProvider>,
+    );
+
+    await act(async () => {
+      await latestOnDragEnd?.({
+        active: { id: 'table:users' },
+        over: { id: 'folder:folder-a' },
+      });
+    });
+
+    expect(onMoveToFolder).toHaveBeenCalledWith(item, 'folder-a');
+  });
 });

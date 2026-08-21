@@ -1,12 +1,5 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  DndContext,
-  PointerSensor,
-  useDroppable,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
+import { memo, useCallback, useMemo, useState } from 'react';
+import { DndContext, useDroppable } from '@dnd-kit/core';
 import {
   ChevronLeft,
   FileEdit,
@@ -34,10 +27,13 @@ import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import type { DraftSummary } from '@ddlbuilder/shared-types/workspace';
 import { useTranslation } from 'react-i18next';
-import { FolderTree, useFolderExpansion } from './FolderTree';
+import { FolderTree } from './FolderTree';
 import { TableItem } from './saved-tables/TableItem';
-import { ROOT_DROP_ID, buildFolderParentMap, resolveDropAction } from './saved-tables/dnd';
-import { useSavedTablesFilter } from './saved-tables/useSavedTablesFilter';
+import { ROOT_DROP_ID } from './saved-tables/dnd';
+import {
+  useWorkspaceTreeControls,
+  type MoveOperationResult,
+} from './saved-tables/useWorkspaceTreeControls';
 
 type TablePresentation = {
   title: string;
@@ -73,17 +69,11 @@ interface WorkspaceSidebarProps {
   onMoveToFolder?: (
     item: SavedTableSummary,
     folderId?: string,
-  ) =>
-    | { ok: boolean; message?: string }
-    | Promise<{ ok: boolean; message?: string } | undefined>
-    | undefined;
+  ) => MoveOperationResult | Promise<MoveOperationResult | undefined> | undefined;
   onMoveFolder?: (
     folder: FolderTreeNode,
     parentId?: string,
-  ) =>
-    | { ok: boolean; message?: string }
-    | Promise<{ ok: boolean; message?: string } | undefined>
-    | undefined;
+  ) => MoveOperationResult | Promise<MoveOperationResult | undefined> | undefined;
   onRenameFolder?: (folder: FolderTreeNode) => void;
   onDeleteFolder?: (folder: FolderTreeNode) => void;
   onViewHistory?: (item: SavedTableSummary) => void;
@@ -143,31 +133,30 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
     onViewHistory,
   }) => {
     const { t } = useTranslation();
-    const [query, setQuery] = useState('');
     const [showTrash, setShowTrash] = useState(false);
-    const [selectedFolderId, setSelectedFolderId] = useState<string | undefined>();
-    const [dragFeedback, setDragFeedback] = useState<{
-      type: 'success' | 'blocked' | 'error';
-      message: string;
-    } | null>(null);
-    const dragFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const { expandedFolders, toggleFolder, expandFolder } = useFolderExpansion(
-      folders.map((folder) => folder.id),
-    );
-    const sensors = useSensors(
-      useSensor(PointerSensor, {
-        activationConstraint: { distance: 6 },
-      }),
-    );
+    const {
+      searchQuery,
+      setSearchQuery,
+      selectedFolderId,
+      setSelectedFolderId,
+      expandedFolders,
+      toggleFolder,
+      sensors,
+      foldersWithCount,
+      filteredItems,
+      ungroupedItems,
+      isSearching,
+      dragFeedback,
+      handleDragEnd,
+    } = useWorkspaceTreeControls({
+      items,
+      folders,
+      initiallyExpandedFolderIds: folders.map((folder) => folder.id),
+      onMoveToFolder,
+      onMoveFolder,
+    });
 
-    const normalizedQuery = query.trim().toLowerCase();
-    const visibleItems = useMemo(
-      () =>
-        normalizedQuery
-          ? items.filter((item) => item.name.toLowerCase().includes(normalizedQuery))
-          : items,
-      [items, normalizedQuery],
-    );
+    const normalizedQuery = searchQuery.trim().toLowerCase();
     const visibleDrafts = useMemo(
       () =>
         normalizedQuery
@@ -175,11 +164,6 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
           : draftItems,
       [draftItems, normalizedQuery],
     );
-    const { foldersWithCount, filteredItems, ungroupedItems, isSearching } = useSavedTablesFilter({
-      items,
-      folders,
-      searchQuery: query,
-    });
     const flatFolders = useMemo(() => {
       const result: Array<{ id: string; name: string; depth: number }> = [];
       const walk = (nodes: FolderTreeNode[], depth: number) => {
@@ -191,54 +175,6 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
       walk(folders, 0);
       return result;
     }, [folders]);
-    const itemMap = useMemo(
-      () => new Map(items.map((item) => [item.normalizedName, item])),
-      [items],
-    );
-    const tableFolderMap = useMemo(
-      () =>
-        items.reduce<Record<string, string | undefined>>((acc, item) => {
-          acc[item.normalizedName] = item.folderId;
-          return acc;
-        }, {}),
-      [items],
-    );
-    const folderParentMap = useMemo(
-      () => buildFolderParentMap(foldersWithCount),
-      [foldersWithCount],
-    );
-    const folderNodeMap = useMemo(() => {
-      const map = new Map<string, FolderTreeNode>();
-      const walk = (nodes: FolderTreeNode[]) => {
-        for (const node of nodes) {
-          map.set(node.id, node);
-          walk(node.children);
-        }
-      };
-      walk(foldersWithCount);
-      return map;
-    }, [foldersWithCount]);
-
-    useEffect(
-      () => () => {
-        if (dragFeedbackTimerRef.current) {
-          clearTimeout(dragFeedbackTimerRef.current);
-        }
-      },
-      [],
-    );
-
-    const showDragFeedback = useCallback(
-      (type: 'success' | 'blocked' | 'error', message: string) => {
-        setDragFeedback({ type, message });
-        if (dragFeedbackTimerRef.current) {
-          clearTimeout(dragFeedbackTimerRef.current);
-        }
-        dragFeedbackTimerRef.current = setTimeout(() => setDragFeedback(null), 2400);
-      },
-      [],
-    );
-
     const renderTableList = useCallback(
       (tableItems: SavedTableSummary[], depth = 0) => (
         <div className="space-y-1">
@@ -284,85 +220,6 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
         );
       },
       [filteredItems, isSearching, renderTableList, ungroupedItems],
-    );
-
-    const handleDragEnd = useCallback(
-      async (event: DragEndEvent) => {
-        const action = resolveDropAction({
-          activeId: event.active.id,
-          overId: event.over?.id ?? null,
-          isSearching,
-          tableFolderMap,
-          folderParentMap,
-        });
-
-        if (action.kind === 'none') return;
-        if (action.kind === 'invalid_folder_cycle') {
-          showDragFeedback('blocked', t('savedTables.dragFeedback.folderCycle'));
-          return;
-        }
-        if (action.kind === 'move_table') {
-          if (!onMoveToFolder) return;
-          const item = itemMap.get(action.normalizedName);
-          if (!item) return;
-          try {
-            const result = await Promise.resolve(onMoveToFolder(item, action.folderId));
-            if (result && result.ok === false) {
-              showDragFeedback('error', result.message ?? t('savedTables.dragFeedback.moveFailed'));
-              return;
-            }
-            if (action.folderId) expandFolder(action.folderId);
-            showDragFeedback(
-              'success',
-              action.folderId
-                ? t('savedTables.dragFeedback.tableMovedToFolder', {
-                    name:
-                      folderNodeMap.get(action.folderId)?.name ??
-                      t('savedTables.dragFeedback.unknownFolder'),
-                  })
-                : t('savedTables.dragFeedback.tableMovedToRoot'),
-            );
-          } catch {
-            showDragFeedback('error', t('savedTables.dragFeedback.moveFailed'));
-          }
-          return;
-        }
-        if (!onMoveFolder) return;
-        const folder = folderNodeMap.get(action.folderId);
-        if (!folder) return;
-        try {
-          const result = await Promise.resolve(onMoveFolder(folder, action.parentId));
-          if (result && result.ok === false) {
-            showDragFeedback('error', result.message ?? t('savedTables.dragFeedback.moveFailed'));
-            return;
-          }
-          if (action.parentId) expandFolder(action.parentId);
-          showDragFeedback(
-            'success',
-            action.parentId
-              ? t('savedTables.dragFeedback.folderMovedToFolder', {
-                  name:
-                    folderNodeMap.get(action.parentId)?.name ??
-                    t('savedTables.dragFeedback.unknownFolder'),
-                })
-              : t('savedTables.dragFeedback.folderMovedToRoot'),
-          );
-        } catch {
-          showDragFeedback('error', t('savedTables.dragFeedback.moveFailed'));
-        }
-      },
-      [
-        expandFolder,
-        folderNodeMap,
-        folderParentMap,
-        isSearching,
-        itemMap,
-        onMoveFolder,
-        onMoveToFolder,
-        showDragFeedback,
-        tableFolderMap,
-        t,
-      ],
     );
 
     const renderTrashTable = (item: SavedTableSummary) => (
@@ -475,8 +332,8 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
             <div className="relative min-w-0 flex-1">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder={t('savedTables.workspaceSearchPlaceholder')}
                 className="h-8 pl-8 text-xs"
               />
@@ -610,7 +467,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                   <div className="px-2 text-xs font-medium text-muted-foreground">
                     {t('savedTables.projectsSection')}
                   </div>
-                  {visibleItems.length > 0 && (
+                  {filteredItems.length > 0 && (
                     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
                       <RootDropZone disabled={isSearching} />
                       {dragFeedback && (
@@ -650,7 +507,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                       )}
                     </DndContext>
                   )}
-                  {visibleItems.length === 0 && (
+                  {filteredItems.length === 0 && (
                     <div className="px-2 py-2 text-xs text-muted-foreground">
                       {normalizedQuery ? t('savedTables.noMatch') : t('savedTables.empty')}
                     </div>

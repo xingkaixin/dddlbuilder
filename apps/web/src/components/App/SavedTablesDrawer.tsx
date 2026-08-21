@@ -1,12 +1,5 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  DndContext,
-  PointerSensor,
-  useDroppable,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
+import { memo, useCallback, useMemo } from 'react';
+import { DndContext, useDroppable } from '@dnd-kit/core';
 import { Database, FilePlus, FolderPlus, Search, X } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,12 +14,14 @@ import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import type { DraftSummary } from '@ddlbuilder/shared-types/workspace';
 import { useTranslation } from 'react-i18next';
 import { Input } from '../ui/input';
-import { FolderTree, useFolderExpansion } from './FolderTree';
+import { FolderTree } from './FolderTree';
 import { TableItem } from './saved-tables/TableItem';
-import { ROOT_DROP_ID, buildFolderParentMap, resolveDropAction } from './saved-tables/dnd';
-import { useSavedTablesFilter } from './saved-tables/useSavedTablesFilter';
+import { ROOT_DROP_ID } from './saved-tables/dnd';
+import {
+  useWorkspaceTreeControls,
+  type MoveOperationResult,
+} from './saved-tables/useWorkspaceTreeControls';
 
-type MoveOperationResult = { ok: boolean; message?: string };
 type TablePresentation = {
   title: string;
   isDirty: boolean;
@@ -128,19 +123,6 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     onDeleteFolder,
   }) => {
     const { t } = useTranslation();
-    const [searchQuery, setSearchQuery] = useState('');
-    const [dragFeedback, setDragFeedback] = useState<{
-      type: 'success' | 'blocked' | 'error';
-      message: string;
-    } | null>(null);
-    const dragFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const { expandedFolders, toggleFolder, expandFolder } = useFolderExpansion();
-    const [selectedFolderId, setSelectedFolderId] = useState<string | undefined>();
-    const sensors = useSensors(
-      useSensor(PointerSensor, {
-        activationConstraint: { distance: 6 },
-      }),
-    );
 
     const draftAsSavedItems = useMemo<SavedTableSummary[]>(
       () =>
@@ -157,62 +139,26 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     );
     const allItems = useMemo(() => [...draftAsSavedItems, ...items], [draftAsSavedItems, items]);
     const draftIdSet = useMemo(() => new Set(draftItems.map((d) => d.draftId)), [draftItems]);
-
-    const { foldersWithCount, filteredItems, ungroupedItems, isSearching } = useSavedTablesFilter({
+    const {
+      searchQuery,
+      setSearchQuery,
+      selectedFolderId,
+      setSelectedFolderId,
+      expandedFolders,
+      toggleFolder,
+      sensors,
+      foldersWithCount,
+      filteredItems,
+      ungroupedItems,
+      isSearching,
+      dragFeedback,
+      handleDragEnd,
+    } = useWorkspaceTreeControls({
       items: allItems,
       folders,
-      searchQuery,
+      onMoveToFolder,
+      onMoveFolder,
     });
-
-    const itemMap = useMemo(
-      () => new Map(allItems.map((item) => [item.normalizedName, item])),
-      [allItems],
-    );
-    const tableFolderMap = useMemo(
-      () =>
-        allItems.reduce<Record<string, string | undefined>>((acc, item) => {
-          acc[item.normalizedName] = item.folderId;
-          return acc;
-        }, {}),
-      [allItems],
-    );
-    const folderParentMap = useMemo(
-      () => buildFolderParentMap(foldersWithCount),
-      [foldersWithCount],
-    );
-    const folderNodeMap = useMemo(() => {
-      const map = new Map<string, FolderTreeNode>();
-      const walk = (nodes: FolderTreeNode[]) => {
-        for (const node of nodes) {
-          map.set(node.id, node);
-          walk(node.children);
-        }
-      };
-      walk(foldersWithCount);
-      return map;
-    }, [foldersWithCount]);
-
-    useEffect(
-      () => () => {
-        if (dragFeedbackTimerRef.current) {
-          clearTimeout(dragFeedbackTimerRef.current);
-        }
-      },
-      [],
-    );
-
-    const showDragFeedback = useCallback(
-      (type: 'success' | 'blocked' | 'error', message: string) => {
-        setDragFeedback({ type, message });
-        if (dragFeedbackTimerRef.current) {
-          clearTimeout(dragFeedbackTimerRef.current);
-        }
-        dragFeedbackTimerRef.current = setTimeout(() => {
-          setDragFeedback(null);
-        }, 2400);
-      },
-      [],
-    );
 
     const renderTableList = useCallback(
       (tableItems: SavedTableSummary[], depth = 0) => (
@@ -281,105 +227,6 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
         );
       },
       [filteredItems, isSearching, renderTableList, ungroupedItems],
-    );
-
-    const handleDragEnd = useCallback(
-      async (event: DragEndEvent) => {
-        const action = resolveDropAction({
-          activeId: event.active.id,
-          overId: event.over?.id ?? null,
-          isSearching,
-          tableFolderMap,
-          folderParentMap,
-        });
-
-        switch (action.kind) {
-          case 'none':
-            return;
-          case 'invalid_folder_cycle': {
-            showDragFeedback('blocked', t('savedTables.dragFeedback.folderCycle'));
-            return;
-          }
-          case 'move_table': {
-            if (!onMoveToFolder) return;
-            const item = itemMap.get(action.normalizedName);
-            if (!item) return;
-            try {
-              const result = await Promise.resolve(onMoveToFolder(item, action.folderId));
-              if (result && result.ok === false) {
-                showDragFeedback(
-                  'error',
-                  result.message ?? t('savedTables.dragFeedback.moveFailed'),
-                );
-                return;
-              }
-              if (action.folderId) {
-                expandFolder(action.folderId);
-              }
-              showDragFeedback(
-                'success',
-                action.folderId
-                  ? t('savedTables.dragFeedback.tableMovedToFolder', {
-                      name:
-                        folderNodeMap.get(action.folderId)?.name ??
-                        t('savedTables.dragFeedback.unknownFolder'),
-                    })
-                  : t('savedTables.dragFeedback.tableMovedToRoot'),
-              );
-            } catch {
-              showDragFeedback('error', t('savedTables.dragFeedback.moveFailed'));
-            }
-            return;
-          }
-          case 'move_folder': {
-            if (!onMoveFolder) return;
-            const folder = folderNodeMap.get(action.folderId);
-            if (!folder) return;
-            try {
-              const result = await Promise.resolve(onMoveFolder(folder, action.parentId));
-              if (result && result.ok === false) {
-                showDragFeedback(
-                  'error',
-                  result.message ?? t('savedTables.dragFeedback.moveFailed'),
-                );
-                return;
-              }
-              if (action.parentId) {
-                expandFolder(action.parentId);
-              }
-              showDragFeedback(
-                'success',
-                action.parentId
-                  ? t('savedTables.dragFeedback.folderMovedToFolder', {
-                      name:
-                        folderNodeMap.get(action.parentId)?.name ??
-                        t('savedTables.dragFeedback.unknownFolder'),
-                    })
-                  : t('savedTables.dragFeedback.folderMovedToRoot'),
-              );
-            } catch {
-              showDragFeedback('error', t('savedTables.dragFeedback.moveFailed'));
-            }
-            return;
-          }
-          default: {
-            const _exhaustiveCheck: never = action;
-            return _exhaustiveCheck;
-          }
-        }
-      },
-      [
-        expandFolder,
-        folderNodeMap,
-        folderParentMap,
-        isSearching,
-        itemMap,
-        onMoveFolder,
-        onMoveToFolder,
-        showDragFeedback,
-        tableFolderMap,
-        t,
-      ],
     );
 
     const hasFolders = folders.length > 0;
