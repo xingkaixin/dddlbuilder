@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { OceanBaseMySqlStrategy } from '@ddlbuilder/ddl-core';
+import { OceanBaseMySqlStrategy } from '../../strategies/OceanBaseMySqlStrategy.js';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('OceanBaseMySqlStrategy', () => {

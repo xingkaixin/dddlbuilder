@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { KingbaseStrategy } from '@ddlbuilder/ddl-core';
+import { GaussDbStrategy } from '../../strategies/GaussDbStrategy.js';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
-describe('KingbaseStrategy', () => {
-  const strategy = new KingbaseStrategy();
+describe('GaussDbStrategy', () => {
+  const strategy = new GaussDbStrategy();
 
-  it('应该返回 kingbase 数据库类型', () => {
-    expect(strategy.getDatabaseType()).toBe('kingbase');
+  it('应该返回 gaussdb 数据库类型', () => {
+    expect(strategy.getDatabaseType()).toBe('gaussdb');
   });
 
   it('应该继承 PostgreSQL 风格 DDL 生成能力', () => {

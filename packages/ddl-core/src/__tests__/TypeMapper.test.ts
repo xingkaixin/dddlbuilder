@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TypeMapper } from '@ddlbuilder/ddl-core';
+import { TypeMapper } from '../utils/TypeMapper.js';
 
 describe('TypeMapper', () => {
   describe('create', () => {

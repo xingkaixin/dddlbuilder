@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { DDLStrategyFactory, MySqlStrategy } from '@ddlbuilder/ddl-core';
+import { DDLStrategyFactory } from '../factories/DDLStrategyFactory.js';
+import { MySqlStrategy } from '../strategies/MySqlStrategy.js';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 
 describe('DDLStrategyFactory', () => {

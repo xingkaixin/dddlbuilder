@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PostgresStrategy } from '@ddlbuilder/ddl-core';
+import { PostgresStrategy } from '../../strategies/PostgresStrategy.js';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('PostgresStrategy', () => {

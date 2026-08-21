@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GBaseStrategy } from '@ddlbuilder/ddl-core';
+import { GBaseStrategy } from '../../strategies/GBaseStrategy.js';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('GBaseStrategy', () => {

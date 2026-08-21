@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { AbstractDDLStrategy } from '@ddlbuilder/ddl-core';
+import { AbstractDDLStrategy } from '../../strategies/AbstractDDLStrategy.js';
 import type { NormalizedField, IndexDefinition, DatabaseType } from '@ddlbuilder/shared-types';
-import { TypeMapper } from '@ddlbuilder/ddl-core';
+import { TypeMapper } from '../../utils/TypeMapper.js';
 
 class TestStrategy extends AbstractDDLStrategy {
   constructor(private readonly db: DatabaseType = 'mysql') {

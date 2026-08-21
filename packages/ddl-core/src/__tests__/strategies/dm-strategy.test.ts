@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DmStrategy } from '@ddlbuilder/ddl-core';
+import { DmStrategy } from '../../strategies/DmStrategy.js';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('DmStrategy', () => {

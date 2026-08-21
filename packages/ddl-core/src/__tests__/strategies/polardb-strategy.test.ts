@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PolarDbStrategy } from '@ddlbuilder/ddl-core';
+import { PolarDbStrategy } from '../../strategies/PolarDbStrategy.js';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('PolarDbStrategy', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TiDbStrategy } from '@ddlbuilder/ddl-core';
+import { TiDbStrategy } from '../../strategies/TiDbStrategy.js';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('TiDbStrategy', () => {

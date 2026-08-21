@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MySqlStrategy } from '@ddlbuilder/ddl-core';
+import { MySqlStrategy } from '../../strategies/MySqlStrategy.js';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('MySqlStrategy', () => {

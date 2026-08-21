@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TYPE_MAPPINGS } from '@ddlbuilder/ddl-core';
+import { TYPE_MAPPINGS } from '../../configs/typeMappings.js';
 import type { ParsedFieldType } from '@ddlbuilder/shared-types';
 
 const parsed: ParsedFieldType = {

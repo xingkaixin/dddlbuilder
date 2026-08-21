@@ -1,6 +1,3 @@
-export * from './strategies/index.js';
-export type { DDLStrategy } from './interfaces/DDLStrategy.js';
-export { DDLStrategyFactory } from './factories/DDLStrategyFactory.js';
 export { buildDDL, buildDCL, buildOracleSynonyms, buildViewDDL } from './utils/ddlGenerators.js';
 export { buildRoutineTemplateDDL } from './utils/routineTemplates.js';
 export { diffPersistedState } from './utils/tableDiff.js';
@@ -14,7 +11,6 @@ export type {
   ForeignKeyDiffType,
   FieldChangeType,
 } from './utils/tableDiff.js';
-export { TYPE_MAPPINGS } from './configs/typeMappings.js';
 export {
   TYPE_ALIASES,
   canonicalizeBaseType,
@@ -42,7 +38,6 @@ export {
   DEFAULT_IDENTIFIER_NAME_MAX_LENGTH,
   ORACLE_IDENTIFIER_NAME_MAX_LENGTH,
 } from './utils/identifierNaming.js';
-export { TypeMapper } from './utils/TypeMapper.js';
 export {
   generateAlterDDL,
   generateRollbackDDL,
