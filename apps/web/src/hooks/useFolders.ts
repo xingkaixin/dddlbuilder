@@ -1,7 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type * as Y from 'yjs';
-import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import {
   buildFolderTreeFromYDoc,
@@ -20,6 +19,7 @@ import {
   updateFolder,
   type FolderTreeNode,
 } from '@/utils/tableFolders';
+import { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
 import { useWorkspaceScope } from '@/hooks/useWorkspaceScope';
 import { useWorkspaceYDocProjection } from '@/hooks/useWorkspaceYDocProjection';
 import { localFoldersOptions, workspaceLocalQueryKeys } from '@/queries/workspaceLocal';
@@ -51,17 +51,11 @@ const descendantFolderIds = (folders: TableFolder[], parentId: string) => {
 };
 
 export function useFolders() {
-  const workspaceYDoc = useWorkspaceYDoc();
   const currentScope = useWorkspaceScope();
   const queryClient = useQueryClient();
-  const yDocReady = Boolean(
-    workspaceYDoc.doc &&
-    workspaceYDoc.localSynced &&
-    currentScope?.kind === 'user' &&
-    currentScope.workspaceId,
-  );
+  const { yDoc, yDocReady, runInYDoc } = useWorkspaceYDocGateway(currentScope);
   const yDocProjection = useWorkspaceYDocProjection(
-    yDocReady ? workspaceYDoc.doc : null,
+    yDoc,
     FOLDER_COLLECTIONS,
     readFolderProjection,
     EMPTY_FOLDER_PROJECTION,
@@ -78,15 +72,6 @@ export function useFolders() {
       queryKey: workspaceLocalQueryKeys.scope(currentScope),
     });
   }, [currentScope, queryClient]);
-
-  const runInYDoc = useCallback(
-    (mutate: (doc: Y.Doc) => void) => {
-      if (!yDocReady || !workspaceYDoc.doc) return;
-      const doc = workspaceYDoc.doc;
-      doc.transact(() => mutate(doc));
-    },
-    [workspaceYDoc.doc, yDocReady],
-  );
 
   useEffect(() => {
     const handleSnapshotApplied = () => void refresh();
@@ -114,7 +99,7 @@ export function useFolders() {
     async (id: string, newName: string) => {
       if (!currentScope) throw new Error('工作区未就绪');
       try {
-        if (!yDocReady || !workspaceYDoc.doc) {
+        if (!yDocReady) {
           await renameFolder(id, newName, currentScope);
           await refresh();
           return;
@@ -131,7 +116,7 @@ export function useFolders() {
         throw error instanceof Error ? error : new Error('重命名文件夹失败');
       }
     },
-    [currentScope, refresh, runInYDoc, workspaceYDoc.doc, yDocProjection.folders, yDocReady],
+    [currentScope, refresh, runInYDoc, yDocProjection.folders, yDocReady],
   );
 
   const handleDeleteFolder = useCallback(
@@ -160,7 +145,7 @@ export function useFolders() {
     async (id: string, newParentId?: string) => {
       if (!currentScope) throw new Error('工作区未就绪');
       try {
-        if (!yDocReady || !workspaceYDoc.doc) {
+        if (!yDocReady) {
           await moveFolder(id, currentScope, newParentId);
           await refresh();
           return;
@@ -180,7 +165,7 @@ export function useFolders() {
         throw error instanceof Error ? error : new Error('移动文件夹失败');
       }
     },
-    [currentScope, refresh, runInYDoc, workspaceYDoc.doc, yDocProjection.folders, yDocReady],
+    [currentScope, refresh, runInYDoc, yDocProjection.folders, yDocReady],
   );
 
   return {

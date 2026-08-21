@@ -1,9 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import type * as Y from 'yjs';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
-import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 import { shareStateOptions } from '@/queries/share';
 import { ShareApiError } from '@/services/shareService';
 import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
@@ -46,6 +44,7 @@ import { serializePersistedStateForComparison } from '@/utils/persistedStateSign
 import { getWorkspaceBootstrap } from './workspacePersistence/bootstrap';
 import { resetWorkspaceBootstrapCache } from './workspacePersistence/bootstrap';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
+import { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
 import {
   buildDraftSummary,
   getDraftDisplayName,
@@ -118,7 +117,6 @@ export interface UsePersistedStateReturn {
 
 export function usePersistedState(): UsePersistedStateReturn {
   const authSession = useAuthSession();
-  const workspaceYDoc = useWorkspaceYDoc();
   const pathInfo = useShareRoute();
   const shareId = pathInfo.shareId;
   const shareStorageKey = shareId ? buildShareStorageKey(shareId) : null;
@@ -168,13 +166,11 @@ export function usePersistedState(): UsePersistedStateReturn {
   const workspaceScopeReady =
     authSession.status !== 'loading' &&
     (authSession.status !== 'signed_in' || Boolean(authSession.workspaceId));
-  const yDocReady = Boolean(
-    !shareId &&
-    workspaceYDoc.doc &&
-    workspaceYDoc.localSynced &&
-    currentScope.kind === 'user' &&
-    currentScope.workspaceId,
-  );
+  // 分享页没有 workspace 上下文，Y.Doc 永远不参与，本地分区即真相源。
+  const { workspaceYDoc, yDoc, yDocReady, runInYDoc } = useWorkspaceYDocGateway(currentScope, {
+    enabled: !shareId,
+    origin: WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN,
+  });
   const shouldWaitForYDocHydration = Boolean(
     !shareId &&
     currentScope.kind === 'user' &&
@@ -221,15 +217,6 @@ export function usePersistedState(): UsePersistedStateReturn {
   const getSavedTableDraft = useCallback((normalizedName: string) => {
     return savedTableDraftsRef.current.get(normalizedName) ?? null;
   }, []);
-
-  const runInYDoc = useCallback(
-    (mutate: (doc: Y.Doc) => void) => {
-      if (!yDocReady || !workspaceYDoc.doc) return;
-      const doc = workspaceYDoc.doc;
-      doc.transact(() => mutate(doc), WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN);
-    },
-    [workspaceYDoc.doc, yDocReady],
-  );
 
   const upsertDraftSummary = useCallback((draftId: string, record: GlobalDraftRecord) => {
     setDraftSummaries((prev) => {
@@ -596,8 +583,8 @@ export function usePersistedState(): UsePersistedStateReturn {
     };
 
     const hydrateYDocWorkspace = async () => {
-      if (!workspaceYDoc.doc) return false;
-      const doc = workspaceYDoc.doc;
+      if (!yDoc) return false;
+      const doc = yDoc;
 
       savedTableDraftsRef.current = listSavedDraftsFromYDoc(doc);
       const drafts: DraftEntry[] = listDraftRecordsFromYDoc(doc);
@@ -628,7 +615,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     };
 
     const hydrateMainWorkspace = async () => {
-      if (yDocReady && (await hydrateYDocWorkspace())) {
+      if (await hydrateYDocWorkspace()) {
         return;
       }
 
@@ -711,16 +698,15 @@ export function usePersistedState(): UsePersistedStateReturn {
     updateDrafts,
     shouldWaitForYDocHydration,
     workspaceScopeReady,
-    workspaceYDoc.doc,
-    yDocReady,
+    yDoc,
   ]);
 
   useEffect(() => {
-    if (!yDocReady || !workspaceYDoc.doc) {
+    if (!yDoc) {
       return;
     }
 
-    const doc = workspaceYDoc.doc;
+    const doc = yDoc;
     const refreshFromYDoc = (change?: WorkspaceYDocChange) => {
       let allDrafts: DraftEntry[] = Array.from(draftsRef.current, ([draftId, record]) => ({
         draftId,
@@ -825,15 +811,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     ]);
     refreshFromYDoc();
     return unsubscribe;
-  }, [
-    applyYDocState,
-    runInYDoc,
-    setPersistedStateIfChanged,
-    syncActiveSource,
-    updateDrafts,
-    workspaceYDoc.doc,
-    yDocReady,
-  ]);
+  }, [applyYDocState, runInYDoc, setPersistedStateIfChanged, syncActiveSource, updateDrafts, yDoc]);
 
   useEffect(() => {
     if (shareId || !workspaceScopeReady || yDocReady) {
