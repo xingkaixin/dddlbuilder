@@ -1,9 +1,4 @@
-import { useEffect } from 'react';
-import type {
-  PersistedState,
-  TableMiscConfig,
-  HivePartitionConfig,
-} from '@ddlbuilder/shared-types';
+import type { TableMiscConfig, HivePartitionConfig } from '@ddlbuilder/shared-types';
 import { useTableOptionsStore } from '@/stores';
 
 export interface UseTableOptionsReturn {
@@ -24,9 +19,7 @@ export interface UseTableOptionsReturn {
   resetTableMiscConfig: () => void;
 }
 
-export function useTableOptions(
-  persistedState?: Pick<PersistedState, 'tableMiscConfig'>,
-): UseTableOptionsReturn {
+export function useTableOptions(): UseTableOptionsReturn {
   const tableMiscConfig = useTableOptionsStore((state) => state.tableMiscConfig);
   const setMiscEnabled = useTableOptionsStore((state) => state.setMiscEnabled);
   const setEngine = useTableOptionsStore((state) => state.setEngine);
@@ -41,20 +34,7 @@ export function useTableOptions(
   const setLocation = useTableOptionsStore((state) => state.setLocation);
   const setHivePartitionConfig = useTableOptionsStore((state) => state.setHivePartitionConfig);
   const setTableMiscConfig = useTableOptionsStore((state) => state.setTableMiscConfig);
-  const hydratedFromPersisted = useTableOptionsStore((state) => state.hydratedFromPersisted);
-  const markHydratedFromPersisted = useTableOptionsStore(
-    (state) => state.markHydratedFromPersisted,
-  );
   const resetTableMiscConfig = useTableOptionsStore((state) => state.resetTableMiscConfig);
-
-  useEffect(() => {
-    if (!persistedState?.tableMiscConfig || hydratedFromPersisted) return;
-    setTableMiscConfig((prev) => ({
-      ...prev,
-      ...persistedState.tableMiscConfig,
-    }));
-    markHydratedFromPersisted();
-  }, [hydratedFromPersisted, markHydratedFromPersisted, persistedState, setTableMiscConfig]);
 
   return {
     tableMiscConfig,

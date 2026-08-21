@@ -65,18 +65,4 @@ describe('useCitusSharding', () => {
       distributionColumn: undefined,
     });
   });
-
-  it('应该从持久化状态恢复配置', () => {
-    const persistedState = {
-      citusShardingConfig: {
-        mode: 'distributed' as const,
-        distributionColumn: 'org_id',
-      },
-    };
-
-    const { result } = renderHook(() => useCitusSharding(persistedState));
-
-    expect(result.current.citusShardingConfig.mode).toBe('distributed');
-    expect(result.current.citusShardingConfig.distributionColumn).toBe('org_id');
-  });
 });

@@ -67,17 +67,6 @@ describe('tableOptionsStore', () => {
     expect(current.tableMiscConfig.engine).toBe('MyISAM');
   });
 
-  it('应该在重置时清理持久化初始化标记', () => {
-    const state = useTableOptionsStore.getState();
-
-    expect(state.hydratedFromPersisted).toBe(false);
-    state.markHydratedFromPersisted();
-    expect(useTableOptionsStore.getState().hydratedFromPersisted).toBe(true);
-
-    useTableOptionsStore.getState().resetTableMiscConfig();
-    expect(useTableOptionsStore.getState().hydratedFromPersisted).toBe(false);
-  });
-
   it('应该设置 storedAs', () => {
     const state = useTableOptionsStore.getState();
 

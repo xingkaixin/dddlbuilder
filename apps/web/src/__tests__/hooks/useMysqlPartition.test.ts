@@ -198,23 +198,4 @@ describe('useMysqlPartition', () => {
       partitions: [],
     });
   });
-
-  it('应该从持久化状态恢复配置', () => {
-    const persistedState = {
-      mysqlPartitionConfig: {
-        enabled: true,
-        type: 'HASH' as const,
-        columns: ['user_id'],
-        partitionCount: 8,
-        partitions: [],
-      },
-    };
-
-    const { result } = renderHook(() => useMysqlPartition(persistedState));
-
-    expect(result.current.mysqlPartitionConfig.enabled).toBe(true);
-    expect(result.current.mysqlPartitionConfig.type).toBe('HASH');
-    expect(result.current.mysqlPartitionConfig.columns).toEqual(['user_id']);
-    expect(result.current.mysqlPartitionConfig.partitionCount).toBe(8);
-  });
 });

@@ -27,7 +27,7 @@ import { useTableTemplateActions } from './hooks/useTableTemplateActions';
 import { useSchemaApplyActions } from './hooks/useSchemaApplyActions';
 import { useSavedTableFlowActions } from './hooks/useSavedTableFlowActions';
 import { usePersistedSync } from './hooks/usePersistedSync';
-import { useApplySavedState } from './hooks/useApplySavedState';
+import { applySavedState } from './applySavedState';
 import { useClearAllActions } from './hooks/useClearAllActions';
 import { useReviewActions } from './hooks/useReviewActions';
 import { useShareAction } from './hooks/useShareAction';
@@ -73,10 +73,6 @@ const ImportSqlDialog = lazy(() =>
 
 const createInitialRows = () => Array.from({ length: 12 }, () => createEmptyRow());
 
-// 模块级共享引用，仅用作 applySavedState 的兜底默认值；新建草稿必须用独立数组。
-const INITIAL_ROWS = createInitialRows();
-const DEFAULT_FIELD_TABLE_FREEZE_ENABLED = false;
-const DEFAULT_FIELD_TABLE_FREEZE_COLUMNS = 3;
 const SHARE_COPY_SAVED_TOAST_KEY = 'ddlbuilder:share:copy-saved:v1';
 
 const createEmptyGlobalDraftState = (): PersistedState => ({
@@ -117,15 +113,12 @@ function App() {
     setDbType,
     setSqlFormatMode,
     addCount,
-    setAddCount,
     activeTab,
     setActiveTab,
     resetTableConfig,
     resetTableViewConfig,
     fieldTableFreezeEnabled,
-    setFieldTableFreezeEnabled,
     fieldTableFreezeColumns,
-    setFieldTableFreezeColumns,
     setIsClearDialogOpen,
     showFireworks,
     setShowFireworks,
@@ -150,13 +143,11 @@ function App() {
     currentIndexFields,
     indexes,
     setIndexInput,
-    setCurrentIndexFields,
     updateIndexNames,
     resetIndexState,
     setIndexes,
     foreignKeys,
     setForeignKeys,
-    resetForeignKeyState,
   } = useAppSelectors();
 
   // ─── 2. Dialog states ──────────────────────────────────────────
@@ -246,20 +237,15 @@ function App() {
     removeAuthObject,
     resetAuthState,
     setAuthObjects,
-  } = useAuthManagement(persistedState || undefined);
+  } = useAuthManagement();
   const activeWorkspaceTab = useMemo(
     () => tabs.find((tab) => tab.id === activeTabId) ?? null,
     [activeTabId, tabs],
   );
   const activeTabSnapshot = activeWorkspaceTab?.stateSnapshot ?? null;
 
-  const {
-    citusShardingConfig,
-    setCitusMode,
-    setDistributionColumn,
-    setCitusShardingConfig,
-    resetCitusSharding,
-  } = useCitusSharding(persistedState || undefined);
+  const { citusShardingConfig, setCitusMode, setDistributionColumn, resetCitusSharding } =
+    useCitusSharding();
 
   const {
     animatingIndexIds,
@@ -283,7 +269,7 @@ function App() {
     generateRangePartitions,
     setMysqlPartitionConfig,
     resetPartition,
-  } = useMysqlPartition(persistedState || undefined);
+  } = useMysqlPartition();
 
   const {
     tableMiscConfig,
@@ -301,7 +287,7 @@ function App() {
     setHivePartitionConfig,
     setTableMiscConfig,
     resetTableMiscConfig,
-  } = useTableOptions(persistedState || undefined);
+  } = useTableOptions();
 
   const qualifiedTableName = useMemo(
     () => buildQualifiedTableName(schemaName, tableName),
@@ -624,37 +610,6 @@ function App() {
     showToast,
   });
 
-  const applySavedState = useApplySavedState({
-    initialRows: INITIAL_ROWS,
-    defaultFieldTableFreezeEnabled: DEFAULT_FIELD_TABLE_FREEZE_ENABLED,
-    defaultFieldTableFreezeColumns: DEFAULT_FIELD_TABLE_FREEZE_COLUMNS,
-    setRows,
-    setIndexes,
-    setIndexInput,
-    setCurrentIndexFields,
-    setForeignKeys,
-    resetForeignKeys: resetForeignKeyState,
-    setAuthObjects,
-    setAuthInput,
-    setCitusShardingConfig,
-    resetCitusSharding,
-    setMysqlPartitionConfig,
-    resetPartition,
-    setTableMiscConfig,
-    resetTableMiscConfig,
-    setSchemaName,
-    setTableName,
-    setTableComment,
-    setObjectType,
-    setViewDefinition,
-    setViewCreateOrReplace,
-    setDbType,
-    setSqlFormatMode,
-    setAddCount,
-    setFieldTableFreezeEnabled,
-    setFieldTableFreezeColumns,
-  });
-
   usePersistedSync({
     hydrated,
     hasOpenTab: tabs.length > 0,
@@ -888,7 +843,6 @@ function App() {
       setSavedTablesDrawerOpen,
       findTabBySource,
       activateTab,
-      applySavedState,
       selectWorkspaceSnapshot,
       buildPersistedState,
       addTab,
@@ -937,7 +891,6 @@ function App() {
       setSavedTablesDrawerOpen,
       findTabBySource,
       activateTab,
-      applySavedState,
       selectWorkspaceSnapshot,
       getDraftState,
       draftSummaries,
@@ -969,15 +922,7 @@ function App() {
       applySavedState(finalState);
       setWorkspaceSnapshot({ kind: 'draft', draftId }, finalState);
     },
-    [
-      tabs.length,
-      flushCurrentWorkspace,
-      createDraft,
-      addTab,
-      activateTab,
-      applySavedState,
-      setWorkspaceSnapshot,
-    ],
+    [tabs.length, flushCurrentWorkspace, createDraft, addTab, activateTab, setWorkspaceSnapshot],
   );
 
   const {
@@ -1019,14 +964,7 @@ function App() {
         selectWorkspaceSnapshot(nextActive.source, nextActive.stateSnapshot);
       }
     },
-    [
-      activeTabId,
-      applySavedState,
-      closeTabStore,
-      flushCurrentWorkspace,
-      getActiveTab,
-      selectWorkspaceSnapshot,
-    ],
+    [activeTabId, closeTabStore, flushCurrentWorkspace, getActiveTab, selectWorkspaceSnapshot],
   );
 
   const handleRestoreTable = useCallback(
@@ -1257,7 +1195,7 @@ function App() {
       setSavedTablesDrawerOpen(false);
       showToast(t('app.rollbackDone'));
     },
-    [applySavedState, setSavedTablesDrawerOpen, showToast, t],
+    [setSavedTablesDrawerOpen, showToast, t],
   );
 
   const aiGenerateExistingConfig = useMemo(

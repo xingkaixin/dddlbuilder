@@ -1,9 +1,7 @@
-import { useEffect } from 'react';
 import type {
   MysqlPartitionType,
   MysqlPartitionConfig,
   PartitionDefinition,
-  PersistedState,
 } from '@ddlbuilder/shared-types';
 import { usePartitionStore } from '@/stores';
 
@@ -22,9 +20,7 @@ export interface UseMysqlPartitionReturn {
   resetPartition: () => void;
 }
 
-export function useMysqlPartition(
-  persistedState?: Pick<PersistedState, 'mysqlPartitionConfig'>,
-): UseMysqlPartitionReturn {
+export function useMysqlPartition(): UseMysqlPartitionReturn {
   const mysqlPartitionConfig = usePartitionStore((state) => state.mysqlPartitionConfig);
   const setPartitionEnabled = usePartitionStore((state) => state.setPartitionEnabled);
   const setPartitionType = usePartitionStore((state) => state.setPartitionType);
@@ -36,15 +32,7 @@ export function useMysqlPartition(
   const updatePartition = usePartitionStore((state) => state.updatePartition);
   const generateRangePartitions = usePartitionStore((state) => state.generateRangePartitions);
   const setMysqlPartitionConfig = usePartitionStore((state) => state.setMysqlPartitionConfig);
-  const hydratedFromPersisted = usePartitionStore((state) => state.hydratedFromPersisted);
-  const markHydratedFromPersisted = usePartitionStore((state) => state.markHydratedFromPersisted);
   const resetPartition = usePartitionStore((state) => state.resetPartition);
-
-  useEffect(() => {
-    if (!persistedState?.mysqlPartitionConfig || hydratedFromPersisted) return;
-    setMysqlPartitionConfig(persistedState.mysqlPartitionConfig);
-    markHydratedFromPersisted();
-  }, [hydratedFromPersisted, markHydratedFromPersisted, persistedState, setMysqlPartitionConfig]);
 
   return {
     mysqlPartitionConfig,
