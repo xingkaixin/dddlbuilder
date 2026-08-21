@@ -6,7 +6,7 @@ import type {
   ForeignKeyDefinition,
   ForeignKeyAction,
 } from '@ddlbuilder/shared-types';
-import { buildPrimaryKeyName } from '@ddlbuilder/ddl-core';
+import { buildPrimaryKeyName } from '../utils/primaryKeyNaming.js';
 import type { ParsedResult } from './types.js';
 import {
   isTransactAssignList,

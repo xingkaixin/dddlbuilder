@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { useSchemaApplyActions } from '@/components/App/hooks/useSchemaApplyActions';
-import type { ParsedResult } from '@/utils/SqlParser';
+import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 
 function createHook(initialState: Partial<Parameters<typeof useSchemaApplyActions>[0]> = {}) {
   const spies = {

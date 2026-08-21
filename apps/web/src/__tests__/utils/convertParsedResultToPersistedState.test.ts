@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
-import type { ParsedResult } from '@/utils/SqlParser';
+import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 
 describe('convertParsedResultToPersistedState', () => {
   function createParsedResult(overrides: Partial<ParsedResult> = {}): ParsedResult {

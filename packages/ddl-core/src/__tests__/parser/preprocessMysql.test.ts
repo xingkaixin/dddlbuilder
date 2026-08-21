@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { preprocessMysql } from '@/utils/sql-parser/preprocessMysql';
+import { preprocessMysql } from '../../parser/preprocessMysql.js';
 
 describe('preprocessMysql', () => {
   it('未包含分区语法时应直接返回原始结果', () => {

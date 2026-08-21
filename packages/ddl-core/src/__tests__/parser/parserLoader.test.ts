@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const importParserLoader = async () => {
   const { loadParserConstructor, __setParserModuleLoaderForTests } =
-    await import('@/utils/sql-parser/parserLoader');
+    await import('../../parser/parserLoader.js');
   return {
     loadParserConstructor,
     __setParserModuleLoaderForTests,

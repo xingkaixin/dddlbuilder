@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import type { ParsedResult } from '@/utils/sql-parser/types';
+import type { ParsedResult } from '../../parser/types.js';
 import {
   parseAlterTable,
   parseCreateIndex,
   parseCreateTable,
   parseDCL,
   parseTransactGrant,
-} from '@/utils/sql-parser/astHandlers';
+} from '../../parser/astHandlers.js';
 
 function createResult(): ParsedResult {
   return {

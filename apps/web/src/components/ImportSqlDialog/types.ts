@@ -1,5 +1,5 @@
 import type { FieldDefaultKind } from '@ddlbuilder/shared-types';
-import type { ParsedResult } from '@/utils/SqlParser';
+import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 
 export type ImportMode = 'workspace' | 'saved';
 

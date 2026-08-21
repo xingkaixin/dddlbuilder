@@ -8,7 +8,7 @@ import type {
 } from '@ddlbuilder/shared-types';
 import { createFieldId } from '@ddlbuilder/workspace-core';
 import { createEmptyRow } from './helpers';
-import type { ParsedResult } from './SqlParser';
+import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 
 const DEFAULT_TABLE_MISC_CONFIG: TableMiscConfig = {
   enabled: false,

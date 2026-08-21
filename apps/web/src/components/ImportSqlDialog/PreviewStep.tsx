@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Eye, ArrowLeft, ArrowRight, Trash2 } from '@/components/icons';
-import type { ParsedResult } from '@/utils/SqlParser';
+import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import type { PreviewField } from './types';
 import { useTranslation } from 'react-i18next';
 import { getNullableLabel } from '@/i18n/fieldEnums';

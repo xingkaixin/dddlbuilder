@@ -1,5 +1,5 @@
 import type { NormalizedField } from '@ddlbuilder/shared-types';
-import type { ParsedResult } from './SqlParser';
+import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 
 export type StructuredImportSource = 'csv' | 'excel' | 'json';
 

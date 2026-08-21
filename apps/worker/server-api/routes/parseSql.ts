@@ -1,5 +1,6 @@
 import type { Hono } from 'hono';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
+import { SqlParser } from '@ddlbuilder/ddl-core/parser';
 import type { ApiEnv } from '../lib/context.js';
 import {
   errorResponse,
@@ -77,8 +78,6 @@ export function registerParseSqlRoute(app: Hono<ApiEnv>) {
     const { sql, dbType } = validation;
 
     try {
-      // TODO(Phase 6): move SqlParser to @ddlbuilder/ddl-core and update this import
-      const { SqlParser } = await import('../../../../apps/web/src/utils/SqlParser.js');
       const parser = new SqlParser();
       const result = await parser.parseAsync(sql, dbType);
 
@@ -100,7 +99,6 @@ export function registerParseSqlRoute(app: Hono<ApiEnv>) {
     const { sql, dbType } = validation;
 
     try {
-      const { SqlParser } = await import('../../../../apps/web/src/utils/SqlParser.js');
       const parser = new SqlParser();
       const { results, failed } = await parser.parseMultiAsync(sql, dbType);
 

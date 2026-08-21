@@ -2,7 +2,7 @@ import { memo, lazy, Suspense, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
-import type { ParsedResult } from '@/utils/SqlParser';
+import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import packageInfo from '../../../package.json';
 import {
   Share2,

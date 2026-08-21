@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SqlParser } from '@/utils/SqlParser';
+import { SqlParser } from '../../parser/SqlParser.js';
 
 describe('SqlParser.parseMultiAsync', () => {
   it('单 CREATE TABLE → 返回 1 个 result', async () => {

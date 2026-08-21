@@ -1,5 +1,5 @@
 import type { DatabaseType } from '@ddlbuilder/shared-types';
-import type { ParsedResult } from '@/utils/SqlParser';
+import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import { useTranslation } from 'react-i18next';
 
 interface ConfirmStepProps {

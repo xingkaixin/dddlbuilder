@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PARTITION_BY_REGEX, extractPartitionConfig } from '@/utils/sql-parser/partitionParser';
+import { PARTITION_BY_REGEX, extractPartitionConfig } from '../../parser/partitionParser.js';
 
 describe('partitionParser', () => {
   it('应识别 HASH 分区与分区数量', () => {

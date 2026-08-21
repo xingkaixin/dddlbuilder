@@ -11,10 +11,13 @@
     "format": "oxfmt --config ../../.oxfmtrc.json --write src/"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./parser": "./src/parser/index.ts"
   },
   "dependencies": {
-    "@ddlbuilder/shared-types": "workspace:*"
+    "@ddlbuilder/shared-types": "workspace:*",
+    "node-sql-parser": "^5.4.0",
+    "uuid": "^14.0.2"
   },
   "devDependencies": {
     "@ddlbuilder/tsconfig": "workspace:*"

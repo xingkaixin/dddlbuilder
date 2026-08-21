@@ -1,5 +1,5 @@
 import { useCallback, type Dispatch, type SetStateAction } from 'react';
-import type { ParsedResult } from '@/utils/SqlParser';
+import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import { getSchemaAndTable } from '@ddlbuilder/ddl-core';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
 import type {

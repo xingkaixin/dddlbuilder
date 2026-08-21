@@ -11,7 +11,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import type { DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
-import type { ParsedResult } from '@/utils/SqlParser';
+import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import { useToast } from '@/hooks/useToast';
 import { requestSqlParse, requestMultiSqlParse } from '@/services/sqlParseService';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';

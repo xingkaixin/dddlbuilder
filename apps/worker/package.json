@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@ddlbuilder/db": "workspace:*",
+    "@ddlbuilder/ddl-core": "workspace:*",
     "@ddlbuilder/shared-types": "workspace:*",
     "@ddlbuilder/workspace-core": "workspace:*",
     "better-auth": "^1.7.1",

@@ -5,7 +5,7 @@ import {
   extractFunctionName,
   normalizeColumnName,
   normalizeLiteral,
-} from '@/utils/sql-parser/normalizers';
+} from '../../parser/normalizers.js';
 
 describe('sql-parser normalizers', () => {
   describe('normalizeColumnName', () => {

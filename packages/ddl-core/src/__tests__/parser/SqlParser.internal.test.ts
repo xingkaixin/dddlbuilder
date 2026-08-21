@@ -1,16 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
-import { SqlParser } from '@/utils/SqlParser';
-import type { ParsedResult } from '@/utils/sql-parser/types';
-
-const reporterMocks = vi.hoisted(() => ({
-  reportError: vi.fn(),
-}));
-
-vi.mock('@/utils/errorReporter', () => ({
-  reportError: reporterMocks.reportError,
-}));
+import { SqlParser } from '../../parser/SqlParser.js';
+import type { ParsedResult } from '../../parser/types.js';
 
 function createEmptyResult(): ParsedResult {
   return {
@@ -23,17 +15,17 @@ function createEmptyResult(): ParsedResult {
 }
 
 const sqlParserRuntimeImportFiles = [
-  '../../utils/SqlParser.ts',
-  '../../utils/preprocessors/index.ts',
-  '../../utils/preprocessors/OraclePreprocessor.ts',
-  '../../utils/preprocessors/PostgresPreprocessor.ts',
-  '../../utils/preprocessors/SqlServerPreprocessor.ts',
-  '../../utils/sql-parser/astHandlers.ts',
-  '../../utils/sql-parser/normalizers.ts',
-  '../../utils/sql-parser/parserLoader.ts',
-  '../../utils/sql-parser/partitionParser.ts',
-  '../../utils/sql-parser/preprocessMysql.ts',
-  '../../utils/sql-parser/types.ts',
+  '../../parser/SqlParser.ts',
+  '../../parser/preprocessors/index.ts',
+  '../../parser/preprocessors/OraclePreprocessor.ts',
+  '../../parser/preprocessors/PostgresPreprocessor.ts',
+  '../../parser/preprocessors/SqlServerPreprocessor.ts',
+  '../../parser/astHandlers.ts',
+  '../../parser/normalizers.ts',
+  '../../parser/parserLoader.ts',
+  '../../parser/partitionParser.ts',
+  '../../parser/preprocessMysql.ts',
+  '../../parser/types.ts',
 ].map((relativePath) => fileURLToPath(new URL(relativePath, import.meta.url)));
 
 describe('SqlParser internals', () => {
@@ -74,7 +66,6 @@ describe('SqlParser internals', () => {
       '无法解析 SQL，请检查语法或数据库类型是否正确。',
     );
     expect(astify).toHaveBeenCalledTimes(1);
-    expect(reporterMocks.reportError).toHaveBeenCalledTimes(1);
   });
 
   it('parse 应在 sqlserver 下回填 GRANT 用户', () => {

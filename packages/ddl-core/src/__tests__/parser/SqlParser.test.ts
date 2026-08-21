@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SqlParser } from '@/utils/SqlParser';
+import { SqlParser } from '../../parser/SqlParser.js';
 
 const stripIndexIds = (indexes: any[]) =>
   indexes.map(({ name, fields, unique, isPrimary }) => ({

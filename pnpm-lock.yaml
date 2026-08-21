@@ -145,9 +145,6 @@ importers:
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      node-sql-parser:
-        specifier: ^5.4.0
-        version: 5.4.0
       react:
         specifier: ^19.2.8
         version: 19.2.8
@@ -245,6 +242,9 @@ importers:
       '@ddlbuilder/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@ddlbuilder/ddl-core':
+        specifier: workspace:*
+        version: link:../../packages/ddl-core
       '@ddlbuilder/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
@@ -310,6 +310,12 @@ importers:
       '@ddlbuilder/shared-types':
         specifier: workspace:*
         version: link:../shared-types
+      node-sql-parser:
+        specifier: ^5.4.0
+        version: 5.4.0
+      uuid:
+        specifier: ^14.0.2
+        version: 14.0.2
     devDependencies:
       '@ddlbuilder/tsconfig':
         specifier: workspace:*

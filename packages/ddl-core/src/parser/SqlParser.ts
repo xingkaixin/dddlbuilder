@@ -6,26 +6,25 @@ import {
   extractStandaloneComments,
   type PreprocessResult,
 } from './preprocessors/index.js';
-import { reportError } from './errorReporter.js';
 import {
   parseCreateIndex,
   parseCreateTable,
   parseAlterTable,
   parseDCL,
   parseTransactGrant,
-} from './sql-parser/astHandlers.js';
+} from './astHandlers.js';
 import {
   isAlterTableStmt,
   isCreateIndexStmt,
   isCreateTableStmt,
   isGrantStmt,
   type AstStatement,
-} from './sql-parser/astTypes.js';
-import { loadParserConstructor } from './sql-parser/parserLoader.js';
-import { preprocessMysql } from './sql-parser/preprocessMysql.js';
-import type { ParsedResult, ParserInstance, MultiParsedResult } from './sql-parser/types.js';
+} from './astTypes.js';
+import { loadParserConstructor } from './parserLoader.js';
+import { preprocessMysql } from './preprocessMysql.js';
+import type { ParsedResult, ParserInstance, MultiParsedResult } from './types.js';
 
-export type { ParsedResult } from './sql-parser/types.js';
+export type { ParsedResult } from './types.js';
 
 export class SqlParser {
   private parser: ParserInstance | null;
@@ -173,12 +172,7 @@ export class SqlParser {
     let ast: AstStatement | AstStatement[];
     try {
       ast = parser.astify(sqlToParse, opt);
-    } catch (e) {
-      reportError(e, {
-        scope: 'SqlParser',
-        action: 'astify',
-        metadata: { dbType },
-      });
+    } catch {
       throw new Error('无法解析 SQL，请检查语法或数据库类型是否正确。');
     }
 
@@ -231,12 +225,7 @@ export class SqlParser {
     let ast: AstStatement | AstStatement[];
     try {
       ast = parser.astify(sqlToParse, opt);
-    } catch (e) {
-      reportError(e, {
-        scope: 'SqlParser',
-        action: 'astify-multi',
-        metadata: { dbType },
-      });
+    } catch {
       throw new Error('无法解析 SQL，请检查语法或数据库类型是否正确。');
     }
 
