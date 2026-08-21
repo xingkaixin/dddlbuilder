@@ -1,8 +1,8 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { WorkspaceSavePayload, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 import { usePersistedSync } from '@/components/App/hooks/usePersistedSync';
-import type { WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 
 function createState(name: string): PersistedState {
@@ -22,29 +22,28 @@ function createState(name: string): PersistedState {
   };
 }
 
-function createBaseParams(overrides?: {
-  hydrated?: boolean;
-  persistedState?: PersistedState | null;
-  buildPersistedState?: () => PersistedState;
-  saveState?: (payload: {
-    state: PersistedState;
-    source: WorkspaceSource;
-    isDirty: boolean;
-  }) => void;
-  activeSource?: WorkspaceSource;
-}) {
-  return {
-    hydrated: overrides?.hydrated ?? true,
-    hasOpenTab: true,
-    persistedState: overrides?.persistedState ?? null,
-    activeSource: overrides?.activeSource ?? { kind: 'draft', draftId: 'default' },
-    saveState: overrides?.saveState ?? vi.fn(),
-    buildPersistedState: overrides?.buildPersistedState ?? (() => createState('a')),
-    applyPersistedState: vi.fn(),
-  };
+interface PersistedSyncParams {
+  hydrated: boolean;
+  hasOpenTab: boolean;
+  persistedState: PersistedState | null;
+  activeSource: WorkspaceSource;
+  saveState: (payload: WorkspaceSavePayload) => void;
+  currentState: PersistedState;
+  applyPersistedState: (state: PersistedState) => void;
 }
 
-describe('usePersistedSync debounce save', () => {
+const createBaseParams = (overrides: Partial<PersistedSyncParams> = {}): PersistedSyncParams => ({
+  hydrated: true,
+  hasOpenTab: true,
+  persistedState: null,
+  activeSource: { kind: 'draft', draftId: 'default' },
+  saveState: vi.fn(),
+  currentState: createState('a'),
+  applyPersistedState: vi.fn(),
+  ...overrides,
+});
+
+describe('usePersistedSync', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -54,296 +53,171 @@ describe('usePersistedSync debounce save', () => {
     vi.useRealTimers();
   });
 
-  it('hydrated 为 false 时不会保存', () => {
+  it('未水合时不保存', () => {
     const saveState = vi.fn();
-    const params = createBaseParams({
-      hydrated: false,
-      saveState,
-    });
+    renderHook(() => usePersistedSync(createBaseParams({ hydrated: false, saveState })));
 
-    renderHook(() => usePersistedSync(params));
-
-    act(() => {
-      vi.advanceTimersByTime(1000);
-    });
+    act(() => vi.advanceTimersByTime(1000));
 
     expect(saveState).not.toHaveBeenCalled();
   });
 
-  it('没有打开标签页时不会保存', () => {
+  it('没有打开标签页时不保存', () => {
     const saveState = vi.fn();
-    const buildPersistedState = vi.fn(() => createState('ghost_draft'));
-    const params = createBaseParams({
-      saveState,
-      buildPersistedState,
-    });
-    params.hasOpenTab = false;
+    renderHook(() => usePersistedSync(createBaseParams({ hasOpenTab: false, saveState })));
 
-    renderHook(() => usePersistedSync(params));
+    act(() => vi.advanceTimersByTime(1000));
 
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
-
-    expect(buildPersistedState).not.toHaveBeenCalled();
     expect(saveState).not.toHaveBeenCalled();
   });
 
-  it('应在 500ms 后触发一次保存', () => {
+  it('在 500ms 后保存当前编辑态', () => {
     const saveState = vi.fn();
-    const payload = createState('users');
-    const buildPersistedState = vi.fn(() => payload);
-    const params = createBaseParams({
-      saveState,
-      buildPersistedState,
-    });
+    const currentState = createState('users');
+    renderHook(() => usePersistedSync(createBaseParams({ currentState, saveState })));
 
-    renderHook(() => usePersistedSync(params));
-
-    act(() => {
-      vi.advanceTimersByTime(499);
-    });
+    act(() => vi.advanceTimersByTime(499));
     expect(saveState).not.toHaveBeenCalled();
 
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
-    expect(buildPersistedState).toHaveBeenCalledTimes(1);
-    expect(saveState).toHaveBeenCalledTimes(1);
+    act(() => vi.advanceTimersByTime(1));
+    expect(saveState).toHaveBeenCalledOnce();
     expect(saveState).toHaveBeenCalledWith({
-      state: payload,
+      state: currentState,
       source: { kind: 'draft', draftId: 'default' },
       isDirty: false,
     });
   });
 
-  it('依赖变化应重置防抖，仅保存最终状态', () => {
+  it('编辑态变化时重置防抖并只保存最终值', () => {
     const saveState = vi.fn();
-    const firstPayload = createState('first');
-    const secondPayload = createState('second');
-    const firstBuild = vi.fn(() => firstPayload);
-    const secondBuild = vi.fn(() => secondPayload);
-
-    const { rerender } = renderHook(
-      (params: ReturnType<typeof createBaseParams>) => usePersistedSync(params),
-      {
-        initialProps: createBaseParams({
-          saveState,
-          buildPersistedState: firstBuild,
-        }),
-      },
-    );
-
-    act(() => {
-      vi.advanceTimersByTime(300);
+    const firstState = createState('first');
+    const secondState = createState('second');
+    const { rerender } = renderHook((params: PersistedSyncParams) => usePersistedSync(params), {
+      initialProps: createBaseParams({ currentState: firstState, saveState }),
     });
 
-    rerender(
-      createBaseParams({
-        saveState,
-        buildPersistedState: secondBuild,
-      }),
-    );
-
-    act(() => {
-      vi.advanceTimersByTime(499);
-    });
+    act(() => vi.advanceTimersByTime(300));
+    rerender(createBaseParams({ currentState: secondState, saveState }));
+    act(() => vi.advanceTimersByTime(499));
     expect(saveState).not.toHaveBeenCalled();
 
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
-    expect(saveState).toHaveBeenCalledTimes(1);
+    act(() => vi.advanceTimersByTime(1));
+    expect(saveState).toHaveBeenCalledOnce();
     expect(saveState).toHaveBeenCalledWith({
-      state: secondPayload,
+      state: secondState,
       source: { kind: 'draft', draftId: 'default' },
       isDirty: false,
     });
-    expect(firstBuild).not.toHaveBeenCalled();
-    expect(secondBuild).toHaveBeenCalledTimes(1);
   });
 
-  it('当前状态与 active tab 快照一致时仍应保存到工作区', () => {
+  it('恢复在线时立即保存当前编辑态', () => {
     const saveState = vi.fn();
-    const payload = createState('users');
-    const params = createBaseParams({
-      saveState,
-      buildPersistedState: () => payload,
-    });
+    const currentState = createState('online_flush');
+    renderHook(() => usePersistedSync(createBaseParams({ currentState, saveState })));
 
-    renderHook(() => usePersistedSync(params));
-
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
+    act(() => window.dispatchEvent(new Event('online')));
 
     expect(saveState).toHaveBeenCalledWith({
-      state: payload,
+      state: currentState,
       source: { kind: 'draft', draftId: 'default' },
       isDirty: false,
     });
   });
 
-  it('恢复在线时应立即保存当前状态', () => {
-    const saveState = vi.fn();
-    const payload = createState('online_flush');
-    const buildPersistedState = vi.fn(() => payload);
-    const params = createBaseParams({
-      saveState,
-      buildPersistedState,
-    });
-
-    renderHook(() => usePersistedSync(params));
-
-    act(() => {
-      window.dispatchEvent(new Event('online'));
-    });
-
-    expect(buildPersistedState).toHaveBeenCalledTimes(1);
-    expect(saveState).toHaveBeenCalledWith({
-      state: payload,
-      source: { kind: 'draft', draftId: 'default' },
-      isDirty: false,
-    });
-  });
-
-  it('离线状态变化时应立即保存到本地同步源', () => {
+  it('离线编辑时立即保存最终值且不重复防抖保存', () => {
     const onlineSpy = vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(true);
     const saveState = vi.fn();
-    const firstPayload = createState('offline_first');
-    const secondPayload = createState('offline_second');
-    const firstBuild = vi.fn(() => firstPayload);
-    const secondBuild = vi.fn(() => secondPayload);
-
-    const { rerender } = renderHook(
-      (params: ReturnType<typeof createBaseParams>) => usePersistedSync(params),
-      {
-        initialProps: createBaseParams({
-          saveState,
-          buildPersistedState: firstBuild,
-        }),
-      },
-    );
-    act(() => {
-      window.dispatchEvent(new Event('offline'));
+    const { rerender } = renderHook((params: PersistedSyncParams) => usePersistedSync(params), {
+      initialProps: createBaseParams({ currentState: createState('first'), saveState }),
     });
-    saveState.mockClear();
 
-    rerender(
-      createBaseParams({
-        saveState,
-        buildPersistedState: secondBuild,
-      }),
-    );
+    act(() => window.dispatchEvent(new Event('offline')));
+    rerender(createBaseParams({ currentState: createState('second'), saveState }));
 
-    expect(secondBuild).toHaveBeenCalledTimes(1);
     expect(saveState).toHaveBeenCalledWith({
-      state: secondPayload,
+      state: createState('second'),
       source: { kind: 'draft', draftId: 'default' },
       isDirty: false,
     });
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
-    expect(saveState).toHaveBeenCalledTimes(1);
+    act(() => vi.advanceTimersByTime(500));
+    expect(saveState).toHaveBeenCalledOnce();
     onlineSpy.mockRestore();
   });
 
-  it('刚应用远端状态且 UI 仍未追上时应跳过本轮保存', () => {
+  it('远端状态尚未反映到编辑态时不回写旧值', () => {
     const saveState = vi.fn();
-    const remoteState = createState('remote_state');
-    const staleState = createState('stale_state');
-    const params = createBaseParams({
-      saveState,
-      persistedState: remoteState,
-      buildPersistedState: () => staleState,
-    });
+    renderHook(() =>
+      usePersistedSync(
+        createBaseParams({
+          persistedState: createState('remote'),
+          currentState: createState('stale'),
+          saveState,
+        }),
+      ),
+    );
 
-    renderHook(() => usePersistedSync(params));
-
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
+    act(() => vi.advanceTimersByTime(500));
 
     expect(saveState).not.toHaveBeenCalled();
   });
 
-  it('远端状态已应用后首个本地编辑应保存', () => {
+  it('远端状态应用完成后的首个本地编辑会保存', () => {
     const saveState = vi.fn();
-    const remoteState = createState('remote_state');
-    const localEditState = createState('local_edit');
-    const remoteBuild = vi.fn(() => remoteState);
-    const localEditBuild = vi.fn(() => localEditState);
-    const params = createBaseParams({
+    const persistedState = createState('remote');
+    const baseParams = createBaseParams({
+      persistedState,
+      currentState: createState('stale'),
       saveState,
-      persistedState: remoteState,
-      buildPersistedState: remoteBuild,
+    });
+    const { rerender } = renderHook((params: PersistedSyncParams) => usePersistedSync(params), {
+      initialProps: baseParams,
     });
 
-    const { rerender } = renderHook(
-      (params: ReturnType<typeof createBaseParams>) => usePersistedSync(params),
-      {
-        initialProps: params,
-      },
-    );
+    rerender({ ...baseParams, currentState: persistedState });
+    rerender({ ...baseParams, currentState: createState('local_edit') });
+    act(() => vi.advanceTimersByTime(500));
 
-    rerender({
-      ...params,
-      buildPersistedState: localEditBuild,
-    });
-
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
-
-    expect(saveState).toHaveBeenCalledTimes(1);
+    expect(saveState).toHaveBeenCalledOnce();
     expect(saveState).toHaveBeenCalledWith({
-      state: localEditState,
+      state: createState('local_edit'),
       source: { kind: 'draft', draftId: 'default' },
       isDirty: false,
     });
   });
 
-  it('当来源为保存表时应计算 dirty 状态', () => {
+  it('保存表根据当前值和基线计算 dirty', () => {
     const saveState = vi.fn();
     const baseState = createState('users');
-    const dirtyState = createState('users_v2');
-    const params = createBaseParams({
-      saveState,
-      buildPersistedState: () => dirtyState,
-      activeSource: {
-        kind: 'saved_table',
-        normalizedName: 'users',
-        tableName: 'Users',
-        baseSignature: JSON.stringify(baseState),
-      },
-    });
+    const currentState = createState('users_v2');
+    const activeSource: WorkspaceSource = {
+      kind: 'saved_table',
+      normalizedName: 'users',
+      tableName: 'Users',
+      baseSignature: serializePersistedStateForComparison(baseState),
+    };
+    renderHook(() => usePersistedSync(createBaseParams({ activeSource, currentState, saveState })));
 
-    renderHook(() => usePersistedSync(params));
-
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
+    act(() => vi.advanceTimersByTime(500));
 
     expect(saveState).toHaveBeenCalledWith({
-      state: dirtyState,
-      source: params.activeSource,
+      state: currentState,
+      source: activeSource,
       isDirty: true,
     });
   });
 
-  it('保存表只补齐 UI 默认值时应保持 clean', () => {
+  it('保存表只补齐 UI 默认值时保持 clean', () => {
     const saveState = vi.fn();
     const baseState = createState('users');
-    const currentState = {
+    const currentState: PersistedState = {
       ...baseState,
-      objectType: 'table' as const,
+      objectType: 'table',
       viewDefinition: '',
       viewCreateOrReplace: true,
       foreignKeys: [],
       mysqlPartitionConfig: {
         enabled: false,
-        type: 'RANGE' as const,
+        type: 'RANGE',
         columns: [],
         partitionCount: 4,
         partitions: [],
@@ -355,112 +229,58 @@ describe('usePersistedSync debounce save', () => {
         collation: '',
         tablespace: '',
       },
-      fieldTableViewConfig: {
-        freezeEnabled: false,
-        freezeColumns: 3,
-      },
+      fieldTableViewConfig: { freezeEnabled: false, freezeColumns: 3 },
     };
-    const params = createBaseParams({
-      saveState,
-      buildPersistedState: () => currentState,
-      activeSource: {
-        kind: 'saved_table',
-        normalizedName: 'users',
-        tableName: 'Users',
-        baseSignature: serializePersistedStateForComparison(baseState),
-      },
-    });
+    const activeSource: WorkspaceSource = {
+      kind: 'saved_table',
+      normalizedName: 'users',
+      tableName: 'Users',
+      baseSignature: serializePersistedStateForComparison(baseState),
+    };
+    renderHook(() => usePersistedSync(createBaseParams({ activeSource, currentState, saveState })));
 
-    renderHook(() => usePersistedSync(params));
-
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
+    act(() => vi.advanceTimersByTime(500));
 
     expect(saveState).toHaveBeenCalledWith({
       state: currentState,
-      source: params.activeSource,
+      source: activeSource,
       isDirty: false,
     });
   });
 
-  it('应使用当前内存工作区来源，不依赖 localStorage', () => {
+  it('基线更新后用同一编辑态写入 clean 状态', () => {
     const saveState = vi.fn();
-    const dirtyState = createState('users_v3');
-    const params = createBaseParams({
-      saveState,
-      buildPersistedState: () => dirtyState,
-      activeSource: {
-        kind: 'saved_table',
-        normalizedName: 'users',
-        tableName: 'Users',
-        baseSignature: JSON.stringify(createState('users')),
-      },
-    });
-
-    renderHook(() => usePersistedSync(params));
-
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
-
-    expect(saveState).toHaveBeenCalledWith({
-      state: dirtyState,
-      source: params.activeSource,
-      isDirty: true,
-    });
-    expect(saveState).toHaveBeenCalledWith({
-      state: dirtyState,
-      source: params.activeSource,
-      isDirty: true,
-    });
-  });
-
-  it('保存时应使用 activeSource', () => {
-    const saveState = vi.fn();
-    const savedState = createState('saved_table_content');
-    const source: WorkspaceSource = {
+    const currentState = createState('users_v2');
+    const dirtySource: WorkspaceSource = {
       kind: 'saved_table',
       normalizedName: 'users',
       tableName: 'Users',
-      baseSignature: '{"table":"users"}',
+      baseSignature: serializePersistedStateForComparison(createState('users')),
     };
-
-    const params = createBaseParams({
-      saveState,
-      activeSource: source,
-      buildPersistedState: () => savedState,
+    const cleanSource: WorkspaceSource = {
+      ...dirtySource,
+      baseSignature: serializePersistedStateForComparison(currentState),
+    };
+    const { rerender } = renderHook((params: PersistedSyncParams) => usePersistedSync(params), {
+      initialProps: createBaseParams({ activeSource: dirtySource, currentState, saveState }),
     });
+    act(() => vi.advanceTimersByTime(500));
 
-    renderHook(() => usePersistedSync(params));
+    rerender(createBaseParams({ activeSource: cleanSource, currentState, saveState }));
+    act(() => vi.advanceTimersByTime(500));
 
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
-
-    expect(saveState).toHaveBeenCalledWith({
-      state: savedState,
-      source: source,
-      isDirty: true,
+    expect(saveState).toHaveBeenLastCalledWith({
+      state: currentState,
+      source: cleanSource,
+      isDirty: false,
     });
   });
-});
 
-describe('usePersistedSync useEffect synchronization', () => {
-  it('应在 hydrated 和 persistedState 都在时通过统一入口应用数据', () => {
+  it('水合状态通过统一入口应用', () => {
     const applyPersistedState = vi.fn();
     const persistedState = createState('test_table');
-    persistedState.tableComment = 'test comment';
-    persistedState.dbType = 'postgresql';
-    persistedState.addCount = 5;
 
-    const params = createBaseParams({
-      hydrated: true,
-      persistedState,
-    });
-    params.applyPersistedState = applyPersistedState;
-
-    renderHook(() => usePersistedSync(params));
+    renderHook(() => usePersistedSync(createBaseParams({ applyPersistedState, persistedState })));
 
     expect(applyPersistedState).toHaveBeenCalledOnce();
     expect(applyPersistedState).toHaveBeenCalledWith(persistedState);

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSavePayload, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
 import { useDebouncedEffect } from '@/hooks/useDebouncedEffect';
@@ -12,9 +12,8 @@ interface UsePersistedSyncParams {
   persistedState: PersistedState | null;
   activeSource: WorkspaceSource;
   saveState: (payload: WorkspaceSavePayload) => void;
-  buildPersistedState: () => PersistedState;
+  currentState: PersistedState;
   applyPersistedState: (state: PersistedState) => void;
-  updateActiveTabSnapshot?: (state: PersistedState, isDirty: boolean) => void;
 }
 
 export function usePersistedSync({
@@ -23,112 +22,81 @@ export function usePersistedSync({
   persistedState,
   activeSource,
   saveState,
-  buildPersistedState,
+  currentState,
   applyPersistedState,
-  updateActiveTabSnapshot,
 }: UsePersistedSyncParams) {
-  const activeSourceRef = useRef(activeSource);
-  activeSourceRef.current = activeSource;
-  const buildPersistedStateRef = useRef(buildPersistedState);
-  buildPersistedStateRef.current = buildPersistedState;
   const browserOfflineRef = useRef(typeof navigator !== 'undefined' ? !navigator.onLine : false);
-  const latestSaveInputsRef = useRef({
-    hydrated,
-    hasOpenTab,
-    persistedState,
-    saveState,
-    updateActiveTabSnapshot,
-  });
-  latestSaveInputsRef.current = {
-    hydrated,
-    hasOpenTab,
-    persistedState,
-    saveState,
-    updateActiveTabSnapshot,
-  };
-  const lastAppliedBuildPersistedStateRef = useRef<(() => PersistedState) | null>(null);
-  const lastSavedBuildPersistedStateRef = useRef<(() => PersistedState) | null>(null);
+  const pendingAppliedStateRef = useRef<{ sourceId: string; signature: string } | null>(null);
+  const lastSavedKeyRef = useRef<string | null>(null);
+  const currentSignature = useMemo(
+    () => serializePersistedStateForComparison(currentState),
+    [currentState],
+  );
+  const sourceId =
+    activeSource.kind === 'draft'
+      ? `draft:${activeSource.draftId}`
+      : `saved_table:${activeSource.normalizedName}`;
+  const sourceVersion =
+    activeSource.kind === 'draft' ? sourceId : `${sourceId}:${activeSource.baseSignature}`;
+  const currentSaveKey = `${sourceVersion}:${currentSignature}`;
 
   const saveCurrentState = useCallback(() => {
-    const {
-      hydrated: latestHydrated,
-      hasOpenTab: latestHasOpenTab,
-      saveState: latestSaveState,
-      updateActiveTabSnapshot: latestUpdateActiveTabSnapshot,
-    } = latestSaveInputsRef.current;
-    if (!latestHydrated) return;
-    if (!latestHasOpenTab) return;
-    const source = activeSourceRef.current;
-    if (lastSavedBuildPersistedStateRef.current === buildPersistedStateRef.current) return;
-    const lastAppliedBuildPersistedState = lastAppliedBuildPersistedStateRef.current;
-    if (lastAppliedBuildPersistedState) {
-      if (lastAppliedBuildPersistedState === buildPersistedStateRef.current) {
-        return;
-      }
-      lastAppliedBuildPersistedStateRef.current = null;
-    }
+    if (!hydrated || !hasOpenTab) return;
+    const pendingAppliedState = pendingAppliedStateRef.current;
+    if (pendingAppliedState?.sourceId === sourceId) return;
+    if (lastSavedKeyRef.current === currentSaveKey) return;
 
-    try {
-      const state = buildPersistedStateRef.current();
-      const currentSignature = serializePersistedStateForComparison(state);
-      const isDirty =
-        source.kind === 'saved_table' ? currentSignature !== source.baseSignature : false;
-      latestSaveState({
-        state,
-        source,
-        isDirty,
-      });
-      latestUpdateActiveTabSnapshot?.(state, isDirty);
-      lastSavedBuildPersistedStateRef.current = buildPersistedStateRef.current;
-    } catch {
-      // ignore quota errors
-    }
-  }, []);
+    const isDirty =
+      activeSource.kind === 'saved_table' ? currentSignature !== activeSource.baseSignature : false;
+    saveState({
+      state: currentState,
+      source: activeSource,
+      isDirty,
+    });
+    lastSavedKeyRef.current = currentSaveKey;
+  }, [
+    activeSource,
+    currentSaveKey,
+    currentSignature,
+    currentState,
+    hasOpenTab,
+    hydrated,
+    saveState,
+    sourceId,
+  ]);
 
   useEffect(() => {
     if (!hydrated || !persistedState) return;
-    lastAppliedBuildPersistedStateRef.current = buildPersistedStateRef.current;
+    pendingAppliedStateRef.current = {
+      sourceId,
+      signature: serializePersistedStateForComparison(persistedState),
+    };
     applyPersistedState(persistedState);
-  }, [hydrated, persistedState, applyPersistedState]);
+  }, [applyPersistedState, hydrated, persistedState, sourceId]);
 
   useEffect(() => {
-    if (!hydrated || !hasOpenTab) return;
-    if (!lastAppliedBuildPersistedStateRef.current) return;
-    if (lastAppliedBuildPersistedStateRef.current === buildPersistedState) return;
-    lastAppliedBuildPersistedStateRef.current = null;
-    const appliedState = latestSaveInputsRef.current.persistedState;
-    if (
-      appliedState?.rows &&
-      serializePersistedStateForComparison(appliedState as PersistedState) ===
-        serializePersistedStateForComparison(buildPersistedState())
-    ) {
-      lastSavedBuildPersistedStateRef.current = buildPersistedState;
+    const pendingAppliedState = pendingAppliedStateRef.current;
+    if (!pendingAppliedState) return;
+    if (pendingAppliedState.sourceId !== sourceId) {
+      pendingAppliedStateRef.current = null;
+      return;
     }
-  }, [buildPersistedState, hasOpenTab, hydrated]);
-
-  useEffect(() => {
-    if (lastSavedBuildPersistedStateRef.current === buildPersistedState) return;
-    lastSavedBuildPersistedStateRef.current = null;
-  }, [buildPersistedState]);
+    if (pendingAppliedState.signature !== currentSignature) return;
+    pendingAppliedStateRef.current = null;
+    lastSavedKeyRef.current = currentSaveKey;
+  }, [currentSaveKey, currentSignature, sourceId]);
 
   useLayoutEffect(() => {
     if (browserOfflineRef.current || (typeof navigator !== 'undefined' && !navigator.onLine)) {
       saveCurrentState();
     }
-  }, [buildPersistedState, saveCurrentState]);
+  }, [currentSaveKey, saveCurrentState]);
 
   useDebouncedEffect(
     () => {
       saveCurrentState();
     },
-    [
-      hydrated,
-      hasOpenTab,
-      buildPersistedState,
-      saveState,
-      updateActiveTabSnapshot,
-      saveCurrentState,
-    ],
+    [hydrated, hasOpenTab, currentSaveKey, saveState, saveCurrentState],
     PERSIST_DEBOUNCE_MS,
   );
 

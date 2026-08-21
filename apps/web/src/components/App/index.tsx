@@ -656,9 +656,8 @@ function App() {
     persistedState,
     activeSource,
     saveState,
-    buildPersistedState,
+    currentState: currentPersistedState,
     applyPersistedState: applySavedState,
-    updateActiveTabSnapshot,
   });
 
   const { handleClearAll, cancelClearAll, confirmClearAll } = useClearAllActions({
@@ -676,7 +675,7 @@ function App() {
 
   const flushCurrentWorkspace = useCallback(() => {
     if (!hydrated || isShareView) return;
-    const state = buildPersistedState();
+    const state = currentPersistedState;
     const source = activeSource;
     const currentSignature = serializePersistedState(state);
 
@@ -688,16 +687,13 @@ function App() {
 
     if (tabSnapshotSignature === currentSignature && activeTabDirty === isDirty) return;
 
-    // 保存到当前激活标签页的快照
     updateActiveTabSnapshot(state, isDirty);
-
-    // 保持原有的 IndexedDB 保存
     saveState({ state, source, isDirty });
   }, [
     hydrated,
     isShareView,
     activeSource,
-    buildPersistedState,
+    currentPersistedState,
     serializePersistedState,
     activeTabSnapshot,
     activeTabDirty,
@@ -1022,6 +1018,9 @@ function App() {
 
   const handleCloseTab = useCallback(
     (tabId: string) => {
+      if (tabId === activeTabId) {
+        flushCurrentWorkspace();
+      }
       closeTabStore(tabId);
 
       const nextActive = getActiveTab();
@@ -1030,7 +1029,14 @@ function App() {
         selectWorkspaceSnapshot(nextActive.source, nextActive.stateSnapshot);
       }
     },
-    [closeTabStore, getActiveTab, applySavedState, selectWorkspaceSnapshot],
+    [
+      activeTabId,
+      applySavedState,
+      closeTabStore,
+      flushCurrentWorkspace,
+      getActiveTab,
+      selectWorkspaceSnapshot,
+    ],
   );
 
   const handleRestoreTable = useCallback(
@@ -1339,9 +1345,22 @@ function App() {
     [savedTables],
   );
 
+  const presentedTabs = useMemo(
+    () =>
+      tabs.map((tab) =>
+        tab.id === activeTabId
+          ? {
+              ...tab,
+              isDirty: activeSource.kind === 'saved_table' && isLoadedDirty,
+            }
+          : tab,
+      ),
+    [activeSource.kind, activeTabId, isLoadedDirty, tabs],
+  );
+
   const tablePresentations = useMemo(() => {
     const presentations = new Map<string, { title: string; isDirty: boolean }>();
-    for (const tab of tabs) {
+    for (const tab of presentedTabs) {
       if (tab.source.kind === 'saved_table') {
         presentations.set(tab.source.normalizedName, {
           title: tab.title,
@@ -1350,7 +1369,7 @@ function App() {
       }
     }
     return presentations;
-  }, [tabs]);
+  }, [presentedTabs]);
 
   const shouldShowWorkspaceSkeleton =
     activeWorkspaceTab?.isLoading === true || (isShareView && !hydrated);
@@ -1476,7 +1495,7 @@ function App() {
                     </button>
                   ) : undefined
                 }
-                tabs={tabs}
+                tabs={presentedTabs}
                 activeTabId={activeTabId}
                 onActivateTab={(id) => {
                   const tab = tabs.find((t) => t.id === id);
