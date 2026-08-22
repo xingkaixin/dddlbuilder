@@ -1,5 +1,5 @@
-import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
+import type { WorkspaceMigrationResponse } from '@ddlbuilder/shared-types/api';
+import type { WorkspaceMigrationPayload } from '@ddlbuilder/shared-types/workspace';
 import type { ApiEnv } from './context.js';
 import { upsertWorkspaceSnapshotEntity } from './workspaceEntities.js';
 
@@ -15,65 +15,7 @@ type SnapshotRecord = {
   sourceUpdatedAt: number;
 };
 
-export type WorkspaceMigrationPayload = {
-  localFingerprint: string;
-  idempotencyKey: string;
-  snapshot: {
-    globalDraft: {
-      state: PersistedState;
-      updatedAt: number;
-    } | null;
-    activeSession: {
-      activeSource: WorkspaceSource;
-      activeState: PersistedState | null;
-      updatedAt: number;
-    } | null;
-    savedTables: Array<{
-      normalizedName: string;
-      name: string;
-      state: PersistedState;
-      createdAt?: number;
-      updatedAt: number;
-      folderId?: string;
-    }>;
-    drafts?: Array<{
-      draftId: string;
-      state: PersistedState;
-      createdAt?: number;
-      updatedAt: number;
-      folderId?: string;
-    }>;
-    savedDrafts: Array<{
-      normalizedName: string;
-      tableName: string;
-      state: PersistedState;
-      updatedAt: number;
-      baseSignature: string;
-    }>;
-    folders?: Array<{
-      id: string;
-      name: string;
-      parentId?: string;
-      order: number;
-      createdAt: number;
-    }>;
-  };
-};
-
-export type WorkspaceMigrationConflict = {
-  kind: ConflictKind;
-  normalizedName: string | null;
-  displayName: string;
-};
-
-export type WorkspaceMigrationResult = {
-  status: 'no_data' | 'ready' | 'completed';
-  createdCount: number;
-  copiedCount: number;
-  skippedCount: number;
-  conflictCount: number;
-  conflicts: WorkspaceMigrationConflict[];
-};
+export type WorkspaceMigrationResult = Omit<WorkspaceMigrationResponse, 'meta'>;
 
 const LOCAL_COPY_SUFFIX = ' (Imported)';
 
@@ -401,7 +343,7 @@ export const analyzeWorkspaceMigration = async (
 
   let createdCount = 0;
   let skippedCount = 0;
-  const conflicts: WorkspaceMigrationConflict[] = [];
+  const conflicts: WorkspaceMigrationResult['conflicts'] = [];
 
   for (const record of records) {
     const existing = await findExistingSnapshot(env, userId, record.kind, record.normalizedName);

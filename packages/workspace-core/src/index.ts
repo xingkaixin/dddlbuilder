@@ -6,6 +6,7 @@ export {
   decodeWorkspaceSnapshot,
   type PersistedStateDecodeMode,
 } from './persistedStateCodec';
+export { decodeWorkspaceMigrationPayload } from './workspaceMigrationCodec';
 export { stableStringify } from './yMapJson';
 export {
   type ApplyPersistedStateOptions,

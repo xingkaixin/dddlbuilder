@@ -94,3 +94,17 @@ export type WorkspaceSnapshot = {
   }>;
   folders: TableFolderSnapshot[];
 };
+
+export type WorkspaceMigrationSnapshot = WorkspaceSnapshot & {
+  activeSession: {
+    activeSource: WorkspaceSource;
+    activeState: PersistedState | null;
+    updatedAt: number;
+  } | null;
+};
+
+export type WorkspaceMigrationPayload = {
+  localFingerprint: string;
+  idempotencyKey: string;
+  snapshot: WorkspaceMigrationSnapshot;
+};

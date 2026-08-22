@@ -1,9 +1,10 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { ApiErrorPayload, WorkspaceMigrationResponse } from '@ddlbuilder/shared-types/api';
 import type {
+  WorkspaceMigrationPayload,
+  WorkspaceMigrationSnapshot,
   WorkspaceScope,
   WorkspaceSnapshot,
-  WorkspaceSource,
 } from '@ddlbuilder/shared-types/workspace';
 import { shouldAcceptSnapshotRecord } from '@ddlbuilder/workspace-core';
 import {
@@ -30,52 +31,7 @@ import {
 } from '@/utils/workspaceStateDb';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 
-export type WorkspaceMigrationSnapshot = {
-  globalDraft: {
-    state: PersistedState;
-    updatedAt: number;
-  } | null;
-  activeSession: {
-    activeSource: WorkspaceSource;
-    activeState: PersistedState | null;
-    updatedAt: number;
-  } | null;
-  savedTables: Array<{
-    normalizedName: string;
-    name: string;
-    state: PersistedState;
-    createdAt?: number;
-    updatedAt: number;
-    folderId?: string;
-  }>;
-  drafts: Array<{
-    draftId: string;
-    state: PersistedState;
-    createdAt?: number;
-    updatedAt: number;
-    folderId?: string;
-  }>;
-  savedDrafts: Array<{
-    normalizedName: string;
-    tableName: string;
-    state: PersistedState;
-    updatedAt: number;
-    baseSignature: string;
-  }>;
-  folders: Array<{
-    id: string;
-    name: string;
-    parentId?: string;
-    order: number;
-    createdAt: number;
-  }>;
-};
-
-export type WorkspaceMigrationPayload = {
-  localFingerprint: string;
-  idempotencyKey: string;
-  snapshot: WorkspaceMigrationSnapshot;
-};
+export type { WorkspaceMigrationPayload } from '@ddlbuilder/shared-types/workspace';
 
 const isPersistedStateTrivial = (state: PersistedState): boolean =>
   !state.rows?.some((row) => row.fieldName?.trim());

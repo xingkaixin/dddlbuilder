@@ -142,4 +142,42 @@ describe('/api/workspace/migrations', () => {
       copiedCount: 1,
     });
   });
+
+  it('returns 400 before dispatching malformed migration payloads', async () => {
+    const analyzeWorkspaceMigration = vi.fn();
+    vi.doMock('../lib/auth.js', () => ({
+      authenticateRequest: vi.fn().mockResolvedValue({
+        userId: 'user-1',
+        email: 'user@example.com',
+        emailVerified: true,
+        name: 'User One',
+      }),
+    }));
+    vi.doMock('../lib/workspaceMigration.js', () => ({
+      analyzeWorkspaceMigration,
+      commitWorkspaceMigration: vi.fn(),
+    }));
+
+    const { default: app } = await import('../../api/index');
+    const response = await app.fetch(
+      createRequest('/api/workspace/migrations', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          mode: 'analyze',
+          payload: {
+            ...samplePayload,
+            snapshot: { ...samplePayload.snapshot, savedTables: {} },
+          },
+        }),
+      }),
+      createEnv(),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: 'INVALID_JSON' });
+    expect(analyzeWorkspaceMigration).not.toHaveBeenCalled();
+  });
 });
