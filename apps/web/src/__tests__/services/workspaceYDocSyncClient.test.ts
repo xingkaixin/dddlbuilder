@@ -284,6 +284,26 @@ describe('WorkspaceYDocSyncClient', () => {
     client.destroy();
   });
 
+  it('ignores callbacks from a connecting socket replaced after returning online', async () => {
+    const doc = new Y.Doc();
+    const statuses: WorkspaceYDocConnectionStatus[] = [];
+    const client = new WorkspaceYDocSyncClient('ws-1', doc, (status) => statuses.push(status));
+
+    await client.connect();
+    const replacedSocket = firstSocket();
+
+    window.dispatchEvent(new Event('online'));
+    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
+    const activeSocket = MockWebSocket.instances[1] as MockWebSocket;
+    activeSocket.open();
+    expect(statuses.at(-1)).toMatchObject({ state: 'connected' });
+
+    replacedSocket.close();
+
+    expect(statuses.at(-1)).toMatchObject({ state: 'connected' });
+    client.destroy();
+  });
+
   it('reports auth and service failures before opening a websocket', async () => {
     const doc = new Y.Doc();
     const onConnectionStateChange = vi.fn();
