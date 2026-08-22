@@ -67,9 +67,9 @@ const createEnv = (userDb: D1Database): ApiEnv['Bindings'] => ({
 
 const createWorkspaceSnapshotDb = (
   legacyRows: StoredLegacySnapshotRow[] = [],
-  options: { includeMeta?: boolean } = {},
+  options: { includeMeta?: boolean; initialWorkspaces?: StoredWorkspace[] } = {},
 ) => {
-  const workspaces: StoredWorkspace[] = [];
+  const workspaces: StoredWorkspace[] = [...(options.initialWorkspaces ?? [])];
   const clocks = new Map<string, number>();
   const rows: StoredRow[] = [];
   const mutations: StoredMutation[] = [];
@@ -124,7 +124,7 @@ const createWorkspaceSnapshotDb = (
                 const workspace = workspaces.find(
                   (item) => item.id === workspaceId && item.userId === userId,
                 );
-                return allResult(workspace ? [{ id: workspace.id }] : []);
+                return allResult(workspace ? [{ isDefault: workspace.isDefault }] : []);
               }
 
               if (sql.includes('FROM workspace_mutations')) {
@@ -273,7 +273,7 @@ const createWorkspaceSnapshotDb = (
                 const workspace = workspaces.find(
                   (item) => item.id === workspaceId && item.userId === userId,
                 );
-                return workspace ? { id: workspace.id } : null;
+                return workspace ? { isDefault: workspace.isDefault } : null;
               }
 
               if (sql.includes('FROM workspaces')) {
@@ -560,6 +560,27 @@ describe('workspace entity checkpoints', () => {
       'orders',
       'users',
     ]);
+  });
+
+  it('不应把默认 workspace 的旧快照回填到其他 workspace', async () => {
+    const { getWorkspaceSnapshotForWorkspace } = await import('../../lib/workspaceEntities.js');
+    const secondaryWorkspace: StoredWorkspace = {
+      id: 'workspace-secondary',
+      userId: 'user-1',
+      name: 'Secondary',
+      isDefault: 0,
+      activeAt: 100,
+      updatedAt: 100,
+    };
+    const env = createEnv(
+      createWorkspaceSnapshotDb([createLegacySavedTableRow('user-1', 'legacy', 100)], {
+        initialWorkspaces: [secondaryWorkspace],
+      }),
+    );
+
+    const snapshot = await getWorkspaceSnapshotForWorkspace(env, 'user-1', secondaryWorkspace.id);
+
+    expect(snapshot.savedTables).toEqual([]);
   });
 
   it('应同步多份普通草稿', async () => {

@@ -180,10 +180,10 @@ export const assertWorkspaceOwner = async (
   workspaceId: string,
   metrics?: WorkspaceD1Metrics,
 ) => {
-  const row = await firstWorkspaceD1Result<{ id: string }>(
+  const row = await firstWorkspaceD1Result<{ isDefault: number }>(
     env.USER_DB.prepare(
       `
-      SELECT id
+      SELECT is_default AS isDefault
       FROM workspaces
       WHERE id = ? AND user_id = ?
       LIMIT 1
@@ -195,6 +195,8 @@ export const assertWorkspaceOwner = async (
   if (!row) {
     throw new WorkspaceNotFoundError();
   }
+
+  return { isDefault: row.isDefault === 1 };
 };
 
 const readWorkspaceCursor = async (
@@ -488,6 +490,14 @@ const backfillLegacySnapshotEntities = async (
     return false;
   }
 
+  console.info(
+    JSON.stringify({
+      event: 'workspace_legacy_backfill',
+      userId,
+      workspaceId,
+      entityCount: missingLegacyEntities.length,
+    }),
+  );
   await writeEntityInputs(
     env,
     {
@@ -514,8 +524,10 @@ export const getWorkspaceSnapshotForWorkspace = async (
   userId: string,
   workspaceId: string,
 ): Promise<WorkspaceSnapshot> => {
-  await assertWorkspaceOwner(env, userId, workspaceId);
-  await backfillLegacySnapshotEntities(env, userId, workspaceId);
+  const workspace = await assertWorkspaceOwner(env, userId, workspaceId);
+  if (workspace.isDefault) {
+    await backfillLegacySnapshotEntities(env, userId, workspaceId);
+  }
   return storedEntitiesToWorkspaceSnapshot(await listActiveEntities(env, workspaceId));
 };
 
