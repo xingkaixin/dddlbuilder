@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import type { TableMiscConfig, HivePartitionConfig } from '@ddlbuilder/shared-types';
 import { useTableOptionsStore } from '@/stores';
 
@@ -15,6 +16,14 @@ export interface UseTableOptionsReturn {
   setExternal: (value: boolean) => void;
   setLocation: (value: string) => void;
   setHivePartitionConfig: React.Dispatch<React.SetStateAction<HivePartitionConfig>>;
+  setHivePartitionEnabled: (enabled: boolean) => void;
+  addHivePartitionColumn: (column: HivePartitionConfig['columns'][number]) => void;
+  removeHivePartitionColumn: (index: number) => void;
+  updateHivePartitionColumn: (
+    index: number,
+    column: HivePartitionConfig['columns'][number],
+  ) => void;
+  setHiveClustering: (clustering: HivePartitionConfig['clustering']) => void;
   setTableMiscConfig: React.Dispatch<React.SetStateAction<TableMiscConfig>>;
   resetTableMiscConfig: () => void;
 }
@@ -35,6 +44,41 @@ export function useTableOptions(): UseTableOptionsReturn {
   const setHivePartitionConfig = useTableOptionsStore((state) => state.setHivePartitionConfig);
   const setTableMiscConfig = useTableOptionsStore((state) => state.setTableMiscConfig);
   const resetTableMiscConfig = useTableOptionsStore((state) => state.resetTableMiscConfig);
+  const setHivePartitionEnabled = useCallback(
+    (enabled: boolean) => setHivePartitionConfig((previous) => ({ ...previous, enabled })),
+    [setHivePartitionConfig],
+  );
+  const addHivePartitionColumn = useCallback(
+    (column: HivePartitionConfig['columns'][number]) =>
+      setHivePartitionConfig((previous) => ({
+        ...previous,
+        columns: [...previous.columns, column],
+      })),
+    [setHivePartitionConfig],
+  );
+  const removeHivePartitionColumn = useCallback(
+    (index: number) =>
+      setHivePartitionConfig((previous) => ({
+        ...previous,
+        columns: previous.columns.filter((_, columnIndex) => columnIndex !== index),
+      })),
+    [setHivePartitionConfig],
+  );
+  const updateHivePartitionColumn = useCallback(
+    (index: number, column: HivePartitionConfig['columns'][number]) =>
+      setHivePartitionConfig((previous) => ({
+        ...previous,
+        columns: previous.columns.map((current, columnIndex) =>
+          columnIndex === index ? column : current,
+        ),
+      })),
+    [setHivePartitionConfig],
+  );
+  const setHiveClustering = useCallback(
+    (clustering: HivePartitionConfig['clustering']) =>
+      setHivePartitionConfig((previous) => ({ ...previous, clustering })),
+    [setHivePartitionConfig],
+  );
 
   return {
     tableMiscConfig,
@@ -50,6 +94,11 @@ export function useTableOptions(): UseTableOptionsReturn {
     setExternal,
     setLocation,
     setHivePartitionConfig,
+    setHivePartitionEnabled,
+    addHivePartitionColumn,
+    removeHivePartitionColumn,
+    updateHivePartitionColumn,
+    setHiveClustering,
     setTableMiscConfig,
     resetTableMiscConfig,
   };

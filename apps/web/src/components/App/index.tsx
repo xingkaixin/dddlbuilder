@@ -1,6 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import type { AICommentMode, DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
-import { createEmptyRow } from '@/utils/helpers';
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
+import type { DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
 import { isTabAvailable } from '@/utils/tabUtils';
 import { ChevronRight, Upload } from '@/components/icons';
 import { Header } from './Header';
@@ -16,7 +15,6 @@ import { WorkspaceSidebar } from './WorkspaceSidebar';
 import { TabBar } from './TabBar';
 import { WorkspaceEmptyState } from './WorkspaceEmptyState';
 import { TableTemplatePopover } from './TableTemplatePopover';
-import { useTabStore } from '@/stores';
 import { isWorkspaceTabDirty } from '@/stores/tabStore';
 import { useAppSelectors } from './hooks/useAppSelectors';
 import { useDialogStates } from './hooks/useDialogStates';
@@ -37,6 +35,12 @@ import { useTemplateToolbarLeft } from './hooks/useTemplateToolbarLeft';
 import { useFireworksIntro } from './hooks/useFireworksIntro';
 import { useIndexAdvisorFlow } from './hooks/useIndexAdvisorFlow';
 import { useAISchemaPatchFlow } from './hooks/useAISchemaPatchFlow';
+import { useAICommentActions } from './hooks/useAICommentActions';
+import { useLoadedTablePresentation } from './hooks/useLoadedTablePresentation';
+import { useSavedTableTabIntegration } from './hooks/useSavedTableTabIntegration';
+import { useWorkspaceNotifications } from './hooks/useWorkspaceNotifications';
+import { useWorkspaceTabActions } from './hooks/useWorkspaceTabActions';
+import { useWorkspaceTrashActions } from './hooks/useWorkspaceTrashActions';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { useAuthManagement } from '@/hooks/useAuthManagement';
 import { useSqlGeneration } from '@/hooks/useSqlGeneration';
@@ -46,19 +50,14 @@ import { useCitusSharding } from '@/hooks/useCitusSharding';
 import { useMysqlPartition } from '@/hooks/useMysqlPartition';
 import { useTableOptions } from '@/hooks/useTableOptions';
 import { useDDLReview } from '@/hooks/useDDLReview';
-import { useAIComments } from '@/hooks/useAIComments';
 import { useSuggestionAnimation } from '@/hooks/useSuggestionAnimation';
 import { useSavedTables } from '@/hooks/useSavedTables';
-import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import { useFolders } from '@/hooks/useFolders';
 import { useWorkspaceScope } from '@/hooks/useWorkspaceScope';
 import { useFieldTemplates } from '@/hooks/useFieldTemplates';
 import { useTableTemplates } from '@/hooks/useTableTemplates';
-import { countVersions } from '@/utils/tableVersions';
-import { writeWorkspaceSession } from '@/utils/workspaceStateDb';
 import { lintSchema } from '@/utils/schemaLint';
 import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
-import { EXAMPLE_USER_PROFILE_TABLE } from '@/utils/exampleTable';
 import { useTranslation } from 'react-i18next';
 
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -71,25 +70,6 @@ const ImportSqlDialog = lazy(() =>
     default: module.ImportSqlDialog,
   })),
 );
-
-const createInitialRows = () => Array.from({ length: 12 }, () => createEmptyRow());
-
-const SHARE_COPY_SAVED_TOAST_KEY = 'ddlbuilder:share:copy-saved:v1';
-
-const createEmptyGlobalDraftState = (): PersistedState => ({
-  schemaName: '',
-  tableName: '',
-  tableComment: '',
-  dbType: 'mysql',
-  sqlFormatMode: 'compact',
-  rows: createInitialRows(),
-  addCount: 10,
-  indexInput: '',
-  currentIndexFields: [],
-  indexes: [],
-  authInput: '',
-  authObjects: [],
-});
 
 function App() {
   const { t } = useTranslation();
@@ -161,6 +141,8 @@ function App() {
     renameName,
     renameError,
     deleteTarget,
+    handleSaveNameChange,
+    handleRenameNameChange,
   } = useDialogStates({
     isSaveDialogOpen,
     setIsSaveDialogOpen,
@@ -263,7 +245,11 @@ function App() {
     setStoredAs,
     setExternal,
     setLocation,
-    setHivePartitionConfig,
+    setHivePartitionEnabled,
+    addHivePartitionColumn,
+    removeHivePartitionColumn,
+    updateHivePartitionColumn,
+    setHiveClustering,
     setTableMiscConfig,
     resetTableMiscConfig,
   } = useTableOptions();
@@ -315,28 +301,16 @@ function App() {
     loadedTableSignature,
     updateIndexNames,
   });
+  const { setLoadedTableVersion, workspaceLabel } = useLoadedTablePresentation({
+    hydrated,
+    isShareView,
+    normalizedName: loadedTableNormalizedName,
+    tableName: loadedTableName,
+    isDirty: isLoadedDirty,
+  });
 
   // ─── Tab lifecycle ─────────────────────────────────────────────
-  const {
-    tabs,
-    activeTabId,
-    activeWorkspaceTab,
-    addTab,
-    activateTab,
-    findTabBySource,
-    getActiveTab,
-    setTabLoading,
-    removeTabBySource,
-    updateTabTitleBySource,
-    updateActiveTabTitle,
-    updateActiveTabSource,
-    updateActiveTabSnapshot,
-    flushActiveTab,
-    showTab,
-    switchToTab,
-    switchToTabById,
-    closeTab: handleCloseTab,
-  } = useTabLifecycle({
+  const tabLifecycle = useTabLifecycle({
     enabled: hydrated && !isShareView,
     currentState: currentPersistedState,
     activeSource,
@@ -344,6 +318,15 @@ function App() {
     saveState,
     selectWorkspaceSnapshot,
   });
+  const {
+    tabs,
+    activeTabId,
+    activeWorkspaceTab,
+    getActiveTab,
+    updateActiveTabTitle,
+    switchToTabById,
+    closeTab: handleCloseTab,
+  } = tabLifecycle;
 
   // ─── 5. SQL generation & data hooks ────────────────────────────
   const { generatedSql, generatedDcl, copySql, copyDcl } = useSqlGeneration(
@@ -371,8 +354,15 @@ function App() {
     foreignKeys,
   );
 
-  const { showToast, error: showErrorToast } = useToast();
-  const { isLoading: isGeneratingComments, generateComments } = useAIComments();
+  const { showToast } = useToast();
+  const { isGeneratingComments, handleGenerateComments } = useAICommentActions({
+    schemaName,
+    tableName,
+    tableComment,
+    rows,
+    setTableComment,
+    setRows,
+  });
   const {
     open: isAIIndexAdvisorOpen,
     setDialogOpen: handleAIIndexAdvisorOpenChange,
@@ -395,105 +385,13 @@ function App() {
     setActiveTab,
   });
 
-  const handleGenerateComments = useCallback(
-    (mode: AICommentMode, targetLocale?: 'zh-CN' | 'en-US') => {
-      void (async () => {
-        try {
-          const result = await generateComments({
-            mode,
-            targetLocale,
-            schemaName,
-            tableName: tableName.trim() || 'current_table',
-            tableComment,
-            fields: rows
-              .filter((row) => row.fieldName.trim())
-              .map((row) => ({
-                fieldName: row.fieldName.trim(),
-                fieldType: row.fieldType.trim(),
-                fieldComment: row.fieldComment.trim(),
-              })),
-          });
-
-          if (!result) return;
-
-          const commentsByField = new Map(
-            result.fields.map((field) => [field.fieldName, field.fieldComment]),
-          );
-
-          if (result.tableComment && (mode === 'translate' || !tableComment.trim())) {
-            setTableComment(result.tableComment);
-          }
-
-          setRows((prev) =>
-            prev.map((row) => {
-              const nextComment = commentsByField.get(row.fieldName.trim());
-              if (!nextComment || (mode === 'fill_missing' && row.fieldComment.trim())) {
-                return row;
-              }
-              return { ...row, fieldComment: nextComment };
-            }),
-          );
-
-          showToast(t('aiComments.done'));
-        } catch (error) {
-          showToast((error as Error).message || t('services.generationFailed'));
-        }
-      })();
-    },
-    [
-      generateComments,
-      schemaName,
-      tableName,
-      tableComment,
-      rows,
-      setTableComment,
-      setRows,
-      showToast,
-      t,
-    ],
-  );
-
-  useEffect(() => {
-    if (shareLoadStatus === 'not_found') {
-      showToast(t('app.shareNotFound'));
-      return;
-    }
-    if (shareLoadStatus === 'error') {
-      showToast(t('app.shareLoadFailed'));
-    }
-  }, [shareLoadStatus, showToast, t]);
-
-  useEffect(() => {
-    if (!hydrated || !isShareView) return;
-    showToast(t('app.shareReadOnly'));
-  }, [hydrated, isShareView, showToast, t]);
-
-  useEffect(() => {
-    if (isShareView) return;
-    try {
-      const savedCopyName = sessionStorage.getItem(SHARE_COPY_SAVED_TOAST_KEY);
-      if (!savedCopyName) return;
-      sessionStorage.removeItem(SHARE_COPY_SAVED_TOAST_KEY);
-      showToast(
-        t('app.shareCopySaved', {
-          name: savedCopyName,
-        }),
-      );
-    } catch {
-      // ignore sessionStorage errors
-    }
-  }, [isShareView, showToast, t]);
-
-  useEffect(() => {
-    if (!persistenceFailure) return;
-    showErrorToast(t('app.persistenceFailed'), {
-      id: 'workspace-persistence-failure',
-      action: {
-        label: t('app.retryPersistence'),
-        onClick: retryPersistence,
-      },
-    });
-  }, [persistenceFailure, retryPersistence, showErrorToast, t]);
+  useWorkspaceNotifications({
+    shareLoadStatus,
+    hydrated,
+    isShareView,
+    persistenceFailure,
+    retryPersistence,
+  });
 
   const {
     savedTables,
@@ -641,35 +539,19 @@ function App() {
     resetTableMiscConfig,
   });
 
-  const [loadedTableVersion, setLoadedTableVersion] = useState<number>(0);
   const [isErDialogOpen, setIsErDialogOpen] = useState(false);
   const [workspaceSidebarOpen, setWorkspaceSidebarOpen] = useState(true);
   const [outputPanelOpen, setOutputPanelOpen] = useState(true);
   const [isAISchemaPatchOpen, setIsAISchemaPatchOpen] = useState(false);
-  const [isEmptyTrashDialogOpen, setIsEmptyTrashDialogOpen] = useState(false);
-
-  useEffect(() => {
-    if (!hydrated || isShareView) return;
-    if (!loadedTableNormalizedName) {
-      setLoadedTableVersion(0);
-      return;
-    }
-
-    let cancelled = false;
-    void countVersions(loadedTableNormalizedName)
-      .then((count) => {
-        if (cancelled) return;
-        setLoadedTableVersion(count > 0 ? count : 1);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setLoadedTableVersion(1);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [hydrated, isShareView, loadedTableNormalizedName]);
+  const savedTableTabIntegration = useSavedTableTabIntegration({
+    isShareView,
+    workspaceScope,
+    activeSource,
+    deleteDraftById,
+    removeSavedTableDraft,
+    buildPersistedState,
+    tabs: tabLifecycle,
+  });
 
   const {
     handleOpenSaveDialog,
@@ -704,57 +586,7 @@ function App() {
     setWorkspaceSnapshot,
     renameSavedTableDraft,
     removeSavedTableDraft,
-    onSaveSuccess: async ({ normalizedName, displayName, baseSignature, mode }) => {
-      if (isShareView) {
-        try {
-          if (!workspaceScope) throw new Error('工作区未就绪');
-          await writeWorkspaceSession(
-            {
-              activeSource: {
-                kind: 'saved_table',
-                normalizedName,
-              },
-              updatedAt: Date.now(),
-            },
-            workspaceScope,
-          );
-          sessionStorage.setItem(SHARE_COPY_SAVED_TOAST_KEY, displayName);
-        } catch {
-          // ignore persistence errors
-        }
-        window.location.replace('/');
-        return;
-      }
-      if (mode === 'create' && activeSource.kind === 'draft') {
-        deleteDraftById(activeSource.draftId);
-      }
-      removeSavedTableDraft(normalizedName);
-
-      // 更新标签页 title 和 source
-      updateActiveTabTitle(displayName);
-      updateActiveTabSource({
-        kind: 'saved_table',
-        normalizedName,
-        tableName: displayName,
-        baseSignature,
-      });
-      updateActiveTabSnapshot(buildPersistedState());
-    },
-    onTabRename: (fromNormalizedName, _toNormalizedName, newTitle) => {
-      updateTabTitleBySource(
-        {
-          kind: 'saved_table',
-          normalizedName: fromNormalizedName,
-        },
-        newTitle,
-      );
-    },
-    onTabRemove: (normalizedName) => {
-      removeTabBySource({
-        kind: 'saved_table',
-        normalizedName,
-      });
-    },
+    ...savedTableTabIntegration,
   });
 
   const handleSaveCurrent = useCallback(() => {
@@ -765,143 +597,25 @@ function App() {
     handleOpenSaveDialog();
   }, [hasLoadedTable, handleConfirmSave, handleOpenSaveDialog]);
 
-  const handleSelectSavedTable = useCallback(
-    async (item: SavedTableSummary) => {
-      if (tabs.length > 0) {
-        flushActiveTab();
-      }
-      setSavedTablesDrawerOpen(false);
-
-      const existingTab = findTabBySource({
-        kind: 'saved_table',
-        normalizedName: item.normalizedName,
-      });
-      if (existingTab) {
-        switchToTab(existingTab);
-        return;
-      }
-
-      const currentState = buildPersistedState();
-      const newTabId = addTab({
-        title: item.name,
-        source: {
-          kind: 'saved_table',
-          normalizedName: item.normalizedName,
-          tableName: item.name,
-          baseSignature: '',
-        },
-        stateSnapshot: currentState,
-        isLoading: true,
-      });
-      activateTab(newTabId);
-
-      const result = await handleLoadSavedTable(item);
-      // 加载完成后，检查用户是否仍然在该标签页
-      if (useTabStore.getState().activeTabId === newTabId) {
-        if (result) {
-          updateActiveTabSource({
-            kind: 'saved_table',
-            normalizedName: item.normalizedName,
-            tableName: item.name,
-            baseSignature: result.signature,
-          });
-          updateActiveTabSnapshot(result.state);
-        }
-      } else {
-        // 用户已切换到其他标签页，恢复当前激活标签页的状态
-        const currentTab = getActiveTab();
-        if (currentTab) {
-          showTab(currentTab);
-        }
-      }
-      setTabLoading(newTabId, false);
-    },
-    [
-      flushActiveTab,
-      setSavedTablesDrawerOpen,
-      findTabBySource,
-      switchToTab,
-      buildPersistedState,
-      addTab,
-      activateTab,
-      handleLoadSavedTable,
-      updateActiveTabSource,
-      updateActiveTabSnapshot,
-      setTabLoading,
-      getActiveTab,
-      showTab,
-      tabs,
-    ],
-  );
-
-  const handleSelectDraft = useCallback(
-    (draftId: string) => {
-      if (tabs.length > 0) {
-        flushActiveTab();
-      }
-      setSavedTablesDrawerOpen(false);
-
-      const existingTab = findTabBySource({ kind: 'draft', draftId });
-      if (existingTab) {
-        switchToTab(existingTab);
-        return;
-      }
-
-      const existedDraftState = getDraftState(draftId);
-      const nextState = existedDraftState ?? createEmptyGlobalDraftState();
-      const draftName =
-        draftSummaries.find((d) => d.draftId === draftId)?.name ?? t('app.workspace.globalDraft');
-
-      const newTabId = addTab({
-        title: draftName,
-        source: { kind: 'draft', draftId },
-        stateSnapshot: nextState,
-      });
-      activateTab(newTabId);
-      applySavedState(nextState);
-      selectWorkspaceSnapshot({ kind: 'draft', draftId }, nextState);
-
-      showToast(existedDraftState ? t('app.loadedDraft') : t('app.emptyDraftCreated'));
-    },
-    [
-      flushActiveTab,
-      setSavedTablesDrawerOpen,
-      findTabBySource,
-      switchToTab,
-      getDraftState,
-      draftSummaries,
-      addTab,
-      activateTab,
-      selectWorkspaceSnapshot,
-      showToast,
-      t,
-      tabs,
-    ],
-  );
-
-  const openStateInNewDraftTab = useCallback(
-    (initialState: PersistedState) => {
-      if (tabs.length > 0) {
-        flushActiveTab();
-      }
-      const draftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      const uniqueName = createDraft(draftId, initialState);
-      const finalState =
-        uniqueName === initialState.tableName
-          ? initialState
-          : { ...initialState, tableName: uniqueName };
-
-      const newTabId = addTab({
-        title: uniqueName,
-        source: { kind: 'draft', draftId },
-        stateSnapshot: finalState,
-      });
-      activateTab(newTabId);
-      applySavedState(finalState);
-      setWorkspaceSnapshot({ kind: 'draft', draftId }, finalState);
-    },
-    [tabs.length, flushActiveTab, createDraft, addTab, activateTab, setWorkspaceSnapshot],
-  );
+  const {
+    handleSelectSavedTable,
+    handleSelectDraft,
+    openStateInNewDraftTab,
+    handleDeleteDraft,
+    handleCreateDraft,
+    handleLoadExample,
+  } = useWorkspaceTabActions({
+    tabs: tabLifecycle,
+    setSavedTablesDrawerOpen,
+    buildPersistedState,
+    loadSavedTable: handleLoadSavedTable,
+    draftSummaries,
+    getDraftState,
+    selectWorkspaceSnapshot,
+    setWorkspaceSnapshot,
+    createDraft,
+    deleteDraftById,
+  });
 
   const {
     isManagerOpen: isTableTemplateManagerOpen,
@@ -920,114 +634,24 @@ function App() {
     showToast,
   });
 
-  const handleCreateDraft = useCallback(() => {
-    openStateInNewDraftTab(createEmptyGlobalDraftState());
-  }, [openStateInNewDraftTab]);
-
-  const handleLoadExample = useCallback(() => {
-    openStateInNewDraftTab(EXAMPLE_USER_PROFILE_TABLE);
-    showToast(t('emptyState.exampleLoaded'));
-  }, [openStateInNewDraftTab, showToast, t]);
-
-  const handleRestoreTable = useCallback(
-    (item: SavedTableSummary) => {
-      const existingFolderIds = new Set(folderTree.map((f) => f.id));
-      void restoreTable(item.normalizedName, { existingFolderIds }).then((result) => {
-        showToast(
-          result.ok
-            ? t('savedTables.restore')
-            : (result.message ?? t('savedTables.toast.moveFailed')),
-        );
-      });
-    },
-    [restoreTable, showToast, t, folderTree],
-  );
-
-  const handleRestoreDraft = useCallback(
-    (draftId: string) => {
-      void restoreDraftById(draftId).then(() => {
-        showToast(t('savedTables.restore'));
-      });
-    },
-    [restoreDraftById, showToast, t],
-  );
-
-  const handleDeleteDraftPermanently = useCallback(
-    (draftId: string) => {
-      permanentlyDeleteDraftById(draftId);
-      showToast(t('savedTables.deletePermanently'));
-    },
-    [permanentlyDeleteDraftById, showToast, t],
-  );
-
-  const handleDeleteTablePermanently = useCallback(
-    (item: SavedTableSummary) => {
-      void deleteTablePermanently(item.normalizedName).then((result) => {
-        showToast(
-          result.ok
-            ? t('savedTables.deletePermanently')
-            : (result.message ?? t('savedTables.toast.deleteFolderFailed')),
-        );
-      });
-    },
-    [deleteTablePermanently, showToast, t],
-  );
-
-  const handleEmptyTrash = useCallback(() => {
-    setIsEmptyTrashDialogOpen(true);
-  }, []);
-
-  const handleConfirmEmptyTrash = useCallback(() => {
-    setIsEmptyTrashDialogOpen(false);
-
-    // 批量永久删除回收站中的表和草稿
-    void Promise.all([
-      ...trashedTables.map((item) => deleteTablePermanently(item.normalizedName)),
-      ...trashedDrafts.map((draft) =>
-        (async () => {
-          permanentlyDeleteDraftById(draft.draftId);
-          return { ok: true as const };
-        })(),
-      ),
-    ]).then(() => {
-      showToast(t('savedTables.deletePermanently'));
-    });
-  }, [
+  const {
+    isEmptyTrashDialogOpen,
+    setIsEmptyTrashDialogOpen,
+    handleRestoreTable,
+    handleRestoreDraft,
+    handleDeleteDraftPermanently,
+    handleDeleteTablePermanently,
+    handleEmptyTrash,
+    handleConfirmEmptyTrash,
+  } = useWorkspaceTrashActions({
+    folderTree,
     trashedTables,
     trashedDrafts,
+    restoreTable,
+    restoreDraftById,
     deleteTablePermanently,
     permanentlyDeleteDraftById,
-    showToast,
-    t,
-  ]);
-
-  const handleDeleteDraft = useCallback(
-    (draftId: string) => {
-      deleteDraftById(draftId);
-
-      const tab = findTabBySource({ kind: 'draft', draftId });
-      if (tab) {
-        // 关闭激活标签页会自动创建新草稿
-        handleCloseTab(tab.id);
-      }
-
-      showToast(t('app.draftDeleted'));
-    },
-    [deleteDraftById, findTabBySource, handleCloseTab, showToast, t],
-  );
-
-  const workspaceLabel = useMemo(() => {
-    if (isShareView) return t('app.workspace.shareReadonly');
-    if (loadedTableName) {
-      return t('app.workspace.currentTable', {
-        name: loadedTableName,
-        version:
-          loadedTableVersion > 0 ? t('app.workspace.version', { version: loadedTableVersion }) : '',
-        dirty: isLoadedDirty ? t('app.workspace.dirtyMark') : '',
-      });
-    }
-    return t('app.workspace.globalDraft');
-  }, [isShareView, loadedTableName, isLoadedDirty, loadedTableVersion, t]);
+  });
 
   const { applyChange: handleApplyAISchemaChange, focusChange: handleFocusAISchemaChange } =
     useAISchemaPatchFlow({
@@ -1122,24 +746,6 @@ function App() {
       showToast(t('erDiagram.tableLoaded'));
     },
     [openStateInNewDraftTab, showToast, t],
-  );
-
-  // 下面这些回调与派生值原先写在 GlobalDialogs 的 props 字面量里，每次渲染都是新引用，
-  // 让各对话框的 memo 全部失配——关闭状态下也要跑完整个组件体（合计约 80 个 hook）。
-  const handleSaveNameChange = useCallback(
-    (value: string) => {
-      saveDialog.updateData((prev) => ({ ...prev, name: value }));
-      if (saveError) saveDialog.clearError();
-    },
-    [saveDialog, saveError],
-  );
-
-  const handleRenameNameChange = useCallback(
-    (value: string) => {
-      renameDialog.updateData((prev) => ({ ...prev, name: value }));
-      if (renameError) renameDialog.clearError();
-    },
-    [renameDialog, renameError],
   );
 
   const handleCopyDiff = useCallback(() => {
@@ -1509,33 +1115,11 @@ function App() {
                           enabled: false,
                           columns: [],
                         },
-                        onEnabledChange: (enabled) =>
-                          setHivePartitionConfig((prev) => ({
-                            ...(prev || { enabled: false, columns: [] }),
-                            enabled,
-                          })),
-                        onAddColumn: (column) =>
-                          setHivePartitionConfig((prev) => ({
-                            ...(prev || { enabled: true, columns: [] }),
-                            columns: [...(prev?.columns || []), column],
-                          })),
-                        onRemoveColumn: (index) =>
-                          setHivePartitionConfig((prev) => ({
-                            ...(prev || { enabled: false, columns: [] }),
-                            columns: (prev?.columns || []).filter((_, i) => i !== index),
-                          })),
-                        onUpdateColumn: (index, column) =>
-                          setHivePartitionConfig((prev) => ({
-                            ...(prev || { enabled: false, columns: [] }),
-                            columns: (prev?.columns || []).map((c, i) =>
-                              i === index ? column : c,
-                            ),
-                          })),
-                        onClusteringChange: (clustering) =>
-                          setHivePartitionConfig((prev) => ({
-                            ...(prev || { enabled: false, columns: [] }),
-                            clustering,
-                          })),
+                        onEnabledChange: setHivePartitionEnabled,
+                        onAddColumn: addHivePartitionColumn,
+                        onRemoveColumn: removeHivePartitionColumn,
+                        onUpdateColumn: updateHivePartitionColumn,
+                        onClusteringChange: setHiveClustering,
                       }}
                     />
                   </div>

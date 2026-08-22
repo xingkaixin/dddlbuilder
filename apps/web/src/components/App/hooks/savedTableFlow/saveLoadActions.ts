@@ -31,7 +31,7 @@ interface UseSaveLoadActionsParams {
   hasLoadedTable: boolean;
   canSaveCurrent: boolean;
   loadedTableSource: Extract<WorkspaceSelection, { kind: 'saved_table' }> | null;
-  setLoadedTableVersion: (version: number) => void;
+  setLoadedTableVersion: (version: number, normalizedName?: string) => void;
   saveDialog: UseDialogStateReturn<SaveDialogData>;
   buildPersistedState: () => PersistedState;
   serializePersistedState: (state: PersistedState) => string;
@@ -117,7 +117,7 @@ export function useSaveLoadActions({
           stateToApply,
         );
         applySavedState(stateToApply);
-        setLoadedTableVersion(resolvedVersion);
+        setLoadedTableVersion(resolvedVersion, record.normalizedName);
         showToast(`已加载：${record.name} (v${resolvedVersion})`);
 
         return { state: stateToApply, signature: savedBaseSignature };

@@ -24,7 +24,7 @@ interface UseSavedTableFlowActionsParams {
   hasLoadedTable: boolean;
   canSaveCurrent: boolean;
   loadedTableSource: Extract<WorkspaceSelection, { kind: 'saved_table' }> | null;
-  setLoadedTableVersion: (version: number) => void;
+  setLoadedTableVersion: (version: number, normalizedName?: string) => void;
   saveDialog: UseDialogStateReturn<SaveDialogData>;
   renameDialog: UseDialogStateReturn<RenameDialogData>;
   deleteDialog: UseDialogStateReturn<DeleteDialogData>;

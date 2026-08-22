@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import { useDialogState } from '@/hooks/useDialogState';
 
@@ -52,6 +53,20 @@ export function useDialogStates(deps: {
   const renameName = renameDialog.data.name;
   const renameError = renameDialog.error;
   const deleteTarget = deleteDialog.data.target;
+  const handleSaveNameChange = useCallback(
+    (value: string) => {
+      saveDialog.updateData((previous) => ({ ...previous, name: value }));
+      if (saveDialog.error) saveDialog.clearError();
+    },
+    [saveDialog],
+  );
+  const handleRenameNameChange = useCallback(
+    (value: string) => {
+      renameDialog.updateData((previous) => ({ ...previous, name: value }));
+      if (renameDialog.error) renameDialog.clearError();
+    },
+    [renameDialog],
+  );
 
   return {
     saveDialog,
@@ -62,5 +77,7 @@ export function useDialogStates(deps: {
     renameName,
     renameError,
     deleteTarget,
+    handleSaveNameChange,
+    handleRenameNameChange,
   };
 }

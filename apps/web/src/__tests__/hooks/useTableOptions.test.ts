@@ -47,4 +47,28 @@ describe('useTableOptions', () => {
       tablespace: '',
     });
   });
+
+  it('应该集中处理 Hive 分区列和分桶配置', () => {
+    const { result } = renderHook(() => useTableOptions());
+
+    act(() => {
+      result.current.setHivePartitionEnabled(true);
+      result.current.addHivePartitionColumn({ name: 'dt', type: 'STRING', comment: '日期' });
+      result.current.updateHivePartitionColumn(0, {
+        name: 'event_date',
+        type: 'DATE',
+        comment: '事件日期',
+      });
+      result.current.setHiveClustering({ enabled: true, columns: ['id'], bucketCount: 8 });
+    });
+
+    expect(result.current.tableMiscConfig.partitions).toEqual({
+      enabled: true,
+      columns: [{ name: 'event_date', type: 'DATE', comment: '事件日期' }],
+      clustering: { enabled: true, columns: ['id'], bucketCount: 8 },
+    });
+
+    act(() => result.current.removeHivePartitionColumn(0));
+    expect(result.current.tableMiscConfig.partitions?.columns).toEqual([]);
+  });
 });
