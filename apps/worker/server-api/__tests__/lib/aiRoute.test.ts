@@ -12,7 +12,7 @@ const createEnv = (): ApiEnv['Bindings'] =>
   }) as ApiEnv['Bindings'];
 
 /** 只放行治理外壳，把额度与限流的副作用换成可断言的 spy。 */
-const loadShell = async (overrides: Record<string, unknown> = {}) => {
+const loadShell = async (overrides: Record<string, unknown> = {}, completionContent = '{}') => {
   const reserveAIUsage = vi.fn().mockResolvedValue(RESERVATION);
   const completeAIUsage = vi.fn().mockResolvedValue(undefined);
   const failAIUsage = vi.fn().mockResolvedValue(undefined);
@@ -33,6 +33,18 @@ const loadShell = async (overrides: Record<string, unknown> = {}) => {
       logOpenAIAudit: vi.fn(),
     };
   });
+  vi.doMock('openai', () => ({
+    default: class {
+      chat = {
+        completions: {
+          create: vi.fn().mockResolvedValue({
+            choices: [{ message: { content: completionContent } }],
+            usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+          }),
+        },
+      };
+    },
+  }));
 
   const { withAIGovernance, rejectAIRequest } = await import('../../lib/aiRoute.js');
   return { withAIGovernance, rejectAIRequest, reserveAIUsage, completeAIUsage, failAIUsage };
@@ -90,6 +102,32 @@ describe('withAIGovernance', () => {
     const response = await post(app, { sql: 'select 1' });
 
     expect(response.status).toBe(502);
+    expect(shell.failAIUsage).toHaveBeenCalledWith(
+      expect.anything(),
+      RESERVATION,
+      'UPSTREAM_OPENAI_ERROR',
+    );
+  });
+
+  it('模型返回非法 JSON 时退还额度', async () => {
+    const shell = await loadShell({}, '{invalid');
+    const app = new Hono<ApiEnv>();
+    app.post('/t', (c) =>
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async (session) => {
+        await session.completeJson({
+          system: 'Return JSON',
+          user: 'test',
+          scope: 'test-json',
+          temperature: 0,
+        });
+        return c.json({ ok: true });
+      }),
+    );
+
+    const response = await post(app, { sql: 'select 1' });
+
+    expect(response.status).toBe(502);
+    expect(shell.completeAIUsage).not.toHaveBeenCalled();
     expect(shell.failAIUsage).toHaveBeenCalledWith(
       expect.anything(),
       RESERVATION,

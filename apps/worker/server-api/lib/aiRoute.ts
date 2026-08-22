@@ -66,7 +66,7 @@ export type AISession<Request> = {
   config: OpenAIConfig;
   startedAt: number;
   reportUsage: (usage: OpenAIUsageSnapshot | null | undefined) => void;
-  /** 非流式补全：重试、usage 上报、JSON 解析和成功结算都在里面，调用方只拿结果。 */
+  /** 非流式补全：重试、usage 上报和 JSON 解析都在里面，调用方只拿结果。 */
   completeJson: (input: AICompletionInput) => Promise<unknown>;
   /** 流式补全：把增量直接写进响应，结算和审计在流结束或出错时完成。 */
   streamCompletion: (input: AIStreamInput) => Response;
@@ -258,6 +258,7 @@ export const withAIGovernance = async <Request>(
   let settled = false;
   // 流式响应在流结束前就会从 run 返回，包装器看到 streamed 就不能代为结算——那时 usage 还没读到
   let streamed = false;
+  let retryCount = 0;
   const settleSuccess = (retryCount: number) => {
     if (settled) return;
     settled = true;
@@ -286,37 +287,42 @@ export const withAIGovernance = async <Request>(
       if (next) usage = next;
     },
     completeJson: async ({ system, user, scope, temperature }) => {
+      const { data: response, attempts } = await withOpenAIRetry(
+        async () =>
+          session.openai.chat.completions.create({
+            model,
+            messages: [
+              { role: 'system', content: system },
+              { role: 'user', content: user },
+            ],
+            response_format: { type: 'json_object' },
+            temperature,
+            max_tokens: maxOutputTokens,
+            ...(THINKING_DISABLED as Record<string, unknown>),
+          }),
+        { scope },
+        config,
+      );
+      retryCount = attempts;
+      const usageSnapshot = response.usage;
+      session.reportUsage(
+        usageSnapshot
+          ? {
+              promptTokens: usageSnapshot.prompt_tokens,
+              completionTokens: usageSnapshot.completion_tokens,
+              totalTokens: usageSnapshot.total_tokens,
+            }
+          : null,
+      );
+      const content = response.choices[0]?.message?.content || '{}';
       try {
-        const { data: response } = await withOpenAIRetry(
-          async () =>
-            session.openai.chat.completions.create({
-              model,
-              messages: [
-                { role: 'system', content: system },
-                { role: 'user', content: user },
-              ],
-              response_format: { type: 'json_object' },
-              temperature,
-              max_tokens: maxOutputTokens,
-              ...(THINKING_DISABLED as Record<string, unknown>),
-            }),
-          { scope },
-          config,
-        );
-        const usageSnapshot = response.usage;
-        session.reportUsage(
-          usageSnapshot
-            ? {
-                promptTokens: usageSnapshot.prompt_tokens,
-                completionTokens: usageSnapshot.completion_tokens,
-                totalTokens: usageSnapshot.total_tokens,
-              }
-            : null,
-        );
-        settleSuccess(0);
-        return JSON.parse(response.choices[0]?.message?.content || '{}');
+        return JSON.parse(content);
       } catch (error) {
-        settleFailure('UPSTREAM_OPENAI_ERROR', 502, 0);
+        console.error(`[${route}] completion JSON parse failed`, {
+          requestId,
+          contentLength: content.length,
+          error,
+        });
         throw error;
       }
     },
@@ -333,7 +339,6 @@ export const withAIGovernance = async <Request>(
       });
 
       return streamText(c, async (stream) => {
-        let retryCount = 0;
         streamDebug.start();
         try {
           const { data: response, attempts } = await withOpenAIRetry(
@@ -379,11 +384,11 @@ export const withAIGovernance = async <Request>(
 
   try {
     const response = await run(session);
-    if (!streamed) settleSuccess(0);
+    if (!streamed) settleSuccess(retryCount);
     return response;
   } catch (error) {
     console.error(`[${route}] failed`, error);
-    settleFailure('UPSTREAM_OPENAI_ERROR', 502, 0);
+    settleFailure('UPSTREAM_OPENAI_ERROR', 502, retryCount);
     return errorResponse(c, 502, 'Upstream OpenAI error', 'UPSTREAM_OPENAI_ERROR');
   }
 };
