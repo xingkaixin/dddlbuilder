@@ -86,6 +86,24 @@ test.describe('核心 UI 交互功能测试 @core', () => {
     await expect(html).toHaveClass(/dark/);
   });
 
+  test('场景：切换日语后应更新并记住界面语言', async ({ page }) => {
+    await page.getByRole('button', { name: /功能菜单|Menu/i }).click();
+    await page.getByRole('menuitem', { name: /语言|Language/i }).click();
+    await page.getByRole('menuitemradio', { name: '日本語' }).click();
+
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ja-JP');
+    await expect(
+      page.getByText('プロフェッショナルなデータベーステーブル設計ツール', { exact: true }),
+    ).toBeVisible();
+
+    await page.reload();
+
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ja-JP');
+    await expect(
+      page.getByText('プロフェッショナルなデータベーステーブル設計ツール', { exact: true }),
+    ).toBeVisible();
+  });
+
   test('场景：标签页切换应正常工作', async ({ page }) => {
     // 填写表名以激活 SQL 生成
     await page.locator('#table-name').fill('tab_test');

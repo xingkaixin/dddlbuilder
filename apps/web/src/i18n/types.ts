@@ -34,6 +34,7 @@ export function normalizeLocale(value: string | null | undefined): AppLocale | n
   const lowerValue = value.toLowerCase();
   if (lowerValue.startsWith('zh')) return 'zh-CN';
   if (lowerValue.startsWith('en')) return 'en-US';
+  if (lowerValue.startsWith('ja')) return 'ja-JP';
   return null;
 }
 

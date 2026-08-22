@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AICommentMode, FieldRow } from '@ddlbuilder/shared-types';
+import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 import { useAIComments } from '@/hooks/useAIComments';
 import { useToast } from '@/hooks/useToast';
 
@@ -26,7 +27,7 @@ export function useAICommentActions({
   const { isLoading, generateComments } = useAIComments();
 
   const generateFieldComments = useCallback(
-    (mode: AICommentMode, targetLocale?: 'zh-CN' | 'en-US') => {
+    (mode: AICommentMode, targetLocale?: AppLocale) => {
       void (async () => {
         try {
           const result = await generateComments({

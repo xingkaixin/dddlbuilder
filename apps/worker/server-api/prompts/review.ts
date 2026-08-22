@@ -3,7 +3,7 @@ import { DDL_REVIEW_SUGGESTION_TYPES } from '@ddlbuilder/shared-types/ddl-review
 
 const suggestionTypes = DDL_REVIEW_SUGGESTION_TYPES.join(' | ');
 
-export const REVIEW_SYSTEM_PROMPT: Record<AppLocale, string> = {
+const BASE_REVIEW_SYSTEM_PROMPT: Record<Exclude<AppLocale, 'ja-JP'>, string> = {
   'zh-CN': `你是一位资深的数据库架构师和DDL评审专家。你的任务是评审用户提供的DDL语句，给出专业的评分和改进建议。
 
 评审维度包括：
@@ -143,13 +143,18 @@ Notes:
 3. Return JSON only with no extra text.`,
 };
 
+export const REVIEW_SYSTEM_PROMPT: Record<AppLocale, string> = {
+  ...BASE_REVIEW_SYSTEM_PROMPT,
+  'ja-JP': `${BASE_REVIEW_SYSTEM_PROMPT['en-US']}\nAll natural-language values in the response must be written in Japanese.`,
+};
+
 export const buildReviewUserPrompt = (
   ddl: string,
   tableName: string | undefined,
   dbType: string | undefined,
   locale: AppLocale,
 ) => {
-  if (locale === 'en-US') {
+  if (locale !== 'zh-CN') {
     return `Please review the following ${(dbType || '').toUpperCase()} DDL:\n\nTable: ${tableName || 'N/A'}\n\nDDL:\n\`\`\`sql\n${ddl}\n\`\`\``;
   }
 

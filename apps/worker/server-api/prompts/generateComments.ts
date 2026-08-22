@@ -3,6 +3,7 @@ import type { AICommentRequest } from '@ddlbuilder/shared-types/ai-generate';
 const TARGET_LANGUAGE: Record<AICommentRequest['targetLocale'], string> = {
   'zh-CN': '中文',
   'en-US': 'English',
+  'ja-JP': '日本語',
 };
 
 export const GENERATE_COMMENTS_SYSTEM_PROMPT = `你是一位数据库建模专家，负责为表和字段生成准确、简洁的业务注释。

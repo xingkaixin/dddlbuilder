@@ -27,6 +27,7 @@ import { useLocale } from '@/i18n/LocaleContext';
 import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 import { creditLedgerOptions } from '@/queries/credits';
 import type { CreditLedgerItem } from '@/services/creditService';
+import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 
 interface UserSettingsDialogProps {
   open: boolean;
@@ -69,7 +70,7 @@ const formatLedgerTime = (value: string) => {
   }).format(date);
 };
 
-const formatCompactCredits = (value: number | null | undefined, locale: 'zh-CN' | 'en-US') => {
+const formatCompactCredits = (value: number | null | undefined, locale: AppLocale) => {
   const amount = Number(value ?? 0);
   if (!Number.isFinite(amount)) {
     return '0';

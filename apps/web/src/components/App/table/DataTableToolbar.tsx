@@ -26,13 +26,14 @@ import { COLUMN_HEADERS } from '@/utils/constants';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import type { AICommentMode } from '@ddlbuilder/shared-types';
+import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 
 interface DataTableToolbarProps {
   toolbarLeft?: ReactNode;
   onOpenStorageEstimator?: () => void;
   onOpenMockDataGenerator?: () => void;
   onOpenAISchemaPatch?: () => void;
-  onGenerateComments?: (mode: AICommentMode, targetLocale?: 'zh-CN' | 'en-US') => void;
+  onGenerateComments?: (mode: AICommentMode, targetLocale?: AppLocale) => void;
   isGeneratingComments?: boolean;
   onOpenAIIndexAdvisor?: () => void;
   freezeEnabled: boolean;
@@ -152,6 +153,9 @@ export function DataTableToolbar({
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onGenerateComments('translate', 'en-US')}>
                   {t('dataTable.toolbar.aiCommentsTranslateEn')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onGenerateComments('translate', 'ja-JP')}>
+                  {t('dataTable.toolbar.aiCommentsTranslateJa')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

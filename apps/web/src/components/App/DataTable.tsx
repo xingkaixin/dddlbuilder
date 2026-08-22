@@ -30,6 +30,7 @@ import { DangerousChangeDialog } from './table/DangerousChangeDialog';
 import { useSortableFieldRows } from './table/useSortableFieldRows';
 import { useTranslation } from 'react-i18next';
 import type { AICommentMode } from '@ddlbuilder/shared-types';
+import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 
 interface DataTableProps {
   toolbarLeft?: ReactNode;
@@ -38,7 +39,7 @@ interface DataTableProps {
   onOpenStorageEstimator?: () => void;
   onOpenMockDataGenerator?: () => void;
   onOpenAISchemaPatch?: () => void;
-  onGenerateComments?: (mode: AICommentMode, targetLocale?: 'zh-CN' | 'en-US') => void;
+  onGenerateComments?: (mode: AICommentMode, targetLocale?: AppLocale) => void;
   isGeneratingComments?: boolean;
   onOpenAIIndexAdvisor?: () => void;
 }

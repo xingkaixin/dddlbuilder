@@ -1,7 +1,7 @@
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 import type { ConversationMessage } from '@ddlbuilder/shared-types/ai-generate';
 
-const SYSTEM_PROMPT_TEMPLATES: Record<AppLocale, string> = {
+const BASE_SYSTEM_PROMPT_TEMPLATES: Record<Exclude<AppLocale, 'ja-JP'>, string> = {
   'zh-CN': `你是一位资深的数据库架构师。根据用户的自然语言描述，生成符合 {{DB}} 数据库规范的表结构。
 {{TEMPLATE_CONTEXT}}{{EXISTING_CONTEXT}}{{PATCH_CONTEXT}}
 {{PREVIOUS_SCHEMA_CONTEXT}}
@@ -92,6 +92,11 @@ Notes:
 6. schemaName is optional; return an empty string or omit it when not needed.
 7. designDecisions should explain the key modeling decisions involved in this generation or edit.
 8. Return JSON only, with no extra text.`,
+};
+
+const SYSTEM_PROMPT_TEMPLATES: Record<AppLocale, string> = {
+  ...BASE_SYSTEM_PROMPT_TEMPLATES,
+  'ja-JP': `${BASE_SYSTEM_PROMPT_TEMPLATES['en-US']}\nAll natural-language values in the response, including comments and design decisions, must be written in Japanese.`,
 };
 
 export const buildGenerateTableSystemPrompt = (params: {

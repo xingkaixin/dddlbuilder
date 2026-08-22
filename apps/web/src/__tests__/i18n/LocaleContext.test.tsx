@@ -20,6 +20,11 @@ describe('i18n/LocaleContext', () => {
     document.documentElement.lang = 'zh-CN';
   });
 
+  it('应将日语浏览器语言规范化为 ja-JP', () => {
+    expect(localeTypes.normalizeLocale('ja')).toBe('ja-JP');
+    expect(localeTypes.normalizeLocale('ja-JP')).toBe('ja-JP');
+  });
+
   it('应根据 localStorage 初始化语言', async () => {
     vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
       key === LOCAL_STORAGE_KEY ? 'en-US' : null,
@@ -50,6 +55,19 @@ describe('i18n/LocaleContext', () => {
     });
 
     expect(setItemSpy).toHaveBeenCalledWith(LOCAL_STORAGE_KEY, 'en-US');
+  });
+
+  it('应支持日语环境和日语语言切换', async () => {
+    vi.spyOn(window.localStorage, 'getItem').mockImplementation((key) =>
+      key === LOCAL_STORAGE_KEY ? 'ja-JP' : null,
+    );
+
+    const { result } = renderHook(() => useLocale(), { wrapper: Wrapper });
+
+    expect(result.current.locale).toBe('ja-JP');
+    await waitFor(() => {
+      expect(document.documentElement.lang).toBe('ja-JP');
+    });
   });
 
   it('切换语言后 resolvedLocale 应与当前 locale 保持一致', async () => {

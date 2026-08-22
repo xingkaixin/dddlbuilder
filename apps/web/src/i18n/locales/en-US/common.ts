@@ -3,6 +3,7 @@ export const enUSCommon = {
     label: 'Language',
     zhCN: '中文',
     enUS: 'English',
+    jaJP: '日本語',
     aria: 'Language: {{lang}}',
   },
   theme: {
@@ -529,6 +530,7 @@ export const enUSCommon = {
       aiCommentsFillMissing: 'Fill Missing Comments',
       aiCommentsTranslateZh: 'Translate to Chinese',
       aiCommentsTranslateEn: 'Translate to English',
+      aiCommentsTranslateJa: 'Translate to Japanese',
       aiIndexAdvisor: 'AI Index Advisor',
       aiIndexAdvisorTip: 'Recommend index changes from typical query SQL',
       freeze: 'Freeze',

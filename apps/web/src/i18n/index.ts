@@ -1,6 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { enUSCommon } from './locales/en-US/common';
+import { jaJPCommon } from './locales/ja-JP/common';
 import { zhCNCommon } from './locales/zh-CN/common';
 import { resolveInitialLocale } from './types';
 
@@ -10,6 +11,9 @@ const resources = {
   },
   'en-US': {
     translation: enUSCommon,
+  },
+  'ja-JP': {
+    translation: jaJPCommon,
   },
 };
 

@@ -24,6 +24,7 @@ export const LocaleSwitcher = memo<LocaleSwitcherProps>(({ triggerClassName }) =
   const labelMap: Record<AppLocale, string> = {
     'zh-CN': t('locale.zhCN'),
     'en-US': t('locale.enUS'),
+    'ja-JP': t('locale.jaJP'),
   };
 
   const triggerLabel = t('locale.aria', {
@@ -59,6 +60,7 @@ export const LocaleSwitcher = memo<LocaleSwitcherProps>(({ triggerClassName }) =
         >
           <DropdownMenuRadioItem value="zh-CN">{t('locale.zhCN')}</DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="en-US">{t('locale.enUS')}</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="ja-JP">{t('locale.jaJP')}</DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>

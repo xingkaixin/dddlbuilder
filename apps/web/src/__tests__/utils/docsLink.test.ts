@@ -10,6 +10,10 @@ describe('docsLink', () => {
     expect(getDocsUrl('en-US')).toBe('/docs/en/');
   });
 
+  it('应将 ja-JP 解析到日文文档路径', () => {
+    expect(getDocsUrl('ja-JP')).toBe('/docs/ja/');
+  });
+
   it('应将未知语言回退到中文文档路径', () => {
     expect(getDocsUrl('fr-FR')).toBe('/docs/zh/');
   });

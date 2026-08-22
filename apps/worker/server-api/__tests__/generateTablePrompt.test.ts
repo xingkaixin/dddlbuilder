@@ -2,6 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { buildGenerateTableSystemPrompt } from '../prompts/generateTable.js';
 
 describe('buildGenerateTableSystemPrompt', () => {
+  it('日语请求应要求自然语言结果使用日语', () => {
+    const prompt = buildGenerateTableSystemPrompt({
+      dbType: 'mysql',
+      locale: 'ja-JP',
+    });
+
+    expect(prompt).toContain('must be written in Japanese');
+    expect(prompt).toContain('MYSQL');
+  });
+
   it('constrains patch mode to the current user instruction', () => {
     const prompt = buildGenerateTableSystemPrompt({
       dbType: 'mysql',

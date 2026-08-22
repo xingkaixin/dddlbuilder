@@ -3,6 +3,7 @@ export const zhCNCommon = {
     label: '语言',
     zhCN: '中文',
     enUS: 'English',
+    jaJP: '日本語',
     aria: '语言：{{lang}}',
   },
   theme: {
@@ -512,6 +513,7 @@ export const zhCNCommon = {
       aiCommentsFillMissing: '补全缺失注释',
       aiCommentsTranslateZh: '翻译为中文',
       aiCommentsTranslateEn: '翻译为英文',
+      aiCommentsTranslateJa: '翻译为日文',
       aiIndexAdvisor: 'AI 索引顾问',
       aiIndexAdvisorTip: '根据典型查询 SQL 推荐索引优化方案',
       freeze: '冻结',

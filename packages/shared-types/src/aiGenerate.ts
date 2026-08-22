@@ -1,4 +1,5 @@
 import type { FieldDefaultKind, FieldOnUpdate } from './fieldRow.js';
+import type { AppLocale } from './locale.js';
 
 export interface GeneratedTableSchema {
   schemaName?: string;
@@ -55,7 +56,7 @@ export interface AICommentFieldInput {
 
 export interface AICommentRequest {
   mode: AICommentMode;
-  targetLocale: 'zh-CN' | 'en-US';
+  targetLocale: AppLocale;
   schemaName?: string;
   tableName: string;
   tableComment: string;

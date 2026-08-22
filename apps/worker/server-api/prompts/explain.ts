@@ -5,6 +5,8 @@ export const EXPLAIN_SYSTEM_PROMPT: Record<AppLocale, string> = {
 请直接返回解释文本，不要包含 Markdown 代码块。`,
   'en-US': `You are a senior database expert. Explain the functionality and key points of the SQL snippet clearly and concisely. If context is provided, include it in your explanation.
 Return plain explanation text only, without Markdown code blocks.`,
+  'ja-JP': `You are a senior database expert. Explain the functionality and key points of the SQL snippet clearly and concisely in Japanese. If context is provided, include it in your explanation.
+Return plain Japanese explanation text only, without Markdown code blocks.`,
 };
 
 export const buildExplainUserPrompt = (
@@ -12,7 +14,7 @@ export const buildExplainUserPrompt = (
   context: string | undefined,
   locale: AppLocale,
 ) => {
-  if (locale === 'en-US') {
+  if (locale !== 'zh-CN') {
     return `Explain the following SQL snippet:\n${sql}\n\n${context ? `Related SQL context:\n${context}` : ''}`;
   }
 

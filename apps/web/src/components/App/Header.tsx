@@ -107,7 +107,11 @@ export const Header = memo<HeaderProps>(
       'group inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-all duration-200 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60';
     const ghostIconBtnClass =
       'inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:pointer-events-none disabled:opacity-60';
-    const localeLabel = locale === 'en-US' ? t('locale.enUS') : t('locale.zhCN');
+    const localeLabels: Record<AppLocale, string> = {
+      'zh-CN': t('locale.zhCN'),
+      'en-US': t('locale.enUS'),
+      'ja-JP': t('locale.jaJP'),
+    };
     const themeLabels = {
       system: t('theme.system'),
       light: t('theme.light'),
@@ -360,7 +364,9 @@ export const Header = memo<HeaderProps>(
                       <DropdownMenuSubTrigger>
                         <Languages className="h-4 w-4" aria-hidden />
                         <span className="min-w-0 flex-1">{t('locale.label')}</span>
-                        <span className="text-xs text-muted-foreground">{localeLabel}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {localeLabels[locale]}
+                        </span>
                       </DropdownMenuSubTrigger>
                       <DropdownMenuSubContent className="w-36">
                         <DropdownMenuRadioGroup
@@ -372,6 +378,9 @@ export const Header = memo<HeaderProps>(
                           </DropdownMenuRadioItem>
                           <DropdownMenuRadioItem value="en-US">
                             {t('locale.enUS')}
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="ja-JP">
+                            {t('locale.jaJP')}
                           </DropdownMenuRadioItem>
                         </DropdownMenuRadioGroup>
                       </DropdownMenuSubContent>
