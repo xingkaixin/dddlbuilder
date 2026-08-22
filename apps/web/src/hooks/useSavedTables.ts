@@ -8,6 +8,7 @@ import {
   deleteSavedTableFromYDoc,
   getSavedTableFromYDoc,
   listSavedTableMetadataFromYDoc,
+  listSavedTableRecordsFromYDoc,
   upsertSavedTableInYDoc,
 } from '@/services/workspaceYDocAdapter';
 import {
@@ -15,6 +16,8 @@ import {
   deleteSavedTable,
   ensureSavedTableName,
   getSavedTable,
+  listSavedTables,
+  listTrashedSavedTables,
   moveSavedTableToTrash,
   normalizeSavedTableName,
   updateSavedTable,
@@ -22,6 +25,11 @@ import {
   type SavedTableMetadata,
   type SavedTableRecord,
 } from '@/utils/savedTablesDb';
+import {
+  buildSavedTableBatchImportPlan,
+  type SavedTableBatchImportRequest,
+  type SavedTableBatchImportResult,
+} from '@/utils/savedTableBatchImport';
 import { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
 import { useWorkspaceScope } from '@/hooks/useWorkspaceScope';
 import { useWorkspaceYDocProjection } from '@/hooks/useWorkspaceYDocProjection';
@@ -392,6 +400,51 @@ export function useSavedTables() {
     [currentScope, refresh, runInYDoc, yDoc],
   );
 
+  const importTables = useCallback(
+    async (request: SavedTableBatchImportRequest): Promise<SavedTableBatchImportResult> => {
+      if (!currentScope) {
+        return { successCount: 0, skipCount: 0, failCount: request.items.length };
+      }
+
+      let skipCount = 0;
+      try {
+        const [activeRecords, trashedRecords] = await Promise.all([
+          yDoc
+            ? Promise.resolve(listSavedTableRecordsFromYDoc(yDoc))
+            : listSavedTables(currentScope),
+          listTrashedSavedTables(currentScope),
+        ]);
+        const plan = buildSavedTableBatchImportPlan(
+          request,
+          [...trashedRecords, ...activeRecords],
+          Date.now(),
+        );
+        skipCount = plan.skipCount;
+
+        await updateSavedTables(plan.records, currentScope);
+        runInYDoc((doc) => {
+          for (const record of plan.records) {
+            upsertSavedTableInYDoc(doc, record);
+          }
+        });
+        await refresh();
+
+        return {
+          successCount: plan.successCount,
+          skipCount: plan.skipCount,
+          failCount: 0,
+        };
+      } catch {
+        return {
+          successCount: 0,
+          skipCount,
+          failCount: request.items.length - skipCount,
+        };
+      }
+    },
+    [currentScope, refresh, runInYDoc, yDoc],
+  );
+
   // 清理指定文件夹ID关联的表（将它们移回未分组）
   const clearTablesFromFolders = useCallback(
     async (folderIds: string[]): Promise<void> => {
@@ -440,6 +493,7 @@ export function useSavedTables() {
     renameTable,
     loadTable,
     moveTableToFolder,
+    importTables,
     clearTablesFromFolders,
   };
 }

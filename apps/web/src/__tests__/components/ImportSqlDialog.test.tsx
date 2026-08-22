@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@/__tests__/utils/test-utils';
 import { ImportSqlDialog } from '@/components/ImportSqlDialog';
-import { requestSqlParse } from '@/services/sqlParseService';
+import { requestMultiSqlParse, requestSqlParse } from '@/services/sqlParseService';
 
 vi.mock('@/services/sqlParseService', () => ({
   requestSqlParse: vi.fn(),
@@ -15,6 +15,7 @@ vi.mock('@/hooks/useToast', () => ({
 }));
 
 const mockedRequestSqlParse = vi.mocked(requestSqlParse);
+const mockedRequestMultiSqlParse = vi.mocked(requestMultiSqlParse);
 
 describe('ImportSqlDialog', () => {
   beforeEach(() => {
@@ -130,5 +131,71 @@ describe('ImportSqlDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: '确认导入' }));
 
     expect(onImport).toHaveBeenCalledWith(parsedResult, 'mysql');
+  });
+
+  it('批量导入应规范化冲突名并只调用一次数据层操作', async () => {
+    mockedRequestMultiSqlParse.mockResolvedValue({
+      results: [
+        {
+          tableName: ' USERS ',
+          tableComment: '',
+          fields: [],
+          indexes: [],
+          foreignKeys: [],
+          authObjects: [],
+        },
+      ],
+      failed: [],
+    });
+    const onBatchImport = vi.fn().mockResolvedValue({
+      successCount: 0,
+      skipCount: 1,
+      failCount: 0,
+    });
+
+    render(
+      <ImportSqlDialog
+        currentDbType="mysql"
+        onImport={vi.fn()}
+        triggerLabel="导入 SQL"
+        savedTables={[
+          {
+            normalizedName: 'users',
+            name: 'users',
+            dbType: 'mysql',
+            fieldCount: 0,
+            createdAt: 1,
+            updatedAt: 1,
+          },
+        ]}
+        folderTree={[]}
+        onBatchImport={onBatchImport}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '导入 SQL' }));
+    fireEvent.click(await screen.findByLabelText('保存为已保存表'));
+    fireEvent.change(screen.getByLabelText('SQL 内容'), {
+      target: { value: 'CREATE TABLE USERS (id INT);' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '下一步' }));
+
+    expect(await screen.findByText('同名冲突')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '下一步' }));
+    fireEvent.click(screen.getByRole('button', { name: '确认导入' }));
+
+    await waitFor(() => {
+      expect(onBatchImport).toHaveBeenCalledTimes(1);
+    });
+    expect(onBatchImport).toHaveBeenCalledWith({
+      items: [
+        expect.objectContaining({
+          name: ' USERS ',
+          state: expect.objectContaining({ tableName: ' USERS ', dbType: 'mysql' }),
+        }),
+      ],
+      conflictStrategy: 'skip',
+      folderId: undefined,
+    });
   });
 });

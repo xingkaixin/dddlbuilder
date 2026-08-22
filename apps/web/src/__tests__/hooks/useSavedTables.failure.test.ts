@@ -22,7 +22,9 @@ const savedTableMocks = vi.hoisted(() => ({
   deleteSavedTable: vi.fn(),
   ensureSavedTableName: vi.fn((name: string) => name.trim() || '未命名表'),
   getSavedTable: vi.fn(),
+  listSavedTables: vi.fn(),
   listSavedTableMetadata: vi.fn(),
+  listTrashedSavedTables: vi.fn(),
   listTrashedSavedTableMetadata: vi.fn(),
   moveSavedTableToTrash: vi.fn(),
   restoreSavedTableFromTrash: vi.fn(),
@@ -36,7 +38,9 @@ vi.mock('@/utils/savedTablesDb', () => ({
   deleteSavedTable: savedTableMocks.deleteSavedTable,
   ensureSavedTableName: savedTableMocks.ensureSavedTableName,
   getSavedTable: savedTableMocks.getSavedTable,
+  listSavedTables: savedTableMocks.listSavedTables,
   listSavedTableMetadata: savedTableMocks.listSavedTableMetadata,
+  listTrashedSavedTables: savedTableMocks.listTrashedSavedTables,
   listTrashedSavedTableMetadata: savedTableMocks.listTrashedSavedTableMetadata,
   moveSavedTableToTrash: savedTableMocks.moveSavedTableToTrash,
   restoreSavedTableFromTrash: savedTableMocks.restoreSavedTableFromTrash,
@@ -83,7 +87,9 @@ describe('useSavedTables failure states', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     savedTableMocks.listSavedTableMetadata.mockResolvedValue([]);
+    savedTableMocks.listSavedTables.mockResolvedValue([]);
     savedTableMocks.listTrashedSavedTableMetadata.mockResolvedValue([]);
+    savedTableMocks.listTrashedSavedTables.mockResolvedValue([]);
     savedTableMocks.getSavedTable.mockResolvedValue(null);
   });
 
@@ -258,6 +264,43 @@ describe('useSavedTables failure states', () => {
       reason: 'error',
       message: '移动异常',
     });
+  });
+
+  it('批量导入应一次写入最终记录，并整体报告写入失败', async () => {
+    const { result } = renderHook(() => useSavedTables());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    let imported;
+    await act(async () => {
+      imported = await result.current.importTables({
+        items: [
+          { name: 'Alpha', state: createState('alpha') },
+          { name: 'Beta', state: createState('beta') },
+        ],
+        conflictStrategy: 'skip',
+        folderId: 'folder-a',
+      });
+    });
+
+    expect(imported).toEqual({ successCount: 2, skipCount: 0, failCount: 0 });
+    expect(savedTableMocks.updateSavedTables).toHaveBeenCalledTimes(1);
+    expect(savedTableMocks.updateSavedTables).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({ normalizedName: 'alpha', folderId: 'folder-a' }),
+        expect.objectContaining({ normalizedName: 'beta', folderId: 'folder-a' }),
+      ],
+      { kind: 'anonymous' },
+    );
+
+    savedTableMocks.updateSavedTables.mockRejectedValueOnce(new Error('事务失败'));
+    let failed;
+    await act(async () => {
+      failed = await result.current.importTables({
+        items: [{ name: 'Gamma', state: createState('gamma') }],
+        conflictStrategy: 'skip',
+      });
+    });
+    expect(failed).toEqual({ successCount: 0, skipCount: 0, failCount: 1 });
   });
 
   it('clearTablesFromFolders should update matched existing records', async () => {

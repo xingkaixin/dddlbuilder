@@ -1,9 +1,10 @@
 import type { FieldDefaultKind } from '@ddlbuilder/shared-types';
 import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
+import type { SavedTableConflictStrategy } from '@/utils/savedTableBatchImport';
 
 export type ImportMode = 'workspace' | 'saved';
 
-export type ConflictStrategy = 'skip' | 'overwrite' | 'rename';
+export type ConflictStrategy = SavedTableConflictStrategy;
 
 export type ImportSourceType = 'sql' | 'csv' | 'excel' | 'json';
 

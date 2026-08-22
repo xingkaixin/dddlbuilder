@@ -30,6 +30,7 @@ const mockYDocAdapter = vi.hoisted(() => ({
   deleteSavedTableFromYDoc: vi.fn(),
   getSavedTableFromYDoc: vi.fn(),
   listSavedTableMetadataFromYDoc: vi.fn(),
+  listSavedTableRecordsFromYDoc: vi.fn(),
   subscribeWorkspaceYDoc: vi.fn(),
   upsertSavedTableInYDoc: vi.fn(),
 }));
@@ -50,6 +51,7 @@ vi.mock('@/services/workspaceYDocAdapter', () => ({
   deleteSavedTableFromYDoc: mockYDocAdapter.deleteSavedTableFromYDoc,
   getSavedTableFromYDoc: mockYDocAdapter.getSavedTableFromYDoc,
   listSavedTableMetadataFromYDoc: mockYDocAdapter.listSavedTableMetadataFromYDoc,
+  listSavedTableRecordsFromYDoc: mockYDocAdapter.listSavedTableRecordsFromYDoc,
   subscribeWorkspaceYDoc: mockYDocAdapter.subscribeWorkspaceYDoc,
   upsertSavedTableInYDoc: mockYDocAdapter.upsertSavedTableInYDoc,
 }));
@@ -89,6 +91,7 @@ describe('useSavedTables', () => {
     mockYDocAdapter.deleteSavedTableFromYDoc.mockReset();
     mockYDocAdapter.getSavedTableFromYDoc.mockReset();
     mockYDocAdapter.listSavedTableMetadataFromYDoc.mockReset();
+    mockYDocAdapter.listSavedTableRecordsFromYDoc.mockReset().mockReturnValue([]);
     mockYDocAdapter.subscribeWorkspaceYDoc.mockReset().mockReturnValue(vi.fn());
     mockYDocAdapter.upsertSavedTableInYDoc.mockReset();
   });

@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
-import type { DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
+import type { DatabaseType } from '@ddlbuilder/shared-types';
 import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import { useToast } from '@/hooks/useToast';
 import { requestSqlParse, requestMultiSqlParse } from '@/services/sqlParseService';
@@ -19,8 +19,13 @@ import { convertParsedResultToPersistedState } from '@/utils/convertParsedResult
 import { parseExcelImport, parseStructuredImportText } from '@/utils/structuredImportParser';
 import { ArrowRight, Check } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
-import type { SavedTableSummary, SaveTableResult } from '@/hooks/useSavedTables';
+import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import type { FolderTreeNode } from '@/hooks/useFolders';
+import { normalizeSavedTableName } from '@/utils/savedTablesDb';
+import type {
+  SavedTableBatchImportRequest,
+  SavedTableBatchImportResult,
+} from '@/utils/savedTableBatchImport';
 import { SqlInputStep } from './SqlInputStep';
 import { PreviewStep } from './PreviewStep';
 import { ConfirmStep } from './ConfirmStep';
@@ -44,13 +49,9 @@ interface ImportSqlDialogProps {
   triggerClassName?: string;
   triggerIcon?: ReactNode;
   triggerLabel?: string;
-  // Optional batch save support. When all callbacks are provided, the dialog
-  // exposes a "保存为已保存表" mode in addition to "回填当前工作区".
   savedTables?: SavedTableSummary[];
   folderTree?: FolderTreeNode[];
-  saveTable?: (name: string, state: PersistedState) => Promise<SaveTableResult>;
-  overwriteTable?: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
-  moveTableToFolder?: (normalizedName: string, folderId?: string) => Promise<SaveTableResult>;
+  onBatchImport?: (request: SavedTableBatchImportRequest) => Promise<SavedTableBatchImportResult>;
   onBatchImportComplete?: () => void;
   // Controlled mode: when provided, the dialog is controlled externally.
   open?: boolean;
@@ -71,9 +72,7 @@ export function ImportSqlDialog({
   triggerLabel,
   savedTables,
   folderTree,
-  saveTable,
-  overwriteTable,
-  moveTableToFolder,
+  onBatchImport,
   onBatchImportComplete,
   open: controlledOpen,
   onOpenChange,
@@ -91,9 +90,7 @@ export function ImportSqlDialog({
   const { t } = useTranslation();
   const { showToast } = useToast();
 
-  const batchImportSupported = Boolean(
-    savedTables && folderTree && saveTable && overwriteTable && moveTableToFolder,
-  );
+  const batchImportSupported = Boolean(savedTables && folderTree && onBatchImport);
 
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
@@ -257,7 +254,7 @@ export function ImportSqlDialog({
       const items: ParsedTableItem[] = results.map((r: ParsedResult) => ({
         ...r,
         selected: true,
-        conflict: savedTableNames.has(r.tableName),
+        conflict: savedTableNames.has(normalizeSavedTableName(r.tableName)),
       }));
 
       setParsedTables(items);
@@ -409,92 +406,32 @@ export function ImportSqlDialog({
     [selectedTables],
   );
 
-  const generateUniqueName = useCallback((baseName: string, existingNames: Set<string>): string => {
-    let candidate = baseName;
-    let suffix = 1;
-    while (existingNames.has(candidate)) {
-      candidate = `${baseName}_${suffix}`;
-      suffix += 1;
-    }
-    return candidate;
-  }, []);
-
   const handleConfirmBatchImport = async () => {
     if (selectedTables.length === 0) return;
-    if (!saveTable || !overwriteTable || !moveTableToFolder) return;
+    if (!onBatchImport) return;
 
     setIsImporting(true);
-    let successCount = 0;
-    let skipCount = 0;
-    let failCount = 0;
-
-    const currentSavedNames = new Set((savedTables ?? []).map((s) => s.normalizedName));
-
-    for (const table of selectedTables) {
-      const state = convertParsedResultToPersistedState(table, selectedDbType);
-      const normalizedName = table.tableName;
-
-      try {
-        if (table.conflict) {
-          if (conflictStrategy === 'skip') {
-            skipCount += 1;
-            continue;
-          }
-          if (conflictStrategy === 'overwrite') {
-            const result = await overwriteTable(normalizedName, state);
-            if (result.ok) {
-              successCount += 1;
-              if (selectedFolderId) {
-                await moveTableToFolder(normalizedName, selectedFolderId);
-              }
-            } else {
-              failCount += 1;
-            }
-            continue;
-          }
-          if (conflictStrategy === 'rename') {
-            const newName = generateUniqueName(normalizedName, currentSavedNames);
-            currentSavedNames.add(newName);
-            const result = await saveTable(newName, state);
-            if (result.ok) {
-              successCount += 1;
-              if (selectedFolderId) {
-                await moveTableToFolder(newName, selectedFolderId);
-              }
-            } else {
-              failCount += 1;
-            }
-            continue;
-          }
-        }
-
-        const result = await saveTable(normalizedName, state);
-        if (result.ok) {
-          successCount += 1;
-          currentSavedNames.add(normalizedName);
-          if (selectedFolderId) {
-            await moveTableToFolder(normalizedName, selectedFolderId);
-          }
-        } else {
-          failCount += 1;
-        }
-      } catch {
-        failCount += 1;
-      }
+    try {
+      const result = await onBatchImport({
+        items: selectedTables.map((table) => ({
+          name: table.tableName,
+          state: convertParsedResultToPersistedState(table, selectedDbType),
+        })),
+        conflictStrategy,
+        folderId: selectedFolderId,
+      });
+      setOpen(false);
+      showToast(
+        t('importSql.batch.importResult', {
+          success: result.successCount,
+          skip: result.skipCount,
+          failed: result.failCount,
+        }),
+      );
+      onBatchImportComplete?.();
+    } finally {
+      setIsImporting(false);
     }
-
-    setIsImporting(false);
-    setOpen(false);
-
-    showToast(
-      t('importSql.batch.importResult', {
-        success: successCount,
-        skip: skipCount,
-        failed: failCount,
-      }),
-    );
-
-    onBatchImportComplete?.();
   };
 
   const stepDefinitions = useMemo(() => {

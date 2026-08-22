@@ -44,9 +44,12 @@ import { UserSettingsDialog } from './UserSettingsDialog';
 import { WorkspaceYDocStatus } from './WorkspaceYDocStatus';
 import { WorkspaceMigrationDialog } from './WorkspaceMigrationDialog';
 import { AuthDialogs } from '@/auth/AuthDialogs';
-import type { SavedTableSummary, SaveTableResult } from '@/hooks/useSavedTables';
+import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import type { FolderTreeNode } from '@/hooks/useFolders';
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import type {
+  SavedTableBatchImportRequest,
+  SavedTableBatchImportResult,
+} from '@/utils/savedTableBatchImport';
 
 const ImportSqlDialog = lazy(() =>
   import('@/components/ImportSqlDialog').then((module) => ({
@@ -65,9 +68,7 @@ interface HeaderProps {
   savedTables: SavedTableSummary[];
   folderTree: FolderTreeNode[];
   onBatchImportComplete: () => void;
-  saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
-  overwriteTable: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
-  moveTableToFolder: (normalizedName: string, folderId?: string) => Promise<SaveTableResult>;
+  onBatchImport: (request: SavedTableBatchImportRequest) => Promise<SavedTableBatchImportResult>;
   onOpenAIGenerate?: () => void;
 }
 
@@ -81,9 +82,7 @@ export const Header = memo<HeaderProps>(
     savedTables,
     folderTree,
     onBatchImportComplete,
-    saveTable,
-    overwriteTable,
-    moveTableToFolder,
+    onBatchImport,
     onOpenAIGenerate = () => {},
   }) => {
     const { t } = useTranslation();
@@ -292,9 +291,7 @@ export const Header = memo<HeaderProps>(
                       triggerLabel={t('header.importSql')}
                       savedTables={savedTables}
                       folderTree={folderTree}
-                      saveTable={saveTable}
-                      overwriteTable={overwriteTable}
-                      moveTableToFolder={moveTableToFolder}
+                      onBatchImport={onBatchImport}
                       onBatchImportComplete={onBatchImportComplete}
                     />
                   </Suspense>

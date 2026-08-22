@@ -508,8 +508,8 @@ function App() {
     renameTable,
     loadTable,
     moveTableToFolder,
+    importTables,
     clearTablesFromFolders,
-    refresh: refreshSavedTables,
   } = useSavedTables();
 
   const {
@@ -1252,12 +1252,9 @@ function App() {
           savedTables={savedTables}
           folderTree={folderTree}
           onBatchImportComplete={() => {
-            void refreshSavedTables();
             setSavedTablesDrawerOpen(true);
           }}
-          saveTable={saveTable}
-          overwriteTable={overwriteTable}
-          moveTableToFolder={moveTableToFolder}
+          onBatchImport={importTables}
           onOpenAIGenerate={handleOpenAIGenerateDialog}
         />
 
@@ -1743,10 +1740,7 @@ function App() {
                 hideTrigger
                 savedTables={savedTables}
                 folderTree={folderTree}
-                saveTable={saveTable}
-                overwriteTable={overwriteTable}
-                moveTableToFolder={moveTableToFolder}
-                onBatchImportComplete={refreshSavedTables}
+                onBatchImport={importTables}
               />
             </DialogRenderGuard>
           </Suspense>

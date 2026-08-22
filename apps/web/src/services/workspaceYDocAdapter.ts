@@ -123,19 +123,21 @@ export const getSavedTableFromYDoc = (
   };
 };
 
-export const listSavedTableMetadataFromYDoc = (doc: Y.Doc): SavedTableMetadata[] =>
+export const listSavedTableRecordsFromYDoc = (doc: Y.Doc): SavedTableRecord[] =>
   Array.from(getWorkspaceRoot(doc).savedTables.keys())
     .map((normalizedName) => getSavedTableFromYDoc(doc, normalizedName))
-    .filter((record): record is SavedTableRecord => record != null)
-    .map((record) => ({
-      normalizedName: record.normalizedName,
-      name: record.name,
-      dbType: record.state.dbType,
-      fieldCount: record.state.rows.filter((row) => row.fieldName.trim()).length,
-      folderId: record.folderId,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
-    }));
+    .filter((record): record is SavedTableRecord => record != null);
+
+export const listSavedTableMetadataFromYDoc = (doc: Y.Doc): SavedTableMetadata[] =>
+  listSavedTableRecordsFromYDoc(doc).map((record) => ({
+    normalizedName: record.normalizedName,
+    name: record.name,
+    dbType: record.state.dbType,
+    fieldCount: record.state.rows.filter((row) => row.fieldName.trim()).length,
+    folderId: record.folderId,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+  }));
 
 export const upsertSavedDraftInYDoc = (
   doc: Y.Doc,
