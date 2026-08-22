@@ -155,3 +155,39 @@
 - 先识别用户目标：新建表设计、SQL 导入、AI 评审、SQL 解释、分享协作，还是问题排查。
 - 从上面的文档链接中选择最匹配的一项，并给出可执行的下一步建议。
 - 回答时要和当前选择的数据库方言以及界面中可见的功能保持一致。
+
+## 公式ドキュメント（日本語）
+- [ドキュメントホーム](https://ddl.xingkaixin.me/docs/ja/)
+  日本語ドキュメントの目次です。
+- [クイックスタート](https://ddl.xingkaixin.me/docs/ja/basic/getting-started)
+  最初の DDL / DCL を作成してコピーする手順です。
+- [コアコンセプト](https://ddl.xingkaixin.me/docs/ja/basic/core-concepts)
+  ワークスペース、下書き、保存済みテーブル、共有コピー、DDL、DCL の説明です。
+- [テーブルとフィールドの設定](https://ddl.xingkaixin.me/docs/ja/basic/table-and-fields)
+  テーブル情報とフィールド属性の設定方法です。
+- [インデックス、権限、その他](https://ddl.xingkaixin.me/docs/ja/basic/index-auth-misc)
+  インデックス、アクセス権限、テーブル単位のオプションを設定する方法です。
+- [DDL 出力と共有](https://ddl.xingkaixin.me/docs/ja/basic/ddl-and-share)
+  SQL 出力のコピーと共有リンクを使った共同作業について説明します。
+- [保存済みテーブルと下書き](https://ddl.xingkaixin.me/docs/ja/basic/saved-tables)
+  スキーマを保存、再読み込み、整理する方法です。
+- [SQL のインポートと解析](https://ddl.xingkaixin.me/docs/ja/advanced/import-and-parse)
+  既存の SQL を編集可能な設定へ変換する方法です。
+- [AI 支援テーブル設計](https://ddl.xingkaixin.me/docs/ja/advanced/ai-workflow)
+  自然言語からスキーマを生成し、AI の変更提案で既存テーブルを調整する方法です。
+- [SQL のレビューと説明](https://ddl.xingkaixin.me/docs/ja/advanced/review-and-explain)
+  AI レビューと SQL 説明機能を使う方法です。
+- [パーティションとシャーディング](https://ddl.xingkaixin.me/docs/ja/advanced/partition-and-sharding)
+  データベースごとのパーティションおよびシャーディング機能について説明します。
+- [外部キーと ER 図](https://ddl.xingkaixin.me/docs/ja/advanced/foreign-key-and-er)
+  外部キーと ER 関係ウィザードを使う方法です。
+- [差分とロールバック](https://ddl.xingkaixin.me/docs/ja/advanced/diff-and-rollback)
+  スキーマ差分とロールバック SQL を確認する方法です。
+- [エラーと失敗への対処](https://ddl.xingkaixin.me/docs/ja/faq/common-errors)
+  よくあるエラーと復旧手順です。
+- [機能の場所と表示条件](https://ddl.xingkaixin.me/docs/ja/faq/feature-visibility)
+  タブやボタンが表示または非表示になる条件です。
+- [共有と共同作業](https://ddl.xingkaixin.me/docs/ja/faq/sharing-and-collaboration)
+  共有リンクでの共同作業と制限事項です。
+- [変更履歴](https://ddl.xingkaixin.me/docs/ja/changelog/changelog)
+  リリース履歴と機能の変更内容です。

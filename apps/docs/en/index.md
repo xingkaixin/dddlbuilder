@@ -25,4 +25,4 @@ This guide is for real DDLBuilder users. It focuses on two questions: what the p
 - Supports user system (email sign-up / sign-in), real-time workspace sync, incremental sync, and cross-device folder sync.
 - Supports AI credit center: AI generation, AI modification, AI index advisor, review, and explanation consume credits based on actual usage.
 - Supports advanced capabilities such as SQL import, AI workshop, AI current-table modification, AI index optimization, and partitioning/sharding (see "Advanced Guide").
-- The English docs path is reserved, and content will be synced after the Chinese docs are stable.
+- Documentation is available in Chinese, English, and Japanese through the language menu.

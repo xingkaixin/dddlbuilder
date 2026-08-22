@@ -8,27 +8,30 @@ const docsBase = '/docs/';
 const cleanDocsPath = (url: string) =>
   url.replace(/(^|\/)index(?:\.html)?$/, '$1').replace(/\.html$/, '');
 
-const withDocsBase = (url: string) =>
-  `${docsBase}${cleanDocsPath(url)}`.replace(/\/+/g, '/');
+const withDocsBase = (url: string) => `${docsBase}${cleanDocsPath(url)}`.replace(/\/+/g, '/');
 
 const canonicalDocsPath = (url: string) =>
-  cleanDocsPath(url).replace(/^\/?(?:en|zh)\//, '').replace(/^\/?$/, '');
+  cleanDocsPath(url)
+    .replace(/^\/?(?:en|ja|zh)\//, '')
+    .replace(/^\/?$/, '');
 
-const pageToDocsPath = (page: string) =>
-  cleanDocsPath(page.replace(/\.md$/, ''));
+const pageToDocsPath = (page: string) => cleanDocsPath(page.replace(/\.md$/, ''));
 
-const docsPathToPage = (path: string) =>
-  path.endsWith('/') ? `${path}index.md` : `${path}.md`;
+const docsPathToPage = (path: string) => (path.endsWith('/') ? `${path}index.md` : `${path}.md`);
 
-const docsPageExists = (pages: string[], path: string) =>
-  pages.includes(docsPathToPage(path));
+const docsPageExists = (pages: string[], path: string) => pages.includes(docsPathToPage(path));
 
 const alternateLinksFor = (path: string, pages: string[]) => {
   const key = canonicalDocsPath(path);
   const zhPath = key ? `zh/${key}` : 'zh/';
   const enPath = key ? `en/${key}` : 'en/';
+  const jaPath = key ? `ja/${key}` : 'ja/';
 
-  if (!docsPageExists(pages, zhPath) || !docsPageExists(pages, enPath)) {
+  if (
+    !docsPageExists(pages, zhPath) ||
+    !docsPageExists(pages, enPath) ||
+    !docsPageExists(pages, jaPath)
+  ) {
     return [];
   }
 
@@ -53,6 +56,14 @@ const alternateLinksFor = (path: string, pages: string[]) => {
       'link',
       {
         rel: 'alternate',
+        hreflang: 'ja-JP',
+        href: `${siteUrl}${withDocsBase(jaPath)}`,
+      },
+    ],
+    [
+      'link',
+      {
+        rel: 'alternate',
         hreflang: 'x-default',
         href: `${siteUrl}${withDocsBase(zhPath)}`,
       },
@@ -70,10 +81,7 @@ const canonicalHeadForPage = (page: string, pages: string[]) => {
   if (!path) {
     return [
       ['meta', { name: 'robots', content: 'noindex,follow' }],
-      [
-        'link',
-        { rel: 'canonical', href: `${siteUrl}${withDocsBase('zh/')}` },
-      ],
+      ['link', { rel: 'canonical', href: `${siteUrl}${withDocsBase('zh/')}` }],
     ] as const;
   }
 
@@ -86,7 +94,7 @@ const canonicalHeadForPage = (page: string, pages: string[]) => {
 const formatSitemapLastmod = (xml: string) =>
   xml.replace(
     /<lastmod>(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\.\d{3}Z<\/lastmod>/g,
-    '<lastmod>$1+00:00</lastmod>'
+    '<lastmod>$1+00:00</lastmod>',
   );
 
 const readGeneratedSitemap = async (path: string) => {
@@ -231,6 +239,51 @@ const enSidebar = [
   },
 ];
 
+const jaSidebar = [
+  {
+    text: '基本ガイド',
+    items: [
+      { text: 'クイックスタート', link: '/ja/basic/getting-started' },
+      { text: 'コアコンセプト', link: '/ja/basic/core-concepts' },
+      { text: 'テーブルとフィールドの設定', link: '/ja/basic/table-and-fields' },
+      { text: 'インデックス、権限、その他', link: '/ja/basic/index-auth-misc' },
+      { text: 'DDL 出力と共有', link: '/ja/basic/ddl-and-share' },
+      { text: '保存済みテーブルと下書き', link: '/ja/basic/saved-tables' },
+    ],
+  },
+  {
+    text: '上級ガイド',
+    items: [
+      { text: 'SQL のインポートと解析', link: '/ja/advanced/import-and-parse' },
+      { text: 'AI 支援テーブル設計', link: '/ja/advanced/ai-workflow' },
+      { text: 'SQL のレビューと説明', link: '/ja/advanced/review-and-explain' },
+      {
+        text: 'パーティションとシャーディング',
+        link: '/ja/advanced/partition-and-sharding',
+      },
+      { text: '差分とロールバック', link: '/ja/advanced/diff-and-rollback' },
+      { text: '外部キーと ER 図', link: '/ja/advanced/foreign-key-and-er' },
+      { text: 'ORM モデル生成', link: '/ja/advanced/orm-generation' },
+      { text: 'ビューと Routine の設定', link: '/ja/advanced/view-and-routine' },
+      { text: 'Schema Lint', link: '/ja/advanced/schema-lint' },
+      { text: 'Mock データと論理列挙', link: '/ja/advanced/mock-data-and-enum' },
+      { text: 'テーブル設計テンプレート', link: '/ja/advanced/blueprint-templates' },
+    ],
+  },
+  {
+    text: 'よくある質問',
+    items: [
+      { text: 'エラーと失敗への対処', link: '/ja/faq/common-errors' },
+      { text: '機能の場所と表示条件', link: '/ja/faq/feature-visibility' },
+      { text: '共有と共同作業', link: '/ja/faq/sharing-and-collaboration' },
+    ],
+  },
+  {
+    text: '更新情報',
+    items: [{ text: '変更履歴', link: '/ja/changelog/changelog' }],
+  },
+];
+
 const zhNav = [
   { text: '基础指南', link: '/zh/basic/getting-started' },
   { text: '高级技巧', link: '/zh/advanced/' },
@@ -243,6 +296,13 @@ const enNav = [
   { text: 'Advanced Guide', link: '/en/advanced/' },
   { text: 'FAQ', link: '/en/faq/common-errors' },
   { text: 'Changelog', link: '/en/changelog/changelog' },
+];
+
+const jaNav = [
+  { text: '基本ガイド', link: '/ja/basic/getting-started' },
+  { text: '上級ガイド', link: '/ja/advanced/' },
+  { text: 'よくある質問', link: '/ja/faq/common-errors' },
+  { text: '更新情報', link: '/ja/changelog/changelog' },
 ];
 
 export default defineConfig({
@@ -261,10 +321,8 @@ export default defineConfig({
       xhtml: true,
     },
     transformItems(items) {
-      const indexableItems = items.filter(
-        (item) => cleanDocsPath(item.url) !== ''
-      );
-      const byPath = new Map<string, { en?: string; zh?: string }>();
+      const indexableItems = items.filter((item) => cleanDocsPath(item.url) !== '');
+      const byPath = new Map<string, { en?: string; ja?: string; zh?: string }>();
 
       for (const item of indexableItems) {
         const key = canonicalDocsPath(item.url);
@@ -278,6 +336,10 @@ export default defineConfig({
           group.zh = withDocsBase(item.url);
         }
 
+        if (item.url.startsWith('ja/')) {
+          group.ja = withDocsBase(item.url);
+        }
+
         byPath.set(key, group);
       }
 
@@ -285,10 +347,11 @@ export default defineConfig({
         const key = canonicalDocsPath(item.url);
         const group = byPath.get(key);
         const links =
-          group?.en && group.zh
+          group?.en && group.ja && group.zh
             ? [
                 { lang: 'zh-CN', url: group.zh },
                 { lang: 'en-US', url: group.en },
+                { lang: 'ja-JP', url: group.ja },
                 { lang: 'x-default', url: group.zh },
               ]
             : undefined;
@@ -362,6 +425,7 @@ export default defineConfig({
         sidebar: {
           '/zh/': zhSidebar,
           '/en/': enSidebar,
+          '/ja/': jaSidebar,
         },
         outline: {
           level: [2, 3],
@@ -373,12 +437,36 @@ export default defineConfig({
         },
       },
     },
+    ja: {
+      label: '日本語',
+      lang: 'ja-JP',
+      link: '/ja/',
+      title: 'DDLBuilder ドキュメント',
+      description: 'DDLBuilder の使い方とよくある質問',
+      themeConfig: {
+        nav: jaNav,
+        sidebar: {
+          '/zh/': zhSidebar,
+          '/en/': enSidebar,
+          '/ja/': jaSidebar,
+        },
+        outline: {
+          level: [2, 3],
+          label: 'このページの内容',
+        },
+        docFooter: {
+          prev: '前のページ',
+          next: '次のページ',
+        },
+      },
+    },
   },
   themeConfig: {
     nav: zhNav,
     sidebar: {
       '/zh/': zhSidebar,
       '/en/': enSidebar,
+      '/ja/': jaSidebar,
     },
     search: {
       provider: 'local',

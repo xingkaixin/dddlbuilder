@@ -19,7 +19,11 @@ onMounted(() => {
 
   const base = pathname.startsWith("/docs") ? "/docs" : "";
   const lang = navigator.language?.toLowerCase() ?? "";
-  const target = lang.startsWith("zh") ? `${base}/zh/` : `${base}/en/`;
+  const target = lang.startsWith("zh")
+    ? `${base}/zh/`
+    : lang.startsWith("ja")
+      ? `${base}/ja/`
+      : `${base}/en/`;
 
   window.location.replace(`${target}${search}${hash}`);
 });
@@ -31,3 +35,4 @@ Redirecting by browser language...
 
 - [中文文档](/zh/)
 - [English](/en/)
+- [日本語](/ja/)
