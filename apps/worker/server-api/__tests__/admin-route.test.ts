@@ -1,3 +1,4 @@
+import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../lib/context.js';
 
@@ -36,6 +37,21 @@ const mockD1Results = (results: unknown[]) => ({
   batch: vi.fn().mockResolvedValue([]),
 });
 
+const createAdminApp = async () => {
+  const { registerAdminRoutes } = await import('../routes/admin.js');
+  const { DomainError, errorResponse } = await import('../lib/http.js');
+  const app = new Hono<ApiEnv>().basePath('/api');
+  app.onError((error, c) => {
+    if (error instanceof DomainError) {
+      return errorResponse(c, error.status, error.message, error.code);
+    }
+    console.error('[api] unhandled error', error);
+    return errorResponse(c, 503, 'Service unavailable', 'SERVICE_UNAVAILABLE');
+  });
+  registerAdminRoutes(app);
+  return app;
+};
+
 describe('/api/admin/*', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -58,7 +74,7 @@ describe('/api/admin/*', () => {
         remaining: 0,
         retryAfterSeconds: 600,
       });
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/session', {
           method: 'POST',
@@ -84,7 +100,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/session', {
           method: 'POST',
@@ -106,7 +122,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/session', {
           method: 'POST',
@@ -130,7 +146,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/session', {
           method: 'POST',
@@ -154,7 +170,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/session', {
           method: 'POST',
@@ -184,7 +200,7 @@ describe('/api/admin/*', () => {
           ),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/session', { method: 'DELETE' }),
         createEnv(),
@@ -204,7 +220,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/session', {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
@@ -223,7 +239,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(createRequest('/api/admin/session'), createEnv());
 
       expect(response.status).toBe(200);
@@ -241,7 +257,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(createRequest('/api/admin/users'), createEnv());
 
       expect(response.status).toBe(401);
@@ -258,7 +274,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users', {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
@@ -316,7 +332,7 @@ describe('/api/admin/*', () => {
       }));
 
       const d1Mock = mockD1Results([]);
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users?limit=10&offset=20', {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
@@ -339,7 +355,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(createRequest('/api/admin/users/user-1'), createEnv());
 
       expect(response.status).toBe(401);
@@ -356,7 +372,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1', {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
@@ -398,7 +414,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/nonexistent', {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
@@ -423,7 +439,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/reset-password', { method: 'POST' }),
         createEnv(),
@@ -443,7 +459,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/nonexistent/reset-password', {
           method: 'POST',
@@ -469,7 +485,7 @@ describe('/api/admin/*', () => {
         createBetterAuth: vi.fn().mockReturnValue({ handler: mockHandler }),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/reset-password', {
           method: 'POST',
@@ -499,7 +515,7 @@ describe('/api/admin/*', () => {
         }),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/reset-password', {
           method: 'POST',
@@ -532,7 +548,7 @@ describe('/api/admin/*', () => {
         }),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/reset-password', {
           method: 'POST',
@@ -561,7 +577,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/disable', { method: 'POST' }),
         createEnv(),
@@ -581,7 +597,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/nonexistent/disable', {
           method: 'POST',
@@ -608,7 +624,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/disable', {
           method: 'POST',
@@ -634,7 +650,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/disable', {
           method: 'POST',
@@ -661,7 +677,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/enable', { method: 'POST' }),
         createEnv(),
@@ -682,7 +698,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/enable', {
           method: 'POST',
@@ -705,7 +721,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/email-verification', { method: 'POST' }),
         createEnv(),
@@ -725,7 +741,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/email-verification', {
           method: 'POST',
@@ -751,7 +767,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/email-verification', {
           method: 'POST',
@@ -778,7 +794,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/email-verification', {
           method: 'POST',
@@ -806,7 +822,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/email-verification', {
           method: 'POST',
@@ -835,7 +851,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/credits', { method: 'POST' }),
         createEnv(),
@@ -855,7 +871,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/credits', {
           method: 'POST',
@@ -881,7 +897,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/credits', {
           method: 'POST',
@@ -907,7 +923,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/nonexistent/credits', {
           method: 'POST',
@@ -940,7 +956,7 @@ describe('/api/admin/*', () => {
         listCreditLedger: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/credits', {
           method: 'POST',
@@ -973,7 +989,7 @@ describe('/api/admin/*', () => {
         listCreditLedger: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/credits', {
           method: 'POST',
@@ -1003,7 +1019,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/credits/ledger'),
         createEnv(),
@@ -1040,7 +1056,7 @@ describe('/api/admin/*', () => {
         applyCreditMutation: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/credits/ledger', {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
@@ -1069,7 +1085,7 @@ describe('/api/admin/*', () => {
         deleteAdminSession: vi.fn(),
       }));
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/usage-events'),
         createEnv(),
@@ -1117,7 +1133,7 @@ describe('/api/admin/*', () => {
         batch: vi.fn().mockResolvedValue([]),
       };
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/usage-events?limit=10&offset=5', {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
@@ -1171,7 +1187,7 @@ describe('/api/admin/*', () => {
         batch: vi.fn().mockResolvedValue([]),
       };
 
-      const { default: app } = await import('../../api/index');
+      const app = await createAdminApp();
       const response = await app.fetch(
         createRequest('/api/admin/users/user-1/usage-events', {
           headers: { Cookie: 'ddlbuilder_admin_session=valid-token' },
