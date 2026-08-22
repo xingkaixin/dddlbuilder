@@ -105,33 +105,20 @@ const upsertWorkspaceLink = async (
     .run();
 };
 
-const findExistingSnapshot = async (
-  env: ApiEnv['Bindings'],
-  userId: string,
-  kind: SnapshotKind,
-  normalizedName: string | null,
-) => {
-  return env.USER_DB.prepare(
+const readExistingSnapshotPayloads = async (env: ApiEnv['Bindings'], userId: string) => {
+  const result = await env.USER_DB.prepare(
     `
       SELECT
         id,
-        kind,
-        normalized_name AS normalizedName,
-        payload_json AS payloadJson,
-        source_updated_at AS sourceUpdatedAt
+        payload_json AS payloadJson
       FROM workspace_snapshots
-      WHERE user_id = ? AND kind = ? AND normalized_name IS ?
-      LIMIT 1
+      WHERE user_id = ?
     `,
   )
-    .bind(userId, kind, normalizedName)
-    .first<{
-      id: string;
-      kind: SnapshotKind;
-      normalizedName: string | null;
-      payloadJson: string;
-      sourceUpdatedAt: number;
-    }>();
+    .bind(userId)
+    .all<{ id: string; payloadJson: string }>();
+
+  return new Map((result.results ?? []).map((row) => [row.id, row.payloadJson] as const));
 };
 
 const writeSnapshot = async (env: ApiEnv['Bindings'], userId: string, record: SnapshotRecord) => {
@@ -171,10 +158,10 @@ const writeSnapshot = async (env: ApiEnv['Bindings'], userId: string, record: Sn
   });
 };
 
-const resolveCopyRecord = async (
-  env: ApiEnv['Bindings'],
+const resolveCopyRecord = (
   userId: string,
   source: SnapshotRecord,
+  existingPayloads: ReadonlyMap<string, string>,
 ) => {
   const targetKind = source.kind === 'global_draft' ? 'saved_draft' : source.kind;
   const baseName = source.kind === 'global_draft' ? 'Migrated draft' : source.displayName;
@@ -203,9 +190,9 @@ const resolveCopyRecord = async (
       payload,
       source.sourceUpdatedAt,
     );
-    const existing = await findExistingSnapshot(env, userId, targetKind, normalizedName);
-    if (!existing || existing.payloadJson === candidate.payloadJson) {
-      return { record: candidate, alreadyExists: Boolean(existing) };
+    const existingPayload = existingPayloads.get(candidate.id);
+    if (existingPayload === undefined || existingPayload === candidate.payloadJson) {
+      return { record: candidate, alreadyExists: existingPayload !== undefined };
     }
     counter += 1;
   }
@@ -344,15 +331,16 @@ export const analyzeWorkspaceMigration = async (
   let createdCount = 0;
   let skippedCount = 0;
   const conflicts: WorkspaceMigrationResult['conflicts'] = [];
+  const existingPayloads = await readExistingSnapshotPayloads(env, userId);
 
   for (const record of records) {
-    const existing = await findExistingSnapshot(env, userId, record.kind, record.normalizedName);
-    if (!existing) {
+    const existingPayload = existingPayloads.get(record.id);
+    if (existingPayload === undefined) {
       createdCount += 1;
       continue;
     }
 
-    if (existing.payloadJson === record.payloadJson) {
+    if (existingPayload === record.payloadJson) {
       skippedCount += 1;
       continue;
     }
@@ -415,15 +403,17 @@ export const commitWorkspaceMigration = async (
   let skippedCount = 0;
 
   try {
+    const existingPayloads = await readExistingSnapshotPayloads(env, userId);
     for (const record of records) {
-      const existing = await findExistingSnapshot(env, userId, record.kind, record.normalizedName);
-      if (!existing) {
+      const existingPayload = existingPayloads.get(record.id);
+      if (existingPayload === undefined) {
         await writeSnapshot(env, userId, record);
+        existingPayloads.set(record.id, record.payloadJson);
         createdCount += 1;
         continue;
       }
 
-      if (existing.payloadJson === record.payloadJson) {
+      if (existingPayload === record.payloadJson) {
         await upsertWorkspaceSnapshotEntity(env, {
           userId,
           kind: record.kind,
@@ -435,8 +425,9 @@ export const commitWorkspaceMigration = async (
         continue;
       }
 
-      const copy = await resolveCopyRecord(env, userId, record);
+      const copy = resolveCopyRecord(userId, record, existingPayloads);
       await writeSnapshot(env, userId, copy.record);
+      existingPayloads.set(copy.record.id, copy.record.payloadJson);
       if (copy.alreadyExists) {
         skippedCount += 1;
       } else {
