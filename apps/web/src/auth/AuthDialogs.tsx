@@ -24,23 +24,33 @@ const clearAuthQuery = () => {
   window.history.replaceState({}, document.title, nextUrl);
 };
 
+const readAuthQuery = () => {
+  const query = new URLSearchParams(window.location.search);
+  return {
+    action: query.get('auth_action'),
+    token: query.get('token'),
+  };
+};
+
 export function AuthDialogs() {
   const { t } = useTranslation();
   const { success, error } = useToast();
   const authSession = useAuthSession();
-  const [authMode, setAuthMode] = useState<AuthMode>('sign_in');
+  const [authQuery] = useState(readAuthQuery);
+  const [authMode, setAuthMode] = useState<AuthMode>(() =>
+    authQuery.action === 'reset-password' && authQuery.token ? 'reset_password' : 'sign_in',
+  );
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [resetPassword, setResetPassword] = useState('');
   const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
-  const [resetToken, setResetToken] = useState<string | null>(null);
+  const [resetToken, setResetToken] = useState<string | null>(() => authQuery.token);
   const [verifyEmailDialogOpen, setVerifyEmailDialogOpen] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   useEffect(() => {
-    const query = new URLSearchParams(window.location.search);
-    const authAction = query.get('auth_action');
+    const authAction = authQuery.action;
     if (authAction === 'verify-email') {
       void authSession.refreshSession().finally(() => {
         success(t('header.auth.verifyEmailSucceeded'));
@@ -54,17 +64,15 @@ export function AuthDialogs() {
       return;
     }
 
-    const token = query.get('token');
+    const token = authQuery.token;
     if (!token) {
       error(t('header.auth.resetTokenInvalid'));
       clearAuthQuery();
       return;
     }
 
-    setResetToken(token);
-    setAuthMode('reset_password');
     authSession.openAuthDialog();
-  }, [authSession, error, success, t]);
+  }, [authQuery, authSession, error, success, t]);
 
   const authDialogDescription = useMemo(() => {
     if (authMode === 'sign_up') return t('header.auth.dialogDescriptionSignUp');

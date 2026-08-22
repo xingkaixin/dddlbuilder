@@ -1,4 +1,4 @@
-import { memo, useState, useCallback, useEffect, useMemo } from 'react';
+import { memo, useState, useCallback, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -80,7 +80,11 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
     const { t } = useTranslation();
     const authSession = useAuthSession();
     const [input, setInput] = useState('');
-    const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<string>>(new Set());
+    const [templateSelection, setTemplateSelection] = useState<Set<string> | null>(null);
+    const selectedTemplateIds = useMemo(
+      () => templateSelection ?? new Set(templates?.map((template) => template.id) ?? []),
+      [templateSelection, templates],
+    );
     const [showTemplateSelection, setShowTemplateSelection] = useState(false);
     const {
       isLoading,
@@ -104,14 +108,6 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
     const displayResult: PartialTableSchema | GeneratedTableSchema | null =
       result || (isLoading ? partialResult : null);
 
-    // Reset template selection when dialog opens
-    useEffect(() => {
-      if (open && templates && templates.length > 0) {
-        // Select all templates by default
-        setSelectedTemplateIds(new Set(templates.map((t) => t.id)));
-      }
-    }, [open, templates]);
-
     const handleGenerate = useCallback(() => {
       if (!input.trim()) return;
       const selectedTemplates = templates?.filter((t) => selectedTemplateIds.has(t.id)) || [];
@@ -132,24 +128,28 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
       generateTable,
     ]);
 
-    const toggleTemplate = useCallback((id: string) => {
-      setSelectedTemplateIds((prev) => {
-        const next = new Set(prev);
-        if (next.has(id)) {
-          next.delete(id);
-        } else {
-          next.add(id);
-        }
-        return next;
-      });
-    }, []);
+    const toggleTemplate = useCallback(
+      (id: string) => {
+        setTemplateSelection((selection) => {
+          const previous = selection ?? selectedTemplateIds;
+          const next = new Set(previous);
+          if (next.has(id)) {
+            next.delete(id);
+          } else {
+            next.add(id);
+          }
+          return next;
+        });
+      },
+      [selectedTemplateIds],
+    );
 
     const toggleAllTemplates = useCallback(() => {
       if (!templates) return;
       if (selectedTemplateIds.size === templates.length) {
-        setSelectedTemplateIds(new Set());
+        setTemplateSelection(new Set());
       } else {
-        setSelectedTemplateIds(new Set(templates.map((t) => t.id)));
+        setTemplateSelection(new Set(templates.map((t) => t.id)));
       }
     }, [templates, selectedTemplateIds.size]);
 

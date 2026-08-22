@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import type { DatabaseType, IndexDefinition, IndexField } from '@ddlbuilder/shared-types';
 import { buildPrimaryKeyName } from '@ddlbuilder/ddl-core';
 import { Button } from '@/components/ui/button';
@@ -58,10 +58,15 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<number>(-1);
   const [draggedFieldIndex, setDraggedFieldIndex] = useState<number | null>(null);
 
-  const selectedIndex = useMemo(
-    () => indexes.find((index) => index.id === selectedIndexId) ?? null,
-    [indexes, selectedIndexId],
-  );
+  const isCreating = mode === 'edit' && !draft.id;
+  const requestedIndex = indexes.find((index) => index.id === selectedIndexId) ?? null;
+  const selectedIndex = requestedIndex ?? (isCreating ? null : (indexes[0] ?? null));
+  const visibleMode: PanelMode =
+    !requestedIndex && !isCreating && selectedIndex
+      ? 'view'
+      : selectedIndex || isCreating
+        ? mode
+        : 'edit';
   const selectedFieldNames = useMemo(
     () => new Set(draft.fields.map((field) => field.name)),
     [draft.fields],
@@ -75,26 +80,10 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
     );
   }, [availableFields, fieldQuery, selectedFieldNames]);
 
-  useEffect(() => {
-    setActiveSuggestionIndex(fieldSuggestions.length > 0 ? 0 : -1);
-  }, [fieldSuggestions]);
-
-  useEffect(() => {
-    if (mode === 'edit' && !draft.id) {
-      return;
-    }
-
-    if (!indexes.length) {
-      setSelectedIndexId(null);
-      setMode('edit');
-      return;
-    }
-
-    if (!selectedIndexId || !indexes.some((index) => index.id === selectedIndexId)) {
-      setSelectedIndexId(indexes[0].id);
-      setMode('view');
-    }
-  }, [draft.id, indexes, mode, selectedIndexId]);
+  const visibleSuggestionIndex =
+    fieldSuggestions.length === 0
+      ? -1
+      : Math.min(Math.max(activeSuggestionIndex, 0), fieldSuggestions.length - 1);
 
   const startCreate = (type: IndexType) => {
     setDraft({
@@ -217,7 +206,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
   };
 
   const detailIndex =
-    mode === 'edit'
+    visibleMode === 'edit'
       ? ({
           id: draft.id ?? 'draft',
           name: draft.name,
@@ -273,7 +262,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
       <div className="relative grid min-h-[320px] gap-0 2xl:grid-cols-[minmax(320px,1.05fr)_minmax(300px,1fr)]">
         <div className="border-b p-3 2xl:border-r 2xl:border-b-0">
           <div className="space-y-1.5">
-            {mode === 'edit' && !draft.id && (
+            {visibleMode === 'edit' && !draft.id && (
               <button
                 type="button"
                 className="relative flex w-full items-start gap-2 rounded-md border border-primary bg-primary/5 px-3 py-2.5 pr-24 text-left shadow-sm"
@@ -297,7 +286,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
 
             {indexes.map((index) => {
               const type = getIndexType(index);
-              const active = selectedIndexId === index.id;
+              const active = selectedIndex?.id === index.id;
               return (
                 <div
                   key={index.id}
@@ -359,7 +348,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
               );
             })}
 
-            {indexes.length === 0 && mode !== 'edit' && (
+            {indexes.length === 0 && visibleMode !== 'edit' && (
               <div className="rounded-lg border border-dashed px-3 py-8 text-center text-sm text-muted-foreground">
                 {t('indexPanel.emptyList')}
               </div>
@@ -377,9 +366,9 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <h4 className="text-sm font-semibold">
-                  {mode === 'edit' ? t('indexPanel.editTitle') : t('indexPanel.detailTitle')}
+                  {visibleMode === 'edit' ? t('indexPanel.editTitle') : t('indexPanel.detailTitle')}
                 </h4>
-                {mode === 'view' && selectedIndex && (
+                {visibleMode === 'view' && selectedIndex && (
                   <Button
                     size="sm"
                     variant="outline"
@@ -397,7 +386,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
                   <label className="text-xs font-semibold text-muted-foreground">
                     {t('indexPanel.nameLabel')}
                   </label>
-                  {mode === 'edit' ? (
+                  {visibleMode === 'edit' ? (
                     <Input
                       value={draft.name}
                       onChange={(event) =>
@@ -438,28 +427,34 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
                   <div className="text-xs font-semibold text-muted-foreground">
                     {t('indexPanel.fieldsLabel')}
                   </div>
-                  {mode === 'edit' ? (
+                  {visibleMode === 'edit' ? (
                     <div className="rounded-md border bg-muted/10 p-2.5">
                       <div className="relative">
                         <Input
                           value={fieldQuery}
-                          onChange={(event) => setFieldQuery(event.target.value)}
+                          onChange={(event) => {
+                            setFieldQuery(event.target.value);
+                            setActiveSuggestionIndex(0);
+                          }}
                           onKeyDown={(event) => {
                             if (fieldSuggestions.length === 0) return;
                             if (event.key === 'ArrowDown') {
                               event.preventDefault();
-                              setActiveSuggestionIndex((prev) =>
-                                prev < fieldSuggestions.length - 1 ? prev + 1 : 0,
+                              setActiveSuggestionIndex(
+                                visibleSuggestionIndex < fieldSuggestions.length - 1
+                                  ? visibleSuggestionIndex + 1
+                                  : 0,
                               );
                             } else if (event.key === 'ArrowUp') {
                               event.preventDefault();
-                              setActiveSuggestionIndex((prev) =>
-                                prev > 0 ? prev - 1 : fieldSuggestions.length - 1,
+                              setActiveSuggestionIndex(
+                                visibleSuggestionIndex > 0
+                                  ? visibleSuggestionIndex - 1
+                                  : fieldSuggestions.length - 1,
                               );
                             } else if (event.key === 'Enter') {
                               event.preventDefault();
-                              const idx = activeSuggestionIndex >= 0 ? activeSuggestionIndex : 0;
-                              addField(fieldSuggestions[idx]);
+                              addField(fieldSuggestions[visibleSuggestionIndex]);
                             } else if (event.key === 'Escape') {
                               setFieldQuery('');
                             }
@@ -472,8 +467,8 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
                           aria-expanded={fieldSuggestions.length > 0}
                           aria-controls="index-field-suggestions-listbox"
                           aria-activedescendant={
-                            activeSuggestionIndex >= 0
-                              ? `index-field-suggestion-${activeSuggestionIndex}`
+                            visibleSuggestionIndex >= 0
+                              ? `index-field-suggestion-${visibleSuggestionIndex}`
                               : undefined
                           }
                         />
@@ -490,10 +485,10 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
                                 id={`index-field-suggestion-${idx}`}
                                 type="button"
                                 role="option"
-                                aria-selected={idx === activeSuggestionIndex}
+                                aria-selected={idx === visibleSuggestionIndex}
                                 className={cn(
                                   'block w-full px-3 py-2 text-left text-sm hover:bg-accent',
-                                  idx === activeSuggestionIndex && 'bg-accent',
+                                  idx === visibleSuggestionIndex && 'bg-accent',
                                 )}
                                 onClick={() => addField(field)}
                               >
@@ -560,7 +555,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
                 </div>
               </div>
 
-              {mode === 'edit' && (
+              {visibleMode === 'edit' && (
                 <div className="flex justify-end gap-2 pt-1">
                   <Button
                     variant="outline"

@@ -3,7 +3,7 @@
  * 将用户选中的字段保存为可复用的模板
  */
 
-import { memo, useState, useCallback, useEffect, useMemo } from 'react';
+import { memo, useState, useCallback, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -42,16 +42,6 @@ export const CreateTemplateDialog = memo<CreateTemplateDialogProps>(
       () => selectedFields.filter((f) => f.fieldName?.trim()),
       [selectedFields],
     );
-
-    // 重置状态
-    useEffect(() => {
-      if (open) {
-        setName('');
-        setDescription('');
-        setError('');
-        setLoading(false);
-      }
-    }, [open]);
 
     const handleConfirm = useCallback(async () => {
       const trimmedName = name.trim();

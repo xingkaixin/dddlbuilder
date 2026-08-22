@@ -77,8 +77,8 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
   const { shareId } = useShareRoute();
   const clientRef = useRef<WorkspaceYDocSyncClient | null>(null);
   const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
-  const [bootstrapTimedOut, setBootstrapTimedOut] = useState(false);
-  const retry = useMemo(() => () => clientRef.current?.retry(), []);
+  const [timedOutAttempt, setTimedOutAttempt] = useState<number | null>(null);
+  const [retry] = useState(() => () => clientRef.current?.retry());
   const [value, setValue] = useState<WorkspaceYDocContextValue>({
     doc: null,
     synced: false,
@@ -102,6 +102,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     });
 
     if (!startupPlan.enabled) {
+      // oxlint-disable-next-line react/set-state-in-effect
       setValue({
         doc: null,
         synced: false,
@@ -120,6 +121,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     const persistence = new IndexeddbPersistence(buildWorkspaceYDocName(workspaceId), doc);
     let client: WorkspaceYDocSyncClient | null = null;
 
+    // oxlint-disable-next-line react/set-state-in-effect
     setValue({
       doc,
       synced: false,
@@ -195,11 +197,15 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     });
 
   useEffect(() => {
-    setBootstrapTimedOut(false);
     if (!blocked) return;
-    const timer = setTimeout(() => setBootstrapTimedOut(true), WORKSPACE_BOOTSTRAP_TIMEOUT_MS);
+    const timer = setTimeout(
+      () => setTimedOutAttempt(bootstrapAttempt),
+      WORKSPACE_BOOTSTRAP_TIMEOUT_MS,
+    );
     return () => clearTimeout(timer);
   }, [blocked, bootstrapAttempt]);
+
+  const bootstrapTimedOut = timedOutAttempt === bootstrapAttempt;
 
   // 门禁期可能卡在两处：Y.Doc 本地加载，或 workspaceId 还没落地。前者要重跑启动流程，
   // 后者只有重新解析会话才能拿到 workspaceId，所以两件事都做。

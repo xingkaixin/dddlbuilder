@@ -30,10 +30,6 @@ export const LogicalEnumCell = memo<LogicalEnumCellProps>(
     const hiddenCount = chips.length - MAX_VISIBLE_CHIPS;
 
     useEffect(() => {
-      if (!isEditing) setEditValue(fieldType);
-    }, [fieldType, isEditing]);
-
-    useEffect(() => {
       if (isEditing && inputRef.current) {
         inputRef.current.focus();
         inputRef.current.select();
@@ -175,14 +171,16 @@ export const LogicalEnumCell = memo<LogicalEnumCellProps>(
           </button>
         </div>
 
-        <EnumSetEditor
-          open={open}
-          onOpenChange={setOpen}
-          fieldType={fieldType}
-          enumMeta={enumMeta}
-          onSave={onEnumSave}
-          mode="logical"
-        />
+        {open && (
+          <EnumSetEditor
+            open={open}
+            onOpenChange={setOpen}
+            fieldType={fieldType}
+            enumMeta={enumMeta}
+            onSave={onEnumSave}
+            mode="logical"
+          />
+        )}
       </>
     );
   },

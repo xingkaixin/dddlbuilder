@@ -25,7 +25,7 @@ export const ErDiagramDialog = memo<ErDiagramDialogProps>(
     const { t } = useTranslation();
     const { showToast } = useToast();
     const [tables, setTables] = useState<SavedTableRecord[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(open && Boolean(workspaceScope));
 
     const refresh = useCallback(async () => {
       if (!workspaceScope) return;
@@ -35,7 +35,6 @@ export const ErDiagramDialog = memo<ErDiagramDialogProps>(
 
     useEffect(() => {
       if (!open || !workspaceScope) return;
-      setLoading(true);
       void listSavedTables(workspaceScope)
         .then((records) => setTables(records))
         .finally(() => setLoading(false));

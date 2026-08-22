@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Bot,
   Check,
@@ -30,6 +30,7 @@ import {
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 
 const MAX_INPUT_LENGTH = 500;
+const EMPTY_CHANGE_STATUSES: Record<string, AISchemaChangeStatus> = {};
 
 interface AISchemaPatchPanelProps {
   dbType: DatabaseType;
@@ -131,7 +132,6 @@ export function AISchemaPatchPanel({
   const authSession = useAuthSession();
   const [input, setInput] = useState('');
   const [lastSubmittedInput, setLastSubmittedInput] = useState('');
-  const [statuses, setStatuses] = useState<Record<string, AISchemaChangeStatus>>({});
   const {
     isLoading,
     error,
@@ -143,6 +143,24 @@ export function AISchemaPatchPanel({
     clearConversation,
     cancelGeneration,
   } = useAIGenerateTable();
+  const [statusState, setStatusState] = useState(() => ({
+    result,
+    values: {} as Record<string, AISchemaChangeStatus>,
+  }));
+  const statuses = statusState.result === result ? statusState.values : EMPTY_CHANGE_STATUSES;
+  const updateStatuses = useCallback(
+    (
+      update: (
+        current: Record<string, AISchemaChangeStatus>,
+      ) => Record<string, AISchemaChangeStatus>,
+    ) => {
+      setStatusState((current) => ({
+        result,
+        values: update(current.result === result ? current.values : {}),
+      }));
+    },
+    [result],
+  );
 
   const candidateState = useMemo(() => {
     if (!result) return null;
@@ -158,10 +176,6 @@ export function AISchemaPatchPanel({
         status: statuses[change.id] || 'pending',
       }));
   }, [candidateState, currentState, lastSubmittedInput, statuses]);
-
-  useEffect(() => {
-    setStatuses({});
-  }, [result]);
 
   const pendingChanges = changes.filter((change) => change.status === 'pending');
   const acceptedChanges = changes.filter((change) => change.status === 'accepted');
@@ -217,14 +231,17 @@ export function AISchemaPatchPanel({
   const handleReset = useCallback(() => {
     clearResult();
     clearConversation();
-    setStatuses({});
+    setStatusState({ result: null, values: {} });
     setInput('');
     setLastSubmittedInput('');
   }, [clearConversation, clearResult]);
 
-  const setChangeStatus = useCallback((id: string, status: AISchemaChangeStatus) => {
-    setStatuses((prev) => ({ ...prev, [id]: status }));
-  }, []);
+  const setChangeStatus = useCallback(
+    (id: string, status: AISchemaChangeStatus) => {
+      updateStatuses((current) => ({ ...current, [id]: status }));
+    },
+    [updateStatuses],
+  );
 
   const handleAccept = useCallback(
     (change: AISchemaChange) => {
@@ -241,24 +258,24 @@ export function AISchemaPatchPanel({
   }, [acceptedChanges, candidateState, onApplyChange]);
 
   const handleSelectAll = useCallback(() => {
-    setStatuses((prev) => {
-      const next = { ...prev };
+    updateStatuses((current) => {
+      const next = { ...current };
       for (const change of changes) {
         next[change.id] = 'accepted';
       }
       return next;
     });
-  }, [changes]);
+  }, [changes, updateStatuses]);
 
   const handleUnselectAll = useCallback(() => {
-    setStatuses((prev) => {
-      const next = { ...prev };
+    updateStatuses((current) => {
+      const next = { ...current };
       for (const change of changes) {
         next[change.id] = 'rejected';
       }
       return next;
     });
-  }, [changes]);
+  }, [changes, updateStatuses]);
 
   const handleInputChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(event.target.value.slice(0, MAX_INPUT_LENGTH));

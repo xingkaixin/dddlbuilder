@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { ForeignKeyAction } from '@ddlbuilder/shared-types';
 import { AlertTriangle, ArrowRight, KeyRound, Link2 } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
@@ -41,15 +41,14 @@ const FOREIGN_KEY_ACTIONS: ForeignKeyAction[] = [
 ];
 
 type RelationCreationDialogProps = {
-  draft: TableRelationshipDraft | null;
+  draft: TableRelationshipDraft;
   sourceField: string;
   targetField: string;
   onCancel: () => void;
   onConfirm: (plan: TableRelationshipPlan) => Promise<void>;
 };
 
-function fieldOptions(draft: TableRelationshipDraft | null, side: 'source' | 'target') {
-  if (!draft) return [];
+function fieldOptions(draft: TableRelationshipDraft, side: 'source' | 'target') {
   const keyFields = side === 'target' ? referencedKeyFields(draft.target) : null;
   const state = side === 'source' ? draft.source : draft.target;
   return state.rows
@@ -95,21 +94,14 @@ export function RelationCreationDialog({
   onConfirm,
 }: RelationCreationDialogProps) {
   const { t } = useTranslation();
-  const [intent, setIntent] = useState<TableRelationshipIntent | null>(null);
+  const [intent, setIntent] = useState<TableRelationshipIntent>(() =>
+    defaultRelationshipIntent(draft, sourceField, targetField),
+  );
   const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    setIntent(draft ? defaultRelationshipIntent(draft, sourceField, targetField) : null);
-  }, [draft, sourceField, targetField]);
 
   const sourceFields = useMemo(() => fieldOptions(draft, 'source'), [draft]);
   const targetFields = useMemo(() => fieldOptions(draft, 'target'), [draft]);
-  const result = useMemo(
-    () => (draft && intent ? planTableRelationship(draft, intent) : null),
-    [draft, intent],
-  );
-
-  if (!draft || !intent) return null;
+  const result = useMemo(() => planTableRelationship(draft, intent), [draft, intent]);
 
   const updateIntent = <Key extends keyof TableRelationshipIntent>(
     key: Key,

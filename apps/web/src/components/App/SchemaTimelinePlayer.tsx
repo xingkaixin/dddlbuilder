@@ -119,20 +119,14 @@ export const SchemaTimelinePlayer = memo<SchemaTimelinePlayerProps>(
     const { t } = useTranslation();
     const { resolvedLocale } = useLocale();
     const [versions, setVersions] = useState<TableVersion[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(open && Boolean(tableNormalizedName));
     const [currentFrame, setCurrentFrame] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
     const [speed, setSpeed] = useState<Speed>(1);
 
     // Load versions when dialog opens
     useEffect(() => {
-      if (!open || !tableNormalizedName) {
-        setVersions([]);
-        setCurrentFrame(0);
-        setIsPlaying(false);
-        return;
-      }
-      setLoading(true);
+      if (!open || !tableNormalizedName) return;
       void listVersions(tableNormalizedName)
         .then((list) => {
           // Sort ascending (oldest first)

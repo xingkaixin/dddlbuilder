@@ -318,20 +318,19 @@ function CanvasInner({
         />
         <ErDiagramToolbar onAddTable={onAddTable} onAutoLayout={handleAutoLayout} />
       </ReactFlow>
-      <RelationCreationDialog
-        draft={
-          pendingRelationship
-            ? {
-                source: pendingRelationship.sourceRecord.state,
-                target: pendingRelationship.targetRecord.state,
-              }
-            : null
-        }
-        sourceField={pendingRelationship?.sourceField ?? ''}
-        targetField={pendingRelationship?.targetField ?? ''}
-        onCancel={() => setPendingRelationship(null)}
-        onConfirm={handleCreateRelationship}
-      />
+      {pendingRelationship && (
+        <RelationCreationDialog
+          key={`${pendingRelationship.sourceRecord.normalizedName}:${pendingRelationship.targetRecord.normalizedName}:${pendingRelationship.sourceField}:${pendingRelationship.targetField}`}
+          draft={{
+            source: pendingRelationship.sourceRecord.state,
+            target: pendingRelationship.targetRecord.state,
+          }}
+          sourceField={pendingRelationship.sourceField}
+          targetField={pendingRelationship.targetField}
+          onCancel={() => setPendingRelationship(null)}
+          onConfirm={handleCreateRelationship}
+        />
+      )}
     </>
   );
 }

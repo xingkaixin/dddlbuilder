@@ -91,13 +91,15 @@ export const EnumSetCell = memo<EnumSetCellProps>(
           </button>
         </div>
 
-        <EnumSetEditor
-          open={open}
-          onOpenChange={setOpen}
-          fieldType={fieldType}
-          enumMeta={enumMeta}
-          onSave={onSave}
-        />
+        {open && (
+          <EnumSetEditor
+            open={open}
+            onOpenChange={setOpen}
+            fieldType={fieldType}
+            enumMeta={enumMeta}
+            onSave={onSave}
+          />
+        )}
       </>
     );
   },

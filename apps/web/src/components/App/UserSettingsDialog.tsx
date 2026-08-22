@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Coins, RefreshCw, User2 } from '@/components/icons';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
@@ -137,7 +137,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
   const authSession = useAuthSession();
   const workspaceYDoc = useWorkspaceYDoc();
   const { success, error } = useToast();
-  const [name, setName] = useState('');
+  const [name, setName] = useState(() => authSession.name ?? '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -171,13 +171,6 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
       ? ledgerQuery.error.message
       : t('settings.loadFailed')
     : null;
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    setName(authSession.name ?? '');
-  }, [authSession.name, open]);
 
   const ledgerPageCount = useMemo(
     () => Math.max(1, Math.ceil(ledgerTotal / LEDGER_PAGE_SIZE)),

@@ -1,4 +1,4 @@
-import { memo, useState, useCallback, useEffect } from 'react';
+import { memo, useState, useCallback } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -244,28 +244,17 @@ export interface EnumSetEditorProps {
 export const EnumSetEditor = memo<EnumSetEditorProps>(
   ({ open, onOpenChange, fieldType, enumMeta, onSave, mode = 'native' }) => {
     const { t } = useTranslation();
-    const [items, setItems] = useState<EnumItem[]>([]);
-    const [newValue, setNewValue] = useState('');
-    const [addError, setAddError] = useState('');
-
     const isLogical = mode === 'logical';
     const baseType = isLogical
       ? fieldType
       : (fieldType.match(/^(enum|set)\s*/i)?.[1]?.toUpperCase() ?? 'ENUM');
-
-    // Sync items when dialog opens
-    useEffect(() => {
-      if (open) {
-        if (isLogical) {
-          setItems(metaToItems(enumMeta?.map((m) => m.value) ?? [], enumMeta));
-        } else {
-          const parsed = parseEnumValues(fieldType);
-          setItems(metaToItems(parsed, enumMeta));
-        }
-        setNewValue('');
-        setAddError('');
-      }
-    }, [open, fieldType, enumMeta, isLogical]);
+    const [items, setItems] = useState<EnumItem[]>(() =>
+      isLogical
+        ? metaToItems(enumMeta?.map((item) => item.value) ?? [], enumMeta)
+        : metaToItems(parseEnumValues(fieldType), enumMeta),
+    );
+    const [newValue, setNewValue] = useState('');
+    const [addError, setAddError] = useState('');
 
     const sensors = useSensors(
       useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),

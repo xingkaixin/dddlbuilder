@@ -3,7 +3,7 @@
  * 提供模板的查看、创建、编辑、删除功能，包含字段编辑器
  */
 
-import { memo, useState, useCallback, useEffect, useMemo } from 'react';
+import { memo, useState, useCallback, useMemo } from 'react';
 import { Plus, Search } from '@/components/icons';
 import {
   Dialog,
@@ -230,13 +230,6 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
       setIsDeleteDialogOpen(false);
       setDeleteTarget(null);
     }, [deleteTarget, onDeleteTemplate, showToast, t]);
-
-    // 关闭时重置状态
-    useEffect(() => {
-      if (!open) {
-        setSearchTerm('');
-      }
-    }, [open]);
 
     return (
       <>

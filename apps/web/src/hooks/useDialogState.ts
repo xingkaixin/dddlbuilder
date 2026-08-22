@@ -28,7 +28,7 @@ export function useDialogState<TData>(
 ): UseDialogStateReturn<TData> {
   const { open, setOpen, initialData } = options;
   const initialDataRef = useRef(initialData);
-  const [data, setData] = useState<TData>(initialDataRef.current);
+  const [data, setData] = useState<TData>(() => initialData);
   const [error, setError] = useState('');
 
   const resetData = useCallback(() => {

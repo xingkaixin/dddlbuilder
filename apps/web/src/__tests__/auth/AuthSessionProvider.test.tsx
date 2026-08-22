@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@/__tests__/utils/test-utils';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { useEffect } from 'react';
 import {
   AuthSessionProvider,
   useAuthSession,
@@ -452,9 +453,12 @@ describe('AuthSessionProvider', () => {
         )
         .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 8800 })));
 
-      let sessionApi: ReturnType<typeof useAuthSession> | null = null;
+      const sessionApi: { current: ReturnType<typeof useAuthSession> | null } = { current: null };
       const Probe = () => {
-        sessionApi = useAuthSession();
+        const api = useAuthSession();
+        useEffect(() => {
+          sessionApi.current = api;
+        }, [api]);
         return null;
       };
 
@@ -465,14 +469,14 @@ describe('AuthSessionProvider', () => {
       );
 
       await waitFor(() => {
-        expect(sessionApi?.status).toBe('signed_in');
+        expect(sessionApi.current?.status).toBe('signed_in');
       });
 
       updateUserMock.mockResolvedValue({ error: null });
       changePasswordMock.mockResolvedValue({ error: null });
 
-      await sessionApi?.updateUserName('User Two');
-      await sessionApi?.changePassword('old-pass', 'new-pass');
+      await sessionApi.current?.updateUserName('User Two');
+      await sessionApi.current?.changePassword('old-pass', 'new-pass');
 
       expect(updateUserMock).toHaveBeenCalledWith({ name: 'User Two' });
       expect(changePasswordMock).toHaveBeenCalledWith({

@@ -229,7 +229,7 @@ export const FolderTree = memo<FolderTreeProps>(
     const { t } = useTranslation();
     // 递归渲染文件夹
     const renderFolder = useCallback(
-      (folder: FolderTreeNode, depth: number): React.ReactNode => {
+      function renderFolder(folder: FolderTreeNode, depth: number): React.ReactNode {
         const isExpanded = expandedFolders.has(folder.id);
         const isSelected = selectedFolderId === folder.id;
 

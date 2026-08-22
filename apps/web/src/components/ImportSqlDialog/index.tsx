@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode, useCallback, useMemo } from 'react';
+import { useState, type ReactNode, useCallback, useMemo } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import {
   Dialog,
@@ -94,15 +94,6 @@ export function ImportSqlDialog({
 
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
-  const setOpen = useCallback(
-    (nextOpen: boolean) => {
-      if (controlledOpen === undefined) {
-        setInternalOpen(nextOpen);
-      }
-      onOpenChange?.(nextOpen);
-    },
-    [controlledOpen, onOpenChange],
-  );
   const [step, setStep] = useState<ImportStep>('validate');
   const [importMode, setImportMode] = useState<ImportMode>('workspace');
   const [sourceType, setSourceType] = useState<ImportSourceType>('sql');
@@ -123,6 +114,35 @@ export function ImportSqlDialog({
   const [conflictStrategy, setConflictStrategy] = useState<ConflictStrategy>('skip');
   const [isImporting, setIsImporting] = useState(false);
 
+  const resetDialog = useCallback(() => {
+    setStep('validate');
+    setImportMode('workspace');
+    setSourceType('sql');
+    setSql('');
+    setFile(null);
+    setParsedResult(null);
+    setValidationResult(null);
+    setPreviewFields([]);
+    setParsedTables([]);
+    setFailedItems([]);
+    setSelectedFolderId(undefined);
+    setConflictStrategy('skip');
+    setIsImporting(false);
+  }, []);
+
+  const setOpen = useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) {
+        resetDialog();
+      }
+      if (controlledOpen === undefined) {
+        setInternalOpen(nextOpen);
+      }
+      onOpenChange?.(nextOpen);
+    },
+    [controlledOpen, onOpenChange, resetDialog],
+  );
+
   const resolvedTriggerLabel = triggerLabel ?? t('importSql.title');
 
   const savedTableNames = useMemo(
@@ -135,24 +155,6 @@ export function ImportSqlDialog({
     setFile(null);
     setValidationResult(null);
   }, []);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setStep('validate');
-      setImportMode('workspace');
-      setSourceType('sql');
-      setSql('');
-      setFile(null);
-      setParsedResult(null);
-      setValidationResult(null);
-      setPreviewFields([]);
-      setParsedTables([]);
-      setFailedItems([]);
-      setSelectedFolderId(undefined);
-      setConflictStrategy('skip');
-      setIsImporting(false);
-    }
-  }, [isOpen]);
 
   const buildStructuredTables = useCallback(async (): Promise<ParsedResult[]> => {
     if (sourceType === 'excel') {

@@ -175,7 +175,7 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     [currentPersistedState],
   );
 
-  const serializePersistedState = useCallback(serializePersistedStateForComparison, []);
+  const serializePersistedState = serializePersistedStateForComparison;
 
   // --- 加载状态派生 ---
   const currentStateSignature = useMemo(

@@ -3,7 +3,7 @@ import { render } from '@/__tests__/utils/test-utils';
 import { DialogRenderGuard } from '@/components/App/containers/DialogRenderGuard';
 
 describe('DialogRenderGuard', () => {
-  it('连续关闭时跳过子组件渲染，并在开关变化时同步最新属性', () => {
+  it('关闭时不挂载子组件，重新打开时使用最新属性', () => {
     const Child = vi.fn(({ value }: { value: string }) => <span>{value}</span>);
     const { rerender } = render(
       <DialogRenderGuard open={false}>
@@ -16,14 +16,14 @@ describe('DialogRenderGuard', () => {
         <Child value="hidden update" />
       </DialogRenderGuard>,
     );
-    expect(Child).toHaveBeenCalledTimes(1);
+    expect(Child).not.toHaveBeenCalled();
 
     rerender(
       <DialogRenderGuard open>
         <Child value="opened" />
       </DialogRenderGuard>,
     );
-    expect(Child).toHaveBeenCalledTimes(2);
+    expect(Child).toHaveBeenCalledTimes(1);
 
     rerender(
       <DialogRenderGuard open={false}>
@@ -35,6 +35,6 @@ describe('DialogRenderGuard', () => {
         <Child value="closed update" />
       </DialogRenderGuard>,
     );
-    expect(Child).toHaveBeenCalledTimes(3);
+    expect(Child).toHaveBeenCalledTimes(1);
   });
 });

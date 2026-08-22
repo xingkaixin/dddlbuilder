@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -53,12 +53,7 @@ export const AIIndexAdvisorDialog = memo<AIIndexAdvisorDialogProps>(
     onApplyIndex,
   }) => {
     const { t } = useTranslation();
-    const [queryPatterns, setQueryPatterns] = useState('');
-
-    useEffect(() => {
-      if (!open) return;
-      setQueryPatterns(suggestedQuery);
-    }, [open, suggestedQuery]);
+    const [queryPatterns, setQueryPatterns] = useState(suggestedQuery);
 
     const canAnalyze = queryPatterns.trim().length > 0 && !isLoading && !blockingMessage;
     const recommendations = useMemo(() => result?.recommendations ?? [], [result]);

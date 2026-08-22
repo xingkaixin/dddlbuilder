@@ -131,6 +131,7 @@ export function useWorkspaceInitialHydration({
     };
 
     if (pathInvalid) {
+      // oxlint-disable-next-line react/set-state-in-effect
       setShareLoadStatus('error');
       leaveShareRoute();
       return () => {

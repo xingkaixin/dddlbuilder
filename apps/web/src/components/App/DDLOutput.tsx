@@ -118,6 +118,7 @@ export const DDLOutput = memo<DDLOutputProps>(
     const [routineKind, setRoutineKind] = useState<RoutineTemplateKind>('updated_at_trigger');
     const [routineName, setRoutineName] = useState('trg_set_updated_at');
     const [routineTableName, setRoutineTableName] = useState('');
+    const resolvedRoutineTableName = routineTableName || routineTableNameDefault || '';
     const [routineParameters, setRoutineParameters] = useState('');
     const [routineReturnType, setRoutineReturnType] = useState('INTEGER');
     const [routineTimestampColumn, setRoutineTimestampColumn] = useState('updated_at');
@@ -137,18 +138,12 @@ export const DDLOutput = memo<DDLOutputProps>(
       };
     }, []);
 
-    useEffect(() => {
-      if (routineTableNameDefault && !routineTableName) {
-        setRoutineTableName(routineTableNameDefault);
-      }
-    }, [routineTableNameDefault, routineTableName]);
-
     const routineSql = useMemo(
       () =>
         buildRoutineTemplateDDL(dbType, {
           kind: routineKind,
           routineName,
-          tableName: routineTableName,
+          tableName: resolvedRoutineTableName,
           parameters: routineParameters,
           returnType: routineReturnType,
           body: routineBody,
@@ -159,7 +154,7 @@ export const DDLOutput = memo<DDLOutputProps>(
         dbType,
         routineKind,
         routineName,
-        routineTableName,
+        resolvedRoutineTableName,
         routineParameters,
         routineReturnType,
         routineBody,
@@ -645,7 +640,7 @@ export const DDLOutput = memo<DDLOutputProps>(
                     <Label htmlFor="routine-table">{t('ddlOutput.routineTable')}</Label>
                     <Input
                       id="routine-table"
-                      value={routineTableName}
+                      value={resolvedRoutineTableName}
                       onChange={(event) => setRoutineTableName(event.target.value)}
                       placeholder={t('ddlOutput.routineTablePlaceholder')}
                     />

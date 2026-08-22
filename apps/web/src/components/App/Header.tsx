@@ -480,7 +480,9 @@ export const Header = memo<HeaderProps>(
         {themeOverlay && typeof document !== 'undefined'
           ? createPortal(themeOverlay, document.body)
           : null}
-        <UserSettingsDialog open={userSettingsOpen} onOpenChange={setUserSettingsOpen} />
+        {userSettingsOpen && (
+          <UserSettingsDialog open={userSettingsOpen} onOpenChange={setUserSettingsOpen} />
+        )}
         <AuthDialogs />
         <WorkspaceMigrationDialog />
       </>

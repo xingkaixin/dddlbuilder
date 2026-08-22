@@ -1,4 +1,4 @@
-import { memo, useState, useCallback, useEffect } from 'react';
+import { memo, useState, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -35,18 +35,11 @@ interface FolderDialogProps {
 export const FolderDialog = memo<FolderDialogProps>(
   ({ open, onOpenChange, mode, parentFolder, targetFolder, onConfirm }) => {
     const { t } = useTranslation();
-    const [name, setName] = useState('');
+    const [name, setName] = useState(() =>
+      mode === 'rename' && targetFolder ? targetFolder.name : '',
+    );
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-
-    // Reset state when dialog opens
-    useEffect(() => {
-      if (open) {
-        setName(mode === 'rename' && targetFolder ? targetFolder.name : '');
-        setError('');
-        setLoading(false);
-      }
-    }, [open, mode, targetFolder]);
 
     const handleConfirm = useCallback(async () => {
       const trimmed = name.trim();

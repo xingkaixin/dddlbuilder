@@ -11,7 +11,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
-    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json src/ && oxfmt --config ../../.oxfmtrc.json --check src/",
+    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json --deny-warnings src/ && oxfmt --config ../../.oxfmtrc.json --check src/",
     "lint:fix": "oxlint --config ../../.oxlintrc.json --type-aware --tsconfig tsconfig.json --fix src/ && oxfmt --config ../../.oxfmtrc.json --write src/",
     "format": "oxfmt --config ../../.oxfmtrc.json --write src/"
   },

@@ -69,7 +69,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
     const { resolvedLocale } = useLocale();
     const { showToast } = useToast();
     const [reviews, setReviews] = useState<ReviewRecordMetadata[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(open);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [expandedDetail, setExpandedDetail] = useState<ReviewRecord | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -77,7 +77,6 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
 
     // 加载评审列表
     const loadReviews = useCallback(async () => {
-      setLoading(true);
       try {
         const list = await listReviewMetadata(tableNormalizedName || undefined);
         setReviews(list);
@@ -87,13 +86,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
     }, [tableNormalizedName]);
 
     useEffect(() => {
-      if (open) {
-        void loadReviews();
-      } else {
-        setReviews([]);
-        setExpandedId(null);
-        setExpandedDetail(null);
-      }
+      if (open) void loadReviews();
     }, [open, loadReviews]);
 
     // 展开/折叠详情

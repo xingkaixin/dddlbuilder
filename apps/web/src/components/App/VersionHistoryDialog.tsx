@@ -115,8 +115,8 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
     const { resolvedLocale } = useLocale();
     const { showToast } = useToast();
     const [versions, setVersions] = useState<TableVersion[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [loading, setLoading] = useState(open && Boolean(tableNormalizedName));
+    const [requestedSelectedId, setSelectedId] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [startTime, setStartTime] = useState('');
@@ -140,28 +140,18 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
     // 加载版本列表（完整版本，用于计算 diff）
     const loadVersions = useCallback(async () => {
       if (!tableNormalizedName) return;
-      setLoading(true);
       try {
         const list = await listVersions(tableNormalizedName);
         // listVersions 返回倒序，保持倒序（最新在前）用于时间轴展示
         setVersions(list);
-        if (list.length > 0 && !selectedId) {
-          setSelectedId(list[0].id);
-        }
+        setSelectedId(list[0]?.id ?? null);
       } finally {
         setLoading(false);
       }
-    }, [tableNormalizedName, selectedId]);
+    }, [tableNormalizedName]);
 
     useEffect(() => {
-      if (open && tableNormalizedName) {
-        void loadVersions();
-      } else {
-        setVersions([]);
-        setSelectedId(null);
-        setStartTime('');
-        setEndTime('');
-      }
+      if (open && tableNormalizedName) void loadVersions();
     }, [open, tableNormalizedName, loadVersions]);
 
     // 预计算相邻版本之间的 diff（时间轴上每个节点 vs 它的下一个/更老的版本）
@@ -193,12 +183,9 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
       return versions.filter((version) => version.createdAt >= start && version.createdAt <= end);
     }, [endTime, startTime, versions]);
 
-    useEffect(() => {
-      if (filteredVersions.length === 0) return;
-      if (!selectedId || !filteredVersions.some((version) => version.id === selectedId)) {
-        setSelectedId(filteredVersions[0].id);
-      }
-    }, [filteredVersions, selectedId]);
+    const selectedId = filteredVersions.some((version) => version.id === requestedSelectedId)
+      ? requestedSelectedId
+      : (filteredVersions[0]?.id ?? null);
 
     // 回滚到选中版本
     const handleRollback = useCallback(async () => {

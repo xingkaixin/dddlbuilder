@@ -46,14 +46,6 @@ export const EditableCell = memo<EditableCellProps>(
       [controlledIsEditing, onEditingChange],
     );
 
-    // Sync with external value when not editing
-    useEffect(() => {
-      if (!isEditing) {
-        setEditValue(value);
-        lastCommittedValueRef.current = value;
-      }
-    }, [value, isEditing]);
-
     const commitValue = useCallback(
       (nextValue: string) => {
         if (nextValue === lastCommittedValueRef.current) return;
