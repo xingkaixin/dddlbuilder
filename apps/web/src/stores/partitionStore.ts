@@ -1,14 +1,8 @@
-import { create } from 'zustand';
-import type {
-  MysqlPartitionConfig,
-  MysqlPartitionType,
-  PartitionDefinition,
-} from '@ddlbuilder/shared-types';
+import type { MysqlPartitionConfig, PartitionDefinition } from '@ddlbuilder/shared-types';
 import { replaceIdentifierToken } from '@/utils/fieldRenameUtils';
+import type { EditorSetState, PartitionSlice } from './editorStoreTypes';
 
-type Setter<T> = T | ((prev: T) => T);
-
-const DEFAULT_CONFIG: MysqlPartitionConfig = {
+export const DEFAULT_PARTITION_CONFIG: MysqlPartitionConfig = {
   enabled: false,
   type: 'RANGE',
   columns: [],
@@ -16,24 +10,8 @@ const DEFAULT_CONFIG: MysqlPartitionConfig = {
   partitions: [],
 };
 
-interface PartitionStoreState {
-  mysqlPartitionConfig: MysqlPartitionConfig;
-  setPartitionEnabled: (enabled: boolean) => void;
-  setPartitionType: (type: MysqlPartitionType) => void;
-  setPartitionColumns: (columns: string[]) => void;
-  setPartitionExpression: (expression: string) => void;
-  setPartitionCount: (count: number) => void;
-  addPartition: (partition: PartitionDefinition) => void;
-  removePartition: (name: string) => void;
-  updatePartition: (name: string, partition: PartitionDefinition) => void;
-  generateRangePartitions: (preset: 'year' | 'month' | 'day') => void;
-  syncFieldRename: (oldFieldName: string, newFieldName: string) => void;
-  setMysqlPartitionConfig: (value: Setter<MysqlPartitionConfig>) => void;
-  resetPartition: () => void;
-}
-
-export const usePartitionStore = create<PartitionStoreState>((set) => ({
-  mysqlPartitionConfig: DEFAULT_CONFIG,
+export const createPartitionSlice = (set: EditorSetState): PartitionSlice => ({
+  mysqlPartitionConfig: DEFAULT_PARTITION_CONFIG,
   setPartitionEnabled: (enabled) =>
     set((state) => ({
       mysqlPartitionConfig: {
@@ -136,7 +114,7 @@ export const usePartitionStore = create<PartitionStoreState>((set) => ({
       },
     }));
   },
-  syncFieldRename: (oldFieldName, newFieldName) => {
+  syncPartitionFieldRename: (oldFieldName, newFieldName) => {
     if (!oldFieldName || !newFieldName || oldFieldName === newFieldName) {
       return;
     }
@@ -163,6 +141,6 @@ export const usePartitionStore = create<PartitionStoreState>((set) => ({
     })),
   resetPartition: () =>
     set({
-      mysqlPartitionConfig: DEFAULT_CONFIG,
+      mysqlPartitionConfig: DEFAULT_PARTITION_CONFIG,
     }),
-}));
+});

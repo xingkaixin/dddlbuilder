@@ -1,9 +1,7 @@
-import { create } from 'zustand';
-import type { TableMiscConfig, HivePartitionConfig } from '@ddlbuilder/shared-types';
+import type { TableMiscConfig } from '@ddlbuilder/shared-types';
+import type { EditorSetState, TableOptionsSlice } from './editorStoreTypes';
 
-type Setter<T> = T | ((prev: T) => T);
-
-const DEFAULT_CONFIG: TableMiscConfig = {
+export const DEFAULT_TABLE_MISC_CONFIG: TableMiscConfig = {
   enabled: false,
   engine: '',
   charset: '',
@@ -11,26 +9,8 @@ const DEFAULT_CONFIG: TableMiscConfig = {
   tablespace: '',
 };
 
-interface TableOptionsStoreState {
-  tableMiscConfig: TableMiscConfig;
-  setMiscEnabled: (enabled: boolean) => void;
-  setEngine: (engine: string) => void;
-  setCharset: (charset: string) => void;
-  setCollation: (collation: string) => void;
-  setTablespace: (tablespace: string) => void;
-  setFillfactor: (fillfactor: number | undefined) => void;
-  setPctfree: (pctfree: number | undefined) => void;
-  setInitrans: (initrans: number | undefined) => void;
-  setStoredAs: (value: TableMiscConfig['storedAs']) => void;
-  setExternal: (value: boolean) => void;
-  setLocation: (value: string) => void;
-  setHivePartitionConfig: (value: Setter<HivePartitionConfig>) => void;
-  setTableMiscConfig: (value: Setter<TableMiscConfig>) => void;
-  resetTableMiscConfig: () => void;
-}
-
-export const useTableOptionsStore = create<TableOptionsStoreState>((set) => ({
-  tableMiscConfig: DEFAULT_CONFIG,
+export const createTableOptionsSlice = (set: EditorSetState): TableOptionsSlice => ({
+  tableMiscConfig: DEFAULT_TABLE_MISC_CONFIG,
   setMiscEnabled: (enabled) =>
     set((state) => ({
       tableMiscConfig: {
@@ -129,6 +109,6 @@ export const useTableOptionsStore = create<TableOptionsStoreState>((set) => ({
     })),
   resetTableMiscConfig: () =>
     set({
-      tableMiscConfig: DEFAULT_CONFIG,
+      tableMiscConfig: DEFAULT_TABLE_MISC_CONFIG,
     }),
-}));
+});

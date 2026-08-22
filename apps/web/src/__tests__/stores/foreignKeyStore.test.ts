@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useForeignKeyStore } from '@/stores/foreignKeyStore';
+import { useForeignKeyStore } from '@/stores';
 
 function resetForeignKeyStore() {
   useForeignKeyStore.setState({ foreignKeys: [] });
@@ -106,7 +106,7 @@ describe('foreignKeyStore', () => {
       refTable: 'users',
       refFields: ['id', 'org_id'],
     });
-    useForeignKeyStore.getState().syncFieldRename('user_id', 'account_id');
+    useForeignKeyStore.getState().syncForeignKeyFieldRename('user_id', 'account_id');
     expect(useForeignKeyStore.getState().foreignKeys[0].fields).toEqual(['account_id', 'org_id']);
   });
 
@@ -117,7 +117,7 @@ describe('foreignKeyStore', () => {
       refTable: 'users',
       refFields: ['id'],
     });
-    useForeignKeyStore.getState().syncFieldRename('user_id', 'user_id');
+    useForeignKeyStore.getState().syncForeignKeyFieldRename('user_id', 'user_id');
     expect(useForeignKeyStore.getState().foreignKeys[0].fields).toEqual(['user_id']);
   });
 
@@ -128,7 +128,7 @@ describe('foreignKeyStore', () => {
       refTable: 'users',
       refFields: ['id'],
     });
-    useForeignKeyStore.getState().syncFieldRename('', 'account_id');
+    useForeignKeyStore.getState().syncForeignKeyFieldRename('', 'account_id');
     expect(useForeignKeyStore.getState().foreignKeys[0].fields).toEqual(['user_id']);
   });
 
@@ -139,7 +139,7 @@ describe('foreignKeyStore', () => {
       refTable: 'users',
       refFields: ['id'],
     });
-    useForeignKeyStore.getState().syncFieldRename('org_id', 'organization_id');
+    useForeignKeyStore.getState().syncForeignKeyFieldRename('org_id', 'organization_id');
     expect(useForeignKeyStore.getState().foreignKeys[0].fields).toEqual(['user_id']);
   });
 

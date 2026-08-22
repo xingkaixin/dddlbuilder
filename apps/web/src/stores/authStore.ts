@@ -1,18 +1,6 @@
-import { create } from 'zustand';
+import type { AuthSlice, EditorGetState, EditorSetState } from './editorStoreTypes';
 
-type Setter<T> = T | ((prev: T) => T);
-
-interface AuthStoreState {
-  authInput: string;
-  authObjects: string[];
-  setAuthInput: (value: Setter<string>) => void;
-  setAuthObjects: (value: Setter<string[]>) => void;
-  addAuthObject: (authObj: string) => void;
-  removeAuthObject: (index: number) => void;
-  resetAuthState: () => void;
-}
-
-export const useAuthStore = create<AuthStoreState>((set, get) => ({
+export const createAuthSlice = (set: EditorSetState, get: EditorGetState): AuthSlice => ({
   authInput: '',
   authObjects: [],
   setAuthInput: (value) =>
@@ -43,4 +31,4 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
       authInput: '',
       authObjects: [],
     }),
-}));
+});

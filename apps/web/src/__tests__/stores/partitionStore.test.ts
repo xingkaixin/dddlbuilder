@@ -50,7 +50,7 @@ describe('partitionStore', () => {
       partitions: [],
     });
 
-    state.syncFieldRename('created_at', 'created_on');
+    state.syncPartitionFieldRename('created_at', 'created_on');
 
     const current = usePartitionStore.getState();
     expect(current.mysqlPartitionConfig.columns).toEqual(['dayofmonth(created_on)', 'tenant_id']);

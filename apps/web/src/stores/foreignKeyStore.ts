@@ -1,24 +1,7 @@
-import { create } from 'zustand';
 import type { ForeignKeyDefinition } from '@ddlbuilder/shared-types';
+import type { EditorSetState, ForeignKeySlice } from './editorStoreTypes';
 
-interface ForeignKeyStoreState {
-  foreignKeys: ForeignKeyDefinition[];
-
-  setForeignKeys: (
-    foreignKeys:
-      | ForeignKeyDefinition[]
-      | ((prev: ForeignKeyDefinition[]) => ForeignKeyDefinition[]),
-  ) => void;
-
-  initializeForeignKeyState: (persistedState?: { foreignKeys?: ForeignKeyDefinition[] }) => void;
-  addForeignKey: (fk: Omit<ForeignKeyDefinition, 'id'>) => void;
-  removeForeignKey: (id: string) => void;
-  updateForeignKey: (id: string, updates: Partial<Omit<ForeignKeyDefinition, 'id'>>) => void;
-  syncFieldRename: (oldFieldName: string, newFieldName: string) => void;
-  resetForeignKeyState: () => void;
-}
-
-export const useForeignKeyStore = create<ForeignKeyStoreState>((set) => ({
+export const createForeignKeySlice = (set: EditorSetState): ForeignKeySlice => ({
   foreignKeys: [],
 
   setForeignKeys: (foreignKeys) =>
@@ -57,7 +40,7 @@ export const useForeignKeyStore = create<ForeignKeyStoreState>((set) => ({
     }));
   },
 
-  syncFieldRename: (oldFieldName, newFieldName) => {
+  syncForeignKeyFieldRename: (oldFieldName, newFieldName) => {
     if (!oldFieldName || !newFieldName || oldFieldName === newFieldName) {
       return;
     }
@@ -76,4 +59,4 @@ export const useForeignKeyStore = create<ForeignKeyStoreState>((set) => ({
   resetForeignKeyState: () => {
     set({ foreignKeys: [] });
   },
-}));
+});

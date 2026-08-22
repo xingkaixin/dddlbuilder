@@ -1,4 +1,3 @@
-import { create } from 'zustand';
 import { ensureFieldId, type FieldRow } from '@ddlbuilder/shared-types';
 import {
   createEmptyRow,
@@ -7,7 +6,8 @@ import {
   normalizeFields,
   toStringSafe,
 } from '@/utils/helpers';
-import type { TableCellChange, TableChangeSource } from '@/types/tableChanges';
+import type { TableCellChange } from '@/types/tableChanges';
+import type { EditorSetState, FieldSlice } from './editorStoreTypes';
 
 function createInitialRows(count: number): FieldRow[] {
   return Array.from({ length: count }, () => createEmptyRow());
@@ -29,18 +29,7 @@ function normalizePersistedRows(rows: FieldRow[]): FieldRow[] {
   }));
 }
 
-interface FieldStoreState {
-  rows: FieldRow[];
-  setRows: (next: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => void;
-  initializeRows: (persistedRows?: FieldRow[]) => void;
-  resetRows: (count?: number) => void;
-  handleRowsChange: (changes: (TableCellChange | null)[] | null, source: TableChangeSource) => void;
-  handleCreateRow: (index: number, amount: number) => void;
-  handleRemoveRow: (index: number, amount: number) => void;
-  handleAddRows: (count: number) => void;
-}
-
-export const useFieldStore = create<FieldStoreState>((set) => ({
+export const createFieldSlice = (set: EditorSetState): FieldSlice => ({
   rows: createInitialRows(12),
   setRows: (next) =>
     set((state) => ({
@@ -136,7 +125,7 @@ export const useFieldStore = create<FieldStoreState>((set) => ({
       return { rows: nextRows };
     });
   },
-}));
+});
 
 export function buildDuplicateNameSet(rows: FieldRow[]): Set<string> {
   const counts = new Map<string, number>();

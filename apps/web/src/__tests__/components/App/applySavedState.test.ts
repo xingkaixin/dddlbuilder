@@ -4,6 +4,7 @@ import { applySavedState } from '@/components/App/applySavedState';
 import {
   useAppStore,
   useAuthStore,
+  useEditorStore,
   useFieldStore,
   usePartitionStore,
   useShardingStore,
@@ -44,6 +45,18 @@ const state: PersistedState = {
 };
 
 describe('applySavedState', () => {
+  it('一次通知内替换完整文档', () => {
+    useEditorStore.getState().replaceDocument({ ...state, tableName: 'before' });
+    const tableNames: string[] = [];
+    const unsubscribe = useEditorStore.subscribe((current) => tableNames.push(current.tableName));
+
+    applySavedState(state);
+    unsubscribe();
+
+    expect(tableNames).toEqual(['users']);
+    expect(useAppStore).toBe(useFieldStore);
+  });
+
   it('由一个入口无损应用已经解码的持久化状态', () => {
     applySavedState(state);
 

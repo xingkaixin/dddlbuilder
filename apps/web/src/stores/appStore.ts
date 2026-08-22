@@ -1,17 +1,6 @@
-import { create } from 'zustand';
-import type { DatabaseType, SchemaObjectType, SqlFormatMode } from '@ddlbuilder/shared-types';
+import type { AppSlice, EditorSetState } from './editorStoreTypes';
 
-type CoreDialogKey = 'save' | 'rename' | 'delete';
-
-type CoreDialogState = Record<CoreDialogKey, boolean>;
-
-/** target 即开关：为 null 就是关闭状态，不再另存一个必然同步的布尔。 */
-interface VersionHistoryTarget {
-  normalizedName: string;
-  name: string;
-}
-
-function createInitialDialogs(): CoreDialogState {
+function createInitialDialogs() {
   return {
     save: false,
     rename: false,
@@ -19,62 +8,7 @@ function createInitialDialogs(): CoreDialogState {
   };
 }
 
-interface AppStoreState {
-  schemaName: string;
-  tableName: string;
-  tableComment: string;
-  objectType: SchemaObjectType;
-  viewDefinition: string;
-  viewCreateOrReplace: boolean;
-  dbType: DatabaseType;
-  sqlFormatMode: SqlFormatMode;
-  addCount: number;
-  fieldTableFreezeEnabled: boolean;
-  fieldTableFreezeColumns: number;
-  activeTab: string;
-  savedTablesDrawerOpen: boolean;
-  dialogs: CoreDialogState;
-  isClearDialogOpen: boolean;
-  showFireworks: boolean;
-  isDiffDialogOpen: boolean;
-  versionHistoryTarget: VersionHistoryTarget | null;
-  isReviewHistoryOpen: boolean;
-  isStorageEstimatorOpen: boolean;
-  isAIGenerateDialogOpen: boolean;
-  isMockDataDialogOpen: boolean;
-  timelinePlayerTarget: VersionHistoryTarget | null;
-
-  setSchemaName: (schemaName: string) => void;
-  setTableName: (tableName: string) => void;
-  setTableComment: (tableComment: string) => void;
-  setObjectType: (objectType: SchemaObjectType) => void;
-  setViewDefinition: (definition: string) => void;
-  setViewCreateOrReplace: (enabled: boolean) => void;
-  setDbType: (dbType: DatabaseType) => void;
-  setSqlFormatMode: (mode: SqlFormatMode) => void;
-  setAddCount: (count: number) => void;
-  setFieldTableFreezeEnabled: (enabled: boolean) => void;
-  setFieldTableFreezeColumns: (columns: number) => void;
-  setActiveTab: (tab: string) => void;
-  resetTableConfig: () => void;
-  resetTableViewConfig: () => void;
-
-  setSavedTablesDrawerOpen: (open: boolean) => void;
-  setIsSaveDialogOpen: (open: boolean) => void;
-  setIsRenameDialogOpen: (open: boolean) => void;
-  setIsDeleteDialogOpen: (open: boolean) => void;
-  setIsClearDialogOpen: (open: boolean) => void;
-  setShowFireworks: (show: boolean) => void;
-  setIsDiffDialogOpen: (open: boolean) => void;
-  setVersionHistoryTarget: (target: VersionHistoryTarget | null) => void;
-  setIsReviewHistoryOpen: (open: boolean) => void;
-  setIsStorageEstimatorOpen: (open: boolean) => void;
-  setIsAIGenerateDialogOpen: (open: boolean) => void;
-  setIsMockDataDialogOpen: (open: boolean) => void;
-  setTimelinePlayerTarget: (target: VersionHistoryTarget | null) => void;
-}
-
-export const useAppStore = create<AppStoreState>((set) => ({
+export const createAppSlice = (set: EditorSetState): AppSlice => ({
   schemaName: '',
   tableName: '',
   tableComment: '',
@@ -153,4 +87,4 @@ export const useAppStore = create<AppStoreState>((set) => ({
   setIsAIGenerateDialogOpen: (isAIGenerateDialogOpen) => set({ isAIGenerateDialogOpen }),
   setIsMockDataDialogOpen: (isMockDataDialogOpen) => set({ isMockDataDialogOpen }),
   setTimelinePlayerTarget: (timelinePlayerTarget) => set({ timelinePlayerTarget }),
-}));
+});

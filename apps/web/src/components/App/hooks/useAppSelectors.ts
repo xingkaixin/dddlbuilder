@@ -55,7 +55,7 @@ export function useAppSelectors() {
     addForeignKey,
     removeForeignKey,
     updateForeignKey,
-    syncFieldRename: syncForeignKeyFieldRename,
+    syncForeignKeyFieldRename,
   } = useForeignKeyStore.getState();
 
   // --- 基础表配置 ---

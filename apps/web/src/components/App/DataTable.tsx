@@ -218,10 +218,12 @@ export const DataTable = memo<DataTableProps>(
     const onFreezeEnabledChange = useAppStore((state) => state.setFieldTableFreezeEnabled);
     const freezeColumns = useAppStore((state) => state.fieldTableFreezeColumns);
     const onFreezeColumnsChange = useAppStore((state) => state.setFieldTableFreezeColumns);
-    const syncIndexFieldRename = useIndexStore((state) => state.syncFieldRename);
-    const syncPartitionFieldRename = usePartitionStore((state) => state.syncFieldRename);
-    const syncShardingFieldRename = useShardingStore((state) => state.syncFieldRename);
-    const syncForeignKeyFieldRename = useForeignKeyStore((state) => state.syncFieldRename);
+    const syncIndexFieldRename = useIndexStore((state) => state.syncIndexFieldRename);
+    const syncPartitionFieldRename = usePartitionStore((state) => state.syncPartitionFieldRename);
+    const syncShardingFieldRename = useShardingStore((state) => state.syncShardingFieldRename);
+    const syncForeignKeyFieldRename = useForeignKeyStore(
+      (state) => state.syncForeignKeyFieldRename,
+    );
 
     const duplicateNameSet = useMemo(() => buildDuplicateNameSet(rows), [rows]);
     const tableRef = useRef<HTMLDivElement>(null);

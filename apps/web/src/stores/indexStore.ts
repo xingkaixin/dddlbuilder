@@ -1,41 +1,10 @@
-import { create } from 'zustand';
-import type { DatabaseType, IndexDefinition, IndexField } from '@ddlbuilder/shared-types';
+import type { IndexDefinition } from '@ddlbuilder/shared-types';
 import { buildPrimaryKeyName } from '@ddlbuilder/ddl-core';
 import { isSameIdentifierToken, replaceIdentifierToken } from '@/utils/fieldRenameUtils';
 import { buildIndexName, getIndexNameMaxLength, truncateIndexName } from '@/utils/indexNameUtils';
+import type { EditorGetState, EditorSetState, IndexSlice } from './editorStoreTypes';
 
-interface IndexStoreState {
-  indexInput: string;
-  currentIndexFields: IndexField[];
-  indexes: IndexDefinition[];
-  showFieldSuggestions: boolean;
-  selectedSuggestionIndex: number;
-
-  setIndexInput: (value: string | ((prev: string) => string)) => void;
-  setCurrentIndexFields: (fields: IndexField[] | ((prev: IndexField[]) => IndexField[])) => void;
-  setIndexes: (
-    indexes: IndexDefinition[] | ((prev: IndexDefinition[]) => IndexDefinition[]),
-  ) => void;
-  setShowFieldSuggestions: (show: boolean | ((prev: boolean) => boolean)) => void;
-  setSelectedSuggestionIndex: (index: number | ((prev: number) => number)) => void;
-
-  initializeIndexState: (persistedState?: {
-    indexInput?: string;
-    currentIndexFields?: IndexField[];
-    indexes?: IndexDefinition[];
-  }) => void;
-  addFieldToIndex: (fieldName: string) => void;
-  removeFieldFromIndex: (index: number) => void;
-  toggleFieldDirection: (index: number) => void;
-  addIndex: (unique: boolean, isPrimary: boolean, tableName: string, dbType: DatabaseType) => void;
-  removeIndex: (id: string) => void;
-  updateIndexName: (id: string, newName: string, dbType: DatabaseType) => void;
-  updateIndexNames: (tableName: string, dbType: DatabaseType) => void;
-  syncFieldRename: (oldFieldName: string, newFieldName: string, dbType: DatabaseType) => void;
-  resetIndexState: () => void;
-}
-
-export const useIndexStore = create<IndexStoreState>((set, get) => ({
+export const createIndexSlice = (set: EditorSetState, get: EditorGetState): IndexSlice => ({
   indexInput: '',
   currentIndexFields: [],
   indexes: [],
@@ -192,7 +161,7 @@ export const useIndexStore = create<IndexStoreState>((set, get) => ({
     }));
   },
 
-  syncFieldRename: (oldFieldName, newFieldName, dbType) => {
+  syncIndexFieldRename: (oldFieldName, newFieldName, dbType) => {
     if (!oldFieldName || !newFieldName || oldFieldName === newFieldName) {
       return;
     }
@@ -239,4 +208,4 @@ export const useIndexStore = create<IndexStoreState>((set, get) => ({
       selectedSuggestionIndex: 0,
     });
   },
-}));
+});

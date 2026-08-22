@@ -68,7 +68,7 @@ describe('indexStore', () => {
       },
     ]);
 
-    state.syncFieldRename('name', 'nickname', 'mysql');
+    state.syncIndexFieldRename('name', 'nickname', 'mysql');
 
     const current = useIndexStore.getState();
     expect(current.currentIndexFields).toEqual([{ name: 'nickname', direction: 'ASC' }]);
@@ -94,7 +94,7 @@ describe('indexStore', () => {
       },
     ]);
 
-    state.syncFieldRename('id', 'uuid', 'mysql');
+    state.syncIndexFieldRename('id', 'uuid', 'mysql');
 
     const current = useIndexStore.getState();
     expect(current.indexes[0].name).toBe('idx_video_uuid');
@@ -113,7 +113,7 @@ describe('indexStore', () => {
       },
     ]);
 
-    state.syncFieldRename('name', 'nickname', 'mysql');
+    state.syncIndexFieldRename('name', 'nickname', 'mysql');
 
     const current = useIndexStore.getState();
     expect(current.currentIndexFields).toEqual([{ name: 'nickname', direction: 'ASC' }]);
@@ -229,11 +229,11 @@ describe('indexStore', () => {
     state.setCurrentIndexFields([{ name: 'id', direction: 'ASC' }]);
 
     // missing arg
-    state.syncFieldRename('', 'new_id', 'mysql');
+    state.syncIndexFieldRename('', 'new_id', 'mysql');
     expect(useIndexStore.getState().currentIndexFields[0].name).toBe('id');
 
     // same arg
-    state.syncFieldRename('id', 'id', 'mysql');
+    state.syncIndexFieldRename('id', 'id', 'mysql');
     expect(useIndexStore.getState().currentIndexFields[0].name).toBe('id');
   });
 });

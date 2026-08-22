@@ -1,25 +1,14 @@
-import { create } from 'zustand';
-import type { CitusShardingConfig, CitusTableMode } from '@ddlbuilder/shared-types';
+import type { CitusShardingConfig } from '@ddlbuilder/shared-types';
 import { isSameIdentifierToken } from '@/utils/fieldRenameUtils';
+import type { EditorSetState, ShardingSlice } from './editorStoreTypes';
 
-type Setter<T> = T | ((prev: T) => T);
-
-const DEFAULT_CONFIG: CitusShardingConfig = {
+export const DEFAULT_SHARDING_CONFIG: CitusShardingConfig = {
   mode: 'reference',
   distributionColumn: undefined,
 };
 
-interface ShardingStoreState {
-  citusShardingConfig: CitusShardingConfig;
-  setCitusMode: (mode: CitusTableMode) => void;
-  setDistributionColumn: (column: string | undefined) => void;
-  syncFieldRename: (oldFieldName: string, newFieldName: string) => void;
-  setCitusShardingConfig: (value: Setter<CitusShardingConfig>) => void;
-  resetCitusSharding: () => void;
-}
-
-export const useShardingStore = create<ShardingStoreState>((set) => ({
-  citusShardingConfig: DEFAULT_CONFIG,
+export const createShardingSlice = (set: EditorSetState): ShardingSlice => ({
+  citusShardingConfig: DEFAULT_SHARDING_CONFIG,
   setCitusMode: (mode) =>
     set((state) => ({
       citusShardingConfig: {
@@ -36,7 +25,7 @@ export const useShardingStore = create<ShardingStoreState>((set) => ({
         distributionColumn: column,
       },
     })),
-  syncFieldRename: (oldFieldName, newFieldName) =>
+  syncShardingFieldRename: (oldFieldName, newFieldName) =>
     set((state) => ({
       citusShardingConfig: {
         ...state.citusShardingConfig,
@@ -53,6 +42,6 @@ export const useShardingStore = create<ShardingStoreState>((set) => ({
     })),
   resetCitusSharding: () =>
     set({
-      citusShardingConfig: DEFAULT_CONFIG,
+      citusShardingConfig: DEFAULT_SHARDING_CONFIG,
     }),
-}));
+});

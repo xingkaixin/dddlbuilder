@@ -48,7 +48,7 @@ describe('shardingStore', () => {
       mode: 'distributed',
       distributionColumn: 'tenant_id',
     });
-    state.syncFieldRename('tenant_id', 'org_id');
+    state.syncShardingFieldRename('tenant_id', 'org_id');
 
     const current = useShardingStore.getState();
     expect(current.citusShardingConfig).toEqual({
