@@ -15,7 +15,6 @@ import {
   type WorkspaceD1Metrics,
 } from './workspaceSyncMetrics.js';
 import {
-  GLOBAL_DRAFT_ENTITY_ID,
   legacyRowsToWorkspaceSnapshot,
   storedEntitiesToWorkspaceSnapshot,
   workspaceSnapshotToEntities,
@@ -265,18 +264,6 @@ const writeEntityVersions = async (
   return { cursor, versions };
 };
 
-const writeEntityVersion = async (
-  env: ApiEnv['Bindings'],
-  input: EntityVersionInput,
-  metrics?: WorkspaceD1Metrics,
-) => {
-  const result = await writeEntityVersions(env, [input], metrics);
-  if (!result) {
-    throw new Error('Workspace entity write failed');
-  }
-  return result.versions[0];
-};
-
 const listEntities = async (
   env: ApiEnv['Bindings'],
   workspaceId: string,
@@ -375,32 +362,18 @@ const listLegacySnapshotRows = async (
   return result.results ?? [];
 };
 
-export const upsertWorkspaceEntity = async (
+export const upsertDefaultWorkspaceEntities = async (
   env: ApiEnv['Bindings'],
   input: {
     userId: string;
-    kind: 'global_draft' | WorkspaceEntityType;
-    normalizedName: string | null;
-    payload: Record<string, unknown>;
-    sourceUpdatedAt: number;
+    entities: WorkspaceEntityInput[];
   },
 ) => {
   const workspace = await getOrCreateDefaultWorkspace(env, input.userId);
-  const entityType = input.kind === 'global_draft' ? 'draft' : input.kind;
-  const entityId = input.kind === 'global_draft' ? GLOBAL_DRAFT_ENTITY_ID : input.normalizedName;
-  if (!entityId) {
-    return;
-  }
-
-  await writeEntityVersion(env, {
+  await writeEntityInputs(env, {
     userId: input.userId,
     workspaceId: workspace.id,
-    entityType,
-    entityId,
-    op: 'upsert',
-    payload: input.payload,
-    contentHash: await buildWorkspaceContentHash(input.payload),
-    updatedAt: input.sourceUpdatedAt,
+    entities: input.entities,
   });
 };
 
@@ -499,10 +472,8 @@ export const putWorkspaceSnapshotAsEntities = async (
   userId: string,
   snapshot: WorkspaceSnapshot,
 ) => {
-  const workspace = await getOrCreateDefaultWorkspace(env, userId);
-  await writeEntityInputs(env, {
+  await upsertDefaultWorkspaceEntities(env, {
     userId,
-    workspaceId: workspace.id,
     entities: workspaceSnapshotToEntities(snapshot),
   });
 };

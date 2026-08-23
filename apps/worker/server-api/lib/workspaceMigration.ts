@@ -4,7 +4,15 @@ import type {
   WorkspaceSnapshot,
 } from '@ddlbuilder/shared-types/workspace';
 import type { ApiEnv } from './context.js';
-import { getWorkspaceSnapshotFromEntities, upsertWorkspaceEntity } from './workspaceEntities.js';
+import {
+  getWorkspaceSnapshotFromEntities,
+  upsertDefaultWorkspaceEntities,
+} from './workspaceEntities.js';
+import {
+  GLOBAL_DRAFT_ENTITY_ID,
+  workspaceSnapshotToEntities,
+  type WorkspaceEntityInput,
+} from './workspaceEntitySnapshot.js';
 
 type MigrationEntityKind = 'global_draft' | 'draft' | 'saved_table' | 'saved_draft' | 'folder';
 type ConflictKind = 'draft' | 'saved_table' | 'saved_draft';
@@ -14,8 +22,8 @@ type MigrationEntityRecord = {
   kind: MigrationEntityKind;
   normalizedName: string | null;
   displayName: string;
+  entity: WorkspaceEntityInput;
   payloadJson: string;
-  sourceUpdatedAt: number;
 };
 
 export type WorkspaceMigrationResult = Omit<WorkspaceMigrationResponse, 'meta'>;
@@ -28,21 +36,35 @@ const buildMigrationEntityId = (
   normalizedName: string | null,
 ) => `${kind}:${userId}:${normalizedName ?? 'global'}`;
 
-const buildMigrationEntityRecord = (
+const toMigrationEntityRecord = (
   userId: string,
-  kind: MigrationEntityKind,
-  normalizedName: string | null,
-  displayName: string,
-  payload: Record<string, unknown>,
-  sourceUpdatedAt: number,
-): MigrationEntityRecord => ({
-  id: buildMigrationEntityId(userId, kind, normalizedName),
-  kind,
-  normalizedName,
-  displayName,
-  payloadJson: JSON.stringify(payload),
-  sourceUpdatedAt,
-});
+  entity: WorkspaceEntityInput,
+): MigrationEntityRecord => {
+  const isGlobalDraft = entity.entityType === 'draft' && entity.entityId === GLOBAL_DRAFT_ENTITY_ID;
+  const kind = isGlobalDraft ? 'global_draft' : entity.entityType;
+  const normalizedName = isGlobalDraft ? null : entity.entityId;
+  const payload = entity.payload as Record<string, unknown>;
+  const payloadName = typeof payload.name === 'string' ? payload.name : entity.entityId;
+  const payloadTableName =
+    typeof payload.tableName === 'string' ? payload.tableName : entity.entityId;
+  const displayName =
+    kind === 'global_draft'
+      ? 'Global Draft'
+      : kind === 'saved_table' || kind === 'folder'
+        ? payloadName
+        : kind === 'saved_draft'
+          ? payloadTableName
+          : entity.entityId;
+
+  return {
+    id: buildMigrationEntityId(userId, kind, normalizedName),
+    kind,
+    normalizedName,
+    displayName,
+    entity,
+    payloadJson: JSON.stringify(entity.payload),
+  };
+};
 
 const toConflictKind = (kind: MigrationEntityKind): ConflictKind =>
   kind === 'global_draft' || kind === 'folder' ? 'draft' : kind;
@@ -53,6 +75,51 @@ const buildLocalCopyName = (baseName: string, counter: number) =>
   counter === 0
     ? `${baseName}${LOCAL_COPY_SUFFIX}`
     : `${baseName}${LOCAL_COPY_SUFFIX} ${counter + 1}`;
+
+const buildCopyEntity = (
+  source: MigrationEntityRecord,
+  displayName: string,
+  normalizedName: string,
+): WorkspaceEntityInput => {
+  const sourcePayload = source.entity.payload as Record<string, unknown>;
+
+  switch (source.kind) {
+    case 'global_draft':
+      return {
+        entityType: 'saved_draft',
+        entityId: normalizedName,
+        payload: {
+          tableName: displayName,
+          state: sourcePayload.state,
+          baseSignature: '',
+        },
+        sourceUpdatedAt: source.entity.sourceUpdatedAt,
+      };
+    case 'saved_table':
+      return {
+        ...source.entity,
+        entityId: normalizedName,
+        payload: { ...sourcePayload, name: displayName },
+      };
+    case 'saved_draft':
+      return {
+        ...source.entity,
+        entityId: normalizedName,
+        payload: { ...sourcePayload, tableName: displayName },
+      };
+    case 'folder':
+      return {
+        ...source.entity,
+        entityId: normalizedName,
+        payload: { ...sourcePayload, id: normalizedName, name: displayName },
+      };
+    case 'draft':
+      return {
+        ...source.entity,
+        entityId: normalizedName,
+      };
+  }
+};
 
 const readWorkspaceLink = async (
   env: ApiEnv['Bindings'],
@@ -111,52 +178,18 @@ const upsertWorkspaceLink = async (
     .run();
 };
 
-const writeMigrationEntity = async (
-  env: ApiEnv['Bindings'],
-  userId: string,
-  record: MigrationEntityRecord,
-) => {
-  await upsertWorkspaceEntity(env, {
-    userId,
-    kind: record.kind,
-    normalizedName: record.normalizedName,
-    payload: JSON.parse(record.payloadJson) as Record<string, unknown>,
-    sourceUpdatedAt: record.sourceUpdatedAt,
-  });
-};
-
 const resolveCopyRecord = (
   userId: string,
   source: MigrationEntityRecord,
   existingPayloads: ReadonlyMap<string, string>,
 ) => {
-  const targetKind = source.kind === 'global_draft' ? 'saved_draft' : source.kind;
   const baseName = source.kind === 'global_draft' ? 'Migrated draft' : source.displayName;
-  const sourcePayload = JSON.parse(source.payloadJson) as Record<string, unknown>;
   let counter = 0;
   while (true) {
     const displayName = buildLocalCopyName(baseName, counter);
     const normalizedName = normalizeName(displayName);
-    const payload =
-      source.kind === 'global_draft'
-        ? {
-            tableName: displayName,
-            baseSignature: '',
-            state: sourcePayload.state,
-          }
-        : {
-            ...sourcePayload,
-            name: displayName,
-            tableName: displayName,
-          };
-    const candidate = buildMigrationEntityRecord(
-      userId,
-      targetKind,
-      normalizedName,
-      displayName,
-      payload,
-      source.sourceUpdatedAt,
-    );
+    const entity = buildCopyEntity(source, displayName, normalizedName);
+    const candidate = toMigrationEntityRecord(userId, entity);
     const existingPayload = existingPayloads.get(candidate.id);
     if (existingPayload === undefined || existingPayload === candidate.payloadJson) {
       return { record: candidate, alreadyExists: existingPayload !== undefined };
@@ -188,87 +221,11 @@ const buildMigrationEntityRecords = (
   userId: string,
   snapshot: WorkspaceSnapshot,
   activeSession?: WorkspaceMigrationPayload['snapshot']['activeSession'],
-): MigrationEntityRecord[] => {
-  const records: MigrationEntityRecord[] = [];
-  const globalDraft = mergeGlobalDraft(snapshot, activeSession);
-
-  if (globalDraft) {
-    records.push(
-      buildMigrationEntityRecord(
-        userId,
-        'global_draft',
-        null,
-        'Global Draft',
-        { state: globalDraft.state },
-        globalDraft.updatedAt,
-      ),
-    );
-  }
-
-  for (const item of snapshot.drafts ?? []) {
-    records.push(
-      buildMigrationEntityRecord(
-        userId,
-        'draft',
-        item.draftId,
-        item.draftId,
-        { state: item.state, createdAt: item.createdAt, folderId: item.folderId },
-        item.updatedAt,
-      ),
-    );
-  }
-
-  for (const item of snapshot.savedTables) {
-    records.push(
-      buildMigrationEntityRecord(
-        userId,
-        'saved_table',
-        item.normalizedName,
-        item.name,
-        { name: item.name, state: item.state, createdAt: item.createdAt, folderId: item.folderId },
-        item.updatedAt,
-      ),
-    );
-  }
-
-  for (const item of snapshot.savedDrafts) {
-    records.push(
-      buildMigrationEntityRecord(
-        userId,
-        'saved_draft',
-        item.normalizedName,
-        item.tableName,
-        {
-          tableName: item.tableName,
-          baseSignature: item.baseSignature,
-          state: item.state,
-        },
-        item.updatedAt,
-      ),
-    );
-  }
-
-  for (const item of snapshot.folders ?? []) {
-    records.push(
-      buildMigrationEntityRecord(
-        userId,
-        'folder',
-        item.id,
-        item.name,
-        {
-          id: item.id,
-          name: item.name,
-          parentId: item.parentId,
-          order: item.order,
-          createdAt: item.createdAt,
-        },
-        item.createdAt,
-      ),
-    );
-  }
-
-  return records;
-};
+): MigrationEntityRecord[] =>
+  workspaceSnapshotToEntities({
+    ...snapshot,
+    globalDraft: mergeGlobalDraft(snapshot, activeSession),
+  }).map((entity) => toMigrationEntityRecord(userId, entity));
 
 const readExistingEntityPayloads = async (env: ApiEnv['Bindings'], userId: string) =>
   new Map(
@@ -390,29 +347,24 @@ export const commitWorkspaceMigration = async (
 
   try {
     const existingPayloads = await readExistingEntityPayloads(env, userId);
+    const entitiesToWrite: WorkspaceEntityInput[] = [];
     for (const record of records) {
       const existingPayload = existingPayloads.get(record.id);
       if (existingPayload === undefined) {
-        await writeMigrationEntity(env, userId, record);
+        entitiesToWrite.push(record.entity);
         existingPayloads.set(record.id, record.payloadJson);
         createdCount += 1;
         continue;
       }
 
       if (existingPayload === record.payloadJson) {
-        await upsertWorkspaceEntity(env, {
-          userId,
-          kind: record.kind,
-          normalizedName: record.normalizedName,
-          payload: JSON.parse(record.payloadJson) as Record<string, unknown>,
-          sourceUpdatedAt: record.sourceUpdatedAt,
-        });
+        entitiesToWrite.push(record.entity);
         skippedCount += 1;
         continue;
       }
 
       const copy = resolveCopyRecord(userId, record, existingPayloads);
-      await writeMigrationEntity(env, userId, copy.record);
+      entitiesToWrite.push(copy.record.entity);
       existingPayloads.set(copy.record.id, copy.record.payloadJson);
       if (copy.alreadyExists) {
         skippedCount += 1;
@@ -420,6 +372,7 @@ export const commitWorkspaceMigration = async (
         copiedCount += 1;
       }
     }
+    await upsertDefaultWorkspaceEntities(env, { userId, entities: entitiesToWrite });
 
     await upsertWorkspaceLink(env, {
       userId,

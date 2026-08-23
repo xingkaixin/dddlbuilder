@@ -8,12 +8,12 @@ import {
 
 const workspaceEntityMocks = vi.hoisted(() => ({
   getWorkspaceSnapshotFromEntities: vi.fn(),
-  upsertWorkspaceEntity: vi.fn(),
+  upsertDefaultWorkspaceEntities: vi.fn(),
 }));
 
 vi.mock('../../lib/workspaceEntities.js', () => ({
   getWorkspaceSnapshotFromEntities: workspaceEntityMocks.getWorkspaceSnapshotFromEntities,
-  upsertWorkspaceEntity: workspaceEntityMocks.upsertWorkspaceEntity,
+  upsertDefaultWorkspaceEntities: workspaceEntityMocks.upsertDefaultWorkspaceEntities,
 }));
 
 const createState = (tableName: string): PersistedState => ({
@@ -129,6 +129,80 @@ describe('workspaceMigration', () => {
       }),
     );
     expect(queries.some((sql) => sql.includes('workspace_snapshots'))).toBe(false);
-    expect(workspaceEntityMocks.upsertWorkspaceEntity).toHaveBeenCalledTimes(3);
+    expect(workspaceEntityMocks.upsertDefaultWorkspaceEntities).toHaveBeenCalledOnce();
+    expect(workspaceEntityMocks.upsertDefaultWorkspaceEntities).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        userId: 'user-1',
+        entities: expect.arrayContaining([
+          expect.objectContaining({
+            entityType: 'saved_table',
+            entityId: 'alpha (imported)',
+            payload: expect.objectContaining({ name: 'alpha (Imported)' }),
+          }),
+        ]),
+      },
+    );
+  });
+
+  it('重复迁移时复用已有导入副本', async () => {
+    const payload = createPayload();
+    payload.snapshot.savedTables = payload.snapshot.savedTables.slice(0, 1);
+    workspaceEntityMocks.getWorkspaceSnapshotFromEntities.mockResolvedValue({
+      globalDraft: null,
+      drafts: [],
+      savedTables: [
+        {
+          normalizedName: 'alpha',
+          name: 'alpha',
+          state: createState('different_alpha'),
+          createdAt: 1,
+          updatedAt: 2,
+        },
+        {
+          normalizedName: 'alpha (imported)',
+          name: 'alpha (Imported)',
+          state: createState('alpha'),
+          createdAt: 1,
+          updatedAt: 2,
+        },
+      ],
+      savedDrafts: [],
+      folders: [],
+    });
+    const database = {
+      prepare: () => {
+        const statement = {
+          bind: () => statement,
+          first: async () => null,
+          run: async () => ({ success: true }),
+        };
+        return statement;
+      },
+    };
+
+    const result = await commitWorkspaceMigration(
+      { USER_DB: database } as never,
+      'user-1',
+      payload,
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        copiedCount: 0,
+        skippedCount: 1,
+      }),
+    );
+    expect(workspaceEntityMocks.upsertDefaultWorkspaceEntities).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        entities: [
+          expect.objectContaining({
+            entityId: 'alpha (imported)',
+            payload: expect.not.objectContaining({ tableName: expect.anything() }),
+          }),
+        ],
+      }),
+    );
   });
 });
