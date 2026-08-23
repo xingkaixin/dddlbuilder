@@ -5,12 +5,7 @@ import type { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
 import { deleteDraftFromYDoc, upsertDraftInYDoc } from '@/services/workspaceYDocAdapter';
 import { deleteDraft, readDraft, writeDraft } from '@/utils/workspaceStateDb';
 import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
-import {
-  buildDraftSummary,
-  getDraftDisplayName,
-  resolveUniqueDraftName,
-  type GlobalDraftRecord,
-} from './normalize';
+import { getDraftDisplayName, resolveUniqueDraftName, type GlobalDraftRecord } from './normalize';
 import { toDraftSummary, type DraftEntry } from './hydration';
 import type { usePersistenceQueue } from './usePersistenceQueue';
 
@@ -35,15 +30,30 @@ export function useDraftRecords({
   enqueuePersistence,
   runInYDoc,
 }: UseDraftRecordsParams) {
-  const recordsRef = useRef<Map<string, GlobalDraftRecord>>(new Map());
-  const [draftSummaries, setDraftSummaries] = useState<DraftSummary[]>([]);
+  const [draftRecords, setDraftRecords] = useState<Map<string, GlobalDraftRecord>>(() => new Map());
+  const recordsRef = useRef(draftRecords);
   const [trashedDrafts, setTrashedDrafts] = useState<DraftSummary[]>([]);
+  const draftSummaries = sortDraftSummaries(
+    Array.from(draftRecords, ([draftId, record]) => toDraftSummary(draftId, record)),
+  );
+
+  const cacheDraftRecord = useCallback((draftId: string, record: GlobalDraftRecord) => {
+    const nextRecords = new Map(recordsRef.current).set(draftId, record);
+    recordsRef.current = nextRecords;
+    setDraftRecords(nextRecords);
+  }, []);
+
+  const removeDraftRecord = useCallback((draftId: string) => {
+    const nextRecords = new Map(recordsRef.current);
+    nextRecords.delete(draftId);
+    recordsRef.current = nextRecords;
+    setDraftRecords(nextRecords);
+  }, []);
 
   const replaceDrafts = useCallback((drafts: DraftEntry[]) => {
-    recordsRef.current = new Map(drafts.map(({ draftId, record }) => [draftId, record]));
-    setDraftSummaries(
-      sortDraftSummaries(drafts.map(({ draftId, record }) => toDraftSummary(draftId, record))),
-    );
+    const nextRecords = new Map(drafts.map(({ draftId, record }) => [draftId, record]));
+    recordsRef.current = nextRecords;
+    setDraftRecords(nextRecords);
   }, []);
 
   const replaceTrashedDrafts = useCallback((drafts: DraftEntry[]) => {
@@ -59,29 +69,9 @@ export function useDraftRecords({
       Array.from(recordsRef.current, ([draftId, record]) => ({ draftId, record })),
     [],
   );
-  const cacheDraftRecord = useCallback((draftId: string, record: GlobalDraftRecord) => {
-    recordsRef.current.set(draftId, record);
-  }, []);
-
-  const upsertDraftSummary = useCallback((draftId: string, record: GlobalDraftRecord) => {
-    setDraftSummaries((previous) => {
-      const existing = previous.find((draft) => draft.draftId === draftId);
-      return sortDraftSummaries([
-        ...previous.filter((draft) => draft.draftId !== draftId),
-        buildDraftSummary(
-          draftId,
-          record.state,
-          existing?.createdAt ?? record.createdAt ?? record.updatedAt,
-          record.updatedAt,
-          existing?.folderId ?? record.folderId,
-        ),
-      ]);
-    });
-  }, []);
 
   const persistDraftRecord = useCallback(
     (draftId: string, record: GlobalDraftRecord) => {
-      recordsRef.current.set(draftId, record);
       const written = persistLocally
         ? writeDraft(draftId, record, currentScope)
         : Promise.resolve();
@@ -106,13 +96,12 @@ export function useDraftRecords({
         state,
         folderId: existingRecord?.folderId,
       };
-      recordsRef.current.set(draftId, record);
-      upsertDraftSummary(draftId, record);
+      cacheDraftRecord(draftId, record);
       enqueuePersistence(`draft:${draftId}`, 'save draft', () =>
         persistDraftRecord(draftId, record),
       );
     },
-    [enqueuePersistence, persistDraftRecord, upsertDraftSummary],
+    [cacheDraftRecord, enqueuePersistence, persistDraftRecord],
   );
 
   const resolveDraftNameConflict = useCallback((state: PersistedState) => {
@@ -137,20 +126,13 @@ export function useDraftRecords({
         updatedAt: now,
         state: resolved.state,
       };
-      recordsRef.current.set(draftId, record);
-      upsertDraftSummary(draftId, record);
+      cacheDraftRecord(draftId, record);
       enqueuePersistence(`draft:${draftId}`, 'create draft', () =>
         persistDraftRecord(draftId, record),
       );
       return resolved.uniqueName;
     },
-    [
-      disabled,
-      enqueuePersistence,
-      persistDraftRecord,
-      resolveDraftNameConflict,
-      upsertDraftSummary,
-    ],
+    [disabled, cacheDraftRecord, enqueuePersistence, persistDraftRecord, resolveDraftNameConflict],
   );
 
   const moveDraftToTrash = useCallback(
@@ -160,8 +142,7 @@ export function useDraftRecords({
       if (!record) return false;
       const now = Date.now();
       const trashedRecord: GlobalDraftRecord = { ...record, updatedAt: now, trashedAt: now };
-      recordsRef.current.delete(draftId);
-      setDraftSummaries((previous) => previous.filter((draft) => draft.draftId !== draftId));
+      removeDraftRecord(draftId);
       setTrashedDrafts((previous) => [toDraftSummary(draftId, trashedRecord), ...previous]);
       enqueuePersistence(`draft:${draftId}`, 'move draft to trash', () =>
         writeDraft(draftId, trashedRecord, currentScope),
@@ -169,7 +150,7 @@ export function useDraftRecords({
       dropDraftRecord(draftId);
       return true;
     },
-    [currentScope, disabled, dropDraftRecord, enqueuePersistence],
+    [currentScope, disabled, dropDraftRecord, enqueuePersistence, removeDraftRecord],
   );
 
   const restoreDraftById = useCallback(
@@ -184,17 +165,17 @@ export function useDraftRecords({
         trashedAt: undefined,
       };
       setTrashedDrafts((previous) => previous.filter((draft) => draft.draftId !== draftId));
-      upsertDraftSummary(draftId, restoredRecord);
+      cacheDraftRecord(draftId, restoredRecord);
       await persistDraftRecord(draftId, restoredRecord);
       if (!persistLocally) await deleteDraft(draftId, currentScope);
     },
     [
+      cacheDraftRecord,
       currentScope,
       disabled,
       persistDraftRecord,
       persistLocally,
       resolveDraftNameConflict,
-      upsertDraftSummary,
     ],
   );
 
@@ -215,28 +196,24 @@ export function useDraftRecords({
       if (disabled) return;
       const record = recordsRef.current.get(draftId);
       if (!record) return;
-      setDraftSummaries((previous) =>
-        previous.map((draft) => (draft.draftId === draftId ? { ...draft, folderId } : draft)),
-      );
       const updatedRecord = { ...record, folderId, updatedAt: Date.now() };
-      recordsRef.current.set(draftId, updatedRecord);
+      cacheDraftRecord(draftId, updatedRecord);
       enqueuePersistence(`draft:${draftId}`, 'move draft to folder', () =>
         persistDraftRecord(draftId, updatedRecord),
       );
     },
-    [disabled, enqueuePersistence, persistDraftRecord],
+    [cacheDraftRecord, disabled, enqueuePersistence, persistDraftRecord],
   );
 
   const clearDraft = useCallback(
     (draftId: string) => {
-      recordsRef.current.delete(draftId);
-      setDraftSummaries((previous) => previous.filter((draft) => draft.draftId !== draftId));
+      removeDraftRecord(draftId);
       enqueuePersistence(`draft:${draftId}`, 'delete draft', () =>
         deleteDraft(draftId, currentScope),
       );
       dropDraftRecord(draftId);
     },
-    [currentScope, dropDraftRecord, enqueuePersistence],
+    [currentScope, dropDraftRecord, enqueuePersistence, removeDraftRecord],
   );
 
   return {
