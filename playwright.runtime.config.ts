@@ -10,5 +10,6 @@ export default defineConfig(sharedPlaywrightConfig, {
     command: 'pnpm run e2e:serve',
     url: 'http://127.0.0.1:3000/api/health',
     reuseExistingServer: false,
+    timeout: 120_000,
   },
 });
