@@ -2,18 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../../lib/context.js';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
-
-type StoredRow = {
-  workspaceId: string;
-  userId: string;
-  entityType: string;
-  entityId: string;
-  payloadJson: string | null;
-  contentHash: string | null;
-  version: number;
-  deletedAt: number | null;
-  updatedAt: number;
-};
+import { createSqliteD1Database } from '../helpers/sqliteD1.js';
 
 type StoredWorkspace = {
   id: string;
@@ -61,306 +50,54 @@ const createWorkspaceSnapshotDb = (
   legacyRows: StoredLegacySnapshotRow[] = [],
   options: { includeMeta?: boolean; initialWorkspaces?: StoredWorkspace[] } = {},
 ) => {
-  const workspaces: StoredWorkspace[] = [...(options.initialWorkspaces ?? [])];
-  const clocks = new Map<string, number>();
-  const rows: StoredRow[] = [];
+  const { database, sqlite } = createSqliteD1Database({ includeMeta: options.includeMeta });
+  sqlite
+    .prepare(
+      `
+        INSERT INTO user (id, name, email, email_verified, created_at, updated_at)
+        VALUES (?, ?, ?, 1, ?, ?)
+      `,
+    )
+    .run('user-1', 'Test User', 'user-1@example.com', 1, 1);
 
-  const withMeta = <T extends Record<string, unknown>>(
-    result: T,
-    rowsRead: number,
-    rowsWritten: number,
-  ) =>
-    options.includeMeta
-      ? {
-          ...result,
-          meta: {
-            rows_read: rowsRead,
-            rows_written: rowsWritten,
-            duration: 1,
-          },
-        }
-      : result;
-  const allResult = <T>(results: T[], rowsWritten = 0) =>
-    withMeta({ results }, results.length, rowsWritten);
-  const writeReturningResult = <T>(results: T[]) => withMeta({ results }, 0, 1);
-  const runResult = () => withMeta({ success: true }, 0, 1);
+  const insertLegacySnapshot = sqlite.prepare(`
+    INSERT INTO workspace_snapshots (
+      id, user_id, kind, normalized_name, payload_json, source_updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?)
+  `);
+  legacyRows.forEach((row, index) => {
+    insertLegacySnapshot.run(
+      `legacy-${index}`,
+      row.userId,
+      row.kind,
+      row.normalizedName,
+      row.payloadJson,
+      row.sourceUpdatedAt,
+    );
+  });
 
-  const database = {
-    async batch(statements: D1PreparedStatement[]) {
-      const results = [];
-      for (const statement of statements) {
-        results.push(await statement.run());
-      }
-      return results;
-    },
-    prepare(sql: string) {
-      return {
-        bind(...args: unknown[]) {
-          return {
-            async all() {
-              if (sql.includes('UPDATE workspace_clocks')) {
-                const [workspaceId] = args;
-                const next = (clocks.get(String(workspaceId)) ?? 0) + 1;
-                clocks.set(String(workspaceId), next);
-                return writeReturningResult([{ version: next }]);
-              }
+  const insertWorkspace = sqlite.prepare(`
+    INSERT INTO workspaces (
+      id, user_id, name, is_default, active_at, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+  const insertClock = sqlite.prepare(
+    'INSERT INTO workspace_clocks (workspace_id, next_version) VALUES (?, 0)',
+  );
+  for (const workspace of options.initialWorkspaces ?? []) {
+    insertWorkspace.run(
+      workspace.id,
+      workspace.userId,
+      workspace.name,
+      workspace.isDefault,
+      workspace.activeAt,
+      workspace.updatedAt,
+      workspace.updatedAt,
+    );
+    insertClock.run(workspace.id);
+  }
 
-              if (sql.includes('SELECT next_version AS cursor')) {
-                const [workspaceId] = args;
-                return allResult([{ cursor: clocks.get(String(workspaceId)) ?? 0 }]);
-              }
-
-              if (sql.includes('WHERE id = ? AND user_id = ?')) {
-                const [workspaceId, userId] = args;
-                const workspace = workspaces.find(
-                  (item) => item.id === workspaceId && item.userId === userId,
-                );
-                return allResult(workspace ? [{ isDefault: workspace.isDefault }] : []);
-              }
-
-              if (
-                sql.includes('FROM workspace_entities') &&
-                sql.includes('entity_type = ?') &&
-                sql.includes('entity_id = ?')
-              ) {
-                const [workspaceId, entityType, entityId] = args;
-                const row = rows.find(
-                  (item) =>
-                    item.workspaceId === workspaceId &&
-                    item.entityType === entityType &&
-                    item.entityId === entityId,
-                );
-                return allResult(
-                  row
-                    ? [
-                        {
-                          entityType: row.entityType,
-                          entityId: row.entityId,
-                          payloadJson: row.payloadJson,
-                          contentHash: row.contentHash,
-                          version: row.version,
-                          deletedAt: row.deletedAt,
-                          updatedAt: row.updatedAt,
-                        },
-                      ]
-                    : [],
-                );
-              }
-
-              if (sql.includes('FROM workspace_entities')) {
-                const [workspaceId] = args;
-                if (!sql.includes('payload_json')) {
-                  return allResult(
-                    rows
-                      .filter((row) => row.workspaceId === workspaceId)
-                      .map((row) => ({
-                        entityType: row.entityType,
-                        entityId: row.entityId,
-                      })),
-                  );
-                }
-                if (sql.includes('version >')) {
-                  const [, since] = args;
-                  return allResult(
-                    rows
-                      .filter(
-                        (row) => row.workspaceId === workspaceId && row.version > Number(since),
-                      )
-                      .sort((a, b) => a.version - b.version)
-                      .map((row) => ({
-                        entityType: row.entityType,
-                        entityId: row.entityId,
-                        payloadJson: row.payloadJson,
-                        contentHash: row.contentHash,
-                        version: row.version,
-                        deletedAt: row.deletedAt,
-                        updatedAt: row.updatedAt,
-                      })),
-                  );
-                }
-                return allResult(
-                  rows
-                    .filter(
-                      (row) =>
-                        row.workspaceId === workspaceId &&
-                        (!sql.includes('deleted_at IS NULL') || row.deletedAt === null),
-                    )
-                    .sort((a, b) => a.version - b.version)
-                    .map((row) => ({
-                      entityType: row.entityType,
-                      entityId: row.entityId,
-                      payloadJson: row.payloadJson,
-                      contentHash: row.contentHash,
-                      version: row.version,
-                      deletedAt: row.deletedAt,
-                      updatedAt: row.updatedAt,
-                    })),
-                );
-              }
-
-              if (sql.includes('FROM workspace_snapshots')) {
-                const [userId] = args;
-                return allResult(
-                  legacyRows
-                    .filter((row) => row.userId === userId)
-                    .map((row) => ({
-                      kind: row.kind,
-                      normalizedName: row.normalizedName,
-                      payloadJson: row.payloadJson,
-                      sourceUpdatedAt: row.sourceUpdatedAt,
-                    })),
-                );
-              }
-
-              return allResult([]);
-            },
-            async first() {
-              if (
-                sql.includes('FROM workspace_entities') &&
-                sql.includes('entity_type = ?') &&
-                sql.includes('entity_id = ?')
-              ) {
-                const [workspaceId, entityType, entityId] = args;
-                const row = rows.find(
-                  (item) =>
-                    item.workspaceId === workspaceId &&
-                    item.entityType === entityType &&
-                    item.entityId === entityId,
-                );
-                return row
-                  ? {
-                      entityType: row.entityType,
-                      entityId: row.entityId,
-                      payloadJson: row.payloadJson,
-                      contentHash: row.contentHash,
-                      version: row.version,
-                      deletedAt: row.deletedAt,
-                      updatedAt: row.updatedAt,
-                    }
-                  : null;
-              }
-
-              if (sql.includes('WHERE id = ? AND user_id = ?')) {
-                const [workspaceId, userId] = args;
-                const workspace = workspaces.find(
-                  (item) => item.id === workspaceId && item.userId === userId,
-                );
-                return workspace ? { isDefault: workspace.isDefault } : null;
-              }
-
-              if (sql.includes('FROM workspaces')) {
-                const [userId] = args;
-                const workspace = workspaces.find(
-                  (item) => item.userId === userId && item.isDefault === 1,
-                );
-                return workspace
-                  ? {
-                      id: workspace.id,
-                      name: workspace.name,
-                      isDefault: workspace.isDefault,
-                      activeAt: workspace.activeAt,
-                      updatedAt: workspace.updatedAt,
-                    }
-                  : null;
-              }
-
-              if (sql.includes('SELECT next_version AS cursor')) {
-                const [workspaceId] = args;
-                return { cursor: clocks.get(String(workspaceId)) ?? 0 };
-              }
-
-              if (sql.includes('UPDATE workspace_clocks')) {
-                const [workspaceId] = args;
-                const next = (clocks.get(String(workspaceId)) ?? 0) + 1;
-                clocks.set(String(workspaceId), next);
-                return { version: next };
-              }
-
-              return null;
-            },
-            async run() {
-              if (sql.includes('UPDATE workspace_clocks')) {
-                const workspaceId = args[1];
-                clocks.set(
-                  String(workspaceId),
-                  (clocks.get(String(workspaceId)) ?? 0) + Number(args[0]),
-                );
-                return withMeta(
-                  {
-                    success: true,
-                    results: [{ cursor: clocks.get(String(workspaceId)) ?? 0 }],
-                  },
-                  0,
-                  1,
-                );
-              }
-
-              if (sql.includes('INSERT INTO workspaces')) {
-                const [id, userId, name, activeAt, , updatedAt] = args;
-                if (!workspaces.some((item) => item.userId === userId && item.isDefault === 1)) {
-                  workspaces.push({
-                    id: String(id),
-                    userId: String(userId),
-                    name: String(name),
-                    isDefault: 1,
-                    activeAt: Number(activeAt),
-                    updatedAt: Number(updatedAt),
-                  });
-                }
-                return runResult();
-              }
-
-              if (sql.includes('INSERT INTO workspace_clocks')) {
-                const [userId] = args;
-                const workspace = workspaces.find(
-                  (item) => item.userId === userId && item.isDefault === 1,
-                );
-                if (workspace && !clocks.has(workspace.id)) {
-                  clocks.set(workspace.id, 0);
-                }
-                return runResult();
-              }
-
-              if (sql.includes('INSERT INTO workspace_entities')) {
-                const [, workspaceId, userId, entityType, entityId, payloadJson, contentHash] =
-                  args;
-                const version = (clocks.get(String(workspaceId)) ?? 0) - Number(args[7]);
-                const deletedAt = args[8];
-                const updatedAt = args[10];
-                const index = rows.findIndex(
-                  (item) =>
-                    item.workspaceId === workspaceId &&
-                    item.entityType === entityType &&
-                    item.entityId === entityId,
-                );
-                const nextRow = {
-                  workspaceId: String(workspaceId),
-                  userId: String(userId),
-                  entityType: String(entityType),
-                  entityId: String(entityId),
-                  payloadJson: payloadJson == null ? null : String(payloadJson),
-                  contentHash: contentHash == null ? null : String(contentHash),
-                  version: Number(version),
-                  deletedAt: deletedAt == null ? null : Number(deletedAt),
-                  updatedAt: Number(updatedAt),
-                };
-
-                if (index >= 0) {
-                  rows[index] = nextRow;
-                } else {
-                  rows.push(nextRow);
-                }
-                return withMeta({ success: true, results: [{ version }] }, 0, 1);
-              }
-
-              return runResult();
-            },
-          };
-        },
-      };
-    },
-  };
-  return database as unknown as D1Database;
+  return database;
 };
 
 const createState = (tableName: string): PersistedState => ({
