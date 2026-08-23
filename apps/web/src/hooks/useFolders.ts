@@ -1,7 +1,6 @@
-import { useCallback, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type * as Y from 'yjs';
-import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
 import {
   buildFolderTreeFromYDoc,
   deleteFolderFromYDoc,
@@ -18,10 +17,9 @@ import {
   renameFolder,
   type FolderTreeNode,
 } from '@/utils/tableFolders';
-import { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
-import { useWorkspaceScope } from '@/hooks/useWorkspaceScope';
+import { useWorkspaceEntityPersistence } from '@/hooks/workspacePersistence/useWorkspaceEntityPersistence';
 import { useWorkspaceYDocProjection } from '@/hooks/useWorkspaceYDocProjection';
-import { localFoldersOptions, workspaceLocalQueryKeys } from '@/queries/workspaceLocal';
+import { localFoldersOptions } from '@/queries/workspaceLocal';
 import {
   createFolderRecord,
   getFolderDescendantIds,
@@ -43,9 +41,13 @@ const readFolderProjection = (doc: Y.Doc) => ({
 });
 
 export function useFolders() {
-  const currentScope = useWorkspaceScope();
-  const queryClient = useQueryClient();
-  const { yDoc, yDocReady, runInYDoc } = useWorkspaceYDocGateway(currentScope);
+  const {
+    scope: currentScope,
+    yDoc,
+    yDocReady,
+    runInYDoc,
+    refresh,
+  } = useWorkspaceEntityPersistence();
   const yDocProjection = useWorkspaceYDocProjection(
     yDoc,
     FOLDER_COLLECTIONS,
@@ -57,20 +59,6 @@ export function useFolders() {
     enabled: Boolean(currentScope && !yDocReady),
   });
   const projection = yDocReady ? yDocProjection : localFoldersQuery.data;
-
-  const refresh = useCallback(async () => {
-    if (!currentScope) return;
-    await queryClient.invalidateQueries({
-      queryKey: workspaceLocalQueryKeys.scope(currentScope),
-    });
-  }, [currentScope, queryClient]);
-
-  useEffect(() => {
-    const handleSnapshotApplied = () => void refresh();
-    window.addEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);
-    return () =>
-      window.removeEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);
-  }, [refresh]);
 
   const handleCreateFolder = useCallback(
     async (name: string, parentId?: string) => {

@@ -1,13 +1,11 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN } from '@/services/workspaceYDocAdapter';
 import type {
   DraftSummary,
   SavedTableDraftRecord,
   WorkspaceSavePayload,
   WorkspaceSelection,
-  WorkspaceScope,
 } from '@ddlbuilder/shared-types/workspace';
 import {
   clearWorkspaceSession,
@@ -15,8 +13,8 @@ import {
   writeWorkspaceSession,
 } from '@/utils/workspaceStateDb';
 import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
-import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 import { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
+import { useWorkspaceScopeState } from '@/hooks/useWorkspaceScope';
 import {
   isSameWorkspaceSource,
   isSameWorkspaceSelection,
@@ -77,7 +75,6 @@ export interface UsePersistedStateReturn {
 }
 
 export function usePersistedState(): UsePersistedStateReturn {
-  const authSession = useAuthSession();
   const pathInfo = useShareRoute();
   const shareId = pathInfo.shareId;
   const shareStorageKey = shareId ? buildShareStorageKey(shareId) : null;
@@ -99,20 +96,7 @@ export function usePersistedState(): UsePersistedStateReturn {
   const persistedStateRef = useRef<PersistedState | null>(null);
   const lastLocalSaveRef = useRef<PendingLocalSave | null>(null);
 
-  const currentScope = useMemo<WorkspaceScope>(
-    () =>
-      authSession.status === 'signed_in' && authSession.userId
-        ? {
-            kind: 'user',
-            userId: authSession.userId,
-            ...(authSession.workspaceId ? { workspaceId: authSession.workspaceId } : {}),
-          }
-        : getAnonymousWorkspaceScope(),
-    [authSession.status, authSession.userId, authSession.workspaceId],
-  );
-  const workspaceScopeReady =
-    authSession.status !== 'loading' &&
-    (authSession.status !== 'signed_in' || Boolean(authSession.workspaceId));
+  const { scope: currentScope, ready: workspaceScopeReady } = useWorkspaceScopeState();
   // 分享页没有 workspace 上下文，Y.Doc 永远不参与，本地分区即真相源。
   const { workspaceYDoc, yDoc, yDocReady, runInYDoc } = useWorkspaceYDocGateway(currentScope, {
     enabled: !shareId,

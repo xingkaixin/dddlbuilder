@@ -1,9 +1,7 @@
-import { useCallback, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type * as Y from 'yjs';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import { WORKSPACE_SNAPSHOT_APPLIED_EVENT } from '@/services/workspaceSyncService';
-import { invalidateLegacyWorkspaceMigration } from '@/services/workspaceLegacyMigrationMarker';
 import {
   deleteSavedTableFromYDoc,
   getSavedTableFromYDoc,
@@ -29,14 +27,9 @@ import {
   type SavedTableBatchImportRequest,
   type SavedTableBatchImportResult,
 } from '@/utils/savedTableBatchImport';
-import { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
-import { useWorkspaceScope } from '@/hooks/useWorkspaceScope';
+import { useWorkspaceEntityPersistence } from '@/hooks/workspacePersistence/useWorkspaceEntityPersistence';
 import { useWorkspaceYDocProjection } from '@/hooks/useWorkspaceYDocProjection';
-import {
-  localSavedTablesOptions,
-  localTrashedTablesOptions,
-  workspaceLocalQueryKeys,
-} from '@/queries/workspaceLocal';
+import { localSavedTablesOptions, localTrashedTablesOptions } from '@/queries/workspaceLocal';
 
 export type SavedTableSummary = SavedTableMetadata;
 
@@ -58,9 +51,16 @@ const EMPTY_SAVED_TABLES: SavedTableSummary[] = [];
 const readSavedTablesProjection = (doc: Y.Doc) => listSavedTableMetadataFromYDoc(doc);
 
 export function useSavedTables() {
-  const currentScope = useWorkspaceScope();
-  const queryClient = useQueryClient();
-  const { yDoc, yDocReady, runInYDoc } = useWorkspaceYDocGateway(currentScope);
+  const {
+    scope: currentScope,
+    yDoc,
+    yDocReady,
+    runInYDoc,
+    refresh,
+    read,
+    write,
+    writeLocalFallback,
+  } = useWorkspaceEntityPersistence();
   const yDocSavedTables = useWorkspaceYDocProjection(
     yDoc,
     SAVED_TABLE_COLLECTIONS,
@@ -88,49 +88,16 @@ export function useSavedTables() {
   const queryError = localSavedTablesQuery.error ?? trashedTablesQuery.error;
   const error = queryError ? (queryError instanceof Error ? queryError.message : '读取失败') : null;
 
-  const refresh = useCallback(async () => {
-    if (!currentScope) return;
-    await queryClient.invalidateQueries({
-      queryKey: workspaceLocalQueryKeys.scope(currentScope),
-    });
-  }, [currentScope, queryClient]);
-
-  const writeLocalFallback = useCallback(
-    async (write: () => Promise<void>) => {
-      await write();
-      if (currentScope?.kind === 'user' && currentScope.workspaceId) {
-        invalidateLegacyWorkspaceMigration(currentScope);
-      }
-    },
-    [currentScope],
-  );
-
   const persistActiveTable = useCallback(
     async (record: SavedTableRecord, mode: 'add' | 'update' = 'update') => {
-      if (yDoc) {
-        runInYDoc((doc) => upsertSavedTableInYDoc(doc, record));
-        return;
-      }
-      if (!currentScope) throw new Error('工作区未就绪');
-      await writeLocalFallback(() =>
-        mode === 'add'
-          ? addSavedTable(record, currentScope)
-          : updateSavedTable(record, currentScope),
-      );
+      await write({
+        toYDoc: (doc) => upsertSavedTableInYDoc(doc, record),
+        toLocal: (scope) =>
+          mode === 'add' ? addSavedTable(record, scope) : updateSavedTable(record, scope),
+      });
     },
-    [currentScope, runInYDoc, writeLocalFallback, yDoc],
+    [write],
   );
-
-  useEffect(() => {
-    const handleSnapshotApplied = () => {
-      void refresh();
-    };
-
-    window.addEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);
-    return () => {
-      window.removeEventListener(WORKSPACE_SNAPSHOT_APPLIED_EVENT, handleSnapshotApplied);
-    };
-  }, [refresh]);
 
   const saveTable = useCallback(
     async (name: string, state: PersistedState): Promise<SaveTableResult> => {
@@ -138,9 +105,10 @@ export function useSavedTables() {
         if (!currentScope) throw new Error('工作区未就绪');
         const displayName = ensureSavedTableName(name);
         const normalizedName = normalizeSavedTableName(displayName);
-        const existing = yDoc
-          ? getSavedTableFromYDoc(yDoc, normalizedName)
-          : await getSavedTable(normalizedName, currentScope);
+        const existing = await read({
+          fromYDoc: (doc) => getSavedTableFromYDoc(doc, normalizedName),
+          fromLocal: (scope) => getSavedTable(normalizedName, scope),
+        });
         if (existing && !existing.trashedAt) {
           return { ok: false, reason: 'duplicate' };
         }
@@ -165,16 +133,17 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, persistActiveTable, refresh, yDoc],
+    [currentScope, persistActiveTable, read, refresh],
   );
 
   const overwriteTable = useCallback(
     async (normalizedName: string, state: PersistedState): Promise<SaveTableResult> => {
       try {
         if (!currentScope) throw new Error('工作区未就绪');
-        const record = yDoc
-          ? getSavedTableFromYDoc(yDoc, normalizedName)
-          : await getSavedTable(normalizedName, currentScope);
+        const record = await read({
+          fromYDoc: (doc) => getSavedTableFromYDoc(doc, normalizedName),
+          fromLocal: (scope) => getSavedTable(normalizedName, scope),
+        });
         if (!record) {
           return { ok: false, reason: 'not_found' };
         }
@@ -194,7 +163,7 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, persistActiveTable, refresh, yDoc],
+    [currentScope, persistActiveTable, read, refresh],
   );
 
   const deleteTable = useCallback(
@@ -322,17 +291,19 @@ export function useSavedTables() {
     async (normalizedName: string, newName: string): Promise<SaveTableResult> => {
       try {
         if (!currentScope) throw new Error('工作区未就绪');
-        const record = yDoc
-          ? getSavedTableFromYDoc(yDoc, normalizedName)
-          : await getSavedTable(normalizedName, currentScope);
+        const record = await read({
+          fromYDoc: (doc) => getSavedTableFromYDoc(doc, normalizedName),
+          fromLocal: (scope) => getSavedTable(normalizedName, scope),
+        });
         if (!record) {
           return { ok: false, reason: 'not_found' };
         }
         const displayName = ensureSavedTableName(newName);
         const nextNormalizedName = normalizeSavedTableName(displayName);
-        const existing = yDoc
-          ? getSavedTableFromYDoc(yDoc, nextNormalizedName)
-          : await getSavedTable(nextNormalizedName, currentScope);
+        const existing = await read({
+          fromYDoc: (doc) => getSavedTableFromYDoc(doc, nextNormalizedName),
+          fromLocal: (scope) => getSavedTable(nextNormalizedName, scope),
+        });
         if (existing && existing.normalizedName !== normalizedName) {
           return { ok: false, reason: 'duplicate' };
         }
@@ -342,23 +313,22 @@ export function useSavedTables() {
           normalizedName: nextNormalizedName,
           updatedAt: Date.now(),
         };
-        if (yDoc) {
-          runInYDoc((doc) => {
+        await write({
+          toYDoc: (doc) => {
             upsertSavedTableInYDoc(doc, updatedRecord);
             if (nextNormalizedName !== normalizedName) {
               deleteSavedTableFromYDoc(doc, normalizedName);
             }
-          });
-        } else {
-          await writeLocalFallback(async () => {
+          },
+          toLocal: async (scope) => {
             if (nextNormalizedName === normalizedName) {
-              await updateSavedTable(updatedRecord, currentScope);
+              await updateSavedTable(updatedRecord, scope);
               return;
             }
-            await addSavedTable(updatedRecord, currentScope);
-            await deleteSavedTable(normalizedName, currentScope);
-          });
-        }
+            await addSavedTable(updatedRecord, scope);
+            await deleteSavedTable(normalizedName, scope);
+          },
+        });
         await refresh();
         return { ok: true, normalizedName: nextNormalizedName };
       } catch (err) {
@@ -369,18 +339,16 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, refresh, runInYDoc, writeLocalFallback, yDoc],
+    [currentScope, read, refresh, write],
   );
 
   const loadTable = useCallback(
-    async (normalizedName: string) => {
-      if (!currentScope) throw new Error('工作区未就绪');
-      if (yDoc) {
-        return getSavedTableFromYDoc(yDoc, normalizedName);
-      }
-      return getSavedTable(normalizedName, currentScope);
-    },
-    [currentScope, yDoc],
+    (normalizedName: string) =>
+      read({
+        fromYDoc: (doc) => getSavedTableFromYDoc(doc, normalizedName),
+        fromLocal: (scope) => getSavedTable(normalizedName, scope),
+      }),
+    [read],
   );
 
   // 移动表到指定文件夹
@@ -388,9 +356,10 @@ export function useSavedTables() {
     async (normalizedName: string, folderId?: string): Promise<SaveTableResult> => {
       try {
         if (!currentScope) throw new Error('工作区未就绪');
-        const record = yDoc
-          ? getSavedTableFromYDoc(yDoc, normalizedName)
-          : await getSavedTable(normalizedName, currentScope);
+        const record = await read({
+          fromYDoc: (doc) => getSavedTableFromYDoc(doc, normalizedName),
+          fromLocal: (scope) => getSavedTable(normalizedName, scope),
+        });
         if (!record) {
           return { ok: false, reason: 'not_found' };
         }
@@ -410,7 +379,7 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, persistActiveTable, refresh, yDoc],
+    [currentScope, persistActiveTable, read, refresh],
   );
 
   const importTables = useCallback(
@@ -422,9 +391,10 @@ export function useSavedTables() {
       let skipCount = 0;
       try {
         const [activeRecords, trashedRecords] = await Promise.all([
-          yDoc
-            ? Promise.resolve(listSavedTableRecordsFromYDoc(yDoc))
-            : listSavedTables(currentScope),
+          read({
+            fromYDoc: listSavedTableRecordsFromYDoc,
+            fromLocal: listSavedTables,
+          }),
           listTrashedSavedTables(currentScope),
         ]);
         const plan = buildSavedTableBatchImportPlan(
@@ -434,13 +404,12 @@ export function useSavedTables() {
         );
         skipCount = plan.skipCount;
 
-        if (yDoc) {
-          runInYDoc((doc) => {
+        await write({
+          toYDoc: (doc) => {
             for (const record of plan.records) upsertSavedTableInYDoc(doc, record);
-          });
-        } else {
-          await writeLocalFallback(() => updateSavedTables(plan.records, currentScope));
-        }
+          },
+          toLocal: (scope) => updateSavedTables(plan.records, scope),
+        });
         await refresh();
 
         return {
@@ -456,7 +425,7 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, refresh, runInYDoc, writeLocalFallback, yDoc],
+    [currentScope, read, refresh, write],
   );
 
   // 清理指定文件夹ID关联的表（将它们移回未分组）
@@ -470,9 +439,10 @@ export function useSavedTables() {
       const updatedRecords = (
         await Promise.all(
           tables.map(async (table): Promise<SavedTableRecord | null> => {
-            const record = yDoc
-              ? getSavedTableFromYDoc(yDoc, table.normalizedName)
-              : await getSavedTable(table.normalizedName, currentScope);
+            const record = await read({
+              fromYDoc: (doc) => getSavedTableFromYDoc(doc, table.normalizedName),
+              fromLocal: (scope) => getSavedTable(table.normalizedName, scope),
+            });
             if (!record) return null;
             return {
               ...record,
@@ -482,16 +452,15 @@ export function useSavedTables() {
           }),
         )
       ).filter((record): record is SavedTableRecord => record != null);
-      if (yDoc) {
-        runInYDoc((doc) => {
+      await write({
+        toYDoc: (doc) => {
           for (const record of updatedRecords) upsertSavedTableInYDoc(doc, record);
-        });
-      } else {
-        await writeLocalFallback(() => updateSavedTables(updatedRecords, currentScope));
-      }
+        },
+        toLocal: (scope) => updateSavedTables(updatedRecords, scope),
+      });
       await refresh();
     },
-    [currentScope, refresh, runInYDoc, savedTables, writeLocalFallback, yDoc],
+    [currentScope, read, refresh, savedTables, write],
   );
 
   return {
