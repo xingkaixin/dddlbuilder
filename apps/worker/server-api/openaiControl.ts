@@ -2,13 +2,7 @@ import type { Context } from 'hono';
 import type { ApiEnv } from './lib/context.js';
 import { dispatchTelegramAuditNotification } from './lib/telegramNotifier.js';
 import { errorResponse, type ApiErrorCode } from './lib/http.js';
-
-export type OpenAIRouteKey =
-  | 'explain'
-  | 'review'
-  | 'generate-table'
-  | 'generate-comments'
-  | 'index-advisor';
+import type { AIRouteKey } from './lib/aiRouteKey.js';
 
 type RateLimitRule = {
   maxRequests: number;
@@ -24,7 +18,7 @@ type RetryOptions = {
 
 export type AuditLogPayload = {
   requestId: string;
-  route: OpenAIRouteKey;
+  route: AIRouteKey;
   status: number;
   latencyMs: number;
   retryCount: number;
@@ -86,7 +80,7 @@ export type OpenAIConfig = {
   dailyBudgetEnabled: boolean;
   dailyBudgetMaxTokens: number;
   streamDebugEnabled: boolean;
-  rateLimitRules: Record<OpenAIRouteKey, RateLimitRule>;
+  rateLimitRules: Record<AIRouteKey, RateLimitRule>;
 };
 
 export const buildOpenAIConfig = (env: ApiEnv['Bindings']): OpenAIConfig => {
@@ -242,7 +236,7 @@ const getClientIp = (c: Context<ApiEnv>): string => {
   return 'unknown';
 };
 
-const getClientFingerprint = (c: Context<ApiEnv>, routeKey: OpenAIRouteKey): string => {
+const getClientFingerprint = (c: Context<ApiEnv>, routeKey: AIRouteKey): string => {
   const ip = getClientIp(c);
   return hashFNV1a(`${routeKey}|${ip}`);
 };
@@ -275,7 +269,7 @@ export const estimateRequestTokens = (payload: unknown, maxOutputTokens = 0): nu
 };
 
 export const getOpenAIGovernanceSnapshot = (
-  routeKey: OpenAIRouteKey,
+  routeKey: AIRouteKey,
   config: OpenAIConfig,
 ): GovernanceSnapshot => {
   const rule = config.rateLimitRules[routeKey];
@@ -360,7 +354,7 @@ const getMsUntilUtcTomorrow = () => {
 
 export async function enforceOpenAIRateLimit(
   c: Context<ApiEnv>,
-  routeKey: OpenAIRouteKey,
+  routeKey: AIRouteKey,
   config: OpenAIConfig,
 ): Promise<{
   response: Response | null;

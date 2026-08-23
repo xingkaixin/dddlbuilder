@@ -1,9 +1,9 @@
-import type { OpenAIRouteKey } from '../openaiControl.js';
+import type { AIRouteKey } from './aiRouteKey.js';
 
 type StreamDebugLoggerOptions = {
   enabled: boolean;
   requestId: string;
-  route: OpenAIRouteKey;
+  route: AIRouteKey;
   model: string;
   startedAt: number;
   input: Record<string, unknown>;

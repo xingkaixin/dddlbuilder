@@ -2,13 +2,9 @@ import type { Context } from 'hono';
 import { authenticateRequest } from './auth.js';
 import { applyCreditMutation, readCreditLedgerEntry, type CreditLedgerSource } from './credits.js';
 import type { ApiEnv } from './context.js';
+import type { AIRouteKey } from './aiRouteKey.js';
 
-export type AIRouteKey =
-  | 'explain'
-  | 'review'
-  | 'generate-table'
-  | 'generate-comments'
-  | 'index-advisor';
+export type { AIRouteKey } from './aiRouteKey.js';
 
 export type AIUsageReservation<RouteKey extends AIRouteKey = AIRouteKey> = {
   usageEventId: string;
