@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@/__tests__/utils/test-utils';
+import { fireEvent, render, screen, waitFor } from '@/__tests__/utils/test-utils';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { useEffect } from 'react';
 import {
@@ -504,12 +504,12 @@ describe('AuthSessionProvider', () => {
 
       expect(screen.getByTestId('auth-dialog')).toHaveTextContent('closed');
 
-      screen.getByTestId('open-dialog').click();
+      fireEvent.click(screen.getByTestId('open-dialog'));
       await waitFor(() => {
         expect(screen.getByTestId('auth-dialog')).toHaveTextContent('open');
       });
 
-      screen.getByTestId('close-dialog').click();
+      fireEvent.click(screen.getByTestId('close-dialog'));
       await waitFor(() => {
         expect(screen.getByTestId('auth-dialog')).toHaveTextContent('closed');
       });

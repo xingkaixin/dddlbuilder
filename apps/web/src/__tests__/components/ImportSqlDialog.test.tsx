@@ -14,6 +14,13 @@ vi.mock('@/hooks/useToast', () => ({
   }),
 }));
 
+vi.mock('@/components/ui/tooltip', () => ({
+  TooltipProvider: ({ children }: { children: any }) => <>{children}</>,
+  Tooltip: ({ children }: { children: any }) => <>{children}</>,
+  TooltipTrigger: ({ children }: { children: any }) => <>{children}</>,
+  TooltipContent: ({ children }: { children: any }) => <>{children}</>,
+}));
+
 const mockedRequestSqlParse = vi.mocked(requestSqlParse);
 const mockedRequestMultiSqlParse = vi.mocked(requestMultiSqlParse);
 
