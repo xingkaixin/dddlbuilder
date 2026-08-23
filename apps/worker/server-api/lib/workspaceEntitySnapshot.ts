@@ -1,4 +1,4 @@
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { SchemaDocumentState } from '@ddlbuilder/shared-types';
 import type { WorkspaceEntityType, WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import { normalizeWorkspaceSnapshot } from '@ddlbuilder/workspace-core';
 
@@ -113,7 +113,7 @@ const applyPayloadToSnapshot = (
   if (entityType === 'draft' && entityId === GLOBAL_DRAFT_ENTITY_ID) {
     if (payload.state) {
       snapshot.globalDraft = {
-        state: payload.state as PersistedState,
+        state: payload.state as SchemaDocumentState,
         updatedAt,
       };
     }

@@ -231,6 +231,22 @@ export const withDefaultEditorSession = (state: SchemaDocumentState): PersistedS
   currentIndexFields: [...DEFAULT_EDITOR_SESSION_STATE.currentIndexFields],
 });
 
+export const toEditorSessionState = (state: EditorSessionState): EditorSessionState => ({
+  sqlFormatMode: state.sqlFormatMode,
+  addCount: state.addCount,
+  indexInput: state.indexInput,
+  currentIndexFields: state.currentIndexFields,
+  fieldTableViewConfig: state.fieldTableViewConfig,
+});
+
+export const withEditorSession = (
+  state: SchemaDocumentState,
+  session: EditorSessionState,
+): PersistedState => ({
+  ...state,
+  ...toEditorSessionState(session),
+});
+
 export type { ApiErrorCode, ApiMeta, ApiErrorPayload } from './api.js';
 export type {
   WorkspaceSource,

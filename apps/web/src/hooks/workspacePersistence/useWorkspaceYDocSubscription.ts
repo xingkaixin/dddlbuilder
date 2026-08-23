@@ -1,6 +1,12 @@
 import { useEffect } from 'react';
 import type * as Y from 'yjs';
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import {
+  toEditorSessionState,
+  withDefaultEditorSession,
+  withEditorSession,
+  type PersistedState,
+  type SchemaDocumentState,
+} from '@ddlbuilder/shared-types';
 import type { SavedTableDraftRecord, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
 import type { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
 import {
@@ -42,7 +48,7 @@ interface UseWorkspaceYDocSubscriptionParams {
   replaceTrashedDrafts: (drafts: DraftEntry[]) => void;
   replaceSavedTableDrafts: (records: Map<string, SavedTableDraftRecord>) => void;
   cacheDraftRecord: (draftId: string, record: GlobalDraftRecord) => void;
-  applyYDocState: (state: PersistedState) => void;
+  applyYDocState: (state: SchemaDocumentState) => void;
   setPersistedStateIfChanged: (state: PersistedState | null) => void;
   syncActiveSource: (source: WorkspaceSelection) => void;
 }
@@ -145,7 +151,10 @@ export function useWorkspaceYDocSubscription({
       } else {
         const nextState = getStateForWorkspaceSource(yDoc, source);
         if (nextState) {
-          applyYDocState(reconcileDraftState(nextState));
+          const editorState = persistedStateRef.current
+            ? withEditorSession(nextState, toEditorSessionState(persistedStateRef.current))
+            : withDefaultEditorSession(nextState);
+          applyYDocState(reconcileDraftState(editorState));
           return;
         }
       }

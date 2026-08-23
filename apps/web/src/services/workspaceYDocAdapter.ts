@@ -1,5 +1,11 @@
 import type * as Y from 'yjs';
-import { type PersistedState, withDefaultEditorSession } from '@ddlbuilder/shared-types';
+import {
+  type PersistedState,
+  type EditorSessionState,
+  type SchemaDocumentState,
+  withEditorSession,
+  withDefaultEditorSession,
+} from '@ddlbuilder/shared-types';
 import type {
   SavedTableDraftRecord,
   WorkspaceSelection,
@@ -62,6 +68,9 @@ export type { WorkspaceYDocChange, WorkspaceYDocCollection };
 export type WorkspaceYDocDraftRecord = Omit<SchemaWorkspaceYDocDraftRecord, 'state'> & {
   state: PersistedState;
 };
+type WorkspaceYDocDraftWriteRecord = Omit<SchemaWorkspaceYDocDraftRecord, 'state'> & {
+  state: SchemaDocumentState;
+};
 
 export const WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN = { source: 'workspace-local-edit' } as const;
 
@@ -76,7 +85,7 @@ export const getDraftRecordFromYDoc = (
 export const upsertDraftInYDoc = (
   doc: Y.Doc,
   draftId: string,
-  record: WorkspaceYDocDraftRecord,
+  record: WorkspaceYDocDraftWriteRecord,
   options?: ApplySchemaDocumentStateOptions,
 ) => upsertWorkspaceDraft(doc, draftId, record, options);
 
@@ -103,7 +112,7 @@ const toSavedTableRecord = (
 
 export const upsertSavedTableInYDoc = (
   doc: Y.Doc,
-  record: SavedTableRecord,
+  record: Omit<SavedTableRecord, 'state'> & { state: SchemaDocumentState },
   options?: ApplySchemaDocumentStateOptions,
 ) => upsertWorkspaceSavedTable(doc, record, options);
 
@@ -143,7 +152,7 @@ export const listTrashedSavedTableMetadataFromYDoc = (doc: Y.Doc): SavedTableMet
 export const upsertSavedDraftInYDoc = (
   doc: Y.Doc,
   normalizedName: string,
-  record: SavedTableDraftRecord,
+  record: Omit<SavedTableDraftRecord, 'state'> & { state: SchemaDocumentState },
   options?: ApplySchemaDocumentStateOptions,
 ) => upsertWorkspaceSavedDraft(doc, { normalizedName, ...record }, options);
 
@@ -181,21 +190,23 @@ export const buildFolderTreeFromYDoc = (doc: Y.Doc): FolderTreeNode[] =>
 export const getStateForWorkspaceSource = (
   doc: Y.Doc,
   source: WorkspaceSource,
-): PersistedState | null => {
-  const state = getWorkspaceSourceState(doc, source);
-  return state ? withDefaultEditorSession(state) : null;
-};
+): SchemaDocumentState | null => getWorkspaceSourceState(doc, source);
 
 export const getWorkspaceSnapshotFromYDoc = (
   doc: Y.Doc,
   source: WorkspaceSelection,
+  editorSession: EditorSessionState,
 ): { source: WorkspaceSelection; state: PersistedState } | null => {
   if (source.kind === 'draft') {
     const state = getStateForWorkspaceSource(doc, source);
-    return state ? { source, state } : null;
+    return state ? { source, state: withEditorSession(state, editorSession) } : null;
   }
 
   const record = getSavedTableFromYDoc(doc, source.normalizedName);
   if (!record) return null;
-  return resolveSavedTableSnapshot(record, getSavedDraftFromYDoc(doc, source.normalizedName));
+  const snapshot = resolveSavedTableSnapshot(
+    record,
+    getSavedDraftFromYDoc(doc, source.normalizedName),
+  );
+  return { ...snapshot, state: withEditorSession(snapshot.state, editorSession) };
 };

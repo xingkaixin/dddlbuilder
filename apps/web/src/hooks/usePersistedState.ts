@@ -1,5 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import {
+  DEFAULT_EDITOR_SESSION_STATE,
+  toEditorSessionState,
+  withDefaultEditorSession,
+  withEditorSession,
+  type PersistedState,
+  type SchemaDocumentState,
+} from '@ddlbuilder/shared-types';
 import {
   getWorkspaceSnapshotFromYDoc,
   WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN,
@@ -167,17 +174,10 @@ export function usePersistedState(): UsePersistedStateReturn {
     });
   }, []);
 
-  const applyYDocState = useCallback((nextState: PersistedState) => {
+  const applyYDocState = useCallback((nextState: SchemaDocumentState) => {
     setPersistedState((previousState) => {
-      if (!previousState) return nextState;
-      const mergedState: PersistedState = {
-        ...nextState,
-        sqlFormatMode: previousState.sqlFormatMode,
-        addCount: previousState.addCount,
-        indexInput: previousState.indexInput,
-        currentIndexFields: previousState.currentIndexFields,
-        fieldTableViewConfig: previousState.fieldTableViewConfig,
-      };
+      if (!previousState) return withDefaultEditorSession(nextState);
+      const mergedState = withEditorSession(nextState, toEditorSessionState(previousState));
       return isSamePersistedState(previousState, mergedState) ? previousState : mergedState;
     });
   }, []);
@@ -280,7 +280,11 @@ export function usePersistedState(): UsePersistedStateReturn {
         const state = getDraftState(source.draftId);
         return state ? { source, state } : null;
       }
-      return yDoc ? getWorkspaceSnapshotFromYDoc(yDoc, source) : null;
+      const state = persistedStateRef.current;
+      const editorSession = state
+        ? toEditorSessionState(state)
+        : toEditorSessionState(DEFAULT_EDITOR_SESSION_STATE);
+      return yDoc ? getWorkspaceSnapshotFromYDoc(yDoc, source, editorSession) : null;
     },
     [getDraftState, yDoc],
   );

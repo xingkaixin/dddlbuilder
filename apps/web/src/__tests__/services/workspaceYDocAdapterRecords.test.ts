@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import { toEditorSessionState, type PersistedState } from '@ddlbuilder/shared-types';
 import {
   buildFolderTreeFromYDoc,
   deleteFolderFromYDoc,
@@ -190,11 +190,14 @@ describe('workspaceYDocAdapter records', () => {
       baseSignature: '',
     };
 
-    expect(getWorkspaceSnapshotFromYDoc(doc, source)?.state.tableName).toBe('local_edit');
+    const editorSession = toEditorSessionState(createState());
+    expect(getWorkspaceSnapshotFromYDoc(doc, source, editorSession)?.state.tableName).toBe(
+      'local_edit',
+    );
 
     upsertSavedTableInYDoc(doc, createSavedTable({ tableName: 'remote_update' }));
 
-    const refreshed = getWorkspaceSnapshotFromYDoc(doc, source);
+    const refreshed = getWorkspaceSnapshotFromYDoc(doc, source, editorSession);
     const remoteRecord = getSavedTableFromYDoc(doc, 'users');
     expect(remoteRecord).not.toBeNull();
     if (!remoteRecord) throw new Error('remote saved table fixture missing');
