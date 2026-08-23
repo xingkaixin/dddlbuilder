@@ -62,6 +62,13 @@ export {
   buildTableOptionsClause,
 } from './utils/tableOptions.js';
 export { buildORM } from './utils/ormGenerators.js';
+export {
+  estimateStorage,
+  estimateStorageBreakdown,
+  type StorageBreakdown,
+  type StorageProfile,
+  type StorageResult,
+} from './utils/storageEstimator.js';
 export { ORMGeneratorFactory } from './factories/ORMGeneratorFactory.js';
 export type { ORMGenerator, ORMTarget } from './interfaces/ORMGenerator.js';
 export { mapCanonicalToORMType, getORMTypeWithArgs } from './utils/ormTypeResolver.js';

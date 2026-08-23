@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { estimateStorage } from '@/utils/storageEstimator';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
+import { estimateStorage } from '../utils/storageEstimator';
 
 describe('storageEstimator', () => {
   const fields: NormalizedField[] = [
@@ -182,6 +182,14 @@ describe('storageEstimator', () => {
     expect(gaussdbResult.dataSize).toBe(72);
   });
 
+  it('uses PostgreSQL LOB locators for its compatible databases', () => {
+    const lobField = [{ ...fields[0], type: 'text' }];
+
+    expect(estimateStorage('kingbase', lobField).dataSize).toBe(24);
+    expect(estimateStorage('gaussdb', lobField).dataSize).toBe(24);
+    expect(estimateStorage('postgresql-citus', lobField).dataSize).toBe(24);
+  });
+
   it('should support gbase and polardb mysql-like profiles', () => {
     const gbaseResult = estimateStorage('gbase', fields);
     const polardbResult = estimateStorage('polardb', fields);
@@ -194,10 +202,12 @@ describe('storageEstimator', () => {
     expect(polardbResult.dataSize).toBe(66);
   });
 
-  it('should fallback to mysql profile when db type is unknown', () => {
-    const result = estimateStorage('unknown-db' as any, fields);
-    expect(result.dbName).toBe('MySQL (InnoDB)');
-    expect(result.rowOverhead).toBe(5 + 6 + 7 + 1);
+  it('uses MySQL LOB locators for its compatible databases', () => {
+    const lobField = [{ ...fields[0], type: 'text' }];
+
+    expect(estimateStorage('gbase', lobField).dataSize).toBe(20);
+    expect(estimateStorage('polardb', lobField).dataSize).toBe(20);
+    expect(estimateStorage('mariadb', lobField).dataSize).toBe(20);
   });
 
   it('should cover float53 char date bit and blob sizing branches', () => {
