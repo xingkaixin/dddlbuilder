@@ -47,6 +47,7 @@ export const workspaceSnapshotToEntities = (
         state: item.state,
         createdAt: item.createdAt,
         folderId: item.folderId,
+        trashedAt: item.trashedAt,
       },
       sourceUpdatedAt: item.updatedAt,
     });
@@ -61,6 +62,7 @@ export const workspaceSnapshotToEntities = (
         state: item.state,
         createdAt: item.createdAt,
         folderId: item.folderId,
+        trashedAt: item.trashedAt,
       },
       sourceUpdatedAt: item.updatedAt,
     });
@@ -126,6 +128,7 @@ const applyPayloadToSnapshot = (
         createdAt: typeof payload.createdAt === 'number' ? payload.createdAt : updatedAt,
         updatedAt,
         ...(typeof payload.folderId === 'string' ? { folderId: payload.folderId } : {}),
+        ...(typeof payload.trashedAt === 'number' ? { trashedAt: payload.trashedAt } : {}),
       });
     }
     return;
@@ -140,6 +143,7 @@ const applyPayloadToSnapshot = (
         createdAt: typeof payload.createdAt === 'number' ? payload.createdAt : updatedAt,
         updatedAt,
         ...(typeof payload.folderId === 'string' ? { folderId: payload.folderId } : {}),
+        ...(typeof payload.trashedAt === 'number' ? { trashedAt: payload.trashedAt } : {}),
       });
     }
     return;

@@ -10,6 +10,7 @@ import {
   getStateForWorkspaceSource,
   listDraftRecordsFromYDoc,
   listSavedDraftsFromYDoc,
+  listTrashedDraftRecordsFromYDoc,
   subscribeWorkspaceYDoc,
   type WorkspaceYDocChange,
   WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN,
@@ -38,6 +39,7 @@ interface UseWorkspaceYDocSubscriptionParams {
   lastLocalSaveRef: MutableValue<PendingLocalSave | null>;
   getDraftEntries: () => DraftEntry[];
   replaceDrafts: (drafts: DraftEntry[]) => void;
+  replaceTrashedDrafts: (drafts: DraftEntry[]) => void;
   replaceSavedTableDrafts: (records: Map<string, SavedTableDraftRecord>) => void;
   cacheDraftRecord: (draftId: string, record: GlobalDraftRecord) => void;
   applyYDocState: (state: PersistedState) => void;
@@ -56,6 +58,7 @@ export function useWorkspaceYDocSubscription({
   lastLocalSaveRef,
   getDraftEntries,
   replaceDrafts,
+  replaceTrashedDrafts,
   replaceSavedTableDrafts,
   cacheDraftRecord,
   applyYDocState,
@@ -70,6 +73,7 @@ export function useWorkspaceYDocSubscription({
       if (!change || change.collection === 'drafts') {
         allDrafts = listDraftRecordsFromYDoc(yDoc);
         replaceDrafts(allDrafts);
+        replaceTrashedDrafts(listTrashedDraftRecordsFromYDoc(yDoc));
       }
       if (!change || change.collection === 'savedDrafts') {
         replaceSavedTableDrafts(listSavedDraftsFromYDoc(yDoc));
@@ -172,6 +176,7 @@ export function useWorkspaceYDocSubscription({
     lastLocalSaveRef,
     persistedStateRef,
     replaceDrafts,
+    replaceTrashedDrafts,
     replaceSavedTableDrafts,
     runInYDoc,
     setPersistedStateIfChanged,

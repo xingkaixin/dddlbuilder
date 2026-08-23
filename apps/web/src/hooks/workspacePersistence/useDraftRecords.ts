@@ -32,6 +32,7 @@ export function useDraftRecords({
 }: UseDraftRecordsParams) {
   const [draftRecords, setDraftRecords] = useState<Map<string, GlobalDraftRecord>>(() => new Map());
   const recordsRef = useRef(draftRecords);
+  const trashedRecordsRef = useRef<Map<string, GlobalDraftRecord>>(new Map());
   const [trashedDrafts, setTrashedDrafts] = useState<DraftSummary[]>([]);
   const draftSummaries = sortDraftSummaries(
     Array.from(draftRecords, ([draftId, record]) => toDraftSummary(draftId, record)),
@@ -57,6 +58,7 @@ export function useDraftRecords({
   }, []);
 
   const replaceTrashedDrafts = useCallback((drafts: DraftEntry[]) => {
+    trashedRecordsRef.current = new Map(drafts.map(({ draftId, record }) => [draftId, record]));
     setTrashedDrafts(drafts.map(({ draftId, record }) => toDraftSummary(draftId, record)));
   }, []);
 
@@ -142,21 +144,31 @@ export function useDraftRecords({
       if (!record) return false;
       const now = Date.now();
       const trashedRecord: GlobalDraftRecord = { ...record, updatedAt: now, trashedAt: now };
+      console.info(
+        JSON.stringify({
+          event: 'workspace_trash_write',
+          entityType: 'draft',
+          draftId,
+          target: persistLocally ? 'indexeddb' : 'ydoc',
+          yDocReady: !persistLocally,
+        }),
+      );
       removeDraftRecord(draftId);
+      trashedRecordsRef.current.set(draftId, trashedRecord);
       setTrashedDrafts((previous) => [toDraftSummary(draftId, trashedRecord), ...previous]);
       enqueuePersistence(`draft:${draftId}`, 'move draft to trash', () =>
-        writeDraft(draftId, trashedRecord, currentScope),
+        persistDraftRecord(draftId, trashedRecord),
       );
-      dropDraftRecord(draftId);
       return true;
     },
-    [currentScope, disabled, dropDraftRecord, enqueuePersistence, removeDraftRecord],
+    [disabled, enqueuePersistence, persistDraftRecord, persistLocally, removeDraftRecord],
   );
 
   const restoreDraftById = useCallback(
     async (draftId: string) => {
       if (disabled) return;
-      const record = await readDraft(draftId, currentScope);
+      const record =
+        trashedRecordsRef.current.get(draftId) ?? (await readDraft(draftId, currentScope));
       if (!record) return;
       const restoredRecord: GlobalDraftRecord = {
         ...record,
@@ -165,6 +177,7 @@ export function useDraftRecords({
         trashedAt: undefined,
       };
       setTrashedDrafts((previous) => previous.filter((draft) => draft.draftId !== draftId));
+      trashedRecordsRef.current.delete(draftId);
       cacheDraftRecord(draftId, restoredRecord);
       await persistDraftRecord(draftId, restoredRecord);
       if (!persistLocally) await deleteDraft(draftId, currentScope);
@@ -183,6 +196,7 @@ export function useDraftRecords({
     (draftId: string) => {
       if (disabled) return;
       setTrashedDrafts((previous) => previous.filter((draft) => draft.draftId !== draftId));
+      trashedRecordsRef.current.delete(draftId);
       enqueuePersistence(`draft:${draftId}`, 'permanently delete draft', () =>
         deleteDraft(draftId, currentScope),
       );

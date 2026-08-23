@@ -6,6 +6,9 @@ import {
   getWorkspaceSavedTable,
   getWorkspaceSourceState,
   listWorkspaceDrafts,
+  listWorkspaceSavedTables,
+  listWorkspaceTrashedDrafts,
+  listWorkspaceTrashedSavedTables,
   subscribeWorkspaceYDoc,
   upsertWorkspaceDraft,
   upsertWorkspaceSavedTable,
@@ -87,5 +90,31 @@ describe('workspace records', () => {
       updatedAt: 2,
     });
     expect(notify).not.toHaveBeenCalled();
+  });
+
+  it('keeps soft-deleted records out of active collections', () => {
+    const doc = new Y.Doc();
+    upsertWorkspaceDraft(doc, 'draft-1', {
+      state: createState('draft'),
+      updatedAt: 2,
+      trashedAt: 2,
+    });
+    upsertWorkspaceSavedTable(doc, {
+      normalizedName: 'users',
+      name: 'Users',
+      state: createState('users'),
+      createdAt: 3,
+      updatedAt: 4,
+      trashedAt: 4,
+    });
+
+    expect(listWorkspaceDrafts(doc)).toEqual([]);
+    expect(listWorkspaceSavedTables(doc)).toEqual([]);
+    expect(listWorkspaceTrashedDrafts(doc)).toMatchObject([
+      { draftId: 'draft-1', record: { trashedAt: 2 } },
+    ]);
+    expect(listWorkspaceTrashedSavedTables(doc)).toMatchObject([
+      { normalizedName: 'users', trashedAt: 4 },
+    ]);
   });
 });

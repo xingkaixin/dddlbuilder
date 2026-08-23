@@ -24,6 +24,7 @@ export const importWorkspaceSnapshotToYDoc = (doc: Y.Doc, snapshot: WorkspaceSna
         createdAt: draft.createdAt,
         updatedAt: draft.updatedAt,
         folderId: draft.folderId,
+        trashedAt: draft.trashedAt,
       });
     }
 
@@ -34,6 +35,7 @@ export const importWorkspaceSnapshotToYDoc = (doc: Y.Doc, snapshot: WorkspaceSna
         createdAt: table.createdAt ?? table.updatedAt,
         updatedAt: table.updatedAt,
         folderId: table.folderId,
+        trashedAt: table.trashedAt,
       });
     }
 
@@ -77,6 +79,7 @@ export const exportWorkspaceYDocToSnapshot = (doc: Y.Doc): WorkspaceSnapshot => 
         createdAt: readWorkspaceCreatedAt(metadata.createdAt, updatedAt),
         updatedAt,
         ...(typeof metadata.folderId === 'string' ? { folderId: metadata.folderId } : {}),
+        ...(typeof metadata.trashedAt === 'number' ? { trashedAt: metadata.trashedAt } : {}),
       };
     }),
     savedDrafts: Array.from(savedDrafts.entries()).map(([normalizedName, tableDoc]) => {

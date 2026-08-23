@@ -7,6 +7,8 @@ import {
   getSavedTableFromYDoc,
   listSavedTableMetadataFromYDoc,
   listSavedTableRecordsFromYDoc,
+  listTrashedSavedTableMetadataFromYDoc,
+  listTrashedSavedTableRecordsFromYDoc,
   upsertSavedTableInYDoc,
 } from '@/services/workspaceYDocAdapter';
 import {
@@ -48,7 +50,14 @@ const sortSavedTablesByCreatedAt = (tables: SavedTableSummary[]) =>
 
 const SAVED_TABLE_COLLECTIONS = ['savedTables'] as const;
 const EMPTY_SAVED_TABLES: SavedTableSummary[] = [];
-const readSavedTablesProjection = (doc: Y.Doc) => listSavedTableMetadataFromYDoc(doc);
+const EMPTY_SAVED_TABLE_PROJECTION = {
+  savedTables: EMPTY_SAVED_TABLES,
+  trashedTables: EMPTY_SAVED_TABLES,
+};
+const readSavedTablesProjection = (doc: Y.Doc) => ({
+  savedTables: listSavedTableMetadataFromYDoc(doc),
+  trashedTables: listTrashedSavedTableMetadataFromYDoc(doc),
+});
 
 export function useSavedTables() {
   const {
@@ -61,11 +70,11 @@ export function useSavedTables() {
     write,
     writeLocalFallback,
   } = useWorkspaceEntityPersistence();
-  const yDocSavedTables = useWorkspaceYDocProjection(
+  const yDocProjection = useWorkspaceYDocProjection(
     yDoc,
     SAVED_TABLE_COLLECTIONS,
     readSavedTablesProjection,
-    EMPTY_SAVED_TABLES,
+    EMPTY_SAVED_TABLE_PROJECTION,
   );
   const localSavedTablesQuery = useQuery({
     ...localSavedTablesOptions(currentScope),
@@ -73,18 +82,17 @@ export function useSavedTables() {
   });
   const trashedTablesQuery = useQuery({
     ...localTrashedTablesOptions(currentScope),
-    enabled: Boolean(currentScope),
+    enabled: Boolean(currentScope && !yDocReady),
   });
   const savedTables = sortSavedTablesByCreatedAt(
-    yDocReady ? yDocSavedTables : (localSavedTablesQuery.data ?? []),
+    yDocReady ? yDocProjection.savedTables : (localSavedTablesQuery.data ?? []),
   );
-  const trashedTables = [...(trashedTablesQuery.data ?? [])].sort(
-    (a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0),
-  );
+  const trashedTables = [
+    ...(yDocReady ? yDocProjection.trashedTables : (trashedTablesQuery.data ?? [])),
+  ].sort((a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0));
   const loading =
     !currentScope ||
-    trashedTablesQuery.isPending ||
-    (!yDocReady && localSavedTablesQuery.isPending);
+    (!yDocReady && (trashedTablesQuery.isPending || localSavedTablesQuery.isPending));
   const queryError = localSavedTablesQuery.error ?? trashedTablesQuery.error;
   const error = queryError ? (queryError instanceof Error ? queryError.message : '读取失败') : null;
 
@@ -174,14 +182,25 @@ export function useSavedTables() {
           const record = getSavedTableFromYDoc(yDoc, normalizedName);
           if (!record) return { ok: false, reason: 'not_found' };
           const timestamp = Date.now();
-          await updateSavedTable(
-            { ...record, trashedAt: timestamp, updatedAt: timestamp },
-            currentScope,
+          console.info(
+            JSON.stringify({
+              event: 'workspace_trash_write',
+              entityType: 'saved_table',
+              normalizedName,
+              target: 'ydoc',
+              yDocReady: true,
+            }),
+          );
+          runInYDoc((doc) =>
+            upsertSavedTableInYDoc(doc, {
+              ...record,
+              trashedAt: timestamp,
+              updatedAt: timestamp,
+            }),
           );
         } else {
           await writeLocalFallback(() => moveSavedTableToTrash(normalizedName, currentScope));
         }
-        runInYDoc((doc) => deleteSavedTableFromYDoc(doc, normalizedName));
         await refresh();
         return { ok: true, normalizedName };
       } catch (err) {
@@ -202,7 +221,9 @@ export function useSavedTables() {
     ): Promise<SaveTableResult> => {
       try {
         if (!currentScope) throw new Error('工作区未就绪');
-        const record = await getSavedTable(normalizedName, currentScope);
+        const record = yDoc
+          ? getSavedTableFromYDoc(yDoc, normalizedName)
+          : await getSavedTable(normalizedName, currentScope);
         if (!record) {
           return { ok: false, reason: 'not_found' };
         }
@@ -395,7 +416,10 @@ export function useSavedTables() {
             fromYDoc: listSavedTableRecordsFromYDoc,
             fromLocal: listSavedTables,
           }),
-          listTrashedSavedTables(currentScope),
+          read({
+            fromYDoc: listTrashedSavedTableRecordsFromYDoc,
+            fromLocal: listTrashedSavedTables,
+          }),
         ]);
         const plan = buildSavedTableBatchImportPlan(
           request,

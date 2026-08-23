@@ -50,6 +50,8 @@ export {
   listWorkspaceFolders,
   listWorkspaceSavedDrafts,
   listWorkspaceSavedTables,
+  listWorkspaceTrashedDrafts,
+  listWorkspaceTrashedSavedTables,
   subscribeWorkspaceYDoc,
   upsertWorkspaceDraft,
   upsertWorkspaceFolder,

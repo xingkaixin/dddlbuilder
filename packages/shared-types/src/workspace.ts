@@ -67,6 +67,7 @@ export type WorkspaceSnapshot = {
     createdAt?: number;
     updatedAt: number;
     folderId?: string;
+    trashedAt?: number;
   }>;
   savedTables: Array<{
     normalizedName: string;
@@ -75,6 +76,7 @@ export type WorkspaceSnapshot = {
     createdAt?: number;
     updatedAt: number;
     folderId?: string;
+    trashedAt?: number;
   }>;
   savedDrafts: Array<{
     normalizedName: string;

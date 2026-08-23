@@ -18,6 +18,7 @@ export type WorkspaceYDocDraftRecord = {
   createdAt?: number;
   updatedAt: number;
   folderId?: string;
+  trashedAt?: number;
 };
 
 export const getWorkspaceRoot = (doc: Y.Doc) => ({
@@ -77,6 +78,7 @@ export const getDraftRecordFromYDoc = (
     createdAt: typeof metadata.createdAt === 'number' ? metadata.createdAt : undefined,
     updatedAt: readWorkspaceTimestamp(metadata.updatedAt),
     ...(typeof metadata.folderId === 'string' ? { folderId: metadata.folderId } : {}),
+    ...(typeof metadata.trashedAt === 'number' ? { trashedAt: metadata.trashedAt } : {}),
   };
 };
 

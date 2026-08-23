@@ -32,6 +32,7 @@ const snapshot = (): WorkspaceSnapshot => ({
       createdAt: 20,
       updatedAt: 21,
       folderId: 'folder-1',
+      trashedAt: 22,
     },
   ],
   savedTables: [
@@ -42,6 +43,7 @@ const snapshot = (): WorkspaceSnapshot => ({
       createdAt: 30,
       updatedAt: 31,
       folderId: 'folder-1',
+      trashedAt: 32,
     },
   ],
   savedDrafts: [

@@ -209,6 +209,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     lastLocalSaveRef,
     getDraftEntries,
     replaceDrafts,
+    replaceTrashedDrafts,
     replaceSavedTableDrafts,
     cacheDraftRecord,
     applyYDocState,

@@ -343,7 +343,8 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
       !item.draftId ||
       !isOptionalFiniteNumber(item.createdAt) ||
       !isFiniteNumber(item.updatedAt) ||
-      !isOptionalString(item.folderId)
+      !isOptionalString(item.folderId) ||
+      !isOptionalFiniteNumber(item.trashedAt)
     ) {
       return null;
     }
@@ -355,6 +356,7 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
       ...(item.createdAt === undefined ? {} : { createdAt: item.createdAt }),
       updatedAt: item.updatedAt,
       ...(item.folderId === undefined ? {} : { folderId: item.folderId }),
+      ...(item.trashedAt === undefined ? {} : { trashedAt: item.trashedAt }),
     });
   }
 
@@ -367,7 +369,8 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
       typeof item.name !== 'string' ||
       !isOptionalFiniteNumber(item.createdAt) ||
       !isFiniteNumber(item.updatedAt) ||
-      !isOptionalString(item.folderId)
+      !isOptionalString(item.folderId) ||
+      !isOptionalFiniteNumber(item.trashedAt)
     ) {
       return null;
     }
@@ -380,6 +383,7 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
       ...(item.createdAt === undefined ? {} : { createdAt: item.createdAt }),
       updatedAt: item.updatedAt,
       ...(item.folderId === undefined ? {} : { folderId: item.folderId }),
+      ...(item.trashedAt === undefined ? {} : { trashedAt: item.trashedAt }),
     });
   }
 

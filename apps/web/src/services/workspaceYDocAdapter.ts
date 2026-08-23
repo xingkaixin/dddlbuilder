@@ -24,6 +24,8 @@ import {
   listWorkspaceFolders,
   listWorkspaceSavedDrafts,
   listWorkspaceSavedTables,
+  listWorkspaceTrashedDrafts,
+  listWorkspaceTrashedSavedTables,
   materializeWorkspaceYDoc,
   mergeWorkspaceSnapshotIntoYDoc,
   subscribeWorkspaceYDoc,
@@ -86,6 +88,12 @@ export const listDraftRecordsFromYDoc = (doc: Y.Doc) =>
     record: { ...record, state: withDefaultEditorSession(record.state) },
   }));
 
+export const listTrashedDraftRecordsFromYDoc = (doc: Y.Doc) =>
+  listWorkspaceTrashedDrafts(doc).map(({ draftId, record }) => ({
+    draftId,
+    record: { ...record, state: withDefaultEditorSession(record.state) },
+  }));
+
 const toSavedTableRecord = (
   record: NonNullable<ReturnType<typeof getWorkspaceSavedTable>>,
 ): SavedTableRecord => ({
@@ -112,16 +120,25 @@ export const getSavedTableFromYDoc = (
 export const listSavedTableRecordsFromYDoc = (doc: Y.Doc): SavedTableRecord[] =>
   listWorkspaceSavedTables(doc).map(toSavedTableRecord);
 
+export const listTrashedSavedTableRecordsFromYDoc = (doc: Y.Doc): SavedTableRecord[] =>
+  listWorkspaceTrashedSavedTables(doc).map(toSavedTableRecord);
+
+const toSavedTableMetadata = (record: SavedTableRecord): SavedTableMetadata => ({
+  normalizedName: record.normalizedName,
+  name: record.name,
+  dbType: record.state.dbType,
+  fieldCount: record.state.rows.filter((row) => row.fieldName.trim()).length,
+  folderId: record.folderId,
+  trashedAt: record.trashedAt,
+  createdAt: record.createdAt,
+  updatedAt: record.updatedAt,
+});
+
 export const listSavedTableMetadataFromYDoc = (doc: Y.Doc): SavedTableMetadata[] =>
-  listSavedTableRecordsFromYDoc(doc).map((record) => ({
-    normalizedName: record.normalizedName,
-    name: record.name,
-    dbType: record.state.dbType,
-    fieldCount: record.state.rows.filter((row) => row.fieldName.trim()).length,
-    folderId: record.folderId,
-    createdAt: record.createdAt,
-    updatedAt: record.updatedAt,
-  }));
+  listSavedTableRecordsFromYDoc(doc).map(toSavedTableMetadata);
+
+export const listTrashedSavedTableMetadataFromYDoc = (doc: Y.Doc): SavedTableMetadata[] =>
+  listTrashedSavedTableRecordsFromYDoc(doc).map(toSavedTableMetadata);
 
 export const upsertSavedDraftInYDoc = (
   doc: Y.Doc,

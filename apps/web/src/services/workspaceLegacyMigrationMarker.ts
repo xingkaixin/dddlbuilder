@@ -7,7 +7,7 @@ import { getWorkspaceScopeStorageKey } from '@/utils/workspaceScope';
  * （否则清空目标分区后会重新提升一份陈旧 legacy 快照），也不应该跨设备同步
  * （每台设备有各自的 legacy 分区要处理）。
  */
-const STORAGE_KEY_PREFIX = 'ddlbuilder:workspace-legacy-migration';
+const STORAGE_KEY_PREFIX = 'ddlbuilder:workspace-legacy-migration:v2';
 
 const DONE = 'done';
 

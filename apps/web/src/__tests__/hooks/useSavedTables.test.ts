@@ -4,7 +4,7 @@ import { useSavedTables } from '@/hooks/useSavedTables';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '../utils/fakeIndexedDb';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { flushPromises } from '@/__tests__/utils/test-utils';
-import { addSavedTable, getSavedTable, moveSavedTableToTrash } from '@/utils/savedTablesDb';
+import { getSavedTable } from '@/utils/savedTablesDb';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
 const renderHook = <Result, Props>(render: (initialProps: Props) => Result) => {
@@ -31,6 +31,8 @@ const mockYDocAdapter = vi.hoisted(() => ({
   getSavedTableFromYDoc: vi.fn(),
   listSavedTableMetadataFromYDoc: vi.fn(),
   listSavedTableRecordsFromYDoc: vi.fn(),
+  listTrashedSavedTableMetadataFromYDoc: vi.fn(),
+  listTrashedSavedTableRecordsFromYDoc: vi.fn(),
   subscribeWorkspaceYDoc: vi.fn(),
   upsertSavedTableInYDoc: vi.fn(),
 }));
@@ -52,6 +54,8 @@ vi.mock('@/services/workspaceYDocAdapter', () => ({
   getSavedTableFromYDoc: mockYDocAdapter.getSavedTableFromYDoc,
   listSavedTableMetadataFromYDoc: mockYDocAdapter.listSavedTableMetadataFromYDoc,
   listSavedTableRecordsFromYDoc: mockYDocAdapter.listSavedTableRecordsFromYDoc,
+  listTrashedSavedTableMetadataFromYDoc: mockYDocAdapter.listTrashedSavedTableMetadataFromYDoc,
+  listTrashedSavedTableRecordsFromYDoc: mockYDocAdapter.listTrashedSavedTableRecordsFromYDoc,
   subscribeWorkspaceYDoc: mockYDocAdapter.subscribeWorkspaceYDoc,
   upsertSavedTableInYDoc: mockYDocAdapter.upsertSavedTableInYDoc,
 }));
@@ -92,6 +96,8 @@ describe('useSavedTables', () => {
     mockYDocAdapter.getSavedTableFromYDoc.mockReset();
     mockYDocAdapter.listSavedTableMetadataFromYDoc.mockReset();
     mockYDocAdapter.listSavedTableRecordsFromYDoc.mockReset().mockReturnValue([]);
+    mockYDocAdapter.listTrashedSavedTableMetadataFromYDoc.mockReset().mockReturnValue([]);
+    mockYDocAdapter.listTrashedSavedTableRecordsFromYDoc.mockReset().mockReturnValue([]);
     mockYDocAdapter.subscribeWorkspaceYDoc.mockReset().mockReturnValue(vi.fn());
     mockYDocAdapter.upsertSavedTableInYDoc.mockReset();
   });
@@ -315,6 +321,46 @@ describe('useSavedTables', () => {
     expect(mockMigrationMarker.invalidateLegacyWorkspaceMigration).not.toHaveBeenCalled();
   });
 
+  it('records the current trash write target when Y.Doc is ready', async () => {
+    const log = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const doc = { transact: (callback: () => void) => callback() };
+    mockUseAuthSession.mockReturnValue({
+      status: 'signed_in',
+      configured: true,
+      userId: 'user_1',
+      workspaceId: 'workspace_1',
+    } as any);
+    mockWorkspaceYDoc.value = {
+      doc,
+      synced: true,
+      localSynced: true,
+      connectionState: 'connected',
+      retry: vi.fn(),
+    };
+    mockYDocAdapter.listSavedTableMetadataFromYDoc.mockReturnValue([]);
+    mockYDocAdapter.getSavedTableFromYDoc.mockReturnValue({
+      normalizedName: 'orders',
+      name: 'Orders',
+      state: createState('orders'),
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    const { result } = renderHook(() => useSavedTables());
+
+    await act(async () => {
+      await result.current.deleteTable('orders');
+      await flushPromises();
+    });
+
+    expect(mockYDocAdapter.upsertSavedTableInYDoc).toHaveBeenCalledWith(
+      doc,
+      expect.objectContaining({ normalizedName: 'orders', trashedAt: expect.any(Number) }),
+    );
+    expect(mockYDocAdapter.deleteSavedTableFromYDoc).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('"target":"ydoc"'));
+    log.mockRestore();
+  });
+
   it('should keep saved table order stable after overwrite', async () => {
     vi.spyOn(Date, 'now')
       .mockReturnValueOnce(100)
@@ -403,24 +449,7 @@ describe('useSavedTables', () => {
     expect(result.current.loading).toBe(false);
   });
 
-  it('restores trashed local data when the authoritative YDoc no longer contains it', async () => {
-    const scope = {
-      kind: 'user' as const,
-      userId: 'user_1',
-      workspaceId: 'workspace_1',
-    };
-    await addSavedTable(
-      {
-        normalizedName: 'archived',
-        name: 'Archived',
-        state: createState('archived'),
-        folderId: 'folder-1',
-        createdAt: 100,
-        updatedAt: 100,
-      },
-      scope,
-    );
-    await moveSavedTableToTrash('archived', scope);
+  it('restores a trashed record from the authoritative YDoc', async () => {
     const doc = { transact: (callback: () => void) => callback() };
     mockUseAuthSession.mockReturnValue({
       status: 'signed_in',
@@ -436,7 +465,15 @@ describe('useSavedTables', () => {
       retry: vi.fn(),
     };
     mockYDocAdapter.listSavedTableMetadataFromYDoc.mockReturnValue([]);
-    mockYDocAdapter.getSavedTableFromYDoc.mockReturnValue(null);
+    mockYDocAdapter.getSavedTableFromYDoc.mockReturnValue({
+      normalizedName: 'archived',
+      name: 'Archived',
+      state: createState('archived'),
+      folderId: 'folder-1',
+      trashedAt: 200,
+      createdAt: 100,
+      updatedAt: 200,
+    });
     const { result } = renderHook(() => useSavedTables());
     await act(async () => {
       await flushPromises();

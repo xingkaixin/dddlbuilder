@@ -5,7 +5,12 @@ import type {
 } from '@ddlbuilder/shared-types/workspace';
 import { withDefaultEditorSession } from '@ddlbuilder/shared-types';
 import { normalizeWorkspaceSnapshot } from '@ddlbuilder/workspace-core';
-import { addSavedTable, deleteSavedTable, listSavedTables } from '@/utils/savedTablesDb';
+import {
+  addSavedTable,
+  deleteSavedTable,
+  listSavedTables,
+  listTrashedSavedTables,
+} from '@/utils/savedTablesDb';
 import { clearFolders, bulkPutFolders } from '@/utils/tableFolders';
 import {
   DEFAULT_DRAFT_ID,
@@ -14,6 +19,7 @@ import {
   deleteSavedDraft,
   listDrafts,
   listSavedDrafts,
+  listTrashedDrafts,
   upsertSavedDraft,
   writeDraft,
 } from '@/utils/workspaceStateDb';
@@ -32,19 +38,24 @@ const replaceLocalWorkspaceSnapshot = async (
   scope: WorkspaceScope,
 ) => {
   const normalizedSnapshot = normalizeWorkspaceSnapshot(snapshot);
-  const [localDrafts, localSavedTables, localSavedDrafts] = await Promise.all([
-    listDrafts(scope),
-    listSavedTables(scope),
-    listSavedDrafts(scope),
-  ]);
+  const [localDrafts, localTrashedDrafts, localSavedTables, localTrashedTables, localSavedDrafts] =
+    await Promise.all([
+      listDrafts(scope),
+      listTrashedDrafts(scope),
+      listSavedTables(scope),
+      listTrashedSavedTables(scope),
+      listSavedDrafts(scope),
+    ]);
 
   await deleteDraft(DEFAULT_DRAFT_ID, scope);
   await clearWorkspaceSession(scope);
   await clearFolders(scope);
 
   await Promise.all([
-    ...localDrafts.map((item) => deleteDraft(item.draftId, scope)),
-    ...localSavedTables.map((item) => deleteSavedTable(item.normalizedName, scope)),
+    ...[...localDrafts, ...localTrashedDrafts].map((item) => deleteDraft(item.draftId, scope)),
+    ...[...localSavedTables, ...localTrashedTables].map((item) =>
+      deleteSavedTable(item.normalizedName, scope),
+    ),
     ...Object.keys(localSavedDrafts).map((normalizedName) =>
       deleteSavedDraft(normalizedName, scope),
     ),
@@ -58,6 +69,7 @@ const replaceLocalWorkspaceSnapshot = async (
         createdAt: item.createdAt ?? item.updatedAt,
         updatedAt: item.updatedAt,
         folderId: item.folderId,
+        trashedAt: item.trashedAt,
       },
       scope,
     );
@@ -72,6 +84,7 @@ const replaceLocalWorkspaceSnapshot = async (
         createdAt: item.createdAt ?? item.updatedAt,
         updatedAt: item.updatedAt,
         folderId: item.folderId,
+        trashedAt: item.trashedAt,
       },
       scope,
     );

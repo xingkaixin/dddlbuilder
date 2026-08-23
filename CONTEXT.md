@@ -42,8 +42,8 @@ derived from uniqueness and field nullability rather than stored independently.
 _Avoid_: ER edge, connector
 
 **Trash Entry**:
-A locally retained Saved Table that is no longer active but can still be restored during its retention period.
-_Avoid_: Deleted Y.Doc entity
+A soft-deleted Draft or Saved Table retained in the workspace document until it is restored or permanently deleted. The deletion timestamp is synchronized across devices.
+_Avoid_: Local-only deleted entity
 
 ## AI Usage and Credits
 

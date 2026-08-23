@@ -15,6 +15,7 @@ import {
   addSavedTable,
   getSavedTable,
   listSavedTables,
+  listTrashedSavedTables,
   updateSavedTable,
 } from '@/utils/savedTablesDb';
 import { bulkPutFolders, listFolders } from '@/utils/tableFolders';
@@ -22,6 +23,7 @@ import {
   DEFAULT_DRAFT_ID,
   listDrafts,
   listSavedDrafts,
+  listTrashedDrafts,
   readDraft,
   readSavedDraft,
   readWorkspaceSession,
@@ -108,15 +110,25 @@ const requestWorkspaceMigration = async (
 export const collectWorkspaceMigrationPayload = async (
   scope: WorkspaceScope = getAnonymousWorkspaceScope(),
 ): Promise<WorkspaceMigrationPayload | null> => {
-  const [globalDraft, activeSession, drafts, savedTables, savedDraftMap, folders] =
-    await Promise.all([
-      readDraft(DEFAULT_DRAFT_ID, scope),
-      readWorkspaceSession(scope),
-      listDrafts(scope),
-      listSavedTables(scope),
-      listSavedDrafts(scope),
-      listFolders(scope),
-    ]);
+  const [
+    globalDraft,
+    activeSession,
+    drafts,
+    trashedDrafts,
+    savedTables,
+    trashedTables,
+    savedDraftMap,
+    folders,
+  ] = await Promise.all([
+    readDraft(DEFAULT_DRAFT_ID, scope),
+    readWorkspaceSession(scope),
+    listDrafts(scope),
+    listTrashedDrafts(scope),
+    listSavedTables(scope),
+    listTrashedSavedTables(scope),
+    listSavedDrafts(scope),
+    listFolders(scope),
+  ]);
 
   const savedDrafts = Object.entries(savedDraftMap).map(([normalizedName, item]) => ({
     normalizedName,
@@ -137,7 +149,9 @@ export const collectWorkspaceMigrationPayload = async (
     Boolean(meaningfulGlobalDraft) ||
     Boolean(meaningfulActiveState) ||
     drafts.some((item) => item.draftId !== DEFAULT_DRAFT_ID) ||
+    trashedDrafts.length > 0 ||
     savedTables.length > 0 ||
+    trashedTables.length > 0 ||
     savedDrafts.length > 0 ||
     folders.length > 0;
 
@@ -148,16 +162,17 @@ export const collectWorkspaceMigrationPayload = async (
   const snapshot: WorkspaceMigrationSnapshot = {
     globalDraft: meaningfulGlobalDraft,
     activeSession: activeSession ? { ...activeSession, activeState: meaningfulActiveState } : null,
-    drafts: drafts
+    drafts: [...drafts, ...trashedDrafts]
       .filter((item) => item.draftId !== DEFAULT_DRAFT_ID)
       .map(({ draftId, record }) => ({ draftId, ...record })),
-    savedTables: savedTables.map((item) => ({
+    savedTables: [...savedTables, ...trashedTables].map((item) => ({
       normalizedName: item.normalizedName,
       name: item.name,
       state: item.state,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
       folderId: item.folderId,
+      trashedAt: item.trashedAt,
     })),
     savedDrafts,
     folders,
@@ -187,31 +202,36 @@ export const promoteLegacyUserWorkspaceData = async (scope: WorkspaceScope): Pro
     kind: 'user',
     userId: scope.userId,
   };
-  const [drafts, savedTables, savedDrafts, folders, session] = await Promise.all([
-    listDrafts(legacyScope),
-    listSavedTables(legacyScope),
-    listSavedDrafts(legacyScope),
-    listFolders(legacyScope),
-    readWorkspaceSession(legacyScope),
-  ]);
+  const [drafts, trashedDrafts, savedTables, trashedTables, savedDrafts, folders, session] =
+    await Promise.all([
+      listDrafts(legacyScope),
+      listTrashedDrafts(legacyScope),
+      listSavedTables(legacyScope),
+      listTrashedSavedTables(legacyScope),
+      listSavedDrafts(legacyScope),
+      listFolders(legacyScope),
+      readWorkspaceSession(legacyScope),
+    ]);
 
   if (
     drafts.length === 0 &&
+    trashedDrafts.length === 0 &&
     savedTables.length === 0 &&
+    trashedTables.length === 0 &&
     Object.keys(savedDrafts).length === 0 &&
     folders.length === 0
   ) {
     return false;
   }
 
-  for (const { draftId, record } of drafts) {
+  for (const { draftId, record } of [...drafts, ...trashedDrafts]) {
     const existing = await readDraft(draftId, scope);
     if (shouldPromoteRecord(record.updatedAt, existing?.updatedAt)) {
       await writeDraft(draftId, record, scope);
     }
   }
 
-  for (const table of savedTables) {
+  for (const table of [...savedTables, ...trashedTables]) {
     const existing = await getSavedTable(table.normalizedName, scope);
     if (!existing) {
       await addSavedTable(table, scope);

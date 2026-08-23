@@ -46,6 +46,7 @@ export const upsertWorkspaceDraft = (
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
       folderId: record.folderId,
+      trashedAt: record.trashedAt,
     },
     options,
   );
@@ -55,11 +56,17 @@ export const deleteWorkspaceDraft = (doc: Y.Doc, draftId: string) => {
   getWorkspaceRoot(doc).drafts.delete(draftId);
 };
 
-export const listWorkspaceDrafts = (doc: Y.Doc) =>
+const listWorkspaceDraftRecords = (doc: Y.Doc) =>
   Array.from(getWorkspaceRoot(doc).drafts.keys()).flatMap((draftId) => {
     const record = getDraftRecordFromYDoc(doc, draftId);
     return record ? [{ draftId, record }] : [];
   });
+
+export const listWorkspaceDrafts = (doc: Y.Doc) =>
+  listWorkspaceDraftRecords(doc).filter(({ record }) => record.trashedAt == null);
+
+export const listWorkspaceTrashedDrafts = (doc: Y.Doc) =>
+  listWorkspaceDraftRecords(doc).filter(({ record }) => record.trashedAt != null);
 
 export const upsertWorkspaceSavedTable = (
   doc: Y.Doc,
@@ -76,6 +83,7 @@ export const upsertWorkspaceSavedTable = (
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
       folderId: record.folderId,
+      trashedAt: record.trashedAt,
     },
     options,
   );
@@ -100,14 +108,21 @@ export const getWorkspaceSavedTable = (
     createdAt: readWorkspaceCreatedAt(metadata.createdAt, updatedAt),
     updatedAt,
     ...(typeof metadata.folderId === 'string' ? { folderId: metadata.folderId } : {}),
+    ...(typeof metadata.trashedAt === 'number' ? { trashedAt: metadata.trashedAt } : {}),
   };
 };
 
-export const listWorkspaceSavedTables = (doc: Y.Doc): WorkspaceSavedTableRecord[] =>
+const listWorkspaceSavedTableRecords = (doc: Y.Doc): WorkspaceSavedTableRecord[] =>
   Array.from(getWorkspaceRoot(doc).savedTables.keys()).flatMap((normalizedName) => {
     const record = getWorkspaceSavedTable(doc, normalizedName);
     return record ? [record] : [];
   });
+
+export const listWorkspaceSavedTables = (doc: Y.Doc): WorkspaceSavedTableRecord[] =>
+  listWorkspaceSavedTableRecords(doc).filter((record) => record.trashedAt == null);
+
+export const listWorkspaceTrashedSavedTables = (doc: Y.Doc): WorkspaceSavedTableRecord[] =>
+  listWorkspaceSavedTableRecords(doc).filter((record) => record.trashedAt != null);
 
 export const upsertWorkspaceSavedDraft = (
   doc: Y.Doc,
@@ -169,9 +184,11 @@ export const getWorkspaceSourceState = (
   source: WorkspaceSource,
 ): SchemaDocumentState | null => {
   if (source.kind === 'draft') {
-    return getDraftRecordFromYDoc(doc, source.draftId)?.state ?? null;
+    const record = getDraftRecordFromYDoc(doc, source.draftId);
+    return record && record.trashedAt == null ? record.state : null;
   }
-  return getWorkspaceSavedTable(doc, source.normalizedName)?.state ?? null;
+  const record = getWorkspaceSavedTable(doc, source.normalizedName);
+  return record && record.trashedAt == null ? record.state : null;
 };
 
 export const subscribeWorkspaceYDoc = (
