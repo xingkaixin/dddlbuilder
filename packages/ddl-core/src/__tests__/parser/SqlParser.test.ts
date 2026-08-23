@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { DATABASE_TYPES } from '@ddlbuilder/shared-types';
 import { SqlParser } from '../../parser/SqlParser.js';
 
 const stripIndexIds = (indexes: any[]) =>
@@ -10,6 +11,18 @@ const stripIndexIds = (indexes: any[]) =>
   }));
 
 describe('SqlParser', () => {
+  it.each(DATABASE_TYPES.filter((databaseType) => databaseType !== 'hive'))(
+    '能够使用 %s 的兼容方言解析基础建表语句',
+    async (databaseType) => {
+      const parser = new SqlParser();
+
+      const result = await parser.parseAsync('CREATE TABLE users (id INT);', databaseType);
+
+      expect(result.tableName).toBe('users');
+      expect(result.fields[0]).toMatchObject({ name: 'id', type: 'INT' });
+    },
+  );
+
   it('能够解析 MySQL 的表结构、索引与授权', async () => {
     const sql = `
     CREATE TABLE users (

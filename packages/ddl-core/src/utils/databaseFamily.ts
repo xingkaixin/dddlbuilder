@@ -2,43 +2,47 @@ import type { DatabaseType } from '@ddlbuilder/shared-types';
 
 export type DatabaseFamily = 'mysql' | 'postgresql' | 'sqlserver' | 'oracle' | 'dm' | 'hive';
 
-const DATABASE_FAMILIES = {
-  mysql: 'mysql',
-  mariadb: 'mysql',
-  tidb: 'mysql',
-  oceanbase: 'mysql',
-  gbase: 'mysql',
-  polardb: 'mysql',
-  postgresql: 'postgresql',
-  'postgresql-citus': 'postgresql',
-  kingbase: 'postgresql',
-  gaussdb: 'postgresql',
-  sqlserver: 'sqlserver',
-  oracle: 'oracle',
-  'oceanbase-oracle': 'oracle',
-  dm: 'dm',
-  hive: 'hive',
-} as const satisfies Record<DatabaseType, DatabaseFamily>;
+export type SqlParserDialect = 'mysql' | 'mariadb' | 'postgresql' | 'transactsql' | 'hive';
 
-export const getDatabaseFamily = (databaseType: DatabaseType): DatabaseFamily =>
-  DATABASE_FAMILIES[databaseType];
+interface DatabaseCapabilities {
+  family: DatabaseFamily;
+  parserDialect: SqlParserDialect;
+}
+
+const DATABASE_CAPABILITIES = {
+  mysql: { family: 'mysql', parserDialect: 'mysql' },
+  mariadb: { family: 'mysql', parserDialect: 'mariadb' },
+  tidb: { family: 'mysql', parserDialect: 'mysql' },
+  oceanbase: { family: 'mysql', parserDialect: 'mysql' },
+  gbase: { family: 'mysql', parserDialect: 'mysql' },
+  polardb: { family: 'mysql', parserDialect: 'mysql' },
+  postgresql: { family: 'postgresql', parserDialect: 'postgresql' },
+  'postgresql-citus': { family: 'postgresql', parserDialect: 'postgresql' },
+  kingbase: { family: 'postgresql', parserDialect: 'postgresql' },
+  gaussdb: { family: 'postgresql', parserDialect: 'postgresql' },
+  sqlserver: { family: 'sqlserver', parserDialect: 'transactsql' },
+  oracle: { family: 'oracle', parserDialect: 'mysql' },
+  'oceanbase-oracle': { family: 'oracle', parserDialect: 'mysql' },
+  dm: { family: 'dm', parserDialect: 'mysql' },
+  hive: { family: 'hive', parserDialect: 'hive' },
+} as const satisfies Record<DatabaseType, DatabaseCapabilities>;
+
+export const getDatabaseFamily = (databaseType: DatabaseType): DatabaseFamily | undefined =>
+  (DATABASE_CAPABILITIES as Partial<Record<DatabaseType, DatabaseCapabilities>>)[databaseType]
+    ?.family;
+
+export const getSqlParserDialect = (databaseType: DatabaseType): SqlParserDialect =>
+  DATABASE_CAPABILITIES[databaseType].parserDialect;
+
+export const supportsMysqlPartition = (databaseType: DatabaseType): boolean =>
+  getDatabaseFamily(databaseType) === 'mysql';
 
 export const expandDatabaseFamilies = <T>(
   values: Record<DatabaseFamily, T>,
-): Record<DatabaseType, T> => ({
-  mysql: values.mysql,
-  mariadb: values.mysql,
-  tidb: values.mysql,
-  oceanbase: values.mysql,
-  gbase: values.mysql,
-  polardb: values.mysql,
-  postgresql: values.postgresql,
-  'postgresql-citus': values.postgresql,
-  kingbase: values.postgresql,
-  gaussdb: values.postgresql,
-  sqlserver: values.sqlserver,
-  oracle: values.oracle,
-  'oceanbase-oracle': values.oracle,
-  dm: values.dm,
-  hive: values.hive,
-});
+): Record<DatabaseType, T> =>
+  Object.fromEntries(
+    Object.entries(DATABASE_CAPABILITIES).map(([databaseType, capabilities]) => [
+      databaseType,
+      values[capabilities.family],
+    ]),
+  ) as Record<DatabaseType, T>;

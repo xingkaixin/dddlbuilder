@@ -17,10 +17,17 @@ describe('tabUtils', () => {
       expect(getAvailableTabs('mysql')).not.toContain('sharding');
     });
 
-    it('should include partition tab for mysql/mariadb/tidb', () => {
-      expect(getAvailableTabs('mysql')).toContain('partition');
-      expect(getAvailableTabs('mariadb')).toContain('partition');
-      expect(getAvailableTabs('tidb')).toContain('partition');
+    it('should include partition tab for mysql-family databases', () => {
+      for (const databaseType of [
+        'mysql',
+        'mariadb',
+        'tidb',
+        'oceanbase',
+        'gbase',
+        'polardb',
+      ] as const) {
+        expect(getAvailableTabs(databaseType)).toContain('partition');
+      }
       expect(getAvailableTabs('postgresql')).not.toContain('partition');
       expect(getAvailableTabs('oracle')).not.toContain('partition');
     });
@@ -41,9 +48,16 @@ describe('tabUtils', () => {
     });
 
     it('should return true for partition tab on mysql-family databases', () => {
-      expect(isTabAvailable('partition', 'mysql')).toBe(true);
-      expect(isTabAvailable('partition', 'mariadb')).toBe(true);
-      expect(isTabAvailable('partition', 'tidb')).toBe(true);
+      for (const databaseType of [
+        'mysql',
+        'mariadb',
+        'tidb',
+        'oceanbase',
+        'gbase',
+        'polardb',
+      ] as const) {
+        expect(isTabAvailable('partition', databaseType)).toBe(true);
+      }
     });
 
     it('should return false for sharding tab on non-citus databases', () => {

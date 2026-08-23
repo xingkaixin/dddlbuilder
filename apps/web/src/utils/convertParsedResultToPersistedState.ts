@@ -1,4 +1,4 @@
-import { getSchemaAndTable } from '@ddlbuilder/ddl-core';
+import { getSchemaAndTable, supportsMysqlPartition } from '@ddlbuilder/ddl-core';
 import type {
   DatabaseType,
   FieldRow,
@@ -17,8 +17,6 @@ const DEFAULT_TABLE_MISC_CONFIG: TableMiscConfig = {
   collation: '',
   tablespace: '',
 };
-
-const MYSQL_PARTITION_DBS: DatabaseType[] = ['mysql', 'mariadb', 'tidb'];
 
 const DEFAULT_MYSQL_PARTITION_CONFIG: MysqlPartitionConfig = {
   enabled: false,
@@ -68,7 +66,7 @@ export function convertParsedResultToPersistedState(
     indexes: result.indexes,
     authInput: '',
     authObjects: result.authObjects,
-    mysqlPartitionConfig: MYSQL_PARTITION_DBS.includes(importDbType)
+    mysqlPartitionConfig: supportsMysqlPartition(importDbType)
       ? {
           ...DEFAULT_MYSQL_PARTITION_CONFIG,
           ...result.mysqlPartitionConfig,

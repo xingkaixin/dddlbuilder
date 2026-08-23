@@ -21,6 +21,7 @@ import { useFieldTypeChangeGuard } from './table/useFieldTypeChangeGuard';
 import { DangerousChangeDialog } from './table/DangerousChangeDialog';
 import { useSortableFieldRows } from './table/useSortableFieldRows';
 import { useTranslation } from 'react-i18next';
+import { supportsMysqlPartition } from '@ddlbuilder/ddl-core';
 import type { AICommentMode } from '@ddlbuilder/shared-types';
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 
@@ -251,7 +252,7 @@ export const DataTable = memo<DataTableProps>(
 
         syncIndexFieldRename(oldFieldName, newFieldName, dbType);
 
-        if (['mysql', 'mariadb', 'tidb'].includes(dbType)) {
+        if (supportsMysqlPartition(dbType)) {
           syncPartitionFieldRename(oldFieldName, newFieldName);
         }
 

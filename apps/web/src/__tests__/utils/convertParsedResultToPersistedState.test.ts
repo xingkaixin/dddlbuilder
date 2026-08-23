@@ -120,25 +120,28 @@ describe('convertParsedResultToPersistedState', () => {
     });
   });
 
-  it('MySQL 分区配置保留', () => {
-    const result = createParsedResult({
-      mysqlPartitionConfig: {
+  it.each(['mysql', 'mariadb', 'tidb', 'oceanbase', 'gbase', 'polardb'] as const)(
+    '%s 分区配置保留',
+    (databaseType) => {
+      const result = createParsedResult({
+        mysqlPartitionConfig: {
+          enabled: true,
+          type: 'HASH',
+          columns: ['id'],
+          partitionCount: 8,
+          partitions: [],
+        },
+      });
+      const state = convertParsedResultToPersistedState(result, databaseType);
+
+      expect(state.mysqlPartitionConfig).toMatchObject({
         enabled: true,
         type: 'HASH',
         columns: ['id'],
         partitionCount: 8,
-        partitions: [],
-      },
-    });
-    const state = convertParsedResultToPersistedState(result, 'mysql');
-
-    expect(state.mysqlPartitionConfig).toMatchObject({
-      enabled: true,
-      type: 'HASH',
-      columns: ['id'],
-      partitionCount: 8,
-    });
-  });
+      });
+    },
+  );
 
   it('非 MySQL 分区使用默认值', () => {
     const result = createParsedResult();

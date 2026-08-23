@@ -11,6 +11,7 @@ import {
   buildExtendedProperty,
 } from './dialectStatements';
 import type { ConfiguredTableDDL, TableFeatureConfig } from '../interfaces/DDLStrategy';
+import { supportsMysqlPartition } from '../utils/databaseFamily';
 
 /**
  * 由方言描述表驱动的通用 CREATE TABLE 生成器。
@@ -56,7 +57,7 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
       };
     }
 
-    if (this.profile.supportsPartition && config.mysqlPartitionConfig?.enabled) {
+    if (supportsMysqlPartition(this.databaseType) && config.mysqlPartitionConfig?.enabled) {
       const partitionClause = buildMysqlPartitionClause(config.mysqlPartitionConfig);
       if (partitionClause) {
         return {

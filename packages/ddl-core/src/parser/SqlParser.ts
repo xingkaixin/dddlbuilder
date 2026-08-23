@@ -23,6 +23,7 @@ import {
 import { loadParserConstructor } from './parserLoader.js';
 import { preprocessMysql } from './preprocessMysql.js';
 import type { ParsedResult, ParserInstance, MultiParsedResult } from './types.js';
+import { getDatabaseFamily, getSqlParserDialect } from '../utils/databaseFamily.js';
 
 export type { ParsedResult } from './types.js';
 
@@ -94,7 +95,9 @@ export class SqlParser {
       }
     };
 
-    if (dbType === 'oracle') {
+    const databaseFamily = getDatabaseFamily(dbType);
+
+    if (databaseFamily === 'oracle' || databaseFamily === 'dm') {
       const processed = preprocessOracle(sqlToParse);
       sqlToParse = processed.sql;
       mergeCommentSource(processed);
@@ -107,7 +110,7 @@ export class SqlParser {
       rawGrantUsers = extractSqlServerGrantUsers(sql);
     }
 
-    if (['mysql', 'mariadb', 'tidb', 'oceanbase'].includes(dbType)) {
+    if (databaseFamily === 'mysql') {
       const processed = preprocessMysql(sqlToParse);
       sqlToParse = processed.sql;
       extractedPartitionConfig = processed.partitionConfig;
@@ -125,14 +128,7 @@ export class SqlParser {
 
   private buildAstifyOpt(dbType: DatabaseType) {
     return {
-      database:
-        dbType === 'sqlserver'
-          ? 'transactsql'
-          : dbType === 'oracle'
-            ? 'mysql'
-            : dbType === 'postgresql-citus'
-              ? 'postgresql'
-              : dbType,
+      database: getSqlParserDialect(dbType),
     };
   }
 

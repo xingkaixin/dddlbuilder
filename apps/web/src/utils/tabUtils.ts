@@ -1,3 +1,4 @@
+import { supportsMysqlPartition } from '@ddlbuilder/ddl-core';
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 
 export const BUILDER_TABS = [
@@ -21,8 +22,6 @@ const ALWAYS_AVAILABLE_TABS = [
   'misc',
 ] satisfies BuilderTab[];
 
-const MYSQL_PARTITION_DBS: DatabaseType[] = ['mysql', 'mariadb', 'tidb'];
-
 // Hive 不支持的 tab
 const HIVE_DISABLED_TABS = new Set<BuilderTab>(['indexes', 'foreignKeys']);
 
@@ -36,7 +35,7 @@ export function isBuilderTab(value: string): value is BuilderTab {
 export function getAvailableTabs(dbType: DatabaseType): BuilderTab[] {
   const tabs: BuilderTab[] = [...ALWAYS_AVAILABLE_TABS];
   if (dbType === 'postgresql-citus') tabs.push('sharding');
-  if (MYSQL_PARTITION_DBS.includes(dbType)) tabs.push('partition');
+  if (supportsMysqlPartition(dbType)) tabs.push('partition');
   if (dbType === 'hive') tabs.push('hive-partition');
 
   // 移除该数据库类型不支持的 tab

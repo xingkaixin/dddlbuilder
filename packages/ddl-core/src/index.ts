@@ -1,5 +1,12 @@
 export { buildDDL, buildDCL, buildOracleSynonyms, buildViewDDL } from './utils/ddlGenerators.js';
 export { buildRoutineTemplateDDL } from './utils/routineTemplates.js';
+export {
+  getDatabaseFamily,
+  getSqlParserDialect,
+  supportsMysqlPartition,
+  type DatabaseFamily,
+  type SqlParserDialect,
+} from './utils/databaseFamily.js';
 export { diffPersistedState } from './utils/tableDiff.js';
 export type {
   TableDiff,

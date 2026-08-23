@@ -17,7 +17,7 @@ import {
   normalizePersistedStateSignature,
   serializePersistedStateForComparison,
 } from '@/utils/persistedStateSignature';
-import { diffPersistedState, type TableDiff } from '@ddlbuilder/ddl-core';
+import { diffPersistedState, supportsMysqlPartition, type TableDiff } from '@ddlbuilder/ddl-core';
 
 interface UseDerivedTableStateDeps {
   // 基础表数据
@@ -101,7 +101,7 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
   }, [tableName, dbType, indexes.length, updateIndexNames]);
 
   // --- Tab 计算 ---
-  const supportsMysqlPartition = ['mysql', 'mariadb', 'tidb'].includes(dbType);
+  const canPartitionMysqlTable = supportsMysqlPartition(dbType);
 
   // --- 持久化状态 ---
   const normalizedRowsForPersist = useMemo(
@@ -139,7 +139,7 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
       authInput,
       authObjects,
       citusShardingConfig: dbType === 'postgresql-citus' ? citusShardingConfig : undefined,
-      mysqlPartitionConfig: supportsMysqlPartition ? mysqlPartitionConfig : undefined,
+      mysqlPartitionConfig: canPartitionMysqlTable ? mysqlPartitionConfig : undefined,
       tableMiscConfig,
       fieldTableViewConfig: {
         freezeEnabled: fieldTableFreezeEnabled,
@@ -165,7 +165,7 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
       authObjects,
       citusShardingConfig,
       mysqlPartitionConfig,
-      supportsMysqlPartition,
+      canPartitionMysqlTable,
       tableMiscConfig,
       fieldTableFreezeEnabled,
       fieldTableFreezeColumns,
@@ -227,7 +227,7 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     availableFields,
     filledRowCount,
     // Tab
-    supportsMysqlPartition,
+    supportsMysqlPartition: canPartitionMysqlTable,
     // 持久化
     currentPersistedState,
     buildPersistedState,
