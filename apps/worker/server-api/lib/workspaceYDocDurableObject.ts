@@ -37,6 +37,11 @@ type WorkspaceYDocSocketAttachment = {
   connectedAt: number;
 };
 
+type PendingWorkspaceUpdate = {
+  seq: number;
+  update: Uint8Array;
+};
+
 const MESSAGE_SYNC = 0;
 const SNAPSHOT_KEY = 'snapshot';
 const META_KEY = 'meta';
@@ -71,8 +76,8 @@ const createSocketId = () => crypto.randomUUID();
 export class WorkspaceYDocDurableObject {
   private doc: Y.Doc | null = null;
   private loadPromise: Promise<Y.Doc> | null = null;
-  private persistQueue: Promise<void> = Promise.resolve();
-  private persistFailure: Error | null = null;
+  private persistQueue: Promise<void> | null = null;
+  private readonly pendingUpdates: PendingWorkspaceUpdate[] = [];
   private nextSeq = 0;
   private updateCount = 0;
   private updateBytes = 0;
@@ -281,35 +286,52 @@ export class WorkspaceYDocDurableObject {
     this.nextSeq = seq;
     this.updateCount += 1;
     this.updateBytes += update.byteLength;
+    this.pendingUpdates.push({ seq, update });
+    this.startPersisting();
+  }
 
-    const persist = this.persistQueue
-      .then(async () => {
-        await this.state.storage.put(encodeUpdateKey(seq), update);
+  private startPersisting() {
+    if (this.persistQueue || this.pendingUpdates.length === 0) return;
+
+    const persist = this.drainPendingUpdates();
+    this.persistQueue = persist;
+    void persist.then(
+      () => {
+        if (this.persistQueue === persist) this.persistQueue = null;
+      },
+      () => {
+        if (this.persistQueue === persist) this.persistQueue = null;
+      },
+    );
+  }
+
+  private async drainPendingUpdates() {
+    while (this.pendingUpdates.length > 0) {
+      const pending = this.pendingUpdates[0];
+      try {
+        await this.state.storage.put(encodeUpdateKey(pending.seq), pending.update);
         await this.writeMeta();
         if (this.updateCount >= COMPACT_UPDATE_COUNT || this.updateBytes >= COMPACT_UPDATE_BYTES) {
           await this.compact();
         }
         await this.ensureAlarm();
-      })
-      .then(() => {
-        this.persistFailure = null;
-      });
-    this.persistQueue = persist.catch((error: unknown) => {
-      this.persistFailure = error instanceof Error ? error : new Error(String(error));
-      logWorkspaceYDocHealth('persist_failed', {
-        workspaceId: this.workspaceId,
-        seq,
-        errorMessage: this.persistFailure.message,
-      });
-      console.error('[workspace-yjs-do] persist failed', error);
-    });
+        this.pendingUpdates.shift();
+      } catch (error) {
+        const persistError = error instanceof Error ? error : new Error(String(error));
+        logWorkspaceYDocHealth('persist_failed', {
+          workspaceId: this.workspaceId,
+          seq: pending.seq,
+          errorMessage: persistError.message,
+        });
+        console.error('[workspace-yjs-do] persist failed', error);
+        throw persistError;
+      }
+    }
   }
 
   private async awaitPersisted() {
+    this.startPersisting();
     await this.persistQueue;
-    if (this.persistFailure) {
-      throw this.persistFailure;
-    }
   }
 
   private broadcastUpdate(update: Uint8Array, origin: unknown) {

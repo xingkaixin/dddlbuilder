@@ -217,6 +217,63 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     );
   });
 
+  it('retries a failed update before persisting later updates', async () => {
+    vi.doMock('../../lib/workspaceEntities.js', () => ({
+      checkpointWorkspaceSnapshotEntities: vi.fn(),
+      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
+        globalDraft: null,
+        drafts: [],
+        savedTables: [],
+        savedDrafts: [],
+        folders: [],
+      }),
+    }));
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state, store } = createDurableObjectState();
+    let failNextUpdate = true;
+    vi.mocked(
+      state.storage.put as (key: string, value: unknown) => Promise<void>,
+    ).mockImplementation(async (key, value) => {
+      if (key.startsWith('update:') && failNextUpdate) {
+        failNextUpdate = false;
+        throw new Error('storage temporarily unavailable');
+      }
+      store.set(key, value);
+    });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
+    const ws = createWebSocket();
+    const sourceDoc = new Y.Doc();
+    const recoveryState = sourceDoc.getMap('recovery');
+    recoveryState.set('first', true);
+    const firstUpdate = Y.encodeStateAsUpdate(sourceDoc);
+    const firstStateVector = Y.encodeStateVector(sourceDoc);
+
+    await expect(
+      durableObject.webSocketMessage(
+        ws,
+        toArrayBuffer(
+          encodeSyncMessage((encoder) => syncProtocol.writeUpdate(encoder, firstUpdate)),
+        ),
+      ),
+    ).rejects.toThrow('storage temporarily unavailable');
+
+    recoveryState.set('second', true);
+    const secondUpdate = Y.encodeStateAsUpdate(sourceDoc, firstStateVector);
+    await durableObject.webSocketMessage(
+      ws,
+      toArrayBuffer(
+        encodeSyncMessage((encoder) => syncProtocol.writeUpdate(encoder, secondUpdate)),
+      ),
+    );
+
+    const coldObject = new WorkspaceYDocDurableObject(state, createEnv());
+    const response = await coldObject.fetch(createRequest('/api/workspaces/ws-1/yjs/state'));
+    const restoredDoc = new Y.Doc();
+    Y.applyUpdate(restoredDoc, new Uint8Array(await response.arrayBuffer()));
+    expect(restoredDoc.getMap('recovery').toJSON()).toEqual({ first: true, second: true });
+  });
+
   it('rejects an import when its D1 checkpoint fails', async () => {
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi
