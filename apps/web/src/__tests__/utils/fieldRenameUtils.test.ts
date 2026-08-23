@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { isSameIdentifierToken, replaceIdentifierToken } from '@/utils/fieldRenameUtils';
+import {
+  containsSqlIdentifierToken,
+  isSameIdentifierToken,
+  replaceIdentifierToken,
+} from '@/utils/fieldRenameUtils';
 
 describe('fieldRenameUtils', () => {
+  it('应按完整标识符判断表达式是否引用字段', () => {
+    expect(containsSqlIdentifierToken('YEAR(created_at)', 'created_at')).toBe(true);
+    expect(containsSqlIdentifierToken('YEAR(created_at)', 'created')).toBe(false);
+  });
+
   describe('replaceIdentifierToken', () => {
     it('应替换下划线分隔的索引名称字段片段', () => {
       const result = replaceIdentifierToken('idx_user_old_name', 'old_name', 'new_name');

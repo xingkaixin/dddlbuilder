@@ -142,4 +142,46 @@ describe('lintSchema', () => {
 
     expect(issues.map((issue) => issue.ruleId)).toContain('large-type-index');
   });
+
+  it('reports references to fields that do not exist', () => {
+    const issues = lintSchema({
+      tableName: 'users',
+      rows: [field('id')],
+      indexes: [
+        {
+          id: 'dangling-index',
+          name: 'idx_users_missing',
+          fields: [{ name: 'missing', direction: 'ASC' }],
+          unique: false,
+        },
+      ],
+      foreignKeys: [
+        {
+          id: 'dangling-fk',
+          name: 'fk_users_account',
+          fields: ['account_id'],
+          refTable: 'accounts',
+          refFields: ['id'],
+        },
+      ],
+      mysqlPartitionConfig: {
+        enabled: true,
+        type: 'HASH',
+        columns: ['partition_key'],
+      },
+      citusShardingConfig: { mode: 'distributed', distributionColumn: 'tenant_id' },
+      tableMiscConfig: {
+        enabled: true,
+        partitions: {
+          enabled: true,
+          columns: [],
+          clustering: { enabled: true, columns: ['bucket_key'], bucketCount: 4 },
+        },
+      },
+    });
+
+    const danglingIssues = issues.filter((issue) => issue.ruleId === 'dangling-field-reference');
+    expect(danglingIssues).toHaveLength(5);
+    expect(danglingIssues.every((issue) => issue.severity === 'error')).toBe(true);
+  });
 });

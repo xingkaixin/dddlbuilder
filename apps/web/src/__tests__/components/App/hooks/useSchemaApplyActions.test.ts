@@ -179,6 +179,23 @@ describe('useSchemaApplyActions', () => {
       state: createState({
         tableComment: 'edited during animation',
         rows: [...initialState.rows, createRow('added_later')],
+        indexes: [
+          {
+            id: 'obsolete-index',
+            name: 'idx_obsolete',
+            fields: [{ name: 'obsolete', direction: 'ASC' }],
+            unique: false,
+          },
+        ],
+        foreignKeys: [
+          {
+            id: 'obsolete-fk',
+            name: 'fk_obsolete',
+            fields: ['obsolete'],
+            refTable: 'other',
+            refFields: ['id'],
+          },
+        ],
       }),
     });
     act(() => vi.advanceTimersByTime(500));
@@ -187,6 +204,8 @@ describe('useSchemaApplyActions', () => {
       expect.objectContaining({
         tableComment: 'edited during animation',
         rows: [createRow('kept'), createRow('added_later')],
+        indexes: [],
+        foreignKeys: [],
       }),
     );
   });

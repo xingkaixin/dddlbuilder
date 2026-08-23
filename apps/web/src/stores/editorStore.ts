@@ -9,6 +9,7 @@ import { DEFAULT_PARTITION_CONFIG, createPartitionSlice } from './partitionStore
 import { DEFAULT_SHARDING_CONFIG, createShardingSlice } from './shardingStore';
 import { DEFAULT_TABLE_MISC_CONFIG, createTableOptionsSlice } from './tableOptionsStore';
 import type { EditorStoreState } from './editorStoreTypes';
+import { removeFieldsFromDocument } from './editorDocumentMutations';
 
 const documentState = (state: PersistedState) => ({
   schemaName: state.schemaName ?? '',
@@ -45,5 +46,11 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
   ...createShardingSlice(set),
   ...createPartitionSlice(set),
   ...createTableOptionsSlice(set),
+  handleRemoveRow: (index, amount) =>
+    set((state) =>
+      removeFieldsFromDocument(state, (_, rowIndex) => {
+        return rowIndex >= index && rowIndex < index + amount;
+      }),
+    ),
   replaceDocument: (state) => set(documentState(state)),
 }));

@@ -1,4 +1,12 @@
-import type { FieldRow, IndexDefinition } from '@ddlbuilder/shared-types';
+import type {
+  CitusShardingConfig,
+  FieldRow,
+  ForeignKeyDefinition,
+  IndexDefinition,
+  IndexField,
+  MysqlPartitionConfig,
+  TableMiscConfig,
+} from '@ddlbuilder/shared-types';
 
 export type SchemaLintSeverity = 'error' | 'warning' | 'suggestion';
 
@@ -14,7 +22,8 @@ export type SchemaLintRuleId =
   | 'string-length-required'
   | 'money-decimal-required'
   | 'zero-date-default'
-  | 'large-type-index';
+  | 'large-type-index'
+  | 'dangling-field-reference';
 
 export type SchemaLintIssue = {
   id: string;
@@ -28,6 +37,11 @@ export type SchemaLintInput = {
   tableName: string;
   rows: FieldRow[];
   indexes: IndexDefinition[];
+  currentIndexFields?: IndexField[];
+  foreignKeys?: ForeignKeyDefinition[];
+  mysqlPartitionConfig?: MysqlPartitionConfig;
+  citusShardingConfig?: CitusShardingConfig;
+  tableMiscConfig?: TableMiscConfig;
 };
 
 const NAME_PATTERN = /^[a-z][a-z0-9_]*$/;
@@ -78,10 +92,52 @@ function buildExpectedIndexPrefix(tableName: string, index: IndexDefinition): st
   return `${prefix}_${tableName}_${fields.join('_')}`;
 }
 
-export function lintSchema({ tableName, rows, indexes }: SchemaLintInput): SchemaLintIssue[] {
+export function lintSchema({
+  tableName,
+  rows,
+  indexes,
+  currentIndexFields = [],
+  foreignKeys = [],
+  mysqlPartitionConfig,
+  citusShardingConfig,
+  tableMiscConfig,
+}: SchemaLintInput): SchemaLintIssue[] {
   const issues: SchemaLintIssue[] = [];
   const normalizedTableName = tableName.trim();
   const filledRows = getFilledRows(rows);
+  const fieldNames = new Set(filledRows.map((row) => row.fieldName.trim().toLowerCase()));
+  const danglingReferences = new Set<string>();
+  const addDanglingReference = (owner: string, fieldName: string) => {
+    if (!fieldName.trim() || fieldNames.has(fieldName.trim().toLowerCase())) return;
+    const referenceKey = `${owner}:${fieldName}`;
+    if (danglingReferences.has(referenceKey)) return;
+    danglingReferences.add(referenceKey);
+    issues.push(
+      createIssue('dangling-field-reference', 'error', `${owner} → ${fieldName}`, {
+        fieldName,
+        owner,
+      }),
+    );
+  };
+
+  for (const index of indexes) {
+    for (const field of index.fields) addDanglingReference(index.name || 'index', field.name);
+  }
+  for (const field of currentIndexFields) addDanglingReference('current index', field.name);
+  for (const foreignKey of foreignKeys) {
+    for (const field of foreignKey.fields) {
+      addDanglingReference(foreignKey.name || 'foreign key', field);
+    }
+  }
+  for (const column of mysqlPartitionConfig?.columns ?? []) {
+    addDanglingReference('MySQL partition', column);
+  }
+  if (citusShardingConfig?.distributionColumn) {
+    addDanglingReference('Citus distribution', citusShardingConfig.distributionColumn);
+  }
+  for (const column of tableMiscConfig?.partitions?.clustering?.columns ?? []) {
+    addDanglingReference('Hive clustering', column);
+  }
 
   if (normalizedTableName && !isSnakeCaseName(normalizedTableName)) {
     issues.push(createIssue('table-name-snake-case', 'warning', normalizedTableName));

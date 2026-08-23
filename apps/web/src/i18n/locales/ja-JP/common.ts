@@ -1148,6 +1148,11 @@ export const jaJPCommon = {
           'text、blob、json への直接インデックスは高コストで、データベースごとに制限も異なります。',
         suggestion: '{{target}} の安定した短い派生値または接頭辞にインデックスを作成してください。',
       },
+      'dangling-field-reference': {
+        title: '無効なカラム参照',
+        reason: '{{owner}} が存在しないカラム {{fieldName}} を参照しています。',
+        suggestion: 'カラムを復元するか、設定からこの参照を削除してください。',
+      },
     },
   },
   savedTables: {

@@ -2,8 +2,19 @@ function escapeRegExp(input: string): string {
   return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function identifierTokenPattern(token: string) {
+  const escapedToken = escapeRegExp(token);
+  return new RegExp(`(^|[^\\p{L}\\p{N}])${escapedToken}(?=[^\\p{L}\\p{N}]|$)`, 'iu');
+}
+
 export function isSameIdentifierToken(a: string, b: string): boolean {
   return a.localeCompare(b, undefined, { sensitivity: 'accent' }) === 0;
+}
+
+export function containsSqlIdentifierToken(source: string, token: string): boolean {
+  if (!source || !token) return false;
+  const escapedToken = escapeRegExp(token);
+  return new RegExp(`(^|[^\\p{L}\\p{N}_])${escapedToken}(?=[^\\p{L}\\p{N}_]|$)`, 'iu').test(source);
 }
 
 /**
@@ -14,8 +25,7 @@ export function replaceIdentifierToken(source: string, oldToken: string, newToke
     return source;
   }
 
-  const escapedOldToken = escapeRegExp(oldToken);
-  const pattern = new RegExp(`(^|[^\\p{L}\\p{N}])${escapedOldToken}(?=[^\\p{L}\\p{N}]|$)`, 'giu');
+  const pattern = new RegExp(identifierTokenPattern(oldToken), 'giu');
 
   return source.replace(pattern, (_match, prefix: string) => {
     const safePrefix = typeof prefix === 'string' ? prefix : '';

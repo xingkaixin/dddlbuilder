@@ -88,7 +88,6 @@ export interface FieldSlice {
   resetRows: (count?: number) => void;
   handleRowsChange: (changes: (TableCellChange | null)[] | null, source: TableChangeSource) => void;
   handleCreateRow: (index: number, amount: number) => void;
-  handleRemoveRow: (index: number, amount: number) => void;
   handleAddRows: (count: number) => void;
 }
 
@@ -191,6 +190,7 @@ export type EditorStoreState = AppSlice &
   ShardingSlice &
   PartitionSlice &
   TableOptionsSlice & {
+    handleRemoveRow: (index: number, amount: number) => void;
     replaceDocument: (state: PersistedState) => void;
   };
 

@@ -409,8 +409,27 @@ export function useAppController() {
   });
 
   const schemaLintIssues = useMemo(
-    () => lintSchema({ tableName, rows, indexes }),
-    [tableName, rows, indexes],
+    () =>
+      lintSchema({
+        tableName,
+        rows,
+        indexes,
+        currentIndexFields,
+        foreignKeys,
+        mysqlPartitionConfig,
+        citusShardingConfig,
+        tableMiscConfig,
+      }),
+    [
+      tableName,
+      rows,
+      indexes,
+      currentIndexFields,
+      foreignKeys,
+      mysqlPartitionConfig,
+      citusShardingConfig,
+      tableMiscConfig,
+    ],
   );
 
   const shareAction = useShareAction({

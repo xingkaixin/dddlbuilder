@@ -10,6 +10,7 @@ import type { GeneratedTableSchema } from '@/hooks/useAIGenerateTable';
 import { buildPersistedStateFromAISchema } from '@/utils/aiSchemaChanges';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
 import type { BuilderTab } from '@/utils/tabUtils';
+import { removeFieldsFromDocument } from '@/stores/editorDocumentMutations';
 
 interface UseSchemaApplyActionsParams {
   currentState: PersistedState;
@@ -132,10 +133,9 @@ export function useSchemaApplyActions({
           }
           triggerFieldTableHighlight(rowIndex);
           setTimeout(() => {
-            replaceLatestState((state) => ({
-              ...state,
-              rows: state.rows.filter((row) => row.fieldName !== suggestion.fieldName),
-            }));
+            replaceLatestState((state) =>
+              removeFieldsFromDocument(state, (row) => row.fieldName === suggestion.fieldName),
+            );
           }, 500);
           break;
         }

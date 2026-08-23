@@ -149,6 +149,74 @@ describe('fieldStore', () => {
     expect(current.rows.length).toBe(2);
   });
 
+  it('删除字段时应同时清理文档内的字段引用', () => {
+    const idRow = { ...createEmptyRow(0), fieldName: 'id' };
+    const userIdRow = { ...createEmptyRow(1), fieldName: 'user_id' };
+    useEditorStore.setState({
+      rows: [idRow, userIdRow],
+      currentIndexFields: [
+        { name: 'id', direction: 'ASC' },
+        { name: 'user_id', direction: 'ASC' },
+      ],
+      indexes: [
+        {
+          id: 'kept-index',
+          name: 'idx_users_id',
+          fields: [{ name: 'id', direction: 'ASC' }],
+          unique: false,
+        },
+        {
+          id: 'removed-index',
+          name: 'idx_users_user_id',
+          fields: [{ name: 'user_id', direction: 'ASC' }],
+          unique: false,
+        },
+      ],
+      foreignKeys: [
+        {
+          id: 'removed-fk',
+          name: 'fk_users_user',
+          fields: ['user_id'],
+          refTable: 'accounts',
+          refFields: ['id'],
+        },
+      ],
+      mysqlPartitionConfig: {
+        enabled: true,
+        type: 'HASH',
+        columns: [],
+        expression: 'YEAR(user_id)',
+      },
+      citusShardingConfig: { mode: 'distributed', distributionColumn: 'user_id' },
+      tableMiscConfig: {
+        enabled: true,
+        partitions: {
+          enabled: true,
+          columns: [],
+          clustering: { enabled: true, columns: ['id', 'user_id'], bucketCount: 4 },
+        },
+      },
+    });
+
+    useEditorStore.getState().handleRemoveRow(1, 1);
+
+    const current = useEditorStore.getState();
+    expect(current.rows).toEqual([idRow]);
+    expect(current.currentIndexFields).toEqual([{ name: 'id', direction: 'ASC' }]);
+    expect(current.indexes.map((index) => index.id)).toEqual(['kept-index']);
+    expect(current.foreignKeys).toEqual([]);
+    expect(current.mysqlPartitionConfig).toMatchObject({ enabled: false, columns: [] });
+    expect(current.mysqlPartitionConfig.expression).toBeUndefined();
+    expect(current.citusShardingConfig).toEqual({
+      mode: 'reference',
+      distributionColumn: undefined,
+    });
+    expect(current.tableMiscConfig.partitions?.clustering).toMatchObject({
+      enabled: true,
+      columns: ['id'],
+    });
+  });
+
   it('应该支持中间插入行 handleCreateRow', () => {
     const state = useEditorStore.getState();
     state.resetRows(2);

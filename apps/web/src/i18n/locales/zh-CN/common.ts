@@ -1105,6 +1105,11 @@ export const zhCNCommon = {
         reason: 'text、blob、json 等大字段直接参与索引通常成本高，且各数据库限制差异明显。',
         suggestion: '为 {{target}} 设计派生字段或前缀索引，再把索引放在稳定的短字段上。',
       },
+      'dangling-field-reference': {
+        title: '字段引用已失效',
+        reason: '{{owner}} 仍然引用不存在的字段 {{fieldName}}。',
+        suggestion: '恢复该字段，或从对应配置中删除这条引用。',
+      },
     },
   },
   savedTables: {

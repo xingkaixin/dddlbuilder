@@ -102,16 +102,6 @@ export const createFieldSlice = (set: EditorSetState): FieldSlice => ({
       return { rows: nextRows };
     });
   },
-  handleRemoveRow: (index, amount) => {
-    set((state) => {
-      const nextRows = state.rows.slice();
-      nextRows.splice(index, amount);
-      if (nextRows.length === 0) {
-        nextRows.push(createEmptyRow());
-      }
-      return { rows: nextRows };
-    });
-  },
   handleAddRows: (count) => {
     const n = Math.floor(Number(count));
     const amount = Number.isFinite(n) && n > 0 ? n : 1;

@@ -1141,6 +1141,11 @@ export const enUSCommon = {
           'Indexing text, blob, or json columns directly is expensive and database restrictions vary.',
         suggestion: 'Index a stable short derivative or prefix of {{target}} instead.',
       },
+      'dangling-field-reference': {
+        title: 'Invalid column reference',
+        reason: '{{owner}} still references the missing column {{fieldName}}.',
+        suggestion: 'Restore the column or remove this reference from its configuration.',
+      },
     },
   },
   savedTables: {
