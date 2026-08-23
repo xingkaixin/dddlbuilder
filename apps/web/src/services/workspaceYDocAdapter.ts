@@ -26,7 +26,7 @@ import {
   writeFolderRecord,
 } from '@ddlbuilder/workspace-core';
 import type { SavedTableMetadata, SavedTableRecord, TableFolder } from '@/utils/savedTablesDb';
-import type { FolderTreeNode } from '@/utils/tableFolders';
+import { buildFolderTreeModel, type FolderTreeNode } from '@/utils/folderModel';
 
 export {
   applyPersistedStateToTableDoc,
@@ -198,27 +198,7 @@ export const deleteFolderFromYDoc = (doc: Y.Doc, folderId: string) => {
 export const listFoldersFromYDoc = (doc: Y.Doc): TableFolder[] => readFolderRecords(doc);
 
 export const buildFolderTreeFromYDoc = (doc: Y.Doc): FolderTreeNode[] => {
-  const folders = listFoldersFromYDoc(doc);
-  const folderMap = new Map<string, FolderTreeNode>();
-  for (const folder of folders) {
-    folderMap.set(folder.id, { ...folder, children: [] });
-  }
-  const roots: FolderTreeNode[] = [];
-  for (const folder of folders) {
-    const node = folderMap.get(folder.id);
-    if (!node) continue;
-    if (folder.parentId && folderMap.has(folder.parentId)) {
-      folderMap.get(folder.parentId)?.children.push(node);
-    } else {
-      roots.push(node);
-    }
-  }
-  const sortNodes = (nodes: FolderTreeNode[]) => {
-    nodes.sort((a, b) => a.order - b.order);
-    nodes.forEach((node) => sortNodes(node.children));
-  };
-  sortNodes(roots);
-  return roots;
+  return buildFolderTreeModel(listFoldersFromYDoc(doc));
 };
 
 export const importWorkspaceSnapshotToYDoc = (doc: Y.Doc, snapshot: WorkspaceSnapshot) => {

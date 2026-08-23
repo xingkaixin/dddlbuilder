@@ -23,6 +23,12 @@ import { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
 import { useWorkspaceScope } from '@/hooks/useWorkspaceScope';
 import { useWorkspaceYDocProjection } from '@/hooks/useWorkspaceYDocProjection';
 import { localFoldersOptions, workspaceLocalQueryKeys } from '@/queries/workspaceLocal';
+import {
+  createFolderRecord,
+  getFolderDescendantIds,
+  moveFolderRecord,
+  renameFolderRecord,
+} from '@/utils/folderModel';
 
 export type { FolderTreeNode };
 
@@ -36,19 +42,6 @@ const readFolderProjection = (doc: Y.Doc) => ({
   folders: listFoldersFromYDoc(doc),
   folderTree: buildFolderTreeFromYDoc(doc),
 });
-
-const descendantFolderIds = (folders: TableFolder[], parentId: string) => {
-  const result: string[] = [];
-  const collect = (currentParentId: string) => {
-    for (const folder of folders) {
-      if (folder.parentId !== currentParentId) continue;
-      result.push(folder.id);
-      collect(folder.id);
-    }
-  };
-  collect(parentId);
-  return result;
-};
 
 export function useFolders() {
   const currentScope = useWorkspaceScope();
@@ -84,7 +77,10 @@ export function useFolders() {
     async (name: string, parentId?: string) => {
       if (!currentScope) throw new Error('工作区未就绪');
       try {
-        const folder = await createFolder(name, currentScope, parentId);
+        const folder = yDocReady
+          ? createFolderRecord(yDocProjection.folders, name, parentId)
+          : await createFolder(name, currentScope, parentId);
+        if (yDocReady) await updateFolder(folder, currentScope);
         runInYDoc((doc) => upsertFolderInYDoc(doc, folder));
         await refresh();
         return folder;
@@ -92,7 +88,7 @@ export function useFolders() {
         throw error instanceof Error ? error : new Error('创建文件夹失败');
       }
     },
-    [currentScope, refresh, runInYDoc],
+    [currentScope, refresh, runInYDoc, yDocProjection.folders, yDocReady],
   );
 
   const handleRenameFolder = useCallback(
@@ -109,7 +105,7 @@ export function useFolders() {
           yDocProjection.folders.find((item) => item.id === id) ??
           (await getFolder(id, currentScope));
         if (!folder) throw new Error('文件夹不存在');
-        const nextFolder = { ...folder, name: newName.trim() };
+        const nextFolder = renameFolderRecord(folder, newName);
         await updateFolder(nextFolder, currentScope);
         runInYDoc((doc) => upsertFolderInYDoc(doc, nextFolder));
       } catch (error) {
@@ -124,7 +120,7 @@ export function useFolders() {
       if (!currentScope) throw new Error('工作区未就绪');
       try {
         const descendantIds = yDocReady
-          ? descendantFolderIds(yDocProjection.folders, id)
+          ? getFolderDescendantIds(yDocProjection.folders, id)
           : await getDescendantFolderIds(id, currentScope);
         const allFolderIds = [id, ...descendantIds];
 
@@ -155,10 +151,7 @@ export function useFolders() {
           yDocProjection.folders.find((item) => item.id === id) ??
           (await getFolder(id, currentScope));
         if (!folder) throw new Error('文件夹不存在');
-        const maxOrder = yDocProjection.folders
-          .filter((item) => item.parentId === newParentId && item.id !== id)
-          .reduce((max, item) => Math.max(max, item.order), 0);
-        const nextFolder = { ...folder, parentId: newParentId, order: maxOrder + 1 };
+        const nextFolder = moveFolderRecord(yDocProjection.folders, id, newParentId);
         await updateFolder(nextFolder, currentScope);
         runInYDoc((doc) => upsertFolderInYDoc(doc, nextFolder));
       } catch (error) {

@@ -6,6 +6,16 @@ import {
   getWorkspaceScopeStorageKey,
 } from './workspaceScope';
 import { runIndexedDbRequest } from './indexedDbTransaction';
+import {
+  buildFolderTreeModel,
+  createFolderRecord,
+  getFolderDescendantIds,
+  moveFolderRecord,
+  renameFolderRecord,
+  type FolderTreeNode,
+} from './folderModel';
+
+export type { FolderTreeNode } from './folderModel';
 
 const LEGACY_SCOPE = getWorkspaceScopeStorageKey(getAnonymousWorkspaceScope());
 
@@ -44,13 +54,6 @@ const encodeFolder = (folder: TableFolder, scope: WorkspaceScope): TableFolder =
   id: withScopeKey(scope, folder.id),
   scope: getWorkspaceScopeStorageKey(scope),
 });
-
-/**
- * 生成唯一 ID
- */
-function generateId(): string {
-  return `folder_${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-}
 
 /**
  * 运行文件夹 store 事务
@@ -113,17 +116,7 @@ export async function createFolder(
   scope: WorkspaceScope,
   parentId?: string,
 ): Promise<TableFolder> {
-  // 获取同级文件夹以确定 order
-  const siblings = await listChildFolders(scope, parentId);
-  const maxOrder = siblings.reduce((max, f) => Math.max(max, f.order), 0);
-
-  const folder: TableFolder = {
-    id: generateId(),
-    name: name.trim(),
-    parentId,
-    order: maxOrder + 1,
-    createdAt: Date.now(),
-  };
+  const folder = createFolderRecord(await listFolders(scope), name, parentId);
 
   await runWithFolderStore<IDBValidKey>('readwrite', (store) =>
     store.add(encodeFolder(folder, scope)),
@@ -155,8 +148,7 @@ export async function renameFolder(
   if (!folder) {
     throw new Error('文件夹不存在');
   }
-  folder.name = newName.trim();
-  await updateFolder(folder, scope);
+  await updateFolder(renameFolderRecord(folder, newName), scope);
 }
 
 /**
@@ -172,21 +164,7 @@ export async function moveFolder(
     throw new Error('文件夹不存在');
   }
 
-  // 防止移动到自身或子文件夹下
-  if (newParentId) {
-    const descendants = await getDescendantFolderIds(id, scope);
-    if (newParentId === id || descendants.includes(newParentId)) {
-      throw new Error('不能将文件夹移动到自身或其子文件夹下');
-    }
-  }
-
-  // 获取目标位置的同级文件夹以确定 order
-  const siblings = await listChildFolders(scope, newParentId);
-  const maxOrder = siblings.reduce((max, f) => Math.max(max, f.order), 0);
-
-  folder.parentId = newParentId;
-  folder.order = maxOrder + 1;
-  await updateFolder(folder, scope);
+  await updateFolder(moveFolderRecord(await listFolders(scope), id, newParentId), scope);
 }
 
 /**
@@ -196,20 +174,7 @@ export async function getDescendantFolderIds(
   folderId: string,
   scope: WorkspaceScope,
 ): Promise<string[]> {
-  const allFolders = await listFolders(scope);
-  const descendants: string[] = [];
-
-  function collectDescendants(parentId: string) {
-    for (const folder of allFolders) {
-      if (folder.parentId === parentId) {
-        descendants.push(folder.id);
-        collectDescendants(folder.id);
-      }
-    }
-  }
-
-  collectDescendants(folderId);
-  return descendants;
+  return getFolderDescendantIds(await listFolders(scope), folderId);
 }
 
 /**
@@ -285,41 +250,6 @@ export async function getFolderPath(
 /**
  * 构建文件夹树结构
  */
-export type FolderTreeNode = TableFolder & {
-  children: FolderTreeNode[];
-  tableCount?: number;
-};
-
 export async function buildFolderTree(scope: WorkspaceScope): Promise<FolderTreeNode[]> {
-  const allFolders = await listFolders(scope);
-  const folderMap = new Map<string, FolderTreeNode>();
-
-  // 初始化所有节点
-  for (const folder of allFolders) {
-    folderMap.set(folder.id, { ...folder, children: [] });
-  }
-
-  // 构建树结构
-  const rootNodes: FolderTreeNode[] = [];
-
-  for (const folder of allFolders) {
-    const node = folderMap.get(folder.id);
-    if (!node) continue;
-    if (folder.parentId && folderMap.has(folder.parentId)) {
-      folderMap.get(folder.parentId)?.children.push(node);
-    } else {
-      rootNodes.push(node);
-    }
-  }
-
-  // 对每层的 children 按 order 排序
-  function sortChildren(nodes: FolderTreeNode[]) {
-    nodes.sort((a, b) => a.order - b.order);
-    for (const node of nodes) {
-      sortChildren(node.children);
-    }
-  }
-
-  sortChildren(rootNodes);
-  return rootNodes;
+  return buildFolderTreeModel(await listFolders(scope));
 }
