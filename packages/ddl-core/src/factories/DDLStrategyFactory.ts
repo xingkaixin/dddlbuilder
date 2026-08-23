@@ -1,4 +1,4 @@
-import type { DatabaseType } from '@ddlbuilder/shared-types';
+import { DATABASE_TYPES, type DatabaseType } from '@ddlbuilder/shared-types';
 import type { DDLStrategy } from '../interfaces/DDLStrategy';
 import { ProfiledDDLStrategy } from '../strategies/ProfiledDDLStrategy';
 import { HiveStrategy } from '../strategies/HiveStrategy';
@@ -7,25 +7,7 @@ const createStrategy = (databaseType: DatabaseType): DDLStrategy =>
   databaseType === 'hive' ? new HiveStrategy() : new ProfiledDDLStrategy(databaseType);
 
 const strategies = new Map<DatabaseType, DDLStrategy>(
-  (
-    [
-      'mysql',
-      'postgresql',
-      'postgresql-citus',
-      'sqlserver',
-      'oracle',
-      'mariadb',
-      'tidb',
-      'dm',
-      'oceanbase',
-      'oceanbase-oracle',
-      'kingbase',
-      'gbase',
-      'polardb',
-      'gaussdb',
-      'hive',
-    ] as DatabaseType[]
-  ).map((databaseType) => [databaseType, createStrategy(databaseType)]),
+  DATABASE_TYPES.map((databaseType) => [databaseType, createStrategy(databaseType)]),
 );
 
 export class DDLStrategyFactory {

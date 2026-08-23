@@ -69,6 +69,20 @@ describe('parse-sql route', () => {
     });
   });
 
+  it('不把仅支持 DDL 生成的 Hive 交给 SQL 解析器', async () => {
+    const response = await app.fetch(
+      createRequest('/api/parse-sql', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sql: 'CREATE TABLE users (id BIGINT)', dbType: 'hive' }),
+      }),
+      createEnv(),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ code: 'INVALID_DATABASE_TYPE' });
+  });
+
   it('SQL 语法错误时应返回 SQL_PARSE_FAILED', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
 

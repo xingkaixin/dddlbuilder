@@ -1,5 +1,5 @@
 import type { Hono } from 'hono';
-import type { DatabaseType } from '@ddlbuilder/shared-types';
+import { DATABASE_TYPES, type DatabaseType } from '@ddlbuilder/shared-types';
 import { SqlParser } from '@ddlbuilder/ddl-core/parser';
 import type { ApiEnv } from '../lib/context.js';
 import {
@@ -12,22 +12,9 @@ import {
 const MAX_SQL_LENGTH = 50_000;
 const MAX_PARSE_SQL_BODY_BYTES = 131_072;
 
-const SUPPORTED_DATABASE_TYPES = new Set<DatabaseType>([
-  'mysql',
-  'postgresql',
-  'postgresql-citus',
-  'sqlserver',
-  'oracle',
-  'mariadb',
-  'tidb',
-  'dm',
-  'oceanbase',
-  'oceanbase-oracle',
-  'kingbase',
-  'gbase',
-  'polardb',
-  'gaussdb',
-]);
+const SUPPORTED_DATABASE_TYPES = new Set<DatabaseType>(
+  DATABASE_TYPES.filter((databaseType) => databaseType !== 'hive'),
+);
 
 function isValidDatabaseType(value: unknown): value is DatabaseType {
   return typeof value === 'string' && SUPPORTED_DATABASE_TYPES.has(value as DatabaseType);

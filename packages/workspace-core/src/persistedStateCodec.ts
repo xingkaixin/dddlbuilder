@@ -1,10 +1,10 @@
 import {
+  isDatabaseType,
   ensureFieldId,
   normalizeFieldDefaultKind,
   normalizeFieldNullable,
   normalizeFieldOnUpdate,
   type CitusShardingConfig,
-  type DatabaseType,
   type FieldRow,
   type FieldTableViewConfig,
   type ForeignKeyAction,
@@ -22,23 +22,6 @@ import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 
 export type PersistedStateDecodeMode = 'compatible' | 'external';
 
-const DATABASE_TYPES = new Set<DatabaseType>([
-  'mysql',
-  'postgresql',
-  'postgresql-citus',
-  'sqlserver',
-  'oracle',
-  'mariadb',
-  'tidb',
-  'dm',
-  'oceanbase',
-  'oceanbase-oracle',
-  'kingbase',
-  'gbase',
-  'polardb',
-  'gaussdb',
-  'hive',
-]);
 const MYSQL_PARTITION_TYPES = new Set<MysqlPartitionType>([
   'RANGE',
   'RANGE COLUMNS',
@@ -253,7 +236,7 @@ const decodeFieldTableViewConfig = (value: unknown): FieldTableViewConfig | unde
 const hasExternalStateShape = (value: Record<string, unknown>) =>
   typeof value.tableName === 'string' &&
   typeof value.tableComment === 'string' &&
-  DATABASE_TYPES.has(value.dbType as DatabaseType) &&
+  isDatabaseType(value.dbType) &&
   Array.isArray(value.rows) &&
   typeof value.addCount === 'number' &&
   Number.isFinite(value.addCount) &&
@@ -275,9 +258,7 @@ export const decodePersistedState = (
     explicitSchemaName || !rawTableName.includes('.')
       ? { schema: explicitSchemaName, table: rawTableName }
       : splitQualifiedTableName(rawTableName);
-  const dbType = DATABASE_TYPES.has(value.dbType as DatabaseType)
-    ? (value.dbType as DatabaseType)
-    : 'mysql';
+  const dbType = isDatabaseType(value.dbType) ? value.dbType : 'mysql';
   const foreignKeys = decodeForeignKeys(value.foreignKeys);
   const citusShardingConfig = decodeCitusConfig(value.citusShardingConfig);
   const mysqlPartitionConfig = decodeMysqlPartitionConfig(value.mysqlPartitionConfig);

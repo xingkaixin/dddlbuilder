@@ -1,29 +1,31 @@
 import type React from 'react';
 import { Database, GitBranch, HardDrive, Layers, Share2 } from '@/components/icons';
-import type { DatabaseType } from '@ddlbuilder/shared-types';
+import { DATABASE_TYPES, type DatabaseType } from '@ddlbuilder/shared-types';
 
-export const DATABASE_OPTIONS: Array<{
-  value: DatabaseType;
+type DatabaseOptionMetadata = {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-}> = [
-  { value: 'mysql', label: 'MySQL', icon: Database },
-  { value: 'postgresql', label: 'PostgreSQL', icon: HardDrive },
-  {
-    value: 'postgresql-citus',
-    label: 'PostgreSQL (Citus)',
-    icon: HardDrive,
-  },
-  { value: 'sqlserver', label: 'SQL Server', icon: GitBranch },
-  { value: 'oracle', label: 'Oracle', icon: Layers },
-  { value: 'mariadb', label: 'MariaDB', icon: Share2 },
-  { value: 'tidb', label: 'TiDB', icon: Database },
-  { value: 'dm', label: 'Dameng', icon: Database },
-  { value: 'oceanbase', label: 'OceanBase (MySQL)', icon: Database },
-  { value: 'oceanbase-oracle', label: 'OceanBase (Oracle)', icon: Layers },
-  { value: 'kingbase', label: 'Kingbase', icon: HardDrive },
-  { value: 'gbase', label: 'GBase', icon: Database },
-  { value: 'polardb', label: 'PolarDB', icon: Database },
-  { value: 'gaussdb', label: 'GaussDB', icon: HardDrive },
-  { value: 'hive', label: 'Hive', icon: Database },
-];
+};
+
+const DATABASE_OPTION_METADATA = {
+  mysql: { label: 'MySQL', icon: Database },
+  postgresql: { label: 'PostgreSQL', icon: HardDrive },
+  'postgresql-citus': { label: 'PostgreSQL (Citus)', icon: HardDrive },
+  sqlserver: { label: 'SQL Server', icon: GitBranch },
+  oracle: { label: 'Oracle', icon: Layers },
+  mariadb: { label: 'MariaDB', icon: Share2 },
+  tidb: { label: 'TiDB', icon: Database },
+  dm: { label: 'Dameng', icon: Database },
+  oceanbase: { label: 'OceanBase (MySQL)', icon: Database },
+  'oceanbase-oracle': { label: 'OceanBase (Oracle)', icon: Layers },
+  kingbase: { label: 'Kingbase', icon: HardDrive },
+  gbase: { label: 'GBase', icon: Database },
+  polardb: { label: 'PolarDB', icon: Database },
+  gaussdb: { label: 'GaussDB', icon: HardDrive },
+  hive: { label: 'Hive', icon: Database },
+} satisfies Record<DatabaseType, DatabaseOptionMetadata>;
+
+export const DATABASE_OPTIONS = DATABASE_TYPES.map((value) => ({
+  value,
+  ...DATABASE_OPTION_METADATA[value],
+}));
