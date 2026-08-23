@@ -504,7 +504,7 @@ describe('generateAddColumn', () => {
       newField: createField({ name: 'age', type: 'int', nullable: true }),
     };
     expect(generateAddColumn('users', diff, 'oracle')).toBe(
-      'ALTER TABLE users ADD (age NUMBER(10) NULL);',
+      'ALTER TABLE users ADD (age NUMBER(10));',
     );
   });
 
@@ -531,7 +531,7 @@ describe('generateAddColumn', () => {
       }),
     };
     expect(generateAddColumn('users', diff, 'mysql')).toBe(
-      "ALTER TABLE users ADD COLUMN status VARCHAR(255) NOT NULL  DEFAULT 'active';",
+      "ALTER TABLE users ADD COLUMN status VARCHAR(255) NOT NULL DEFAULT 'active';",
     );
   });
 
@@ -639,7 +639,7 @@ describe('generateModifyColumn', () => {
       changes: ['default'],
     };
     const sql = generateModifyColumn('users', diff, 'postgresql');
-    expect(sql).toBe("ALTER TABLE users ALTER COLUMN status SET  DEFAULT 'active';");
+    expect(sql).toBe("ALTER TABLE users ALTER COLUMN status SET DEFAULT 'active';");
   });
 
   it('generates PostgreSQL drop default when default is removed', () => {
@@ -697,7 +697,7 @@ describe('buildDefaultClause', () => {
         createField({ defaultKind: 'constant', defaultValue: 'active', type: 'varchar' }),
         'mysql',
       ),
-    ).toBe(" DEFAULT 'active'");
+    ).toBe("DEFAULT 'active'");
   });
 
   it('formats constant default without quotes for numeric', () => {
@@ -706,7 +706,7 @@ describe('buildDefaultClause', () => {
         createField({ defaultKind: 'constant', defaultValue: '0', type: 'int' }),
         'mysql',
       ),
-    ).toBe(' DEFAULT 0');
+    ).toBe('DEFAULT 0');
   });
 
   it('formats uuid default for mysql', () => {
@@ -737,6 +737,32 @@ describe('buildDefaultClause', () => {
         'sqlserver',
       ),
     ).toBe('DEFAULT GETDATE()');
+  });
+
+  it('uses the configured family defaults for compatible databases', () => {
+    expect(
+      buildDefaultClause(createField({ defaultKind: 'uuid', type: 'varchar' }), 'oceanbase'),
+    ).toBe('DEFAULT (UUID())');
+    expect(buildDefaultClause(createField({ defaultKind: 'uuid', type: 'uuid' }), 'kingbase')).toBe(
+      'DEFAULT gen_random_uuid()',
+    );
+    expect(
+      buildDefaultClause(
+        createField({ defaultKind: 'current_timestamp', type: 'timestamp' }),
+        'oracle',
+      ),
+    ).toBe('DEFAULT SYSTIMESTAMP');
+  });
+
+  it('uses the configured identity clause for compatible databases', () => {
+    const diff: FieldDiff = {
+      type: 'add',
+      fieldName: 'id',
+      newField: createField({ name: 'id', type: 'int', defaultKind: 'auto_increment' }),
+    };
+
+    expect(generateAddColumn('users', diff, 'oceanbase')).toContain('INT AUTO_INCREMENT NOT NULL');
+    expect(generateAddColumn('users', diff, 'gbase')).toContain('INT AUTO_INCREMENT NOT NULL');
   });
 
   it('returns empty for unsupported default on type', () => {

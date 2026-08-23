@@ -25,7 +25,7 @@ describe('buildDefaultClause', () => {
       'mysql',
     );
 
-    expect(clause).toBe(" DEFAULT 'O''Hara'");
+    expect(clause).toBe("DEFAULT 'O''Hara'");
   });
 
   it('uuid 默认值应按数据库类型生成', () => {

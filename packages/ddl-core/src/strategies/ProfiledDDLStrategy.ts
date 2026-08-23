@@ -1,18 +1,9 @@
 import type { DatabaseType, NormalizedField, SqlFormatMode } from '@ddlbuilder/shared-types';
-import {
-  getCanonicalBaseType,
-  supportsAutoIncrement,
-  supportsDefaultCurrentTimestamp,
-  supportsOnUpdateCurrentTimestamp,
-  supportsUuidDefault,
-  formatConstantDefault,
-  escapeSingleQuotes,
-  parseFieldType,
-  getSchemaAndTable,
-} from '../utils/databaseTypeMapping';
+import { escapeSingleQuotes, getSchemaAndTable } from '../utils/databaseTypeMapping';
 import { AbstractDDLStrategy } from './AbstractDDLStrategy';
 import { DIALECT_PROFILES } from './dialectProfiles';
 import type { DialectProfile } from './dialectProfiles';
+import { buildDialectColumn } from './dialectColumn';
 import {
   buildCitusShardingStatement,
   buildMysqlPartitionClause,
@@ -103,56 +94,10 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
     field: NormalizedField,
     typeMapper: ReturnType<AbstractDDLStrategy['createTypeMapper']>,
   ): { name: string; body: string; comment?: string } {
-    const parsedType = parseFieldType(field.type);
-    const type = typeMapper.mapType(parsedType);
-    const base = getCanonicalBaseType(field.type);
-
-    const segments: Record<'identity' | 'nullability' | 'default' | 'onUpdate', string> = {
-      identity: this.identityClauseFor(field, base),
-      nullability: field.nullable ? (this.profile.explicitNull ? ' NULL' : '') : ' NOT NULL',
-      default: this.defaultClauseFor(field, base),
-      onUpdate:
-        field.onUpdate === 'current_timestamp' &&
-        supportsOnUpdateCurrentTimestamp(this.databaseType, base)
-          ? ' ON UPDATE CURRENT_TIMESTAMP'
-          : '',
+    return {
+      name: this.formatFieldName(field.name),
+      ...buildDialectColumn(field, this.databaseType, typeMapper),
     };
-
-    const body = `${type}${this.profile.clauseOrder
-      .map((key) => segments[key])
-      .join('')}${segments.onUpdate}`;
-    const comment =
-      this.profile.commentChannel === 'inline' ? this.inlineComment(field) : undefined;
-
-    return { name: this.formatFieldName(field.name), body, comment };
-  }
-
-  private identityClauseFor(field: NormalizedField, canonicalBase: string): string {
-    if (!this.profile.identityClause) return '';
-    if (field.defaultKind !== 'auto_increment') return '';
-    if (!supportsAutoIncrement(this.databaseType, canonicalBase)) return '';
-    return ` ${this.profile.identityClause}`;
-  }
-
-  private defaultClauseFor(field: NormalizedField, canonicalBase: string): string {
-    if (field.defaultKind === 'constant') {
-      return formatConstantDefault(canonicalBase, field.defaultValue);
-    }
-    if (
-      field.defaultKind === 'current_timestamp' &&
-      supportsDefaultCurrentTimestamp(this.databaseType, canonicalBase)
-    ) {
-      return ` DEFAULT ${this.profile.nowFunction(canonicalBase)}`;
-    }
-    if (field.defaultKind === 'uuid' && supportsUuidDefault(canonicalBase)) {
-      return ` DEFAULT ${this.profile.uuidFunction}`;
-    }
-    return '';
-  }
-
-  private inlineComment(field: NormalizedField): string | undefined {
-    if (!field.comment) return undefined;
-    return `COMMENT '${escapeSingleQuotes(field.comment)}'`;
   }
 
   private assembleInlineTable(

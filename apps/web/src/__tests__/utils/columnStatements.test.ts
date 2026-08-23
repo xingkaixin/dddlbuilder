@@ -172,7 +172,7 @@ describe('columnStatements', () => {
 
     expect(postgresSetSql).toContain('ALTER TABLE users ALTER COLUMN name TYPE VARCHAR(128);');
     expect(postgresSetSql).toContain('ALTER TABLE users ALTER COLUMN name DROP NOT NULL;');
-    expect(postgresSetSql).toContain("ALTER TABLE users ALTER COLUMN name SET  DEFAULT 'abc';");
+    expect(postgresSetSql).toContain("ALTER TABLE users ALTER COLUMN name SET DEFAULT 'abc';");
     expect(postgresSetSql).toContain("COMMENT ON COLUMN users.name IS '备注''O';");
 
     const postgresDropDefaultSql = generateModifyColumn(

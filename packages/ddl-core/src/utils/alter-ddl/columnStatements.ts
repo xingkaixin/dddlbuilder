@@ -1,13 +1,7 @@
 import type { NormalizedField, DatabaseType } from '@ddlbuilder/shared-types';
 import type { FieldDiff } from '../tableDiff';
-import { TypeMapper } from '../TypeMapper';
-import {
-  getCanonicalBaseType,
-  supportsAutoIncrement,
-  supportsOnUpdateCurrentTimestamp,
-  escapeSingleQuotes,
-  parseFieldType,
-} from '../databaseTypeMapping';
+import { escapeSingleQuotes, getFieldTypeForDatabase } from '../databaseTypeMapping';
+import { buildDialectColumn } from '../../strategies/dialectColumn';
 import { buildDefaultClause } from './defaultClause';
 
 export function generateTableCommentAlter(
@@ -170,9 +164,7 @@ function generatePostgresModifyColumn(tableName: string, fieldDiff: FieldDiff): 
   const statements: string[] = [];
 
   if (changes.includes('type')) {
-    const typeMapper = TypeMapper.create('postgresql');
-    const parsedType = parseFieldType(field.type);
-    const mappedType = typeMapper.mapType(parsedType);
+    const mappedType = getFieldTypeForDatabase('postgresql', field.type);
     statements.push(`ALTER TABLE ${tableName} ALTER COLUMN ${field.name} TYPE ${mappedType};`);
   }
 
@@ -202,42 +194,6 @@ function generatePostgresModifyColumn(tableName: string, fieldDiff: FieldDiff): 
 }
 
 function buildColumnDefinition(field: NormalizedField, dbType: DatabaseType): string {
-  const typeMapper = TypeMapper.create(dbType);
-  const parsedType = parseFieldType(field.type);
-  const type = typeMapper.mapType(parsedType);
-  const base = getCanonicalBaseType(field.type);
-
-  const parts: string[] = [type];
-
-  // 自增（仅特定数据库和类型支持）
-  if (field.defaultKind === 'auto_increment' && supportsAutoIncrement(dbType, base)) {
-    if (dbType === 'mysql' || dbType === 'mariadb' || dbType === 'tidb') {
-      parts.push('AUTO_INCREMENT');
-    }
-    // PostgreSQL/Oracle 的自增在类型中处理（SERIAL/IDENTITY）
-  }
-
-  // NULL/NOT NULL
-  parts.push(field.nullable ? 'NULL' : 'NOT NULL');
-
-  // 默认值
-  const defaultClause = buildDefaultClause(field, dbType);
-  if (defaultClause) {
-    parts.push(defaultClause);
-  }
-
-  // ON UPDATE（仅 MySQL 系）
-  if (field.onUpdate === 'current_timestamp' && supportsOnUpdateCurrentTimestamp(dbType, base)) {
-    parts.push('ON UPDATE CURRENT_TIMESTAMP');
-  }
-
-  // 注释（仅 MySQL 系内联）
-  if (
-    field.comment &&
-    (dbType === 'mysql' || dbType === 'mariadb' || dbType === 'tidb' || dbType === 'oceanbase')
-  ) {
-    parts.push(`COMMENT '${escapeSingleQuotes(field.comment)}'`);
-  }
-
-  return parts.join(' ');
+  const column = buildDialectColumn(field, dbType);
+  return column.comment ? `${column.body} ${column.comment}` : column.body;
 }
