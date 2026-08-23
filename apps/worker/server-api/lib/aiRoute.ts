@@ -19,7 +19,6 @@ import {
   logOpenAIAudit,
   readUsageFromStreamChunk,
   withOpenAIRetry,
-  type OpenAIConfig,
   type OpenAIUsageSnapshot,
 } from '../openaiControl.js';
 import {
@@ -59,13 +58,6 @@ export const rejectAIRequest = (code: ApiErrorCode, message: string): AIRequestR
  */
 export type AISession<Request> = {
   request: Request;
-  requestId: string;
-  openai: OpenAI;
-  model: string;
-  maxOutputTokens: number;
-  config: OpenAIConfig;
-  startedAt: number;
-  reportUsage: (usage: OpenAIUsageSnapshot | null | undefined) => void;
   /** 非流式补全：重试、usage 上报和 JSON 解析都在里面，调用方只拿结果。 */
   completeJson: (input: AICompletionInput) => Promise<unknown>;
   /** 流式补全：把增量直接写进响应，结算和审计在流结束或出错时完成。 */
@@ -251,6 +243,13 @@ export const withAIGovernance = async <Request>(
   // 流式响应在流结束前就会从 run 返回，包装器看到 streamed 就不能代为结算——那时 usage 还没读到
   let streamed = false;
   let retryCount = 0;
+  const openai = new OpenAI({
+    baseURL: c.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+    apiKey,
+  });
+  const reportUsage = (next: OpenAIUsageSnapshot | null | undefined) => {
+    if (next) usage = next;
+  };
   const settleSuccess = (retryCount: number) => {
     if (settled) return;
     settled = true;
@@ -269,19 +268,10 @@ export const withAIGovernance = async <Request>(
 
   const session: AISession<Request> = {
     request: parsed,
-    requestId,
-    openai: new OpenAI({ baseURL: c.env.OPENAI_BASE_URL || 'https://api.openai.com/v1', apiKey }),
-    model,
-    maxOutputTokens,
-    config,
-    startedAt,
-    reportUsage: (next) => {
-      if (next) usage = next;
-    },
     completeJson: async ({ system, user, scope, temperature }) => {
       const { data: response, attempts } = await withOpenAIRetry(
         async () =>
-          session.openai.chat.completions.create({
+          openai.chat.completions.create({
             model,
             messages: [
               { role: 'system', content: system },
@@ -297,7 +287,7 @@ export const withAIGovernance = async <Request>(
       );
       retryCount = attempts;
       const usageSnapshot = response.usage;
-      session.reportUsage(
+      reportUsage(
         usageSnapshot
           ? {
               promptTokens: usageSnapshot.prompt_tokens,
@@ -335,7 +325,7 @@ export const withAIGovernance = async <Request>(
         try {
           const { data: response, attempts } = await withOpenAIRetry(
             async () =>
-              (await session.openai.chat.completions.create({
+              (await openai.chat.completions.create({
                 model,
                 messages,
                 ...(jsonResponse ? { response_format: { type: 'json_object' as const } } : {}),
@@ -352,7 +342,7 @@ export const withAIGovernance = async <Request>(
           streamDebug.connected();
 
           for await (const chunk of response) {
-            session.reportUsage(readUsageFromStreamChunk(chunk));
+            reportUsage(readUsageFromStreamChunk(chunk));
             const content = chunk.choices[0]?.delta?.content || '';
             if (content) {
               streamDebug.chunk(content);

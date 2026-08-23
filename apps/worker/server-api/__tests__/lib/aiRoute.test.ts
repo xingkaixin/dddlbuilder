@@ -91,6 +91,25 @@ describe('withAIGovernance', () => {
     expect(shell.failAIUsage).not.toHaveBeenCalled();
   });
 
+  it('只向路由暴露请求与受治理的补全命令', async () => {
+    const shell = await loadShell();
+    const app = new Hono<ApiEnv>();
+    app.post('/t', (c) =>
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async (session) => {
+        expect(Object.keys(session).sort()).toEqual([
+          'completeJson',
+          'request',
+          'streamCompletion',
+        ]);
+        return c.json({ ok: true });
+      }),
+    );
+
+    const response = await post(app, { sql: 'select 1' });
+
+    expect(response.status).toBe(200);
+  });
+
   it('run 抛异常时退还已预留的额度', async () => {
     const shell = await loadShell();
     vi.spyOn(console, 'error').mockImplementation(() => {});
