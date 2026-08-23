@@ -144,6 +144,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
       sensors,
       foldersWithCount,
       filteredItems,
+      itemsByFolder,
       ungroupedItems,
       isSearching,
       dragFeedback,
@@ -210,16 +211,14 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
 
     const renderTables = useCallback(
       (folderId?: string, depth = 0) => {
-        const folderItems = folderId
-          ? filteredItems.filter((item) => item.folderId === folderId)
-          : ungroupedItems;
+        const folderItems = folderId ? (itemsByFolder.get(folderId) ?? []) : ungroupedItems;
         if (folderItems.length === 0 || isSearching) return null;
         if (!folderId) return renderTableList(folderItems, 0);
         return (
           <div style={{ marginLeft: `${(depth + 1) * 16}px` }}>{renderTableList(folderItems)}</div>
         );
       },
-      [filteredItems, isSearching, renderTableList, ungroupedItems],
+      [isSearching, itemsByFolder, renderTableList, ungroupedItems],
     );
 
     const renderTrashTable = (item: SavedTableSummary) => (

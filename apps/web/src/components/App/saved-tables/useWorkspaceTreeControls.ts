@@ -48,11 +48,12 @@ export function useWorkspaceTreeControls({
       activationConstraint: { distance: 6 },
     }),
   );
-  const { foldersWithCount, filteredItems, ungroupedItems, isSearching } = useSavedTablesFilter({
-    items,
-    folders,
-    searchQuery,
-  });
+  const { foldersWithCount, filteredItems, itemsByFolder, ungroupedItems, isSearching } =
+    useSavedTablesFilter({
+      items,
+      folders,
+      searchQuery,
+    });
 
   const itemMap = useMemo(() => new Map(items.map((item) => [item.normalizedName, item])), [items]);
   const tableFolderMap = useMemo(
@@ -198,6 +199,7 @@ export function useWorkspaceTreeControls({
     sensors,
     foldersWithCount,
     filteredItems,
+    itemsByFolder,
     ungroupedItems,
     isSearching,
     dragFeedback,

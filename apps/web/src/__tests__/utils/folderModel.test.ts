@@ -38,4 +38,40 @@ describe('folderModel', () => {
     expect(getFolderDescendantIds(cyclic, 'a')).toEqual(['b']);
     expect(buildFolderTreeModel(cyclic).map((folder) => folder.id)).toEqual(['a', 'b']);
   });
+
+  it('treats folders leading to a cycle or missing parent as roots', () => {
+    const invalid: TableFolder[] = [
+      { id: 'a', name: 'A', parentId: 'b', order: 1, createdAt: 1 },
+      { id: 'b', name: 'B', parentId: 'a', order: 2, createdAt: 1 },
+      { id: 'before-cycle', name: 'Before', parentId: 'a', order: 3, createdAt: 1 },
+      { id: 'orphan', name: 'Orphan', parentId: 'missing', order: 4, createdAt: 1 },
+    ];
+
+    expect(buildFolderTreeModel(invalid).map((folder) => folder.id)).toEqual([
+      'a',
+      'b',
+      'before-cycle',
+      'orphan',
+    ]);
+  });
+
+  it('builds a deep folder chain without recursive traversal', () => {
+    const deepFolders = Array.from({ length: 3_000 }, (_, index): TableFolder => ({
+      id: `folder-${index}`,
+      name: `Folder ${index}`,
+      ...(index > 0 ? { parentId: `folder-${index - 1}` } : {}),
+      order: 1,
+      createdAt: index,
+    }));
+
+    const tree = buildFolderTreeModel(deepFolders);
+    let current = tree[0];
+    let depth = 0;
+    while (current) {
+      depth += 1;
+      current = current.children[0];
+    }
+
+    expect(depth).toBe(3_000);
+  });
 });

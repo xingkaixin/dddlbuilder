@@ -27,25 +27,43 @@ export function useSavedTablesFilter({ items, folders, searchQuery }: UseSavedTa
     return folders.map(addCount);
   }, [folders, items]);
 
-  const filteredItems = useMemo(() => {
-    if (!searchQuery.trim()) return items;
+  const { filteredItems, itemsByFolder, ungroupedItems } = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
-    return items.filter(
-      (item) =>
-        item.name.toLowerCase().includes(query) || item.dbType.toLowerCase().includes(query),
-    );
-  }, [items, searchQuery]);
+    const filtered = query
+      ? items.filter(
+          (item) =>
+            item.name.toLowerCase().includes(query) || item.dbType.toLowerCase().includes(query),
+        )
+      : items;
+    const grouped = new Map<string, SavedTableSummary[]>();
+    const ungrouped: SavedTableSummary[] = [];
 
-  const ungroupedItems = useMemo(
-    () => filteredItems.filter((item) => !item.folderId),
-    [filteredItems],
-  );
+    for (const item of filtered) {
+      if (!item.folderId) {
+        ungrouped.push(item);
+        continue;
+      }
+      const folderItems = grouped.get(item.folderId);
+      if (folderItems) {
+        folderItems.push(item);
+      } else {
+        grouped.set(item.folderId, [item]);
+      }
+    }
+
+    return {
+      filteredItems: filtered,
+      itemsByFolder: grouped,
+      ungroupedItems: ungrouped,
+    };
+  }, [items, searchQuery]);
 
   const isSearching = searchQuery.trim().length > 0;
 
   return {
     foldersWithCount,
     filteredItems,
+    itemsByFolder,
     ungroupedItems,
     isSearching,
   };

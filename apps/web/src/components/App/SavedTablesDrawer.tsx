@@ -149,6 +149,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
       sensors,
       foldersWithCount,
       filteredItems,
+      itemsByFolder,
       ungroupedItems,
       isSearching,
       dragFeedback,
@@ -206,9 +207,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
 
     const renderTables = useCallback(
       (folderId?: string, depth = 0) => {
-        const folderItems = folderId
-          ? filteredItems.filter((item) => item.folderId === folderId)
-          : ungroupedItems;
+        const folderItems = folderId ? (itemsByFolder.get(folderId) ?? []) : ungroupedItems;
 
         if (folderItems.length === 0) return null;
 
@@ -226,7 +225,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
           </div>
         );
       },
-      [filteredItems, isSearching, renderTableList, ungroupedItems],
+      [isSearching, itemsByFolder, renderTableList, ungroupedItems],
     );
 
     const hasFolders = folders.length > 0;

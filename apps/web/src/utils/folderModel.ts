@@ -9,7 +9,12 @@ const childIdsByParent = (folders: readonly TableFolder[]) => {
   const children = new Map<string, string[]>();
   for (const folder of folders) {
     if (!folder.parentId) continue;
-    children.set(folder.parentId, [...(children.get(folder.parentId) ?? []), folder.id]);
+    const siblings = children.get(folder.parentId);
+    if (siblings) {
+      siblings.push(folder.id);
+    } else {
+      children.set(folder.parentId, [folder.id]);
+    }
   }
   return children;
 };
@@ -23,8 +28,8 @@ export const getFolderDescendantIds = (
   const visited = new Set([folderId]);
   const pending = [...(children.get(folderId) ?? [])];
 
-  while (pending.length > 0) {
-    const currentId = pending.shift();
+  for (let cursor = 0; cursor < pending.length; cursor += 1) {
+    const currentId = pending[cursor];
     if (!currentId || visited.has(currentId)) continue;
     visited.add(currentId);
     descendants.push(currentId);
@@ -34,20 +39,43 @@ export const getFolderDescendantIds = (
   return descendants;
 };
 
-const hasInvalidParent = (foldersById: ReadonlyMap<string, TableFolder>, folder: TableFolder) => {
-  if (!folder.parentId || !foldersById.has(folder.parentId)) return Boolean(folder.parentId);
-  const visited = new Set([folder.id]);
-  let parentId: string | undefined = folder.parentId;
-  while (parentId) {
-    if (visited.has(parentId)) return true;
-    visited.add(parentId);
-    parentId = foldersById.get(parentId)?.parentId;
+const findInvalidFolderIds = (foldersById: ReadonlyMap<string, TableFolder>) => {
+  const invalidIds = new Set<string>();
+  const validIds = new Set<string>();
+
+  for (const folder of foldersById.values()) {
+    if (invalidIds.has(folder.id) || validIds.has(folder.id)) continue;
+
+    const path: string[] = [];
+    const pathIds = new Set<string>();
+    let current: TableFolder | undefined = folder;
+    let invalid = false;
+
+    while (current) {
+      if (invalidIds.has(current.id) || pathIds.has(current.id)) {
+        invalid = true;
+        break;
+      }
+      if (validIds.has(current.id)) break;
+
+      path.push(current.id);
+      pathIds.add(current.id);
+      if (!current.parentId) break;
+
+      current = foldersById.get(current.parentId);
+      if (!current) invalid = true;
+    }
+
+    const resolvedIds = invalid ? invalidIds : validIds;
+    for (const id of path) resolvedIds.add(id);
   }
-  return false;
+
+  return invalidIds;
 };
 
 export const buildFolderTreeModel = (folders: readonly TableFolder[]): FolderTreeNode[] => {
   const foldersById = new Map(folders.map((folder) => [folder.id, folder]));
+  const invalidFolderIds = findInvalidFolderIds(foldersById);
   const nodes = new Map<string, FolderTreeNode>(
     folders.map((folder): [string, FolderTreeNode] => [folder.id, { ...folder, children: [] }]),
   );
@@ -56,18 +84,20 @@ export const buildFolderTreeModel = (folders: readonly TableFolder[]): FolderTre
   for (const folder of folders) {
     const node = nodes.get(folder.id);
     if (!node) continue;
-    if (!folder.parentId || hasInvalidParent(foldersById, folder)) {
+    if (!folder.parentId || invalidFolderIds.has(folder.id)) {
       roots.push(node);
       continue;
     }
     nodes.get(folder.parentId)?.children.push(node);
   }
 
-  const sortNodes = (items: FolderTreeNode[]) => {
+  const pendingLevels = [roots];
+  while (pendingLevels.length > 0) {
+    const items = pendingLevels.pop();
+    if (!items) continue;
     items.sort((left, right) => left.order - right.order || left.id.localeCompare(right.id));
-    for (const item of items) sortNodes(item.children);
-  };
-  sortNodes(roots);
+    for (const item of items) pendingLevels.push(item.children);
+  }
   return roots;
 };
 
