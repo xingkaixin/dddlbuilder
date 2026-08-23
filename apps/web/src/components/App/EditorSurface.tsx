@@ -2,10 +2,10 @@ import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OutputContainer } from './containers/OutputContainer';
 import { TableBuilderContainer } from './containers/TableBuilderContainer';
-import type { AppController } from './useAppController';
+import type { AppWorkspaceModel } from './appViewModel';
 
 type EditorSurfaceActions = Pick<
-  AppController['actions'],
+  AppWorkspaceModel['actions'],
   | 'aiCommentActions'
   | 'indexAdvisor'
   | 'reviewActions'
@@ -14,34 +14,19 @@ type EditorSurfaceActions = Pick<
   | 'navigationActions'
 >;
 
-export type EditorSurfaceSchema = Pick<
-  AppController['schema'],
-  | 'availableFields'
-  | 'canSaveCurrent'
-  | 'dataTableToolbarLeft'
-  | 'filledRowCount'
-  | 'handleDbTypeChange'
-  | 'handleSaveCurrent'
-  | 'handleTableNameChange'
-  | 'handleViewCurrentVersionHistory'
-  | 'qualifiedTableName'
-  | 'schemaLintIssues'
-  | 'tableDiff'
->;
-
 interface EditorSurfaceProps {
   actions: EditorSurfaceActions;
-  domains: AppController['domains'];
+  domains: AppWorkspaceModel['domains'];
   workspace: Pick<
-    AppController['workspace'],
+    AppWorkspaceModel['workspace'],
     | 'isLoadedDirty'
     | 'isShareView'
     | 'loadedTableName'
     | 'loadedTableNormalizedName'
     | 'workspaceLabel'
   >;
-  schema: EditorSurfaceSchema;
-  output: AppController['output'];
+  schema: AppWorkspaceModel['schema'];
+  output: AppWorkspaceModel['output'];
   outputPanelOpen: boolean;
   setOutputPanelOpen: (open: boolean) => void;
   onOpenErDiagram: () => void;

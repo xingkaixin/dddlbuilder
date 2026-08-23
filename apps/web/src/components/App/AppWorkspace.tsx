@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight, Upload } from '@/components/icons';
 import { isCnyFireworksEnabled } from '@/config/featureFlags';
-import { EditorSurface, type EditorSurfaceSchema } from './EditorSurface';
+import { EditorSurface } from './EditorSurface';
 import { Header } from './Header';
 import { MainWorkspaceSkeleton } from './MainWorkspaceSkeleton';
 import { SavedTablesDrawer } from './SavedTablesDrawer';
@@ -10,37 +10,11 @@ import { TabBar } from './TabBar';
 import { TableTemplatePopover } from './TableTemplatePopover';
 import { WorkspaceEmptyState } from './WorkspaceEmptyState';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
-import type { AppController } from './useAppController';
+import type { AppWorkspaceModel } from './appViewModel';
 
 const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
 
-type WorkspaceActions = Pick<
-  AppController['actions'],
-  | 'aiCommentActions'
-  | 'indexAdvisor'
-  | 'folderActions'
-  | 'reviewActions'
-  | 'shareAction'
-  | 'clearActions'
-  | 'savedTableFlow'
-  | 'workspaceTabs'
-  | 'tableTemplateActions'
-  | 'trashActions'
-  | 'schemaActions'
-  | 'navigationActions'
->;
-
-interface AppWorkspaceProps {
-  actions: WorkspaceActions;
-  domains: AppController['domains'];
-  resources: Pick<
-    AppController['resources'],
-    'savedTableData' | 'folderData' | 'tableTemplateData'
-  >;
-  workspace: Omit<AppController['workspace'], 'workspaceScope'>;
-  schema: EditorSurfaceSchema;
-  output: AppController['output'];
-  celebration: AppController['celebration'];
+type AppWorkspaceProps = AppWorkspaceModel & {
   workspaceSidebarOpen: boolean;
   setWorkspaceSidebarOpen: (open: boolean) => void;
   outputPanelOpen: boolean;
@@ -48,7 +22,7 @@ interface AppWorkspaceProps {
   onOpenImport: () => void;
   onOpenErDiagram: () => void;
   onOpenAISchemaPatch: () => void;
-}
+};
 
 export function AppWorkspace({
   actions,

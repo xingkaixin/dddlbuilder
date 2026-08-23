@@ -5,7 +5,7 @@ import { AISchemaPatchPanel } from './AISchemaPatchPanel';
 import { AIIndexAdvisorDialog } from './AIIndexAdvisorDialog';
 import { DialogRenderGuard } from './containers/DialogRenderGuard';
 import { GlobalDialogs } from './containers/GlobalDialogs';
-import type { AppController } from './useAppController';
+import type { AppDialogModel } from './appViewModel';
 
 const ImportSqlDialog = lazy(() =>
   import('@/components/ImportSqlDialog').then((module) => ({
@@ -13,44 +13,14 @@ const ImportSqlDialog = lazy(() =>
   })),
 );
 
-type DialogActions = Pick<
-  AppController['actions'],
-  | 'indexAdvisor'
-  | 'folderActions'
-  | 'templateActions'
-  | 'clearActions'
-  | 'savedTableFlow'
-  | 'tableTemplateActions'
-  | 'trashActions'
-  | 'aiPatchFlow'
-  | 'schemaActions'
->;
-
-interface AppDialogLayerProps {
-  actions: DialogActions;
-  domains: Pick<AppController['domains'], 'editor' | 'tableOptions'>;
-  resources: AppController['resources'];
-  workspace: Pick<
-    AppController['workspace'],
-    'loadedTableNormalizedName' | 'workspaceScope' | 'isShareView'
-  >;
-  schema: Pick<
-    AppController['schema'],
-    | 'aiGenerateExistingConfig'
-    | 'aiGenerateTemplates'
-    | 'canSaveCurrent'
-    | 'currentPersistedState'
-    | 'normalizedFields'
-    | 'tableDiff'
-  >;
-  dialogs: AppController['dialogs'];
+type AppDialogLayerProps = AppDialogModel & {
   isImportDialogOpen: boolean;
   setIsImportDialogOpen: (open: boolean) => void;
   isErDialogOpen: boolean;
   setIsErDialogOpen: (open: boolean) => void;
   isAISchemaPatchOpen: boolean;
   setIsAISchemaPatchOpen: (open: boolean) => void;
-}
+};
 
 export function AppDialogLayer({
   actions,
