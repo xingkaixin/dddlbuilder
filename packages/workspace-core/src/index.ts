@@ -2,6 +2,10 @@ export { buildWorkspaceContentHash } from './contentHash';
 export { createFieldId } from './fieldId';
 export { DEFAULT_DRAFT_ID, shouldAcceptSnapshotRecord } from './snapshotMergePolicy';
 export {
+  normalizeWorkspaceSnapshot,
+  type CanonicalWorkspaceSnapshot,
+} from './workspaceSnapshotNormalization';
+export {
   decodePersistedState,
   decodeSchemaDocumentState,
   decodeWorkspaceSnapshot,

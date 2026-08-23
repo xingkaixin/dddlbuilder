@@ -4,6 +4,7 @@ import type {
   WorkspaceSnapshot,
 } from '@ddlbuilder/shared-types/workspace';
 import { withDefaultEditorSession } from '@ddlbuilder/shared-types';
+import { normalizeWorkspaceSnapshot } from '@ddlbuilder/workspace-core';
 import { addSavedTable, deleteSavedTable, listSavedTables } from '@/utils/savedTablesDb';
 import { clearFolders, bulkPutFolders } from '@/utils/tableFolders';
 import {
@@ -30,6 +31,7 @@ const replaceLocalWorkspaceSnapshot = async (
   snapshot: WorkspaceSnapshot,
   scope: WorkspaceScope,
 ) => {
+  const normalizedSnapshot = normalizeWorkspaceSnapshot(snapshot);
   const [localDrafts, localSavedTables, localSavedDrafts] = await Promise.all([
     listDrafts(scope),
     listSavedTables(scope),
@@ -48,15 +50,7 @@ const replaceLocalWorkspaceSnapshot = async (
     ),
   ]);
 
-  if (snapshot.globalDraft) {
-    await writeDraft(
-      DEFAULT_DRAFT_ID,
-      { ...snapshot.globalDraft, state: withDefaultEditorSession(snapshot.globalDraft.state) },
-      scope,
-    );
-  }
-
-  for (const item of snapshot.drafts) {
+  for (const item of normalizedSnapshot.drafts) {
     await writeDraft(
       item.draftId,
       {
@@ -69,7 +63,7 @@ const replaceLocalWorkspaceSnapshot = async (
     );
   }
 
-  for (const item of snapshot.savedTables) {
+  for (const item of normalizedSnapshot.savedTables) {
     await addSavedTable(
       {
         normalizedName: item.normalizedName,
@@ -83,7 +77,7 @@ const replaceLocalWorkspaceSnapshot = async (
     );
   }
 
-  for (const item of snapshot.savedDrafts) {
+  for (const item of normalizedSnapshot.savedDrafts) {
     const nextDraft: SavedTableDraftRecord = {
       tableName: item.tableName,
       state: withDefaultEditorSession(item.state),
@@ -93,8 +87,8 @@ const replaceLocalWorkspaceSnapshot = async (
     await upsertSavedDraft(item.normalizedName, nextDraft, scope);
   }
 
-  if (snapshot.folders.length > 0) {
-    await bulkPutFolders(snapshot.folders, scope);
+  if (normalizedSnapshot.folders.length > 0) {
+    await bulkPutFolders(normalizedSnapshot.folders, scope);
   }
 };
 

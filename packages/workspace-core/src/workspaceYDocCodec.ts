@@ -9,21 +9,17 @@ import {
   upsertTableRecord,
   writeFolderRecord,
 } from './workspaceYDoc';
-import { DEFAULT_DRAFT_ID, shouldAcceptSnapshotRecord } from './snapshotMergePolicy';
+import { shouldAcceptSnapshotRecord } from './snapshotMergePolicy';
 import { readWorkspaceCreatedAt, readWorkspaceTimestamp } from './workspaceMetadata';
+import { normalizeWorkspaceSnapshot } from './workspaceSnapshotNormalization';
 
 export const importWorkspaceSnapshotToYDoc = (doc: Y.Doc, snapshot: WorkspaceSnapshot) => {
+  const normalizedSnapshot = normalizeWorkspaceSnapshot(snapshot);
   doc.transact(() => {
     ensureWorkspaceYDocMeta(doc);
     const { drafts, savedTables, savedDrafts } = getWorkspaceRoot(doc);
 
-    if (snapshot.globalDraft) {
-      upsertTableRecord(drafts, DEFAULT_DRAFT_ID, snapshot.globalDraft.state, {
-        updatedAt: snapshot.globalDraft.updatedAt,
-      });
-    }
-
-    for (const draft of snapshot.drafts) {
+    for (const draft of normalizedSnapshot.drafts) {
       upsertTableRecord(drafts, draft.draftId, draft.state, {
         createdAt: draft.createdAt,
         updatedAt: draft.updatedAt,
@@ -31,7 +27,7 @@ export const importWorkspaceSnapshotToYDoc = (doc: Y.Doc, snapshot: WorkspaceSna
       });
     }
 
-    for (const table of snapshot.savedTables) {
+    for (const table of normalizedSnapshot.savedTables) {
       upsertTableRecord(savedTables, table.normalizedName, table.state, {
         normalizedName: table.normalizedName,
         name: table.name,
@@ -41,7 +37,7 @@ export const importWorkspaceSnapshotToYDoc = (doc: Y.Doc, snapshot: WorkspaceSna
       });
     }
 
-    for (const draft of snapshot.savedDrafts) {
+    for (const draft of normalizedSnapshot.savedDrafts) {
       upsertTableRecord(savedDrafts, draft.normalizedName, draft.state, {
         normalizedName: draft.normalizedName,
         tableName: draft.tableName,
@@ -50,7 +46,7 @@ export const importWorkspaceSnapshotToYDoc = (doc: Y.Doc, snapshot: WorkspaceSna
       });
     }
 
-    for (const folder of snapshot.folders) {
+    for (const folder of normalizedSnapshot.folders) {
       writeFolderRecord(doc, folder);
     }
   });
@@ -98,6 +94,7 @@ export const exportWorkspaceYDocToSnapshot = (doc: Y.Doc): WorkspaceSnapshot => 
 };
 
 export const mergeWorkspaceSnapshotIntoYDoc = (doc: Y.Doc, snapshot: WorkspaceSnapshot) => {
+  const normalizedSnapshot = normalizeWorkspaceSnapshot(snapshot);
   const current = exportWorkspaceYDocToSnapshot(doc);
   const currentDrafts = new Map(current.drafts.map((draft) => [draft.draftId, draft]));
   const currentTables = new Map(current.savedTables.map((table) => [table.normalizedName, table]));
@@ -113,22 +110,12 @@ export const mergeWorkspaceSnapshotIntoYDoc = (doc: Y.Doc, snapshot: WorkspaceSn
     folders: [],
   };
 
-  if (
-    snapshot.globalDraft &&
-    shouldAcceptSnapshotRecord(
-      snapshot.globalDraft.updatedAt,
-      currentDrafts.get(DEFAULT_DRAFT_ID)?.updatedAt,
-    )
-  ) {
-    merged.globalDraft = snapshot.globalDraft;
-  }
-
-  for (const draft of snapshot.drafts) {
+  for (const draft of normalizedSnapshot.drafts) {
     if (shouldAcceptSnapshotRecord(draft.updatedAt, currentDrafts.get(draft.draftId)?.updatedAt)) {
       merged.drafts.push(draft);
     }
   }
-  for (const table of snapshot.savedTables) {
+  for (const table of normalizedSnapshot.savedTables) {
     if (
       shouldAcceptSnapshotRecord(
         table.updatedAt,
@@ -138,7 +125,7 @@ export const mergeWorkspaceSnapshotIntoYDoc = (doc: Y.Doc, snapshot: WorkspaceSn
       merged.savedTables.push(table);
     }
   }
-  for (const draft of snapshot.savedDrafts) {
+  for (const draft of normalizedSnapshot.savedDrafts) {
     if (
       shouldAcceptSnapshotRecord(
         draft.updatedAt,
@@ -148,12 +135,11 @@ export const mergeWorkspaceSnapshotIntoYDoc = (doc: Y.Doc, snapshot: WorkspaceSn
       merged.savedDrafts.push(draft);
     }
   }
-  for (const folder of snapshot.folders) {
+  for (const folder of normalizedSnapshot.folders) {
     if (!currentFolders.has(folder.id)) merged.folders.push(folder);
   }
 
   if (
-    merged.globalDraft ||
     merged.drafts.length > 0 ||
     merged.savedTables.length > 0 ||
     merged.savedDrafts.length > 0 ||

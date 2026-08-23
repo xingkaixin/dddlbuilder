@@ -21,6 +21,7 @@ import {
   toSchemaDocumentState,
 } from '@ddlbuilder/shared-types';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
+import { normalizeWorkspaceSnapshot } from './workspaceSnapshotNormalization';
 
 export type PersistedStateDecodeMode = 'compatible' | 'external';
 
@@ -427,5 +428,5 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
     });
   }
 
-  return { globalDraft, drafts, savedTables, savedDrafts, folders };
+  return normalizeWorkspaceSnapshot({ globalDraft, drafts, savedTables, savedDrafts, folders });
 };

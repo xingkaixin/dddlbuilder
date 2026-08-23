@@ -358,11 +358,12 @@ describe('decodeWorkspaceSnapshot', () => {
       folders: [],
     });
 
-    expect(decoded?.globalDraft?.state).toMatchObject({
+    expect(decoded?.globalDraft).toBeNull();
+    expect(decoded?.drafts[0]?.state).toMatchObject({
       schemaName: '',
       tableName: 'users',
     });
-    expect(decoded?.globalDraft?.state).not.toHaveProperty('sqlFormatMode');
+    expect(decoded?.drafts[0]?.state).not.toHaveProperty('sqlFormatMode');
   });
 
   it('接受不包含本地编辑状态的协作文档快照', () => {
@@ -385,7 +386,8 @@ describe('decodeWorkspaceSnapshot', () => {
       folders: [],
     });
 
-    expect(decoded?.globalDraft?.state.tableName).toBe('users');
+    expect(decoded?.globalDraft).toBeNull();
+    expect(decoded?.drafts[0]?.state.tableName).toBe('users');
   });
 
   it('规范化快照中的全部实体和可选字段', () => {

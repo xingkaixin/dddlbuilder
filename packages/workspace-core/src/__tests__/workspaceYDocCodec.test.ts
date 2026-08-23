@@ -154,6 +154,36 @@ describe('workspace YDoc codec', () => {
     );
   });
 
+  it('keeps the newest default draft when legacy and canonical records conflict', () => {
+    const legacyIsNewer = createSnapshot();
+    legacyIsNewer.globalDraft = { state: createState('new_legacy'), updatedAt: 100 };
+    legacyIsNewer.drafts.unshift({
+      draftId: 'default',
+      state: createState('stale_canonical'),
+      updatedAt: 1,
+    });
+    const firstDoc = new Y.Doc();
+    importWorkspaceSnapshotToYDoc(firstDoc, legacyIsNewer);
+    expect(
+      exportWorkspaceYDocToSnapshot(firstDoc).drafts.find((draft) => draft.draftId === 'default')
+        ?.state.tableName,
+    ).toBe('new_legacy');
+
+    const canonicalIsNewer = createSnapshot();
+    canonicalIsNewer.globalDraft = { state: createState('stale_legacy'), updatedAt: 1 };
+    canonicalIsNewer.drafts.unshift({
+      draftId: 'default',
+      state: createState('new_canonical'),
+      updatedAt: 100,
+    });
+    const secondDoc = new Y.Doc();
+    importWorkspaceSnapshotToYDoc(secondDoc, canonicalIsNewer);
+    expect(
+      exportWorkspaceYDocToSnapshot(secondDoc).drafts.find((draft) => draft.draftId === 'default')
+        ?.state.tableName,
+    ).toBe('new_canonical');
+  });
+
   it('encodes a transport update and preserves authoritative empty collections', () => {
     const doc = new Y.Doc();
     Y.applyUpdate(

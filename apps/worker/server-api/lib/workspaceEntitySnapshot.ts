@@ -1,5 +1,6 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceEntityType, WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
+import { normalizeWorkspaceSnapshot } from '@ddlbuilder/workspace-core';
 
 export const GLOBAL_DRAFT_ENTITY_ID = '__global_draft__';
 
@@ -35,18 +36,10 @@ const emptyWorkspaceSnapshot = (): WorkspaceSnapshot => ({
 export const workspaceSnapshotToEntities = (
   snapshot: WorkspaceSnapshot,
 ): WorkspaceEntityInput[] => {
+  const normalizedSnapshot = normalizeWorkspaceSnapshot(snapshot);
   const entities: WorkspaceEntityInput[] = [];
 
-  if (snapshot.globalDraft) {
-    entities.push({
-      entityType: 'draft',
-      entityId: GLOBAL_DRAFT_ENTITY_ID,
-      payload: { state: snapshot.globalDraft.state },
-      sourceUpdatedAt: snapshot.globalDraft.updatedAt,
-    });
-  }
-
-  for (const item of snapshot.drafts) {
+  for (const item of normalizedSnapshot.drafts) {
     entities.push({
       entityType: 'draft',
       entityId: item.draftId,
@@ -59,7 +52,7 @@ export const workspaceSnapshotToEntities = (
     });
   }
 
-  for (const item of snapshot.savedTables) {
+  for (const item of normalizedSnapshot.savedTables) {
     entities.push({
       entityType: 'saved_table',
       entityId: item.normalizedName,
@@ -73,7 +66,7 @@ export const workspaceSnapshotToEntities = (
     });
   }
 
-  for (const item of snapshot.savedDrafts) {
+  for (const item of normalizedSnapshot.savedDrafts) {
     entities.push({
       entityType: 'saved_draft',
       entityId: item.normalizedName,
@@ -86,7 +79,7 @@ export const workspaceSnapshotToEntities = (
     });
   }
 
-  for (const item of snapshot.folders) {
+  for (const item of normalizedSnapshot.folders) {
     entities.push({
       entityType: 'folder',
       entityId: item.id,
@@ -200,7 +193,7 @@ export const storedEntitiesToWorkspaceSnapshot = (
   snapshot.savedDrafts.sort((a, b) => b.updatedAt - a.updatedAt);
   snapshot.folders.sort((a, b) => a.order - b.order);
 
-  return snapshot;
+  return normalizeWorkspaceSnapshot(snapshot);
 };
 
 export const legacyRowsToWorkspaceSnapshot = (
@@ -221,5 +214,5 @@ export const legacyRowsToWorkspaceSnapshot = (
     });
   }
 
-  return snapshot;
+  return normalizeWorkspaceSnapshot(snapshot);
 };

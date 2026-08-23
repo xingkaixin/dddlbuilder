@@ -66,8 +66,16 @@ describe('workspaceEntitySnapshot', () => {
       updatedAt: entity.sourceUpdatedAt,
     }));
 
-    expect(entities.map((entity) => entity.entityId)).toContain(GLOBAL_DRAFT_ENTITY_ID);
-    expect(storedEntitiesToWorkspaceSnapshot(storedRows)).toEqual(snapshot());
+    expect(entities.map((entity) => entity.entityId)).not.toContain(GLOBAL_DRAFT_ENTITY_ID);
+    expect(entities.map((entity) => entity.entityId)).toContain('default');
+    expect(storedEntitiesToWorkspaceSnapshot(storedRows)).toEqual({
+      ...snapshot(),
+      globalDraft: null,
+      drafts: [
+        { draftId: 'default', state: state('global'), createdAt: 10, updatedAt: 10 },
+        ...snapshot().drafts,
+      ],
+    });
   });
 
   it('normalizes legacy rows through the same entity mapping policy', () => {
@@ -101,7 +109,8 @@ describe('workspaceEntitySnapshot', () => {
     ]);
 
     expect(legacySnapshot).toMatchObject({
-      globalDraft: { state: { tableName: 'global' }, updatedAt: 10 },
+      globalDraft: null,
+      drafts: [{ draftId: 'default', state: { tableName: 'global' }, updatedAt: 10 }],
       savedTables: [
         {
           normalizedName: 'users',
@@ -118,6 +127,31 @@ describe('workspaceEntitySnapshot', () => {
         },
       ],
     });
+  });
+
+  it('keeps the newest default draft across legacy and canonical entity ids', () => {
+    const result = storedEntitiesToWorkspaceSnapshot([
+      {
+        entityType: 'draft',
+        entityId: GLOBAL_DRAFT_ENTITY_ID,
+        payloadJson: JSON.stringify({ state: state('stale') }),
+        updatedAt: 1,
+      },
+      {
+        entityType: 'draft',
+        entityId: 'default',
+        payloadJson: JSON.stringify({ state: state('current') }),
+        updatedAt: 2,
+      },
+    ]);
+
+    expect(result.globalDraft).toBeNull();
+    expect(result.drafts).toEqual([
+      expect.objectContaining({
+        draftId: 'default',
+        state: expect.objectContaining({ tableName: 'current' }),
+      }),
+    ]);
   });
 
   it('ignores deleted and incomplete persisted records', () => {
