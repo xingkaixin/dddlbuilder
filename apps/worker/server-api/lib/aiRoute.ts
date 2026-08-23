@@ -98,14 +98,6 @@ export type AIRouteSpec<Request> = {
   parseRequest: (body: Record<string, unknown>) => Request | AIRequestRejection;
 };
 
-const resolveWaitUntil = (c: Context<ApiEnv>) => {
-  try {
-    return c.executionCtx.waitUntil.bind(c.executionCtx);
-  } catch {
-    return undefined;
-  }
-};
-
 /**
  * 五条 AI 路由共用的前置流水线：限流 → 解析请求体 → 鉴权 → 估算 → 预留额度 → 预算，
  * 任一步失败都会带上审计日志直接返回。走通之后把句柄交给 run，由它决定怎么调模型、
@@ -121,7 +113,7 @@ export const withAIGovernance = async <Request>(
   const requestId = getRequestId(c) ?? 'unknown';
   const startedAt = Date.now();
   const governance = getOpenAIGovernanceSnapshot(route, config);
-  const waitUntil = resolveWaitUntil(c);
+  const waitUntil = c.executionCtx.waitUntil.bind(c.executionCtx);
   const model = c.env.OPENAI_MODEL_NAME || DEFAULT_MODEL;
 
   let estimatedTokens = 0;
@@ -266,13 +258,13 @@ export const withAIGovernance = async <Request>(
     const settlement = completeAIUsage(c.env, reservation, usage?.totalTokens ?? null)
       .then(() => audit(200, retryCount, false, false))
       .catch((error) => console.error(`[${route}] settlement failed`, error));
-    waitUntil?.(settlement);
+    waitUntil(settlement);
   };
   const settleFailure = (code: ApiErrorCode, status: number, retryCount: number) => {
     if (settled) return;
     settled = true;
     const settlement = refund(code).then(() => audit(status, retryCount, false, false, code));
-    waitUntil?.(settlement);
+    waitUntil(settlement);
   };
 
   const session: AISession<Request> = {

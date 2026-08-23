@@ -471,7 +471,7 @@ export async function enforceOpenAIDailyBudget(
 export function logOpenAIAudit(
   env: ApiEnv['Bindings'],
   payload: AuditLogPayload,
-  waitUntil?: WaitUntilFn,
+  waitUntil: WaitUntilFn,
 ) {
   console.info(
     JSON.stringify({
@@ -483,12 +483,7 @@ export function logOpenAIAudit(
 
   const notifyTask = dispatchTelegramAuditNotification(env, payload);
 
-  if (waitUntil && notifyTask) {
-    waitUntil(notifyTask);
-    return;
-  }
-
-  void notifyTask;
+  if (notifyTask) waitUntil(notifyTask);
 }
 
 export async function withOpenAIRetry<T>(

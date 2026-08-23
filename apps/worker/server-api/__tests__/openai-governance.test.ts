@@ -61,15 +61,23 @@ const createAppWrapper = (
   env: ApiEnv['Bindings'],
 ): {
   request: (path: string, options?: RequestInit) => Promise<Response>;
-} => ({
-  request: async (path: string, options: RequestInit = {}) => {
-    const url = path.startsWith('http')
-      ? path
-      : `http://localhost${path.startsWith('/') ? path : `/${path}`}`;
-    const request = new Request(url, options);
-    return app.fetch(request, env);
-  },
-});
+  waitUntilTasks: Promise<unknown>[];
+} => {
+  const waitUntilTasks: Promise<unknown>[] = [];
+  return {
+    waitUntilTasks,
+    request: async (path: string, options: RequestInit = {}) => {
+      const url = path.startsWith('http')
+        ? path
+        : `http://localhost${path.startsWith('/') ? path : `/${path}`}`;
+      const request = new Request(url, options);
+      return app.fetch(request, env, {
+        waitUntil: (task) => waitUntilTasks.push(task),
+        passThroughOnException: () => {},
+      } as ExecutionContext);
+    },
+  };
+};
 
 const createMockStream = (chunks: unknown[]) => ({
   async *[Symbol.asyncIterator]() {
@@ -430,8 +438,8 @@ describe.sequential('openai governance', () => {
     });
 
     expect(response.status).toBe(503);
-    await Promise.resolve();
-    await Promise.resolve();
+    expect(app.waitUntilTasks).toHaveLength(1);
+    await Promise.all(app.waitUntilTasks);
 
     expect(consoleInfoSpy).toHaveBeenCalled();
     expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -473,8 +481,8 @@ describe.sequential('openai governance', () => {
     });
 
     expect(response.status).toBe(503);
-    await Promise.resolve();
-    await Promise.resolve();
+    expect(app.waitUntilTasks).toHaveLength(1);
+    await Promise.all(app.waitUntilTasks);
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy).toHaveBeenCalledTimes(1);

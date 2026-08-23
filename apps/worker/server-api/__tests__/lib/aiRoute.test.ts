@@ -50,7 +50,7 @@ const loadShell = async (overrides: Record<string, unknown> = {}, completionCont
   return { withAIGovernance, rejectAIRequest, reserveAIUsage, completeAIUsage, failAIUsage };
 };
 
-const post = (app: Hono<ApiEnv>, body: unknown) =>
+const post = (app: Hono<ApiEnv>, body: unknown, waitUntil = vi.fn()) =>
   app.fetch(
     new Request('http://localhost/t', {
       method: 'POST',
@@ -58,7 +58,7 @@ const post = (app: Hono<ApiEnv>, body: unknown) =>
       body: JSON.stringify(body),
     }),
     createEnv(),
-    { waitUntil: () => {}, passThroughOnException: () => {} } as ExecutionContext,
+    { waitUntil, passThroughOnException: () => {} } as ExecutionContext,
   );
 
 describe('withAIGovernance', () => {
@@ -75,6 +75,7 @@ describe('withAIGovernance', () => {
 
   it('结算成功的请求并放行响应', async () => {
     const shell = await loadShell();
+    const waitUntil = vi.fn();
     const app = new Hono<ApiEnv>();
     app.post('/t', (c) =>
       shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async () =>
@@ -82,10 +83,11 @@ describe('withAIGovernance', () => {
       ),
     );
 
-    const response = await post(app, { sql: 'select 1' });
+    const response = await post(app, { sql: 'select 1' }, waitUntil);
 
     expect(response.status).toBe(200);
     await vi.waitFor(() => expect(shell.completeAIUsage).toHaveBeenCalledTimes(1));
+    expect(waitUntil).toHaveBeenCalledTimes(1);
     expect(shell.failAIUsage).not.toHaveBeenCalled();
   });
 
