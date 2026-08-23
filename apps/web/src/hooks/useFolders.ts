@@ -17,7 +17,7 @@ import {
   renameFolder,
   type FolderTreeNode,
 } from '@/utils/tableFolders';
-import { useWorkspaceEntityPersistence } from '@/hooks/workspacePersistence/useWorkspaceEntityPersistence';
+import { useWorkspaceAuthority } from '@/hooks/workspacePersistence/useWorkspaceAuthority';
 import { useWorkspaceYDocProjection } from '@/hooks/useWorkspaceYDocProjection';
 import { localFoldersOptions } from '@/queries/workspaceLocal';
 import {
@@ -41,13 +41,7 @@ const readFolderProjection = (doc: Y.Doc) => ({
 });
 
 export function useFolders() {
-  const {
-    scope: currentScope,
-    yDoc,
-    yDocReady,
-    runInYDoc,
-    refresh,
-  } = useWorkspaceEntityPersistence();
+  const { scope: currentScope, yDoc, yDocReady, runInYDoc, refresh } = useWorkspaceAuthority();
   const yDocProjection = useWorkspaceYDocProjection(
     yDoc,
     FOLDER_COLLECTIONS,
