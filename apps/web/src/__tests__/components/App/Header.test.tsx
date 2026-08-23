@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@/__tests__/utils/test-utils';
+import { act, fireEvent, render, screen, waitFor } from '@/__tests__/utils/test-utils';
 import { Header } from '@/components/App/Header';
 
 const signInWithEmailMock = vi.fn();
@@ -79,6 +79,13 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
       {children}
     </button>
   ),
+}));
+
+vi.mock('@/components/ui/tooltip', () => ({
+  TooltipProvider: ({ children }: { children: any }) => <>{children}</>,
+  Tooltip: ({ children }: { children: any }) => <>{children}</>,
+  TooltipTrigger: ({ children }: { children: any }) => <>{children}</>,
+  TooltipContent: ({ children }: { children: any }) => <>{children}</>,
 }));
 
 vi.mock('@/auth/AuthSessionProvider', () => ({
@@ -166,8 +173,10 @@ describe('Header', () => {
     moveTableToFolder: vi.fn(),
   };
 
-  it('未传入烟花能力时不渲染灯笼按钮', () => {
-    render(<Header {...baseProps} />);
+  it('未传入烟花能力时不渲染灯笼按钮', async () => {
+    await act(async () => {
+      render(<Header {...baseProps} />);
+    });
 
     expect(screen.queryByRole('button', { name: '点击播放烟花' })).not.toBeInTheDocument();
   });

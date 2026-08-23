@@ -9,6 +9,13 @@ vi.mock('next-themes', () => ({
   useTheme: () => useThemeMock(),
 }));
 
+vi.mock('@/components/ui/tooltip', () => ({
+  TooltipProvider: ({ children }: { children: any }) => <>{children}</>,
+  Tooltip: ({ children }: { children: any }) => <>{children}</>,
+  TooltipTrigger: ({ children }: { children: any }) => <>{children}</>,
+  TooltipContent: ({ children }: { children: any }) => <>{children}</>,
+}));
+
 class ResizeObserverMock {
   observe = vi.fn();
   unobserve = vi.fn();
