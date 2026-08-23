@@ -2,22 +2,15 @@ import type { DatabaseType } from '@ddlbuilder/shared-types';
 import {
   preprocessOracle,
   preprocessSqlServer,
-  extractSqlServerGrantUsers,
   extractStandaloneComments,
   type PreprocessResult,
+  type PreprocessedTableMetadata,
 } from './preprocessors/index.js';
-import {
-  parseCreateIndex,
-  parseCreateTable,
-  parseAlterTable,
-  parseDCL,
-  parseTransactGrant,
-} from './astHandlers.js';
+import { parseCreateIndex, parseCreateTable, parseAlterTable } from './astHandlers.js';
 import {
   isAlterTableStmt,
   isCreateIndexStmt,
   isCreateTableStmt,
-  isGrantStmt,
   type AstStatement,
 } from './astTypes.js';
 import { loadParserConstructor } from './parserLoader.js';
@@ -26,6 +19,41 @@ import type { ParsedResult, ParserInstance, MultiParsedResult } from './types.js
 import { getDatabaseFamily, getSqlParserDialect } from '../utils/databaseFamily.js';
 
 export type { ParsedResult } from './types.js';
+
+type ScopedGrant = {
+  tableName: string;
+  users: string[];
+};
+
+const normalizeTableName = (tableName: string) =>
+  tableName
+    .split('.')
+    .at(-1)
+    ?.replaceAll('`', '')
+    .replaceAll('"', '')
+    .replaceAll('[', '')
+    .replaceAll(']', '')
+    .toLowerCase() ?? '';
+
+const cleanGrantUser = (value: string) =>
+  value
+    .trim()
+    .replace(/^N'/i, "'")
+    .replaceAll('`', '')
+    .replaceAll('"', '')
+    .replaceAll("'", '')
+    .replaceAll('[', '')
+    .replaceAll(']', '');
+
+const extractScopedGrants = (sql: string): ScopedGrant[] => {
+  const grants: ScopedGrant[] = [];
+  const grantRegex = /\bGRANT\b[\s\S]*?\bON\s+(?:TABLE\s+)?([`"[\]\w.*]+)\s+\bTO\s+([^;]+)/gi;
+  for (const match of sql.matchAll(grantRegex)) {
+    const users = match[2].split(',').map(cleanGrantUser).filter(Boolean);
+    if (users.length > 0) grants.push({ tableName: match[1], users });
+  }
+  return grants;
+};
 
 export class SqlParser {
   private parser: ParserInstance | null;
@@ -61,36 +89,31 @@ export class SqlParser {
     dbType: DatabaseType,
   ): {
     sqlToParse: string;
-    extractedComments: {
-      tableComment: string;
-      columnComments: Record<string, string>;
-    } | null;
-    rawGrantUsers: string[];
-    extractedPartitionConfig: ParsedResult['mysqlPartitionConfig'];
+    tableMetadata: Map<string, PreprocessedTableMetadata>;
+    grants: ScopedGrant[];
+    partitionConfigs: Map<string, NonNullable<ParsedResult['mysqlPartitionConfig']>>;
   } {
     let sqlToParse = sql;
-    let extractedComments: {
-      tableComment: string;
-      columnComments: Record<string, string>;
-    } | null = null;
-    let rawGrantUsers: string[] = [];
-    let extractedPartitionConfig: ParsedResult['mysqlPartitionConfig'];
+    const tableMetadata = new Map<string, PreprocessedTableMetadata>();
+    const partitionConfigs = new Map<string, NonNullable<ParsedResult['mysqlPartitionConfig']>>();
 
     const mergeCommentSource = (source: PreprocessResult | null) => {
       if (!source) return;
-      if (!extractedComments) {
-        extractedComments = {
-          tableComment: source.tableComment,
-          columnComments: { ...source.columnComments },
-        };
-        return;
-      }
-      if (source.tableComment && !extractedComments.tableComment) {
-        extractedComments.tableComment = source.tableComment;
-      }
-      for (const key of Object.keys(source.columnComments)) {
-        if (!extractedComments.columnComments[key]) {
-          extractedComments.columnComments[key] = source.columnComments[key];
+      for (const metadata of source.tableMetadata) {
+        const key = normalizeTableName(metadata.tableName);
+        const existing = tableMetadata.get(key);
+        if (!existing) {
+          tableMetadata.set(key, {
+            ...metadata,
+            columnComments: { ...metadata.columnComments },
+          });
+          continue;
+        }
+        if (metadata.tableComment && !existing.tableComment) {
+          existing.tableComment = metadata.tableComment;
+        }
+        for (const [columnName, comment] of Object.entries(metadata.columnComments)) {
+          if (!existing.columnComments[columnName]) existing.columnComments[columnName] = comment;
         }
       }
     };
@@ -107,15 +130,14 @@ export class SqlParser {
       const processed = preprocessSqlServer(sqlToParse);
       sqlToParse = processed.sql;
       mergeCommentSource(processed);
-      rawGrantUsers = extractSqlServerGrantUsers(sql);
     }
 
     if (databaseFamily === 'mysql') {
       const processed = preprocessMysql(sqlToParse);
       sqlToParse = processed.sql;
-      extractedPartitionConfig = processed.partitionConfig;
-      if (processed.tableComment || Object.keys(processed.columnComments).length > 0) {
-        mergeCommentSource(processed);
+      mergeCommentSource(processed);
+      for (const [tableName, config] of Object.entries(processed.partitionConfigs)) {
+        partitionConfigs.set(normalizeTableName(tableName), config);
       }
     }
 
@@ -123,7 +145,12 @@ export class SqlParser {
     sqlToParse = standalone.sql;
     mergeCommentSource(standalone);
 
-    return { sqlToParse, extractedComments, rawGrantUsers, extractedPartitionConfig };
+    return {
+      sqlToParse,
+      tableMetadata,
+      grants: extractScopedGrants(sql),
+      partitionConfigs,
+    };
   }
 
   private buildAstifyOpt(dbType: DatabaseType) {
@@ -134,34 +161,34 @@ export class SqlParser {
 
   private applyPostParseMetadata(
     result: ParsedResult,
-    dbType: DatabaseType,
-    extractedComments: {
-      tableComment: string;
-      columnComments: Record<string, string>;
-    } | null,
-    rawGrantUsers: string[],
-    extractedPartitionConfig: ParsedResult['mysqlPartitionConfig'],
+    tableMetadata: Map<string, PreprocessedTableMetadata>,
+    grants: ScopedGrant[],
+    partitionConfigs: Map<string, NonNullable<ParsedResult['mysqlPartitionConfig']>>,
   ) {
-    if (extractedComments) {
-      this.mergeComments(result, extractedComments.tableComment, extractedComments.columnComments);
+    const tableKey = normalizeTableName(result.tableName);
+    const metadata =
+      tableMetadata.get(tableKey) ??
+      (tableMetadata.size === 1 && !tableKey ? tableMetadata.values().next().value : undefined);
+    if (metadata) {
+      this.mergeComments(result, metadata.tableComment, metadata.columnComments);
     }
 
-    if (dbType === 'sqlserver' && result.authObjects.length === 0 && rawGrantUsers.length > 0) {
-      rawGrantUsers.forEach((u) => {
-        if (!result.authObjects.includes(u)) {
-          result.authObjects.push(u);
-        }
-      });
+    const matchingGrants = grants.filter(
+      (grant) =>
+        normalizeTableName(grant.tableName) === tableKey || (!tableKey && grants.length === 1),
+    );
+    for (const grant of matchingGrants) {
+      for (const user of grant.users) {
+        if (!result.authObjects.includes(user)) result.authObjects.push(user);
+      }
     }
 
-    if (extractedPartitionConfig) {
-      result.mysqlPartitionConfig = extractedPartitionConfig;
-    }
+    const partitionConfig = partitionConfigs.get(tableKey);
+    if (partitionConfig) result.mysqlPartitionConfig = partitionConfig;
   }
 
   private parseWithParser(parser: ParserInstance, sql: string, dbType: DatabaseType): ParsedResult {
-    const { sqlToParse, extractedComments, rawGrantUsers, extractedPartitionConfig } =
-      this.preprocessSql(sql, dbType);
+    const { sqlToParse, tableMetadata, grants, partitionConfigs } = this.preprocessSql(sql, dbType);
 
     const opt = this.buildAstifyOpt(dbType);
 
@@ -173,6 +200,9 @@ export class SqlParser {
     }
 
     const statements = Array.isArray(ast) ? ast : [ast];
+    if (statements.filter(isCreateTableStmt).length > 1) {
+      throw new Error('检测到多个 CREATE TABLE，请使用 parseMultiAsync() 方法。');
+    }
 
     const result: ParsedResult = {
       tableName: '',
@@ -190,20 +220,10 @@ export class SqlParser {
         parseCreateIndex(stmt, result);
       } else if (isAlterTableStmt(stmt)) {
         parseAlterTable(stmt, result);
-      } else if (isGrantStmt(stmt)) {
-        parseDCL(stmt, result);
-      } else if (dbType === 'sqlserver') {
-        parseTransactGrant(stmt, result);
       }
     }
 
-    this.applyPostParseMetadata(
-      result,
-      dbType,
-      extractedComments,
-      rawGrantUsers,
-      extractedPartitionConfig,
-    );
+    this.applyPostParseMetadata(result, tableMetadata, grants, partitionConfigs);
 
     return result;
   }
@@ -213,8 +233,7 @@ export class SqlParser {
     sql: string,
     dbType: DatabaseType,
   ): MultiParsedResult {
-    const { sqlToParse, extractedComments, rawGrantUsers, extractedPartitionConfig } =
-      this.preprocessSql(sql, dbType);
+    const { sqlToParse, tableMetadata, grants, partitionConfigs } = this.preprocessSql(sql, dbType);
 
     const opt = this.buildAstifyOpt(dbType);
 
@@ -231,11 +250,6 @@ export class SqlParser {
 
     const statements = Array.isArray(ast) ? ast : [ast];
 
-    // Collect all extracted comments info for per-table matching
-    const globalColumnComments = extractedComments?.columnComments ?? {};
-    const globalTableComment = extractedComments?.tableComment ?? '';
-
-    // Phase 1: Create a ParsedResult for each CREATE TABLE
     const tableMap = new Map<string, ParsedResult>();
     const results: ParsedResult[] = [];
     const failed: Array<{ statement: string; error: string }> = [];
@@ -261,7 +275,7 @@ export class SqlParser {
           continue;
         }
         if (tableResult.tableName) {
-          tableMap.set(tableResult.tableName, tableResult);
+          tableMap.set(normalizeTableName(tableResult.tableName), tableResult);
           results.push(tableResult);
         }
       }
@@ -271,61 +285,29 @@ export class SqlParser {
       return { results: [], failed };
     }
 
-    // Phase 2: Associate CREATE INDEX / ALTER TABLE / GRANT to matching tables
     for (const stmt of statements) {
       if (isCreateIndexStmt(stmt)) {
         const indexTableName = stmt.table?.table;
-        const targetResult = indexTableName ? tableMap.get(indexTableName) : undefined;
+        const targetResult = indexTableName
+          ? tableMap.get(normalizeTableName(indexTableName))
+          : undefined;
         if (targetResult) {
           parseCreateIndex(stmt, targetResult, indexTableName);
         }
       } else if (isAlterTableStmt(stmt)) {
-        const alterTableName = Array.isArray(stmt.table) ? stmt.table[0]?.table : undefined;
-        const targetResult = alterTableName ? tableMap.get(alterTableName) : undefined;
+        const tableNode = Array.isArray(stmt.table) ? stmt.table[0] : stmt.table;
+        const alterTableName = tableNode?.table;
+        const targetResult = alterTableName
+          ? tableMap.get(normalizeTableName(alterTableName))
+          : undefined;
         if (targetResult) {
           parseAlterTable(stmt, targetResult, alterTableName);
         }
-      } else if (isGrantStmt(stmt)) {
-        for (const result of results) {
-          parseDCL(stmt, result);
-        }
-      } else if (dbType === 'sqlserver') {
-        for (const result of results) {
-          parseTransactGrant(stmt, result);
-        }
       }
     }
 
-    // Phase 3: Merge extracted comments and partition config per table
     for (const result of results) {
-      // Try to match table-specific comments. If the global extracted comment
-      // was from standalone comments or per-table preprocessors, we apply it.
-      // For multi-table, standalone comments are global; per-table processors
-      // (Oracle/SQLServer/MySQL) may extract the first table's info.
-      // We apply global comments to all tables as a best-effort baseline.
-      if (globalTableComment || Object.keys(globalColumnComments).length > 0) {
-        this.mergeComments(result, globalTableComment, globalColumnComments);
-      }
-    }
-
-    if (rawGrantUsers.length > 0) {
-      for (const result of results) {
-        if (result.authObjects.length === 0) {
-          rawGrantUsers.forEach((u) => {
-            if (!result.authObjects.includes(u)) {
-              result.authObjects.push(u);
-            }
-          });
-        }
-      }
-    }
-
-    if (extractedPartitionConfig) {
-      // For multi-table, partition config is typically global in the script.
-      // Apply to all MySQL-family tables as best effort.
-      for (const result of results) {
-        result.mysqlPartitionConfig = extractedPartitionConfig;
-      }
+      this.applyPostParseMetadata(result, tableMetadata, grants, partitionConfigs);
     }
 
     return { results, failed };

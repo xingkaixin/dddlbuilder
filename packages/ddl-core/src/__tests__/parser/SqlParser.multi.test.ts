@@ -62,20 +62,63 @@ describe('SqlParser.parseMultiAsync', () => {
     expect(users?.foreignKeys).toHaveLength(0);
   });
 
-  it('GRANT 应用到所有表', async () => {
+  it('GRANT 只应用到目标表', async () => {
     const sql = `
       CREATE TABLE t1 (id INT);
       CREATE TABLE t2 (id INT);
-      GRANT SELECT ON t1 TO app_user;
-      GRANT SELECT ON t2 TO app_user;
+      GRANT SELECT ON t1 TO user_one;
+      GRANT SELECT ON t2 TO user_two;
     `;
     const parser = new SqlParser();
     const { results } = await parser.parseMultiAsync(sql, 'mysql');
 
-    expect(results).toHaveLength(2);
-    for (const r of results) {
-      expect(r.authObjects).toContain('app_user');
-    }
+    expect(results.find((result) => result.tableName === 't1')?.authObjects).toEqual(['user_one']);
+    expect(results.find((result) => result.tableName === 't2')?.authObjects).toEqual(['user_two']);
+  });
+
+  it('Oracle 注释只应用到目标表', async () => {
+    const sql = `
+      CREATE TABLE alpha (id NUMBER);
+      CREATE TABLE beta (id NUMBER);
+      COMMENT ON TABLE alpha IS 'Alpha table';
+      COMMENT ON COLUMN alpha.id IS 'Alpha id';
+      COMMENT ON TABLE beta IS 'Beta table';
+      COMMENT ON COLUMN beta.id IS 'Beta id';
+    `;
+    const parser = new SqlParser();
+    const { results } = await parser.parseMultiAsync(sql, 'oracle');
+
+    const alpha = results.find((result) => result.tableName === 'alpha');
+    const beta = results.find((result) => result.tableName === 'beta');
+    expect(alpha?.tableComment).toBe('Alpha table');
+    expect(alpha?.fields[0].comment).toBe('Alpha id');
+    expect(beta?.tableComment).toBe('Beta table');
+    expect(beta?.fields[0].comment).toBe('Beta id');
+  });
+
+  it('MySQL 分区配置只应用到目标表', async () => {
+    const sql = `
+      CREATE TABLE alpha (id INT)
+      PARTITION BY HASH(id) PARTITIONS 2;
+      CREATE TABLE beta (id INT)
+      PARTITION BY KEY(id) PARTITIONS 8;
+    `;
+    const parser = new SqlParser();
+    const { results } = await parser.parseMultiAsync(sql, 'mysql');
+
+    expect(results.find((result) => result.tableName === 'alpha')?.mysqlPartitionConfig).toEqual(
+      expect.objectContaining({ type: 'HASH', partitionCount: 2 }),
+    );
+    expect(results.find((result) => result.tableName === 'beta')?.mysqlPartitionConfig).toEqual(
+      expect.objectContaining({ type: 'KEY', partitionCount: 8 }),
+    );
+  });
+
+  it('单表入口拒绝多个 CREATE TABLE', async () => {
+    const parser = new SqlParser();
+    await expect(
+      parser.parseAsync('CREATE TABLE alpha (id INT); CREATE TABLE beta (id INT);', 'mysql'),
+    ).rejects.toThrow('检测到多个 CREATE TABLE，请使用 parseMultiAsync() 方法。');
   });
 
   it('混合合法/非法语句 → results + failed 都有值', async () => {

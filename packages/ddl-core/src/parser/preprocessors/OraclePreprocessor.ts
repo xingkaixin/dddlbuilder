@@ -10,24 +10,34 @@ import type { PreprocessResult } from './types.js';
  * - Convert SYS_GUID() → uuid(), SYSTIMESTAMP → CURRENT_TIMESTAMP
  */
 export function preprocessOracle(sql: string): PreprocessResult {
-  const columnComments: Record<string, string> = {};
-  let tableComment = '';
+  const metadataByTable = new Map<string, PreprocessResult['tableMetadata'][number]>();
   const unescapeComment = (value: string) => value.replace(/''/g, "'");
+  const getTableMetadata = (tableName: string) => {
+    const existing = metadataByTable.get(tableName);
+    if (existing) return existing;
+    const metadata: PreprocessResult['tableMetadata'][number] = {
+      tableName,
+      tableComment: '',
+      columnComments: {},
+    };
+    metadataByTable.set(tableName, metadata);
+    return metadata;
+  };
 
   // Extract and remove COMMENT statements
   sql = sql.replace(
-    /COMMENT\s+ON\s+TABLE\s+[\w".]+\s+IS\s+'((?:''|[^'])*)'\s*;/gi,
-    (_m, comment) => {
-      tableComment = unescapeComment(comment);
+    /COMMENT\s+ON\s+TABLE\s+([\w".]+)\s+IS\s+'((?:''|[^'])*)'\s*;/gi,
+    (_m, tableName, comment) => {
+      getTableMetadata(tableName).tableComment = unescapeComment(comment);
       return '';
     },
   );
 
   sql = sql.replace(
-    /COMMENT\s+ON\s+COLUMN\s+[\w".]+\.(["\w]+)\s+IS\s+'((?:''|[^'])*)'\s*;/gi,
-    (_m, column, comment) => {
+    /COMMENT\s+ON\s+COLUMN\s+([\w".]+)\.(["\w]+)\s+IS\s+'((?:''|[^'])*)'\s*;/gi,
+    (_m, tableName, column, comment) => {
       const colName = column.replace(/"/g, '');
-      columnComments[colName] = unescapeComment(comment);
+      getTableMetadata(tableName).columnComments[colName] = unescapeComment(comment);
       return '';
     },
   );
@@ -45,5 +55,5 @@ export function preprocessOracle(sql: string): PreprocessResult {
     .replace(/DEFAULT\s+SYS_GUID\(\)/gi, 'DEFAULT uuid()')
     .replace(/DEFAULT\s+SYSTIMESTAMP/gi, 'DEFAULT CURRENT_TIMESTAMP');
 
-  return { sql: normalizedSql, tableComment, columnComments };
+  return { sql: normalizedSql, tableMetadata: Array.from(metadataByTable.values()) };
 }

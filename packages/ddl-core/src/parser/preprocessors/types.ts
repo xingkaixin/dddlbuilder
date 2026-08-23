@@ -5,11 +5,15 @@
 /**
  * Result from preprocessing SQL before parsing
  */
+export type PreprocessedTableMetadata = {
+  tableName: string;
+  tableComment: string;
+  columnComments: Record<string, string>;
+};
+
 export type PreprocessResult = {
   /** Normalized SQL ready for parsing */
   sql: string;
-  /** Extracted table comment */
-  tableComment: string;
-  /** Map of column name to comment */
-  columnComments: Record<string, string>;
+  /** Extracted comments grouped by their owning table */
+  tableMetadata: PreprocessedTableMetadata[];
 };

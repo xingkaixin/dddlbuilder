@@ -9,8 +9,18 @@ import type { PreprocessResult } from './types.js';
  * - Normalize gen_random_uuid() → uuid()
  */
 export function preprocessSqlServer(sql: string): PreprocessResult {
-  const columnComments: Record<string, string> = {};
-  let tableComment = '';
+  const metadataByTable = new Map<string, PreprocessResult['tableMetadata'][number]>();
+  const getTableMetadata = (tableName: string) => {
+    const existing = metadataByTable.get(tableName);
+    if (existing) return existing;
+    const metadata: PreprocessResult['tableMetadata'][number] = {
+      tableName,
+      tableComment: '',
+      columnComments: {},
+    };
+    metadataByTable.set(tableName, metadata);
+    return metadata;
+  };
 
   const execRegex = /EXEC\s+sp_addextendedproperty\s+([\s\S]*?);/gi;
   let sqlWithoutExec = sql;
@@ -35,13 +45,14 @@ export function preprocessSqlServer(sql: string): PreprocessResult {
 
     const comment = paramMap['value'] || '';
     const level1Type = (paramMap['level1type'] || '').toLowerCase();
+    const level1Name = paramMap['level1name'] || '';
     const level2Type = (paramMap['level2type'] || '').toLowerCase();
     const level2Name = paramMap['level2name'] || '';
 
-    if (level1Type === 'table' && !level2Type) {
-      tableComment = comment;
-    } else if (level1Type === 'table' && level2Type === 'column' && level2Name) {
-      columnComments[level2Name] = comment;
+    if (level1Type === 'table' && level1Name && !level2Type) {
+      getTableMetadata(level1Name).tableComment = comment;
+    } else if (level1Type === 'table' && level1Name && level2Type === 'column' && level2Name) {
+      getTableMetadata(level1Name).columnComments[level2Name] = comment;
     }
 
     match = execRegex.exec(sql);
@@ -49,43 +60,5 @@ export function preprocessSqlServer(sql: string): PreprocessResult {
 
   const normalizedSql = sqlWithoutExec.replace(/gen_random_uuid\(\)/gi, 'uuid()');
 
-  return { sql: normalizedSql, tableComment, columnComments };
-}
-
-/**
- * Extract users from SQL Server GRANT statements
- *
- * Handles various formats:
- * - GRANT SELECT ON table TO user;
- * - GRANT SELECT ON table TO [user];
- * - GRANT SELECT ON table TO N'user';
- */
-export function extractSqlServerGrantUsers(sql: string): string[] {
-  const users: string[] = [];
-  const grantRegex = /GRANT\s+[\s\S]*?\s+TO\s+([^;]+);/gi;
-  let match: RegExpExecArray | null = grantRegex.exec(sql);
-
-  while (match !== null) {
-    const target = match[1];
-    target
-      .split(',')
-      .map((raw) => raw.trim().replace(/^N'/, "'"))
-      .map((value) => {
-        let cleaned = value;
-        if (cleaned.startsWith('[') || cleaned.startsWith("'") || cleaned.startsWith('"')) {
-          cleaned = cleaned.slice(1);
-        }
-        if (cleaned.endsWith(']') || cleaned.endsWith("'") || cleaned.endsWith('"')) {
-          cleaned = cleaned.slice(0, -1);
-        }
-        return cleaned;
-      })
-      .forEach((u) => {
-        if (u && !users.includes(u)) users.push(u);
-      });
-
-    match = grantRegex.exec(sql);
-  }
-
-  return users;
+  return { sql: normalizedSql, tableMetadata: Array.from(metadataByTable.values()) };
 }

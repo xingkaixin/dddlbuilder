@@ -9,9 +9,8 @@ describe('preprocessMysql', () => {
     expect(result).toEqual({
       sql,
       indexes: [],
-      tableComment: '',
-      columnComments: {},
-      partitionConfig: undefined,
+      tableMetadata: [],
+      partitionConfigs: {},
     });
   });
 
@@ -31,14 +30,14 @@ describe('preprocessMysql', () => {
 
     expect(result.sql).not.toContain('PARTITION BY');
     expect(result.sql.endsWith(';')).toBe(true);
-    expect(result.columnComments).toEqual({
+    expect(result.tableMetadata[0].columnComments).toEqual({
       id: '主键',
       name: '姓名',
     });
     expect(result.indexes).toHaveLength(2);
     expect(result.indexes[0]).toContain('CREATE INDEX idx_users_name');
     expect(result.indexes[1]).toContain('ALTER TABLE users ADD INDEX');
-    expect(result.partitionConfig).toEqual({
+    expect(result.partitionConfigs.users).toEqual({
       enabled: true,
       type: 'HASH',
       columns: ['id'],
@@ -65,7 +64,7 @@ describe('preprocessMysql', () => {
     expect(result.sql).toContain("COMMENT='证券公司评级1'");
     expect(result.sql).not.toContain('PARTITION BY KEY(ID)');
     expect(result.sql).toContain('CREATE INDEX idx_corp_id ON COO_SC_RAT (INFO_SRC ASC);');
-    expect(result.partitionConfig).toEqual({
+    expect(result.partitionConfigs.COO_SC_RAT).toEqual({
       enabled: true,
       type: 'KEY',
       columns: ['ID'],
@@ -81,8 +80,7 @@ describe('preprocessMysql', () => {
 
     expect(result.sql).toBe(sql);
     expect(result.indexes).toEqual([]);
-    expect(result.tableComment).toBe('');
-    expect(result.columnComments).toEqual({});
-    expect(result.partitionConfig).toBeUndefined();
+    expect(result.tableMetadata).toEqual([]);
+    expect(result.partitionConfigs).toEqual({});
   });
 });
