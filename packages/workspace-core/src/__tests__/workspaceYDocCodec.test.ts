@@ -7,6 +7,7 @@ import {
   exportWorkspaceYDocToSnapshot,
   importWorkspaceSnapshotToYDoc,
   isWorkspaceYDocInitialized,
+  mergeWorkspaceSnapshotIntoYDoc,
 } from '../workspaceYDocCodec';
 
 const createState = (tableName: string): PersistedState => ({
@@ -243,6 +244,46 @@ describe('workspace YDoc codec', () => {
         },
       ],
     });
+  });
+
+  it('exports missing timestamps deterministically', () => {
+    const doc = new Y.Doc();
+    const tableDoc = new Y.Map<unknown>();
+    tableDoc.set('stateSnapshot', createState('legacy'));
+    tableDoc.set('metadata', new Y.Map());
+    doc.getMap<Y.Map<unknown>>('savedTables').set('legacy', tableDoc);
+
+    const first = exportWorkspaceYDocToSnapshot(doc);
+    const second = exportWorkspaceYDocToSnapshot(doc);
+
+    expect(second).toEqual(first);
+    expect(first.savedTables[0]).toMatchObject({ createdAt: 0, updatedAt: 0 });
+  });
+
+  it('keeps newer document records when merging a snapshot', () => {
+    const doc = new Y.Doc();
+    const current = createSnapshot();
+    current.drafts[0] = { ...current.drafts[0], updatedAt: 100 };
+    importWorkspaceSnapshotToYDoc(doc, current);
+    const incoming = createSnapshot();
+    incoming.drafts[0] = {
+      ...incoming.drafts[0],
+      state: createState('stale'),
+      updatedAt: 99,
+    };
+    incoming.savedTables[0] = {
+      ...incoming.savedTables[0],
+      state: createState('newer'),
+      updatedAt: 41,
+    };
+
+    mergeWorkspaceSnapshotIntoYDoc(doc, incoming);
+
+    const exported = exportWorkspaceYDocToSnapshot(doc);
+    expect(exported.drafts.find(({ draftId }) => draftId === 'draft-1')?.state.tableName).toBe(
+      'draft_users',
+    );
+    expect(exported.savedTables[0]?.state.tableName).toBe('newer');
   });
 
   it('falls back to defaults for saved entries without metadata', () => {

@@ -102,7 +102,7 @@ describe('workspace YDoc roots', () => {
       createdAt: undefined,
       folderId: 'folder-1',
     });
-    expect(getDraftRecordFromYDoc(doc, 'draft-1')?.updatedAt).toBeTypeOf('number');
+    expect(getDraftRecordFromYDoc(doc, 'draft-1')?.updatedAt).toBe(0);
     expect(getDraftRecordFromYDoc(doc, 'draft-2')).toMatchObject({ createdAt: 1, updatedAt: 2 });
     expect(getDraftRecordFromYDoc(doc, 'draft-2')).not.toHaveProperty('folderId');
   });
@@ -138,6 +138,6 @@ describe('workspace YDoc roots', () => {
     ]);
     expect(records[2].parentId).toBe('root');
     expect(records[0]).toMatchObject({ id: 'partial', name: 'Partial', order: 0 });
-    expect(records[0].createdAt).toBeTypeOf('number');
+    expect(records[0].createdAt).toBe(0);
   });
 });

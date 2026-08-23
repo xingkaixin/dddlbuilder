@@ -9,7 +9,8 @@ import {
   upsertTableRecord,
   writeFolderRecord,
 } from './workspaceYDoc';
-import { DEFAULT_DRAFT_ID } from './snapshotMergePolicy';
+import { DEFAULT_DRAFT_ID, shouldAcceptSnapshotRecord } from './snapshotMergePolicy';
+import { readWorkspaceCreatedAt, readWorkspaceTimestamp } from './workspaceMetadata';
 
 export const importWorkspaceSnapshotToYDoc = (doc: Y.Doc, snapshot: WorkspaceSnapshot) => {
   doc.transact(() => {
@@ -72,13 +73,13 @@ export const exportWorkspaceYDocToSnapshot = (doc: Y.Doc): WorkspaceSnapshot => 
     }),
     savedTables: Array.from(savedTables.entries()).map(([normalizedName, tableDoc]) => {
       const metadata = tableMetadata(tableDoc);
-      const now = Date.now();
+      const updatedAt = readWorkspaceTimestamp(metadata.updatedAt);
       return {
         normalizedName,
         name: typeof metadata.name === 'string' ? metadata.name : normalizedName,
         state: tableDocToSchemaDocumentState(tableDoc),
-        createdAt: typeof metadata.createdAt === 'number' ? metadata.createdAt : now,
-        updatedAt: typeof metadata.updatedAt === 'number' ? metadata.updatedAt : now,
+        createdAt: readWorkspaceCreatedAt(metadata.createdAt, updatedAt),
+        updatedAt,
         ...(typeof metadata.folderId === 'string' ? { folderId: metadata.folderId } : {}),
       };
     }),
@@ -88,12 +89,78 @@ export const exportWorkspaceYDocToSnapshot = (doc: Y.Doc): WorkspaceSnapshot => 
         normalizedName,
         tableName: typeof metadata.tableName === 'string' ? metadata.tableName : normalizedName,
         state: tableDocToSchemaDocumentState(tableDoc),
-        updatedAt: typeof metadata.updatedAt === 'number' ? metadata.updatedAt : Date.now(),
+        updatedAt: readWorkspaceTimestamp(metadata.updatedAt),
         baseSignature: typeof metadata.baseSignature === 'string' ? metadata.baseSignature : '',
       };
     }),
     folders: readFolderRecords(doc),
   };
+};
+
+export const mergeWorkspaceSnapshotIntoYDoc = (doc: Y.Doc, snapshot: WorkspaceSnapshot) => {
+  const current = exportWorkspaceYDocToSnapshot(doc);
+  const currentDrafts = new Map(current.drafts.map((draft) => [draft.draftId, draft]));
+  const currentTables = new Map(current.savedTables.map((table) => [table.normalizedName, table]));
+  const currentSavedDrafts = new Map(
+    current.savedDrafts.map((draft) => [draft.normalizedName, draft]),
+  );
+  const currentFolders = new Set(current.folders.map((folder) => folder.id));
+  const merged: WorkspaceSnapshot = {
+    globalDraft: null,
+    drafts: [],
+    savedTables: [],
+    savedDrafts: [],
+    folders: [],
+  };
+
+  if (
+    snapshot.globalDraft &&
+    shouldAcceptSnapshotRecord(
+      snapshot.globalDraft.updatedAt,
+      currentDrafts.get(DEFAULT_DRAFT_ID)?.updatedAt,
+    )
+  ) {
+    merged.globalDraft = snapshot.globalDraft;
+  }
+
+  for (const draft of snapshot.drafts) {
+    if (shouldAcceptSnapshotRecord(draft.updatedAt, currentDrafts.get(draft.draftId)?.updatedAt)) {
+      merged.drafts.push(draft);
+    }
+  }
+  for (const table of snapshot.savedTables) {
+    if (
+      shouldAcceptSnapshotRecord(
+        table.updatedAt,
+        currentTables.get(table.normalizedName)?.updatedAt,
+      )
+    ) {
+      merged.savedTables.push(table);
+    }
+  }
+  for (const draft of snapshot.savedDrafts) {
+    if (
+      shouldAcceptSnapshotRecord(
+        draft.updatedAt,
+        currentSavedDrafts.get(draft.normalizedName)?.updatedAt,
+      )
+    ) {
+      merged.savedDrafts.push(draft);
+    }
+  }
+  for (const folder of snapshot.folders) {
+    if (!currentFolders.has(folder.id)) merged.folders.push(folder);
+  }
+
+  if (
+    merged.globalDraft ||
+    merged.drafts.length > 0 ||
+    merged.savedTables.length > 0 ||
+    merged.savedDrafts.length > 0 ||
+    merged.folders.length > 0
+  ) {
+    importWorkspaceSnapshotToYDoc(doc, merged);
+  }
 };
 
 export const isWorkspaceYDocInitialized = (doc: Y.Doc) =>

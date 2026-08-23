@@ -9,6 +9,7 @@ import {
   tableMetadata,
 } from './workspaceTableDoc';
 import { ensureMap, type JsonRecord, readJsonMap, writeJsonMap } from './yMapJson';
+import { readWorkspaceTimestamp } from './workspaceMetadata';
 
 export const WORKSPACE_YDOC_SCHEMA_VERSION = 1;
 
@@ -74,7 +75,7 @@ export const getDraftRecordFromYDoc = (
   return {
     state: tableDocToSchemaDocumentState(tableDoc),
     createdAt: typeof metadata.createdAt === 'number' ? metadata.createdAt : undefined,
-    updatedAt: typeof metadata.updatedAt === 'number' ? metadata.updatedAt : Date.now(),
+    updatedAt: readWorkspaceTimestamp(metadata.updatedAt),
     ...(typeof metadata.folderId === 'string' ? { folderId: metadata.folderId } : {}),
   };
 };
@@ -93,7 +94,7 @@ export const readFolderRecords = (doc: Y.Doc): TableFolderSnapshot[] =>
         name: record.name,
         parentId: typeof record.parentId === 'string' ? record.parentId : undefined,
         order: typeof record.order === 'number' ? record.order : 0,
-        createdAt: typeof record.createdAt === 'number' ? record.createdAt : Date.now(),
+        createdAt: readWorkspaceTimestamp(record.createdAt),
       };
     })
     .filter((folder): folder is TableFolderSnapshot => folder != null)
