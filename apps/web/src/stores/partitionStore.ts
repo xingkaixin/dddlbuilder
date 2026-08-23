@@ -1,4 +1,8 @@
-import type { MysqlPartitionConfig, PartitionDefinition } from '@ddlbuilder/shared-types';
+import {
+  normalizeMysqlPartitionCount,
+  type MysqlPartitionConfig,
+  type PartitionDefinition,
+} from '@ddlbuilder/shared-types';
 import { replaceIdentifierToken } from '@/utils/fieldRenameUtils';
 import type { EditorSetState, PartitionSlice } from './editorStoreTypes';
 
@@ -49,7 +53,7 @@ export const createPartitionSlice = (set: EditorSetState): PartitionSlice => ({
     set((state) => ({
       mysqlPartitionConfig: {
         ...state.mysqlPartitionConfig,
-        partitionCount: Math.max(1, count),
+        partitionCount: normalizeMysqlPartitionCount(count),
       },
     })),
   addPartition: (partition) =>

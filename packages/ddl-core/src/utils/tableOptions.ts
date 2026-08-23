@@ -1,4 +1,8 @@
-import type { DatabaseType, TableMiscConfig } from '@ddlbuilder/shared-types';
+import {
+  normalizeTableMiscConfigNumbers,
+  type DatabaseType,
+  type TableMiscConfig,
+} from '@ddlbuilder/shared-types';
 
 const MYSQL_LIKE_DBS = new Set<DatabaseType>([
   'mysql',
@@ -56,11 +60,12 @@ const normalizeValue = (value?: string): string => {
 export const buildTableOptionsClause = (dbType: DatabaseType, config?: TableMiscConfig): string => {
   if (!config?.enabled) return '';
   if (HIVE_DBS.has(dbType)) return '';
+  const normalizedConfig = normalizeTableMiscConfigNumbers(config);
 
-  const engine = normalizeValue(config.engine);
-  const charset = normalizeValue(config.charset);
-  const collation = normalizeValue(config.collation);
-  const tablespace = normalizeValue(config.tablespace);
+  const engine = normalizeValue(normalizedConfig.engine);
+  const charset = normalizeValue(normalizedConfig.charset);
+  const collation = normalizeValue(normalizedConfig.collation);
+  const tablespace = normalizeValue(normalizedConfig.tablespace);
 
   const parts: string[] = [];
 
@@ -76,16 +81,16 @@ export const buildTableOptionsClause = (dbType: DatabaseType, config?: TableMisc
   if (supportsTablespaceOption(dbType) && tablespace) {
     parts.push(`TABLESPACE ${tablespace}`);
   }
-  if (supportsFillfactorOption(dbType) && config.fillfactor != null) {
-    parts.push(`WITH (fillfactor = ${config.fillfactor})`);
+  if (supportsFillfactorOption(dbType) && normalizedConfig.fillfactor != null) {
+    parts.push(`WITH (fillfactor = ${normalizedConfig.fillfactor})`);
   }
   if (supportsOracleStorageOption(dbType)) {
     const storageParts: string[] = [];
-    if (config.pctfree != null) {
-      storageParts.push(`PCTFREE ${config.pctfree}`);
+    if (normalizedConfig.pctfree != null) {
+      storageParts.push(`PCTFREE ${normalizedConfig.pctfree}`);
     }
-    if (config.initrans != null) {
-      storageParts.push(`INITRANS ${config.initrans}`);
+    if (normalizedConfig.initrans != null) {
+      storageParts.push(`INITRANS ${normalizedConfig.initrans}`);
     }
     if (storageParts.length > 0) {
       parts.push(`STORAGE (${storageParts.join(' ')})`);

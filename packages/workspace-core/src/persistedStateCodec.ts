@@ -4,6 +4,13 @@ import {
   normalizeFieldDefaultKind,
   normalizeFieldNullable,
   normalizeFieldOnUpdate,
+  normalizeAddCount,
+  normalizeFillfactor,
+  normalizeFreezeColumns,
+  normalizeHiveBucketCount,
+  normalizeInitrans,
+  normalizeOptionalMysqlPartitionCount,
+  normalizePctfree,
   type CitusShardingConfig,
   type FieldRow,
   type FieldTableViewConfig,
@@ -45,11 +52,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const toText = (value: unknown, fallback = '') => (typeof value === 'string' ? value : fallback);
-const toFiniteNumber = (value: unknown, fallback: number) =>
-  typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 const toOptionalText = (value: unknown) => (typeof value === 'string' ? value : undefined);
-const toOptionalFiniteNumber = (value: unknown) =>
-  typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 const toStringArray = (value: unknown) =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 
@@ -177,14 +180,13 @@ const decodeMysqlPartitionConfig = (value: unknown): MysqlPartitionConfig | unde
           : [],
       )
     : undefined;
+  const partitionCount = normalizeOptionalMysqlPartitionCount(value.partitionCount);
   return {
     enabled: value.enabled === true,
     type: value.type as MysqlPartitionType,
     columns: toStringArray(value.columns),
     ...(typeof value.expression === 'string' ? { expression: value.expression } : {}),
-    ...(toOptionalFiniteNumber(value.partitionCount) === undefined
-      ? {}
-      : { partitionCount: toOptionalFiniteNumber(value.partitionCount) }),
+    ...(partitionCount === undefined ? {} : { partitionCount }),
     ...(partitions ? { partitions } : {}),
   };
 };
@@ -194,7 +196,7 @@ const decodeHiveClustering = (value: unknown): HiveClusteringConfig | undefined 
   return {
     enabled: value.enabled === true,
     columns: toStringArray(value.columns),
-    bucketCount: toFiniteNumber(value.bucketCount, 0),
+    bucketCount: normalizeHiveBucketCount(value.bucketCount),
   };
 };
 
@@ -214,6 +216,9 @@ const decodeHivePartitions = (value: unknown): HivePartitionConfig | undefined =
 
 const decodeTableMiscConfig = (value: unknown): TableMiscConfig | undefined => {
   if (!isRecord(value)) return undefined;
+  const fillfactor = normalizeFillfactor(value.fillfactor);
+  const pctfree = normalizePctfree(value.pctfree);
+  const initrans = normalizeInitrans(value.initrans);
   const storedAs =
     value.storedAs === 'ORC' ||
     value.storedAs === 'TEXTFILE' ||
@@ -234,15 +239,9 @@ const decodeTableMiscConfig = (value: unknown): TableMiscConfig | undefined => {
     ...(toOptionalText(value.tablespace) === undefined
       ? {}
       : { tablespace: toOptionalText(value.tablespace) }),
-    ...(toOptionalFiniteNumber(value.fillfactor) === undefined
-      ? {}
-      : { fillfactor: toOptionalFiniteNumber(value.fillfactor) }),
-    ...(toOptionalFiniteNumber(value.pctfree) === undefined
-      ? {}
-      : { pctfree: toOptionalFiniteNumber(value.pctfree) }),
-    ...(toOptionalFiniteNumber(value.initrans) === undefined
-      ? {}
-      : { initrans: toOptionalFiniteNumber(value.initrans) }),
+    ...(fillfactor === undefined ? {} : { fillfactor }),
+    ...(pctfree === undefined ? {} : { pctfree }),
+    ...(initrans === undefined ? {} : { initrans }),
     ...(storedAs === undefined ? {} : { storedAs }),
     ...(typeof value.external === 'boolean' ? { external: value.external } : {}),
     ...(toOptionalText(value.location) === undefined
@@ -256,7 +255,7 @@ const decodeFieldTableViewConfig = (value: unknown): FieldTableViewConfig | unde
   isRecord(value)
     ? {
         freezeEnabled: value.freezeEnabled === true,
-        freezeColumns: toFiniteNumber(value.freezeColumns, 0),
+        freezeColumns: normalizeFreezeColumns(value.freezeColumns),
       }
     : undefined;
 
@@ -315,7 +314,7 @@ export const decodePersistedState = (
       ? { viewCreateOrReplace: value.viewCreateOrReplace }
       : {}),
     rows: decodeRows(value.rows),
-    addCount: toFiniteNumber(value.addCount, 10),
+    addCount: normalizeAddCount(value.addCount),
     indexInput: toText(value.indexInput),
     currentIndexFields: decodeIndexFields(value.currentIndexFields),
     indexes: decodeIndexes(value.indexes),

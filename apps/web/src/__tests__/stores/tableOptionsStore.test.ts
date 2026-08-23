@@ -94,6 +94,20 @@ describe('tableOptionsStore', () => {
     expect(current.tableMiscConfig.location).toBe('/data/table');
   });
 
+  it('应该限制数据库数值选项', () => {
+    const state = useEditorStore.getState();
+
+    state.setFillfactor(-50);
+    state.setPctfree(500);
+    state.setInitrans(0);
+
+    expect(useEditorStore.getState().tableMiscConfig).toMatchObject({
+      fillfactor: 10,
+      pctfree: 99,
+      initrans: 1,
+    });
+  });
+
   it('应该支持直接设置和函数式 setHivePartitionConfig', () => {
     const state = useEditorStore.getState();
 
@@ -121,6 +135,16 @@ describe('tableOptionsStore', () => {
         { name: 'region', type: 'string' },
       ],
     });
+  });
+
+  it('应该限制 Hive 分桶数量', () => {
+    useEditorStore.getState().setHivePartitionConfig({
+      enabled: true,
+      columns: [],
+      clustering: { enabled: true, columns: ['id'], bucketCount: -3 },
+    });
+
+    expect(useEditorStore.getState().tableMiscConfig.partitions?.clustering?.bucketCount).toBe(1);
   });
 
   it('应该在 partitions 为 undefined 时，函数式 setHivePartitionConfig 使用默认值', () => {

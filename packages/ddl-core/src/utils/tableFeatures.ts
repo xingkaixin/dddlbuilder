@@ -1,4 +1,8 @@
-import type { CitusShardingConfig, MysqlPartitionConfig } from '@ddlbuilder/shared-types';
+import {
+  normalizeMysqlPartitionCount,
+  type CitusShardingConfig,
+  type MysqlPartitionConfig,
+} from '@ddlbuilder/shared-types';
 
 export const buildCitusShardingDDL = (tableName: string, config: CitusShardingConfig): string => {
   const cleanTableName = tableName.trim();
@@ -17,9 +21,9 @@ export const buildMysqlPartitionClause = (config: MysqlPartitionConfig): string 
 
   switch (config.type) {
     case 'HASH':
-      return `\nPARTITION BY HASH(${partitionKey})\nPARTITIONS ${config.partitionCount || 4}`;
+      return `\nPARTITION BY HASH(${partitionKey})\nPARTITIONS ${normalizeMysqlPartitionCount(config.partitionCount)}`;
     case 'KEY':
-      return `\nPARTITION BY KEY(${partitionKey})\nPARTITIONS ${config.partitionCount || 4}`;
+      return `\nPARTITION BY KEY(${partitionKey})\nPARTITIONS ${normalizeMysqlPartitionCount(config.partitionCount)}`;
     case 'RANGE':
     case 'RANGE COLUMNS':
     case 'LIST':

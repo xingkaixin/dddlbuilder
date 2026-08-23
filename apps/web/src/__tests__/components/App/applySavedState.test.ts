@@ -48,12 +48,12 @@ describe('applySavedState', () => {
     expect(tableNames).toEqual(['users']);
   });
 
-  it('由一个入口无损应用已经解码的持久化状态', () => {
+  it('由一个入口应用并约束持久化状态', () => {
     applySavedState(state);
 
     expect(useEditorStore.getState()).toMatchObject({
       tableName: 'users',
-      addCount: 0,
+      addCount: 1,
       fieldTableFreezeColumns: 0,
     });
     expect(useEditorStore.getState().rows).toEqual([]);
@@ -91,6 +91,28 @@ describe('applySavedState', () => {
     expect(useEditorStore.getState().tableMiscConfig).toMatchObject({
       enabled: false,
       engine: '',
+    });
+  });
+
+  it('替换文档时统一限制所有数值配置', () => {
+    applySavedState({
+      ...state,
+      addCount: 1_000_000,
+      mysqlPartitionConfig: {
+        enabled: true,
+        type: 'HASH',
+        columns: ['tenant_id'],
+        partitionCount: -3,
+      },
+      tableMiscConfig: { enabled: true, fillfactor: -50, pctfree: 500, initrans: 0 },
+      fieldTableViewConfig: { freezeEnabled: true, freezeColumns: 100 },
+    });
+
+    expect(useEditorStore.getState()).toMatchObject({
+      addCount: 100,
+      mysqlPartitionConfig: { partitionCount: 1 },
+      tableMiscConfig: { fillfactor: 10, pctfree: 99, initrans: 1 },
+      fieldTableFreezeColumns: 8,
     });
   });
 });

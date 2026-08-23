@@ -107,6 +107,11 @@ describe('editor store partition state', () => {
       result.current.setPartitionCount(-5);
     });
     expect(result.current.mysqlPartitionConfig.partitionCount).toBe(1);
+
+    act(() => {
+      result.current.setPartitionCount(1_000_000);
+    });
+    expect(result.current.mysqlPartitionConfig.partitionCount).toBe(8192);
   });
 
   it('应该正确添加、更新和删除分区', () => {

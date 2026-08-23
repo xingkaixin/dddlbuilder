@@ -31,6 +31,12 @@ describe('partitionParser', () => {
     });
   });
 
+  it('HASH/KEY 分区数不应超过资源上限', () => {
+    const sql = `CREATE TABLE t (id BIGINT) PARTITION BY KEY(id) PARTITIONS 1000000;`;
+
+    expect(extractPartitionConfig(sql)?.partitionCount).toBe(8192);
+  });
+
   it('应识别表达式分区键', () => {
     const sql = `
       CREATE TABLE t (created_at DATETIME)

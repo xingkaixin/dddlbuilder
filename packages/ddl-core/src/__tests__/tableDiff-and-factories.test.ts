@@ -693,6 +693,15 @@ describe('tableOptions', () => {
     expect(clause).toBe(' STORAGE (PCTFREE 10 INITRANS 2)');
   });
 
+  it('buildTableOptionsClause clamps out-of-range numeric options', () => {
+    expect(buildTableOptionsClause('postgresql', { enabled: true, fillfactor: -50 })).toBe(
+      ' WITH (fillfactor = 10)',
+    );
+    expect(buildTableOptionsClause('oracle', { enabled: true, pctfree: 500, initrans: 0 })).toBe(
+      ' STORAGE (PCTFREE 99 INITRANS 1)',
+    );
+  });
+
   it('buildTableOptionsClause ignores Default value', () => {
     const clause = buildTableOptionsClause('mysql', { enabled: true, engine: 'Default' });
     expect(clause).toBe('');

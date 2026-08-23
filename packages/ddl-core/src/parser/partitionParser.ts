@@ -1,4 +1,8 @@
-import type { MysqlPartitionConfig, MysqlPartitionType } from '@ddlbuilder/shared-types';
+import {
+  normalizeMysqlPartitionCount,
+  type MysqlPartitionConfig,
+  type MysqlPartitionType,
+} from '@ddlbuilder/shared-types';
 
 export const PARTITION_BY_REGEX = /\bPARTITION\s+BY\b/i;
 
@@ -206,7 +210,7 @@ export function extractPartitionConfig(sql: string): MysqlPartitionConfig | unde
   if (type === 'HASH' || type === 'KEY') {
     const partitionCountMatch = tail.match(/\bPARTITIONS\s+(\d+)\b/i);
     if (partitionCountMatch) {
-      config.partitionCount = Math.max(1, Number(partitionCountMatch[1]));
+      config.partitionCount = normalizeMysqlPartitionCount(Number(partitionCountMatch[1]));
     }
     return config;
   }

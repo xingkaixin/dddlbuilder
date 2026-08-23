@@ -1,4 +1,10 @@
-import type { TableMiscConfig } from '@ddlbuilder/shared-types';
+import {
+  normalizeFillfactor,
+  normalizeInitrans,
+  normalizePctfree,
+  normalizeTableMiscConfigNumbers,
+  type TableMiscConfig,
+} from '@ddlbuilder/shared-types';
 import type { EditorSetState, TableOptionsSlice } from './editorStoreTypes';
 
 export const DEFAULT_TABLE_MISC_CONFIG: TableMiscConfig = {
@@ -50,21 +56,21 @@ export const createTableOptionsSlice = (set: EditorSetState): TableOptionsSlice 
     set((state) => ({
       tableMiscConfig: {
         ...state.tableMiscConfig,
-        fillfactor,
+        fillfactor: normalizeFillfactor(fillfactor),
       },
     })),
   setPctfree: (pctfree) =>
     set((state) => ({
       tableMiscConfig: {
         ...state.tableMiscConfig,
-        pctfree,
+        pctfree: normalizePctfree(pctfree),
       },
     })),
   setInitrans: (initrans) =>
     set((state) => ({
       tableMiscConfig: {
         ...state.tableMiscConfig,
-        initrans,
+        initrans: normalizeInitrans(initrans),
       },
     })),
   setStoredAs: (value) =>
@@ -89,23 +95,28 @@ export const createTableOptionsSlice = (set: EditorSetState): TableOptionsSlice 
       },
     })),
   setHivePartitionConfig: (value) =>
-    set((state) => ({
-      tableMiscConfig: {
-        ...state.tableMiscConfig,
-        partitions:
-          typeof value === 'function'
-            ? value(
-                state.tableMiscConfig.partitions ?? {
-                  enabled: false,
-                  columns: [],
-                },
-              )
-            : value,
-      },
-    })),
+    set((state) => {
+      const partitions =
+        typeof value === 'function'
+          ? value(
+              state.tableMiscConfig.partitions ?? {
+                enabled: false,
+                columns: [],
+              },
+            )
+          : value;
+      return {
+        tableMiscConfig: normalizeTableMiscConfigNumbers({
+          ...state.tableMiscConfig,
+          partitions,
+        }),
+      };
+    }),
   setTableMiscConfig: (value) =>
     set((state) => ({
-      tableMiscConfig: typeof value === 'function' ? value(state.tableMiscConfig) : value,
+      tableMiscConfig: normalizeTableMiscConfigNumbers(
+        typeof value === 'function' ? value(state.tableMiscConfig) : value,
+      ),
     })),
   resetTableMiscConfig: () =>
     set({

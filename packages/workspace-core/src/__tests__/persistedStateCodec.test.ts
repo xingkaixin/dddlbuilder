@@ -345,6 +345,44 @@ describe('decodePersistedState', () => {
     });
   });
 
+  it('把外部数值限制在领域允许范围内', () => {
+    const decoded = decodePersistedState(
+      externalState({
+        addCount: 1_000_000_000,
+        fieldTableViewConfig: { freezeEnabled: true, freezeColumns: -20 },
+        mysqlPartitionConfig: {
+          enabled: true,
+          type: 'HASH',
+          columns: ['id'],
+          partitionCount: -9,
+        },
+        tableMiscConfig: {
+          enabled: true,
+          fillfactor: -50,
+          pctfree: 500,
+          initrans: 0,
+          partitions: {
+            enabled: true,
+            columns: [],
+            clustering: { enabled: true, columns: ['id'], bucketCount: -3 },
+          },
+        },
+      }),
+    );
+
+    expect(decoded).toMatchObject({
+      addCount: 100,
+      fieldTableViewConfig: { freezeEnabled: true, freezeColumns: 0 },
+      mysqlPartitionConfig: { partitionCount: 1 },
+      tableMiscConfig: {
+        fillfactor: 10,
+        pctfree: 99,
+        initrans: 1,
+        partitions: { clustering: { bucketCount: 1 } },
+      },
+    });
+  });
+
   it('处理退化的限定表名', () => {
     expect(decodePersistedState(externalState({ tableName: '.' }))).toMatchObject({
       schemaName: '',

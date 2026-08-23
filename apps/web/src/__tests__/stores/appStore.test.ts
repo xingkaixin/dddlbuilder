@@ -73,6 +73,18 @@ describe('appStore', () => {
     expect(current.activeTab).toBe('fields');
   });
 
+  it('应该限制批量新增数和冻结列数', () => {
+    const state = useEditorStore.getState();
+
+    state.setAddCount(1_000_000_000);
+    state.setFieldTableFreezeColumns(-20);
+
+    expect(useEditorStore.getState()).toMatchObject({
+      addCount: 100,
+      fieldTableFreezeColumns: 0,
+    });
+  });
+
   it('应该管理保存表抽屉和核心对话框开关', () => {
     const state = useEditorStore.getState();
 

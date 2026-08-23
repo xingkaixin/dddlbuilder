@@ -1,8 +1,12 @@
-import type { NormalizedField, SqlFormatMode } from '@ddlbuilder/shared-types';
+import {
+  normalizeHiveBucketCount,
+  type HiveClusteringConfig,
+  type NormalizedField,
+  type SqlFormatMode,
+  type TableMiscConfig,
+} from '@ddlbuilder/shared-types';
 import { escapeSingleQuotes, parseFieldType } from '../utils/databaseTypeMapping';
 import { AbstractDDLStrategy } from './AbstractDDLStrategy';
-import type { TableMiscConfig } from '@ddlbuilder/shared-types';
-import type { HiveClusteringConfig } from '@ddlbuilder/shared-types';
 
 /**
  * Hive 的建表语句结构与关系型方言差异过大（EXTERNAL / PARTITIONED BY /
@@ -21,6 +25,7 @@ export class HiveStrategy extends AbstractDDLStrategy {
     sqlFormatMode: SqlFormatMode = 'compact',
   ): string {
     const typeMapper = this.createTypeMapper();
+    const config = tableMiscConfig?.enabled ? tableMiscConfig : undefined;
 
     const columns = fields.map((field) => {
       const parsedType = parseFieldType(field.type);
@@ -36,22 +41,20 @@ export class HiveStrategy extends AbstractDDLStrategy {
     });
     const columnLines = this.renderColumnDefinitions(columns, sqlFormatMode);
 
-    const externalClause = tableMiscConfig?.external ? 'EXTERNAL ' : '';
+    const externalClause = config?.external ? 'EXTERNAL ' : '';
 
     const commentClause = tableComment
       ? ` COMMENT '${escapeSingleQuotes(tableComment.trim())}'`
       : '';
 
-    const partitionClause = this.buildPartitionClause(tableMiscConfig?.partitions);
+    const partitionClause = this.buildPartitionClause(config?.partitions);
 
-    const clusteringClause = this.buildClusteringClause(tableMiscConfig?.partitions?.clustering);
+    const clusteringClause = this.buildClusteringClause(config?.partitions?.clustering);
 
-    const storedAsClause = tableMiscConfig?.storedAs
-      ? `\nSTORED AS ${tableMiscConfig.storedAs}`
-      : '';
+    const storedAsClause = config?.storedAs ? `\nSTORED AS ${config.storedAs}` : '';
 
-    const locationClause = tableMiscConfig?.location
-      ? `\nLOCATION '${escapeSingleQuotes(tableMiscConfig.location)}'`
+    const locationClause = config?.location
+      ? `\nLOCATION '${escapeSingleQuotes(config.location)}'`
       : '';
 
     return (
@@ -87,6 +90,6 @@ export class HiveStrategy extends AbstractDDLStrategy {
     }
 
     const columns = config.columns.join(', ');
-    return `\nCLUSTERED BY (${columns}) INTO ${config.bucketCount} BUCKETS`;
+    return `\nCLUSTERED BY (${columns}) INTO ${normalizeHiveBucketCount(config.bucketCount)} BUCKETS`;
   }
 }

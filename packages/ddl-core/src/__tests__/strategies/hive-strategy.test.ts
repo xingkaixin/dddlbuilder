@@ -62,6 +62,30 @@ describe('HiveStrategy', () => {
     expect(ddl).toContain('STORED AS ORC');
   });
 
+  it('配置未启用时不生成 Hive 表选项', () => {
+    const fields: NormalizedField[] = [
+      {
+        name: 'id',
+        type: 'int',
+        comment: '',
+        nullable: false,
+        defaultKind: 'none',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+    ];
+    const ddl = strategy.generateTableDDL('events', '', fields, {
+      enabled: false,
+      external: true,
+      storedAs: 'ORC',
+      location: '/data/events',
+    });
+
+    expect(ddl).not.toContain('EXTERNAL');
+    expect(ddl).not.toContain('STORED AS');
+    expect(ddl).not.toContain('LOCATION');
+  });
+
   it('应生成 TEXTFILE 存储格式', () => {
     const fields: NormalizedField[] = [
       {
@@ -435,6 +459,30 @@ describe('HiveStrategy', () => {
 
     expect(ddl).toContain('PARTITIONED BY (');
     expect(ddl).toContain('CLUSTERED BY (user_id) INTO 8 BUCKETS');
+  });
+
+  it('限制 Hive 分桶数量', () => {
+    const fields: NormalizedField[] = [
+      {
+        name: 'id',
+        type: 'bigint',
+        comment: '',
+        nullable: false,
+        defaultKind: 'none',
+        defaultValue: '',
+        onUpdate: 'none',
+      },
+    ];
+    const ddl = strategy.generateTableDDL('events', '', fields, {
+      enabled: true,
+      partitions: {
+        enabled: true,
+        columns: [{ name: 'dt', type: 'string', comment: '' }],
+        clustering: { enabled: true, columns: ['id'], bucketCount: -5 },
+      },
+    });
+
+    expect(ddl).toContain('CLUSTERED BY (id) INTO 1 BUCKETS');
   });
 
   it('应生成多列分桶子句', () => {

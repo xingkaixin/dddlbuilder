@@ -1,6 +1,17 @@
 import type { FieldRow } from './fieldRow.js';
 
 export { createEntityId } from './identity.js';
+export {
+  normalizeAddCount,
+  normalizeFillfactor,
+  normalizeFreezeColumns,
+  normalizeHiveBucketCount,
+  normalizeInitrans,
+  normalizeMysqlPartitionCount,
+  normalizeOptionalMysqlPartitionCount,
+  normalizePctfree,
+  normalizeTableMiscConfigNumbers,
+} from './stateNumbers.js';
 
 export const DATABASE_TYPES = [
   'mysql',

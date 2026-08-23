@@ -7,7 +7,7 @@ import { useTable, flexRender } from '@tanstack/react-table';
 import { DragDropVerticalIcon } from '@/components/icons';
 import { toStringSafe, isReservedKeyword } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
-import type { EnumValueMeta } from '@ddlbuilder/shared-types';
+import { normalizeAddCount, type EnumValueMeta } from '@ddlbuilder/shared-types';
 import { buildDuplicateNameSet, useEditorStore } from '@/stores';
 import { useFieldColumns } from './table/columns';
 import { fieldTableFeatures, type FieldTableRow } from './table/tableFeatures';
@@ -384,7 +384,7 @@ export const DataTable = memo<DataTableProps>(
 
     useRowHighlight(tableRef, highlightedRowIndex);
 
-    const safeAddCount = Number.isFinite(addCount) && addCount > 0 ? Math.floor(addCount) : 1;
+    const safeAddCount = normalizeAddCount(addCount);
 
     const handleAddRowsClick = useCallback(() => {
       onAddRows(safeAddCount);

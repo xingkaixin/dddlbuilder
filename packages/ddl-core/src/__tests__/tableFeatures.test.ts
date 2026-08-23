@@ -62,6 +62,25 @@ describe('tableFeatures', () => {
     ).toBe('\nPARTITION BY KEY(tenant_id)\nPARTITIONS 4');
   });
 
+  it('限制 HASH 与 KEY 的分区数量', () => {
+    expect(
+      buildMysqlPartitionClause({
+        enabled: true,
+        type: 'HASH',
+        columns: ['id'],
+        partitionCount: -9,
+      }),
+    ).toBe('\nPARTITION BY HASH(id)\nPARTITIONS 1');
+    expect(
+      buildMysqlPartitionClause({
+        enabled: true,
+        type: 'KEY',
+        columns: ['id'],
+        partitionCount: 1_000_000,
+      }),
+    ).toBe('\nPARTITION BY KEY(id)\nPARTITIONS 8192');
+  });
+
   it('生成 RANGE 与 LIST 分区定义并提示缺失定义', () => {
     expect(
       buildMysqlPartitionClause({

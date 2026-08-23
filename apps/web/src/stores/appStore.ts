@@ -1,4 +1,8 @@
-import { DEFAULT_EDITOR_SESSION_STATE } from '@ddlbuilder/shared-types';
+import {
+  DEFAULT_EDITOR_SESSION_STATE,
+  normalizeAddCount,
+  normalizeFreezeColumns,
+} from '@ddlbuilder/shared-types';
 import type { AppSlice, EditorSetState } from './editorStoreTypes';
 
 function createInitialDialogs() {
@@ -42,9 +46,10 @@ export const createAppSlice = (set: EditorSetState): AppSlice => ({
   setViewCreateOrReplace: (viewCreateOrReplace) => set({ viewCreateOrReplace }),
   setDbType: (dbType) => set({ dbType }),
   setSqlFormatMode: (sqlFormatMode) => set({ sqlFormatMode }),
-  setAddCount: (addCount) => set({ addCount }),
+  setAddCount: (addCount) => set({ addCount: normalizeAddCount(addCount) }),
   setFieldTableFreezeEnabled: (fieldTableFreezeEnabled) => set({ fieldTableFreezeEnabled }),
-  setFieldTableFreezeColumns: (fieldTableFreezeColumns) => set({ fieldTableFreezeColumns }),
+  setFieldTableFreezeColumns: (fieldTableFreezeColumns) =>
+    set({ fieldTableFreezeColumns: normalizeFreezeColumns(fieldTableFreezeColumns) }),
   setActiveTab: (activeTab) => set({ activeTab }),
   resetTableConfig: () =>
     set({
