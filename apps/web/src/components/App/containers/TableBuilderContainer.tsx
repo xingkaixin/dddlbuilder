@@ -1,4 +1,4 @@
-import type { ComponentProps, ComponentType, ReactNode } from 'react';
+import { memo, type ComponentProps, type ComponentType, type ReactNode } from 'react';
 import {
   Columns3Cog,
   Network,
@@ -101,7 +101,7 @@ function IndexStatsBadge({ stats }: { stats: IndexStats }) {
   );
 }
 
-export function TableBuilderContainer({
+export const TableBuilderContainer = memo(function TableBuilderContainer({
   tableConfigProps,
   tabsValue,
   onTabsValueChange,
@@ -237,4 +237,4 @@ export function TableBuilderContainer({
       </Tabs>
     </div>
   );
-}
+});

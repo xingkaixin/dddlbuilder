@@ -740,3 +740,5 @@ export function useAppController() {
     },
   };
 }
+
+export type AppController = ReturnType<typeof useAppController>;
