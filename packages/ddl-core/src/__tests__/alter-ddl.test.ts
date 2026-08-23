@@ -20,6 +20,10 @@ import {
   generateAddForeignKey,
   generateDropForeignKey,
 } from '../utils/alter-ddl';
+import {
+  generateRenameTable,
+  generateTableOptionsChangeNotice,
+} from '../utils/alter-ddl/tableStatements';
 
 const createField = (overrides: Partial<NormalizedField> = {}): NormalizedField => ({
   name: 'id',
@@ -255,6 +259,36 @@ describe('generateAlterDDL', () => {
     expect(sql).toBe("COMMENT ON TABLE users IS '用户表';");
   });
 
+  it('renames the table before applying changes to its new name', () => {
+    const diff = createTableDiff({
+      tableNameChanged: true,
+      oldTableName: 'users',
+      newTableName: 'accounts',
+      fields: [
+        {
+          type: 'add',
+          fieldName: 'age',
+          newField: createField({ name: 'age', type: 'int' }),
+        },
+      ],
+    });
+
+    const sql = generateAlterDDL('accounts', diff, [], 'mysql');
+
+    expect(sql).toBe(
+      'ALTER TABLE users RENAME TO accounts;\n\n' +
+        'ALTER TABLE accounts ADD COLUMN age INT NOT NULL;',
+    );
+  });
+
+  it('emits an explicit notice for table options that need manual migration', () => {
+    const diff = createTableDiff({ miscConfigChanged: true });
+
+    expect(generateAlterDDL('users', diff, [], 'hive')).toBe(
+      '-- Manual migration required: table options changed for users (hive).',
+    );
+  });
+
   it('processes multiple changes in correct order', () => {
     const diff = createTableDiff({
       fields: [
@@ -397,6 +431,47 @@ describe('generateRollbackDDL', () => {
     });
     const sql = generateRollbackDDL('users', diff, [], 'mysql');
     expect(sql).toBe("ALTER TABLE users COMMENT = '旧注释';");
+  });
+
+  it('rollback: reverses other changes before restoring the old table name', () => {
+    const diff = createTableDiff({
+      tableNameChanged: true,
+      oldTableName: 'users',
+      newTableName: 'accounts',
+      fields: [
+        {
+          type: 'add',
+          fieldName: 'age',
+          newField: createField({ name: 'age', type: 'int' }),
+        },
+      ],
+    });
+
+    const sql = generateRollbackDDL('accounts', diff, [], 'mysql');
+
+    expect(sql).toBe(
+      'ALTER TABLE accounts DROP COLUMN age;\n\n' + 'ALTER TABLE accounts RENAME TO users;',
+    );
+  });
+
+  it('rollback: keeps table option changes visible', () => {
+    const diff = createTableDiff({ miscConfigChanged: true });
+
+    expect(generateRollbackDDL('users', diff, [], 'postgresql')).toBe(
+      '-- Manual migration required: table options changed for users (postgresql).',
+    );
+  });
+});
+
+describe('table statements', () => {
+  it('uses sp_rename for SQL Server table renames', () => {
+    expect(generateRenameTable("old'users", "new'users", 'sqlserver')).toBe(
+      "EXEC sp_rename 'old''users', 'new''users';",
+    );
+  });
+
+  it('describes manual table option migrations', () => {
+    expect(generateTableOptionsChangeNotice('users', 'mysql')).toContain('users (mysql)');
   });
 });
 

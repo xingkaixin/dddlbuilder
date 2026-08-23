@@ -194,6 +194,53 @@ describe('diffPersistedState', () => {
     expect(diff.fields[0].newFieldName).toBe('new_name');
   });
 
+  it('uses a stable field id to detect rename and property changes together', () => {
+    const oldState = createPersistedState({
+      rows: [createRow({ id: 'field-1', fieldName: 'old_name', fieldType: 'varchar' })],
+    });
+    const newState = createPersistedState({
+      rows: [createRow({ id: 'field-1', fieldName: 'new_name', fieldType: 'bigint' })],
+    });
+
+    const diff = diffPersistedState(oldState, newState);
+
+    expect(diff.fields).toEqual([
+      expect.objectContaining({
+        type: 'rename',
+        oldFieldName: 'old_name',
+        newFieldName: 'new_name',
+        changes: ['type'],
+      }),
+    ]);
+  });
+
+  it('does not infer a rename between fields with different stable ids', () => {
+    const oldState = createPersistedState({
+      rows: [
+        createRow({
+          id: 'field-old',
+          fieldName: 'old_name',
+          fieldType: 'varchar',
+          fieldComment: '名称',
+        }),
+      ],
+    });
+    const newState = createPersistedState({
+      rows: [
+        createRow({
+          id: 'field-new',
+          fieldName: 'new_name',
+          fieldType: 'varchar',
+          fieldComment: '名称',
+        }),
+      ],
+    });
+
+    const diff = diffPersistedState(oldState, newState);
+
+    expect(diff.fields.map(({ type }) => type)).toEqual(['remove', 'add']);
+  });
+
   it('does not rename when type differs', () => {
     const oldState = createPersistedState({
       rows: [createRow({ fieldName: 'old_name', fieldType: 'varchar', fieldComment: '名称' })],
@@ -323,6 +370,39 @@ describe('diffPersistedState', () => {
     const diff = diffPersistedState(oldState, newState);
     expect(diff.hasChanges).toBe(true);
     expect(diff.miscConfigChanged).toBe(true);
+  });
+
+  it('ignores stale table options when the feature is disabled', () => {
+    const oldState = createPersistedState({
+      tableMiscConfig: { enabled: false, fillfactor: 80, storedAs: 'PARQUET' },
+    });
+    const newState = createPersistedState({ tableMiscConfig: { enabled: false } });
+
+    const diff = diffPersistedState(oldState, newState);
+
+    expect(diff.miscConfigChanged).toBe(false);
+    expect(diff.hasChanges).toBe(false);
+  });
+
+  it('detects Hive storage and partition option changes', () => {
+    const oldState = createPersistedState({
+      tableMiscConfig: { enabled: true, storedAs: 'ORC' },
+    });
+    const newState = createPersistedState({
+      tableMiscConfig: {
+        enabled: true,
+        storedAs: 'PARQUET',
+        partitions: {
+          enabled: true,
+          columns: [{ name: 'day', type: 'STRING', comment: '' }],
+        },
+      },
+    });
+
+    const diff = diffPersistedState(oldState, newState);
+
+    expect(diff.miscConfigChanged).toBe(true);
+    expect(diff.hasChanges).toBe(true);
   });
 
   it('ignores case difference in field names', () => {

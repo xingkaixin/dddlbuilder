@@ -84,27 +84,35 @@ export type TableDiff = {
  *
  * 作为共享包不能假设调用方已把历史中文枚举值归一化，这里重新收敛一次。
  */
-function normalizeFieldRow(row: FieldRow): NormalizedField | null {
+type DiffField = {
+  id: string | null;
+  field: NormalizedField;
+};
+
+function normalizeFieldRow(row: FieldRow): DiffField | null {
   const name = row.fieldName?.trim();
   if (!name) return null;
 
   return {
-    name,
-    type: row.fieldType?.trim() || '',
-    comment: row.fieldComment?.trim() || '',
-    nullable: normalizeFieldNullable(row.nullable),
-    defaultKind: normalizeFieldDefaultKind(row.defaultKind),
-    defaultValue: row.defaultValue?.trim() || '',
-    onUpdate: normalizeFieldOnUpdate(row.onUpdate),
+    id: typeof row.id === 'string' && row.id.trim() ? row.id.trim() : null,
+    field: {
+      name,
+      type: row.fieldType?.trim() || '',
+      comment: row.fieldComment?.trim() || '',
+      nullable: normalizeFieldNullable(row.nullable),
+      defaultKind: normalizeFieldDefaultKind(row.defaultKind),
+      defaultValue: row.defaultValue?.trim() || '',
+      onUpdate: normalizeFieldOnUpdate(row.onUpdate),
+    },
   };
 }
 
 /**
  * 从 PersistedState 中提取有效字段列表
  */
-function extractFields(state: PersistedState): NormalizedField[] {
+function extractFields(state: PersistedState): DiffField[] {
   if (!state.rows) return [];
-  return state.rows.map(normalizeFieldRow).filter((f): f is NormalizedField => f !== null);
+  return state.rows.map(normalizeFieldRow).filter((field): field is DiffField => field !== null);
 }
 
 /**
@@ -151,6 +159,129 @@ function getFieldChanges(oldField: NormalizedField, newField: NormalizedField): 
   return changes;
 }
 
+function createMatchedFieldDiff(oldField: NormalizedField, newField: NormalizedField) {
+  const changes = getFieldChanges(oldField, newField);
+  if (oldField.name.toLowerCase() !== newField.name.toLowerCase()) {
+    return {
+      type: 'rename',
+      fieldName: newField.name,
+      oldField,
+      newField,
+      oldFieldName: oldField.name,
+      newFieldName: newField.name,
+      ...(changes.length > 0 ? { changes } : {}),
+    } satisfies FieldDiff;
+  }
+  if (fieldsEqual(oldField, newField)) return null;
+  return {
+    type: 'modify',
+    fieldName: newField.name,
+    oldField,
+    newField,
+    changes,
+  } satisfies FieldDiff;
+}
+
+function diffFields(oldFields: DiffField[], newFields: DiffField[]): FieldDiff[] {
+  const diffs: FieldDiff[] = [];
+  const unmatchedOld = new Set(oldFields.map((_, index) => index));
+  const unmatchedNew = new Set(newFields.map((_, index) => index));
+
+  const match = (oldIndex: number, newIndex: number) => {
+    unmatchedOld.delete(oldIndex);
+    unmatchedNew.delete(newIndex);
+    const diff = createMatchedFieldDiff(oldFields[oldIndex].field, newFields[newIndex].field);
+    if (diff) diffs.push(diff);
+  };
+
+  const newIndexById = new Map(
+    newFields.flatMap((field, index) => (field.id ? [[field.id, index] as const] : [])),
+  );
+  oldFields.forEach((field, oldIndex) => {
+    if (!field.id) return;
+    const newIndex = newIndexById.get(field.id);
+    if (newIndex !== undefined && unmatchedNew.has(newIndex)) match(oldIndex, newIndex);
+  });
+
+  for (const oldIndex of Array.from(unmatchedOld)) {
+    const oldField = oldFields[oldIndex];
+    const candidates = Array.from(unmatchedNew).filter((newIndex) => {
+      const newField = newFields[newIndex];
+      return (
+        (!oldField.id || !newField.id) &&
+        oldField.field.name.toLowerCase() === newField.field.name.toLowerCase()
+      );
+    });
+    if (candidates.length === 1) match(oldIndex, candidates[0]);
+  }
+
+  const oldByStructure = new Map<string, number[]>();
+  const newByStructure = new Map<string, number[]>();
+  for (const oldIndex of unmatchedOld) {
+    if (oldFields[oldIndex].id) continue;
+    const signature = getFieldRenameSignature(oldFields[oldIndex].field);
+    oldByStructure.set(signature, [...(oldByStructure.get(signature) ?? []), oldIndex]);
+  }
+  for (const newIndex of unmatchedNew) {
+    if (newFields[newIndex].id) continue;
+    const signature = getFieldRenameSignature(newFields[newIndex].field);
+    newByStructure.set(signature, [...(newByStructure.get(signature) ?? []), newIndex]);
+  }
+  for (const [signature, oldIndexes] of oldByStructure) {
+    const newIndexes = newByStructure.get(signature);
+    if (oldIndexes.length === 1 && newIndexes?.length === 1) {
+      match(oldIndexes[0], newIndexes[0]);
+    }
+  }
+
+  for (const oldIndex of unmatchedOld) {
+    const oldField = oldFields[oldIndex].field;
+    diffs.push({ type: 'remove', fieldName: oldField.name, oldField });
+  }
+  for (const newIndex of unmatchedNew) {
+    const newField = newFields[newIndex].field;
+    diffs.push({ type: 'add', fieldName: newField.name, newField });
+  }
+  return diffs;
+}
+
+function normalizeMiscConfig(config?: TableMiscConfig): TableMiscConfig {
+  if (!config?.enabled) return { enabled: false };
+  const partitions = config.partitions?.enabled
+    ? {
+        enabled: true,
+        columns: config.partitions.columns.map((column) => ({
+          name: column.name.trim(),
+          type: column.type.trim(),
+          comment: column.comment.trim(),
+        })),
+        ...(config.partitions.clustering?.enabled
+          ? {
+              clustering: {
+                enabled: true,
+                columns: config.partitions.clustering.columns.map((column) => column.trim()),
+                bucketCount: config.partitions.clustering.bucketCount,
+              },
+            }
+          : {}),
+      }
+    : undefined;
+  return {
+    enabled: true,
+    engine: config.engine?.trim() || '',
+    charset: config.charset?.trim() || '',
+    collation: config.collation?.trim() || '',
+    tablespace: config.tablespace?.trim() || '',
+    fillfactor: config.fillfactor,
+    pctfree: config.pctfree,
+    initrans: config.initrans,
+    storedAs: config.storedAs || '',
+    external: config.external === true,
+    location: config.location?.trim() || '',
+    ...(partitions ? { partitions } : {}),
+  };
+}
+
 /**
  * 生成索引的唯一标识（用于比较）
  */
@@ -195,42 +326,9 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
   }
 
   // 2.5 杂项设置变更
-  type NormalizedMiscConfig = TableMiscConfig &
-    Required<Pick<TableMiscConfig, 'enabled' | 'engine' | 'charset' | 'collation' | 'tablespace'>>;
-
-  const normalizeMiscConfig = (config?: TableMiscConfig): NormalizedMiscConfig => {
-    const normalized: NormalizedMiscConfig = {
-      enabled: false,
-      engine: '',
-      charset: '',
-      collation: '',
-      tablespace: '',
-      ...config,
-    };
-    if (!normalized.enabled) {
-      return {
-        ...normalized,
-        engine: '',
-        charset: '',
-        collation: '',
-        tablespace: '',
-      };
-    }
-    return normalized;
-  };
-
   const oldMiscConfig = normalizeMiscConfig(oldState.tableMiscConfig);
   const newMiscConfig = normalizeMiscConfig(newState.tableMiscConfig);
-  if (
-    oldMiscConfig.enabled !== newMiscConfig.enabled ||
-    oldMiscConfig.engine !== newMiscConfig.engine ||
-    oldMiscConfig.charset !== newMiscConfig.charset ||
-    oldMiscConfig.collation !== newMiscConfig.collation ||
-    oldMiscConfig.tablespace !== newMiscConfig.tablespace ||
-    oldMiscConfig.fillfactor !== newMiscConfig.fillfactor ||
-    oldMiscConfig.pctfree !== newMiscConfig.pctfree ||
-    oldMiscConfig.initrans !== newMiscConfig.initrans
-  ) {
+  if (JSON.stringify(oldMiscConfig) !== JSON.stringify(newMiscConfig)) {
     result.miscConfigChanged = true;
     result.oldMiscConfig = oldMiscConfig;
     result.newMiscConfig = newMiscConfig;
@@ -240,93 +338,8 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
   // 3. 字段变更
   const oldFields = extractFields(oldState);
   const newFields = extractFields(newState);
-
-  const oldFieldMap = new Map<string, NormalizedField>();
-  for (const f of oldFields) {
-    oldFieldMap.set(f.name.toLowerCase(), f);
-  }
-
-  const newFieldMap = new Map<string, NormalizedField>();
-  for (const f of newFields) {
-    newFieldMap.set(f.name.toLowerCase(), f);
-  }
-
-  // 检测删除和修改的字段
-  for (const [key, oldField] of oldFieldMap) {
-    const newField = newFieldMap.get(key);
-    if (!newField) {
-      // 字段被删除
-      result.fields.push({
-        type: 'remove',
-        fieldName: oldField.name,
-        oldField,
-      });
-      result.hasChanges = true;
-    } else if (!fieldsEqual(oldField, newField)) {
-      // 字段被修改
-      result.fields.push({
-        type: 'modify',
-        fieldName: newField.name,
-        oldField,
-        newField,
-        changes: getFieldChanges(oldField, newField),
-      });
-      result.hasChanges = true;
-    }
-  }
-
-  // 检测新增的字段
-  for (const [key, newField] of newFieldMap) {
-    if (!oldFieldMap.has(key)) {
-      result.fields.push({
-        type: 'add',
-        fieldName: newField.name,
-        newField,
-      });
-      result.hasChanges = true;
-    }
-  }
-
-  // 5. 重命名检测：仅将结构签名唯一的 remove + add 合并为 rename
-  const removedFields = result.fields.filter((f) => f.type === 'remove');
-  const addedFields = result.fields.filter((f) => f.type === 'add');
-  const removedByStructure = new Map<string, FieldDiff[]>();
-  const addedByStructure = new Map<string, FieldDiff[]>();
-  for (const field of removedFields) {
-    if (!field.oldField) continue;
-    const signature = getFieldRenameSignature(field.oldField);
-    removedByStructure.set(signature, [...(removedByStructure.get(signature) ?? []), field]);
-  }
-  for (const field of addedFields) {
-    if (!field.newField) continue;
-    const signature = getFieldRenameSignature(field.newField);
-    addedByStructure.set(signature, [...(addedByStructure.get(signature) ?? []), field]);
-  }
-
-  const renamedFields = new Set<FieldDiff>();
-  const renames: FieldDiff[] = [];
-  for (const [signature, removed] of removedByStructure) {
-    const added = addedByStructure.get(signature);
-    if (removed.length !== 1 || added?.length !== 1) continue;
-    const oldField = removed[0].oldField;
-    const newField = added[0].newField;
-    if (!oldField || !newField) continue;
-    renamedFields.add(removed[0]);
-    renamedFields.add(added[0]);
-    renames.push({
-      type: 'rename',
-      fieldName: newField.name,
-      oldField,
-      newField,
-      oldFieldName: oldField.name,
-      newFieldName: newField.name,
-      changes: (() => {
-        const changes = getFieldChanges(oldField, newField);
-        return changes.length > 0 ? changes : undefined;
-      })(),
-    });
-  }
-  result.fields = [...result.fields.filter((field) => !renamedFields.has(field)), ...renames];
+  result.fields = diffFields(oldFields, newFields);
+  if (result.fields.length > 0) result.hasChanges = true;
 
   // 4. 索引变更
   const oldIndexes = oldState.indexes || [];
