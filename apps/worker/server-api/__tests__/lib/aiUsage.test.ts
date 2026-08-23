@@ -68,6 +68,41 @@ describe('aiUsage', () => {
   });
 
   describe('reserveAIUsage', () => {
+    it('refunds and rejects when pending cannot transition to reserved', async () => {
+      const applyCreditMutation = vi.fn().mockResolvedValue({ id: 'ledger-1' });
+      vi.doMock('../../lib/credits.js', () => ({
+        applyCreditMutation,
+        readCreditLedgerEntry: vi.fn(),
+      }));
+
+      const db = createMockDb();
+      db.run
+        .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
+        .mockResolvedValueOnce({ success: false, meta: { changes: 0 } })
+        .mockResolvedValueOnce({ success: true, meta: { changes: 1 } });
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const { reserveAIUsage } = await import('../../lib/aiUsage.js');
+      await expect(
+        reserveAIUsage(createEnv({ USER_DB: db as unknown as D1Database }), {
+          userId: 'user-1',
+          routeKey: 'explain',
+          requestId: 'transition-failure',
+          estimatedTokens: 100,
+        }),
+      ).rejects.toThrow('AI_USAGE_STATUS_TRANSITION_FAILED');
+
+      expect(applyCreditMutation).toHaveBeenNthCalledWith(
+        2,
+        expect.anything(),
+        expect.objectContaining({
+          kind: 'refund',
+          amount: 100,
+          idempotencyKey: 'usage:6:user-1:7:explain:18:transition-failure:settlement',
+        }),
+      );
+    });
+
     it('reserves tokens successfully for explain route', async () => {
       const mockApplyCreditMutation = vi.fn().mockResolvedValue({
         id: 'consume:req-1:reserve',
@@ -84,6 +119,7 @@ describe('aiUsage', () => {
 
       vi.doMock('../../lib/credits.js', () => ({
         applyCreditMutation: mockApplyCreditMutation,
+        readCreditLedgerEntry: vi.fn().mockResolvedValue(null),
       }));
 
       const db = createMockDb();
@@ -129,6 +165,7 @@ describe('aiUsage', () => {
 
       vi.doMock('../../lib/credits.js', () => ({
         applyCreditMutation: mockApplyCreditMutation,
+        readCreditLedgerEntry: vi.fn().mockResolvedValue(null),
       }));
 
       const db = createMockDb();
@@ -198,6 +235,7 @@ describe('aiUsage', () => {
 
       vi.doMock('../../lib/credits.js', () => ({
         applyCreditMutation: mockApplyCreditMutation,
+        readCreditLedgerEntry: vi.fn().mockResolvedValue(null),
       }));
 
       const db = createMockDb();
@@ -327,6 +365,33 @@ describe('aiUsage', () => {
   });
 
   describe('completeAIUsage', () => {
+    it('rejects when the final succeeded transition is not persisted', async () => {
+      vi.doMock('../../lib/credits.js', () => ({
+        applyCreditMutation: vi.fn(),
+      }));
+
+      const db = createMockDb();
+      db.run
+        .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
+        .mockResolvedValueOnce({ success: false, meta: { changes: 0 } });
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const { completeAIUsage } = await import('../../lib/aiUsage.js');
+      await expect(
+        completeAIUsage(
+          createEnv({ USER_DB: db as unknown as D1Database }),
+          {
+            usageEventId: 'usage:req-1',
+            userId: 'user-1',
+            routeKey: 'explain',
+            requestId: 'req-1',
+            reservedTokens: 100,
+          },
+          100,
+        ),
+      ).rejects.toThrow('AI_USAGE_STATUS_TRANSITION_FAILED');
+    });
+
     it('refunds when actual tokens are less than reserved', async () => {
       const mockApplyCreditMutation = vi.fn().mockResolvedValue({
         id: 'refund:req-1:success',

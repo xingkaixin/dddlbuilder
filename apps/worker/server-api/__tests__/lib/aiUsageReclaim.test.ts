@@ -35,14 +35,24 @@ const staleRow = (overrides: Record<string, unknown> = {}) => ({
   routeKey: 'explain',
   requestId: 'req-1',
   estimatedTokens: 120,
+  actualTotalTokens: null,
   status: 'reserved',
+  errorCode: null,
   ...overrides,
 });
 
-const loadReclaim = async (ledgerEntry: unknown, applyCreditMutation = vi.fn()) => {
+const loadReclaim = async (
+  reserveLedgerEntry: unknown,
+  applyCreditMutation = vi.fn(),
+  settlementLedgerEntry: unknown = null,
+) => {
   vi.doMock('../../lib/credits.js', () => ({
     applyCreditMutation,
-    readCreditLedgerEntry: vi.fn().mockResolvedValue(ledgerEntry),
+    readCreditLedgerEntry: vi
+      .fn()
+      .mockImplementation((_env, _userId, idempotencyKey: string) =>
+        idempotencyKey.endsWith(':reserve') ? reserveLedgerEntry : settlementLedgerEntry,
+      ),
   }));
   const { reclaimStaleAIUsage } = await import('../../lib/aiUsage.js');
   return { reclaimStaleAIUsage, applyCreditMutation };
@@ -75,12 +85,61 @@ describe('reclaimStaleAIUsage', () => {
     );
     // 抢占必须发生在退款之前，否则会和正常结算路径同时动同一笔额度
     expect(runs[0].sql).toContain("SET status = 'reclaiming'");
-    expect(runs.at(-1)?.sql).toContain("SET status = 'failed'");
+    expect(runs.at(-1)?.args).toContain('failed');
   });
 
   it('settles a pending event without refunding when no consume entry was written', async () => {
     const { db } = createDb([staleRow({ status: 'pending' })]);
     const { reclaimStaleAIUsage, applyCreditMutation } = await loadReclaim(null);
+
+    const result = await reclaimStaleAIUsage(createEnv(db));
+
+    expect(result).toEqual({ scanned: 1, reclaimed: 1 });
+    expect(applyCreditMutation).not.toHaveBeenCalled();
+  });
+
+  it('resumes an interrupted successful settlement from stored actual tokens', async () => {
+    const { db, runs } = createDb([
+      staleRow({ status: 'settling_succeeded', actualTotalTokens: 70 }),
+    ]);
+    const { reclaimStaleAIUsage, applyCreditMutation } = await loadReclaim(null);
+
+    const result = await reclaimStaleAIUsage(createEnv(db));
+
+    expect(result).toEqual({ scanned: 1, reclaimed: 1 });
+    expect(applyCreditMutation).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ kind: 'refund', amount: 50 }),
+    );
+    expect(runs).toHaveLength(1);
+    expect(runs[0].args).toContain('succeeded');
+  });
+
+  it('resumes an interrupted failed settlement without changing its outcome', async () => {
+    const { db, runs } = createDb([
+      staleRow({ status: 'settling_failed', errorCode: 'OPENAI_ERROR' }),
+    ]);
+    const { reclaimStaleAIUsage, applyCreditMutation } = await loadReclaim(null);
+
+    const result = await reclaimStaleAIUsage(createEnv(db));
+
+    expect(result).toEqual({ scanned: 1, reclaimed: 1 });
+    expect(applyCreditMutation).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ kind: 'refund', amount: 120 }),
+    );
+    expect(runs).toHaveLength(1);
+    expect(runs[0].args).toContain('failed');
+    expect(runs[0].args).toContain('OPENAI_ERROR');
+  });
+
+  it('does not write a second settlement when a reclaiming row already has one', async () => {
+    const { db } = createDb([staleRow({ status: 'reclaiming' })]);
+    const { reclaimStaleAIUsage, applyCreditMutation } = await loadReclaim(
+      { id: 'reserve-ledger' },
+      vi.fn(),
+      { id: 'settlement-ledger' },
+    );
 
     const result = await reclaimStaleAIUsage(createEnv(db));
 

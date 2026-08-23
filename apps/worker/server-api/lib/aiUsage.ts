@@ -20,7 +20,8 @@ type AIUsageTerminalStatus = 'succeeded' | 'failed';
  * usage_events.status 的显式状态机。
  * pending → reserved：预留分录落账后；
  * reserved/settling_* → settling_{terminal}：正常结算抢占（幂等，只允许一个终态）；
- * 任何非终态 → reclaiming：回收器抢占；reclaiming → failed：退款完成。
+ * pending/reserved → reclaiming：回收器抢占废弃预留；
+ * settling_* 由回收器按已记录的结算意图续跑到对应终态。
  */
 export const AI_USAGE_STATUS = {
   pending: 'pending',
@@ -65,6 +66,8 @@ const normalizeTokenAmount = (value: number) => {
   return Math.max(1, Math.round(value));
 };
 
+const changedRows = (result: D1Result<unknown>) => Number(result.meta.changes ?? 0);
+
 const createUsageEvent = async (env: ApiEnv['Bindings'], reservation: AIUsageReservation) => {
   const result = await env.USER_DB.prepare(
     `
@@ -100,17 +103,19 @@ const updateUsageStatus = async (
   env: ApiEnv['Bindings'],
   reservation: AIUsageReservation,
   input: {
-    from: AIUsageStatus;
+    from: AIUsageStatus | readonly AIUsageStatus[];
     to: AIUsageStatus;
     actualTotalTokens?: number | null;
     errorCode?: string | null;
   },
-) =>
-  env.USER_DB.prepare(
+) => {
+  const fromStatuses = Array.isArray(input.from) ? input.from : [input.from];
+  const placeholders = fromStatuses.map(() => '?').join(', ');
+  const result = await env.USER_DB.prepare(
     `
       UPDATE usage_events
       SET status = ?, actual_total_tokens = ?, error_code = ?
-      WHERE id = ? AND status = ?
+      WHERE id = ? AND status IN (${placeholders})
     `,
   )
     .bind(
@@ -118,14 +123,28 @@ const updateUsageStatus = async (
       input.actualTotalTokens ?? null,
       input.errorCode ?? null,
       reservation.usageEventId,
-      input.from,
+      ...fromStatuses,
     )
     .run();
+
+  if (!result.success || changedRows(result) !== 1) {
+    console.error('[ai-usage] status transition rejected', {
+      usageEventId: reservation.usageEventId,
+      from: fromStatuses,
+      to: input.to,
+      success: result.success,
+      changes: changedRows(result),
+    });
+    throw new Error('AI_USAGE_STATUS_TRANSITION_FAILED');
+  }
+};
 
 const claimSettlement = async (
   env: ApiEnv['Bindings'],
   reservation: AIUsageReservation,
   terminalStatus: AIUsageTerminalStatus,
+  actualTotalTokens: number | null,
+  errorCode: string | null,
 ) => {
   const settlingStatus =
     terminalStatus === 'succeeded'
@@ -134,17 +153,121 @@ const claimSettlement = async (
   const result = await env.USER_DB.prepare(
     `
       UPDATE usage_events
-      SET status = ?
-      WHERE id = ? AND status IN (?, ?)
+      SET
+        status = ?,
+        actual_total_tokens = COALESCE(actual_total_tokens, ?),
+        error_code = COALESCE(error_code, ?)
+      WHERE id = ?
+        AND (
+          status = ?
+          OR (
+            status = ?
+            AND actual_total_tokens IS ?
+            AND error_code IS ?
+          )
+        )
     `,
   )
-    .bind(settlingStatus, reservation.usageEventId, AI_USAGE_STATUS.reserved, settlingStatus)
+    .bind(
+      settlingStatus,
+      actualTotalTokens,
+      errorCode,
+      reservation.usageEventId,
+      AI_USAGE_STATUS.reserved,
+      settlingStatus,
+      actualTotalTokens,
+      errorCode,
+    )
     .run();
-  return result.success && Number(result.meta.changes ?? 0) > 0;
+  if (!result.success) {
+    console.error('[ai-usage] settlement claim failed', {
+      usageEventId: reservation.usageEventId,
+      terminalStatus,
+    });
+    throw new Error('AI_USAGE_SETTLEMENT_CLAIM_FAILED');
+  }
+  return changedRows(result) > 0;
 };
 
 export const authenticateAIUser = async (c: Context<ApiEnv>) => {
   return authenticateRequest(c);
+};
+
+const applyFailedSettlement = async (
+  env: ApiEnv['Bindings'],
+  reservation: AIUsageReservation,
+  errorCode: string,
+  reason: 'request_failed' | 'reservation_failed' | 'reservation_abandoned',
+) => {
+  const ledgerIdentity = buildLedgerIdentity(reservation, 'settlement');
+  await applyCreditMutation(env, {
+    userId: reservation.userId,
+    kind: 'refund',
+    source: ROUTE_SOURCES[reservation.routeKey],
+    amount: reservation.reservedTokens,
+    idempotencyKey: ledgerIdentity,
+    relatedUsageId: reservation.usageEventId,
+    metadata: {
+      routeKey: reservation.routeKey,
+      requestId: reservation.requestId,
+      reason,
+      errorCode,
+    },
+    ledgerId: `refund:${ledgerIdentity}`,
+  });
+};
+
+const applySuccessfulSettlement = async (
+  env: ApiEnv['Bindings'],
+  reservation: AIUsageReservation,
+  actualTokens: number,
+) => {
+  const tokenDelta = reservation.reservedTokens - actualTokens;
+  if (tokenDelta === 0) return;
+
+  const kind = tokenDelta > 0 ? 'refund' : 'consume';
+  const ledgerIdentity = buildLedgerIdentity(reservation, 'settlement');
+  await applyCreditMutation(env, {
+    userId: reservation.userId,
+    kind,
+    source: ROUTE_SOURCES[reservation.routeKey],
+    amount: Math.abs(tokenDelta),
+    idempotencyKey: ledgerIdentity,
+    relatedUsageId: reservation.usageEventId,
+    metadata: {
+      routeKey: reservation.routeKey,
+      requestId: reservation.requestId,
+      reason: tokenDelta > 0 ? 'actual_less_than_reserved' : 'actual_exceeded_reserved',
+    },
+    ledgerId: `${kind}:${ledgerIdentity}`,
+  });
+};
+
+const recoverReservationFailure = async (
+  env: ApiEnv['Bindings'],
+  reservation: AIUsageReservation,
+  errorCode: string,
+  creditReserved: boolean,
+) => {
+  const reserveLedger = creditReserved
+    ? true
+    : Boolean(
+        await readCreditLedgerEntry(
+          env,
+          reservation.userId,
+          buildLedgerIdentity(reservation, 'reserve'),
+        ),
+      );
+
+  if (reserveLedger) {
+    await applyFailedSettlement(env, reservation, errorCode, 'reservation_failed');
+  }
+
+  await updateUsageStatus(env, reservation, {
+    from: [AI_USAGE_STATUS.pending, AI_USAGE_STATUS.reserved],
+    to: AI_USAGE_STATUS.failed,
+    errorCode,
+  });
 };
 
 export const reserveAIUsage = async <RouteKey extends AIRouteKey>(
@@ -166,6 +289,7 @@ export const reserveAIUsage = async <RouteKey extends AIRouteKey>(
 
   await createUsageEvent(env, reservation);
 
+  let creditReserved = false;
   try {
     const ledgerIdentity = buildLedgerIdentity(reservation, 'reserve');
     await applyCreditMutation(env, {
@@ -181,6 +305,7 @@ export const reserveAIUsage = async <RouteKey extends AIRouteKey>(
       },
       ledgerId: `consume:${ledgerIdentity}`,
     });
+    creditReserved = true;
 
     await updateUsageStatus(env, reservation, {
       from: AI_USAGE_STATUS.pending,
@@ -189,11 +314,14 @@ export const reserveAIUsage = async <RouteKey extends AIRouteKey>(
     return reservation;
   } catch (error) {
     const errorCode = error instanceof Error ? error.message : 'SERVICE_UNAVAILABLE';
-    await updateUsageStatus(env, reservation, {
-      from: AI_USAGE_STATUS.pending,
-      to: AI_USAGE_STATUS.failed,
-      errorCode,
-    });
+    try {
+      await recoverReservationFailure(env, reservation, errorCode, creditReserved);
+    } catch (recoveryError) {
+      console.error('[ai-usage] reservation recovery failed', {
+        usageEventId: reservation.usageEventId,
+        recoveryError,
+      });
+    }
     throw error;
   }
 };
@@ -203,35 +331,15 @@ export const completeAIUsage = async (
   reservation: AIUsageReservation,
   actualTotalTokens: number | null,
 ) => {
-  if (!(await claimSettlement(env, reservation, 'succeeded'))) {
-    return;
-  }
-
   const actualTokens =
     actualTotalTokens == null
       ? reservation.reservedTokens
       : Math.max(0, Math.round(actualTotalTokens));
-  const tokenDelta = reservation.reservedTokens - actualTokens;
-
-  if (tokenDelta !== 0) {
-    const kind = tokenDelta > 0 ? 'refund' : 'consume';
-    const amount = Math.abs(tokenDelta);
-    const ledgerIdentity = buildLedgerIdentity(reservation, 'settlement');
-    await applyCreditMutation(env, {
-      userId: reservation.userId,
-      kind,
-      source: ROUTE_SOURCES[reservation.routeKey],
-      amount,
-      idempotencyKey: ledgerIdentity,
-      relatedUsageId: reservation.usageEventId,
-      metadata: {
-        routeKey: reservation.routeKey,
-        requestId: reservation.requestId,
-        reason: tokenDelta > 0 ? 'actual_less_than_reserved' : 'actual_exceeded_reserved',
-      },
-      ledgerId: `${kind}:${ledgerIdentity}`,
-    });
+  if (!(await claimSettlement(env, reservation, 'succeeded', actualTokens, null))) {
+    return;
   }
+
+  await applySuccessfulSettlement(env, reservation, actualTokens);
 
   await updateUsageStatus(env, reservation, {
     from: AI_USAGE_STATUS.settlingSucceeded,
@@ -245,26 +353,11 @@ export const failAIUsage = async (
   reservation: AIUsageReservation,
   errorCode: string,
 ) => {
-  if (!(await claimSettlement(env, reservation, 'failed'))) {
+  if (!(await claimSettlement(env, reservation, 'failed', null, errorCode))) {
     return;
   }
 
-  const ledgerIdentity = buildLedgerIdentity(reservation, 'settlement');
-  await applyCreditMutation(env, {
-    userId: reservation.userId,
-    kind: 'refund',
-    source: ROUTE_SOURCES[reservation.routeKey],
-    amount: reservation.reservedTokens,
-    idempotencyKey: ledgerIdentity,
-    relatedUsageId: reservation.usageEventId,
-    metadata: {
-      routeKey: reservation.routeKey,
-      requestId: reservation.requestId,
-      reason: 'request_failed',
-      errorCode,
-    },
-    ledgerId: `refund:${ledgerIdentity}`,
-  });
+  await applyFailedSettlement(env, reservation, errorCode, 'request_failed');
 
   await updateUsageStatus(env, reservation, {
     from: AI_USAGE_STATUS.settlingFailed,
@@ -296,7 +389,9 @@ type StaleUsageRow = {
   routeKey: string;
   requestId: string;
   estimatedTokens: number;
+  actualTotalTokens: number | null;
   status: string;
+  errorCode: string | null;
 };
 
 const isAIRouteKey = (value: string): value is AIRouteKey => value in ROUTE_SOURCES;
@@ -315,12 +410,14 @@ const claimStaleUsage = async (env: ApiEnv['Bindings'], row: StaleUsageRow) => {
   )
     .bind(row.id, row.status)
     .run();
-  return result.success && Number(result.meta.changes ?? 0) > 0;
+  if (!result.success) {
+    throw new Error('AI_USAGE_RECLAIM_CLAIM_FAILED');
+  }
+  return changedRows(result) > 0;
 };
 
 const reclaimOne = async (env: ApiEnv['Bindings'], row: StaleUsageRow) => {
   if (!isAIRouteKey(row.routeKey)) return false;
-  if (!(await claimStaleUsage(env, row))) return false;
 
   const reservation: AIUsageReservation = {
     usageEventId: row.id,
@@ -330,39 +427,59 @@ const reclaimOne = async (env: ApiEnv['Bindings'], row: StaleUsageRow) => {
     reservedTokens: normalizeTokenAmount(row.estimatedTokens),
   };
 
-  // pending 记录的扣款未必发生过，退款前必须先确认预留分录真的存在
+  if (row.status === AI_USAGE_STATUS.settlingSucceeded) {
+    const actualTokens = Math.max(
+      0,
+      Math.round(row.actualTotalTokens ?? reservation.reservedTokens),
+    );
+    await applySuccessfulSettlement(env, reservation, actualTokens);
+    await updateUsageStatus(env, reservation, {
+      from: AI_USAGE_STATUS.settlingSucceeded,
+      to: AI_USAGE_STATUS.succeeded,
+      actualTotalTokens: actualTokens,
+    });
+    return true;
+  }
+
+  if (row.status === AI_USAGE_STATUS.settlingFailed) {
+    const errorCode = row.errorCode ?? 'RESERVATION_ABANDONED';
+    await applyFailedSettlement(env, reservation, errorCode, 'request_failed');
+    await updateUsageStatus(env, reservation, {
+      from: AI_USAGE_STATUS.settlingFailed,
+      to: AI_USAGE_STATUS.failed,
+      errorCode,
+    });
+    return true;
+  }
+
+  if (!(await claimStaleUsage(env, row))) return false;
+
   const reserved = await readCreditLedgerEntry(
     env,
     row.userId,
     buildLedgerIdentity(reservation, 'reserve'),
   );
   if (reserved) {
-    await applyCreditMutation(env, {
-      userId: row.userId,
-      kind: 'refund',
-      source: ROUTE_SOURCES[row.routeKey],
-      amount: reservation.reservedTokens,
-      idempotencyKey: buildLedgerIdentity(reservation, 'settlement'),
-      relatedUsageId: row.id,
-      metadata: {
-        routeKey: row.routeKey,
-        requestId: row.requestId,
-        reason: 'reservation_abandoned',
-        reclaimedFrom: row.status,
-      },
-      ledgerId: `refund:${buildLedgerIdentity(reservation, 'settlement')}`,
-    });
+    const settled = await readCreditLedgerEntry(
+      env,
+      row.userId,
+      buildLedgerIdentity(reservation, 'settlement'),
+    );
+    if (!settled) {
+      await applyFailedSettlement(
+        env,
+        reservation,
+        'RESERVATION_ABANDONED',
+        'reservation_abandoned',
+      );
+    }
   }
 
-  await env.USER_DB.prepare(
-    `
-      UPDATE usage_events
-      SET status = 'failed', error_code = 'RESERVATION_ABANDONED'
-      WHERE id = ? AND status = 'reclaiming'
-    `,
-  )
-    .bind(row.id)
-    .run();
+  await updateUsageStatus(env, reservation, {
+    from: AI_USAGE_STATUS.reclaiming,
+    to: AI_USAGE_STATUS.failed,
+    errorCode: 'RESERVATION_ABANDONED',
+  });
   return true;
 };
 
@@ -382,7 +499,9 @@ export const reclaimStaleAIUsage = async (
         route_key AS routeKey,
         request_id AS requestId,
         estimated_tokens AS estimatedTokens,
-        status
+        actual_total_tokens AS actualTotalTokens,
+        status,
+        error_code AS errorCode
       FROM usage_events
       WHERE status IN (${placeholders}) AND created_at < ?
       ORDER BY created_at
