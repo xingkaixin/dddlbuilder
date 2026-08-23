@@ -61,16 +61,7 @@ const readSavedTablesProjection = (doc: Y.Doc) => listSavedTableMetadataFromYDoc
 export function useSavedTables() {
   const currentScope = useWorkspaceScope();
   const queryClient = useQueryClient();
-  // Y.Doc 还不可写（分享页在本地加载完成前仍然放行「另存为副本」），这次改动只落在本地
-  // 分区。legacy 迁移的一次性标记会让它永远留在那里，所以按既有契约重开迁移：谁写了本地
-  // 分区，谁负责让下次启动把它带进 Y.Doc。
-  const { yDoc, yDocReady, runInYDoc } = useWorkspaceYDocGateway(currentScope, {
-    onDocUnavailable: () => {
-      if (currentScope?.kind === 'user' && currentScope.workspaceId) {
-        invalidateLegacyWorkspaceMigration(currentScope);
-      }
-    },
-  });
+  const { yDoc, yDocReady, runInYDoc } = useWorkspaceYDocGateway(currentScope);
   const yDocSavedTables = useWorkspaceYDocProjection(
     yDoc,
     SAVED_TABLE_COLLECTIONS,
@@ -105,6 +96,16 @@ export function useSavedTables() {
     });
   }, [currentScope, queryClient]);
 
+  const writeLocalFallback = useCallback(
+    async (write: () => Promise<void>) => {
+      await write();
+      if (currentScope?.kind === 'user' && currentScope.workspaceId) {
+        invalidateLegacyWorkspaceMigration(currentScope);
+      }
+    },
+    [currentScope],
+  );
+
   const persistActiveTable = useCallback(
     async (record: SavedTableRecord, mode: 'add' | 'update' = 'update') => {
       if (yDoc) {
@@ -112,14 +113,13 @@ export function useSavedTables() {
         return;
       }
       if (!currentScope) throw new Error('工作区未就绪');
-      if (mode === 'add') {
-        await addSavedTable(record, currentScope);
-      } else {
-        await updateSavedTable(record, currentScope);
-      }
-      runInYDoc(() => {});
+      await writeLocalFallback(() =>
+        mode === 'add'
+          ? addSavedTable(record, currentScope)
+          : updateSavedTable(record, currentScope),
+      );
     },
-    [currentScope, runInYDoc, yDoc],
+    [currentScope, runInYDoc, writeLocalFallback, yDoc],
   );
 
   useEffect(() => {
@@ -211,7 +211,7 @@ export function useSavedTables() {
             currentScope,
           );
         } else {
-          await moveSavedTableToTrash(normalizedName, currentScope);
+          await writeLocalFallback(() => moveSavedTableToTrash(normalizedName, currentScope));
         }
         runInYDoc((doc) => deleteSavedTableFromYDoc(doc, normalizedName));
         await refresh();
@@ -224,7 +224,7 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, refresh, runInYDoc, yDoc],
+    [currentScope, refresh, runInYDoc, writeLocalFallback, yDoc],
   );
 
   const restoreTable = useCallback(
@@ -273,11 +273,15 @@ export function useSavedTables() {
         if (yDoc) {
           runInYDoc((doc) => upsertSavedTableInYDoc(doc, restoredRecord));
           await deleteSavedTable(normalizedName, currentScope);
-        } else if (targetNormalizedName !== normalizedName) {
-          await addSavedTable(restoredRecord, currentScope);
-          await deleteSavedTable(normalizedName, currentScope);
         } else {
-          await updateSavedTable(restoredRecord, currentScope);
+          await writeLocalFallback(async () => {
+            if (targetNormalizedName !== normalizedName) {
+              await addSavedTable(restoredRecord, currentScope);
+              await deleteSavedTable(normalizedName, currentScope);
+              return;
+            }
+            await updateSavedTable(restoredRecord, currentScope);
+          });
         }
         await refresh();
         return { ok: true, normalizedName: targetNormalizedName };
@@ -289,14 +293,18 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, refresh, runInYDoc, savedTables, yDoc],
+    [currentScope, refresh, runInYDoc, savedTables, writeLocalFallback, yDoc],
   );
 
   const deleteTablePermanently = useCallback(
     async (normalizedName: string): Promise<SaveTableResult> => {
       try {
         if (!currentScope) throw new Error('工作区未就绪');
-        await deleteSavedTable(normalizedName, currentScope);
+        if (yDoc) {
+          await deleteSavedTable(normalizedName, currentScope);
+        } else {
+          await writeLocalFallback(() => deleteSavedTable(normalizedName, currentScope));
+        }
         runInYDoc((doc) => deleteSavedTableFromYDoc(doc, normalizedName));
         await refresh();
         return { ok: true, normalizedName };
@@ -308,7 +316,7 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, refresh, runInYDoc],
+    [currentScope, refresh, runInYDoc, writeLocalFallback, yDoc],
   );
 
   const renameTable = useCallback(
@@ -342,11 +350,15 @@ export function useSavedTables() {
               deleteSavedTableFromYDoc(doc, normalizedName);
             }
           });
-        } else if (nextNormalizedName === normalizedName) {
-          await updateSavedTable(updatedRecord, currentScope);
         } else {
-          await addSavedTable(updatedRecord, currentScope);
-          await deleteSavedTable(normalizedName, currentScope);
+          await writeLocalFallback(async () => {
+            if (nextNormalizedName === normalizedName) {
+              await updateSavedTable(updatedRecord, currentScope);
+              return;
+            }
+            await addSavedTable(updatedRecord, currentScope);
+            await deleteSavedTable(normalizedName, currentScope);
+          });
         }
         await refresh();
         return { ok: true, normalizedName: nextNormalizedName };
@@ -358,7 +370,7 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, refresh, runInYDoc, yDoc],
+    [currentScope, refresh, runInYDoc, writeLocalFallback, yDoc],
   );
 
   const loadTable = useCallback(
@@ -428,7 +440,7 @@ export function useSavedTables() {
             for (const record of plan.records) upsertSavedTableInYDoc(doc, record);
           });
         } else {
-          await updateSavedTables(plan.records, currentScope);
+          await writeLocalFallback(() => updateSavedTables(plan.records, currentScope));
         }
         await refresh();
 
@@ -445,7 +457,7 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, refresh, runInYDoc, yDoc],
+    [currentScope, refresh, runInYDoc, writeLocalFallback, yDoc],
   );
 
   // 清理指定文件夹ID关联的表（将它们移回未分组）
@@ -476,11 +488,11 @@ export function useSavedTables() {
           for (const record of updatedRecords) upsertSavedTableInYDoc(doc, record);
         });
       } else {
-        await updateSavedTables(updatedRecords, currentScope);
+        await writeLocalFallback(() => updateSavedTables(updatedRecords, currentScope));
       }
       await refresh();
     },
-    [currentScope, refresh, runInYDoc, savedTables, yDoc],
+    [currentScope, refresh, runInYDoc, savedTables, writeLocalFallback, yDoc],
   );
 
   return {

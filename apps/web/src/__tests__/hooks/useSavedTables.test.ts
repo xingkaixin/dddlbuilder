@@ -252,6 +252,38 @@ describe('useSavedTables', () => {
     });
   });
 
+  it('本地 Y.Doc 未就绪时批量导入，应重开 legacy 迁移', async () => {
+    mockUseAuthSession.mockReturnValue({
+      status: 'signed_in',
+      configured: true,
+      userId: 'user_1',
+      workspaceId: 'workspace_1',
+    } as any);
+    mockWorkspaceYDoc.value = {
+      doc: { transact: (callback: () => void) => callback() },
+      synced: false,
+      localSynced: false,
+      connectionState: 'idle',
+      retry: vi.fn(),
+    };
+    const { result } = renderHook(() => useSavedTables());
+
+    await act(async () => {
+      await flushPromises();
+      await result.current.importTables({
+        items: [{ name: 'Imported', state: createState('imported') }],
+        conflictStrategy: 'skip',
+      });
+      await flushPromises();
+    });
+
+    expect(mockMigrationMarker.invalidateLegacyWorkspaceMigration).toHaveBeenCalledWith({
+      kind: 'user',
+      userId: 'user_1',
+      workspaceId: 'workspace_1',
+    });
+  });
+
   it('本地 Y.Doc 就绪时保存，不应重开 legacy 迁移', async () => {
     mockUseAuthSession.mockReturnValue({
       status: 'signed_in',

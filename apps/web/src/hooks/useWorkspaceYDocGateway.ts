@@ -6,12 +6,11 @@ import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 type WorkspaceYDocGatewayOptions = {
   enabled?: boolean;
   origin?: unknown;
-  onDocUnavailable?: () => void;
 };
 
 export function useWorkspaceYDocGateway(
   scope: WorkspaceScope | null,
-  { enabled = true, origin, onDocUnavailable }: WorkspaceYDocGatewayOptions = {},
+  { enabled = true, origin }: WorkspaceYDocGatewayOptions = {},
 ) {
   const workspaceYDoc = useWorkspaceYDoc();
   const yDocReady = Boolean(
@@ -26,13 +25,10 @@ export function useWorkspaceYDocGateway(
 
   const runInYDoc = useCallback(
     (mutate: (doc: Y.Doc) => void) => {
-      if (!yDoc) {
-        onDocUnavailable?.();
-        return;
-      }
+      if (!yDoc) return;
       yDoc.transact(() => mutate(yDoc), origin);
     },
-    [onDocUnavailable, origin, yDoc],
+    [origin, yDoc],
   );
 
   return { workspaceYDoc, yDoc, yDocReady, runInYDoc };
