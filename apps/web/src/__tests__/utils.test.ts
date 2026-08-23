@@ -4,8 +4,6 @@ import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
 import type { IndexDefinition } from '@ddlbuilder/shared-types';
 import {
   createEmptyRow,
-  isIntegerType,
-  isCharacterType,
   supportsUuidDefault,
   getUiDefaultKindOptions,
   getUiOnUpdateOptions,
@@ -461,47 +459,6 @@ describe('Utils', () => {
       const row2 = createEmptyRow();
 
       expect(row1.id).not.toBe(row2.id);
-    });
-  });
-
-  describe('isIntegerType function', () => {
-    it('应该正确识别整数类型', () => {
-      expect(isIntegerType('tinyint')).toBe(true);
-      expect(isIntegerType('smallint')).toBe(true);
-      expect(isIntegerType('int')).toBe(true);
-      expect(isIntegerType('integer')).toBe(true);
-      expect(isIntegerType('bigint')).toBe(true);
-    });
-
-    it('应该识别非整数类型', () => {
-      expect(isIntegerType('varchar')).toBe(false);
-      expect(isIntegerType('decimal')).toBe(false);
-      expect(isIntegerType('float')).toBe(false);
-      expect(isIntegerType('text')).toBe(false);
-    });
-  });
-
-  describe('isCharacterType function', () => {
-    it('应该正确识别字符类型', () => {
-      expect(isCharacterType('char')).toBe(true);
-      expect(isCharacterType('varchar')).toBe(true);
-      expect(isCharacterType('text')).toBe(true);
-      expect(isCharacterType('nchar')).toBe(true);
-      expect(isCharacterType('nvarchar')).toBe(true);
-      expect(isCharacterType('longtext')).toBe(true);
-      expect(isCharacterType('mediumtext')).toBe(true);
-      expect(isCharacterType('tinytext')).toBe(true);
-      expect(isCharacterType('clob')).toBe(true);
-      expect(isCharacterType('varchar2')).toBe(true);
-      expect(isCharacterType('nvarchar2')).toBe(true);
-      expect(isCharacterType('uuid')).toBe(true);
-    });
-
-    it('应该识别非字符类型', () => {
-      expect(isCharacterType('int')).toBe(false);
-      expect(isCharacterType('decimal')).toBe(false);
-      expect(isCharacterType('float')).toBe(false);
-      expect(isCharacterType('timestamp')).toBe(false);
     });
   });
 

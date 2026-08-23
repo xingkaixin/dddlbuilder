@@ -37,20 +37,13 @@ export function useAppSelectors() {
     setTimelinePlayerTarget,
   } = useEditorStore.getState();
 
-  const { setRows, initializeRows, resetRows: resetTableRows } = useEditorStore.getState();
+  const { setRows, resetRows: resetTableRows } = useEditorStore.getState();
 
-  const {
-    setIndexInput,
-    setCurrentIndexFields,
-    initializeIndexState,
-    updateIndexNames,
-    resetIndexState,
-    setIndexes,
-  } = useEditorStore.getState();
+  const { setIndexInput, setCurrentIndexFields, updateIndexNames, resetIndexState, setIndexes } =
+    useEditorStore.getState();
 
   const {
     setForeignKeys,
-    initializeForeignKeyState,
     resetForeignKeyState,
     addForeignKey,
     removeForeignKey,
@@ -145,7 +138,6 @@ export function useAppSelectors() {
     // Field store
     rows,
     setRows,
-    initializeRows,
     resetTableRows,
     // Index store
     indexInput,
@@ -153,14 +145,12 @@ export function useAppSelectors() {
     indexes,
     setIndexInput,
     setCurrentIndexFields,
-    initializeIndexState,
     updateIndexNames,
     resetIndexState,
     setIndexes,
     // ForeignKey store
     foreignKeys,
     setForeignKeys,
-    initializeForeignKeyState,
     resetForeignKeyState,
     addForeignKey,
     removeForeignKey,

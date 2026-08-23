@@ -16,7 +16,6 @@ import type {
   SqlFormatMode,
   TableMiscConfig,
 } from '@ddlbuilder/shared-types';
-import type { TableCellChange, TableChangeSource } from '@/types/tableChanges';
 import type { BuilderTab } from '@/utils/tabUtils';
 
 type Setter<T> = T | ((previous: T) => T);
@@ -84,9 +83,7 @@ export interface AppSlice {
 export interface FieldSlice {
   rows: FieldRow[];
   setRows: (value: Setter<FieldRow[]>) => void;
-  initializeRows: (persistedRows?: FieldRow[]) => void;
   resetRows: (count?: number) => void;
-  handleRowsChange: (changes: (TableCellChange | null)[] | null, source: TableChangeSource) => void;
   handleCreateRow: (index: number, amount: number) => void;
   handleAddRows: (count: number) => void;
 }
@@ -102,11 +99,6 @@ export interface IndexSlice {
   setIndexes: (value: Setter<IndexDefinition[]>) => void;
   setShowFieldSuggestions: (value: Setter<boolean>) => void;
   setSelectedSuggestionIndex: (value: Setter<number>) => void;
-  initializeIndexState: (state?: {
-    indexInput?: string;
-    currentIndexFields?: IndexField[];
-    indexes?: IndexDefinition[];
-  }) => void;
   addFieldToIndex: (fieldName: string) => void;
   removeFieldFromIndex: (index: number) => void;
   toggleFieldDirection: (index: number) => void;
@@ -121,7 +113,6 @@ export interface IndexSlice {
 export interface ForeignKeySlice {
   foreignKeys: ForeignKeyDefinition[];
   setForeignKeys: (value: Setter<ForeignKeyDefinition[]>) => void;
-  initializeForeignKeyState: (state?: { foreignKeys?: ForeignKeyDefinition[] }) => void;
   addForeignKey: (foreignKey: Omit<ForeignKeyDefinition, 'id'>) => void;
   removeForeignKey: (id: string) => void;
   updateForeignKey: (id: string, updates: Partial<Omit<ForeignKeyDefinition, 'id'>>) => void;

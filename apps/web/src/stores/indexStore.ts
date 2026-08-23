@@ -33,18 +33,6 @@ export const createIndexSlice = (set: EditorSetState, get: EditorGetState): Inde
         typeof index === 'function' ? index(state.selectedSuggestionIndex) : index,
     })),
 
-  initializeIndexState: (persistedState) => {
-    if (!persistedState) {
-      return;
-    }
-
-    set({
-      indexInput: persistedState.indexInput ?? '',
-      currentIndexFields: persistedState.currentIndexFields ?? [],
-      indexes: persistedState.indexes ?? [],
-    });
-  },
-
   addFieldToIndex: (fieldName) => {
     set((state) => ({
       currentIndexFields: [...state.currentIndexFields, { name: fieldName, direction: 'ASC' }],

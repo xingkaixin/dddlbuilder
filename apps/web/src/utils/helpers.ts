@@ -71,25 +71,6 @@ export const normalizeFields = (rows: FieldRow[]) =>
     }))
     .filter((field) => field.name && field.type);
 
-export const isIntegerType = (canonical: string) =>
-  new Set(['tinyint', 'smallint', 'int', 'integer', 'bigint']).has(canonical);
-
-export const isCharacterType = (canonical: string) =>
-  new Set([
-    'char',
-    'varchar',
-    'text',
-    'nchar',
-    'nvarchar',
-    'longtext',
-    'mediumtext',
-    'tinytext',
-    'clob',
-    'varchar2',
-    'nvarchar2',
-    'uuid',
-  ]).has(canonical);
-
 // 委托到 databaseTypeMapping.ts 中的函数以保持一致性
 export {
   supportsAutoIncrement,

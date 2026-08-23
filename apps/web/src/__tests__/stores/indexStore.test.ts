@@ -139,17 +139,9 @@ describe('indexStore', () => {
     expect(useEditorStore.getState().indexes.length).toBe(1);
   });
 
-  it('应支持初始化、切换排序方向与删除字段', () => {
+  it('应支持切换排序方向与删除字段', () => {
     const state = useEditorStore.getState();
-    const persisted = {
-      indexInput: 'na',
-      currentIndexFields: [{ name: 'name', direction: 'ASC' as const }],
-      indexes: [],
-    };
-
-    state.initializeIndexState(undefined);
-    state.initializeIndexState(persisted);
-    expect(useEditorStore.getState().indexInput).toBe('na');
+    state.setCurrentIndexFields([{ name: 'name', direction: 'ASC' }]);
 
     state.toggleFieldDirection(0);
     expect(useEditorStore.getState().currentIndexFields[0].direction).toBe('DESC');

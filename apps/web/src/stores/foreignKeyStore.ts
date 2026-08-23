@@ -9,15 +9,6 @@ export const createForeignKeySlice = (set: EditorSetState): ForeignKeySlice => (
       foreignKeys: typeof foreignKeys === 'function' ? foreignKeys(state.foreignKeys) : foreignKeys,
     })),
 
-  initializeForeignKeyState: (persistedState) => {
-    if (!persistedState) {
-      return;
-    }
-    set({
-      foreignKeys: persistedState.foreignKeys ?? [],
-    });
-  },
-
   addForeignKey: (fk) => {
     const newFk: ForeignKeyDefinition = {
       ...fk,

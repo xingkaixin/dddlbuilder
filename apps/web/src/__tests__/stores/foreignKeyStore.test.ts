@@ -37,20 +37,6 @@ describe('foreignKeyStore', () => {
     expect(useEditorStore.getState().foreignKeys[0].name).toBe('fk_account');
   });
 
-  it('initializes from persisted state', () => {
-    useEditorStore.getState().initializeForeignKeyState({
-      foreignKeys: [
-        { id: 'fk1', name: 'fk_user', fields: ['user_id'], refTable: 'users', refFields: ['id'] },
-      ],
-    });
-    expect(useEditorStore.getState().foreignKeys).toHaveLength(1);
-  });
-
-  it('does nothing when initializing with undefined', () => {
-    useEditorStore.getState().initializeForeignKeyState(undefined);
-    expect(useEditorStore.getState().foreignKeys).toEqual([]);
-  });
-
   it('adds a foreign key with generated id', () => {
     useEditorStore.getState().addForeignKey({
       name: 'fk_user',
