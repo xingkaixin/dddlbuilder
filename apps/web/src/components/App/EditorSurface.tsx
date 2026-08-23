@@ -4,8 +4,44 @@ import { OutputContainer } from './containers/OutputContainer';
 import { TableBuilderContainer } from './containers/TableBuilderContainer';
 import type { AppController } from './useAppController';
 
+type EditorSurfaceActions = Pick<
+  AppController['actions'],
+  | 'aiCommentActions'
+  | 'indexAdvisor'
+  | 'reviewActions'
+  | 'clearActions'
+  | 'schemaActions'
+  | 'navigationActions'
+>;
+
+export type EditorSurfaceSchema = Pick<
+  AppController['schema'],
+  | 'availableFields'
+  | 'canSaveCurrent'
+  | 'dataTableToolbarLeft'
+  | 'filledRowCount'
+  | 'handleDbTypeChange'
+  | 'handleSaveCurrent'
+  | 'handleTableNameChange'
+  | 'handleViewCurrentVersionHistory'
+  | 'qualifiedTableName'
+  | 'schemaLintIssues'
+  | 'tableDiff'
+>;
+
 interface EditorSurfaceProps {
-  controller: AppController;
+  actions: EditorSurfaceActions;
+  domains: AppController['domains'];
+  workspace: Pick<
+    AppController['workspace'],
+    | 'isLoadedDirty'
+    | 'isShareView'
+    | 'loadedTableName'
+    | 'loadedTableNormalizedName'
+    | 'workspaceLabel'
+  >;
+  schema: EditorSurfaceSchema;
+  output: AppController['output'];
   outputPanelOpen: boolean;
   setOutputPanelOpen: (open: boolean) => void;
   onOpenErDiagram: () => void;
@@ -13,14 +49,17 @@ interface EditorSurfaceProps {
 }
 
 export function EditorSurface({
-  controller,
+  actions,
+  domains,
+  workspace,
+  schema,
+  output,
   outputPanelOpen,
   setOutputPanelOpen,
   onOpenErDiagram,
   onOpenAISchemaPatch,
 }: EditorSurfaceProps) {
   const { t } = useTranslation();
-  const { actions, domains, workspace, schema, output } = controller;
   const { editor, auth, sharding, animations, partition, tableOptions, reviewState } = domains;
   const {
     aiCommentActions,

@@ -13,8 +13,37 @@ const ImportSqlDialog = lazy(() =>
   })),
 );
 
+type DialogActions = Pick<
+  AppController['actions'],
+  | 'indexAdvisor'
+  | 'folderActions'
+  | 'templateActions'
+  | 'clearActions'
+  | 'savedTableFlow'
+  | 'tableTemplateActions'
+  | 'trashActions'
+  | 'aiPatchFlow'
+  | 'schemaActions'
+>;
+
 interface AppDialogLayerProps {
-  controller: AppController;
+  actions: DialogActions;
+  domains: Pick<AppController['domains'], 'editor' | 'tableOptions'>;
+  resources: AppController['resources'];
+  workspace: Pick<
+    AppController['workspace'],
+    'loadedTableNormalizedName' | 'workspaceScope' | 'isShareView'
+  >;
+  schema: Pick<
+    AppController['schema'],
+    | 'aiGenerateExistingConfig'
+    | 'aiGenerateTemplates'
+    | 'canSaveCurrent'
+    | 'currentPersistedState'
+    | 'normalizedFields'
+    | 'tableDiff'
+  >;
+  dialogs: AppController['dialogs'];
   isImportDialogOpen: boolean;
   setIsImportDialogOpen: (open: boolean) => void;
   isErDialogOpen: boolean;
@@ -24,7 +53,12 @@ interface AppDialogLayerProps {
 }
 
 export function AppDialogLayer({
-  controller,
+  actions,
+  domains,
+  resources,
+  workspace,
+  schema,
+  dialogs,
   isImportDialogOpen,
   setIsImportDialogOpen,
   isErDialogOpen,
@@ -33,7 +67,6 @@ export function AppDialogLayer({
   setIsAISchemaPatchOpen,
 }: AppDialogLayerProps) {
   const { t } = useTranslation();
-  const { actions, domains, resources, workspace, schema, dialogs } = controller;
   const { editor, tableOptions } = domains;
   const { savedTableData, folderData, fieldTemplateData, tableTemplateData } = resources;
   const { folderActions, templateActions, savedTableFlow, tableTemplateActions, trashActions } =

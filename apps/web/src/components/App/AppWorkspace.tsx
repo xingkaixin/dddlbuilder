@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight, Upload } from '@/components/icons';
 import { isCnyFireworksEnabled } from '@/config/featureFlags';
-import { EditorSurface } from './EditorSurface';
+import { EditorSurface, type EditorSurfaceSchema } from './EditorSurface';
 import { Header } from './Header';
 import { MainWorkspaceSkeleton } from './MainWorkspaceSkeleton';
 import { SavedTablesDrawer } from './SavedTablesDrawer';
@@ -14,8 +14,33 @@ import type { AppController } from './useAppController';
 
 const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
 
+type WorkspaceActions = Pick<
+  AppController['actions'],
+  | 'aiCommentActions'
+  | 'indexAdvisor'
+  | 'folderActions'
+  | 'reviewActions'
+  | 'shareAction'
+  | 'clearActions'
+  | 'savedTableFlow'
+  | 'workspaceTabs'
+  | 'tableTemplateActions'
+  | 'trashActions'
+  | 'schemaActions'
+  | 'navigationActions'
+>;
+
 interface AppWorkspaceProps {
-  controller: AppController;
+  actions: WorkspaceActions;
+  domains: AppController['domains'];
+  resources: Pick<
+    AppController['resources'],
+    'savedTableData' | 'folderData' | 'tableTemplateData'
+  >;
+  workspace: Omit<AppController['workspace'], 'workspaceScope'>;
+  schema: EditorSurfaceSchema;
+  output: AppController['output'];
+  celebration: AppController['celebration'];
   workspaceSidebarOpen: boolean;
   setWorkspaceSidebarOpen: (open: boolean) => void;
   outputPanelOpen: boolean;
@@ -26,7 +51,13 @@ interface AppWorkspaceProps {
 }
 
 export function AppWorkspace({
-  controller,
+  actions,
+  domains,
+  resources,
+  workspace,
+  schema,
+  output,
+  celebration,
   workspaceSidebarOpen,
   setWorkspaceSidebarOpen,
   outputPanelOpen,
@@ -36,7 +67,6 @@ export function AppWorkspace({
   onOpenAISchemaPatch,
 }: AppWorkspaceProps) {
   const { t } = useTranslation();
-  const { actions, domains, resources, workspace, celebration } = controller;
   const { editor } = domains;
   const { setSavedTablesDrawerOpen } = editor;
   const { savedTableData, folderData, tableTemplateData } = resources;
@@ -220,7 +250,11 @@ export function AppWorkspace({
               />
             ) : (
               <EditorSurface
-                controller={controller}
+                actions={actions}
+                domains={domains}
+                workspace={workspace}
+                schema={schema}
+                output={output}
                 outputPanelOpen={outputPanelOpen}
                 setOutputPanelOpen={setOutputPanelOpen}
                 onOpenErDiagram={onOpenErDiagram}
