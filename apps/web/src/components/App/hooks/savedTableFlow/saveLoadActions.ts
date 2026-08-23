@@ -9,7 +9,6 @@ import { resolveSavedTableSnapshot } from '@/services/savedTableSnapshot';
 
 type SaveDialogData = {
   name: string;
-  queuedLoadAfterSave: SavedTableSummary | null;
 };
 
 interface UseSaveLoadActionsParams {
@@ -21,7 +20,6 @@ interface UseSaveLoadActionsParams {
   saveDialog: UseDialogStateReturn<SaveDialogData>;
   buildPersistedState: () => PersistedState;
   serializePersistedState: (state: PersistedState) => string;
-  applySavedState: (state: PersistedState) => void;
   loadTable: (normalizedName: string) => Promise<{
     normalizedName: string;
     name: string;
@@ -50,7 +48,6 @@ export function useSaveLoadActions({
   saveDialog,
   buildPersistedState,
   serializePersistedState,
-  applySavedState,
   loadTable,
   saveTable,
   overwriteTable,
@@ -63,7 +60,6 @@ export function useSaveLoadActions({
   const loadedTableNormalizedName = loadedTableSource?.normalizedName ?? null;
   const loadedTableName = loadedTableSource?.tableName ?? null;
   const saveName = saveDialog.data.name;
-  const queuedLoadAfterSave = saveDialog.data.queuedLoadAfterSave;
 
   const resolveSavedTable = useCallback(
     async (target: SavedTableSummary) => {
@@ -100,30 +96,10 @@ export function useSaveLoadActions({
     [loadTable, showToast, getSavedTableDraft, onTableLoadStateChange],
   );
 
-  const handleLoadSavedTable = useCallback(
-    async (target: SavedTableSummary) => {
-      const snapshot = await resolveSavedTable(target);
-      if (!snapshot) return null;
-
-      setWorkspaceSnapshot?.(snapshot.source, snapshot.state);
-      applySavedState(snapshot.state);
-      setLoadedTableVersion(snapshot.version, snapshot.source.normalizedName);
-      showToast(`已加载：${snapshot.source.tableName} (v${snapshot.version})`);
-      return snapshot;
-    },
-    [applySavedState, resolveSavedTable, setLoadedTableVersion, setWorkspaceSnapshot, showToast],
-  );
-
-  const openSaveDialog = useCallback(
-    (queuedLoad?: SavedTableSummary | null) => {
-      const defaultName = loadedTableName || tableName.trim() || DEFAULT_SAVED_TABLE_NAME;
-      saveDialog.openDialog({
-        name: defaultName,
-        queuedLoadAfterSave: queuedLoad ?? null,
-      });
-    },
-    [loadedTableName, tableName, saveDialog],
-  );
+  const openSaveDialog = useCallback(() => {
+    const defaultName = loadedTableName || tableName.trim() || DEFAULT_SAVED_TABLE_NAME;
+    saveDialog.openDialog({ name: defaultName });
+  }, [loadedTableName, tableName, saveDialog]);
 
   const handleConfirmSave = useCallback(async () => {
     if (!canSaveCurrent) {
@@ -209,10 +185,6 @@ export function useSaveLoadActions({
         mode: saveMode,
       });
     }
-
-    if (queuedLoadAfterSave) {
-      await handleLoadSavedTable(queuedLoadAfterSave);
-    }
   }, [
     canSaveCurrent,
     showToast,
@@ -228,8 +200,6 @@ export function useSaveLoadActions({
     saveTable,
     saveDialog,
     onSaveSuccess,
-    queuedLoadAfterSave,
-    handleLoadSavedTable,
   ]);
 
   const handleSaveDialogOpenChange = useCallback(
@@ -242,14 +212,13 @@ export function useSaveLoadActions({
   );
 
   const handleOpenSaveDialog = useCallback(() => {
-    openSaveDialog(null);
+    openSaveDialog();
   }, [openSaveDialog]);
 
   return {
     handleOpenSaveDialog,
     handleConfirmSave,
     handleSaveDialogOpenChange,
-    handleLoadSavedTable,
     resolveSavedTable,
   };
 }

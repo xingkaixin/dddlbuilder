@@ -2,7 +2,6 @@ import { useCallback, useState } from 'react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { AppDialogLayer } from './AppDialogLayer';
 import { AppWorkspace } from './AppWorkspace';
-import { toAppDialogModel, toAppShellModel, toAppWorkspaceModel } from './appViewModel';
 import { useAppController } from './useAppController';
 
 export function AppView() {
@@ -12,26 +11,32 @@ export function AppView() {
   const [workspaceSidebarOpen, setWorkspaceSidebarOpen] = useState(true);
   const [outputPanelOpen, setOutputPanelOpen] = useState(true);
   const [isAISchemaPatchOpen, setIsAISchemaPatchOpen] = useState(false);
-  const shell = toAppShellModel(controller);
-  const workspaceModel = toAppWorkspaceModel(controller);
-  const dialogModel = toAppDialogModel(controller);
-  const { tabs, isShareView, openAIGenerateDialog } = shell;
+  const { actions, domains, resources, workspace, schema, output, dialogs, celebration } =
+    controller;
+  const { tabs, isShareView } = workspace;
+  const { handleOpenAIGenerateDialog } = actions.navigationActions;
 
   const handleOpenImport = useCallback(() => setIsImportDialogOpen(true), []);
   const handleOpenErDiagram = useCallback(() => setIsErDialogOpen(true), []);
   const handleOpenAISchemaPatch = useCallback(() => {
     if (tabs.length === 0 && !isShareView) {
-      openAIGenerateDialog();
+      handleOpenAIGenerateDialog();
       return;
     }
     setIsAISchemaPatchOpen(true);
-  }, [isShareView, openAIGenerateDialog, tabs.length]);
+  }, [handleOpenAIGenerateDialog, isShareView, tabs.length]);
 
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-background text-foreground">
         <AppWorkspace
-          {...workspaceModel}
+          actions={actions}
+          domains={domains}
+          resources={resources}
+          workspace={workspace}
+          schema={schema}
+          output={output}
+          celebration={celebration}
           workspaceSidebarOpen={workspaceSidebarOpen}
           setWorkspaceSidebarOpen={setWorkspaceSidebarOpen}
           outputPanelOpen={outputPanelOpen}
@@ -41,7 +46,12 @@ export function AppView() {
           onOpenAISchemaPatch={handleOpenAISchemaPatch}
         />
         <AppDialogLayer
-          {...dialogModel}
+          actions={actions}
+          domains={domains}
+          resources={resources}
+          workspace={workspace}
+          schema={schema}
+          dialogs={dialogs}
           isImportDialogOpen={isImportDialogOpen}
           setIsImportDialogOpen={setIsImportDialogOpen}
           isErDialogOpen={isErDialogOpen}

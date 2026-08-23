@@ -7,7 +7,6 @@ import { useSaveLoadActions } from './savedTableFlow/saveLoadActions';
 
 type SaveDialogData = {
   name: string;
-  queuedLoadAfterSave: SavedTableSummary | null;
 };
 
 type RenameDialogData = {
@@ -30,7 +29,6 @@ interface UseSavedTableFlowActionsParams {
   deleteDialog: UseDialogStateReturn<DeleteDialogData>;
   buildPersistedState: () => PersistedState;
   serializePersistedState: (state: PersistedState) => string;
-  applySavedState: (state: PersistedState) => void;
   loadTable: (normalizedName: string) => Promise<{
     normalizedName: string;
     name: string;
@@ -71,7 +69,6 @@ export function useSavedTableFlowActions({
   deleteDialog,
   buildPersistedState,
   serializePersistedState,
-  applySavedState,
   loadTable,
   renameTable,
   deleteTable,
@@ -96,7 +93,6 @@ export function useSavedTableFlowActions({
     saveDialog,
     buildPersistedState,
     serializePersistedState,
-    applySavedState,
     loadTable,
     saveTable,
     overwriteTable,

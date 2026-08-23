@@ -14,7 +14,6 @@ vi.mock('@/utils/tableVersions', () => ({
 describe('useSaveLoadActions', () => {
   let saveDialog: any;
   let setLoadedTableVersion: any;
-  let applySavedState: any;
   let loadTable: any;
   let saveTable: any;
   let overwriteTable: any;
@@ -29,7 +28,7 @@ describe('useSaveLoadActions', () => {
     vi.clearAllMocks();
     saveDialog = {
       isOpen: false,
-      data: { name: '', queuedLoadAfterSave: null },
+      data: { name: '' },
       openDialog: vi.fn().mockImplementation((d: any) => {
         saveDialog.data = d;
       }),
@@ -37,7 +36,6 @@ describe('useSaveLoadActions', () => {
       setError: vi.fn(),
     };
     setLoadedTableVersion = vi.fn();
-    applySavedState = vi.fn();
     loadTable = vi.fn();
     saveTable = vi.fn();
     overwriteTable = vi.fn();
@@ -60,7 +58,6 @@ describe('useSaveLoadActions', () => {
         saveDialog,
         buildPersistedState,
         serializePersistedState,
-        applySavedState,
         loadTable,
         saveTable,
         overwriteTable,
@@ -72,12 +69,12 @@ describe('useSaveLoadActions', () => {
       }),
     );
 
-  it('handleLoadSavedTable handles not found', async () => {
+  it('resolveSavedTable handles not found', async () => {
     loadTable.mockResolvedValue(null);
     const { result } = getHook();
 
     await act(async () => {
-      result.current.handleLoadSavedTable({
+      await result.current.resolveSavedTable({
         normalizedName: 'missing',
       } as any);
     });
@@ -85,12 +82,12 @@ describe('useSaveLoadActions', () => {
     expect(showToast).toHaveBeenCalledWith('未找到保存的表');
   });
 
-  it('handleLoadSavedTable handles load error', async () => {
+  it('resolveSavedTable handles load error', async () => {
     loadTable.mockRejectedValue(new Error('Load failed'));
     const { result } = getHook();
 
     await act(async () => {
-      result.current.handleLoadSavedTable({
+      await result.current.resolveSavedTable({
         normalizedName: 'error_table',
       } as any);
     });
@@ -99,7 +96,7 @@ describe('useSaveLoadActions', () => {
     expect(onTableLoadStateChange).toHaveBeenCalledWith(false);
   });
 
-  it('handleLoadSavedTable success sets states appropriately', async () => {
+  it('resolveSavedTable returns resolved state and version', async () => {
     const mockRecord = {
       normalizedName: 'norm_test',
       name: 'test_table',
@@ -112,18 +109,20 @@ describe('useSaveLoadActions', () => {
     loadTable.mockResolvedValue(mockRecord);
     const { result } = getHook();
 
+    let snapshot: Awaited<ReturnType<typeof result.current.resolveSavedTable>> = null;
     await act(async () => {
-      result.current.handleLoadSavedTable(mockRecord as any);
+      snapshot = await result.current.resolveSavedTable(mockRecord as any);
     });
 
     expect(onTableLoadStateChange).toHaveBeenCalledWith(true);
-    expect(setWorkspaceSnapshot).toHaveBeenCalled();
-    expect(applySavedState).toHaveBeenCalledWith(mockRecord.state);
-    expect(showToast).toHaveBeenCalledWith(expect.stringContaining('已加载：test_table'));
+    expect(snapshot).toMatchObject({
+      source: { normalizedName: 'norm_test', tableName: 'test_table' },
+      version: 1,
+    });
     expect(onTableLoadStateChange).toHaveBeenCalledWith(false);
   });
 
-  it('handleLoadSavedTable restores matching saved-table draft', async () => {
+  it('resolveSavedTable restores matching saved-table draft', async () => {
     const savedState = {
       tableName: 'test_table',
       dbType: 'mysql',
@@ -148,16 +147,16 @@ describe('useSaveLoadActions', () => {
       }),
     });
 
+    let snapshot: Awaited<ReturnType<typeof result.current.resolveSavedTable>> = null;
     await act(async () => {
-      result.current.handleLoadSavedTable({
+      snapshot = await result.current.resolveSavedTable({
         normalizedName: 'norm_test',
         name: 'test_table',
       } as any);
     });
 
-    expect(applySavedState).toHaveBeenCalledWith(draftState);
-    expect(setWorkspaceSnapshot).toHaveBeenCalledWith(
-      {
+    expect(snapshot).toEqual({
+      source: {
         kind: 'saved_table',
         normalizedName: 'norm_test',
         tableName: 'test_table',
@@ -165,8 +164,9 @@ describe('useSaveLoadActions', () => {
           normalizePersistedRows(savedState as PersistedState),
         ),
       },
-      draftState,
-    );
+      state: draftState,
+      version: 1,
+    });
   });
 
   it('resolveSavedTable 只解析目标标签数据，不修改当前编辑器', async () => {
@@ -191,7 +191,6 @@ describe('useSaveLoadActions', () => {
       state: savedState,
     });
     expect(setWorkspaceSnapshot).not.toHaveBeenCalled();
-    expect(applySavedState).not.toHaveBeenCalled();
     expect(setLoadedTableVersion).not.toHaveBeenCalled();
   });
 
@@ -240,11 +239,12 @@ describe('useSaveLoadActions', () => {
       } as PersistedState;
       const { result } = loadWithDraft(draftState, JSON.stringify(legacySavedState));
 
+      let snapshot: Awaited<ReturnType<typeof result.current.resolveSavedTable>> = null;
       await act(async () => {
-        result.current.handleLoadSavedTable({ normalizedName: 'orders' } as any);
+        snapshot = await result.current.resolveSavedTable({ normalizedName: 'orders' } as any);
       });
 
-      expect(applySavedState).toHaveBeenCalledWith(draftState);
+      expect(snapshot?.state).toBe(draftState);
     });
 
     it('基线确实变化时仍回落到已保存版本', async () => {
@@ -255,11 +255,12 @@ describe('useSaveLoadActions', () => {
       });
       const { result } = loadWithDraft(draftState, staleBase);
 
+      let snapshot: Awaited<ReturnType<typeof result.current.resolveSavedTable>> = null;
       await act(async () => {
-        result.current.handleLoadSavedTable({ normalizedName: 'orders' } as any);
+        snapshot = await result.current.resolveSavedTable({ normalizedName: 'orders' } as any);
       });
 
-      expect(applySavedState).toHaveBeenCalledWith(normalizePersistedRows(legacySavedState));
+      expect(snapshot?.state).toEqual(normalizePersistedRows(legacySavedState));
     });
   });
 
@@ -270,7 +271,6 @@ describe('useSaveLoadActions', () => {
     });
     expect(saveDialog.openDialog).toHaveBeenCalledWith({
       name: '未命名表',
-      queuedLoadAfterSave: null,
     });
   });
 
@@ -324,16 +324,8 @@ describe('useSaveLoadActions', () => {
   it('handleConfirmSave handles overwriteTable success with exact states mapped', async () => {
     saveDialog.data = {
       name: 'saved_name',
-      queuedLoadAfterSave: { normalizedName: 'queue_1' },
     };
     overwriteTable.mockResolvedValue({ ok: true });
-
-    // We mock the loadTable so queuedLoadAfterSave works cleanly
-    loadTable.mockResolvedValue({
-      normalizedName: 'queue_1',
-      name: 'queue_table',
-      state: { rows: [] },
-    });
 
     const { result } = getHook({
       hasLoadedTable: true,
@@ -358,8 +350,7 @@ describe('useSaveLoadActions', () => {
       baseSignature: 'mock-sig',
       mode: 'update',
     });
-    // We expect it to run handleLoadSavedTable after success
-    expect(loadTable).toHaveBeenCalledWith('queue_1');
+    expect(loadTable).not.toHaveBeenCalled();
   });
 
   it('handleConfirmSave handles saveTable duplicate error', async () => {

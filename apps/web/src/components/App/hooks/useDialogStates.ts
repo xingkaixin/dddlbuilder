@@ -16,13 +16,11 @@ export function useDialogStates(deps: {
 }) {
   const saveDialog = useDialogState<{
     name: string;
-    queuedLoadAfterSave: SavedTableSummary | null;
   }>({
     open: deps.isSaveDialogOpen,
     setOpen: deps.setIsSaveDialogOpen,
     initialData: {
       name: '',
-      queuedLoadAfterSave: null,
     },
   });
 

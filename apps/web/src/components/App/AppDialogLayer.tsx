@@ -5,7 +5,7 @@ import { AISchemaPatchPanel } from './AISchemaPatchPanel';
 import { AIIndexAdvisorDialog } from './AIIndexAdvisorDialog';
 import { DialogRenderGuard } from './containers/DialogRenderGuard';
 import { GlobalDialogs } from './containers/GlobalDialogs';
-import type { AppDialogModel } from './appViewModel';
+import type { AppController } from './useAppController';
 
 const ImportSqlDialog = lazy(() =>
   import('@/components/ImportSqlDialog').then((module) => ({
@@ -13,14 +13,44 @@ const ImportSqlDialog = lazy(() =>
   })),
 );
 
-type AppDialogLayerProps = AppDialogModel & {
+type DialogActions = Pick<
+  AppController['actions'],
+  | 'indexAdvisor'
+  | 'folderActions'
+  | 'templateActions'
+  | 'clearActions'
+  | 'savedTableFlow'
+  | 'tableTemplateActions'
+  | 'trashActions'
+  | 'aiPatchFlow'
+  | 'schemaActions'
+>;
+
+interface AppDialogLayerProps {
+  actions: DialogActions;
+  domains: Pick<AppController['domains'], 'editor' | 'tableOptions'>;
+  resources: AppController['resources'];
+  workspace: Pick<
+    AppController['workspace'],
+    'loadedTableNormalizedName' | 'workspaceScope' | 'isShareView'
+  >;
+  schema: Pick<
+    AppController['schema'],
+    | 'aiGenerateExistingConfig'
+    | 'aiGenerateTemplates'
+    | 'canSaveCurrent'
+    | 'currentPersistedState'
+    | 'normalizedFields'
+    | 'tableDiff'
+  >;
+  dialogs: AppController['dialogs'];
   isImportDialogOpen: boolean;
   setIsImportDialogOpen: (open: boolean) => void;
   isErDialogOpen: boolean;
   setIsErDialogOpen: (open: boolean) => void;
   isAISchemaPatchOpen: boolean;
   setIsAISchemaPatchOpen: (open: boolean) => void;
-};
+}
 
 export function AppDialogLayer({
   actions,
@@ -53,12 +83,8 @@ export function AppDialogLayer({
         saveDialog={{
           open: editor.isSaveDialogOpen,
           onOpenChange: savedTableFlow.handleSaveDialogOpenChange,
-          title: dialogs.saveDialog.data.queuedLoadAfterSave
-            ? t('dialogs.save.queuedLoadTitle')
-            : dialogs.saveDialogTitle,
-          description: dialogs.saveDialog.data.queuedLoadAfterSave
-            ? t('dialogs.save.queuedLoadDescription')
-            : dialogs.saveDialogDescription,
+          title: dialogs.saveDialogTitle,
+          description: dialogs.saveDialogDescription,
           name: dialogs.saveName,
           onNameChange: dialogs.handleSaveNameChange,
           error: dialogs.saveError,

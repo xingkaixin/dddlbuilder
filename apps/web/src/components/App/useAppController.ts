@@ -462,7 +462,6 @@ export function useAppController() {
     deleteDialog,
     buildPersistedState,
     serializePersistedState,
-    applySavedState,
     loadTable,
     renameTable,
     deleteTable,

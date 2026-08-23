@@ -51,7 +51,6 @@ describe('useSavedTableFlowActions', () => {
     const state = createState('Users');
     const saveDialog = createDialog({
       name: 'Users',
-      queuedLoadAfterSave: null,
     });
 
     const setWorkspaceSnapshot = vi.fn();
@@ -69,7 +68,6 @@ describe('useSavedTableFlowActions', () => {
         deleteDialog: createDialog({ target: null }),
         buildPersistedState: () => state,
         serializePersistedState: (nextState) => JSON.stringify(nextState),
-        applySavedState: vi.fn(),
         loadTable: vi.fn(),
         renameTable: vi.fn(),
         deleteTable: vi.fn(),
@@ -113,12 +111,11 @@ describe('useSavedTableFlowActions', () => {
         },
         setLoadedTableVersion: vi.fn(),
         setSavedTablesDrawerOpen: vi.fn(),
-        saveDialog: createDialog({ name: 'Users', queuedLoadAfterSave: null }),
+        saveDialog: createDialog({ name: 'Users' }),
         renameDialog: createDialog({ name: 'Users New', target }),
         deleteDialog: createDialog({ target: null }),
         buildPersistedState: () => createState('Users'),
         serializePersistedState: (nextState) => JSON.stringify(nextState),
-        applySavedState: vi.fn(),
         loadTable: vi.fn(),
         renameTable: vi.fn().mockResolvedValue({ ok: true, normalizedName: 'users_new' }),
         deleteTable: vi.fn(),
@@ -153,12 +150,11 @@ describe('useSavedTableFlowActions', () => {
         },
         setLoadedTableVersion: vi.fn(),
         setSavedTablesDrawerOpen: vi.fn(),
-        saveDialog: createDialog({ name: 'Users', queuedLoadAfterSave: null }),
+        saveDialog: createDialog({ name: 'Users' }),
         renameDialog: createDialog({ name: '', target: null }),
         deleteDialog: createDialog({ target }),
         buildPersistedState: () => createState('Users'),
         serializePersistedState: (nextState) => JSON.stringify(nextState),
-        applySavedState: vi.fn(),
         loadTable: vi.fn(),
         renameTable: vi.fn(),
         deleteTable: vi.fn().mockResolvedValue({ ok: true, normalizedName: 'users' }),
@@ -176,14 +172,10 @@ describe('useSavedTableFlowActions', () => {
     expect(removeSavedTableDraft).toHaveBeenCalledWith('users');
   });
 
-  it('加载表时应应用已保存版本', async () => {
+  it('加载表时应解析已保存版本而不修改编辑器', async () => {
     const target = createSavedTableSummary('Users', 'users');
     const savedState = createState('Users');
     const staleDraftState = createState('GlobalDraftLike');
-    const setWorkspaceSnapshot = vi.fn();
-    const applySavedState = vi.fn();
-    const removeSavedTableDraft = vi.fn();
-    const showToast = vi.fn();
     const onTableLoadStateChange = vi.fn();
     const loadTable = vi.fn().mockResolvedValue({
       normalizedName: 'users',
@@ -199,43 +191,36 @@ describe('useSavedTableFlowActions', () => {
         loadedTableSource: null,
         setLoadedTableVersion: vi.fn(),
         setSavedTablesDrawerOpen: vi.fn(),
-        saveDialog: createDialog({ name: 'Users', queuedLoadAfterSave: null }),
+        saveDialog: createDialog({ name: 'Users' }),
         renameDialog: createDialog({ name: '', target: null }),
         deleteDialog: createDialog({ target: null }),
         buildPersistedState: () => createState('Users'),
         serializePersistedState: (nextState) => JSON.stringify(nextState),
-        applySavedState,
         loadTable,
         renameTable: vi.fn(),
         deleteTable: vi.fn(),
         saveTable: vi.fn(),
         overwriteTable: vi.fn(),
-        showToast,
+        showToast: vi.fn(),
         getSavedTableDraft: () => ({
           state: staleDraftState,
           tableName: 'Users',
           baseSignature: JSON.stringify(createState('OldUsers')),
           updatedAt: Date.now(),
         }),
-        removeSavedTableDraft,
-        setWorkspaceSnapshot,
         onTableLoadStateChange,
       }),
     );
 
+    let snapshot: Awaited<ReturnType<typeof result.current.resolveSavedTable>> = null;
     await act(async () => {
-      result.current.handleLoadSavedTable(target);
-      await Promise.resolve();
+      snapshot = await result.current.resolveSavedTable(target);
     });
 
     expect(loadTable).toHaveBeenCalledWith('users');
-    expect(applySavedState).toHaveBeenCalledWith(savedState);
-    expect(showToast).toHaveBeenCalledWith('已加载：Users (v1)');
+    expect(snapshot?.state).toEqual(savedState);
     expect(onTableLoadStateChange).toHaveBeenNthCalledWith(1, true);
     expect(onTableLoadStateChange).toHaveBeenLastCalledWith(false);
-    expect(setWorkspaceSnapshot.mock.invocationCallOrder[0]).toBeLessThan(
-      applySavedState.mock.invocationCallOrder[0],
-    );
   });
 
   it('加载表未命中时也应结束加载状态', async () => {
@@ -252,12 +237,11 @@ describe('useSavedTableFlowActions', () => {
         loadedTableSource: null,
         setLoadedTableVersion: vi.fn(),
         setSavedTablesDrawerOpen: vi.fn(),
-        saveDialog: createDialog({ name: 'Users', queuedLoadAfterSave: null }),
+        saveDialog: createDialog({ name: 'Users' }),
         renameDialog: createDialog({ name: '', target: null }),
         deleteDialog: createDialog({ target: null }),
         buildPersistedState: () => createState('Users'),
         serializePersistedState: (nextState) => JSON.stringify(nextState),
-        applySavedState: vi.fn(),
         loadTable,
         renameTable: vi.fn(),
         deleteTable: vi.fn(),
@@ -269,8 +253,7 @@ describe('useSavedTableFlowActions', () => {
     );
 
     await act(async () => {
-      result.current.handleLoadSavedTable(target);
-      await Promise.resolve();
+      await result.current.resolveSavedTable(target);
     });
 
     expect(showToast).toHaveBeenCalledWith('未找到保存的表');
