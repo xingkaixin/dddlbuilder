@@ -191,10 +191,8 @@ test('gate stays closed until workspaceId lands, then the workspace persists wri
   // 草稿摘要刷新说明 saveState 已经跑过（表名写入本身走 500ms 防抖）。
   await expect(page.getByText('GATE_AFTER_WORKSPACE').first()).toBeVisible();
 
-  // 门禁放行后写入必须落在 workspace 分区；`user:<id>::` 与 `anonymous::` 都是回不来的旧分区。
-  await expect
-    .poll(() => readWorkspaceDraftScopes(page), { timeout: 10_000 })
-    .toEqual([`user:user-gate:workspace:${workspaceId}`]);
+  // 同步工作区只写 Y.Doc，本地业务库不再保留第二份活动草稿。
+  await expect.poll(() => readWorkspaceDraftScopes(page), { timeout: 10_000 }).toEqual([]);
 
   await expect
     .poll(() => workspaceYDocPersisted(page, workspaceId, 'GATE_AFTER_WORKSPACE'), {
