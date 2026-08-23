@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import type { DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
 import { isTabAvailable } from '@/utils/tabUtils';
-import { isWorkspaceTabDirty } from '@/stores/tabStore';
 import { useAppSelectors } from './hooks/useAppSelectors';
 import { useDialogStates } from './hooks/useDialogStates';
 import { useDerivedTableState } from './hooks/useDerivedTableState';
@@ -27,6 +26,7 @@ import { useSavedTableTabIntegration } from './hooks/useSavedTableTabIntegration
 import { useWorkspaceNotifications } from './hooks/useWorkspaceNotifications';
 import { useWorkspaceTabActions } from './hooks/useWorkspaceTabActions';
 import { useWorkspaceTrashActions } from './hooks/useWorkspaceTrashActions';
+import { useWorkspacePresentation } from './hooks/useWorkspacePresentation';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { useAuthManagement } from '@/hooks/useAuthManagement';
 import { useSqlGeneration } from '@/hooks/useSqlGeneration';
@@ -620,128 +620,123 @@ export function useAppController() {
     handleSaveAsTableTemplate,
   });
 
-  const recentDrafts = useMemo(
-    () => [...draftSummaries].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 3),
-    [draftSummaries],
-  );
-
-  const recentTables = useMemo(
-    () => [...savedTables].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 3),
-    [savedTables],
-  );
-
-  const presentedTabs = useMemo(
-    () =>
-      tabs.map((tab) =>
-        tab.id === activeTabId
-          ? {
-              ...tab,
-              isDirty: activeSource.kind === 'saved_table' && isLoadedDirty,
-            }
-          : tab,
-      ),
-    [activeSource.kind, activeTabId, isLoadedDirty, tabs],
-  );
-
-  const tablePresentations = useMemo(() => {
-    const presentations = new Map<string, { title: string; isDirty: boolean }>();
-    for (const tab of presentedTabs) {
-      if (tab.source.kind === 'saved_table') {
-        presentations.set(tab.source.normalizedName, {
-          title: tab.title,
-          isDirty: isWorkspaceTabDirty(tab),
-        });
-      }
-    }
-    return presentations;
-  }, [presentedTabs]);
-
-  const shouldShowWorkspaceSkeleton =
-    activeWorkspaceTab?.isLoading === true || (isShareView && !hydrated);
-
-  return {
-    aiCommentActions,
-    indexAdvisor,
-    folderActions,
-    templateActions,
-    reviewState,
-    reviewActions,
-    shareAction,
-    clearActions,
-    savedTableFlow,
-    workspaceTabs,
-    tableTemplateActions,
-    trashActions,
-    aiPatchFlow,
-    schemaActions,
-    navigationActions,
-    editor,
-    auth,
-    sharding,
-    animations,
-    partition,
-    tableOptions,
-    savedTableData,
-    folderData,
-    fieldTemplateData,
-    tableTemplateData,
-    activeSource,
-    activeTabId,
-    aiGenerateExistingConfig,
-    aiGenerateTemplates,
-    availableFields,
-    canSaveCurrent,
-    copyDcl,
-    copyOrm,
-    copySql,
-    currentPersistedState,
-    dataTableToolbarLeft,
-    deleteTarget,
-    draftSummaries,
-    filledRowCount,
-    generatedDcl,
-    generatedOrm,
-    generatedSql,
-    handleCloseTab,
-    handleCopyDiff,
-    handleDbTypeChange,
-    handleFireworksComplete,
-    handlePlayFireworks,
-    handleRenameNameChange,
-    handleRollbackVersion,
-    handleSaveCurrent,
-    handleSaveNameChange,
-    handleSelectTableFromEr,
-    handleTableNameChange,
-    handleViewCurrentVersionHistory,
-    isLoadedDirty,
-    isShareView,
-    loadedTableName,
-    loadedTableNormalizedName,
-    moveDraftToFolder,
-    normalizedFields,
-    ormTarget,
+  const {
     presentedTabs,
-    qualifiedTableName,
     recentDrafts,
     recentTables,
-    renameError,
-    renameName,
-    saveDialog,
-    saveDialogDescription,
-    saveDialogTitle,
-    saveError,
-    saveInputDisabled,
-    saveName,
-    schemaLintIssues,
-    setOrmTarget,
-    shouldShowWorkspaceSkeleton,
-    switchToTabById,
-    tableDiff,
     tablePresentations,
+    shouldShowWorkspaceSkeleton,
+  } = useWorkspacePresentation({
+    activeSourceKind: activeSource.kind,
+    activeTabId,
+    activeWorkspaceTab,
+    draftSummaries,
+    hydrated,
+    isLoadedDirty,
+    isShareView,
+    savedTables,
     tabs,
-    trashedDrafts,
-    workspaceLabel,
-    workspaceScope,
+  });
+
+  return {
+    actions: {
+      aiCommentActions,
+      indexAdvisor,
+      folderActions,
+      templateActions,
+      reviewActions,
+      shareAction,
+      clearActions,
+      savedTableFlow,
+      workspaceTabs,
+      tableTemplateActions,
+      trashActions,
+      aiPatchFlow,
+      schemaActions,
+      navigationActions,
+    },
+    domains: {
+      editor,
+      auth,
+      sharding,
+      animations,
+      partition,
+      tableOptions,
+      reviewState,
+    },
+    resources: {
+      savedTableData,
+      folderData,
+      fieldTemplateData,
+      tableTemplateData,
+    },
+    workspace: {
+      activeSource,
+      activeTabId,
+      draftSummaries,
+      handleCloseTab,
+      isLoadedDirty,
+      isShareView,
+      loadedTableName,
+      loadedTableNormalizedName,
+      moveDraftToFolder,
+      presentedTabs,
+      recentDrafts,
+      recentTables,
+      shouldShowWorkspaceSkeleton,
+      switchToTabById,
+      tablePresentations,
+      tabs,
+      trashedDrafts,
+      workspaceLabel,
+      workspaceScope,
+    },
+    schema: {
+      aiGenerateExistingConfig,
+      aiGenerateTemplates,
+      availableFields,
+      canSaveCurrent,
+      currentPersistedState,
+      dataTableToolbarLeft,
+      filledRowCount,
+      handleDbTypeChange,
+      handleSaveCurrent,
+      handleTableNameChange,
+      handleViewCurrentVersionHistory,
+      normalizedFields,
+      qualifiedTableName,
+      schemaLintIssues,
+      tableDiff,
+    },
+    output: {
+      copyDcl,
+      copyOrm,
+      copySql,
+      generatedDcl,
+      generatedOrm,
+      generatedSql,
+      ormTarget,
+      setOrmTarget,
+    },
+    dialogs: {
+      deleteTarget,
+      handleCopyDiff,
+      handleRenameNameChange,
+      handleRollbackVersion,
+      handleSaveNameChange,
+      handleSelectTableFromEr,
+      renameError,
+      renameName,
+      saveDialog,
+      saveDialogDescription,
+      saveDialogTitle,
+      saveError,
+      saveInputDisabled,
+      saveName,
+    },
+    celebration: {
+      handleFireworksComplete,
+      handlePlayFireworks,
+    },
   };
 }
