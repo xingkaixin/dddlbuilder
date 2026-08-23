@@ -1,6 +1,6 @@
 import * as Y from 'yjs';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
-import { tableDocToPersistedState, tableMetadata } from './workspaceTableDoc';
+import { tableDocToSchemaDocumentState, tableMetadata } from './workspaceTableDoc';
 import {
   ensureWorkspaceYDocMeta,
   getDraftRecordFromYDoc,
@@ -76,7 +76,7 @@ export const exportWorkspaceYDocToSnapshot = (doc: Y.Doc): WorkspaceSnapshot => 
       return {
         normalizedName,
         name: typeof metadata.name === 'string' ? metadata.name : normalizedName,
-        state: tableDocToPersistedState(tableDoc),
+        state: tableDocToSchemaDocumentState(tableDoc),
         createdAt: typeof metadata.createdAt === 'number' ? metadata.createdAt : now,
         updatedAt: typeof metadata.updatedAt === 'number' ? metadata.updatedAt : now,
         ...(typeof metadata.folderId === 'string' ? { folderId: metadata.folderId } : {}),
@@ -87,7 +87,7 @@ export const exportWorkspaceYDocToSnapshot = (doc: Y.Doc): WorkspaceSnapshot => 
       return {
         normalizedName,
         tableName: typeof metadata.tableName === 'string' ? metadata.tableName : normalizedName,
-        state: tableDocToPersistedState(tableDoc),
+        state: tableDocToSchemaDocumentState(tableDoc),
         updatedAt: typeof metadata.updatedAt === 'number' ? metadata.updatedAt : Date.now(),
         baseSignature: typeof metadata.baseSignature === 'string' ? metadata.baseSignature : '',
       };

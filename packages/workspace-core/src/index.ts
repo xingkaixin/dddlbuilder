@@ -3,15 +3,16 @@ export { createFieldId } from './fieldId';
 export { DEFAULT_DRAFT_ID, shouldAcceptSnapshotRecord } from './snapshotMergePolicy';
 export {
   decodePersistedState,
+  decodeSchemaDocumentState,
   decodeWorkspaceSnapshot,
   type PersistedStateDecodeMode,
 } from './persistedStateCodec';
 export { decodeWorkspaceMigrationPayload } from './workspaceMigrationCodec';
 export { stableStringify } from './yMapJson';
 export {
-  type ApplyPersistedStateOptions,
-  applyPersistedStateToTableDoc,
-  tableDocToPersistedState,
+  type ApplySchemaDocumentStateOptions,
+  applySchemaDocumentStateToTableDoc,
+  tableDocToSchemaDocumentState,
   tableMetadata,
 } from './workspaceTableDoc';
 export {

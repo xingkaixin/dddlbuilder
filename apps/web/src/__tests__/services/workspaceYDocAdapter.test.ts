@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
-import { type PersistedState, toSchemaDocumentState } from '@ddlbuilder/shared-types';
+import {
+  type PersistedState,
+  toSchemaDocumentState,
+  withDefaultEditorSession,
+} from '@ddlbuilder/shared-types';
 import {
   exportWorkspaceYDocToSnapshot,
   getDraftRecordFromYDoc,
@@ -90,13 +94,11 @@ const createState = (overrides: Partial<PersistedState> = {}): PersistedState =>
   ...overrides,
 });
 
-const collaborativeState = (state: PersistedState): PersistedState => ({
-  ...JSON.parse(JSON.stringify(toSchemaDocumentState(state))),
-  sqlFormatMode: 'compact',
-  addCount: 12,
-  indexInput: '',
-  currentIndexFields: [],
-});
+const collaborativeDocumentState = (state: PersistedState) =>
+  JSON.parse(JSON.stringify(toSchemaDocumentState(state)));
+
+const collaborativeState = (state: PersistedState): PersistedState =>
+  withDefaultEditorSession(collaborativeDocumentState(state));
 
 const getFirstFieldId = (doc: Y.Doc) => {
   const tableDoc = doc.getMap<Y.Map<unknown>>('drafts').get(DEFAULT_DRAFT_ID);
@@ -206,7 +208,7 @@ describe('workspaceYDocAdapter', () => {
       normalizedName: 'users',
       name: 'Users',
       folderId: 'folder-1',
-      state: collaborativeState(state),
+      state: collaborativeDocumentState(state),
     });
     expect(exported.savedDrafts[0].state.tableComment).toBe('本地草稿');
     expect(exported.folders).toEqual([{ id: 'folder-1', name: 'Core', order: 1, createdAt: 80 }]);
@@ -375,6 +377,27 @@ describe('workspaceYDocAdapter', () => {
     upsertDraftInYDoc(doc, DEFAULT_DRAFT_ID, { state, updatedAt: 1 });
 
     expect(getDraftRecordFromYDoc(doc, DEFAULT_DRAFT_ID)?.state).toEqual(collaborativeState(state));
+  });
+
+  it('restores local editor defaults without syncing another client session', () => {
+    const doc = new Y.Doc();
+    upsertDraftInYDoc(doc, DEFAULT_DRAFT_ID, {
+      state: createState({
+        sqlFormatMode: 'aligned',
+        addCount: 99,
+        indexInput: 'email',
+        currentIndexFields: [{ name: 'email', direction: 'DESC' }],
+      }),
+      updatedAt: 1,
+    });
+
+    const restored = getDraftRecordFromYDoc(doc, DEFAULT_DRAFT_ID)?.state;
+    expect(restored).toMatchObject({
+      sqlFormatMode: 'compact',
+      addCount: 10,
+      indexInput: '',
+      currentIndexFields: [],
+    });
   });
 
   it('prefers fine-grained table data over stale state snapshots', () => {

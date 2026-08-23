@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import type { FieldRow, PersistedState } from '@ddlbuilder/shared-types';
-import { applyPersistedStateToTableDoc, tableDocToPersistedState } from '../workspaceTableDoc';
+import {
+  applySchemaDocumentStateToTableDoc,
+  tableDocToSchemaDocumentState,
+} from '../workspaceTableDoc';
 
 const row = (id: string, fieldName: string, overrides: Partial<FieldRow> = {}): FieldRow => ({
   id,
@@ -36,7 +39,7 @@ const state = (rows: FieldRow[]): PersistedState =>
 const forkPeers = (initial: PersistedState) => {
   const docA = new Y.Doc();
   const tableA = docA.getMap<Y.Map<unknown>>('drafts').set('draft-1', new Y.Map());
-  applyPersistedStateToTableDoc(tableA, initial, { forceFineGrained: true });
+  applySchemaDocumentStateToTableDoc(tableA, initial, { forceFineGrained: true });
 
   const docB = new Y.Doc();
   Y.applyUpdate(docB, Y.encodeStateAsUpdate(docA));
@@ -46,7 +49,7 @@ const forkPeers = (initial: PersistedState) => {
     const updateA = Y.encodeStateAsUpdate(docA);
     Y.applyUpdate(docA, Y.encodeStateAsUpdate(docB));
     Y.applyUpdate(docB, updateA);
-    return [tableDocToPersistedState(tableA), tableDocToPersistedState(tableB)] as const;
+    return [tableDocToSchemaDocumentState(tableA), tableDocToSchemaDocumentState(tableB)] as const;
   };
 
   return { tableA, tableB, converge };
@@ -60,8 +63,8 @@ describe('并发字段编辑', () => {
   it('一端改字段类型，另一端在其之前插入行时改动留在原字段上', () => {
     const { tableA, tableB, converge } = forkPeers(state([ID, NAME]));
 
-    applyPersistedStateToTableDoc(tableA, state([ID, { ...NAME, fieldType: 'varchar(64)' }]));
-    applyPersistedStateToTableDoc(tableB, state([row('f-uuid', 'uuid'), ID, NAME]));
+    applySchemaDocumentStateToTableDoc(tableA, state([ID, { ...NAME, fieldType: 'varchar(64)' }]));
+    applySchemaDocumentStateToTableDoc(tableB, state([row('f-uuid', 'uuid'), ID, NAME]));
 
     const [merged, mergedPeer] = converge();
     expect(merged.rows.map((r) => [r.fieldName, r.fieldType])).toEqual([
@@ -75,8 +78,11 @@ describe('并发字段编辑', () => {
   it('一端改名，另一端在其之前插入行时改名不丢失', () => {
     const { tableA, tableB, converge } = forkPeers(state([ID, NAME, AGE]));
 
-    applyPersistedStateToTableDoc(tableA, state([ID, { ...NAME, fieldName: 'user_name' }, AGE]));
-    applyPersistedStateToTableDoc(tableB, state([row('f-uuid', 'uuid'), ID, NAME, AGE]));
+    applySchemaDocumentStateToTableDoc(
+      tableA,
+      state([ID, { ...NAME, fieldName: 'user_name' }, AGE]),
+    );
+    applySchemaDocumentStateToTableDoc(tableB, state([row('f-uuid', 'uuid'), ID, NAME, AGE]));
 
     const [merged] = converge();
     expect(merged.rows.map((r) => r.fieldName)).toEqual(['uuid', 'id', 'user_name', 'age']);
@@ -85,8 +91,8 @@ describe('并发字段编辑', () => {
   it('两端各改不同字段的注释时都保留', () => {
     const { tableA, tableB, converge } = forkPeers(state([ID, NAME, AGE]));
 
-    applyPersistedStateToTableDoc(tableA, state([{ ...ID, fieldComment: '主键' }, NAME, AGE]));
-    applyPersistedStateToTableDoc(tableB, state([ID, NAME, { ...AGE, fieldComment: '岁数' }]));
+    applySchemaDocumentStateToTableDoc(tableA, state([{ ...ID, fieldComment: '主键' }, NAME, AGE]));
+    applySchemaDocumentStateToTableDoc(tableB, state([ID, NAME, { ...AGE, fieldComment: '岁数' }]));
 
     const [merged] = converge();
     expect(merged.rows.map((r) => r.fieldComment)).toEqual(['主键', '', '岁数']);
@@ -95,8 +101,8 @@ describe('并发字段编辑', () => {
   it('一端删行，另一端改另一行时两个意图都生效', () => {
     const { tableA, tableB, converge } = forkPeers(state([ID, NAME, AGE]));
 
-    applyPersistedStateToTableDoc(tableA, state([ID, AGE]));
-    applyPersistedStateToTableDoc(tableB, state([ID, NAME, { ...AGE, fieldComment: '岁数' }]));
+    applySchemaDocumentStateToTableDoc(tableA, state([ID, AGE]));
+    applySchemaDocumentStateToTableDoc(tableB, state([ID, NAME, { ...AGE, fieldComment: '岁数' }]));
 
     const [merged] = converge();
     expect(merged.rows.map((r) => [r.fieldName, r.fieldComment])).toEqual([
@@ -108,8 +114,8 @@ describe('并发字段编辑', () => {
   it('两端各追加一行时都保留', () => {
     const { tableA, tableB, converge } = forkPeers(state([ID]));
 
-    applyPersistedStateToTableDoc(tableA, state([ID, row('f-a', 'from_a')]));
-    applyPersistedStateToTableDoc(tableB, state([ID, row('f-b', 'from_b')]));
+    applySchemaDocumentStateToTableDoc(tableA, state([ID, row('f-a', 'from_a')]));
+    applySchemaDocumentStateToTableDoc(tableB, state([ID, row('f-b', 'from_b')]));
 
     const [merged] = converge();
     expect(merged.rows.map((r) => r.fieldName).sort()).toEqual(['from_a', 'from_b', 'id']);

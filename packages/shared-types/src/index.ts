@@ -200,7 +200,14 @@ export type EditorSessionState = {
 
 export type PersistedState = SchemaDocumentState & EditorSessionState;
 
-export const toSchemaDocumentState = (state: PersistedState): SchemaDocumentState => ({
+export const DEFAULT_EDITOR_SESSION_STATE: Readonly<EditorSessionState> = {
+  sqlFormatMode: 'compact',
+  addCount: 10,
+  indexInput: '',
+  currentIndexFields: [],
+};
+
+export const toSchemaDocumentState = (state: SchemaDocumentState): SchemaDocumentState => ({
   objectType: state.objectType,
   schemaName: state.schemaName,
   tableName: state.tableName,
@@ -216,6 +223,12 @@ export const toSchemaDocumentState = (state: PersistedState): SchemaDocumentStat
   mysqlPartitionConfig: state.mysqlPartitionConfig,
   tableMiscConfig: state.tableMiscConfig,
   foreignKeys: state.foreignKeys,
+});
+
+export const withDefaultEditorSession = (state: SchemaDocumentState): PersistedState => ({
+  ...state,
+  ...DEFAULT_EDITOR_SESSION_STATE,
+  currentIndexFields: [...DEFAULT_EDITOR_SESSION_STATE.currentIndexFields],
 });
 
 export type { ApiErrorCode, ApiMeta, ApiErrorPayload } from './api.js';

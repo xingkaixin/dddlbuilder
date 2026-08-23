@@ -1,4 +1,4 @@
-import type { PersistedState } from './index.js';
+import type { PersistedState, SchemaDocumentState } from './index.js';
 
 export type WorkspaceSource =
   | { kind: 'draft'; draftId: string }
@@ -58,12 +58,12 @@ export type TableFolderSnapshot = {
 
 export type WorkspaceSnapshot = {
   globalDraft: {
-    state: PersistedState;
+    state: SchemaDocumentState;
     updatedAt: number;
   } | null;
   drafts: Array<{
     draftId: string;
-    state: PersistedState;
+    state: SchemaDocumentState;
     createdAt?: number;
     updatedAt: number;
     folderId?: string;
@@ -71,7 +71,7 @@ export type WorkspaceSnapshot = {
   savedTables: Array<{
     normalizedName: string;
     name: string;
-    state: PersistedState;
+    state: SchemaDocumentState;
     createdAt?: number;
     updatedAt: number;
     folderId?: string;
@@ -79,7 +79,7 @@ export type WorkspaceSnapshot = {
   savedDrafts: Array<{
     normalizedName: string;
     tableName: string;
-    state: PersistedState;
+    state: SchemaDocumentState;
     updatedAt: number;
     baseSignature: string;
   }>;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
-import type { PersistedState } from '@ddlbuilder/shared-types';
-import { tableDocToPersistedState } from '../workspaceTableDoc';
+import { type PersistedState, toSchemaDocumentState } from '@ddlbuilder/shared-types';
+import { tableDocToSchemaDocumentState } from '../workspaceTableDoc';
 import {
   ensureWorkspaceYDocMeta,
   getDraftRecordFromYDoc,
@@ -82,7 +82,9 @@ describe('workspace YDoc roots', () => {
     expect(materializeWorkspaceYDoc(doc)).toBe(true);
     expect(savedDraft.get('fieldOrder')).toBeInstanceOf(Y.Array);
     expect(materializeWorkspaceYDoc(doc)).toBe(false);
-    expect(tableDocToPersistedState(savedDraft)).toEqual(createState('users_draft'));
+    expect(tableDocToSchemaDocumentState(savedDraft)).toEqual(
+      toSchemaDocumentState(createState('users_draft')),
+    );
   });
 
   it('reads draft metadata with fallbacks and reports missing drafts', () => {

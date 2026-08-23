@@ -16,7 +16,9 @@ import {
   type MysqlPartitionConfig,
   type MysqlPartitionType,
   type PersistedState,
+  type SchemaDocumentState,
   type TableMiscConfig,
+  toSchemaDocumentState,
 } from '@ddlbuilder/shared-types';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 
@@ -246,6 +248,15 @@ const hasExternalStateShape = (value: Record<string, unknown>) =>
   typeof value.authInput === 'string' &&
   Array.isArray(value.authObjects);
 
+const hasExternalSchemaDocumentShape = (value: Record<string, unknown>) =>
+  typeof value.tableName === 'string' &&
+  typeof value.tableComment === 'string' &&
+  isDatabaseType(value.dbType) &&
+  Array.isArray(value.rows) &&
+  Array.isArray(value.indexes) &&
+  typeof value.authInput === 'string' &&
+  Array.isArray(value.authObjects);
+
 export const decodePersistedState = (
   value: unknown,
   mode: PersistedStateDecodeMode = 'compatible',
@@ -293,7 +304,12 @@ export const decodePersistedState = (
   };
 };
 
-const decodeRequiredState = (value: unknown) => decodePersistedState(value, 'external');
+export const decodeSchemaDocumentState = (value: unknown): SchemaDocumentState | null => {
+  if (!isRecord(value) || !hasExternalSchemaDocumentShape(value)) return null;
+  const state = decodePersistedState(value);
+  return state ? toSchemaDocumentState(state) : null;
+};
+
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
 const isOptionalString = (value: unknown) => value === undefined || typeof value === 'string';
@@ -313,7 +329,7 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
   let globalDraft: WorkspaceSnapshot['globalDraft'] = null;
   if (value.globalDraft !== null) {
     if (!isRecord(value.globalDraft) || !isFiniteNumber(value.globalDraft.updatedAt)) return null;
-    const state = decodeRequiredState(value.globalDraft.state);
+    const state = decodeSchemaDocumentState(value.globalDraft.state);
     if (!state) return null;
     globalDraft = { state, updatedAt: value.globalDraft.updatedAt };
   }
@@ -330,7 +346,7 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
     ) {
       return null;
     }
-    const state = decodeRequiredState(item.state);
+    const state = decodeSchemaDocumentState(item.state);
     if (!state) return null;
     drafts.push({
       draftId: item.draftId,
@@ -354,7 +370,7 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
     ) {
       return null;
     }
-    const state = decodeRequiredState(item.state);
+    const state = decodeSchemaDocumentState(item.state);
     if (!state) return null;
     savedTables.push({
       normalizedName: item.normalizedName,
@@ -378,7 +394,7 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
     ) {
       return null;
     }
-    const state = decodeRequiredState(item.state);
+    const state = decodeSchemaDocumentState(item.state);
     if (!state) return null;
     savedDrafts.push({
       normalizedName: item.normalizedName,

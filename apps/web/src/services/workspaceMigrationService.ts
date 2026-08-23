@@ -1,4 +1,4 @@
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { SchemaDocumentState } from '@ddlbuilder/shared-types';
 import type { ApiErrorPayload, WorkspaceMigrationResponse } from '@ddlbuilder/shared-types/api';
 import type {
   WorkspaceMigrationPayload,
@@ -33,7 +33,7 @@ import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 
 export type { WorkspaceMigrationPayload } from '@ddlbuilder/shared-types/workspace';
 
-const isPersistedStateTrivial = (state: PersistedState): boolean =>
+const isPersistedStateTrivial = (state: SchemaDocumentState): boolean =>
   !state.rows?.some((row) => row.fieldName?.trim());
 
 export const hasMeaningfulWorkspaceSnapshotData = (snapshot: WorkspaceMigrationSnapshot | null) =>

@@ -3,6 +3,7 @@ import type {
   WorkspaceScope,
   WorkspaceSnapshot,
 } from '@ddlbuilder/shared-types/workspace';
+import { withDefaultEditorSession } from '@ddlbuilder/shared-types';
 import { addSavedTable, deleteSavedTable, listSavedTables } from '@/utils/savedTablesDb';
 import { clearFolders, bulkPutFolders } from '@/utils/tableFolders';
 import {
@@ -48,14 +49,18 @@ const replaceLocalWorkspaceSnapshot = async (
   ]);
 
   if (snapshot.globalDraft) {
-    await writeDraft(DEFAULT_DRAFT_ID, snapshot.globalDraft, scope);
+    await writeDraft(
+      DEFAULT_DRAFT_ID,
+      { ...snapshot.globalDraft, state: withDefaultEditorSession(snapshot.globalDraft.state) },
+      scope,
+    );
   }
 
   for (const item of snapshot.drafts) {
     await writeDraft(
       item.draftId,
       {
-        state: item.state,
+        state: withDefaultEditorSession(item.state),
         createdAt: item.createdAt ?? item.updatedAt,
         updatedAt: item.updatedAt,
         folderId: item.folderId,
@@ -69,7 +74,7 @@ const replaceLocalWorkspaceSnapshot = async (
       {
         normalizedName: item.normalizedName,
         name: item.name,
-        state: item.state,
+        state: withDefaultEditorSession(item.state),
         createdAt: item.createdAt ?? item.updatedAt,
         updatedAt: item.updatedAt,
         folderId: item.folderId,
@@ -81,7 +86,7 @@ const replaceLocalWorkspaceSnapshot = async (
   for (const item of snapshot.savedDrafts) {
     const nextDraft: SavedTableDraftRecord = {
       tableName: item.tableName,
-      state: item.state,
+      state: withDefaultEditorSession(item.state),
       updatedAt: item.updatedAt,
       baseSignature: item.baseSignature,
     };

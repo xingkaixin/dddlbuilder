@@ -3,10 +3,14 @@ import * as Y from 'yjs';
 import {
   normalizePersistedRows,
   type PersistedState,
+  type SchemaDocumentState,
   toSchemaDocumentState,
 } from '@ddlbuilder/shared-types';
 import { buildWorkspaceContentHash } from '../contentHash';
-import { applyPersistedStateToTableDoc, tableDocToPersistedState } from '../workspaceTableDoc';
+import {
+  applySchemaDocumentStateToTableDoc,
+  tableDocToSchemaDocumentState,
+} from '../workspaceTableDoc';
 import { getWorkspaceRoot } from '../workspaceYDoc';
 import {
   exportWorkspaceYDocToSnapshot,
@@ -66,7 +70,7 @@ const createTableDoc = (state: PersistedState) => {
   const doc = new Y.Doc();
   const tableDoc = new Y.Map<unknown>();
   doc.getMap<Y.Map<unknown>>('drafts').set('draft-1', tableDoc);
-  applyPersistedStateToTableDoc(tableDoc, state);
+  applySchemaDocumentStateToTableDoc(tableDoc, state);
   return tableDoc;
 };
 
@@ -86,18 +90,13 @@ const snapshotOf = (state: PersistedState) => ({
   folders: [],
 });
 
-const collaborativeState = (state: PersistedState): PersistedState => ({
-  ...toSchemaDocumentState(state),
-  sqlFormatMode: 'compact',
-  addCount: 12,
-  indexInput: '',
-  currentIndexFields: [],
-});
+const collaborativeState = (state: PersistedState): SchemaDocumentState =>
+  toSchemaDocumentState(state);
 
 describe('workspace table doc', () => {
   it('hashes decoded state identically to the client state it was written from', async () => {
     const clientState = createClientState();
-    const decoded = tableDocToPersistedState(createTableDoc(clientState));
+    const decoded = tableDocToSchemaDocumentState(createTableDoc(clientState));
 
     expect(decoded).not.toHaveProperty('foreignKeys');
     expect(decoded).toEqual(collaborativeState(clientState));
@@ -117,7 +116,9 @@ describe('workspace table doc', () => {
         onDelete: 'CASCADE' as const,
       },
     ];
-    const decoded = tableDocToPersistedState(createTableDoc(createClientState({ foreignKeys })));
+    const decoded = tableDocToSchemaDocumentState(
+      createTableDoc(createClientState({ foreignKeys })),
+    );
 
     expect(decoded.foreignKeys).toEqual(foreignKeys);
   });
@@ -127,14 +128,14 @@ describe('workspace table doc', () => {
     for (const tableDoc of [createTableDoc(clientState), createLegacyTableDoc(clientState)]) {
       const doc = tableDoc.doc as Y.Doc;
       const before = Y.encodeStateAsUpdate(doc);
-      tableDocToPersistedState(tableDoc);
+      tableDocToSchemaDocumentState(tableDoc);
       expect(Y.encodeStateAsUpdate(doc)).toEqual(before);
     }
   });
 
   it('reads rows from a snapshot-only table doc', () => {
     const clientState = createClientState();
-    const decoded = tableDocToPersistedState(createLegacyTableDoc(clientState));
+    const decoded = tableDocToSchemaDocumentState(createLegacyTableDoc(clientState));
 
     expect(decoded.rows).toEqual(clientState.rows);
   });
@@ -146,7 +147,7 @@ describe('workspace table doc', () => {
     scalar.set('tableName', 'renamed');
     tableDoc.set('scalar', scalar);
 
-    const decoded = tableDocToPersistedState(tableDoc);
+    const decoded = tableDocToSchemaDocumentState(tableDoc);
 
     expect(decoded.tableName).toBe('renamed');
     expect(decoded.tableComment).toBe(clientState.tableComment);
@@ -181,11 +182,11 @@ describe('workspace table doc', () => {
     const expectedRows = normalizePersistedRows({ rows: legacyRows }).rows;
 
     const snapshotOnly = createLegacyTableDoc(createClientState({ rows: legacyRows }));
-    expect(tableDocToPersistedState(snapshotOnly).rows).toEqual(expectedRows);
+    expect(tableDocToSchemaDocumentState(snapshotOnly).rows).toEqual(expectedRows);
 
     const withoutFieldDoc = createLegacyTableDoc(createClientState({ rows: legacyRows }));
     withoutFieldDoc.set('scalar', new Y.Map<unknown>());
-    expect(tableDocToPersistedState(withoutFieldDoc).rows).toEqual(expectedRows);
+    expect(tableDocToSchemaDocumentState(withoutFieldDoc).rows).toEqual(expectedRows);
   });
 
   it('fills missing field values from the matching snapshot row', () => {
@@ -204,7 +205,7 @@ describe('workspace table doc', () => {
     tableDoc.set('fieldOrder', fieldOrder);
 
     // fields 的键就是行身份，快照只补该键缺失的值
-    expect(tableDocToPersistedState(tableDoc).rows).toEqual([
+    expect(tableDocToSchemaDocumentState(tableDoc).rows).toEqual([
       { ...clientState.rows[0], id: 'field-1', fieldName: 'renamed_id' },
     ]);
   });
@@ -224,19 +225,15 @@ describe('workspace table doc', () => {
     scalar.set('citusShardingConfig', { enabled: true });
     tableDoc.set('scalar', scalar);
 
-    expect(tableDocToPersistedState(tableDoc)).toEqual({
+    expect(tableDocToSchemaDocumentState(tableDoc)).toEqual({
       objectType: 'view',
       schemaName: '',
       tableName: '',
       tableComment: '',
       dbType: 'mysql',
-      sqlFormatMode: 'compact',
       viewDefinition: '',
       viewCreateOrReplace: false,
       rows: [],
-      addCount: 12,
-      indexInput: '',
-      currentIndexFields: [],
       indexes: [],
       authInput: '',
       authObjects: [],
@@ -254,7 +251,7 @@ describe('workspace table doc', () => {
 
     const source = getWorkspaceRoot(doc).drafts.get('draft-1') as Y.Map<unknown>;
     const target = getWorkspaceRoot(restored).drafts.get('draft-1') as Y.Map<unknown>;
-    expect(tableDocToPersistedState(target)).toEqual(tableDocToPersistedState(source));
+    expect(tableDocToSchemaDocumentState(target)).toEqual(tableDocToSchemaDocumentState(source));
     expect(exportWorkspaceYDocToSnapshot(restored)).toEqual(exportWorkspaceYDocToSnapshot(doc));
   });
 });
@@ -271,7 +268,7 @@ describe('workspace table doc writes', () => {
     const tableDoc = createTableDoc(clientState);
     const updates = collectUpdates(tableDoc.doc as Y.Doc);
 
-    applyPersistedStateToTableDoc(tableDoc, createClientState());
+    applySchemaDocumentStateToTableDoc(tableDoc, createClientState());
 
     expect(updates).toEqual([]);
   });
@@ -281,7 +278,7 @@ describe('workspace table doc writes', () => {
     const tableDoc = createTableDoc(clientState);
     const updates = collectUpdates(tableDoc.doc as Y.Doc);
 
-    applyPersistedStateToTableDoc(tableDoc, {
+    applySchemaDocumentStateToTableDoc(tableDoc, {
       ...clientState,
       sqlFormatMode: 'aligned',
       addCount: 99,
@@ -302,10 +299,10 @@ describe('workspace table doc writes', () => {
     });
     const tableDoc = createLegacyTableDoc(clientState);
 
-    applyPersistedStateToTableDoc(tableDoc, clientState, { compactSnapshotBase: true });
+    applySchemaDocumentStateToTableDoc(tableDoc, clientState, { compactSnapshotBase: true });
 
     expect(tableDoc.get('stateSnapshot')).toEqual(toSchemaDocumentState(clientState));
-    expect(tableDocToPersistedState(tableDoc)).toEqual(collaborativeState(clientState));
+    expect(tableDocToSchemaDocumentState(tableDoc)).toEqual(collaborativeState(clientState));
   });
 
   it('patches changed scalars and fields against the previous snapshot', () => {
@@ -316,9 +313,9 @@ describe('workspace table doc writes', () => {
     );
     const nextState = createClientState({ tableName: 'accounts', rows: nextRows });
 
-    applyPersistedStateToTableDoc(tableDoc, nextState);
+    applySchemaDocumentStateToTableDoc(tableDoc, nextState);
 
-    expect(tableDocToPersistedState(tableDoc)).toEqual(collaborativeState(nextState));
+    expect(tableDocToSchemaDocumentState(tableDoc)).toEqual(collaborativeState(nextState));
   });
 
   it('keeps the previous snapshot as the base when compacting', () => {
@@ -326,10 +323,10 @@ describe('workspace table doc writes', () => {
     const tableDoc = createTableDoc(clientState);
     const nextState = createClientState({ tableName: 'accounts' });
 
-    applyPersistedStateToTableDoc(tableDoc, nextState, { compactSnapshotBase: true });
+    applySchemaDocumentStateToTableDoc(tableDoc, nextState, { compactSnapshotBase: true });
 
     expect((tableDoc.get('stateSnapshot') as PersistedState).tableName).toBe(clientState.tableName);
-    expect(tableDocToPersistedState(tableDoc)).toEqual(collaborativeState(nextState));
+    expect(tableDocToSchemaDocumentState(tableDoc)).toEqual(collaborativeState(nextState));
   });
 
   it('reuses field identities when rows are reordered and removed', () => {
@@ -337,11 +334,14 @@ describe('workspace table doc writes', () => {
     const tableDoc = createTableDoc(clientState);
     const fieldIds = (tableDoc.get('fieldOrder') as Y.Array<string>).toArray();
 
-    applyPersistedStateToTableDoc(tableDoc, createClientState({ rows: [clientState.rows[1]] }));
+    applySchemaDocumentStateToTableDoc(
+      tableDoc,
+      createClientState({ rows: [clientState.rows[1]] }),
+    );
 
     expect((tableDoc.get('fieldOrder') as Y.Array<string>).toArray()).toEqual([fieldIds[1]]);
     expect(Array.from((tableDoc.get('fields') as Y.Map<unknown>).keys())).toEqual([fieldIds[1]]);
-    expect(tableDocToPersistedState(tableDoc).rows).toEqual([clientState.rows[1]]);
+    expect(tableDocToSchemaDocumentState(tableDoc).rows).toEqual([clientState.rows[1]]);
   });
 
   it('rewrites indexes and foreign keys when they change', () => {
@@ -355,9 +355,9 @@ describe('workspace table doc writes', () => {
       },
     ];
 
-    applyPersistedStateToTableDoc(tableDoc, createClientState({ indexes }));
+    applySchemaDocumentStateToTableDoc(tableDoc, createClientState({ indexes }));
 
-    expect(tableDocToPersistedState(tableDoc).indexes).toEqual(indexes);
+    expect(tableDocToSchemaDocumentState(tableDoc).indexes).toEqual(indexes);
   });
 });
 
@@ -366,12 +366,12 @@ describe('workspace table doc key removals', () => {
     const doc = new Y.Doc();
     const tableDoc = new Y.Map<unknown>();
     doc.getMap<Y.Map<unknown>>('drafts').set('draft-1', tableDoc);
-    applyPersistedStateToTableDoc(tableDoc, state, { compactSnapshotBase: true });
+    applySchemaDocumentStateToTableDoc(tableDoc, state, { compactSnapshotBase: true });
     return tableDoc;
   };
 
   const applyCompacted = (tableDoc: Y.Map<unknown>, state: PersistedState) =>
-    applyPersistedStateToTableDoc(tableDoc, state, { compactSnapshotBase: true });
+    applySchemaDocumentStateToTableDoc(tableDoc, state, { compactSnapshotBase: true });
 
   const enumMeta = [{ value: 'a', color: '#fff' }];
   const configuredState = createClientState({
@@ -394,7 +394,7 @@ describe('workspace table doc key removals', () => {
 
     applyCompacted(tableDoc, createClientState({ dbType: 'postgresql' }));
 
-    const decoded = tableDocToPersistedState(tableDoc);
+    const decoded = tableDocToSchemaDocumentState(tableDoc);
     expect(decoded).not.toHaveProperty('citusShardingConfig');
     expect(decoded).not.toHaveProperty('mysqlPartitionConfig');
     expect(decoded).not.toHaveProperty('tableMiscConfig');
@@ -412,7 +412,7 @@ describe('workspace table doc key removals', () => {
 
     applyCompacted(tableDoc, createClientState({ rows: [clearedRow, rowsWithOptionalKeys[1]] }));
 
-    const decoded = tableDocToPersistedState(tableDoc);
+    const decoded = tableDocToSchemaDocumentState(tableDoc);
     expect(decoded.rows[0]).not.toHaveProperty('enumMeta');
     expect(decoded.rows[0]).not.toHaveProperty('defaultKind');
     expect(decoded.rows[0]).not.toHaveProperty('onUpdate');
@@ -436,7 +436,7 @@ describe('workspace table doc key removals', () => {
     });
     applyCompacted(tableDoc, restoredState);
 
-    expect(tableDocToPersistedState(tableDoc)).toEqual(collaborativeState(restoredState));
+    expect(tableDocToSchemaDocumentState(tableDoc)).toEqual(collaborativeState(restoredState));
   });
 
   it('keeps the decoded content hash aligned across an incremental edit sequence', async () => {
@@ -455,7 +455,7 @@ describe('workspace table doc key removals', () => {
     for (const state of sequence) {
       applyCompacted(tableDoc, state);
       await expect(
-        buildWorkspaceContentHash({ state: tableDocToPersistedState(tableDoc) }),
+        buildWorkspaceContentHash({ state: tableDocToSchemaDocumentState(tableDoc) }),
       ).resolves.toBe(await buildWorkspaceContentHash({ state: collaborativeState(state) }));
     }
   });

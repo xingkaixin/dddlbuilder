@@ -1,11 +1,11 @@
 import type * as Y from 'yjs';
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { SchemaDocumentState } from '@ddlbuilder/shared-types';
 import type { TableFolderSnapshot } from '@ddlbuilder/shared-types/workspace';
 import {
-  type ApplyPersistedStateOptions,
-  applyPersistedStateToTableDoc,
+  type ApplySchemaDocumentStateOptions,
+  applySchemaDocumentStateToTableDoc,
   materializeTableDoc,
-  tableDocToPersistedState,
+  tableDocToSchemaDocumentState,
   tableMetadata,
 } from './workspaceTableDoc';
 import { ensureMap, type JsonRecord, readJsonMap, writeJsonMap } from './yMapJson';
@@ -13,7 +13,7 @@ import { ensureMap, type JsonRecord, readJsonMap, writeJsonMap } from './yMapJso
 export const WORKSPACE_YDOC_SCHEMA_VERSION = 1;
 
 export type WorkspaceYDocDraftRecord = {
-  state: PersistedState;
+  state: SchemaDocumentState;
   createdAt?: number;
   updatedAt: number;
   folderId?: string;
@@ -55,12 +55,12 @@ export const materializeWorkspaceYDoc = (doc: Y.Doc) => {
 export const upsertTableRecord = (
   collection: Y.Map<Y.Map<unknown>>,
   key: string,
-  state: PersistedState,
+  state: SchemaDocumentState,
   metadata: JsonRecord,
-  options?: ApplyPersistedStateOptions,
+  options?: ApplySchemaDocumentStateOptions,
 ) => {
   const tableDoc = ensureMap(collection, key);
-  applyPersistedStateToTableDoc(tableDoc, state, options);
+  applySchemaDocumentStateToTableDoc(tableDoc, state, options);
   writeJsonMap(ensureMap(tableDoc, 'metadata'), metadata);
 };
 
@@ -72,7 +72,7 @@ export const getDraftRecordFromYDoc = (
   if (!tableDoc) return null;
   const metadata = tableMetadata(tableDoc);
   return {
-    state: tableDocToPersistedState(tableDoc),
+    state: tableDocToSchemaDocumentState(tableDoc),
     createdAt: typeof metadata.createdAt === 'number' ? metadata.createdAt : undefined,
     updatedAt: typeof metadata.updatedAt === 'number' ? metadata.updatedAt : Date.now(),
     ...(typeof metadata.folderId === 'string' ? { folderId: metadata.folderId } : {}),

@@ -113,13 +113,7 @@ const createSnapshot = (): WorkspaceSnapshot => ({
   folders: [{ id: 'folder-1', name: 'Core', order: 1, createdAt: 5 }],
 });
 
-const collaborativeState = (state: PersistedState): PersistedState => ({
-  ...toSchemaDocumentState(state),
-  sqlFormatMode: 'compact',
-  addCount: 12,
-  indexInput: '',
-  currentIndexFields: [],
-});
+const collaborativeState = (state: PersistedState) => toSchemaDocumentState(state);
 
 describe('workspace YDoc codec', () => {
   it('round-trips every workspace collection', () => {

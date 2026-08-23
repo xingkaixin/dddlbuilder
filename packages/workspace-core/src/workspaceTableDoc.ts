@@ -3,7 +3,6 @@ import {
   type FieldRow,
   type ForeignKeyDefinition,
   type IndexDefinition,
-  type PersistedState,
   type SchemaDocumentState,
   ensureFieldId,
   normalizeFieldDefaultKind,
@@ -62,7 +61,7 @@ const FIELD_KEYS = [
   'enumMeta',
 ] as const;
 
-export type ApplyPersistedStateOptions = {
+export type ApplySchemaDocumentStateOptions = {
   compactSnapshotBase?: boolean;
   forceFineGrained?: boolean;
 };
@@ -90,9 +89,9 @@ const hasRemovedStateKey = (previous: SchemaDocumentState, next: SchemaDocumentS
 const readStateSnapshot = (tableDoc: Y.Map<unknown>): SchemaDocumentState | null => {
   const snapshot = tableDoc.get('stateSnapshot');
   if (!snapshot || typeof snapshot !== 'object') return null;
-  const state = snapshot as Partial<PersistedState>;
+  const state = snapshot as Partial<SchemaDocumentState>;
   if (!Array.isArray(state.rows)) return null;
-  return toSchemaDocumentState(state as PersistedState);
+  return toSchemaDocumentState(state as SchemaDocumentState);
 };
 
 const hasEditorSessionState = (tableDoc: Y.Map<unknown>) => {
@@ -170,10 +169,10 @@ const buildPatch = <T>(
   return values;
 };
 
-export const applyPersistedStateToTableDoc = (
+export const applySchemaDocumentStateToTableDoc = (
   tableDoc: Y.Map<unknown>,
-  state: PersistedState,
-  options: ApplyPersistedStateOptions = {},
+  state: SchemaDocumentState,
+  options: ApplySchemaDocumentStateOptions = {},
 ) => {
   const documentState = toSchemaDocumentState(state);
   const previousSnapshot = readStateSnapshot(tableDoc);
@@ -252,7 +251,7 @@ export const applyPersistedStateToTableDoc = (
   }
 };
 
-export const tableDocToPersistedState = (tableDoc: Y.Map<unknown>): PersistedState => {
+export const tableDocToSchemaDocumentState = (tableDoc: Y.Map<unknown>): SchemaDocumentState => {
   const rawSnapshot = readStateSnapshot(tableDoc);
   // 快照可能是历史格式，且下面有绕过 readFieldRow 直接取快照 rows 的分支，先归一化。
   const stateSnapshot = rawSnapshot && normalizePersistedRows(rawSnapshot);
@@ -263,7 +262,7 @@ export const tableDocToPersistedState = (tableDoc: Y.Map<unknown>): PersistedSta
         ([, value]) => value !== undefined,
       ),
     ),
-  } as Partial<PersistedState>;
+  } as Partial<SchemaDocumentState>;
   const fields = getFields(tableDoc);
   const rows = !hasFieldDoc(tableDoc)
     ? (stateSnapshot?.rows ?? [])
@@ -288,29 +287,24 @@ export const tableDocToPersistedState = (tableDoc: Y.Map<unknown>): PersistedSta
     tableName: typeof state.tableName === 'string' ? state.tableName : '',
     tableComment: typeof state.tableComment === 'string' ? state.tableComment : '',
     dbType: typeof state.dbType === 'string' ? state.dbType : 'mysql',
-    sqlFormatMode: state.sqlFormatMode === 'aligned' ? 'aligned' : 'compact',
     viewDefinition: typeof state.viewDefinition === 'string' ? state.viewDefinition : '',
     viewCreateOrReplace: state.viewCreateOrReplace !== false,
     rows,
-    addCount: typeof state.addCount === 'number' ? state.addCount : 12,
-    indexInput: typeof state.indexInput === 'string' ? state.indexInput : '',
-    currentIndexFields: Array.isArray(state.currentIndexFields) ? state.currentIndexFields : [],
     indexes,
     authInput: typeof state.authInput === 'string' ? state.authInput : '',
     authObjects: Array.isArray(state.authObjects) ? state.authObjects : [],
     ...(state.citusShardingConfig ? { citusShardingConfig: state.citusShardingConfig } : {}),
     ...(state.mysqlPartitionConfig ? { mysqlPartitionConfig: state.mysqlPartitionConfig } : {}),
     ...(state.tableMiscConfig ? { tableMiscConfig: state.tableMiscConfig } : {}),
-    ...(state.fieldTableViewConfig ? { fieldTableViewConfig: state.fieldTableViewConfig } : {}),
     ...(foreignKeys && foreignKeys.length > 0 ? { foreignKeys } : {}),
-  } as PersistedState;
+  } as SchemaDocumentState;
 };
 
 export const materializeTableDoc = (tableDoc: Y.Map<unknown>) => {
   if (hasFineGrainedTableDoc(tableDoc)) return false;
   const stateSnapshot = readStateSnapshot(tableDoc);
   if (!stateSnapshot) return false;
-  applyPersistedStateToTableDoc(tableDoc, tableDocToPersistedState(tableDoc), {
+  applySchemaDocumentStateToTableDoc(tableDoc, tableDocToSchemaDocumentState(tableDoc), {
     forceFineGrained: true,
   });
   return true;

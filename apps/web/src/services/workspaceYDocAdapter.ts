@@ -1,28 +1,28 @@
 import * as Y from 'yjs';
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import { type PersistedState, withDefaultEditorSession } from '@ddlbuilder/shared-types';
 import type {
   SavedTableDraftRecord,
   WorkspaceSnapshot,
   WorkspaceSource,
 } from '@ddlbuilder/shared-types/workspace';
 import {
-  type ApplyPersistedStateOptions,
-  applyPersistedStateToTableDoc,
+  type ApplySchemaDocumentStateOptions,
+  applySchemaDocumentStateToTableDoc,
   DEFAULT_DRAFT_ID,
   ensureWorkspaceYDocMeta,
   exportWorkspaceYDocToSnapshot as encodeWorkspaceSnapshot,
-  getDraftRecordFromYDoc,
+  getDraftRecordFromYDoc as getSchemaDraftRecordFromYDoc,
   getWorkspaceRoot,
   importWorkspaceSnapshotToYDoc as decodeWorkspaceSnapshot,
   isWorkspaceYDocEmpty,
   materializeWorkspaceYDoc,
   readFolderRecords,
   shouldAcceptSnapshotRecord,
-  tableDocToPersistedState,
+  tableDocToSchemaDocumentState,
   tableMetadata,
   upsertTableRecord,
   WORKSPACE_YDOC_SCHEMA_VERSION,
-  type WorkspaceYDocDraftRecord,
+  type WorkspaceYDocDraftRecord as SchemaWorkspaceYDocDraftRecord,
   writeFolderRecord,
 } from '@ddlbuilder/workspace-core';
 import type {
@@ -33,15 +33,27 @@ import type {
 import { buildFolderTreeModel, type FolderTreeNode } from '@/utils/folderModel';
 
 export {
-  applyPersistedStateToTableDoc,
+  applySchemaDocumentStateToTableDoc,
   ensureWorkspaceYDocMeta,
-  getDraftRecordFromYDoc,
   isWorkspaceYDocEmpty,
   materializeWorkspaceYDoc,
-  tableDocToPersistedState,
   WORKSPACE_YDOC_SCHEMA_VERSION,
 };
-export type { WorkspaceYDocDraftRecord };
+
+export type WorkspaceYDocDraftRecord = Omit<SchemaWorkspaceYDocDraftRecord, 'state'> & {
+  state: PersistedState;
+};
+
+const readEditorState = (tableDoc: Y.Map<unknown>) =>
+  withDefaultEditorSession(tableDocToSchemaDocumentState(tableDoc));
+
+export const getDraftRecordFromYDoc = (
+  doc: Y.Doc,
+  draftId: string,
+): WorkspaceYDocDraftRecord | null => {
+  const record = getSchemaDraftRecordFromYDoc(doc, draftId);
+  return record ? { ...record, state: withDefaultEditorSession(record.state) } : null;
+};
 
 export const WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN = { source: 'workspace-local-edit' } as const;
 
@@ -57,7 +69,7 @@ export const upsertDraftInYDoc = (
   doc: Y.Doc,
   draftId: string,
   record: WorkspaceYDocDraftRecord,
-  options?: ApplyPersistedStateOptions,
+  options?: ApplySchemaDocumentStateOptions,
 ) => {
   upsertTableRecord(
     getWorkspaceRoot(doc).drafts,
@@ -80,7 +92,7 @@ export const listDraftRecordsFromYDoc = (doc: Y.Doc) =>
   Array.from(getWorkspaceRoot(doc).drafts.entries()).map(([draftId, tableDoc]) => ({
     draftId,
     record: getDraftRecordFromYDoc(doc, draftId) ?? {
-      state: tableDocToPersistedState(tableDoc),
+      state: readEditorState(tableDoc),
       updatedAt: Date.now(),
     },
   }));
@@ -88,7 +100,7 @@ export const listDraftRecordsFromYDoc = (doc: Y.Doc) =>
 export const upsertSavedTableInYDoc = (
   doc: Y.Doc,
   record: SavedTableRecord,
-  options?: ApplyPersistedStateOptions,
+  options?: ApplySchemaDocumentStateOptions,
 ) => {
   upsertTableRecord(
     getWorkspaceRoot(doc).savedTables,
@@ -120,7 +132,7 @@ export const getSavedTableFromYDoc = (
   return {
     normalizedName,
     name: typeof metadata.name === 'string' ? metadata.name : normalizedName,
-    state: tableDocToPersistedState(tableDoc),
+    state: readEditorState(tableDoc),
     createdAt: typeof metadata.createdAt === 'number' ? metadata.createdAt : now,
     updatedAt: typeof metadata.updatedAt === 'number' ? metadata.updatedAt : now,
     ...(typeof metadata.folderId === 'string' ? { folderId: metadata.folderId } : {}),
@@ -147,7 +159,7 @@ export const upsertSavedDraftInYDoc = (
   doc: Y.Doc,
   normalizedName: string,
   record: SavedTableDraftRecord,
-  options?: ApplyPersistedStateOptions,
+  options?: ApplySchemaDocumentStateOptions,
 ) => {
   upsertTableRecord(
     getWorkspaceRoot(doc).savedDrafts,
@@ -175,7 +187,7 @@ export const getSavedDraftFromYDoc = (
   if (!tableDoc) return null;
   const metadata = tableMetadata(tableDoc);
   return {
-    state: tableDocToPersistedState(tableDoc),
+    state: readEditorState(tableDoc),
     tableName: typeof metadata.tableName === 'string' ? metadata.tableName : normalizedName,
     baseSignature: typeof metadata.baseSignature === 'string' ? metadata.baseSignature : '',
     updatedAt: typeof metadata.updatedAt === 'number' ? metadata.updatedAt : Date.now(),

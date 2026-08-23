@@ -3,10 +3,14 @@ import * as Y from 'yjs';
 import {
   type FieldRow,
   type PersistedState,
+  type SchemaDocumentState,
   toSchemaDocumentState,
 } from '@ddlbuilder/shared-types';
 import { buildWorkspaceContentHash } from '../contentHash';
-import { applyPersistedStateToTableDoc, tableDocToPersistedState } from '../workspaceTableDoc';
+import {
+  applySchemaDocumentStateToTableDoc,
+  tableDocToSchemaDocumentState,
+} from '../workspaceTableDoc';
 
 const createRow = (index: number, overrides: Partial<FieldRow> = {}): FieldRow => ({
   id: `f${index}`,
@@ -55,25 +59,19 @@ const createTableDoc = () => {
   return tableDoc;
 };
 
-const normalize = (state: PersistedState): PersistedState => ({
-  ...toSchemaDocumentState(state),
-  sqlFormatMode: 'compact',
-  addCount: 12,
-  indexInput: '',
-  currentIndexFields: [],
-});
+const normalize = (state: PersistedState): SchemaDocumentState => toSchemaDocumentState(state);
 
 const runSequence = (states: PersistedState[], compactSnapshotBase: boolean) => {
   const tableDoc = createTableDoc();
   states.forEach((state, step) => {
-    applyPersistedStateToTableDoc(tableDoc, state, { compactSnapshotBase });
-    expect(tableDocToPersistedState(tableDoc), `step ${step + 1}`).toEqual(normalize(state));
+    applySchemaDocumentStateToTableDoc(tableDoc, state, { compactSnapshotBase });
+    expect(tableDocToSchemaDocumentState(tableDoc), `step ${step + 1}`).toEqual(normalize(state));
   });
   return tableDoc;
 };
 
 const rowsOf = (tableDoc: Y.Map<unknown>) =>
-  tableDocToPersistedState(tableDoc).rows.map((row) => row.fieldName);
+  tableDocToSchemaDocumentState(tableDoc).rows.map((row) => row.fieldName);
 
 describe.each([true, false])('table doc edit sequences (compactSnapshotBase=%s)', (compact) => {
   it('A: clears an optional field key again after it was set, cleared and set once more', () => {
@@ -88,7 +86,7 @@ describe.each([true, false])('table doc edit sequences (compactSnapshotBase=%s)'
       compact,
     );
 
-    expect(tableDocToPersistedState(tableDoc).rows[0]).not.toHaveProperty('enumMeta');
+    expect(tableDocToSchemaDocumentState(tableDoc).rows[0]).not.toHaveProperty('enumMeta');
   });
 
   it('B: restores a field name that was renamed after an optional key was cleared', () => {
@@ -104,7 +102,7 @@ describe.each([true, false])('table doc edit sequences (compactSnapshotBase=%s)'
       compact,
     );
 
-    expect(tableDocToPersistedState(tableDoc).rows[0].fieldName).toBe('user_id');
+    expect(tableDocToSchemaDocumentState(tableDoc).rows[0].fieldName).toBe('user_id');
   });
 
   it('C: drops a row again after it was added and removed', () => {
@@ -152,8 +150,8 @@ describe('table doc snapshot base', () => {
     ];
 
     sequence.forEach((state) => {
-      applyPersistedStateToTableDoc(tableDoc, state, { compactSnapshotBase: true });
-      expect(tableDocToPersistedState(tableDoc)).toEqual(normalize(state));
+      applySchemaDocumentStateToTableDoc(tableDoc, state, { compactSnapshotBase: true });
+      expect(tableDocToSchemaDocumentState(tableDoc)).toEqual(normalize(state));
     });
 
     expect(tableDoc.get('stateSnapshot')).toEqual(
@@ -260,13 +258,13 @@ describe.each([true, false])(
         let state = createClientState({
           rows: Array.from({ length: (round % 3) + 1 }, (_, index) => createRow(index)),
         });
-        applyPersistedStateToTableDoc(tableDoc, state, { compactSnapshotBase: compact });
+        applySchemaDocumentStateToTableDoc(tableDoc, state, { compactSnapshotBase: compact });
 
         for (let step = 0; step < 6; step += 1) {
           state = pick(MUTATIONS, random)(state, random);
-          applyPersistedStateToTableDoc(tableDoc, state, { compactSnapshotBase: compact });
+          applySchemaDocumentStateToTableDoc(tableDoc, state, { compactSnapshotBase: compact });
           const decoded = await buildWorkspaceContentHash({
-            state: tableDocToPersistedState(tableDoc),
+            state: tableDocToSchemaDocumentState(tableDoc),
           });
           const expected = await buildWorkspaceContentHash({ state: normalize(state) });
           if (decoded !== expected) {

@@ -1,3 +1,4 @@
+import { DEFAULT_EDITOR_SESSION_STATE } from '@ddlbuilder/shared-types';
 import type { AppSlice, EditorSetState } from './editorStoreTypes';
 
 function createInitialDialogs() {
@@ -16,8 +17,8 @@ export const createAppSlice = (set: EditorSetState): AppSlice => ({
   viewDefinition: '',
   viewCreateOrReplace: true,
   dbType: 'mysql',
-  sqlFormatMode: 'compact',
-  addCount: 10,
+  sqlFormatMode: DEFAULT_EDITOR_SESSION_STATE.sqlFormatMode,
+  addCount: DEFAULT_EDITOR_SESSION_STATE.addCount,
   fieldTableFreezeEnabled: false,
   fieldTableFreezeColumns: 3,
   activeTab: 'fields',
@@ -54,15 +55,15 @@ export const createAppSlice = (set: EditorSetState): AppSlice => ({
       viewDefinition: '',
       viewCreateOrReplace: true,
       dbType: 'mysql',
-      sqlFormatMode: 'compact',
+      sqlFormatMode: DEFAULT_EDITOR_SESSION_STATE.sqlFormatMode,
     }),
   resetTableViewConfig: () =>
     set({
-      addCount: 10,
+      addCount: DEFAULT_EDITOR_SESSION_STATE.addCount,
       fieldTableFreezeEnabled: false,
       fieldTableFreezeColumns: 3,
       activeTab: 'fields',
-      sqlFormatMode: 'compact',
+      sqlFormatMode: DEFAULT_EDITOR_SESSION_STATE.sqlFormatMode,
     }),
 
   setSavedTablesDrawerOpen: (savedTablesDrawerOpen) => set({ savedTablesDrawerOpen }),

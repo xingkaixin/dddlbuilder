@@ -361,8 +361,31 @@ describe('decodeWorkspaceSnapshot', () => {
     expect(decoded?.globalDraft?.state).toMatchObject({
       schemaName: '',
       tableName: 'users',
-      sqlFormatMode: 'compact',
     });
+    expect(decoded?.globalDraft?.state).not.toHaveProperty('sqlFormatMode');
+  });
+
+  it('接受不包含本地编辑状态的协作文档快照', () => {
+    const decoded = decodeWorkspaceSnapshot({
+      globalDraft: {
+        state: {
+          tableName: 'users',
+          tableComment: '',
+          dbType: 'mysql',
+          rows: [],
+          indexes: [],
+          authInput: '',
+          authObjects: [],
+        },
+        updatedAt: 1,
+      },
+      drafts: [],
+      savedTables: [],
+      savedDrafts: [],
+      folders: [],
+    });
+
+    expect(decoded?.globalDraft?.state.tableName).toBe('users');
   });
 
   it('规范化快照中的全部实体和可选字段', () => {
