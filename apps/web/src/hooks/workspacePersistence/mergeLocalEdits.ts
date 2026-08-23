@@ -9,7 +9,6 @@ const SCALAR_MERGE_KEYS = [
   'viewDefinition',
   'viewCreateOrReplace',
   'dbType',
-  'sqlFormatMode',
   'indexes',
   'foreignKeys',
   'citusShardingConfig',

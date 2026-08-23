@@ -192,6 +192,24 @@ export type EditorSessionState = {
 
 export type PersistedState = SchemaDocumentState & EditorSessionState;
 
+export const toSchemaDocumentState = (state: PersistedState): SchemaDocumentState => ({
+  objectType: state.objectType,
+  schemaName: state.schemaName,
+  tableName: state.tableName,
+  tableComment: state.tableComment,
+  dbType: state.dbType,
+  viewDefinition: state.viewDefinition,
+  viewCreateOrReplace: state.viewCreateOrReplace,
+  rows: state.rows,
+  indexes: state.indexes,
+  authInput: state.authInput,
+  authObjects: state.authObjects,
+  citusShardingConfig: state.citusShardingConfig,
+  mysqlPartitionConfig: state.mysqlPartitionConfig,
+  tableMiscConfig: state.tableMiscConfig,
+  foreignKeys: state.foreignKeys,
+});
+
 export type { ApiErrorCode, ApiMeta, ApiErrorPayload } from './api.js';
 export type {
   WorkspaceSource,

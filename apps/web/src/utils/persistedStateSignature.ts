@@ -2,9 +2,9 @@ import type {
   CitusShardingConfig,
   MysqlPartitionConfig,
   PersistedState,
-  SchemaDocumentState,
   TableMiscConfig,
 } from '@ddlbuilder/shared-types';
+import { toSchemaDocumentState } from '@ddlbuilder/shared-types';
 
 type JsonLike = Record<string, unknown>;
 
@@ -62,25 +62,12 @@ const isDefaultCitusShardingConfig = (config: CitusShardingConfig | undefined) =
   !config || (config.mode === 'reference' && !config.distributionColumn);
 
 export const normalizePersistedStateForSignature = (state: PersistedState) => {
-  const normalized: SchemaDocumentState = {
-    objectType: state.objectType,
-    schemaName: state.schemaName,
-    tableName: state.tableName,
-    tableComment: state.tableComment,
-    dbType: state.dbType,
-    viewDefinition: state.viewDefinition,
-    viewCreateOrReplace: state.viewCreateOrReplace,
+  const normalized = {
+    ...toSchemaDocumentState(state),
     rows: state.rows.map((row) => {
       const { order: _legacyOrder, ...content } = row as typeof row & { order?: unknown };
       return content;
     }),
-    indexes: state.indexes,
-    authInput: state.authInput,
-    authObjects: state.authObjects,
-    citusShardingConfig: state.citusShardingConfig,
-    mysqlPartitionConfig: state.mysqlPartitionConfig,
-    tableMiscConfig: state.tableMiscConfig,
-    foreignKeys: state.foreignKeys,
   };
 
   if (!normalized.objectType || normalized.objectType === 'table') {

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
-import type { FieldRow, PersistedState } from '@ddlbuilder/shared-types';
+import {
+  type FieldRow,
+  type PersistedState,
+  toSchemaDocumentState,
+} from '@ddlbuilder/shared-types';
 import { buildWorkspaceContentHash } from '../contentHash';
 import { applyPersistedStateToTableDoc, tableDocToPersistedState } from '../workspaceTableDoc';
 
@@ -51,7 +55,13 @@ const createTableDoc = () => {
   return tableDoc;
 };
 
-const normalize = (state: PersistedState) => state;
+const normalize = (state: PersistedState): PersistedState => ({
+  ...toSchemaDocumentState(state),
+  sqlFormatMode: 'compact',
+  addCount: 12,
+  indexInput: '',
+  currentIndexFields: [],
+});
 
 const runSequence = (states: PersistedState[], compactSnapshotBase: boolean) => {
   const tableDoc = createTableDoc();
@@ -146,7 +156,9 @@ describe('table doc snapshot base', () => {
       expect(tableDocToPersistedState(tableDoc)).toEqual(normalize(state));
     });
 
-    expect(tableDoc.get('stateSnapshot')).toEqual(JSON.parse(JSON.stringify(sequence[0])));
+    expect(tableDoc.get('stateSnapshot')).toEqual(
+      JSON.parse(JSON.stringify(toSchemaDocumentState(sequence[0]))),
+    );
   });
 });
 

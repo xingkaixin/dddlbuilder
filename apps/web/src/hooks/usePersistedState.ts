@@ -177,12 +177,20 @@ export function usePersistedState(): UsePersistedStateReturn {
     });
   }, []);
 
-  const applyYDocState = useCallback(
-    (nextState: PersistedState) => {
-      setPersistedStateIfChanged(nextState);
-    },
-    [setPersistedStateIfChanged],
-  );
+  const applyYDocState = useCallback((nextState: PersistedState) => {
+    setPersistedState((previousState) => {
+      if (!previousState) return nextState;
+      const mergedState: PersistedState = {
+        ...nextState,
+        sqlFormatMode: previousState.sqlFormatMode,
+        addCount: previousState.addCount,
+        indexInput: previousState.indexInput,
+        currentIndexFields: previousState.currentIndexFields,
+        fieldTableViewConfig: previousState.fieldTableViewConfig,
+      };
+      return isSamePersistedState(previousState, mergedState) ? previousState : mergedState;
+    });
+  }, []);
 
   useEffect(() => {
     persistedStateRef.current = persistedState;

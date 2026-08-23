@@ -4,11 +4,13 @@ import {
   type ForeignKeyDefinition,
   type IndexDefinition,
   type PersistedState,
+  type SchemaDocumentState,
   ensureFieldId,
   normalizeFieldDefaultKind,
   normalizeFieldNullable,
   normalizeFieldOnUpdate,
   normalizePersistedRows,
+  toSchemaDocumentState,
 } from '@ddlbuilder/shared-types';
 import {
   ensureArray,
@@ -31,17 +33,20 @@ const TABLE_SCALAR_KEYS = [
   'tableName',
   'tableComment',
   'dbType',
-  'sqlFormatMode',
   'viewDefinition',
   'viewCreateOrReplace',
-  'addCount',
-  'indexInput',
-  'currentIndexFields',
   'authInput',
   'authObjects',
   'citusShardingConfig',
   'mysqlPartitionConfig',
   'tableMiscConfig',
+] as const;
+
+const EDITOR_SESSION_KEYS = [
+  'sqlFormatMode',
+  'addCount',
+  'indexInput',
+  'currentIndexFields',
   'fieldTableViewConfig',
 ] as const;
 
@@ -62,7 +67,7 @@ export type ApplyPersistedStateOptions = {
   forceFineGrained?: boolean;
 };
 
-const writeStateSnapshot = (tableDoc: Y.Map<unknown>, state: PersistedState) => {
+const writeStateSnapshot = (tableDoc: Y.Map<unknown>, state: SchemaDocumentState) => {
   const nextSnapshot = JSON.parse(JSON.stringify(state));
   if (stableStringify(tableDoc.get('stateSnapshot')) !== stableStringify(nextSnapshot)) {
     tableDoc.set('stateSnapshot', nextSnapshot);
@@ -74,7 +79,7 @@ const writeStateSnapshot = (tableDoc: Y.Map<unknown>, state: PersistedState) => 
 const hasRemovedKey = <T>(previous: T | undefined, next: T, keys: readonly (keyof T)[]) =>
   previous != null && keys.some((key) => previous[key] !== undefined && next[key] === undefined);
 
-const hasRemovedStateKey = (previous: PersistedState, next: PersistedState) => {
+const hasRemovedStateKey = (previous: SchemaDocumentState, next: SchemaDocumentState) => {
   if (hasRemovedKey(previous, next, TABLE_SCALAR_KEYS)) return true;
   const previousRows = previous.rows ?? [];
   return (next.rows ?? []).some((row, index) =>
@@ -82,12 +87,21 @@ const hasRemovedStateKey = (previous: PersistedState, next: PersistedState) => {
   );
 };
 
-const readStateSnapshot = (tableDoc: Y.Map<unknown>): PersistedState | null => {
+const readStateSnapshot = (tableDoc: Y.Map<unknown>): SchemaDocumentState | null => {
   const snapshot = tableDoc.get('stateSnapshot');
   if (!snapshot || typeof snapshot !== 'object') return null;
   const state = snapshot as Partial<PersistedState>;
   if (!Array.isArray(state.rows)) return null;
-  return state as PersistedState;
+  return toSchemaDocumentState(state as PersistedState);
+};
+
+const hasEditorSessionState = (tableDoc: Y.Map<unknown>) => {
+  const snapshot = tableDoc.get('stateSnapshot');
+  const scalar = readMap(tableDoc, 'scalar');
+  return EDITOR_SESSION_KEYS.some(
+    (key) =>
+      (snapshot != null && typeof snapshot === 'object' && key in snapshot) || scalar?.has(key),
+  );
 };
 
 const hasFieldDoc = (tableDoc: Y.Map<unknown>) => hasMapOrArray(tableDoc, 'fields', 'fieldOrder');
@@ -161,25 +175,32 @@ export const applyPersistedStateToTableDoc = (
   state: PersistedState,
   options: ApplyPersistedStateOptions = {},
 ) => {
+  const documentState = toSchemaDocumentState(state);
   const previousSnapshot = readStateSnapshot(tableDoc);
+  const containsEditorSessionState = hasEditorSessionState(tableDoc);
   if (
     options.compactSnapshotBase !== true ||
     previousSnapshot == null ||
-    hasRemovedStateKey(previousSnapshot, state)
+    containsEditorSessionState ||
+    hasRemovedStateKey(previousSnapshot, documentState)
   ) {
-    writeStateSnapshot(tableDoc, state);
+    writeStateSnapshot(tableDoc, documentState);
   }
   const writeAllKeys = options.forceFineGrained === true || previousSnapshot == null;
 
   const scalarValues = buildPatch(
     readMap(tableDoc, 'scalar'),
     TABLE_SCALAR_KEYS,
-    state,
+    documentState,
     previousSnapshot,
     writeAllKeys,
   );
   if (Object.keys(scalarValues).length > 0) {
     writeJsonMapPatch(ensureMap(tableDoc, 'scalar'), scalarValues);
+  }
+  if (containsEditorSessionState) {
+    const scalar = readMap(tableDoc, 'scalar');
+    EDITOR_SESSION_KEYS.forEach((key) => scalar?.delete(key));
   }
 
   const snapshotRows = previousSnapshot?.rows ?? [];
@@ -216,17 +237,18 @@ export const applyPersistedStateToTableDoc = (
   if (
     writeAllKeys ||
     hasIndexDoc(tableDoc) ||
-    stableStringify(previousSnapshot?.indexes ?? []) !== stableStringify(state.indexes ?? [])
+    stableStringify(previousSnapshot?.indexes ?? []) !==
+      stableStringify(documentState.indexes ?? [])
   ) {
-    writeOrderedMap(tableDoc, 'indexes', 'indexOrder', state.indexes ?? []);
+    writeOrderedMap(tableDoc, 'indexes', 'indexOrder', documentState.indexes ?? []);
   }
   if (
     writeAllKeys ||
     hasForeignKeyDoc(tableDoc) ||
     stableStringify(previousSnapshot?.foreignKeys ?? []) !==
-      stableStringify(state.foreignKeys ?? [])
+      stableStringify(documentState.foreignKeys ?? [])
   ) {
-    writeOrderedMap(tableDoc, 'foreignKeys', 'foreignKeyOrder', state.foreignKeys ?? []);
+    writeOrderedMap(tableDoc, 'foreignKeys', 'foreignKeyOrder', documentState.foreignKeys ?? []);
   }
 };
 
@@ -234,11 +256,13 @@ export const tableDocToPersistedState = (tableDoc: Y.Map<unknown>): PersistedSta
   const rawSnapshot = readStateSnapshot(tableDoc);
   // 快照可能是历史格式，且下面有绕过 readFieldRow 直接取快照 rows 的分支，先归一化。
   const stateSnapshot = rawSnapshot && normalizePersistedRows(rawSnapshot);
-  if (!hasFineGrainedTableDoc(tableDoc) && stateSnapshot) return stateSnapshot;
-
   const state = {
     ...stateSnapshot,
-    ...readJsonMap(readMap(tableDoc, 'scalar')),
+    ...Object.fromEntries(
+      TABLE_SCALAR_KEYS.map((key) => [key, readMap(tableDoc, 'scalar')?.get(key)]).filter(
+        ([, value]) => value !== undefined,
+      ),
+    ),
   } as Partial<PersistedState>;
   const fields = getFields(tableDoc);
   const rows = !hasFieldDoc(tableDoc)
@@ -286,7 +310,9 @@ export const materializeTableDoc = (tableDoc: Y.Map<unknown>) => {
   if (hasFineGrainedTableDoc(tableDoc)) return false;
   const stateSnapshot = readStateSnapshot(tableDoc);
   if (!stateSnapshot) return false;
-  applyPersistedStateToTableDoc(tableDoc, stateSnapshot, { forceFineGrained: true });
+  applyPersistedStateToTableDoc(tableDoc, tableDocToPersistedState(tableDoc), {
+    forceFineGrained: true,
+  });
   return true;
 };
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import { type PersistedState, toSchemaDocumentState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import {
   createWorkspaceYDocUpdateFromSnapshot,
@@ -113,13 +113,21 @@ const createSnapshot = (): WorkspaceSnapshot => ({
   folders: [{ id: 'folder-1', name: 'Core', order: 1, createdAt: 5 }],
 });
 
+const collaborativeState = (state: PersistedState): PersistedState => ({
+  ...toSchemaDocumentState(state),
+  sqlFormatMode: 'compact',
+  addCount: 12,
+  indexInput: '',
+  currentIndexFields: [],
+});
+
 describe('workspace YDoc codec', () => {
   it('round-trips every workspace collection', () => {
     const doc = new Y.Doc();
     importWorkspaceSnapshotToYDoc(doc, createSnapshot());
 
     expect(isWorkspaceYDocInitialized(doc)).toBe(true);
-    expect(exportWorkspaceYDocToSnapshot(doc)).toEqual({
+    const expected = {
       ...createSnapshot(),
       globalDraft: null,
       drafts: [
@@ -132,7 +140,23 @@ describe('workspace YDoc codec', () => {
         },
         ...createSnapshot().drafts,
       ],
-    });
+    };
+    expected.drafts = expected.drafts.map((record) => ({
+      ...record,
+      state: collaborativeState(record.state),
+    }));
+    expected.savedTables = expected.savedTables.map((record) => ({
+      ...record,
+      state: collaborativeState(record.state),
+    }));
+    expected.savedDrafts = expected.savedDrafts.map((record) => ({
+      ...record,
+      state: collaborativeState(record.state),
+    }));
+
+    expect(JSON.parse(JSON.stringify(exportWorkspaceYDocToSnapshot(doc)))).toEqual(
+      JSON.parse(JSON.stringify(expected)),
+    );
   });
 
   it('encodes a transport update and preserves authoritative empty collections', () => {

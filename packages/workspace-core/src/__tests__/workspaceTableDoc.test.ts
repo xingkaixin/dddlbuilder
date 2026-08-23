@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
-import { normalizePersistedRows, type PersistedState } from '@ddlbuilder/shared-types';
+import {
+  normalizePersistedRows,
+  type PersistedState,
+  toSchemaDocumentState,
+} from '@ddlbuilder/shared-types';
 import { buildWorkspaceContentHash } from '../contentHash';
 import { applyPersistedStateToTableDoc, tableDocToPersistedState } from '../workspaceTableDoc';
 import { getWorkspaceRoot } from '../workspaceYDoc';
@@ -82,15 +86,23 @@ const snapshotOf = (state: PersistedState) => ({
   folders: [],
 });
 
+const collaborativeState = (state: PersistedState): PersistedState => ({
+  ...toSchemaDocumentState(state),
+  sqlFormatMode: 'compact',
+  addCount: 12,
+  indexInput: '',
+  currentIndexFields: [],
+});
+
 describe('workspace table doc', () => {
   it('hashes decoded state identically to the client state it was written from', async () => {
     const clientState = createClientState();
     const decoded = tableDocToPersistedState(createTableDoc(clientState));
 
     expect(decoded).not.toHaveProperty('foreignKeys');
-    expect(decoded).toEqual(clientState);
+    expect(decoded).toEqual(collaborativeState(clientState));
     await expect(buildWorkspaceContentHash({ state: decoded })).resolves.toBe(
-      await buildWorkspaceContentHash({ state: clientState }),
+      await buildWorkspaceContentHash({ state: collaborativeState(clientState) }),
     );
   });
 
@@ -218,7 +230,7 @@ describe('workspace table doc', () => {
       tableName: '',
       tableComment: '',
       dbType: 'mysql',
-      sqlFormatMode: 'aligned',
+      sqlFormatMode: 'compact',
       viewDefinition: '',
       viewCreateOrReplace: false,
       rows: [],
@@ -264,6 +276,38 @@ describe('workspace table doc writes', () => {
     expect(updates).toEqual([]);
   });
 
+  it('does not store or emit updates for editor session changes', () => {
+    const clientState = createClientState();
+    const tableDoc = createTableDoc(clientState);
+    const updates = collectUpdates(tableDoc.doc as Y.Doc);
+
+    applyPersistedStateToTableDoc(tableDoc, {
+      ...clientState,
+      sqlFormatMode: 'aligned',
+      addCount: 99,
+      indexInput: 'email',
+      currentIndexFields: [{ name: 'email', direction: 'DESC' }],
+      fieldTableViewConfig: { freezeEnabled: true, freezeColumns: 2 },
+    });
+
+    expect(updates).toEqual([]);
+    expect(tableDoc.get('stateSnapshot')).toEqual(toSchemaDocumentState(clientState));
+  });
+
+  it('removes editor session fields from legacy collaborative storage', () => {
+    const clientState = createClientState({
+      sqlFormatMode: 'aligned',
+      indexInput: 'email',
+      fieldTableViewConfig: { freezeEnabled: true, freezeColumns: 2 },
+    });
+    const tableDoc = createLegacyTableDoc(clientState);
+
+    applyPersistedStateToTableDoc(tableDoc, clientState, { compactSnapshotBase: true });
+
+    expect(tableDoc.get('stateSnapshot')).toEqual(toSchemaDocumentState(clientState));
+    expect(tableDocToPersistedState(tableDoc)).toEqual(collaborativeState(clientState));
+  });
+
   it('patches changed scalars and fields against the previous snapshot', () => {
     const clientState = createClientState();
     const tableDoc = createTableDoc(clientState);
@@ -274,7 +318,7 @@ describe('workspace table doc writes', () => {
 
     applyPersistedStateToTableDoc(tableDoc, nextState);
 
-    expect(tableDocToPersistedState(tableDoc)).toEqual(nextState);
+    expect(tableDocToPersistedState(tableDoc)).toEqual(collaborativeState(nextState));
   });
 
   it('keeps the previous snapshot as the base when compacting', () => {
@@ -285,7 +329,7 @@ describe('workspace table doc writes', () => {
     applyPersistedStateToTableDoc(tableDoc, nextState, { compactSnapshotBase: true });
 
     expect((tableDoc.get('stateSnapshot') as PersistedState).tableName).toBe(clientState.tableName);
-    expect(tableDocToPersistedState(tableDoc)).toEqual(nextState);
+    expect(tableDocToPersistedState(tableDoc)).toEqual(collaborativeState(nextState));
   });
 
   it('reuses field identities when rows are reordered and removed', () => {
@@ -392,7 +436,7 @@ describe('workspace table doc key removals', () => {
     });
     applyCompacted(tableDoc, restoredState);
 
-    expect(tableDocToPersistedState(tableDoc)).toEqual(restoredState);
+    expect(tableDocToPersistedState(tableDoc)).toEqual(collaborativeState(restoredState));
   });
 
   it('keeps the decoded content hash aligned across an incremental edit sequence', async () => {
@@ -412,7 +456,7 @@ describe('workspace table doc key removals', () => {
       applyCompacted(tableDoc, state);
       await expect(
         buildWorkspaceContentHash({ state: tableDocToPersistedState(tableDoc) }),
-      ).resolves.toBe(await buildWorkspaceContentHash({ state }));
+      ).resolves.toBe(await buildWorkspaceContentHash({ state: collaborativeState(state) }));
     }
   });
 });
