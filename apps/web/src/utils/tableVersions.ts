@@ -1,6 +1,6 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { TableVersion, TableVersionMetadata } from './savedTablesDb';
-import { openDb, VERSION_STORE_NAME } from './savedTablesDb';
+import { openDb, VERSION_STORE_NAME } from './workspaceDb';
+import type { TableVersion, TableVersionMetadata } from './workspaceStorageTypes';
 import { normalizePersistedRows } from './helpers';
 import { runIndexedDbRequest } from './indexedDbTransaction';
 

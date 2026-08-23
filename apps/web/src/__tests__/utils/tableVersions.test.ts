@@ -9,7 +9,7 @@ import {
   pruneOldVersions,
   countVersions,
 } from '@/utils/tableVersions';
-import * as dbUtils from '@/utils/savedTablesDb';
+import * as dbUtils from '@/utils/workspaceDb';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from './fakeIndexedDb';
 

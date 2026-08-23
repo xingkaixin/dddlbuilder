@@ -8,7 +8,7 @@ import {
   listFoldersFromYDoc,
   upsertFolderInYDoc,
 } from '@/services/workspaceYDocAdapter';
-import type { TableFolder } from '@/utils/savedTablesDb';
+import type { TableFolder } from '@/utils/workspaceStorageTypes';
 import {
   createFolder,
   deleteFolder,

@@ -2,7 +2,7 @@ import {
   normalizeDDLReviewResult,
   type DDLReviewResult as ReviewResult,
 } from '@ddlbuilder/shared-types/ddl-review';
-import { openDb, REVIEW_STORE_NAME } from './savedTablesDb';
+import { openDb, REVIEW_STORE_NAME } from './workspaceDb';
 import { runIndexedDbRequest } from './indexedDbTransaction';
 
 /**

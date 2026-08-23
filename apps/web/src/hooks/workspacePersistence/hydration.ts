@@ -1,6 +1,6 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { DraftSummary, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
-import type { SavedTableRecord } from '@/utils/savedTablesDb';
+import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import { DEFAULT_DRAFT_ID, type WorkspaceSessionRecord } from '@/utils/workspaceStateDb';
 import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 import { buildDraftSummary, normalizeGlobalDraftRecord, type GlobalDraftRecord } from './normalize';

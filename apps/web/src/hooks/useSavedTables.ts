@@ -22,9 +22,8 @@ import {
   normalizeSavedTableName,
   updateSavedTable,
   updateSavedTables,
-  type SavedTableMetadata,
-  type SavedTableRecord,
 } from '@/utils/savedTablesDb';
+import type { SavedTableMetadata, SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import {
   buildSavedTableBatchImportPlan,
   type SavedTableBatchImportRequest,

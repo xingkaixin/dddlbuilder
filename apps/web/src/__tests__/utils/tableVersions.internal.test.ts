@@ -77,7 +77,7 @@ const mocks = vi.hoisted(() => ({
   }),
 }));
 
-vi.mock('@/utils/savedTablesDb', () => ({
+vi.mock('@/utils/workspaceDb', () => ({
   VERSION_STORE_NAME: 'table_versions',
   openDb: mocks.openDb,
 }));

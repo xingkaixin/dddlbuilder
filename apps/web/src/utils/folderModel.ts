@@ -1,4 +1,4 @@
-import type { TableFolder } from './savedTablesDb';
+import type { TableFolder } from './workspaceStorageTypes';
 
 export type FolderTreeNode = TableFolder & {
   children: FolderTreeNode[];

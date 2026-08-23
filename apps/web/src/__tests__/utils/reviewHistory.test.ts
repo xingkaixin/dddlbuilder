@@ -8,7 +8,7 @@ import {
   countReviews,
   pruneOldReviews,
 } from '@/utils/reviewHistory';
-import * as dbUtils from '@/utils/savedTablesDb';
+import * as dbUtils from '@/utils/workspaceDb';
 import { setupFakeIndexedDB } from './fakeIndexedDb';
 
 describe('reviewHistory', () => {

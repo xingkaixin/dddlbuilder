@@ -13,7 +13,7 @@ import {
   buildFolderTree as buildFolderTreeInScope,
   getFolderPath as getFolderPathInScope,
 } from '@/utils/tableFolders';
-import * as dbUtils from '@/utils/savedTablesDb';
+import * as dbUtils from '@/utils/workspaceDb';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 

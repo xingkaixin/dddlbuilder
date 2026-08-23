@@ -1,11 +1,9 @@
-import { openDb, FOLDER_STORE_NAME, type TableFolder } from './savedTablesDb';
+import { FOLDER_STORE_NAME, openDb } from './workspaceDb';
+import type { TableFolder } from './workspaceStorageTypes';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
-import {
-  buildScopedWorkspaceKey,
-  getAnonymousWorkspaceScope,
-  getWorkspaceScopeStorageKey,
-} from './workspaceScope';
+import { buildScopedWorkspaceKey, getWorkspaceScopeStorageKey } from './workspaceScope';
 import { runIndexedDbRequest } from './indexedDbTransaction';
+import { decodeWorkspaceScopedKey } from './workspaceScopedRecord';
 import {
   buildFolderTreeModel,
   createFolderRecord,
@@ -17,36 +15,11 @@ import {
 
 export type { FolderTreeNode } from './folderModel';
 
-const LEGACY_SCOPE = getWorkspaceScopeStorageKey(getAnonymousWorkspaceScope());
-
 const withScopeKey = (scope: WorkspaceScope, id: string) => buildScopedWorkspaceKey(scope, id);
 
 const decodeScopedFolder = (folder: TableFolder, scope: WorkspaceScope): TableFolder | null => {
-  const scopeKey = getWorkspaceScopeStorageKey(scope);
-  if (folder.scope && folder.scope !== scopeKey) {
-    return null;
-  }
-
-  if (folder.id.includes('::')) {
-    const prefix = `${scopeKey}::`;
-    if (!folder.id.startsWith(prefix)) {
-      return null;
-    }
-    return {
-      ...folder,
-      id: folder.id.slice(prefix.length),
-      scope: scopeKey,
-    };
-  }
-
-  if (scope.kind !== 'anonymous') {
-    return null;
-  }
-
-  return {
-    ...folder,
-    scope: LEGACY_SCOPE,
-  };
+  const decoded = decodeWorkspaceScopedKey(folder.id, folder.scope, scope);
+  return decoded ? { ...folder, id: decoded.key, scope: decoded.scope } : null;
 };
 
 const encodeFolder = (folder: TableFolder, scope: WorkspaceScope): TableFolder => ({

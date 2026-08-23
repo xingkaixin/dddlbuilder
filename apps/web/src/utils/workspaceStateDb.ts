@@ -12,14 +12,15 @@ import {
   WORKSPACE_SAVED_DRAFTS_STORE_NAME,
   WORKSPACE_SESSION_STORE_NAME,
   openDb,
-  type SavedTableRecord,
-} from './savedTablesDb';
+} from './workspaceDb';
+import type { SavedTableRecord } from './workspaceStorageTypes';
 import {
   buildScopedWorkspaceKey,
   getAnonymousWorkspaceScope,
   getWorkspaceScopeStorageKey,
 } from './workspaceScope';
 import { runIndexedDbRequest } from './indexedDbTransaction';
+import { decodeWorkspaceScopedKey } from './workspaceScopedRecord';
 
 export { DEFAULT_DRAFT_ID };
 const WORKSPACE_SESSION_ROW_ID = 'active';
@@ -62,58 +63,19 @@ type WorkspaceStoreName =
 
 type BootstrapReadableStoreName = WorkspaceStoreName | typeof STORE_NAME;
 
-const LEGACY_SCOPE = getWorkspaceScopeStorageKey(getAnonymousWorkspaceScope());
-
 const withScopeKey = (scope: WorkspaceScope, key: string) => buildScopedWorkspaceKey(scope, key);
 
 const decodeScopedEntity = <T extends { id?: string; normalizedName?: string; scope?: string }>(
   entity: T,
   scope: WorkspaceScope,
 ): T | null => {
-  const scopeKey = getWorkspaceScopeStorageKey(scope);
-
   const rawKey = typeof entity.id === 'string' ? entity.id : entity.normalizedName;
-  if (!rawKey) {
-    return null;
-  }
-
-  if (entity.scope && entity.scope !== scopeKey) {
-    return null;
-  }
-
-  if (rawKey.includes('::')) {
-    const prefix = `${scopeKey}::`;
-    if (!rawKey.startsWith(prefix)) {
-      return null;
-    }
-
-    if (typeof entity.id === 'string') {
-      return {
-        ...entity,
-        id: rawKey.slice(prefix.length),
-        scope: scopeKey,
-      };
-    }
-    return {
-      ...entity,
-      normalizedName: rawKey.slice(prefix.length),
-      scope: scopeKey,
-    };
-  }
-
-  if (scope.kind !== 'anonymous') {
-    return null;
-  }
-
-  return {
-    ...entity,
-    scope: LEGACY_SCOPE,
-  };
-};
-
-const stripScopePrefix = (rawKey: string, scope: WorkspaceScope) => {
-  const prefix = `${getWorkspaceScopeStorageKey(scope)}::`;
-  return rawKey.startsWith(prefix) ? rawKey.slice(prefix.length) : rawKey;
+  if (!rawKey) return null;
+  const decoded = decodeWorkspaceScopedKey(rawKey, entity.scope, scope);
+  if (!decoded) return null;
+  return typeof entity.id === 'string'
+    ? { ...entity, id: decoded.key, scope: decoded.scope }
+    : { ...entity, normalizedName: decoded.key, scope: decoded.scope };
 };
 
 const decodeDrafts = (
@@ -123,7 +85,7 @@ const decodeDrafts = (
   if (!Array.isArray(entities)) return [];
   return entities.flatMap((entity) => {
     const decoded = decodeScopedEntity(entity, scope);
-    return decoded ? [{ ...decoded, id: stripScopePrefix(decoded.id, scope) }] : [];
+    return decoded ? [decoded] : [];
   });
 };
 

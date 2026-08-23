@@ -1,9 +1,6 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import {
-  ensureSavedTableName,
-  normalizeSavedTableName,
-  type SavedTableRecord,
-} from './savedTablesDb';
+import { ensureSavedTableName, normalizeSavedTableName } from './savedTablesDb';
+import type { SavedTableRecord } from './workspaceStorageTypes';
 
 export type SavedTableConflictStrategy = 'skip' | 'overwrite' | 'rename';
 

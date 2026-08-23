@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
-import type { TableFolder } from '@/utils/savedTablesDb';
+import type { TableFolder } from '@/utils/workspaceStorageTypes';
 import i18n from '@/i18n';
 
 interface UseFolderActionsParams {

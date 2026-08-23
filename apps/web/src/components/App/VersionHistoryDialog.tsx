@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import type { TableVersion } from '@/utils/savedTablesDb';
+import type { TableVersion } from '@/utils/workspaceStorageTypes';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { TableDiff } from '@ddlbuilder/ddl-core';
 import { diffPersistedState } from '@ddlbuilder/ddl-core';

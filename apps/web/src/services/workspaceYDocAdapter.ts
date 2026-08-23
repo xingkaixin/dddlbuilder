@@ -25,7 +25,11 @@ import {
   type WorkspaceYDocDraftRecord,
   writeFolderRecord,
 } from '@ddlbuilder/workspace-core';
-import type { SavedTableMetadata, SavedTableRecord, TableFolder } from '@/utils/savedTablesDb';
+import type {
+  SavedTableMetadata,
+  SavedTableRecord,
+  TableFolder,
+} from '@/utils/workspaceStorageTypes';
 import { buildFolderTreeModel, type FolderTreeNode } from '@/utils/folderModel';
 
 export {

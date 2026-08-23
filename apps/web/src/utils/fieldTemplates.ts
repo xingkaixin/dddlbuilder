@@ -8,12 +8,8 @@ import {
   normalizeFieldEnums,
   normalizeFieldNullable,
 } from '@ddlbuilder/shared-types';
-import {
-  openDb,
-  TEMPLATE_STORE_NAME,
-  type FieldTemplate,
-  type TemplateField,
-} from './savedTablesDb';
+import { openDb, TEMPLATE_STORE_NAME } from './workspaceDb';
+import type { FieldTemplate, TemplateField } from './workspaceStorageTypes';
 import { runIndexedDbRequest } from './indexedDbTransaction';
 
 export type { FieldTemplate, TemplateField };

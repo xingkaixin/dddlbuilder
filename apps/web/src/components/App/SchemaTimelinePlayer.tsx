@@ -12,7 +12,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { TableVersion } from '@/utils/savedTablesDb';
+import type { TableVersion } from '@/utils/workspaceStorageTypes';
 import type { FieldRow } from '@ddlbuilder/shared-types';
 import type { TableDiff, FieldDiff, FieldChangeType } from '@ddlbuilder/ddl-core';
 import { diffPersistedState } from '@ddlbuilder/ddl-core';
