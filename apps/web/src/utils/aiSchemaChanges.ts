@@ -1,10 +1,11 @@
-import type {
-  DatabaseType,
-  FieldRow,
-  IndexDefinition,
-  PersistedState,
-  NormalizedField,
-  SqlFormatMode,
+import {
+  createEntityId,
+  type DatabaseType,
+  type FieldRow,
+  type IndexDefinition,
+  type PersistedState,
+  type NormalizedField,
+  type SqlFormatMode,
 } from '@ddlbuilder/shared-types';
 import { createFieldId } from '@ddlbuilder/workspace-core';
 import type { GeneratedTableSchema } from '@ddlbuilder/shared-types/ai-generate';
@@ -75,7 +76,6 @@ function buildGeneratedIndexes(
   schema: GeneratedTableSchema,
   baseIndexes: IndexDefinition[],
 ): IndexDefinition[] {
-  const now = Date.now();
   const existingIds = new Map(baseIndexes.map((index) => [index.name.toLowerCase(), index.id]));
   const pkFields = schema.fields
     .filter((field) => field.isPrimaryKey)
@@ -88,10 +88,10 @@ function buildGeneratedIndexes(
         field.name.trim().toLowerCase() === pkFields[index]?.name.trim().toLowerCase() &&
         field.direction === pkFields[index]?.direction,
     );
-  const indexes = (schema.indexes || []).map((index, i) => {
+  const indexes = (schema.indexes || []).map((index) => {
     const isPrimary = /^primary$|^pk_/i.test(index.name) && hasSameFields(index.fields);
     return {
-      id: existingIds.get(index.name.toLowerCase()) ?? `ai-index-${now}-${i}`,
+      id: existingIds.get(index.name.toLowerCase()) ?? createEntityId(),
       name: index.name,
       fields: index.fields,
       unique: isPrimary ? true : index.unique,
@@ -102,7 +102,7 @@ function buildGeneratedIndexes(
   if (pkFields.length > 0 && !indexes.some((index) => index.isPrimary)) {
     const oldPrimary = baseIndexes.find((index) => index.isPrimary);
     indexes.unshift({
-      id: oldPrimary?.id ?? `ai-primary-${now}`,
+      id: oldPrimary?.id ?? createEntityId(),
       name: oldPrimary?.name || 'PRIMARY',
       fields: pkFields,
       unique: true,

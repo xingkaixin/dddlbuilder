@@ -1,4 +1,4 @@
-import type { ForeignKeyDefinition } from '@ddlbuilder/shared-types';
+import { createEntityId, type ForeignKeyDefinition } from '@ddlbuilder/shared-types';
 import type { EditorSetState, ForeignKeySlice } from './editorStoreTypes';
 
 export const createForeignKeySlice = (set: EditorSetState): ForeignKeySlice => ({
@@ -12,7 +12,7 @@ export const createForeignKeySlice = (set: EditorSetState): ForeignKeySlice => (
   addForeignKey: (fk) => {
     const newFk: ForeignKeyDefinition = {
       ...fk,
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      id: createEntityId(),
     };
     set((state) => ({
       foreignKeys: [...state.foreignKeys, newFk],

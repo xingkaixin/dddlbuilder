@@ -1,1 +1,3 @@
-export const createFieldId = (): string => crypto.randomUUID();
+import { createEntityId } from '@ddlbuilder/shared-types';
+
+export const createFieldId = createEntityId;

@@ -12,6 +12,7 @@ import {
   toSchemaDocumentState,
 } from '@ddlbuilder/shared-types';
 import {
+  assertUniqueIds,
   ensureArray,
   ensureMap,
   hasMapOrArray,
@@ -175,6 +176,17 @@ export const applySchemaDocumentStateToTableDoc = (
   options: ApplySchemaDocumentStateOptions = {},
 ) => {
   const documentState = toSchemaDocumentState(state);
+  const nextRows = documentState.rows ?? [];
+  const fieldIds = nextRows.map((row, index) => ensureFieldId(row, index));
+  assertUniqueIds(fieldIds, 'fields');
+  assertUniqueIds(
+    (documentState.indexes ?? []).map((index) => index.id),
+    'indexes',
+  );
+  assertUniqueIds(
+    (documentState.foreignKeys ?? []).map((foreignKey) => foreignKey.id),
+    'foreignKeys',
+  );
   const previousSnapshot = readStateSnapshot(tableDoc);
   const containsEditorSessionState = hasEditorSessionState(tableDoc);
   if (
@@ -203,8 +215,6 @@ export const applySchemaDocumentStateToTableDoc = (
   }
 
   const snapshotRows = previousSnapshot?.rows ?? [];
-  const nextRows = state.rows ?? [];
-  const fieldIds = nextRows.map((row, index) => ensureFieldId(row, index));
   if (
     writeAllKeys ||
     hasFieldDoc(tableDoc) ||

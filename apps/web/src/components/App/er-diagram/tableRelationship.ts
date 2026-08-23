@@ -1,10 +1,10 @@
-import type {
-  ForeignKeyAction,
-  ForeignKeyDefinition,
-  IndexDefinition,
-  PersistedState,
+import {
+  createEntityId,
+  type ForeignKeyAction,
+  type ForeignKeyDefinition,
+  type IndexDefinition,
+  type PersistedState,
 } from '@ddlbuilder/shared-types';
-import { v4 as uuidv4 } from 'uuid';
 
 export type RelationshipCardinality = 'many-to-one' | 'one-to-one';
 export type RelationshipOptionality = 'required' | 'optional';
@@ -102,7 +102,7 @@ function buildRelationshipIndex(
   }
 
   return {
-    id: uuidv4(),
+    id: createEntityId(),
     name,
     fields: [{ name: fieldName, direction: 'ASC' }],
     unique: isUnique,
@@ -184,7 +184,7 @@ export function planTableRelationship(
   }
 
   const foreignKey: ForeignKeyDefinition = {
-    id: uuidv4(),
+    id: createEntityId(),
     name: relationshipName,
     fields: [intent.sourceField],
     refSchema: draft.target.schemaName || undefined,

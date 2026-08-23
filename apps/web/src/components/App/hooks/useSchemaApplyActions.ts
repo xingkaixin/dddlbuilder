@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
-import type { DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
+import { createEntityId, type DatabaseType, type PersistedState } from '@ddlbuilder/shared-types';
 import type {
   DDLReviewResult as ReviewResult,
   DDLReviewStructuredSuggestion as StructuredSuggestion,
@@ -140,7 +140,7 @@ export function useSchemaApplyActions({
           break;
         }
         case 'add_index': {
-          const indexId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+          const indexId = createEntityId();
           replaceLatestState((state) => ({
             ...state,
             indexes: [

@@ -16,8 +16,7 @@
   },
   "dependencies": {
     "@ddlbuilder/shared-types": "workspace:*",
-    "node-sql-parser": "^5.4.0",
-    "uuid": "^14.0.2"
+    "node-sql-parser": "^5.4.0"
   },
   "devDependencies": {
     "@ddlbuilder/tsconfig": "workspace:*"

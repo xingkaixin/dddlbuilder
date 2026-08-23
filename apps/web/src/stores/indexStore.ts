@@ -1,4 +1,4 @@
-import type { IndexDefinition } from '@ddlbuilder/shared-types';
+import { createEntityId, type IndexDefinition } from '@ddlbuilder/shared-types';
 import { buildPrimaryKeyName } from '@ddlbuilder/ddl-core';
 import { isSameIdentifierToken, replaceIdentifierToken } from '@/utils/fieldRenameUtils';
 import {
@@ -85,7 +85,7 @@ export const createIndexSlice = (set: EditorSetState, get: EditorGetState): Inde
         );
 
     const newIndex: IndexDefinition = {
-      id: Date.now().toString(),
+      id: createEntityId(),
       name: indexName,
       fields: [...currentIndexFields],
       unique,

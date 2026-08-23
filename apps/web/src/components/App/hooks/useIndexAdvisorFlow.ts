@@ -1,10 +1,11 @@
 import { useCallback, useMemo, useState } from 'react';
-import type {
-  AIIndexAdvisorRecommendation,
-  DatabaseType,
-  IndexDefinition,
-  IndexField,
-  NormalizedField,
+import {
+  createEntityId,
+  type AIIndexAdvisorRecommendation,
+  type DatabaseType,
+  type IndexDefinition,
+  type IndexField,
+  type NormalizedField,
 } from '@ddlbuilder/shared-types';
 import { useAIIndexAdvisor } from '@/hooks/useAIIndexAdvisor';
 import { useToast } from '@/hooks/useToast';
@@ -156,7 +157,7 @@ export function useIndexAdvisorFlow({
       }
 
       const nextIndex: IndexDefinition = {
-        id: `${Date.now()}_${recommendation.id}`,
+        id: createEntityId(),
         name: buildIndexName(
           recommendation.index.unique ? 'uk' : 'idx',
           tableName.trim() || 'current_table',

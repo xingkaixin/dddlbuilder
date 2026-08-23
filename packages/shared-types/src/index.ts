@@ -1,5 +1,7 @@
 import type { FieldRow } from './fieldRow.js';
 
+export { createEntityId } from './identity.js';
+
 export const DATABASE_TYPES = [
   'mysql',
   'postgresql',

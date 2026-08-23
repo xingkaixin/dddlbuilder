@@ -53,6 +53,21 @@ const toOptionalFiniteNumber = (value: unknown) =>
 const toStringArray = (value: unknown) =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 
+const decodeUniqueEntityId = (value: unknown, fallback: string, usedIds: Set<string>) => {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  let id = trimmed || fallback;
+  let suffix = 2;
+  if (usedIds.has(id)) {
+    id = fallback;
+  }
+  while (usedIds.has(id)) {
+    id = `${fallback}-${suffix}`;
+    suffix += 1;
+  }
+  usedIds.add(id);
+  return id;
+};
+
 const splitQualifiedTableName = (raw: string) => {
   const parts = raw
     .split('.')
@@ -70,14 +85,15 @@ const decodeIndexFields = (value: unknown): IndexField[] =>
     return name ? [{ name, direction: item.direction === 'DESC' ? 'DESC' : 'ASC' }] : [];
   });
 
-const decodeIndexes = (value: unknown): IndexDefinition[] =>
-  (Array.isArray(value) ? value : []).flatMap((item, index) => {
+const decodeIndexes = (value: unknown): IndexDefinition[] => {
+  const usedIds = new Set<string>();
+  return (Array.isArray(value) ? value : []).flatMap((item, index) => {
     if (!isRecord(item)) return [];
     const name = toText(item.name);
     if (!name) return [];
     return [
       {
-        id: toText(item.id, `legacy-index-${index}`),
+        id: decodeUniqueEntityId(item.id, `legacy-index-${index}`, usedIds),
         name,
         fields: decodeIndexFields(item.fields),
         unique: item.unique === true,
@@ -85,12 +101,18 @@ const decodeIndexes = (value: unknown): IndexDefinition[] =>
       },
     ];
   });
+};
 
-const decodeRows = (value: unknown): FieldRow[] =>
-  (Array.isArray(value) ? value : []).map((item, index) => {
+const decodeRows = (value: unknown): FieldRow[] => {
+  const usedIds = new Set<string>();
+  return (Array.isArray(value) ? value : []).map((item, index) => {
     const row = isRecord(item) ? item : {};
     return {
-      id: ensureFieldId(row as Partial<FieldRow>, index),
+      id: decodeUniqueEntityId(
+        ensureFieldId(row as Partial<FieldRow>, index),
+        `legacy-field-${index}`,
+        usedIds,
+      ),
       fieldName: toText(row.fieldName),
       fieldType: toText(row.fieldType),
       fieldComment: toText(row.fieldComment),
@@ -101,9 +123,11 @@ const decodeRows = (value: unknown): FieldRow[] =>
       ...(Array.isArray(row.enumMeta) ? { enumMeta: row.enumMeta as FieldRow['enumMeta'] } : {}),
     };
   });
+};
 
 const decodeForeignKeys = (value: unknown): ForeignKeyDefinition[] | undefined => {
   if (!Array.isArray(value)) return undefined;
+  const usedIds = new Set<string>();
   return value.flatMap((item, index) => {
     if (!isRecord(item)) return [];
     const name = toText(item.name);
@@ -117,7 +141,7 @@ const decodeForeignKeys = (value: unknown): ForeignKeyDefinition[] | undefined =
       : undefined;
     return [
       {
-        id: toText(item.id, `legacy-foreign-key-${index}`),
+        id: decodeUniqueEntityId(item.id, `legacy-foreign-key-${index}`, usedIds),
         name,
         fields: toStringArray(item.fields),
         refSchema: toOptionalText(item.refSchema),

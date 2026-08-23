@@ -42,7 +42,6 @@
     "react-syntax-highlighter": "^16.1.1",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.6.0",
-    "uuid": "^14.0.2",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "y-indexeddb": "^9.0.12",
     "y-protocols": "^1.0.7",

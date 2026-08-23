@@ -99,6 +99,12 @@ export const syncStringArray = (array: Y.Array<string>, values: string[]) => {
   }
 };
 
+export const assertUniqueIds = (ids: string[], subject: string) => {
+  if (ids.some((id) => id.trim().length === 0) || new Set(ids).size !== ids.length) {
+    throw new Error(`${subject} must have unique non-empty ids`);
+  }
+};
+
 export const writeOrderedMap = <T extends { id: string }>(
   parent: Y.Map<any>,
   mapKey: string,
@@ -108,6 +114,7 @@ export const writeOrderedMap = <T extends { id: string }>(
   const map = ensureMap(parent, mapKey);
   const order = ensureArray(parent, orderKey);
   const ids = values.map((value) => value.id);
+  assertUniqueIds(ids, mapKey);
   const idSet = new Set(ids);
   for (const key of Array.from(map.keys())) {
     if (!idSet.has(key)) {

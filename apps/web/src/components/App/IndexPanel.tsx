@@ -1,5 +1,10 @@
 import { memo, useMemo, useState } from 'react';
-import type { DatabaseType, IndexDefinition, IndexField } from '@ddlbuilder/shared-types';
+import {
+  createEntityId,
+  type DatabaseType,
+  type IndexDefinition,
+  type IndexField,
+} from '@ddlbuilder/shared-types';
 import { buildPrimaryKeyName } from '@ddlbuilder/ddl-core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -136,7 +141,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
     if (!draft.id && draft.type === 'primary' && indexes.some((index) => index.isPrimary)) return;
 
     const nextIndex: IndexDefinition = {
-      id: draft.id ?? Date.now().toString(),
+      id: draft.id ?? createEntityId(),
       name: buildDraftName(),
       fields: [...draft.fields],
       unique: draft.type !== 'normal',

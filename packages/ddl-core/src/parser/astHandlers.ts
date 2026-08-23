@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { createEntityId } from '@ddlbuilder/shared-types';
 import type {
   DatabaseType,
   IndexField,
@@ -48,7 +48,7 @@ function pushIndex(
   const baseName = result.tableName || name;
   const normalizedName = isPrimary ? buildPrimaryKeyName(baseName) : name;
   result.indexes.push({
-    id: uuidv4(),
+    id: createEntityId(),
     name: normalizedName,
     fields,
     unique,
@@ -107,7 +107,7 @@ function pushForeignKey(result: ParsedResult, def: ForeignKeyNode) {
   const onActions = parseOnAction(refDef.on_action || []);
 
   const fk: ForeignKeyDefinition = {
-    id: uuidv4(),
+    id: createEntityId(),
     name: constraintName,
     fields: fieldNames,
     refSchema: refTableInfo.db || undefined,

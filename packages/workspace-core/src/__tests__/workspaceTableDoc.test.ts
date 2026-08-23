@@ -273,6 +273,48 @@ describe('workspace table doc writes', () => {
     expect(updates).toEqual([]);
   });
 
+  it.each([
+    [
+      'fields',
+      {
+        rows: createClientState().rows.map((row) => ({ ...row, id: 'duplicate' })),
+      },
+    ],
+    [
+      'indexes',
+      {
+        indexes: [
+          { id: 'duplicate', name: 'idx_id', fields: [], unique: false },
+          { id: 'duplicate', name: 'idx_email', fields: [], unique: false },
+        ],
+      },
+    ],
+    [
+      'foreignKeys',
+      {
+        foreignKeys: [
+          { id: 'duplicate', name: 'fk_team', fields: [], refTable: 'teams', refFields: [] },
+          {
+            id: 'duplicate',
+            name: 'fk_org',
+            fields: [],
+            refTable: 'organizations',
+            refFields: [],
+          },
+        ],
+      },
+    ],
+  ])('rejects duplicate %s identities before mutating the document', (subject, overrides) => {
+    const doc = new Y.Doc();
+    const tableDoc = new Y.Map<unknown>();
+    doc.getMap<Y.Map<unknown>>('drafts').set('draft-1', tableDoc);
+
+    expect(() =>
+      applySchemaDocumentStateToTableDoc(tableDoc, createClientState(overrides)),
+    ).toThrow(`${subject} must have unique non-empty ids`);
+    expect(tableDoc.size).toBe(0);
+  });
+
   it('does not store or emit updates for editor session changes', () => {
     const clientState = createClientState();
     const tableDoc = createTableDoc(clientState);

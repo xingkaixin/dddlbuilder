@@ -86,6 +86,39 @@ describe('decodePersistedState', () => {
     });
   });
 
+  it('确定性修复重复和空白的实体 id', () => {
+    const input = externalState({
+      rows: [
+        { id: 'field-1', fieldName: 'id' },
+        { id: 'field-1', fieldName: 'email' },
+        { id: '  ', fieldName: 'name' },
+      ],
+      indexes: [
+        { id: 'index-1', name: 'idx_id' },
+        { id: 'index-1', name: 'idx_email' },
+      ],
+      foreignKeys: [
+        { id: 'foreign-key-1', name: 'fk_team', refTable: 'teams' },
+        { id: 'foreign-key-1', name: 'fk_org', refTable: 'organizations' },
+      ],
+    });
+
+    const first = decodePersistedState(input);
+    const second = decodePersistedState(input);
+
+    expect(first).toEqual(second);
+    expect(first?.rows.map(({ id }) => id)).toEqual([
+      'field-1',
+      'legacy-field-1',
+      'legacy-field-2',
+    ]);
+    expect(first?.indexes.map(({ id }) => id)).toEqual(['index-1', 'legacy-index-1']);
+    expect(first?.foreignKeys?.map(({ id }) => id)).toEqual([
+      'foreign-key-1',
+      'legacy-foreign-key-1',
+    ]);
+  });
+
   it('兼容模式修复未知数据库类型，外部模式拒绝不完整或未知输入', () => {
     expect(decodePersistedState({ tableName: 'users', dbType: 'unknown' })?.dbType).toBe('mysql');
     expect(decodePersistedState({}, 'external')).toBeNull();
