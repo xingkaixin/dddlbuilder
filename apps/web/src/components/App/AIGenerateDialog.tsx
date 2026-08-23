@@ -24,8 +24,7 @@ import {
   type PartialTableSchema,
 } from '@/hooks/useAIGenerateTable';
 import type { FieldRow, IndexDefinition, DatabaseType } from '@ddlbuilder/shared-types';
-import { buildGeneratedRows } from '@/utils/aiSchemaChanges';
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import { buildPersistedStateFromAISchema } from '@/utils/aiSchemaChanges';
 import { diffPersistedState, type FieldDiff } from '@ddlbuilder/ddl-core';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
 import type { TableTemplate } from '@/hooks/useTableTemplates';
@@ -33,28 +32,6 @@ import { useTranslation } from 'react-i18next';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 
 const MAX_INPUT_LENGTH = 500;
-
-function toPersistedState(schema: GeneratedTableSchema): PersistedState {
-  return {
-    objectType: 'table',
-    schemaName: schema.schemaName ?? '',
-    tableName: schema.tableName,
-    tableComment: schema.tableComment,
-    dbType: 'mysql',
-    sqlFormatMode: 'compact',
-    rows: buildGeneratedRows(schema),
-    addCount: 10,
-    indexInput: '',
-    currentIndexFields: [],
-    indexes: (schema.indexes ?? []).map((index, i) => ({
-      id: `ai-preview-index-${i}`,
-      ...index,
-    })),
-    authInput: '',
-    authObjects: [],
-    foreignKeys: [],
-  };
-}
 
 function getFieldChangeKey(diff: FieldDiff) {
   return `${diff.type}:${diff.fieldName}:${diff.oldFieldName ?? ''}:${diff.newFieldName ?? ''}`;
@@ -192,8 +169,11 @@ export const AIGenerateDialog = memo<AIGenerateDialogProps>(
       if (!previousResult || !result) {
         return [];
       }
-      return diffPersistedState(toPersistedState(previousResult), toPersistedState(result)).fields;
-    }, [previousResult, result]);
+      return diffPersistedState(
+        buildPersistedStateFromAISchema(previousResult, { dbType, sqlFormatMode: 'compact' }),
+        buildPersistedStateFromAISchema(result, { dbType, sqlFormatMode: 'compact' }),
+      ).fields;
+    }, [dbType, previousResult, result]);
 
     const describeFieldChange = useCallback(
       (change: FieldDiff) => {

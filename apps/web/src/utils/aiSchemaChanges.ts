@@ -1,8 +1,10 @@
 import type {
+  DatabaseType,
   FieldRow,
   IndexDefinition,
   PersistedState,
   NormalizedField,
+  SqlFormatMode,
 } from '@ddlbuilder/shared-types';
 import { createFieldId } from '@ddlbuilder/workspace-core';
 import type { GeneratedTableSchema } from '@ddlbuilder/shared-types/ai-generate';
@@ -111,10 +113,52 @@ function buildGeneratedIndexes(
   return indexes;
 }
 
-export function buildCandidateStateFromAISchema(
-  baseState: PersistedState,
+type AISchemaStateContext =
+  | { baseState: PersistedState; dbType?: never; sqlFormatMode?: never }
+  | {
+      baseState?: never;
+      dbType: DatabaseType;
+      sqlFormatMode: SqlFormatMode;
+    };
+
+function createBaseState(dbType: DatabaseType, sqlFormatMode: SqlFormatMode): PersistedState {
+  return {
+    objectType: 'table',
+    schemaName: '',
+    tableName: '',
+    tableComment: '',
+    dbType,
+    sqlFormatMode,
+    rows: [],
+    addCount: 10,
+    indexInput: '',
+    currentIndexFields: [],
+    indexes: [],
+    authInput: '',
+    authObjects: [],
+    tableMiscConfig: {
+      enabled: false,
+      engine: '',
+      charset: '',
+      collation: '',
+      tablespace: '',
+    },
+    mysqlPartitionConfig: {
+      enabled: false,
+      type: 'RANGE',
+      columns: [],
+      partitionCount: 4,
+      partitions: [],
+    },
+    foreignKeys: [],
+  };
+}
+
+export function buildPersistedStateFromAISchema(
   schema: GeneratedTableSchema,
+  context: AISchemaStateContext,
 ): PersistedState {
+  const baseState = context.baseState ?? createBaseState(context.dbType, context.sqlFormatMode);
   const qualifiedIdentity = schema.tableName.includes('.')
     ? getSchemaAndTable(schema.tableName)
     : null;

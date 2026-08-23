@@ -1,6 +1,5 @@
 import { useCallback, type Dispatch, type SetStateAction } from 'react';
 import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
-import { getSchemaAndTable } from '@ddlbuilder/ddl-core';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
 import type {
   DatabaseType,
@@ -17,7 +16,7 @@ import type {
   DDLReviewStructuredSuggestion as StructuredSuggestion,
 } from '@ddlbuilder/shared-types/ddl-review';
 import type { GeneratedTableSchema } from '@/hooks/useAIGenerateTable';
-import { buildGeneratedRows } from '@/utils/aiSchemaChanges';
+import { buildPersistedStateFromAISchema } from '@/utils/aiSchemaChanges';
 import { createFieldId } from '@ddlbuilder/workspace-core';
 
 interface UseSchemaApplyActionsParams {
@@ -61,65 +60,6 @@ const DEFAULT_MYSQL_PARTITION_CONFIG: MysqlPartitionConfig = {
   partitionCount: 4,
   partitions: [],
 };
-
-function buildAIGeneratedIndexes(schema: GeneratedTableSchema): IndexDefinition[] {
-  if (!schema.indexes || schema.indexes.length === 0) {
-    return [];
-  }
-
-  const now = Date.now();
-  const newIndexes = schema.indexes.map((index, i) => ({
-    id: `ai-${now}-${i}`,
-    name: index.name,
-    fields: index.fields,
-    unique: index.unique,
-    isPrimary: false,
-  }));
-
-  const pkFields = schema.fields
-    ?.filter((field) => field.isPrimaryKey)
-    .map((field) => ({
-      name: field.fieldName,
-      direction: 'ASC' as const,
-    }));
-
-  if (pkFields && pkFields.length > 0) {
-    newIndexes.unshift({
-      id: `pk-${now}`,
-      name: 'PRIMARY',
-      fields: pkFields,
-      unique: true,
-      isPrimary: true,
-    });
-  }
-
-  return newIndexes as IndexDefinition[];
-}
-
-function resolveGeneratedTableIdentity(schema: GeneratedTableSchema) {
-  const qualifiedIdentity = schema.tableName?.includes('.')
-    ? getSchemaAndTable(schema.tableName)
-    : null;
-
-  if (schema.schemaName) {
-    return {
-      schemaName: schema.schemaName,
-      tableName: qualifiedIdentity ? qualifiedIdentity.table : schema.tableName,
-    };
-  }
-
-  if (qualifiedIdentity) {
-    return {
-      schemaName: qualifiedIdentity.schema,
-      tableName: qualifiedIdentity.table,
-    };
-  }
-
-  return {
-    schemaName: '',
-    tableName: schema.tableName,
-  };
-}
 
 export function useSchemaApplyActions({
   rows,
@@ -312,28 +252,10 @@ export function useSchemaApplyActions({
 
   const handleApplyAIGeneratedSchema = useCallback(
     (schema: GeneratedTableSchema) => {
-      const identity = resolveGeneratedTableIdentity(schema);
-      const generatedRows =
-        schema.fields && schema.fields.length > 0 ? buildGeneratedRows(schema) : [];
-      const generatedIndexes = buildAIGeneratedIndexes(schema);
-      const nextState: PersistedState = {
-        objectType: 'table',
-        schemaName: identity.schemaName,
-        tableName: identity.tableName,
-        tableComment: schema.tableComment || '',
+      const nextState = buildPersistedStateFromAISchema(schema, {
         dbType,
         sqlFormatMode,
-        rows: generatedRows,
-        addCount: 10,
-        indexInput: '',
-        currentIndexFields: [],
-        indexes: generatedIndexes,
-        authInput: '',
-        authObjects: [],
-        tableMiscConfig: DEFAULT_TABLE_MISC_CONFIG,
-        mysqlPartitionConfig: DEFAULT_MYSQL_PARTITION_CONFIG,
-        foreignKeys: [],
-      };
+      });
 
       if (onApplyAIGeneratedState) {
         onApplyAIGeneratedState(nextState);
@@ -341,11 +263,11 @@ export function useSchemaApplyActions({
         setSchemaName(nextState.schemaName);
         setTableName(nextState.tableName);
         setTableComment(nextState.tableComment);
-        if (generatedRows.length > 0) {
-          setRows(generatedRows);
+        if (nextState.rows.length > 0) {
+          setRows(nextState.rows);
         }
-        if (generatedIndexes.length > 0) {
-          setIndexes(generatedIndexes);
+        if (nextState.indexes.length > 0) {
+          setIndexes(nextState.indexes);
         }
       }
 

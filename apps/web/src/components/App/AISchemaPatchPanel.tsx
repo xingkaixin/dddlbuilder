@@ -23,7 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import {
   buildAISchemaChanges,
-  buildCandidateStateFromAISchema,
+  buildPersistedStateFromAISchema,
   type AISchemaChange,
   type AISchemaChangeStatus,
 } from '@/utils/aiSchemaChanges';
@@ -98,7 +98,7 @@ export function AISchemaPatchPanel({
 
   const candidateState = useMemo(() => {
     if (!result) return null;
-    return buildCandidateStateFromAISchema(currentState, result);
+    return buildPersistedStateFromAISchema(result, { baseState: currentState });
   }, [currentState, result]);
 
   const changes = useMemo(() => {

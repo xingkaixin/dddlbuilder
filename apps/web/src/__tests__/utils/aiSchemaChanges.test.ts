@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { GeneratedTableSchema } from '@ddlbuilder/shared-types/ai-generate';
-import { buildAISchemaChanges, buildCandidateStateFromAISchema } from '@/utils/aiSchemaChanges';
+import { buildAISchemaChanges, buildPersistedStateFromAISchema } from '@/utils/aiSchemaChanges';
 
 function createBaseState(): PersistedState {
   return {
@@ -95,7 +95,7 @@ describe('aiSchemaChanges', () => {
       ],
     };
 
-    const candidateState = buildCandidateStateFromAISchema(baseState, schema);
+    const candidateState = buildPersistedStateFromAISchema(schema, { baseState });
     const changes = buildAISchemaChanges(baseState, candidateState);
 
     expect(changes.map((change) => change.id)).toEqual(
@@ -111,5 +111,41 @@ describe('aiSchemaChanges', () => {
     expect(candidateState.indexes.find((index) => index.name === 'uk_users_phone')?.id).toBe(
       'idx-phone',
     );
+  });
+
+  it('builds a complete fresh state with the same identity and primary-index rules', () => {
+    const state = buildPersistedStateFromAISchema(
+      {
+        tableName: 'audit.events',
+        tableComment: 'Audit events',
+        fields: [
+          {
+            fieldName: 'id',
+            fieldType: 'bigint',
+            fieldComment: '',
+            nullable: false,
+            defaultKind: 'none',
+            isPrimaryKey: true,
+          },
+        ],
+        indexes: [],
+      },
+      { dbType: 'postgresql', sqlFormatMode: 'expanded' },
+    );
+
+    expect(state).toMatchObject({
+      schemaName: 'audit',
+      tableName: 'events',
+      dbType: 'postgresql',
+      sqlFormatMode: 'expanded',
+      rows: [expect.objectContaining({ fieldName: 'id' })],
+      indexes: [
+        expect.objectContaining({
+          name: 'PRIMARY',
+          isPrimary: true,
+          fields: [{ name: 'id', direction: 'ASC' }],
+        }),
+      ],
+    });
   });
 });
