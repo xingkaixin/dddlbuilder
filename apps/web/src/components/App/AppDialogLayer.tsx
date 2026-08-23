@@ -5,7 +5,14 @@ import { AISchemaPatchPanel } from './AISchemaPatchPanel';
 import { AIIndexAdvisorDialog } from './AIIndexAdvisorDialog';
 import { DialogRenderGuard } from './containers/DialogRenderGuard';
 import { GlobalDialogs } from './containers/GlobalDialogs';
-import type { AppController } from './useAppController';
+import type {
+  AppActions,
+  AppDialogs,
+  AppDomains,
+  AppResources,
+  AppSchema,
+  AppWorkspaceState,
+} from './useAppController';
 
 const ImportSqlDialog = lazy(() =>
   import('@/components/ImportSqlDialog').then((module) => ({
@@ -14,7 +21,7 @@ const ImportSqlDialog = lazy(() =>
 );
 
 type DialogActions = Pick<
-  AppController['actions'],
+  AppActions,
   | 'indexAdvisor'
   | 'folderActions'
   | 'templateActions'
@@ -28,14 +35,14 @@ type DialogActions = Pick<
 
 interface AppDialogLayerProps {
   actions: DialogActions;
-  domains: Pick<AppController['domains'], 'editor' | 'tableOptions'>;
-  resources: AppController['resources'];
+  domains: Pick<AppDomains, 'editor' | 'tableOptions'>;
+  resources: AppResources;
   workspace: Pick<
-    AppController['workspace'],
+    AppWorkspaceState,
     'loadedTableNormalizedName' | 'workspaceScope' | 'isShareView'
   >;
   schema: Pick<
-    AppController['schema'],
+    AppSchema,
     | 'aiGenerateExistingConfig'
     | 'aiGenerateTemplates'
     | 'canSaveCurrent'
@@ -43,7 +50,7 @@ interface AppDialogLayerProps {
     | 'normalizedFields'
     | 'tableDiff'
   >;
-  dialogs: AppController['dialogs'];
+  dialogs: AppDialogs;
   isImportDialogOpen: boolean;
   setIsImportDialogOpen: (open: boolean) => void;
   isErDialogOpen: boolean;

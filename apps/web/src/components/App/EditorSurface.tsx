@@ -2,10 +2,16 @@ import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OutputContainer } from './containers/OutputContainer';
 import { TableBuilderContainer } from './containers/TableBuilderContainer';
-import type { AppController } from './useAppController';
+import type {
+  AppActions,
+  AppDomains,
+  AppOutput,
+  AppSchema,
+  AppWorkspaceState,
+} from './useAppController';
 
 type EditorSurfaceActions = Pick<
-  AppController['actions'],
+  AppActions,
   | 'aiCommentActions'
   | 'indexAdvisor'
   | 'reviewActions'
@@ -15,7 +21,7 @@ type EditorSurfaceActions = Pick<
 >;
 
 export type EditorSurfaceSchema = Pick<
-  AppController['schema'],
+  AppSchema,
   | 'availableFields'
   | 'canSaveCurrent'
   | 'dataTableToolbarLeft'
@@ -31,9 +37,9 @@ export type EditorSurfaceSchema = Pick<
 
 interface EditorSurfaceProps {
   actions: EditorSurfaceActions;
-  domains: AppController['domains'];
+  domains: AppDomains;
   workspace: Pick<
-    AppController['workspace'],
+    AppWorkspaceState,
     | 'isLoadedDirty'
     | 'isShareView'
     | 'loadedTableName'
@@ -41,7 +47,7 @@ interface EditorSurfaceProps {
     | 'workspaceLabel'
   >;
   schema: EditorSurfaceSchema;
-  output: AppController['output'];
+  output: AppOutput;
   outputPanelOpen: boolean;
   setOutputPanelOpen: (open: boolean) => void;
   onOpenErDiagram: () => void;

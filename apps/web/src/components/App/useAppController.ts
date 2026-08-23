@@ -1,9 +1,10 @@
 import { useCallback, useMemo } from 'react';
 import type { DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
 import { isTabAvailable } from '@/utils/tabUtils';
-import { useAppSelectors } from './hooks/useAppSelectors';
+import { useEditorDomains } from './hooks/useEditorDomains';
+import { useWorkspaceController } from './hooks/useWorkspaceController';
 import { useDialogStates } from './hooks/useDialogStates';
-import { useDerivedTableState } from './hooks/useDerivedTableState';
+import { useSchemaController } from './hooks/useSchemaController';
 import { useFolderActions } from './hooks/useFolderActions';
 import { useTemplateActions } from './hooks/useTemplateActions';
 import { useTableTemplateActions } from './hooks/useTableTemplateActions';
@@ -13,64 +14,44 @@ import { useTabLifecycle } from './hooks/useTabLifecycle';
 import { usePersistedSync } from './hooks/usePersistedSync';
 import { applySavedState } from './applySavedState';
 import { useClearAllActions } from './hooks/useClearAllActions';
-import { useReviewActions } from './hooks/useReviewActions';
-import { useShareAction } from './hooks/useShareAction';
 import { useNavigationActions } from './hooks/useNavigationActions';
 import { useTemplateToolbarLeft } from './hooks/useTemplateToolbarLeft';
 import { useFireworksIntro } from './hooks/useFireworksIntro';
-import { useIndexAdvisorFlow } from './hooks/useIndexAdvisorFlow';
 import { useAISchemaPatchFlow } from './hooks/useAISchemaPatchFlow';
-import { useAICommentActions } from './hooks/useAICommentActions';
-import { useLoadedTablePresentation } from './hooks/useLoadedTablePresentation';
 import { useSavedTableTabIntegration } from './hooks/useSavedTableTabIntegration';
-import { useWorkspaceNotifications } from './hooks/useWorkspaceNotifications';
 import { useWorkspaceTabActions } from './hooks/useWorkspaceTabActions';
 import { useWorkspaceTrashActions } from './hooks/useWorkspaceTrashActions';
 import { useWorkspacePresentation } from './hooks/useWorkspacePresentation';
-import { usePersistedState } from '@/hooks/usePersistedState';
-import { useSqlGeneration } from '@/hooks/useSqlGeneration';
-import { useOrmGeneration } from '@/hooks/useOrmGeneration';
-import { useToast } from '@/hooks/useToast';
-import { useTableOptions } from '@/hooks/useTableOptions';
-import { useDDLReview } from '@/hooks/useDDLReview';
-import { useSuggestionAnimation } from '@/hooks/useSuggestionAnimation';
-import { useSavedTables } from '@/hooks/useSavedTables';
-import { useFolders } from '@/hooks/useFolders';
-import { useWorkspaceScope } from '@/hooks/useWorkspaceScope';
 import { useFieldTemplates } from '@/hooks/useFieldTemplates';
 import { useTableTemplates } from '@/hooks/useTableTemplates';
-import { lintSchema } from '@/utils/schemaLint';
-import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
 import { useTranslation } from 'react-i18next';
 
 import { isCnyFireworksEnabled } from '@/config/featureFlags';
-import { useEditorStore } from '@/stores';
-import { useShallow } from 'zustand/react/shallow';
 
 export function useAppController() {
   const { t } = useTranslation();
-  const workspaceScope = useWorkspaceScope();
-
-  const editor = useAppSelectors();
+  const { editor, auth, sharding, animations, partition, tableOptions } = useEditorDomains();
+  const {
+    persistence,
+    savedTableData,
+    folderData,
+    workspaceScope,
+    loadedTableSource,
+    loadedTableNormalizedName,
+    loadedTableName,
+    loadedTableSignature,
+  } = useWorkspaceController();
   const {
     schemaName,
     tableName,
     tableComment,
-    objectType,
-    viewDefinition,
-    viewCreateOrReplace,
     dbType,
-    sqlFormatMode,
     setTableName,
-    setTableComment,
     setDbType,
-    addCount,
     activeTab,
     setActiveTab,
     resetTableConfig,
     resetTableViewConfig,
-    fieldTableFreezeEnabled,
-    fieldTableFreezeColumns,
     setIsClearDialogOpen,
     setShowFireworks,
     setSavedTablesDrawerOpen,
@@ -82,20 +63,14 @@ export function useAppController() {
     setIsDeleteDialogOpen,
     setIsDiffDialogOpen,
     setVersionHistoryTarget,
-    setIsReviewHistoryOpen,
     setIsStorageEstimatorOpen,
     setIsAIGenerateDialogOpen,
     setIsMockDataDialogOpen,
     rows,
     setRows,
     resetTableRows,
-    indexInput,
-    currentIndexFields,
     indexes,
-    updateIndexNames,
     resetIndexState,
-    setIndexes,
-    foreignKeys,
   } = editor;
 
   const {
@@ -134,7 +109,6 @@ export function useAppController() {
     hydrated,
     saveState,
     clearState,
-    shareLoadStatus,
     isShareView,
     activeSource,
     draftSummaries,
@@ -151,70 +125,29 @@ export function useAppController() {
     trashedDrafts,
     restoreDraftById,
     permanentlyDeleteDraftById,
-    persistenceFailure,
-    retryPersistence,
-  } = usePersistedState();
-  const loadedTableSource = activeSource.kind === 'saved_table' ? activeSource : null;
-  const loadedTableNormalizedName = loadedTableSource?.normalizedName ?? null;
-  const loadedTableName = loadedTableSource?.tableName ?? null;
-  const loadedTableSignature = loadedTableSource?.baseSignature ?? null;
+  } = persistence;
+  const { resetAuthState } = auth;
 
-  const auth = useEditorStore(
-    useShallow((state) => ({
-      authInput: state.authInput,
-      authObjects: state.authObjects,
-      setAuthInput: state.setAuthInput,
-      addAuthObject: state.addAuthObject,
-      removeAuthObject: state.removeAuthObject,
-      resetAuthState: state.resetAuthState,
-    })),
-  );
-  const { authInput, authObjects, resetAuthState } = auth;
+  const { resetCitusSharding } = sharding;
 
-  const sharding = useEditorStore(
-    useShallow((state) => ({
-      citusShardingConfig: state.citusShardingConfig,
-      setCitusMode: state.setCitusMode,
-      setDistributionColumn: state.setDistributionColumn,
-      setCitusShardingConfig: state.setCitusShardingConfig,
-      resetCitusSharding: state.resetCitusSharding,
-    })),
-  );
-  const { citusShardingConfig, resetCitusSharding } = sharding;
-
-  const animations = useSuggestionAnimation();
   const { triggerIndexAnimation, triggerFieldTableHighlight } = animations;
 
-  const partition = useEditorStore(
-    useShallow((state) => ({
-      mysqlPartitionConfig: state.mysqlPartitionConfig,
-      setPartitionEnabled: state.setPartitionEnabled,
-      setPartitionType: state.setPartitionType,
-      setPartitionColumns: state.setPartitionColumns,
-      setPartitionExpression: state.setPartitionExpression,
-      setPartitionCount: state.setPartitionCount,
-      addPartition: state.addPartition,
-      removePartition: state.removePartition,
-      updatePartition: state.updatePartition,
-      generateRangePartitions: state.generateRangePartitions,
-      resetPartition: state.resetPartition,
-    })),
-  );
-  const { mysqlPartitionConfig, resetPartition } = partition;
+  const { resetPartition } = partition;
 
-  const tableOptions = useTableOptions();
-  const { tableMiscConfig, resetTableMiscConfig } = tableOptions;
+  const { resetTableMiscConfig } = tableOptions;
 
-  const qualifiedTableName = useMemo(
-    () => buildQualifiedTableName(schemaName, tableName),
-    [schemaName, tableName],
-  );
-
+  const schemaController = useSchemaController({
+    domains: { editor, auth, sharding, animations, partition, tableOptions },
+    hydrated,
+    isShareView,
+    loadedTableNormalizedName,
+    loadedTableName,
+    loadedTableSignature,
+  });
   const {
     normalizedFields,
     availableFields,
     filledRowCount,
-    supportsMysqlPartition,
     currentPersistedState,
     buildPersistedState,
     serializePersistedState,
@@ -225,39 +158,21 @@ export function useAppController() {
     saveDialogDescription,
     saveInputDisabled,
     tableDiff,
-  } = useDerivedTableState({
-    objectType,
-    schemaName,
-    tableName,
-    tableComment,
-    viewDefinition,
-    viewCreateOrReplace,
-    dbType,
-    sqlFormatMode,
-    addCount,
-    rows,
-    indexes,
-    indexInput,
-    currentIndexFields,
-    foreignKeys,
-    authInput,
-    authObjects,
-    citusShardingConfig,
-    mysqlPartitionConfig,
-    tableMiscConfig,
-    fieldTableFreezeEnabled,
-    fieldTableFreezeColumns,
-    loadedTableNormalizedName,
-    loadedTableSignature,
-    updateIndexNames,
-  });
-  const { setLoadedTableVersion, workspaceLabel } = useLoadedTablePresentation({
-    hydrated,
-    isShareView,
-    normalizedName: loadedTableNormalizedName,
-    tableName: loadedTableName,
-    isDirty: isLoadedDirty,
-  });
+  } = schemaController.derived;
+  const { setLoadedTableVersion, workspaceLabel } = schemaController.loadedPresentation;
+  const { generatedSql, generatedDcl, copySql, copyDcl } = schemaController.sql;
+  const { generatedOrm, copyOrm, ormTarget, setOrmTarget } = schemaController.orm;
+  const {
+    aiCommentActions,
+    indexAdvisor,
+    reviewState,
+    reviewActions,
+    schemaLintIssues,
+    shareAction,
+    qualifiedTableName,
+    showToast,
+  } = schemaController;
+  const { result: reviewResult, setReviewResult } = reviewState;
 
   const tabLifecycle = useTabLifecycle({
     enabled: hydrated && !isShareView,
@@ -278,60 +193,6 @@ export function useAppController() {
     closeTab: handleCloseTab,
   } = tabLifecycle;
 
-  const { generatedSql, generatedDcl, copySql, copyDcl } = useSqlGeneration(
-    objectType,
-    dbType,
-    schemaName,
-    tableName,
-    tableComment,
-    viewDefinition,
-    viewCreateOrReplace,
-    normalizedFields,
-    indexes,
-    authObjects,
-    sqlFormatMode,
-    dbType === 'postgresql-citus' ? citusShardingConfig : undefined,
-    supportsMysqlPartition ? mysqlPartitionConfig : undefined,
-    tableMiscConfig,
-    foreignKeys,
-  );
-  const { generatedOrm, copyOrm, ormTarget, setOrmTarget } = useOrmGeneration(
-    qualifiedTableName,
-    tableComment,
-    normalizedFields,
-    indexes,
-    foreignKeys,
-  );
-
-  const { showToast } = useToast();
-  const aiCommentActions = useAICommentActions({
-    schemaName,
-    tableName,
-    tableComment,
-    rows,
-    setTableComment,
-    setRows,
-  });
-  const indexAdvisor = useIndexAdvisorFlow({
-    dbType,
-    schemaName,
-    tableName,
-    tableComment,
-    fields: normalizedFields,
-    indexes,
-    setIndexes,
-    setActiveTab,
-  });
-
-  useWorkspaceNotifications({
-    shareLoadStatus,
-    hydrated,
-    isShareView,
-    persistenceFailure,
-    retryPersistence,
-  });
-
-  const savedTableData = useSavedTables();
   const {
     savedTables,
     trashedTables,
@@ -346,7 +207,6 @@ export function useAppController() {
     clearTablesFromFolders,
   } = savedTableData;
 
-  const folderData = useFolders();
   const {
     folderTree,
     createFolder,
@@ -388,54 +248,6 @@ export function useAppController() {
     showToast,
   });
   const { handleManageTemplates, handleApplyTemplate, handleSaveAsTemplate } = templateActions;
-
-  const reviewState = useDDLReview();
-  const {
-    isLoading: isReviewing,
-    result: reviewResult,
-    startReview,
-    setReviewResult,
-  } = reviewState;
-
-  const reviewActions = useReviewActions({
-    dbType,
-    tableName: qualifiedTableName,
-    generatedSql,
-    loadedTableNormalizedName,
-    isReviewing,
-    reviewResult,
-    startReview,
-    setIsReviewHistoryOpen,
-  });
-
-  const schemaLintIssues = useMemo(
-    () =>
-      lintSchema({
-        tableName,
-        rows,
-        indexes,
-        currentIndexFields,
-        foreignKeys,
-        mysqlPartitionConfig,
-        citusShardingConfig,
-        tableMiscConfig,
-      }),
-    [
-      tableName,
-      rows,
-      indexes,
-      currentIndexFields,
-      foreignKeys,
-      mysqlPartitionConfig,
-      citusShardingConfig,
-      tableMiscConfig,
-    ],
-  );
-
-  const shareAction = useShareAction({
-    buildPersistedState,
-    showToast,
-  });
 
   usePersistedSync({
     hydrated,
@@ -775,3 +587,11 @@ export function useAppController() {
 }
 
 export type AppController = ReturnType<typeof useAppController>;
+export type AppActions = AppController['actions'];
+export type AppDomains = AppController['domains'];
+export type AppResources = AppController['resources'];
+export type AppWorkspaceState = AppController['workspace'];
+export type AppSchema = AppController['schema'];
+export type AppOutput = AppController['output'];
+export type AppDialogs = AppController['dialogs'];
+export type AppCelebration = AppController['celebration'];

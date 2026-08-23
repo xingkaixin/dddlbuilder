@@ -10,12 +10,19 @@ import { TabBar } from './TabBar';
 import { TableTemplatePopover } from './TableTemplatePopover';
 import { WorkspaceEmptyState } from './WorkspaceEmptyState';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
-import type { AppController } from './useAppController';
+import type {
+  AppActions,
+  AppCelebration,
+  AppDomains,
+  AppOutput,
+  AppResources,
+  AppWorkspaceState,
+} from './useAppController';
 
 const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
 
 type WorkspaceActions = Pick<
-  AppController['actions'],
+  AppActions,
   | 'aiCommentActions'
   | 'indexAdvisor'
   | 'folderActions'
@@ -32,15 +39,12 @@ type WorkspaceActions = Pick<
 
 interface AppWorkspaceProps {
   actions: WorkspaceActions;
-  domains: AppController['domains'];
-  resources: Pick<
-    AppController['resources'],
-    'savedTableData' | 'folderData' | 'tableTemplateData'
-  >;
-  workspace: Omit<AppController['workspace'], 'workspaceScope'>;
+  domains: AppDomains;
+  resources: Pick<AppResources, 'savedTableData' | 'folderData' | 'tableTemplateData'>;
+  workspace: Omit<AppWorkspaceState, 'workspaceScope'>;
   schema: EditorSurfaceSchema;
-  output: AppController['output'];
-  celebration: AppController['celebration'];
+  output: AppOutput;
+  celebration: AppCelebration;
   workspaceSidebarOpen: boolean;
   setWorkspaceSidebarOpen: (open: boolean) => void;
   outputPanelOpen: boolean;
