@@ -12,8 +12,6 @@ export type {
   FieldChangeType,
 } from './utils/tableDiff.js';
 export {
-  TYPE_ALIASES,
-  canonicalizeBaseType,
   getFieldTypeForDatabase,
   parseFieldType,
   getCanonicalBaseType,
@@ -30,6 +28,7 @@ export {
   getSchemaAndTable,
   buildQualifiedTableName,
 } from './utils/databaseTypeMapping.js';
+export { TYPE_ALIASES, canonicalizeBaseType } from './utils/typeAliases.js';
 export { buildPrimaryKeyName } from './utils/primaryKeyNaming.js';
 export {
   buildIndexName,

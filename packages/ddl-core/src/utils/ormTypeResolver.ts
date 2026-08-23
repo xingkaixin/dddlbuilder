@@ -1,6 +1,7 @@
 import { ORM_TYPE_MAPPINGS } from '../configs/ormTypeMappings.js';
 import type { ORMTarget } from '../interfaces/ORMGenerator.js';
-import { canonicalizeBaseType, parseFieldType } from './databaseTypeMapping.js';
+import { parseFieldType } from './databaseTypeMapping.js';
+import { canonicalizeBaseType } from './typeAliases.js';
 
 export function mapCanonicalToORMType(ormTarget: ORMTarget, fieldType: string): string {
   const parsed = parseFieldType(fieldType);

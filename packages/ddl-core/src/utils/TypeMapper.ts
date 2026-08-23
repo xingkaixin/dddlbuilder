@@ -1,7 +1,7 @@
 import type { DatabaseType, ParsedFieldType } from '@ddlbuilder/shared-types';
 import { TYPE_MAPPINGS } from '../configs/typeMappings.js';
-import { canonicalizeBaseType } from './databaseTypeMapping.js';
 import { getDatabaseFamily } from './databaseFamily.js';
+import { canonicalizeBaseType } from './typeAliases.js';
 
 export class TypeMapper {
   private readonly databaseType: DatabaseType;

@@ -1,6 +1,9 @@
 import { useMemo, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
-import { EditableCell, SelectCell, CheckboxCell, OrderCell } from './index';
+import { CheckboxCell } from './CheckboxCell';
+import { EditableCell } from './EditableCell';
+import { OrderCell } from './OrderCell';
+import { SelectCell } from './SelectCell';
 import type { FieldTableColumnDef, FieldTableFeatures, FieldTableRow } from './tableFeatures';
 import { RowActions } from './RowActions';
 import { EnumSetCell } from './EnumSetCell';
