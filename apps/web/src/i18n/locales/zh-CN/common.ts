@@ -846,7 +846,7 @@ export const zhCNCommon = {
     selectAll: '全部确认',
     unselectAll: '全部拒绝',
     applySelected: '应用 {{count}} 项变更',
-    applyHint: '{{pending}} 项待应用，{{accepted}} 项已应用',
+    applyHint: '{{pending}} 项待确认，{{accepted}} 项已选择，{{applied}} 项已应用',
     toggleChange: '切换变更选择',
     generating: '正在分析当前表结构...（已生成 {{count}} 个字段）',
     noChanges: '本次没有发现可应用的结构变更',
@@ -863,6 +863,7 @@ export const zhCNCommon = {
       pending: '待确认',
       accepted: '已确认',
       rejected: '已拒绝',
+      applied: '已应用',
     },
     change: {
       table: {

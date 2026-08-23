@@ -1,92 +1,52 @@
 import { useCallback } from 'react';
-import type { FieldRow, IndexDefinition, PersistedState } from '@ddlbuilder/shared-types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { AISchemaChange } from '@/utils/aiSchemaChanges';
-import { applyFieldSchemaChange } from '../aiSchemaPatchTransition';
+import { applyAISchemaChanges } from '../aiSchemaPatchTransition';
 
 interface UseAISchemaPatchFlowParams {
-  rows: FieldRow[];
-  indexes: IndexDefinition[];
-  setRows: (rows: FieldRow[] | ((current: FieldRow[]) => FieldRow[])) => void;
-  setIndexes: (
-    indexes: IndexDefinition[] | ((current: IndexDefinition[]) => IndexDefinition[]),
-  ) => void;
-  setSchemaName: (value: string) => void;
-  setTableName: (value: string) => void;
-  setTableComment: (value: string) => void;
+  currentState: PersistedState;
+  applyState: (state: PersistedState) => void;
   setActiveTab: (tab: string) => void;
   highlightField: (rowIndex?: number) => void;
   animateIndex: (indexId: string, type: 'add' | 'remove') => Promise<void>;
 }
 
 export function useAISchemaPatchFlow({
-  rows,
-  indexes,
-  setRows,
-  setIndexes,
-  setSchemaName,
-  setTableName,
-  setTableComment,
+  currentState,
+  applyState,
   setActiveTab,
   highlightField,
   animateIndex,
 }: UseAISchemaPatchFlowParams) {
-  const applyChange = useCallback(
-    (change: AISchemaChange, candidateState: PersistedState) => {
-      if (change.kind === 'table') {
-        if (change.type === 'schema_name') setSchemaName(change.newValue);
-        else if (change.type === 'table_name') setTableName(change.newValue);
-        else setTableComment(change.newValue);
-      }
+  const applyChanges = useCallback(
+    (changes: AISchemaChange[], candidateState: PersistedState) => {
+      const nextState = applyAISchemaChanges(currentState, candidateState, changes);
+      applyState(nextState);
 
-      if (change.kind === 'field') {
+      const lastStructuralChange = [...changes].reverse().find((change) => change.kind !== 'table');
+      if (lastStructuralChange?.kind === 'field') {
         setActiveTab('fields');
-        let focusIndex = -1;
-        setRows((current) => {
-          const transition = applyFieldSchemaChange(current, candidateState.rows, change);
-          focusIndex = transition.focusIndex;
-          return transition.rows;
-        });
-        if (focusIndex >= 0) highlightField(focusIndex);
+        const targetName =
+          lastStructuralChange.newRow?.fieldName ||
+          lastStructuralChange.oldRow?.fieldName ||
+          lastStructuralChange.fieldName;
+        const rowIndex = nextState.rows.findIndex(
+          (row) => row.fieldName.trim().toLowerCase() === targetName.trim().toLowerCase(),
+        );
+        if (rowIndex >= 0) highlightField(rowIndex);
+      } else if (lastStructuralChange?.kind === 'index') {
+        setActiveTab('indexes');
       }
 
-      if (change.kind === 'index') {
-        setActiveTab('indexes');
-        if (change.type === 'add' && change.newIndex) {
-          const nextIndex = change.newIndex;
-          setIndexes((current) => [...current, nextIndex]);
-          setTimeout(() => void animateIndex(nextIndex.id, 'add'), 50);
-        } else if (change.type === 'modify' && change.newIndex) {
-          const nextIndex = change.newIndex;
-          setIndexes((current) =>
-            current.map((index) =>
-              index.name.toLowerCase() === change.indexName.toLowerCase()
-                ? { ...nextIndex, id: index.id }
-                : index,
-            ),
-          );
-          setTimeout(() => void animateIndex(nextIndex.id, 'add'), 50);
-        } else if (change.type === 'remove' && change.oldIndex) {
-          void animateIndex(change.oldIndex.id, 'remove');
-          setTimeout(() => {
-            setIndexes((current) =>
-              current.filter(
-                (index) => index.name.toLowerCase() !== change.indexName.toLowerCase(),
-              ),
-            );
-          }, 500);
-        }
+      for (const change of changes) {
+        if (change.kind !== 'index' || change.type === 'remove') continue;
+        const index = nextState.indexes.find(
+          (item) => item.name.toLowerCase() === change.indexName.toLowerCase(),
+        );
+        if (index) setTimeout(() => void animateIndex(index.id, 'add'), 50);
       }
     },
-    [
-      animateIndex,
-      highlightField,
-      setIndexes,
-      setRows,
-      setSchemaName,
-      setTableComment,
-      setTableName,
-      setActiveTab,
-    ],
+    [animateIndex, applyState, currentState, highlightField, setActiveTab],
   );
 
   const focusChange = useCallback(
@@ -94,7 +54,7 @@ export function useAISchemaPatchFlow({
       if (change.kind === 'field') {
         setActiveTab('fields');
         const targetName = change.oldRow?.fieldName || change.newRow?.fieldName || change.fieldName;
-        const rowIndex = rows.findIndex(
+        const rowIndex = currentState.rows.findIndex(
           (row) => row.fieldName.trim().toLowerCase() === targetName.trim().toLowerCase(),
         );
         if (rowIndex >= 0) highlightField(rowIndex);
@@ -104,7 +64,9 @@ export function useAISchemaPatchFlow({
       if (change.kind === 'index') {
         setActiveTab('indexes');
         const targetIndex =
-          indexes.find((index) => index.name.toLowerCase() === change.indexName.toLowerCase()) ||
+          currentState.indexes.find(
+            (index) => index.name.toLowerCase() === change.indexName.toLowerCase(),
+          ) ||
           change.newIndex ||
           change.oldIndex;
         if (targetIndex) {
@@ -112,8 +74,8 @@ export function useAISchemaPatchFlow({
         }
       }
     },
-    [animateIndex, highlightField, indexes, rows, setActiveTab],
+    [animateIndex, currentState.indexes, currentState.rows, highlightField, setActiveTab],
   );
 
-  return { applyChange, focusChange };
+  return { applyChanges, focusChange };
 }

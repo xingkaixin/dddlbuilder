@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { FieldRow } from '@ddlbuilder/shared-types';
-import { applyFieldSchemaChange } from '@/components/App/aiSchemaPatchTransition';
+import type { FieldRow, PersistedState } from '@ddlbuilder/shared-types';
+import {
+  applyAISchemaChanges,
+  applyFieldSchemaChange,
+} from '@/components/App/aiSchemaPatchTransition';
 
 const row = (fieldName: string, order: number): FieldRow => ({
   order,
@@ -65,5 +68,89 @@ describe('applyFieldSchemaChange', () => {
     });
 
     expect(result).toEqual({ rows, focusIndex: -1 });
+  });
+
+  it('does not add the same field twice', () => {
+    const email = row('email', 2);
+    const change = {
+      id: 'field:add:email',
+      kind: 'field' as const,
+      type: 'add' as const,
+      fieldName: 'email',
+      newRow: email,
+    };
+    const candidateRows = [row('id', 1), email];
+    const first = applyFieldSchemaChange([row('id', 1)], candidateRows, change);
+    const second = applyFieldSchemaChange(first.rows, candidateRows, change);
+
+    expect(second.rows.map((item) => item.fieldName)).toEqual(['id', 'email']);
+  });
+});
+
+describe('applyAISchemaChanges', () => {
+  const createState = (): PersistedState => ({
+    objectType: 'table',
+    schemaName: '',
+    tableName: 'users',
+    tableComment: '',
+    dbType: 'mysql',
+    sqlFormatMode: 'compact',
+    rows: [row('id', 1)],
+    addCount: 10,
+    indexInput: '',
+    currentIndexFields: [],
+    indexes: [],
+    authInput: '',
+    authObjects: [],
+  });
+
+  it('applies a selected batch as one state transition and stays idempotent', () => {
+    const current = createState();
+    const email = row('email', 2);
+    const index = {
+      id: 'idx-email',
+      name: 'idx_users_email',
+      fields: [{ name: 'email', direction: 'ASC' as const }],
+      unique: false,
+    };
+    const candidate = {
+      ...current,
+      tableComment: 'Accounts',
+      rows: [...current.rows, email],
+      indexes: [index],
+    };
+    const changes = [
+      {
+        id: 'table:table_comment',
+        kind: 'table' as const,
+        type: 'table_comment' as const,
+        oldValue: '',
+        newValue: 'Accounts',
+      },
+      {
+        id: 'field:add:email',
+        kind: 'field' as const,
+        type: 'add' as const,
+        fieldName: 'email',
+        newRow: email,
+      },
+      {
+        id: 'index:add:idx_users_email',
+        kind: 'index' as const,
+        type: 'add' as const,
+        indexName: index.name,
+        newIndex: index,
+      },
+    ];
+
+    const first = applyAISchemaChanges(current, candidate, changes);
+    const second = applyAISchemaChanges(first, candidate, changes);
+
+    expect(first).toMatchObject({
+      tableComment: 'Accounts',
+      rows: [{ fieldName: 'id' }, { fieldName: 'email' }],
+      indexes: [{ name: 'idx_users_email' }],
+    });
+    expect(second).toEqual(first);
   });
 });

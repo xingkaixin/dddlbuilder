@@ -36,7 +36,7 @@ interface AISchemaPatchPanelProps {
   dbType: DatabaseType;
   currentState: PersistedState;
   templates?: Array<FieldTemplate | TableTemplate>;
-  onApplyChange: (change: AISchemaChange, candidateState: PersistedState) => void;
+  onApplyChanges: (changes: AISchemaChange[], candidateState: PersistedState) => void;
   onFocusChange?: (change: AISchemaChange) => void;
 }
 
@@ -125,7 +125,7 @@ export function AISchemaPatchPanel({
   dbType,
   currentState,
   templates,
-  onApplyChange,
+  onApplyChanges,
   onFocusChange,
 }: AISchemaPatchPanelProps) {
   const { t } = useTranslation();
@@ -179,6 +179,8 @@ export function AISchemaPatchPanel({
 
   const pendingChanges = changes.filter((change) => change.status === 'pending');
   const acceptedChanges = changes.filter((change) => change.status === 'accepted');
+  const appliedChanges = changes.filter((change) => change.status === 'applied');
+  const selectableChanges = changes.filter((change) => change.status !== 'applied');
   const displayFieldCount = result?.fields.length ?? partialResult?.fields?.length ?? 0;
   const configuredRows = currentState.rows.filter((row) => row.fieldName.trim());
   const contextItems = [
@@ -252,30 +254,34 @@ export function AISchemaPatchPanel({
 
   const handleApplyAccepted = useCallback(() => {
     if (!candidateState) return;
-    for (const change of acceptedChanges) {
-      onApplyChange(change, candidateState);
-    }
-  }, [acceptedChanges, candidateState, onApplyChange]);
+    onApplyChanges(acceptedChanges, candidateState);
+    const appliedIds = new Set(acceptedChanges.map((change) => change.id));
+    updateStatuses((current) => {
+      const next = { ...current };
+      for (const id of appliedIds) next[id] = 'applied';
+      return next;
+    });
+  }, [acceptedChanges, candidateState, onApplyChanges, updateStatuses]);
 
   const handleSelectAll = useCallback(() => {
     updateStatuses((current) => {
       const next = { ...current };
-      for (const change of changes) {
+      for (const change of selectableChanges) {
         next[change.id] = 'accepted';
       }
       return next;
     });
-  }, [changes, updateStatuses]);
+  }, [selectableChanges, updateStatuses]);
 
   const handleUnselectAll = useCallback(() => {
     updateStatuses((current) => {
       const next = { ...current };
-      for (const change of changes) {
+      for (const change of selectableChanges) {
         next[change.id] = 'rejected';
       }
       return next;
     });
-  }, [changes, updateStatuses]);
+  }, [selectableChanges, updateStatuses]);
 
   const handleInputChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(event.target.value.slice(0, MAX_INPUT_LENGTH));
@@ -353,6 +359,7 @@ export function AISchemaPatchPanel({
         'rounded-md border bg-background px-3 py-3 transition-colors',
         change.status === 'pending' && 'border-primary/30 bg-primary/[0.03]',
         change.status === 'accepted' && 'border-emerald-300 bg-emerald-50/60',
+        change.status === 'applied' && 'border-emerald-300 bg-emerald-50/60 opacity-70',
         change.status === 'rejected' && 'border-muted bg-muted/40 opacity-70',
       )}
     >
@@ -363,15 +370,21 @@ export function AISchemaPatchPanel({
             'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border',
             change.status === 'pending' && 'border-muted-foreground/40 bg-background',
             change.status === 'accepted' && 'border-emerald-500 bg-emerald-500 text-white',
+            change.status === 'applied' && 'border-emerald-500 bg-emerald-500 text-white',
             change.status === 'rejected' &&
               'border-muted-foreground/40 bg-muted text-muted-foreground',
           )}
-          onClick={() =>
-            setChangeStatus(change.id, change.status === 'accepted' ? 'pending' : 'accepted')
-          }
+          onClick={() => {
+            if (change.status !== 'applied') {
+              setChangeStatus(change.id, change.status === 'accepted' ? 'pending' : 'accepted');
+            }
+          }}
+          disabled={change.status === 'applied'}
           aria-label={t('aiPatch.toggleChange')}
         >
-          {change.status === 'accepted' && <Check className="h-3.5 w-3.5" />}
+          {(change.status === 'accepted' || change.status === 'applied') && (
+            <Check className="h-3.5 w-3.5" />
+          )}
           {change.status === 'rejected' && <X className="h-3.5 w-3.5" />}
         </button>
         <div className="min-w-0 flex-1">
@@ -388,7 +401,7 @@ export function AISchemaPatchPanel({
             </span>
           </div>
           <div className="mt-2">{renderChangeBody(change)}</div>
-          {change.status !== 'accepted' ? (
+          {change.status === 'applied' ? null : change.status !== 'accepted' ? (
             <div className="mt-2 flex justify-end gap-1.5">
               <Button
                 type="button"
@@ -585,7 +598,7 @@ export function AISchemaPatchPanel({
                       size="sm"
                       className="h-7 px-2 text-xs"
                       onClick={handleSelectAll}
-                      disabled={changes.length === acceptedChanges.length}
+                      disabled={selectableChanges.length === acceptedChanges.length}
                     >
                       {t('aiPatch.selectAll')}
                     </Button>
@@ -617,6 +630,7 @@ export function AISchemaPatchPanel({
             {t('aiPatch.applyHint', {
               pending: pendingChanges.length,
               accepted: acceptedChanges.length,
+              applied: appliedChanges.length,
             })}
           </span>
           <div className="flex items-center gap-2">

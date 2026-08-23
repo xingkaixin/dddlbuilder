@@ -8,7 +8,7 @@ import { createFieldId } from '@ddlbuilder/workspace-core';
 import type { GeneratedTableSchema } from '@ddlbuilder/shared-types/ai-generate';
 import { diffPersistedState, getSchemaAndTable, type FieldDiff } from '@ddlbuilder/ddl-core';
 
-export type AISchemaChangeStatus = 'pending' | 'accepted' | 'rejected';
+export type AISchemaChangeStatus = 'pending' | 'accepted' | 'rejected' | 'applied';
 
 export type AISchemaChange =
   | {

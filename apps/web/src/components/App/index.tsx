@@ -653,15 +653,10 @@ function App() {
     permanentlyDeleteDraftById,
   });
 
-  const { applyChange: handleApplyAISchemaChange, focusChange: handleFocusAISchemaChange } =
+  const { applyChanges: handleApplyAISchemaChanges, focusChange: handleFocusAISchemaChange } =
     useAISchemaPatchFlow({
-      rows,
-      indexes,
-      setRows,
-      setIndexes,
-      setSchemaName,
-      setTableName,
-      setTableComment,
+      currentState: currentPersistedState,
+      applyState: applySavedState,
       setActiveTab,
       highlightField: triggerFieldTableHighlight,
       animateIndex: triggerIndexAnimation,
@@ -1292,7 +1287,7 @@ function App() {
                 dbType={dbType}
                 currentState={currentPersistedState}
                 templates={[...templates, ...tableTemplates]}
-                onApplyChange={handleApplyAISchemaChange}
+                onApplyChanges={handleApplyAISchemaChanges}
                 onFocusChange={handleFocusAISchemaChange}
               />
             </DialogContent>

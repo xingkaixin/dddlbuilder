@@ -877,7 +877,7 @@ export const jaJPCommon = {
     selectAll: 'すべてを受け入れる',
     unselectAll: 'すべて拒否する',
     applySelected: '{{count}} の変更を適用',
-    applyHint: '{{pending}} 保留中、{{accepted}} が適用されました',
+    applyHint: '{{pending}} 保留中、{{accepted}} 選択済み、{{applied}} 適用済み',
     toggleChange: '選択の変更を切り替えます',
     generating: '現在のスキーマを分析中... ({{count}} フィールドが生成されました)',
     noChanges: '今回は該当するスキーマ変更が見つかりませんでした',
@@ -894,6 +894,7 @@ export const jaJPCommon = {
       pending: '保留中',
       accepted: '承認されました',
       rejected: '拒否されました',
+      applied: '適用済み',
     },
     change: {
       table: {

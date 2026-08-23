@@ -871,7 +871,7 @@ export const enUSCommon = {
     selectAll: 'Accept all',
     unselectAll: 'Reject all',
     applySelected: 'Apply {{count}} changes',
-    applyHint: '{{pending}} pending, {{accepted}} applied',
+    applyHint: '{{pending}} pending, {{accepted}} selected, {{applied}} applied',
     toggleChange: 'Toggle change selection',
     generating: 'Analyzing current schema... ({{count}} fields generated)',
     noChanges: 'No applicable schema changes were found this time',
@@ -888,6 +888,7 @@ export const enUSCommon = {
       pending: 'Pending',
       accepted: 'Accepted',
       rejected: 'Rejected',
+      applied: 'Applied',
     },
     change: {
       table: {
