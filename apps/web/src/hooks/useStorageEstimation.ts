@@ -5,7 +5,7 @@ import {
   estimateStorageBreakdown,
   type StorageBreakdown,
   type StorageResult,
-} from '@/utils/storageEstimator';
+} from '@ddlbuilder/ddl-core';
 
 interface SizeDisplay {
   value: number;

@@ -6,7 +6,11 @@ import { Input } from '@/components/ui/input';
 import { DragDropVerticalIcon, Hash, Key, Lock, Pencil, Trash2, X } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { buildNormalizedFields, useEditorStore } from '@/stores';
-import { buildIndexName, getIndexNameMaxLength, truncateIndexName } from '@/utils/indexNameUtils';
+import {
+  buildIndexName,
+  getIdentifierNameMaxLength as getIndexNameMaxLength,
+  truncateIdentifierName as truncateIndexName,
+} from '@ddlbuilder/ddl-core';
 import { useTranslation } from 'react-i18next';
 
 interface IndexPanelProps {

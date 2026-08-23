@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { truncateIndexName, buildIndexName, MAX_INDEX_NAME_LENGTH } from '@/utils/indexNameUtils';
+import {
+  buildIndexName,
+  DEFAULT_IDENTIFIER_NAME_MAX_LENGTH as MAX_INDEX_NAME_LENGTH,
+  truncateIdentifierName as truncateIndexName,
+} from '@ddlbuilder/ddl-core';
 
 describe('indexNameUtils', () => {
   describe('MAX_INDEX_NAME_LENGTH', () => {

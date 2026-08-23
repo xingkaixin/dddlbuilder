@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateAlterDDL } from '@/utils/alterDdlGenerator';
+import { generateAlterDDL } from '@ddlbuilder/ddl-core';
 import type { TableDiff } from '@ddlbuilder/ddl-core';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 

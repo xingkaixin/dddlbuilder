@@ -1,7 +1,11 @@
 import type { IndexDefinition } from '@ddlbuilder/shared-types';
 import { buildPrimaryKeyName } from '@ddlbuilder/ddl-core';
 import { isSameIdentifierToken, replaceIdentifierToken } from '@/utils/fieldRenameUtils';
-import { buildIndexName, getIndexNameMaxLength, truncateIndexName } from '@/utils/indexNameUtils';
+import {
+  buildIndexName,
+  getIdentifierNameMaxLength as getIndexNameMaxLength,
+  truncateIdentifierName as truncateIndexName,
+} from '@ddlbuilder/ddl-core';
 import type { EditorGetState, EditorSetState, IndexSlice } from './editorStoreTypes';
 
 export const createIndexSlice = (set: EditorSetState, get: EditorGetState): IndexSlice => ({

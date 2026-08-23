@@ -8,7 +8,10 @@ import type {
 } from '@ddlbuilder/shared-types';
 import { useAIIndexAdvisor } from '@/hooks/useAIIndexAdvisor';
 import { useToast } from '@/hooks/useToast';
-import { buildIndexName, getIndexNameMaxLength } from '@/utils/indexNameUtils';
+import {
+  buildIndexName,
+  getIdentifierNameMaxLength as getIndexNameMaxLength,
+} from '@ddlbuilder/ddl-core';
 import { useTranslation } from 'react-i18next';
 import type { BuilderTab } from '@/utils/tabUtils';
 
