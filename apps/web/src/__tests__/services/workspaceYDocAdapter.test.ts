@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import { type PersistedState, toSchemaDocumentState } from '@ddlbuilder/shared-types';
 import {
   exportWorkspaceYDocToSnapshot,
   getDraftRecordFromYDoc,
@@ -88,6 +88,14 @@ const createState = (overrides: Partial<PersistedState> = {}): PersistedState =>
     },
   ],
   ...overrides,
+});
+
+const collaborativeState = (state: PersistedState): PersistedState => ({
+  ...JSON.parse(JSON.stringify(toSchemaDocumentState(state))),
+  sqlFormatMode: 'compact',
+  addCount: 12,
+  indexInput: '',
+  currentIndexFields: [],
 });
 
 const getFirstFieldId = (doc: Y.Doc) => {
@@ -193,12 +201,12 @@ describe('workspaceYDocAdapter', () => {
 
     const exported = exportWorkspaceYDocToSnapshot(doc);
 
-    expect(getDraftRecordFromYDoc(doc, DEFAULT_DRAFT_ID)?.state).toEqual(state);
+    expect(getDraftRecordFromYDoc(doc, DEFAULT_DRAFT_ID)?.state).toEqual(collaborativeState(state));
     expect(exported.savedTables[0]).toMatchObject({
       normalizedName: 'users',
       name: 'Users',
       folderId: 'folder-1',
-      state,
+      state: collaborativeState(state),
     });
     expect(exported.savedDrafts[0].state.tableComment).toBe('本地草稿');
     expect(exported.folders).toEqual([{ id: 'folder-1', name: 'Core', order: 1, createdAt: 80 }]);
@@ -254,7 +262,7 @@ describe('workspaceYDocAdapter', () => {
     expect(tableDoc?.get('scalar')).toBeInstanceOf(Y.Map);
     expect(tableDoc?.get('fields')).toBeInstanceOf(Y.Map);
     expect(tableDoc?.get('fieldOrder')).toBeInstanceOf(Y.Array);
-    expect(readDefaultDraftState(left)).toEqual(createState());
+    expect(readDefaultDraftState(left)).toEqual(collaborativeState(createState()));
   });
 
   it('keeps field docs when compact writes only change table scalars', () => {
@@ -366,7 +374,7 @@ describe('workspaceYDocAdapter', () => {
 
     upsertDraftInYDoc(doc, DEFAULT_DRAFT_ID, { state, updatedAt: 1 });
 
-    expect(getDraftRecordFromYDoc(doc, DEFAULT_DRAFT_ID)?.state).toEqual(state);
+    expect(getDraftRecordFromYDoc(doc, DEFAULT_DRAFT_ID)?.state).toEqual(collaborativeState(state));
   });
 
   it('prefers fine-grained table data over stale state snapshots', () => {
