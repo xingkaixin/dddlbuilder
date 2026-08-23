@@ -61,7 +61,6 @@ export function useAppController() {
     viewCreateOrReplace,
     dbType,
     sqlFormatMode,
-    setSchemaName,
     setTableName,
     setTableComment,
     setDbType,
@@ -93,12 +92,10 @@ export function useAppController() {
     indexInput,
     currentIndexFields,
     indexes,
-    setIndexInput,
     updateIndexNames,
     resetIndexState,
     setIndexes,
     foreignKeys,
-    setForeignKeys,
   } = editor;
 
   const {
@@ -166,13 +163,12 @@ export function useAppController() {
       authInput: state.authInput,
       authObjects: state.authObjects,
       setAuthInput: state.setAuthInput,
-      setAuthObjects: state.setAuthObjects,
       addAuthObject: state.addAuthObject,
       removeAuthObject: state.removeAuthObject,
       resetAuthState: state.resetAuthState,
     })),
   );
-  const { authInput, authObjects, setAuthInput, resetAuthState, setAuthObjects } = auth;
+  const { authInput, authObjects, resetAuthState } = auth;
 
   const sharding = useEditorStore(
     useShallow((state) => ({
@@ -200,14 +196,13 @@ export function useAppController() {
       removePartition: state.removePartition,
       updatePartition: state.updatePartition,
       generateRangePartitions: state.generateRangePartitions,
-      setMysqlPartitionConfig: state.setMysqlPartitionConfig,
       resetPartition: state.resetPartition,
     })),
   );
-  const { mysqlPartitionConfig, setMysqlPartitionConfig, resetPartition } = partition;
+  const { mysqlPartitionConfig, resetPartition } = partition;
 
   const tableOptions = useTableOptions();
-  const { tableMiscConfig, setTableMiscConfig, resetTableMiscConfig } = tableOptions;
+  const { tableMiscConfig, resetTableMiscConfig } = tableOptions;
 
   const qualifiedTableName = useMemo(
     () => buildQualifiedTableName(schemaName, tableName),
@@ -532,29 +527,15 @@ export function useAppController() {
   });
 
   const schemaActions = useSchemaApplyActions({
-    rows,
-    indexes,
+    currentState: currentPersistedState,
     reviewResult,
-    setRows,
-    setIndexes,
-    setForeignKeys,
     setReviewResult,
-    setIndexInput,
-    setAuthObjects,
-    setAuthInput,
-    setSchemaName,
-    setTableName,
-    setTableComment,
-    setDbType,
-    dbType,
-    sqlFormatMode,
-    setTableMiscConfig,
-    setMysqlPartitionConfig,
+    replaceCurrentState: applySavedState,
+    openGeneratedState: openStateInNewDraftTab,
     setActiveTab,
     triggerIndexAnimation,
     triggerFieldTableHighlight,
     showToast,
-    onApplyAIGeneratedState: openStateInNewDraftTab,
   });
 
   const navigationActions = useNavigationActions({
