@@ -1,4 +1,4 @@
-import { useState, type ReactNode, useCallback, useMemo } from 'react';
+import { useReducer, useState, type ReactNode, useCallback, useMemo } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import {
   Dialog,
@@ -31,17 +31,8 @@ import { PreviewStep } from './PreviewStep';
 import { ConfirmStep } from './ConfirmStep';
 import { TableSelectStep } from './TableSelectStep';
 import { SaveConfigStep } from './SaveConfigStep';
-import type {
-  ImportMode,
-  ConflictStrategy,
-  ImportSourceType,
-  ParsedTableItem,
-  PreviewField,
-  ValidationResult,
-  FailedItem,
-} from './types';
-
-type ImportStep = 'validate' | 'preview' | 'confirm' | 'select' | 'save';
+import { createImportDialogState, importDialogReducer } from './importDialogState';
+import type { ImportSourceType, ParsedTableItem, PreviewField } from './types';
 
 interface ImportSqlDialogProps {
   currentDbType: DatabaseType;
@@ -94,41 +85,26 @@ export function ImportSqlDialog({
 
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
-  const [step, setStep] = useState<ImportStep>('validate');
-  const [importMode, setImportMode] = useState<ImportMode>('workspace');
-  const [sourceType, setSourceType] = useState<ImportSourceType>('sql');
-  const [sql, setSql] = useState('');
-  const [file, setFile] = useState<File | null>(null);
-  const [selectedDbType, setSelectedDbType] = useState<DatabaseType>(currentDbType);
-  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
-  const [isValidating, setIsValidating] = useState(false);
-
-  // Workspace-mode state
-  const [parsedResult, setParsedResult] = useState<ParsedResult | null>(null);
-  const [previewFields, setPreviewFields] = useState<PreviewField[]>([]);
-
-  // Saved-mode state
-  const [parsedTables, setParsedTables] = useState<ParsedTableItem[]>([]);
-  const [failedItems, setFailedItems] = useState<FailedItem[]>([]);
-  const [selectedFolderId, setSelectedFolderId] = useState<string | undefined>(undefined);
-  const [conflictStrategy, setConflictStrategy] = useState<ConflictStrategy>('skip');
-  const [isImporting, setIsImporting] = useState(false);
+  const [dialogState, dispatch] = useReducer(
+    importDialogReducer,
+    currentDbType,
+    createImportDialogState,
+  );
+  const { sourceType, sql, file, selectedDbType, validationResult, operation } = dialogState;
+  const importMode = dialogState.mode;
+  const step = dialogState.step;
+  const parsedResult = dialogState.mode === 'workspace' ? dialogState.parsedResult : null;
+  const previewFields = dialogState.mode === 'workspace' ? dialogState.previewFields : [];
+  const parsedTables = dialogState.mode === 'saved' ? dialogState.parsedTables : [];
+  const failedItems = dialogState.mode === 'saved' ? dialogState.failedItems : [];
+  const selectedFolderId = dialogState.mode === 'saved' ? dialogState.selectedFolderId : undefined;
+  const conflictStrategy = dialogState.mode === 'saved' ? dialogState.conflictStrategy : 'skip';
+  const isValidating = operation === 'validating';
+  const isImporting = operation === 'importing';
 
   const resetDialog = useCallback(() => {
-    setStep('validate');
-    setImportMode('workspace');
-    setSourceType('sql');
-    setSql('');
-    setFile(null);
-    setParsedResult(null);
-    setValidationResult(null);
-    setPreviewFields([]);
-    setParsedTables([]);
-    setFailedItems([]);
-    setSelectedFolderId(undefined);
-    setConflictStrategy('skip');
-    setIsImporting(false);
-  }, []);
+    dispatch({ type: 'reset', dbType: currentDbType });
+  }, [currentDbType]);
 
   const setOpen = useCallback(
     (nextOpen: boolean) => {
@@ -151,9 +127,19 @@ export function ImportSqlDialog({
   );
 
   const handleSourceTypeChange = useCallback((nextSourceType: ImportSourceType) => {
-    setSourceType(nextSourceType);
-    setFile(null);
-    setValidationResult(null);
+    dispatch({ type: 'set_source_type', sourceType: nextSourceType });
+  }, []);
+
+  const handleDbTypeChange = useCallback((dbType: DatabaseType) => {
+    dispatch({ type: 'set_db_type', dbType });
+  }, []);
+
+  const handleSqlChange = useCallback((nextSql: string) => {
+    dispatch({ type: 'set_sql', sql: nextSql });
+  }, []);
+
+  const handleFileChange = useCallback((nextFile: File | null) => {
+    dispatch({ type: 'set_file', file: nextFile });
   }, []);
 
   const buildStructuredTables = useCallback(async (): Promise<ParsedResult[]> => {
@@ -185,8 +171,7 @@ export function ImportSqlDialog({
   }, []);
 
   const validateForWorkspace = useCallback(async () => {
-    setIsValidating(true);
-    setValidationResult(null);
+    dispatch({ type: 'validation_started' });
 
     try {
       const result =
@@ -198,29 +183,31 @@ export function ImportSqlDialog({
           : (await buildStructuredTables())[0];
 
       if (!result || (result.fields.length === 0 && result.tableName === '')) {
-        setValidationResult({
-          success: false,
-          error: t('importSql.sqlNoTable'),
+        dispatch({
+          type: 'validation_failed',
+          result: { success: false, error: t('importSql.sqlNoTable') },
         });
         return;
       }
 
-      setValidationResult({ success: true });
-      setParsedResult(result);
-      setPreviewFields(buildPreviewFields(result));
-      setStep('preview');
-    } catch (err) {
-      setValidationResult({
-        success: false,
-        error:
-          sourceType === 'sql'
-            ? t('importSql.sqlParseFailed')
-            : err instanceof Error
-              ? err.message
-              : t('importSql.sqlParseFailed'),
+      dispatch({
+        type: 'workspace_validated',
+        result,
+        fields: buildPreviewFields(result),
       });
-    } finally {
-      setIsValidating(false);
+    } catch (err) {
+      dispatch({
+        type: 'validation_failed',
+        result: {
+          success: false,
+          error:
+            sourceType === 'sql'
+              ? t('importSql.sqlParseFailed')
+              : err instanceof Error
+                ? err.message
+                : t('importSql.sqlParseFailed'),
+        },
+      });
     }
   }, [
     sourceType,
@@ -233,8 +220,7 @@ export function ImportSqlDialog({
   ]);
 
   const validateForSaved = useCallback(async () => {
-    setIsValidating(true);
-    setValidationResult(null);
+    dispatch({ type: 'validation_started' });
 
     try {
       const { results, failed } =
@@ -246,9 +232,9 @@ export function ImportSqlDialog({
           : { results: await buildStructuredTables(), failed: [] };
 
       if (results.length === 0) {
-        setValidationResult({
-          success: false,
-          error: t('importSql.sqlNoTable'),
+        dispatch({
+          type: 'validation_failed',
+          result: { success: false, error: t('importSql.sqlNoTable') },
         });
         return;
       }
@@ -259,16 +245,15 @@ export function ImportSqlDialog({
         conflict: savedTableNames.has(normalizeSavedTableName(r.tableName)),
       }));
 
-      setParsedTables(items);
-      setFailedItems(failed);
-      setStep('select');
+      dispatch({ type: 'saved_validated', tables: items, failedItems: failed });
     } catch (err) {
-      setValidationResult({
-        success: false,
-        error: err instanceof Error ? err.message : t('importSql.sqlParseFailed'),
+      dispatch({
+        type: 'validation_failed',
+        result: {
+          success: false,
+          error: err instanceof Error ? err.message : t('importSql.sqlParseFailed'),
+        },
       });
-    } finally {
-      setIsValidating(false);
     }
   }, [
     sourceType,
@@ -284,29 +269,30 @@ export function ImportSqlDialog({
     const trimmedSql = sql.trim();
     const needsText = sourceType !== 'excel' && !file;
     if (needsText && !trimmedSql) {
-      setValidationResult({
-        success: false,
-        error: t('importSql.sqlRequired'),
-        lineNumber: 1,
+      dispatch({
+        type: 'validation_failed',
+        result: { success: false, error: t('importSql.sqlRequired'), lineNumber: 1 },
       });
       return;
     }
     if (sourceType === 'excel' && !file) {
-      setValidationResult({
-        success: false,
-        error: t('importSql.file.required'),
-        lineNumber: 1,
+      dispatch({
+        type: 'validation_failed',
+        result: { success: false, error: t('importSql.file.required'), lineNumber: 1 },
       });
       return;
     }
     const maxLength = sourceType === 'sql' ? MAX_SQL_LENGTH : MAX_TEXT_LENGTH;
     if (trimmedSql.length > maxLength) {
-      setValidationResult({
-        success: false,
-        error: t('importSql.sqlTooLong', {
-          max: maxLength.toLocaleString(),
-        }),
-        lineNumber: 1,
+      dispatch({
+        type: 'validation_failed',
+        result: {
+          success: false,
+          error: t('importSql.sqlTooLong', {
+            max: maxLength.toLocaleString(),
+          }),
+          lineNumber: 1,
+        },
       });
       return;
     }
@@ -329,21 +315,13 @@ export function ImportSqlDialog({
   const handleNext = () => {
     if (step === 'validate') {
       validateAndAdvance();
-    } else if (step === 'preview') {
-      setStep('confirm');
-    } else if (step === 'select') {
-      setStep('save');
+    } else {
+      dispatch({ type: 'advance' });
     }
   };
 
   const handleBack = () => {
-    if (step === 'preview' || step === 'select') {
-      setStep('validate');
-    } else if (step === 'confirm') {
-      setStep('preview');
-    } else if (step === 'save') {
-      setStep('select');
-    }
+    dispatch({ type: 'back' });
   };
 
   const handleConfirm = () => {
@@ -363,45 +341,36 @@ export function ImportSqlDialog({
     field: keyof PreviewField,
     value: string | number | boolean,
   ) => {
-    setPreviewFields((prev) => {
-      const newFields = [...prev];
-      newFields[index] = { ...newFields[index], [field]: value };
-      return newFields;
-    });
+    dispatch({ type: 'update_preview_field', index, field, value });
   };
 
   const moveField = (index: number, direction: 'up' | 'down') => {
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= previewFields.length) return;
-
-    setPreviewFields((prev) => {
-      const newFields = [...prev];
-      [newFields[index], newFields[newIndex]] = [newFields[newIndex], newFields[index]];
-      return newFields;
-    });
+    dispatch({ type: 'move_preview_field', index, direction });
   };
 
   const deleteField = (index: number) => {
-    setPreviewFields((prev) => prev.filter((_, i) => i !== index));
+    dispatch({ type: 'delete_preview_field', index });
   };
 
   const handleToggleSelect = (index: number) => {
-    setParsedTables((prev) => {
-      const next = [...prev];
-      next[index] = { ...next[index], selected: !next[index].selected };
-      return next;
-    });
+    dispatch({ type: 'toggle_table', index });
   };
 
   const handleSelectAll = () => {
-    setParsedTables((prev) => prev.map((t) => ({ ...t, selected: true })));
+    dispatch({ type: 'select_all_tables', selected: true });
   };
 
   const handleDeselectAll = () => {
-    setParsedTables((prev) => prev.map((t) => ({ ...t, selected: false })));
+    dispatch({ type: 'select_all_tables', selected: false });
   };
 
-  const selectedTables = useMemo(() => parsedTables.filter((t) => t.selected), [parsedTables]);
+  const selectedTables = useMemo(
+    () =>
+      dialogState.mode === 'saved'
+        ? dialogState.parsedTables.filter((table) => table.selected)
+        : [],
+    [dialogState],
+  );
 
   const selectedConflictCount = useMemo(
     () => selectedTables.filter((t) => t.conflict).length,
@@ -412,7 +381,7 @@ export function ImportSqlDialog({
     if (selectedTables.length === 0) return;
     if (!onBatchImport) return;
 
-    setIsImporting(true);
+    dispatch({ type: 'import_started' });
     try {
       const result = await onBatchImport({
         items: selectedTables.map((table) => ({
@@ -432,7 +401,7 @@ export function ImportSqlDialog({
       );
       onBatchImportComplete?.();
     } finally {
-      setIsImporting(false);
+      dispatch({ type: 'import_finished' });
     }
   };
 
@@ -525,16 +494,18 @@ export function ImportSqlDialog({
           {step === 'validate' && (
             <SqlInputStep
               selectedDbType={selectedDbType}
-              onDbTypeChange={setSelectedDbType}
+              onDbTypeChange={handleDbTypeChange}
               sourceType={sourceType}
               onSourceTypeChange={handleSourceTypeChange}
               sql={sql}
-              onSqlChange={setSql}
+              onSqlChange={handleSqlChange}
               file={file}
-              onFileChange={setFile}
+              onFileChange={handleFileChange}
               validationResult={validationResult}
               importMode={batchImportSupported ? importMode : undefined}
-              onImportModeChange={batchImportSupported ? setImportMode : undefined}
+              onImportModeChange={
+                batchImportSupported ? (mode) => dispatch({ type: 'set_mode', mode }) : undefined
+              }
             />
           )}
 
@@ -570,9 +541,11 @@ export function ImportSqlDialog({
             <SaveConfigStep
               folders={folderTree ?? []}
               selectedFolderId={selectedFolderId}
-              onFolderChange={setSelectedFolderId}
+              onFolderChange={(folderId) => dispatch({ type: 'set_folder', folderId })}
               conflictStrategy={conflictStrategy}
-              onConflictStrategyChange={setConflictStrategy}
+              onConflictStrategyChange={(strategy) =>
+                dispatch({ type: 'set_conflict_strategy', strategy })
+              }
               totalCount={selectedTables.length}
               newCount={selectedTables.length - selectedConflictCount}
               conflictCount={selectedConflictCount}
