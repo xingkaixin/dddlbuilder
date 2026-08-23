@@ -29,7 +29,7 @@ import { Label } from '@/components/ui/label';
 import type { FieldTemplate, TemplateField } from '@/hooks/useFieldTemplates';
 import type { DatabaseType, FieldRow } from '@ddlbuilder/shared-types';
 import { createEmptyRow } from '@/utils/helpers';
-import { useAppStore } from '@/stores';
+import { useEditorStore } from '@/stores';
 import { TemplateListItem } from './TemplateListItem';
 import { TemplateFieldTable } from './TemplateFieldTable';
 import { useToast } from '@/hooks/useToast';
@@ -98,7 +98,7 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
   }) => {
     const { t } = useTranslation();
     const { showToast } = useToast();
-    const dbType = useAppStore((state) => state.dbType) as DatabaseType;
+    const dbType = useEditorStore((state) => state.dbType) as DatabaseType;
     const [searchTerm, setSearchTerm] = useState('');
     const [editingTemplate, setEditingTemplate] = useState<FieldTemplate | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);

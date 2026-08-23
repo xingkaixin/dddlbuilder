@@ -14,7 +14,7 @@ import {
   type AppIconProps,
 } from '@/components/icons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useFieldStore, useForeignKeyStore, useIndexStore } from '@/stores';
+import { useEditorStore } from '@/stores';
 import { isBuilderTab, isTabAvailable, type BuilderTab } from '@/utils/tabUtils';
 import { useTranslation } from 'react-i18next';
 import { AuthPanel } from '../AuthPanel';
@@ -118,11 +118,11 @@ export const TableBuilderContainer = memo(function TableBuilderContainer({
   const { t } = useTranslation();
   const { objectType, dbType } = tableConfigProps;
 
-  const fieldCount = useFieldStore(
+  const fieldCount = useEditorStore(
     (state) => state.rows.filter((row) => row.fieldName?.trim()).length,
   );
-  const foreignKeyCount = useForeignKeyStore((state) => state.foreignKeys.length);
-  const indexes = useIndexStore((state) => state.indexes);
+  const foreignKeyCount = useEditorStore((state) => state.foreignKeys.length);
+  const indexes = useEditorStore((state) => state.indexes);
   const indexStats = indexes.reduce<IndexStats>(
     (acc, index) => {
       if (index.isPrimary) acc.primary += 1;

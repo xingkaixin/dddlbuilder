@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type { TableMiscConfig, HivePartitionConfig } from '@ddlbuilder/shared-types';
-import { useTableOptionsStore } from '@/stores';
+import { useEditorStore } from '@/stores';
 
 export interface UseTableOptionsReturn {
   tableMiscConfig: TableMiscConfig;
@@ -29,21 +29,21 @@ export interface UseTableOptionsReturn {
 }
 
 export function useTableOptions(): UseTableOptionsReturn {
-  const tableMiscConfig = useTableOptionsStore((state) => state.tableMiscConfig);
-  const setMiscEnabled = useTableOptionsStore((state) => state.setMiscEnabled);
-  const setEngine = useTableOptionsStore((state) => state.setEngine);
-  const setCharset = useTableOptionsStore((state) => state.setCharset);
-  const setCollation = useTableOptionsStore((state) => state.setCollation);
-  const setTablespace = useTableOptionsStore((state) => state.setTablespace);
-  const setFillfactor = useTableOptionsStore((state) => state.setFillfactor);
-  const setPctfree = useTableOptionsStore((state) => state.setPctfree);
-  const setInitrans = useTableOptionsStore((state) => state.setInitrans);
-  const setStoredAs = useTableOptionsStore((state) => state.setStoredAs);
-  const setExternal = useTableOptionsStore((state) => state.setExternal);
-  const setLocation = useTableOptionsStore((state) => state.setLocation);
-  const setHivePartitionConfig = useTableOptionsStore((state) => state.setHivePartitionConfig);
-  const setTableMiscConfig = useTableOptionsStore((state) => state.setTableMiscConfig);
-  const resetTableMiscConfig = useTableOptionsStore((state) => state.resetTableMiscConfig);
+  const tableMiscConfig = useEditorStore((state) => state.tableMiscConfig);
+  const setMiscEnabled = useEditorStore((state) => state.setMiscEnabled);
+  const setEngine = useEditorStore((state) => state.setEngine);
+  const setCharset = useEditorStore((state) => state.setCharset);
+  const setCollation = useEditorStore((state) => state.setCollation);
+  const setTablespace = useEditorStore((state) => state.setTablespace);
+  const setFillfactor = useEditorStore((state) => state.setFillfactor);
+  const setPctfree = useEditorStore((state) => state.setPctfree);
+  const setInitrans = useEditorStore((state) => state.setInitrans);
+  const setStoredAs = useEditorStore((state) => state.setStoredAs);
+  const setExternal = useEditorStore((state) => state.setExternal);
+  const setLocation = useEditorStore((state) => state.setLocation);
+  const setHivePartitionConfig = useEditorStore((state) => state.setHivePartitionConfig);
+  const setTableMiscConfig = useEditorStore((state) => state.setTableMiscConfig);
+  const resetTableMiscConfig = useEditorStore((state) => state.resetTableMiscConfig);
   const setHivePartitionEnabled = useCallback(
     (enabled: boolean) => setHivePartitionConfig((previous) => ({ ...previous, enabled })),
     [setHivePartitionConfig],

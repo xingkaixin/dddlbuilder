@@ -8,15 +8,7 @@ import { DragDropVerticalIcon } from '@/components/icons';
 import { toStringSafe, isReservedKeyword } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
 import type { EnumValueMeta } from '@ddlbuilder/shared-types';
-import {
-  buildDuplicateNameSet,
-  useAppStore,
-  useFieldStore,
-  useIndexStore,
-  usePartitionStore,
-  useShardingStore,
-  useForeignKeyStore,
-} from '@/stores';
+import { buildDuplicateNameSet, useEditorStore } from '@/stores';
 import { useFieldColumns } from './table/columns';
 import { fieldTableFeatures, type FieldTableRow } from './table/tableFeatures';
 import { useFreezeColumns } from './table/useFreezeColumns';
@@ -207,23 +199,21 @@ export const DataTable = memo<DataTableProps>(
     onOpenAIIndexAdvisor,
   }) => {
     const { t } = useTranslation();
-    const rows = useFieldStore((state) => state.rows);
-    const setRows = useFieldStore((state) => state.setRows);
-    const onAddRows = useFieldStore((state) => state.handleAddRows);
-    const onRemoveRow = useFieldStore((state) => state.handleRemoveRow);
-    const dbType = useAppStore((state) => state.dbType);
-    const addCount = useAppStore((state) => state.addCount);
-    const onAddCountChange = useAppStore((state) => state.setAddCount);
-    const freezeEnabled = useAppStore((state) => state.fieldTableFreezeEnabled);
-    const onFreezeEnabledChange = useAppStore((state) => state.setFieldTableFreezeEnabled);
-    const freezeColumns = useAppStore((state) => state.fieldTableFreezeColumns);
-    const onFreezeColumnsChange = useAppStore((state) => state.setFieldTableFreezeColumns);
-    const syncIndexFieldRename = useIndexStore((state) => state.syncIndexFieldRename);
-    const syncPartitionFieldRename = usePartitionStore((state) => state.syncPartitionFieldRename);
-    const syncShardingFieldRename = useShardingStore((state) => state.syncShardingFieldRename);
-    const syncForeignKeyFieldRename = useForeignKeyStore(
-      (state) => state.syncForeignKeyFieldRename,
-    );
+    const rows = useEditorStore((state) => state.rows);
+    const setRows = useEditorStore((state) => state.setRows);
+    const onAddRows = useEditorStore((state) => state.handleAddRows);
+    const onRemoveRow = useEditorStore((state) => state.handleRemoveRow);
+    const dbType = useEditorStore((state) => state.dbType);
+    const addCount = useEditorStore((state) => state.addCount);
+    const onAddCountChange = useEditorStore((state) => state.setAddCount);
+    const freezeEnabled = useEditorStore((state) => state.fieldTableFreezeEnabled);
+    const onFreezeEnabledChange = useEditorStore((state) => state.setFieldTableFreezeEnabled);
+    const freezeColumns = useEditorStore((state) => state.fieldTableFreezeColumns);
+    const onFreezeColumnsChange = useEditorStore((state) => state.setFieldTableFreezeColumns);
+    const syncIndexFieldRename = useEditorStore((state) => state.syncIndexFieldRename);
+    const syncPartitionFieldRename = useEditorStore((state) => state.syncPartitionFieldRename);
+    const syncShardingFieldRename = useEditorStore((state) => state.syncShardingFieldRename);
+    const syncForeignKeyFieldRename = useEditorStore((state) => state.syncForeignKeyFieldRename);
 
     const duplicateNameSet = useMemo(() => buildDuplicateNameSet(rows), [rows]);
     const tableRef = useRef<HTMLDivElement>(null);

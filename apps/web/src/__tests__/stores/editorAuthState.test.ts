@@ -1,19 +1,20 @@
 import { beforeEach, describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useAuthManagement } from '@/hooks';
-import { useAuthStore } from '@/stores';
+import { useEditorStore } from '@/stores';
+
+const useAuthState = useEditorStore;
 
 function resetAuthStore() {
-  useAuthStore.getState().resetAuthState();
+  useEditorStore.getState().resetAuthState();
 }
 
-describe('useAuthManagement', () => {
+describe('editor store auth state', () => {
   beforeEach(() => {
     resetAuthStore();
   });
 
   it('应该初始化为空状态', () => {
-    const { result } = renderHook(() => useAuthManagement());
+    const { result } = renderHook(() => useAuthState());
 
     expect(result.current.authInput).toBe('');
     expect(result.current.authObjects).toEqual([]);
@@ -23,7 +24,7 @@ describe('useAuthManagement', () => {
   });
 
   it('应该能够重置授权状态', () => {
-    const { result } = renderHook(() => useAuthManagement());
+    const { result } = renderHook(() => useAuthState());
 
     // 添加一些授权对象
     act(() => {
@@ -43,7 +44,7 @@ describe('useAuthManagement', () => {
   });
 
   it('应该能够直接设置授权对象数组', () => {
-    const { result } = renderHook(() => useAuthManagement());
+    const { result } = renderHook(() => useAuthState());
 
     act(() => {
       result.current.setAuthObjects(['user1', 'user2', 'user3']);
@@ -53,7 +54,7 @@ describe('useAuthManagement', () => {
   });
 
   it('应该能够设置授权输入值', () => {
-    const { result } = renderHook(() => useAuthManagement());
+    const { result } = renderHook(() => useAuthState());
 
     act(() => {
       result.current.setAuthInput('test_user');
@@ -63,7 +64,7 @@ describe('useAuthManagement', () => {
   });
 
   it('应该能够添加授权对象', () => {
-    const { result } = renderHook(() => useAuthManagement());
+    const { result } = renderHook(() => useAuthState());
 
     // 设置输入值
     act(() => {
@@ -80,7 +81,7 @@ describe('useAuthManagement', () => {
   });
 
   it('应该能够添加多个授权对象', () => {
-    const { result } = renderHook(() => useAuthManagement());
+    const { result } = renderHook(() => useAuthState());
 
     const authUsers = ['user1', 'user2', 'user3'];
 
@@ -95,7 +96,7 @@ describe('useAuthManagement', () => {
   });
 
   it('应该能够删除授权对象', () => {
-    const { result } = renderHook(() => useAuthManagement());
+    const { result } = renderHook(() => useAuthState());
 
     // 先添加一些授权对象
     const initialAuths = ['user1', 'user2', 'user3'];
@@ -114,7 +115,7 @@ describe('useAuthManagement', () => {
   });
 
   it('应该能够删除第一个授权对象', () => {
-    const { result } = renderHook(() => useAuthManagement());
+    const { result } = renderHook(() => useAuthState());
 
     // 添加授权对象
     act(() => {
@@ -131,7 +132,7 @@ describe('useAuthManagement', () => {
   });
 
   it('应该能够删除最后一个授权对象', () => {
-    const { result } = renderHook(() => useAuthManagement());
+    const { result } = renderHook(() => useAuthState());
 
     // 添加授权对象
     act(() => {
@@ -148,7 +149,7 @@ describe('useAuthManagement', () => {
   });
 
   it('应该能够删除所有授权对象', () => {
-    const { result } = renderHook(() => useAuthManagement());
+    const { result } = renderHook(() => useAuthState());
 
     // 添加多个授权对象
     const authUsers = ['user1', 'user2', 'user3'];
@@ -169,7 +170,7 @@ describe('useAuthManagement', () => {
   });
 
   it('应该处理无效的删除索引', () => {
-    const { result } = renderHook(() => useAuthManagement());
+    const { result } = renderHook(() => useAuthState());
 
     // 添加一些授权对象
     act(() => {
@@ -192,7 +193,7 @@ describe('useAuthManagement', () => {
   });
 
   it('应该忽略空字符串授权对象', () => {
-    const { result } = renderHook(() => useAuthManagement());
+    const { result } = renderHook(() => useAuthState());
 
     // 尝试添加空字符串
     act(() => {
@@ -204,7 +205,7 @@ describe('useAuthManagement', () => {
   });
 
   it('应该能够处理包含特殊字符的授权对象', () => {
-    const { result } = renderHook(() => useAuthManagement());
+    const { result } = renderHook(() => useAuthState());
 
     const specialAuth = 'user@domain.com#$%^&*()';
 
@@ -216,7 +217,7 @@ describe('useAuthManagement', () => {
   });
 
   it('应该能够处理长授权对象名称', () => {
-    const { result } = renderHook(() => useAuthManagement());
+    const { result } = renderHook(() => useAuthState());
 
     const longAuth = 'a'.repeat(1000);
 
@@ -228,7 +229,7 @@ describe('useAuthManagement', () => {
   });
 
   it('应该忽略重复添加的授权对象', () => {
-    const { result } = renderHook(() => useAuthManagement());
+    const { result } = renderHook(() => useAuthState());
 
     const user = 'user1';
 
@@ -243,7 +244,7 @@ describe('useAuthManagement', () => {
   });
 
   it('应该在添加授权对象后清空输入', () => {
-    const { result } = renderHook(() => useAuthManagement());
+    const { result } = renderHook(() => useAuthState());
 
     // 设置输入值
     act(() => {
@@ -261,7 +262,7 @@ describe('useAuthManagement', () => {
   });
 
   it('应该能够快速连续操作授权对象', () => {
-    const { result } = renderHook(() => useAuthManagement());
+    const { result } = renderHook(() => useAuthState());
 
     // 快速连续添加
     act(() => {

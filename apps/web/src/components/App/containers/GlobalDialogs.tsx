@@ -25,7 +25,7 @@ import { VersionHistoryDialog } from '../VersionHistoryDialog';
 import { SchemaTimelinePlayer } from '../SchemaTimelinePlayer';
 import { useTranslation } from 'react-i18next';
 import { DialogRenderGuard } from './DialogRenderGuard';
-import { useAppStore } from '@/stores';
+import { useEditorStore } from '@/stores';
 
 type ControlledDialogProps<T extends ElementType> = Omit<
   ComponentProps<T>,
@@ -107,14 +107,14 @@ export function GlobalDialogs({
   emptyTrashDialog,
 }: GlobalDialogsProps) {
   const { t } = useTranslation();
-  const isClearDialogOpen = useAppStore((state) => state.isClearDialogOpen);
-  const isDiffDialogOpen = useAppStore((state) => state.isDiffDialogOpen);
-  const versionHistoryTarget = useAppStore((state) => state.versionHistoryTarget);
-  const timelinePlayerTarget = useAppStore((state) => state.timelinePlayerTarget);
-  const isReviewHistoryOpen = useAppStore((state) => state.isReviewHistoryOpen);
-  const isAIGenerateDialogOpen = useAppStore((state) => state.isAIGenerateDialogOpen);
-  const isStorageEstimatorOpen = useAppStore((state) => state.isStorageEstimatorOpen);
-  const isMockDataDialogOpen = useAppStore((state) => state.isMockDataDialogOpen);
+  const isClearDialogOpen = useEditorStore((state) => state.isClearDialogOpen);
+  const isDiffDialogOpen = useEditorStore((state) => state.isDiffDialogOpen);
+  const versionHistoryTarget = useEditorStore((state) => state.versionHistoryTarget);
+  const timelinePlayerTarget = useEditorStore((state) => state.timelinePlayerTarget);
+  const isReviewHistoryOpen = useEditorStore((state) => state.isReviewHistoryOpen);
+  const isAIGenerateDialogOpen = useEditorStore((state) => state.isAIGenerateDialogOpen);
+  const isStorageEstimatorOpen = useEditorStore((state) => state.isStorageEstimatorOpen);
+  const isMockDataDialogOpen = useEditorStore((state) => state.isMockDataDialogOpen);
   const {
     setIsClearDialogOpen,
     setIsDiffDialogOpen,
@@ -124,7 +124,7 @@ export function GlobalDialogs({
     setIsAIGenerateDialogOpen,
     setIsStorageEstimatorOpen,
     setIsMockDataDialogOpen,
-  } = useAppStore.getState();
+  } = useEditorStore.getState();
 
   const handlePlayTimeline = useCallback(() => {
     if (versionHistoryTarget) {

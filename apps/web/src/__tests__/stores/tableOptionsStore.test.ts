@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useTableOptionsStore } from '@/stores';
+import { useEditorStore } from '@/stores';
 
 function resetTableOptionsStore() {
-  useTableOptionsStore.getState().resetTableMiscConfig();
+  useEditorStore.getState().resetTableMiscConfig();
 }
 
 describe('tableOptionsStore', () => {
@@ -11,21 +11,21 @@ describe('tableOptionsStore', () => {
   });
 
   it('应该更新并重置表级杂项配置', () => {
-    const state = useTableOptionsStore.getState();
+    const state = useEditorStore.getState();
 
     state.setMiscEnabled(true);
     state.setEngine('InnoDB');
     state.setCharset('utf8mb4');
     state.setCollation('utf8mb4_general_ci');
 
-    let current = useTableOptionsStore.getState();
+    let current = useEditorStore.getState();
     expect(current.tableMiscConfig.enabled).toBe(true);
     expect(current.tableMiscConfig.engine).toBe('InnoDB');
     expect(current.tableMiscConfig.charset).toBe('utf8mb4');
     expect(current.tableMiscConfig.collation).toBe('utf8mb4_general_ci');
 
     current.resetTableMiscConfig();
-    current = useTableOptionsStore.getState();
+    current = useEditorStore.getState();
     expect(current.tableMiscConfig).toEqual({
       enabled: false,
       engine: '',
@@ -36,7 +36,7 @@ describe('tableOptionsStore', () => {
   });
 
   it('应该支持直接设置和函数式 setTableMiscConfig', () => {
-    const state = useTableOptionsStore.getState();
+    const state = useEditorStore.getState();
 
     state.setTableMiscConfig({
       enabled: true,
@@ -46,7 +46,7 @@ describe('tableOptionsStore', () => {
       tablespace: 'ts_direct',
     });
 
-    let current = useTableOptionsStore.getState();
+    let current = useEditorStore.getState();
     expect(current.tableMiscConfig).toEqual({
       enabled: true,
       engine: 'MyISAM',
@@ -61,48 +61,48 @@ describe('tableOptionsStore', () => {
       tablespace: 'ts_func',
     }));
 
-    current = useTableOptionsStore.getState();
+    current = useEditorStore.getState();
     expect(current.tableMiscConfig.enabled).toBe(false);
     expect(current.tableMiscConfig.tablespace).toBe('ts_func');
     expect(current.tableMiscConfig.engine).toBe('MyISAM');
   });
 
   it('应该设置 storedAs', () => {
-    const state = useTableOptionsStore.getState();
+    const state = useEditorStore.getState();
 
     state.setStoredAs('PARQUET');
 
-    const current = useTableOptionsStore.getState();
+    const current = useEditorStore.getState();
     expect(current.tableMiscConfig.storedAs).toBe('PARQUET');
   });
 
   it('应该设置 external', () => {
-    const state = useTableOptionsStore.getState();
+    const state = useEditorStore.getState();
 
     state.setExternal(true);
 
-    const current = useTableOptionsStore.getState();
+    const current = useEditorStore.getState();
     expect(current.tableMiscConfig.external).toBe(true);
   });
 
   it('应该设置 location', () => {
-    const state = useTableOptionsStore.getState();
+    const state = useEditorStore.getState();
 
     state.setLocation('/data/table');
 
-    const current = useTableOptionsStore.getState();
+    const current = useEditorStore.getState();
     expect(current.tableMiscConfig.location).toBe('/data/table');
   });
 
   it('应该支持直接设置和函数式 setHivePartitionConfig', () => {
-    const state = useTableOptionsStore.getState();
+    const state = useEditorStore.getState();
 
     state.setHivePartitionConfig({
       enabled: true,
       columns: [{ name: 'dt', type: 'string' }],
     });
 
-    let current = useTableOptionsStore.getState();
+    let current = useEditorStore.getState();
     expect(current.tableMiscConfig.partitions).toEqual({
       enabled: true,
       columns: [{ name: 'dt', type: 'string' }],
@@ -113,7 +113,7 @@ describe('tableOptionsStore', () => {
       columns: [...prev.columns, { name: 'region', type: 'string' }],
     }));
 
-    current = useTableOptionsStore.getState();
+    current = useEditorStore.getState();
     expect(current.tableMiscConfig.partitions).toEqual({
       enabled: true,
       columns: [
@@ -124,7 +124,7 @@ describe('tableOptionsStore', () => {
   });
 
   it('应该在 partitions 为 undefined 时，函数式 setHivePartitionConfig 使用默认值', () => {
-    const state = useTableOptionsStore.getState();
+    const state = useEditorStore.getState();
 
     expect(state.tableMiscConfig.partitions).toBeUndefined();
 
@@ -133,7 +133,7 @@ describe('tableOptionsStore', () => {
       enabled: true,
     }));
 
-    const current = useTableOptionsStore.getState();
+    const current = useEditorStore.getState();
     expect(current.tableMiscConfig.partitions).toEqual({
       enabled: true,
       columns: [],

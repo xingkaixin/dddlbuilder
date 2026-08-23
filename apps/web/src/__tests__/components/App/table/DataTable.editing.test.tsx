@@ -2,13 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { fireEvent, render, screen, waitFor } from '@/__tests__/utils/test-utils';
 import { DataTable } from '@/components/App/DataTable';
-import {
-  useAppStore,
-  useFieldStore,
-  useIndexStore,
-  usePartitionStore,
-  useShardingStore,
-} from '@/stores';
+import { useEditorStore } from '@/stores';
 
 vi.mock('@dnd-kit/core', () => ({
   DndContext: ({ children }: { children: ReactNode }) => children,
@@ -47,12 +41,12 @@ vi.mock('@/components/ui/animated-number', () => ({
 }));
 
 function setupStores() {
-  const appState = useAppStore.getState();
+  const appState = useEditorStore.getState();
   appState.resetTableConfig();
   appState.resetTableViewConfig();
   appState.setDbType('mysql');
 
-  useFieldStore.getState().setRows([
+  useEditorStore.getState().setRows([
     {
       order: 1,
       fieldName: 'id',
@@ -65,9 +59,9 @@ function setupStores() {
     },
   ]);
 
-  useIndexStore.getState().resetIndexState();
-  usePartitionStore.getState().resetPartition();
-  useShardingStore.getState().resetCitusSharding();
+  useEditorStore.getState().resetIndexState();
+  useEditorStore.getState().resetPartition();
+  useEditorStore.getState().resetCitusSharding();
 }
 
 describe('DataTable 单元格编辑切换', () => {
@@ -90,7 +84,7 @@ describe('DataTable 单元格编辑切换', () => {
 
     fireEvent.pointerDown(commentCell, { button: 0 });
 
-    expect(useFieldStore.getState().rows[0].fieldName).toBe('abc');
+    expect(useEditorStore.getState().rows[0].fieldName).toBe('abc');
     expect(commentCell).toHaveClass('ring-2');
     await waitFor(() => {
       expect(document.activeElement).toHaveAttribute('title', '主键');

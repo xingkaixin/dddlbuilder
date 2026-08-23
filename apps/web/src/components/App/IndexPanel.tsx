@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DragDropVerticalIcon, Hash, Key, Lock, Pencil, Trash2, X } from '@/components/icons';
 import { cn } from '@/lib/utils';
-import { buildNormalizedFields, useAppStore, useFieldStore, useIndexStore } from '@/stores';
+import { buildNormalizedFields, useEditorStore } from '@/stores';
 import { buildIndexName, getIndexNameMaxLength, truncateIndexName } from '@/utils/indexNameUtils';
 import { useTranslation } from 'react-i18next';
 
@@ -31,12 +31,12 @@ const getIndexType = (index: IndexDefinition): IndexType => {
 
 export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIndexIds }) => {
   const { t } = useTranslation();
-  const rows = useFieldStore((state) => state.rows);
-  const tableName = useAppStore((state) => state.tableName);
-  const dbType = useAppStore((state) => state.dbType);
-  const indexes = useIndexStore((state) => state.indexes);
-  const setIndexes = useIndexStore((state) => state.setIndexes);
-  const removeIndex = useIndexStore((state) => state.removeIndex);
+  const rows = useEditorStore((state) => state.rows);
+  const tableName = useEditorStore((state) => state.tableName);
+  const dbType = useEditorStore((state) => state.dbType);
+  const indexes = useEditorStore((state) => state.indexes);
+  const setIndexes = useEditorStore((state) => state.setIndexes);
+  const removeIndex = useEditorStore((state) => state.removeIndex);
 
   const availableFields = useMemo(
     () =>

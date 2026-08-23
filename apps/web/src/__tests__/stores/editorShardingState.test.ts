@@ -1,19 +1,20 @@
 import { beforeEach, describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useCitusSharding } from '@/hooks/useCitusSharding';
-import { useShardingStore } from '@/stores';
+import { useEditorStore } from '@/stores';
+
+const useShardingState = useEditorStore;
 
 function resetShardingStore() {
-  useShardingStore.getState().resetCitusSharding();
+  useEditorStore.getState().resetCitusSharding();
 }
 
-describe('useCitusSharding', () => {
+describe('editor store sharding state', () => {
   beforeEach(() => {
     resetShardingStore();
   });
 
   it('应该返回默认配置', () => {
-    const { result } = renderHook(() => useCitusSharding());
+    const { result } = renderHook(() => useShardingState());
 
     expect(result.current.citusShardingConfig).toEqual({
       mode: 'reference',
@@ -22,7 +23,7 @@ describe('useCitusSharding', () => {
   });
 
   it('应该正确设置分片模式为 reference', () => {
-    const { result } = renderHook(() => useCitusSharding());
+    const { result } = renderHook(() => useShardingState());
 
     act(() => {
       result.current.setCitusMode('distributed');
@@ -36,7 +37,7 @@ describe('useCitusSharding', () => {
   });
 
   it('应该正确设置分布列', () => {
-    const { result } = renderHook(() => useCitusSharding());
+    const { result } = renderHook(() => useShardingState());
 
     act(() => {
       result.current.setDistributionColumn('user_id');
@@ -46,7 +47,7 @@ describe('useCitusSharding', () => {
   });
 
   it('应该正确重置配置', () => {
-    const { result } = renderHook(() => useCitusSharding());
+    const { result } = renderHook(() => useShardingState());
 
     act(() => {
       result.current.setCitusMode('distributed');

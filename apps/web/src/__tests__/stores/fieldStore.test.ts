@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { FieldRow } from '@ddlbuilder/shared-types';
-import { useFieldStore } from '@/stores';
+import { useEditorStore } from '@/stores';
 import { createEmptyRow } from '@/utils/helpers';
 import { buildDuplicateNameSet, buildNormalizedFields } from '@/stores/fieldStore';
 
 function resetFieldStore() {
-  useFieldStore.getState().resetRows(12);
+  useEditorStore.getState().resetRows(12);
 }
 
 describe('fieldStore', () => {
@@ -14,21 +14,21 @@ describe('fieldStore', () => {
   });
 
   it('应该支持增删行并保持数组顺序', () => {
-    const state = useFieldStore.getState();
+    const state = useEditorStore.getState();
 
     state.handleAddRows(2);
-    let current = useFieldStore.getState();
+    let current = useEditorStore.getState();
     expect(current.rows.length).toBe(14);
     const fourthRowId = current.rows[3].id;
 
     state.handleRemoveRow(0, 3);
-    current = useFieldStore.getState();
+    current = useEditorStore.getState();
     expect(current.rows.length).toBe(11);
     expect(current.rows[0].id).toBe(fourthRowId);
   });
 
   it('应该处理单元格变更并应用 defaultKind 规则', () => {
-    const state = useFieldStore.getState();
+    const state = useEditorStore.getState();
     state.setRows([createEmptyRow(0)]);
 
     state.handleRowsChange(
@@ -39,7 +39,7 @@ describe('fieldStore', () => {
       'edit',
     );
 
-    const current = useFieldStore.getState();
+    const current = useEditorStore.getState();
     expect(current.rows[0].fieldName).toBe('id');
     expect(current.rows[0].defaultKind).toBe('auto_increment');
     expect(current.rows[0].nullable).toBe(false);
@@ -47,7 +47,7 @@ describe('fieldStore', () => {
   });
 
   it('应该标准化持久化行并移除历史顺序字段', () => {
-    const state = useFieldStore.getState();
+    const state = useEditorStore.getState();
 
     state.initializeRows([
       {
@@ -62,7 +62,7 @@ describe('fieldStore', () => {
       },
     ]);
 
-    const current = useFieldStore.getState();
+    const current = useEditorStore.getState();
     expect(current.rows).toEqual([
       {
         id: 'legacy-field-0',
@@ -78,7 +78,7 @@ describe('fieldStore', () => {
   });
 
   it('初始化历史格式的行时应归一化而不是丢弃枚举值', () => {
-    useFieldStore.getState().initializeRows([
+    useEditorStore.getState().initializeRows([
       {
         id: 'field-id',
         order: 1,
@@ -92,7 +92,7 @@ describe('fieldStore', () => {
       },
     ] as unknown as FieldRow[]);
 
-    expect(useFieldStore.getState().rows[0]).toMatchObject({
+    expect(useEditorStore.getState().rows[0]).toMatchObject({
       nullable: false,
       defaultKind: 'auto_increment',
       onUpdate: 'current_timestamp',
@@ -100,7 +100,7 @@ describe('fieldStore', () => {
   });
 
   it('空初始化与无效变更应保持数据不变', () => {
-    const state = useFieldStore.getState();
+    const state = useEditorStore.getState();
     const emptyRow = createEmptyRow(0);
     state.setRows([emptyRow]);
 
@@ -110,12 +110,12 @@ describe('fieldStore', () => {
     state.handleRowsChange([[0, 'fieldName', '', 'name']], 'loadData');
     state.handleRowsChange([null], 'edit');
 
-    const current = useFieldStore.getState();
+    const current = useEditorStore.getState();
     expect(current.rows).toEqual([emptyRow]);
   });
 
   it('应该扩容到目标行并处理默认值规则', () => {
-    const state = useFieldStore.getState();
+    const state = useEditorStore.getState();
     state.setRows([createEmptyRow(0)]);
 
     state.handleRowsChange(
@@ -127,7 +127,7 @@ describe('fieldStore', () => {
       'edit',
     );
 
-    const current = useFieldStore.getState();
+    const current = useEditorStore.getState();
     expect(current.rows.length).toBe(3);
     expect(current.rows[2].id).toEqual(expect.any(String));
     expect(current.rows[2].fieldName).toBe('status');
@@ -136,40 +136,40 @@ describe('fieldStore', () => {
   });
 
   it('删除全部行后至少保留一行，非法新增数量按 1 处理', () => {
-    const state = useFieldStore.getState();
+    const state = useEditorStore.getState();
     state.resetRows(1);
 
     state.handleRemoveRow(0, 1);
-    let current = useFieldStore.getState();
+    let current = useEditorStore.getState();
     expect(current.rows.length).toBe(1);
     expect(current.rows[0].id).toEqual(expect.any(String));
 
     state.handleAddRows(0);
-    current = useFieldStore.getState();
+    current = useEditorStore.getState();
     expect(current.rows.length).toBe(2);
   });
 
   it('应该支持中间插入行 handleCreateRow', () => {
-    const state = useFieldStore.getState();
+    const state = useEditorStore.getState();
     state.resetRows(2);
 
-    let current = useFieldStore.getState();
+    let current = useEditorStore.getState();
     expect(current.rows.length).toBe(2);
 
     state.handleCreateRow(1, 2);
-    current = useFieldStore.getState();
+    current = useEditorStore.getState();
     expect(current.rows.length).toBe(4);
     expect(current.rows[1].id).not.toBe(current.rows[2].id);
   });
 
   it('应该处理 normalizeNullableValue 与 handleRowsChange 异常 prop 边界', () => {
-    const state = useFieldStore.getState();
+    const state = useEditorStore.getState();
 
     state.initializeRows([{ ...createEmptyRow(0), nullable: false as any }]);
 
-    expect(useFieldStore.getState().rows[0].nullable).toBe(false);
+    expect(useEditorStore.getState().rows[0].nullable).toBe(false);
 
-    useFieldStore.getState().handleRowsChange(
+    useEditorStore.getState().handleRowsChange(
       [
         [0, 123 as any, '', 'ignored'],
         [0, 'order', 1, 2],
@@ -177,7 +177,7 @@ describe('fieldStore', () => {
       'edit',
     );
 
-    expect(useFieldStore.getState().rows[0]).not.toHaveProperty('order');
+    expect(useEditorStore.getState().rows[0]).not.toHaveProperty('order');
   });
 });
 

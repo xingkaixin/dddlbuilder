@@ -1,15 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { applySavedState } from '@/components/App/applySavedState';
-import {
-  useAppStore,
-  useAuthStore,
-  useEditorStore,
-  useFieldStore,
-  usePartitionStore,
-  useShardingStore,
-  useTableOptionsStore,
-} from '@/stores';
+import { useEditorStore } from '@/stores';
 
 const state: PersistedState = {
   schemaName: '',
@@ -54,25 +46,24 @@ describe('applySavedState', () => {
     unsubscribe();
 
     expect(tableNames).toEqual(['users']);
-    expect(useAppStore).toBe(useFieldStore);
   });
 
   it('由一个入口无损应用已经解码的持久化状态', () => {
     applySavedState(state);
 
-    expect(useAppStore.getState()).toMatchObject({
+    expect(useEditorStore.getState()).toMatchObject({
       tableName: 'users',
       addCount: 0,
       fieldTableFreezeColumns: 0,
     });
-    expect(useFieldStore.getState().rows).toEqual([]);
-    expect(useAuthStore.getState()).toMatchObject({
+    expect(useEditorStore.getState().rows).toEqual([]);
+    expect(useEditorStore.getState()).toMatchObject({
       authInput: 'grant_input',
       authObjects: ['reader'],
     });
-    expect(useShardingStore.getState().citusShardingConfig).toEqual(state.citusShardingConfig);
-    expect(usePartitionStore.getState().mysqlPartitionConfig).toEqual(state.mysqlPartitionConfig);
-    expect(useTableOptionsStore.getState().tableMiscConfig).toEqual(state.tableMiscConfig);
+    expect(useEditorStore.getState().citusShardingConfig).toEqual(state.citusShardingConfig);
+    expect(useEditorStore.getState().mysqlPartitionConfig).toEqual(state.mysqlPartitionConfig);
+    expect(useEditorStore.getState().tableMiscConfig).toEqual(state.tableMiscConfig);
   });
 
   it('缺省可选配置时恢复各自的默认值', () => {
@@ -85,19 +76,19 @@ describe('applySavedState', () => {
       fieldTableViewConfig: undefined,
     });
 
-    expect(useAppStore.getState()).toMatchObject({
+    expect(useEditorStore.getState()).toMatchObject({
       fieldTableFreezeEnabled: false,
       fieldTableFreezeColumns: 3,
     });
-    expect(useShardingStore.getState().citusShardingConfig).toEqual({
+    expect(useEditorStore.getState().citusShardingConfig).toEqual({
       mode: 'reference',
       distributionColumn: undefined,
     });
-    expect(usePartitionStore.getState().mysqlPartitionConfig).toMatchObject({
+    expect(useEditorStore.getState().mysqlPartitionConfig).toMatchObject({
       enabled: false,
       type: 'RANGE',
     });
-    expect(useTableOptionsStore.getState().tableMiscConfig).toMatchObject({
+    expect(useEditorStore.getState().tableMiscConfig).toMatchObject({
       enabled: false,
       engine: '',
     });

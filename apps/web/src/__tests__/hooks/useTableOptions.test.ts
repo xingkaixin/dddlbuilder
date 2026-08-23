@@ -1,10 +1,10 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useTableOptions } from '@/hooks/useTableOptions';
-import { useTableOptionsStore } from '@/stores';
+import { useEditorStore } from '@/stores';
 
 function resetTableOptionsStore() {
-  useTableOptionsStore.getState().resetTableMiscConfig();
+  useEditorStore.getState().resetTableMiscConfig();
 }
 
 describe('useTableOptions', () => {

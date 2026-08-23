@@ -28,12 +28,9 @@ import { useWorkspaceTabActions } from './hooks/useWorkspaceTabActions';
 import { useWorkspaceTrashActions } from './hooks/useWorkspaceTrashActions';
 import { useWorkspacePresentation } from './hooks/useWorkspacePresentation';
 import { usePersistedState } from '@/hooks/usePersistedState';
-import { useAuthManagement } from '@/hooks/useAuthManagement';
 import { useSqlGeneration } from '@/hooks/useSqlGeneration';
 import { useOrmGeneration } from '@/hooks/useOrmGeneration';
 import { useToast } from '@/hooks/useToast';
-import { useCitusSharding } from '@/hooks/useCitusSharding';
-import { useMysqlPartition } from '@/hooks/useMysqlPartition';
 import { useTableOptions } from '@/hooks/useTableOptions';
 import { useDDLReview } from '@/hooks/useDDLReview';
 import { useSuggestionAnimation } from '@/hooks/useSuggestionAnimation';
@@ -47,6 +44,8 @@ import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
 import { useTranslation } from 'react-i18next';
 
 import { isCnyFireworksEnabled } from '@/config/featureFlags';
+import { useEditorStore } from '@/stores';
+import { useShallow } from 'zustand/react/shallow';
 
 export function useAppController() {
   const { t } = useTranslation();
@@ -162,16 +161,49 @@ export function useAppController() {
   const loadedTableName = loadedTableSource?.tableName ?? null;
   const loadedTableSignature = loadedTableSource?.baseSignature ?? null;
 
-  const auth = useAuthManagement();
+  const auth = useEditorStore(
+    useShallow((state) => ({
+      authInput: state.authInput,
+      authObjects: state.authObjects,
+      setAuthInput: state.setAuthInput,
+      setAuthObjects: state.setAuthObjects,
+      addAuthObject: state.addAuthObject,
+      removeAuthObject: state.removeAuthObject,
+      resetAuthState: state.resetAuthState,
+    })),
+  );
   const { authInput, authObjects, setAuthInput, resetAuthState, setAuthObjects } = auth;
 
-  const sharding = useCitusSharding();
+  const sharding = useEditorStore(
+    useShallow((state) => ({
+      citusShardingConfig: state.citusShardingConfig,
+      setCitusMode: state.setCitusMode,
+      setDistributionColumn: state.setDistributionColumn,
+      setCitusShardingConfig: state.setCitusShardingConfig,
+      resetCitusSharding: state.resetCitusSharding,
+    })),
+  );
   const { citusShardingConfig, resetCitusSharding } = sharding;
 
   const animations = useSuggestionAnimation();
   const { triggerIndexAnimation, triggerFieldTableHighlight } = animations;
 
-  const partition = useMysqlPartition();
+  const partition = useEditorStore(
+    useShallow((state) => ({
+      mysqlPartitionConfig: state.mysqlPartitionConfig,
+      setPartitionEnabled: state.setPartitionEnabled,
+      setPartitionType: state.setPartitionType,
+      setPartitionColumns: state.setPartitionColumns,
+      setPartitionExpression: state.setPartitionExpression,
+      setPartitionCount: state.setPartitionCount,
+      addPartition: state.addPartition,
+      removePartition: state.removePartition,
+      updatePartition: state.updatePartition,
+      generateRangePartitions: state.generateRangePartitions,
+      setMysqlPartitionConfig: state.setMysqlPartitionConfig,
+      resetPartition: state.resetPartition,
+    })),
+  );
   const { mysqlPartitionConfig, setMysqlPartitionConfig, resetPartition } = partition;
 
   const tableOptions = useTableOptions();

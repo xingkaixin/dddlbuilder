@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { X, Pencil, Link2, Plus } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { useForeignKeyStore, useAppStore } from '@/stores';
+import { useEditorStore } from '@/stores';
 import type { ForeignKeyAction } from '@ddlbuilder/shared-types';
 import { useTranslation } from 'react-i18next';
 
@@ -22,11 +22,11 @@ interface ForeignKeyPanelProps {
 
 export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) => {
   const { t } = useTranslation();
-  const tableName = useAppStore((state) => state.tableName);
-  const foreignKeys = useForeignKeyStore((state) => state.foreignKeys);
-  const addForeignKey = useForeignKeyStore((state) => state.addForeignKey);
-  const removeForeignKey = useForeignKeyStore((state) => state.removeForeignKey);
-  const updateForeignKey = useForeignKeyStore((state) => state.updateForeignKey);
+  const tableName = useEditorStore((state) => state.tableName);
+  const foreignKeys = useEditorStore((state) => state.foreignKeys);
+  const addForeignKey = useEditorStore((state) => state.addForeignKey);
+  const removeForeignKey = useEditorStore((state) => state.removeForeignKey);
+  const updateForeignKey = useEditorStore((state) => state.updateForeignKey);
 
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);

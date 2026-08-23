@@ -1,19 +1,20 @@
 import { beforeEach, describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useMysqlPartition } from '@/hooks/useMysqlPartition';
-import { usePartitionStore } from '@/stores';
+import { useEditorStore } from '@/stores';
+
+const usePartitionState = useEditorStore;
 
 function resetPartitionStore() {
-  usePartitionStore.getState().resetPartition();
+  useEditorStore.getState().resetPartition();
 }
 
-describe('useMysqlPartition', () => {
+describe('editor store partition state', () => {
   beforeEach(() => {
     resetPartitionStore();
   });
 
   it('应该返回默认配置', () => {
-    const { result } = renderHook(() => useMysqlPartition());
+    const { result } = renderHook(() => usePartitionState());
 
     expect(result.current.mysqlPartitionConfig).toEqual({
       enabled: false,
@@ -25,7 +26,7 @@ describe('useMysqlPartition', () => {
   });
 
   it('应该正确设置启用状态', () => {
-    const { result } = renderHook(() => useMysqlPartition());
+    const { result } = renderHook(() => usePartitionState());
 
     act(() => {
       result.current.setPartitionEnabled(true);
@@ -35,7 +36,7 @@ describe('useMysqlPartition', () => {
   });
 
   it('应该正确设置分区类型并清空分区', () => {
-    const { result } = renderHook(() => useMysqlPartition());
+    const { result } = renderHook(() => usePartitionState());
 
     // First add a partition
     act(() => {
@@ -54,7 +55,7 @@ describe('useMysqlPartition', () => {
   });
 
   it('应该正确设置分区列并清空表达式', () => {
-    const { result } = renderHook(() => useMysqlPartition());
+    const { result } = renderHook(() => usePartitionState());
 
     // First set expression
     act(() => {
@@ -72,7 +73,7 @@ describe('useMysqlPartition', () => {
   });
 
   it('应该正确设置表达式并清空列', () => {
-    const { result } = renderHook(() => useMysqlPartition());
+    const { result } = renderHook(() => usePartitionState());
 
     // First set columns
     act(() => {
@@ -90,7 +91,7 @@ describe('useMysqlPartition', () => {
   });
 
   it('应该正确设置分区数量，最小值为1', () => {
-    const { result } = renderHook(() => useMysqlPartition());
+    const { result } = renderHook(() => usePartitionState());
 
     act(() => {
       result.current.setPartitionCount(16);
@@ -109,7 +110,7 @@ describe('useMysqlPartition', () => {
   });
 
   it('应该正确添加、更新和删除分区', () => {
-    const { result } = renderHook(() => useMysqlPartition());
+    const { result } = renderHook(() => usePartitionState());
 
     // Add partitions
     act(() => {
@@ -133,7 +134,7 @@ describe('useMysqlPartition', () => {
   });
 
   it('应该正确生成年分区', () => {
-    const { result } = renderHook(() => useMysqlPartition());
+    const { result } = renderHook(() => usePartitionState());
 
     act(() => {
       result.current.generateRangePartitions('year');
@@ -147,7 +148,7 @@ describe('useMysqlPartition', () => {
   });
 
   it('应该正确生成月分区', () => {
-    const { result } = renderHook(() => useMysqlPartition());
+    const { result } = renderHook(() => usePartitionState());
 
     act(() => {
       result.current.generateRangePartitions('month');
@@ -162,7 +163,7 @@ describe('useMysqlPartition', () => {
   });
 
   it('应该正确生成日分区', () => {
-    const { result } = renderHook(() => useMysqlPartition());
+    const { result } = renderHook(() => usePartitionState());
 
     act(() => {
       result.current.generateRangePartitions('day');
@@ -177,7 +178,7 @@ describe('useMysqlPartition', () => {
   });
 
   it('应该正确重置配置', () => {
-    const { result } = renderHook(() => useMysqlPartition());
+    const { result } = renderHook(() => usePartitionState());
 
     act(() => {
       result.current.setPartitionEnabled(true);

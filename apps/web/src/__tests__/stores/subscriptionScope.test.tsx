@@ -1,11 +1,11 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createEmptyRow } from '@/utils/helpers';
-import { useAppStore, useFieldStore, useIndexStore } from '@/stores';
+import { useEditorStore } from '@/stores';
 import { useAppSelectors } from '@/components/App/hooks/useAppSelectors';
 
 function resetAppStore() {
-  const state = useAppStore.getState();
+  const state = useEditorStore.getState();
   state.resetTableConfig();
   state.resetTableViewConfig();
   state.setSavedTablesDrawerOpen(false);
@@ -24,33 +24,33 @@ function resetAppStore() {
 }
 
 function resetFieldStore() {
-  const state = useFieldStore.getState();
+  const state = useEditorStore.getState();
   state.resetRows(12);
 }
 
 function resetIndexStore() {
-  const state = useIndexStore.getState();
+  const state = useEditorStore.getState();
   state.resetIndexState();
   state.setIndexes([]);
 }
 
 function useDataTableSelectorProbe() {
-  const rowsLength = useFieldStore((state) => state.rows.length);
-  const dbType = useAppStore((state) => state.dbType);
-  const addCount = useAppStore((state) => state.addCount);
-  const freezeEnabled = useAppStore((state) => state.fieldTableFreezeEnabled);
-  const freezeColumns = useAppStore((state) => state.fieldTableFreezeColumns);
+  const rowsLength = useEditorStore((state) => state.rows.length);
+  const dbType = useEditorStore((state) => state.dbType);
+  const addCount = useEditorStore((state) => state.addCount);
+  const freezeEnabled = useEditorStore((state) => state.fieldTableFreezeEnabled);
+  const freezeColumns = useEditorStore((state) => state.fieldTableFreezeColumns);
 
   return { rowsLength, dbType, addCount, freezeEnabled, freezeColumns };
 }
 
 function useIndexPanelSelectorProbe() {
-  const tableName = useAppStore((state) => state.tableName);
-  const dbType = useAppStore((state) => state.dbType);
-  const rowsLength = useFieldStore((state) => state.rows.length);
-  const indexInput = useIndexStore((state) => state.indexInput);
-  const currentIndexFieldsLength = useIndexStore((state) => state.currentIndexFields.length);
-  const indexesLength = useIndexStore((state) => state.indexes.length);
+  const tableName = useEditorStore((state) => state.tableName);
+  const dbType = useEditorStore((state) => state.dbType);
+  const rowsLength = useEditorStore((state) => state.rows.length);
+  const indexInput = useEditorStore((state) => state.indexInput);
+  const currentIndexFieldsLength = useEditorStore((state) => state.currentIndexFields.length);
+  const indexesLength = useEditorStore((state) => state.indexes.length);
 
   return {
     tableName,
@@ -68,7 +68,7 @@ describe('store selector subscription scope', () => {
     resetFieldStore();
     resetIndexStore();
 
-    useFieldStore.getState().setRows([
+    useEditorStore.getState().setRows([
       {
         ...createEmptyRow(0),
         fieldName: 'id',
@@ -87,13 +87,13 @@ describe('store selector subscription scope', () => {
     const initialRenderCount = renderCount;
 
     act(() => {
-      useAppStore.getState().setIsClearDialogOpen(true);
+      useEditorStore.getState().setIsClearDialogOpen(true);
     });
 
     expect(renderCount).toBe(initialRenderCount);
 
     act(() => {
-      useAppStore.getState().setAddCount(33);
+      useEditorStore.getState().setAddCount(33);
     });
 
     expect(renderCount).toBe(initialRenderCount + 1);
@@ -110,13 +110,13 @@ describe('store selector subscription scope', () => {
     const initialRenderCount = renderCount;
 
     act(() => {
-      useAppStore.getState().setIsStorageEstimatorOpen(true);
+      useEditorStore.getState().setIsStorageEstimatorOpen(true);
     });
 
     expect(renderCount).toBe(initialRenderCount);
 
     act(() => {
-      useIndexStore.getState().setIndexInput('id');
+      useEditorStore.getState().setIndexInput('id');
     });
 
     expect(renderCount).toBe(initialRenderCount + 1);
@@ -132,7 +132,7 @@ describe('store selector subscription scope', () => {
     const initialRenderCount = renderCount;
 
     act(() => {
-      const state = useAppStore.getState();
+      const state = useEditorStore.getState();
       state.setIsDiffDialogOpen(true);
       state.setIsStorageEstimatorOpen(true);
       state.setVersionHistoryTarget({
@@ -148,7 +148,7 @@ describe('store selector subscription scope', () => {
     expect(renderCount).toBe(initialRenderCount);
 
     act(() => {
-      useAppStore.getState().setTableName('orders');
+      useEditorStore.getState().setTableName('orders');
     });
 
     expect(renderCount).toBe(initialRenderCount + 1);

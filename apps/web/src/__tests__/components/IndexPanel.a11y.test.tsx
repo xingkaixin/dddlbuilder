@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@/__tests__/utils/test-utils';
 import { IndexPanel } from '@/components/App/IndexPanel';
-import { useAppStore, useFieldStore, useIndexStore } from '@/stores';
+import { useEditorStore } from '@/stores';
 
 function setupStores() {
-  useAppStore.getState().setTableName('orders');
-  useAppStore.getState().setDbType('mysql');
+  useEditorStore.getState().setTableName('orders');
+  useEditorStore.getState().setDbType('mysql');
 
-  useFieldStore.getState().setRows([
+  useEditorStore.getState().setRows([
     {
       order: 1,
       fieldName: 'id',
@@ -40,7 +40,7 @@ function setupStores() {
     },
   ]);
 
-  useIndexStore.getState().resetIndexState();
+  useEditorStore.getState().resetIndexState();
 }
 
 describe('IndexPanel a11y', () => {

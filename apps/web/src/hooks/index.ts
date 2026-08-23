@@ -4,14 +4,8 @@ export type { UseToastReturn } from './useToast';
 export { usePersistedState } from './usePersistedState';
 export type { UsePersistedStateReturn } from './usePersistedState';
 
-export { useAuthManagement } from './useAuthManagement';
-export type { UseAuthManagementReturn } from './useAuthManagement';
-
 export { useSqlGeneration } from './useSqlGeneration';
 export type { UseSqlGenerationReturn } from './useSqlGeneration';
-
-export { useCitusSharding } from './useCitusSharding';
-export type { UseCitusShardingReturn } from './useCitusSharding';
 
 export { useTableOptions } from './useTableOptions';
 
