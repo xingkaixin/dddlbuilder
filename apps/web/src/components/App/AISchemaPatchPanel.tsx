@@ -56,71 +56,6 @@ function countConfiguredPartitions(currentState: PersistedState) {
   return mysqlPartitions + hivePartitions;
 }
 
-function includesNormalized(input: string, value?: string) {
-  const normalizedValue = value?.trim().toLowerCase();
-  return !!normalizedValue && input.includes(normalizedValue);
-}
-
-function isBroadPatchRequest(description: string) {
-  return /审查|评审|优化|规范|全面|全表|重构|整理|review|audit|optimi[sz]e|normalize|refactor/i.test(
-    description,
-  );
-}
-
-function isFieldMentioned(description: string, change: AISchemaChange & { kind: 'field' }) {
-  const input = description.trim().toLowerCase();
-  return [
-    change.fieldName,
-    change.oldFieldName,
-    change.newFieldName,
-    change.oldField?.name,
-    change.newField?.name,
-    change.oldRow?.fieldName,
-    change.newRow?.fieldName,
-    change.oldRow?.fieldComment,
-    change.newRow?.fieldComment,
-  ].some((value) => includesNormalized(input, value));
-}
-
-function isIndexRequested(description: string) {
-  return /索引|主键|唯一|查询|检索|index|primary|unique|query|search/i.test(description);
-}
-
-function isIndexMentioned(description: string, change: AISchemaChange & { kind: 'index' }) {
-  const input = description.trim().toLowerCase();
-  const index = change.newIndex || change.oldIndex;
-
-  return [
-    change.indexName,
-    change.oldIndex?.name,
-    change.newIndex?.name,
-    ...(index?.fields.map((field) => field.name) ?? []),
-  ].some((value) => includesNormalized(input, value));
-}
-
-function shouldShowChange(description: string, change: AISchemaChange) {
-  if (change.kind === 'index') {
-    if (isBroadPatchRequest(description)) {
-      return true;
-    }
-
-    return isIndexRequested(description) && isIndexMentioned(description, change);
-  }
-
-  if (change.kind === 'table') {
-    return (
-      isBroadPatchRequest(description) ||
-      /表名|表说明|表注释|schema|table name|table comment/i.test(description)
-    );
-  }
-
-  if (change.type === 'add') {
-    return true;
-  }
-
-  return isBroadPatchRequest(description) || isFieldMentioned(description, change);
-}
-
 export function AISchemaPatchPanel({
   dbType,
   currentState,
@@ -131,7 +66,6 @@ export function AISchemaPatchPanel({
   const { t } = useTranslation();
   const authSession = useAuthSession();
   const [input, setInput] = useState('');
-  const [lastSubmittedInput, setLastSubmittedInput] = useState('');
   const {
     isLoading,
     error,
@@ -169,13 +103,11 @@ export function AISchemaPatchPanel({
 
   const changes = useMemo(() => {
     if (!candidateState) return [];
-    return buildAISchemaChanges(currentState, candidateState)
-      .filter((change) => shouldShowChange(lastSubmittedInput, change))
-      .map((change) => ({
-        ...change,
-        status: statuses[change.id] || 'pending',
-      }));
-  }, [candidateState, currentState, lastSubmittedInput, statuses]);
+    return buildAISchemaChanges(currentState, candidateState).map((change) => ({
+      ...change,
+      status: statuses[change.id] || 'pending',
+    }));
+  }, [candidateState, currentState, statuses]);
 
   const pendingChanges = changes.filter((change) => change.status === 'pending');
   const acceptedChanges = changes.filter((change) => change.status === 'accepted');
@@ -221,7 +153,6 @@ export function AISchemaPatchPanel({
   const handleGenerate = useCallback(() => {
     const description = input.trim();
     if (!description) return;
-    setLastSubmittedInput(description);
     void generateTable(description, dbType, {
       existingConfig: currentState,
       templates,
@@ -235,7 +166,6 @@ export function AISchemaPatchPanel({
     clearConversation();
     setStatusState({ result: null, values: {} });
     setInput('');
-    setLastSubmittedInput('');
   }, [clearConversation, clearResult]);
 
   const setChangeStatus = useCallback(
