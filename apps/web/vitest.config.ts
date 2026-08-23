@@ -43,6 +43,7 @@ export default defineConfig({
         'src/components/App/hooks/useNavigationActions.ts',
         'src/components/App/hooks/useReviewActions.ts',
         'src/components/App/hooks/useTemplateActions.ts',
+        'src/components/App/useAppController.ts',
         // Exclude complex grid helpers pending interaction-test expansion.
         'src/components/App/table/useDataTableClipboard.ts',
         'src/components/App/table/useDataTableNavigation.ts',
