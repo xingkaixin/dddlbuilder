@@ -21,17 +21,8 @@ export type WorkspaceScope =
 
 export type WorkspaceEntityType = 'draft' | 'saved_table' | 'saved_draft' | 'folder';
 
-export type WorkspaceListItem = {
-  id: string;
-  name: string;
-  isDefault: boolean;
-  activeAt?: number;
-  updatedAt: number;
-};
-
-export type WorkspaceListResponse = {
-  workspaces: WorkspaceListItem[];
-  activeWorkspaceId: string;
+export type CurrentWorkspaceResponse = {
+  workspaceId: string;
 };
 
 export type WorkspaceSavePayload = {

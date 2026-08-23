@@ -311,9 +311,7 @@ describe('AuthSessionProvider', () => {
           ),
         )
         .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 8800 })))
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify({ activeWorkspaceId: 'ws-1', workspaces: [] })),
-        )
+        .mockResolvedValueOnce(new Response(JSON.stringify({ workspaceId: 'ws-1' })))
         .mockReturnValue(never);
 
       render(
@@ -348,9 +346,7 @@ describe('AuthSessionProvider', () => {
           ),
         )
         .mockReturnValueOnce(slowCredit)
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify({ activeWorkspaceId: 'ws-1', workspaces: [] })),
-        )
+        .mockResolvedValueOnce(new Response(JSON.stringify({ workspaceId: 'ws-1' })))
         .mockResolvedValue(
           new Response(JSON.stringify({ workspaceId: 'ws-1', cursor: 0, entities: [] })),
         );
@@ -535,9 +531,7 @@ describe('AuthSessionProvider', () => {
           ),
         )
         .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 100 })))
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify({ activeWorkspaceId: 'ws-1', workspaces: [] })),
-        )
+        .mockResolvedValueOnce(new Response(JSON.stringify({ workspaceId: 'ws-1' })))
         .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 200 })));
 
       render(

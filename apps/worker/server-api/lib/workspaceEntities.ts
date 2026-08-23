@@ -1,6 +1,6 @@
 import type {
+  CurrentWorkspaceResponse,
   WorkspaceEntityType,
-  WorkspaceListResponse,
   WorkspaceSnapshot,
 } from '@ddlbuilder/shared-types/workspace';
 import { buildWorkspaceContentHash } from '@ddlbuilder/workspace-core';
@@ -25,10 +25,6 @@ import {
 
 type WorkspaceRow = {
   id: string;
-  name: string;
-  isDefault: number;
-  activeAt: number | null;
-  updatedAt: number;
 };
 
 type EntityRow = {
@@ -74,26 +70,13 @@ const buildWorkspaceId = () => `ws_${crypto.randomUUID()}`;
 const buildEntityRowId = (workspaceId: string, entityType: WorkspaceEntityType, entityId: string) =>
   `${workspaceId}:${entityType}:${entityId}`;
 
-const normalizeWorkspace = (row: WorkspaceRow) => ({
-  id: row.id,
-  name: row.name,
-  isDefault: row.isDefault === 1,
-  ...(row.activeAt == null ? {} : { activeAt: row.activeAt }),
-  updatedAt: row.updatedAt,
-});
-
 export { buildWorkspaceContentHash };
 
 const readDefaultWorkspace = async (env: ApiEnv['Bindings'], userId: string) =>
   firstWorkspaceD1Result<WorkspaceRow>(
     env.USER_DB.prepare(
       `
-      SELECT
-        id,
-        name,
-        is_default AS isDefault,
-        active_at AS activeAt,
-        updated_at AS updatedAt
+      SELECT id
       FROM workspaces
       WHERE user_id = ? AND is_default = 1
       LIMIT 1
@@ -147,32 +130,12 @@ export const getOrCreateDefaultWorkspace = async (
   return created;
 };
 
-export const listWorkspaces = async (
+export const getCurrentWorkspace = async (
   env: ApiEnv['Bindings'],
   userId: string,
-): Promise<WorkspaceListResponse> => {
-  const activeWorkspace = await getOrCreateDefaultWorkspace(env, userId);
-  const result = await env.USER_DB.prepare(
-    `
-      SELECT
-        id,
-        name,
-        is_default AS isDefault,
-        active_at AS activeAt,
-        updated_at AS updatedAt
-      FROM workspaces
-      WHERE user_id = ?
-      ORDER BY is_default DESC, updated_at DESC
-    `,
-  )
-    .bind(userId)
-    .all<WorkspaceRow>();
-
-  return {
-    workspaces: (result.results ?? []).map(normalizeWorkspace),
-    activeWorkspaceId: activeWorkspace.id,
-  };
-};
+): Promise<CurrentWorkspaceResponse> => ({
+  workspaceId: (await getOrCreateDefaultWorkspace(env, userId)).id,
+});
 
 export const assertWorkspaceOwner = async (
   env: ApiEnv['Bindings'],

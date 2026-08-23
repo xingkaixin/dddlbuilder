@@ -45,14 +45,9 @@ test.describe('Cloudflare runtime bindings', () => {
 
     const workspacesResponse = await context.request.get('/api/workspaces');
     expect(workspacesResponse.ok()).toBe(true);
-    const workspaceList = (await workspacesResponse.json()) as {
-      activeWorkspaceId: string;
-      workspaces: Array<{ id: string; isDefault: boolean }>;
-    };
-    const workspaceId = workspaceList.activeWorkspaceId;
-    expect(workspaceList.workspaces).toContainEqual(
-      expect.objectContaining({ id: workspaceId, isDefault: true }),
-    );
+    const currentWorkspace = (await workspacesResponse.json()) as { workspaceId: string };
+    const { workspaceId } = currentWorkspace;
+    expect(workspaceId).toMatch(/^ws_/);
 
     const state = createState(`runtime_${Date.now()}`);
     const importResponse = await context.request.post(`/api/workspaces/${workspaceId}/yjs/import`, {

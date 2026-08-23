@@ -1,18 +1,18 @@
 import { queryOptions } from '@tanstack/react-query';
-import { fetchWorkspaceList } from '@/services/workspaceAccountService';
+import { fetchCurrentWorkspace } from '@/services/workspaceAccountService';
 
-const WORKSPACE_LIST_STALE_TIME_MS = 30_000;
+const CURRENT_WORKSPACE_STALE_TIME_MS = 30_000;
 
 export const workspaceQueryKeys = {
   all: (userId: string) => ['workspaces', userId] as const,
-  list: (userId: string) => ['workspaces', userId, 'list'] as const,
+  current: (userId: string) => ['workspaces', userId, 'current'] as const,
 };
 
-export function workspaceListOptions(userId: string) {
+export function currentWorkspaceOptions(userId: string) {
   return queryOptions({
-    queryKey: workspaceQueryKeys.list(userId),
-    queryFn: ({ signal }) => fetchWorkspaceList(signal),
-    staleTime: WORKSPACE_LIST_STALE_TIME_MS,
+    queryKey: workspaceQueryKeys.current(userId),
+    queryFn: ({ signal }) => fetchCurrentWorkspace(signal),
+    staleTime: CURRENT_WORKSPACE_STALE_TIME_MS,
     refetchOnWindowFocus: true,
   });
 }

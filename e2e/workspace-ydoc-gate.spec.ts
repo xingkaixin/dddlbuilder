@@ -56,10 +56,7 @@ const mockSignedInWorkspace = async (
       }
       await route.fulfill({
         json: {
-          activeWorkspaceId: workspaceId,
-          workspaces: [
-            { id: workspaceId, name: 'Default Workspace', isDefault: true, updatedAt: 1 },
-          ],
+          workspaceId,
         },
       });
       return;

@@ -25,7 +25,7 @@ describe('/api/workspaces', () => {
     vi.clearAllMocks();
   });
 
-  it('returns 401 for anonymous workspace list requests', async () => {
+  it('returns 401 for anonymous current workspace requests', async () => {
     const { default: app } = await import('../../api/index');
     const response = await app.fetch(createRequest('/api/workspaces'), createEnv());
 
@@ -41,9 +41,8 @@ describe('/api/workspaces', () => {
       const actual = await importOriginal<typeof WorkspaceEntitiesModule>();
       return {
         ...actual,
-        listWorkspaces: vi.fn().mockResolvedValue({
-          activeWorkspaceId: 'ws-1',
-          workspaces: [{ id: 'ws-1', name: 'Default Workspace', isDefault: true, updatedAt: 1 }],
+        getCurrentWorkspace: vi.fn().mockResolvedValue({
+          workspaceId: 'ws-1',
         }),
       };
     });
@@ -53,8 +52,7 @@ describe('/api/workspaces', () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
-      activeWorkspaceId: 'ws-1',
-      workspaces: [{ id: 'ws-1', isDefault: true }],
+      workspaceId: 'ws-1',
     });
   });
 

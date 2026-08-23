@@ -1,5 +1,5 @@
 import type { WorkspaceScope } from '@ddlbuilder/shared-types';
-import type { ApiErrorPayload, WorkspaceListResponse } from '@ddlbuilder/shared-types/api';
+import type { ApiErrorPayload, CurrentWorkspaceResponse } from '@ddlbuilder/shared-types/api';
 import { deleteSavedTable, listSavedTables, listTrashedSavedTables } from '@/utils/savedTablesDb';
 import { clearFolders } from '@/utils/tableFolders';
 import {
@@ -16,15 +16,22 @@ import { ApiError } from '@/services/apiError';
 const readJsonSafely = async <T>(response: Response): Promise<T | null> =>
   (await response.json().catch(() => null)) as T | null;
 
-export const fetchWorkspaceList = async (signal?: AbortSignal): Promise<WorkspaceListResponse> => {
+export const fetchCurrentWorkspace = async (
+  signal?: AbortSignal,
+): Promise<CurrentWorkspaceResponse> => {
   const response = await fetch('/api/workspaces', { credentials: 'include', signal });
-  const payload = await readJsonSafely<WorkspaceListResponse | ApiErrorPayload>(response);
+  const payload = await readJsonSafely<CurrentWorkspaceResponse | ApiErrorPayload>(response);
   if (!response.ok) {
-    const message = payload && 'error' in payload ? payload.error : '工作区列表拉取失败';
+    const message = payload && 'error' in payload ? payload.error : '工作区获取失败';
     throw new ApiError(message, response.status);
   }
-  if (!payload || !('activeWorkspaceId' in payload)) {
-    throw new Error('工作区列表响应为空');
+  if (
+    !payload ||
+    !('workspaceId' in payload) ||
+    typeof payload.workspaceId !== 'string' ||
+    !payload.workspaceId.trim()
+  ) {
+    throw new Error('工作区响应为空');
   }
   return payload;
 };

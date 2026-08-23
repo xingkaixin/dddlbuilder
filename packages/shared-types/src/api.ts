@@ -1,4 +1,4 @@
-import type { WorkspaceListResponse as WorkspaceListResponseBody } from './workspace.js';
+import type { CurrentWorkspaceResponse as CurrentWorkspaceResponseBody } from './workspace.js';
 
 export type ApiErrorCode =
   | 'AUTH_REQUIRED'
@@ -61,7 +61,7 @@ export type WorkspaceMigrationResponse = {
   meta?: ApiMeta;
 };
 
-export type WorkspaceListResponse = WorkspaceListResponseBody & { meta?: ApiMeta };
+export type CurrentWorkspaceResponse = CurrentWorkspaceResponseBody & { meta?: ApiMeta };
 
 export type MeApiResponse =
   | {

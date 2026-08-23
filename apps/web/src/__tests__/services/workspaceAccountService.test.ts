@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
-import { clearLocalWorkspaceData } from '@/services/workspaceAccountService';
+import { clearLocalWorkspaceData, fetchCurrentWorkspace } from '@/services/workspaceAccountService';
 import { addSavedTable, listSavedTables } from '@/utils/savedTablesDb';
 import { bulkPutFolders, listFolders } from '@/utils/tableFolders';
 import { readDraft, writeDraft } from '@/utils/workspaceStateDb';
@@ -30,6 +30,22 @@ describe('workspaceAccountService', () => {
   afterEach(() => {
     teardownFakeIndexedDB();
     vi.restoreAllMocks();
+  });
+
+  it('reads the current workspace identifier', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ workspaceId: 'ws-1' })),
+    );
+
+    await expect(fetchCurrentWorkspace()).resolves.toMatchObject({ workspaceId: 'ws-1' });
+  });
+
+  it('rejects the retired workspace list response', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ activeWorkspaceId: 'ws-1', workspaces: [] })),
+    );
+
+    await expect(fetchCurrentWorkspace()).rejects.toThrow('工作区响应为空');
   });
 
   it('clears only the selected local workspace partition', async () => {

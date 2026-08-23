@@ -13,7 +13,7 @@ import i18n from '@/i18n';
 import { clearLocalWorkspaceData } from '@/services/workspaceAccountService';
 import { currentUserOptions, authQueryKeys } from '@/queries/auth';
 import { creditBalanceOptions, creditQueryKeys } from '@/queries/credits';
-import { workspaceListOptions, workspaceQueryKeys } from '@/queries/workspaces';
+import { currentWorkspaceOptions, workspaceQueryKeys } from '@/queries/workspaces';
 import { workspaceMigrationQueryKeys } from '@/queries/workspaceMigration';
 import { fetchCurrentUser } from '@/services/authService';
 import { fetchCreditBalance } from '@/services/creditService';
@@ -121,8 +121,8 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     ...creditBalanceOptions(userId ?? ''),
     enabled: Boolean(userId),
   });
-  const workspaceListQuery = useQuery({
-    ...workspaceListOptions(userId ?? ''),
+  const currentWorkspaceQuery = useQuery({
+    ...currentWorkspaceOptions(userId ?? ''),
     enabled: Boolean(userId),
   });
   const refetchCurrentUser = currentUserQuery.refetch;
@@ -138,7 +138,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       status,
       configured: true,
       userId,
-      workspaceId: workspaceListQuery.data?.activeWorkspaceId ?? null,
+      workspaceId: currentWorkspaceQuery.data?.workspaceId ?? null,
       email: currentUser?.email ?? null,
       name: currentUser?.name ?? null,
       emailVerified: currentUser?.emailVerified ?? false,
@@ -162,7 +162,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     currentUserQuery.isFetching,
     currentUserQuery.isPending,
     userId,
-    workspaceListQuery.data?.activeWorkspaceId,
+    currentWorkspaceQuery.data?.workspaceId,
   ]);
 
   const refreshSession = useCallback(async () => {
@@ -185,10 +185,10 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
   }, [creditBalanceQuery.error]);
 
   useEffect(() => {
-    if (workspaceListQuery.error) {
-      console.error('[auth] failed to resolve workspace', workspaceListQuery.error);
+    if (currentWorkspaceQuery.error) {
+      console.error('[auth] failed to resolve workspace', currentWorkspaceQuery.error);
     }
-  }, [workspaceListQuery.error]);
+  }, [currentWorkspaceQuery.error]);
 
   const value = useMemo<AuthSessionContextValue>(
     () => ({
