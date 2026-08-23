@@ -32,12 +32,10 @@ type TabLifecycle = Pick<
   | 'activateTab'
   | 'findTabBySource'
   | 'getActiveTab'
-  | 'setTabLoading'
+  | 'hydrateTab'
   | 'flushActiveTab'
   | 'showTab'
   | 'switchToTab'
-  | 'updateActiveTabSource'
-  | 'updateActiveTabSnapshot'
   | 'closeTab'
 >;
 
@@ -45,9 +43,11 @@ interface UseWorkspaceTabActionsParams {
   tabs: TabLifecycle;
   setSavedTablesDrawerOpen: (open: boolean) => void;
   buildPersistedState: () => PersistedState;
-  loadSavedTable: (
-    item: SavedTableSummary,
-  ) => Promise<{ state: PersistedState; signature: string } | null>;
+  loadSavedTable: (item: SavedTableSummary) => Promise<{
+    source: Extract<WorkspaceSelection, { kind: 'saved_table' }>;
+    state: PersistedState;
+    version: number;
+  } | null>;
   draftSummaries: DraftSummary[];
   getDraftState: (draftId: string) => PersistedState | null;
   selectWorkspaceSnapshot: (source: WorkspaceSelection, state: PersistedState) => void;
@@ -76,18 +76,15 @@ export function useWorkspaceTabActions({
     activateTab,
     findTabBySource,
     getActiveTab,
-    setTabLoading,
+    hydrateTab,
     flushActiveTab,
     showTab,
     switchToTab,
-    updateActiveTabSource,
-    updateActiveTabSnapshot,
     closeTab,
   } = tabs;
 
   const handleSelectSavedTable = useCallback(
     async (item: SavedTableSummary) => {
-      if (openTabs.length > 0) flushActiveTab();
       setSavedTablesDrawerOpen(false);
 
       const existingTab = findTabBySource({
@@ -98,6 +95,8 @@ export function useWorkspaceTabActions({
         switchToTab(existingTab);
         return;
       }
+
+      if (openTabs.length > 0) flushActiveTab();
 
       const newTabId = addTab({
         title: item.name,
@@ -113,43 +112,44 @@ export function useWorkspaceTabActions({
       activateTab(newTabId);
 
       const result = await loadSavedTable(item);
-      if (useTabStore.getState().activeTabId === newTabId) {
-        if (result) {
-          updateActiveTabSource({
-            kind: 'saved_table',
-            normalizedName: item.normalizedName,
-            tableName: item.name,
-            baseSignature: result.signature,
-          });
-          updateActiveTabSnapshot(result.state);
+      const isLoadedTabActive = useTabStore.getState().activeTabId === newTabId;
+      if (!result) {
+        closeTab(newTabId);
+        if (isLoadedTabActive) {
+          const currentTab = getActiveTab();
+          if (currentTab) showTab(currentTab);
         }
-      } else {
-        const currentTab = getActiveTab();
-        if (currentTab) showTab(currentTab);
+        return;
       }
-      setTabLoading(newTabId, false);
+
+      hydrateTab(newTabId, result.source, result.state);
+      if (useTabStore.getState().activeTabId === newTabId) {
+        applySavedState(result.state);
+        selectWorkspaceSnapshot(result.source, result.state);
+        showToast(`已加载：${result.source.tableName} (v${result.version})`);
+      }
     },
     [
       activateTab,
       addTab,
       buildPersistedState,
+      closeTab,
       findTabBySource,
       flushActiveTab,
       getActiveTab,
+      hydrateTab,
       loadSavedTable,
       openTabs.length,
       setSavedTablesDrawerOpen,
-      setTabLoading,
       showTab,
+      showToast,
       switchToTab,
-      updateActiveTabSnapshot,
-      updateActiveTabSource,
+      selectWorkspaceSnapshot,
     ],
   );
 
   const handleSelectDraft = useCallback(
     (draftId: string) => {
-      if (openTabs.length > 0) flushActiveTab();
       setSavedTablesDrawerOpen(false);
 
       const existingTab = findTabBySource({ kind: 'draft', draftId });
@@ -157,6 +157,8 @@ export function useWorkspaceTabActions({
         switchToTab(existingTab);
         return;
       }
+
+      if (openTabs.length > 0) flushActiveTab();
 
       const existingState = getDraftState(draftId);
       const nextState = existingState ?? createEmptyDraftState();

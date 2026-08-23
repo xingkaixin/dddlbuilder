@@ -8,6 +8,7 @@ import {
   getSavedDraftFromYDoc,
   getSavedTableFromYDoc,
   getStateForWorkspaceSource,
+  getWorkspaceSnapshotFromYDoc,
   isWorkspaceYDocEmpty,
   listDraftRecordsFromYDoc,
   listFoldersFromYDoc,
@@ -19,6 +20,7 @@ import {
   upsertSavedDraftInYDoc,
   upsertSavedTableInYDoc,
 } from '@/services/workspaceYDocAdapter';
+import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 import { DEFAULT_DRAFT_ID } from '@/utils/workspaceStateDb';
 
 const createState = (overrides: Partial<PersistedState> = {}): PersistedState => ({
@@ -165,6 +167,43 @@ describe('workspaceYDocAdapter records', () => {
     expect(
       getStateForWorkspaceSource(doc, { kind: 'saved', normalizedName: 'missing' }),
     ).toBeNull();
+  });
+
+  it('激活保存表时只恢复仍基于当前远端版本的草稿', () => {
+    const doc = new Y.Doc();
+    const draftState = createState({ tableName: 'local_edit' });
+    upsertSavedTableInYDoc(doc, createSavedTable({ tableName: 'saved_users' }));
+    const savedRecord = getSavedTableFromYDoc(doc, 'users');
+    expect(savedRecord).not.toBeNull();
+    if (!savedRecord) throw new Error('saved table fixture missing');
+    const savedBaseSignature = serializePersistedStateForComparison(savedRecord.state);
+    upsertSavedDraftInYDoc(doc, 'users', {
+      state: draftState,
+      tableName: 'Users',
+      baseSignature: savedBaseSignature,
+      updatedAt: 30,
+    });
+    const source = {
+      kind: 'saved_table' as const,
+      normalizedName: 'users',
+      tableName: 'Users',
+      baseSignature: '',
+    };
+
+    expect(getWorkspaceSnapshotFromYDoc(doc, source)?.state.tableName).toBe('local_edit');
+
+    upsertSavedTableInYDoc(doc, createSavedTable({ tableName: 'remote_update' }));
+
+    const refreshed = getWorkspaceSnapshotFromYDoc(doc, source);
+    const remoteRecord = getSavedTableFromYDoc(doc, 'users');
+    expect(remoteRecord).not.toBeNull();
+    if (!remoteRecord) throw new Error('remote saved table fixture missing');
+    expect(refreshed?.state.tableName).toBe('remote_update');
+    expect(refreshed?.source).toMatchObject({
+      kind: 'saved_table',
+      normalizedName: 'users',
+      baseSignature: serializePersistedStateForComparison(remoteRecord.state),
+    });
   });
 
   it('builds a folder tree and drops deleted folders', () => {

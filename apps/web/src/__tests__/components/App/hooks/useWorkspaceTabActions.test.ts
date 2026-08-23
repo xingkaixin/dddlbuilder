@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useWorkspaceTabActions } from '@/components/App/hooks/useWorkspaceTabActions';
+import { useTabStore } from '@/stores';
 
 const mocks = vi.hoisted(() => ({
   applySavedState: vi.fn(),
@@ -50,12 +51,10 @@ const createParams = () => {
       activateTab: vi.fn(),
       findTabBySource: vi.fn(() => undefined),
       getActiveTab: vi.fn(),
-      setTabLoading: vi.fn(),
+      hydrateTab: vi.fn(),
       flushActiveTab: vi.fn(),
       showTab: vi.fn(),
       switchToTab: vi.fn(),
-      updateActiveTabSource: vi.fn(),
-      updateActiveTabSnapshot: vi.fn(),
       closeTab: vi.fn(),
     },
     setSavedTablesDrawerOpen: vi.fn(),
@@ -72,7 +71,45 @@ const createParams = () => {
 };
 
 describe('useWorkspaceTabActions', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useTabStore.setState({ tabs: [], activeTabId: null });
+  });
+
+  it('保存表加载完成前标签失焦时把结果写入原标签且不改当前编辑器', async () => {
+    const params = createParams();
+    params.loadSavedTable.mockResolvedValue({
+      source: {
+        kind: 'saved_table',
+        normalizedName: 'loaded',
+        tableName: 'Loaded',
+        baseSignature: 'loaded-signature',
+      },
+      state: createState('Loaded'),
+      version: 1,
+    });
+    useTabStore.setState({ activeTabId: 'tab-other' });
+    const { result } = renderHook(() => useWorkspaceTabActions(params));
+
+    await act(async () => {
+      await result.current.handleSelectSavedTable({
+        normalizedName: 'loaded',
+        name: 'Loaded',
+        dbType: 'mysql',
+        fieldCount: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+    });
+
+    expect(params.tabs.hydrateTab).toHaveBeenCalledWith(
+      'tab-new',
+      expect.objectContaining({ normalizedName: 'loaded' }),
+      expect.objectContaining({ tableName: 'Loaded' }),
+    );
+    expect(mocks.applySavedState).not.toHaveBeenCalled();
+    expect(params.selectWorkspaceSnapshot).not.toHaveBeenCalled();
+  });
 
   it('选择已经打开的保存表时只切换标签，不重复加载', async () => {
     const params = createParams();
@@ -90,7 +127,7 @@ describe('useWorkspaceTabActions', () => {
       });
     });
 
-    expect(params.tabs.flushActiveTab).toHaveBeenCalledOnce();
+    expect(params.tabs.flushActiveTab).not.toHaveBeenCalled();
     expect(params.tabs.switchToTab).toHaveBeenCalledWith(params.existingTab);
     expect(params.loadSavedTable).not.toHaveBeenCalled();
   });

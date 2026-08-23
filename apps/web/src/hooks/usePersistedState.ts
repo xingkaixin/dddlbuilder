@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import { WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN } from '@/services/workspaceYDocAdapter';
+import {
+  getWorkspaceSnapshotFromYDoc,
+  WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN,
+} from '@/services/workspaceYDocAdapter';
 import type {
   DraftSummary,
   SavedTableDraftRecord,
@@ -55,6 +58,9 @@ export interface UsePersistedStateReturn {
   activeSource: WorkspaceSelection;
   draftSummaries: DraftSummary[];
   getDraftState: (draftId: string) => PersistedState | null;
+  resolveWorkspaceSnapshot: (
+    source: WorkspaceSelection,
+  ) => { source: WorkspaceSelection; state: PersistedState } | null;
   setWorkspaceSnapshot: (source: WorkspaceSelection, state: PersistedState) => void;
   selectWorkspaceSnapshot: (source: WorkspaceSelection, state: PersistedState) => void;
   createDraft: (draftId: string, state: PersistedState) => string;
@@ -267,6 +273,17 @@ export function usePersistedState(): UsePersistedStateReturn {
     [setPersistedStateIfChanged, shareId, syncActiveSource, writeSession],
   );
 
+  const resolveWorkspaceSnapshot = useCallback(
+    (source: WorkspaceSelection) => {
+      if (source.kind === 'draft') {
+        const state = getDraftState(source.draftId);
+        return state ? { source, state } : null;
+      }
+      return yDoc ? getWorkspaceSnapshotFromYDoc(yDoc, source) : null;
+    },
+    [getDraftState, yDoc],
+  );
+
   const saveState = useCallback(
     (payload: WorkspaceSavePayload) => {
       if (!hydrated) return;
@@ -357,6 +374,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     activeSource,
     draftSummaries,
     getDraftState,
+    resolveWorkspaceSnapshot,
     setWorkspaceSnapshot,
     selectWorkspaceSnapshot,
     createDraft,

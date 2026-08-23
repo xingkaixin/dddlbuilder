@@ -136,14 +136,14 @@ describe('useSaveLoadActions', () => {
     loadTable.mockResolvedValue({
       normalizedName: 'norm_test',
       name: 'test_table',
-      state: savedState,
+      state: normalizePersistedRows(savedState as PersistedState),
     });
 
     const { result } = getHook({
       getSavedTableDraft: vi.fn().mockReturnValue({
         state: draftState,
         tableName: 'test_table',
-        baseSignature: 'mock-sig',
+        baseSignature: JSON.stringify(savedState),
         updatedAt: Date.now(),
       }),
     });
@@ -161,10 +161,38 @@ describe('useSaveLoadActions', () => {
         kind: 'saved_table',
         normalizedName: 'norm_test',
         tableName: 'test_table',
-        baseSignature: 'mock-sig',
+        baseSignature: serializePersistedStateForComparison(
+          normalizePersistedRows(savedState as PersistedState),
+        ),
       },
       draftState,
     );
+  });
+
+  it('resolveSavedTable 只解析目标标签数据，不修改当前编辑器', async () => {
+    const savedState = {
+      tableName: 'background',
+      dbType: 'mysql',
+      rows: [],
+    } as PersistedState;
+    loadTable.mockResolvedValue({
+      normalizedName: 'background',
+      name: 'Background',
+      state: savedState,
+    });
+    const { result } = getHook();
+
+    const snapshot = await act(() =>
+      result.current.resolveSavedTable({ normalizedName: 'background' } as any),
+    );
+
+    expect(snapshot).toMatchObject({
+      source: { normalizedName: 'background', tableName: 'Background' },
+      state: savedState,
+    });
+    expect(setWorkspaceSnapshot).not.toHaveBeenCalled();
+    expect(applySavedState).not.toHaveBeenCalled();
+    expect(setLoadedTableVersion).not.toHaveBeenCalled();
   });
 
   describe('跨版本升级后的已保存表草稿', () => {

@@ -1,29 +1,15 @@
 import { useCallback } from 'react';
-import { type PersistedState, normalizePersistedRows } from '@ddlbuilder/shared-types';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { SavedTableDraftRecord, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
 import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
 import { createVersion, countVersions, INITIAL_VERSION_MESSAGE_KEY } from '@/utils/tableVersions';
+import { resolveSavedTableSnapshot } from '@/services/savedTableSnapshot';
 
 type SaveDialogData = {
   name: string;
   queuedLoadAfterSave: SavedTableSummary | null;
-};
-
-/**
- * baseSignature 是历史写入的原始快照 JSON，而它的比较对象来自已归一化的读取入口，
- * 因此必须先归一化再重新签名，否则跨版本升级后草稿会被误判为过期而丢弃。
- */
-const resignBaseSignature = (
-  baseSignature: string,
-  serialize: (state: PersistedState) => string,
-) => {
-  try {
-    return serialize(normalizePersistedRows(JSON.parse(baseSignature) as PersistedState));
-  } catch {
-    return baseSignature;
-  }
 };
 
 interface UseSaveLoadActionsParams {
@@ -79,7 +65,7 @@ export function useSaveLoadActions({
   const saveName = saveDialog.data.name;
   const queuedLoadAfterSave = saveDialog.data.queuedLoadAfterSave;
 
-  const handleLoadSavedTable = useCallback(
+  const resolveSavedTable = useCallback(
     async (target: SavedTableSummary) => {
       onTableLoadStateChange?.(true);
 
@@ -90,14 +76,10 @@ export function useSaveLoadActions({
           return null;
         }
 
-        const savedBaseSignature = serializePersistedState(record.state);
-        const savedDraft = getSavedTableDraft?.(record.normalizedName);
-        const stateToApply =
-          savedDraft &&
-          resignBaseSignature(savedDraft.baseSignature, serializePersistedState) ===
-            savedBaseSignature
-            ? savedDraft.state
-            : record.state;
+        const snapshot = resolveSavedTableSnapshot(
+          record,
+          getSavedTableDraft?.(record.normalizedName) ?? null,
+        );
 
         let versionCount = 0;
         try {
@@ -107,20 +89,7 @@ export function useSaveLoadActions({
         }
         const resolvedVersion = versionCount > 0 ? versionCount : 1;
 
-        setWorkspaceSnapshot?.(
-          {
-            kind: 'saved_table',
-            normalizedName: record.normalizedName,
-            tableName: record.name,
-            baseSignature: savedBaseSignature,
-          },
-          stateToApply,
-        );
-        applySavedState(stateToApply);
-        setLoadedTableVersion(resolvedVersion, record.normalizedName);
-        showToast(`已加载：${record.name} (v${resolvedVersion})`);
-
-        return { state: stateToApply, signature: savedBaseSignature };
+        return { ...snapshot, version: resolvedVersion };
       } catch (error) {
         showToast(error instanceof Error ? error.message : '加载失败');
         return null;
@@ -128,16 +97,21 @@ export function useSaveLoadActions({
         onTableLoadStateChange?.(false);
       }
     },
-    [
-      loadTable,
-      showToast,
-      applySavedState,
-      setLoadedTableVersion,
-      serializePersistedState,
-      getSavedTableDraft,
-      setWorkspaceSnapshot,
-      onTableLoadStateChange,
-    ],
+    [loadTable, showToast, getSavedTableDraft, onTableLoadStateChange],
+  );
+
+  const handleLoadSavedTable = useCallback(
+    async (target: SavedTableSummary) => {
+      const snapshot = await resolveSavedTable(target);
+      if (!snapshot) return null;
+
+      setWorkspaceSnapshot?.(snapshot.source, snapshot.state);
+      applySavedState(snapshot.state);
+      setLoadedTableVersion(snapshot.version, snapshot.source.normalizedName);
+      showToast(`已加载：${snapshot.source.tableName} (v${snapshot.version})`);
+      return snapshot;
+    },
+    [applySavedState, resolveSavedTable, setLoadedTableVersion, setWorkspaceSnapshot, showToast],
   );
 
   const openSaveDialog = useCallback(
@@ -276,5 +250,6 @@ export function useSaveLoadActions({
     handleConfirmSave,
     handleSaveDialogOpenChange,
     handleLoadSavedTable,
+    resolveSavedTable,
   };
 }

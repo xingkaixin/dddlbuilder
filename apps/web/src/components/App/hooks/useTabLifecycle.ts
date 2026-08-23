@@ -11,6 +11,9 @@ interface UseTabLifecycleParams {
   serializePersistedState: (state: PersistedState) => string;
   saveState: (payload: WorkspaceSavePayload) => void;
   selectWorkspaceSnapshot: (source: WorkspaceSelection, state: PersistedState) => void;
+  resolveWorkspaceSnapshot: (
+    source: WorkspaceSelection,
+  ) => { source: WorkspaceSelection; state: PersistedState } | null;
 }
 
 export function useTabLifecycle({
@@ -20,6 +23,7 @@ export function useTabLifecycle({
   serializePersistedState,
   saveState,
   selectWorkspaceSnapshot,
+  resolveWorkspaceSnapshot,
 }: UseTabLifecycleParams) {
   const {
     tabs,
@@ -27,12 +31,12 @@ export function useTabLifecycle({
     addTab,
     activateTab,
     closeTab: closeTabStore,
+    hydrateTab,
     updateActiveTabSnapshot,
     updateActiveTabTitle,
     updateActiveTabSource,
     findTabBySource,
     getActiveTab,
-    setTabLoading,
     removeTabBySource,
     updateTabTitleBySource,
   } = useTabStore();
@@ -44,7 +48,7 @@ export function useTabLifecycle({
 
   // 编辑器是唯一真相源，标签快照只在冲刷点回写；内容没变时跳过，避免无谓的持久化。
   const flushActiveTab = useCallback(() => {
-    if (!enabled) return;
+    if (!enabled || activeWorkspaceTab?.isLoading) return;
     const tabSnapshot = activeWorkspaceTab?.stateSnapshot ?? null;
     const tabSnapshotSignature = tabSnapshot ? serializePersistedState(tabSnapshot) : null;
     if (tabSnapshotSignature === serializePersistedState(currentState)) return;
@@ -63,11 +67,16 @@ export function useTabLifecycle({
 
   const showTab = useCallback(
     (tab: WorkspaceTab) => {
+      const snapshot = resolveWorkspaceSnapshot(tab.source) ?? {
+        source: tab.source,
+        state: tab.stateSnapshot,
+      };
+      hydrateTab(tab.id, snapshot.source, snapshot.state);
       activateTab(tab.id);
-      applySavedState(tab.stateSnapshot);
-      selectWorkspaceSnapshot(tab.source, tab.stateSnapshot);
+      applySavedState(snapshot.state);
+      selectWorkspaceSnapshot(snapshot.source, snapshot.state);
     },
-    [activateTab, selectWorkspaceSnapshot],
+    [activateTab, hydrateTab, resolveWorkspaceSnapshot, selectWorkspaceSnapshot],
   );
 
   const switchToTab = useCallback(
@@ -111,9 +120,9 @@ export function useTabLifecycle({
     activeWorkspaceTab,
     addTab,
     activateTab,
+    hydrateTab,
     findTabBySource,
     getActiveTab,
-    setTabLoading,
     removeTabBySource,
     updateTabTitleBySource,
     updateActiveTabTitle,

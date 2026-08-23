@@ -137,6 +137,37 @@ describe('tabStore', () => {
     expect(tab && isWorkspaceTabDirty(tab)).toBe(true);
   });
 
+  it('hydrates a background tab by id without changing the active tab', () => {
+    const state = useTabStore.getState();
+    const backgroundId = state.addTab({
+      title: 'Background',
+      source: { kind: 'draft', draftId: 'loading' },
+      stateSnapshot: createSnapshot('placeholder'),
+      isLoading: true,
+    });
+    const activeId = state.addTab({
+      title: 'Active',
+      source: { kind: 'draft', draftId: 'active' },
+      stateSnapshot: createSnapshot('active'),
+    });
+    const source = {
+      kind: 'saved_table' as const,
+      normalizedName: 'loaded',
+      tableName: 'Loaded',
+      baseSignature: 'loaded-signature',
+    };
+
+    useTabStore.getState().hydrateTab(backgroundId, source, createSnapshot('loaded'));
+
+    const current = useTabStore.getState();
+    expect(current.activeTabId).toBe(activeId);
+    expect(current.tabs.find((tab) => tab.id === backgroundId)).toMatchObject({
+      source,
+      isLoading: false,
+      stateSnapshot: { tableName: 'loaded' },
+    });
+  });
+
   it('does nothing when updating snapshot with no active tab', () => {
     useTabStore.setState({ tabs: [], activeTabId: null });
     useTabStore.getState().updateActiveTabSnapshot(createSnapshot('new'));
@@ -236,25 +267,6 @@ describe('tabStore', () => {
   it('getActiveTab returns undefined when no active tab', () => {
     useTabStore.setState({ tabs: [], activeTabId: null });
     expect(useTabStore.getState().getActiveTab()).toBeUndefined();
-  });
-
-  it('sets tab loading state', () => {
-    const state = useTabStore.getState();
-    const id = state.addTab({
-      title: 'Tab 1',
-      source: { kind: 'draft', draftId: 'd1' },
-      stateSnapshot: createSnapshot('t1'),
-    });
-
-    useTabStore.getState().setTabLoading(id, true);
-    const tab = useTabStore.getState().tabs.find((t) => t.id === id);
-    expect(tab).toBeDefined();
-    expect(tab?.isLoading).toBe(true);
-
-    useTabStore.getState().setTabLoading(id, false);
-    const tab2 = useTabStore.getState().tabs.find((t) => t.id === id);
-    expect(tab2).toBeDefined();
-    expect(tab2?.isLoading).toBe(false);
   });
 
   it('removes tab by source', () => {

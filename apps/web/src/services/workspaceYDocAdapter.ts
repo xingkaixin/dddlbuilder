@@ -1,6 +1,10 @@
 import type * as Y from 'yjs';
 import { type PersistedState, withDefaultEditorSession } from '@ddlbuilder/shared-types';
-import type { SavedTableDraftRecord, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
+import type {
+  SavedTableDraftRecord,
+  WorkspaceSelection,
+  WorkspaceSource,
+} from '@ddlbuilder/shared-types/workspace';
 import {
   type ApplySchemaDocumentStateOptions,
   applySchemaDocumentStateToTableDoc,
@@ -38,6 +42,7 @@ import type {
   TableFolder,
 } from '@/utils/workspaceStorageTypes';
 import { buildFolderTreeModel, type FolderTreeNode } from '@/utils/folderModel';
+import { resolveSavedTableSnapshot } from './savedTableSnapshot';
 
 export {
   applySchemaDocumentStateToTableDoc,
@@ -162,4 +167,18 @@ export const getStateForWorkspaceSource = (
 ): PersistedState | null => {
   const state = getWorkspaceSourceState(doc, source);
   return state ? withDefaultEditorSession(state) : null;
+};
+
+export const getWorkspaceSnapshotFromYDoc = (
+  doc: Y.Doc,
+  source: WorkspaceSelection,
+): { source: WorkspaceSelection; state: PersistedState } | null => {
+  if (source.kind === 'draft') {
+    const state = getStateForWorkspaceSource(doc, source);
+    return state ? { source, state } : null;
+  }
+
+  const record = getSavedTableFromYDoc(doc, source.normalizedName);
+  if (!record) return null;
+  return resolveSavedTableSnapshot(record, getSavedDraftFromYDoc(doc, source.normalizedName));
 };

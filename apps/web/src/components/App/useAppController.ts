@@ -139,6 +139,7 @@ export function useAppController() {
     activeSource,
     draftSummaries,
     getDraftState,
+    resolveWorkspaceSnapshot,
     setWorkspaceSnapshot,
     selectWorkspaceSnapshot,
     createDraft,
@@ -265,6 +266,7 @@ export function useAppController() {
     serializePersistedState,
     saveState,
     selectWorkspaceSnapshot,
+    resolveWorkspaceSnapshot,
   });
   const {
     tabs,
@@ -473,7 +475,7 @@ export function useAppController() {
     removeSavedTableDraft,
     ...savedTableTabIntegration,
   });
-  const { handleOpenSaveDialog, handleConfirmSave, handleLoadSavedTable } = savedTableFlow;
+  const { handleOpenSaveDialog, handleConfirmSave, resolveSavedTable } = savedTableFlow;
 
   const handleSaveCurrent = useCallback(() => {
     if (hasLoadedTable) {
@@ -487,7 +489,7 @@ export function useAppController() {
     tabs: tabLifecycle,
     setSavedTablesDrawerOpen,
     buildPersistedState,
-    loadSavedTable: handleLoadSavedTable,
+    loadSavedTable: resolveSavedTable,
     draftSummaries,
     getDraftState,
     selectWorkspaceSnapshot,
