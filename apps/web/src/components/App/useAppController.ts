@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
 import { isTabAvailable } from '@/utils/tabUtils';
 import { isWorkspaceTabDirty } from '@/stores/tabStore';
@@ -132,8 +132,6 @@ export function useAppController() {
     }
     setShowFireworks(true);
   }, [setShowFireworks]);
-
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const {
     persistedState,
@@ -414,10 +412,6 @@ export function useAppController() {
     resetTableMiscConfig,
   });
 
-  const [isErDialogOpen, setIsErDialogOpen] = useState(false);
-  const [workspaceSidebarOpen, setWorkspaceSidebarOpen] = useState(true);
-  const [outputPanelOpen, setOutputPanelOpen] = useState(true);
-  const [isAISchemaPatchOpen, setIsAISchemaPatchOpen] = useState(false);
   const savedTableTabIntegration = useSavedTableTabIntegration({
     isShareView,
     workspaceScope,
@@ -539,17 +533,8 @@ export function useAppController() {
     setVersionHistoryTarget,
     setIsAIGenerateDialogOpen,
     setIsMockDataDialogOpen,
-    setIsErDialogOpen,
   });
-  const { handleViewVersionHistory, handleOpenAIGenerateDialog } = navigationActions;
-
-  const handleOpenAISchemaPatchPanel = useCallback(() => {
-    if (tabs.length === 0 && !isShareView) {
-      handleOpenAIGenerateDialog();
-      return;
-    }
-    setIsAISchemaPatchOpen(true);
-  }, [handleOpenAIGenerateDialog, isShareView, tabs.length]);
+  const { handleViewVersionHistory } = navigationActions;
 
   const handleViewCurrentVersionHistory = useCallback(() => {
     if (!loadedTableNormalizedName || !loadedTableName) return;
@@ -721,7 +706,6 @@ export function useAppController() {
     handleCopyDiff,
     handleDbTypeChange,
     handleFireworksComplete,
-    handleOpenAISchemaPatchPanel,
     handlePlayFireworks,
     handleRenameNameChange,
     handleRollbackVersion,
@@ -730,9 +714,6 @@ export function useAppController() {
     handleSelectTableFromEr,
     handleTableNameChange,
     handleViewCurrentVersionHistory,
-    isAISchemaPatchOpen,
-    isErDialogOpen,
-    isImportDialogOpen,
     isLoadedDirty,
     isShareView,
     loadedTableName,
@@ -740,7 +721,6 @@ export function useAppController() {
     moveDraftToFolder,
     normalizedFields,
     ormTarget,
-    outputPanelOpen,
     presentedTabs,
     qualifiedTableName,
     recentDrafts,
@@ -754,12 +734,7 @@ export function useAppController() {
     saveInputDisabled,
     saveName,
     schemaLintIssues,
-    setIsAISchemaPatchOpen,
-    setIsErDialogOpen,
-    setIsImportDialogOpen,
     setOrmTarget,
-    setOutputPanelOpen,
-    setWorkspaceSidebarOpen,
     shouldShowWorkspaceSkeleton,
     switchToTabById,
     tableDiff,
@@ -768,8 +743,5 @@ export function useAppController() {
     trashedDrafts,
     workspaceLabel,
     workspaceScope,
-    workspaceSidebarOpen,
   };
 }
-
-export type AppController = ReturnType<typeof useAppController>;

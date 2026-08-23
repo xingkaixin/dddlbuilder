@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { ChevronRight, Upload } from '@/components/icons';
 import { Header } from './Header';
 import { GlobalDialogs } from './containers/GlobalDialogs';
@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { isCnyFireworksEnabled } from '@/config/featureFlags';
 import { useTranslation } from 'react-i18next';
-import type { AppController } from './useAppController';
+import { useAppController } from './useAppController';
 
 const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
 const ImportSqlDialog = lazy(() =>
@@ -26,12 +26,14 @@ const ImportSqlDialog = lazy(() =>
   })),
 );
 
-interface AppViewProps {
-  controller: AppController;
-}
-
-export function AppView({ controller }: AppViewProps) {
+export function AppView() {
   const { t } = useTranslation();
+  const controller = useAppController();
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isErDialogOpen, setIsErDialogOpen] = useState(false);
+  const [workspaceSidebarOpen, setWorkspaceSidebarOpen] = useState(true);
+  const [outputPanelOpen, setOutputPanelOpen] = useState(true);
+  const [isAISchemaPatchOpen, setIsAISchemaPatchOpen] = useState(false);
   const {
     aiCommentActions,
     indexAdvisor,
@@ -79,7 +81,6 @@ export function AppView({ controller }: AppViewProps) {
     handleCopyDiff,
     handleDbTypeChange,
     handleFireworksComplete,
-    handleOpenAISchemaPatchPanel,
     handlePlayFireworks,
     handleRenameNameChange,
     handleRollbackVersion,
@@ -88,9 +89,6 @@ export function AppView({ controller }: AppViewProps) {
     handleSelectTableFromEr,
     handleTableNameChange,
     handleViewCurrentVersionHistory,
-    isAISchemaPatchOpen,
-    isErDialogOpen,
-    isImportDialogOpen,
     isLoadedDirty,
     isShareView,
     loadedTableName,
@@ -98,7 +96,6 @@ export function AppView({ controller }: AppViewProps) {
     moveDraftToFolder,
     normalizedFields,
     ormTarget,
-    outputPanelOpen,
     presentedTabs,
     qualifiedTableName,
     recentDrafts,
@@ -112,12 +109,7 @@ export function AppView({ controller }: AppViewProps) {
     saveInputDisabled,
     saveName,
     schemaLintIssues,
-    setIsAISchemaPatchOpen,
-    setIsErDialogOpen,
-    setIsImportDialogOpen,
     setOrmTarget,
-    setOutputPanelOpen,
-    setWorkspaceSidebarOpen,
     shouldShowWorkspaceSkeleton,
     switchToTabById,
     tableDiff,
@@ -126,7 +118,6 @@ export function AppView({ controller }: AppViewProps) {
     trashedDrafts,
     workspaceLabel,
     workspaceScope,
-    workspaceSidebarOpen,
   } = controller;
   const { isGeneratingComments, handleGenerateComments } = aiCommentActions;
   const {
@@ -226,8 +217,15 @@ export function AppView({ controller }: AppViewProps) {
     handleViewVersionHistory,
     handleOpenAIGenerateDialog,
     handleOpenMockDataGenerator,
-    handleOpenErDiagram,
   } = navigationActions;
+  const handleOpenErDiagram = () => setIsErDialogOpen(true);
+  const handleOpenAISchemaPatchPanel = () => {
+    if (tabs.length === 0 && !isShareView) {
+      handleOpenAIGenerateDialog();
+      return;
+    }
+    setIsAISchemaPatchOpen(true);
+  };
   const {
     schemaName,
     tableName,
