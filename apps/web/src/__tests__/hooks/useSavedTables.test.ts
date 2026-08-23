@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook as testingLibraryRenderHook, act } from '@testing-library/react';
+import { renderHook as testingLibraryRenderHook, act, waitFor } from '@testing-library/react';
 import { useSavedTables } from '@/hooks/useSavedTables';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '../utils/fakeIndexedDb';
 import type { PersistedState } from '@ddlbuilder/shared-types';
@@ -346,12 +346,10 @@ describe('useSavedTables', () => {
 
     const { result } = renderHook(() => useSavedTables());
 
-    await act(async () => {
-      await flushPromises();
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+      expect(result.current.savedTables.map((table) => table.name)).toEqual(['Alpha']);
     });
-
-    expect(result.current.loading).toBe(false);
-    expect(result.current.savedTables.map((table) => table.name)).toEqual(['Alpha']);
 
     act(() => {
       notifyYDocChanged?.();
@@ -359,12 +357,11 @@ describe('useSavedTables', () => {
 
     expect(result.current.loading).toBe(false);
 
-    await act(async () => {
-      await flushPromises();
+    await waitFor(() => {
+      expect(result.current.savedTables.map((table) => table.name)).toEqual(['Beta']);
     });
 
     expect(result.current.loading).toBe(false);
-    expect(result.current.savedTables.map((table) => table.name)).toEqual(['Beta']);
   });
 
   it('restores trashed local data when the authoritative YDoc no longer contains it', async () => {
