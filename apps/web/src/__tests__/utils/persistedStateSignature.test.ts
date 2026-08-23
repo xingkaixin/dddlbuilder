@@ -50,4 +50,31 @@ describe('persistedStateSignature', () => {
       serializePersistedStateForComparison(stored),
     );
   });
+
+  it('ignores editor session changes when comparing schema documents', () => {
+    const stored = createState();
+    const current = createState({
+      sqlFormatMode: 'aligned',
+      addCount: 50,
+      indexInput: 'idx_users_email',
+      currentIndexFields: [{ name: 'email', direction: 'DESC' }],
+      fieldTableViewConfig: {
+        freezeEnabled: true,
+        freezeColumns: 5,
+      },
+    });
+
+    expect(serializePersistedStateForComparison(current)).toBe(
+      serializePersistedStateForComparison(stored),
+    );
+  });
+
+  it('keeps schema document changes in the comparison signature', () => {
+    const stored = createState();
+    const current = createState({ tableComment: 'Changed' });
+
+    expect(serializePersistedStateForComparison(current)).not.toBe(
+      serializePersistedStateForComparison(stored),
+    );
+  });
 });

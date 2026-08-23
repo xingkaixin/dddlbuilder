@@ -13,7 +13,10 @@ import type {
 } from '@ddlbuilder/shared-types';
 import { buildNormalizedFields } from '@/stores';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
-import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import {
+  normalizePersistedStateSignature,
+  serializePersistedStateForComparison,
+} from '@/utils/persistedStateSignature';
 import { diffPersistedState, type TableDiff } from '@ddlbuilder/ddl-core';
 
 interface UseDerivedTableStateDeps {
@@ -176,19 +179,27 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
   );
 
   const serializePersistedState = serializePersistedStateForComparison;
+  const normalizedLoadedTableSignature = useMemo(
+    () =>
+      loadedTableSignature == null ? null : normalizePersistedStateSignature(loadedTableSignature),
+    [loadedTableSignature],
+  );
 
   // --- 加载状态派生 ---
   const currentStateSignature = useMemo(
-    () => (loadedTableSignature == null ? null : serializePersistedState(currentPersistedState)),
-    [loadedTableSignature, currentPersistedState, serializePersistedState],
+    () =>
+      normalizedLoadedTableSignature == null
+        ? null
+        : serializePersistedState(currentPersistedState),
+    [normalizedLoadedTableSignature, currentPersistedState, serializePersistedState],
   );
 
   const hasLoadedTable = Boolean(loadedTableNormalizedName);
   const isLoadedDirty =
     hasLoadedTable &&
-    loadedTableSignature != null &&
+    normalizedLoadedTableSignature != null &&
     currentStateSignature != null &&
-    currentStateSignature !== loadedTableSignature;
+    currentStateSignature !== normalizedLoadedTableSignature;
   const canSaveCurrent = !hasLoadedTable || isLoadedDirty;
   const loadedStatus = hasLoadedTable ? (isLoadedDirty ? 'dirty' : 'clean') : null;
   const objectLabel = objectType === 'view' ? '视图' : '表';
@@ -200,15 +211,15 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
 
   // --- Diff ---
   const tableDiff = useMemo<TableDiff | null>(() => {
-    if (!isLoadedDirty || !loadedTableSignature) return null;
+    if (!isLoadedDirty || !normalizedLoadedTableSignature) return null;
     try {
-      const oldState = JSON.parse(loadedTableSignature) as PersistedState;
+      const oldState = JSON.parse(normalizedLoadedTableSignature) as PersistedState;
       const newState = currentPersistedState;
       return diffPersistedState(oldState, newState);
     } catch {
       return null;
     }
-  }, [isLoadedDirty, loadedTableSignature, currentPersistedState]);
+  }, [isLoadedDirty, normalizedLoadedTableSignature, currentPersistedState]);
 
   return {
     // 字段

@@ -1,8 +1,8 @@
 import type {
   CitusShardingConfig,
-  FieldTableViewConfig,
   MysqlPartitionConfig,
   PersistedState,
+  SchemaDocumentState,
   TableMiscConfig,
 } from '@ddlbuilder/shared-types';
 
@@ -27,9 +27,6 @@ const sortValue = (value: unknown): unknown => {
 };
 
 const hasText = (value: unknown) => typeof value === 'string' && value.length > 0;
-
-const isDefaultFieldTableViewConfig = (config: FieldTableViewConfig | undefined) =>
-  !config || (config.freezeEnabled === false && config.freezeColumns === 3);
 
 const isInactiveMysqlPartitionConfig = (config: MysqlPartitionConfig | undefined) =>
   !config ||
@@ -65,12 +62,25 @@ const isDefaultCitusShardingConfig = (config: CitusShardingConfig | undefined) =
   !config || (config.mode === 'reference' && !config.distributionColumn);
 
 export const normalizePersistedStateForSignature = (state: PersistedState) => {
-  const normalized: PersistedState = {
-    ...state,
+  const normalized: SchemaDocumentState = {
+    objectType: state.objectType,
+    schemaName: state.schemaName,
+    tableName: state.tableName,
+    tableComment: state.tableComment,
+    dbType: state.dbType,
+    viewDefinition: state.viewDefinition,
+    viewCreateOrReplace: state.viewCreateOrReplace,
     rows: state.rows.map((row) => {
       const { order: _legacyOrder, ...content } = row as typeof row & { order?: unknown };
       return content;
     }),
+    indexes: state.indexes,
+    authInput: state.authInput,
+    authObjects: state.authObjects,
+    citusShardingConfig: state.citusShardingConfig,
+    mysqlPartitionConfig: state.mysqlPartitionConfig,
+    tableMiscConfig: state.tableMiscConfig,
+    foreignKeys: state.foreignKeys,
   };
 
   if (!normalized.objectType || normalized.objectType === 'table') {
@@ -84,9 +94,6 @@ export const normalizePersistedStateForSignature = (state: PersistedState) => {
   }
   if ((normalized.foreignKeys?.length ?? 0) === 0) {
     delete normalized.foreignKeys;
-  }
-  if (isDefaultFieldTableViewConfig(normalized.fieldTableViewConfig)) {
-    delete normalized.fieldTableViewConfig;
   }
   if (isInactiveMysqlPartitionConfig(normalized.mysqlPartitionConfig)) {
     delete normalized.mysqlPartitionConfig;
@@ -103,3 +110,11 @@ export const normalizePersistedStateForSignature = (state: PersistedState) => {
 
 export const serializePersistedStateForComparison = (state: PersistedState) =>
   JSON.stringify(normalizePersistedStateForSignature(state));
+
+export const normalizePersistedStateSignature = (signature: string) => {
+  try {
+    return serializePersistedStateForComparison(JSON.parse(signature) as PersistedState);
+  } catch {
+    return signature;
+  }
+};

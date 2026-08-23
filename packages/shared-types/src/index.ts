@@ -164,28 +164,33 @@ export type FieldTableViewConfig = {
   freezeColumns: number; // 冻结列数（从左到右）
 };
 
-export type PersistedState = {
+export type SchemaDocumentState = {
   objectType?: SchemaObjectType;
   schemaName: string;
   tableName: string;
   tableComment: string;
   dbType: DatabaseType;
-  sqlFormatMode: SqlFormatMode;
   viewDefinition?: string;
   viewCreateOrReplace?: boolean;
   rows: FieldRow[];
-  addCount: number;
-  indexInput: string;
-  currentIndexFields: IndexField[];
   indexes: IndexDefinition[];
   authInput: string;
   authObjects: string[];
   citusShardingConfig?: CitusShardingConfig;
   mysqlPartitionConfig?: MysqlPartitionConfig;
   tableMiscConfig?: TableMiscConfig;
-  fieldTableViewConfig?: FieldTableViewConfig;
   foreignKeys?: ForeignKeyDefinition[];
 };
+
+export type EditorSessionState = {
+  sqlFormatMode: SqlFormatMode;
+  addCount: number;
+  indexInput: string;
+  currentIndexFields: IndexField[];
+  fieldTableViewConfig?: FieldTableViewConfig;
+};
+
+export type PersistedState = SchemaDocumentState & EditorSessionState;
 
 export type { ApiErrorCode, ApiMeta, ApiErrorPayload } from './api.js';
 export type {
