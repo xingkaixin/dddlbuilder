@@ -271,6 +271,12 @@ const readSavedTableFolderId = (doc: Y.Doc, normalizedName: string) => {
   return typeof folderId === 'string' ? folderId : undefined;
 };
 
+const readSavedTableTrashedAt = (doc: Y.Doc, normalizedName: string) => {
+  const tableDoc = doc.getMap<Y.Map<unknown>>('savedTables').get(normalizedName);
+  const trashedAt = readMetadata(tableDoc)?.get('trashedAt');
+  return typeof trashedAt === 'number' ? trashedAt : undefined;
+};
+
 const findFolderIdByName = (doc: Y.Doc, name: string) => {
   for (const [id, folder] of doc.getMap<Y.Map<unknown>>('folders').entries()) {
     if (folder.get('name') === name) {
@@ -487,7 +493,9 @@ test('workspace yjs sync converges saved table lifecycle and folder moves across
   await pageA.getByRole('menuitem', { name: /删除/i }).click();
   await expect(pageA.getByRole('heading', { name: /移入回收站/i })).toBeVisible();
   await pageA.getByRole('button', { name: /移入回收站/i }).click();
-  await expect.poll(() => readSavedTableState(server.doc, tableName)).toBeUndefined();
+  await expect
+    .poll(() => readSavedTableTrashedAt(server.doc, tableName))
+    .toEqual(expect.any(Number));
   await expect(getSavedTableRow(pageB, tableName)).toHaveCount(0);
 
   await contextA.close();
