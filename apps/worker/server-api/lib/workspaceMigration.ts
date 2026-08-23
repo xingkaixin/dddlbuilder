@@ -1,14 +1,17 @@
 import type { WorkspaceMigrationResponse } from '@ddlbuilder/shared-types/api';
-import type { WorkspaceMigrationPayload } from '@ddlbuilder/shared-types/workspace';
+import type {
+  WorkspaceMigrationPayload,
+  WorkspaceSnapshot,
+} from '@ddlbuilder/shared-types/workspace';
 import type { ApiEnv } from './context.js';
-import { upsertWorkspaceSnapshotEntity } from './workspaceEntities.js';
+import { getWorkspaceSnapshotFromEntities, upsertWorkspaceEntity } from './workspaceEntities.js';
 
-type SnapshotKind = 'global_draft' | 'draft' | 'saved_table' | 'saved_draft' | 'folder';
+type MigrationEntityKind = 'global_draft' | 'draft' | 'saved_table' | 'saved_draft' | 'folder';
 type ConflictKind = 'draft' | 'saved_table' | 'saved_draft';
 
-type SnapshotRecord = {
+type MigrationEntityRecord = {
   id: string;
-  kind: SnapshotKind;
+  kind: MigrationEntityKind;
   normalizedName: string | null;
   displayName: string;
   payloadJson: string;
@@ -19,18 +22,21 @@ export type WorkspaceMigrationResult = Omit<WorkspaceMigrationResponse, 'meta'>;
 
 const LOCAL_COPY_SUFFIX = ' (Imported)';
 
-const buildSnapshotId = (userId: string, kind: SnapshotKind, normalizedName: string | null) =>
-  `${kind}:${userId}:${normalizedName ?? 'global'}`;
-
-const buildSnapshotRecord = (
+const buildMigrationEntityId = (
   userId: string,
-  kind: SnapshotKind,
+  kind: MigrationEntityKind,
+  normalizedName: string | null,
+) => `${kind}:${userId}:${normalizedName ?? 'global'}`;
+
+const buildMigrationEntityRecord = (
+  userId: string,
+  kind: MigrationEntityKind,
   normalizedName: string | null,
   displayName: string,
   payload: Record<string, unknown>,
   sourceUpdatedAt: number,
-): SnapshotRecord => ({
-  id: buildSnapshotId(userId, kind, normalizedName),
+): MigrationEntityRecord => ({
+  id: buildMigrationEntityId(userId, kind, normalizedName),
   kind,
   normalizedName,
   displayName,
@@ -38,7 +44,7 @@ const buildSnapshotRecord = (
   sourceUpdatedAt,
 });
 
-const toConflictKind = (kind: SnapshotKind): ConflictKind =>
+const toConflictKind = (kind: MigrationEntityKind): ConflictKind =>
   kind === 'global_draft' || kind === 'folder' ? 'draft' : kind;
 
 const normalizeName = (value: string) => value.trim().toLowerCase();
@@ -105,51 +111,12 @@ const upsertWorkspaceLink = async (
     .run();
 };
 
-const readExistingSnapshotPayloads = async (env: ApiEnv['Bindings'], userId: string) => {
-  const result = await env.USER_DB.prepare(
-    `
-      SELECT
-        id,
-        payload_json AS payloadJson
-      FROM workspace_snapshots
-      WHERE user_id = ?
-    `,
-  )
-    .bind(userId)
-    .all<{ id: string; payloadJson: string }>();
-
-  return new Map((result.results ?? []).map((row) => [row.id, row.payloadJson] as const));
-};
-
-const writeSnapshot = async (env: ApiEnv['Bindings'], userId: string, record: SnapshotRecord) => {
-  await env.USER_DB.prepare(
-    `
-      INSERT INTO workspace_snapshots (
-        id,
-        user_id,
-        kind,
-        normalized_name,
-        payload_json,
-        source_updated_at
-      )
-      VALUES (?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        payload_json = excluded.payload_json,
-        source_updated_at = excluded.source_updated_at,
-        updated_at = CURRENT_TIMESTAMP
-    `,
-  )
-    .bind(
-      record.id,
-      userId,
-      record.kind,
-      record.normalizedName,
-      record.payloadJson,
-      record.sourceUpdatedAt,
-    )
-    .run();
-
-  await upsertWorkspaceSnapshotEntity(env, {
+const writeMigrationEntity = async (
+  env: ApiEnv['Bindings'],
+  userId: string,
+  record: MigrationEntityRecord,
+) => {
+  await upsertWorkspaceEntity(env, {
     userId,
     kind: record.kind,
     normalizedName: record.normalizedName,
@@ -160,7 +127,7 @@ const writeSnapshot = async (env: ApiEnv['Bindings'], userId: string, record: Sn
 
 const resolveCopyRecord = (
   userId: string,
-  source: SnapshotRecord,
+  source: MigrationEntityRecord,
   existingPayloads: ReadonlyMap<string, string>,
 ) => {
   const targetKind = source.kind === 'global_draft' ? 'saved_draft' : source.kind;
@@ -182,7 +149,7 @@ const resolveCopyRecord = (
             name: displayName,
             tableName: displayName,
           };
-    const candidate = buildSnapshotRecord(
+    const candidate = buildMigrationEntityRecord(
       userId,
       targetKind,
       normalizedName,
@@ -198,32 +165,36 @@ const resolveCopyRecord = (
   }
 };
 
-const mergeGlobalDraft = (payload: WorkspaceMigrationPayload['snapshot']) => {
+const mergeGlobalDraft = (
+  snapshot: WorkspaceSnapshot,
+  activeSession?: WorkspaceMigrationPayload['snapshot']['activeSession'],
+) => {
   const sessionDraft =
-    payload.activeSession?.activeSource.kind === 'draft' && payload.activeSession.activeState
+    activeSession?.activeSource.kind === 'draft' && activeSession.activeState
       ? {
-          state: payload.activeSession.activeState,
-          updatedAt: payload.activeSession.updatedAt,
+          state: activeSession.activeState,
+          updatedAt: activeSession.updatedAt,
         }
       : null;
 
-  if (!payload.globalDraft) return sessionDraft;
-  if (!sessionDraft) return payload.globalDraft;
-  return payload.globalDraft.updatedAt >= sessionDraft.updatedAt
-    ? payload.globalDraft
+  if (!snapshot.globalDraft) return sessionDraft;
+  if (!sessionDraft) return snapshot.globalDraft;
+  return snapshot.globalDraft.updatedAt >= sessionDraft.updatedAt
+    ? snapshot.globalDraft
     : sessionDraft;
 };
 
-const buildSnapshotRecords = (
+const buildMigrationEntityRecords = (
   userId: string,
-  payload: WorkspaceMigrationPayload,
-): SnapshotRecord[] => {
-  const records: SnapshotRecord[] = [];
-  const globalDraft = mergeGlobalDraft(payload.snapshot);
+  snapshot: WorkspaceSnapshot,
+  activeSession?: WorkspaceMigrationPayload['snapshot']['activeSession'],
+): MigrationEntityRecord[] => {
+  const records: MigrationEntityRecord[] = [];
+  const globalDraft = mergeGlobalDraft(snapshot, activeSession);
 
   if (globalDraft) {
     records.push(
-      buildSnapshotRecord(
+      buildMigrationEntityRecord(
         userId,
         'global_draft',
         null,
@@ -234,9 +205,9 @@ const buildSnapshotRecords = (
     );
   }
 
-  for (const item of payload.snapshot.drafts ?? []) {
+  for (const item of snapshot.drafts ?? []) {
     records.push(
-      buildSnapshotRecord(
+      buildMigrationEntityRecord(
         userId,
         'draft',
         item.draftId,
@@ -247,9 +218,9 @@ const buildSnapshotRecords = (
     );
   }
 
-  for (const item of payload.snapshot.savedTables) {
+  for (const item of snapshot.savedTables) {
     records.push(
-      buildSnapshotRecord(
+      buildMigrationEntityRecord(
         userId,
         'saved_table',
         item.normalizedName,
@@ -260,9 +231,9 @@ const buildSnapshotRecords = (
     );
   }
 
-  for (const item of payload.snapshot.savedDrafts) {
+  for (const item of snapshot.savedDrafts) {
     records.push(
-      buildSnapshotRecord(
+      buildMigrationEntityRecord(
         userId,
         'saved_draft',
         item.normalizedName,
@@ -277,9 +248,9 @@ const buildSnapshotRecords = (
     );
   }
 
-  for (const item of payload.snapshot.folders ?? []) {
+  for (const item of snapshot.folders ?? []) {
     records.push(
-      buildSnapshotRecord(
+      buildMigrationEntityRecord(
         userId,
         'folder',
         item.id,
@@ -299,12 +270,23 @@ const buildSnapshotRecords = (
   return records;
 };
 
+const readExistingEntityPayloads = async (env: ApiEnv['Bindings'], userId: string) =>
+  new Map(
+    buildMigrationEntityRecords(userId, await getWorkspaceSnapshotFromEntities(env, userId)).map(
+      (record) => [record.id, record.payloadJson] as const,
+    ),
+  );
+
 export const analyzeWorkspaceMigration = async (
   env: ApiEnv['Bindings'],
   userId: string,
   payload: WorkspaceMigrationPayload,
 ): Promise<WorkspaceMigrationResult> => {
-  const records = buildSnapshotRecords(userId, payload);
+  const records = buildMigrationEntityRecords(
+    userId,
+    payload.snapshot,
+    payload.snapshot.activeSession,
+  );
   if (records.length === 0) {
     return {
       status: 'no_data',
@@ -331,7 +313,7 @@ export const analyzeWorkspaceMigration = async (
   let createdCount = 0;
   let skippedCount = 0;
   const conflicts: WorkspaceMigrationResult['conflicts'] = [];
-  const existingPayloads = await readExistingSnapshotPayloads(env, userId);
+  const existingPayloads = await readExistingEntityPayloads(env, userId);
 
   for (const record of records) {
     const existingPayload = existingPayloads.get(record.id);
@@ -367,7 +349,11 @@ export const commitWorkspaceMigration = async (
   userId: string,
   payload: WorkspaceMigrationPayload,
 ): Promise<WorkspaceMigrationResult> => {
-  const records = buildSnapshotRecords(userId, payload);
+  const records = buildMigrationEntityRecords(
+    userId,
+    payload.snapshot,
+    payload.snapshot.activeSession,
+  );
   if (records.length === 0) {
     return {
       status: 'no_data',
@@ -403,18 +389,18 @@ export const commitWorkspaceMigration = async (
   let skippedCount = 0;
 
   try {
-    const existingPayloads = await readExistingSnapshotPayloads(env, userId);
+    const existingPayloads = await readExistingEntityPayloads(env, userId);
     for (const record of records) {
       const existingPayload = existingPayloads.get(record.id);
       if (existingPayload === undefined) {
-        await writeSnapshot(env, userId, record);
+        await writeMigrationEntity(env, userId, record);
         existingPayloads.set(record.id, record.payloadJson);
         createdCount += 1;
         continue;
       }
 
       if (existingPayload === record.payloadJson) {
-        await upsertWorkspaceSnapshotEntity(env, {
+        await upsertWorkspaceEntity(env, {
           userId,
           kind: record.kind,
           normalizedName: record.normalizedName,
@@ -426,7 +412,7 @@ export const commitWorkspaceMigration = async (
       }
 
       const copy = resolveCopyRecord(userId, record, existingPayloads);
-      await writeSnapshot(env, userId, copy.record);
+      await writeMigrationEntity(env, userId, copy.record);
       existingPayloads.set(copy.record.id, copy.record.payloadJson);
       if (copy.alreadyExists) {
         skippedCount += 1;

@@ -32,14 +32,6 @@ type StoredLegacySnapshotRow = {
   sourceUpdatedAt: number;
 };
 
-type StoredMutation = {
-  workspaceId: string;
-  clientMutationId: string;
-  entityType: string;
-  entityId: string;
-  version: number;
-};
-
 type WorkspaceD1Log = {
   event: string;
   operation: string;
@@ -72,7 +64,6 @@ const createWorkspaceSnapshotDb = (
   const workspaces: StoredWorkspace[] = [...(options.initialWorkspaces ?? [])];
   const clocks = new Map<string, number>();
   const rows: StoredRow[] = [];
-  const mutations: StoredMutation[] = [];
 
   const withMeta = <T extends Record<string, unknown>>(
     result: T,
@@ -125,25 +116,6 @@ const createWorkspaceSnapshotDb = (
                   (item) => item.id === workspaceId && item.userId === userId,
                 );
                 return allResult(workspace ? [{ isDefault: workspace.isDefault }] : []);
-              }
-
-              if (sql.includes('FROM workspace_mutations')) {
-                const [workspaceId, clientMutationId] = args;
-                const mutation = mutations.find(
-                  (item) =>
-                    item.workspaceId === workspaceId && item.clientMutationId === clientMutationId,
-                );
-                return allResult(
-                  mutation
-                    ? [
-                        {
-                          entityType: mutation.entityType,
-                          entityId: mutation.entityId,
-                          version: mutation.version,
-                        },
-                      ]
-                    : [],
-                );
               }
 
               if (
@@ -308,33 +280,19 @@ const createWorkspaceSnapshotDb = (
             },
             async run() {
               if (sql.includes('UPDATE workspace_clocks')) {
-                const allocatesBatch = sql.includes('next_version = next_version + ?');
-                const workspaceId = allocatesBatch ? args[1] : args[0];
-                const mutationId = allocatesBatch ? undefined : args[1];
-                const shouldIncrement =
-                  mutationId === undefined ||
-                  mutations.some(
-                    (item) =>
-                      `${item.workspaceId}:${item.clientMutationId}` === mutationId &&
-                      item.version === 0,
-                  );
-                if (shouldIncrement) {
-                  const increment = allocatesBatch ? Number(args[0]) : 1;
-                  clocks.set(
-                    String(workspaceId),
-                    (clocks.get(String(workspaceId)) ?? 0) + increment,
-                  );
-                }
-                return allocatesBatch
-                  ? withMeta(
-                      {
-                        success: true,
-                        results: [{ cursor: clocks.get(String(workspaceId)) ?? 0 }],
-                      },
-                      0,
-                      1,
-                    )
-                  : runResult();
+                const workspaceId = args[1];
+                clocks.set(
+                  String(workspaceId),
+                  (clocks.get(String(workspaceId)) ?? 0) + Number(args[0]),
+                );
+                return withMeta(
+                  {
+                    success: true,
+                    results: [{ cursor: clocks.get(String(workspaceId)) ?? 0 }],
+                  },
+                  0,
+                  1,
+                );
               }
 
               if (sql.includes('INSERT INTO workspaces')) {
@@ -366,26 +324,9 @@ const createWorkspaceSnapshotDb = (
               if (sql.includes('INSERT INTO workspace_entities')) {
                 const [, workspaceId, userId, entityType, entityId, payloadJson, contentHash] =
                   args;
-                const usesClockVersion = sql.includes('workspace_clocks.next_version');
-                const usesVersionOffset = sql.includes('next_version - ?');
-                const version = usesVersionOffset
-                  ? (clocks.get(String(workspaceId)) ?? 0) - Number(args[7])
-                  : usesClockVersion
-                    ? clocks.get(String(workspaceId))
-                    : clocks.get(String(args[10]));
-                const deletedAt = usesVersionOffset ? args[8] : args[7];
-                const updatedAt = usesVersionOffset ? args[10] : args[9];
-                const mutationId = usesClockVersion && !usesVersionOffset ? args[11] : undefined;
-                if (
-                  mutationId !== undefined &&
-                  !mutations.some(
-                    (item) =>
-                      `${item.workspaceId}:${item.clientMutationId}` === mutationId &&
-                      item.version === 0,
-                  )
-                ) {
-                  return runResult();
-                }
+                const version = (clocks.get(String(workspaceId)) ?? 0) - Number(args[7]);
+                const deletedAt = args[8];
+                const updatedAt = args[10];
                 const index = rows.findIndex(
                   (item) =>
                     item.workspaceId === workspaceId &&
@@ -410,47 +351,6 @@ const createWorkspaceSnapshotDb = (
                   rows.push(nextRow);
                 }
                 return withMeta({ success: true, results: [{ version }] }, 0, 1);
-              }
-
-              if (sql.includes('INSERT INTO workspace_mutations')) {
-                const [, workspaceId, , clientMutationId, entityType, entityId] = args;
-                const index = mutations.findIndex(
-                  (item) =>
-                    item.workspaceId === workspaceId && item.clientMutationId === clientMutationId,
-                );
-                if (index < 0) {
-                  const baseVersion = sql.includes('SELECT') ? args[16] : undefined;
-                  const existing = rows.find(
-                    (item) =>
-                      item.workspaceId === workspaceId &&
-                      item.entityType === entityType &&
-                      item.entityId === entityId,
-                  );
-                  if (existing && existing.version !== baseVersion) {
-                    return runResult();
-                  }
-                  mutations.push({
-                    workspaceId: String(workspaceId),
-                    clientMutationId: String(clientMutationId),
-                    entityType: String(entityType),
-                    entityId: String(entityId),
-                    version: sql.includes('SELECT') ? 0 : Number(args[6]),
-                  });
-                }
-                return runResult();
-              }
-
-              if (sql.includes('UPDATE workspace_mutations')) {
-                const [workspaceId, mutationId] = args;
-                const mutation = mutations.find(
-                  (item) =>
-                    `${item.workspaceId}:${item.clientMutationId}` === mutationId &&
-                    item.version === 0,
-                );
-                if (mutation) {
-                  mutation.version = clocks.get(String(workspaceId)) ?? 0;
-                }
-                return runResult();
               }
 
               return runResult();

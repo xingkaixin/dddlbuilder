@@ -412,7 +412,7 @@ const listLegacySnapshotRows = async (
   return result.results ?? [];
 };
 
-export const upsertWorkspaceSnapshotEntity = async (
+export const upsertWorkspaceEntity = async (
   env: ApiEnv['Bindings'],
   input: {
     userId: string;

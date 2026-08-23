@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceMigrationPayload } from '@ddlbuilder/shared-types/workspace';
 import {
@@ -7,11 +7,13 @@ import {
 } from '../../lib/workspaceMigration.js';
 
 const workspaceEntityMocks = vi.hoisted(() => ({
-  upsertWorkspaceSnapshotEntity: vi.fn(),
+  getWorkspaceSnapshotFromEntities: vi.fn(),
+  upsertWorkspaceEntity: vi.fn(),
 }));
 
 vi.mock('../../lib/workspaceEntities.js', () => ({
-  upsertWorkspaceSnapshotEntity: workspaceEntityMocks.upsertWorkspaceSnapshotEntity,
+  getWorkspaceSnapshotFromEntities: workspaceEntityMocks.getWorkspaceSnapshotFromEntities,
+  upsertWorkspaceEntity: workspaceEntityMocks.upsertWorkspaceEntity,
 }));
 
 const createState = (tableName: string): PersistedState => ({
@@ -49,6 +51,17 @@ const createPayload = (): WorkspaceMigrationPayload => ({
 });
 
 describe('workspaceMigration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    workspaceEntityMocks.getWorkspaceSnapshotFromEntities.mockResolvedValue({
+      globalDraft: null,
+      drafts: [],
+      savedTables: [],
+      savedDrafts: [],
+      folders: [],
+    });
+  });
+
   it('分析迁移时识别所有待创建记录', async () => {
     const queries: string[] = [];
     const database = {
@@ -70,22 +83,31 @@ describe('workspaceMigration', () => {
     );
 
     expect(result.createdCount).toBe(3);
-    expect(queries).toHaveLength(2);
+    expect(queries).toHaveLength(1);
   });
 
   it('提交迁移时一次读取现有快照，并在内存中解决所有名称冲突', async () => {
     const queries: string[] = [];
-    const existingRows = ['alpha', 'beta', 'gamma'].map((name) => ({
-      id: `saved_table:user-1:${name}`,
-      payloadJson: JSON.stringify({ different: name }),
-    }));
+    workspaceEntityMocks.getWorkspaceSnapshotFromEntities.mockResolvedValue({
+      globalDraft: null,
+      drafts: [],
+      savedTables: ['alpha', 'beta', 'gamma'].map((name) => ({
+        normalizedName: name,
+        name,
+        state: createState(`different_${name}`),
+        createdAt: 1,
+        updatedAt: 2,
+      })),
+      savedDrafts: [],
+      folders: [],
+    });
     const database = {
       prepare: (sql: string) => {
         queries.push(sql);
         const statement = {
           bind: () => statement,
           first: async () => null,
-          all: async () => ({ results: existingRows }),
+          all: async () => ({ results: [] }),
           run: async () => ({ success: true }),
         };
         return statement;
@@ -106,7 +128,7 @@ describe('workspaceMigration', () => {
         skippedCount: 0,
       }),
     );
-    expect(queries.filter((sql) => sql.includes('FROM workspace_snapshots'))).toHaveLength(1);
-    expect(workspaceEntityMocks.upsertWorkspaceSnapshotEntity).toHaveBeenCalledTimes(3);
+    expect(queries.some((sql) => sql.includes('workspace_snapshots'))).toBe(false);
+    expect(workspaceEntityMocks.upsertWorkspaceEntity).toHaveBeenCalledTimes(3);
   });
 });

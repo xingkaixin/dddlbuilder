@@ -23,7 +23,6 @@ export const REQUIRED_RUNTIME_TABLES = [
   'workspace_clocks',
   'workspace_entities',
   'workspace_links',
-  'workspace_mutations',
   'workspace_snapshots',
   'workspaces',
 ] as const;

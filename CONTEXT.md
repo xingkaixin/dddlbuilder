@@ -24,10 +24,6 @@ A Workspace Document whose schema version has been established, even when all en
 are empty. An initialized empty document is authoritative and must not be replaced by legacy data.
 _Avoid_: Non-empty document
 
-**Client Mutation**:
-A user's requested Workspace Entity change, identified so that retrying the same change has one observable result.
-_Avoid_: Request, update
-
 **Draft**:
 Editable schema state that has not become a Saved Table.
 _Avoid_: Temporary table
