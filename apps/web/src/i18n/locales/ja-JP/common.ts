@@ -1083,6 +1083,72 @@ export const jaJPCommon = {
     error: 'エラー',
     warning: '警告',
     suggestion: '提案',
+    rules: {
+      'table-name-snake-case': {
+        title: 'テーブル名の規則',
+        reason:
+          '組み込みの構造チェックでは、小文字の snake_case を標準のテーブル名規則として使用します。',
+        suggestion: 'user_profile のように、小文字・数字・アンダースコアで構成してください。',
+      },
+      'field-name-snake-case': {
+        title: 'カラム名の規則',
+        reason: 'カラム名を統一すると、SQL、ORM、レビュー記録を保守しやすくなります。',
+        suggestion: 'created_at のような小文字の snake_case を使用してください。',
+      },
+      'primary-key-required': {
+        title: '主キーがありません',
+        reason: '主キーがないと、行の更新、削除、関連付けを安定して行うことが困難です。',
+        suggestion: 'id または安定した業務キーを使って主キーを追加してください。',
+      },
+      'index-name-convention': {
+        title: 'インデックス名の規則',
+        reason: '種類、テーブル名、カラム名を含めると、実行計画や移行を確認しやすくなります。',
+        suggestion: 'インデックス名の接頭辞に {{expectedPrefix}} を使用してください。',
+      },
+      'audit-field-required': {
+        title: '監査カラムを推奨',
+        reason: '作成時刻と更新時刻があると、データの書き込みや変更を追跡できます。',
+        suggestion: '{{target}} を追加し、timestamp または datetime 型を使用してください。',
+      },
+      'audit-field-type': {
+        title: '監査カラムの型',
+        reason: '{{target}} に時刻型を使うと、並べ替え、絞り込み、データ交換が安定します。',
+        suggestion: '{{target}} の型を timestamp または datetime に変更してください。',
+      },
+      'created-at-default': {
+        title: '作成時刻のデフォルト値',
+        reason: '作成時刻をデータベースで設定すると、アプリ側の設定漏れを防げます。',
+        suggestion: 'created_at のデフォルト値を現在時刻に設定してください。',
+      },
+      'updated-at-on-update': {
+        title: '更新時刻の自動管理',
+        reason: '更新時刻を自動管理すると、変更履歴の信頼性が高まります。',
+        suggestion: '更新時に updated_at を現在時刻へ設定してください。',
+      },
+      'string-length-required': {
+        title: '文字列の長さがありません',
+        reason:
+          '長さのない varchar や char は、データベースやチームによって解釈が異なる場合があります。',
+        suggestion: '{{target}} に varchar(255) などの明示的な長さを設定してください。',
+      },
+      'money-decimal-required': {
+        title: '金額型の精度リスク',
+        reason: 'float、double、real には二進数の丸め誤差があるため、金額には適しません。',
+        suggestion: '{{target}} の型を decimal(p, s) に変更してください。',
+      },
+      'zero-date-default': {
+        title: 'ゼロ日付のデフォルト値',
+        reason: '0000-00-00 は厳格な SQL モードやデータベース間の移行で失敗する場合があります。',
+        suggestion:
+          '{{target}} のゼロ日付を削除し、現在時刻、NULL、または有効な業務日付を使用してください。',
+      },
+      'large-type-index': {
+        title: '大きなカラムのインデックス',
+        reason:
+          'text、blob、json への直接インデックスは高コストで、データベースごとに制限も異なります。',
+        suggestion: '{{target}} の安定した短い派生値または接頭辞にインデックスを作成してください。',
+      },
+    },
   },
   savedTables: {
     title: 'ワークスペース',

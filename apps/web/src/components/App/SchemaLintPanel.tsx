@@ -60,6 +60,8 @@ export const SchemaLintPanel = memo<SchemaLintPanelProps>(({ issues }) => {
         <ul className="space-y-2">
           {sortedIssues.map((issue) => {
             const Icon = severityIcon[issue.severity];
+            const translationParams = { target: issue.target, ...issue.params };
+            const ruleKey = `schemaLint.rules.${issue.ruleId}`;
             return (
               <li
                 key={issue.id}
@@ -74,16 +76,18 @@ export const SchemaLintPanel = memo<SchemaLintPanelProps>(({ issues }) => {
                       >
                         {t(severityBadgeKey[issue.severity])}
                       </span>
-                      <span className="text-sm font-medium text-foreground">{issue.title}</span>
+                      <span className="text-sm font-medium text-foreground">
+                        {t(`${ruleKey}.title`, translationParams)}
+                      </span>
                       <span className="max-w-full truncate rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
                         {issue.target}
                       </span>
                     </div>
                     <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                      {issue.reason}
+                      {t(`${ruleKey}.reason`, translationParams)}
                     </p>
                     <p className="mt-1 text-xs leading-relaxed text-foreground/75">
-                      {issue.suggestion}
+                      {t(`${ruleKey}.suggestion`, translationParams)}
                     </p>
                   </div>
                 </div>

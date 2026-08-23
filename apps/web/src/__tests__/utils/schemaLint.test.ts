@@ -91,6 +91,10 @@ describe('lintSchema', () => {
       ]),
     );
     expect(issues.find((issue) => issue.ruleId === 'primary-key-required')?.severity).toBe('error');
+    expect(issues[0]).not.toHaveProperty('title');
+    expect(issues.find((issue) => issue.ruleId === 'index-name-convention')?.params).toEqual({
+      expectedPrefix: 'idx_UserProfile_name',
+    });
   });
 
   it('reports audit fields with weak conventions', () => {

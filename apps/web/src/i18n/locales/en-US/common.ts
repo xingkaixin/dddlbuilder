@@ -1074,6 +1074,74 @@ export const enUSCommon = {
     error: 'Error',
     warning: 'Warning',
     suggestion: 'Suggestion',
+    rules: {
+      'table-name-snake-case': {
+        title: 'Table naming convention',
+        reason: 'The built-in schema rules use lowercase snake_case for table names.',
+        suggestion: 'Use lowercase letters, numbers, and underscores, such as user_profile.',
+      },
+      'field-name-snake-case': {
+        title: 'Column naming convention',
+        reason: 'Consistent column names make SQL, ORM code, and reviews easier to maintain.',
+        suggestion: 'Use lowercase snake_case, such as created_at.',
+      },
+      'primary-key-required': {
+        title: 'Primary key missing',
+        reason:
+          'Without a primary key, individual rows are difficult to update, delete, or relate reliably.',
+        suggestion: 'Add a primary key using an id column or a stable business key.',
+      },
+      'index-name-convention': {
+        title: 'Index naming convention',
+        reason:
+          'Including the index type, table, and columns makes plans and migrations easier to inspect.',
+        suggestion: 'Use {{expectedPrefix}} as the index name prefix.',
+      },
+      'audit-field-required': {
+        title: 'Audit column recommended',
+        reason: 'Creation and update timestamps help trace when data was written or changed.',
+        suggestion: 'Add {{target}} with a timestamp or datetime type.',
+      },
+      'audit-field-type': {
+        title: 'Audit column type',
+        reason: 'A time type makes {{target}} reliable for sorting, filtering, and data exchange.',
+        suggestion: 'Change {{target}} to timestamp or datetime.',
+      },
+      'created-at-default': {
+        title: 'Creation time default',
+        reason: 'A database-generated creation time prevents application-side omissions.',
+        suggestion: 'Set the created_at default to the current time.',
+      },
+      'updated-at-on-update': {
+        title: 'Automatic update time',
+        reason: 'Automatically maintained update times provide a more reliable change record.',
+        suggestion: 'Set updated_at to use the current time on update.',
+      },
+      'string-length-required': {
+        title: 'String length missing',
+        reason:
+          'A varchar or char without a length can be interpreted differently across databases and teams.',
+        suggestion: 'Set an explicit length for {{target}}, such as varchar(255).',
+      },
+      'money-decimal-required': {
+        title: 'Unsafe monetary type',
+        reason:
+          'float, double, and real have binary precision errors and are unsuitable for monetary values.',
+        suggestion: 'Change {{target}} to decimal(p, s).',
+      },
+      'zero-date-default': {
+        title: 'Zero-date default',
+        reason: '0000-00-00 can fail in strict SQL modes and cross-database migrations.',
+        suggestion:
+          'Remove the zero-date default from {{target}}, or use the current time, NULL, or a valid business date.',
+      },
+      'large-type-index': {
+        title: 'Large column in index',
+        reason:
+          'Indexing text, blob, or json columns directly is expensive and database restrictions vary.',
+        suggestion: 'Index a stable short derivative or prefix of {{target}} instead.',
+      },
+    },
   },
   savedTables: {
     title: 'Workspace',

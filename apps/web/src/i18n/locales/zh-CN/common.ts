@@ -1044,6 +1044,68 @@ export const zhCNCommon = {
     error: '错误',
     warning: '警告',
     suggestion: '建议',
+    rules: {
+      'table-name-snake-case': {
+        title: '表名命名规范',
+        reason: '稳定的结构检查使用小写 snake_case 作为默认表名约定。',
+        suggestion: '把表名调整为小写字母、数字和下划线组合，例如 user_profile。',
+      },
+      'field-name-snake-case': {
+        title: '字段名命名规范',
+        reason: '字段名风格统一后，SQL、ORM 和评审记录更容易维护。',
+        suggestion: '把字段名调整为小写 snake_case，例如 created_at。',
+      },
+      'primary-key-required': {
+        title: '缺少主键',
+        reason: '没有主键的表很难稳定定位单行数据，也会影响更新、删除和关联建模。',
+        suggestion: '添加一个主键索引，常见做法是使用 id 或业务唯一键作为主键。',
+      },
+      'index-name-convention': {
+        title: '索引命名规范',
+        reason: '索引名包含类型、表名和字段名后，排查执行计划和迁移脚本会更直接。',
+        suggestion: '建议使用 {{expectedPrefix}} 作为索引名前缀。',
+      },
+      'audit-field-required': {
+        title: '建议补充审计字段',
+        reason: '创建时间和更新时间能支持排查数据写入与变更过程。',
+        suggestion: '添加 {{target}} 字段，并使用 timestamp 或 datetime 类型。',
+      },
+      'audit-field-type': {
+        title: '审计字段类型约定',
+        reason: '{{target}} 使用时间类型后，排序、过滤和跨系统解释更稳定。',
+        suggestion: '把 {{target}} 的字段类型调整为 timestamp 或 datetime。',
+      },
+      'created-at-default': {
+        title: '创建时间默认值',
+        reason: '创建时间由数据库写入可减少应用侧遗漏。',
+        suggestion: '把 created_at 默认值设置为当前时间。',
+      },
+      'updated-at-on-update': {
+        title: '更新时间自动维护',
+        reason: '更新时间自动更新后，数据变更记录更可靠。',
+        suggestion: '把 updated_at 的更新时机设置为当前时间。',
+      },
+      'string-length-required': {
+        title: '字符类型缺少长度',
+        reason: 'varchar 或 char 缺少长度时，不同数据库和团队规范的解释可能不一致。',
+        suggestion: '为 {{target}} 设置明确长度，例如 varchar(255)。',
+      },
+      'money-decimal-required': {
+        title: '金额字段类型风险',
+        reason: 'float、double 和 real 存在二进制精度误差，金额类字段需要定点数。',
+        suggestion: '把 {{target}} 的字段类型调整为 decimal(p, s)。',
+      },
+      'zero-date-default': {
+        title: '零日期默认值',
+        reason: '0000-00-00 在严格 SQL 模式和跨数据库迁移中容易失败。',
+        suggestion: '移除 {{target}} 的零日期默认值，或改用当前时间、NULL、业务明确日期。',
+      },
+      'large-type-index': {
+        title: '大字段参与索引',
+        reason: 'text、blob、json 等大字段直接参与索引通常成本高，且各数据库限制差异明显。',
+        suggestion: '为 {{target}} 设计派生字段或前缀索引，再把索引放在稳定的短字段上。',
+      },
+    },
   },
   savedTables: {
     title: '工作区',
