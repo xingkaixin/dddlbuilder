@@ -1,10 +1,11 @@
 import { useCallback } from 'react';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
+import type { BuilderTab } from '@/utils/tabUtils';
 
 interface UseNavigationActionsParams {
   setSavedTablesDrawerOpen: (open: boolean) => void;
   setIsDiffDialogOpen: (open: boolean) => void;
-  setActiveTab: (tab: string) => void;
+  setActiveTab: (tab: BuilderTab) => void;
   setIsStorageEstimatorOpen: (open: boolean) => void;
   setVersionHistoryTarget: (
     target: {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getAvailableTabs, isTabAvailable } from '@/utils/tabUtils';
+import { getAvailableTabs, isBuilderTab, isTabAvailable } from '@/utils/tabUtils';
 
 describe('tabUtils', () => {
   describe('getAvailableTabs', () => {
@@ -64,8 +64,8 @@ describe('tabUtils', () => {
       expect(isTabAvailable('hive-partition', 'hive')).toBe(true);
     });
 
-    it('should return false for unknown tabs', () => {
-      expect(isTabAvailable('nonexistent', 'mysql')).toBe(false);
+    it('should reject unknown tabs at the input boundary', () => {
+      expect(isBuilderTab('nonexistent')).toBe(false);
     });
   });
 });

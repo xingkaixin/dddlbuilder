@@ -1,12 +1,13 @@
 import { useCallback } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { AISchemaChange } from '@/utils/aiSchemaChanges';
+import type { BuilderTab } from '@/utils/tabUtils';
 import { applyAISchemaChanges } from '../aiSchemaPatchTransition';
 
 interface UseAISchemaPatchFlowParams {
   currentState: PersistedState;
   applyState: (state: PersistedState) => void;
-  setActiveTab: (tab: string) => void;
+  setActiveTab: (tab: BuilderTab) => void;
   highlightField: (rowIndex?: number) => void;
   animateIndex: (indexId: string, type: 'add' | 'remove') => Promise<void>;
 }

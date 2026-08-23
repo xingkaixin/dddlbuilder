@@ -15,7 +15,7 @@ import {
 } from '@/components/icons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFieldStore, useForeignKeyStore, useIndexStore } from '@/stores';
-import { isTabAvailable } from '@/utils/tabUtils';
+import { isBuilderTab, isTabAvailable, type BuilderTab } from '@/utils/tabUtils';
 import { useTranslation } from 'react-i18next';
 import { AuthPanel } from '../AuthPanel';
 import { DataTable } from '../DataTable';
@@ -30,8 +30,8 @@ import { ViewDefinitionPanel } from '../ViewDefinitionPanel';
 
 interface TableBuilderContainerProps {
   tableConfigProps: ComponentProps<typeof TableConfig>;
-  tabsValue: string;
-  onTabsValueChange: (value: string) => void;
+  tabsValue: BuilderTab;
+  onTabsValueChange: (value: BuilderTab) => void;
   dataTableProps: ComponentProps<typeof DataTable>;
   viewDefinitionPanelProps: ComponentProps<typeof ViewDefinitionPanel>;
   indexPanelProps: ComponentProps<typeof IndexPanel>;
@@ -43,8 +43,8 @@ interface TableBuilderContainerProps {
   hivePartitionPanelProps: ComponentProps<typeof HivePartitionPanel>;
 }
 
-interface BuilderTab {
-  value: string;
+interface BuilderTabDefinition {
+  value: BuilderTab;
   icon: ComponentType<AppIconProps>;
   label: string;
   badge?: ReactNode;
@@ -134,9 +134,9 @@ export function TableBuilderContainer({
   );
 
   const isTable = objectType === 'table';
-  const showTab = (tab: string) => isTable && isTabAvailable(tab, dbType);
+  const showTab = (tab: BuilderTab) => isTable && isTabAvailable(tab, dbType);
 
-  const tabCandidates: Array<BuilderTab | false> = [
+  const tabCandidates: Array<BuilderTabDefinition | false> = [
     objectType === 'view'
       ? {
           value: 'fields',
@@ -209,13 +209,17 @@ export function TableBuilderContainer({
       panel: <HivePartitionPanel {...hivePartitionPanelProps} />,
     },
   ];
-  const tabs = tabCandidates.filter((tab): tab is BuilderTab => tab !== false);
+  const tabs = tabCandidates.filter((tab): tab is BuilderTabDefinition => tab !== false);
+
+  const handleTabValueChange = (value: string) => {
+    if (isBuilderTab(value)) onTabsValueChange(value);
+  };
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-4">
       <TableConfig {...tableConfigProps} />
 
-      <Tabs value={tabsValue} onValueChange={onTabsValueChange} className="w-full">
+      <Tabs value={tabsValue} onValueChange={handleTabValueChange} className="w-full">
         <TabsList className="inline-flex h-auto max-w-full flex-wrap justify-start gap-1 [&>*]:after:hidden sm:flex-nowrap sm:gap-0 sm:overflow-x-auto sm:whitespace-nowrap sm:[&>*]:after:block [&>*]:shrink-0">
           {tabs.map(({ value, icon: Icon, label, badge }) => (
             <TabsTrigger key={value} value={value} className="gap-1.5 px-2.5 text-xs">

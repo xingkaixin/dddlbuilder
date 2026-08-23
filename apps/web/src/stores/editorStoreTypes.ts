@@ -17,6 +17,7 @@ import type {
   TableMiscConfig,
 } from '@ddlbuilder/shared-types';
 import type { TableCellChange, TableChangeSource } from '@/types/tableChanges';
+import type { BuilderTab } from '@/utils/tabUtils';
 
 type Setter<T> = T | ((previous: T) => T);
 
@@ -39,7 +40,7 @@ export interface AppSlice {
   addCount: number;
   fieldTableFreezeEnabled: boolean;
   fieldTableFreezeColumns: number;
-  activeTab: string;
+  activeTab: BuilderTab;
   savedTablesDrawerOpen: boolean;
   dialogs: CoreDialogState;
   isClearDialogOpen: boolean;
@@ -62,7 +63,7 @@ export interface AppSlice {
   setAddCount: (value: number) => void;
   setFieldTableFreezeEnabled: (value: boolean) => void;
   setFieldTableFreezeColumns: (value: number) => void;
-  setActiveTab: (value: string) => void;
+  setActiveTab: (value: BuilderTab) => void;
   resetTableConfig: () => void;
   resetTableViewConfig: () => void;
   setSavedTablesDrawerOpen: (value: boolean) => void;

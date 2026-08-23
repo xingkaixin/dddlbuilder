@@ -18,6 +18,7 @@ import type {
 import type { GeneratedTableSchema } from '@/hooks/useAIGenerateTable';
 import { buildPersistedStateFromAISchema } from '@/utils/aiSchemaChanges';
 import { createFieldId } from '@ddlbuilder/workspace-core';
+import type { BuilderTab } from '@/utils/tabUtils';
 
 interface UseSchemaApplyActionsParams {
   rows: FieldRow[];
@@ -38,7 +39,7 @@ interface UseSchemaApplyActionsParams {
   sqlFormatMode: SqlFormatMode;
   setTableMiscConfig: Dispatch<SetStateAction<TableMiscConfig>>;
   setMysqlPartitionConfig: Dispatch<SetStateAction<MysqlPartitionConfig>>;
-  setActiveTab: (value: string) => void;
+  setActiveTab: (value: BuilderTab) => void;
   triggerIndexAnimation: (indexId: string, mode: 'add' | 'remove') => void;
   triggerFieldTableHighlight: (rowIndex: number) => void;
   showToast: (message: string) => void;

@@ -10,6 +10,7 @@ import { useAIIndexAdvisor } from '@/hooks/useAIIndexAdvisor';
 import { useToast } from '@/hooks/useToast';
 import { buildIndexName, getIndexNameMaxLength } from '@/utils/indexNameUtils';
 import { useTranslation } from 'react-i18next';
+import type { BuilderTab } from '@/utils/tabUtils';
 
 interface UseIndexAdvisorFlowParams {
   dbType: DatabaseType;
@@ -21,7 +22,7 @@ interface UseIndexAdvisorFlowParams {
   setIndexes: (
     indexes: IndexDefinition[] | ((current: IndexDefinition[]) => IndexDefinition[]),
   ) => void;
-  setActiveTab: (tab: string) => void;
+  setActiveTab: (tab: BuilderTab) => void;
 }
 
 const hasSameIndexFields = (left: IndexField[], right: IndexField[]) =>
