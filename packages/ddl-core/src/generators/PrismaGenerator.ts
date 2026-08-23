@@ -5,7 +5,7 @@ import type {
 } from '@ddlbuilder/shared-types';
 import type { ORMGenerator } from '../interfaces/ORMGenerator.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
-import { isPrimaryKeyField, toCamelCase, escapePrismaDefault } from './shared.js';
+import { buildIndexFieldLookup, toCamelCase, escapePrismaDefault } from './shared.js';
 
 export class PrismaGenerator implements ORMGenerator {
   generateModel(
@@ -23,6 +23,7 @@ export class PrismaGenerator implements ORMGenerator {
     }
 
     const lines: string[] = [];
+    const { primaryFields } = buildIndexFieldLookup(indexes);
 
     if (tableComment.trim()) {
       lines.push(`/// ${tableComment.trim()}`);
@@ -32,7 +33,7 @@ export class PrismaGenerator implements ORMGenerator {
     for (const field of fields) {
       const fieldName = toCamelCase(field.name);
       const prismaType = mapCanonicalToORMType('prisma', field.type);
-      const isPk = isPrimaryKeyField(field.name, indexes);
+      const isPk = primaryFields.has(field.name);
       const isAutoInc = field.defaultKind === 'auto_increment';
       const isNullable = field.nullable && !isPk;
 

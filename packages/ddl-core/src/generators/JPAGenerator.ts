@@ -5,7 +5,7 @@ import type {
 } from '@ddlbuilder/shared-types';
 import type { ORMGenerator } from '../interfaces/ORMGenerator.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
-import { isPrimaryKeyField, toCamelCase, toPascalCase } from './shared.js';
+import { buildIndexFieldLookup, toCamelCase, toPascalCase } from './shared.js';
 
 export class JPAGenerator implements ORMGenerator {
   generateModel(
@@ -23,6 +23,7 @@ export class JPAGenerator implements ORMGenerator {
     }
 
     const lines: string[] = [];
+    const { primaryFields } = buildIndexFieldLookup(indexes);
 
     const imports = new Set<string>(['jakarta.persistence.*']);
     const needsDate = fields.some((f) =>
@@ -59,7 +60,7 @@ export class JPAGenerator implements ORMGenerator {
     for (const field of fields) {
       const propName = toCamelCase(field.name);
       const javaType = mapCanonicalToORMType('jpa', field.type);
-      const isPk = isPrimaryKeyField(field.name, indexes);
+      const isPk = primaryFields.has(field.name);
       const isAutoInc = field.defaultKind === 'auto_increment';
       const isNullable = field.nullable && !isPk;
 

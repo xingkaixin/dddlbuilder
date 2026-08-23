@@ -5,7 +5,7 @@ import type {
 } from '@ddlbuilder/shared-types';
 import type { ORMGenerator } from '../interfaces/ORMGenerator.js';
 import { getORMTypeWithArgs } from '../utils/ormTypeResolver.js';
-import { isPrimaryKeyField, escapePythonString } from './shared.js';
+import { buildIndexFieldLookup, escapePythonString } from './shared.js';
 
 export class SQLAlchemyGenerator implements ORMGenerator {
   generateModel(
@@ -23,6 +23,7 @@ export class SQLAlchemyGenerator implements ORMGenerator {
     }
 
     const lines: string[] = [];
+    const { primaryFields } = buildIndexFieldLookup(indexes);
 
     lines.push(
       'from sqlalchemy import Column, Integer, String, BigInteger, SmallInteger, Numeric, Float, Boolean, Date, DateTime, Time, Text, LargeBinary, JSON, Index, ForeignKey',
@@ -48,7 +49,7 @@ export class SQLAlchemyGenerator implements ORMGenerator {
 
     for (const field of fields) {
       const colType = getORMTypeWithArgs('sqlalchemy', field.type);
-      const isPk = isPrimaryKeyField(field.name, indexes);
+      const isPk = primaryFields.has(field.name);
       const isAutoInc = field.defaultKind === 'auto_increment';
       const isNullable = field.nullable && !isPk;
 

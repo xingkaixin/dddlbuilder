@@ -5,7 +5,7 @@ import type {
 } from '@ddlbuilder/shared-types';
 import type { ORMGenerator } from '../interfaces/ORMGenerator.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
-import { isPrimaryKeyField, toCamelCase, toPascalCase } from './shared.js';
+import { buildIndexFieldLookup, toCamelCase, toPascalCase } from './shared.js';
 
 export class TypeORMGenerator implements ORMGenerator {
   generateModel(
@@ -23,6 +23,7 @@ export class TypeORMGenerator implements ORMGenerator {
     }
 
     const lines: string[] = [];
+    const { primaryFields, singleUniqueFields } = buildIndexFieldLookup(indexes);
 
     lines.push(
       `import { Entity, Column, Index, PrimaryGeneratedColumn, PrimaryColumn } from 'typeorm';`,
@@ -58,7 +59,7 @@ export class TypeORMGenerator implements ORMGenerator {
     for (const field of fields) {
       const propName = toCamelCase(field.name);
       const tsType = mapCanonicalToORMType('typeorm', field.type);
-      const isPk = isPrimaryKeyField(field.name, indexes);
+      const isPk = primaryFields.has(field.name);
       const isAutoInc = field.defaultKind === 'auto_increment';
       const isNullable = field.nullable && !isPk;
 
@@ -71,12 +72,7 @@ export class TypeORMGenerator implements ORMGenerator {
           lines.push(`  @PrimaryColumn()`);
         }
       } else {
-        // Single-field unique
-        const isSingleUnique = indexes.some(
-          (i) =>
-            i.unique && !i.isPrimary && i.fields.length === 1 && i.fields[0].name === field.name,
-        );
-        if (isSingleUnique) {
+        if (singleUniqueFields.has(field.name)) {
           optionsParts.push('unique: true');
         }
         if (isNullable) {

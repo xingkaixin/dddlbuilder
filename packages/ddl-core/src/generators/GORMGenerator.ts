@@ -5,7 +5,7 @@ import type {
 } from '@ddlbuilder/shared-types';
 import type { ORMGenerator } from '../interfaces/ORMGenerator.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
-import { isPrimaryKeyField, toPascalCase } from './shared.js';
+import { buildIndexFieldLookup, toPascalCase } from './shared.js';
 
 export class GORMGenerator implements ORMGenerator {
   generateModel(
@@ -23,6 +23,7 @@ export class GORMGenerator implements ORMGenerator {
     }
 
     const lines: string[] = [];
+    const { primaryFields, singleUniqueFields } = buildIndexFieldLookup(indexes);
     const needsTime = fields.some((f) =>
       mapCanonicalToORMType('gorm', f.type).includes('time.Time'),
     );
@@ -44,7 +45,7 @@ export class GORMGenerator implements ORMGenerator {
     for (const field of fields) {
       const fieldName = toPascalCase(field.name);
       const goType = mapCanonicalToORMType('gorm', field.type);
-      const isPk = isPrimaryKeyField(field.name, indexes);
+      const isPk = primaryFields.has(field.name);
       const isAutoInc = field.defaultKind === 'auto_increment';
       const isNullable = field.nullable && !isPk;
 
@@ -57,11 +58,7 @@ export class GORMGenerator implements ORMGenerator {
         }
       }
 
-      // Single-field unique
-      const isSingleUnique = indexes.some(
-        (i) => i.unique && !i.isPrimary && i.fields.length === 1 && i.fields[0].name === field.name,
-      );
-      if (isSingleUnique) {
+      if (singleUniqueFields.has(field.name)) {
         tagParts.push('uniqueIndex');
       }
 

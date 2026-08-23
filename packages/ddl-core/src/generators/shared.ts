@@ -9,6 +9,19 @@ export function isPrimaryKeyField(fieldName: string, indexes: IndexDefinition[])
   return getPrimaryKeyFieldNames(indexes).includes(fieldName);
 }
 
+export function buildIndexFieldLookup(indexes: IndexDefinition[]) {
+  const primaryFields = new Set(getPrimaryKeyFieldNames(indexes));
+  const singleUniqueFields = new Set<string>();
+
+  for (const index of indexes) {
+    if (index.unique && !index.isPrimary && index.fields.length === 1) {
+      singleUniqueFields.add(index.fields[0].name);
+    }
+  }
+
+  return { primaryFields, singleUniqueFields };
+}
+
 export function toCamelCase(str: string): string {
   return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
 }

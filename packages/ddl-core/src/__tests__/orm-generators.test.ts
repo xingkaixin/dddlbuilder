@@ -12,6 +12,7 @@ import { JPAGenerator } from '../generators/JPAGenerator';
 import {
   getPrimaryKeyFieldNames,
   isPrimaryKeyField,
+  buildIndexFieldLookup,
   toCamelCase,
   toPascalCase,
   escapePrismaDefault,
@@ -66,6 +67,32 @@ describe('shared utilities', () => {
 
     it('returns false for non-PK field', () => {
       expect(isPrimaryKeyField('name', [createIndex()])).toBe(false);
+    });
+  });
+
+  describe('buildIndexFieldLookup', () => {
+    it('precomputes primary and single-field unique membership', () => {
+      const lookup = buildIndexFieldLookup([
+        createIndex(),
+        {
+          id: 'unique-email',
+          name: 'uq_email',
+          fields: [{ name: 'email', direction: 'ASC' }],
+          unique: true,
+        },
+        {
+          id: 'unique-name-org',
+          name: 'uq_name_org',
+          fields: [
+            { name: 'name', direction: 'ASC' },
+            { name: 'org_id', direction: 'ASC' },
+          ],
+          unique: true,
+        },
+      ]);
+
+      expect([...lookup.primaryFields]).toEqual(['id']);
+      expect([...lookup.singleUniqueFields]).toEqual(['email']);
     });
   });
 
