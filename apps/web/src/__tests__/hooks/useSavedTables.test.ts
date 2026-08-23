@@ -4,7 +4,7 @@ import { useSavedTables } from '@/hooks/useSavedTables';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '../utils/fakeIndexedDb';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { flushPromises } from '@/__tests__/utils/test-utils';
-import { addSavedTable, moveSavedTableToTrash } from '@/utils/savedTablesDb';
+import { addSavedTable, getSavedTable, moveSavedTableToTrash } from '@/utils/savedTablesDb';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
 const renderHook = <Result, Props>(render: (initialProps: Props) => Result) => {
@@ -207,6 +207,13 @@ describe('useSavedTables', () => {
       doc,
       expect.objectContaining({ normalizedName: 'pending' }),
     );
+    await expect(
+      getSavedTable('pending', {
+        kind: 'user',
+        userId: 'user_1',
+        workspaceId: 'workspace_1',
+      }),
+    ).resolves.toBeNull();
   });
 
   // 分享页在本地 Y.Doc 加载完成前仍然放行「另存为副本」，那次写入只落本地分区；

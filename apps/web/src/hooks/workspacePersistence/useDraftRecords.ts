@@ -23,6 +23,7 @@ const isSameState = (left: PersistedState, right: PersistedState) =>
 interface UseDraftRecordsParams {
   currentScope: WorkspaceScope;
   disabled: boolean;
+  persistLocally: boolean;
   enqueuePersistence: ReturnType<typeof usePersistenceQueue>['enqueue'];
   runInYDoc: ReturnType<typeof useWorkspaceYDocGateway>['runInYDoc'];
 }
@@ -30,6 +31,7 @@ interface UseDraftRecordsParams {
 export function useDraftRecords({
   currentScope,
   disabled,
+  persistLocally,
   enqueuePersistence,
   runInYDoc,
 }: UseDraftRecordsParams) {
@@ -80,11 +82,13 @@ export function useDraftRecords({
   const persistDraftRecord = useCallback(
     (draftId: string, record: GlobalDraftRecord) => {
       recordsRef.current.set(draftId, record);
-      const written = writeDraft(draftId, record, currentScope);
+      const written = persistLocally
+        ? writeDraft(draftId, record, currentScope)
+        : Promise.resolve();
       runInYDoc((doc) => upsertDraftInYDoc(doc, draftId, record, { compactSnapshotBase: true }));
       return written;
     },
-    [currentScope, runInYDoc],
+    [currentScope, persistLocally, runInYDoc],
   );
 
   const dropDraftRecord = useCallback(
@@ -182,8 +186,16 @@ export function useDraftRecords({
       setTrashedDrafts((previous) => previous.filter((draft) => draft.draftId !== draftId));
       upsertDraftSummary(draftId, restoredRecord);
       await persistDraftRecord(draftId, restoredRecord);
+      if (!persistLocally) await deleteDraft(draftId, currentScope);
     },
-    [currentScope, disabled, persistDraftRecord, resolveDraftNameConflict, upsertDraftSummary],
+    [
+      currentScope,
+      disabled,
+      persistDraftRecord,
+      persistLocally,
+      resolveDraftNameConflict,
+      upsertDraftSummary,
+    ],
   );
 
   const permanentlyDeleteDraftById = useCallback(

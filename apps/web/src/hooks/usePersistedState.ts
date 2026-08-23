@@ -127,12 +127,14 @@ export function usePersistedState(): UsePersistedStateReturn {
   const draftRecords = useDraftRecords({
     currentScope,
     disabled: Boolean(shareId),
+    persistLocally: !yDocReady,
     enqueuePersistence,
     runInYDoc,
   });
   const savedTableDraftRecords = useSavedTableDraftRecords({
     currentScope,
     disabled: Boolean(shareId),
+    persistLocally: !yDocReady,
     enqueuePersistence,
     runInYDoc,
   });

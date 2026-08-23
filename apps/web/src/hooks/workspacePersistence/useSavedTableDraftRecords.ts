@@ -8,6 +8,7 @@ import type { usePersistenceQueue } from './usePersistenceQueue';
 interface UseSavedTableDraftRecordsParams {
   currentScope: WorkspaceScope;
   disabled: boolean;
+  persistLocally: boolean;
   enqueuePersistence: ReturnType<typeof usePersistenceQueue>['enqueue'];
   runInYDoc: ReturnType<typeof useWorkspaceYDocGateway>['runInYDoc'];
 }
@@ -15,6 +16,7 @@ interface UseSavedTableDraftRecordsParams {
 export function useSavedTableDraftRecords({
   currentScope,
   disabled,
+  persistLocally,
   enqueuePersistence,
   runInYDoc,
 }: UseSavedTableDraftRecordsParams) {
@@ -32,14 +34,16 @@ export function useSavedTableDraftRecords({
   const persistRecord = useCallback(
     (normalizedName: string, record: SavedTableDraftRecord) => {
       recordsRef.current.set(normalizedName, record);
-      enqueuePersistence(`saved-draft:${normalizedName}`, 'save saved-table draft', () =>
-        upsertSavedDraft(normalizedName, record, currentScope),
-      );
+      if (persistLocally) {
+        enqueuePersistence(`saved-draft:${normalizedName}`, 'save saved-table draft', () =>
+          upsertSavedDraft(normalizedName, record, currentScope),
+        );
+      }
       runInYDoc((doc) =>
         upsertSavedDraftInYDoc(doc, normalizedName, record, { compactSnapshotBase: true }),
       );
     },
-    [currentScope, enqueuePersistence, runInYDoc],
+    [currentScope, enqueuePersistence, persistLocally, runInYDoc],
   );
 
   const dropRecord = useCallback(
@@ -74,11 +78,17 @@ export function useSavedTableDraftRecords({
           if (keyChanged) deleteSavedDraftFromYDoc(doc, fromNormalizedName);
         });
       }
-      enqueuePersistence(`saved-draft:${fromNormalizedName}`, 'rename saved-table draft', () =>
-        renameSavedDraftKey(fromNormalizedName, toNormalizedName, nextTableName, currentScope),
-      );
+      if (persistLocally) {
+        enqueuePersistence(`saved-draft:${fromNormalizedName}`, 'rename saved-table draft', () =>
+          renameSavedDraftKey(fromNormalizedName, toNormalizedName, nextTableName, currentScope),
+        );
+      } else if (keyChanged) {
+        enqueuePersistence(`saved-draft:${fromNormalizedName}`, 'delete legacy saved draft', () =>
+          deleteSavedDraft(fromNormalizedName, currentScope),
+        );
+      }
     },
-    [currentScope, disabled, enqueuePersistence, runInYDoc],
+    [currentScope, disabled, enqueuePersistence, persistLocally, runInYDoc],
   );
 
   return {

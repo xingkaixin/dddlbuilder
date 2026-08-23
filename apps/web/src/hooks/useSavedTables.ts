@@ -105,6 +105,23 @@ export function useSavedTables() {
     });
   }, [currentScope, queryClient]);
 
+  const persistActiveTable = useCallback(
+    async (record: SavedTableRecord, mode: 'add' | 'update' = 'update') => {
+      if (yDoc) {
+        runInYDoc((doc) => upsertSavedTableInYDoc(doc, record));
+        return;
+      }
+      if (!currentScope) throw new Error('工作区未就绪');
+      if (mode === 'add') {
+        await addSavedTable(record, currentScope);
+      } else {
+        await updateSavedTable(record, currentScope);
+      }
+      runInYDoc(() => {});
+    },
+    [currentScope, runInYDoc, yDoc],
+  );
+
   useEffect(() => {
     const handleSnapshotApplied = () => {
       void refresh();
@@ -129,37 +146,15 @@ export function useSavedTables() {
           return { ok: false, reason: 'duplicate' };
         }
         const now = Date.now();
-        if (existing?.trashedAt) {
-          await updateSavedTable(
-            {
-              ...existing,
-              name: displayName,
-              state,
-              trashedAt: undefined,
-              updatedAt: now,
-            },
-            currentScope,
-          );
-        } else {
-          await addSavedTable(
-            {
-              normalizedName,
-              name: displayName,
-              state,
-              createdAt: now,
-              updatedAt: now,
-            },
-            currentScope,
-          );
-        }
-        runInYDoc((doc) =>
-          upsertSavedTableInYDoc(doc, {
+        await persistActiveTable(
+          {
             normalizedName,
             name: displayName,
             state,
             createdAt: existing?.createdAt ?? now,
             updatedAt: now,
-          }),
+          },
+          existing?.trashedAt ? 'update' : 'add',
         );
         await refresh();
         return { ok: true, normalizedName };
@@ -171,7 +166,7 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, refresh, runInYDoc, yDoc],
+    [currentScope, persistActiveTable, refresh, yDoc],
   );
 
   const overwriteTable = useCallback(
@@ -189,8 +184,7 @@ export function useSavedTables() {
           state,
           updatedAt: Date.now(),
         };
-        await updateSavedTable(updatedRecord, currentScope);
-        runInYDoc((doc) => upsertSavedTableInYDoc(doc, updatedRecord));
+        await persistActiveTable(updatedRecord);
         await refresh();
         return { ok: true, normalizedName };
       } catch (err) {
@@ -201,14 +195,24 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, refresh, runInYDoc, yDoc],
+    [currentScope, persistActiveTable, refresh, yDoc],
   );
 
   const deleteTable = useCallback(
     async (normalizedName: string): Promise<SaveTableResult> => {
       try {
         if (!currentScope) throw new Error('工作区未就绪');
-        await moveSavedTableToTrash(normalizedName, currentScope);
+        if (yDoc) {
+          const record = getSavedTableFromYDoc(yDoc, normalizedName);
+          if (!record) return { ok: false, reason: 'not_found' };
+          const timestamp = Date.now();
+          await updateSavedTable(
+            { ...record, trashedAt: timestamp, updatedAt: timestamp },
+            currentScope,
+          );
+        } else {
+          await moveSavedTableToTrash(normalizedName, currentScope);
+        }
         runInYDoc((doc) => deleteSavedTableFromYDoc(doc, normalizedName));
         await refresh();
         return { ok: true, normalizedName };
@@ -220,7 +224,7 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, refresh, runInYDoc],
+    [currentScope, refresh, runInYDoc, yDoc],
   );
 
   const restoreTable = useCallback(
@@ -266,16 +270,14 @@ export function useSavedTables() {
           updatedAt: Date.now(),
         };
 
-        if (targetNormalizedName !== normalizedName) {
+        if (yDoc) {
+          runInYDoc((doc) => upsertSavedTableInYDoc(doc, restoredRecord));
+          await deleteSavedTable(normalizedName, currentScope);
+        } else if (targetNormalizedName !== normalizedName) {
           await addSavedTable(restoredRecord, currentScope);
           await deleteSavedTable(normalizedName, currentScope);
         } else {
           await updateSavedTable(restoredRecord, currentScope);
-        }
-
-        runInYDoc((doc) => upsertSavedTableInYDoc(doc, restoredRecord));
-        if (targetNormalizedName !== normalizedName) {
-          runInYDoc((doc) => deleteSavedTableFromYDoc(doc, normalizedName));
         }
         await refresh();
         return { ok: true, normalizedName: targetNormalizedName };
@@ -287,7 +289,7 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, refresh, runInYDoc, savedTables],
+    [currentScope, refresh, runInYDoc, savedTables, yDoc],
   );
 
   const deleteTablePermanently = useCallback(
@@ -333,18 +335,19 @@ export function useSavedTables() {
           normalizedName: nextNormalizedName,
           updatedAt: Date.now(),
         };
-        if (nextNormalizedName === normalizedName) {
+        if (yDoc) {
+          runInYDoc((doc) => {
+            upsertSavedTableInYDoc(doc, updatedRecord);
+            if (nextNormalizedName !== normalizedName) {
+              deleteSavedTableFromYDoc(doc, normalizedName);
+            }
+          });
+        } else if (nextNormalizedName === normalizedName) {
           await updateSavedTable(updatedRecord, currentScope);
         } else {
           await addSavedTable(updatedRecord, currentScope);
           await deleteSavedTable(normalizedName, currentScope);
         }
-        runInYDoc((doc) => {
-          upsertSavedTableInYDoc(doc, updatedRecord);
-          if (nextNormalizedName !== normalizedName) {
-            deleteSavedTableFromYDoc(doc, normalizedName);
-          }
-        });
         await refresh();
         return { ok: true, normalizedName: nextNormalizedName };
       } catch (err) {
@@ -385,8 +388,7 @@ export function useSavedTables() {
           folderId,
           updatedAt: Date.now(),
         };
-        await updateSavedTable(updatedRecord, currentScope);
-        runInYDoc((doc) => upsertSavedTableInYDoc(doc, updatedRecord));
+        await persistActiveTable(updatedRecord);
         await refresh();
         return { ok: true, normalizedName };
       } catch (err) {
@@ -397,7 +399,7 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, refresh, runInYDoc, yDoc],
+    [currentScope, persistActiveTable, refresh, yDoc],
   );
 
   const importTables = useCallback(
@@ -421,12 +423,13 @@ export function useSavedTables() {
         );
         skipCount = plan.skipCount;
 
-        await updateSavedTables(plan.records, currentScope);
-        runInYDoc((doc) => {
-          for (const record of plan.records) {
-            upsertSavedTableInYDoc(doc, record);
-          }
-        });
+        if (yDoc) {
+          runInYDoc((doc) => {
+            for (const record of plan.records) upsertSavedTableInYDoc(doc, record);
+          });
+        } else {
+          await updateSavedTables(plan.records, currentScope);
+        }
         await refresh();
 
         return {
@@ -468,12 +471,13 @@ export function useSavedTables() {
           }),
         )
       ).filter((record): record is SavedTableRecord => record != null);
-      await updateSavedTables(updatedRecords, currentScope);
-      runInYDoc((doc) => {
-        for (const record of updatedRecords) {
-          upsertSavedTableInYDoc(doc, record);
-        }
-      });
+      if (yDoc) {
+        runInYDoc((doc) => {
+          for (const record of updatedRecords) upsertSavedTableInYDoc(doc, record);
+        });
+      } else {
+        await updateSavedTables(updatedRecords, currentScope);
+      }
       await refresh();
     },
     [currentScope, refresh, runInYDoc, savedTables, yDoc],

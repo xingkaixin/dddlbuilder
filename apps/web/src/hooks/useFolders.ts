@@ -16,7 +16,6 @@ import {
   getFolder,
   moveFolder,
   renameFolder,
-  updateFolder,
   type FolderTreeNode,
 } from '@/utils/tableFolders';
 import { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
@@ -80,7 +79,6 @@ export function useFolders() {
         const folder = yDocReady
           ? createFolderRecord(yDocProjection.folders, name, parentId)
           : await createFolder(name, currentScope, parentId);
-        if (yDocReady) await updateFolder(folder, currentScope);
         runInYDoc((doc) => upsertFolderInYDoc(doc, folder));
         await refresh();
         return folder;
@@ -106,7 +104,6 @@ export function useFolders() {
           (await getFolder(id, currentScope));
         if (!folder) throw new Error('文件夹不存在');
         const nextFolder = renameFolderRecord(folder, newName);
-        await updateFolder(nextFolder, currentScope);
         runInYDoc((doc) => upsertFolderInYDoc(doc, nextFolder));
       } catch (error) {
         throw error instanceof Error ? error : new Error('重命名文件夹失败');
@@ -124,7 +121,7 @@ export function useFolders() {
           : await getDescendantFolderIds(id, currentScope);
         const allFolderIds = [id, ...descendantIds];
 
-        await deleteFolder(id, currentScope);
+        if (!yDocReady) await deleteFolder(id, currentScope);
         runInYDoc((doc) => {
           for (const folderId of allFolderIds) deleteFolderFromYDoc(doc, folderId);
         });
@@ -152,7 +149,6 @@ export function useFolders() {
           (await getFolder(id, currentScope));
         if (!folder) throw new Error('文件夹不存在');
         const nextFolder = moveFolderRecord(yDocProjection.folders, id, newParentId);
-        await updateFolder(nextFolder, currentScope);
         runInYDoc((doc) => upsertFolderInYDoc(doc, nextFolder));
       } catch (error) {
         throw error instanceof Error ? error : new Error('移动文件夹失败');

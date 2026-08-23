@@ -473,6 +473,9 @@ describe('usePersistedState', () => {
     await waitFor(() => {
       expect(getDraftRecordFromYDoc(doc, 'default')?.state.tableName).toBe('pending_remote_draft');
     });
+    await expect(
+      readDraft('default', { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' }),
+    ).resolves.toBeNull();
   });
 
   it('本地 YDoc 保存回声应保留当前编辑态入口', async () => {
