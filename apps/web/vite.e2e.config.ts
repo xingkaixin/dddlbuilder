@@ -1,5 +1,5 @@
 import { defineConfig, mergeConfig, type Plugin } from 'vite';
-import baseConfig from './vite.config';
+import baseConfig from './vite.config.ts';
 
 const guestSessionPlugin = (): Plugin => ({
   name: 'ddlbuilder-e2e-guest-session',

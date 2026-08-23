@@ -4,7 +4,7 @@ import path from 'node:path';
 export default defineConfig({
   build: {
     lib: {
-      entry: path.resolve(__dirname, 'api/index.ts'),
+      entry: path.resolve(import.meta.dirname, 'api/index.ts'),
       formats: ['es'],
       fileName: () => 'server.js',
     },
