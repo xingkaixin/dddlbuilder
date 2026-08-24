@@ -68,7 +68,6 @@ export type AISession<Request> = {
 export type AIChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
 export type AIStreamInput = {
-  messages: AIChatMessage[];
   scope: string;
   temperature: number;
   jsonResponse?: boolean;
@@ -77,8 +76,6 @@ export type AIStreamInput = {
 };
 
 export type AICompletionInput = {
-  system: string;
-  user: string;
   scope: string;
   temperature: number;
 };
@@ -87,8 +84,10 @@ export type AIRouteSpec<Request> = {
   route: AIRouteKey;
   maxOutputTokens: number;
   bodyMaxBytes: number;
-  /** 返回 rejection 表示请求体不合法；估算 token 用的也是这里返回的对象。 */
+  /** 返回 rejection 表示请求体不合法。 */
   parseRequest: (body: Record<string, unknown>) => Request | AIRequestRejection;
+  /** 构造实际发送给模型的完整消息，同时作为额度和预算的预估输入。 */
+  buildMessages: (request: Request) => AIChatMessage[];
 };
 
 /**
@@ -191,7 +190,8 @@ export const withAIGovernance = async <Request>(
     return errorResponse(c, 503, 'Authentication service unavailable', 'SERVICE_UNAVAILABLE');
   }
 
-  estimatedTokens = estimateRequestTokens(parsed, maxOutputTokens);
+  const messages = spec.buildMessages(parsed);
+  estimatedTokens = estimateRequestTokens(messages, maxOutputTokens);
 
   const apiKey = c.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -297,15 +297,12 @@ export const withAIGovernance = async <Request>(
 
   const session: AISession<Request> = {
     request: parsed,
-    completeJson: async ({ system, user, scope, temperature }) => {
+    completeJson: async ({ scope, temperature }) => {
       const { data: response, attempts } = await withOpenAIRetry(
         async () =>
           openai.chat.completions.create({
             model,
-            messages: [
-              { role: 'system', content: system },
-              { role: 'user', content: user },
-            ],
+            messages,
             response_format: { type: 'json_object' },
             temperature,
             max_tokens: maxOutputTokens,
@@ -337,7 +334,7 @@ export const withAIGovernance = async <Request>(
         throw error;
       }
     },
-    streamCompletion: ({ messages, scope, temperature, jsonResponse, debugInput }) => {
+    streamCompletion: ({ scope, temperature, jsonResponse, debugInput }) => {
       c.header('X-AI-Stream-Debug', config.streamDebugEnabled ? '1' : '0');
       streamed = true;
       const streamDebug = createOpenAIStreamDebugLogger({

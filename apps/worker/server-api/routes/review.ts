@@ -1,6 +1,6 @@
 import type { Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
-import { rejectAIRequest, withAIGovernance } from '../lib/aiRoute.js';
+import { rejectAIRequest, withAIGovernance, type AIChatMessage } from '../lib/aiRoute.js';
 import { REVIEW_SYSTEM_PROMPT, buildReviewUserPrompt } from '../prompts/review.js';
 import { isAppLocale, type AppLocale } from '@ddlbuilder/shared-types/locale';
 
@@ -14,6 +14,11 @@ type ReviewRequest = {
   locale: AppLocale;
 };
 
+const buildMessages = ({ ddl, tableName, dbType, locale }: ReviewRequest): AIChatMessage[] => [
+  { role: 'system', content: REVIEW_SYSTEM_PROMPT[locale] },
+  { role: 'user', content: buildReviewUserPrompt(ddl, tableName, dbType, locale) },
+];
+
 export function registerReviewRoute(app: Hono<ApiEnv>) {
   app.post('/review', (c) =>
     withAIGovernance<ReviewRequest>(
@@ -22,6 +27,7 @@ export function registerReviewRoute(app: Hono<ApiEnv>) {
         route: 'review',
         maxOutputTokens: MAX_OUTPUT_TOKENS,
         bodyMaxBytes: REQUEST_BODY_MAX_BYTES,
+        buildMessages,
         parseRequest: (body) => {
           const ddl = typeof body.ddl === 'string' ? body.ddl : '';
           if (ddl.trim().length === 0) {
@@ -38,10 +44,6 @@ export function registerReviewRoute(app: Hono<ApiEnv>) {
       async (session) => {
         const { ddl, tableName, dbType, locale } = session.request;
         return session.streamCompletion({
-          messages: [
-            { role: 'system', content: REVIEW_SYSTEM_PROMPT[locale] },
-            { role: 'user', content: buildReviewUserPrompt(ddl, tableName, dbType, locale) },
-          ],
           scope: 'Review',
           temperature: 0.3,
           jsonResponse: true,

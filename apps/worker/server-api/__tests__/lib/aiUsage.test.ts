@@ -464,7 +464,7 @@ describe('aiUsage', () => {
       expect(applyCreditMutation).not.toHaveBeenCalled();
     });
 
-    it('charges when actual tokens exceed reserved', async () => {
+    it('caps the charge at the reservation when actual tokens exceed it', async () => {
       vi.doMock('../../lib/credits.js', () => ({
         applyCreditMutation: vi.fn().mockResolvedValue({}),
       }));
@@ -486,13 +486,8 @@ describe('aiUsage', () => {
       );
 
       const { applyCreditMutation } = await import('../../lib/credits.js');
-      expect(applyCreditMutation).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          kind: 'consume',
-          amount: 50,
-        }),
-      );
+      expect(applyCreditMutation).not.toHaveBeenCalled();
+      expect(db.run).toHaveBeenCalledTimes(2);
     });
 
     it('uses reserved tokens when actualTotalTokens is null', async () => {

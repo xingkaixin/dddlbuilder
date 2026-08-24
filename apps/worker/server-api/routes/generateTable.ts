@@ -1,6 +1,6 @@
 import type { Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
-import { rejectAIRequest, withAIGovernance } from '../lib/aiRoute.js';
+import { rejectAIRequest, withAIGovernance, type AIChatMessage } from '../lib/aiRoute.js';
 import {
   buildGenerateTableMessages,
   buildGenerateTableSystemPrompt,
@@ -44,6 +44,29 @@ const parseConversationHistory = (value: unknown): ConversationMessage[] | null 
   return messages;
 };
 
+const buildMessages = ({
+  description,
+  dbType,
+  locale,
+  mode,
+  templates,
+  existingConfig,
+  previousSchema,
+  conversationHistory,
+}: GenerateTableRequest): AIChatMessage[] =>
+  buildGenerateTableMessages({
+    systemPrompt: buildGenerateTableSystemPrompt({
+      dbType,
+      locale,
+      mode,
+      templates,
+      existingConfig,
+      previousSchema,
+    }),
+    description,
+    conversationHistory,
+  });
+
 export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
   app.post('/generate-table', (c) =>
     withAIGovernance<GenerateTableRequest>(
@@ -52,6 +75,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
         route: 'generate-table',
         maxOutputTokens: MAX_OUTPUT_TOKENS,
         bodyMaxBytes: REQUEST_BODY_MAX_BYTES,
+        buildMessages,
         parseRequest: (body) => {
           const description = typeof body.description === 'string' ? body.description : '';
           if (description.trim().length === 0) {
@@ -74,30 +98,10 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
         },
       },
       async (session) => {
-        const {
-          description,
-          dbType,
-          locale,
-          mode,
-          templates,
-          existingConfig,
-          previousSchema,
-          conversationHistory,
-        } = session.request;
+        const { description, dbType, locale, mode, templates, existingConfig, previousSchema } =
+          session.request;
 
         return session.streamCompletion({
-          messages: buildGenerateTableMessages({
-            systemPrompt: buildGenerateTableSystemPrompt({
-              dbType,
-              locale,
-              mode,
-              templates,
-              existingConfig,
-              previousSchema,
-            }),
-            description,
-            conversationHistory,
-          }),
           scope: 'GenerateTable',
           temperature: 0.3,
           jsonResponse: true,
@@ -109,7 +113,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
             templateCount: templates.length,
             hasExistingConfig: existingConfig != null,
             hasPreviousSchema: previousSchema != null,
-            conversationTurnCount: conversationHistory.length,
+            conversationTurnCount: session.request.conversationHistory.length,
           },
         });
       },

@@ -3,6 +3,10 @@ import { Hono } from 'hono';
 import type { ApiEnv } from '../../lib/context.js';
 
 const RESERVATION = { usageEventId: 'usage-1', userId: 'user-1', reservedTokens: 100 };
+const PROMPT_MESSAGES = [
+  { role: 'system' as const, content: 'System prompt used by the model' },
+  { role: 'user' as const, content: 'User prompt used by the model' },
+];
 
 const createEnv = (): ApiEnv['Bindings'] =>
   ({
@@ -71,7 +75,27 @@ describe('withAIGovernance', () => {
     route: 'explain' as const,
     maxOutputTokens: 100,
     bodyMaxBytes: 4096,
+    buildMessages: () => PROMPT_MESSAGES,
   };
+
+  it('使用实际模型消息预留额度', async () => {
+    const shell = await loadShell();
+    const app = new Hono<ApiEnv>();
+    app.post('/t', (c) =>
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async () =>
+        c.json({ ok: true }),
+      ),
+    );
+
+    await post(app, { sql: 'select 1' });
+
+    expect(shell.reserveAIUsage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        estimatedTokens: 100 + Math.ceil(JSON.stringify(PROMPT_MESSAGES).length / 4),
+      }),
+    );
+  });
 
   it('结算成功的请求并放行响应', async () => {
     const shell = await loadShell();
@@ -136,8 +160,6 @@ describe('withAIGovernance', () => {
     app.post('/t', (c) =>
       shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async (session) => {
         await session.completeJson({
-          system: 'Return JSON',
-          user: 'test',
           scope: 'test-json',
           temperature: 0,
         });

@@ -1,6 +1,6 @@
 import type { Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
-import { rejectAIRequest, withAIGovernance } from '../lib/aiRoute.js';
+import { rejectAIRequest, withAIGovernance, type AIChatMessage } from '../lib/aiRoute.js';
 import { withMeta } from '../lib/http.js';
 import {
   GENERATE_COMMENTS_SYSTEM_PROMPT,
@@ -56,6 +56,11 @@ const normalizeResult = (payload: unknown, fields: AICommentFieldInput[]): AICom
   };
 };
 
+const buildMessages = (request: AICommentRequest): AIChatMessage[] => [
+  { role: 'system', content: GENERATE_COMMENTS_SYSTEM_PROMPT },
+  { role: 'user', content: buildGenerateCommentsUserPrompt(request) },
+];
+
 export function registerGenerateCommentsRoute(app: Hono<ApiEnv>) {
   app.post('/generate-comments', (c) =>
     withAIGovernance<AICommentRequest>(
@@ -64,6 +69,7 @@ export function registerGenerateCommentsRoute(app: Hono<ApiEnv>) {
         route: 'generate-comments',
         maxOutputTokens: MAX_OUTPUT_TOKENS,
         bodyMaxBytes: REQUEST_BODY_MAX_BYTES,
+        buildMessages,
         parseRequest: (body) => {
           const fields = normalizeFields(body.fields);
           const tableName = typeof body.tableName === 'string' ? body.tableName.trim() : '';
@@ -84,8 +90,6 @@ export function registerGenerateCommentsRoute(app: Hono<ApiEnv>) {
       },
       async (session) => {
         const data = await session.completeJson({
-          system: GENERATE_COMMENTS_SYSTEM_PROMPT,
-          user: buildGenerateCommentsUserPrompt(session.request),
           scope: 'GenerateComments',
           temperature: 0.2,
         });

@@ -1,6 +1,6 @@
 import type { Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
-import { rejectAIRequest, withAIGovernance } from '../lib/aiRoute.js';
+import { rejectAIRequest, withAIGovernance, type AIChatMessage } from '../lib/aiRoute.js';
 import { withMeta } from '../lib/http.js';
 import {
   INDEX_ADVISOR_SYSTEM_PROMPT,
@@ -160,6 +160,11 @@ const normalizeResult = (
   };
 };
 
+const buildMessages = (request: AIIndexAdvisorRequest): AIChatMessage[] => [
+  { role: 'system', content: INDEX_ADVISOR_SYSTEM_PROMPT },
+  { role: 'user', content: buildIndexAdvisorUserPrompt(request) },
+];
+
 export function registerIndexAdvisorRoute(app: Hono<ApiEnv>) {
   app.post('/index-advisor', (c) =>
     withAIGovernance<AIIndexAdvisorRequest>(
@@ -168,6 +173,7 @@ export function registerIndexAdvisorRoute(app: Hono<ApiEnv>) {
         route: 'index-advisor',
         maxOutputTokens: MAX_OUTPUT_TOKENS,
         bodyMaxBytes: MAX_REQUEST_BYTES,
+        buildMessages,
         parseRequest: (body) => {
           const fields = normalizeFields(body.fields);
           const tableName = typeof body.tableName === 'string' ? body.tableName.trim() : '';
@@ -192,8 +198,6 @@ export function registerIndexAdvisorRoute(app: Hono<ApiEnv>) {
       },
       async (session) => {
         const data = await session.completeJson({
-          system: INDEX_ADVISOR_SYSTEM_PROMPT,
-          user: buildIndexAdvisorUserPrompt(session.request),
           scope: 'IndexAdvisor',
           temperature: 0.2,
         });

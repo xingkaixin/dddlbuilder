@@ -1,6 +1,6 @@
 import type { Hono } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
-import { rejectAIRequest, withAIGovernance } from '../lib/aiRoute.js';
+import { rejectAIRequest, withAIGovernance, type AIChatMessage } from '../lib/aiRoute.js';
 import { EXPLAIN_SYSTEM_PROMPT, buildExplainUserPrompt } from '../prompts/explain.js';
 import { isAppLocale, type AppLocale } from '@ddlbuilder/shared-types/locale';
 
@@ -13,6 +13,11 @@ type ExplainRequest = {
   locale: AppLocale;
 };
 
+const buildMessages = ({ sql, context, locale }: ExplainRequest): AIChatMessage[] => [
+  { role: 'system', content: EXPLAIN_SYSTEM_PROMPT[locale] },
+  { role: 'user', content: buildExplainUserPrompt(sql, context, locale) },
+];
+
 export function registerExplainRoute(app: Hono<ApiEnv>) {
   app.post('/explain', (c) =>
     withAIGovernance<ExplainRequest>(
@@ -21,6 +26,7 @@ export function registerExplainRoute(app: Hono<ApiEnv>) {
         route: 'explain',
         maxOutputTokens: MAX_OUTPUT_TOKENS,
         bodyMaxBytes: REQUEST_BODY_MAX_BYTES,
+        buildMessages,
         parseRequest: (body) => {
           const sql = typeof body.sql === 'string' ? body.sql : '';
           if (sql.trim().length === 0) {
@@ -36,10 +42,6 @@ export function registerExplainRoute(app: Hono<ApiEnv>) {
       async (session) => {
         const { sql, context, locale } = session.request;
         return session.streamCompletion({
-          messages: [
-            { role: 'system', content: EXPLAIN_SYSTEM_PROMPT[locale] },
-            { role: 'user', content: buildExplainUserPrompt(sql, context, locale) },
-          ],
           scope: 'Explain',
           temperature: 0.3,
           debugInput: { sqlLength: sql.length, contextLength: context.length, locale },

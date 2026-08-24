@@ -223,24 +223,23 @@ const applySuccessfulSettlement = async (
   reservation: AIUsageReservation,
   actualTokens: number,
 ) => {
-  const tokenDelta = reservation.reservedTokens - actualTokens;
-  if (tokenDelta === 0) return;
+  const refundableTokens = reservation.reservedTokens - actualTokens;
+  if (refundableTokens <= 0) return;
 
-  const kind = tokenDelta > 0 ? 'refund' : 'consume';
   const ledgerIdentity = buildLedgerIdentity(reservation, 'settlement');
   await applyCreditMutation(env, {
     userId: reservation.userId,
-    kind,
+    kind: 'refund',
     source: ROUTE_SOURCES[reservation.routeKey],
-    amount: Math.abs(tokenDelta),
+    amount: refundableTokens,
     idempotencyKey: ledgerIdentity,
     relatedUsageId: reservation.usageEventId,
     metadata: {
       routeKey: reservation.routeKey,
       requestId: reservation.requestId,
-      reason: tokenDelta > 0 ? 'actual_less_than_reserved' : 'actual_exceeded_reserved',
+      reason: 'actual_less_than_reserved',
     },
-    ledgerId: `${kind}:${ledgerIdentity}`,
+    ledgerId: `refund:${ledgerIdentity}`,
   });
 };
 
