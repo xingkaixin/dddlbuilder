@@ -104,7 +104,7 @@ export const mergeWorkspaceSnapshotIntoYDoc = (doc: Y.Doc, snapshot: WorkspaceSn
   const currentSavedDrafts = new Map(
     current.savedDrafts.map((draft) => [draft.normalizedName, draft]),
   );
-  const currentFolders = new Set(current.folders.map((folder) => folder.id));
+  const currentFolders = new Map(current.folders.map((folder) => [folder.id, folder]));
   const merged: WorkspaceSnapshot = {
     globalDraft: null,
     drafts: [],
@@ -139,7 +139,9 @@ export const mergeWorkspaceSnapshotIntoYDoc = (doc: Y.Doc, snapshot: WorkspaceSn
     }
   }
   for (const folder of normalizedSnapshot.folders) {
-    if (!currentFolders.has(folder.id)) merged.folders.push(folder);
+    if (shouldAcceptSnapshotRecord(folder.updatedAt, currentFolders.get(folder.id)?.updatedAt)) {
+      merged.folders.push(folder);
+    }
   }
 
   if (

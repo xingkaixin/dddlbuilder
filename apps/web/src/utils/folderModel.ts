@@ -113,20 +113,23 @@ export const createFolderRecord = (
   folders: readonly TableFolder[],
   name: string,
   parentId?: string,
-  options: { id?: string; createdAt?: number } = {},
+  options: { id?: string; createdAt?: number; updatedAt?: number } = {},
 ): TableFolder => {
+  const createdAt = options.createdAt ?? Date.now();
   return {
     id: options.id ?? generateFolderId(),
     name: name.trim(),
     parentId,
     order: nextFolderOrder(folders, parentId),
-    createdAt: options.createdAt ?? Date.now(),
+    createdAt,
+    updatedAt: options.updatedAt ?? createdAt,
   };
 };
 
 export const renameFolderRecord = (folder: TableFolder, name: string): TableFolder => ({
   ...folder,
   name: name.trim(),
+  updatedAt: Date.now(),
 });
 
 export const moveFolderRecord = (
@@ -146,5 +149,6 @@ export const moveFolderRecord = (
     ...folder,
     parentId,
     order: nextFolderOrder(folders, parentId, folderId),
+    updatedAt: Date.now(),
   };
 };

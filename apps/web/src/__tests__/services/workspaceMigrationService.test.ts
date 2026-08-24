@@ -87,7 +87,10 @@ const seedLegacyWorkspace = async () => {
     },
     legacyScope,
   );
-  await bulkPutFolders([{ id: 'folder-1', name: 'Folder', order: 1, createdAt: 6 }], legacyScope);
+  await bulkPutFolders(
+    [{ id: 'folder-1', name: 'Folder', order: 1, createdAt: 6, updatedAt: 6 }],
+    legacyScope,
+  );
 };
 
 const createWorkspaceYDoc = () => {

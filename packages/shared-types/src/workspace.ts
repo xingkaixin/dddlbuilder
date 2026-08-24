@@ -61,6 +61,7 @@ export type TableFolderSnapshot = {
   parentId?: string;
   order: number;
   createdAt: number;
+  updatedAt: number;
 };
 
 export type WorkspaceSnapshot = {

@@ -52,6 +52,7 @@ const completeSnapshot = () => ({
       parentId: 'parent-1',
       order: 0,
       createdAt: 6,
+      updatedAt: 7,
     },
   ],
 });
@@ -499,6 +500,7 @@ describe('decodeWorkspaceSnapshot', () => {
           parentId: 'parent-1',
           order: 0,
           createdAt: 6,
+          updatedAt: 7,
         },
       ],
     });
@@ -519,6 +521,16 @@ describe('decodeWorkspaceSnapshot', () => {
     expect(decoded?.savedTables[0]).not.toHaveProperty('createdAt');
     expect(decoded?.savedTables[0]).not.toHaveProperty('folderId');
     expect(decoded?.folders[0]).not.toHaveProperty('parentId');
+  });
+
+  it('兼容缺少更新时间的旧文件夹快照', () => {
+    const snapshot = completeSnapshot();
+    delete snapshot.folders[0]?.updatedAt;
+
+    expect(decodeWorkspaceSnapshot(snapshot)?.folders[0]).toMatchObject({
+      createdAt: 6,
+      updatedAt: 6,
+    });
   });
 
   it.each([

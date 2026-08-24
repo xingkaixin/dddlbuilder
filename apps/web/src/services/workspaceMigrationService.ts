@@ -235,10 +235,12 @@ export const promoteLegacyUserWorkspaceData = async (
     }
   }
 
-  const targetFolderIds = new Set((await listFolders(scope)).map((folder) => folder.id));
-  const newFolders = folders.filter((folder) => !targetFolderIds.has(folder.id));
-  if (newFolders.length > 0) {
-    await bulkPutFolders(newFolders, scope);
+  const targetFolders = new Map((await listFolders(scope)).map((folder) => [folder.id, folder]));
+  const foldersToPromote = folders.filter((folder) =>
+    shouldPromoteRecord(folder.updatedAt, targetFolders.get(folder.id)?.updatedAt),
+  );
+  if (foldersToPromote.length > 0) {
+    await bulkPutFolders(foldersToPromote, scope);
   }
 
   const targetSession = await readWorkspaceSession(scope);

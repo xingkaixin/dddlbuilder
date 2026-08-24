@@ -198,7 +198,7 @@ describe('workspaceYDocAdapter', () => {
           baseSignature: JSON.stringify(state),
         },
       ],
-      folders: [{ id: 'folder-1', name: 'Core', order: 1, createdAt: 80 }],
+      folders: [{ id: 'folder-1', name: 'Core', order: 1, createdAt: 80, updatedAt: 80 }],
     });
 
     const exported = exportWorkspaceYDocToSnapshot(doc);
@@ -211,7 +211,16 @@ describe('workspaceYDocAdapter', () => {
       state: collaborativeDocumentState(state),
     });
     expect(exported.savedDrafts[0].state.tableComment).toBe('本地草稿');
-    expect(exported.folders).toEqual([{ id: 'folder-1', name: 'Core', order: 1, createdAt: 80 }]);
+    expect(exported.folders).toEqual([
+      {
+        id: 'folder-1',
+        name: 'Core',
+        parentId: undefined,
+        order: 1,
+        createdAt: 80,
+        updatedAt: 80,
+      },
+    ]);
   });
 
   it('keeps field ids stable while applying full persisted states', () => {
@@ -650,7 +659,13 @@ describe('workspaceYDocAdapter', () => {
       }),
       updatedAt: 2,
     });
-    upsertFolderInYDoc(right, { id: 'folder-1', name: 'Core', order: 1, createdAt: 3 });
+    upsertFolderInYDoc(right, {
+      id: 'folder-1',
+      name: 'Core',
+      order: 1,
+      createdAt: 3,
+      updatedAt: 3,
+    });
     for (const update of rightUpdates.splice(0)) Y.applyUpdate(left, update);
 
     upsertFolderInYDoc(left, {
@@ -659,6 +674,7 @@ describe('workspaceYDocAdapter', () => {
       parentId: 'folder-root',
       order: 2,
       createdAt: 3,
+      updatedAt: 3,
     });
     deleteDraftFromYDoc(left, DEFAULT_DRAFT_ID);
     for (const update of leftUpdates.splice(0)) Y.applyUpdate(right, update);
@@ -673,6 +689,7 @@ describe('workspaceYDocAdapter', () => {
         parentId: 'folder-root',
         order: 2,
         createdAt: 3,
+        updatedAt: 3,
       },
     ]);
   });

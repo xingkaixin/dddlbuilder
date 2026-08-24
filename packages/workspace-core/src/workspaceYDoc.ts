@@ -97,6 +97,7 @@ export const readFolderRecords = (doc: Y.Doc): TableFolderSnapshot[] =>
         parentId: typeof record.parentId === 'string' ? record.parentId : undefined,
         order: typeof record.order === 'number' ? record.order : 0,
         createdAt: readWorkspaceTimestamp(record.createdAt),
+        updatedAt: readWorkspaceTimestamp(record.updatedAt ?? record.createdAt),
       };
     })
     .filter((folder): folder is TableFolderSnapshot => folder != null)

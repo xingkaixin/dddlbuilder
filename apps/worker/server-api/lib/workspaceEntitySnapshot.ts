@@ -92,7 +92,7 @@ export const workspaceSnapshotToEntities = (
         order: item.order,
         createdAt: item.createdAt,
       },
-      sourceUpdatedAt: item.createdAt,
+      sourceUpdatedAt: item.updatedAt,
     });
   }
 
@@ -157,6 +157,7 @@ const applyPayloadToSnapshot = (
         ...(typeof payload.parentId === 'string' ? { parentId: payload.parentId } : {}),
         order: typeof payload.order === 'number' ? payload.order : 0,
         createdAt: typeof payload.createdAt === 'number' ? payload.createdAt : updatedAt,
+        updatedAt,
       });
     }
     return;

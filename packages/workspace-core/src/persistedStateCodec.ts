@@ -442,7 +442,8 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
       typeof item.name !== 'string' ||
       !isOptionalString(item.parentId) ||
       !isFiniteNumber(item.order) ||
-      !isFiniteNumber(item.createdAt)
+      !isFiniteNumber(item.createdAt) ||
+      !isOptionalFiniteNumber(item.updatedAt)
     ) {
       return null;
     }
@@ -452,6 +453,7 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
       ...(item.parentId === undefined ? {} : { parentId: item.parentId }),
       order: item.order,
       createdAt: item.createdAt,
+      updatedAt: item.updatedAt ?? item.createdAt,
     });
   }
 

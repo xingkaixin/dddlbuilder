@@ -113,7 +113,7 @@ const createSnapshot = (): WorkspaceSnapshot => ({
       baseSignature: 'base',
     },
   ],
-  folders: [{ id: 'folder-1', name: 'Core', order: 1, createdAt: 5 }],
+  folders: [{ id: 'folder-1', name: 'Core', order: 1, createdAt: 5, updatedAt: 5 }],
 });
 
 const collaborativeState = (state: PersistedState) => toSchemaDocumentState(state);
@@ -316,6 +316,23 @@ describe('workspace YDoc codec', () => {
       'draft_users',
     );
     expect(exported.savedTables[0]?.state.tableName).toBe('newer');
+  });
+
+  it('merges folder changes by modification time', () => {
+    const doc = new Y.Doc();
+    const current = createSnapshot();
+    current.folders[0] = { ...current.folders[0], name: 'Current', updatedAt: 20 };
+    importWorkspaceSnapshotToYDoc(doc, current);
+
+    const stale = createSnapshot();
+    stale.folders[0] = { ...stale.folders[0], name: 'Stale', updatedAt: 19 };
+    mergeWorkspaceSnapshotIntoYDoc(doc, stale);
+    expect(exportWorkspaceYDocToSnapshot(doc).folders[0]?.name).toBe('Current');
+
+    const newer = createSnapshot();
+    newer.folders[0] = { ...newer.folders[0], name: 'Newer', updatedAt: 21 };
+    mergeWorkspaceSnapshotIntoYDoc(doc, newer);
+    expect(exportWorkspaceYDocToSnapshot(doc).folders[0]?.name).toBe('Newer');
   });
 
   it('falls back to defaults for saved entries without metadata', () => {

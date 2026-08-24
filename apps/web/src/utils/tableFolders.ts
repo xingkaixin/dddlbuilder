@@ -19,7 +19,14 @@ const withScopeKey = (scope: WorkspaceScope, id: string) => buildScopedWorkspace
 
 const decodeScopedFolder = (folder: TableFolder, scope: WorkspaceScope): TableFolder | null => {
   const decoded = decodeWorkspaceScopedKey(folder.id, folder.scope, scope);
-  return decoded ? { ...folder, id: decoded.key, scope: decoded.scope } : null;
+  return decoded
+    ? {
+        ...folder,
+        id: decoded.key,
+        scope: decoded.scope,
+        updatedAt: folder.updatedAt ?? folder.createdAt,
+      }
+    : null;
 };
 
 const encodeFolder = (folder: TableFolder, scope: WorkspaceScope): TableFolder => ({

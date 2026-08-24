@@ -279,7 +279,7 @@ describe('workspaceYDocAdapter records', () => {
           updatedAt: 1,
         },
       ],
-      folders: [{ id: 'folder-1', name: 'Renamed', order: 9, createdAt: 1 }],
+      folders: [{ id: 'folder-1', name: 'Renamed', order: 9, createdAt: 1, updatedAt: 1 }],
     });
 
     expect(

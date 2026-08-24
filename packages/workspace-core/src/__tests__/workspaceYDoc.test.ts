@@ -67,7 +67,13 @@ describe('workspace YDoc roots', () => {
     const doc = new Y.Doc();
     expect(isWorkspaceYDocEmpty(doc)).toBe(true);
 
-    writeFolderRecord(doc, { id: 'folder-1', name: 'Core', order: 1, createdAt: 5 });
+    writeFolderRecord(doc, {
+      id: 'folder-1',
+      name: 'Core',
+      order: 1,
+      createdAt: 5,
+      updatedAt: 5,
+    });
 
     expect(isWorkspaceYDocEmpty(doc)).toBe(false);
   });
@@ -116,8 +122,15 @@ describe('workspace YDoc roots', () => {
       parentId: 'root',
       order: 2,
       createdAt: 7,
+      updatedAt: 7,
     });
-    writeFolderRecord(doc, { id: 'root', name: 'Root', order: 1, createdAt: 6 });
+    writeFolderRecord(doc, {
+      id: 'root',
+      name: 'Root',
+      order: 1,
+      createdAt: 6,
+      updatedAt: 6,
+    });
     const malformed = new Y.Map<unknown>();
     malformed.set('name', 1);
     folders.set('broken', malformed);
@@ -128,16 +141,25 @@ describe('workspace YDoc roots', () => {
     const records = readFolderRecords(doc);
 
     expect(records.map((folder) => folder.id)).toEqual(['partial', 'root', 'child']);
-    expect(records[1]).toEqual({ id: 'root', name: 'Root', order: 1, createdAt: 6 });
+    expect(records[1]).toEqual({
+      id: 'root',
+      name: 'Root',
+      parentId: undefined,
+      order: 1,
+      createdAt: 6,
+      updatedAt: 6,
+    });
     expect(Object.keys(records[1]).sort()).toEqual([
       'createdAt',
       'id',
       'name',
       'order',
       'parentId',
+      'updatedAt',
     ]);
     expect(records[2].parentId).toBe('root');
     expect(records[0]).toMatchObject({ id: 'partial', name: 'Partial', order: 0 });
     expect(records[0].createdAt).toBe(0);
+    expect(records[0].updatedAt).toBe(0);
   });
 });
