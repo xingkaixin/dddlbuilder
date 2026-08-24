@@ -1,4 +1,4 @@
-import type { TableMiscConfig } from './index.js';
+import type { TableMiscConfig } from './schema.js';
 
 const clampInteger = (value: unknown, minimum: number, maximum: number, fallback: number) => {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;

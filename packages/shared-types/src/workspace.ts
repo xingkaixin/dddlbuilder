@@ -1,4 +1,4 @@
-import type { PersistedState, SchemaDocumentState } from './index.js';
+import type { PersistedState, SchemaDocumentState } from './schema.js';
 
 export type WorkspaceSource =
   | { kind: 'draft'; draftId: string }

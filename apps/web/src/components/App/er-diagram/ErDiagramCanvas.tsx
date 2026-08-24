@@ -16,7 +16,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { ErNodeData, ErEdgeData } from '@ddlbuilder/shared-types';
+import type { ErNodeData, ErEdgeData } from './types';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { updateSavedTable } from '@/utils/savedTablesDb';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';

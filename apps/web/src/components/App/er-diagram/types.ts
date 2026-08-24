@@ -1,4 +1,4 @@
-import type { PersistedState, ForeignKeyDefinition } from './index.js';
+import type { ForeignKeyDefinition, PersistedState } from '@ddlbuilder/shared-types';
 
 export type ErNodeData = Record<string, unknown> & {
   state: PersistedState;
