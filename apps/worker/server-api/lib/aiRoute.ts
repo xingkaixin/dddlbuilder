@@ -30,6 +30,7 @@ import {
   type ApiErrorCode,
 } from './http.js';
 import { createOpenAIStreamDebugLogger } from './aiStreamDebug.js';
+import { settleAIDailyBudget } from './aiBudget.js';
 
 const DEFAULT_MODEL = 'gpt-4o-mini';
 
@@ -216,16 +217,33 @@ export const withAIGovernance = async <Request>(
     return errorResponse(c, 503, 'Credit service unavailable', 'SERVICE_UNAVAILABLE');
   }
 
+  const settleBudget = (actualTokens: number | null) =>
+    governance.budgetLimitTokens !== null
+      ? settleAIDailyBudget(c.env, reservation.usageEventId, actualTokens)
+      : Promise.resolve(null);
+
   const refund = async (code: ApiErrorCode) => {
-    try {
-      await failAIUsage(c.env, reservation, code);
-    } catch (error) {
-      console.error(`[${route}] failed to refund credits`, error);
+    const [creditResult, budgetResult] = await Promise.allSettled([
+      failAIUsage(c.env, reservation, code),
+      settleBudget(0),
+    ]);
+    if (creditResult.status === 'rejected') {
+      console.error(`[${route}] failed to refund credits`, creditResult.reason);
+    }
+    if (budgetResult.status === 'rejected') {
+      console.error(`[${route}] failed to release budget`, budgetResult.reason);
+    } else if (budgetResult.value !== null) {
+      budgetUsedTokens = budgetResult.value;
     }
   };
 
   try {
-    const budget = await enforceOpenAIDailyBudget(c, estimatedTokens, config);
+    const budget = await enforceOpenAIDailyBudget(
+      c,
+      reservation.usageEventId,
+      estimatedTokens,
+      config,
+    );
     budgetUsedTokens = budget.usedTokens;
     if (budget.response) {
       await refund('BUDGET_EXCEEDED');
@@ -254,9 +272,20 @@ export const withAIGovernance = async <Request>(
     if (settled) return;
     settled = true;
     // 结算晚于响应返回，必须挂 waitUntil，否则线上 isolate 提前结束会丢账
-    const settlement = completeAIUsage(c.env, reservation, usage?.totalTokens ?? null)
-      .then(() => audit(200, retryCount, false, false))
-      .catch((error) => console.error(`[${route}] settlement failed`, error));
+    const settlement = Promise.allSettled([
+      completeAIUsage(c.env, reservation, usage?.totalTokens ?? null),
+      settleBudget(usage?.totalTokens ?? null),
+    ]).then(([creditResult, budgetResult]) => {
+      if (creditResult.status === 'rejected') {
+        console.error(`[${route}] credit settlement failed`, creditResult.reason);
+      }
+      if (budgetResult.status === 'rejected') {
+        console.error(`[${route}] budget settlement failed`, budgetResult.reason);
+      } else if (budgetResult.value !== null) {
+        budgetUsedTokens = budgetResult.value;
+      }
+      audit(200, retryCount, false, false);
+    });
     waitUntil(settlement);
   };
   const settleFailure = (code: ApiErrorCode, status: number, retryCount: number) => {

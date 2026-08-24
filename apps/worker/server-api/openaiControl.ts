@@ -3,6 +3,7 @@ import type { ApiEnv } from './lib/context.js';
 import { dispatchTelegramAuditNotification } from './lib/telegramNotifier.js';
 import { errorResponse, type ApiErrorCode } from './lib/http.js';
 import type { AIRouteKey } from './lib/aiRouteKey.js';
+import { reserveAIDailyBudget } from './lib/aiBudget.js';
 
 type RateLimitRule = {
   maxRequests: number;
@@ -330,28 +331,6 @@ const reserveCounterCapacity = async (
   return row ? Number(row.value) : null;
 };
 
-const getCurrentUtcDateKey = () => {
-  const now = new Date();
-  const y = now.getUTCFullYear();
-  const m = String(now.getUTCMonth() + 1).padStart(2, '0');
-  const d = String(now.getUTCDate()).padStart(2, '0');
-  return `${y}${m}${d}`;
-};
-
-const getMsUntilUtcTomorrow = () => {
-  const now = new Date();
-  const tomorrow = Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate() + 1,
-    0,
-    0,
-    0,
-    0,
-  );
-  return Math.max(60_000, tomorrow - now.getTime());
-};
-
 export async function enforceOpenAIRateLimit(
   c: Context<ApiEnv>,
   routeKey: AIRouteKey,
@@ -417,6 +396,7 @@ export async function enforceOpenAIRateLimit(
 
 export async function enforceOpenAIDailyBudget(
   c: Context<ApiEnv>,
+  usageEventId: string,
   estimatedTokens: number,
   config: OpenAIConfig,
 ): Promise<{
@@ -434,18 +414,11 @@ export async function enforceOpenAIDailyBudget(
     };
   }
 
-  const safeEstimatedTokens = Math.max(1, Math.floor(estimatedTokens));
-  const dayKey = getCurrentUtcDateKey();
-  const ttlMs = getMsUntilUtcTomorrow() + 60 * 60 * 1000;
-
-  const usedTokens = await reserveCounterCapacity(
+  const usedTokens = await reserveAIDailyBudget(
     c.env,
-    'daily-budget',
-    'global',
-    dayKey,
-    safeEstimatedTokens,
+    usageEventId,
+    estimatedTokens,
     config.dailyBudgetMaxTokens,
-    Date.now() + ttlMs,
   );
 
   c.header('X-Budget-Limit-Tokens', String(config.dailyBudgetMaxTokens));

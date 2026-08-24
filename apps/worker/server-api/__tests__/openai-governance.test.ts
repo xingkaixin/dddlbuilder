@@ -102,6 +102,30 @@ let reserveAIUsageMock = vi.fn().mockImplementation(async (_env, input) => ({
 }));
 let completeAIUsageMock = vi.fn().mockResolvedValue(undefined);
 let failAIUsageMock = vi.fn().mockResolvedValue(undefined);
+let reserveAIDailyBudgetMock = vi.fn();
+let settleAIDailyBudgetMock = vi.fn();
+
+const mockAIBudgetModule = () => {
+  const reservations = new Map<string, number>();
+  reserveAIDailyBudgetMock = vi
+    .fn()
+    .mockImplementation(async (_env, usageEventId, estimatedTokens, limitTokens) => {
+      const usedTokens = [...reservations.values()].reduce((total, value) => total + value, 0);
+      if (usedTokens + estimatedTokens > limitTokens) return null;
+      reservations.set(usageEventId, estimatedTokens);
+      return usedTokens + estimatedTokens;
+    });
+  settleAIDailyBudgetMock = vi.fn().mockImplementation(async (_env, usageEventId, actualTokens) => {
+    if (!reservations.has(usageEventId)) return null;
+    reservations.set(usageEventId, actualTokens ?? reservations.get(usageEventId) ?? 0);
+    return [...reservations.values()].reduce((total, value) => total + value, 0);
+  });
+  vi.doMock('../lib/aiBudget.js', () => ({
+    reserveAIDailyBudget: reserveAIDailyBudgetMock,
+    settleAIDailyBudget: settleAIDailyBudgetMock,
+    reconcileTerminalAIBudgets: vi.fn().mockResolvedValue(0),
+  }));
+};
 
 const mockAIUsageModule = async (options?: {
   authenticateError?: string;
@@ -178,6 +202,7 @@ const loadAppWithOpenAIMock = async (
 
   vi.resetModules();
   await mockAIUsageModule(aiUsageOptions);
+  mockAIBudgetModule();
   vi.doMock('openai', () => ({
     default: class OpenAI {
       chat = {
@@ -217,6 +242,7 @@ const loadAuthenticatedApp = async (
 
   vi.resetModules();
   await mockAIUsageModule(aiUsageOptions);
+  mockAIBudgetModule();
   const module = await import('../../api/index');
   const app = module.default as Hono<ApiEnv>;
   const env = createEnv(
@@ -232,6 +258,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.doUnmock('openai');
   vi.doUnmock('../lib/aiUsage.js');
+  vi.doUnmock('../lib/aiBudget.js');
   restoreEnv();
   vi.resetModules();
 });
@@ -632,6 +659,12 @@ describe.sequential('openai governance', () => {
 
     expect((await request()).status).toBe(402);
     expect((await request()).status).toBe(200);
+    expect(reserveAIDailyBudgetMock).toHaveBeenCalledTimes(1);
+    expect(settleAIDailyBudgetMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringMatching(/^usage:/),
+      20,
+    );
     expect(createCompletionMock).toHaveBeenCalledTimes(1);
   });
 
