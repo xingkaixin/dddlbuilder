@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../../lib/context.js';
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import { type PersistedState, toSchemaDocumentState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import { createSqliteD1Database } from '../helpers/sqliteD1.js';
 
@@ -258,14 +258,14 @@ describe('workspace entity checkpoints', () => {
     expect(snapshot.drafts).toEqual([
       {
         draftId: 'draft-1',
-        state: createState('draft_one'),
+        state: toSchemaDocumentState(createState('draft_one')),
         createdAt: 50,
         updatedAt: 100,
         folderId: 'folder_1',
       },
       {
         draftId: 'draft-2',
-        state: createState('draft_two'),
+        state: toSchemaDocumentState(createState('draft_two')),
         createdAt: 40,
         updatedAt: 200,
       },
