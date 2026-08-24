@@ -19,7 +19,7 @@ interface UseSavedTableTabIntegrationParams {
     | 'updateActiveTabSource'
     | 'updateActiveTabSnapshot'
     | 'updateTabTitleBySource'
-    | 'removeTabBySource'
+    | 'closeTabBySource'
   >;
 }
 
@@ -37,7 +37,7 @@ export function useSavedTableTabIntegration({
     updateActiveTabSource,
     updateActiveTabSnapshot,
     updateTabTitleBySource,
-    removeTabBySource,
+    closeTabBySource,
   } = tabs;
   const onSaveSuccess = useCallback(
     async ({
@@ -104,9 +104,9 @@ export function useSavedTableTabIntegration({
 
   const onTabRemove = useCallback(
     (normalizedName: string) => {
-      removeTabBySource({ kind: 'saved_table', normalizedName });
+      closeTabBySource({ kind: 'saved_table', normalizedName });
     },
-    [removeTabBySource],
+    [closeTabBySource],
   );
 
   return { onSaveSuccess, onTabRename, onTabRemove };

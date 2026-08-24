@@ -279,7 +279,7 @@ describe('useRenameDeleteActions', () => {
     expect(showToast).toHaveBeenCalledWith('Custom delete error');
   });
 
-  it('handleConfirmDelete success matching loaded table resets global state', async () => {
+  it('handleConfirmDelete delegates loaded table removal without writing stale editor state', async () => {
     deleteDialog.data = {
       target: { name: 'old', normalizedName: 'test_table' },
     };
@@ -292,10 +292,7 @@ describe('useRenameDeleteActions', () => {
 
     expect(removeSavedTableDraft).toHaveBeenCalledWith('test_table');
     expect(showToast).toHaveBeenCalledWith('已移入回收站：old');
-    expect(setWorkspaceSnapshot).toHaveBeenCalledWith(
-      { kind: 'draft', draftId: 'default' },
-      { test: 1 },
-    );
+    expect(setWorkspaceSnapshot).not.toHaveBeenCalled();
     expect(deleteDialog.closeDialog).toHaveBeenCalled();
   });
 

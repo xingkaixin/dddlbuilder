@@ -59,6 +59,7 @@ describe('useTabLifecycle', () => {
         saveState: vi.fn(),
         selectWorkspaceSnapshot,
         resolveWorkspaceSnapshot,
+        resetWorkspaceSelection: vi.fn(),
       }),
     );
 
@@ -102,6 +103,7 @@ describe('useTabLifecycle', () => {
         saveState,
         selectWorkspaceSnapshot: vi.fn(),
         resolveWorkspaceSnapshot: () => null,
+        resetWorkspaceSelection: vi.fn(),
       }),
     );
 
@@ -125,6 +127,7 @@ describe('useTabLifecycle', () => {
       saveState,
       selectWorkspaceSnapshot: vi.fn(),
       resolveWorkspaceSnapshot: () => null,
+      resetWorkspaceSelection: vi.fn(),
     };
 
     let currentState = initialState;
@@ -143,5 +146,78 @@ describe('useTabLifecycle', () => {
       state: latestState,
       source: { kind: 'draft', draftId: 'draft-a' },
     });
+  });
+
+  it('删除当前保存表时加载相邻标签并同步工作区选择', () => {
+    const draftState = createState('Draft');
+    const savedState = createState('Saved');
+    const savedSource = {
+      kind: 'saved_table' as const,
+      normalizedName: 'saved',
+      tableName: 'Saved',
+      baseSignature: JSON.stringify(savedState),
+    };
+    const store = useTabStore.getState();
+    const draftTabId = store.addTab({
+      title: 'Draft',
+      source: { kind: 'draft', draftId: 'draft-a' },
+      stateSnapshot: draftState,
+    });
+    store.addTab({ title: 'Saved', source: savedSource, stateSnapshot: savedState });
+    const selectWorkspaceSnapshot = vi.fn();
+    const resetWorkspaceSelection = vi.fn();
+
+    const { result } = renderHook(() =>
+      useTabLifecycle({
+        enabled: true,
+        getCurrentState: () => savedState,
+        serializePersistedState: JSON.stringify,
+        saveState: vi.fn(),
+        selectWorkspaceSnapshot,
+        resolveWorkspaceSnapshot: () => null,
+        resetWorkspaceSelection,
+      }),
+    );
+
+    act(() => result.current.closeTabBySource(savedSource));
+
+    expect(useTabStore.getState().activeTabId).toBe(draftTabId);
+    expect(mocks.applySavedState).toHaveBeenCalledWith(draftState);
+    expect(selectWorkspaceSnapshot).toHaveBeenCalledWith(
+      { kind: 'draft', draftId: 'draft-a' },
+      draftState,
+    );
+    expect(resetWorkspaceSelection).not.toHaveBeenCalled();
+  });
+
+  it('关闭最后一个标签时清理工作区选择', () => {
+    const savedState = createState('Saved');
+    const savedSource = {
+      kind: 'saved_table' as const,
+      normalizedName: 'saved',
+      tableName: 'Saved',
+      baseSignature: JSON.stringify(savedState),
+    };
+    useTabStore
+      .getState()
+      .addTab({ title: 'Saved', source: savedSource, stateSnapshot: savedState });
+    const resetWorkspaceSelection = vi.fn();
+
+    const { result } = renderHook(() =>
+      useTabLifecycle({
+        enabled: true,
+        getCurrentState: () => savedState,
+        serializePersistedState: JSON.stringify,
+        saveState: vi.fn(),
+        selectWorkspaceSnapshot: vi.fn(),
+        resolveWorkspaceSnapshot: () => null,
+        resetWorkspaceSelection,
+      }),
+    );
+
+    act(() => result.current.closeTabBySource(savedSource));
+
+    expect(useTabStore.getState()).toMatchObject({ tabs: [], activeTabId: null });
+    expect(resetWorkspaceSelection).toHaveBeenCalledOnce();
   });
 });

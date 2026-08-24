@@ -110,6 +110,7 @@ export function useAppController() {
     hydrated,
     saveState,
     clearState,
+    resetWorkspaceSelection,
     isShareView,
     activeSource,
     draftSummaries,
@@ -180,6 +181,7 @@ export function useAppController() {
     saveState,
     selectWorkspaceSnapshot,
     resolveWorkspaceSnapshot,
+    resetWorkspaceSelection,
   });
   const {
     tabs,

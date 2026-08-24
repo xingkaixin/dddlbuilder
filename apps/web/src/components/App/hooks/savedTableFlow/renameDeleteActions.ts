@@ -143,22 +143,9 @@ export function useRenameDeleteActions({
       removeSavedTableDraft?.(deleteTarget.normalizedName);
       showToast(`已移入回收站：${deleteTarget.name}`);
       onTabRemove?.(deleteTarget.normalizedName);
-      if (deleteTarget.normalizedName === loadedTableNormalizedName) {
-        setWorkspaceSnapshot?.({ kind: 'draft', draftId: 'default' }, buildPersistedState());
-      }
     }
     deleteDialog.closeDialog();
-  }, [
-    deleteTarget,
-    deleteTable,
-    showToast,
-    loadedTableNormalizedName,
-    setWorkspaceSnapshot,
-    buildPersistedState,
-    removeSavedTableDraft,
-    deleteDialog,
-    onTabRemove,
-  ]);
+  }, [deleteTarget, deleteTable, showToast, removeSavedTableDraft, deleteDialog, onTabRemove]);
 
   return {
     handleOpenRenameDialog,

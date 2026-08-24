@@ -61,6 +61,7 @@ export interface UsePersistedStateReturn {
   hydrated: boolean;
   saveState: (payload: WorkspaceSavePayload) => void;
   clearState: () => void;
+  resetWorkspaceSelection: () => void;
   shareLoadStatus: ShareLoadStatus;
   isShareView: boolean;
   activeSource: WorkspaceSelection;
@@ -373,6 +374,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     hydrated,
     saveState,
     clearState,
+    resetWorkspaceSelection: resetToDefaultDraft,
     shareLoadStatus,
     isShareView: Boolean(shareId),
     activeSource,

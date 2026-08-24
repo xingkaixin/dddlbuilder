@@ -11,7 +11,7 @@ describe('useSavedTableTabIntegration', () => {
       updateActiveTabSource: vi.fn(),
       updateActiveTabSnapshot: vi.fn(),
       updateTabTitleBySource: vi.fn(),
-      removeTabBySource: vi.fn(),
+      closeTabBySource: vi.fn(),
     };
     const state = { tableName: 'Users' } as never;
     const { result } = renderHook(() =>
@@ -52,7 +52,7 @@ describe('useSavedTableTabIntegration', () => {
       updateActiveTabSource: vi.fn(),
       updateActiveTabSnapshot: vi.fn(),
       updateTabTitleBySource: vi.fn(),
-      removeTabBySource: vi.fn(),
+      closeTabBySource: vi.fn(),
     };
     const { result } = renderHook(() =>
       useSavedTableTabIntegration({
@@ -73,7 +73,7 @@ describe('useSavedTableTabIntegration', () => {
       { kind: 'saved_table', normalizedName: 'old' },
       'New',
     );
-    expect(tabs.removeTabBySource).toHaveBeenCalledWith({
+    expect(tabs.closeTabBySource).toHaveBeenCalledWith({
       kind: 'saved_table',
       normalizedName: 'new',
     });

@@ -1,6 +1,10 @@
 import { useCallback, useMemo } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { WorkspaceSavePayload, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
+import type {
+  WorkspaceSavePayload,
+  WorkspaceSelection,
+  WorkspaceSource,
+} from '@ddlbuilder/shared-types/workspace';
 import { useTabStore, type WorkspaceTab } from '@/stores';
 import { useShallow } from 'zustand/react/shallow';
 import { applySavedState } from '../applySavedState';
@@ -14,6 +18,7 @@ interface UseTabLifecycleParams {
   resolveWorkspaceSnapshot: (
     source: WorkspaceSelection,
   ) => { source: WorkspaceSelection; state: PersistedState } | null;
+  resetWorkspaceSelection: () => void;
 }
 
 export function useTabLifecycle({
@@ -23,6 +28,7 @@ export function useTabLifecycle({
   saveState,
   selectWorkspaceSnapshot,
   resolveWorkspaceSnapshot,
+  resetWorkspaceSelection,
 }: UseTabLifecycleParams) {
   const { tabs, activeTabId } = useTabStore(
     useShallow((state) => ({ tabs: state.tabs, activeTabId: state.activeTabId })),
@@ -37,7 +43,6 @@ export function useTabLifecycle({
     updateActiveTabSource,
     findTabBySource,
     getActiveTab,
-    removeTabBySource,
     updateTabTitleBySource,
   } = useTabStore.getState();
 
@@ -107,9 +112,19 @@ export function useTabLifecycle({
       const nextActive = getActiveTab();
       if (nextActive) {
         showTab(nextActive);
+      } else {
+        resetWorkspaceSelection();
       }
     },
-    [activeTabId, flushActiveTab, closeTabStore, getActiveTab, showTab],
+    [activeTabId, flushActiveTab, closeTabStore, getActiveTab, resetWorkspaceSelection, showTab],
+  );
+
+  const closeTabBySource = useCallback(
+    (source: WorkspaceSource) => {
+      const tab = findTabBySource(source);
+      if (tab) closeTab(tab.id);
+    },
+    [closeTab, findTabBySource],
   );
 
   return {
@@ -121,7 +136,6 @@ export function useTabLifecycle({
     hydrateTab,
     findTabBySource,
     getActiveTab,
-    removeTabBySource,
     updateTabTitleBySource,
     updateActiveTabTitle,
     updateActiveTabSource,
@@ -131,5 +145,6 @@ export function useTabLifecycle({
     switchToTab,
     switchToTabById,
     closeTab,
+    closeTabBySource,
   };
 }

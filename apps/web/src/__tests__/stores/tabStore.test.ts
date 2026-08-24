@@ -269,44 +269,6 @@ describe('tabStore', () => {
     expect(useTabStore.getState().getActiveTab()).toBeUndefined();
   });
 
-  it('removes tab by source', () => {
-    const state = useTabStore.getState();
-    state.addTab({
-      title: 'Tab 1',
-      source: { kind: 'draft', draftId: 'd1' },
-      stateSnapshot: createSnapshot('t1'),
-    });
-    state.addTab({
-      title: 'Tab 2',
-      source: { kind: 'draft', draftId: 'd2' },
-      stateSnapshot: createSnapshot('t2'),
-    });
-
-    useTabStore.getState().removeTabBySource({ kind: 'draft', draftId: 'd1' });
-    const current = useTabStore.getState();
-    expect(current.tabs).toHaveLength(1);
-    expect(current.tabs[0].title).toBe('Tab 2');
-  });
-
-  it('removing by source adjusts active tab', () => {
-    const state = useTabStore.getState();
-    const id1 = state.addTab({
-      title: 'Tab 1',
-      source: { kind: 'draft', draftId: 'd1' },
-      stateSnapshot: createSnapshot('t1'),
-    });
-    const id2 = state.addTab({
-      title: 'Tab 2',
-      source: { kind: 'draft', draftId: 'd2' },
-      stateSnapshot: createSnapshot('t2'),
-    });
-
-    useTabStore.getState().activateTab(id1);
-    useTabStore.getState().removeTabBySource({ kind: 'draft', draftId: 'd1' });
-    const current = useTabStore.getState();
-    expect(current.activeTabId).toBe(id2);
-  });
-
   it('updateTabTitleBySource updates matching tab', () => {
     const state = useTabStore.getState();
     state.addTab({

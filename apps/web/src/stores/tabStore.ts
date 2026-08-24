@@ -37,7 +37,6 @@ interface TabStoreState {
   updateActiveTabSource: (source: WorkspaceSelection) => void;
   findTabBySource: (source: WorkspaceSource) => WorkspaceTab | undefined;
   getActiveTab: () => WorkspaceTab | undefined;
-  removeTabBySource: (source: WorkspaceSource) => void;
   updateTabTitleBySource: (source: WorkspaceSource, title: string) => void;
 }
 
@@ -119,24 +118,6 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
   getActiveTab: () => {
     const { tabs, activeTabId } = get();
     return tabs.find((t) => t.id === activeTabId);
-  },
-
-  removeTabBySource: (source) => {
-    set((state) => {
-      const tabToRemove = state.tabs.find((t) => isSameSourceId(t.source, source));
-      if (!tabToRemove) return state;
-
-      const nextTabs = state.tabs.filter((t) => t.id !== tabToRemove.id);
-      let nextActiveId = state.activeTabId;
-
-      if (state.activeTabId === tabToRemove.id) {
-        const index = state.tabs.findIndex((t) => t.id === tabToRemove.id);
-        const nextTab = state.tabs[index + 1] ?? state.tabs[index - 1];
-        nextActiveId = nextTab?.id ?? null;
-      }
-
-      return { tabs: nextTabs, activeTabId: nextActiveId };
-    });
   },
 
   updateTabTitleBySource: (source, title) => {
