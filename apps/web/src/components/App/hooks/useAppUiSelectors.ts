@@ -4,21 +4,24 @@ import { useShallow } from 'zustand/react/shallow';
 export function useAppUiSelectors() {
   const actions = useAppUiStore.getState();
   const state = useAppUiStore(
-    useShallow((current) => ({
-      savedTablesDrawerOpen: current.savedTablesDrawerOpen,
-      isSaveDialogOpen: current.dialogs.save,
-      isRenameDialogOpen: current.dialogs.rename,
-      isDeleteDialogOpen: current.dialogs.delete,
-      isClearDialogOpen: current.isClearDialogOpen,
-      showFireworks: current.showFireworks,
-      isDiffDialogOpen: current.isDiffDialogOpen,
-      versionHistoryTarget: current.versionHistoryTarget,
-      timelinePlayerTarget: current.timelinePlayerTarget,
-      isReviewHistoryOpen: current.isReviewHistoryOpen,
-      isStorageEstimatorOpen: current.isStorageEstimatorOpen,
-      isAIGenerateDialogOpen: current.isAIGenerateDialogOpen,
-      isMockDataDialogOpen: current.isMockDataDialogOpen,
-    })),
+    useShallow((current) => {
+      const { activeDialog } = current;
+      return {
+        savedTablesDrawerOpen: current.savedTablesDrawerOpen,
+        isSaveDialogOpen: activeDialog.kind === 'save',
+        isRenameDialogOpen: activeDialog.kind === 'rename',
+        isDeleteDialogOpen: activeDialog.kind === 'delete',
+        isClearDialogOpen: activeDialog.kind === 'clear',
+        showFireworks: current.showFireworks,
+        isDiffDialogOpen: activeDialog.kind === 'diff',
+        versionHistoryTarget: activeDialog.kind === 'version-history' ? activeDialog.target : null,
+        timelinePlayerTarget: activeDialog.kind === 'timeline-player' ? activeDialog.target : null,
+        isReviewHistoryOpen: activeDialog.kind === 'review-history',
+        isStorageEstimatorOpen: activeDialog.kind === 'storage-estimator',
+        isAIGenerateDialogOpen: activeDialog.kind === 'ai-generate',
+        isMockDataDialogOpen: activeDialog.kind === 'mock-data',
+      };
+    }),
   );
 
   return {

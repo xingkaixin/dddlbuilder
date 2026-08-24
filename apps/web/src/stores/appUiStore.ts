@@ -1,29 +1,36 @@
 import { create } from 'zustand';
 
-type CoreDialogState = Record<'save' | 'rename' | 'delete', boolean>;
-
 export interface VersionHistoryTarget {
   normalizedName: string;
   name: string;
 }
 
+type SimpleDialogKind =
+  | 'import'
+  | 'er'
+  | 'ai-schema-patch'
+  | 'save'
+  | 'rename'
+  | 'delete'
+  | 'clear'
+  | 'diff'
+  | 'review-history'
+  | 'storage-estimator'
+  | 'ai-generate'
+  | 'mock-data';
+
+export type ActiveAppDialog =
+  | { kind: 'none' }
+  | { kind: SimpleDialogKind }
+  | { kind: 'version-history'; target: VersionHistoryTarget }
+  | { kind: 'timeline-player'; target: VersionHistoryTarget };
+
 interface AppUiState {
   workspaceSidebarOpen: boolean;
   outputPanelOpen: boolean;
   savedTablesDrawerOpen: boolean;
-  dialogs: CoreDialogState;
-  isImportDialogOpen: boolean;
-  isErDialogOpen: boolean;
-  isAISchemaPatchOpen: boolean;
-  isClearDialogOpen: boolean;
+  activeDialog: ActiveAppDialog;
   showFireworks: boolean;
-  isDiffDialogOpen: boolean;
-  versionHistoryTarget: VersionHistoryTarget | null;
-  timelinePlayerTarget: VersionHistoryTarget | null;
-  isReviewHistoryOpen: boolean;
-  isStorageEstimatorOpen: boolean;
-  isAIGenerateDialogOpen: boolean;
-  isMockDataDialogOpen: boolean;
   setWorkspaceSidebarOpen: (open: boolean) => void;
   setOutputPanelOpen: (open: boolean) => void;
   setSavedTablesDrawerOpen: (open: boolean) => void;
@@ -44,45 +51,50 @@ interface AppUiState {
   setIsMockDataDialogOpen: (open: boolean) => void;
 }
 
-export const useAppUiStore = create<AppUiState>((set) => ({
-  workspaceSidebarOpen: true,
-  outputPanelOpen: true,
-  savedTablesDrawerOpen: false,
-  dialogs: {
-    save: false,
-    rename: false,
-    delete: false,
-  },
-  isImportDialogOpen: false,
-  isErDialogOpen: false,
-  isAISchemaPatchOpen: false,
-  isClearDialogOpen: false,
-  showFireworks: false,
-  isDiffDialogOpen: false,
-  versionHistoryTarget: null,
-  timelinePlayerTarget: null,
-  isReviewHistoryOpen: false,
-  isStorageEstimatorOpen: false,
-  isAIGenerateDialogOpen: false,
-  isMockDataDialogOpen: false,
-  setWorkspaceSidebarOpen: (workspaceSidebarOpen) => set({ workspaceSidebarOpen }),
-  setOutputPanelOpen: (outputPanelOpen) => set({ outputPanelOpen }),
-  setSavedTablesDrawerOpen: (savedTablesDrawerOpen) => set({ savedTablesDrawerOpen }),
-  setIsImportDialogOpen: (isImportDialogOpen) => set({ isImportDialogOpen }),
-  setIsErDialogOpen: (isErDialogOpen) => set({ isErDialogOpen }),
-  setIsAISchemaPatchOpen: (isAISchemaPatchOpen) => set({ isAISchemaPatchOpen }),
-  setIsSaveDialogOpen: (open) => set((state) => ({ dialogs: { ...state.dialogs, save: open } })),
-  setIsRenameDialogOpen: (open) =>
-    set((state) => ({ dialogs: { ...state.dialogs, rename: open } })),
-  setIsDeleteDialogOpen: (open) =>
-    set((state) => ({ dialogs: { ...state.dialogs, delete: open } })),
-  setIsClearDialogOpen: (isClearDialogOpen) => set({ isClearDialogOpen }),
-  setShowFireworks: (showFireworks) => set({ showFireworks }),
-  setIsDiffDialogOpen: (isDiffDialogOpen) => set({ isDiffDialogOpen }),
-  setVersionHistoryTarget: (versionHistoryTarget) => set({ versionHistoryTarget }),
-  setTimelinePlayerTarget: (timelinePlayerTarget) => set({ timelinePlayerTarget }),
-  setIsReviewHistoryOpen: (isReviewHistoryOpen) => set({ isReviewHistoryOpen }),
-  setIsStorageEstimatorOpen: (isStorageEstimatorOpen) => set({ isStorageEstimatorOpen }),
-  setIsAIGenerateDialogOpen: (isAIGenerateDialogOpen) => set({ isAIGenerateDialogOpen }),
-  setIsMockDataDialogOpen: (isMockDataDialogOpen) => set({ isMockDataDialogOpen }),
-}));
+const noDialog: ActiveAppDialog = { kind: 'none' };
+
+const closeDialog = (activeDialog: ActiveAppDialog, kind: ActiveAppDialog['kind']) =>
+  activeDialog.kind === kind ? noDialog : activeDialog;
+
+export const useAppUiStore = create<AppUiState>((set) => {
+  const setDialogOpen = (kind: SimpleDialogKind) => (open: boolean) =>
+    set((state) => ({
+      activeDialog: open ? { kind } : closeDialog(state.activeDialog, kind),
+    }));
+
+  return {
+    workspaceSidebarOpen: true,
+    outputPanelOpen: true,
+    savedTablesDrawerOpen: false,
+    activeDialog: noDialog,
+    showFireworks: false,
+    setWorkspaceSidebarOpen: (workspaceSidebarOpen) => set({ workspaceSidebarOpen }),
+    setOutputPanelOpen: (outputPanelOpen) => set({ outputPanelOpen }),
+    setSavedTablesDrawerOpen: (savedTablesDrawerOpen) => set({ savedTablesDrawerOpen }),
+    setIsImportDialogOpen: setDialogOpen('import'),
+    setIsErDialogOpen: setDialogOpen('er'),
+    setIsAISchemaPatchOpen: setDialogOpen('ai-schema-patch'),
+    setIsSaveDialogOpen: setDialogOpen('save'),
+    setIsRenameDialogOpen: setDialogOpen('rename'),
+    setIsDeleteDialogOpen: setDialogOpen('delete'),
+    setIsClearDialogOpen: setDialogOpen('clear'),
+    setShowFireworks: (showFireworks) => set({ showFireworks }),
+    setIsDiffDialogOpen: setDialogOpen('diff'),
+    setVersionHistoryTarget: (target) =>
+      set((state) => ({
+        activeDialog: target
+          ? { kind: 'version-history', target }
+          : closeDialog(state.activeDialog, 'version-history'),
+      })),
+    setTimelinePlayerTarget: (target) =>
+      set((state) => ({
+        activeDialog: target
+          ? { kind: 'timeline-player', target }
+          : closeDialog(state.activeDialog, 'timeline-player'),
+      })),
+    setIsReviewHistoryOpen: setDialogOpen('review-history'),
+    setIsStorageEstimatorOpen: setDialogOpen('storage-estimator'),
+    setIsAIGenerateDialogOpen: setDialogOpen('ai-generate'),
+    setIsMockDataDialogOpen: setDialogOpen('mock-data'),
+  };
+});

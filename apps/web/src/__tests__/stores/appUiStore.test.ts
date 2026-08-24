@@ -6,25 +6,20 @@ function resetUiStore() {
   state.setWorkspaceSidebarOpen(true);
   state.setOutputPanelOpen(true);
   state.setSavedTablesDrawerOpen(false);
-  state.setIsImportDialogOpen(false);
-  state.setIsErDialogOpen(false);
-  state.setIsAISchemaPatchOpen(false);
-  state.setIsSaveDialogOpen(false);
-  state.setIsRenameDialogOpen(false);
-  state.setIsDeleteDialogOpen(false);
-  state.setIsClearDialogOpen(false);
+  useAppUiStore.setState({ activeDialog: { kind: 'none' } });
   state.setShowFireworks(false);
-  state.setIsDiffDialogOpen(false);
-  state.setVersionHistoryTarget(null);
-  state.setTimelinePlayerTarget(null);
-  state.setIsReviewHistoryOpen(false);
-  state.setIsStorageEstimatorOpen(false);
-  state.setIsAIGenerateDialogOpen(false);
-  state.setIsMockDataDialogOpen(false);
 }
 
 describe('appUiStore', () => {
   beforeEach(resetUiStore);
+
+  it('全局弹窗应互斥', () => {
+    const state = useAppUiStore.getState();
+    state.setIsSaveDialogOpen(true);
+    state.setIsRenameDialogOpen(true);
+
+    expect(useAppUiStore.getState().activeDialog).toEqual({ kind: 'rename' });
+  });
 
   it('集中管理应用布局和核心弹窗', () => {
     const state = useAppUiStore.getState();
@@ -41,12 +36,7 @@ describe('appUiStore', () => {
       workspaceSidebarOpen: false,
       outputPanelOpen: false,
       savedTablesDrawerOpen: true,
-      isImportDialogOpen: true,
-      dialogs: {
-        save: true,
-        rename: true,
-        delete: true,
-      },
+      activeDialog: { kind: 'delete' },
     });
   });
 
@@ -54,26 +44,25 @@ describe('appUiStore', () => {
     const target = { normalizedName: 'users', name: 'Users' };
     const state = useAppUiStore.getState();
 
-    state.setIsClearDialogOpen(true);
     state.setShowFireworks(true);
-    state.setIsDiffDialogOpen(true);
     state.setVersionHistoryTarget(target);
+    expect(useAppUiStore.getState().activeDialog).toEqual({
+      kind: 'version-history',
+      target,
+    });
+
     state.setTimelinePlayerTarget(target);
-    state.setIsReviewHistoryOpen(true);
-    state.setIsStorageEstimatorOpen(true);
-    state.setIsAIGenerateDialogOpen(true);
+    state.setVersionHistoryTarget(null);
+    expect(useAppUiStore.getState().activeDialog).toEqual({
+      kind: 'timeline-player',
+      target,
+    });
+
     state.setIsMockDataDialogOpen(true);
 
     expect(useAppUiStore.getState()).toMatchObject({
-      isClearDialogOpen: true,
       showFireworks: true,
-      isDiffDialogOpen: true,
-      versionHistoryTarget: target,
-      timelinePlayerTarget: target,
-      isReviewHistoryOpen: true,
-      isStorageEstimatorOpen: true,
-      isAIGenerateDialogOpen: true,
-      isMockDataDialogOpen: true,
+      activeDialog: { kind: 'mock-data' },
     });
   });
 });

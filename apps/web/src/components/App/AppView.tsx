@@ -16,11 +16,11 @@ export function AppView() {
     isAISchemaPatchOpen,
   } = useAppUiStore(
     useShallow((state) => ({
-      isImportDialogOpen: state.isImportDialogOpen,
-      isErDialogOpen: state.isErDialogOpen,
+      isImportDialogOpen: state.activeDialog.kind === 'import',
+      isErDialogOpen: state.activeDialog.kind === 'er',
       workspaceSidebarOpen: state.workspaceSidebarOpen,
       outputPanelOpen: state.outputPanelOpen,
-      isAISchemaPatchOpen: state.isAISchemaPatchOpen,
+      isAISchemaPatchOpen: state.activeDialog.kind === 'ai-schema-patch',
     })),
   );
   const {
