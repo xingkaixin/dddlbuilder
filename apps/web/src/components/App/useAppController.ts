@@ -175,7 +175,6 @@ export function useAppController() {
   const tabLifecycle = useTabLifecycle({
     enabled: hydrated && !isShareView,
     getCurrentState: buildPersistedState,
-    activeSource,
     serializePersistedState,
     saveState,
     selectWorkspaceSnapshot,
@@ -190,6 +189,8 @@ export function useAppController() {
     switchToTabById,
     closeTab: handleCloseTab,
   } = tabLifecycle;
+  const activeEditorSource = activeWorkspaceTab?.source ?? activeSource;
+  const canSyncActiveTab = activeWorkspaceTab != null && !activeWorkspaceTab.isLoading;
 
   const {
     savedTables,
@@ -247,9 +248,9 @@ export function useAppController() {
 
   usePersistedSync({
     hydrated,
-    hasOpenTab: tabs.length > 0,
+    hasOpenTab: canSyncActiveTab,
     persistedState,
-    activeSource,
+    activeSource: activeEditorSource,
     saveState,
     currentState: currentPersistedState,
     applyPersistedState: applySavedState,
@@ -271,7 +272,7 @@ export function useAppController() {
   const savedTableTabIntegration = useSavedTableTabIntegration({
     isShareView,
     workspaceScope,
-    activeSource,
+    activeSource: activeEditorSource,
     deleteDraftById,
     removeSavedTableDraft,
     buildPersistedState,
@@ -468,7 +469,7 @@ export function useAppController() {
     tablePresentations,
     shouldShowWorkspaceSkeleton,
   } = useWorkspacePresentation({
-    activeSourceKind: activeSource.kind,
+    activeSourceKind: activeEditorSource.kind,
     activeTabId,
     activeWorkspaceTab,
     draftSummaries,
@@ -538,7 +539,7 @@ export function useAppController() {
         },
       },
       workspace: {
-        activeSource,
+        activeSource: activeEditorSource,
         activeTabId,
         draftSummaries,
         handleCloseTab,

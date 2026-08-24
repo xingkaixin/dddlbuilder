@@ -55,7 +55,6 @@ describe('useTabLifecycle', () => {
       useTabLifecycle({
         enabled: true,
         getCurrentState: () => createState('active'),
-        activeSource: { kind: 'draft', draftId: 'draft-b' },
         serializePersistedState: JSON.stringify,
         saveState: vi.fn(),
         selectWorkspaceSnapshot,
@@ -99,12 +98,6 @@ describe('useTabLifecycle', () => {
       useTabLifecycle({
         enabled: true,
         getCurrentState: () => createState('placeholder'),
-        activeSource: {
-          kind: 'saved_table',
-          normalizedName: 'loading',
-          tableName: 'Loading',
-          baseSignature: '',
-        },
         serializePersistedState: JSON.stringify,
         saveState,
         selectWorkspaceSnapshot: vi.fn(),
@@ -128,7 +121,6 @@ describe('useTabLifecycle', () => {
     const saveState = vi.fn();
     const stableParams = {
       enabled: true,
-      activeSource: { kind: 'draft' as const, draftId: 'draft-a' },
       serializePersistedState: JSON.stringify,
       saveState,
       selectWorkspaceSnapshot: vi.fn(),
@@ -149,7 +141,7 @@ describe('useTabLifecycle', () => {
     act(() => result.current.flushActiveTab());
     expect(saveState).toHaveBeenCalledWith({
       state: latestState,
-      source: stableParams.activeSource,
+      source: { kind: 'draft', draftId: 'draft-a' },
     });
   });
 });

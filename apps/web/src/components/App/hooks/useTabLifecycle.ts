@@ -8,7 +8,6 @@ import { applySavedState } from '../applySavedState';
 interface UseTabLifecycleParams {
   enabled: boolean;
   getCurrentState: () => PersistedState;
-  activeSource: WorkspaceSelection;
   serializePersistedState: (state: PersistedState) => string;
   saveState: (payload: WorkspaceSavePayload) => void;
   selectWorkspaceSnapshot: (source: WorkspaceSelection, state: PersistedState) => void;
@@ -20,7 +19,6 @@ interface UseTabLifecycleParams {
 export function useTabLifecycle({
   enabled,
   getCurrentState,
-  activeSource,
   serializePersistedState,
   saveState,
   selectWorkspaceSnapshot,
@@ -49,14 +47,13 @@ export function useTabLifecycle({
   );
   // 编辑器是唯一真相源，标签快照只在冲刷点回写；内容没变时跳过，避免无谓的持久化。
   const flushActiveTab = useCallback(() => {
-    if (!enabled || activeWorkspaceTab?.isLoading) return;
+    if (!enabled || !activeWorkspaceTab || activeWorkspaceTab.isLoading) return;
     const currentState = getCurrentState();
-    const tabSnapshot = activeWorkspaceTab?.stateSnapshot ?? null;
-    const tabSnapshotSignature = tabSnapshot ? serializePersistedState(tabSnapshot) : null;
+    const tabSnapshotSignature = serializePersistedState(activeWorkspaceTab.stateSnapshot);
     if (tabSnapshotSignature === serializePersistedState(currentState)) return;
 
     updateActiveTabSnapshot(currentState);
-    saveState({ state: currentState, source: activeSource });
+    saveState({ state: currentState, source: activeWorkspaceTab.source });
   }, [
     enabled,
     activeWorkspaceTab,
@@ -64,7 +61,6 @@ export function useTabLifecycle({
     serializePersistedState,
     updateActiveTabSnapshot,
     saveState,
-    activeSource,
   ]);
 
   const showTab = useCallback(

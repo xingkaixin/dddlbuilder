@@ -54,13 +54,13 @@ export function usePersistedSync({
   }, [activeSource, currentSaveKey, currentState, hasOpenTab, hydrated, saveState, sourceId]);
 
   useEffect(() => {
-    if (!hydrated || !persistedState) return;
+    if (!hydrated || !hasOpenTab || !persistedState) return;
     pendingAppliedStateRef.current = {
       sourceId,
       signature: serializePersistedStateForComparison(persistedState),
     };
     applyPersistedState(persistedState);
-  }, [applyPersistedState, hydrated, persistedState, sourceId]);
+  }, [applyPersistedState, hasOpenTab, hydrated, persistedState, sourceId]);
 
   useEffect(() => {
     const pendingAppliedState = pendingAppliedStateRef.current;

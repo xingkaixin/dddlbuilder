@@ -64,11 +64,22 @@ describe('usePersistedSync', () => {
 
   it('没有打开标签页时不保存', () => {
     const saveState = vi.fn();
-    renderHook(() => usePersistedSync(createBaseParams({ hasOpenTab: false, saveState })));
+    const applyPersistedState = vi.fn();
+    renderHook(() =>
+      usePersistedSync(
+        createBaseParams({
+          hasOpenTab: false,
+          persistedState: createState('remote'),
+          saveState,
+          applyPersistedState,
+        }),
+      ),
+    );
 
     act(() => vi.advanceTimersByTime(1000));
 
     expect(saveState).not.toHaveBeenCalled();
+    expect(applyPersistedState).not.toHaveBeenCalled();
   });
 
   it('在 500ms 后保存当前编辑态', () => {
