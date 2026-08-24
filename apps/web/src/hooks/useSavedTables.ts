@@ -379,33 +379,6 @@ export function useSavedTables() {
     [currentScope, putTables, readAllTables, refresh],
   );
 
-  // 清理指定文件夹ID关联的表（将它们移回未分组）
-  const clearTablesFromFolders = useCallback(
-    async (folderIds: string[]): Promise<void> => {
-      if (!currentScope) throw new Error('工作区未就绪');
-      const folderIdSet = new Set(folderIds);
-      const tables = savedTables.filter(
-        (table) => table.folderId && folderIdSet.has(table.folderId),
-      );
-      const updatedRecords = (
-        await Promise.all(
-          tables.map(async (table): Promise<SavedTableRecord | null> => {
-            const record = await readTable(table.normalizedName);
-            if (!record) return null;
-            return {
-              ...record,
-              folderId: undefined,
-              updatedAt: Date.now(),
-            } satisfies SavedTableRecord;
-          }),
-        )
-      ).filter((record): record is SavedTableRecord => record != null);
-      await putTables(updatedRecords);
-      await refresh();
-    },
-    [currentScope, putTables, readTable, refresh, savedTables],
-  );
-
   return {
     savedTables,
     trashedTables,
@@ -421,6 +394,5 @@ export function useSavedTables() {
     loadTable,
     moveTableToFolder,
     importTables,
-    clearTablesFromFolders,
   };
 }

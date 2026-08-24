@@ -11,7 +11,6 @@ interface UseFolderActionsParams {
   renameFolder: (id: string, name: string) => Promise<void>;
   moveFolder: (id: string, parentId?: string) => Promise<void>;
   deleteFolderAction: (id: string) => Promise<string[]>;
-  clearTablesFromFolders: (folderIds: string[]) => Promise<void>;
   deleteTable: (normalizedName: string) => Promise<SaveTableResult>;
   moveTableToFolder: (normalizedName: string, folderId?: string) => Promise<SaveTableResult>;
   showToast: (message: string) => void;
@@ -24,7 +23,6 @@ export function useFolderActions({
   renameFolder,
   moveFolder,
   deleteFolderAction,
-  clearTablesFromFolders,
   deleteTable,
   moveTableToFolder,
   showToast,
@@ -100,8 +98,22 @@ export function useFolderActions({
         (table) => table.folderId && affectedFolderIds.includes(table.folderId),
       );
 
-      await clearTablesFromFolders(affectedFolderIds);
-      await Promise.all(affectedTables.map((table) => deleteTable(table.normalizedName)));
+      const deleteResults = await Promise.all(
+        affectedTables.map((table) => deleteTable(table.normalizedName)),
+      );
+      const failedTableDeletes = deleteResults.filter((result) => !result.ok);
+      if (failedTableDeletes.length > 0) {
+        console.error(
+          JSON.stringify({
+            event: 'folder_delete_table_failure',
+            folderId: deleteFolderTarget.id,
+            failedCount: failedTableDeletes.length,
+            reasons: failedTableDeletes.map((result) => result.reason),
+          }),
+        );
+        const firstFailure = failedTableDeletes[0];
+        throw new Error(firstFailure.message ?? i18n.t('savedTables.toast.deleteFolderFailed'));
+      }
       await deleteFolderAction(deleteFolderTarget.id);
       showToast(
         i18n.t('savedTables.toast.deletedFolder', {
@@ -113,14 +125,7 @@ export function useFolderActions({
         error instanceof Error ? error.message : i18n.t('savedTables.toast.deleteFolderFailed'),
       );
     }
-  }, [
-    deleteFolderTarget,
-    savedTables,
-    clearTablesFromFolders,
-    deleteTable,
-    deleteFolderAction,
-    showToast,
-  ]);
+  }, [deleteFolderTarget, savedTables, deleteTable, deleteFolderAction, showToast]);
 
   const deleteFolderTableCount = useMemo(() => {
     if (!deleteFolderTarget) return 0;

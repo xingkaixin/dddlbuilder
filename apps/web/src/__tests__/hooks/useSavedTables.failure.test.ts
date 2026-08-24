@@ -302,48 +302,4 @@ describe('useSavedTables failure states', () => {
     });
     expect(failed).toEqual({ successCount: 0, skipCount: 0, failCount: 1 });
   });
-
-  it('clearTablesFromFolders should update matched existing records', async () => {
-    savedTableMocks.listSavedTableMetadata.mockResolvedValueOnce([
-      {
-        normalizedName: 'a',
-        name: 'A',
-        dbType: 'mysql',
-        fieldCount: 1,
-        folderId: 'folder-a',
-        createdAt: 1,
-        updatedAt: 2,
-      },
-      {
-        normalizedName: 'b',
-        name: 'B',
-        dbType: 'mysql',
-        fieldCount: 1,
-        folderId: 'folder-b',
-        createdAt: 1,
-        updatedAt: 3,
-      },
-    ]);
-    savedTableMocks.getSavedTable.mockImplementation(async (name: string) => {
-      if (name === 'a') return createRecord('a', 'A', 'folder-a');
-      return null;
-    });
-
-    const { result } = renderHook(() => useSavedTables());
-    await waitFor(() => expect(result.current.loading).toBe(false));
-
-    await act(async () => {
-      await result.current.clearTablesFromFolders(['folder-a', 'folder-b']);
-    });
-
-    expect(savedTableMocks.updateSavedTables).toHaveBeenCalledWith(
-      [
-        expect.objectContaining({
-          normalizedName: 'a',
-          folderId: undefined,
-        }),
-      ],
-      { kind: 'anonymous' },
-    );
-  });
 });

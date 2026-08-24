@@ -204,7 +204,6 @@ export function useAppController() {
     renameTable,
     loadTable,
     moveTableToFolder,
-    clearTablesFromFolders,
   } = savedTableData;
 
   const {
@@ -236,7 +235,6 @@ export function useAppController() {
     renameFolder,
     moveFolder,
     deleteFolderAction,
-    clearTablesFromFolders,
     deleteTable,
     moveTableToFolder,
     showToast,
