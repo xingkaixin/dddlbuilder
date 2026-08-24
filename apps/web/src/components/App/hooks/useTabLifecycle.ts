@@ -2,11 +2,12 @@ import { useCallback, useMemo } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSavePayload, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
 import { useTabStore, type WorkspaceTab } from '@/stores';
+import { useShallow } from 'zustand/react/shallow';
 import { applySavedState } from '../applySavedState';
 
 interface UseTabLifecycleParams {
   enabled: boolean;
-  currentState: PersistedState;
+  getCurrentState: () => PersistedState;
   activeSource: WorkspaceSelection;
   serializePersistedState: (state: PersistedState) => string;
   saveState: (payload: WorkspaceSavePayload) => void;
@@ -18,16 +19,17 @@ interface UseTabLifecycleParams {
 
 export function useTabLifecycle({
   enabled,
-  currentState,
+  getCurrentState,
   activeSource,
   serializePersistedState,
   saveState,
   selectWorkspaceSnapshot,
   resolveWorkspaceSnapshot,
 }: UseTabLifecycleParams) {
+  const { tabs, activeTabId } = useTabStore(
+    useShallow((state) => ({ tabs: state.tabs, activeTabId: state.activeTabId })),
+  );
   const {
-    tabs,
-    activeTabId,
     addTab,
     activateTab,
     closeTab: closeTabStore,
@@ -39,16 +41,16 @@ export function useTabLifecycle({
     getActiveTab,
     removeTabBySource,
     updateTabTitleBySource,
-  } = useTabStore();
+  } = useTabStore.getState();
 
   const activeWorkspaceTab = useMemo(
     () => tabs.find((tab) => tab.id === activeTabId) ?? null,
     [activeTabId, tabs],
   );
-
   // 编辑器是唯一真相源，标签快照只在冲刷点回写；内容没变时跳过，避免无谓的持久化。
   const flushActiveTab = useCallback(() => {
     if (!enabled || activeWorkspaceTab?.isLoading) return;
+    const currentState = getCurrentState();
     const tabSnapshot = activeWorkspaceTab?.stateSnapshot ?? null;
     const tabSnapshotSignature = tabSnapshot ? serializePersistedState(tabSnapshot) : null;
     if (tabSnapshotSignature === serializePersistedState(currentState)) return;
@@ -58,8 +60,8 @@ export function useTabLifecycle({
   }, [
     enabled,
     activeWorkspaceTab,
+    getCurrentState,
     serializePersistedState,
-    currentState,
     updateActiveTabSnapshot,
     saveState,
     activeSource,

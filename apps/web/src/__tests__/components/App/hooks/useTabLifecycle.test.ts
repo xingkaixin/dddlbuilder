@@ -54,7 +54,7 @@ describe('useTabLifecycle', () => {
     const { result } = renderHook(() =>
       useTabLifecycle({
         enabled: true,
-        currentState: createState('active'),
+        getCurrentState: () => createState('active'),
         activeSource: { kind: 'draft', draftId: 'draft-b' },
         serializePersistedState: JSON.stringify,
         saveState: vi.fn(),
@@ -98,7 +98,7 @@ describe('useTabLifecycle', () => {
     const { result } = renderHook(() =>
       useTabLifecycle({
         enabled: true,
-        currentState: createState('placeholder'),
+        getCurrentState: () => createState('placeholder'),
         activeSource: {
           kind: 'saved_table',
           normalizedName: 'loading',
@@ -115,5 +115,41 @@ describe('useTabLifecycle', () => {
     act(() => result.current.switchToTabById(targetTabId));
 
     expect(saveState).not.toHaveBeenCalled();
+  });
+
+  it('编辑内容变化时保持标签命令稳定并读取最新状态', () => {
+    const initialState = createState('initial');
+    const latestState = createState('latest');
+    useTabStore.getState().addTab({
+      title: 'Draft',
+      source: { kind: 'draft', draftId: 'draft-a' },
+      stateSnapshot: initialState,
+    });
+    const saveState = vi.fn();
+    const stableParams = {
+      enabled: true,
+      activeSource: { kind: 'draft' as const, draftId: 'draft-a' },
+      serializePersistedState: JSON.stringify,
+      saveState,
+      selectWorkspaceSnapshot: vi.fn(),
+      resolveWorkspaceSnapshot: () => null,
+    };
+
+    let currentState = initialState;
+    const getCurrentState = () => currentState;
+    const { result, rerender } = renderHook(() =>
+      useTabLifecycle({ ...stableParams, getCurrentState }),
+    );
+    const initialFlush = result.current.flushActiveTab;
+
+    currentState = latestState;
+    rerender();
+
+    expect(result.current.flushActiveTab).toBe(initialFlush);
+    act(() => result.current.flushActiveTab());
+    expect(saveState).toHaveBeenCalledWith({
+      state: latestState,
+      source: stableParams.activeSource,
+    });
   });
 });

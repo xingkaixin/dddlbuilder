@@ -174,7 +174,7 @@ export function useAppController() {
 
   const tabLifecycle = useTabLifecycle({
     enabled: hydrated && !isShareView,
-    currentState: currentPersistedState,
+    getCurrentState: buildPersistedState,
     activeSource,
     serializePersistedState,
     saveState,

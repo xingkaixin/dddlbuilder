@@ -18,10 +18,74 @@ import {
   serializePersistedStateForComparison,
 } from '@/utils/persistedStateSignature';
 import { diffPersistedState, supportsMysqlPartition, type TableDiff } from '@ddlbuilder/ddl-core';
+import { useEditorStore } from '@/stores';
+import type { EditorStoreState } from '@/stores/editorStoreTypes';
+
+type EditorDocumentState = Pick<
+  EditorStoreState,
+  | 'objectType'
+  | 'schemaName'
+  | 'tableName'
+  | 'tableComment'
+  | 'dbType'
+  | 'sqlFormatMode'
+  | 'viewDefinition'
+  | 'viewCreateOrReplace'
+  | 'rows'
+  | 'addCount'
+  | 'indexInput'
+  | 'currentIndexFields'
+  | 'indexes'
+  | 'authInput'
+  | 'authObjects'
+  | 'citusShardingConfig'
+  | 'mysqlPartitionConfig'
+  | 'tableMiscConfig'
+  | 'fieldTableFreezeEnabled'
+  | 'fieldTableFreezeColumns'
+  | 'foreignKeys'
+>;
+
+const buildEditorPersistedState = (state: EditorDocumentState): PersistedState => ({
+  objectType: state.objectType,
+  schemaName: state.schemaName,
+  tableName: state.tableName,
+  tableComment: state.tableComment,
+  dbType: state.dbType,
+  sqlFormatMode: state.sqlFormatMode,
+  viewDefinition: state.viewDefinition,
+  viewCreateOrReplace: state.viewCreateOrReplace,
+  rows: state.rows.map((row) => ({
+    ...row,
+    fieldName: row.fieldName || '',
+    fieldComment: row.fieldComment || '',
+    fieldType: row.fieldType || '',
+    nullable: row.nullable !== false,
+    defaultKind: row.defaultKind ?? 'none',
+    defaultValue: row.defaultValue || '',
+    onUpdate: row.onUpdate ?? 'none',
+  })),
+  addCount: state.addCount,
+  indexInput: state.indexInput,
+  currentIndexFields: state.currentIndexFields,
+  indexes: sanitizeIndexesForPersist(state.indexes),
+  authInput: state.authInput,
+  authObjects: state.authObjects,
+  citusShardingConfig: state.dbType === 'postgresql-citus' ? state.citusShardingConfig : undefined,
+  mysqlPartitionConfig: supportsMysqlPartition(state.dbType)
+    ? state.mysqlPartitionConfig
+    : undefined,
+  tableMiscConfig: state.tableMiscConfig,
+  fieldTableViewConfig: {
+    freezeEnabled: state.fieldTableFreezeEnabled,
+    freezeColumns: state.fieldTableFreezeColumns,
+  },
+  foreignKeys: state.foreignKeys.length > 0 ? state.foreignKeys : undefined,
+});
 
 interface UseDerivedTableStateDeps {
   // 基础表数据
-  objectType: PersistedState['objectType'];
+  objectType: NonNullable<PersistedState['objectType']>;
   schemaName: string;
   tableName: string;
   tableComment: string;
@@ -104,49 +168,31 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
   const canPartitionMysqlTable = supportsMysqlPartition(dbType);
 
   // --- 持久化状态 ---
-  const normalizedRowsForPersist = useMemo(
-    () =>
-      rows.map((row) => ({
-        ...row,
-        fieldName: row.fieldName || '',
-        fieldComment: row.fieldComment || '',
-        fieldType: row.fieldType || '',
-        nullable: row.nullable !== false,
-        defaultKind: row.defaultKind ?? 'none',
-        defaultValue: row.defaultValue || '',
-        onUpdate: row.onUpdate ?? 'none',
-      })),
-    [rows],
-  );
-
-  const sanitizedIndexesForPersist = useMemo(() => sanitizeIndexesForPersist(indexes), [indexes]);
-
   const currentPersistedState = useMemo(
-    (): PersistedState => ({
-      objectType,
-      schemaName,
-      tableName,
-      tableComment,
-      dbType,
-      sqlFormatMode,
-      viewDefinition,
-      viewCreateOrReplace,
-      rows: normalizedRowsForPersist,
-      addCount,
-      indexInput,
-      currentIndexFields,
-      indexes: sanitizedIndexesForPersist,
-      authInput,
-      authObjects,
-      citusShardingConfig: dbType === 'postgresql-citus' ? citusShardingConfig : undefined,
-      mysqlPartitionConfig: canPartitionMysqlTable ? mysqlPartitionConfig : undefined,
-      tableMiscConfig,
-      fieldTableViewConfig: {
-        freezeEnabled: fieldTableFreezeEnabled,
-        freezeColumns: fieldTableFreezeColumns,
-      },
-      foreignKeys: foreignKeys.length > 0 ? foreignKeys : undefined,
-    }),
+    () =>
+      buildEditorPersistedState({
+        objectType,
+        schemaName,
+        tableName,
+        tableComment,
+        dbType,
+        sqlFormatMode,
+        viewDefinition,
+        viewCreateOrReplace,
+        rows,
+        addCount,
+        indexInput,
+        currentIndexFields,
+        indexes,
+        authInput,
+        authObjects,
+        citusShardingConfig,
+        mysqlPartitionConfig,
+        tableMiscConfig,
+        fieldTableFreezeEnabled,
+        fieldTableFreezeColumns,
+        foreignKeys,
+      }),
     [
       schemaName,
       tableName,
@@ -156,16 +202,15 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
       viewCreateOrReplace,
       dbType,
       sqlFormatMode,
-      normalizedRowsForPersist,
+      rows,
       addCount,
       indexInput,
       currentIndexFields,
-      sanitizedIndexesForPersist,
+      indexes,
       authInput,
       authObjects,
       citusShardingConfig,
       mysqlPartitionConfig,
-      canPartitionMysqlTable,
       tableMiscConfig,
       fieldTableFreezeEnabled,
       fieldTableFreezeColumns,
@@ -174,8 +219,8 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
   );
 
   const buildPersistedState = useCallback(
-    (): PersistedState => currentPersistedState,
-    [currentPersistedState],
+    () => buildEditorPersistedState(useEditorStore.getState()),
+    [],
   );
 
   const serializePersistedState = serializePersistedStateForComparison;

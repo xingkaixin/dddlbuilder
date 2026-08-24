@@ -1,4 +1,5 @@
 import { useEditorStore } from '@/stores';
+import { useShallow } from 'zustand/react/shallow';
 
 /**
  * 聚合 App 组件所需的所有 zustand selector，按功能分组。
@@ -51,50 +52,36 @@ export function useAppSelectors() {
     syncForeignKeyFieldRename,
   } = useEditorStore.getState();
 
-  // --- 基础表配置 ---
-  const schemaName = useEditorStore((s) => s.schemaName);
-  const tableName = useEditorStore((s) => s.tableName);
-  const tableComment = useEditorStore((s) => s.tableComment);
-  const objectType = useEditorStore((s) => s.objectType);
-  const viewDefinition = useEditorStore((s) => s.viewDefinition);
-  const viewCreateOrReplace = useEditorStore((s) => s.viewCreateOrReplace);
-  const dbType = useEditorStore((s) => s.dbType);
-  const sqlFormatMode = useEditorStore((s) => s.sqlFormatMode);
-  const addCount = useEditorStore((s) => s.addCount);
-  const activeTab = useEditorStore((s) => s.activeTab);
-
-  // --- 冻结列配置 ---
-  const fieldTableFreezeEnabled = useEditorStore((s) => s.fieldTableFreezeEnabled);
-  const fieldTableFreezeColumns = useEditorStore((s) => s.fieldTableFreezeColumns);
-
-  // --- 全局 UI 状态 ---
-  const showFireworks = useEditorStore((s) => s.showFireworks);
-
-  // --- 保存表相关 ---
-  const savedTablesDrawerOpen = useEditorStore((s) => s.savedTablesDrawerOpen);
-
-  // --- 对话框开关 ---
-  const isSaveDialogOpen = useEditorStore((s) => s.dialogs.save);
-  const isRenameDialogOpen = useEditorStore((s) => s.dialogs.rename);
-  const isDeleteDialogOpen = useEditorStore((s) => s.dialogs.delete);
-
-  // --- 其余 store 的状态值 ---
-  const rows = useEditorStore((s) => s.rows);
-  const indexInput = useEditorStore((s) => s.indexInput);
-  const currentIndexFields = useEditorStore((s) => s.currentIndexFields);
-  const indexes = useEditorStore((s) => s.indexes);
-  const foreignKeys = useEditorStore((s) => s.foreignKeys);
+  const state = useEditorStore(
+    useShallow((current) => ({
+      schemaName: current.schemaName,
+      tableName: current.tableName,
+      tableComment: current.tableComment,
+      objectType: current.objectType,
+      viewDefinition: current.viewDefinition,
+      viewCreateOrReplace: current.viewCreateOrReplace,
+      dbType: current.dbType,
+      sqlFormatMode: current.sqlFormatMode,
+      addCount: current.addCount,
+      activeTab: current.activeTab,
+      fieldTableFreezeEnabled: current.fieldTableFreezeEnabled,
+      fieldTableFreezeColumns: current.fieldTableFreezeColumns,
+      showFireworks: current.showFireworks,
+      savedTablesDrawerOpen: current.savedTablesDrawerOpen,
+      isSaveDialogOpen: current.dialogs.save,
+      isRenameDialogOpen: current.dialogs.rename,
+      isDeleteDialogOpen: current.dialogs.delete,
+      rows: current.rows,
+      indexInput: current.indexInput,
+      currentIndexFields: current.currentIndexFields,
+      indexes: current.indexes,
+      foreignKeys: current.foreignKeys,
+    })),
+  );
 
   return {
+    ...state,
     // 基础表配置
-    schemaName,
-    tableName,
-    tableComment,
-    objectType,
-    viewDefinition,
-    viewCreateOrReplace,
-    dbType,
-    sqlFormatMode,
     setSchemaName,
     setTableName,
     setTableComment,
@@ -103,30 +90,21 @@ export function useAppSelectors() {
     setViewCreateOrReplace,
     setDbType,
     setSqlFormatMode,
-    addCount,
     setAddCount,
-    activeTab,
     setActiveTab,
     resetTableConfig,
     resetTableViewConfig,
     // 冻结列
-    fieldTableFreezeEnabled,
     setFieldTableFreezeEnabled,
-    fieldTableFreezeColumns,
     setFieldTableFreezeColumns,
     // 全局 UI
     setIsClearDialogOpen,
-    showFireworks,
     setShowFireworks,
     // 保存表
-    savedTablesDrawerOpen,
     setSavedTablesDrawerOpen,
     // 对话框
-    isSaveDialogOpen,
     setIsSaveDialogOpen,
-    isRenameDialogOpen,
     setIsRenameDialogOpen,
-    isDeleteDialogOpen,
     setIsDeleteDialogOpen,
     setIsDiffDialogOpen,
     setVersionHistoryTarget,
@@ -136,20 +114,15 @@ export function useAppSelectors() {
     setIsMockDataDialogOpen,
     setTimelinePlayerTarget,
     // Field store
-    rows,
     setRows,
     resetTableRows,
     // Index store
-    indexInput,
-    currentIndexFields,
-    indexes,
     setIndexInput,
     setCurrentIndexFields,
     updateIndexNames,
     resetIndexState,
     setIndexes,
     // ForeignKey store
-    foreignKeys,
     setForeignKeys,
     resetForeignKeyState,
     addForeignKey,
