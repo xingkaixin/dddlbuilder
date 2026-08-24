@@ -8,8 +8,6 @@ import type {
   ForeignKeyDefinition,
 } from '@ddlbuilder/shared-types';
 import { diffPersistedState } from '../utils/tableDiff';
-import { DDLStrategyFactory } from '../factories/DDLStrategyFactory';
-import { ORMGeneratorFactory } from '../factories/ORMGeneratorFactory';
 import { buildDDL, buildViewDDL, buildDCL, buildOracleSynonyms } from '../utils/ddlGenerators';
 import {
   supportsStorageOption,
@@ -21,7 +19,6 @@ import {
   supportsOracleStorageOption,
   buildTableOptionsClause,
 } from '../utils/tableOptions';
-import { TypeMapper } from '../utils/TypeMapper';
 
 const createPersistedState = (overrides: Partial<PersistedState> = {}): PersistedState => ({
   tableName: 'users',
@@ -429,53 +426,6 @@ describe('diffPersistedState', () => {
   });
 });
 
-describe('DDLStrategyFactory', () => {
-  it('creates strategy for all supported databases', () => {
-    const types = DDLStrategyFactory.getSupportedDatabaseTypes();
-    for (const dbType of types) {
-      const strategy = DDLStrategyFactory.create(dbType);
-      expect(strategy).toBeDefined();
-      expect(strategy.getDatabaseType()).toBe(dbType);
-    }
-  });
-
-  it('throws for unsupported database', () => {
-    expect(() => DDLStrategyFactory.create('unknown' as any)).toThrow('Unsupported database type');
-  });
-
-  it('returns supported types list', () => {
-    const types = DDLStrategyFactory.getSupportedDatabaseTypes();
-    expect(types).toContain('mysql');
-    expect(types).toContain('postgresql');
-    expect(types).toContain('oracle');
-    expect(types).toContain('sqlserver');
-    expect(types.length).toBeGreaterThan(10);
-  });
-});
-
-describe('ORMGeneratorFactory', () => {
-  it('creates generator for all supported targets', () => {
-    const targets = ORMGeneratorFactory.getSupportedTargets();
-    for (const target of targets) {
-      const generator = ORMGeneratorFactory.create(target);
-      expect(generator).toBeDefined();
-    }
-  });
-
-  it('throws for unsupported target', () => {
-    expect(() => ORMGeneratorFactory.create('unknown' as any)).toThrow('Unsupported ORM target');
-  });
-
-  it('returns supported targets list', () => {
-    const targets = ORMGeneratorFactory.getSupportedTargets();
-    expect(targets).toContain('prisma');
-    expect(targets).toContain('typeorm');
-    expect(targets).toContain('sqlalchemy');
-    expect(targets).toContain('gorm');
-    expect(targets).toContain('jpa');
-  });
-});
-
 describe('buildDDL', () => {
   const fields: NormalizedField[] = [
     {
@@ -773,83 +723,5 @@ describe('tableOptions', () => {
   it('supportsStorageOption returns true only for hive', () => {
     expect(supportsStorageOption('hive')).toBe(true);
     expect(supportsStorageOption('mysql')).toBe(false);
-  });
-});
-
-describe('TypeMapper', () => {
-  it('maps varchar for mysql', () => {
-    const mapper = TypeMapper.create('mysql');
-    expect(mapper.mapType({ baseType: 'varchar', args: [], unsigned: false, raw: 'varchar' })).toBe(
-      'VARCHAR(255)',
-    );
-  });
-
-  it('maps int for postgresql', () => {
-    const mapper = TypeMapper.create('postgresql');
-    expect(mapper.mapType({ baseType: 'int', args: [], unsigned: false, raw: 'int' })).toBe(
-      'INTEGER',
-    );
-  });
-
-  it('preserves custom args when provided', () => {
-    const mapper = TypeMapper.create('mysql');
-    expect(
-      mapper.mapType({ baseType: 'varchar', args: ['100'], unsigned: false, raw: 'varchar(100)' }),
-    ).toBe('VARCHAR(100)');
-  });
-
-  it('adds unsigned suffix for mysql', () => {
-    const mapper = TypeMapper.create('mysql');
-    expect(mapper.mapType({ baseType: 'int', args: [], unsigned: true, raw: 'int unsigned' })).toBe(
-      'INT UNSIGNED',
-    );
-  });
-
-  it('does not add unsigned for postgresql', () => {
-    const mapper = TypeMapper.create('postgresql');
-    expect(mapper.mapType({ baseType: 'int', args: [], unsigned: true, raw: 'int unsigned' })).toBe(
-      'INTEGER',
-    );
-  });
-
-  it('returns raw type for unknown mapping', () => {
-    const mapper = TypeMapper.create('mysql');
-    expect(
-      mapper.mapType({ baseType: 'geometry', args: [], unsigned: false, raw: 'geometry' }),
-    ).toBe('geometry');
-  });
-
-  it('getSupportedTypes returns keys for mapped database', () => {
-    const mapper = TypeMapper.create('mysql');
-    const types = mapper.getSupportedTypes();
-    expect(types).toContain('varchar');
-    expect(types).toContain('int');
-  });
-
-  it('hasMapping returns true for mapped type', () => {
-    const mapper = TypeMapper.create('mysql');
-    expect(mapper.hasMapping('varchar')).toBe(true);
-    expect(mapper.hasMapping('unknown_type')).toBe(false);
-  });
-
-  it('handles serial transform for mysql', () => {
-    const mapper = TypeMapper.create('mysql');
-    expect(mapper.mapType({ baseType: 'serial', args: [], unsigned: false, raw: 'serial' })).toBe(
-      'BIGINT UNSIGNED AUTO_INCREMENT',
-    );
-  });
-
-  it('handles serial transform for postgresql', () => {
-    const mapper = TypeMapper.create('postgresql');
-    expect(mapper.mapType({ baseType: 'serial', args: [], unsigned: false, raw: 'serial' })).toBe(
-      'SERIAL',
-    );
-  });
-
-  it('handles serial transform for sqlserver', () => {
-    const mapper = TypeMapper.create('sqlserver');
-    expect(mapper.mapType({ baseType: 'serial', args: [], unsigned: false, raw: 'serial' })).toBe(
-      'BIGINT IDENTITY(1,1)',
-    );
   });
 });

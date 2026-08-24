@@ -109,6 +109,12 @@ describe('ORMGeneratorFactory', () => {
   it('throws for unsupported target', () => {
     expect(() => ORMGeneratorFactory.create('invalid' as any)).toThrow('Unsupported ORM target');
   });
+
+  it('creates every supported generator', () => {
+    for (const target of ORMGeneratorFactory.getSupportedTargets()) {
+      expect(ORMGeneratorFactory.create(target)).toBeDefined();
+    }
+  });
 });
 
 describe('PrismaGenerator', () => {

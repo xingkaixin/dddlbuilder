@@ -26,6 +26,12 @@ describe('DDLStrategyFactory', () => {
     expect(supported).toEqual(DATABASE_TYPES);
   });
 
+  it('应该为每种支持的数据库创建对应策略', () => {
+    for (const dbType of DDLStrategyFactory.getSupportedDatabaseTypes()) {
+      expect(DDLStrategyFactory.create(dbType).getDatabaseType()).toBe(dbType);
+    }
+  });
+
   it('应该为 Hive 使用独立实现，其余方言走通用生成器', () => {
     expect(DDLStrategyFactory.create('hive')).toBeInstanceOf(HiveStrategy);
     expect(DDLStrategyFactory.create('mysql')).toBeInstanceOf(ProfiledDDLStrategy);

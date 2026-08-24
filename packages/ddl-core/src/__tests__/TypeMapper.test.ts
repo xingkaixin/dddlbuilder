@@ -114,6 +114,18 @@ describe('TypeMapper', () => {
       ).toBe('TIMESTAMP');
     });
 
+    it.each([
+      ['mysql', 'BIGINT UNSIGNED AUTO_INCREMENT'],
+      ['postgresql', 'SERIAL'],
+      ['sqlserver', 'BIGINT IDENTITY(1,1)'],
+    ] as const)('should transform serial for %s', (dbType, expected) => {
+      const mapper = TypeMapper.create(dbType);
+
+      expect(mapper.mapType({ baseType: 'serial', args: [], unsigned: false, raw: 'serial' })).toBe(
+        expected,
+      );
+    });
+
     it('should handle unknown types by returning original', () => {
       const mapper = TypeMapper.create('mysql');
 
