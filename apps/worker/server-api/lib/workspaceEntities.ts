@@ -12,6 +12,7 @@ import {
   createWorkspaceD1Metrics,
   firstWorkspaceD1Result,
   logWorkspaceD1Metrics,
+  runWorkspaceD1Result,
   type WorkspaceD1Metrics,
 } from './workspaceSyncMetrics.js';
 import {
@@ -24,6 +25,7 @@ import {
 
 type WorkspaceRow = {
   id: string;
+  legacySnapshotBackfilledAt: number | null;
 };
 
 type EntityRow = {
@@ -75,7 +77,9 @@ const readDefaultWorkspace = async (env: ApiEnv['Bindings'], userId: string) =>
   firstWorkspaceD1Result<WorkspaceRow>(
     env.USER_DB.prepare(
       `
-      SELECT id
+      SELECT
+        id,
+        legacy_snapshot_backfilled_at AS legacySnapshotBackfilledAt
       FROM workspaces
       WHERE user_id = ? AND is_default = 1
       LIMIT 1
@@ -142,10 +146,15 @@ export const assertWorkspaceOwner = async (
   workspaceId: string,
   metrics?: WorkspaceD1Metrics,
 ) => {
-  const row = await firstWorkspaceD1Result<{ isDefault: number }>(
+  const row = await firstWorkspaceD1Result<{
+    isDefault: number;
+    legacySnapshotBackfilledAt: number | null;
+  }>(
     env.USER_DB.prepare(
       `
-      SELECT is_default AS isDefault
+      SELECT
+        is_default AS isDefault,
+        legacy_snapshot_backfilled_at AS legacySnapshotBackfilledAt
       FROM workspaces
       WHERE id = ? AND user_id = ?
       LIMIT 1
@@ -158,7 +167,10 @@ export const assertWorkspaceOwner = async (
     throw new WorkspaceNotFoundError();
   }
 
-  return { isDefault: row.isDefault === 1 };
+  return {
+    isDefault: row.isDefault === 1,
+    legacySnapshotBackfilledAt: row.legacySnapshotBackfilledAt,
+  };
 };
 
 const readWorkspaceCursor = async (
@@ -446,12 +458,35 @@ const backfillLegacySnapshotEntities = async (
   return true;
 };
 
+const ensureLegacySnapshotBackfilled = async (
+  env: ApiEnv['Bindings'],
+  userId: string,
+  workspace: WorkspaceRow,
+  metrics?: WorkspaceD1Metrics,
+) => {
+  if (workspace.legacySnapshotBackfilledAt !== null) {
+    return;
+  }
+
+  await backfillLegacySnapshotEntities(env, userId, workspace.id, metrics);
+  await runWorkspaceD1Result(
+    env.USER_DB.prepare(
+      `
+        UPDATE workspaces
+        SET legacy_snapshot_backfilled_at = ?
+        WHERE id = ? AND legacy_snapshot_backfilled_at IS NULL
+      `,
+    ).bind(now(), workspace.id),
+    metrics,
+  );
+};
+
 export const getWorkspaceSnapshotFromEntities = async (
   env: ApiEnv['Bindings'],
   userId: string,
 ): Promise<WorkspaceSnapshot> => {
   const workspace = await getOrCreateDefaultWorkspace(env, userId);
-  await backfillLegacySnapshotEntities(env, userId, workspace.id);
+  await ensureLegacySnapshotBackfilled(env, userId, workspace);
   return storedEntitiesToWorkspaceSnapshot(await listActiveEntities(env, workspace.id));
 };
 
@@ -462,7 +497,7 @@ export const getWorkspaceSnapshotForWorkspace = async (
 ): Promise<WorkspaceSnapshot> => {
   const workspace = await assertWorkspaceOwner(env, userId, workspaceId);
   if (workspace.isDefault) {
-    await backfillLegacySnapshotEntities(env, userId, workspaceId);
+    await ensureLegacySnapshotBackfilled(env, userId, { id: workspaceId, ...workspace });
   }
   return storedEntitiesToWorkspaceSnapshot(await listActiveEntities(env, workspaceId));
 };

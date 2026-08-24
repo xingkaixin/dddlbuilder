@@ -184,6 +184,7 @@ describe('workspace entity checkpoints', () => {
 
     await putWorkspaceSnapshot(env, 'user-1', createSnapshot(['orders']));
 
+    const prepareSpy = vi.spyOn(env.USER_DB, 'prepare');
     const snapshot = await getWorkspaceSnapshot(env, 'user-1');
     const persistedSnapshot = await getWorkspaceSnapshot(env, 'user-1');
 
@@ -197,6 +198,9 @@ describe('workspace entity checkpoints', () => {
       'orders',
       'users',
     ]);
+    expect(
+      prepareSpy.mock.calls.filter(([sql]) => String(sql).includes('FROM workspace_snapshots')),
+    ).toHaveLength(1);
   });
 
   it('不应把默认 workspace 的旧快照回填到其他 workspace', async () => {
