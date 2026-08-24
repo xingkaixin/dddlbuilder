@@ -521,9 +521,21 @@ export function useAppController() {
         reviewState,
       },
       resources: {
-        savedTableData,
-        folderData,
-        tableTemplateData,
+        savedTableData: {
+          savedTables: savedTableData.savedTables,
+          trashedTables: savedTableData.trashedTables,
+          loading: savedTableData.loading,
+          error: savedTableData.error,
+          importTables: savedTableData.importTables,
+        },
+        folderData: {
+          folderTree: folderData.folderTree,
+          loading: folderData.loading,
+        },
+        tableTemplateData: {
+          templates: tableTemplateData.templates,
+          loading: tableTemplateData.loading,
+        },
       },
       workspace: {
         activeSource,
@@ -577,14 +589,41 @@ export function useAppController() {
         schemaActions,
       },
       domains: {
-        editor,
-        tableOptions,
+        editor: {
+          dbType: editor.dbType,
+          indexes: editor.indexes,
+          isDeleteDialogOpen: editor.isDeleteDialogOpen,
+          isRenameDialogOpen: editor.isRenameDialogOpen,
+          isSaveDialogOpen: editor.isSaveDialogOpen,
+          objectType: editor.objectType,
+          schemaName: editor.schemaName,
+          tableName: editor.tableName,
+        },
       },
       resources: {
-        savedTableData,
-        folderData,
-        fieldTemplateData,
-        tableTemplateData,
+        savedTableData: {
+          importTables: savedTableData.importTables,
+          saveTable: savedTableData.saveTable,
+          savedTables: savedTableData.savedTables,
+        },
+        folderData: {
+          folderTree: folderData.folderTree,
+        },
+        fieldTemplateData: {
+          create: fieldTemplateData.create,
+          duplicate: fieldTemplateData.duplicate,
+          loading: fieldTemplateData.loading,
+          remove: fieldTemplateData.remove,
+          templates: fieldTemplateData.templates,
+          update: fieldTemplateData.update,
+        },
+        tableTemplateData: {
+          duplicate: tableTemplateData.duplicate,
+          loading: tableTemplateData.loading,
+          remove: tableTemplateData.remove,
+          rename: tableTemplateData.rename,
+          templates: tableTemplateData.templates,
+        },
       },
       workspace: {
         loadedTableNormalizedName,
@@ -598,6 +637,7 @@ export function useAppController() {
         currentPersistedState,
         hasLoadedTable,
         normalizedFields,
+        storageFormat: tableOptions.tableMiscConfig.storedAs || undefined,
         tableDiff,
       },
       dialogs: {
@@ -609,7 +649,6 @@ export function useAppController() {
         handleSelectTableFromEr,
         renameError,
         renameName,
-        saveDialog,
         saveError,
         saveInputDisabled,
         saveName,

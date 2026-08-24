@@ -34,7 +34,7 @@ export function AppDialogLayer({
 }: AppDialogLayerProps) {
   const { actions, domains, resources, workspace, schema, dialogs } = model;
   const { t } = useTranslation();
-  const { editor, tableOptions } = domains;
+  const { editor } = domains;
   const { savedTableData, folderData, fieldTemplateData, tableTemplateData } = resources;
   const { folderActions, templateActions, savedTableFlow, tableTemplateActions, trashActions } =
     actions;
@@ -156,7 +156,7 @@ export function AppDialogLayer({
           dbType: editor.dbType,
           fields: schema.normalizedFields,
           indexes: editor.indexes,
-          storageFormat: tableOptions.tableMiscConfig.storedAs || undefined,
+          storageFormat: schema.storageFormat,
         }}
         mockDataDialogProps={{
           tableName: editor.tableName,
