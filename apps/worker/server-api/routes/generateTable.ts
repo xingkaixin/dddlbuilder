@@ -22,6 +22,28 @@ type GenerateTableRequest = {
   conversationHistory: ConversationMessage[];
 };
 
+const parseConversationHistory = (value: unknown): ConversationMessage[] | null => {
+  if (value == null) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const messages: ConversationMessage[] = [];
+  for (const item of value) {
+    if (typeof item !== 'object' || item === null) {
+      return null;
+    }
+    const { role, content } = item as Record<string, unknown>;
+    if ((role !== 'user' && role !== 'assistant') || typeof content !== 'string') {
+      return null;
+    }
+    messages.push({ role, content });
+  }
+  return messages;
+};
+
 export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
   app.post('/generate-table', (c) =>
     withAIGovernance<GenerateTableRequest>(
@@ -35,6 +57,10 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
           if (description.trim().length === 0) {
             return rejectAIRequest('DESCRIPTION_REQUIRED', 'Description is required');
           }
+          const conversationHistory = parseConversationHistory(body.conversationHistory);
+          if (conversationHistory === null) {
+            return rejectAIRequest('INVALID_JSON', 'Invalid conversation history');
+          }
           return {
             description,
             dbType: typeof body.dbType === 'string' ? body.dbType : '',
@@ -43,10 +69,7 @@ export function registerGenerateTableRoute(app: Hono<ApiEnv>) {
             templates: Array.isArray(body.templates) ? body.templates : [],
             existingConfig: body.existingConfig,
             previousSchema: body.previousSchema,
-            // 与改造前一致：只确认是数组，元素形状留给 prompt 构造处理
-            conversationHistory: (Array.isArray(body.conversationHistory)
-              ? body.conversationHistory
-              : []) as ConversationMessage[],
+            conversationHistory,
           };
         },
       },
