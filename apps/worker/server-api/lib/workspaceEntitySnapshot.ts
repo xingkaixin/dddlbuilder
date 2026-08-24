@@ -1,6 +1,5 @@
-import type { SchemaDocumentState } from '@ddlbuilder/shared-types';
 import type { WorkspaceEntityType, WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
-import { normalizeWorkspaceSnapshot } from '@ddlbuilder/workspace-core';
+import { decodeSchemaDocumentState, normalizeWorkspaceSnapshot } from '@ddlbuilder/workspace-core';
 
 export const GLOBAL_DRAFT_ENTITY_ID = '__global_draft__';
 
@@ -86,7 +85,6 @@ export const workspaceSnapshotToEntities = (
       entityType: 'folder',
       entityId: item.id,
       payload: {
-        id: item.id,
         name: item.name,
         parentId: item.parentId,
         order: item.order,
@@ -107,75 +105,104 @@ const applyPayloadToSnapshot = (
     payload: Record<string, unknown>;
     updatedAt: number;
   },
-) => {
+): boolean => {
   const { entityType, entityId, payload, updatedAt } = input;
+  const state = decodeSchemaDocumentState(payload.state);
 
   if (entityType === 'draft' && entityId === GLOBAL_DRAFT_ENTITY_ID) {
-    if (payload.state) {
+    if (state) {
       snapshot.globalDraft = {
-        state: payload.state as SchemaDocumentState,
+        state,
         updatedAt,
       };
+      return true;
     }
-    return;
+    return false;
   }
 
   if (entityType === 'draft') {
-    if (payload.state) {
+    if (state) {
       snapshot.drafts.push({
         draftId: entityId,
-        state: payload.state as WorkspaceSnapshot['drafts'][number]['state'],
+        state,
         createdAt: typeof payload.createdAt === 'number' ? payload.createdAt : updatedAt,
         updatedAt,
         ...(typeof payload.folderId === 'string' ? { folderId: payload.folderId } : {}),
         ...(typeof payload.trashedAt === 'number' ? { trashedAt: payload.trashedAt } : {}),
       });
+      return true;
     }
-    return;
+    return false;
   }
 
   if (entityType === 'saved_table') {
-    if (payload.state && typeof payload.name === 'string') {
+    if (state && typeof payload.name === 'string') {
       snapshot.savedTables.push({
         normalizedName: entityId,
         name: payload.name,
-        state: payload.state as WorkspaceSnapshot['savedTables'][number]['state'],
+        state,
         createdAt: typeof payload.createdAt === 'number' ? payload.createdAt : updatedAt,
         updatedAt,
         ...(typeof payload.folderId === 'string' ? { folderId: payload.folderId } : {}),
         ...(typeof payload.trashedAt === 'number' ? { trashedAt: payload.trashedAt } : {}),
       });
+      return true;
     }
-    return;
+    return false;
   }
 
   if (entityType === 'folder') {
-    if (typeof payload.id === 'string' && typeof payload.name === 'string') {
+    if (typeof payload.name === 'string') {
       snapshot.folders.push({
-        id: payload.id,
+        id: entityId,
         name: payload.name,
         ...(typeof payload.parentId === 'string' ? { parentId: payload.parentId } : {}),
         order: typeof payload.order === 'number' ? payload.order : 0,
         createdAt: typeof payload.createdAt === 'number' ? payload.createdAt : updatedAt,
         updatedAt,
       });
+      return true;
     }
-    return;
+    return false;
   }
 
-  if (
-    typeof payload.tableName === 'string' &&
-    typeof payload.baseSignature === 'string' &&
-    payload.state
-  ) {
+  if (typeof payload.tableName === 'string' && typeof payload.baseSignature === 'string' && state) {
     snapshot.savedDrafts.push({
       normalizedName: entityId,
       tableName: payload.tableName,
-      state: payload.state as WorkspaceSnapshot['savedDrafts'][number]['state'],
+      state,
       updatedAt,
       baseSignature: payload.baseSignature,
     });
+    return true;
   }
+  return false;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const reportDecodeFailure = (
+  entityType: WorkspaceEntityType,
+  entityId: string,
+  reason: 'invalid_json' | 'invalid_payload',
+) => {
+  console.warn('workspace_entity_decode_failed', { entityType, entityId, reason });
+};
+
+const decodeEntityPayload = (
+  entityType: WorkspaceEntityType,
+  entityId: string,
+  payloadJson: string,
+) => {
+  try {
+    const payload: unknown = JSON.parse(payloadJson);
+    if (isRecord(payload)) return payload;
+    reportDecodeFailure(entityType, entityId, 'invalid_payload');
+  } catch {
+    reportDecodeFailure(entityType, entityId, 'invalid_json');
+  }
+  return null;
 };
 
 export const storedEntitiesToWorkspaceSnapshot = (
@@ -185,12 +212,15 @@ export const storedEntitiesToWorkspaceSnapshot = (
 
   for (const row of rows) {
     if (row.payloadJson == null) continue;
-    applyPayloadToSnapshot(snapshot, {
+    const payload = decodeEntityPayload(row.entityType, row.entityId, row.payloadJson);
+    if (!payload) continue;
+    const applied = applyPayloadToSnapshot(snapshot, {
       entityType: row.entityType,
       entityId: row.entityId,
-      payload: JSON.parse(row.payloadJson) as Record<string, unknown>,
+      payload,
       updatedAt: row.updatedAt,
     });
+    if (!applied) reportDecodeFailure(row.entityType, row.entityId, 'invalid_payload');
   }
 
   snapshot.drafts.sort((a, b) => (b.createdAt ?? b.updatedAt) - (a.createdAt ?? a.updatedAt));
@@ -207,16 +237,18 @@ export const legacyRowsToWorkspaceSnapshot = (
   const snapshot = emptyWorkspaceSnapshot();
 
   for (const row of rows) {
-    const payload = JSON.parse(row.payloadJson) as Record<string, unknown>;
     const entityType = row.kind === 'global_draft' ? 'draft' : row.kind;
     const entityId = row.kind === 'global_draft' ? GLOBAL_DRAFT_ENTITY_ID : row.normalizedName;
     if (!entityId) continue;
-    applyPayloadToSnapshot(snapshot, {
+    const payload = decodeEntityPayload(entityType, entityId, row.payloadJson);
+    if (!payload) continue;
+    const applied = applyPayloadToSnapshot(snapshot, {
       entityType,
       entityId,
       payload,
       updatedAt: row.sourceUpdatedAt,
     });
+    if (!applied) reportDecodeFailure(entityType, entityId, 'invalid_payload');
   }
 
   return normalizeWorkspaceSnapshot(snapshot);

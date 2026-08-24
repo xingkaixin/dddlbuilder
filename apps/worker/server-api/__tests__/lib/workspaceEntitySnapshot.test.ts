@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { type PersistedState, toSchemaDocumentState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import {
   GLOBAL_DRAFT_ENTITY_ID,
@@ -55,10 +55,12 @@ const snapshot = (): WorkspaceSnapshot => ({
       baseSignature: 'base',
     },
   ],
-  folders: [{ id: 'folder-1', name: 'Core', order: 1, createdAt: 5 }],
+  folders: [{ id: 'folder-1', name: 'Core', order: 1, createdAt: 5, updatedAt: 5 }],
 });
 
 describe('workspaceEntitySnapshot', () => {
+  afterEach(() => vi.restoreAllMocks());
+
   it('round-trips every workspace entity type through stored rows', () => {
     const entities = workspaceSnapshotToEntities(snapshot());
     const storedRows = entities.map((entity) => ({
@@ -70,12 +72,30 @@ describe('workspaceEntitySnapshot', () => {
 
     expect(entities.map((entity) => entity.entityId)).not.toContain(GLOBAL_DRAFT_ENTITY_ID);
     expect(entities.map((entity) => entity.entityId)).toContain('default');
+    const expected = snapshot();
+    expected.drafts = expected.drafts.map((draft) => ({
+      ...draft,
+      state: toSchemaDocumentState(draft.state),
+    }));
+    expected.savedTables = expected.savedTables.map((table) => ({
+      ...table,
+      state: toSchemaDocumentState(table.state),
+    }));
+    expected.savedDrafts = expected.savedDrafts.map((draft) => ({
+      ...draft,
+      state: toSchemaDocumentState(draft.state),
+    }));
     expect(storedEntitiesToWorkspaceSnapshot(storedRows)).toEqual({
-      ...snapshot(),
+      ...expected,
       globalDraft: null,
       drafts: [
-        { draftId: 'default', state: state('global'), createdAt: 10, updatedAt: 10 },
-        ...snapshot().drafts,
+        {
+          draftId: 'default',
+          state: toSchemaDocumentState(state('global')),
+          createdAt: 10,
+          updatedAt: 10,
+        },
+        ...expected.drafts,
       ],
     });
   });
@@ -157,6 +177,7 @@ describe('workspaceEntitySnapshot', () => {
   });
 
   it('ignores deleted and incomplete persisted records', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     expect(
       storedEntitiesToWorkspaceSnapshot([
         {
@@ -195,6 +216,48 @@ describe('workspaceEntitySnapshot', () => {
       savedTables: [],
       savedDrafts: [],
       folders: [],
+    });
+  });
+
+  it('skips malformed rows without discarding valid workspace entities', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const result = storedEntitiesToWorkspaceSnapshot([
+      {
+        entityType: 'draft',
+        entityId: 'malformed-json',
+        payloadJson: '{invalid',
+        updatedAt: 1,
+      },
+      {
+        entityType: 'draft',
+        entityId: 'invalid-state',
+        payloadJson: JSON.stringify({ state: { tableName: 1 } }),
+        updatedAt: 2,
+      },
+      {
+        entityType: 'draft',
+        entityId: 'valid',
+        payloadJson: JSON.stringify({ state: state('valid') }),
+        updatedAt: 3,
+      },
+    ]);
+
+    expect(result.drafts).toEqual([
+      expect.objectContaining({
+        draftId: 'valid',
+        state: expect.objectContaining({ tableName: 'valid' }),
+      }),
+    ]);
+    expect(warn).toHaveBeenCalledWith('workspace_entity_decode_failed', {
+      entityType: 'draft',
+      entityId: 'malformed-json',
+      reason: 'invalid_json',
+    });
+    expect(warn).toHaveBeenCalledWith('workspace_entity_decode_failed', {
+      entityType: 'draft',
+      entityId: 'invalid-state',
+      reason: 'invalid_payload',
     });
   });
 });
