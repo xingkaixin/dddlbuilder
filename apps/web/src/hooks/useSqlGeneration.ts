@@ -52,18 +52,18 @@ export function useSqlGeneration(
     () =>
       objectType === 'view'
         ? buildViewDDL(dbType, qualifiedTableName, viewDefinition, viewCreateOrReplace)
-        : buildDDL(
+        : buildDDL({
             dbType,
-            qualifiedTableName,
+            tableName: qualifiedTableName,
             tableComment,
-            fieldsForDdl,
+            fields: fieldsForDdl,
             indexes,
             citusShardingConfig,
             mysqlPartitionConfig,
             tableMiscConfig,
             sqlFormatMode,
             foreignKeys,
-          ),
+          }),
     [
       objectType,
       dbType,
@@ -82,8 +82,8 @@ export function useSqlGeneration(
   );
 
   const generatedDcl = useMemo(
-    () => buildDCL(dbType, qualifiedTableName, authObjects),
-    [dbType, qualifiedTableName, authObjects],
+    () => buildDCL(qualifiedTableName, authObjects),
+    [qualifiedTableName, authObjects],
   );
 
   const copySql = useCallback(async () => {

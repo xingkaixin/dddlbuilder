@@ -161,11 +161,7 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
   /**
    * 默认索引DDL生成实现，子类可以重写
    */
-  generateIndexDDL(
-    tableName: string,
-    index: IndexDefinition,
-    // fields: NormalizedField[],
-  ): string {
+  generateIndexDDL(tableName: string, index: IndexDefinition): string {
     return this.generateStandardIndexDDL(tableName, index);
   }
 

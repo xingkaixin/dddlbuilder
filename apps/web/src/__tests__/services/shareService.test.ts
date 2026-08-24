@@ -209,7 +209,12 @@ describe('shareService', () => {
       },
     ]);
 
-    const ddl = buildDDL('mysql', result.tableName, '', normalizeFields(result.rows));
+    const ddl = buildDDL({
+      dbType: 'mysql',
+      tableName: result.tableName,
+      tableComment: '',
+      fields: normalizeFields(result.rows),
+    });
     expect(ddl).toContain('AUTO_INCREMENT');
     expect(ddl).toContain('NOT NULL');
     expect(ddl).toContain('DEFAULT CURRENT_TIMESTAMP');

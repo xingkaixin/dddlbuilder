@@ -35,7 +35,7 @@ export interface DDLStrategy {
   /**
    * 生成索引的DDL语句
    */
-  generateIndexDDL(tableName: string, index: IndexDefinition, fields: NormalizedField[]): string;
+  generateIndexDDL(tableName: string, index: IndexDefinition): string;
 
   /**
    * 生成外键约束的DDL语句

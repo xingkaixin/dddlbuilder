@@ -12,18 +12,31 @@ import { DDLStrategyFactory } from '../factories/DDLStrategyFactory';
 
 export { buildOracleSynonyms } from './tableFeatures';
 
-export const buildDDL = (
-  dbType: DatabaseType,
-  tableName: string,
-  tableComment: string,
-  fields: NormalizedField[],
-  indexes: IndexDefinition[] = [],
-  citusShardingConfig?: CitusShardingConfig,
-  mysqlPartitionConfig?: MysqlPartitionConfig,
-  tableMiscConfig?: TableMiscConfig,
-  sqlFormatMode: SqlFormatMode = 'compact',
-  foreignKeys: ForeignKeyDefinition[] = [],
-) => {
+export interface BuildDDLInput {
+  dbType: DatabaseType;
+  tableName: string;
+  tableComment: string;
+  fields: NormalizedField[];
+  indexes?: IndexDefinition[];
+  citusShardingConfig?: CitusShardingConfig;
+  mysqlPartitionConfig?: MysqlPartitionConfig;
+  tableMiscConfig?: TableMiscConfig;
+  sqlFormatMode?: SqlFormatMode;
+  foreignKeys?: ForeignKeyDefinition[];
+}
+
+export const buildDDL = ({
+  dbType,
+  tableName,
+  tableComment,
+  fields,
+  indexes = [],
+  citusShardingConfig,
+  mysqlPartitionConfig,
+  tableMiscConfig,
+  sqlFormatMode = 'compact',
+  foreignKeys = [],
+}: BuildDDLInput) => {
   if (!tableName.trim()) {
     return '-- 请填写表名';
   }
@@ -46,12 +59,8 @@ export const buildDDL = (
     citusShardingConfig,
   });
 
-  // Build index DDL statements
-  const indexDDLs = indexes.map((index) =>
-    strategy.generateIndexDDL(tableName.trim(), index, fields),
-  );
+  const indexDDLs = indexes.map((index) => strategy.generateIndexDDL(tableName.trim(), index));
 
-  // Build foreign key DDL statements
   const fkDDLs = foreignKeys.map((fk) => strategy.generateForeignKeyDDL(tableName.trim(), fk));
 
   const extraBlocks: string[] = [];
@@ -96,11 +105,7 @@ export const buildViewDDL = (
   return `${keyword} ${strategy.formatTableName(cleanViewName)} AS\n${cleanDefinition};`;
 };
 
-export const buildDCL = (
-  _dbType: DatabaseType,
-  tableName: string,
-  authorizationObjects: string[],
-) => {
+export const buildDCL = (tableName: string, authorizationObjects: string[]) => {
   if (!tableName.trim() || authorizationObjects.length === 0) {
     return '';
   }

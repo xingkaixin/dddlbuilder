@@ -1,4 +1,10 @@
-export { buildDDL, buildDCL, buildOracleSynonyms, buildViewDDL } from './utils/ddlGenerators.js';
+export {
+  buildDDL,
+  buildDCL,
+  buildOracleSynonyms,
+  buildViewDDL,
+  type BuildDDLInput,
+} from './utils/ddlGenerators.js';
 export { buildRoutineTemplateDDL } from './utils/routineTemplates.js';
 export {
   getDatabaseFamily,
