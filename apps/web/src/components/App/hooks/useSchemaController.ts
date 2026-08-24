@@ -32,7 +32,7 @@ export function useSchemaController({
   loadedTableName,
   loadedTableSignature,
 }: UseSchemaControllerParams) {
-  const { editor, auth, sharding, partition, tableOptions } = domains;
+  const { editor, ui, auth, sharding, partition, tableOptions } = domains;
   const {
     schemaName,
     tableName,
@@ -55,8 +55,8 @@ export function useSchemaController({
     foreignKeys,
     fieldTableFreezeEnabled,
     fieldTableFreezeColumns,
-    setIsReviewHistoryOpen,
   } = editor;
+  const { setIsReviewHistoryOpen } = ui;
   const { authInput, authObjects } = auth;
   const { citusShardingConfig } = sharding;
   const { mysqlPartitionConfig } = partition;

@@ -1,4 +1,5 @@
 import { useAppSelectors } from './useAppSelectors';
+import { useAppUiSelectors } from './useAppUiSelectors';
 import { useSuggestionAnimation } from '@/hooks/useSuggestionAnimation';
 import { useTableOptions } from '@/hooks/useTableOptions';
 import { useEditorStore } from '@/stores';
@@ -6,6 +7,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 export function useEditorDomains() {
   const editor = useAppSelectors();
+  const ui = useAppUiSelectors();
   const auth = useEditorStore(
     useShallow((state) => ({
       authInput: state.authInput,
@@ -43,6 +45,7 @@ export function useEditorDomains() {
 
   return {
     editor,
+    ui,
     auth,
     sharding,
     animations: useSuggestionAnimation(),

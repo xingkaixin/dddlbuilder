@@ -30,7 +30,7 @@ import { isCnyFireworksEnabled } from '@/config/featureFlags';
 
 export function useAppController() {
   const { t } = useTranslation();
-  const { editor, auth, sharding, animations, partition, tableOptions } = useEditorDomains();
+  const { editor, ui, auth, sharding, animations, partition, tableOptions } = useEditorDomains();
   const {
     persistence,
     savedTableData,
@@ -52,6 +52,13 @@ export function useAppController() {
     setActiveTab,
     resetTableConfig,
     resetTableViewConfig,
+    rows,
+    setRows,
+    resetTableRows,
+    indexes,
+    resetIndexState,
+  } = editor;
+  const {
     setIsClearDialogOpen,
     setShowFireworks,
     setSavedTablesDrawerOpen,
@@ -66,12 +73,7 @@ export function useAppController() {
     setIsStorageEstimatorOpen,
     setIsAIGenerateDialogOpen,
     setIsMockDataDialogOpen,
-    rows,
-    setRows,
-    resetTableRows,
-    indexes,
-    resetIndexState,
-  } = editor;
+  } = ui;
 
   const {
     saveDialog,
@@ -137,7 +139,7 @@ export function useAppController() {
   const { resetTableMiscConfig } = tableOptions;
 
   const schemaController = useSchemaController({
-    domains: { editor, auth, sharding, animations, partition, tableOptions },
+    domains: { editor, ui, auth, sharding, animations, partition, tableOptions },
     hydrated,
     isShareView,
     loadedTableNormalizedName,
@@ -514,6 +516,7 @@ export function useAppController() {
       },
       domains: {
         editor,
+        ui,
         auth,
         sharding,
         animations,
@@ -593,13 +596,11 @@ export function useAppController() {
         editor: {
           dbType: editor.dbType,
           indexes: editor.indexes,
-          isDeleteDialogOpen: editor.isDeleteDialogOpen,
-          isRenameDialogOpen: editor.isRenameDialogOpen,
-          isSaveDialogOpen: editor.isSaveDialogOpen,
           objectType: editor.objectType,
           schemaName: editor.schemaName,
           tableName: editor.tableName,
         },
+        ui,
       },
       resources: {
         savedTableData: {

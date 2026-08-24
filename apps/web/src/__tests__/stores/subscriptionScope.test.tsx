@@ -1,26 +1,26 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createEmptyRow } from '@/utils/helpers';
-import { useEditorStore } from '@/stores';
+import { useAppUiStore, useEditorStore } from '@/stores';
 import { useAppSelectors } from '@/components/App/hooks/useAppSelectors';
 
 function resetAppStore() {
-  const state = useEditorStore.getState();
-  state.resetTableConfig();
-  state.resetTableViewConfig();
-  state.setSavedTablesDrawerOpen(false);
-  state.setIsSaveDialogOpen(false);
-  state.setIsRenameDialogOpen(false);
-  state.setIsDeleteDialogOpen(false);
-  state.setIsClearDialogOpen(false);
-  state.setShowFireworks(false);
-  state.setIsDiffDialogOpen(false);
-  state.setVersionHistoryTarget(null);
-  state.setIsReviewHistoryOpen(false);
-  state.setIsStorageEstimatorOpen(false);
-  state.setIsAIGenerateDialogOpen(false);
-  state.setIsMockDataDialogOpen(false);
-  state.setTimelinePlayerTarget(null);
+  useEditorStore.getState().resetTableConfig();
+  useEditorStore.getState().resetTableViewConfig();
+  const ui = useAppUiStore.getState();
+  ui.setSavedTablesDrawerOpen(false);
+  ui.setIsSaveDialogOpen(false);
+  ui.setIsRenameDialogOpen(false);
+  ui.setIsDeleteDialogOpen(false);
+  ui.setIsClearDialogOpen(false);
+  ui.setShowFireworks(false);
+  ui.setIsDiffDialogOpen(false);
+  ui.setVersionHistoryTarget(null);
+  ui.setIsReviewHistoryOpen(false);
+  ui.setIsStorageEstimatorOpen(false);
+  ui.setIsAIGenerateDialogOpen(false);
+  ui.setIsMockDataDialogOpen(false);
+  ui.setTimelinePlayerTarget(null);
 }
 
 function resetFieldStore() {
@@ -87,7 +87,7 @@ describe('store selector subscription scope', () => {
     const initialRenderCount = renderCount;
 
     act(() => {
-      useEditorStore.getState().setIsClearDialogOpen(true);
+      useAppUiStore.getState().setIsClearDialogOpen(true);
     });
 
     expect(renderCount).toBe(initialRenderCount);
@@ -110,7 +110,7 @@ describe('store selector subscription scope', () => {
     const initialRenderCount = renderCount;
 
     act(() => {
-      useEditorStore.getState().setIsStorageEstimatorOpen(true);
+      useAppUiStore.getState().setIsStorageEstimatorOpen(true);
     });
 
     expect(renderCount).toBe(initialRenderCount);
@@ -132,16 +132,12 @@ describe('store selector subscription scope', () => {
     const initialRenderCount = renderCount;
 
     act(() => {
-      const state = useEditorStore.getState();
+      const state = useAppUiStore.getState();
       state.setIsDiffDialogOpen(true);
       state.setIsStorageEstimatorOpen(true);
       state.setVersionHistoryTarget({
         normalizedName: 'orders',
         name: 'orders',
-        dbType: 'mysql',
-        fieldCount: 1,
-        createdAt: 1,
-        updatedAt: 1,
       });
     });
 

@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { AISchemaPatchPanel } from './AISchemaPatchPanel';
@@ -33,7 +33,7 @@ export function AppDialogLayer({
 }: AppDialogLayerProps) {
   const { actions, domains, resources, workspace, schema, dialogs } = model;
   const { t } = useTranslation();
-  const { editor } = domains;
+  const { editor, ui } = domains;
   const { savedTableData, folderData, fieldTemplateData, tableTemplateData } = resources;
   const { folderActions, templateActions, savedTableFlow, tableTemplateActions, trashActions } =
     actions;
@@ -43,16 +43,35 @@ export function AppDialogLayer({
       ? 'dialogs.save.objectLabels.view'
       : 'dialogs.save.objectLabels.table',
   );
+  const handleVersionHistoryOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) ui.setVersionHistoryTarget(null);
+    },
+    [ui],
+  );
+  const handlePlayTimeline = useCallback(() => {
+    if (ui.versionHistoryTarget) {
+      ui.setTimelinePlayerTarget(ui.versionHistoryTarget);
+    }
+  }, [ui]);
+  const handleTimelinePlayerOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) ui.setTimelinePlayerTarget(null);
+    },
+    [ui],
+  );
 
   return (
     <>
       <GlobalDialogs
         clearDialog={{
+          open: ui.isClearDialogOpen,
+          onOpenChange: ui.setIsClearDialogOpen,
           onCancel: clearActions.cancelClearAll,
           onConfirm: clearActions.confirmClearAll,
         }}
         saveDialog={{
-          open: editor.isSaveDialogOpen,
+          open: ui.isSaveDialogOpen,
           onOpenChange: savedTableFlow.handleSaveDialogOpenChange,
           title: t(
             schema.hasLoadedTable ? 'dialogs.save.updateTitle' : 'dialogs.save.createTitle',
@@ -72,7 +91,7 @@ export function AppDialogLayer({
           onConfirm: savedTableFlow.handleConfirmSave,
         }}
         renameDialog={{
-          open: editor.isRenameDialogOpen,
+          open: ui.isRenameDialogOpen,
           onOpenChange: savedTableFlow.handleRenameDialogOpenChange,
           name: dialogs.renameName,
           onNameChange: dialogs.handleRenameNameChange,
@@ -80,7 +99,7 @@ export function AppDialogLayer({
           onConfirm: savedTableFlow.handleConfirmRename,
         }}
         deleteDialog={{
-          open: editor.isDeleteDialogOpen,
+          open: ui.isDeleteDialogOpen,
           onOpenChange: savedTableFlow.handleDeleteDialogOpenChange,
           targetName: dialogs.deleteTarget?.name,
           onConfirm: savedTableFlow.handleConfirmDelete,
@@ -132,32 +151,61 @@ export function AppDialogLayer({
           onConfirm: tableTemplateActions.handleCreateTemplate,
         }}
         diffDialogProps={{
+          open: ui.isDiffDialogOpen,
+          onOpenChange: ui.setIsDiffDialogOpen,
           tableName: editor.tableName,
           dbType: editor.dbType,
           diff: schema.tableDiff,
           fields: schema.normalizedFields,
           onCopy: dialogs.handleCopyDiff,
         }}
-        versionHistoryDialogProps={{
-          currentState: schema.currentPersistedState,
-          onRollback: dialogs.handleRollbackVersion,
-        }}
+        versionHistoryDialogProps={
+          ui.versionHistoryTarget
+            ? {
+                open: true,
+                onOpenChange: handleVersionHistoryOpenChange,
+                tableNormalizedName: ui.versionHistoryTarget.normalizedName,
+                tableName: ui.versionHistoryTarget.name,
+                currentState: schema.currentPersistedState,
+                onRollback: dialogs.handleRollbackVersion,
+                onPlayTimeline: handlePlayTimeline,
+              }
+            : null
+        }
+        timelinePlayerProps={
+          ui.timelinePlayerTarget
+            ? {
+                open: true,
+                onOpenChange: handleTimelinePlayerOpenChange,
+                tableNormalizedName: ui.timelinePlayerTarget.normalizedName,
+                tableName: ui.timelinePlayerTarget.name,
+              }
+            : null
+        }
         reviewHistoryDialogProps={{
+          open: ui.isReviewHistoryOpen,
+          onOpenChange: ui.setIsReviewHistoryOpen,
           tableNormalizedName: workspace.loadedTableNormalizedName,
         }}
         aiGenerateDialogProps={{
+          open: ui.isAIGenerateDialogOpen,
+          onOpenChange: ui.setIsAIGenerateDialogOpen,
           dbType: editor.dbType,
           existingConfig: schema.aiGenerateExistingConfig,
           templates: schema.aiGenerateTemplates,
           onApply: schemaActions.handleApplyAIGeneratedSchema,
         }}
         storageEstimatorDialogProps={{
+          open: ui.isStorageEstimatorOpen,
+          onOpenChange: ui.setIsStorageEstimatorOpen,
           dbType: editor.dbType,
           fields: schema.normalizedFields,
           indexes: editor.indexes,
           storageFormat: schema.storageFormat,
         }}
         mockDataDialogProps={{
+          open: ui.isMockDataDialogOpen,
+          onOpenChange: ui.setIsMockDataDialogOpen,
           tableName: editor.tableName,
           schemaName: editor.schemaName,
           dbType: editor.dbType,

@@ -23,19 +23,6 @@ export function useAppSelectors() {
     resetTableViewConfig,
     setFieldTableFreezeEnabled,
     setFieldTableFreezeColumns,
-    setIsClearDialogOpen,
-    setShowFireworks,
-    setSavedTablesDrawerOpen,
-    setIsSaveDialogOpen,
-    setIsRenameDialogOpen,
-    setIsDeleteDialogOpen,
-    setIsDiffDialogOpen,
-    setVersionHistoryTarget,
-    setIsReviewHistoryOpen,
-    setIsStorageEstimatorOpen,
-    setIsAIGenerateDialogOpen,
-    setIsMockDataDialogOpen,
-    setTimelinePlayerTarget,
   } = useEditorStore.getState();
 
   const { setRows, resetRows: resetTableRows } = useEditorStore.getState();
@@ -66,11 +53,6 @@ export function useAppSelectors() {
       activeTab: current.activeTab,
       fieldTableFreezeEnabled: current.fieldTableFreezeEnabled,
       fieldTableFreezeColumns: current.fieldTableFreezeColumns,
-      showFireworks: current.showFireworks,
-      savedTablesDrawerOpen: current.savedTablesDrawerOpen,
-      isSaveDialogOpen: current.dialogs.save,
-      isRenameDialogOpen: current.dialogs.rename,
-      isDeleteDialogOpen: current.dialogs.delete,
       rows: current.rows,
       indexInput: current.indexInput,
       currentIndexFields: current.currentIndexFields,
@@ -97,22 +79,6 @@ export function useAppSelectors() {
     // 冻结列
     setFieldTableFreezeEnabled,
     setFieldTableFreezeColumns,
-    // 全局 UI
-    setIsClearDialogOpen,
-    setShowFireworks,
-    // 保存表
-    setSavedTablesDrawerOpen,
-    // 对话框
-    setIsSaveDialogOpen,
-    setIsRenameDialogOpen,
-    setIsDeleteDialogOpen,
-    setIsDiffDialogOpen,
-    setVersionHistoryTarget,
-    setIsReviewHistoryOpen,
-    setIsStorageEstimatorOpen,
-    setIsAIGenerateDialogOpen,
-    setIsMockDataDialogOpen,
-    setTimelinePlayerTarget,
     // Field store
     setRows,
     resetTableRows,

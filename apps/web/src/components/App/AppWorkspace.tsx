@@ -37,8 +37,8 @@ export function AppWorkspace({
 }: AppWorkspaceProps) {
   const { actions, domains, resources, workspace, schema, output, celebration } = model;
   const { t } = useTranslation();
-  const { editor } = domains;
-  const { setSavedTablesDrawerOpen } = editor;
+  const { editor, ui } = domains;
+  const { setSavedTablesDrawerOpen } = ui;
   const { savedTableData, folderData, tableTemplateData } = resources;
   const { savedTables, trashedTables, loading, error, importTables } = savedTableData;
   const {
@@ -89,15 +89,15 @@ export function AppWorkspace({
         </div>
       )}
 
-      {isCnyFireworksEnabled && editor.showFireworks && (
+      {isCnyFireworksEnabled && ui.showFireworks && (
         <Suspense fallback={<div className="fixed inset-0 z-[100] bg-black/70" />}>
           <FireworksOverlay onComplete={celebration.handleFireworksComplete} />
         </Suspense>
       )}
 
       <SavedTablesDrawer
-        open={editor.savedTablesDrawerOpen}
-        onOpenChange={editor.setSavedTablesDrawerOpen}
+        open={ui.savedTablesDrawerOpen}
+        onOpenChange={ui.setSavedTablesDrawerOpen}
         loading={loading}
         error={error}
         items={savedTables}

@@ -20,13 +20,6 @@ import type { BuilderTab } from '@/utils/tabUtils';
 
 type Setter<T> = T | ((previous: T) => T);
 
-type CoreDialogState = Record<'save' | 'rename' | 'delete', boolean>;
-
-interface VersionHistoryTarget {
-  normalizedName: string;
-  name: string;
-}
-
 export interface AppSlice {
   schemaName: string;
   tableName: string;
@@ -40,17 +33,6 @@ export interface AppSlice {
   fieldTableFreezeEnabled: boolean;
   fieldTableFreezeColumns: number;
   activeTab: BuilderTab;
-  savedTablesDrawerOpen: boolean;
-  dialogs: CoreDialogState;
-  isClearDialogOpen: boolean;
-  showFireworks: boolean;
-  isDiffDialogOpen: boolean;
-  versionHistoryTarget: VersionHistoryTarget | null;
-  isReviewHistoryOpen: boolean;
-  isStorageEstimatorOpen: boolean;
-  isAIGenerateDialogOpen: boolean;
-  isMockDataDialogOpen: boolean;
-  timelinePlayerTarget: VersionHistoryTarget | null;
   setSchemaName: (value: string) => void;
   setTableName: (value: string) => void;
   setTableComment: (value: string) => void;
@@ -65,19 +47,6 @@ export interface AppSlice {
   setActiveTab: (value: BuilderTab) => void;
   resetTableConfig: () => void;
   resetTableViewConfig: () => void;
-  setSavedTablesDrawerOpen: (value: boolean) => void;
-  setIsSaveDialogOpen: (value: boolean) => void;
-  setIsRenameDialogOpen: (value: boolean) => void;
-  setIsDeleteDialogOpen: (value: boolean) => void;
-  setIsClearDialogOpen: (value: boolean) => void;
-  setShowFireworks: (value: boolean) => void;
-  setIsDiffDialogOpen: (value: boolean) => void;
-  setVersionHistoryTarget: (value: VersionHistoryTarget | null) => void;
-  setIsReviewHistoryOpen: (value: boolean) => void;
-  setIsStorageEstimatorOpen: (value: boolean) => void;
-  setIsAIGenerateDialogOpen: (value: boolean) => void;
-  setIsMockDataDialogOpen: (value: boolean) => void;
-  setTimelinePlayerTarget: (value: VersionHistoryTarget | null) => void;
 }
 
 export interface FieldSlice {
