@@ -5,14 +5,7 @@ import { AISchemaPatchPanel } from './AISchemaPatchPanel';
 import { AIIndexAdvisorDialog } from './AIIndexAdvisorDialog';
 import { DialogRenderGuard } from './containers/DialogRenderGuard';
 import { GlobalDialogs } from './containers/GlobalDialogs';
-import type {
-  AppActions,
-  AppDialogs,
-  AppDomains,
-  AppResources,
-  AppSchema,
-  AppWorkspaceState,
-} from './useAppController';
+import type { AppDialogLayerModel } from './useAppController';
 
 const ImportSqlDialog = lazy(() =>
   import('@/components/ImportSqlDialog').then((module) => ({
@@ -20,37 +13,8 @@ const ImportSqlDialog = lazy(() =>
   })),
 );
 
-type DialogActions = Pick<
-  AppActions,
-  | 'indexAdvisor'
-  | 'folderActions'
-  | 'templateActions'
-  | 'clearActions'
-  | 'savedTableFlow'
-  | 'tableTemplateActions'
-  | 'trashActions'
-  | 'aiPatchFlow'
-  | 'schemaActions'
->;
-
 interface AppDialogLayerProps {
-  actions: DialogActions;
-  domains: Pick<AppDomains, 'editor' | 'tableOptions'>;
-  resources: AppResources;
-  workspace: Pick<
-    AppWorkspaceState,
-    'loadedTableNormalizedName' | 'workspaceScope' | 'isShareView'
-  >;
-  schema: Pick<
-    AppSchema,
-    | 'aiGenerateExistingConfig'
-    | 'aiGenerateTemplates'
-    | 'canSaveCurrent'
-    | 'currentPersistedState'
-    | 'normalizedFields'
-    | 'tableDiff'
-  >;
-  dialogs: AppDialogs;
+  model: AppDialogLayerModel;
   isImportDialogOpen: boolean;
   setIsImportDialogOpen: (open: boolean) => void;
   isErDialogOpen: boolean;
@@ -60,12 +24,7 @@ interface AppDialogLayerProps {
 }
 
 export function AppDialogLayer({
-  actions,
-  domains,
-  resources,
-  workspace,
-  schema,
-  dialogs,
+  model,
   isImportDialogOpen,
   setIsImportDialogOpen,
   isErDialogOpen,
@@ -73,6 +32,7 @@ export function AppDialogLayer({
   isAISchemaPatchOpen,
   setIsAISchemaPatchOpen,
 }: AppDialogLayerProps) {
+  const { actions, domains, resources, workspace, schema, dialogs } = model;
   const { t } = useTranslation();
   const { editor, tableOptions } = domains;
   const { savedTableData, folderData, fieldTemplateData, tableTemplateData } = resources;

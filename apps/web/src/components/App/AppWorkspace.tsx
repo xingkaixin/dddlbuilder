@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight, Upload } from '@/components/icons';
 import { isCnyFireworksEnabled } from '@/config/featureFlags';
-import { EditorSurface, type EditorSurfaceSchema } from './EditorSurface';
+import { EditorSurface } from './EditorSurface';
 import { Header } from './Header';
 import { MainWorkspaceSkeleton } from './MainWorkspaceSkeleton';
 import { SavedTablesDrawer } from './SavedTablesDrawer';
@@ -10,41 +10,12 @@ import { TabBar } from './TabBar';
 import { TableTemplatePopover } from './TableTemplatePopover';
 import { WorkspaceEmptyState } from './WorkspaceEmptyState';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
-import type {
-  AppActions,
-  AppCelebration,
-  AppDomains,
-  AppOutput,
-  AppResources,
-  AppWorkspaceState,
-} from './useAppController';
+import type { AppWorkspaceModel } from './useAppController';
 
 const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
 
-type WorkspaceActions = Pick<
-  AppActions,
-  | 'aiCommentActions'
-  | 'indexAdvisor'
-  | 'folderActions'
-  | 'reviewActions'
-  | 'shareAction'
-  | 'clearActions'
-  | 'savedTableFlow'
-  | 'workspaceTabs'
-  | 'tableTemplateActions'
-  | 'trashActions'
-  | 'schemaActions'
-  | 'navigationActions'
->;
-
 interface AppWorkspaceProps {
-  actions: WorkspaceActions;
-  domains: AppDomains;
-  resources: Pick<AppResources, 'savedTableData' | 'folderData' | 'tableTemplateData'>;
-  workspace: Omit<AppWorkspaceState, 'workspaceScope'>;
-  schema: EditorSurfaceSchema;
-  output: AppOutput;
-  celebration: AppCelebration;
+  model: AppWorkspaceModel;
   workspaceSidebarOpen: boolean;
   setWorkspaceSidebarOpen: (open: boolean) => void;
   outputPanelOpen: boolean;
@@ -55,13 +26,7 @@ interface AppWorkspaceProps {
 }
 
 export function AppWorkspace({
-  actions,
-  domains,
-  resources,
-  workspace,
-  schema,
-  output,
-  celebration,
+  model,
   workspaceSidebarOpen,
   setWorkspaceSidebarOpen,
   outputPanelOpen,
@@ -70,6 +35,7 @@ export function AppWorkspace({
   onOpenErDiagram,
   onOpenAISchemaPatch,
 }: AppWorkspaceProps) {
+  const { actions, domains, resources, workspace, schema, output, celebration } = model;
   const { t } = useTranslation();
   const { editor } = domains;
   const { setSavedTablesDrawerOpen } = editor;

@@ -5,16 +5,13 @@ import { AppWorkspace } from './AppWorkspace';
 import { useAppController } from './useAppController';
 
 export function AppView() {
-  const controller = useAppController();
+  const { view, workspaceView, dialogLayer } = useAppController();
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isErDialogOpen, setIsErDialogOpen] = useState(false);
   const [workspaceSidebarOpen, setWorkspaceSidebarOpen] = useState(true);
   const [outputPanelOpen, setOutputPanelOpen] = useState(true);
   const [isAISchemaPatchOpen, setIsAISchemaPatchOpen] = useState(false);
-  const { actions, domains, resources, workspace, schema, output, dialogs, celebration } =
-    controller;
-  const { tabs, isShareView } = workspace;
-  const { handleOpenAIGenerateDialog } = actions.navigationActions;
+  const { tabs, isShareView, handleOpenAIGenerateDialog } = view;
 
   const handleOpenImport = useCallback(() => setIsImportDialogOpen(true), []);
   const handleOpenErDiagram = useCallback(() => setIsErDialogOpen(true), []);
@@ -30,13 +27,7 @@ export function AppView() {
     <TooltipProvider>
       <div className="min-h-screen bg-background text-foreground">
         <AppWorkspace
-          actions={actions}
-          domains={domains}
-          resources={resources}
-          workspace={workspace}
-          schema={schema}
-          output={output}
-          celebration={celebration}
+          model={workspaceView}
           workspaceSidebarOpen={workspaceSidebarOpen}
           setWorkspaceSidebarOpen={setWorkspaceSidebarOpen}
           outputPanelOpen={outputPanelOpen}
@@ -46,12 +37,7 @@ export function AppView() {
           onOpenAISchemaPatch={handleOpenAISchemaPatch}
         />
         <AppDialogLayer
-          actions={actions}
-          domains={domains}
-          resources={resources}
-          workspace={workspace}
-          schema={schema}
-          dialogs={dialogs}
+          model={dialogLayer}
           isImportDialogOpen={isImportDialogOpen}
           setIsImportDialogOpen={setIsImportDialogOpen}
           isErDialogOpen={isErDialogOpen}
