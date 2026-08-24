@@ -46,7 +46,7 @@ export type ApiErrorPayload = {
 };
 
 export type WorkspaceMigrationConflict = {
-  kind: 'draft' | 'saved_table' | 'saved_draft';
+  kind: 'draft' | 'saved_table' | 'saved_draft' | 'folder';
   normalizedName: string | null;
   displayName: string;
 };

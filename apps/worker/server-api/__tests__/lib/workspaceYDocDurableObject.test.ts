@@ -179,6 +179,67 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     );
   });
 
+  it('merges migration records without replacing authoritative state', async () => {
+    const checkpointWorkspaceSnapshotEntities = vi.fn().mockResolvedValue({
+      cursor: 1,
+      upserted: 1,
+      deleted: 0,
+      skipped: 0,
+    });
+    vi.doMock('../../lib/workspaceEntities.js', () => ({
+      checkpointWorkspaceSnapshotEntities,
+      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
+        globalDraft: null,
+        drafts: [],
+        savedTables: [],
+        savedDrafts: [],
+        folders: [],
+      }),
+    }));
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state } = createDurableObjectState();
+    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
+    await durableObject.fetch(
+      createRequest('/api/workspaces/ws-1/yjs/import', {
+        method: 'POST',
+        body: JSON.stringify(createSnapshot('current')),
+      }),
+    );
+
+    const migrationSnapshot: WorkspaceSnapshot = {
+      globalDraft: null,
+      drafts: [],
+      savedTables: [
+        {
+          normalizedName: 'imported',
+          name: 'Imported',
+          state: createState('imported'),
+          createdAt: 3,
+          updatedAt: 4,
+        },
+      ],
+      savedDrafts: [],
+      folders: [],
+    };
+    const response = await durableObject.fetch(
+      createRequest('/api/workspaces/ws-1/yjs/merge', {
+        method: 'POST',
+        body: JSON.stringify(migrationSnapshot),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(checkpointWorkspaceSnapshotEntities).toHaveBeenLastCalledWith(
+      expect.anything(),
+      'user-1',
+      'ws-1',
+      expect.objectContaining({
+        drafts: [expect.objectContaining({ draftId: 'default' })],
+        savedTables: [expect.objectContaining({ normalizedName: 'imported' })],
+      }),
+    );
+  });
+
   it('rejects an import when Durable Object storage cannot persist its update', async () => {
     vi.doMock('../../lib/workspaceEntities.js', () => ({
       checkpointWorkspaceSnapshotEntities: vi.fn(),

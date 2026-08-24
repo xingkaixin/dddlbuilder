@@ -5,17 +5,15 @@ import type {
   WorkspaceSnapshot,
 } from '@ddlbuilder/shared-types/workspace';
 import type { ApiEnv } from './context.js';
+import { openDefaultWorkspaceYDocAuthority } from './workspaceYDocAuthority.js';
 import {
-  getWorkspaceSnapshotFromEntities,
-  upsertDefaultWorkspaceEntities,
-} from './workspaceEntities.js';
-import {
+  storedEntitiesToWorkspaceSnapshot,
   workspaceSnapshotToEntities,
   type WorkspaceEntityInput,
 } from './workspaceEntitySnapshot.js';
 
 type MigrationEntityKind = WorkspaceEntityType;
-type ConflictKind = 'draft' | 'saved_table' | 'saved_draft';
+type ConflictKind = 'draft' | 'saved_table' | 'saved_draft' | 'folder';
 
 type MigrationEntityRecord = {
   id: string;
@@ -63,8 +61,7 @@ const toMigrationEntityRecord = (
   };
 };
 
-const toConflictKind = (kind: MigrationEntityKind): ConflictKind =>
-  kind === 'folder' ? 'draft' : kind;
+const toConflictKind = (kind: MigrationEntityKind): ConflictKind => kind;
 
 const normalizeName = (value: string) => value.trim().toLowerCase();
 
@@ -97,7 +94,7 @@ const buildCopyEntity = (
       return {
         ...source.entity,
         entityId: normalizedName,
-        payload: { ...sourcePayload, id: normalizedName, name: displayName },
+        payload: { ...sourcePayload, name: displayName },
       };
     case 'draft':
       return {
@@ -164,26 +161,6 @@ const upsertWorkspaceLink = async (
     .run();
 };
 
-const resolveCopyRecord = (
-  userId: string,
-  source: MigrationEntityRecord,
-  existingPayloads: ReadonlyMap<string, string>,
-) => {
-  const baseName = source.displayName;
-  let counter = 0;
-  while (true) {
-    const displayName = buildLocalCopyName(baseName, counter);
-    const normalizedName = normalizeName(displayName);
-    const entity = buildCopyEntity(source, displayName, normalizedName);
-    const candidate = toMigrationEntityRecord(userId, entity);
-    const existingPayload = existingPayloads.get(candidate.id);
-    if (existingPayload === undefined || existingPayload === candidate.payloadJson) {
-      return { record: candidate, alreadyExists: existingPayload !== undefined };
-    }
-    counter += 1;
-  }
-};
-
 const mergeGlobalDraft = (
   snapshot: WorkspaceSnapshot,
   activeSession?: WorkspaceMigrationPayload['snapshot']['activeSession'],
@@ -213,12 +190,134 @@ const buildMigrationEntityRecords = (
     globalDraft: mergeGlobalDraft(snapshot, activeSession),
   }).map((entity) => toMigrationEntityRecord(userId, entity));
 
-const readExistingEntityPayloads = async (env: ApiEnv['Bindings'], userId: string) =>
-  new Map(
-    buildMigrationEntityRecords(userId, await getWorkspaceSnapshotFromEntities(env, userId)).map(
-      (record) => [record.id, record.payloadJson] as const,
-    ),
+const buildEntityPayloadMap = (records: MigrationEntityRecord[]) =>
+  new Map(records.map((record) => [record.id, record.payloadJson] as const));
+
+const replaceFolderReference = (
+  userId: string,
+  record: MigrationEntityRecord,
+  folderIds: ReadonlyMap<string, string>,
+) => {
+  const payload = record.entity.payload as Record<string, unknown>;
+  const referenceName = record.kind === 'folder' ? 'parentId' : 'folderId';
+  const sourceFolderId = payload[referenceName];
+  if (typeof sourceFolderId !== 'string') return record;
+  const targetFolderId = folderIds.get(sourceFolderId);
+  if (!targetFolderId || targetFolderId === sourceFolderId) return record;
+  return toMigrationEntityRecord(userId, {
+    ...record.entity,
+    payload: { ...payload, [referenceName]: targetFolderId },
+  });
+};
+
+const canReserveRecords = (
+  records: MigrationEntityRecord[],
+  reservedPayloads: ReadonlyMap<string, string>,
+) =>
+  records.every((record) => {
+    const payload = reservedPayloads.get(record.id);
+    return payload === undefined || payload === record.payloadJson;
+  });
+
+const reserveRecords = (
+  records: MigrationEntityRecord[],
+  reservedPayloads: Map<string, string>,
+) => {
+  for (const record of records) reservedPayloads.set(record.id, record.payloadJson);
+};
+
+const copyRecordGroup = (
+  userId: string,
+  records: MigrationEntityRecord[],
+  reservedPayloads: ReadonlyMap<string, string>,
+) => {
+  const baseName =
+    records.find((record) => record.kind === 'saved_table')?.displayName ?? records[0].displayName;
+  let counter = 0;
+  while (true) {
+    const displayName = buildLocalCopyName(baseName, counter);
+    const normalizedName = normalizeName(displayName);
+    const candidates = records.map((record) =>
+      toMigrationEntityRecord(userId, buildCopyEntity(record, displayName, normalizedName)),
+    );
+    if (canReserveRecords(candidates, reservedPayloads)) return candidates;
+    counter += 1;
+  }
+};
+
+const resolveMigrationRecords = (
+  userId: string,
+  sourceRecords: MigrationEntityRecord[],
+  existingPayloads: ReadonlyMap<string, string>,
+) => {
+  const reservedPayloads = new Map(existingPayloads);
+  const folderIds = new Map<string, string>();
+  const sourceFolders = new Map(
+    sourceRecords
+      .filter((record) => record.kind === 'folder')
+      .map((record) => [record.normalizedName, record] as const),
   );
+  const resolvedRecords: MigrationEntityRecord[] = [];
+  const resolvedFolders = new Map<string, MigrationEntityRecord>();
+  const resolvingFolders = new Set<string>();
+
+  const resolveFolder = (folderId: string): MigrationEntityRecord => {
+    const existingResolution = resolvedFolders.get(folderId);
+    if (existingResolution) return existingResolution;
+
+    const source = sourceFolders.get(folderId);
+    if (!source) throw new Error(`Migration folder not found: ${folderId}`);
+    const parentId = (source.entity.payload as Record<string, unknown>).parentId;
+    if (
+      typeof parentId === 'string' &&
+      sourceFolders.has(parentId) &&
+      !resolvingFolders.has(parentId)
+    ) {
+      resolvingFolders.add(folderId);
+      resolveFolder(parentId);
+      resolvingFolders.delete(folderId);
+    }
+
+    const referenced = replaceFolderReference(userId, source, folderIds);
+    const records = canReserveRecords([referenced], reservedPayloads)
+      ? [referenced]
+      : copyRecordGroup(userId, [referenced], reservedPayloads);
+    const resolved = records[0];
+    folderIds.set(folderId, resolved.normalizedName);
+    resolvedFolders.set(folderId, resolved);
+    reserveRecords(records, reservedPayloads);
+    resolvedRecords.push(resolved);
+    return resolved;
+  };
+
+  for (const folderId of sourceFolders.keys()) resolveFolder(folderId);
+
+  const tableGroups = new Map<string, MigrationEntityRecord[]>();
+  for (const record of sourceRecords) {
+    if (record.kind !== 'saved_table' && record.kind !== 'saved_draft') continue;
+    const group = tableGroups.get(record.normalizedName) ?? [];
+    group.push(replaceFolderReference(userId, record, folderIds));
+    tableGroups.set(record.normalizedName, group);
+  }
+  for (const group of tableGroups.values()) {
+    const records = canReserveRecords(group, reservedPayloads)
+      ? group
+      : copyRecordGroup(userId, group, reservedPayloads);
+    reserveRecords(records, reservedPayloads);
+    resolvedRecords.push(...records);
+  }
+
+  for (const source of sourceRecords.filter((record) => record.kind === 'draft')) {
+    const referenced = replaceFolderReference(userId, source, folderIds);
+    const records = canReserveRecords([referenced], reservedPayloads)
+      ? [referenced]
+      : copyRecordGroup(userId, [referenced], reservedPayloads);
+    reserveRecords(records, reservedPayloads);
+    resolvedRecords.push(...records);
+  }
+
+  return resolvedRecords;
+};
 
 export const analyzeWorkspaceMigration = async (
   env: ApiEnv['Bindings'],
@@ -256,7 +355,10 @@ export const analyzeWorkspaceMigration = async (
   let createdCount = 0;
   let skippedCount = 0;
   const conflicts: WorkspaceMigrationResult['conflicts'] = [];
-  const existingPayloads = await readExistingEntityPayloads(env, userId);
+  const authority = await openDefaultWorkspaceYDocAuthority(env, userId);
+  const existingPayloads = buildEntityPayloadMap(
+    buildMigrationEntityRecords(userId, await authority.readSnapshot()),
+  );
 
   for (const record of records) {
     const existingPayload = existingPayloads.get(record.id);
@@ -332,33 +434,32 @@ export const commitWorkspaceMigration = async (
   let skippedCount = 0;
 
   try {
-    const existingPayloads = await readExistingEntityPayloads(env, userId);
+    const authority = await openDefaultWorkspaceYDocAuthority(env, userId);
+    const existingPayloads = buildEntityPayloadMap(
+      buildMigrationEntityRecords(userId, await authority.readSnapshot()),
+    );
+    const sourceIds = new Set(records.map((record) => record.id));
     const entitiesToWrite: WorkspaceEntityInput[] = [];
-    for (const record of records) {
-      const existingPayload = existingPayloads.get(record.id);
-      if (existingPayload === undefined) {
-        entitiesToWrite.push(record.entity);
-        existingPayloads.set(record.id, record.payloadJson);
-        createdCount += 1;
-        continue;
-      }
-
-      if (existingPayload === record.payloadJson) {
+    for (const record of resolveMigrationRecords(userId, records, existingPayloads)) {
+      if (existingPayloads.get(record.id) === record.payloadJson) {
         skippedCount += 1;
         continue;
       }
-
-      const copy = resolveCopyRecord(userId, record, existingPayloads);
-      if (copy.alreadyExists) {
-        skippedCount += 1;
-      } else {
-        entitiesToWrite.push(copy.record.entity);
-        existingPayloads.set(copy.record.id, copy.record.payloadJson);
-        copiedCount += 1;
-      }
+      entitiesToWrite.push(record.entity);
+      if (sourceIds.has(record.id)) createdCount += 1;
+      else copiedCount += 1;
     }
     if (entitiesToWrite.length > 0) {
-      await upsertDefaultWorkspaceEntities(env, { userId, entities: entitiesToWrite });
+      await authority.mergeSnapshot(
+        storedEntitiesToWorkspaceSnapshot(
+          entitiesToWrite.map((entity) => ({
+            entityType: entity.entityType,
+            entityId: entity.entityId,
+            payloadJson: JSON.stringify(entity.payload),
+            updatedAt: entity.sourceUpdatedAt,
+          })),
+        ),
+      );
     }
 
     await upsertWorkspaceLink(env, {

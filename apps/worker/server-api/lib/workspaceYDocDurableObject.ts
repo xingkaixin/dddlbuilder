@@ -12,6 +12,7 @@ import {
   createWorkspaceYDocUpdateFromSnapshot,
   exportWorkspaceYDocToSnapshot,
   isWorkspaceYDocInitialized,
+  mergeWorkspaceSnapshotIntoYDoc,
 } from '@ddlbuilder/workspace-core';
 import { logWorkspaceYDocHealth } from './workspaceSyncMetrics.js';
 
@@ -150,6 +151,14 @@ export class WorkspaceYDocDurableObject {
         ok: true,
         stateVectorBytes: Y.encodeStateVector(doc).byteLength,
       });
+    }
+
+    if (request.method === 'POST' && url.pathname.endsWith('/merge')) {
+      const snapshot = (await request.json()) as WorkspaceSnapshot;
+      mergeWorkspaceSnapshotIntoYDoc(doc, snapshot);
+      await this.awaitPersisted();
+      await this.compact();
+      return Response.json({ ok: true });
     }
 
     if (request.method === 'POST' && url.pathname.endsWith('/compact')) {
