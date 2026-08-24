@@ -98,7 +98,7 @@ describe('AI usage identity and settlement', () => {
     expect(applyCreditMutation).toHaveBeenCalledTimes(1);
   });
 
-  it('charges tokens used above the reservation', async () => {
+  it('does not charge beyond the reservation after a successful response', async () => {
     const applyCreditMutation = vi.fn().mockResolvedValue({});
     vi.doMock('../../lib/credits.js', () => ({ applyCreditMutation }));
     const db = createMockDb();
@@ -116,12 +116,7 @@ describe('AI usage identity and settlement', () => {
       140,
     );
 
-    expect(applyCreditMutation).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        kind: 'consume',
-        amount: 40,
-      }),
-    );
+    expect(applyCreditMutation).not.toHaveBeenCalled();
+    expect(db.run).toHaveBeenCalledTimes(2);
   });
 });
