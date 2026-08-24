@@ -28,7 +28,7 @@ import { TableConfig } from '../TableConfig';
 import { TableOptionsPanel } from '../TableOptionsPanel';
 import { ViewDefinitionPanel } from '../ViewDefinitionPanel';
 
-interface TableBuilderContainerProps {
+export interface TableBuilderContainerProps {
   tableConfigProps: ComponentProps<typeof TableConfig>;
   tabsValue: BuilderTab;
   onTabsValueChange: (value: BuilderTab) => void;

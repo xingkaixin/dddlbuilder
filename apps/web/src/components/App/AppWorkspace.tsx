@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback } from 'react';
+import { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight, Upload } from '@/components/icons';
 import { isCnyFireworksEnabled } from '@/config/featureFlags';
@@ -16,29 +16,11 @@ const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
 
 interface AppWorkspaceProps {
   model: AppWorkspaceModel;
-  workspaceSidebarOpen: boolean;
-  setWorkspaceSidebarOpen: (open: boolean) => void;
-  outputPanelOpen: boolean;
-  setOutputPanelOpen: (open: boolean) => void;
-  onOpenImport: () => void;
-  onOpenErDiagram: () => void;
-  onOpenAISchemaPatch: () => void;
 }
 
-export function AppWorkspace({
-  model,
-  workspaceSidebarOpen,
-  setWorkspaceSidebarOpen,
-  outputPanelOpen,
-  setOutputPanelOpen,
-  onOpenImport,
-  onOpenErDiagram,
-  onOpenAISchemaPatch,
-}: AppWorkspaceProps) {
-  const { actions, domains, resources, workspace, schema, output, celebration } = model;
+export function AppWorkspace({ model }: AppWorkspaceProps) {
+  const { actions, ui, resources, workspace, layout, editorSurface, celebration } = model;
   const { t } = useTranslation();
-  const { editor, ui } = domains;
-  const { setSavedTablesDrawerOpen } = ui;
   const { savedTableData, folderData, tableTemplateData } = resources;
   const { savedTables, trashedTables, loading, error, importTables } = savedTableData;
   const {
@@ -51,27 +33,18 @@ export function AppWorkspace({
     schemaActions,
     navigationActions,
   } = actions;
-  const collapseSidebar = useCallback(
-    () => setWorkspaceSidebarOpen(false),
-    [setWorkspaceSidebarOpen],
-  );
-  const expandSidebar = useCallback(() => setWorkspaceSidebarOpen(true), [setWorkspaceSidebarOpen]);
-  const openWorkspaceAfterImport = useCallback(
-    () => setSavedTablesDrawerOpen(true),
-    [setSavedTablesDrawerOpen],
-  );
 
   return (
     <>
       <Header
         onShare={shareAction.handleShare}
         isSharing={shareAction.isSharing}
-        currentDbType={editor.dbType}
+        currentDbType={ui.currentDbType}
         onImport={schemaActions.handleImport}
         onPlayFireworks={isCnyFireworksEnabled ? celebration.handlePlayFireworks : undefined}
         savedTables={savedTables}
         folderTree={folderData.folderTree}
-        onBatchImportComplete={openWorkspaceAfterImport}
+        onBatchImportComplete={layout.openWorkspaceAfterImport}
         onBatchImport={importTables}
         onOpenAIGenerate={navigationActions.handleOpenAIGenerateDialog}
       />
@@ -126,7 +99,7 @@ export function AppWorkspace({
       />
 
       <div className="flex flex-col sm:flex-row">
-        {!workspace.isShareView && workspaceSidebarOpen && (
+        {!workspace.isShareView && layout.workspaceSidebarOpen && (
           <WorkspaceSidebar
             loading={loading || folderData.loading}
             error={error}
@@ -141,7 +114,7 @@ export function AppWorkspace({
             }
             activeDirty={workspace.isLoadedDirty}
             tablePresentations={workspace.tablePresentations}
-            onCollapse={collapseSidebar}
+            onCollapse={layout.collapseSidebar}
             onOpenWorkspace={navigationActions.handleOpenSavedTablesDrawer}
             onCreateFolder={folderActions.handleOpenCreateFolderDialog}
             onSelectDraft={workspaceTabs.handleSelectDraft}
@@ -167,11 +140,11 @@ export function AppWorkspace({
           {!workspace.isShareView && (
             <TabBar
               leadingAction={
-                !workspaceSidebarOpen ? (
+                !layout.workspaceSidebarOpen ? (
                   <button
                     type="button"
                     className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                    onClick={expandSidebar}
+                    onClick={layout.expandSidebar}
                     aria-label={t('savedTables.expand')}
                   >
                     <ChevronRight className="h-4 w-4" />
@@ -200,7 +173,7 @@ export function AppWorkspace({
                 importButton={
                   <button
                     type="button"
-                    onClick={onOpenImport}
+                    onClick={layout.openImportDialog}
                     className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-card px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   >
                     <Upload className="h-4 w-4" />
@@ -219,17 +192,7 @@ export function AppWorkspace({
                 }
               />
             ) : (
-              <EditorSurface
-                actions={actions}
-                domains={domains}
-                workspace={workspace}
-                schema={schema}
-                output={output}
-                outputPanelOpen={outputPanelOpen}
-                setOutputPanelOpen={setOutputPanelOpen}
-                onOpenErDiagram={onOpenErDiagram}
-                onOpenAISchemaPatch={onOpenAISchemaPatch}
-              />
+              <EditorSurface model={editorSurface} />
             )}
           </div>
         </div>

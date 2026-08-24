@@ -7,7 +7,12 @@ export function useAppUiSelectors() {
     useShallow((current) => {
       const { activeDialog } = current;
       return {
+        workspaceSidebarOpen: current.workspaceSidebarOpen,
+        outputPanelOpen: current.outputPanelOpen,
         savedTablesDrawerOpen: current.savedTablesDrawerOpen,
+        isImportDialogOpen: activeDialog.kind === 'import',
+        isErDialogOpen: activeDialog.kind === 'er',
+        isAISchemaPatchOpen: activeDialog.kind === 'ai-schema-patch',
         isSaveDialogOpen: activeDialog.kind === 'save',
         isRenameDialogOpen: activeDialog.kind === 'rename',
         isDeleteDialogOpen: activeDialog.kind === 'delete',
@@ -26,7 +31,12 @@ export function useAppUiSelectors() {
 
   return {
     ...state,
+    setWorkspaceSidebarOpen: actions.setWorkspaceSidebarOpen,
+    setOutputPanelOpen: actions.setOutputPanelOpen,
     setSavedTablesDrawerOpen: actions.setSavedTablesDrawerOpen,
+    setIsImportDialogOpen: actions.setIsImportDialogOpen,
+    setIsErDialogOpen: actions.setIsErDialogOpen,
+    setIsAISchemaPatchOpen: actions.setIsAISchemaPatchOpen,
     setIsSaveDialogOpen: actions.setIsSaveDialogOpen,
     setIsRenameDialogOpen: actions.setIsRenameDialogOpen,
     setIsDeleteDialogOpen: actions.setIsDeleteDialogOpen,

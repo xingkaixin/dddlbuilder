@@ -22,6 +22,7 @@ import { useSavedTableTabIntegration } from './hooks/useSavedTableTabIntegration
 import { useWorkspaceTabActions } from './hooks/useWorkspaceTabActions';
 import { useWorkspaceTrashActions } from './hooks/useWorkspaceTrashActions';
 import { useWorkspacePresentation } from './hooks/useWorkspacePresentation';
+import { useEditorSurfaceModel } from './hooks/useEditorSurfaceModel';
 import { useFieldTemplates } from '@/hooks/useFieldTemplates';
 import { useTableTemplates } from '@/hooks/useTableTemplates';
 import { useTranslation } from 'react-i18next';
@@ -30,7 +31,8 @@ import { isCnyFireworksEnabled } from '@/config/featureFlags';
 
 export function useAppController() {
   const { t } = useTranslation();
-  const { editor, ui, auth, sharding, animations, partition, tableOptions } = useEditorDomains();
+  const domains = useEditorDomains();
+  const { editor, ui, auth, sharding, animations, partition, tableOptions } = domains;
   const {
     persistence,
     savedTableData,
@@ -58,9 +60,19 @@ export function useAppController() {
     resetIndexState,
   } = editor;
   const {
+    workspaceSidebarOpen,
+    outputPanelOpen,
     setIsClearDialogOpen,
     setShowFireworks,
     setSavedTablesDrawerOpen,
+    isImportDialogOpen,
+    setIsImportDialogOpen,
+    isErDialogOpen,
+    setIsErDialogOpen,
+    isAISchemaPatchOpen,
+    setIsAISchemaPatchOpen,
+    setWorkspaceSidebarOpen,
+    setOutputPanelOpen,
     isSaveDialogOpen,
     setIsSaveDialogOpen,
     isRenameDialogOpen,
@@ -148,8 +160,6 @@ export function useAppController() {
   });
   const {
     normalizedFields,
-    availableFields,
-    filledRowCount,
     currentPersistedState,
     buildPersistedState,
     serializePersistedState,
@@ -160,18 +170,7 @@ export function useAppController() {
     tableDiff,
   } = schemaController.derived;
   const { setLoadedTableVersion, workspaceLabel } = schemaController.loadedPresentation;
-  const { generatedSql, generatedDcl, copySql, copyDcl } = schemaController.sql;
-  const { generatedOrm, copyOrm, ormTarget, setOrmTarget } = schemaController.orm;
-  const {
-    aiCommentActions,
-    indexAdvisor,
-    reviewState,
-    reviewActions,
-    schemaLintIssues,
-    shareAction,
-    qualifiedTableName,
-    showToast,
-  } = schemaController;
+  const { indexAdvisor, reviewState, shareAction, showToast } = schemaController;
   const { result: reviewResult, setReviewResult } = reviewState;
 
   const tabLifecycle = useTabLifecycle({
@@ -443,6 +442,25 @@ export function useAppController() {
     [setTableName, getActiveTab, updateActiveTabTitle, t],
   );
 
+  const collapseSidebar = useCallback(
+    () => setWorkspaceSidebarOpen(false),
+    [setWorkspaceSidebarOpen],
+  );
+  const expandSidebar = useCallback(() => setWorkspaceSidebarOpen(true), [setWorkspaceSidebarOpen]);
+  const openWorkspaceAfterImport = useCallback(
+    () => setSavedTablesDrawerOpen(true),
+    [setSavedTablesDrawerOpen],
+  );
+  const openImportDialog = useCallback(() => setIsImportDialogOpen(true), [setIsImportDialogOpen]);
+  const openErDiagram = useCallback(() => setIsErDialogOpen(true), [setIsErDialogOpen]);
+  const openAISchemaPatch = useCallback(() => {
+    if (tabs.length === 0 && !isShareView) {
+      navigationActions.handleOpenAIGenerateDialog();
+      return;
+    }
+    setIsAISchemaPatchOpen(true);
+  }, [isShareView, navigationActions, setIsAISchemaPatchOpen, tabs.length]);
+
   const dataTableToolbarLeft = useTemplateToolbarLeft({
     templates,
     templatesLoading,
@@ -474,47 +492,80 @@ export function useAppController() {
     tabs,
   });
 
-  const output = {
-    copyDcl,
-    copyOrm,
-    copySql,
-    generatedDcl,
-    generatedOrm,
-    generatedSql,
-    ormTarget,
-    setOrmTarget,
-  };
+  const editorSurface = useEditorSurfaceModel({
+    domains,
+    schemaController,
+    clearActions,
+    navigationActions,
+    schemaActions,
+    isShareView,
+    outputPanelOpen,
+    setOutputPanelOpen,
+    isLoadedDirty,
+    loadedTableName,
+    loadedTableNormalizedName,
+    workspaceLabel,
+    dataTableToolbarLeft,
+    onTableNameChange: handleTableNameChange,
+    onDbTypeChange: handleDbTypeChange,
+    onSaveCurrent: handleSaveCurrent,
+    onViewCurrentVersionHistory: handleViewCurrentVersionHistory,
+    onOpenErDiagram: openErDiagram,
+    onOpenAISchemaPatch: openAISchemaPatch,
+  });
 
   return {
-    view: {
-      tabs,
-      isShareView,
-      handleOpenAIGenerateDialog: navigationActions.handleOpenAIGenerateDialog,
-    },
     workspaceView: {
       actions: {
-        aiCommentActions,
-        indexAdvisor,
-        folderActions,
-        reviewActions,
-        shareAction,
-        clearActions,
-        savedTableFlow,
-        workspaceTabs,
-        tableTemplateActions,
-        trashActions,
-        schemaActions,
-        navigationActions,
+        folderActions: {
+          handleMoveTableToFolder: folderActions.handleMoveTableToFolder,
+          handleMoveFolderToFolder: folderActions.handleMoveFolderToFolder,
+          handleOpenCreateFolderDialog: folderActions.handleOpenCreateFolderDialog,
+          handleOpenRenameFolderDialog: folderActions.handleOpenRenameFolderDialog,
+          handleOpenDeleteFolderDialog: folderActions.handleOpenDeleteFolderDialog,
+        },
+        shareAction: {
+          handleShare: shareAction.handleShare,
+          isSharing: shareAction.isSharing,
+        },
+        savedTableFlow: {
+          handleOpenSaveDialog: savedTableFlow.handleOpenSaveDialog,
+          handleOpenRenameDialog: savedTableFlow.handleOpenRenameDialog,
+          handleOpenDeleteDialog: savedTableFlow.handleOpenDeleteDialog,
+        },
+        workspaceTabs: {
+          handleSelectDraft: workspaceTabs.handleSelectDraft,
+          handleDeleteDraft: workspaceTabs.handleDeleteDraft,
+          handleSelectSavedTable: workspaceTabs.handleSelectSavedTable,
+          handleCreateDraft: workspaceTabs.handleCreateDraft,
+          handleLoadExample: workspaceTabs.handleLoadExample,
+        },
+        tableTemplateActions: {
+          handleApplyTemplate: tableTemplateActions.handleApplyTemplate,
+          handleManageTemplates: tableTemplateActions.handleManageTemplates,
+          handleSaveAsTemplate: tableTemplateActions.handleSaveAsTemplate,
+        },
+        trashActions: {
+          handleRestoreTable: trashActions.handleRestoreTable,
+          handleDeleteTablePermanently: trashActions.handleDeleteTablePermanently,
+          handleRestoreDraft: trashActions.handleRestoreDraft,
+          handleDeleteDraftPermanently: trashActions.handleDeleteDraftPermanently,
+          handleEmptyTrash: trashActions.handleEmptyTrash,
+        },
+        schemaActions: {
+          handleImport: schemaActions.handleImport,
+        },
+        navigationActions: {
+          handleOpenAIGenerateDialog: navigationActions.handleOpenAIGenerateDialog,
+          handleOpenSavedTablesDrawer: navigationActions.handleOpenSavedTablesDrawer,
+          handleViewVersionHistory: navigationActions.handleViewVersionHistory,
+        },
       },
-      domains: {
-        editor,
-        ui,
-        auth,
-        sharding,
-        animations,
-        partition,
-        tableOptions,
-        reviewState,
+      ui: {
+        currentDbType: editor.dbType,
+        savedTablesDrawerOpen: ui.savedTablesDrawerOpen,
+        setSavedTablesDrawerOpen: ui.setSavedTablesDrawerOpen,
+        showFireworks: ui.showFireworks,
       },
       resources: {
         savedTableData: {
@@ -553,20 +604,14 @@ export function useAppController() {
         trashedDrafts,
         workspaceLabel,
       },
-      schema: {
-        availableFields,
-        canSaveCurrent,
-        dataTableToolbarLeft,
-        filledRowCount,
-        handleDbTypeChange,
-        handleSaveCurrent,
-        handleTableNameChange,
-        handleViewCurrentVersionHistory,
-        qualifiedTableName,
-        schemaLintIssues,
-        tableDiff,
+      layout: {
+        workspaceSidebarOpen,
+        collapseSidebar,
+        expandSidebar,
+        openImportDialog,
+        openWorkspaceAfterImport,
       },
-      output,
+      editorSurface,
       celebration: {
         handleFireworksComplete,
         handlePlayFireworks,
@@ -574,15 +619,71 @@ export function useAppController() {
     },
     dialogLayer: {
       actions: {
-        indexAdvisor,
-        folderActions,
-        templateActions,
-        clearActions,
-        savedTableFlow,
-        tableTemplateActions,
-        trashActions,
-        aiPatchFlow,
-        schemaActions,
+        indexAdvisor: {
+          open: indexAdvisor.open,
+          setDialogOpen: indexAdvisor.setDialogOpen,
+          isLoading: indexAdvisor.isLoading,
+          result: indexAdvisor.result,
+          error: indexAdvisor.error,
+          suggestedQuery: indexAdvisor.suggestedQuery,
+          blockingMessage: indexAdvisor.blockingMessage,
+          analyze: indexAdvisor.analyze,
+          applyRecommendation: indexAdvisor.applyRecommendation,
+        },
+        folderActions: {
+          isFolderDialogOpen: folderActions.isFolderDialogOpen,
+          setIsFolderDialogOpen: folderActions.setIsFolderDialogOpen,
+          folderDialogMode: folderActions.folderDialogMode,
+          folderDialogParent: folderActions.folderDialogParent,
+          folderDialogTarget: folderActions.folderDialogTarget,
+          handleFolderDialogConfirm: folderActions.handleFolderDialogConfirm,
+          isDeleteFolderDialogOpen: folderActions.isDeleteFolderDialogOpen,
+          setIsDeleteFolderDialogOpen: folderActions.setIsDeleteFolderDialogOpen,
+          deleteFolderTarget: folderActions.deleteFolderTarget,
+          deleteFolderTableCount: folderActions.deleteFolderTableCount,
+          handleDeleteFolderConfirm: folderActions.handleDeleteFolderConfirm,
+        },
+        templateActions: {
+          isTemplateManagerOpen: templateActions.isTemplateManagerOpen,
+          setIsTemplateManagerOpen: templateActions.setIsTemplateManagerOpen,
+          isCreateTemplateDialogOpen: templateActions.isCreateTemplateDialogOpen,
+          setIsCreateTemplateDialogOpen: templateActions.setIsCreateTemplateDialogOpen,
+          selectedFieldsForTemplate: templateActions.selectedFieldsForTemplate,
+          handleCreateTemplateFromFields: templateActions.handleCreateTemplateFromFields,
+        },
+        clearActions: {
+          cancelClearAll: clearActions.cancelClearAll,
+          confirmClearAll: clearActions.confirmClearAll,
+        },
+        savedTableFlow: {
+          handleSaveDialogOpenChange: savedTableFlow.handleSaveDialogOpenChange,
+          handleConfirmSave: savedTableFlow.handleConfirmSave,
+          handleRenameDialogOpenChange: savedTableFlow.handleRenameDialogOpenChange,
+          handleConfirmRename: savedTableFlow.handleConfirmRename,
+          handleDeleteDialogOpenChange: savedTableFlow.handleDeleteDialogOpenChange,
+          handleConfirmDelete: savedTableFlow.handleConfirmDelete,
+        },
+        tableTemplateActions: {
+          isManagerOpen: tableTemplateActions.isManagerOpen,
+          setIsManagerOpen: tableTemplateActions.setIsManagerOpen,
+          isCreateDialogOpen: tableTemplateActions.isCreateDialogOpen,
+          setIsCreateDialogOpen: tableTemplateActions.setIsCreateDialogOpen,
+          pendingBlueprint: tableTemplateActions.pendingBlueprint,
+          handleCreateTemplate: tableTemplateActions.handleCreateTemplate,
+        },
+        trashActions: {
+          isEmptyTrashDialogOpen: trashActions.isEmptyTrashDialogOpen,
+          setIsEmptyTrashDialogOpen: trashActions.setIsEmptyTrashDialogOpen,
+          handleConfirmEmptyTrash: trashActions.handleConfirmEmptyTrash,
+        },
+        aiPatchFlow: {
+          applyChanges: aiPatchFlow.applyChanges,
+          focusChange: aiPatchFlow.focusChange,
+        },
+        schemaActions: {
+          handleApplyAIGeneratedSchema: schemaActions.handleApplyAIGeneratedSchema,
+          handleImport: schemaActions.handleImport,
+        },
       },
       domains: {
         editor: {
@@ -592,7 +693,35 @@ export function useAppController() {
           schemaName: editor.schemaName,
           tableName: editor.tableName,
         },
-        ui,
+        ui: {
+          isClearDialogOpen: ui.isClearDialogOpen,
+          setIsClearDialogOpen: ui.setIsClearDialogOpen,
+          isSaveDialogOpen: ui.isSaveDialogOpen,
+          isRenameDialogOpen: ui.isRenameDialogOpen,
+          isDeleteDialogOpen: ui.isDeleteDialogOpen,
+          isDiffDialogOpen: ui.isDiffDialogOpen,
+          setIsDiffDialogOpen: ui.setIsDiffDialogOpen,
+          versionHistoryTarget: ui.versionHistoryTarget,
+          setVersionHistoryTarget: ui.setVersionHistoryTarget,
+          timelinePlayerTarget: ui.timelinePlayerTarget,
+          setTimelinePlayerTarget: ui.setTimelinePlayerTarget,
+          isReviewHistoryOpen: ui.isReviewHistoryOpen,
+          setIsReviewHistoryOpen: ui.setIsReviewHistoryOpen,
+          isAIGenerateDialogOpen: ui.isAIGenerateDialogOpen,
+          setIsAIGenerateDialogOpen: ui.setIsAIGenerateDialogOpen,
+          isStorageEstimatorOpen: ui.isStorageEstimatorOpen,
+          setIsStorageEstimatorOpen: ui.setIsStorageEstimatorOpen,
+          isMockDataDialogOpen: ui.isMockDataDialogOpen,
+          setIsMockDataDialogOpen: ui.setIsMockDataDialogOpen,
+        },
+      },
+      visibility: {
+        isImportDialogOpen,
+        setIsImportDialogOpen,
+        isErDialogOpen,
+        setIsErDialogOpen,
+        isAISchemaPatchOpen,
+        setIsAISchemaPatchOpen,
       },
       resources: {
         savedTableData: {

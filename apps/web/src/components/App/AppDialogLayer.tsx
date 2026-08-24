@@ -14,24 +14,18 @@ const ImportSqlDialog = lazy(() =>
 
 interface AppDialogLayerProps {
   model: AppDialogLayerModel;
-  isImportDialogOpen: boolean;
-  setIsImportDialogOpen: (open: boolean) => void;
-  isErDialogOpen: boolean;
-  setIsErDialogOpen: (open: boolean) => void;
-  isAISchemaPatchOpen: boolean;
-  setIsAISchemaPatchOpen: (open: boolean) => void;
 }
 
-export function AppDialogLayer({
-  model,
-  isImportDialogOpen,
-  setIsImportDialogOpen,
-  isErDialogOpen,
-  setIsErDialogOpen,
-  isAISchemaPatchOpen,
-  setIsAISchemaPatchOpen,
-}: AppDialogLayerProps) {
-  const { actions, domains, resources, workspace, schema, dialogs } = model;
+export function AppDialogLayer({ model }: AppDialogLayerProps) {
+  const { actions, domains, visibility, resources, workspace, schema, dialogs } = model;
+  const {
+    isImportDialogOpen,
+    setIsImportDialogOpen,
+    isErDialogOpen,
+    setIsErDialogOpen,
+    isAISchemaPatchOpen,
+    setIsAISchemaPatchOpen,
+  } = visibility;
   const { t } = useTranslation();
   const { editor, ui } = domains;
   const { savedTableData, folderData, fieldTemplateData, tableTemplateData } = resources;

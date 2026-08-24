@@ -1,7 +1,7 @@
 import { memo, type ComponentProps } from 'react';
 import { DDLOutput } from '../DDLOutput';
 
-interface OutputContainerProps {
+export interface OutputContainerProps {
   ddlOutputProps: ComponentProps<typeof DDLOutput>;
   onCollapse?: () => void;
 }
