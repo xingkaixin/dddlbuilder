@@ -45,7 +45,6 @@ export function useAppController() {
     schemaName,
     tableName,
     tableComment,
-    dbType,
     setTableName,
     setDbType,
     activeTab,
@@ -385,18 +384,8 @@ export function useAppController() {
     handleViewVersionHistory({
       normalizedName: loadedTableNormalizedName,
       name: loadedTableName,
-      dbType,
-      fieldCount: filledRowCount,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
     });
-  }, [
-    loadedTableNormalizedName,
-    loadedTableName,
-    handleViewVersionHistory,
-    dbType,
-    filledRowCount,
-  ]);
+  }, [loadedTableNormalizedName, loadedTableName, handleViewVersionHistory]);
 
   const handleSelectTableFromEr = useCallback(
     (state: PersistedState) => {

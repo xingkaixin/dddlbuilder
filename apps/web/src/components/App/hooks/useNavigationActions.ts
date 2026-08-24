@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { SavedTableSummary } from '@/hooks/useSavedTables';
+import type { VersionHistoryTarget } from '@/stores';
 import type { BuilderTab } from '@/utils/tabUtils';
 
 interface UseNavigationActionsParams {
@@ -7,12 +7,7 @@ interface UseNavigationActionsParams {
   setIsDiffDialogOpen: (open: boolean) => void;
   setActiveTab: (tab: BuilderTab) => void;
   setIsStorageEstimatorOpen: (open: boolean) => void;
-  setVersionHistoryTarget: (
-    target: {
-      normalizedName: string;
-      name: string;
-    } | null,
-  ) => void;
+  setVersionHistoryTarget: (target: VersionHistoryTarget | null) => void;
   setIsAIGenerateDialogOpen: (open: boolean) => void;
   setIsMockDataDialogOpen: (open: boolean) => void;
 }
@@ -39,7 +34,7 @@ export function useNavigationActions({
   }, [setIsStorageEstimatorOpen]);
 
   const handleViewVersionHistory = useCallback(
-    (item: SavedTableSummary) => {
+    (item: VersionHistoryTarget) => {
       setVersionHistoryTarget({
         normalizedName: item.normalizedName,
         name: item.name,
