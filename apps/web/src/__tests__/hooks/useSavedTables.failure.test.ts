@@ -26,8 +26,6 @@ const savedTableMocks = vi.hoisted(() => ({
   listSavedTableMetadata: vi.fn(),
   listTrashedSavedTables: vi.fn(),
   listTrashedSavedTableMetadata: vi.fn(),
-  moveSavedTableToTrash: vi.fn(),
-  restoreSavedTableFromTrash: vi.fn(),
   normalizeSavedTableName: vi.fn((name: string) => name.trim().toLowerCase()),
   updateSavedTable: vi.fn(),
   updateSavedTables: vi.fn(),
@@ -42,8 +40,6 @@ vi.mock('@/utils/savedTablesDb', () => ({
   listSavedTableMetadata: savedTableMocks.listSavedTableMetadata,
   listTrashedSavedTables: savedTableMocks.listTrashedSavedTables,
   listTrashedSavedTableMetadata: savedTableMocks.listTrashedSavedTableMetadata,
-  moveSavedTableToTrash: savedTableMocks.moveSavedTableToTrash,
-  restoreSavedTableFromTrash: savedTableMocks.restoreSavedTableFromTrash,
   normalizeSavedTableName: savedTableMocks.normalizeSavedTableName,
   updateSavedTable: savedTableMocks.updateSavedTable,
   updateSavedTables: savedTableMocks.updateSavedTables,
@@ -153,7 +149,8 @@ describe('useSavedTables failure states', () => {
   });
 
   it('deleteTable should return error when deletion throws', async () => {
-    savedTableMocks.moveSavedTableToTrash.mockRejectedValueOnce(new Error('删除失败'));
+    savedTableMocks.getSavedTable.mockResolvedValueOnce(createRecord('demo', 'Demo'));
+    savedTableMocks.updateSavedTable.mockRejectedValueOnce(new Error('删除失败'));
 
     const { result } = renderHook(() => useSavedTables());
     await waitFor(() => expect(result.current.loading).toBe(false));

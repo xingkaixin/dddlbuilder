@@ -12,7 +12,6 @@ import {
   createFolder,
   deleteFolder,
   getDescendantFolderIds,
-  getFolder,
   moveFolder,
   renameFolder,
   type FolderTreeNode,
@@ -41,7 +40,7 @@ const readFolderProjection = (doc: Y.Doc) => ({
 });
 
 export function useFolders() {
-  const { scope: currentScope, yDoc, yDocReady, runInYDoc, refresh } = useWorkspaceAuthority();
+  const { scope: currentScope, yDoc, yDocReady, storage, refresh } = useWorkspaceAuthority();
   const yDocProjection = useWorkspaceYDocProjection(
     yDoc,
     FOLDER_COLLECTIONS,
@@ -56,56 +55,57 @@ export function useFolders() {
 
   const handleCreateFolder = useCallback(
     async (name: string, parentId?: string) => {
-      if (!currentScope) throw new Error('工作区未就绪');
       try {
-        const folder = yDocReady
-          ? createFolderRecord(yDocProjection.folders, name, parentId)
-          : await createFolder(name, currentScope, parentId);
-        runInYDoc((doc) => upsertFolderInYDoc(doc, folder));
+        const folder = await storage.update({
+          yDoc: (doc) => {
+            const nextFolder = createFolderRecord(yDocProjection.folders, name, parentId);
+            upsertFolderInYDoc(doc, nextFolder);
+            return nextFolder;
+          },
+          local: (scope) => createFolder(name, scope, parentId),
+        });
         await refresh();
         return folder;
       } catch (error) {
         throw error instanceof Error ? error : new Error('创建文件夹失败');
       }
     },
-    [currentScope, refresh, runInYDoc, yDocProjection.folders, yDocReady],
+    [refresh, storage, yDocProjection.folders],
   );
 
   const handleRenameFolder = useCallback(
     async (id: string, newName: string) => {
-      if (!currentScope) throw new Error('工作区未就绪');
       try {
-        if (!yDocReady) {
-          await renameFolder(id, newName, currentScope);
-          await refresh();
-          return;
-        }
-
-        const folder =
-          yDocProjection.folders.find((item) => item.id === id) ??
-          (await getFolder(id, currentScope));
-        if (!folder) throw new Error('文件夹不存在');
-        const nextFolder = renameFolderRecord(folder, newName);
-        runInYDoc((doc) => upsertFolderInYDoc(doc, nextFolder));
+        await storage.update({
+          yDoc: (doc) => {
+            const folder = yDocProjection.folders.find((item) => item.id === id);
+            if (!folder) throw new Error('文件夹不存在');
+            upsertFolderInYDoc(doc, renameFolderRecord(folder, newName));
+          },
+          local: (scope) => renameFolder(id, newName, scope),
+        });
+        await refresh();
       } catch (error) {
         throw error instanceof Error ? error : new Error('重命名文件夹失败');
       }
     },
-    [currentScope, refresh, runInYDoc, yDocProjection.folders, yDocReady],
+    [refresh, storage, yDocProjection.folders],
   );
 
   const handleDeleteFolder = useCallback(
     async (id: string) => {
-      if (!currentScope) throw new Error('工作区未就绪');
       try {
-        const descendantIds = yDocReady
-          ? getFolderDescendantIds(yDocProjection.folders, id)
-          : await getDescendantFolderIds(id, currentScope);
-        const allFolderIds = [id, ...descendantIds];
-
-        if (!yDocReady) await deleteFolder(id, currentScope);
-        runInYDoc((doc) => {
-          for (const folderId of allFolderIds) deleteFolderFromYDoc(doc, folderId);
+        const allFolderIds = await storage.update({
+          yDoc: (doc) => {
+            const ids = [id, ...getFolderDescendantIds(yDocProjection.folders, id)];
+            for (const folderId of ids) deleteFolderFromYDoc(doc, folderId);
+            return ids;
+          },
+          local: async (scope) => {
+            const ids = [id, ...(await getDescendantFolderIds(id, scope))];
+            await deleteFolder(id, scope);
+            return ids;
+          },
         });
         await refresh();
         return allFolderIds;
@@ -113,30 +113,25 @@ export function useFolders() {
         throw error instanceof Error ? error : new Error('删除文件夹失败');
       }
     },
-    [currentScope, refresh, runInYDoc, yDocProjection.folders, yDocReady],
+    [refresh, storage, yDocProjection.folders],
   );
 
   const handleMoveFolder = useCallback(
     async (id: string, newParentId?: string) => {
-      if (!currentScope) throw new Error('工作区未就绪');
       try {
-        if (!yDocReady) {
-          await moveFolder(id, currentScope, newParentId);
-          await refresh();
-          return;
-        }
-
-        const folder =
-          yDocProjection.folders.find((item) => item.id === id) ??
-          (await getFolder(id, currentScope));
-        if (!folder) throw new Error('文件夹不存在');
-        const nextFolder = moveFolderRecord(yDocProjection.folders, id, newParentId);
-        runInYDoc((doc) => upsertFolderInYDoc(doc, nextFolder));
+        await storage.update({
+          yDoc: (doc) => {
+            const nextFolder = moveFolderRecord(yDocProjection.folders, id, newParentId);
+            upsertFolderInYDoc(doc, nextFolder);
+          },
+          local: (scope) => moveFolder(id, scope, newParentId),
+        });
+        await refresh();
       } catch (error) {
         throw error instanceof Error ? error : new Error('移动文件夹失败');
       }
     },
-    [currentScope, refresh, runInYDoc, yDocProjection.folders, yDocReady],
+    [refresh, storage, yDocProjection.folders],
   );
 
   return {

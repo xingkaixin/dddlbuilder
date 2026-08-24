@@ -21,11 +21,17 @@ const createState = (tableName: string): PersistedState => ({
 const renderDraftRecords = () =>
   renderHook(() =>
     useDraftRecords({
-      currentScope: { kind: 'anonymous' },
       disabled: false,
-      persistLocally: false,
       enqueuePersistence: vi.fn(),
-      runInYDoc: vi.fn(),
+      storage: {
+        kind: 'ydoc',
+        read: vi.fn(),
+        readLocal: vi.fn(),
+        update: vi.fn(),
+        write: vi.fn(),
+        cleanupLocal: vi.fn(),
+        removeEverywhere: vi.fn(),
+      },
     }),
   );
 

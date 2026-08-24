@@ -3,18 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import type * as Y from 'yjs';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import {
-  deleteSavedTableFromYDoc,
-  getSavedTableFromYDoc,
   listSavedTableMetadataFromYDoc,
   listTrashedSavedTableMetadataFromYDoc,
-  upsertSavedTableInYDoc,
 } from '@/services/workspaceYDocAdapter';
-import {
-  deleteSavedTable,
-  ensureSavedTableName,
-  moveSavedTableToTrash,
-  normalizeSavedTableName,
-} from '@/utils/savedTablesDb';
+import { ensureSavedTableName, normalizeSavedTableName } from '@/utils/savedTablesDb';
 import type { SavedTableMetadata, SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import {
   buildSavedTableBatchImportPlan,
@@ -56,14 +48,15 @@ export function useSavedTables() {
     scope: currentScope,
     yDoc,
     yDocReady,
-    runInYDoc,
     refresh,
     readTable,
     readAllTables,
     putTable,
     putTables,
     replaceTable,
-    writeLocalFallback,
+    moveTableToTrash,
+    cleanupLocalTable,
+    deleteTableEverywhere,
   } = useSavedTablePersistence();
   const yDocProjection = useWorkspaceYDocProjection(
     yDoc,
@@ -163,29 +156,8 @@ export function useSavedTables() {
     async (normalizedName: string): Promise<SaveTableResult> => {
       try {
         if (!currentScope) throw new Error('工作区未就绪');
-        if (yDoc) {
-          const record = getSavedTableFromYDoc(yDoc, normalizedName);
-          if (!record) return { ok: false, reason: 'not_found' };
-          const timestamp = Date.now();
-          console.info(
-            JSON.stringify({
-              event: 'workspace_trash_write',
-              entityType: 'saved_table',
-              normalizedName,
-              target: 'ydoc',
-              yDocReady: true,
-            }),
-          );
-          runInYDoc((doc) =>
-            upsertSavedTableInYDoc(doc, {
-              ...record,
-              trashedAt: timestamp,
-              updatedAt: timestamp,
-            }),
-          );
-        } else {
-          await writeLocalFallback(() => moveSavedTableToTrash(normalizedName, currentScope));
-        }
+        const moved = await moveTableToTrash(normalizedName);
+        if (!moved) return { ok: false, reason: 'not_found' };
         await refresh();
         return { ok: true, normalizedName };
       } catch (err) {
@@ -196,7 +168,7 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, refresh, runInYDoc, writeLocalFallback, yDoc],
+    [currentScope, moveTableToTrash, refresh],
   );
 
   const restoreTable = useCallback(
@@ -243,7 +215,7 @@ export function useSavedTables() {
         };
 
         await replaceTable(normalizedName, restoredRecord);
-        if (yDoc) await deleteSavedTable(normalizedName, currentScope);
+        await cleanupLocalTable(normalizedName);
         await refresh();
         return { ok: true, normalizedName: targetNormalizedName };
       } catch (err) {
@@ -254,19 +226,14 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, readTable, refresh, replaceTable, savedTables, yDoc],
+    [cleanupLocalTable, currentScope, readTable, refresh, replaceTable, savedTables],
   );
 
   const deleteTablePermanently = useCallback(
     async (normalizedName: string): Promise<SaveTableResult> => {
       try {
         if (!currentScope) throw new Error('工作区未就绪');
-        if (yDoc) {
-          await deleteSavedTable(normalizedName, currentScope);
-        } else {
-          await writeLocalFallback(() => deleteSavedTable(normalizedName, currentScope));
-        }
-        runInYDoc((doc) => deleteSavedTableFromYDoc(doc, normalizedName));
+        await deleteTableEverywhere(normalizedName);
         await refresh();
         return { ok: true, normalizedName };
       } catch (err) {
@@ -277,7 +244,7 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, refresh, runInYDoc, writeLocalFallback, yDoc],
+    [currentScope, deleteTableEverywhere, refresh],
   );
 
   const renameTable = useCallback(

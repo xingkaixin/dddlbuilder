@@ -1,24 +1,20 @@
 import { useCallback, useRef } from 'react';
-import type { SavedTableDraftRecord, WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
-import type { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
+import type { SavedTableDraftRecord } from '@ddlbuilder/shared-types/workspace';
 import { deleteSavedDraftFromYDoc, upsertSavedDraftInYDoc } from '@/services/workspaceYDocAdapter';
 import { deleteSavedDraft, renameSavedDraftKey, upsertSavedDraft } from '@/utils/workspaceStateDb';
 import type { usePersistenceQueue } from './usePersistenceQueue';
+import type { WorkspaceStorageTarget } from './useWorkspaceStorageTarget';
 
 interface UseSavedTableDraftRecordsParams {
-  currentScope: WorkspaceScope;
   disabled: boolean;
-  persistLocally: boolean;
   enqueuePersistence: ReturnType<typeof usePersistenceQueue>['enqueue'];
-  runInYDoc: ReturnType<typeof useWorkspaceYDocGateway>['runInYDoc'];
+  storage: WorkspaceStorageTarget;
 }
 
 export function useSavedTableDraftRecords({
-  currentScope,
   disabled,
-  persistLocally,
   enqueuePersistence,
-  runInYDoc,
+  storage,
 }: UseSavedTableDraftRecordsParams) {
   const recordsRef = useRef<Map<string, SavedTableDraftRecord>>(new Map());
 
@@ -34,27 +30,30 @@ export function useSavedTableDraftRecords({
   const persistRecord = useCallback(
     (normalizedName: string, record: SavedTableDraftRecord) => {
       recordsRef.current.set(normalizedName, record);
-      if (persistLocally) {
-        enqueuePersistence(`saved-draft:${normalizedName}`, 'save saved-table draft', () =>
-          upsertSavedDraft(normalizedName, record, currentScope),
-        );
-      }
-      runInYDoc((doc) =>
-        upsertSavedDraftInYDoc(doc, normalizedName, record, { compactSnapshotBase: true }),
+      enqueuePersistence(`saved-draft:${normalizedName}`, 'save saved-table draft', () =>
+        storage.write({
+          yDoc: (doc) =>
+            upsertSavedDraftInYDoc(doc, normalizedName, record, {
+              compactSnapshotBase: true,
+            }),
+          local: (scope) => upsertSavedDraft(normalizedName, record, scope),
+        }),
       );
     },
-    [currentScope, enqueuePersistence, persistLocally, runInYDoc],
+    [enqueuePersistence, storage],
   );
 
   const dropRecord = useCallback(
     (normalizedName: string) => {
       recordsRef.current.delete(normalizedName);
       enqueuePersistence(`saved-draft:${normalizedName}`, 'delete saved-table draft', () =>
-        deleteSavedDraft(normalizedName, currentScope),
+        storage.removeEverywhere({
+          yDoc: (doc) => deleteSavedDraftFromYDoc(doc, normalizedName),
+          local: (scope) => deleteSavedDraft(normalizedName, scope),
+        }),
       );
-      runInYDoc((doc) => deleteSavedDraftFromYDoc(doc, normalizedName));
     },
-    [currentScope, enqueuePersistence, runInYDoc],
+    [enqueuePersistence, storage],
   );
 
   const removeRecord = useCallback(
@@ -69,26 +68,35 @@ export function useSavedTableDraftRecords({
       if (disabled) return;
       const record = recordsRef.current.get(fromNormalizedName);
       const keyChanged = fromNormalizedName !== toNormalizedName;
+      let nextRecord: SavedTableDraftRecord | null = null;
       if (record) {
-        const nextRecord = { ...record, tableName: nextTableName, updatedAt: Date.now() };
+        nextRecord = { ...record, tableName: nextTableName, updatedAt: Date.now() };
         recordsRef.current.set(toNormalizedName, nextRecord);
         if (keyChanged) recordsRef.current.delete(fromNormalizedName);
-        runInYDoc((doc) => {
-          upsertSavedDraftInYDoc(doc, toNormalizedName, nextRecord, { compactSnapshotBase: true });
-          if (keyChanged) deleteSavedDraftFromYDoc(doc, fromNormalizedName);
-        });
       }
-      if (persistLocally) {
-        enqueuePersistence(`saved-draft:${fromNormalizedName}`, 'rename saved-table draft', () =>
-          renameSavedDraftKey(fromNormalizedName, toNormalizedName, nextTableName, currentScope),
-        );
-      } else if (keyChanged) {
-        enqueuePersistence(`saved-draft:${fromNormalizedName}`, 'delete legacy saved draft', () =>
-          deleteSavedDraft(fromNormalizedName, currentScope),
-        );
-      }
+      enqueuePersistence(
+        `saved-draft:${fromNormalizedName}`,
+        'rename saved-table draft',
+        async () => {
+          await storage.write({
+            yDoc: (doc) => {
+              if (nextRecord) {
+                upsertSavedDraftInYDoc(doc, toNormalizedName, nextRecord, {
+                  compactSnapshotBase: true,
+                });
+              }
+              if (keyChanged) deleteSavedDraftFromYDoc(doc, fromNormalizedName);
+            },
+            local: (scope) =>
+              renameSavedDraftKey(fromNormalizedName, toNormalizedName, nextTableName, scope),
+          });
+          if (keyChanged) {
+            await storage.cleanupLocal((scope) => deleteSavedDraft(fromNormalizedName, scope));
+          }
+        },
+      );
     },
-    [currentScope, disabled, enqueuePersistence, persistLocally, runInYDoc],
+    [disabled, enqueuePersistence, storage],
   );
 
   return {

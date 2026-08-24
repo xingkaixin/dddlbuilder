@@ -1,13 +1,13 @@
 import { useCallback, useRef, useState } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { DraftSummary, WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
-import type { useWorkspaceYDocGateway } from '@/hooks/useWorkspaceYDocGateway';
+import type { DraftSummary } from '@ddlbuilder/shared-types/workspace';
 import { deleteDraftFromYDoc, upsertDraftInYDoc } from '@/services/workspaceYDocAdapter';
 import { deleteDraft, readDraft, writeDraft } from '@/utils/workspaceStateDb';
 import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 import { getDraftDisplayName, resolveUniqueDraftName, type GlobalDraftRecord } from './normalize';
 import { toDraftSummary, type DraftEntry } from './hydration';
 import type { usePersistenceQueue } from './usePersistenceQueue';
+import type { WorkspaceStorageTarget } from './useWorkspaceStorageTarget';
 
 const sortDraftSummaries = (drafts: DraftSummary[]) =>
   [...drafts].sort((a, b) => b.createdAt - a.createdAt || a.draftId.localeCompare(b.draftId));
@@ -16,20 +16,12 @@ const isSameState = (left: PersistedState, right: PersistedState) =>
   serializePersistedStateForComparison(left) === serializePersistedStateForComparison(right);
 
 interface UseDraftRecordsParams {
-  currentScope: WorkspaceScope;
   disabled: boolean;
-  persistLocally: boolean;
   enqueuePersistence: ReturnType<typeof usePersistenceQueue>['enqueue'];
-  runInYDoc: ReturnType<typeof useWorkspaceYDocGateway>['runInYDoc'];
+  storage: WorkspaceStorageTarget;
 }
 
-export function useDraftRecords({
-  currentScope,
-  disabled,
-  persistLocally,
-  enqueuePersistence,
-  runInYDoc,
-}: UseDraftRecordsParams) {
+export function useDraftRecords({ disabled, enqueuePersistence, storage }: UseDraftRecordsParams) {
   const [draftRecords, setDraftRecords] = useState<Map<string, GlobalDraftRecord>>(() => new Map());
   const recordsRef = useRef(draftRecords);
   const trashedRecordsRef = useRef<Map<string, GlobalDraftRecord>>(new Map());
@@ -73,19 +65,12 @@ export function useDraftRecords({
   );
 
   const persistDraftRecord = useCallback(
-    (draftId: string, record: GlobalDraftRecord) => {
-      const written = persistLocally
-        ? writeDraft(draftId, record, currentScope)
-        : Promise.resolve();
-      runInYDoc((doc) => upsertDraftInYDoc(doc, draftId, record, { compactSnapshotBase: true }));
-      return written;
-    },
-    [currentScope, persistLocally, runInYDoc],
-  );
-
-  const dropDraftRecord = useCallback(
-    (draftId: string) => runInYDoc((doc) => deleteDraftFromYDoc(doc, draftId)),
-    [runInYDoc],
+    (draftId: string, record: GlobalDraftRecord) =>
+      storage.write({
+        yDoc: (doc) => upsertDraftInYDoc(doc, draftId, record, { compactSnapshotBase: true }),
+        local: (scope) => writeDraft(draftId, record, scope),
+      }),
+    [storage],
   );
 
   const saveDraftState = useCallback(
@@ -149,8 +134,8 @@ export function useDraftRecords({
           event: 'workspace_trash_write',
           entityType: 'draft',
           draftId,
-          target: persistLocally ? 'indexeddb' : 'ydoc',
-          yDocReady: !persistLocally,
+          target: storage.kind,
+          yDocReady: storage.kind === 'ydoc',
         }),
       );
       removeDraftRecord(draftId);
@@ -161,14 +146,15 @@ export function useDraftRecords({
       );
       return true;
     },
-    [disabled, enqueuePersistence, persistDraftRecord, persistLocally, removeDraftRecord],
+    [disabled, enqueuePersistence, persistDraftRecord, removeDraftRecord, storage.kind],
   );
 
   const restoreDraftById = useCallback(
     async (draftId: string) => {
       if (disabled) return;
       const record =
-        trashedRecordsRef.current.get(draftId) ?? (await readDraft(draftId, currentScope));
+        trashedRecordsRef.current.get(draftId) ??
+        (await storage.readLocal((scope) => readDraft(draftId, scope)));
       if (!record) return;
       const restoredRecord: GlobalDraftRecord = {
         ...record,
@@ -180,16 +166,9 @@ export function useDraftRecords({
       trashedRecordsRef.current.delete(draftId);
       cacheDraftRecord(draftId, restoredRecord);
       await persistDraftRecord(draftId, restoredRecord);
-      if (!persistLocally) await deleteDraft(draftId, currentScope);
+      await storage.cleanupLocal((scope) => deleteDraft(draftId, scope));
     },
-    [
-      cacheDraftRecord,
-      currentScope,
-      disabled,
-      persistDraftRecord,
-      persistLocally,
-      resolveDraftNameConflict,
-    ],
+    [cacheDraftRecord, disabled, persistDraftRecord, resolveDraftNameConflict, storage],
   );
 
   const permanentlyDeleteDraftById = useCallback(
@@ -198,11 +177,13 @@ export function useDraftRecords({
       setTrashedDrafts((previous) => previous.filter((draft) => draft.draftId !== draftId));
       trashedRecordsRef.current.delete(draftId);
       enqueuePersistence(`draft:${draftId}`, 'permanently delete draft', () =>
-        deleteDraft(draftId, currentScope),
+        storage.removeEverywhere({
+          yDoc: (doc) => deleteDraftFromYDoc(doc, draftId),
+          local: (scope) => deleteDraft(draftId, scope),
+        }),
       );
-      dropDraftRecord(draftId);
     },
-    [currentScope, disabled, dropDraftRecord, enqueuePersistence],
+    [disabled, enqueuePersistence, storage],
   );
 
   const moveDraftToFolder = useCallback(
@@ -223,11 +204,13 @@ export function useDraftRecords({
     (draftId: string) => {
       removeDraftRecord(draftId);
       enqueuePersistence(`draft:${draftId}`, 'delete draft', () =>
-        deleteDraft(draftId, currentScope),
+        storage.removeEverywhere({
+          yDoc: (doc) => deleteDraftFromYDoc(doc, draftId),
+          local: (scope) => deleteDraft(draftId, scope),
+        }),
       );
-      dropDraftRecord(draftId);
     },
-    [currentScope, dropDraftRecord, enqueuePersistence, removeDraftRecord],
+    [enqueuePersistence, removeDraftRecord, storage],
   );
 
   return {

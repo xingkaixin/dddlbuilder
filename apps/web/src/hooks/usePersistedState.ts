@@ -51,6 +51,7 @@ import {
   type PendingLocalSave,
 } from './workspacePersistence/useWorkspaceYDocSubscription';
 import { useWorkspaceSnapshotRefresh } from './workspacePersistence/useWorkspaceSnapshotRefresh';
+import { useWorkspaceStorageTarget } from './workspacePersistence/useWorkspaceStorageTarget';
 
 const isSamePersistedState = (left: PersistedState, right: PersistedState) =>
   serializePersistedStateForComparison(left) === serializePersistedStateForComparison(right);
@@ -118,19 +119,20 @@ export function usePersistedState(): UsePersistedStateReturn {
   const shouldWaitForYDocHydration = Boolean(
     !shareId && currentScope.kind === 'user' && !workspaceYDoc.localSynced,
   );
-  const draftRecords = useDraftRecords({
-    currentScope,
-    disabled: Boolean(shareId),
-    persistLocally: !yDocReady,
-    enqueuePersistence,
+  const storage = useWorkspaceStorageTarget({
+    scope: currentScope,
+    yDoc,
     runInYDoc,
   });
-  const savedTableDraftRecords = useSavedTableDraftRecords({
-    currentScope,
+  const draftRecords = useDraftRecords({
     disabled: Boolean(shareId),
-    persistLocally: !yDocReady,
     enqueuePersistence,
-    runInYDoc,
+    storage,
+  });
+  const savedTableDraftRecords = useSavedTableDraftRecords({
+    disabled: Boolean(shareId),
+    enqueuePersistence,
+    storage,
   });
   const {
     draftSummaries,

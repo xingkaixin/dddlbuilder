@@ -20,87 +20,121 @@ import { useWorkspaceAuthority } from './useWorkspaceAuthority';
 
 export function useSavedTablePersistence() {
   const authority = useWorkspaceAuthority();
-  const { scope, yDoc, runInYDoc, writeLocalFallback } = authority;
-  const requireScope = useCallback(() => {
-    if (!scope) throw new Error('工作区未就绪');
-    return scope;
-  }, [scope]);
+  const { storage } = authority;
 
   const readTable = useCallback(
     (normalizedName: string) =>
-      yDoc
-        ? Promise.resolve(getSavedTableFromYDoc(yDoc, normalizedName))
-        : getSavedTable(normalizedName, requireScope()),
-    [requireScope, yDoc],
+      storage.read({
+        yDoc: (doc) => getSavedTableFromYDoc(doc, normalizedName),
+        local: (scope) => getSavedTable(normalizedName, scope),
+      }),
+    [storage],
   );
 
   const readAllTables = useCallback(
     () =>
-      yDoc
-        ? Promise.resolve({
-            active: listSavedTableRecordsFromYDoc(yDoc),
-            trashed: listTrashedSavedTableRecordsFromYDoc(yDoc),
-          })
-        : Promise.all([
-            listSavedTables(requireScope()),
-            listTrashedSavedTables(requireScope()),
-          ]).then(([active, trashed]) => ({ active, trashed })),
-    [requireScope, yDoc],
+      storage.read({
+        yDoc: (doc) => ({
+          active: listSavedTableRecordsFromYDoc(doc),
+          trashed: listTrashedSavedTableRecordsFromYDoc(doc),
+        }),
+        local: (scope) =>
+          Promise.all([listSavedTables(scope), listTrashedSavedTables(scope)]).then(
+            ([active, trashed]) => ({ active, trashed }),
+          ),
+      }),
+    [storage],
   );
 
   const putTable = useCallback(
     async (record: SavedTableRecord, mode: 'add' | 'update' = 'update') => {
-      if (yDoc) {
-        runInYDoc((doc) => upsertSavedTableInYDoc(doc, record));
-        return;
-      }
-      const currentScope = requireScope();
-      await writeLocalFallback(() =>
-        mode === 'add'
-          ? addSavedTable(record, currentScope)
-          : updateSavedTable(record, currentScope),
-      );
+      await storage.write({
+        yDoc: (doc) => upsertSavedTableInYDoc(doc, record),
+        local: (scope) =>
+          mode === 'add' ? addSavedTable(record, scope) : updateSavedTable(record, scope),
+      });
     },
-    [requireScope, runInYDoc, writeLocalFallback, yDoc],
+    [storage],
   );
 
   const putTables = useCallback(
     async (records: SavedTableRecord[]) => {
-      if (yDoc) {
-        runInYDoc((doc) => {
+      await storage.write({
+        yDoc: (doc) => {
           for (const record of records) upsertSavedTableInYDoc(doc, record);
-        });
-        return;
-      }
-      const currentScope = requireScope();
-      await writeLocalFallback(() => updateSavedTables(records, currentScope));
+        },
+        local: (scope) => updateSavedTables(records, scope),
+      });
     },
-    [requireScope, runInYDoc, writeLocalFallback, yDoc],
+    [storage],
   );
 
   const replaceTable = useCallback(
     async (previousNormalizedName: string, record: SavedTableRecord) => {
-      if (yDoc) {
-        runInYDoc((doc) => {
+      await storage.write({
+        yDoc: (doc) => {
           upsertSavedTableInYDoc(doc, record);
           if (record.normalizedName !== previousNormalizedName) {
             deleteSavedTableFromYDoc(doc, previousNormalizedName);
           }
-        });
-        return;
-      }
-      const currentScope = requireScope();
-      await writeLocalFallback(async () => {
-        if (record.normalizedName === previousNormalizedName) {
-          await updateSavedTable(record, currentScope);
-          return;
-        }
-        await addSavedTable(record, currentScope);
-        await deleteSavedTable(previousNormalizedName, currentScope);
+        },
+        local: async (scope) => {
+          if (record.normalizedName === previousNormalizedName) {
+            await updateSavedTable(record, scope);
+            return;
+          }
+          await addSavedTable(record, scope);
+          await deleteSavedTable(previousNormalizedName, scope);
+        },
       });
     },
-    [requireScope, runInYDoc, writeLocalFallback, yDoc],
+    [storage],
   );
 
-  return { ...authority, readTable, readAllTables, putTable, putTables, replaceTable };
+  const moveTableToTrash = useCallback(
+    async (normalizedName: string) => {
+      const record = await readTable(normalizedName);
+      if (!record) return false;
+      const timestamp = Date.now();
+      console.info(
+        JSON.stringify({
+          event: 'workspace_trash_write',
+          entityType: 'saved_table',
+          normalizedName,
+          target: storage.kind,
+          yDocReady: storage.kind === 'ydoc',
+        }),
+      );
+      await putTable({ ...record, trashedAt: timestamp, updatedAt: timestamp });
+      return true;
+    },
+    [putTable, readTable, storage.kind],
+  );
+
+  const cleanupLocalTable = useCallback(
+    (normalizedName: string) =>
+      storage.cleanupLocal((scope) => deleteSavedTable(normalizedName, scope)),
+    [storage],
+  );
+
+  const deleteTableEverywhere = useCallback(
+    (normalizedName: string) =>
+      storage.removeEverywhere({
+        yDoc: (doc) => deleteSavedTableFromYDoc(doc, normalizedName),
+        local: (scope) => deleteSavedTable(normalizedName, scope),
+      }),
+    [storage],
+  );
+
+  return {
+    ...authority,
+    readTable,
+    readAllTables,
+    putTable,
+    putTables,
+    replaceTable,
+    moveTableToTrash,
+    cleanupLocalTable,
+    deleteTableEverywhere,
+  };
 }
