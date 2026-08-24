@@ -5,7 +5,7 @@ import { logAiStreamDebug } from '@/services/aiStreamDebug';
 import i18n from '@/i18n';
 import { useLocale } from '@/i18n/LocaleContext';
 import { buildAuthenticatedJsonHeaders, readAIErrorMessage } from '@/services/aiApi';
-import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { useAIRequestAccess } from './useAIRequestAccess';
 
 interface ExplainState {
   isLoading: boolean;
@@ -19,7 +19,7 @@ interface ExplainState {
 
 export function useDDLExplain() {
   const { resolvedLocale } = useLocale();
-  const authSession = useAuthSession();
+  const requestAccess = useAIRequestAccess();
   const [state, setState] = useState<ExplainState>({
     isLoading: false,
     isStreaming: false,
@@ -62,19 +62,11 @@ export function useDDLExplain() {
         return;
       }
 
-      if (authSession.status !== 'signed_in' || !authSession.userId) {
-        authSession.openAuthDialog();
+      const accessError = requestAccess.getAccessError();
+      if (accessError) {
         setState((prev) => ({
           ...prev,
-          error: i18n.t('services.authRequired'),
-        }));
-        return;
-      }
-
-      if (authSession.creditsStatus === 'ready' && (authSession.creditBalance ?? 0) <= 0) {
-        setState((prev) => ({
-          ...prev,
-          error: i18n.t('services.creditExhausted'),
+          error: accessError,
         }));
         return;
       }
@@ -188,7 +180,7 @@ export function useDDLExplain() {
           requestId,
           debugEnabled: serverDebugEnabled,
         }));
-        void authSession.refreshCredits();
+        requestAccess.refreshCreditsAfterSuccess();
         logAiStreamDebug(
           'ai_explain_state_transition',
           {
@@ -206,15 +198,12 @@ export function useDDLExplain() {
           });
           return; // Request was cancelled
         }
-        if ((error as Error).message === i18n.t('services.authRequired')) {
-          authSession.openAuthDialog();
-        }
         setState({
           isLoading: false,
           isStreaming: false,
           isComplete: false,
           explanation: null,
-          error: error instanceof Error ? error.message : i18n.t('services.explainFailed'),
+          error: requestAccess.resolveRequestError(error, i18n.t('services.explainFailed')),
           requestId: null,
           debugEnabled: false,
         });
@@ -226,7 +215,7 @@ export function useDDLExplain() {
         });
       }
     },
-    [authSession, explainRequestMutation, resolvedLocale],
+    [explainRequestMutation, requestAccess, resolvedLocale],
   );
 
   const clearExplain = useCallback(() => {

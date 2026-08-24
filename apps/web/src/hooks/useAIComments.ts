@@ -2,9 +2,9 @@ import { useCallback, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import type { AICommentMode, AICommentRequest, AICommentResult } from '@ddlbuilder/shared-types';
 import { requestAIComments, assertAICommentTarget } from '@/services/aiCommentService';
-import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { useLocale } from '@/i18n/LocaleContext';
 import i18n from '@/i18n';
+import { useAIRequestAccess } from './useAIRequestAccess';
 
 interface AICommentState {
   error: string | null;
@@ -16,7 +16,7 @@ type GenerateCommentsInput = Omit<AICommentRequest, 'mode' | 'targetLocale'> & {
 };
 
 export function useAIComments() {
-  const authSession = useAuthSession();
+  const requestAccess = useAIRequestAccess();
   const { resolvedLocale } = useLocale();
   const [state, setState] = useState<AICommentState>({
     error: null,
@@ -30,17 +30,10 @@ export function useAIComments() {
 
   const generateComments = useCallback(
     async (input: GenerateCommentsInput): Promise<AICommentResult | null> => {
-      if (authSession.status !== 'signed_in' || !authSession.userId) {
-        authSession.openAuthDialog();
-        const message = i18n.t('services.authRequired');
-        setState({ error: message });
-        throw new Error(message);
-      }
-
-      if (authSession.creditsStatus === 'ready' && (authSession.creditBalance ?? 0) <= 0) {
-        const message = i18n.t('services.creditExhausted');
-        setState({ error: message });
-        throw new Error(message);
+      const accessError = requestAccess.getAccessError();
+      if (accessError) {
+        setState({ error: accessError });
+        throw new Error(accessError);
       }
 
       const payload: AICommentRequest = {
@@ -67,16 +60,16 @@ export function useAIComments() {
           signal: abortController.signal,
         });
         setState({ error: null });
-        void authSession.refreshCredits();
+        requestAccess.refreshCreditsAfterSuccess();
         return result;
       } catch (error) {
         if ((error as Error).name === 'AbortError') {
           return null;
         }
-        if ((error as Error).message === i18n.t('services.authRequired')) {
-          authSession.openAuthDialog();
-        }
-        const message = (error as Error).message || i18n.t('services.generationFailed');
+        const message = requestAccess.resolveRequestError(
+          error,
+          i18n.t('services.generationFailed'),
+        );
         setState({ error: message });
         throw new Error(message);
       } finally {
@@ -85,7 +78,7 @@ export function useAIComments() {
         }
       }
     },
-    [authSession, commentsMutation, resolvedLocale],
+    [commentsMutation, requestAccess, resolvedLocale],
   );
 
   const cancelComments = useCallback(() => {

@@ -12,7 +12,7 @@ import type {
 import { parsePartialTableSchema } from '@/utils/parsePartialTableSchema';
 import { useLocale } from '@/i18n/LocaleContext';
 import i18n from '@/i18n';
-import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { useAIRequestAccess } from './useAIRequestAccess';
 
 export type {
   ConversationMessage,
@@ -50,7 +50,7 @@ function appendConversation(
  */
 export function useAIGenerateTable() {
   const { resolvedLocale } = useLocale();
-  const authSession = useAuthSession();
+  const requestAccess = useAIRequestAccess();
   const [state, setState] = useState<GenerateState>({
     streamingText: '',
     result: null,
@@ -92,19 +92,11 @@ export function useAIGenerateTable() {
         return;
       }
 
-      if (authSession.status !== 'signed_in' || !authSession.userId) {
-        authSession.openAuthDialog();
+      const accessError = requestAccess.getAccessError();
+      if (accessError) {
         setState((prev) => ({
           ...prev,
-          error: i18n.t('services.authRequired'),
-        }));
-        return;
-      }
-
-      if (authSession.creditsStatus === 'ready' && (authSession.creditBalance ?? 0) <= 0) {
-        setState((prev) => ({
-          ...prev,
-          error: i18n.t('services.creditExhausted'),
+          error: accessError,
         }));
         return;
       }
@@ -170,19 +162,16 @@ export function useAIGenerateTable() {
         setConversationHistory(() =>
           appendConversation(baseConversation, normalizedDescription, fullText),
         );
-        void authSession.refreshCredits();
+        requestAccess.refreshCreditsAfterSuccess();
       } catch (err) {
         if ((err as Error).name === 'AbortError') {
           return;
-        }
-        if ((err as Error).message === i18n.t('services.authRequired')) {
-          authSession.openAuthDialog();
         }
         setState({
           streamingText: '',
           result: null,
           previousResult: null,
-          error: (err as Error).message || i18n.t('services.generationFailed'),
+          error: requestAccess.resolveRequestError(err, i18n.t('services.generationFailed')),
         });
       } finally {
         if (activeRequestRef.current?.controller === abortController) {
@@ -190,7 +179,7 @@ export function useAIGenerateTable() {
         }
       }
     },
-    [authSession, conversationHistory, generateMutation, resolvedLocale],
+    [conversationHistory, generateMutation, requestAccess, resolvedLocale],
   );
 
   const clearResult = useCallback(() => {

@@ -2,8 +2,8 @@ import { useCallback, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import type { AIIndexAdvisorRequest, AIIndexAdvisorResult } from '@ddlbuilder/shared-types';
 import { assertAIIndexAdvisorTarget, requestAIIndexAdvice } from '@/services/aiIndexAdvisorService';
-import { useAuthSession } from '@/auth/AuthSessionProvider';
 import i18n from '@/i18n';
+import { useAIRequestAccess } from './useAIRequestAccess';
 
 interface AIIndexAdvisorState {
   result: AIIndexAdvisorResult | null;
@@ -11,7 +11,7 @@ interface AIIndexAdvisorState {
 }
 
 export function useAIIndexAdvisor() {
-  const authSession = useAuthSession();
+  const requestAccess = useAIRequestAccess();
   const [state, setState] = useState<AIIndexAdvisorState>({
     result: null,
     error: null,
@@ -25,17 +25,10 @@ export function useAIIndexAdvisor() {
 
   const analyzeIndexes = useCallback(
     async (payload: AIIndexAdvisorRequest): Promise<AIIndexAdvisorResult | null> => {
-      if (authSession.status !== 'signed_in' || !authSession.userId) {
-        authSession.openAuthDialog();
-        const message = i18n.t('services.authRequired');
-        setState({ result: null, error: message });
-        throw new Error(message);
-      }
-
-      if (authSession.creditsStatus === 'ready' && (authSession.creditBalance ?? 0) <= 0) {
-        const message = i18n.t('services.creditExhausted');
-        setState({ result: null, error: message });
-        throw new Error(message);
+      const accessError = requestAccess.getAccessError();
+      if (accessError) {
+        setState({ result: null, error: accessError });
+        throw new Error(accessError);
       }
 
       try {
@@ -57,16 +50,16 @@ export function useAIIndexAdvisor() {
           signal: abortController.signal,
         });
         setState({ result, error: null });
-        void authSession.refreshCredits();
+        requestAccess.refreshCreditsAfterSuccess();
         return result;
       } catch (error) {
         if ((error as Error).name === 'AbortError') {
           return null;
         }
-        if ((error as Error).message === i18n.t('services.authRequired')) {
-          authSession.openAuthDialog();
-        }
-        const message = (error as Error).message || i18n.t('services.generationFailed');
+        const message = requestAccess.resolveRequestError(
+          error,
+          i18n.t('services.generationFailed'),
+        );
         setState({ result: null, error: message });
         throw new Error(message);
       } finally {
@@ -75,7 +68,7 @@ export function useAIIndexAdvisor() {
         }
       }
     },
-    [adviceMutation, authSession],
+    [adviceMutation, requestAccess],
   );
 
   const clearAdvice = useCallback(() => {

@@ -4,7 +4,7 @@ import { parsePartialJson, type PartialReviewResult } from '@/utils/parsePartial
 import { requestDDLReview } from '@/services/reviewService';
 import { useLocale } from '@/i18n/LocaleContext';
 import i18n from '@/i18n';
-import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { useAIRequestAccess } from './useAIRequestAccess';
 import type {
   DDLReviewResult,
   DDLReviewStructuredSuggestion,
@@ -21,7 +21,7 @@ interface ReviewState {
 
 export function useDDLReview() {
   const { resolvedLocale } = useLocale();
-  const authSession = useAuthSession();
+  const requestAccess = useAIRequestAccess();
   const [state, setState] = useState<ReviewState>({
     streamingText: '',
     result: null,
@@ -62,19 +62,11 @@ export function useDDLReview() {
         return;
       }
 
-      if (authSession.status !== 'signed_in' || !authSession.userId) {
-        authSession.openAuthDialog();
+      const accessError = requestAccess.getAccessError();
+      if (accessError) {
         setState((prev) => ({
           ...prev,
-          error: i18n.t('services.authRequired'),
-        }));
-        return;
-      }
-
-      if (authSession.creditsStatus === 'ready' && (authSession.creditBalance ?? 0) <= 0) {
-        setState((prev) => ({
-          ...prev,
-          error: i18n.t('services.creditExhausted'),
+          error: accessError,
         }));
         return;
       }
@@ -123,18 +115,15 @@ export function useDDLReview() {
           result,
           error: null,
         });
-        void authSession.refreshCredits();
+        requestAccess.refreshCreditsAfterSuccess();
       } catch (error) {
         if ((error as Error).name === 'AbortError') {
           return; // Request was cancelled, don't update state
         }
-        if ((error as Error).message === i18n.t('services.authRequired')) {
-          authSession.openAuthDialog();
-        }
         setState({
           streamingText: '',
           result: null,
-          error: error instanceof Error ? error.message : i18n.t('services.reviewFailed'),
+          error: requestAccess.resolveRequestError(error, i18n.t('services.reviewFailed')),
         });
       } finally {
         if (activeRequestRef.current?.controller === abortController) {
@@ -142,7 +131,7 @@ export function useDDLReview() {
         }
       }
     },
-    [authSession, resolvedLocale, reviewMutation],
+    [requestAccess, resolvedLocale, reviewMutation],
   );
 
   const clearReview = useCallback(() => {
