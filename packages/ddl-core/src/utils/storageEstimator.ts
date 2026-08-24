@@ -7,7 +7,6 @@ export interface StorageResult {
   rowOverhead: number;
   dataSize: number;
   totalRowSize: number;
-  explanation: string[];
   dbName: string;
 }
 
@@ -16,7 +15,6 @@ export interface StorageProfile {
   calculateRowSize: (fields: NormalizedField[]) => {
     overhead: number;
     data: number;
-    explanation: string[];
   };
 }
 
@@ -70,12 +68,6 @@ const MySQLProfile: StorageProfile = {
     return {
       overhead,
       data,
-      explanation: [
-        '包含 InnoDB 记录头 (5字节)',
-        '包含隐藏事务 ID (6字节) 与回滚指针 (7字节)',
-        `包含 Null 值位图 (${nullBitmap}字节)`,
-        '未计算索引、页间隙及磁盘碎片开销',
-      ],
     };
   },
 };
@@ -93,11 +85,6 @@ const PostgresProfile: StorageProfile = {
     return {
       overhead,
       data,
-      explanation: [
-        '包含堆元组头 (23字节) 与行指针 (4字节)',
-        `已计入估算的 8 字节对齐补全 (${padding}字节)`,
-        'PG 具有较强的 MVCC 开销，旧版本数据会额外占用空间直到被 VACUUM',
-      ],
     };
   },
 };
@@ -112,11 +99,6 @@ const TiDBProfile: StorageProfile = {
     return {
       overhead,
       data: data * 3, // 默认三副本
-      explanation: [
-        'TiDB 默认采用 Raft 三副本存储，估算值已包含副本冗余',
-        '包含 TiKV Key 前缀及事务 CommitTS 开销',
-        '存储成本受全局单调生成的有序 Key 影响',
-      ],
     };
   },
 };
@@ -131,11 +113,6 @@ const OceanBaseProfile: StorageProfile = {
     return {
       overhead: 10,
       data: compressedData,
-      explanation: [
-        'OceanBase 采用 LSM-Tree 架构，具备极高性能的压缩能力',
-        '当前结果基于 70% 的平均压缩率进行估算',
-        '增量数据在早期会存储在 MemTable，后期通过 Major Freeze 归档到 SSTable',
-      ],
     };
   },
 };
@@ -150,11 +127,6 @@ const OracleProfile: StorageProfile = {
     return {
       overhead: overhead + columnOverhead,
       data,
-      explanation: [
-        'Oracle 采用极简行头 (3字节)，每个列附带 1-3 字节长度标识',
-        '未考虑表空间 PCTFREE 预留空间 (默认 10%)',
-        '变长数字 (NUMBER) 按实际有效位存储',
-      ],
     };
   },
 };
@@ -169,17 +141,12 @@ const SqlServerProfile: StorageProfile = {
     return {
       overhead: overhead + nullBitmap,
       data,
-      explanation: [
-        '包含 SQL Server 行头 (4字节) 及状态字节',
-        `包含 Null 值位图开销 (${nullBitmap}字节)`,
-        '变长列超出 8060 字节会发生行溢出 (Off-page)',
-      ],
     };
   },
 };
 
 const KingbaseProfile: StorageProfile = {
-  name: 'Kingbase (人大金仓)',
+  name: 'Kingbase',
   calculateRowSize: (fields) => {
     // Kingbase 基于 PostgreSQL，使用类似的计算逻辑
     const overhead = 23 + 4; // Header + ItemID
@@ -192,18 +159,12 @@ const KingbaseProfile: StorageProfile = {
     return {
       overhead,
       data,
-      explanation: [
-        'Kingbase 基于 PostgreSQL 内核，采用堆元组存储格式',
-        '包含堆元组头 (23字节) 与行指针 (4字节)',
-        `已计入估算的 8 字节对齐补全 (${padding}字节)`,
-        '支持国产加密及审计特性，会额外占用少量元数据空间',
-      ],
     };
   },
 };
 
 const GBaseProfile: StorageProfile = {
-  name: 'GBase (南大通用)',
+  name: 'GBase',
   calculateRowSize: (fields) => {
     // GBase 基于 MySQL，使用类似的计算逻辑
     let overhead = 5 + 6 + 7; // 隐藏列开销
@@ -214,19 +175,12 @@ const GBaseProfile: StorageProfile = {
     return {
       overhead,
       data,
-      explanation: [
-        'GBase 兼容 MySQL 协议，采用类似的 InnoDB 存储格式',
-        '包含 InnoDB 记录头 (5字节)',
-        '包含隐藏事务 ID (6字节) 与回滚指针 (7字节)',
-        `包含 Null 值位图 (${nullBitmap}字节)`,
-        '支持列存储模式，如使用列存则实际占用会显著不同',
-      ],
     };
   },
 };
 
 const PolarDBProfile: StorageProfile = {
-  name: 'PolarDB (阿里云)',
+  name: 'PolarDB',
   calculateRowSize: (fields) => {
     // PolarDB 基于 MySQL，使用类似的计算逻辑
     let overhead = 5 + 6 + 7; // 隐藏列开销
@@ -237,19 +191,12 @@ const PolarDBProfile: StorageProfile = {
     return {
       overhead,
       data,
-      explanation: [
-        'PolarDB 完全兼容 MySQL，采用共享存储架构',
-        '包含 InnoDB 记录头 (5字节)',
-        '包含隐藏事务 ID (6字节) 与回滚指针 (7字节)',
-        `包含 Null 值位图 (${nullBitmap}字节)`,
-        '共享存储模式下，数据只需存储一份，大幅降低存储成本',
-      ],
     };
   },
 };
 
 const GaussDBProfile: StorageProfile = {
-  name: 'GaussDB (华为)',
+  name: 'GaussDB',
   calculateRowSize: (fields) => {
     // GaussDB 基于 PostgreSQL，使用类似的计算逻辑
     const overhead = 23 + 4; // Header + ItemID
@@ -262,13 +209,6 @@ const GaussDBProfile: StorageProfile = {
     return {
       overhead,
       data,
-      explanation: [
-        'GaussDB 基于 PostgreSQL 内核，采用分布式架构',
-        '包含堆元组头 (23字节) 与行指针 (4字节)',
-        `已计入估算的 8 字节对齐补全 (${padding}字节)`,
-        '分布式部署下数据有多副本，实际存储需乘以副本数',
-        '支持高压缩存储，开启压缩后实际占用可降低 50-70%',
-      ],
     };
   },
 };
@@ -283,12 +223,6 @@ const HiveOrcProfile: StorageProfile = {
     return {
       overhead,
       data: compressedData,
-      explanation: [
-        'ORC 采用列式存储，支持字典编码、RLE 及 Snappy/LZO 压缩',
-        '当前结果基于 75% 的平均压缩率进行估算',
-        'ORC 文件包含 Stripe (默认 64MB) 和 Row Group 级别的索引',
-        '小文件场景下索引开销占比会显著增大',
-      ],
     };
   },
 };
@@ -303,12 +237,6 @@ const HiveParquetProfile: StorageProfile = {
     return {
       overhead,
       data: compressedData,
-      explanation: [
-        'Parquet 采用列式存储，支持页级 Snappy/Gzip 压缩',
-        '当前结果基于 55% 的平均压缩率进行估算',
-        'Parquet 文件包含 Row Group 和 Page 级别的统计信息',
-        '适合 Spark/Presto 等计算引擎的高效扫描',
-      ],
     };
   },
 };
@@ -322,11 +250,6 @@ const HiveTextfileProfile: StorageProfile = {
     return {
       overhead,
       data,
-      explanation: [
-        'TEXTFILE 为纯文本存储，无压缩，按分隔符划分列',
-        '适合小数据量调试或需要直接读取原始文件的场景',
-        '不推荐用于生产环境，存储效率较低',
-      ],
     };
   },
 };
@@ -364,14 +287,13 @@ export function estimateStorage(
     dbType === 'hive' && storageFormat
       ? HiveProfiles[storageFormat.toUpperCase()] || HiveOrcProfile
       : Profiles[dbType];
-  const { overhead, data, explanation } = profile.calculateRowSize(fields);
+  const { overhead, data } = profile.calculateRowSize(fields);
 
   return {
     dbName: profile.name,
     rowOverhead: overhead,
     dataSize: data,
     totalRowSize: overhead + data,
-    explanation,
   };
 }
 
@@ -385,9 +307,8 @@ export interface StorageBreakdown {
   indexPerRow: number;
   redundancyPerRow: number;
   totalPerRow: number;
-  dataExplanation: string[];
-  indexExplanation: string[];
-  redundancyExplanation: string[];
+  clusteredIndexes: boolean;
+  redundancyRate: number;
 }
 
 // Databases where the PK is the clustered index (no separate PK B-tree needed)
@@ -439,24 +360,6 @@ const REDUNDANCY_FACTORS = {
   hive: 0.05,
 } satisfies Record<DatabaseType, number>;
 
-const REDUNDANCY_DESCRIPTIONS = {
-  mysql: 'InnoDB 随机写页碎片 + 事务 Undo 日志预留',
-  mariadb: 'InnoDB 随机写页碎片 + 事务 Undo 日志预留',
-  tidb: 'Raft 日志写入放大 + Compaction 开销（三副本已含在裸数据中）',
-  postgresql: 'MVCC 旧版本行（dead tuple）+ autovacuum 延迟清理',
-  'postgresql-citus': 'MVCC dead tuple + 分片元数据 + 跨节点一致性开销',
-  oceanbase: 'MemTable → SSTable Compaction 写放大，压缩后冗余极低',
-  'oceanbase-oracle': 'MemTable → SSTable 写放大，Oracle 兼容模式下 Undo 空间预留',
-  oracle: 'PCTFREE 默认 10% 页内预留 + 行迁移防护',
-  sqlserver: 'Fill Factor 默认 80% + B-Tree 页分裂碎片',
-  dm: 'PCTFREE 预留 + 行迁移防护（参考 Oracle 模型）',
-  kingbase: 'MVCC dead tuple + autovacuum（基于 PostgreSQL 内核）',
-  gbase: 'InnoDB 页碎片 + 事务 Undo 预留（参考 MySQL 模型）',
-  polardb: '共享存储架构减少副本碎片；PCTFREE 15% 作为更新缓冲',
-  gaussdb: 'MVCC dead tuple + 分布式多副本写放大（建议参考实际副本数）',
-  hive: 'Hive 列式格式（ORC/Parquet）存储效率极高，冗余开销可忽略',
-} satisfies Record<DatabaseType, string>;
-
 // B-tree overhead factor: accounts for non-leaf nodes and fill-factor gaps
 const BTREE_OVERHEAD = 1.6;
 const BTREE_ENTRY_OVERHEAD = 10; // bytes per leaf entry (page format headers)
@@ -465,18 +368,13 @@ function computeIndexBytesPerRow(
   dbType: DatabaseType,
   fields: NormalizedField[],
   indexes: IndexDefinition[],
-): { bytesPerRow: number; explanation: string[] } {
+): number {
   if (dbType === 'hive') {
-    return {
-      bytesPerRow: 0,
-      explanation: [
-        'Hive 列式格式（ORC/Parquet）通过内置的 Stripe/RowGroup 级统计信息实现谓词下推，无传统 B-Tree 索引',
-      ],
-    };
+    return 0;
   }
 
   if (indexes.length === 0) {
-    return { bytesPerRow: 0, explanation: ['当前表未定义任何索引，索引占用为 0'] };
+    return 0;
   }
 
   const fieldMap = new Map(fields.map((f) => [f.name, f]));
@@ -491,11 +389,8 @@ function computeIndexBytesPerRow(
     : 6; // default row-id size when no PK defined
 
   let totalBytesPerRow = 0;
-  const indexSummaries: string[] = [];
-
   for (const index of indexes) {
     if (index.isPrimary && isClustered) {
-      indexSummaries.push(`主键（${index.name}）：聚簇索引，成本已含在行数据中，无额外占用`);
       continue;
     }
 
@@ -510,47 +405,24 @@ function computeIndexBytesPerRow(
     const locator = isClustered ? pkKeySize : getHeapLocatorSize(dbType);
     const entrySize = (keySize + locator + BTREE_ENTRY_OVERHEAD) * BTREE_OVERHEAD;
     totalBytesPerRow += entrySize;
-
-    const label = index.isPrimary ? '主键' : index.unique ? '唯一索引' : '普通索引';
-    indexSummaries.push(`${label}（${index.name}）≈ ${Math.ceil(entrySize)} B/行`);
   }
-
-  const explanation: string[] = [...indexSummaries];
-  if (isClustered && pkIndex) {
-    explanation.push('聚簇表：二级索引的行定位器为主键列，非物理行 ID');
-  }
-  if (!isClustered) {
-    explanation.push('非聚簇存储：主键及所有索引均为独立的 B-Tree 结构');
-  }
-  explanation.push(`B-Tree 估算系数 ${BTREE_OVERHEAD}×（含非叶节点 20% + 随机写填充率损耗 30%）`);
 
   const factor = INDEX_STORAGE_FACTORS[dbType] ?? 1;
-  return { bytesPerRow: Math.ceil(totalBytesPerRow * factor), explanation };
+  return Math.ceil(totalBytesPerRow * factor);
 }
 
 function computeRedundancyBytesPerRow(
   dbType: DatabaseType,
   rawDataPerRow: number,
   indexPerRow: number,
-): { bytesPerRow: number; explanation: string[] } {
+): { bytesPerRow: number; rate: number } {
   if (dbType === 'hive') {
-    return {
-      bytesPerRow: 0,
-      explanation: [REDUNDANCY_DESCRIPTIONS.hive ?? '列式格式冗余可忽略'],
-    };
+    return { bytesPerRow: 0, rate: 0 };
   }
 
   const factor = REDUNDANCY_FACTORS[dbType];
   const bytesPerRow = Math.ceil((rawDataPerRow + indexPerRow) * factor);
-  const description = REDUNDANCY_DESCRIPTIONS[dbType];
-
-  return {
-    bytesPerRow,
-    explanation: [
-      `冗余开销率 ${(factor * 100).toFixed(0)}%：${description}`,
-      '基于（裸数据 + 索引）合计估算，实际开销受写入模式影响较大',
-    ],
-  };
+  return { bytesPerRow, rate: factor };
 }
 
 export function estimateStorageBreakdown(
@@ -562,14 +434,13 @@ export function estimateStorageBreakdown(
   const storageResult = estimateStorage(dbType, fields, storageFormat);
   const rawDataPerRow = storageResult.totalRowSize;
 
-  const { bytesPerRow: indexPerRow, explanation: indexExplanation } = computeIndexBytesPerRow(
-    dbType,
-    fields,
-    indexes,
-  );
+  const indexPerRow = computeIndexBytesPerRow(dbType, fields, indexes);
 
-  const { bytesPerRow: redundancyPerRow, explanation: redundancyExplanation } =
-    computeRedundancyBytesPerRow(dbType, rawDataPerRow, indexPerRow);
+  const { bytesPerRow: redundancyPerRow, rate: redundancyRate } = computeRedundancyBytesPerRow(
+    dbType,
+    rawDataPerRow,
+    indexPerRow,
+  );
 
   return {
     dbName: storageResult.dbName,
@@ -577,8 +448,7 @@ export function estimateStorageBreakdown(
     indexPerRow,
     redundancyPerRow,
     totalPerRow: rawDataPerRow + indexPerRow + redundancyPerRow,
-    dataExplanation: storageResult.explanation,
-    indexExplanation,
-    redundancyExplanation,
+    clusteredIndexes: CLUSTERED_DATABASES.has(dbType),
+    redundancyRate,
   };
 }

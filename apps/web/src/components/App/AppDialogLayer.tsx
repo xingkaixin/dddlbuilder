@@ -39,6 +39,11 @@ export function AppDialogLayer({
   const { folderActions, templateActions, savedTableFlow, tableTemplateActions, trashActions } =
     actions;
   const { aiPatchFlow, schemaActions, clearActions, indexAdvisor } = actions;
+  const objectLabel = t(
+    editor.objectType === 'view'
+      ? 'dialogs.save.objectLabels.view'
+      : 'dialogs.save.objectLabels.table',
+  );
 
   return (
     <>
@@ -50,8 +55,16 @@ export function AppDialogLayer({
         saveDialog={{
           open: editor.isSaveDialogOpen,
           onOpenChange: savedTableFlow.handleSaveDialogOpenChange,
-          title: dialogs.saveDialogTitle,
-          description: dialogs.saveDialogDescription,
+          title: t(
+            schema.hasLoadedTable ? 'dialogs.save.updateTitle' : 'dialogs.save.createTitle',
+            { object: objectLabel },
+          ),
+          description: t(
+            schema.hasLoadedTable
+              ? 'dialogs.save.updateDescription'
+              : 'dialogs.save.createDescription',
+            { object: objectLabel },
+          ),
           name: dialogs.saveName,
           onNameChange: dialogs.handleSaveNameChange,
           error: dialogs.saveError,

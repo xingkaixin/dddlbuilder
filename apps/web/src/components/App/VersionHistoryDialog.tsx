@@ -32,6 +32,7 @@ import {
 } from '@/utils/tableVersions';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useLocale } from '@/i18n/LocaleContext';
 
 interface VersionHistoryDialogProps {
@@ -71,7 +72,7 @@ function formatDate(
   });
 }
 
-function buildDiffSummary(diff: TableDiff | null): string {
+function buildDiffSummary(diff: TableDiff | null, t: TFunction): string {
   if (!diff || !diff.hasChanges) return '';
   const parts: string[] = [];
   const addedFields = diff.fields.filter((f) => f.type === 'add').length;
@@ -82,14 +83,17 @@ function buildDiffSummary(diff: TableDiff | null): string {
   const addedIndexes = diff.indexes.filter((i) => i.type === 'add').length;
   const removedIndexes = diff.indexes.filter((i) => i.type === 'remove').length;
 
-  if (addedFields > 0) parts.push(`+${addedFields} 字段`);
-  if (removedFields > 0) parts.push(`-${removedFields} 字段`);
-  if (modifiedFields > 0) parts.push(`~${modifiedFields} 字段`);
-  if (addedIndexes > 0) parts.push(`+${addedIndexes} 索引`);
-  if (removedIndexes > 0) parts.push(`-${removedIndexes} 索引`);
-  if (diff.tableNameChanged) parts.push('表名变更');
-  if (diff.tableCommentChanged) parts.push('注释变更');
-  if (diff.miscConfigChanged) parts.push('杂项变更');
+  if (addedFields > 0) parts.push(t('versionHistory.diff.fieldAdded', { count: addedFields }));
+  if (removedFields > 0)
+    parts.push(t('versionHistory.diff.fieldRemoved', { count: removedFields }));
+  if (modifiedFields > 0)
+    parts.push(t('versionHistory.diff.fieldModified', { count: modifiedFields }));
+  if (addedIndexes > 0) parts.push(t('versionHistory.diff.indexAdded', { count: addedIndexes }));
+  if (removedIndexes > 0)
+    parts.push(t('versionHistory.diff.indexRemoved', { count: removedIndexes }));
+  if (diff.tableNameChanged) parts.push(t('versionHistory.diff.tableNameChanged'));
+  if (diff.tableCommentChanged) parts.push(t('versionHistory.diff.tableCommentChanged'));
+  if (diff.miscConfigChanged) parts.push(t('versionHistory.diff.miscChanged'));
 
   return parts.join(', ');
 }
@@ -324,7 +328,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                     const isLatest = index === 0;
                     const isInitial = index === versions.length - 1;
                     const diff = versionDiffMap.get(v.id) ?? null;
-                    const diffSummary = buildDiffSummary(diff);
+                    const diffSummary = buildDiffSummary(diff, t);
 
                     return (
                       <div key={v.id} className="group relative mb-1">

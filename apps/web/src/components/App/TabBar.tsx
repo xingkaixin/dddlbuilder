@@ -1,4 +1,5 @@
 import { memo, useMemo, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, X, Loader2, ChevronDown } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import type { WorkspaceTab } from '@/stores';
@@ -33,6 +34,7 @@ const TabItem = memo(
     onActivate: () => void;
     onClose: (e: React.MouseEvent) => void;
   }) => {
+    const { t } = useTranslation();
     const isDraft = tab.source.kind === 'draft';
     const isDirty = isWorkspaceTabDirty(tab);
 
@@ -78,7 +80,7 @@ const TabItem = memo(
             'flex h-5 w-5 shrink-0 items-center justify-center rounded-sm opacity-0 transition-opacity hover:bg-accent',
             isActive ? 'opacity-100' : 'group-hover:opacity-100',
           )}
-          aria-label="关闭标签页"
+          aria-label={t('tabBar.close')}
         >
           <X className="h-3 w-3" />
         </button>
@@ -91,6 +93,7 @@ TabItem.displayName = 'TabItem';
 
 export const TabBar = memo(
   ({ leadingAction, tabs, activeTabId, onActivateTab, onCloseTab, onCreateTab }: TabBarProps) => {
+    const { t } = useTranslation();
     const { visibleTabs, hiddenTabs } = useMemo(() => {
       if (tabs.length <= MAX_VISIBLE_TABS) {
         return { visibleTabs: tabs, hiddenTabs: [] as WorkspaceTab[] };
@@ -130,7 +133,7 @@ export const TabBar = memo(
                       : 'border-transparent bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground',
                   )}
                 >
-                  <span className="select-none">更多</span>
+                  <span className="select-none">{t('tabBar.more')}</span>
                   <ChevronDown className="h-3 w-3" />
                   {hiddenTabs.some((t) => t.id === activeTabId && isWorkspaceTabDirty(t)) && (
                     <span className="h-2 w-2 shrink-0 rounded-full bg-destructive" />
@@ -167,7 +170,7 @@ export const TabBar = memo(
                         onCloseTab(tab.id);
                       }}
                       className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm hover:bg-accent"
-                      aria-label="关闭标签页"
+                      aria-label={t('tabBar.close')}
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -181,7 +184,7 @@ export const TabBar = memo(
             type="button"
             onClick={onCreateTab}
             className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            aria-label="新建草稿"
+            aria-label={t('tabBar.createDraft')}
           >
             <Plus className="h-4 w-4" />
           </button>

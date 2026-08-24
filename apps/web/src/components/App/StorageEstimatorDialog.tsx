@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -43,6 +44,11 @@ function formatSizeDisplay(bytes: number): SizeDisplay {
   return { value: Number.parseFloat((bytes / k ** i).toFixed(2)), unit: units[i] };
 }
 
+function formatSizeText(bytes: number): string {
+  const display = formatSizeDisplay(bytes);
+  return `${display.value} ${display.unit}`;
+}
+
 interface BreakdownCardProps {
   icon: React.ReactNode;
   label: string;
@@ -72,6 +78,7 @@ function BreakdownCard({ icon, label, bytes, colorClass }: BreakdownCardProps) {
 
 export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
   ({ open, onOpenChange, dbType, fields, indexes = [], storageFormat }) => {
+    const { t } = useTranslation();
     const {
       estimateRows,
       setEstimateRows,
@@ -82,6 +89,42 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
       redundancyBytes,
       totalSizeDisplay,
     } = useStorageEstimation(dbType, fields, indexes, storageFormat);
+    const dataExplanation = [
+      t('storageEstimator.explanations.rowOverhead', {
+        size: formatSizeText(result.rowOverhead),
+      }),
+      t('storageEstimator.explanations.fieldData', {
+        size: formatSizeText(result.dataSize),
+      }),
+      t('storageEstimator.explanations.rowTotal', {
+        size: formatSizeText(result.totalRowSize),
+      }),
+    ];
+    const indexExplanation =
+      dbType === 'hive'
+        ? [t('storageEstimator.explanations.hiveIndexes')]
+        : indexes.length === 0
+          ? [t('storageEstimator.explanations.noIndexes')]
+          : [
+              t('storageEstimator.explanations.indexAverage', {
+                count: indexes.length,
+                size: formatSizeText(breakdown.indexPerRow),
+              }),
+              t(
+                breakdown.clusteredIndexes
+                  ? 'storageEstimator.explanations.clusteredIndexes'
+                  : 'storageEstimator.explanations.independentIndexes',
+              ),
+            ];
+    const redundancyExplanation =
+      dbType === 'hive'
+        ? [t('storageEstimator.explanations.hiveRedundancy')]
+        : [
+            t('storageEstimator.explanations.redundancyRate', {
+              rate: Math.round(breakdown.redundancyRate * 100),
+            }),
+            t('storageEstimator.explanations.redundancyBasis'),
+          ];
 
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -89,11 +132,9 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-2xl">
               <HardDrive className="h-6 w-6 text-primary" />
-              存储容量估算器
+              {t('storageEstimator.title')}
             </DialogTitle>
-            <DialogDescription>
-              基于当前所选的数据库特性与字段配置，预估物理磁盘占用情况。
-            </DialogDescription>
+            <DialogDescription>{t('storageEstimator.description')}</DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-6 py-4">
@@ -101,14 +142,14 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
             <div className="space-y-2 rounded-lg border bg-muted/30 p-4">
               <div className="flex items-center justify-between">
                 <Label htmlFor="rows-input" className="text-sm font-medium">
-                  预估承载数据量 (行)
+                  {t('storageEstimator.estimatedRows')}
                 </Label>
                 <span className="text-xs font-mono text-muted-foreground">
                   <AnimatedNumber
                     value={estimateRows}
                     format={{ useGrouping: true, maximumFractionDigits: 0 }}
                   />{' '}
-                  行
+                  {t('storageEstimator.rowsUnit')}
                 </span>
               </div>
               <div className="flex gap-4 items-center">
@@ -136,7 +177,7 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
             <div className="flex items-center justify-between p-4 bg-violet-500/5 border border-violet-500/20 rounded-xl">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <BarChart3 className="h-4 w-4 text-violet-500" />
-                <span>磁盘占用合计</span>
+                <span>{t('storageEstimator.total')}</span>
               </div>
               <div className="text-3xl font-bold text-violet-600">
                 <AnimatedNumber
@@ -152,19 +193,19 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
             <div className="grid grid-cols-3 gap-3">
               <BreakdownCard
                 icon={<Layers className="h-4 w-4" />}
-                label="裸数据"
+                label={t('storageEstimator.rawData')}
                 bytes={rawDataBytes}
                 colorClass="bg-primary/5 border-primary/10"
               />
               <BreakdownCard
                 icon={<GitBranch className="h-4 w-4" />}
-                label="索引占用"
+                label={t('storageEstimator.indexStorage')}
                 bytes={indexBytes}
                 colorClass="bg-emerald-500/5 border-emerald-500/10"
               />
               <BreakdownCard
                 icon={<Zap className="h-4 w-4" />}
-                label="冗余开销"
+                label={t('storageEstimator.redundancy')}
                 bytes={redundancyBytes}
                 colorClass="bg-amber-500/5 border-amber-500/10"
               />
@@ -175,27 +216,27 @@ export const StorageEstimatorDialog = memo<StorageEstimatorDialogProps>(
               {/* Data */}
               <ExplainSection
                 icon={<Database className="h-4 w-4 text-primary" />}
-                title={`${result.dbName} 裸数据特性`}
-                items={breakdown.dataExplanation}
+                title={t('storageEstimator.dataFeatures', { database: result.dbName })}
+                items={dataExplanation}
               />
 
               {/* Index */}
               <ExplainSection
                 icon={<GitBranch className="h-4 w-4 text-emerald-600" />}
-                title="索引占用说明"
-                items={breakdown.indexExplanation}
+                title={t('storageEstimator.indexExplanation')}
+                items={indexExplanation}
               />
 
               {/* Redundancy */}
               <ExplainSection
                 icon={<Zap className="h-4 w-4 text-amber-600" />}
-                title="冗余开销说明"
-                items={breakdown.redundancyExplanation}
+                title={t('storageEstimator.redundancyExplanation')}
+                items={redundancyExplanation}
               />
             </div>
 
             <div className="text-[10px] text-muted-foreground italic border-t pt-2 mt-2">
-              提示：此工具仅为逻辑估算，实际占用受文件系统碎片、索引页分裂、空隙、事务并发版本等复杂物理因素影响，结果仅供容量规划参考。
+              {t('storageEstimator.disclaimer')}
             </div>
           </div>
         </DialogContent>

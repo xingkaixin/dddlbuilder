@@ -772,6 +772,43 @@ export const enUSCommon = {
       trigger: 'Custom Trigger',
     },
   },
+  tabBar: {
+    close: 'Close tab',
+    more: 'More',
+    createDraft: 'Create draft',
+  },
+  storageEstimator: {
+    title: 'Storage Capacity Estimator',
+    description: 'Estimate physical disk usage from the selected database and field configuration.',
+    estimatedRows: 'Estimated rows',
+    rowsUnit: 'rows',
+    total: 'Estimated disk usage',
+    rawData: 'Raw data',
+    indexStorage: 'Indexes',
+    redundancy: 'Overhead',
+    dataFeatures: '{{database}} data characteristics',
+    indexExplanation: 'Index estimate',
+    redundancyExplanation: 'Overhead estimate',
+    disclaimer:
+      'This is a logical estimate for capacity planning. Actual usage also depends on filesystem fragmentation, page splits, free space, and concurrent row versions.',
+    explanations: {
+      rowOverhead: 'Fixed row structure overhead is about {{size}} per row.',
+      fieldData: 'Field data is about {{size}} per row based on types and typical fill rates.',
+      rowTotal: 'Fixed overhead and field data total about {{size}} per row.',
+      hiveIndexes:
+        'Hive columnar formats use file-level statistics, so traditional B-Tree indexes are not counted.',
+      noIndexes: 'No indexes are defined, so index storage is estimated as zero.',
+      indexAverage: '{{count}} indexes use about {{size}} per row in total.',
+      clusteredIndexes:
+        'The primary key cost is included in clustered row data, and secondary indexes use the primary key as the locator.',
+      independentIndexes:
+        'Primary and secondary indexes are calculated as independent B-Tree structures for non-clustered storage.',
+      hiveRedundancy: 'Additional redundancy for Hive columnar formats is estimated as zero.',
+      redundancyRate: 'Overhead is estimated at {{rate}}% of raw data plus indexes.',
+      redundancyBasis:
+        'Actual overhead varies with write patterns, page fill, compression, and row-version retention.',
+    },
+  },
   dialogs: {
     clear: {
       title: 'Clear all configuration?',
@@ -783,6 +820,14 @@ export const enUSCommon = {
     save: {
       name: 'Save Name',
       placeholder: 'e.g. User Table',
+      createTitle: 'Save current {{object}}',
+      updateTitle: 'Update saved {{object}}',
+      createDescription: 'Save it for quick access from the list on the left.',
+      updateDescription: 'This loaded {{object}} will overwrite its saved record.',
+      objectLabels: {
+        table: 'table',
+        view: 'view',
+      },
       loadedHint:
         'Loaded tables can only be overwritten. Rename from the left saved list if needed.',
       disabledTip: 'Loaded table is not modified, cannot save',
@@ -1279,6 +1324,16 @@ export const enUSCommon = {
     deleteConfirmTitle: 'Delete this version?',
     deleteConfirmDescription: 'This version will be permanently deleted and cannot be recovered.',
     deleteConfirmAction: 'Delete',
+    diff: {
+      fieldAdded: '+{{count}} fields',
+      fieldRemoved: '-{{count}} fields',
+      fieldModified: '~{{count}} fields',
+      indexAdded: '+{{count}} indexes',
+      indexRemoved: '-{{count}} indexes',
+      tableNameChanged: 'Table name changed',
+      tableCommentChanged: 'Comment changed',
+      miscChanged: 'Misc settings changed',
+    },
   },
   timelinePlayer: {
     title: 'Schema Change Replay',

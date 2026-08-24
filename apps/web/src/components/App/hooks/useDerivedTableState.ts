@@ -202,11 +202,6 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     currentStateSignature !== normalizedLoadedTableSignature;
   const canSaveCurrent = !hasLoadedTable || isLoadedDirty;
   const loadedStatus = hasLoadedTable ? (isLoadedDirty ? 'dirty' : 'clean') : null;
-  const objectLabel = objectType === 'view' ? '视图' : '表';
-  const saveDialogTitle = hasLoadedTable ? `更新保存的${objectLabel}` : `保存当前${objectLabel}`;
-  const saveDialogDescription = hasLoadedTable
-    ? `当前为已加载${objectLabel}，保存将覆盖原记录。`
-    : '保存后可在左侧列表中快速加载。';
   const saveInputDisabled = hasLoadedTable;
 
   // --- Diff ---
@@ -237,8 +232,6 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     isLoadedDirty,
     canSaveCurrent,
     loadedStatus,
-    saveDialogTitle,
-    saveDialogDescription,
     saveInputDisabled,
     // Diff
     tableDiff,

@@ -780,6 +780,44 @@ export const jaJPCommon = {
       trigger: 'カスタムトリガー',
     },
   },
+  tabBar: {
+    close: 'タブを閉じる',
+    more: 'その他',
+    createDraft: '下書きを作成',
+  },
+  storageEstimator: {
+    title: 'ストレージ容量見積もり',
+    description: '選択したデータベースとフィールド構成から物理ディスク使用量を見積もります。',
+    estimatedRows: '推定行数',
+    rowsUnit: '行',
+    total: '推定ディスク使用量',
+    rawData: '生データ',
+    indexStorage: 'インデックス',
+    redundancy: 'オーバーヘッド',
+    dataFeatures: '{{database}} のデータ特性',
+    indexExplanation: 'インデックスの見積もり',
+    redundancyExplanation: 'オーバーヘッドの見積もり',
+    disclaimer:
+      'これは容量計画用の論理的な見積もりです。実際の使用量は、ファイルシステムの断片化、ページ分割、空き領域、同時実行時の行バージョンにも左右されます。',
+    explanations: {
+      rowOverhead: '固定行構造のオーバーヘッドは 1 行あたり約 {{size}} です。',
+      fieldData: '型と一般的な充填率に基づくフィールドデータは 1 行あたり約 {{size}} です。',
+      rowTotal: '固定オーバーヘッドとフィールドデータの合計は 1 行あたり約 {{size}} です。',
+      hiveIndexes:
+        'Hive の列指向形式はファイル単位の統計情報を使うため、従来の B-Tree インデックスは計上しません。',
+      noIndexes: 'インデックスが定義されていないため、インデックス容量は 0 と見積もります。',
+      indexAverage: '{{count}} 個のインデックスで合計約 {{size}}/行を使用します。',
+      clusteredIndexes:
+        'クラスタ化された行データには主キーのコストが含まれ、セカンダリインデックスは主キーを行位置として使います。',
+      independentIndexes:
+        '非クラスタ化ストレージでは主キーとセカンダリインデックスを独立した B-Tree として計算します。',
+      hiveRedundancy: 'Hive の列指向形式に対する追加の冗長性は 0 と見積もります。',
+      redundancyRate:
+        '生データとインデックスの合計の {{rate}}% をオーバーヘッドとして見積もります。',
+      redundancyBasis:
+        '実際のオーバーヘッドは、書き込みパターン、ページ充填率、圧縮、行バージョン保持によって変化します。',
+    },
+  },
   dialogs: {
     clear: {
       title: 'すべての設定をクリアしますか?',
@@ -791,6 +829,14 @@ export const jaJPCommon = {
     save: {
       name: '名前を保存',
       placeholder: '例:ユーザーテーブル',
+      createTitle: '現在の{{object}}を保存',
+      updateTitle: '保存済みの{{object}}を更新',
+      createDescription: '保存すると左側のリストからすぐに読み込めます。',
+      updateDescription: '読み込み済みの{{object}}を保存すると既存のレコードを上書きします。',
+      objectLabels: {
+        table: 'テーブル',
+        view: 'ビュー',
+      },
       loadedHint:
         'ロードされたテーブルは上書きのみ可能です。必要に応じて、左側の保存済みリストから名前を変更します。',
       disabledTip: 'ロードされたテーブルは変更されていないため、保存できません',
@@ -1286,6 +1332,16 @@ export const jaJPCommon = {
     deleteConfirmTitle: 'このバージョンを削除しますか?',
     deleteConfirmDescription: 'このバージョンは完全に削除され、復元できません。',
     deleteConfirmAction: '削除',
+    diff: {
+      fieldAdded: '+{{count}} フィールド',
+      fieldRemoved: '-{{count}} フィールド',
+      fieldModified: '~{{count}} フィールド',
+      indexAdded: '+{{count}} インデックス',
+      indexRemoved: '-{{count}} インデックス',
+      tableNameChanged: 'テーブル名の変更',
+      tableCommentChanged: 'コメントの変更',
+      miscChanged: 'その他の設定変更',
+    },
   },
   timelinePlayer: {
     title: 'スキーマ変更の再生',

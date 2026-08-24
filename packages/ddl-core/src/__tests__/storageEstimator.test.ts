@@ -180,8 +180,8 @@ describe('storageEstimator', () => {
     const kingbaseResult = estimateStorage('kingbase', fields);
     const gaussdbResult = estimateStorage('gaussdb', fields);
 
-    expect(kingbaseResult.dbName).toBe('Kingbase (人大金仓)');
-    expect(gaussdbResult.dbName).toBe('GaussDB (华为)');
+    expect(kingbaseResult.dbName).toBe('Kingbase');
+    expect(gaussdbResult.dbName).toBe('GaussDB');
     expect(kingbaseResult.rowOverhead).toBe(23 + 4);
     expect(gaussdbResult.rowOverhead).toBe(23 + 4);
     expect(kingbaseResult.dataSize).toBe(72);
@@ -200,8 +200,8 @@ describe('storageEstimator', () => {
     const gbaseResult = estimateStorage('gbase', fields);
     const polardbResult = estimateStorage('polardb', fields);
 
-    expect(gbaseResult.dbName).toBe('GBase (南大通用)');
-    expect(polardbResult.dbName).toBe('PolarDB (阿里云)');
+    expect(gbaseResult.dbName).toBe('GBase');
+    expect(polardbResult.dbName).toBe('PolarDB');
     expect(gbaseResult.rowOverhead).toBe(5 + 6 + 7 + 1);
     expect(polardbResult.rowOverhead).toBe(5 + 6 + 7 + 1);
     expect(gbaseResult.dataSize).toBe(66);
