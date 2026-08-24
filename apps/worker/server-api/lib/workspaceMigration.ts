@@ -358,21 +358,22 @@ export const commitWorkspaceMigration = async (
       }
 
       if (existingPayload === record.payloadJson) {
-        entitiesToWrite.push(record.entity);
         skippedCount += 1;
         continue;
       }
 
       const copy = resolveCopyRecord(userId, record, existingPayloads);
-      entitiesToWrite.push(copy.record.entity);
-      existingPayloads.set(copy.record.id, copy.record.payloadJson);
       if (copy.alreadyExists) {
         skippedCount += 1;
       } else {
+        entitiesToWrite.push(copy.record.entity);
+        existingPayloads.set(copy.record.id, copy.record.payloadJson);
         copiedCount += 1;
       }
     }
-    await upsertDefaultWorkspaceEntities(env, { userId, entities: entitiesToWrite });
+    if (entitiesToWrite.length > 0) {
+      await upsertDefaultWorkspaceEntities(env, { userId, entities: entitiesToWrite });
+    }
 
     await upsertWorkspaceLink(env, {
       userId,

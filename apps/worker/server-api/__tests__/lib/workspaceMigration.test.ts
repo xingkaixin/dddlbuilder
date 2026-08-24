@@ -193,16 +193,32 @@ describe('workspaceMigration', () => {
         skippedCount: 1,
       }),
     );
-    expect(workspaceEntityMocks.upsertDefaultWorkspaceEntities).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        entities: [
-          expect.objectContaining({
-            entityId: 'alpha (imported)',
-            payload: expect.not.objectContaining({ tableName: expect.anything() }),
-          }),
-        ],
-      }),
+    expect(workspaceEntityMocks.upsertDefaultWorkspaceEntities).not.toHaveBeenCalled();
+  });
+
+  it('内容相同的已有记录只计为跳过且不触发实体写入', async () => {
+    const payload = createPayload();
+    workspaceEntityMocks.getWorkspaceSnapshotFromEntities.mockResolvedValue(payload.snapshot);
+    const database = {
+      prepare: () => {
+        const statement = {
+          bind: () => statement,
+          first: async () => null,
+          run: async () => ({ success: true }),
+        };
+        return statement;
+      },
+    };
+
+    const result = await commitWorkspaceMigration(
+      { USER_DB: database } as never,
+      'user-1',
+      payload,
     );
+
+    expect(result).toEqual(
+      expect.objectContaining({ createdCount: 0, copiedCount: 0, skippedCount: 3 }),
+    );
+    expect(workspaceEntityMocks.upsertDefaultWorkspaceEntities).not.toHaveBeenCalled();
   });
 });
