@@ -224,8 +224,9 @@ describe('PrismaGenerator', () => {
       createField({ name: 'user_id', type: 'bigint', defaultKind: 'none' }),
     ];
     const result = generator.generateModel('orders', '', fields, [createIndex()], fks);
-    expect(result).toContain('@@foreignKey([userId])');
-    expect(result).toContain('// references users(id)');
+    expect(result).toContain(
+      'fkUser Users @relation(fields: [userId], references: [id], map: "fk_user")',
+    );
   });
 
   it('generates uuid default', () => {
@@ -505,5 +506,53 @@ describe('JPAGenerator', () => {
     const result = generator.generateModel('users', '', fields, [], []);
     expect(result).toContain('@Column(name = "bio")');
     expect(result).not.toContain('nullable = false');
+  });
+});
+
+describe('foreign key generation contract', () => {
+  const fields = [
+    createField(),
+    createField({ name: 'tenant_id', type: 'bigint', defaultKind: 'none' }),
+    createField({ name: 'user_id', type: 'bigint', defaultKind: 'none', nullable: true }),
+    createField({
+      name: 'created_at',
+      type: 'timestamp',
+      defaultKind: 'current_timestamp',
+    }),
+  ];
+  const foreignKeys: ForeignKeyDefinition[] = [
+    {
+      id: 'fk-owner',
+      name: 'fk_order_owner',
+      fields: ['tenant_id', 'user_id'],
+      refSchema: 'identity',
+      refTable: 'users',
+      refFields: ['tenant_id', 'id'],
+      onDelete: 'SET NULL',
+      onUpdate: 'CASCADE',
+    },
+  ];
+
+  it('emits usable relationship metadata for every target', () => {
+    const outputs = {
+      prisma: new PrismaGenerator().generateModel('orders', '', fields, [], foreignKeys),
+      typeorm: new TypeORMGenerator().generateModel('orders', '', fields, [], foreignKeys),
+      sqlalchemy: new SQLAlchemyGenerator().generateModel('orders', '', fields, [], foreignKeys),
+      gorm: new GORMGenerator().generateModel('orders', '', fields, [], foreignKeys),
+      jpa: new JPAGenerator().generateModel('orders', '', fields, [], foreignKeys),
+    };
+    expect(outputs.prisma).not.toContain('@@foreignKey');
+    expect(outputs.prisma).toContain(
+      '@relation(fields: [tenantId, userId], references: [tenantId, id]',
+    );
+    expect(outputs.typeorm).toContain('@ManyToOne(() => Users');
+    expect(outputs.typeorm).toContain("@JoinColumn([{ name: 'tenant_id'");
+    expect(outputs.sqlalchemy).toContain('func, ForeignKeyConstraint');
+    expect(outputs.sqlalchemy).toContain(
+      "ForeignKeyConstraint(['tenant_id', 'user_id'], ['identity.users.tenant_id', 'identity.users.id']",
+    );
+    expect(outputs.gorm).toContain('foreignKey:TenantId,UserId;references:TenantId,Id');
+    expect(outputs.jpa).toContain('@ManyToOne');
+    expect(outputs.jpa).toContain('@JoinColumns(value = {');
   });
 });

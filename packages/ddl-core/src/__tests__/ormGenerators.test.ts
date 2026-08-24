@@ -142,7 +142,9 @@ describe('PrismaGenerator', () => {
     expect(result).toContain('@default(now())');
     expect(result).toContain('@@unique([name, email])');
     expect(result).toContain('@@unique([email])');
-    expect(result).toContain('@@foreignKey([id])');
+    expect(result).toContain(
+      'fkUserRole Roles @relation(fields: [id], references: [id], map: "fk_user_role")',
+    );
   });
 
   it('handles nullable primary key correctly', () => {

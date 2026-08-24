@@ -13,7 +13,7 @@ export class GORMGenerator implements ORMGenerator {
     tableComment: string,
     fields: NormalizedField[],
     indexes: IndexDefinition[],
-    _foreignKeys: ForeignKeyDefinition[],
+    foreignKeys: ForeignKeyDefinition[],
   ): string {
     if (!tableName.trim()) {
       return '// 请填写表名';
@@ -69,6 +69,28 @@ export class GORMGenerator implements ORMGenerator {
       const tag = `gorm:"${tagParts.join(';')}"`;
       const typeStr = isNullable ? `*${goType}` : goType;
       lines.push(`\t${fieldName.padEnd(14)} ${typeStr.padEnd(14)} \`${tag}\``);
+    }
+
+    for (const foreignKey of foreignKeys) {
+      const fieldName = toPascalCase(foreignKey.name || `${foreignKey.refTable}_relation`);
+      const referencedType = toPascalCase(foreignKey.refTable);
+      const isNullable = foreignKey.fields.some(
+        (fieldName) => fields.find((field) => field.name === fieldName)?.nullable,
+      );
+      const localFields = foreignKey.fields.map(toPascalCase).join(',');
+      const referencedFields = foreignKey.refFields.map(toPascalCase).join(',');
+      const constraints = [
+        ...(foreignKey.onUpdate ? [`OnUpdate:${foreignKey.onUpdate}`] : []),
+        ...(foreignKey.onDelete ? [`OnDelete:${foreignKey.onDelete}`] : []),
+      ];
+      const tagParts = [
+        ...(constraints.length > 0 ? [`constraint:${constraints.join(',')}`] : []),
+        `foreignKey:${localFields}`,
+        `references:${referencedFields}`,
+      ];
+      lines.push(
+        `\t${fieldName.padEnd(14)} ${(isNullable ? `*${referencedType}` : referencedType).padEnd(14)} \`gorm:"${tagParts.join(';')}"\``,
+      );
     }
 
     lines.push('}');

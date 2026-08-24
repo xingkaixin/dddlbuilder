@@ -25,9 +25,26 @@ export class SQLAlchemyGenerator implements ORMGenerator {
     const lines: string[] = [];
     const { primaryFields } = buildIndexFieldLookup(indexes);
 
-    lines.push(
-      'from sqlalchemy import Column, Integer, String, BigInteger, SmallInteger, Numeric, Float, Boolean, Date, DateTime, Time, Text, LargeBinary, JSON, Index, ForeignKey',
-    );
+    const imports = [
+      'Column',
+      'Integer',
+      'String',
+      'BigInteger',
+      'SmallInteger',
+      'Numeric',
+      'Float',
+      'Boolean',
+      'Date',
+      'DateTime',
+      'Time',
+      'Text',
+      'LargeBinary',
+      'JSON',
+      'Index',
+      ...(fields.some((field) => field.defaultKind === 'current_timestamp') ? ['func'] : []),
+      ...(foreignKeys.length > 0 ? ['ForeignKeyConstraint'] : []),
+    ];
+    lines.push(`from sqlalchemy import ${imports.join(', ')}`);
     lines.push('from sqlalchemy.ext.declarative import declarative_base');
     lines.push('');
     lines.push('Base = declarative_base()');
@@ -85,15 +102,16 @@ export class SQLAlchemyGenerator implements ORMGenerator {
       tableArgs.push(`    Index('${idx.name}', ${fieldNames}${uniqueStr})`);
     }
 
-    // Foreign keys
     for (const fk of foreignKeys) {
-      const localField = fk.fields[0];
-      const refTable = fk.refTable;
-      const refField = fk.refFields[0];
+      const localFields = fk.fields.map((field) => `'${field}'`).join(', ');
+      const referencedTable = [fk.refSchema, fk.refTable].filter(Boolean).join('.');
+      const referencedFields = fk.refFields
+        .map((field) => `'${referencedTable}.${field}'`)
+        .join(', ');
       const onDelete = fk.onDelete ? `, ondelete='${fk.onDelete}'` : '';
       const onUpdate = fk.onUpdate ? `, onupdate='${fk.onUpdate}'` : '';
       tableArgs.push(
-        `    ForeignKeyConstraint(['${localField}'], ['${refTable}.${refField}']${onDelete}${onUpdate})`,
+        `    ForeignKeyConstraint([${localFields}], [${referencedFields}]${onDelete}${onUpdate})`,
       );
     }
 
@@ -101,7 +119,7 @@ export class SQLAlchemyGenerator implements ORMGenerator {
       lines.push('');
       lines.push('    __table_args__ = (');
       for (const arg of tableArgs) {
-        lines.push(arg);
+        lines.push(`${arg},`);
       }
       lines.push('    )');
     }

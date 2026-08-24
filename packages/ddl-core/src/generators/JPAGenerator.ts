@@ -13,7 +13,7 @@ export class JPAGenerator implements ORMGenerator {
     tableComment: string,
     fields: NormalizedField[],
     indexes: IndexDefinition[],
-    _foreignKeys: ForeignKeyDefinition[],
+    foreignKeys: ForeignKeyDefinition[],
   ): string {
     if (!tableName.trim()) {
       return '// 请填写表名';
@@ -79,16 +79,39 @@ export class JPAGenerator implements ORMGenerator {
       if (!isNullable) {
         colParts.push('nullable = false');
       }
-      if (field.comment.trim()) {
-        // JPA doesn't have a standard comment attribute on @Column
-      }
-
       lines.push(`    @Column(${colParts.join(', ')})`);
       lines.push(`    private ${javaType} ${propName};`);
       lines.push('');
     }
 
-    // Getters and setters
+    for (const foreignKey of foreignKeys) {
+      const referencedType = toPascalCase(foreignKey.refTable);
+      const propertyName = toCamelCase(foreignKey.name || `${foreignKey.refTable}_relation`);
+      const isNullable = foreignKey.fields.some(
+        (fieldName) => fields.find((field) => field.name === fieldName)?.nullable,
+      );
+      lines.push(`    @ManyToOne${isNullable ? '' : '(optional = false)'}`);
+      const joinColumns = foreignKey.fields.map(
+        (fieldName, index) =>
+          `name = "${fieldName}", referencedColumnName = "${foreignKey.refFields[index]}", insertable = false, updatable = false`,
+      );
+      if (joinColumns.length === 1) {
+        const foreignKeyAttribute = foreignKey.name
+          ? `, foreignKey = @ForeignKey(name = "${foreignKey.name}")`
+          : '';
+        lines.push(`    @JoinColumn(${joinColumns[0]}${foreignKeyAttribute})`);
+      } else {
+        lines.push(`    @JoinColumns(value = {`);
+        for (const joinColumn of joinColumns) lines.push(`        @JoinColumn(${joinColumn}),`);
+        const foreignKeyAttribute = foreignKey.name
+          ? `, foreignKey = @ForeignKey(name = "${foreignKey.name}")`
+          : '';
+        lines.push(`    }${foreignKeyAttribute})`);
+      }
+      lines.push(`    private ${referencedType} ${propertyName};`);
+      lines.push('');
+    }
+
     for (const field of fields) {
       const propName = toCamelCase(field.name);
       const javaType = mapCanonicalToORMType('jpa', field.type);
@@ -101,6 +124,20 @@ export class JPAGenerator implements ORMGenerator {
       lines.push('');
       lines.push(`    public void ${setterName}(${javaType} ${propName}) {`);
       lines.push(`        this.${propName} = ${propName};`);
+      lines.push(`    }`);
+      lines.push('');
+    }
+
+    for (const foreignKey of foreignKeys) {
+      const referencedType = toPascalCase(foreignKey.refTable);
+      const propertyName = toCamelCase(foreignKey.name || `${foreignKey.refTable}_relation`);
+      const accessorName = toPascalCase(propertyName);
+      lines.push(`    public ${referencedType} get${accessorName}() {`);
+      lines.push(`        return this.${propertyName};`);
+      lines.push(`    }`);
+      lines.push('');
+      lines.push(`    public void set${accessorName}(${referencedType} ${propertyName}) {`);
+      lines.push(`        this.${propertyName} = ${propertyName};`);
       lines.push(`    }`);
       lines.push('');
     }

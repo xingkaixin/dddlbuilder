@@ -13,7 +13,7 @@ export class TypeORMGenerator implements ORMGenerator {
     tableComment: string,
     fields: NormalizedField[],
     indexes: IndexDefinition[],
-    _foreignKeys: ForeignKeyDefinition[],
+    foreignKeys: ForeignKeyDefinition[],
   ): string {
     if (!tableName.trim()) {
       return '-- 请填写表名';
@@ -25,9 +25,24 @@ export class TypeORMGenerator implements ORMGenerator {
     const lines: string[] = [];
     const { primaryFields, singleUniqueFields } = buildIndexFieldLookup(indexes);
 
-    lines.push(
-      `import { Entity, Column, Index, PrimaryGeneratedColumn, PrimaryColumn } from 'typeorm';`,
+    const decorators = [
+      'Entity',
+      'Column',
+      'Index',
+      'PrimaryGeneratedColumn',
+      'PrimaryColumn',
+      ...(foreignKeys.length > 0 ? ['ManyToOne', 'JoinColumn'] : []),
+    ];
+    lines.push(`import { ${decorators.join(', ')} } from 'typeorm';`);
+    const className = toPascalCase(tableName.trim());
+    const referencedEntities = new Map(
+      foreignKeys
+        .filter((foreignKey) => toPascalCase(foreignKey.refTable) !== className)
+        .map((foreignKey) => [toPascalCase(foreignKey.refTable), foreignKey.refTable] as const),
     );
+    for (const [referencedClass, referencedTable] of referencedEntities) {
+      lines.push(`import { ${referencedClass} } from './${referencedTable}';`);
+    }
     lines.push('');
 
     if (tableComment.trim()) {
@@ -54,7 +69,7 @@ export class TypeORMGenerator implements ORMGenerator {
       lines.push(idx);
     }
 
-    lines.push(`export class ${toPascalCase(tableName.trim())} {`);
+    lines.push(`export class ${className} {`);
 
     for (const field of fields) {
       const propName = toCamelCase(field.name);
@@ -95,6 +110,38 @@ export class TypeORMGenerator implements ORMGenerator {
 
       const typeStr = isNullable ? `${tsType} | null` : tsType;
       lines.push(`  ${propName}: ${typeStr};`);
+    }
+
+    for (const foreignKey of foreignKeys) {
+      const referencedClass = toPascalCase(foreignKey.refTable);
+      const propertyName = toCamelCase(foreignKey.name || `${foreignKey.refTable}_relation`);
+      const isNullable = foreignKey.fields.some(
+        (fieldName) => fields.find((field) => field.name === fieldName)?.nullable,
+      );
+      const relationOptions = [
+        ...(isNullable ? ['nullable: true'] : []),
+        ...(foreignKey.onDelete ? [`onDelete: '${foreignKey.onDelete}'`] : []),
+        ...(foreignKey.onUpdate ? [`onUpdate: '${foreignKey.onUpdate}'`] : []),
+      ];
+      const options = relationOptions.length > 0 ? `, { ${relationOptions.join(', ')} }` : '';
+      lines.push('');
+      lines.push(`  @ManyToOne(() => ${referencedClass}${options})`);
+      const joinColumns = foreignKey.fields.map((fieldName, index) => {
+        const parts = [
+          `name: '${fieldName}'`,
+          `referencedColumnName: '${foreignKey.refFields[index]}'`,
+          ...(index === 0 && foreignKey.name
+            ? [`foreignKeyConstraintName: '${foreignKey.name}'`]
+            : []),
+        ];
+        return `{ ${parts.join(', ')} }`;
+      });
+      lines.push(
+        joinColumns.length === 1
+          ? `  @JoinColumn(${joinColumns[0]})`
+          : `  @JoinColumn([${joinColumns.join(', ')}])`,
+      );
+      lines.push(`  ${propertyName}: ${referencedClass}${isNullable ? ' | null' : ''};`);
     }
 
     lines.push('}');

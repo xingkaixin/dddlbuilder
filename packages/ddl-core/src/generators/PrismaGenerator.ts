@@ -5,7 +5,14 @@ import type {
 } from '@ddlbuilder/shared-types';
 import type { ORMGenerator } from '../interfaces/ORMGenerator.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
-import { buildIndexFieldLookup, toCamelCase, escapePrismaDefault } from './shared.js';
+import { buildIndexFieldLookup, toCamelCase, toPascalCase, escapePrismaDefault } from './shared.js';
+
+const toReferentialAction = (action: string) =>
+  action
+    .toLowerCase()
+    .split(' ')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('');
 
 export class PrismaGenerator implements ORMGenerator {
   generateModel(
@@ -82,20 +89,27 @@ export class PrismaGenerator implements ORMGenerator {
       lines.push(`  @@unique([${fieldNames}])`);
     }
 
-    // Foreign keys
     for (const fk of foreignKeys) {
       const localFields = fk.fields.map((f) => toCamelCase(f)).join(', ');
       const refFields = fk.refFields.map((f) => toCamelCase(f)).join(', ');
-      lines.push(`  @@foreignKey([${localFields}])`);
-      lines.push(`  // references ${fk.refTable}(${refFields})`);
+      const relationName = toCamelCase(fk.name || `${fk.refTable}_relation`);
+      const relationType = toPascalCase(fk.refTable);
+      const isNullable = fk.fields.some(
+        (fieldName) => fields.find((field) => field.name === fieldName)?.nullable,
+      );
+      const options = [
+        `fields: [${localFields}]`,
+        `references: [${refFields}]`,
+        ...(fk.onDelete ? [`onDelete: ${toReferentialAction(fk.onDelete)}`] : []),
+        ...(fk.onUpdate ? [`onUpdate: ${toReferentialAction(fk.onUpdate)}`] : []),
+        ...(fk.name ? [`map: "${fk.name}"`] : []),
+      ];
+      lines.push(
+        `  ${relationName} ${relationType}${isNullable ? '?' : ''} @relation(${options.join(', ')})`,
+      );
     }
 
     lines.push('}');
     return lines.join('\n');
   }
-}
-
-function toPascalCase(str: string): string {
-  const camel = str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-  return camel.charAt(0).toUpperCase() + camel.slice(1);
 }
