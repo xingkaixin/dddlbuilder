@@ -21,11 +21,11 @@ import {
   readMap,
   readOrderedMap,
   readStringArray,
-  stableStringify,
   syncStringArray,
   writeJsonMapPatch,
   writeOrderedMap,
 } from './yMapJson';
+import { stableStringify } from './stableStringify';
 
 const TABLE_SCALAR_KEYS = [
   'objectType',

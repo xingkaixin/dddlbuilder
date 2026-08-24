@@ -1,4 +1,5 @@
 import * as Y from 'yjs';
+import { stableStringify } from './stableStringify';
 
 export type JsonRecord = Record<string, unknown>;
 
@@ -50,17 +51,6 @@ export const ensureArray = (parent: Y.Map<any>, key: string): Y.Array<string> =>
   const next = new Y.Array<string>();
   parent.set(key, next);
   return next;
-};
-
-export const stableStringify = (value: unknown): string => {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
-  const record = value as JsonRecord;
-  return `{${Object.keys(record)
-    .filter((key) => record[key] !== undefined)
-    .sort()
-    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
-    .join(',')}}`;
 };
 
 export const writeJsonMapPatch = (map: Y.Map<unknown>, values: JsonRecord) => {

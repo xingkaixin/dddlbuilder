@@ -12,7 +12,7 @@ export {
   type PersistedStateDecodeMode,
 } from './persistedStateCodec';
 export { decodeWorkspaceMigrationPayload } from './workspaceMigrationCodec';
-export { stableStringify } from './yMapJson';
+export { stableStringify } from './stableStringify';
 export {
   type ApplySchemaDocumentStateOptions,
   applySchemaDocumentStateToTableDoc,
