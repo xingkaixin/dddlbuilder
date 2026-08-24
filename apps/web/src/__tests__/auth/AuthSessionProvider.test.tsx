@@ -18,6 +18,9 @@ const sendVerificationEmailMock = vi.fn();
 const signOutMock = vi.fn();
 const updateUserMock = vi.fn();
 const changePasswordMock = vi.fn();
+const { clearLocalWorkspaceDataMock } = vi.hoisted(() => ({
+  clearLocalWorkspaceDataMock: vi.fn(),
+}));
 
 vi.mock('@/auth/betterAuthClient', () => ({
   isBetterAuthConfigured: () => true,
@@ -35,6 +38,11 @@ vi.mock('@/auth/betterAuthClient', () => ({
     updateUser: updateUserMock,
     changePassword: changePasswordMock,
   }),
+}));
+
+vi.mock('@/services/workspaceAccountService', async (importOriginal) => ({
+  ...(await importOriginal()),
+  clearLocalWorkspaceData: clearLocalWorkspaceDataMock,
 }));
 
 const SessionProbe = () => {
@@ -72,75 +80,29 @@ describe('AuthSessionProvider', () => {
     signOutMock.mockReset();
     updateUserMock.mockReset();
     changePasswordMock.mockReset();
+    clearLocalWorkspaceDataMock.mockReset();
   });
 
   describe('translateAuthError', () => {
-    it('maps "not verified" to emailNotVerified', () => {
-      expect(translateAuthError('Email not verified', 'fallback')).toBe(
-        '邮箱尚未验证，请先查收验证邮件',
-      );
+    it.each([
+      ['EMAIL_NOT_VERIFIED', '邮箱尚未验证，请先查收验证邮件'],
+      ['INVALID_EMAIL_OR_PASSWORD', '邮箱或密码错误'],
+      ['USER_NOT_FOUND', '账号不存在'],
+      ['USER_ALREADY_EXISTS', '该邮箱已注册'],
+      ['TOKEN_EXPIRED', '密码重置链接无效或已过期'],
+      ['PASSWORD_TOO_SHORT', '密码长度不足'],
+      ['RATE_LIMIT_EXCEEDED', '操作过于频繁，请稍后再试'],
+      ['USER_DISABLED', '账号已被禁用'],
+    ])('maps stable code %s', (code, expected) => {
+      expect(translateAuthError({ code }, 'fallback')).toBe(expected);
     });
 
-    it('maps "verify your email" to emailNotVerified', () => {
-      expect(translateAuthError('Please verify your email', 'fallback')).toBe(
-        '邮箱尚未验证，请先查收验证邮件',
-      );
+    it('maps HTTP 429 without relying on an error message', () => {
+      expect(translateAuthError({ status: 429 }, 'fallback')).toBe('操作过于频繁，请稍后再试');
     });
 
-    it('maps "invalid email" to invalidCredentials', () => {
-      expect(translateAuthError('Invalid email', 'fallback')).toBe('邮箱或密码错误');
-    });
-
-    it('maps "incorrect password" to invalidCredentials', () => {
-      expect(translateAuthError('Incorrect password', 'fallback')).toBe('邮箱或密码错误');
-    });
-
-    it('maps "invalid credentials" to invalidCredentials', () => {
-      expect(translateAuthError('Invalid credentials provided', 'fallback')).toBe('邮箱或密码错误');
-    });
-
-    it('maps "not found" to userNotFound', () => {
-      expect(translateAuthError('User not found', 'fallback')).toBe('账号不存在');
-    });
-
-    it('maps "already exists" to userAlreadyExists', () => {
-      expect(translateAuthError('User already exists', 'fallback')).toBe('该邮箱已注册');
-    });
-
-    it('maps "invalid token" to resetTokenInvalid', () => {
-      expect(translateAuthError('Invalid token', 'fallback')).toBe('密码重置链接无效或已过期');
-    });
-
-    it('maps "expired" to resetTokenInvalid', () => {
-      expect(translateAuthError('Token expired', 'fallback')).toBe('密码重置链接无效或已过期');
-    });
-
-    it('maps "too short" to passwordTooShort', () => {
-      expect(translateAuthError('Password too short', 'fallback')).toBe('密码长度不足');
-    });
-
-    it('maps "password must be" to passwordTooShort', () => {
-      expect(translateAuthError('Password must be at least 8 chars', 'fallback')).toBe(
-        '密码长度不足',
-      );
-    });
-
-    it('maps "rate limit" to tooManyRequests', () => {
-      expect(translateAuthError('Rate limit exceeded', 'fallback')).toBe(
-        '操作过于频繁，请稍后再试',
-      );
-    });
-
-    it('maps "too many" to tooManyRequests', () => {
-      expect(translateAuthError('Too many attempts', 'fallback')).toBe('操作过于频繁，请稍后再试');
-    });
-
-    it('maps "disabled" to accountDisabled', () => {
-      expect(translateAuthError('Account disabled', 'fallback')).toBe('账号已被禁用');
-    });
-
-    it('uses fallbackKey for unknown messages', () => {
-      expect(translateAuthError('some random error', 'header.auth.signInFailed')).toBe('登录失败');
+    it('uses fallbackKey for unknown codes', () => {
+      expect(translateAuthError({ code: 'UNKNOWN' }, 'header.auth.signInFailed')).toBe('登录失败');
     });
   });
 
@@ -480,6 +442,59 @@ describe('AuthSessionProvider', () => {
         newPassword: 'new-pass',
         revokeOtherSessions: false,
       });
+    });
+
+    it('keeps the client signed out when local workspace cleanup fails', async () => {
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              signedIn: true,
+              user: {
+                userId: 'user-1',
+                email: 'user@example.com',
+                emailVerified: true,
+                name: 'User One',
+              },
+            }),
+          ),
+        )
+        .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 8800 })))
+        .mockResolvedValueOnce(new Response(JSON.stringify({ workspaceId: 'ws-1' })))
+        .mockResolvedValue(
+          new Response(JSON.stringify({ workspaceId: 'ws-1', cursor: 0, entities: [] })),
+        );
+      signOutMock.mockResolvedValue({ error: null });
+      clearLocalWorkspaceDataMock.mockRejectedValue(new Error('IndexedDB unavailable'));
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const sessionApi: { current: ReturnType<typeof useAuthSession> | null } = { current: null };
+      const Probe = () => {
+        const api = useAuthSession();
+        useEffect(() => {
+          sessionApi.current = api;
+        }, [api]);
+        return <span data-testid="sign-out-status">{api.status}</span>;
+      };
+
+      render(
+        <AuthSessionProvider>
+          <Probe />
+        </AuthSessionProvider>,
+      );
+
+      await waitFor(() => expect(sessionApi.current?.workspaceId).toBe('ws-1'));
+      await expect(sessionApi.current?.signOut()).resolves.toBeUndefined();
+      await waitFor(() => {
+        expect(screen.getByTestId('sign-out-status')).toHaveTextContent('signed_out');
+      });
+      expect(consoleError).toHaveBeenCalledWith(
+        JSON.stringify({
+          event: 'sign_out_local_cleanup_failure',
+          userId: 'user-1',
+          workspaceId: 'ws-1',
+        }),
+        expect.any(Error),
+      );
     });
 
     it('opens and closes auth dialog', async () => {
