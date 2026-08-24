@@ -146,35 +146,21 @@ const createLegacySavedTableRow = (
 const readWorkspaceD1Log = (calls: unknown[][]) =>
   JSON.parse(String(calls[0]?.[0])) as WorkspaceD1Log;
 
+const checkpointDefaultWorkspace = async (env: ApiEnv['Bindings'], snapshot: WorkspaceSnapshot) => {
+  const { checkpointWorkspaceSnapshotEntities, getOrCreateDefaultWorkspace } =
+    await import('../../lib/workspaceEntities.js');
+  const workspace = await getOrCreateDefaultWorkspace(env, 'user-1');
+  await checkpointWorkspaceSnapshotEntities(env, 'user-1', workspace.id, snapshot);
+  return workspace.id;
+};
+
 describe('workspace entity checkpoints', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('上传快照时应保留云端已有实体', async () => {
-    const {
-      getWorkspaceSnapshotFromEntities: getWorkspaceSnapshot,
-      putWorkspaceSnapshotAsEntities: putWorkspaceSnapshot,
-    } = await import('../../lib/workspaceEntities.js');
-    const env = createEnv(createWorkspaceSnapshotDb());
-
-    await putWorkspaceSnapshot(env, 'user-1', createSnapshot(['legacy', 'users']));
-    await putWorkspaceSnapshot(env, 'user-1', createSnapshot(['orders']));
-
-    const snapshot = await getWorkspaceSnapshot(env, 'user-1');
-
-    expect(snapshot.savedTables.map((item) => item.normalizedName).sort()).toEqual([
-      'legacy',
-      'orders',
-      'users',
-    ]);
-  });
-
   it('读取快照时应从旧快照补齐缺失实体', async () => {
-    const {
-      getWorkspaceSnapshotFromEntities: getWorkspaceSnapshot,
-      putWorkspaceSnapshotAsEntities: putWorkspaceSnapshot,
-    } = await import('../../lib/workspaceEntities.js');
+    const { getWorkspaceSnapshotForWorkspace } = await import('../../lib/workspaceEntities.js');
     const env = createEnv(
       createWorkspaceSnapshotDb([
         createLegacySavedTableRow('user-1', 'legacy', 100),
@@ -182,11 +168,11 @@ describe('workspace entity checkpoints', () => {
       ]),
     );
 
-    await putWorkspaceSnapshot(env, 'user-1', createSnapshot(['orders']));
+    const workspaceId = await checkpointDefaultWorkspace(env, createSnapshot(['orders']));
 
     const prepareSpy = vi.spyOn(env.USER_DB, 'prepare');
-    const snapshot = await getWorkspaceSnapshot(env, 'user-1');
-    const persistedSnapshot = await getWorkspaceSnapshot(env, 'user-1');
+    const snapshot = await getWorkspaceSnapshotForWorkspace(env, 'user-1', workspaceId);
+    const persistedSnapshot = await getWorkspaceSnapshotForWorkspace(env, 'user-1', workspaceId);
 
     expect(snapshot.savedTables.map((item) => item.normalizedName).sort()).toEqual([
       'legacy',
@@ -225,13 +211,10 @@ describe('workspace entity checkpoints', () => {
   });
 
   it('应同步多份普通草稿', async () => {
-    const {
-      getWorkspaceSnapshotFromEntities: getWorkspaceSnapshot,
-      putWorkspaceSnapshotAsEntities: putWorkspaceSnapshot,
-    } = await import('../../lib/workspaceEntities.js');
+    const { getWorkspaceSnapshotForWorkspace } = await import('../../lib/workspaceEntities.js');
     const env = createEnv(createWorkspaceSnapshotDb());
 
-    await putWorkspaceSnapshot(env, 'user-1', {
+    const workspaceId = await checkpointDefaultWorkspace(env, {
       globalDraft: null,
       drafts: [
         {
@@ -253,7 +236,7 @@ describe('workspace entity checkpoints', () => {
       folders: [],
     });
 
-    const snapshot = await getWorkspaceSnapshot(env, 'user-1');
+    const snapshot = await getWorkspaceSnapshotForWorkspace(env, 'user-1', workspaceId);
 
     expect(snapshot.drafts).toEqual([
       {
@@ -273,32 +256,19 @@ describe('workspace entity checkpoints', () => {
   });
 
   it('checkpoint 应把 workspace_entities 收敛到当前 Y.Doc snapshot', async () => {
-    const {
-      checkpointWorkspaceSnapshotEntities,
-      getWorkspaceSnapshotForWorkspace,
-      putWorkspaceSnapshotAsEntities,
-    } = await import('../../lib/workspaceEntities.js');
+    const { checkpointWorkspaceSnapshotEntities, getWorkspaceSnapshotForWorkspace } =
+      await import('../../lib/workspaceEntities.js');
     const env = createEnv(createWorkspaceSnapshotDb());
 
-    await putWorkspaceSnapshotAsEntities(env, 'user-1', createSnapshot(['legacy', 'users']));
-    const workspace = await env.USER_DB.prepare(
-      `
-        SELECT id
-        FROM workspaces
-        WHERE user_id = ? AND is_default = 1
-        LIMIT 1
-      `,
-    )
-      .bind('user-1')
-      .first<{ id: string }>();
+    const workspaceId = await checkpointDefaultWorkspace(env, createSnapshot(['legacy', 'users']));
 
     const result = await checkpointWorkspaceSnapshotEntities(
       env,
       'user-1',
-      workspace?.id ?? '',
+      workspaceId,
       createSnapshot(['orders']),
     );
-    const snapshot = await getWorkspaceSnapshotForWorkspace(env, 'user-1', workspace?.id ?? '');
+    const snapshot = await getWorkspaceSnapshotForWorkspace(env, 'user-1', workspaceId);
 
     expect(result.upserted).toBe(1);
     expect(result.deleted).toBe(2);
@@ -306,22 +276,11 @@ describe('workspace entity checkpoints', () => {
   });
 
   it('checkpoint 日志应覆盖单次实体列表读取和批量写入', async () => {
-    const { checkpointWorkspaceSnapshotEntities, putWorkspaceSnapshotAsEntities } =
+    const { checkpointWorkspaceSnapshotEntities, getOrCreateDefaultWorkspace } =
       await import('../../lib/workspaceEntities.js');
     const env = createEnv(createWorkspaceSnapshotDb([], { includeMeta: true }));
 
-    await putWorkspaceSnapshotAsEntities(env, 'user-1', createSnapshot([]));
-    const workspace = await env.USER_DB.prepare(
-      `
-        SELECT id
-        FROM workspaces
-        WHERE user_id = ? AND is_default = 1
-        LIMIT 1
-      `,
-    )
-      .bind('user-1')
-      .first<{ id: string }>();
-    const workspaceId = workspace?.id ?? '';
+    const workspaceId = (await getOrCreateDefaultWorkspace(env, 'user-1')).id;
     const info = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     await checkpointWorkspaceSnapshotEntities(
@@ -349,23 +308,11 @@ describe('workspace entity checkpoints', () => {
   });
 
   it('未变化实体数量增加时不应增加 checkpoint 查询次数', async () => {
-    const { checkpointWorkspaceSnapshotEntities, putWorkspaceSnapshotAsEntities } =
-      await import('../../lib/workspaceEntities.js');
+    const { checkpointWorkspaceSnapshotEntities } = await import('../../lib/workspaceEntities.js');
     const env = createEnv(createWorkspaceSnapshotDb([], { includeMeta: true }));
     const snapshot = createSnapshot(['orders', 'users', 'products']);
 
-    await putWorkspaceSnapshotAsEntities(env, 'user-1', snapshot);
-    const workspace = await env.USER_DB.prepare(
-      `
-        SELECT id
-        FROM workspaces
-        WHERE user_id = ? AND is_default = 1
-        LIMIT 1
-      `,
-    )
-      .bind('user-1')
-      .first<{ id: string }>();
-    const workspaceId = workspace?.id ?? '';
+    const workspaceId = await checkpointDefaultWorkspace(env, snapshot);
     const info = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     const result = await checkpointWorkspaceSnapshotEntities(env, 'user-1', workspaceId, snapshot);

@@ -71,8 +71,6 @@ const buildWorkspaceId = () => `ws_${crypto.randomUUID()}`;
 const buildEntityRowId = (workspaceId: string, entityType: WorkspaceEntityType, entityId: string) =>
   `${workspaceId}:${entityType}:${entityId}`;
 
-export { buildWorkspaceContentHash };
-
 const readDefaultWorkspace = async (env: ApiEnv['Bindings'], userId: string) =>
   firstWorkspaceD1Result<WorkspaceRow>(
     env.USER_DB.prepare(
@@ -374,21 +372,6 @@ const listLegacySnapshotRows = async (
   return result.results ?? [];
 };
 
-export const upsertDefaultWorkspaceEntities = async (
-  env: ApiEnv['Bindings'],
-  input: {
-    userId: string;
-    entities: WorkspaceEntityInput[];
-  },
-) => {
-  const workspace = await getOrCreateDefaultWorkspace(env, input.userId);
-  await writeEntityInputs(env, {
-    userId: input.userId,
-    workspaceId: workspace.id,
-    entities: input.entities,
-  });
-};
-
 const buildEntityKey = (entityType: WorkspaceEntityType, entityId: string) =>
   `${entityType}:${entityId}`;
 
@@ -481,15 +464,6 @@ const ensureLegacySnapshotBackfilled = async (
   );
 };
 
-export const getWorkspaceSnapshotFromEntities = async (
-  env: ApiEnv['Bindings'],
-  userId: string,
-): Promise<WorkspaceSnapshot> => {
-  const workspace = await getOrCreateDefaultWorkspace(env, userId);
-  await ensureLegacySnapshotBackfilled(env, userId, workspace);
-  return storedEntitiesToWorkspaceSnapshot(await listActiveEntities(env, workspace.id));
-};
-
 export const getWorkspaceSnapshotForWorkspace = async (
   env: ApiEnv['Bindings'],
   userId: string,
@@ -500,17 +474,6 @@ export const getWorkspaceSnapshotForWorkspace = async (
     await ensureLegacySnapshotBackfilled(env, userId, { id: workspaceId, ...workspace });
   }
   return storedEntitiesToWorkspaceSnapshot(await listActiveEntities(env, workspaceId));
-};
-
-export const putWorkspaceSnapshotAsEntities = async (
-  env: ApiEnv['Bindings'],
-  userId: string,
-  snapshot: WorkspaceSnapshot,
-) => {
-  await upsertDefaultWorkspaceEntities(env, {
-    userId,
-    entities: workspaceSnapshotToEntities(snapshot),
-  });
 };
 
 export const checkpointWorkspaceSnapshotEntities = async (
