@@ -51,10 +51,7 @@ const ROUTE_SOURCES: Record<AIRouteKey, CreditLedgerSource> = {
   'index-advisor': 'ai_generate',
 };
 
-const encodeIdentityPart = (value: string) => `${value.length}:${value}`;
-
-const buildUsageEventId = (userId: string, routeKey: AIRouteKey, requestId: string) =>
-  `usage:${encodeIdentityPart(userId)}:${encodeIdentityPart(routeKey)}:${encodeIdentityPart(requestId)}`;
+const createUsageEventId = () => `usage:${crypto.randomUUID()}`;
 
 const buildLedgerIdentity = (reservation: AIUsageReservation, phase: 'reserve' | 'settlement') =>
   `${reservation.usageEventId}:${phase}`;
@@ -82,7 +79,6 @@ const createUsageEvent = async (env: ApiEnv['Bindings'], reservation: AIUsageRes
         error_code
       )
       VALUES (?, ?, ?, ?, ?, NULL, 'pending', NULL)
-      ON CONFLICT(user_id, route_key, request_id) DO NOTHING
     `,
   )
     .bind(
@@ -94,8 +90,13 @@ const createUsageEvent = async (env: ApiEnv['Bindings'], reservation: AIUsageRes
     )
     .run();
 
-  if (!result.success || Number(result.meta.changes ?? 0) === 0) {
-    throw new Error('AI_USAGE_REPLAYED');
+  if (!result.success || Number(result.meta.changes ?? 0) !== 1) {
+    console.error('[ai-usage] event creation failed', {
+      usageEventId: reservation.usageEventId,
+      requestId: reservation.requestId,
+      routeKey: reservation.routeKey,
+    });
+    throw new Error('AI_USAGE_CREATE_FAILED');
   }
 };
 
@@ -280,7 +281,7 @@ export const reserveAIUsage = async <RouteKey extends AIRouteKey>(
   },
 ): Promise<AIUsageReservation<RouteKey>> => {
   const reservation: AIUsageReservation<RouteKey> = {
-    usageEventId: buildUsageEventId(input.userId, input.routeKey, input.requestId),
+    usageEventId: createUsageEventId(),
     userId: input.userId,
     routeKey: input.routeKey,
     requestId: input.requestId,

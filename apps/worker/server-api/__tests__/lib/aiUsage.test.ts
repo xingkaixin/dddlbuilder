@@ -98,7 +98,7 @@ describe('aiUsage', () => {
         expect.objectContaining({
           kind: 'refund',
           amount: 100,
-          idempotencyKey: 'usage:6:user-1:7:explain:18:transition-failure:settlement',
+          idempotencyKey: expect.stringMatching(/^usage:[0-9a-f-]+:settlement$/),
         }),
       );
     });
@@ -133,7 +133,7 @@ describe('aiUsage', () => {
         estimatedTokens: 100,
       });
 
-      expect(result.usageEventId).toBe('usage:6:user-1:7:explain:5:req-1');
+      expect(result.usageEventId).toMatch(/^usage:[0-9a-f-]+$/);
       expect(result.reservedTokens).toBe(100);
       expect(result.routeKey).toBe('explain');
       expect(mockApplyCreditMutation).toHaveBeenCalledWith(
@@ -143,8 +143,8 @@ describe('aiUsage', () => {
           kind: 'consume',
           source: 'ai_explain',
           amount: 100,
-          idempotencyKey: 'usage:6:user-1:7:explain:5:req-1:reserve',
-          ledgerId: 'consume:usage:6:user-1:7:explain:5:req-1:reserve',
+          idempotencyKey: `${result.usageEventId}:reserve`,
+          ledgerId: `consume:${result.usageEventId}:reserve`,
         }),
       );
     });

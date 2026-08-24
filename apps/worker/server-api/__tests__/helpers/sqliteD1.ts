@@ -77,6 +77,7 @@ class SqliteD1Statement {
     return {
       ...result,
       meta: {
+        changes: rowsWritten,
         rows_read: rowsRead,
         rows_written: rowsWritten,
         duration: 1,
