@@ -11,13 +11,20 @@ export type WorkspaceSelection =
       baseSignature: string;
     });
 
+export type AnonymousWorkspaceScope = { kind: 'anonymous' };
+
+export type LegacyUserWorkspaceScope = { kind: 'legacy_user'; userId: string };
+
+export type UserWorkspaceScope = {
+  kind: 'user';
+  userId: string;
+  workspaceId: string;
+};
+
 export type WorkspaceScope =
-  | { kind: 'anonymous' }
-  | {
-      kind: 'user';
-      userId: string;
-      workspaceId?: string;
-    };
+  | AnonymousWorkspaceScope
+  | LegacyUserWorkspaceScope
+  | UserWorkspaceScope;
 
 export type WorkspaceEntityType = 'draft' | 'saved_table' | 'saved_draft' | 'folder';
 

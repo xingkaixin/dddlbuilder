@@ -36,7 +36,7 @@ const scope = {
   workspaceId: 'ws-1',
 };
 
-const legacyScope = { kind: 'user' as const, userId: 'user-1' };
+const legacyScope = { kind: 'legacy_user' as const, userId: 'user-1' };
 
 const createState = (tableName: string): PersistedState => ({
   schemaName: '',

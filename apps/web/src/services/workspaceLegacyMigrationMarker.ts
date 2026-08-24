@@ -1,4 +1,4 @@
-import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
+import type { UserWorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { getWorkspaceScopeStorageKey } from '@/utils/workspaceScope';
 
 /**
@@ -11,12 +11,12 @@ const STORAGE_KEY_PREFIX = 'ddlbuilder:workspace-legacy-migration:v2';
 
 const DONE = 'done';
 
-const buildKey = (scope: WorkspaceScope) =>
+const buildKey = (scope: UserWorkspaceScope) =>
   `${STORAGE_KEY_PREFIX}:${getWorkspaceScopeStorageKey(scope)}`;
 
 // localStorage 在隐私模式下连读都可能抛（SecurityError）。这里的任何失败都只应让迁移
 // 退化成"下次再跑"，绝不能冒泡到 Y.Doc 启动路径上——那会让 localSynced 卡住、用户编辑被丢弃。
-const readMarker = (scope: WorkspaceScope) => {
+const readMarker = (scope: UserWorkspaceScope) => {
   try {
     return localStorage.getItem(buildKey(scope));
   } catch (error) {
@@ -25,7 +25,7 @@ const readMarker = (scope: WorkspaceScope) => {
   }
 };
 
-const writeMarker = (scope: WorkspaceScope, value: string) => {
+const writeMarker = (scope: UserWorkspaceScope, value: string) => {
   try {
     localStorage.setItem(buildKey(scope), value);
   } catch (error) {
@@ -33,11 +33,11 @@ const writeMarker = (scope: WorkspaceScope, value: string) => {
   }
 };
 
-export const isLegacyWorkspaceMigrationCompleted = (scope: WorkspaceScope) =>
+export const isLegacyWorkspaceMigrationCompleted = (scope: UserWorkspaceScope) =>
   readMarker(scope) === DONE;
 
 /** 返回本次运行的令牌，收尾时凭它认领结果。 */
-export const beginLegacyWorkspaceMigration = (scope: WorkspaceScope) => {
+export const beginLegacyWorkspaceMigration = (scope: UserWorkspaceScope) => {
   const token = `running:${crypto.randomUUID()}`;
   writeMarker(scope, token);
   return token;
@@ -48,12 +48,12 @@ export const beginLegacyWorkspaceMigration = (scope: WorkspaceScope) => {
  * 期间若有人写了 legacy 分区（invalidate 抹掉标记）或另一个标签页重新开跑，
  * 本次结果都已经不完整，标记成 done 会让那批数据永远不再迁移。
  */
-export const completeLegacyWorkspaceMigration = (scope: WorkspaceScope, token: string) => {
+export const completeLegacyWorkspaceMigration = (scope: UserWorkspaceScope, token: string) => {
   if (readMarker(scope) !== token) return;
   writeMarker(scope, DONE);
 };
 
-export const invalidateLegacyWorkspaceMigration = (scope: WorkspaceScope) => {
+export const invalidateLegacyWorkspaceMigration = (scope: UserWorkspaceScope) => {
   try {
     localStorage.removeItem(buildKey(scope));
   } catch (error) {

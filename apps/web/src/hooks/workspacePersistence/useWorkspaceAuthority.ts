@@ -19,7 +19,7 @@ export function useWorkspaceAuthority() {
   const writeLocalFallback = useCallback(
     async (write: () => Promise<void>) => {
       await write();
-      if (scope?.kind === 'user' && scope.workspaceId) {
+      if (scope?.kind === 'user') {
         invalidateLegacyWorkspaceMigration(scope);
       }
     },

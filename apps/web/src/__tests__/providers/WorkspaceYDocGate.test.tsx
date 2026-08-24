@@ -139,7 +139,7 @@ describe('WorkspaceYDocProvider 加载门禁', () => {
     expect(createDraftEntry()).toBeInTheDocument();
   });
 
-  it('已登录但 workspaceId 还没落地时必须挡住：那一段写入会落进 user:<id> 分区', () => {
+  it('已登录但 workspaceId 还没落地时必须挡住，避免写入匿名分区', () => {
     authSession.current = {
       status: 'signed_in',
       userId: 'user-1',

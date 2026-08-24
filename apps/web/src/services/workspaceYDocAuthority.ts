@@ -4,7 +4,7 @@
  * server-side Yjs update log plus compacted snapshot. D1 `workspace_entities` is only a checkpoint
  * projection written by the Durable Object; clients never synchronize it independently.
  */
-import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
+import type { UserWorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 
 export type WorkspaceYDocStartupStep =
   | 'load-indexeddb-ydoc'
@@ -18,7 +18,7 @@ export type WorkspaceYDocStartupPlan =
     }
   | {
       enabled: true;
-      scope: Extract<WorkspaceScope, { kind: 'user' }> & { workspaceId: string };
+      scope: UserWorkspaceScope;
       steps: WorkspaceYDocStartupStep[];
     };
 
@@ -57,7 +57,7 @@ export const resolveWorkspaceYDocStartupPlan = (input: {
 
 /**
  * 只要浏览器已经确定持有登录会话，匿名分区就不是正确的写入目标；而在该 workspace 的 Y.Doc
- * 本地加载完成之前，写入只会落到 `user:<id>` 或 anonymous 分区，之后不会被合并回来
+ * 本地加载完成之前若错误放行，写入只会落到 anonymous 分区，之后不会被合并回来
  * （legacy 提升是一次性的，完成标记写下后不再重跑）。这段窗口必须整段挡住。
  * 判据同时看 userId 而不只看 status：refreshSession 期间 status 会退回 loading 但 userId 保留，
  * 放行那一段会在重试时闪出一个可写的空工作区。

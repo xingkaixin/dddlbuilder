@@ -14,11 +14,7 @@ export function useWorkspaceYDocGateway(
 ) {
   const workspaceYDoc = useWorkspaceYDoc();
   const yDocReady = Boolean(
-    enabled &&
-    workspaceYDoc.doc &&
-    workspaceYDoc.localSynced &&
-    scope?.kind === 'user' &&
-    scope.workspaceId,
+    enabled && workspaceYDoc.doc && workspaceYDoc.localSynced && scope?.kind === 'user',
   );
   // 非空即就绪：读写路径都以它判断该走 Y.Doc 还是本地分区，避免重复的布尔+判空对。
   const yDoc = yDocReady ? workspaceYDoc.doc : null;

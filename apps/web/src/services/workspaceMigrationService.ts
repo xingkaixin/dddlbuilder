@@ -5,6 +5,7 @@ import type {
   WorkspaceMigrationSnapshot,
   WorkspaceScope,
   WorkspaceSnapshot,
+  UserWorkspaceScope,
 } from '@ddlbuilder/shared-types/workspace';
 import { shouldAcceptSnapshotRecord } from '@ddlbuilder/workspace-core';
 import {
@@ -193,13 +194,11 @@ export const collectWorkspaceMigrationPayload = async (
 // 目标分区缺失或更旧才写入。用“目标分区是否为空”当作“是否已提升过”会漏提升剩余数据。
 const shouldPromoteRecord = shouldAcceptSnapshotRecord;
 
-export const promoteLegacyUserWorkspaceData = async (scope: WorkspaceScope): Promise<boolean> => {
-  if (scope.kind !== 'user' || !scope.workspaceId) {
-    return false;
-  }
-
+export const promoteLegacyUserWorkspaceData = async (
+  scope: UserWorkspaceScope,
+): Promise<boolean> => {
   const legacyScope: WorkspaceScope = {
-    kind: 'user',
+    kind: 'legacy_user',
     userId: scope.userId,
   };
   const [drafts, trashedDrafts, savedTables, trashedTables, savedDrafts, folders, session] =
@@ -293,7 +292,7 @@ const migrationSnapshotToWorkspaceSnapshot = (
 
 // 先把 legacy `user:U` 分区提升到目标分区，再读取；顺序颠倒会让本次会话漏掉刚提升的数据。
 export const prepareLegacyWorkspaceSnapshot = async (
-  scope: WorkspaceScope,
+  scope: UserWorkspaceScope,
 ): Promise<WorkspaceSnapshot | null> => {
   await promoteLegacyUserWorkspaceData(scope);
   const payload = await collectWorkspaceMigrationPayload(scope);

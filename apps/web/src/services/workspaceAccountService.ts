@@ -37,7 +37,7 @@ export const fetchCurrentWorkspace = async (
 };
 
 export const clearLocalWorkspaceData = async (scope: WorkspaceScope): Promise<void> => {
-  if (scope.kind !== 'user' || !scope.workspaceId) return;
+  if (scope.kind !== 'user') return;
 
   const [drafts, trashedDrafts, savedTables, trashedSavedTables, savedDrafts] = await Promise.all([
     listDrafts(scope),

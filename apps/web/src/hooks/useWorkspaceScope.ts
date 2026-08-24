@@ -19,7 +19,7 @@ export const useWorkspaceScopeState = () => {
       };
     }
 
-    if (!userId) {
+    if (!userId || !workspaceId) {
       return {
         scope: getAnonymousWorkspaceScope(),
         ready: false,
@@ -30,9 +30,9 @@ export const useWorkspaceScopeState = () => {
       scope: {
         kind: 'user' as const,
         userId,
-        ...(workspaceId ? { workspaceId } : {}),
+        workspaceId,
       },
-      ready: Boolean(workspaceId),
+      ready: true,
     };
   }, [status, userId, workspaceId]);
 };

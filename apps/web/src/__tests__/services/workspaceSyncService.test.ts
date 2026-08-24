@@ -33,7 +33,11 @@ const createState = (tableName: string) => ({
 });
 
 describe('workspaceSyncService', () => {
-  const scope = { kind: 'user' as const, userId: 'user-1' };
+  const scope = {
+    kind: 'user' as const,
+    userId: 'user-1',
+    workspaceId: 'workspace-1',
+  };
 
   beforeEach(() => {
     setupFakeIndexedDB();

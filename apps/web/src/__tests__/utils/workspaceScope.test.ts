@@ -26,8 +26,8 @@ describe('workspaceScope', () => {
       expect(getWorkspaceScopeStorageKey(scope)).toBe('anonymous');
     });
 
-    it('returns user prefixed key for user scope', () => {
-      const scope: WorkspaceScope = { kind: 'user', userId: 'user-123' };
+    it('returns user prefixed key for legacy user scope', () => {
+      const scope: WorkspaceScope = { kind: 'legacy_user', userId: 'user-123' };
       expect(getWorkspaceScopeStorageKey(scope)).toBe('user:user-123');
     });
 
@@ -43,8 +43,8 @@ describe('workspaceScope', () => {
       expect(buildScopedWorkspaceKey(scope, 'workspace')).toBe('anonymous::workspace');
     });
 
-    it('builds key for user scope', () => {
-      const scope: WorkspaceScope = { kind: 'user', userId: 'user-123' };
+    it('builds key for legacy user scope', () => {
+      const scope: WorkspaceScope = { kind: 'legacy_user', userId: 'user-123' };
       expect(buildScopedWorkspaceKey(scope, 'workspace')).toBe('user:user-123::workspace');
     });
 

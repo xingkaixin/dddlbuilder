@@ -7,9 +7,9 @@ export const getAnonymousWorkspaceScope = (): WorkspaceScope => ANONYMOUS_SCOPE;
 export const getWorkspaceScopeStorageKey = (scope: WorkspaceScope) =>
   scope.kind === 'anonymous'
     ? 'anonymous'
-    : scope.workspaceId
-      ? `user:${scope.userId}:workspace:${scope.workspaceId}`
-      : `user:${scope.userId}`;
+    : scope.kind === 'legacy_user'
+      ? `user:${scope.userId}`
+      : `user:${scope.userId}:workspace:${scope.workspaceId}`;
 
 export const buildScopedWorkspaceKey = (scope: WorkspaceScope, key: string) =>
   `${getWorkspaceScopeStorageKey(scope)}::${key}`;

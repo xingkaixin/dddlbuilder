@@ -125,8 +125,9 @@ describe('useWorkspaceMigration', () => {
     expect(applyWorkspaceMigrationPayloadToLocal).toHaveBeenCalledWith(payload, {
       kind: 'user',
       userId: 'user-1',
+      workspaceId: 'ws-1',
     });
-    // 写进 legacy 分区的数据只能靠启动迁移进 Y.Doc，必须让它重跑一次。
+    // 写进 workspace 本地分区的数据要在启动时折叠进 Y.Doc，必须让迁移重跑一次。
     expect(invalidateLegacyWorkspaceMigration).toHaveBeenCalledWith({
       kind: 'user',
       userId: 'user-1',

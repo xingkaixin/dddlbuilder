@@ -221,8 +221,8 @@ describe('workspaceStateDb', () => {
 
   it('workspace 数据应按账号 scope 隔离', async () => {
     const anonymousScope = getAnonymousWorkspaceScope();
-    const userAScope = { kind: 'user' as const, userId: 'user-a' };
-    const userBScope = { kind: 'user' as const, userId: 'user-b' };
+    const userAScope = { kind: 'legacy_user' as const, userId: 'user-a' };
+    const userBScope = { kind: 'legacy_user' as const, userId: 'user-b' };
 
     await writeDraft(
       DEFAULT_DRAFT_ID,

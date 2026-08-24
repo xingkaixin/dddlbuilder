@@ -116,10 +116,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     origin: WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN,
   });
   const shouldWaitForYDocHydration = Boolean(
-    !shareId &&
-    currentScope.kind === 'user' &&
-    currentScope.workspaceId &&
-    !workspaceYDoc.localSynced,
+    !shareId && currentScope.kind === 'user' && !workspaceYDoc.localSynced,
   );
   const draftRecords = useDraftRecords({
     currentScope,

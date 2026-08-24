@@ -63,6 +63,9 @@ export type { ApiErrorCode, ApiMeta, ApiErrorPayload } from './api.js';
 export type {
   WorkspaceSource,
   WorkspaceSelection,
+  AnonymousWorkspaceScope,
+  LegacyUserWorkspaceScope,
+  UserWorkspaceScope,
   WorkspaceScope,
   WorkspaceEntityType,
   CurrentWorkspaceResponse,

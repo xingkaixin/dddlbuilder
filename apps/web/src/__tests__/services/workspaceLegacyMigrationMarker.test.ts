@@ -26,7 +26,13 @@ describe('workspaceLegacyMigrationMarker', () => {
 
     expect(isLegacyWorkspaceMigrationCompleted(scope)).toBe(true);
     expect(isLegacyWorkspaceMigrationCompleted(otherWorkspaceScope)).toBe(false);
-    expect(isLegacyWorkspaceMigrationCompleted({ kind: 'user', userId: 'user-2' })).toBe(false);
+    expect(
+      isLegacyWorkspaceMigrationCompleted({
+        kind: 'user',
+        userId: 'user-2',
+        workspaceId: 'ws-1',
+      }),
+    ).toBe(false);
   });
 
   it('迁移中途失败（没跑到 complete）不应标记完成', () => {

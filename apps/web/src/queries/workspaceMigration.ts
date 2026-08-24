@@ -26,11 +26,11 @@ export function workspaceMigrationProposalOptions(userId: string, workspaceId: s
         return null;
       }
 
-      const scope = { kind: 'user' as const, userId };
+      const scope = { kind: 'user' as const, userId, workspaceId };
       if (await hasMeaningfulWorkspaceData(scope)) return null;
 
       await applyWorkspaceMigrationPayloadToLocal(analysis.payload, scope);
-      invalidateLegacyWorkspaceMigration({ ...scope, workspaceId });
+      invalidateLegacyWorkspaceMigration(scope);
 
       return isWorkspaceMigrationDismissed(userId, analysis.payload.localFingerprint)
         ? null
