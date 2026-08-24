@@ -1,7 +1,7 @@
 import type { WorkspaceEntityType, WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import { decodeSchemaDocumentState, normalizeWorkspaceSnapshot } from '@ddlbuilder/workspace-core';
 
-export const GLOBAL_DRAFT_ENTITY_ID = '__global_draft__';
+export const LEGACY_GLOBAL_DRAFT_ENTITY_ID = '__global_draft__';
 
 export type WorkspaceEntityInput = {
   entityType: WorkspaceEntityType;
@@ -109,7 +109,7 @@ const applyPayloadToSnapshot = (
   const { entityType, entityId, payload, updatedAt } = input;
   const state = decodeSchemaDocumentState(payload.state);
 
-  if (entityType === 'draft' && entityId === GLOBAL_DRAFT_ENTITY_ID) {
+  if (entityType === 'draft' && entityId === LEGACY_GLOBAL_DRAFT_ENTITY_ID) {
     if (state) {
       snapshot.globalDraft = {
         state,
@@ -238,7 +238,8 @@ export const legacyRowsToWorkspaceSnapshot = (
 
   for (const row of rows) {
     const entityType = row.kind === 'global_draft' ? 'draft' : row.kind;
-    const entityId = row.kind === 'global_draft' ? GLOBAL_DRAFT_ENTITY_ID : row.normalizedName;
+    const entityId =
+      row.kind === 'global_draft' ? LEGACY_GLOBAL_DRAFT_ENTITY_ID : row.normalizedName;
     if (!entityId) continue;
     const payload = decodeEntityPayload(entityType, entityId, row.payloadJson);
     if (!payload) continue;

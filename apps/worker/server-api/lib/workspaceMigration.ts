@@ -1,5 +1,6 @@
 import type { WorkspaceMigrationResponse } from '@ddlbuilder/shared-types/api';
 import type {
+  WorkspaceEntityType,
   WorkspaceMigrationPayload,
   WorkspaceSnapshot,
 } from '@ddlbuilder/shared-types/workspace';
@@ -9,18 +10,17 @@ import {
   upsertDefaultWorkspaceEntities,
 } from './workspaceEntities.js';
 import {
-  GLOBAL_DRAFT_ENTITY_ID,
   workspaceSnapshotToEntities,
   type WorkspaceEntityInput,
 } from './workspaceEntitySnapshot.js';
 
-type MigrationEntityKind = 'global_draft' | 'draft' | 'saved_table' | 'saved_draft' | 'folder';
+type MigrationEntityKind = WorkspaceEntityType;
 type ConflictKind = 'draft' | 'saved_table' | 'saved_draft';
 
 type MigrationEntityRecord = {
   id: string;
   kind: MigrationEntityKind;
-  normalizedName: string | null;
+  normalizedName: string;
   displayName: string;
   entity: WorkspaceEntityInput;
   payloadJson: string;
@@ -33,28 +33,25 @@ const LOCAL_COPY_SUFFIX = ' (Imported)';
 const buildMigrationEntityId = (
   userId: string,
   kind: MigrationEntityKind,
-  normalizedName: string | null,
-) => `${kind}:${userId}:${normalizedName ?? 'global'}`;
+  normalizedName: string,
+) => `${kind}:${userId}:${normalizedName}`;
 
 const toMigrationEntityRecord = (
   userId: string,
   entity: WorkspaceEntityInput,
 ): MigrationEntityRecord => {
-  const isGlobalDraft = entity.entityType === 'draft' && entity.entityId === GLOBAL_DRAFT_ENTITY_ID;
-  const kind = isGlobalDraft ? 'global_draft' : entity.entityType;
-  const normalizedName = isGlobalDraft ? null : entity.entityId;
+  const kind = entity.entityType;
+  const normalizedName = entity.entityId;
   const payload = entity.payload as Record<string, unknown>;
   const payloadName = typeof payload.name === 'string' ? payload.name : entity.entityId;
   const payloadTableName =
     typeof payload.tableName === 'string' ? payload.tableName : entity.entityId;
   const displayName =
-    kind === 'global_draft'
-      ? 'Global Draft'
-      : kind === 'saved_table' || kind === 'folder'
-        ? payloadName
-        : kind === 'saved_draft'
-          ? payloadTableName
-          : entity.entityId;
+    kind === 'saved_table' || kind === 'folder'
+      ? payloadName
+      : kind === 'saved_draft'
+        ? payloadTableName
+        : entity.entityId;
 
   return {
     id: buildMigrationEntityId(userId, kind, normalizedName),
@@ -67,7 +64,7 @@ const toMigrationEntityRecord = (
 };
 
 const toConflictKind = (kind: MigrationEntityKind): ConflictKind =>
-  kind === 'global_draft' || kind === 'folder' ? 'draft' : kind;
+  kind === 'folder' ? 'draft' : kind;
 
 const normalizeName = (value: string) => value.trim().toLowerCase();
 
@@ -84,17 +81,6 @@ const buildCopyEntity = (
   const sourcePayload = source.entity.payload as Record<string, unknown>;
 
   switch (source.kind) {
-    case 'global_draft':
-      return {
-        entityType: 'saved_draft',
-        entityId: normalizedName,
-        payload: {
-          tableName: displayName,
-          state: sourcePayload.state,
-          baseSignature: '',
-        },
-        sourceUpdatedAt: source.entity.sourceUpdatedAt,
-      };
     case 'saved_table':
       return {
         ...source.entity,
@@ -183,7 +169,7 @@ const resolveCopyRecord = (
   source: MigrationEntityRecord,
   existingPayloads: ReadonlyMap<string, string>,
 ) => {
-  const baseName = source.kind === 'global_draft' ? 'Migrated draft' : source.displayName;
+  const baseName = source.displayName;
   let counter = 0;
   while (true) {
     const displayName = buildLocalCopyName(baseName, counter);

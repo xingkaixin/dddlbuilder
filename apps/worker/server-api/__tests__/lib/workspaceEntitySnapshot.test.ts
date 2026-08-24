@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { type PersistedState, toSchemaDocumentState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import {
-  GLOBAL_DRAFT_ENTITY_ID,
+  LEGACY_GLOBAL_DRAFT_ENTITY_ID,
   legacyRowsToWorkspaceSnapshot,
   storedEntitiesToWorkspaceSnapshot,
   workspaceSnapshotToEntities,
@@ -70,7 +70,7 @@ describe('workspaceEntitySnapshot', () => {
       updatedAt: entity.sourceUpdatedAt,
     }));
 
-    expect(entities.map((entity) => entity.entityId)).not.toContain(GLOBAL_DRAFT_ENTITY_ID);
+    expect(entities.map((entity) => entity.entityId)).not.toContain(LEGACY_GLOBAL_DRAFT_ENTITY_ID);
     expect(entities.map((entity) => entity.entityId)).toContain('default');
     const expected = snapshot();
     expected.drafts = expected.drafts.map((draft) => ({
@@ -155,7 +155,7 @@ describe('workspaceEntitySnapshot', () => {
     const result = storedEntitiesToWorkspaceSnapshot([
       {
         entityType: 'draft',
-        entityId: GLOBAL_DRAFT_ENTITY_ID,
+        entityId: LEGACY_GLOBAL_DRAFT_ENTITY_ID,
         payloadJson: JSON.stringify({ state: state('stale') }),
         updatedAt: 1,
       },
