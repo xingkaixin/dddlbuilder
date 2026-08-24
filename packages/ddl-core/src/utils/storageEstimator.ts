@@ -1,5 +1,7 @@
 import type { DatabaseType, IndexDefinition, NormalizedField } from '@ddlbuilder/shared-types';
 import { getDatabaseFamily } from './databaseFamily.js';
+import { parseFieldType } from './databaseTypeMapping.js';
+import { canonicalizeBaseType } from './typeAliases.js';
 
 export interface StorageResult {
   rowOverhead: number;
@@ -22,32 +24,32 @@ export interface StorageProfile {
  * 估算常用类型的字节占用
  */
 function getFieldSize(type: string, dbType: DatabaseType): number {
-  const t = type.toLowerCase();
+  const { baseType, args } = parseFieldType(type);
+  const canonicalType = canonicalizeBaseType(baseType);
   const databaseFamily = getDatabaseFamily(dbType);
 
-  // 通用规则
-  if (t.includes('bigint')) return 8;
-  if (t.includes('smallint')) return 2;
-  if (t.includes('tinyint')) return 1;
-  if (t.includes('int')) return 4;
-  if (t.includes('double') || t.includes('float(53)')) return 8;
-  if (t.includes('float')) return 4;
-  if (t.includes('datetime') || t.includes('timestamp')) return 8; // 粗略估算
-  if (t.includes('date')) return 3;
-  if (t.includes('boolean') || t.includes('bit')) return 1;
+  if (canonicalType === 'bigint') return 8;
+  if (canonicalType === 'smallint') return 2;
+  if (canonicalType === 'tinyint') return 1;
+  if (['int', 'integer', 'mediumint'].includes(canonicalType)) return 4;
+  if (canonicalType === 'double' || (canonicalType === 'float' && args[0] === '53')) return 8;
+  if (canonicalType === 'float' || canonicalType === 'real') return 4;
+  if (canonicalType.includes('datetime') || canonicalType.includes('timestamp')) return 8;
+  if (canonicalType === 'date') return 3;
+  if (canonicalType === 'boolean' || canonicalType === 'bit') return 1;
 
   // 变长字段处理 (假设平均长度为定义长度的 50%)
-  const varcharMatch = t.match(/(?:varchar|nvarchar|char|nchar)\((\d+)\)/);
-  if (varcharMatch) {
-    const len = parseInt(varcharMatch[1], 10);
-    const isN = t.includes('nchar') || t.includes('nvarchar');
+  if (['varchar', 'nvarchar', 'char', 'nchar'].includes(canonicalType) && args[0]) {
+    const len = Number.parseInt(args[0], 10);
+    if (!Number.isFinite(len)) return 8;
+    const isN = canonicalType === 'nchar' || canonicalType === 'nvarchar';
     const factor = isN ? 2 : 1;
-    if (t.startsWith('char') || t.startsWith('nchar')) return len * factor;
+    if (canonicalType === 'char' || canonicalType === 'nchar') return len * factor;
     return Math.ceil(len * 0.5) * factor; // 默认按 50% 填充率估算
   }
 
   // LOB 字段 (仅计算行内指针)
-  if (t.includes('text') || t.includes('blob') || t.includes('clob')) {
+  if (canonicalType.includes('text') || canonicalType === 'blob') {
     if (databaseFamily === 'mysql') return 20; // 溢出页指针
     if (databaseFamily === 'postgresql') return 24; // TOAST 指针
     return 32;

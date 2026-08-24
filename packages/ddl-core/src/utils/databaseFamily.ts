@@ -37,6 +37,17 @@ export const getSqlParserDialect = (databaseType: DatabaseType): SqlParserDialec
 export const supportsMysqlPartition = (databaseType: DatabaseType): boolean =>
   getDatabaseFamily(databaseType) === 'mysql';
 
+export const quoteIdentifier = (identifier: string, databaseType: DatabaseType): string => {
+  switch (getDatabaseFamily(databaseType)) {
+    case 'mysql':
+      return `\`${identifier.replace(/`/g, '``')}\``;
+    case 'sqlserver':
+      return `[${identifier.replace(/]/g, ']]')}]`;
+    default:
+      return `"${identifier.replace(/"/g, '""')}"`;
+  }
+};
+
 export const expandDatabaseFamilies = <T>(
   values: Record<DatabaseFamily, T>,
 ): Record<DatabaseType, T> =>

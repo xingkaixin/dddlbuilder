@@ -156,6 +156,12 @@ describe('storageEstimator', () => {
     ]);
     expect(otherResult.dataSize).toBe(32); // Default for LOB in other DBs
 
+    const oracleCharacterResult = estimateStorage('oracle', [
+      { ...fields[0], type: 'varchar2(100)' },
+      { ...fields[0], type: 'nvarchar2(100)' },
+    ]);
+    expect(oracleCharacterResult.dataSize).toBe(150);
+
     const unknownResult = estimateStorage('mysql', [
       {
         name: 'f1',

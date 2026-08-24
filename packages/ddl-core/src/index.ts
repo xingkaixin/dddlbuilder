@@ -3,6 +3,7 @@ export { buildRoutineTemplateDDL } from './utils/routineTemplates.js';
 export {
   getDatabaseFamily,
   getSqlParserDialect,
+  quoteIdentifier,
   supportsMysqlPartition,
   type DatabaseFamily,
   type SqlParserDialect,

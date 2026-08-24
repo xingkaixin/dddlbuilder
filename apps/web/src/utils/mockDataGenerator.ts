@@ -1,5 +1,5 @@
 import type { DatabaseType, NormalizedField } from '@ddlbuilder/shared-types';
-import { parseFieldType } from '@ddlbuilder/ddl-core';
+import { parseFieldType, quoteIdentifier } from '@ddlbuilder/ddl-core';
 
 // ── 本地化数据池 ─────────────────────────────────────────────────────────────
 
@@ -418,12 +418,6 @@ function generateValueForField(field: NormalizedField, rowIndex: number): unknow
 }
 
 // ── 导出格式 ──────────────────────────────────────────────────────────────────
-
-function quoteIdentifier(name: string, dbType: DatabaseType): string {
-  if (['mysql', 'mariadb', 'tidb', 'oceanbase'].includes(dbType)) return `\`${name}\``;
-  if (['sqlserver'].includes(dbType)) return `[${name}]`;
-  return `"${name}"`;
-}
 
 function toStr(value: unknown): string {
   if (typeof value === 'string') return value;

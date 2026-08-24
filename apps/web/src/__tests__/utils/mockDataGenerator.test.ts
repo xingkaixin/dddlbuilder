@@ -40,6 +40,12 @@ describe('generateMockData', () => {
     expect(result.insertSql).toMatch(/;$/);
   });
 
+  it.each(['gbase', 'polardb'] as const)('generates INSERT SQL for %s with backticks', (dbType) => {
+    const fields = [createField({ name: 'id', type: 'bigint' })];
+    const result = generateMockData('users', '', fields, dbType, { rowCount: 1 });
+    expect(result.insertSql).toContain('INSERT INTO `users` (`id`)');
+  });
+
   it('generates INSERT SQL with schema name', () => {
     const fields = [createField({ name: 'id', type: 'bigint', defaultKind: 'auto_increment' })];
     const result = generateMockData('users', 'public', fields, 'postgresql', { rowCount: 1 });
