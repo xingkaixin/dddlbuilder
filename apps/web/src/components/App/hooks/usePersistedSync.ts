@@ -13,6 +13,7 @@ interface UsePersistedSyncParams {
   activeSource: WorkspaceSelection;
   saveState: (payload: WorkspaceSavePayload) => void;
   currentState: PersistedState;
+  getCurrentState: () => PersistedState;
   applyPersistedState: (state: PersistedState) => void;
 }
 
@@ -23,6 +24,7 @@ export function usePersistedSync({
   activeSource,
   saveState,
   currentState,
+  getCurrentState,
   applyPersistedState,
 }: UsePersistedSyncParams) {
   const browserOfflineRef = useRef(typeof navigator !== 'undefined' ? !navigator.onLine : false);
@@ -44,14 +46,17 @@ export function usePersistedSync({
     if (!hydrated || !hasOpenTab) return;
     const pendingAppliedState = pendingAppliedStateRef.current;
     if (pendingAppliedState?.sourceId === sourceId) return;
-    if (lastSavedKeyRef.current === currentSaveKey) return;
+    const latestState = getCurrentState();
+    const latestSignature = serializePersistedStateForComparison(latestState);
+    const latestSaveKey = `${sourceVersion}:${latestSignature}`;
+    if (lastSavedKeyRef.current === latestSaveKey) return;
 
     saveState({
-      state: currentState,
+      state: latestState,
       source: activeSource,
     });
-    lastSavedKeyRef.current = currentSaveKey;
-  }, [activeSource, currentSaveKey, currentState, hasOpenTab, hydrated, saveState, sourceId]);
+    lastSavedKeyRef.current = latestSaveKey;
+  }, [activeSource, getCurrentState, hasOpenTab, hydrated, saveState, sourceId, sourceVersion]);
 
   useEffect(() => {
     if (!hydrated || !hasOpenTab || !persistedState) return;
@@ -101,21 +106,16 @@ export function usePersistedSync({
         saveCurrentState();
       }
     };
-    const handleFieldRowsCommitted = () => {
-      window.setTimeout(saveCurrentState, 50);
-    };
     window.addEventListener('online', handleOnline, { capture: true });
     window.addEventListener('offline', handleOffline);
     window.addEventListener('blur', saveCurrentState);
     window.addEventListener('pagehide', saveCurrentState);
-    window.addEventListener('ddlbuilder:field-rows-committed', handleFieldRowsCommitted);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
       window.removeEventListener('online', handleOnline, true);
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('blur', saveCurrentState);
       window.removeEventListener('pagehide', saveCurrentState);
-      window.removeEventListener('ddlbuilder:field-rows-committed', handleFieldRowsCommitted);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [saveCurrentState]);

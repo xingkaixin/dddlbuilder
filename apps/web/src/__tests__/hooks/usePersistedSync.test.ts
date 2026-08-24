@@ -29,19 +29,24 @@ interface PersistedSyncParams {
   activeSource: WorkspaceSelection;
   saveState: (payload: WorkspaceSavePayload) => void;
   currentState: PersistedState;
+  getCurrentState: () => PersistedState;
   applyPersistedState: (state: PersistedState) => void;
 }
 
-const createBaseParams = (overrides: Partial<PersistedSyncParams> = {}): PersistedSyncParams => ({
-  hydrated: true,
-  hasOpenTab: true,
-  persistedState: null,
-  activeSource: { kind: 'draft', draftId: 'default' },
-  saveState: vi.fn(),
-  currentState: createState('a'),
-  applyPersistedState: vi.fn(),
-  ...overrides,
-});
+const createBaseParams = (overrides: Partial<PersistedSyncParams> = {}): PersistedSyncParams => {
+  const currentState = overrides.currentState ?? createState('a');
+  return {
+    hydrated: true,
+    hasOpenTab: true,
+    persistedState: null,
+    activeSource: { kind: 'draft', draftId: 'default' },
+    saveState: vi.fn(),
+    currentState,
+    getCurrentState: () => currentState,
+    applyPersistedState: vi.fn(),
+    ...overrides,
+  };
+};
 
 describe('usePersistedSync', () => {
   beforeEach(() => {
@@ -132,6 +137,28 @@ describe('usePersistedSync', () => {
     });
   });
 
+  it('页面退出时读取编辑器的最新快照', () => {
+    const saveState = vi.fn();
+    let latestState = createState('rendered');
+    renderHook(() =>
+      usePersistedSync(
+        createBaseParams({
+          currentState: latestState,
+          getCurrentState: () => latestState,
+          saveState,
+        }),
+      ),
+    );
+    latestState = createState('latest');
+
+    act(() => window.dispatchEvent(new Event('pagehide')));
+
+    expect(saveState).toHaveBeenCalledWith({
+      state: latestState,
+      source: { kind: 'draft', draftId: 'default' },
+    });
+  });
+
   it('离线编辑时立即保存最终值且不重复防抖保存', () => {
     const onlineSpy = vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(true);
     const saveState = vi.fn();
@@ -171,17 +198,21 @@ describe('usePersistedSync', () => {
   it('远端状态应用完成后的首个本地编辑会保存', () => {
     const saveState = vi.fn();
     const persistedState = createState('remote');
+    let latestState = createState('stale');
     const baseParams = createBaseParams({
       persistedState,
-      currentState: createState('stale'),
+      currentState: latestState,
+      getCurrentState: () => latestState,
       saveState,
     });
     const { rerender } = renderHook((params: PersistedSyncParams) => usePersistedSync(params), {
       initialProps: baseParams,
     });
 
-    rerender({ ...baseParams, currentState: persistedState });
-    rerender({ ...baseParams, currentState: createState('local_edit') });
+    latestState = persistedState;
+    rerender({ ...baseParams, currentState: latestState });
+    latestState = createState('local_edit');
+    rerender({ ...baseParams, currentState: latestState });
     act(() => vi.advanceTimersByTime(500));
 
     expect(saveState).toHaveBeenCalledOnce();

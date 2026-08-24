@@ -254,6 +254,7 @@ export function useAppController() {
     activeSource: activeEditorSource,
     saveState,
     currentState: currentPersistedState,
+    getCurrentState: buildPersistedState,
     applyPersistedState: applySavedState,
   });
 
