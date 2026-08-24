@@ -1,7 +1,7 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { openDb, VERSION_STORE_NAME } from './workspaceDb';
 import type { TableVersion, TableVersionMetadata } from './workspaceStorageTypes';
-import { normalizePersistedRows } from './helpers';
+import { normalizePersistedRows } from '@ddlbuilder/shared-types';
 import { runIndexedDbRequest } from './indexedDbTransaction';
 
 const decodeVersion = (version: TableVersion): TableVersion => ({

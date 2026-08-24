@@ -1,16 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import type { FieldRow } from '@ddlbuilder/shared-types';
+import { normalizeFields, isReservedKeyword, toStringSafe } from '@/utils/helpers';
 import {
-  normalizeFields,
   supportsAutoIncrement,
   supportsDefaultCurrentTimestamp,
   supportsOnUpdateCurrentTimestamp,
-  isReservedKeyword,
-  toStringSafe,
-  formatMysqlTableName,
-  formatPostgresTableName,
-} from '@/utils/helpers';
-import {
   escapeSingleQuotes,
   formatConstantDefault,
   shouldQuoteDefault,
@@ -471,28 +465,6 @@ describe('Field Processing Functions', () => {
         });
         expect(getSchemaAndTable('')).toEqual({ schema: '', table: '' });
         expect(getSchemaAndTable('   ')).toEqual({ schema: '', table: '' });
-      });
-    });
-
-    describe('formatMysqlTableName', () => {
-      it('should format MySQL table names', () => {
-        expect(formatMysqlTableName('table')).toBe('table');
-        expect(formatMysqlTableName('schema.table')).toBe('schema.table');
-        expect(formatMysqlTableName('db.schema.table')).toBe('db.schema.table');
-        expect(formatMysqlTableName('  table  ')).toBe('table');
-        expect(formatMysqlTableName('')).toBe('');
-        expect(formatMysqlTableName('   ')).toBe('');
-      });
-    });
-
-    describe('formatPostgresTableName', () => {
-      it('should format PostgreSQL table names', () => {
-        expect(formatPostgresTableName('table')).toBe('table');
-        expect(formatPostgresTableName('schema.table')).toBe('schema.table');
-        expect(formatPostgresTableName('db.schema.table')).toBe('db.schema.table');
-        expect(formatPostgresTableName('  table  ')).toBe('table');
-        expect(formatPostgresTableName('')).toBe('');
-        expect(formatPostgresTableName('   ')).toBe('');
       });
     });
   });

@@ -55,8 +55,6 @@ const FIELD_CELL_NORMALIZERS = new Map<string, (value: unknown) => unknown>([
 export const normalizeFieldCellValue = (prop: string, value: unknown): unknown =>
   (FIELD_CELL_NORMALIZERS.get(prop) ?? toStringSafe)(value);
 
-export { normalizeFieldEnums, normalizePersistedRows } from '@ddlbuilder/shared-types';
-
 export const normalizeFields = (rows: FieldRow[]) =>
   rows
     .map((row) => ({
@@ -70,14 +68,6 @@ export const normalizeFields = (rows: FieldRow[]) =>
       enumMeta: row.enumMeta,
     }))
     .filter((field) => field.name && field.type);
-
-// 委托到 databaseTypeMapping.ts 中的函数以保持一致性
-export {
-  supportsAutoIncrement,
-  supportsDefaultCurrentTimestamp,
-  supportsOnUpdateCurrentTimestamp,
-  supportsUuidDefault,
-} from '@ddlbuilder/ddl-core';
 
 export const getUiDefaultKindOptions = (
   db: DatabaseType,
@@ -94,13 +84,4 @@ export const getUiOnUpdateOptions = (db: DatabaseType, canonical: string): Field
   const opts: FieldOnUpdate[] = ['none'];
   if (supportsOnUpdateCurrentTimestamp(db, canonical)) opts.push('current_timestamp');
   return opts;
-};
-
-// Table name formatting functions
-export const formatMysqlTableName = (tableName: string): string => {
-  return tableName.trim();
-};
-
-export const formatPostgresTableName = (tableName: string): string => {
-  return tableName.trim();
 };

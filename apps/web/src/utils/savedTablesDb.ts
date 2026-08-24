@@ -1,6 +1,6 @@
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { buildScopedWorkspaceKey, getWorkspaceScopeStorageKey } from './workspaceScope';
-import { normalizePersistedRows } from './helpers';
+import { normalizePersistedRows } from '@ddlbuilder/shared-types';
 import { runIndexedDbRequest } from './indexedDbTransaction';
 import { decodeWorkspaceScopedKey } from './workspaceScopedRecord';
 import { openDb, STORE_NAME } from './workspaceDb';

@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { AISchemaPatchPanel } from './AISchemaPatchPanel';
 import { AIIndexAdvisorDialog } from './AIIndexAdvisorDialog';
-import { DialogRenderGuard } from './containers/DialogRenderGuard';
 import { GlobalDialogs } from './containers/GlobalDialogs';
 import type { AppDialogLayerModel } from './useAppController';
 
@@ -178,7 +177,7 @@ export function AppDialogLayer({
         }}
       />
 
-      <DialogRenderGuard open={isAISchemaPatchOpen}>
+      {isAISchemaPatchOpen && (
         <Dialog open={isAISchemaPatchOpen} onOpenChange={setIsAISchemaPatchOpen}>
           <DialogContent className="flex max-h-[88vh] w-[min(1080px,calc(100vw-2rem))] max-w-none flex-col overflow-hidden p-0">
             <DialogTitle className="sr-only">{t('aiPatch.title')}</DialogTitle>
@@ -191,9 +190,9 @@ export function AppDialogLayer({
             />
           </DialogContent>
         </Dialog>
-      </DialogRenderGuard>
+      )}
 
-      <DialogRenderGuard open={indexAdvisor.open}>
+      {indexAdvisor.open && (
         <AIIndexAdvisorDialog
           open={indexAdvisor.open}
           onOpenChange={indexAdvisor.setDialogOpen}
@@ -205,11 +204,11 @@ export function AppDialogLayer({
           onAnalyze={indexAdvisor.analyze}
           onApplyIndex={indexAdvisor.applyRecommendation}
         />
-      </DialogRenderGuard>
+      )}
 
       {!workspace.isShareView && (
         <Suspense fallback={null}>
-          <DialogRenderGuard open={isImportDialogOpen}>
+          {isImportDialogOpen && (
             <ImportSqlDialog
               currentDbType={editor.dbType}
               onImport={schemaActions.handleImport}
@@ -220,7 +219,7 @@ export function AppDialogLayer({
               folderTree={folderData.folderTree}
               onBatchImport={savedTableData.importTables}
             />
-          </DialogRenderGuard>
+          )}
         </Suspense>
       )}
     </>

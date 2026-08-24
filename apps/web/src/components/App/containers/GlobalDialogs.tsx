@@ -24,7 +24,6 @@ import { CreateTemplateDialog } from '../CreateTemplateDialog';
 import { VersionHistoryDialog } from '../VersionHistoryDialog';
 import { SchemaTimelinePlayer } from '../SchemaTimelinePlayer';
 import { useTranslation } from 'react-i18next';
-import { DialogRenderGuard } from './DialogRenderGuard';
 import { useEditorStore } from '@/stores';
 
 type ControlledDialogProps<T extends ElementType> = Omit<
@@ -152,63 +151,55 @@ export function GlobalDialogs({
 
   return (
     <>
-      <DialogRenderGuard open={folderDialogProps.open}>
-        <FolderDialog {...folderDialogProps} />
-      </DialogRenderGuard>
-      <DialogRenderGuard open={deleteFolderDialogProps.open}>
-        <DeleteFolderDialog {...deleteFolderDialogProps} />
-      </DialogRenderGuard>
-      <DialogRenderGuard open={templateManagerDialogProps.open}>
-        <TemplateManagerDialog {...templateManagerDialogProps} />
-      </DialogRenderGuard>
-      <DialogRenderGuard open={createTemplateDialogProps.open}>
-        <CreateTemplateDialog {...createTemplateDialogProps} />
-      </DialogRenderGuard>
-      <DialogRenderGuard open={tableTemplateManagerDialogProps.open}>
+      {folderDialogProps.open && <FolderDialog {...folderDialogProps} />}
+      {deleteFolderDialogProps.open && <DeleteFolderDialog {...deleteFolderDialogProps} />}
+      {templateManagerDialogProps.open && <TemplateManagerDialog {...templateManagerDialogProps} />}
+      {createTemplateDialogProps.open && <CreateTemplateDialog {...createTemplateDialogProps} />}
+      {tableTemplateManagerDialogProps.open && (
         <TableTemplateManagerDialog {...tableTemplateManagerDialogProps} />
-      </DialogRenderGuard>
-      <DialogRenderGuard open={createTableTemplateDialogProps.open}>
+      )}
+      {createTableTemplateDialogProps.open && (
         <CreateTableTemplateDialog {...createTableTemplateDialogProps} />
-      </DialogRenderGuard>
-      <DialogRenderGuard open={isDiffDialogOpen}>
+      )}
+      {isDiffDialogOpen && (
         <DiffDialog
           {...diffDialogProps}
           open={isDiffDialogOpen}
           onOpenChange={setIsDiffDialogOpen}
         />
-      </DialogRenderGuard>
-      <DialogRenderGuard open={versionHistoryTarget !== null}>
+      )}
+      {versionHistoryTarget && (
         <VersionHistoryDialog
           {...versionHistoryDialogProps}
-          open={versionHistoryTarget !== null}
+          open
           onOpenChange={handleVersionHistoryOpenChange}
-          tableNormalizedName={versionHistoryTarget?.normalizedName ?? null}
-          tableName={versionHistoryTarget?.name ?? null}
+          tableNormalizedName={versionHistoryTarget.normalizedName}
+          tableName={versionHistoryTarget.name}
           onPlayTimeline={handlePlayTimeline}
         />
-      </DialogRenderGuard>
-      <DialogRenderGuard open={timelinePlayerTarget !== null}>
+      )}
+      {timelinePlayerTarget && (
         <SchemaTimelinePlayer
-          open={timelinePlayerTarget !== null}
+          open
           onOpenChange={handleTimelinePlayerOpenChange}
-          tableNormalizedName={timelinePlayerTarget?.normalizedName ?? null}
-          tableName={timelinePlayerTarget?.name ?? null}
+          tableNormalizedName={timelinePlayerTarget.normalizedName}
+          tableName={timelinePlayerTarget.name}
         />
-      </DialogRenderGuard>
-      <DialogRenderGuard open={isReviewHistoryOpen}>
+      )}
+      {isReviewHistoryOpen && (
         <ReviewHistoryDialog
           {...reviewHistoryDialogProps}
           open={isReviewHistoryOpen}
           onOpenChange={setIsReviewHistoryOpen}
         />
-      </DialogRenderGuard>
-      <DialogRenderGuard open={isAIGenerateDialogOpen}>
+      )}
+      {isAIGenerateDialogOpen && (
         <AIGenerateDialog
           {...aiGenerateDialogProps}
           open={isAIGenerateDialogOpen}
           onOpenChange={setIsAIGenerateDialogOpen}
         />
-      </DialogRenderGuard>
+      )}
 
       <Dialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
         <DialogContent className="max-w-sm">
@@ -316,23 +307,21 @@ export function GlobalDialogs({
         </DialogContent>
       </Dialog>
 
-      <DialogRenderGuard open={isStorageEstimatorOpen}>
+      {isStorageEstimatorOpen && (
         <StorageEstimatorDialog
           {...storageEstimatorDialogProps}
           open={isStorageEstimatorOpen}
           onOpenChange={setIsStorageEstimatorOpen}
         />
-      </DialogRenderGuard>
-      <DialogRenderGuard open={isMockDataDialogOpen}>
+      )}
+      {isMockDataDialogOpen && (
         <MockDataDialog
           {...mockDataDialogProps}
           open={isMockDataDialogOpen}
           onOpenChange={setIsMockDataDialogOpen}
         />
-      </DialogRenderGuard>
-      <DialogRenderGuard open={erDiagramDialogProps.open}>
-        <ErDiagramDialog {...erDiagramDialogProps} />
-      </DialogRenderGuard>
+      )}
+      {erDiagramDialogProps.open && <ErDiagramDialog {...erDiagramDialogProps} />}
     </>
   );
 }

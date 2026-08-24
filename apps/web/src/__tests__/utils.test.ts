@@ -4,14 +4,13 @@ import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
 import type { IndexDefinition } from '@ddlbuilder/shared-types';
 import {
   createEmptyRow,
-  supportsUuidDefault,
   getUiDefaultKindOptions,
   getUiOnUpdateOptions,
   toStringSafe,
   isReservedKeyword,
   normalizeFields,
 } from '@/utils/helpers';
-import { getCanonicalBaseType } from '@ddlbuilder/ddl-core';
+import { getCanonicalBaseType, supportsUuidDefault } from '@ddlbuilder/ddl-core';
 import {
   normalizeFieldDefaultKind,
   normalizeFieldNullable,

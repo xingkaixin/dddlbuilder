@@ -39,17 +39,6 @@ export type { WorkspaceMigrationPayload } from '@ddlbuilder/shared-types/workspa
 const isPersistedStateTrivial = (state: SchemaDocumentState): boolean =>
   !state.rows?.some((row) => row.fieldName?.trim());
 
-export const hasMeaningfulWorkspaceSnapshotData = (snapshot: WorkspaceMigrationSnapshot | null) =>
-  Boolean(snapshot?.globalDraft && !isPersistedStateTrivial(snapshot.globalDraft.state)) ||
-  Boolean(
-    snapshot?.activeSession?.activeState &&
-    !isPersistedStateTrivial(snapshot.activeSession.activeState),
-  ) ||
-  Boolean(snapshot && snapshot.drafts.length > 0) ||
-  Boolean(snapshot && snapshot.savedTables.length > 0) ||
-  Boolean(snapshot && snapshot.savedDrafts.length > 0) ||
-  Boolean(snapshot && snapshot.folders.length > 0);
-
 const stripUpdatedAtFromSnapshot = (snapshot: WorkspaceMigrationSnapshot) => ({
   globalDraft: snapshot.globalDraft ? { state: snapshot.globalDraft.state } : null,
   activeSession: snapshot.activeSession

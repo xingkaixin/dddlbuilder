@@ -1,6 +1,5 @@
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import { normalizeFieldEnums, type PersistedState } from '@ddlbuilder/shared-types';
 import { createFieldId } from '@ddlbuilder/workspace-core';
-import { normalizeFieldEnums } from './helpers';
 import { openDb, TABLE_TEMPLATE_STORE_NAME } from './workspaceDb';
 import type { TableBlueprint, TableTemplate } from './workspaceStorageTypes';
 import { runIndexedDbRequest } from './indexedDbTransaction';
