@@ -4,6 +4,19 @@ outline: [2, 2]
 
 # Changelog
 
+## [0.21.0] - 2026-08-25
+### Added
+- **Japanese product and documentation support**: The application, AI-generated content, help links, and documentation site are now available in Japanese, with locale switching and localized search metadata.
+
+### Improved
+- **Safer workspace startup and migration**: Signed-in workspaces now wait for the local Y.Doc to load before editing begins, preventing startup edits from being overwritten. Legacy local data is promoted once per device and can recover safely from interrupted migrations.
+- **More reliable workspace operations**: Batch imports, AI-applied schema changes, field removal, and entity updates commit atomically. Stable entity identities and stricter scope handling keep tabs, folders, trash, and the latest editor state consistent across reloads and synchronization.
+
+### Fixed
+- **SQL, DDL, and ORM output correctness**: Multi-table SQL parsing keeps fields with their owning tables, schema diffs preserve rename and property-change intent, and generated ORM relationships are valid for Prisma, TypeORM, SQLAlchemy, GORM, and JPA.
+- **AI schema editing feedback**: The review panel now shows complete schema differences, validates generated changes before applying them, and avoids partially updating the current table when a change fails.
+- **AI credit and budget settlement**: Interrupted requests can no longer leave credits permanently reserved. Settlement, refunds, and daily budget reservations converge to a terminal state without duplicate charges or refunds.
+
 ## [0.20.0] - 2026-07-26
 ### Added
 - **ER relationship creation wizard**: Drag from a source field to a target field in the ER diagram, then confirm many-to-one or one-to-one cardinality, required or optional participation, update/delete actions, and index strategy. The system creates the foreign key, updates field nullability, and adds required indexes together.
