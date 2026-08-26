@@ -16,16 +16,17 @@
 ## 推奨される読む順序
 
 1. [SQL のインポートと解析](/ja/advanced/import-and-parse)
-2. [AI 支援テーブル設計ワークフロー](/ja/advanced/ai-workflow)
-3. [SQL の確認と説明](/ja/advanced/review-and-explain)
-4. [パーティショニングとシャーディングの構成](/ja/advanced/partition-and-sharding)
-5. [差分とロールバックの変更](/ja/advanced/diff-and-rollback)
-6. [外部キーの構成とER図](/ja/advanced/foreign-key-and-er)
-7. [ORMモデルの生成](/ja/advanced/orm-generation)
-8. [ビューとルーチンの設定](/ja/advanced/view-and-routine)
-9. [スキーマ lint](/ja/advanced/schema-lint)
-10. [モックデータと論理列挙型](/ja/advanced/mock-data-and-enum)
-11. [テーブル ブループリント テンプレート](/ja/advanced/blueprint-templates)
+2. [WebMCP Agent ワークフロー](/ja/advanced/webmcp)
+3. [AI 支援テーブル設計ワークフロー](/ja/advanced/ai-workflow)
+4. [SQL の確認と説明](/ja/advanced/review-and-explain)
+5. [パーティショニングとシャーディングの構成](/ja/advanced/partition-and-sharding)
+6. [差分とロールバックの変更](/ja/advanced/diff-and-rollback)
+7. [外部キーの構成とER図](/ja/advanced/foreign-key-and-er)
+8. [ORMモデルの生成](/ja/advanced/orm-generation)
+9. [ビューとルーチンの設定](/ja/advanced/view-and-routine)
+10. [スキーマ lint](/ja/advanced/schema-lint)
+11. [モックデータと論理列挙型](/ja/advanced/mock-data-and-enum)
+12. [テーブル ブループリント テンプレート](/ja/advanced/blueprint-templates)
 
 ## 境界と基本ガイド
 

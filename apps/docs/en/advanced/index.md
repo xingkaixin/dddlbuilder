@@ -16,16 +16,17 @@ Advanced Guide helps you move from "can generate SQL" to "stable reuse, collabor
 ## Recommended reading order
 
 1. [Import and Parse SQL](/en/advanced/import-and-parse)
-2. [AI-Assisted Table Design Workflow](/en/advanced/ai-workflow)
-3. [Review and Explain SQL](/en/advanced/review-and-explain)
-4. [Partitioning and Sharding Configuration](/en/advanced/partition-and-sharding)
-5. [Change Diff and Rollback](/en/advanced/diff-and-rollback)
-6. [Foreign Key Configuration and ER Diagram](/en/advanced/foreign-key-and-er)
-7. [ORM Model Generation](/en/advanced/orm-generation)
-8. [View and Routine Configuration](/en/advanced/view-and-routine)
-9. [Schema Lint](/en/advanced/schema-lint)
-10. [Mock Data and Logical Enums](/en/advanced/mock-data-and-enum)
-11. [Table Blueprint Templates](/en/advanced/blueprint-templates)
+2. [WebMCP Agent Workflow](/en/advanced/webmcp)
+3. [AI-Assisted Table Design Workflow](/en/advanced/ai-workflow)
+4. [Review and Explain SQL](/en/advanced/review-and-explain)
+5. [Partitioning and Sharding Configuration](/en/advanced/partition-and-sharding)
+6. [Change Diff and Rollback](/en/advanced/diff-and-rollback)
+7. [Foreign Key Configuration and ER Diagram](/en/advanced/foreign-key-and-er)
+8. [ORM Model Generation](/en/advanced/orm-generation)
+9. [View and Routine Configuration](/en/advanced/view-and-routine)
+10. [Schema Lint](/en/advanced/schema-lint)
+11. [Mock Data and Logical Enums](/en/advanced/mock-data-and-enum)
+12. [Table Blueprint Templates](/en/advanced/blueprint-templates)
 
 ## Boundary vs Basic Guide
 
