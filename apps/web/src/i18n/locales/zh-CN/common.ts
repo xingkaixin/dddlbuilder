@@ -1247,6 +1247,7 @@ export const zhCNCommon = {
       movedFolder: '文件夹已移动',
       movedFolderToRoot: '文件夹已移回根级',
       moveFolderFailed: '文件夹移动失败',
+      trashActionFailed: '{{count}} 项操作失败，请重试',
     },
   },
   reviewHistory: {

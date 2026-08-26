@@ -53,12 +53,13 @@ export function usePersistenceQueue() {
         setFailure(nextFailure);
       },
     );
+    return current;
   }, []);
 
   const retryFailed = useCallback(() => {
     const failedTasks = [...failedTasksRef.current.values()];
     for (const task of failedTasks) {
-      enqueue(task.key, task.operation, task.run);
+      void enqueue(task.key, task.operation, task.run);
     }
   }, [enqueue]);
 

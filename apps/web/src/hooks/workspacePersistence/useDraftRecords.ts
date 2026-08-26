@@ -84,7 +84,7 @@ export function useDraftRecords({ disabled, enqueuePersistence, storage }: UseDr
         folderId: existingRecord?.folderId,
       };
       cacheDraftRecord(draftId, record);
-      enqueuePersistence(`draft:${draftId}`, 'save draft', () =>
+      void enqueuePersistence(`draft:${draftId}`, 'save draft', () =>
         persistDraftRecord(draftId, record),
       );
     },
@@ -114,7 +114,7 @@ export function useDraftRecords({ disabled, enqueuePersistence, storage }: UseDr
         state: resolved.state,
       };
       cacheDraftRecord(draftId, record);
-      enqueuePersistence(`draft:${draftId}`, 'create draft', () =>
+      void enqueuePersistence(`draft:${draftId}`, 'create draft', () =>
         persistDraftRecord(draftId, record),
       );
       return resolved.uniqueName;
@@ -141,7 +141,7 @@ export function useDraftRecords({ disabled, enqueuePersistence, storage }: UseDr
       removeDraftRecord(draftId);
       trashedRecordsRef.current.set(draftId, trashedRecord);
       setTrashedDrafts((previous) => [toDraftSummary(draftId, trashedRecord), ...previous]);
-      enqueuePersistence(`draft:${draftId}`, 'move draft to trash', () =>
+      void enqueuePersistence(`draft:${draftId}`, 'move draft to trash', () =>
         persistDraftRecord(draftId, trashedRecord),
       );
       return true;
@@ -162,26 +162,37 @@ export function useDraftRecords({ disabled, enqueuePersistence, storage }: UseDr
         updatedAt: Date.now(),
         trashedAt: undefined,
       };
+      await enqueuePersistence(`draft:${draftId}`, 'restore draft', () =>
+        persistDraftRecord(draftId, restoredRecord),
+      );
       setTrashedDrafts((previous) => previous.filter((draft) => draft.draftId !== draftId));
       trashedRecordsRef.current.delete(draftId);
       cacheDraftRecord(draftId, restoredRecord);
-      await persistDraftRecord(draftId, restoredRecord);
-      await storage.cleanupLocal((scope) => deleteDraft(draftId, scope));
+      void enqueuePersistence(`draft-cleanup:${draftId}`, 'clean up restored draft', () =>
+        storage.cleanupLocal((scope) => deleteDraft(draftId, scope)),
+      );
     },
-    [cacheDraftRecord, disabled, persistDraftRecord, resolveDraftNameConflict, storage],
+    [
+      cacheDraftRecord,
+      disabled,
+      enqueuePersistence,
+      persistDraftRecord,
+      resolveDraftNameConflict,
+      storage,
+    ],
   );
 
   const permanentlyDeleteDraftById = useCallback(
-    (draftId: string) => {
+    async (draftId: string) => {
       if (disabled) return;
-      setTrashedDrafts((previous) => previous.filter((draft) => draft.draftId !== draftId));
-      trashedRecordsRef.current.delete(draftId);
-      enqueuePersistence(`draft:${draftId}`, 'permanently delete draft', () =>
+      await enqueuePersistence(`draft:${draftId}`, 'permanently delete draft', () =>
         storage.removeEverywhere({
           yDoc: (doc) => deleteDraftFromYDoc(doc, draftId),
           local: (scope) => deleteDraft(draftId, scope),
         }),
       );
+      setTrashedDrafts((previous) => previous.filter((draft) => draft.draftId !== draftId));
+      trashedRecordsRef.current.delete(draftId);
     },
     [disabled, enqueuePersistence, storage],
   );
@@ -193,7 +204,7 @@ export function useDraftRecords({ disabled, enqueuePersistence, storage }: UseDr
       if (!record) return;
       const updatedRecord = { ...record, folderId, updatedAt: Date.now() };
       cacheDraftRecord(draftId, updatedRecord);
-      enqueuePersistence(`draft:${draftId}`, 'move draft to folder', () =>
+      void enqueuePersistence(`draft:${draftId}`, 'move draft to folder', () =>
         persistDraftRecord(draftId, updatedRecord),
       );
     },
@@ -203,7 +214,7 @@ export function useDraftRecords({ disabled, enqueuePersistence, storage }: UseDr
   const clearDraft = useCallback(
     (draftId: string) => {
       removeDraftRecord(draftId);
-      enqueuePersistence(`draft:${draftId}`, 'delete draft', () =>
+      void enqueuePersistence(`draft:${draftId}`, 'delete draft', () =>
         storage.removeEverywhere({
           yDoc: (doc) => deleteDraftFromYDoc(doc, draftId),
           local: (scope) => deleteDraft(draftId, scope),

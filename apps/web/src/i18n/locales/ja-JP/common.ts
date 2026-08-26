@@ -1296,6 +1296,7 @@ export const jaJPCommon = {
       movedFolder: 'フォルダが移動されました',
       movedFolderToRoot: 'フォルダーがルートに移動されました',
       moveFolderFailed: 'フォルダの移動に失敗しました',
+      trashActionFailed: '{{count}} 件の操作に失敗しました。再試行してください。',
     },
   },
   reviewHistory: {

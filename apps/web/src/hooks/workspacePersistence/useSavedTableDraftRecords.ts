@@ -30,7 +30,7 @@ export function useSavedTableDraftRecords({
   const persistRecord = useCallback(
     (normalizedName: string, record: SavedTableDraftRecord) => {
       recordsRef.current.set(normalizedName, record);
-      enqueuePersistence(`saved-draft:${normalizedName}`, 'save saved-table draft', () =>
+      void enqueuePersistence(`saved-draft:${normalizedName}`, 'save saved-table draft', () =>
         storage.write({
           yDoc: (doc) =>
             upsertSavedDraftInYDoc(doc, normalizedName, record, {
@@ -46,7 +46,7 @@ export function useSavedTableDraftRecords({
   const dropRecord = useCallback(
     (normalizedName: string) => {
       recordsRef.current.delete(normalizedName);
-      enqueuePersistence(`saved-draft:${normalizedName}`, 'delete saved-table draft', () =>
+      void enqueuePersistence(`saved-draft:${normalizedName}`, 'delete saved-table draft', () =>
         storage.removeEverywhere({
           yDoc: (doc) => deleteSavedDraftFromYDoc(doc, normalizedName),
           local: (scope) => deleteSavedDraft(normalizedName, scope),
@@ -74,7 +74,7 @@ export function useSavedTableDraftRecords({
         recordsRef.current.set(toNormalizedName, nextRecord);
         if (keyChanged) recordsRef.current.delete(fromNormalizedName);
       }
-      enqueuePersistence(
+      void enqueuePersistence(
         `saved-draft:${fromNormalizedName}`,
         'rename saved-table draft',
         async () => {

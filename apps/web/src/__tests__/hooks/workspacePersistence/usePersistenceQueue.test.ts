@@ -11,9 +11,12 @@ describe('usePersistenceQueue', () => {
       .mockResolvedValueOnce();
     const { result } = renderHook(() => usePersistenceQueue());
 
+    let completion!: Promise<unknown>;
     act(() => {
-      result.current.enqueue('draft:default', 'save draft', task);
+      completion = result.current.enqueue('draft:default', 'save draft', task);
     });
+
+    await expect(completion).rejects.toThrow('quota');
 
     await waitFor(() => {
       expect(result.current.failure?.operation).toBe('save draft');

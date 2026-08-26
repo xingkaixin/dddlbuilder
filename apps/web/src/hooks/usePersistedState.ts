@@ -84,7 +84,7 @@ export interface UsePersistedStateReturn {
   ) => void;
   trashedDrafts: DraftSummary[];
   restoreDraftById: (draftId: string) => Promise<void>;
-  permanentlyDeleteDraftById: (draftId: string) => void;
+  permanentlyDeleteDraftById: (draftId: string) => Promise<void>;
   persistenceFailure: PersistenceFailure | null;
   retryPersistence: () => void;
 }
@@ -229,7 +229,7 @@ export function usePersistedState(): UsePersistedStateReturn {
 
   const writeSession = useCallback(
     (source: WorkspaceSelection) => {
-      enqueuePersistence('workspace-session', 'save workspace session', () =>
+      void enqueuePersistence('workspace-session', 'save workspace session', () =>
         writeWorkspaceSession(
           { activeSource: toWorkspaceSource(source), updatedAt: Date.now() },
           currentScope,
@@ -241,7 +241,7 @@ export function usePersistedState(): UsePersistedStateReturn {
 
   const resetToDefaultDraft = useCallback(() => {
     syncActiveSource({ kind: 'draft', draftId: DEFAULT_DRAFT_ID });
-    enqueuePersistence('workspace-session', 'clear workspace session', () =>
+    void enqueuePersistence('workspace-session', 'clear workspace session', () =>
       clearWorkspaceSession(currentScope),
     );
     setPersistedState(null);

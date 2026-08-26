@@ -1288,6 +1288,7 @@ export const enUSCommon = {
       movedFolder: 'Folder moved',
       movedFolderToRoot: 'Folder moved to root',
       moveFolderFailed: 'Failed to move folder',
+      trashActionFailed: '{{count}} operation(s) failed. Please retry.',
     },
   },
   reviewHistory: {
