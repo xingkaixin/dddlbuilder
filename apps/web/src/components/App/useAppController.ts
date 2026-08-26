@@ -26,11 +26,14 @@ import { useEditorSurfaceModel } from './hooks/useEditorSurfaceModel';
 import { useFieldTemplates } from '@/hooks/useFieldTemplates';
 import { useTableTemplates } from '@/hooks/useTableTemplates';
 import { useTranslation } from 'react-i18next';
+import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { useWebMcpTools } from '@/webmcp/useWebMcpTools';
 
 import { isCnyFireworksEnabled } from '@/config/featureFlags';
 
 export function useAppController() {
   const { t } = useTranslation();
+  const authSession = useAuthSession();
   const domains = useEditorDomains();
   const { editor, ui, auth, sharding, animations, partition, tableOptions } = domains;
   const {
@@ -514,6 +517,19 @@ export function useAppController() {
     onOpenAISchemaPatch: openAISchemaPatch,
   });
 
+  const webMcpDialog = useWebMcpTools({
+    authStatus: authSession.status,
+    openAuthDialog: authSession.openAuthDialog,
+    hydrated,
+    isShareView,
+    source: activeEditorSource,
+    state: currentPersistedState,
+    generatedSql: schemaController.sql.generatedSql,
+    generatedDcl: schemaController.sql.generatedDcl,
+    generatedOrm: schemaController.orm.generatedOrm,
+    replaceState: applySavedState,
+  });
+
   return {
     workspaceView: {
       actions: {
@@ -618,6 +634,7 @@ export function useAppController() {
       },
     },
     dialogLayer: {
+      webMcpDialog,
       actions: {
         indexAdvisor: {
           open: indexAdvisor.open,

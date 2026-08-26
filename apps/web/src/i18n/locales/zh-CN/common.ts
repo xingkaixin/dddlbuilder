@@ -1616,4 +1616,23 @@ export const zhCNCommon = {
     duplicateValue: '枚举值已存在',
     emptyValue: '枚举值不能为空',
   },
+  webMcp: {
+    previewTitle: 'Agent 结构变更预览',
+    previewDescription: '以下变更尚未写入当前工作区。Agent 申请应用时，你还需要再次确认。',
+    confirmTitle: '确认 Agent 结构变更',
+    confirmDescription: '确认后将把以下变更写入当前工作区。若文档已变化，本次操作会被拒绝。',
+    summary: {
+      table: '表配置',
+      fields: '字段',
+      indexes: '索引',
+      foreignKeys: '外键',
+    },
+    operations: 'Agent 操作',
+    fieldChanges: '字段变更',
+    indexChanges: '索引变更',
+    lintIssues: 'Schema 检查结果',
+    close: '关闭预览',
+    cancel: '取消',
+    apply: '确认应用',
+  },
 };

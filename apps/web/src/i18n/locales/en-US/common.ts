@@ -1665,4 +1665,25 @@ export const enUSCommon = {
     duplicateValue: 'Value already exists',
     emptyValue: 'Value cannot be empty',
   },
+  webMcp: {
+    previewTitle: 'Agent Schema Change Preview',
+    previewDescription:
+      'These changes have not been written to the workspace. You will confirm again if the agent requests to apply them.',
+    confirmTitle: 'Confirm Agent Schema Changes',
+    confirmDescription:
+      'The changes will be written to the active workspace. The request is rejected if the document has changed.',
+    summary: {
+      table: 'Table',
+      fields: 'Fields',
+      indexes: 'Indexes',
+      foreignKeys: 'Foreign keys',
+    },
+    operations: 'Agent operations',
+    fieldChanges: 'Field changes',
+    indexChanges: 'Index changes',
+    lintIssues: 'Schema check results',
+    close: 'Close preview',
+    cancel: 'Cancel',
+    apply: 'Apply changes',
+  },
 };

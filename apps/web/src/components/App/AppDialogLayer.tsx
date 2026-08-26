@@ -5,6 +5,7 @@ import { AISchemaPatchPanel } from './AISchemaPatchPanel';
 import { AIIndexAdvisorDialog } from './AIIndexAdvisorDialog';
 import { GlobalDialogs } from './containers/GlobalDialogs';
 import type { AppDialogLayerModel } from './useAppController';
+import { WebMcpChangeDialog } from '@/webmcp/WebMcpChangeDialog';
 
 const ImportSqlDialog = lazy(() =>
   import('@/components/ImportSqlDialog').then((module) => ({
@@ -57,6 +58,7 @@ export function AppDialogLayer({ model }: AppDialogLayerProps) {
 
   return (
     <>
+      <WebMcpChangeDialog model={model.webMcpDialog} />
       <GlobalDialogs
         clearDialog={{
           open: ui.isClearDialogOpen,

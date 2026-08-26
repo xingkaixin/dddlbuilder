@@ -1676,4 +1676,25 @@ export const jaJPCommon = {
     duplicateValue: '値はすでに存在します',
     emptyValue: '値を空にすることはできません',
   },
+  webMcp: {
+    previewTitle: 'Agent スキーマ変更プレビュー',
+    previewDescription:
+      'これらの変更はまだワークスペースに書き込まれていません。Agent が適用を要求した時点で再度確認します。',
+    confirmTitle: 'Agent のスキーマ変更を確認',
+    confirmDescription:
+      '確認後、変更を現在のワークスペースに書き込みます。文書が変更済みの場合は拒否されます。',
+    summary: {
+      table: 'テーブル',
+      fields: 'フィールド',
+      indexes: 'インデックス',
+      foreignKeys: '外部キー',
+    },
+    operations: 'Agent 操作',
+    fieldChanges: 'フィールド変更',
+    indexChanges: 'インデックス変更',
+    lintIssues: 'スキーマチェック結果',
+    close: 'プレビューを閉じる',
+    cancel: 'キャンセル',
+    apply: '変更を適用',
+  },
 } as const;
