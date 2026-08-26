@@ -4,11 +4,9 @@ import { dispatchTelegramAuditNotification } from './lib/telegramNotifier.js';
 import { errorResponse, type ApiErrorCode } from './lib/http.js';
 import type { AIRouteKey } from './lib/aiRouteKey.js';
 import { reserveAIDailyBudget } from './lib/aiBudget.js';
+import type { OpenAIConfig } from './lib/openaiConfig.js';
 
-type RateLimitRule = {
-  maxRequests: number;
-  windowMs: number;
-};
+export { buildOpenAIConfig } from './lib/openaiConfig.js';
 
 type RetryOptions = {
   scope: string;
@@ -54,79 +52,6 @@ export type OpenAIUsageSnapshot = {
 };
 
 type WaitUntilFn = (promise: Promise<unknown>) => void;
-
-// Environment variable helpers
-const readEnvInt = (value: string | undefined, fallback: number): number => {
-  const raw = value;
-  const parsed = Number(raw);
-  if (!raw || Number.isNaN(parsed) || parsed <= 0) {
-    return fallback;
-  }
-  return Math.floor(parsed);
-};
-
-const readEnvBool = (value: string | undefined, fallback: boolean): boolean => {
-  if (!value) return fallback;
-  const normalized = value.trim().toLowerCase();
-  return ['1', 'true', 'yes', 'on'].includes(normalized);
-};
-
-// Build config from environment bindings
-export type OpenAIConfig = {
-  defaultWindowMs: number;
-  rateLimitEnabled: boolean;
-  retryMaxAttempts: number;
-  retryBaseDelayMs: number;
-  retryMaxDelayMs: number;
-  dailyBudgetEnabled: boolean;
-  dailyBudgetMaxTokens: number;
-  streamDebugEnabled: boolean;
-  rateLimitRules: Record<AIRouteKey, RateLimitRule>;
-};
-
-export const buildOpenAIConfig = (env: ApiEnv['Bindings']): OpenAIConfig => {
-  const defaultWindowMs = readEnvInt(env.OPENAI_RATELIMIT_WINDOW_MS, 60_000);
-  const rateLimitEnabled = readEnvBool(env.OPENAI_RATELIMIT_ENABLED, true);
-  const retryMaxAttempts = readEnvInt(env.OPENAI_RETRY_MAX_ATTEMPTS, 3);
-  const retryBaseDelayMs = readEnvInt(env.OPENAI_RETRY_BASE_DELAY_MS, 400);
-  const retryMaxDelayMs = readEnvInt(env.OPENAI_RETRY_MAX_DELAY_MS, 3_000);
-  const dailyBudgetEnabled = readEnvBool(env.OPENAI_DAILY_BUDGET_ENABLED, false);
-  const dailyBudgetMaxTokens = readEnvInt(env.OPENAI_DAILY_BUDGET_MAX_TOKENS, 0);
-  const streamDebugEnabled = readEnvBool(env.OPENAI_STREAM_DEBUG, false);
-
-  return {
-    defaultWindowMs,
-    rateLimitEnabled,
-    retryMaxAttempts,
-    retryBaseDelayMs,
-    retryMaxDelayMs,
-    dailyBudgetEnabled,
-    dailyBudgetMaxTokens,
-    streamDebugEnabled,
-    rateLimitRules: {
-      explain: {
-        maxRequests: readEnvInt(env.OPENAI_RATELIMIT_EXPLAIN_MAX, 15),
-        windowMs: defaultWindowMs,
-      },
-      review: {
-        maxRequests: readEnvInt(env.OPENAI_RATELIMIT_REVIEW_MAX, 6),
-        windowMs: defaultWindowMs,
-      },
-      'generate-table': {
-        maxRequests: readEnvInt(env.OPENAI_RATELIMIT_GENERATE_MAX, 4),
-        windowMs: defaultWindowMs,
-      },
-      'generate-comments': {
-        maxRequests: readEnvInt(env.OPENAI_RATELIMIT_GENERATE_COMMENTS_MAX, 6),
-        windowMs: defaultWindowMs,
-      },
-      'index-advisor': {
-        maxRequests: readEnvInt(env.OPENAI_RATELIMIT_INDEX_ADVISOR_MAX, 6),
-        windowMs: defaultWindowMs,
-      },
-    },
-  };
-};
 
 const RETRYABLE_STATUS_CODES = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
 

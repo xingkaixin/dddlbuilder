@@ -264,6 +264,8 @@ export const withAIGovernance = async <Request>(
   const openai = new OpenAI({
     baseURL: c.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
     apiKey,
+    maxRetries: 0,
+    timeout: config.requestTimeoutMs,
   });
   const reportUsage = (next: OpenAIUsageSnapshot | null | undefined) => {
     if (next) usage = next;

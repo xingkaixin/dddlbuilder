@@ -3,6 +3,7 @@ import { authenticateRequest } from './auth.js';
 import { applyCreditMutation, readCreditLedgerEntry, type CreditLedgerSource } from './credits.js';
 import type { ApiEnv } from './context.js';
 import type { AIRouteKey } from './aiRouteKey.js';
+import { buildOpenAIConfig, getAIUsageReclaimTtlMs } from './openaiConfig.js';
 
 export type { AIRouteKey } from './aiRouteKey.js';
 
@@ -371,8 +372,6 @@ export const failAIUsage = async (
  * 此时额度已扣但 usage_event 停在非终态，用户余额被永久占用且没有任何请求会再碰它。
  * 这里按 ledger 里的事实——而不是状态列——决定是否退款，然后把记录推到终态。
  */
-const STALE_AI_USAGE_TTL_MS = 15 * 60 * 1000;
-
 // 含 reclaiming：上一轮抢占后中途失败的记录必须能被下一轮重新捡起，否则会永久卡住。
 // 重复捡起是安全的——退款走 settlement 幂等键，第二次只会读回已有分录。
 const RECLAIMABLE_STATUSES: readonly AIUsageStatus[] = [
@@ -487,7 +486,7 @@ export const reclaimStaleAIUsage = async (
   env: ApiEnv['Bindings'],
   options: { now?: number; ttlMs?: number; limit?: number } = {},
 ) => {
-  const ttlMs = options.ttlMs ?? STALE_AI_USAGE_TTL_MS;
+  const ttlMs = options.ttlMs ?? getAIUsageReclaimTtlMs(buildOpenAIConfig(env));
   const cutoff = new Date((options.now ?? Date.now()) - ttlMs).toISOString();
   const placeholders = RECLAIMABLE_STATUSES.map(() => '?').join(', ');
 

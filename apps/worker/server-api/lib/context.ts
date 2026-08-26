@@ -30,6 +30,7 @@ export type ApiEnv = {
     OPENAI_RETRY_MAX_ATTEMPTS?: string;
     OPENAI_RETRY_BASE_DELAY_MS?: string;
     OPENAI_RETRY_MAX_DELAY_MS?: string;
+    OPENAI_REQUEST_TIMEOUT_MS?: string;
     OPENAI_DAILY_BUDGET_ENABLED?: string;
     OPENAI_DAILY_BUDGET_MAX_TOKENS?: string;
     OPENAI_STREAM_DEBUG?: string;

@@ -20,6 +20,7 @@ const loadShell = async (overrides: Record<string, unknown> = {}, completionCont
   const reserveAIUsage = vi.fn().mockResolvedValue(RESERVATION);
   const completeAIUsage = vi.fn().mockResolvedValue(undefined);
   const failAIUsage = vi.fn().mockResolvedValue(undefined);
+  const openAIConstructor = vi.fn();
 
   vi.doMock('../../lib/aiUsage.js', () => ({
     authenticateAIUser: vi.fn().mockResolvedValue({ userId: 'user-1' }),
@@ -39,6 +40,10 @@ const loadShell = async (overrides: Record<string, unknown> = {}, completionCont
   });
   vi.doMock('openai', () => ({
     default: class {
+      constructor(options: unknown) {
+        openAIConstructor(options);
+      }
+
       chat = {
         completions: {
           create: vi.fn().mockResolvedValue({
@@ -51,7 +56,14 @@ const loadShell = async (overrides: Record<string, unknown> = {}, completionCont
   }));
 
   const { withAIGovernance, rejectAIRequest } = await import('../../lib/aiRoute.js');
-  return { withAIGovernance, rejectAIRequest, reserveAIUsage, completeAIUsage, failAIUsage };
+  return {
+    withAIGovernance,
+    rejectAIRequest,
+    reserveAIUsage,
+    completeAIUsage,
+    failAIUsage,
+    openAIConstructor,
+  };
 };
 
 const post = (app: Hono<ApiEnv>, body: unknown, waitUntil = vi.fn()) =>
@@ -95,6 +107,21 @@ describe('withAIGovernance', () => {
         estimatedTokens: 100 + Math.ceil(JSON.stringify(PROMPT_MESSAGES).length / 4),
       }),
     );
+  });
+
+  it('只由治理层重试并限制单次请求时长', async () => {
+    const shell = await loadShell();
+    const app = new Hono<ApiEnv>();
+    app.post('/t', (c) =>
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async () =>
+        c.json({ ok: true }),
+      ),
+    );
+
+    await post(app, { sql: 'select 1' });
+
+    const options = shell.openAIConstructor.mock.calls[0]?.[0];
+    expect(options).toMatchObject({ maxRetries: 0, timeout: 180_000 });
   });
 
   it('结算成功的请求并放行响应', async () => {
