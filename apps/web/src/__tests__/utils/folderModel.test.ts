@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   buildFolderTreeModel,
+  buildFolderDeletionPlan,
   createFolderRecord,
+  findFolderTreeNode,
+  getAllFolderTreeNodeIds,
   getFolderDescendantIds,
+  getFolderTreeNodeIds,
   moveFolderRecord,
   renameFolderRecord,
 } from '@/utils/folderModel';
@@ -99,5 +103,32 @@ describe('folderModel', () => {
     }
 
     expect(depth).toBe(3_000);
+  });
+
+  it('finds and collects nested tree nodes', () => {
+    const tree = buildFolderTreeModel(folders);
+
+    expect(findFolderTreeNode(tree, 'leaf')?.name).toBe('Leaf');
+    expect(findFolderTreeNode(tree, 'missing')).toBeNull();
+    expect(getFolderTreeNodeIds(tree[0])).toEqual(['root', 'child', 'leaf']);
+    expect(getAllFolderTreeNodeIds(tree)).toEqual(['root', 'child', 'leaf']);
+  });
+
+  it('builds one deletion plan for folders and active tables', () => {
+    expect(
+      buildFolderDeletionPlan(
+        folders,
+        [
+          { id: 'active', folderId: 'leaf', updatedAt: 1 },
+          { id: 'trashed', folderId: 'child', trashedAt: 2, updatedAt: 2 },
+          { id: 'other', updatedAt: 1 },
+        ],
+        'root',
+        10,
+      ),
+    ).toEqual({
+      folderIds: ['root', 'child', 'leaf'],
+      tablesToTrash: [{ id: 'active', folderId: 'leaf', trashedAt: 10, updatedAt: 10 }],
+    });
   });
 });

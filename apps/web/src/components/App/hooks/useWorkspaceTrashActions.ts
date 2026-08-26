@@ -4,6 +4,7 @@ import type { DraftSummary } from '@ddlbuilder/shared-types/workspace';
 import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
 import { useToast } from '@/hooks/useToast';
+import { getAllFolderTreeNodeIds } from '@/utils/folderModel';
 
 interface UseWorkspaceTrashActionsParams {
   folderTree: FolderTreeNode[];
@@ -33,7 +34,7 @@ export function useWorkspaceTrashActions({
 
   const handleRestoreTable = useCallback(
     (item: SavedTableSummary) => {
-      const existingFolderIds = new Set(folderTree.map((folder) => folder.id));
+      const existingFolderIds = new Set(getAllFolderTreeNodeIds(folderTree));
       void restoreTable(item.normalizedName, { existingFolderIds }).then((result) => {
         showToast(
           result.ok

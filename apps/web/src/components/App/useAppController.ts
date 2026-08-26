@@ -239,7 +239,6 @@ export function useAppController() {
     renameFolder,
     moveFolder,
     deleteFolderAction,
-    deleteTable,
     moveTableToFolder,
     showToast,
   });

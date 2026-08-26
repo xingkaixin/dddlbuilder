@@ -39,7 +39,6 @@ describe('useFolders', () => {
   const mockDeleteFolder = vi.mocked(tableFolders.deleteFolder);
   const mockMoveFolder = vi.mocked(tableFolders.moveFolder);
   const mockBuildFolderTree = vi.mocked(tableFolders.buildFolderTree);
-  const mockGetDescendantFolderIds = vi.mocked(tableFolders.getDescendantFolderIds);
   const mockGetFolder = vi.mocked(tableFolders.getFolder);
 
   beforeEach(() => {
@@ -140,8 +139,7 @@ describe('useFolders', () => {
     mockBuildFolderTree
       .mockResolvedValueOnce([{ id: '1', name: 'Root', order: 1, children: [] } as any])
       .mockResolvedValueOnce([]);
-    mockGetDescendantFolderIds.mockResolvedValue(['child']);
-    mockDeleteFolder.mockResolvedValue(undefined);
+    mockDeleteFolder.mockResolvedValue(['1', 'child']);
 
     const { result } = renderHook(() => useFolders());
 
@@ -212,7 +210,6 @@ describe('useFolders', () => {
     mockRenameFolder.mockRejectedValue('fail');
     mockDeleteFolder.mockRejectedValue('fail');
     mockMoveFolder.mockRejectedValue('fail');
-    mockGetDescendantFolderIds.mockResolvedValue([]);
 
     const { result } = renderHook(() => useFolders());
 
@@ -231,7 +228,6 @@ describe('useFolders', () => {
     mockBuildFolderTree.mockResolvedValue([]);
     mockCreateFolder.mockRejectedValue(new Error('create err'));
     mockDeleteFolder.mockRejectedValue(new Error('delete err'));
-    mockGetDescendantFolderIds.mockResolvedValue([]);
 
     const { result } = renderHook(() => useFolders());
 

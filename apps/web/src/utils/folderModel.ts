@@ -5,6 +5,38 @@ export type FolderTreeNode = TableFolder & {
   tableCount?: number;
 };
 
+export const findFolderTreeNode = (
+  roots: readonly FolderTreeNode[],
+  folderId: string,
+): FolderTreeNode | null => {
+  const pending = [...roots];
+  for (let cursor = 0; cursor < pending.length; cursor += 1) {
+    const folder = pending[cursor];
+    if (!folder) continue;
+    if (folder.id === folderId) return folder;
+    pending.push(...folder.children);
+  }
+  return null;
+};
+
+export const getFolderTreeNodeIds = (root: FolderTreeNode): string[] => {
+  const ids: string[] = [];
+  const pending = [root];
+  for (let cursor = 0; cursor < pending.length; cursor += 1) {
+    const folder = pending[cursor];
+    if (!folder) continue;
+    ids.push(folder.id);
+    pending.push(...folder.children);
+  }
+  return ids;
+};
+
+export const getAllFolderTreeNodeIds = (roots: readonly FolderTreeNode[]): string[] => {
+  const ids: string[] = [];
+  for (const root of roots) ids.push(...getFolderTreeNodeIds(root));
+  return ids;
+};
+
 const childIdsByParent = (folders: readonly TableFolder[]) => {
   const children = new Map<string, string[]>();
   for (const folder of folders) {
@@ -37,6 +69,22 @@ export const getFolderDescendantIds = (
   }
 
   return descendants;
+};
+
+export const buildFolderDeletionPlan = <
+  Table extends { folderId?: string; trashedAt?: number; updatedAt: number },
+>(
+  folders: readonly TableFolder[],
+  tables: readonly Table[],
+  folderId: string,
+  now = Date.now(),
+) => {
+  const folderIds = [folderId, ...getFolderDescendantIds(folders, folderId)];
+  const affected = new Set(folderIds);
+  const tablesToTrash = tables
+    .filter((table) => table.folderId && affected.has(table.folderId) && !table.trashedAt)
+    .map((table) => ({ ...table, trashedAt: now, updatedAt: now }));
+  return { folderIds, tablesToTrash };
 };
 
 const findInvalidFolderIds = (foldersById: ReadonlyMap<string, TableFolder>) => {

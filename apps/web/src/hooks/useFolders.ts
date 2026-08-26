@@ -4,14 +4,15 @@ import type * as Y from 'yjs';
 import {
   buildFolderTreeFromYDoc,
   deleteFolderFromYDoc,
+  listSavedTableRecordsFromYDoc,
   listFoldersFromYDoc,
+  upsertSavedTableInYDoc,
   upsertFolderInYDoc,
 } from '@/services/workspaceYDocAdapter';
 import type { TableFolder } from '@/utils/workspaceStorageTypes';
 import {
   createFolder,
   deleteFolder,
-  getDescendantFolderIds,
   moveFolder,
   renameFolder,
   type FolderTreeNode,
@@ -20,8 +21,8 @@ import { useWorkspaceAuthority } from '@/hooks/workspacePersistence/useWorkspace
 import { useWorkspaceYDocProjection } from '@/hooks/useWorkspaceYDocProjection';
 import { localFoldersOptions } from '@/queries/workspaceLocal';
 import {
+  buildFolderDeletionPlan,
   createFolderRecord,
-  getFolderDescendantIds,
   moveFolderRecord,
   renameFolderRecord,
 } from '@/utils/folderModel';
@@ -97,23 +98,29 @@ export function useFolders() {
       try {
         const allFolderIds = await storage.update({
           yDoc: (doc) => {
-            const ids = [id, ...getFolderDescendantIds(yDocProjection.folders, id)];
-            for (const folderId of ids) deleteFolderFromYDoc(doc, folderId);
-            return ids;
+            const plan = buildFolderDeletionPlan(
+              listFoldersFromYDoc(doc),
+              listSavedTableRecordsFromYDoc(doc),
+              id,
+            );
+            for (const table of plan.tablesToTrash) upsertSavedTableInYDoc(doc, table);
+            for (const folderId of plan.folderIds) deleteFolderFromYDoc(doc, folderId);
+            return plan.folderIds;
           },
-          local: async (scope) => {
-            const ids = [id, ...(await getDescendantFolderIds(id, scope))];
-            await deleteFolder(id, scope);
-            return ids;
-          },
+          local: (scope) => deleteFolder(id, scope),
         });
         await refresh();
         return allFolderIds;
       } catch (error) {
+        console.error('[folders] atomic deletion failed', {
+          folderId: id,
+          storage: storage.kind,
+          error,
+        });
         throw error instanceof Error ? error : new Error('删除文件夹失败');
       }
     },
-    [refresh, storage, yDocProjection.folders],
+    [refresh, storage],
   );
 
   const handleMoveFolder = useCallback(

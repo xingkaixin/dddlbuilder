@@ -1,11 +1,12 @@
-import { FOLDER_STORE_NAME, openDb } from './workspaceDb';
-import type { TableFolder } from './workspaceStorageTypes';
+import { FOLDER_STORE_NAME, openDb, STORE_NAME } from './workspaceDb';
+import type { SavedTableRecord, TableFolder } from './workspaceStorageTypes';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { buildScopedWorkspaceKey, getWorkspaceScopeStorageKey } from './workspaceScope';
 import { runIndexedDbRequest } from './indexedDbTransaction';
 import { decodeWorkspaceScopedKey } from './workspaceScopedRecord';
 import {
   buildFolderTreeModel,
+  buildFolderDeletionPlan,
   createFolderRecord,
   getFolderDescendantIds,
   moveFolderRecord,
@@ -158,24 +159,63 @@ export async function getDescendantFolderIds(
 }
 
 /**
- * 删除文件夹（子表移回未分组，子文件夹及其表也移回未分组）
+ * 删除文件夹及后代，并把其中仍生效的表移入回收站
  */
-export async function deleteFolder(id: string, scope: WorkspaceScope): Promise<void> {
-  // 获取所有后代文件夹
-  const descendantIds = await getDescendantFolderIds(id, scope);
-  const allFolderIds = [id, ...descendantIds];
+export async function deleteFolder(id: string, scope: WorkspaceScope): Promise<string[]> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([FOLDER_STORE_NAME, STORE_NAME], 'readwrite');
+    const folderStore = transaction.objectStore(FOLDER_STORE_NAME);
+    const tableStore = transaction.objectStore(STORE_NAME);
+    const folderRequest = folderStore.getAll();
+    const tableRequest = tableStore.getAll();
+    let affectedFolderIds: string[] = [];
+    let foldersLoaded = false;
+    let tablesLoaded = false;
+    let settled = false;
 
-  // 先删除所有涉及的文件夹
-  for (const folderId of allFolderIds) {
-    await runWithFolderStore<undefined>('readwrite', (store) => store.delete(folderId));
-    await runWithFolderStore<undefined>('readwrite', (store) =>
-      store.delete(withScopeKey(scope, folderId)),
-    );
-  }
+    const fail = (error: unknown, message: string) => {
+      if (settled) return;
+      settled = true;
+      db.close();
+      reject(error ?? new Error(message));
+    };
 
-  // 注意：表的 folderId 清理需要在调用处处理
-  // 因为表存储在不同的 store 中
-  return;
+    const applyDeletion = () => {
+      if (!foldersLoaded || !tablesLoaded) return;
+      const folders = folderRequest.result
+        .map((folder) => decodeScopedFolder(folder, scope))
+        .filter((folder): folder is TableFolder => folder != null);
+      const tables = (tableRequest.result as SavedTableRecord[]).filter((record) =>
+        decodeWorkspaceScopedKey(record.normalizedName, record.scope, scope),
+      );
+      const plan = buildFolderDeletionPlan(folders, tables, id);
+      affectedFolderIds = plan.folderIds;
+      for (const record of plan.tablesToTrash) tableStore.put(record);
+
+      for (const folderId of affectedFolderIds) {
+        folderStore.delete(withScopeKey(scope, folderId));
+        if (scope.kind === 'anonymous') folderStore.delete(folderId);
+      }
+    };
+
+    folderRequest.onsuccess = () => {
+      foldersLoaded = true;
+      applyDeletion();
+    };
+    tableRequest.onsuccess = () => {
+      tablesLoaded = true;
+      applyDeletion();
+    };
+    transaction.onerror = () => fail(transaction.error, '事务失败');
+    transaction.onabort = () => fail(transaction.error, '事务被中止');
+    transaction.oncomplete = () => {
+      if (settled) return;
+      settled = true;
+      db.close();
+      resolve(affectedFolderIds);
+    };
+  });
 }
 
 /**

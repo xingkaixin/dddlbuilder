@@ -16,6 +16,8 @@ import {
 import * as dbUtils from '@/utils/workspaceDb';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
+import { addSavedTable, listTrashedSavedTables } from '@/utils/savedTablesDb';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 
 const anonymousScope = getAnonymousWorkspaceScope();
 const listFolders = (scope = anonymousScope) => listFoldersInScope(scope);
@@ -32,6 +34,20 @@ const getDescendantFolderIds = (folderId: string) =>
 const getFolder = (id: string) => getFolderInScope(id, anonymousScope);
 const buildFolderTree = () => buildFolderTreeInScope(anonymousScope);
 const getFolderPath = (folderId: string) => getFolderPathInScope(folderId, anonymousScope);
+const createState = (): PersistedState => ({
+  schemaName: '',
+  tableName: 'users',
+  tableComment: '',
+  dbType: 'mysql',
+  sqlFormatMode: 'compact',
+  rows: [],
+  addCount: 1,
+  indexInput: '',
+  currentIndexFields: [],
+  indexes: [],
+  authInput: '',
+  authObjects: [],
+});
 
 describe('tableFolders', () => {
   beforeEach(() => {
@@ -128,6 +144,31 @@ describe('tableFolders', () => {
 
     const missing = await getFolder(child.id);
     expect(missing).toBeNull();
+  });
+
+  it('should move contained tables to trash in the same transaction', async () => {
+    const root = await createFolder('Root');
+    const child = await createFolder('Child', root.id);
+    await addSavedTable(
+      {
+        normalizedName: 'users',
+        name: 'Users',
+        state: createState(),
+        folderId: child.id,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+      anonymousScope,
+    );
+
+    const affectedIds = await deleteFolder(root.id);
+
+    expect(new Set(affectedIds)).toEqual(new Set([root.id, child.id]));
+    expect((await listTrashedSavedTables(anonymousScope))[0]).toMatchObject({
+      normalizedName: 'users',
+      folderId: child.id,
+      trashedAt: expect.any(Number),
+    });
   });
 
   it('should throw when folder not found', async () => {

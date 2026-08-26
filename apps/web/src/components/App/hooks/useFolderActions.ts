@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
 import type { TableFolder } from '@/utils/workspaceStorageTypes';
+import { findFolderTreeNode, getFolderTreeNodeIds } from '@/utils/folderModel';
 import i18n from '@/i18n';
 
 interface UseFolderActionsParams {
@@ -11,7 +12,6 @@ interface UseFolderActionsParams {
   renameFolder: (id: string, name: string) => Promise<void>;
   moveFolder: (id: string, parentId?: string) => Promise<void>;
   deleteFolderAction: (id: string) => Promise<string[]>;
-  deleteTable: (normalizedName: string) => Promise<SaveTableResult>;
   moveTableToFolder: (normalizedName: string, folderId?: string) => Promise<SaveTableResult>;
   showToast: (message: string) => void;
 }
@@ -23,7 +23,6 @@ export function useFolderActions({
   renameFolder,
   moveFolder,
   deleteFolderAction,
-  deleteTable,
   moveTableToFolder,
   showToast,
 }: UseFolderActionsParams) {
@@ -37,9 +36,7 @@ export function useFolderActions({
 
   const handleOpenCreateFolderDialog = useCallback(
     (parentId?: string) => {
-      const parent = parentId
-        ? (folderTree.find((folder) => folder.id === parentId) ?? null)
-        : null;
+      const parent = parentId ? findFolderTreeNode(folderTree, parentId) : null;
       setFolderDialogParent(parent);
       setFolderDialogTarget(null);
       setFolderDialogMode('create');
@@ -89,31 +86,6 @@ export function useFolderActions({
     if (!deleteFolderTarget) return;
 
     try {
-      const collectFolderIds = (folder: FolderTreeNode): string[] => [
-        folder.id,
-        ...folder.children.flatMap(collectFolderIds),
-      ];
-      const affectedFolderIds = collectFolderIds(deleteFolderTarget);
-      const affectedTables = savedTables.filter(
-        (table) => table.folderId && affectedFolderIds.includes(table.folderId),
-      );
-
-      const deleteResults = await Promise.all(
-        affectedTables.map((table) => deleteTable(table.normalizedName)),
-      );
-      const failedTableDeletes = deleteResults.filter((result) => !result.ok);
-      if (failedTableDeletes.length > 0) {
-        console.error(
-          JSON.stringify({
-            event: 'folder_delete_table_failure',
-            folderId: deleteFolderTarget.id,
-            failedCount: failedTableDeletes.length,
-            reasons: failedTableDeletes.map((result) => result.reason),
-          }),
-        );
-        const firstFailure = failedTableDeletes[0];
-        throw new Error(firstFailure.message ?? i18n.t('savedTables.toast.deleteFolderFailed'));
-      }
       await deleteFolderAction(deleteFolderTarget.id);
       showToast(
         i18n.t('savedTables.toast.deletedFolder', {
@@ -125,19 +97,14 @@ export function useFolderActions({
         error instanceof Error ? error.message : i18n.t('savedTables.toast.deleteFolderFailed'),
       );
     }
-  }, [deleteFolderTarget, savedTables, deleteTable, deleteFolderAction, showToast]);
+  }, [deleteFolderTarget, deleteFolderAction, showToast]);
 
   const deleteFolderTableCount = useMemo(() => {
     if (!deleteFolderTarget) return 0;
-    const collectFolderIds = (folder: FolderTreeNode): string[] => [
-      folder.id,
-      ...folder.children.flatMap(collectFolderIds),
-    ];
-    const affectedFolderIds = collectFolderIds(deleteFolderTarget);
+    const affectedFolderIds = new Set(getFolderTreeNodeIds(deleteFolderTarget));
 
-    return savedTables.filter(
-      (table) => table.folderId && affectedFolderIds.includes(table.folderId),
-    ).length;
+    return savedTables.filter((table) => table.folderId && affectedFolderIds.has(table.folderId))
+      .length;
   }, [deleteFolderTarget, savedTables]);
 
   const handleMoveTableToFolder = useCallback(
