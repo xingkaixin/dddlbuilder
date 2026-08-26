@@ -255,6 +255,36 @@ describe('credits', () => {
       ).rejects.toThrow('INVALID_CREDIT_AMOUNT');
     });
 
+    it('throws INVALID_CREDIT_AMOUNT outside the safe integer domain', async () => {
+      const db = createMockDb();
+      const { applyCreditMutation } = await import('../../lib/credits.js');
+
+      for (const amount of [1.5, Number.MAX_SAFE_INTEGER + 1]) {
+        await expect(
+          applyCreditMutation(createEnv({ USER_DB: db as unknown as D1Database }), {
+            ...createMutationInput(),
+            amount,
+          }),
+        ).rejects.toThrow('INVALID_CREDIT_AMOUNT');
+      }
+    });
+
+    it('surfaces CREDIT_BALANCE_OVERFLOW raised by the balance trigger', async () => {
+      const db = createMockDb();
+      db.first.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+      db.run
+        .mockResolvedValueOnce({ success: true, meta: { changes: 1 } })
+        .mockRejectedValueOnce(new Error('D1_ERROR: CREDIT_BALANCE_OVERFLOW'));
+
+      const { applyCreditMutation } = await import('../../lib/credits.js');
+      await expect(
+        applyCreditMutation(
+          createEnv({ USER_DB: db as unknown as D1Database }),
+          createMutationInput({ kind: 'grant', amount: 10 }),
+        ),
+      ).rejects.toThrow('CREDIT_BALANCE_OVERFLOW');
+    });
+
     it('returns existing ledger row when idempotency key matches', async () => {
       const db = createMockDb();
       db.first.mockResolvedValue(ledgerRow());

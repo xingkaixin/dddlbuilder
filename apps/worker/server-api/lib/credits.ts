@@ -212,7 +212,12 @@ const validateExistingLedger = (existing: CreditLedgerRow, input: CreditMutation
   return existing;
 };
 
-const LEDGER_ABORT_CODES = ['CREDIT_ACCOUNT_MISSING', 'CREDIT_EXHAUSTED'] as const;
+const LEDGER_ABORT_CODES = [
+  'CREDIT_ACCOUNT_MISSING',
+  'CREDIT_EXHAUSTED',
+  'INVALID_CREDIT_AMOUNT',
+  'CREDIT_BALANCE_OVERFLOW',
+] as const;
 
 // 余额不变量由触发器执法（ADR-0001）；TS 只负责把 ABORT 消息还原成领域错误。
 const mapLedgerAbort = (error: unknown): Error => {
@@ -224,6 +229,12 @@ const mapLedgerAbort = (error: unknown): Error => {
   if (abortCode === 'CREDIT_ACCOUNT_MISSING') {
     return new DomainError(503, 'SERVICE_UNAVAILABLE', 'CREDIT_ACCOUNT_MISSING');
   }
+  if (abortCode === 'INVALID_CREDIT_AMOUNT') {
+    return new DomainError(500, 'SERVICE_UNAVAILABLE', 'INVALID_CREDIT_AMOUNT');
+  }
+  if (abortCode === 'CREDIT_BALANCE_OVERFLOW') {
+    return new DomainError(409, 'SERVICE_UNAVAILABLE', 'CREDIT_BALANCE_OVERFLOW');
+  }
   return new Error(message);
 };
 
@@ -231,7 +242,7 @@ export const applyCreditMutation = async (
   env: ApiEnv['Bindings'],
   input: CreditMutationInput,
 ): Promise<CreditLedgerRow> => {
-  if (!Number.isFinite(input.amount) || input.amount <= 0) {
+  if (!Number.isSafeInteger(input.amount) || input.amount <= 0) {
     throw new DomainError(500, 'SERVICE_UNAVAILABLE', 'INVALID_CREDIT_AMOUNT');
   }
 

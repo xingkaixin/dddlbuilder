@@ -886,7 +886,7 @@ describe('/api/admin/*', () => {
 
       expect(response.status).toBe(400);
       expect(await response.json()).toMatchObject({
-        error: 'Amount must be a positive number',
+        error: 'Amount must be a positive safe integer',
       });
     });
 
@@ -912,8 +912,36 @@ describe('/api/admin/*', () => {
 
       expect(response.status).toBe(400);
       expect(await response.json()).toMatchObject({
-        error: 'Amount must be a positive number',
+        error: 'Amount must be a positive safe integer',
       });
+    });
+
+    it('returns 400 when amount is not a safe integer', async () => {
+      vi.doMock('../lib/adminAuth.js', () => ({
+        createAdminSession: vi.fn(),
+        resolveAdminSession: vi.fn().mockResolvedValue(true),
+        deleteAdminSession: vi.fn(),
+      }));
+
+      const app = await createAdminApp();
+      for (const amount of [1.5, Number.MAX_SAFE_INTEGER + 1]) {
+        const response = await app.fetch(
+          createRequest('/api/admin/users/user-1/credits', {
+            method: 'POST',
+            headers: {
+              Cookie: 'ddlbuilder_admin_session=valid-token',
+              'content-type': 'application/json',
+            },
+            body: JSON.stringify({ amount }),
+          }),
+          createEnv(),
+        );
+
+        expect(response.status).toBe(400);
+        expect(await response.json()).toMatchObject({
+          error: 'Amount must be a positive safe integer',
+        });
+      }
     });
 
     it('returns 404 when user not found', async () => {

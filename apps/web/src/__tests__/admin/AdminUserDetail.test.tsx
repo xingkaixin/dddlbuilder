@@ -74,4 +74,17 @@ describe('AdminUserDetailView', () => {
     expect(mocks.getUserCreditLedger).toHaveBeenCalledTimes(2);
     expect(mocks.toastSuccess).toHaveBeenCalledWith('已成功增加 500 额度');
   });
+
+  it('小数额度不能提交', async () => {
+    render(<AdminUserDetailView userId="user-1" onBack={vi.fn()} />);
+
+    await screen.findByText('user@example.com');
+    fireEvent.click(screen.getByRole('button', { name: '增加额度' }));
+    fireEvent.change(screen.getByPlaceholderText('100'), {
+      target: { value: '1.5' },
+    });
+
+    expect(screen.getByRole('button', { name: '确认' })).toBeDisabled();
+    expect(mocks.grantUserCredits).not.toHaveBeenCalled();
+  });
 });

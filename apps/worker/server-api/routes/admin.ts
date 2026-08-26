@@ -336,8 +336,8 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
     if (err) return err;
 
     const amount = Number(body.amount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      return errorResponse(c, 400, 'Amount must be a positive number');
+    if (!Number.isSafeInteger(amount) || amount <= 0) {
+      return errorResponse(c, 400, 'Amount must be a positive safe integer');
     }
 
     const userRow = await c.env.USER_DB.prepare('SELECT id FROM user WHERE id = ?')

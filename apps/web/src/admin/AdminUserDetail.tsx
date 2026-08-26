@@ -31,6 +31,11 @@ import {
   adminUserOptions,
 } from '@/queries/admin';
 
+const isValidCreditAmount = (value: string) => {
+  const amount = Number(value);
+  return Number.isSafeInteger(amount) && amount > 0;
+};
+
 type AdminUserDetailProps = {
   userId: string;
   onBack: () => void;
@@ -125,7 +130,7 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
   const handleGrantCredits = async (e: FormEvent) => {
     e.preventDefault();
     const amount = Number(creditAmount);
-    if (!Number.isFinite(amount) || amount <= 0) return;
+    if (!isValidCreditAmount(creditAmount)) return;
 
     try {
       await grantCreditsMutation.mutateAsync({ amount, note: creditNote || undefined });
@@ -433,6 +438,8 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
                 <Input
                   type="number"
                   min={1}
+                  max={Number.MAX_SAFE_INTEGER}
+                  step={1}
                   value={creditAmount}
                   onChange={(e) => setCreditAmount(e.target.value)}
                   placeholder="100"
@@ -450,7 +457,7 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
             </div>
             <AlertDialogFooter>
               <AlertDialogCancel type="button">{t('common.cancel', '取消')}</AlertDialogCancel>
-              <Button type="submit" disabled={!creditAmount || Number(creditAmount) <= 0}>
+              <Button type="submit" disabled={!isValidCreditAmount(creditAmount)}>
                 {t('admin.detail.addCreditsSubmit')}
               </Button>
             </AlertDialogFooter>
