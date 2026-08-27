@@ -3,19 +3,19 @@ import {
   decodeWorkspaceMigrationPayload,
   importWorkspaceSnapshotToYDoc,
   exportWorkspaceYDocToSnapshot,
-  mergeWorkspaceSnapshotIntoYDoc,
 } from '@ddlbuilder/workspace-core';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { toSchemaDocumentState, type SchemaDocumentState } from '@ddlbuilder/shared-types';
 import type { WorkspaceMigrationPayload } from '@ddlbuilder/shared-types/workspace';
 import {
   analyzeWorkspaceMigration,
+  applyWorkspaceMigrationSnapshot,
   commitWorkspaceMigration,
 } from '../../lib/workspaceMigration.js';
 
 const authorityMocks = vi.hoisted(() => ({
   readSnapshot: vi.fn(),
-  mergeSnapshot: vi.fn(),
+  migrateSnapshot: vi.fn(),
 }));
 
 vi.mock('../../lib/workspaceYDocAuthority.js', () => ({
@@ -57,17 +57,21 @@ const createPayload = (): WorkspaceMigrationPayload => ({
 });
 
 describe('workspaceMigration', () => {
+  let cloudDoc: Y.Doc;
   beforeEach(() => {
     vi.clearAllMocks();
-    authorityMocks.mergeSnapshot.mockReset().mockResolvedValue(undefined);
-    authorityMocks.readSnapshot.mockReset().mockResolvedValue({
-      globalDraft: null,
-      drafts: [],
-      savedTables: [],
-      savedDrafts: [],
-      folders: [],
-    });
+    cloudDoc = new Y.Doc();
+    authorityMocks.readSnapshot
+      .mockReset()
+      .mockImplementation(async () => exportWorkspaceYDocToSnapshot(cloudDoc));
+    authorityMocks.migrateSnapshot
+      .mockReset()
+      .mockImplementation(async (snapshot) =>
+        applyWorkspaceMigrationSnapshot(cloudDoc, 'user-1', snapshot),
+      );
   });
+
+  afterEach(() => cloudDoc.destroy());
 
   it.each([undefined, 'table-alpha'])(
     '冲突副本保留独立 ID 和草稿关联并可重复迁移 (%s)',
@@ -83,18 +87,12 @@ describe('workspaceMigration', () => {
           updatedAt: 2,
         },
       ];
-      const doc = new Y.Doc();
+      const doc = cloudDoc;
       importWorkspaceSnapshotToYDoc(doc, {
         ...payload.snapshot,
         savedTables: [{ ...payload.snapshot.savedTables[0], state: createState('cloud') }],
         savedDrafts: [],
       });
-      authorityMocks.readSnapshot.mockImplementation(async () =>
-        exportWorkspaceYDocToSnapshot(doc),
-      );
-      authorityMocks.mergeSnapshot.mockImplementation(async (snapshot) =>
-        mergeWorkspaceSnapshotIntoYDoc(doc, snapshot),
-      );
       const statement = {
         bind: () => statement,
         first: async () => null,
@@ -111,7 +109,6 @@ describe('workspaceMigration', () => {
       expect(snapshot.savedDrafts[0]?.tableId).toBe(copy?.tableId);
       expect((await commitWorkspaceMigration(env, 'user-1', payload)).skippedCount).toBe(2);
       expect(exportWorkspaceYDocToSnapshot(doc).savedTables).toHaveLength(2);
-      doc.destroy();
     },
   );
 
@@ -155,11 +152,7 @@ describe('workspaceMigration', () => {
       },
     });
     if (!payload) throw new Error('Invalid migration fixture');
-    const doc = new Y.Doc();
-    authorityMocks.readSnapshot.mockImplementation(async () => exportWorkspaceYDocToSnapshot(doc));
-    authorityMocks.mergeSnapshot.mockImplementation(async (snapshot) =>
-      mergeWorkspaceSnapshotIntoYDoc(doc, snapshot),
-    );
+    const doc = cloudDoc;
     let status: string | null = null;
     let failCompletedOnce = true;
     const database = {
@@ -185,20 +178,18 @@ describe('workspaceMigration', () => {
       },
     };
     const env = { USER_DB: database } as never;
-    try {
-      await expect(commitWorkspaceMigration(env, 'user-1', payload)).rejects.toThrow(
-        'workspace_links write failed',
-      );
-      const firstSnapshot = exportWorkspaceYDocToSnapshot(doc);
-      const analysis = await analyzeWorkspaceMigration(env, 'user-1', payload);
-      expect(analysis).toMatchObject({ conflictCount: 0, skippedCount: 5 });
-      const retry = await commitWorkspaceMigration(env, 'user-1', payload);
-      expect(retry).toMatchObject({ createdCount: 0, copiedCount: 0, skippedCount: 5 });
-      expect(exportWorkspaceYDocToSnapshot(doc)).toEqual(firstSnapshot);
-      expect(authorityMocks.mergeSnapshot).toHaveBeenCalledOnce();
-    } finally {
-      doc.destroy();
-    }
+    await expect(commitWorkspaceMigration(env, 'user-1', payload)).rejects.toThrow(
+      'workspace_links write failed',
+    );
+    const firstSnapshot = exportWorkspaceYDocToSnapshot(doc);
+    const analysis = await analyzeWorkspaceMigration(env, 'user-1', payload);
+    expect(analysis).toMatchObject({ conflictCount: 0, skippedCount: 5 });
+    const onUpdate = vi.fn();
+    doc.on('update', onUpdate);
+    const retry = await commitWorkspaceMigration(env, 'user-1', payload);
+    expect(retry).toMatchObject({ createdCount: 0, copiedCount: 0, skippedCount: 5 });
+    expect(exportWorkspaceYDocToSnapshot(doc)).toEqual(firstSnapshot);
+    expect(onUpdate).not.toHaveBeenCalled();
   });
 
   it('分析迁移时识别所有待创建记录', async () => {
@@ -225,9 +216,9 @@ describe('workspaceMigration', () => {
     expect(queries).toHaveLength(1);
   });
 
-  it('提交迁移时一次读取现有快照，并在内存中解决所有名称冲突', async () => {
+  it('提交迁移由文档持有方解决冲突，调用方不预读快照', async () => {
     const queries: string[] = [];
-    authorityMocks.readSnapshot.mockResolvedValue({
+    importWorkspaceSnapshotToYDoc(cloudDoc, {
       globalDraft: null,
       drafts: [],
       savedTables: ['alpha', 'beta', 'gamma'].map((name) => ({
@@ -268,15 +259,12 @@ describe('workspaceMigration', () => {
       }),
     );
     expect(queries.some((sql) => sql.includes('workspace_snapshots'))).toBe(false);
-    expect(authorityMocks.mergeSnapshot).toHaveBeenCalledOnce();
-    expect(authorityMocks.mergeSnapshot).toHaveBeenCalledWith(
+    expect(authorityMocks.migrateSnapshot).toHaveBeenCalledOnce();
+    expect(authorityMocks.readSnapshot).not.toHaveBeenCalled();
+    expect(exportWorkspaceYDocToSnapshot(cloudDoc).savedTables).toContainEqual(
       expect.objectContaining({
-        savedTables: expect.arrayContaining([
-          expect.objectContaining({
-            normalizedName: 'alpha (imported)',
-            name: 'alpha (Imported)',
-          }),
-        ]),
+        normalizedName: 'alpha (imported)',
+        name: 'alpha (Imported)',
       }),
     );
   });
@@ -284,7 +272,7 @@ describe('workspaceMigration', () => {
   it('重复迁移时复用已有导入副本', async () => {
     const payload = createPayload();
     payload.snapshot.savedTables = payload.snapshot.savedTables.slice(0, 1);
-    authorityMocks.readSnapshot.mockResolvedValue({
+    importWorkspaceSnapshotToYDoc(cloudDoc, {
       globalDraft: null,
       drafts: [],
       savedTables: [
@@ -317,6 +305,8 @@ describe('workspaceMigration', () => {
       },
     };
 
+    const onUpdate = vi.fn();
+    cloudDoc.on('update', onUpdate);
     const result = await commitWorkspaceMigration(
       { USER_DB: database } as never,
       'user-1',
@@ -329,7 +319,7 @@ describe('workspaceMigration', () => {
         skippedCount: 1,
       }),
     );
-    expect(authorityMocks.mergeSnapshot).not.toHaveBeenCalled();
+    expect(onUpdate).not.toHaveBeenCalled();
   });
 
   it('嵌套属性顺序不同不会产生迁移冲突', async () => {
@@ -345,7 +335,7 @@ describe('workspaceMigration', () => {
     existing.savedTables[0].state.indexes = [
       { fields: [{ direction: 'ASC', name: 'id' }], unique: false, name: 'idx_id', id: 'index-1' },
     ];
-    authorityMocks.readSnapshot.mockResolvedValue(existing);
+    importWorkspaceSnapshotToYDoc(cloudDoc, existing);
     const statement = { bind: () => statement, first: async () => null };
     const result = await analyzeWorkspaceMigration(
       { USER_DB: { prepare: () => statement } } as never,
@@ -357,7 +347,9 @@ describe('workspaceMigration', () => {
 
   it('内容相同的已有记录只计为跳过且不触发实体写入', async () => {
     const payload = createPayload();
-    authorityMocks.readSnapshot.mockResolvedValue(payload.snapshot);
+    importWorkspaceSnapshotToYDoc(cloudDoc, payload.snapshot);
+    const onUpdate = vi.fn();
+    cloudDoc.on('update', onUpdate);
     const database = {
       prepare: () => {
         const statement = {
@@ -378,7 +370,7 @@ describe('workspaceMigration', () => {
     expect(result).toEqual(
       expect.objectContaining({ createdCount: 0, copiedCount: 0, skippedCount: 3 }),
     );
-    expect(authorityMocks.mergeSnapshot).not.toHaveBeenCalled();
+    expect(onUpdate).not.toHaveBeenCalled();
   });
 
   it('冲突副本应保留表草稿和文件夹引用', async () => {
@@ -417,7 +409,7 @@ describe('workspaceMigration', () => {
         updatedAt: 2,
       },
     ];
-    authorityMocks.readSnapshot.mockResolvedValue({
+    importWorkspaceSnapshotToYDoc(cloudDoc, {
       globalDraft: null,
       drafts: [],
       savedTables: [
@@ -453,16 +445,19 @@ describe('workspaceMigration', () => {
 
     await commitWorkspaceMigration({ USER_DB: database } as never, 'user-1', payload);
 
-    const snapshot = authorityMocks.mergeSnapshot.mock.calls[0]?.[0];
-    const table = snapshot.savedTables[0];
+    const snapshot = exportWorkspaceYDocToSnapshot(cloudDoc);
+    const table = snapshot.savedTables.find((item) => item.name === 'alpha (Imported)');
     const draft = snapshot.savedDrafts[0];
     const folder = snapshot.folders.find(
       (item: { name: string }) => item.name === 'Local (Imported)',
     );
     const child = snapshot.folders.find((item: { name: string }) => item.name === 'Child');
 
-    expect(draft.normalizedName).toBe(table.normalizedName);
-    expect(table.folderId).toBe(folder.id);
-    expect(child.parentId).toBe(folder.id);
+    expect(table).toBeDefined();
+    expect(folder).toBeDefined();
+    expect(child).toBeDefined();
+    expect(draft.normalizedName).toBe(table?.normalizedName);
+    expect(table?.folderId).toBe(folder?.id);
+    expect(child?.parentId).toBe(folder?.id);
   });
 });

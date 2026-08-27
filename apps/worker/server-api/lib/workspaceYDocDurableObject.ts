@@ -2,7 +2,10 @@ import * as Y from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
 import * as encoding from 'lib0/encoding';
-import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
+import type {
+  WorkspaceMigrationSnapshot,
+  WorkspaceSnapshot,
+} from '@ddlbuilder/shared-types/workspace';
 import type { ApiEnv } from './context.js';
 import {
   checkpointWorkspaceSnapshotEntities,
@@ -12,9 +15,9 @@ import {
   createWorkspaceYDocUpdateFromSnapshot,
   exportWorkspaceYDocToSnapshot,
   isWorkspaceYDocInitialized,
-  mergeWorkspaceSnapshotIntoYDoc,
 } from '@ddlbuilder/workspace-core';
 import { logWorkspaceYDocHealth } from './workspaceSyncMetrics.js';
+import { applyWorkspaceMigrationSnapshot } from './workspaceMigration.js';
 
 type WorkspaceYDocStoredMeta = {
   workspaceId?: string;
@@ -153,12 +156,13 @@ export class WorkspaceYDocDurableObject {
       });
     }
 
-    if (request.method === 'POST' && url.pathname.endsWith('/merge')) {
-      const snapshot = (await request.json()) as WorkspaceSnapshot;
-      mergeWorkspaceSnapshotIntoYDoc(doc, snapshot);
+    if (request.method === 'POST' && url.pathname.endsWith('/migrate')) {
+      if (!userId) return new Response('Missing user id', { status: 400 });
+      const snapshot = (await request.json()) as WorkspaceMigrationSnapshot;
+      const result = applyWorkspaceMigrationSnapshot(doc, userId, snapshot);
       await this.awaitPersisted();
       await this.compact();
-      return Response.json({ ok: true });
+      return Response.json(result);
     }
 
     if (request.method === 'POST' && url.pathname.endsWith('/compact')) {

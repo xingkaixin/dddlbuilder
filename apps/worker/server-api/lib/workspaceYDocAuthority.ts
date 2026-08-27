@@ -1,19 +1,23 @@
 import * as Y from 'yjs';
-import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
+import type {
+  WorkspaceMigrationSnapshot,
+  WorkspaceSnapshot,
+} from '@ddlbuilder/shared-types/workspace';
 import { exportWorkspaceYDocToSnapshot } from '@ddlbuilder/workspace-core';
 import type { ApiEnv } from './context.js';
 import { getOrCreateDefaultWorkspace } from './workspaceEntities.js';
+import type { WorkspaceMigrationResult } from './workspaceMigration.js';
 
 export type WorkspaceYDocAuthority = {
   readSnapshot: () => Promise<WorkspaceSnapshot>;
-  mergeSnapshot: (snapshot: WorkspaceSnapshot) => Promise<void>;
+  migrateSnapshot: (snapshot: WorkspaceMigrationSnapshot) => Promise<WorkspaceMigrationResult>;
 };
 
 const buildRequest = (
   workspaceId: string,
   userId: string,
-  operation: 'state' | 'merge',
-  snapshot?: WorkspaceSnapshot,
+  operation: 'state' | 'migrate',
+  snapshot?: WorkspaceMigrationSnapshot,
 ) =>
   new Request(`https://workspace.internal/workspaces/${workspaceId}/yjs/${operation}`, {
     method: operation === 'state' ? 'GET' : 'POST',
@@ -51,9 +55,10 @@ export const openDefaultWorkspaceYDocAuthority = async (
       Y.applyUpdate(doc, new Uint8Array(await response.arrayBuffer()));
       return exportWorkspaceYDocToSnapshot(doc);
     },
-    mergeSnapshot: async (snapshot) => {
-      const response = await stub.fetch(buildRequest(workspace.id, userId, 'merge', snapshot));
-      await assertSuccessfulResponse(response, 'merge');
+    migrateSnapshot: async (snapshot) => {
+      const response = await stub.fetch(buildRequest(workspace.id, userId, 'migrate', snapshot));
+      await assertSuccessfulResponse(response, 'migrate');
+      return response.json<WorkspaceMigrationResult>();
     },
   };
 };

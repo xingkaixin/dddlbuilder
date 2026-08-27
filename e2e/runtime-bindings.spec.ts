@@ -1,4 +1,7 @@
 import { expect, test } from '@playwright/test';
+import * as Y from 'yjs';
+import { exportWorkspaceYDocToSnapshot } from '../packages/workspace-core/src/index';
+import type { WorkspaceMigrationResponse } from '../packages/shared-types/src/api';
 
 const createState = (tableName: string) => ({
   schemaName: '',
@@ -67,6 +70,51 @@ test.describe('Cloudflare runtime bindings', () => {
     });
     expect(importResponse.ok(), await importResponse.text()).toBe(true);
 
+    const migrations = ['version A', 'version B'].map((tableComment) => ({
+      mode: 'commit',
+      payload: {
+        localFingerprint: crypto.randomUUID(),
+        idempotencyKey: crypto.randomUUID(),
+        snapshot: {
+          globalDraft: null,
+          activeSession: null,
+          drafts: [],
+          savedDrafts: [],
+          folders: [],
+          savedTables: [
+            {
+              tableId: 'runtime-conflict',
+              normalizedName: 'migration_users',
+              name: 'migration_users',
+              state: { ...createState('migration_users'), tableComment },
+              createdAt: 1,
+              updatedAt: 2,
+            },
+          ],
+        },
+      },
+    }));
+    const migrationResponses = await Promise.all(
+      migrations.map((data) => context.request.post('/api/workspace/migrations', { data })),
+    );
+    for (const response of migrationResponses) {
+      expect(response.ok(), await response.text()).toBe(true);
+    }
+    const migrationResults = await Promise.all(
+      migrationResponses.map(
+        async (response) => (await response.json()) as WorkspaceMigrationResponse,
+      ),
+    );
+    expect(migrationResults.map((result) => result.createdCount).sort((a, b) => a - b)).toEqual([
+      0, 1,
+    ]);
+    expect(migrationResults.map((result) => result.copiedCount).sort((a, b) => a - b)).toEqual([
+      0, 1,
+    ]);
+    const retry = await context.request.post('/api/workspace/migrations', { data: migrations[1] });
+    expect(retry.ok(), await retry.text()).toBe(true);
+    expect(await retry.json()).toMatchObject({ createdCount: 0, copiedCount: 0, skippedCount: 1 });
+
     const shareResponse = await context.request.post('/api/share', {
       data: { state },
     });
@@ -84,6 +132,22 @@ test.describe('Cloudflare runtime bindings', () => {
     );
     expect(durableObjectResponse.ok(), await durableObjectResponse.text()).toBe(true);
     expect(durableObjectResponse.headers()['content-type']).toBe('application/octet-stream');
-    expect((await durableObjectResponse.body()).byteLength).toBeGreaterThan(0);
+    const doc = new Y.Doc();
+    try {
+      Y.applyUpdate(doc, new Uint8Array(await durableObjectResponse.body()));
+      const snapshot = exportWorkspaceYDocToSnapshot(doc);
+      expect(snapshot.savedTables.map((table) => table.state.tableComment).sort()).toEqual([
+        'version A',
+        'version B',
+      ]);
+      expect(snapshot.drafts).toEqual([
+        expect.objectContaining({
+          draftId: 'runtime-draft',
+          state: expect.objectContaining({ tableName: state.tableName }),
+        }),
+      ]);
+    } finally {
+      doc.destroy();
+    }
   });
 });

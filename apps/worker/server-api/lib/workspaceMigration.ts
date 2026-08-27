@@ -1,9 +1,16 @@
 import type { SchemaDocumentState } from '@ddlbuilder/shared-types';
-import { normalizeSchemaDocumentState, stableStringify } from '@ddlbuilder/workspace-core';
+import type * as Y from 'yjs';
+import {
+  exportWorkspaceYDocToSnapshot,
+  mergeWorkspaceSnapshotIntoYDoc,
+  normalizeSchemaDocumentState,
+  stableStringify,
+} from '@ddlbuilder/workspace-core';
 import type { WorkspaceMigrationResponse } from '@ddlbuilder/shared-types/api';
 import type {
   WorkspaceEntityType,
   WorkspaceMigrationPayload,
+  WorkspaceMigrationSnapshot,
   WorkspaceSnapshot,
 } from '@ddlbuilder/shared-types/workspace';
 import type { ApiEnv } from './context.js';
@@ -420,6 +427,52 @@ export const analyzeWorkspaceMigration = async (
   };
 };
 
+export const applyWorkspaceMigrationSnapshot = (
+  doc: Y.Doc,
+  userId: string,
+  snapshot: WorkspaceMigrationSnapshot,
+): WorkspaceMigrationResult => {
+  const records = buildMigrationEntityRecords(userId, snapshot, snapshot.activeSession);
+  const existingPayloads = buildEntityPayloadMap(
+    buildMigrationEntityRecords(userId, exportWorkspaceYDocToSnapshot(doc)),
+  );
+  const sourceIds = new Set(records.map((record) => record.id));
+  const entitiesToWrite: WorkspaceEntityInput[] = [];
+  let createdCount = 0;
+  let copiedCount = 0;
+  let skippedCount = 0;
+  for (const record of resolveMigrationRecords(userId, records, existingPayloads)) {
+    if (existingPayloads.get(record.id) === record.payloadJson) {
+      skippedCount += 1;
+      continue;
+    }
+    entitiesToWrite.push(record.entity);
+    if (sourceIds.has(record.id)) createdCount += 1;
+    else copiedCount += 1;
+  }
+  if (entitiesToWrite.length > 0) {
+    mergeWorkspaceSnapshotIntoYDoc(
+      doc,
+      storedEntitiesToWorkspaceSnapshot(
+        entitiesToWrite.map((entity) => ({
+          entityType: entity.entityType,
+          entityId: entity.entityId,
+          payloadJson: JSON.stringify(entity.payload),
+          updatedAt: entity.sourceUpdatedAt,
+        })),
+      ),
+    );
+  }
+  return {
+    status: records.length === 0 ? 'no_data' : 'completed',
+    createdCount,
+    copiedCount,
+    skippedCount,
+    conflictCount: 0,
+    conflicts: [],
+  };
+};
+
 export const commitWorkspaceMigration = async (
   env: ApiEnv['Bindings'],
   userId: string,
@@ -460,38 +513,9 @@ export const commitWorkspaceMigration = async (
     idempotencyKey: payload.idempotencyKey,
   });
 
-  let createdCount = 0;
-  let copiedCount = 0;
-  let skippedCount = 0;
-
   try {
     const authority = await openDefaultWorkspaceYDocAuthority(env, userId);
-    const existingPayloads = buildEntityPayloadMap(
-      buildMigrationEntityRecords(userId, await authority.readSnapshot()),
-    );
-    const sourceIds = new Set(records.map((record) => record.id));
-    const entitiesToWrite: WorkspaceEntityInput[] = [];
-    for (const record of resolveMigrationRecords(userId, records, existingPayloads)) {
-      if (existingPayloads.get(record.id) === record.payloadJson) {
-        skippedCount += 1;
-        continue;
-      }
-      entitiesToWrite.push(record.entity);
-      if (sourceIds.has(record.id)) createdCount += 1;
-      else copiedCount += 1;
-    }
-    if (entitiesToWrite.length > 0) {
-      await authority.mergeSnapshot(
-        storedEntitiesToWorkspaceSnapshot(
-          entitiesToWrite.map((entity) => ({
-            entityType: entity.entityType,
-            entityId: entity.entityId,
-            payloadJson: JSON.stringify(entity.payload),
-            updatedAt: entity.sourceUpdatedAt,
-          })),
-        ),
-      );
-    }
+    const result = await authority.migrateSnapshot(payload.snapshot);
 
     await upsertWorkspaceLink(env, {
       userId,
@@ -500,14 +524,7 @@ export const commitWorkspaceMigration = async (
       idempotencyKey: payload.idempotencyKey,
     });
 
-    return {
-      status: 'completed',
-      createdCount,
-      copiedCount,
-      skippedCount,
-      conflictCount: 0,
-      conflicts: [],
-    };
+    return result;
   } catch (error) {
     await upsertWorkspaceLink(env, {
       userId,
