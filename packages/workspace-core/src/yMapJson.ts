@@ -75,17 +75,49 @@ export const writeJsonMap = (map: Y.Map<unknown>, values: JsonRecord) => {
   writeJsonMapPatch(map, values);
 };
 
+const retainedArrayIndices = (current: string[], nextPositions: Map<string, number>) => {
+  const positions = current.map((value) => nextPositions.get(value) ?? -1);
+  const predecessors = current.map(() => -1);
+  const tails: number[] = [];
+
+  // Unique target IDs turn the longest common subsequence into an O(n log n) LIS.
+  for (let index = 0; index < positions.length; index += 1) {
+    if (positions[index] < 0) continue;
+    let low = 0;
+    let high = tails.length;
+    while (low < high) {
+      const middle = low + Math.floor((high - low) / 2);
+      if (positions[tails[middle]] < positions[index]) low = middle + 1;
+      else high = middle;
+    }
+    predecessors[index] = low > 0 ? tails[low - 1] : -1;
+    tails[low] = index;
+  }
+
+  const retained: number[] = [];
+  for (let index = tails.at(-1) ?? -1; index >= 0; index = predecessors[index]) {
+    retained.push(index);
+  }
+  return retained.reverse();
+};
+
 export const syncStringArray = (array: Y.Array<string>, values: string[]) => {
   const current = array.toArray();
-  if (
-    current.length === values.length &&
-    current.every((value, index) => value === values[index])
-  ) {
-    return;
-  }
-  array.delete(0, current.length);
-  if (values.length > 0) {
-    array.insert(0, values);
+  const nextPositions = new Map(values.map((value, index) => [value, index]));
+  const retained = retainedArrayIndices(current, nextPositions);
+  let currentStart = 0;
+  let nextStart = 0;
+  let arrayIndex = 0;
+
+  for (const currentEnd of [...retained, current.length]) {
+    const nextEnd = nextPositions.get(current[currentEnd]) ?? values.length;
+    const deleteCount = currentEnd - currentStart;
+    if (deleteCount > 0) array.delete(arrayIndex, deleteCount);
+    const inserted = values.slice(nextStart, nextEnd);
+    if (inserted.length > 0) array.insert(arrayIndex, inserted);
+    arrayIndex += inserted.length + 1;
+    currentStart = currentEnd + 1;
+    nextStart = nextEnd + 1;
   }
 };
 

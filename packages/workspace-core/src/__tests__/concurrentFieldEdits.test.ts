@@ -120,4 +120,32 @@ describe('并发字段编辑', () => {
     const [merged] = converge();
     expect(merged.rows.map((r) => r.fieldName).sort()).toEqual(['from_a', 'from_b', 'id']);
   });
+
+  it('两端在同一位置插入时都留在原来的相邻字段之间', () => {
+    const { tableA, tableB, converge } = forkPeers(state([ID, NAME]));
+
+    applySchemaDocumentStateToTableDoc(tableA, state([ID, row('f-a', 'from_a'), NAME]));
+    applySchemaDocumentStateToTableDoc(tableB, state([ID, row('f-b', 'from_b'), NAME]));
+
+    const [merged, peer] = converge();
+    expect(merged.rows.map((r) => r.fieldName)).toEqual([
+      'id',
+      expect.stringMatching(/^from_[ab]$/),
+      expect.stringMatching(/^from_[ab]$/),
+      'name',
+    ]);
+    expect(new Set(merged.rows.map((r) => r.id)).size).toBe(4);
+    expect(peer).toEqual(merged);
+  });
+
+  it('调整一个字段的位置不会改变其他字段间的并发插入位置', () => {
+    const { tableA, tableB, converge } = forkPeers(state([ID, NAME, AGE]));
+
+    applySchemaDocumentStateToTableDoc(tableA, state([NAME, AGE, ID]));
+    applySchemaDocumentStateToTableDoc(tableB, state([ID, NAME, row('f-a', 'from_a'), AGE]));
+
+    const [merged, peer] = converge();
+    expect(merged.rows.map((r) => r.fieldName)).toEqual(['name', 'from_a', 'age', 'id']);
+    expect(peer).toEqual(merged);
+  });
 });
