@@ -269,20 +269,36 @@ describe('tabStore', () => {
     expect(useTabStore.getState().getActiveTab()).toBeUndefined();
   });
 
-  it('updateTabTitleBySource updates matching tab', () => {
+  it('renames the saved table title and source without replacing its tab or edits', () => {
     const state = useTabStore.getState();
-    state.addTab({
+    const id = state.addTab({
       title: 'Old',
-      source: { kind: 'draft', draftId: 'd1' },
+      source: {
+        kind: 'saved_table',
+        normalizedName: 'old',
+        tableName: 'Old',
+        baseSignature: 'base',
+      },
       stateSnapshot: createSnapshot('t1'),
     });
+    const snapshot = state.getActiveTab()?.stateSnapshot;
 
-    useTabStore.getState().updateTabTitleBySource({ kind: 'draft', draftId: 'd1' }, 'New');
+    useTabStore.getState().renameSavedTableTabs('old', 'new', 'New');
     const tab = useTabStore.getState().tabs[0];
-    expect(tab.title).toBe('New');
+    expect(tab).toMatchObject({
+      id,
+      title: 'New',
+      source: {
+        kind: 'saved_table',
+        normalizedName: 'new',
+        tableName: 'New',
+        baseSignature: 'base',
+      },
+    });
+    expect(tab.stateSnapshot).toBe(snapshot);
   });
 
-  it('updateTabTitleBySource does not affect non-matching tabs', () => {
+  it('renaming a saved table does not affect draft tabs', () => {
     const state = useTabStore.getState();
     state.addTab({
       title: 'Old',
@@ -290,7 +306,7 @@ describe('tabStore', () => {
       stateSnapshot: createSnapshot('t1'),
     });
 
-    useTabStore.getState().updateTabTitleBySource({ kind: 'draft', draftId: 'd2' }, 'New');
+    useTabStore.getState().renameSavedTableTabs('d1', 'new', 'New');
     const tab = useTabStore.getState().tabs[0];
     expect(tab.title).toBe('Old');
   });

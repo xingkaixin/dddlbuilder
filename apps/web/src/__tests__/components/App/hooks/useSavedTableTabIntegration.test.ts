@@ -1,8 +1,14 @@
 import { act, renderHook } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useSavedTableTabIntegration } from '@/components/App/hooks/useSavedTableTabIntegration';
+import { useTabLifecycle } from '@/components/App/hooks/useTabLifecycle';
+import { useTabStore } from '@/stores/tabStore';
+import { useEditorStore } from '@/stores/editorStore';
+import { toPersistedState } from '@/stores/editorDocumentCodec';
+import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 
 describe('useSavedTableTabIntegration', () => {
+  beforeEach(() => useTabStore.setState({ tabs: [], activeTabId: null }));
   it('首次保存草稿时切换标签来源并删除旧草稿', async () => {
     const deleteDraftById = vi.fn();
     const removeSavedTableDraft = vi.fn();
@@ -10,7 +16,7 @@ describe('useSavedTableTabIntegration', () => {
       updateActiveTabTitle: vi.fn(),
       updateActiveTabSource: vi.fn(),
       updateActiveTabSnapshot: vi.fn(),
-      updateTabTitleBySource: vi.fn(),
+      renameSavedTableTabs: vi.fn(),
       closeTabBySource: vi.fn(),
     };
     const state = { tableName: 'Users' } as never;
@@ -46,36 +52,60 @@ describe('useSavedTableTabIntegration', () => {
     expect(tabs.updateActiveTabSnapshot).toHaveBeenCalledWith(state);
   });
 
-  it('重命名和删除保存表时更新对应标签', () => {
-    const tabs = {
-      updateActiveTabTitle: vi.fn(),
-      updateActiveTabSource: vi.fn(),
-      updateActiveTabSnapshot: vi.fn(),
-      updateTabTitleBySource: vi.fn(),
-      closeTabBySource: vi.fn(),
+  it.each([true, false])('重命名后仍可切换和关闭标签（初始激活=%s）', (active) => {
+    const state = toPersistedState(useEditorStore.getInitialState());
+    const source = {
+      kind: 'saved_table' as const,
+      normalizedName: 'old',
+      tableName: 'Old',
+      baseSignature: serializePersistedStateForComparison(state),
     };
-    const { result } = renderHook(() =>
-      useSavedTableTabIntegration({
-        isShareView: false,
-        workspaceScope: { kind: 'anonymous' },
-        activeSource: { kind: 'draft', draftId: 'draft-a' },
-        deleteDraftById: vi.fn(),
-        removeSavedTableDraft: vi.fn(),
-        buildPersistedState: vi.fn(),
-        tabs,
-      }),
-    );
-
-    act(() => result.current.onTabRename('old', 'new', 'New'));
-    act(() => result.current.onTabRemove('new'));
-
-    expect(tabs.updateTabTitleBySource).toHaveBeenCalledWith(
-      { kind: 'saved_table', normalizedName: 'old' },
-      'New',
-    );
-    expect(tabs.closeTabBySource).toHaveBeenCalledWith({
-      kind: 'saved_table',
-      normalizedName: 'new',
+    const savedTabId = useTabStore
+      .getState()
+      .addTab({ title: 'Old', source, stateSnapshot: state });
+    const draftTabId = useTabStore.getState().addTab({
+      title: 'Draft',
+      source: { kind: 'draft', draftId: 'draft-a' },
+      stateSnapshot: state,
     });
+    if (active) useTabStore.getState().activateTab(savedTabId);
+    const selectWorkspaceSnapshot = vi.fn();
+    const { result, unmount } = renderHook(() => {
+      const tabs = useTabLifecycle({
+        enabled: true,
+        getCurrentState: () => state,
+        serializePersistedState: serializePersistedStateForComparison,
+        saveState: vi.fn(),
+        selectWorkspaceSnapshot,
+        resolveWorkspaceSnapshot: () => null,
+        resetWorkspaceSelection: vi.fn(),
+      });
+      return {
+        tabs,
+        ...useSavedTableTabIntegration({
+          isShareView: false,
+          workspaceScope: { kind: 'anonymous' },
+          activeSource: tabs.activeWorkspaceTab?.source ?? source,
+          deleteDraftById: vi.fn(),
+          removeSavedTableDraft: vi.fn(),
+          buildPersistedState: () => state,
+          tabs,
+        }),
+      };
+    });
+    act(() => result.current.onTabRename('old', 'new', 'New'));
+    act(() => result.current.tabs.switchToTabById(draftTabId));
+    act(() => result.current.tabs.switchToTabById(savedTabId));
+    expect(selectWorkspaceSnapshot).toHaveBeenLastCalledWith(
+      {
+        ...source,
+        normalizedName: 'new',
+        tableName: 'New',
+      },
+      state,
+    );
+    act(() => result.current.onTabRemove('new'));
+    expect(useTabStore.getState().tabs.map((tab) => tab.id)).toEqual([draftTabId]);
+    unmount();
   });
 });

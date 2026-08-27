@@ -97,6 +97,13 @@ test.describe('保存表管理补充 @storage', () => {
     await page.getByRole('button', { name: /确认/i }).click();
 
     await expect(page.getByText(new RegExp(`当前：${nextName}`))).toBeVisible();
+
+    await page.locator('#table-comment').fill('edited after rename');
+    await createNewDraft(page);
+    await clickSidebarTable(page, new RegExp(nextName, 'i'));
+    await expect(page.locator('#table-comment')).toHaveValue('edited after rename');
+    await page.getByRole('button', { name: /保存当前表/i }).click();
+    await expect(page.getByText(`已更新：${nextName}`, { exact: true })).toBeVisible();
   });
 
   test('场景：删除并恢复保存表', async ({ page }) => {

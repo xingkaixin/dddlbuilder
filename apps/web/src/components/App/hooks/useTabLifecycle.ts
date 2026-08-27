@@ -43,7 +43,7 @@ export function useTabLifecycle({
     updateActiveTabSource,
     findTabBySource,
     getActiveTab,
-    updateTabTitleBySource,
+    renameSavedTableTabs,
   } = useTabStore.getState();
 
   const activeWorkspaceTab = useMemo(
@@ -136,7 +136,7 @@ export function useTabLifecycle({
     hydrateTab,
     findTabBySource,
     getActiveTab,
-    updateTabTitleBySource,
+    renameSavedTableTabs,
     updateActiveTabTitle,
     updateActiveTabSource,
     updateActiveTabSnapshot,
