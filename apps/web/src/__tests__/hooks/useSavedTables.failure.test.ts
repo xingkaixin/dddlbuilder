@@ -56,6 +56,10 @@ vi.mock('@/utils/tableVersions', () => ({
   deleteAllVersions: tableVersionMocks.deleteAllVersions,
 }));
 
+vi.mock('@/utils/reviewHistory', () => ({
+  migrateReviewsToTable: vi.fn().mockResolvedValue(undefined),
+}));
+
 const createState = (name: string) => ({
   tableName: name,
   tableComment: '测试',

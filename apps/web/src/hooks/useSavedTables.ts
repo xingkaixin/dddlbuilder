@@ -18,6 +18,9 @@ import { useWorkspaceYDocProjection } from '@/hooks/useWorkspaceYDocProjection';
 import { localSavedTablesOptions, localTrashedTablesOptions } from '@/queries/workspaceLocal';
 import { countVersions, createVersion, deleteAllVersions } from '@/utils/tableVersions';
 import { resolveSavedTableId } from '@/utils/savedTableIdentity';
+import { migrateReviewsToTable } from '@/utils/reviewHistory';
+import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
+import { reportError } from '@/utils/errorReporter';
 
 export type SavedTableSummary = SavedTableMetadata;
 
@@ -115,6 +118,16 @@ export function useSavedTables() {
             updatedAt: now,
           },
           existing?.trashedAt ? 'update' : 'add',
+        );
+        await migrateReviewsToTable(
+          { scope: currentScope, tableId, normalizedName },
+          normalizeSavedTableName(buildQualifiedTableName(state.schemaName ?? '', state.tableName)),
+        ).catch((error) =>
+          reportError(error, {
+            scope: 'useSavedTables',
+            action: 'migrateReviewsToTable',
+            metadata: { tableId, normalizedName },
+          }),
         );
         await refresh();
         return { ok: true, normalizedName };

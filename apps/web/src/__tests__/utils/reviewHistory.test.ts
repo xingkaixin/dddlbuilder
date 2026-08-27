@@ -7,6 +7,7 @@ import {
   deleteReview,
   countReviews,
   pruneOldReviews,
+  migrateReviewsToTable,
 } from '@/utils/reviewHistory';
 import * as dbUtils from '@/utils/workspaceDb';
 import { setupFakeIndexedDB } from './fakeIndexedDb';
@@ -25,6 +26,53 @@ describe('reviewHistory', () => {
     summary: 'Test summary',
     suggestions: ['Suggestion 1', 'Suggestion 2'],
   };
+
+  it('preserves draft reviews when a table acquires a stable ID', async () => {
+    const savedTarget = target('draft_review', 'saved-id');
+    const draftTarget = { ...savedTarget, tableId: undefined };
+    const record = await saveReview(draftTarget, 'draft', 'ddl', 'mysql', mockReview);
+    const reviews = await listReviews(savedTarget);
+    expect(reviews.map((review) => review.id)).toEqual([record.id]);
+    expect((await getReview(record.id, savedTarget))?.tableId).toBe('saved-id');
+    expect(await listReviews(draftTarget)).toEqual([]);
+  });
+
+  it('migrates only the matching workspace draft and keeps history through renames', async () => {
+    const savedTarget = target('display_name', 'stable-id');
+    const draft = { ...savedTarget, tableId: undefined, normalizedName: 'schema.sql_name' };
+    const other = {
+      ...draft,
+      scope: { kind: 'user' as const, userId: 'user', workspaceId: 'workspace' },
+    };
+    const record = await saveReview(draft, 'schema.sql_name', 'ddl', 'mysql', mockReview);
+    const otherRecord = await saveReview(
+      other,
+      'schema.sql_name',
+      'other-ddl',
+      'mysql',
+      mockReview,
+    );
+    await migrateReviewsToTable(savedTarget, draft.normalizedName);
+    await migrateReviewsToTable(savedTarget, draft.normalizedName);
+    expect(
+      (await listReviews({ ...savedTarget, normalizedName: 'renamed' })).map((review) => review.id),
+    ).toEqual([record.id]);
+    expect((await listReviews(other)).map((review) => review.id)).toEqual([otherRecord.id]);
+    expect(await listReviews(draft)).toEqual([]);
+    expect(await listReviews({ ...savedTarget, tableId: 'different-id' })).toEqual([]);
+  });
+
+  it('can read a draft review directly by ID after saving', async () => {
+    const savedTarget = target('direct_draft', 'direct-id');
+    const record = await saveReview(
+      { ...savedTarget, tableId: undefined },
+      'draft',
+      'ddl',
+      'mysql',
+      mockReview,
+    );
+    expect((await getReview(record.id, savedTarget))?.tableId).toBe('direct-id');
+  });
 
   it('should save and list reviews', async () => {
     const tableNamespace = 'test_table_1';

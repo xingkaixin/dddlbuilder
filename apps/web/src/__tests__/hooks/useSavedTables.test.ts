@@ -6,6 +6,7 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 import { flushPromises } from '@/__tests__/utils/test-utils';
 import { getSavedTable } from '@/utils/savedTablesDb';
 import { listVersions } from '@/utils/tableVersions';
+import { listReviews, saveReview } from '@/utils/reviewHistory';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
 const renderHook = <Result, Props>(render: (initialProps: Props) => Result) => {
@@ -125,6 +126,35 @@ describe('useSavedTables', () => {
     });
 
     expect(result.current.savedTables).toHaveLength(1);
+  });
+
+  it('保存名称不同于 SQL 表名时仍迁移评审历史，并支持立即重命名', async () => {
+    const scope = { kind: 'anonymous' } as const;
+    const review = await saveReview(
+      { scope, normalizedName: 'public.users' },
+      'public.users',
+      'ddl',
+      'mysql',
+      { score: 8, summary: 'ok', suggestions: [] },
+    );
+    const { result } = renderHook(() => useSavedTables());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => {
+      expect(
+        await result.current.saveTable('用户表', { ...createState('users'), schemaName: 'public' }),
+      ).toEqual({ ok: true, normalizedName: '用户表' });
+      expect(await result.current.renameTable('用户表', '用户归档')).toEqual({
+        ok: true,
+        normalizedName: '用户归档',
+      });
+    });
+    const record = await result.current.loadTable('用户归档');
+    expect(record?.tableId).toBeDefined();
+    expect(
+      (await listReviews({ scope, tableId: record?.tableId, normalizedName: '用户归档' })).map(
+        (entry) => entry.id,
+      ),
+    ).toEqual([review.id]);
   });
 
   it('should rename and delete records', async () => {

@@ -60,13 +60,17 @@ async function runWithStore<T>(
   return runIndexedDbRequest(db, REVIEW_STORE_NAME, mode, runner);
 }
 
-const readAndClaimReviews = async (target: ReviewTarget): Promise<ReviewRecord[]> => {
+const readAndClaimReviews = async (
+  target: ReviewTarget,
+  previousName = target.normalizedName,
+): Promise<ReviewRecord[]> => {
   const db = await openDb();
   const tableKey = getTableKey(target);
+  const draftKey = getTableKey({ ...target, tableId: undefined, normalizedName: previousName });
   return runIndexedDbTransaction(db, REVIEW_STORE_NAME, 'readwrite', (tx) => {
     const store = tx.objectStore(REVIEW_STORE_NAME);
     const scopedRequest = store.index('tableKey').getAll(tableKey);
-    const sameNameRequest = store.index('tableNormalizedName').getAll(target.normalizedName);
+    const sameNameRequest = store.index('tableNormalizedName').getAll(previousName);
     let scopedRecords: ReviewRecord[] | null = null;
     let sameNameRecords: ReviewRecord[] | null = null;
     let records: ReviewRecord[] = [];
@@ -74,11 +78,12 @@ const readAndClaimReviews = async (target: ReviewTarget): Promise<ReviewRecord[]
     const claimLegacyRecords = () => {
       if (!scopedRecords || !sameNameRecords) return;
       const claimed = sameNameRecords
-        .filter((record) => !record.tableKey)
+        .filter((record) => !record.tableKey || (target.tableId && record.tableKey === draftKey))
         .map((record) => ({
           ...record,
           tableKey,
           tableId: target.tableId,
+          tableNormalizedName: target.normalizedName,
         }));
       for (const record of claimed) store.put(record);
       records = [...scopedRecords, ...claimed];
@@ -126,6 +131,13 @@ export async function listReviews(target: ReviewTarget): Promise<ReviewRecord[]>
   return readAndClaimReviews(target);
 }
 
+export async function migrateReviewsToTable(
+  target: ReviewTarget & { tableId: string },
+  previousName: string,
+): Promise<void> {
+  await readAndClaimReviews(target, previousName);
+}
+
 export async function listReviewMetadata(target: ReviewTarget): Promise<ReviewRecordMetadata[]> {
   const records = await listReviews(target);
   return records.map((r) => ({
@@ -144,7 +156,12 @@ export async function getReview(id: string, target: ReviewTarget): Promise<Revie
   const result = await runWithStore<ReviewRecord | undefined>('readonly', (store) => store.get(id));
   if (!result) return null;
   if (result.tableKey === tableKey) return normalizeReviewRecord(result);
-  if (result.tableKey || result.tableNormalizedName !== target.normalizedName) return null;
+  const draftKey = getTableKey({ ...target, tableId: undefined });
+  if (
+    (result.tableKey && result.tableKey !== draftKey) ||
+    result.tableNormalizedName !== target.normalizedName
+  )
+    return null;
   return (await listReviews(target)).find((record) => record.id === id) ?? null;
 }
 
