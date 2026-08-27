@@ -199,7 +199,7 @@ function generatePostgresModifyColumn(tableName: string, fieldDiff: FieldDiff): 
   return statements.join('\n');
 }
 
-function buildColumnDefinition(field: NormalizedField, dbType: DatabaseType): string {
+export function buildColumnDefinition(field: NormalizedField, dbType: DatabaseType): string {
   const column = buildDialectColumn(field, dbType);
   return column.comment ? `${column.body} ${column.comment}` : column.body;
 }

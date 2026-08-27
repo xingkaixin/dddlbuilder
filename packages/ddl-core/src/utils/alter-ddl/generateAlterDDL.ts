@@ -18,6 +18,7 @@ import { buildQualifiedTableName, getSchemaAndTable } from '../databaseTypeMappi
 import { getDatabaseFamily } from '../databaseFamily';
 import { getSqlServerColumnChangeNotice } from './sqlServerColumnStatements';
 import { getForeignKeyIssue } from '../foreignKeys';
+import { generateMysqlAlterStatement } from './mysqlAlterStatement';
 
 const MANUAL_CHANGE_DESCRIPTIONS: Record<ManualSchemaChange, string> = {
   objectType: 'schema object type',
@@ -132,47 +133,50 @@ export function generateAlterDDL(
     statements.push(generateDropForeignKey(activeTableName, fkDiff, dbType));
   }
 
-  // 1. 处理删除的索引（先删索引，再改字段）
-  for (const idxDiff of diff.indexes.filter((i) => i.type === 'remove')) {
-    statements.push(generateDropIndex(activeTableName, idxDiff, dbType));
-  }
-
-  // 2. 处理删除的字段
-  for (const fieldDiff of diff.fields.filter((f) => f.type === 'remove')) {
-    statements.push(generateDropColumn(activeTableName, fieldDiff, dbType));
-  }
-
-  // 3. 处理重命名的字段（在删除之后、新增之前）
-  for (const fieldDiff of renames) {
-    statements.push(generateRenameColumn(activeTableName, fieldDiff, dbType));
-    if (fieldDiff.changes?.length && fieldDiff.newField) {
-      statements.push(
-        generateModifyColumn(
-          activeTableName,
-          {
-            ...fieldDiff,
-            type: 'modify',
-            fieldName: fieldDiff.newField.name,
-          },
-          dbType,
-        ),
-      );
+  if (getDatabaseFamily(dbType) === 'mysql') {
+    statements.push(generateMysqlAlterStatement(activeTableName, diff, dbType));
+  } else {
+    for (const idxDiff of diff.indexes.filter((i) => i.type === 'remove')) {
+      statements.push(generateDropIndex(activeTableName, idxDiff, dbType));
     }
-  }
 
-  // 4. 处理新增的字段
-  for (const fieldDiff of diff.fields.filter((f) => f.type === 'add')) {
-    statements.push(generateAddColumn(activeTableName, fieldDiff, dbType));
-  }
+    // 2. 处理删除的字段
+    for (const fieldDiff of diff.fields.filter((f) => f.type === 'remove')) {
+      statements.push(generateDropColumn(activeTableName, fieldDiff, dbType));
+    }
 
-  // 5. 处理修改的字段
-  for (const fieldDiff of diff.fields.filter((f) => f.type === 'modify')) {
-    statements.push(generateModifyColumn(activeTableName, fieldDiff, dbType));
-  }
+    // 3. 处理重命名的字段（在删除之后、新增之前）
+    for (const fieldDiff of renames) {
+      statements.push(generateRenameColumn(activeTableName, fieldDiff, dbType));
+      if (fieldDiff.changes?.length && fieldDiff.newField) {
+        statements.push(
+          generateModifyColumn(
+            activeTableName,
+            {
+              ...fieldDiff,
+              type: 'modify',
+              fieldName: fieldDiff.newField.name,
+            },
+            dbType,
+          ),
+        );
+      }
+    }
 
-  // 6. 处理新增的索引
-  for (const idxDiff of diff.indexes.filter((i) => i.type === 'add')) {
-    statements.push(generateAddIndex(activeTableName, idxDiff, dbType));
+    // 4. 处理新增的字段
+    for (const fieldDiff of diff.fields.filter((f) => f.type === 'add')) {
+      statements.push(generateAddColumn(activeTableName, fieldDiff, dbType));
+    }
+
+    // 5. 处理修改的字段
+    for (const fieldDiff of diff.fields.filter((f) => f.type === 'modify')) {
+      statements.push(generateModifyColumn(activeTableName, fieldDiff, dbType));
+    }
+
+    // 6. 处理新增的索引
+    for (const idxDiff of diff.indexes.filter((i) => i.type === 'add')) {
+      statements.push(generateAddIndex(activeTableName, idxDiff, dbType));
+    }
   }
 
   // 7. 处理新增的外键

@@ -199,7 +199,7 @@ describe('generateAlterDDL', () => {
         ],
       };
       const result = generateAlterDDL('users', diff, [], 'mysql');
-      expect(result).toContain('CREATE INDEX idx_email ON users');
+      expect(result).toContain('ALTER TABLE users ADD INDEX idx_email');
     });
 
     it('生成新增唯一索引', () => {
@@ -219,7 +219,7 @@ describe('generateAlterDDL', () => {
         ],
       };
       const result = generateAlterDDL('users', diff, [], 'mysql');
-      expect(result).toContain('CREATE UNIQUE INDEX uk_email ON users');
+      expect(result).toContain('ALTER TABLE users ADD UNIQUE INDEX uk_email');
     });
 
     it('MySQL 生成删除索引', () => {
@@ -239,7 +239,7 @@ describe('generateAlterDDL', () => {
         ],
       };
       const result = generateAlterDDL('users', diff, [], 'mysql');
-      expect(result).toContain('DROP INDEX idx_old ON users');
+      expect(result).toContain('ALTER TABLE users DROP INDEX idx_old');
     });
 
     it('PostgreSQL 生成删除索引', () => {
@@ -309,7 +309,7 @@ describe('generateAlterDDL', () => {
   });
 
   describe('混合变更', () => {
-    it('生成顺序正确：先删索引、再改字段、后加索引', () => {
+    it('在同一条 ALTER 中删除索引、修改字段和新增索引', () => {
       const diff: TableDiff = {
         ...createEmptyDiff(),
         hasChanges: true,
@@ -342,12 +342,9 @@ describe('generateAlterDDL', () => {
         ],
       };
       const result = generateAlterDDL('users', diff, [], 'mysql');
-      const dropIdx = result.indexOf('DROP INDEX');
-      const addCol = result.indexOf('ADD COLUMN');
-      const createIdx = result.indexOf('CREATE INDEX');
-
-      expect(dropIdx).toBeLessThan(addCol);
-      expect(addCol).toBeLessThan(createIdx);
+      expect(result).toBe(
+        'ALTER TABLE users\n  DROP INDEX idx_old,\n  ADD COLUMN new_field VARCHAR(100) NULL,\n  ADD INDEX idx_new (new_field ASC);',
+      );
     });
   });
 });

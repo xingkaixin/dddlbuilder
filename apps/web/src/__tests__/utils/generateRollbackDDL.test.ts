@@ -33,7 +33,7 @@ describe('generateRollbackDDL', () => {
     expect(result).toBe('');
   });
 
-  it('应该按依赖顺序生成反向变更语句', () => {
+  it('应该合并反向字段和索引变更，避免无效中间状态', () => {
     const diff: TableDiff = {
       ...createEmptyDiff(),
       hasChanges: true,
@@ -93,22 +93,16 @@ describe('generateRollbackDDL', () => {
     };
 
     const sql = generateRollbackDDL('users', diff, [], 'mysql');
-    const orderedFragments = [
-      "ALTER TABLE users COMMENT = '旧注释';",
-      'DROP INDEX idx_new ON users;',
-      'ALTER TABLE users DROP COLUMN new_col;',
-      'ALTER TABLE users RENAME COLUMN new_name TO old_name;',
-      'ALTER TABLE users ADD COLUMN removed_col VARCHAR(20) NOT NULL;',
-      'ALTER TABLE users MODIFY COLUMN nick VARCHAR(50) NULL;',
-      'CREATE INDEX idx_old ON users (old_name ASC);',
-    ];
-
-    let lastIndex = -1;
-    for (const fragment of orderedFragments) {
-      const currentIndex = sql.indexOf(fragment);
-      expect(currentIndex).toBeGreaterThan(lastIndex);
-      lastIndex = currentIndex;
-    }
+    expect(sql).toBe(
+      "ALTER TABLE users COMMENT = '旧注释';\n\n" +
+        'ALTER TABLE users\n' +
+        '  DROP INDEX idx_new,\n' +
+        '  MODIFY COLUMN nick VARCHAR(50) NULL,\n' +
+        '  DROP COLUMN new_col,\n' +
+        '  RENAME COLUMN new_name TO old_name,\n' +
+        '  ADD COLUMN removed_col VARCHAR(20) NOT NULL,\n' +
+        '  ADD INDEX idx_old (old_name ASC);',
+    );
   });
 
   it('无效重命名回滚语句应被过滤掉', () => {

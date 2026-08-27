@@ -468,7 +468,7 @@ describe('generateAlterDDL', () => {
     },
   );
 
-  it('applies field property changes after a rename', () => {
+  it('combines a rename with field property changes', () => {
     const diff = createTableDiff({
       fields: [
         {
@@ -485,10 +485,7 @@ describe('generateAlterDDL', () => {
 
     const sql = generateAlterDDL('users', diff, [], 'mysql');
 
-    expect(sql).toBe(
-      'ALTER TABLE users RENAME COLUMN age TO new_age;\n\n' +
-        'ALTER TABLE users MODIFY COLUMN new_age INT NOT NULL;',
-    );
+    expect(sql).toBe('ALTER TABLE users CHANGE COLUMN age new_age INT NOT NULL;');
   });
 
   it('generates modify column statement for mysql', () => {
@@ -517,7 +514,7 @@ describe('generateAlterDDL', () => {
       ],
     });
     const sql = generateAlterDDL('users', diff, [], 'mysql');
-    expect(sql).toBe('CREATE INDEX idx_age ON users (age ASC);');
+    expect(sql).toBe('ALTER TABLE users ADD INDEX idx_age (age ASC);');
   });
 
   it('generates drop index statement for mysql', () => {
@@ -530,7 +527,7 @@ describe('generateAlterDDL', () => {
       ],
     });
     const sql = generateAlterDDL('users', diff, [], 'mysql');
-    expect(sql).toBe('DROP INDEX idx_age ON users;');
+    expect(sql).toBe('ALTER TABLE users DROP INDEX idx_age;');
   });
 
   it('generates drop primary key statement', () => {
@@ -676,10 +673,7 @@ describe('generateAlterDDL', () => {
     const lines = sql.split('\n\n');
     expect(lines).toEqual([
       'ALTER TABLE users DROP FOREIGN KEY fk_user;',
-      'DROP INDEX idx_old ON users;',
-      'ALTER TABLE users DROP COLUMN old_col;',
-      'ALTER TABLE users ADD COLUMN new_col VARCHAR(255) NULL;',
-      'CREATE INDEX idx_new ON users (new_col ASC);',
+      'ALTER TABLE users\n  DROP INDEX idx_old,\n  DROP COLUMN old_col,\n  ADD COLUMN new_col VARCHAR(255) NULL,\n  ADD INDEX idx_new (new_col ASC);',
       'ALTER TABLE users ADD CONSTRAINT fk_user FOREIGN KEY (new_col) REFERENCES users (id);',
     ]);
   });
@@ -696,7 +690,7 @@ describe('generateRollbackDDL', () => {
       indexes: [{ type: 'add', index: createIndex({ name: 'idx_age' }) }],
     });
     const sql = generateRollbackDDL('users', diff, [], 'mysql');
-    expect(sql).toBe('DROP INDEX idx_age ON users;');
+    expect(sql).toBe('ALTER TABLE users DROP INDEX idx_age;');
   });
 
   it('rollback: restore modified field', () => {
@@ -763,10 +757,7 @@ describe('generateRollbackDDL', () => {
 
     const sql = generateRollbackDDL('users', diff, [], 'mysql');
 
-    expect(sql).toBe(
-      'ALTER TABLE users RENAME COLUMN new_age TO age;\n\n' +
-        'ALTER TABLE users MODIFY COLUMN age INT NULL;',
-    );
+    expect(sql).toBe('ALTER TABLE users CHANGE COLUMN new_age age INT NULL;');
   });
 
   it('rollback: restore removed field', () => {
@@ -788,7 +779,7 @@ describe('generateRollbackDDL', () => {
       indexes: [{ type: 'remove', index: createIndex({ name: 'idx_age' }) }],
     });
     const sql = generateRollbackDDL('users', diff, [], 'mysql');
-    expect(sql).toBe('CREATE INDEX idx_age ON users (name ASC);');
+    expect(sql).toBe('ALTER TABLE users ADD INDEX idx_age (name ASC);');
   });
 
   it('rollback: restore old table comment', () => {
@@ -861,10 +852,7 @@ describe('generateRollbackDDL', () => {
 
     expect(generateRollbackDDL('orders', diff, [], 'mysql').split('\n\n')).toEqual([
       'ALTER TABLE orders DROP FOREIGN KEY fk_user;',
-      'DROP INDEX idx_user ON orders;',
-      'ALTER TABLE orders DROP COLUMN user_id;',
-      'ALTER TABLE orders ADD COLUMN owner_id INT NOT NULL;',
-      'CREATE INDEX idx_owner ON orders (owner_id ASC);',
+      'ALTER TABLE orders\n  DROP INDEX idx_user,\n  DROP COLUMN user_id,\n  ADD COLUMN owner_id INT NOT NULL,\n  ADD INDEX idx_owner (owner_id ASC);',
       'ALTER TABLE orders ADD CONSTRAINT fk_owner FOREIGN KEY (owner_id) REFERENCES users (id);',
     ]);
   });
