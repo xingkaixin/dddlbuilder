@@ -55,6 +55,95 @@ function createBaseState(): PersistedState {
 }
 
 describe('aiSchemaChanges', () => {
+  it('keeps a renamed field identity and updates its dependencies when only the rename is applied', () => {
+    const baseState = createBaseState();
+    baseState.foreignKeys = [
+      {
+        id: 'fk-phone',
+        name: 'fk_phone',
+        fields: ['phone'],
+        refTable: 'contacts',
+        refFields: ['phone'],
+      },
+    ];
+    const schema: GeneratedTableSchema = {
+      tableName: baseState.tableName,
+      tableComment: baseState.tableComment,
+      fields: baseState.rows.map((row) => ({
+        ...row,
+        fieldName: row.fieldName === 'phone' ? 'mobile' : row.fieldName,
+        defaultKind: row.defaultKind ?? 'none',
+      })),
+      indexes: [],
+    };
+    const candidate = buildPersistedStateFromAISchema(schema, { baseState });
+    const changes = buildAISchemaChanges(baseState, candidate).filter(
+      (change) => change.kind === 'field',
+    );
+    expect(changes.map((change) => change.type)).toEqual(['rename']);
+    const applied = applyAISchemaChanges(baseState, candidate, changes);
+    expect(applied.rows[1].id).toBe('field-phone');
+    expect(applied.indexes[0].fields[0].name).toBe('mobile');
+    expect(applied.foreignKeys?.[0].fields).toEqual(['mobile']);
+    const ddl = generateAlterDDL('users', diffPersistedState(baseState, applied), [], 'mysql');
+    expect(ddl).toContain('RENAME COLUMN phone TO mobile');
+    expect(ddl).not.toContain('DROP COLUMN');
+    expect(ddl).not.toContain('ADD COLUMN');
+  });
+
+  it('applies explicitly selected index changes after propagating a field rename', () => {
+    const baseState = createBaseState();
+    const schema: GeneratedTableSchema = {
+      tableName: baseState.tableName,
+      tableComment: baseState.tableComment,
+      fields: baseState.rows.map((row) => ({
+        ...row,
+        fieldName: row.fieldName === 'phone' ? 'mobile' : row.fieldName,
+        defaultKind: row.defaultKind ?? 'none',
+      })),
+      indexes: [{ ...baseState.indexes[0], fields: [{ name: 'mobile', direction: 'ASC' }] }],
+    };
+    const candidate = buildPersistedStateFromAISchema(schema, { baseState });
+    const changes = buildAISchemaChanges(baseState, candidate);
+    const applied = applyAISchemaChanges(baseState, candidate, changes);
+    expect(applied.indexes[0]).toMatchObject({
+      name: 'uk_users_phone',
+      fields: [{ name: 'mobile' }],
+    });
+
+    const removedCandidate = { ...candidate, indexes: [] };
+    const removed = applyAISchemaChanges(
+      baseState,
+      removedCandidate,
+      buildAISchemaChanges(baseState, removedCandidate),
+    );
+    expect(removed.indexes).toEqual([]);
+  });
+
+  it('applies simultaneous field renames by identity without rewriting a field twice', () => {
+    const baseState = createBaseState();
+    const schema: GeneratedTableSchema = {
+      tableName: baseState.tableName,
+      tableComment: baseState.tableComment,
+      fields: baseState.rows.map((row) => ({
+        ...row,
+        fieldName: row.fieldName === 'phone' ? 'id' : 'phone',
+        defaultKind: row.defaultKind ?? 'none',
+      })),
+      indexes: [],
+    };
+    const candidate = buildPersistedStateFromAISchema(schema, { baseState });
+    const changes = buildAISchemaChanges(baseState, candidate).filter(
+      (change) => change.kind === 'field',
+    );
+    const applied = applyAISchemaChanges(baseState, candidate, changes);
+    expect(applied.rows.map(({ id, fieldName }) => ({ id, fieldName }))).toEqual([
+      { id: 'field-id', fieldName: 'phone' },
+      { id: 'field-phone', fieldName: 'id' },
+    ]);
+    expect(applied.indexes[0].fields[0].name).toBe('id');
+  });
+
   it('retains the kind of existing unique constraints in an AI candidate', () => {
     const baseState = createBaseState();
     baseState.indexes = baseState.indexes.map((index) => ({ ...index, isUniqueConstraint: true }));

@@ -1,12 +1,67 @@
 import { test, expect } from '@playwright/test';
 import { setupHydratedState } from '../utils';
 import { encodeAIStreamEvent } from '../../packages/shared-types/src/aiStream';
+import type { PersistedState } from '../../packages/shared-types/src/index';
 
 const streamedResponse = (value: unknown) => ({
   contentType: 'application/x-ndjson',
   body:
     encodeAIStreamEvent({ type: 'delta', text: JSON.stringify(value) }) +
     encodeAIStreamEvent({ type: 'done' }),
+});
+
+test('AI 修改保留字段身份，将改名应用为单个变更', async ({ page }) => {
+  await page.route('**/api/**', async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/me') {
+      await route.fulfill({
+        json: {
+          signedIn: true,
+          user: {
+            userId: 'rename-user',
+            email: 'rename@example.test',
+            name: 'Rename',
+            emailVerified: true,
+          },
+        },
+      });
+    } else if (path === '/api/workspaces') {
+      await route.fulfill({ json: { workspaceId: 'rename-workspace' } });
+    } else if (path === '/api/credits/balance') {
+      await route.fulfill({ json: { balance: 1000 } });
+    } else if (path === '/api/generate-table') {
+      const { existingConfig } = route.request().postDataJSON() as {
+        existingConfig: PersistedState;
+      };
+      const original = existingConfig.rows.find((row) => row.fieldName === 'HYDRATED_FIELD');
+      expect(original?.id).toBeTruthy();
+      await route.fulfill(
+        streamedResponse({
+          tableName: existingConfig.tableName,
+          tableComment: existingConfig.tableComment,
+          fields: [{ ...original, fieldName: 'renamed_field' }],
+          indexes: [],
+        }),
+      );
+    } else {
+      await route.fulfill({ status: 503, json: { error: 'Not available in this test' } });
+    }
+  });
+  await page.goto('/');
+  await setupHydratedState(page);
+  await page.getByRole('button', { name: 'AI 修改', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'AI 修改当前表' });
+  await dialog.locator('#ai-patch-input').fill('将 HYDRATED_FIELD 改名为 renamed_field');
+  await dialog.getByRole('button', { name: '发送', exact: true }).click();
+  await expect(dialog.getByRole('button', { name: '切换变更选择' })).toHaveCount(1);
+  await expect(dialog.getByText('字段 HYDRATED_FIELD 改名为 renamed_field')).toBeVisible();
+  await dialog.getByRole('button', { name: '切换变更选择' }).click();
+  await dialog.getByRole('button', { name: '应用 1 项变更' }).click();
+  await expect(dialog.getByText('本次没有发现可应用的结构变更')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('data-table')).toContainText('renamed_field');
+  await expect(page.locator('[role="tabpanel"]:visible pre')).toContainText('renamed_field INT');
+  await expect(page.locator('[role="tabpanel"]:visible pre')).not.toContainText('HYDRATED_FIELD');
 });
 
 test('DDL 评审拒绝缺少字段的索引建议，补充字段后可重试', async ({ page }) => {

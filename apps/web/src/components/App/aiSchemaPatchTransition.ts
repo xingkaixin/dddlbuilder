@@ -1,6 +1,6 @@
 import type { FieldRow, IndexDefinition, PersistedState } from '@ddlbuilder/shared-types';
 import type { AISchemaChange } from '@/utils/aiSchemaChanges';
-import { removeFieldsFromDocument } from '@/stores/editorDocumentMutations';
+import { removeFieldsFromDocument, updateDocumentFields } from '@/stores/editorDocumentMutations';
 import { validateIndexFields } from '@/stores/editorDocumentValidation';
 
 type FieldChange = Extract<AISchemaChange, { kind: 'field' }>;
@@ -9,7 +9,11 @@ const normalizedName = (value: string) => value.trim().toLowerCase();
 
 const replaceIndex = (indexes: IndexDefinition[], targetName: string, nextIndex: IndexDefinition) =>
   indexes.map((index) =>
-    normalizedName(index.name) === normalizedName(targetName)
+    (
+      nextIndex.id
+        ? index.id === nextIndex.id
+        : normalizedName(index.name) === normalizedName(targetName)
+    )
       ? { ...nextIndex, id: index.id }
       : index,
   );
@@ -42,7 +46,11 @@ const applyFieldSchemaChange = (
     return {
       ...state,
       rows: rows.map((row) =>
-        normalizedName(row.fieldName) === normalizedName(targetName)
+        (
+          change.oldRow?.id
+            ? row.id === change.oldRow.id
+            : normalizedName(row.fieldName) === normalizedName(targetName)
+        )
           ? {
               ...nextRow,
               id: row.id,
@@ -64,6 +72,16 @@ export const applyAISchemaChanges = (
   const removedNames = new Set<string>();
 
   for (const change of changes) {
+    if (change.kind !== 'field') continue;
+    if (change.type === 'remove') {
+      removedNames.add(normalizedName(change.oldRow?.fieldName || change.fieldName));
+      continue;
+    }
+    nextState = applyFieldSchemaChange(nextState, candidateState.rows, change);
+  }
+  nextState = updateDocumentFields(currentState, nextState.rows);
+
+  for (const change of changes) {
     if (change.kind === 'table') {
       const key = {
         schema_name: 'schemaName',
@@ -75,11 +93,6 @@ export const applyAISchemaChanges = (
     }
 
     if (change.kind === 'field') {
-      if (change.type === 'remove') {
-        removedNames.add(normalizedName(change.oldRow?.fieldName || change.fieldName));
-        continue;
-      }
-      nextState = applyFieldSchemaChange(nextState, candidateState.rows, change);
       continue;
     }
 
@@ -100,8 +113,10 @@ export const applyAISchemaChanges = (
     } else if (change.type === 'remove') {
       nextState = {
         ...nextState,
-        indexes: indexes.filter(
-          (index) => normalizedName(index.name) !== normalizedName(change.indexName),
+        indexes: indexes.filter((index) =>
+          change.oldIndex?.id
+            ? index.id !== change.oldIndex.id
+            : normalizedName(index.name) !== normalizedName(change.indexName),
         ),
       };
     }

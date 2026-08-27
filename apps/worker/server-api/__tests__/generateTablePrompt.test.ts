@@ -2,6 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { buildGenerateTableSystemPrompt } from '../prompts/generateTable.js';
 
 describe('buildGenerateTableSystemPrompt', () => {
+  it.each(['zh-CN', 'en-US', 'ja-JP'] as const)(
+    'requires stable field identities for %s',
+    (locale) => {
+      const prompt = buildGenerateTableSystemPrompt({ dbType: 'mysql', locale, mode: 'patch' });
+      expect(prompt).toContain('"id"');
+      expect(prompt).toContain(
+        locale === 'zh-CN' ? '重命名时也保持 id 不变' : 'including when renaming it',
+      );
+      expect(prompt).toContain(
+        locale === 'zh-CN' ? '新增字段的 id 必须为 null' : 'New fields must use id: null',
+      );
+    },
+  );
+
   it('日语请求应要求自然语言结果使用日语', () => {
     const prompt = buildGenerateTableSystemPrompt({
       dbType: 'mysql',

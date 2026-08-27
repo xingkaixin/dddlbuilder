@@ -11,6 +11,8 @@ export interface GeneratedTableSchema {
 }
 
 export interface GeneratedField {
+  /** Existing fields keep their ID across renames; null explicitly denotes a new field. */
+  id?: string | null;
   fieldName: string;
   fieldType: string;
   fieldComment: string;

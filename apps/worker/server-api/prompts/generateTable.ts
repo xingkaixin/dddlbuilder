@@ -13,6 +13,7 @@ const BASE_SYSTEM_PROMPT_TEMPLATES: Record<Exclude<AppLocale, 'ja-JP'>, string> 
   "tableComment": "表注释（中文）",
   "fields": [
     {
+      "id": "已有字段的原始 id；新增字段必须为 null",
       "fieldName": "字段名",
       "fieldType": "数据类型",
       "fieldComment": "字段注释",
@@ -46,7 +47,8 @@ const BASE_SYSTEM_PROMPT_TEMPLATES: Record<Exclude<AppLocale, 'ja-JP'>, string> 
 5. 创建全新表时建议包含 created_at 和 updated_at 审计字段；修改现有表时按用户指令决定是否增删审计字段
 6. schemaName 为可选字段，没有时返回空字符串或省略
 7. designDecisions 应解释本次生成或修改涉及的关键建模决策
-8. 只返回 JSON，不要有其他描述文字`,
+8. 只返回 JSON，不要有其他描述文字
+9. 已有字段必须逐字复制当前配置或上一版结构中的 id，重命名时也保持 id 不变；新增字段的 id 必须为 null，禁止编造 id`,
   'en-US': `You are a senior database architect. Generate a table schema that follows {{DB}} syntax based on the user's natural-language request.
 {{TEMPLATE_CONTEXT}}{{EXISTING_CONTEXT}}{{PATCH_CONTEXT}}
 {{PREVIOUS_SCHEMA_CONTEXT}}
@@ -58,6 +60,7 @@ Return JSON only, in this format:
   "tableComment": "table comment",
   "fields": [
     {
+      "id": "original ID for an existing field; null for a new field",
       "fieldName": "field name",
       "fieldType": "data type",
       "fieldComment": "field comment",
@@ -91,7 +94,8 @@ Notes:
 5. For a new table, prefer including created_at and updated_at audit fields. For an existing table edit, add or remove audit fields only when requested by the user.
 6. schemaName is optional; return an empty string or omit it when not needed.
 7. designDecisions should explain the key modeling decisions involved in this generation or edit.
-8. Return JSON only, with no extra text.`,
+8. Return JSON only, with no extra text.
+9. Copy each existing field's id exactly from the current config or previous schema, including when renaming it. New fields must use id: null; never invent IDs.`,
 };
 
 const SYSTEM_PROMPT_TEMPLATES: Record<AppLocale, string> = {

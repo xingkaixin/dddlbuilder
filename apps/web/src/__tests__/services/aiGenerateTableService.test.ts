@@ -49,6 +49,37 @@ describe('requestGenerateTable', () => {
     expect(updates[updates.length - 1]).toBe(result.fullText);
   });
 
+  it('uses the request baseline to preserve a renamed field through the stream', async () => {
+    const field = {
+      id: 'phone-id',
+      fieldName: 'phone',
+      fieldType: 'int',
+      fieldComment: '',
+      nullable: true,
+      defaultKind: 'none' as const,
+    };
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        createTextStream([
+          JSON.stringify({
+            tableName: 'users',
+            tableComment: '',
+            fields: [{ ...field, fieldName: 'mobile' }],
+          }),
+        ]),
+      ),
+    );
+    const response = await requestGenerateTable(
+      {
+        description: '重命名 phone',
+        dbType: 'mysql',
+        options: { mode: 'patch', existingConfig: { rows: [field] } },
+      },
+      { signal: new AbortController().signal },
+    );
+    expect(response.result.fields[0]).toMatchObject({ id: 'phone-id', fieldName: 'mobile' });
+  });
+
   it('should throw non-ok response error', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: false,

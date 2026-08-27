@@ -72,9 +72,13 @@ export async function requestGenerateTable(
   try {
     return {
       fullText,
-      result: normalizeGeneratedTableSchema(JSON.parse(fullText) as GeneratedTableSchema),
+      result: normalizeGeneratedTableSchema(
+        JSON.parse(fullText) as GeneratedTableSchema,
+        payload.options?.previousSchema?.fields ?? payload.options?.existingConfig?.rows ?? [],
+      ),
     };
-  } catch {
+  } catch (error) {
+    console.warn('[ai-generate] Invalid generated schema', error);
     throw new Error(i18n.t('services.parseResponseFailed'));
   }
 }

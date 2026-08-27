@@ -51,7 +51,7 @@ export function buildGeneratedRows(
 ): FieldRow[] {
   const idsByName = new Map(baseRows.map((row) => [row.fieldName.trim().toLowerCase(), row.id]));
   return schema.fields.map((field) => ({
-    id: idsByName.get(field.fieldName.trim().toLowerCase()) || createEntityId(),
+    id: field.id ?? idsByName.get(field.fieldName.trim().toLowerCase()) ?? createEntityId(),
     fieldName: field.fieldName,
     fieldType: field.fieldType,
     fieldComment: field.fieldComment,
