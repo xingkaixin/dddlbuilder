@@ -897,6 +897,7 @@ export const enUSCommon = {
     tableGenerating: 'Generating...',
   },
   aiPatch: {
+    staleResult: 'The table has changed. Generate new suggestions from the current schema.',
     title: 'AI Edit Current Table',
     description:
       'Generate reviewable schema changes from the current table, fields, indexes, and database type.',

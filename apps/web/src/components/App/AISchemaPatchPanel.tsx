@@ -37,7 +37,11 @@ interface AISchemaPatchPanelProps {
   dbType: DatabaseType;
   currentState: PersistedState;
   templates?: Array<FieldTemplate | TableTemplate>;
-  onApplyChanges: (changes: AISchemaChange[], candidateState: PersistedState) => void;
+  onApplyChanges: (
+    changes: AISchemaChange[],
+    candidateState: PersistedState,
+    baseState: PersistedState,
+  ) => PersistedState;
   onFocusChange?: (change: AISchemaChange) => void;
 }
 
@@ -72,6 +76,7 @@ export function AISchemaPatchPanel({
     isLoading,
     error,
     result,
+    resultBaseState,
     partialResult,
     conversationHistory,
     generateTable,
@@ -82,34 +87,39 @@ export function AISchemaPatchPanel({
   const [statusState, setStatusState] = useState(() => ({
     result,
     values: {} as Record<string, AISchemaChangeStatus>,
+    appliedState: null as PersistedState | null,
   }));
   const statuses = statusState.result === result ? statusState.values : EMPTY_CHANGE_STATUSES;
+  const reviewBaseState =
+    (statusState.result === result && statusState.appliedState) || resultBaseState;
   const updateStatuses = useCallback(
     (
       update: (
         current: Record<string, AISchemaChangeStatus>,
       ) => Record<string, AISchemaChangeStatus>,
+      appliedState?: PersistedState,
     ) => {
       setStatusState((current) => ({
         result,
         values: update(current.result === result ? current.values : {}),
+        appliedState: appliedState ?? (current.result === result ? current.appliedState : null),
       }));
     },
     [result],
   );
 
   const candidateState = useMemo(() => {
-    if (!result) return null;
-    return buildPersistedStateFromAISchema(result, { baseState: currentState });
-  }, [currentState, result]);
+    if (!result || !resultBaseState) return null;
+    return buildPersistedStateFromAISchema(result, { baseState: resultBaseState });
+  }, [resultBaseState, result]);
 
   const changes = useMemo(() => {
-    if (!candidateState) return [];
-    return buildAISchemaChanges(currentState, candidateState).map((change) => ({
+    if (!candidateState || !reviewBaseState) return [];
+    return buildAISchemaChanges(reviewBaseState, candidateState).map((change) => ({
       ...change,
       status: statuses[change.id] || 'pending',
     }));
-  }, [candidateState, currentState, statuses]);
+  }, [candidateState, reviewBaseState, statuses]);
 
   const pendingChanges = changes.filter((change) => change.status === 'pending');
   const acceptedChanges = changes.filter((change) => change.status === 'accepted');
@@ -166,7 +176,7 @@ export function AISchemaPatchPanel({
   const handleReset = useCallback(() => {
     clearResult();
     clearConversation();
-    setStatusState({ result: null, values: {} });
+    setStatusState({ result: null, values: {}, appliedState: null });
     setInput('');
   }, [clearConversation, clearResult]);
 
@@ -185,9 +195,10 @@ export function AISchemaPatchPanel({
   );
 
   const handleApplyAccepted = useCallback(() => {
-    if (!candidateState) return;
+    if (!candidateState || !reviewBaseState) return;
+    let appliedState: PersistedState;
     try {
-      onApplyChanges(acceptedChanges, candidateState);
+      appliedState = onApplyChanges(acceptedChanges, candidateState, reviewBaseState);
     } catch (error) {
       showApplyError(
         t('aiPatch.applyFailed', {
@@ -201,8 +212,16 @@ export function AISchemaPatchPanel({
       const next = { ...current };
       for (const id of appliedIds) next[id] = 'applied';
       return next;
-    });
-  }, [acceptedChanges, candidateState, onApplyChanges, showApplyError, t, updateStatuses]);
+    }, appliedState);
+  }, [
+    acceptedChanges,
+    candidateState,
+    reviewBaseState,
+    onApplyChanges,
+    showApplyError,
+    t,
+    updateStatuses,
+  ]);
 
   const handleSelectAll = useCallback(() => {
     updateStatuses((current) => {

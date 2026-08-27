@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef, useMemo } from 'react';
-import type { DatabaseType } from '@ddlbuilder/shared-types';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import type { DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
 import { useMutation } from '@tanstack/react-query';
 import {
   requestGenerateTable,
@@ -26,13 +26,20 @@ export type {
 interface GenerateState {
   streamingText: string;
   result: GeneratedTableSchema | null;
+  resultBaseState: PersistedState | null;
   previousResult: GeneratedTableSchema | null;
   error: string | null;
 }
 
-interface GenerateTableOptions extends Omit<GenerateTableRequestOptions, 'conversationHistory'> {
+type GenerateTableOptions = Omit<
+  GenerateTableRequestOptions,
+  'conversationHistory' | 'mode' | 'existingConfig'
+> & {
   continueConversation?: boolean;
-}
+} & (
+    | { mode: 'patch'; existingConfig: PersistedState }
+    | { mode?: 'generate'; existingConfig?: Partial<PersistedState> }
+  );
 
 function appendConversation(
   baseHistory: ConversationMessage[],
@@ -55,6 +62,7 @@ export function useAIGenerateTable() {
   const [state, setState] = useState<GenerateState>({
     streamingText: '',
     result: null,
+    resultBaseState: null,
     previousResult: null,
     error: null,
   });
@@ -64,6 +72,13 @@ export function useAIGenerateTable() {
     key: string;
     controller: AbortController;
   } | null>(null);
+  useEffect(
+    () => () => {
+      activeRequestRef.current?.controller.abort();
+      activeRequestRef.current = null;
+    },
+    [],
+  );
   const generateMutation = useMutation({
     mutationFn: ({
       payload,
@@ -105,10 +120,11 @@ export function useAIGenerateTable() {
       const baseConversation = options?.continueConversation ? conversationHistory : [];
       const previousSchema = options?.continueConversation ? previousSchemaRef.current : null;
       const normalizedDescription = description.trim();
+      const baseState = options?.mode === 'patch' ? structuredClone(options.existingConfig) : null;
       const requestOptions = {
         mode: options?.mode,
         templates: options?.templates,
-        existingConfig: options?.existingConfig,
+        existingConfig: baseState ?? options?.existingConfig,
         previousSchema: previousSchema ?? undefined,
         conversationHistory: baseConversation,
       };
@@ -136,6 +152,7 @@ export function useAIGenerateTable() {
       setState({
         streamingText: '',
         result: null,
+        resultBaseState: null,
         previousResult: null,
         error: null,
       });
@@ -145,16 +162,19 @@ export function useAIGenerateTable() {
           payload: requestPayload,
           signal: abortController.signal,
           onStreamingText: (streamingText) => {
+            if (activeRequestRef.current?.controller !== abortController) return;
             setState((prev) => ({
               ...prev,
               streamingText,
             }));
           },
         });
+        if (activeRequestRef.current?.controller !== abortController) return;
 
         setState({
           streamingText: '',
           result,
+          resultBaseState: baseState,
           previousResult: previousSchema,
           error: null,
         });
@@ -165,12 +185,14 @@ export function useAIGenerateTable() {
         );
         requestAccess.refreshCreditsAfterSuccess();
       } catch (err) {
+        if (activeRequestRef.current?.controller !== abortController) return;
         if ((err as Error).name === 'AbortError') {
           return;
         }
         setState({
           streamingText: '',
           result: null,
+          resultBaseState: null,
           previousResult: null,
           error: requestAccess.resolveRequestError(err, i18n.t('services.generationFailed')),
         });
@@ -187,6 +209,7 @@ export function useAIGenerateTable() {
     setState({
       streamingText: '',
       result: null,
+      resultBaseState: null,
       previousResult: null,
       error: null,
     });
@@ -211,6 +234,7 @@ export function useAIGenerateTable() {
     streamingText: state.streamingText,
     error: state.error,
     result: state.result,
+    resultBaseState: state.resultBaseState,
     previousResult: state.previousResult,
     partialResult,
     conversationHistory,

@@ -11,6 +11,8 @@ import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
 import * as encoding from 'lib0/encoding';
 import { WORKSPACE_SYNC_MESSAGE } from '../packages/shared-types/src/workspaceSync';
+import { encodeAIStreamEvent } from '../packages/shared-types/src/aiStream';
+import type { PersistedState } from '../packages/shared-types/src/index';
 import { confirmFieldTypeChangeIfNeeded } from './utils';
 import {
   getWorkspaceSavedTable,
@@ -487,6 +489,93 @@ test('same-name saved tables keep independent tabs, drafts and lifecycle', async
     readMetadata(server.doc.getMap<Y.Map<unknown>>('savedTables').get('second'))?.get('trashedAt'),
   ).toBeUndefined();
   await context.close();
+});
+
+test('AI suggestions reject concurrent workspace edits and can be regenerated', async ({
+  browser,
+}) => {
+  const workspaceId = `ws-ai-conflict-${Date.now()}`;
+  const server = new MockWorkspaceYjsServer();
+  seedDefaultDraft(server.doc, 'ai_conflict', 'id');
+  const contextA = await browser.newContext({ locale: 'zh-CN' });
+  const contextB = await browser.newContext({ locale: 'zh-CN' });
+  try {
+    await mockSignedInWorkspace(contextA, server, workspaceId);
+    await mockSignedInWorkspace(contextB, server, workspaceId);
+    await contextA.route('**/api/generate-table', async (route) => {
+      const { existingConfig } = route.request().postDataJSON() as {
+        existingConfig: PersistedState;
+      };
+      const schema = {
+        tableName: existingConfig.tableName,
+        tableComment: existingConfig.tableComment,
+        fields: existingConfig.rows
+          .filter((row) => row.fieldName)
+          .map((row) => ({ ...row, fieldType: 'INT' })),
+        indexes: [],
+      };
+      await route.fulfill({
+        contentType: 'application/x-ndjson',
+        body:
+          encodeAIStreamEvent({ type: 'delta', text: JSON.stringify(schema) }) +
+          encodeAIStreamEvent({ type: 'done' }),
+      });
+    });
+    const pageA = await contextA.newPage();
+    const pageB = await contextB.newPage();
+    await pageA.goto('/');
+    await pageB.goto('/');
+    await openDraftByName(pageA, 'ai_conflict');
+    await openDraftByName(pageB, 'ai_conflict');
+    await pageA.getByRole('button', { name: 'AI 修改', exact: true }).click();
+    const dialog = pageA.getByRole('dialog', { name: 'AI 修改当前表' });
+    await dialog.locator('#ai-patch-input').fill('将字段类型改成 INT');
+    await dialog.getByRole('button', { name: '发送', exact: true }).click();
+    await dialog.getByRole('button', { name: '切换变更选择' }).click();
+    const commentCell = pageB
+      .getByTestId('data-table')
+      .locator('tbody tr')
+      .first()
+      .locator('td')
+      .nth(2);
+    await commentCell.dblclick();
+    await commentCell.locator('input').fill('另一端的注释');
+    await commentCell.locator('input').press('Enter');
+    await pageB
+      .getByTestId('data-table')
+      .locator('tbody tr')
+      .first()
+      .locator('td')
+      .nth(4)
+      .getByRole('checkbox')
+      .click();
+    await expect(pageA.getByTestId('data-table')).toContainText('另一端的注释');
+    await dialog.getByRole('button', { name: '应用 1 项变更' }).click();
+    await expect(pageA.getByText(/表结构已发生变化，请基于当前内容重新生成建议/)).toBeVisible();
+    await expect(dialog.getByText('类型', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('类型、可空、注释', { exact: true })).toHaveCount(0);
+    expect(readDefaultDraftState(server.doc)?.rows[0]).toMatchObject({
+      fieldType: 'BIGINT',
+      fieldComment: '另一端的注释',
+      nullable: true,
+    });
+    await dialog.getByRole('button', { name: '继续修改', exact: true }).click();
+    await dialog.getByRole('button', { name: '切换变更选择' }).click();
+    await dialog.getByRole('button', { name: '应用 1 项变更' }).click();
+    await expect(dialog.getByText('本次没有发现可应用的结构变更')).toBeVisible();
+    await expect(
+      pageB.getByTestId('data-table').locator('tbody tr').first().locator('td').nth(3),
+    ).toHaveText('INT');
+    expect(readDefaultDraftState(server.doc)?.rows[0]).toMatchObject({
+      fieldType: 'INT',
+      fieldComment: '另一端的注释',
+      nullable: true,
+    });
+  } finally {
+    await contextA.close();
+    await contextB.close();
+    server.doc.destroy();
+  }
 });
 
 test('workspace yjs sync converges realtime edits and IndexedDB restore', async ({ browser }) => {

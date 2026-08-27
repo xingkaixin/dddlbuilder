@@ -904,6 +904,7 @@ export const jaJPCommon = {
     tableGenerating: '生成中...',
   },
   aiPatch: {
+    staleResult: 'テーブル構造が変更されています。現在の内容から提案を再生成してください。',
     title: 'AI 現在のテーブルを編集',
     description:
       '現在のテーブル、フィールド、インデックス、データベース タイプからレビュー可能なスキーマ変更を生成します。',

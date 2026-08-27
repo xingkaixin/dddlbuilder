@@ -4,6 +4,7 @@ import type { GenerateTableServiceResult } from '@/services/aiGenerateTableServi
 import { useAIGenerateTable } from '@/hooks/useAIGenerateTable';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 import { useLocale } from '@/i18n/LocaleContext';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 
 const aiServiceMocks = vi.hoisted(() => ({
   requestGenerateTable: vi.fn(),
@@ -82,6 +83,74 @@ describe('useAIGenerateTable behaviors', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('keeps the completed patch paired with its request snapshot', async () => {
+    const base: PersistedState = {
+      tableName: 'users',
+      tableComment: 'request baseline',
+      dbType: 'mysql',
+      sqlFormatMode: 'compact',
+      rows: [],
+      indexes: [],
+      addCount: 10,
+      indexInput: '',
+      currentIndexFields: [],
+      authInput: '',
+      authObjects: [],
+    };
+    let complete!: (response: GenerateTableServiceResult) => void;
+    aiServiceMocks.requestGenerateTable.mockReturnValueOnce(
+      new Promise<GenerateTableServiceResult>((resolve) => {
+        complete = resolve;
+      }),
+    );
+    const { result } = renderAIGenerateTableHook();
+    let request!: Promise<void>;
+    act(() => {
+      request = result.current.generateTable('change', 'mysql', {
+        mode: 'patch',
+        existingConfig: base,
+      });
+    });
+    await waitFor(() => expect(aiServiceMocks.requestGenerateTable).toHaveBeenCalledTimes(1));
+    base.tableComment = 'concurrent edit';
+    await act(async () => {
+      complete(createResult('users'));
+      await request;
+    });
+    expect(result.current.resultBaseState?.tableComment).toBe('request baseline');
+    expect(
+      aiServiceMocks.requestGenerateTable.mock.calls[0][0].options.existingConfig.tableComment,
+    ).toBe('request baseline');
+    act(() => result.current.clearResult());
+    expect(result.current.resultBaseState).toBeNull();
+  });
+
+  it('ignores a late result from a replaced request', async () => {
+    let complete!: (response: GenerateTableServiceResult) => void;
+    aiServiceMocks.requestGenerateTable
+      .mockReturnValueOnce(
+        new Promise<GenerateTableServiceResult>((resolve) => {
+          complete = resolve;
+        }),
+      )
+      .mockResolvedValueOnce(createResult('newer'));
+    const { result } = renderAIGenerateTableHook();
+    let older!: Promise<void>;
+    act(() => {
+      older = result.current.generateTable('older', 'mysql');
+    });
+    await waitFor(() => expect(aiServiceMocks.requestGenerateTable).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      await result.current.generateTable('newer', 'mysql');
+    });
+    await act(async () => {
+      complete(createResult('older'));
+      await older;
+    });
+    expect(result.current.result?.tableName).toBe('newer');
+    expect(result.current.conversationHistory[0].content).toBe('newer');
   });
 
   it('should support continueConversation and clear actions', async () => {

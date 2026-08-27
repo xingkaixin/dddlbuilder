@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FieldRow, IndexDefinition, PersistedState } from '@ddlbuilder/shared-types';
 import { useAISchemaPatchFlow } from '@/components/App/hooks/useAISchemaPatchFlow';
+import { buildAISchemaChanges } from '@/utils/aiSchemaChanges';
 
 const row = (fieldName: string, order: number): FieldRow => ({
   order,
@@ -46,6 +47,25 @@ describe('useAISchemaPatchFlow', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
+  it('rejects accepted changes after a concurrent edit without overwriting it', () => {
+    const base = { ...createState(), indexes: [] };
+    const candidate = { ...base, rows: base.rows.map((field) => ({ ...field, fieldType: 'int' })) };
+    const current = {
+      ...base,
+      rows: base.rows.map((field) => ({
+        ...field,
+        nullable: true,
+        fieldComment: 'remote comment',
+      })),
+    };
+    const dependencies = { ...createDependencies(), currentState: current };
+    const { result } = renderHook(() => useAISchemaPatchFlow(dependencies));
+    expect(() =>
+      result.current.applyChanges(buildAISchemaChanges(base, candidate), candidate, base),
+    ).toThrow('表结构已发生变化，请基于当前内容重新生成建议。');
+    expect(dependencies.applyState).not.toHaveBeenCalled();
+  });
+
   it('computes and applies a selected batch once', () => {
     const dependencies = createDependencies();
     const nextRow = row('email', 2);
@@ -84,6 +104,7 @@ describe('useAISchemaPatchFlow', () => {
           },
         ],
         candidate,
+        dependencies.currentState,
       );
       vi.runAllTimers();
     });
@@ -115,6 +136,7 @@ describe('useAISchemaPatchFlow', () => {
             newIndex: oldIndex,
           },
         ],
+        dependencies.currentState,
         dependencies.currentState,
       ),
     ).toThrow('Unknown index field: email');

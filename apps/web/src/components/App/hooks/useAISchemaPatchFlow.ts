@@ -4,6 +4,8 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { AISchemaChange } from '@/utils/aiSchemaChanges';
 import type { BuilderTab } from '@/utils/tabUtils';
 import { applyAISchemaChanges } from '../aiSchemaPatchTransition';
+import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
+import i18n from '@/i18n';
 
 interface UseAISchemaPatchFlowParams {
   currentState: PersistedState;
@@ -21,7 +23,13 @@ export function useAISchemaPatchFlow({
   animateIndex,
 }: UseAISchemaPatchFlowParams) {
   const applyChanges = useCallback(
-    (changes: AISchemaChange[], candidateState: PersistedState) => {
+    (changes: AISchemaChange[], candidateState: PersistedState, baseState: PersistedState) => {
+      if (
+        serializePersistedStateForComparison(currentState) !==
+        serializePersistedStateForComparison(baseState)
+      ) {
+        throw new Error(i18n.t('aiPatch.staleResult'));
+      }
       const nextState = applyAISchemaChanges(currentState, candidateState, changes);
       applyState(nextState);
       const key = (name: string) => getSqlIdentifierKey(name, currentState.dbType);
@@ -44,6 +52,7 @@ export function useAISchemaPatchFlow({
         const index = nextState.indexes.find((item) => key(item.name) === key(change.indexName));
         if (index) setTimeout(() => void animateIndex(index.id, 'add'), 50);
       }
+      return nextState;
     },
     [animateIndex, applyState, currentState, highlightField, setActiveTab],
   );
