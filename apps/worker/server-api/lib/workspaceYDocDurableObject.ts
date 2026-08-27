@@ -13,8 +13,10 @@ import {
 } from './workspaceEntities.js';
 import {
   createWorkspaceYDocUpdateFromSnapshot,
+  ensureWorkspaceYDocMeta,
   exportWorkspaceYDocToSnapshot,
   isWorkspaceYDocInitialized,
+  mergeWorkspaceSnapshotIntoYDoc,
 } from '@ddlbuilder/workspace-core';
 import { logWorkspaceYDocHealth } from './workspaceSyncMetrics.js';
 import { applyWorkspaceMigrationSnapshot } from './workspaceMigration.js';
@@ -146,8 +148,10 @@ export class WorkspaceYDocDurableObject {
 
     if (request.method === 'POST' && url.pathname.endsWith('/import')) {
       const snapshot = (await request.json()) as WorkspaceSnapshot;
-      const update = createWorkspaceYDocUpdateFromSnapshot(snapshot);
-      Y.applyUpdate(doc, update, this);
+      doc.transact(() => {
+        ensureWorkspaceYDocMeta(doc);
+        mergeWorkspaceSnapshotIntoYDoc(doc, snapshot);
+      }, this);
       await this.awaitPersisted();
       await this.compact();
       return Response.json({

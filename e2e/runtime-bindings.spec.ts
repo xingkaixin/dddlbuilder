@@ -53,6 +53,7 @@ test.describe('Cloudflare runtime bindings', () => {
     expect(workspaceId).toMatch(/^ws_/);
 
     const state = createState(`runtime_${Date.now()}`);
+    const importedAt = Date.now();
     const importResponse = await context.request.post(`/api/workspaces/${workspaceId}/yjs/import`, {
       data: {
         globalDraft: null,
@@ -60,7 +61,7 @@ test.describe('Cloudflare runtime bindings', () => {
           {
             draftId: 'runtime-draft',
             state,
-            updatedAt: Date.now(),
+            updatedAt: importedAt,
           },
         ],
         savedTables: [],
@@ -146,6 +147,29 @@ test.describe('Cloudflare runtime bindings', () => {
           state: expect.objectContaining({ tableName: state.tableName }),
         }),
       ]);
+
+      const originalRecord = doc.getMap('drafts').get('runtime-draft');
+      for (const [tableComment, updatedAt] of [
+        ['updated', importedAt + 1],
+        ['stale', importedAt],
+      ] as const) {
+        const response = await context.request.post(`/api/workspaces/${workspaceId}/yjs/import`, {
+          data: {
+            globalDraft: null,
+            drafts: [{ draftId: 'runtime-draft', state: { ...state, tableComment }, updatedAt }],
+            savedTables: [],
+            savedDrafts: [],
+            folders: [],
+          },
+        });
+        expect(response.ok(), await response.text()).toBe(true);
+        const current = await context.request.get(`/api/workspaces/${workspaceId}/yjs/state`);
+        expect(current.ok()).toBe(true);
+        Y.applyUpdate(doc, new Uint8Array(await current.body()));
+        expect(doc.getMap('drafts').get('runtime-draft')).toBe(originalRecord);
+        expect(exportWorkspaceYDocToSnapshot(doc).drafts[0]?.state.tableComment).toBe('updated');
+        expect(exportWorkspaceYDocToSnapshot(doc).savedTables).toEqual(snapshot.savedTables);
+      }
     } finally {
       doc.destroy();
     }
