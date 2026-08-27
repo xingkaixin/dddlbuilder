@@ -775,6 +775,7 @@ test('saved drafts retain concurrent edits across tabs and reload', async ({ bro
     await contextB.setOffline(true);
     await pageB.evaluate(() => window.dispatchEvent(new Event('offline')));
     await pageB.locator('#table-comment').fill('unsaved local comment');
+    await editFirstFieldName(pageB, 'account_id');
 
     await pageA.locator('#table-comment').fill('remote saved comment');
     await editFirstFieldType(pageA, 'INT');
@@ -782,6 +783,23 @@ test('saved drafts retain concurrent edits across tabs and reload', async ({ bro
     await expect
       .poll(() => readSavedTableState(server.doc, tableName)?.tableComment)
       .toBe('remote saved comment');
+    const saved = getWorkspaceSavedTable(server.doc, tableName);
+    if (!saved) throw new Error('Expected saved table');
+    upsertWorkspaceSavedTable(server.doc, {
+      ...saved,
+      state: {
+        ...saved.state,
+        indexes: [
+          {
+            id: 'remote-index',
+            name: 'idx_id',
+            fields: [{ name: 'id', direction: 'ASC' }],
+            unique: false,
+          },
+        ],
+      },
+      updatedAt: Date.now(),
+    });
 
     server.setClientPaused('offline-client', false);
     await contextB.setOffline(false);
@@ -792,6 +810,12 @@ test('saved drafts retain concurrent edits across tabs and reload', async ({ bro
       await expect(
         pageB.locator('[data-testid="data-table"] tbody tr:first-child td:nth-child(4)'),
       ).toHaveText('INT');
+      await expect(
+        pageB.locator('[data-testid="data-table"] tbody tr:first-child td:nth-child(2)'),
+      ).toHaveText('account_id');
+      await expect(pageB.locator('[role="tabpanel"]:visible pre code')).toContainText(
+        'INDEX idx_account_id (account_id ASC)',
+      );
     };
     await assertDraft();
     await pageB.getByRole('button', { name: /新建草稿/i }).click();

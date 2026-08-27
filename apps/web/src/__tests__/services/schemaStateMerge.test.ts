@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { FieldRow, PersistedState } from '@ddlbuilder/shared-types';
 import { mergeSchemaStates } from '@/services/schemaStateMerge';
+import { updateDocumentFields } from '@/stores/editorDocumentMutations';
 
 const row = (id: string, overrides: Partial<FieldRow> = {}): FieldRow => ({
   id,
@@ -33,6 +34,135 @@ const state = (overrides: Partial<PersistedState> = {}): PersistedState =>
   }) as PersistedState;
 
 describe('mergeSchemaStates', () => {
+  it.each([true, false])('字段改名与独立新增索引合并后仍指向同一字段 (%s)', (preferRename) => {
+    const base = state({
+      indexes: [
+        { id: 'existing', name: 'idx_a', fields: [{ name: 'a', direction: 'ASC' }], unique: false },
+      ],
+    });
+    const renamed = updateDocumentFields(base, [row('a', { fieldName: 'account_id' }), row('b')]);
+    const indexed = {
+      ...base,
+      indexes: [
+        ...base.indexes,
+        {
+          id: 'new',
+          name: 'idx_b_a',
+          fields: [
+            { name: 'b', direction: 'ASC' as const },
+            { name: 'a', direction: 'DESC' as const },
+          ],
+          unique: false,
+        },
+      ],
+    };
+    const merged = preferRename
+      ? mergeSchemaStates(base, indexed, renamed)
+      : mergeSchemaStates(base, renamed, indexed);
+    expect(merged.indexes).toEqual([
+      {
+        ...base.indexes[0],
+        name: 'idx_account_id',
+        fields: [{ name: 'account_id', direction: 'ASC' }],
+      },
+      {
+        ...indexed.indexes[1],
+        name: 'idx_b_account_id',
+        fields: [
+          { name: 'b', direction: 'ASC' },
+          { name: 'account_id', direction: 'DESC' },
+        ],
+      },
+    ]);
+    expect(merged.rows.map((field) => field.fieldName)).toEqual(['account_id', 'b']);
+    expect(indexed.indexes[1].fields[1].name).toBe('a');
+  });
+
+  it('改名同步调整独立新增的外键、分区和分布字段引用', () => {
+    const base = state();
+    const renamed = updateDocumentFields(base, [row('a', { fieldName: 'account_id' }), row('b')]);
+    const configured = state({
+      foreignKeys: [
+        { id: 'self', name: 'self', fields: ['b'], refTable: 'users', refFields: ['a'] },
+        { id: 'external', name: 'external', fields: ['a'], refTable: 'other', refFields: ['a'] },
+      ],
+      mysqlPartitionConfig: {
+        enabled: true,
+        type: 'HASH',
+        columns: [],
+        expression: "a + LENGTH('a')",
+        partitionCount: 4,
+      },
+      citusShardingConfig: { mode: 'distributed', distributionColumn: 'a' },
+      tableMiscConfig: {
+        enabled: true,
+        partitions: {
+          enabled: true,
+          columns: [],
+          clustering: { enabled: true, columns: ['a'], bucketCount: 4 },
+        },
+      },
+    });
+    const merged = mergeSchemaStates(base, configured, renamed);
+    expect(merged.foreignKeys).toEqual([
+      { ...configured.foreignKeys![0], refFields: ['account_id'] },
+      { ...configured.foreignKeys![1], fields: ['account_id'] },
+    ]);
+    expect(merged.mysqlPartitionConfig?.expression).toBe("account_id + LENGTH('a')");
+    expect(merged.citusShardingConfig?.distributionColumn).toBe('account_id');
+    expect(merged.tableMiscConfig?.partitions?.clustering?.columns).toEqual(['account_id']);
+  });
+
+  it.each([true, false])('删除字段时清理另一端独立新增的引用 (%s)', (preferDeletion) => {
+    const base = state();
+    const removed = state({ rows: [row('b')] });
+    const configured = state({
+      indexes: [
+        { id: 'a', name: 'idx_a', fields: [{ name: 'a', direction: 'ASC' }], unique: false },
+        { id: 'b', name: 'idx_b', fields: [{ name: 'b', direction: 'ASC' }], unique: false },
+      ],
+      foreignKeys: [
+        { id: 'self', name: 'self', fields: ['b'], refTable: 'users', refFields: ['a'] },
+      ],
+      mysqlPartitionConfig: { enabled: true, type: 'HASH', columns: ['a'], partitionCount: 4 },
+    });
+    const merged = preferDeletion
+      ? mergeSchemaStates(base, configured, removed)
+      : mergeSchemaStates(base, removed, configured);
+    expect(merged.rows.map((field) => field.id)).toEqual(['b']);
+    expect(merged.indexes).toEqual([configured.indexes[1]]);
+    expect(merged.foreignKeys).toEqual([]);
+    expect(merged.mysqlPartitionConfig).toMatchObject({ enabled: false, columns: [] });
+  });
+
+  it('PostgreSQL 同名不同大小写的字段引用按稳定 ID 对齐', () => {
+    const base = state({
+      dbType: 'postgresql',
+      rows: [row('upper', { fieldName: 'UserID' }), row('lower', { fieldName: 'userid' })],
+    });
+    const renamed = updateDocumentFields(base, [
+      { ...base.rows[0], fieldName: 'account_id' },
+      base.rows[1],
+    ]);
+    const indexed = {
+      ...base,
+      indexes: [
+        {
+          id: 'both',
+          name: 'both',
+          fields: [
+            { name: 'UserID', direction: 'ASC' as const },
+            { name: 'userid', direction: 'ASC' as const },
+          ],
+          unique: false,
+        },
+      ],
+    };
+    expect(
+      mergeSchemaStates(base, indexed, renamed).indexes[0].fields.map((field) => field.name),
+    ).toEqual(['account_id', 'userid']);
+  });
+
   it('保留本地改过而远端没动的标量', () => {
     const base = state();
     const local = state({ tableComment: '用户表', dbType: 'postgresql' });

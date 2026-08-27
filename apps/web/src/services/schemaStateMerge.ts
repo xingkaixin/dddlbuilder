@@ -1,5 +1,6 @@
 import type { FieldRow, PersistedState } from '@ddlbuilder/shared-types';
 import { stableStringify } from '@ddlbuilder/workspace-core';
+import { removeFieldsFromDocument, updateDocumentFields } from '@/stores/editorDocumentMutations';
 
 const SCALAR_MERGE_KEYS = [
   'schemaName',
@@ -137,9 +138,23 @@ export const mergeSchemaStates = (
   otherState: PersistedState,
   preferredState: PersistedState,
 ): PersistedState => {
+  const rows = resolveRows(baseState.rows, otherState.rows, preferredState.rows);
+  const resolvedIds = new Set(rowIds(rows));
+  const alignFieldReferences = (state: PersistedState) => {
+    const isRemoved = (row: FieldRow) => !resolvedIds.has(row.id);
+    const retained = state.rows.some(isRemoved)
+      ? removeFieldsFromDocument(state, isRemoved)
+      : state;
+    return updateDocumentFields(retained, rows);
+  };
+
+  // 先对齐引用再比较结构变化，字段改名本身不应与另一端新增索引产生冲突。
+  const base = alignFieldReferences(baseState);
+  const other = alignFieldReferences(otherState);
+  const preferred = alignFieldReferences(preferredState);
   return {
-    ...preferredState,
-    ...pickLocalEdits(baseState, otherState, preferredState, SCALAR_MERGE_KEYS),
-    rows: resolveRows(baseState.rows, otherState.rows, preferredState.rows),
+    ...preferred,
+    ...pickLocalEdits(base, other, preferred, SCALAR_MERGE_KEYS),
+    rows,
   };
 };
