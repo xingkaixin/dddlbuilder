@@ -108,6 +108,34 @@ describe('workspaceMigrationService legacy promotion', () => {
     teardownFakeIndexedDB();
   });
 
+  it('迁移快照保留表与草稿的稳定 ID', async () => {
+    await addSavedTable(
+      {
+        tableId: 'stable-table',
+        normalizedName: 'saved',
+        name: 'Saved',
+        state: createState('saved'),
+        createdAt: 1,
+        updatedAt: 2,
+      },
+      legacyScope,
+    );
+    await upsertSavedDraft(
+      'saved',
+      {
+        tableId: 'stable-table',
+        tableName: 'Saved',
+        state: createState('dirty'),
+        baseSignature: 'base',
+        updatedAt: 3,
+      },
+      legacyScope,
+    );
+    const snapshot = await prepareLegacyWorkspaceSnapshot(scope);
+    expect(snapshot?.savedTables[0]?.tableId).toBe('stable-table');
+    expect(snapshot?.savedDrafts[0]?.tableId).toBe('stable-table');
+  });
+
   it('应将旧 user scope 工作区数据写入默认 workspace scope', async () => {
     await seedLegacyWorkspace();
     await writeWorkspaceSession(

@@ -1,5 +1,11 @@
+import * as Y from 'yjs';
+import {
+  importWorkspaceSnapshotToYDoc,
+  exportWorkspaceYDocToSnapshot,
+  mergeWorkspaceSnapshotIntoYDoc,
+} from '@ddlbuilder/workspace-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import { toSchemaDocumentState, type SchemaDocumentState } from '@ddlbuilder/shared-types';
 import type { WorkspaceMigrationPayload } from '@ddlbuilder/shared-types/workspace';
 import {
   analyzeWorkspaceMigration,
@@ -15,20 +21,20 @@ vi.mock('../../lib/workspaceYDocAuthority.js', () => ({
   openDefaultWorkspaceYDocAuthority: vi.fn(async () => authorityMocks),
 }));
 
-const createState = (tableName: string): PersistedState => ({
-  schemaName: '',
-  tableName,
-  tableComment: '',
-  dbType: 'mysql',
-  sqlFormatMode: 'compact',
-  rows: [],
-  addCount: 1,
-  indexInput: '',
-  currentIndexFields: [],
-  indexes: [],
-  authInput: '',
-  authObjects: [],
-});
+const createState = (tableName: string): SchemaDocumentState =>
+  toSchemaDocumentState({
+    objectType: 'table',
+    viewDefinition: '',
+    viewCreateOrReplace: true,
+    schemaName: '',
+    tableName,
+    tableComment: '',
+    dbType: 'mysql',
+    rows: [],
+    indexes: [],
+    authInput: '',
+    authObjects: [],
+  });
 
 const createPayload = (): WorkspaceMigrationPayload => ({
   localFingerprint: 'local-1',
@@ -52,7 +58,8 @@ const createPayload = (): WorkspaceMigrationPayload => ({
 describe('workspaceMigration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    authorityMocks.readSnapshot.mockResolvedValue({
+    authorityMocks.mergeSnapshot.mockReset().mockResolvedValue(undefined);
+    authorityMocks.readSnapshot.mockReset().mockResolvedValue({
       globalDraft: null,
       drafts: [],
       savedTables: [],
@@ -60,6 +67,52 @@ describe('workspaceMigration', () => {
       folders: [],
     });
   });
+
+  it.each([undefined, 'table-alpha'])(
+    '冲突副本保留独立 ID 和草稿关联并可重复迁移 (%s)',
+    async (tableId) => {
+      const payload = createPayload();
+      payload.snapshot.savedTables = [{ ...payload.snapshot.savedTables[0], tableId }];
+      payload.snapshot.savedDrafts = [
+        {
+          normalizedName: 'alpha',
+          tableName: 'alpha',
+          state: createState('dirty'),
+          baseSignature: 'base',
+          updatedAt: 2,
+        },
+      ];
+      const doc = new Y.Doc();
+      importWorkspaceSnapshotToYDoc(doc, {
+        ...payload.snapshot,
+        savedTables: [{ ...payload.snapshot.savedTables[0], state: createState('cloud') }],
+        savedDrafts: [],
+      });
+      authorityMocks.readSnapshot.mockImplementation(async () =>
+        exportWorkspaceYDocToSnapshot(doc),
+      );
+      authorityMocks.mergeSnapshot.mockImplementation(async (snapshot) =>
+        mergeWorkspaceSnapshotIntoYDoc(doc, snapshot),
+      );
+      const statement = {
+        bind: () => statement,
+        first: async () => null,
+        run: async () => ({ success: true }),
+      };
+      const env = { USER_DB: { prepare: () => statement } } as never;
+      await commitWorkspaceMigration(env, 'user-1', payload);
+      const snapshot = exportWorkspaceYDocToSnapshot(doc);
+      expect(snapshot.savedTables).toHaveLength(2);
+      const copy = snapshot.savedTables.find((table) => table.name === 'alpha (Imported)');
+      expect(copy?.tableId).not.toBe(
+        snapshot.savedTables.find((table) => table.name === 'alpha')?.tableId,
+      );
+      expect(snapshot.savedDrafts[0]?.tableId).toBe(copy?.tableId);
+      expect((await commitWorkspaceMigration(env, 'user-1', payload)).skippedCount).toBe(2);
+      expect(exportWorkspaceYDocToSnapshot(doc).savedTables).toHaveLength(2);
+      doc.destroy();
+    },
+  );
 
   it('分析迁移时识别所有待创建记录', async () => {
     const queries: string[] = [];

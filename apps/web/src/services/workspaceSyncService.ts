@@ -78,6 +78,7 @@ const replaceLocalWorkspaceSnapshot = async (
   for (const item of normalizedSnapshot.savedTables) {
     await addSavedTable(
       {
+        tableId: item.tableId,
         normalizedName: item.normalizedName,
         name: item.name,
         state: withDefaultEditorSession(item.state),
@@ -92,6 +93,7 @@ const replaceLocalWorkspaceSnapshot = async (
 
   for (const item of normalizedSnapshot.savedDrafts) {
     const nextDraft: SavedTableDraftRecord = {
+      tableId: item.tableId,
       tableName: item.tableName,
       state: withDefaultEditorSession(item.state),
       updatedAt: item.updatedAt,

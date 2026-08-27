@@ -227,6 +227,7 @@ export const listSavedDrafts = async (
     const state = decodePersistedState(decoded.state);
     if (!state) continue;
     map[decoded.normalizedName] = {
+      ...(decoded.tableId ? { tableId: decoded.tableId } : {}),
       state,
       tableName: decoded.tableName,
       baseSignature: decoded.baseSignature,
@@ -251,6 +252,7 @@ export const readSavedDraft = async (
   const state = decodePersistedState(decoded.state);
   if (!state) return null;
   return {
+    ...(decoded.tableId ? { tableId: decoded.tableId } : {}),
     state,
     tableName: decoded.tableName,
     baseSignature: decoded.baseSignature,

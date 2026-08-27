@@ -122,6 +122,7 @@ export const collectWorkspaceMigrationPayload = async (
 
   const savedDrafts = Object.entries(savedDraftMap).map(([normalizedName, item]) => ({
     normalizedName,
+    tableId: item.tableId,
     tableName: item.tableName,
     state: item.state,
     updatedAt: item.updatedAt,
@@ -156,6 +157,7 @@ export const collectWorkspaceMigrationPayload = async (
       .filter((item) => item.draftId !== DEFAULT_DRAFT_ID)
       .map(({ draftId, record }) => ({ draftId, ...record })),
     savedTables: [...savedTables, ...trashedTables].map((item) => ({
+      tableId: item.tableId,
       normalizedName: item.normalizedName,
       name: item.name,
       state: item.state,

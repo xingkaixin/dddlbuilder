@@ -106,6 +106,7 @@ describe('workspaceSyncService', () => {
         ],
         savedTables: [
           {
+            tableId: 'table-users',
             normalizedName: 'users',
             name: 'Users',
             state: createState('users'),
@@ -115,6 +116,7 @@ describe('workspaceSyncService', () => {
         ],
         savedDrafts: [
           {
+            tableId: 'table-users',
             normalizedName: 'users',
             tableName: 'Users',
             state: createState('users_draft'),
@@ -145,6 +147,8 @@ describe('workspaceSyncService', () => {
     expect(drafts.map((item) => item.draftId)).toEqual(['default', 'cloud-draft']);
     expect(drafts.find((item) => item.draftId === 'cloud-draft')?.record.folderId).toBe('folder_1');
     expect(savedTables.map((item) => item.normalizedName)).toEqual(['users']);
+    expect(savedTables[0]?.tableId).toBe('table-users');
+    expect(savedDrafts.users?.tableId).toBe('table-users');
     expect(savedTables[0]?.folderId).toBe('folder_1');
     expect(Object.keys(savedDrafts)).toEqual(['users']);
     expect(savedDrafts.users?.baseSignature).toBe('cloud-signature');

@@ -18,7 +18,6 @@ type ConflictKind = 'draft' | 'saved_table' | 'saved_draft' | 'folder';
 type MigrationEntityRecord = {
   id: string;
   kind: MigrationEntityKind;
-  normalizedName: string;
   displayName: string;
   entity: WorkspaceEntityInput;
   payloadJson: string;
@@ -28,18 +27,14 @@ export type WorkspaceMigrationResult = Omit<WorkspaceMigrationResponse, 'meta'>;
 
 const LOCAL_COPY_SUFFIX = ' (Imported)';
 
-const buildMigrationEntityId = (
-  userId: string,
-  kind: MigrationEntityKind,
-  normalizedName: string,
-) => `${kind}:${userId}:${normalizedName}`;
+const buildMigrationEntityId = (userId: string, kind: MigrationEntityKind, entityId: string) =>
+  `${kind}:${userId}:${entityId}`;
 
 const toMigrationEntityRecord = (
   userId: string,
   entity: WorkspaceEntityInput,
 ): MigrationEntityRecord => {
   const kind = entity.entityType;
-  const normalizedName = entity.entityId;
   const payload = entity.payload as Record<string, unknown>;
   const payloadName = typeof payload.name === 'string' ? payload.name : entity.entityId;
   const payloadTableName =
@@ -52,9 +47,8 @@ const toMigrationEntityRecord = (
         : entity.entityId;
 
   return {
-    id: buildMigrationEntityId(userId, kind, normalizedName),
+    id: buildMigrationEntityId(userId, kind, entity.entityId),
     kind,
-    normalizedName,
     displayName,
     entity,
     payloadJson: JSON.stringify(entity.payload),
@@ -79,17 +73,21 @@ const buildCopyEntity = (
 
   switch (source.kind) {
     case 'saved_table':
+    case 'saved_draft': {
+      const tableId = source.entity.entityId.startsWith('legacy:')
+        ? `legacy:${normalizedName}`
+        : `import:${source.entity.entityId}:${normalizedName}`;
       return {
         ...source.entity,
-        entityId: normalizedName,
-        payload: { ...sourcePayload, name: displayName },
+        entityId: tableId,
+        payload: {
+          ...sourcePayload,
+          tableId,
+          normalizedName,
+          [source.kind === 'saved_table' ? 'name' : 'tableName']: displayName,
+        },
       };
-    case 'saved_draft':
-      return {
-        ...source.entity,
-        entityId: normalizedName,
-        payload: { ...sourcePayload, tableName: displayName },
-      };
+    }
     case 'folder':
       return {
         ...source.entity,
@@ -184,11 +182,32 @@ const buildMigrationEntityRecords = (
   userId: string,
   snapshot: WorkspaceSnapshot,
   activeSession?: WorkspaceMigrationPayload['snapshot']['activeSession'],
-): MigrationEntityRecord[] =>
-  workspaceSnapshotToEntities({
+): MigrationEntityRecord[] => {
+  const savedTables = snapshot.savedTables.map((table) => ({
+    ...table,
+    tableId: table.tableId ?? `legacy:${table.normalizedName}`,
+  }));
+  const tableIdsByName = new Map<string, string | null>();
+  for (const table of savedTables) {
+    const existing = tableIdsByName.get(table.normalizedName);
+    tableIdsByName.set(
+      table.normalizedName,
+      existing === undefined || existing === table.tableId ? table.tableId : null,
+    );
+  }
+  const savedDrafts = snapshot.savedDrafts.map((draft) => {
+    const tableId = draft.tableId ?? tableIdsByName.get(draft.normalizedName);
+    if (tableId === null)
+      throw new Error('Cannot migrate an ambiguous saved draft without a table ID');
+    return { ...draft, tableId: tableId ?? `legacy:${draft.normalizedName}` };
+  });
+  return workspaceSnapshotToEntities({
     ...snapshot,
+    savedTables,
+    savedDrafts,
     globalDraft: mergeGlobalDraft(snapshot, activeSession),
   }).map((entity) => toMigrationEntityRecord(userId, entity));
+};
 
 const buildEntityPayloadMap = (records: MigrationEntityRecord[]) =>
   new Map(records.map((record) => [record.id, record.payloadJson] as const));
@@ -255,7 +274,7 @@ const resolveMigrationRecords = (
   const sourceFolders = new Map(
     sourceRecords
       .filter((record) => record.kind === 'folder')
-      .map((record) => [record.normalizedName, record] as const),
+      .map((record) => [record.entity.entityId, record] as const),
   );
   const resolvedRecords: MigrationEntityRecord[] = [];
   const resolvedFolders = new Map<string, MigrationEntityRecord>();
@@ -283,7 +302,7 @@ const resolveMigrationRecords = (
       ? [referenced]
       : copyRecordGroup(userId, [referenced], reservedPayloads);
     const resolved = records[0];
-    folderIds.set(folderId, resolved.normalizedName);
+    folderIds.set(folderId, resolved.entity.entityId);
     resolvedFolders.set(folderId, resolved);
     reserveRecords(records, reservedPayloads);
     resolvedRecords.push(resolved);
@@ -295,9 +314,9 @@ const resolveMigrationRecords = (
   const tableGroups = new Map<string, MigrationEntityRecord[]>();
   for (const record of sourceRecords) {
     if (record.kind !== 'saved_table' && record.kind !== 'saved_draft') continue;
-    const group = tableGroups.get(record.normalizedName) ?? [];
+    const group = tableGroups.get(record.entity.entityId) ?? [];
     group.push(replaceFolderReference(userId, record, folderIds));
-    tableGroups.set(record.normalizedName, group);
+    tableGroups.set(record.entity.entityId, group);
   }
   for (const group of tableGroups.values()) {
     const records = canReserveRecords(group, reservedPayloads)
@@ -374,7 +393,9 @@ export const analyzeWorkspaceMigration = async (
 
     conflicts.push({
       kind: toConflictKind(record.kind),
-      normalizedName: record.normalizedName,
+      normalizedName: String(
+        (record.entity.payload as Record<string, unknown>).normalizedName ?? record.entity.entityId,
+      ),
       displayName: record.displayName,
     });
   }
