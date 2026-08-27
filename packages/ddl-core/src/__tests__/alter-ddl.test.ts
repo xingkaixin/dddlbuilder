@@ -66,6 +66,62 @@ const createTableDiff = (overrides: Partial<TableDiff> = {}): TableDiff => ({
 });
 
 describe('generateAlterDDL', () => {
+  it.each([
+    [
+      'postgresql',
+      'ALTER TABLE public.orders SET SCHEMA archive;',
+      'ALTER TABLE archive.archived_orders SET SCHEMA public;',
+    ],
+    [
+      'mysql',
+      'RENAME TABLE public.orders TO archive.orders;',
+      'RENAME TABLE archive.archived_orders TO public.archived_orders;',
+    ],
+    [
+      'sqlserver',
+      'ALTER SCHEMA archive TRANSFER public.orders;',
+      'ALTER SCHEMA public TRANSFER archive.archived_orders;',
+    ],
+  ] as const)(
+    'moves schemas before renaming or changing fields (%s)',
+    (dbType, forwardMove, reverseMove) => {
+      const before = {
+        schemaName: 'public',
+        tableName: 'orders',
+        rows: [],
+        indexes: [],
+      } as unknown as PersistedState;
+      const after = {
+        ...before,
+        schemaName: 'archive',
+        tableName: 'archived_orders',
+        rows: [{ id: 'field-1', fieldName: 'id', fieldType: 'int', nullable: false }],
+      };
+      const diff = diffPersistedState(before, after);
+      const sql = generateAlterDDL(after.tableName, diff, [], dbType);
+      const rollback = generateRollbackDDL(after.tableName, diff, [], dbType);
+      expect(sql.startsWith(forwardMove)).toBe(true);
+      expect(sql).toContain('ALTER TABLE archive.archived_orders ADD');
+      expect(rollback.startsWith(reverseMove)).toBe(true);
+      expect(rollback).toContain('ALTER TABLE public.orders DROP COLUMN id;');
+    },
+  );
+
+  it.each(['oracle', 'postgresql'] as const)(
+    'stops automatic changes for unsupported schema moves (%s)',
+    (dbType) => {
+      const diff = createTableDiff({
+        schemaNameChanged: true,
+        oldSchemaName: 'public',
+        newSchemaName: dbType === 'oracle' ? 'archive' : '',
+        fields: [{ type: 'remove', fieldName: 'id' }],
+      });
+      const sql = generateAlterDDL('orders', diff, [], dbType);
+      expect(sql).toContain('Manual migration required: schema change');
+      expect(sql).not.toContain('DROP COLUMN');
+    },
+  );
+
   it.each([false, true])(
     'keeps the schema through forward and reverse changes (rename=%s)',
     (rename) => {

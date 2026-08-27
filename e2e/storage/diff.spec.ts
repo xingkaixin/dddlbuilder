@@ -35,34 +35,52 @@ test.describe('变更对比验证 @storage', () => {
     await ensureBuilderVisible(page);
   });
 
-  test('场景：打开变更对比弹窗', async ({ page }) => {
-    const tableName = `diff_test_${Date.now()}`;
-    await page.locator('#table-name').fill(tableName);
-    await fillBasicField(page, 'f1');
+  for (const schemaOnly of [false, true]) {
+    test(`场景：带 Schema 的变更对比 (schemaOnly=${schemaOnly})`, async ({ page }) => {
+      const tableName = `diff_test_${Date.now()}`;
+      await page.locator('#table-name').fill(tableName);
+      await page.locator('#schema-name').fill('audit');
+      await fillBasicField(page, 'f1');
 
-    await page.getByRole('button', { name: /保存当前表/i }).click();
-    await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeVisible();
-    await page.getByLabel('保存名称').fill(tableName);
-    await page.getByRole('button', { name: /^保存$/ }).click();
-    await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeHidden();
+      await page.getByRole('button', { name: /保存当前表/i }).click();
+      await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeVisible();
+      await page.getByLabel('保存名称').fill(tableName);
+      await page.getByRole('button', { name: /^保存$/ }).click();
+      await expect(page.getByRole('heading', { name: /保存当前表|更新保存的表/i })).toBeHidden();
 
-    await page.getByRole('button', { name: '工作区' }).click();
-    await expect(page.getByRole('heading', { name: '工作区' })).toBeVisible();
-    await clickSavedTable(page, new RegExp(tableName, 'i'));
-    await expect(page.getByText(new RegExp(`当前：${tableName}`))).toBeVisible();
+      await page.getByRole('button', { name: '工作区' }).click();
+      await expect(page.getByRole('heading', { name: '工作区' })).toBeVisible();
+      await clickSavedTable(page, new RegExp(tableName, 'i'));
+      await expect(page.getByText(new RegExp(`当前：${tableName}`))).toBeVisible();
 
-    const typeCell = page.locator(
-      '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
-    );
-    await typeCell.dblclick();
-    await page
-      .locator('[data-testid="data-table"] input:not([aria-hidden="true"])')
-      .fill('varchar(20)');
-    await page.keyboard.press('Enter');
-    await confirmFieldTypeChangeIfNeeded(page);
+      if (schemaOnly) {
+        await page.locator('#schema-name').fill('archive');
+      } else {
+        const typeCell = page.locator(
+          '[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(4)',
+        );
+        await typeCell.dblclick();
+        await page
+          .locator('[data-testid="data-table"] input:not([aria-hidden="true"])')
+          .fill('varchar(20)');
+        await page.keyboard.press('Enter');
+        await confirmFieldTypeChangeIfNeeded(page);
+      }
 
-    await page.getByRole('button', { name: /查看表结构变更/i }).click();
-    await expect(page.getByRole('heading', { name: /表结构变更对比/i })).toBeVisible();
-    await expect(page.getByText(/字段变更/)).toBeVisible();
-  });
+      await page.getByRole('button', { name: /查看表结构变更/i }).click();
+      await expect(page.getByRole('heading', { name: /表结构变更对比/i })).toBeVisible();
+      const dialog = page.getByRole('dialog', { name: /表结构变更对比/i });
+      if (schemaOnly) {
+        await expect(dialog.getByText('Schema:')).toBeVisible();
+        await expect(dialog.locator('pre').first()).toContainText(
+          `RENAME TABLE audit.${tableName} TO archive.${tableName};`,
+        );
+      } else {
+        await expect(page.getByText(/字段变更/)).toBeVisible();
+        await expect(dialog.locator('pre').first()).toContainText(
+          `ALTER TABLE audit.${tableName} MODIFY COLUMN`,
+        );
+      }
+    });
+  }
 });

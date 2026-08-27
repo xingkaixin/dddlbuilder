@@ -175,7 +175,10 @@ export const DiffDialog = memo<DiffDialogProps>(
     const hasFieldChanges = diff.fields.length > 0;
     const hasIndexChanges = diff.indexes.length > 0;
     const hasTableMetaChanges =
-      diff.tableNameChanged || diff.tableCommentChanged || diff.miscConfigChanged;
+      diff.tableNameChanged ||
+      diff.schemaNameChanged ||
+      diff.tableCommentChanged ||
+      diff.miscConfigChanged;
 
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -192,6 +195,18 @@ export const DiffDialog = memo<DiffDialogProps>(
                 <h4 className="text-sm font-medium text-muted-foreground">
                   {t('diffDialog.tableMetaChanges')}
                 </h4>
+                {diff.schemaNameChanged && (
+                  <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm">
+                    <span className="text-muted-foreground">Schema: </span>
+                    <span className="line-through">
+                      {diff.oldSchemaName || t('diffDialog.default')}
+                    </span>
+                    <span className="mx-1">→</span>
+                    <span className="font-medium">
+                      {diff.newSchemaName || t('diffDialog.default')}
+                    </span>
+                  </div>
+                )}
                 {diff.tableNameChanged && (
                   <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm">
                     <span className="text-muted-foreground">{t('diffDialog.tableName')}: </span>

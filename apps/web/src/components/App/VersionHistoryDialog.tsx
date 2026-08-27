@@ -93,6 +93,7 @@ function buildDiffSummary(diff: TableDiff | null, t: TFunction): string {
   if (removedIndexes > 0)
     parts.push(t('versionHistory.diff.indexRemoved', { count: removedIndexes }));
   if (diff.tableNameChanged) parts.push(t('versionHistory.diff.tableNameChanged'));
+  if (diff.schemaNameChanged) parts.push(t('versionHistory.diff.schemaNameChanged'));
   if (diff.tableCommentChanged) parts.push(t('versionHistory.diff.tableCommentChanged'));
   if (diff.miscConfigChanged) parts.push(t('versionHistory.diff.miscChanged'));
 

@@ -9,7 +9,11 @@ import {
 } from './columnStatements';
 import { generateDropIndex, generateAddIndex } from './indexStatements';
 import { generateDropForeignKey, generateAddForeignKey } from './foreignKeyStatements';
-import { generateRenameTable, generateTableOptionsChangeNotice } from './tableStatements';
+import {
+  generateRenameTable,
+  generateTableOptionsChangeNotice,
+  generateTableSchemaChange,
+} from './tableStatements';
 import { buildQualifiedTableName, getSchemaAndTable } from '../databaseTypeMapping';
 
 /**
@@ -28,7 +32,7 @@ export function generateAlterDDL(
 
   const statements: string[] = [];
   const fallback = getSchemaAndTable(tableName);
-  const oldTableName = buildQualifiedTableName(
+  let oldTableName = buildQualifiedTableName(
     diff.oldSchemaName ?? fallback.schema,
     diff.oldTableName || fallback.table,
   );
@@ -36,6 +40,16 @@ export function generateAlterDDL(
     diff.newSchemaName ?? fallback.schema,
     diff.newTableName || fallback.table,
   );
+
+  if (diff.schemaNameChanged) {
+    const newSchema = diff.newSchemaName ?? '';
+    const statement = generateTableSchemaChange(oldTableName, newSchema, dbType);
+    if (!statement) {
+      return `-- Manual migration required: schema change from ${oldTableName} to ${activeTableName} (${dbType}). No automatic changes generated.`;
+    }
+    statements.push(statement);
+    oldTableName = buildQualifiedTableName(newSchema, getSchemaAndTable(oldTableName).table);
+  }
 
   if (diff.tableNameChanged) {
     statements.push(generateRenameTable(oldTableName, activeTableName, dbType));

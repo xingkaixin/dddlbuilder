@@ -70,6 +70,7 @@ export type TableDiff = {
   newTableName?: string;
   oldSchemaName?: string;
   newSchemaName?: string;
+  schemaNameChanged?: boolean;
   tableCommentChanged: boolean;
   oldTableComment?: string;
   newTableComment?: string;
@@ -304,6 +305,7 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
     newTableName: newState.tableName?.trim() || '',
     oldSchemaName: oldState.schemaName?.trim() || '',
     newSchemaName: newState.schemaName?.trim() || '',
+    schemaNameChanged: false,
     tableCommentChanged: false,
     miscConfigChanged: false,
     fields: [],
@@ -312,6 +314,10 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
   };
 
   // 1. 表名变更
+  if (result.oldSchemaName !== result.newSchemaName) {
+    result.schemaNameChanged = true;
+    result.hasChanges = true;
+  }
   const oldTableName = oldState.tableName?.trim() || '';
   const newTableName = newState.tableName?.trim() || '';
   if (oldTableName !== newTableName) {

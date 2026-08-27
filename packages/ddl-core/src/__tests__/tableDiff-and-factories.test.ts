@@ -94,6 +94,20 @@ describe('diffPersistedState', () => {
     expect(diff.newTableName).toBe('accounts');
   });
 
+  it('detects schema changes independently of the table name', () => {
+    const diff = diffPersistedState(
+      createPersistedState({ schemaName: 'public' }),
+      createPersistedState({ schemaName: 'archive' }),
+    );
+    expect(diff).toMatchObject({
+      hasChanges: true,
+      schemaNameChanged: true,
+      tableNameChanged: false,
+      oldSchemaName: 'public',
+      newSchemaName: 'archive',
+    });
+  });
+
   it('detects table comment change', () => {
     const oldState = createPersistedState({ tableComment: '' });
     const newState = createPersistedState({ tableComment: '用户表' });

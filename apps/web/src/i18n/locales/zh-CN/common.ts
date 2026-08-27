@@ -1291,6 +1291,7 @@ export const zhCNCommon = {
       indexAdded: '+{{count}} 索引',
       indexRemoved: '-{{count}} 索引',
       tableNameChanged: '表名变更',
+      schemaNameChanged: 'Schema 变更',
       tableCommentChanged: '注释变更',
       miscChanged: '杂项变更',
     },

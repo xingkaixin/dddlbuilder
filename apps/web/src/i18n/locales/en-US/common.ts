@@ -1332,6 +1332,7 @@ export const enUSCommon = {
       indexAdded: '+{{count}} indexes',
       indexRemoved: '-{{count}} indexes',
       tableNameChanged: 'Table name changed',
+      schemaNameChanged: 'Schema changed',
       tableCommentChanged: 'Comment changed',
       miscChanged: 'Misc settings changed',
     },
