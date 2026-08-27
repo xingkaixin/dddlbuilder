@@ -98,7 +98,10 @@ export function updateDocumentFields(state: PersistedState, rows: FieldRow[]): P
     mysqlPartitionConfig: state.mysqlPartitionConfig
       ? {
           ...state.mysqlPartitionConfig,
-          columns: state.mysqlPartitionConfig.columns.map(rename),
+          columns: state.mysqlPartitionConfig.columns.map(
+            (column) =>
+              renames.get(key(column)) ?? renameSqlExpressionFields(column, renames, state.dbType),
+          ),
           expression: state.mysqlPartitionConfig.expression
             ? renameSqlExpressionFields(
                 state.mysqlPartitionConfig.expression,
@@ -145,15 +148,15 @@ export function removeFieldsFromDocument(
   const removedNames = new Set(removedFieldNames);
   const matchesRemovedField = (name: string) =>
     removedNames.has(getSqlIdentifierKey(name, state.dbType));
-  const expression = state.mysqlPartitionConfig?.expression;
-  const removesExpression =
-    expression &&
+  const referencesRemovedField = (expression: string) =>
     removedFieldNames.some((name) => sqlExpressionReferencesField(expression, name, state.dbType));
+  const expression = state.mysqlPartitionConfig?.expression;
+  const removesExpression = expression && referencesRemovedField(expression);
   const mysqlPartitionConfig = state.mysqlPartitionConfig
     ? {
         ...state.mysqlPartitionConfig,
         columns: state.mysqlPartitionConfig.columns.filter(
-          (column) => !matchesRemovedField(column),
+          (column) => !matchesRemovedField(column) && !referencesRemovedField(column),
         ),
         expression: removesExpression ? undefined : expression,
       }

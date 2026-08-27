@@ -57,4 +57,27 @@ describe('partitionStore', () => {
     expect(current.mysqlPartitionConfig.columns).toEqual(['dayofmonth(created_on)', 'tenant_id']);
     expect(current.mysqlPartitionConfig.expression).toBe('YEAR(created_on)');
   });
+
+  it('历史分区表达式只跟随真实字段引用，删除最后一个引用后关闭分区', () => {
+    useEditorStore.getState().setRows([
+      { id: 'year', fieldName: 'year', fieldType: 'int', fieldComment: '', nullable: false },
+      { id: 'date', fieldName: 'created_at', fieldType: 'date', fieldComment: '', nullable: false },
+    ]);
+    useEditorStore.getState().setMysqlPartitionConfig({
+      enabled: true,
+      type: 'RANGE',
+      columns: ['YEAR(created_at)'],
+      partitions: [],
+    });
+    useEditorStore.getState().handleRemoveRow(0, 1);
+    expect(useEditorStore.getState().mysqlPartitionConfig).toMatchObject({
+      enabled: true,
+      columns: ['YEAR(created_at)'],
+    });
+    useEditorStore.getState().handleRemoveRow(0, 1);
+    expect(useEditorStore.getState().mysqlPartitionConfig).toMatchObject({
+      enabled: false,
+      columns: [],
+    });
+  });
 });
