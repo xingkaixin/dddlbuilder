@@ -49,17 +49,27 @@ export function buildGeneratedRows(
   schema: GeneratedTableSchema,
   baseRows: FieldRow[] = [],
 ): FieldRow[] {
-  const idsByName = new Map(baseRows.map((row) => [row.fieldName.trim().toLowerCase(), row.id]));
-  return schema.fields.map((field) => ({
-    id: field.id ?? idsByName.get(field.fieldName.trim().toLowerCase()) ?? createEntityId(),
-    fieldName: field.fieldName,
-    fieldType: field.fieldType,
-    fieldComment: field.fieldComment,
-    nullable: field.nullable,
-    defaultKind: field.defaultKind,
-    defaultValue: field.defaultValue || '',
-    onUpdate: field.onUpdate ?? 'none',
-  }));
+  const rowsById = new Map(baseRows.map((row) => [row.id, row]));
+  const rowsByName = new Map(baseRows.map((row) => [row.fieldName.trim().toLowerCase(), row]));
+  return schema.fields.map((field) => {
+    const original =
+      field.id === null
+        ? undefined
+        : field.id
+          ? rowsById.get(field.id)
+          : rowsByName.get(field.fieldName.trim().toLowerCase());
+    return {
+      ...original,
+      id: field.id ?? original?.id ?? createEntityId(),
+      fieldName: field.fieldName,
+      fieldType: field.fieldType,
+      fieldComment: field.fieldComment,
+      nullable: field.nullable,
+      defaultKind: field.defaultKind,
+      defaultValue: field.defaultValue || '',
+      onUpdate: field.onUpdate ?? 'none',
+    };
+  });
 }
 
 function sameIndex(a: IndexDefinition, b: IndexDefinition) {

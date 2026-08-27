@@ -55,6 +55,77 @@ function createBaseState(): PersistedState {
 }
 
 describe('aiSchemaChanges', () => {
+  it('preserves enum metadata when AI only adds an unrelated field', () => {
+    const baseState = createBaseState();
+    baseState.rows[1].enumMeta = [
+      { value: '1', color: '#00ff00', i18n: { 'zh-CN': '启用', 'en-US': 'Active' } },
+    ];
+    const schema: GeneratedTableSchema = {
+      tableName: baseState.tableName,
+      tableComment: baseState.tableComment,
+      fields: [
+        ...baseState.rows.map(({ enumMeta: _enumMeta, ...row }) => ({
+          ...row,
+          defaultKind: row.defaultKind ?? 'none',
+        })),
+        {
+          fieldName: 'email',
+          fieldType: 'varchar(255)',
+          fieldComment: '',
+          nullable: true,
+          defaultKind: 'none',
+        },
+      ],
+      indexes: baseState.indexes,
+    };
+    const candidate = buildPersistedStateFromAISchema(schema, { baseState });
+    const changes = buildAISchemaChanges(baseState, candidate);
+    const applied = applyAISchemaChanges(baseState, candidate, changes);
+    expect(changes.map((change) => change.id)).toEqual(['field:add::email']);
+    expect(applied.rows[1].enumMeta).toEqual(baseState.rows[1].enumMeta);
+  });
+
+  it.each(['modify', 'rename'] as const)(
+    'preserves editor-owned metadata during an AI field %s',
+    (operation) => {
+      const baseState = createBaseState();
+      baseState.rows[1].enumMeta = [{ value: '1', color: '#123456', i18n: { 'zh-CN': '启用' } }];
+      const schema: GeneratedTableSchema = {
+        tableName: baseState.tableName,
+        tableComment: baseState.tableComment,
+        fields: baseState.rows.map(({ enumMeta: _enumMeta, ...row }) => ({
+          ...row,
+          fieldName: row.fieldName === 'phone' && operation === 'rename' ? 'mobile' : row.fieldName,
+          fieldType:
+            row.fieldName === 'phone' && operation === 'modify' ? 'varchar(64)' : row.fieldType,
+          defaultKind: row.defaultKind ?? 'none',
+        })),
+        indexes: [],
+      };
+      const candidate = buildPersistedStateFromAISchema(schema, { baseState });
+      const changes = buildAISchemaChanges(baseState, candidate).filter(
+        (change) => change.kind === 'field',
+      );
+      expect(changes.map((change) => change.type)).toEqual([operation]);
+      const applied = applyAISchemaChanges(baseState, candidate, changes);
+      expect(applied.rows[1].enumMeta).toEqual(baseState.rows[1].enumMeta);
+    },
+  );
+
+  it.each([null, 'new-field'])('does not inherit metadata for a new field identity %s', (id) => {
+    const baseState = createBaseState();
+    baseState.rows[1].enumMeta = [{ value: '1' }];
+    const candidate = buildPersistedStateFromAISchema(
+      {
+        tableName: 'users',
+        tableComment: '',
+        fields: [{ ...baseState.rows[1], id, defaultKind: 'none' }],
+      },
+      { baseState },
+    );
+    expect(candidate.rows[0].enumMeta).toBeUndefined();
+  });
+
   it('keeps a renamed field identity and updates its dependencies when only the rename is applied', () => {
     const baseState = createBaseState();
     baseState.foreignKeys = [
