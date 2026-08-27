@@ -7,7 +7,10 @@ import type {
   WorkspaceSnapshot,
   UserWorkspaceScope,
 } from '@ddlbuilder/shared-types/workspace';
-import { shouldAcceptSnapshotRecord } from '@ddlbuilder/workspace-core';
+import {
+  normalizeWorkspaceMigrationSnapshot,
+  shouldAcceptSnapshotRecord,
+} from '@ddlbuilder/workspace-core';
 import { dispatchWorkspaceSnapshotApplied } from '@/services/workspaceSyncService';
 import {
   addSavedTable,
@@ -253,42 +256,13 @@ export const promoteLegacyUserWorkspaceData = async (
   return true;
 };
 
-const migrationSnapshotToWorkspaceSnapshot = (
-  snapshot: WorkspaceMigrationSnapshot,
-): WorkspaceSnapshot => {
-  const drafts = [...snapshot.drafts];
-  const activeSession = snapshot.activeSession;
-  const activeSource = activeSession?.activeSource;
-  if (activeSession?.activeState && activeSource?.kind === 'draft') {
-    const existingIndex = drafts.findIndex((draft) => draft.draftId === activeSource.draftId);
-    const draft = {
-      draftId: activeSource.draftId,
-      state: activeSession.activeState,
-      updatedAt: activeSession.updatedAt,
-    };
-    if (existingIndex >= 0) {
-      drafts[existingIndex] = { ...drafts[existingIndex], ...draft };
-    } else {
-      drafts.push(draft);
-    }
-  }
-
-  return {
-    globalDraft: snapshot.globalDraft,
-    drafts,
-    savedTables: snapshot.savedTables,
-    savedDrafts: snapshot.savedDrafts,
-    folders: snapshot.folders,
-  };
-};
-
 // 先把 legacy `user:U` 分区提升到目标分区，再读取；顺序颠倒会让本次会话漏掉刚提升的数据。
 export const prepareLegacyWorkspaceSnapshot = async (
   scope: UserWorkspaceScope,
 ): Promise<WorkspaceSnapshot | null> => {
   await promoteLegacyUserWorkspaceData(scope);
   const payload = await collectWorkspaceMigrationPayload(scope);
-  return payload ? migrationSnapshotToWorkspaceSnapshot(payload.snapshot) : null;
+  return payload ? normalizeWorkspaceMigrationSnapshot(payload.snapshot) : null;
 };
 
 export const analyzeWorkspaceMigration = async () => {

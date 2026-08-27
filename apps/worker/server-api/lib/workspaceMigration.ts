@@ -4,6 +4,7 @@ import {
   exportWorkspaceYDocToSnapshot,
   mergeWorkspaceSnapshotIntoYDoc,
   normalizeSchemaDocumentState,
+  normalizeWorkspaceMigrationSnapshot,
   stableStringify,
 } from '@ddlbuilder/workspace-core';
 import type { WorkspaceMigrationResponse } from '@ddlbuilder/shared-types/api';
@@ -177,29 +178,9 @@ const upsertWorkspaceLink = async (
     .run();
 };
 
-const mergeGlobalDraft = (
-  snapshot: WorkspaceSnapshot,
-  activeSession?: WorkspaceMigrationPayload['snapshot']['activeSession'],
-) => {
-  const sessionDraft =
-    activeSession?.activeSource.kind === 'draft' && activeSession.activeState
-      ? {
-          state: activeSession.activeState,
-          updatedAt: activeSession.updatedAt,
-        }
-      : null;
-
-  if (!snapshot.globalDraft) return sessionDraft;
-  if (!sessionDraft) return snapshot.globalDraft;
-  return snapshot.globalDraft.updatedAt >= sessionDraft.updatedAt
-    ? snapshot.globalDraft
-    : sessionDraft;
-};
-
 const buildMigrationEntityRecords = (
   userId: string,
   snapshot: WorkspaceSnapshot,
-  activeSession?: WorkspaceMigrationPayload['snapshot']['activeSession'],
 ): MigrationEntityRecord[] => {
   const savedTables = snapshot.savedTables.map((table) => ({
     ...table,
@@ -223,7 +204,6 @@ const buildMigrationEntityRecords = (
     ...snapshot,
     savedTables,
     savedDrafts,
-    globalDraft: mergeGlobalDraft(snapshot, activeSession),
   }).map((entity) => toMigrationEntityRecord(userId, entity));
 };
 
@@ -363,8 +343,7 @@ export const analyzeWorkspaceMigration = async (
 ): Promise<WorkspaceMigrationResult> => {
   const records = buildMigrationEntityRecords(
     userId,
-    payload.snapshot,
-    payload.snapshot.activeSession,
+    normalizeWorkspaceMigrationSnapshot(payload.snapshot),
   );
   if (records.length === 0) {
     return {
@@ -432,7 +411,10 @@ export const applyWorkspaceMigrationSnapshot = (
   userId: string,
   snapshot: WorkspaceMigrationSnapshot,
 ): WorkspaceMigrationResult => {
-  const records = buildMigrationEntityRecords(userId, snapshot, snapshot.activeSession);
+  const records = buildMigrationEntityRecords(
+    userId,
+    normalizeWorkspaceMigrationSnapshot(snapshot),
+  );
   const existingPayloads = buildEntityPayloadMap(
     buildMigrationEntityRecords(userId, exportWorkspaceYDocToSnapshot(doc)),
   );
@@ -480,8 +462,7 @@ export const commitWorkspaceMigration = async (
 ): Promise<WorkspaceMigrationResult> => {
   const records = buildMigrationEntityRecords(
     userId,
-    payload.snapshot,
-    payload.snapshot.activeSession,
+    normalizeWorkspaceMigrationSnapshot(payload.snapshot),
   );
   if (records.length === 0) {
     return {

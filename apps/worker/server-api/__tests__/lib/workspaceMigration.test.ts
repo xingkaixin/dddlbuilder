@@ -5,7 +5,11 @@ import {
   exportWorkspaceYDocToSnapshot,
 } from '@ddlbuilder/workspace-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { toSchemaDocumentState, type SchemaDocumentState } from '@ddlbuilder/shared-types';
+import {
+  toSchemaDocumentState,
+  withDefaultEditorSession,
+  type SchemaDocumentState,
+} from '@ddlbuilder/shared-types';
 import type { WorkspaceMigrationPayload } from '@ddlbuilder/shared-types/workspace';
 import {
   analyzeWorkspaceMigration,
@@ -72,6 +76,51 @@ describe('workspaceMigration', () => {
   });
 
   afterEach(() => cloudDoc.destroy());
+
+  it.each([1, 2, 3])('迁移活动草稿时保留身份并选择较新内容 (%s)', async (updatedAt) => {
+    const payload = decodeWorkspaceMigrationPayload({
+      ...createPayload(),
+      snapshot: {
+        ...createPayload().snapshot,
+        savedTables: [],
+        globalDraft: { state: createState('unrelated_global'), updatedAt: 1 },
+        drafts: [{ draftId: 'named', state: createState('stored'), createdAt: 1, updatedAt: 2 }],
+        activeSession: {
+          activeSource: { kind: 'draft', draftId: 'named' },
+          activeState: withDefaultEditorSession(createState('session')),
+          updatedAt,
+        },
+      },
+    });
+    if (!payload) throw new Error('Invalid migration fixture');
+    const statement = {
+      bind: () => statement,
+      first: async () => null,
+      run: async () => ({ success: true }),
+    };
+    const env = { USER_DB: { prepare: () => statement } } as never;
+    expect(await analyzeWorkspaceMigration(env, 'user-1', payload)).toMatchObject({
+      createdCount: 2,
+      conflictCount: 0,
+    });
+    expect(await commitWorkspaceMigration(env, 'user-1', payload)).toMatchObject({
+      createdCount: 2,
+    });
+    const migrated = exportWorkspaceYDocToSnapshot(cloudDoc);
+    expect(migrated.drafts).toHaveLength(2);
+    expect(migrated.drafts.find((draft) => draft.draftId === 'default')?.state.tableName).toBe(
+      'unrelated_global',
+    );
+    expect(migrated.drafts.find((draft) => draft.draftId === 'named')).toMatchObject({
+      state: { tableName: updatedAt > 2 ? 'session' : 'stored' },
+      createdAt: 1,
+      updatedAt: Math.max(2, updatedAt),
+    });
+    expect(await commitWorkspaceMigration(env, 'user-1', payload)).toMatchObject({
+      createdCount: 0,
+      skippedCount: 2,
+    });
+  });
 
   it.each([undefined, 'table-alpha'])(
     '冲突副本保留独立 ID 和草稿关联并可重复迁移 (%s)',

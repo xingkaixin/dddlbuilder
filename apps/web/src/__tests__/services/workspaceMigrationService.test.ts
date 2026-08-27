@@ -110,6 +110,41 @@ describe('workspaceMigrationService legacy promotion', () => {
     teardownFakeIndexedDB();
   });
 
+  it.each([10, 20])('legacy 会话不能覆盖较新或同时间的草稿 (%s)', async (updatedAt) => {
+    await writeDraft(
+      'named',
+      {
+        state: createState('newer_draft'),
+        createdAt: 1,
+        updatedAt: 20,
+        folderId: 'folder',
+      },
+      legacyScope,
+    );
+    await writeWorkspaceSession(
+      {
+        activeSource: { kind: 'draft', draftId: 'named' },
+        activeState: createState('older_session'),
+        updatedAt,
+      },
+      legacyScope,
+    );
+    const snapshot = await prepareLegacyWorkspaceSnapshot(scope);
+    if (!snapshot) throw new Error('Expected legacy snapshot');
+    const doc = createWorkspaceYDoc();
+    mergeWorkspaceSnapshotIntoYDoc(doc, snapshot);
+    expect(exportWorkspaceYDocToSnapshot(doc).drafts).toEqual([
+      expect.objectContaining({
+        draftId: 'named',
+        state: expect.objectContaining({ tableName: 'newer_draft' }),
+        createdAt: 1,
+        updatedAt: 20,
+        folderId: 'folder',
+      }),
+    ]);
+    doc.destroy();
+  });
+
   it('无字段的默认视图草稿应进入匿名迁移快照', async () => {
     const anonymous = { kind: 'anonymous' as const };
     const state: PersistedState = {

@@ -2,6 +2,7 @@ export { buildWorkspaceContentHash } from './contentHash';
 export { DEFAULT_DRAFT_ID, shouldAcceptSnapshotRecord } from './snapshotMergePolicy';
 export {
   normalizeWorkspaceSnapshot,
+  normalizeWorkspaceMigrationSnapshot,
   type CanonicalWorkspaceSnapshot,
 } from './workspaceSnapshotNormalization';
 export {

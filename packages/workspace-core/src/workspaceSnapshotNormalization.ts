@@ -1,5 +1,9 @@
-import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
-import { DEFAULT_DRAFT_ID } from './snapshotMergePolicy';
+import { toSchemaDocumentState } from '@ddlbuilder/shared-types';
+import type {
+  WorkspaceMigrationSnapshot,
+  WorkspaceSnapshot,
+} from '@ddlbuilder/shared-types/workspace';
+import { DEFAULT_DRAFT_ID, shouldAcceptSnapshotRecord } from './snapshotMergePolicy';
 
 export type CanonicalWorkspaceSnapshot = Omit<WorkspaceSnapshot, 'globalDraft'> & {
   globalDraft: null;
@@ -35,5 +39,30 @@ export const normalizeWorkspaceSnapshot = (
     savedTables: snapshot.savedTables,
     savedDrafts: snapshot.savedDrafts,
     folders: snapshot.folders,
+  };
+};
+
+export const normalizeWorkspaceMigrationSnapshot = (
+  snapshot: WorkspaceMigrationSnapshot,
+): CanonicalWorkspaceSnapshot => {
+  const normalized = normalizeWorkspaceSnapshot(snapshot);
+  const session = snapshot.activeSession;
+  if (!session?.activeState || session.activeSource.kind !== 'draft') return normalized;
+
+  const draftId = session.activeSource.draftId;
+  const existing = normalized.drafts.find((draft) => draft.draftId === draftId);
+  if (!shouldAcceptSnapshotRecord(session.updatedAt, existing?.updatedAt)) return normalized;
+
+  const draft = {
+    ...existing,
+    draftId,
+    state: toSchemaDocumentState(session.activeState),
+    updatedAt: session.updatedAt,
+  };
+  return {
+    ...normalized,
+    drafts: existing
+      ? normalized.drafts.map((item) => (item.draftId === draftId ? draft : item))
+      : [...normalized.drafts, draft],
   };
 };
