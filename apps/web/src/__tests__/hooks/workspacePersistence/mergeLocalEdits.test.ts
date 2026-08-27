@@ -84,6 +84,45 @@ describe('mergeLocalDraftChanges', () => {
     expect(mergeLocalDraftChanges(base, local, remote).rows.map((r) => r.id)).toEqual(['a']);
   });
 
+  it('远端只改标量时保留本地新增行及其位置', () => {
+    const base = state();
+    const local = state({ rows: [row('a'), row('local-new'), row('b')] });
+    const remote = state({ tableComment: '远端注释' });
+
+    expect(mergeLocalDraftChanges(base, local, remote).rows.map((r) => r.id)).toEqual([
+      'a',
+      'local-new',
+      'b',
+    ]);
+  });
+
+  it('远端未修改被删行时保留本地删除', () => {
+    const base = state();
+    const local = state({ rows: [row('a')] });
+    const remote = state({ tableComment: '远端注释' });
+
+    expect(mergeLocalDraftChanges(base, local, remote).rows.map((r) => r.id)).toEqual(['a']);
+  });
+
+  it('本地删除与远端行修改冲突时保留远端行', () => {
+    const base = state();
+    const local = state({ rows: [row('a')] });
+    const remote = state({ rows: [row('a'), row('b', { fieldComment: '远端注释' })] });
+
+    expect(mergeLocalDraftChanges(base, local, remote).rows).toEqual([
+      row('a'),
+      row('b', { fieldComment: '远端注释' }),
+    ]);
+  });
+
+  it('远端未重排时保留本地行顺序', () => {
+    const base = state();
+    const local = state({ rows: [row('b'), row('a')] });
+    const remote = state({ tableComment: '远端注释' });
+
+    expect(mergeLocalDraftChanges(base, local, remote).rows.map((r) => r.id)).toEqual(['b', 'a']);
+  });
+
   it('保留本地对行内每一个可选键的修改', () => {
     const base = state({ rows: [row('a')] });
     const local = state({

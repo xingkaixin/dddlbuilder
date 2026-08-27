@@ -39,6 +39,96 @@ const pickLocalEdits = <T>(base: T, local: T, remote: T, keys: readonly (keyof T
   return picked;
 };
 
+const rowIds = (rows: FieldRow[]) => rows.map((row) => row.id);
+
+const hasReorderedBaseRows = (baseRows: FieldRow[], candidateRows: FieldRow[]) => {
+  const baseIds = rowIds(baseRows);
+  const baseIdSet = new Set(baseIds);
+  const candidateIds = rowIds(candidateRows);
+  const candidateIdSet = new Set(candidateIds);
+  const expectedOrder = baseIds.filter((id) => candidateIdSet.has(id));
+  const candidateOrder = candidateIds.filter((id) => baseIdSet.has(id));
+  return stableStringify(expectedOrder) !== stableStringify(candidateOrder);
+};
+
+const mergeRowOrder = (
+  primaryRows: FieldRow[],
+  secondaryRows: FieldRow[],
+  resolvedRows: ReadonlyMap<string, FieldRow>,
+) => {
+  const order = rowIds(primaryRows).filter((id) => resolvedRows.has(id));
+  const secondaryOrder = rowIds(secondaryRows).filter((id) => resolvedRows.has(id));
+
+  secondaryOrder.forEach((id, index) => {
+    if (order.includes(id)) return;
+
+    let previousId: string | undefined;
+    for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
+      const candidate = secondaryOrder[cursor];
+      if (candidate && order.includes(candidate)) {
+        previousId = candidate;
+        break;
+      }
+    }
+    if (previousId) {
+      order.splice(order.indexOf(previousId) + 1, 0, id);
+      return;
+    }
+
+    const nextId = secondaryOrder.slice(index + 1).find((candidate) => order.includes(candidate));
+    if (nextId) {
+      order.splice(order.indexOf(nextId), 0, id);
+      return;
+    }
+
+    order.push(id);
+  });
+
+  return order;
+};
+
+const resolveRows = (baseRows: FieldRow[], localRows: FieldRow[], remoteRows: FieldRow[]) => {
+  const baseById = new Map(baseRows.map((row) => [row.id, row]));
+  const localById = new Map(localRows.map((row) => [row.id, row]));
+  const remoteById = new Map(remoteRows.map((row) => [row.id, row]));
+  const ids = new Set([...baseById.keys(), ...localById.keys(), ...remoteById.keys()]);
+  const resolvedRows = new Map<string, FieldRow>();
+
+  for (const id of ids) {
+    const baseRow = baseById.get(id);
+    const localRow = localById.get(id);
+    const remoteRow = remoteById.get(id);
+
+    if (!baseRow) {
+      const addedRow = remoteRow ?? localRow;
+      if (addedRow) resolvedRows.set(id, addedRow);
+      continue;
+    }
+    if (!remoteRow) continue;
+    if (!localRow) {
+      if (stableStringify(baseRow) !== stableStringify(remoteRow)) {
+        resolvedRows.set(id, remoteRow);
+      }
+      continue;
+    }
+
+    resolvedRows.set(id, {
+      ...remoteRow,
+      ...pickLocalEdits(baseRow, localRow, remoteRow, ROW_MERGE_KEYS),
+    });
+  }
+
+  const localOrderWins =
+    hasReorderedBaseRows(baseRows, localRows) && !hasReorderedBaseRows(baseRows, remoteRows);
+  const order = localOrderWins
+    ? mergeRowOrder(localRows, remoteRows, resolvedRows)
+    : mergeRowOrder(remoteRows, localRows, resolvedRows);
+  return order.flatMap((id) => {
+    const row = resolvedRows.get(id);
+    return row ? [row] : [];
+  });
+};
+
 /**
  * Y.Doc 就绪之前的本地编辑没进过文档，远端刷新回来时只能靠 base→local 的差异补回。
  * 行按 id 对齐——按下标对齐会在任一端增删行后把改动记到别的字段上。
@@ -48,17 +138,9 @@ export const mergeLocalDraftChanges = (
   localState: PersistedState,
   remoteState: PersistedState,
 ): PersistedState => {
-  const baseRows = new Map(baseState.rows.map((row) => [row.id, row]));
-  const localRows = new Map(localState.rows.map((row) => [row.id, row]));
-
   return {
     ...remoteState,
     ...pickLocalEdits(baseState, localState, remoteState, SCALAR_MERGE_KEYS),
-    rows: remoteState.rows.map((remoteRow) => {
-      const baseRow = baseRows.get(remoteRow.id);
-      const localRow = localRows.get(remoteRow.id);
-      if (!baseRow || !localRow) return remoteRow;
-      return { ...remoteRow, ...pickLocalEdits(baseRow, localRow, remoteRow, ROW_MERGE_KEYS) };
-    }),
+    rows: resolveRows(baseState.rows, localState.rows, remoteState.rows),
   };
 };
