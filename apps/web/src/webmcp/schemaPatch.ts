@@ -8,6 +8,7 @@ import {
   type PersistedState,
 } from '@ddlbuilder/shared-types';
 import { removeFieldsFromDocument } from '@/stores/editorDocumentMutations';
+import { validateIndexFields } from '@/stores/editorDocumentValidation';
 import { isSameIdentifierToken, replaceIdentifierToken } from '@/utils/fieldRenameUtils';
 
 type JsonRecord = Record<string, unknown>;
@@ -274,19 +275,6 @@ const assertUniqueIndexName = (indexes: IndexDefinition[], name: string, exceptI
     )
   ) {
     throw new Error(`Duplicate index name: ${name}`);
-  }
-};
-
-const validateIndexFields = (state: PersistedState) => {
-  const names = new Set(
-    state.rows.map((row) => row.fieldName.trim().toLowerCase()).filter((name) => name.length > 0),
-  );
-  for (const index of state.indexes) {
-    for (const field of index.fields) {
-      if (!names.has(field.name.trim().toLowerCase())) {
-        throw new Error(`Unknown index field: ${field.name}`);
-      }
-    }
   }
 };
 

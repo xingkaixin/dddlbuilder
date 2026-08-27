@@ -164,3 +164,76 @@ test.describe('AI 功能 UI 测试 @tools @ai', () => {
     }
   });
 });
+
+test('AI 修改拒绝缺失字段的索引，补选字段后允许应用', async ({ page }) => {
+  await page.route('**/api/**', async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/me') {
+      await route.fulfill({
+        json: {
+          signedIn: true,
+          user: {
+            userId: 'patch-user',
+            email: 'patch@example.test',
+            name: 'Patch',
+            emailVerified: true,
+          },
+        },
+      });
+    } else if (path === '/api/workspaces') {
+      await route.fulfill({ json: { workspaceId: 'patch-workspace' } });
+    } else if (path === '/api/credits/balance') {
+      await route.fulfill({ json: { balance: 1000 } });
+    } else if (path === '/api/generate-table') {
+      const { existingConfig } = route.request().postDataJSON();
+      await route.fulfill({
+        json: {
+          tableName: existingConfig.tableName,
+          tableComment: existingConfig.tableComment,
+          fields: [
+            ...existingConfig.rows.filter((row: { fieldName: string }) => row.fieldName.trim()),
+            {
+              fieldName: 'email',
+              fieldType: 'varchar(255)',
+              fieldComment: '',
+              nullable: true,
+              defaultKind: 'none',
+              defaultValue: '',
+              isPrimaryKey: false,
+            },
+          ],
+          indexes: [
+            {
+              name: 'idx_HYDRATION_CHECK_email',
+              unique: false,
+              fields: [{ name: 'email', direction: 'ASC' }],
+            },
+          ],
+        },
+      });
+    } else {
+      await route.fulfill({ status: 503, json: { error: 'Not available in this test' } });
+    }
+  });
+  await page.goto('/');
+  await setupHydratedState(page);
+  await page.getByRole('button', { name: 'AI 修改', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'AI 修改当前表' });
+  await dialog.locator('#ai-patch-input').fill('新增 email 和对应索引');
+  await dialog.getByRole('button', { name: '发送', exact: true }).click();
+  const changes = dialog.getByRole('button', { name: '切换变更选择' });
+  await expect(changes).toHaveCount(2);
+  await changes.nth(1).click();
+  await dialog.getByRole('button', { name: '应用 1 项变更' }).click();
+  await expect(page.getByText(/未能应用变更.*Unknown index field: email/)).toBeVisible();
+  await expect(dialog.getByRole('button', { name: '应用 1 项变更' })).toBeEnabled();
+  await expect(dialog.getByText('email', { exact: true })).toBeVisible();
+  await changes.first().click();
+  await dialog.getByRole('button', { name: '应用 2 项变更' }).click();
+  await expect(dialog.getByText('本次没有发现可应用的结构变更')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[role="tabpanel"]:visible pre')).toContainText(
+    'CREATE INDEX idx_HYDRATION_CHECK_email',
+  );
+  await expect(page.locator('[role="tabpanel"]:visible pre')).toContainText('email VARCHAR(255)');
+});

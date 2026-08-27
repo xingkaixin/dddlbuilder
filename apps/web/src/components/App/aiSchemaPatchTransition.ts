@@ -1,6 +1,7 @@
 import type { FieldRow, IndexDefinition, PersistedState } from '@ddlbuilder/shared-types';
 import type { AISchemaChange } from '@/utils/aiSchemaChanges';
 import { removeFieldsFromDocument } from '@/stores/editorDocumentMutations';
+import { validateIndexFields } from '@/stores/editorDocumentValidation';
 
 type FieldChange = Extract<AISchemaChange, { kind: 'field' }>;
 
@@ -106,7 +107,11 @@ export const applyAISchemaChanges = (
     }
   }
 
-  return removedNames.size > 0
-    ? removeFieldsFromDocument(nextState, (row) => removedNames.has(normalizedName(row.fieldName)))
-    : nextState;
+  if (removedNames.size > 0) {
+    nextState = removeFieldsFromDocument(nextState, (row) =>
+      removedNames.has(normalizedName(row.fieldName)),
+    );
+  }
+  validateIndexFields(nextState);
+  return nextState;
 };

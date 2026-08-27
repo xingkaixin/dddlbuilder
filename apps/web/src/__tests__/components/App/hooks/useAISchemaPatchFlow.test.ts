@@ -100,6 +100,28 @@ describe('useAISchemaPatchFlow', () => {
     expect(dependencies.animateIndex).toHaveBeenCalledWith(oldIndex.id, 'add');
   });
 
+  it('does not commit or animate a batch with missing index fields', () => {
+    const dependencies = createDependencies();
+    dependencies.currentState.indexes = [];
+    const { result } = renderHook(() => useAISchemaPatchFlow(dependencies));
+    expect(() =>
+      result.current.applyChanges(
+        [
+          {
+            id: 'index:add',
+            kind: 'index',
+            type: 'add',
+            indexName: oldIndex.name,
+            newIndex: oldIndex,
+          },
+        ],
+        dependencies.currentState,
+      ),
+    ).toThrow('Unknown index field: email');
+    expect(dependencies.applyState).not.toHaveBeenCalled();
+    expect(dependencies.animateIndex).not.toHaveBeenCalled();
+  });
+
   it('focuses existing field and index changes', () => {
     const dependencies = createDependencies();
     const { result } = renderHook(() => useAISchemaPatchFlow(dependencies));

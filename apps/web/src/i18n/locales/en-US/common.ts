@@ -916,6 +916,8 @@ export const enUSCommon = {
     selectAll: 'Accept all',
     unselectAll: 'Reject all',
     applySelected: 'Apply {{count}} changes',
+    applyFailed:
+      'Could not apply changes. Check that the fields required by the indexes are selected. {{reason}}',
     applyHint: '{{pending}} pending, {{accepted}} selected, {{applied}} applied',
     toggleChange: 'Toggle change selection',
     generating: 'Analyzing current schema... ({{count}} fields generated)',

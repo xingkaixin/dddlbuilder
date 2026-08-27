@@ -28,6 +28,7 @@ import {
   type AISchemaChangeStatus,
 } from '@/utils/aiSchemaChanges';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
+import { useToast } from '@/hooks/useToast';
 
 const MAX_INPUT_LENGTH = 500;
 const EMPTY_CHANGE_STATUSES: Record<string, AISchemaChangeStatus> = {};
@@ -65,6 +66,7 @@ export function AISchemaPatchPanel({
 }: AISchemaPatchPanelProps) {
   const { t } = useTranslation();
   const authSession = useAuthSession();
+  const { error: showApplyError } = useToast();
   const [input, setInput] = useState('');
   const {
     isLoading,
@@ -184,14 +186,23 @@ export function AISchemaPatchPanel({
 
   const handleApplyAccepted = useCallback(() => {
     if (!candidateState) return;
-    onApplyChanges(acceptedChanges, candidateState);
+    try {
+      onApplyChanges(acceptedChanges, candidateState);
+    } catch (error) {
+      showApplyError(
+        t('aiPatch.applyFailed', {
+          reason: error instanceof Error ? error.message : String(error),
+        }),
+      );
+      return;
+    }
     const appliedIds = new Set(acceptedChanges.map((change) => change.id));
     updateStatuses((current) => {
       const next = { ...current };
       for (const id of appliedIds) next[id] = 'applied';
       return next;
     });
-  }, [acceptedChanges, candidateState, onApplyChanges, updateStatuses]);
+  }, [acceptedChanges, candidateState, onApplyChanges, showApplyError, t, updateStatuses]);
 
   const handleSelectAll = useCallback(() => {
     updateStatuses((current) => {

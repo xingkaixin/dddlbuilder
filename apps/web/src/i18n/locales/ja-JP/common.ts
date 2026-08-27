@@ -923,6 +923,8 @@ export const jaJPCommon = {
     selectAll: 'すべてを受け入れる',
     unselectAll: 'すべて拒否する',
     applySelected: '{{count}} の変更を適用',
+    applyFailed:
+      '変更を適用できませんでした。インデックスに必要なフィールドが選択されているか確認してください。{{reason}}',
     applyHint: '{{pending}} 保留中、{{accepted}} 選択済み、{{applied}} 適用済み',
     toggleChange: '選択の変更を切り替えます',
     generating: '現在のスキーマを分析中... ({{count}} フィールドが生成されました)',

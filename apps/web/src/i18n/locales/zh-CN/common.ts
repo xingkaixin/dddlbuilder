@@ -887,6 +887,7 @@ export const zhCNCommon = {
     selectAll: '全部确认',
     unselectAll: '全部拒绝',
     applySelected: '应用 {{count}} 项变更',
+    applyFailed: '未能应用变更，请检查是否选择了索引依赖的字段。{{reason}}',
     applyHint: '{{pending}} 项待确认，{{accepted}} 项已选择，{{applied}} 项已应用',
     toggleChange: '切换变更选择',
     generating: '正在分析当前表结构...（已生成 {{count}} 个字段）',

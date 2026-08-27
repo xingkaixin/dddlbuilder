@@ -111,6 +111,35 @@ describe('AI field changes', () => {
 });
 
 describe('applyAISchemaChanges', () => {
+  it.each(['add', 'modify'] as const)('rejects a selected index %s without its field', (type) => {
+    const current = createState();
+    const index = {
+      id: 'email-index',
+      name: 'idx_email',
+      unique: false,
+      fields: [{ name: 'email', direction: 'ASC' as const }],
+    };
+    if (type === 'modify')
+      current.indexes = [{ ...index, fields: [{ name: 'id', direction: 'ASC' }] }];
+    const candidate = {
+      ...current,
+      tableComment: 'New comment',
+      rows: [...current.rows, row('email', 2)],
+      indexes: [index],
+    };
+    const changes = buildAISchemaChanges(current, candidate);
+    const selected = changes.filter((change) => change.kind !== 'field');
+    expect(() => applyAISchemaChanges(current, candidate, selected)).toThrow(
+      'Unknown index field: email',
+    );
+    expect(current.tableComment).toBe('');
+    expect(current.rows).toHaveLength(1);
+    expect(applyAISchemaChanges(current, candidate, changes).indexes).toEqual([index]);
+    expect(applyAISchemaChanges(current, candidate, [...changes].reverse()).indexes).toEqual([
+      index,
+    ]);
+  });
+
   it.each([false, true])(
     'preserves a modified index after field removal (reverse=%s)',
     (reverse) => {
