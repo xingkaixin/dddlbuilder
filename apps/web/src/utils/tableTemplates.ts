@@ -1,4 +1,9 @@
-import { createEntityId, normalizeFieldEnums, type PersistedState } from '@ddlbuilder/shared-types';
+import {
+  createEntityId,
+  normalizeFieldEnums,
+  toEditorSessionState,
+  type PersistedState,
+} from '@ddlbuilder/shared-types';
 import { openDb, TABLE_TEMPLATE_STORE_NAME } from './workspaceDb';
 import type { TableBlueprint, TableTemplate } from './workspaceStorageTypes';
 import { runIndexedDbRequest } from './indexedDbTransaction';
@@ -43,7 +48,13 @@ export const applyBlueprintToState = (
   state: PersistedState,
   blueprint: TableBlueprint,
 ): PersistedState => ({
-  ...state,
+  ...toEditorSessionState(state),
+  objectType: 'table',
+  schemaName: state.schemaName,
+  tableName: state.tableName,
+  tableComment: state.tableComment,
+  authInput: state.authInput,
+  authObjects: state.authObjects,
   dbType: blueprint.dbType,
   rows: clone(blueprint.rows).map((row) => ({
     ...row,

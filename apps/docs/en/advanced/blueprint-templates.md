@@ -17,17 +17,17 @@ You can reduce the initialization cost of "user tables, order tables, log tables
 
 1. Click the `Table Blueprint` button in the top action area. Result: the blueprint template selection dialog opens.
 2. Browse the template list and select a template matching the target scenario (such as `User Table`, `Order Table`, `Operation Log Table`). Result: the dialog shows a preview of that template's structure (field list, indexes, primary keys).
-3. After confirming the preview meets expectations, click `Apply`. Result: template fields and indexes are written into the current workspace; if the current tab already has content, the system prompts whether to overwrite.
+3. After confirming the preview meets expectations, click `Apply Blueprint`. Result: the blueprint structure opens in a new draft tab, preserving the original tab's content.
 4. Return to the field configuration table and add, remove, or adjust fields and indexes as needed. Result: the template-generated structure is personalized for business requirements.
 5. Save as a named table. Result: the table enters the saved tables list for repeated loading later.
 
 ## Built-in template examples
 
-| Template | Typical Fields | Typical Indexes |
-|---|---|---|
-| User Table | user_id, username, email, password_hash, created_at | Primary key, username unique index, email unique index |
-| Order Table | order_id, user_id, amount, status, created_at | Primary key, user_id index, status index |
-| Operation Log Table | log_id, operator, action, target, created_at | Primary key, operator index, created_at index |
+| Template            | Typical Fields                                      | Typical Indexes                                        |
+| ------------------- | --------------------------------------------------- | ------------------------------------------------------ |
+| User Table          | user_id, username, email, password_hash, created_at | Primary key, username unique index, email unique index |
+| Order Table         | order_id, user_id, amount, status, created_at       | Primary key, user_id index, status index               |
+| Operation Log Table | log_id, operator, action, target, created_at        | Primary key, operator index, created_at index          |
 
 ## Done when
 
@@ -38,5 +38,5 @@ You can reduce the initialization cost of "user tables, order tables, log tables
 ## Common pitfalls
 
 - Blueprint templates are generic designs; after applying, be sure to adjust field length, nullable, default values, and other details according to actual business requirements.
-- When applying a blueprint to a tab with existing content, unsaved current changes may be lost; save or confirm before applying.
+- Blueprints do not save or inherit foreign keys. Configure relationships in the new table after applying to avoid references to the original table's fields.
 - Field Chinese names in blueprints are generic descriptions; replace them with accurate naming within your business domain.

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
+import { buildDDL } from '@ddlbuilder/ddl-core';
 import {
   applyBlueprintToState,
   createBlueprintFromState,
@@ -125,6 +126,56 @@ describe('tableTemplates', () => {
     expect(next.currentIndexFields).toEqual([]);
     expect(next.indexInput).toBe('');
   });
+
+  it.each(['table', 'view'] as const)(
+    'rebuilds blueprint structure without inheriting constraints from the current %s',
+    (objectType) => {
+      const current: PersistedState = {
+        ...state,
+        objectType,
+        viewDefinition: 'SELECT customer_id FROM archived_orders',
+        rows: [{ ...state.rows[0], id: 'customer', fieldName: 'customer_id' }],
+        foreignKeys: [
+          {
+            id: 'fk-customer',
+            name: 'fk_customer',
+            fields: ['customer_id'],
+            refTable: 'customers',
+            refFields: ['id'],
+          },
+        ],
+        fieldTableViewConfig: { freezeEnabled: true, freezeColumns: 2 },
+      };
+      const next = applyBlueprintToState(current, createBlueprintFromState(state));
+      const ddl = buildDDL({
+        ...next,
+        fields: next.rows.map((row) => ({
+          name: row.fieldName,
+          type: row.fieldType,
+          comment: row.fieldComment,
+          nullable: row.nullable,
+          defaultKind: row.defaultKind ?? 'none',
+          defaultValue: row.defaultValue ?? '',
+          onUpdate: row.onUpdate ?? 'none',
+        })),
+      });
+      console.info('Applied blueprint structure', {
+        objectType: next.objectType,
+        fields: next.rows.map((row) => row.fieldName),
+        foreignKeys: next.foreignKeys,
+        ddl,
+      });
+
+      expect(next.foreignKeys ?? []).toEqual([]);
+      expect(ddl).not.toContain('customer_id');
+      expect(next.objectType).toBe('table');
+      expect(next.viewDefinition ?? '').toBe('');
+      expect(next.fieldTableViewConfig).toEqual(current.fieldTableViewConfig);
+      expect(next.schemaName).toBe(current.schemaName);
+      expect(next.authObjects).toEqual(current.authObjects);
+      expect(current.foreignKeys).toHaveLength(1);
+    },
+  );
 
   it('returns null when duplicating missing template', async () => {
     await expect(duplicateTableTemplate('missing')).resolves.toBeNull();

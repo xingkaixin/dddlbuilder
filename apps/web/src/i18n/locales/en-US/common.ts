@@ -695,7 +695,7 @@ export const enUSCommon = {
       fieldList: 'Field Preview',
       indexList: 'Index Preview',
       excluded:
-        'Blueprints save fields, indexes, database type, and table-level config. Table name, table comment, and grants stay as current table instance info.',
+        'Blueprints save fields, indexes, database type, and table-level config. The current table name, comment, and grants are kept, but foreign keys are not inherited. Configure foreign keys for the new table after applying.',
       cancel: 'Cancel',
       apply: 'Apply Blueprint',
     },
