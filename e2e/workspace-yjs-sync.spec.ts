@@ -778,9 +778,10 @@ test('ER relationship deletion targets the imported table copy', async ({ browse
     await dialog.locator(`button[data-edge-id='["copy","shared-fk"]']`).click();
     const foreignKeyCount = (id: string) => {
       const table = server.doc.getMap<Y.Map<unknown>>('savedTables').get(id);
-      const foreignKeys = table?.get('foreignKeys');
+      if (!table) throw new Error('Saved table was not found');
+      const foreignKeys = table.get('foreignKeys');
       if (foreignKeys instanceof Y.Map) return foreignKeys.size;
-      return (table?.get('stateSnapshot') as { foreignKeys: unknown[] }).foreignKeys.length;
+      return (table.get('stateSnapshot') as { foreignKeys: unknown[] }).foreignKeys.length;
     };
     await expect.poll(() => foreignKeyCount('copy')).toBe(0);
     expect(foreignKeyCount('original')).toBe(1);

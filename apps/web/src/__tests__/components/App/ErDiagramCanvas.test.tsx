@@ -1,16 +1,16 @@
 import { act, render, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { Edge, ReactFlowProps } from '@xyflow/react';
+import type * as ReactFlowModule from '@xyflow/react';
 import type { ErEdgeData } from '@/components/App/er-diagram/types';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import { buildSavedTableBatchImportPlan } from '@/utils/savedTableBatchImport';
 import ErDiagramCanvas from '@/components/App/er-diagram/ErDiagramCanvas';
 
-const capture = vi.hoisted(() => ({ edges: [] as Edge[], fitView: vi.fn() }));
+const capture = vi.hoisted(() => ({ edges: [] as ReactFlowModule.Edge[], fitView: vi.fn() }));
 
 vi.mock('@xyflow/react', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@xyflow/react')>()),
-  ReactFlow: ({ edges }: ReactFlowProps) => {
+  ...(await importOriginal<typeof ReactFlowModule>()),
+  ReactFlow: ({ edges }: ReactFlowModule.ReactFlowProps) => {
     capture.edges = edges ?? [];
     return null;
   },
@@ -72,8 +72,9 @@ describe('ER relationship ownership', () => {
     expect(new Set(capture.edges.map((edge) => edge.id)).size).toBe(2);
     const target = copy ? imported : original;
     const edge = capture.edges.find((item) => item.source === target.tableId);
+    if (!edge?.data) throw new Error('Selected relationship was not rendered');
     await act(async () => {
-      await (edge?.data as ErEdgeData).onDelete();
+      await (edge.data as ErEdgeData).onDelete();
     });
     expect(onUpdateTable).toHaveBeenCalledExactlyOnceWith(target, {
       ...target.state,
