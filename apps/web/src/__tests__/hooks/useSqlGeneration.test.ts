@@ -43,6 +43,24 @@ const defineClipboard = (writeText: (value: string) => Promise<void>) => {
 };
 
 describe('useSqlGeneration', () => {
+  it('枚举注释只在生成 SQL 字面量时转义一次', () => {
+    const fields: NormalizedField[] = [
+      {
+        ...baseFields[0],
+        comment: "Owner's status",
+        enumMeta: [{ value: 'active', i18n: { 'en-US': "It's active" } }],
+      },
+    ];
+    const { result } = renderHook(() =>
+      useSqlGeneration('table', 'mysql', '', 'users', '', '', true, fields, [], [], 'compact'),
+    );
+    console.info('generated enum comment SQL', result.current.generatedSql);
+    expect(result.current.generatedSql).toContain(
+      "COMMENT 'Owner''s status | 枚举: active(It''s active)'",
+    );
+    expect(fields[0].comment).toBe("Owner's status");
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
     Reflect.deleteProperty(document, 'execCommand');

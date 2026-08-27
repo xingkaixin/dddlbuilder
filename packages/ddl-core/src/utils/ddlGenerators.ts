@@ -11,6 +11,7 @@ import type {
 import { formatSqlTableName } from './databaseTypeMapping';
 import { formatSqlIdentifier } from './sqlIdentifiers';
 import { DDLStrategyFactory } from '../factories/DDLStrategyFactory';
+import { resolveFieldComment } from './fieldComment';
 
 export { buildOracleSynonyms } from './tableFeatures';
 
@@ -50,7 +51,7 @@ export const buildDDL = ({
   const generatedTableDDL = strategy.generateTableDDL(
     tableName.trim(),
     tableComment,
-    fields,
+    fields.map((field) => ({ ...field, comment: resolveFieldComment(field) })),
     tableMiscConfig,
     sqlFormatMode,
   );

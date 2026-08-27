@@ -12,7 +12,6 @@ import type {
 } from '@ddlbuilder/shared-types';
 import { buildDDL, buildDCL, buildViewDDL } from '@ddlbuilder/ddl-core';
 import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
-import { mergeEnumMetaIntoComment } from '@/utils/enumCommentMerger';
 
 export interface UseSqlGenerationReturn {
   generatedSql: string;
@@ -43,11 +42,6 @@ export function useSqlGeneration(
     [schemaName, tableName, dbType],
   );
 
-  const fieldsForDdl = useMemo(
-    () => mergeEnumMetaIntoComment(normalizedFields),
-    [normalizedFields],
-  );
-
   const generatedSql = useMemo(
     () =>
       objectType === 'view'
@@ -56,7 +50,7 @@ export function useSqlGeneration(
             dbType,
             tableName: qualifiedTableName,
             tableComment,
-            fields: fieldsForDdl,
+            fields: normalizedFields,
             indexes,
             citusShardingConfig,
             mysqlPartitionConfig,
@@ -71,7 +65,7 @@ export function useSqlGeneration(
       tableComment,
       viewDefinition,
       viewCreateOrReplace,
-      fieldsForDdl,
+      normalizedFields,
       indexes,
       sqlFormatMode,
       citusShardingConfig,

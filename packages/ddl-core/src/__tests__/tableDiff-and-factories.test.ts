@@ -42,6 +42,21 @@ const createRow = (overrides: Partial<FieldRow> = {}): FieldRow => ({
 });
 
 describe('diffPersistedState', () => {
+  it('detects an enum label change as a column comment change', () => {
+    const row = createRow({
+      id: 'field-id',
+      enumMeta: [{ value: 'active', i18n: { 'en-US': 'Active' } }],
+    });
+    const before = createPersistedState({ rows: [row] });
+    const after = createPersistedState({
+      rows: [{ ...row, enumMeta: [{ value: 'active', i18n: { 'en-US': 'Enabled' } }] }],
+    });
+    const diff = diffPersistedState(before, after);
+    console.info('enum label diff', diff.fields);
+    expect(diff.hasChanges).toBe(true);
+    expect(diff.fields[0].changes).toEqual(['comment']);
+  });
+
   it('returns no changes for identical states', () => {
     const state = createPersistedState({ rows: [createRow()] });
     const diff = diffPersistedState(state, state);

@@ -12,6 +12,7 @@ import {
 
 import { buildCitusShardingDDL, buildMysqlPartitionClause } from './tableFeatures';
 import { getDatabaseFamily, supportsMysqlPartition } from './databaseFamily';
+import { resolveFieldComment } from './fieldComment';
 
 /**
  * 字段变更类型
@@ -112,7 +113,10 @@ function normalizeFieldRow(row: FieldRow): DiffField | null {
     field: {
       name,
       type: row.fieldType?.trim() || '',
-      comment: row.fieldComment?.trim() || '',
+      comment: resolveFieldComment({
+        comment: row.fieldComment?.trim() || '',
+        enumMeta: row.enumMeta,
+      }),
       nullable: normalizeFieldNullable(row.nullable),
       defaultKind: normalizeFieldDefaultKind(row.defaultKind),
       defaultValue: row.defaultValue ?? '',
