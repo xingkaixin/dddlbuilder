@@ -502,7 +502,7 @@ export const reclaimStaleAIUsage = async (
         status,
         error_code AS errorCode
       FROM usage_events
-      WHERE status IN (${placeholders}) AND created_at < ?
+      WHERE status IN (${placeholders}) AND created_at < datetime(?)
       ORDER BY created_at
       LIMIT ?
     `,

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiEnv } from '../../lib/context.js';
+import { createSqliteD1Database } from '../helpers/sqliteD1.js';
 
 const createEnv = (db: unknown): ApiEnv['Bindings'] =>
   ({ USER_DB: db as D1Database }) as ApiEnv['Bindings'];
@@ -39,6 +40,76 @@ const staleRow = (overrides: Record<string, unknown> = {}) => ({
   status: 'reserved',
   errorCode: null,
   ...overrides,
+});
+
+describe('reclaimStaleAIUsage with SQLite timestamps', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.doUnmock('../../lib/credits.js');
+  });
+
+  it.each(['2026-08-27T12:15:00.000Z', '2026-08-28T00:01:00.000Z'])(
+    'only refunds expired reservations and preserves normal settlement at %s',
+    async (timestamp) => {
+      const { reserveAIUsage, reclaimStaleAIUsage, completeAIUsage } =
+        await import('../../lib/aiUsage.js');
+      const { applyCreditMutation, getCreditAccount } = await import('../../lib/credits.js');
+      const { database, sqlite } = createSqliteD1Database({ includeMeta: true });
+      const env = createEnv(database);
+      const now = Date.parse(timestamp);
+      const ttlMs = 15 * 60 * 1000;
+
+      try {
+        sqlite
+          .prepare(
+            'INSERT INTO user (id, name, email, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+          )
+          .run('user-1', 'User', 'user@example.com', 1, 1);
+        await applyCreditMutation(env, {
+          userId: 'user-1',
+          kind: 'grant',
+          source: 'signup_bonus',
+          amount: 1000,
+          idempotencyKey: 'signup',
+        });
+        const reserve = async (requestId: string, ageMs: number) => {
+          const reservation = await reserveAIUsage(env, {
+            userId: 'user-1',
+            routeKey: 'review',
+            requestId,
+            estimatedTokens: 100,
+          });
+          sqlite
+            .prepare('UPDATE usage_events SET created_at = datetime(?) WHERE id = ?')
+            .run(new Date(now - ageMs).toISOString(), reservation.usageEventId);
+          return reservation;
+        };
+        const fresh = await reserve('fresh', 60_000);
+        const boundary = await reserve('boundary', ttlMs);
+        await reserve('stale', ttlMs + 1000);
+
+        expect(await reclaimStaleAIUsage(env, { now, ttlMs })).toEqual({
+          scanned: 1,
+          reclaimed: 1,
+        });
+        expect((await getCreditAccount(env, 'user-1'))?.balance).toBe(800);
+
+        await completeAIUsage(env, fresh, 60);
+        await completeAIUsage(env, boundary, 60);
+
+        expect((await getCreditAccount(env, 'user-1'))?.balance).toBe(880);
+        expect(
+          sqlite.prepare('SELECT request_id, status FROM usage_events ORDER BY request_id').all(),
+        ).toEqual([
+          { request_id: 'boundary', status: 'succeeded' },
+          { request_id: 'fresh', status: 'succeeded' },
+          { request_id: 'stale', status: 'failed' },
+        ]);
+      } finally {
+        sqlite.close();
+      }
+    },
+  );
 });
 
 const loadReclaim = async (
