@@ -1,7 +1,12 @@
 import { useCallback } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { WorkspaceScope, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
+import type {
+  SavedTableDraftRecord,
+  WorkspaceScope,
+  WorkspaceSelection,
+} from '@ddlbuilder/shared-types/workspace';
 import { writeWorkspaceSession } from '@/utils/workspaceStateDb';
+import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 import type { useTabLifecycle } from './useTabLifecycle';
 
 export const SHARE_COPY_SAVED_TOAST_KEY = 'ddlbuilder:share:copy-saved:v1';
@@ -12,12 +17,15 @@ interface UseSavedTableTabIntegrationParams {
   activeSource: WorkspaceSelection;
   deleteDraftById: (draftId: string) => void;
   removeSavedTableDraft: (normalizedName: string) => void;
+  persistSavedTableDraft: (normalizedName: string, record: SavedTableDraftRecord) => void;
+  selectWorkspaceSnapshot: (source: WorkspaceSelection, state: PersistedState) => void;
   buildPersistedState: () => PersistedState;
   tabs: Pick<
     ReturnType<typeof useTabLifecycle>,
-    | 'updateActiveTabTitle'
-    | 'updateActiveTabSource'
-    | 'updateActiveTabSnapshot'
+    | 'activeTabId'
+    | 'getActiveTab'
+    | 'getTabById'
+    | 'hydrateTab'
     | 'renameSavedTableTabs'
     | 'closeTabBySource'
   >;
@@ -29,13 +37,16 @@ export function useSavedTableTabIntegration({
   activeSource,
   deleteDraftById,
   removeSavedTableDraft,
+  persistSavedTableDraft,
+  selectWorkspaceSnapshot,
   buildPersistedState,
   tabs,
 }: UseSavedTableTabIntegrationParams) {
   const {
-    updateActiveTabTitle,
-    updateActiveTabSource,
-    updateActiveTabSnapshot,
+    activeTabId,
+    getActiveTab,
+    getTabById,
+    hydrateTab,
     renameSavedTableTabs,
     closeTabBySource,
   } = tabs;
@@ -69,28 +80,44 @@ export function useSavedTableTabIntegration({
         return;
       }
 
-      if (mode === 'create' && activeSource.kind === 'draft') {
-        deleteDraftById(activeSource.draftId);
-      }
-      removeSavedTableDraft(normalizedName);
-      updateActiveTabTitle(displayName);
-      updateActiveTabSource({
+      const tab = activeTabId ? getTabById(activeTabId) : undefined;
+      if (!tab) return;
+      const isActive = getActiveTab()?.id === tab.id;
+      const state = isActive ? buildPersistedState() : tab.stateSnapshot;
+      const source: WorkspaceSelection = {
         kind: 'saved_table',
         normalizedName,
         tableName: displayName,
         baseSignature,
-      });
-      updateActiveTabSnapshot(buildPersistedState());
+      };
+      if (serializePersistedStateForComparison(state) === baseSignature) {
+        removeSavedTableDraft(normalizedName);
+      } else {
+        persistSavedTableDraft(normalizedName, {
+          state,
+          tableName: displayName,
+          baseSignature,
+          updatedAt: Date.now(),
+        });
+      }
+      hydrateTab(tab.id, source, state);
+      if (isActive) selectWorkspaceSnapshot(source, state);
+      if (mode === 'create' && activeSource.kind === 'draft') {
+        deleteDraftById(activeSource.draftId);
+      }
     },
     [
       activeSource,
+      activeTabId,
       buildPersistedState,
       deleteDraftById,
       isShareView,
       removeSavedTableDraft,
-      updateActiveTabSnapshot,
-      updateActiveTabSource,
-      updateActiveTabTitle,
+      persistSavedTableDraft,
+      selectWorkspaceSnapshot,
+      getActiveTab,
+      getTabById,
+      hydrateTab,
       workspaceScope,
     ],
   );

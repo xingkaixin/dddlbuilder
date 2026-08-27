@@ -15,7 +15,6 @@ describe('useSaveLoadActions', () => {
   let saveTable: any;
   let overwriteTable: any;
   let showToast: any;
-  let setWorkspaceSnapshot: any;
   let onSaveSuccess: any;
   let onTableLoadStateChange: any;
   let buildPersistedState: any;
@@ -39,7 +38,6 @@ describe('useSaveLoadActions', () => {
     saveTable = vi.fn();
     overwriteTable = vi.fn();
     showToast = vi.fn();
-    setWorkspaceSnapshot = vi.fn();
     onSaveSuccess = vi.fn();
     onTableLoadStateChange = vi.fn();
     buildPersistedState = vi.fn().mockReturnValue({ test: 1 });
@@ -65,7 +63,6 @@ describe('useSaveLoadActions', () => {
         countTableVersions,
         createTableVersion,
         showToast,
-        setWorkspaceSnapshot,
         onSaveSuccess,
         onTableLoadStateChange,
         ...overrides,
@@ -193,7 +190,6 @@ describe('useSaveLoadActions', () => {
       source: { normalizedName: 'background', tableName: 'Background' },
       state: savedState,
     });
-    expect(setWorkspaceSnapshot).not.toHaveBeenCalled();
     expect(setLoadedTableVersion).not.toHaveBeenCalled();
   });
 
@@ -344,7 +340,6 @@ describe('useSaveLoadActions', () => {
       await result.current.handleConfirmSave();
     });
 
-    expect(setWorkspaceSnapshot).toHaveBeenCalled();
     expect(showToast).toHaveBeenCalledWith('已更新：orig_name');
     expect(saveDialog.closeDialog).toHaveBeenCalled();
     expect(onSaveSuccess).toHaveBeenCalledWith({
@@ -390,9 +385,8 @@ describe('useSaveLoadActions', () => {
       await result.current.handleConfirmSave();
     });
 
-    expect(setWorkspaceSnapshot).toHaveBeenCalled();
     expect(showToast).toHaveBeenCalledWith('已保存：new_name');
-    expect(setLoadedTableVersion).toHaveBeenCalledWith(1);
+    expect(setLoadedTableVersion).toHaveBeenCalledWith(1, 'new_norm');
     expect(saveDialog.closeDialog).toHaveBeenCalled();
     expect(onSaveSuccess).toHaveBeenCalledWith({
       normalizedName: 'new_norm',

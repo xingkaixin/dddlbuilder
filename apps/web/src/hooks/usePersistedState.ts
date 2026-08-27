@@ -76,6 +76,7 @@ export interface UsePersistedStateReturn {
   deleteDraftById: (draftId: string) => void;
   moveDraftToFolder: (draftId: string, folderId?: string) => void;
   getSavedTableDraft: (normalizedName: string) => SavedTableDraftRecord | null;
+  persistSavedTableDraft: (normalizedName: string, record: SavedTableDraftRecord) => void;
   removeSavedTableDraft: (normalizedName: string) => void;
   renameSavedTableDraft: (
     fromNormalizedName: string,
@@ -389,6 +390,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     getSavedTableDraft,
     removeSavedTableDraft,
     renameSavedTableDraft,
+    persistSavedTableDraft,
     trashedDrafts,
     restoreDraftById,
     permanentlyDeleteDraftById,

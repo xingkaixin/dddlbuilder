@@ -35,7 +35,6 @@ interface UseSaveLoadActionsParams {
   ) => Promise<unknown>;
   showToast: (message: string) => void;
   getSavedTableDraft?: (normalizedName: string) => SavedTableDraftRecord | null;
-  setWorkspaceSnapshot?: (source: WorkspaceSelection, state: PersistedState) => void;
   onSaveSuccess?: (payload: {
     normalizedName: string;
     displayName: string;
@@ -61,7 +60,6 @@ export function useSaveLoadActions({
   createTableVersion,
   showToast,
   getSavedTableDraft,
-  setWorkspaceSnapshot,
   onSaveSuccess,
   onTableLoadStateChange,
 }: UseSaveLoadActionsParams) {
@@ -134,15 +132,6 @@ export function useSaveLoadActions({
       savedNormalizedName = loadedTableNormalizedName;
       savedDisplayName = loadedTableName ?? saveName;
       saveMode = 'update';
-      setWorkspaceSnapshot?.(
-        {
-          kind: 'saved_table',
-          normalizedName: loadedTableNormalizedName,
-          tableName: loadedTableName ?? saveName,
-          baseSignature: nextSignature,
-        },
-        nextState,
-      );
       showToast(`已更新：${loadedTableName ?? saveName}`);
     } else {
       const result = await saveTable(saveName, nextState);
@@ -159,15 +148,6 @@ export function useSaveLoadActions({
       savedNormalizedName = normalizedName;
       savedDisplayName = displayName;
       saveMode = 'create';
-      setWorkspaceSnapshot?.(
-        {
-          kind: 'saved_table',
-          normalizedName,
-          tableName: displayName,
-          baseSignature: nextSignature,
-        },
-        nextState,
-      );
       showToast(`已保存：${displayName}`);
     }
     saveDialog.closeDialog();
@@ -176,23 +156,21 @@ export function useSaveLoadActions({
       if (saveMode === 'update' && savedNormalizedName) {
         await createTableVersion(savedNormalizedName, nextState);
         const versionCount = await countTableVersions(savedNormalizedName);
-        setLoadedTableVersion(versionCount > 0 ? versionCount : 1);
+        setLoadedTableVersion(versionCount > 0 ? versionCount : 1, savedNormalizedName);
       } else if (saveMode === 'create' && savedNormalizedName) {
         await createTableVersion(savedNormalizedName, nextState, INITIAL_VERSION_MESSAGE_KEY);
-        setLoadedTableVersion(1);
+        setLoadedTableVersion(1, savedNormalizedName);
       }
     } catch (versionError) {
       console.error('[saved-table] failed to create version', versionError);
     }
 
-    if (onSaveSuccess) {
-      await onSaveSuccess({
-        normalizedName: savedNormalizedName,
-        displayName: savedDisplayName,
-        baseSignature: nextSignature,
-        mode: saveMode,
-      });
-    }
+    await onSaveSuccess?.({
+      normalizedName: savedNormalizedName,
+      displayName: savedDisplayName,
+      baseSignature: nextSignature,
+      mode: saveMode,
+    });
   }, [
     canSaveCurrent,
     showToast,
@@ -201,7 +179,6 @@ export function useSaveLoadActions({
     hasLoadedTable,
     loadedTableNormalizedName,
     overwriteTable,
-    setWorkspaceSnapshot,
     loadedTableName,
     saveName,
     setLoadedTableVersion,

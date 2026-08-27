@@ -108,7 +108,6 @@ export function useSavedTableFlowActions({
     createTableVersion,
     showToast,
     getSavedTableDraft,
-    setWorkspaceSnapshot,
     onSaveSuccess,
     onTableLoadStateChange,
   });

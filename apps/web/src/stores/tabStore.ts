@@ -36,6 +36,7 @@ interface TabStoreState {
   updateActiveTabTitle: (title: string) => void;
   updateActiveTabSource: (source: WorkspaceSelection) => void;
   findTabBySource: (source: WorkspaceSource) => WorkspaceTab | undefined;
+  getTabById: (id: string) => WorkspaceTab | undefined;
   getActiveTab: () => WorkspaceTab | undefined;
   renameSavedTableTabs: (previousName: string, normalizedName: string, tableName: string) => void;
 }
@@ -79,7 +80,15 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
   hydrateTab: (id, source, stateSnapshot) => {
     set((state) => ({
       tabs: state.tabs.map((tab) =>
-        tab.id === id ? { ...tab, source, stateSnapshot, isLoading: false } : tab,
+        tab.id === id
+          ? {
+              ...tab,
+              title: source.kind === 'saved_table' ? source.tableName : tab.title,
+              source,
+              stateSnapshot,
+              isLoading: false,
+            }
+          : tab,
       ),
     }));
   },
@@ -119,6 +128,8 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
     const { tabs, activeTabId } = get();
     return tabs.find((t) => t.id === activeTabId);
   },
+
+  getTabById: (id) => get().tabs.find((tab) => tab.id === id),
 
   renameSavedTableTabs: (previousName, normalizedName, tableName) => {
     set((s) => ({

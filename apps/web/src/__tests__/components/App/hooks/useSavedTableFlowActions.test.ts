@@ -4,12 +4,6 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { useSavedTableFlowActions } from '@/components/App/hooks/useSavedTableFlowActions';
 
-vi.mock('@/utils/tableVersions', () => ({
-  createVersion: vi.fn().mockResolvedValue(undefined),
-  countVersions: vi.fn().mockResolvedValue(1),
-  INITIAL_VERSION_MESSAGE_KEY: 'initial_version',
-}));
-
 const createState = (tableName: string): PersistedState => ({
   schemaName: '',
   tableName,
@@ -47,13 +41,13 @@ const createSavedTableSummary = (name: string, normalizedName: string) => ({
 });
 
 describe('useSavedTableFlowActions', () => {
-  it('首次保存成功后应切换到 saved_table 工作区', async () => {
+  it('首次保存成功后通知发起保存的调用方', async () => {
     const state = createState('Users');
     const saveDialog = createDialog({
       name: 'Users',
     });
 
-    const setWorkspaceSnapshot = vi.fn();
+    const onSaveSuccess = vi.fn();
 
     const { result } = renderHook(() =>
       useSavedTableFlowActions({
@@ -62,7 +56,8 @@ describe('useSavedTableFlowActions', () => {
         canSaveCurrent: true,
         loadedTableSource: null,
         setLoadedTableVersion: vi.fn(),
-        setSavedTablesDrawerOpen: vi.fn(),
+        countTableVersions: vi.fn().mockResolvedValue(1),
+        createTableVersion: vi.fn().mockResolvedValue(undefined),
         saveDialog,
         renameDialog: createDialog({ name: '', target: null }),
         deleteDialog: createDialog({ target: null }),
@@ -74,7 +69,7 @@ describe('useSavedTableFlowActions', () => {
         saveTable: vi.fn().mockResolvedValue({ ok: true, normalizedName: 'users' }),
         overwriteTable: vi.fn(),
         showToast: vi.fn(),
-        setWorkspaceSnapshot,
+        onSaveSuccess,
       }),
     );
 
@@ -83,15 +78,12 @@ describe('useSavedTableFlowActions', () => {
     });
 
     const signature = JSON.stringify(state);
-    expect(setWorkspaceSnapshot).toHaveBeenCalledWith(
-      {
-        kind: 'saved_table',
-        normalizedName: 'users',
-        tableName: 'Users',
-        baseSignature: signature,
-      },
-      state,
-    );
+    expect(onSaveSuccess).toHaveBeenCalledWith({
+      normalizedName: 'users',
+      displayName: 'Users',
+      baseSignature: signature,
+      mode: 'create',
+    });
   });
 
   it('重命名成功后应迁移草稿', async () => {
@@ -110,7 +102,8 @@ describe('useSavedTableFlowActions', () => {
           baseSignature: JSON.stringify(createState('Users')),
         },
         setLoadedTableVersion: vi.fn(),
-        setSavedTablesDrawerOpen: vi.fn(),
+        countTableVersions: vi.fn().mockResolvedValue(1),
+        createTableVersion: vi.fn().mockResolvedValue(undefined),
         saveDialog: createDialog({ name: 'Users' }),
         renameDialog: createDialog({ name: 'Users New', target }),
         deleteDialog: createDialog({ target: null }),
@@ -149,7 +142,8 @@ describe('useSavedTableFlowActions', () => {
           baseSignature: JSON.stringify(createState('Users')),
         },
         setLoadedTableVersion: vi.fn(),
-        setSavedTablesDrawerOpen: vi.fn(),
+        countTableVersions: vi.fn().mockResolvedValue(1),
+        createTableVersion: vi.fn().mockResolvedValue(undefined),
         saveDialog: createDialog({ name: 'Users' }),
         renameDialog: createDialog({ name: '', target: null }),
         deleteDialog: createDialog({ target }),
@@ -190,7 +184,8 @@ describe('useSavedTableFlowActions', () => {
         canSaveCurrent: true,
         loadedTableSource: null,
         setLoadedTableVersion: vi.fn(),
-        setSavedTablesDrawerOpen: vi.fn(),
+        countTableVersions: vi.fn().mockResolvedValue(1),
+        createTableVersion: vi.fn().mockResolvedValue(undefined),
         saveDialog: createDialog({ name: 'Users' }),
         renameDialog: createDialog({ name: '', target: null }),
         deleteDialog: createDialog({ target: null }),
@@ -236,7 +231,8 @@ describe('useSavedTableFlowActions', () => {
         canSaveCurrent: true,
         loadedTableSource: null,
         setLoadedTableVersion: vi.fn(),
-        setSavedTablesDrawerOpen: vi.fn(),
+        countTableVersions: vi.fn().mockResolvedValue(1),
+        createTableVersion: vi.fn().mockResolvedValue(undefined),
         saveDialog: createDialog({ name: 'Users' }),
         renameDialog: createDialog({ name: '', target: null }),
         deleteDialog: createDialog({ target: null }),

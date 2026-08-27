@@ -124,6 +124,7 @@ export function useAppController() {
     getSavedTableDraft,
     removeSavedTableDraft,
     renameSavedTableDraft,
+    persistSavedTableDraft,
     trashedDrafts,
     restoreDraftById,
     permanentlyDeleteDraftById,
@@ -250,6 +251,8 @@ export function useAppController() {
     deleteDraftById,
     removeSavedTableDraft,
     buildPersistedState,
+    persistSavedTableDraft,
+    selectWorkspaceSnapshot,
     tabs: tabLifecycle,
   });
 

@@ -43,6 +43,7 @@ export function useTabLifecycle({
     updateActiveTabSource,
     findTabBySource,
     getActiveTab,
+    getTabById,
     renameSavedTableTabs,
   } = useTabStore.getState();
 
@@ -136,6 +137,7 @@ export function useTabLifecycle({
     hydrateTab,
     findTabBySource,
     getActiveTab,
+    getTabById,
     renameSavedTableTabs,
     updateActiveTabTitle,
     updateActiveTabSource,
