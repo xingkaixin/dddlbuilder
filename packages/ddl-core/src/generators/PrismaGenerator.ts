@@ -48,7 +48,7 @@ export class PrismaGenerator implements ORMGenerator {
       const decorations: string[] = [];
 
       if (isPk) {
-        decorations.push('@id');
+        if (primaryFields.size === 1) decorations.push('@id');
         if (isAutoInc) {
           decorations.push('@default(autoincrement())');
         }
@@ -77,6 +77,10 @@ export class PrismaGenerator implements ORMGenerator {
       const typeStr = isNullable ? `${prismaType}?` : prismaType;
       const decoStr = decorations.length > 0 ? ` ${decorations.join(' ')}` : '';
       lines.push(`  ${fieldName.padEnd(14)} ${typeStr.padEnd(10)}${decoStr}`);
+    }
+
+    if (primaryFields.size > 1) {
+      lines.push(`  @@id([${[...primaryFields].map(toCamelCase).join(', ')}])`);
     }
 
     // Composite unique indexes
