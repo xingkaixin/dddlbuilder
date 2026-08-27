@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
+import { useMemo } from 'react';
+import { usePersistedSync } from '@/components/App/hooks/usePersistedSync';
+import { useEditorStore } from '@/stores/editorStore';
+import { toPersistedState } from '@/stores/editorDocumentCodec';
 import * as Y from 'yjs';
 import { usePersistedState } from '@/hooks';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
@@ -476,6 +480,56 @@ describe('usePersistedState', () => {
     await expect(
       readDraft('default', { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' }),
     ).resolves.toBeNull();
+  });
+
+  it('编辑即时进入 YDoc，随后到达的远端无冲突修改不覆盖本地输入', async () => {
+    const doc = new Y.Doc();
+    const remote = new Y.Doc();
+    const base = createState('users');
+    upsertDraftInYDoc(doc, 'default', { state: base, updatedAt: 1 });
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+    mockSignedInWorkspaceYDoc(doc);
+    useEditorStore.getState().replaceDocument(base);
+    const getCurrentState = () => toPersistedState(useEditorStore.getState());
+    const { wrapper } = createQueryClientWrapper();
+    const { result, unmount } = renderHook(
+      () => {
+        const persistence = usePersistedState();
+        const editor = useEditorStore();
+        const currentState = useMemo(() => toPersistedState(editor), [editor]);
+        usePersistedSync({
+          hydrated: persistence.hydrated,
+          hasOpenTab: true,
+          persistedState: persistence.persistedState,
+          activeSource: persistence.activeSource,
+          saveState: persistence.saveState,
+          currentState,
+          getCurrentState,
+          applyPersistedState: editor.replaceDocument,
+        });
+        return persistence;
+      },
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+
+    await act(async () => useEditorStore.getState().setTableComment('local edit'));
+    expect(getDraftRecordFromYDoc(doc, 'default')?.state.tableComment).toBe('local edit');
+    await act(async () => {
+      upsertDraftInYDoc(remote, 'default', {
+        state: { ...base, schemaName: 'remote_schema' },
+        updatedAt: 2,
+      });
+      Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote), 'remote');
+    });
+    expect(useEditorStore.getState()).toMatchObject({
+      tableComment: 'local edit',
+      schemaName: 'remote_schema',
+    });
+    unmount();
+    doc.destroy();
+    remote.destroy();
+    useEditorStore.getState().resetDocument();
   });
 
   it('本地 YDoc 保存回声应保留当前编辑态入口', async () => {

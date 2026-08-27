@@ -87,15 +87,11 @@ describe('usePersistedSync', () => {
     expect(applyPersistedState).not.toHaveBeenCalled();
   });
 
-  it('在 500ms 后保存当前编辑态', () => {
+  it('立即保存当前编辑态，不等待网络批量发送', () => {
     const saveState = vi.fn();
     const currentState = createState('users');
     renderHook(() => usePersistedSync(createBaseParams({ currentState, saveState })));
 
-    act(() => vi.advanceTimersByTime(499));
-    expect(saveState).not.toHaveBeenCalled();
-
-    act(() => vi.advanceTimersByTime(1));
     expect(saveState).toHaveBeenCalledOnce();
     expect(saveState).toHaveBeenCalledWith({
       state: currentState,
@@ -103,7 +99,7 @@ describe('usePersistedSync', () => {
     });
   });
 
-  it('编辑态变化时重置防抖并只保存最终值', () => {
+  it('立即保存每次编辑且跳过内容相同的重渲染', () => {
     const saveState = vi.fn();
     const firstState = createState('first');
     const secondState = createState('second');
@@ -111,28 +107,15 @@ describe('usePersistedSync', () => {
       initialProps: createBaseParams({ currentState: firstState, saveState }),
     });
 
-    act(() => vi.advanceTimersByTime(300));
-    rerender(createBaseParams({ currentState: secondState, saveState }));
-    act(() => vi.advanceTimersByTime(499));
-    expect(saveState).not.toHaveBeenCalled();
-
-    act(() => vi.advanceTimersByTime(1));
-    expect(saveState).toHaveBeenCalledOnce();
     expect(saveState).toHaveBeenCalledWith({
-      state: secondState,
+      state: firstState,
       source: { kind: 'draft', draftId: 'default' },
     });
-  });
-
-  it('恢复在线时立即保存当前编辑态', () => {
-    const saveState = vi.fn();
-    const currentState = createState('online_flush');
-    renderHook(() => usePersistedSync(createBaseParams({ currentState, saveState })));
-
-    act(() => window.dispatchEvent(new Event('online')));
-
+    rerender(createBaseParams({ currentState: secondState, saveState }));
+    rerender(createBaseParams({ currentState: { ...secondState }, saveState }));
+    expect(saveState).toHaveBeenCalledTimes(2);
     expect(saveState).toHaveBeenCalledWith({
-      state: currentState,
+      state: secondState,
       source: { kind: 'draft', draftId: 'default' },
     });
   });
@@ -159,13 +142,15 @@ describe('usePersistedSync', () => {
     });
   });
 
-  it('离线编辑时立即保存最终值且不重复防抖保存', () => {
+  it('离线编辑采用相同的即时保存路径', () => {
     const onlineSpy = vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(true);
     const saveState = vi.fn();
     const { rerender } = renderHook((params: PersistedSyncParams) => usePersistedSync(params), {
       initialProps: createBaseParams({ currentState: createState('first'), saveState }),
     });
 
+    saveState.mockClear();
+    onlineSpy.mockReturnValue(false);
     act(() => window.dispatchEvent(new Event('offline')));
     rerender(createBaseParams({ currentState: createState('second'), saveState }));
 

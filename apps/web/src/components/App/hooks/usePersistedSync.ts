@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSavePayload, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
-import { useDebouncedEffect } from '@/hooks/useDebouncedEffect';
 import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
-
-const PERSIST_DEBOUNCE_MS = 500;
 
 interface UsePersistedSyncParams {
   hydrated: boolean;
@@ -27,7 +24,6 @@ export function usePersistedSync({
   getCurrentState,
   applyPersistedState,
 }: UsePersistedSyncParams) {
-  const browserOfflineRef = useRef(typeof navigator !== 'undefined' ? !navigator.onLine : false);
   const pendingAppliedStateRef = useRef<{ sourceId: string; signature: string } | null>(null);
   const lastSavedKeyRef = useRef<string | null>(null);
   const currentSignature = useMemo(
@@ -58,7 +54,7 @@ export function usePersistedSync({
     lastSavedKeyRef.current = latestSaveKey;
   }, [activeSource, getCurrentState, hasOpenTab, hydrated, saveState, sourceId, sourceVersion]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!hydrated || !hasOpenTab || !persistedState) return;
     pendingAppliedStateRef.current = {
       sourceId,
@@ -67,53 +63,29 @@ export function usePersistedSync({
     applyPersistedState(persistedState);
   }, [applyPersistedState, hasOpenTab, hydrated, persistedState, sourceId]);
 
-  useEffect(() => {
-    const pendingAppliedState = pendingAppliedStateRef.current;
-    if (!pendingAppliedState) return;
-    if (pendingAppliedState.sourceId !== sourceId) {
-      pendingAppliedStateRef.current = null;
-      return;
-    }
-    if (pendingAppliedState.signature !== currentSignature) return;
-    pendingAppliedStateRef.current = null;
-    lastSavedKeyRef.current = currentSaveKey;
-  }, [currentSaveKey, currentSignature, sourceId]);
-
   useLayoutEffect(() => {
-    if (browserOfflineRef.current || (typeof navigator !== 'undefined' && !navigator.onLine)) {
-      saveCurrentState();
+    const pendingAppliedState = pendingAppliedStateRef.current;
+    if (pendingAppliedState) {
+      if (pendingAppliedState.sourceId !== sourceId) {
+        pendingAppliedStateRef.current = null;
+      } else if (pendingAppliedState.signature === currentSignature) {
+        pendingAppliedStateRef.current = null;
+        lastSavedKeyRef.current = currentSaveKey;
+      }
     }
-  }, [currentSaveKey, saveCurrentState]);
-
-  useDebouncedEffect(
-    () => {
-      saveCurrentState();
-    },
-    [hydrated, hasOpenTab, currentSaveKey, saveState, saveCurrentState],
-    PERSIST_DEBOUNCE_MS,
-  );
+    saveCurrentState();
+  });
 
   useEffect(() => {
-    const handleOnline = () => {
-      saveCurrentState();
-      browserOfflineRef.current = false;
-    };
-    const handleOffline = () => {
-      browserOfflineRef.current = true;
-    };
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         saveCurrentState();
       }
     };
-    window.addEventListener('online', handleOnline, { capture: true });
-    window.addEventListener('offline', handleOffline);
     window.addEventListener('blur', saveCurrentState);
     window.addEventListener('pagehide', saveCurrentState);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
-      window.removeEventListener('online', handleOnline, true);
-      window.removeEventListener('offline', handleOffline);
       window.removeEventListener('blur', saveCurrentState);
       window.removeEventListener('pagehide', saveCurrentState);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
