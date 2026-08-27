@@ -16,6 +16,7 @@ import {
 } from './tableStatements';
 import { buildQualifiedTableName, getSchemaAndTable } from '../databaseTypeMapping';
 import { getDatabaseFamily } from '../databaseFamily';
+import { getSqlServerColumnChangeNotice } from './sqlServerColumnStatements';
 
 const MANUAL_CHANGE_DESCRIPTIONS: Record<ManualSchemaChange, string> = {
   objectType: 'schema object type',
@@ -76,6 +77,13 @@ export function generateAlterDDL(
       .map((change) => MANUAL_CHANGE_DESCRIPTIONS[change])
       .join(', ');
     return `-- Manual migration required: ${reasons} changed from ${oldTableName} to ${activeTableName} (${dbType}). No automatic changes generated.`;
+  }
+
+  if (dbType === 'sqlserver') {
+    for (const field of diff.fields) {
+      const notice = getSqlServerColumnChangeNotice(field);
+      if (notice) return notice;
+    }
   }
 
   const renames = orderFieldRenames(diff.fields, dbType);

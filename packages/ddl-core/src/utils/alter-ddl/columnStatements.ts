@@ -10,6 +10,10 @@ import { formatSqlIdentifier, unquoteSqlIdentifier } from '../sqlIdentifiers';
 import { buildDefaultClause } from './defaultClause';
 import { buildColumnComment } from '../../strategies/dialectComments';
 import { getDatabaseFamily } from '../databaseFamily';
+import {
+  generateSqlServerDropDefault,
+  generateSqlServerModifyColumn,
+} from './sqlServerColumnStatements';
 
 export function generateTableCommentAlter(
   tableName: string,
@@ -48,24 +52,13 @@ export function generateDropColumn(
   tableName = formatSqlTableName(tableName, dbType);
   const fieldName = formatSqlIdentifier(fieldDiff.fieldName, dbType);
 
-  switch (dbType) {
-    case 'mysql':
-    case 'mariadb':
-    case 'tidb':
-    case 'oceanbase':
-      return `ALTER TABLE ${tableName} DROP COLUMN ${fieldName};`;
-    case 'postgresql':
-    case 'postgresql-citus':
-      return `ALTER TABLE ${tableName} DROP COLUMN ${fieldName};`;
-    case 'sqlserver':
-      return `ALTER TABLE ${tableName} DROP COLUMN ${fieldName};`;
-    case 'oracle':
-    case 'oceanbase-oracle':
-    case 'dm':
-      return `ALTER TABLE ${tableName} DROP COLUMN ${fieldName};`;
-    default:
-      return `ALTER TABLE ${tableName} DROP COLUMN ${fieldName};`;
-  }
+  const defaultSql =
+    dbType === 'sqlserver' && fieldDiff.oldField && buildDefaultClause(fieldDiff.oldField, dbType)
+      ? generateSqlServerDropDefault(tableName, fieldDiff.fieldName)
+      : '';
+  return [defaultSql, `ALTER TABLE ${tableName} DROP COLUMN ${fieldName};`]
+    .filter(Boolean)
+    .join('\n');
 }
 
 export function generateRenameColumn(
@@ -140,6 +133,7 @@ export function generateModifyColumn(
   }
   const field = fieldDiff.newField;
   tableName = formatSqlTableName(tableName, dbType);
+  if (dbType === 'sqlserver') return generateSqlServerModifyColumn(tableName, fieldDiff);
   const fieldName = formatSqlIdentifier(field.name, dbType);
   const columnDef = buildColumnDefinition(field, dbType);
   const family = getDatabaseFamily(dbType);
@@ -150,11 +144,7 @@ export function generateModifyColumn(
   if (comment && fieldDiff.changes?.every((change) => change === 'comment')) return comment;
   const column = `${fieldName} ${columnDef}`;
   const clause =
-    family === 'oracle' || dbType === 'dm'
-      ? `MODIFY (${column})`
-      : dbType === 'sqlserver'
-        ? `ALTER COLUMN ${column}`
-        : `MODIFY COLUMN ${column}`;
+    family === 'oracle' || dbType === 'dm' ? `MODIFY (${column})` : `MODIFY COLUMN ${column}`;
   return [`ALTER TABLE ${tableName} ${clause};`, comment].filter(Boolean).join('\n');
 }
 
