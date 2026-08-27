@@ -1,3 +1,4 @@
+import { renameEditorField } from '@/__tests__/utils/editorFields';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useEditorStore } from '@/stores';
 
@@ -48,7 +49,7 @@ describe('shardingStore', () => {
       mode: 'distributed',
       distributionColumn: 'tenant_id',
     });
-    state.syncShardingFieldRename('tenant_id', 'org_id');
+    renameEditorField('tenant_id', 'org_id');
 
     const current = useEditorStore.getState();
     expect(current.citusShardingConfig).toEqual({

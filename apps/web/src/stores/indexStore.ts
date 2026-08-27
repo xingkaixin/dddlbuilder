@@ -1,6 +1,5 @@
 import { createEntityId, type IndexDefinition } from '@ddlbuilder/shared-types';
 import { buildPrimaryKeyName } from '@ddlbuilder/ddl-core';
-import { isSameIdentifierToken, replaceIdentifierToken } from '@/utils/fieldRenameUtils';
 import {
   buildIndexName,
   getIdentifierNameMaxLength as getIndexNameMaxLength,
@@ -122,44 +121,6 @@ export const createIndexSlice = (set: EditorSetState, get: EditorGetState): Inde
             }
           : index,
       ),
-    }));
-  },
-
-  syncIndexFieldRename: (oldFieldName, newFieldName, dbType) => {
-    if (!oldFieldName || !newFieldName || oldFieldName === newFieldName) {
-      return;
-    }
-
-    const indexNameMaxLength = getIndexNameMaxLength(dbType);
-
-    set((state) => ({
-      currentIndexFields: state.currentIndexFields.map((field) =>
-        isSameIdentifierToken(field.name, oldFieldName) ? { ...field, name: newFieldName } : field,
-      ),
-      indexes: state.indexes.map((index) => {
-        const fieldsChanged = index.fields.some((field) =>
-          isSameIdentifierToken(field.name, oldFieldName),
-        );
-
-        if (!fieldsChanged) {
-          return index;
-        }
-
-        const nextNameRaw = replaceIdentifierToken(index.name, oldFieldName, newFieldName);
-
-        return {
-          ...index,
-          fields: index.fields.map((field) =>
-            isSameIdentifierToken(field.name, oldFieldName)
-              ? { ...field, name: newFieldName }
-              : field,
-          ),
-          name:
-            nextNameRaw === index.name
-              ? index.name
-              : truncateIndexName(nextNameRaw, indexNameMaxLength),
-        };
-      }),
     }));
   },
 

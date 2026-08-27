@@ -21,7 +21,6 @@ import { useFieldTypeChangeGuard } from './table/useFieldTypeChangeGuard';
 import { DangerousChangeDialog } from './table/DangerousChangeDialog';
 import { useSortableFieldRows } from './table/useSortableFieldRows';
 import { useTranslation } from 'react-i18next';
-import { supportsMysqlPartition } from '@ddlbuilder/ddl-core';
 import type { AICommentMode } from '@ddlbuilder/shared-types';
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 
@@ -213,10 +212,6 @@ export const DataTable = memo<DataTableProps>(
     const onFreezeEnabledChange = useEditorStore((state) => state.setFieldTableFreezeEnabled);
     const freezeColumns = useEditorStore((state) => state.fieldTableFreezeColumns);
     const onFreezeColumnsChange = useEditorStore((state) => state.setFieldTableFreezeColumns);
-    const syncIndexFieldRename = useEditorStore((state) => state.syncIndexFieldRename);
-    const syncPartitionFieldRename = useEditorStore((state) => state.syncPartitionFieldRename);
-    const syncShardingFieldRename = useEditorStore((state) => state.syncShardingFieldRename);
-    const syncForeignKeyFieldRename = useEditorStore((state) => state.syncForeignKeyFieldRename);
 
     const duplicateNameSet = useMemo(() => buildDuplicateNameSet(rows), [rows]);
     const tableRef = useRef<HTMLDivElement>(null);
@@ -246,38 +241,7 @@ export const DataTable = memo<DataTableProps>(
       'onUpdate',
     ] as const;
 
-    const syncFieldRenameDependencies = useCallback(
-      (oldFieldName: string, newFieldName: string) => {
-        if (!oldFieldName || !newFieldName || oldFieldName === newFieldName) {
-          return;
-        }
-
-        syncIndexFieldRename(oldFieldName, newFieldName, dbType);
-
-        if (supportsMysqlPartition(dbType)) {
-          syncPartitionFieldRename(oldFieldName, newFieldName);
-        }
-
-        if (dbType === 'postgresql-citus') {
-          syncShardingFieldRename(oldFieldName, newFieldName);
-        }
-
-        syncForeignKeyFieldRename(oldFieldName, newFieldName);
-      },
-      [
-        dbType,
-        syncIndexFieldRename,
-        syncPartitionFieldRename,
-        syncShardingFieldRename,
-        syncForeignKeyFieldRename,
-      ],
-    );
-
-    const { updateCellValue } = useFieldRowMutations({
-      rows,
-      setRows,
-      onFieldRename: syncFieldRenameDependencies,
-    });
+    const { updateCellValue } = useFieldRowMutations({ setRows });
 
     const { guardedUpdateCellValue, pendingChange, handleConfirm, handleCancel } =
       useFieldTypeChangeGuard(rows, updateCellValue);
@@ -335,7 +299,6 @@ export const DataTable = memo<DataTableProps>(
       setRows,
       selectedCell,
       editableColumnKeys,
-      syncFieldRenameDependencies,
       clearSelection,
     });
 

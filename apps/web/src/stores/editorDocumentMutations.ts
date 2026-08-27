@@ -1,6 +1,87 @@
 import type { FieldRow, PersistedState } from '@ddlbuilder/shared-types';
 import { createEmptyRow } from '@/utils/helpers';
-import { containsSqlIdentifierToken, isSameIdentifierToken } from '@/utils/fieldRenameUtils';
+import {
+  containsSqlIdentifierToken,
+  isSameIdentifierToken,
+  replaceIdentifierTokens,
+} from '@/utils/fieldRenameUtils';
+import { getIdentifierNameMaxLength, truncateIdentifierName } from '@ddlbuilder/ddl-core';
+
+export function updateDocumentFields(state: PersistedState, rows: FieldRow[]): PersistedState {
+  const previousNames = new Map(state.rows.map((row) => [row.id, row.fieldName.trim()]));
+  const renames = new Map<string, string>();
+  for (const row of rows) {
+    if (!row.id) continue;
+    const oldName = previousNames.get(row.id);
+    const newName = row.fieldName.trim();
+    if (oldName && newName && oldName !== newName) renames.set(oldName.toLowerCase(), newName);
+  }
+  if (renames.size === 0) return { ...state, rows };
+
+  const rename = (name: string) => renames.get(name.toLowerCase()) ?? name;
+  const renameIndexField = <T extends { name: string }>(field: T): T => {
+    const name = rename(field.name);
+    return name === field.name ? field : { ...field, name };
+  };
+  const tableMiscConfig = state.tableMiscConfig;
+  const partitions = tableMiscConfig?.partitions;
+  const clustering = partitions?.clustering;
+  return {
+    ...state,
+    rows,
+    currentIndexFields: state.currentIndexFields.map(renameIndexField),
+    indexes: state.indexes.map((index) => {
+      const indexRenames = new Map(
+        index.fields
+          .filter((field) => renames.has(field.name.toLowerCase()))
+          .map((field) => [field.name.toLowerCase(), rename(field.name)]),
+      );
+      if (indexRenames.size === 0) return index;
+      const name = replaceIdentifierTokens(index.name, indexRenames);
+      return {
+        ...index,
+        name:
+          name === index.name
+            ? name
+            : truncateIdentifierName(name, getIdentifierNameMaxLength(state.dbType)),
+        fields: index.fields.map(renameIndexField),
+      };
+    }),
+    foreignKeys: state.foreignKeys?.map((foreignKey) => ({
+      ...foreignKey,
+      fields: foreignKey.fields.map(rename),
+    })),
+    mysqlPartitionConfig: state.mysqlPartitionConfig
+      ? {
+          ...state.mysqlPartitionConfig,
+          columns: state.mysqlPartitionConfig.columns.map((column) =>
+            replaceIdentifierTokens(column, renames, 'sql'),
+          ),
+          expression: state.mysqlPartitionConfig.expression
+            ? replaceIdentifierTokens(state.mysqlPartitionConfig.expression, renames, 'sql')
+            : undefined,
+        }
+      : undefined,
+    citusShardingConfig: state.citusShardingConfig
+      ? {
+          ...state.citusShardingConfig,
+          distributionColumn: state.citusShardingConfig.distributionColumn
+            ? rename(state.citusShardingConfig.distributionColumn)
+            : undefined,
+        }
+      : undefined,
+    tableMiscConfig:
+      tableMiscConfig && partitions && clustering
+        ? {
+            ...tableMiscConfig,
+            partitions: {
+              ...partitions,
+              clustering: { ...clustering, columns: clustering.columns.map(rename) },
+            },
+          }
+        : tableMiscConfig,
+  };
+}
 
 const matchesRemovedField = (fieldName: string, removedFieldNames: string[]) =>
   removedFieldNames.some((removedName) => isSameIdentifierToken(fieldName, removedName));

@@ -31,22 +31,6 @@ export const createForeignKeySlice = (set: EditorSetState): ForeignKeySlice => (
     }));
   },
 
-  syncForeignKeyFieldRename: (oldFieldName, newFieldName) => {
-    if (!oldFieldName || !newFieldName || oldFieldName === newFieldName) {
-      return;
-    }
-    set((state) => ({
-      foreignKeys: state.foreignKeys.map((fk) => {
-        const fieldsChanged = fk.fields.some((f) => f === oldFieldName);
-        if (!fieldsChanged) return fk;
-        return {
-          ...fk,
-          fields: fk.fields.map((f) => (f === oldFieldName ? newFieldName : f)),
-        };
-      }),
-    }));
-  },
-
   resetForeignKeyState: () => {
     set({ foreignKeys: [] });
   },

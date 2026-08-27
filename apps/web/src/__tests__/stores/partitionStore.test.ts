@@ -1,3 +1,4 @@
+import { renameEditorField } from '@/__tests__/utils/editorFields';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useEditorStore } from '@/stores';
 
@@ -50,7 +51,7 @@ describe('partitionStore', () => {
       partitions: [],
     });
 
-    state.syncPartitionFieldRename('created_at', 'created_on');
+    renameEditorField('created_at', 'created_on');
 
     const current = useEditorStore.getState();
     expect(current.mysqlPartitionConfig.columns).toEqual(['dayofmonth(created_on)', 'tenant_id']);

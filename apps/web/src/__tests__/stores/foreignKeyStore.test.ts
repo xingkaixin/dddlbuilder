@@ -1,3 +1,4 @@
+import { renameEditorField } from '@/__tests__/utils/editorFields';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useEditorStore } from '@/stores';
 
@@ -92,7 +93,7 @@ describe('foreignKeyStore', () => {
       refTable: 'users',
       refFields: ['id', 'org_id'],
     });
-    useEditorStore.getState().syncForeignKeyFieldRename('user_id', 'account_id');
+    renameEditorField('user_id', 'account_id');
     expect(useEditorStore.getState().foreignKeys[0].fields).toEqual(['account_id', 'org_id']);
   });
 
@@ -103,7 +104,7 @@ describe('foreignKeyStore', () => {
       refTable: 'users',
       refFields: ['id'],
     });
-    useEditorStore.getState().syncForeignKeyFieldRename('user_id', 'user_id');
+    renameEditorField('user_id', 'user_id');
     expect(useEditorStore.getState().foreignKeys[0].fields).toEqual(['user_id']);
   });
 
@@ -114,7 +115,7 @@ describe('foreignKeyStore', () => {
       refTable: 'users',
       refFields: ['id'],
     });
-    useEditorStore.getState().syncForeignKeyFieldRename('', 'account_id');
+    renameEditorField('', 'account_id');
     expect(useEditorStore.getState().foreignKeys[0].fields).toEqual(['user_id']);
   });
 
@@ -125,7 +126,7 @@ describe('foreignKeyStore', () => {
       refTable: 'users',
       refFields: ['id'],
     });
-    useEditorStore.getState().syncForeignKeyFieldRename('org_id', 'organization_id');
+    renameEditorField('org_id', 'organization_id');
     expect(useEditorStore.getState().foreignKeys[0].fields).toEqual(['user_id']);
   });
 

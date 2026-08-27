@@ -3,7 +3,6 @@ import {
   type MysqlPartitionConfig,
   type PartitionDefinition,
 } from '@ddlbuilder/shared-types';
-import { replaceIdentifierToken } from '@/utils/fieldRenameUtils';
 import type { EditorSetState, PartitionSlice } from './editorStoreTypes';
 
 export const DEFAULT_PARTITION_CONFIG: MysqlPartitionConfig = {
@@ -115,27 +114,6 @@ export const createPartitionSlice = (set: EditorSetState): PartitionSlice => ({
       mysqlPartitionConfig: {
         ...state.mysqlPartitionConfig,
         partitions,
-      },
-    }));
-  },
-  syncPartitionFieldRename: (oldFieldName, newFieldName) => {
-    if (!oldFieldName || !newFieldName || oldFieldName === newFieldName) {
-      return;
-    }
-
-    set((state) => ({
-      mysqlPartitionConfig: {
-        ...state.mysqlPartitionConfig,
-        columns: state.mysqlPartitionConfig.columns.map((column) =>
-          replaceIdentifierToken(column, oldFieldName, newFieldName),
-        ),
-        expression: state.mysqlPartitionConfig.expression
-          ? replaceIdentifierToken(
-              state.mysqlPartitionConfig.expression,
-              oldFieldName,
-              newFieldName,
-            )
-          : undefined,
       },
     }));
   },

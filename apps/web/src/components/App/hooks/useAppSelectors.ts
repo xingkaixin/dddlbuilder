@@ -37,7 +37,6 @@ export function useAppSelectors() {
     addForeignKey,
     removeForeignKey,
     updateForeignKey,
-    syncForeignKeyFieldRename,
   } = useEditorStore.getState();
 
   const state = useEditorStore(
@@ -95,6 +94,5 @@ export function useAppSelectors() {
     addForeignKey,
     removeForeignKey,
     updateForeignKey,
-    syncForeignKeyFieldRename,
   };
 }

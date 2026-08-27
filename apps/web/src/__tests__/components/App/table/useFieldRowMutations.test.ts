@@ -1,10 +1,10 @@
 import { act, renderHook } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { FieldRow } from '@ddlbuilder/shared-types';
 import { useFieldRowMutations } from '@/components/App/table/useFieldRowMutations';
 
 const createRow = (overrides: Partial<FieldRow> = {}): FieldRow => ({
-  order: 1,
+  id: 'field-id',
   fieldName: 'id',
   fieldComment: '主键',
   fieldType: 'bigint',
@@ -23,9 +23,8 @@ describe('useFieldRowMutations', () => {
     };
 
     const { result, rerender } = renderHook(
-      ({ currentRows }) =>
+      () =>
         useFieldRowMutations({
-          rows: currentRows,
           setRows,
         }),
       {
@@ -60,9 +59,8 @@ describe('useFieldRowMutations', () => {
     };
 
     const { result, rerender } = renderHook(
-      ({ currentRows }) =>
+      () =>
         useFieldRowMutations({
-          rows: currentRows,
           setRows,
         }),
       {
@@ -86,19 +84,16 @@ describe('useFieldRowMutations', () => {
     expect(rows[0].defaultValue).toBe('');
   });
 
-  it('应该在字段名变更时触发依赖回调', () => {
+  it('应该通过行更新提交字段名变更', () => {
     let rows: FieldRow[] = [createRow({ fieldName: 'user_id' })];
     const setRows = (next: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => {
       rows = typeof next === 'function' ? next(rows) : next;
     };
-    const onFieldRename = vi.fn();
 
     const { result, rerender } = renderHook(
-      ({ currentRows }) =>
+      () =>
         useFieldRowMutations({
-          rows: currentRows,
           setRows,
-          onFieldRename,
         }),
       {
         initialProps: { currentRows: rows },
@@ -110,8 +105,6 @@ describe('useFieldRowMutations', () => {
     });
     rerender({ currentRows: rows });
 
-    expect(onFieldRename).toHaveBeenCalledTimes(1);
-    expect(onFieldRename).toHaveBeenCalledWith('user_id', 'account_id');
     expect(rows[0].fieldName).toBe('account_id');
   });
 });

@@ -1,5 +1,4 @@
 import type { CitusShardingConfig } from '@ddlbuilder/shared-types';
-import { isSameIdentifierToken } from '@/utils/fieldRenameUtils';
 import type { EditorSetState, ShardingSlice } from './editorStoreTypes';
 
 export const DEFAULT_SHARDING_CONFIG: CitusShardingConfig = {
@@ -23,17 +22,6 @@ export const createShardingSlice = (set: EditorSetState): ShardingSlice => ({
       citusShardingConfig: {
         ...state.citusShardingConfig,
         distributionColumn: column,
-      },
-    })),
-  syncShardingFieldRename: (oldFieldName, newFieldName) =>
-    set((state) => ({
-      citusShardingConfig: {
-        ...state.citusShardingConfig,
-        distributionColumn:
-          state.citusShardingConfig.distributionColumn &&
-          isSameIdentifierToken(state.citusShardingConfig.distributionColumn, oldFieldName)
-            ? newFieldName
-            : state.citusShardingConfig.distributionColumn,
       },
     })),
   setCitusShardingConfig: (value) =>

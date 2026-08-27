@@ -1,6 +1,7 @@
 import type { FieldRow } from '@ddlbuilder/shared-types';
 import { createEmptyRow, normalizeFields, toStringSafe } from '@/utils/helpers';
 import type { EditorSetState, FieldSlice } from './editorStoreTypes';
+import { updateDocumentFields } from './editorDocumentMutations';
 
 function createInitialRows(count: number): FieldRow[] {
   return Array.from({ length: count }, () => createEmptyRow());
@@ -9,9 +10,9 @@ function createInitialRows(count: number): FieldRow[] {
 export const createFieldSlice = (set: EditorSetState): FieldSlice => ({
   rows: createInitialRows(12),
   setRows: (next) =>
-    set((state) => ({
-      rows: typeof next === 'function' ? next(state.rows) : next,
-    })),
+    set((state) =>
+      updateDocumentFields(state, typeof next === 'function' ? next(state.rows) : next),
+    ),
   resetRows: (count = 12) => {
     set({ rows: createInitialRows(Math.max(1, Math.floor(count))) });
   },

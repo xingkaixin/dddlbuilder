@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { applySchemaPatchOperations, parseSchemaPatchOperations } from '@/webmcp/schemaPatch';
+import { useEditorStore } from '@/stores';
+import { toEditorDocumentState } from '@/stores/editorDocumentCodec';
 
 const createState = (): PersistedState => ({
   objectType: 'table',
@@ -109,11 +111,29 @@ describe('WebMCP schema patch', () => {
     expect(next.rows[1].fieldName).toBe('account_id');
     expect(next.currentIndexFields[0].name).toBe('account_id');
     expect(next.indexes[0].fields[0].name).toBe('account_id');
+    expect(next.indexes[0].name).toBe('idx_orders_account_id');
     expect(next.foreignKeys?.[0].fields).toEqual(['account_id']);
     expect(next.citusShardingConfig?.distributionColumn).toBe('account_id');
     expect(next.mysqlPartitionConfig?.columns).toEqual(['account_id']);
     expect(next.mysqlPartitionConfig?.expression).toBe('YEAR(account_id)');
     expect(next.tableMiscConfig?.partitions?.clustering?.columns).toEqual(['account_id']);
+  });
+
+  it.each(['account_id', 'USER_ID'])('MCP 与编辑器对 %s 使用相同的改名规则', (fieldName) => {
+    const base = createState();
+    const expected = applySchemaPatchOperations(base, [
+      { id: 'rename', kind: 'field.update', fieldId: 'field-user', changes: { fieldName } },
+    ]);
+    useEditorStore.getState().replaceDocument(base);
+    useEditorStore
+      .getState()
+      .setRows((rows) =>
+        rows.map((row) => (row.id === 'field-user' ? { ...row, fieldName } : row)),
+      );
+    expect(toEditorDocumentState(useEditorStore.getState())).toEqual(
+      toEditorDocumentState(expected),
+    );
+    expect(expected.currentIndexFields[0].name).toBe(fieldName);
   });
 
   it('removes dependent definitions when a referenced field is deleted', () => {

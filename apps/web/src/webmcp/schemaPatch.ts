@@ -7,9 +7,8 @@ import {
   type IndexDefinition,
   type PersistedState,
 } from '@ddlbuilder/shared-types';
-import { removeFieldsFromDocument } from '@/stores/editorDocumentMutations';
+import { removeFieldsFromDocument, updateDocumentFields } from '@/stores/editorDocumentMutations';
 import { validateIndexFields } from '@/stores/editorDocumentValidation';
-import { isSameIdentifierToken, replaceIdentifierToken } from '@/utils/fieldRenameUtils';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -203,60 +202,6 @@ export function parseSchemaPatchOperations(value: unknown): SchemaPatchOperation
   });
 }
 
-const renameFieldReferences = (state: PersistedState, oldName: string, newName: string) => {
-  const rename = (name: string) => (isSameIdentifierToken(name, oldName) ? newName : name);
-  const mysqlPartitionConfig = state.mysqlPartitionConfig
-    ? {
-        ...state.mysqlPartitionConfig,
-        columns: state.mysqlPartitionConfig.columns.map(rename),
-        expression: state.mysqlPartitionConfig.expression
-          ? replaceIdentifierToken(state.mysqlPartitionConfig.expression, oldName, newName)
-          : undefined,
-      }
-    : undefined;
-  const citusShardingConfig = state.citusShardingConfig
-    ? {
-        ...state.citusShardingConfig,
-        distributionColumn: state.citusShardingConfig.distributionColumn
-          ? rename(state.citusShardingConfig.distributionColumn)
-          : undefined,
-      }
-    : undefined;
-  const clustering = state.tableMiscConfig?.partitions?.clustering;
-  const tableMiscConfig = state.tableMiscConfig
-    ? {
-        ...state.tableMiscConfig,
-        partitions: state.tableMiscConfig.partitions
-          ? {
-              ...state.tableMiscConfig.partitions,
-              clustering: clustering
-                ? { ...clustering, columns: clustering.columns.map(rename) }
-                : undefined,
-            }
-          : undefined,
-      }
-    : undefined;
-
-  return {
-    ...state,
-    currentIndexFields: state.currentIndexFields.map((field) => ({
-      ...field,
-      name: rename(field.name),
-    })),
-    indexes: state.indexes.map((index) => ({
-      ...index,
-      fields: index.fields.map((field) => ({ ...field, name: rename(field.name) })),
-    })),
-    foreignKeys: state.foreignKeys?.map((foreignKey) => ({
-      ...foreignKey,
-      fields: foreignKey.fields.map(rename),
-    })),
-    mysqlPartitionConfig,
-    citusShardingConfig,
-    tableMiscConfig,
-  };
-};
-
 const assertUniqueFieldName = (rows: FieldRow[], name: string, exceptId?: string) => {
   if (
     rows.some(
@@ -323,10 +268,7 @@ export function applySchemaPatchOperations(
         if (newName) assertUniqueFieldName(state.rows, newName, operation.fieldId);
         const rows = [...state.rows];
         rows[rowIndex] = { ...oldRow, ...operation.changes, id: oldRow.id };
-        state = { ...state, rows };
-        if (newName && !isSameIdentifierToken(oldRow.fieldName, newName)) {
-          state = renameFieldReferences(state, oldRow.fieldName, newName);
-        }
+        state = updateDocumentFields(state, rows);
         break;
       }
       case 'field.remove': {

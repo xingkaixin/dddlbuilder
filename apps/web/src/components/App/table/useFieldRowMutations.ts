@@ -4,25 +4,16 @@ import { type FieldRow, normalizeFieldNullable } from '@ddlbuilder/shared-types'
 type SetRows = (value: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => void;
 
 interface UseFieldRowMutationsParams {
-  rows: FieldRow[];
   setRows: SetRows;
-  onFieldRename?: (oldFieldName: string, newFieldName: string) => void;
 }
 
 /**
  * 字段表格通用联动逻辑：
  * - defaultKind 变化时同步清理 defaultValue/nullable
- * - 可选触发字段改名联动回调（索引/分区/分片依赖）
  */
-export function useFieldRowMutations({ rows, setRows, onFieldRename }: UseFieldRowMutationsParams) {
+export function useFieldRowMutations({ setRows }: UseFieldRowMutationsParams) {
   const updateCellValue = useCallback(
     (rowIndex: number, columnId: string, value: string | boolean) => {
-      if (columnId === 'fieldName') {
-        const oldFieldName = rows[rowIndex]?.fieldName || '';
-        const newFieldName = String(value ?? '');
-        onFieldRename?.(oldFieldName, newFieldName);
-      }
-
       setRows((prev) => {
         const newRows = [...prev];
         const row = { ...newRows[rowIndex] };
@@ -49,7 +40,7 @@ export function useFieldRowMutations({ rows, setRows, onFieldRename }: UseFieldR
         return newRows;
       });
     },
-    [rows, setRows, onFieldRename],
+    [setRows],
   );
 
   return {

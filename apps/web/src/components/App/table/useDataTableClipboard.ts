@@ -16,7 +16,6 @@ interface UseDataTableClipboardParams {
     'defaultValue',
     'onUpdate',
   ];
-  syncFieldRenameDependencies: (oldFieldName: string, newFieldName: string) => void;
   clearSelection: () => void;
 }
 
@@ -25,7 +24,6 @@ export function useDataTableClipboard({
   setRows,
   selectedCell,
   editableColumnKeys,
-  syncFieldRenameDependencies,
   clearSelection,
 }: UseDataTableClipboardParams) {
   const handlePaste = useCallback(
@@ -49,7 +47,6 @@ export function useDataTableClipboard({
       const startRow = selectedCell?.row ?? rows.length;
       const startCol = selectedCell?.col ?? 0;
 
-      const renamePairs: Array<{ oldName: string; newName: string }> = [];
       const newRows = [...rows];
 
       pastedRows.forEach((cols, rowOffset) => {
@@ -67,14 +64,6 @@ export function useDataTableClipboard({
           const key = editableColumnKeys[targetColIndex];
           const value = cellValue?.trim() || '';
 
-          if (key === 'fieldName') {
-            const oldName = row.fieldName || '';
-            const newName = value;
-            if (oldName && newName && oldName !== newName) {
-              renamePairs.push({ oldName, newName });
-            }
-          }
-
           (row as Record<string, unknown>)[key] = normalizeFieldCellValue(key, value);
         });
         newRows[targetRowIndex] = row;
@@ -82,13 +71,9 @@ export function useDataTableClipboard({
 
       setRows(newRows);
 
-      renamePairs.forEach(({ oldName, newName }) => {
-        syncFieldRenameDependencies(oldName, newName);
-      });
-
       clearSelection();
     },
-    [setRows, selectedCell, rows, editableColumnKeys, syncFieldRenameDependencies, clearSelection],
+    [setRows, selectedCell, rows, editableColumnKeys, clearSelection],
   );
 
   return { handlePaste };

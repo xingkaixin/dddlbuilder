@@ -1,3 +1,4 @@
+import { renameEditorField } from '@/__tests__/utils/editorFields';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useEditorStore } from '@/stores';
 
@@ -68,7 +69,7 @@ describe('indexStore', () => {
       },
     ]);
 
-    state.syncIndexFieldRename('name', 'nickname', 'mysql');
+    renameEditorField('name', 'nickname', 'mysql');
 
     const current = useEditorStore.getState();
     expect(current.currentIndexFields).toEqual([{ name: 'nickname', direction: 'ASC' }]);
@@ -94,7 +95,7 @@ describe('indexStore', () => {
       },
     ]);
 
-    state.syncIndexFieldRename('id', 'uuid', 'mysql');
+    renameEditorField('id', 'uuid', 'mysql');
 
     const current = useEditorStore.getState();
     expect(current.indexes[0].name).toBe('idx_video_uuid');
@@ -113,7 +114,7 @@ describe('indexStore', () => {
       },
     ]);
 
-    state.syncIndexFieldRename('name', 'nickname', 'mysql');
+    renameEditorField('name', 'nickname', 'mysql');
 
     const current = useEditorStore.getState();
     expect(current.currentIndexFields).toEqual([{ name: 'nickname', direction: 'ASC' }]);
@@ -187,11 +188,11 @@ describe('indexStore', () => {
     state.setCurrentIndexFields([{ name: 'id', direction: 'ASC' }]);
 
     // missing arg
-    state.syncIndexFieldRename('', 'new_id', 'mysql');
+    renameEditorField('', 'new_id', 'mysql');
     expect(useEditorStore.getState().currentIndexFields[0].name).toBe('id');
 
     // same arg
-    state.syncIndexFieldRename('id', 'id', 'mysql');
+    renameEditorField('id', 'id', 'mysql');
     expect(useEditorStore.getState().currentIndexFields[0].name).toBe('id');
   });
 });

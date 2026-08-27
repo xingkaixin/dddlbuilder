@@ -164,7 +164,7 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
     });
   }, [rows, duplicateNameSet, dbType, t]);
 
-  const { updateCellValue } = useFieldRowMutations({ rows, setRows });
+  const { updateCellValue } = useFieldRowMutations({ setRows });
 
   const { guardedUpdateCellValue, pendingChange, handleConfirm, handleCancel } =
     useFieldTypeChangeGuard(rows, updateCellValue);
@@ -202,7 +202,6 @@ export const TemplateFieldTable = memo<TemplateFieldTableProps>(({ rows, setRows
     setRows,
     selectedCell,
     editableColumnKeys,
-    syncFieldRenameDependencies: () => {},
     clearSelection,
   });
 

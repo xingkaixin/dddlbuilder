@@ -74,7 +74,6 @@ export interface IndexSlice {
   addIndex: (unique: boolean, isPrimary: boolean, tableName: string, dbType: DatabaseType) => void;
   removeIndex: (id: string) => void;
   updateIndexName: (id: string, newName: string, dbType: DatabaseType) => void;
-  syncIndexFieldRename: (oldName: string, newName: string, dbType: DatabaseType) => void;
   resetIndexState: () => void;
 }
 
@@ -84,7 +83,6 @@ export interface ForeignKeySlice {
   addForeignKey: (foreignKey: Omit<ForeignKeyDefinition, 'id'>) => void;
   removeForeignKey: (id: string) => void;
   updateForeignKey: (id: string, updates: Partial<Omit<ForeignKeyDefinition, 'id'>>) => void;
-  syncForeignKeyFieldRename: (oldName: string, newName: string) => void;
   resetForeignKeyState: () => void;
 }
 
@@ -102,7 +100,6 @@ export interface ShardingSlice {
   citusShardingConfig: CitusShardingConfig;
   setCitusMode: (value: CitusTableMode) => void;
   setDistributionColumn: (value: string | undefined) => void;
-  syncShardingFieldRename: (oldName: string, newName: string) => void;
   setCitusShardingConfig: (value: Setter<CitusShardingConfig>) => void;
   resetCitusSharding: () => void;
 }
@@ -118,7 +115,6 @@ export interface PartitionSlice {
   removePartition: (name: string) => void;
   updatePartition: (name: string, value: PartitionDefinition) => void;
   generateRangePartitions: (preset: 'year' | 'month' | 'day') => void;
-  syncPartitionFieldRename: (oldName: string, newName: string) => void;
   setMysqlPartitionConfig: (value: Setter<MysqlPartitionConfig>) => void;
   resetPartition: () => void;
 }
