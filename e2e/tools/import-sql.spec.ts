@@ -89,4 +89,62 @@ test.describe('SQL 导入功能验证 @tools', () => {
     await expect(output).not.toContainText('DROP COLUMN');
     await expect(output).not.toContainText('ADD COLUMN');
   });
+
+  test('场景：导入索引名在增删索引和重命名表后保持不变', async ({ page }) => {
+    await page.route('**/api/parse-sql', (route) =>
+      route.fulfill({
+        json: {
+          result: {
+            tableName: 'import_test',
+            tableComment: '',
+            authObjects: [],
+            foreignKeys: [],
+            fields: [
+              { name: 'id', type: 'INT', comment: '', nullable: true },
+              { name: 'name', type: 'VARCHAR(50)', comment: '', nullable: true },
+            ],
+            indexes: [
+              {
+                id: 'custom-index',
+                name: 'customer_lookup',
+                fields: [{ name: 'name', direction: 'ASC' }],
+                unique: false,
+                isPrimary: false,
+              },
+            ],
+          },
+        },
+      }),
+    );
+    await page.getByRole('button', { name: /导入结构/i }).click();
+    await page
+      .locator('#sql-content')
+      .fill(
+        'CREATE TABLE import_test (id INT, name VARCHAR(50)); CREATE INDEX customer_lookup ON import_test(name);',
+      );
+    await page.getByRole('button', { name: /下一步/i }).click();
+    await page.getByRole('button', { name: /下一步/i }).click();
+    await page.getByRole('button', { name: /确认导入/i }).click();
+    await expect(page.locator('#sql-content')).toBeHidden();
+    await page.getByRole('tab', { name: /索引配置/ }).click();
+    await page.getByRole('button', { name: '添加索引', exact: true }).click();
+    const input = page.getByPlaceholder(/输入字段名进行匹配/);
+    await input.fill('id');
+    await expect(page.locator('[role="listbox"] [role="option"]').first()).toBeVisible();
+    await input.press('ArrowDown');
+    await input.press('Enter');
+    await page.getByRole('button', { name: '保存索引', exact: true }).click();
+    await expect(page.getByText('customer_lookup', { exact: true }).first()).toBeVisible();
+    await page.locator('#table-name').fill('renamed_table');
+    await expect(page.getByText('customer_lookup', { exact: true }).first()).toBeVisible();
+    const card = page
+      .getByText('idx_import_test_id', { exact: true })
+      .first()
+      .locator('xpath=ancestor::div[@role="button"]');
+    await card.hover();
+    await card.getByRole('button', { name: /删除索引/ }).click();
+    const sql = page.locator('[role="tabpanel"]:visible pre');
+    await expect(sql).toContainText('CREATE INDEX customer_lookup ON renamed_table');
+    await expect(sql).not.toContainText('idx_import_test_id');
+  });
 });

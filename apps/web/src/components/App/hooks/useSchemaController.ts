@@ -62,7 +62,6 @@ export function useSchemaController({
     indexInput,
     currentIndexFields,
     indexes,
-    updateIndexNames,
     setIndexes,
     foreignKeys,
     fieldTableFreezeEnabled,
@@ -102,7 +101,6 @@ export function useSchemaController({
     fieldTableFreezeColumns,
     loadedTableNormalizedName,
     loadedTableSignature,
-    updateIndexNames,
   });
   const loadedPresentation = useLoadedTablePresentation({
     hydrated,

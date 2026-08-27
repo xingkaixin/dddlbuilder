@@ -8,6 +8,7 @@ import {
   type MysqlPartitionConfig,
 } from '@ddlbuilder/shared-types';
 import { createEmptyRow } from './helpers';
+import { fillMissingIndexNames } from './indexUtils';
 import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 
 const DEFAULT_TABLE_MISC_CONFIG: TableMiscConfig = {
@@ -63,7 +64,7 @@ export function convertParsedResultToPersistedState(
     addCount: 10,
     indexInput: '',
     currentIndexFields: [],
-    indexes: result.indexes,
+    indexes: fillMissingIndexNames(result.indexes, parsedName.table, importDbType),
     authInput: '',
     authObjects: result.authObjects,
     mysqlPartitionConfig: supportsMysqlPartition(importDbType)

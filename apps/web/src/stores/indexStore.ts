@@ -125,34 +125,6 @@ export const createIndexSlice = (set: EditorSetState, get: EditorGetState): Inde
     }));
   },
 
-  updateIndexNames: (tableName, dbType) => {
-    if (!tableName) return;
-
-    const indexNameMaxLength = getIndexNameMaxLength(dbType);
-
-    set((state) => ({
-      indexes: state.indexes.map((index) => {
-        if (index.isPrimary) {
-          return {
-            ...index,
-            name: buildPrimaryKeyName(tableName, indexNameMaxLength),
-          };
-        }
-
-        const prefix = index.unique ? 'uk' : 'idx';
-        return {
-          ...index,
-          name: buildIndexName(
-            prefix,
-            tableName,
-            index.fields.map((field) => field.name),
-            indexNameMaxLength,
-          ),
-        };
-      }),
-    }));
-  },
-
   syncIndexFieldRename: (oldFieldName, newFieldName, dbType) => {
     if (!oldFieldName || !newFieldName || oldFieldName === newFieldName) {
       return;

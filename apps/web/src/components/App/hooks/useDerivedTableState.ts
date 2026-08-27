@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import type {
   PersistedState,
   FieldRow,
@@ -49,8 +49,6 @@ interface UseDerivedTableStateDeps {
   // 加载状态
   loadedTableNormalizedName: string | null;
   loadedTableSignature: string | null;
-  // Index 更新
-  updateIndexNames: (tableName: string, dbType: DatabaseType) => void;
 }
 
 /**
@@ -82,7 +80,6 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     fieldTableFreezeColumns,
     loadedTableNormalizedName,
     loadedTableSignature,
-    updateIndexNames,
   } = deps;
 
   // --- 字段派生 ---
@@ -94,12 +91,6 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
   );
 
   const filledRowCount = useMemo(() => rows.filter((row) => row.fieldName?.trim()).length, [rows]);
-
-  useEffect(() => {
-    if (indexes.length > 0 && tableName) {
-      updateIndexNames(tableName, dbType);
-    }
-  }, [tableName, dbType, indexes.length, updateIndexNames]);
 
   // --- Tab 计算 ---
   const canPartitionMysqlTable = supportsMysqlPartition(dbType);

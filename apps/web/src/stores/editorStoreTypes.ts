@@ -74,7 +74,6 @@ export interface IndexSlice {
   addIndex: (unique: boolean, isPrimary: boolean, tableName: string, dbType: DatabaseType) => void;
   removeIndex: (id: string) => void;
   updateIndexName: (id: string, newName: string, dbType: DatabaseType) => void;
-  updateIndexNames: (tableName: string, dbType: DatabaseType) => void;
   syncIndexFieldRename: (oldName: string, newName: string, dbType: DatabaseType) => void;
   resetIndexState: () => void;
 }

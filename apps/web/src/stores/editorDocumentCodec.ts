@@ -6,7 +6,7 @@ import {
   normalizeTableMiscConfigNumbers,
   type PersistedState,
 } from '@ddlbuilder/shared-types';
-import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
+import { fillMissingIndexNames, sanitizeIndexesForPersist } from '@/utils/indexUtils';
 import type { EditorStoreState } from './editorStoreTypes';
 import { DEFAULT_PARTITION_CONFIG } from './partitionStore';
 import { DEFAULT_SHARDING_CONFIG } from './shardingStore';
@@ -55,7 +55,7 @@ export const toEditorDocumentState = (state: PersistedState): EditorDocumentStat
     rows: state.rows,
     indexInput: state.indexInput ?? '',
     currentIndexFields: state.currentIndexFields ?? [],
-    indexes: state.indexes ?? [],
+    indexes: fillMissingIndexNames(state.indexes ?? [], state.tableName, state.dbType),
     authInput: state.authInput ?? '',
     authObjects: state.authObjects ?? [],
     citusShardingConfig: state.citusShardingConfig ?? DEFAULT_SHARDING_CONFIG,

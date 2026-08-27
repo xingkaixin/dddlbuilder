@@ -28,7 +28,7 @@ export function useAppSelectors() {
 
   const { setRows, resetRows: resetTableRows } = useEditorStore.getState();
 
-  const { setIndexInput, setCurrentIndexFields, updateIndexNames, resetIndexState, setIndexes } =
+  const { setIndexInput, setCurrentIndexFields, resetIndexState, setIndexes } =
     useEditorStore.getState();
 
   const {
@@ -87,7 +87,6 @@ export function useAppSelectors() {
     // Index store
     setIndexInput,
     setCurrentIndexFields,
-    updateIndexNames,
     resetIndexState,
     setIndexes,
     // ForeignKey store

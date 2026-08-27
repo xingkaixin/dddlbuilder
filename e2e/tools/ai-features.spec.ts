@@ -204,7 +204,7 @@ test('AI 修改拒绝缺失字段的索引，补选字段后允许应用', async
           ],
           indexes: [
             {
-              name: 'idx_HYDRATION_CHECK_email',
+              name: 'email_lookup',
               unique: false,
               fields: [{ name: 'email', direction: 'ASC' }],
             },
@@ -233,7 +233,7 @@ test('AI 修改拒绝缺失字段的索引，补选字段后允许应用', async
   await expect(dialog.getByText('本次没有发现可应用的结构变更')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.locator('[role="tabpanel"]:visible pre')).toContainText(
-    'CREATE INDEX idx_HYDRATION_CHECK_email',
+    'CREATE INDEX email_lookup',
   );
   await expect(page.locator('[role="tabpanel"]:visible pre')).toContainText('email VARCHAR(255)');
 });
