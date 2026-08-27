@@ -7,7 +7,5 @@ export type ErNodeData = Record<string, unknown> & {
 
 export type ErEdgeData = Record<string, unknown> & {
   fk: ForeignKeyDefinition;
-  sourceTable: string;
-  targetTable: string;
-  onDelete: (fkId: string) => void;
+  onDelete: () => Promise<void>;
 };

@@ -735,3 +735,58 @@ test('workspace yjs sync merges offline and online concurrent schema edits', asy
   await contextA.close();
   await contextB.close();
 });
+
+test('ER relationship deletion targets the imported table copy', async ({ browser }) => {
+  const server = new MockWorkspaceYjsServer();
+  const workspaceId = `ws-er-copy-${Date.now()}`;
+  seedDefaultDraft(server.doc, 'initial', 'id');
+  for (const id of ['original', 'copy', 'parent']) {
+    const table = new Y.Map<unknown>();
+    const metadata = new Y.Map<unknown>();
+    metadata.set('tableId', id);
+    metadata.set('normalizedName', id);
+    metadata.set('name', id);
+    metadata.set('createdAt', 1);
+    metadata.set('updatedAt', 1);
+    table.set('metadata', metadata);
+    table.set('stateSnapshot', {
+      ...createState(id === 'parent' ? 'parent' : 'orders', 'id'),
+      foreignKeys:
+        id === 'parent'
+          ? []
+          : [
+              {
+                id: 'shared-fk',
+                name: 'fk_parent',
+                fields: ['id'],
+                refTable: 'parent',
+                refFields: ['id'],
+              },
+            ],
+    });
+    server.doc.getMap<Y.Map<unknown>>('savedTables').set(id, table);
+  }
+  const context = await browser.newContext({ locale: 'zh-CN' });
+  await mockSignedInWorkspace(context, server, workspaceId);
+  const page = await context.newPage();
+  try {
+    await page.goto('/');
+    await openDraftByName(page, 'initial');
+    await page.getByRole('button', { name: 'ER 关系图', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'ER 关系图' });
+    await expect(dialog.locator('.react-flow__edge')).toHaveCount(2);
+    await dialog.locator(`button[data-edge-id='["copy","shared-fk"]']`).click();
+    const foreignKeyCount = (id: string) => {
+      const table = server.doc.getMap<Y.Map<unknown>>('savedTables').get(id);
+      const foreignKeys = table?.get('foreignKeys');
+      if (foreignKeys instanceof Y.Map) return foreignKeys.size;
+      return (table?.get('stateSnapshot') as { foreignKeys: unknown[] }).foreignKeys.length;
+    };
+    await expect.poll(() => foreignKeyCount('copy')).toBe(0);
+    expect(foreignKeyCount('original')).toBe(1);
+    await expect(dialog.locator('.react-flow__edge')).toHaveCount(1);
+  } finally {
+    await context.close();
+    server.doc.destroy();
+  }
+});

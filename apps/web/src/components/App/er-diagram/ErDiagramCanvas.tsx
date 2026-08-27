@@ -62,7 +62,10 @@ function buildNodesFromTables(
   });
 }
 
-function buildEdgesFromTables(tables: SavedTableRecord[]): Edge[] {
+function buildEdgesFromTables(
+  tables: SavedTableRecord[],
+  onDelete: (table: SavedTableRecord, fkId: string) => Promise<void>,
+): Edge[] {
   const edges: Edge[] = [];
   const recordsByReference = new Map<string, SavedTableRecord[]>();
   for (const record of tables) {
@@ -90,7 +93,7 @@ function buildEdgesFromTables(tables: SavedTableRecord[]): Edge[] {
       if (!fk.fields.length || !fk.refFields.length) continue;
 
       edges.push({
-        id: fk.id,
+        id: JSON.stringify([sourceId, fk.id]),
         source: sourceId,
         target: targetId,
         sourceHandle: fk.fields[0],
@@ -98,9 +101,7 @@ function buildEdgesFromTables(tables: SavedTableRecord[]): Edge[] {
         type: 'relation',
         data: {
           fk,
-          sourceTable: table.state.tableName,
-          targetTable: fk.refTable,
-          onDelete: () => {},
+          onDelete: () => onDelete(table, fk.id),
         } as ErEdgeData,
         markerEnd: { type: MarkerType.ArrowClosed },
       });
@@ -140,11 +141,33 @@ function CanvasInner({
   const { showToast } = useToast();
   const { fitView } = useReactFlow();
 
+  const handleDeleteForeignKey = useCallback(
+    async (sourceRecord: SavedTableRecord, fkId: string) => {
+      const updatedState: PersistedState = {
+        ...sourceRecord.state,
+        foreignKeys: sourceRecord.state.foreignKeys?.filter((fk) => fk.id !== fkId) || [],
+      };
+
+      const result = await onUpdateTable(sourceRecord, updatedState);
+      if (!result.ok) {
+        showToast(result.message ?? t('erDiagram.relationship.saveFailed'));
+        return;
+      }
+
+      await onRefresh();
+      showToast(t('erDiagram.toast.fkDeleted'));
+    },
+    [onRefresh, onUpdateTable, showToast, t],
+  );
+
   const initialNodes = useMemo(
     () => buildNodesFromTables(tables, onSelectTable),
     [tables, onSelectTable],
   );
-  const initialEdges = useMemo(() => buildEdgesFromTables(tables), [tables]);
+  const initialEdges = useMemo(
+    () => buildEdgesFromTables(tables, handleDeleteForeignKey),
+    [tables, handleDeleteForeignKey],
+  );
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
@@ -173,43 +196,6 @@ function CanvasInner({
       return () => clearTimeout(timer);
     }
   }, [loading, tables.length, fitView]);
-
-  const handleDeleteForeignKey = useCallback(
-    async (fkId: string) => {
-      const sourceRecord = tables.find((t) => t.state.foreignKeys?.some((fk) => fk.id === fkId));
-      if (!sourceRecord) return;
-
-      const updatedState: PersistedState = {
-        ...sourceRecord.state,
-        foreignKeys: sourceRecord.state.foreignKeys?.filter((fk) => fk.id !== fkId) || [],
-      };
-
-      const result = await onUpdateTable(sourceRecord, updatedState);
-      if (!result.ok) {
-        showToast(result.message ?? t('erDiagram.relationship.saveFailed'));
-        return;
-      }
-
-      await onRefresh();
-      showToast(t('erDiagram.toast.fkDeleted'));
-    },
-    [onRefresh, onUpdateTable, showToast, t, tables],
-  );
-
-  useEffect(() => {
-    setEdges((prev: Edge[]) =>
-      prev.map((e: Edge) => {
-        if (!e.data) return e;
-        return {
-          ...e,
-          data: {
-            ...e.data,
-            onDelete: handleDeleteForeignKey,
-          },
-        };
-      }),
-    );
-  }, [handleDeleteForeignKey, setEdges]);
 
   const handleConnect = useCallback(
     (connection: Connection) => {

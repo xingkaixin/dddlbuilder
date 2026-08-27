@@ -1,4 +1,4 @@
-import { memo, useCallback } from 'react';
+import { memo } from 'react';
 import { BaseEdge, EdgeLabelRenderer, type EdgeProps, getBezierPath } from '@xyflow/react';
 import { X } from '@/components/icons';
 import type { ErEdgeData } from './types';
@@ -24,12 +24,6 @@ function ErRelationEdge(props: EdgeProps) {
     sourcePosition,
     targetPosition,
   });
-
-  const handleDelete = useCallback(() => {
-    if (data?.fk?.id) {
-      data.onDelete(data.fk.id);
-    }
-  }, [data]);
 
   const label =
     data?.fk?.onDelete || data?.fk?.onUpdate
@@ -65,7 +59,8 @@ function ErRelationEdge(props: EdgeProps) {
           {(selected || data?.fk) && (
             <button
               type="button"
-              onClick={handleDelete}
+              onClick={() => void data.onDelete()}
+              data-edge-id={props.id}
               className="ml-1 inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground w-4 h-4 hover:bg-destructive/80 transition-colors"
               title="删除关系"
             >
