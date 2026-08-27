@@ -63,7 +63,7 @@ describe('field comment semantics', () => {
   it.each(DATABASE_TYPES)(
     '%s CREATE renders derived comments with exactly one escape',
     (dbType) => {
-      const sql = buildDDL({ dbType, tableName: 'users', tableComment: '', fields: [field] });
+      const sql = buildDDL({ dbType, tableName: 'app.users', tableComment: '', fields: [field] });
       expect(sql).toContain("Owner''s status | 枚举: active(启用/It''s active)");
       expect(sql).not.toContain("Owner''''s");
       expect(field.comment).toBe("Owner's status");

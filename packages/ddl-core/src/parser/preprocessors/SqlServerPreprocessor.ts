@@ -9,6 +9,14 @@ import type { PreprocessResult } from './types.js';
  * - Normalize gen_random_uuid() → uuid()
  */
 export function preprocessSqlServer(sql: string): PreprocessResult {
+  sql = sql
+    .replace(/EXEC\s+sys\.sp_executesql\s+N'((?:[^']|'')*)'\s*;/gi, (_match, batch: string) =>
+      batch.replaceAll("''", "'"),
+    )
+    .replace(
+      /DECLARE\s+@ddlbuilderSchema\s+sysname\s*=\s*OBJECT_SCHEMA_NAME\(OBJECT_ID\(N'(?:[^']|'')*'\)\);/gi,
+      '',
+    );
   const metadataByTable = new Map<string, PreprocessResult['tableMetadata'][number]>();
   const getTableMetadata = (tableName: string) => {
     const existing = metadataByTable.get(tableName);
@@ -22,7 +30,8 @@ export function preprocessSqlServer(sql: string): PreprocessResult {
     return metadata;
   };
 
-  const execRegex = /EXEC\s+sp_addextendedproperty\s+([\s\S]*?);/gi;
+  const execRegex =
+    /EXEC\s+(?:sys\.)?sp_(?:add|update|drop)extendedproperty\b(?:[^';]|'(?:[^']|'')*')*;/gi;
   let sqlWithoutExec = sql;
   let match: RegExpExecArray | null = execRegex.exec(sql);
 
@@ -31,10 +40,10 @@ export function preprocessSqlServer(sql: string): PreprocessResult {
     sqlWithoutExec = sqlWithoutExec.replace(block, '');
 
     const paramMap: Record<string, string> = {};
-    const paramRegex = /@(\w+)\s*=\s*N?'([^']*)'/gi;
+    const paramRegex = /@(\w+)\s*=\s*N?'((?:[^']|'')*)'/gi;
     let p: RegExpExecArray | null = paramRegex.exec(block);
     while (p !== null) {
-      paramMap[p[1].toLowerCase()] = p[2];
+      paramMap[p[1].toLowerCase()] = p[2].replaceAll("''", "'");
       p = paramRegex.exec(block);
     }
 

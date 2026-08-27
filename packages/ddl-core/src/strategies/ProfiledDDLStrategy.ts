@@ -13,8 +13,8 @@ import {
   buildCitusShardingStatement,
   buildMysqlPartitionClause,
   buildOracleSynonym,
-  buildExtendedProperty,
 } from './dialectStatements';
+import { buildExtendedProperty } from './dialectComments';
 import type { ConfiguredTableDDL, TableFeatureConfig } from '../interfaces/DDLStrategy';
 import { supportsMysqlPartition } from '../utils/databaseFamily';
 import { buildTableOptionsClause } from '../utils/tableOptions';
@@ -175,18 +175,7 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
       statements.push(buildExtendedProperty({ value: tableComment.trim(), schema, table }));
     }
 
-    fields
-      .filter((field) => field.comment)
-      .forEach((field) => {
-        statements.push(
-          buildExtendedProperty({
-            value: field.comment,
-            schema,
-            table,
-            column: field.name,
-          }),
-        );
-      });
+    statements.push(...this.generateColumnCommentsDDL(tableName, fields));
     return statements.join('\n');
   }
 }

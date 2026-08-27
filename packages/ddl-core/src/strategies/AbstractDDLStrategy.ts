@@ -11,15 +11,12 @@ import type {
   DDLStrategy,
   TableFeatureConfig,
 } from '../interfaces/DDLStrategy';
-import {
-  buildQualifiedTableName,
-  escapeSingleQuotes,
-  formatSqlTableName,
-} from '../utils/databaseTypeMapping';
+import { buildQualifiedTableName, formatSqlTableName } from '../utils/databaseTypeMapping';
 import { formatSqlIdentifier } from '../utils/sqlIdentifiers';
 import { TypeMapper } from '../utils/TypeMapper';
 import { buildPrimaryKeyName } from '../utils/primaryKeyNaming';
 import { getIdentifierNameMaxLength, truncateIdentifierName } from '../utils/identifierNaming';
+import { buildColumnComment } from './dialectComments';
 
 export interface ColumnDefinitionSegments {
   name: string;
@@ -102,20 +99,9 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
    * 生成列注释DDL的通用实现（用于支持列注释的数据库）
    */
   protected generateColumnCommentsDDL(tableName: string, fields: NormalizedField[]): string[] {
-    const statements: string[] = [];
-    const qualifiedTableName = this.formatTableName(tableName);
-
-    fields
+    return fields
       .filter((field) => field.comment)
-      .forEach((field) => {
-        statements.push(
-          `COMMENT ON COLUMN ${qualifiedTableName}.${this.formatFieldName(
-            field.name,
-          )} IS '${escapeSingleQuotes(field.comment)}';`,
-        );
-      });
-
-    return statements;
+      .map((field) => buildColumnComment(tableName, field, this.getDatabaseType()));
   }
 
   protected renderColumnDefinitions(

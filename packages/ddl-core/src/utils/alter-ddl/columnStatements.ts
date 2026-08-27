@@ -8,6 +8,8 @@ import {
 import { buildDialectColumn } from '../../strategies/dialectColumn';
 import { formatSqlIdentifier, unquoteSqlIdentifier } from '../sqlIdentifiers';
 import { buildDefaultClause } from './defaultClause';
+import { buildColumnComment } from '../../strategies/dialectComments';
+import { getDatabaseFamily } from '../databaseFamily';
 
 export function generateTableCommentAlter(
   tableName: string,
@@ -112,25 +114,20 @@ export function generateAddColumn(
   tableName = formatSqlTableName(tableName, dbType);
   const fieldName = formatSqlIdentifier(field.name, dbType);
   const columnDef = buildColumnDefinition(field, dbType);
-
-  switch (dbType) {
-    case 'mysql':
-    case 'mariadb':
-    case 'tidb':
-    case 'oceanbase':
-      return `ALTER TABLE ${tableName} ADD COLUMN ${fieldName} ${columnDef};`;
-    case 'postgresql':
-    case 'postgresql-citus':
-      return `ALTER TABLE ${tableName} ADD COLUMN ${fieldName} ${columnDef};`;
-    case 'sqlserver':
-      return `ALTER TABLE ${tableName} ADD ${fieldName} ${columnDef};`;
-    case 'oracle':
-    case 'oceanbase-oracle':
-    case 'dm':
-      return `ALTER TABLE ${tableName} ADD (${fieldName} ${columnDef});`;
-    default:
-      return `ALTER TABLE ${tableName} ADD COLUMN ${fieldName} ${columnDef};`;
-  }
+  const family = getDatabaseFamily(dbType);
+  const column = `${fieldName} ${columnDef}`;
+  const clause =
+    family === 'oracle' || dbType === 'dm'
+      ? `ADD (${column})`
+      : dbType === 'sqlserver'
+        ? `ADD ${column}`
+        : `ADD COLUMN ${column}`;
+  return [
+    `ALTER TABLE ${tableName} ${clause};`,
+    field.comment ? buildColumnComment(tableName, field, dbType) : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 export function generateModifyColumn(
@@ -145,26 +142,20 @@ export function generateModifyColumn(
   tableName = formatSqlTableName(tableName, dbType);
   const fieldName = formatSqlIdentifier(field.name, dbType);
   const columnDef = buildColumnDefinition(field, dbType);
-
-  switch (dbType) {
-    case 'mysql':
-    case 'mariadb':
-    case 'tidb':
-    case 'oceanbase':
-      return `ALTER TABLE ${tableName} MODIFY COLUMN ${fieldName} ${columnDef};`;
-    case 'postgresql':
-    case 'postgresql-citus':
-      // PostgreSQL 需要分开处理类型、nullable、default
-      return generatePostgresModifyColumn(tableName, fieldDiff);
-    case 'sqlserver':
-      return `ALTER TABLE ${tableName} ALTER COLUMN ${fieldName} ${columnDef};`;
-    case 'oracle':
-    case 'oceanbase-oracle':
-    case 'dm':
-      return `ALTER TABLE ${tableName} MODIFY (${fieldName} ${columnDef});`;
-    default:
-      return `ALTER TABLE ${tableName} MODIFY COLUMN ${fieldName} ${columnDef};`;
-  }
+  const family = getDatabaseFamily(dbType);
+  if (family === 'postgresql') return generatePostgresModifyColumn(tableName, fieldDiff);
+  const comment = fieldDiff.changes?.includes('comment')
+    ? buildColumnComment(tableName, field, dbType, fieldDiff.oldField?.comment)
+    : '';
+  if (comment && fieldDiff.changes?.every((change) => change === 'comment')) return comment;
+  const column = `${fieldName} ${columnDef}`;
+  const clause =
+    family === 'oracle' || dbType === 'dm'
+      ? `MODIFY (${column})`
+      : dbType === 'sqlserver'
+        ? `ALTER COLUMN ${column}`
+        : `MODIFY COLUMN ${column}`;
+  return [`ALTER TABLE ${tableName} ${clause};`, comment].filter(Boolean).join('\n');
 }
 
 function generatePostgresModifyColumn(tableName: string, fieldDiff: FieldDiff): string {
@@ -207,8 +198,7 @@ function generatePostgresModifyColumn(tableName: string, fieldDiff: FieldDiff): 
   }
 
   if (changes.includes('comment')) {
-    const escapedComment = escapeSingleQuotes(field.comment);
-    statements.push(`COMMENT ON COLUMN ${tableName}.${fieldName} IS '${escapedComment}';`);
+    statements.push(buildColumnComment(tableName, field, 'postgresql'));
   }
 
   if (addingIdentity) {
