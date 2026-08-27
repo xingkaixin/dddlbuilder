@@ -1,5 +1,6 @@
 import type {
   DatabaseType,
+  IndexDefinition,
   NormalizedField,
   SqlFormatMode,
   TableMiscConfig,
@@ -16,7 +17,7 @@ import {
 } from './dialectStatements';
 import { buildExtendedProperty } from './dialectComments';
 import type { ConfiguredTableDDL, TableFeatureConfig } from '../interfaces/DDLStrategy';
-import { supportsMysqlPartition } from '../utils/databaseFamily';
+import { getDatabaseFamily, supportsMysqlPartition } from '../utils/databaseFamily';
 import { buildTableOptionsClause } from '../utils/tableOptions';
 
 /**
@@ -82,32 +83,53 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
     fields: NormalizedField[],
     tableMiscConfig?: TableMiscConfig,
     sqlFormatMode: SqlFormatMode = 'compact',
+    indexes: IndexDefinition[] = [],
   ): string {
     const typeMapper = this.createTypeMapper();
     const columns = fields.map((field) => this.renderColumn(field, typeMapper));
     const columnLines = this.renderColumnDefinitions(columns, sqlFormatMode);
     const tableOptions = buildTableOptionsClause(this.databaseType, tableMiscConfig);
+    const inlineIndexes = getDatabaseFamily(this.databaseType) === 'mysql';
+    if (inlineIndexes) {
+      columnLines.push(...indexes.map((index) => `  ${this.renderMysqlIndex(index)}`));
+    }
 
+    let tableDDL: string;
     switch (this.profile.commentChannel) {
       case 'inline':
-        return this.assembleInlineTable(tableName, tableComment, columnLines, tableOptions);
+        tableDDL = this.assembleInlineTable(tableName, tableComment, columnLines, tableOptions);
+        break;
       case 'comment-on':
-        return this.assembleCommentOnTable(
+        tableDDL = this.assembleCommentOnTable(
           tableName,
           tableComment,
           fields,
           columnLines,
           tableOptions,
         );
+        break;
       case 'extended-property':
-        return this.assembleExtendedPropertyTable(
+        tableDDL = this.assembleExtendedPropertyTable(
           tableName,
           tableComment,
           fields,
           columnLines,
           tableOptions,
         );
+        break;
     }
+    const indexDDLs = inlineIndexes
+      ? []
+      : indexes.map((index) => this.generateIndexDDL(tableName, index));
+    return indexDDLs.length ? `${tableDDL}\n\n${indexDDLs.join('\n')}` : tableDDL;
+  }
+
+  private renderMysqlIndex(index: IndexDefinition): string {
+    const fields = this.formatIndexFieldList(index);
+    if (index.isPrimary) return `PRIMARY KEY (${fields})`;
+    const name = this.formatFieldName(index.name);
+    if (index.isUniqueConstraint) return `CONSTRAINT ${name} UNIQUE (${fields})`;
+    return `${index.unique ? 'UNIQUE ' : ''}INDEX ${name} (${fields})`;
   }
 
   private renderColumn(

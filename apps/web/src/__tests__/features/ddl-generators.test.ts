@@ -590,7 +590,7 @@ describe('DDL Generation Functions', () => {
   });
 
   describe('buildDDL with indexes and citus', () => {
-    it('should append generated index DDL blocks', () => {
+    it('should create MySQL indexes with the table', () => {
       const indexes: IndexDefinition[] = [
         {
           id: 'idx-1',
@@ -608,10 +608,10 @@ describe('DDL Generation Functions', () => {
         indexes,
       });
 
-      expect(result).toContain('CREATE UNIQUE INDEX idx_users_name ON users (name ASC);');
+      expect(result.split(';')[0]).toContain('UNIQUE INDEX idx_users_name (name ASC)');
     });
 
-    it('should append primary key index DDL block', () => {
+    it('should create the MySQL primary key with the table', () => {
       const indexes: IndexDefinition[] = [
         {
           id: 'pk-1',
@@ -630,7 +630,7 @@ describe('DDL Generation Functions', () => {
         indexes,
       });
 
-      expect(result).toContain('PRIMARY KEY (id);');
+      expect(result.split(';')[0]).toContain('PRIMARY KEY (id ASC)');
     });
 
     it('should append citus reference table SQL', () => {

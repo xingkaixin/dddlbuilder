@@ -267,14 +267,14 @@ test('DDL 评审拒绝缺少字段的索引建议，补充字段后可重试', a
   await expect(page.getByText('无法应用建议：Unknown index field: created_at')).toBeVisible();
   await expect(indexSuggestion.getByRole('button', { name: '应用', exact: true })).toBeEnabled();
   await expect(indexSuggestion.getByText('已应用', { exact: true })).toHaveCount(0);
-  await expect(sql).not.toContainText('CREATE INDEX created_lookup');
+  await expect(sql).not.toContainText('INDEX created_lookup');
 
   await fieldSuggestion.getByRole('button', { name: '应用', exact: true }).click();
   await expect(fieldSuggestion.getByText('已应用', { exact: true })).toBeVisible();
   await indexSuggestion.getByRole('button', { name: '应用', exact: true }).click();
   await expect(indexSuggestion.getByText('已应用', { exact: true })).toBeVisible();
   await expect(sql).toContainText(/created_at\s+DATETIME/);
-  await expect(sql).toContainText('CREATE INDEX created_lookup');
+  await expect(sql).toContainText('INDEX created_lookup');
 });
 
 test('AI 注释请求在切换文档后取消，不覆盖另一张表', async ({ page }) => {
@@ -508,8 +508,6 @@ test('AI 修改拒绝缺失字段的索引，补选字段后允许应用', async
   await dialog.getByRole('button', { name: '应用 2 项变更' }).click();
   await expect(dialog.getByText('本次没有发现可应用的结构变更')).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(page.locator('[role="tabpanel"]:visible pre')).toContainText(
-    'CREATE INDEX email_lookup',
-  );
+  await expect(page.locator('[role="tabpanel"]:visible pre')).toContainText('INDEX email_lookup');
   await expect(page.locator('[role="tabpanel"]:visible pre')).toContainText('email VARCHAR(255)');
 });

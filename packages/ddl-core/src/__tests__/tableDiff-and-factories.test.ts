@@ -522,7 +522,7 @@ describe('buildDDL', () => {
       fields,
       indexes,
     });
-    expect(ddl).toContain('CREATE INDEX idx_name ON users (name ASC)');
+    expect(ddl.split(';')[0]).toContain('INDEX idx_name (name ASC)');
   });
 
   it('includes foreign key DDL', () => {

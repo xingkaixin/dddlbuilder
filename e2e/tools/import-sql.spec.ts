@@ -256,7 +256,8 @@ test.describe('SQL 导入功能验证 @tools', () => {
     await card.hover();
     await card.getByRole('button', { name: /删除索引/ }).click();
     const sql = page.locator('[role="tabpanel"]:visible pre');
-    await expect(sql).toContainText('CREATE INDEX customer_lookup ON renamed_table');
+    await expect(sql).toContainText('CREATE TABLE renamed_table');
+    await expect(sql).toContainText('INDEX customer_lookup (name ASC)');
     await expect(sql).not.toContainText('idx_import_test_id');
   });
 });

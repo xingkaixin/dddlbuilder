@@ -133,6 +133,7 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
     fields: NormalizedField[],
     tableMiscConfig?: TableMiscConfig,
     sqlFormatMode?: SqlFormatMode,
+    indexes?: IndexDefinition[],
   ): string;
 
   applyTableFeatures(

@@ -30,6 +30,7 @@ export interface DDLStrategy {
     fields: NormalizedField[],
     tableMiscConfig?: TableMiscConfig,
     sqlFormatMode?: SqlFormatMode,
+    indexes?: IndexDefinition[],
   ): string;
 
   /**

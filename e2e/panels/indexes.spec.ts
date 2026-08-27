@@ -42,7 +42,7 @@ test.describe('索引管理验证 @panels', () => {
     await expect(page.getByText('idx_index_test_id').first()).toBeVisible();
 
     const sqlOutput = page.locator('.relative.flex-1.overflow-auto.px-4.py-3\\.5 pre');
-    await expect(sqlOutput).toContainText(/CREATE INDEX idx_index_test_id ON index_test/i);
+    await expect(sqlOutput).toContainText(/INDEX idx_index_test_id \(id ASC\)/i);
   });
 
   test('场景：添加唯一索引', async ({ page }) => {
@@ -55,7 +55,7 @@ test.describe('索引管理验证 @panels', () => {
     await expect(page.getByText('uk_index_test_id').first()).toBeVisible();
 
     const sqlOutput = page.locator('.relative.flex-1.overflow-auto.px-4.py-3\\.5 pre');
-    await expect(sqlOutput).toContainText(/CREATE UNIQUE INDEX uk_index_test_id ON index_test/i);
+    await expect(sqlOutput).toContainText(/UNIQUE INDEX uk_index_test_id \(id ASC\)/i);
   });
 
   test('场景：添加主键索引', async ({ page }) => {
@@ -68,7 +68,8 @@ test.describe('索引管理验证 @panels', () => {
     await expect(page.getByText('pk_index_test').first()).toBeVisible();
 
     const sqlOutput = page.locator('.relative.flex-1.overflow-auto.px-4.py-3\\.5 pre');
-    await expect(sqlOutput).toContainText(/ADD CONSTRAINT pk_index_test PRIMARY KEY/i);
+    await expect(sqlOutput).toContainText(/PRIMARY KEY \(id ASC\)/i);
+    await expect(sqlOutput).not.toContainText(/ALTER TABLE/i);
   });
 
   test('场景：删除索引', async ({ page }) => {
@@ -88,6 +89,6 @@ test.describe('索引管理验证 @panels', () => {
     await indexCard.getByRole('button', { name: /删除索引/i }).click();
 
     const sqlOutput = page.locator('.relative.flex-1.overflow-auto.px-4.py-3\\.5 pre');
-    await expect(sqlOutput).not.toContainText(/CREATE INDEX idx_index_test_id ON index_test/i);
+    await expect(sqlOutput).not.toContainText(/INDEX idx_index_test_id/i);
   });
 });

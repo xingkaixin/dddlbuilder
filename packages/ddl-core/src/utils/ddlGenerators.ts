@@ -54,6 +54,7 @@ export const buildDDL = ({
     fields.map((field) => ({ ...field, comment: resolveFieldComment(field) })),
     tableMiscConfig,
     sqlFormatMode,
+    indexes,
   );
 
   const configuredTable = strategy.applyTableFeatures(tableName.trim(), generatedTableDDL, {
@@ -62,14 +63,9 @@ export const buildDDL = ({
     citusShardingConfig,
   });
 
-  const indexDDLs = indexes.map((index) => strategy.generateIndexDDL(tableName.trim(), index));
-
   const fkDDLs = foreignKeys.map((fk) => strategy.generateForeignKeyDDL(tableName.trim(), fk));
 
   const extraBlocks: string[] = [];
-  if (indexDDLs.length > 0) {
-    extraBlocks.push(indexDDLs.join('\n'));
-  }
   if (fkDDLs.length > 0) {
     extraBlocks.push(fkDDLs.join('\n'));
   }
