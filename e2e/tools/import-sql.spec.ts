@@ -65,6 +65,56 @@ test.describe('SQL 导入功能验证 @tools', () => {
     await expect(sqlOutput).toContainText(/id\s+INT/i);
   });
 
+  test('场景：PostgreSQL 大小写不同的字段独立维护索引', async ({ page }) => {
+    await page.getByTestId('db-type-selector').click();
+    await page.getByRole('option', { name: 'PostgreSQL', exact: true }).click();
+    await expect(page.getByTestId('db-type-selector')).toContainText('PostgreSQL');
+    await page.route('**/api/parse-sql', (route) =>
+      route.fulfill({
+        json: {
+          result: {
+            tableName: 'users',
+            tableComment: '',
+            authObjects: [],
+            foreignKeys: [],
+            fields: ['UserID', 'userid'].map((name) => ({
+              name,
+              type: 'INT',
+              comment: '',
+              nullable: false,
+            })),
+            indexes: ['UserID', 'userid'].map((name) => ({
+              id: name,
+              name: `idx_${name}`,
+              fields: [{ name, direction: 'ASC' }],
+              unique: true,
+            })),
+          },
+        },
+      }),
+    );
+    await page.getByRole('button', { name: /导入结构/i }).click();
+    await page.locator('#db-type').click();
+    await page.getByRole('option', { name: 'PostgreSQL', exact: true }).click();
+    await page.locator('#sql-content').fill('CREATE TABLE users ("UserID" INT, userid INT);');
+    await page.getByRole('button', { name: /下一步/i }).click();
+    await page.getByRole('button', { name: /下一步/i }).click();
+    await page.getByRole('button', { name: /确认导入/i }).click();
+    await expect(page.locator('#sql-content')).toBeHidden();
+    await expect(page.getByTestId('db-type-selector')).toContainText('PostgreSQL');
+    await expect(page.locator('[role="tabpanel"]:visible pre')).toContainText('"UserID" INTEGER');
+    await page
+      .locator('[data-testid="data-table"] tbody tr:first-child td:nth-child(2)')
+      .dblclick();
+    await page
+      .locator('[data-testid="data-table"] input:not([aria-hidden="true"])')
+      .fill('account_id');
+    await page.keyboard.press('Enter');
+    const sql = page.locator('[role="tabpanel"]:visible pre');
+    await expect(sql).toContainText('CREATE UNIQUE INDEX idx_account_id ON users (account_id ASC)');
+    await expect(sql).toContainText('CREATE UNIQUE INDEX idx_userid ON users (userid ASC)');
+  });
+
   test('场景：编辑主键字段名同步更新自引用外键', async ({ page }) => {
     await page.route('**/api/parse-sql', (route) =>
       route.fulfill({

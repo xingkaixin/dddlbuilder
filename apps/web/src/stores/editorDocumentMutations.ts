@@ -1,25 +1,17 @@
 import type { FieldRow, ForeignKeyDefinition, PersistedState } from '@ddlbuilder/shared-types';
 import { createEmptyRow } from '@/utils/helpers';
+import { containsSqlIdentifierToken, replaceIdentifierTokens } from '@/utils/fieldRenameUtils';
 import {
-  containsSqlIdentifierToken,
-  isSameIdentifierToken,
-  replaceIdentifierTokens,
-} from '@/utils/fieldRenameUtils';
-import {
-  getDatabaseFamily,
+  getSqlIdentifierKey,
   getSchemaAndTable,
   getIdentifierNameMaxLength,
   truncateIdentifierName,
-  unquoteSqlIdentifier,
 } from '@ddlbuilder/ddl-core';
 
 function referencesCurrentTable(state: PersistedState, foreignKey: ForeignKeyDefinition): boolean {
   const current = getSchemaAndTable(state.tableName);
   const target = getSchemaAndTable(foreignKey.refTable);
-  const normalize = (value: string) => {
-    const name = unquoteSqlIdentifier(value.trim());
-    return getDatabaseFamily(state.dbType) === 'postgresql' ? name : name.toLowerCase();
-  };
+  const normalize = (value: string) => getSqlIdentifierKey(value, state.dbType);
   return (
     normalize(current.table) === normalize(target.table) &&
     normalize(state.schemaName || current.schema) ===
@@ -28,17 +20,18 @@ function referencesCurrentTable(state: PersistedState, foreignKey: ForeignKeyDef
 }
 
 export function updateDocumentFields(state: PersistedState, rows: FieldRow[]): PersistedState {
+  const key = (name: string) => getSqlIdentifierKey(name, state.dbType);
   const previousNames = new Map(state.rows.map((row) => [row.id, row.fieldName.trim()]));
   const renames = new Map<string, string>();
   for (const row of rows) {
     if (!row.id) continue;
     const oldName = previousNames.get(row.id);
     const newName = row.fieldName.trim();
-    if (oldName && newName && oldName !== newName) renames.set(oldName.toLowerCase(), newName);
+    if (oldName && newName && oldName !== newName) renames.set(key(oldName), newName);
   }
   if (renames.size === 0) return { ...state, rows };
 
-  const rename = (name: string) => renames.get(name.toLowerCase()) ?? name;
+  const rename = (name: string) => renames.get(key(name)) ?? name;
   const renameIndexField = <T extends { name: string }>(field: T): T => {
     const name = rename(field.name);
     return name === field.name ? field : { ...field, name };
@@ -53,11 +46,11 @@ export function updateDocumentFields(state: PersistedState, rows: FieldRow[]): P
     indexes: state.indexes.map((index) => {
       const indexRenames = new Map(
         index.fields
-          .filter((field) => renames.has(field.name.toLowerCase()))
-          .map((field) => [field.name.toLowerCase(), rename(field.name)]),
+          .filter((field) => renames.has(key(field.name)))
+          .map((field) => [key(field.name), rename(field.name)]),
       );
       if (indexRenames.size === 0) return index;
-      const name = replaceIdentifierTokens(index.name, indexRenames);
+      const name = replaceIdentifierTokens(index.name, indexRenames, state.dbType);
       return {
         ...index,
         name:
@@ -78,10 +71,15 @@ export function updateDocumentFields(state: PersistedState, rows: FieldRow[]): P
       ? {
           ...state.mysqlPartitionConfig,
           columns: state.mysqlPartitionConfig.columns.map((column) =>
-            replaceIdentifierTokens(column, renames, 'sql'),
+            replaceIdentifierTokens(column, renames, state.dbType, 'sql'),
           ),
           expression: state.mysqlPartitionConfig.expression
-            ? replaceIdentifierTokens(state.mysqlPartitionConfig.expression, renames, 'sql')
+            ? replaceIdentifierTokens(
+                state.mysqlPartitionConfig.expression,
+                renames,
+                state.dbType,
+                'sql',
+              )
             : undefined,
         }
       : undefined,
@@ -106,43 +104,33 @@ export function updateDocumentFields(state: PersistedState, rows: FieldRow[]): P
   };
 }
 
-const matchesRemovedField = (fieldName: string, removedFieldNames: string[]) =>
-  removedFieldNames.some((removedName) => isSameIdentifierToken(fieldName, removedName));
-
-const removeExpressionReferences = (
-  expression: string | undefined,
-  removedFieldNames: string[],
-) => {
-  if (!expression) return expression;
-  const referencesRemovedField = removedFieldNames.some((fieldName) =>
-    containsSqlIdentifierToken(expression, fieldName),
-  );
-  return referencesRemovedField ? undefined : expression;
-};
-
 export function removeFieldsFromDocument(
   state: PersistedState,
   shouldRemove: (row: FieldRow, index: number) => boolean,
 ): PersistedState {
   const removedFieldNames = state.rows
     .filter(shouldRemove)
-    .map((row) => row.fieldName.trim())
+    .map((row) => getSqlIdentifierKey(row.fieldName, state.dbType))
     .filter(Boolean);
   const remainingRows = state.rows.filter((row, index) => !shouldRemove(row, index));
   const rows = remainingRows.length > 0 ? remainingRows : [createEmptyRow()];
 
   if (removedFieldNames.length === 0) return { ...state, rows };
 
+  const removedNames = new Set(removedFieldNames);
+  const matchesRemovedField = (name: string) =>
+    removedNames.has(getSqlIdentifierKey(name, state.dbType));
+  const expression = state.mysqlPartitionConfig?.expression;
+  const removesExpression =
+    expression &&
+    removedFieldNames.some((name) => containsSqlIdentifierToken(expression, name, state.dbType));
   const mysqlPartitionConfig = state.mysqlPartitionConfig
     ? {
         ...state.mysqlPartitionConfig,
         columns: state.mysqlPartitionConfig.columns.filter(
-          (column) => !matchesRemovedField(column, removedFieldNames),
+          (column) => !matchesRemovedField(column),
         ),
-        expression: removeExpressionReferences(
-          state.mysqlPartitionConfig.expression,
-          removedFieldNames,
-        ),
+        expression: removesExpression ? undefined : expression,
       }
     : undefined;
   if (
@@ -154,7 +142,7 @@ export function removeFieldsFromDocument(
   }
 
   const citusShardingConfig = state.citusShardingConfig
-    ? matchesRemovedField(state.citusShardingConfig.distributionColumn ?? '', removedFieldNames)
+    ? matchesRemovedField(state.citusShardingConfig.distributionColumn ?? '')
       ? { mode: 'reference' as const, distributionColumn: undefined }
       : state.citusShardingConfig
     : undefined;
@@ -163,9 +151,7 @@ export function removeFieldsFromDocument(
   const nextClustering = clustering
     ? {
         ...clustering,
-        columns: clustering.columns.filter(
-          (column) => !matchesRemovedField(column, removedFieldNames),
-        ),
+        columns: clustering.columns.filter((column) => !matchesRemovedField(column)),
       }
     : undefined;
   if (nextClustering && nextClustering.columns.length === 0) nextClustering.enabled = false;
@@ -185,17 +171,17 @@ export function removeFieldsFromDocument(
     ...state,
     rows,
     currentIndexFields: state.currentIndexFields.filter(
-      (field) => !matchesRemovedField(field.name, removedFieldNames),
+      (field) => !matchesRemovedField(field.name),
     ),
     indexes: state.indexes.filter(
-      (index) => !index.fields.some((field) => matchesRemovedField(field.name, removedFieldNames)),
+      (index) => !index.fields.some((field) => matchesRemovedField(field.name)),
     ),
     foreignKeys: state.foreignKeys?.filter(
       (foreignKey) =>
-        !foreignKey.fields.some((field) => matchesRemovedField(field, removedFieldNames)) &&
+        !foreignKey.fields.some(matchesRemovedField) &&
         !(
           referencesCurrentTable(state, foreignKey) &&
-          foreignKey.refFields.some((field) => matchesRemovedField(field, removedFieldNames))
+          foreignKey.refFields.some(matchesRemovedField)
         ),
     ),
     mysqlPartitionConfig,

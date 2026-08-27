@@ -44,7 +44,7 @@ export {
 } from './utils/databaseTypeMapping.js';
 export { TYPE_ALIASES, canonicalizeBaseType } from './utils/typeAliases.js';
 export { buildPrimaryKeyName } from './utils/primaryKeyNaming.js';
-export { unquoteSqlIdentifier } from './utils/sqlIdentifiers.js';
+export { getSqlIdentifierKey, unquoteSqlIdentifier } from './utils/sqlIdentifiers.js';
 export {
   buildIndexName,
   truncateIdentifierName,

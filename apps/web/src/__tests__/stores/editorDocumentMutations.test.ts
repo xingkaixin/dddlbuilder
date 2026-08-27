@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { withDefaultEditorSession, type PersistedState } from '@ddlbuilder/shared-types';
+import {
+  withDefaultEditorSession,
+  type DatabaseType,
+  type PersistedState,
+} from '@ddlbuilder/shared-types';
 import { buildDDL } from '@ddlbuilder/ddl-core';
 import { useEditorStore } from '@/stores/editorStore';
 import { buildNormalizedFields } from '@/stores/fieldStore';
@@ -38,7 +42,64 @@ function createState(overrides: Partial<PersistedState> = {}): PersistedState {
   });
 }
 
+function createCaseSensitiveState(dbType: DatabaseType): PersistedState {
+  return createState({
+    dbType,
+    rows: [
+      { id: 'upper', fieldName: 'UserID', fieldType: 'int', fieldComment: '', nullable: false },
+      { id: 'lower', fieldName: 'userid', fieldType: 'int', fieldComment: '', nullable: false },
+    ],
+    indexes: [
+      {
+        id: 'upper-index',
+        name: 'idx_UserID',
+        fields: [{ name: 'UserID', direction: 'ASC' }],
+        unique: true,
+      },
+      {
+        id: 'lower-index',
+        name: 'idx_userid',
+        fields: [{ name: 'userid', direction: 'ASC' }],
+        unique: true,
+      },
+    ],
+    foreignKeys: [{ ...parentForeignKey, fields: ['userid'], refFields: ['UserID'] }],
+  });
+}
+
 describe('editor document references', () => {
+  it.each(['postgresql', 'kingbase', 'gaussdb'] as const)(
+    '%s renames only references to the exact field',
+    (dbType) => {
+      useEditorStore.getState().replaceDocument(createCaseSensitiveState(dbType));
+      useEditorStore
+        .getState()
+        .setRows((rows) =>
+          rows.map((row) => (row.id === 'upper' ? { ...row, fieldName: 'account_id' } : row)),
+        );
+      const state = useEditorStore.getState();
+      expect(
+        state.indexes.map((index) => ({ name: index.name, field: index.fields[0].name })),
+      ).toEqual([
+        { name: 'idx_account_id', field: 'account_id' },
+        { name: 'idx_userid', field: 'userid' },
+      ]);
+      expect(state.foreignKeys[0]).toMatchObject({ fields: ['userid'], refFields: ['account_id'] });
+    },
+  );
+
+  it.each(['postgresql', 'kingbase', 'gaussdb'] as const)(
+    '%s removes only dependencies of the exact field',
+    (dbType) => {
+      useEditorStore.getState().replaceDocument(createCaseSensitiveState(dbType));
+      useEditorStore.getState().handleRemoveRow(0, 1);
+      const state = useEditorStore.getState();
+      expect(state.rows.map((row) => row.fieldName)).toEqual(['userid']);
+      expect(state.indexes.map((index) => index.id)).toEqual(['lower-index']);
+      expect(state.foreignKeys).toEqual([]);
+    },
+  );
+
   it('renames a self-referenced primary key in one store update', () => {
     useEditorStore.getState().replaceDocument(createState());
     useEditorStore

@@ -1,15 +1,21 @@
+import type { DatabaseType } from '@ddlbuilder/shared-types';
+import { getDatabaseFamily, getSqlIdentifierKey } from '@ddlbuilder/ddl-core';
+
 function escapeRegExp(input: string): string {
   return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-export function isSameIdentifierToken(a: string, b: string): boolean {
-  return a.localeCompare(b, undefined, { sensitivity: 'accent' }) === 0;
-}
-
-export function containsSqlIdentifierToken(source: string, token: string): boolean {
+export function containsSqlIdentifierToken(
+  source: string,
+  token: string,
+  dbType: DatabaseType,
+): boolean {
   if (!source || !token) return false;
   const escapedToken = escapeRegExp(token);
-  return new RegExp(`(^|[^\\p{L}\\p{N}_])${escapedToken}(?=[^\\p{L}\\p{N}_]|$)`, 'iu').test(source);
+  return new RegExp(
+    `(^|[^\\p{L}\\p{N}_])${escapedToken}(?=[^\\p{L}\\p{N}_]|$)`,
+    getDatabaseFamily(dbType) === 'postgresql' ? 'u' : 'iu',
+  ).test(source);
 }
 
 /**
@@ -18,6 +24,7 @@ export function containsSqlIdentifierToken(source: string, token: string): boole
 export function replaceIdentifierTokens(
   source: string,
   renames: ReadonlyMap<string, string>,
+  dbType: DatabaseType,
   context: 'index' | 'sql' = 'index',
 ): string {
   if (!source || renames.size === 0) return source;
@@ -25,11 +32,11 @@ export function replaceIdentifierTokens(
   const characters = context === 'sql' ? '\\p{L}\\p{N}_' : '\\p{L}\\p{N}';
   const pattern = new RegExp(
     `(^|[^${characters}])(${tokens.join('|')})(?=[^${characters}]|$)`,
-    'giu',
+    getDatabaseFamily(dbType) === 'postgresql' ? 'gu' : 'giu',
   );
   return source.replace(
     pattern,
     (_match, prefix: string, token: string) =>
-      `${prefix}${renames.get(token.toLowerCase()) ?? token}`,
+      `${prefix}${renames.get(getSqlIdentifierKey(token, dbType)) ?? token}`,
   );
 }

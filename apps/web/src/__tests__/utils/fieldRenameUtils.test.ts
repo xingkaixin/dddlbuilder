@@ -1,12 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import {
-  containsSqlIdentifierToken,
-  isSameIdentifierToken,
-  replaceIdentifierTokens,
-} from '@/utils/fieldRenameUtils';
+import { containsSqlIdentifierToken, replaceIdentifierTokens } from '@/utils/fieldRenameUtils';
 
 const replaceIdentifierToken = (source: string, oldName: string, newName: string) =>
-  replaceIdentifierTokens(source, new Map([[oldName.toLowerCase(), newName]]));
+  replaceIdentifierTokens(source, new Map([[oldName.toLowerCase(), newName]]), 'mysql');
 
 describe('fieldRenameUtils', () => {
   it('同时替换交换的名称，并区分 SQL 字段和索引名中的下划线', () => {
@@ -14,12 +10,14 @@ describe('fieldRenameUtils', () => {
       ['a', 'b'],
       ['b', 'a'],
     ]);
-    expect(replaceIdentifierTokens('idx_a_b', renames)).toBe('idx_b_a');
-    expect(replaceIdentifierTokens('a + b + other_a', renames, 'sql')).toBe('b + a + other_a');
+    expect(replaceIdentifierTokens('idx_a_b', renames, 'mysql')).toBe('idx_b_a');
+    expect(replaceIdentifierTokens('a + b + other_a', renames, 'mysql', 'sql')).toBe(
+      'b + a + other_a',
+    );
   });
   it('应按完整标识符判断表达式是否引用字段', () => {
-    expect(containsSqlIdentifierToken('YEAR(created_at)', 'created_at')).toBe(true);
-    expect(containsSqlIdentifierToken('YEAR(created_at)', 'created')).toBe(false);
+    expect(containsSqlIdentifierToken('YEAR(created_at)', 'created_at', 'mysql')).toBe(true);
+    expect(containsSqlIdentifierToken('YEAR(created_at)', 'created', 'mysql')).toBe(false);
   });
 
   describe('replaceIdentifierToken', () => {
@@ -49,9 +47,15 @@ describe('fieldRenameUtils', () => {
     });
   });
 
-  describe('isSameIdentifierToken', () => {
-    it('应忽略大小写比较', () => {
-      expect(isSameIdentifierToken('UserName', 'username')).toBe(true);
-    });
+  it('PostgreSQL 应区分大小写替换和匹配', () => {
+    const renames = new Map([['UserID', 'account_id']]);
+    expect(replaceIdentifierTokens('idx_UserID_userid', renames, 'postgresql')).toBe(
+      'idx_account_id_userid',
+    );
+    expect(replaceIdentifierTokens('"UserID" + userid', renames, 'postgresql', 'sql')).toBe(
+      '"account_id" + userid',
+    );
+    expect(containsSqlIdentifierToken('userid', 'UserID', 'postgresql')).toBe(false);
+    expect(containsSqlIdentifierToken('"UserID"', 'UserID', 'postgresql')).toBe(true);
   });
 });

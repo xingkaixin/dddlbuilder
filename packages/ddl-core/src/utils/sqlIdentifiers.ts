@@ -12,6 +12,12 @@ export function unquoteSqlIdentifier(value: string): string {
   );
 }
 
+/** PostgreSQL 的编辑器名称保留大小写，生成 SQL 时由 formatSqlIdentifier 自动加引号。 */
+export function getSqlIdentifierKey(name: string, dbType: DatabaseType): string {
+  const value = unquoteSqlIdentifier(name.trim());
+  return getDatabaseFamily(dbType) === 'postgresql' ? value : value.toLowerCase();
+}
+
 export function formatSqlIdentifier(name: string, dbType: DatabaseType): string {
   const value = name.trim();
   if (!value) return '';
