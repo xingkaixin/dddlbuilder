@@ -211,6 +211,7 @@ export function buildAppDialogLayerModel({
       },
     },
     workspace: {
+      scope: workspaceController.workspaceScope,
       loadedTableNormalizedName,
       isShareView: persistence.isShareView,
     },

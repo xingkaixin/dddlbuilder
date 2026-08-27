@@ -36,6 +36,7 @@ export function useNavigationActions({
   const handleViewVersionHistory = useCallback(
     (item: VersionHistoryTarget) => {
       setVersionHistoryTarget({
+        tableId: item.tableId,
         normalizedName: item.normalizedName,
         name: item.name,
       });

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { countVersions } from '@/utils/tableVersions';
 
 interface UseLoadedTablePresentationParams {
   hydrated: boolean;
@@ -8,6 +7,7 @@ interface UseLoadedTablePresentationParams {
   normalizedName: string | null;
   tableName: string | null;
   isDirty: boolean;
+  countTableVersions: (normalizedName: string) => Promise<number>;
 }
 
 export function useLoadedTablePresentation({
@@ -16,6 +16,7 @@ export function useLoadedTablePresentation({
   normalizedName,
   tableName,
   isDirty,
+  countTableVersions,
 }: UseLoadedTablePresentationParams) {
   const { t } = useTranslation();
   const [versionState, setVersionState] = useState({ normalizedName, value: 0 });
@@ -31,7 +32,7 @@ export function useLoadedTablePresentation({
     if (!normalizedName) return;
 
     let cancelled = false;
-    void countVersions(normalizedName)
+    void countTableVersions(normalizedName)
       .then((count) => {
         if (!cancelled) setVersionState({ normalizedName, value: count > 0 ? count : 1 });
       })
@@ -42,7 +43,7 @@ export function useLoadedTablePresentation({
     return () => {
       cancelled = true;
     };
-  }, [hydrated, isShareView, normalizedName]);
+  }, [countTableVersions, hydrated, isShareView, normalizedName]);
 
   const label = useMemo(() => {
     if (isShareView) return t('app.workspace.shareReadonly');

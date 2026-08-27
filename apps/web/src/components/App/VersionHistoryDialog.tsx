@@ -29,6 +29,7 @@ import {
   getVersion,
   deleteVersion,
   INITIAL_VERSION_MESSAGE_KEY,
+  type TableVersionTarget,
 } from '@/utils/tableVersions';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
@@ -38,7 +39,7 @@ import { useLocale } from '@/i18n/LocaleContext';
 interface VersionHistoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  tableNormalizedName: string | null;
+  target: TableVersionTarget | null;
   tableName: string | null;
   onRollback?: (state: PersistedState) => void;
   onCompare?: (oldState: PersistedState, newState: PersistedState) => void;
@@ -108,7 +109,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
   ({
     open,
     onOpenChange,
-    tableNormalizedName,
+    target,
     tableName,
     onRollback,
     onCompare,
@@ -119,7 +120,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
     const { resolvedLocale } = useLocale();
     const { showToast } = useToast();
     const [versions, setVersions] = useState<TableVersion[]>([]);
-    const [loading, setLoading] = useState(open && Boolean(tableNormalizedName));
+    const [loading, setLoading] = useState(open && Boolean(target));
     const [requestedSelectedId, setSelectedId] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -143,20 +144,20 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
 
     // 加载版本列表（完整版本，用于计算 diff）
     const loadVersions = useCallback(async () => {
-      if (!tableNormalizedName) return;
+      if (!target) return;
       try {
-        const list = await listVersions(tableNormalizedName);
+        const list = await listVersions(target);
         // listVersions 返回倒序，保持倒序（最新在前）用于时间轴展示
         setVersions(list);
         setSelectedId(list[0]?.id ?? null);
       } finally {
         setLoading(false);
       }
-    }, [tableNormalizedName]);
+    }, [target]);
 
     useEffect(() => {
-      if (open && tableNormalizedName) void loadVersions();
-    }, [open, tableNormalizedName, loadVersions]);
+      if (open && target) void loadVersions();
+    }, [open, target, loadVersions]);
 
     // 预计算相邻版本之间的 diff（时间轴上每个节点 vs 它的下一个/更老的版本）
     const versionDiffs = useMemo(() => {
@@ -193,10 +194,10 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
 
     // 回滚到选中版本
     const handleRollback = useCallback(async () => {
-      if (!selectedId || !onRollback) return;
+      if (!selectedId || !onRollback || !target) return;
       setActionLoading(true);
       try {
-        const version = await getVersion(selectedId);
+        const version = await getVersion(selectedId, target);
         if (version) {
           onRollback(version.state);
           onOpenChange(false);
@@ -204,28 +205,28 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
       } finally {
         setActionLoading(false);
       }
-    }, [selectedId, onRollback, onOpenChange]);
+    }, [selectedId, onRollback, onOpenChange, target]);
 
     // 与当前版本对比
     const handleCompare = useCallback(async () => {
-      if (!selectedId || !onCompare || !currentState) return;
+      if (!selectedId || !onCompare || !currentState || !target) return;
       setActionLoading(true);
       try {
-        const version = await getVersion(selectedId);
+        const version = await getVersion(selectedId, target);
         if (version) {
           onCompare(version.state, currentState);
         }
       } finally {
         setActionLoading(false);
       }
-    }, [selectedId, onCompare, currentState]);
+    }, [selectedId, onCompare, currentState, target]);
 
     // 删除版本
     const handleDelete = useCallback(async () => {
-      if (!deleteConfirmId) return;
+      if (!deleteConfirmId || !target) return;
       setActionLoading(true);
       try {
-        await deleteVersion(deleteConfirmId);
+        await deleteVersion(deleteConfirmId, target);
         setDeleteConfirmId(null);
         await loadVersions();
         showToast(t('versionHistory.deleteSuccess'));
@@ -234,7 +235,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
       } finally {
         setActionLoading(false);
       }
-    }, [deleteConfirmId, loadVersions, showToast, t]);
+    }, [deleteConfirmId, loadVersions, showToast, t, target]);
 
     return (
       <>

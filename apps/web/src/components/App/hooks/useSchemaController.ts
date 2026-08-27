@@ -22,6 +22,7 @@ interface UseSchemaControllerParams {
   loadedTableNormalizedName: string | null;
   loadedTableName: string | null;
   loadedTableSignature: string | null;
+  countTableVersions: (normalizedName: string) => Promise<number>;
 }
 
 export function useSchemaController({
@@ -31,6 +32,7 @@ export function useSchemaController({
   loadedTableNormalizedName,
   loadedTableName,
   loadedTableSignature,
+  countTableVersions,
 }: UseSchemaControllerParams) {
   const { editor, ui, auth, sharding, partition, tableOptions } = domains;
   const {
@@ -98,6 +100,7 @@ export function useSchemaController({
     normalizedName: loadedTableNormalizedName,
     tableName: loadedTableName,
     isDirty: derived.isLoadedDirty,
+    countTableVersions,
   });
   const sql = useSqlGeneration(
     objectType,

@@ -4,7 +4,7 @@ import type { SavedTableDraftRecord, WorkspaceSelection } from '@ddlbuilder/shar
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
 import type { UseDialogStateReturn } from '@/hooks/useDialogState';
 import { DEFAULT_SAVED_TABLE_NAME } from '@/utils/savedTablesDb';
-import { createVersion, countVersions, INITIAL_VERSION_MESSAGE_KEY } from '@/utils/tableVersions';
+import { INITIAL_VERSION_MESSAGE_KEY } from '@/utils/tableVersions';
 import { resolveSavedTableSnapshot } from '@/services/savedTableSnapshot';
 
 type SaveDialogData = {
@@ -27,6 +27,12 @@ interface UseSaveLoadActionsParams {
   } | null>;
   saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
   overwriteTable: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
+  countTableVersions: (normalizedName: string) => Promise<number>;
+  createTableVersion: (
+    normalizedName: string,
+    state: PersistedState,
+    message?: string,
+  ) => Promise<unknown>;
   showToast: (message: string) => void;
   getSavedTableDraft?: (normalizedName: string) => SavedTableDraftRecord | null;
   setWorkspaceSnapshot?: (source: WorkspaceSelection, state: PersistedState) => void;
@@ -51,6 +57,8 @@ export function useSaveLoadActions({
   loadTable,
   saveTable,
   overwriteTable,
+  countTableVersions,
+  createTableVersion,
   showToast,
   getSavedTableDraft,
   setWorkspaceSnapshot,
@@ -79,7 +87,7 @@ export function useSaveLoadActions({
 
         let versionCount = 0;
         try {
-          versionCount = await countVersions(record.normalizedName);
+          versionCount = await countTableVersions(record.normalizedName);
         } catch (error) {
           console.error('[saved-table] failed to count versions', error);
         }
@@ -93,7 +101,7 @@ export function useSaveLoadActions({
         onTableLoadStateChange?.(false);
       }
     },
-    [loadTable, showToast, getSavedTableDraft, onTableLoadStateChange],
+    [loadTable, showToast, getSavedTableDraft, onTableLoadStateChange, countTableVersions],
   );
 
   const openSaveDialog = useCallback(() => {
@@ -166,11 +174,11 @@ export function useSaveLoadActions({
 
     try {
       if (saveMode === 'update' && savedNormalizedName) {
-        await createVersion(savedNormalizedName, nextState);
-        const versionCount = await countVersions(savedNormalizedName);
+        await createTableVersion(savedNormalizedName, nextState);
+        const versionCount = await countTableVersions(savedNormalizedName);
         setLoadedTableVersion(versionCount > 0 ? versionCount : 1);
       } else if (saveMode === 'create' && savedNormalizedName) {
-        await createVersion(savedNormalizedName, nextState, INITIAL_VERSION_MESSAGE_KEY);
+        await createTableVersion(savedNormalizedName, nextState, INITIAL_VERSION_MESSAGE_KEY);
         setLoadedTableVersion(1);
       }
     } catch (versionError) {
@@ -200,6 +208,8 @@ export function useSaveLoadActions({
     saveTable,
     saveDialog,
     onSaveSuccess,
+    countTableVersions,
+    createTableVersion,
   ]);
 
   const handleSaveDialogOpenChange = useCallback(

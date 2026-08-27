@@ -42,7 +42,15 @@ function createMockState(overrides: Partial<PersistedState> = {}): PersistedStat
 
 describe('tableVersions', () => {
   let testId = 0;
-  const getTestTableName = () => `test_table_${Date.now()}_${testId++}`;
+  const getTestTableName = () => {
+    const normalizedName = `test_table_${Date.now()}_${testId++}`;
+    return { scope: { kind: 'anonymous' } as const, tableId: normalizedName, normalizedName };
+  };
+  const defaultTarget = {
+    scope: { kind: 'anonymous' } as const,
+    tableId: 'test',
+    normalizedName: 'test',
+  };
 
   beforeAll(() => {
     setupFakeIndexedDB();
@@ -59,7 +67,7 @@ describe('tableVersions', () => {
       const version = await createVersion(testTableName, state, '初始版本');
 
       expect(version.id).toBeDefined();
-      expect(version.tableNormalizedName).toBe(testTableName);
+      expect(version.tableNormalizedName).toBe(testTableName.normalizedName);
       expect(version.state).toEqual(state);
       expect(version.message).toBe('初始版本');
       expect(version.createdAt).toBeGreaterThan(0);
@@ -84,6 +92,66 @@ describe('tableVersions', () => {
       const testTableName = getTestTableName();
       const versions = await listVersions(testTableName);
       expect(versions).toEqual([]);
+    });
+
+    it('同名表在不同工作区中互不影响', async () => {
+      const normalizedName = getTestTableName().normalizedName;
+      const anonymousTarget = {
+        scope: { kind: 'anonymous' } as const,
+        tableId: 'shared-id',
+        normalizedName,
+      };
+      const userTarget = {
+        scope: { kind: 'user' } as const,
+        userId: 'user-1',
+        workspaceId: 'workspace-1',
+        tableId: 'shared-id',
+        normalizedName,
+      };
+
+      await createVersion(anonymousTarget, createMockState(), 'anonymous');
+      await createVersion(userTarget, createMockState(), 'user');
+
+      expect((await listVersions(anonymousTarget)).map((version) => version.message)).toEqual([
+        'anonymous',
+      ]);
+      expect((await listVersions(userTarget)).map((version) => version.message)).toEqual(['user']);
+    });
+
+    it('表重命名后仍通过稳定 ID 读取原有历史', async () => {
+      const originalTarget = getTestTableName();
+      await createVersion(originalTarget, createMockState(), 'before-rename');
+      const renamedTarget = {
+        ...originalTarget,
+        normalizedName: `${originalTarget.normalizedName}_v2`,
+      };
+
+      const versions = await listVersions(renamedTarget);
+
+      expect(versions.map((version) => version.message)).toEqual(['before-rename']);
+    });
+
+    it('首次读取时接管旧版未分区历史', async () => {
+      const target = getTestTableName();
+      const db = await dbUtils.openDb();
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(dbUtils.VERSION_STORE_NAME, 'readwrite');
+        tx.objectStore(dbUtils.VERSION_STORE_NAME).add({
+          id: `legacy-${target.tableId}`,
+          tableNormalizedName: target.normalizedName,
+          state: createMockState(),
+          message: 'legacy',
+          createdAt: Date.now(),
+        });
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+
+      const [version] = await listVersions(target);
+
+      expect(version.message).toBe('legacy');
+      expect(version.tableId).toBe(target.tableId);
+      expect(version.tableKey).toBe(`anonymous::${target.tableId}`);
     });
   });
 
@@ -154,13 +222,13 @@ describe('tableVersions', () => {
       const state = createMockState();
       const created = await createVersion(testTableName, state);
 
-      const fetched = await getVersion(created.id);
+      const fetched = await getVersion(created.id, testTableName);
       expect(fetched).not.toBeNull();
       expect(fetched?.id).toBe(created.id);
     });
 
     it('不存在返回 null', async () => {
-      const result = await getVersion('non_existent_id');
+      const result = await getVersion('non_existent_id', defaultTarget);
       expect(result).toBeNull();
     });
   });
@@ -171,8 +239,8 @@ describe('tableVersions', () => {
       const state = createMockState();
       const version = await createVersion(testTableName, state);
 
-      await deleteVersion(version.id);
-      const result = await getVersion(version.id);
+      await deleteVersion(version.id, testTableName);
+      const result = await getVersion(version.id, testTableName);
       expect(result).toBeNull();
     });
   });
@@ -257,7 +325,7 @@ describe('tableVersions', () => {
         oncomplete: null,
       };
 
-      const p1 = getVersion('1');
+      const p1 = getVersion('1', defaultTarget);
       await Promise.resolve(); // yield to let openDb resolve
       mockRequest.onerror();
       await expect(p1).rejects.toThrow('请求失败');
@@ -272,7 +340,7 @@ describe('tableVersions', () => {
         error: null,
       };
 
-      const p2 = getVersion('1');
+      const p2 = getVersion('1', defaultTarget);
       await Promise.resolve();
       mockTx.onerror();
       await expect(p2).rejects.toThrow('事务失败');
@@ -305,7 +373,7 @@ describe('tableVersions', () => {
         onerror: null,
         oncomplete: null,
       };
-      const p1 = countVersions('test');
+      const p1 = countVersions(defaultTarget);
       await Promise.resolve();
       mockRequest.onerror();
       await expect(p1).rejects.toThrow('index error');
@@ -325,7 +393,7 @@ describe('tableVersions', () => {
         onerror: null,
         oncomplete: null,
       };
-      const p2 = listVersions('test');
+      const p2 = listVersions(defaultTarget);
       await Promise.resolve();
       mockRequest.onerror();
       await expect(p2).rejects.toThrow('list error');

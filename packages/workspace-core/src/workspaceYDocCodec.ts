@@ -30,6 +30,7 @@ export const importWorkspaceSnapshotToYDoc = (doc: Y.Doc, snapshot: WorkspaceSna
 
     for (const table of normalizedSnapshot.savedTables) {
       upsertTableRecord(savedTables, table.normalizedName, table.state, {
+        tableId: table.tableId ?? `legacy:${table.normalizedName}`,
         normalizedName: table.normalizedName,
         name: table.name,
         createdAt: table.createdAt ?? table.updatedAt,
@@ -73,6 +74,8 @@ export const exportWorkspaceYDocToSnapshot = (doc: Y.Doc): WorkspaceSnapshot => 
       const metadata = tableMetadata(tableDoc);
       const updatedAt = readWorkspaceTimestamp(metadata.updatedAt);
       return {
+        tableId:
+          typeof metadata.tableId === 'string' ? metadata.tableId : `legacy:${normalizedName}`,
         normalizedName,
         name: typeof metadata.name === 'string' ? metadata.name : normalizedName,
         state: tableDocToSchemaDocumentState(tableDoc),

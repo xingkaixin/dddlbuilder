@@ -11,6 +11,7 @@ import type {
 } from '@ddlbuilder/shared-types';
 
 export type SavedTableRecord = {
+  tableId?: string;
   normalizedName: string;
   name: string;
   state: PersistedState;
@@ -22,6 +23,7 @@ export type SavedTableRecord = {
 };
 
 export type SavedTableMetadata = {
+  tableId: string;
   normalizedName: string;
   name: string;
   dbType: string;
@@ -83,6 +85,8 @@ export type TableTemplate = {
 
 export type TableVersion = {
   id: string;
+  tableKey?: string;
+  tableId?: string;
   tableNormalizedName: string;
   state: PersistedState;
   message?: string;

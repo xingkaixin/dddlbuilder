@@ -95,6 +95,7 @@ const createSnapshot = (): WorkspaceSnapshot => ({
   ],
   savedTables: [
     {
+      tableId: 'table-users',
       normalizedName: 'users',
       name: 'Users',
       state: createState('users'),

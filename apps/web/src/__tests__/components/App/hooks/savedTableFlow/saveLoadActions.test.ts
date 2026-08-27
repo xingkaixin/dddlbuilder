@@ -4,10 +4,7 @@ import { type PersistedState, normalizePersistedRows } from '@ddlbuilder/shared-
 import { useSaveLoadActions } from '@/components/App/hooks/savedTableFlow/saveLoadActions';
 import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 
-// Mocks for DB utils so we don't depend on indexedDB environment in these unit tests
 vi.mock('@/utils/tableVersions', () => ({
-  createVersion: vi.fn(),
-  countVersions: vi.fn().mockResolvedValue(1),
   INITIAL_VERSION_MESSAGE_KEY: 'init',
 }));
 
@@ -23,6 +20,8 @@ describe('useSaveLoadActions', () => {
   let onTableLoadStateChange: any;
   let buildPersistedState: any;
   let serializePersistedState: any;
+  let countTableVersions: any;
+  let createTableVersion: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -45,6 +44,8 @@ describe('useSaveLoadActions', () => {
     onTableLoadStateChange = vi.fn();
     buildPersistedState = vi.fn().mockReturnValue({ test: 1 });
     serializePersistedState = vi.fn().mockReturnValue('mock-sig');
+    countTableVersions = vi.fn().mockResolvedValue(1);
+    createTableVersion = vi.fn().mockResolvedValue(undefined);
   });
 
   const getHook = (overrides = {}) =>
@@ -61,6 +62,8 @@ describe('useSaveLoadActions', () => {
         loadTable,
         saveTable,
         overwriteTable,
+        countTableVersions,
+        createTableVersion,
         showToast,
         setWorkspaceSnapshot,
         onSaveSuccess,

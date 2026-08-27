@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 export interface VersionHistoryTarget {
+  tableId: string;
   normalizedName: string;
   name: string;
 }

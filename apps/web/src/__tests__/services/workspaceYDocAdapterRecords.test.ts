@@ -95,11 +95,13 @@ describe('workspaceYDocAdapter records', () => {
 
     expect(listSavedTableMetadataFromYDoc(doc)).toEqual([
       {
+        tableId: 'legacy:users',
         normalizedName: 'users',
         name: 'Users',
         dbType: 'mysql',
         fieldCount: 1,
         folderId: 'folder-1',
+        trashedAt: undefined,
         createdAt: 10,
         updatedAt: 20,
       },

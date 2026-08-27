@@ -51,6 +51,7 @@ import type {
 } from '@/utils/workspaceStorageTypes';
 import { buildFolderTreeModel, type FolderTreeNode } from '@/utils/folderModel';
 import { resolveSavedTableSnapshot } from './savedTableSnapshot';
+import { resolveSavedTableId } from '@/utils/savedTableIdentity';
 
 export {
   applySchemaDocumentStateToTableDoc,
@@ -114,7 +115,7 @@ export const upsertSavedTableInYDoc = (
   doc: Y.Doc,
   record: Omit<SavedTableRecord, 'state'> & { state: SchemaDocumentState },
   options?: ApplySchemaDocumentStateOptions,
-) => upsertWorkspaceSavedTable(doc, record, options);
+) => upsertWorkspaceSavedTable(doc, { ...record, tableId: resolveSavedTableId(record) }, options);
 
 export const deleteSavedTableFromYDoc = deleteWorkspaceSavedTable;
 
@@ -133,6 +134,7 @@ export const listTrashedSavedTableRecordsFromYDoc = (doc: Y.Doc): SavedTableReco
   listWorkspaceTrashedSavedTables(doc).map(toSavedTableRecord);
 
 const toSavedTableMetadata = (record: SavedTableRecord): SavedTableMetadata => ({
+  tableId: resolveSavedTableId(record),
   normalizedName: record.normalizedName,
   name: record.name,
   dbType: record.state.dbType,

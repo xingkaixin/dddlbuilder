@@ -16,7 +16,7 @@ import type { TableVersion } from '@/utils/workspaceStorageTypes';
 import type { FieldRow } from '@ddlbuilder/shared-types';
 import type { TableDiff, FieldDiff, FieldChangeType } from '@ddlbuilder/ddl-core';
 import { diffPersistedState } from '@ddlbuilder/ddl-core';
-import { listVersions } from '@/utils/tableVersions';
+import { listVersions, type TableVersionTarget } from '@/utils/tableVersions';
 import { useTranslation } from 'react-i18next';
 import { getDefaultKindLabel, getNullableLabel, getOnUpdateLabel } from '@/i18n/fieldEnums';
 import { useLocale } from '@/i18n/LocaleContext';
@@ -24,7 +24,7 @@ import { useLocale } from '@/i18n/LocaleContext';
 interface SchemaTimelinePlayerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  tableNormalizedName: string | null;
+  target: TableVersionTarget | null;
   tableName: string | null;
 }
 
@@ -115,19 +115,19 @@ function buildChangeSummary(
 }
 
 export const SchemaTimelinePlayer = memo<SchemaTimelinePlayerProps>(
-  ({ open, onOpenChange, tableNormalizedName, tableName }) => {
+  ({ open, onOpenChange, target, tableName }) => {
     const { t } = useTranslation();
     const { resolvedLocale } = useLocale();
     const [versions, setVersions] = useState<TableVersion[]>([]);
-    const [loading, setLoading] = useState(open && Boolean(tableNormalizedName));
+    const [loading, setLoading] = useState(open && Boolean(target));
     const [currentFrame, setCurrentFrame] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
     const [speed, setSpeed] = useState<Speed>(1);
 
     // Load versions when dialog opens
     useEffect(() => {
-      if (!open || !tableNormalizedName) return;
-      void listVersions(tableNormalizedName)
+      if (!open || !target) return;
+      void listVersions(target)
         .then((list) => {
           // Sort ascending (oldest first)
           const sorted = list.sort((a, b) => a.createdAt - b.createdAt);
@@ -135,7 +135,7 @@ export const SchemaTimelinePlayer = memo<SchemaTimelinePlayerProps>(
           setCurrentFrame(0);
         })
         .finally(() => setLoading(false));
-    }, [open, tableNormalizedName]);
+    }, [open, target]);
 
     // Precompute diffs for each frame
     const frameDiffs = useMemo<(TableDiff | null)[]>(() => {

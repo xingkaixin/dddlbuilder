@@ -94,6 +94,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     const draftAsSavedItems = useMemo<SavedTableSummary[]>(
       () =>
         draftItems.map((d) => ({
+          tableId: `draft:${d.draftId}`,
           normalizedName: d.draftId,
           name: d.name,
           dbType: d.dbType,

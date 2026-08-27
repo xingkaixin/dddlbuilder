@@ -78,6 +78,7 @@ export type WorkspaceSnapshot = {
     trashedAt?: number;
   }>;
   savedTables: Array<{
+    tableId?: string;
     normalizedName: string;
     name: string;
     state: SchemaDocumentState;

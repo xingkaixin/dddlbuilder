@@ -1,18 +1,13 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { useLoadedTablePresentation } from '@/components/App/hooks/useLoadedTablePresentation';
-import { countVersions } from '@/utils/tableVersions';
 
-vi.mock('@/utils/tableVersions', () => ({
-  countVersions: vi.fn(),
-}));
-
-const mockedCountVersions = vi.mocked(countVersions);
+const countTableVersions = vi.fn();
 
 describe('useLoadedTablePresentation', () => {
   it('切换表时不展示上一张表尚未完成的版本查询结果', async () => {
     let resolveAlpha: (count: number) => void = () => {};
-    mockedCountVersions
+    countTableVersions
       .mockImplementationOnce(
         () =>
           new Promise<number>((resolve) => {
@@ -28,6 +23,7 @@ describe('useLoadedTablePresentation', () => {
           normalizedName,
           tableName,
           isDirty: false,
+          countTableVersions,
         }),
       { initialProps: { normalizedName: 'alpha', tableName: 'Alpha' } },
     );
@@ -48,6 +44,7 @@ describe('useLoadedTablePresentation', () => {
           normalizedName,
           tableName,
           isDirty: false,
+          countTableVersions,
         }),
       { initialProps: { normalizedName: 'alpha', tableName: 'Alpha' } },
     );

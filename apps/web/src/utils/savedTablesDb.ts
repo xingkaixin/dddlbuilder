@@ -5,6 +5,7 @@ import { runIndexedDbRequest } from './indexedDbTransaction';
 import { decodeWorkspaceScopedKey } from './workspaceScopedRecord';
 import { openDb, STORE_NAME } from './workspaceDb';
 import type { SavedTableMetadata, SavedTableRecord } from './workspaceStorageTypes';
+import { resolveSavedTableId } from './savedTableIdentity';
 
 export { openDb } from './workspaceDb';
 export {
@@ -49,6 +50,7 @@ const decodeScopedTableRecord = (
   if (!decoded) return null;
   return {
     ...record,
+    tableId: resolveSavedTableId(record),
     normalizedName: decoded.key,
     scope: decoded.scope,
     state: normalizePersistedRows(record.state),
@@ -95,6 +97,7 @@ export const listSavedTableMetadata = async (
   const records = await listSavedTables(scope);
 
   return records.map((record) => ({
+    tableId: resolveSavedTableId(record),
     normalizedName: record.normalizedName,
     name: record.name,
     dbType: record.state.dbType,
@@ -111,6 +114,7 @@ export const listTrashedSavedTableMetadata = async (
   const records = await listTrashedSavedTables(scope);
 
   return records.map((record) => ({
+    tableId: resolveSavedTableId(record),
     normalizedName: record.normalizedName,
     name: record.name,
     dbType: record.state.dbType,

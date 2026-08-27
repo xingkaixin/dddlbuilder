@@ -1,28 +1,31 @@
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import {
+  createEntityId,
+  normalizePersistedRows,
+  type PersistedState,
+} from '@ddlbuilder/shared-types';
+import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
+import { runIndexedDbRequest } from './indexedDbTransaction';
+import { getWorkspaceScopeStorageKey } from './workspaceScope';
 import { openDb, VERSION_STORE_NAME } from './workspaceDb';
 import type { TableVersion, TableVersionMetadata } from './workspaceStorageTypes';
-import { normalizePersistedRows } from '@ddlbuilder/shared-types';
-import { runIndexedDbRequest } from './indexedDbTransaction';
+
+export type TableVersionTarget = {
+  scope: WorkspaceScope;
+  tableId: string;
+  normalizedName: string;
+};
+
+export const MAX_VERSIONS_PER_TABLE = 20;
+export const INITIAL_VERSION_MESSAGE_KEY = 'initial_version';
+
+const getTableKey = ({ scope, tableId }: TableVersionTarget) =>
+  `${getWorkspaceScopeStorageKey(scope)}::${tableId}`;
 
 const decodeVersion = (version: TableVersion): TableVersion => ({
   ...version,
   state: normalizePersistedRows(version.state),
 });
 
-/** 每个表最多保留的版本数量 */
-export const MAX_VERSIONS_PER_TABLE = 20;
-export const INITIAL_VERSION_MESSAGE_KEY = 'initial_version';
-
-/**
- * 生成唯一 ID
- */
-function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-}
-
-/**
- * 运行事务
- */
 async function runWithStore<T>(
   mode: IDBTransactionMode,
   runner: (store: IDBObjectStore) => IDBRequest<T>,
@@ -31,138 +34,134 @@ async function runWithStore<T>(
   return runIndexedDbRequest(db, VERSION_STORE_NAME, mode, runner);
 }
 
-/**
- * 创建版本快照
- */
+const readVersionsByIndex = async (indexName: string, key: IDBValidKey) => {
+  const db = await openDb();
+  return runIndexedDbRequest<TableVersion[]>(db, VERSION_STORE_NAME, 'readonly', (store) =>
+    store.index(indexName).getAll(key),
+  );
+};
+
+const claimLegacyVersions = async (
+  target: TableVersionTarget,
+  versions: TableVersion[],
+): Promise<TableVersion[]> => {
+  const legacyVersions = versions.filter((version) => !version.tableKey);
+  if (legacyVersions.length === 0) return [];
+
+  const tableKey = getTableKey(target);
+  const claimed = legacyVersions.map((version) => ({
+    ...version,
+    tableKey,
+    tableId: target.tableId,
+  }));
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(VERSION_STORE_NAME, 'readwrite');
+    const store = tx.objectStore(VERSION_STORE_NAME);
+    for (const version of claimed) store.put(version);
+    tx.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    tx.onerror = () => reject(tx.error ?? new Error('版本迁移失败'));
+    tx.onabort = () => reject(tx.error ?? new Error('版本迁移被中止'));
+  });
+  return claimed;
+};
+
 export async function createVersion(
-  tableNormalizedName: string,
+  target: TableVersionTarget,
   state: PersistedState,
   message?: string,
 ): Promise<TableVersion> {
   const version: TableVersion = {
-    id: generateId(),
-    tableNormalizedName,
+    id: createEntityId(),
+    tableKey: getTableKey(target),
+    tableId: target.tableId,
+    tableNormalizedName: target.normalizedName,
     state,
     message,
     createdAt: Date.now(),
   };
 
   await runWithStore<IDBValidKey>('readwrite', (store) => store.add(version));
-
-  // 清理超限版本
-  await pruneOldVersions(tableNormalizedName, MAX_VERSIONS_PER_TABLE);
-
+  await pruneOldVersions(target, MAX_VERSIONS_PER_TABLE);
   return version;
 }
 
-/**
- * 获取表的所有版本（按时间倒序）
- */
-export async function listVersions(tableNormalizedName: string): Promise<TableVersion[]> {
-  const db = await openDb();
-  const versions = await runIndexedDbRequest<TableVersion[]>(
-    db,
-    VERSION_STORE_NAME,
-    'readonly',
-    (store) => store.index('tableNormalizedName').getAll(tableNormalizedName),
-  );
-  return (versions ?? []).sort((a, b) => b.createdAt - a.createdAt).map(decodeVersion);
+export async function listVersions(target: TableVersionTarget): Promise<TableVersion[]> {
+  const tableKey = getTableKey(target);
+  const [scopedVersions, sameNameVersions] = await Promise.all([
+    readVersionsByIndex('tableKey', tableKey),
+    readVersionsByIndex('tableNormalizedName', target.normalizedName),
+  ]);
+  const claimed = await claimLegacyVersions(target, sameNameVersions ?? []);
+  return [...(scopedVersions ?? []), ...claimed]
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .map(decodeVersion);
 }
 
-/**
- * 获取表的版本元数据列表（轻量级）
- */
 export async function listVersionMetadata(
-  tableNormalizedName: string,
+  target: TableVersionTarget,
 ): Promise<TableVersionMetadata[]> {
-  const versions = await listVersions(tableNormalizedName);
-  return versions.map((v) => ({
-    id: v.id,
-    tableNormalizedName: v.tableNormalizedName,
-    message: v.message,
-    dbType: v.state.dbType,
-    fieldCount: v.state.rows?.filter((r) => r.fieldName?.trim()).length || 0,
-    createdAt: v.createdAt,
+  const versions = await listVersions(target);
+  return versions.map((version) => ({
+    id: version.id,
+    tableNormalizedName: version.tableNormalizedName,
+    message: version.message,
+    dbType: version.state.dbType,
+    fieldCount: version.state.rows?.filter((row) => row.fieldName?.trim()).length || 0,
+    createdAt: version.createdAt,
   }));
 }
 
-/**
- * 获取单个版本
- */
-export async function getVersion(id: string): Promise<TableVersion | null> {
+export async function getVersion(
+  id: string,
+  target: TableVersionTarget,
+): Promise<TableVersion | null> {
   const result = await runWithStore<TableVersion | undefined>('readonly', (store) => store.get(id));
-  return result ? decodeVersion(result) : null;
+  if (!result) return null;
+  if (result.tableKey === getTableKey(target)) return decodeVersion(result);
+  if (result.tableKey || result.tableNormalizedName !== target.normalizedName) return null;
+  const [claimed] = await claimLegacyVersions(target, [result]);
+  return claimed ? decodeVersion(claimed) : null;
 }
 
-/**
- * 删除版本
- */
-export async function deleteVersion(id: string): Promise<void> {
+export async function deleteVersion(id: string, target: TableVersionTarget): Promise<void> {
+  if (!(await getVersion(id, target))) return;
   await runWithStore<undefined>('readwrite', (store) => store.delete(id));
 }
 
-/**
- * 删除表的所有版本
- */
-export async function deleteAllVersions(tableNormalizedName: string): Promise<void> {
-  const versions = await listVersions(tableNormalizedName);
+const deleteVersions = async (versions: TableVersion[]): Promise<void> => {
+  if (versions.length === 0) return;
   const db = await openDb();
-
-  return new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(VERSION_STORE_NAME, 'readwrite');
     const store = tx.objectStore(VERSION_STORE_NAME);
-
-    for (const v of versions) {
-      store.delete(v.id);
-    }
-
+    for (const version of versions) store.delete(version.id);
     tx.oncomplete = () => {
       db.close();
       resolve();
     };
-    tx.onerror = () => reject(tx.error);
+    tx.onerror = () => reject(tx.error ?? new Error('删除版本失败'));
+    tx.onabort = () => reject(tx.error ?? new Error('删除版本被中止'));
   });
+};
+
+export async function deleteAllVersions(target: TableVersionTarget): Promise<void> {
+  await deleteVersions(await listVersions(target));
 }
 
-/**
- * 清理超出限制的旧版本
- */
 export async function pruneOldVersions(
-  tableNormalizedName: string,
+  target: TableVersionTarget,
   maxCount: number,
 ): Promise<number> {
-  const versions = await listVersions(tableNormalizedName);
-
-  if (versions.length <= maxCount) {
-    return 0;
-  }
-
-  // 版本已按时间倒序，保留前 maxCount 个
-  const toDelete = versions.slice(maxCount);
-
-  const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(VERSION_STORE_NAME, 'readwrite');
-    const store = tx.objectStore(VERSION_STORE_NAME);
-
-    for (const v of toDelete) {
-      store.delete(v.id);
-    }
-
-    tx.oncomplete = () => {
-      db.close();
-      resolve(toDelete.length);
-    };
-    tx.onerror = () => reject(tx.error);
-  });
+  const versions = await listVersions(target);
+  const toDelete = versions.slice(Math.max(0, maxCount));
+  await deleteVersions(toDelete);
+  return toDelete.length;
 }
 
-/**
- * 获取表的版本数量
- */
-export async function countVersions(tableNormalizedName: string): Promise<number> {
-  const db = await openDb();
-  return runIndexedDbRequest(db, VERSION_STORE_NAME, 'readonly', (store) =>
-    store.index('tableNormalizedName').count(tableNormalizedName),
-  );
+export async function countVersions(target: TableVersionTarget): Promise<number> {
+  return (await listVersions(target)).length;
 }

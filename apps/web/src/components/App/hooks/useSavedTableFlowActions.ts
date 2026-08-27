@@ -38,6 +38,12 @@ interface UseSavedTableFlowActionsParams {
   deleteTable: (normalizedName: string) => Promise<SaveTableResult>;
   saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
   overwriteTable: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
+  countTableVersions: (normalizedName: string) => Promise<number>;
+  createTableVersion: (
+    normalizedName: string,
+    state: PersistedState,
+    message?: string,
+  ) => Promise<unknown>;
   showToast: (message: string) => void;
   getSavedTableDraft?: (normalizedName: string) => SavedTableDraftRecord | null;
   setWorkspaceSnapshot?: (source: WorkspaceSelection, state: PersistedState) => void;
@@ -74,6 +80,8 @@ export function useSavedTableFlowActions({
   deleteTable,
   saveTable,
   overwriteTable,
+  countTableVersions,
+  createTableVersion,
   showToast,
   getSavedTableDraft,
   setWorkspaceSnapshot,
@@ -96,6 +104,8 @@ export function useSavedTableFlowActions({
     loadTable,
     saveTable,
     overwriteTable,
+    countTableVersions,
+    createTableVersion,
     showToast,
     getSavedTableDraft,
     setWorkspaceSnapshot,

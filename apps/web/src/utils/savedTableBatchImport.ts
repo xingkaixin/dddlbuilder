@@ -1,6 +1,7 @@
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { ensureSavedTableName, normalizeSavedTableName } from './savedTablesDb';
 import type { SavedTableRecord } from './workspaceStorageTypes';
+import { createSavedTableId, resolveSavedTableId } from './savedTableIdentity';
 
 export type SavedTableConflictStrategy = 'skip' | 'overwrite' | 'rename';
 
@@ -68,6 +69,7 @@ export const buildSavedTableBatchImportPlan = (
     if (hasActiveConflict && request.conflictStrategy === 'rename') {
       const uniqueIdentity = createUniqueIdentity(displayName, occupiedNames);
       const record: SavedTableRecord = {
+        tableId: createSavedTableId(),
         normalizedName: uniqueIdentity.normalizedName,
         name: uniqueIdentity.displayName,
         state: item.state,
@@ -82,6 +84,7 @@ export const buildSavedTableBatchImportPlan = (
     }
 
     const record: SavedTableRecord = {
+      tableId: existing ? resolveSavedTableId(existing) : createSavedTableId(),
       normalizedName,
       name: hasActiveConflict ? (existing?.name ?? displayName) : displayName,
       state: item.state,

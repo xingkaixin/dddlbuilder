@@ -156,11 +156,15 @@ export function AppDialogLayer({ model }: AppDialogLayerProps) {
           onCopy: dialogs.handleCopyDiff,
         }}
         versionHistoryDialogProps={
-          ui.versionHistoryTarget
+          ui.versionHistoryTarget && workspace.scope
             ? {
                 open: true,
                 onOpenChange: handleVersionHistoryOpenChange,
-                tableNormalizedName: ui.versionHistoryTarget.normalizedName,
+                target: {
+                  scope: workspace.scope,
+                  tableId: ui.versionHistoryTarget.tableId,
+                  normalizedName: ui.versionHistoryTarget.normalizedName,
+                },
                 tableName: ui.versionHistoryTarget.name,
                 currentState: schema.currentPersistedState,
                 onRollback: dialogs.handleRollbackVersion,
@@ -169,11 +173,15 @@ export function AppDialogLayer({ model }: AppDialogLayerProps) {
             : null
         }
         timelinePlayerProps={
-          ui.timelinePlayerTarget
+          ui.timelinePlayerTarget && workspace.scope
             ? {
                 open: true,
                 onOpenChange: handleTimelinePlayerOpenChange,
-                tableNormalizedName: ui.timelinePlayerTarget.normalizedName,
+                target: {
+                  scope: workspace.scope,
+                  tableId: ui.timelinePlayerTarget.tableId,
+                  normalizedName: ui.timelinePlayerTarget.normalizedName,
+                },
                 tableName: ui.timelinePlayerTarget.name,
               }
             : null

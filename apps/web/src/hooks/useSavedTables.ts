@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type * as Y from 'yjs';
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import { createEntityId, type PersistedState } from '@ddlbuilder/shared-types';
 import {
   listSavedTableMetadataFromYDoc,
   listTrashedSavedTableMetadataFromYDoc,
@@ -16,6 +16,8 @@ import {
 import { useSavedTablePersistence } from '@/hooks/workspacePersistence/useSavedTablePersistence';
 import { useWorkspaceYDocProjection } from '@/hooks/useWorkspaceYDocProjection';
 import { localSavedTablesOptions, localTrashedTablesOptions } from '@/queries/workspaceLocal';
+import { countVersions, createVersion } from '@/utils/tableVersions';
+import { resolveSavedTableId } from '@/utils/savedTableIdentity';
 
 export type SavedTableSummary = SavedTableMetadata;
 
@@ -102,8 +104,10 @@ export function useSavedTables() {
           return { ok: false, reason: 'duplicate' };
         }
         const now = Date.now();
+        const tableId = existing?.tableId ?? createEntityId();
         await persistActiveTable(
           {
+            tableId,
             normalizedName,
             name: displayName,
             state,
@@ -283,6 +287,28 @@ export function useSavedTables() {
 
   const loadTable = useCallback((normalizedName: string) => readTable(normalizedName), [readTable]);
   const loadTables = useCallback(async () => (await readAllTables()).active, [readAllTables]);
+  const resolveVersionTarget = useCallback(
+    async (normalizedName: string) => {
+      if (!currentScope) throw new Error('工作区未就绪');
+      const record = await readTable(normalizedName);
+      if (!record) throw new Error('未找到保存的表');
+      return {
+        scope: currentScope,
+        tableId: resolveSavedTableId(record),
+        normalizedName: record.normalizedName,
+      };
+    },
+    [currentScope, readTable],
+  );
+  const countTableVersions = useCallback(
+    async (normalizedName: string) => countVersions(await resolveVersionTarget(normalizedName)),
+    [resolveVersionTarget],
+  );
+  const createTableVersion = useCallback(
+    async (normalizedName: string, state: PersistedState, message?: string) =>
+      createVersion(await resolveVersionTarget(normalizedName), state, message),
+    [resolveVersionTarget],
+  );
 
   // 移动表到指定文件夹
   const moveTableToFolder = useCallback(
@@ -361,6 +387,8 @@ export function useSavedTables() {
     renameTable,
     loadTable,
     loadTables,
+    countTableVersions,
+    createTableVersion,
     moveTableToFolder,
     importTables,
   };

@@ -148,6 +148,7 @@ export function useAppController() {
     loadedTableNormalizedName,
     loadedTableName,
     loadedTableSignature,
+    countTableVersions: savedTableData.countTableVersions,
   });
   const {
     currentPersistedState,
@@ -185,6 +186,8 @@ export function useAppController() {
     deleteTablePermanently,
     renameTable,
     loadTable,
+    countTableVersions,
+    createTableVersion,
     moveTableToFolder,
   } = savedTableData;
 
@@ -278,6 +281,8 @@ export function useAppController() {
     deleteTable,
     saveTable,
     overwriteTable,
+    countTableVersions,
+    createTableVersion,
     showToast,
     getSavedTableDraft,
     setWorkspaceSnapshot,
@@ -363,11 +368,16 @@ export function useAppController() {
 
   const handleViewCurrentVersionHistory = useCallback(() => {
     if (!loadedTableNormalizedName || !loadedTableName) return;
+    const currentTable = savedTables.find(
+      (table) => table.normalizedName === loadedTableNormalizedName,
+    );
+    if (!currentTable) return;
     handleViewVersionHistory({
+      tableId: currentTable.tableId,
       normalizedName: loadedTableNormalizedName,
       name: loadedTableName,
     });
-  }, [loadedTableNormalizedName, loadedTableName, handleViewVersionHistory]);
+  }, [handleViewVersionHistory, loadedTableName, loadedTableNormalizedName, savedTables]);
 
   const handleSelectTableFromEr = useCallback(
     (state: PersistedState) => {

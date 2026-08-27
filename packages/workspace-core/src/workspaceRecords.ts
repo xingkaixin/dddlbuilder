@@ -21,8 +21,8 @@ import { readWorkspaceCreatedAt, readWorkspaceTimestamp } from './workspaceMetad
 
 export type WorkspaceSavedTableRecord = Omit<
   WorkspaceSnapshot['savedTables'][number],
-  'createdAt'
-> & { createdAt: number };
+  'createdAt' | 'tableId'
+> & { tableId: string; createdAt: number };
 export type WorkspaceSavedDraftRecord = WorkspaceSnapshot['savedDrafts'][number];
 export type WorkspaceDraftRecord = Omit<WorkspaceSnapshot['drafts'][number], 'draftId'>;
 export type WorkspaceYDocCollection = 'drafts' | 'savedTables' | 'savedDrafts' | 'folders';
@@ -78,6 +78,7 @@ export const upsertWorkspaceSavedTable = (
     record.normalizedName,
     record.state,
     {
+      tableId: record.tableId,
       normalizedName: record.normalizedName,
       name: record.name,
       createdAt: record.createdAt,
@@ -102,6 +103,7 @@ export const getWorkspaceSavedTable = (
   const metadata = tableMetadata(tableDoc);
   const updatedAt = readWorkspaceTimestamp(metadata.updatedAt);
   return {
+    tableId: typeof metadata.tableId === 'string' ? metadata.tableId : `legacy:${normalizedName}`,
     normalizedName,
     name: typeof metadata.name === 'string' ? metadata.name : normalizedName,
     state: tableDocToSchemaDocumentState(tableDoc),

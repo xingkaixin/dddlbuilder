@@ -38,6 +38,8 @@ const mocks = vi.hoisted(() => ({
               req.result = [
                 {
                   id: 'v1',
+                  tableKey: 'anonymous::t',
+                  tableId: 't',
                   tableNormalizedName: 't',
                   message: 'm',
                   createdAt: 1,
@@ -84,25 +86,31 @@ vi.mock('@/utils/workspaceDb', () => ({
 
 import { getVersion, listVersionMetadata, listVersions } from '@/utils/tableVersions';
 
+const target = {
+  scope: { kind: 'anonymous' } as const,
+  tableId: 't',
+  normalizedName: 't',
+};
+
 describe('tableVersions internal branches', () => {
   it('should fallback to default request error when request.error is null', async () => {
     mocks.behavior = 'get_request_error_null';
-    await expect(getVersion('v1')).rejects.toThrow('IndexedDB 请求失败');
+    await expect(getVersion('v1', target)).rejects.toThrow('IndexedDB 请求失败');
   });
 
   it('should fallback to default tx error when tx.error is null', async () => {
     mocks.behavior = 'get_tx_error_null';
-    await expect(getVersion('v1')).rejects.toThrow('IndexedDB 事务失败');
+    await expect(getVersion('v1', target)).rejects.toThrow('IndexedDB 事务失败');
   });
 
   it('should fallback listVersions result to empty array', async () => {
     mocks.behavior = 'list_result_undefined';
-    await expect(listVersions('t')).resolves.toEqual([]);
+    await expect(listVersions(target)).resolves.toEqual([]);
   });
 
   it('should fallback metadata fieldCount to 0 when rows are missing', async () => {
     mocks.behavior = 'list_rows_missing';
-    const metadata = await listVersionMetadata('t');
+    const metadata = await listVersionMetadata(target);
     expect(metadata).toHaveLength(1);
     expect(metadata[0].fieldCount).toBe(0);
   });

@@ -400,6 +400,7 @@ export const decodeWorkspaceSnapshot = (value: unknown): WorkspaceSnapshot | nul
     const state = decodeSchemaDocumentState(item.state);
     if (!state) return null;
     savedTables.push({
+      ...(typeof item.tableId === 'string' ? { tableId: item.tableId } : {}),
       normalizedName: item.normalizedName,
       name: item.name,
       state,
