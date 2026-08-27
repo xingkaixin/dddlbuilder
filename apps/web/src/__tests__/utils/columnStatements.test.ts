@@ -42,7 +42,9 @@ describe('columnStatements', () => {
     expect(generateTableCommentAlter('users', '表', 'sqlserver')).toContain(
       'sp_updateextendedproperty',
     );
-    expect(generateTableCommentAlter('users', '表', 'polardb')).toBe('');
+    expect(generateTableCommentAlter('users', '表', 'polardb')).toBe(
+      "ALTER TABLE users COMMENT = '表';",
+    );
   });
 
   it('应生成重命名字段 SQL，并在参数缺失时返回空', () => {

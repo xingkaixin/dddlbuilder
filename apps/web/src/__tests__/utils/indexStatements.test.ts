@@ -56,7 +56,7 @@ describe('indexStatements', () => {
       'DROP INDEX idx_users_age ON users;',
     );
     expect(generateDropIndex('users', diff, 'oracle')).toBe('DROP INDEX idx_users_age;');
-    expect(generateDropIndex('users', diff, 'kingbase')).toBe('DROP INDEX idx_users_age ON users;');
+    expect(generateDropIndex('users', diff, 'kingbase')).toBe('DROP INDEX idx_users_age;');
   });
 
   it('应生成主键新增语句（多数据库分支）', () => {
@@ -84,7 +84,7 @@ describe('indexStatements', () => {
       'ALTER TABLE users ADD CONSTRAINT pk_users PRIMARY KEY (id);',
     );
     expect(generateAddIndex('users', diff, 'kingbase')).toBe(
-      'ALTER TABLE users ADD PRIMARY KEY (id);',
+      'ALTER TABLE users ADD CONSTRAINT pk_users PRIMARY KEY (id);',
     );
   });
 

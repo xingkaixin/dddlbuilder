@@ -23,24 +23,18 @@ export function generateTableCommentAlter(
   tableName = formatSqlTableName(tableName, dbType);
   const escapedComment = escapeSingleQuotes(comment);
 
-  switch (dbType) {
+  switch (getDatabaseFamily(dbType)) {
     case 'mysql':
-    case 'mariadb':
-    case 'tidb':
       return `ALTER TABLE ${tableName} COMMENT = '${escapedComment}';`;
     case 'postgresql':
-    case 'postgresql-citus':
+    case 'oracle':
+    case 'dm':
       return `COMMENT ON TABLE ${tableName} IS '${escapedComment}';`;
     case 'sqlserver':
       // SQL Server 使用扩展属性，较复杂，暂返回注释提示
       return `-- 请使用 sp_updateextendedproperty 更新表注释`;
-    case 'oracle':
-    case 'oceanbase-oracle':
-      return `COMMENT ON TABLE ${tableName} IS '${escapedComment}';`;
-    case 'dm':
-      return `COMMENT ON TABLE ${tableName} IS '${escapedComment}';`;
     default:
-      return '';
+      return `-- Manual migration required: update table comment for ${tableName} (${dbType}).`;
   }
 }
 

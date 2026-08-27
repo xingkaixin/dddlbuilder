@@ -78,6 +78,65 @@ const createTableDiff = (overrides: Partial<TableDiff> = {}): TableDiff => ({
 });
 
 describe('generateAlterDDL', () => {
+  it('reports unsupported index operations instead of emitting another dialect', () => {
+    const diff = createTableDiff({ indexes: [{ type: 'remove', index: createIndex() }] });
+    expect(generateAlterDDL('users', diff, [], 'hive')).toBe(
+      '-- Manual migration required: drop index idx_name on users (hive).',
+    );
+    expect(generateRollbackDDL('users', diff, [], 'hive')).toBe(
+      '-- Manual migration required: add index idx_name on users (hive).',
+    );
+  });
+
+  it.each(['postgresql-citus', 'kingbase', 'gaussdb'] as const)(
+    '%s drops and restores indexes and comments using PostgreSQL syntax',
+    (dbType) => {
+      const primary = createIndex({ name: 'users_pkey', isPrimary: true, unique: true });
+      const index = createIndex();
+      const diff = createTableDiff({
+        oldSchemaName: 'audit',
+        newSchemaName: 'audit',
+        tableCommentChanged: true,
+        oldTableComment: 'before',
+        newTableComment: "it's new",
+        indexes: [
+          { type: 'remove', index: primary },
+          { type: 'remove', index },
+        ],
+      });
+      expect(generateAlterDDL('audit.users', diff, [], dbType)).toBe(
+        "COMMENT ON TABLE audit.users IS 'it''s new';\n\nALTER TABLE audit.users DROP CONSTRAINT users_pkey;\n\nDROP INDEX audit.idx_name;",
+      );
+      expect(generateRollbackDDL('audit.users', diff, [], dbType)).toBe(
+        "COMMENT ON TABLE audit.users IS 'before';\n\nALTER TABLE audit.users ADD CONSTRAINT users_pkey PRIMARY KEY (name);\n\nCREATE INDEX idx_name ON audit.users (name ASC);",
+      );
+    },
+  );
+
+  it.each(['mariadb', 'tidb', 'oceanbase', 'gbase', 'polardb'] as const)(
+    '%s retains MySQL syntax for primary keys, indexes and comments',
+    (dbType) => {
+      const diff = createTableDiff({
+        tableCommentChanged: true,
+        oldTableComment: 'before',
+        newTableComment: 'after',
+        indexes: [
+          {
+            type: 'remove',
+            index: createIndex({ name: 'PRIMARY', isPrimary: true, unique: true }),
+          },
+          { type: 'remove', index: createIndex() },
+        ],
+      });
+      expect(generateAlterDDL('users', diff, [], dbType)).toBe(
+        generateAlterDDL('users', diff, [], 'mysql'),
+      );
+      expect(generateRollbackDDL('users', diff, [], dbType)).toBe(
+        generateRollbackDDL('users', diff, [], 'mysql'),
+      );
+    },
+  );
+
   it.each([
     'CREATE TABLE users (email TEXT, CONSTRAINT uq_users_email UNIQUE(email));',
     'CREATE TABLE users (email TEXT CONSTRAINT uq_users_email UNIQUE);',
@@ -854,8 +913,10 @@ describe('generateTableCommentAlter', () => {
     );
   });
 
-  it('returns empty for unsupported db', () => {
-    expect(generateTableCommentAlter('t', '注释', 'hive' as DatabaseType)).toBe('');
+  it('keeps unsupported comment changes visible', () => {
+    expect(generateTableCommentAlter('t', '注释', 'hive')).toBe(
+      '-- Manual migration required: update table comment for t (hive).',
+    );
   });
 });
 
