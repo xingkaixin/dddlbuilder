@@ -25,6 +25,9 @@ export function generateRenameTable(
   dbType: DatabaseType,
 ): string {
   if (!oldTableName || !newTableName || oldTableName === newTableName) return '';
+  if (['mysql', 'mariadb', 'tidb', 'oceanbase'].includes(dbType)) {
+    return `ALTER TABLE ${oldTableName} RENAME TO ${newTableName};`;
+  }
   const newName = getSchemaAndTable(newTableName).table;
   if (dbType === 'sqlserver') {
     return `EXEC sp_rename '${escapeSingleQuotes(oldTableName)}', '${escapeSingleQuotes(newName)}';`;

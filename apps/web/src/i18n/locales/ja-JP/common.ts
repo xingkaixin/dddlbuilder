@@ -1340,6 +1340,7 @@ export const jaJPCommon = {
       indexAdded: '+{{count}} インデックス',
       indexRemoved: '-{{count}} インデックス',
       tableNameChanged: 'テーブル名の変更',
+      schemaNameChanged: 'スキーマの変更',
       tableCommentChanged: 'コメントの変更',
       miscChanged: 'その他の設定変更',
     },

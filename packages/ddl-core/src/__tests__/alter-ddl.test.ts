@@ -144,10 +144,16 @@ describe('generateAlterDDL', () => {
         `ALTER TABLE audit.${after.tableName} ADD COLUMN id INTEGER NOT NULL;`,
       );
       expect(rollback).toContain('ALTER TABLE audit.orders DROP COLUMN id;');
-      if (rename) {
-        expect(forward).toContain('ALTER TABLE audit.orders RENAME TO archived_orders;');
-        expect(rollback).toContain('ALTER TABLE audit.archived_orders RENAME TO orders;');
-      }
+      expect(forward.includes('ALTER TABLE audit.orders RENAME TO archived_orders;')).toBe(rename);
+      expect(rollback.includes('ALTER TABLE audit.archived_orders RENAME TO orders;')).toBe(rename);
+    },
+  );
+
+  it.each(['mysql', 'mariadb', 'tidb', 'oceanbase'] as const)(
+    'retains the destination database when renaming a qualified table (%s)',
+    (dbType) => {
+      const sql = generateRenameTable('audit.orders', 'audit.archived_orders', dbType);
+      expect(sql).toBe('ALTER TABLE audit.orders RENAME TO audit.archived_orders;');
     },
   );
 
