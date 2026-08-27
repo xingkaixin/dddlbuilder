@@ -171,8 +171,14 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     const result = await refetchCurrentUser();
     if (result.error) {
       console.error('[auth] failed to refresh session', result.error);
+      return;
     }
-  }, [configured, refetchCurrentUser]);
+    if (result.data?.signedIn) {
+      await queryClient.invalidateQueries({
+        queryKey: workspaceQueryKeys.current(result.data.user.userId),
+      });
+    }
+  }, [configured, queryClient, refetchCurrentUser]);
 
   const refreshCredits = useCallback(async () => {
     if (!userId) return;

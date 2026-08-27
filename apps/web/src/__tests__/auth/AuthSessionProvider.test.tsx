@@ -65,6 +65,9 @@ const SessionProbe = () => {
       <button data-testid="refresh-credits" onClick={() => session.refreshCredits()}>
         Refresh Credits
       </button>
+      <button data-testid="refresh-session" onClick={() => session.refreshSession()}>
+        Refresh Session
+      </button>
     </div>
   );
 };
@@ -638,25 +641,29 @@ describe('AuthSessionProvider', () => {
       });
     });
 
-    it('keeps the session signed in when workspace loading fails', async () => {
-      vi.spyOn(globalThis, 'fetch')
-        .mockResolvedValueOnce(
-          new Response(
-            JSON.stringify({
-              signedIn: true,
-              user: {
-                userId: 'user-1',
-                email: 'user@example.com',
-                emailVerified: true,
-                name: 'User One',
-              },
-            }),
-          ),
-        )
-        .mockResolvedValueOnce(new Response(JSON.stringify({ balance: 100 })))
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify({ error: 'Workspace load failed' }), { status: 500 }),
-        );
+    it('retries workspace loading when refreshing an unchanged session', async () => {
+      let workspaceAvailable = false;
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+        if (input === '/api/me') {
+          return Response.json({
+            signedIn: true,
+            user: {
+              userId: 'user-1',
+              email: 'user@example.com',
+              emailVerified: true,
+              name: 'User One',
+            },
+          });
+        }
+        if (input === '/api/credits/balance') return Response.json({ balance: 100 });
+        if (input === '/api/workspaces') {
+          return workspaceAvailable
+            ? Response.json({ workspaceId: 'ws-1' })
+            : Response.json({ error: 'Workspace load failed' }, { status: 503 });
+        }
+        throw new Error(`Unexpected request: ${String(input)}`);
+      });
 
       render(
         <AuthSessionProvider>
@@ -665,10 +672,22 @@ describe('AuthSessionProvider', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('credits')).toHaveTextContent('100');
+        expect(consoleError).toHaveBeenCalledWith(
+          '[auth] failed to resolve workspace',
+          expect.any(Error),
+        );
       });
       expect(screen.getByTestId('status')).toHaveTextContent('signed_in');
-      expect(screen.getByTestId('workspace-id')).toHaveTextContent('');
+      expect(screen.getByTestId('workspace-id')).toBeEmptyDOMElement();
+
+      workspaceAvailable = true;
+      fireEvent.click(screen.getByTestId('refresh-session'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('workspace-id')).toHaveTextContent('ws-1');
+      });
+      expect(fetchMock.mock.calls.filter(([input]) => input === '/api/me')).toHaveLength(2);
+      expect(fetchMock.mock.calls.filter(([input]) => input === '/api/workspaces')).toHaveLength(2);
     });
 
     it('does nothing when refreshing credits while not signed in', async () => {

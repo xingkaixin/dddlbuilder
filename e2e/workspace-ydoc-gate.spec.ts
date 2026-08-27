@@ -166,6 +166,41 @@ test('a dead share link falls back into the gate instead of a writable workspace
   await context.close();
 });
 
+test('retry reloads a failed workspace query and opens the editor', async ({ browser }) => {
+  const workspaceId = `ws-gate-retry-${Date.now()}`;
+  const context = await browser.newContext({ locale: 'zh-CN' });
+  await mockSignedInWorkspace(context, workspaceId);
+  let workspaceAvailable = false;
+  await context.route('**/api/workspaces', async (route) => {
+    await route.fulfill(
+      workspaceAvailable
+        ? { json: { workspaceId } }
+        : { status: 503, json: { error: 'Workspace temporarily unavailable' } },
+    );
+  });
+  const page = await context.newPage();
+
+  await page.goto('/');
+  await expect(page.getByTestId('workspace-bootstrap-error')).toBeVisible({
+    timeout: BOOTSTRAP_TIMEOUT_MS + 5_000,
+  });
+  const createDraft = page.getByRole('button', { name: '新建草稿' });
+  await expect(createDraft).toHaveCount(0);
+
+  workspaceAvailable = true;
+  await page.getByRole('button', { name: '重试加载' }).click();
+  await expect(createDraft).toBeVisible();
+  await createDraft.click();
+  await page.locator('#table-name').fill('GATE_AFTER_RETRY');
+  await expect
+    .poll(() => workspaceYDocPersisted(page, workspaceId, 'GATE_AFTER_RETRY'), {
+      timeout: 10_000,
+    })
+    .toBe(true);
+
+  await context.close();
+});
+
 test('gate stays closed until workspaceId lands, then the workspace persists writes', async ({
   browser,
 }) => {
