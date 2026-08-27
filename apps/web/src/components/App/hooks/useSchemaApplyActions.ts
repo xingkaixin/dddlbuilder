@@ -9,8 +9,10 @@ import type { GeneratedTableSchema } from '@/hooks/useAIGenerateTable';
 import { buildPersistedStateFromAISchema } from '@/utils/aiSchemaChanges';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
 import { preserveImportedFieldIds } from '@/utils/importedFieldIdentity';
+import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
 import type { BuilderTab } from '@/utils/tabUtils';
 import { removeFieldsFromDocument } from '@/stores/editorDocumentMutations';
+import { validateIndexFields } from '@/stores/editorDocumentValidation';
 
 interface UseSchemaApplyActionsParams {
   currentState: PersistedState;
@@ -169,18 +171,25 @@ export function useSchemaApplyActions({
         }
         case 'add_index': {
           const indexId = createEntityId();
-          replaceLatestState((state) => ({
-            ...state,
-            indexes: [
-              ...state.indexes,
+          const nextState: PersistedState = {
+            ...currentStateRef.current,
+            indexes: sanitizeIndexesForPersist([
+              ...currentStateRef.current.indexes,
               {
                 id: indexId,
                 name: suggestion.index.name,
                 fields: suggestion.index.fields,
                 unique: suggestion.index.unique === true,
               },
-            ],
-          }));
+            ]),
+          };
+          try {
+            validateIndexFields(nextState);
+          } catch (error) {
+            showToast(`无法应用建议：${error instanceof Error ? error.message : String(error)}`);
+            return;
+          }
+          replaceLatestState(() => nextState);
           markSuggestionApplied(suggestion);
           scheduleReviewAction(() => triggerIndexAnimation(indexId, 'add'), 50);
           return;

@@ -2,8 +2,11 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import type { FieldRow, PersistedState } from '@ddlbuilder/shared-types';
+import type { DDLReviewStructuredSuggestion } from '@ddlbuilder/shared-types/ddl-review';
 import { useSchemaApplyActions } from '@/components/App/hooks/useSchemaApplyActions';
 import { diffPersistedState } from '@ddlbuilder/ddl-core';
+import { toEditorDocumentState, toPersistedState } from '@/stores/editorDocumentCodec';
+import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 
 const createState = (overrides: Partial<PersistedState> = {}): PersistedState => ({
   schemaName: '',
@@ -300,7 +303,7 @@ describe('useSchemaApplyActions', () => {
   });
 
   it('添加索引建议时原子替换并触发动画', () => {
-    const { hook, actions } = createHook(createState());
+    const { hook, actions } = createHook(createState({ rows: [createRow('name')] }));
 
     act(() => {
       hook.result.current.handleApplySuggestion({
@@ -321,6 +324,63 @@ describe('useSchemaApplyActions', () => {
     ]);
     act(() => vi.advanceTimersByTime(50));
     expect(actions.triggerIndexAnimation).toHaveBeenCalledWith(nextState.indexes[0].id, 'add');
+  });
+
+  it('缺少依赖字段时不应用索引建议，补充字段后可重试同一建议', () => {
+    const fieldSuggestion: DDLReviewStructuredSuggestion = {
+      id: 'add-created-at',
+      type: 'add_field',
+      actionable: true,
+      description: '新增创建时间',
+      field: { fieldName: 'created_at', fieldType: 'DATETIME' },
+    };
+    const indexSuggestion: DDLReviewStructuredSuggestion = {
+      id: 'index-created-at',
+      type: 'add_index',
+      actionable: true,
+      description: '创建时间索引',
+      index: { name: 'created_lookup', fields: [{ name: 'created_at', direction: 'ASC' }] },
+    };
+    const { hook, actions } = createHook(createState({ rows: [createRow('id', 'INT')] }), {
+      score: 8,
+      summary: '补充审计字段和索引',
+      suggestions: [fieldSuggestion, indexSuggestion],
+    });
+
+    act(() => hook.result.current.handleApplySuggestion(indexSuggestion));
+    act(() => vi.advanceTimersByTime(50));
+
+    expect(actions.showToast).toHaveBeenCalledWith('无法应用建议：Unknown index field: created_at');
+    expect(actions.replaceCurrentState).not.toHaveBeenCalled();
+    expect(actions.setReviewResult).not.toHaveBeenCalled();
+    expect(actions.triggerIndexAnimation).not.toHaveBeenCalled();
+
+    act(() => hook.result.current.handleApplySuggestion(fieldSuggestion));
+    act(() => hook.result.current.handleApplySuggestion(indexSuggestion));
+    act(() => vi.advanceTimersByTime(50));
+
+    const nextState = actions.replaceCurrentState.mock.lastCall?.[0] as PersistedState;
+    expect(nextState.rows.map((row) => row.fieldName)).toEqual(['id', 'created_at']);
+    expect(nextState.indexes).toEqual([
+      expect.objectContaining({
+        name: 'created_lookup',
+        fields: [{ name: 'created_at', direction: 'ASC' }],
+      }),
+    ]);
+    expect(actions.setReviewResult).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        suggestions: [
+          { ...fieldSuggestion, applied: true },
+          { ...indexSuggestion, applied: true },
+        ],
+      }),
+      nextState,
+    );
+    expect(actions.triggerIndexAnimation).toHaveBeenCalledOnce();
+    const committedState = toPersistedState(toEditorDocumentState(nextState));
+    expect(serializePersistedStateForComparison(nextState)).toBe(
+      serializePersistedStateForComparison(committedState),
+    );
   });
 
   it('不支持自动应用的建议只提示用户', () => {

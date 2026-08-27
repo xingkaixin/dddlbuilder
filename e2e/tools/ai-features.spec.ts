@@ -1,6 +1,69 @@
 import { test, expect } from '@playwright/test';
 import { setupHydratedState } from '../utils';
 
+test('DDL 评审拒绝缺少字段的索引建议，补充字段后可重试', async ({ page }) => {
+  const responses: Record<string, unknown> = {
+    '/api/me': {
+      signedIn: true,
+      user: {
+        userId: 'review-user',
+        email: 'review@example.test',
+        name: 'Review',
+        emailVerified: true,
+      },
+    },
+    '/api/workspaces': { workspaceId: 'review-workspace' },
+    '/api/credits/balance': { balance: 1000 },
+    '/api/review': {
+      score: 8,
+      summary: '补充审计字段和索引',
+      suggestions: [
+        {
+          id: 'add-created-at',
+          type: 'add_field',
+          actionable: true,
+          description: '新增创建时间',
+          field: { fieldName: 'created_at', fieldType: 'DATETIME' },
+        },
+        {
+          id: 'index-created-at',
+          type: 'add_index',
+          actionable: true,
+          description: '创建时间索引',
+          index: { name: 'created_lookup', fields: [{ name: 'created_at', direction: 'ASC' }] },
+        },
+      ],
+    },
+  };
+  await page.route('**/api/**', async (route) => {
+    const response = responses[new URL(route.request().url()).pathname];
+    await route.fulfill(
+      response
+        ? { json: response }
+        : { status: 503, json: { error: 'Not available in this test' } },
+    );
+  });
+  await page.goto('/');
+  await setupHydratedState(page);
+  await page.getByRole('button', { name: '大师评审', exact: true }).click();
+  const indexSuggestion = page.getByRole('listitem').filter({ hasText: '创建时间索引' });
+  const fieldSuggestion = page.getByRole('listitem').filter({ hasText: '新增创建时间' });
+  const sql = page.locator('[role="tabpanel"]:visible pre');
+
+  await indexSuggestion.getByRole('button', { name: '应用', exact: true }).click();
+  await expect(page.getByText('无法应用建议：Unknown index field: created_at')).toBeVisible();
+  await expect(indexSuggestion.getByRole('button', { name: '应用', exact: true })).toBeEnabled();
+  await expect(indexSuggestion.getByText('已应用', { exact: true })).toHaveCount(0);
+  await expect(sql).not.toContainText('CREATE INDEX created_lookup');
+
+  await fieldSuggestion.getByRole('button', { name: '应用', exact: true }).click();
+  await expect(fieldSuggestion.getByText('已应用', { exact: true })).toBeVisible();
+  await indexSuggestion.getByRole('button', { name: '应用', exact: true }).click();
+  await expect(indexSuggestion.getByText('已应用', { exact: true })).toBeVisible();
+  await expect(sql).toContainText(/created_at\s+DATETIME/);
+  await expect(sql).toContainText('CREATE INDEX created_lookup');
+});
+
 test('AI 注释请求在切换文档后取消，不覆盖另一张表', async ({ page }) => {
   let finishResponse!: () => void;
   const responseReady = new Promise<void>((resolve) => {
