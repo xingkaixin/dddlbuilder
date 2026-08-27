@@ -54,16 +54,3 @@ export const buildOracleSynonyms = (tableName: string): string => {
   if (!cleanTableName) return '';
   return `CREATE OR REPLACE PUBLIC SYNONYM ${cleanTableName} FOR ${cleanTableName};`;
 };
-
-export const insertTableOptions = (ddl: string, clause: string): string => {
-  if (!clause) return ddl;
-  const createIndex = ddl.indexOf('CREATE TABLE');
-  if (createIndex === -1) return ddl;
-  const afterCreate = ddl.slice(createIndex);
-  const semiIndex = afterCreate.indexOf(';');
-  if (semiIndex === -1) return ddl;
-  const before = ddl.slice(0, createIndex);
-  const createStatement = afterCreate.slice(0, semiIndex);
-  const rest = afterCreate.slice(semiIndex);
-  return `${before}${createStatement}${clause}${rest}`;
-};

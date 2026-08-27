@@ -15,8 +15,6 @@ import { escapeSingleQuotes, splitQualifiedName } from '../utils/databaseTypeMap
 import { TypeMapper } from '../utils/TypeMapper';
 import { buildPrimaryKeyName } from '../utils/primaryKeyNaming';
 import { getIdentifierNameMaxLength, truncateIdentifierName } from '../utils/identifierNaming';
-import { buildTableOptionsClause } from '../utils/tableOptions';
-import { insertTableOptions } from '../utils/tableFeatures';
 
 export interface ColumnDefinitionSegments {
   name: string;
@@ -149,11 +147,10 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
   applyTableFeatures(
     _tableName: string,
     tableDDL: string,
-    config: TableFeatureConfig,
+    _config: TableFeatureConfig,
   ): ConfiguredTableDDL {
-    const tableOptions = buildTableOptionsClause(this.getDatabaseType(), config.tableMiscConfig);
     return {
-      tableDDL: insertTableOptions(tableDDL, tableOptions),
+      tableDDL,
       trailingStatements: [],
     };
   }

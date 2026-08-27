@@ -1,4 +1,9 @@
-import type { DatabaseType, NormalizedField, SqlFormatMode } from '@ddlbuilder/shared-types';
+import type {
+  DatabaseType,
+  NormalizedField,
+  SqlFormatMode,
+  TableMiscConfig,
+} from '@ddlbuilder/shared-types';
 import { escapeSingleQuotes, getSchemaAndTable } from '../utils/databaseTypeMapping';
 import { AbstractDDLStrategy } from './AbstractDDLStrategy';
 import { DIALECT_PROFILES } from './dialectProfiles';
@@ -12,6 +17,7 @@ import {
 } from './dialectStatements';
 import type { ConfiguredTableDDL, TableFeatureConfig } from '../interfaces/DDLStrategy';
 import { supportsMysqlPartition } from '../utils/databaseFamily';
+import { buildTableOptionsClause } from '../utils/tableOptions';
 
 /**
  * 由方言描述表驱动的通用 CREATE TABLE 生成器。
@@ -74,20 +80,33 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
     tableName: string,
     tableComment: string,
     fields: NormalizedField[],
-    _tableMiscConfig?: undefined,
+    tableMiscConfig?: TableMiscConfig,
     sqlFormatMode: SqlFormatMode = 'compact',
   ): string {
     const typeMapper = this.createTypeMapper();
     const columns = fields.map((field) => this.renderColumn(field, typeMapper));
     const columnLines = this.renderColumnDefinitions(columns, sqlFormatMode);
+    const tableOptions = buildTableOptionsClause(this.databaseType, tableMiscConfig);
 
     switch (this.profile.commentChannel) {
       case 'inline':
-        return this.assembleInlineTable(tableName, tableComment, columnLines);
+        return this.assembleInlineTable(tableName, tableComment, columnLines, tableOptions);
       case 'comment-on':
-        return this.assembleCommentOnTable(tableName, tableComment, fields, columnLines);
+        return this.assembleCommentOnTable(
+          tableName,
+          tableComment,
+          fields,
+          columnLines,
+          tableOptions,
+        );
       case 'extended-property':
-        return this.assembleExtendedPropertyTable(tableName, tableComment, fields, columnLines);
+        return this.assembleExtendedPropertyTable(
+          tableName,
+          tableComment,
+          fields,
+          columnLines,
+          tableOptions,
+        );
     }
   }
 
@@ -105,6 +124,7 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
     tableName: string,
     tableComment: string,
     columnLines: string[],
+    tableOptions: string,
   ): string {
     const commentClause = tableComment
       ? ` COMMENT='${escapeSingleQuotes(tableComment.trim())}'`
@@ -112,7 +132,7 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
 
     return `CREATE TABLE ${this.formatTableName(tableName)} (\n${columnLines.join(
       ',\n',
-    )}\n)${commentClause};`;
+    )}\n)${commentClause}${tableOptions};`;
   }
 
   private assembleCommentOnTable(
@@ -120,10 +140,11 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
     tableComment: string,
     fields: NormalizedField[],
     columnLines: string[],
+    tableOptions: string,
   ): string {
     const qualifiedTableName = this.formatTableName(tableName);
     const statements: string[] = [
-      `CREATE TABLE ${qualifiedTableName} (\n${columnLines.join(',\n')}\n);`,
+      `CREATE TABLE ${qualifiedTableName} (\n${columnLines.join(',\n')}\n)${tableOptions};`,
     ];
 
     if (tableComment.trim()) {
@@ -142,10 +163,13 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
     tableComment: string,
     fields: NormalizedField[],
     columnLines: string[],
+    tableOptions: string,
   ): string {
     const { schema, table } = getSchemaAndTable(tableName);
     const qualified = schema ? `${schema}.${table}` : table;
-    const statements: string[] = [`CREATE TABLE ${qualified} (\n${columnLines.join(',\n')}\n);`];
+    const statements: string[] = [
+      `CREATE TABLE ${qualified} (\n${columnLines.join(',\n')}\n)${tableOptions};`,
+    ];
 
     if (tableComment.trim()) {
       statements.push(buildExtendedProperty({ value: tableComment.trim(), schema, table }));

@@ -3,8 +3,8 @@ import {
   buildCitusShardingDDL,
   buildMysqlPartitionClause,
   buildOracleSynonyms,
-  insertTableOptions,
 } from '../utils/tableFeatures';
+import { buildDDL } from '../utils/ddlGenerators';
 
 describe('tableFeatures', () => {
   it('生成 Citus 引用表与分布表语句', () => {
@@ -126,16 +126,29 @@ describe('tableFeatures', () => {
     );
   });
 
-  it('只把表选项插入 CREATE TABLE 主语句', () => {
-    expect(insertTableOptions('CREATE TABLE users (id INT);', ' ENGINE=InnoDB')).toBe(
-      'CREATE TABLE users (id INT) ENGINE=InnoDB;',
-    );
-    expect(insertTableOptions('CREATE TABLE users (id INT);', '')).toBe(
-      'CREATE TABLE users (id INT);',
-    );
-    expect(insertTableOptions('SELECT 1;', ' ENGINE=InnoDB')).toBe('SELECT 1;');
-    expect(insertTableOptions('CREATE TABLE users (id INT)', ' ENGINE=InnoDB')).toBe(
-      'CREATE TABLE users (id INT)',
+  it.each(['mysql', 'postgresql'] as const)('装配 %s 表选项时保留字符串内的分号', (dbType) => {
+    const ddl = buildDDL({
+      dbType,
+      tableName: 'users',
+      tableComment: 'table;comment',
+      fields: [
+        {
+          name: 'label',
+          type: 'varchar(40)',
+          nullable: true,
+          comment: 'column;comment',
+          defaultKind: 'constant',
+          defaultValue: "before;after's",
+          onUpdate: 'none',
+        },
+      ],
+      tableMiscConfig: { enabled: true, engine: 'InnoDB', tablespace: 'app_data' },
+    });
+    expect(ddl).toContain("DEFAULT 'before;after''s'");
+    expect(ddl).toContain('column;comment');
+    expect(ddl).toContain('table;comment');
+    expect(ddl).toContain(
+      dbType === 'mysql' ? ") COMMENT='table;comment' ENGINE=InnoDB;" : ') TABLESPACE app_data;',
     );
   });
 });
