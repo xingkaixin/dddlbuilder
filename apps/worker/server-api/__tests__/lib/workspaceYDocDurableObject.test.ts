@@ -385,6 +385,77 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     }
   });
 
+  it('persists and reloads imports larger than the storage value limit', async () => {
+    vi.doMock('../../lib/workspaceEntities.js', () => ({
+      checkpointWorkspaceSnapshotEntities: vi.fn(),
+      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
+        globalDraft: null,
+        drafts: [],
+        savedTables: [],
+        savedDrafts: [],
+        folders: [],
+      }),
+    }));
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { exportWorkspaceYDocToSnapshot } = await import('@ddlbuilder/workspace-core');
+    const { state, store } = createDurableObjectState();
+    vi.mocked(
+      state.storage.put as (key: string, value: unknown) => Promise<void>,
+    ).mockImplementation(async (key, value) => {
+      if (value instanceof Uint8Array && value.byteLength > 2 * 1024 * 1024) {
+        throw new Error('SQLITE_TOOBIG');
+      }
+      store.set(key, value);
+    });
+    const snapshot: WorkspaceSnapshot = {
+      globalDraft: null,
+      drafts: [],
+      savedDrafts: [],
+      folders: [],
+      savedTables: Array.from({ length: 50 }, (_, table) => ({
+        tableId: `table-${table}`,
+        normalizedName: `table_${table}`,
+        name: `table_${table}`,
+        createdAt: 1,
+        updatedAt: 1,
+        state: {
+          ...createState(`table_${table}`),
+          rows: Array.from({ length: 100 }, (_, row) => ({
+            id: `row-${row}`,
+            fieldName: `column_${row}`,
+            fieldType: 'varchar(255)',
+            fieldComment: 'x'.repeat(64),
+            nullable: true,
+            defaultKind: 'none',
+            defaultValue: '',
+            onUpdate: 'none',
+          })),
+        },
+      })),
+    };
+    const response = await new WorkspaceYDocDurableObject(state, createEnv()).fetch(
+      createRequest('/api/workspaces/ws-1/yjs/import', {
+        method: 'POST',
+        body: JSON.stringify(snapshot),
+      }),
+    );
+    expect(response.status).toBe(200);
+    const cold = new WorkspaceYDocDurableObject(state, createEnv());
+    const restored = new Y.Doc();
+    try {
+      const response = await cold.fetch(createRequest('/api/workspaces/ws-1/yjs/state'));
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      expect(bytes.byteLength).toBeGreaterThan(2 * 1024 * 1024);
+      Y.applyUpdate(restored, bytes);
+      const tables = exportWorkspaceYDocToSnapshot(restored).savedTables;
+      expect(Object.fromEntries(tables.map((table) => [table.tableId, table.state.rows]))).toEqual(
+        Object.fromEntries(snapshot.savedTables.map((table) => [table.tableId, table.state.rows])),
+      );
+    } finally {
+      restored.destroy();
+    }
+  });
+
   it('merges migration records without replacing authoritative state', async () => {
     const checkpointWorkspaceSnapshotEntities = vi.fn().mockResolvedValue({
       cursor: 1,
@@ -943,6 +1014,33 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const doc = new Y.Doc();
     Y.applyUpdate(doc, new Uint8Array(await response.arrayBuffer()));
     expect(exportWorkspaceYDocToSnapshot(doc).drafts[0]?.state.tableName).toBe('alarm_safe');
+  });
+
+  it('keeps compaction counters consistent when requests overlap', async () => {
+    vi.doMock('../../lib/workspaceEntities.js', () => ({
+      checkpointWorkspaceSnapshotEntities: vi.fn(),
+      getWorkspaceSnapshotForWorkspace: vi.fn().mockResolvedValue({
+        globalDraft: null,
+        drafts: [],
+        savedTables: [],
+        savedDrafts: [],
+        folders: [],
+      }),
+    }));
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state, store } = createDurableObjectState();
+    const object = new WorkspaceYDocDurableObject(state, createEnv());
+    const source = new Y.Doc();
+    source.getMap('fields').set('name', 'users');
+    await object.webSocketMessage(
+      createWebSocket(),
+      trackedUpdate(Y.encodeStateAsUpdate(source), 1),
+    );
+    await Promise.all(
+      [1, 2].map(() => object.fetch(createRequest('/compact', { method: 'POST' }))),
+    );
+    expect(store.get('meta')).toMatchObject({ updateCount: 0, updateBytes: 0 });
+    source.destroy();
   });
 
   it('does not reschedule an alarm after all updates are checkpointed', async () => {

@@ -21,20 +21,13 @@ import {
 } from '@ddlbuilder/workspace-core';
 import { logWorkspaceYDocHealth } from './workspaceSyncMetrics.js';
 import { applyWorkspaceMigrationSnapshot } from './workspaceMigration.js';
-
-type WorkspaceYDocStoredMeta = {
-  workspaceId?: string;
-  userId?: string;
-  schemaVersion: number;
-  nextSeq: number;
-  updateCount: number;
-  updateBytes: number;
-  updatedAt: number;
-  lastCompactedSeq: number;
-  lastCheckpointSeq: number;
-  compactCount?: number;
-  checkpointFailedAt?: number;
-};
+import {
+  appendWorkspaceYDocUpdate,
+  compactWorkspaceYDocStorage,
+  readWorkspaceYDocStorage,
+  WORKSPACE_YDOC_META_KEY,
+  type WorkspaceYDocStoredMeta,
+} from './workspaceYDocStorage.js';
 
 type WorkspaceYDocSocketAttachment = {
   schemaVersion: 1;
@@ -51,27 +44,16 @@ type PendingWorkspaceUpdate = {
 };
 
 const MESSAGE_SYNC = WORKSPACE_SYNC_MESSAGE.sync;
-const SNAPSHOT_KEY = 'snapshot';
-const META_KEY = 'meta';
-const UPDATE_PREFIX = 'update:';
 const COMPACT_UPDATE_COUNT = 100;
 const COMPACT_UPDATE_BYTES = 512 * 1024;
 const ALARM_DELAY_MS = 60 * 60 * 1000;
 const LAST_AUTOMATIC_ALARM_RETRY = 5;
-
-const encodeUpdateKey = (seq: number) => `${UPDATE_PREFIX}${seq.toString().padStart(16, '0')}`;
 
 const encodeSyncMessage = (write: (encoder: encoding.Encoder) => void) => {
   const encoder = encoding.createEncoder();
   encoding.writeVarUint(encoder, MESSAGE_SYNC);
   write(encoder);
   return encoding.toUint8Array(encoder);
-};
-
-const toUint8Array = (value: unknown) => {
-  if (value instanceof Uint8Array) return value;
-  if (value instanceof ArrayBuffer) return new Uint8Array(value);
-  return null;
 };
 
 const isSocketAttachment = (value: unknown): value is WorkspaceYDocSocketAttachment => {
@@ -85,6 +67,7 @@ export class WorkspaceYDocDurableObject {
   private doc: Y.Doc | null = null;
   private loadPromise: Promise<Y.Doc> | null = null;
   private persistQueue: Promise<void> | null = null;
+  private compactQueue: Promise<void> = Promise.resolve();
   private readonly pendingUpdates: PendingWorkspaceUpdate[] = [];
   private nextSeq = 0;
   private updateCount = 0;
@@ -257,10 +240,7 @@ export class WorkspaceYDocDurableObject {
     const doc = new Y.Doc();
     this.loadPromise = (async () => {
       const startedAt = Date.now();
-      const [meta, snapshot] = await Promise.all([
-        this.state.storage.get<WorkspaceYDocStoredMeta>(META_KEY),
-        this.state.storage.get<Uint8Array | ArrayBuffer>(SNAPSHOT_KEY),
-      ]);
+      const { meta, snapshot, updates } = await readWorkspaceYDocStorage(this.state.storage);
       if (meta) {
         this.workspaceId = meta.workspaceId ?? this.workspaceId;
         this.nextSeq = meta.nextSeq;
@@ -273,21 +253,14 @@ export class WorkspaceYDocDurableObject {
         this.userId = meta.userId ?? this.userId;
       }
 
-      const snapshotBytes = toUint8Array(snapshot);
-      if (snapshotBytes) {
-        Y.applyUpdate(doc, snapshotBytes, this);
+      if (snapshot) {
+        Y.applyUpdate(doc, snapshot, this);
       }
 
-      const updates = await this.state.storage.list<Uint8Array | ArrayBuffer>({
-        prefix: UPDATE_PREFIX,
-      });
       let storedUpdateBytes = 0;
-      for (const value of updates.values()) {
-        const update = toUint8Array(value);
-        if (update) {
-          storedUpdateBytes += update.byteLength;
-          Y.applyUpdate(doc, update, this);
-        }
+      for (const update of updates.values()) {
+        storedUpdateBytes += update.byteLength;
+        Y.applyUpdate(doc, update, this);
       }
 
       let restoredFromD1 = false;
@@ -360,8 +333,12 @@ export class WorkspaceYDocDurableObject {
     while (this.pendingUpdates.length > 0) {
       const pending = this.pendingUpdates[0];
       try {
-        await this.state.storage.put(encodeUpdateKey(pending.seq), pending.update);
-        await this.writeMeta();
+        await appendWorkspaceYDocUpdate(
+          this.state.storage,
+          pending.seq,
+          pending.update,
+          this.storedMeta(),
+        );
         if (this.updateCount >= COMPACT_UPDATE_COUNT || this.updateBytes >= COMPACT_UPDATE_BYTES) {
           await this.compact();
         }
@@ -425,16 +402,29 @@ export class WorkspaceYDocDurableObject {
     }
   }
 
-  private async compact(options: { checkpoint?: boolean } = {}) {
+  private compact(options: { checkpoint?: boolean } = {}) {
+    const compact = this.compactQueue
+      .catch(() => undefined)
+      .then(() => this.compactSnapshot(options));
+    this.compactQueue = compact;
+    return compact;
+  }
+
+  private async compactSnapshot(options: { checkpoint?: boolean }) {
     if (!this.doc) return;
     const startedAt = Date.now();
     const snapshot = Y.encodeStateAsUpdate(this.doc);
-    const updateKeys = await this.state.storage.list({ prefix: UPDATE_PREFIX });
-    await this.state.storage.put(SNAPSHOT_KEY, snapshot);
-    await Promise.all(Array.from(updateKeys.keys()).map((key) => this.state.storage.delete(key)));
-    this.updateCount = 0;
-    this.updateBytes = 0;
-    this.lastCompactedSeq = this.nextSeq;
+    const meta = this.storedMeta();
+    const compactedUpdateCount = await compactWorkspaceYDocStorage(this.state.storage, snapshot, {
+      ...meta,
+      updateCount: 0,
+      updateBytes: 0,
+      lastCompactedSeq: meta.nextSeq,
+      compactCount: this.compactCount + 1,
+    });
+    this.updateCount -= meta.updateCount;
+    this.updateBytes -= meta.updateBytes;
+    this.lastCompactedSeq = meta.nextSeq;
     this.compactCount += 1;
     let checkpointError: unknown;
     if (options.checkpoint !== false) {
@@ -449,7 +439,7 @@ export class WorkspaceYDocDurableObject {
       workspaceId: this.workspaceId,
       compactDurationMs: Date.now() - startedAt,
       compactCount: this.compactCount,
-      compactedUpdateCount: updateKeys.size,
+      compactedUpdateCount,
       snapshotBytes: snapshot.byteLength,
       connectedSockets: this.connectedSocketCount(),
       checkpointed: options.checkpoint !== false && checkpointError === undefined,
@@ -500,8 +490,8 @@ export class WorkspaceYDocDurableObject {
     }
   }
 
-  private async writeMeta() {
-    await this.state.storage.put<WorkspaceYDocStoredMeta>(META_KEY, {
+  private storedMeta(): WorkspaceYDocStoredMeta {
+    return {
       workspaceId: this.workspaceId,
       userId: this.userId,
       schemaVersion: 1,
@@ -513,7 +503,11 @@ export class WorkspaceYDocDurableObject {
       lastCheckpointSeq: this.lastCheckpointSeq,
       compactCount: this.compactCount,
       checkpointFailedAt: this.checkpointFailedAt,
-    });
+    };
+  }
+
+  private async writeMeta() {
+    await this.state.storage.put(WORKSPACE_YDOC_META_KEY, this.storedMeta());
   }
 
   private async ensureAlarm() {
