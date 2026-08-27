@@ -32,6 +32,30 @@ const createRecord = (
 });
 
 describe('buildSavedTableBatchImportPlan', () => {
+  it('批量覆盖保留字段身份，另存副本不继承身份', () => {
+    const existing = createRecord('users', 'users', {
+      state: {
+        ...createState('users'),
+        rows: [{ id: 'original', fieldName: 'id', fieldType: 'INT' }],
+      },
+    });
+    const item = {
+      name: 'users',
+      state: { ...existing.state, rows: [{ ...existing.state.rows[0], id: 'imported' }] },
+    };
+    const overwritten = buildSavedTableBatchImportPlan(
+      { items: [item], conflictStrategy: 'overwrite' },
+      [existing],
+      100,
+    );
+    const copied = buildSavedTableBatchImportPlan(
+      { items: [item], conflictStrategy: 'rename' },
+      [existing],
+      100,
+    );
+    expect(overwritten.records[0].state.rows[0].id).toBe('original');
+    expect(copied.records[0].state.rows[0].id).toBe('imported');
+  });
   it('rejects ambiguous overwrite targets but allows skip and rename', () => {
     const existing = ['first', 'second'].map((tableId) =>
       createRecord('shared', 'Shared', { tableId }),

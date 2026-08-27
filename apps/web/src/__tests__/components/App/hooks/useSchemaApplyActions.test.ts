@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import type { FieldRow, PersistedState } from '@ddlbuilder/shared-types';
 import { useSchemaApplyActions } from '@/components/App/hooks/useSchemaApplyActions';
+import { diffPersistedState } from '@ddlbuilder/ddl-core';
 
 const createState = (overrides: Partial<PersistedState> = {}): PersistedState => ({
   schemaName: '',
@@ -71,6 +72,22 @@ describe('useSchemaApplyActions', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('导入当前表时保留已有字段身份', () => {
+    const state = createState({ tableName: 'users', rows: [createRow('id', 'INT')] });
+    const { hook, actions } = createHook(state);
+    const parsed: ParsedResult = {
+      tableName: 'users',
+      tableComment: '',
+      indexes: [],
+      authObjects: [],
+      fields: [{ name: 'id', type: 'INT', comment: '', nullable: true }],
+    };
+    act(() => hook.result.current.handleImport(parsed, 'mysql'));
+    const imported = actions.replaceCurrentState.mock.calls[0][0] as PersistedState;
+    expect(imported.rows[0].id).toBe(state.rows[0].id);
+    expect(diffPersistedState(state, imported).fields).toEqual([]);
   });
 
   it('导入 SQL 时一次替换完整文档并补齐默认配置', () => {

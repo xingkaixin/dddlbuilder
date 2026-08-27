@@ -6,6 +6,7 @@ import { buildWorkspaceContentHash } from '@ddlbuilder/workspace-core';
 import { buildNormalizedFields } from '@/stores';
 import { requestSqlParse } from '@/services/sqlParseService';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
+import { preserveImportedFieldIds } from '@/utils/importedFieldIdentity';
 import { lintSchema, type SchemaLintIssue } from '@/utils/schemaLint';
 import { normalizePersistedStateForSignature } from '@/utils/persistedStateSignature';
 import { applySchemaPatchOperations, parseSchemaPatchOperations } from './schemaPatch';
@@ -383,7 +384,10 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
           throw new WebMcpToolError('INVALID_INPUT', 'Unsupported database type');
         }
         const parsed = await requestSqlParse({ sql, dbType });
-        const candidate = convertParsedResultToPersistedState(parsed, dbType);
+        const candidate = preserveImportedFieldIds(
+          snapshot.state,
+          convertParsedResultToPersistedState(parsed, dbType),
+        );
         return stageCandidate('sql_import', baseSignature, candidate);
       },
       applyPatch: async (toolInput: Record<string, unknown>, signal: AbortSignal) => {

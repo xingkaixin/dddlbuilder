@@ -64,4 +64,29 @@ test.describe('SQL 导入功能验证 @tools', () => {
     await expect(sqlOutput).toContainText(/CREATE TABLE import_test/i);
     await expect(sqlOutput).toContainText(/id\s+INT/i);
   });
+
+  test('场景：重新导入已有表不删除重建字段', async ({ page }) => {
+    const importSql = async () => {
+      await page.getByRole('button', { name: /导入结构/i }).click();
+      await page
+        .locator('#sql-content')
+        .fill('CREATE TABLE import_test (id INT, name VARCHAR(50));');
+      await page.getByRole('button', { name: /下一步/i }).click();
+      await page.getByRole('button', { name: /下一步/i }).click();
+      await page.getByRole('button', { name: /确认导入/i }).click();
+      await expect(page.locator('#sql-content')).toBeHidden();
+    };
+    await importSql();
+    await page.getByRole('button', { name: /保存当前表/i }).click();
+    await page.getByLabel('保存名称').fill('import_test');
+    await page.getByRole('button', { name: '保存', exact: true }).click();
+    await expect(page.getByLabel('保存名称')).toBeHidden();
+    await importSql();
+    await page.locator('#table-comment').fill('Only the comment changed');
+    await page.getByRole('button', { name: /查看表结构变更/i }).click();
+    const output = page.getByRole('dialog', { name: '表结构变更对比' }).locator('pre').first();
+    await expect(output).toContainText('Only the comment changed');
+    await expect(output).not.toContainText('DROP COLUMN');
+    await expect(output).not.toContainText('ADD COLUMN');
+  });
 });

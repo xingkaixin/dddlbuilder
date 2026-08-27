@@ -8,6 +8,7 @@ import type {
 import type { GeneratedTableSchema } from '@/hooks/useAIGenerateTable';
 import { buildPersistedStateFromAISchema } from '@/utils/aiSchemaChanges';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
+import { preserveImportedFieldIds } from '@/utils/importedFieldIdentity';
 import type { BuilderTab } from '@/utils/tabUtils';
 import { removeFieldsFromDocument } from '@/stores/editorDocumentMutations';
 
@@ -223,9 +224,11 @@ export function useSchemaApplyActions({
 
   const handleImport = useCallback(
     (result: ParsedResult, importDbType: DatabaseType) => {
-      replaceCurrentState(convertParsedResultToPersistedState(result, importDbType));
+      replaceLatestState((state) =>
+        preserveImportedFieldIds(state, convertParsedResultToPersistedState(result, importDbType)),
+      );
     },
-    [replaceCurrentState],
+    [replaceLatestState],
   );
 
   const handleApplyAIGeneratedSchema = useCallback(
