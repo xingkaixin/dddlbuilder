@@ -33,6 +33,7 @@ describe('createBetterAuth', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    resendSendMock.mockResolvedValue({ data: { id: 'email-1' }, error: null });
 
     vi.doMock('better-auth', () => ({
       betterAuth: betterAuthMock,
@@ -165,6 +166,36 @@ describe('createBetterAuth', () => {
     expect(sent.text).toBe(
       'Test User，请打开这个链接重置密码：https://example.com/reset?token=abc',
     );
+  });
+
+  it.each([
+    ['emailVerification', 'sendVerificationEmail'],
+    ['emailAndPassword', 'sendResetPassword'],
+  ])('%s propagates a provider error returned without rejecting', async (section, method) => {
+    const { createBetterAuth } = await import('../../lib/betterAuth.js');
+    createBetterAuth(createEnv());
+    const config = betterAuthMock.mock.calls[0][0];
+    resendSendMock.mockResolvedValue({
+      data: null,
+      error: { name: 'rate_limit_exceeded', message: 'Too many requests', statusCode: 429 },
+    });
+
+    const outcome = await config[section]
+      [method]({
+        user: { email: 'user@example.com', name: 'Test User' },
+        url: 'https://example.com/verify?token=secret',
+      })
+      .then(
+        () => ({ status: 'resolved' }),
+        (error: Error) => ({ status: 'rejected', message: error.message }),
+      );
+    console.info('authentication email provider rejection', { section, outcome });
+
+    expect(outcome).toEqual({
+      status: 'rejected',
+      message: 'Authentication email delivery failed',
+    });
+    expect(resendSendMock).toHaveBeenCalledTimes(1);
   });
 
   it('sendResetPassword falls back to email when name is empty', async () => {

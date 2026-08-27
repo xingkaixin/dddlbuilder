@@ -63,13 +63,20 @@ const sendEmail = async (
   const config = getUserSystemConfig(env);
   const resend = new Resend(config.resendApiKey);
 
-  await resend.emails.send({
+  const { error } = await resend.emails.send({
     from: `${config.resendFromName} <${config.resendFromEmail}>`,
     to: input.to,
     subject: input.subject,
     html: input.html,
     text: input.text,
   });
+  if (error) {
+    console.error('[auth] email delivery failed', {
+      name: error.name,
+      statusCode: error.statusCode,
+    });
+    throw new Error('Authentication email delivery failed');
+  }
 };
 
 // Shared email layout matching the website's light theme
