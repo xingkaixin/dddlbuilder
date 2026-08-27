@@ -62,6 +62,7 @@ export type {
 export type { ApiErrorCode, ApiMeta, ApiErrorPayload } from './api.js';
 export { encodeAIStreamEvent } from './aiStream.js';
 export type { AIStreamEvent } from './aiStream.js';
+export { WORKSPACE_SYNC_MESSAGE } from './workspaceSync.js';
 export type {
   WorkspaceSource,
   WorkspaceSelection,

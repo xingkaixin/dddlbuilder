@@ -3,6 +3,7 @@ import * as Y from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
 import * as encoding from 'lib0/encoding';
+import { WORKSPACE_SYNC_MESSAGE } from '@ddlbuilder/shared-types';
 import {
   WORKSPACE_YDOC_CONNECT_TIMEOUT_MS,
   WORKSPACE_YDOC_UPDATE_BATCH_MS,
@@ -20,20 +21,46 @@ const encodeSyncMessage = (write: (encoder: encoding.Encoder) => void) => {
 };
 
 const applySyncMessage = (doc: Y.Doc, message: ArrayBuffer) => {
-  const decoder = decoding.createDecoder(new Uint8Array(message));
-  expect(decoding.readVarUint(decoder)).toBe(MESSAGE_SYNC);
+  const decoder = decodeSyncMessage(message);
   const encoder = encoding.createEncoder();
   encoding.writeVarUint(encoder, MESSAGE_SYNC);
   syncProtocol.readSyncMessage(decoder, encoder, doc, null);
 };
 
 const respondToSyncMessage = (doc: Y.Doc, message: ArrayBuffer) => {
-  const decoder = decoding.createDecoder(new Uint8Array(message));
-  expect(decoding.readVarUint(decoder)).toBe(MESSAGE_SYNC);
+  const decoder = decodeSyncMessage(message);
   const encoder = encoding.createEncoder();
   encoding.writeVarUint(encoder, MESSAGE_SYNC);
   syncProtocol.readSyncMessage(decoder, encoder, doc, null);
   return encoding.length(encoder) > 1 ? encoding.toUint8Array(encoder) : null;
+};
+
+const decodeSyncMessage = (message: ArrayBuffer) => {
+  const decoder = decoding.createDecoder(new Uint8Array(message));
+  let type = decoding.readVarUint(decoder);
+  if (type === WORKSPACE_SYNC_MESSAGE.syncWithAck) {
+    decoding.readVarUint(decoder);
+    type = decoding.readVarUint(decoder);
+  }
+  expect(type).toBe(MESSAGE_SYNC);
+  return decoder;
+};
+
+const acknowledge = (socket: MockWebSocket, message: ArrayBuffer) => {
+  const decoder = decoding.createDecoder(new Uint8Array(message));
+  if (decoding.readVarUint(decoder) !== WORKSPACE_SYNC_MESSAGE.syncWithAck) return;
+  const encoder = encoding.createEncoder();
+  encoding.writeVarUint(encoder, WORKSPACE_SYNC_MESSAGE.persisted);
+  encoding.writeVarUint(encoder, decoding.readVarUint(decoder));
+  socket.receive(encoding.toUint8Array(encoder));
+};
+
+const syncWithServer = (socket: MockWebSocket, serverDoc: Y.Doc) => {
+  for (const message of socket.sent) {
+    const response = respondToSyncMessage(serverDoc, message);
+    if (response) socket.receive(response);
+    acknowledge(socket, message);
+  }
 };
 
 class MockWebSocket {
@@ -146,13 +173,12 @@ describe('WorkspaceYDocSyncClient', () => {
     client.destroy();
   });
 
-  it('reports cloud sync after an initial server message and an empty outbound batch', async () => {
+  it('does not report cloud sync when local updates were only sent', async () => {
     const doc = new Y.Doc();
     const statuses: WorkspaceYDocConnectionStatus[] = [];
     const onConnectionStateChange = vi.fn((status) => statuses.push(status));
     const client = new WorkspaceYDocSyncClient('ws-1', doc, onConnectionStateChange);
     const serverDoc = new Y.Doc();
-    vi.spyOn(console, 'info').mockImplementation(() => {});
 
     await client.connect();
     const socket = firstSocket();
@@ -161,14 +187,82 @@ describe('WorkspaceYDocSyncClient', () => {
 
     socket.receive(encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, serverDoc)));
     await Promise.resolve();
-    expect(statuses.at(-1)).toMatchObject({ state: 'connected', synced: true });
+    console.info('sync status before server persistence', statuses.at(-1));
+    expect(statuses.at(-1)).toMatchObject({ state: 'connected', synced: false });
 
     doc.getMap('fields').set('field-1', 'value-1');
     expect(statuses.at(-1)).toMatchObject({ state: 'connected', synced: false });
 
     vi.advanceTimersByTime(WORKSPACE_YDOC_UPDATE_BATCH_MS);
-    expect(statuses.at(-1)).toMatchObject({ state: 'connected', synced: true });
+    console.info('sync status after send without acknowledgement', statuses.at(-1));
+    expect(statuses.at(-1)).toMatchObject({ state: 'connected', synced: false });
 
+    client.destroy();
+  });
+
+  it('requires acknowledgements for every batch, including deletions and newer edits', async () => {
+    const doc = new Y.Doc();
+    const statuses: WorkspaceYDocConnectionStatus[] = [];
+    const client = new WorkspaceYDocSyncClient('ws-1', doc, (status) => statuses.push(status));
+    await client.connect();
+    const socket = firstSocket();
+    socket.open();
+    const serverDoc = new Y.Doc();
+    syncWithServer(socket, serverDoc);
+    expect(statuses.at(-1)?.synced).toBe(true);
+
+    const fields = doc.getMap('fields');
+    fields.set('first', 'value');
+    vi.advanceTimersByTime(WORKSPACE_YDOC_UPDATE_BATCH_MS);
+    const firstBatch = socket.sent.at(-1)!;
+    expect(statuses.at(-1)?.synced).toBe(false);
+    fields.set('second', 'value');
+    acknowledge(socket, firstBatch);
+    expect(statuses.at(-1)?.synced).toBe(false);
+
+    vi.advanceTimersByTime(WORKSPACE_YDOC_UPDATE_BATCH_MS);
+    acknowledge(socket, firstBatch);
+    expect(statuses.at(-1)?.synced).toBe(false);
+    acknowledge(socket, socket.sent.at(-1)!);
+    expect(statuses.at(-1)?.synced).toBe(true);
+
+    const vector = Y.encodeStateVector(doc);
+    fields.delete('first');
+    expect(Y.encodeStateVector(doc)).toEqual(vector);
+    vi.advanceTimersByTime(WORKSPACE_YDOC_UPDATE_BATCH_MS);
+    expect(statuses.at(-1)?.synced).toBe(false);
+    acknowledge(socket, socket.sent.at(-1)!);
+    expect(statuses.at(-1)?.synced).toBe(true);
+    client.destroy();
+  });
+
+  it('does not reuse acknowledgements after retry or reconnect', async () => {
+    const doc = new Y.Doc();
+    const statuses: WorkspaceYDocConnectionStatus[] = [];
+    const client = new WorkspaceYDocSyncClient('ws-1', doc, (status) => statuses.push(status));
+    await client.connect();
+    const socket = firstSocket();
+    socket.open();
+    const oldBatch = socket.sent.at(-1)!;
+    client.retry();
+    socket.receive(
+      encodeSyncMessage((encoder) => syncProtocol.writeSyncStep2(encoder, new Y.Doc())),
+    );
+    acknowledge(socket, oldBatch);
+    expect(statuses.at(-1)?.synced).toBe(false);
+    acknowledge(socket, socket.sent.at(-1)!);
+    expect(statuses.at(-1)?.synced).toBe(true);
+
+    socket.close();
+    client.retry();
+    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
+    const activeSocket = MockWebSocket.instances[1];
+    activeSocket.open();
+    acknowledge(socket, oldBatch);
+    acknowledge(activeSocket, oldBatch);
+    expect(statuses.at(-1)?.synced).toBe(false);
+    syncWithServer(activeSocket, new Y.Doc());
+    expect(statuses.at(-1)?.synced).toBe(true);
     client.destroy();
   });
 
@@ -214,6 +308,7 @@ describe('WorkspaceYDocSyncClient', () => {
     socket.open();
     socket.receive(encodeSyncMessage((encoder) => syncProtocol.writeSyncStep1(encoder, serverDoc)));
     await Promise.resolve();
+    syncWithServer(socket, serverDoc);
     expect(statuses.at(-1)).toMatchObject({ state: 'connected', synced: true });
     const syncedMessageCount = socket.sent.length;
 

@@ -3,6 +3,7 @@ import { encodeStateAsUpdate, mergeUpdates } from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
 import * as encoding from 'lib0/encoding';
+import { WORKSPACE_SYNC_MESSAGE } from '@ddlbuilder/shared-types';
 import {
   materializeWorkspaceYDoc,
   WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN,
@@ -23,7 +24,7 @@ export type WorkspaceYDocConnectionStatus = {
   synced: boolean;
 };
 
-const MESSAGE_SYNC = 0;
+const MESSAGE_SYNC = WORKSPACE_SYNC_MESSAGE.sync;
 const MAX_RECONNECT_DELAY_MS = 10_000;
 export const WORKSPACE_YDOC_CONNECT_TIMEOUT_MS = 8_000;
 export const WORKSPACE_YDOC_UPDATE_IDLE_MS = 2_000;
@@ -57,6 +58,8 @@ export class WorkspaceYDocSyncClient {
   private pendingUpdatesStartedAt: number | null = null;
   private reconnectDelayMs = 1000;
   private syncRoundTripComplete = false;
+  private nextRequestId = 0;
+  private readonly pendingAcknowledgements = new Set<number>();
   private browserOffline = false;
   private readonly ignoredSockets = new WeakSet<WebSocket>();
   private readonly workspaceId: string;
@@ -127,6 +130,7 @@ export class WorkspaceYDocSyncClient {
       this.clearSocketOpenTimer();
       this.reconnectDelayMs = 1000;
       this.syncRoundTripComplete = false;
+      this.pendingAcknowledgements.clear();
       if (this.isOffline()) {
         this.notify('offline');
         return;
@@ -172,6 +176,7 @@ export class WorkspaceYDocSyncClient {
     }
     if (this.socket?.readyState === WebSocket.OPEN) {
       this.syncRoundTripComplete = false;
+      this.pendingAcknowledgements.clear();
       this.notify('connected');
       this.sendSyncState();
       this.sendFullState();
@@ -214,6 +219,7 @@ export class WorkspaceYDocSyncClient {
     this.clearPendingUpdates();
     if (this.socket?.readyState === WebSocket.OPEN) {
       this.syncRoundTripComplete = false;
+      this.pendingAcknowledgements.clear();
       this.notify('connected');
       this.sendSyncState();
       this.sendFullState();
@@ -302,17 +308,17 @@ export class WorkspaceYDocSyncClient {
     this.pendingUpdatesStartedAt = null;
     const update = updates.length === 1 ? updates[0] : mergeUpdates(updates);
     const message = encodeSyncMessage((encoder) => syncProtocol.writeUpdate(encoder, update));
+    const messageBytes = this.sendImmediate(message, true);
     console.info(
       JSON.stringify({
         event: 'workspace_yjs_client_batch',
         workspaceId: this.workspaceId,
         updateCount: updates.length,
         updateBytes: update.byteLength,
-        messageBytes: message.byteLength,
+        messageBytes,
         durationMs: startedAt == null ? 0 : Date.now() - startedAt,
       }),
     );
-    this.sendImmediate(message);
     if (!this.destroyed && this.socket?.readyState === WebSocket.OPEN) {
       this.notify('connected');
     }
@@ -355,12 +361,23 @@ export class WorkspaceYDocSyncClient {
     return !this.destroyed && this.socket === socket && !this.ignoredSockets.has(socket);
   }
 
-  private sendImmediate(message: Uint8Array) {
+  private sendImmediate(message: Uint8Array, requireAcknowledgement = false) {
     if (!this.isOffline() && this.socket?.readyState === WebSocket.OPEN) {
+      if (requireAcknowledgement) {
+        const requestId = ++this.nextRequestId;
+        const encoder = encoding.createEncoder();
+        encoding.writeVarUint(encoder, WORKSPACE_SYNC_MESSAGE.syncWithAck);
+        encoding.writeVarUint(encoder, requestId);
+        encoding.writeUint8Array(encoder, message);
+        message = encoding.toUint8Array(encoder);
+        this.pendingAcknowledgements.add(requestId);
+      }
       const payload = new Uint8Array(message.byteLength);
       payload.set(message);
       this.socket.send(payload.buffer);
+      return payload.byteLength;
     }
+    return 0;
   }
 
   private sendSyncState() {
@@ -374,6 +391,7 @@ export class WorkspaceYDocSyncClient {
       encodeSyncMessage((encoder) =>
         syncProtocol.writeUpdate(encoder, encodeStateAsUpdate(this.doc)),
       ),
+      true,
     );
   }
 
@@ -384,9 +402,8 @@ export class WorkspaceYDocSyncClient {
       synced:
         state === 'connected' &&
         this.syncRoundTripComplete &&
-        this.pendingUpdates.length === 0 &&
-        this.flushTimer == null &&
-        this.maxFlushTimer == null,
+        this.pendingAcknowledgements.size === 0 &&
+        this.pendingUpdates.length === 0,
     });
   }
 
@@ -435,13 +452,21 @@ export class WorkspaceYDocSyncClient {
 
     const decoder = decoding.createDecoder(bytes);
     const messageType = decoding.readVarUint(decoder);
+    if (messageType === WORKSPACE_SYNC_MESSAGE.persisted) {
+      const requestId = decoding.readVarUint(decoder);
+      if (this.pendingAcknowledgements.delete(requestId)) {
+        this.notify(this.isOffline() ? 'offline' : 'connected');
+      }
+      return;
+    }
     if (messageType !== MESSAGE_SYNC) return;
 
+    const syncMessageType = decoding.peekVarUint(decoder);
     const encoder = encoding.createEncoder();
     encoding.writeVarUint(encoder, MESSAGE_SYNC);
     syncProtocol.readSyncMessage(decoder, encoder, this.doc, this);
     if (encoding.length(encoder) > 1) {
-      this.sendImmediate(encoding.toUint8Array(encoder));
+      this.sendImmediate(encoding.toUint8Array(encoder), true);
     }
     let materialized = false;
     this.doc.transact(() => {
@@ -454,7 +479,9 @@ export class WorkspaceYDocSyncClient {
       this.notify('connected');
       return;
     }
-    this.syncRoundTripComplete = true;
+    if (syncMessageType === syncProtocol.messageYjsSyncStep2) {
+      this.syncRoundTripComplete = true;
+    }
     if (this.socket?.readyState === WebSocket.OPEN) {
       this.notify('connected');
     }

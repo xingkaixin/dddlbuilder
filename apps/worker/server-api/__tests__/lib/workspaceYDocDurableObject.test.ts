@@ -3,7 +3,7 @@ import * as Y from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
 import * as encoding from 'lib0/encoding';
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import { WORKSPACE_SYNC_MESSAGE, type PersistedState } from '@ddlbuilder/shared-types';
 import type {
   WorkspaceMigrationSnapshot,
   WorkspaceSnapshot,
@@ -22,6 +22,15 @@ const encodeSyncMessage = (write: (encoder: encoding.Encoder) => void) => {
 
 const toArrayBuffer = (bytes: Uint8Array) =>
   bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+
+const trackedUpdate = (update: Uint8Array, requestId: number) => {
+  const encoder = encoding.createEncoder();
+  encoding.writeVarUint(encoder, WORKSPACE_SYNC_MESSAGE.syncWithAck);
+  encoding.writeVarUint(encoder, requestId);
+  encoding.writeVarUint(encoder, MESSAGE_SYNC);
+  syncProtocol.writeUpdate(encoder, update);
+  return toArrayBuffer(encoding.toUint8Array(encoder));
+};
 
 const createState = (tableName: string): PersistedState => ({
   schemaName: '',
@@ -133,6 +142,63 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+  });
+
+  it('acknowledges a batch only after storage completes and survives a cold reload', async () => {
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state, store } = createDurableObjectState();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.mocked(
+      state.storage.put as (key: string, value: unknown) => Promise<void>,
+    ).mockImplementation(async (key, value) => {
+      if (key.startsWith('update:')) await gate;
+      store.set(key, value);
+    });
+    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
+    const ws = createWebSocket();
+    const doc = new Y.Doc();
+    doc.getMap('fields').set('field', 'persisted value');
+    const processing = durableObject.webSocketMessage(
+      ws,
+      trackedUpdate(Y.encodeStateAsUpdate(doc), 42),
+    );
+    await vi.waitFor(() => expect(state.storage.put).toHaveBeenCalled());
+    expect(ws.send).not.toHaveBeenCalled();
+
+    release();
+    await processing;
+    expect(ws.send).toHaveBeenCalledTimes(1);
+    const acknowledgement = decoding.createDecoder(ws.send.mock.calls[0][0]);
+    expect(decoding.readVarUint(acknowledgement)).toBe(WORKSPACE_SYNC_MESSAGE.persisted);
+    expect(decoding.readVarUint(acknowledgement)).toBe(42);
+
+    const coldObject = new WorkspaceYDocDurableObject(state, createEnv());
+    const response = await coldObject.fetch(new Request('http://localhost/state'));
+    const restored = new Y.Doc();
+    Y.applyUpdate(restored, new Uint8Array(await response.arrayBuffer()));
+    expect(restored.getMap('fields').get('field')).toBe('persisted value');
+    doc.destroy();
+    restored.destroy();
+  });
+
+  it('does not acknowledge a failed write and closes the socket for reconnect', async () => {
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { state } = createDurableObjectState();
+    vi.mocked(state.storage.put).mockRejectedValue(new Error('storage failed'));
+    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
+    const ws = createWebSocket();
+    const doc = new Y.Doc();
+    doc.getMap('fields').set('field', 'not yet persisted');
+
+    await expect(
+      durableObject.webSocketMessage(ws, trackedUpdate(Y.encodeStateAsUpdate(doc), 7)),
+    ).rejects.toThrow('storage failed');
+    expect(ws.send).not.toHaveBeenCalled();
+    expect(ws.close).toHaveBeenCalledWith(1011, 'Workspace persistence failed');
+    doc.destroy();
   });
 
   it.each(['read', 'snapshot'])('retries initialization after a failed %s', async (failure) => {

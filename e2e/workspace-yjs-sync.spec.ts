@@ -10,6 +10,7 @@ import * as Y from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
 import * as encoding from 'lib0/encoding';
+import { WORKSPACE_SYNC_MESSAGE } from '../packages/shared-types/src/workspaceSync';
 import { confirmFieldTypeChangeIfNeeded } from './utils';
 import {
   getWorkspaceSavedTable,
@@ -54,13 +55,25 @@ class MockWorkspaceYjsServer {
         if (this.pausedClients.has(clientId)) return;
         if (typeof message === 'string') return;
         const decoder = decoding.createDecoder(new Uint8Array(message));
-        if (decoding.readVarUint(decoder) !== MESSAGE_SYNC) return;
+        let messageType = decoding.readVarUint(decoder);
+        let requestId: number | undefined;
+        if (messageType === WORKSPACE_SYNC_MESSAGE.syncWithAck) {
+          requestId = decoding.readVarUint(decoder);
+          messageType = decoding.readVarUint(decoder);
+        }
+        if (messageType !== MESSAGE_SYNC) return;
 
         const encoder = encoding.createEncoder();
         encoding.writeVarUint(encoder, MESSAGE_SYNC);
         syncProtocol.readSyncMessage(decoder, encoder, this.doc, socket);
         if (encoding.length(encoder) > 1) {
           socket.send(Buffer.from(encoding.toUint8Array(encoder)));
+        }
+        if (requestId !== undefined) {
+          const acknowledgement = encoding.createEncoder();
+          encoding.writeVarUint(acknowledgement, WORKSPACE_SYNC_MESSAGE.persisted);
+          encoding.writeVarUint(acknowledgement, requestId);
+          socket.send(Buffer.from(encoding.toUint8Array(acknowledgement)));
         }
       });
       socket.onClose(() => {

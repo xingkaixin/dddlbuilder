@@ -2,6 +2,7 @@ import * as Y from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
 import * as encoding from 'lib0/encoding';
+import { WORKSPACE_SYNC_MESSAGE } from '@ddlbuilder/shared-types';
 import type {
   WorkspaceMigrationSnapshot,
   WorkspaceSnapshot,
@@ -48,7 +49,7 @@ type PendingWorkspaceUpdate = {
   update: Uint8Array;
 };
 
-const MESSAGE_SYNC = 0;
+const MESSAGE_SYNC = WORKSPACE_SYNC_MESSAGE.sync;
 const SNAPSHOT_KEY = 'snapshot';
 const META_KEY = 'meta';
 const UPDATE_PREFIX = 'update:';
@@ -182,15 +183,31 @@ export class WorkspaceYDocDurableObject {
     this.restoreSocketAttachment(ws);
     const doc = await this.loadDoc();
     const decoder = decoding.createDecoder(new Uint8Array(message));
-    const messageType = decoding.readVarUint(decoder);
+    let messageType = decoding.readVarUint(decoder);
+    let requestId: number | undefined;
+    if (messageType === WORKSPACE_SYNC_MESSAGE.syncWithAck) {
+      requestId = decoding.readVarUint(decoder);
+      messageType = decoding.readVarUint(decoder);
+    }
     if (messageType !== MESSAGE_SYNC) return;
 
     const encoder = encoding.createEncoder();
     encoding.writeVarUint(encoder, MESSAGE_SYNC);
     syncProtocol.readSyncMessage(decoder, encoder, doc, ws);
-    await this.awaitPersisted();
+    try {
+      await this.awaitPersisted();
+    } catch (error) {
+      ws.close(1011, 'Workspace persistence failed');
+      throw error;
+    }
     if (encoding.length(encoder) > 1) {
       ws.send(encoding.toUint8Array(encoder));
+    }
+    if (requestId !== undefined) {
+      const acknowledgement = encoding.createEncoder();
+      encoding.writeVarUint(acknowledgement, WORKSPACE_SYNC_MESSAGE.persisted);
+      encoding.writeVarUint(acknowledgement, requestId);
+      ws.send(encoding.toUint8Array(acknowledgement));
     }
   }
 
