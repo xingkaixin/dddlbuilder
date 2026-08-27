@@ -1,4 +1,4 @@
-import type { Hono } from 'hono';
+import type { Hono, MiddlewareHandler } from 'hono';
 import type { ApiEnv } from '../lib/context.js';
 import { createAdminSession, resolveAdminSession, deleteAdminSession } from '../lib/adminAuth.js';
 import { errorResponse, withMeta, parseJsonBodyWithLimit } from '../lib/http.js';
@@ -6,6 +6,16 @@ import { createBetterAuth } from '../lib/betterAuth.js';
 import { getUserSystemConfig } from '../lib/userSystemConfig.js';
 import { applyCreditMutation, listCreditLedger } from '../lib/credits.js';
 import { enforceRequestRateLimit } from '../lib/requestRateLimit.js';
+import {
+  adminUserExists,
+  disableAdminUser,
+  enableAdminUser,
+  getAdminUser,
+  getAdminUserContact,
+  listAdminUsageEvents,
+  listAdminUsers,
+  setAdminUserEmailVerification,
+} from '../lib/adminUsers.js';
 
 const ADMIN_LOGIN_RATE_LIMIT = {
   scope: 'admin:login',
@@ -13,64 +23,18 @@ const ADMIN_LOGIN_RATE_LIMIT = {
   windowMs: 15 * 60 * 1000,
 } as const;
 
-type AdminUserSummary = {
-  id: string;
-  name: string;
-  email: string;
-  emailVerified: boolean;
-  balance: number;
-  createdAt: string;
-  disabled: boolean;
-};
-
-type AdminUserDetail = AdminUserSummary & {
-  updatedAt: string;
-  lastActiveAt: string | null;
-};
-
-type UsageEventRow = {
-  id: string;
-  routeKey: string;
-  requestId: string;
-  estimatedTokens: number;
-  actualTotalTokens: number | null;
-  status: string;
-  errorCode: string | null;
-  createdAt: string;
-};
-
-const toUserSummary = (row: Record<string, unknown>): AdminUserSummary => ({
-  id: String(row.id),
-  name: typeof row.name === 'string' ? row.name : '',
-  email: String(row.email),
-  emailVerified: Number(row.emailVerified) === 1,
-  balance: Number(row.balance ?? 0),
-  createdAt: new Date(Number(row.createdAt)).toISOString(),
-  disabled: row.disabled === 1 || row.disabled === true,
-});
-
-const toUsageEventRow = (row: Record<string, unknown>): UsageEventRow => ({
-  id: String(row.id),
-  routeKey: String(row.routeKey),
-  requestId: String(row.requestId),
-  estimatedTokens: Number(row.estimatedTokens),
-  actualTotalTokens: row.actualTotalTokens !== null ? Number(row.actualTotalTokens) : null,
-  status: String(row.status),
-  errorCode: typeof row.errorCode === 'string' ? row.errorCode : null,
-  createdAt: String(row.createdAt),
-});
-
 const parsePagination = (query: Record<string, string | undefined>) => {
   const limit = Math.min(Math.max(Number.parseInt(query.limit ?? '50', 10) || 50, 1), 100);
   const offset = Math.max(Number.parseInt(query.offset ?? '0', 10) || 0, 0);
   return { limit, offset };
 };
 
-const requireAdmin = async (
-  env: ApiEnv['Bindings'],
-  cookieHeader: string | null | undefined,
-): Promise<boolean> => {
-  return resolveAdminSession(env, cookieHeader);
+const requireAdminSession: MiddlewareHandler<ApiEnv> = async (c, next) => {
+  const valid = await resolveAdminSession(c.env, c.req.header('cookie'));
+  if (!valid) {
+    return errorResponse(c, 401, 'Admin session required', 'ADMIN_REQUIRED');
+  }
+  await next();
 };
 
 export function registerAdminRoutes(app: Hono<ApiEnv>) {
@@ -109,98 +73,34 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
   });
 
   app.get('/admin/session', async (c) => {
-    const valid = await requireAdmin(c.env, c.req.header('cookie'));
+    const valid = await resolveAdminSession(c.env, c.req.header('cookie'));
     return c.json({ authenticated: valid });
   });
 
   // ─── User management ─────────────────────────────────────────────
 
+  app.use('/admin/users', requireAdminSession);
+  app.use('/admin/users/*', requireAdminSession);
+
   app.get('/admin/users', async (c) => {
-    const valid = await requireAdmin(c.env, c.req.header('cookie'));
-    if (!valid) {
-      return errorResponse(c, 401, 'Admin session required', 'ADMIN_REQUIRED');
-    }
-
     const { limit, offset } = parsePagination(c.req.query());
-    const result = await c.env.USER_DB.prepare(
-      `
-        SELECT
-          u.id,
-          u.name,
-          u.email,
-          u.email_verified AS emailVerified,
-          u.created_at AS createdAt,
-          COALESCE(ca.balance, 0) AS balance,
-          CASE WHEN f.user_id IS NOT NULL THEN 1 ELSE 0 END AS disabled
-        FROM user u
-        LEFT JOIN credit_accounts ca ON u.id = ca.user_id
-        LEFT JOIN admin_user_flags f ON u.id = f.user_id
-        ORDER BY u.created_at DESC
-        LIMIT ? OFFSET ?
-      `,
-    )
-      .bind(limit, offset)
-      .all<Record<string, unknown>>();
-
-    const users = (result.results ?? []).map(toUserSummary);
+    const users = await listAdminUsers(c.env.USER_DB, { limit, offset });
     return c.json(withMeta(c, { users }));
   });
 
   app.get('/admin/users/:userId', async (c) => {
-    const valid = await requireAdmin(c.env, c.req.header('cookie'));
-    if (!valid) {
-      return errorResponse(c, 401, 'Admin session required', 'ADMIN_REQUIRED');
-    }
-
-    const userId = c.req.param('userId');
-    const row = await c.env.USER_DB.prepare(
-      `
-        SELECT
-          u.id,
-          u.name,
-          u.email,
-          u.email_verified AS emailVerified,
-          u.created_at AS createdAt,
-          u.updated_at AS updatedAt,
-          COALESCE(ca.balance, 0) AS balance,
-          CASE WHEN f.user_id IS NOT NULL THEN 1 ELSE 0 END AS disabled,
-          (
-            SELECT MAX(created_at)
-            FROM usage_events
-            WHERE user_id = u.id
-          ) AS lastActiveAt
-        FROM user u
-        LEFT JOIN credit_accounts ca ON u.id = ca.user_id
-        LEFT JOIN admin_user_flags f ON u.id = f.user_id
-        WHERE u.id = ?
-      `,
-    )
-      .bind(userId)
-      .first<Record<string, unknown>>();
-
-    if (!row) {
+    const user = await getAdminUser(c.env.USER_DB, c.req.param('userId'));
+    if (!user) {
       return errorResponse(c, 404, 'User not found');
     }
-
-    const user = toUserSummary(row) as AdminUserDetail;
-    user.updatedAt = new Date(Number(row.updatedAt)).toISOString();
-    user.lastActiveAt = typeof row.lastActiveAt === 'string' ? row.lastActiveAt : null;
-
     return c.json(withMeta(c, { user }));
   });
 
   // ─── User actions ────────────────────────────────────────────────
 
   app.post('/admin/users/:userId/reset-password', async (c) => {
-    const valid = await requireAdmin(c.env, c.req.header('cookie'));
-    if (!valid) {
-      return errorResponse(c, 401, 'Admin session required', 'ADMIN_REQUIRED');
-    }
-
     const userId = c.req.param('userId');
-    const userRow = await c.env.USER_DB.prepare('SELECT email, name FROM user WHERE id = ?')
-      .bind(userId)
-      .first<{ email: string; name: string }>();
+    const userRow = await getAdminUserContact(c.env.USER_DB, userId);
 
     if (!userRow) {
       return errorResponse(c, 404, 'User not found');
@@ -235,56 +135,29 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
   });
 
   app.post('/admin/users/:userId/disable', async (c) => {
-    const valid = await requireAdmin(c.env, c.req.header('cookie'));
-    if (!valid) {
-      return errorResponse(c, 401, 'Admin session required', 'ADMIN_REQUIRED');
-    }
-
     const userId = c.req.param('userId');
     const { data: body, errorResponse: err } = await parseJsonBodyWithLimit<{
       reason?: string;
     }>(c, 1024);
     if (err) return err;
 
-    const userRow = await c.env.USER_DB.prepare('SELECT id FROM user WHERE id = ?')
-      .bind(userId)
-      .first();
-
-    if (!userRow) {
+    if (!(await adminUserExists(c.env.USER_DB, userId))) {
       return errorResponse(c, 404, 'User not found');
     }
 
-    await c.env.USER_DB.batch([
-      c.env.USER_DB.prepare(
-        'INSERT OR IGNORE INTO admin_user_flags (user_id, disabled_at, disabled_reason) VALUES (?, CURRENT_TIMESTAMP, ?)',
-      ).bind(userId, body.reason ?? null),
-      c.env.USER_DB.prepare('DELETE FROM session WHERE user_id = ?').bind(userId),
-    ]);
+    await disableAdminUser(c.env.USER_DB, userId, body.reason);
 
     return c.json(withMeta(c, { ok: true }));
   });
 
   app.post('/admin/users/:userId/enable', async (c) => {
-    const valid = await requireAdmin(c.env, c.req.header('cookie'));
-    if (!valid) {
-      return errorResponse(c, 401, 'Admin session required', 'ADMIN_REQUIRED');
-    }
-
     const userId = c.req.param('userId');
-
-    await c.env.USER_DB.prepare('DELETE FROM admin_user_flags WHERE user_id = ?')
-      .bind(userId)
-      .run();
+    await enableAdminUser(c.env.USER_DB, userId);
 
     return c.json(withMeta(c, { ok: true }));
   });
 
   app.post('/admin/users/:userId/email-verification', async (c) => {
-    const valid = await requireAdmin(c.env, c.req.header('cookie'));
-    if (!valid) {
-      return errorResponse(c, 401, 'Admin session required', 'ADMIN_REQUIRED');
-    }
-
     const userId = c.req.param('userId');
     const { data: body, errorResponse: err } = await parseJsonBodyWithLimit<{
       verified?: boolean;
@@ -295,27 +168,11 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
       return errorResponse(c, 400, 'Verified flag must be a boolean');
     }
 
-    const userRow = await c.env.USER_DB.prepare('SELECT id FROM user WHERE id = ?')
-      .bind(userId)
-      .first();
-
-    if (!userRow) {
+    if (!(await adminUserExists(c.env.USER_DB, userId))) {
       return errorResponse(c, 404, 'User not found');
     }
 
-    const updatedAt = Date.now();
-    if (body.verified) {
-      await c.env.USER_DB.prepare('UPDATE user SET email_verified = 1, updated_at = ? WHERE id = ?')
-        .bind(updatedAt, userId)
-        .run();
-    } else {
-      await c.env.USER_DB.batch([
-        c.env.USER_DB.prepare(
-          'UPDATE user SET email_verified = 0, updated_at = ? WHERE id = ?',
-        ).bind(updatedAt, userId),
-        c.env.USER_DB.prepare('DELETE FROM session WHERE user_id = ?').bind(userId),
-      ]);
-    }
+    await setAdminUserEmailVerification(c.env.USER_DB, userId, body.verified);
 
     return c.json(withMeta(c, { ok: true, emailVerified: body.verified }));
   });
@@ -323,11 +180,6 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
   // ─── Credits ─────────────────────────────────────────────────────
 
   app.post('/admin/users/:userId/credits', async (c) => {
-    const valid = await requireAdmin(c.env, c.req.header('cookie'));
-    if (!valid) {
-      return errorResponse(c, 401, 'Admin session required', 'ADMIN_REQUIRED');
-    }
-
     const userId = c.req.param('userId');
     const { data: body, errorResponse: err } = await parseJsonBodyWithLimit<{
       amount?: number;
@@ -340,11 +192,7 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
       return errorResponse(c, 400, 'Amount must be a positive safe integer');
     }
 
-    const userRow = await c.env.USER_DB.prepare('SELECT id FROM user WHERE id = ?')
-      .bind(userId)
-      .first();
-
-    if (!userRow) {
+    if (!(await adminUserExists(c.env.USER_DB, userId))) {
       return errorResponse(c, 404, 'User not found');
     }
 
@@ -364,11 +212,6 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
   });
 
   app.get('/admin/users/:userId/credits/ledger', async (c) => {
-    const valid = await requireAdmin(c.env, c.req.header('cookie'));
-    if (!valid) {
-      return errorResponse(c, 401, 'Admin session required', 'ADMIN_REQUIRED');
-    }
-
     const userId = c.req.param('userId');
     const limit = Math.min(
       Math.max(Number.parseInt(c.req.query('limit') ?? '20', 10) || 20, 1),
@@ -382,42 +225,10 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
   // ─── Usage events ────────────────────────────────────────────────
 
   app.get('/admin/users/:userId/usage-events', async (c) => {
-    const valid = await requireAdmin(c.env, c.req.header('cookie'));
-    if (!valid) {
-      return errorResponse(c, 401, 'Admin session required', 'ADMIN_REQUIRED');
-    }
-
     const userId = c.req.param('userId');
     const { limit, offset } = parsePagination(c.req.query());
-
-    const [dataResult, countResult] = await Promise.all([
-      c.env.USER_DB.prepare(
-        `
-          SELECT
-            id,
-            route_key AS routeKey,
-            request_id AS requestId,
-            estimated_tokens AS estimatedTokens,
-            actual_total_tokens AS actualTotalTokens,
-            status,
-            error_code AS errorCode,
-            created_at AS createdAt
-          FROM usage_events
-          WHERE user_id = ?
-          ORDER BY created_at DESC
-          LIMIT ? OFFSET ?
-        `,
-      )
-        .bind(userId, limit, offset)
-        .all<Record<string, unknown>>(),
-      c.env.USER_DB.prepare('SELECT COUNT(*) AS total FROM usage_events WHERE user_id = ?')
-        .bind(userId)
-        .first<{ total: number }>(),
-    ]);
-
-    const items = (dataResult.results ?? []).map(toUsageEventRow);
-    const total = countResult?.total ?? 0;
-
-    return c.json(withMeta(c, { items, total }));
+    return c.json(
+      withMeta(c, await listAdminUsageEvents(c.env.USER_DB, userId, { limit, offset })),
+    );
   });
 }
