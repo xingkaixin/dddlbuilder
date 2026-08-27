@@ -191,6 +191,18 @@ describe('Utils', () => {
   });
 
   describe('sanitizeIndexesForPersist function', () => {
+    it('retains unique constraints when preparing editor state for persistence', () => {
+      const constraint = {
+        id: 'uq',
+        name: 'uq_email',
+        fields: [{ name: 'email', direction: 'ASC' as const }],
+        unique: true,
+        isPrimary: false,
+        isUniqueConstraint: true,
+      };
+      expect(sanitizeIndexesForPersist([constraint])).toEqual([constraint]);
+    });
+
     it('应该正确清理有效的索引数据', () => {
       const indexes: IndexDefinition[] = [
         {

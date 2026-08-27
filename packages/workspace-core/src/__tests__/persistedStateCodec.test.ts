@@ -58,6 +58,20 @@ const completeSnapshot = () => ({
 });
 
 describe('decodePersistedState', () => {
+  it('preserves unique constraint identity through serialization and decoding', () => {
+    const constraint = {
+      id: 'uq',
+      name: 'uq_email',
+      unique: true,
+      isUniqueConstraint: true,
+      fields: [{ name: 'email', direction: 'ASC' }],
+    };
+    const state = decodePersistedState(externalState({ indexes: [constraint] }));
+    expect(decodePersistedState(JSON.parse(JSON.stringify(state)))?.indexes).toEqual([
+      { ...constraint, isPrimary: false },
+    ]);
+  });
+
   it('兼容旧的限定表名并稳定补齐实体 id', () => {
     const input = {
       ...externalState(),

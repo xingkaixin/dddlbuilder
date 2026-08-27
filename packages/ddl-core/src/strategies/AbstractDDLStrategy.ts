@@ -79,6 +79,10 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
     if (index.isPrimary) {
       return this.generatePrimaryKeyDDL(tableName, index);
     }
+    if (index.isUniqueConstraint) {
+      const fields = index.fields.map((field) => this.formatFieldName(field.name)).join(', ');
+      return `ALTER TABLE ${this.formatTableName(tableName)} ADD CONSTRAINT ${this.formatFieldName(index.name)} UNIQUE (${fields});`;
+    }
 
     const indexType = index.unique ? 'UNIQUE INDEX' : 'INDEX';
     const fieldList = this.formatIndexFieldList(index);

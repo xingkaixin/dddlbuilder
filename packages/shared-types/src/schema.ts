@@ -12,6 +12,7 @@ export type IndexDefinition = {
   fields: IndexField[];
   unique: boolean;
   isPrimary?: boolean;
+  isUniqueConstraint?: boolean;
 };
 
 export type ForeignKeyAction = 'CASCADE' | 'SET NULL' | 'SET DEFAULT' | 'RESTRICT' | 'NO ACTION';

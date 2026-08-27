@@ -67,6 +67,7 @@ function sameIndex(a: IndexDefinition, b: IndexDefinition) {
     a.name === b.name &&
     !!a.unique === !!b.unique &&
     !!a.isPrimary === !!b.isPrimary &&
+    !!a.isUniqueConstraint === !!b.isUniqueConstraint &&
     a.fields.length === b.fields.length &&
     a.fields.every((field, index) => {
       const other = b.fields[index];
@@ -79,7 +80,7 @@ function buildGeneratedIndexes(
   schema: GeneratedTableSchema,
   baseIndexes: IndexDefinition[],
 ): IndexDefinition[] {
-  const existingIds = new Map(baseIndexes.map((index) => [index.name.toLowerCase(), index.id]));
+  const existingIndexes = new Map(baseIndexes.map((index) => [index.name.toLowerCase(), index]));
   const pkFields = schema.fields
     .filter((field) => field.isPrimaryKey)
     .map((field) => ({ name: field.fieldName, direction: 'ASC' as const }));
@@ -93,12 +94,16 @@ function buildGeneratedIndexes(
     );
   const indexes = (schema.indexes || []).map((index) => {
     const isPrimary = /^primary$|^pk_/i.test(index.name) && hasSameFields(index.fields);
+    const existing = existingIndexes.get(index.name.toLowerCase());
     return {
-      id: existingIds.get(index.name.toLowerCase()) ?? createEntityId(),
+      id: existing?.id ?? createEntityId(),
       name: index.name,
       fields: index.fields,
       unique: isPrimary ? true : index.unique,
       isPrimary,
+      ...(existing?.isUniqueConstraint && index.unique && !isPrimary
+        ? { isUniqueConstraint: true }
+        : {}),
     };
   });
 

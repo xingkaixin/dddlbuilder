@@ -41,5 +41,6 @@ export const sanitizeIndexesForPersist = (indexes: IndexDefinition[]): IndexDefi
       })),
       unique: Boolean(index.unique),
       isPrimary: Boolean(index.isPrimary),
+      ...(index.isUniqueConstraint ? { isUniqueConstraint: true } : {}),
     }))
     .filter((index) => index.name && index.fields.length > 0);

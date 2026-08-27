@@ -319,7 +319,13 @@ function normalizeMiscConfig(config?: TableMiscConfig): TableMiscConfig {
  */
 function getIndexSignature(index: IndexDefinition): string {
   const fieldsSig = index.fields.map((f) => `${f.name}:${f.direction}`).join(',');
-  const prefix = index.isPrimary ? 'PK' : index.unique ? 'UQ' : 'IX';
+  const prefix = index.isPrimary
+    ? 'PK'
+    : index.isUniqueConstraint
+      ? 'UC'
+      : index.unique
+        ? 'UQ'
+        : 'IX';
   return `${prefix}:${index.name}:${fieldsSig}`;
 }
 

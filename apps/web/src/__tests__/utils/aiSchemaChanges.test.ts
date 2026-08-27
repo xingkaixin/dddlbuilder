@@ -55,6 +55,21 @@ function createBaseState(): PersistedState {
 }
 
 describe('aiSchemaChanges', () => {
+  it('retains the kind of existing unique constraints in an AI candidate', () => {
+    const baseState = createBaseState();
+    baseState.indexes = baseState.indexes.map((index) => ({ ...index, isUniqueConstraint: true }));
+    const schema: GeneratedTableSchema = {
+      tableName: baseState.tableName,
+      tableComment: baseState.tableComment,
+      fields: baseState.rows.map((row) => ({ ...row, defaultKind: row.defaultKind ?? 'none' })),
+      indexes: baseState.indexes.map(({ name, fields, unique }) => ({ name, fields, unique })),
+    };
+    const candidate = buildPersistedStateFromAISchema(schema, { baseState });
+    expect(candidate.indexes).toEqual(
+      baseState.indexes.map((index) => ({ ...index, isPrimary: false })),
+    );
+  });
+
   it('builds reviewable changes from an AI candidate schema', () => {
     const baseState = createBaseState();
     const schema: GeneratedTableSchema = {

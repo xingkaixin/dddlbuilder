@@ -101,6 +101,9 @@ const decodeIndexes = (value: unknown): IndexDefinition[] => {
         fields: decodeIndexFields(item.fields),
         unique: item.unique === true,
         isPrimary: item.isPrimary === true,
+        ...(item.isUniqueConstraint === true && item.unique === true && item.isPrimary !== true
+          ? { isUniqueConstraint: true }
+          : {}),
       },
     ];
   });

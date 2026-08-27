@@ -1,5 +1,6 @@
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 import { formatSqlIdentifier } from '../sqlIdentifiers';
+import { getDatabaseFamily } from '../databaseFamily';
 import type { IndexDiff } from '../tableDiff';
 import {
   buildQualifiedTableName,
@@ -20,6 +21,9 @@ export function generateDropIndex(
     index.name,
     dbType,
   );
+  if (index.isUniqueConstraint && getDatabaseFamily(dbType) !== 'mysql') {
+    return `ALTER TABLE ${tableName} DROP CONSTRAINT ${indexName};`;
+  }
 
   // 主键需要特殊处理
   if (index.isPrimary) {
@@ -74,6 +78,11 @@ export function generateAddIndex(
   const fieldList = index.fields
     .map((f) => `${formatSqlIdentifier(f.name, dbType)} ${f.direction}`)
     .join(', ');
+
+  if (index.isUniqueConstraint) {
+    const columns = index.fields.map((field) => formatSqlIdentifier(field.name, dbType)).join(', ');
+    return `ALTER TABLE ${tableName} ADD CONSTRAINT ${indexName} UNIQUE (${columns});`;
+  }
 
   // 主键
   if (index.isPrimary) {

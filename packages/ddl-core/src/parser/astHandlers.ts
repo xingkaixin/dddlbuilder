@@ -42,7 +42,7 @@ function pushIndex(
   name: string,
   fields: IndexField[],
   unique: boolean,
-  isPrimary = false,
+  kind: 'index' | 'primary' | 'unique' = 'index',
 ) {
   if (fields.length === 0) return;
   result.indexes.push({
@@ -50,7 +50,8 @@ function pushIndex(
     name,
     fields,
     unique,
-    isPrimary,
+    isPrimary: kind === 'primary',
+    ...(kind === 'unique' ? { isUniqueConstraint: true } : {}),
   });
 }
 
@@ -118,7 +119,7 @@ function enforceNotNullForFields(result: ParsedResult, fieldNames: string[]) {
 }
 
 function pushPrimaryKey(result: ParsedResult, fields: IndexField[], name?: string | null) {
-  pushIndex(result, name || buildPrimaryKeyName(result.tableName), fields, true, true);
+  pushIndex(result, name || buildPrimaryKeyName(result.tableName), fields, true, 'primary');
   enforceNotNullForFields(
     result,
     fields.map((field) => field.name),
@@ -307,10 +308,10 @@ export function parseCreateTable(
         if (def.unique) {
           pushIndex(
             result,
-            `uk_${field.name}`,
+            def.constraint?.constraint || `uk_${field.name}`,
             [{ name: field.name, direction: 'ASC' }],
             true,
-            false,
+            'unique',
           );
         }
       } else if (def.resource === 'constraint') {
@@ -320,7 +321,7 @@ export function parseCreateTable(
           const fields = buildIndexFields(def.definition || []);
           const indexName =
             def.constraint || def.index || `uk_${fields.map((f) => f.name).join('_')}`;
-          pushIndex(result, indexName, fields, true, false);
+          pushIndex(result, indexName, fields, true, 'unique');
         } else if (def.constraint_type?.toLowerCase() === 'foreign key') {
           pushForeignKey(result, def);
         }
@@ -332,7 +333,6 @@ export function parseCreateTable(
           def.index as string,
           fields,
           def.index_type === 'unique' || def.keyword === 'unique',
-          false,
         );
       }
     });
@@ -360,13 +360,7 @@ export function parseCreateIndex(
 
   const fields: IndexField[] = buildIndexFields(columns);
 
-  pushIndex(
-    result,
-    indexName,
-    fields,
-    stmt.index_type === 'unique' || stmt.keyword === 'unique',
-    false,
-  );
+  pushIndex(result, indexName, fields, stmt.index_type === 'unique' || stmt.keyword === 'unique');
 }
 
 export function parseAlterTable(
@@ -383,26 +377,28 @@ export function parseAlterTable(
   }
 
   stmt.expr.forEach((expr) => {
-    const defs = expr.create_definitions;
-    if (expr.action === 'add' && defs) {
-      const constraintType = defs.constraint_type?.toLowerCase?.() || '';
-      if (constraintType === 'primary key') {
-        pushPrimaryKey(result, buildIndexFields(defs.definition), defs.constraint || defs.index);
-      } else if (constraintType === 'foreign key') {
-        pushForeignKey(result, defs);
-      }
-    } else if (
-      expr.action === 'add' &&
-      expr.resource === 'constraint' &&
-      expr.constraint_type?.toLowerCase?.() === 'primary key'
-    ) {
-      pushPrimaryKey(result, buildIndexFields(expr.definition), expr.constraint);
-    } else if (
-      expr.action === 'add' &&
-      expr.resource === 'constraint' &&
-      expr.constraint_type?.toLowerCase?.() === 'foreign key'
-    ) {
-      pushForeignKey(result, expr);
+    if (expr.action !== 'add') return;
+    const definition = expr.create_definitions ?? (expr.resource === 'constraint' ? expr : null);
+    if (!definition) return;
+    const name = definition.constraint || expr.create_definitions?.index;
+    const fields = buildIndexFields(definition.definition);
+    switch (definition.constraint_type?.toLowerCase()) {
+      case 'primary key':
+        pushPrimaryKey(result, fields, name);
+        break;
+      case 'unique':
+      case 'unique key':
+        pushIndex(
+          result,
+          name || `uk_${fields.map((field) => field.name).join('_')}`,
+          fields,
+          true,
+          'unique',
+        );
+        break;
+      case 'foreign key':
+        pushForeignKey(result, definition);
+        break;
     }
   });
 }

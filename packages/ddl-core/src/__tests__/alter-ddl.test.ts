@@ -9,6 +9,7 @@ import type {
   PersistedState,
 } from '@ddlbuilder/shared-types';
 import { diffPersistedState } from '../utils/tableDiff';
+import { buildDDL } from '../utils/ddlGenerators';
 import type { TableDiff, FieldDiff, IndexDiff, ForeignKeyDiff } from '../utils/tableDiff';
 import {
   generateAlterDDL,
@@ -77,6 +78,50 @@ const createTableDiff = (overrides: Partial<TableDiff> = {}): TableDiff => ({
 });
 
 describe('generateAlterDDL', () => {
+  it.each([
+    'CREATE TABLE users (email TEXT, CONSTRAINT uq_users_email UNIQUE(email));',
+    'CREATE TABLE users (email TEXT CONSTRAINT uq_users_email UNIQUE);',
+    'CREATE TABLE users (email TEXT); ALTER TABLE users ADD CONSTRAINT uq_users_email UNIQUE(email);',
+  ])('keeps unique constraints distinct from independent indexes: %s', async (sql) => {
+    const parsed = await new SqlParser().parseAsync(
+      sql + ' CREATE UNIQUE INDEX ix_users_email ON users(email);',
+      'postgresql',
+    );
+    const before = withDefaultEditorSession({
+      dbType: 'postgresql',
+      schemaName: '',
+      tableName: parsed.tableName,
+      tableComment: '',
+      rows: [],
+      indexes: parsed.indexes,
+      authInput: '',
+      authObjects: [],
+    });
+    const diff = diffPersistedState(before, { ...before, indexes: [] });
+    expect(generateAlterDDL('users', diff, [], 'postgresql')).toBe(
+      'ALTER TABLE users DROP CONSTRAINT uq_users_email;\n\nDROP INDEX ix_users_email;',
+    );
+    expect(generateRollbackDDL('users', diff, [], 'postgresql')).toBe(
+      'ALTER TABLE users ADD CONSTRAINT uq_users_email UNIQUE (email);\n\nCREATE UNIQUE INDEX ix_users_email ON users (email ASC);',
+    );
+    expect(
+      buildDDL({
+        dbType: 'postgresql',
+        tableName: 'users',
+        tableComment: '',
+        fields: parsed.fields,
+        indexes: parsed.indexes,
+      }),
+    ).toContain('ALTER TABLE users ADD CONSTRAINT uq_users_email UNIQUE (email);');
+  });
+
+  it('does not drop MySQL unique constraints as PostgreSQL constraints', () => {
+    const index = createIndex({ name: 'uq_email', unique: true, isUniqueConstraint: true });
+    expect(generateDropIndex('users', { type: 'remove', index }, 'mysql')).toBe(
+      'DROP INDEX uq_email ON users;',
+    );
+  });
+
   it('detects and reverses PostgreSQL case-only column renames', () => {
     const before = withDefaultEditorSession({
       dbType: 'postgresql',
