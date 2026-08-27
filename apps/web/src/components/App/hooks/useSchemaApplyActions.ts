@@ -5,7 +5,6 @@ import type {
   DDLReviewResult as ReviewResult,
   DDLReviewStructuredSuggestion as StructuredSuggestion,
 } from '@ddlbuilder/shared-types/ddl-review';
-import { createFieldId } from '@ddlbuilder/workspace-core';
 import type { GeneratedTableSchema } from '@/hooks/useAIGenerateTable';
 import { buildPersistedStateFromAISchema } from '@/utils/aiSchemaChanges';
 import { convertParsedResultToPersistedState } from '@/utils/convertParsedResultToPersistedState';
@@ -91,7 +90,7 @@ export function useSchemaApplyActions({
             rows: [
               ...state.rows,
               {
-                id: createFieldId(),
+                id: createEntityId(),
                 fieldName: suggestion.field.fieldName,
                 fieldType: suggestion.field.fieldType,
                 fieldComment: suggestion.field.fieldComment || '',

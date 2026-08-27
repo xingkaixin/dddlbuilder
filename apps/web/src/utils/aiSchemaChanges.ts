@@ -7,7 +7,6 @@ import {
   type NormalizedField,
   type SqlFormatMode,
 } from '@ddlbuilder/shared-types';
-import { createFieldId } from '@ddlbuilder/workspace-core';
 import type { GeneratedTableSchema } from '@ddlbuilder/shared-types/ai-generate';
 import { diffPersistedState, getSchemaAndTable, type FieldDiff } from '@ddlbuilder/ddl-core';
 
@@ -48,7 +47,7 @@ export type AISchemaChange =
 
 export function buildGeneratedRows(schema: GeneratedTableSchema): FieldRow[] {
   return schema.fields.map((field) => ({
-    id: createFieldId(),
+    id: createEntityId(),
     fieldName: field.fieldName,
     fieldType: field.fieldType,
     fieldComment: field.fieldComment,

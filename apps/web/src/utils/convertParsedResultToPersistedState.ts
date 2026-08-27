@@ -1,12 +1,12 @@
 import { getSchemaAndTable, supportsMysqlPartition } from '@ddlbuilder/ddl-core';
-import type {
-  DatabaseType,
-  FieldRow,
-  PersistedState,
-  TableMiscConfig,
-  MysqlPartitionConfig,
+import {
+  createEntityId,
+  type DatabaseType,
+  type FieldRow,
+  type PersistedState,
+  type TableMiscConfig,
+  type MysqlPartitionConfig,
 } from '@ddlbuilder/shared-types';
-import { createFieldId } from '@ddlbuilder/workspace-core';
 import { createEmptyRow } from './helpers';
 import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 
@@ -36,7 +36,7 @@ export function convertParsedResultToPersistedState(
       : getSchemaAndTable(result.tableName);
 
   const newRows: FieldRow[] = result.fields.map((field) => ({
-    id: createFieldId(),
+    id: createEntityId(),
     fieldName: field.name,
     fieldType: field.type,
     fieldComment: field.comment,

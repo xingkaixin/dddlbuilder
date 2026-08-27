@@ -1,5 +1,4 @@
-import { normalizeFieldEnums, type PersistedState } from '@ddlbuilder/shared-types';
-import { createFieldId } from '@ddlbuilder/workspace-core';
+import { createEntityId, normalizeFieldEnums, type PersistedState } from '@ddlbuilder/shared-types';
 import { openDb, TABLE_TEMPLATE_STORE_NAME } from './workspaceDb';
 import type { TableBlueprint, TableTemplate } from './workspaceStorageTypes';
 import { runIndexedDbRequest } from './indexedDbTransaction';
@@ -48,7 +47,7 @@ export const applyBlueprintToState = (
   dbType: blueprint.dbType,
   rows: clone(blueprint.rows).map((row) => ({
     ...row,
-    id: createFieldId(),
+    id: createEntityId(),
   })),
   indexes: clone(blueprint.indexes),
   currentIndexFields: [],

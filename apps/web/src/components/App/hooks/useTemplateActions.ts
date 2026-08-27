@@ -1,6 +1,5 @@
 import { useCallback, useState, type Dispatch, type SetStateAction } from 'react';
-import type { FieldRow } from '@ddlbuilder/shared-types';
-import { createFieldId } from '@ddlbuilder/workspace-core';
+import { createEntityId, type FieldRow } from '@ddlbuilder/shared-types';
 import type { FieldTemplate } from '@/hooks/useFieldTemplates';
 import i18n from '@/i18n';
 
@@ -51,7 +50,7 @@ export function useTemplateActions({
         const after = prevRows.slice(insertAt);
 
         const newRows: FieldRow[] = template.fields.map((field) => ({
-          id: createFieldId(),
+          id: createEntityId(),
           fieldName: field.fieldName,
           fieldComment: field.fieldComment || '',
           fieldType: field.fieldType,

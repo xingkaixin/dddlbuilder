@@ -1,4 +1,5 @@
 import {
+  createEntityId,
   type DatabaseType,
   type FieldDefaultKind,
   type FieldOnUpdate,
@@ -7,7 +8,6 @@ import {
   normalizeFieldNullable,
   normalizeFieldOnUpdate,
 } from '@ddlbuilder/shared-types';
-import { createFieldId } from '@ddlbuilder/workspace-core';
 import { RESERVED_KEYWORDS } from './constants';
 import {
   supportsAutoIncrement,
@@ -35,7 +35,7 @@ export const isReservedKeyword = (db: DatabaseType, name: string) => {
 };
 
 export const createEmptyRow = (): FieldRow => ({
-  id: createFieldId(),
+  id: createEntityId(),
   fieldName: '',
   fieldType: '',
   fieldComment: '',
