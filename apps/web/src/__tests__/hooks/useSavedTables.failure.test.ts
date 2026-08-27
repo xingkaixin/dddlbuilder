@@ -29,6 +29,7 @@ const savedTableMocks = vi.hoisted(() => ({
   normalizeSavedTableName: vi.fn((name: string) => name.trim().toLowerCase()),
   updateSavedTable: vi.fn(),
   updateSavedTables: vi.fn(),
+  updateSavedTableState: vi.fn(),
 }));
 const tableVersionMocks = vi.hoisted(() => ({
   countVersions: vi.fn(),
@@ -49,6 +50,7 @@ vi.mock('@/utils/savedTablesDb', () => ({
   normalizeSavedTableName: savedTableMocks.normalizeSavedTableName,
   updateSavedTable: savedTableMocks.updateSavedTable,
   updateSavedTables: savedTableMocks.updateSavedTables,
+  updateSavedTableState: savedTableMocks.updateSavedTableState,
 }));
 
 vi.mock('@/utils/tableVersions', () => ({
@@ -159,8 +161,7 @@ describe('useSavedTables failure states', () => {
     });
     expect(notFound).toEqual({ ok: false, reason: 'not_found' });
 
-    savedTableMocks.getSavedTable.mockResolvedValueOnce(createRecord('alpha', 'Alpha'));
-    savedTableMocks.updateSavedTable.mockRejectedValueOnce(new Error('更新异常'));
+    savedTableMocks.updateSavedTableState.mockRejectedValueOnce(new Error('更新异常'));
 
     let failed: SaveResult | undefined;
     await act(async () => {

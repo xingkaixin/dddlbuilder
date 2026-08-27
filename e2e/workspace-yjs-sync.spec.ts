@@ -11,6 +11,10 @@ import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
 import * as encoding from 'lib0/encoding';
 import { confirmFieldTypeChangeIfNeeded } from './utils';
+import {
+  getWorkspaceSavedTable,
+  upsertWorkspaceSavedTable,
+} from '../packages/workspace-core/src/index';
 
 const MESSAGE_SYNC = 0;
 const DEFAULT_DRAFT_ID = 'default';
@@ -736,7 +740,9 @@ test('workspace yjs sync merges offline and online concurrent schema edits', asy
   await contextB.close();
 });
 
-test('ER relationship deletion targets the imported table copy', async ({ browser }) => {
+test('ER relationship deletion preserves synced edits on the selected copy', async ({
+  browser,
+}) => {
   const server = new MockWorkspaceYjsServer();
   const workspaceId = `ws-er-copy-${Date.now()}`;
   seedDefaultDraft(server.doc, 'initial', 'id');
@@ -772,9 +778,30 @@ test('ER relationship deletion targets the imported table copy', async ({ browse
   try {
     await page.goto('/');
     await openDraftByName(page, 'initial');
+    await openSavedTables(page);
+    await getSavedTableRow(page, 'copy').getByTestId('table-select:copy').click();
+    await expect(tableNameInput(page)).toHaveValue('orders');
     await page.getByRole('button', { name: 'ER 关系图', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'ER 关系图' });
     await expect(dialog.locator('.react-flow__edge')).toHaveCount(2);
+    const currentCopy = getWorkspaceSavedTable(server.doc, {
+      normalizedName: 'copy',
+      tableId: 'copy',
+    });
+    if (!currentCopy) throw new Error('Copy not found');
+    upsertWorkspaceSavedTable(server.doc, {
+      ...currentCopy,
+      updatedAt: Date.now(),
+      state: {
+        ...currentCopy.state,
+        tableComment: 'remote comment',
+        rows: [
+          ...currentCopy.state.rows,
+          { id: 'remote-field', fieldName: 'remote_note', fieldType: 'TEXT' },
+        ],
+      },
+    });
+    await expect(page.locator('#table-comment')).toHaveValue('remote comment');
     await dialog.locator(`button[data-edge-id='["copy","shared-fk"]']`).click();
     const foreignKeyCount = (id: string) => {
       const table = server.doc.getMap<Y.Map<unknown>>('savedTables').get(id);
@@ -785,6 +812,12 @@ test('ER relationship deletion targets the imported table copy', async ({ browse
     };
     await expect.poll(() => foreignKeyCount('copy')).toBe(0);
     expect(foreignKeyCount('original')).toBe(1);
+    const updatedCopy = getWorkspaceSavedTable(server.doc, {
+      normalizedName: 'copy',
+      tableId: 'copy',
+    });
+    expect(updatedCopy?.state.tableComment).toBe('remote comment');
+    expect(updatedCopy?.state.rows.map((row) => row.fieldName)).toContain('remote_note');
     await expect(dialog.locator('.react-flow__edge')).toHaveCount(1);
   } finally {
     await context.close();

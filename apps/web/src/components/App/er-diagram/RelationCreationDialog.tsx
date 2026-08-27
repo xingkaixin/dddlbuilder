@@ -29,7 +29,6 @@ import {
   type RelationshipOptionality,
   type TableRelationshipDraft,
   type TableRelationshipIntent,
-  type TableRelationshipPlan,
 } from './tableRelationship';
 
 const FOREIGN_KEY_ACTIONS: ForeignKeyAction[] = [
@@ -45,7 +44,7 @@ type RelationCreationDialogProps = {
   sourceField: string;
   targetField: string;
   onCancel: () => void;
-  onConfirm: (plan: TableRelationshipPlan) => Promise<void>;
+  onConfirm: (intent: TableRelationshipIntent) => Promise<void>;
 };
 
 function fieldOptions(draft: TableRelationshipDraft, side: 'source' | 'target') {
@@ -125,7 +124,7 @@ export function RelationCreationDialog({
     if (!result?.ok || isSaving) return;
     setIsSaving(true);
     try {
-      await onConfirm(result.plan);
+      await onConfirm(intent);
     } finally {
       setIsSaving(false);
     }

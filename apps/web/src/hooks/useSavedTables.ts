@@ -22,6 +22,7 @@ import { resolveSavedTableId } from '@/utils/savedTableIdentity';
 import { deleteAllReviews, migrateReviewsToTable } from '@/utils/reviewHistory';
 import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
 import { reportError } from '@/utils/errorReporter';
+import type { SavedTableStateUpdate } from '@/utils/savedTableStateUpdate';
 
 export type SavedTableSummary = SavedTableMetadata;
 
@@ -59,6 +60,7 @@ export function useSavedTables() {
     readAllTables,
     putTable,
     putTables,
+    updateTableState,
     replaceTable,
     moveTableToTrash,
     cleanupLocalTable,
@@ -146,19 +148,13 @@ export function useSavedTables() {
   );
 
   const overwriteTable = useCallback(
-    async (target: SavedTableTarget, state: PersistedState): Promise<SaveTableResult> => {
+    async (target: SavedTableTarget, update: SavedTableStateUpdate): Promise<SaveTableResult> => {
       try {
         if (!currentScope) throw new Error('工作区未就绪');
-        const record = await readTable(target);
+        const record = await updateTableState(target, update);
         if (!record) {
           return { ok: false, reason: 'not_found' };
         }
-        const updatedRecord: SavedTableRecord = {
-          ...record,
-          state,
-          updatedAt: Date.now(),
-        };
-        await persistActiveTable(updatedRecord);
         await refresh();
         return {
           ok: true,
@@ -173,7 +169,7 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, persistActiveTable, readTable, refresh],
+    [currentScope, updateTableState, refresh],
   );
 
   const deleteTable = useCallback(

@@ -5,6 +5,11 @@ import type { ErEdgeData } from '@/components/App/er-diagram/types';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import { buildSavedTableBatchImportPlan } from '@/utils/savedTableBatchImport';
 import ErDiagramCanvas from '@/components/App/er-diagram/ErDiagramCanvas';
+import {
+  applySavedTableStateUpdate,
+  type SavedTableStateUpdate,
+} from '@/utils/savedTableStateUpdate';
+import type { SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 
 const capture = vi.hoisted(() => ({ edges: [] as ReactFlowModule.Edge[], fitView: vi.fn() }));
 
@@ -56,7 +61,12 @@ describe('ER relationship ownership', () => {
       name: 'parent',
       state: { ...original.state, tableName: 'parent', foreignKeys: [] },
     };
-    const onUpdateTable = vi.fn().mockResolvedValue({ ok: true });
+    const updates: SavedTableRecord[] = [];
+    const onUpdateTable = vi.fn((target: SavedTableTarget, update: SavedTableStateUpdate) => {
+      const record = applySavedTableStateUpdate(target, update, () => (copy ? imported : original));
+      if (record) updates.push(record);
+      return Promise.resolve({ ok: true as const, tableId: 'updated', normalizedName: 'updated' });
+    });
     const onRefresh = vi.fn().mockResolvedValue(undefined);
     render(
       <ErDiagramCanvas
@@ -76,7 +86,8 @@ describe('ER relationship ownership', () => {
     await act(async () => {
       await (edge.data as ErEdgeData).onDelete();
     });
-    expect(onUpdateTable).toHaveBeenCalledExactlyOnceWith(target, {
+    expect(onUpdateTable).toHaveBeenCalledExactlyOnceWith(target, expect.any(Function));
+    expect(updates[0].state).toEqual({
       ...target.state,
       foreignKeys: [],
     });

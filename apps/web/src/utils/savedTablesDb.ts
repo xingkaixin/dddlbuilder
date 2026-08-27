@@ -7,6 +7,7 @@ import { decodeWorkspaceScopedKey } from './workspaceScopedRecord';
 import { openDb, STORE_NAME } from './workspaceDb';
 import type { SavedTableMetadata, SavedTableRecord } from './workspaceStorageTypes';
 import { resolveSavedTableId } from './savedTableIdentity';
+import { applySavedTableStateUpdate, type SavedTableStateUpdate } from './savedTableStateUpdate';
 
 export { openDb } from './workspaceDb';
 export {
@@ -191,6 +192,45 @@ export const updateSavedTables = async (
       } satisfies SavedTableRecord);
     }
     return () => undefined;
+  });
+};
+
+export const updateSavedTableState = async (
+  target: SavedTableTarget,
+  update: SavedTableStateUpdate,
+  scope: WorkspaceScope,
+): Promise<SavedTableRecord | null> => {
+  const db = await openDb();
+  return runIndexedDbTransaction(db, STORE_NAME, 'readwrite', (tx, fail) => {
+    const store = tx.objectStore(STORE_NAME);
+    const request: IDBRequest<SavedTableRecord[]> = store.getAll();
+    let updated: SavedTableRecord | null = null;
+    request.onerror = () => fail(request.error);
+    request.onsuccess = () => {
+      try {
+        const records = request.result
+          .map((record) => decodeScopedTableRecord(record, scope))
+          .filter((record): record is SavedTableRecord => record !== null);
+        updated = applySavedTableStateUpdate(target, update, (reference) => {
+          const { tableId, normalizedName } = savedTableReference(reference);
+          return (
+            records.find((record) =>
+              tableId ? record.tableId === tableId : record.normalizedName === normalizedName,
+            ) ?? null
+          );
+        });
+        if (updated) {
+          store.put({
+            ...updated,
+            normalizedName: withScopeKey(scope, updated.normalizedName),
+            scope: getWorkspaceScopeStorageKey(scope),
+          } satisfies SavedTableRecord);
+        }
+      } catch (error) {
+        fail(error);
+      }
+    };
+    return () => updated;
   });
 };
 

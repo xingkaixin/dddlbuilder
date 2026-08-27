@@ -19,6 +19,7 @@ import '@xyflow/react/dist/style.css';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { ErNodeData, ErEdgeData } from './types';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
+import type { SavedTableStateUpdate } from '@/utils/savedTableStateUpdate';
 import type { SaveTableResult } from '@/hooks/useSavedTables';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
@@ -26,7 +27,7 @@ import ErTableNode from './ErTableNode';
 import ErRelationEdge from './ErRelationEdge';
 import ErDiagramToolbar from './ErDiagramToolbar';
 import { RelationCreationDialog } from './RelationCreationDialog';
-import type { TableRelationshipPlan } from './tableRelationship';
+import { planTableRelationship, type TableRelationshipIntent } from './tableRelationship';
 
 const GRID_GAP_X = 300;
 const GRID_GAP_Y = 200;
@@ -118,7 +119,7 @@ interface CanvasInnerProps {
   onAddTable: () => void;
   onUpdateTable: (
     normalizedName: SavedTableTarget,
-    state: PersistedState,
+    state: SavedTableStateUpdate,
   ) => Promise<SaveTableResult>;
 }
 
@@ -143,12 +144,10 @@ function CanvasInner({
 
   const handleDeleteForeignKey = useCallback(
     async (sourceRecord: SavedTableRecord, fkId: string) => {
-      const updatedState: PersistedState = {
-        ...sourceRecord.state,
-        foreignKeys: sourceRecord.state.foreignKeys?.filter((fk) => fk.id !== fkId) || [],
-      };
-
-      const result = await onUpdateTable(sourceRecord, updatedState);
+      const result = await onUpdateTable(sourceRecord, (current) => ({
+        ...current,
+        foreignKeys: current.foreignKeys?.filter((fk) => fk.id !== fkId) || [],
+      }));
       if (!result.ok) {
         showToast(result.message ?? t('erDiagram.relationship.saveFailed'));
         return;
@@ -227,11 +226,21 @@ function CanvasInner({
   );
 
   const handleCreateRelationship = useCallback(
-    async (plan: TableRelationshipPlan) => {
+    async (intent: TableRelationshipIntent) => {
       if (!pendingRelationship) return;
 
       try {
-        const result = await onUpdateTable(pendingRelationship.sourceRecord, plan.sourceState);
+        const result = await onUpdateTable(
+          pendingRelationship.sourceRecord,
+          (source, readTable) => {
+            const target = readTable(pendingRelationship.targetRecord);
+            if (!target || target.trashedAt)
+              throw new Error(t('erDiagram.relationship.saveFailed'));
+            const planned = planTableRelationship({ source, target: target.state }, intent);
+            if (!planned.ok) throw new Error(t(`erDiagram.relationship.errors.${planned.error}`));
+            return planned.plan.sourceState;
+          },
+        );
         if (!result.ok) {
           showToast(result.message ?? t('erDiagram.relationship.saveFailed'));
           return;
@@ -318,18 +327,6 @@ function CanvasInner({
   );
 }
 
-interface ErDiagramCanvasProps {
-  tables: SavedTableRecord[];
-  loading: boolean;
-  onSelectTable: (state: PersistedState) => void;
-  onRefresh: () => Promise<void>;
-  onAddTable: () => void;
-  onUpdateTable: (
-    normalizedName: SavedTableTarget,
-    state: PersistedState,
-  ) => Promise<SaveTableResult>;
-}
-
 function ErDiagramCanvas({
   tables,
   loading,
@@ -337,7 +334,7 @@ function ErDiagramCanvas({
   onRefresh,
   onAddTable,
   onUpdateTable,
-}: ErDiagramCanvasProps) {
+}: CanvasInnerProps) {
   return (
     <ReactFlowProvider>
       <CanvasInner

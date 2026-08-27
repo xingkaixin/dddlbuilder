@@ -16,7 +16,12 @@ import {
   listTrashedSavedTables,
   updateSavedTable,
   updateSavedTables,
+  updateSavedTableState,
 } from '@/utils/savedTablesDb';
+import {
+  applySavedTableStateUpdate,
+  type SavedTableStateUpdate,
+} from '@/utils/savedTableStateUpdate';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import { useWorkspaceAuthority } from './useWorkspaceAuthority';
 
@@ -68,6 +73,21 @@ export function useSavedTablePersistence() {
         local: (scope) => updateSavedTables(records, scope),
       });
     },
+    [storage],
+  );
+
+  const updateTableState = useCallback(
+    (target: SavedTableTarget, update: SavedTableStateUpdate) =>
+      storage.update({
+        yDoc: (doc) => {
+          const record = applySavedTableStateUpdate(target, update, (reference) =>
+            getSavedTableFromYDoc(doc, reference),
+          );
+          if (record) upsertSavedTableInYDoc(doc, record);
+          return record;
+        },
+        local: (scope) => updateSavedTableState(target, update, scope),
+      }),
     [storage],
   );
 
@@ -129,6 +149,7 @@ export function useSavedTablePersistence() {
     readAllTables,
     putTable,
     putTables,
+    updateTableState,
     replaceTable,
     moveTableToTrash,
     cleanupLocalTable,
