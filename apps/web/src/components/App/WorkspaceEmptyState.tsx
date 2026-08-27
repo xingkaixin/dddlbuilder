@@ -80,7 +80,7 @@ export const WorkspaceEmptyState = memo<WorkspaceEmptyStateProps>(
                 <RecentSection title={t('emptyState.recentTables')}>
                   {recentTables.map((table) => (
                     <RecentCard
-                      key={table.normalizedName}
+                      key={table.tableId}
                       title={table.name}
                       meta={t('emptyState.tableMeta', {
                         count: table.fieldCount,

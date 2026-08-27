@@ -99,6 +99,7 @@ describe('SavedTablesDrawer', () => {
 
     const items: SavedTableSummary[] = [
       {
+        tableId: 'table-users',
         normalizedName: 'users',
         name: 'Users',
         dbType: 'mysql',
@@ -146,6 +147,7 @@ describe('SavedTablesDrawer', () => {
       children: [],
     };
     const item: SavedTableSummary = {
+      tableId: 'table-users',
       normalizedName: 'users',
       name: 'Users',
       dbType: 'mysql',
@@ -167,7 +169,7 @@ describe('SavedTablesDrawer', () => {
 
     await act(async () => {
       await latestOnDragEnd?.({
-        active: { id: 'table:users' },
+        active: { id: 'table:table-users' },
         over: { id: 'folder:folder-a' },
       });
     });

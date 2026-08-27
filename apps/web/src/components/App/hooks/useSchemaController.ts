@@ -1,3 +1,4 @@
+import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import { useMemo } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { DDLReviewResult } from '@ddlbuilder/shared-types/ddl-review';
@@ -29,7 +30,7 @@ interface UseSchemaControllerParams {
   loadedTableNormalizedName: string | null;
   loadedTableName: string | null;
   loadedTableSignature: string | null;
-  countTableVersions: (normalizedName: string) => Promise<number>;
+  countTableVersions: (normalizedName: SavedTableTarget) => Promise<number>;
 }
 
 export function useSchemaController({
@@ -107,6 +108,7 @@ export function useSchemaController({
     hydrated,
     isShareView,
     normalizedName: loadedTableNormalizedName,
+    tableId: loadedTableId,
     tableName: loadedTableName,
     isDirty: derived.isLoadedDirty,
     countTableVersions,

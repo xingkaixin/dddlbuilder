@@ -59,6 +59,7 @@ export function useWorkspaceSnapshotRefresh({
         if (savedTable) {
           syncActiveSource({
             kind: 'saved_table',
+            ...(savedTable.tableId ? { tableId: savedTable.tableId } : {}),
             normalizedName: savedTable.normalizedName,
             tableName: savedTable.tableName,
             baseSignature: serializePersistedStateForComparison(savedTable.state),

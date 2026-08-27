@@ -1,3 +1,4 @@
+import { savedTableKey, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -5,26 +6,29 @@ interface UseLoadedTablePresentationParams {
   hydrated: boolean;
   isShareView: boolean;
   normalizedName: string | null;
+  tableId?: string | null;
   tableName: string | null;
   isDirty: boolean;
-  countTableVersions: (normalizedName: string) => Promise<number>;
+  countTableVersions: (normalizedName: SavedTableTarget) => Promise<number>;
 }
 
 export function useLoadedTablePresentation({
   hydrated,
   isShareView,
   normalizedName,
+  tableId,
   tableName,
   isDirty,
   countTableVersions,
 }: UseLoadedTablePresentationParams) {
   const { t } = useTranslation();
-  const [versionState, setVersionState] = useState({ normalizedName, value: 0 });
-  const version = versionState.normalizedName === normalizedName ? versionState.value : 0;
+  const identityKey = tableId ?? normalizedName;
+  const [versionState, setVersionState] = useState({ identityKey, value: 0 });
+  const version = versionState.identityKey === identityKey ? versionState.value : 0;
   const setVersion = useCallback(
-    (value: number, targetNormalizedName = normalizedName) =>
-      setVersionState({ normalizedName: targetNormalizedName, value }),
-    [normalizedName],
+    (value: number, target?: SavedTableTarget) =>
+      setVersionState({ identityKey: target ? savedTableKey(target) : identityKey, value }),
+    [identityKey],
   );
 
   useEffect(() => {
@@ -32,18 +36,18 @@ export function useLoadedTablePresentation({
     if (!normalizedName) return;
 
     let cancelled = false;
-    void countTableVersions(normalizedName)
+    void countTableVersions(tableId ? { normalizedName, tableId } : normalizedName)
       .then((count) => {
-        if (!cancelled) setVersionState({ normalizedName, value: count > 0 ? count : 1 });
+        if (!cancelled) setVersionState({ identityKey, value: count > 0 ? count : 1 });
       })
       .catch(() => {
-        if (!cancelled) setVersionState({ normalizedName, value: 1 });
+        if (!cancelled) setVersionState({ identityKey, value: 1 });
       });
 
     return () => {
       cancelled = true;
     };
-  }, [countTableVersions, hydrated, isShareView, normalizedName]);
+  }, [countTableVersions, hydrated, isShareView, normalizedName, tableId, identityKey]);
 
   const label = useMemo(() => {
     if (isShareView) return t('app.workspace.shareReadonly');

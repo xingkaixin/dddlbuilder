@@ -1,3 +1,4 @@
+import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type * as Y from 'yjs';
@@ -25,7 +26,7 @@ import { reportError } from '@/utils/errorReporter';
 export type SavedTableSummary = SavedTableMetadata;
 
 export type SaveTableResult =
-  | { ok: true; normalizedName: string }
+  | { ok: true; normalizedName: string; tableId: string }
   | {
       ok: false;
       reason: 'duplicate' | 'not_found' | 'error';
@@ -102,10 +103,12 @@ export function useSavedTables() {
         if (!currentScope) throw new Error('工作区未就绪');
         const displayName = ensureSavedTableName(name);
         const normalizedName = normalizeSavedTableName(displayName);
-        const existing = await readTable(normalizedName);
-        if (existing && !existing.trashedAt) {
+        const { active, trashed } = await readAllTables();
+        if (active.some((table) => table.normalizedName === normalizedName)) {
           return { ok: false, reason: 'duplicate' };
         }
+        const matchingTrashed = trashed.filter((table) => table.normalizedName === normalizedName);
+        const existing = matchingTrashed.length === 1 ? matchingTrashed[0] : undefined;
         const now = Date.now();
         const tableId = existing?.tableId ?? createEntityId();
         await persistActiveTable(
@@ -130,7 +133,7 @@ export function useSavedTables() {
           }),
         );
         await refresh();
-        return { ok: true, normalizedName };
+        return { ok: true, normalizedName, tableId };
       } catch (err) {
         return {
           ok: false,
@@ -139,14 +142,14 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, persistActiveTable, readTable, refresh],
+    [currentScope, persistActiveTable, readAllTables, refresh],
   );
 
   const overwriteTable = useCallback(
-    async (normalizedName: string, state: PersistedState): Promise<SaveTableResult> => {
+    async (target: SavedTableTarget, state: PersistedState): Promise<SaveTableResult> => {
       try {
         if (!currentScope) throw new Error('工作区未就绪');
-        const record = await readTable(normalizedName);
+        const record = await readTable(target);
         if (!record) {
           return { ok: false, reason: 'not_found' };
         }
@@ -157,7 +160,11 @@ export function useSavedTables() {
         };
         await persistActiveTable(updatedRecord);
         await refresh();
-        return { ok: true, normalizedName };
+        return {
+          ok: true,
+          normalizedName: record.normalizedName,
+          tableId: resolveSavedTableId(record),
+        };
       } catch (err) {
         return {
           ok: false,
@@ -170,13 +177,17 @@ export function useSavedTables() {
   );
 
   const deleteTable = useCallback(
-    async (normalizedName: string): Promise<SaveTableResult> => {
+    async (target: SavedTableTarget): Promise<SaveTableResult> => {
       try {
         if (!currentScope) throw new Error('工作区未就绪');
-        const moved = await moveTableToTrash(normalizedName);
-        if (!moved) return { ok: false, reason: 'not_found' };
+        const record = await moveTableToTrash(target);
+        if (!record) return { ok: false, reason: 'not_found' };
         await refresh();
-        return { ok: true, normalizedName };
+        return {
+          ok: true,
+          normalizedName: record.normalizedName,
+          tableId: resolveSavedTableId(record),
+        };
       } catch (err) {
         return {
           ok: false,
@@ -190,22 +201,22 @@ export function useSavedTables() {
 
   const restoreTable = useCallback(
     async (
-      normalizedName: string,
+      target: SavedTableTarget,
       options?: { existingFolderIds?: Set<string> },
     ): Promise<SaveTableResult> => {
       try {
         if (!currentScope) throw new Error('工作区未就绪');
-        const record = await readTable(normalizedName);
+        const record = await readTable(target);
         if (!record) {
           return { ok: false, reason: 'not_found' };
         }
 
         // 命名冲突解决
         const existingNormalizedNames = new Set(savedTables.map((t) => t.normalizedName));
-        let targetNormalizedName = normalizedName;
+        let targetNormalizedName = record.normalizedName;
         let targetName = record.name;
 
-        if (existingNormalizedNames.has(normalizedName)) {
+        if (existingNormalizedNames.has(record.normalizedName)) {
           let counter = 1;
           const baseName = record.name;
           const baseNormalized = normalizeSavedTableName(baseName);
@@ -231,10 +242,14 @@ export function useSavedTables() {
           updatedAt: Date.now(),
         };
 
-        await replaceTable(normalizedName, restoredRecord);
-        await cleanupLocalTable(normalizedName);
+        await replaceTable(record.normalizedName, restoredRecord);
+        await cleanupLocalTable(target);
         await refresh();
-        return { ok: true, normalizedName: targetNormalizedName };
+        return {
+          ok: true,
+          normalizedName: targetNormalizedName,
+          tableId: resolveSavedTableId(record),
+        };
       } catch (err) {
         return {
           ok: false,
@@ -247,10 +262,10 @@ export function useSavedTables() {
   );
 
   const deleteTablePermanently = useCallback(
-    async (normalizedName: string): Promise<SaveTableResult> => {
+    async (target: SavedTableTarget): Promise<SaveTableResult> => {
       try {
         if (!currentScope) throw new Error('工作区未就绪');
-        const record = await readTable(normalizedName);
+        const record = await readTable(target);
         if (!record) return { ok: false, reason: 'not_found' };
         const historyTarget = {
           scope: currentScope,
@@ -259,9 +274,13 @@ export function useSavedTables() {
         };
         await deleteAllVersions(historyTarget);
         await deleteAllReviews(historyTarget);
-        await deleteTableEverywhere(normalizedName);
+        await deleteTableEverywhere(target);
         await refresh();
-        return { ok: true, normalizedName };
+        return {
+          ok: true,
+          normalizedName: record.normalizedName,
+          tableId: resolveSavedTableId(record),
+        };
       } catch (err) {
         return {
           ok: false,
@@ -274,17 +293,22 @@ export function useSavedTables() {
   );
 
   const renameTable = useCallback(
-    async (normalizedName: string, newName: string): Promise<SaveTableResult> => {
+    async (target: SavedTableTarget, newName: string): Promise<SaveTableResult> => {
       try {
         if (!currentScope) throw new Error('工作区未就绪');
-        const record = await readTable(normalizedName);
+        const record = await readTable(target);
         if (!record) {
           return { ok: false, reason: 'not_found' };
         }
         const displayName = ensureSavedTableName(newName);
         const nextNormalizedName = normalizeSavedTableName(displayName);
-        const existing = await readTable(nextNormalizedName);
-        if (existing && existing.normalizedName !== normalizedName) {
+        const { active, trashed } = await readAllTables();
+        const existing = [...active, ...trashed].find(
+          (table) =>
+            table.normalizedName === nextNormalizedName &&
+            resolveSavedTableId(table) !== resolveSavedTableId(record),
+        );
+        if (existing) {
           return { ok: false, reason: 'duplicate' };
         }
         const updatedRecord: SavedTableRecord = {
@@ -293,9 +317,13 @@ export function useSavedTables() {
           normalizedName: nextNormalizedName,
           updatedAt: Date.now(),
         };
-        await replaceTable(normalizedName, updatedRecord);
+        await replaceTable(record.normalizedName, updatedRecord);
         await refresh();
-        return { ok: true, normalizedName: nextNormalizedName };
+        return {
+          ok: true,
+          normalizedName: nextNormalizedName,
+          tableId: resolveSavedTableId(record),
+        };
       } catch (err) {
         return {
           ok: false,
@@ -304,15 +332,18 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, readTable, refresh, replaceTable],
+    [currentScope, readTable, readAllTables, refresh, replaceTable],
   );
 
-  const loadTable = useCallback((normalizedName: string) => readTable(normalizedName), [readTable]);
+  const loadTable = useCallback(
+    (normalizedName: SavedTableTarget) => readTable(normalizedName),
+    [readTable],
+  );
   const loadTables = useCallback(async () => (await readAllTables()).active, [readAllTables]);
   const resolveVersionTarget = useCallback(
-    async (normalizedName: string) => {
+    async (target: SavedTableTarget) => {
       if (!currentScope) throw new Error('工作区未就绪');
-      const record = await readTable(normalizedName);
+      const record = await readTable(target);
       if (!record) throw new Error('未找到保存的表');
       return {
         scope: currentScope,
@@ -323,21 +354,22 @@ export function useSavedTables() {
     [currentScope, readTable],
   );
   const countTableVersions = useCallback(
-    async (normalizedName: string) => countVersions(await resolveVersionTarget(normalizedName)),
+    async (normalizedName: SavedTableTarget) =>
+      countVersions(await resolveVersionTarget(normalizedName)),
     [resolveVersionTarget],
   );
   const createTableVersion = useCallback(
-    async (normalizedName: string, state: PersistedState, message?: string) =>
+    async (normalizedName: SavedTableTarget, state: PersistedState, message?: string) =>
       createVersion(await resolveVersionTarget(normalizedName), state, message),
     [resolveVersionTarget],
   );
 
   // 移动表到指定文件夹
   const moveTableToFolder = useCallback(
-    async (normalizedName: string, folderId?: string): Promise<SaveTableResult> => {
+    async (target: SavedTableTarget, folderId?: string): Promise<SaveTableResult> => {
       try {
         if (!currentScope) throw new Error('工作区未就绪');
-        const record = await readTable(normalizedName);
+        const record = await readTable(target);
         if (!record) {
           return { ok: false, reason: 'not_found' };
         }
@@ -348,7 +380,11 @@ export function useSavedTables() {
         };
         await persistActiveTable(updatedRecord);
         await refresh();
-        return { ok: true, normalizedName };
+        return {
+          ok: true,
+          normalizedName: record.normalizedName,
+          tableId: resolveSavedTableId(record),
+        };
       } catch (err) {
         return {
           ok: false,

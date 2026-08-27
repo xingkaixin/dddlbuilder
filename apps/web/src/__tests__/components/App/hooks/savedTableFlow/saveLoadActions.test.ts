@@ -324,7 +324,7 @@ describe('useSaveLoadActions', () => {
     saveDialog.data = {
       name: 'saved_name',
     };
-    overwriteTable.mockResolvedValue({ ok: true });
+    overwriteTable.mockResolvedValue({ ok: true, normalizedName: 'norm' });
 
     const { result } = getHook({
       hasLoadedTable: true,
@@ -386,7 +386,10 @@ describe('useSaveLoadActions', () => {
     });
 
     expect(showToast).toHaveBeenCalledWith('已保存：new_name');
-    expect(setLoadedTableVersion).toHaveBeenCalledWith(1, 'new_norm');
+    expect(setLoadedTableVersion).toHaveBeenCalledWith(1, {
+      normalizedName: 'new_norm',
+      tableId: undefined,
+    });
     expect(saveDialog.closeDialog).toHaveBeenCalled();
     expect(onSaveSuccess).toHaveBeenCalledWith({
       normalizedName: 'new_norm',

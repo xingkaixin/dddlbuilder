@@ -9,6 +9,7 @@ import type {
 } from '@ddlbuilder/shared-types/workspace';
 import { shareStateOptions } from '@/queries/share';
 import { ShareApiError } from '@/services/shareService';
+import { reportError } from '@/utils/errorReporter';
 import {
   getSavedDraftFromYDoc,
   getSavedTableFromYDoc,
@@ -97,15 +98,21 @@ export function useWorkspaceInitialHydration({
         resolveWorkspaceHydration({
           drafts,
           session: normalizeWorkspaceSession(session),
-          findSavedTable: (normalizedName) => {
-            const savedTable = getSavedTableFromYDoc(yDoc, normalizedName);
-            if (!savedTable || savedTable.trashedAt != null) return null;
-            return {
-              normalizedName: savedTable.normalizedName,
-              tableName: savedTable.name,
-              state: savedTable.state,
-              draftState: getSavedDraftFromYDoc(yDoc, savedTable.normalizedName)?.state ?? null,
-            };
+          findSavedTable: (target) => {
+            try {
+              const savedTable = getSavedTableFromYDoc(yDoc, target);
+              if (!savedTable || savedTable.trashedAt != null) return null;
+              return {
+                tableId: savedTable.tableId,
+                normalizedName: savedTable.normalizedName,
+                tableName: savedTable.name,
+                state: savedTable.state,
+                draftState: getSavedDraftFromYDoc(yDoc, savedTable)?.state ?? null,
+              };
+            } catch (error) {
+              reportError(error, { scope: 'workspaceHydration', action: 'resolveSavedTable' });
+              return null;
+            }
           },
         }),
       );

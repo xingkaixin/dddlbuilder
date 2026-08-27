@@ -1,3 +1,4 @@
+import { savedTableReference, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { buildScopedWorkspaceKey, getWorkspaceScopeStorageKey } from './workspaceScope';
 import { normalizePersistedRows } from '@ddlbuilder/shared-types';
@@ -127,9 +128,18 @@ export const listTrashedSavedTableMetadata = async (
 };
 
 export const getSavedTable = async (
-  normalizedName: string,
+  target: SavedTableTarget,
   scope: WorkspaceScope,
 ): Promise<SavedTableRecord | null> => {
+  const { normalizedName, tableId } = savedTableReference(target);
+  if (tableId) {
+    const records = await runWithStore<SavedTableRecord[]>('readonly', (store) => store.getAll());
+    return (
+      records
+        .map((item) => decodeScopedTableRecord(item, scope))
+        .find((item) => item?.tableId === tableId) ?? null
+    );
+  }
   const record = await runWithStore<SavedTableRecord | undefined>('readonly', (store) =>
     store.get(withScopeKey(scope, normalizedName)),
   );
@@ -185,9 +195,12 @@ export const updateSavedTables = async (
 };
 
 export const deleteSavedTable = async (
-  normalizedName: string,
+  target: SavedTableTarget,
   scope: WorkspaceScope,
 ): Promise<void> => {
+  const record = await getSavedTable(target, scope);
+  if (!record) return;
+  const normalizedName = record.normalizedName;
   await runWithStore<undefined>('readwrite', (store) =>
     store.delete(withScopeKey(scope, normalizedName)),
   );

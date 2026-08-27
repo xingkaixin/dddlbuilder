@@ -1,3 +1,4 @@
+import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DraftSummary } from '@ddlbuilder/shared-types/workspace';
@@ -11,11 +12,11 @@ interface UseWorkspaceTrashActionsParams {
   trashedTables: SavedTableSummary[];
   trashedDrafts: DraftSummary[];
   restoreTable: (
-    normalizedName: string,
+    normalizedName: SavedTableTarget,
     options?: { existingFolderIds?: Set<string> },
   ) => Promise<SaveTableResult>;
   restoreDraftById: (draftId: string) => Promise<void>;
-  deleteTablePermanently: (normalizedName: string) => Promise<SaveTableResult>;
+  deleteTablePermanently: (normalizedName: SavedTableTarget) => Promise<SaveTableResult>;
   permanentlyDeleteDraftById: (draftId: string) => Promise<void>;
 }
 
@@ -42,7 +43,7 @@ export function useWorkspaceTrashActions({
   const handleRestoreTable = useCallback(
     (item: SavedTableSummary) => {
       const existingFolderIds = new Set(getAllFolderTreeNodeIds(folderTree));
-      void restoreTable(item.normalizedName, { existingFolderIds }).then((result) => {
+      void restoreTable(item, { existingFolderIds }).then((result) => {
         showToast(
           result.ok
             ? t('savedTables.restore')
@@ -75,7 +76,7 @@ export function useWorkspaceTrashActions({
 
   const handleDeleteTablePermanently = useCallback(
     (item: SavedTableSummary) => {
-      void deleteTablePermanently(item.normalizedName).then((result) => {
+      void deleteTablePermanently(item).then((result) => {
         showToast(
           result.ok
             ? t('savedTables.deletePermanently')
@@ -89,7 +90,7 @@ export function useWorkspaceTrashActions({
   const handleConfirmEmptyTrash = useCallback(() => {
     setIsEmptyTrashDialogOpen(false);
     void Promise.allSettled([
-      ...trashedTables.map((item) => deleteTablePermanently(item.normalizedName)),
+      ...trashedTables.map((item) => deleteTablePermanently(item)),
       ...trashedDrafts.map((draft) =>
         permanentlyDeleteDraftById(draft.draftId).then(() => ({ ok: true as const })),
       ),

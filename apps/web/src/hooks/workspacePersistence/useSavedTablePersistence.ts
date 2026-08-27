@@ -1,3 +1,4 @@
+import { savedTableReference, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import { useCallback } from 'react';
 import {
   deleteSavedTableFromYDoc,
@@ -24,7 +25,7 @@ export function useSavedTablePersistence() {
   const { storage } = authority;
 
   const readTable = useCallback(
-    (normalizedName: string) =>
+    (normalizedName: SavedTableTarget) =>
       storage.read({
         yDoc: (doc) => getSavedTableFromYDoc(doc, normalizedName),
         local: (scope) => getSavedTable(normalizedName, scope),
@@ -88,33 +89,33 @@ export function useSavedTablePersistence() {
   );
 
   const moveTableToTrash = useCallback(
-    async (normalizedName: string) => {
+    async (normalizedName: SavedTableTarget) => {
       const record = await readTable(normalizedName);
-      if (!record) return false;
+      if (!record) return null;
       const timestamp = Date.now();
       console.info(
         JSON.stringify({
           event: 'workspace_trash_write',
           entityType: 'saved_table',
-          normalizedName,
+          ...savedTableReference(normalizedName),
           target: storage.kind,
           yDocReady: storage.kind === 'ydoc',
         }),
       );
       await putTable({ ...record, trashedAt: timestamp, updatedAt: timestamp });
-      return true;
+      return record;
     },
     [putTable, readTable, storage.kind],
   );
 
   const cleanupLocalTable = useCallback(
-    (normalizedName: string) =>
+    (normalizedName: SavedTableTarget) =>
       storage.cleanupLocal((scope) => deleteSavedTable(normalizedName, scope)),
     [storage],
   );
 
   const deleteTableEverywhere = useCallback(
-    (normalizedName: string) =>
+    (normalizedName: SavedTableTarget) =>
       storage.removeEverywhere({
         yDoc: (doc) => deleteSavedTableFromYDoc(doc, normalizedName),
         local: (scope) => deleteSavedTable(normalizedName, scope),

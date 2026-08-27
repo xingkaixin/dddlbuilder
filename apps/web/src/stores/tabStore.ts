@@ -1,3 +1,8 @@
+import {
+  savedTableReference,
+  isSameSavedTable,
+  type SavedTableTarget,
+} from '@ddlbuilder/shared-types/workspace';
 import { create } from 'zustand';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSelection, WorkspaceSource } from '@ddlbuilder/shared-types/workspace';
@@ -19,7 +24,7 @@ function isSameSourceId(a: WorkspaceSource, b: WorkspaceSource): boolean {
   if (a.kind !== b.kind) return false;
   if (a.kind === 'draft' && b.kind === 'draft') return a.draftId === b.draftId;
   if (a.kind === 'saved_table' && b.kind === 'saved_table') {
-    return a.normalizedName === b.normalizedName;
+    return isSameSavedTable(a, b);
   }
   return false;
 }
@@ -38,7 +43,11 @@ interface TabStoreState {
   findTabBySource: (source: WorkspaceSource) => WorkspaceTab | undefined;
   getTabById: (id: string) => WorkspaceTab | undefined;
   getActiveTab: () => WorkspaceTab | undefined;
-  renameSavedTableTabs: (previousName: string, normalizedName: string, tableName: string) => void;
+  renameSavedTableTabs: (
+    previousName: SavedTableTarget,
+    normalizedName: string,
+    tableName: string,
+  ) => void;
 }
 
 export const useTabStore = create<TabStoreState>((set, get) => ({
@@ -134,8 +143,17 @@ export const useTabStore = create<TabStoreState>((set, get) => ({
   renameSavedTableTabs: (previousName, normalizedName, tableName) => {
     set((s) => ({
       tabs: s.tabs.map((tab) =>
-        tab.source.kind === 'saved_table' && tab.source.normalizedName === previousName
-          ? { ...tab, title: tableName, source: { ...tab.source, normalizedName, tableName } }
+        tab.source.kind === 'saved_table' && isSameSavedTable(tab.source, previousName)
+          ? {
+              ...tab,
+              title: tableName,
+              source: {
+                ...tab.source,
+                ...savedTableReference(previousName),
+                normalizedName,
+                tableName,
+              },
+            }
           : tab,
       ),
     }));

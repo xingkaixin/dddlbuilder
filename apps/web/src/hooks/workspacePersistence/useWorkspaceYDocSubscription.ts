@@ -1,3 +1,4 @@
+import { isSameSavedTable, savedTableKey } from '@ddlbuilder/shared-types/workspace';
 import { useEffect } from 'react';
 import { useTabStore } from '@/stores/tabStore';
 import type * as Y from 'yjs';
@@ -89,9 +90,16 @@ export function useWorkspaceYDocSubscription({
       for (const rename of change?.renamedTables ?? []) {
         useTabStore
           .getState()
-          .renameSavedTableTabs(rename.previousName, rename.normalizedName, rename.tableName);
+          .renameSavedTableTabs(
+            { normalizedName: rename.previousName, tableId: rename.tableId },
+            rename.normalizedName,
+            rename.tableName,
+          );
         const active = activeSourceRef.current;
-        if (active.kind === 'saved_table' && active.normalizedName === rename.previousName) {
+        if (
+          active.kind === 'saved_table' &&
+          isSameSavedTable(active, { normalizedName: rename.previousName, tableId: rename.tableId })
+        ) {
           syncActiveSource({
             ...active,
             normalizedName: rename.normalizedName,
@@ -102,7 +110,7 @@ export function useWorkspaceYDocSubscription({
 
       const source = activeSourceRef.current;
       if (change) {
-        const sourceId = source.kind === 'draft' ? source.draftId : source.normalizedName;
+        const sourceId = source.kind === 'draft' ? source.draftId : savedTableKey(source);
         const sourceCollectionChanged =
           source.kind === 'draft'
             ? change.collection === 'drafts'
@@ -155,8 +163,8 @@ export function useWorkspaceYDocSubscription({
       };
 
       if (source.kind === 'saved_table') {
-        const savedDraft = getSavedDraftFromYDoc(yDoc, source.normalizedName);
-        const savedTable = getSavedTableFromYDoc(yDoc, source.normalizedName);
+        const savedDraft = getSavedDraftFromYDoc(yDoc, source);
+        const savedTable = getSavedTableFromYDoc(yDoc, source);
         const nextState = savedDraft?.state ?? savedTable?.state ?? null;
         if (nextState) {
           applyYDocState(nextState);

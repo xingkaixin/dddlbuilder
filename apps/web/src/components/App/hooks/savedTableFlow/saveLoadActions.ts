@@ -1,3 +1,4 @@
+import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import { useCallback } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { SavedTableDraftRecord, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
@@ -16,26 +17,31 @@ interface UseSaveLoadActionsParams {
   hasLoadedTable: boolean;
   canSaveCurrent: boolean;
   loadedTableSource: Extract<WorkspaceSelection, { kind: 'saved_table' }> | null;
-  setLoadedTableVersion: (version: number, normalizedName?: string) => void;
+  setLoadedTableVersion: (version: number, normalizedName?: SavedTableTarget) => void;
   saveDialog: UseDialogStateReturn<SaveDialogData>;
   buildPersistedState: () => PersistedState;
   serializePersistedState: (state: PersistedState) => string;
-  loadTable: (normalizedName: string) => Promise<{
+  loadTable: (normalizedName: SavedTableTarget) => Promise<{
+    tableId?: string;
     normalizedName: string;
     name: string;
     state: PersistedState;
   } | null>;
   saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
-  overwriteTable: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
-  countTableVersions: (normalizedName: string) => Promise<number>;
+  overwriteTable: (
+    normalizedName: SavedTableTarget,
+    state: PersistedState,
+  ) => Promise<SaveTableResult>;
+  countTableVersions: (normalizedName: SavedTableTarget) => Promise<number>;
   createTableVersion: (
-    normalizedName: string,
+    normalizedName: SavedTableTarget,
     state: PersistedState,
     message?: string,
   ) => Promise<unknown>;
   showToast: (message: string) => void;
-  getSavedTableDraft?: (normalizedName: string) => SavedTableDraftRecord | null;
+  getSavedTableDraft?: (normalizedName: SavedTableTarget) => SavedTableDraftRecord | null;
   onSaveSuccess?: (payload: {
+    tableId?: string;
     normalizedName: string;
     displayName: string;
     baseSignature: string;
@@ -63,7 +69,6 @@ export function useSaveLoadActions({
   onSaveSuccess,
   onTableLoadStateChange,
 }: UseSaveLoadActionsParams) {
-  const loadedTableNormalizedName = loadedTableSource?.normalizedName ?? null;
   const loadedTableName = loadedTableSource?.tableName ?? null;
   const saveName = saveDialog.data.name;
 
@@ -72,20 +77,17 @@ export function useSaveLoadActions({
       onTableLoadStateChange?.(true);
 
       try {
-        const record = await loadTable(target.normalizedName);
+        const record = await loadTable(target);
         if (!record) {
           showToast('未找到保存的表');
           return null;
         }
 
-        const snapshot = resolveSavedTableSnapshot(
-          record,
-          getSavedTableDraft?.(record.normalizedName) ?? null,
-        );
+        const snapshot = resolveSavedTableSnapshot(record, getSavedTableDraft?.(record) ?? null);
 
         let versionCount = 0;
         try {
-          versionCount = await countTableVersions(record.normalizedName);
+          versionCount = await countTableVersions(record);
         } catch (error) {
           console.error('[saved-table] failed to count versions', error);
         }
@@ -116,11 +118,12 @@ export function useSaveLoadActions({
     const nextSignature = serializePersistedState(nextState);
 
     let savedNormalizedName = '';
+    let savedTableId: string | undefined;
     let savedDisplayName = '';
     let saveMode: 'create' | 'update' = 'create';
 
-    if (hasLoadedTable && loadedTableNormalizedName) {
-      const result = await overwriteTable(loadedTableNormalizedName, nextState);
+    if (hasLoadedTable && loadedTableSource) {
+      const result = await overwriteTable(loadedTableSource, nextState);
       if (!result.ok) {
         if (result.reason === 'not_found') {
           showToast('未找到保存的表');
@@ -129,7 +132,8 @@ export function useSaveLoadActions({
         showToast(result.message ?? '更新失败');
         return;
       }
-      savedNormalizedName = loadedTableNormalizedName;
+      savedNormalizedName = result.normalizedName;
+      savedTableId = result.tableId ?? loadedTableSource.tableId;
       savedDisplayName = loadedTableName ?? saveName;
       saveMode = 'update';
       showToast(`已更新：${loadedTableName ?? saveName}`);
@@ -146,6 +150,7 @@ export function useSaveLoadActions({
       const displayName = saveName.trim() || DEFAULT_SAVED_TABLE_NAME;
       const normalizedName = result.normalizedName;
       savedNormalizedName = normalizedName;
+      savedTableId = result.tableId;
       savedDisplayName = displayName;
       saveMode = 'create';
       showToast(`已保存：${displayName}`);
@@ -154,12 +159,25 @@ export function useSaveLoadActions({
 
     try {
       if (saveMode === 'update' && savedNormalizedName) {
-        await createTableVersion(savedNormalizedName, nextState);
-        const versionCount = await countTableVersions(savedNormalizedName);
-        setLoadedTableVersion(versionCount > 0 ? versionCount : 1, savedNormalizedName);
+        await createTableVersion(
+          { normalizedName: savedNormalizedName, tableId: savedTableId },
+          nextState,
+        );
+        const versionCount = await countTableVersions({
+          normalizedName: savedNormalizedName,
+          tableId: savedTableId,
+        });
+        setLoadedTableVersion(versionCount > 0 ? versionCount : 1, {
+          normalizedName: savedNormalizedName,
+          tableId: savedTableId,
+        });
       } else if (saveMode === 'create' && savedNormalizedName) {
-        await createTableVersion(savedNormalizedName, nextState, INITIAL_VERSION_MESSAGE_KEY);
-        setLoadedTableVersion(1, savedNormalizedName);
+        await createTableVersion(
+          { normalizedName: savedNormalizedName, tableId: savedTableId },
+          nextState,
+          INITIAL_VERSION_MESSAGE_KEY,
+        );
+        setLoadedTableVersion(1, { normalizedName: savedNormalizedName, tableId: savedTableId });
       }
     } catch (versionError) {
       console.error('[saved-table] failed to create version', versionError);
@@ -167,6 +185,7 @@ export function useSaveLoadActions({
 
     await onSaveSuccess?.({
       normalizedName: savedNormalizedName,
+      ...(savedTableId ? { tableId: savedTableId } : {}),
       displayName: savedDisplayName,
       baseSignature: nextSignature,
       mode: saveMode,
@@ -177,7 +196,7 @@ export function useSaveLoadActions({
     buildPersistedState,
     serializePersistedState,
     hasLoadedTable,
-    loadedTableNormalizedName,
+    loadedTableSource,
     overwriteTable,
     loadedTableName,
     saveName,

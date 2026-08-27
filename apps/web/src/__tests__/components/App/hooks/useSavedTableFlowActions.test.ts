@@ -123,7 +123,11 @@ describe('useSavedTableFlowActions', () => {
       await result.current.handleConfirmRename();
     });
 
-    expect(renameSavedTableDraft).toHaveBeenCalledWith('users', 'users_new', 'Users New');
+    expect(renameSavedTableDraft).toHaveBeenCalledWith(
+      expect.objectContaining({ normalizedName: 'users' }),
+      'users_new',
+      'Users New',
+    );
   });
 
   it('删除成功后应清理草稿', async () => {
@@ -163,7 +167,9 @@ describe('useSavedTableFlowActions', () => {
       await result.current.handleConfirmDelete();
     });
 
-    expect(removeSavedTableDraft).toHaveBeenCalledWith('users');
+    expect(removeSavedTableDraft).toHaveBeenCalledWith(
+      expect.objectContaining({ normalizedName: 'users' }),
+    );
   });
 
   it('加载表时应解析已保存版本而不修改编辑器', async () => {
@@ -212,7 +218,7 @@ describe('useSavedTableFlowActions', () => {
       snapshot = await result.current.resolveSavedTable(target);
     });
 
-    expect(loadTable).toHaveBeenCalledWith('users');
+    expect(loadTable).toHaveBeenCalledWith(expect.objectContaining({ normalizedName: 'users' }));
     expect(snapshot?.state).toEqual(savedState);
     expect(onTableLoadStateChange).toHaveBeenNthCalledWith(1, true);
     expect(onTableLoadStateChange).toHaveBeenLastCalledWith(false);

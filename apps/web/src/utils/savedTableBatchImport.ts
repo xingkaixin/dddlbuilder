@@ -47,10 +47,16 @@ export const buildSavedTableBatchImportPlan = (
   existingRecords: SavedTableRecord[],
   now: number,
 ): SavedTableBatchImportPlan => {
-  const recordsByName = new Map(
-    existingRecords.map((record) => [record.normalizedName, record] as const),
-  );
-  const occupiedNames = new Set(existingRecords.map((record) => record.normalizedName));
+  const recordsByName = new Map<string, SavedTableRecord>();
+  const ambiguousNames = new Set<string>();
+  for (const record of existingRecords) {
+    const previous = recordsByName.get(record.normalizedName);
+    if (previous && resolveSavedTableId(previous) !== resolveSavedTableId(record)) {
+      ambiguousNames.add(record.normalizedName);
+    }
+    recordsByName.set(record.normalizedName, record);
+  }
+  const occupiedNames = new Set(recordsByName.keys());
   const pendingRecords = new Map<string, SavedTableRecord>();
   let successCount = 0;
   let skipCount = 0;
@@ -58,8 +64,12 @@ export const buildSavedTableBatchImportPlan = (
   for (const item of request.items) {
     const displayName = ensureSavedTableName(item.name);
     const normalizedName = normalizeSavedTableName(displayName);
+    if (ambiguousNames.has(normalizedName) && request.conflictStrategy === 'overwrite') {
+      throw new Error('Multiple saved tables share this name; rename them before overwriting');
+    }
     const existing = pendingRecords.get(normalizedName) ?? recordsByName.get(normalizedName);
-    const hasActiveConflict = Boolean(existing && !existing.trashedAt);
+    const hasActiveConflict =
+      ambiguousNames.has(normalizedName) || Boolean(existing && !existing.trashedAt);
 
     if (hasActiveConflict && request.conflictStrategy === 'skip') {
       skipCount += 1;

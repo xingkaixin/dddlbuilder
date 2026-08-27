@@ -3,7 +3,12 @@ import type { PersistedState, SchemaDocumentState } from './schema.js';
 export type SavedTableTarget = string | { normalizedName: string; tableId?: string };
 
 export const savedTableReference = (target: SavedTableTarget) =>
-  typeof target === 'string' ? { normalizedName: target } : target;
+  typeof target === 'string'
+    ? { normalizedName: target }
+    : {
+        normalizedName: target.normalizedName,
+        ...(target.tableId ? { tableId: target.tableId } : {}),
+      };
 
 export const savedTableKey = (target: SavedTableTarget) => {
   const reference = savedTableReference(target);

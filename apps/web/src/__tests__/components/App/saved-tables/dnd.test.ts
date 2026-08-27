@@ -55,7 +55,7 @@ describe('saved tables dnd decision', () => {
     expect(action).toEqual({
       kind: 'move_table',
       reason: 'table_relocated',
-      normalizedName: 'users',
+      tableId: 'users',
       folderId: 'root-a',
     });
   });
@@ -72,7 +72,7 @@ describe('saved tables dnd decision', () => {
     expect(action).toEqual({
       kind: 'move_table',
       reason: 'table_relocated',
-      normalizedName: 'users',
+      tableId: 'users',
       folderId: undefined,
     });
   });

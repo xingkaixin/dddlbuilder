@@ -47,6 +47,7 @@ interface WorkspaceSidebarProps {
   draftItems?: DraftSummary[];
   folders: FolderTreeNode[];
   activeNormalizedName?: string | null;
+  activeTableId?: string;
   activeDraftId?: string | null;
   activeDirty?: boolean;
   tablePresentations?: ReadonlyMap<string, TablePresentation>;
@@ -87,6 +88,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
     draftItems = [],
     folders,
     activeNormalizedName,
+    activeTableId,
     activeDraftId,
     activeDirty = false,
     tablePresentations,
@@ -145,12 +147,16 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
         <div className="space-y-1">
           {tableItems.map((item) => (
             <TableItem
-              key={item.normalizedName}
+              key={item.tableId}
               item={item}
-              isActive={activeNormalizedName === item.normalizedName}
+              isActive={
+                activeTableId
+                  ? activeTableId === item.tableId
+                  : activeNormalizedName === item.normalizedName
+              }
               activeDirty={activeDirty}
-              displayName={tablePresentations?.get(item.normalizedName)?.title}
-              isDirty={tablePresentations?.get(item.normalizedName)?.isDirty}
+              displayName={tablePresentations?.get(item.tableId)?.title}
+              isDirty={tablePresentations?.get(item.tableId)?.isDirty}
               depth={depth}
               onSelect={() => onSelect(item)}
               onRename={() => onRename(item)}
@@ -164,6 +170,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
       [
         activeDirty,
         activeNormalizedName,
+        activeTableId,
         isSearching,
         onDelete,
         onRename,
@@ -175,7 +182,7 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
 
     const renderTrashTable = (item: SavedTableSummary) => (
       <div
-        key={item.normalizedName}
+        key={item.tableId}
         className="group flex items-center gap-1 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
       >
         <Trash2 className="h-4 w-4 shrink-0 text-muted-foreground" />

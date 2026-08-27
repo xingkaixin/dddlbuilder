@@ -228,7 +228,11 @@ export function useWebMcpTools(input: UseWebMcpToolsInput): WebMcpDialogModel {
           source:
             snapshot.source.kind === 'draft'
               ? { kind: 'draft', draftId: snapshot.source.draftId }
-              : { kind: 'saved_table', normalizedName: snapshot.source.normalizedName },
+              : {
+                  kind: 'saved_table',
+                  normalizedName: snapshot.source.normalizedName,
+                  tableId: snapshot.source.tableId,
+                },
           readOnly: snapshot.isShareView,
           objectType: state.objectType ?? 'table',
           schemaName: state.schemaName,

@@ -55,7 +55,7 @@ export const TableItem = memo<TableItemProps>(
   }) => {
     const { t } = useTranslation();
     const { attributes, listeners, setNodeRef, transform } = useDraggable({
-      id: toTableDragId(item.normalizedName),
+      id: toTableDragId(item.tableId),
       disabled: dragDisabled,
     });
     const showDirty = isDirty ?? (isActive && activeDirty);
@@ -72,6 +72,7 @@ export const TableItem = memo<TableItemProps>(
           transform: CSS.Transform.toString(transform),
         }}
         data-testid={`saved-table-row:${item.normalizedName}`}
+        data-table-id={item.tableId}
       >
         <button
           type="button"

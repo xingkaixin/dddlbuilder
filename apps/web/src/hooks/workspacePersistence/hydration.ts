@@ -1,3 +1,4 @@
+import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { DraftSummary, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
@@ -9,6 +10,7 @@ export type DraftEntry = { draftId: string; record: GlobalDraftRecord };
 
 /** Hydration 只关心已保存表的这几个字段，屏蔽 Y.Doc / IndexedDB 两种数据源的形状差异 */
 export type HydrationSavedTable = {
+  tableId?: string;
   normalizedName: string;
   tableName: string;
   state: PersistedState;
@@ -64,6 +66,7 @@ export const toHydrationSavedTable = (value: unknown): HydrationSavedTable | nul
   if (!value) return null;
   const record = value as SavedTableRecord;
   return {
+    tableId: record.tableId,
     normalizedName: record.normalizedName,
     tableName: record.name ?? '',
     state: record.state,
@@ -77,7 +80,7 @@ export const resolveWorkspaceHydration = ({
 }: {
   drafts: DraftEntry[];
   session: WorkspaceSessionRecord | null;
-  findSavedTable: (normalizedName: string) => HydrationSavedTable | null;
+  findSavedTable: (normalizedName: SavedTableTarget) => HydrationSavedTable | null;
 }): WorkspaceHydration => {
   const initialDraft = pickInitialDraft(drafts);
   const initialHydration = (): WorkspaceHydration => ({
@@ -88,11 +91,12 @@ export const resolveWorkspaceHydration = ({
   if (!session) return initialHydration();
 
   if (session.activeSource.kind === 'saved_table') {
-    const savedTable = findSavedTable(session.activeSource.normalizedName);
+    const savedTable = findSavedTable(session.activeSource);
     if (!savedTable) return initialHydration();
     return {
       activeSource: {
         kind: 'saved_table',
+        ...(savedTable.tableId ? { tableId: savedTable.tableId } : {}),
         normalizedName: savedTable.normalizedName,
         tableName: savedTable.tableName,
         baseSignature: serializePersistedStateForComparison(savedTable.state),

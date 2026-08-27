@@ -32,6 +32,26 @@ const createRecord = (
 });
 
 describe('buildSavedTableBatchImportPlan', () => {
+  it('rejects ambiguous overwrite targets but allows skip and rename', () => {
+    const existing = ['first', 'second'].map((tableId) =>
+      createRecord('shared', 'Shared', { tableId }),
+    );
+    const items = [{ name: 'Shared', state: createState('imported') }];
+    expect(() =>
+      buildSavedTableBatchImportPlan({ items, conflictStrategy: 'overwrite' }, existing, 100),
+    ).toThrow('Multiple saved tables');
+    expect(
+      buildSavedTableBatchImportPlan({ items, conflictStrategy: 'skip' }, existing, 100).records,
+    ).toEqual([]);
+    const renamed = buildSavedTableBatchImportPlan(
+      { items, conflictStrategy: 'rename' },
+      existing,
+      100,
+    ).records[0];
+    expect(renamed.normalizedName).toBe('shared_1');
+    expect(existing.map((table) => table.tableId)).not.toContain(renamed.tableId);
+  });
+
   it('使用规范化名称识别冲突，并在同一批次内继续识别重复项', () => {
     const plan = buildSavedTableBatchImportPlan(
       {

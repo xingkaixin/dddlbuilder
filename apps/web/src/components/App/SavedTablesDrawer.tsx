@@ -38,6 +38,7 @@ export interface SavedTablesDrawerProps {
   foldersLoading?: boolean;
   showSearchWhenEmpty?: boolean;
   activeNormalizedName?: string | null;
+  activeTableId?: string;
   activeDirty?: boolean;
   tablePresentations?: ReadonlyMap<string, TablePresentation>;
   onOpenChange: (open: boolean) => void;
@@ -73,6 +74,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     foldersLoading = false,
     showSearchWhenEmpty = true,
     activeNormalizedName,
+    activeTableId,
     activeDirty = false,
     tablePresentations,
     onOpenChange,
@@ -106,7 +108,10 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
       [draftItems],
     );
     const allItems = useMemo(() => [...draftAsSavedItems, ...items], [draftAsSavedItems, items]);
-    const draftIdSet = useMemo(() => new Set(draftItems.map((d) => d.draftId)), [draftItems]);
+    const draftIdSet = useMemo(
+      () => new Set(draftAsSavedItems.map((d) => d.tableId)),
+      [draftAsSavedItems],
+    );
     const treeControls = useWorkspaceTreeControls({
       items: allItems,
       folders,
@@ -120,18 +125,20 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
       (tableItems: SavedTableSummary[], depth = 0) => (
         <div className="space-y-2">
           {tableItems.map((item) => {
-            const isDraft = draftIdSet.has(item.normalizedName);
+            const isDraft = draftIdSet.has(item.tableId);
             const isActive = isDraft
               ? activeDraftId === item.normalizedName
-              : activeNormalizedName === item.normalizedName;
+              : activeTableId
+                ? activeTableId === item.tableId
+                : activeNormalizedName === item.normalizedName;
             return (
               <TableItem
-                key={item.normalizedName}
+                key={item.tableId}
                 item={item}
                 isActive={isActive}
                 activeDirty={activeDirty}
-                displayName={tablePresentations?.get(item.normalizedName)?.title}
-                isDirty={tablePresentations?.get(item.normalizedName)?.isDirty}
+                displayName={tablePresentations?.get(item.tableId)?.title}
+                isDirty={tablePresentations?.get(item.tableId)?.isDirty}
                 isDraft={isDraft}
                 depth={depth}
                 onSelect={() => (isDraft ? onSelectDraft?.(item.normalizedName) : onSelect(item))}
@@ -147,6 +154,7 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
       [
         activeDirty,
         activeNormalizedName,
+        activeTableId,
         activeDraftId,
         draftIdSet,
         isSearching,

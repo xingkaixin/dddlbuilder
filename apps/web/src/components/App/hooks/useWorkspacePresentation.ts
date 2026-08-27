@@ -1,3 +1,4 @@
+import { savedTableKey } from '@ddlbuilder/shared-types/workspace';
 import { useMemo } from 'react';
 import type { DraftSummary } from '@ddlbuilder/shared-types/workspace';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
@@ -47,7 +48,7 @@ export function useWorkspacePresentation({
     const presentations = new Map<string, { title: string; isDirty: boolean }>();
     for (const tab of presentedTabs) {
       if (tab.source.kind === 'saved_table') {
-        presentations.set(tab.source.normalizedName, {
+        presentations.set(savedTableKey(tab.source), {
           title: tab.title,
           isDirty: isWorkspaceTabDirty(tab),
         });

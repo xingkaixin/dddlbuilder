@@ -8,9 +8,7 @@ export const FOLDER_DRAG_PREFIX = 'folder:';
 export type FolderParentMap = Record<string, string | undefined>;
 export type TableFolderMap = Record<string, string | undefined>;
 
-export type DragEntity =
-  | { kind: 'table'; normalizedName: string }
-  | { kind: 'folder'; folderId: string };
+export type DragEntity = { kind: 'table'; tableId: string } | { kind: 'folder'; folderId: string };
 
 export type DropTarget = { kind: 'root' } | { kind: 'folder'; folderId: string };
 
@@ -22,7 +20,7 @@ export type DropAction =
   | {
       kind: 'move_table';
       reason: 'table_relocated';
-      normalizedName: string;
+      tableId: string;
       folderId?: string;
     }
   | {
@@ -46,16 +44,16 @@ export interface ResolveDropActionInput {
   folderParentMap: FolderParentMap;
 }
 
-export const toTableDragId = (normalizedName: string) => `${TABLE_DRAG_PREFIX}${normalizedName}`;
+export const toTableDragId = (tableId: string) => `${TABLE_DRAG_PREFIX}${tableId}`;
 
 export const toFolderDragId = (folderId: string) => `${FOLDER_DRAG_PREFIX}${folderId}`;
 
 export function parseDragEntity(id: UniqueIdentifier): DragEntity | null {
   const raw = String(id);
   if (raw.startsWith(TABLE_DRAG_PREFIX)) {
-    const normalizedName = raw.slice(TABLE_DRAG_PREFIX.length);
-    if (!normalizedName) return null;
-    return { kind: 'table', normalizedName };
+    const tableId = raw.slice(TABLE_DRAG_PREFIX.length);
+    if (!tableId) return null;
+    return { kind: 'table', tableId };
   }
   if (raw.startsWith(FOLDER_DRAG_PREFIX)) {
     const folderId = raw.slice(FOLDER_DRAG_PREFIX.length);
@@ -137,7 +135,7 @@ export function resolveDropAction({
   }
 
   if (dragEntity.kind === 'table') {
-    const currentFolderId = tableFolderMap[dragEntity.normalizedName];
+    const currentFolderId = tableFolderMap[dragEntity.tableId];
     const nextFolderId = dropTarget.kind === 'folder' ? dropTarget.folderId : undefined;
 
     if (currentFolderId === nextFolderId) {
@@ -147,7 +145,7 @@ export function resolveDropAction({
     return {
       kind: 'move_table',
       reason: 'table_relocated',
-      normalizedName: dragEntity.normalizedName,
+      tableId: dragEntity.tableId,
       folderId: nextFolderId,
     };
   }

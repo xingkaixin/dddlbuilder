@@ -175,7 +175,11 @@ describe('useRenameDeleteActions', () => {
     });
 
     expect(showToast).toHaveBeenCalledWith('已重命名为：new_name');
-    expect(renameSavedTableDraft).toHaveBeenCalledWith('test_table', 'new_name_norm', 'new_name');
+    expect(renameSavedTableDraft).toHaveBeenCalledWith(
+      renameDialog.data.target,
+      'new_name_norm',
+      'new_name',
+    );
 
     expect(setWorkspaceSnapshot).toHaveBeenCalledWith(
       {
@@ -290,7 +294,7 @@ describe('useRenameDeleteActions', () => {
       await result.current.handleConfirmDelete();
     });
 
-    expect(removeSavedTableDraft).toHaveBeenCalledWith('test_table');
+    expect(removeSavedTableDraft).toHaveBeenCalledWith(deleteDialog.data.target);
     expect(showToast).toHaveBeenCalledWith('已移入回收站：old');
     expect(setWorkspaceSnapshot).not.toHaveBeenCalled();
     expect(deleteDialog.closeDialog).toHaveBeenCalled();
@@ -307,7 +311,7 @@ describe('useRenameDeleteActions', () => {
       await result.current.handleConfirmDelete();
     });
 
-    expect(removeSavedTableDraft).toHaveBeenCalledWith('other_table');
+    expect(removeSavedTableDraft).toHaveBeenCalledWith(deleteDialog.data.target);
     expect(setWorkspaceSnapshot).not.toHaveBeenCalled();
     expect(deleteDialog.closeDialog).toHaveBeenCalled();
   });

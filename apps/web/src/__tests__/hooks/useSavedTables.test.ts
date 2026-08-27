@@ -145,10 +145,11 @@ describe('useSavedTables', () => {
     await act(async () => {
       expect(
         await result.current.saveTable('用户表', { ...createState('users'), schemaName: 'public' }),
-      ).toEqual({ ok: true, normalizedName: '用户表' });
+      ).toEqual({ ok: true, normalizedName: '用户表', tableId: expect.any(String) });
       expect(await result.current.renameTable('用户表', '用户归档')).toEqual({
         ok: true,
         normalizedName: '用户归档',
+        tableId: expect.any(String),
       });
     });
     const record = await result.current.loadTable('用户归档');
@@ -222,7 +223,11 @@ describe('useSavedTables', () => {
 
     await act(async () => {
       const deleted = await result.current.deleteTablePermanently(saved.normalizedName);
-      expect(deleted).toEqual({ ok: true, normalizedName: saved.normalizedName });
+      expect(deleted).toEqual({
+        ok: true,
+        normalizedName: saved.normalizedName,
+        tableId: saved.tableId,
+      });
       await flushPromises();
     });
 
@@ -439,14 +444,12 @@ describe('useSavedTables', () => {
   });
 
   it('should keep saved table order stable after overwrite', async () => {
-    vi.spyOn(Date, 'now')
-      .mockReturnValueOnce(100)
-      .mockReturnValueOnce(200)
-      .mockReturnValueOnce(300);
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(100);
     const { result } = renderHook(() => useSavedTables());
 
     await act(async () => {
       await result.current.saveTable('Alpha', createState('alpha'));
+      clock.mockReturnValue(200);
       await result.current.saveTable('Beta', createState('beta'));
       await flushPromises();
     });
@@ -457,6 +460,7 @@ describe('useSavedTables', () => {
       const alpha = result.current.savedTables.find((table) => table.name === 'Alpha');
       expect(alpha).toBeDefined();
       if (!alpha) return;
+      clock.mockReturnValue(300);
       await result.current.overwriteTable(alpha.normalizedName, createState('alpha-updated'));
       await flushPromises();
     });
@@ -560,7 +564,11 @@ describe('useSavedTables', () => {
       const restored = await result.current.restoreTable('archived', {
         existingFolderIds: new Set(['folder-1']),
       });
-      expect(restored).toEqual({ ok: true, normalizedName: 'archived' });
+      expect(restored).toEqual({
+        ok: true,
+        normalizedName: 'archived',
+        tableId: 'legacy:archived',
+      });
       await flushPromises();
     });
 

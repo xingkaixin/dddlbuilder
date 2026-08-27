@@ -1,3 +1,4 @@
+import { isSameSavedTable } from '@ddlbuilder/shared-types/workspace';
 import { useCallback, useMemo } from 'react';
 import type { DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
 import { isTabAvailable } from '@/utils/tabUtils';
@@ -132,8 +133,9 @@ export function useAppController() {
   const { triggerIndexAnimation, triggerFieldTableHighlight } = animations;
 
   const loadedTableId =
-    savedTableData.savedTables.find((table) => table.normalizedName === loadedTableNormalizedName)
-      ?.tableId ?? null;
+    savedTableData.savedTables.find(
+      (table) => loadedTableSource && isSameSavedTable(table, loadedTableSource),
+    )?.tableId ?? null;
 
   const schemaController = useSchemaController({
     domains: { editor, ui, auth, sharding, animations, partition, tableOptions },
@@ -360,7 +362,7 @@ export function useAppController() {
   const handleViewCurrentVersionHistory = useCallback(() => {
     if (!loadedTableNormalizedName || !loadedTableName) return;
     const currentTable = savedTables.find(
-      (table) => table.normalizedName === loadedTableNormalizedName,
+      (table) => loadedTableSource && isSameSavedTable(table, loadedTableSource),
     );
     if (!currentTable) return;
     handleViewVersionHistory({
@@ -368,7 +370,13 @@ export function useAppController() {
       normalizedName: loadedTableNormalizedName,
       name: loadedTableName,
     });
-  }, [handleViewVersionHistory, loadedTableName, loadedTableNormalizedName, savedTables]);
+  }, [
+    handleViewVersionHistory,
+    loadedTableName,
+    loadedTableNormalizedName,
+    loadedTableSource,
+    savedTables,
+  ]);
 
   const handleSelectTableFromEr = useCallback(
     (state: PersistedState) => {

@@ -46,7 +46,9 @@ describe('useSavedTableTabIntegration', () => {
     });
 
     expect(deleteDraftById).toHaveBeenCalledWith('draft-a');
-    expect(removeSavedTableDraft).toHaveBeenCalledWith('users');
+    expect(removeSavedTableDraft).toHaveBeenCalledWith(
+      expect.objectContaining({ normalizedName: 'users' }),
+    );
     expect(tabs.getTabById(tabId)).toMatchObject({
       title: 'Users',
       source: {
@@ -223,8 +225,15 @@ describe('useSavedTableTabIntegration', () => {
       await saving;
     });
 
-    expect(createTableVersion).toHaveBeenCalledWith('users', original, expect.any(String));
-    expect(setLoadedTableVersion).toHaveBeenCalledWith(1, 'users');
+    expect(createTableVersion).toHaveBeenCalledWith(
+      { normalizedName: 'users', tableId: undefined },
+      original,
+      expect.any(String),
+    );
+    expect(setLoadedTableVersion).toHaveBeenCalledWith(1, {
+      normalizedName: 'users',
+      tableId: undefined,
+    });
     expect(store.getTabById(secondId)).toMatchObject({
       title: 'orders',
       source: { kind: 'draft', draftId: 'second' },
@@ -245,7 +254,7 @@ describe('useSavedTableTabIntegration', () => {
     };
     expect(store.getTabById(firstId)).toEqual(action === 'close' ? undefined : expectedSavedTab);
     const draftCall = [
-      'users',
+      savedSource,
       {
         state: editorState,
         tableName: 'users',
@@ -254,7 +263,7 @@ describe('useSavedTableTabIntegration', () => {
       },
     ];
     expect(persistSavedTableDraft.mock.calls).toEqual(action === 'edit' ? [draftCall] : []);
-    expect(removeSavedTableDraft.mock.calls).toEqual(action === 'switch' ? [['users']] : []);
+    expect(removeSavedTableDraft.mock.calls).toEqual(action === 'switch' ? [[savedSource]] : []);
     expect(selectWorkspaceSnapshot.mock.calls).toEqual(
       action === 'edit' ? [[savedSource, editorState]] : [],
     );

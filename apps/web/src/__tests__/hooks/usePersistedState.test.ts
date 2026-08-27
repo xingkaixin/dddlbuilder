@@ -19,12 +19,19 @@ import {
   readDraft as readDraftInScope,
   readSavedDraft as readSavedDraftInScope,
   readWorkspaceSession as readWorkspaceSessionInScope,
+  upsertSavedDraft as writeSavedDraftInScope,
   writeDraft as writeDraftInScope,
   writeWorkspaceSession as writeWorkspaceSessionInScope,
 } from '@/utils/workspaceStateDb';
 import { addSavedTable as addSavedTableInScope } from '@/utils/savedTablesDb';
 import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
-import { getDraftRecordFromYDoc, upsertDraftInYDoc } from '@/services/workspaceYDocAdapter';
+import {
+  getDraftRecordFromYDoc,
+  upsertDraftInYDoc,
+  upsertSavedTableInYDoc,
+  upsertSavedDraftInYDoc,
+  getSavedDraftFromYDoc,
+} from '@/services/workspaceYDocAdapter';
 
 const GLOBAL_DRAFT_STORAGE_KEY = `${STORAGE_KEY}:draft:global:v1`;
 const WORKSPACE_SESSION_STORAGE_KEY = `${STORAGE_KEY}:workspace:v1`;
@@ -229,6 +236,73 @@ describe('usePersistedState', () => {
     resetWorkspaceBootstrapCache();
     teardownFakeIndexedDB();
     vi.restoreAllMocks();
+  });
+
+  it('恢复本地 ID 草稿后删除应同时清理缓存', async () => {
+    const target = { tableId: 'table-users', normalizedName: 'users' };
+    await addSavedTable({
+      ...target,
+      name: 'Users',
+      state: createState('users'),
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    await writeSavedDraftInScope(
+      'users',
+      {
+        tableId: target.tableId,
+        tableName: 'Users',
+        state: createState('dirty'),
+        baseSignature: 'base',
+        updatedAt: 2,
+      },
+      anonymousScope,
+    );
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = renderHook(() => usePersistedState(), { wrapper });
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+    expect(result.current.getSavedTableDraft(target)?.state.tableName).toBe('dirty');
+    await act(async () => result.current.removeSavedTableDraft(target));
+    await waitFor(async () => expect(await readSavedDraft('users')).toBeNull());
+    expect(result.current.getSavedTableDraft(target)).toBeNull();
+  });
+
+  it('同名表按 ID 独立缓存草稿，旧名称会话回退到草稿箱', async () => {
+    const doc = new Y.Doc();
+    const scope = { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' } as const;
+    const targets = ['first', 'second'].map((tableId) => ({ tableId, normalizedName: 'shared' }));
+    for (const target of targets) {
+      upsertSavedTableInYDoc(doc, {
+        ...target,
+        name: 'Shared',
+        state: createState(target.tableId),
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      upsertSavedDraftInYDoc(doc, target, {
+        state: createState(`${target.tableId}-draft`),
+        tableName: 'Shared',
+        baseSignature: 'base',
+        updatedAt: 2,
+      });
+    }
+    upsertDraftInYDoc(doc, 'default', { state: createState('fallback'), updatedAt: 1 });
+    await writeWorkspaceSession(
+      { activeSource: { kind: 'saved_table', normalizedName: 'shared' }, updatedAt: 1 },
+      scope,
+    );
+    mockSignedInWorkspaceYDoc(doc);
+    const { wrapper } = createQueryClientWrapper();
+    const { result, unmount } = renderHook(() => usePersistedState(), { wrapper });
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+    expect(result.current.persistedState?.tableName).toBe('fallback');
+    expect(result.current.getSavedTableDraft(targets[0])?.state.tableName).toBe('first-draft');
+    expect(result.current.getSavedTableDraft(targets[1])?.state.tableName).toBe('second-draft');
+    await act(async () => result.current.removeSavedTableDraft(targets[0]));
+    await waitFor(() => expect(getSavedDraftFromYDoc(doc, targets[0])).toBeNull());
+    expect(result.current.getSavedTableDraft(targets[1])?.state.tableName).toBe('second-draft');
+    unmount();
+    doc.destroy();
   });
 
   it('应迁移 localStorage 全局草稿到 IndexedDB 并恢复', async () => {

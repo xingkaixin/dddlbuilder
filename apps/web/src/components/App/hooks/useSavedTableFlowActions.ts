@@ -1,3 +1,4 @@
+import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { SavedTableDraftRecord, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
@@ -23,36 +24,40 @@ interface UseSavedTableFlowActionsParams {
   hasLoadedTable: boolean;
   canSaveCurrent: boolean;
   loadedTableSource: Extract<WorkspaceSelection, { kind: 'saved_table' }> | null;
-  setLoadedTableVersion: (version: number, normalizedName?: string) => void;
+  setLoadedTableVersion: (version: number, normalizedName?: SavedTableTarget) => void;
   saveDialog: UseDialogStateReturn<SaveDialogData>;
   renameDialog: UseDialogStateReturn<RenameDialogData>;
   deleteDialog: UseDialogStateReturn<DeleteDialogData>;
   buildPersistedState: () => PersistedState;
   serializePersistedState: (state: PersistedState) => string;
-  loadTable: (normalizedName: string) => Promise<{
+  loadTable: (normalizedName: SavedTableTarget) => Promise<{
+    tableId?: string;
     normalizedName: string;
     name: string;
     state: PersistedState;
   } | null>;
-  renameTable: (normalizedName: string, newName: string) => Promise<SaveTableResult>;
-  deleteTable: (normalizedName: string) => Promise<SaveTableResult>;
+  renameTable: (normalizedName: SavedTableTarget, newName: string) => Promise<SaveTableResult>;
+  deleteTable: (normalizedName: SavedTableTarget) => Promise<SaveTableResult>;
   saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
-  overwriteTable: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
-  countTableVersions: (normalizedName: string) => Promise<number>;
+  overwriteTable: (
+    normalizedName: SavedTableTarget,
+    state: PersistedState,
+  ) => Promise<SaveTableResult>;
+  countTableVersions: (normalizedName: SavedTableTarget) => Promise<number>;
   createTableVersion: (
-    normalizedName: string,
+    normalizedName: SavedTableTarget,
     state: PersistedState,
     message?: string,
   ) => Promise<unknown>;
   showToast: (message: string) => void;
-  getSavedTableDraft?: (normalizedName: string) => SavedTableDraftRecord | null;
+  getSavedTableDraft?: (normalizedName: SavedTableTarget) => SavedTableDraftRecord | null;
   setWorkspaceSnapshot?: (source: WorkspaceSelection, state: PersistedState) => void;
   renameSavedTableDraft?: (
-    fromNormalizedName: string,
+    fromNormalizedName: SavedTableTarget,
     toNormalizedName: string,
     nextTableName: string,
   ) => void;
-  removeSavedTableDraft?: (normalizedName: string) => void;
+  removeSavedTableDraft?: (normalizedName: SavedTableTarget) => void;
   onSaveSuccess?: (payload: {
     normalizedName: string;
     displayName: string;
@@ -60,8 +65,12 @@ interface UseSavedTableFlowActionsParams {
     mode: 'create' | 'update';
   }) => Promise<void> | void;
   onTableLoadStateChange?: (loading: boolean) => void;
-  onTabRename?: (fromNormalizedName: string, toNormalizedName: string, newTitle: string) => void;
-  onTabRemove?: (normalizedName: string) => void;
+  onTabRename?: (
+    fromNormalizedName: SavedTableTarget,
+    toNormalizedName: string,
+    newTitle: string,
+  ) => void;
+  onTabRemove?: (normalizedName: SavedTableTarget) => void;
 }
 
 export function useSavedTableFlowActions({

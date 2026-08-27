@@ -169,7 +169,7 @@ describe('workspaceYDocAdapter', () => {
 
     expect(changes).toHaveLength(1);
     expect(changes[0].collection).toBe('savedTables');
-    expect([...changes[0].entityIds]).toEqual(['users']);
+    expect([...changes[0].entityIds]).toEqual(['users', 'legacy:users']);
   });
 
   it('imports and exports workspace content without losing table data', () => {

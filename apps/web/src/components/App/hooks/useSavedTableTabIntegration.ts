@@ -1,3 +1,4 @@
+import { savedTableReference, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import { useCallback } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type {
@@ -16,8 +17,8 @@ interface UseSavedTableTabIntegrationParams {
   workspaceScope: WorkspaceScope | null;
   activeSource: WorkspaceSelection;
   deleteDraftById: (draftId: string) => void;
-  removeSavedTableDraft: (normalizedName: string) => void;
-  persistSavedTableDraft: (normalizedName: string, record: SavedTableDraftRecord) => void;
+  removeSavedTableDraft: (normalizedName: SavedTableTarget) => void;
+  persistSavedTableDraft: (normalizedName: SavedTableTarget, record: SavedTableDraftRecord) => void;
   selectWorkspaceSnapshot: (source: WorkspaceSelection, state: PersistedState) => void;
   buildPersistedState: () => PersistedState;
   tabs: Pick<
@@ -53,11 +54,13 @@ export function useSavedTableTabIntegration({
   const onSaveSuccess = useCallback(
     async ({
       normalizedName,
+      tableId,
       displayName,
       baseSignature,
       mode,
     }: {
       normalizedName: string;
+      tableId?: string;
       displayName: string;
       baseSignature: string;
       mode: 'create' | 'update';
@@ -67,7 +70,11 @@ export function useSavedTableTabIntegration({
           if (!workspaceScope) throw new Error('工作区未就绪');
           await writeWorkspaceSession(
             {
-              activeSource: { kind: 'saved_table', normalizedName },
+              activeSource: {
+                kind: 'saved_table',
+                normalizedName,
+                ...(tableId ? { tableId } : {}),
+              },
               updatedAt: Date.now(),
             },
             workspaceScope,
@@ -87,13 +94,14 @@ export function useSavedTableTabIntegration({
       const source: WorkspaceSelection = {
         kind: 'saved_table',
         normalizedName,
+        ...(tableId ? { tableId } : {}),
         tableName: displayName,
         baseSignature,
       };
       if (serializePersistedStateForComparison(state) === baseSignature) {
-        removeSavedTableDraft(normalizedName);
+        removeSavedTableDraft(source);
       } else {
-        persistSavedTableDraft(normalizedName, {
+        persistSavedTableDraft(source, {
           state,
           tableName: displayName,
           baseSignature,
@@ -123,8 +131,8 @@ export function useSavedTableTabIntegration({
   );
 
   const onTabRemove = useCallback(
-    (normalizedName: string) => {
-      closeTabBySource({ kind: 'saved_table', normalizedName });
+    (target: SavedTableTarget) => {
+      closeTabBySource({ kind: 'saved_table', ...savedTableReference(target) });
     },
     [closeTabBySource],
   );

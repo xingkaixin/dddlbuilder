@@ -1,3 +1,8 @@
+import {
+  savedTableReference,
+  savedTableKey,
+  type SavedTableTarget,
+} from '@ddlbuilder/shared-types/workspace';
 import type * as Y from 'yjs';
 import {
   type PersistedState,
@@ -132,7 +137,7 @@ export const deleteSavedTableFromYDoc = deleteWorkspaceSavedTable;
 
 export const getSavedTableFromYDoc = (
   doc: Y.Doc,
-  normalizedName: string,
+  normalizedName: SavedTableTarget,
 ): SavedTableRecord | null => {
   const record = getWorkspaceSavedTable(doc, normalizedName);
   return record ? toSavedTableRecord(record) : null;
@@ -164,16 +169,16 @@ export const listTrashedSavedTableMetadataFromYDoc = (doc: Y.Doc): SavedTableMet
 
 export const upsertSavedDraftInYDoc = (
   doc: Y.Doc,
-  normalizedName: string,
+  target: SavedTableTarget,
   record: Omit<SavedTableDraftRecord, 'state'> & { state: SchemaDocumentState },
   options?: ApplySchemaDocumentStateOptions,
-) => upsertWorkspaceSavedDraft(doc, { normalizedName, ...record }, options);
+) => upsertWorkspaceSavedDraft(doc, { ...record, ...savedTableReference(target) }, options);
 
 export const deleteSavedDraftFromYDoc = deleteWorkspaceSavedDraft;
 
 export const getSavedDraftFromYDoc = (
   doc: Y.Doc,
-  normalizedName: string,
+  normalizedName: SavedTableTarget,
 ): SavedTableDraftRecord | null => {
   const record = getWorkspaceSavedDraft(doc, normalizedName);
   if (!record) return null;
@@ -183,8 +188,8 @@ export const getSavedDraftFromYDoc = (
 
 export const listSavedDraftsFromYDoc = (doc: Y.Doc) =>
   new Map(
-    listWorkspaceSavedDrafts(doc).map(({ normalizedName, ...record }) => [
-      normalizedName,
+    listWorkspaceSavedDrafts(doc).map((record) => [
+      savedTableKey(record),
       { ...record, state: withDefaultEditorSession(record.state) },
     ]),
   );
@@ -215,11 +220,8 @@ export const getWorkspaceSnapshotFromYDoc = (
     return state ? { source, state: withEditorSession(state, editorSession) } : null;
   }
 
-  const record = getSavedTableFromYDoc(doc, source.normalizedName);
+  const record = getSavedTableFromYDoc(doc, source);
   if (!record) return null;
-  const snapshot = resolveSavedTableSnapshot(
-    record,
-    getSavedDraftFromYDoc(doc, source.normalizedName),
-  );
+  const snapshot = resolveSavedTableSnapshot(record, getSavedDraftFromYDoc(doc, source));
   return { ...snapshot, state: withEditorSession(snapshot.state, editorSession) };
 };

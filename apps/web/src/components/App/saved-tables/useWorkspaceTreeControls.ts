@@ -55,11 +55,11 @@ export function useWorkspaceTreeControls({
       searchQuery,
     });
 
-  const itemMap = useMemo(() => new Map(items.map((item) => [item.normalizedName, item])), [items]);
+  const itemMap = useMemo(() => new Map(items.map((item) => [item.tableId, item])), [items]);
   const tableFolderMap = useMemo(
     () =>
       items.reduce<Record<string, string | undefined>>((map, item) => {
-        map[item.normalizedName] = item.folderId;
+        map[item.tableId] = item.folderId;
         return map;
       }, {}),
     [items],
@@ -114,7 +114,7 @@ export function useWorkspaceTreeControls({
       }
       if (action.kind === 'move_table') {
         if (!onMoveToFolder) return;
-        const item = itemMap.get(action.normalizedName);
+        const item = itemMap.get(action.tableId);
         if (!item) return;
         try {
           const result = await Promise.resolve(onMoveToFolder(item, action.folderId));

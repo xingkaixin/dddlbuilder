@@ -399,6 +399,79 @@ const ensureFolderExpanded = async (page: Page, folderName: string) => {
   }
 };
 
+test('same-name saved tables keep independent tabs, drafts and lifecycle', async ({ browser }) => {
+  const server = new MockWorkspaceYjsServer();
+  const workspaceId = `ws-same-name-${Date.now()}`;
+  seedDefaultDraft(server.doc, 'initial', 'id');
+  for (const id of ['first', 'second']) {
+    const table = new Y.Map<unknown>();
+    const metadata = new Y.Map<unknown>();
+    metadata.set('tableId', id);
+    metadata.set('normalizedName', 'shared');
+    metadata.set('name', 'Shared');
+    metadata.set('createdAt', 1);
+    metadata.set('updatedAt', 1);
+    table.set('metadata', metadata);
+    table.set('stateSnapshot', createState(id, `${id}_id`));
+    server.doc.getMap<Y.Map<unknown>>('savedTables').set(id, table);
+  }
+  const context = await browser.newContext({ locale: 'zh-CN' });
+  await mockSignedInWorkspace(context, server, workspaceId);
+  const page = await context.newPage();
+  const row = (id: string) =>
+    page.getByRole('dialog', { name: /工作区/i }).locator(`[data-table-id="${id}"]`);
+  const select = async (id: string) => {
+    await openSavedTables(page);
+    await row(id).getByTestId('table-select:shared').click();
+    await expect(page.getByRole('dialog', { name: /工作区/i })).toBeHidden();
+    await expect(tableNameInput(page)).toHaveValue(id);
+  };
+  await page.goto('/');
+  await select('first');
+  await page.locator('#table-comment').fill('first draft');
+  await select('second');
+  await page.locator('#table-comment').fill('second draft');
+  await select('first');
+  await expect(page.locator('#table-comment')).toHaveValue('first draft');
+  await page.getByRole('button', { name: /保存当前表/i }).click();
+  await expect
+    .poll(
+      () =>
+        readTableDocState(server.doc.getMap<Y.Map<unknown>>('savedTables').get('first'))
+          ?.tableComment,
+    )
+    .toBe('first draft');
+  expect(
+    readTableDocState(server.doc.getMap<Y.Map<unknown>>('savedTables').get('second'))?.tableComment,
+  ).toBe('');
+  await select('second');
+  await expect(page.locator('#table-comment')).toHaveValue('second draft');
+  await openSavedTables(page);
+  await row('first').hover();
+  await row('first').getByTestId('table-actions:shared').getByRole('button').click();
+  await page.getByRole('menuitem', { name: /重命名/i }).click();
+  await page.getByLabel('新名称').fill('Renamed');
+  await page.getByRole('button', { name: /确认/i }).click();
+  await expect
+    .poll(() =>
+      readMetadata(server.doc.getMap<Y.Map<unknown>>('savedTables').get('first'))?.get(
+        'normalizedName',
+      ),
+    )
+    .toBe('renamed');
+  await row('first').hover();
+  await row('first').getByTestId('table-actions:renamed').getByRole('button').click();
+  await page.getByRole('menuitem', { name: /删除/i }).click();
+  await page.getByRole('button', { name: '移入回收站', exact: true }).click();
+  await expect(row('first')).toHaveCount(0);
+  await row('second').getByTestId('table-select:shared').click();
+  await expect(page.locator('#table-comment')).toHaveValue('second draft');
+  expect(
+    readMetadata(server.doc.getMap<Y.Map<unknown>>('savedTables').get('second'))?.get('trashedAt'),
+  ).toBeUndefined();
+  await context.close();
+});
+
 test('workspace yjs sync converges realtime edits and IndexedDB restore', async ({ browser }) => {
   const workspaceId = `ws-e2e-${Date.now()}`;
   const server = new MockWorkspaceYjsServer();

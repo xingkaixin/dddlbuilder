@@ -3,6 +3,7 @@ import type { SavedTableDraftRecord, WorkspaceSelection } from '@ddlbuilder/shar
 import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 
 interface SavedTableSnapshotRecord {
+  tableId?: string;
   normalizedName: string;
   name: string;
   state: PersistedState;
@@ -34,6 +35,7 @@ export const resolveSavedTableSnapshot = (
   return {
     source: {
       kind: 'saved_table',
+      ...(record.tableId ? { tableId: record.tableId } : {}),
       normalizedName: record.normalizedName,
       tableName: record.name,
       baseSignature,

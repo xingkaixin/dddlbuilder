@@ -1,3 +1,4 @@
+import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   DEFAULT_EDITOR_SESSION_STATE,
@@ -75,11 +76,11 @@ export interface UsePersistedStateReturn {
   createDraft: (draftId: string, state: PersistedState) => string;
   deleteDraftById: (draftId: string) => void;
   moveDraftToFolder: (draftId: string, folderId?: string) => void;
-  getSavedTableDraft: (normalizedName: string) => SavedTableDraftRecord | null;
-  persistSavedTableDraft: (normalizedName: string, record: SavedTableDraftRecord) => void;
-  removeSavedTableDraft: (normalizedName: string) => void;
+  getSavedTableDraft: (normalizedName: SavedTableTarget) => SavedTableDraftRecord | null;
+  persistSavedTableDraft: (normalizedName: SavedTableTarget, record: SavedTableDraftRecord) => void;
+  removeSavedTableDraft: (normalizedName: SavedTableTarget) => void;
   renameSavedTableDraft: (
-    fromNormalizedName: string,
+    fromNormalizedName: SavedTableTarget,
     toNormalizedName: string,
     nextTableName: string,
   ) => void;
@@ -315,14 +316,14 @@ export function usePersistedState(): UsePersistedStateReturn {
       if (payload.source.kind === 'draft') {
         saveDraftState(payload.source.draftId, payload.state);
       } else {
-        const { normalizedName, tableName, baseSignature } = payload.source;
-        const existingDraft = getSavedTableDraft(normalizedName);
+        const { tableName, baseSignature } = payload.source;
+        const existingDraft = getSavedTableDraft(payload.source);
         const isDirty =
           serializePersistedStateForComparison(payload.state) !== payload.source.baseSignature;
         if (!isDirty) {
-          if (existingDraft) dropSavedTableDraft(normalizedName);
+          if (existingDraft) dropSavedTableDraft(payload.source);
         } else if (!existingDraft || !isSamePersistedState(existingDraft.state, payload.state)) {
-          persistSavedTableDraft(normalizedName, {
+          persistSavedTableDraft(payload.source, {
             state: payload.state,
             tableName,
             baseSignature,

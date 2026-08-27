@@ -73,6 +73,20 @@ const createSavedTable = (overrides: Partial<PersistedState> = {}) => ({
 });
 
 describe('workspaceYDocAdapter records', () => {
+  it('uses only identity fields from a saved-table target when writing its draft', () => {
+    const doc = new Y.Doc();
+    const table = { ...createSavedTable(), tableId: 'table-users' };
+    upsertSavedTableInYDoc(doc, table);
+    upsertSavedDraftInYDoc(doc, table, {
+      tableName: table.name,
+      state: createState({ tableComment: 'unsaved' }),
+      baseSignature: 'base',
+      updatedAt: 30,
+    });
+    expect(getSavedDraftFromYDoc(doc, table)?.state.tableComment).toBe('unsaved');
+    doc.destroy();
+  });
+
   it('reads saved tables with metadata fallbacks', () => {
     const doc = new Y.Doc();
     upsertSavedTableInYDoc(doc, createSavedTable());

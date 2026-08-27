@@ -1,3 +1,4 @@
+import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import { useCallback, useMemo, useState } from 'react';
 import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { SaveTableResult, SavedTableSummary } from '@/hooks/useSavedTables';
@@ -12,7 +13,10 @@ interface UseFolderActionsParams {
   renameFolder: (id: string, name: string) => Promise<void>;
   moveFolder: (id: string, parentId?: string) => Promise<void>;
   deleteFolderAction: (id: string) => Promise<string[]>;
-  moveTableToFolder: (normalizedName: string, folderId?: string) => Promise<SaveTableResult>;
+  moveTableToFolder: (
+    normalizedName: SavedTableTarget,
+    folderId?: string,
+  ) => Promise<SaveTableResult>;
   showToast: (message: string) => void;
 }
 
@@ -109,7 +113,7 @@ export function useFolderActions({
 
   const handleMoveTableToFolder = useCallback(
     async (item: SavedTableSummary, folderId?: string) => {
-      const result = await moveTableToFolder(item.normalizedName, folderId);
+      const result = await moveTableToFolder(item, folderId);
       if (result.ok) {
         showToast(
           folderId

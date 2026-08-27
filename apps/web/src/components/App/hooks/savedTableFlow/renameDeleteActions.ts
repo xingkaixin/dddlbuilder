@@ -1,3 +1,4 @@
+import { isSameSavedTable, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import { useCallback } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
@@ -20,18 +21,22 @@ interface UseRenameDeleteActionsParams {
   deleteDialog: UseDialogStateReturn<DeleteDialogData>;
   buildPersistedState: () => PersistedState;
   serializePersistedState: (state: PersistedState) => string;
-  renameTable: (normalizedName: string, newName: string) => Promise<SaveTableResult>;
-  deleteTable: (normalizedName: string) => Promise<SaveTableResult>;
+  renameTable: (normalizedName: SavedTableTarget, newName: string) => Promise<SaveTableResult>;
+  deleteTable: (normalizedName: SavedTableTarget) => Promise<SaveTableResult>;
   showToast: (message: string) => void;
   setWorkspaceSnapshot?: (source: WorkspaceSelection, state: PersistedState) => void;
   renameSavedTableDraft?: (
-    fromNormalizedName: string,
+    fromNormalizedName: SavedTableTarget,
     toNormalizedName: string,
     nextTableName: string,
   ) => void;
-  removeSavedTableDraft?: (normalizedName: string) => void;
-  onTabRename?: (fromNormalizedName: string, toNormalizedName: string, newTitle: string) => void;
-  onTabRemove?: (normalizedName: string) => void;
+  removeSavedTableDraft?: (normalizedName: SavedTableTarget) => void;
+  onTabRename?: (
+    fromNormalizedName: SavedTableTarget,
+    toNormalizedName: string,
+    newTitle: string,
+  ) => void;
+  onTabRemove?: (normalizedName: SavedTableTarget) => void;
 }
 
 export function useRenameDeleteActions({
@@ -49,7 +54,6 @@ export function useRenameDeleteActions({
   onTabRename,
   onTabRemove,
 }: UseRenameDeleteActionsParams) {
-  const loadedTableNormalizedName = loadedTableSource?.normalizedName ?? null;
   const loadedTableSignature = loadedTableSource?.baseSignature ?? null;
   const renameName = renameDialog.data.name;
   const renameTarget = renameDialog.data.target;
@@ -76,7 +80,7 @@ export function useRenameDeleteActions({
 
   const handleConfirmRename = useCallback(async () => {
     if (!renameTarget) return;
-    const result = await renameTable(renameTarget.normalizedName, renameName);
+    const result = await renameTable(renameTarget, renameName);
     if (!result.ok) {
       if (result.reason === 'duplicate') {
         renameDialog.setError('名称已存在，请换一个');
@@ -87,14 +91,15 @@ export function useRenameDeleteActions({
     }
     const displayName = renameName.trim() || DEFAULT_SAVED_TABLE_NAME;
     showToast(`已重命名为：${displayName}`);
-    renameSavedTableDraft?.(renameTarget.normalizedName, result.normalizedName, displayName);
-    onTabRename?.(renameTarget.normalizedName, result.normalizedName, displayName);
-    if (loadedTableNormalizedName && renameTarget.normalizedName === loadedTableNormalizedName) {
+    renameSavedTableDraft?.(renameTarget, result.normalizedName, displayName);
+    onTabRename?.(renameTarget, result.normalizedName, displayName);
+    if (loadedTableSource && isSameSavedTable(renameTarget, loadedTableSource)) {
       const currentState = buildPersistedState();
       const nextSignature = loadedTableSignature ?? serializePersistedState(currentState);
       setWorkspaceSnapshot?.(
         {
           kind: 'saved_table',
+          tableId: renameTarget.tableId,
           normalizedName: result.normalizedName,
           tableName: displayName,
           baseSignature: nextSignature,
@@ -109,7 +114,7 @@ export function useRenameDeleteActions({
     renameName,
     renameDialog,
     showToast,
-    loadedTableNormalizedName,
+    loadedTableSource,
     loadedTableSignature,
     serializePersistedState,
     setWorkspaceSnapshot,
@@ -136,13 +141,13 @@ export function useRenameDeleteActions({
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
-    const result = await deleteTable(deleteTarget.normalizedName);
+    const result = await deleteTable(deleteTarget);
     if (!result.ok) {
       showToast(result.message ?? '删除失败');
     } else {
-      removeSavedTableDraft?.(deleteTarget.normalizedName);
+      removeSavedTableDraft?.(deleteTarget);
       showToast(`已移入回收站：${deleteTarget.name}`);
-      onTabRemove?.(deleteTarget.normalizedName);
+      onTabRemove?.(deleteTarget);
     }
     deleteDialog.closeDialog();
   }, [deleteTarget, deleteTable, showToast, removeSavedTableDraft, deleteDialog, onTabRemove]);

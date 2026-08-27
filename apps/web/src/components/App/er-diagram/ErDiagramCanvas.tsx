@@ -1,3 +1,4 @@
+import { savedTableKey, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ReactFlow,
@@ -38,7 +39,7 @@ function buildTableReferenceId(state: PersistedState): string {
 }
 
 function buildSavedTableNodeId(record: SavedTableRecord): string {
-  return record.normalizedName;
+  return savedTableKey(record);
 }
 
 function buildNodesFromTables(
@@ -114,7 +115,10 @@ interface CanvasInnerProps {
   onSelectTable: (state: PersistedState) => void;
   onRefresh: () => Promise<void>;
   onAddTable: () => void;
-  onUpdateTable: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
+  onUpdateTable: (
+    normalizedName: SavedTableTarget,
+    state: PersistedState,
+  ) => Promise<SaveTableResult>;
 }
 
 type PendingRelationship = {
@@ -180,7 +184,7 @@ function CanvasInner({
         foreignKeys: sourceRecord.state.foreignKeys?.filter((fk) => fk.id !== fkId) || [],
       };
 
-      const result = await onUpdateTable(sourceRecord.normalizedName, updatedState);
+      const result = await onUpdateTable(sourceRecord, updatedState);
       if (!result.ok) {
         showToast(result.message ?? t('erDiagram.relationship.saveFailed'));
         return;
@@ -241,10 +245,7 @@ function CanvasInner({
       if (!pendingRelationship) return;
 
       try {
-        const result = await onUpdateTable(
-          pendingRelationship.sourceRecord.normalizedName,
-          plan.sourceState,
-        );
+        const result = await onUpdateTable(pendingRelationship.sourceRecord, plan.sourceState);
         if (!result.ok) {
           showToast(result.message ?? t('erDiagram.relationship.saveFailed'));
           return;
@@ -316,7 +317,7 @@ function CanvasInner({
       </ReactFlow>
       {pendingRelationship && (
         <RelationCreationDialog
-          key={`${pendingRelationship.sourceRecord.normalizedName}:${pendingRelationship.targetRecord.normalizedName}:${pendingRelationship.sourceField}:${pendingRelationship.targetField}`}
+          key={`${savedTableKey(pendingRelationship.sourceRecord)}:${savedTableKey(pendingRelationship.targetRecord)}:${pendingRelationship.sourceField}:${pendingRelationship.targetField}`}
           draft={{
             source: pendingRelationship.sourceRecord.state,
             target: pendingRelationship.targetRecord.state,
@@ -337,7 +338,10 @@ interface ErDiagramCanvasProps {
   onSelectTable: (state: PersistedState) => void;
   onRefresh: () => Promise<void>;
   onAddTable: () => void;
-  onUpdateTable: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
+  onUpdateTable: (
+    normalizedName: SavedTableTarget,
+    state: PersistedState,
+  ) => Promise<SaveTableResult>;
 }
 
 function ErDiagramCanvas({

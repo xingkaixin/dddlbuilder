@@ -23,6 +23,27 @@ describe('tabStore', () => {
     resetTabStore();
   });
 
+  it('keeps same-name tables in separate tabs and renames only the selected ID', () => {
+    const sources = ['first', 'second'].map((tableId) => ({
+      kind: 'saved_table' as const,
+      tableId,
+      normalizedName: 'shared',
+      tableName: 'Shared',
+      baseSignature: 'base',
+    }));
+    const store = useTabStore.getState();
+    const ids = sources.map((source) =>
+      store.addTab({ title: 'Shared', source, stateSnapshot: createSnapshot(source.tableId) }),
+    );
+    expect(ids[0]).not.toBe(ids[1]);
+    expect(store.findTabBySource(sources[1])?.id).toBe(ids[1]);
+    store.renameSavedTableTabs(sources[0], 'renamed', 'Renamed');
+    expect(useTabStore.getState().tabs.map((tab) => tab.title)).toEqual(['Renamed', 'Shared']);
+    expect(store.findTabBySource(sources[0])?.id).toBe(ids[0]);
+    store.closeTab(ids[0]);
+    expect(store.findTabBySource(sources[1])?.stateSnapshot.tableName).toBe('second');
+  });
+
   it('adds a tab and activates it', () => {
     const state = useTabStore.getState();
     const id = state.addTab({

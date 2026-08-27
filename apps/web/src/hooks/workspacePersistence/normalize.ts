@@ -1,3 +1,4 @@
+import { isSameSavedTable } from '@ddlbuilder/shared-types/workspace';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type {
   DraftSummary,
@@ -23,7 +24,8 @@ export const isWorkspaceSource = (value: unknown): value is WorkspaceSource => {
   return (
     value.kind === 'saved_table' &&
     typeof value.normalizedName === 'string' &&
-    value.normalizedName.length > 0
+    value.normalizedName.length > 0 &&
+    (value.tableId === undefined || (typeof value.tableId === 'string' && value.tableId.length > 0))
   );
 };
 
@@ -33,7 +35,7 @@ export const isSameWorkspaceSource = (a: WorkspaceSource, b: WorkspaceSource) =>
     return a.draftId === b.draftId;
   }
   if (a.kind === 'saved_table' && b.kind === 'saved_table') {
-    return a.normalizedName === b.normalizedName;
+    return isSameSavedTable(a, b);
   }
   return false;
 };
@@ -48,7 +50,11 @@ export const isSameWorkspaceSelection = (a: WorkspaceSelection, b: WorkspaceSele
 export const toWorkspaceSource = (selection: WorkspaceSelection): WorkspaceSource =>
   selection.kind === 'draft'
     ? selection
-    : { kind: 'saved_table', normalizedName: selection.normalizedName };
+    : {
+        kind: 'saved_table',
+        normalizedName: selection.normalizedName,
+        ...(selection.tableId ? { tableId: selection.tableId } : {}),
+      };
 
 /** 持久化数据里的默认草稿名，随界面语言变化会污染已存数据，因此不接入 i18n */
 export const UNTITLED_DRAFT_NAME = '未命名草稿';

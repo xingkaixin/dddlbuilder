@@ -90,6 +90,7 @@ export function useWorkspaceTabActions({
       const existingTab = findTabBySource({
         kind: 'saved_table',
         normalizedName: item.normalizedName,
+        tableId: item.tableId,
       });
       if (existingTab) {
         switchToTab(existingTab);
@@ -103,6 +104,7 @@ export function useWorkspaceTabActions({
         source: {
           kind: 'saved_table',
           normalizedName: item.normalizedName,
+          tableId: item.tableId,
           tableName: item.name,
           baseSignature: '',
         },

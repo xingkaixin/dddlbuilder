@@ -1,3 +1,4 @@
+import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import { memo, useCallback, useEffect, useState } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { SaveTableResult } from '@/hooks/useSavedTables';
@@ -13,7 +14,10 @@ interface ErDiagramDialogProps {
   onOpenChange: (open: boolean) => void;
   onSelectTable: (state: PersistedState) => void;
   saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
-  overwriteTable: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
+  overwriteTable: (
+    normalizedName: SavedTableTarget,
+    state: PersistedState,
+  ) => Promise<SaveTableResult>;
   loadTables: () => Promise<SavedTableRecord[]>;
 }
 

@@ -98,7 +98,13 @@ type SaveResult =
 
 describe('useSavedTables failure states', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
+    savedTableMocks.ensureSavedTableName.mockImplementation(
+      (name: string) => name.trim() || '未命名表',
+    );
+    savedTableMocks.normalizeSavedTableName.mockImplementation((name: string) =>
+      name.trim().toLowerCase(),
+    );
     savedTableMocks.listSavedTableMetadata.mockResolvedValue([]);
     savedTableMocks.listSavedTables.mockResolvedValue([]);
     savedTableMocks.listTrashedSavedTableMetadata.mockResolvedValue([]);
@@ -239,6 +245,7 @@ describe('useSavedTables failure states', () => {
       expect(await result.current.deleteTablePermanently('demo')).toEqual({
         ok: true,
         normalizedName: 'demo',
+        tableId: 'table-demo',
       });
     });
     expect(savedTableMocks.deleteSavedTable).toHaveBeenCalledOnce();
@@ -248,10 +255,8 @@ describe('useSavedTables failure states', () => {
     const sourceRecord = createRecord('alpha', 'Alpha');
     const duplicateRecord = createRecord('beta', 'Beta');
 
-    savedTableMocks.getSavedTable
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(sourceRecord)
-      .mockResolvedValueOnce(duplicateRecord);
+    savedTableMocks.getSavedTable.mockResolvedValueOnce(null).mockResolvedValueOnce(sourceRecord);
+    savedTableMocks.listSavedTables.mockResolvedValue([sourceRecord, duplicateRecord]);
 
     const { result } = renderHook(() => useSavedTables());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -274,25 +279,21 @@ describe('useSavedTables failure states', () => {
     const { result } = renderHook(() => useSavedTables());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    savedTableMocks.getSavedTable
-      .mockResolvedValueOnce(sourceRecord)
-      .mockResolvedValueOnce(sourceRecord);
+    savedTableMocks.getSavedTable.mockResolvedValueOnce(sourceRecord);
     let sameName: SaveResult | undefined;
     await act(async () => {
       sameName = await result.current.renameTable('alpha', ' alpha ');
     });
-    expect(sameName).toEqual({ ok: true, normalizedName: 'alpha' });
+    expect(sameName).toEqual({ ok: true, normalizedName: 'alpha', tableId: 'legacy:alpha' });
 
-    savedTableMocks.getSavedTable.mockResolvedValueOnce(sourceRecord).mockResolvedValueOnce(null);
+    savedTableMocks.getSavedTable.mockResolvedValueOnce(sourceRecord);
     let changedName: SaveResult | undefined;
     await act(async () => {
       changedName = await result.current.renameTable('alpha', 'Gamma');
     });
-    expect(changedName).toEqual({ ok: true, normalizedName: 'gamma' });
+    expect(changedName).toEqual({ ok: true, normalizedName: 'gamma', tableId: 'legacy:alpha' });
 
-    savedTableMocks.getSavedTable
-      .mockResolvedValueOnce(sourceRecord)
-      .mockResolvedValueOnce(sourceRecord);
+    savedTableMocks.getSavedTable.mockResolvedValueOnce(sourceRecord);
     savedTableMocks.updateSavedTable.mockRejectedValueOnce(new Error('重命名异常'));
     let failed: SaveResult | undefined;
     await act(async () => {
@@ -327,7 +328,7 @@ describe('useSavedTables failure states', () => {
     await act(async () => {
       success = await result.current.moveTableToFolder('alpha', 'folder-a');
     });
-    expect(success).toEqual({ ok: true, normalizedName: 'alpha' });
+    expect(success).toEqual({ ok: true, normalizedName: 'alpha', tableId: 'legacy:alpha' });
 
     let failed: SaveResult | undefined;
     await act(async () => {
