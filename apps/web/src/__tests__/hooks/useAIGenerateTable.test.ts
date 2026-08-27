@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import { useAIGenerateTable } from '@/hooks/useAIGenerateTable';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
+import { createAITextStream } from '@/__tests__/utils/aiStream';
 
 vi.mock('@/auth/AuthSessionProvider', () => ({
   useAuthSession: () => ({
@@ -69,23 +70,15 @@ describe('useAIGenerateTable failure states', () => {
   it('should execute completed generation again for same params', async () => {
     const fetchMock = vi.fn().mockImplementation(() => ({
       ok: true,
-      body: new ReadableStream({
-        start(controller) {
-          const encoder = new TextEncoder();
-          controller.enqueue(
-            encoder.encode(
-              JSON.stringify({
-                tableName: 'users',
-                tableComment: '用户表',
-                fields: [],
-                indexes: [],
-                authObjects: [],
-              }),
-            ),
-          );
-          controller.close();
-        },
-      }),
+      body: createAITextStream([
+        JSON.stringify({
+          tableName: 'users',
+          tableComment: '用户表',
+          fields: [],
+          indexes: [],
+          authObjects: [],
+        }),
+      ]),
     }));
     vi.stubGlobal('fetch', fetchMock);
 

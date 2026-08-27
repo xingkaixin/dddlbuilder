@@ -60,6 +60,8 @@ export type {
   TableMiscConfig,
 } from './schema.js';
 export type { ApiErrorCode, ApiMeta, ApiErrorPayload } from './api.js';
+export { encodeAIStreamEvent } from './aiStream.js';
+export type { AIStreamEvent } from './aiStream.js';
 export type {
   WorkspaceSource,
   WorkspaceSelection,

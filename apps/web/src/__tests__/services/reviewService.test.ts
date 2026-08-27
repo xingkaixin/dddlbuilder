@@ -1,21 +1,22 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { requestDDLReview } from '@/services/reviewService';
-
-function createTextStream(chunks: string[]): ReadableStream<Uint8Array> {
-  const encoder = new TextEncoder();
-  return new ReadableStream({
-    start(controller) {
-      chunks.forEach((chunk) => {
-        controller.enqueue(encoder.encode(chunk));
-      });
-      controller.close();
-    },
-  });
-}
+import { createAITextStream as createTextStream } from '@/__tests__/utils/aiStream';
 
 describe('requestDDLReview', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('rejects a streamed service error instead of producing a default review', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('{"type":"error","error":"upstream failed","code":"UPSTREAM_OPENAI_ERROR"}\n'),
+    );
+    await expect(
+      requestDDLReview(
+        { ddl: 'ddl', tableName: 'users', dbType: 'mysql' },
+        { signal: new AbortController().signal },
+      ),
+    ).rejects.toThrow('AI');
   });
 
   it('should parse stream result and normalize score', async () => {
@@ -117,7 +118,10 @@ describe('requestDDLReview', () => {
   });
 
   it('should handle null payload via JSON.parse intervention', async () => {
-    const parseSpy = vi.spyOn(JSON, 'parse').mockReturnValue(null);
+    const parse = JSON.parse;
+    const parseSpy = vi
+      .spyOn(JSON, 'parse')
+      .mockImplementation((text) => (text === '{}' ? null : parse(text)));
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       status: 200,

@@ -41,13 +41,6 @@ export const errorResponse = (
   return c.json(payload, status);
 };
 
-export const streamErrorPayload = (error: string, code?: ApiErrorCode, requestId?: string) =>
-  JSON.stringify({
-    error,
-    ...(code ? { code } : {}),
-    ...(requestId ? { requestId } : {}),
-  } satisfies ApiErrorPayload);
-
 export type JsonBodyResult<T> =
   | { data: T; errorResponse: null }
   | { data: null; errorResponse: Response };

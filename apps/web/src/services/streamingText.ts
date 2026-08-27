@@ -1,4 +1,7 @@
 import { logAiStreamDebug } from '@/services/aiStreamDebug';
+import { getAIErrorMessage } from '@/services/aiApi';
+import i18n from '@/i18n';
+import type { AIStreamEvent } from '@ddlbuilder/shared-types';
 
 const DEFAULT_STREAM_UPDATE_INTERVAL_MS = 33;
 
@@ -24,6 +27,8 @@ export async function readTextStream(
   const startedAt = Date.now();
 
   let fullText = '';
+  let buffered = '';
+  let completed = false;
   let lastEmittedText = '';
   let hasEmittedFirstChunk = false;
   let lastEmitAt = 0;
@@ -68,7 +73,28 @@ export async function readTextStream(
 
       chunkCount += 1;
       totalBytes += value.byteLength;
-      fullText += decoder.decode(value, { stream: true });
+      buffered += decoder.decode(value, { stream: true });
+      const previousLength = fullText.length;
+      let newline: number;
+      while ((newline = buffered.indexOf('\n')) !== -1) {
+        const line = buffered.slice(0, newline);
+        buffered = buffered.slice(newline + 1);
+        const event = JSON.parse(line) as AIStreamEvent | null;
+        if (completed || !event) {
+          throw new Error(i18n.t('services.aiServiceUnavailable'));
+        }
+        if (event.type === 'error' && typeof event.error === 'string') {
+          throw new Error(getAIErrorMessage(event) ?? i18n.t('services.aiServiceUnavailable'));
+        }
+        if (event.type === 'done') {
+          completed = true;
+        } else if (event.type === 'delta' && typeof event.text === 'string') {
+          fullText += event.text;
+        } else {
+          throw new Error(i18n.t('services.aiServiceUnavailable'));
+        }
+      }
+      if (fullText.length === previousLength) continue;
 
       if (!hasEmittedFirstChunk) {
         hasEmittedFirstChunk = true;
@@ -97,6 +123,10 @@ export async function readTextStream(
         lastEmitAt = now;
       }
     }
+    buffered += decoder.decode();
+    if (!completed || buffered.length > 0) {
+      throw new Error(i18n.t('services.aiServiceUnavailable'));
+    }
   } catch (error) {
     logAiStreamDebug(
       'ai_stream_read_error',
@@ -111,12 +141,10 @@ export async function readTextStream(
       },
       { force: debugContext?.forceDebug },
     );
+    await reader.cancel().catch(() => {});
     throw error;
-  }
-
-  const tail = decoder.decode();
-  if (tail) {
-    fullText += tail;
+  } finally {
+    reader.releaseLock();
   }
 
   if (lastEmittedText !== fullText) {

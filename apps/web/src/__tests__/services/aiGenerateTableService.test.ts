@@ -1,21 +1,22 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { requestGenerateTable } from '@/services/aiGenerateTableService';
-
-function createTextStream(chunks: string[]): ReadableStream<Uint8Array> {
-  const encoder = new TextEncoder();
-  return new ReadableStream({
-    start(controller) {
-      chunks.forEach((chunk) => {
-        controller.enqueue(encoder.encode(chunk));
-      });
-      controller.close();
-    },
-  });
-}
+import { createAITextStream as createTextStream } from '@/__tests__/utils/aiStream';
 
 describe('requestGenerateTable', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('rejects a streamed error instead of returning an empty schema', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('{"type":"error","error":"upstream failed","code":"UPSTREAM_OPENAI_ERROR"}\n'),
+    );
+    await expect(
+      requestGenerateTable(
+        { description: '生成用户表', dbType: 'mysql' },
+        { signal: new AbortController().signal },
+      ),
+    ).rejects.toThrow('AI');
   });
 
   it('should parse final generated schema and stream updates', async () => {

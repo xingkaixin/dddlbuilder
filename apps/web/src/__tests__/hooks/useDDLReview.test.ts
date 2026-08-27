@@ -4,6 +4,8 @@ import { useDDLReview } from '@/hooks/useDDLReview';
 import { flushPromises } from '@/__tests__/utils/test-utils';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 import { useLocale } from '@/i18n/LocaleContext';
+import { createAITextStream as createStream } from '@/__tests__/utils/aiStream';
+import { encodeAIStreamEvent } from '@ddlbuilder/shared-types';
 
 vi.mock('@/auth/AuthSessionProvider', () => ({
   useAuthSession: () => ({
@@ -28,18 +30,6 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
     closeAuthDialog: vi.fn(),
   }),
 }));
-
-const createStream = (chunks: string[]) => {
-  const encoder = new TextEncoder();
-  return new ReadableStream({
-    start(controller) {
-      chunks.forEach((chunk) => {
-        controller.enqueue(encoder.encode(chunk));
-      });
-      controller.close();
-    },
-  });
-};
 
 function renderDDLReviewHook() {
   const { wrapper } = createQueryClientWrapper();
@@ -188,7 +178,11 @@ describe('useDDLReview', () => {
 
     // Send partial data
     act(() => {
-      controllerRef?.enqueue(encoder.encode('{"score": 7, "summary": "good"'));
+      controllerRef?.enqueue(
+        encoder.encode(
+          encodeAIStreamEvent({ type: 'delta', text: '{"score": 7, "summary": "good"' }),
+        ),
+      );
     });
 
     await act(async () => {
@@ -201,7 +195,12 @@ describe('useDDLReview', () => {
 
     // Complete the stream
     act(() => {
-      controllerRef?.enqueue(encoder.encode(', "suggestions": ["fix 1", "fix 2"]}'));
+      controllerRef?.enqueue(
+        encoder.encode(
+          encodeAIStreamEvent({ type: 'delta', text: ', "suggestions": ["fix 1", "fix 2"]}' }),
+        ),
+      );
+      controllerRef?.enqueue(encoder.encode(encodeAIStreamEvent({ type: 'done' })));
       controllerRef?.close();
     });
 

@@ -1,5 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { setupHydratedState } from '../utils';
+import { encodeAIStreamEvent } from '../../packages/shared-types/src/aiStream';
+
+const streamedResponse = (value: unknown) => ({
+  contentType: 'application/x-ndjson',
+  body:
+    encodeAIStreamEvent({ type: 'delta', text: JSON.stringify(value) }) +
+    encodeAIStreamEvent({ type: 'done' }),
+});
 
 test('DDL 评审拒绝缺少字段的索引建议，补充字段后可重试', async ({ page }) => {
   const responses: Record<string, unknown> = {
@@ -36,10 +44,13 @@ test('DDL 评审拒绝缺少字段的索引建议，补充字段后可重试', a
     },
   };
   await page.route('**/api/**', async (route) => {
-    const response = responses[new URL(route.request().url()).pathname];
+    const path = new URL(route.request().url()).pathname;
+    const response = responses[path];
     await route.fulfill(
       response
-        ? { json: response }
+        ? path === '/api/review'
+          ? streamedResponse(response)
+          : { json: response }
         : { status: 503, json: { error: 'Not available in this test' } },
     );
   });
@@ -249,8 +260,8 @@ test('AI 修改拒绝缺失字段的索引，补选字段后允许应用', async
       await route.fulfill({ json: { balance: 1000 } });
     } else if (path === '/api/generate-table') {
       const { existingConfig } = route.request().postDataJSON();
-      await route.fulfill({
-        json: {
+      await route.fulfill(
+        streamedResponse({
           tableName: existingConfig.tableName,
           tableComment: existingConfig.tableComment,
           fields: [
@@ -272,8 +283,8 @@ test('AI 修改拒绝缺失字段的索引，补选字段后允许应用', async
               fields: [{ name: 'email', direction: 'ASC' }],
             },
           ],
-        },
-      });
+        }),
+      );
     } else {
       await route.fulfill({ status: 503, json: { error: 'Not available in this test' } });
     }

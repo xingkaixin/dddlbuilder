@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
-import { streamText } from 'hono/streaming';
+import { stream } from 'hono/streaming';
+import { encodeAIStreamEvent } from '@ddlbuilder/shared-types';
 import OpenAI from 'openai';
 import {
   type AIRouteKey,
@@ -25,7 +26,6 @@ import {
   errorResponse,
   getRequestId,
   parseJsonBodyWithLimit,
-  streamErrorPayload,
   DomainError,
   type ApiErrorCode,
 } from './http.js';
@@ -93,7 +93,7 @@ export type AIRouteSpec<Request> = {
 /**
  * 五条 AI 路由共用的前置流水线：限流 → 解析请求体 → 鉴权 → 估算 → 预留额度 → 预算，
  * 任一步失败都会带上审计日志直接返回。走通之后把句柄交给 run，由它决定怎么调模型、
- * 怎么回包——流式路由会在 streamText 回调里才结算，所以结算时机必须留给 run 自己。
+ * 怎么回包——流式路由会在流回调里才结算，所以结算时机必须留给 run 自己。
  */
 export const withAIGovernance = async <Request>(
   c: Context<ApiEnv>,
@@ -348,7 +348,9 @@ export const withAIGovernance = async <Request>(
         input: debugInput,
       });
 
-      return streamText(c, async (stream) => {
+      c.header('Content-Type', 'application/x-ndjson; charset=utf-8');
+      c.header('Cache-Control', 'no-cache');
+      return stream(c, async (stream) => {
         streamDebug.start();
         try {
           const { data: response, attempts } = await withOpenAIRetry(
@@ -374,10 +376,11 @@ export const withAIGovernance = async <Request>(
             const content = chunk.choices[0]?.delta?.content || '';
             if (content) {
               streamDebug.chunk(content);
-              await stream.write(content);
+              await stream.write(encodeAIStreamEvent({ type: 'delta', text: content }));
             }
           }
 
+          await stream.write(encodeAIStreamEvent({ type: 'done' }));
           streamDebug.complete();
           settleSuccess(retryCount);
         } catch (error) {
@@ -385,7 +388,12 @@ export const withAIGovernance = async <Request>(
           console.error(`[${route}] stream failed`, error);
           settleFailure('UPSTREAM_OPENAI_ERROR', 502, retryCount);
           await stream.write(
-            streamErrorPayload('Upstream OpenAI error', 'UPSTREAM_OPENAI_ERROR', requestId),
+            encodeAIStreamEvent({
+              type: 'error',
+              error: 'Upstream OpenAI error',
+              code: 'UPSTREAM_OPENAI_ERROR',
+              requestId,
+            }),
           );
         }
       });

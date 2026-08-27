@@ -658,7 +658,9 @@ describe.sequential('openai governance', () => {
       });
 
     expect((await request()).status).toBe(402);
-    expect((await request()).status).toBe(200);
+    const successfulResponse = await request();
+    expect(successfulResponse.status).toBe(200);
+    await successfulResponse.text();
     expect(reserveAIDailyBudgetMock).toHaveBeenCalledTimes(1);
     expect(settleAIDailyBudgetMock).toHaveBeenCalledWith(
       expect.anything(),
@@ -720,7 +722,16 @@ describe.sequential('openai governance', () => {
     });
 
     expect(response.status).toBe(200);
-    expect(await response.text()).toBe('{"ok":true}');
+    expect(
+      (await response.text())
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line)),
+    ).toEqual([
+      { type: 'delta', text: '{"ok":' },
+      { type: 'delta', text: 'true}' },
+      { type: 'done' },
+    ]);
 
     expect(createCompletionMock).toHaveBeenCalledTimes(1);
     expect(createCompletionMock.mock.calls[0]?.[0]).toMatchObject({

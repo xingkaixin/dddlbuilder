@@ -16,7 +16,11 @@ const createEnv = (): ApiEnv['Bindings'] =>
   }) as ApiEnv['Bindings'];
 
 /** 只放行治理外壳，把额度与限流的副作用换成可断言的 spy。 */
-const loadShell = async (overrides: Record<string, unknown> = {}, completionContent = '{}') => {
+const loadShell = async (
+  overrides: Record<string, unknown> = {},
+  completionContent = '{}',
+  streamResponse?: AsyncIterable<unknown>,
+) => {
   const reserveAIUsage = vi.fn().mockResolvedValue(RESERVATION);
   const completeAIUsage = vi.fn().mockResolvedValue(undefined);
   const failAIUsage = vi.fn().mockResolvedValue(undefined);
@@ -46,10 +50,12 @@ const loadShell = async (overrides: Record<string, unknown> = {}, completionCont
 
       chat = {
         completions: {
-          create: vi.fn().mockResolvedValue({
-            choices: [{ message: { content: completionContent } }],
-            usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
-          }),
+          create: vi.fn().mockResolvedValue(
+            streamResponse ?? {
+              choices: [{ message: { content: completionContent } }],
+              usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+            },
+          ),
         },
       };
     },
@@ -89,6 +95,42 @@ describe('withAIGovernance', () => {
     bodyMaxBytes: 4096,
     buildMessages: () => PROMPT_MESSAGES,
   };
+
+  it.each([false, true])('流中途失败时发送错误终态并退款，已有输出=%s', async (hasOutput) => {
+    async function* upstream() {
+      if (hasOutput) yield { choices: [{ delta: { content: 'partial' } }] };
+      throw new Error('upstream disconnected');
+    }
+    const shell = await loadShell({}, '{}', upstream());
+    const waitUntil = vi.fn();
+    const app = new Hono<ApiEnv>();
+    app.post('/t', (c) =>
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async (session) =>
+        session.streamCompletion({ scope: 'test-stream', temperature: 0, debugInput: {} }),
+      ),
+    );
+
+    const response = await post(app, { sql: 'select 1' }, waitUntil);
+    const events = (await response.text())
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+
+    expect(response.headers.get('content-type')).toContain('application/x-ndjson');
+    expect(events).toEqual([
+      ...(hasOutput ? [{ type: 'delta', text: 'partial' }] : []),
+      {
+        type: 'error',
+        error: 'Upstream OpenAI error',
+        code: 'UPSTREAM_OPENAI_ERROR',
+        requestId: 'unknown',
+      },
+    ]);
+    expect(shell.completeAIUsage).not.toHaveBeenCalled();
+    expect(shell.failAIUsage).toHaveBeenCalledTimes(1);
+    expect(waitUntil).toHaveBeenCalledTimes(1);
+    await Promise.all(waitUntil.mock.calls.map(([task]) => task));
+  });
 
   it('使用实际模型消息预留额度', async () => {
     const shell = await loadShell();

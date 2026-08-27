@@ -1,12 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Context } from 'hono';
-import {
-  getRequestId,
-  withMeta,
-  errorResponse,
-  streamErrorPayload,
-  parseJsonBodyWithLimit,
-} from '../../lib/http';
+import { getRequestId, withMeta, errorResponse, parseJsonBodyWithLimit } from '../../lib/http';
 
 describe('http lib utilities', () => {
   const mockContext = (
@@ -80,20 +74,6 @@ describe('http lib utilities', () => {
         code: 'SHARE_LOAD_FAILED',
         requestId: 'my-req',
       });
-    });
-  });
-
-  describe('streamErrorPayload', () => {
-    it('serializes basic error', () => {
-      expect(streamErrorPayload('error')).toBe(JSON.stringify({ error: 'error' }));
-    });
-    it('serializes with code and request id', () => {
-      const exact = JSON.stringify({
-        error: 'err',
-        code: 'INVALID_JSON',
-        requestId: '1',
-      });
-      expect(streamErrorPayload('err', 'INVALID_JSON', '1')).toBe(exact);
     });
   });
 
