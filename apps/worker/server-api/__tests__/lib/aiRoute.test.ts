@@ -20,6 +20,7 @@ const loadShell = async (
   overrides: Record<string, unknown> = {},
   completionContent = '{}',
   streamResponse?: AsyncIterable<unknown>,
+  finishReason = 'stop',
 ) => {
   const reserveAIUsage = vi.fn().mockResolvedValue(RESERVATION);
   const completeAIUsage = vi.fn().mockResolvedValue(undefined);
@@ -52,7 +53,7 @@ const loadShell = async (
         completions: {
           create: vi.fn().mockResolvedValue(
             streamResponse ?? {
-              choices: [{ message: { content: completionContent } }],
+              choices: [{ message: { content: completionContent }, finish_reason: finishReason }],
               usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
             },
           ),
@@ -95,6 +96,101 @@ describe('withAIGovernance', () => {
     bodyMaxBytes: 4096,
     buildMessages: () => PROMPT_MESSAGES,
   };
+
+  it.each([
+    { label: '截断', content: '{"fields":[', reason: 'length' },
+    { label: '过滤', content: '{"ok":true}', reason: 'content_filter' },
+    { label: '缺少结束原因', content: '{"ok":true}', reason: null },
+    { label: '非法 JSON', content: '{invalid', reason: 'stop' },
+    { label: '空响应', content: '  ', reason: 'stop' },
+    { label: '非对象 JSON', content: 'null', reason: 'stop' },
+  ])('$label 的 JSON 流必须报错并退款', async ({ content, reason }) => {
+    async function* upstream() {
+      yield { choices: [{ delta: { content } }] };
+      yield { choices: [{ delta: {}, finish_reason: reason }] };
+    }
+    const shell = await loadShell({}, '{}', upstream());
+    const waitUntil = vi.fn();
+    const app = new Hono<ApiEnv>();
+    app.post('/t', (c) =>
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async (session) =>
+        session.streamCompletion({
+          scope: 'test-json-stream',
+          temperature: 0,
+          jsonResponse: true,
+          debugInput: {},
+        }),
+      ),
+    );
+    const response = await post(app, { sql: 'select 1' }, waitUntil);
+    const events = (await response.text())
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+    await Promise.all(waitUntil.mock.calls.map(([task]) => task));
+    expect(events.at(-1)).toMatchObject({ type: 'error', code: 'UPSTREAM_OPENAI_ERROR' });
+    expect(events.some((event) => event.type === 'done')).toBe(false);
+    expect(shell.completeAIUsage).not.toHaveBeenCalled();
+    expect(shell.failAIUsage).toHaveBeenCalledTimes(1);
+    expect(waitUntil).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([false, true])('完整流在读完最终 usage 后结算一次，JSON=%s', async (jsonResponse) => {
+    const content = jsonResponse ? '{"ok":true}' : 'A complete explanation';
+    async function* upstream() {
+      yield { choices: [{ delta: { content: content.slice(0, 5) } }] };
+      yield { choices: [{ delta: { content: content.slice(5) }, finish_reason: 'stop' }] };
+      yield { choices: [], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } };
+    }
+    const shell = await loadShell({}, '{}', upstream());
+    const waitUntil = vi.fn();
+    const app = new Hono<ApiEnv>();
+    app.post('/t', (c) =>
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async (session) =>
+        session.streamCompletion({
+          scope: 'test-stream',
+          temperature: 0,
+          jsonResponse,
+          debugInput: {},
+        }),
+      ),
+    );
+    const response = await post(app, { sql: 'select 1' }, waitUntil);
+    const events = (await response.text())
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+    await Promise.all(waitUntil.mock.calls.map(([task]) => task));
+    expect(events).toEqual([
+      { type: 'delta', text: content.slice(0, 5) },
+      { type: 'delta', text: content.slice(5) },
+      { type: 'done' },
+    ]);
+    expect(shell.completeAIUsage).toHaveBeenCalledExactlyOnceWith(
+      expect.anything(),
+      RESERVATION,
+      15,
+    );
+    expect(shell.failAIUsage).not.toHaveBeenCalled();
+    expect(waitUntil).toHaveBeenCalledTimes(1);
+  });
+
+  it('非流式 JSON 同样拒绝截断结果，即使内容恰好可以解析', async () => {
+    const shell = await loadShell({}, '{}', undefined, 'length');
+    const waitUntil = vi.fn();
+    const app = new Hono<ApiEnv>();
+    app.post('/t', (c) =>
+      shell.withAIGovernance(c, { ...spec, parseRequest: (body) => body }, async (session) => {
+        await session.completeJson({ scope: 'test-json', temperature: 0 });
+        return c.json({ ok: true });
+      }),
+    );
+    const response = await post(app, { sql: 'select 1' }, waitUntil);
+    await Promise.all(waitUntil.mock.calls.map(([task]) => task));
+    expect(response.status).toBe(502);
+    expect(shell.completeAIUsage).not.toHaveBeenCalled();
+    expect(shell.failAIUsage).toHaveBeenCalledTimes(1);
+  });
 
   it.each([false, true])('流中途失败时发送错误终态并退款，已有输出=%s', async (hasOutput) => {
     async function* upstream() {

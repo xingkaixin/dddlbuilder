@@ -611,7 +611,7 @@ describe.sequential('openai governance', () => {
     const createCompletionMock = vi.fn().mockResolvedValue(
       createMockStream([
         {
-          choices: [{ delta: { content: '{"ok":true}' } }],
+          choices: [{ delta: { content: '{"ok":true}' }, finish_reason: 'stop' }],
         },
         {
           choices: [],
@@ -679,7 +679,7 @@ describe.sequential('openai governance', () => {
           choices: [{ delta: { content: '{"ok":' } }],
         },
         {
-          choices: [{ delta: { content: 'true}' } }],
+          choices: [{ delta: { content: 'true}' }, finish_reason: 'stop' }],
         },
         {
           choices: [],

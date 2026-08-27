@@ -37,6 +37,24 @@ const DEFAULT_MODEL = 'gpt-4o-mini';
 // 兼容层：部分上游按这两个键关闭思维链，OpenAI 官方类型里没有它们
 const THINKING_DISABLED = { thinking: { type: 'disabled' }, enable_thinking: false };
 
+const readCompletedContent = (
+  content: string,
+  finishReason: string | null | undefined,
+  jsonResponse: boolean,
+): unknown => {
+  if (finishReason !== 'stop') {
+    throw new Error(`Incomplete AI completion: ${finishReason ?? 'missing finish reason'}`);
+  }
+  if (!content.trim()) throw new Error('Empty AI completion');
+  if (!jsonResponse) return content;
+
+  const value: unknown = JSON.parse(content);
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error('AI completion must be a JSON object');
+  }
+  return value;
+};
+
 export type AIRequestRejection = {
   status: 400 | 413;
   code: ApiErrorCode;
@@ -324,12 +342,14 @@ export const withAIGovernance = async <Request>(
             }
           : null,
       );
-      const content = response.choices[0]?.message?.content || '{}';
+      const choice = response.choices[0];
+      const content = choice?.message?.content ?? '';
       try {
-        return JSON.parse(content);
+        return readCompletedContent(content, choice?.finish_reason, true);
       } catch (error) {
-        console.error(`[${route}] completion JSON parse failed`, {
+        console.error(`[${route}] invalid completion`, {
           requestId,
+          finishReason: choice?.finish_reason,
           contentLength: content.length,
           error,
         });
@@ -355,7 +375,7 @@ export const withAIGovernance = async <Request>(
         try {
           const { data: response, attempts } = await withOpenAIRetry(
             async () =>
-              (await openai.chat.completions.create({
+              openai.chat.completions.create({
                 model,
                 messages,
                 ...(jsonResponse ? { response_format: { type: 'json_object' as const } } : {}),
@@ -364,22 +384,28 @@ export const withAIGovernance = async <Request>(
                 stream: true,
                 stream_options: { include_usage: true },
                 ...(THINKING_DISABLED as Record<string, unknown>),
-              })) as any,
+              }),
             { scope },
             config,
           );
           retryCount = attempts;
           streamDebug.connected();
 
+          let fullText = '';
+          let finishReason: string | null = null;
           for await (const chunk of response) {
             reportUsage(readUsageFromStreamChunk(chunk));
-            const content = chunk.choices[0]?.delta?.content || '';
+            const choice = chunk.choices[0];
+            if (choice?.finish_reason) finishReason = choice.finish_reason;
+            const content = choice?.delta?.content ?? '';
             if (content) {
+              fullText += content;
               streamDebug.chunk(content);
               await stream.write(encodeAIStreamEvent({ type: 'delta', text: content }));
             }
           }
 
+          readCompletedContent(fullText, finishReason, Boolean(jsonResponse));
           await stream.write(encodeAIStreamEvent({ type: 'done' }));
           streamDebug.complete();
           settleSuccess(retryCount);
