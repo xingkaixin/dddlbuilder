@@ -5,6 +5,7 @@ const DEFAULT_KIND_KEY_MAP: Record<FieldDefaultKind, string> = {
   none: 'none',
   auto_increment: 'autoIncrement',
   constant: 'constant',
+  expression: 'expression',
   current_timestamp: 'currentTimestamp',
   uuid: 'uuid',
 };

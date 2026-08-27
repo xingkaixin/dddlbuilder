@@ -115,7 +115,7 @@ function normalizeFieldRow(row: FieldRow): DiffField | null {
       comment: row.fieldComment?.trim() || '',
       nullable: normalizeFieldNullable(row.nullable),
       defaultKind: normalizeFieldDefaultKind(row.defaultKind),
-      defaultValue: row.defaultValue?.trim() || '',
+      defaultValue: row.defaultValue ?? '',
       onUpdate: normalizeFieldOnUpdate(row.onUpdate),
     },
   };

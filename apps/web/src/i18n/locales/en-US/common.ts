@@ -1483,6 +1483,7 @@ export const enUSCommon = {
       none: 'None',
       autoIncrement: 'Auto Increment',
       constant: 'Constant',
+      expression: 'SQL expression',
       currentTimestamp: 'Current Time',
       uuid: 'UUID',
     },

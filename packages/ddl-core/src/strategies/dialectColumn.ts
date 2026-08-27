@@ -19,6 +19,10 @@ export const buildDialectDefaultClause = (field: NormalizedField, dbType: Databa
   if (field.defaultKind === 'constant') {
     return formatConstantDefault(canonicalType, field.defaultValue).trimStart();
   }
+  if (field.defaultKind === 'expression') {
+    const expression = field.defaultValue.trim();
+    return expression ? `DEFAULT ${expression}` : '';
+  }
   if (
     field.defaultKind === 'current_timestamp' &&
     supportsDefaultCurrentTimestamp(dbType, canonicalType)

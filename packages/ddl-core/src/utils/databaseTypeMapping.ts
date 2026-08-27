@@ -230,15 +230,8 @@ export const getOracleTimestampDefault = (canonical: string): string => {
 };
 
 export const formatConstantDefault = (canonical: string, value: string) => {
-  if (!value.trim()) return '';
-
-  // 如果是函数或关键字，不加引号
-  if (isLikelyFunctionOrKeyword(value)) {
-    return ` DEFAULT ${value}`;
-  }
-
-  // 否则根据类型决定是否加引号
   const shouldQuote = shouldQuoteDefault(canonical, value);
+  if (!shouldQuote && !value.trim()) return '';
   const cleanValue = escapeSingleQuotes(value);
   const formattedValue = shouldQuote ? `'${cleanValue}'` : cleanValue;
   return ` DEFAULT ${formattedValue}`;
@@ -248,7 +241,6 @@ export const shouldQuoteDefault = (canonical: string, value?: string) => {
   // 支持两种调用方式：shouldQuoteDefault(type) 或 shouldQuoteDefault(type, value)
   const testValue = value !== undefined ? value : 'test';
 
-  if (!testValue?.trim()) return false;
   if (isCharacterType(canonical)) return true;
   if (
     ['date', 'time', 'timestamp', 'datetime', 'datetime2', 'timetz', 'timestamptz'].includes(
@@ -256,11 +248,9 @@ export const shouldQuoteDefault = (canonical: string, value?: string) => {
     )
   )
     return true;
-  if (['uuid', 'xml', 'json'].includes(canonical)) return true;
-  if (['jsonb'].includes(canonical)) return false;
+  if (['uuid', 'xml', 'json', 'jsonb'].includes(canonical)) return true;
   if (['boolean', 'bit'].includes(canonical)) return false;
   if (testValue.toLowerCase() === 'null') return false;
-  if (isLikelyFunctionOrKeyword(testValue)) return false;
   if (isNumericType(canonical)) return false;
   return true;
 };

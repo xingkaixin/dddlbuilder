@@ -11,6 +11,27 @@ const stripIndexIds = (indexes: any[]) =>
   }));
 
 describe('SqlParser', () => {
+  it('distinguishes string literals from SQL expressions without losing their contents', async () => {
+    const result = await new SqlParser().parseAsync(
+      "CREATE TABLE defaults_test(literal TEXT DEFAULT 'now()', empty_text TEXT DEFAULT '', padded TEXT DEFAULT ' padded ', author TEXT DEFAULT 'O''Reilly', computed TEXT DEFAULT lower('HELLO'), amount INTEGER DEFAULT (1 + 2));",
+      'postgresql',
+    );
+    expect(
+      result.fields.map(({ name, defaultKind, defaultValue }) => ({
+        name,
+        defaultKind,
+        defaultValue,
+      })),
+    ).toEqual([
+      { name: 'literal', defaultKind: 'constant', defaultValue: 'now()' },
+      { name: 'empty_text', defaultKind: 'constant', defaultValue: '' },
+      { name: 'padded', defaultKind: 'constant', defaultValue: ' padded ' },
+      { name: 'author', defaultKind: 'constant', defaultValue: "O'Reilly" },
+      { name: 'computed', defaultKind: 'expression', defaultValue: "lower('HELLO')" },
+      { name: 'amount', defaultKind: 'expression', defaultValue: '(1 + 2)' },
+    ]);
+  });
+
   describe.each(['mysql', 'postgresql', 'sqlserver'] as const)('%s 显式主键名称', (dbType) => {
     it.each([
       'CREATE TABLE users (id INT, CONSTRAINT users_identity PRIMARY KEY (id));',
@@ -263,8 +284,8 @@ describe('SqlParser', () => {
         type: 'DATETIME',
         comment: '',
         nullable: false,
-        defaultKind: 'constant',
-        defaultValue: 'getdate()',
+        defaultKind: 'expression',
+        defaultValue: 'GETDATE()',
         onUpdate: 'none',
       },
     ]);

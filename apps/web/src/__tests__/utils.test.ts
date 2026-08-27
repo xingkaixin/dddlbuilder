@@ -513,7 +513,7 @@ describe('Utils', () => {
 
     it('应该为不支持的类型只返回基本选项', () => {
       const result = getUiDefaultKindOptions('mysql', 'float');
-      expect(result).toEqual(['none', 'constant']);
+      expect(result).toEqual(['none', 'constant', 'expression']);
     });
 
     it('应该正确组合多个支持的选项', () => {
@@ -650,12 +650,12 @@ describe('Utils', () => {
   describe('Unknown database types', () => {
     it('应该对未知数据库类型不支持自增', () => {
       const result = getUiDefaultKindOptions('unknown_db' as any, 'int');
-      expect(result).toEqual(['none', 'constant']); // 不包含 auto_increment
+      expect(result).toEqual(['none', 'constant', 'expression']); // 不包含 auto_increment
     });
 
     it('应该对未知数据库类型不支持当前时间默认值', () => {
       const result = getUiDefaultKindOptions('unknown_db' as any, 'timestamp');
-      expect(result).toEqual(['none', 'constant']); // 不包含 current_timestamp
+      expect(result).toEqual(['none', 'constant', 'expression']); // 不包含 current_timestamp
     });
 
     it('应该对未知数据库类型不支持当前时间更新', () => {
@@ -786,6 +786,22 @@ describe('Utils', () => {
   });
 
   describe('normalizeFields', () => {
+    it('preserves whitespace in string defaults', () => {
+      expect(
+        normalizeFields([
+          {
+            id: 'literal',
+            fieldName: 'label',
+            fieldType: 'text',
+            fieldComment: '',
+            nullable: true,
+            defaultKind: 'constant',
+            defaultValue: ' padded ',
+          },
+        ])[0].defaultValue,
+      ).toBe(' padded ');
+    });
+
     it('normalizes field rows to NormalizedField', () => {
       const rows: FieldRow[] = [
         {

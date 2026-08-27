@@ -84,6 +84,33 @@ const sampleForeignKeys: ForeignKeyDefinition[] = [
 ];
 
 describe('buildORM', () => {
+  it.each([
+    ['prisma', '@default("")', '@default("now()")', '@default(dbgenerated("lower(\'X\')"))'],
+    ['typeorm', "default: ''", "default: 'now()'", 'default: () => "lower(\'X\')"'],
+    ['sqlalchemy', "default=''", "default='now()'", "server_default=text('lower(\\'X\\')')"],
+  ] as const)(
+    'preserves literal and expression defaults in %s',
+    (target, empty, literal, expression) => {
+      const field: NormalizedField = {
+        name: 'label',
+        type: 'text',
+        comment: '',
+        nullable: true,
+        defaultKind: 'constant',
+        defaultValue: '',
+        onUpdate: 'none',
+      };
+      const model = buildORM(target, 'defaults', '', [
+        field,
+        { ...field, name: 'literal', defaultValue: 'now()' },
+        { ...field, name: 'computed', defaultKind: 'expression', defaultValue: "lower('X')" },
+      ]);
+      expect(model).toContain(empty);
+      expect(model).toContain(literal);
+      expect(model).toContain(expression);
+    },
+  );
+
   it('returns empty table message when table name is empty', () => {
     const result = buildORM('prisma', '', '', [], [], []);
     expect(result).toBe('-- 请填写表名');

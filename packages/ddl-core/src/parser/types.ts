@@ -21,6 +21,7 @@ export type ParsedResult = {
 
 export type ParserInstance = {
   astify: (sql: string, opt: { database: string }) => AstStatement | AstStatement[];
+  exprToSQL: (expression: unknown, opt: { database: string }) => string;
 };
 
 export type ParserConstructor = new () => ParserInstance;

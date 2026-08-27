@@ -34,7 +34,7 @@ export function useFieldRowMutations({ rows, setRows, onFieldRename }: UseFieldR
         }
 
         if (columnId === 'defaultKind') {
-          if (value !== 'constant') {
+          if (value !== 'constant' && value !== 'expression') {
             row.defaultValue = '';
           }
           if (value === 'auto_increment') {

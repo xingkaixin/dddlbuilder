@@ -265,7 +265,7 @@ export class SqlParser {
 
     for (const stmt of statements) {
       if (isCreateTableStmt(stmt)) {
-        parseCreateTable(stmt, result, dbType);
+        parseCreateTable(stmt, result, (value) => parser.exprToSQL(value, opt));
       }
     }
 
@@ -310,7 +310,7 @@ export class SqlParser {
           authObjects: [],
         };
         try {
-          parseCreateTable(stmt, tableResult, dbType);
+          parseCreateTable(stmt, tableResult, (value) => parser.exprToSQL(value, opt));
         } catch (err) {
           const stmtText = typeof stmt === 'object' ? JSON.stringify(stmt) : String(stmt);
           failed.push({

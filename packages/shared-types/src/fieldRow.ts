@@ -8,6 +8,7 @@ export const FIELD_DEFAULT_KINDS = [
   'none',
   'auto_increment',
   'constant',
+  'expression',
   'current_timestamp',
   'uuid',
 ] as const;
@@ -66,6 +67,8 @@ const DEFAULT_KIND_ALIASES = new Map<string, FieldDefaultKind>([
   ['constant', 'constant'],
   ['const', 'constant'],
   ['literal', 'constant'],
+  ['expression', 'expression'],
+  ['表达式', 'expression'],
   ['当前时间', 'current_timestamp'],
   ['current_timestamp', 'current_timestamp'],
   ['current_time', 'current_timestamp'],

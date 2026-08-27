@@ -141,7 +141,7 @@ describe('Field Processing Functions', () => {
         comment: 'comment',
         nullable: true,
         defaultKind: 'none',
-        defaultValue: 'default',
+        defaultValue: '  default  ',
         onUpdate: 'none',
       });
     });
@@ -348,18 +348,18 @@ describe('Field Processing Functions', () => {
       expect(formatConstantDefault('decimal', '123.45')).toBe(' DEFAULT 123.45');
       expect(formatConstantDefault('float', '12.34')).toBe(' DEFAULT 12.34');
 
-      // Function-like keywords should not be quoted
+      // Constants remain literal even when their text resembles SQL.
       expect(formatConstantDefault('varchar', 'CURRENT_TIMESTAMP')).toBe(
-        ' DEFAULT CURRENT_TIMESTAMP',
+        " DEFAULT 'CURRENT_TIMESTAMP'",
       );
-      expect(formatConstantDefault('varchar', 'UUID()')).toBe(' DEFAULT UUID()');
+      expect(formatConstantDefault('varchar', 'UUID()')).toBe(" DEFAULT 'UUID()'");
       expect(formatConstantDefault('varchar', 'GEN_RANDOM_UUID()')).toBe(
-        ' DEFAULT GEN_RANDOM_UUID()',
+        " DEFAULT 'GEN_RANDOM_UUID()'",
       );
 
-      // Empty value should return empty string
-      expect(formatConstantDefault('varchar', '')).toBe('');
-      expect(formatConstantDefault('varchar', '   ')).toBe('');
+      // Empty strings and whitespace are valid text defaults.
+      expect(formatConstantDefault('varchar', '')).toBe(" DEFAULT ''");
+      expect(formatConstantDefault('varchar', '   ')).toBe(" DEFAULT '   '");
     });
   });
 
@@ -375,7 +375,7 @@ describe('Field Processing Functions', () => {
       expect(shouldQuoteDefault('uuid')).toBe(true);
       expect(shouldQuoteDefault('xml')).toBe(true);
       expect(shouldQuoteDefault('json')).toBe(true);
-      expect(shouldQuoteDefault('jsonb')).toBe(false);
+      expect(shouldQuoteDefault('jsonb')).toBe(true);
       expect(shouldQuoteDefault('clob')).toBe(true);
       expect(shouldQuoteDefault('varchar2')).toBe(true);
       expect(shouldQuoteDefault('nvarchar2')).toBe(true);

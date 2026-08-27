@@ -55,8 +55,15 @@ export class PrismaGenerator implements ORMGenerator {
         decorations.push('@default(uuid())');
       } else if (field.defaultKind === 'current_timestamp') {
         decorations.push('@default(now())');
-      } else if (field.defaultKind === 'constant' && field.defaultValue) {
-        decorations.push(`@default(${escapePrismaDefault(field.defaultValue)})`);
+      } else if (field.defaultKind === 'constant') {
+        const value =
+          prismaType === 'String'
+            ? JSON.stringify(field.defaultValue)
+            : escapePrismaDefault(field.defaultValue);
+        decorations.push(`@default(${value})`);
+      }
+      if (field.defaultKind === 'expression' && field.defaultValue.trim()) {
+        decorations.push(`@default(dbgenerated(${JSON.stringify(field.defaultValue)}))`);
       }
 
       if (field.comment.trim()) {

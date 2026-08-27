@@ -1493,6 +1493,7 @@ export const jaJPCommon = {
       none: 'なし',
       autoIncrement: '自動インクリメント',
       constant: '定数',
+      expression: 'SQL 式',
       currentTimestamp: '現在の時刻',
       uuid: 'UUID',
     },

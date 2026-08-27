@@ -236,7 +236,8 @@ export function useFieldColumns(params: UseFieldColumnsParams): FieldTableColumn
         header: () => t('dataTable.headers.defaultValue'),
         size: columnWidths.defaultValue,
         cell: ({ row, getValue }) => {
-          const disabled = row.original.defaultKind !== 'constant';
+          const disabled =
+            row.original.defaultKind !== 'constant' && row.original.defaultKind !== 'expression';
           return (
             <EditableCell
               value={(getValue() as string) || ''}

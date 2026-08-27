@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { Parser } from 'node-sql-parser';
 import type { ParsedResult } from '../../parser/types.js';
 import {
   parseAlterTable,
@@ -7,6 +8,9 @@ import {
   parseDCL,
   parseTransactGrant,
 } from '../../parser/astHandlers.js';
+
+const parser = new Parser();
+const serializeExpression = (value: unknown) => parser.exprToSQL(value, { database: 'mysql' });
 
 function createResult(): ParsedResult {
   return {
@@ -54,7 +58,13 @@ describe('astHandlers', () => {
             resource: 'column',
             column: 'custom_func_col',
             definition: { dataType: 'VARCHAR', length: 20 },
-            default_val: { value: { type: 'function', name: 'my_func' } },
+            default_val: {
+              value: {
+                type: 'function',
+                name: { name: [{ value: 'my_func' }] },
+                args: { type: 'expr_list', value: [] },
+              },
+            },
             nullable: { value: 'null' },
           },
           {
@@ -72,7 +82,7 @@ describe('astHandlers', () => {
         ],
       },
       result,
-      'mysql',
+      serializeExpression,
     );
 
     expect(result.tableName).toBe('users');
@@ -119,7 +129,7 @@ describe('astHandlers', () => {
         ],
       },
       result,
-      'mysql',
+      serializeExpression,
     );
 
     expect(result.indexes.some((i) => i.isPrimary)).toBe(true);

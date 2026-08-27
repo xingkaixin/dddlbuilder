@@ -1118,6 +1118,27 @@ describe('generateModifyColumn', () => {
 });
 
 describe('buildDefaultClause', () => {
+  it.each(['', '   ', 'now()', 'current_timestamp', "O'Reilly"])(
+    'keeps the text constant %j literal',
+    (value) => {
+      expect(
+        buildDefaultClause(
+          createField({ type: 'text', defaultKind: 'constant', defaultValue: value }),
+          'postgresql',
+        ),
+      ).toBe(`DEFAULT '${value.replace(/'/g, "''")}'`);
+    },
+  );
+
+  it('emits SQL only for explicit expression defaults', () => {
+    expect(
+      buildDefaultClause(
+        createField({ type: 'text', defaultKind: 'expression', defaultValue: "lower('HELLO')" }),
+        'postgresql',
+      ),
+    ).toBe("DEFAULT lower('HELLO')");
+  });
+
   it('returns empty for none defaultKind', () => {
     expect(buildDefaultClause(createField({ defaultKind: 'none' }), 'mysql')).toBe('');
   });

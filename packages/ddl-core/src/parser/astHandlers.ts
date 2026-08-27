@@ -1,6 +1,5 @@
 import { createEntityId } from '@ddlbuilder/shared-types';
 import type {
-  DatabaseType,
   IndexField,
   NormalizedField,
   ForeignKeyDefinition,
@@ -148,7 +147,10 @@ function normalizeEngineName(engine: string): string {
   return MYSQL_ENGINE_NAME_MAP[normalized.toLowerCase()] ?? normalized;
 }
 
-function mapColumnToField(colDef: ColumnDefNode, _dbType: DatabaseType): NormalizedField {
+function mapColumnToField(
+  colDef: ColumnDefNode,
+  serializeExpression: (value: unknown) => string,
+): NormalizedField {
   const name = normalizeColumnName(colDef.column);
   const typeStr = buildTypeString(colDef.definition);
 
@@ -178,19 +180,24 @@ function mapColumnToField(colDef: ColumnDefNode, _dbType: DatabaseType): Normali
   if (colDef.default_val) {
     const val = colDef.default_val.value;
     const funcName = extractFunctionName(val);
-
-    if (funcName) {
-      if (['now', 'current_timestamp', 'sysdate'].includes(funcName)) {
-        defaultKind = 'current_timestamp';
-      } else if (funcName === 'uuid') {
-        defaultKind = 'uuid';
-      } else {
-        defaultKind = 'constant';
-        defaultValue = `${funcName}()`;
-      }
-    } else {
+    const literalType = readField(val, 'type');
+    if (literalType === 'single_quote_string' || literalType === 'double_quote_string') {
+      defaultKind = 'constant';
+      const value = stringifyAstValue(readField(val, 'value') ?? '');
+      defaultValue =
+        literalType === 'single_quote_string'
+          ? value.replace(/''/g, "'")
+          : value.replace(/""/g, '"');
+    } else if (literalType === 'number' || literalType === 'bool' || (!literalType && !funcName)) {
       defaultKind = 'constant';
       defaultValue = normalizeLiteral(val);
+    } else if (funcName && ['now', 'current_timestamp', 'sysdate'].includes(funcName)) {
+      defaultKind = 'current_timestamp';
+    } else if (funcName === 'uuid') {
+      defaultKind = 'uuid';
+    } else {
+      defaultKind = 'expression';
+      defaultValue = serializeExpression(val);
     }
   }
 
@@ -223,7 +230,7 @@ function mapColumnToField(colDef: ColumnDefNode, _dbType: DatabaseType): Normali
 export function parseCreateTable(
   stmt: CreateTableStmt,
   result: ParsedResult,
-  dbType: DatabaseType,
+  serializeExpression: (value: unknown) => string,
 ) {
   // 1. Table Name
   if (stmt.table && stmt.table.length > 0) {
@@ -293,7 +300,7 @@ export function parseCreateTable(
   if (stmt.create_definitions) {
     stmt.create_definitions.forEach((def) => {
       if (def.resource === 'column') {
-        const field = mapColumnToField(def, dbType);
+        const field = mapColumnToField(def, serializeExpression);
         result.fields.push(field);
 
         // Handle inline primary key / unique

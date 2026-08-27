@@ -42,6 +42,7 @@ export class SQLAlchemyGenerator implements ORMGenerator {
       'JSON',
       'Index',
       ...(fields.some((field) => field.defaultKind === 'current_timestamp') ? ['func'] : []),
+      ...(fields.some((field) => field.defaultKind === 'expression') ? ['text'] : []),
       ...(foreignKeys.length > 0 ? ['ForeignKeyConstraint'] : []),
     ];
     lines.push(`from sqlalchemy import ${imports.join(', ')}`);
@@ -82,8 +83,10 @@ export class SQLAlchemyGenerator implements ORMGenerator {
       } else if (!isPk) {
         args.push('nullable=False');
       }
-      if (field.defaultKind === 'constant' && field.defaultValue) {
+      if (field.defaultKind === 'constant') {
         args.push(`default='${escapePythonString(field.defaultValue)}'`);
+      } else if (field.defaultKind === 'expression' && field.defaultValue.trim()) {
+        args.push(`server_default=text('${escapePythonString(field.defaultValue)}')`);
       } else if (field.defaultKind === 'current_timestamp') {
         args.push('default=func.now()');
       }

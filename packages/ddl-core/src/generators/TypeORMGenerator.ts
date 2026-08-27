@@ -96,8 +96,10 @@ export class TypeORMGenerator implements ORMGenerator {
         if (field.comment.trim()) {
           optionsParts.push(`comment: '${field.comment.trim().replace(/'/g, "\\'")}'`);
         }
-        if (field.defaultKind === 'constant' && field.defaultValue) {
+        if (field.defaultKind === 'constant') {
           optionsParts.push(`default: '${field.defaultValue.replace(/'/g, "\\'")}'`);
+        } else if (field.defaultKind === 'expression' && field.defaultValue.trim()) {
+          optionsParts.push(`default: () => ${JSON.stringify(field.defaultValue)}`);
         } else if (field.defaultKind === 'current_timestamp') {
           optionsParts.push(`default: () => 'CURRENT_TIMESTAMP'`);
         } else if (field.defaultKind === 'uuid') {

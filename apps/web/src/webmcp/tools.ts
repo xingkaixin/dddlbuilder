@@ -62,7 +62,7 @@ const fieldProperties = {
   nullable: { type: 'boolean' },
   defaultKind: {
     type: 'string',
-    enum: ['none', 'auto_increment', 'constant', 'current_timestamp', 'uuid'],
+    enum: ['none', 'auto_increment', 'constant', 'expression', 'current_timestamp', 'uuid'],
   },
   defaultValue: { type: 'string' },
   onUpdate: { type: 'string', enum: ['none', 'current_timestamp'] },

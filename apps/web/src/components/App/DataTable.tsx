@@ -135,6 +135,7 @@ const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
                 return;
               }
               handleCellActivate(row.index, colIndex);
+              if (event.target !== event.currentTarget) return;
               focusFirstInteractiveInCell(event.currentTarget);
               setTimeout(() => {
                 focusEditableCell(row.index, colIndex - 1);
@@ -158,6 +159,7 @@ const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
                 return;
               }
               handleCellActivate(row.index, colIndex);
+              if (event.target !== event.currentTarget) return;
               focusFirstInteractiveInCell(event.currentTarget);
             }}
             onFocusCapture={() => handleCellActivate(row.index, colIndex)}

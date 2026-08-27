@@ -1438,6 +1438,7 @@ export const zhCNCommon = {
       none: '无',
       autoIncrement: '自增',
       constant: '常量',
+      expression: 'SQL 表达式',
       currentTimestamp: '当前时间',
       uuid: 'uuid',
     },

@@ -63,7 +63,7 @@ export const normalizeFields = (rows: FieldRow[]) =>
       comment: toStringSafe(row.fieldComment).trim(),
       nullable: row.nullable,
       defaultKind: row.defaultKind ?? 'none',
-      defaultValue: toStringSafe(row.defaultValue).trim(),
+      defaultValue: toStringSafe(row.defaultValue),
       onUpdate: row.onUpdate ?? 'none',
       enumMeta: row.enumMeta,
     }))
@@ -73,7 +73,7 @@ export const getUiDefaultKindOptions = (
   db: DatabaseType,
   canonical: string,
 ): FieldDefaultKind[] => {
-  const opts: FieldDefaultKind[] = ['none', 'constant'];
+  const opts: FieldDefaultKind[] = ['none', 'constant', 'expression'];
   if (supportsAutoIncrement(db, canonical)) opts.splice(1, 0, 'auto_increment');
   if (supportsUuidDefault(canonical)) opts.push('uuid');
   if (supportsDefaultCurrentTimestamp(db, canonical)) opts.push('current_timestamp');

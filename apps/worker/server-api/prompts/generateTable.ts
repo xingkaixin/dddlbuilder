@@ -17,8 +17,8 @@ const BASE_SYSTEM_PROMPT_TEMPLATES: Record<Exclude<AppLocale, 'ja-JP'>, string> 
       "fieldType": "数据类型",
       "fieldComment": "字段注释",
       "nullable": true | false,
-      "defaultKind": "none" | "auto_increment" | "constant" | "current_timestamp" | "uuid",
-      "defaultValue": "默认值（仅当 defaultKind 为 constant 时填写）",
+      "defaultKind": "none" | "auto_increment" | "constant" | "expression" | "current_timestamp" | "uuid",
+      "defaultValue": "默认值（仅当 defaultKind 为 constant 或 expression 时填写）",
       "onUpdate": "none" | "current_timestamp",
       "isPrimaryKey": true | false
     }
@@ -62,8 +62,8 @@ Return JSON only, in this format:
       "fieldType": "data type",
       "fieldComment": "field comment",
       "nullable": true | false,
-      "defaultKind": "none" | "auto_increment" | "constant" | "current_timestamp" | "uuid",
-      "defaultValue": "default value (only when defaultKind is constant)",
+      "defaultKind": "none" | "auto_increment" | "constant" | "expression" | "current_timestamp" | "uuid",
+      "defaultValue": "default value (only when defaultKind is constant or expression)",
       "onUpdate": "none" | "current_timestamp",
       "isPrimaryKey": true | false
     }
