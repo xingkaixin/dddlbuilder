@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { assert, describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { FieldRow } from '@ddlbuilder/shared-types';
 import {
   listTemplates,
@@ -9,6 +9,8 @@ import {
   deleteTemplate,
   duplicateTemplate,
   createTemplateFromFields,
+  instantiateTemplateFields,
+  toTemplateFields,
 } from '@/utils/fieldTemplates';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 
@@ -123,6 +125,50 @@ describe('fieldTemplates', () => {
     ]);
 
     expect(template.fields.map((field) => field.nullable)).toEqual([false, true, true]);
+  });
+
+  it('preserves logical enum metadata when saving fields as a template', async () => {
+    const field: FieldRow = {
+      id: 'source-status',
+      fieldName: 'status',
+      fieldType: 'INT',
+      fieldComment: '状态',
+      nullable: false,
+      enumMeta: [{ value: '1', color: '#16a34a', i18n: { 'zh-CN': '启用', 'en-US': 'Active' } }],
+    };
+
+    const saved = await createTemplateFromFields('状态模板', [field]);
+    const loaded = await getTemplate(saved.id);
+    console.info('Saved template enum metadata', loaded?.fields[0]);
+
+    expect(loaded?.fields[0]).toMatchObject({ enumMeta: field.enumMeta });
+    expect(loaded?.fields[0]).not.toHaveProperty('id');
+  });
+
+  it('round-trips template edits without sharing nested metadata', () => {
+    const fields = [
+      {
+        fieldName: 'status',
+        fieldType: 'INT',
+        fieldComment: '状态',
+        nullable: false,
+        defaultKind: 'constant' as const,
+        defaultValue: '1',
+        onUpdate: 'none' as const,
+        enumMeta: [{ value: '1', color: '#16a34a', i18n: { 'zh-CN': '启用' } }],
+      },
+    ];
+    const rows = instantiateTemplateFields(fields);
+    const savedFields = toTemplateFields(rows);
+
+    expect(savedFields).toEqual(fields);
+    expect(savedFields[0]).not.toHaveProperty('id');
+    const labels = rows[0].enumMeta?.[0].i18n;
+    assert(labels);
+    labels['zh-CN'] = '已修改';
+    expect(fields[0].enumMeta[0].i18n['zh-CN']).toBe('启用');
+    expect(savedFields[0].enumMeta?.[0].i18n?.['zh-CN']).toBe('启用');
+    expect(instantiateTemplateFields([])).toEqual([]);
   });
 
   it('should return null when duplicating missing template', async () => {

@@ -1,8 +1,6 @@
 import type {
   CitusShardingConfig,
   DatabaseType,
-  FieldDefaultKind,
-  FieldOnUpdate,
   FieldRow,
   IndexDefinition,
   MysqlPartitionConfig,
@@ -45,14 +43,8 @@ export type TableFolder = {
   updatedAt: number;
 };
 
-export type TemplateField = {
-  fieldName: string;
-  fieldType: string;
-  fieldComment?: string;
-  nullable: boolean;
-  defaultKind?: FieldDefaultKind;
-  defaultValue?: string;
-  onUpdate?: FieldOnUpdate;
+export type TemplateField = Omit<FieldRow, 'id' | 'fieldComment'> & {
+  fieldComment?: FieldRow['fieldComment'];
 };
 
 export type FieldTemplate = {

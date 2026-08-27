@@ -4,6 +4,7 @@
  */
 
 import {
+  createEntityId,
   type FieldRow,
   normalizeFieldEnums,
   normalizeFieldNullable,
@@ -13,6 +14,27 @@ import type { FieldTemplate, TemplateField } from './workspaceStorageTypes';
 import { runIndexedDbRequest } from './indexedDbTransaction';
 
 export type { FieldTemplate, TemplateField };
+
+export const toTemplateFields = (rows: Array<Partial<FieldRow>>): TemplateField[] =>
+  rows
+    .filter((row) => row.fieldName?.trim())
+    .map(({ id: _id, ...field }) => ({
+      ...structuredClone(field),
+      fieldName: field.fieldName?.trim() || '',
+      fieldType: field.fieldType?.trim() || '',
+      fieldComment: field.fieldComment?.trim(),
+      nullable: normalizeFieldNullable(field.nullable),
+    }));
+
+export const instantiateTemplateFields = (fields: TemplateField[]): FieldRow[] =>
+  fields.map((field) => ({
+    ...structuredClone(field),
+    id: createEntityId(),
+    fieldComment: field.fieldComment ?? '',
+    defaultKind: field.defaultKind ?? 'none',
+    defaultValue: field.defaultValue ?? '',
+    onUpdate: field.onUpdate ?? 'none',
+  }));
 
 const decodeTemplate = (template: FieldTemplate): FieldTemplate => ({
   ...template,
@@ -131,20 +153,7 @@ export const createTemplateFromFields = async (
   fields: Array<Partial<FieldRow>>,
   description?: string,
 ): Promise<FieldTemplate> => {
-  // 过滤掉空行并转换格式
-  const templateFields: TemplateField[] = fields
-    .filter((f) => f.fieldName?.trim())
-    .map((f) => ({
-      fieldName: f.fieldName?.trim() || '',
-      fieldType: f.fieldType?.trim() || '',
-      fieldComment: f.fieldComment?.trim(),
-      nullable: normalizeFieldNullable(f.nullable),
-      defaultKind: f.defaultKind,
-      defaultValue: f.defaultValue,
-      onUpdate: f.onUpdate,
-    }));
-
-  return createTemplate(name, templateFields, description);
+  return createTemplate(name, toTemplateFields(fields), description);
 };
 
 /**

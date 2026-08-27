@@ -29,42 +29,12 @@ import { Label } from '@/components/ui/label';
 import type { FieldTemplate, TemplateField } from '@/hooks/useFieldTemplates';
 import type { DatabaseType, FieldRow } from '@ddlbuilder/shared-types';
 import { createEmptyRow } from '@/utils/helpers';
+import { instantiateTemplateFields, toTemplateFields } from '@/utils/fieldTemplates';
 import { useEditorStore } from '@/stores';
 import { TemplateListItem } from './TemplateListItem';
 import { TemplateFieldTable } from './TemplateFieldTable';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
-
-const toFieldRows = (fields: TemplateField[]): FieldRow[] => {
-  if (fields.length === 0) {
-    return [createEmptyRow()];
-  }
-
-  return fields.map((field) => ({
-    ...createEmptyRow(),
-    fieldName: field.fieldName,
-    fieldComment: field.fieldComment || '',
-    fieldType: field.fieldType,
-    nullable: field.nullable,
-    defaultKind: field.defaultKind ?? 'none',
-    defaultValue: field.defaultValue || '',
-    onUpdate: field.onUpdate ?? 'none',
-  }));
-};
-
-const toTemplateFields = (rows: FieldRow[]): TemplateField[] => {
-  return rows
-    .filter((row) => row.fieldName.trim())
-    .map((row) => ({
-      fieldName: row.fieldName.trim(),
-      fieldType: row.fieldType.trim(),
-      fieldComment: row.fieldComment?.trim() || undefined,
-      nullable: row.nullable,
-      defaultKind: row.defaultKind ?? 'none',
-      defaultValue: row.defaultValue || '',
-      onUpdate: row.onUpdate ?? 'none',
-    }));
-};
 
 // 模板管理对话框
 interface TemplateManagerDialogProps {
@@ -126,7 +96,9 @@ export const TemplateManagerDialog = memo<TemplateManagerDialogProps>(
         setEditingTemplate(template);
         setEditName(template.name);
         setEditDescription(template.description || '');
-        setEditRows(toFieldRows(template.fields));
+        setEditRows(
+          template.fields.length ? instantiateTemplateFields(template.fields) : [createEmptyRow()],
+        );
       } else {
         setEditingTemplate(null);
         setEditName('');
