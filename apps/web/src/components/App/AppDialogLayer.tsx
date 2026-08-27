@@ -1,4 +1,4 @@
-import { lazy, memo, Suspense, useCallback } from 'react';
+import { lazy, Suspense, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { AISchemaPatchPanel } from './AISchemaPatchPanel';
@@ -17,45 +17,7 @@ interface AppDialogLayerProps {
   model: AppDialogLayerModel;
 }
 
-export const hasOpenAppDialog = (model: AppDialogLayerModel) => {
-  const { actions, domains, visibility, webMcpDialog } = model;
-  const { ui } = domains;
-  return Boolean(
-    webMcpDialog.request ||
-    actions.indexAdvisor.open ||
-    actions.folderActions.isFolderDialogOpen ||
-    actions.folderActions.isDeleteFolderDialogOpen ||
-    actions.templateActions.isTemplateManagerOpen ||
-    actions.templateActions.isCreateTemplateDialogOpen ||
-    actions.tableTemplateActions.isManagerOpen ||
-    actions.tableTemplateActions.isCreateDialogOpen ||
-    actions.trashActions.isEmptyTrashDialogOpen ||
-    ui.isClearDialogOpen ||
-    ui.isSaveDialogOpen ||
-    ui.isRenameDialogOpen ||
-    ui.isDeleteDialogOpen ||
-    ui.isDiffDialogOpen ||
-    ui.versionHistoryTarget ||
-    ui.timelinePlayerTarget ||
-    ui.isReviewHistoryOpen ||
-    ui.isAIGenerateDialogOpen ||
-    ui.isStorageEstimatorOpen ||
-    ui.isMockDataDialogOpen ||
-    visibility.isImportDialogOpen ||
-    visibility.isErDialogOpen ||
-    visibility.isAISchemaPatchOpen,
-  );
-};
-
-export const shouldSkipAppDialogLayerRender = (
-  previous: AppDialogLayerProps,
-  next: AppDialogLayerProps,
-) =>
-  previous.model === next.model ||
-  // 关闭的弹窗不消费实时编辑数据，直到某个弹窗打开前都无需刷新整层组件。
-  (!hasOpenAppDialog(previous.model) && !hasOpenAppDialog(next.model));
-
-function AppDialogLayerContent({ model }: AppDialogLayerProps) {
+export function AppDialogLayer({ model }: AppDialogLayerProps) {
   const { actions, domains, visibility, resources, workspace, schema, dialogs } = model;
   const {
     isImportDialogOpen,
@@ -307,7 +269,3 @@ function AppDialogLayerContent({ model }: AppDialogLayerProps) {
     </>
   );
 }
-
-export const AppDialogLayer = memo(function AppDialogLayer(props: AppDialogLayerProps) {
-  return <AppDialogLayerContent {...props} />;
-}, shouldSkipAppDialogLayerRender);
