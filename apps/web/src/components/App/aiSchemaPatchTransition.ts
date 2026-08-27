@@ -1,5 +1,6 @@
 import type { FieldRow, IndexDefinition, PersistedState } from '@ddlbuilder/shared-types';
 import type { AISchemaChange } from '@/utils/aiSchemaChanges';
+import { removeFieldsFromDocument } from '@/stores/editorDocumentMutations';
 
 type FieldChange = Extract<AISchemaChange, { kind: 'field' }>;
 
@@ -12,17 +13,18 @@ const replaceIndex = (indexes: IndexDefinition[], targetName: string, nextIndex:
       : index,
   );
 
-export const applyFieldSchemaChange = (
-  rows: FieldRow[],
+const applyFieldSchemaChange = (
+  state: PersistedState,
   candidateRows: FieldRow[],
   change: FieldChange,
-) => {
+): PersistedState => {
+  const rows = state.rows;
   if (change.type === 'add' && change.newRow) {
     const existingIndex = rows.findIndex(
       (row) => normalizedName(row.fieldName) === normalizedName(change.newRow?.fieldName || ''),
     );
     if (existingIndex >= 0) {
-      return { rows, focusIndex: existingIndex };
+      return state;
     }
     const candidateIndex = candidateRows.findIndex(
       (row) => normalizedName(row.fieldName) === normalizedName(change.newRow?.fieldName || ''),
@@ -30,14 +32,14 @@ export const applyFieldSchemaChange = (
     const insertIndex = candidateIndex >= 0 ? Math.min(candidateIndex, rows.length) : rows.length;
     const nextRows = rows.slice();
     nextRows.splice(insertIndex, 0, change.newRow);
-    return { rows: nextRows, focusIndex: candidateIndex };
+    return { ...state, rows: nextRows };
   }
 
   if ((change.type === 'modify' || change.type === 'rename') && change.newRow) {
     const nextRow = change.newRow;
     const targetName = change.oldFieldName || change.oldRow?.fieldName || change.fieldName;
-    const focusIndex = candidateRows.findIndex((row) => row.fieldName === nextRow.fieldName);
     return {
+      ...state,
       rows: rows.map((row) =>
         normalizedName(row.fieldName) === normalizedName(targetName)
           ? {
@@ -46,22 +48,18 @@ export const applyFieldSchemaChange = (
             }
           : row,
       ),
-      focusIndex,
     };
   }
 
   if (change.type === 'remove') {
     const targetName = change.oldRow?.fieldName || change.fieldName;
-    const focusIndex = rows.findIndex(
+    return removeFieldsFromDocument(
+      state,
       (row) => normalizedName(row.fieldName) === normalizedName(targetName),
     );
-    return {
-      rows: rows.filter((row) => normalizedName(row.fieldName) !== normalizedName(targetName)),
-      focusIndex,
-    };
   }
 
-  return { rows, focusIndex: -1 };
+  return state;
 };
 
 export const applyAISchemaChanges = (
@@ -83,10 +81,7 @@ export const applyAISchemaChanges = (
     }
 
     if (change.kind === 'field') {
-      nextState = {
-        ...nextState,
-        rows: applyFieldSchemaChange(nextState.rows, candidateState.rows, change).rows,
-      };
+      nextState = applyFieldSchemaChange(nextState, candidateState.rows, change);
       continue;
     }
 

@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { FieldRow, PersistedState } from '@ddlbuilder/shared-types';
-import {
-  applyAISchemaChanges,
-  applyFieldSchemaChange,
-} from '@/components/App/aiSchemaPatchTransition';
+import { applyAISchemaChanges } from '@/components/App/aiSchemaPatchTransition';
+import { buildAISchemaChanges } from '@/utils/aiSchemaChanges';
 
 const row = (fieldName: string, order: number): FieldRow => ({
   order,
@@ -13,61 +11,86 @@ const row = (fieldName: string, order: number): FieldRow => ({
   nullable: false,
 });
 
-describe('applyFieldSchemaChange', () => {
-  it('inserts a field at its candidate position and repairs order', () => {
+const createState = (rows = [row('id', 1)]): PersistedState => ({
+  objectType: 'table',
+  schemaName: '',
+  tableName: 'users',
+  tableComment: '',
+  dbType: 'mysql',
+  sqlFormatMode: 'compact',
+  rows,
+  addCount: 10,
+  indexInput: '',
+  currentIndexFields: [],
+  indexes: [],
+  authInput: '',
+  authObjects: [],
+});
+
+describe('AI field changes', () => {
+  it('inserts a field at its candidate position', () => {
     const email = row('email', 2);
-    const result = applyFieldSchemaChange([row('id', 1)], [row('id', 1), email], {
-      id: 'field:add:email',
-      kind: 'field',
-      type: 'add',
-      fieldName: 'email',
-      newRow: email,
-    });
+    const result = applyAISchemaChanges(createState(), createState([row('id', 1), email]), [
+      {
+        id: 'field:add:email',
+        kind: 'field',
+        type: 'add',
+        fieldName: 'email',
+        newRow: email,
+      },
+    ]);
 
     expect(result.rows.map(({ fieldName, order }) => ({ fieldName, order }))).toEqual([
       { fieldName: 'id', order: 1 },
       { fieldName: 'email', order: 2 },
     ]);
-    expect(result.focusIndex).toBe(1);
   });
 
   it('renames a field case-insensitively', () => {
     const renamed = row('account_id', 1);
-    const result = applyFieldSchemaChange([row('User_ID', 1)], [renamed], {
-      id: 'field:rename:user_id:account_id',
-      kind: 'field',
-      type: 'rename',
-      fieldName: 'account_id',
-      oldFieldName: 'user_id',
-      newRow: renamed,
-    });
+    const result = applyAISchemaChanges(createState([row('User_ID', 1)]), createState([renamed]), [
+      {
+        id: 'field:rename:user_id:account_id',
+        kind: 'field',
+        type: 'rename',
+        fieldName: 'account_id',
+        oldFieldName: 'user_id',
+        newRow: renamed,
+      },
+    ]);
 
     expect(result.rows[0]?.fieldName).toBe('account_id');
-    expect(result.focusIndex).toBe(0);
   });
 
-  it('removes a field and reports its former position', () => {
-    const result = applyFieldSchemaChange([row('id', 1), row('email', 2)], [], {
-      id: 'field:remove:email',
-      kind: 'field',
-      type: 'remove',
-      fieldName: 'email',
-    });
+  it('removes a field', () => {
+    const result = applyAISchemaChanges(
+      createState([row('id', 1), row('email', 2)]),
+      createState(),
+      [
+        {
+          id: 'field:remove:email',
+          kind: 'field',
+          type: 'remove',
+          fieldName: 'email',
+        },
+      ],
+    );
 
     expect(result.rows).toEqual([row('id', 1)]);
-    expect(result.focusIndex).toBe(1);
   });
 
   it('leaves unsupported incomplete changes unchanged', () => {
     const rows = [row('id', 1)];
-    const result = applyFieldSchemaChange(rows, rows, {
-      id: 'field:add:email',
-      kind: 'field',
-      type: 'add',
-      fieldName: 'email',
-    });
+    const result = applyAISchemaChanges(createState(rows), createState(rows), [
+      {
+        id: 'field:add:email',
+        kind: 'field',
+        type: 'add',
+        fieldName: 'email',
+      },
+    ]);
 
-    expect(result).toEqual({ rows, focusIndex: -1 });
+    expect(result).toEqual(createState(rows));
   });
 
   it('does not add the same field twice', () => {
@@ -80,28 +103,48 @@ describe('applyFieldSchemaChange', () => {
       newRow: email,
     };
     const candidateRows = [row('id', 1), email];
-    const first = applyFieldSchemaChange([row('id', 1)], candidateRows, change);
-    const second = applyFieldSchemaChange(first.rows, candidateRows, change);
+    const first = applyAISchemaChanges(createState(), createState(candidateRows), [change]);
+    const second = applyAISchemaChanges(first, createState(candidateRows), [change]);
 
     expect(second.rows.map((item) => item.fieldName)).toEqual(['id', 'email']);
   });
 });
 
 describe('applyAISchemaChanges', () => {
-  const createState = (): PersistedState => ({
-    objectType: 'table',
-    schemaName: '',
-    tableName: 'users',
-    tableComment: '',
-    dbType: 'mysql',
-    sqlFormatMode: 'compact',
-    rows: [row('id', 1)],
-    addCount: 10,
-    indexInput: '',
-    currentIndexFields: [],
-    indexes: [],
-    authInput: '',
-    authObjects: [],
+  it.each([false, true])('cleans field references when applying removals (all=%s)', (all) => {
+    const current: PersistedState = {
+      ...createState([row('id', 1), row('user_id', 2)]),
+      indexes: [
+        {
+          id: 'idx-user',
+          name: 'idx_user',
+          unique: false,
+          fields: [{ name: 'user_id', direction: 'ASC' }],
+        },
+      ],
+      foreignKeys: [
+        {
+          id: 'fk-user',
+          name: 'fk_user',
+          fields: ['user_id'],
+          refTable: 'users',
+          refFields: ['id'],
+        },
+      ],
+      mysqlPartitionConfig: { enabled: true, type: 'HASH', columns: ['user_id'], partitions: [] },
+    };
+    const candidate = { ...current, rows: [current.rows[0]], indexes: [], foreignKeys: [] };
+    const changes = buildAISchemaChanges(current, candidate);
+    const next = applyAISchemaChanges(
+      current,
+      candidate,
+      all ? changes : changes.filter((change) => change.kind === 'field'),
+    );
+
+    expect(next.rows).toEqual([current.rows[0]]);
+    expect(next.indexes).toEqual([]);
+    expect(next.foreignKeys).toEqual([]);
+    expect(next.mysqlPartitionConfig).toMatchObject({ enabled: false, columns: [] });
   });
 
   it('applies a selected batch as one state transition and stays idempotent', () => {
