@@ -1,5 +1,4 @@
 import { memo, useCallback, useMemo, useState } from 'react';
-import { DndContext, useDroppable } from '@dnd-kit/core';
 import {
   ChevronLeft,
   FileEdit,
@@ -27,9 +26,8 @@ import type { FolderTreeNode } from '@/hooks/useFolders';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import type { DraftSummary } from '@ddlbuilder/shared-types/workspace';
 import { useTranslation } from 'react-i18next';
-import { FolderTree } from './FolderTree';
 import { TableItem } from './saved-tables/TableItem';
-import { ROOT_DROP_ID } from './saved-tables/dnd';
+import { WorkspaceTreeView } from './saved-tables/WorkspaceTreeView';
 import {
   useWorkspaceTreeControls,
   type MoveOperationResult,
@@ -79,26 +77,6 @@ interface WorkspaceSidebarProps {
   onViewHistory?: (item: SavedTableSummary) => void;
 }
 
-const RootDropZone = memo<{ disabled: boolean }>(({ disabled }) => {
-  const { t } = useTranslation();
-  const { setNodeRef, isOver } = useDroppable({ id: ROOT_DROP_ID, disabled });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={cn(
-        'mb-2 rounded-md border border-dashed px-2.5 py-1.5 text-[11px] font-medium transition-colors',
-        disabled && 'border-border/70 bg-muted/20 text-muted-foreground/70',
-        !disabled && isOver && 'border-primary bg-primary/10 text-primary',
-        !disabled && !isOver && 'border-border/80 bg-muted/20 text-muted-foreground',
-      )}
-    >
-      {t('savedTables.rootDropzone')}
-    </div>
-  );
-});
-RootDropZone.displayName = 'WorkspaceRootDropZone';
-
 export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
   ({
     loading,
@@ -134,28 +112,14 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
   }) => {
     const { t } = useTranslation();
     const [showTrash, setShowTrash] = useState(false);
-    const {
-      searchQuery,
-      setSearchQuery,
-      selectedFolderId,
-      setSelectedFolderId,
-      expandedFolders,
-      toggleFolder,
-      sensors,
-      foldersWithCount,
-      filteredItems,
-      itemsByFolder,
-      ungroupedItems,
-      isSearching,
-      dragFeedback,
-      handleDragEnd,
-    } = useWorkspaceTreeControls({
+    const treeControls = useWorkspaceTreeControls({
       items,
       folders,
       initiallyExpandedFolderIds: folders.map((folder) => folder.id),
       onMoveToFolder,
       onMoveFolder,
     });
+    const { searchQuery, setSearchQuery, filteredItems, isSearching } = treeControls;
 
     const normalizedQuery = searchQuery.trim().toLowerCase();
     const visibleDrafts = useMemo(
@@ -207,18 +171,6 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
         onViewHistory,
         tablePresentations,
       ],
-    );
-
-    const renderTables = useCallback(
-      (folderId?: string, depth = 0) => {
-        const folderItems = folderId ? (itemsByFolder.get(folderId) ?? []) : ungroupedItems;
-        if (folderItems.length === 0 || isSearching) return null;
-        if (!folderId) return renderTableList(folderItems, 0);
-        return (
-          <div style={{ marginLeft: `${(depth + 1) * 16}px` }}>{renderTableList(folderItems)}</div>
-        );
-      },
-      [isSearching, itemsByFolder, renderTableList, ungroupedItems],
     );
 
     const renderTrashTable = (item: SavedTableSummary) => (
@@ -467,44 +419,15 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                     {t('savedTables.projectsSection')}
                   </div>
                   {filteredItems.length > 0 && (
-                    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-                      <RootDropZone disabled={isSearching} />
-                      {dragFeedback && (
-                        <div
-                          className={cn(
-                            'mb-2 rounded-md border px-2 py-1.5 text-[11px]',
-                            dragFeedback.type === 'success' &&
-                              'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-                            dragFeedback.type === 'blocked' &&
-                              'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300',
-                            dragFeedback.type === 'error' &&
-                              'border-destructive/30 bg-destructive/10 text-destructive',
-                          )}
-                        >
-                          {dragFeedback.message}
-                        </div>
-                      )}
-                      {isSearching ? (
-                        renderTableList(filteredItems)
-                      ) : foldersWithCount.length > 0 &&
-                        onCreateFolder &&
-                        onRenameFolder &&
-                        onDeleteFolder ? (
-                        <FolderTree
-                          folders={foldersWithCount}
-                          expandedFolders={expandedFolders}
-                          selectedFolderId={selectedFolderId}
-                          onToggleFolder={toggleFolder}
-                          onSelectFolder={setSelectedFolderId}
-                          onCreateFolder={onCreateFolder}
-                          onRenameFolder={onRenameFolder}
-                          onDeleteFolder={onDeleteFolder}
-                          renderTables={renderTables}
-                        />
-                      ) : (
-                        renderTableList(filteredItems)
-                      )}
-                    </DndContext>
+                    <WorkspaceTreeView
+                      controls={treeControls}
+                      folderActions={{
+                        create: onCreateFolder,
+                        rename: onRenameFolder,
+                        delete: onDeleteFolder,
+                      }}
+                      renderTableList={renderTableList}
+                    />
                   )}
                   {filteredItems.length === 0 && (
                     <div className="px-2 py-2 text-xs text-muted-foreground">

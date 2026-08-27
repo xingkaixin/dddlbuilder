@@ -1,5 +1,4 @@
 import { memo, useCallback, useMemo } from 'react';
-import { DndContext, useDroppable } from '@dnd-kit/core';
 import { Database, FilePlus, FolderPlus, Search, X } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,9 +13,8 @@ import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import type { DraftSummary } from '@ddlbuilder/shared-types/workspace';
 import { useTranslation } from 'react-i18next';
 import { Input } from '../ui/input';
-import { FolderTree } from './FolderTree';
 import { TableItem } from './saved-tables/TableItem';
-import { ROOT_DROP_ID } from './saved-tables/dnd';
+import { WorkspaceTreeView } from './saved-tables/WorkspaceTreeView';
 import {
   useWorkspaceTreeControls,
   type MoveOperationResult,
@@ -63,37 +61,6 @@ export interface SavedTablesDrawerProps {
   onDeleteFolder?: (folder: FolderTreeNode) => void;
 }
 
-interface RootDropZoneProps {
-  disabled: boolean;
-}
-
-const RootDropZone = memo<RootDropZoneProps>(({ disabled }) => {
-  const { t } = useTranslation();
-  const { setNodeRef, isOver } = useDroppable({
-    id: ROOT_DROP_ID,
-    disabled,
-  });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`mb-3 rounded-lg border-2 border-dashed bg-gradient-to-r px-3 py-2 text-xs font-medium transition-all ${
-        disabled
-          ? 'from-muted/20 to-transparent border-border/70 text-muted-foreground/80 opacity-70'
-          : isOver
-            ? 'from-primary/20 to-primary/5 border-primary bg-primary/10 text-primary shadow-sm shadow-primary/25'
-            : 'from-muted/35 to-muted/5 border-border/80 text-muted-foreground'
-      }`}
-      aria-disabled={disabled}
-      data-drag-over={isOver ? 'true' : 'false'}
-      data-testid="root-dropzone"
-    >
-      {t('savedTables.rootDropzone')}
-    </div>
-  );
-});
-RootDropZone.displayName = 'RootDropZone';
-
 export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
   ({
     open,
@@ -139,27 +106,14 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
     );
     const allItems = useMemo(() => [...draftAsSavedItems, ...items], [draftAsSavedItems, items]);
     const draftIdSet = useMemo(() => new Set(draftItems.map((d) => d.draftId)), [draftItems]);
-    const {
-      searchQuery,
-      setSearchQuery,
-      selectedFolderId,
-      setSelectedFolderId,
-      expandedFolders,
-      toggleFolder,
-      sensors,
-      foldersWithCount,
-      filteredItems,
-      itemsByFolder,
-      ungroupedItems,
-      isSearching,
-      dragFeedback,
-      handleDragEnd,
-    } = useWorkspaceTreeControls({
+    const treeControls = useWorkspaceTreeControls({
       items: allItems,
       folders,
       onMoveToFolder,
       onMoveFolder,
     });
+    const { searchQuery, setSearchQuery, foldersWithCount, filteredItems, isSearching } =
+      treeControls;
 
     const renderTableList = useCallback(
       (tableItems: SavedTableSummary[], depth = 0) => (
@@ -205,30 +159,6 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
       ],
     );
 
-    const renderTables = useCallback(
-      (folderId?: string, depth = 0) => {
-        const folderItems = folderId ? (itemsByFolder.get(folderId) ?? []) : ungroupedItems;
-
-        if (folderItems.length === 0) return null;
-
-        if (isSearching) {
-          return null;
-        }
-
-        if (!folderId) {
-          return renderTableList(folderItems, 0);
-        }
-
-        return (
-          <div style={{ marginLeft: `${(depth + 1) * 16}px` }}>
-            {renderTableList(folderItems, 0)}
-          </div>
-        );
-      },
-      [isSearching, itemsByFolder, renderTableList, ungroupedItems],
-    );
-
-    const hasFolders = folders.length > 0;
     const hasVisibleContent = filteredItems.length > 0 || foldersWithCount.length > 0;
     const isLoading = loading || foldersLoading;
     const canSearch = allItems.length > 0;
@@ -334,42 +264,15 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
             )}
 
             {!isLoading && !error && hasVisibleContent && (
-              <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-                <RootDropZone disabled={isSearching} />
-                {dragFeedback && (
-                  <div
-                    role={dragFeedback.type === 'error' ? 'alert' : 'status'}
-                    className={`mb-3 rounded-md px-2.5 py-2 text-xs ${
-                      dragFeedback.type === 'success'
-                        ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                        : dragFeedback.type === 'blocked'
-                          ? 'border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
-                          : 'border border-destructive/30 bg-destructive/10 text-destructive'
-                    }`}
-                    data-testid="saved-tables-drag-feedback"
-                  >
-                    {dragFeedback.message}
-                  </div>
-                )}
-                {isSearching ? (
-                  renderTableList(filteredItems)
-                ) : hasFolders && onCreateFolder && onRenameFolder && onDeleteFolder ? (
-                  <FolderTree
-                    folders={foldersWithCount}
-                    expandedFolders={expandedFolders}
-                    selectedFolderId={selectedFolderId}
-                    dragDisabled={isSearching}
-                    onToggleFolder={toggleFolder}
-                    onSelectFolder={setSelectedFolderId}
-                    onCreateFolder={onCreateFolder}
-                    onRenameFolder={onRenameFolder}
-                    onDeleteFolder={onDeleteFolder}
-                    renderTables={renderTables}
-                  />
-                ) : (
-                  renderTableList(filteredItems)
-                )}
-              </DndContext>
+              <WorkspaceTreeView
+                controls={treeControls}
+                folderActions={{
+                  create: onCreateFolder,
+                  rename: onRenameFolder,
+                  delete: onDeleteFolder,
+                }}
+                renderTableList={renderTableList}
+              />
             )}
           </div>
         </DrawerContent>
