@@ -12,6 +12,7 @@ import {
   isCreateIndexStmt,
   isCreateTableStmt,
   type AstStatement,
+  type TableRefNode,
 } from './astTypes.js';
 import { loadParserConstructor } from './parserLoader.js';
 import { preprocessMysql } from './preprocessMysql.js';
@@ -25,15 +26,42 @@ type ScopedGrant = {
   users: string[];
 };
 
-const normalizeTableName = (tableName: string) =>
-  tableName
-    .split('.')
-    .at(-1)
-    ?.replaceAll('`', '')
-    .replaceAll('"', '')
-    .replaceAll('[', '')
-    .replaceAll(']', '')
-    .toLowerCase() ?? '';
+const normalizeIdentifier = (name: string) =>
+  name
+    .trim()
+    .replace(/^([`"[])(.*)[`"\]]$/, '$2')
+    .replaceAll('""', '"')
+    .replaceAll('``', '`')
+    .replaceAll(']]', ']')
+    .toLowerCase();
+
+const tableKey = (table: string, schema = '') =>
+  JSON.stringify([normalizeIdentifier(schema), normalizeIdentifier(table)]);
+
+const parseTableReference = (name: string): TableRefNode => {
+  const parts = name.match(/"(?:[^"]|"")*"|`(?:[^`]|``)*`|\[(?:[^\]]|\]\])*\]|[^.\s]+/g) ?? [];
+  return {
+    table: parts.at(-1) ?? '',
+    schema: parts.slice(0, -1).map(normalizeIdentifier).join('.'),
+  };
+};
+
+const referenceKey = ({ table, schema, db }: TableRefNode) => tableKey(table, db || schema || '');
+
+const createTableResolver = (results: ParsedResult[]) => {
+  const qualified = new Map<string, ParsedResult>();
+  const unqualified = new Map<string, ParsedResult | null>();
+  for (const result of results) {
+    qualified.set(tableKey(result.tableName, result.schemaName), result);
+    const name = normalizeIdentifier(result.tableName);
+    unqualified.set(name, unqualified.has(name) ? null : result);
+  }
+  return (reference: TableRefNode) =>
+    qualified.get(referenceKey(reference)) ??
+    (!(reference.db || reference.schema)
+      ? unqualified.get(normalizeIdentifier(reference.table))
+      : undefined);
+};
 
 const cleanGrantUser = (value: string) =>
   value
@@ -100,7 +128,7 @@ export class SqlParser {
     const mergeCommentSource = (source: PreprocessResult | null) => {
       if (!source) return;
       for (const metadata of source.tableMetadata) {
-        const key = normalizeTableName(metadata.tableName);
+        const key = referenceKey(parseTableReference(metadata.tableName));
         const existing = tableMetadata.get(key);
         if (!existing) {
           tableMetadata.set(key, {
@@ -137,7 +165,7 @@ export class SqlParser {
       sqlToParse = processed.sql;
       mergeCommentSource(processed);
       for (const [tableName, config] of Object.entries(processed.partitionConfigs)) {
-        partitionConfigs.set(normalizeTableName(tableName), config);
+        partitionConfigs.set(tableName, config);
       }
     }
 
@@ -159,32 +187,46 @@ export class SqlParser {
     };
   }
 
-  private applyPostParseMetadata(
-    result: ParsedResult,
+  private completeTables(
+    results: ParsedResult[],
+    statements: AstStatement[],
     tableMetadata: Map<string, PreprocessedTableMetadata>,
     grants: ScopedGrant[],
     partitionConfigs: Map<string, NonNullable<ParsedResult['mysqlPartitionConfig']>>,
   ) {
-    const tableKey = normalizeTableName(result.tableName);
-    const metadata =
-      tableMetadata.get(tableKey) ??
-      (tableMetadata.size === 1 && !tableKey ? tableMetadata.values().next().value : undefined);
-    if (metadata) {
-      this.mergeComments(result, metadata.tableComment, metadata.columnComments);
+    const resolveTable = createTableResolver(results);
+    const emptyResult = results.length === 1 && !results[0].tableName ? results[0] : undefined;
+    for (const stmt of statements) {
+      if (isCreateIndexStmt(stmt)) {
+        const target = resolveTable(stmt.table) ?? emptyResult;
+        if (target) parseCreateIndex(stmt, target, stmt.table.table);
+      } else if (isAlterTableStmt(stmt)) {
+        const reference = Array.isArray(stmt.table) ? stmt.table[0] : stmt.table;
+        const target = reference ? (resolveTable(reference) ?? emptyResult) : emptyResult;
+        if (target) parseAlterTable(stmt, target, reference?.table);
+      }
     }
 
-    const matchingGrants = grants.filter(
-      (grant) =>
-        normalizeTableName(grant.tableName) === tableKey || (!tableKey && grants.length === 1),
-    );
-    for (const grant of matchingGrants) {
+    for (const metadata of tableMetadata.values()) {
+      const result =
+        resolveTable(parseTableReference(metadata.tableName)) ??
+        (tableMetadata.size === 1 ? emptyResult : undefined);
+      if (result) this.mergeComments(result, metadata.tableComment, metadata.columnComments);
+    }
+    for (const grant of grants) {
+      const result =
+        resolveTable(parseTableReference(grant.tableName)) ??
+        (grants.length === 1 ? emptyResult : undefined);
+      if (!result) continue;
       for (const user of grant.users) {
         if (!result.authObjects.includes(user)) result.authObjects.push(user);
       }
     }
 
-    const partitionConfig = partitionConfigs.get(tableKey);
-    if (partitionConfig) result.mysqlPartitionConfig = partitionConfig;
+    for (const [name, config] of partitionConfigs) {
+      const result = resolveTable(parseTableReference(name));
+      if (result) result.mysqlPartitionConfig = config;
+    }
   }
 
   private parseWithParser(parser: ParserInstance, sql: string, dbType: DatabaseType): ParsedResult {
@@ -216,14 +258,10 @@ export class SqlParser {
     for (const stmt of statements) {
       if (isCreateTableStmt(stmt)) {
         parseCreateTable(stmt, result, dbType);
-      } else if (isCreateIndexStmt(stmt)) {
-        parseCreateIndex(stmt, result);
-      } else if (isAlterTableStmt(stmt)) {
-        parseAlterTable(stmt, result);
       }
     }
 
-    this.applyPostParseMetadata(result, tableMetadata, grants, partitionConfigs);
+    this.completeTables([result], statements, tableMetadata, grants, partitionConfigs);
 
     return result;
   }
@@ -250,7 +288,6 @@ export class SqlParser {
 
     const statements = Array.isArray(ast) ? ast : [ast];
 
-    const tableMap = new Map<string, ParsedResult>();
     const results: ParsedResult[] = [];
     const failed: Array<{ statement: string; error: string }> = [];
 
@@ -275,7 +312,6 @@ export class SqlParser {
           continue;
         }
         if (tableResult.tableName) {
-          tableMap.set(normalizeTableName(tableResult.tableName), tableResult);
           results.push(tableResult);
         }
       }
@@ -285,30 +321,7 @@ export class SqlParser {
       return { results: [], failed };
     }
 
-    for (const stmt of statements) {
-      if (isCreateIndexStmt(stmt)) {
-        const indexTableName = stmt.table?.table;
-        const targetResult = indexTableName
-          ? tableMap.get(normalizeTableName(indexTableName))
-          : undefined;
-        if (targetResult) {
-          parseCreateIndex(stmt, targetResult, indexTableName);
-        }
-      } else if (isAlterTableStmt(stmt)) {
-        const tableNode = Array.isArray(stmt.table) ? stmt.table[0] : stmt.table;
-        const alterTableName = tableNode?.table;
-        const targetResult = alterTableName
-          ? tableMap.get(normalizeTableName(alterTableName))
-          : undefined;
-        if (targetResult) {
-          parseAlterTable(stmt, targetResult, alterTableName);
-        }
-      }
-    }
-
-    for (const result of results) {
-      this.applyPostParseMetadata(result, tableMetadata, grants, partitionConfigs);
-    }
+    this.completeTables(results, statements, tableMetadata, grants, partitionConfigs);
 
     return { results, failed };
   }

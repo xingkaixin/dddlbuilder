@@ -46,13 +46,18 @@ export function preprocessSqlServer(sql: string): PreprocessResult {
     const comment = paramMap['value'] || '';
     const level1Type = (paramMap['level1type'] || '').toLowerCase();
     const level1Name = paramMap['level1name'] || '';
+    const schemaName =
+      (paramMap['level0type'] || '').toLowerCase() === 'schema' ? paramMap['level0name'] : '';
+    const tableName = schemaName
+      ? `[${schemaName.replaceAll(']', ']]')}].[${level1Name.replaceAll(']', ']]')}]`
+      : level1Name;
     const level2Type = (paramMap['level2type'] || '').toLowerCase();
     const level2Name = paramMap['level2name'] || '';
 
     if (level1Type === 'table' && level1Name && !level2Type) {
-      getTableMetadata(level1Name).tableComment = comment;
+      getTableMetadata(tableName).tableComment = comment;
     } else if (level1Type === 'table' && level1Name && level2Type === 'column' && level2Name) {
-      getTableMetadata(level1Name).columnComments[level2Name] = comment;
+      getTableMetadata(tableName).columnComments[level2Name] = comment;
     }
 
     match = execRegex.exec(sql);
