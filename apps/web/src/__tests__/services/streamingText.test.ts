@@ -24,7 +24,7 @@ describe('readTextStream', () => {
       ]);
       await expect(
         readTextStream(stream, { debugContext: { route: 'review', forceDebug: true } }),
-      ).rejects.toThrow();
+      ).rejects.toThrow('AI');
       expect(stream.locked).toBe(false);
     },
   );
@@ -34,7 +34,7 @@ describe('readTextStream', () => {
       readTextStream(createTextStream(['{"type":"delta","text":"partial"}\n']), {
         debugContext: { route: 'review', forceDebug: true },
       }),
-    ).rejects.toThrow();
+    ).rejects.toThrow('AI');
   });
 
   it('should return full text and emit first chunk + final result', async () => {
@@ -85,6 +85,6 @@ describe('readTextStream', () => {
     '{"type":"delta","text":1}\n',
     '{"type":"done"}\ntruncated',
   ])('rejects invalid or incomplete framing: %j', async (wire) => {
-    await expect(readTextStream(createTextStream([wire]))).rejects.toThrow();
+    await expect(readTextStream(createTextStream([wire]))).rejects.toThrow('AI');
   });
 });

@@ -214,7 +214,7 @@ describe('WorkspaceYDocSyncClient', () => {
     const fields = doc.getMap('fields');
     fields.set('first', 'value');
     vi.advanceTimersByTime(WORKSPACE_YDOC_UPDATE_BATCH_MS);
-    const firstBatch = socket.sent.at(-1)!;
+    const firstBatch = sentMessage(socket, socket.sent.length - 1);
     expect(statuses.at(-1)?.synced).toBe(false);
     fields.set('second', 'value');
     acknowledge(socket, firstBatch);
@@ -223,7 +223,7 @@ describe('WorkspaceYDocSyncClient', () => {
     vi.advanceTimersByTime(WORKSPACE_YDOC_UPDATE_BATCH_MS);
     acknowledge(socket, firstBatch);
     expect(statuses.at(-1)?.synced).toBe(false);
-    acknowledge(socket, socket.sent.at(-1)!);
+    acknowledge(socket, sentMessage(socket, socket.sent.length - 1));
     expect(statuses.at(-1)?.synced).toBe(true);
 
     const vector = Y.encodeStateVector(doc);
@@ -231,7 +231,7 @@ describe('WorkspaceYDocSyncClient', () => {
     expect(Y.encodeStateVector(doc)).toEqual(vector);
     vi.advanceTimersByTime(WORKSPACE_YDOC_UPDATE_BATCH_MS);
     expect(statuses.at(-1)?.synced).toBe(false);
-    acknowledge(socket, socket.sent.at(-1)!);
+    acknowledge(socket, sentMessage(socket, socket.sent.length - 1));
     expect(statuses.at(-1)?.synced).toBe(true);
     client.destroy();
   });
@@ -243,14 +243,14 @@ describe('WorkspaceYDocSyncClient', () => {
     await client.connect();
     const socket = firstSocket();
     socket.open();
-    const oldBatch = socket.sent.at(-1)!;
+    const oldBatch = sentMessage(socket, socket.sent.length - 1);
     client.retry();
     socket.receive(
       encodeSyncMessage((encoder) => syncProtocol.writeSyncStep2(encoder, new Y.Doc())),
     );
     acknowledge(socket, oldBatch);
     expect(statuses.at(-1)?.synced).toBe(false);
-    acknowledge(socket, socket.sent.at(-1)!);
+    acknowledge(socket, sentMessage(socket, socket.sent.length - 1));
     expect(statuses.at(-1)?.synced).toBe(true);
 
     socket.close();
