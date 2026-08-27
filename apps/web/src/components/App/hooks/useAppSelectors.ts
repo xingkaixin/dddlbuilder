@@ -21,6 +21,7 @@ export function useAppSelectors() {
     setActiveTab,
     resetTableConfig,
     resetTableViewConfig,
+    resetDocument,
     setFieldTableFreezeEnabled,
     setFieldTableFreezeColumns,
   } = useEditorStore.getState();
@@ -76,6 +77,7 @@ export function useAppSelectors() {
     setActiveTab,
     resetTableConfig,
     resetTableViewConfig,
+    resetDocument,
     // 冻结列
     setFieldTableFreezeEnabled,
     setFieldTableFreezeColumns,

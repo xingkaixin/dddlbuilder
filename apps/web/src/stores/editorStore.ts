@@ -10,6 +10,7 @@ import { createShardingSlice } from './shardingStore';
 import { createTableOptionsSlice } from './tableOptionsStore';
 import type { EditorStoreState } from './editorStoreTypes';
 import { removeFieldsFromDocument } from './editorDocumentMutations';
+import { createEmptyRow } from '@/utils/helpers';
 
 export const useEditorStore = create<EditorStoreState>((set, get) => ({
   ...createAppSlice(set),
@@ -20,6 +21,10 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
   ...createShardingSlice(set),
   ...createPartitionSlice(set),
   ...createTableOptionsSlice(set),
+  resetDocument: () => {
+    const initial = useEditorStore.getInitialState();
+    set({ ...initial, rows: initial.rows.map(() => createEmptyRow()) });
+  },
   handleRemoveRow: (index, amount) =>
     set((state) =>
       removeFieldsFromDocument(state, (_, rowIndex) => {

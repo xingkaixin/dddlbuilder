@@ -3,27 +3,13 @@ import { useCallback } from 'react';
 interface UseClearAllActionsParams {
   setIsClearDialogOpen: (open: boolean) => void;
   clearState: () => void;
-  resetTableConfig: () => void;
-  resetTableViewConfig: () => void;
-  resetTableRows: () => void;
-  resetIndexState: () => void;
-  resetAuthState: () => void;
-  resetCitusSharding: () => void;
-  resetPartition: () => void;
-  resetTableMiscConfig: () => void;
+  resetDocument: () => void;
 }
 
 export function useClearAllActions({
   setIsClearDialogOpen,
   clearState,
-  resetTableConfig,
-  resetTableViewConfig,
-  resetTableRows,
-  resetIndexState,
-  resetAuthState,
-  resetCitusSharding,
-  resetPartition,
-  resetTableMiscConfig,
+  resetDocument,
 }: UseClearAllActionsParams) {
   const handleClearAll = useCallback(() => {
     setIsClearDialogOpen(true);
@@ -34,28 +20,10 @@ export function useClearAllActions({
   }, [setIsClearDialogOpen]);
 
   const confirmClearAll = useCallback(() => {
-    resetTableConfig();
-    resetTableViewConfig();
-    resetTableRows();
-    resetIndexState();
-    resetAuthState();
-    resetCitusSharding();
-    resetPartition();
-    resetTableMiscConfig();
+    resetDocument();
     clearState();
     cancelClearAll();
-  }, [
-    resetTableConfig,
-    resetTableViewConfig,
-    resetTableRows,
-    resetIndexState,
-    resetAuthState,
-    resetCitusSharding,
-    resetPartition,
-    resetTableMiscConfig,
-    clearState,
-    cancelClearAll,
-  ]);
+  }, [resetDocument, clearState, cancelClearAll]);
 
   return {
     handleClearAll,

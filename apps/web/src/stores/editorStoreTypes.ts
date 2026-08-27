@@ -152,6 +152,7 @@ export type EditorStoreState = AppSlice &
   TableOptionsSlice & {
     handleRemoveRow: (index: number, amount: number) => void;
     replaceDocument: (state: PersistedState) => void;
+    resetDocument: () => void;
   };
 
 export type EditorSetState = StoreApi<EditorStoreState>['setState'];

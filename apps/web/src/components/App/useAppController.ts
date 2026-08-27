@@ -57,13 +57,10 @@ export function useAppController() {
     setDbType,
     activeTab,
     setActiveTab,
-    resetTableConfig,
-    resetTableViewConfig,
+    resetDocument,
     rows,
     setRows,
-    resetTableRows,
     indexes,
-    resetIndexState,
   } = editor;
   const {
     outputPanelOpen,
@@ -131,15 +128,8 @@ export function useAppController() {
     restoreDraftById,
     permanentlyDeleteDraftById,
   } = persistence;
-  const { resetAuthState } = auth;
-
-  const { resetCitusSharding } = sharding;
-
   const { triggerIndexAnimation, triggerFieldTableHighlight } = animations;
 
-  const { resetPartition } = partition;
-
-  const { resetTableMiscConfig } = tableOptions;
   const loadedTableId =
     savedTableData.savedTables.find((table) => table.normalizedName === loadedTableNormalizedName)
       ?.tableId ?? null;
@@ -250,14 +240,7 @@ export function useAppController() {
   const clearActions = useClearAllActions({
     setIsClearDialogOpen,
     clearState,
-    resetTableConfig,
-    resetTableViewConfig,
-    resetTableRows,
-    resetIndexState,
-    resetAuthState,
-    resetCitusSharding,
-    resetPartition,
-    resetTableMiscConfig,
+    resetDocument,
   });
 
   const savedTableTabIntegration = useSavedTableTabIntegration({
