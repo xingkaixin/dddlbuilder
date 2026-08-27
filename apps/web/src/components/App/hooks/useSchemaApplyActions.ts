@@ -12,7 +12,7 @@ import { preserveImportedFieldIds } from '@/utils/importedFieldIdentity';
 import { sanitizeIndexesForPersist } from '@/utils/indexUtils';
 import type { BuilderTab } from '@/utils/tabUtils';
 import { removeFieldsFromDocument } from '@/stores/editorDocumentMutations';
-import { validateIndexFields } from '@/stores/editorDocumentValidation';
+import { validateDocumentFields } from '@/stores/editorDocumentValidation';
 
 interface UseSchemaApplyActionsParams {
   currentState: PersistedState;
@@ -184,7 +184,7 @@ export function useSchemaApplyActions({
             ]),
           };
           try {
-            validateIndexFields(nextState);
+            validateDocumentFields(nextState);
           } catch (error) {
             showToast(`无法应用建议：${error instanceof Error ? error.message : String(error)}`);
             return;

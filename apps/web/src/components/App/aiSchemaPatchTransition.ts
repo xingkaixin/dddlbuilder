@@ -5,7 +5,7 @@ import {
   updateDocumentFields,
   updateDocumentTable,
 } from '@/stores/editorDocumentMutations';
-import { validateIndexFields } from '@/stores/editorDocumentValidation';
+import { validateDocumentFields } from '@/stores/editorDocumentValidation';
 
 type FieldChange = Extract<AISchemaChange, { kind: 'field' }>;
 
@@ -157,6 +157,6 @@ export const applyAISchemaChanges = (
   }
 
   nextState = updateDocumentTable(nextState, tableChanges);
-  validateIndexFields(nextState);
+  validateDocumentFields(nextState);
   return nextState;
 };

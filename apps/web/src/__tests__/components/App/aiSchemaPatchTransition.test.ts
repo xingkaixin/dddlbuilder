@@ -111,6 +111,24 @@ describe('AI field changes', () => {
 });
 
 describe('applyAISchemaChanges', () => {
+  it('rejects a partial rename that keeps the conflicting field', () => {
+    const current = createState([
+      { ...row('a', 1), id: 'a' },
+      { ...row('b', 2), id: 'b' },
+    ]);
+    const candidate = { ...current, rows: [{ ...current.rows[0], fieldName: 'b' }] };
+    const changes = buildAISchemaChanges(current, candidate);
+    const selected = changes.filter((change) => change.type === 'rename');
+    expect(() => applyAISchemaChanges(current, candidate, selected)).toThrow(
+      'Duplicate field name: b',
+    );
+    expect(current.rows.map((row) => row.fieldName)).toEqual(['a', 'b']);
+    expect(applyAISchemaChanges(current, candidate, changes).rows).toEqual(candidate.rows);
+    expect(applyAISchemaChanges(current, candidate, [...changes].reverse()).rows).toEqual(
+      candidate.rows,
+    );
+  });
+
   it.each([false, true])(
     'updates table identity and self references atomically (reverse=%s)',
     (reverse) => {

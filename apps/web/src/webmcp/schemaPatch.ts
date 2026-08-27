@@ -12,7 +12,10 @@ import {
   updateDocumentFields,
   updateDocumentTable,
 } from '@/stores/editorDocumentMutations';
-import { validateIndexFields } from '@/stores/editorDocumentValidation';
+import {
+  validateDocumentFields,
+  validateUniqueFieldNames,
+} from '@/stores/editorDocumentValidation';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -206,17 +209,6 @@ export function parseSchemaPatchOperations(value: unknown): SchemaPatchOperation
   });
 }
 
-const assertUniqueFieldName = (rows: FieldRow[], name: string, exceptId?: string) => {
-  if (
-    rows.some(
-      (row) =>
-        row.id !== exceptId && row.fieldName.trim().toLowerCase() === name.trim().toLowerCase(),
-    )
-  ) {
-    throw new Error(`Duplicate field name: ${name}`);
-  }
-};
-
 const assertUniqueIndexName = (indexes: IndexDefinition[], name: string, exceptId?: string) => {
   if (
     indexes.some(
@@ -239,7 +231,6 @@ export function applySchemaPatchOperations(
         state = updateDocumentTable(state, operation);
         break;
       case 'field.add': {
-        assertUniqueFieldName(state.rows, operation.field.fieldName);
         const row = { ...operation.field, id: createEntityId() };
         const firstEmptyIndex = state.rows.findIndex((item) => !item.fieldName.trim());
         const afterIndex = operation.afterFieldId
@@ -256,6 +247,7 @@ export function applySchemaPatchOperations(
               : state.rows.length;
         const rows = [...state.rows];
         rows.splice(insertIndex, 0, row);
+        validateUniqueFieldNames({ rows, dbType: state.dbType });
         state = { ...state, rows };
         break;
       }
@@ -263,10 +255,9 @@ export function applySchemaPatchOperations(
         const rowIndex = state.rows.findIndex((row) => row.id === operation.fieldId);
         if (rowIndex < 0) throw new Error(`Field not found: ${operation.fieldId}`);
         const oldRow = state.rows[rowIndex];
-        const newName = operation.changes.fieldName;
-        if (newName) assertUniqueFieldName(state.rows, newName, operation.fieldId);
         const rows = [...state.rows];
         rows[rowIndex] = { ...oldRow, ...operation.changes, id: oldRow.id };
+        validateUniqueFieldNames({ rows, dbType: state.dbType });
         state = updateDocumentFields(state, rows);
         break;
       }
@@ -328,6 +319,6 @@ export function applySchemaPatchOperations(
     }
   }
 
-  validateIndexFields(state);
+  validateDocumentFields(state);
   return state;
 }

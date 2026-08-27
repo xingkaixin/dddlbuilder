@@ -64,6 +64,78 @@ test('AI 修改保留字段身份，将改名应用为单个变更', async ({ pa
   await expect(page.locator('[role="tabpanel"]:visible pre')).not.toContainText('HYDRATED_FIELD');
 });
 
+test('AI 部分应用拒绝同名字段，补选删除后成功', async ({ page }) => {
+  const responses: Record<string, unknown> = {
+    '/api/me': {
+      signedIn: true,
+      user: {
+        userId: 'partial-user',
+        email: 'partial@example.test',
+        name: 'Partial',
+        emailVerified: true,
+      },
+    },
+    '/api/workspaces': { workspaceId: 'partial-workspace' },
+    '/api/credits/balance': { balance: 1000 },
+  };
+  await page.route('**/api/**', async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/generate-table') {
+      const { existingConfig } = route.request().postDataJSON() as {
+        existingConfig: PersistedState;
+      };
+      const original = existingConfig.rows.find((row) => row.fieldName === 'HYDRATED_FIELD');
+      expect(original?.id).toBeTruthy();
+      await route.fulfill(
+        streamedResponse({
+          tableName: existingConfig.tableName,
+          tableComment: existingConfig.tableComment,
+          fields: [{ ...original, fieldName: 'occupied' }],
+          indexes: [],
+        }),
+      );
+    } else {
+      await route.fulfill(
+        responses[path]
+          ? { json: responses[path] }
+          : { status: 503, json: { error: 'Not available in this test' } },
+      );
+    }
+  });
+  await page.goto('/');
+  await setupHydratedState(page);
+  await page.locator('[data-testid="data-table"] tbody tr:nth-child(2) td:nth-child(2)').dblclick();
+  await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('occupied');
+  await page.keyboard.press('Enter');
+  await page.locator('[data-testid="data-table"] tbody tr:nth-child(2) td:nth-child(4)').dblclick();
+  await page.locator('[data-testid="data-table"] input:not([aria-hidden="true"])').fill('int');
+  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: 'AI 修改', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'AI 修改当前表' });
+  await dialog.locator('#ai-patch-input').fill('删除 occupied，将 HYDRATED_FIELD 改名为 occupied');
+  await dialog.getByRole('button', { name: '发送', exact: true }).click();
+  const changes = dialog.getByRole('button', { name: '切换变更选择' });
+  await expect(changes).toHaveCount(2);
+  const rename = dialog
+    .getByRole('button', { name: '字段 HYDRATED_FIELD 改名为 occupied', exact: true })
+    .locator('xpath=../../..')
+    .getByRole('button', { name: '切换变更选择' });
+  await rename.click();
+  await dialog.getByRole('button', { name: '应用 1 项变更' }).click();
+  await expect(page.getByText(/未能应用变更.*Duplicate field name: occupied/)).toBeVisible();
+  await expect(dialog.getByRole('button', { name: '应用 1 项变更' })).toBeEnabled();
+  await dialog
+    .getByRole('button', { name: '删除字段 occupied', exact: true })
+    .locator('xpath=../../..')
+    .getByRole('button', { name: '切换变更选择' })
+    .click();
+  await dialog.getByRole('button', { name: '应用 2 项变更' }).click();
+  await expect(dialog.getByText('本次没有发现可应用的结构变更')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('data-table')).not.toContainText('HYDRATED_FIELD');
+  await expect(page.locator('[role="tabpanel"]:visible pre')).toContainText('occupied INT');
+});
+
 test('DDL 评审拒绝缺少字段的索引建议，补充字段后可重试', async ({ page }) => {
   const responses: Record<string, unknown> = {
     '/api/me': {
