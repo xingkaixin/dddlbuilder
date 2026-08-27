@@ -460,7 +460,7 @@ describe('SqlParser', () => {
     const result = await parser.parseAsync(sql, 'postgresql');
 
     expect(result.tableComment).toBe('dfdfdf');
-    const idField = result.fields.find((f) => f.name === 'ID');
+    const idField = result.fields.find((f) => f.name === 'id');
     expect(idField?.comment).toBe('记录编号');
     expect(result.authObjects).toEqual(['cbd1', 'cbdd2']);
   });

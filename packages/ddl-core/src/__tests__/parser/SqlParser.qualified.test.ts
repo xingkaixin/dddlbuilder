@@ -1,7 +1,108 @@
 import { describe, expect, it } from 'vitest';
 import { SqlParser } from '../../parser/SqlParser.js';
+import { foldUnquotedPostgresIdentifiers } from '../../parser/preprocessors/PostgresPreprocessor.js';
 
 describe('qualified table ownership', () => {
+  it.each([
+    '"Audit"."Users"',
+    "'Upper ''Quoted'' Text'",
+    String.raw`E'Upper \' Quoted Text'`,
+    String.raw`'Upper\'`,
+    '$Body$Upper \' "Text" $Other$ $Body$',
+    '-- Upper "Text"\n',
+    "/* Upper /* Nested */ 'Text' */",
+  ])('折叠标识符时不修改引用内容：%s', (fragment) => {
+    expect(foldUnquotedPostgresIdentifiers(`SELECT ${fragment} FROM PUBLIC.Users`)).toBe(
+      `select ${fragment} from public.users`,
+    );
+  });
+
+  it('PostgreSQL 区分加引号的表名并保留对应的索引、外键、注释与授权', async () => {
+    const { results, failed } = await new SqlParser().parseMultiAsync(
+      `
+      CREATE TABLE public."Users" ("ID" INT, note VARCHAR(20) DEFAULT 'KeepCase');
+      CREATE TABLE public.users (id INT);
+      CREATE INDEX mixed_idx ON public."Users" ("ID");
+      CREATE INDEX lower_idx ON PUBLIC.Users (ID);
+      ALTER TABLE public."Users" ADD CONSTRAINT mixed_fk FOREIGN KEY ("ID") REFERENCES public.users(id);
+      COMMENT ON TABLE public."Users" IS 'Mixed';
+      COMMENT ON COLUMN public."Users"."ID" IS 'Mixed ID';
+      COMMENT ON TABLE PUBLIC.Users IS 'Lower';
+      COMMENT ON COLUMN PUBLIC.Users.ID IS 'Lower ID';
+      GRANT SELECT ON public."Users" TO mixed_reader;
+      GRANT SELECT ON PUBLIC.Users TO lower_reader;
+      `,
+      'postgresql',
+    );
+    expect(failed).toEqual([]);
+    expect(
+      results.map((result) => ({
+        name: result.tableName,
+        comment: result.tableComment,
+        fieldComment: result.fields[0].comment,
+        indexes: result.indexes.map((index) => index.name),
+        foreignKeys: result.foreignKeys.map((key) => key.name),
+        grants: result.authObjects,
+      })),
+    ).toEqual([
+      {
+        name: 'Users',
+        comment: 'Mixed',
+        fieldComment: 'Mixed ID',
+        indexes: ['mixed_idx'],
+        foreignKeys: ['mixed_fk'],
+        grants: ['mixed_reader'],
+      },
+      {
+        name: 'users',
+        comment: 'Lower',
+        fieldComment: 'Lower ID',
+        indexes: ['lower_idx'],
+        foreignKeys: [],
+        grants: ['lower_reader'],
+      },
+    ]);
+    expect(results[0].fields[1].defaultValue).toBe('KeepCase');
+  });
+
+  it('PostgreSQL 区分加引号的 schema 并折叠未加引号的名称', async () => {
+    const { results } = await new SqlParser().parseMultiAsync(
+      `
+      CREATE TABLE "Audit".Users (ID INT);
+      CREATE TABLE AUDIT.Users (ID INT);
+      CREATE INDEX mixed_idx ON "Audit".USERS (id);
+      CREATE INDEX lower_idx ON audit.users (id);
+      COMMENT ON TABLE "Audit".users IS 'Mixed schema';
+      COMMENT ON TABLE audit.USERS IS 'Lower schema';
+      `,
+      'postgresql',
+    );
+    expect(
+      results.map((result) => [
+        result.schemaName,
+        result.tableName,
+        result.tableComment,
+        result.indexes.map((index) => index.name),
+      ]),
+    ).toEqual([
+      ['Audit', 'users', 'Mixed schema', ['mixed_idx']],
+      ['audit', 'users', 'Lower schema', ['lower_idx']],
+    ]);
+  });
+
+  it('PostgreSQL 单表入口不接收另一种大小写表名的元数据', async () => {
+    const result = await new SqlParser().parseAsync(
+      `CREATE TABLE public."Users" (id INT);
+       CREATE INDEX other_idx ON public.users(id);
+       COMMENT ON TABLE public.users IS 'Other';
+       GRANT SELECT ON public.users TO other_reader;`,
+      'postgresql',
+    );
+    expect(result.indexes).toEqual([]);
+    expect(result.tableComment).toBe('');
+    expect(result.authObjects).toEqual([]);
+  });
+
   it.each(['mysql', 'postgresql'] as const)('%s 按 schema 关联索引、外键和授权', async (dbType) => {
     const { results, failed } = await new SqlParser().parseMultiAsync(
       `

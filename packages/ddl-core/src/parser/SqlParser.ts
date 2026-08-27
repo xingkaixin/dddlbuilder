@@ -3,6 +3,7 @@ import {
   preprocessOracle,
   preprocessSqlServer,
   extractStandaloneComments,
+  foldUnquotedPostgresIdentifiers,
   type PreprocessResult,
   type PreprocessedTableMetadata,
 } from './preprocessors/index.js';
@@ -26,40 +27,45 @@ type ScopedGrant = {
   users: string[];
 };
 
-const normalizeIdentifier = (name: string) =>
-  name
+const normalizeIdentifier = (name: string, dbType: DatabaseType) => {
+  const unquoted = name
     .trim()
     .replace(/^([`"[])(.*)[`"\]]$/, '$2')
     .replaceAll('""', '"')
     .replaceAll('``', '`')
-    .replaceAll(']]', ']')
-    .toLowerCase();
+    .replaceAll(']]', ']');
+  return getDatabaseFamily(dbType) === 'postgresql' ? unquoted : unquoted.toLowerCase();
+};
 
-const tableKey = (table: string, schema = '') =>
-  JSON.stringify([normalizeIdentifier(schema), normalizeIdentifier(table)]);
+const tableKey = (table: string, schema: string, dbType: DatabaseType) =>
+  JSON.stringify([normalizeIdentifier(schema, dbType), normalizeIdentifier(table, dbType)]);
 
-const parseTableReference = (name: string): TableRefNode => {
+const parseTableReference = (name: string, dbType: DatabaseType): TableRefNode => {
   const parts = name.match(/"(?:[^"]|"")*"|`(?:[^`]|``)*`|\[(?:[^\]]|\]\])*\]|[^.\s]+/g) ?? [];
   return {
     table: parts.at(-1) ?? '',
-    schema: parts.slice(0, -1).map(normalizeIdentifier).join('.'),
+    schema: parts
+      .slice(0, -1)
+      .map((part) => normalizeIdentifier(part, dbType))
+      .join('.'),
   };
 };
 
-const referenceKey = ({ table, schema, db }: TableRefNode) => tableKey(table, db || schema || '');
+const referenceKey = ({ table, schema, db }: TableRefNode, dbType: DatabaseType) =>
+  tableKey(table, db || schema || '', dbType);
 
-const createTableResolver = (results: ParsedResult[]) => {
+const createTableResolver = (results: ParsedResult[], dbType: DatabaseType) => {
   const qualified = new Map<string, ParsedResult>();
   const unqualified = new Map<string, ParsedResult | null>();
   for (const result of results) {
-    qualified.set(tableKey(result.tableName, result.schemaName), result);
-    const name = normalizeIdentifier(result.tableName);
+    qualified.set(tableKey(result.tableName, result.schemaName ?? '', dbType), result);
+    const name = normalizeIdentifier(result.tableName, dbType);
     unqualified.set(name, unqualified.has(name) ? null : result);
   }
   return (reference: TableRefNode) =>
-    qualified.get(referenceKey(reference)) ??
+    qualified.get(referenceKey(reference, dbType)) ??
     (!(reference.db || reference.schema)
-      ? unqualified.get(normalizeIdentifier(reference.table))
+      ? unqualified.get(normalizeIdentifier(reference.table, dbType))
       : undefined);
 };
 
@@ -121,14 +127,17 @@ export class SqlParser {
     grants: ScopedGrant[];
     partitionConfigs: Map<string, NonNullable<ParsedResult['mysqlPartitionConfig']>>;
   } {
-    let sqlToParse = sql;
+    const databaseFamily = getDatabaseFamily(dbType);
+    const normalizedSql =
+      databaseFamily === 'postgresql' ? foldUnquotedPostgresIdentifiers(sql) : sql;
+    let sqlToParse = normalizedSql;
     const tableMetadata = new Map<string, PreprocessedTableMetadata>();
     const partitionConfigs = new Map<string, NonNullable<ParsedResult['mysqlPartitionConfig']>>();
 
     const mergeCommentSource = (source: PreprocessResult | null) => {
       if (!source) return;
       for (const metadata of source.tableMetadata) {
-        const key = referenceKey(parseTableReference(metadata.tableName));
+        const key = referenceKey(parseTableReference(metadata.tableName, dbType), dbType);
         const existing = tableMetadata.get(key);
         if (!existing) {
           tableMetadata.set(key, {
@@ -145,8 +154,6 @@ export class SqlParser {
         }
       }
     };
-
-    const databaseFamily = getDatabaseFamily(dbType);
 
     if (databaseFamily === 'oracle' || databaseFamily === 'dm') {
       const processed = preprocessOracle(sqlToParse);
@@ -176,7 +183,7 @@ export class SqlParser {
     return {
       sqlToParse,
       tableMetadata,
-      grants: extractScopedGrants(sql),
+      grants: extractScopedGrants(normalizedSql),
       partitionConfigs,
     };
   }
@@ -193,8 +200,9 @@ export class SqlParser {
     tableMetadata: Map<string, PreprocessedTableMetadata>,
     grants: ScopedGrant[],
     partitionConfigs: Map<string, NonNullable<ParsedResult['mysqlPartitionConfig']>>,
+    dbType: DatabaseType,
   ) {
-    const resolveTable = createTableResolver(results);
+    const resolveTable = createTableResolver(results, dbType);
     const emptyResult = results.length === 1 && !results[0].tableName ? results[0] : undefined;
     for (const stmt of statements) {
       if (isCreateIndexStmt(stmt)) {
@@ -209,13 +217,13 @@ export class SqlParser {
 
     for (const metadata of tableMetadata.values()) {
       const result =
-        resolveTable(parseTableReference(metadata.tableName)) ??
+        resolveTable(parseTableReference(metadata.tableName, dbType)) ??
         (tableMetadata.size === 1 ? emptyResult : undefined);
       if (result) this.mergeComments(result, metadata.tableComment, metadata.columnComments);
     }
     for (const grant of grants) {
       const result =
-        resolveTable(parseTableReference(grant.tableName)) ??
+        resolveTable(parseTableReference(grant.tableName, dbType)) ??
         (grants.length === 1 ? emptyResult : undefined);
       if (!result) continue;
       for (const user of grant.users) {
@@ -224,7 +232,7 @@ export class SqlParser {
     }
 
     for (const [name, config] of partitionConfigs) {
-      const result = resolveTable(parseTableReference(name));
+      const result = resolveTable(parseTableReference(name, dbType));
       if (result) result.mysqlPartitionConfig = config;
     }
   }
@@ -261,7 +269,7 @@ export class SqlParser {
       }
     }
 
-    this.completeTables([result], statements, tableMetadata, grants, partitionConfigs);
+    this.completeTables([result], statements, tableMetadata, grants, partitionConfigs, dbType);
 
     return result;
   }
@@ -321,7 +329,7 @@ export class SqlParser {
       return { results: [], failed };
     }
 
-    this.completeTables(results, statements, tableMetadata, grants, partitionConfigs);
+    this.completeTables(results, statements, tableMetadata, grants, partitionConfigs, dbType);
 
     return { results, failed };
   }
