@@ -66,6 +66,37 @@ const setLegacyTableDoc = (collection: Y.Map<Y.Map<unknown>>, key: string, table
 };
 
 describe('saved table identity', () => {
+  it('does not attach another legacy table draft when names collide', () => {
+    const doc = new Y.Doc();
+    const { savedTables, savedDrafts } = getWorkspaceRoot(doc);
+    for (const key of ['first', 'second']) {
+      upsertTableRecord(savedTables, key, toSchemaDocumentState(createState(key)), {
+        tableId: `table-${key}`,
+        normalizedName: 'shared',
+        name: 'Shared',
+        updatedAt: 1,
+      });
+    }
+    upsertTableRecord(savedDrafts, 'first', toSchemaDocumentState(createState('first-draft')), {
+      normalizedName: 'shared',
+      tableName: 'Shared',
+      updatedAt: 2,
+    });
+    const target = { tableId: 'table-second', normalizedName: 'shared' };
+    expect(getWorkspaceSavedDraft(doc, target)).toBeNull();
+    const saved = getWorkspaceSavedTable(doc, target);
+    if (!saved) throw new Error('Missing fixture table');
+    renameWorkspaceSavedTable(doc, 'shared', {
+      ...saved,
+      normalizedName: 'renamed',
+      name: 'Renamed',
+    });
+    expect(
+      getWorkspaceSavedDraft(doc, { tableId: 'table-first', normalizedName: 'shared' })?.state
+        .tableName,
+    ).toBe('first-draft');
+  });
+
   it('targets tables and drafts by ID after concurrent same-name renames', () => {
     const doc = new Y.Doc();
     const records = ['users', 'orders'].map((name) => ({

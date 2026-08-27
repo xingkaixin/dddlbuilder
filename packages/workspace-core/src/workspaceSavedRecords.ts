@@ -129,6 +129,7 @@ const findSavedDraftEntry = (doc: Y.Doc, target: SavedTableTarget) => {
       );
     }
     const legacyParent = getWorkspaceRoot(doc).savedTables.get(key);
+    if (legacyParent && tableId) return savedTableId(key, legacyParent) === tableId;
     return savedTableName(key, legacyParent ?? value) === normalizedName;
   };
   const direct = savedDrafts.get(directKey);
@@ -216,7 +217,9 @@ export const renameWorkspaceSavedDraft = (
   normalizedName: string,
   tableName: string,
 ) => {
-  const entry = findSavedDraftEntry(doc, previousName) ?? findSavedDraftEntry(doc, normalizedName);
+  const entry =
+    findSavedDraftEntry(doc, previousName) ??
+    findSavedDraftEntry(doc, { ...savedTableReference(previousName), normalizedName });
   if (!entry) return;
   const parent = findSavedTableEntry(doc, { ...savedTableReference(previousName), normalizedName });
   writeJsonMapPatch(ensureMap(entry[1], 'metadata'), {
