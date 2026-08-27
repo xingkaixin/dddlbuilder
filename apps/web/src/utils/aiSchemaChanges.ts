@@ -104,35 +104,38 @@ function buildGeneratedIndexes(
   const pkFields = schema.fields
     .filter((field) => field.isPrimaryKey)
     .map((field) => ({ name: field.fieldName, direction: 'ASC' as const }));
+  const pkNames = new Set(pkFields.map((field) => key(field.name)));
   const hasSameFields = (fields: IndexDefinition['fields']) =>
-    pkFields.length > 0 &&
-    fields.length === pkFields.length &&
-    fields.every(
-      (field, index) =>
-        key(field.name) === key(pkFields[index].name) &&
-        field.direction === pkFields[index]?.direction,
-    );
-  const indexes = (schema.indexes || []).map((index) => {
-    const isPrimary = /^primary$|^pk_/i.test(index.name) && hasSameFields(index.fields);
-    const existing = existingIndexes.get(key(index.name));
-    return {
-      id: existing?.id ?? createEntityId(),
-      name: index.name,
-      fields: index.fields,
-      unique: isPrimary ? true : index.unique,
-      isPrimary,
-      ...(existing?.isUniqueConstraint && index.unique && !isPrimary
-        ? { isUniqueConstraint: true }
-        : {}),
-    };
-  });
+    fields.length === pkFields.length && fields.every((field) => pkNames.has(key(field.name)));
+  const oldPrimary = baseIndexes.find((index) => index.isPrimary);
+  const primarySource =
+    pkFields.length > 0
+      ? schema.indexes?.find((index) =>
+          oldPrimary
+            ? key(index.name) === key(oldPrimary.name)
+            : !existingIndexes.has(key(index.name)) && index.unique && hasSameFields(index.fields),
+        )
+      : undefined;
+  const indexes: IndexDefinition[] = (schema.indexes || [])
+    .filter((index) => index !== primarySource)
+    .map((index) => {
+      const existing = existingIndexes.get(key(index.name));
+      return {
+        id: existing?.id ?? createEntityId(),
+        name: index.name,
+        fields: index.fields,
+        unique: index.unique,
+        isPrimary: false,
+        ...(existing?.isUniqueConstraint && index.unique ? { isUniqueConstraint: true } : {}),
+      };
+    });
 
-  if (pkFields.length > 0 && !indexes.some((index) => index.isPrimary)) {
-    const oldPrimary = baseIndexes.find((index) => index.isPrimary);
+  if (pkFields.length > 0) {
+    const orderedFields = primarySource?.fields ?? oldPrimary?.fields;
     indexes.unshift({
       id: oldPrimary?.id ?? createEntityId(),
-      name: oldPrimary?.name || 'PRIMARY',
-      fields: pkFields,
+      name: oldPrimary?.name || primarySource?.name || 'PRIMARY',
+      fields: orderedFields && hasSameFields(orderedFields) ? orderedFields : pkFields,
       unique: true,
       isPrimary: true,
     });

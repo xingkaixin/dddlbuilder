@@ -315,6 +315,125 @@ describe('aiSchemaChanges', () => {
     );
   });
 
+  it.each([true, false])('preserves a named composite primary key (returned=%s)', (returned) => {
+    const baseState = createBaseState();
+    baseState.dbType = 'postgresql';
+    const primary = {
+      id: 'primary',
+      name: 'users_pkey',
+      unique: true,
+      isPrimary: true,
+      fields: [
+        { name: 'phone', direction: 'DESC' as const },
+        { name: 'id', direction: 'ASC' as const },
+      ],
+    };
+    baseState.indexes = [primary];
+    const candidate = buildPersistedStateFromAISchema(
+      {
+        tableName: baseState.tableName,
+        tableComment: baseState.tableComment,
+        fields: baseState.rows.map((row) => ({ ...row, isPrimaryKey: true })),
+        indexes: returned ? [primary] : [],
+      },
+      { baseState },
+    );
+    expect(candidate.indexes).toEqual([primary]);
+    expect(buildAISchemaChanges(baseState, candidate)).toEqual([]);
+    expect(
+      generateAlterDDL('users', diffPersistedState(baseState, candidate), [], 'postgresql'),
+    ).toBe('');
+  });
+
+  it('updates primary-key columns without duplicating the existing identity', () => {
+    const baseState = createBaseState();
+    baseState.indexes = [
+      {
+        id: 'primary',
+        name: 'users_pkey',
+        unique: true,
+        isPrimary: true,
+        fields: [{ name: 'id', direction: 'ASC' }],
+      },
+    ];
+    const candidate = buildPersistedStateFromAISchema(
+      {
+        tableName: baseState.tableName,
+        tableComment: baseState.tableComment,
+        fields: baseState.rows.map((row) => ({ ...row, isPrimaryKey: row.fieldName === 'phone' })),
+        indexes: baseState.indexes,
+      },
+      { baseState },
+    );
+    const applied = applyAISchemaChanges(
+      baseState,
+      candidate,
+      buildAISchemaChanges(baseState, candidate),
+    );
+    expect(applied.indexes).toEqual([
+      { ...baseState.indexes[0], fields: [{ name: 'phone', direction: 'ASC' }] },
+    ]);
+  });
+
+  it('keeps existing secondary indexes separate when creating a primary key', () => {
+    const baseState = createBaseState();
+    const candidate = buildPersistedStateFromAISchema(
+      {
+        tableName: baseState.tableName,
+        tableComment: baseState.tableComment,
+        fields: baseState.rows.map((row) => ({ ...row, isPrimaryKey: row.fieldName === 'phone' })),
+        indexes: baseState.indexes,
+      },
+      { baseState },
+    );
+    expect(candidate.indexes).toHaveLength(2);
+    expect(candidate.indexes.find((index) => index.id === 'idx-phone')?.isPrimary).toBe(false);
+    expect(candidate.indexes.filter((index) => index.isPrimary)).toHaveLength(1);
+  });
+
+  it('uses the supplied unique index for a new primary key without naming heuristics', () => {
+    const baseState = createBaseState();
+    baseState.indexes = [];
+    const candidate = buildPersistedStateFromAISchema(
+      {
+        tableName: baseState.tableName,
+        tableComment: baseState.tableComment,
+        fields: baseState.rows.map((row) => ({ ...row, isPrimaryKey: row.fieldName === 'id' })),
+        indexes: [{ name: 'users_pkey', unique: true, fields: [{ name: 'id', direction: 'ASC' }] }],
+      },
+      { baseState },
+    );
+    expect(candidate.indexes).toEqual([
+      expect.objectContaining({ name: 'users_pkey', isPrimary: true }),
+    ]);
+  });
+
+  it('removes a primary key when its field markers and index are removed', () => {
+    const baseState = createBaseState();
+    baseState.indexes = [
+      {
+        id: 'primary',
+        name: 'users_pkey',
+        unique: true,
+        isPrimary: true,
+        fields: [{ name: 'id', direction: 'ASC' }],
+      },
+    ];
+    const candidate = buildPersistedStateFromAISchema(
+      {
+        tableName: baseState.tableName,
+        tableComment: baseState.tableComment,
+        fields: baseState.rows.map((row) => ({ ...row, isPrimaryKey: false })),
+        indexes: [],
+      },
+      { baseState },
+    );
+    expect(
+      applyAISchemaChanges(baseState, candidate, buildAISchemaChanges(baseState, candidate))
+        .indexes,
+    ).toEqual([]);
+  });
+
   it('builds reviewable changes from an AI candidate schema', () => {
     const baseState = createBaseState();
     const schema: GeneratedTableSchema = {
