@@ -45,9 +45,13 @@ export type AISchemaChange =
       status?: AISchemaChangeStatus;
     };
 
-export function buildGeneratedRows(schema: GeneratedTableSchema): FieldRow[] {
+export function buildGeneratedRows(
+  schema: GeneratedTableSchema,
+  baseRows: FieldRow[] = [],
+): FieldRow[] {
+  const idsByName = new Map(baseRows.map((row) => [row.fieldName.trim().toLowerCase(), row.id]));
   return schema.fields.map((field) => ({
-    id: createEntityId(),
+    id: idsByName.get(field.fieldName.trim().toLowerCase()) || createEntityId(),
     fieldName: field.fieldName,
     fieldType: field.fieldType,
     fieldComment: field.fieldComment,
@@ -179,7 +183,7 @@ export function buildPersistedStateFromAISchema(
     schemaName: identity.schemaName,
     tableName: identity.tableName,
     tableComment: schema.tableComment || '',
-    rows: buildGeneratedRows(schema),
+    rows: buildGeneratedRows(schema, baseState.rows),
     indexes: buildGeneratedIndexes(schema, baseState.indexes || []),
   };
 }

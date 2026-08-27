@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { GeneratedTableSchema } from '@ddlbuilder/shared-types/ai-generate';
+import { diffPersistedState, generateAlterDDL } from '@ddlbuilder/ddl-core';
 import { buildAISchemaChanges, buildPersistedStateFromAISchema } from '@/utils/aiSchemaChanges';
+import { applyAISchemaChanges } from '@/components/App/aiSchemaPatchTransition';
 
 function createBaseState(): PersistedState {
   return {
@@ -13,6 +15,7 @@ function createBaseState(): PersistedState {
     sqlFormatMode: 'compact',
     rows: [
       {
+        id: 'field-id',
         order: 1,
         fieldName: 'id',
         fieldType: 'bigint',
@@ -23,6 +26,7 @@ function createBaseState(): PersistedState {
         onUpdate: 'none',
       },
       {
+        id: 'field-phone',
         order: 2,
         fieldName: 'phone',
         fieldType: 'varchar(32)',
@@ -98,18 +102,46 @@ describe('aiSchemaChanges', () => {
     const candidateState = buildPersistedStateFromAISchema(schema, { baseState });
     const changes = buildAISchemaChanges(baseState, candidateState);
 
-    expect(changes.map((change) => change.id)).toEqual(
-      expect.arrayContaining([
-        'table:table_name',
-        'table:table_comment',
-        'field:modify:phone:phone',
-        'field:add::deleted_at',
-        'index:modify:uk_users_phone',
-        'index:add:PRIMARY',
-      ]),
-    );
+    expect(changes.map((change) => change.id)).toEqual([
+      'table:table_name',
+      'table:table_comment',
+      'field:modify:phone:phone',
+      'field:add::deleted_at',
+      'index:modify:uk_users_phone',
+      'index:add:PRIMARY',
+    ]);
     expect(candidateState.indexes.find((index) => index.name === 'uk_users_phone')?.id).toBe(
       'idx-phone',
+    );
+  });
+
+  it('preserves existing field identities when applying an incremental addition', () => {
+    const baseState = createBaseState();
+    const schema: GeneratedTableSchema = {
+      tableName: baseState.tableName,
+      tableComment: baseState.tableComment,
+      fields: [
+        ...baseState.rows,
+        {
+          fieldName: 'email',
+          fieldType: 'varchar(255)',
+          fieldComment: '',
+          nullable: true,
+          defaultKind: 'none',
+        },
+      ],
+      indexes: baseState.indexes,
+    };
+    const candidate = buildPersistedStateFromAISchema(schema, { baseState });
+    const changes = buildAISchemaChanges(baseState, candidate);
+    const applied = applyAISchemaChanges(baseState, candidate, changes);
+
+    expect(changes.map((change) => change.id)).toEqual(['field:add::email']);
+    expect(applied.rows.slice(0, 2)).toEqual(baseState.rows);
+    expect(applied.rows[2].id).toBeTruthy();
+    expect(new Set(applied.rows.map((row) => row.id)).size).toBe(3);
+    expect(generateAlterDDL('users', diffPersistedState(baseState, applied), [], 'mysql')).toBe(
+      'ALTER TABLE users ADD COLUMN email VARCHAR(255) NULL;',
     );
   });
 
