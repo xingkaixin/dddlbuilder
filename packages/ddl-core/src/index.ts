@@ -15,6 +15,7 @@ export {
   type SqlParserDialect,
 } from './utils/databaseFamily.js';
 export { diffPersistedState } from './utils/tableDiff.js';
+export { getForeignKeyActions, getForeignKeyIssue } from './utils/foreignKeys.js';
 export type {
   TableDiff,
   FieldDiff,

@@ -5,6 +5,7 @@ import {
   type IndexDefinition,
   type PersistedState,
 } from '@ddlbuilder/shared-types';
+import { getForeignKeyIssue } from '@ddlbuilder/ddl-core';
 
 export type RelationshipCardinality = 'many-to-one' | 'one-to-one';
 export type RelationshipOptionality = 'required' | 'optional';
@@ -21,8 +22,8 @@ export type TableRelationshipIntent = {
   cardinality: RelationshipCardinality;
   optionality: RelationshipOptionality;
   createIndex: boolean;
-  onDelete: ForeignKeyAction;
-  onUpdate: ForeignKeyAction;
+  onDelete?: ForeignKeyAction;
+  onUpdate?: ForeignKeyAction;
 };
 
 export type TableRelationshipWarning = 'field-type-mismatch';
@@ -34,7 +35,8 @@ export type TableRelationshipError =
   | 'duplicate-relationship'
   | 'duplicate-name'
   | 'primary-key-cannot-be-optional'
-  | 'set-null-requires-optional';
+  | 'set-null-requires-optional'
+  | 'unsupported-foreign-key-action';
 
 export type TableRelationshipPlan = {
   sourceState: PersistedState;
@@ -131,8 +133,6 @@ export function defaultRelationshipIntent(
     cardinality: 'many-to-one',
     optionality: isPrimaryKeyField(draft.source, sourceField) ? 'required' : 'optional',
     createIndex: true,
-    onDelete: 'NO ACTION',
-    onUpdate: 'NO ACTION',
   };
 }
 
@@ -181,6 +181,10 @@ export function planTableRelationship(
     (intent.onDelete === 'SET NULL' || intent.onUpdate === 'SET NULL')
   ) {
     return { ok: false, error: 'set-null-requires-optional' };
+  }
+
+  if (getForeignKeyIssue(intent, draft.source.dbType)) {
+    return { ok: false, error: 'unsupported-foreign-key-action' };
   }
 
   const foreignKey: ForeignKeyDefinition = {

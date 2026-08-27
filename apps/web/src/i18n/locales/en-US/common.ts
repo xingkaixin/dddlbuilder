@@ -341,6 +341,9 @@ export const enUSCommon = {
     },
   },
   foreignKeyPanel: {
+    unsupportedAction: '{{action}} (unsupported by this database)',
+    unsupportedActions:
+      'This database does not support the selected foreign key actions. Choose supported actions, or remove and recreate an existing foreign key.',
     add: 'Add Foreign Key',
     name: 'Constraint Name',
     namePlaceholder: 'e.g. fk_user_id',
@@ -1651,6 +1654,8 @@ export const enUSCommon = {
         'duplicate-name': 'A foreign key with this name already exists in the table.',
         'primary-key-cannot-be-optional': 'A primary key field cannot be nullable.',
         'set-null-requires-optional': 'SET NULL requires an optional foreign key field.',
+        'unsupported-foreign-key-action':
+          'This database does not support the selected foreign key actions. Choose supported actions.',
       },
       create: 'Create Relationship',
       cancel: 'Cancel',

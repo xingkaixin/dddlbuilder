@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { ForeignKeyAction } from '@ddlbuilder/shared-types';
+import { getForeignKeyActions } from '@ddlbuilder/ddl-core';
 import { AlertTriangle, ArrowRight, KeyRound, Link2 } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
@@ -30,14 +31,6 @@ import {
   type TableRelationshipDraft,
   type TableRelationshipIntent,
 } from './tableRelationship';
-
-const FOREIGN_KEY_ACTIONS: ForeignKeyAction[] = [
-  'NO ACTION',
-  'RESTRICT',
-  'CASCADE',
-  'SET NULL',
-  'SET DEFAULT',
-];
 
 type RelationCreationDialogProps = {
   draft: TableRelationshipDraft;
@@ -115,8 +108,8 @@ export function RelationCreationDialog({
   const selectOptionality = (optionality: RelationshipOptionality) => {
     updateIntent('optionality', optionality);
     if (optionality === 'required') {
-      if (intent.onDelete === 'SET NULL') updateIntent('onDelete', 'NO ACTION');
-      if (intent.onUpdate === 'SET NULL') updateIntent('onUpdate', 'NO ACTION');
+      if (intent.onDelete === 'SET NULL') updateIntent('onDelete', undefined);
+      if (intent.onUpdate === 'SET NULL') updateIntent('onUpdate', undefined);
     }
   };
 
@@ -279,32 +272,44 @@ export function RelationCreationDialog({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            {(['onDelete', 'onUpdate'] as const).map((actionType) => (
-              <div key={actionType} className="space-y-1.5">
-                <div className="text-sm font-medium">
-                  {t(`erDiagram.relationship.${actionType}`)}
+            {(['onDelete', 'onUpdate'] as const).map((actionType) => {
+              const actions = getForeignKeyActions(draft.source.dbType, actionType);
+              const selectedAction = intent[actionType];
+              return (
+                <div key={actionType} className="space-y-1.5">
+                  <div className="text-sm font-medium">
+                    {t(`erDiagram.relationship.${actionType}`)}
+                  </div>
+                  <Select
+                    value={selectedAction ?? ''}
+                    onValueChange={(value) =>
+                      updateIntent(actionType, (value as ForeignKeyAction) || undefined)
+                    }
+                  >
+                    <SelectTrigger aria-label={t(`erDiagram.relationship.${actionType}`)}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">{t('foreignKeyPanel.noAction')}</SelectItem>
+                      {selectedAction && !actions.includes(selectedAction) && (
+                        <SelectItem value={selectedAction} disabled>
+                          {t('foreignKeyPanel.unsupportedAction', { action: selectedAction })}
+                        </SelectItem>
+                      )}
+                      {actions.map((action) => (
+                        <SelectItem
+                          key={action}
+                          value={action}
+                          disabled={action === 'SET NULL' && intent.optionality === 'required'}
+                        >
+                          {action}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <Select
-                  value={intent[actionType]}
-                  onValueChange={(value) => updateIntent(actionType, value as ForeignKeyAction)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FOREIGN_KEY_ACTIONS.map((action) => (
-                      <SelectItem
-                        key={action}
-                        value={action}
-                        disabled={action === 'SET NULL' && intent.optionality === 'required'}
-                      >
-                        {action}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="flex items-start gap-3 rounded-lg border px-4 py-3">

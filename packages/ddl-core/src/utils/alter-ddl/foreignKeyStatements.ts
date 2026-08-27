@@ -1,6 +1,7 @@
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 import { formatSqlIdentifier } from '../sqlIdentifiers';
-import { buildQualifiedTableName, formatSqlTableName } from '../databaseTypeMapping';
+import { formatSqlTableName } from '../databaseTypeMapping';
+import { buildForeignKeyDDL } from '../foreignKeys';
 import type { ForeignKeyDiff } from '../tableDiff';
 
 export function generateDropForeignKey(
@@ -41,23 +42,5 @@ export function generateAddForeignKey(
   fkDiff: ForeignKeyDiff,
   dbType: DatabaseType,
 ): string {
-  tableName = formatSqlTableName(tableName, dbType);
-  const fk = fkDiff.foreignKey;
-  const constraintName = formatSqlIdentifier(fk.name, dbType);
-  const fieldList = fk.fields.map((name) => formatSqlIdentifier(name, dbType)).join(', ');
-  const refFieldList = fk.refFields.map((name) => formatSqlIdentifier(name, dbType)).join(', ');
-
-  const refTable = buildQualifiedTableName(fk.refSchema ?? '', fk.refTable, dbType);
-
-  let sql = `ALTER TABLE ${tableName} ADD CONSTRAINT ${constraintName} FOREIGN KEY (${fieldList}) REFERENCES ${refTable} (${refFieldList})`;
-
-  if (fk.onDelete) {
-    sql += ` ON DELETE ${fk.onDelete}`;
-  }
-  if (fk.onUpdate) {
-    sql += ` ON UPDATE ${fk.onUpdate}`;
-  }
-
-  sql += ';';
-  return sql;
+  return buildForeignKeyDDL(tableName, fkDiff.foreignKey, dbType);
 }

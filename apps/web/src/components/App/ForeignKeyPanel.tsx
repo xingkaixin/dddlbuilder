@@ -7,14 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useEditorStore } from '@/stores';
 import type { ForeignKeyAction } from '@ddlbuilder/shared-types';
 import { useTranslation } from 'react-i18next';
-
-const FK_ACTIONS: ForeignKeyAction[] = [
-  'CASCADE',
-  'SET NULL',
-  'SET DEFAULT',
-  'RESTRICT',
-  'NO ACTION',
-];
+import { getForeignKeyActions, getForeignKeyIssue } from '@ddlbuilder/ddl-core';
 
 interface ForeignKeyPanelProps {
   availableFields: string[];
@@ -23,6 +16,7 @@ interface ForeignKeyPanelProps {
 export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) => {
   const { t } = useTranslation();
   const tableName = useEditorStore((state) => state.tableName);
+  const dbType = useEditorStore((state) => state.dbType);
   const foreignKeys = useEditorStore((state) => state.foreignKeys);
   const addForeignKey = useEditorStore((state) => state.addForeignKey);
   const removeForeignKey = useEditorStore((state) => state.removeForeignKey);
@@ -41,6 +35,9 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
   const [refFields, setRefFields] = useState<string[]>([]);
   const [onDelete, setOnDelete] = useState<ForeignKeyAction | undefined>(undefined);
   const [onUpdate, setOnUpdate] = useState<ForeignKeyAction | undefined>(undefined);
+  const deleteActions = getForeignKeyActions(dbType, 'onDelete');
+  const updateActions = getForeignKeyActions(dbType, 'onUpdate');
+  const actionIssue = getForeignKeyIssue({ onDelete, onUpdate }, dbType);
 
   useEffect(() => {
     if (editingId && editInputRef.current) {
@@ -80,7 +77,8 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
   };
 
   const handleAdd = () => {
-    if (selectedFields.length === 0 || !refTable.trim() || refFields.length === 0) return;
+    if (selectedFields.length === 0 || !refTable.trim() || refFields.length === 0 || actionIssue)
+      return;
 
     const name = newFkName.trim() || `fk_${tableName || 'table'}_${selectedFields.join('_')}`;
 
@@ -245,16 +243,25 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
               {/* Actions */}
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                  <label
+                    htmlFor="foreign-key-on-delete"
+                    className="mb-1 block text-xs font-medium text-muted-foreground"
+                  >
                     {t('foreignKeyPanel.onDelete')}
                   </label>
                   <select
+                    id="foreign-key-on-delete"
                     value={onDelete || ''}
                     onChange={(e) => setOnDelete((e.target.value as ForeignKeyAction) || undefined)}
                     className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
                   >
                     <option value="">{t('foreignKeyPanel.noAction')}</option>
-                    {FK_ACTIONS.map((action) => (
+                    {onDelete && !deleteActions.includes(onDelete) && (
+                      <option value={onDelete} disabled>
+                        {t('foreignKeyPanel.unsupportedAction', { action: onDelete })}
+                      </option>
+                    )}
+                    {deleteActions.map((action) => (
                       <option key={action} value={action}>
                         {action}
                       </option>
@@ -262,16 +269,25 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                  <label
+                    htmlFor="foreign-key-on-update"
+                    className="mb-1 block text-xs font-medium text-muted-foreground"
+                  >
                     {t('foreignKeyPanel.onUpdate')}
                   </label>
                   <select
+                    id="foreign-key-on-update"
                     value={onUpdate || ''}
                     onChange={(e) => setOnUpdate((e.target.value as ForeignKeyAction) || undefined)}
                     className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
                   >
                     <option value="">{t('foreignKeyPanel.noAction')}</option>
-                    {FK_ACTIONS.map((action) => (
+                    {onUpdate && !updateActions.includes(onUpdate) && (
+                      <option value={onUpdate} disabled>
+                        {t('foreignKeyPanel.unsupportedAction', { action: onUpdate })}
+                      </option>
+                    )}
+                    {updateActions.map((action) => (
                       <option key={action} value={action}>
                         {action}
                       </option>
@@ -280,6 +296,12 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                 </div>
               </div>
 
+              {actionIssue && (
+                <p role="alert" className="text-xs text-destructive">
+                  {t('foreignKeyPanel.unsupportedActions')}
+                </p>
+              )}
+
               <div className="flex gap-2">
                 <Button
                   size="sm"
@@ -287,7 +309,10 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                   className="h-7 text-xs"
                   onClick={handleAdd}
                   disabled={
-                    selectedFields.length === 0 || !refTable.trim() || refFields.length === 0
+                    selectedFields.length === 0 ||
+                    !refTable.trim() ||
+                    refFields.length === 0 ||
+                    !!actionIssue
                   }
                 >
                   {t('foreignKeyPanel.confirmAdd')}
@@ -315,6 +340,11 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/30 to-transparent transition-all duration-300 group-hover/item:w-2" />
 
                     <div className="relative flex flex-1 flex-col gap-2 pl-2">
+                      {getForeignKeyIssue(fk, dbType) && (
+                        <p role="alert" className="text-xs text-destructive">
+                          {t('foreignKeyPanel.unsupportedActions')}
+                        </p>
+                      )}
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="inline-flex items-center gap-1.5 rounded-md bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200">
                           <Link2 className="h-3.5 w-3.5" />

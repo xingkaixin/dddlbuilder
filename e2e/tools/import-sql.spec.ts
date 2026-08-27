@@ -168,7 +168,7 @@ test.describe('SQL 导入功能验证 @tools', () => {
       .fill('employee_id');
     await page.keyboard.press('Enter');
     const sql = page.locator('[role="tabpanel"]:visible pre');
-    await expect(sql).toContainText('PRIMARY KEY (employee_id)');
+    await expect(sql).toContainText('PRIMARY KEY (employee_id ASC)');
     await expect(sql).toContainText('REFERENCES employees (employee_id)');
     await expect(sql).not.toContainText('REFERENCES employees (id)');
     await page.locator('#table-name').fill('staff');

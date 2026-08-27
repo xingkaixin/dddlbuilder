@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PersistedState } from '@ddlbuilder/shared-types';
+import { getForeignKeyIssue } from '@ddlbuilder/ddl-core';
 import {
   defaultRelationshipIntent,
   planTableRelationship,
@@ -78,6 +79,22 @@ function createDraft() {
 }
 
 describe('tableRelationship', () => {
+  it('creates an Oracle relationship without unsupported default actions', () => {
+    const draft = createDraft();
+    draft.source.dbType = 'oracle';
+    draft.target.dbType = 'oracle';
+    const intent = defaultRelationshipIntent(draft, 'user_id', 'id');
+    const result = planTableRelationship(draft, intent);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(getForeignKeyIssue(result.plan.foreignKey, 'oracle')).toBeNull();
+  });
+
+  it('rejects unsupported actions before creating a relationship', () => {
+    const result = planTableRelationship(createDraft(), createIntent({ onDelete: 'SET DEFAULT' }));
+    expect(result).toEqual({ ok: false, error: 'unsupported-foreign-key-action' });
+  });
+
   it('only exposes single-field primary and unique keys as reference targets', () => {
     const state = createTable('users', { isUnique: true });
     state.indexes?.push({
@@ -96,13 +113,14 @@ describe('tableRelationship', () => {
   it('uses safe referential actions and derives optionality for a new relationship', () => {
     const draft = createDraft();
 
-    expect(defaultRelationshipIntent(draft, 'user_id', 'id')).toMatchObject({
+    const intent = defaultRelationshipIntent(draft, 'user_id', 'id');
+    expect(intent).toMatchObject({
       cardinality: 'many-to-one',
       optionality: 'optional',
       createIndex: true,
-      onDelete: 'NO ACTION',
-      onUpdate: 'NO ACTION',
     });
+    expect(intent.onDelete).toBeUndefined();
+    expect(intent.onUpdate).toBeUndefined();
   });
 
   it('plans a many-to-one relationship with nullability and an index', () => {

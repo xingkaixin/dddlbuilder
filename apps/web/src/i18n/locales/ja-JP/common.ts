@@ -344,6 +344,9 @@ export const jaJPCommon = {
     },
   },
   foreignKeyPanel: {
+    unsupportedAction: '{{action}}（このデータベースでは未対応）',
+    unsupportedActions:
+      'このデータベースでは外部キーのアクションが未対応です。対応するアクションを選択するか、既存の外部キーを削除して再設定してください。',
     add: '外部キーの追加',
     name: '制約名',
     namePlaceholder: '例: fk_user_id',
@@ -1661,6 +1664,8 @@ export const jaJPCommon = {
         'duplicate-name': 'この名前の外部キーはテーブル内にすでに存在します。',
         'primary-key-cannot-be-optional': '主キー フィールドを NULL 値にすることはできません。',
         'set-null-requires-optional': 'SET NULL には、オプションの外部キー フィールドが必要です。',
+        'unsupported-foreign-key-action':
+          'このデータベースは選択された外部キーアクションをサポートしていません。選択し直してください。',
       },
       create: '関係を作成する',
       cancel: 'キャンセル',

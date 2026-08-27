@@ -17,6 +17,7 @@ import {
 import { buildQualifiedTableName, getSchemaAndTable } from '../databaseTypeMapping';
 import { getDatabaseFamily } from '../databaseFamily';
 import { getSqlServerColumnChangeNotice } from './sqlServerColumnStatements';
+import { getForeignKeyIssue } from '../foreignKeys';
 
 const MANUAL_CHANGE_DESCRIPTIONS: Record<ManualSchemaChange, string> = {
   objectType: 'schema object type',
@@ -85,6 +86,12 @@ export function generateAlterDDL(
       if (notice) return notice;
     }
   }
+
+  const unsupportedForeignKey = diff.foreignKeys?.find(
+    (change) => change.type === 'add' && getForeignKeyIssue(change.foreignKey, dbType),
+  );
+  if (unsupportedForeignKey)
+    return generateAddForeignKey(activeTableName, unsupportedForeignKey, dbType);
 
   const renames = orderFieldRenames(diff.fields, dbType);
   if (!renames) {

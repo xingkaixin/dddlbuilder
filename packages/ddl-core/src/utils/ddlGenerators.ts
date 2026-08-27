@@ -12,6 +12,7 @@ import { formatSqlTableName } from './databaseTypeMapping';
 import { formatSqlIdentifier } from './sqlIdentifiers';
 import { DDLStrategyFactory } from '../factories/DDLStrategyFactory';
 import { resolveFieldComment } from './fieldComment';
+import { getForeignKeyIssue } from './foreignKeys';
 
 export { buildOracleSynonyms } from './tableFeatures';
 
@@ -48,6 +49,9 @@ export const buildDDL = ({
   }
 
   const strategy = DDLStrategyFactory.create(dbType);
+  const unsupportedForeignKey = foreignKeys.find((fk) => getForeignKeyIssue(fk, dbType));
+  if (unsupportedForeignKey)
+    return strategy.generateForeignKeyDDL(tableName, unsupportedForeignKey);
   const generatedTableDDL = strategy.generateTableDDL(
     tableName.trim(),
     tableComment,

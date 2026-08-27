@@ -331,6 +331,8 @@ export const zhCNCommon = {
     },
   },
   foreignKeyPanel: {
+    unsupportedAction: '{{action}}（当前数据库不支持）',
+    unsupportedActions: '当前数据库不支持此外键动作，请重新选择；已有外键请删除后重新配置。',
     add: '添加外键',
     name: '约束名称',
     namePlaceholder: '例如: fk_user_id',
@@ -1600,6 +1602,7 @@ export const zhCNCommon = {
         'duplicate-name': '本表已经存在同名外键。',
         'primary-key-cannot-be-optional': '主键字段不能设置为可空。',
         'set-null-requires-optional': 'SET NULL 仅适用于允许为空的外键字段。',
+        'unsupported-foreign-key-action': '当前数据库不支持所选外键动作，请重新选择。',
       },
       create: '创建关系',
       cancel: '取消',

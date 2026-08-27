@@ -11,7 +11,8 @@ import type {
   DDLStrategy,
   TableFeatureConfig,
 } from '../interfaces/DDLStrategy';
-import { buildQualifiedTableName, formatSqlTableName } from '../utils/databaseTypeMapping';
+import { formatSqlTableName } from '../utils/databaseTypeMapping';
+import { buildForeignKeyDDL } from '../utils/foreignKeys';
 import { formatSqlIdentifier } from '../utils/sqlIdentifiers';
 import { TypeMapper } from '../utils/TypeMapper';
 import { buildPrimaryKeyName } from '../utils/primaryKeyNaming';
@@ -159,24 +160,6 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
    * 子类可以重写以适配方言差异
    */
   generateForeignKeyDDL(tableName: string, fk: ForeignKeyDefinition): string {
-    const fieldList = fk.fields.map((name) => this.formatFieldName(name)).join(', ');
-    const refFieldList = fk.refFields.map((name) => this.formatFieldName(name)).join(', ');
-    const refTable = buildQualifiedTableName(
-      fk.refSchema ?? '',
-      fk.refTable,
-      this.getDatabaseType(),
-    );
-
-    let sql = `ALTER TABLE ${this.formatTableName(tableName)} ADD CONSTRAINT ${this.formatFieldName(fk.name)} FOREIGN KEY (${fieldList}) REFERENCES ${refTable} (${refFieldList})`;
-
-    if (fk.onDelete) {
-      sql += ` ON DELETE ${fk.onDelete}`;
-    }
-    if (fk.onUpdate) {
-      sql += ` ON UPDATE ${fk.onUpdate}`;
-    }
-
-    sql += ';';
-    return sql;
+    return buildForeignKeyDDL(tableName, fk, this.getDatabaseType());
   }
 }
