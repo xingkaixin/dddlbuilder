@@ -68,6 +68,44 @@ function createCaseSensitiveState(dbType: DatabaseType): PersistedState {
 }
 
 describe('editor document references', () => {
+  it('updates self references when the table and schema change', () => {
+    useEditorStore.getState().replaceDocument(
+      createState({
+        foreignKeys: [
+          { ...parentForeignKey },
+          { ...parentForeignKey, id: 'external', refSchema: 'other' },
+        ],
+      }),
+    );
+    useEditorStore.getState().setTableName('accounts');
+    useEditorStore.getState().setSchemaName('audit');
+    const state = useEditorStore.getState();
+    expect(state.foreignKeys[0]).toMatchObject({ refTable: 'accounts', refSchema: 'audit' });
+    expect(state.foreignKeys[1]).toMatchObject({ refTable: 'users', refSchema: 'other' });
+  });
+
+  it('preserves quoted, qualified identities through rename and schema removal', () => {
+    useEditorStore.getState().replaceDocument(
+      createState({
+        dbType: 'postgresql',
+        tableName: '"Audit"."Users"',
+        foreignKeys: [
+          { ...parentForeignKey, refTable: '"Audit"."Users"' },
+          { ...parentForeignKey, id: 'different-case', refTable: '"Audit".users' },
+        ],
+      }),
+    );
+    useEditorStore.getState().setTableName('accounts');
+    expect(useEditorStore.getState().foreignKeys[0]).toMatchObject({
+      refTable: 'accounts',
+      refSchema: undefined,
+    });
+    expect(useEditorStore.getState().foreignKeys[1].refTable).toBe('"Audit".users');
+    useEditorStore.getState().setTableName('');
+    useEditorStore.getState().setTableName('staff');
+    expect(useEditorStore.getState().foreignKeys[0].refTable).toBe('staff');
+  });
+
   it.each(['postgresql', 'kingbase', 'gaussdb'] as const)(
     '%s renames only references to the exact field',
     (dbType) => {

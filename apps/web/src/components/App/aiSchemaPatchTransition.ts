@@ -1,6 +1,10 @@
 import type { FieldRow, IndexDefinition, PersistedState } from '@ddlbuilder/shared-types';
 import type { AISchemaChange } from '@/utils/aiSchemaChanges';
-import { removeFieldsFromDocument, updateDocumentFields } from '@/stores/editorDocumentMutations';
+import {
+  removeFieldsFromDocument,
+  updateDocumentFields,
+  updateDocumentTable,
+} from '@/stores/editorDocumentMutations';
 import { validateIndexFields } from '@/stores/editorDocumentValidation';
 
 type FieldChange = Extract<AISchemaChange, { kind: 'field' }>;
@@ -107,14 +111,18 @@ export const applyAISchemaChanges = (
     nextState.rows.length > 0 ? nextState.rows : stateAfterRemovals.rows,
   );
 
+  const tableChanges: Partial<Pick<PersistedState, 'schemaName' | 'tableName' | 'tableComment'>> =
+    {};
   for (const change of changes) {
     if (change.kind === 'table') {
-      const key = {
-        schema_name: 'schemaName',
-        table_name: 'tableName',
-        table_comment: 'tableComment',
-      }[change.type];
-      nextState = { ...nextState, [key]: change.newValue };
+      const key = (
+        {
+          schema_name: 'schemaName',
+          table_name: 'tableName',
+          table_comment: 'tableComment',
+        } as const
+      )[change.type];
+      tableChanges[key] = change.newValue;
       continue;
     }
 
@@ -148,6 +156,7 @@ export const applyAISchemaChanges = (
     }
   }
 
+  nextState = updateDocumentTable(nextState, tableChanges);
   validateIndexFields(nextState);
   return nextState;
 };

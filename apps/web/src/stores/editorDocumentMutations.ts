@@ -19,6 +19,32 @@ function referencesCurrentTable(state: PersistedState, foreignKey: ForeignKeyDef
   );
 }
 
+export function updateDocumentTable(
+  state: PersistedState,
+  changes: Partial<Pick<PersistedState, 'schemaName' | 'tableName' | 'tableComment'>>,
+): PersistedState {
+  const next = {
+    ...state,
+    schemaName: changes.schemaName ?? state.schemaName,
+    tableName: changes.tableName ?? state.tableName,
+    tableComment: changes.tableComment ?? state.tableComment,
+  };
+  if (next.schemaName === state.schemaName && next.tableName === state.tableName) return next;
+  const target = getSchemaAndTable(next.tableName);
+  return {
+    ...next,
+    foreignKeys: state.foreignKeys?.map((foreignKey) =>
+      referencesCurrentTable(state, foreignKey)
+        ? {
+            ...foreignKey,
+            refTable: target.table,
+            refSchema: next.schemaName || target.schema || undefined,
+          }
+        : foreignKey,
+    ),
+  };
+}
+
 export function updateDocumentFields(state: PersistedState, rows: FieldRow[]): PersistedState {
   const key = (name: string) => getSqlIdentifierKey(name, state.dbType);
   const previousNames = new Map(state.rows.map((row) => [row.id, row.fieldName.trim()]));

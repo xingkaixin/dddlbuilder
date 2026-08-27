@@ -7,7 +7,11 @@ import {
   type IndexDefinition,
   type PersistedState,
 } from '@ddlbuilder/shared-types';
-import { removeFieldsFromDocument, updateDocumentFields } from '@/stores/editorDocumentMutations';
+import {
+  removeFieldsFromDocument,
+  updateDocumentFields,
+  updateDocumentTable,
+} from '@/stores/editorDocumentMutations';
 import { validateIndexFields } from '@/stores/editorDocumentValidation';
 
 type JsonRecord = Record<string, unknown>;
@@ -232,12 +236,7 @@ export function applySchemaPatchOperations(
   for (const operation of operations) {
     switch (operation.kind) {
       case 'table.update':
-        state = {
-          ...state,
-          ...(operation.schemaName === undefined ? {} : { schemaName: operation.schemaName }),
-          ...(operation.tableName === undefined ? {} : { tableName: operation.tableName }),
-          ...(operation.tableComment === undefined ? {} : { tableComment: operation.tableComment }),
-        };
+        state = updateDocumentTable(state, operation);
         break;
       case 'field.add': {
         assertUniqueFieldName(state.rows, operation.field.fieldName);

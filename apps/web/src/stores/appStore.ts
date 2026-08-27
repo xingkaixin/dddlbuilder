@@ -4,6 +4,7 @@ import {
   normalizeFreezeColumns,
 } from '@ddlbuilder/shared-types';
 import type { AppSlice, EditorSetState } from './editorStoreTypes';
+import { updateDocumentTable } from './editorDocumentMutations';
 
 export const createAppSlice = (set: EditorSetState): AppSlice => ({
   schemaName: '',
@@ -19,8 +20,8 @@ export const createAppSlice = (set: EditorSetState): AppSlice => ({
   fieldTableFreezeColumns: 3,
   activeTab: 'fields',
 
-  setSchemaName: (schemaName) => set({ schemaName }),
-  setTableName: (tableName) => set({ tableName }),
+  setSchemaName: (schemaName) => set((state) => updateDocumentTable(state, { schemaName })),
+  setTableName: (tableName) => set((state) => updateDocumentTable(state, { tableName })),
   setTableComment: (tableComment) => set({ tableComment }),
   setObjectType: (objectType) => set({ objectType }),
   setViewDefinition: (viewDefinition) => set({ viewDefinition }),

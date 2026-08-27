@@ -73,6 +73,24 @@ const createState = (): PersistedState => ({
 });
 
 describe('WebMCP schema patch', () => {
+  it('updates self references when changing table identity', () => {
+    const base = createState();
+    base.foreignKeys?.push({
+      id: 'self',
+      name: 'fk_self',
+      fields: ['user_id'],
+      refSchema: 'public',
+      refTable: 'orders',
+      refFields: ['id'],
+    });
+    const next = applySchemaPatchOperations(base, [
+      { id: 'rename', kind: 'table.update', schemaName: 'audit', tableName: 'purchases' },
+    ]);
+    expect(next.foreignKeys?.[0]).toEqual(base.foreignKeys?.[0]);
+    expect(next.foreignKeys?.[1]).toMatchObject({ refSchema: 'audit', refTable: 'purchases' });
+    expect(base.foreignKeys?.[1].refTable).toBe('orders');
+  });
+
   it('parses field additions with deterministic operation ids and defaults', () => {
     const operations = parseSchemaPatchOperations([
       {

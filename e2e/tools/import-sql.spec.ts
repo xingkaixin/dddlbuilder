@@ -171,6 +171,10 @@ test.describe('SQL 导入功能验证 @tools', () => {
     await expect(sql).toContainText('PRIMARY KEY (employee_id)');
     await expect(sql).toContainText('REFERENCES employees (employee_id)');
     await expect(sql).not.toContainText('REFERENCES employees (id)');
+    await page.locator('#table-name').fill('staff');
+    await expect(sql).toContainText('CREATE TABLE staff');
+    await expect(sql).toContainText('REFERENCES staff (employee_id)');
+    await expect(sql).not.toContainText('REFERENCES employees');
   });
 
   test('场景：重新导入已有表不删除重建字段', async ({ page }) => {

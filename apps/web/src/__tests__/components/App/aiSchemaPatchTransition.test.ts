@@ -112,6 +112,35 @@ describe('AI field changes', () => {
 
 describe('applyAISchemaChanges', () => {
   it.each([false, true])(
+    'updates table identity and self references atomically (reverse=%s)',
+    (reverse) => {
+      const current = {
+        ...createState([{ ...row('id', 1), id: 'primary' }]),
+        foreignKeys: [
+          { id: 'self', name: 'fk_self', fields: ['id'], refTable: 'users', refFields: ['id'] },
+        ],
+      };
+      const candidate = {
+        ...current,
+        tableName: 'accounts',
+        schemaName: 'audit',
+        rows: [{ ...current.rows[0], fieldName: 'account_id' }],
+      };
+      const changes = buildAISchemaChanges(current, candidate);
+      if (reverse) changes.reverse();
+      const next = applyAISchemaChanges(current, candidate, changes);
+      expect(next.foreignKeys?.[0]).toMatchObject({
+        refTable: 'accounts',
+        refSchema: 'audit',
+        fields: ['account_id'],
+        refFields: ['account_id'],
+      });
+      expect(current.foreignKeys[0].refTable).toBe('users');
+      expect(applyAISchemaChanges(next, candidate, changes)).toEqual(next);
+    },
+  );
+
+  it.each([false, true])(
     'keeps a renamed field that reuses a removed name (reverse=%s)',
     (reverse) => {
       const current = createState([
