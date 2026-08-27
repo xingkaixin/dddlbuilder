@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { EnumValueMeta } from '@ddlbuilder/shared-types';
 import {
   buildDraftSummary,
   getDraftDisplayName,
@@ -110,6 +111,10 @@ describe('workspacePersistence/normalize', () => {
   });
 
   it('normalizePersistedState 应保留 enumMeta', () => {
+    const enumMeta: EnumValueMeta[] = [
+      { value: '0', i18n: { 'zh-CN': '删除' }, color: '#ff0000' },
+      { value: '1', i18n: { 'zh-CN': '正常' }, color: '#00ff00' },
+    ];
     const result = normalizePersistedState({
       tableName: 't1',
       dbType: 'mysql',
@@ -120,10 +125,7 @@ describe('workspacePersistence/normalize', () => {
           fieldName: 'status',
           fieldType: 'char(1)',
           nullable: '是',
-          enumMeta: [
-            { value: '0', comment: '删除', color: '#ff0000' },
-            { value: '1', comment: '正常', color: '#00ff00' },
-          ],
+          enumMeta,
         },
         {
           id: 'field-type',
@@ -143,10 +145,7 @@ describe('workspacePersistence/normalize', () => {
     });
 
     expect(result).not.toBeNull();
-    expect(result?.rows[0].enumMeta).toEqual([
-      { value: '0', comment: '删除', color: '#ff0000' },
-      { value: '1', comment: '正常', color: '#00ff00' },
-    ]);
+    expect(result?.rows[0].enumMeta).toEqual(enumMeta);
     expect(result?.rows[1].enumMeta).toBeUndefined();
   });
 
