@@ -64,6 +64,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
     vi.doMock('../lib/auth.js', () => ({
       authenticateRequest: vi.fn().mockResolvedValue({
         userId: 'user-1',
+        sessionId: 'session-1',
         email: 'user@example.com',
         emailVerified: true,
         name: 'User One',
@@ -89,6 +90,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
     vi.doMock('../lib/auth.js', () => ({
       authenticateRequest: vi.fn().mockResolvedValue({
         userId: 'user-1',
+        sessionId: 'session-1',
         email: 'user@example.com',
         emailVerified: true,
         name: 'User One',
@@ -104,7 +106,9 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
 
     const { default: app } = await import('../../api/index');
     const response = await app.fetch(
-      createRequest('/api/workspaces/ws-1/yjs/state'),
+      createRequest('/api/workspaces/ws-1/yjs/state', {
+        headers: { 'x-ddlbuilder-session-id': 'untrusted-session' },
+      }),
       createEnv({ WORKSPACE_YDOC: createYDocNamespace(stubFetch) }),
     );
 
@@ -112,6 +116,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
     const [forwarded] = stubFetch.mock.calls[0] as [Request];
     expect(forwarded.headers.get('x-ddlbuilder-workspace-id')).toBe('ws-1');
     expect(forwarded.headers.get('x-ddlbuilder-user-id')).toBe('user-1');
+    expect(forwarded.headers.get('x-ddlbuilder-session-id')).toBe('session-1');
   });
 
   it('returns 204 for authorized websocket health preflight', async () => {
@@ -119,6 +124,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
     vi.doMock('../lib/auth.js', () => ({
       authenticateRequest: vi.fn().mockResolvedValue({
         userId: 'user-1',
+        sessionId: 'session-1',
         email: 'user@example.com',
         emailVerified: true,
         name: 'User One',
@@ -147,6 +153,7 @@ describe('/api/workspaces/:workspaceId/yjs', () => {
     vi.doMock('../lib/auth.js', () => ({
       authenticateRequest: vi.fn().mockResolvedValue({
         userId: 'user-1',
+        sessionId: 'session-1',
         email: 'user@example.com',
         emailVerified: true,
         name: 'User One',

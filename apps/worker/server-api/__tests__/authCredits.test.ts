@@ -7,7 +7,7 @@ vi.mock('../lib/betterAuth.js', () => ({
   createBetterAuth: () => ({
     handler: async () =>
       Response.json({
-        session: { token: 'session-token' },
+        session: { id: 'session-1', token: 'session-token' },
         user: {
           id: 'user-1',
           email: 'user@example.com',

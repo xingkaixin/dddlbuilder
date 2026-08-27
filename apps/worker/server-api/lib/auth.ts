@@ -7,6 +7,7 @@ import { getUserSystemConfig } from './userSystemConfig.js';
 
 export type AuthenticatedAppUser = {
   userId: string;
+  sessionId: string;
   email: string;
   emailVerified: boolean;
   name: string;
@@ -14,6 +15,7 @@ export type AuthenticatedAppUser = {
 
 type BetterAuthSession = {
   session: {
+    id: string;
     token: string;
   };
   user: {
@@ -26,12 +28,13 @@ type BetterAuthSession = {
 
 const ensureBusinessUser = async (
   env: ApiEnv['Bindings'],
-  user: BetterAuthSession['user'],
+  { user, session }: BetterAuthSession,
 ): Promise<AuthenticatedAppUser> => {
   await grantSignupCredits(env, { userId: user.id, email: user.email });
 
   return {
     userId: user.id,
+    sessionId: session.id,
     email: user.email,
     emailVerified: user.emailVerified,
     name: user.name,
@@ -67,7 +70,7 @@ export const resolveAuthenticatedUser = async (
 
   const session = (await response.json().catch(() => null)) as BetterAuthSession | null;
 
-  if (!session?.user) {
+  if (!session?.user || !session.session?.id) {
     return null;
   }
 
@@ -79,7 +82,7 @@ export const resolveAuthenticatedUser = async (
     throw new DomainError(403, 'USER_DISABLED', 'USER_DISABLED');
   }
 
-  return ensureBusinessUser(env, session.user);
+  return ensureBusinessUser(env, session);
 };
 
 export const authenticateRequest = async (c: Context<ApiEnv>) => {

@@ -17,11 +17,13 @@ const buildForwardedRequest = (
   request: Request,
   workspaceId: string,
   userId: string,
+  sessionId: string,
   body?: BodyInit,
 ) => {
   const headers = new Headers(request.headers);
   headers.set('x-ddlbuilder-workspace-id', workspaceId);
   headers.set('x-ddlbuilder-user-id', userId);
+  headers.set('x-ddlbuilder-session-id', sessionId);
   return new Request(request.url, {
     method: request.method,
     headers,
@@ -30,7 +32,7 @@ const buildForwardedRequest = (
 };
 
 type WorkspaceYDocAuthResult =
-  | { userId: string; workspaceId: string; stub: DurableObjectStub }
+  | { userId: string; sessionId: string; workspaceId: string; stub: DurableObjectStub }
   | { response: Response };
 
 const authenticateWorkspaceRequest = async (
@@ -63,13 +65,14 @@ const authenticateWorkspaceRequest = async (
     };
   }
 
-  return { userId: user.userId, workspaceId, stub };
+  return { userId: user.userId, sessionId: user.sessionId, workspaceId, stub };
 };
 
 const withAuthenticatedWorkspace = async (
   c: Context<ApiEnv>,
   handle: (auth: {
     userId: string;
+    sessionId: string;
     workspaceId: string;
     stub: DurableObjectStub;
   }) => Promise<Response>,
@@ -86,7 +89,12 @@ export function registerWorkspaceYDocRoutes(app: Hono<ApiEnv>) {
         return new Response(null, { status: 204 });
       }
       return authenticated.stub.fetch(
-        buildForwardedRequest(c.req.raw, authenticated.workspaceId, authenticated.userId),
+        buildForwardedRequest(
+          c.req.raw,
+          authenticated.workspaceId,
+          authenticated.userId,
+          authenticated.sessionId,
+        ),
       );
     }),
   );
@@ -94,7 +102,12 @@ export function registerWorkspaceYDocRoutes(app: Hono<ApiEnv>) {
   app.get('/workspaces/:workspaceId/yjs/state', async (c) =>
     withAuthenticatedWorkspace(c, async (authenticated) =>
       authenticated.stub.fetch(
-        buildForwardedRequest(c.req.raw, authenticated.workspaceId, authenticated.userId),
+        buildForwardedRequest(
+          c.req.raw,
+          authenticated.workspaceId,
+          authenticated.userId,
+          authenticated.sessionId,
+        ),
       ),
     ),
   );
@@ -115,6 +128,7 @@ export function registerWorkspaceYDocRoutes(app: Hono<ApiEnv>) {
           c.req.raw,
           authenticated.workspaceId,
           authenticated.userId,
+          authenticated.sessionId,
           JSON.stringify(snapshot),
         ),
       );

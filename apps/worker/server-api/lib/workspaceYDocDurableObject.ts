@@ -41,6 +41,7 @@ type WorkspaceYDocSocketAttachment = {
   socketId: string;
   workspaceId?: string;
   userId?: string;
+  sessionId: string;
   connectedAt: number;
 };
 
@@ -114,9 +115,11 @@ export class WorkspaceYDocDurableObject {
     const doc = await this.loadDoc();
 
     if (request.headers.get('upgrade')?.toLowerCase() === 'websocket') {
+      const sessionId = request.headers.get('x-ddlbuilder-session-id');
+      if (!sessionId) return new Response('Missing session id', { status: 401 });
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
-      const attachment = this.createSocketAttachment();
+      const attachment = this.createSocketAttachment(sessionId);
       server.serializeAttachment?.(attachment);
       this.state.acceptWebSocket(server, attachment.workspaceId ? [attachment.workspaceId] : []);
       await this.writeMeta();
@@ -181,6 +184,7 @@ export class WorkspaceYDocDurableObject {
   async webSocketMessage(ws: WebSocket, message: ArrayBuffer | string) {
     if (typeof message === 'string') return;
     this.restoreSocketAttachment(ws);
+    if ((await this.authorizeSockets([ws])).length === 0) return;
     const doc = await this.loadDoc();
     const decoder = decoding.createDecoder(new Uint8Array(message));
     let messageType = decoding.readVarUint(decoder);
@@ -321,7 +325,11 @@ export class WorkspaceYDocDurableObject {
 
   private readonly handleDocUpdate = (update: Uint8Array, origin: unknown) => {
     this.queuePersistUpdate(update);
-    this.broadcastUpdate(update, origin);
+    this.state.waitUntil(
+      this.broadcastUpdate(update, origin).catch((error: unknown) => {
+        console.error('[workspace-yjs-do] broadcast failed', error);
+      }),
+    );
   };
 
   private queuePersistUpdate(update: Uint8Array) {
@@ -377,10 +385,42 @@ export class WorkspaceYDocDurableObject {
     await this.persistQueue;
   }
 
-  private broadcastUpdate(update: Uint8Array, origin: unknown) {
+  private async authorizeSockets(sockets: WebSocket[]): Promise<WebSocket[]> {
+    if (sockets.length === 0) return [];
+    try {
+      const { results } = await this.env.USER_DB.prepare(
+        `SELECT s.id FROM session s
+         JOIN workspaces w ON w.user_id = s.user_id
+         WHERE w.id = ? AND s.user_id = ? AND s.expires_at > ?
+           AND NOT EXISTS (SELECT 1 FROM admin_user_flags f WHERE f.user_id = s.user_id)`,
+      )
+        .bind(this.workspaceId ?? null, this.userId ?? null, Date.now())
+        .all<{ id: string }>();
+      const sessionIds = new Set(results.map(({ id }) => id));
+      return sockets.filter((socket) => {
+        const attachment = socket.deserializeAttachment?.();
+        if (
+          isSocketAttachment(attachment) &&
+          attachment.workspaceId === this.workspaceId &&
+          attachment.userId === this.userId &&
+          sessionIds.has(attachment.sessionId)
+        )
+          return true;
+        socket.close(1008, 'Workspace access denied');
+        return false;
+      });
+    } catch (error) {
+      for (const socket of sockets) socket.close(1011, 'Workspace authorization unavailable');
+      throw error;
+    }
+  }
+
+  private async broadcastUpdate(update: Uint8Array, origin: unknown) {
     const message = encodeSyncMessage((encoder) => syncProtocol.writeUpdate(encoder, update));
-    for (const socket of this.state.getWebSockets()) {
-      if (socket === origin || socket.readyState !== WebSocket.OPEN) continue;
+    const sockets = this.state
+      .getWebSockets()
+      .filter((socket) => socket !== origin && socket.readyState === WebSocket.OPEN);
+    for (const socket of await this.authorizeSockets(sockets)) {
       socket.send(message);
     }
   }
@@ -496,12 +536,13 @@ export class WorkspaceYDocDurableObject {
     return this.state.getWebSockets().filter((socket) => socket.readyState === openState).length;
   }
 
-  private createSocketAttachment(): WorkspaceYDocSocketAttachment {
+  private createSocketAttachment(sessionId: string): WorkspaceYDocSocketAttachment {
     return {
       schemaVersion: 1,
       socketId: createSocketId(),
       workspaceId: this.workspaceId,
       userId: this.userId,
+      sessionId,
       connectedAt: Date.now(),
     };
   }

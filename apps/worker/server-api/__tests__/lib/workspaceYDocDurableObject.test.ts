@@ -10,6 +10,7 @@ import type {
 } from '@ddlbuilder/shared-types/workspace';
 import type { WorkspaceMigrationResult } from '../../lib/workspaceMigration.js';
 import type { ApiEnv } from '../../lib/context.js';
+import { createDurableObjectState } from '../helpers/durableObjectState';
 
 const MESSAGE_SYNC = 0;
 
@@ -66,37 +67,13 @@ const createSnapshot = (tableName: string, updatedAt = 2): WorkspaceSnapshot => 
   folders: [],
 });
 
-const createDurableObjectState = (store = new Map<string, unknown>()) => {
-  return {
-    state: {
-      storage: {
-        get: vi.fn(async (key: string) => store.get(key)),
-        put: vi.fn(async (key: string, value: unknown) => {
-          store.set(key, value);
-        }),
-        delete: vi.fn(async (key: string) => {
-          store.delete(key);
-          return true;
-        }),
-        list: vi.fn(async (options?: { prefix?: string }) => {
-          const entries = Array.from(store.entries()).filter(
-            ([key]) => !options?.prefix || key.startsWith(options.prefix),
-          );
-          return new Map(entries);
-        }),
-        getAlarm: vi.fn(async () => null),
-        setAlarm: vi.fn(async () => undefined),
-      },
-      acceptWebSocket: vi.fn(),
-      getWebSockets: vi.fn(() => []),
-    } as unknown as DurableObjectState,
-    store,
-  };
-};
-
 const createEnv = (): ApiEnv['Bindings'] =>
   ({
-    USER_DB: {} as D1Database,
+    USER_DB: {
+      prepare: () => ({
+        bind: () => ({ all: async () => ({ results: [{ id: 'session-1' }] }) }),
+      }),
+    } as unknown as D1Database,
   }) as ApiEnv['Bindings'];
 
 const createRequest = (path: string, init: RequestInit = {}) => {
@@ -110,7 +87,14 @@ const createRequest = (path: string, init: RequestInit = {}) => {
 };
 
 const createWebSocket = (
-  attachment?: unknown,
+  attachment: unknown = {
+    schemaVersion: 1,
+    socketId: 'socket-1',
+    workspaceId: 'ws-1',
+    userId: 'user-1',
+    sessionId: 'session-1',
+    connectedAt: 1,
+  },
 ): WebSocket & {
   send: ReturnType<typeof vi.fn>;
   serializeAttachment: ReturnType<typeof vi.fn>;
@@ -160,6 +144,8 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
     const ws = createWebSocket();
     const doc = new Y.Doc();
+    doc.getMap('meta').set('schemaVersion', 1);
+    store.set('snapshot', Y.encodeStateAsUpdate(doc));
     doc.getMap('fields').set('field', 'persisted value');
     const processing = durableObject.webSocketMessage(
       ws,
@@ -186,11 +172,13 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
 
   it('does not acknowledge a failed write and closes the socket for reconnect', async () => {
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
-    const { state } = createDurableObjectState();
+    const { state, store } = createDurableObjectState();
     vi.mocked(state.storage.put).mockRejectedValue(new Error('storage failed'));
     const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
     const ws = createWebSocket();
     const doc = new Y.Doc();
+    doc.getMap('meta').set('schemaVersion', 1);
+    store.set('snapshot', Y.encodeStateAsUpdate(doc));
     doc.getMap('fields').set('field', 'not yet persisted');
 
     await expect(
@@ -759,8 +747,8 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     vi.stubGlobal('WebSocket', { OPEN: 1 });
     const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
     const { state } = createDurableObjectState();
-    const origin = { readyState: 1, send: vi.fn() } as unknown as WebSocket;
-    const peer = { readyState: 1, send: vi.fn() } as unknown as WebSocket;
+    const origin = createWebSocket();
+    const peer = createWebSocket();
     vi.mocked(state.getWebSockets).mockReturnValue([origin, peer]);
     const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
     const sourceDoc = new Y.Doc();
@@ -780,6 +768,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       ),
     );
 
+    await Promise.all(vi.mocked(state.waitUntil).mock.calls.map(([promise]) => promise));
     expect(peer.send).toHaveBeenCalledTimes(1);
     expect(origin.send).not.toHaveBeenCalled();
   });
@@ -842,12 +831,10 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     const secondObject = new WorkspaceYDocDurableObject(secondState, createEnv());
     const clientDoc = new Y.Doc();
     const sent: Uint8Array[] = [];
-    const clientSocket = {
-      readyState: 1,
-      send: vi.fn((message: Uint8Array) => {
-        sent.push(message);
-      }),
-    } as unknown as WebSocket;
+    const clientSocket = createWebSocket();
+    clientSocket.send.mockImplementation((message: Uint8Array) => {
+      sent.push(message);
+    });
 
     await secondObject.webSocketMessage(
       clientSocket,
@@ -884,6 +871,7 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
       socketId: 'socket-1',
       workspaceId: 'ws-1',
       userId: 'user-1',
+      sessionId: 'session-1',
       connectedAt: 1,
     });
 

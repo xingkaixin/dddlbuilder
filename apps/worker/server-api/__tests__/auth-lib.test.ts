@@ -33,6 +33,7 @@ describe('resolveAuthenticatedUser', () => {
       new Response(
         JSON.stringify({
           session: {
+            id: 'session-1',
             token: 'session-token',
           },
           user: {
@@ -68,6 +69,7 @@ describe('resolveAuthenticatedUser', () => {
     expect(request.headers.get('cookie')).toContain('better-auth.session_token=');
     expect(user).toMatchObject({
       userId: 'user-1',
+      sessionId: 'session-1',
       email: 'user@example.com',
     });
   });
@@ -121,7 +123,7 @@ describe('resolveAuthenticatedUser', () => {
     const handler = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
-          session: { token: 'token' },
+          session: { id: 'session-1', token: 'token' },
           user: {
             id: 'user-1',
             email: 'user@example.com',
@@ -184,7 +186,7 @@ describe('authenticateRequest', () => {
         handler: vi.fn().mockResolvedValue(
           new Response(
             JSON.stringify({
-              session: { token: 'token' },
+              session: { id: 'session-1', token: 'token' },
               user: {
                 id: 'user-1',
                 email: 'user@example.com',
