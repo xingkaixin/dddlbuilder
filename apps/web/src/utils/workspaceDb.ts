@@ -32,6 +32,11 @@ export const openDb = (): Promise<IDBDatabase> =>
     try {
       ensureIndexedDb();
       const request = indexedDB.open(DB_NAME, DB_VERSION);
+      let blocked = false;
+      request.onblocked = () => {
+        blocked = true;
+        reject(new Error('数据库升级被其他页面阻塞，请关闭其他页面后重试'));
+      };
       request.onerror = () => reject(request.error ?? new Error('打开 IndexedDB 失败'));
       request.onupgradeneeded = (event) => {
         const db = request.result;
@@ -149,7 +154,15 @@ export const openDb = (): Promise<IDBDatabase> =>
           };
         }
       };
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => {
+        const db = request.result;
+        db.onversionchange = () => db.close();
+        if (blocked) {
+          db.close();
+          return;
+        }
+        resolve(db);
+      };
     } catch (error) {
       reject(error);
     }

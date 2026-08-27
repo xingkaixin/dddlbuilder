@@ -1,7 +1,7 @@
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { buildScopedWorkspaceKey, getWorkspaceScopeStorageKey } from './workspaceScope';
 import { normalizePersistedRows } from '@ddlbuilder/shared-types';
-import { runIndexedDbRequest } from './indexedDbTransaction';
+import { runIndexedDbRequest, runIndexedDbTransaction } from './indexedDbTransaction';
 import { decodeWorkspaceScopedKey } from './workspaceScopedRecord';
 import { openDb, STORE_NAME } from './workspaceDb';
 import type { SavedTableMetadata, SavedTableRecord } from './workspaceStorageTypes';
@@ -171,8 +171,7 @@ export const updateSavedTables = async (
 ): Promise<void> => {
   if (records.length === 0) return;
   const db = await openDb();
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
+  await runIndexedDbTransaction(db, STORE_NAME, 'readwrite', (tx) => {
     const store = tx.objectStore(STORE_NAME);
     for (const record of records) {
       store.put({
@@ -181,12 +180,7 @@ export const updateSavedTables = async (
         scope: getWorkspaceScopeStorageKey(scope),
       } satisfies SavedTableRecord);
     }
-    tx.onerror = () => reject(tx.error ?? new Error('事务失败'));
-    tx.onabort = () => reject(tx.error ?? new Error('事务被中止'));
-    tx.oncomplete = () => {
-      db.close();
-      resolve();
-    };
+    return () => undefined;
   });
 };
 

@@ -4,7 +4,7 @@ import {
 } from '@ddlbuilder/shared-types/ddl-review';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { openDb, REVIEW_STORE_NAME } from './workspaceDb';
-import { runIndexedDbRequest } from './indexedDbTransaction';
+import { runIndexedDbRequest, runIndexedDbTransaction } from './indexedDbTransaction';
 import { getWorkspaceScopeStorageKey } from './workspaceScope';
 
 export type ReviewTarget = {
@@ -63,8 +63,7 @@ async function runWithStore<T>(
 const readAndClaimReviews = async (target: ReviewTarget): Promise<ReviewRecord[]> => {
   const db = await openDb();
   const tableKey = getTableKey(target);
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(REVIEW_STORE_NAME, 'readwrite');
+  return runIndexedDbTransaction(db, REVIEW_STORE_NAME, 'readwrite', (tx) => {
     const store = tx.objectStore(REVIEW_STORE_NAME);
     const scopedRequest = store.index('tableKey').getAll(tableKey);
     const sameNameRequest = store.index('tableNormalizedName').getAll(target.normalizedName);
@@ -93,18 +92,7 @@ const readAndClaimReviews = async (target: ReviewTarget): Promise<ReviewRecord[]
       sameNameRecords = sameNameRequest.result as ReviewRecord[];
       claimLegacyRecords();
     };
-    tx.oncomplete = () => {
-      db.close();
-      resolve(records.map(normalizeReviewRecord).sort((a, b) => b.createdAt - a.createdAt));
-    };
-    tx.onerror = () => {
-      db.close();
-      reject(tx.error ?? new Error('读取评审历史失败'));
-    };
-    tx.onabort = () => {
-      db.close();
-      reject(tx.error ?? new Error('读取评审历史被中止'));
-    };
+    return () => records.map(normalizeReviewRecord).sort((a, b) => b.createdAt - a.createdAt);
   });
 };
 
@@ -174,19 +162,14 @@ export async function pruneOldReviews(target: ReviewTarget, maxCount: number): P
 
   const toDelete = records.slice(maxCount);
   const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(REVIEW_STORE_NAME, 'readwrite');
+  return runIndexedDbTransaction(db, REVIEW_STORE_NAME, 'readwrite', (tx) => {
     const store = tx.objectStore(REVIEW_STORE_NAME);
 
     for (const record of toDelete) {
       store.delete(record.id);
     }
 
-    tx.oncomplete = () => {
-      db.close();
-      resolve(toDelete.length);
-    };
-    tx.onerror = () => reject(tx.error);
+    return () => toDelete.length;
   });
 }
 

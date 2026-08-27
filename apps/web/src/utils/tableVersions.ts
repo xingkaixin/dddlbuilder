@@ -4,7 +4,7 @@ import {
   type PersistedState,
 } from '@ddlbuilder/shared-types';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
-import { runIndexedDbRequest } from './indexedDbTransaction';
+import { runIndexedDbRequest, runIndexedDbTransaction } from './indexedDbTransaction';
 import { getWorkspaceScopeStorageKey } from './workspaceScope';
 import { openDb, VERSION_STORE_NAME } from './workspaceDb';
 import type { TableVersion, TableVersionMetadata } from './workspaceStorageTypes';
@@ -37,8 +37,7 @@ async function runWithStore<T>(
 const readAndClaimVersions = async (target: TableVersionTarget): Promise<TableVersion[]> => {
   const db = await openDb();
   const tableKey = getTableKey(target);
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(VERSION_STORE_NAME, 'readwrite');
+  return runIndexedDbTransaction(db, VERSION_STORE_NAME, 'readwrite', (tx) => {
     const store = tx.objectStore(VERSION_STORE_NAME);
     const scopedRequest = store.index('tableKey').getAll(tableKey);
     const sameNameRequest = store.index('tableNormalizedName').getAll(target.normalizedName);
@@ -67,18 +66,7 @@ const readAndClaimVersions = async (target: TableVersionTarget): Promise<TableVe
       sameNameVersions = sameNameRequest.result as TableVersion[];
       claimLegacyVersions();
     };
-    tx.oncomplete = () => {
-      db.close();
-      resolve(versions.sort((a, b) => b.createdAt - a.createdAt).map(decodeVersion));
-    };
-    tx.onerror = () => {
-      db.close();
-      reject(tx.error ?? new Error('读取版本历史失败'));
-    };
-    tx.onabort = () => {
-      db.close();
-      reject(tx.error ?? new Error('读取版本历史被中止'));
-    };
+    return () => versions.sort((a, b) => b.createdAt - a.createdAt).map(decodeVersion);
   });
 };
 
@@ -139,16 +127,10 @@ export async function deleteVersion(id: string, target: TableVersionTarget): Pro
 const deleteVersions = async (versions: TableVersion[]): Promise<void> => {
   if (versions.length === 0) return;
   const db = await openDb();
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(VERSION_STORE_NAME, 'readwrite');
+  await runIndexedDbTransaction(db, VERSION_STORE_NAME, 'readwrite', (tx) => {
     const store = tx.objectStore(VERSION_STORE_NAME);
     for (const version of versions) store.delete(version.id);
-    tx.oncomplete = () => {
-      db.close();
-      resolve();
-    };
-    tx.onerror = () => reject(tx.error ?? new Error('删除版本失败'));
-    tx.onabort = () => reject(tx.error ?? new Error('删除版本被中止'));
+    return () => undefined;
   });
 };
 

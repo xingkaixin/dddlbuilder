@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { runIndexedDbRequest } from '@/utils/indexedDbTransaction';
+import { runIndexedDbRequest, runIndexedDbTransaction } from '@/utils/indexedDbTransaction';
 
 type RequestHandlers<T> = {
   result: T;
@@ -14,6 +14,7 @@ type TransactionHandlers = {
   onerror: (() => void) | null;
   onabort: (() => void) | null;
   objectStore: () => IDBObjectStore;
+  abort: ReturnType<typeof vi.fn>;
 };
 
 const createHarness = <T>(result: T) => {
@@ -30,6 +31,7 @@ const createHarness = <T>(result: T) => {
     onerror: null,
     onabort: null,
     objectStore: () => store,
+    abort: vi.fn(),
   };
   const close = vi.fn();
   const db = {
@@ -41,6 +43,39 @@ const createHarness = <T>(result: T) => {
 };
 
 describe('runIndexedDbRequest', () => {
+  it('aborts partial work and closes the connection when scheduling throws', async () => {
+    const harness = createHarness(undefined);
+    const error = new Error('DataCloneError');
+    await expect(
+      runIndexedDbTransaction(harness.db, 'records', 'readwrite', () => {
+        throw error;
+      }),
+    ).rejects.toBe(error);
+    expect(harness.transaction.abort).toHaveBeenCalledOnce();
+    harness.transaction.onabort?.();
+    expect(harness.close).toHaveBeenCalledOnce();
+  });
+
+  it('closes the connection when a transaction cannot be created', async () => {
+    const harness = createHarness(undefined);
+    vi.mocked(harness.db.transaction).mockImplementation(() => {
+      throw new Error('closed');
+    });
+    await expect(
+      runIndexedDbTransaction(harness.db, 'records', 'readwrite', () => () => undefined),
+    ).rejects.toThrow('closed');
+    expect(harness.close).toHaveBeenCalledOnce();
+  });
+
+  it('can leave a shared connection open after committing', async () => {
+    const harness = createHarness(undefined);
+    const result = runIndexedDbTransaction(harness.db, 'records', 'readwrite', () => () => 2, {
+      closeDatabase: false,
+    });
+    harness.transaction.oncomplete?.();
+    await expect(result).resolves.toBe(2);
+    expect(harness.close).not.toHaveBeenCalled();
+  });
   it('resolves only after the transaction commits', async () => {
     const harness = createHarness('saved');
     let resolved = false;

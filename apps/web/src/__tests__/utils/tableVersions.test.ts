@@ -411,7 +411,7 @@ describe('tableVersions', () => {
       const abortedRead = listVersions(defaultTarget);
       await Promise.resolve();
       mockTx.onabort();
-      await expect(abortedRead).rejects.toThrow('读取版本历史被中止');
+      await expect(abortedRead).rejects.toThrow('IndexedDB 事务被中止');
 
       vi.restoreAllMocks();
     });
