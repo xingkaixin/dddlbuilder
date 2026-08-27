@@ -1404,6 +1404,7 @@ export const zhCNCommon = {
     schemaRequired: '请先填写字段名',
     queryRequired: '请输入典型查询 SQL',
     indexExists: '相同字段顺序的索引已存在',
+    invalidIndexFields: '推荐索引的字段与当前表结构不匹配，请重新分析。',
     indexApplied: '索引建议已添加',
     category: {
       missing_index: '缺失索引',

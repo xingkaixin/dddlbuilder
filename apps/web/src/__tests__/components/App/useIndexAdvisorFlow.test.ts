@@ -151,23 +151,30 @@ describe('useIndexAdvisorFlow', () => {
     expect(mocks.showToast).toHaveBeenCalledWith('advisor failed');
   });
 
-  it('rejects recommendations without usable or novel fields', () => {
-    const missing = renderFlow();
-    act(() =>
-      missing.result.current.applyRecommendation({
-        id: 'missing',
-        category: 'performance',
-        title: 'Missing',
-        rationale: '',
-        priority: 'medium',
-        index: {
-          fields: [{ name: 'unknown', direction: 'ASC' }],
-          unique: false,
-        },
-      }),
-    );
-    expect(mocks.showToast).toHaveBeenCalledWith('aiIndexAdvisor.schemaRequired');
+  it.each([{ names: [] }, { names: ['unknown'] }, { names: ['tenant_id', 'email'] }])(
+    'rejects incomplete index fields: $names',
+    ({ names }) => {
+      const { result, setIndexes, setActiveTab } = renderFlow();
+      act(() =>
+        result.current.applyRecommendation({
+          id: 'missing',
+          category: 'missing_index',
+          title: 'Missing',
+          rationale: '',
+          confidence: 'medium',
+          index: {
+            fields: names.map((name) => ({ name, direction: 'ASC' })),
+            unique: true,
+          },
+        }),
+      );
+      expect(setIndexes).not.toHaveBeenCalled();
+      expect(setActiveTab).not.toHaveBeenCalled();
+      expect(mocks.showToast).toHaveBeenCalledWith('aiIndexAdvisor.invalidIndexFields');
+    },
+  );
 
+  it('rejects an existing index', () => {
     const duplicate = renderFlow({ indexes: [index] });
     act(() =>
       duplicate.result.current.applyRecommendation({
@@ -196,7 +203,10 @@ describe('useIndexAdvisorFlow', () => {
         rationale: '',
         priority: 'high',
         index: {
-          fields: [{ name: 'email', direction: 'ASC' }],
+          fields: [
+            { name: 'id', direction: 'ASC' },
+            { name: 'email', direction: 'DESC' },
+          ],
           unique: true,
         },
       }),
@@ -206,7 +216,10 @@ describe('useIndexAdvisorFlow', () => {
       current: IndexDefinition[],
     ) => IndexDefinition[];
     expect(updater([])[0]).toMatchObject({
-      fields: [{ name: 'email', direction: 'ASC' }],
+      fields: [
+        { name: 'id', direction: 'ASC' },
+        { name: 'email', direction: 'DESC' },
+      ],
       unique: true,
     });
     expect(setActiveTab).toHaveBeenCalledWith('indexes');

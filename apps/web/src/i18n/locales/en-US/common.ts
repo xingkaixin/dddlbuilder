@@ -1447,6 +1447,8 @@ export const enUSCommon = {
     schemaRequired: 'Enter field names first',
     queryRequired: 'Enter typical query SQL',
     indexExists: 'An index with the same field order already exists',
+    invalidIndexFields:
+      'The recommended index fields do not match the current schema. Analyze again.',
     indexApplied: 'Index recommendation added',
     category: {
       missing_index: 'Missing Index',

@@ -1457,6 +1457,8 @@ export const jaJPCommon = {
     schemaRequired: '最初にフィールド名を入力してください',
     queryRequired: '一般的なクエリ SQL を入力します',
     indexExists: '同じフィールド順序のインデックスがすでに存在します',
+    invalidIndexFields:
+      '推奨インデックスのフィールドが現在のテーブル定義と一致しません。もう一度分析してください。',
     indexApplied: 'インデックスの推奨事項を追加しました',
     category: {
       missing_index: 'インデックスがありません',

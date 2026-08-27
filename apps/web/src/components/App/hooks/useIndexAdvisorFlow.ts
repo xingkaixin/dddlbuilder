@@ -143,11 +143,12 @@ export function useIndexAdvisorFlow({
       if (!recommendation.index) return;
 
       const availableFieldNames = new Set(fields.map((field) => field.name));
-      const recommendedFields = recommendation.index.fields.filter((field) =>
-        availableFieldNames.has(field.name),
-      );
-      if (recommendedFields.length === 0) {
-        showToast(t('aiIndexAdvisor.schemaRequired'));
+      const recommendedFields = recommendation.index.fields;
+      if (
+        recommendedFields.length === 0 ||
+        recommendedFields.some((field) => !availableFieldNames.has(field.name))
+      ) {
+        showToast(t('aiIndexAdvisor.invalidIndexFields'));
         return;
       }
 
