@@ -44,6 +44,10 @@ export function generateAlterDDL(
     }
   }
 
+  for (const fkDiff of (diff.foreignKeys || []).filter((f) => f.type === 'remove')) {
+    statements.push(generateDropForeignKey(activeTableName, fkDiff, dbType));
+  }
+
   // 1. 处理删除的索引（先删索引，再改字段）
   for (const idxDiff of diff.indexes.filter((i) => i.type === 'remove')) {
     statements.push(generateDropIndex(activeTableName, idxDiff, dbType));
@@ -87,12 +91,7 @@ export function generateAlterDDL(
     statements.push(generateAddIndex(activeTableName, idxDiff, dbType));
   }
 
-  // 7. 处理删除的外键（在新增索引之后，避免依赖冲突）
-  for (const fkDiff of (diff.foreignKeys || []).filter((f) => f.type === 'remove')) {
-    statements.push(generateDropForeignKey(activeTableName, fkDiff, dbType));
-  }
-
-  // 8. 处理新增的外键
+  // 7. 处理新增的外键
   for (const fkDiff of (diff.foreignKeys || []).filter((f) => f.type === 'add')) {
     statements.push(generateAddForeignKey(activeTableName, fkDiff, dbType));
   }

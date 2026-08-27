@@ -304,16 +304,30 @@ describe('generateAlterDDL', () => {
         },
       ],
       indexes: [
-        { type: 'remove', index: createIndex({ name: 'idx_old' }) },
-        { type: 'add', index: createIndex({ name: 'idx_new' }) },
+        {
+          type: 'remove',
+          index: createIndex({ name: 'idx_old', fields: [{ name: 'old_col', direction: 'ASC' }] }),
+        },
+        {
+          type: 'add',
+          index: createIndex({ name: 'idx_new', fields: [{ name: 'new_col', direction: 'ASC' }] }),
+        },
+      ],
+      foreignKeys: [
+        { type: 'remove', foreignKey: createFk({ fields: ['old_col'] }) },
+        { type: 'add', foreignKey: createFk({ fields: ['new_col'] }) },
       ],
     });
     const sql = generateAlterDDL('users', diff, [], 'mysql');
     const lines = sql.split('\n\n');
-    expect(lines[0]).toBe('DROP INDEX idx_old ON users;');
-    expect(lines[1]).toBe('ALTER TABLE users DROP COLUMN old_col;');
-    expect(lines[2]).toBe('ALTER TABLE users ADD COLUMN new_col VARCHAR(255) NULL;');
-    expect(lines[3]).toBe('CREATE INDEX idx_new ON users (name ASC);');
+    expect(lines).toEqual([
+      'ALTER TABLE users DROP FOREIGN KEY fk_user;',
+      'DROP INDEX idx_old ON users;',
+      'ALTER TABLE users DROP COLUMN old_col;',
+      'ALTER TABLE users ADD COLUMN new_col VARCHAR(255) NULL;',
+      'CREATE INDEX idx_new ON users (new_col ASC);',
+      'ALTER TABLE users ADD CONSTRAINT fk_user FOREIGN KEY (new_col) REFERENCES users (id);',
+    ]);
   });
 });
 
