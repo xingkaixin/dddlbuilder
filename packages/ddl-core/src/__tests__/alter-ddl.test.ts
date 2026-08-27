@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { withDefaultEditorSession } from '@ddlbuilder/shared-types';
+import { SqlParser } from '../parser/SqlParser';
 import type {
   NormalizedField,
   DatabaseType,
@@ -66,6 +68,30 @@ const createTableDiff = (overrides: Partial<TableDiff> = {}): TableDiff => ({
 });
 
 describe('generateAlterDDL', () => {
+  it('drops and restores the original imported primary constraint', async () => {
+    const parsed = await new SqlParser().parseAsync(
+      'CREATE TABLE users (id INT, CONSTRAINT users_identity PRIMARY KEY (id));',
+      'postgresql',
+    );
+    const before = withDefaultEditorSession({
+      schemaName: '',
+      tableName: parsed.tableName,
+      tableComment: '',
+      dbType: 'postgresql',
+      rows: [],
+      indexes: parsed.indexes,
+      authInput: '',
+      authObjects: [],
+    });
+    const diff = diffPersistedState(before, { ...before, indexes: [] });
+    expect(generateAlterDDL('users', diff, [], 'postgresql')).toBe(
+      'ALTER TABLE users DROP CONSTRAINT users_identity;',
+    );
+    expect(generateRollbackDDL('users', diff, [], 'postgresql')).toBe(
+      'ALTER TABLE users ADD CONSTRAINT users_identity PRIMARY KEY (id);',
+    );
+  });
+
   it.each([
     [
       'postgresql',

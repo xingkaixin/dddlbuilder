@@ -31,6 +31,7 @@ export type ColumnDefNode = {
   comment?: { value: { value: unknown } };
   nullable?: { value?: string };
   primary_key?: unknown;
+  constraint?: { constraint?: string | null };
   unique?: unknown;
   auto_increment?: unknown;
   default_val?: { value?: unknown };

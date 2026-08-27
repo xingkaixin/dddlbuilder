@@ -11,6 +11,31 @@ const stripIndexIds = (indexes: any[]) =>
   }));
 
 describe('SqlParser', () => {
+  describe.each(['mysql', 'postgresql', 'sqlserver'] as const)('%s 显式主键名称', (dbType) => {
+    it.each([
+      'CREATE TABLE users (id INT, CONSTRAINT users_identity PRIMARY KEY (id));',
+      'CREATE TABLE users (id INT); ALTER TABLE users ADD CONSTRAINT users_identity PRIMARY KEY (id);',
+    ])('保留约束名称：%s', async (sql) => {
+      const result = await new SqlParser().parseAsync(sql, dbType);
+      expect(result.indexes).toEqual([
+        expect.objectContaining({
+          name: 'users_identity',
+          isPrimary: true,
+          fields: [{ name: 'id', direction: 'ASC' }],
+        }),
+      ]);
+      expect(result.fields[0].nullable).toBe(false);
+    });
+  });
+
+  it('保留 PostgreSQL 列内主键约束名称', async () => {
+    const result = await new SqlParser().parseAsync(
+      'CREATE TABLE users (id INT CONSTRAINT users_identity PRIMARY KEY);',
+      'postgresql',
+    );
+    expect(result.indexes[0]).toMatchObject({ name: 'users_identity', isPrimary: true });
+  });
+
   it.each(DATABASE_TYPES.filter((databaseType) => databaseType !== 'hive'))(
     '能够使用 %s 的兼容方言解析基础建表语句',
     async (databaseType) => {

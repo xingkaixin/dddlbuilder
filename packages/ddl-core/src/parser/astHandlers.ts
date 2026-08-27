@@ -45,11 +45,9 @@ function pushIndex(
   isPrimary = false,
 ) {
   if (fields.length === 0) return;
-  const baseName = result.tableName || name;
-  const normalizedName = isPrimary ? buildPrimaryKeyName(baseName) : name;
   result.indexes.push({
     id: createEntityId(),
-    name: normalizedName,
+    name,
     fields,
     unique,
     isPrimary,
@@ -116,6 +114,14 @@ function enforceNotNullForFields(result: ParsedResult, fieldNames: string[]) {
   if (!fieldNames.length) return;
   result.fields = result.fields.map((f) =>
     fieldNames.includes(f.name) ? { ...f, nullable: false } : f,
+  );
+}
+
+function pushPrimaryKey(result: ParsedResult, fields: IndexField[], name?: string | null) {
+  pushIndex(result, name || buildPrimaryKeyName(result.tableName), fields, true, true);
+  enforceNotNullForFields(
+    result,
+    fields.map((field) => field.name),
   );
 }
 
@@ -291,8 +297,11 @@ export function parseCreateTable(
 
         // Handle inline primary key / unique
         if (def.primary_key) {
-          pushIndex(result, 'PRIMARY', [{ name: field.name, direction: 'ASC' }], true, true);
-          enforceNotNullForFields(result, [field.name]);
+          pushPrimaryKey(
+            result,
+            [{ name: field.name, direction: 'ASC' }],
+            def.constraint?.constraint,
+          );
         }
 
         if (def.unique) {
@@ -306,12 +315,7 @@ export function parseCreateTable(
         }
       } else if (def.resource === 'constraint') {
         if (def.constraint_type === 'primary key') {
-          const fields = buildIndexFields(def.definition || []);
-          pushIndex(result, 'PRIMARY', fields, true, true);
-          enforceNotNullForFields(
-            result,
-            fields.map((f) => f.name),
-          );
+          pushPrimaryKey(result, buildIndexFields(def.definition), def.constraint || def.index);
         } else if (def.constraint_type === 'unique key' || def.constraint_type === 'unique') {
           const fields = buildIndexFields(def.definition || []);
           const indexName =
@@ -383,12 +387,7 @@ export function parseAlterTable(
     if (expr.action === 'add' && defs) {
       const constraintType = defs.constraint_type?.toLowerCase?.() || '';
       if (constraintType === 'primary key') {
-        const fields = buildIndexFields(defs.definition || []);
-        pushIndex(result, 'PRIMARY', fields, true, true);
-        enforceNotNullForFields(
-          result,
-          fields.map((f) => f.name),
-        );
+        pushPrimaryKey(result, buildIndexFields(defs.definition), defs.constraint || defs.index);
       } else if (constraintType === 'foreign key') {
         pushForeignKey(result, defs);
       }
@@ -397,13 +396,7 @@ export function parseAlterTable(
       expr.resource === 'constraint' &&
       expr.constraint_type?.toLowerCase?.() === 'primary key'
     ) {
-      // Fallback for other AST structure
-      const fields = buildIndexFields(expr.definition || []);
-      pushIndex(result, 'PRIMARY', fields, true, true);
-      enforceNotNullForFields(
-        result,
-        fields.map((f) => f.name),
-      );
+      pushPrimaryKey(result, buildIndexFields(expr.definition), expr.constraint);
     } else if (
       expr.action === 'add' &&
       expr.resource === 'constraint' &&
