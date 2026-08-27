@@ -18,7 +18,7 @@ import { useWorkspaceYDocProjection } from '@/hooks/useWorkspaceYDocProjection';
 import { localSavedTablesOptions, localTrashedTablesOptions } from '@/queries/workspaceLocal';
 import { countVersions, createVersion, deleteAllVersions } from '@/utils/tableVersions';
 import { resolveSavedTableId } from '@/utils/savedTableIdentity';
-import { migrateReviewsToTable } from '@/utils/reviewHistory';
+import { deleteAllReviews, migrateReviewsToTable } from '@/utils/reviewHistory';
 import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
 import { reportError } from '@/utils/errorReporter';
 
@@ -252,11 +252,13 @@ export function useSavedTables() {
         if (!currentScope) throw new Error('工作区未就绪');
         const record = await readTable(normalizedName);
         if (!record) return { ok: false, reason: 'not_found' };
-        await deleteAllVersions({
+        const historyTarget = {
           scope: currentScope,
           tableId: resolveSavedTableId(record),
           normalizedName: record.normalizedName,
-        });
+        };
+        await deleteAllVersions(historyTarget);
+        await deleteAllReviews(historyTarget);
         await deleteTableEverywhere(normalizedName);
         await refresh();
         return { ok: true, normalizedName };

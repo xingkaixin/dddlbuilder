@@ -170,24 +170,29 @@ export async function deleteReview(id: string, target: ReviewTarget): Promise<vo
   await runWithStore<undefined>('readwrite', (store) => store.delete(id));
 }
 
-export async function pruneOldReviews(target: ReviewTarget, maxCount: number): Promise<number> {
-  const records = await listReviews(target);
-
-  if (records.length <= maxCount) {
-    return 0;
-  }
-
-  const toDelete = records.slice(maxCount);
+async function deleteReviews(records: ReviewRecord[]): Promise<void> {
+  if (records.length === 0) return;
   const db = await openDb();
-  return runIndexedDbTransaction(db, REVIEW_STORE_NAME, 'readwrite', (tx) => {
+  await runIndexedDbTransaction(db, REVIEW_STORE_NAME, 'readwrite', (tx) => {
     const store = tx.objectStore(REVIEW_STORE_NAME);
 
-    for (const record of toDelete) {
+    for (const record of records) {
       store.delete(record.id);
     }
 
-    return () => toDelete.length;
+    return () => undefined;
   });
+}
+
+export async function deleteAllReviews(target: ReviewTarget): Promise<void> {
+  await deleteReviews(await listReviews(target));
+}
+
+export async function pruneOldReviews(target: ReviewTarget, maxCount: number): Promise<number> {
+  const records = await listReviews(target);
+  const toDelete = records.slice(Math.max(0, maxCount));
+  await deleteReviews(toDelete);
+  return toDelete.length;
 }
 
 export async function countReviews(target: ReviewTarget): Promise<number> {

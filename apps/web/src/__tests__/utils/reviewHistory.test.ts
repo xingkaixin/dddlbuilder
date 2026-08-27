@@ -5,6 +5,7 @@ import {
   listReviewMetadata,
   getReview,
   deleteReview,
+  deleteAllReviews,
   countReviews,
   pruneOldReviews,
   migrateReviewsToTable,
@@ -118,6 +119,24 @@ describe('reviewHistory', () => {
 
     const count = await countReviews(reviewTarget);
     expect(count).toBe(0);
+  });
+
+  it('deletes all table reviews without deleting other tables or workspaces', async () => {
+    const owner = target('delete_all', 'owner');
+    const anotherTable = target('delete_all', 'another');
+    const anotherWorkspace = {
+      ...owner,
+      scope: { kind: 'user' as const, userId: 'user', workspaceId: 'workspace' },
+    };
+    await saveReview(owner, 'owner', 'ddl', 'mysql', mockReview);
+    await saveReview(owner, 'owner', 'ddl-2', 'mysql', mockReview);
+    await saveReview(anotherTable, 'another', 'ddl', 'mysql', mockReview);
+    await saveReview(anotherWorkspace, 'other', 'ddl', 'mysql', mockReview);
+    await deleteAllReviews(owner);
+    await deleteAllReviews(owner);
+    expect(await listReviews(owner)).toEqual([]);
+    expect(await listReviews(anotherTable)).toHaveLength(1);
+    expect(await listReviews(anotherWorkspace)).toHaveLength(1);
   });
 
   it('should count reviews for a table', async () => {

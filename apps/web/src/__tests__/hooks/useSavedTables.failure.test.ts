@@ -35,6 +35,7 @@ const tableVersionMocks = vi.hoisted(() => ({
   createVersion: vi.fn(),
   deleteAllVersions: vi.fn(),
 }));
+const reviewHistoryMocks = vi.hoisted(() => ({ deleteAllReviews: vi.fn() }));
 
 vi.mock('@/utils/savedTablesDb', () => ({
   addSavedTable: savedTableMocks.addSavedTable,
@@ -58,6 +59,7 @@ vi.mock('@/utils/tableVersions', () => ({
 
 vi.mock('@/utils/reviewHistory', () => ({
   migrateReviewsToTable: vi.fn().mockResolvedValue(undefined),
+  deleteAllReviews: reviewHistoryMocks.deleteAllReviews,
 }));
 
 const createState = (name: string) => ({
@@ -103,6 +105,7 @@ describe('useSavedTables failure states', () => {
     savedTableMocks.listTrashedSavedTables.mockResolvedValue([]);
     savedTableMocks.getSavedTable.mockResolvedValue(null);
     tableVersionMocks.deleteAllVersions.mockResolvedValue(undefined);
+    reviewHistoryMocks.deleteAllReviews.mockResolvedValue(undefined);
   });
 
   it('should return error result when saveTable throws', async () => {
@@ -208,6 +211,37 @@ describe('useSavedTables failure states', () => {
       normalizedName: 'demo',
     });
     expect(savedTableMocks.deleteSavedTable).not.toHaveBeenCalled();
+    expect(reviewHistoryMocks.deleteAllReviews).not.toHaveBeenCalled();
+  });
+
+  it('评审历史清理失败时保留表记录，重试成功后再删除表', async () => {
+    savedTableMocks.getSavedTable.mockResolvedValue({
+      ...createRecord('demo', 'Demo'),
+      tableId: 'table-demo',
+    });
+    reviewHistoryMocks.deleteAllReviews.mockRejectedValueOnce(new Error('评审清理失败'));
+    const { result } = renderHook(() => useSavedTables());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => {
+      expect(await result.current.deleteTablePermanently('demo')).toEqual({
+        ok: false,
+        reason: 'error',
+        message: '评审清理失败',
+      });
+    });
+    expect(savedTableMocks.deleteSavedTable).not.toHaveBeenCalled();
+    expect(reviewHistoryMocks.deleteAllReviews).toHaveBeenCalledWith({
+      scope: { kind: 'anonymous' },
+      tableId: 'table-demo',
+      normalizedName: 'demo',
+    });
+    await act(async () => {
+      expect(await result.current.deleteTablePermanently('demo')).toEqual({
+        ok: true,
+        normalizedName: 'demo',
+      });
+    });
+    expect(savedTableMocks.deleteSavedTable).toHaveBeenCalledOnce();
   });
 
   it('renameTable should cover not_found and duplicate branches', async () => {

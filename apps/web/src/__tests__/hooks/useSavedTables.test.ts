@@ -186,7 +186,7 @@ describe('useSavedTables', () => {
     expect(result.current.savedTables).toHaveLength(0);
   });
 
-  it('永久删除表时应同时删除全部版本', async () => {
+  it('永久删除表时应同时删除全部版本和评审历史', async () => {
     const { result } = renderHook(() => useSavedTables());
 
     await act(async () => {
@@ -210,6 +210,12 @@ describe('useSavedTables', () => {
       normalizedName: saved.normalizedName,
     };
     expect(await listVersions(target)).toHaveLength(2);
+    await saveReview(target, saved.name, 'ddl', 'mysql', {
+      score: 8,
+      summary: 'ok',
+      suggestions: [],
+    });
+    expect(await listReviews(target)).toHaveLength(1);
 
     await act(async () => {
       const deleted = await result.current.deleteTablePermanently(saved.normalizedName);
@@ -218,6 +224,8 @@ describe('useSavedTables', () => {
     });
 
     expect(await listVersions(target)).toEqual([]);
+    const reviews = await listReviews(target);
+    expect(reviews).toEqual([]);
     expect(result.current.trashedTables).toEqual([]);
   });
 
