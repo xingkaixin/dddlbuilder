@@ -1,5 +1,6 @@
 import type { ApiEnv } from './context.js';
 import { DomainError } from './http.js';
+import { getUserSystemConfig } from './userSystemConfig.js';
 
 export type CreditLedgerKind = 'grant' | 'consume' | 'refund';
 
@@ -309,4 +310,27 @@ export const applyCreditMutation = async (
     throw new DomainError(503, 'SERVICE_UNAVAILABLE', 'CREDIT_LEDGER_WRITE_FAILED');
   }
   return created;
+};
+
+export const grantSignupCredits = async (
+  env: ApiEnv['Bindings'],
+  user: { userId: string; email: string },
+): Promise<void> => {
+  const idempotencyKey = `signup_bonus:${user.userId}`;
+  if (await readCreditLedgerEntry(env, user.userId, idempotencyKey)) return;
+
+  try {
+    await applyCreditMutation(env, {
+      userId: user.userId,
+      kind: 'grant',
+      source: 'signup_bonus',
+      amount: getUserSystemConfig(env).signupBonusCredits,
+      idempotencyKey,
+      ledgerId: idempotencyKey,
+      metadata: { email: user.email },
+    });
+  } catch (error) {
+    // Another first login may have completed the grant under a different policy.
+    if (!(await readCreditLedgerEntry(env, user.userId, idempotencyKey))) throw error;
+  }
 };

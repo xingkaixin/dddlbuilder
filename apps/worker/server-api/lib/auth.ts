@@ -1,5 +1,5 @@
 import type { Context } from 'hono';
-import { applyCreditMutation, ensureCreditAccount } from './credits.js';
+import { grantSignupCredits } from './credits.js';
 import type { ApiEnv } from './context.js';
 import { createBetterAuth } from './betterAuth.js';
 import { DomainError } from './http.js';
@@ -28,19 +28,7 @@ const ensureBusinessUser = async (
   env: ApiEnv['Bindings'],
   user: BetterAuthSession['user'],
 ): Promise<AuthenticatedAppUser> => {
-  const config = getUserSystemConfig(env);
-  await ensureCreditAccount(env, user.id);
-  await applyCreditMutation(env, {
-    userId: user.id,
-    kind: 'grant',
-    source: 'signup_bonus',
-    amount: config.signupBonusCredits,
-    idempotencyKey: `signup_bonus:${user.id}`,
-    ledgerId: `signup_bonus:${user.id}`,
-    metadata: {
-      email: user.email,
-    },
-  });
+  await grantSignupCredits(env, { userId: user.id, email: user.email });
 
   return {
     userId: user.id,

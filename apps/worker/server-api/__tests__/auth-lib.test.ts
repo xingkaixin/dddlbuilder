@@ -51,8 +51,7 @@ describe('resolveAuthenticatedUser', () => {
       })),
     }));
     vi.doMock('../lib/credits.js', () => ({
-      ensureCreditAccount: vi.fn(),
-      applyCreditMutation: vi.fn(),
+      grantSignupCredits: vi.fn(),
     }));
 
     const { resolveAuthenticatedUser } = await import('../lib/auth.js');
@@ -198,8 +197,7 @@ describe('authenticateRequest', () => {
       })),
     }));
     vi.doMock('../lib/credits.js', () => ({
-      ensureCreditAccount: vi.fn(),
-      applyCreditMutation: vi.fn(),
+      grantSignupCredits: vi.fn(),
     }));
 
     const { authenticateRequest } = await import('../lib/auth.js');
