@@ -1,8 +1,24 @@
 import type { PersistedState, SchemaDocumentState } from './schema.js';
 
+export type SavedTableTarget = string | { normalizedName: string; tableId?: string };
+
+export const savedTableReference = (target: SavedTableTarget) =>
+  typeof target === 'string' ? { normalizedName: target } : target;
+
+export const savedTableKey = (target: SavedTableTarget) => {
+  const reference = savedTableReference(target);
+  return reference.tableId ?? reference.normalizedName;
+};
+
+export const isSameSavedTable = (left: SavedTableTarget, right: SavedTableTarget) => {
+  const a = savedTableReference(left);
+  const b = savedTableReference(right);
+  return a.tableId || b.tableId ? a.tableId === b.tableId : a.normalizedName === b.normalizedName;
+};
+
 export type WorkspaceSource =
   | { kind: 'draft'; draftId: string }
-  | { kind: 'saved_table'; normalizedName: string };
+  | { kind: 'saved_table'; normalizedName: string; tableId?: string };
 
 export type WorkspaceSelection =
   | Extract<WorkspaceSource, { kind: 'draft' }>
@@ -38,6 +54,7 @@ export type WorkspaceSavePayload = {
 };
 
 export type SavedTableDraftRecord = {
+  tableId?: string;
   state: PersistedState;
   tableName: string;
   baseSignature: string;
@@ -88,6 +105,7 @@ export type WorkspaceSnapshot = {
     trashedAt?: number;
   }>;
   savedDrafts: Array<{
+    tableId?: string;
     normalizedName: string;
     tableName: string;
     state: SchemaDocumentState;

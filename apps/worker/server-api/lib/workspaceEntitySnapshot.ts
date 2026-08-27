@@ -55,8 +55,10 @@ export const workspaceSnapshotToEntities = (
   for (const item of normalizedSnapshot.savedTables) {
     entities.push({
       entityType: 'saved_table',
-      entityId: item.normalizedName,
+      entityId: item.tableId ?? item.normalizedName,
       payload: {
+        tableId: item.tableId,
+        normalizedName: item.normalizedName,
         name: item.name,
         state: item.state,
         createdAt: item.createdAt,
@@ -70,8 +72,10 @@ export const workspaceSnapshotToEntities = (
   for (const item of normalizedSnapshot.savedDrafts) {
     entities.push({
       entityType: 'saved_draft',
-      entityId: item.normalizedName,
+      entityId: item.tableId ?? item.normalizedName,
       payload: {
+        tableId: item.tableId,
+        normalizedName: item.normalizedName,
         tableName: item.tableName,
         state: item.state,
         baseSignature: item.baseSignature,
@@ -138,7 +142,9 @@ const applyPayloadToSnapshot = (
   if (entityType === 'saved_table') {
     if (state && typeof payload.name === 'string') {
       snapshot.savedTables.push({
-        normalizedName: entityId,
+        ...(typeof payload.tableId === 'string' ? { tableId: payload.tableId } : {}),
+        normalizedName:
+          typeof payload.normalizedName === 'string' ? payload.normalizedName : entityId,
         name: payload.name,
         state,
         createdAt: typeof payload.createdAt === 'number' ? payload.createdAt : updatedAt,
@@ -168,7 +174,9 @@ const applyPayloadToSnapshot = (
 
   if (typeof payload.tableName === 'string' && typeof payload.baseSignature === 'string' && state) {
     snapshot.savedDrafts.push({
-      normalizedName: entityId,
+      ...(typeof payload.tableId === 'string' ? { tableId: payload.tableId } : {}),
+      normalizedName:
+        typeof payload.normalizedName === 'string' ? payload.normalizedName : entityId,
       tableName: payload.tableName,
       state,
       updatedAt,

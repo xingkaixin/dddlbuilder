@@ -149,6 +149,7 @@ describe('workspace YDoc codec', () => {
     }));
     expected.savedDrafts = expected.savedDrafts.map((record) => ({
       ...record,
+      tableId: 'table-users',
       state: collaborativeState(record.state),
     }));
 

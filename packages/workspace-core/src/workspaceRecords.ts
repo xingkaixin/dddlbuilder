@@ -36,7 +36,12 @@ export type WorkspaceYDocChange = {
   collection: WorkspaceYDocCollection;
   entityIds: ReadonlySet<string>;
   origin: unknown;
-  renamedTables?: Array<{ previousName: string; normalizedName: string; tableName: string }>;
+  renamedTables?: Array<{
+    previousName: string;
+    normalizedName: string;
+    tableName: string;
+    tableId?: string;
+  }>;
 };
 
 export const upsertWorkspaceDraft = (
@@ -93,7 +98,7 @@ export const getWorkspaceSourceState = (
     const record = getDraftRecordFromYDoc(doc, source.draftId);
     return record && record.trashedAt == null ? record.state : null;
   }
-  const record = getWorkspaceSavedTable(doc, source.normalizedName);
+  const record = getWorkspaceSavedTable(doc, source);
   return record && record.trashedAt == null ? record.state : null;
 };
 
@@ -114,7 +119,7 @@ export const subscribeWorkspaceYDoc = (
       const value = root.get(key);
       if (!value) return null;
       if (collection !== 'savedTables' && collection !== 'savedDrafts') {
-        return { normalizedName: key, tableName: key };
+        return { normalizedName: key, tableName: key, tableId: undefined };
       }
       return readWorkspaceSavedRecordIdentity(doc, collection, key, value);
     };
@@ -136,9 +141,13 @@ export const subscribeWorkspaceYDoc = (
       for (const key of changedKeys) {
         const previous = identities.get(key);
         const next = readIdentity(key);
-        if (previous) entityIds.add(previous.normalizedName);
+        if (previous) {
+          entityIds.add(previous.normalizedName);
+          if (previous.tableId) entityIds.add(previous.tableId);
+        }
         if (next) {
           entityIds.add(next.normalizedName);
+          if (next.tableId) entityIds.add(next.tableId);
           identities.set(key, next);
         } else identities.delete(key);
         if (

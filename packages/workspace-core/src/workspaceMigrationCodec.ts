@@ -19,7 +19,13 @@ const decodeWorkspaceSource = (value: unknown): WorkspaceSource | null => {
   }
   if (value.kind === 'saved_table') {
     const normalizedName = readRequiredText(value.normalizedName);
-    return normalizedName ? { kind: 'saved_table', normalizedName } : null;
+    return normalizedName
+      ? {
+          kind: 'saved_table',
+          normalizedName,
+          ...(typeof value.tableId === 'string' ? { tableId: value.tableId } : {}),
+        }
+      : null;
   }
   return null;
 };

@@ -66,6 +66,50 @@ const setLegacyTableDoc = (collection: Y.Map<Y.Map<unknown>>, key: string, table
 };
 
 describe('saved table identity', () => {
+  it('targets tables and drafts by ID after concurrent same-name renames', () => {
+    const doc = new Y.Doc();
+    const records = ['users', 'orders'].map((name) => ({
+      tableId: `table-${name}`,
+      normalizedName: name,
+      name,
+      state: toSchemaDocumentState(createState(name)),
+      createdAt: 1,
+      updatedAt: 1,
+    }));
+    for (const record of records) upsertWorkspaceSavedTable(doc, record);
+    const peer = new Y.Doc();
+    Y.applyUpdate(peer, Y.encodeStateAsUpdate(doc));
+    renameWorkspaceSavedTable(doc, 'users', {
+      ...records[0],
+      normalizedName: 'archive',
+      name: 'Archive',
+    });
+    renameWorkspaceSavedTable(peer, 'orders', {
+      ...records[1],
+      normalizedName: 'archive',
+      name: 'Archive',
+    });
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(peer));
+    for (const record of records) {
+      expect(getWorkspaceSavedTable(doc, record)?.state.tableName).toBe(record.name);
+      upsertWorkspaceSavedDraft(doc, {
+        ...record,
+        normalizedName: 'archive',
+        tableName: 'Archive',
+        baseSignature: 'base',
+      });
+      expect(getWorkspaceSavedDraft(doc, record)?.state.tableName).toBe(record.name);
+    }
+    expect(() => getWorkspaceSavedTable(doc, 'archive')).toThrow('Multiple saved tables');
+    expect(() => deleteWorkspaceSavedTable(doc, 'archive')).toThrow('Multiple saved tables');
+    deleteWorkspaceSavedTable(doc, records[1]);
+    expect(listWorkspaceSavedTables(doc).map((table) => table.tableId)).toEqual([
+      records[0].tableId,
+    ]);
+    doc.destroy();
+    peer.destroy();
+  });
+
   it.each(['id-key', 'legacy-key', 'legacy-without-id'])(
     '%s 重命名保留并发字段编辑和草稿',
     (format) => {
@@ -226,11 +270,11 @@ describe('saved table identity', () => {
     expect(getWorkspaceSavedTable(doc, 'accounts')?.state.tableComment).toBe('新内容');
     expect([...getWorkspaceRoot(doc).savedDrafts.values()]).toEqual([draftNode]);
     expect(changes[0]).toMatchObject({
-      entityIds: new Set(['users', 'accounts']),
+      entityIds: new Set(['users', 'table-users', 'accounts']),
       renamedTables: [{ previousName: 'users', normalizedName: 'accounts', tableName: 'Accounts' }],
     });
     deleteWorkspaceSavedTable(doc, 'accounts');
-    expect(changes.at(-1)?.entityIds).toEqual(new Set(['accounts']));
+    expect(changes.at(-1)?.entityIds).toEqual(new Set(['accounts', 'table-users']));
     unsubscribe();
   });
 });

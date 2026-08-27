@@ -1,5 +1,5 @@
 import * as Y from 'yjs';
-import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
+import { savedTableKey, type WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
 import {
   ensureWorkspaceYDocMeta,
   getDraftRecordFromYDoc,
@@ -79,7 +79,7 @@ export const mergeWorkspaceSnapshotIntoYDoc = (doc: Y.Doc, snapshot: WorkspaceSn
     current.savedTables.map((table) => [table.tableId ?? `legacy:${table.normalizedName}`, table]),
   );
   const currentSavedDrafts = new Map(
-    current.savedDrafts.map((draft) => [draft.normalizedName, draft]),
+    current.savedDrafts.map((draft) => [savedTableKey(draft), draft]),
   );
   const currentFolders = new Map(current.folders.map((folder) => [folder.id, folder]));
   const merged: WorkspaceSnapshot = {
@@ -109,7 +109,7 @@ export const mergeWorkspaceSnapshotIntoYDoc = (doc: Y.Doc, snapshot: WorkspaceSn
     if (
       shouldAcceptSnapshotRecord(
         draft.updatedAt,
-        currentSavedDrafts.get(draft.normalizedName)?.updatedAt,
+        currentSavedDrafts.get(savedTableKey(draft))?.updatedAt,
       )
     ) {
       merged.savedDrafts.push(draft);

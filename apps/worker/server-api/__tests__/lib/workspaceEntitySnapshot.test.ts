@@ -100,6 +100,38 @@ describe('workspaceEntitySnapshot', () => {
     });
   });
 
+  it('keeps same-name tables and drafts distinct across storage round trips', () => {
+    const source = snapshot();
+    source.savedTables = ['table-1', 'table-2'].map((tableId) => ({
+      ...source.savedTables[0],
+      tableId,
+    }));
+    source.savedDrafts = ['table-1', 'table-2'].map((tableId) => ({
+      ...source.savedDrafts[0],
+      tableId,
+    }));
+    const entities = workspaceSnapshotToEntities(source);
+    const restored = storedEntitiesToWorkspaceSnapshot(
+      entities.map((entity) => ({
+        entityType: entity.entityType,
+        entityId: entity.entityId,
+        payloadJson: JSON.stringify(entity.payload),
+        updatedAt: entity.sourceUpdatedAt,
+      })),
+    );
+    expect(
+      entities
+        .filter((entity) => entity.entityType === 'saved_table')
+        .map((entity) => entity.entityId),
+    ).toEqual(['table-1', 'table-2']);
+    expect(
+      restored.savedTables.map(({ tableId, normalizedName }) => ({ tableId, normalizedName })),
+    ).toEqual(
+      source.savedTables.map(({ tableId, normalizedName }) => ({ tableId, normalizedName })),
+    );
+    expect(restored.savedDrafts.map((draft) => draft.tableId)).toEqual(['table-1', 'table-2']);
+  });
+
   it('normalizes legacy rows through the same entity mapping policy', () => {
     const legacySnapshot = legacyRowsToWorkspaceSnapshot([
       {
