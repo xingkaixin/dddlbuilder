@@ -72,171 +72,214 @@ export function buildAppDialogLayerModel({
   handleSelectTableFromEr,
 }: BuildAppDialogLayerModelParams) {
   const { editor, ui, tableOptions } = domains;
-  const { persistence, savedTableData, folderData, loadedTableNormalizedName } =
+  const { persistence, savedTableData, folderData, loadedTableNormalizedName, workspaceScope } =
     workspaceController;
   const { derived, indexAdvisor } = schemaController;
+  const versionTarget =
+    ui.versionHistoryTarget && workspaceScope
+      ? {
+          scope: workspaceScope,
+          tableId: ui.versionHistoryTarget.tableId,
+          normalizedName: ui.versionHistoryTarget.normalizedName,
+        }
+      : null;
+  const timelineTarget =
+    ui.timelinePlayerTarget && workspaceScope
+      ? {
+          scope: workspaceScope,
+          tableId: ui.timelinePlayerTarget.tableId,
+          normalizedName: ui.timelinePlayerTarget.normalizedName,
+        }
+      : null;
 
   return {
     webMcpDialog,
-    actions: {
-      indexAdvisor: {
-        open: indexAdvisor.open,
-        setDialogOpen: indexAdvisor.setDialogOpen,
-        isLoading: indexAdvisor.isLoading,
-        result: indexAdvisor.result,
-        error: indexAdvisor.error,
-        suggestedQuery: indexAdvisor.suggestedQuery,
-        blockingMessage: indexAdvisor.blockingMessage,
-        analyze: indexAdvisor.analyze,
-        applyRecommendation: indexAdvisor.applyRecommendation,
+    saveObjectType: editor.objectType,
+    saveDialogIsUpdate: derived.hasLoadedTable,
+    globalDialogs: {
+      clearDialog: {
+        open: ui.isClearDialogOpen,
+        onOpenChange: ui.setIsClearDialogOpen,
+        onCancel: clearActions.cancelClearAll,
+        onConfirm: clearActions.confirmClearAll,
       },
-      folderActions: {
-        isFolderDialogOpen: folderActions.isFolderDialogOpen,
-        setIsFolderDialogOpen: folderActions.setIsFolderDialogOpen,
-        folderDialogMode: folderActions.folderDialogMode,
-        folderDialogParent: folderActions.folderDialogParent,
-        folderDialogTarget: folderActions.folderDialogTarget,
-        handleFolderDialogConfirm: folderActions.handleFolderDialogConfirm,
-        isDeleteFolderDialogOpen: folderActions.isDeleteFolderDialogOpen,
-        setIsDeleteFolderDialogOpen: folderActions.setIsDeleteFolderDialogOpen,
-        deleteFolderTarget: folderActions.deleteFolderTarget,
-        deleteFolderTableCount: folderActions.deleteFolderTableCount,
-        handleDeleteFolderConfirm: folderActions.handleDeleteFolderConfirm,
+      saveDialog: {
+        open: ui.isSaveDialogOpen,
+        onOpenChange: savedTableFlow.handleSaveDialogOpenChange,
+        name: dialogStates.saveName,
+        onNameChange: dialogStates.handleSaveNameChange,
+        error: dialogStates.saveError,
+        inputDisabled: derived.saveInputDisabled,
+        canSaveCurrent: derived.canSaveCurrent,
+        onConfirm: savedTableFlow.handleConfirmSave,
       },
-      templateActions: {
-        isTemplateManagerOpen: templateActions.isTemplateManagerOpen,
-        setIsTemplateManagerOpen: templateActions.setIsTemplateManagerOpen,
-        isCreateTemplateDialogOpen: templateActions.isCreateTemplateDialogOpen,
-        setIsCreateTemplateDialogOpen: templateActions.setIsCreateTemplateDialogOpen,
-        selectedFieldsForTemplate: templateActions.selectedFieldsForTemplate,
-        handleCreateTemplateFromFields: templateActions.handleCreateTemplateFromFields,
+      renameDialog: {
+        open: ui.isRenameDialogOpen,
+        onOpenChange: savedTableFlow.handleRenameDialogOpenChange,
+        name: dialogStates.renameName,
+        onNameChange: dialogStates.handleRenameNameChange,
+        error: dialogStates.renameError,
+        onConfirm: savedTableFlow.handleConfirmRename,
       },
-      clearActions: {
-        cancelClearAll: clearActions.cancelClearAll,
-        confirmClearAll: clearActions.confirmClearAll,
+      deleteDialog: {
+        open: ui.isDeleteDialogOpen,
+        onOpenChange: savedTableFlow.handleDeleteDialogOpenChange,
+        targetName: dialogStates.deleteTarget?.name,
+        onConfirm: savedTableFlow.handleConfirmDelete,
       },
-      savedTableFlow: {
-        handleSaveDialogOpenChange: savedTableFlow.handleSaveDialogOpenChange,
-        handleConfirmSave: savedTableFlow.handleConfirmSave,
-        handleRenameDialogOpenChange: savedTableFlow.handleRenameDialogOpenChange,
-        handleConfirmRename: savedTableFlow.handleConfirmRename,
-        handleDeleteDialogOpenChange: savedTableFlow.handleDeleteDialogOpenChange,
-        handleConfirmDelete: savedTableFlow.handleConfirmDelete,
+      folderDialogProps: {
+        open: folderActions.isFolderDialogOpen,
+        onOpenChange: folderActions.setIsFolderDialogOpen,
+        mode: folderActions.folderDialogMode,
+        parentFolder: folderActions.folderDialogParent,
+        targetFolder: folderActions.folderDialogTarget,
+        onConfirm: folderActions.handleFolderDialogConfirm,
       },
-      tableTemplateActions: {
-        isManagerOpen: tableTemplateActions.isManagerOpen,
-        setIsManagerOpen: tableTemplateActions.setIsManagerOpen,
-        isCreateDialogOpen: tableTemplateActions.isCreateDialogOpen,
-        setIsCreateDialogOpen: tableTemplateActions.setIsCreateDialogOpen,
-        pendingBlueprint: tableTemplateActions.pendingBlueprint,
-        handleCreateTemplate: tableTemplateActions.handleCreateTemplate,
+      deleteFolderDialogProps: {
+        open: folderActions.isDeleteFolderDialogOpen,
+        onOpenChange: folderActions.setIsDeleteFolderDialogOpen,
+        folder: folderActions.deleteFolderTarget,
+        tableCount: folderActions.deleteFolderTableCount,
+        onConfirm: folderActions.handleDeleteFolderConfirm,
       },
-      trashActions: {
-        isEmptyTrashDialogOpen: trashActions.isEmptyTrashDialogOpen,
-        setIsEmptyTrashDialogOpen: trashActions.setIsEmptyTrashDialogOpen,
-        handleConfirmEmptyTrash: trashActions.handleConfirmEmptyTrash,
-      },
-      aiPatchFlow: {
-        applyChanges: aiPatchFlow.applyChanges,
-        focusChange: aiPatchFlow.focusChange,
-      },
-      schemaActions: {
-        handleApplyAIGeneratedSchema: schemaActions.handleApplyAIGeneratedSchema,
-        handleImport: schemaActions.handleImport,
-      },
-    },
-    domains: {
-      editor: {
-        dbType: editor.dbType,
-        indexes: editor.indexes,
-        objectType: editor.objectType,
-        schemaName: editor.schemaName,
-        tableName: editor.tableName,
-      },
-      ui: {
-        isClearDialogOpen: ui.isClearDialogOpen,
-        setIsClearDialogOpen: ui.setIsClearDialogOpen,
-        isSaveDialogOpen: ui.isSaveDialogOpen,
-        isRenameDialogOpen: ui.isRenameDialogOpen,
-        isDeleteDialogOpen: ui.isDeleteDialogOpen,
-        isDiffDialogOpen: ui.isDiffDialogOpen,
-        setIsDiffDialogOpen: ui.setIsDiffDialogOpen,
-        versionHistoryTarget: ui.versionHistoryTarget,
-        setVersionHistoryTarget: ui.setVersionHistoryTarget,
-        timelinePlayerTarget: ui.timelinePlayerTarget,
-        setTimelinePlayerTarget: ui.setTimelinePlayerTarget,
-        isReviewHistoryOpen: ui.isReviewHistoryOpen,
-        setIsReviewHistoryOpen: ui.setIsReviewHistoryOpen,
-        isAIGenerateDialogOpen: ui.isAIGenerateDialogOpen,
-        setIsAIGenerateDialogOpen: ui.setIsAIGenerateDialogOpen,
-        isStorageEstimatorOpen: ui.isStorageEstimatorOpen,
-        setIsStorageEstimatorOpen: ui.setIsStorageEstimatorOpen,
-        isMockDataDialogOpen: ui.isMockDataDialogOpen,
-        setIsMockDataDialogOpen: ui.setIsMockDataDialogOpen,
-      },
-    },
-    visibility: {
-      isImportDialogOpen: ui.isImportDialogOpen,
-      setIsImportDialogOpen: ui.setIsImportDialogOpen,
-      isErDialogOpen: ui.isErDialogOpen,
-      setIsErDialogOpen: ui.setIsErDialogOpen,
-      isAISchemaPatchOpen: ui.isAISchemaPatchOpen,
-      setIsAISchemaPatchOpen: ui.setIsAISchemaPatchOpen,
-    },
-    resources: {
-      savedTableData: {
-        importTables: savedTableData.importTables,
-        loadTables: savedTableData.loadTables,
-        overwriteTable: savedTableData.overwriteTable,
-        saveTable: savedTableData.saveTable,
-        savedTables: savedTableData.savedTables,
-      },
-      folderData: {
-        folderTree: folderData.folderTree,
-      },
-      fieldTemplateData: {
-        create: fieldTemplateData.create,
-        duplicate: fieldTemplateData.duplicate,
-        loading: fieldTemplateData.loading,
-        remove: fieldTemplateData.remove,
+      templateManagerDialogProps: {
+        open: templateActions.isTemplateManagerOpen,
+        onOpenChange: templateActions.setIsTemplateManagerOpen,
         templates: fieldTemplateData.templates,
-        update: fieldTemplateData.update,
+        loading: fieldTemplateData.loading,
+        onCreateTemplate: fieldTemplateData.create,
+        onUpdateTemplate: fieldTemplateData.update,
+        onDuplicateTemplate: fieldTemplateData.duplicate,
+        onDeleteTemplate: fieldTemplateData.remove,
       },
-      tableTemplateData: {
-        duplicate: tableTemplateData.duplicate,
-        loading: tableTemplateData.loading,
-        remove: tableTemplateData.remove,
-        rename: tableTemplateData.rename,
+      createTemplateDialogProps: {
+        open: templateActions.isCreateTemplateDialogOpen,
+        onOpenChange: templateActions.setIsCreateTemplateDialogOpen,
+        selectedFields: templateActions.selectedFieldsForTemplate,
+        onConfirm: templateActions.handleCreateTemplateFromFields,
+      },
+      tableTemplateManagerDialogProps: {
+        open: tableTemplateActions.isManagerOpen,
+        onOpenChange: tableTemplateActions.setIsManagerOpen,
         templates: tableTemplateData.templates,
+        loading: tableTemplateData.loading,
+        onRenameTemplate: tableTemplateData.rename,
+        onDuplicateTemplate: tableTemplateData.duplicate,
+        onDeleteTemplate: tableTemplateData.remove,
+      },
+      createTableTemplateDialogProps: {
+        open: tableTemplateActions.isCreateDialogOpen,
+        onOpenChange: tableTemplateActions.setIsCreateDialogOpen,
+        blueprint: tableTemplateActions.pendingBlueprint,
+        onConfirm: tableTemplateActions.handleCreateTemplate,
+      },
+      diffDialogProps: {
+        open: ui.isDiffDialogOpen,
+        onOpenChange: ui.setIsDiffDialogOpen,
+        tableName: editor.tableName,
+        dbType: editor.dbType,
+        diff: derived.tableDiff,
+        fields: derived.normalizedFields,
+        onCopy: handleCopyDiff,
+      },
+      versionHistoryDialogProps:
+        versionTarget && ui.versionHistoryTarget
+          ? {
+              open: true,
+              onOpenChange: (open: boolean) => {
+                if (!open) ui.setVersionHistoryTarget(null);
+              },
+              target: versionTarget,
+              tableName: ui.versionHistoryTarget.name,
+              currentState: derived.currentPersistedState,
+              onRollback: handleRollbackVersion,
+              onPlayTimeline: () => ui.setTimelinePlayerTarget(ui.versionHistoryTarget),
+            }
+          : null,
+      timelinePlayerProps:
+        timelineTarget && ui.timelinePlayerTarget
+          ? {
+              open: true,
+              onOpenChange: (open: boolean) => {
+                if (!open) ui.setTimelinePlayerTarget(null);
+              },
+              target: timelineTarget,
+              tableName: ui.timelinePlayerTarget.name,
+            }
+          : null,
+      reviewHistoryDialogProps: {
+        open: ui.isReviewHistoryOpen,
+        onOpenChange: ui.setIsReviewHistoryOpen,
+        tableNormalizedName: loadedTableNormalizedName,
+      },
+      aiGenerateDialogProps: {
+        open: ui.isAIGenerateDialogOpen,
+        onOpenChange: ui.setIsAIGenerateDialogOpen,
+        dbType: editor.dbType,
+        existingConfig: aiGenerateExistingConfig,
+        templates: aiGenerateTemplates,
+        onApply: schemaActions.handleApplyAIGeneratedSchema,
+      },
+      storageEstimatorDialogProps: {
+        open: ui.isStorageEstimatorOpen,
+        onOpenChange: ui.setIsStorageEstimatorOpen,
+        dbType: editor.dbType,
+        fields: derived.normalizedFields,
+        indexes: editor.indexes,
+        storageFormat: tableOptions.tableMiscConfig.storedAs || undefined,
+      },
+      mockDataDialogProps: {
+        open: ui.isMockDataDialogOpen,
+        onOpenChange: ui.setIsMockDataDialogOpen,
+        tableName: editor.tableName,
+        schemaName: editor.schemaName,
+        dbType: editor.dbType,
+        fields: derived.normalizedFields,
+      },
+      erDiagramDialogProps: {
+        open: ui.isErDialogOpen,
+        onOpenChange: ui.setIsErDialogOpen,
+        onSelectTable: handleSelectTableFromEr,
+        saveTable: savedTableData.saveTable,
+        overwriteTable: savedTableData.overwriteTable,
+        loadTables: savedTableData.loadTables,
+      },
+      emptyTrashDialog: {
+        open: trashActions.isEmptyTrashDialogOpen,
+        onOpenChange: trashActions.setIsEmptyTrashDialogOpen,
+        onConfirm: trashActions.handleConfirmEmptyTrash,
       },
     },
-    workspace: {
-      scope: workspaceController.workspaceScope,
-      loadedTableNormalizedName,
-      isShareView: persistence.isShareView,
+    aiPatch: {
+      open: ui.isAISchemaPatchOpen,
+      onOpenChange: ui.setIsAISchemaPatchOpen,
+      dbType: editor.dbType,
+      currentState: derived.currentPersistedState,
+      templates: [...fieldTemplateData.templates, ...tableTemplateData.templates],
+      onApplyChanges: aiPatchFlow.applyChanges,
+      onFocusChange: aiPatchFlow.focusChange,
     },
-    schema: {
-      aiGenerateExistingConfig,
-      aiGenerateTemplates,
-      canSaveCurrent: derived.canSaveCurrent,
-      currentPersistedState: derived.currentPersistedState,
-      hasLoadedTable: derived.hasLoadedTable,
-      normalizedFields: derived.normalizedFields,
-      storageFormat: tableOptions.tableMiscConfig.storedAs || undefined,
-      tableDiff: derived.tableDiff,
+    indexAdvisor: {
+      open: indexAdvisor.open,
+      onOpenChange: indexAdvisor.setDialogOpen,
+      isLoading: indexAdvisor.isLoading,
+      result: indexAdvisor.result,
+      error: indexAdvisor.error,
+      suggestedQuery: indexAdvisor.suggestedQuery,
+      blockingMessage: indexAdvisor.blockingMessage,
+      onAnalyze: indexAdvisor.analyze,
+      onApplyIndex: indexAdvisor.applyRecommendation,
     },
-    dialogs: {
-      deleteTarget: dialogStates.deleteTarget,
-      handleCopyDiff,
-      handleRenameNameChange: dialogStates.handleRenameNameChange,
-      handleRollbackVersion,
-      handleSaveNameChange: dialogStates.handleSaveNameChange,
-      handleSelectTableFromEr,
-      renameError: dialogStates.renameError,
-      renameName: dialogStates.renameName,
-      saveError: dialogStates.saveError,
-      saveInputDisabled: derived.saveInputDisabled,
-      saveName: dialogStates.saveName,
+    importDialog: {
+      visible: !persistence.isShareView && ui.isImportDialogOpen,
+      currentDbType: editor.dbType,
+      onImport: schemaActions.handleImport,
+      open: ui.isImportDialogOpen,
+      onOpenChange: ui.setIsImportDialogOpen,
+      hideTrigger: true,
+      savedTables: savedTableData.savedTables,
+      folderTree: folderData.folderTree,
+      onBatchImport: savedTableData.importTables,
     },
   };
 }

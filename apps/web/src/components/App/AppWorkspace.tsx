@@ -19,42 +19,32 @@ interface AppWorkspaceProps {
 }
 
 export function AppWorkspace({ model }: AppWorkspaceProps) {
-  const { actions, ui, resources, workspace, layout, editorSurface, celebration } = model;
-  const { t } = useTranslation();
-  const { savedTableData, folderData, tableTemplateData } = resources;
-  const { savedTables, trashedTables, loading, error, importTables } = savedTableData;
   const {
-    folderActions,
-    shareAction,
-    savedTableFlow,
-    workspaceTabs,
-    tableTemplateActions,
-    trashActions,
-    schemaActions,
-    navigationActions,
-  } = actions;
+    header,
+    drawer,
+    sidebar,
+    tabBar,
+    emptyState,
+    tableTemplates,
+    view,
+    editorSurface,
+    celebration,
+  } = model;
+  const { t } = useTranslation();
 
   return (
     <>
       <Header
-        onShare={shareAction.handleShare}
-        isSharing={shareAction.isSharing}
-        currentDbType={ui.currentDbType}
-        onImport={schemaActions.handleImport}
+        {...header}
         onPlayFireworks={isCnyFireworksEnabled ? celebration.handlePlayFireworks : undefined}
-        savedTables={savedTables}
-        folderTree={folderData.folderTree}
-        onBatchImportComplete={layout.openWorkspaceAfterImport}
-        onBatchImport={importTables}
-        onOpenAIGenerate={navigationActions.handleOpenAIGenerateDialog}
       />
 
-      {workspace.isShareView && (
+      {view.isShareView && (
         <div className="mx-3 mt-3 flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-300 sm:flex-row sm:items-center sm:justify-between">
           <p>{t('app.shareBanner')}</p>
           <button
             type="button"
-            onClick={savedTableFlow.handleOpenSaveDialog}
+            onClick={view.openSaveDialog}
             className="inline-flex shrink-0 items-center justify-center rounded-md border border-amber-500/40 bg-amber-100 px-3 py-2 text-xs font-medium text-amber-900 transition-colors hover:bg-amber-200 dark:border-amber-600 dark:bg-amber-900/50 dark:text-amber-100 dark:hover:bg-amber-900"
           >
             {t('app.saveAsCopy')}
@@ -62,118 +52,45 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
         </div>
       )}
 
-      {isCnyFireworksEnabled && ui.showFireworks && (
+      {isCnyFireworksEnabled && view.showFireworks && (
         <Suspense fallback={<div className="fixed inset-0 z-[100] bg-black/70" />}>
           <FireworksOverlay onComplete={celebration.handleFireworksComplete} />
         </Suspense>
       )}
 
-      <SavedTablesDrawer
-        open={ui.savedTablesDrawerOpen}
-        onOpenChange={ui.setSavedTablesDrawerOpen}
-        loading={loading}
-        error={error}
-        items={savedTables}
-        draftItems={workspace.draftSummaries}
-        activeDraftId={
-          !workspace.isShareView && workspace.activeSource.kind === 'draft'
-            ? workspace.activeSource.draftId
-            : null
-        }
-        folders={folderData.folderTree}
-        foldersLoading={folderData.loading}
-        activeNormalizedName={workspace.loadedTableNormalizedName}
-        activeDirty={workspace.isLoadedDirty}
-        tablePresentations={workspace.tablePresentations}
-        onSelectDraft={workspaceTabs.handleSelectDraft}
-        onDeleteDraft={workspaceTabs.handleDeleteDraft}
-        onSelect={workspaceTabs.handleSelectSavedTable}
-        onRename={savedTableFlow.handleOpenRenameDialog}
-        onDelete={savedTableFlow.handleOpenDeleteDialog}
-        onViewHistory={navigationActions.handleViewVersionHistory}
-        onMoveToFolder={folderActions.handleMoveTableToFolder}
-        onMoveFolder={folderActions.handleMoveFolderToFolder}
-        onCreateFolder={folderActions.handleOpenCreateFolderDialog}
-        onRenameFolder={folderActions.handleOpenRenameFolderDialog}
-        onDeleteFolder={folderActions.handleOpenDeleteFolderDialog}
-      />
+      <SavedTablesDrawer {...drawer} />
 
       <div className="flex flex-col sm:flex-row">
-        {!workspace.isShareView && layout.workspaceSidebarOpen && (
-          <WorkspaceSidebar
-            loading={loading || folderData.loading}
-            error={error}
-            items={savedTables}
-            trashedItems={trashedTables}
-            trashedDraftItems={workspace.trashedDrafts}
-            draftItems={workspace.draftSummaries}
-            folders={folderData.folderTree}
-            activeNormalizedName={workspace.loadedTableNormalizedName}
-            activeDraftId={
-              workspace.activeSource.kind === 'draft' ? workspace.activeSource.draftId : null
-            }
-            activeDirty={workspace.isLoadedDirty}
-            tablePresentations={workspace.tablePresentations}
-            onCollapse={layout.collapseSidebar}
-            onOpenWorkspace={navigationActions.handleOpenSavedTablesDrawer}
-            onCreateFolder={folderActions.handleOpenCreateFolderDialog}
-            onSelectDraft={workspaceTabs.handleSelectDraft}
-            onDeleteDraft={workspaceTabs.handleDeleteDraft}
-            onMoveDraftToFolder={workspace.moveDraftToFolder}
-            onSelect={workspaceTabs.handleSelectSavedTable}
-            onRename={savedTableFlow.handleOpenRenameDialog}
-            onDelete={savedTableFlow.handleOpenDeleteDialog}
-            onRestore={trashActions.handleRestoreTable}
-            onDeletePermanently={trashActions.handleDeleteTablePermanently}
-            onRestoreDraft={trashActions.handleRestoreDraft}
-            onDeleteDraftPermanently={trashActions.handleDeleteDraftPermanently}
-            onEmptyTrash={trashActions.handleEmptyTrash}
-            onMoveToFolder={folderActions.handleMoveTableToFolder}
-            onMoveFolder={folderActions.handleMoveFolderToFolder}
-            onRenameFolder={folderActions.handleOpenRenameFolderDialog}
-            onDeleteFolder={folderActions.handleOpenDeleteFolderDialog}
-            onViewHistory={navigationActions.handleViewVersionHistory}
-          />
-        )}
+        {!view.isShareView && view.workspaceSidebarOpen && <WorkspaceSidebar {...sidebar} />}
 
         <div className="min-w-0 flex-1" data-testid="workspace-content">
-          {!workspace.isShareView && (
+          {!view.isShareView && (
             <TabBar
               leadingAction={
-                !layout.workspaceSidebarOpen ? (
+                !view.workspaceSidebarOpen ? (
                   <button
                     type="button"
                     className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                    onClick={layout.expandSidebar}
+                    onClick={view.expandSidebar}
                     aria-label={t('savedTables.expand')}
                   >
                     <ChevronRight className="h-4 w-4" />
                   </button>
                 ) : undefined
               }
-              tabs={workspace.presentedTabs}
-              activeTabId={workspace.activeTabId}
-              onActivateTab={workspace.switchToTabById}
-              onCloseTab={workspace.handleCloseTab}
-              onCreateTab={workspaceTabs.handleCreateDraft}
+              {...tabBar}
             />
           )}
           <div className="p-3 sm:p-4">
-            {workspace.shouldShowWorkspaceSkeleton ? (
+            {view.shouldShowWorkspaceSkeleton ? (
               <MainWorkspaceSkeleton />
-            ) : workspace.tabs.length === 0 && !workspace.isShareView ? (
+            ) : !view.hasTabs && !view.isShareView ? (
               <WorkspaceEmptyState
-                hasContent={workspace.draftSummaries.length > 0 || savedTables.length > 0}
-                recentDrafts={workspace.recentDrafts}
-                recentTables={workspace.recentTables}
-                onCreateNewTable={workspaceTabs.handleCreateDraft}
-                onOpenDraft={workspaceTabs.handleSelectDraft}
-                onOpenTable={workspaceTabs.handleSelectSavedTable}
-                onLoadExample={workspaceTabs.handleLoadExample}
+                {...emptyState}
                 importButton={
                   <button
                     type="button"
-                    onClick={layout.openImportDialog}
+                    onClick={view.openImportDialog}
                     className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-card px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   >
                     <Upload className="h-4 w-4" />
@@ -182,11 +99,7 @@ export function AppWorkspace({ model }: AppWorkspaceProps) {
                 }
                 templateButton={
                   <TableTemplatePopover
-                    templates={tableTemplateData.templates}
-                    loading={tableTemplateData.loading}
-                    onApplyTemplate={tableTemplateActions.handleApplyTemplate}
-                    onManageTemplates={tableTemplateActions.handleManageTemplates}
-                    onSaveAsTemplate={tableTemplateActions.handleSaveAsTemplate}
+                    {...tableTemplates}
                     triggerClassName="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-card px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   />
                 }
