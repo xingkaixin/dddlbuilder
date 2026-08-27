@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
+import {
+  decodeWorkspaceMigrationPayload,
+  normalizeWorkspaceMigrationSnapshot,
+} from '@ddlbuilder/workspace-core';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 import { setupMemoryLocalStorage } from '@/__tests__/utils/memoryLocalStorage';
@@ -156,8 +160,64 @@ describe('workspaceMigrationService legacy promotion', () => {
     await writeDraft(DEFAULT_DRAFT_ID, { state, updatedAt: 2 }, anonymous);
 
     const payload = await collectWorkspaceMigrationPayload(anonymous);
-    expect(payload?.snapshot.globalDraft?.state).toMatchObject(state);
+    expect(payload?.snapshot.globalDraft).toBeNull();
+    expect(payload?.snapshot.drafts[0]).toMatchObject({ draftId: DEFAULT_DRAFT_ID, state });
     expect(await hasMeaningfulWorkspaceData(anonymous)).toBe(true);
+  });
+
+  it.each([undefined, 20])('默认草稿迁移保留完整元数据 (%s)', async (trashedAt) => {
+    const anonymous = { kind: 'anonymous' as const };
+    await writeDraft(
+      DEFAULT_DRAFT_ID,
+      {
+        state: createState('default_table'),
+        createdAt: 1,
+        updatedAt: 20,
+        folderId: 'folder',
+        trashedAt,
+      },
+      anonymous,
+    );
+    const payload = decodeWorkspaceMigrationPayload(
+      await collectWorkspaceMigrationPayload(anonymous),
+    );
+    if (!payload) throw new Error('Expected migration payload');
+    const doc = createWorkspaceYDoc();
+    mergeWorkspaceSnapshotIntoYDoc(doc, normalizeWorkspaceMigrationSnapshot(payload.snapshot));
+    expect(exportWorkspaceYDocToSnapshot(doc).drafts).toEqual([
+      expect.objectContaining({
+        draftId: DEFAULT_DRAFT_ID,
+        createdAt: 1,
+        updatedAt: 20,
+        folderId: 'folder',
+        ...(trashedAt === undefined ? {} : { trashedAt }),
+      }),
+    ]);
+    expect(exportWorkspaceYDocToSnapshot(doc).drafts[0].trashedAt).toBe(trashedAt);
+    doc.destroy();
+  });
+
+  it('回收站里的空默认草稿也保留删除记录', async () => {
+    await writeDraft(
+      DEFAULT_DRAFT_ID,
+      {
+        state: { ...createState('empty'), rows: [] },
+        createdAt: 1,
+        updatedAt: 20,
+        trashedAt: 20,
+      },
+      scope,
+    );
+    const payload = await collectWorkspaceMigrationPayload(scope);
+    expect(payload?.snapshot.globalDraft).toBeNull();
+    expect(payload?.snapshot.drafts).toEqual([
+      expect.objectContaining({
+        draftId: DEFAULT_DRAFT_ID,
+        createdAt: 1,
+        updatedAt: 20,
+        trashedAt: 20,
+      }),
+    ]);
   });
 
   it('仅活动会话包含视图时应保留并折叠进 Y.Doc', async () => {

@@ -102,25 +102,16 @@ const requestWorkspaceMigration = async (
 export const collectWorkspaceMigrationPayload = async (
   scope: WorkspaceScope = getAnonymousWorkspaceScope(),
 ): Promise<WorkspaceMigrationPayload | null> => {
-  const [
-    globalDraft,
-    activeSession,
-    drafts,
-    trashedDrafts,
-    savedTables,
-    trashedTables,
-    savedDraftMap,
-    folders,
-  ] = await Promise.all([
-    readDraft(DEFAULT_DRAFT_ID, scope),
-    readWorkspaceSession(scope),
-    listDrafts(scope),
-    listTrashedDrafts(scope),
-    listSavedTables(scope),
-    listTrashedSavedTables(scope),
-    listSavedDrafts(scope),
-    listFolders(scope),
-  ]);
+  const [activeSession, drafts, trashedDrafts, savedTables, trashedTables, savedDraftMap, folders] =
+    await Promise.all([
+      readWorkspaceSession(scope),
+      listDrafts(scope),
+      listTrashedDrafts(scope),
+      listSavedTables(scope),
+      listTrashedSavedTables(scope),
+      listSavedDrafts(scope),
+      listFolders(scope),
+    ]);
 
   const savedDrafts = Object.entries(savedDraftMap).map(([normalizedName, item]) => ({
     normalizedName,
@@ -131,18 +122,21 @@ export const collectWorkspaceMigrationPayload = async (
     baseSignature: item.baseSignature,
   }));
 
-  const meaningfulGlobalDraft =
-    globalDraft && hasSchemaDocumentContent(globalDraft.state) ? globalDraft : null;
+  const migrationDrafts = [
+    ...drafts.filter(
+      ({ draftId, record }) =>
+        draftId !== DEFAULT_DRAFT_ID || hasSchemaDocumentContent(record.state),
+    ),
+    ...trashedDrafts,
+  ].map(({ draftId, record }) => ({ draftId, ...record }));
   const meaningfulActiveState =
     activeSession?.activeState && hasSchemaDocumentContent(activeSession.activeState)
       ? activeSession.activeState
       : null;
 
   const hasData =
-    Boolean(meaningfulGlobalDraft) ||
     Boolean(meaningfulActiveState) ||
-    drafts.some((item) => item.draftId !== DEFAULT_DRAFT_ID) ||
-    trashedDrafts.length > 0 ||
+    migrationDrafts.length > 0 ||
     savedTables.length > 0 ||
     trashedTables.length > 0 ||
     savedDrafts.length > 0 ||
@@ -153,11 +147,9 @@ export const collectWorkspaceMigrationPayload = async (
   }
 
   const snapshot: WorkspaceMigrationSnapshot = {
-    globalDraft: meaningfulGlobalDraft,
+    globalDraft: null,
     activeSession: activeSession ? { ...activeSession, activeState: meaningfulActiveState } : null,
-    drafts: [...drafts, ...trashedDrafts]
-      .filter((item) => item.draftId !== DEFAULT_DRAFT_ID)
-      .map(({ draftId, record }) => ({ draftId, ...record })),
+    drafts: migrationDrafts,
     savedTables: [...savedTables, ...trashedTables].map((item) => ({
       tableId: item.tableId,
       normalizedName: item.normalizedName,
