@@ -34,39 +34,52 @@ async function runWithStore<T>(
   return runIndexedDbRequest(db, VERSION_STORE_NAME, mode, runner);
 }
 
-const readVersionsByIndex = async (indexName: string, key: IDBValidKey) => {
+const readAndClaimVersions = async (target: TableVersionTarget): Promise<TableVersion[]> => {
   const db = await openDb();
-  return runIndexedDbRequest<TableVersion[]>(db, VERSION_STORE_NAME, 'readonly', (store) =>
-    store.index(indexName).getAll(key),
-  );
-};
-
-const claimLegacyVersions = async (
-  target: TableVersionTarget,
-  versions: TableVersion[],
-): Promise<TableVersion[]> => {
-  const legacyVersions = versions.filter((version) => !version.tableKey);
-  if (legacyVersions.length === 0) return [];
-
   const tableKey = getTableKey(target);
-  const claimed = legacyVersions.map((version) => ({
-    ...version,
-    tableKey,
-    tableId: target.tableId,
-  }));
-  const db = await openDb();
-  await new Promise<void>((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     const tx = db.transaction(VERSION_STORE_NAME, 'readwrite');
     const store = tx.objectStore(VERSION_STORE_NAME);
-    for (const version of claimed) store.put(version);
+    const scopedRequest = store.index('tableKey').getAll(tableKey);
+    const sameNameRequest = store.index('tableNormalizedName').getAll(target.normalizedName);
+    let scopedVersions: TableVersion[] | null = null;
+    let sameNameVersions: TableVersion[] | null = null;
+    let versions: TableVersion[] = [];
+
+    const claimLegacyVersions = () => {
+      if (!scopedVersions || !sameNameVersions) return;
+      const claimed = sameNameVersions
+        .filter((version) => !version.tableKey)
+        .map((version) => ({
+          ...version,
+          tableKey,
+          tableId: target.tableId,
+        }));
+      for (const version of claimed) store.put(version);
+      versions = [...scopedVersions, ...claimed];
+    };
+
+    scopedRequest.onsuccess = () => {
+      scopedVersions = scopedRequest.result as TableVersion[];
+      claimLegacyVersions();
+    };
+    sameNameRequest.onsuccess = () => {
+      sameNameVersions = sameNameRequest.result as TableVersion[];
+      claimLegacyVersions();
+    };
     tx.oncomplete = () => {
       db.close();
-      resolve();
+      resolve(versions.sort((a, b) => b.createdAt - a.createdAt).map(decodeVersion));
     };
-    tx.onerror = () => reject(tx.error ?? new Error('版本迁移失败'));
-    tx.onabort = () => reject(tx.error ?? new Error('版本迁移被中止'));
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error ?? new Error('读取版本历史失败'));
+    };
+    tx.onabort = () => {
+      db.close();
+      reject(tx.error ?? new Error('读取版本历史被中止'));
+    };
   });
-  return claimed;
 };
 
 export async function createVersion(
@@ -90,15 +103,7 @@ export async function createVersion(
 }
 
 export async function listVersions(target: TableVersionTarget): Promise<TableVersion[]> {
-  const tableKey = getTableKey(target);
-  const [scopedVersions, sameNameVersions] = await Promise.all([
-    readVersionsByIndex('tableKey', tableKey),
-    readVersionsByIndex('tableNormalizedName', target.normalizedName),
-  ]);
-  const claimed = await claimLegacyVersions(target, sameNameVersions ?? []);
-  return [...(scopedVersions ?? []), ...claimed]
-    .sort((a, b) => b.createdAt - a.createdAt)
-    .map(decodeVersion);
+  return readAndClaimVersions(target);
 }
 
 export async function listVersionMetadata(
@@ -123,8 +128,7 @@ export async function getVersion(
   if (!result) return null;
   if (result.tableKey === getTableKey(target)) return decodeVersion(result);
   if (result.tableKey || result.tableNormalizedName !== target.normalizedName) return null;
-  const [claimed] = await claimLegacyVersions(target, [result]);
-  return claimed ? decodeVersion(claimed) : null;
+  return (await listVersions(target)).find((version) => version.id === id) ?? null;
 }
 
 export async function deleteVersion(id: string, target: TableVersionTarget): Promise<void> {

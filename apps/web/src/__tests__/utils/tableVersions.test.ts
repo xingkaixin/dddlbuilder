@@ -133,6 +133,15 @@ describe('tableVersions', () => {
 
     it('首次读取时接管旧版未分区历史', async () => {
       const target = getTestTableName();
+      const competingTarget = {
+        scope: {
+          kind: 'user' as const,
+          userId: 'legacy-user',
+          workspaceId: 'legacy-workspace',
+        },
+        tableId: `${target.tableId}-competing`,
+        normalizedName: target.normalizedName,
+      };
       const db = await dbUtils.openDb();
       await new Promise<void>((resolve, reject) => {
         const tx = db.transaction(dbUtils.VERSION_STORE_NAME, 'readwrite');
@@ -152,6 +161,29 @@ describe('tableVersions', () => {
       expect(version.message).toBe('legacy');
       expect(version.tableId).toBe(target.tableId);
       expect(version.tableKey).toBe(`anonymous::${target.tableId}`);
+      expect(await listVersions(competingTarget)).toEqual([]);
+    });
+
+    it('通过 ID 读取旧版本时也会固定归属', async () => {
+      const target = getTestTableName();
+      const versionId = `legacy-by-id-${target.tableId}`;
+      const db = await dbUtils.openDb();
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(dbUtils.VERSION_STORE_NAME, 'readwrite');
+        tx.objectStore(dbUtils.VERSION_STORE_NAME).add({
+          id: versionId,
+          tableNormalizedName: target.normalizedName,
+          state: createMockState(),
+          message: 'legacy-by-id',
+          createdAt: Date.now(),
+        });
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+
+      const version = await getVersion(versionId, target);
+
+      expect(version?.tableKey).toBe(`anonymous::${target.tableId}`);
     });
   });
 
@@ -348,85 +380,39 @@ describe('tableVersions', () => {
       vi.restoreAllMocks();
     });
 
-    it('should handle explicit indexeddb errors', async () => {
+    it('propagates version history transaction failures', async () => {
       let mockTx: any;
-      let mockRequest: any = {
-        onerror: null,
-        onsuccess: null,
-        error: new Error('index error'),
-      };
-      const mockIndex: any = {
-        getAll: () => mockRequest,
-        count: () => mockRequest,
-      };
-
+      const mockRequest = { onerror: null, onsuccess: null };
       const mockDb = {
         transaction: () => mockTx,
         close: vi.fn(),
       };
-
       vi.spyOn(dbUtils, 'openDb').mockResolvedValue(mockDb as unknown as IDBDatabase);
 
-      // countVersions error
       mockTx = {
-        objectStore: () => ({ index: () => mockIndex }),
+        objectStore: () => ({ index: () => ({ getAll: () => mockRequest }) }),
         onerror: null,
+        onabort: null,
         oncomplete: null,
-      };
-      const p1 = countVersions(defaultTarget);
-      await Promise.resolve();
-      mockRequest.onerror();
-      await expect(p1).rejects.toThrow('index error');
-
-      // listVersions error
-      mockRequest = {
-        onerror: null,
-        onsuccess: null,
         error: new Error('list error'),
       };
-      mockTx = {
-        objectStore: () => ({
-          index: () => {
-            return { getAll: () => mockRequest };
-          },
-        }),
-        onerror: null,
-        oncomplete: null,
-      };
-      const p2 = listVersions(defaultTarget);
+      const failedRead = listVersions(defaultTarget);
       await Promise.resolve();
-      mockRequest.onerror();
-      await expect(p2).rejects.toThrow('list error');
+      mockTx.onerror();
+      await expect(failedRead).rejects.toThrow('list error');
 
-      // deleteAllVersions error
-      vi.restoreAllMocks();
+      mockTx = {
+        objectStore: () => ({ index: () => ({ getAll: () => mockRequest }) }),
+        onerror: null,
+        onabort: null,
+        oncomplete: null,
+        error: null,
+      };
+      const abortedRead = listVersions(defaultTarget);
+      await Promise.resolve();
+      mockTx.onabort();
+      await expect(abortedRead).rejects.toThrow('读取版本历史被中止');
 
-      // Need to spy again but only fail the delete transaction, let listVersions pass
-      const testTableName = getTestTableName();
-      await createVersion(testTableName, createMockState(), 'v1');
-
-      const failDelete = true;
-      vi.spyOn(dbUtils, 'openDb').mockImplementation(async () => {
-        await dbUtils.openDb(); // The original is mocked by fakeIndexedDB but spyOn overrides it!
-        // Wait, if we use actualDb it's intercepted by spyOn if we don't restore.
-        // Actually, just mock the transaction for delete.
-        if (failDelete) {
-          return {
-            transaction: () => ({
-              objectStore: () => ({ delete: vi.fn() }),
-              onerror: null,
-              oncomplete: null,
-              error: new Error('delete error'),
-            }),
-            close: vi.fn(),
-          } as unknown as IDBDatabase;
-        }
-        return {} as unknown as IDBDatabase; // Not used
-      });
-
-      // Instead of relying on openDb for listVersions, we can mock listVersions directly
-      // But it's not exported to be mocked locally like this without messing up the module.
-      // Let's just mock tx.onerror in pruneOldVersions as well.
       vi.restoreAllMocks();
     });
   });
