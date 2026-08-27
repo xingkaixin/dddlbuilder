@@ -33,8 +33,10 @@ import { getAnonymousWorkspaceScope } from '@/utils/workspaceScope';
 
 export type { WorkspaceMigrationPayload } from '@ddlbuilder/shared-types/workspace';
 
-const isPersistedStateTrivial = (state: SchemaDocumentState): boolean =>
-  !state.rows?.some((row) => row.fieldName?.trim());
+const hasSchemaDocumentContent = (state: SchemaDocumentState): boolean =>
+  state.objectType === 'view'
+    ? Boolean(state.viewDefinition?.trim())
+    : state.rows.some((row) => row.fieldName.trim().length > 0);
 
 const stripUpdatedAtFromSnapshot = (snapshot: WorkspaceMigrationSnapshot) => ({
   globalDraft: snapshot.globalDraft ? { state: snapshot.globalDraft.state } : null,
@@ -127,9 +129,9 @@ export const collectWorkspaceMigrationPayload = async (
   }));
 
   const meaningfulGlobalDraft =
-    globalDraft && !isPersistedStateTrivial(globalDraft.state) ? globalDraft : null;
+    globalDraft && hasSchemaDocumentContent(globalDraft.state) ? globalDraft : null;
   const meaningfulActiveState =
-    activeSession?.activeState && !isPersistedStateTrivial(activeSession.activeState)
+    activeSession?.activeState && hasSchemaDocumentContent(activeSession.activeState)
       ? activeSession.activeState
       : null;
 

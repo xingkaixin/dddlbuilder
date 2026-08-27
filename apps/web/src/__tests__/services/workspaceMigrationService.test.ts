@@ -10,6 +10,8 @@ import {
   isLegacyWorkspaceMigrationCompleted,
 } from '@/services/workspaceLegacyMigrationMarker';
 import {
+  collectWorkspaceMigrationPayload,
+  hasMeaningfulWorkspaceData,
   prepareLegacyWorkspaceSnapshot,
   promoteLegacyUserWorkspaceData,
 } from '@/services/workspaceMigrationService';
@@ -106,6 +108,64 @@ describe('workspaceMigrationService legacy promotion', () => {
 
   afterEach(() => {
     teardownFakeIndexedDB();
+  });
+
+  it('无字段的默认视图草稿应进入匿名迁移快照', async () => {
+    const anonymous = { kind: 'anonymous' as const };
+    const state: PersistedState = {
+      ...createState('active_orders'),
+      objectType: 'view',
+      rows: [],
+      viewDefinition: 'SELECT id FROM orders WHERE active = 1',
+    };
+    await writeDraft(DEFAULT_DRAFT_ID, { state, updatedAt: 2 }, anonymous);
+
+    const payload = await collectWorkspaceMigrationPayload(anonymous);
+    expect(payload?.snapshot.globalDraft?.state).toMatchObject(state);
+    expect(await hasMeaningfulWorkspaceData(anonymous)).toBe(true);
+  });
+
+  it('仅活动会话包含视图时应保留并折叠进 Y.Doc', async () => {
+    const state: PersistedState = {
+      ...createState('active_orders'),
+      objectType: 'view',
+      rows: [],
+      viewDefinition: 'SELECT id FROM orders',
+    };
+    await writeWorkspaceSession(
+      {
+        activeSource: { kind: 'draft', draftId: DEFAULT_DRAFT_ID },
+        activeState: state,
+        updatedAt: 3,
+      },
+      scope,
+    );
+    const snapshot = await prepareLegacyWorkspaceSnapshot(scope);
+    expect(snapshot).not.toBeNull();
+    if (!snapshot) throw new Error('Expected view snapshot');
+    const doc = createWorkspaceYDoc();
+    mergeWorkspaceSnapshotIntoYDoc(doc, snapshot);
+    expect(exportWorkspaceYDocToSnapshot(doc).drafts[0]).toMatchObject({
+      draftId: DEFAULT_DRAFT_ID,
+      state: { objectType: 'view', rows: [], viewDefinition: state.viewDefinition },
+    });
+    doc.destroy();
+  });
+
+  it.each([
+    { objectType: 'view' as const, viewDefinition: ' \n ', rows: createState('').rows },
+    { objectType: 'table' as const, viewDefinition: 'SELECT 1', rows: [] },
+    { rows: [] },
+  ])('空草稿不应因非当前对象内容而触发迁移 (%j)', async (content) => {
+    await writeDraft(
+      DEFAULT_DRAFT_ID,
+      {
+        state: { ...createState(''), ...content },
+        updatedAt: 1,
+      },
+      scope,
+    );
+    expect(await collectWorkspaceMigrationPayload(scope)).toBeNull();
   });
 
   it('迁移快照保留表与草稿的稳定 ID', async () => {
