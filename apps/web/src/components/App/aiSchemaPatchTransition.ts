@@ -51,14 +51,6 @@ const applyFieldSchemaChange = (
     };
   }
 
-  if (change.type === 'remove') {
-    const targetName = change.oldRow?.fieldName || change.fieldName;
-    return removeFieldsFromDocument(
-      state,
-      (row) => normalizedName(row.fieldName) === normalizedName(targetName),
-    );
-  }
-
   return state;
 };
 
@@ -68,6 +60,7 @@ export const applyAISchemaChanges = (
   changes: AISchemaChange[],
 ): PersistedState => {
   let nextState = currentState;
+  const removedNames = new Set<string>();
 
   for (const change of changes) {
     if (change.kind === 'table') {
@@ -81,6 +74,10 @@ export const applyAISchemaChanges = (
     }
 
     if (change.kind === 'field') {
+      if (change.type === 'remove') {
+        removedNames.add(normalizedName(change.oldRow?.fieldName || change.fieldName));
+        continue;
+      }
       nextState = applyFieldSchemaChange(nextState, candidateState.rows, change);
       continue;
     }
@@ -109,5 +106,7 @@ export const applyAISchemaChanges = (
     }
   }
 
-  return nextState;
+  return removedNames.size > 0
+    ? removeFieldsFromDocument(nextState, (row) => removedNames.has(normalizedName(row.fieldName)))
+    : nextState;
 };

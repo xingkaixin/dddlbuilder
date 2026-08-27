@@ -111,6 +111,38 @@ describe('AI field changes', () => {
 });
 
 describe('applyAISchemaChanges', () => {
+  it.each([false, true])(
+    'preserves a modified index after field removal (reverse=%s)',
+    (reverse) => {
+      const current: PersistedState = {
+        ...createState([row('old_key', 1), row('new_key', 2)]),
+        indexes: [
+          {
+            id: 'uk-keys',
+            name: 'uk_keys',
+            unique: true,
+            fields: [
+              { name: 'old_key', direction: 'ASC' },
+              { name: 'new_key', direction: 'ASC' },
+            ],
+          },
+        ],
+      };
+      const candidate = {
+        ...current,
+        rows: [current.rows[1]],
+        indexes: [{ ...current.indexes[0], fields: [current.indexes[0].fields[1]] }],
+      };
+      const changes = buildAISchemaChanges(current, candidate);
+      if (reverse) changes.reverse();
+      const next = applyAISchemaChanges(current, candidate, changes);
+
+      expect(next.rows).toEqual(candidate.rows);
+      expect(next.indexes).toEqual(candidate.indexes);
+      expect(applyAISchemaChanges(next, candidate, changes)).toEqual(next);
+    },
+  );
+
   it.each([false, true])('cleans field references when applying removals (all=%s)', (all) => {
     const current: PersistedState = {
       ...createState([row('id', 1), row('user_id', 2)]),
