@@ -1,3 +1,5 @@
+import type { SchemaDocumentState } from '@ddlbuilder/shared-types';
+import { normalizeSchemaDocumentState, stableStringify } from '@ddlbuilder/workspace-core';
 import type { WorkspaceMigrationResponse } from '@ddlbuilder/shared-types/api';
 import type {
   WorkspaceEntityType,
@@ -35,7 +37,16 @@ const toMigrationEntityRecord = (
   entity: WorkspaceEntityInput,
 ): MigrationEntityRecord => {
   const kind = entity.entityType;
-  const payload = entity.payload as Record<string, unknown>;
+  const sourcePayload = entity.payload as Record<string, unknown>;
+  const payload: Record<string, unknown> = {
+    ...sourcePayload,
+    ...(kind !== 'folder'
+      ? { state: normalizeSchemaDocumentState(sourcePayload.state as SchemaDocumentState) }
+      : {}),
+    ...(kind !== 'saved_draft'
+      ? { createdAt: sourcePayload.createdAt ?? entity.sourceUpdatedAt }
+      : {}),
+  };
   const payloadName = typeof payload.name === 'string' ? payload.name : entity.entityId;
   const payloadTableName =
     typeof payload.tableName === 'string' ? payload.tableName : entity.entityId;
@@ -50,8 +61,8 @@ const toMigrationEntityRecord = (
     id: buildMigrationEntityId(userId, kind, entity.entityId),
     kind,
     displayName,
-    entity,
-    payloadJson: JSON.stringify(entity.payload),
+    entity: { ...entity, payload },
+    payloadJson: stableStringify(payload),
   };
 };
 
@@ -391,11 +402,10 @@ export const analyzeWorkspaceMigration = async (
       continue;
     }
 
+    const normalizedName = (record.entity.payload as Record<string, unknown>).normalizedName;
     conflicts.push({
       kind: toConflictKind(record.kind),
-      normalizedName: String(
-        (record.entity.payload as Record<string, unknown>).normalizedName ?? record.entity.entityId,
-      ),
+      normalizedName: typeof normalizedName === 'string' ? normalizedName : record.entity.entityId,
       displayName: record.displayName,
     });
   }

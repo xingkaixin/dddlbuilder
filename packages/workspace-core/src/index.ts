@@ -16,6 +16,7 @@ export {
   type ApplySchemaDocumentStateOptions,
   applySchemaDocumentStateToTableDoc,
   tableDocToSchemaDocumentState,
+  normalizeSchemaDocumentState,
   tableMetadata,
 } from './workspaceTableDoc';
 export {

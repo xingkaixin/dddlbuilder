@@ -1,5 +1,6 @@
 import * as Y from 'yjs';
 import {
+  decodeWorkspaceMigrationPayload,
   importWorkspaceSnapshotToYDoc,
   exportWorkspaceYDocToSnapshot,
   mergeWorkspaceSnapshotIntoYDoc,
@@ -113,6 +114,92 @@ describe('workspaceMigration', () => {
       doc.destroy();
     },
   );
+
+  it('完成标记失败后重试旧载荷，跳过所有已写入实体', async () => {
+    const legacyState = {
+      schemaName: '',
+      tableName: 'orders',
+      tableComment: '',
+      dbType: 'mysql',
+      rows: [{ order: 1, fieldName: 'id', fieldType: 'bigint', nullable: '否' }],
+      indexes: [],
+      authInput: '',
+      authObjects: [],
+      foreignKeys: [],
+    };
+    const payload = decodeWorkspaceMigrationPayload({
+      localFingerprint: 'legacy-retry',
+      idempotencyKey: 'retry-1',
+      snapshot: {
+        activeSession: null,
+        globalDraft: { state: legacyState, updatedAt: 2 },
+        drafts: [{ draftId: 'draft-1', state: legacyState, updatedAt: 2 }],
+        savedTables: [
+          {
+            name: 'orders',
+            normalizedName: 'orders',
+            state: legacyState,
+            updatedAt: 2,
+          },
+        ],
+        savedDrafts: [
+          {
+            tableName: 'orders',
+            normalizedName: 'orders',
+            state: legacyState,
+            baseSignature: 'base',
+            updatedAt: 2,
+          },
+        ],
+        folders: [{ id: 'folder-1', name: 'Folder', order: 0, createdAt: 1, updatedAt: 2 }],
+      },
+    });
+    if (!payload) throw new Error('Invalid migration fixture');
+    const doc = new Y.Doc();
+    authorityMocks.readSnapshot.mockImplementation(async () => exportWorkspaceYDocToSnapshot(doc));
+    authorityMocks.mergeSnapshot.mockImplementation(async (snapshot) =>
+      mergeWorkspaceSnapshotIntoYDoc(doc, snapshot),
+    );
+    let status: string | null = null;
+    let failCompletedOnce = true;
+    const database = {
+      prepare: () => {
+        let args: unknown[] = [];
+        const statement = {
+          bind: (...values: unknown[]) => {
+            args = values;
+            return statement;
+          },
+          first: async () => (status ? { migrationStatus: status } : null),
+          run: async () => {
+            const nextStatus = args[3] as string;
+            if (nextStatus === 'completed' && failCompletedOnce) {
+              failCompletedOnce = false;
+              throw new Error('workspace_links write failed');
+            }
+            status = nextStatus;
+            return { success: true };
+          },
+        };
+        return statement;
+      },
+    };
+    const env = { USER_DB: database } as never;
+    try {
+      await expect(commitWorkspaceMigration(env, 'user-1', payload)).rejects.toThrow(
+        'workspace_links write failed',
+      );
+      const firstSnapshot = exportWorkspaceYDocToSnapshot(doc);
+      const analysis = await analyzeWorkspaceMigration(env, 'user-1', payload);
+      expect(analysis).toMatchObject({ conflictCount: 0, skippedCount: 5 });
+      const retry = await commitWorkspaceMigration(env, 'user-1', payload);
+      expect(retry).toMatchObject({ createdCount: 0, copiedCount: 0, skippedCount: 5 });
+      expect(exportWorkspaceYDocToSnapshot(doc)).toEqual(firstSnapshot);
+      expect(authorityMocks.mergeSnapshot).toHaveBeenCalledOnce();
+    } finally {
+      doc.destroy();
+    }
+  });
 
   it('分析迁移时识别所有待创建记录', async () => {
     const queries: string[] = [];
@@ -243,6 +330,29 @@ describe('workspaceMigration', () => {
       }),
     );
     expect(authorityMocks.mergeSnapshot).not.toHaveBeenCalled();
+  });
+
+  it('嵌套属性顺序不同不会产生迁移冲突', async () => {
+    const payload = createPayload();
+    const index = {
+      id: 'index-1',
+      name: 'idx_id',
+      unique: false,
+      fields: [{ name: 'id', direction: 'ASC' as const }],
+    };
+    payload.snapshot.savedTables[0].state.indexes = [index];
+    const existing = structuredClone(payload.snapshot);
+    existing.savedTables[0].state.indexes = [
+      { fields: [{ direction: 'ASC', name: 'id' }], unique: false, name: 'idx_id', id: 'index-1' },
+    ];
+    authorityMocks.readSnapshot.mockResolvedValue(existing);
+    const statement = { bind: () => statement, first: async () => null };
+    const result = await analyzeWorkspaceMigration(
+      { USER_DB: { prepare: () => statement } } as never,
+      'user-1',
+      payload,
+    );
+    expect(result).toMatchObject({ conflictCount: 0, skippedCount: 3 });
   });
 
   it('内容相同的已有记录只计为跳过且不触发实体写入', async () => {

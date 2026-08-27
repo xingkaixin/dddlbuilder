@@ -261,10 +261,35 @@ export const applySchemaDocumentStateToTableDoc = (
   }
 };
 
+export const normalizeSchemaDocumentState = (
+  state: Partial<SchemaDocumentState>,
+): SchemaDocumentState => {
+  return {
+    objectType: state.objectType === 'view' ? 'view' : 'table',
+    schemaName: typeof state.schemaName === 'string' ? state.schemaName : '',
+    tableName: typeof state.tableName === 'string' ? state.tableName : '',
+    tableComment: typeof state.tableComment === 'string' ? state.tableComment : '',
+    dbType: typeof state.dbType === 'string' ? state.dbType : 'mysql',
+    viewDefinition: typeof state.viewDefinition === 'string' ? state.viewDefinition : '',
+    viewCreateOrReplace: state.viewCreateOrReplace !== false,
+    rows: normalizePersistedRows({ rows: state.rows ?? [] }).rows.map((row) => ({
+      ...row,
+      fieldName: typeof row.fieldName === 'string' ? row.fieldName : '',
+      fieldType: typeof row.fieldType === 'string' ? row.fieldType : '',
+      fieldComment: typeof row.fieldComment === 'string' ? row.fieldComment : '',
+    })),
+    indexes: state.indexes ?? [],
+    authInput: typeof state.authInput === 'string' ? state.authInput : '',
+    authObjects: Array.isArray(state.authObjects) ? state.authObjects : [],
+    ...(state.citusShardingConfig ? { citusShardingConfig: state.citusShardingConfig } : {}),
+    ...(state.mysqlPartitionConfig ? { mysqlPartitionConfig: state.mysqlPartitionConfig } : {}),
+    ...(state.tableMiscConfig ? { tableMiscConfig: state.tableMiscConfig } : {}),
+    ...(state.foreignKeys?.length ? { foreignKeys: state.foreignKeys } : {}),
+  };
+};
+
 export const tableDocToSchemaDocumentState = (tableDoc: Y.Map<unknown>): SchemaDocumentState => {
-  const rawSnapshot = readStateSnapshot(tableDoc);
-  // 快照可能是历史格式，且下面有绕过 readFieldRow 直接取快照 rows 的分支，先归一化。
-  const stateSnapshot = rawSnapshot && normalizePersistedRows(rawSnapshot);
+  const stateSnapshot = readStateSnapshot(tableDoc);
   const state = {
     ...stateSnapshot,
     ...Object.fromEntries(
@@ -291,23 +316,7 @@ export const tableDocToSchemaDocumentState = (tableDoc: Y.Map<unknown>): SchemaD
     ? readOrderedMap<ForeignKeyDefinition>(tableDoc, 'foreignKeys', 'foreignKeyOrder')
     : state.foreignKeys;
 
-  return {
-    objectType: state.objectType === 'view' ? 'view' : 'table',
-    schemaName: typeof state.schemaName === 'string' ? state.schemaName : '',
-    tableName: typeof state.tableName === 'string' ? state.tableName : '',
-    tableComment: typeof state.tableComment === 'string' ? state.tableComment : '',
-    dbType: typeof state.dbType === 'string' ? state.dbType : 'mysql',
-    viewDefinition: typeof state.viewDefinition === 'string' ? state.viewDefinition : '',
-    viewCreateOrReplace: state.viewCreateOrReplace !== false,
-    rows,
-    indexes,
-    authInput: typeof state.authInput === 'string' ? state.authInput : '',
-    authObjects: Array.isArray(state.authObjects) ? state.authObjects : [],
-    ...(state.citusShardingConfig ? { citusShardingConfig: state.citusShardingConfig } : {}),
-    ...(state.mysqlPartitionConfig ? { mysqlPartitionConfig: state.mysqlPartitionConfig } : {}),
-    ...(state.tableMiscConfig ? { tableMiscConfig: state.tableMiscConfig } : {}),
-    ...(foreignKeys && foreignKeys.length > 0 ? { foreignKeys } : {}),
-  } as SchemaDocumentState;
+  return normalizeSchemaDocumentState({ ...state, rows, indexes, foreignKeys });
 };
 
 export const materializeTableDoc = (tableDoc: Y.Map<unknown>) => {

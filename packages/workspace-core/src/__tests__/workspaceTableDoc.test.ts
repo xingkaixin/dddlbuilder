@@ -9,6 +9,7 @@ import {
 import { buildWorkspaceContentHash } from '../contentHash';
 import {
   applySchemaDocumentStateToTableDoc,
+  normalizeSchemaDocumentState,
   tableDocToSchemaDocumentState,
 } from '../workspaceTableDoc';
 import { getWorkspaceRoot } from '../workspaceYDoc';
@@ -94,6 +95,28 @@ const collaborativeState = (state: PersistedState): SchemaDocumentState =>
   toSchemaDocumentState(state);
 
 describe('workspace table doc', () => {
+  it('normalizes legacy defaults, field IDs and empty collections like the stored document', () => {
+    const legacy = createClientState({
+      objectType: undefined,
+      viewDefinition: undefined,
+      viewCreateOrReplace: undefined,
+      foreignKeys: [],
+    });
+    legacy.rows = [{ fieldName: 'id', fieldType: 'bigint', nullable: false }];
+    const normalized = normalizeSchemaDocumentState(legacy);
+    expect(normalized).toMatchObject({
+      objectType: 'table',
+      viewDefinition: '',
+      viewCreateOrReplace: true,
+      rows: [{ id: 'legacy-field-0', fieldComment: '' }],
+    });
+    expect(normalized).not.toHaveProperty('foreignKeys');
+    expect(normalized).not.toHaveProperty('sqlFormatMode');
+    expect(normalized).toEqual(tableDocToSchemaDocumentState(createTableDoc(legacy)));
+    expect(normalizeSchemaDocumentState(normalized)).toEqual(normalized);
+    expect(legacy.rows[0]).not.toHaveProperty('id');
+  });
+
   it('hashes decoded state identically to the client state it was written from', async () => {
     const clientState = createClientState();
     const decoded = tableDocToSchemaDocumentState(createTableDoc(clientState));
