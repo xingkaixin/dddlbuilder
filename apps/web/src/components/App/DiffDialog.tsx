@@ -175,6 +175,7 @@ export const DiffDialog = memo<DiffDialogProps>(
     const hasFieldChanges = diff.fields.length > 0;
     const hasIndexChanges = diff.indexes.length > 0;
     const hasTableMetaChanges =
+      Boolean(diff.manualChanges?.length) ||
       diff.tableNameChanged ||
       diff.schemaNameChanged ||
       diff.tableCommentChanged ||
@@ -195,6 +196,14 @@ export const DiffDialog = memo<DiffDialogProps>(
                 <h4 className="text-sm font-medium text-muted-foreground">
                   {t('diffDialog.tableMetaChanges')}
                 </h4>
+                {diff.manualChanges?.map((change) => (
+                  <div
+                    key={change}
+                    className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm"
+                  >
+                    {t(`diffDialog.manualChanges.${change}`)} · {t('diffDialog.manualMigration')}
+                  </div>
+                ))}
                 {diff.schemaNameChanged && (
                   <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm">
                     <span className="text-muted-foreground">Schema: </span>

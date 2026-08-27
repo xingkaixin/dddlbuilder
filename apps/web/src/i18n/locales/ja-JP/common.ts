@@ -1383,6 +1383,14 @@ export const jaJPCommon = {
     },
   },
   diffDialog: {
+    manualMigration: '手動移行が必要です。自動変更スクリプトは生成されません',
+    manualChanges: {
+      objectType: 'オブジェクト種別の変更',
+      dbType: 'データベース種別の変更',
+      view: 'ビュー定義または構造の変更',
+      mysqlPartition: 'テーブルパーティションの変更',
+      citusSharding: 'Citus 分散設定の変更',
+    },
     title: 'テーブル構造の差分',
     description: '現在のテーブルと保存されたバージョンを比較する',
     tableMetaChanges: 'テーブル構成の変更',

@@ -83,4 +83,45 @@ test.describe('变更对比验证 @storage', () => {
       }
     });
   }
+  for (const kind of ['view', 'partition'] as const) {
+    test(`场景：识别需要手动迁移的结构变更 (${kind})`, async ({ page }) => {
+      const tableName = `manual_diff_${kind}`;
+      await page.locator('#table-name').fill(tableName);
+      if (kind === 'view') {
+        await page.locator('#object-type-select').click();
+        await page.getByRole('option', { name: '视图', exact: true }).click();
+        await page.locator('#view-definition').fill('SELECT id FROM users WHERE active = true');
+      } else {
+        await fillBasicField(page, 'id');
+        await page.getByRole('tab', { name: /分区配置/ }).click();
+        const panel = page.getByRole('tabpanel', { name: /分区配置/ });
+        await panel.getByRole('switch').click();
+        await panel.getByRole('combobox').first().click();
+        await page.getByRole('option', { name: 'HASH', exact: true }).click();
+        await page.getByPlaceholder(/输入表达式/).fill('id');
+        await panel.getByRole('spinbutton').fill('4');
+      }
+      await page.getByRole('button', { name: /保存当前表|保存当前视图/ }).click();
+      await page.getByLabel('保存名称').fill(tableName);
+      await page.getByRole('button', { name: '保存', exact: true }).click();
+      await expect(page.getByLabel('保存名称')).toBeHidden();
+      if (kind === 'view') {
+        await page.locator('#view-definition').fill('SELECT id FROM users WHERE active = false');
+      } else {
+        await page
+          .getByRole('tabpanel', { name: /分区配置/ })
+          .getByRole('spinbutton')
+          .fill('8');
+      }
+      await page.getByRole('button', { name: /查看表结构变更/ }).click();
+      const dialog = page.getByRole('dialog', { name: '表结构变更对比' });
+      await expect(
+        dialog.getByText(
+          kind === 'view' ? /视图定义或结构变更.*需手动迁移/ : /表分区变更.*需手动迁移/,
+        ),
+      ).toBeVisible();
+      await expect(dialog.locator('pre').first()).toContainText('Manual migration required');
+      await expect(dialog.locator('pre').first()).toContainText('No automatic changes generated');
+    });
+  }
 });

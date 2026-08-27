@@ -10,6 +10,9 @@ import {
   normalizeFieldOnUpdate,
 } from '@ddlbuilder/shared-types';
 
+import { buildCitusShardingDDL, buildMysqlPartitionClause } from './tableFeatures';
+import { supportsMysqlPartition } from './databaseFamily';
+
 /**
  * 字段变更类型
  */
@@ -63,7 +66,15 @@ export type ForeignKeyDiff = {
 /**
  * 表结构变更汇总
  */
+export type ManualSchemaChange =
+  | 'objectType'
+  | 'dbType'
+  | 'view'
+  | 'mysqlPartition'
+  | 'citusSharding';
+
 export type TableDiff = {
+  manualChanges?: ManualSchemaChange[];
   hasChanges: boolean;
   tableNameChanged: boolean;
   oldTableName?: string;
@@ -294,6 +305,39 @@ function getIndexSignature(index: IndexDefinition): string {
   return `${prefix}:${index.name}:${fieldsSig}`;
 }
 
+function getManualSchemaChanges(
+  oldState: PersistedState,
+  newState: PersistedState,
+  hasStructuralChanges: boolean,
+): ManualSchemaChange[] {
+  const changes: ManualSchemaChange[] = [];
+  const oldType = oldState.objectType ?? 'table';
+  const newType = newState.objectType ?? 'table';
+  if (oldType !== newType) changes.push('objectType');
+  if (oldState.dbType !== newState.dbType) changes.push('dbType');
+  if (
+    oldType === 'view' &&
+    newType === 'view' &&
+    (hasStructuralChanges ||
+      (oldState.viewDefinition ?? '').trim() !== (newState.viewDefinition ?? '').trim() ||
+      (oldState.viewCreateOrReplace !== false) !== (newState.viewCreateOrReplace !== false))
+  )
+    changes.push('view');
+
+  const partitionClause = (state: PersistedState) =>
+    supportsMysqlPartition(state.dbType) && state.mysqlPartitionConfig
+      ? buildMysqlPartitionClause(state.mysqlPartitionConfig)
+      : '';
+  if (partitionClause(oldState) !== partitionClause(newState)) changes.push('mysqlPartition');
+
+  const shardingDDL = (state: PersistedState) =>
+    state.dbType === 'postgresql-citus' && state.citusShardingConfig
+      ? buildCitusShardingDDL('', state.citusShardingConfig)
+      : '';
+  if (shardingDDL(oldState) !== shardingDDL(newState)) changes.push('citusSharding');
+  return changes;
+}
+
 /**
  * 对比两个 PersistedState，生成变更详情
  */
@@ -418,6 +462,12 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
       result.foreignKeys.push({ type: 'add', foreignKey: fk });
       result.hasChanges = true;
     }
+  }
+
+  const manualChanges = getManualSchemaChanges(oldState, newState, result.hasChanges);
+  if (manualChanges.length > 0) {
+    result.manualChanges = manualChanges;
+    result.hasChanges = true;
   }
 
   return result;

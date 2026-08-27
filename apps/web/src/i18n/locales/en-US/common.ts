@@ -1375,6 +1375,14 @@ export const enUSCommon = {
     },
   },
   diffDialog: {
+    manualMigration: 'Manual migration required; no automatic changes generated',
+    manualChanges: {
+      objectType: 'Schema object type changed',
+      dbType: 'Database dialect changed',
+      view: 'View definition or structure changed',
+      mysqlPartition: 'Table partitioning changed',
+      citusSharding: 'Citus distribution changed',
+    },
     title: 'Table Structure Diff',
     description: 'Compare the current table with the saved version',
     tableMetaChanges: 'Table Config Changes',

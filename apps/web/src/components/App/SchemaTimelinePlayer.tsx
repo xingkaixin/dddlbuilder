@@ -110,6 +110,8 @@ function buildChangeSummary(
   if (diff.tableNameChanged) parts.push(t('timelinePlayer.tableNameChanged'));
   if (diff.tableCommentChanged) parts.push(t('timelinePlayer.tableCommentChanged'));
   if (diff.miscConfigChanged) parts.push(t('timelinePlayer.miscChanged'));
+  for (const change of diff.manualChanges ?? [])
+    parts.push(t(`diffDialog.manualChanges.${change}`));
 
   return parts.join(' · ') || t('timelinePlayer.noChange');
 }

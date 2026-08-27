@@ -1333,6 +1333,14 @@ export const zhCNCommon = {
     },
   },
   diffDialog: {
+    manualMigration: '需手动迁移，未生成自动变更脚本',
+    manualChanges: {
+      objectType: '对象类型变更',
+      dbType: '数据库类型变更',
+      view: '视图定义或结构变更',
+      mysqlPartition: '表分区变更',
+      citusSharding: 'Citus 分片变更',
+    },
     title: '表结构变更对比',
     description: '对比当前表与已保存版本的差异',
     tableMetaChanges: '表配置变更',

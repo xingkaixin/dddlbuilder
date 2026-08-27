@@ -1,5 +1,5 @@
 import type { NormalizedField, DatabaseType } from '@ddlbuilder/shared-types';
-import type { TableDiff } from '../tableDiff';
+import type { ManualSchemaChange, TableDiff } from '../tableDiff';
 import {
   generateTableCommentAlter,
   generateDropColumn,
@@ -15,6 +15,14 @@ import {
   generateTableSchemaChange,
 } from './tableStatements';
 import { buildQualifiedTableName, getSchemaAndTable } from '../databaseTypeMapping';
+
+const MANUAL_CHANGE_DESCRIPTIONS: Record<ManualSchemaChange, string> = {
+  objectType: 'schema object type',
+  dbType: 'database dialect',
+  view: 'view definition or structure',
+  mysqlPartition: 'table partitioning',
+  citusSharding: 'Citus distribution',
+};
 
 /**
  * ALTER DDL 生成器
@@ -40,6 +48,13 @@ export function generateAlterDDL(
     diff.newSchemaName ?? fallback.schema,
     diff.newTableName || fallback.table,
   );
+
+  if (diff.manualChanges?.length) {
+    const reasons = diff.manualChanges
+      .map((change) => MANUAL_CHANGE_DESCRIPTIONS[change])
+      .join(', ');
+    return `-- Manual migration required: ${reasons} changed from ${oldTableName} to ${activeTableName} (${dbType}). No automatic changes generated.`;
+  }
 
   if (diff.schemaNameChanged) {
     const newSchema = diff.newSchemaName ?? '';

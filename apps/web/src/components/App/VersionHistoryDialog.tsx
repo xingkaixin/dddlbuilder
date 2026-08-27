@@ -96,6 +96,8 @@ function buildDiffSummary(diff: TableDiff | null, t: TFunction): string {
   if (diff.schemaNameChanged) parts.push(t('versionHistory.diff.schemaNameChanged'));
   if (diff.tableCommentChanged) parts.push(t('versionHistory.diff.tableCommentChanged'));
   if (diff.miscConfigChanged) parts.push(t('versionHistory.diff.miscChanged'));
+  for (const change of diff.manualChanges ?? [])
+    parts.push(t(`diffDialog.manualChanges.${change}`));
 
   return parts.join(', ');
 }
