@@ -1,11 +1,31 @@
-import type { FieldRow, PersistedState } from '@ddlbuilder/shared-types';
+import type { FieldRow, ForeignKeyDefinition, PersistedState } from '@ddlbuilder/shared-types';
 import { createEmptyRow } from '@/utils/helpers';
 import {
   containsSqlIdentifierToken,
   isSameIdentifierToken,
   replaceIdentifierTokens,
 } from '@/utils/fieldRenameUtils';
-import { getIdentifierNameMaxLength, truncateIdentifierName } from '@ddlbuilder/ddl-core';
+import {
+  getDatabaseFamily,
+  getSchemaAndTable,
+  getIdentifierNameMaxLength,
+  truncateIdentifierName,
+  unquoteSqlIdentifier,
+} from '@ddlbuilder/ddl-core';
+
+function referencesCurrentTable(state: PersistedState, foreignKey: ForeignKeyDefinition): boolean {
+  const current = getSchemaAndTable(state.tableName);
+  const target = getSchemaAndTable(foreignKey.refTable);
+  const normalize = (value: string) => {
+    const name = unquoteSqlIdentifier(value.trim());
+    return getDatabaseFamily(state.dbType) === 'postgresql' ? name : name.toLowerCase();
+  };
+  return (
+    normalize(current.table) === normalize(target.table) &&
+    normalize(state.schemaName || current.schema) ===
+      normalize(foreignKey.refSchema || target.schema)
+  );
+}
 
 export function updateDocumentFields(state: PersistedState, rows: FieldRow[]): PersistedState {
   const previousNames = new Map(state.rows.map((row) => [row.id, row.fieldName.trim()]));
@@ -50,6 +70,9 @@ export function updateDocumentFields(state: PersistedState, rows: FieldRow[]): P
     foreignKeys: state.foreignKeys?.map((foreignKey) => ({
       ...foreignKey,
       fields: foreignKey.fields.map(rename),
+      refFields: referencesCurrentTable(state, foreignKey)
+        ? foreignKey.refFields.map(rename)
+        : foreignKey.refFields,
     })),
     mysqlPartitionConfig: state.mysqlPartitionConfig
       ? {
@@ -169,7 +192,11 @@ export function removeFieldsFromDocument(
     ),
     foreignKeys: state.foreignKeys?.filter(
       (foreignKey) =>
-        !foreignKey.fields.some((field) => matchesRemovedField(field, removedFieldNames)),
+        !foreignKey.fields.some((field) => matchesRemovedField(field, removedFieldNames)) &&
+        !(
+          referencesCurrentTable(state, foreignKey) &&
+          foreignKey.refFields.some((field) => matchesRemovedField(field, removedFieldNames))
+        ),
     ),
     mysqlPartitionConfig,
     citusShardingConfig,

@@ -65,6 +65,64 @@ test.describe('SQL 导入功能验证 @tools', () => {
     await expect(sqlOutput).toContainText(/id\s+INT/i);
   });
 
+  test('场景：编辑主键字段名同步更新自引用外键', async ({ page }) => {
+    await page.route('**/api/parse-sql', (route) =>
+      route.fulfill({
+        json: {
+          result: {
+            tableName: 'employees',
+            tableComment: '',
+            authObjects: [],
+            fields: [
+              { name: 'id', type: 'INT', comment: '', nullable: false },
+              { name: 'manager_id', type: 'INT', comment: '', nullable: true },
+            ],
+            indexes: [
+              {
+                id: 'pk',
+                name: 'pk_employees',
+                fields: [{ name: 'id', direction: 'ASC' }],
+                unique: true,
+                isPrimary: true,
+              },
+            ],
+            foreignKeys: [
+              {
+                id: 'self',
+                name: 'fk_manager',
+                fields: ['manager_id'],
+                refTable: 'employees',
+                refFields: ['id'],
+              },
+            ],
+          },
+        },
+      }),
+    );
+    await page.getByRole('button', { name: /导入结构/i }).click();
+    await page
+      .locator('#sql-content')
+      .fill(
+        'CREATE TABLE employees (id INT PRIMARY KEY, manager_id INT, CONSTRAINT fk_manager FOREIGN KEY (manager_id) REFERENCES employees (id));',
+      );
+    await page.getByRole('button', { name: /下一步/i }).click();
+    await page.getByRole('button', { name: /下一步/i }).click();
+    await page.getByRole('button', { name: /确认导入/i }).click();
+    await expect(page.locator('#sql-content')).toBeHidden();
+    const nameCell = page.locator(
+      '[data-testid="data-table"] tbody tr:first-child td:nth-child(2)',
+    );
+    await nameCell.dblclick();
+    await page
+      .locator('[data-testid="data-table"] input:not([aria-hidden="true"])')
+      .fill('employee_id');
+    await page.keyboard.press('Enter');
+    const sql = page.locator('[role="tabpanel"]:visible pre');
+    await expect(sql).toContainText('PRIMARY KEY (employee_id)');
+    await expect(sql).toContainText('REFERENCES employees (employee_id)');
+    await expect(sql).not.toContainText('REFERENCES employees (id)');
+  });
+
   test('场景：重新导入已有表不删除重建字段', async ({ page }) => {
     const importSql = async () => {
       await page.getByRole('button', { name: /导入结构/i }).click();
