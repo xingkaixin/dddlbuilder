@@ -14,6 +14,12 @@ import { setupFakeIndexedDB } from './fakeIndexedDb';
 describe('reviewHistory', () => {
   setupFakeIndexedDB();
 
+  const target = (normalizedName: string, tableId = normalizedName) => ({
+    scope: { kind: 'anonymous' } as const,
+    tableId,
+    normalizedName,
+  });
+
   const mockReview = {
     score: 8,
     summary: 'Test summary',
@@ -26,7 +32,8 @@ describe('reviewHistory', () => {
     const ddl = 'CREATE TABLE test_table (id INT)';
     const dbType = 'mysql';
 
-    const record = await saveReview(tableNamespace, tableName, ddl, dbType, mockReview);
+    const reviewTarget = target(tableNamespace);
+    const record = await saveReview(reviewTarget, tableName, ddl, dbType, mockReview);
 
     expect(record.id).toBeDefined();
     expect(record.tableNormalizedName).toBe(tableNamespace);
@@ -34,69 +41,145 @@ describe('reviewHistory', () => {
     expect(record.ddl).toBe(ddl);
     expect(record.result).toEqual(mockReview);
 
-    const list = await listReviews(tableNamespace);
+    const list = await listReviews(reviewTarget);
     expect(list.length).toBe(1);
     expect(list[0].id).toBe(record.id);
   });
 
   it('should get a specific review by id', async () => {
     const tableNamespace = 'test_get_id';
-    const record = await saveReview(tableNamespace, 'table', 'ddl', 'mysql', mockReview);
+    const reviewTarget = target(tableNamespace);
+    const record = await saveReview(reviewTarget, 'table', 'ddl', 'mysql', mockReview);
 
-    const found = await getReview(record.id);
+    const found = await getReview(record.id, reviewTarget);
     expect(found).not.toBeNull();
     expect(found?.id).toBe(record.id);
 
-    const nonExistent = await getReview('non-existent');
+    const nonExistent = await getReview('non-existent', reviewTarget);
     expect(nonExistent).toBeNull();
   });
 
   it('should delete a review', async () => {
     const tableNamespace = 'test_delete';
-    const record = await saveReview(tableNamespace, 'table', 'ddl', 'mysql', mockReview);
+    const reviewTarget = target(tableNamespace);
+    const record = await saveReview(reviewTarget, 'table', 'ddl', 'mysql', mockReview);
 
-    await deleteReview(record.id);
-    const found = await getReview(record.id);
+    await deleteReview(record.id, reviewTarget);
+    const found = await getReview(record.id, reviewTarget);
     expect(found).toBeNull();
 
-    const count = await countReviews(tableNamespace);
+    const count = await countReviews(reviewTarget);
     expect(count).toBe(0);
   });
 
   it('should count reviews for a table', async () => {
     const tableNamespace = 'test_count';
-    await saveReview(tableNamespace, 't1', 'd1', 'mysql', mockReview);
-    await saveReview(tableNamespace, 't2', 'd2', 'mysql', mockReview);
+    const reviewTarget = target(tableNamespace);
+    await saveReview(reviewTarget, 't1', 'd1', 'mysql', mockReview);
+    await saveReview(reviewTarget, 't2', 'd2', 'mysql', mockReview);
 
-    const count = await countReviews(tableNamespace);
+    const count = await countReviews(reviewTarget);
     expect(count).toBe(2);
+  });
 
-    const totalCount = await countReviews();
-    expect(totalCount).toBeGreaterThanOrEqual(2);
+  it('isolates same-name reviews by workspace', async () => {
+    const normalizedName = 'shared_review_table';
+    const anonymousTarget = target(normalizedName, 'shared-id');
+    const userTarget = {
+      scope: {
+        kind: 'user' as const,
+        userId: 'user-1',
+        workspaceId: 'workspace-1',
+      },
+      tableId: 'shared-id',
+      normalizedName,
+    };
+
+    await saveReview(anonymousTarget, 'anonymous', 'ddl-a', 'mysql', mockReview);
+    await saveReview(userTarget, 'user', 'ddl-b', 'mysql', mockReview);
+
+    expect((await listReviews(anonymousTarget)).map((review) => review.tableName)).toEqual([
+      'anonymous',
+    ]);
+    expect((await listReviews(userTarget)).map((review) => review.tableName)).toEqual(['user']);
+  });
+
+  it('does not read or delete a review owned by another workspace', async () => {
+    const normalizedName = 'protected_review_table';
+    const owner = target(normalizedName, 'owner-id');
+    const otherWorkspace = {
+      scope: {
+        kind: 'user' as const,
+        userId: 'user-2',
+        workspaceId: 'workspace-2',
+      },
+      tableId: 'owner-id',
+      normalizedName,
+    };
+    const record = await saveReview(owner, 'owner', 'ddl', 'mysql', mockReview);
+
+    expect(await getReview(record.id, otherWorkspace)).toBeNull();
+    await deleteReview(record.id, otherWorkspace);
+    expect(await getReview(record.id, owner)).not.toBeNull();
+  });
+
+  it('claims an unscoped legacy review for the first workspace that reads it', async () => {
+    const normalizedName = 'legacy_review_table';
+    const owner = target(normalizedName, 'legacy-owner');
+    const otherWorkspace = {
+      scope: {
+        kind: 'user' as const,
+        userId: 'legacy-user',
+        workspaceId: 'legacy-workspace',
+      },
+      tableId: 'legacy-owner',
+      normalizedName,
+    };
+    const db = await dbUtils.openDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(dbUtils.REVIEW_STORE_NAME, 'readwrite');
+      tx.objectStore(dbUtils.REVIEW_STORE_NAME).add({
+        id: 'legacy-review',
+        tableNormalizedName: normalizedName,
+        tableName: 'legacy',
+        ddl: 'ddl',
+        dbType: 'mysql',
+        result: mockReview,
+        createdAt: Date.now(),
+      });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+
+    const [claimed] = await listReviews(owner);
+
+    expect(claimed.tableKey).toBe('anonymous::table:legacy-owner');
+    expect(await listReviews(otherWorkspace)).toEqual([]);
   });
 
   it('should prune old reviews when limit is exceeded', async () => {
     const tableNamespace = 'test_prune';
+    const reviewTarget = target(tableNamespace);
     const maxCount = 3;
 
     // Save 5 reviews
     for (let i = 0; i < 5; i++) {
       // Small delay to ensure consistent ordering if based on timestamp
       await new Promise((r) => setTimeout(r, 10));
-      await saveReview(tableNamespace, `t${i}`, `d${i}`, 'mysql', mockReview);
+      await saveReview(reviewTarget, `t${i}`, `d${i}`, 'mysql', mockReview);
     }
 
-    const countBefore = await countReviews(tableNamespace);
+    const countBefore = await countReviews(reviewTarget);
     expect(countBefore).toBe(5);
 
-    const deletedCount = await pruneOldReviews(tableNamespace, maxCount);
+    const deletedCount = await pruneOldReviews(reviewTarget, maxCount);
     expect(deletedCount).toBe(2);
 
-    const countAfter = await countReviews(tableNamespace);
+    const countAfter = await countReviews(reviewTarget);
     expect(countAfter).toBe(3);
 
     // Verify the latest 3 are kept (they are sorted by createdAt desc)
-    const list = await listReviews(tableNamespace);
+    const list = await listReviews(reviewTarget);
     expect(list[0].tableName).toBe('t4');
     expect(list[1].tableName).toBe('t3');
     expect(list[2].tableName).toBe('t2');
@@ -104,24 +187,23 @@ describe('reviewHistory', () => {
 
   it('should return zero when prune limit is not exceeded', async () => {
     const tableNamespace = 'test_prune_noop';
-    await saveReview(tableNamespace, 't1', 'd1', 'mysql', mockReview);
+    const reviewTarget = target(tableNamespace);
+    await saveReview(reviewTarget, 't1', 'd1', 'mysql', mockReview);
 
-    const deletedCount = await pruneOldReviews(tableNamespace, 10);
+    const deletedCount = await pruneOldReviews(reviewTarget, 10);
     expect(deletedCount).toBe(0);
   });
 
   it('should list all reviews and return metadata projection', async () => {
     const tableNamespace = 'test_metadata';
-    await saveReview(tableNamespace, 'meta_table', 'ddl', 'postgresql', {
+    const reviewTarget = target(tableNamespace);
+    await saveReview(reviewTarget, 'meta_table', 'ddl', 'postgresql', {
       ...mockReview,
       score: 9,
       summary: 'Metadata summary',
     });
 
-    const allReviews = await listReviews();
-    expect(allReviews.length).toBeGreaterThan(0);
-
-    const metadataList = await listReviewMetadata(tableNamespace);
+    const metadataList = await listReviewMetadata(reviewTarget);
     expect(metadataList).toHaveLength(1);
     expect(metadataList[0].tableName).toBe('meta_table');
     expect(metadataList[0].dbType).toBe('postgresql');
@@ -158,7 +240,7 @@ describe('reviewHistory', () => {
 
     vi.spyOn(dbUtils, 'openDb').mockResolvedValue(mockDb as unknown as IDBDatabase);
 
-    await expect(saveReview('ns', 'tb', 'ddl', 'mysql', mockReview)).rejects.toThrow(
+    await expect(saveReview(target('ns'), 'tb', 'ddl', 'mysql', mockReview)).rejects.toThrow(
       'IndexedDB 请求失败',
     );
 

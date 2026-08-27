@@ -19,7 +19,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import type { ReviewRecordMetadata, ReviewRecord } from '@/utils/reviewHistory';
+import type { ReviewRecordMetadata, ReviewRecord, ReviewTarget } from '@/utils/reviewHistory';
 import { listReviewMetadata, getReview, deleteReview } from '@/utils/reviewHistory';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
@@ -28,7 +28,7 @@ import { useLocale } from '@/i18n/LocaleContext';
 interface ReviewHistoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  tableNormalizedName: string | null;
+  target: ReviewTarget | null;
 }
 
 function formatDate(
@@ -64,7 +64,7 @@ function getScoreColor(score: number): string {
 }
 
 export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
-  ({ open, onOpenChange, tableNormalizedName }) => {
+  ({ open, onOpenChange, target }) => {
     const { t } = useTranslation();
     const { resolvedLocale } = useLocale();
     const { showToast } = useToast();
@@ -77,17 +77,23 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
 
     // 加载评审列表
     const loadReviews = useCallback(async () => {
+      if (!target) {
+        return;
+      }
       try {
-        const list = await listReviewMetadata(tableNormalizedName || undefined);
+        const list = await listReviewMetadata(target);
         setReviews(list);
       } finally {
         setLoading(false);
       }
-    }, [tableNormalizedName]);
+    }, [target]);
 
     useEffect(() => {
-      if (open) void loadReviews();
-    }, [open, loadReviews]);
+      if (open && target) void loadReviews();
+    }, [open, loadReviews, target]);
+
+    const visibleReviews = target ? reviews : [];
+    const isLoading = Boolean(target && loading);
 
     // 展开/折叠详情
     const handleToggleExpand = useCallback(
@@ -97,19 +103,19 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
           setExpandedDetail(null);
         } else {
           setExpandedId(id);
-          const detail = await getReview(id);
+          const detail = target ? await getReview(id, target) : null;
           setExpandedDetail(detail);
         }
       },
-      [expandedId],
+      [expandedId, target],
     );
 
     // 删除记录
     const handleDelete = useCallback(async () => {
-      if (!deleteConfirmId) return;
+      if (!deleteConfirmId || !target) return;
       setActionLoading(true);
       try {
-        await deleteReview(deleteConfirmId);
+        await deleteReview(deleteConfirmId, target);
         setDeleteConfirmId(null);
         await loadReviews();
         showToast(t('reviewHistory.deleteSuccess'));
@@ -118,7 +124,7 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
       } finally {
         setActionLoading(false);
       }
-    }, [deleteConfirmId, loadReviews, showToast, t]);
+    }, [deleteConfirmId, loadReviews, showToast, t, target]);
 
     return (
       <>
@@ -133,16 +139,16 @@ export const ReviewHistoryDialog = memo<ReviewHistoryDialogProps>(
             </DialogHeader>
 
             <div className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto overscroll-contain pr-1">
-              {loading ? (
+              {isLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
-              ) : reviews.length === 0 ? (
+              ) : visibleReviews.length === 0 ? (
                 <div className="py-8 text-center text-sm text-muted-foreground">
                   {t('reviewHistory.empty')}
                 </div>
               ) : (
-                reviews.map((r) => (
+                visibleReviews.map((r) => (
                   <div
                     key={r.id}
                     className="group rounded-lg border bg-muted/30 transition-colors hover:bg-muted/50"

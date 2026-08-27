@@ -6,7 +6,7 @@ import {
 } from './workspaceScope';
 
 export const DB_NAME = 'ddlbuilder';
-export const DB_VERSION = 13;
+export const DB_VERSION = 14;
 export const STORE_NAME = 'saved_tables';
 export const VERSION_STORE_NAME = 'table_versions';
 export const REVIEW_STORE_NAME = 'review_history';
@@ -50,6 +50,7 @@ export const openDb = (): Promise<IDBDatabase> =>
         }
         if (!db.objectStoreNames.contains(REVIEW_STORE_NAME)) {
           const store = db.createObjectStore(REVIEW_STORE_NAME, { keyPath: 'id' });
+          store.createIndex('tableKey', 'tableKey', { unique: false });
           store.createIndex('tableNormalizedName', 'tableNormalizedName', { unique: false });
           store.createIndex('createdAt', 'createdAt', { unique: false });
         }
@@ -62,6 +63,12 @@ export const openDb = (): Promise<IDBDatabase> =>
         const transaction = request.transaction;
         if (transaction && db.objectStoreNames.contains(VERSION_STORE_NAME)) {
           const store = transaction.objectStore(VERSION_STORE_NAME);
+          if (!store.indexNames.contains('tableKey')) {
+            store.createIndex('tableKey', 'tableKey', { unique: false });
+          }
+        }
+        if (transaction && db.objectStoreNames.contains(REVIEW_STORE_NAME)) {
+          const store = transaction.objectStore(REVIEW_STORE_NAME);
           if (!store.indexNames.contains('tableKey')) {
             store.createIndex('tableKey', 'tableKey', { unique: false });
           }

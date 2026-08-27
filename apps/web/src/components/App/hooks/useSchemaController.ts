@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
+import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { useSqlGeneration } from '@/hooks/useSqlGeneration';
 import { useOrmGeneration } from '@/hooks/useOrmGeneration';
 import { useDDLReview } from '@/hooks/useDDLReview';
@@ -19,6 +20,8 @@ interface UseSchemaControllerParams {
   domains: EditorDomains;
   hydrated: boolean;
   isShareView: boolean;
+  workspaceScope: WorkspaceScope | null;
+  loadedTableId: string | null;
   loadedTableNormalizedName: string | null;
   loadedTableName: string | null;
   loadedTableSignature: string | null;
@@ -29,6 +32,8 @@ export function useSchemaController({
   domains,
   hydrated,
   isShareView,
+  workspaceScope,
+  loadedTableId,
   loadedTableNormalizedName,
   loadedTableName,
   loadedTableSignature,
@@ -149,6 +154,8 @@ export function useSchemaController({
     dbType,
     tableName: qualifiedTableName,
     generatedSql: sql.generatedSql,
+    workspaceScope,
+    loadedTableId,
     loadedTableNormalizedName,
     isReviewing: reviewState.isLoading,
     reviewResult: reviewState.result,

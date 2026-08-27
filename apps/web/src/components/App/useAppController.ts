@@ -140,11 +140,16 @@ export function useAppController() {
   const { resetPartition } = partition;
 
   const { resetTableMiscConfig } = tableOptions;
+  const loadedTableId =
+    savedTableData.savedTables.find((table) => table.normalizedName === loadedTableNormalizedName)
+      ?.tableId ?? null;
 
   const schemaController = useSchemaController({
     domains: { editor, ui, auth, sharding, animations, partition, tableOptions },
     hydrated,
     isShareView,
+    workspaceScope,
+    loadedTableId,
     loadedTableNormalizedName,
     loadedTableName,
     loadedTableSignature,

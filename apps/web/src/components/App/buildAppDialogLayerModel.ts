@@ -72,8 +72,7 @@ export function buildAppDialogLayerModel({
   handleSelectTableFromEr,
 }: BuildAppDialogLayerModelParams) {
   const { editor, ui, tableOptions } = domains;
-  const { persistence, savedTableData, folderData, loadedTableNormalizedName, workspaceScope } =
-    workspaceController;
+  const { persistence, savedTableData, folderData, workspaceScope } = workspaceController;
   const { derived, indexAdvisor } = schemaController;
   const versionTarget =
     ui.versionHistoryTarget && workspaceScope
@@ -210,7 +209,7 @@ export function buildAppDialogLayerModel({
       reviewHistoryDialogProps: {
         open: ui.isReviewHistoryOpen,
         onOpenChange: ui.setIsReviewHistoryOpen,
-        tableNormalizedName: loadedTableNormalizedName,
+        target: schemaController.reviewActions.reviewTarget,
       },
       aiGenerateDialogProps: {
         open: ui.isAIGenerateDialogOpen,

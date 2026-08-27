@@ -2,14 +2,21 @@ import {
   normalizeDDLReviewResult,
   type DDLReviewResult as ReviewResult,
 } from '@ddlbuilder/shared-types/ddl-review';
+import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { openDb, REVIEW_STORE_NAME } from './workspaceDb';
 import { runIndexedDbRequest } from './indexedDbTransaction';
+import { getWorkspaceScopeStorageKey } from './workspaceScope';
 
-/**
- * 评审记录类型
- */
+export type ReviewTarget = {
+  scope: WorkspaceScope;
+  tableId?: string;
+  normalizedName: string;
+};
+
 export type ReviewRecord = {
   id: string;
+  tableKey?: string;
+  tableId?: string;
   tableNormalizedName: string;
   tableName: string;
   ddl: string;
@@ -18,9 +25,6 @@ export type ReviewRecord = {
   createdAt: number;
 };
 
-/**
- * 评审记录元数据（不含 DDL 完整内容）
- */
 export type ReviewRecordMetadata = {
   id: string;
   tableNormalizedName: string;
@@ -31,8 +35,10 @@ export type ReviewRecordMetadata = {
   createdAt: number;
 };
 
-/** 每个表最多保留的评审记录数量 */
 export const MAX_REVIEWS_PER_TABLE = 50;
+
+const getTableKey = ({ scope, tableId, normalizedName }: ReviewTarget) =>
+  `${getWorkspaceScopeStorageKey(scope)}::${tableId ? `table:${tableId}` : `name:${normalizedName}`}`;
 
 const normalizeReviewRecord = (record: ReviewRecord): ReviewRecord => ({
   ...record,
@@ -42,16 +48,10 @@ const normalizeReviewRecord = (record: ReviewRecord): ReviewRecord => ({
   ),
 });
 
-/**
- * 生成唯一 ID
- */
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
-/**
- * 运行事务
- */
 async function runWithStore<T>(
   mode: IDBTransactionMode,
   runner: (store: IDBObjectStore) => IDBRequest<T>,
@@ -60,11 +60,56 @@ async function runWithStore<T>(
   return runIndexedDbRequest(db, REVIEW_STORE_NAME, mode, runner);
 }
 
-/**
- * 保存评审记录
- */
+const readAndClaimReviews = async (target: ReviewTarget): Promise<ReviewRecord[]> => {
+  const db = await openDb();
+  const tableKey = getTableKey(target);
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(REVIEW_STORE_NAME, 'readwrite');
+    const store = tx.objectStore(REVIEW_STORE_NAME);
+    const scopedRequest = store.index('tableKey').getAll(tableKey);
+    const sameNameRequest = store.index('tableNormalizedName').getAll(target.normalizedName);
+    let scopedRecords: ReviewRecord[] | null = null;
+    let sameNameRecords: ReviewRecord[] | null = null;
+    let records: ReviewRecord[] = [];
+
+    const claimLegacyRecords = () => {
+      if (!scopedRecords || !sameNameRecords) return;
+      const claimed = sameNameRecords
+        .filter((record) => !record.tableKey)
+        .map((record) => ({
+          ...record,
+          tableKey,
+          tableId: target.tableId,
+        }));
+      for (const record of claimed) store.put(record);
+      records = [...scopedRecords, ...claimed];
+    };
+
+    scopedRequest.onsuccess = () => {
+      scopedRecords = scopedRequest.result as ReviewRecord[];
+      claimLegacyRecords();
+    };
+    sameNameRequest.onsuccess = () => {
+      sameNameRecords = sameNameRequest.result as ReviewRecord[];
+      claimLegacyRecords();
+    };
+    tx.oncomplete = () => {
+      db.close();
+      resolve(records.map(normalizeReviewRecord).sort((a, b) => b.createdAt - a.createdAt));
+    };
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error ?? new Error('读取评审历史失败'));
+    };
+    tx.onabort = () => {
+      db.close();
+      reject(tx.error ?? new Error('读取评审历史被中止'));
+    };
+  });
+};
+
 export async function saveReview(
-  tableNormalizedName: string,
+  target: ReviewTarget,
   tableName: string,
   ddl: string,
   dbType: string,
@@ -72,7 +117,9 @@ export async function saveReview(
 ): Promise<ReviewRecord> {
   const record: ReviewRecord = {
     id: generateId(),
-    tableNormalizedName,
+    tableKey: getTableKey(target),
+    tableId: target.tableId,
+    tableNormalizedName: target.normalizedName,
     tableName,
     ddl,
     dbType,
@@ -82,36 +129,17 @@ export async function saveReview(
 
   await runWithStore('readwrite', (store) => store.add(record));
 
-  // 自动清理超限记录
-  await pruneOldReviews(tableNormalizedName, MAX_REVIEWS_PER_TABLE);
+  await pruneOldReviews(target, MAX_REVIEWS_PER_TABLE);
 
   return record;
 }
 
-/**
- * 获取评审历史列表（按时间倒序）
- */
-export async function listReviews(tableNormalizedName?: string): Promise<ReviewRecord[]> {
-  const db = await openDb();
-  const records = await runIndexedDbRequest<ReviewRecord[]>(
-    db,
-    REVIEW_STORE_NAME,
-    'readonly',
-    (store) =>
-      tableNormalizedName
-        ? store.index('tableNormalizedName').getAll(tableNormalizedName)
-        : store.getAll(),
-  );
-  return (records ?? []).map(normalizeReviewRecord).sort((a, b) => b.createdAt - a.createdAt);
+export async function listReviews(target: ReviewTarget): Promise<ReviewRecord[]> {
+  return readAndClaimReviews(target);
 }
 
-/**
- * 获取评审历史元数据列表（轻量级）
- */
-export async function listReviewMetadata(
-  tableNormalizedName?: string,
-): Promise<ReviewRecordMetadata[]> {
-  const records = await listReviews(tableNormalizedName);
+export async function listReviewMetadata(target: ReviewTarget): Promise<ReviewRecordMetadata[]> {
+  const records = await listReviews(target);
   return records.map((r) => ({
     id: r.id,
     tableNormalizedName: r.tableNormalizedName,
@@ -123,29 +151,22 @@ export async function listReviewMetadata(
   }));
 }
 
-/**
- * 获取单个评审记录
- */
-export async function getReview(id: string): Promise<ReviewRecord | null> {
+export async function getReview(id: string, target: ReviewTarget): Promise<ReviewRecord | null> {
+  const tableKey = getTableKey(target);
   const result = await runWithStore<ReviewRecord | undefined>('readonly', (store) => store.get(id));
-  return result ? normalizeReviewRecord(result) : null;
+  if (!result) return null;
+  if (result.tableKey === tableKey) return normalizeReviewRecord(result);
+  if (result.tableKey || result.tableNormalizedName !== target.normalizedName) return null;
+  return (await listReviews(target)).find((record) => record.id === id) ?? null;
 }
 
-/**
- * 删除评审记录
- */
-export async function deleteReview(id: string): Promise<void> {
-  await runWithStore('readwrite', (store) => store.delete(id));
+export async function deleteReview(id: string, target: ReviewTarget): Promise<void> {
+  if (!(await getReview(id, target))) return;
+  await runWithStore<undefined>('readwrite', (store) => store.delete(id));
 }
 
-/**
- * 清理超出限制的旧评审记录
- */
-export async function pruneOldReviews(
-  tableNormalizedName: string,
-  maxCount: number,
-): Promise<number> {
-  const records = await listReviews(tableNormalizedName);
+export async function pruneOldReviews(target: ReviewTarget, maxCount: number): Promise<number> {
+  const records = await listReviews(target);
 
   if (records.length <= maxCount) {
     return 0;
@@ -169,14 +190,6 @@ export async function pruneOldReviews(
   });
 }
 
-/**
- * 统计评审记录数量
- */
-export async function countReviews(tableNormalizedName?: string): Promise<number> {
-  const db = await openDb();
-  return runIndexedDbRequest(db, REVIEW_STORE_NAME, 'readonly', (store) =>
-    tableNormalizedName
-      ? store.index('tableNormalizedName').count(tableNormalizedName)
-      : store.count(),
-  );
+export async function countReviews(target: ReviewTarget): Promise<number> {
+  return (await listReviews(target)).length;
 }
