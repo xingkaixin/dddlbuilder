@@ -3,7 +3,10 @@ import {
   buildQualifiedTableName,
   escapeSingleQuotes,
   getSchemaAndTable,
+  formatSqlTableName,
 } from '../databaseTypeMapping';
+
+import { formatSqlIdentifier, unquoteSqlIdentifier } from '../sqlIdentifiers';
 
 export function generateTableSchemaChange(
   tableName: string,
@@ -11,10 +14,12 @@ export function generateTableSchemaChange(
   dbType: DatabaseType,
 ): string | null {
   if (!newSchema) return null;
+  tableName = formatSqlTableName(tableName, dbType);
+  newSchema = formatSqlIdentifier(newSchema, dbType);
   if (dbType === 'postgresql') return `ALTER TABLE ${tableName} SET SCHEMA ${newSchema};`;
   if (dbType === 'sqlserver') return `ALTER SCHEMA ${newSchema} TRANSFER ${tableName};`;
   if (dbType === 'mysql') {
-    return `RENAME TABLE ${tableName} TO ${buildQualifiedTableName(newSchema, getSchemaAndTable(tableName).table)};`;
+    return `RENAME TABLE ${tableName} TO ${buildQualifiedTableName(newSchema, getSchemaAndTable(tableName).table, dbType)};`;
   }
   return null;
 }
@@ -25,13 +30,16 @@ export function generateRenameTable(
   dbType: DatabaseType,
 ): string {
   if (!oldTableName || !newTableName || oldTableName === newTableName) return '';
+  if (dbType === 'sqlserver') {
+    const newName = unquoteSqlIdentifier(getSchemaAndTable(newTableName).table);
+    return `EXEC sp_rename '${escapeSingleQuotes(oldTableName)}', '${escapeSingleQuotes(newName)}';`;
+  }
+  oldTableName = formatSqlTableName(oldTableName, dbType);
+  newTableName = formatSqlTableName(newTableName, dbType);
   if (['mysql', 'mariadb', 'tidb', 'oceanbase'].includes(dbType)) {
     return `ALTER TABLE ${oldTableName} RENAME TO ${newTableName};`;
   }
   const newName = getSchemaAndTable(newTableName).table;
-  if (dbType === 'sqlserver') {
-    return `EXEC sp_rename '${escapeSingleQuotes(oldTableName)}', '${escapeSingleQuotes(newName)}';`;
-  }
   return `ALTER TABLE ${oldTableName} RENAME TO ${newName};`;
 }
 

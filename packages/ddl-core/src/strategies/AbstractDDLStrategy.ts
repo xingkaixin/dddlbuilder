@@ -11,7 +11,12 @@ import type {
   DDLStrategy,
   TableFeatureConfig,
 } from '../interfaces/DDLStrategy';
-import { escapeSingleQuotes, splitQualifiedName } from '../utils/databaseTypeMapping';
+import {
+  buildQualifiedTableName,
+  escapeSingleQuotes,
+  formatSqlTableName,
+} from '../utils/databaseTypeMapping';
+import { formatSqlIdentifier } from '../utils/sqlIdentifiers';
 import { TypeMapper } from '../utils/TypeMapper';
 import { buildPrimaryKeyName } from '../utils/primaryKeyNaming';
 import { getIdentifierNameMaxLength, truncateIdentifierName } from '../utils/identifierNaming';
@@ -36,39 +41,35 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
    * 格式化表名 - 所有数据库的通用实现
    */
   formatTableName(tableName: string): string {
-    const parts = splitQualifiedName(tableName);
-    if (parts.length === 0) {
-      return tableName.trim();
-    }
-    return parts.join('.');
+    return formatSqlTableName(tableName, this.getDatabaseType());
   }
 
   /**
    * 格式化字段名 - 所有数据库的通用实现
    */
   formatFieldName(fieldName: string): string {
-    return fieldName;
+    return formatSqlIdentifier(fieldName, this.getDatabaseType());
   }
 
   /**
    * 生成主键DDL的通用实现
    */
   protected generatePrimaryKeyDDL(tableName: string, index: IndexDefinition): string {
-    const fieldList = index.fields.map((f) => f.name).join(', ');
+    const fieldList = index.fields.map((f) => this.formatFieldName(f.name)).join(', ');
     const maxLength = getIdentifierNameMaxLength(this.getDatabaseType());
     const constraintName = truncateIdentifierName(
       index.name.trim() || buildPrimaryKeyName(tableName, maxLength),
       maxLength,
     );
 
-    return `ALTER TABLE ${this.formatTableName(tableName)} ADD CONSTRAINT ${constraintName} PRIMARY KEY (${fieldList});`;
+    return `ALTER TABLE ${this.formatTableName(tableName)} ADD CONSTRAINT ${this.formatFieldName(constraintName)} PRIMARY KEY (${fieldList});`;
   }
 
   /**
    * 生成索引字段列表的通用实现
    */
   protected formatIndexFieldList(index: IndexDefinition): string {
-    return index.fields.map((f) => `${f.name} ${f.direction}`).join(', ');
+    return index.fields.map((f) => `${this.formatFieldName(f.name)} ${f.direction}`).join(', ');
   }
 
   /**
@@ -83,7 +84,7 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
     const fieldList = this.formatIndexFieldList(index);
     const qualifiedName = this.formatTableName(tableName);
 
-    return `CREATE ${indexType} ${index.name} ON ${qualifiedName} (${fieldList});`;
+    return `CREATE ${indexType} ${this.formatFieldName(index.name)} ON ${qualifiedName} (${fieldList});`;
   }
 
   /**
@@ -167,17 +168,15 @@ export abstract class AbstractDDLStrategy implements DDLStrategy {
    * 子类可以重写以适配方言差异
    */
   generateForeignKeyDDL(tableName: string, fk: ForeignKeyDefinition): string {
-    const fieldList = fk.fields.join(', ');
-    const refFieldList = fk.refFields.join(', ');
+    const fieldList = fk.fields.map((name) => this.formatFieldName(name)).join(', ');
+    const refFieldList = fk.refFields.map((name) => this.formatFieldName(name)).join(', ');
+    const refTable = buildQualifiedTableName(
+      fk.refSchema ?? '',
+      fk.refTable,
+      this.getDatabaseType(),
+    );
 
-    const refTableParts: string[] = [];
-    if (fk.refSchema) {
-      refTableParts.push(fk.refSchema);
-    }
-    refTableParts.push(fk.refTable);
-    const refTable = refTableParts.join('.');
-
-    let sql = `ALTER TABLE ${this.formatTableName(tableName)} ADD CONSTRAINT ${fk.name} FOREIGN KEY (${fieldList}) REFERENCES ${refTable} (${refFieldList})`;
+    let sql = `ALTER TABLE ${this.formatTableName(tableName)} ADD CONSTRAINT ${this.formatFieldName(fk.name)} FOREIGN KEY (${fieldList}) REFERENCES ${refTable} (${refFieldList})`;
 
     if (fk.onDelete) {
       sql += ` ON DELETE ${fk.onDelete}`;

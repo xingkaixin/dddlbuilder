@@ -86,6 +86,23 @@ const normalIndex: IndexDefinition = {
 };
 
 describe('AbstractDDLStrategy', () => {
+  it.each([
+    ['postgresql', 'Users', '"Users"'],
+    ['postgresql', 'order', '"order"'],
+    ['postgresql', 'odd"name', '"odd""name"'],
+    ['mysql', 'odd`name', '`odd``name`'],
+    ['sqlserver', 'odd]name', '[odd]]name]'],
+    ['oracle', 'two words', '"two words"'],
+  ] as const)('quotes %s identifiers without changing their value', (dbType, name, expected) => {
+    const strategy = new TestStrategy(dbType);
+    expect(strategy.formatFieldName(name)).toBe(expected);
+  });
+
+  it('keeps quoted qualified-name components intact', () => {
+    const strategy = new TestStrategy('postgresql');
+    expect(strategy.formatTableName('"Audit.Log"."User""Data"')).toBe('"Audit.Log"."User""Data"');
+  });
+
   it('应该格式化带 schema 的表名', () => {
     const strategy = new TestStrategy();
     expect(strategy.exposeFormatTableName('public.users')).toBe('public.users');

@@ -3,6 +3,46 @@ import { ProfiledDDLStrategy } from '../../strategies/ProfiledDDLStrategy.js';
 import type { NormalizedField } from '@ddlbuilder/shared-types';
 
 describe('PostgresStrategy', () => {
+  it('quotes table, column, index, and referenced key names consistently', () => {
+    const strategy = new ProfiledDDLStrategy('postgresql');
+    const index = {
+      id: 'index',
+      name: 'OrderKey',
+      unique: true,
+      fields: [{ name: 'order', direction: 'ASC' as const }],
+    };
+    expect(strategy.generateIndexDDL('Audit.Users', index)).toBe(
+      'CREATE UNIQUE INDEX "OrderKey" ON "Audit"."Users" ("order" ASC);',
+    );
+    expect(
+      strategy.generateForeignKeyDDL('Audit.Users', {
+        id: 'fk',
+        name: 'OwnerFk',
+        fields: ['OwnerId'],
+        refSchema: 'Auth',
+        refTable: 'Users',
+        refFields: ['Id'],
+      }),
+    ).toBe(
+      'ALTER TABLE "Audit"."Users" ADD CONSTRAINT "OwnerFk" FOREIGN KEY ("OwnerId") REFERENCES "Auth"."Users" ("Id");',
+    );
+    expect(
+      strategy.generateTableDDL('Audit.Users', 'users', [
+        {
+          name: 'order',
+          type: 'int',
+          nullable: true,
+          comment: 'order',
+          defaultKind: 'none',
+          defaultValue: '',
+          onUpdate: 'none',
+        },
+      ]),
+    ).toBe(
+      'CREATE TABLE "Audit"."Users" (\n  "order" INTEGER\n);\nCOMMENT ON TABLE "Audit"."Users" IS \'users\';\nCOMMENT ON COLUMN "Audit"."Users"."order" IS \'order\';',
+    );
+  });
+
   it('应支持默认 PostgreSQL 与 Citus 数据库类型', () => {
     expect(new ProfiledDDLStrategy('postgresql').getDatabaseType()).toBe('postgresql');
     expect(new ProfiledDDLStrategy('postgresql-citus').getDatabaseType()).toBe('postgresql-citus');

@@ -15,6 +15,7 @@ import {
   generateTableSchemaChange,
 } from './tableStatements';
 import { buildQualifiedTableName, getSchemaAndTable } from '../databaseTypeMapping';
+import { getDatabaseFamily } from '../databaseFamily';
 
 const MANUAL_CHANGE_DESCRIPTIONS: Record<ManualSchemaChange, string> = {
   objectType: 'schema object type',
@@ -24,11 +25,14 @@ const MANUAL_CHANGE_DESCRIPTIONS: Record<ManualSchemaChange, string> = {
   citusSharding: 'Citus distribution',
 };
 
-function orderFieldRenames(fields: FieldDiff[]): FieldDiff[] | null {
+function orderFieldRenames(fields: FieldDiff[], dbType: DatabaseType): FieldDiff[] | null {
   const renames = fields.filter(
     (field) => field.type === 'rename' && field.oldFieldName && field.newFieldName,
   );
-  const key = (name: string | undefined) => name?.trim().toLowerCase() ?? '';
+  const key = (name: string | undefined) => {
+    const value = name?.trim() ?? '';
+    return getDatabaseFamily(dbType) === 'postgresql' ? value : value.toLowerCase();
+  };
   const oldNames = new Set(renames.map((field) => key(field.oldFieldName)));
   const byTarget = new Map(renames.map((field) => [key(field.newFieldName), field]));
   const ordered = renames.filter((field) => !oldNames.has(key(field.newFieldName)));
@@ -59,10 +63,12 @@ export function generateAlterDDL(
   let oldTableName = buildQualifiedTableName(
     diff.oldSchemaName ?? fallback.schema,
     diff.oldTableName || fallback.table,
+    dbType,
   );
   const activeTableName = buildQualifiedTableName(
     diff.newSchemaName ?? fallback.schema,
     diff.newTableName || fallback.table,
+    dbType,
   );
 
   if (diff.manualChanges?.length) {
@@ -72,7 +78,7 @@ export function generateAlterDDL(
     return `-- Manual migration required: ${reasons} changed from ${oldTableName} to ${activeTableName} (${dbType}). No automatic changes generated.`;
   }
 
-  const renames = orderFieldRenames(diff.fields);
+  const renames = orderFieldRenames(diff.fields, dbType);
   if (!renames) {
     return `-- Manual migration required: cyclic column renames in ${oldTableName} (${dbType}). No automatic changes generated.`;
   }
@@ -84,7 +90,11 @@ export function generateAlterDDL(
       return `-- Manual migration required: schema change from ${oldTableName} to ${activeTableName} (${dbType}). No automatic changes generated.`;
     }
     statements.push(statement);
-    oldTableName = buildQualifiedTableName(newSchema, getSchemaAndTable(oldTableName).table);
+    oldTableName = buildQualifiedTableName(
+      newSchema,
+      getSchemaAndTable(oldTableName).table,
+      dbType,
+    );
   }
 
   if (diff.tableNameChanged) {

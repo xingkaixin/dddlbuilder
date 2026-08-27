@@ -3,14 +3,15 @@ import {
   type CitusShardingConfig,
   type MysqlPartitionConfig,
 } from '@ddlbuilder/shared-types';
+import { escapeSingleQuotes, formatSqlTableName } from './databaseTypeMapping';
 
 export const buildCitusShardingDDL = (tableName: string, config: CitusShardingConfig): string => {
-  const cleanTableName = tableName.trim();
+  const cleanTableName = escapeSingleQuotes(formatSqlTableName(tableName, 'postgresql-citus'));
   if (config.mode === 'reference') {
     return `SELECT create_reference_table('${cleanTableName}');`;
   }
   if (config.distributionColumn) {
-    return `SELECT create_distributed_table('${cleanTableName}', '${config.distributionColumn}');`;
+    return `SELECT create_distributed_table('${cleanTableName}', '${escapeSingleQuotes(config.distributionColumn)}');`;
   }
   return '-- 请选择分片字段';
 };

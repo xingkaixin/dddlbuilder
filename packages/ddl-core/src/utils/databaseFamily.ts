@@ -40,6 +40,7 @@ export const supportsMysqlPartition = (databaseType: DatabaseType): boolean =>
 export const quoteIdentifier = (identifier: string, databaseType: DatabaseType): string => {
   switch (getDatabaseFamily(databaseType)) {
     case 'mysql':
+    case 'hive':
       return `\`${identifier.replace(/`/g, '``')}\``;
     case 'sqlserver':
       return `[${identifier.replace(/]/g, ']]')}]`;

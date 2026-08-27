@@ -77,6 +77,57 @@ const createTableDiff = (overrides: Partial<TableDiff> = {}): TableDiff => ({
 });
 
 describe('generateAlterDDL', () => {
+  it('detects and reverses PostgreSQL case-only column renames', () => {
+    const before = withDefaultEditorSession({
+      dbType: 'postgresql',
+      schemaName: '',
+      tableName: 'users',
+      tableComment: '',
+      rows: [{ id: 'id', fieldName: 'Id', fieldType: 'int', nullable: true, fieldComment: '' }],
+      indexes: [],
+      authInput: '',
+      authObjects: [],
+    });
+    const after = { ...before, rows: before.rows.map((row) => ({ ...row, fieldName: 'id' })) };
+    const diff = diffPersistedState(before, after);
+    expect(generateAlterDDL('users', diff, [], 'postgresql')).toBe(
+      'ALTER TABLE users RENAME COLUMN "Id" TO id;',
+    );
+    expect(generateRollbackDDL('users', diff, [], 'postgresql')).toBe(
+      'ALTER TABLE users RENAME COLUMN id TO "Id";',
+    );
+  });
+
+  it('preserves imported case-sensitive table and column names in both directions', async () => {
+    const parsed = await new SqlParser().parseAsync(
+      'CREATE TABLE "Audit"."Users" (id INTEGER);',
+      'postgresql',
+    );
+    const before = withDefaultEditorSession({
+      schemaName: parsed.schemaName ?? '',
+      tableName: parsed.tableName,
+      tableComment: '',
+      dbType: 'postgresql',
+      rows: [],
+      indexes: [],
+      authInput: '',
+      authObjects: [],
+    });
+    const after = {
+      ...before,
+      rows: [
+        { id: 'tenant', fieldName: 'TenantId', fieldType: 'int', fieldComment: '', nullable: true },
+      ],
+    };
+    const diff = diffPersistedState(before, after);
+    expect(generateAlterDDL('Audit.Users', diff, [], 'postgresql')).toBe(
+      'ALTER TABLE "Audit"."Users" ADD COLUMN "TenantId" INTEGER;',
+    );
+    expect(generateRollbackDDL('Audit.Users', diff, [], 'postgresql')).toBe(
+      'ALTER TABLE "Audit"."Users" DROP COLUMN "TenantId";',
+    );
+  });
+
   it('drops and restores the original imported primary constraint', async () => {
     const parsed = await new SqlParser().parseAsync(
       'CREATE TABLE users (id INT, CONSTRAINT users_identity PRIMARY KEY (id));',

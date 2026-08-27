@@ -8,6 +8,8 @@ import type {
   TableMiscConfig,
   ForeignKeyDefinition,
 } from '@ddlbuilder/shared-types';
+import { formatSqlTableName } from './databaseTypeMapping';
+import { formatSqlIdentifier } from './sqlIdentifiers';
 import { DDLStrategyFactory } from '../factories/DDLStrategyFactory';
 
 export { buildOracleSynonyms } from './tableFeatures';
@@ -105,13 +107,20 @@ export const buildViewDDL = (
   return `${keyword} ${strategy.formatTableName(cleanViewName)} AS\n${cleanDefinition};`;
 };
 
-export const buildDCL = (tableName: string, authorizationObjects: string[]) => {
+export const buildDCL = (
+  tableName: string,
+  authorizationObjects: string[],
+  dbType: DatabaseType = 'mysql',
+) => {
   if (!tableName.trim() || authorizationObjects.length === 0) {
     return '';
   }
 
-  const cleanTableName = tableName.trim();
+  const cleanTableName = formatSqlTableName(tableName, dbType);
   return authorizationObjects
-    .map((authObject) => `GRANT SELECT ON ${cleanTableName} TO ${authObject.trim()};`)
+    .map(
+      (authObject) =>
+        `GRANT SELECT ON ${cleanTableName} TO ${formatSqlIdentifier(authObject, dbType)};`,
+    )
     .join('\n');
 };

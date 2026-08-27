@@ -166,7 +166,7 @@ export class ProfiledDDLStrategy extends AbstractDDLStrategy {
     tableOptions: string,
   ): string {
     const { schema, table } = getSchemaAndTable(tableName);
-    const qualified = schema ? `${schema}.${table}` : table;
+    const qualified = this.formatTableName(tableName);
     const statements: string[] = [
       `CREATE TABLE ${qualified} (\n${columnLines.join(',\n')}\n)${tableOptions};`,
     ];

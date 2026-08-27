@@ -11,7 +11,7 @@ import {
 } from '@ddlbuilder/shared-types';
 
 import { buildCitusShardingDDL, buildMysqlPartitionClause } from './tableFeatures';
-import { supportsMysqlPartition } from './databaseFamily';
+import { getDatabaseFamily, supportsMysqlPartition } from './databaseFamily';
 
 /**
  * 字段变更类型
@@ -173,9 +173,17 @@ function getFieldChanges(oldField: NormalizedField, newField: NormalizedField): 
   return changes;
 }
 
-function createMatchedFieldDiff(oldField: NormalizedField, newField: NormalizedField) {
+function createMatchedFieldDiff(
+  oldField: NormalizedField,
+  newField: NormalizedField,
+  caseSensitive: boolean,
+) {
   const changes = getFieldChanges(oldField, newField);
-  if (oldField.name.toLowerCase() !== newField.name.toLowerCase()) {
+  if (
+    caseSensitive
+      ? oldField.name !== newField.name
+      : oldField.name.toLowerCase() !== newField.name.toLowerCase()
+  ) {
     return {
       type: 'rename',
       fieldName: newField.name,
@@ -196,7 +204,11 @@ function createMatchedFieldDiff(oldField: NormalizedField, newField: NormalizedF
   } satisfies FieldDiff;
 }
 
-function diffFields(oldFields: DiffField[], newFields: DiffField[]): FieldDiff[] {
+function diffFields(
+  oldFields: DiffField[],
+  newFields: DiffField[],
+  caseSensitive: boolean,
+): FieldDiff[] {
   const diffs: FieldDiff[] = [];
   const unmatchedOld = new Set(oldFields.map((_, index) => index));
   const unmatchedNew = new Set(newFields.map((_, index) => index));
@@ -204,7 +216,11 @@ function diffFields(oldFields: DiffField[], newFields: DiffField[]): FieldDiff[]
   const match = (oldIndex: number, newIndex: number) => {
     unmatchedOld.delete(oldIndex);
     unmatchedNew.delete(newIndex);
-    const diff = createMatchedFieldDiff(oldFields[oldIndex].field, newFields[newIndex].field);
+    const diff = createMatchedFieldDiff(
+      oldFields[oldIndex].field,
+      newFields[newIndex].field,
+      caseSensitive,
+    );
     if (diff) diffs.push(diff);
   };
 
@@ -223,7 +239,9 @@ function diffFields(oldFields: DiffField[], newFields: DiffField[]): FieldDiff[]
       const newField = newFields[newIndex];
       return (
         (!oldField.id || !newField.id) &&
-        oldField.field.name.toLowerCase() === newField.field.name.toLowerCase()
+        (caseSensitive
+          ? oldField.field.name === newField.field.name
+          : oldField.field.name.toLowerCase() === newField.field.name.toLowerCase())
       );
     });
     if (candidates.length === 1) match(oldIndex, candidates[0]);
@@ -394,7 +412,11 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
   // 3. 字段变更
   const oldFields = extractFields(oldState);
   const newFields = extractFields(newState);
-  result.fields = diffFields(oldFields, newFields);
+  result.fields = diffFields(
+    oldFields,
+    newFields,
+    getDatabaseFamily(newState.dbType) === 'postgresql',
+  );
   if (result.fields.length > 0) result.hasChanges = true;
 
   // 4. 索引变更

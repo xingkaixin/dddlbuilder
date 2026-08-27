@@ -39,8 +39,8 @@ export function useSqlGeneration(
   foreignKeys?: ForeignKeyDefinition[],
 ): UseSqlGenerationReturn {
   const qualifiedTableName = useMemo(
-    () => buildQualifiedTableName(schemaName, tableName),
-    [schemaName, tableName],
+    () => buildQualifiedTableName(schemaName, tableName, dbType),
+    [schemaName, tableName, dbType],
   );
 
   const fieldsForDdl = useMemo(
@@ -82,8 +82,8 @@ export function useSqlGeneration(
   );
 
   const generatedDcl = useMemo(
-    () => buildDCL(qualifiedTableName, authObjects),
-    [qualifiedTableName, authObjects],
+    () => buildDCL(qualifiedTableName, authObjects, dbType),
+    [qualifiedTableName, authObjects, dbType],
   );
 
   const copySql = useCallback(async () => {

@@ -2,6 +2,7 @@ import type { DatabaseType, ParsedFieldType } from '@ddlbuilder/shared-types';
 import { TypeMapper } from './TypeMapper.js';
 import { getDatabaseFamily } from './databaseFamily.js';
 import { canonicalizeBaseType } from './typeAliases.js';
+import { formatSqlIdentifier } from './sqlIdentifiers';
 
 export const getFieldTypeForDatabase = (databaseType: DatabaseType, fieldType: string): string => {
   const parsed = parseFieldType(fieldType);
@@ -301,8 +302,7 @@ export const isLikelyFunctionOrKeyword = (value: string) => {
 export const escapeSingleQuotes = (value: string) => value.replace(/'/g, "''");
 
 export const splitQualifiedName = (raw: string) =>
-  raw
-    .split('.')
+  (raw.match(/(?:"(?:[^"]|"")*"|`(?:[^`]|``)*`|\[(?:[^\]]|\]\])*\]|[^.])+/g) ?? [])
     .map((part) => part.trim())
     .filter((part) => part.length > 0);
 
@@ -318,10 +318,20 @@ export const getSchemaAndTable = (raw: string) => {
   };
 };
 
-export const buildQualifiedTableName = (schemaName: string, tableName: string) => {
+export const formatSqlTableName = (tableName: string, dbType: DatabaseType): string =>
+  splitQualifiedName(tableName)
+    .map((name) => formatSqlIdentifier(name, dbType))
+    .join('.');
+
+export const buildQualifiedTableName = (
+  schemaName: string,
+  tableName: string,
+  dbType?: DatabaseType,
+) => {
   const table = tableName.trim();
   if (!table) return '';
 
   const schema = schemaName.trim();
-  return schema ? `${schema}.${table}` : table;
+  const parts = schema ? [schema, table] : [table];
+  return parts.map((name) => (dbType ? formatSqlIdentifier(name, dbType) : name)).join('.');
 };
