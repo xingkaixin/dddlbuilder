@@ -1,9 +1,13 @@
 import { useMemo } from 'react';
+import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { DDLReviewResult } from '@ddlbuilder/shared-types/ddl-review';
 import { buildQualifiedTableName } from '@ddlbuilder/ddl-core';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { useSqlGeneration } from '@/hooks/useSqlGeneration';
 import { useOrmGeneration } from '@/hooks/useOrmGeneration';
-import { useDDLReview } from '@/hooks/useDDLReview';
+import { useTabStore } from '@/stores/tabStore';
+import { getWorkspaceScopeStorageKey } from '@/utils/workspaceScope';
+import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
 import { useToast } from '@/hooks/useToast';
 import { lintSchema } from '@/utils/schemaLint';
 import { useDerivedTableState } from './useDerivedTableState';
@@ -149,19 +153,28 @@ export function useSchemaController({
     setIndexes,
     setActiveTab,
   });
-  const reviewState = useDDLReview();
+  const activeTabId = useTabStore((state) => state.activeTabId);
+  const reviewDocumentKey = (state: PersistedState) =>
+    JSON.stringify([
+      workspaceScope ? getWorkspaceScopeStorageKey(workspaceScope) : null,
+      activeTabId,
+      serializePersistedStateForComparison(state),
+    ]);
   const reviewActions = useReviewActions({
+    documentKey: reviewDocumentKey(derived.currentPersistedState),
     dbType,
     tableName: qualifiedTableName,
     generatedSql: sql.generatedSql,
     workspaceScope,
     loadedTableId,
     loadedTableNormalizedName,
-    isReviewing: reviewState.isLoading,
-    reviewResult: reviewState.result,
-    startReview: reviewState.startReview,
     setIsReviewHistoryOpen,
   });
+  const reviewState = {
+    ...reviewActions.reviewState,
+    setReviewResult: (result: DDLReviewResult | null, state: PersistedState) =>
+      reviewActions.reviewState.setReviewResult(result, reviewDocumentKey(state)),
+  };
   const schemaLintIssues = useMemo(
     () =>
       lintSchema({

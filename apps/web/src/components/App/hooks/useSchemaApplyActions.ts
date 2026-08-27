@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import { createEntityId, type DatabaseType, type PersistedState } from '@ddlbuilder/shared-types';
 import type {
@@ -14,7 +14,7 @@ import { removeFieldsFromDocument } from '@/stores/editorDocumentMutations';
 interface UseSchemaApplyActionsParams {
   currentState: PersistedState;
   reviewResult: ReviewResult | null;
-  setReviewResult: (result: ReviewResult | null) => void;
+  setReviewResult: (result: ReviewResult | null, state: PersistedState) => void;
   replaceCurrentState: (state: PersistedState) => void;
   openGeneratedState: (state: PersistedState) => void;
   setActiveTab: (value: BuilderTab) => void;
@@ -50,9 +50,29 @@ export function useSchemaApplyActions({
   showToast,
 }: UseSchemaApplyActionsParams) {
   const currentStateRef = useRef(currentState);
-  useEffect(() => {
+  const reviewResultRef = useRef(reviewResult);
+  const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
+  useLayoutEffect(() => {
     currentStateRef.current = currentState;
-  }, [currentState]);
+    reviewResultRef.current = reviewResult;
+  }, [currentState, reviewResult]);
+  useEffect(
+    () => () => {
+      for (const timer of timers.current) clearTimeout(timer);
+    },
+    [],
+  );
+
+  const scheduleReviewAction = useCallback((action: () => void, delay: number) => {
+    const state = currentStateRef.current;
+    const review = reviewResultRef.current;
+    const timer = setTimeout(() => {
+      timers.current.delete(timer);
+      if (currentStateRef.current !== state || reviewResultRef.current !== review) return;
+      action();
+    }, delay);
+    timers.current.add(timer);
+  }, []);
 
   const replaceLatestState = useCallback(
     (update: (state: PersistedState) => PersistedState) => {
@@ -65,19 +85,26 @@ export function useSchemaApplyActions({
 
   const markSuggestionApplied = useCallback(
     (suggestion: StructuredSuggestion) => {
-      if (!reviewResult) return;
-      const suggestions = reviewResult.suggestions.map((item) =>
+      const review = reviewResultRef.current;
+      if (!review) return;
+      const suggestions = review.suggestions.map((item) =>
         typeof item !== 'string' && item.id === suggestion.id ? { ...item, applied: true } : item,
       );
-      setReviewResult({ ...reviewResult, suggestions });
+      const nextReview = { ...review, suggestions };
+      reviewResultRef.current = nextReview;
+      setReviewResult(nextReview, currentStateRef.current);
       showToast(`已应用建议：${suggestion.description}`);
     },
-    [reviewResult, setReviewResult, showToast],
+    [setReviewResult, showToast],
   );
 
   const handleApplySuggestion = useCallback(
     (suggestion: StructuredSuggestion) => {
-      if (suggestion.applied) return;
+      const currentSuggestion = reviewResultRef.current?.suggestions.find(
+        (item) => typeof item !== 'string' && item.id === suggestion.id,
+      );
+      if (!currentSuggestion || typeof currentSuggestion === 'string' || currentSuggestion.applied)
+        return;
 
       const activeTab = suggestionTab(suggestion);
       if (activeTab) setActiveTab(activeTab);
@@ -131,12 +158,13 @@ export function useSchemaApplyActions({
             return;
           }
           triggerFieldTableHighlight(rowIndex);
-          setTimeout(() => {
+          scheduleReviewAction(() => {
             replaceLatestState((state) =>
               removeFieldsFromDocument(state, (row) => row.fieldName === suggestion.fieldName),
             );
+            markSuggestionApplied(suggestion);
           }, 500);
-          break;
+          return;
         }
         case 'add_index': {
           const indexId = createEntityId();
@@ -152,8 +180,9 @@ export function useSchemaApplyActions({
               },
             ],
           }));
-          setTimeout(() => triggerIndexAnimation(indexId, 'add'), 50);
-          break;
+          markSuggestionApplied(suggestion);
+          scheduleReviewAction(() => triggerIndexAnimation(indexId, 'add'), 50);
+          return;
         }
         case 'remove_index': {
           const targetIndex = currentStateRef.current.indexes.find(
@@ -164,13 +193,14 @@ export function useSchemaApplyActions({
             return;
           }
           triggerIndexAnimation(targetIndex.id, 'remove');
-          setTimeout(() => {
+          scheduleReviewAction(() => {
             replaceLatestState((state) => ({
               ...state,
               indexes: state.indexes.filter((index) => index.name !== suggestion.indexName),
             }));
+            markSuggestionApplied(suggestion);
           }, 500);
-          break;
+          return;
         }
         case 'performance_warning':
         case 'general':
@@ -183,6 +213,7 @@ export function useSchemaApplyActions({
     [
       markSuggestionApplied,
       replaceLatestState,
+      scheduleReviewAction,
       setActiveTab,
       showToast,
       triggerFieldTableHighlight,

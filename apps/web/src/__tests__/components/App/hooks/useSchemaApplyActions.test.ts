@@ -33,7 +33,15 @@ const createRow = (fieldName: string, fieldType = 'VARCHAR'): FieldRow => ({
 
 const createHook = (
   currentState = createState(),
-  reviewResult: Parameters<typeof useSchemaApplyActions>[0]['reviewResult'] = null,
+  reviewResult: Parameters<typeof useSchemaApplyActions>[0]['reviewResult'] = {
+    score: 8,
+    summary: 'review',
+    suggestions: ['s1', 's2', 's3', 's4', 's5'].map((id) => ({
+      id,
+      type: 'general',
+      description: id,
+    })),
+  } as never,
 ) => {
   const actions = {
     setReviewResult: vi.fn(),
@@ -45,13 +53,13 @@ const createHook = (
     showToast: vi.fn(),
   };
   const hook = renderHook(
-    ({ state }) =>
+    ({ state, review }) =>
       useSchemaApplyActions({
         currentState: state,
-        reviewResult,
+        reviewResult: review,
         ...actions,
       }),
-    { initialProps: { state: currentState } },
+    { initialProps: { state: currentState, review: reviewResult } },
   );
   return { hook, actions };
 };
@@ -131,16 +139,19 @@ describe('useSchemaApplyActions', () => {
     );
     expect(actions.setActiveTab).toHaveBeenCalledWith('fields');
     expect(actions.triggerFieldTableHighlight).toHaveBeenCalledWith(0);
-    expect(actions.setReviewResult).toHaveBeenCalledWith({
-      suggestions: [
-        {
-          id: 's1',
-          type: 'add_field',
-          description: 'Add field',
-          applied: true,
-        },
-      ],
-    });
+    expect(actions.setReviewResult).toHaveBeenCalledWith(
+      {
+        suggestions: [
+          {
+            id: 's1',
+            type: 'add_field',
+            description: 'Add field',
+            applied: true,
+          },
+        ],
+      },
+      actions.replaceCurrentState.mock.calls[0][0],
+    );
   });
 
   it('修改不存在的字段时不替换文档', () => {
@@ -162,7 +173,7 @@ describe('useSchemaApplyActions', () => {
     expect(actions.showToast).toHaveBeenCalledWith('未找到字段 "missing"，无法应用修改');
   });
 
-  it('延迟删除字段时基于最新文档计算', () => {
+  it('延迟删除期间修改文档后不再应用旧建议', () => {
     const initialState = createState({ rows: [createRow('obsolete'), createRow('kept')] });
     const { hook, actions } = createHook(initialState);
 
@@ -176,6 +187,7 @@ describe('useSchemaApplyActions', () => {
     });
 
     hook.rerender({
+      review: null,
       state: createState({
         tableComment: 'edited during animation',
         rows: [...initialState.rows, createRow('added_later')],
@@ -200,14 +212,74 @@ describe('useSchemaApplyActions', () => {
     });
     act(() => vi.advanceTimersByTime(500));
 
-    expect(actions.replaceCurrentState).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        tableComment: 'edited during animation',
-        rows: [createRow('kept'), createRow('added_later')],
-        indexes: [],
-        foreignKeys: [],
+    expect(actions.replaceCurrentState).not.toHaveBeenCalled();
+    expect(actions.setReviewResult).not.toHaveBeenCalled();
+  });
+
+  it('过期结果即使使用旧事件处理函数也不能修改文档', () => {
+    const { hook, actions } = createHook();
+    const apply = hook.result.current.handleApplySuggestion;
+    hook.rerender({ state: createState({ tableName: 'other' }), review: null });
+    act(() =>
+      apply({
+        id: 's1',
+        type: 'add_field',
+        field: { fieldName: 'wrong', fieldType: 'INT' },
+      } as never),
+    );
+    expect(actions.replaceCurrentState).not.toHaveBeenCalled();
+  });
+
+  it('延迟删除完成后才标记建议，并清理字段关联', () => {
+    const { hook, actions } = createHook(
+      createState({
+        rows: [createRow('obsolete'), createRow('kept')],
+        indexes: [
+          {
+            id: 'idx',
+            name: 'idx_obsolete',
+            fields: [{ name: 'obsolete', direction: 'ASC' }],
+            unique: false,
+          },
+        ],
+        foreignKeys: [
+          {
+            id: 'fk',
+            name: 'fk_obsolete',
+            fields: ['obsolete'],
+            refTable: 'other',
+            refFields: ['id'],
+          },
+        ],
       }),
     );
+    act(() =>
+      hook.result.current.handleApplySuggestion({
+        id: 's3',
+        type: 'remove_field',
+        fieldName: 'obsolete',
+      } as never),
+    );
+    expect(actions.setReviewResult).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(500));
+    expect(actions.replaceCurrentState).toHaveBeenCalledWith(
+      expect.objectContaining({ rows: [createRow('kept')], indexes: [], foreignKeys: [] }),
+    );
+    expect(actions.setReviewResult).toHaveBeenCalledOnce();
+  });
+
+  it('卸载后取消延迟操作', () => {
+    const { hook, actions } = createHook(createState({ rows: [createRow('obsolete')] }));
+    act(() =>
+      hook.result.current.handleApplySuggestion({
+        id: 's3',
+        type: 'remove_field',
+        fieldName: 'obsolete',
+      } as never),
+    );
+    hook.unmount();
+    act(() => vi.advanceTimersByTime(500));
+    expect(actions.replaceCurrentState).not.toHaveBeenCalled();
   });
 
   it('添加索引建议时原子替换并触发动画', () => {

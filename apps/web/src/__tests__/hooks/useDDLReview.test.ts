@@ -43,14 +43,14 @@ const createStream = (chunks: string[]) => {
 
 function renderDDLReviewHook() {
   const { wrapper } = createQueryClientWrapper();
-  return renderHook(() => useDDLReview(), { wrapper });
+  return renderHook(() => useDDLReview('document'), { wrapper });
 }
 
 function renderDDLReviewWithLocaleHook() {
   const { wrapper } = createQueryClientWrapper();
   return renderHook(
     () => ({
-      review: useDDLReview(),
+      review: useDDLReview('document'),
       locale: useLocale(),
     }),
     { wrapper },

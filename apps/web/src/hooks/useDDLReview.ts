@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { parsePartialJson, type PartialReviewResult } from '@/utils/parsePartialJson';
 import { requestDDLReview } from '@/services/reviewService';
@@ -14,15 +14,17 @@ export type StructuredSuggestion = DDLReviewStructuredSuggestion;
 export type ReviewResult = DDLReviewResult;
 
 interface ReviewState {
+  documentKey: string;
   streamingText: string;
   result: ReviewResult | null;
   error: string | null;
 }
 
-export function useDDLReview() {
+export function useDDLReview(documentKey: string) {
   const { resolvedLocale } = useLocale();
   const requestAccess = useAIRequestAccess();
   const [state, setState] = useState<ReviewState>({
+    documentKey,
     streamingText: '',
     result: null,
     error: null,
@@ -31,6 +33,13 @@ export function useDDLReview() {
     key: string;
     controller: AbortController;
   } | null>(null);
+  useEffect(
+    () => () => {
+      activeRequestRef.current?.controller.abort();
+      activeRequestRef.current = null;
+    },
+    [],
+  );
   const reviewMutation = useMutation({
     mutationFn: ({
       payload,
@@ -43,31 +52,37 @@ export function useDDLReview() {
     }) => requestDDLReview(payload, { signal, onStreamingText }),
     retry: false,
   });
+  const isCurrentDocument = state.documentKey === documentKey;
+  const isLoading = isCurrentDocument && reviewMutation.isPending;
 
   // Parse partial result from streaming text for progressive rendering
   const partialResult: PartialReviewResult | null = useMemo(() => {
-    if (!reviewMutation.isPending || !state.streamingText) {
+    if (!isLoading || !state.streamingText) {
       return null;
     }
     return parsePartialJson(state.streamingText);
-  }, [reviewMutation.isPending, state.streamingText]);
+  }, [isLoading, state.streamingText]);
 
   const startReview = useCallback(
     async (ddl: string, tableName: string, dbType: string) => {
       if (!ddl || ddl.trim().length === 0) {
-        setState((prev) => ({
-          ...prev,
+        setState({
+          documentKey,
+          streamingText: '',
+          result: null,
           error: i18n.t('services.ddlRequired'),
-        }));
+        });
         return;
       }
 
       const accessError = requestAccess.getAccessError();
       if (accessError) {
-        setState((prev) => ({
-          ...prev,
+        setState({
+          documentKey,
+          streamingText: '',
+          result: null,
           error: accessError,
-        }));
+        });
         return;
       }
 
@@ -77,7 +92,7 @@ export function useDDLReview() {
         dbType,
         locale: resolvedLocale,
       };
-      const requestKey = JSON.stringify(requestPayload);
+      const requestKey = JSON.stringify([documentKey, requestPayload]);
 
       if (activeRequestRef.current) {
         if (activeRequestRef.current.key === requestKey) {
@@ -93,6 +108,7 @@ export function useDDLReview() {
       };
 
       setState({
+        documentKey,
         streamingText: '',
         result: null,
         error: null,
@@ -103,6 +119,7 @@ export function useDDLReview() {
           payload: requestPayload,
           signal: abortController.signal,
           onStreamingText: (streamingText) => {
+            if (activeRequestRef.current?.controller !== abortController) return;
             setState((prev) => ({
               ...prev,
               streamingText,
@@ -110,17 +127,22 @@ export function useDDLReview() {
           },
         });
 
+        if (activeRequestRef.current?.controller !== abortController) return;
         setState({
+          documentKey,
           streamingText: '',
           result,
           error: null,
         });
         requestAccess.refreshCreditsAfterSuccess();
+        return result;
       } catch (error) {
+        if (activeRequestRef.current?.controller !== abortController) return;
         if ((error as Error).name === 'AbortError') {
           return; // Request was cancelled, don't update state
         }
         setState({
+          documentKey,
           streamingText: '',
           result: null,
           error: requestAccess.resolveRequestError(error, i18n.t('services.reviewFailed')),
@@ -131,7 +153,7 @@ export function useDDLReview() {
         }
       }
     },
-    [requestAccess, resolvedLocale, reviewMutation],
+    [documentKey, requestAccess, resolvedLocale, reviewMutation],
   );
 
   const clearReview = useCallback(() => {
@@ -140,23 +162,29 @@ export function useDDLReview() {
       activeRequestRef.current = null;
     }
     setState({
+      documentKey,
       streamingText: '',
       result: null,
       error: null,
     });
     reviewMutation.reset();
-  }, [reviewMutation]);
+  }, [documentKey, reviewMutation]);
 
-  const setReviewResult = useCallback((result: ReviewResult | null) => {
-    setState((prev) => ({ ...prev, result }));
-  }, []);
+  const setReviewResult = useCallback(
+    (result: ReviewResult | null, nextDocumentKey = documentKey) => {
+      setState((prev) =>
+        prev.documentKey === documentKey ? { ...prev, result, documentKey: nextDocumentKey } : prev,
+      );
+    },
+    [documentKey],
+  );
 
   return {
-    isLoading: reviewMutation.isPending,
-    streamingText: state.streamingText,
+    isLoading,
+    streamingText: isCurrentDocument ? state.streamingText : '',
     partialResult,
-    result: state.result,
-    error: state.error,
+    result: isCurrentDocument ? state.result : null,
+    error: isCurrentDocument ? state.error : null,
     startReview,
     clearReview,
     setReviewResult,
