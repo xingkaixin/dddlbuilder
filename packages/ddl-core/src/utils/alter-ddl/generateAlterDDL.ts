@@ -1,5 +1,5 @@
 import type { NormalizedField, DatabaseType } from '@ddlbuilder/shared-types';
-import type { ManualSchemaChange, TableDiff } from '../tableDiff';
+import type { FieldDiff, ManualSchemaChange, TableDiff } from '../tableDiff';
 import {
   generateTableCommentAlter,
   generateDropColumn,
@@ -23,6 +23,22 @@ const MANUAL_CHANGE_DESCRIPTIONS: Record<ManualSchemaChange, string> = {
   mysqlPartition: 'table partitioning',
   citusSharding: 'Citus distribution',
 };
+
+function orderFieldRenames(fields: FieldDiff[]): FieldDiff[] | null {
+  const renames = fields.filter(
+    (field) => field.type === 'rename' && field.oldFieldName && field.newFieldName,
+  );
+  const key = (name: string | undefined) => name?.trim().toLowerCase() ?? '';
+  const oldNames = new Set(renames.map((field) => key(field.oldFieldName)));
+  const byTarget = new Map(renames.map((field) => [key(field.newFieldName), field]));
+  const ordered = renames.filter((field) => !oldNames.has(key(field.newFieldName)));
+  for (const field of ordered) {
+    byTarget.delete(key(field.newFieldName));
+    const waiting = byTarget.get(key(field.oldFieldName));
+    if (waiting) ordered.push(waiting);
+  }
+  return ordered.length === renames.length ? ordered : null;
+}
 
 /**
  * ALTER DDL 生成器
@@ -54,6 +70,11 @@ export function generateAlterDDL(
       .map((change) => MANUAL_CHANGE_DESCRIPTIONS[change])
       .join(', ');
     return `-- Manual migration required: ${reasons} changed from ${oldTableName} to ${activeTableName} (${dbType}). No automatic changes generated.`;
+  }
+
+  const renames = orderFieldRenames(diff.fields);
+  if (!renames) {
+    return `-- Manual migration required: cyclic column renames in ${oldTableName} (${dbType}). No automatic changes generated.`;
   }
 
   if (diff.schemaNameChanged) {
@@ -97,7 +118,7 @@ export function generateAlterDDL(
   }
 
   // 3. 处理重命名的字段（在删除之后、新增之前）
-  for (const fieldDiff of diff.fields.filter((f) => f.type === 'rename')) {
+  for (const fieldDiff of renames) {
     statements.push(generateRenameColumn(activeTableName, fieldDiff, dbType));
     if (fieldDiff.changes?.length && fieldDiff.newField) {
       statements.push(

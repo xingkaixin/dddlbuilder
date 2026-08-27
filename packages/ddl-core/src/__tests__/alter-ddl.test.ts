@@ -56,6 +56,15 @@ const createFk = (overrides: Partial<ForeignKeyDefinition> = {}): ForeignKeyDefi
   ...overrides,
 });
 
+const createRename = (oldFieldName: string, newFieldName: string): FieldDiff => ({
+  type: 'rename',
+  fieldName: newFieldName,
+  oldFieldName,
+  newFieldName,
+  oldField: createField({ name: oldFieldName }),
+  newField: createField({ name: newFieldName }),
+});
+
 const createTableDiff = (overrides: Partial<TableDiff> = {}): TableDiff => ({
   hasChanges: true,
   tableNameChanged: false,
@@ -239,6 +248,70 @@ describe('generateAlterDDL', () => {
     const sql = generateAlterDDL('users', diff, [], 'mysql');
     expect(sql).toBe('ALTER TABLE users RENAME COLUMN age TO new_age;');
   });
+
+  it.each([{ order: [0, 1, 2] }, { order: [2, 0, 1] }])(
+    'orders rename chains and their rollback independently of diff order ($order)',
+    ({ order }) => {
+      const renames = [createRename('a', 'b'), createRename('b', 'c'), createRename('c', 'd')];
+      const diff = createTableDiff({ fields: order.map((index) => renames[index]) });
+      expect(generateAlterDDL('users', diff, [], 'postgresql')).toBe(
+        [
+          'ALTER TABLE users RENAME COLUMN c TO d;',
+          'ALTER TABLE users RENAME COLUMN b TO c;',
+          'ALTER TABLE users RENAME COLUMN a TO b;',
+        ].join('\n\n'),
+      );
+      expect(generateRollbackDDL('users', diff, [], 'postgresql')).toBe(
+        [
+          'ALTER TABLE users RENAME COLUMN b TO a;',
+          'ALTER TABLE users RENAME COLUMN c TO b;',
+          'ALTER TABLE users RENAME COLUMN d TO c;',
+        ].join('\n\n'),
+      );
+    },
+  );
+
+  it('changes column properties only after freeing the rename target', () => {
+    const diff = createTableDiff({
+      fields: [
+        {
+          ...createRename('a', 'b'),
+          changes: ['nullable'],
+          oldField: createField({ name: 'a', nullable: true }),
+        },
+        createRename('b', 'c'),
+      ],
+    });
+    expect(generateAlterDDL('users', diff, [], 'postgresql')).toBe(
+      [
+        'ALTER TABLE users RENAME COLUMN b TO c;',
+        'ALTER TABLE users RENAME COLUMN a TO b;',
+        'ALTER TABLE users ALTER COLUMN b SET NOT NULL;',
+      ].join('\n\n'),
+    );
+  });
+
+  it.each([
+    { cycle: [createRename('a', 'b'), createRename('b', 'a')] },
+    { cycle: [createRename('a', 'b'), createRename('b', 'c'), createRename('c', 'a')] },
+  ])(
+    'does not emit partial migrations when column renames form a cycle ($cycle.length)',
+    ({ cycle }) => {
+      const diff = createTableDiff({
+        tableNameChanged: true,
+        oldTableName: 'users',
+        newTableName: 'renamed_users',
+        fields: [...cycle, createRename('x', 'y'), { type: 'remove', fieldName: 'obsolete' }],
+        indexes: [{ type: 'remove', index: createIndex() }],
+      });
+      expect(generateAlterDDL('renamed_users', diff, [], 'postgresql')).toBe(
+        '-- Manual migration required: cyclic column renames in users (postgresql). No automatic changes generated.',
+      );
+      expect(generateRollbackDDL('renamed_users', diff, [], 'postgresql')).toBe(
+        '-- Manual migration required: cyclic column renames in renamed_users (postgresql). No automatic changes generated.',
+      );
+    },
+  );
 
   it('applies field property changes after a rename', () => {
     const diff = createTableDiff({
