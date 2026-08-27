@@ -33,7 +33,7 @@ describe('generateRollbackDDL', () => {
     expect(result).toBe('');
   });
 
-  it('应该按逆向顺序生成回滚语句', () => {
+  it('应该按依赖顺序生成反向变更语句', () => {
     const diff: TableDiff = {
       ...createEmptyDiff(),
       hasChanges: true,
@@ -94,13 +94,13 @@ describe('generateRollbackDDL', () => {
 
     const sql = generateRollbackDDL('users', diff, [], 'mysql');
     const orderedFragments = [
+      "ALTER TABLE users COMMENT = '旧注释';",
       'DROP INDEX idx_new ON users;',
-      'ALTER TABLE users MODIFY COLUMN nick VARCHAR(50) NULL;',
       'ALTER TABLE users DROP COLUMN new_col;',
       'ALTER TABLE users RENAME COLUMN new_name TO old_name;',
       'ALTER TABLE users ADD COLUMN removed_col VARCHAR(20) NOT NULL;',
+      'ALTER TABLE users MODIFY COLUMN nick VARCHAR(50) NULL;',
       'CREATE INDEX idx_old ON users (old_name ASC);',
-      "ALTER TABLE users COMMENT = '旧注释';",
     ];
 
     let lastIndex = -1;

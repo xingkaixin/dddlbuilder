@@ -392,7 +392,7 @@ describe('generateRollbackDDL', () => {
     expect(sql).toBe('ALTER TABLE users RENAME COLUMN new_age TO age;');
   });
 
-  it('rollback: restores field properties before reversing a rename', () => {
+  it('rollback: restores field properties after reversing a rename', () => {
     const diff = createTableDiff({
       fields: [
         {
@@ -410,8 +410,8 @@ describe('generateRollbackDDL', () => {
     const sql = generateRollbackDDL('users', diff, [], 'mysql');
 
     expect(sql).toBe(
-      'ALTER TABLE users MODIFY COLUMN new_age INT NULL;\n\n' +
-        'ALTER TABLE users RENAME COLUMN new_age TO age;',
+      'ALTER TABLE users RENAME COLUMN new_age TO age;\n\n' +
+        'ALTER TABLE users MODIFY COLUMN age INT NULL;',
     );
   });
 
@@ -447,7 +447,7 @@ describe('generateRollbackDDL', () => {
     expect(sql).toBe("ALTER TABLE users COMMENT = '旧注释';");
   });
 
-  it('rollback: reverses other changes before restoring the old table name', () => {
+  it('rollback: restores the table name before applying the reversed changes', () => {
     const diff = createTableDiff({
       tableNameChanged: true,
       oldTableName: 'users',
@@ -464,8 +464,55 @@ describe('generateRollbackDDL', () => {
     const sql = generateRollbackDDL('accounts', diff, [], 'mysql');
 
     expect(sql).toBe(
-      'ALTER TABLE accounts DROP COLUMN age;\n\n' + 'ALTER TABLE accounts RENAME TO users;',
+      'ALTER TABLE accounts RENAME TO users;\n\n' + 'ALTER TABLE users DROP COLUMN age;',
     );
+  });
+
+  it.each(['add', 'remove'] as const)('rollback: reverses a foreign key %s', (type) => {
+    const diff = createTableDiff({
+      foreignKeys: [{ type, foreignKey: createFk({ onDelete: 'CASCADE' }) }],
+    });
+
+    expect(generateRollbackDDL('orders', diff, [], 'mysql')).toBe(
+      type === 'add'
+        ? 'ALTER TABLE orders DROP FOREIGN KEY fk_user;'
+        : 'ALTER TABLE orders ADD CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE;',
+    );
+  });
+
+  it('rollback: removes and restores foreign keys in dependency order', () => {
+    const diff = createTableDiff({
+      fields: [
+        { type: 'add', fieldName: 'user_id', newField: createField({ name: 'user_id' }) },
+        { type: 'remove', fieldName: 'owner_id', oldField: createField({ name: 'owner_id' }) },
+      ],
+      indexes: [
+        {
+          type: 'add',
+          index: createIndex({ name: 'idx_user', fields: [{ name: 'user_id', direction: 'ASC' }] }),
+        },
+        {
+          type: 'remove',
+          index: createIndex({
+            name: 'idx_owner',
+            fields: [{ name: 'owner_id', direction: 'ASC' }],
+          }),
+        },
+      ],
+      foreignKeys: [
+        { type: 'add', foreignKey: createFk() },
+        { type: 'remove', foreignKey: createFk({ name: 'fk_owner', fields: ['owner_id'] }) },
+      ],
+    });
+
+    expect(generateRollbackDDL('orders', diff, [], 'mysql').split('\n\n')).toEqual([
+      'ALTER TABLE orders DROP FOREIGN KEY fk_user;',
+      'DROP INDEX idx_user ON orders;',
+      'ALTER TABLE orders DROP COLUMN user_id;',
+      'ALTER TABLE orders ADD COLUMN owner_id INT NOT NULL;',
+      'CREATE INDEX idx_owner ON orders (owner_id ASC);',
+      'ALTER TABLE orders ADD CONSTRAINT fk_owner FOREIGN KEY (owner_id) REFERENCES users (id);',
+    ]);
   });
 
   it('rollback: keeps table option changes visible', () => {

@@ -1,118 +1,39 @@
 import type { NormalizedField, DatabaseType } from '@ddlbuilder/shared-types';
-import type { TableDiff, FieldDiff } from '../tableDiff';
-import {
-  generateTableCommentAlter,
-  generateDropColumn,
-  generateRenameColumn,
-  generateAddColumn,
-  generateModifyColumn,
-} from './columnStatements';
-import { generateDropIndex, generateAddIndex } from './indexStatements';
-import { generateRenameTable, generateTableOptionsChangeNotice } from './tableStatements';
+import type { TableDiff } from '../tableDiff';
+import { generateAlterDDL } from './generateAlterDDL';
 
-/**
- * 生成回滚 DDL 语句（逆向操作）
- * 用于撤销 generateAlterDDL 生成的变更
- */
 export function generateRollbackDDL(
   tableName: string,
   diff: TableDiff,
-  _fields: NormalizedField[],
+  fields: NormalizedField[],
   dbType: DatabaseType,
 ): string {
-  if (!diff.hasChanges) {
-    return '';
-  }
+  const reversedDiff: TableDiff = {
+    ...diff,
+    oldTableName: diff.newTableName,
+    newTableName: diff.oldTableName,
+    oldTableComment: diff.newTableComment,
+    newTableComment: diff.oldTableComment,
+    oldMiscConfig: diff.newMiscConfig,
+    newMiscConfig: diff.oldMiscConfig,
+    fields: diff.fields.map((field) => ({
+      ...field,
+      type: field.type === 'add' ? 'remove' : field.type === 'remove' ? 'add' : field.type,
+      fieldName: field.oldFieldName ?? field.fieldName,
+      oldField: field.newField,
+      newField: field.oldField,
+      oldFieldName: field.newFieldName,
+      newFieldName: field.oldFieldName,
+    })),
+    indexes: diff.indexes.map((index) => ({
+      ...index,
+      type: index.type === 'add' ? 'remove' : 'add',
+    })),
+    foreignKeys: (diff.foreignKeys || []).map((foreignKey) => ({
+      ...foreignKey,
+      type: foreignKey.type === 'add' ? 'remove' : 'add',
+    })),
+  };
 
-  const statements: string[] = [];
-  const activeTableName = diff.tableNameChanged ? diff.newTableName || tableName : tableName;
-
-  // 回滚顺序与正向操作相反
-
-  // 1. 删除新增的索引
-  for (const idxDiff of diff.indexes.filter((i) => i.type === 'add')) {
-    statements.push(generateDropIndex(activeTableName, { ...idxDiff, type: 'remove' }, dbType));
-  }
-
-  // 2. 恢复修改的字段（使用旧字段定义）
-  for (const fieldDiff of diff.fields.filter((f) => f.type === 'modify')) {
-    if (fieldDiff.oldField) {
-      const rollbackDiff: FieldDiff = {
-        type: 'modify',
-        fieldName: fieldDiff.fieldName,
-        oldField: fieldDiff.newField,
-        newField: fieldDiff.oldField,
-        changes: fieldDiff.changes,
-      };
-      statements.push(generateModifyColumn(activeTableName, rollbackDiff, dbType));
-    }
-  }
-
-  // 3. 删除新增的字段
-  for (const fieldDiff of diff.fields.filter((f) => f.type === 'add')) {
-    statements.push(generateDropColumn(activeTableName, { ...fieldDiff, type: 'remove' }, dbType));
-  }
-
-  // 4. 恢复重命名的字段（反向重命名）
-  for (const fieldDiff of diff.fields.filter((f) => f.type === 'rename')) {
-    if (fieldDiff.changes?.length && fieldDiff.oldField && fieldDiff.newFieldName) {
-      statements.push(
-        generateModifyColumn(
-          activeTableName,
-          {
-            type: 'modify',
-            fieldName: fieldDiff.newFieldName,
-            oldField: fieldDiff.newField,
-            newField: { ...fieldDiff.oldField, name: fieldDiff.newFieldName },
-            changes: fieldDiff.changes,
-          },
-          dbType,
-        ),
-      );
-    }
-    const rollbackDiff: FieldDiff = {
-      type: 'rename',
-      fieldName: fieldDiff.oldFieldName || '',
-      oldField: fieldDiff.newField,
-      newField: fieldDiff.oldField,
-      oldFieldName: fieldDiff.newFieldName,
-      newFieldName: fieldDiff.oldFieldName,
-    };
-    statements.push(generateRenameColumn(activeTableName, rollbackDiff, dbType));
-  }
-
-  // 5. 恢复删除的字段
-  for (const fieldDiff of diff.fields.filter((f) => f.type === 'remove')) {
-    if (fieldDiff.oldField) {
-      const rollbackDiff: FieldDiff = {
-        type: 'add',
-        fieldName: fieldDiff.fieldName,
-        newField: fieldDiff.oldField,
-      };
-      statements.push(generateAddColumn(activeTableName, rollbackDiff, dbType));
-    }
-  }
-
-  // 6. 恢复删除的索引
-  for (const idxDiff of diff.indexes.filter((i) => i.type === 'remove')) {
-    statements.push(generateAddIndex(activeTableName, { ...idxDiff, type: 'add' }, dbType));
-  }
-
-  // 7. 恢复表注释
-  if (diff.tableCommentChanged && diff.oldTableComment !== undefined) {
-    const commentSql = generateTableCommentAlter(activeTableName, diff.oldTableComment, dbType);
-    if (commentSql) {
-      statements.push(commentSql);
-    }
-  }
-
-  if (diff.miscConfigChanged) {
-    statements.push(generateTableOptionsChangeNotice(activeTableName, dbType));
-  }
-
-  if (diff.tableNameChanged) {
-    statements.push(generateRenameTable(diff.newTableName || '', diff.oldTableName || '', dbType));
-  }
-
-  return statements.filter((s) => s.trim()).join('\n\n');
+  return generateAlterDDL(tableName, reversedDiff, fields, dbType);
 }
