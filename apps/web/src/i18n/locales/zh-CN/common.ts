@@ -332,7 +332,11 @@ export const zhCNCommon = {
   },
   foreignKeyPanel: {
     unsupportedAction: '{{action}}（当前数据库不支持）',
-    unsupportedActions: '当前数据库不支持此外键动作，请重新选择；已有外键请删除后重新配置。',
+    issues: {
+      actions: '当前数据库不支持此外键动作，请重新选择；已有外键请删除后重新配置。',
+      fields:
+        '请填写目标表名，并按对应顺序选择数量相同、非空且不重复的本表字段和目标字段；已有外键请删除后重新配置。',
+    },
     add: '添加外键',
     name: '约束名称',
     namePlaceholder: '例如: fk_user_id',

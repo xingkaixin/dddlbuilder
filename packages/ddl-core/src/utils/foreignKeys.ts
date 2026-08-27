@@ -5,7 +5,12 @@ import type {
 } from '@ddlbuilder/shared-types';
 import { getDatabaseFamily, type DatabaseFamily } from './databaseFamily';
 import { buildQualifiedTableName, formatSqlTableName } from './databaseTypeMapping';
-import { formatSqlIdentifier } from './sqlIdentifiers';
+import { formatSqlIdentifier, getSqlIdentifierKey } from './sqlIdentifiers';
+
+interface ForeignKeyIssue {
+  kind: 'fields' | 'actions';
+  message: string;
+}
 
 type ForeignKeyEvent = 'onDelete' | 'onUpdate';
 const mysqlActions: readonly ForeignKeyAction[] = ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'];
@@ -34,16 +39,35 @@ export const getForeignKeyActions = (
 };
 
 export const getForeignKeyIssue = (
-  fk: Pick<ForeignKeyDefinition, ForeignKeyEvent>,
+  fk: Pick<ForeignKeyDefinition, ForeignKeyEvent | 'fields' | 'refFields' | 'refTable'>,
   dbType: DatabaseType,
-): string | null => {
+): ForeignKeyIssue | null => {
   const family = getDatabaseFamily(dbType);
-  if (!family || family === 'hive') return `Foreign keys are not supported by ${dbType}`;
+  if (!family || family === 'hive') {
+    return { kind: 'actions', message: `Foreign keys are not supported by ${dbType}` };
+  }
   for (const event of ['onDelete', 'onUpdate'] as const) {
     const action = fk[event];
     if (action && !getForeignKeyActions(dbType, event).includes(action)) {
-      return `${dbType} does not support ON ${event === 'onDelete' ? 'DELETE' : 'UPDATE'} ${action}`;
+      return {
+        kind: 'actions',
+        message: `${dbType} does not support ON ${event === 'onDelete' ? 'DELETE' : 'UPDATE'} ${action}`,
+      };
     }
+  }
+  if (
+    !fk.refTable.trim() ||
+    fk.fields.length === 0 ||
+    fk.fields.length !== fk.refFields.length ||
+    [fk.fields, fk.refFields].some((fields) => {
+      const names = fields.map((name) => getSqlIdentifierKey(name, dbType));
+      return names.some((name) => !name.trim()) || new Set(names).size !== names.length;
+    })
+  ) {
+    return {
+      kind: 'fields',
+      message: 'A referenced table and matching non-empty, distinct field lists are required',
+    };
   }
   return null;
 };
@@ -57,7 +81,7 @@ export const buildForeignKeyDDL = (
   const constraint = formatSqlIdentifier(fk.name, dbType);
   const issue = getForeignKeyIssue(fk, dbType);
   if (issue)
-    return `-- Manual migration required: foreign key ${constraint} on ${table}. ${issue}.`;
+    return `-- Manual migration required: foreign key ${constraint} on ${table}. ${issue.message}.`;
   const fields = fk.fields.map((name) => formatSqlIdentifier(name, dbType)).join(', ');
   const refFields = fk.refFields.map((name) => formatSqlIdentifier(name, dbType)).join(', ');
   const refTable = buildQualifiedTableName(fk.refSchema ?? '', fk.refTable, dbType);

@@ -342,8 +342,12 @@ export const enUSCommon = {
   },
   foreignKeyPanel: {
     unsupportedAction: '{{action}} (unsupported by this database)',
-    unsupportedActions:
-      'This database does not support the selected foreign key actions. Choose supported actions, or remove and recreate an existing foreign key.',
+    issues: {
+      actions:
+        'This database does not support the selected foreign key actions. Choose supported actions, or remove and recreate an existing foreign key.',
+      fields:
+        'Specify a target table and select equally sized, non-empty, distinct local and target field lists in matching order. Remove and recreate an existing foreign key to correct it.',
+    },
     add: 'Add Foreign Key',
     name: 'Constraint Name',
     namePlaceholder: 'e.g. fk_user_id',

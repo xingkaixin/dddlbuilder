@@ -8,6 +8,46 @@ describe('ForeignKeyPanel dialect actions', () => {
     useEditorStore.setState({ dbType: 'oracle', tableName: 'orders', foreignKeys: [] });
   });
 
+  it('requires matching field counts before adding a composite foreign key', () => {
+    render(<ForeignKeyPanel availableFields={['tenant_id', 'user_id']} />);
+    fireEvent.click(screen.getByRole('button', { name: '添加外键' }));
+    fireEvent.click(screen.getByRole('button', { name: 'tenant_id' }));
+    fireEvent.click(screen.getByRole('button', { name: 'user_id' }));
+    fireEvent.change(screen.getByPlaceholderText('例如: users'), { target: { value: 'users' } });
+    const refField = screen.getByPlaceholderText('输入字段名，回车添加');
+    fireEvent.change(refField, { target: { value: 'tenant_id' } });
+    fireEvent.keyDown(refField, { key: 'Enter' });
+    const confirm = screen.getByRole('button', { name: '确认添加' });
+    expect(confirm).toBeDisabled();
+    expect(screen.getByRole('alert')).toHaveTextContent('数量相同');
+    fireEvent.click(confirm);
+    expect(useEditorStore.getState().foreignKeys).toEqual([]);
+
+    fireEvent.change(refField, { target: { value: 'id' } });
+    fireEvent.keyDown(refField, { key: 'Enter' });
+    expect(confirm).toBeEnabled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    fireEvent.click(confirm);
+    expect(useEditorStore.getState().foreignKeys[0]).toMatchObject({
+      fields: ['tenant_id', 'user_id'],
+      refFields: ['tenant_id', 'id'],
+    });
+  });
+
+  it('warns about imported incomplete foreign keys without removing them', () => {
+    const foreignKey = {
+      id: 'fk',
+      name: 'fk_owner',
+      fields: ['tenant_id', 'user_id'],
+      refTable: 'users',
+      refFields: ['id'],
+    };
+    useEditorStore.setState({ foreignKeys: [foreignKey] });
+    render(<ForeignKeyPanel availableFields={['tenant_id', 'user_id']} />);
+    expect(screen.getByRole('alert')).toHaveTextContent('数量相同');
+    expect(useEditorStore.getState().foreignKeys).toEqual([foreignKey]);
+  });
+
   it('only offers supported Oracle actions', () => {
     render(<ForeignKeyPanel availableFields={['user_id']} />);
     fireEvent.click(screen.getByRole('button', { name: '添加外键' }));

@@ -49,6 +49,8 @@ You can clarify foreign key constraints and cascade rules during the design phas
 
 ## Common pitfalls
 
+- Local and referenced field lists must have matching counts, contain no empty or duplicate names, and follow the same pairing order. Confirmation is disabled otherwise.
+- Foreign keys with incomplete field lists from older data or imports are retained with a warning. DDL/ORM output requires manual correction rather than silently dropping individual fields. Remove and recreate the affected foreign key.
 - When foreign key field and related field types are incompatible, generated DDL may fail on the target database. Confirm type matching in advance.
 - The wizard blocks creation when the target is not a single-column primary or unique key. Add a primary or unique index to the target field first.
 - Tables with the same name may represent different saved records. The ER diagram keeps these nodes separate and does not guess which duplicate target should receive a relationship.

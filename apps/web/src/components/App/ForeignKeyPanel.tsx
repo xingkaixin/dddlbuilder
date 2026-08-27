@@ -37,7 +37,14 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
   const [onUpdate, setOnUpdate] = useState<ForeignKeyAction | undefined>(undefined);
   const deleteActions = getForeignKeyActions(dbType, 'onDelete');
   const updateActions = getForeignKeyActions(dbType, 'onUpdate');
-  const actionIssue = getForeignKeyIssue({ onDelete, onUpdate }, dbType);
+  const pendingForeignKey = {
+    fields: selectedFields,
+    refTable: refTable.trim(),
+    refFields,
+    onDelete,
+    onUpdate,
+  };
+  const pendingIssue = getForeignKeyIssue(pendingForeignKey, dbType);
 
   useEffect(() => {
     if (editingId && editInputRef.current) {
@@ -77,19 +84,14 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
   };
 
   const handleAdd = () => {
-    if (selectedFields.length === 0 || !refTable.trim() || refFields.length === 0 || actionIssue)
-      return;
+    if (pendingIssue) return;
 
     const name = newFkName.trim() || `fk_${tableName || 'table'}_${selectedFields.join('_')}`;
 
     addForeignKey({
+      ...pendingForeignKey,
       name,
-      fields: selectedFields,
       refSchema: refSchema.trim() || undefined,
-      refTable: refTable.trim(),
-      refFields,
-      onDelete,
-      onUpdate,
     });
 
     // Reset form
@@ -296,11 +298,13 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                 </div>
               </div>
 
-              {actionIssue && (
-                <p role="alert" className="text-xs text-destructive">
-                  {t('foreignKeyPanel.unsupportedActions')}
-                </p>
-              )}
+              {pendingIssue &&
+                (pendingIssue.kind === 'actions' ||
+                  (selectedFields.length > 0 && refFields.length > 0)) && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {t(`foreignKeyPanel.issues.${pendingIssue.kind}`)}
+                  </p>
+                )}
 
               <div className="flex gap-2">
                 <Button
@@ -308,12 +312,7 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                   variant="default"
                   className="h-7 text-xs"
                   onClick={handleAdd}
-                  disabled={
-                    selectedFields.length === 0 ||
-                    !refTable.trim() ||
-                    refFields.length === 0 ||
-                    !!actionIssue
-                  }
+                  disabled={!!pendingIssue}
                 >
                   {t('foreignKeyPanel.confirmAdd')}
                 </Button>
@@ -332,101 +331,104 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                 <div className="absolute bottom-0 left-0 w-10 h-0.5 bg-gradient-to-r from-primary to-transparent rounded" />
               </div>
               <div className="grid gap-3 sm:grid-cols-1 xl:grid-cols-2">
-                {foreignKeys.map((fk) => (
-                  <div
-                    key={fk.id}
-                    className="group/item relative flex items-start justify-between gap-4 rounded-xl border bg-muted/50 px-5 py-4 transition-all duration-300 hover:bg-muted/70 hover:-translate-y-1 hover:shadow-lg overflow-hidden"
-                  >
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/30 to-transparent transition-all duration-300 group-hover/item:w-2" />
+                {foreignKeys.map((fk) => {
+                  const issue = getForeignKeyIssue(fk, dbType);
+                  return (
+                    <div
+                      key={fk.id}
+                      className="group/item relative flex items-start justify-between gap-4 rounded-xl border bg-muted/50 px-5 py-4 transition-all duration-300 hover:bg-muted/70 hover:-translate-y-1 hover:shadow-lg overflow-hidden"
+                    >
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/30 to-transparent transition-all duration-300 group-hover/item:w-2" />
 
-                    <div className="relative flex flex-1 flex-col gap-2 pl-2">
-                      {getForeignKeyIssue(fk, dbType) && (
-                        <p role="alert" className="text-xs text-destructive">
-                          {t('foreignKeyPanel.unsupportedActions')}
-                        </p>
-                      )}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 rounded-md bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200">
-                          <Link2 className="h-3.5 w-3.5" />
-                          FK
-                        </span>
-                        {editingId === fk.id ? (
-                          <Input
-                            ref={editInputRef}
-                            value={editingName}
-                            onChange={(e) => setEditingName(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleConfirmEdit();
-                              } else if (e.key === 'Escape') {
-                                e.preventDefault();
-                                handleCancelEdit();
-                              }
-                            }}
-                            onBlur={handleConfirmEdit}
-                            className="h-7 text-base font-semibold px-2 py-0 w-48"
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        ) : (
-                          <span
-                            className="break-all text-base font-semibold leading-snug transition-colors duration-200 group-hover/item:text-primary cursor-pointer hover:underline hover:decoration-dashed hover:underline-offset-4"
-                            onDoubleClick={() => handleStartEdit(fk)}
-                          >
-                            {fk.name}
-                            <Pencil className="inline-block ml-1.5 h-3 w-3 opacity-0 group-hover/item:opacity-50 transition-opacity" />
+                      <div className="relative flex flex-1 flex-col gap-2 pl-2">
+                        {issue && (
+                          <p role="alert" className="text-xs text-destructive">
+                            {t(`foreignKeyPanel.issues.${issue.kind}`)}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 rounded-md bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200">
+                            <Link2 className="h-3.5 w-3.5" />
+                            FK
                           </span>
-                        )}
-                      </div>
-                      <div className="text-sm leading-relaxed text-muted-foreground space-y-1">
-                        <div>
-                          <span className="text-xs font-medium text-foreground/70">
-                            {t('foreignKeyPanel.local')}:
-                          </span>{' '}
-                          {fk.fields.join(', ')}
+                          {editingId === fk.id ? (
+                            <Input
+                              ref={editInputRef}
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleConfirmEdit();
+                                } else if (e.key === 'Escape') {
+                                  e.preventDefault();
+                                  handleCancelEdit();
+                                }
+                              }}
+                              onBlur={handleConfirmEdit}
+                              className="h-7 text-base font-semibold px-2 py-0 w-48"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : (
+                            <span
+                              className="break-all text-base font-semibold leading-snug transition-colors duration-200 group-hover/item:text-primary cursor-pointer hover:underline hover:decoration-dashed hover:underline-offset-4"
+                              onDoubleClick={() => handleStartEdit(fk)}
+                            >
+                              {fk.name}
+                              <Pencil className="inline-block ml-1.5 h-3 w-3 opacity-0 group-hover/item:opacity-50 transition-opacity" />
+                            </span>
+                          )}
                         </div>
-                        <div>
-                          <span className="text-xs font-medium text-foreground/70">
-                            {t('foreignKeyPanel.references')}:
-                          </span>{' '}
-                          {fk.refSchema ? `${fk.refSchema}.` : ''}
-                          {fk.refTable}({fk.refFields.join(', ')})
-                        </div>
-                        {(fk.onDelete || fk.onUpdate) && (
-                          <div className="flex gap-3 text-xs">
-                            {fk.onDelete && (
-                              <span>
-                                <span className="font-medium text-foreground/60">ON DELETE:</span>{' '}
-                                {fk.onDelete}
-                              </span>
-                            )}
-                            {fk.onUpdate && (
-                              <span>
-                                <span className="font-medium text-foreground/60">ON UPDATE:</span>{' '}
-                                {fk.onUpdate}
-                              </span>
-                            )}
+                        <div className="text-sm leading-relaxed text-muted-foreground space-y-1">
+                          <div>
+                            <span className="text-xs font-medium text-foreground/70">
+                              {t('foreignKeyPanel.local')}:
+                            </span>{' '}
+                            {fk.fields.join(', ')}
                           </div>
-                        )}
+                          <div>
+                            <span className="text-xs font-medium text-foreground/70">
+                              {t('foreignKeyPanel.references')}:
+                            </span>{' '}
+                            {fk.refSchema ? `${fk.refSchema}.` : ''}
+                            {fk.refTable}({fk.refFields.join(', ')})
+                          </div>
+                          {(fk.onDelete || fk.onUpdate) && (
+                            <div className="flex gap-3 text-xs">
+                              {fk.onDelete && (
+                                <span>
+                                  <span className="font-medium text-foreground/60">ON DELETE:</span>{' '}
+                                  {fk.onDelete}
+                                </span>
+                              )}
+                              {fk.onUpdate && (
+                                <span>
+                                  <span className="font-medium text-foreground/60">ON UPDATE:</span>{' '}
+                                  {fk.onUpdate}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="transition-all duration-200 hover:scale-110 hover:bg-destructive/10"
+                            onClick={() => removeForeignKey(fk.id)}
+                          >
+                            <X className="h-4 w-4 transition-transform duration-200 group-hover/item:rotate-90" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{t('foreignKeyPanel.deleteTip')}</p>
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="transition-all duration-200 hover:scale-110 hover:bg-destructive/10"
-                          onClick={() => removeForeignKey(fk.id)}
-                        >
-                          <X className="h-4 w-4 transition-transform duration-200 group-hover/item:rotate-90" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{t('foreignKeyPanel.deleteTip')}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

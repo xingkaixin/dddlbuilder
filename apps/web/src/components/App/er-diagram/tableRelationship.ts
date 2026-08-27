@@ -183,10 +183,6 @@ export function planTableRelationship(
     return { ok: false, error: 'set-null-requires-optional' };
   }
 
-  if (getForeignKeyIssue(intent, draft.source.dbType)) {
-    return { ok: false, error: 'unsupported-foreign-key-action' };
-  }
-
   const foreignKey: ForeignKeyDefinition = {
     id: createEntityId(),
     name: relationshipName,
@@ -197,6 +193,9 @@ export function planTableRelationship(
     onDelete: intent.onDelete,
     onUpdate: intent.onUpdate,
   };
+  if (getForeignKeyIssue(foreignKey, draft.source.dbType)) {
+    return { ok: false, error: 'unsupported-foreign-key-action' };
+  }
 
   const requiresUniqueIndex = intent.cardinality === 'one-to-one';
   const indexes = draft.source.indexes ?? [];

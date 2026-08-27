@@ -114,24 +114,4 @@ describe('ORM database name mapping', () => {
 
     expect(model).toContain(expected);
   });
-
-  it('does not crash TypeORM generation for incomplete foreign key references', () => {
-    expect(() =>
-      buildORM('typeorm', {
-        dbType: 'mysql',
-        tableName: 'membership',
-        tableComment: '',
-        fields: [field('user_id'), field('tenant_id')],
-        foreignKeys: [
-          {
-            id: 'owner',
-            name: 'fk_owner',
-            fields: ['user_id', 'tenant_id'],
-            refTable: 'user_profile',
-            refFields: ['user_id'],
-          },
-        ],
-      }),
-    ).not.toThrow();
-  });
 });

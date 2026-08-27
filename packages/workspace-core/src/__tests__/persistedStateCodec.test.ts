@@ -58,6 +58,29 @@ const completeSnapshot = () => ({
 });
 
 describe('decodePersistedState', () => {
+  it('keeps invalid foreign key positions instead of realigning column pairs', () => {
+    const decoded = decodePersistedState(
+      externalState({
+        foreignKeys: [
+          {
+            id: 'fk',
+            name: 'fk_owner',
+            refTable: 'users',
+            fields: ['tenant_id', null, 'user_id'],
+            refFields: ['id', 'tenant_id', null],
+          },
+        ],
+      }),
+    );
+    expect(decoded?.foreignKeys?.[0]).toMatchObject({
+      fields: ['tenant_id', '', 'user_id'],
+      refFields: ['id', 'tenant_id', ''],
+    });
+    expect(decodePersistedState(JSON.parse(JSON.stringify(decoded)))?.foreignKeys).toEqual(
+      decoded?.foreignKeys,
+    );
+  });
+
   it('preserves unique constraint identity through serialization and decoding', () => {
     const constraint = {
       id: 'uq',
@@ -297,9 +320,9 @@ describe('decodePersistedState', () => {
       foreignKeys: [
         {
           id: 'foreign-key-1',
-          fields: ['team_id'],
+          fields: ['team_id', ''],
           refSchema: 'public',
-          refFields: ['id'],
+          refFields: ['id', ''],
           onDelete: 'CASCADE',
           onUpdate: 'RESTRICT',
         },

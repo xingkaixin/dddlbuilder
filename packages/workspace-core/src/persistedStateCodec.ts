@@ -131,6 +131,10 @@ const decodeRows = (value: unknown): FieldRow[] => {
   });
 };
 
+// Keep positions so invalid entries cannot silently change field pairings.
+const decodeForeignKeyFields = (value: unknown): string[] =>
+  Array.isArray(value) ? value.map((field) => toText(field)) : [];
+
 const decodeForeignKeys = (value: unknown): ForeignKeyDefinition[] | undefined => {
   if (!Array.isArray(value)) return undefined;
   const usedIds = new Set<string>();
@@ -149,10 +153,10 @@ const decodeForeignKeys = (value: unknown): ForeignKeyDefinition[] | undefined =
       {
         id: decodeUniqueEntityId(item.id, `legacy-foreign-key-${index}`, usedIds),
         name,
-        fields: toStringArray(item.fields),
+        fields: decodeForeignKeyFields(item.fields),
         refSchema: toOptionalText(item.refSchema),
         refTable,
-        refFields: toStringArray(item.refFields),
+        refFields: decodeForeignKeyFields(item.refFields),
         ...(onDelete ? { onDelete } : {}),
         ...(onUpdate ? { onUpdate } : {}),
       },
