@@ -1,5 +1,6 @@
 import type { DatabaseType } from '@ddlbuilder/shared-types';
 import type { IndexDiff } from '../tableDiff';
+import { buildQualifiedTableName, getSchemaAndTable } from '../databaseTypeMapping';
 
 export function generateDropIndex(
   tableName: string,
@@ -7,6 +8,7 @@ export function generateDropIndex(
   dbType: DatabaseType,
 ): string {
   const index = idxDiff.index;
+  const qualifiedIndex = buildQualifiedTableName(getSchemaAndTable(tableName).schema, index.name);
 
   // 主键需要特殊处理
   if (index.isPrimary) {
@@ -38,13 +40,13 @@ export function generateDropIndex(
       return `DROP INDEX ${index.name} ON ${tableName};`;
     case 'postgresql':
     case 'postgresql-citus':
-      return `DROP INDEX ${index.name};`;
+      return `DROP INDEX ${qualifiedIndex};`;
     case 'sqlserver':
       return `DROP INDEX ${index.name} ON ${tableName};`;
     case 'oracle':
     case 'oceanbase-oracle':
     case 'dm':
-      return `DROP INDEX ${index.name};`;
+      return `DROP INDEX ${qualifiedIndex};`;
     default:
       return `DROP INDEX ${index.name} ON ${tableName};`;
   }

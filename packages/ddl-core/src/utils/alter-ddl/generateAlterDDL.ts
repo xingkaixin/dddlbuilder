@@ -10,6 +10,7 @@ import {
 import { generateDropIndex, generateAddIndex } from './indexStatements';
 import { generateDropForeignKey, generateAddForeignKey } from './foreignKeyStatements';
 import { generateRenameTable, generateTableOptionsChangeNotice } from './tableStatements';
+import { buildQualifiedTableName, getSchemaAndTable } from '../databaseTypeMapping';
 
 /**
  * ALTER DDL 生成器
@@ -26,10 +27,18 @@ export function generateAlterDDL(
   }
 
   const statements: string[] = [];
-  const activeTableName = diff.tableNameChanged ? diff.newTableName || tableName : tableName;
+  const fallback = getSchemaAndTable(tableName);
+  const oldTableName = buildQualifiedTableName(
+    diff.oldSchemaName ?? fallback.schema,
+    diff.oldTableName || fallback.table,
+  );
+  const activeTableName = buildQualifiedTableName(
+    diff.newSchemaName ?? fallback.schema,
+    diff.newTableName || fallback.table,
+  );
 
   if (diff.tableNameChanged) {
-    statements.push(generateRenameTable(diff.oldTableName || '', diff.newTableName || '', dbType));
+    statements.push(generateRenameTable(oldTableName, activeTableName, dbType));
   }
 
   // 表注释变更 (某些数据库支持)

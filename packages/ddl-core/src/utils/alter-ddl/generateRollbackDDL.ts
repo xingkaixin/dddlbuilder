@@ -12,6 +12,8 @@ export function generateRollbackDDL(
     ...diff,
     oldTableName: diff.newTableName,
     newTableName: diff.oldTableName,
+    oldSchemaName: diff.newSchemaName,
+    newSchemaName: diff.oldSchemaName,
     oldTableComment: diff.newTableComment,
     newTableComment: diff.oldTableComment,
     oldMiscConfig: diff.newMiscConfig,

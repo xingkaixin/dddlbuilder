@@ -4,7 +4,9 @@ import type {
   DatabaseType,
   IndexDefinition,
   ForeignKeyDefinition,
+  PersistedState,
 } from '@ddlbuilder/shared-types';
+import { diffPersistedState } from '../utils/tableDiff';
 import type { TableDiff, FieldDiff, IndexDiff, ForeignKeyDiff } from '../utils/tableDiff';
 import {
   generateAlterDDL,
@@ -64,6 +66,42 @@ const createTableDiff = (overrides: Partial<TableDiff> = {}): TableDiff => ({
 });
 
 describe('generateAlterDDL', () => {
+  it.each([false, true])(
+    'keeps the schema through forward and reverse changes (rename=%s)',
+    (rename) => {
+      const before = {
+        schemaName: 'audit',
+        tableName: 'orders',
+        rows: [],
+        indexes: [],
+      } as unknown as PersistedState;
+      const after = {
+        ...before,
+        tableName: rename ? 'archived_orders' : 'orders',
+        rows: [{ id: 'field-1', fieldName: 'id', fieldType: 'int', nullable: false }],
+      };
+      const diff = diffPersistedState(before, after);
+      const forward = generateAlterDDL(after.tableName, diff, [], 'postgresql');
+      const rollback = generateRollbackDDL(after.tableName, diff, [], 'postgresql');
+
+      expect(forward).toContain(
+        `ALTER TABLE audit.${after.tableName} ADD COLUMN id INTEGER NOT NULL;`,
+      );
+      expect(rollback).toContain('ALTER TABLE audit.orders DROP COLUMN id;');
+      if (rename) {
+        expect(forward).toContain('ALTER TABLE audit.orders RENAME TO archived_orders;');
+        expect(rollback).toContain('ALTER TABLE audit.archived_orders RENAME TO orders;');
+      }
+    },
+  );
+
+  it('qualifies standalone index drops using the table schema', () => {
+    const diff = createTableDiff({ indexes: [{ type: 'remove', index: createIndex() }] });
+    expect(generateAlterDDL('audit.orders', diff, [], 'postgresql')).toBe(
+      'DROP INDEX audit.idx_name;',
+    );
+  });
+
   it('returns empty string when no changes', () => {
     const diff = createTableDiff({ hasChanges: false });
     expect(generateAlterDDL('users', diff, [], 'mysql')).toBe('');

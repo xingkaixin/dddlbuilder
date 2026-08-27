@@ -68,6 +68,8 @@ export type TableDiff = {
   tableNameChanged: boolean;
   oldTableName?: string;
   newTableName?: string;
+  oldSchemaName?: string;
+  newSchemaName?: string;
   tableCommentChanged: boolean;
   oldTableComment?: string;
   newTableComment?: string;
@@ -298,6 +300,10 @@ export function diffPersistedState(oldState: PersistedState, newState: Persisted
   const result: TableDiff = {
     hasChanges: false,
     tableNameChanged: false,
+    oldTableName: oldState.tableName?.trim() || '',
+    newTableName: newState.tableName?.trim() || '',
+    oldSchemaName: oldState.schemaName?.trim() || '',
+    newSchemaName: newState.schemaName?.trim() || '',
     tableCommentChanged: false,
     miscConfigChanged: false,
     fields: [],
