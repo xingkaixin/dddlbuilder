@@ -7,16 +7,21 @@ type FieldChange = Extract<AISchemaChange, { kind: 'field' }>;
 
 const normalizedName = (value: string) => value.trim().toLowerCase();
 
-const replaceIndex = (indexes: IndexDefinition[], targetName: string, nextIndex: IndexDefinition) =>
-  indexes.map((index) =>
-    (
-      nextIndex.id
-        ? index.id === nextIndex.id
-        : normalizedName(index.name) === normalizedName(targetName)
-    )
-      ? { ...nextIndex, id: index.id }
-      : index,
+const upsertIndex = (
+  indexes: IndexDefinition[],
+  targetName: string,
+  nextIndex: IndexDefinition,
+) => {
+  const position = indexes.findIndex((index) =>
+    nextIndex.id
+      ? index.id === nextIndex.id
+      : normalizedName(index.name) === normalizedName(targetName),
   );
+  if (position < 0) return [...indexes, nextIndex];
+  return indexes.map((index, indexPosition) =>
+    indexPosition === position ? { ...nextIndex, id: index.id } : index,
+  );
+};
 
 const applyFieldSchemaChange = (
   state: PersistedState,
@@ -68,18 +73,39 @@ export const applyAISchemaChanges = (
   candidateState: PersistedState,
   changes: AISchemaChange[],
 ): PersistedState => {
-  let nextState = currentState;
+  const removedIds = new Set<string>();
   const removedNames = new Set<string>();
+  for (const change of changes) {
+    if (change.kind !== 'field' || change.type !== 'remove') continue;
+    if (change.oldRow?.id) {
+      removedIds.add(change.oldRow.id);
+    } else {
+      removedNames.add(normalizedName(change.oldRow?.fieldName || change.fieldName));
+    }
+  }
+  const shouldRemove = (row: FieldRow) =>
+    (!!row.id && removedIds.has(row.id)) || removedNames.has(normalizedName(row.fieldName));
+  const stateAfterRemovals =
+    removedIds.size > 0 || removedNames.size > 0
+      ? removeFieldsFromDocument(currentState, shouldRemove)
+      : currentState;
+  let nextState = {
+    ...stateAfterRemovals,
+    rows: currentState.rows.filter((row) => !shouldRemove(row)),
+  };
 
   for (const change of changes) {
-    if (change.kind !== 'field') continue;
-    if (change.type === 'remove') {
-      removedNames.add(normalizedName(change.oldRow?.fieldName || change.fieldName));
-      continue;
-    }
+    if (change.kind !== 'field' || change.type === 'add' || change.type === 'remove') continue;
     nextState = applyFieldSchemaChange(nextState, candidateState.rows, change);
   }
-  nextState = updateDocumentFields(currentState, nextState.rows);
+  for (const change of changes) {
+    if (change.kind !== 'field' || change.type !== 'add') continue;
+    nextState = applyFieldSchemaChange(nextState, candidateState.rows, change);
+  }
+  nextState = updateDocumentFields(
+    stateAfterRemovals,
+    nextState.rows.length > 0 ? nextState.rows : stateAfterRemovals.rows,
+  );
 
   for (const change of changes) {
     if (change.kind === 'table') {
@@ -108,7 +134,7 @@ export const applyAISchemaChanges = (
     } else if (change.type === 'modify' && change.newIndex) {
       nextState = {
         ...nextState,
-        indexes: replaceIndex(indexes, change.indexName, change.newIndex),
+        indexes: upsertIndex(indexes, change.indexName, change.newIndex),
       };
     } else if (change.type === 'remove') {
       nextState = {
@@ -122,11 +148,6 @@ export const applyAISchemaChanges = (
     }
   }
 
-  if (removedNames.size > 0) {
-    nextState = removeFieldsFromDocument(nextState, (row) =>
-      removedNames.has(normalizedName(row.fieldName)),
-    );
-  }
   validateIndexFields(nextState);
   return nextState;
 };

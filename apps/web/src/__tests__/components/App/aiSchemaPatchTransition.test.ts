@@ -111,6 +111,66 @@ describe('AI field changes', () => {
 });
 
 describe('applyAISchemaChanges', () => {
+  it.each([false, true])(
+    'keeps a renamed field that reuses a removed name (reverse=%s)',
+    (reverse) => {
+      const current = createState([
+        { ...row('legacy_id', 1), id: 'kept' },
+        { ...row('id', 2), id: 'removed' },
+      ]);
+      current.indexes = [
+        {
+          id: 'kept-index',
+          name: 'idx_legacy_id',
+          fields: [{ name: 'legacy_id', direction: 'ASC' }],
+          unique: false,
+        },
+        {
+          id: 'removed-index',
+          name: 'idx_id',
+          fields: [{ name: 'id', direction: 'ASC' }],
+          unique: false,
+        },
+      ];
+      const candidate = {
+        ...current,
+        rows: [{ ...current.rows[0], fieldName: 'id' }],
+        indexes: [],
+      };
+      const changes = buildAISchemaChanges(current, candidate).filter(
+        (change) => change.kind === 'field',
+      );
+      if (reverse) changes.reverse();
+      const result = applyAISchemaChanges(current, candidate, changes);
+      expect(result.rows).toEqual(candidate.rows);
+      expect(result.indexes.map((index) => index.id)).toEqual(['kept-index']);
+      expect(result.indexes[0].fields[0].name).toBe('id');
+      expect(applyAISchemaChanges(result, candidate, changes)).toEqual(result);
+    },
+  );
+
+  it.each([false, true])('adds a field with a name vacated by a rename (reverse=%s)', (reverse) => {
+    const current = createState([{ ...row('id', 1), id: 'original' }]);
+    const candidate = createState([
+      { ...row('id', 1), id: 'new' },
+      { ...current.rows[0], fieldName: 'legacy_id', order: 2 },
+    ]);
+    const changes = buildAISchemaChanges(current, candidate);
+    if (reverse) changes.reverse();
+    const result = applyAISchemaChanges(current, candidate, changes);
+    expect(result.rows).toEqual(candidate.rows);
+    expect(applyAISchemaChanges(result, candidate, changes)).toEqual(result);
+  });
+
+  it('replaces a removed field with an explicitly new identity of the same name', () => {
+    const current = createState([{ ...row('id', 1), id: 'old' }]);
+    const candidate = createState([{ ...row('id', 1), id: 'new' }]);
+    const changes = buildAISchemaChanges(current, candidate);
+    const result = applyAISchemaChanges(current, candidate, changes);
+    expect(result.rows).toEqual(candidate.rows);
+    expect(applyAISchemaChanges(result, candidate, changes)).toEqual(result);
+  });
+
   it.each(['add', 'modify'] as const)('rejects a selected index %s without its field', (type) => {
     const current = createState();
     const index = {
