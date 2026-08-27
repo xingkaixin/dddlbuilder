@@ -231,7 +231,7 @@ export function useAppController() {
 
   usePersistedSync({
     hydrated,
-    hasOpenTab: canSyncActiveTab,
+    enabled: isShareView || canSyncActiveTab,
     persistedState,
     activeSource: activeEditorSource,
     saveState,

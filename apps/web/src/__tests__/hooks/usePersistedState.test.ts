@@ -692,7 +692,7 @@ describe('usePersistedState', () => {
         const currentState = useMemo(() => toPersistedState(editor), [editor]);
         usePersistedSync({
           hydrated: persistence.hydrated,
-          hasOpenTab: true,
+          enabled: true,
           persistedState: persistence.persistedState,
           activeSource: persistence.activeSource,
           saveState: persistence.saveState,

@@ -1,5 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
 import { registerShareRoutes } from '../routes/share';
 import type { ApiEnv } from '../lib/context';
@@ -51,6 +51,8 @@ const createMockKV = (): MockKV => {
 describe('share api', () => {
   let app: Hono<ApiEnv>;
   let mockKV: MockKV;
+
+  afterEach(() => vi.restoreAllMocks());
 
   beforeEach(() => {
     mockKV = createMockKV();
@@ -219,13 +221,18 @@ describe('share api', () => {
     expect(payload.code).toBe('SHARE_UUID_INVALID');
   });
 
-  it('读取分享时如果 KV 报错应当返回 404', async () => {
-    mockKV.get.mockRejectedValueOnce(new Error('KV error'));
+  it('读取分享时 KV 故障应返回可重试的 502，而不是链接不存在', async () => {
+    const storageError = new Error('KV error');
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockKV.get.mockRejectedValueOnce(storageError);
 
     const response = await app.request(`https://ddlbuilder.test/api/share/${VALID_SHARE_ID}`);
-    expect(response.status).toBe(404);
     const payload = (await response.json()) as { code: string };
-    expect(payload.code).toBe('SHARE_NOT_FOUND');
+    console.info('Share storage failure response', { status: response.status, payload });
+    expect(response.status).toBe(502);
+    expect(payload.code).toBe('SHARE_LOAD_FAILED');
+    expect(JSON.stringify(payload)).not.toContain('KV error');
+    expect(errorLog).toHaveBeenCalledWith('[share] storage read failed', storageError);
   });
 
   it('GET缺少 KV 配置时应返回 500', async () => {

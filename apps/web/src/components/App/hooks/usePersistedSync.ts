@@ -5,7 +5,7 @@ import { serializePersistedStateForComparison } from '@/utils/persistedStateSign
 
 interface UsePersistedSyncParams {
   hydrated: boolean;
-  hasOpenTab: boolean;
+  enabled: boolean;
   persistedState: PersistedState | null;
   activeSource: WorkspaceSelection;
   saveState: (payload: WorkspaceSavePayload) => void;
@@ -16,7 +16,7 @@ interface UsePersistedSyncParams {
 
 export function usePersistedSync({
   hydrated,
-  hasOpenTab,
+  enabled,
   persistedState,
   activeSource,
   saveState,
@@ -39,7 +39,7 @@ export function usePersistedSync({
   const currentSaveKey = `${sourceVersion}:${currentSignature}`;
 
   const saveCurrentState = useCallback(() => {
-    if (!hydrated || !hasOpenTab) return;
+    if (!hydrated || !enabled) return;
     const pendingAppliedState = pendingAppliedStateRef.current;
     if (pendingAppliedState?.sourceId === sourceId) return;
     const latestState = getCurrentState();
@@ -52,16 +52,16 @@ export function usePersistedSync({
       source: activeSource,
     });
     lastSavedKeyRef.current = latestSaveKey;
-  }, [activeSource, getCurrentState, hasOpenTab, hydrated, saveState, sourceId, sourceVersion]);
+  }, [activeSource, getCurrentState, enabled, hydrated, saveState, sourceId, sourceVersion]);
 
   useLayoutEffect(() => {
-    if (!hydrated || !hasOpenTab || !persistedState) return;
+    if (!hydrated || !enabled || !persistedState) return;
     pendingAppliedStateRef.current = {
       sourceId,
       signature: serializePersistedStateForComparison(persistedState),
     };
     applyPersistedState(persistedState);
-  }, [applyPersistedState, hasOpenTab, hydrated, persistedState, sourceId]);
+  }, [applyPersistedState, enabled, hydrated, persistedState, sourceId]);
 
   useLayoutEffect(() => {
     const pendingAppliedState = pendingAppliedStateRef.current;

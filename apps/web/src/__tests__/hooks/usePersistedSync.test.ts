@@ -24,7 +24,7 @@ function createState(name: string): PersistedState {
 
 interface PersistedSyncParams {
   hydrated: boolean;
-  hasOpenTab: boolean;
+  enabled: boolean;
   persistedState: PersistedState | null;
   activeSource: WorkspaceSelection;
   saveState: (payload: WorkspaceSavePayload) => void;
@@ -37,7 +37,7 @@ const createBaseParams = (overrides: Partial<PersistedSyncParams> = {}): Persist
   const currentState = overrides.currentState ?? createState('a');
   return {
     hydrated: true,
-    hasOpenTab: true,
+    enabled: true,
     persistedState: null,
     activeSource: { kind: 'draft', draftId: 'default' },
     saveState: vi.fn(),
@@ -73,7 +73,7 @@ describe('usePersistedSync', () => {
     renderHook(() =>
       usePersistedSync(
         createBaseParams({
-          hasOpenTab: false,
+          enabled: false,
           persistedState: createState('remote'),
           saveState,
           applyPersistedState,

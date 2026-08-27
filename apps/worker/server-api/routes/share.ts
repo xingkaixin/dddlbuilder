@@ -36,10 +36,10 @@ async function setShareState(
 }
 
 async function getShareState(kv: KVNamespace, key: string): Promise<PersistedState | null> {
-  try {
-    const value = await kv.get(key);
-    if (!value) return null;
+  const value = await kv.get(key);
+  if (!value) return null;
 
+  try {
     return decodePersistedState(JSON.parse(value), 'external');
   } catch {
     return null;
@@ -108,7 +108,13 @@ export function registerShareRoutes(app: Hono<ApiEnv>) {
 
     const key = `${SHARE_KEY_PREFIX}${shareId}`;
 
-    const state = await getShareState(kv, key);
+    let state: PersistedState | null;
+    try {
+      state = await getShareState(kv, key);
+    } catch (error) {
+      console.error('[share] storage read failed', error);
+      return errorResponse(c, 502, 'Share read failed', 'SHARE_LOAD_FAILED');
+    }
 
     if (!state) {
       return errorResponse(c, 404, 'Share not found', 'SHARE_NOT_FOUND');
