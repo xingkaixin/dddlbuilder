@@ -1,11 +1,9 @@
 import { queryOptions } from '@tanstack/react-query';
 import {
   analyzeWorkspaceMigration,
-  applyWorkspaceMigrationPayloadToLocal,
   hasMeaningfulWorkspaceData,
   isWorkspaceMigrationDismissed,
 } from '@/services/workspaceMigrationService';
-import { invalidateLegacyWorkspaceMigration } from '@/services/workspaceLegacyMigrationMarker';
 
 export const workspaceMigrationQueryKeys = {
   all: (userId: string) => ['workspace-migration', userId] as const,
@@ -28,9 +26,6 @@ export function workspaceMigrationProposalOptions(userId: string, workspaceId: s
 
       const scope = { kind: 'user' as const, userId, workspaceId };
       if (await hasMeaningfulWorkspaceData(scope)) return null;
-
-      await applyWorkspaceMigrationPayloadToLocal(analysis.payload, scope);
-      invalidateLegacyWorkspaceMigration(scope);
 
       return isWorkspaceMigrationDismissed(userId, analysis.payload.localFingerprint)
         ? null

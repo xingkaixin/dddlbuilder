@@ -1,214 +1,165 @@
-import { renderHook as testingLibraryRenderHook, act, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  renderHook as testingLibraryRenderHook,
+  act,
+  cleanup,
+  waitFor,
+} from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { PersistedState } from '@ddlbuilder/shared-types';
 import { useWorkspaceMigration } from '@/hooks/useWorkspaceMigration';
-import { invalidateLegacyWorkspaceMigration } from '@/services/workspaceLegacyMigrationMarker';
+import {
+  beginLegacyWorkspaceMigration,
+  completeLegacyWorkspaceMigration,
+  isLegacyWorkspaceMigrationCompleted,
+} from '@/services/workspaceLegacyMigrationMarker';
+import { addSavedTable, listSavedTables } from '@/utils/savedTablesDb';
+import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
+import { setupMemoryLocalStorage } from '@/__tests__/utils/memoryLocalStorage';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
-const renderHook = <Result, Props>(render: (initialProps: Props) => Result) => {
+const scope = { kind: 'user' as const, userId: 'user-1', workspaceId: 'ws-1' };
+const authState = {
+  status: 'signed_in' as const,
+  userId: scope.userId,
+  workspaceId: scope.workspaceId,
+};
+const anonymous = { kind: 'anonymous' as const };
+const state: PersistedState = {
+  schemaName: '',
+  tableName: 'orders',
+  tableComment: '',
+  dbType: 'mysql',
+  sqlFormatMode: 'compact',
+  rows: [{ id: 'id', fieldName: 'id', fieldType: 'INT', fieldComment: '', nullable: false }],
+  indexes: [],
+  addCount: 1,
+  indexInput: '',
+  currentIndexFields: [],
+  authInput: '',
+  authObjects: [],
+};
+const table = {
+  tableId: 'orders-id',
+  name: 'orders',
+  normalizedName: 'orders',
+  state,
+  createdAt: 1,
+  updatedAt: 2,
+};
+const migrationResponse = (status: 'ready' | 'completed') =>
+  Response.json({
+    status,
+    createdCount: 1,
+    copiedCount: 0,
+    skippedCount: 0,
+    conflictCount: 0,
+    conflicts: [],
+  });
+
+const renderHook = () => {
   const { wrapper } = createQueryClientWrapper();
-  return testingLibraryRenderHook(render, { wrapper });
+  return testingLibraryRenderHook(useWorkspaceMigration, { initialProps: authState, wrapper });
 };
 
-vi.mock('@/services/workspaceLegacyMigrationMarker', () => ({
-  invalidateLegacyWorkspaceMigration: vi.fn(),
-}));
-
-vi.mock('@/services/workspaceMigrationService', () => ({
-  analyzeWorkspaceMigration: vi.fn(),
-  applyWorkspaceMigrationPayloadToLocal: vi.fn(),
-  commitWorkspaceMigration: vi.fn(),
-  clearWorkspaceMigrationDismissed: vi.fn(),
-  dismissWorkspaceMigration: vi.fn(),
-  hasMeaningfulWorkspaceData: vi.fn(),
-  isWorkspaceMigrationDismissed: vi.fn(() => false),
-}));
-
 describe('useWorkspaceMigration', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  beforeEach(async () => {
+    setupFakeIndexedDB();
+    setupMemoryLocalStorage();
+    await addSavedTable(table, anonymous);
+    completeLegacyWorkspaceMigration(scope, beginLegacyWorkspaceMigration(scope));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() => Promise.resolve(migrationResponse('ready'))),
+    );
+  });
+
+  afterEach(() => {
+    cleanup();
+    teardownFakeIndexedDB();
+    vi.unstubAllGlobals();
+  });
+
+  it('检查迁移只返回提案，不写入账号分区或重置迁移标记', async () => {
+    const { result } = renderHook();
+    await waitFor(() => expect(result.current.open).toBe(true));
+
+    expect(result.current.pending?.payload.snapshot.savedTables[0]?.tableId).toBe(table.tableId);
+    expect(await listSavedTables(scope)).toEqual([]);
+    expect(isLegacyWorkspaceMigrationCompleted(scope)).toBe(true);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('稍后处理后重新检查仍不迁移，匿名数据保持原位', async () => {
+    const first = renderHook();
+    await waitFor(() => expect(first.result.current.open).toBe(true));
+    act(() => first.result.current.dismiss());
+    expect(first.result.current.open).toBe(false);
+    first.unmount();
+
+    const second = renderHook();
+    await waitFor(() => expect(second.result.current.checking).toBe(false));
+    expect(second.result.current.pending).toBeNull();
+    expect(second.result.current.open).toBe(false);
+    expect(await listSavedTables(scope)).toEqual([]);
+    expect((await listSavedTables(anonymous)).map((item) => item.tableId)).toEqual([table.tableId]);
+    expect(isLegacyWorkspaceMigrationCompleted(scope)).toBe(true);
+    expect(
+      vi.mocked(fetch).mock.calls.map(([, options]) => JSON.parse(String(options?.body)).mode),
+    ).toEqual(['analyze', 'analyze']);
   });
 
   it('当前账号本地已有工作区时不应弹匿名迁移', async () => {
-    const { analyzeWorkspaceMigration, hasMeaningfulWorkspaceData } =
-      await import('@/services/workspaceMigrationService');
-
-    vi.mocked(analyzeWorkspaceMigration).mockResolvedValue({
-      payload: {
-        localFingerprint: 'fingerprint',
-        idempotencyKey: 'idempotency',
-        snapshot: {
-          globalDraft: {
-            state: { rows: [{ fieldName: 'id' }] },
-            updatedAt: 1,
-          },
-          activeSession: null,
-          savedTables: [],
-          savedDrafts: [],
-        },
-      },
-      result: {
-        status: 'ready',
-        createdCount: 1,
-        copiedCount: 0,
-        skippedCount: 0,
-        conflictCount: 0,
-        conflicts: [],
-      },
-    } as any);
-    vi.mocked(hasMeaningfulWorkspaceData).mockResolvedValue(true);
-
-    const { result } = renderHook(() =>
-      useWorkspaceMigration({
-        status: 'signed_in',
-        userId: 'user-1',
-        workspaceId: 'ws-1',
-      }),
-    );
-
-    await waitFor(() => {
-      expect(result.current.checking).toBe(false);
-    });
-
+    await addSavedTable(table, scope);
+    const { result } = renderHook();
+    await waitFor(() => expect(result.current.checking).toBe(false));
     expect(result.current.open).toBe(false);
     expect(result.current.pending).toBeNull();
   });
 
-  it('检测到匿名工作区时应先应用到当前用户本地作用域', async () => {
-    const {
-      analyzeWorkspaceMigration,
-      applyWorkspaceMigrationPayloadToLocal,
-      hasMeaningfulWorkspaceData,
-    } = await import('@/services/workspaceMigrationService');
-
-    const payload = {
-      localFingerprint: 'fingerprint',
-      idempotencyKey: 'idempotency',
-      snapshot: {
-        globalDraft: {
-          state: { rows: [{ fieldName: 'id' }] },
-          updatedAt: 1,
-        },
-        activeSession: null,
-        drafts: [],
-        savedTables: [],
-        savedDrafts: [],
-        folders: [],
-      },
-    };
-
-    vi.mocked(analyzeWorkspaceMigration).mockResolvedValue({
-      payload,
-      result: {
-        status: 'ready',
-        createdCount: 1,
-        copiedCount: 0,
-        skippedCount: 0,
-        conflictCount: 0,
-        conflicts: [],
-      },
-    } as any);
-    vi.mocked(hasMeaningfulWorkspaceData).mockResolvedValue(false);
-    vi.mocked(applyWorkspaceMigrationPayloadToLocal).mockResolvedValue(undefined);
-
-    const { result } = renderHook(() =>
-      useWorkspaceMigration({
-        status: 'signed_in',
-        userId: 'user-1',
-        workspaceId: 'ws-1',
-      }),
+  it('workspace 未解析出来之前不应检查迁移', () => {
+    const { wrapper } = createQueryClientWrapper();
+    const { result } = testingLibraryRenderHook(
+      () => useWorkspaceMigration({ ...authState, workspaceId: null }),
+      { wrapper },
     );
-
-    await waitFor(() => {
-      expect(result.current.open).toBe(true);
-    });
-
-    expect(applyWorkspaceMigrationPayloadToLocal).toHaveBeenCalledWith(payload, {
-      kind: 'user',
-      userId: 'user-1',
-      workspaceId: 'ws-1',
-    });
-    // 写进 workspace 本地分区的数据要在启动时折叠进 Y.Doc，必须让迁移重跑一次。
-    expect(invalidateLegacyWorkspaceMigration).toHaveBeenCalledWith({
-      kind: 'user',
-      userId: 'user-1',
-      workspaceId: 'ws-1',
-    });
+    expect(result.current.checking).toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('workspace 未解析出来之前不应采纳匿名工作区', async () => {
-    const { analyzeWorkspaceMigration } = await import('@/services/workspaceMigrationService');
-
-    const { result } = renderHook(() =>
-      useWorkspaceMigration({
-        status: 'signed_in',
-        userId: 'user-1',
-        workspaceId: null,
-      }),
-    );
-
-    await waitFor(() => {
-      expect(result.current.checking).toBe(false);
-    });
-
-    expect(analyzeWorkspaceMigration).not.toHaveBeenCalled();
-  });
-
-  it('提交迁移应作为命令执行并清除当前提案', async () => {
-    const {
-      analyzeWorkspaceMigration,
-      applyWorkspaceMigrationPayloadToLocal,
-      commitWorkspaceMigration,
-      hasMeaningfulWorkspaceData,
-    } = await import('@/services/workspaceMigrationService');
-    const payload = {
-      localFingerprint: 'fingerprint',
-      idempotencyKey: 'idempotency',
-      snapshot: {
-        globalDraft: null,
-        activeSession: null,
-        drafts: [],
-        savedTables: [],
-        savedDrafts: [],
-        folders: [],
-      },
-    };
-    vi.mocked(analyzeWorkspaceMigration).mockResolvedValue({
-      payload,
-      result: {
-        status: 'ready',
-        createdCount: 0,
-        copiedCount: 0,
-        skippedCount: 0,
-        conflictCount: 0,
-        conflicts: [],
-      },
-    } as any);
-    vi.mocked(hasMeaningfulWorkspaceData).mockResolvedValue(false);
-    vi.mocked(applyWorkspaceMigrationPayloadToLocal).mockResolvedValue(undefined);
-    vi.mocked(commitWorkspaceMigration).mockResolvedValue({
-      status: 'completed',
-      createdCount: 1,
-      copiedCount: 0,
-      skippedCount: 0,
-      conflictCount: 0,
-      conflicts: [],
-    });
-
-    const { result } = renderHook(() =>
-      useWorkspaceMigration({
-        status: 'signed_in',
-        userId: 'user-1',
-        workspaceId: 'ws-1',
-      }),
-    );
+  it('确认后只提交服务端迁移命令，不另行写入本地快照', async () => {
+    const { result } = renderHook();
     await waitFor(() => expect(result.current.open).toBe(true));
+    const payload = result.current.pending?.payload;
+    vi.mocked(fetch).mockResolvedValueOnce(migrationResponse('completed'));
 
     await act(async () => {
       await result.current.runMigration();
     });
 
-    expect(commitWorkspaceMigration).toHaveBeenCalledWith(payload);
+    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[1]?.[1]?.body))).toEqual({
+      mode: 'commit',
+      payload,
+    });
     expect(result.current.pending).toBeNull();
     expect(result.current.open).toBe(false);
+    expect(await listSavedTables(scope)).toEqual([]);
+    expect(isLegacyWorkspaceMigrationCompleted(scope)).toBe(true);
+  });
+
+  it('服务端迁移失败时保留提案供重试，不在本地提前采纳', async () => {
+    const { result } = renderHook();
+    await waitFor(() => expect(result.current.open).toBe(true));
+    vi.mocked(fetch).mockResolvedValueOnce(
+      Response.json({ error: '迁移暂时不可用' }, { status: 503 }),
+    );
+
+    await act(async () => {
+      await expect(result.current.runMigration()).rejects.toThrow('迁移暂时不可用');
+    });
+    await waitFor(() => expect(result.current.error).toBe('迁移暂时不可用'));
+    expect(result.current.open).toBe(true);
+    expect(result.current.pending).not.toBeNull();
+    expect(await listSavedTables(scope)).toEqual([]);
+    expect(isLegacyWorkspaceMigrationCompleted(scope)).toBe(true);
   });
 });

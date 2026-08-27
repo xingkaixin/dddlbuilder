@@ -8,10 +8,7 @@ import type {
   UserWorkspaceScope,
 } from '@ddlbuilder/shared-types/workspace';
 import { shouldAcceptSnapshotRecord } from '@ddlbuilder/workspace-core';
-import {
-  applyCloudSnapshotToLocal,
-  dispatchWorkspaceSnapshotApplied,
-} from '@/services/workspaceSyncService';
+import { dispatchWorkspaceSnapshotApplied } from '@/services/workspaceSyncService';
 import {
   addSavedTable,
   getSavedTable,
@@ -314,22 +311,6 @@ export const hasMeaningfulWorkspaceData = async (
 
 export const commitWorkspaceMigration = async (payload: WorkspaceMigrationPayload) =>
   requestWorkspaceMigration('commit', payload);
-
-export const applyWorkspaceMigrationPayloadToLocal = async (
-  payload: WorkspaceMigrationPayload,
-  scope: WorkspaceScope,
-) => {
-  await applyCloudSnapshotToLocal(
-    {
-      globalDraft: payload.snapshot.globalDraft,
-      drafts: payload.snapshot.drafts,
-      savedTables: payload.snapshot.savedTables,
-      savedDrafts: payload.snapshot.savedDrafts,
-      folders: payload.snapshot.folders,
-    },
-    { scope },
-  );
-};
 
 export const dismissWorkspaceMigration = (appUserId: string, fingerprint: string) => {
   localStorage.setItem(buildDismissKey(appUserId, fingerprint), '1');

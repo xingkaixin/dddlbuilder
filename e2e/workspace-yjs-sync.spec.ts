@@ -13,7 +13,9 @@ import * as encoding from 'lib0/encoding';
 import { WORKSPACE_SYNC_MESSAGE } from '../packages/shared-types/src/workspaceSync';
 import { encodeAIStreamEvent } from '../packages/shared-types/src/aiStream';
 import type { PersistedState } from '../packages/shared-types/src/index';
-import { confirmFieldTypeChangeIfNeeded } from './utils';
+import { confirmFieldTypeChangeIfNeeded, ensureBuilderVisible } from './utils';
+import type { WorkspaceMigrationPayload } from '../packages/shared-types/src/workspace';
+import { applyWorkspaceMigrationSnapshot } from '../apps/worker/server-api/lib/workspaceMigration';
 import {
   getWorkspaceSavedTable,
   upsertWorkspaceSavedTable,
@@ -410,6 +412,67 @@ const ensureFolderExpanded = async (page: Page, folderName: string) => {
     }
   }
 };
+
+for (const action of ['dismiss', 'confirm'] as const) {
+  test(`anonymous migration ${action} respects confirmation across reload`, async ({ browser }) => {
+    const context = await browser.newContext({ locale: 'zh-CN' });
+    const page = await context.newPage();
+    await page.goto('/');
+    await ensureBuilderVisible(page);
+    await saveCurrentTable(page, 'ANONYMOUS_ORDERS');
+
+    const server = new MockWorkspaceYjsServer();
+    const workspaceId = `ws-migration-${action}-${Date.now()}`;
+    await mockSignedInWorkspace(context, server, workspaceId);
+    const modes: string[] = [];
+    await context.route('**/api/workspace/migrations', async (route) => {
+      const { mode, payload } = route.request().postDataJSON() as {
+        mode: 'analyze' | 'commit';
+        payload: WorkspaceMigrationPayload;
+      };
+      modes.push(mode);
+      await route.fulfill({
+        json:
+          mode === 'commit'
+            ? applyWorkspaceMigrationSnapshot(server.doc, 'user-1', payload.snapshot)
+            : {
+                status: modes.includes('commit') ? 'completed' : 'ready',
+                createdCount: 1,
+                copiedCount: 0,
+                skippedCount: 0,
+                conflictCount: 0,
+                conflicts: [],
+              },
+      });
+    });
+    await page.reload();
+    const dialog = page.getByRole('dialog', { name: '迁移匿名工作区' });
+    await expect(dialog).toBeVisible();
+    expect(server.doc.getMap('savedTables').size).toBe(0);
+
+    await dialog
+      .getByRole('button', { name: action === 'confirm' ? '开始迁移' : '稍后处理' })
+      .click();
+    await expect(dialog).toBeHidden();
+    await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
+    expect(modes).toEqual(action === 'confirm' ? ['analyze', 'commit'] : ['analyze']);
+
+    await page.reload();
+    await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
+    await expect(dialog).toBeHidden();
+    if (action === 'dismiss') {
+      expect(server.doc.getMap('savedTables').size).toBe(0);
+      expect(server.doc.getMap('drafts').size).toBe(0);
+      expect(modes).not.toContain('commit');
+    } else {
+      expect(server.doc.getMap('savedTables').size).toBe(1);
+      await openSavedTables(page);
+      await expect(getSavedTableRow(page, 'anonymous_orders')).toBeVisible();
+    }
+    await context.close();
+    server.doc.destroy();
+  });
+}
 
 test('same-name saved tables keep independent tabs, drafts and lifecycle', async ({ browser }) => {
   const server = new MockWorkspaceYjsServer();
