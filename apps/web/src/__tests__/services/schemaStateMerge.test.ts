@@ -104,9 +104,9 @@ describe('mergeSchemaStates', () => {
       },
     });
     const merged = mergeSchemaStates(base, configured, renamed);
-    expect(merged.foreignKeys).toEqual([
-      { ...configured.foreignKeys![0], refFields: ['account_id'] },
-      { ...configured.foreignKeys![1], fields: ['account_id'] },
+    expect(merged.foreignKeys).toMatchObject([
+      { id: 'self', fields: ['b'], refTable: 'users', refFields: ['account_id'] },
+      { id: 'external', fields: ['account_id'], refTable: 'other', refFields: ['a'] },
     ]);
     expect(merged.mysqlPartitionConfig?.expression).toBe("account_id + LENGTH('a')");
     expect(merged.citusShardingConfig?.distributionColumn).toBe('account_id');

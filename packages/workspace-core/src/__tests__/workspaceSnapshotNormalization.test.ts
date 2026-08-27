@@ -15,27 +15,28 @@ const state = (tableName: string) =>
     authObjects: [],
   });
 
-const snapshot = (): WorkspaceMigrationSnapshot => ({
-  globalDraft: { state: state('global'), updatedAt: 1 },
-  drafts: [
-    {
-      draftId: 'named',
-      state: state('stored'),
-      createdAt: 2,
-      updatedAt: 20,
-      folderId: 'folder',
-      trashedAt: 20,
+const snapshot = () =>
+  ({
+    globalDraft: { state: state('global'), updatedAt: 1 },
+    drafts: [
+      {
+        draftId: 'named',
+        state: state('stored'),
+        createdAt: 2,
+        updatedAt: 20,
+        folderId: 'folder',
+        trashedAt: 20,
+      },
+    ],
+    activeSession: {
+      activeSource: { kind: 'draft', draftId: 'named' },
+      activeState: state('session'),
+      updatedAt: 30,
     },
-  ],
-  activeSession: {
-    activeSource: { kind: 'draft', draftId: 'named' },
-    activeState: state('session'),
-    updatedAt: 30,
-  },
-  savedTables: [],
-  savedDrafts: [],
-  folders: [],
-});
+    savedTables: [],
+    savedDrafts: [],
+    folders: [],
+  }) satisfies WorkspaceMigrationSnapshot;
 
 describe('normalizeWorkspaceMigrationSnapshot', () => {
   it('按活动草稿 ID 合并并保留其他草稿及元数据', () => {
@@ -59,14 +60,14 @@ describe('normalizeWorkspaceMigrationSnapshot', () => {
 
   it.each([10, 20])('旧或同时间会话不覆盖已保存草稿 (%s)', (updatedAt) => {
     const input = snapshot();
-    input.activeSession!.updatedAt = updatedAt;
+    input.activeSession.updatedAt = updatedAt;
     expect(normalizeWorkspaceMigrationSnapshot(input).drafts[1]).toEqual(input.drafts[0]);
   });
 
   it('先归一化全局草稿再比较默认草稿会话时间', () => {
     const input = snapshot();
     input.globalDraft = { state: state('newer_global'), updatedAt: 40 };
-    input.activeSession!.activeSource = { kind: 'draft', draftId: 'default' };
+    input.activeSession.activeSource = { kind: 'draft', draftId: 'default' };
     const result = normalizeWorkspaceMigrationSnapshot(input);
     expect(result.drafts[0]).toMatchObject({ state: { tableName: 'newer_global' }, updatedAt: 40 });
     expect(result.drafts[1]).toEqual(input.drafts[0]);
