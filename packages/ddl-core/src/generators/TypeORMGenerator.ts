@@ -79,14 +79,11 @@ export class TypeORMGenerator implements ORMGenerator {
       const isNullable = field.nullable && !isPk;
 
       const optionsParts: string[] = [];
+      if (propName !== field.name) {
+        optionsParts.push(`name: ${JSON.stringify(field.name)}`);
+      }
 
-      if (isPk) {
-        if (isAutoInc) {
-          lines.push(`  @PrimaryGeneratedColumn()`);
-        } else {
-          lines.push(`  @PrimaryColumn()`);
-        }
-      } else {
+      if (!isPk) {
         if (singleUniqueFields.has(field.name)) {
           optionsParts.push('unique: true');
         }
@@ -105,10 +102,10 @@ export class TypeORMGenerator implements ORMGenerator {
         } else if (field.defaultKind === 'uuid') {
           optionsParts.push(`default: () => 'uuid()'`);
         }
-
-        const opts = optionsParts.length > 0 ? `{ ${optionsParts.join(', ')} }` : '';
-        lines.push(`  @Column(${opts})`);
       }
+      const decorator = isPk ? (isAutoInc ? 'PrimaryGeneratedColumn' : 'PrimaryColumn') : 'Column';
+      const opts = optionsParts.length > 0 ? `{ ${optionsParts.join(', ')} }` : '';
+      lines.push(`  @${decorator}(${opts})`);
 
       const typeStr = isNullable ? `${tsType} | null` : tsType;
       lines.push(`  ${propName}: ${typeStr};`);
@@ -131,7 +128,7 @@ export class TypeORMGenerator implements ORMGenerator {
       const joinColumns = foreignKey.fields.map((fieldName, index) => {
         const parts = [
           `name: '${fieldName}'`,
-          `referencedColumnName: '${foreignKey.refFields[index]}'`,
+          `referencedColumnName: '${toCamelCase(foreignKey.refFields[index] ?? '')}'`,
           ...(index === 0 && foreignKey.name
             ? [`foreignKeyConstraintName: '${foreignKey.name}'`]
             : []),

@@ -31,11 +31,12 @@ export class PrismaGenerator implements ORMGenerator {
 
     const lines: string[] = [];
     const { primaryFields } = buildIndexFieldLookup(indexes);
+    const modelName = toPascalCase(tableName.trim());
 
     if (tableComment.trim()) {
       lines.push(`/// ${tableComment.trim()}`);
     }
-    lines.push(`model ${toPascalCase(tableName.trim())} {`);
+    lines.push(`model ${modelName} {`);
 
     for (const field of fields) {
       const fieldName = toCamelCase(field.name);
@@ -64,6 +65,9 @@ export class PrismaGenerator implements ORMGenerator {
       }
       if (field.defaultKind === 'expression' && field.defaultValue.trim()) {
         decorations.push(`@default(dbgenerated(${JSON.stringify(field.defaultValue)}))`);
+      }
+      if (fieldName !== field.name) {
+        decorations.push(`@map(${JSON.stringify(field.name)})`);
       }
 
       if (field.comment.trim()) {
@@ -116,6 +120,9 @@ export class PrismaGenerator implements ORMGenerator {
       );
     }
 
+    if (modelName !== tableName.trim()) {
+      lines.push(`  @@map(${JSON.stringify(tableName.trim())})`);
+    }
     lines.push('}');
     return lines.join('\n');
   }
