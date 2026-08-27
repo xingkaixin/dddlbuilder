@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { AISchemaPatchPanel } from './AISchemaPatchPanel';
 import { AIIndexAdvisorDialog } from './AIIndexAdvisorDialog';
 import { GlobalDialogs } from './containers/GlobalDialogs';
-import type { AppDialogLayerModel } from './useAppController';
+import type { AppDialogLayerModel } from './buildAppDialogLayerModel';
 import { WebMcpChangeDialog } from '@/webmcp/WebMcpChangeDialog';
 
 const ImportSqlDialog = lazy(() =>

@@ -28,6 +28,8 @@ import { useTableTemplates } from '@/hooks/useTableTemplates';
 import { useTranslation } from 'react-i18next';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { useWebMcpTools } from '@/webmcp/useWebMcpTools';
+import { buildAppDialogLayerModel } from './buildAppDialogLayerModel';
+import { buildAppWorkspaceModel } from './buildAppWorkspaceModel';
 
 import { isCnyFireworksEnabled } from '@/config/featureFlags';
 
@@ -36,6 +38,7 @@ export function useAppController() {
   const authSession = useAuthSession();
   const domains = useEditorDomains();
   const { editor, ui, auth, sharding, animations, partition, tableOptions } = domains;
+  const workspaceController = useWorkspaceController();
   const {
     persistence,
     savedTableData,
@@ -45,7 +48,7 @@ export function useAppController() {
     loadedTableNormalizedName,
     loadedTableName,
     loadedTableSignature,
-  } = useWorkspaceController();
+  } = workspaceController;
   const {
     schemaName,
     tableName,
@@ -63,16 +66,12 @@ export function useAppController() {
     resetIndexState,
   } = editor;
   const {
-    workspaceSidebarOpen,
     outputPanelOpen,
     setIsClearDialogOpen,
     setShowFireworks,
     setSavedTablesDrawerOpen,
-    isImportDialogOpen,
     setIsImportDialogOpen,
-    isErDialogOpen,
     setIsErDialogOpen,
-    isAISchemaPatchOpen,
     setIsAISchemaPatchOpen,
     setWorkspaceSidebarOpen,
     setOutputPanelOpen,
@@ -89,18 +88,7 @@ export function useAppController() {
     setIsMockDataDialogOpen,
   } = ui;
 
-  const {
-    saveDialog,
-    renameDialog,
-    deleteDialog,
-    saveName,
-    saveError,
-    renameName,
-    renameError,
-    deleteTarget,
-    handleSaveNameChange,
-    handleRenameNameChange,
-  } = useDialogStates({
+  const dialogStates = useDialogStates({
     isSaveDialogOpen,
     setIsSaveDialogOpen,
     isRenameDialogOpen,
@@ -108,6 +96,7 @@ export function useAppController() {
     isDeleteDialogOpen,
     setIsDeleteDialogOpen,
   });
+  const { saveDialog, renameDialog, deleteDialog } = dialogStates;
 
   const { handleFireworksComplete } = useFireworksIntro({
     enabled: isCnyFireworksEnabled,
@@ -135,7 +124,6 @@ export function useAppController() {
     selectWorkspaceSnapshot,
     createDraft,
     deleteDraftById,
-    moveDraftToFolder,
     getSavedTableDraft,
     removeSavedTableDraft,
     renameSavedTableDraft,
@@ -162,18 +150,15 @@ export function useAppController() {
     loadedTableSignature,
   });
   const {
-    normalizedFields,
     currentPersistedState,
     buildPersistedState,
     serializePersistedState,
     hasLoadedTable,
     isLoadedDirty,
     canSaveCurrent,
-    saveInputDisabled,
-    tableDiff,
   } = schemaController.derived;
   const { setLoadedTableVersion, workspaceLabel } = schemaController.loadedPresentation;
-  const { indexAdvisor, reviewState, shareAction, showToast } = schemaController;
+  const { reviewState, showToast } = schemaController;
   const { result: reviewResult, setReviewResult } = reviewState;
 
   const tabLifecycle = useTabLifecycle({
@@ -185,15 +170,8 @@ export function useAppController() {
     resolveWorkspaceSnapshot,
     resetWorkspaceSelection,
   });
-  const {
-    tabs,
-    activeTabId,
-    activeWorkspaceTab,
-    getActiveTab,
-    updateActiveTabTitle,
-    switchToTabById,
-    closeTab: handleCloseTab,
-  } = tabLifecycle;
+  const { tabs, activeTabId, activeWorkspaceTab, getActiveTab, updateActiveTabTitle } =
+    tabLifecycle;
   const activeEditorSource = activeWorkspaceTab?.source ?? activeSource;
   const canSyncActiveTab = activeWorkspaceTab != null && !activeWorkspaceTab.isLoading;
 
@@ -476,13 +454,7 @@ export function useAppController() {
     handleSaveAsTableTemplate,
   });
 
-  const {
-    presentedTabs,
-    recentDrafts,
-    recentTables,
-    tablePresentations,
-    shouldShowWorkspaceSkeleton,
-  } = useWorkspacePresentation({
+  const workspacePresentation = useWorkspacePresentation({
     activeSourceKind: activeEditorSource.kind,
     activeTabId,
     activeWorkspaceTab,
@@ -493,7 +465,6 @@ export function useAppController() {
     savedTables,
     tabs,
   });
-
   const editorSurface = useEditorSurfaceModel({
     domains,
     schemaController,
@@ -529,274 +500,52 @@ export function useAppController() {
     replaceState: applySavedState,
   });
 
-  return {
-    workspaceView: {
-      actions: {
-        folderActions: {
-          handleMoveTableToFolder: folderActions.handleMoveTableToFolder,
-          handleMoveFolderToFolder: folderActions.handleMoveFolderToFolder,
-          handleOpenCreateFolderDialog: folderActions.handleOpenCreateFolderDialog,
-          handleOpenRenameFolderDialog: folderActions.handleOpenRenameFolderDialog,
-          handleOpenDeleteFolderDialog: folderActions.handleOpenDeleteFolderDialog,
-        },
-        shareAction: {
-          handleShare: shareAction.handleShare,
-          isSharing: shareAction.isSharing,
-        },
-        savedTableFlow: {
-          handleOpenSaveDialog: savedTableFlow.handleOpenSaveDialog,
-          handleOpenRenameDialog: savedTableFlow.handleOpenRenameDialog,
-          handleOpenDeleteDialog: savedTableFlow.handleOpenDeleteDialog,
-        },
-        workspaceTabs: {
-          handleSelectDraft: workspaceTabs.handleSelectDraft,
-          handleDeleteDraft: workspaceTabs.handleDeleteDraft,
-          handleSelectSavedTable: workspaceTabs.handleSelectSavedTable,
-          handleCreateDraft: workspaceTabs.handleCreateDraft,
-          handleLoadExample: workspaceTabs.handleLoadExample,
-        },
-        tableTemplateActions: {
-          handleApplyTemplate: tableTemplateActions.handleApplyTemplate,
-          handleManageTemplates: tableTemplateActions.handleManageTemplates,
-          handleSaveAsTemplate: tableTemplateActions.handleSaveAsTemplate,
-        },
-        trashActions: {
-          handleRestoreTable: trashActions.handleRestoreTable,
-          handleDeleteTablePermanently: trashActions.handleDeleteTablePermanently,
-          handleRestoreDraft: trashActions.handleRestoreDraft,
-          handleDeleteDraftPermanently: trashActions.handleDeleteDraftPermanently,
-          handleEmptyTrash: trashActions.handleEmptyTrash,
-        },
-        schemaActions: {
-          handleImport: schemaActions.handleImport,
-        },
-        navigationActions: {
-          handleOpenAIGenerateDialog: navigationActions.handleOpenAIGenerateDialog,
-          handleOpenSavedTablesDrawer: navigationActions.handleOpenSavedTablesDrawer,
-          handleViewVersionHistory: navigationActions.handleViewVersionHistory,
-        },
-      },
-      ui: {
-        currentDbType: editor.dbType,
-        savedTablesDrawerOpen: ui.savedTablesDrawerOpen,
-        setSavedTablesDrawerOpen: ui.setSavedTablesDrawerOpen,
-        showFireworks: ui.showFireworks,
-      },
-      resources: {
-        savedTableData: {
-          savedTables: savedTableData.savedTables,
-          trashedTables: savedTableData.trashedTables,
-          loading: savedTableData.loading,
-          error: savedTableData.error,
-          importTables: savedTableData.importTables,
-        },
-        folderData: {
-          folderTree: folderData.folderTree,
-          loading: folderData.loading,
-        },
-        tableTemplateData: {
-          templates: tableTemplateData.templates,
-          loading: tableTemplateData.loading,
-        },
-      },
-      workspace: {
-        activeSource: activeEditorSource,
-        activeTabId,
-        draftSummaries,
-        handleCloseTab,
-        isLoadedDirty,
-        isShareView,
-        loadedTableName,
-        loadedTableNormalizedName,
-        moveDraftToFolder,
-        presentedTabs,
-        recentDrafts,
-        recentTables,
-        shouldShowWorkspaceSkeleton,
-        switchToTabById,
-        tablePresentations,
-        tabs,
-        trashedDrafts,
-        workspaceLabel,
-      },
-      layout: {
-        workspaceSidebarOpen,
-        collapseSidebar,
-        expandSidebar,
-        openImportDialog,
-        openWorkspaceAfterImport,
-      },
-      editorSurface,
-      celebration: {
-        handleFireworksComplete,
-        handlePlayFireworks,
-      },
-    },
-    dialogLayer: {
-      webMcpDialog,
-      actions: {
-        indexAdvisor: {
-          open: indexAdvisor.open,
-          setDialogOpen: indexAdvisor.setDialogOpen,
-          isLoading: indexAdvisor.isLoading,
-          result: indexAdvisor.result,
-          error: indexAdvisor.error,
-          suggestedQuery: indexAdvisor.suggestedQuery,
-          blockingMessage: indexAdvisor.blockingMessage,
-          analyze: indexAdvisor.analyze,
-          applyRecommendation: indexAdvisor.applyRecommendation,
-        },
-        folderActions: {
-          isFolderDialogOpen: folderActions.isFolderDialogOpen,
-          setIsFolderDialogOpen: folderActions.setIsFolderDialogOpen,
-          folderDialogMode: folderActions.folderDialogMode,
-          folderDialogParent: folderActions.folderDialogParent,
-          folderDialogTarget: folderActions.folderDialogTarget,
-          handleFolderDialogConfirm: folderActions.handleFolderDialogConfirm,
-          isDeleteFolderDialogOpen: folderActions.isDeleteFolderDialogOpen,
-          setIsDeleteFolderDialogOpen: folderActions.setIsDeleteFolderDialogOpen,
-          deleteFolderTarget: folderActions.deleteFolderTarget,
-          deleteFolderTableCount: folderActions.deleteFolderTableCount,
-          handleDeleteFolderConfirm: folderActions.handleDeleteFolderConfirm,
-        },
-        templateActions: {
-          isTemplateManagerOpen: templateActions.isTemplateManagerOpen,
-          setIsTemplateManagerOpen: templateActions.setIsTemplateManagerOpen,
-          isCreateTemplateDialogOpen: templateActions.isCreateTemplateDialogOpen,
-          setIsCreateTemplateDialogOpen: templateActions.setIsCreateTemplateDialogOpen,
-          selectedFieldsForTemplate: templateActions.selectedFieldsForTemplate,
-          handleCreateTemplateFromFields: templateActions.handleCreateTemplateFromFields,
-        },
-        clearActions: {
-          cancelClearAll: clearActions.cancelClearAll,
-          confirmClearAll: clearActions.confirmClearAll,
-        },
-        savedTableFlow: {
-          handleSaveDialogOpenChange: savedTableFlow.handleSaveDialogOpenChange,
-          handleConfirmSave: savedTableFlow.handleConfirmSave,
-          handleRenameDialogOpenChange: savedTableFlow.handleRenameDialogOpenChange,
-          handleConfirmRename: savedTableFlow.handleConfirmRename,
-          handleDeleteDialogOpenChange: savedTableFlow.handleDeleteDialogOpenChange,
-          handleConfirmDelete: savedTableFlow.handleConfirmDelete,
-        },
-        tableTemplateActions: {
-          isManagerOpen: tableTemplateActions.isManagerOpen,
-          setIsManagerOpen: tableTemplateActions.setIsManagerOpen,
-          isCreateDialogOpen: tableTemplateActions.isCreateDialogOpen,
-          setIsCreateDialogOpen: tableTemplateActions.setIsCreateDialogOpen,
-          pendingBlueprint: tableTemplateActions.pendingBlueprint,
-          handleCreateTemplate: tableTemplateActions.handleCreateTemplate,
-        },
-        trashActions: {
-          isEmptyTrashDialogOpen: trashActions.isEmptyTrashDialogOpen,
-          setIsEmptyTrashDialogOpen: trashActions.setIsEmptyTrashDialogOpen,
-          handleConfirmEmptyTrash: trashActions.handleConfirmEmptyTrash,
-        },
-        aiPatchFlow: {
-          applyChanges: aiPatchFlow.applyChanges,
-          focusChange: aiPatchFlow.focusChange,
-        },
-        schemaActions: {
-          handleApplyAIGeneratedSchema: schemaActions.handleApplyAIGeneratedSchema,
-          handleImport: schemaActions.handleImport,
-        },
-      },
-      domains: {
-        editor: {
-          dbType: editor.dbType,
-          indexes: editor.indexes,
-          objectType: editor.objectType,
-          schemaName: editor.schemaName,
-          tableName: editor.tableName,
-        },
-        ui: {
-          isClearDialogOpen: ui.isClearDialogOpen,
-          setIsClearDialogOpen: ui.setIsClearDialogOpen,
-          isSaveDialogOpen: ui.isSaveDialogOpen,
-          isRenameDialogOpen: ui.isRenameDialogOpen,
-          isDeleteDialogOpen: ui.isDeleteDialogOpen,
-          isDiffDialogOpen: ui.isDiffDialogOpen,
-          setIsDiffDialogOpen: ui.setIsDiffDialogOpen,
-          versionHistoryTarget: ui.versionHistoryTarget,
-          setVersionHistoryTarget: ui.setVersionHistoryTarget,
-          timelinePlayerTarget: ui.timelinePlayerTarget,
-          setTimelinePlayerTarget: ui.setTimelinePlayerTarget,
-          isReviewHistoryOpen: ui.isReviewHistoryOpen,
-          setIsReviewHistoryOpen: ui.setIsReviewHistoryOpen,
-          isAIGenerateDialogOpen: ui.isAIGenerateDialogOpen,
-          setIsAIGenerateDialogOpen: ui.setIsAIGenerateDialogOpen,
-          isStorageEstimatorOpen: ui.isStorageEstimatorOpen,
-          setIsStorageEstimatorOpen: ui.setIsStorageEstimatorOpen,
-          isMockDataDialogOpen: ui.isMockDataDialogOpen,
-          setIsMockDataDialogOpen: ui.setIsMockDataDialogOpen,
-        },
-      },
-      visibility: {
-        isImportDialogOpen,
-        setIsImportDialogOpen,
-        isErDialogOpen,
-        setIsErDialogOpen,
-        isAISchemaPatchOpen,
-        setIsAISchemaPatchOpen,
-      },
-      resources: {
-        savedTableData: {
-          importTables: savedTableData.importTables,
-          saveTable: savedTableData.saveTable,
-          savedTables: savedTableData.savedTables,
-        },
-        folderData: {
-          folderTree: folderData.folderTree,
-        },
-        fieldTemplateData: {
-          create: fieldTemplateData.create,
-          duplicate: fieldTemplateData.duplicate,
-          loading: fieldTemplateData.loading,
-          remove: fieldTemplateData.remove,
-          templates: fieldTemplateData.templates,
-          update: fieldTemplateData.update,
-        },
-        tableTemplateData: {
-          duplicate: tableTemplateData.duplicate,
-          loading: tableTemplateData.loading,
-          remove: tableTemplateData.remove,
-          rename: tableTemplateData.rename,
-          templates: tableTemplateData.templates,
-        },
-      },
-      workspace: {
-        loadedTableNormalizedName,
-        workspaceScope,
-        isShareView,
-      },
-      schema: {
-        aiGenerateExistingConfig,
-        aiGenerateTemplates,
-        canSaveCurrent,
-        currentPersistedState,
-        hasLoadedTable,
-        normalizedFields,
-        storageFormat: tableOptions.tableMiscConfig.storedAs || undefined,
-        tableDiff,
-      },
-      dialogs: {
-        deleteTarget,
-        handleCopyDiff,
-        handleRenameNameChange,
-        handleRollbackVersion,
-        handleSaveNameChange,
-        handleSelectTableFromEr,
-        renameError,
-        renameName,
-        saveError,
-        saveInputDisabled,
-        saveName,
-      },
-    },
-  };
+  const workspaceView = buildAppWorkspaceModel({
+    domains,
+    workspaceController,
+    tableTemplateData,
+    schemaController,
+    tabLifecycle,
+    folderActions,
+    savedTableFlow,
+    workspaceTabs,
+    tableTemplateActions,
+    trashActions,
+    schemaActions,
+    navigationActions,
+    workspacePresentation,
+    editorSurface,
+    activeEditorSource,
+    isLoadedDirty,
+    collapseSidebar,
+    expandSidebar,
+    openImportDialog,
+    openWorkspaceAfterImport,
+    handleFireworksComplete,
+    handlePlayFireworks,
+  });
+  const dialogLayer = buildAppDialogLayerModel({
+    domains,
+    workspaceController,
+    schemaController,
+    webMcpDialog,
+    folderActions,
+    templateActions,
+    clearActions,
+    savedTableFlow,
+    tableTemplateActions,
+    trashActions,
+    aiPatchFlow,
+    schemaActions,
+    fieldTemplateData,
+    tableTemplateData,
+    dialogStates,
+    aiGenerateExistingConfig,
+    aiGenerateTemplates,
+    handleCopyDiff,
+    handleRollbackVersion,
+    handleSelectTableFromEr,
+  });
+
+  return { workspaceView, dialogLayer };
 }
-
-type AppController = ReturnType<typeof useAppController>;
-
-export type AppWorkspaceModel = AppController['workspaceView'];
-export type AppDialogLayerModel = AppController['dialogLayer'];

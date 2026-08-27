@@ -10,7 +10,7 @@ import { TabBar } from './TabBar';
 import { TableTemplatePopover } from './TableTemplatePopover';
 import { WorkspaceEmptyState } from './WorkspaceEmptyState';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
-import type { AppWorkspaceModel } from './useAppController';
+import type { AppWorkspaceModel } from './buildAppWorkspaceModel';
 
 const FireworksOverlay = lazy(() => import('@/components/FireworksOverlay'));
 
