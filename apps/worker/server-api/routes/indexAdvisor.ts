@@ -78,6 +78,29 @@ const normalizeIndexes = (value: unknown): AIIndexAdvisorIndexInput[] => {
     .filter((item): item is AIIndexAdvisorIndexInput => item !== null);
 };
 
+const normalizeRecommendedIndex = (
+  value: unknown,
+  fieldNames: ReadonlySet<string>,
+): AIIndexAdvisorIndexInput | undefined => {
+  if (!value || typeof value !== 'object') return undefined;
+  const index = value as Record<string, unknown>;
+  const name = typeof index.name === 'string' ? index.name.trim() : '';
+  if (!name || !Array.isArray(index.fields) || index.fields.length === 0) return undefined;
+
+  const fields: AIIndexAdvisorIndexInput['fields'] = [];
+  for (const rawField of index.fields) {
+    if (!rawField || typeof rawField !== 'object') return undefined;
+    const field = rawField as Record<string, unknown>;
+    const fieldName = typeof field.name === 'string' ? field.name.trim() : '';
+    if (!fieldNames.has(fieldName)) return undefined;
+    fields.push({
+      name: fieldName,
+      direction: field.direction === 'DESC' ? 'DESC' : 'ASC',
+    });
+  }
+  return { name, fields, unique: index.unique === true };
+};
+
 const normalizeResult = (
   payload: unknown,
   fields: AIIndexAdvisorFieldInput[],
@@ -102,32 +125,7 @@ const normalizeResult = (
         return null;
       }
 
-      let recommendedIndex: AIIndexAdvisorIndexInput | undefined;
-      const rawIndex =
-        raw.index && typeof raw.index === 'object' ? (raw.index as Record<string, unknown>) : null;
-      if (rawIndex) {
-        const name = typeof rawIndex.name === 'string' ? rawIndex.name.trim() : '';
-        const rawIndexFields = Array.isArray(rawIndex.fields) ? rawIndex.fields : [];
-        const indexFields = rawIndexFields
-          .map((rawField) => {
-            if (!rawField || typeof rawField !== 'object') return null;
-            const field = rawField as Record<string, unknown>;
-            const fieldName = typeof field.name === 'string' ? field.name.trim() : '';
-            if (!fieldNames.has(fieldName)) return null;
-            return {
-              name: fieldName,
-              direction: field.direction === 'DESC' ? ('DESC' as const) : ('ASC' as const),
-            };
-          })
-          .filter((field): field is AIIndexAdvisorIndexInput['fields'][number] => field !== null);
-        if (name && indexFields.length > 0) {
-          recommendedIndex = {
-            name,
-            fields: indexFields,
-            unique: rawIndex.unique === true,
-          };
-        }
-      }
+      const recommendedIndex = normalizeRecommendedIndex(raw.index, fieldNames);
 
       return {
         id: `rec_${index + 1}`,
