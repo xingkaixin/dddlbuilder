@@ -5,11 +5,7 @@ import type {
   WorkspaceSnapshot,
   WorkspaceSource,
 } from '@ddlbuilder/shared-types/workspace';
-import {
-  type ApplySchemaDocumentStateOptions,
-  tableDocToSchemaDocumentState,
-  tableMetadata,
-} from './workspaceTableDoc';
+import type { ApplySchemaDocumentStateOptions } from './workspaceTableDoc';
 import {
   getDraftRecordFromYDoc,
   getWorkspaceRoot,
@@ -17,19 +13,30 @@ import {
   upsertTableRecord,
   writeFolderRecord,
 } from './workspaceYDoc';
-import { readWorkspaceCreatedAt, readWorkspaceTimestamp } from './workspaceMetadata';
+import { getWorkspaceSavedTable, readWorkspaceSavedRecordIdentity } from './workspaceSavedRecords';
+export {
+  upsertWorkspaceSavedTable,
+  deleteWorkspaceSavedTable,
+  getWorkspaceSavedTable,
+  listWorkspaceSavedTables,
+  listWorkspaceTrashedSavedTables,
+  upsertWorkspaceSavedDraft,
+  deleteWorkspaceSavedDraft,
+  getWorkspaceSavedDraft,
+  listWorkspaceSavedDrafts,
+  renameWorkspaceSavedDraft,
+  renameWorkspaceSavedTable,
+  type WorkspaceSavedTableRecord,
+  type WorkspaceSavedDraftRecord,
+} from './workspaceSavedRecords';
 
-export type WorkspaceSavedTableRecord = Omit<
-  WorkspaceSnapshot['savedTables'][number],
-  'createdAt' | 'tableId'
-> & { tableId: string; createdAt: number };
-export type WorkspaceSavedDraftRecord = WorkspaceSnapshot['savedDrafts'][number];
 export type WorkspaceDraftRecord = Omit<WorkspaceSnapshot['drafts'][number], 'draftId'>;
 export type WorkspaceYDocCollection = 'drafts' | 'savedTables' | 'savedDrafts' | 'folders';
 export type WorkspaceYDocChange = {
   collection: WorkspaceYDocCollection;
   entityIds: ReadonlySet<string>;
   origin: unknown;
+  renamedTables?: Array<{ previousName: string; normalizedName: string; tableName: string }>;
 };
 
 export const upsertWorkspaceDraft = (
@@ -68,109 +75,6 @@ export const listWorkspaceDrafts = (doc: Y.Doc) =>
 export const listWorkspaceTrashedDrafts = (doc: Y.Doc) =>
   listWorkspaceDraftRecords(doc).filter(({ record }) => record.trashedAt != null);
 
-export const upsertWorkspaceSavedTable = (
-  doc: Y.Doc,
-  record: WorkspaceSavedTableRecord,
-  options?: ApplySchemaDocumentStateOptions,
-) => {
-  upsertTableRecord(
-    getWorkspaceRoot(doc).savedTables,
-    record.normalizedName,
-    record.state,
-    {
-      tableId: record.tableId,
-      normalizedName: record.normalizedName,
-      name: record.name,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
-      folderId: record.folderId,
-      trashedAt: record.trashedAt,
-    },
-    options,
-  );
-};
-
-export const deleteWorkspaceSavedTable = (doc: Y.Doc, normalizedName: string) => {
-  getWorkspaceRoot(doc).savedTables.delete(normalizedName);
-};
-
-export const getWorkspaceSavedTable = (
-  doc: Y.Doc,
-  normalizedName: string,
-): WorkspaceSavedTableRecord | null => {
-  const tableDoc = getWorkspaceRoot(doc).savedTables.get(normalizedName);
-  if (!tableDoc) return null;
-  const metadata = tableMetadata(tableDoc);
-  const updatedAt = readWorkspaceTimestamp(metadata.updatedAt);
-  return {
-    tableId: typeof metadata.tableId === 'string' ? metadata.tableId : `legacy:${normalizedName}`,
-    normalizedName,
-    name: typeof metadata.name === 'string' ? metadata.name : normalizedName,
-    state: tableDocToSchemaDocumentState(tableDoc),
-    createdAt: readWorkspaceCreatedAt(metadata.createdAt, updatedAt),
-    updatedAt,
-    ...(typeof metadata.folderId === 'string' ? { folderId: metadata.folderId } : {}),
-    ...(typeof metadata.trashedAt === 'number' ? { trashedAt: metadata.trashedAt } : {}),
-  };
-};
-
-const listWorkspaceSavedTableRecords = (doc: Y.Doc): WorkspaceSavedTableRecord[] =>
-  Array.from(getWorkspaceRoot(doc).savedTables.keys()).flatMap((normalizedName) => {
-    const record = getWorkspaceSavedTable(doc, normalizedName);
-    return record ? [record] : [];
-  });
-
-export const listWorkspaceSavedTables = (doc: Y.Doc): WorkspaceSavedTableRecord[] =>
-  listWorkspaceSavedTableRecords(doc).filter((record) => record.trashedAt == null);
-
-export const listWorkspaceTrashedSavedTables = (doc: Y.Doc): WorkspaceSavedTableRecord[] =>
-  listWorkspaceSavedTableRecords(doc).filter((record) => record.trashedAt != null);
-
-export const upsertWorkspaceSavedDraft = (
-  doc: Y.Doc,
-  record: WorkspaceSavedDraftRecord,
-  options?: ApplySchemaDocumentStateOptions,
-) => {
-  upsertTableRecord(
-    getWorkspaceRoot(doc).savedDrafts,
-    record.normalizedName,
-    record.state,
-    {
-      normalizedName: record.normalizedName,
-      tableName: record.tableName,
-      baseSignature: record.baseSignature,
-      updatedAt: record.updatedAt,
-    },
-    options,
-  );
-};
-
-export const deleteWorkspaceSavedDraft = (doc: Y.Doc, normalizedName: string) => {
-  getWorkspaceRoot(doc).savedDrafts.delete(normalizedName);
-};
-
-export const getWorkspaceSavedDraft = (
-  doc: Y.Doc,
-  normalizedName: string,
-): WorkspaceSavedDraftRecord | null => {
-  const tableDoc = getWorkspaceRoot(doc).savedDrafts.get(normalizedName);
-  if (!tableDoc) return null;
-  const metadata = tableMetadata(tableDoc);
-  return {
-    normalizedName,
-    tableName: typeof metadata.tableName === 'string' ? metadata.tableName : normalizedName,
-    state: tableDocToSchemaDocumentState(tableDoc),
-    baseSignature: typeof metadata.baseSignature === 'string' ? metadata.baseSignature : '',
-    updatedAt: readWorkspaceTimestamp(metadata.updatedAt),
-  };
-};
-
-export const listWorkspaceSavedDrafts = (doc: Y.Doc): WorkspaceSavedDraftRecord[] =>
-  Array.from(getWorkspaceRoot(doc).savedDrafts.keys()).flatMap((normalizedName) => {
-    const record = getWorkspaceSavedDraft(doc, normalizedName);
-    return record ? [record] : [];
-  });
-
 export const upsertWorkspaceFolder = (doc: Y.Doc, folder: TableFolderSnapshot) => {
   writeFolderRecord(doc, folder);
 };
@@ -206,22 +110,52 @@ export const subscribeWorkspaceYDoc = (
   const roots = getWorkspaceRoot(doc);
   const subscriptions = collections.map((collection) => {
     const root = roots[collection];
+    const readIdentity = (key: string) => {
+      const value = root.get(key);
+      if (!value) return null;
+      if (collection !== 'savedTables' && collection !== 'savedDrafts') {
+        return { normalizedName: key, tableName: key };
+      }
+      return readWorkspaceSavedRecordIdentity(doc, collection, key, value);
+    };
+    const identities = new Map(Array.from(root.keys(), (key) => [key, readIdentity(key)]));
     const handleChange = (
       events: Y.YEvent<Y.AbstractType<unknown>>[],
       transaction: Y.Transaction,
     ) => {
-      const entityIds = new Set<string>();
+      const changedKeys = new Set<string>();
       for (const event of events) {
-        const entityId = event.path[0];
-        if (typeof entityId === 'string') {
-          entityIds.add(entityId);
-          continue;
-        }
-        if (event instanceof Y.YMapEvent) {
-          for (const key of event.changes.keys.keys()) entityIds.add(key);
+        const key = event.path[0];
+        if (typeof key === 'string') changedKeys.add(key);
+        else if (event instanceof Y.YMapEvent) {
+          for (const changedKey of event.changes.keys.keys()) changedKeys.add(changedKey);
         }
       }
-      notify({ collection, entityIds, origin: transaction.origin });
+      const entityIds = new Set<string>();
+      const renamedTables: NonNullable<WorkspaceYDocChange['renamedTables']> = [];
+      for (const key of changedKeys) {
+        const previous = identities.get(key);
+        const next = readIdentity(key);
+        if (previous) entityIds.add(previous.normalizedName);
+        if (next) {
+          entityIds.add(next.normalizedName);
+          identities.set(key, next);
+        } else identities.delete(key);
+        if (
+          collection === 'savedTables' &&
+          previous &&
+          next &&
+          (previous.normalizedName !== next.normalizedName || previous.tableName !== next.tableName)
+        ) {
+          renamedTables.push({ previousName: previous.normalizedName, ...next });
+        }
+      }
+      notify({
+        collection,
+        entityIds,
+        origin: transaction.origin,
+        ...(renamedTables.length > 0 ? { renamedTables } : {}),
+      });
     };
     root.observeDeep(handleChange);
     return { root, handleChange };

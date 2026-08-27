@@ -210,6 +210,10 @@ const readTableDocState = (tableDoc: Y.Map<unknown> | undefined) => {
             typeof scalar.get('tableName') === 'string'
               ? String(scalar.get('tableName'))
               : (snapshot?.tableName ?? ''),
+          tableComment:
+            typeof scalar.get('tableComment') === 'string'
+              ? String(scalar.get('tableComment'))
+              : (snapshot?.tableComment ?? ''),
         }
       : {}),
     rows: fieldOrder
@@ -259,20 +263,25 @@ const readMetadata = (tableDoc: Y.Map<unknown> | undefined) => {
   return metadata instanceof Y.Map ? metadata : null;
 };
 
+const savedTableDoc = (doc: Y.Doc, normalizedName: string) =>
+  Array.from(doc.getMap<Y.Map<unknown>>('savedTables').entries()).find(
+    ([key, value]) => (readMetadata(value)?.get('normalizedName') ?? key) === normalizedName,
+  )?.[1];
+
 const readSavedTableState = (doc: Y.Doc, normalizedName: string) => {
-  const tableDoc = doc.getMap<Y.Map<unknown>>('savedTables').get(normalizedName);
+  const tableDoc = savedTableDoc(doc, normalizedName);
   return readTableDocState(tableDoc);
 };
 
 const readSavedTableFolderId = (doc: Y.Doc, normalizedName: string) => {
-  const tableDoc = doc.getMap<Y.Map<unknown>>('savedTables').get(normalizedName);
+  const tableDoc = savedTableDoc(doc, normalizedName);
   const metadata = readMetadata(tableDoc);
   const folderId = metadata?.get('folderId');
   return typeof folderId === 'string' ? folderId : undefined;
 };
 
 const readSavedTableTrashedAt = (doc: Y.Doc, normalizedName: string) => {
-  const tableDoc = doc.getMap<Y.Map<unknown>>('savedTables').get(normalizedName);
+  const tableDoc = savedTableDoc(doc, normalizedName);
   const trashedAt = readMetadata(tableDoc)?.get('trashedAt');
   return typeof trashedAt === 'number' ? trashedAt : undefined;
 };
@@ -498,6 +507,70 @@ test('workspace yjs sync converges saved table lifecycle and folder moves across
     .toEqual(expect.any(Number));
   await expect(getSavedTableRow(pageB, tableName)).toHaveCount(0);
 
+  await contextA.close();
+  await contextB.close();
+});
+
+test('workspace yjs rename preserves an offline save and retargets open tabs', async ({
+  browser,
+}) => {
+  const workspaceId = `ws-rename-e2e-${Date.now()}`;
+  const server = new MockWorkspaceYjsServer();
+  seedDefaultDraft(server.doc, 'cloud_seed', 'id');
+  const contextA = await browser.newContext({ locale: 'zh-CN' });
+  const contextB = await browser.newContext({ locale: 'zh-CN' });
+  await mockSignedInWorkspace(contextA, server, workspaceId, 'online-client');
+  await mockSignedInWorkspace(contextB, server, workspaceId, 'offline-client');
+  const pageA = await contextA.newPage();
+  const pageB = await contextB.newPage();
+  const originalName = `rename_${Date.now()}`;
+  const renamed = `${originalName}_new`;
+
+  await pageA.goto('/');
+  await openDraftByName(pageA, 'cloud_seed');
+  await saveCurrentTable(pageA, originalName);
+  await expect
+    .poll(() => readSavedTableState(server.doc, originalName)?.rows[0]?.fieldName)
+    .toBe('id');
+  const originalNode = savedTableDoc(server.doc, originalName);
+  await pageB.goto('/');
+  await openSavedTables(pageB);
+  await getSavedTableRow(pageB, originalName).click();
+  await expect(tableNameInput(pageB)).toHaveValue(originalName);
+  await expect(pageB.getByTestId('data-table')).toBeVisible();
+  await expect(pageB.locator('[role="tabpanel"]:visible pre code')).toBeVisible();
+
+  server.setClientPaused('offline-client', true);
+  await contextB.setOffline(true);
+  await pageB.evaluate(() => window.dispatchEvent(new Event('offline')));
+  await editFirstFieldName(pageB, 'offline_id');
+  await pageB.getByRole('button', { name: /保存当前表/i }).click();
+  await expect(pageB.getByRole('button', { name: /保存当前表/i })).toBeDisabled();
+
+  await openSavedTables(pageA);
+  await getSavedTableRow(pageA, originalName).hover();
+  await pageA.getByTestId(`table-actions:${originalName}`).getByRole('button').click();
+  await pageA.getByRole('menuitem', { name: /重命名/i }).click();
+  await pageA.getByLabel('新名称').fill(renamed);
+  await pageA.getByRole('button', { name: /确认/i }).click();
+  await expect.poll(() => savedTableDoc(server.doc, renamed) === originalNode).toBe(true);
+
+  server.setClientPaused('offline-client', false);
+  await contextB.setOffline(false);
+  await pageB.evaluate(() => window.dispatchEvent(new Event('online')));
+  await expect
+    .poll(() => readSavedTableState(server.doc, renamed)?.rows[0]?.fieldName)
+    .toBe('offline_id');
+  await expect(pageB.getByText(new RegExp(`当前：${renamed}`))).toBeVisible();
+  await expect(
+    pageB.locator('[data-testid="data-table"] tbody tr:nth-child(1) td:nth-child(2)'),
+  ).toHaveText('offline_id');
+  await pageB.locator('#table-comment').fill('edit after remote rename');
+  await pageB.getByRole('button', { name: /保存当前表/i }).click();
+  await expect
+    .poll(() => readSavedTableState(server.doc, renamed)?.tableComment)
+    .toBe('edit after remote rename');
+  expect(savedTableDoc(server.doc, originalName)).toBeUndefined();
   await contextA.close();
   await contextB.close();
 });

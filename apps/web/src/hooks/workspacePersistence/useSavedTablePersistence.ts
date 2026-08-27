@@ -5,6 +5,7 @@ import {
   listSavedTableRecordsFromYDoc,
   listTrashedSavedTableRecordsFromYDoc,
   upsertSavedTableInYDoc,
+  renameSavedTableInYDoc,
 } from '@/services/workspaceYDocAdapter';
 import {
   addSavedTable,
@@ -72,12 +73,7 @@ export function useSavedTablePersistence() {
   const replaceTable = useCallback(
     async (previousNormalizedName: string, record: SavedTableRecord) => {
       await storage.write({
-        yDoc: (doc) => {
-          upsertSavedTableInYDoc(doc, record);
-          if (record.normalizedName !== previousNormalizedName) {
-            deleteSavedTableFromYDoc(doc, previousNormalizedName);
-          }
-        },
+        yDoc: (doc) => renameSavedTableInYDoc(doc, previousNormalizedName, record),
         local: async (scope) => {
           if (record.normalizedName === previousNormalizedName) {
             await updateSavedTable(record, scope);

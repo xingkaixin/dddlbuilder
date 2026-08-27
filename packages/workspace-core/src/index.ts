@@ -44,6 +44,8 @@ export {
   deleteWorkspaceSavedTable,
   getWorkspaceSavedDraft,
   getWorkspaceSavedTable,
+  renameWorkspaceSavedTable,
+  renameWorkspaceSavedDraft,
   getWorkspaceSourceState,
   listWorkspaceDrafts,
   listWorkspaceFolders,

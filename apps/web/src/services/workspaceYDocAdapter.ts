@@ -23,6 +23,8 @@ import {
   getDraftRecordFromYDoc as getSchemaDraftRecordFromYDoc,
   getWorkspaceSavedDraft,
   getWorkspaceSavedTable,
+  renameWorkspaceSavedTable,
+  renameWorkspaceSavedDraft,
   getWorkspaceSourceState,
   importWorkspaceSnapshotToYDoc,
   isWorkspaceYDocEmpty,
@@ -116,6 +118,15 @@ export const upsertSavedTableInYDoc = (
   record: Omit<SavedTableRecord, 'state'> & { state: SchemaDocumentState },
   options?: ApplySchemaDocumentStateOptions,
 ) => upsertWorkspaceSavedTable(doc, { ...record, tableId: resolveSavedTableId(record) }, options);
+
+export const renameSavedTableInYDoc = (
+  doc: Y.Doc,
+  previousName: string,
+  record: SavedTableRecord,
+) =>
+  renameWorkspaceSavedTable(doc, previousName, { ...record, tableId: resolveSavedTableId(record) });
+
+export const renameSavedDraftInYDoc = renameWorkspaceSavedDraft;
 
 export const deleteSavedTableFromYDoc = deleteWorkspaceSavedTable;
 

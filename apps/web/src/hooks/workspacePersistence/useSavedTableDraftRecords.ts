@@ -1,6 +1,10 @@
 import { useCallback, useRef } from 'react';
 import type { SavedTableDraftRecord } from '@ddlbuilder/shared-types/workspace';
-import { deleteSavedDraftFromYDoc, upsertSavedDraftInYDoc } from '@/services/workspaceYDocAdapter';
+import {
+  deleteSavedDraftFromYDoc,
+  upsertSavedDraftInYDoc,
+  renameSavedDraftInYDoc,
+} from '@/services/workspaceYDocAdapter';
 import { deleteSavedDraft, renameSavedDraftKey, upsertSavedDraft } from '@/utils/workspaceStateDb';
 import type { usePersistenceQueue } from './usePersistenceQueue';
 import type { WorkspaceStorageTarget } from './useWorkspaceStorageTarget';
@@ -79,14 +83,8 @@ export function useSavedTableDraftRecords({
         'rename saved-table draft',
         async () => {
           await storage.write({
-            yDoc: (doc) => {
-              if (nextRecord) {
-                upsertSavedDraftInYDoc(doc, toNormalizedName, nextRecord, {
-                  compactSnapshotBase: true,
-                });
-              }
-              if (keyChanged) deleteSavedDraftFromYDoc(doc, fromNormalizedName);
-            },
+            yDoc: (doc) =>
+              renameSavedDraftInYDoc(doc, fromNormalizedName, toNormalizedName, nextTableName),
             local: (scope) =>
               renameSavedDraftKey(fromNormalizedName, toNormalizedName, nextTableName, scope),
           });

@@ -3,6 +3,21 @@ import * as Y from 'yjs';
 import { type PersistedState, toSchemaDocumentState } from '@ddlbuilder/shared-types';
 import { tableDocToSchemaDocumentState } from '../workspaceTableDoc';
 import {
+  deleteWorkspaceSavedTable,
+  getWorkspaceSavedDraft,
+  getWorkspaceSavedTable,
+  listWorkspaceSavedTables,
+  renameWorkspaceSavedTable,
+  subscribeWorkspaceYDoc,
+  upsertWorkspaceSavedDraft,
+  upsertWorkspaceSavedTable,
+  type WorkspaceYDocChange,
+} from '../workspaceRecords';
+import {
+  exportWorkspaceYDocToSnapshot,
+  mergeWorkspaceSnapshotIntoYDoc,
+} from '../workspaceYDocCodec';
+import {
   ensureWorkspaceYDocMeta,
   getDraftRecordFromYDoc,
   getWorkspaceRoot,
@@ -49,6 +64,176 @@ const setLegacyTableDoc = (collection: Y.Map<Y.Map<unknown>>, key: string, table
   tableDoc.set('stateSnapshot', createState(tableName));
   return tableDoc;
 };
+
+describe('saved table identity', () => {
+  it.each(['id-key', 'legacy-key', 'legacy-without-id'])(
+    '%s 重命名保留并发字段编辑和草稿',
+    (format) => {
+      const doc = new Y.Doc();
+      const record = {
+        tableId: format === 'legacy-without-id' ? 'legacy:users' : 'table-users',
+        normalizedName: 'users',
+        name: 'Users',
+        state: toSchemaDocumentState(createState('users')),
+        createdAt: 1,
+        updatedAt: 1,
+      };
+      if (format === 'id-key') upsertWorkspaceSavedTable(doc, record, { forceFineGrained: true });
+      else
+        upsertTableRecord(
+          getWorkspaceRoot(doc).savedTables,
+          'users',
+          record.state,
+          {
+            ...(format === 'legacy-key' ? { tableId: record.tableId } : {}),
+            normalizedName: 'users',
+            name: 'Users',
+            createdAt: 1,
+            updatedAt: 1,
+          },
+          { forceFineGrained: true },
+        );
+      if (format !== 'id-key') {
+        upsertTableRecord(
+          getWorkspaceRoot(doc).savedDrafts,
+          'users',
+          record.state,
+          {
+            normalizedName: 'users',
+            tableName: 'Users',
+            baseSignature: 'base',
+            updatedAt: 1,
+          },
+          { forceFineGrained: true },
+        );
+      }
+      const originalNode = [...getWorkspaceRoot(doc).savedTables.values()][0];
+      const peer = new Y.Doc();
+      Y.applyUpdate(peer, Y.encodeStateAsUpdate(doc));
+      renameWorkspaceSavedTable(doc, 'users', {
+        ...record,
+        normalizedName: 'accounts',
+        name: 'Accounts',
+        updatedAt: 2,
+      });
+      upsertWorkspaceSavedTable(peer, {
+        ...record,
+        state: {
+          ...record.state,
+          rows: record.state.rows.map((row) => ({ ...row, fieldComment: '远端修改' })),
+        },
+        updatedAt: 3,
+      });
+      upsertWorkspaceSavedDraft(peer, {
+        normalizedName: 'users',
+        tableName: 'Users',
+        baseSignature: 'base',
+        updatedAt: 4,
+        state: { ...record.state, tableComment: '远端未保存草稿' },
+      });
+      const update = Y.encodeStateAsUpdate(doc);
+      Y.applyUpdate(doc, Y.encodeStateAsUpdate(peer));
+      Y.applyUpdate(peer, update);
+
+      expect([...getWorkspaceRoot(doc).savedTables.values()]).toEqual([originalNode]);
+      for (const replica of [doc, peer]) {
+        expect(getWorkspaceSavedTable(replica, 'users')).toBeNull();
+        expect(getWorkspaceSavedTable(replica, 'accounts')).toMatchObject({
+          tableId: record.tableId,
+          name: 'Accounts',
+          state: { rows: [{ fieldComment: '远端修改' }] },
+        });
+        expect(getWorkspaceSavedDraft(replica, 'users')).toBeNull();
+        expect(getWorkspaceSavedDraft(replica, 'accounts')).toMatchObject({
+          normalizedName: 'accounts',
+          tableName: 'Accounts',
+          state: { tableComment: '远端未保存草稿' },
+        });
+        expect([...getWorkspaceRoot(replica).savedDrafts.keys()]).toEqual([
+          format === 'id-key' ? record.tableId : 'users',
+        ]);
+        expect(exportWorkspaceYDocToSnapshot(replica).savedDrafts[0].normalizedName).toBe(
+          'accounts',
+        );
+      }
+      expect(exportWorkspaceYDocToSnapshot(doc)).toEqual(exportWorkspaceYDocToSnapshot(peer));
+
+      mergeWorkspaceSnapshotIntoYDoc(doc, {
+        globalDraft: null,
+        drafts: [],
+        savedTables: [record],
+        savedDrafts: [],
+        folders: [],
+      });
+      expect(listWorkspaceSavedTables(doc).map((table) => table.normalizedName)).toEqual([
+        'accounts',
+      ]);
+      upsertWorkspaceSavedTable(doc, { ...record, tableId: 'new-users' });
+      expect(listWorkspaceSavedTables(doc).map((table) => table.tableId)).toEqual([
+        record.tableId,
+        'new-users',
+      ]);
+      expect(getWorkspaceSavedDraft(doc, 'users')).toBeNull();
+      upsertWorkspaceSavedTable(doc, {
+        ...record,
+        tableId: 'users',
+        normalizedName: 'other',
+        name: 'Other',
+      });
+      expect(getWorkspaceSavedTable(doc, 'accounts')?.tableId).toBe(record.tableId);
+      deleteWorkspaceSavedTable(doc, 'accounts');
+      expect(listWorkspaceSavedTables(doc).map((table) => table.tableId)).toEqual([
+        'new-users',
+        'users',
+      ]);
+    },
+  );
+
+  it('重命名只更新名称，并对外通知逻辑名称的变化和删除', () => {
+    const doc = new Y.Doc();
+    const record = {
+      tableId: 'table-users',
+      normalizedName: 'users',
+      name: 'Users',
+      state: toSchemaDocumentState(createState('users')),
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    upsertWorkspaceSavedTable(doc, record);
+    upsertWorkspaceSavedDraft(doc, {
+      normalizedName: 'users',
+      tableName: 'Users',
+      baseSignature: 'base',
+      updatedAt: 1,
+      state: record.state,
+    });
+    const draftNode = [...getWorkspaceRoot(doc).savedDrafts.values()][0];
+    upsertWorkspaceSavedTable(doc, {
+      ...record,
+      state: { ...record.state, tableComment: '新内容' },
+    });
+    const changes: WorkspaceYDocChange[] = [];
+    const unsubscribe = subscribeWorkspaceYDoc(doc, (change) => changes.push(change), [
+      'savedTables',
+    ]);
+    renameWorkspaceSavedTable(doc, 'users', {
+      ...record,
+      normalizedName: 'accounts',
+      name: 'Accounts',
+      updatedAt: 2,
+    });
+
+    expect(getWorkspaceSavedTable(doc, 'accounts')?.state.tableComment).toBe('新内容');
+    expect([...getWorkspaceRoot(doc).savedDrafts.values()]).toEqual([draftNode]);
+    expect(changes[0]).toMatchObject({
+      entityIds: new Set(['users', 'accounts']),
+      renamedTables: [{ previousName: 'users', normalizedName: 'accounts', tableName: 'Accounts' }],
+    });
+    deleteWorkspaceSavedTable(doc, 'accounts');
+    expect(changes.at(-1)?.entityIds).toEqual(new Set(['accounts']));
+    unsubscribe();
+  });
+});
 
 describe('workspace YDoc roots', () => {
   it('writes the schema version only once', () => {

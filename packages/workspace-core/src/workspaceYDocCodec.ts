@@ -1,6 +1,5 @@
 import * as Y from 'yjs';
 import type { WorkspaceSnapshot } from '@ddlbuilder/shared-types/workspace';
-import { tableDocToSchemaDocumentState, tableMetadata } from './workspaceTableDoc';
 import {
   ensureWorkspaceYDocMeta,
   getDraftRecordFromYDoc,
@@ -10,14 +9,19 @@ import {
   writeFolderRecord,
 } from './workspaceYDoc';
 import { shouldAcceptSnapshotRecord } from './snapshotMergePolicy';
-import { readWorkspaceCreatedAt, readWorkspaceTimestamp } from './workspaceMetadata';
+import {
+  listWorkspaceSavedTableRecords,
+  listWorkspaceSavedDrafts,
+  upsertWorkspaceSavedTable,
+  upsertWorkspaceSavedDraft,
+} from './workspaceSavedRecords';
 import { normalizeWorkspaceSnapshot } from './workspaceSnapshotNormalization';
 
 export const importWorkspaceSnapshotToYDoc = (doc: Y.Doc, snapshot: WorkspaceSnapshot) => {
   const normalizedSnapshot = normalizeWorkspaceSnapshot(snapshot);
   doc.transact(() => {
     ensureWorkspaceYDocMeta(doc);
-    const { drafts, savedTables, savedDrafts } = getWorkspaceRoot(doc);
+    const { drafts } = getWorkspaceRoot(doc);
 
     for (const draft of normalizedSnapshot.drafts) {
       upsertTableRecord(drafts, draft.draftId, draft.state, {
@@ -29,24 +33,15 @@ export const importWorkspaceSnapshotToYDoc = (doc: Y.Doc, snapshot: WorkspaceSna
     }
 
     for (const table of normalizedSnapshot.savedTables) {
-      upsertTableRecord(savedTables, table.normalizedName, table.state, {
+      upsertWorkspaceSavedTable(doc, {
+        ...table,
         tableId: table.tableId ?? `legacy:${table.normalizedName}`,
-        normalizedName: table.normalizedName,
-        name: table.name,
         createdAt: table.createdAt ?? table.updatedAt,
-        updatedAt: table.updatedAt,
-        folderId: table.folderId,
-        trashedAt: table.trashedAt,
       });
     }
 
     for (const draft of normalizedSnapshot.savedDrafts) {
-      upsertTableRecord(savedDrafts, draft.normalizedName, draft.state, {
-        normalizedName: draft.normalizedName,
-        tableName: draft.tableName,
-        baseSignature: draft.baseSignature,
-        updatedAt: draft.updatedAt,
-      });
+      upsertWorkspaceSavedDraft(doc, draft);
     }
 
     for (const folder of normalizedSnapshot.folders) {
@@ -62,7 +57,7 @@ export const createWorkspaceYDocUpdateFromSnapshot = (snapshot: WorkspaceSnapsho
 };
 
 export const exportWorkspaceYDocToSnapshot = (doc: Y.Doc): WorkspaceSnapshot => {
-  const { drafts, savedTables, savedDrafts } = getWorkspaceRoot(doc);
+  const { drafts } = getWorkspaceRoot(doc);
 
   return {
     globalDraft: null,
@@ -70,31 +65,8 @@ export const exportWorkspaceYDocToSnapshot = (doc: Y.Doc): WorkspaceSnapshot => 
       const record = getDraftRecordFromYDoc(doc, draftId);
       return record ? [{ draftId, ...record }] : [];
     }),
-    savedTables: Array.from(savedTables.entries()).map(([normalizedName, tableDoc]) => {
-      const metadata = tableMetadata(tableDoc);
-      const updatedAt = readWorkspaceTimestamp(metadata.updatedAt);
-      return {
-        tableId:
-          typeof metadata.tableId === 'string' ? metadata.tableId : `legacy:${normalizedName}`,
-        normalizedName,
-        name: typeof metadata.name === 'string' ? metadata.name : normalizedName,
-        state: tableDocToSchemaDocumentState(tableDoc),
-        createdAt: readWorkspaceCreatedAt(metadata.createdAt, updatedAt),
-        updatedAt,
-        ...(typeof metadata.folderId === 'string' ? { folderId: metadata.folderId } : {}),
-        ...(typeof metadata.trashedAt === 'number' ? { trashedAt: metadata.trashedAt } : {}),
-      };
-    }),
-    savedDrafts: Array.from(savedDrafts.entries()).map(([normalizedName, tableDoc]) => {
-      const metadata = tableMetadata(tableDoc);
-      return {
-        normalizedName,
-        tableName: typeof metadata.tableName === 'string' ? metadata.tableName : normalizedName,
-        state: tableDocToSchemaDocumentState(tableDoc),
-        updatedAt: readWorkspaceTimestamp(metadata.updatedAt),
-        baseSignature: typeof metadata.baseSignature === 'string' ? metadata.baseSignature : '',
-      };
-    }),
+    savedTables: listWorkspaceSavedTableRecords(doc),
+    savedDrafts: listWorkspaceSavedDrafts(doc),
     folders: readFolderRecords(doc),
   };
 };
@@ -103,7 +75,9 @@ export const mergeWorkspaceSnapshotIntoYDoc = (doc: Y.Doc, snapshot: WorkspaceSn
   const normalizedSnapshot = normalizeWorkspaceSnapshot(snapshot);
   const current = exportWorkspaceYDocToSnapshot(doc);
   const currentDrafts = new Map(current.drafts.map((draft) => [draft.draftId, draft]));
-  const currentTables = new Map(current.savedTables.map((table) => [table.normalizedName, table]));
+  const currentTables = new Map(
+    current.savedTables.map((table) => [table.tableId ?? `legacy:${table.normalizedName}`, table]),
+  );
   const currentSavedDrafts = new Map(
     current.savedDrafts.map((draft) => [draft.normalizedName, draft]),
   );
@@ -125,7 +99,7 @@ export const mergeWorkspaceSnapshotIntoYDoc = (doc: Y.Doc, snapshot: WorkspaceSn
     if (
       shouldAcceptSnapshotRecord(
         table.updatedAt,
-        currentTables.get(table.normalizedName)?.updatedAt,
+        currentTables.get(table.tableId ?? `legacy:${table.normalizedName}`)?.updatedAt,
       )
     ) {
       merged.savedTables.push(table);

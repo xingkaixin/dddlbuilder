@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useTabStore } from '@/stores/tabStore';
 import type * as Y from 'yjs';
 import {
   toEditorSessionState,
@@ -81,10 +82,23 @@ export function useWorkspaceYDocSubscription({
         replaceDrafts(allDrafts);
         replaceTrashedDrafts(listTrashedDraftRecordsFromYDoc(yDoc));
       }
-      if (!change || change.collection === 'savedDrafts') {
+      if (!change || change.collection === 'savedDrafts' || change.collection === 'savedTables') {
         replaceSavedTableDrafts(listSavedDraftsFromYDoc(yDoc));
       }
       if (change?.origin === WORKSPACE_YDOC_LOCAL_EDIT_ORIGIN) return;
+      for (const rename of change?.renamedTables ?? []) {
+        useTabStore
+          .getState()
+          .renameSavedTableTabs(rename.previousName, rename.normalizedName, rename.tableName);
+        const active = activeSourceRef.current;
+        if (active.kind === 'saved_table' && active.normalizedName === rename.previousName) {
+          syncActiveSource({
+            ...active,
+            normalizedName: rename.normalizedName,
+            tableName: rename.tableName,
+          });
+        }
+      }
 
       const source = activeSourceRef.current;
       if (change) {

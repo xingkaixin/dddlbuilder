@@ -37,6 +37,7 @@ const mockYDocAdapter = vi.hoisted(() => ({
   listTrashedSavedTableRecordsFromYDoc: vi.fn(),
   subscribeWorkspaceYDoc: vi.fn(),
   upsertSavedTableInYDoc: vi.fn(),
+  renameSavedTableInYDoc: vi.fn(),
 }));
 
 vi.mock('@/auth/AuthSessionProvider', () => ({
@@ -60,6 +61,7 @@ vi.mock('@/services/workspaceYDocAdapter', () => ({
   listTrashedSavedTableRecordsFromYDoc: mockYDocAdapter.listTrashedSavedTableRecordsFromYDoc,
   subscribeWorkspaceYDoc: mockYDocAdapter.subscribeWorkspaceYDoc,
   upsertSavedTableInYDoc: mockYDocAdapter.upsertSavedTableInYDoc,
+  renameSavedTableInYDoc: mockYDocAdapter.renameSavedTableInYDoc,
 }));
 
 const createState = (name: string): PersistedState => ({
@@ -102,6 +104,7 @@ describe('useSavedTables', () => {
     mockYDocAdapter.listTrashedSavedTableRecordsFromYDoc.mockReset().mockReturnValue([]);
     mockYDocAdapter.subscribeWorkspaceYDoc.mockReset().mockReturnValue(vi.fn());
     mockYDocAdapter.upsertSavedTableInYDoc.mockReset();
+    mockYDocAdapter.renameSavedTableInYDoc.mockReset();
   });
 
   afterEach(() => {
@@ -561,8 +564,9 @@ describe('useSavedTables', () => {
       await flushPromises();
     });
 
-    expect(mockYDocAdapter.upsertSavedTableInYDoc).toHaveBeenCalledWith(
+    expect(mockYDocAdapter.renameSavedTableInYDoc).toHaveBeenCalledWith(
       doc,
+      'archived',
       expect.objectContaining({
         normalizedName: 'archived',
         folderId: 'folder-1',
