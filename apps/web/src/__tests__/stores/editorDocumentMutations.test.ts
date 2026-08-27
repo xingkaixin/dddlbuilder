@@ -4,6 +4,14 @@ import { buildDDL } from '@ddlbuilder/ddl-core';
 import { useEditorStore } from '@/stores/editorStore';
 import { buildNormalizedFields } from '@/stores/fieldStore';
 
+const parentForeignKey = {
+  id: 'self',
+  name: 'fk_parent',
+  fields: ['parent_id'],
+  refTable: 'users',
+  refFields: ['id'],
+};
+
 function createState(overrides: Partial<PersistedState> = {}): PersistedState {
   return withDefaultEditorSession({
     dbType: 'mysql',
@@ -25,15 +33,7 @@ function createState(overrides: Partial<PersistedState> = {}): PersistedState {
         isPrimary: true,
       },
     ],
-    foreignKeys: [
-      {
-        id: 'self',
-        name: 'fk_parent',
-        fields: ['parent_id'],
-        refTable: 'users',
-        refFields: ['id'],
-      },
-    ],
+    foreignKeys: [{ ...parentForeignKey }],
     ...overrides,
   });
 }
@@ -71,8 +71,11 @@ describe('editor document references', () => {
   ])(
     'respects the reference identity $refSchema/$refTable',
     ({ schemaName, refSchema, refTable, self }) => {
-      const state = createState({ dbType: 'postgresql', schemaName });
-      state.foreignKeys![0] = { ...state.foreignKeys![0], refSchema, refTable };
+      const state = createState({
+        dbType: 'postgresql',
+        schemaName,
+        foreignKeys: [{ ...parentForeignKey, refSchema, refTable }],
+      });
       useEditorStore.getState().replaceDocument(state);
       useEditorStore
         .getState()
@@ -84,12 +87,11 @@ describe('editor document references', () => {
   );
 
   it('removes a self-reference when its referenced field is deleted but keeps external references', () => {
-    const state = createState();
-    state.foreignKeys!.push({
-      ...state.foreignKeys![0],
-      id: 'external',
-      name: 'fk_account',
-      refTable: 'accounts',
+    const state = createState({
+      foreignKeys: [
+        { ...parentForeignKey },
+        { ...parentForeignKey, id: 'external', name: 'fk_account', refTable: 'accounts' },
+      ],
     });
     useEditorStore.getState().replaceDocument(state);
     useEditorStore.getState().handleRemoveRow(0, 1);
