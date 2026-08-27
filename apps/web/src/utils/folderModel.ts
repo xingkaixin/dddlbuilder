@@ -37,38 +37,12 @@ export const getAllFolderTreeNodeIds = (roots: readonly FolderTreeNode[]): strin
   return ids;
 };
 
-const childIdsByParent = (folders: readonly TableFolder[]) => {
-  const children = new Map<string, string[]>();
-  for (const folder of folders) {
-    if (!folder.parentId) continue;
-    const siblings = children.get(folder.parentId);
-    if (siblings) {
-      siblings.push(folder.id);
-    } else {
-      children.set(folder.parentId, [folder.id]);
-    }
-  }
-  return children;
-};
-
 export const getFolderDescendantIds = (
   folders: readonly TableFolder[],
   folderId: string,
 ): string[] => {
-  const children = childIdsByParent(folders);
-  const descendants: string[] = [];
-  const visited = new Set([folderId]);
-  const pending = [...(children.get(folderId) ?? [])];
-
-  for (let cursor = 0; cursor < pending.length; cursor += 1) {
-    const currentId = pending[cursor];
-    if (!currentId || visited.has(currentId)) continue;
-    visited.add(currentId);
-    descendants.push(currentId);
-    pending.push(...(children.get(currentId) ?? []));
-  }
-
-  return descendants;
+  const folder = findFolderTreeNode(buildFolderTreeModel(folders), folderId);
+  return folder ? getFolderTreeNodeIds(folder).slice(1) : [];
 };
 
 export const buildFolderDeletionPlan = <

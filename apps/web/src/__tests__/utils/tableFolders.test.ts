@@ -176,6 +176,36 @@ describe('tableFolders', () => {
     await expect(moveFolder('missing', undefined)).rejects.toThrow('文件夹不存在');
   });
 
+  it('deletes only the selected visible root when stored folders form a cycle', async () => {
+    await bulkPutFolders(
+      [
+        { id: 'a', name: 'A', parentId: 'b', order: 1, createdAt: 1 },
+        { id: 'b', name: 'B', parentId: 'a', order: 2, createdAt: 1 },
+      ],
+      anonymousScope,
+    );
+    for (const id of ['a', 'b']) {
+      await addSavedTable(
+        {
+          normalizedName: `table_${id}`,
+          name: `table_${id}`,
+          state: { ...createState(), tableName: `table_${id}` },
+          folderId: id,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+        anonymousScope,
+      );
+    }
+
+    expect((await buildFolderTree()).map((folder) => folder.id)).toEqual(['a', 'b']);
+    expect(await deleteFolder('a')).toEqual(['a']);
+    expect((await listFolders()).map((folder) => folder.id)).toEqual(['b']);
+    expect((await listTrashedSavedTables(anonymousScope)).map((table) => table.name)).toEqual([
+      'table_a',
+    ]);
+  });
+
   it('should isolate folders by workspace scope', async () => {
     const workspaceA = { kind: 'user' as const, userId: 'u1', workspaceId: 'ws-a' };
     const workspaceB = { kind: 'user' as const, userId: 'u1', workspaceId: 'ws-b' };

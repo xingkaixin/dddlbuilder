@@ -1,4 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, assert, describe, expect, it, vi } from 'vitest';
+import * as Y from 'yjs';
+import { listWorkspaceFolders, upsertWorkspaceFolder } from '@ddlbuilder/workspace-core';
 import {
   buildFolderTreeModel,
   buildFolderDeletionPlan,
@@ -44,14 +46,71 @@ describe('folderModel', () => {
     expect(moveFolderRecord(folders, 'child').updatedAt).toBe(10);
   });
 
-  it('collects descendants once even when stored data contains a cycle', () => {
+  it('keeps independent displayed roots outside each other’s deletion scope', () => {
     const cyclic: TableFolder[] = [
       { id: 'a', name: 'A', parentId: 'b', order: 1, createdAt: 1, updatedAt: 1 },
       { id: 'b', name: 'B', parentId: 'a', order: 1, createdAt: 1, updatedAt: 1 },
     ];
 
-    expect(getFolderDescendantIds(cyclic, 'a')).toEqual(['b']);
+    expect(getFolderDescendantIds(cyclic, 'a')).toEqual([]);
     expect(buildFolderTreeModel(cyclic).map((folder) => folder.id)).toEqual(['a', 'b']);
+  });
+
+  it('matches the displayed deletion scope after concurrent folder moves', () => {
+    const original = new Y.Doc();
+    const left = new Y.Doc();
+    const right = new Y.Doc();
+    try {
+      for (const id of ['a', 'b']) {
+        upsertWorkspaceFolder(original, {
+          id,
+          name: id,
+          order: 1,
+          createdAt: 1,
+          updatedAt: 1,
+        });
+      }
+      const seed = Y.encodeStateAsUpdate(original);
+      Y.applyUpdate(left, seed);
+      Y.applyUpdate(right, seed);
+      upsertWorkspaceFolder(left, moveFolderRecord(listWorkspaceFolders(left), 'a', 'b'));
+      upsertWorkspaceFolder(right, moveFolderRecord(listWorkspaceFolders(right), 'b', 'a'));
+      Y.applyUpdate(left, Y.encodeStateAsUpdate(right));
+
+      const merged = listWorkspaceFolders(left);
+      const tree = buildFolderTreeModel(merged);
+      const displayedFolder = findFolderTreeNode(tree, 'a');
+      assert(displayedFolder, 'Folder A must be present in the displayed tree');
+      const displayedIds = getFolderTreeNodeIds(displayedFolder);
+      const plan = buildFolderDeletionPlan(
+        merged,
+        ['a', 'b'].map((id) => ({ id: `table-${id}`, folderId: id, updatedAt: 1 })),
+        'a',
+        10,
+      );
+      console.info('folder deletion scope after concurrent moves', {
+        displayedIds,
+        deletedIds: plan.folderIds,
+        trashedTableIds: plan.tablesToTrash.map((table) => table.id),
+      });
+
+      expect(tree.map((folder) => folder.id)).toEqual(['a', 'b']);
+      expect(plan.folderIds).toEqual(displayedIds);
+      expect(plan.tablesToTrash.map((table) => table.id)).toEqual(['table-a']);
+    } finally {
+      original.destroy();
+      left.destroy();
+      right.destroy();
+    }
+  });
+
+  it('does not delete another displayed root through a missing parent chain', () => {
+    const orphaned = [{ ...folders[0], parentId: 'missing' }, ...folders.slice(1)];
+
+    expect(new Set(buildFolderTreeModel(orphaned).map((folder) => folder.id))).toEqual(
+      new Set(['root', 'child', 'leaf']),
+    );
+    expect(buildFolderDeletionPlan(orphaned, [], 'root').folderIds).toEqual(['root']);
   });
 
   it('treats folders leading to a cycle or missing parent as roots', () => {
