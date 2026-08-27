@@ -72,7 +72,7 @@ export function buildAppDialogLayerModel({
   handleSelectTableFromEr,
 }: BuildAppDialogLayerModelParams) {
   const { editor, ui, tableOptions } = domains;
-  const { persistence, savedTableData, folderData, loadedTableNormalizedName, workspaceScope } =
+  const { persistence, savedTableData, folderData, loadedTableNormalizedName } =
     workspaceController;
   const { derived, indexAdvisor } = schemaController;
 
@@ -186,6 +186,8 @@ export function buildAppDialogLayerModel({
     resources: {
       savedTableData: {
         importTables: savedTableData.importTables,
+        loadTables: savedTableData.loadTables,
+        overwriteTable: savedTableData.overwriteTable,
         saveTable: savedTableData.saveTable,
         savedTables: savedTableData.savedTables,
       },
@@ -210,7 +212,6 @@ export function buildAppDialogLayerModel({
     },
     workspace: {
       loadedTableNormalizedName,
-      workspaceScope,
       isShareView: persistence.isShareView,
     },
     schema: {

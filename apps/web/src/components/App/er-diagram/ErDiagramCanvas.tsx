@@ -17,9 +17,8 @@ import {
 import '@xyflow/react/dist/style.css';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { ErNodeData, ErEdgeData } from './types';
-import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
-import { updateSavedTable } from '@/utils/savedTablesDb';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
+import type { SaveTableResult } from '@/hooks/useSavedTables';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
 import ErTableNode from './ErTableNode';
@@ -115,7 +114,7 @@ interface CanvasInnerProps {
   onSelectTable: (state: PersistedState) => void;
   onRefresh: () => Promise<void>;
   onAddTable: () => void;
-  workspaceScope: WorkspaceScope | null;
+  onUpdateTable: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
 }
 
 type PendingRelationship = {
@@ -131,7 +130,7 @@ function CanvasInner({
   onSelectTable,
   onRefresh,
   onAddTable,
-  workspaceScope,
+  onUpdateTable,
 }: CanvasInnerProps) {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -173,7 +172,6 @@ function CanvasInner({
 
   const handleDeleteForeignKey = useCallback(
     async (fkId: string) => {
-      if (!workspaceScope) return;
       const sourceRecord = tables.find((t) => t.state.foreignKeys?.some((fk) => fk.id === fkId));
       if (!sourceRecord) return;
 
@@ -182,19 +180,16 @@ function CanvasInner({
         foreignKeys: sourceRecord.state.foreignKeys?.filter((fk) => fk.id !== fkId) || [],
       };
 
-      await updateSavedTable(
-        {
-          ...sourceRecord,
-          state: updatedState,
-          updatedAt: Date.now(),
-        },
-        workspaceScope,
-      );
+      const result = await onUpdateTable(sourceRecord.normalizedName, updatedState);
+      if (!result.ok) {
+        showToast(result.message ?? t('erDiagram.relationship.saveFailed'));
+        return;
+      }
 
       await onRefresh();
       showToast(t('erDiagram.toast.fkDeleted'));
     },
-    [onRefresh, showToast, t, tables, workspaceScope],
+    [onRefresh, onUpdateTable, showToast, t, tables],
   );
 
   useEffect(() => {
@@ -243,17 +238,17 @@ function CanvasInner({
 
   const handleCreateRelationship = useCallback(
     async (plan: TableRelationshipPlan) => {
-      if (!pendingRelationship || !workspaceScope) return;
+      if (!pendingRelationship) return;
 
       try {
-        await updateSavedTable(
-          {
-            ...pendingRelationship.sourceRecord,
-            state: plan.sourceState,
-            updatedAt: Date.now(),
-          },
-          workspaceScope,
+        const result = await onUpdateTable(
+          pendingRelationship.sourceRecord.normalizedName,
+          plan.sourceState,
         );
+        if (!result.ok) {
+          showToast(result.message ?? t('erDiagram.relationship.saveFailed'));
+          return;
+        }
         await onRefresh();
         setPendingRelationship(null);
         showToast(t('erDiagram.relationship.success'));
@@ -261,7 +256,7 @@ function CanvasInner({
         showToast(t('erDiagram.relationship.saveFailed'));
       }
     },
-    [onRefresh, pendingRelationship, showToast, t, workspaceScope],
+    [onRefresh, onUpdateTable, pendingRelationship, showToast, t],
   );
 
   const handleAutoLayout = useCallback(() => {
@@ -342,7 +337,7 @@ interface ErDiagramCanvasProps {
   onSelectTable: (state: PersistedState) => void;
   onRefresh: () => Promise<void>;
   onAddTable: () => void;
-  workspaceScope: WorkspaceScope | null;
+  onUpdateTable: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
 }
 
 function ErDiagramCanvas({
@@ -351,7 +346,7 @@ function ErDiagramCanvas({
   onSelectTable,
   onRefresh,
   onAddTable,
-  workspaceScope,
+  onUpdateTable,
 }: ErDiagramCanvasProps) {
   return (
     <ReactFlowProvider>
@@ -361,7 +356,7 @@ function ErDiagramCanvas({
         onSelectTable={onSelectTable}
         onRefresh={onRefresh}
         onAddTable={onAddTable}
-        workspaceScope={workspaceScope}
+        onUpdateTable={onUpdateTable}
       />
     </ReactFlowProvider>
   );

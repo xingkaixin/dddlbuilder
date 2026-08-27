@@ -282,6 +282,7 @@ export function useSavedTables() {
   );
 
   const loadTable = useCallback((normalizedName: string) => readTable(normalizedName), [readTable]);
+  const loadTables = useCallback(async () => (await readAllTables()).active, [readAllTables]);
 
   // 移动表到指定文件夹
   const moveTableToFolder = useCallback(
@@ -359,6 +360,7 @@ export function useSavedTables() {
     deleteTablePermanently,
     renameTable,
     loadTable,
+    loadTables,
     moveTableToFolder,
     importTables,
   };

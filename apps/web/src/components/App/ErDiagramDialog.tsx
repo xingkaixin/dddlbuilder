@@ -1,9 +1,7 @@
 import { memo, useCallback, useEffect, useState } from 'react';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import type { SaveTableResult } from '@/hooks/useSavedTables';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
-import { listSavedTables } from '@/utils/savedTablesDb';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/useToast';
@@ -15,30 +13,30 @@ interface ErDiagramDialogProps {
   onOpenChange: (open: boolean) => void;
   onSelectTable: (state: PersistedState) => void;
   saveTable: (name: string, state: PersistedState) => Promise<SaveTableResult>;
-  workspaceScope: WorkspaceScope | null;
+  overwriteTable: (normalizedName: string, state: PersistedState) => Promise<SaveTableResult>;
+  loadTables: () => Promise<SavedTableRecord[]>;
 }
 
 const INITIAL_ROWS = Array.from({ length: 4 }, () => createEmptyRow());
 
 export const ErDiagramDialog = memo<ErDiagramDialogProps>(
-  ({ open, onOpenChange, onSelectTable, saveTable, workspaceScope }) => {
+  ({ open, onOpenChange, onSelectTable, saveTable, overwriteTable, loadTables }) => {
     const { t } = useTranslation();
     const { showToast } = useToast();
     const [tables, setTables] = useState<SavedTableRecord[]>([]);
-    const [loading, setLoading] = useState(open && Boolean(workspaceScope));
+    const [loading, setLoading] = useState(open);
 
     const refresh = useCallback(async () => {
-      if (!workspaceScope) return;
-      const records = await listSavedTables(workspaceScope);
+      const records = await loadTables();
       setTables(records);
-    }, [workspaceScope]);
+    }, [loadTables]);
 
     useEffect(() => {
-      if (!open || !workspaceScope) return;
-      void listSavedTables(workspaceScope)
-        .then((records) => setTables(records))
+      if (!open) return;
+      void loadTables()
+        .then(setTables)
         .finally(() => setLoading(false));
-    }, [open, workspaceScope]);
+    }, [loadTables, open]);
 
     const handleSelectTable = useCallback(
       (state: PersistedState) => {
@@ -93,7 +91,7 @@ export const ErDiagramDialog = memo<ErDiagramDialogProps>(
               onSelectTable={handleSelectTable}
               onRefresh={refresh}
               onAddTable={handleAddTable}
-              workspaceScope={workspaceScope}
+              onUpdateTable={overwriteTable}
             />
           </div>
         </DialogContent>

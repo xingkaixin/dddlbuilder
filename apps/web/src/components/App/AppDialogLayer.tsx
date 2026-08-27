@@ -212,7 +212,8 @@ export function AppDialogLayer({ model }: AppDialogLayerProps) {
           onOpenChange: setIsErDialogOpen,
           onSelectTable: dialogs.handleSelectTableFromEr,
           saveTable: savedTableData.saveTable,
-          workspaceScope: workspace.workspaceScope,
+          overwriteTable: savedTableData.overwriteTable,
+          loadTables: savedTableData.loadTables,
         }}
         emptyTrashDialog={{
           open: trashActions.isEmptyTrashDialogOpen,
