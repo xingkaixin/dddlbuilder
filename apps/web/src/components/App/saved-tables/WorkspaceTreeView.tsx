@@ -18,10 +18,12 @@ interface WorkspaceTreeViewProps {
   controls: ReturnType<typeof useWorkspaceTreeControls>;
   folderActions: FolderActions;
   renderTableList: (items: SavedTableSummary[]) => ReactNode;
+  rootDropZoneTestId: string;
+  dragFeedbackTestId: string;
   className?: string;
 }
 
-const RootDropZone = memo<{ disabled: boolean }>(({ disabled }) => {
+const RootDropZone = memo<{ disabled: boolean; testId: string }>(({ disabled, testId }) => {
   const { t } = useTranslation();
   const { setNodeRef, isOver } = useDroppable({ id: ROOT_DROP_ID, disabled });
 
@@ -36,7 +38,7 @@ const RootDropZone = memo<{ disabled: boolean }>(({ disabled }) => {
       )}
       aria-disabled={disabled}
       data-drag-over={isOver ? 'true' : 'false'}
-      data-testid="root-dropzone"
+      data-testid={testId}
     >
       {t('savedTables.rootDropzone')}
     </div>
@@ -48,6 +50,8 @@ export function WorkspaceTreeView({
   controls,
   folderActions,
   renderTableList,
+  rootDropZoneTestId,
+  dragFeedbackTestId,
   className,
 }: WorkspaceTreeViewProps) {
   const {
@@ -80,7 +84,7 @@ export function WorkspaceTreeView({
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <RootDropZone disabled={isSearching} />
+      <RootDropZone disabled={isSearching} testId={rootDropZoneTestId} />
       {dragFeedback && (
         <div
           role={dragFeedback.type === 'error' ? 'alert' : 'status'}
@@ -93,7 +97,7 @@ export function WorkspaceTreeView({
             dragFeedback.type === 'error' &&
               'border-destructive/30 bg-destructive/10 text-destructive',
           )}
-          data-testid="saved-tables-drag-feedback"
+          data-testid={dragFeedbackTestId}
         >
           {dragFeedback.message}
         </div>

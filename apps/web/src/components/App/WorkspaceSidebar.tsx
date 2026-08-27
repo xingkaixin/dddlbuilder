@@ -427,6 +427,8 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                         delete: onDeleteFolder,
                       }}
                       renderTableList={renderTableList}
+                      rootDropZoneTestId="workspace-root-dropzone"
+                      dragFeedbackTestId="workspace-drag-feedback"
                     />
                   )}
                   {filteredItems.length === 0 && (

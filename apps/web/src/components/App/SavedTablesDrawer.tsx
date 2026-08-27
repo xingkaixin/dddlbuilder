@@ -272,6 +272,8 @@ export const SavedTablesDrawer = memo<SavedTablesDrawerProps>(
                   delete: onDeleteFolder,
                 }}
                 renderTableList={renderTableList}
+                rootDropZoneTestId="root-dropzone"
+                dragFeedbackTestId="saved-tables-drag-feedback"
               />
             )}
           </div>
