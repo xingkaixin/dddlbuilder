@@ -1,7 +1,7 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
-import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
 import { getDatabaseFamily } from '../utils/databaseFamily.js';
 import { buildIndexFieldLookup, toCamelCase, toPascalCase } from './shared.js';
+import { resolveTypeORMColumn } from './typeormColumn.js';
 
 export class TypeORMGenerator implements ORMGenerator {
   generateModel({
@@ -75,18 +75,25 @@ export class TypeORMGenerator implements ORMGenerator {
     lines.push(`export class ${className} {`);
 
     for (const field of fields) {
+      const column = resolveTypeORMColumn(field, dbType);
+      if (!column) {
+        return `// Manual mapping required: column ${JSON.stringify(field.name)} has unsupported type parameters in ${JSON.stringify(field.type)}.`;
+      }
       const propName = toCamelCase(field.name);
-      const tsType = mapCanonicalToORMType('typeorm', field.type);
+      const tsType = column.propertyType;
       const isPk = primaryFields.has(field.name);
-      const isAutoInc = field.defaultKind === 'auto_increment';
+      const isAutoInc = column.autoIncrement;
       const isNullable = field.nullable && !isPk;
 
-      const optionsParts: string[] = [];
+      const optionsParts = Object.entries(column.options).map(
+        ([key, value]) => `${key}: ${JSON.stringify(value)}`,
+      );
       if (propName !== field.name) {
         optionsParts.push(`name: ${JSON.stringify(field.name)}`);
       }
 
       if (!isPk) {
+        if (isAutoInc) optionsParts.push("generated: 'increment'");
         if (singleUniqueFields.has(field.name)) {
           optionsParts.push('unique: true');
         }

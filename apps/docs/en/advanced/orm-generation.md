@@ -41,5 +41,6 @@ You don't need to manually translate between DDL and ORM models; the system can 
 - ORM generation is based on current table structure snapshot; field changes require re-copying, not automatically synced.
 - Complex relationships in some frameworks (such as many-to-many intermediate tables) may require additional manual adjustments.
 - Enum types vary greatly across ORMs (e.g., Prisma enum vs JPA `@Enumerated`); review after generation is recommended.
+- TypeORM explicitly preserves database column types, lengths, precision, and scale. `bigint` and MySQL/PostgreSQL exact decimals use `string` properties to avoid precision loss from ordinary `number` handling. Type parameters that cannot be represented safely produce a manual-mapping notice.
 - `Schema Name` only affects physical table mapping, not model, class, or struct names. TypeORM uses schema/database, SQLAlchemy uses `__table_args__`, JPA uses schema/catalog, and GORM uses a qualified table name.
 - Prisma emits `@@schema` for PostgreSQL and SQL Server; also add that schema to the data source's `schemas` list. For MySQL, select the database in the connection configuration; no `@@schema` is generated.

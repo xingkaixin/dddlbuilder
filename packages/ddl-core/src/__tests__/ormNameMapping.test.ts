@@ -80,7 +80,7 @@ describe('ORM database name mapping', () => {
     });
 
     expect(model).toContain("@Entity('user_profile')");
-    expect(model).toContain(`@${decorator}({ name: "user_id" })`);
+    expect(model).toContain(`@${decorator}({ type: "int", name: "user_id" })`);
     expect(model).toContain('userId: number;');
   });
 

@@ -237,10 +237,12 @@ describe('TypeORMGenerator', () => {
     );
     expect(result).toContain("@Entity('user_info')");
     expect(result).toContain('export class UserInfo {');
-    expect(result).toContain('@PrimaryGeneratedColumn()');
-    expect(result).toContain('id: number;');
+    expect(result).toContain('@PrimaryGeneratedColumn({ type: "bigint" })');
+    expect(result).toContain('id: string;');
     expect(result).toContain('name: string | null;');
-    expect(result).toContain("@Column({ unique: true, comment: '邮箱' })");
+    expect(result).toContain(
+      '@Column({ type: "varchar", length: 100, unique: true, comment: \'邮箱\' })',
+    );
     expect(result).toContain('email: string;');
   });
 });

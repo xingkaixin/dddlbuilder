@@ -325,8 +325,8 @@ describe('TypeORMGenerator', () => {
     );
     expect(result).toContain("@Entity('users')");
     expect(result).toContain('export class Users {');
-    expect(result).toContain('@PrimaryGeneratedColumn()');
-    expect(result).toContain('id: number;');
+    expect(result).toContain('@PrimaryGeneratedColumn({ type: "bigint" })');
+    expect(result).toContain('id: string;');
   });
 
   it('generates with nullable field', () => {
@@ -365,7 +365,7 @@ describe('TypeORMGenerator', () => {
       fields,
       indexes,
     });
-    expect(result).toContain('@Column({ unique: true })');
+    expect(result).toContain('@Column({ type: "varchar", length: 255, unique: true })');
   });
 
   it('generates with default values', () => {
