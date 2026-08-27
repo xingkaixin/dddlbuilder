@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { ReactNode, SyntheticEvent } from 'react';
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -49,6 +49,13 @@ interface SortableDataRowProps {
   getStickyLeft: (colIndex: number) => number;
   isRowHighlighted: boolean;
   dragFieldLabel: string;
+}
+
+function isCellContentEvent({ target, currentTarget }: SyntheticEvent<HTMLTableCellElement>) {
+  // Portal 弹窗事件也会沿 React 树冒泡，但不属于单元格的 DOM 内容。
+  return (
+    target instanceof Element && currentTarget.contains(target) && !target.closest('input, button')
+  );
 }
 
 const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
@@ -116,7 +123,7 @@ const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
             }}
             onPointerDown={(event) => {
               if (event.button !== 0) return;
-              if (event.target instanceof HTMLInputElement) return;
+              if (!isCellContentEvent(event)) return;
               const isTextEditableCell =
                 colIndex === 1 ||
                 colIndex === 2 ||
@@ -141,7 +148,7 @@ const SortableDataRow = memo<SortableDataRowProps>(function SortableDataRow({
               }, 0);
             }}
             onClick={(event) => {
-              if (event.target instanceof HTMLInputElement) return;
+              if (!isCellContentEvent(event)) return;
               const isTextEditableCell =
                 colIndex === 1 ||
                 colIndex === 2 ||
