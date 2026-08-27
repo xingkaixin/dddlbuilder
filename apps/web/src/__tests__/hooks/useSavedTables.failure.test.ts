@@ -30,6 +30,11 @@ const savedTableMocks = vi.hoisted(() => ({
   updateSavedTable: vi.fn(),
   updateSavedTables: vi.fn(),
 }));
+const tableVersionMocks = vi.hoisted(() => ({
+  countVersions: vi.fn(),
+  createVersion: vi.fn(),
+  deleteAllVersions: vi.fn(),
+}));
 
 vi.mock('@/utils/savedTablesDb', () => ({
   addSavedTable: savedTableMocks.addSavedTable,
@@ -43,6 +48,12 @@ vi.mock('@/utils/savedTablesDb', () => ({
   normalizeSavedTableName: savedTableMocks.normalizeSavedTableName,
   updateSavedTable: savedTableMocks.updateSavedTable,
   updateSavedTables: savedTableMocks.updateSavedTables,
+}));
+
+vi.mock('@/utils/tableVersions', () => ({
+  countVersions: tableVersionMocks.countVersions,
+  createVersion: tableVersionMocks.createVersion,
+  deleteAllVersions: tableVersionMocks.deleteAllVersions,
 }));
 
 const createState = (name: string) => ({
@@ -87,6 +98,7 @@ describe('useSavedTables failure states', () => {
     savedTableMocks.listTrashedSavedTableMetadata.mockResolvedValue([]);
     savedTableMocks.listTrashedSavedTables.mockResolvedValue([]);
     savedTableMocks.getSavedTable.mockResolvedValue(null);
+    tableVersionMocks.deleteAllVersions.mockResolvedValue(undefined);
   });
 
   it('should return error result when saveTable throws', async () => {
@@ -165,6 +177,33 @@ describe('useSavedTables failure states', () => {
       reason: 'error',
       message: '删除失败',
     });
+  });
+
+  it('永久删除应先清理版本，清理失败时保留表记录', async () => {
+    savedTableMocks.getSavedTable.mockResolvedValueOnce({
+      ...createRecord('demo', 'Demo'),
+      tableId: 'table-demo',
+    });
+    tableVersionMocks.deleteAllVersions.mockRejectedValueOnce(new Error('版本清理失败'));
+    const { result } = renderHook(() => useSavedTables());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    let response: SaveResult | undefined;
+    await act(async () => {
+      response = await result.current.deleteTablePermanently('demo');
+    });
+
+    expect(response).toEqual({
+      ok: false,
+      reason: 'error',
+      message: '版本清理失败',
+    });
+    expect(tableVersionMocks.deleteAllVersions).toHaveBeenCalledWith({
+      scope: { kind: 'anonymous' },
+      tableId: 'table-demo',
+      normalizedName: 'demo',
+    });
+    expect(savedTableMocks.deleteSavedTable).not.toHaveBeenCalled();
   });
 
   it('renameTable should cover not_found and duplicate branches', async () => {

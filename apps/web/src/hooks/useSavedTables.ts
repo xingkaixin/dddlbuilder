@@ -16,7 +16,7 @@ import {
 import { useSavedTablePersistence } from '@/hooks/workspacePersistence/useSavedTablePersistence';
 import { useWorkspaceYDocProjection } from '@/hooks/useWorkspaceYDocProjection';
 import { localSavedTablesOptions, localTrashedTablesOptions } from '@/queries/workspaceLocal';
-import { countVersions, createVersion } from '@/utils/tableVersions';
+import { countVersions, createVersion, deleteAllVersions } from '@/utils/tableVersions';
 import { resolveSavedTableId } from '@/utils/savedTableIdentity';
 
 export type SavedTableSummary = SavedTableMetadata;
@@ -237,6 +237,13 @@ export function useSavedTables() {
     async (normalizedName: string): Promise<SaveTableResult> => {
       try {
         if (!currentScope) throw new Error('工作区未就绪');
+        const record = await readTable(normalizedName);
+        if (!record) return { ok: false, reason: 'not_found' };
+        await deleteAllVersions({
+          scope: currentScope,
+          tableId: resolveSavedTableId(record),
+          normalizedName: record.normalizedName,
+        });
         await deleteTableEverywhere(normalizedName);
         await refresh();
         return { ok: true, normalizedName };
@@ -248,7 +255,7 @@ export function useSavedTables() {
         };
       }
     },
-    [currentScope, deleteTableEverywhere, refresh],
+    [currentScope, deleteTableEverywhere, readTable, refresh],
   );
 
   const renameTable = useCallback(

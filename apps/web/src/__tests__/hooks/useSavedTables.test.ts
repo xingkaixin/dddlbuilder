@@ -5,6 +5,7 @@ import { setupFakeIndexedDB, teardownFakeIndexedDB } from '../utils/fakeIndexedD
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import { flushPromises } from '@/__tests__/utils/test-utils';
 import { getSavedTable } from '@/utils/savedTablesDb';
+import { listVersions } from '@/utils/tableVersions';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
 
 const renderHook = <Result, Props>(render: (initialProps: Props) => Result) => {
@@ -153,6 +154,41 @@ describe('useSavedTables', () => {
     });
 
     expect(result.current.savedTables).toHaveLength(0);
+  });
+
+  it('永久删除表时应同时删除全部版本', async () => {
+    const { result } = renderHook(() => useSavedTables());
+
+    await act(async () => {
+      await result.current.saveTable('History', createState('history'));
+      await flushPromises();
+    });
+    const saved = result.current.savedTables[0];
+    expect(saved).toBeDefined();
+    if (!saved) throw new Error('未创建保存表');
+
+    await act(async () => {
+      await result.current.createTableVersion(saved.normalizedName, createState('version-1'));
+      await result.current.createTableVersion(saved.normalizedName, createState('version-2'));
+      await result.current.deleteTable(saved.normalizedName);
+      await flushPromises();
+    });
+
+    const target = {
+      scope: { kind: 'anonymous' } as const,
+      tableId: saved.tableId,
+      normalizedName: saved.normalizedName,
+    };
+    expect(await listVersions(target)).toHaveLength(2);
+
+    await act(async () => {
+      const deleted = await result.current.deleteTablePermanently(saved.normalizedName);
+      expect(deleted).toEqual({ ok: true, normalizedName: saved.normalizedName });
+      await flushPromises();
+    });
+
+    expect(await listVersions(target)).toEqual([]);
+    expect(result.current.trashedTables).toEqual([]);
   });
 
   it('should overwrite existing record', async () => {
