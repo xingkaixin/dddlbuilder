@@ -23,16 +23,16 @@ const primaryKey = (names: string[]): IndexDefinition => ({
 
 describe('ORM database name mapping', () => {
   it('preserves Prisma table and column names while using properties in indexes', () => {
-    const model = buildORM(
-      'prisma',
-      'user_profile',
-      '',
-      [
+    const model = buildORM('prisma', {
+      dbType: 'mysql',
+      tableName: 'user_profile',
+      tableComment: '',
+      fields: [
         field('user_id', { defaultKind: 'auto_increment' }),
         field('display_name', { type: 'varchar(100)', nullable: true, comment: 'Display name' }),
         field('createdAt', { type: 'timestamp', defaultKind: 'current_timestamp' }),
       ],
-      [
+      indexes: [
         primaryKey(['user_id']),
         {
           id: 'name',
@@ -41,7 +41,7 @@ describe('ORM database name mapping', () => {
           unique: false,
         },
       ],
-    );
+    });
 
     expect(model).toContain('model UserProfile {');
     expect(model).toContain('@@map("user_profile")');
@@ -54,13 +54,13 @@ describe('ORM database name mapping', () => {
   });
 
   it('keeps unchanged Prisma identifiers without redundant mappings', () => {
-    const model = buildORM(
-      'prisma',
-      'UserProfile',
-      '',
-      [field('userId')],
-      [primaryKey(['userId'])],
-    );
+    const model = buildORM('prisma', {
+      dbType: 'mysql',
+      tableName: 'UserProfile',
+      tableComment: '',
+      fields: [field('userId')],
+      indexes: [primaryKey(['userId'])],
+    });
 
     expect(model).toContain('model UserProfile {');
     expect(model).not.toContain('@map(');
@@ -71,13 +71,13 @@ describe('ORM database name mapping', () => {
     { isPrimary: true, defaultKind: 'none', decorator: 'PrimaryColumn' },
     { isPrimary: true, defaultKind: 'auto_increment', decorator: 'PrimaryGeneratedColumn' },
   ] as const)('maps TypeORM columns using @$decorator', ({ isPrimary, defaultKind, decorator }) => {
-    const model = buildORM(
-      'typeorm',
-      'user_profile',
-      '',
-      [field('user_id', { defaultKind })],
-      isPrimary ? [primaryKey(['user_id'])] : [],
-    );
+    const model = buildORM('typeorm', {
+      dbType: 'mysql',
+      tableName: 'user_profile',
+      tableComment: '',
+      fields: [field('user_id', { defaultKind })],
+      indexes: isPrimary ? [primaryKey(['user_id'])] : [],
+    });
 
     expect(model).toContain("@Entity('user_profile')");
     expect(model).toContain(`@${decorator}({ name: "user_id" })`);
@@ -96,13 +96,12 @@ describe('ORM database name mapping', () => {
         "@JoinColumn([{ name: 'tenant_id', referencedColumnName: 'tenantId', foreignKeyConstraintName: 'fk_owner' }, { name: 'user_id', referencedColumnName: 'userId' }])",
     },
   ])('uses TypeORM property names in foreign key references: $names', ({ names, expected }) => {
-    const model = buildORM(
-      'typeorm',
-      'membership',
-      '',
-      names.map((name) => field(name)),
-      [],
-      [
+    const model = buildORM('typeorm', {
+      dbType: 'mysql',
+      tableName: 'membership',
+      tableComment: '',
+      fields: names.map((name) => field(name)),
+      foreignKeys: [
         {
           id: 'owner',
           name: 'fk_owner',
@@ -111,20 +110,19 @@ describe('ORM database name mapping', () => {
           refFields: names,
         },
       ],
-    );
+    });
 
     expect(model).toContain(expected);
   });
 
   it('does not crash TypeORM generation for incomplete foreign key references', () => {
     expect(() =>
-      buildORM(
-        'typeorm',
-        'membership',
-        '',
-        [field('user_id'), field('tenant_id')],
-        [],
-        [
+      buildORM('typeorm', {
+        dbType: 'mysql',
+        tableName: 'membership',
+        tableComment: '',
+        fields: [field('user_id'), field('tenant_id')],
+        foreignKeys: [
           {
             id: 'owner',
             name: 'fk_owner',
@@ -133,7 +131,7 @@ describe('ORM database name mapping', () => {
             refFields: ['user_id'],
           },
         ],
-      ),
+      }),
     ).not.toThrow();
   });
 });

@@ -15,9 +15,36 @@ const createField = (overrides: Partial<NormalizedField> = {}): NormalizedField 
 });
 
 describe('useOrmGeneration', () => {
+  it('regenerates namespace mappings when schema or database changes', () => {
+    const { result, rerender } = renderHook(
+      ({ schemaName, dbType }: { schemaName: string; dbType: 'postgresql' | 'mysql' }) =>
+        useOrmGeneration({
+          dbType,
+          schemaName,
+          tableName: 'users',
+          tableComment: '',
+          fields: [createField()],
+        }),
+      { initialProps: { schemaName: 'public', dbType: 'postgresql' } },
+    );
+    expect(result.current.generatedOrm).toContain('model Users {');
+    expect(result.current.generatedOrm).toContain('@@schema("public")');
+    rerender({ schemaName: 'audit', dbType: 'postgresql' });
+    expect(result.current.generatedOrm).toContain('@@schema("audit")');
+    expect(result.current.generatedOrm).not.toContain('@@schema("public")');
+    rerender({ schemaName: 'audit', dbType: 'mysql' });
+    expect(result.current.generatedOrm).not.toContain('@@schema(');
+    expect(result.current.generatedOrm).toContain('Select database "audit"');
+  });
+
   it('defaults to prisma target', () => {
     const { result } = renderHook(() =>
-      useOrmGeneration('users', '用户表', [createField()], [], []),
+      useOrmGeneration({
+        dbType: 'mysql',
+        tableName: 'users',
+        tableComment: '用户表',
+        fields: [createField()],
+      }),
     );
     expect(result.current.ormTarget).toBe('prisma');
     expect(result.current.generatedOrm).toContain('model Users {');
@@ -25,7 +52,12 @@ describe('useOrmGeneration', () => {
 
   it('switches ORM target', () => {
     const { result } = renderHook(() =>
-      useOrmGeneration('users', '用户表', [createField()], [], []),
+      useOrmGeneration({
+        dbType: 'mysql',
+        tableName: 'users',
+        tableComment: '用户表',
+        fields: [createField()],
+      }),
     );
 
     act(() => {
@@ -38,7 +70,12 @@ describe('useOrmGeneration', () => {
 
   it('generates GORM model', () => {
     const { result } = renderHook(() =>
-      useOrmGeneration('users', '用户表', [createField()], [], []),
+      useOrmGeneration({
+        dbType: 'mysql',
+        tableName: 'users',
+        tableComment: '用户表',
+        fields: [createField()],
+      }),
     );
 
     act(() => {
@@ -51,7 +88,12 @@ describe('useOrmGeneration', () => {
 
   it('generates SQLAlchemy model', () => {
     const { result } = renderHook(() =>
-      useOrmGeneration('users', '用户表', [createField()], [], []),
+      useOrmGeneration({
+        dbType: 'mysql',
+        tableName: 'users',
+        tableComment: '用户表',
+        fields: [createField()],
+      }),
     );
 
     act(() => {
@@ -64,7 +106,12 @@ describe('useOrmGeneration', () => {
 
   it('generates JPA entity', () => {
     const { result } = renderHook(() =>
-      useOrmGeneration('users', '用户表', [createField()], [], []),
+      useOrmGeneration({
+        dbType: 'mysql',
+        tableName: 'users',
+        tableComment: '用户表',
+        fields: [createField()],
+      }),
     );
 
     act(() => {
@@ -77,7 +124,12 @@ describe('useOrmGeneration', () => {
 
   it('copies ORM to clipboard', async () => {
     const { result } = renderHook(() =>
-      useOrmGeneration('users', '用户表', [createField()], [], []),
+      useOrmGeneration({
+        dbType: 'mysql',
+        tableName: 'users',
+        tableComment: '用户表',
+        fields: [createField()],
+      }),
     );
 
     let copied = false;
@@ -93,14 +145,22 @@ describe('useOrmGeneration', () => {
       { name: 'pk_id', fields: [{ name: 'id', direction: 'ASC' }], unique: false, isPrimary: true },
     ];
     const { result } = renderHook(() =>
-      useOrmGeneration('users', '用户表', [createField()], indexes, []),
+      useOrmGeneration({
+        dbType: 'mysql',
+        tableName: 'users',
+        tableComment: '用户表',
+        fields: [createField()],
+        indexes,
+      }),
     );
 
     expect(result.current.generatedOrm).toContain('@id');
   });
 
   it('handles empty fields gracefully', () => {
-    const { result } = renderHook(() => useOrmGeneration('users', '用户表', [], [], []));
+    const { result } = renderHook(() =>
+      useOrmGeneration({ dbType: 'mysql', tableName: 'users', tableComment: '用户表', fields: [] }),
+    );
 
     expect(result.current.generatedOrm).toBeTruthy();
   });

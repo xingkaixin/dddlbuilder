@@ -41,4 +41,5 @@
 - ORM 生成基于当前表结构快照，字段变更后需重新复制，不会自动同步。
 - 部分框架的复杂关系（如多对多中间表）可能需要额外手工调整。
 - 枚举类型在不同 ORM 中的表达差异较大（如 Prisma enum vs JPA `@Enumerated`），生成后建议复核。
-- `Schema Name` 会被映射为部分框架的 schema/database 配置，但具体生效取决于 ORM 自身的数据源配置。
+- `Schema Name` 只影响物理表映射，不会拼入模型、类或结构体名称。TypeORM 使用 schema/database，SQLAlchemy 使用 `__table_args__`，JPA 使用 schema/catalog，GORM 使用限定表名。
+- Prisma 在 PostgreSQL、SQL Server 下生成 `@@schema`，需要同时把该 schema 加入数据源的 `schemas` 列表；MySQL 则需要在连接配置中选择对应数据库，不生成 `@@schema`。

@@ -1,20 +1,17 @@
-import type {
-  NormalizedField,
-  IndexDefinition,
-  ForeignKeyDefinition,
-} from '@ddlbuilder/shared-types';
-import type { ORMGenerator } from '../interfaces/ORMGenerator.js';
+import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
+import { buildQualifiedTableName } from '../utils/databaseTypeMapping.js';
 import { buildIndexFieldLookup, toPascalCase } from './shared.js';
 
 export class GORMGenerator implements ORMGenerator {
-  generateModel(
-    tableName: string,
-    tableComment: string,
-    fields: NormalizedField[],
-    indexes: IndexDefinition[],
-    foreignKeys: ForeignKeyDefinition[],
-  ): string {
+  generateModel({
+    schemaName = '',
+    tableName,
+    tableComment,
+    fields,
+    indexes = [],
+    foreignKeys = [],
+  }: ORMModelInput): string {
     if (!tableName.trim()) {
       return '// 请填写表名';
     }
@@ -96,7 +93,7 @@ export class GORMGenerator implements ORMGenerator {
     lines.push('}');
     lines.push('');
     lines.push(`func (${structName}) TableName() string {`);
-    lines.push(`\treturn "${tableName.trim()}"`);
+    lines.push(`\treturn ${JSON.stringify(buildQualifiedTableName(schemaName, tableName))}`);
     lines.push('}');
 
     return lines.join('\n');

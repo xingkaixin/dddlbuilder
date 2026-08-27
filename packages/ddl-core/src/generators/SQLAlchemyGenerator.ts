@@ -1,20 +1,16 @@
-import type {
-  NormalizedField,
-  IndexDefinition,
-  ForeignKeyDefinition,
-} from '@ddlbuilder/shared-types';
-import type { ORMGenerator } from '../interfaces/ORMGenerator.js';
+import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
 import { getORMTypeWithArgs } from '../utils/ormTypeResolver.js';
 import { buildIndexFieldLookup, escapePythonString } from './shared.js';
 
 export class SQLAlchemyGenerator implements ORMGenerator {
-  generateModel(
-    tableName: string,
-    tableComment: string,
-    fields: NormalizedField[],
-    indexes: IndexDefinition[],
-    foreignKeys: ForeignKeyDefinition[],
-  ): string {
+  generateModel({
+    schemaName = '',
+    tableName,
+    tableComment,
+    fields,
+    indexes = [],
+    foreignKeys = [],
+  }: ORMModelInput): string {
     if (!tableName.trim()) {
       return '# 请填写表名';
     }
@@ -116,6 +112,10 @@ export class SQLAlchemyGenerator implements ORMGenerator {
       tableArgs.push(
         `    ForeignKeyConstraint([${localFields}], [${referencedFields}]${onDelete}${onUpdate})`,
       );
+    }
+
+    if (schemaName) {
+      tableArgs.push(`    {"schema": ${JSON.stringify(schemaName)}}`);
     }
 
     if (tableArgs.length > 0) {

@@ -1,11 +1,6 @@
 import { useMemo, useCallback, useState } from 'react';
-import type {
-  NormalizedField,
-  IndexDefinition,
-  ForeignKeyDefinition,
-} from '@ddlbuilder/shared-types';
 import { buildORM } from '@ddlbuilder/ddl-core';
-import type { ORMTarget } from '@ddlbuilder/ddl-core';
+import type { ORMModelInput, ORMTarget } from '@ddlbuilder/ddl-core';
 
 export const ORM_TARGET_OPTIONS: { value: ORMTarget; label: string }[] = [
   { value: 'prisma', label: 'Prisma' },
@@ -22,18 +17,29 @@ export interface UseOrmGenerationReturn {
   setOrmTarget: (target: ORMTarget) => void;
 }
 
-export function useOrmGeneration(
-  tableName: string,
-  tableComment: string,
-  normalizedFields: NormalizedField[],
-  indexes: IndexDefinition[],
-  foreignKeys: ForeignKeyDefinition[],
-): UseOrmGenerationReturn {
+export function useOrmGeneration({
+  dbType,
+  schemaName,
+  tableName,
+  tableComment,
+  fields,
+  indexes,
+  foreignKeys,
+}: ORMModelInput): UseOrmGenerationReturn {
   const [ormTarget, setOrmTarget] = useState<ORMTarget>('prisma');
 
   const generatedOrm = useMemo(
-    () => buildORM(ormTarget, tableName, tableComment, normalizedFields, indexes, foreignKeys),
-    [ormTarget, tableName, tableComment, normalizedFields, indexes, foreignKeys],
+    () =>
+      buildORM(ormTarget, {
+        dbType,
+        schemaName,
+        tableName,
+        tableComment,
+        fields,
+        indexes,
+        foreignKeys,
+      }),
+    [ormTarget, dbType, schemaName, tableName, tableComment, fields, indexes, foreignKeys],
   );
 
   const copyOrm = useCallback(async () => {

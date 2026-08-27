@@ -1,4 +1,5 @@
 import type {
+  DatabaseType,
   NormalizedField,
   IndexDefinition,
   ForeignKeyDefinition,
@@ -6,12 +7,16 @@ import type {
 
 export type ORMTarget = 'prisma' | 'typeorm' | 'sqlalchemy' | 'gorm' | 'jpa';
 
+export interface ORMModelInput {
+  dbType: DatabaseType;
+  schemaName?: string;
+  tableName: string;
+  tableComment: string;
+  fields: NormalizedField[];
+  indexes?: IndexDefinition[];
+  foreignKeys?: ForeignKeyDefinition[];
+}
+
 export interface ORMGenerator {
-  generateModel(
-    tableName: string,
-    tableComment: string,
-    fields: NormalizedField[],
-    indexes: IndexDefinition[],
-    foreignKeys: ForeignKeyDefinition[],
-  ): string;
+  generateModel(input: ORMModelInput): string;
 }

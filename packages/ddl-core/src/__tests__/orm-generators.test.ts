@@ -158,15 +158,35 @@ describe('PrismaGenerator', () => {
   const generator = new PrismaGenerator();
 
   it('returns prompt for empty table name', () => {
-    expect(generator.generateModel('', '', [createField()], [], [])).toBe('-- 请填写表名');
+    expect(
+      generator.generateModel({
+        dbType: 'mysql',
+        tableName: '',
+        tableComment: '',
+        fields: [createField()],
+      }),
+    ).toBe('-- 请填写表名');
   });
 
   it('returns prompt for no fields', () => {
-    expect(generator.generateModel('users', '', [], [], [])).toBe('-- 请补充字段信息');
+    expect(
+      generator.generateModel({
+        dbType: 'mysql',
+        tableName: 'users',
+        tableComment: '',
+        fields: [],
+      }),
+    ).toBe('-- 请补充字段信息');
   });
 
   it('generates basic model', () => {
-    const result = generator.generateModel('users', '用户表', [createField()], [createIndex()], []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '用户表',
+      fields: [createField()],
+      indexes: [createIndex()],
+    });
     expect(result).toContain('model Users {');
     expect(result).toContain('/// 用户表');
     expect(result).toContain('id');
@@ -186,7 +206,13 @@ describe('PrismaGenerator', () => {
         nullable: false,
       }),
     ];
-    const result = generator.generateModel('users', '', fields, [createIndex()], []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '',
+      fields,
+      indexes: [createIndex()],
+    });
     expect(result).toContain('name');
     expect(result).toContain('email');
     expect(result).toContain('String?'); // nullable
@@ -211,7 +237,13 @@ describe('PrismaGenerator', () => {
       createField({ name: 'org_id', type: 'int', defaultKind: 'none' }),
       createField({ name: 'name', type: 'varchar', defaultKind: 'none' }),
     ];
-    const result = generator.generateModel('users', '', fields, indexes, []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '',
+      fields,
+      indexes,
+    });
     expect(result).toContain('@@unique([orgId, name])');
   });
 
@@ -223,7 +255,14 @@ describe('PrismaGenerator', () => {
       createField(),
       createField({ name: 'user_id', type: 'bigint', defaultKind: 'none' }),
     ];
-    const result = generator.generateModel('orders', '', fields, [createIndex()], fks);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'orders',
+      tableComment: '',
+      fields,
+      indexes: [createIndex()],
+      foreignKeys: fks,
+    });
     expect(result).toContain(
       'fkUser Users @relation(fields: [userId], references: [id], map: "fk_user")',
     );
@@ -231,7 +270,12 @@ describe('PrismaGenerator', () => {
 
   it('generates uuid default', () => {
     const fields = [createField({ name: 'uuid', type: 'varchar', defaultKind: 'uuid' })];
-    const result = generator.generateModel('users', '', fields, [], []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '',
+      fields,
+    });
     expect(result).toContain('@default(uuid())');
   });
 
@@ -244,7 +288,12 @@ describe('PrismaGenerator', () => {
         defaultValue: 'active',
       }),
     ];
-    const result = generator.generateModel('users', '', fields, [], []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '',
+      fields,
+    });
     expect(result).toContain('@default("active")');
   });
 });
@@ -253,11 +302,24 @@ describe('TypeORMGenerator', () => {
   const generator = new TypeORMGenerator();
 
   it('returns prompt for empty table name', () => {
-    expect(generator.generateModel('', '', [createField()], [], [])).toBe('-- 请填写表名');
+    expect(
+      generator.generateModel({
+        dbType: 'mysql',
+        tableName: '',
+        tableComment: '',
+        fields: [createField()],
+      }),
+    ).toBe('-- 请填写表名');
   });
 
   it('generates basic entity', () => {
-    const result = generator.generateModel('users', '用户表', [createField()], [createIndex()], []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '用户表',
+      fields: [createField()],
+      indexes: [createIndex()],
+    });
     expect(result).toContain(
       "import { Entity, Column, Index, PrimaryGeneratedColumn, PrimaryColumn } from 'typeorm';",
     );
@@ -272,7 +334,13 @@ describe('TypeORMGenerator', () => {
       createField(),
       createField({ name: 'deleted_at', type: 'timestamp', defaultKind: 'none', nullable: true }),
     ];
-    const result = generator.generateModel('users', '', fields, [createIndex()], []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '',
+      fields,
+      indexes: [createIndex()],
+    });
     expect(result).toContain('deletedAt: Date | null;');
   });
 
@@ -290,7 +358,13 @@ describe('TypeORMGenerator', () => {
       createField(),
       createField({ name: 'email', type: 'varchar', defaultKind: 'none' }),
     ];
-    const result = generator.generateModel('users', '', fields, indexes, []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '',
+      fields,
+      indexes,
+    });
     expect(result).toContain('@Column({ unique: true })');
   });
 
@@ -304,7 +378,13 @@ describe('TypeORMGenerator', () => {
         defaultValue: 'active',
       }),
     ];
-    const result = generator.generateModel('users', '', fields, [createIndex()], []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '',
+      fields,
+      indexes: [createIndex()],
+    });
     expect(result).toContain("default: 'active'");
   });
 });
@@ -313,11 +393,24 @@ describe('SQLAlchemyGenerator', () => {
   const generator = new SQLAlchemyGenerator();
 
   it('returns prompt for empty table name', () => {
-    expect(generator.generateModel('', '', [createField()], [], [])).toBe('# 请填写表名');
+    expect(
+      generator.generateModel({
+        dbType: 'mysql',
+        tableName: '',
+        tableComment: '',
+        fields: [createField()],
+      }),
+    ).toBe('# 请填写表名');
   });
 
   it('generates basic model', () => {
-    const result = generator.generateModel('users', '用户表', [createField()], [createIndex()], []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '用户表',
+      fields: [createField()],
+      indexes: [createIndex()],
+    });
     expect(result).toContain('from sqlalchemy import Column');
     expect(result).toContain('class Users(Base):');
     expect(result).toContain("__tablename__ = 'users'");
@@ -330,7 +423,13 @@ describe('SQLAlchemyGenerator', () => {
       createField(),
       createField({ name: 'bio', type: 'text', defaultKind: 'none', nullable: true }),
     ];
-    const result = generator.generateModel('users', '', fields, [createIndex()], []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '',
+      fields,
+      indexes: [createIndex()],
+    });
     expect(result).toContain('bio = Column(Text, nullable=True)');
   });
 
@@ -348,7 +447,14 @@ describe('SQLAlchemyGenerator', () => {
       createField(),
       createField({ name: 'user_id', type: 'bigint', defaultKind: 'none' }),
     ];
-    const result = generator.generateModel('orders', '', fields, [createIndex()], fks);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'orders',
+      tableComment: '',
+      fields,
+      indexes: [createIndex()],
+      foreignKeys: fks,
+    });
     expect(result).toContain("ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE')");
   });
 
@@ -366,13 +472,24 @@ describe('SQLAlchemyGenerator', () => {
       createField(),
       createField({ name: 'name', type: 'varchar', defaultKind: 'none' }),
     ];
-    const result = generator.generateModel('users', '', fields, indexes, []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '',
+      fields,
+      indexes,
+    });
     expect(result).toContain("Index('idx_name', 'name')");
   });
 
   it('handles varchar with args', () => {
     const fields = [createField({ name: 'name', type: 'varchar(100)', defaultKind: 'none' })];
-    const result = generator.generateModel('users', '', fields, [], []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '',
+      fields,
+    });
     expect(result).toContain('name = Column(String(100), nullable=False)');
   });
 });
@@ -381,11 +498,24 @@ describe('GORMGenerator', () => {
   const generator = new GORMGenerator();
 
   it('returns prompt for empty table name', () => {
-    expect(generator.generateModel('', '', [createField()], [], [])).toBe('// 请填写表名');
+    expect(
+      generator.generateModel({
+        dbType: 'mysql',
+        tableName: '',
+        tableComment: '',
+        fields: [createField()],
+      }),
+    ).toBe('// 请填写表名');
   });
 
   it('generates basic struct', () => {
-    const result = generator.generateModel('users', '用户表', [createField()], [createIndex()], []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '用户表',
+      fields: [createField()],
+      indexes: [createIndex()],
+    });
     expect(result).toContain('package models');
     expect(result).toContain('type Users struct {');
     expect(result).toContain('Id');
@@ -399,7 +529,13 @@ describe('GORMGenerator', () => {
       createField(),
       createField({ name: 'created_at', type: 'timestamp', defaultKind: 'none' }),
     ];
-    const result = generator.generateModel('users', '', fields, [createIndex()], []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '',
+      fields,
+      indexes: [createIndex()],
+    });
     expect(result).toContain('import "time"');
     expect(result).toContain('CreatedAt');
     expect(result).toContain('time.Time');
@@ -410,7 +546,13 @@ describe('GORMGenerator', () => {
       createField(),
       createField({ name: 'deleted_at', type: 'timestamp', defaultKind: 'none', nullable: true }),
     ];
-    const result = generator.generateModel('users', '', fields, [createIndex()], []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '',
+      fields,
+      indexes: [createIndex()],
+    });
     expect(result).toContain('*time.Time');
   });
 
@@ -428,7 +570,13 @@ describe('GORMGenerator', () => {
       createField(),
       createField({ name: 'email', type: 'varchar', defaultKind: 'none' }),
     ];
-    const result = generator.generateModel('users', '', fields, indexes, []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '',
+      fields,
+      indexes,
+    });
     expect(result).toContain('gorm:"column:email;uniqueIndex"');
   });
 
@@ -436,7 +584,12 @@ describe('GORMGenerator', () => {
     const fields = [
       createField({ name: 'name', type: 'varchar', defaultKind: 'none', comment: '用户名' }),
     ];
-    const result = generator.generateModel('users', '', fields, [], []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '',
+      fields,
+    });
     expect(result).toContain('gorm:"column:name;comment:用户名"');
   });
 });
@@ -445,11 +598,24 @@ describe('JPAGenerator', () => {
   const generator = new JPAGenerator();
 
   it('returns prompt for empty table name', () => {
-    expect(generator.generateModel('', '', [createField()], [], [])).toBe('// 请填写表名');
+    expect(
+      generator.generateModel({
+        dbType: 'mysql',
+        tableName: '',
+        tableComment: '',
+        fields: [createField()],
+      }),
+    ).toBe('// 请填写表名');
   });
 
   it('generates basic entity', () => {
-    const result = generator.generateModel('users', '用户表', [createField()], [createIndex()], []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '用户表',
+      fields: [createField()],
+      indexes: [createIndex()],
+    });
     expect(result).toContain('import jakarta.persistence.*;');
     expect(result).toContain('@Entity');
     expect(result).toContain('@Table(name = "users")');
@@ -464,7 +630,13 @@ describe('JPAGenerator', () => {
       createField(),
       createField({ name: 'created_at', type: 'timestamp', defaultKind: 'none' }),
     ];
-    const result = generator.generateModel('users', '', fields, [createIndex()], []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '',
+      fields,
+      indexes: [createIndex()],
+    });
     expect(result).toContain('import java.util.Date;');
   });
 
@@ -473,7 +645,13 @@ describe('JPAGenerator', () => {
       createField(),
       createField({ name: 'price', type: 'decimal', defaultKind: 'none' }),
     ];
-    const result = generator.generateModel('users', '', fields, [createIndex()], []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '',
+      fields,
+      indexes: [createIndex()],
+    });
     expect(result).toContain('import java.math.BigDecimal;');
   });
 
@@ -482,20 +660,36 @@ describe('JPAGenerator', () => {
       createField(),
       createField({ name: 'uuid', type: 'uuid', defaultKind: 'none' }),
     ];
-    const result = generator.generateModel('users', '', fields, [createIndex()], []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '',
+      fields,
+      indexes: [createIndex()],
+    });
     expect(result).toContain('import java.util.UUID;');
   });
 
   it('generates getters and setters', () => {
     const fields = [createField({ name: 'name', type: 'varchar', defaultKind: 'none' })];
-    const result = generator.generateModel('users', '', fields, [], []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '',
+      fields,
+    });
     expect(result).toContain('public String getName()');
     expect(result).toContain('public void setName(String name)');
   });
 
   it('marks non-nullable column', () => {
     const fields = [createField({ name: 'name', type: 'varchar', defaultKind: 'none' })];
-    const result = generator.generateModel('users', '', fields, [], []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '',
+      fields,
+    });
     expect(result).toContain('@Column(name = "name", nullable = false)');
   });
 
@@ -503,7 +697,12 @@ describe('JPAGenerator', () => {
     const fields = [
       createField({ name: 'bio', type: 'text', defaultKind: 'none', nullable: true }),
     ];
-    const result = generator.generateModel('users', '', fields, [], []);
+    const result = generator.generateModel({
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '',
+      fields,
+    });
     expect(result).toContain('@Column(name = "bio")');
     expect(result).not.toContain('nullable = false');
   });
@@ -535,11 +734,41 @@ describe('foreign key generation contract', () => {
 
   it('emits usable relationship metadata for every target', () => {
     const outputs = {
-      prisma: new PrismaGenerator().generateModel('orders', '', fields, [], foreignKeys),
-      typeorm: new TypeORMGenerator().generateModel('orders', '', fields, [], foreignKeys),
-      sqlalchemy: new SQLAlchemyGenerator().generateModel('orders', '', fields, [], foreignKeys),
-      gorm: new GORMGenerator().generateModel('orders', '', fields, [], foreignKeys),
-      jpa: new JPAGenerator().generateModel('orders', '', fields, [], foreignKeys),
+      prisma: new PrismaGenerator().generateModel({
+        dbType: 'mysql',
+        tableName: 'orders',
+        tableComment: '',
+        fields,
+        foreignKeys,
+      }),
+      typeorm: new TypeORMGenerator().generateModel({
+        dbType: 'mysql',
+        tableName: 'orders',
+        tableComment: '',
+        fields,
+        foreignKeys,
+      }),
+      sqlalchemy: new SQLAlchemyGenerator().generateModel({
+        dbType: 'mysql',
+        tableName: 'orders',
+        tableComment: '',
+        fields,
+        foreignKeys,
+      }),
+      gorm: new GORMGenerator().generateModel({
+        dbType: 'mysql',
+        tableName: 'orders',
+        tableComment: '',
+        fields,
+        foreignKeys,
+      }),
+      jpa: new JPAGenerator().generateModel({
+        dbType: 'mysql',
+        tableName: 'orders',
+        tableComment: '',
+        fields,
+        foreignKeys,
+      }),
     };
     expect(outputs.prisma).not.toContain('@@foreignKey');
     expect(outputs.prisma).toContain(

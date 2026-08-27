@@ -1,10 +1,6 @@
-import type {
-  NormalizedField,
-  IndexDefinition,
-  ForeignKeyDefinition,
-} from '@ddlbuilder/shared-types';
-import type { ORMGenerator } from '../interfaces/ORMGenerator.js';
+import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
+import { getDatabaseFamily } from '../utils/databaseFamily.js';
 import { buildIndexFieldLookup, toCamelCase, toPascalCase, escapePrismaDefault } from './shared.js';
 
 const toReferentialAction = (action: string) =>
@@ -15,13 +11,15 @@ const toReferentialAction = (action: string) =>
     .join('');
 
 export class PrismaGenerator implements ORMGenerator {
-  generateModel(
-    tableName: string,
-    tableComment: string,
-    fields: NormalizedField[],
-    indexes: IndexDefinition[],
-    foreignKeys: ForeignKeyDefinition[],
-  ): string {
+  generateModel({
+    dbType,
+    schemaName = '',
+    tableName,
+    tableComment,
+    fields,
+    indexes = [],
+    foreignKeys = [],
+  }: ORMModelInput): string {
     if (!tableName.trim()) {
       return '-- 请填写表名';
     }
@@ -32,6 +30,16 @@ export class PrismaGenerator implements ORMGenerator {
     const lines: string[] = [];
     const { primaryFields } = buildIndexFieldLookup(indexes);
     const modelName = toPascalCase(tableName.trim());
+    const family = getDatabaseFamily(dbType);
+    const supportsSchema = family === 'postgresql' || family === 'sqlserver';
+
+    if (schemaName) {
+      lines.push(
+        supportsSchema
+          ? `// Add ${JSON.stringify(schemaName)} to datasource.schemas.`
+          : `// Select database ${JSON.stringify(schemaName)} in the datasource connection configuration.`,
+      );
+    }
 
     if (tableComment.trim()) {
       lines.push(`/// ${tableComment.trim()}`);
@@ -126,6 +134,9 @@ export class PrismaGenerator implements ORMGenerator {
 
     if (modelName !== tableName.trim()) {
       lines.push(`  @@map(${JSON.stringify(tableName.trim())})`);
+    }
+    if (schemaName && supportsSchema) {
+      lines.push(`  @@schema(${JSON.stringify(schemaName)})`);
     }
     lines.push('}');
     return lines.join('\n');

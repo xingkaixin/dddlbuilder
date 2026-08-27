@@ -1,20 +1,18 @@
-import type {
-  NormalizedField,
-  IndexDefinition,
-  ForeignKeyDefinition,
-} from '@ddlbuilder/shared-types';
-import type { ORMGenerator } from '../interfaces/ORMGenerator.js';
+import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
+import { getDatabaseFamily } from '../utils/databaseFamily.js';
 import { buildIndexFieldLookup, toCamelCase, toPascalCase } from './shared.js';
 
 export class TypeORMGenerator implements ORMGenerator {
-  generateModel(
-    tableName: string,
-    tableComment: string,
-    fields: NormalizedField[],
-    indexes: IndexDefinition[],
-    foreignKeys: ForeignKeyDefinition[],
-  ): string {
+  generateModel({
+    dbType,
+    schemaName = '',
+    tableName,
+    tableComment,
+    fields,
+    indexes = [],
+    foreignKeys = [],
+  }: ORMModelInput): string {
     if (!tableName.trim()) {
       return '-- 请填写表名';
     }
@@ -50,7 +48,12 @@ export class TypeORMGenerator implements ORMGenerator {
       lines.push(` * ${tableComment.trim()}`);
       lines.push(` */`);
     }
-    lines.push(`@Entity('${tableName.trim()}')`);
+    const namespaceOption = getDatabaseFamily(dbType) === 'mysql' ? 'database' : 'schema';
+    lines.push(
+      schemaName
+        ? `@Entity({ name: ${JSON.stringify(tableName.trim())}, ${namespaceOption}: ${JSON.stringify(schemaName)} })`
+        : `@Entity('${tableName.trim()}')`,
+    );
 
     const classIndexes: string[] = [];
 

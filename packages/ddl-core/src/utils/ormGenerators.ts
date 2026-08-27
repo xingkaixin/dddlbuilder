@@ -1,19 +1,8 @@
-import type {
-  NormalizedField,
-  IndexDefinition,
-  ForeignKeyDefinition,
-} from '@ddlbuilder/shared-types';
-import type { ORMTarget } from '../interfaces/ORMGenerator.js';
+import type { ORMModelInput, ORMTarget } from '../interfaces/ORMGenerator.js';
 import { ORMGeneratorFactory } from '../factories/ORMGeneratorFactory.js';
 
-export const buildORM = (
-  target: ORMTarget,
-  tableName: string,
-  tableComment: string,
-  fields: NormalizedField[],
-  indexes: IndexDefinition[] = [],
-  foreignKeys: ForeignKeyDefinition[] = [],
-): string => {
+export const buildORM = (target: ORMTarget, input: ORMModelInput): string => {
+  const { tableName, fields } = input;
   if (!tableName.trim()) {
     return '-- 请填写表名';
   }
@@ -22,5 +11,9 @@ export const buildORM = (
   }
 
   const generator = ORMGeneratorFactory.create(target);
-  return generator.generateModel(tableName.trim(), tableComment, fields, indexes, foreignKeys);
+  return generator.generateModel({
+    ...input,
+    tableName: tableName.trim(),
+    schemaName: input.schemaName?.trim(),
+  });
 };

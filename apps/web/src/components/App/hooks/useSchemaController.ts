@@ -128,13 +128,15 @@ export function useSchemaController({
     tableMiscConfig,
     foreignKeys,
   );
-  const orm = useOrmGeneration(
-    qualifiedTableName,
+  const orm = useOrmGeneration({
+    dbType,
+    schemaName,
+    tableName,
     tableComment,
-    derived.normalizedFields,
+    fields: derived.normalizedFields,
     indexes,
     foreignKeys,
-  );
+  });
   const activeTabId = useTabStore((state) => state.activeTabId);
   const getDocumentKey = (state: PersistedState, tabId = activeTabId) =>
     JSON.stringify([

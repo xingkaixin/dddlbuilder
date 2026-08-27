@@ -1,20 +1,18 @@
-import type {
-  NormalizedField,
-  IndexDefinition,
-  ForeignKeyDefinition,
-} from '@ddlbuilder/shared-types';
-import type { ORMGenerator } from '../interfaces/ORMGenerator.js';
+import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
+import { getDatabaseFamily } from '../utils/databaseFamily.js';
 import { buildIndexFieldLookup, toCamelCase, toPascalCase } from './shared.js';
 
 export class JPAGenerator implements ORMGenerator {
-  generateModel(
-    tableName: string,
-    tableComment: string,
-    fields: NormalizedField[],
-    indexes: IndexDefinition[],
-    foreignKeys: ForeignKeyDefinition[],
-  ): string {
+  generateModel({
+    dbType,
+    schemaName = '',
+    tableName,
+    tableComment,
+    fields,
+    indexes = [],
+    foreignKeys = [],
+  }: ORMModelInput): string {
     if (!tableName.trim()) {
       return '// 请填写表名';
     }
@@ -51,7 +49,9 @@ export class JPAGenerator implements ORMGenerator {
       lines.push(` */`);
     }
     lines.push(`@Entity`);
-    lines.push(`@Table(name = "${tableName.trim()}")`);
+    const namespaceOption = getDatabaseFamily(dbType) === 'mysql' ? 'catalog' : 'schema';
+    const namespace = schemaName ? `, ${namespaceOption} = ${JSON.stringify(schemaName)}` : '';
+    lines.push(`@Table(name = ${JSON.stringify(tableName.trim())}${namespace})`);
 
     const className = toPascalCase(tableName.trim());
     lines.push(`public class ${className} {`);

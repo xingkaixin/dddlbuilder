@@ -100,11 +100,16 @@ describe('buildORM', () => {
         defaultValue: '',
         onUpdate: 'none',
       };
-      const model = buildORM(target, 'defaults', '', [
-        field,
-        { ...field, name: 'literal', defaultValue: 'now()' },
-        { ...field, name: 'computed', defaultKind: 'expression', defaultValue: "lower('X')" },
-      ]);
+      const model = buildORM(target, {
+        dbType: 'mysql',
+        tableName: 'defaults',
+        tableComment: '',
+        fields: [
+          field,
+          { ...field, name: 'literal', defaultValue: 'now()' },
+          { ...field, name: 'computed', defaultKind: 'expression', defaultValue: "lower('X')" },
+        ],
+      });
       expect(model).toContain(empty);
       expect(model).toContain(literal);
       expect(model).toContain(expression);
@@ -112,12 +117,22 @@ describe('buildORM', () => {
   );
 
   it('returns empty table message when table name is empty', () => {
-    const result = buildORM('prisma', '', '', [], [], []);
+    const result = buildORM('prisma', {
+      dbType: 'mysql',
+      tableName: '',
+      tableComment: '',
+      fields: [],
+    });
     expect(result).toBe('-- 请填写表名');
   });
 
   it('returns empty fields message when fields are empty', () => {
-    const result = buildORM('prisma', 'users', '', [], [], []);
+    const result = buildORM('prisma', {
+      dbType: 'mysql',
+      tableName: 'users',
+      tableComment: '',
+      fields: [],
+    });
     expect(result).toBe('-- 请补充字段信息');
   });
 });
@@ -146,14 +161,14 @@ describe('ORMGeneratorFactory', () => {
 
 describe('PrismaGenerator', () => {
   it('generates Prisma model', () => {
-    const result = buildORM(
-      'prisma',
-      'user_info',
-      '用户信息表',
-      sampleFields,
-      sampleIndexes,
-      sampleForeignKeys,
-    );
+    const result = buildORM('prisma', {
+      dbType: 'mysql',
+      tableName: 'user_info',
+      tableComment: '用户信息表',
+      fields: sampleFields,
+      indexes: sampleIndexes,
+      foreignKeys: sampleForeignKeys,
+    });
     expect(result).toContain('model UserInfo {');
     expect(result).toContain('/// 用户信息表');
     expect(result).toContain('id');
@@ -195,7 +210,13 @@ describe('PrismaGenerator', () => {
         isPrimary: true,
       },
     ];
-    const result = buildORM('prisma', 'test', '', fields, indexes, []);
+    const result = buildORM('prisma', {
+      dbType: 'mysql',
+      tableName: 'test',
+      tableComment: '',
+      fields,
+      indexes,
+    });
     expect(result).toContain('id');
     expect(result).toContain('Int');
     expect(result).not.toContain('Int?');
@@ -204,7 +225,13 @@ describe('PrismaGenerator', () => {
 
 describe('TypeORMGenerator', () => {
   it('generates TypeORM entity', () => {
-    const result = buildORM('typeorm', 'user_info', '用户信息表', sampleFields, sampleIndexes, []);
+    const result = buildORM('typeorm', {
+      dbType: 'mysql',
+      tableName: 'user_info',
+      tableComment: '用户信息表',
+      fields: sampleFields,
+      indexes: sampleIndexes,
+    });
     expect(result).toContain(
       "import { Entity, Column, Index, PrimaryGeneratedColumn, PrimaryColumn } from 'typeorm';",
     );
@@ -220,14 +247,13 @@ describe('TypeORMGenerator', () => {
 
 describe('SQLAlchemyGenerator', () => {
   it('generates SQLAlchemy model', () => {
-    const result = buildORM(
-      'sqlalchemy',
-      'user_info',
-      '用户信息表',
-      sampleFields,
-      sampleIndexes,
-      [],
-    );
+    const result = buildORM('sqlalchemy', {
+      dbType: 'mysql',
+      tableName: 'user_info',
+      tableComment: '用户信息表',
+      fields: sampleFields,
+      indexes: sampleIndexes,
+    });
     expect(result).toContain('from sqlalchemy import Column');
     expect(result).toContain('Base = declarative_base()');
     expect(result).toContain('class UserInfo(Base):');
@@ -247,7 +273,13 @@ describe('SQLAlchemyGenerator', () => {
 
 describe('GORMGenerator', () => {
   it('generates GORM struct', () => {
-    const result = buildORM('gorm', 'user_info', '用户信息表', sampleFields, sampleIndexes, []);
+    const result = buildORM('gorm', {
+      dbType: 'mysql',
+      tableName: 'user_info',
+      tableComment: '用户信息表',
+      fields: sampleFields,
+      indexes: sampleIndexes,
+    });
     expect(result).toContain('package models');
     expect(result).toContain('import "time"');
     expect(result).toContain('type UserInfo struct {');
@@ -273,14 +305,25 @@ describe('GORMGenerator', () => {
         onUpdate: 'none',
       },
     ];
-    const result = buildORM('gorm', 'test', '', fields, [], []);
+    const result = buildORM('gorm', {
+      dbType: 'mysql',
+      tableName: 'test',
+      tableComment: '',
+      fields,
+    });
     expect(result).not.toContain('import "time"');
   });
 });
 
 describe('JPAGenerator', () => {
   it('generates JPA entity', () => {
-    const result = buildORM('jpa', 'user_info', '用户信息表', sampleFields, sampleIndexes, []);
+    const result = buildORM('jpa', {
+      dbType: 'mysql',
+      tableName: 'user_info',
+      tableComment: '用户信息表',
+      fields: sampleFields,
+      indexes: sampleIndexes,
+    });
     expect(result).toContain('import jakarta.persistence.*;');
     expect(result).toContain('import java.util.Date;');
     expect(result).toContain('@Entity');
@@ -306,7 +349,12 @@ describe('JPAGenerator', () => {
         onUpdate: 'none',
       },
     ];
-    const result = buildORM('jpa', 'test', '', fields, [], []);
+    const result = buildORM('jpa', {
+      dbType: 'mysql',
+      tableName: 'test',
+      tableComment: '',
+      fields,
+    });
     expect(result).toContain('import java.math.BigDecimal;');
     expect(result).toContain('private BigDecimal amount;');
   });
@@ -323,7 +371,12 @@ describe('JPAGenerator', () => {
         onUpdate: 'none',
       },
     ];
-    const result = buildORM('jpa', 'test', '', fields, [], []);
+    const result = buildORM('jpa', {
+      dbType: 'mysql',
+      tableName: 'test',
+      tableComment: '',
+      fields,
+    });
     expect(result).toContain('import java.util.UUID;');
     expect(result).toContain('private UUID uuidCol;');
   });

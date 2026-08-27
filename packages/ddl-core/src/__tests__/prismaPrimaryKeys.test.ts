@@ -23,13 +23,13 @@ const primaryKey = (names: string[]): IndexDefinition => ({
 
 describe('Prisma primary keys', () => {
   it('emits one compound key in index order instead of separate field IDs', () => {
-    const model = buildORM(
-      'prisma',
-      'membership',
-      '',
-      [field('tenant_id'), field('user_id'), field('label', { type: 'varchar(100)' })],
-      [primaryKey(['user_id', 'tenant_id'])],
-    );
+    const model = buildORM('prisma', {
+      dbType: 'mysql',
+      tableName: 'membership',
+      tableComment: '',
+      fields: [field('tenant_id'), field('user_id'), field('label', { type: 'varchar(100)' })],
+      indexes: [primaryKey(['user_id', 'tenant_id'])],
+    });
 
     expect(model).toContain('@@id([userId, tenantId])');
     expect(model.match(/@@id\(/g)).toHaveLength(1);
@@ -47,13 +47,13 @@ describe('Prisma primary keys', () => {
   ])(
     'preserves auto increment defaults for primary columns: $names',
     ({ names, fieldIds, compoundIds }) => {
-      const model = buildORM(
-        'prisma',
-        'membership',
-        '',
-        [field('id', { defaultKind: 'auto_increment' }), field('tenant_id')],
-        [primaryKey(names)],
-      );
+      const model = buildORM('prisma', {
+        dbType: 'mysql',
+        tableName: 'membership',
+        tableComment: '',
+        fields: [field('id', { defaultKind: 'auto_increment' }), field('tenant_id')],
+        indexes: [primaryKey(names)],
+      });
 
       expect(model).toMatch(/id\s+Int\s+(?:@id )?@default\(autoincrement\(\)\)/);
       expect(model.match(/\s@id\b/g) ?? []).toHaveLength(fieldIds);
@@ -62,12 +62,16 @@ describe('Prisma primary keys', () => {
   );
 
   it('does not turn a compound unique index into a primary key', () => {
-    const model = buildORM(
-      'prisma',
-      'membership',
-      '',
-      [field('id'), field('tenant_id', { nullable: false }), field('user_id', { nullable: false })],
-      [
+    const model = buildORM('prisma', {
+      dbType: 'mysql',
+      tableName: 'membership',
+      tableComment: '',
+      fields: [
+        field('id'),
+        field('tenant_id', { nullable: false }),
+        field('user_id', { nullable: false }),
+      ],
+      indexes: [
         primaryKey(['id']),
         {
           ...primaryKey(['tenant_id', 'user_id']),
@@ -76,7 +80,7 @@ describe('Prisma primary keys', () => {
           isPrimary: false,
         },
       ],
-    );
+    });
 
     expect(model).toMatch(/id\s+Int\s+@id\b/);
     expect(model).toContain('@@unique([tenantId, userId])');
