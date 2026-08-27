@@ -46,6 +46,10 @@ export { TYPE_ALIASES, canonicalizeBaseType } from './utils/typeAliases.js';
 export { buildPrimaryKeyName } from './utils/primaryKeyNaming.js';
 export { getSqlIdentifierKey, unquoteSqlIdentifier } from './utils/sqlIdentifiers.js';
 export {
+  renameSqlExpressionFields,
+  sqlExpressionReferencesField,
+} from './utils/sqlExpressionIdentifiers.js';
+export {
   buildIndexName,
   truncateIdentifierName,
   getIdentifierNameMaxLength,

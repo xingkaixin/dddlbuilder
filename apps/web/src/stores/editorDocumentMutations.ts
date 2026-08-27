@@ -1,11 +1,13 @@
 import type { FieldRow, ForeignKeyDefinition, PersistedState } from '@ddlbuilder/shared-types';
 import { createEmptyRow } from '@/utils/helpers';
-import { containsSqlIdentifierToken, replaceIdentifierTokens } from '@/utils/fieldRenameUtils';
+import { renameIndexNameTokens } from '@/utils/fieldRenameUtils';
 import {
   getSqlIdentifierKey,
   getSchemaAndTable,
   getIdentifierNameMaxLength,
   truncateIdentifierName,
+  renameSqlExpressionFields,
+  sqlExpressionReferencesField,
 } from '@ddlbuilder/ddl-core';
 
 function referencesCurrentTable(state: PersistedState, foreignKey: ForeignKeyDefinition): boolean {
@@ -76,7 +78,7 @@ export function updateDocumentFields(state: PersistedState, rows: FieldRow[]): P
           .map((field) => [key(field.name), rename(field.name)]),
       );
       if (indexRenames.size === 0) return index;
-      const name = replaceIdentifierTokens(index.name, indexRenames, state.dbType);
+      const name = renameIndexNameTokens(index.name, indexRenames, state.dbType);
       return {
         ...index,
         name:
@@ -96,15 +98,12 @@ export function updateDocumentFields(state: PersistedState, rows: FieldRow[]): P
     mysqlPartitionConfig: state.mysqlPartitionConfig
       ? {
           ...state.mysqlPartitionConfig,
-          columns: state.mysqlPartitionConfig.columns.map((column) =>
-            replaceIdentifierTokens(column, renames, state.dbType, 'sql'),
-          ),
+          columns: state.mysqlPartitionConfig.columns.map(rename),
           expression: state.mysqlPartitionConfig.expression
-            ? replaceIdentifierTokens(
+            ? renameSqlExpressionFields(
                 state.mysqlPartitionConfig.expression,
                 renames,
                 state.dbType,
-                'sql',
               )
             : undefined,
         }
@@ -149,7 +148,7 @@ export function removeFieldsFromDocument(
   const expression = state.mysqlPartitionConfig?.expression;
   const removesExpression =
     expression &&
-    removedFieldNames.some((name) => containsSqlIdentifierToken(expression, name, state.dbType));
+    removedFieldNames.some((name) => sqlExpressionReferencesField(expression, name, state.dbType));
   const mysqlPartitionConfig = state.mysqlPartitionConfig
     ? {
         ...state.mysqlPartitionConfig,

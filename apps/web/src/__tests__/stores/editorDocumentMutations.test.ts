@@ -68,6 +68,79 @@ function createCaseSensitiveState(dbType: DatabaseType): PersistedState {
 }
 
 describe('editor document references', () => {
+  it.each(['rename', 'remove'] as const)(
+    'does not %s a partition function when changing an unrelated field',
+    (operation) => {
+      const state = createState({
+        rows: [
+          { id: 'year', fieldName: 'year', fieldType: 'int', fieldComment: '', nullable: false },
+          {
+            id: 'date',
+            fieldName: 'created_at',
+            fieldType: 'date',
+            fieldComment: '',
+            nullable: false,
+          },
+        ],
+        indexes: [],
+        foreignKeys: [],
+        mysqlPartitionConfig: {
+          enabled: true,
+          type: 'RANGE',
+          columns: [],
+          expression: 'YEAR(created_at)',
+          partitions: [],
+        },
+      });
+      useEditorStore.getState().replaceDocument(state);
+      if (operation === 'rename') {
+        useEditorStore
+          .getState()
+          .setRows((rows) =>
+            rows.map((row) => (row.id === 'year' ? { ...row, fieldName: 'fiscal_year' } : row)),
+          );
+      } else {
+        useEditorStore.getState().handleRemoveRow(0, 1);
+      }
+      expect(useEditorStore.getState().mysqlPartitionConfig).toEqual(state.mysqlPartitionConfig);
+    },
+  );
+
+  it('renames and removes real partition references without touching SQL literals', () => {
+    const state = createState({
+      rows: [
+        {
+          id: 'date',
+          fieldName: 'created_at',
+          fieldType: 'date',
+          fieldComment: '',
+          nullable: false,
+        },
+      ],
+      indexes: [],
+      foreignKeys: [],
+      mysqlPartitionConfig: {
+        enabled: true,
+        type: 'RANGE',
+        columns: [],
+        expression: "YEAR(created_at) + LENGTH('created_at') /* created_at */",
+        partitions: [],
+      },
+    });
+    useEditorStore.getState().replaceDocument(state);
+    useEditorStore
+      .getState()
+      .setRows((rows) => rows.map((row) => ({ ...row, fieldName: 'created on' })));
+    expect(useEditorStore.getState().mysqlPartitionConfig?.expression).toBe(
+      "YEAR(`created on`) + LENGTH('created_at') /* created_at */",
+    );
+    useEditorStore.getState().handleRemoveRow(0, 1);
+    expect(useEditorStore.getState().mysqlPartitionConfig).toMatchObject({
+      enabled: false,
+      expression: undefined,
+    });
+  });
+
   it('updates self references when the table and schema change', () => {
     useEditorStore.getState().replaceDocument(
       createState({
