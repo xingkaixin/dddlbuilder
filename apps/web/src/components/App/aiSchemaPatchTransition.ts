@@ -1,4 +1,10 @@
-import type { FieldRow, IndexDefinition, PersistedState } from '@ddlbuilder/shared-types';
+import type {
+  DatabaseType,
+  FieldRow,
+  IndexDefinition,
+  PersistedState,
+} from '@ddlbuilder/shared-types';
+import { getSqlIdentifierKey } from '@ddlbuilder/ddl-core';
 import type { AISchemaChange } from '@/utils/aiSchemaChanges';
 import {
   removeFieldsFromDocument,
@@ -9,13 +15,13 @@ import { validateDocumentFields } from '@/stores/editorDocumentValidation';
 
 type FieldChange = Extract<AISchemaChange, { kind: 'field' }>;
 
-const normalizedName = (value: string) => value.trim().toLowerCase();
-
 const upsertIndex = (
   indexes: IndexDefinition[],
   targetName: string,
   nextIndex: IndexDefinition,
+  dbType: DatabaseType,
 ) => {
+  const normalizedName = (value: string) => getSqlIdentifierKey(value, dbType);
   const position = indexes.findIndex((index) =>
     nextIndex.id
       ? index.id === nextIndex.id
@@ -32,6 +38,7 @@ const applyFieldSchemaChange = (
   candidateRows: FieldRow[],
   change: FieldChange,
 ): PersistedState => {
+  const normalizedName = (value: string) => getSqlIdentifierKey(value, state.dbType);
   const rows = state.rows;
   if (change.type === 'add' && change.newRow) {
     const existingIndex = rows.findIndex(
@@ -77,6 +84,7 @@ export const applyAISchemaChanges = (
   candidateState: PersistedState,
   changes: AISchemaChange[],
 ): PersistedState => {
+  const normalizedName = (value: string) => getSqlIdentifierKey(value, currentState.dbType);
   const removedIds = new Set<string>();
   const removedNames = new Set<string>();
   for (const change of changes) {
@@ -142,7 +150,7 @@ export const applyAISchemaChanges = (
     } else if (change.type === 'modify' && change.newIndex) {
       nextState = {
         ...nextState,
-        indexes: upsertIndex(indexes, change.indexName, change.newIndex),
+        indexes: upsertIndex(indexes, change.indexName, change.newIndex, currentState.dbType),
       };
     } else if (change.type === 'remove') {
       nextState = {

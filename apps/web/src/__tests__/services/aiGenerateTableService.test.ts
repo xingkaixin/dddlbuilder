@@ -3,6 +3,37 @@ import { requestGenerateTable } from '@/services/aiGenerateTableService';
 import { createAITextStream as createTextStream } from '@/__tests__/utils/aiStream';
 
 describe('requestGenerateTable', () => {
+  it('resolves legacy field identities using the requested dialect', async () => {
+    const rows = ['UserID', 'userid'].map((fieldName) => ({
+      id: fieldName,
+      fieldName,
+      fieldType: 'int',
+      fieldComment: '',
+      nullable: true,
+      defaultKind: 'none' as const,
+    }));
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        createTextStream([
+          JSON.stringify({
+            tableName: 'users',
+            tableComment: '',
+            fields: rows.map(({ id: _id, ...row }) => row),
+          }),
+        ]),
+      ),
+    );
+    const response = await requestGenerateTable(
+      {
+        description: '保留字段',
+        dbType: 'postgresql',
+        options: { mode: 'patch', existingConfig: { rows } },
+      },
+      { signal: new AbortController().signal },
+    );
+    expect(response.result.fields.map((field) => field.id)).toEqual(['UserID', 'userid']);
+  });
+
   it('uses current fields after a previous patch proposal was not applied', async () => {
     const fields = ['a', 'b'].map((id) => ({
       id,

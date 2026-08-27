@@ -1,11 +1,12 @@
 import type { GeneratedField, GeneratedTableSchema } from '@ddlbuilder/shared-types/ai-generate';
 import {
   createEntityId,
+  type DatabaseType,
   normalizeFieldDefaultKind,
   normalizeFieldNullable,
   normalizeFieldOnUpdate,
 } from '@ddlbuilder/shared-types';
-import { getSchemaAndTable } from '@ddlbuilder/ddl-core';
+import { getSchemaAndTable, getSqlIdentifierKey } from '@ddlbuilder/ddl-core';
 
 function normalizeGeneratedField(field: GeneratedField): GeneratedField {
   return {
@@ -19,13 +20,14 @@ function normalizeGeneratedField(field: GeneratedField): GeneratedField {
 function normalizeGeneratedFields(
   fields: GeneratedField[],
   baseFields: ReadonlyArray<Pick<GeneratedField, 'id' | 'fieldName'>>,
+  dbType: DatabaseType,
 ): GeneratedField[] {
   const existingFields = baseFields.filter((field) => field.fieldName.trim());
   const baseIds = new Set(
     existingFields.map((field) => field.id).filter((id): id is string => !!id),
   );
   const idsByName = new Map(
-    existingFields.map((field) => [field.fieldName.trim().toLowerCase(), field.id]),
+    existingFields.map((field) => [getSqlIdentifierKey(field.fieldName, dbType), field.id]),
   );
   const usedIds = new Set<string>();
   let hasUnidentifiedAddition = false;
@@ -36,7 +38,7 @@ function normalizeGeneratedFields(
     const existingId =
       field.id === null
         ? undefined
-        : (field.id ?? idsByName.get(field.fieldName.trim().toLowerCase()));
+        : (field.id ?? idsByName.get(getSqlIdentifierKey(field.fieldName, dbType)));
     if (!existingId && field.id === undefined) hasUnidentifiedAddition = true;
     const id = existingId || createEntityId();
     if (usedIds.has(id)) throw new Error('Duplicate AI field identity');
@@ -51,6 +53,7 @@ function normalizeGeneratedFields(
 
 export function normalizeGeneratedTableSchema(
   schema: GeneratedTableSchema,
+  dbType: DatabaseType,
   baseFields: ReadonlyArray<Pick<GeneratedField, 'id' | 'fieldName'>> = [],
 ): GeneratedTableSchema {
   const normalizedName =
@@ -65,7 +68,9 @@ export function normalizeGeneratedTableSchema(
     ...schema,
     schemaName: normalizedName.schema || undefined,
     tableName: normalizedName.table,
-    fields: Array.isArray(schema.fields) ? normalizeGeneratedFields(schema.fields, baseFields) : [],
+    fields: Array.isArray(schema.fields)
+      ? normalizeGeneratedFields(schema.fields, baseFields, dbType)
+      : [],
     designDecisions: Array.isArray(schema.designDecisions)
       ? schema.designDecisions.filter(
           (decision) =>

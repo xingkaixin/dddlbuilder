@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { getSqlIdentifierKey } from '@ddlbuilder/ddl-core';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { AISchemaChange } from '@/utils/aiSchemaChanges';
 import type { BuilderTab } from '@/utils/tabUtils';
@@ -23,6 +24,7 @@ export function useAISchemaPatchFlow({
     (changes: AISchemaChange[], candidateState: PersistedState) => {
       const nextState = applyAISchemaChanges(currentState, candidateState, changes);
       applyState(nextState);
+      const key = (name: string) => getSqlIdentifierKey(name, currentState.dbType);
 
       const lastStructuralChange = [...changes].reverse().find((change) => change.kind !== 'table');
       if (lastStructuralChange?.kind === 'field') {
@@ -31,9 +33,7 @@ export function useAISchemaPatchFlow({
           lastStructuralChange.newRow?.fieldName ||
           lastStructuralChange.oldRow?.fieldName ||
           lastStructuralChange.fieldName;
-        const rowIndex = nextState.rows.findIndex(
-          (row) => row.fieldName.trim().toLowerCase() === targetName.trim().toLowerCase(),
-        );
+        const rowIndex = nextState.rows.findIndex((row) => key(row.fieldName) === key(targetName));
         if (rowIndex >= 0) highlightField(rowIndex);
       } else if (lastStructuralChange?.kind === 'index') {
         setActiveTab('indexes');
@@ -41,9 +41,7 @@ export function useAISchemaPatchFlow({
 
       for (const change of changes) {
         if (change.kind !== 'index' || change.type === 'remove') continue;
-        const index = nextState.indexes.find(
-          (item) => item.name.toLowerCase() === change.indexName.toLowerCase(),
-        );
+        const index = nextState.indexes.find((item) => key(item.name) === key(change.indexName));
         if (index) setTimeout(() => void animateIndex(index.id, 'add'), 50);
       }
     },
@@ -52,11 +50,12 @@ export function useAISchemaPatchFlow({
 
   const focusChange = useCallback(
     (change: AISchemaChange) => {
+      const key = (name: string) => getSqlIdentifierKey(name, currentState.dbType);
       if (change.kind === 'field') {
         setActiveTab('fields');
         const targetName = change.oldRow?.fieldName || change.newRow?.fieldName || change.fieldName;
         const rowIndex = currentState.rows.findIndex(
-          (row) => row.fieldName.trim().toLowerCase() === targetName.trim().toLowerCase(),
+          (row) => key(row.fieldName) === key(targetName),
         );
         if (rowIndex >= 0) highlightField(rowIndex);
         return;
@@ -65,9 +64,7 @@ export function useAISchemaPatchFlow({
       if (change.kind === 'index') {
         setActiveTab('indexes');
         const targetIndex =
-          currentState.indexes.find(
-            (index) => index.name.toLowerCase() === change.indexName.toLowerCase(),
-          ) ||
+          currentState.indexes.find((index) => key(index.name) === key(change.indexName)) ||
           change.newIndex ||
           change.oldIndex;
         if (targetIndex) {
@@ -75,7 +72,14 @@ export function useAISchemaPatchFlow({
         }
       }
     },
-    [animateIndex, currentState.indexes, currentState.rows, highlightField, setActiveTab],
+    [
+      animateIndex,
+      currentState.dbType,
+      currentState.indexes,
+      currentState.rows,
+      highlightField,
+      setActiveTab,
+    ],
   );
 
   return { applyChanges, focusChange };

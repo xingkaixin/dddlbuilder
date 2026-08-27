@@ -25,12 +25,14 @@ describe('normalizeAiEnumValue', () => {
   it('preserves renamed identities and assigns new identities once for later conversation turns', () => {
     const first = normalizeGeneratedTableSchema(
       schema([field('phone', 'contact'), field('email', null)]),
+      'mysql',
       [field('mobile', 'contact')],
     );
     expect(first.fields[0].id).toBe('contact');
     expect(first.fields[1].id).toBeTruthy();
     const second = normalizeGeneratedTableSchema(
       schema([first.fields[0], { ...first.fields[1], fieldName: 'address' }]),
+      'mysql',
       first.fields,
     );
     expect(second.fields.map((row) => row.id)).toEqual(first.fields.map((row) => row.id));
@@ -39,28 +41,34 @@ describe('normalizeAiEnumValue', () => {
   it('accepts name-matched legacy fields with an incremental addition or a deletion', () => {
     const base = [field('phone', 'contact'), field('', 'empty-row')];
     expect(
-      normalizeGeneratedTableSchema(schema([field('phone'), field('email')]), base).fields[0].id,
+      normalizeGeneratedTableSchema(schema([field('phone'), field('email')]), 'mysql', base)
+        .fields[0].id,
     ).toBe('contact');
-    expect(normalizeGeneratedTableSchema(schema([]), base).fields).toEqual([]);
+    expect(normalizeGeneratedTableSchema(schema([]), 'mysql', base).fields).toEqual([]);
   });
 
   it('requires explicit new-field intent when replacing an existing field', () => {
     const base = [field('phone', 'contact')];
-    expect(() => normalizeGeneratedTableSchema(schema([field('email')]), base)).toThrow(
+    expect(() => normalizeGeneratedTableSchema(schema([field('email')]), 'mysql', base)).toThrow(
       'explicit identity',
     );
-    const replacement = normalizeGeneratedTableSchema(schema([field('email', null)]), base);
+    const replacement = normalizeGeneratedTableSchema(
+      schema([field('email', null)]),
+      'mysql',
+      base,
+    );
     expect(replacement.fields[0].id).not.toBe('contact');
   });
 
   it('rejects unknown or duplicated field identities', () => {
     const base = [field('phone', 'contact')];
-    expect(() => normalizeGeneratedTableSchema(schema([field('email', 'invented')]), base)).toThrow(
-      'Unknown',
-    );
+    expect(() =>
+      normalizeGeneratedTableSchema(schema([field('email', 'invented')]), 'mysql', base),
+    ).toThrow('Unknown');
     expect(() =>
       normalizeGeneratedTableSchema(
         schema([field('phone', 'contact'), field('email', 'contact')]),
+        'mysql',
         base,
       ),
     ).toThrow('Duplicate');
@@ -108,23 +116,26 @@ describe('normalizeAiEnumValue', () => {
   });
 
   it('normalizeGeneratedTableSchema 应处理 fields 数组与非数组输入', () => {
-    const normalized = normalizeGeneratedTableSchema({
-      tableName: 'users',
-      tableComment: '',
-      dbType: 'mysql',
-      fields: [
-        {
-          fieldName: 'id',
-          fieldType: 'bigint',
-          fieldComment: '',
-          nullable: 'false',
-          defaultKind: 'auto_increment',
-          defaultValue: '',
-          onUpdate: 'none',
-        },
-      ],
-      designDecisions: [{ title: '主键策略', rationale: '使用自增主键' }, { title: '无效项' }],
-    } as any);
+    const normalized = normalizeGeneratedTableSchema(
+      {
+        tableName: 'users',
+        tableComment: '',
+        dbType: 'mysql',
+        fields: [
+          {
+            fieldName: 'id',
+            fieldType: 'bigint',
+            fieldComment: '',
+            nullable: 'false',
+            defaultKind: 'auto_increment',
+            defaultValue: '',
+            onUpdate: 'none',
+          },
+        ],
+        designDecisions: [{ title: '主键策略', rationale: '使用自增主键' }, { title: '无效项' }],
+      } as any,
+      'mysql',
+    );
 
     expect(normalized.fields[0]).toMatchObject({
       nullable: false,
@@ -133,12 +144,15 @@ describe('normalizeAiEnumValue', () => {
     });
     expect(normalized.designDecisions).toEqual([{ title: '主键策略', rationale: '使用自增主键' }]);
 
-    const noFields = normalizeGeneratedTableSchema({
-      tableName: 'users',
-      tableComment: '',
-      dbType: 'mysql',
-      fields: 'not-array',
-    } as any);
+    const noFields = normalizeGeneratedTableSchema(
+      {
+        tableName: 'users',
+        tableComment: '',
+        dbType: 'mysql',
+        fields: 'not-array',
+      } as any,
+      'mysql',
+    );
 
     expect(noFields.fields).toEqual([]);
   });

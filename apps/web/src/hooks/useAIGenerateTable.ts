@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
+import type { DatabaseType } from '@ddlbuilder/shared-types';
 import { useMutation } from '@tanstack/react-query';
 import {
   requestGenerateTable,
@@ -83,7 +84,7 @@ export function useAIGenerateTable() {
   }, [generateMutation.isPending, state.streamingText]);
 
   const generateTable = useCallback(
-    async (description: string, dbType: string, options?: GenerateTableOptions) => {
+    async (description: string, dbType: DatabaseType, options?: GenerateTableOptions) => {
       if (!description.trim()) {
         setState((prev) => ({
           ...prev,

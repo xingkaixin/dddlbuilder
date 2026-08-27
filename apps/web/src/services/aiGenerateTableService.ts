@@ -4,7 +4,7 @@ import type {
   ConversationMessage,
   GeneratedTableSchema,
 } from '@ddlbuilder/shared-types/ai-generate';
-import type { PersistedState } from '@ddlbuilder/shared-types';
+import type { DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
 import i18n from '@/i18n';
 import { normalizeGeneratedTableSchema } from '@/utils/normalizeAiEnumValue';
@@ -26,7 +26,7 @@ interface RequestGenerateTableOptions {
 
 interface RequestGenerateTablePayload {
   description: string;
-  dbType: string;
+  dbType: DatabaseType;
   locale?: AppLocale;
   options?: GenerateTableRequestOptions;
 }
@@ -77,6 +77,7 @@ export async function requestGenerateTable(
       fullText,
       result: normalizeGeneratedTableSchema(
         JSON.parse(fullText) as GeneratedTableSchema,
+        payload.dbType,
         previousSchema?.fields ?? existingConfig?.rows ?? [],
       ),
     };

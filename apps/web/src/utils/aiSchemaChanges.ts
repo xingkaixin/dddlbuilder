@@ -8,7 +8,12 @@ import {
   type SqlFormatMode,
 } from '@ddlbuilder/shared-types';
 import type { GeneratedTableSchema } from '@ddlbuilder/shared-types/ai-generate';
-import { diffPersistedState, getSchemaAndTable, type FieldDiff } from '@ddlbuilder/ddl-core';
+import {
+  diffPersistedState,
+  getSchemaAndTable,
+  getSqlIdentifierKey,
+  type FieldDiff,
+} from '@ddlbuilder/ddl-core';
 
 export type AISchemaChangeStatus = 'pending' | 'accepted' | 'rejected' | 'applied';
 
@@ -45,19 +50,22 @@ export type AISchemaChange =
       status?: AISchemaChangeStatus;
     };
 
-export function buildGeneratedRows(
+function buildGeneratedRows(
   schema: GeneratedTableSchema,
-  baseRows: FieldRow[] = [],
+  baseRows: FieldRow[],
+  dbType: DatabaseType,
 ): FieldRow[] {
   const rowsById = new Map(baseRows.map((row) => [row.id, row]));
-  const rowsByName = new Map(baseRows.map((row) => [row.fieldName.trim().toLowerCase(), row]));
+  const rowsByName = new Map(
+    baseRows.map((row) => [getSqlIdentifierKey(row.fieldName, dbType), row]),
+  );
   return schema.fields.map((field) => {
     const original =
       field.id === null
         ? undefined
         : field.id
           ? rowsById.get(field.id)
-          : rowsByName.get(field.fieldName.trim().toLowerCase());
+          : rowsByName.get(getSqlIdentifierKey(field.fieldName, dbType));
     return {
       ...original,
       id: field.id ?? original?.id ?? createEntityId(),
@@ -89,8 +97,10 @@ function sameIndex(a: IndexDefinition, b: IndexDefinition) {
 function buildGeneratedIndexes(
   schema: GeneratedTableSchema,
   baseIndexes: IndexDefinition[],
+  dbType: DatabaseType,
 ): IndexDefinition[] {
-  const existingIndexes = new Map(baseIndexes.map((index) => [index.name.toLowerCase(), index]));
+  const key = (name: string) => getSqlIdentifierKey(name, dbType);
+  const existingIndexes = new Map(baseIndexes.map((index) => [key(index.name), index]));
   const pkFields = schema.fields
     .filter((field) => field.isPrimaryKey)
     .map((field) => ({ name: field.fieldName, direction: 'ASC' as const }));
@@ -99,12 +109,12 @@ function buildGeneratedIndexes(
     fields.length === pkFields.length &&
     fields.every(
       (field, index) =>
-        field.name.trim().toLowerCase() === pkFields[index]?.name.trim().toLowerCase() &&
+        key(field.name) === key(pkFields[index].name) &&
         field.direction === pkFields[index]?.direction,
     );
   const indexes = (schema.indexes || []).map((index) => {
     const isPrimary = /^primary$|^pk_/i.test(index.name) && hasSameFields(index.fields);
-    const existing = existingIndexes.get(index.name.toLowerCase());
+    const existing = existingIndexes.get(key(index.name));
     return {
       id: existing?.id ?? createEntityId(),
       name: index.name,
@@ -198,15 +208,15 @@ export function buildPersistedStateFromAISchema(
     schemaName: identity.schemaName,
     tableName: identity.tableName,
     tableComment: schema.tableComment || '',
-    rows: buildGeneratedRows(schema, baseState.rows),
-    indexes: buildGeneratedIndexes(schema, baseState.indexes || []),
+    rows: buildGeneratedRows(schema, baseState.rows, baseState.dbType),
+    indexes: buildGeneratedIndexes(schema, baseState.indexes || [], baseState.dbType),
   };
 }
 
-function fieldRowByName(rows: FieldRow[], fieldName?: string) {
+function fieldRowByName(state: PersistedState, fieldName?: string) {
   if (!fieldName) return undefined;
-  const name = fieldName.toLowerCase();
-  return rows.find((row) => row.fieldName.trim().toLowerCase() === name);
+  const name = getSqlIdentifierKey(fieldName, state.dbType);
+  return state.rows.find((row) => getSqlIdentifierKey(row.fieldName, state.dbType) === name);
 }
 
 function buildFieldChangeId(change: FieldDiff) {
@@ -221,10 +231,15 @@ function buildFieldChangeId(change: FieldDiff) {
 function buildIndexChanges(
   baseIndexes: IndexDefinition[],
   nextIndexes: IndexDefinition[],
+  dbType: DatabaseType,
 ): AISchemaChange[] {
   const changes: AISchemaChange[] = [];
-  const baseByName = new Map(baseIndexes.map((index) => [index.name.toLowerCase(), index]));
-  const nextByName = new Map(nextIndexes.map((index) => [index.name.toLowerCase(), index]));
+  const baseByName = new Map(
+    baseIndexes.map((index) => [getSqlIdentifierKey(index.name, dbType), index]),
+  );
+  const nextByName = new Map(
+    nextIndexes.map((index) => [getSqlIdentifierKey(index.name, dbType), index]),
+  );
 
   for (const [name, oldIndex] of baseByName) {
     const newIndex = nextByName.get(name);
@@ -310,15 +325,17 @@ export function buildAISchemaChanges(
       fieldName: field.fieldName,
       oldField: field.oldField,
       newField: field.newField,
-      oldRow: fieldRowByName(baseState.rows, oldName),
-      newRow: fieldRowByName(candidateState.rows, newName),
+      oldRow: fieldRowByName(baseState, oldName),
+      newRow: fieldRowByName(candidateState, newName),
       oldFieldName: field.oldFieldName,
       newFieldName: field.newFieldName,
       changes: field.changes,
     });
   }
 
-  changes.push(...buildIndexChanges(baseState.indexes || [], candidateState.indexes || []));
+  changes.push(
+    ...buildIndexChanges(baseState.indexes || [], candidateState.indexes || [], baseState.dbType),
+  );
 
   return changes;
 }

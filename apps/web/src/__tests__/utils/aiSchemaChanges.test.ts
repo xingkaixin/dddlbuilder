@@ -55,6 +55,91 @@ function createBaseState(): PersistedState {
 }
 
 describe('aiSchemaChanges', () => {
+  describe.each(['postgresql', 'kingbase', 'gaussdb'] as const)('%s identifiers', (dbType) => {
+    it.each(['add', 'remove', 'modify', 'rename'] as const)(
+      'applies a field %s without confusing case-distinct names',
+      (operation) => {
+        const baseState = createBaseState();
+        baseState.dbType = dbType;
+        baseState.indexes = [];
+        const upper = { ...baseState.rows[1], id: 'upper', fieldName: 'UserID' };
+        const lower = { ...baseState.rows[1], id: 'lower', fieldName: 'userid' };
+        baseState.rows = operation === 'add' ? [upper] : [upper, lower];
+        const rows =
+          operation === 'remove'
+            ? [upper]
+            : [
+                upper,
+                {
+                  ...lower,
+                  fieldName: operation === 'rename' ? 'account_id' : lower.fieldName,
+                  fieldType: operation === 'modify' ? 'varchar(64)' : lower.fieldType,
+                },
+              ];
+        const candidate = buildPersistedStateFromAISchema(
+          { tableName: baseState.tableName, tableComment: baseState.tableComment, fields: rows },
+          { baseState },
+        );
+        const changes = buildAISchemaChanges(baseState, candidate);
+        const applied = applyAISchemaChanges(baseState, candidate, changes);
+        expect(applied.rows).toEqual(candidate.rows);
+        expect(applied.rows[0]).toEqual(upper);
+        expect(applyAISchemaChanges(applied, candidate, changes)).toEqual(applied);
+      },
+    );
+
+    it('keeps case-distinct index identities during additions and removals', () => {
+      const baseState = createBaseState();
+      baseState.dbType = dbType;
+      const upper = { ...baseState.indexes[0], id: 'upper', name: 'Idx_phone' };
+      const lower = { ...baseState.indexes[0], id: 'lower', name: 'idx_phone' };
+      baseState.indexes = [upper];
+      const candidate = buildPersistedStateFromAISchema(
+        {
+          tableName: baseState.tableName,
+          tableComment: baseState.tableComment,
+          fields: baseState.rows,
+          indexes: [upper, lower],
+        },
+        { baseState },
+      );
+      const added = applyAISchemaChanges(
+        baseState,
+        candidate,
+        buildAISchemaChanges(baseState, candidate),
+      );
+      expect(added.indexes.map((index) => index.name)).toEqual(['Idx_phone', 'idx_phone']);
+      expect(new Set(added.indexes.map((index) => index.id)).size).toBe(2);
+      const removedCandidate = { ...added, indexes: [added.indexes[0]] };
+      const removed = applyAISchemaChanges(
+        added,
+        removedCandidate,
+        buildAISchemaChanges(added, removedCandidate),
+      );
+      expect(removed.indexes).toEqual([added.indexes[0]]);
+    });
+
+    it('uses dialect-aware name fallback for editor metadata', () => {
+      const baseState = createBaseState();
+      baseState.dbType = dbType;
+      baseState.rows = ['UserID', 'userid'].map((fieldName, index) => ({
+        ...baseState.rows[1],
+        id: fieldName,
+        fieldName,
+        enumMeta: [{ value: String(index) }],
+      }));
+      const candidate = buildPersistedStateFromAISchema(
+        {
+          tableName: baseState.tableName,
+          tableComment: baseState.tableComment,
+          fields: baseState.rows.map(({ id: _id, enumMeta: _meta, ...row }) => row),
+        },
+        { baseState },
+      );
+      expect(candidate.rows).toEqual(baseState.rows);
+    });
+  });
+
   it('preserves enum metadata when AI only adds an unrelated field', () => {
     const baseState = createBaseState();
     baseState.rows[1].enumMeta = [
