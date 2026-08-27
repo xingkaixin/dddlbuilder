@@ -53,7 +53,10 @@ export function useWorkspaceSnapshotRefresh({
         const session = normalizeWorkspaceSession(bootstrap.session);
         const savedTable =
           session?.activeSource.kind === 'saved_table'
-            ? toHydrationSavedTable(bootstrap.savedTable)
+            ? toHydrationSavedTable(
+                bootstrap.savedTable,
+                savedDrafts[session.activeSource.normalizedName],
+              )
             : null;
 
         if (savedTable) {
@@ -64,7 +67,9 @@ export function useWorkspaceSnapshotRefresh({
             tableName: savedTable.tableName,
             baseSignature: serializePersistedStateForComparison(savedTable.state),
           });
-          setPersistedStateIfChanged(session?.activeState ?? savedTable.state);
+          setPersistedStateIfChanged(
+            savedTable.draftState ?? session?.activeState ?? savedTable.state,
+          );
           setHydrated(true);
           return;
         }

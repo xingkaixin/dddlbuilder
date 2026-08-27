@@ -172,10 +172,10 @@ describe('useSavedTableFlowActions', () => {
     );
   });
 
-  it('加载表时应解析已保存版本而不修改编辑器', async () => {
+  it('加载表时应合并保存版本与草稿而不修改编辑器', async () => {
     const target = createSavedTableSummary('Users', 'users');
     const savedState = createState('Users');
-    const staleDraftState = createState('GlobalDraftLike');
+    const draftState = createState('UnsavedUsers');
     const onTableLoadStateChange = vi.fn();
     const loadTable = vi.fn().mockResolvedValue({
       normalizedName: 'users',
@@ -204,7 +204,7 @@ describe('useSavedTableFlowActions', () => {
         overwriteTable: vi.fn(),
         showToast: vi.fn(),
         getSavedTableDraft: () => ({
-          state: staleDraftState,
+          state: draftState,
           tableName: 'Users',
           baseSignature: JSON.stringify(createState('OldUsers')),
           updatedAt: Date.now(),
@@ -219,7 +219,7 @@ describe('useSavedTableFlowActions', () => {
     });
 
     expect(loadTable).toHaveBeenCalledWith(expect.objectContaining({ normalizedName: 'users' }));
-    expect(snapshot?.state).toEqual(savedState);
+    expect(snapshot?.state).toEqual(draftState);
     expect(onTableLoadStateChange).toHaveBeenNthCalledWith(1, true);
     expect(onTableLoadStateChange).toHaveBeenLastCalledWith(false);
   });

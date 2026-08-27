@@ -14,6 +14,8 @@ const SCALAR_MERGE_KEYS = [
   'citusShardingConfig',
   'mysqlPartitionConfig',
   'tableMiscConfig',
+  'authInput',
+  'authObjects',
 ] as const satisfies readonly (keyof PersistedState)[];
 
 const ROW_MERGE_KEYS = [
@@ -129,18 +131,15 @@ const resolveRows = (baseRows: FieldRow[], localRows: FieldRow[], remoteRows: Fi
   });
 };
 
-/**
- * Y.Doc 就绪之前的本地编辑没进过文档，远端刷新回来时只能靠 base→local 的差异补回。
- * 行按 id 对齐——按下标对齐会在任一端增删行后把改动记到别的字段上。
- */
-export const mergeLocalDraftChanges = (
+/** 合并双方相对基线的修改，冲突由 preferredState 决定；行按稳定 id 对齐。 */
+export const mergeSchemaStates = (
   baseState: PersistedState,
-  localState: PersistedState,
-  remoteState: PersistedState,
+  otherState: PersistedState,
+  preferredState: PersistedState,
 ): PersistedState => {
   return {
-    ...remoteState,
-    ...pickLocalEdits(baseState, localState, remoteState, SCALAR_MERGE_KEYS),
-    rows: resolveRows(baseState.rows, localState.rows, remoteState.rows),
+    ...preferredState,
+    ...pickLocalEdits(baseState, otherState, preferredState, SCALAR_MERGE_KEYS),
+    rows: resolveRows(baseState.rows, otherState.rows, preferredState.rows),
   };
 };

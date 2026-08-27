@@ -1,6 +1,11 @@
 import { type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import type { PersistedState } from '@ddlbuilder/shared-types';
-import type { DraftSummary, WorkspaceSelection } from '@ddlbuilder/shared-types/workspace';
+import type {
+  DraftSummary,
+  SavedTableDraftRecord,
+  WorkspaceSelection,
+} from '@ddlbuilder/shared-types/workspace';
+import { resolveSavedTableSnapshot } from '@/services/savedTableSnapshot';
 import type { SavedTableRecord } from '@/utils/workspaceStorageTypes';
 import { DEFAULT_DRAFT_ID, type WorkspaceSessionRecord } from '@/utils/workspaceStateDb';
 import { serializePersistedStateForComparison } from '@/utils/persistedStateSignature';
@@ -62,7 +67,10 @@ export const collectBootstrapDrafts = (bootstrap: {
   return entries;
 };
 
-export const toHydrationSavedTable = (value: unknown): HydrationSavedTable | null => {
+export const toHydrationSavedTable = (
+  value: unknown,
+  draft?: SavedTableDraftRecord | null,
+): HydrationSavedTable | null => {
   if (!value) return null;
   const record = value as SavedTableRecord;
   return {
@@ -70,6 +78,7 @@ export const toHydrationSavedTable = (value: unknown): HydrationSavedTable | nul
     normalizedName: record.normalizedName,
     tableName: record.name ?? '',
     state: record.state,
+    ...(draft ? { draftState: resolveSavedTableSnapshot(record, draft).state } : {}),
   };
 };
 

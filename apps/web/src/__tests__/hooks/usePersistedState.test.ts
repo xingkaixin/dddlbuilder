@@ -31,6 +31,7 @@ import {
   upsertSavedTableInYDoc,
   upsertSavedDraftInYDoc,
   getSavedDraftFromYDoc,
+  deleteSavedDraftFromYDoc,
 } from '@/services/workspaceYDocAdapter';
 
 const GLOBAL_DRAFT_STORAGE_KEY = `${STORAGE_KEY}:draft:global:v1`;
@@ -194,6 +195,124 @@ const mockSignedInWorkspaceYDoc = (doc: Y.Doc, localSynced = true) => {
 };
 
 describe('usePersistedState', () => {
+  it.each([1, 3])('远端保存清理草稿后恢复离线端未保存的修改，客户端 ID=%s', async (clientId) => {
+    const doc = new Y.Doc();
+    doc.clientID = 10;
+    const base = createState('users');
+    const target = { tableId: 'table-1', normalizedName: 'users' };
+    const record = { ...target, name: 'Users', state: base, createdAt: 1, updatedAt: 1 };
+    upsertSavedTableInYDoc(doc, record);
+    const remote = new Y.Doc();
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+    doc.clientID = clientId;
+    remote.clientID = 2;
+    mockSignedInWorkspaceYDoc(doc);
+    const { wrapper } = createQueryClientWrapper();
+    const { result, unmount } = renderHook(() => usePersistedState(), { wrapper });
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+    const loaded = result.current.resolveWorkspaceSnapshot({
+      kind: 'saved_table',
+      ...target,
+      tableName: 'Users',
+      baseSignature: '',
+    });
+    if (!loaded || loaded.source.kind !== 'saved_table')
+      throw new Error('Saved table snapshot missing');
+    act(() => result.current.selectWorkspaceSnapshot(loaded.source, loaded.state));
+    await act(async () =>
+      result.current.saveState({
+        source: loaded.source,
+        state: { ...loaded.state, tableComment: 'offline edit' },
+      }),
+    );
+    expect(getSavedDraftFromYDoc(doc, target)?.state.tableComment).toBe('offline edit');
+    upsertSavedDraftInYDoc(remote, target, {
+      state: { ...base, tableComment: 'remote edit' },
+      tableName: 'Users',
+      baseSignature: loaded.source.baseSignature,
+      updatedAt: 2,
+    });
+    upsertSavedTableInYDoc(remote, {
+      ...record,
+      state: { ...base, tableComment: 'remote edit', schemaName: 'app' },
+      updatedAt: 3,
+    });
+    deleteSavedDraftFromYDoc(remote, target);
+    act(() => Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote), 'remote'));
+    expect(result.current.persistedState).toMatchObject({
+      tableComment: 'offline edit',
+      schemaName: 'app',
+    });
+    expect(getSavedDraftFromYDoc(doc, target)?.state).toMatchObject({
+      tableComment: 'offline edit',
+    });
+    expect(result.current.resolveWorkspaceSnapshot(loaded.source)?.state).toEqual(
+      result.current.persistedState,
+    );
+    unmount();
+    doc.destroy();
+    remote.destroy();
+  });
+
+  it('协作保存后实时显示、切换标签和重载应保留相同的草稿修改', async () => {
+    const doc = new Y.Doc();
+    const base = { ...createState('users'), tableComment: 'base' };
+    const target = { tableId: 'table-1', normalizedName: 'users' };
+    const record = { ...target, name: 'Users', state: base, createdAt: 1, updatedAt: 1 };
+    upsertSavedTableInYDoc(doc, record);
+    const remote = new Y.Doc();
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+    mockSignedInWorkspaceYDoc(doc);
+
+    const { wrapper } = createQueryClientWrapper();
+    const { result, unmount } = renderHook(() => usePersistedState(), { wrapper });
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+    const source = {
+      kind: 'saved_table' as const,
+      ...target,
+      tableName: 'Users',
+      baseSignature: '',
+    };
+    const loaded = result.current.resolveWorkspaceSnapshot(source);
+    if (!loaded) throw new Error('Saved table snapshot missing');
+    act(() => result.current.selectWorkspaceSnapshot(loaded.source, loaded.state));
+    act(() =>
+      upsertSavedDraftInYDoc(doc, target, {
+        state: { ...base, tableComment: 'local draft' },
+        tableName: 'Users',
+        baseSignature: (loaded.source as typeof source).baseSignature,
+        updatedAt: 2,
+      }),
+    );
+    await waitFor(() => expect(result.current.persistedState?.tableComment).toBe('local draft'));
+
+    upsertSavedTableInYDoc(remote, {
+      ...record,
+      state: { ...base, tableComment: 'remote save', schemaName: 'remote_schema' },
+      updatedAt: 3,
+    });
+    act(() => Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote)));
+    const reopened = result.current.resolveWorkspaceSnapshot(result.current.activeSource);
+    if (!reopened) throw new Error('Saved table snapshot missing');
+    expect(reopened.state).toMatchObject({
+      tableComment: 'local draft',
+      schemaName: 'remote_schema',
+    });
+    expect(result.current.persistedState).toEqual(reopened.state);
+    expect(result.current.activeSource).toEqual(reopened.source);
+    act(() => result.current.selectWorkspaceSnapshot(reopened.source, reopened.state));
+    expect(result.current.persistedState).toEqual(reopened.state);
+    unmount();
+
+    const reloaded = renderHook(() => usePersistedState(), { wrapper });
+    await waitFor(() => expect(reloaded.result.current.hydrated).toBe(true));
+    expect(reloaded.result.current.persistedState).toEqual(reopened.state);
+    expect(reloaded.result.current.resolveWorkspaceSnapshot(source)?.state).toEqual(reopened.state);
+    reloaded.unmount();
+    doc.destroy();
+    remote.destroy();
+  });
+
   beforeEach(() => {
     setupFakeIndexedDB();
     resetWorkspaceBootstrapCache();

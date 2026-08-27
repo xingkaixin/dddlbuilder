@@ -322,7 +322,11 @@ export function usePersistedState(): UsePersistedStateReturn {
           serializePersistedStateForComparison(payload.state) !== payload.source.baseSignature;
         if (!isDirty) {
           if (existingDraft) dropSavedTableDraft(payload.source);
-        } else if (!existingDraft || !isSamePersistedState(existingDraft.state, payload.state)) {
+        } else if (
+          !existingDraft ||
+          existingDraft.baseSignature !== baseSignature ||
+          !isSamePersistedState(existingDraft.state, payload.state)
+        ) {
           persistSavedTableDraft(payload.source, {
             state: payload.state,
             tableName,

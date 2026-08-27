@@ -185,7 +185,7 @@ describe('workspaceYDocAdapter records', () => {
     ).toBeNull();
   });
 
-  it('激活保存表时只恢复仍基于当前远端版本的草稿', () => {
+  it('激活保存表时合并远端更新且保留未保存草稿', () => {
     const doc = new Y.Doc();
     const draftState = createState({ tableName: 'local_edit' });
     upsertSavedTableInYDoc(doc, createSavedTable({ tableName: 'saved_users' }));
@@ -217,7 +217,7 @@ describe('workspaceYDocAdapter records', () => {
     const remoteRecord = getSavedTableFromYDoc(doc, 'users');
     expect(remoteRecord).not.toBeNull();
     if (!remoteRecord) throw new Error('remote saved table fixture missing');
-    expect(refreshed?.state.tableName).toBe('remote_update');
+    expect(refreshed?.state.tableName).toBe('local_edit');
     expect(refreshed?.source).toMatchObject({
       kind: 'saved_table',
       normalizedName: 'users',

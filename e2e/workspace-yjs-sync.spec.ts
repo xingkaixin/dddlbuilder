@@ -141,13 +141,6 @@ const mockSignedInWorkspace = async (
   workspaceId: string,
   clientId?: string,
 ) => {
-  await context.addInitScript(
-    ({ workspace }) => {
-      indexedDB.deleteDatabase('ddlbuilder');
-      indexedDB.deleteDatabase(`ddlbuilder:workspace:${workspace}`);
-    },
-    { workspace: workspaceId },
-  );
   await context.route('**/api/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -688,6 +681,69 @@ test('workspace yjs sync converges saved table lifecycle and folder moves across
 
   await contextA.close();
   await contextB.close();
+});
+
+test('saved drafts retain concurrent edits across tabs and reload', async ({ browser }) => {
+  const workspaceId = `ws-saved-draft-${Date.now()}`;
+  const server = new MockWorkspaceYjsServer();
+  seedDefaultDraft(server.doc, 'cloud_seed', 'id');
+  const contextA = await browser.newContext({ locale: 'zh-CN' });
+  const contextB = await browser.newContext({ locale: 'zh-CN' });
+  try {
+    await mockSignedInWorkspace(contextA, server, workspaceId, 'online-client');
+    await mockSignedInWorkspace(contextB, server, workspaceId, 'offline-client');
+    const pageA = await contextA.newPage();
+    const pageB = await contextB.newPage();
+    const tableName = `saved_draft_${Date.now()}`;
+    await pageA.goto('/');
+    await openDraftByName(pageA, 'cloud_seed');
+    await saveCurrentTable(pageA, tableName);
+    await expect
+      .poll(() => readSavedTableState(server.doc, tableName)?.rows[0]?.fieldName)
+      .toBe('id');
+
+    await pageB.goto('/');
+    await openSavedTables(pageB);
+    await getSavedTableRow(pageB, tableName).click();
+    await expect(tableNameInput(pageB)).toHaveValue(tableName);
+    await expect(pageB.getByTestId('data-table')).toBeVisible();
+    await expect(pageB.locator('[role="tabpanel"]:visible pre code')).toBeVisible();
+    server.setClientPaused('offline-client', true);
+    await contextB.setOffline(true);
+    await pageB.evaluate(() => window.dispatchEvent(new Event('offline')));
+    await pageB.locator('#table-comment').fill('unsaved local comment');
+
+    await pageA.locator('#table-comment').fill('remote saved comment');
+    await editFirstFieldType(pageA, 'INT');
+    await pageA.getByRole('button', { name: /保存当前表/i }).click();
+    await expect
+      .poll(() => readSavedTableState(server.doc, tableName)?.tableComment)
+      .toBe('remote saved comment');
+
+    server.setClientPaused('offline-client', false);
+    await contextB.setOffline(false);
+    await pageB.evaluate(() => window.dispatchEvent(new Event('online')));
+    await expect(pageB.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
+    const assertDraft = async () => {
+      await expect(pageB.locator('#table-comment')).toHaveValue('unsaved local comment');
+      await expect(
+        pageB.locator('[data-testid="data-table"] tbody tr:first-child td:nth-child(4)'),
+      ).toHaveText('INT');
+    };
+    await assertDraft();
+    await pageB.getByRole('button', { name: /新建草稿/i }).click();
+    await pageB.locator('div[role="button"]').filter({ hasText: tableName }).click();
+    await assertDraft();
+    await pageB.reload();
+    await openSavedTables(pageB);
+    await getSavedTableRow(pageB, tableName).click();
+    await assertDraft();
+    expect(readSavedTableState(server.doc, tableName)?.tableComment).toBe('remote saved comment');
+  } finally {
+    await contextA.close();
+    await contextB.close();
+    server.doc.destroy();
+  }
 });
 
 test('workspace yjs rename preserves an offline save and retargets open tabs', async ({
