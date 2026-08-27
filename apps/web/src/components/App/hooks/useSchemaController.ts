@@ -135,7 +135,18 @@ export function useSchemaController({
     indexes,
     foreignKeys,
   );
+  const activeTabId = useTabStore((state) => state.activeTabId);
+  const getDocumentKey = (state: PersistedState, tabId = activeTabId) =>
+    JSON.stringify([
+      workspaceScope ? getWorkspaceScopeStorageKey(workspaceScope) : null,
+      tabId,
+      serializePersistedStateForComparison(state),
+    ]);
+  const documentKey = getDocumentKey(derived.currentPersistedState);
   const aiCommentActions = useAICommentActions({
+    documentKey,
+    getCurrentDocumentKey: () =>
+      getDocumentKey(derived.buildPersistedState(), useTabStore.getState().activeTabId),
     schemaName,
     tableName,
     tableComment,
@@ -153,15 +164,8 @@ export function useSchemaController({
     setIndexes,
     setActiveTab,
   });
-  const activeTabId = useTabStore((state) => state.activeTabId);
-  const reviewDocumentKey = (state: PersistedState) =>
-    JSON.stringify([
-      workspaceScope ? getWorkspaceScopeStorageKey(workspaceScope) : null,
-      activeTabId,
-      serializePersistedStateForComparison(state),
-    ]);
   const reviewActions = useReviewActions({
-    documentKey: reviewDocumentKey(derived.currentPersistedState),
+    documentKey,
     dbType,
     tableName: qualifiedTableName,
     generatedSql: sql.generatedSql,
@@ -173,7 +177,7 @@ export function useSchemaController({
   const reviewState = {
     ...reviewActions.reviewState,
     setReviewResult: (result: DDLReviewResult | null, state: PersistedState) =>
-      reviewActions.reviewState.setReviewResult(result, reviewDocumentKey(state)),
+      reviewActions.reviewState.setReviewResult(result, getDocumentKey(state)),
   };
   const schemaLintIssues = useMemo(
     () =>

@@ -22,7 +22,7 @@ export function useAIComments() {
     error: null,
   });
   const activeRequestRef = useRef<AbortController | null>(null);
-  const commentsMutation = useMutation({
+  const { mutateAsync, reset, isPending } = useMutation({
     mutationFn: ({ payload, signal }: { payload: AICommentRequest; signal: AbortSignal }) =>
       requestAIComments(payload, signal),
     retry: false,
@@ -55,14 +55,16 @@ export function useAIComments() {
       setState({ error: null });
 
       try {
-        const result = await commentsMutation.mutateAsync({
+        const result = await mutateAsync({
           payload,
           signal: abortController.signal,
         });
+        if (activeRequestRef.current !== abortController) return null;
         setState({ error: null });
         requestAccess.refreshCreditsAfterSuccess();
         return result;
       } catch (error) {
+        if (activeRequestRef.current !== abortController) return null;
         if ((error as Error).name === 'AbortError') {
           return null;
         }
@@ -78,18 +80,18 @@ export function useAIComments() {
         }
       }
     },
-    [commentsMutation, requestAccess, resolvedLocale],
+    [mutateAsync, requestAccess, resolvedLocale],
   );
 
   const cancelComments = useCallback(() => {
     activeRequestRef.current?.abort();
     activeRequestRef.current = null;
-    commentsMutation.reset();
-    setState((previous) => ({ ...previous }));
-  }, [commentsMutation]);
+    reset();
+    setState({ error: null });
+  }, [reset]);
 
   return {
-    isLoading: commentsMutation.isPending,
+    isLoading: isPending,
     error: state.error,
     generateComments,
     cancelComments,

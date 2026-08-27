@@ -1,6 +1,78 @@
 import { test, expect } from '@playwright/test';
 import { setupHydratedState } from '../utils';
 
+test('AI 注释请求在切换文档后取消，不覆盖另一张表', async ({ page }) => {
+  let finishResponse!: () => void;
+  const responseReady = new Promise<void>((resolve) => {
+    finishResponse = resolve;
+  });
+  await page.route('**/api/**', async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/me') {
+      await route.fulfill({
+        json: {
+          signedIn: true,
+          user: {
+            userId: 'ai-comments-user',
+            email: 'comments@example.test',
+            name: 'Comments',
+            emailVerified: true,
+          },
+        },
+      });
+    } else if (path === '/api/workspaces') {
+      await route.fulfill({ json: { workspaceId: 'ai-comments-workspace' } });
+    } else if (path === '/api/credits/balance') {
+      await route.fulfill({ json: { balance: 1000 } });
+    } else if (path === '/api/generate-comments') {
+      await responseReady;
+      await route.fulfill({
+        json: {
+          tableComment: '用户表',
+          fields: [{ fieldName: 'HYDRATED_FIELD', fieldComment: '用户字段' }],
+        },
+      });
+    } else {
+      await route.fulfill({ status: 503, json: { error: 'Not available in this test' } });
+    }
+  });
+
+  try {
+    await page.goto('/');
+    await setupHydratedState(page);
+    await page.locator('#table-name').fill('users');
+    await page.getByRole('button', { name: '新建草稿', exact: true }).click();
+    await setupHydratedState(page);
+    await page.locator('#table-name').fill('orders');
+    await page.locator('#table-comment').fill('订单表，请保留');
+    await page
+      .locator('div[role="button"]')
+      .filter({ hasText: /^users/ })
+      .click();
+    await expect(page.locator('#table-name')).toHaveValue('users');
+
+    const requestStarted = page.waitForRequest('**/api/generate-comments');
+    await page.getByRole('button', { name: 'AI 注释', exact: true }).click();
+    await page.getByRole('menuitem', { name: '补全缺失注释' }).click();
+    const request = await requestStarted;
+    expect(request.postDataJSON().tableName).toBe('users');
+    const cancelled = page.waitForEvent('requestfailed', (failed) => failed === request);
+    await page
+      .locator('div[role="button"]')
+      .filter({ hasText: /^orders/ })
+      .click();
+    finishResponse();
+    await cancelled;
+
+    await expect(page.getByRole('button', { name: 'AI 注释', exact: true })).toBeEnabled();
+    await expect(page.locator('#table-name')).toHaveValue('orders');
+    await expect(page.locator('#table-comment')).toHaveValue('订单表，请保留');
+    await expect(page.getByTestId('data-table')).not.toContainText('用户字段');
+  } finally {
+    finishResponse();
+  }
+});
+
 test.describe('AI 功能 UI 测试 @tools @ai', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');

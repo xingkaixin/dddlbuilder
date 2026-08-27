@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useLayoutEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AICommentMode, FieldRow } from '@ddlbuilder/shared-types';
 import type { AppLocale } from '@ddlbuilder/shared-types/locale';
@@ -6,6 +6,8 @@ import { useAIComments } from '@/hooks/useAIComments';
 import { useToast } from '@/hooks/useToast';
 
 interface UseAICommentActionsParams {
+  documentKey: string;
+  getCurrentDocumentKey: () => string;
   schemaName: string;
   tableName: string;
   tableComment: string;
@@ -15,6 +17,8 @@ interface UseAICommentActionsParams {
 }
 
 export function useAICommentActions({
+  documentKey,
+  getCurrentDocumentKey,
   schemaName,
   tableName,
   tableComment,
@@ -24,7 +28,9 @@ export function useAICommentActions({
 }: UseAICommentActionsParams) {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const { isLoading, generateComments } = useAIComments();
+  const { isLoading, generateComments, cancelComments } = useAIComments();
+
+  useLayoutEffect(() => cancelComments, [cancelComments, documentKey]);
 
   const generateFieldComments = useCallback(
     (mode: AICommentMode, targetLocale?: AppLocale) => {
@@ -45,7 +51,7 @@ export function useAICommentActions({
               })),
           });
 
-          if (!result) return;
+          if (!result || getCurrentDocumentKey() !== documentKey) return;
 
           const commentsByField = new Map(
             result.fields.map((field) => [field.fieldName, field.fieldComment]),
@@ -69,7 +75,9 @@ export function useAICommentActions({
       })();
     },
     [
+      documentKey,
       generateComments,
+      getCurrentDocumentKey,
       rows,
       schemaName,
       setRows,
