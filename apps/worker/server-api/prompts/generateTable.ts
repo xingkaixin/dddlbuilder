@@ -119,18 +119,20 @@ export const buildGenerateTableSystemPrompt = (params: {
       : `\n\nUser-defined templates and table blueprints (high priority):\n${JSON.stringify(templates, null, 2)}`
     : '';
 
-  const existingContext = existingConfig
-    ? locale === 'zh-CN'
-      ? `\n\n当前已有表配置（用户可能希望基于此修改）：\n${JSON.stringify(existingConfig, null, 2)}`
-      : `\n\nCurrent table config (the user may want to modify based on this):\n${JSON.stringify(existingConfig, null, 2)}`
-    : '';
+  const usePreviousSchema = mode !== 'patch' && !!previousSchema;
+  const existingContext =
+    existingConfig && !usePreviousSchema
+      ? locale === 'zh-CN'
+        ? `\n\n当前已有表配置（本轮唯一修改基线；历史对话中的提案可能未被应用）：\n${JSON.stringify(existingConfig, null, 2)}`
+        : `\n\nCurrent table config (the only baseline for this revision; proposals in conversation history may not have been applied):\n${JSON.stringify(existingConfig, null, 2)}`
+      : '';
   const patchContext =
     mode === 'patch'
       ? locale === 'zh-CN'
         ? `\n\n本次任务类型：对现有表做指令式修改。\n这些规则优先级高于通用建表建议：\n1. 以当前已有表配置作为完整基线，返回完整表结构 JSON\n2. 只执行用户本轮指令明确要求的表信息、字段、索引变化\n3. 当用户指令是明确动作，例如“增加 A、B 字段”“删除 A 字段”“把 A 改为 B”时，本轮只能产生这些点名对象的变更\n4. 用户要求新增字段时，只追加用户要求的字段；字段类型、可空、默认值和注释按用户给定信息与数据库语法补齐\n5. 用户要求删除字段时，只删除用户点名的字段\n6. 用户要求调整字段时，只调整用户点名字段的指定属性\n7. 用户要求调整索引时，只调整用户点名或直接相关的索引\n8. 用户没有明确要求修改某个已有字段时，禁止改变该字段的 fieldType、nullable、defaultKind、defaultValue、onUpdate、fieldComment、isPrimaryKey 或顺序\n9. 用户没有要求审查、评审、优化、规范化、全面调整、重构时，不输出额外的质量评审、字段批评、索引建议、命名建议、审计字段建议或全表改造\n10. 未被本轮指令覆盖的字段、字段类型、字段注释、可空、默认值、更新策略、主键、索引、表名、schema 和表注释必须逐值保留当前已有表配置；复制原值，不要做类型同义词转换、默认值补全、大小写归一、字段顺序整理\n11. designDecisions 只说明本轮实际执行的变更原因，避免对保留项做评价`
         : `\n\nTask type: instruction-based edit on an existing table.\nThese rules have higher priority than general table-design recommendations:\n1. Use the current table config as the complete baseline and return a full schema JSON.\n2. Apply only table-info, field, and index changes explicitly requested in the current user instruction.\n3. When the instruction is explicit, such as "add fields A and B", "remove field A", or "change A to B", this turn may produce changes only for those named objects.\n4. When the user asks to add fields, append only the requested fields; infer type, nullability, defaults, and comments from the user-provided details and database syntax.\n5. When the user asks to remove fields, remove only the named fields.\n6. When the user asks to update fields, update only the named properties of the named fields.\n7. When the user asks to update indexes, update only the named or directly related indexes.\n8. Unless the user explicitly asks to modify an existing field, do not change that field's fieldType, nullable, defaultKind, defaultValue, onUpdate, fieldComment, isPrimaryKey, or order.\n9. Unless the user asks for review, optimization, audit, normalization, comprehensive adjustment, or refactoring, do not output extra quality reviews, field criticism, index suggestions, naming suggestions, audit-field suggestions, or full-table redesigns.\n10. Fields, field types, comments, nullability, defaults, on-update rules, primary keys, indexes, table name, schema, and table comment outside the current instruction must keep the exact values from the current table config. Copy original values and do not apply type synonym conversion, default completion, case normalization, or field reordering.\n11. designDecisions should explain only the changes actually made in this turn and avoid evaluating preserved items.`
       : '';
-  const previousSchemaContext = previousSchema
+  const previousSchemaContext = usePreviousSchema
     ? locale === 'zh-CN'
       ? `\n\n上一版表结构（本轮修改的基线，按用户要求做增量变更）：\n${JSON.stringify(previousSchema, null, 2)}`
       : `\n\nPrevious schema (baseline for this revision; apply the user's requested changes incrementally):\n${JSON.stringify(previousSchema, null, 2)}`

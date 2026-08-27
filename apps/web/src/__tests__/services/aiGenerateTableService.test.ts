@@ -3,8 +3,100 @@ import { requestGenerateTable } from '@/services/aiGenerateTableService';
 import { createAITextStream as createTextStream } from '@/__tests__/utils/aiStream';
 
 describe('requestGenerateTable', () => {
+  it('uses current fields after a previous patch proposal was not applied', async () => {
+    const fields = ['a', 'b'].map((id) => ({
+      id,
+      fieldName: id,
+      fieldType: 'int',
+      fieldComment: '',
+      nullable: true,
+      defaultKind: 'none' as const,
+    }));
+    const previousSchema = {
+      tableName: 'users',
+      tableComment: '',
+      fields: [fields[0]],
+      indexes: [],
+    };
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        createTextStream([
+          JSON.stringify({
+            ...previousSchema,
+            fields: [...fields, { ...fields[0], id: null, fieldName: 'c' }],
+          }),
+        ]),
+      ),
+    );
+    const response = await requestGenerateTable(
+      {
+        description: '新增 c，保留当前 a、b',
+        dbType: 'mysql',
+        options: { mode: 'patch', existingConfig: { rows: fields }, previousSchema },
+      },
+      { signal: new AbortController().signal },
+    );
+    expect(response.result.fields.map((field) => field.fieldName)).toEqual(['a', 'b', 'c']);
+    const request = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    expect(request.previousSchema).toBeUndefined();
+    expect(request.existingConfig.rows).toEqual(fields);
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('rejects an identity that exists only in an unapplied patch proposal', async () => {
+    const stale = {
+      id: 'stale',
+      fieldName: 'stale',
+      fieldType: 'int',
+      fieldComment: '',
+      nullable: true,
+      defaultKind: 'none' as const,
+    };
+    const schema = { tableName: 'users', tableComment: '', fields: [stale], indexes: [] };
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(createTextStream([JSON.stringify(schema)])),
+    );
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await expect(
+      requestGenerateTable(
+        {
+          description: '修改当前表',
+          dbType: 'mysql',
+          options: { mode: 'patch', existingConfig: { rows: [] }, previousSchema: schema },
+        },
+        { signal: new AbortController().signal },
+      ),
+    ).rejects.toThrow('解析响应失败');
+  });
+
+  it('continues generated designs from the previous proposal instead of the editor', async () => {
+    const field = {
+      id: 'proposal',
+      fieldName: 'id',
+      fieldType: 'int',
+      fieldComment: '',
+      nullable: true,
+      defaultKind: 'none' as const,
+    };
+    const schema = { tableName: 'users', tableComment: '', fields: [field], indexes: [] };
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(createTextStream([JSON.stringify(schema)])));
+    const result = await requestGenerateTable(
+      {
+        description: '继续设计',
+        dbType: 'mysql',
+        options: { mode: 'generate', existingConfig: { rows: [] }, previousSchema: schema },
+      },
+      { signal: new AbortController().signal },
+    );
+    expect(result.result.fields[0].id).toBe('proposal');
+    const request = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    expect(request.previousSchema).toEqual(schema);
+    expect(request.existingConfig).toBeUndefined();
   });
 
   it('rejects a streamed error instead of returning an empty schema', async () => {

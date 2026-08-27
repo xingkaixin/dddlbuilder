@@ -40,6 +40,9 @@ export async function requestGenerateTable(
   payload: RequestGenerateTablePayload,
   options: RequestGenerateTableOptions,
 ): Promise<GenerateTableServiceResult> {
+  const previousSchema =
+    payload.options?.mode === 'patch' ? undefined : payload.options?.previousSchema;
+  const existingConfig = previousSchema ? undefined : payload.options?.existingConfig;
   const response = await fetch(AI_GENERATE_API_ENDPOINT, {
     method: 'POST',
     headers: buildAuthenticatedJsonHeaders(),
@@ -50,8 +53,8 @@ export async function requestGenerateTable(
       locale: payload.locale,
       mode: payload.options?.mode,
       templates: payload.options?.templates,
-      existingConfig: payload.options?.existingConfig,
-      previousSchema: payload.options?.previousSchema,
+      existingConfig,
+      previousSchema,
       conversationHistory: payload.options?.conversationHistory ?? [],
     }),
     signal: options.signal,
@@ -74,7 +77,7 @@ export async function requestGenerateTable(
       fullText,
       result: normalizeGeneratedTableSchema(
         JSON.parse(fullText) as GeneratedTableSchema,
-        payload.options?.previousSchema?.fields ?? payload.options?.existingConfig?.rows ?? [],
+        previousSchema?.fields ?? existingConfig?.rows ?? [],
       ),
     };
   } catch (error) {

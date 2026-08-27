@@ -136,6 +136,81 @@ test('AI 部分应用拒绝同名字段，补选删除后成功', async ({ page 
   await expect(page.locator('[role="tabpanel"]:visible pre')).toContainText('occupied INT');
 });
 
+test('多轮 AI 修改以部分应用后的当前表为基线', async ({ page }) => {
+  const responses: Record<string, unknown> = {
+    '/api/me': {
+      signedIn: true,
+      user: {
+        userId: 'baseline-user',
+        email: 'baseline@example.test',
+        name: 'Baseline',
+        emailVerified: true,
+      },
+    },
+    '/api/workspaces': { workspaceId: 'baseline-workspace' },
+    '/api/credits/balance': { balance: 1000 },
+  };
+  let requests = 0;
+  await page.route('**/api/**', async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path !== '/api/generate-table') {
+      await route.fulfill(
+        responses[path]
+          ? { json: responses[path] }
+          : { status: 503, json: { error: 'Not available in this test' } },
+      );
+      return;
+    }
+    requests++;
+    const request = route.request().postDataJSON() as {
+      existingConfig: PersistedState;
+      previousSchema?: unknown;
+      conversationHistory: unknown[];
+    };
+    const { existingConfig } = request;
+    const fields = existingConfig.rows.filter((row) => row.fieldName.trim());
+    expect(fields.map((row) => row.fieldName)).toEqual(['HYDRATED_FIELD']);
+    if (requests === 2) {
+      expect(request.previousSchema).toBeUndefined();
+      expect(request.conversationHistory).toHaveLength(2);
+      expect(existingConfig.tableComment).toBe('第一轮注释');
+    }
+    await route.fulfill(
+      streamedResponse({
+        tableName: existingConfig.tableName,
+        tableComment: '第一轮注释',
+        fields:
+          requests === 1 ? [] : [...fields, { ...fields[0], id: null, fieldName: 'new_field' }],
+        indexes: [],
+      }),
+    );
+  });
+  await page.goto('/');
+  await setupHydratedState(page);
+  await page.getByRole('button', { name: 'AI 修改', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'AI 修改当前表' });
+  await dialog.locator('#ai-patch-input').fill('修改表注释并删除 HYDRATED_FIELD');
+  await dialog.getByRole('button', { name: '发送', exact: true }).click();
+  const changes = dialog.getByRole('button', { name: '切换变更选择' });
+  await expect(changes).toHaveCount(2);
+  await changes.first().click();
+  await dialog.getByRole('button', { name: '应用 1 项变更' }).click();
+  await expect(changes).toHaveCount(1);
+  await dialog.locator('#ai-patch-input').fill('保留当前字段，只增加 new_field');
+  await dialog.getByRole('button', { name: '继续修改', exact: true }).click();
+  await expect(
+    dialog.getByRole('button', { name: '新增字段 new_field', exact: true }),
+  ).toBeVisible();
+  await expect(changes).toHaveCount(1);
+  await changes.click();
+  await dialog.getByRole('button', { name: '应用 1 项变更' }).click();
+  await expect(dialog.getByText('本次没有发现可应用的结构变更')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('data-table')).toContainText('HYDRATED_FIELD');
+  await expect(page.getByTestId('data-table')).toContainText('new_field');
+  expect(requests).toBe(2);
+});
+
 test('DDL 评审拒绝缺少字段的索引建议，补充字段后可重试', async ({ page }) => {
   const responses: Record<string, unknown> = {
     '/api/me': {
