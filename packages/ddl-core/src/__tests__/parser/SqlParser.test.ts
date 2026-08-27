@@ -494,7 +494,30 @@ describe('SqlParser', () => {
     expect(result.authObjects).toEqual(['cbd1', 'cbdd2']);
   });
 
-  it('能够解析复杂的 ALTER TABLE 语句', async () => {
+  it.each(['mysql', 'postgresql'] as const)('能够解析 %s 的复合外键', async (dbType) => {
+    const result = await new SqlParser().parseAsync(
+      `CREATE TABLE orders (
+        tenant_id INT,
+        user_id INT,
+        CONSTRAINT orders_user_fk FOREIGN KEY (tenant_id, user_id)
+          REFERENCES public.users (tenant_id, id) ON DELETE CASCADE
+      );`,
+      dbType,
+    );
+
+    expect(result.foreignKeys).toEqual([
+      expect.objectContaining({
+        name: 'orders_user_fk',
+        fields: ['tenant_id', 'user_id'],
+        refSchema: 'public',
+        refTable: 'users',
+        refFields: ['tenant_id', 'id'],
+        onDelete: 'CASCADE',
+      }),
+    ]);
+  });
+
+  it.each(['mysql', 'postgresql'] as const)('能够解析 %s 的 ALTER TABLE 约束', async (dbType) => {
     const sql = `
     CREATE TABLE orders (
       id INT,
@@ -507,7 +530,7 @@ describe('SqlParser', () => {
     `;
 
     const parser = new SqlParser();
-    const result = await parser.parseAsync(sql, 'mysql');
+    const result = await parser.parseAsync(sql, dbType);
 
     expect(result.tableName).toBe('orders');
     expect(result.fields.map((f) => f.name)).toEqual(['id', 'user_id', 'amount']);
@@ -515,6 +538,14 @@ describe('SqlParser', () => {
     const primaryKey = result.indexes.find((idx) => idx.isPrimary);
     expect(primaryKey).toBeDefined();
     expect(primaryKey?.fields).toEqual([{ name: 'id', direction: 'ASC' }]);
+    expect(result.foreignKeys).toEqual([
+      expect.objectContaining({
+        name: 'fk_user_id',
+        fields: ['user_id'],
+        refTable: 'users',
+        refFields: ['id'],
+      }),
+    ]);
   });
 
   it('能够解析包含复杂类型定义的 SQL', async () => {

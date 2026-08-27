@@ -81,14 +81,7 @@ function parseOnAction(actionList: OnActionNode[]): {
 }
 
 function collectColumnNames(columns: Array<ColumnListNode | string> | undefined): string[] {
-  if (!Array.isArray(columns)) return [];
-  const names: string[] = [];
-  for (const col of columns) {
-    // pg 等方言下 column 是嵌套节点而非字符串，这里沿用既有实现直接当作列名使用
-    const colName = typeof col === 'string' ? col : (col.column as string | undefined);
-    if (colName) names.push(colName);
-  }
-  return names;
+  return (columns ?? []).map(normalizeColumnName).filter(Boolean);
 }
 
 function pushForeignKey(result: ParsedResult, def: ForeignKeyNode) {
