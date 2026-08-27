@@ -1,6 +1,6 @@
 import type React from 'react';
-import { Database, GitBranch, HardDrive, Layers, Share2 } from '@/components/icons';
 import { DATABASE_TYPES, type DatabaseType } from '@ddlbuilder/shared-types';
+import { Database, GitBranch, HardDrive, Layers, Share2 } from '@/components/icons';
 
 type DatabaseOptionMetadata = {
   label: string;

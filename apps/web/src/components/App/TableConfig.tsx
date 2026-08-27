@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/select';
 import type { DatabaseType, SchemaObjectType } from '@ddlbuilder/shared-types';
-import { DATABASE_OPTIONS } from '@/utils/constants';
+import { DATABASE_OPTIONS } from './databaseOptions';
 import { useTranslation } from 'react-i18next';
 
 interface TableConfigProps {

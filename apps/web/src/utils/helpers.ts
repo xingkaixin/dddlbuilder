@@ -8,7 +8,7 @@ import {
   normalizeFieldNullable,
   normalizeFieldOnUpdate,
 } from '@ddlbuilder/shared-types';
-import { RESERVED_KEYWORDS } from './constants';
+import { RESERVED_KEYWORDS } from './constants/reservedKeywords';
 import {
   supportsAutoIncrement,
   supportsDefaultCurrentTimestamp,

@@ -11,7 +11,7 @@ import type { DatabaseType } from '@ddlbuilder/shared-types';
 import { Check, Copy } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { DATABASE_OPTIONS } from '@/utils/constants';
+import { DATABASE_OPTIONS } from '../databaseOptions';
 import { useToast } from '@/hooks/useToast';
 import { useTranslation } from 'react-i18next';
 
