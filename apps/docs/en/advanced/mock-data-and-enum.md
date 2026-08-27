@@ -18,7 +18,7 @@ Mock data helps quickly populate structurally compliant data during development 
 ### Mock Data Generation
 
 1. Click `Mock Data` in the table configuration area or field configuration toolbar. Result: the Mock Data generation dialog opens.
-2. Set target row count (e.g., 100, 1000). Result: the system generates corresponding random data by field type.
+2. Set the target row count (1–100 rows). Result: the system generates corresponding random data by field type.
 3. Check generation preview and confirm string length, numeric range, and date format meet expectations. Result: if deviation is large, return to field configuration to adjust defaults or types, then regenerate.
 4. Select export format (such as SQL INSERT, CSV, JSON). Result: data is exported in batch, ready to import into test databases or pass to testing colleagues.
 
@@ -39,6 +39,8 @@ Mock data helps quickly populate structurally compliant data during development 
 ## Common pitfalls
 
 - Mock data is randomly generated and does not represent real business distribution; for sensitive fields (such as phone numbers, IDs), secondary processing with masking rules is recommended.
+- Field types, string lengths, and numeric precision take priority over semantics inferred from names or comments; names, email addresses, or UUIDs in short fields may be truncated.
+- Mock data does not automatically satisfy unique indexes or cross-table foreign key constraints. Check these constraints before importing.
 - After enum values are modified, previously generated mock data does not update automatically; regeneration is required.
 - Not all database types natively support enum types; the system expresses enum specifications via comments or constraints in DDL, with actual effect depending on the target database.
 - Enum colors are for interface display only and are not written into DDL.

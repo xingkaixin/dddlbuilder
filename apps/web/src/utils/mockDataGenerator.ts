@@ -1,5 +1,10 @@
 import type { DatabaseType, NormalizedField } from '@ddlbuilder/shared-types';
-import { parseFieldType, quoteIdentifier } from '@ddlbuilder/ddl-core';
+import {
+  getCanonicalBaseType,
+  getDatabaseFamily,
+  parseFieldType,
+  quoteIdentifier,
+} from '@ddlbuilder/ddl-core';
 
 // ── 本地化数据池 ─────────────────────────────────────────────────────────────
 
@@ -207,7 +212,7 @@ function genIp(): string {
 
 function genRandomString(maxLen = 20): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  const len = randInt(4, Math.min(maxLen, 20));
+  const len = randInt(Math.min(4, maxLen), Math.min(maxLen, 20));
   return Array.from({ length: len }, () => pick(chars.split(''))).join('');
 }
 
@@ -245,7 +250,6 @@ type SemanticHint =
   | 'id_card'
   | 'age'
   | 'gender_text'
-  | 'gender_num'
   | 'company'
   | 'uuid'
   | 'ip'
@@ -294,29 +298,8 @@ function inferSemanticHint(fieldName: string, fieldComment: string): SemanticHin
 
 // ── 字段值生成 ────────────────────────────────────────────────────────────────
 
-function generateValueForField(field: NormalizedField, rowIndex: number): unknown {
-  // nullable 字段有 10% 概率生成 NULL
-  if (field.nullable && field.defaultKind === 'none' && Math.random() < 0.1) {
-    return null;
-  }
-
-  // defaultKind 处理
-  if (field.defaultKind === 'auto_increment') return rowIndex + 1;
-  if (field.defaultKind === 'uuid') return genUUID();
-  if (field.defaultKind === 'current_timestamp') return genDatetime();
-
-  // enumMeta 存在时优先从中取值（逻辑枚举）
-  if (field.enumMeta && field.enumMeta.length > 0) {
-    return pick(field.enumMeta).value;
-  }
-
-  const parsed = parseFieldType(field.type);
-  const baseType = parsed.baseType.toLowerCase();
-  const args = parsed.args ?? [];
-
+function generateSemanticValue(field: NormalizedField): string | number | undefined {
   const semantic = inferSemanticHint(field.name, field.comment ?? '');
-
-  // ── 按语义优先生成 ──
   if (semantic) {
     switch (semantic) {
       case 'chinese_name':
@@ -337,8 +320,6 @@ function generateValueForField(field: NormalizedField, rowIndex: number): unknow
         return randInt(18, 75);
       case 'gender_text':
         return pick(['男', '女']);
-      case 'gender_num':
-        return randInt(0, 1);
       case 'company':
         return genCompany();
       case 'uuid':
@@ -365,56 +346,104 @@ function generateValueForField(field: NormalizedField, rowIndex: number): unknow
         return randInt(2010, 2025);
     }
   }
+  return undefined;
+}
 
-  // ── 按字段类型生成 ──
-  if (baseType === 'enum') {
-    // 从 args 中随机选一个，args 如 ["'active'","'inactive'","'pending'"]
-    if (args.length > 0) return pick(args).replace(/^'|'$/g, '');
+const INTEGER_BITS: Record<string, number> = {
+  tinyint: 8,
+  smallint: 16,
+  mediumint: 24,
+  int: 32,
+  bigint: 64,
+  smallserial: 16,
+  serial: 32,
+  bigserial: 64,
+};
+
+function generateDecimalValue(args: string[], preferred: number): number {
+  const precision = Number(args[0] ?? 10);
+  const scale = Number(args[1] ?? 0);
+  if (!Number.isSafeInteger(precision) || precision < 1 || !Number.isSafeInteger(scale)) return 0;
+
+  const coefficient = Math.round(preferred * 10 ** scale);
+  // Sample a bounded coefficient instead of rounding up past the column's maximum.
+  const units =
+    Number.isSafeInteger(coefficient) && Math.abs(coefficient) < 10 ** precision
+      ? coefficient
+      : randInt(0, 10 ** Math.min(precision, 6) - 1);
+  const value = Number(`${units}e${-scale}`);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function generateValueForField(
+  field: NormalizedField,
+  rowIndex: number,
+  dbType: DatabaseType,
+): unknown {
+  if (field.nullable && field.defaultKind === 'none' && Math.random() < 0.1) return null;
+
+  const parsed = parseFieldType(field.type);
+  const baseType = getCanonicalBaseType(field.type);
+  const args = parsed.args ?? [];
+  const family = getDatabaseFamily(dbType);
+
+  if (baseType === 'enum' || baseType === 'set') {
+    if (args.length > 0) return pick(args).replace(/^'|'$/g, '').replace(/''/g, "'");
     return 'value';
   }
 
-  if (baseType === 'bool' || baseType === 'boolean') {
-    return randInt(0, 1);
+  if (baseType === 'date') return genDate();
+  if (['datetime', 'datetime2', 'datetimeoffset', 'timestamp', 'timestamptz'].includes(baseType))
+    return genDatetime();
+  if (baseType === 'time' || baseType === 'timetz') return genTime();
+  if (baseType === 'year') return randInt(2010, 2025);
+  if (baseType === 'json' || baseType === 'jsonb')
+    return JSON.stringify({ id: randInt(1, 999), value: genRandomString(6) });
+  if (baseType === 'uuid' || baseType === 'uniqueidentifier') return genUUID();
+
+  const preferred =
+    field.defaultKind === 'auto_increment'
+      ? rowIndex + 1
+      : field.defaultKind === 'uuid'
+        ? genUUID()
+        : field.enumMeta?.length
+          ? pick(field.enumMeta).value
+          : generateSemanticValue(field);
+  const numeric = Number(preferred);
+
+  if (baseType === 'boolean') {
+    const value = numeric === 0 || numeric === 1 ? numeric : randInt(0, 1);
+    return family === 'postgresql' || family === 'hive' ? Boolean(value) : value;
   }
 
   if (baseType === 'bit') {
-    const len = args[0] ? parseInt(args[0]) : 1;
-    return len === 1 ? randInt(0, 1) : randInt(0, Math.pow(2, len) - 1);
+    const length = Number(args[0] ?? 1);
+    const bits = Number.isSafeInteger(length) && length > 0 ? Math.min(length, 53) : 1;
+    return randInt(0, 2 ** bits - 1);
   }
 
-  if (baseType === 'tinyint') {
-    // tinyint(1) 通常用作 boolean
-    const len = args[0] ? parseInt(args[0]) : undefined;
-    return len === 1 ? randInt(0, 1) : randInt(0, 127);
+  const bits = INTEGER_BITS[baseType];
+  if (bits) {
+    const unsigned = parsed.unsigned || (family === 'sqlserver' && baseType === 'tinyint');
+    const max = 2 ** Math.min(bits - (unsigned ? 0 : 1), 53) - 1;
+    const min = unsigned ? 0 : -max - 1;
+    const value = Math.trunc(numeric);
+    if (Number.isSafeInteger(value) && value >= min && value <= max) return value;
+    const sampleMax = baseType === 'tinyint' && args[0] === '1' ? 1 : Math.min(max, 999999);
+    return randInt(0, sampleMax);
   }
 
-  if (baseType === 'smallint') return randInt(0, 32767);
-  if (['int', 'integer', 'mediumint'].includes(baseType)) return randInt(1, 999999);
-  if (baseType === 'bigint') return randInt(1000000, 9999999);
-
+  if (baseType === 'decimal') return generateDecimalValue(args, numeric);
   if (['float', 'double', 'real'].includes(baseType)) {
-    return Number((Math.random() * 999).toFixed(4));
+    if (args.length === 2) return generateDecimalValue(args, numeric);
+    return Number.isFinite(numeric) ? numeric : Number((Math.random() * 999).toFixed(4));
   }
 
-  if (['decimal', 'numeric'].includes(baseType)) {
-    const precision = args[1] ? parseInt(args[1]) : 2;
-    return Number((Math.random() * 9999).toFixed(precision));
-  }
-
-  if (baseType === 'date') return genDate();
-  if (['datetime', 'timestamp'].includes(baseType)) return genDatetime();
-  if (baseType === 'time') return genTime();
-  if (baseType === 'year') return randInt(2010, 2025);
-
-  if (baseType === 'json') {
-    return JSON.stringify({ id: randInt(1, 999), value: genRandomString(6) });
-  }
-
-  if (['uuid', 'uniqueidentifier'].includes(baseType)) return genUUID();
-
-  // 字符串类型：varchar, char, text 等
-  const maxLen = args[0] ? Math.min(parseInt(args[0]), 50) : 20;
-  return genRandomString(maxLen);
+  const declaredLength = Number(args[0] ?? (baseType === 'char' || baseType === 'nchar' ? 1 : NaN));
+  const maxLength =
+    Number.isSafeInteger(declaredLength) && declaredLength >= 0 ? declaredLength : undefined;
+  const value = preferred === undefined ? genRandomString(maxLength) : String(preferred);
+  return maxLength === undefined ? value : Array.from(value).slice(0, maxLength).join('');
 }
 
 // ── 导出格式 ──────────────────────────────────────────────────────────────────
@@ -428,7 +457,7 @@ function toStr(value: unknown): string {
 function formatSqlValue(value: unknown): string {
   if (value === null || value === undefined) return 'NULL';
   if (typeof value === 'number') return String(value);
-  if (typeof value === 'boolean') return value ? '1' : '0';
+  if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
   const str = toStr(value);
   return `'${str.replace(/'/g, "''")}'`;
 }
@@ -473,7 +502,7 @@ export function generateMockData(
   const rows: Record<string, unknown>[] = Array.from({ length: rowCount }, (_, i) => {
     const row: Record<string, unknown> = {};
     for (const field of validFields) {
-      row[field.name] = generateValueForField(field, i);
+      row[field.name] = generateValueForField(field, i, dbType);
     }
     return row;
   });
