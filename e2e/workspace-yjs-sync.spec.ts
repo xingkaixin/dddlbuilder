@@ -797,7 +797,13 @@ test('ER relationship deletion preserves synced edits on the selected copy', asy
         tableComment: 'remote comment',
         rows: [
           ...currentCopy.state.rows,
-          { id: 'remote-field', fieldName: 'remote_note', fieldType: 'TEXT' },
+          {
+            id: 'remote-field',
+            fieldName: 'remote_note',
+            fieldType: 'TEXT',
+            fieldComment: '',
+            nullable: true,
+          },
         ],
       },
     });
