@@ -131,6 +131,43 @@ describe('WorkspaceYDocDurableObject checkpoint', () => {
     vi.restoreAllMocks();
   });
 
+  it.each(['read', 'snapshot'])('retries initialization after a failed %s', async (failure) => {
+    const getWorkspaceSnapshotForWorkspace = vi.fn().mockResolvedValue(createSnapshot('users'));
+    if (failure === 'read') {
+      getWorkspaceSnapshotForWorkspace.mockRejectedValueOnce(new Error('temporary failure'));
+    }
+    vi.doMock('../../lib/workspaceEntities.js', () => ({
+      checkpointWorkspaceSnapshotEntities: vi.fn(),
+      getWorkspaceSnapshotForWorkspace,
+    }));
+    const { WorkspaceYDocDurableObject } = await import('../../lib/workspaceYDocDurableObject.js');
+    const { exportWorkspaceYDocToSnapshot } = await import('@ddlbuilder/workspace-core');
+    const { state, store } = createDurableObjectState();
+    if (failure === 'snapshot') {
+      vi.mocked(state.storage.put).mockImplementationOnce(async () => {
+        throw new Error('temporary failure');
+      });
+    }
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const durableObject = new WorkspaceYDocDurableObject(state, createEnv());
+    const request = () => createRequest('/api/workspaces/ws-1/yjs/state');
+
+    await expect(durableObject.fetch(request())).rejects.toThrow('temporary failure');
+
+    const responses = await Promise.all([
+      durableObject.fetch(request()),
+      durableObject.fetch(request()),
+    ]);
+    for (const response of responses) {
+      const restoredDoc = new Y.Doc();
+      Y.applyUpdate(restoredDoc, new Uint8Array(await response.arrayBuffer()));
+      expect(exportWorkspaceYDocToSnapshot(restoredDoc).drafts[0]?.state.tableName).toBe('users');
+      restoredDoc.destroy();
+    }
+    expect(store.has('snapshot')).toBe(true);
+    expect(getWorkspaceSnapshotForWorkspace).toHaveBeenCalledTimes(2);
+  });
+
   it('checkpoints imported snapshots during compact', async () => {
     const checkpointWorkspaceSnapshotEntities = vi.fn().mockResolvedValue({
       cursor: 1,

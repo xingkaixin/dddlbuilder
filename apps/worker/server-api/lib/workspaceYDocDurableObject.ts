@@ -222,12 +222,12 @@ export class WorkspaceYDocDurableObject {
   }
 
   private async loadDoc() {
-    if (this.doc) return this.doc;
     if (this.loadPromise) return this.loadPromise;
+    if (this.doc) return this.doc;
 
+    const doc = new Y.Doc();
     this.loadPromise = (async () => {
       const startedAt = Date.now();
-      const doc = new Y.Doc();
       const [meta, snapshot] = await Promise.all([
         this.state.storage.get<WorkspaceYDocStoredMeta>(META_KEY),
         this.state.storage.get<Uint8Array | ArrayBuffer>(SNAPSHOT_KEY),
@@ -280,7 +280,16 @@ export class WorkspaceYDocDurableObject {
         restoredFromD1,
       });
       return doc;
-    })();
+    })()
+      .catch((error: unknown) => {
+        this.doc = null;
+        doc.destroy();
+        console.error('[workspace-yjs-do] load failed', error);
+        throw error;
+      })
+      .finally(() => {
+        this.loadPromise = null;
+      });
 
     return this.loadPromise;
   }
