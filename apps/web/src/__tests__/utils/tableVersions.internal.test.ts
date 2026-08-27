@@ -17,9 +17,20 @@ const mocks = vi.hoisted(() => ({
       onerror: null as null | (() => void),
     });
 
+    let pendingRequests = 0;
+    const completeRequest = (request: ReturnType<typeof createRequest>) => {
+      pendingRequests += 1;
+      queueMicrotask(() => {
+        request.onsuccess?.();
+        pendingRequests -= 1;
+        if (pendingRequests === 0) queueMicrotask(() => tx.oncomplete?.());
+      });
+    };
+
     const createTransaction = () => ({
       error: null as any,
       onerror: null as null | (() => void),
+      onabort: null as null | (() => void),
       oncomplete: null as null | (() => void),
       objectStore: () => ({
         get: () => {
@@ -31,10 +42,10 @@ const mocks = vi.hoisted(() => ({
           }
           return req as any;
         },
-        index: () => ({
+        index: (indexName: string) => ({
           getAll: () => {
             const req = createRequest();
-            if (mocks.behavior === 'list_rows_missing') {
+            if (mocks.behavior === 'list_rows_missing' && indexName === 'tableKey') {
               req.result = [
                 {
                   id: 'v1',
@@ -51,19 +62,13 @@ const mocks = vi.hoisted(() => ({
             } else {
               req.result = [];
             }
-            queueMicrotask(() => {
-              req.onsuccess?.();
-              tx.oncomplete?.();
-            });
+            completeRequest(req);
             return req as any;
           },
           count: () => {
             const req = createRequest();
             req.result = 0;
-            queueMicrotask(() => {
-              req.onsuccess?.();
-              tx.oncomplete?.();
-            });
+            completeRequest(req);
             return req as any;
           },
         }),
