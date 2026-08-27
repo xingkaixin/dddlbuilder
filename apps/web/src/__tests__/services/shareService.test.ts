@@ -221,6 +221,35 @@ describe('shareService', () => {
     expect(ddl).toContain('ON UPDATE CURRENT_TIMESTAMP');
   });
 
+  it('旧分享包含无效枚举元数据时仍能生成 DDL 并保留合法枚举注释', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json({
+        id: 's1',
+        state: {
+          ...createState(),
+          rows: [
+            {
+              id: 'status',
+              fieldName: 'status',
+              fieldType: 'INT',
+              nullable: false,
+              enumMeta: [null, { value: {} }, { value: '1', i18n: { 'zh-CN': '启用' } }],
+            },
+          ],
+        },
+      }),
+    );
+    const result = await getShareState('s1');
+    const ddl = buildDDL({
+      dbType: result.dbType,
+      tableName: result.tableName,
+      tableComment: '',
+      fields: normalizeFields(result.rows),
+    });
+    expect(ddl).toContain('枚举: 1(启用)');
+    expect(result.rows[0].enumMeta).toEqual([{ value: '1', i18n: { 'zh-CN': '启用' } }]);
+  });
+
   it('getShareState 在 state 非对象时应抛出业务错误', async () => {
     vi.mocked(fetch).mockResolvedValue(
       mockResponse({

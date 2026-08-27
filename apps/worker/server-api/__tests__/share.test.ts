@@ -115,6 +115,32 @@ describe('share api', () => {
     expect(mockKV.get).toHaveBeenCalledWith(`share:${VALID_SHARE_ID}`);
   });
 
+  it('创建分享时过滤非法枚举成员再写入 KV', async () => {
+    const response = await app.request('https://ddlbuilder.test/api/share', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        state: {
+          ...buildState(),
+          rows: [
+            {
+              fieldName: 'status',
+              fieldType: 'INT',
+              enumMeta: [
+                null,
+                { value: 1 },
+                { value: '1', color: {}, i18n: { 'zh-CN': '启用', 'en-US': false } },
+              ],
+            },
+          ],
+        },
+      }),
+    });
+    expect(response.status).toBe(200);
+    const stored = JSON.parse(mockKV.put.mock.calls[0][1]);
+    expect(stored.rows[0].enumMeta).toEqual([{ value: '1', i18n: { 'zh-CN': '启用' } }]);
+  });
+
   it('分享不存在时应返回 404', async () => {
     mockKV.get.mockResolvedValueOnce(null);
 

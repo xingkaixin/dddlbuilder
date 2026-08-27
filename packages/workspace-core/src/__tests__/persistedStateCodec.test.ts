@@ -58,6 +58,61 @@ const completeSnapshot = () => ({
 });
 
 describe('decodePersistedState', () => {
+  it.each(['compatible', 'external'] as const)('校验枚举成员并保留合法元数据 (%s)', (mode) => {
+    const decoded = decodePersistedState(
+      externalState({
+        rows: [
+          {
+            fieldName: 'status',
+            enumMeta: [
+              null,
+              false,
+              1,
+              'invalid',
+              [],
+              {},
+              { value: 1 },
+              {
+                value: 'active',
+                color: '#16a34a',
+                i18n: { 'zh-CN': '启用', 'en-US': 'Active', 'ja-JP': '有効', invalid: {} },
+                extra: true,
+              },
+              { value: '', color: 1, i18n: [] },
+              { value: ' spaced ', i18n: null },
+            ],
+          },
+        ],
+      }),
+      mode,
+    );
+
+    expect(decoded?.rows[0].enumMeta).toEqual([
+      {
+        value: 'active',
+        color: '#16a34a',
+        i18n: { 'zh-CN': '启用', 'en-US': 'Active', 'ja-JP': '有効' },
+      },
+      { value: '' },
+      { value: ' spaced ' },
+    ]);
+    expect(decodePersistedState(JSON.parse(JSON.stringify(decoded)), mode)).toEqual(decoded);
+  });
+
+  it('没有合法枚举成员时保留空数组，非数组元数据不进入字段', () => {
+    const decoded = decodePersistedState(
+      externalState({
+        rows: [
+          { fieldName: 'status', enumMeta: [null, { value: {} }] },
+          { fieldName: 'kind', enumMeta: { value: '1' } },
+        ],
+      }),
+      'external',
+    );
+    expect(decoded?.rows[0].enumMeta).toEqual([]);
+    expect(decoded?.rows[1]).not.toHaveProperty('enumMeta');
+  });
+
   it('keeps invalid foreign key positions instead of realigning column pairs', () => {
     const decoded = decodePersistedState(
       externalState({
@@ -200,7 +255,7 @@ describe('decodePersistedState', () => {
             defaultKind: 'literal',
             defaultValue: '1',
             onUpdate: 'CURRENT_TIMESTAMP',
-            enumMeta: [{ value: '1', label: 'one' }],
+            enumMeta: [{ value: '1', i18n: { 'en-US': 'one' } }],
           },
           'invalid-row',
         ],
@@ -291,7 +346,7 @@ describe('decodePersistedState', () => {
       viewDefinition: 'select 1',
       viewCreateOrReplace: true,
       rows: [
-        { id: 'field-1', fieldName: 'id', enumMeta: [{ value: '1', label: 'one' }] },
+        { id: 'field-1', fieldName: 'id', enumMeta: [{ value: '1', i18n: { 'en-US': 'one' } }] },
         { id: 'legacy-field-1', fieldName: '' },
       ],
       currentIndexFields: [{ name: 'id', direction: 'DESC' }],

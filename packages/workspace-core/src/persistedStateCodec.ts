@@ -12,6 +12,7 @@ import {
   normalizeOptionalMysqlPartitionCount,
   normalizePctfree,
   type CitusShardingConfig,
+  type EnumValueMeta,
   type FieldRow,
   type FieldTableViewConfig,
   type ForeignKeyAction,
@@ -109,6 +110,26 @@ const decodeIndexes = (value: unknown): IndexDefinition[] => {
   });
 };
 
+const decodeEnumMeta = (value: unknown[]): EnumValueMeta[] =>
+  value.flatMap((item) => {
+    if (!isRecord(item) || typeof item.value !== 'string') return [];
+    return [
+      {
+        value: item.value,
+        ...(typeof item.color === 'string' ? { color: item.color } : {}),
+        ...(isRecord(item.i18n)
+          ? {
+              i18n: Object.fromEntries(
+                Object.entries(item.i18n).filter(
+                  (entry): entry is [string, string] => typeof entry[1] === 'string',
+                ),
+              ),
+            }
+          : {}),
+      },
+    ];
+  });
+
 const decodeRows = (value: unknown): FieldRow[] => {
   const usedIds = new Set<string>();
   return (Array.isArray(value) ? value : []).map((item, index) => {
@@ -126,7 +147,7 @@ const decodeRows = (value: unknown): FieldRow[] => {
       defaultKind: normalizeFieldDefaultKind(row.defaultKind),
       defaultValue: toText(row.defaultValue),
       onUpdate: normalizeFieldOnUpdate(row.onUpdate),
-      ...(Array.isArray(row.enumMeta) ? { enumMeta: row.enumMeta as FieldRow['enumMeta'] } : {}),
+      ...(Array.isArray(row.enumMeta) ? { enumMeta: decodeEnumMeta(row.enumMeta) } : {}),
     };
   });
 };
