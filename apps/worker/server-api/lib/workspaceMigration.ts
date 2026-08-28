@@ -138,15 +138,15 @@ const readWorkspaceLink = async (
     .first<{ migrationStatus: string }>();
 };
 
-const upsertWorkspaceLink = async (
+const recordCompletedWorkspaceMigration = async (
   env: ApiEnv['Bindings'],
   input: {
     userId: string;
     localFingerprint: string;
-    migrationStatus: 'pending' | 'completed' | 'failed';
     idempotencyKey: string;
   },
 ) => {
+  const now = Date.now();
   await env.USER_DB.prepare(
     `
       INSERT INTO workspace_links (
@@ -155,26 +155,24 @@ const upsertWorkspaceLink = async (
         local_fingerprint,
         migration_status,
         last_idempotency_key,
-        migrated_at
+        migrated_at,
+        created_at
       )
-      VALUES (?, ?, ?, ?, ?, CASE WHEN ? = 'completed' THEN ? ELSE NULL END)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(user_id, local_fingerprint) DO UPDATE SET
         migration_status = excluded.migration_status,
         last_idempotency_key = excluded.last_idempotency_key,
-        migrated_at = CASE
-          WHEN excluded.migration_status = 'completed' THEN excluded.migrated_at
-          ELSE workspace_links.migrated_at
-        END
+        migrated_at = excluded.migrated_at
     `,
   )
     .bind(
       `workspace-link:${input.userId}:${input.localFingerprint}`,
       input.userId,
       input.localFingerprint,
-      input.migrationStatus,
+      'completed',
       input.idempotencyKey,
-      input.migrationStatus,
-      Date.now(),
+      now,
+      now,
     )
     .run();
 };
@@ -488,32 +486,12 @@ export const commitWorkspaceMigration = async (
     };
   }
 
-  await upsertWorkspaceLink(env, {
+  const authority = await openDefaultWorkspaceYDocAuthority(env, userId);
+  const result = await authority.migrateSnapshot(payload.snapshot);
+  await recordCompletedWorkspaceMigration(env, {
     userId,
     localFingerprint: payload.localFingerprint,
-    migrationStatus: 'pending',
     idempotencyKey: payload.idempotencyKey,
   });
-
-  try {
-    const authority = await openDefaultWorkspaceYDocAuthority(env, userId);
-    const result = await authority.migrateSnapshot(payload.snapshot);
-
-    await upsertWorkspaceLink(env, {
-      userId,
-      localFingerprint: payload.localFingerprint,
-      migrationStatus: 'completed',
-      idempotencyKey: payload.idempotencyKey,
-    });
-
-    return result;
-  } catch (error) {
-    await upsertWorkspaceLink(env, {
-      userId,
-      localFingerprint: payload.localFingerprint,
-      migrationStatus: 'failed',
-      idempotencyKey: payload.idempotencyKey,
-    });
-    throw error;
-  }
+  return result;
 };

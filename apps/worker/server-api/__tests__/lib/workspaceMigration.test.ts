@@ -5,6 +5,7 @@ import {
   exportWorkspaceYDocToSnapshot,
 } from '@ddlbuilder/workspace-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createSqliteD1Database } from '../helpers/sqliteD1.js';
 import {
   toSchemaDocumentState,
   withDefaultEditorSession,
@@ -61,6 +62,36 @@ const createPayload = (): WorkspaceMigrationPayload => ({
 });
 
 describe('workspaceMigration', () => {
+  it('stores only confirmed migrations with a creation timestamp', async () => {
+    const { database, sqlite } = createSqliteD1Database({ includeMeta: true });
+    sqlite
+      .prepare('INSERT INTO user (id, name, email, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
+      .run('user-1', 'User', 'user@example.com', 1, 1);
+    let resume!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      resume = resolve;
+    });
+    authorityMocks.migrateSnapshot.mockImplementationOnce(async () => {
+      await gate;
+      return { status: 'completed' };
+    });
+    const task = commitWorkspaceMigration(
+      { USER_DB: database } as never,
+      'user-1',
+      createPayload(),
+    );
+    await vi.waitFor(() => expect(authorityMocks.migrateSnapshot).toHaveBeenCalled());
+    const inProgress = sqlite.prepare('SELECT migration_status FROM workspace_links').all();
+    resume();
+    await task;
+    const completed = sqlite
+      .prepare('SELECT migration_status, created_at FROM workspace_links')
+      .get();
+    sqlite.close();
+    expect(inProgress).toEqual([]);
+    expect(completed?.migration_status).toBe('completed');
+    expect(Number(completed?.created_at)).toBeGreaterThan(0);
+  });
   let cloudDoc: Y.Doc;
   beforeEach(() => {
     vi.clearAllMocks();
