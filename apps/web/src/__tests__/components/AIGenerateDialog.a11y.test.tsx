@@ -134,7 +134,7 @@ describe('AIGenerateDialog a11y', () => {
     expect(alert).toHaveAttribute('aria-live', 'assertive');
   });
 
-  it('结果态输入新需求后应继续迭代', () => {
+  it('结果态输入新需求后应继续迭代', async () => {
     const generateTable = vi.fn().mockResolvedValue(true);
     mockedUseAIGenerateTable.mockReturnValue(
       createHookState({
@@ -159,7 +159,9 @@ describe('AIGenerateDialog a11y', () => {
     fireEvent.change(screen.getByPlaceholderText(/继续描述你的需求/), {
       target: { value: '把状态字段改成 varchar' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /发送修改/ }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /发送修改/ }));
+    });
 
     expect(generateTable).toHaveBeenCalledWith(
       '把状态字段改成 varchar',
