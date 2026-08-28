@@ -31,6 +31,10 @@ class FakeIndex {
     return this.store.getAllByIndex(this.tx, this.indexKey, query);
   }
 
+  openKeyCursor(query: { includes: (key: string) => boolean }) {
+    return this.store.openKeyCursor(this.tx, this.indexKey, query);
+  }
+
   count(query?: IDBValidKey) {
     return this.store.countByIndex(this.tx, this.indexKey, query);
   }
@@ -77,6 +81,29 @@ class FakeObjectStore {
     });
 
     tx.addPendingRequest();
+    return request;
+  }
+
+  openKeyCursor(
+    tx: FakeTransaction,
+    indexKey: string,
+    query: { includes: (key: string) => boolean },
+  ) {
+    const request = createRequest();
+    const keys = [...this.data.entries()]
+      .filter(([, item]) => query.includes(item[indexKey]))
+      .map(([primaryKey, item]) => ({ primaryKey, key: item[indexKey] }));
+    let position = 0;
+    const next = () => {
+      tx.addPendingRequest();
+      queueMicrotask(() => {
+        const entry = keys[position++];
+        request.result = entry ? { ...entry, continue: next } : null;
+        request.onsuccess?.({ target: request });
+        tx.markRequestComplete();
+      });
+    };
+    next();
     return request;
   }
 
@@ -343,6 +370,14 @@ export const createFakeIndexedDB = () => new FakeIndexedDB();
 
 export const setupFakeIndexedDB = () => {
   const fake = createFakeIndexedDB();
+  Object.defineProperty(globalThis, 'IDBKeyRange', {
+    configurable: true,
+    value: {
+      bound: (lower: string, upper: string) => ({
+        includes: (key: string) => key >= lower && key <= upper,
+      }),
+    },
+  });
   Object.defineProperty(globalThis, 'indexedDB', {
     value: fake as unknown,
     configurable: true,

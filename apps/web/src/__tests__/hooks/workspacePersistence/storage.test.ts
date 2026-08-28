@@ -1,3 +1,4 @@
+import { setupMemoryLocalStorage } from '@/__tests__/utils/memoryLocalStorage';
 import { describe, expect, it, vi } from 'vitest';
 import {
   buildShareStorageKey,
@@ -9,6 +10,19 @@ import {
 import { STORAGE_KEY } from '@/utils/constants';
 
 describe('workspacePersistence/storage', () => {
+  it('bounds cached share snapshots to the five most recently used entries', () => {
+    const memory = setupMemoryLocalStorage();
+    for (let i = 0; i < 7; i += 1)
+      writeStorageJson(buildShareStorageKey(String(i)), { tableName: String(i) });
+    const shares = [...memory.keys()].filter((key) => key.startsWith(`${STORAGE_KEY}:share:`));
+    expect(shares).toHaveLength(5);
+    expect(readStorageJson(buildShareStorageKey('0'))).toBeNull();
+    expect(readStorageJson(buildShareStorageKey('6'))).toEqual({ tableName: '6' });
+    readStorageJson(buildShareStorageKey('2'));
+    writeStorageJson(buildShareStorageKey('7'), {});
+    expect(readStorageJson(buildShareStorageKey('2'))).not.toBeNull();
+    expect(readStorageJson(buildShareStorageKey('3'))).toBeNull();
+  });
   it('writeStorageJson 应写入 JSON 字符串', () => {
     const setItemSpy = vi.spyOn(window.localStorage, 'setItem');
     writeStorageJson('k1', { a: 1 });

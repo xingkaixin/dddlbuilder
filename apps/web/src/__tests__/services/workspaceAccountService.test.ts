@@ -1,3 +1,8 @@
+import * as Y from 'yjs';
+import { watchWorkspaceHistory } from '@/services/workspaceHistoryCleanup';
+import { upsertSavedTableInYDoc, deleteSavedTableFromYDoc } from '@/services/workspaceYDocAdapter';
+import { createVersion, listVersions } from '@/utils/tableVersions';
+import { saveReview, listReviews } from '@/utils/reviewHistory';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setupFakeIndexedDB, teardownFakeIndexedDB } from '@/__tests__/utils/fakeIndexedDb';
 import {
@@ -27,6 +32,56 @@ const createState = (tableName: string) => ({
 });
 
 describe('workspaceAccountService', () => {
+  it('cleans history after a remote permanent deletion and retains trashed tables', async () => {
+    const doc = new Y.Doc();
+    const remote = new Y.Doc();
+    const deleted = { scope, tableId: 'deleted', normalizedName: 'deleted' };
+    const trashed = { scope, tableId: 'trashed', normalizedName: 'trashed' };
+    for (const target of [deleted, trashed]) {
+      upsertSavedTableInYDoc(doc, {
+        tableId: target.tableId,
+        normalizedName: target.normalizedName,
+        name: target.normalizedName,
+        state: createState(target.normalizedName),
+        createdAt: 1,
+        updatedAt: 1,
+        ...(target === trashed ? { trashedAt: 2 } : {}),
+      });
+      await createVersion(target, createState(target.normalizedName));
+    }
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+    const stop = watchWorkspaceHistory(doc, scope);
+    deleteSavedTableFromYDoc(remote, deleted);
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote), 'remote');
+    await vi.waitFor(async () => expect(await listVersions(deleted)).toEqual([]));
+    expect(await listVersions(trashed)).toHaveLength(1);
+    stop();
+    doc.destroy();
+    remote.destroy();
+  });
+
+  it('preserves history while cleaning migrated legacy table snapshots', async () => {
+    const target = { scope, tableId: 'kept', normalizedName: 'kept' };
+    await createVersion(target, createState('kept'));
+    await clearLegacyWorkspaceData(scope);
+    expect(await listVersions(target)).toHaveLength(1);
+  });
+
+  it('clears account history including records whose tables no longer exist', async () => {
+    const target = { scope, tableId: 'orphan', normalizedName: 'gone' };
+    const other = { ...target, scope: { ...scope, userId: 'another' } };
+    const review = { score: 8, summary: 'review', suggestions: [] };
+    await createVersion(target, createState('gone'));
+    await saveReview(target, 'gone', 'ddl', 'mysql', review);
+    await createVersion(other, createState('other'));
+    await clearLocalWorkspaceData(scope);
+    const versions = await listVersions(target);
+    const reviews = await listReviews(target);
+    expect(versions).toEqual([]);
+    expect(reviews).toEqual([]);
+    expect(await listVersions(other)).toHaveLength(1);
+  });
+
   beforeEach(() => {
     setupFakeIndexedDB();
   });

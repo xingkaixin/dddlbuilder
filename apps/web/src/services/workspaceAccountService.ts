@@ -1,3 +1,4 @@
+import { clearWorkspaceHistory } from './workspaceHistoryCleanup';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types';
 import type {
   ApiErrorPayload,
@@ -82,5 +83,7 @@ export const clearLocalWorkspaceData = async (scope: WorkspaceScope): Promise<vo
   await clearWorkspaceYDocData(scope.workspaceId);
   await clearWorkspacePartition(scope);
   await clearWorkspacePartition({ kind: 'legacy_user', userId: scope.userId });
+  await clearWorkspaceHistory(scope);
+  await clearWorkspaceHistory({ kind: 'legacy_user', userId: scope.userId });
   dispatchWorkspaceSnapshotApplied();
 };

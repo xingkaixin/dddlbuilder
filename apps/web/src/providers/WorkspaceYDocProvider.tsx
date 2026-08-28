@@ -1,3 +1,4 @@
+import { watchWorkspaceHistory } from '@/services/workspaceHistoryCleanup';
 import {
   createContext,
   useCallback,
@@ -219,6 +220,11 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
   const doc = sameWorkspace ? value.doc : null;
   const localSynced = sameWorkspace && value.localSynced;
   const canSync = authSession.status === 'signed_in' && authSession.userId === workspaceUserId;
+
+  useEffect(() => {
+    if (!doc || !localSynced || !value.scope || !value.remoteLoaded) return;
+    return watchWorkspaceHistory(doc, value.scope);
+  }, [doc, localSynced, value.scope, value.remoteLoaded]);
 
   useEffect(() => {
     if (!doc || !localSynced || !workspaceId) return;
