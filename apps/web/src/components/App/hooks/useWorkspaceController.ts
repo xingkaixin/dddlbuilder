@@ -3,8 +3,8 @@ import { useSavedTables } from '@/hooks/useSavedTables';
 import { useFolders } from '@/hooks/useFolders';
 import { useWorkspaceScope } from '@/hooks/useWorkspaceScope';
 import { useWorkspaceNotifications } from './useWorkspaceNotifications';
-import { useMemo } from 'react';
-import { isSameSavedTable } from '@ddlbuilder/shared-types/workspace';
+import { useSavedTableRecord } from '@/hooks/useSavedTableRecord';
+import { resolveSavedTableId } from '@/utils/savedTableIdentity';
 
 export function useWorkspaceController() {
   const persistence = usePersistedState();
@@ -22,14 +22,7 @@ export function useWorkspaceController() {
 
   const loadedTableSource =
     persistence.activeSource.kind === 'saved_table' ? persistence.activeSource : null;
-  const loadedTable = useMemo(
-    () =>
-      loadedTableSource
-        ? (savedTableData.savedTables.find((table) => isSameSavedTable(table, loadedTableSource)) ??
-          null)
-        : null,
-    [loadedTableSource, savedTableData.savedTables],
-  );
+  const loadedTable = useSavedTableRecord(loadedTableSource);
 
   return {
     persistence,
@@ -38,7 +31,7 @@ export function useWorkspaceController() {
     workspaceScope,
     loadedTableSource,
     loadedTable,
-    loadedTableId: loadedTable?.tableId ?? null,
+    loadedTableId: loadedTable ? resolveSavedTableId(loadedTable) : null,
     loadedTableNormalizedName: loadedTableSource?.normalizedName ?? null,
     loadedTableName: loadedTableSource?.tableName ?? null,
     loadedTableSignature: loadedTableSource?.baseSignature ?? null,

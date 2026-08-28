@@ -1,6 +1,14 @@
 import { queryOptions } from '@tanstack/react-query';
-import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
-import { listSavedTableMetadata, listTrashedSavedTableMetadata } from '@/utils/savedTablesDb';
+import {
+  savedTableKey,
+  type SavedTableTarget,
+  type WorkspaceScope,
+} from '@ddlbuilder/shared-types/workspace';
+import {
+  getSavedTable,
+  listSavedTableMetadata,
+  listTrashedSavedTableMetadata,
+} from '@/utils/savedTablesDb';
 import { buildFolderTree, listFolders } from '@/utils/tableFolders';
 import i18n from '@/i18n';
 
@@ -19,6 +27,17 @@ export function localSavedTablesOptions(scope: WorkspaceScope | null) {
     queryFn: () => {
       if (!scope) throw new Error(i18n.t('savedTables.toast.workspaceNotReady'));
       return listSavedTableMetadata(scope);
+    },
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+}
+
+export function localSavedTableOptions(scope: WorkspaceScope | null, target: SavedTableTarget) {
+  return queryOptions({
+    queryKey: [...workspaceLocalQueryKeys.scope(scope), 'saved-table', savedTableKey(target)],
+    queryFn: () => {
+      if (!scope) throw new Error(i18n.t('savedTables.toast.workspaceNotReady'));
+      return getSavedTable(target, scope);
     },
     staleTime: Number.POSITIVE_INFINITY,
   });

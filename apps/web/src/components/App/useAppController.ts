@@ -140,6 +140,7 @@ export function useAppController() {
     loadedTableName,
     loadedTableSignature,
     countTableVersions: savedTableData.countTableVersions,
+    loadedTableState: loadedTable?.state ?? null,
   });
   const {
     currentPersistedState,
@@ -335,13 +336,13 @@ export function useAppController() {
   const { handleViewVersionHistory, handleOpenAIGenerateDialog } = navigationActions;
 
   const handleViewCurrentVersionHistory = useCallback(() => {
-    if (!loadedTable) return;
+    if (!loadedTable || !loadedTableId) return;
     handleViewVersionHistory({
-      tableId: loadedTable.tableId,
+      tableId: loadedTableId,
       normalizedName: loadedTable.normalizedName,
       name: loadedTable.name,
     });
-  }, [handleViewVersionHistory, loadedTable]);
+  }, [handleViewVersionHistory, loadedTable, loadedTableId]);
 
   const handleSelectTableFromEr = useCallback(
     (state: PersistedState) => {

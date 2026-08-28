@@ -21,11 +21,13 @@ const loadTable = async () => {
   const signature = serializePersistedStateForComparison(
     toPersistedState(useEditorStore.getState()),
   );
+  const loadedTableState = toPersistedState(useEditorStore.getState());
   return renderHook(() =>
     useDerivedTableState({
       ...useEditorStore(),
       loadedTableNormalizedName: 'users',
       loadedTableSignature: signature,
+      loadedTableState,
     }),
   );
 };
@@ -35,6 +37,13 @@ it('加载已有索引时派生计算不修改文档', async () => {
   expect(result.current.currentPersistedState.indexes[0].name).toBe('email_lookup');
   expect(result.current.isLoadedDirty).toBe(false);
   expect(result.current.tableDiff).toBeNull();
+});
+
+it('使用结构化的已保存状态计算变更，不解析内容哈希', async () => {
+  const { result } = await loadTable();
+  act(() => useEditorStore.getState().setSchemaName('archive'));
+  expect(result.current.isLoadedDirty).toBe(true);
+  expect(result.current.tableDiff?.hasChanges).toBe(true);
 });
 
 it('增删索引、修改表名和数据库不改写已有索引名', async () => {

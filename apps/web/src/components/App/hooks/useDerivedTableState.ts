@@ -49,6 +49,7 @@ interface UseDerivedTableStateDeps {
   // 加载状态
   loadedTableNormalizedName: string | null;
   loadedTableSignature: string | null;
+  loadedTableState: PersistedState | null;
 }
 
 /**
@@ -80,6 +81,7 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
     fieldTableFreezeColumns,
     loadedTableNormalizedName,
     loadedTableSignature,
+    loadedTableState,
   } = deps;
 
   // --- 字段派生 ---
@@ -176,15 +178,9 @@ export function useDerivedTableState(deps: UseDerivedTableStateDeps) {
 
   // --- Diff ---
   const tableDiff = useMemo<TableDiff | null>(() => {
-    if (!isLoadedDirty || !normalizedLoadedTableSignature) return null;
-    try {
-      const oldState = JSON.parse(normalizedLoadedTableSignature) as PersistedState;
-      const newState = currentPersistedState;
-      return diffPersistedState(oldState, newState);
-    } catch {
-      return null;
-    }
-  }, [isLoadedDirty, normalizedLoadedTableSignature, currentPersistedState]);
+    if (!isLoadedDirty || !loadedTableState) return null;
+    return diffPersistedState(loadedTableState, currentPersistedState);
+  }, [isLoadedDirty, loadedTableState, currentPersistedState]);
 
   return {
     // 字段

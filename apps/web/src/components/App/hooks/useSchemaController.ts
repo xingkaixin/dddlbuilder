@@ -30,6 +30,7 @@ interface UseSchemaControllerParams {
   loadedTableNormalizedName: string | null;
   loadedTableName: string | null;
   loadedTableSignature: string | null;
+  loadedTableState: PersistedState | null;
   countTableVersions: (normalizedName: SavedTableTarget) => Promise<number>;
 }
 
@@ -42,6 +43,7 @@ export function useSchemaController({
   loadedTableNormalizedName,
   loadedTableName,
   loadedTableSignature,
+  loadedTableState,
   countTableVersions,
 }: UseSchemaControllerParams) {
   const { editor, ui, auth, sharding, partition, tableOptions } = domains;
@@ -101,6 +103,7 @@ export function useSchemaController({
     fieldTableFreezeColumns,
     loadedTableNormalizedName,
     loadedTableSignature,
+    loadedTableState,
   });
   const loadedPresentation = useLoadedTablePresentation({
     hydrated,
