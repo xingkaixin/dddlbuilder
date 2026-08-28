@@ -1,7 +1,13 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
 import { getDatabaseFamily } from '../utils/databaseFamily.js';
-import { buildIndexFieldLookup, toCamelCase, toPascalCase } from './shared.js';
+import {
+  buildIndexFieldLookup,
+  toCamelCase,
+  toPascalCase,
+  escapeJavaString,
+  formatLineComment,
+} from './shared.js';
 
 export class JPAGenerator implements ORMGenerator {
   generateModel({
@@ -45,7 +51,7 @@ export class JPAGenerator implements ORMGenerator {
 
     if (tableComment.trim()) {
       lines.push(`/**`);
-      lines.push(` * ${tableComment.trim()}`);
+      lines.push(formatLineComment(tableComment.replaceAll('*/', '* /'), ' * '));
       lines.push(` */`);
     }
     lines.push(`@Entity`);
@@ -65,7 +71,7 @@ export class JPAGenerator implements ORMGenerator {
       const isNullable = field.nullable && !isPk;
 
       if (field.comment.trim()) {
-        lines.push(`    /** ${field.comment.trim()} */`);
+        lines.push(formatLineComment(field.comment, '    // '));
       }
 
       if (isPk) {
@@ -75,7 +81,7 @@ export class JPAGenerator implements ORMGenerator {
         }
       }
 
-      const colParts: string[] = [`name = "${field.name}"`];
+      const colParts: string[] = [`name = "${escapeJavaString(field.name)}"`];
       if (!isNullable) {
         colParts.push('nullable = false');
       }
@@ -93,18 +99,18 @@ export class JPAGenerator implements ORMGenerator {
       lines.push(`    @ManyToOne${isNullable ? '' : '(optional = false)'}`);
       const joinColumns = foreignKey.fields.map(
         (fieldName, index) =>
-          `name = "${fieldName}", referencedColumnName = "${foreignKey.refFields[index]}", insertable = false, updatable = false`,
+          `name = "${escapeJavaString(fieldName)}", referencedColumnName = "${escapeJavaString(foreignKey.refFields[index])}", insertable = false, updatable = false`,
       );
       if (joinColumns.length === 1) {
         const foreignKeyAttribute = foreignKey.name
-          ? `, foreignKey = @ForeignKey(name = "${foreignKey.name}")`
+          ? `, foreignKey = @ForeignKey(name = "${escapeJavaString(foreignKey.name)}")`
           : '';
         lines.push(`    @JoinColumn(${joinColumns[0]}${foreignKeyAttribute})`);
       } else {
         lines.push(`    @JoinColumns(value = {`);
         for (const joinColumn of joinColumns) lines.push(`        @JoinColumn(${joinColumn}),`);
         const foreignKeyAttribute = foreignKey.name
-          ? `, foreignKey = @ForeignKey(name = "${foreignKey.name}")`
+          ? `, foreignKey = @ForeignKey(name = "${escapeJavaString(foreignKey.name)}")`
           : '';
         lines.push(`    }${foreignKeyAttribute})`);
       }

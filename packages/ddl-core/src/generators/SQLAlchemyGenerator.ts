@@ -1,6 +1,6 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
 import { getORMTypeWithArgs } from '../utils/ormTypeResolver.js';
-import { buildIndexFieldLookup, escapePythonString } from './shared.js';
+import { buildIndexFieldLookup, escapePythonString, formatLineComment } from './shared.js';
 
 export class SQLAlchemyGenerator implements ORMGenerator {
   generateModel({
@@ -48,12 +48,12 @@ export class SQLAlchemyGenerator implements ORMGenerator {
     lines.push('');
 
     if (tableComment.trim()) {
-      lines.push(`# ${tableComment.trim()}`);
+      lines.push(formatLineComment(tableComment, '# '));
     }
 
     const className = this.toClassName(tableName.trim());
     lines.push(`class ${className}(Base):`);
-    lines.push(`    __tablename__ = '${tableName.trim()}'`);
+    lines.push(`    __tablename__ = '${escapePythonString(tableName.trim())}'`);
     if (tableComment.trim()) {
       lines.push(`    __doc__ = '${escapePythonString(tableComment.trim())}'`);
     }
@@ -96,16 +96,16 @@ export class SQLAlchemyGenerator implements ORMGenerator {
     // Indexes
     for (const idx of indexes) {
       if (idx.isPrimary) continue;
-      const fieldNames = idx.fields.map((f) => `'${f.name}'`).join(', ');
+      const fieldNames = idx.fields.map((f) => `'${escapePythonString(f.name)}'`).join(', ');
       const uniqueStr = idx.unique ? ', unique=True' : '';
-      tableArgs.push(`    Index('${idx.name}', ${fieldNames}${uniqueStr})`);
+      tableArgs.push(`    Index('${escapePythonString(idx.name)}', ${fieldNames}${uniqueStr})`);
     }
 
     for (const fk of foreignKeys) {
-      const localFields = fk.fields.map((field) => `'${field}'`).join(', ');
+      const localFields = fk.fields.map((field) => `'${escapePythonString(field)}'`).join(', ');
       const referencedTable = [fk.refSchema, fk.refTable].filter(Boolean).join('.');
       const referencedFields = fk.refFields
-        .map((field) => `'${referencedTable}.${field}'`)
+        .map((field) => `'${escapePythonString(`${referencedTable}.${field}`)}'`)
         .join(', ');
       const onDelete = fk.onDelete ? `, ondelete='${fk.onDelete}'` : '';
       const onUpdate = fk.onUpdate ? `, onupdate='${fk.onUpdate}'` : '';

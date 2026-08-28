@@ -39,13 +39,22 @@ export function escapePrismaDefault(value: string): string {
   if (/^-?\d+(\.\d+)?$/.test(value) || value === 'true' || value === 'false') {
     return value;
   }
-  return `"${value.replace(/"/g, '\\"')}"`;
+  return JSON.stringify(value);
 }
 
 export function escapePythonString(value: string): string {
-  return value.replace(/'/g, "\\'").replace(/"/g, '\\"');
+  return JSON.stringify(value).slice(1, -1).replaceAll("'", "\\'");
 }
 
 export function escapeJavaString(value: string): string {
-  return value.replace(/"/g, '\\"');
+  return JSON.stringify(value).slice(1, -1);
 }
+
+export const tsStringLiteral = (value: string) => `'${escapePythonString(value)}'`;
+
+export const formatLineComment = (value: string, prefix: string) =>
+  value
+    .trim()
+    .split(/\r?\n/)
+    .map((line) => `${prefix}${line}`)
+    .join('\n');

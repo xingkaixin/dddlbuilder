@@ -1,6 +1,12 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
 import { getDatabaseFamily } from '../utils/databaseFamily.js';
-import { buildIndexFieldLookup, toCamelCase, toPascalCase } from './shared.js';
+import {
+  buildIndexFieldLookup,
+  toCamelCase,
+  toPascalCase,
+  tsStringLiteral,
+  formatLineComment,
+} from './shared.js';
 import { resolveTypeORMColumn } from './typeormColumn.js';
 
 export class TypeORMGenerator implements ORMGenerator {
@@ -39,20 +45,20 @@ export class TypeORMGenerator implements ORMGenerator {
         .map((foreignKey) => [toPascalCase(foreignKey.refTable), foreignKey.refTable] as const),
     );
     for (const [referencedClass, referencedTable] of referencedEntities) {
-      lines.push(`import { ${referencedClass} } from './${referencedTable}';`);
+      lines.push(`import { ${referencedClass} } from ${tsStringLiteral(`./${referencedTable}`)};`);
     }
     lines.push('');
 
     if (tableComment.trim()) {
       lines.push(`/**`);
-      lines.push(` * ${tableComment.trim()}`);
+      lines.push(formatLineComment(tableComment.replaceAll('*/', '* /'), ' * '));
       lines.push(` */`);
     }
     const namespaceOption = getDatabaseFamily(dbType) === 'mysql' ? 'database' : 'schema';
     lines.push(
       schemaName
         ? `@Entity({ name: ${JSON.stringify(tableName.trim())}, ${namespaceOption}: ${JSON.stringify(schemaName)} })`
-        : `@Entity('${tableName.trim()}')`,
+        : `@Entity(${tsStringLiteral(tableName.trim())})`,
     );
 
     const classIndexes: string[] = [];
@@ -60,11 +66,11 @@ export class TypeORMGenerator implements ORMGenerator {
     // Collect composite unique and normal indexes
     for (const idx of indexes) {
       if (idx.isPrimary) continue;
-      const fieldNames = idx.fields.map((f) => toCamelCase(f.name)).join(', ');
+      const fieldNames = idx.fields.map((f) => tsStringLiteral(toCamelCase(f.name))).join(', ');
       if (idx.unique && idx.fields.length > 1) {
-        classIndexes.push(`@Index(['${fieldNames.replace(/, /g, "', '")}'], { unique: true })`);
+        classIndexes.push(`@Index([${fieldNames}], { unique: true })`);
       } else if (!idx.unique) {
-        classIndexes.push(`@Index(['${fieldNames.replace(/, /g, "', '")}'])`);
+        classIndexes.push(`@Index([${fieldNames}])`);
       }
     }
 
@@ -101,10 +107,10 @@ export class TypeORMGenerator implements ORMGenerator {
           optionsParts.push('nullable: true');
         }
         if (field.comment.trim()) {
-          optionsParts.push(`comment: '${field.comment.trim().replace(/'/g, "\\'")}'`);
+          optionsParts.push(`comment: ${tsStringLiteral(field.comment.trim())}`);
         }
         if (field.defaultKind === 'constant') {
-          optionsParts.push(`default: '${field.defaultValue.replace(/'/g, "\\'")}'`);
+          optionsParts.push(`default: ${tsStringLiteral(field.defaultValue)}`);
         } else if (field.defaultKind === 'expression' && field.defaultValue.trim()) {
           optionsParts.push(`default: () => ${JSON.stringify(field.defaultValue)}`);
         } else if (field.defaultKind === 'current_timestamp') {
@@ -137,10 +143,10 @@ export class TypeORMGenerator implements ORMGenerator {
       lines.push(`  @ManyToOne(() => ${referencedClass}${options})`);
       const joinColumns = foreignKey.fields.map((fieldName, index) => {
         const parts = [
-          `name: '${fieldName}'`,
-          `referencedColumnName: '${toCamelCase(foreignKey.refFields[index] ?? '')}'`,
+          `name: ${tsStringLiteral(fieldName)}`,
+          `referencedColumnName: ${tsStringLiteral(toCamelCase(foreignKey.refFields[index] ?? ''))}`,
           ...(index === 0 && foreignKey.name
-            ? [`foreignKeyConstraintName: '${foreignKey.name}'`]
+            ? [`foreignKeyConstraintName: ${tsStringLiteral(foreignKey.name)}`]
             : []),
         ];
         return `{ ${parts.join(', ')} }`;

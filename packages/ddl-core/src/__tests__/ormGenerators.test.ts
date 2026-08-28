@@ -383,3 +383,47 @@ describe('JPAGenerator', () => {
     expect(result).toContain('private UUID uuidCol;');
   });
 });
+
+describe('generated string literals', () => {
+  it.each(['typeorm', 'sqlalchemy'] as const)(
+    'escapes newlines and backslashes in %s',
+    (target) => {
+      const value = 'line' + String.fromCharCode(10) + 'C:' + String.fromCharCode(92);
+      const result = buildORM(target, {
+        dbType: 'mysql',
+        tableName: 'items',
+        tableComment: '',
+        fields: [
+          { ...sampleFields[1], comment: value, defaultKind: 'constant', defaultValue: value },
+        ],
+        indexes: [],
+      });
+      expect(result).not.toContain(value);
+      expect(result).toContain(String.fromCharCode(92) + 'n');
+    },
+  );
+  it('keeps Go comments out of tags when they contain tag delimiters', () => {
+    const comment = 'a;b "q"';
+    const result = buildORM('gorm', {
+      dbType: 'mysql',
+      tableName: 'items',
+      tableComment: '',
+      fields: [{ ...sampleFields[1], comment }],
+      indexes: [],
+    });
+    expect(result).toContain('// ' + comment);
+    expect(result).not.toContain('comment:' + comment);
+  });
+  it('preserves database DateTime defaults for Prisma', () => {
+    const result = buildORM('prisma', {
+      dbType: 'mysql',
+      tableName: 'items',
+      tableComment: '',
+      fields: [
+        { ...sampleFields[3], defaultKind: 'constant', defaultValue: '2024-01-01 00:00:00' },
+      ],
+      indexes: [],
+    });
+    expect(result).toContain('dbgenerated(');
+  });
+});

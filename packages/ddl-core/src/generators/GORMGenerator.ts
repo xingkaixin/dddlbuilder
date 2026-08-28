@@ -1,7 +1,7 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
 import { buildQualifiedTableName } from '../utils/databaseTypeMapping.js';
-import { buildIndexFieldLookup, toPascalCase } from './shared.js';
+import { buildIndexFieldLookup, toPascalCase, formatLineComment } from './shared.js';
 
 export class GORMGenerator implements ORMGenerator {
   generateModel({
@@ -33,7 +33,7 @@ export class GORMGenerator implements ORMGenerator {
     }
 
     if (tableComment.trim()) {
-      lines.push(`// ${tableComment.trim()}`);
+      lines.push(formatLineComment(tableComment, '// '));
     }
 
     const structName = toPascalCase(tableName.trim());
@@ -60,12 +60,18 @@ export class GORMGenerator implements ORMGenerator {
       }
 
       if (field.comment.trim()) {
-        tagParts.push(`comment:${field.comment.trim()}`);
+        if (/[;"`\\\r\n]/.test(field.comment)) {
+          lines.push(formatLineComment(field.comment, '\t// '));
+        } else {
+          tagParts.push(`comment:${field.comment.trim()}`);
+        }
       }
 
-      const tag = `gorm:"${tagParts.join(';')}"`;
+      const tag = `gorm:${JSON.stringify(tagParts.join(';'))}`;
       const typeStr = isNullable ? `*${goType}` : goType;
-      lines.push(`\t${fieldName.padEnd(14)} ${typeStr.padEnd(14)} \`${tag}\``);
+      lines.push(
+        `\t${fieldName.padEnd(14)} ${typeStr.padEnd(14)} ${tag.includes('`') ? JSON.stringify(tag) : '`' + tag + '`'}`,
+      );
     }
 
     for (const foreignKey of foreignKeys) {

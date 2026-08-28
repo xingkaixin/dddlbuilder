@@ -1,7 +1,13 @@
 import type { ORMGenerator, ORMModelInput } from '../interfaces/ORMGenerator.js';
 import { mapCanonicalToORMType } from '../utils/ormTypeResolver.js';
-import { getDatabaseFamily } from '../utils/databaseFamily.js';
-import { buildIndexFieldLookup, toCamelCase, toPascalCase, escapePrismaDefault } from './shared.js';
+import { escapeSqlString, getDatabaseFamily } from '../utils/databaseFamily.js';
+import {
+  buildIndexFieldLookup,
+  toCamelCase,
+  toPascalCase,
+  escapePrismaDefault,
+  formatLineComment,
+} from './shared.js';
 
 const toReferentialAction = (action: string) =>
   action
@@ -42,7 +48,7 @@ export class PrismaGenerator implements ORMGenerator {
     }
 
     if (tableComment.trim()) {
-      lines.push(`/// ${tableComment.trim()}`);
+      lines.push(formatLineComment(tableComment, '/// '));
     }
     lines.push(`model ${modelName} {`);
 
@@ -66,9 +72,11 @@ export class PrismaGenerator implements ORMGenerator {
         decorations.push('@default(now())');
       } else if (field.defaultKind === 'constant') {
         const value =
-          prismaType === 'String'
-            ? JSON.stringify(field.defaultValue)
-            : escapePrismaDefault(field.defaultValue);
+          prismaType === 'DateTime'
+            ? `dbgenerated(${JSON.stringify("'" + escapeSqlString(field.defaultValue, dbType) + "'")})`
+            : prismaType === 'String'
+              ? JSON.stringify(field.defaultValue)
+              : escapePrismaDefault(field.defaultValue);
         decorations.push(`@default(${value})`);
       }
       if (field.defaultKind === 'expression' && field.defaultValue.trim()) {
@@ -79,7 +87,7 @@ export class PrismaGenerator implements ORMGenerator {
       }
 
       if (field.comment.trim()) {
-        lines.push(`  /// ${field.comment.trim()}`);
+        lines.push(formatLineComment(field.comment, '  /// '));
       }
 
       const typeStr = isNullable ? `${prismaType}?` : prismaType;
@@ -125,7 +133,7 @@ export class PrismaGenerator implements ORMGenerator {
         `references: [${refFields}]`,
         ...(fk.onDelete ? [`onDelete: ${toReferentialAction(fk.onDelete)}`] : []),
         ...(fk.onUpdate ? [`onUpdate: ${toReferentialAction(fk.onUpdate)}`] : []),
-        ...(fk.name ? [`map: "${fk.name}"`] : []),
+        ...(fk.name ? [`map: ${JSON.stringify(fk.name)}`] : []),
       ];
       lines.push(
         `  ${relationName} ${relationType}${isNullable ? '?' : ''} @relation(${options.join(', ')})`,
