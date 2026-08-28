@@ -5,6 +5,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
   type PropsWithChildren,
 } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -12,6 +13,14 @@ import { toast } from 'sonner';
 import i18n from '@/i18n';
 import { clearLocalWorkspaceData } from '@/services/workspaceAccountService';
 import { prepareWorkspaceSignOut } from '@/services/workspaceYDocStorage';
+import type { UserWorkspaceScope } from '@ddlbuilder/shared-types/workspace';
+import {
+  readWorkspaceIdentity,
+  parseWorkspaceIdentity,
+  subscribeWorkspaceIdentity,
+  writeWorkspaceIdentity,
+  WORKSPACE_IDENTITY_KEY,
+} from '@/services/workspaceIdentity';
 import { currentUserOptions, authQueryKeys } from '@/queries/auth';
 import { creditBalanceOptions, creditQueryKeys } from '@/queries/credits';
 import { currentWorkspaceOptions, workspaceQueryKeys } from '@/queries/workspaces';
@@ -27,6 +36,7 @@ export type UserSessionState = {
   configured: boolean;
   userId: string | null;
   workspaceId: string | null;
+  workspaceScope: UserWorkspaceScope | null;
   email: string | null;
   name: string | null;
   emailVerified: boolean;
@@ -100,6 +110,7 @@ export const signedOutState = (configured: boolean): UserSessionState => ({
   configured,
   userId: null,
   workspaceId: null,
+  workspaceScope: null,
   email: null,
   name: null,
   emailVerified: false,
@@ -114,6 +125,8 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
   const queryClient = useQueryClient();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const storedIdentity = useSyncExternalStore(subscribeWorkspaceIdentity, readWorkspaceIdentity);
+  const localWorkspace = useMemo(() => parseWorkspaceIdentity(storedIdentity), [storedIdentity]);
   const currentUserQuery = useQuery({
     ...currentUserOptions(),
     enabled: configured,
@@ -128,6 +141,42 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     ...currentWorkspaceOptions(userId ?? ''),
     enabled: Boolean(userId),
   });
+  const workspaceId =
+    currentWorkspaceQuery.data?.workspaceId ??
+    (userId === localWorkspace?.userId ? localWorkspace.workspaceId : null);
+  const scopeUserId = userId ?? localWorkspace?.userId ?? null;
+  const scopeWorkspaceId = userId ? workspaceId : (localWorkspace?.workspaceId ?? null);
+  const workspaceScope = useMemo<UserWorkspaceScope | null>(
+    () =>
+      scopeUserId && scopeWorkspaceId
+        ? { kind: 'user', userId: scopeUserId, workspaceId: scopeWorkspaceId }
+        : null,
+    [scopeUserId, scopeWorkspaceId],
+  );
+
+  useEffect(() => {
+    if (userId && currentWorkspaceQuery.data?.workspaceId && !signingOut) {
+      writeWorkspaceIdentity({
+        kind: 'user',
+        userId,
+        workspaceId: currentWorkspaceQuery.data.workspaceId,
+      });
+    }
+  }, [currentWorkspaceQuery.data?.workspaceId, signingOut, userId]);
+
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== WORKSPACE_IDENTITY_KEY && event.key !== null) return;
+      if (!event.newValue) {
+        void queryClient.cancelQueries({ queryKey: authQueryKeys.me });
+        queryClient.setQueryData(authQueryKeys.me, { signedIn: false, user: null });
+      } else {
+        void queryClient.resetQueries({ queryKey: authQueryKeys.me });
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [queryClient]);
   const refetchCurrentUser = currentUserQuery.refetch;
   const state = useMemo<UserSessionState>(() => {
     if (!configured) return signedOutState(false);
@@ -141,7 +190,8 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
       status,
       configured: true,
       userId,
-      workspaceId: currentWorkspaceQuery.data?.workspaceId ?? null,
+      workspaceId,
+      workspaceScope,
       email: currentUser?.email ?? null,
       name: currentUser?.name ?? null,
       emailVerified: currentUser?.emailVerified ?? false,
@@ -165,7 +215,8 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     currentUserQuery.isFetching,
     currentUserQuery.isPending,
     userId,
-    currentWorkspaceQuery.data?.workspaceId,
+    workspaceId,
+    workspaceScope,
   ]);
 
   const refreshSession = useCallback(async () => {
@@ -335,6 +386,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
           if (result.error) {
             throw new Error(translateAuthError(result.error, 'header.auth.signOutFailed'));
           }
+          await queryClient.cancelQueries({ queryKey: authQueryKeys.me });
 
           if (scope) {
             try {
@@ -356,6 +408,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
             queryClient.removeQueries({ queryKey: workspaceMigrationQueryKeys.all(state.userId) });
           }
           queryClient.setQueryData(authQueryKeys.me, { signedIn: false, user: null });
+          writeWorkspaceIdentity(null);
           setAuthDialogOpen(false);
         } finally {
           setSigningOut(false);

@@ -19,7 +19,17 @@ const authSession = vi.hoisted(() => ({
 }));
 
 vi.mock('@/auth/AuthSessionProvider', () => ({
-  useAuthSession: () => authSession.current,
+  useAuthSession: () => ({
+    ...authSession.current,
+    workspaceScope:
+      authSession.current.userId && authSession.current.workspaceId
+        ? {
+            kind: 'user',
+            userId: authSession.current.userId,
+            workspaceId: authSession.current.workspaceId,
+          }
+        : null,
+  }),
 }));
 
 // whenSynced 的 resolve 由用例掌控，用来复现"本地 update log 还没加载完"的窗口期。
@@ -132,7 +142,7 @@ describe('WorkspaceYDocProvider 加载门禁', () => {
     expect(screen.queryByTestId('workspace-bootstrap-loading')).toBeNull();
   });
 
-  it('还不知道登录状态时不挡：此时写入落在匿名分区，仍有登录后的导入通道', () => {
+  it('身份未知时等待解析，避免闪出匿名空工作区', () => {
     authSession.current = {
       status: 'loading',
       userId: null,
@@ -141,7 +151,8 @@ describe('WorkspaceYDocProvider 加载门禁', () => {
     };
     renderGate();
 
-    expect(createDraftEntry()).toBeInTheDocument();
+    expect(createDraftEntry()).toBeNull();
+    expect(screen.getByTestId('workspace-bootstrap-loading')).toBeInTheDocument();
   });
 
   it('已登录但 workspaceId 还没落地时必须挡住，避免写入匿名分区', () => {

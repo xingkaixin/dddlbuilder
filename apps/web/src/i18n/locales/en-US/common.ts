@@ -186,6 +186,7 @@ export const enUSCommon = {
     },
     status: {
       localSaved: 'Saved locally',
+      localCopy: 'Local copy opened',
       syncing: 'Syncing',
       offlineLocalSaved: 'Offline, saved locally',
       cloudSynced: 'Synced to cloud',
@@ -203,6 +204,9 @@ export const enUSCommon = {
     },
   },
   emptyState: {
+    initialSyncTitle: 'Initial sync is not complete',
+    initialSyncDescription:
+      'This device has not downloaded the cloud workspace yet. Sign in and stay connected, or create or import content now to merge it later.',
     noTabOpenTitle: 'No table opened yet',
     completelyEmptyTitle: 'No tables or drafts yet',
     description:

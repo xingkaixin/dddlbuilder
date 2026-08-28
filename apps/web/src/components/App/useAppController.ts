@@ -414,7 +414,6 @@ export function useAppController() {
     draftSummaries,
     hydrated,
     isLoadedDirty,
-    isShareView,
     savedTables,
     tabs,
   });

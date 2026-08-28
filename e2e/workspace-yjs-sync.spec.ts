@@ -22,6 +22,138 @@ import {
 } from '../packages/workspace-core/src/index';
 
 const MESSAGE_SYNC = 0;
+
+test('first cloud sync is not presented as an empty workspace', async ({ browser }) => {
+  const workspaceId = `ws-initial-sync-${Date.now()}`;
+  const server = new MockWorkspaceYjsServer();
+  seedDefaultDraft(server.doc, 'remote_existing', 'id');
+  const context = await browser.newContext({ locale: 'zh-CN' });
+  await mockSignedInWorkspace(context, server, workspaceId);
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await context.route(`**/api/workspaces/${workspaceId}/yjs`, async (route) => {
+    await gate;
+    await route.fallback();
+  });
+  const page = await context.newPage();
+  try {
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: '尚未完成首次同步' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '还没有任何表或草稿' })).toHaveCount(0);
+    release();
+    await openDraftByName(page, 'remote_existing');
+    await expect(tableNameInput(page)).toHaveValue('remote_existing');
+  } finally {
+    release();
+    await context.close();
+    server.doc.destroy();
+  }
+});
+
+test('switching accounts after local startup never carries over the previous editor', async ({
+  browser,
+}) => {
+  const workspaceId = `ws-account-a-${Date.now()}`;
+  const otherWorkspaceId = `${workspaceId}-b`;
+  const server = new MockWorkspaceYjsServer();
+  const otherServer = new MockWorkspaceYjsServer();
+  seedDefaultDraft(server.doc, 'account_a_private', 'id');
+  const context = await browser.newContext({ locale: 'zh-CN' });
+  await mockSignedInWorkspace(context, server, workspaceId);
+  const page = await context.newPage();
+  let release = () => {};
+  try {
+    await page.goto('/');
+    await openDraftByName(page, 'account_a_private');
+    await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await context.route('**/api/me', async (route) => {
+      await gate;
+      await route.fulfill({
+        json: {
+          signedIn: true,
+          user: {
+            userId: 'user-b',
+            name: 'Account B',
+            email: 'b@example.com',
+            emailVerified: true,
+          },
+        },
+      });
+    });
+    await context.route('**/api/workspaces', (route) =>
+      route.fulfill({ json: { workspaceId: otherWorkspaceId } }),
+    );
+    await context.route(`**/api/workspaces/${otherWorkspaceId}/yjs`, (route) =>
+      route.fulfill({ status: 204 }),
+    );
+    await context.routeWebSocket(
+      `**/api/workspaces/${otherWorkspaceId}/yjs`,
+      otherServer.route('account-b'),
+    );
+    await page.reload();
+    await openDraftByName(page, 'account_a_private');
+    release();
+    await expect(page.getByTitle('Account B', { exact: true })).toBeVisible();
+    await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
+    await expect(page.getByText('account_a_private', { exact: true })).toHaveCount(0);
+    await expect(tableNameInput(page)).toHaveCount(0);
+    expect(otherServer.doc.getMap('drafts').size).toBe(0);
+  } finally {
+    release();
+    await context.close();
+    server.doc.destroy();
+    otherServer.doc.destroy();
+  }
+});
+
+test('a previously synchronized empty workspace remains empty while offline', async ({
+  browser,
+}) => {
+  const workspaceId = `ws-known-empty-${Date.now()}`;
+  const server = new MockWorkspaceYjsServer();
+  const context = await browser.newContext({ locale: 'zh-CN' });
+  await mockSignedInWorkspace(context, server, workspaceId);
+  const page = await context.newPage();
+  try {
+    await page.goto('/');
+    await expect(page.getByTestId('workspace-yjs-status')).toContainText('云端已同步');
+    await expect
+      .poll(() =>
+        page.evaluate(async (id) => {
+          const db = await new Promise<IDBDatabase>((resolve, reject) => {
+            const request = indexedDB.open(`ddlbuilder:workspace:${id}`);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          });
+          const loaded = await new Promise<unknown>((resolve, reject) => {
+            const request = db
+              .transaction('custom', 'readonly')
+              .objectStore('custom')
+              .get('remote-loaded');
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          });
+          db.close();
+          return loaded;
+        }, workspaceId),
+      )
+      .toBe(1);
+    await context.route(`**/api/workspaces/${workspaceId}/yjs`, (route) =>
+      route.fulfill({ status: 503 }),
+    );
+    await page.reload();
+    await expect(page.getByRole('heading', { name: '还没有任何表或草稿' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '尚未完成首次同步' })).toHaveCount(0);
+  } finally {
+    await context.close();
+    server.doc.destroy();
+  }
+});
 const DEFAULT_DRAFT_ID = 'default';
 
 const encodeSyncMessage = (write: (encoder: encoding.Encoder) => void) => {

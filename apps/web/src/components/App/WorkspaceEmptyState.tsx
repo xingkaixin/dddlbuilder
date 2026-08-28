@@ -3,6 +3,7 @@ import { FileEdit, Lightbulb, Plus, Table2 } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import type { SavedTableSummary } from '@/hooks/useSavedTables';
 import type { DraftSummary } from '@ddlbuilder/shared-types/workspace';
+import { useWorkspaceYDoc } from '@/providers/WorkspaceYDocProvider';
 
 interface WorkspaceEmptyStateProps {
   hasContent: boolean;
@@ -29,6 +30,8 @@ export const WorkspaceEmptyState = memo<WorkspaceEmptyStateProps>(
     templateButton,
   }) => {
     const { t } = useTranslation();
+    const workspace = useWorkspaceYDoc();
+    const awaitingCloud = Boolean(workspace.doc && !workspace.remoteLoaded && !hasContent);
     const hasRecentItems = recentDrafts.length > 0 || recentTables.length > 0;
 
     return (
@@ -39,11 +42,15 @@ export const WorkspaceEmptyState = memo<WorkspaceEmptyStateProps>(
           </div>
 
           <h2 className="mb-2 text-center text-lg font-semibold tracking-tight text-foreground">
-            {hasContent ? t('emptyState.noTabOpenTitle') : t('emptyState.completelyEmptyTitle')}
+            {awaitingCloud
+              ? t('emptyState.initialSyncTitle')
+              : hasContent
+                ? t('emptyState.noTabOpenTitle')
+                : t('emptyState.completelyEmptyTitle')}
           </h2>
 
           <p className="mb-6 max-w-md text-center text-sm leading-7 text-muted-foreground">
-            {t('emptyState.description')}
+            {t(awaitingCloud ? 'emptyState.initialSyncDescription' : 'emptyState.description')}
           </p>
 
           <div className="mb-8 flex flex-wrap justify-center gap-2">

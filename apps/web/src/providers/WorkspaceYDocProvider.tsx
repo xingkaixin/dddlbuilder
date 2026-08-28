@@ -10,7 +10,7 @@ import {
 } from 'react';
 import * as Y from 'yjs';
 import { fetchUpdates, IndexeddbPersistence } from 'y-indexeddb';
-import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
+import type { UserWorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { WorkspaceBootstrapScreen } from '@/components/WorkspaceBootstrapScreen';
 import { useShareRoute } from '@/hooks/workspacePersistence/shareRoute';
@@ -36,15 +36,15 @@ import {
   registerWorkspaceYDocOwner,
 } from '@/services/workspaceYDocStorage';
 import { clearLegacyWorkspaceData } from '@/services/workspaceAccountService';
-import {
-  isWorkspaceWriteTargetPending,
-  resolveWorkspaceYDocStartupPlan,
-} from '@/services/workspaceYDocAuthority';
+import { isWorkspaceWriteTargetPending } from '@/services/workspaceYDocAuthority';
+import { useAppUiStore, useEditorStore, useTabStore } from '@/stores';
 
 type WorkspaceYDocContextValue = {
   doc: Y.Doc | null;
+  scope: UserWorkspaceScope | null;
   synced: boolean;
   localSynced: boolean;
+  remoteLoaded: boolean;
   connectionState: WorkspaceYDocConnectionState;
   failureReason?: WorkspaceYDocFailureReason;
   retry: () => void;
@@ -61,6 +61,7 @@ const noop = () => {};
  * 与 WORKSPACE_YDOC_CONNECT_TIMEOUT_MS(8s) 同量级。
  */
 const WORKSPACE_BOOTSTRAP_TIMEOUT_MS = 10_000;
+const REMOTE_LOADED = 'remote-loaded';
 
 const hasCompletedLegacyMigration = (userId: string | null, workspaceId: string | null) =>
   Boolean(
@@ -71,8 +72,10 @@ const hasCompletedLegacyMigration = (userId: string | null, workspaceId: string 
 
 const WorkspaceYDocContext = createContext<WorkspaceYDocContextValue>({
   doc: null,
+  scope: null,
   synced: false,
   localSynced: false,
+  remoteLoaded: false,
   connectionState: 'idle',
   retry: noop,
 });
@@ -82,56 +85,59 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
   const { refreshSession } = authSession;
   const { shareId } = useShareRoute();
   const clientRef = useRef<WorkspaceYDocSyncClient | null>(null);
+  const persistenceRef = useRef<IndexeddbPersistence | null>(null);
   const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
   const [timedOutAttempt, setTimedOutAttempt] = useState<number | null>(null);
-  const [retry] = useState(() => () => clientRef.current?.retry());
-  const [value, setValue] = useState<WorkspaceYDocContextValue>({
+  const retry = useCallback(() => {
+    void refreshSession();
+    clientRef.current?.retry();
+  }, [refreshSession]);
+  const [value, setValue] = useState<Omit<WorkspaceYDocContextValue, 'retry'>>({
     doc: null,
+    scope: null,
     synced: false,
     localSynced: false,
+    remoteLoaded: false,
     connectionState: 'idle',
-    retry,
   });
 
-  // 只有"是否登出"和身份本身该触发重建。refreshSession 期间 status 会短暂退回 loading，
-  // 把它纳入依赖会拆掉一个健康的 Y.Doc，连带把整个界面退回启动态。
-  const signedOut = authSession.status === 'signed_out';
-  const authUserId = authSession.userId;
-  const authWorkspaceId = authSession.workspaceId;
+  const workspaceUserId = authSession.workspaceScope?.userId ?? null;
+  const workspaceId = authSession.workspaceScope?.workspaceId ?? null;
 
   useEffect(() => {
-    const startupPlan = resolveWorkspaceYDocStartupPlan({
-      authStatus: signedOut ? 'signed_out' : 'signed_in',
-      userId: authUserId,
-      workspaceId: authWorkspaceId,
-      legacyMigrationCompleted: hasCompletedLegacyMigration(authUserId, authWorkspaceId),
-    });
+    if (shareId) return;
+    useTabStore.setState({ tabs: [], activeTabId: null });
+    useEditorStore.getState().resetDocument();
+    useAppUiStore.setState({ activeDialog: { kind: 'none' } });
+  }, [workspaceUserId, workspaceId, shareId]);
 
-    if (!startupPlan.enabled) {
+  useEffect(() => {
+    if (!workspaceUserId || !workspaceId) {
       // oxlint-disable-next-line react/set-state-in-effect
       setValue({
         doc: null,
+        scope: null,
         synced: false,
         localSynced: false,
+        remoteLoaded: false,
         connectionState: 'idle',
-        retry,
       });
       return;
     }
 
     let cancelled = false;
-    const workspaceId = startupPlan.scope.workspaceId;
-    const scope: WorkspaceScope = startupPlan.scope;
+    const scope: UserWorkspaceScope = { kind: 'user', userId: workspaceUserId, workspaceId };
     const doc = new Y.Doc();
     ensureWorkspaceYDocMeta(doc);
     const persistence = new IndexeddbPersistence(buildWorkspaceYDocName(workspaceId), doc);
-    let client: WorkspaceYDocSyncClient | null = null;
+    persistenceRef.current = persistence;
     let disposal: Promise<void> | null = null;
     const dispose = () => {
       if (disposal) return disposal;
       cancelled = true;
+      clientRef.current?.destroy();
       clientRef.current = null;
-      client?.destroy();
+      persistenceRef.current = null;
       doc.destroy();
       disposal = persistence.destroy().finally(unregister);
       return disposal;
@@ -139,8 +145,10 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     const unregister = registerWorkspaceYDocOwner(workspaceId, {
       dispose,
       prepareSignOut: async () => {
+        const client = clientRef.current;
         if (!client || cancelled) throw new Error('Workspace is not ready');
         await fetchUpdates(persistence);
+        if (cancelled || clientRef.current !== client) throw new Error('Workspace changed');
         await client.flushAndWaitForSync();
       },
     });
@@ -148,10 +156,11 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     // oxlint-disable-next-line react/set-state-in-effect
     setValue({
       doc,
+      scope,
       synced: false,
       localSynced: false,
+      remoteLoaded: false,
       connectionState: 'idle',
-      retry,
     });
 
     const initialize = async () => {
@@ -165,7 +174,7 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
       try {
         const token = beginLegacyWorkspaceMigration(scope);
         const committed = await persistence.get(LEGACY_MIGRATION_COMMITTED);
-        if (!committed && startupPlan.steps.includes('merge-legacy-indexeddb-snapshot')) {
+        if (!committed && !hasCompletedLegacyMigration(workspaceUserId, workspaceId)) {
           const snapshot = await prepareLegacyWorkspaceSnapshot(scope);
           if (cancelled) return;
           if (snapshot) mergeWorkspaceSnapshotIntoYDoc(doc, snapshot);
@@ -179,21 +188,9 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
         console.error('[workspace-yjs] legacy snapshot merge failed', error);
       }
 
+      const remoteLoaded = (await persistence.get(REMOTE_LOADED)) === 1;
       if (cancelled) return;
-      setValue((prev) => ({ ...prev, doc, localSynced: true }));
-      if (startupPlan.steps.includes('connect-durable-object')) {
-        client = new WorkspaceYDocSyncClient(workspaceId, doc, (connectionStatus) => {
-          if (cancelled) return;
-          setValue((prev) => ({
-            ...prev,
-            connectionState: connectionStatus.state,
-            failureReason: connectionStatus.failureReason,
-            synced: connectionStatus.synced,
-          }));
-        });
-        clientRef.current = client;
-        void client.connect();
-      }
+      setValue((prev) => ({ ...prev, doc, localSynced: true, remoteLoaded }));
     };
 
     void initialize().catch((error) => {
@@ -206,17 +203,68 @@ export function WorkspaceYDocProvider({ children }: PropsWithChildren) {
     return () => {
       void dispose().catch(() => {});
     };
-  }, [signedOut, authUserId, authWorkspaceId, retry, bootstrapAttempt]);
+  }, [workspaceUserId, workspaceId, bootstrapAttempt]);
 
-  const memoizedValue = useMemo(() => value, [value]);
+  const sameWorkspace =
+    (value.scope?.userId ?? null) === workspaceUserId &&
+    (value.scope?.workspaceId ?? null) === workspaceId;
+  const doc = sameWorkspace ? value.doc : null;
+  const localSynced = sameWorkspace && value.localSynced;
+  const canSync = authSession.status === 'signed_in' && authSession.userId === workspaceUserId;
+
+  useEffect(() => {
+    if (!doc || !localSynced || !workspaceId) return;
+    if (!canSync) {
+      // oxlint-disable-next-line react/set-state-in-effect
+      setValue((prev) => ({
+        ...prev,
+        synced: false,
+        connectionState: 'idle',
+        failureReason: undefined,
+      }));
+      return;
+    }
+    let cancelled = false;
+    let rememberedRemote = false;
+    const persistence = persistenceRef.current;
+    const client = new WorkspaceYDocSyncClient(workspaceId, doc, (status) => {
+      if (cancelled) return;
+      setValue((prev) => ({
+        ...prev,
+        connectionState: status.state,
+        failureReason: status.failureReason,
+        synced: status.synced,
+        remoteLoaded: prev.remoteLoaded || status.synced,
+      }));
+      if (status.synced && !rememberedRemote) {
+        rememberedRemote = true;
+        void persistence?.set(REMOTE_LOADED, 1).catch((error: unknown) => {
+          console.error('[workspace-yjs] failed to remember initial cloud sync', error);
+        });
+      }
+    });
+    clientRef.current = client;
+    void client.connect();
+    return () => {
+      cancelled = true;
+      client.destroy();
+      if (clientRef.current === client) clientRef.current = null;
+    };
+  }, [canSync, doc, localSynced, workspaceId]);
+
+  const memoizedValue = useMemo(
+    () => ({ ...value, doc, localSynced, retry }),
+    [value, doc, localSynced, retry],
+  );
   // 分享页读的是分享快照而非 Y.Doc，工作区写入入口全部关闭，挡住它只会让本可展示的页面白屏。
   const blocked =
     !shareId &&
-    isWorkspaceWriteTargetPending({
-      authStatus: authSession.status,
-      userId: authSession.userId,
-      localSynced: value.localSynced,
-    });
+    (!sameWorkspace ||
+      isWorkspaceWriteTargetPending({
+        authStatus: authSession.status,
+        userId: workspaceUserId ?? authSession.userId,
+        localSynced,
+      }));
 
   useEffect(() => {
     if (!blocked) return;

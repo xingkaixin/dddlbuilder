@@ -5,7 +5,6 @@ import type { PersistenceFailure } from '@/hooks/workspacePersistence/usePersist
 import { SHARE_COPY_SAVED_TOAST_KEY } from './useSavedTableTabIntegration';
 
 interface UseWorkspaceNotificationsParams {
-  shareLoadStatus: 'idle' | 'loading' | 'success' | 'not_found' | 'error';
   hydrated: boolean;
   isShareView: boolean;
   persistenceFailure: PersistenceFailure | null;
@@ -13,7 +12,6 @@ interface UseWorkspaceNotificationsParams {
 }
 
 export function useWorkspaceNotifications({
-  shareLoadStatus,
   hydrated,
   isShareView,
   persistenceFailure,
@@ -21,16 +19,6 @@ export function useWorkspaceNotifications({
 }: UseWorkspaceNotificationsParams) {
   const { t } = useTranslation();
   const { showToast, error: showErrorToast } = useToast();
-
-  useEffect(() => {
-    if (shareLoadStatus === 'not_found') {
-      showToast(t('app.shareNotFound'));
-      return;
-    }
-    if (shareLoadStatus === 'error') {
-      showToast(t('app.shareLoadFailed'));
-    }
-  }, [shareLoadStatus, showToast, t]);
 
   useEffect(() => {
     if (!hydrated || !isShareView) return;

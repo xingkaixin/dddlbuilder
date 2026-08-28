@@ -22,6 +22,7 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
     status: capture.doc ? 'signed_in' : 'signed_out',
     userId: 'user',
     workspaceId: 'workspace',
+    workspaceScope: capture.doc ? { kind: 'user', userId: 'user', workspaceId: 'workspace' } : null,
   }),
 }));
 vi.mock('@/providers/WorkspaceYDocProvider', () => ({

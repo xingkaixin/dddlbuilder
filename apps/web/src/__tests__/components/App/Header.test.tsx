@@ -271,6 +271,7 @@ describe('Header', () => {
       configured: true,
       userId: 'user-1',
       workspaceId: 'workspace-1',
+      workspaceScope: { kind: 'user', userId: 'user-1', workspaceId: 'workspace-1' },
       email: 'user@example.com',
       name: 'User One',
       emailVerified: true,
@@ -310,6 +311,7 @@ describe('Header', () => {
       configured: true,
       userId: 'user-1',
       workspaceId: 'workspace-1',
+      workspaceScope: { kind: 'user', userId: 'user-1', workspaceId: 'workspace-1' },
       email: 'user@example.com',
       name: 'User One',
       emailVerified: true,
@@ -338,7 +340,7 @@ describe('Header', () => {
     };
 
     const { rerender } = render(<Header {...baseProps} />);
-    expect(screen.getByTestId('workspace-yjs-status')).toHaveTextContent('本地已保存');
+    expect(screen.getByTestId('workspace-yjs-status')).toHaveTextContent('已打开本地副本');
 
     mockWorkspaceYDoc.value = {
       doc: null,
@@ -373,6 +375,7 @@ describe('Header', () => {
       configured: true,
       userId: 'user-1',
       workspaceId: 'workspace-1',
+      workspaceScope: { kind: 'user', userId: 'user-1', workspaceId: 'workspace-1' },
       email: 'user@example.com',
       name: 'User One',
       emailVerified: true,

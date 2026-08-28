@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useMemo } from 'react';
+import { toast } from 'sonner';
 import { usePersistedSync } from '@/components/App/hooks/usePersistedSync';
 import { useEditorStore } from '@/stores/editorStore';
 import { toPersistedState } from '@/stores/editorDocumentCodec';
@@ -36,6 +37,8 @@ import {
 const GLOBAL_DRAFT_STORAGE_KEY = `${STORAGE_KEY}:draft:global:v1`;
 const WORKSPACE_SESSION_STORAGE_KEY = `${STORAGE_KEY}:workspace:v1`;
 const anonymousScope = getAnonymousWorkspaceScope();
+
+vi.mock('sonner', () => ({ toast: vi.fn() }));
 
 const addSavedTable = (
   record: Parameters<typeof addSavedTableInScope>[0],
@@ -165,6 +168,7 @@ const mockSignedInWorkspaceYDoc = (doc: Y.Doc, localSynced = true) => {
     configured: true,
     userId: 'user-1',
     workspaceId: 'ws-1',
+    workspaceScope: { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' },
     email: 'user@example.com',
     name: 'User One',
     emailVerified: true,
@@ -448,6 +452,7 @@ describe('usePersistedState', () => {
       configured: true,
       userId: 'user-1',
       workspaceId: 'ws-1',
+      workspaceScope: { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' },
       email: 'user@example.com',
       name: 'User One',
       emailVerified: true,
@@ -494,6 +499,7 @@ describe('usePersistedState', () => {
       configured: true,
       userId: 'user-1',
       workspaceId: 'ws-1',
+      workspaceScope: { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' },
       email: 'user@example.com',
       name: 'User One',
       emailVerified: true,
@@ -540,6 +546,7 @@ describe('usePersistedState', () => {
       configured: true,
       userId: 'user-1',
       workspaceId: 'ws-1',
+      workspaceScope: { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' },
       email: 'user@example.com',
       name: 'User One',
       emailVerified: true,
@@ -576,6 +583,7 @@ describe('usePersistedState', () => {
       configured: true,
       userId: 'user-1',
       workspaceId: 'ws-1',
+      workspaceScope: { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' },
       email: 'user@example.com',
       name: 'User One',
       emailVerified: true,
@@ -1123,7 +1131,7 @@ describe('usePersistedState', () => {
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
-      expect(result.current.shareLoadStatus).toBe('not_found');
+      expect(toast).toHaveBeenCalledWith('分享链接不存在或已过期，已返回首页');
       expect(result.current.persistedState).toEqual(createState('global_after_share_fail'));
       expect(result.current.isShareView).toBe(false);
     });
@@ -1146,7 +1154,7 @@ describe('usePersistedState', () => {
     const { result, rerender } = renderHook(() => usePersistedState(), { wrapper });
 
     await waitFor(() => {
-      expect(result.current.shareLoadStatus).toBe('not_found');
+      expect(toast).toHaveBeenCalledWith('分享链接不存在或已过期，已返回首页');
       expect(window.location.pathname).toBe('/');
     });
     await act(async () => {
@@ -1179,7 +1187,7 @@ describe('usePersistedState', () => {
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
-      expect(result.current.shareLoadStatus).toBe('error');
+      expect(toast).toHaveBeenCalledWith('分享链接加载失败，已返回首页');
       expect(result.current.persistedState).toEqual(fallbackState);
       expect(result.current.isShareView).toBe(false);
       expect(window.location.pathname).toBe('/');
@@ -1250,7 +1258,7 @@ describe('usePersistedState', () => {
 
     await waitFor(() => {
       expect(result.current.hydrated).toBe(true);
-      expect(result.current.shareLoadStatus).toBe('error');
+      expect(toast).toHaveBeenCalledWith('分享链接加载失败，已返回首页');
       expect(result.current.persistedState).toEqual(fallbackState);
       expect(result.current.isShareView).toBe(false);
       expect(window.location.pathname).toBe('/');

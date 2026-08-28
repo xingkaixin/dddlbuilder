@@ -189,6 +189,7 @@ export const jaJPCommon = {
     },
     status: {
       localSaved: 'ローカルに保存されました',
+      localCopy: 'ローカルコピーを開きました',
       syncing: '同期中',
       offlineLocalSaved: 'オフライン、ローカルに保存',
       cloudSynced: 'クラウドに同期',
@@ -206,6 +207,9 @@ export const jaJPCommon = {
     },
   },
   emptyState: {
+    initialSyncTitle: '初回同期が完了していません',
+    initialSyncDescription:
+      'この端末にはクラウドのワークスペースがまだ取得されていません。ログインして接続を維持するか、先に作成・インポートして後で統合できます。',
     noTabOpenTitle: 'まだテーブルが開いていません',
     completelyEmptyTitle: 'まだテーブルもドラフトもありません',
     description:

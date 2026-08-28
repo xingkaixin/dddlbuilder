@@ -15,13 +15,15 @@ import { commitLegacyWorkspaceYDoc } from '@/services/workspaceYDocStorage';
 import { clearLegacyWorkspaceData } from '@/services/workspaceAccountService';
 import type * as WorkspaceYDocStorage from '@/services/workspaceYDocStorage';
 
-vi.mock('@/auth/AuthSessionProvider', () => ({
-  useAuthSession: () => ({
-    status: 'signed_in' as const,
-    userId: 'user-1',
-    workspaceId: 'ws-1',
-  }),
+const auth = vi.hoisted(() => ({
+  status: 'signed_in' as 'loading' | 'signed_in' | 'signed_out',
+  userId: 'user-1' as string | null,
+  workspaceId: 'ws-1',
+  workspaceScope: { kind: 'user', userId: 'user-1', workspaceId: 'ws-1' },
+  refreshSession: vi.fn(async () => {}),
 }));
+
+vi.mock('@/auth/AuthSessionProvider', () => ({ useAuthSession: () => auth }));
 
 // 模拟 y-indexeddb 的持久化：同一 workspace 的 Y.Doc 状态（含删除墓碑）跨启动保留。
 const persistence = vi.hoisted(() => ({ update: null as Uint8Array | null, committed: false }));
@@ -131,6 +133,8 @@ const readPersistedSnapshot = () => {
 describe('WorkspaceYDocProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    auth.status = 'signed_in';
+    auth.userId = 'user-1';
     persistence.update = null;
     persistence.committed = false;
     setupMemoryLocalStorage();
@@ -139,6 +143,29 @@ describe('WorkspaceYDocProvider', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('opens the local document without authentication and keeps it when authentication settles', async () => {
+    auth.status = 'loading';
+    auth.userId = null;
+    prepareLegacyWorkspaceSnapshotMock.mockResolvedValue(null);
+    const view = await startProvider();
+    const doc = view.result.current.doc;
+    expect(doc).not.toBeNull();
+    expect(connect).not.toHaveBeenCalled();
+
+    auth.status = 'signed_in';
+    auth.userId = 'user-1';
+    view.rerender();
+    await waitFor(() => expect(connect).toHaveBeenCalledOnce());
+    expect(view.result.current.doc).toBe(doc);
+
+    auth.status = 'signed_out';
+    auth.userId = null;
+    view.rerender();
+    expect(view.result.current.doc).toBe(doc);
+    expect(view.result.current.localSynced).toBe(true);
+    expect(destroy).toHaveBeenCalledOnce();
   });
 
   it('legacy 快照合并成功后应本地就绪并连接 Durable Object', async () => {

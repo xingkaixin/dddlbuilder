@@ -306,7 +306,7 @@ export const Header = memo<HeaderProps>(
                 </div>
               </div>
               <div className="flex shrink-0 items-center justify-end gap-2">
-                {authSession.status === 'signed_in' ? <WorkspaceYDocStatus /> : null}
+                {authSession.workspaceScope ? <WorkspaceYDocStatus /> : null}
                 <div className="hidden rounded-full bg-muted/60 px-2 py-1 text-[10px] text-muted-foreground sm:inline-flex">
                   v{packageInfo.version}
                 </div>

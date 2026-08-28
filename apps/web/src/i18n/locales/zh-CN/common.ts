@@ -179,6 +179,7 @@ export const zhCNCommon = {
     },
     status: {
       localSaved: '本地已保存',
+      localCopy: '已打开本地副本',
       syncing: '同步中',
       offlineLocalSaved: '离线，本地已保存',
       cloudSynced: '云端已同步',
@@ -196,6 +197,9 @@ export const zhCNCommon = {
     },
   },
   emptyState: {
+    initialSyncTitle: '尚未完成首次同步',
+    initialSyncDescription:
+      '此设备还没有获取云端工作区。请登录并保持联网，也可以先创建或导入内容，稍后自动合并。',
     noTabOpenTitle: '还没有打开任何表',
     completelyEmptyTitle: '还没有任何表或草稿',
     description: '你可以创建新表、导入现有表结构，或者使用模板快速开始设计你的数据库结构。',

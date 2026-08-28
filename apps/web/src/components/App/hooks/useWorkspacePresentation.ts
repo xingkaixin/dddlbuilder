@@ -11,7 +11,6 @@ interface UseWorkspacePresentationParams {
   draftSummaries: DraftSummary[];
   hydrated: boolean;
   isLoadedDirty: boolean;
-  isShareView: boolean;
   savedTables: SavedTableSummary[];
   tabs: WorkspaceTab[];
 }
@@ -23,7 +22,6 @@ export function useWorkspacePresentation({
   draftSummaries,
   hydrated,
   isLoadedDirty,
-  isShareView,
   savedTables,
   tabs,
 }: UseWorkspacePresentationParams) {
@@ -62,7 +60,6 @@ export function useWorkspacePresentation({
     recentDrafts,
     recentTables,
     tablePresentations,
-    shouldShowWorkspaceSkeleton:
-      activeWorkspaceTab?.isLoading === true || (isShareView && !hydrated),
+    shouldShowWorkspaceSkeleton: activeWorkspaceTab?.isLoading === true || !hydrated,
   };
 }

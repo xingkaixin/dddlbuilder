@@ -1,6 +1,95 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 
 const BOOTSTRAP_TIMEOUT_MS = 10_000;
+
+test('cached workspace opens before authentication and workspace requests finish', async ({
+  browser,
+}) => {
+  const workspaceId = `ws-local-first-${Date.now()}`;
+  const context = await browser.newContext({ locale: 'zh-CN' });
+  await mockSignedInWorkspace(context, workspaceId);
+  await context.route(`**/api/workspaces/${workspaceId}/yjs`, (route) =>
+    route.fulfill({ status: 503 }),
+  );
+  const page = await context.newPage();
+  let releaseMe = () => {};
+  let releaseWorkspace = () => {};
+  try {
+    await page.goto('/');
+    await page.getByRole('button', { name: '新建草稿' }).click();
+    await page.locator('#table-name').fill('LOCAL_FIRST_RESTORE');
+    await expect
+      .poll(() => workspaceYDocPersisted(page, workspaceId, 'LOCAL_FIRST_RESTORE'))
+      .toBe(true);
+    const me = new Promise<void>((resolve) => {
+      releaseMe = resolve;
+    });
+    const workspace = new Promise<void>((resolve) => {
+      releaseWorkspace = resolve;
+    });
+    await context.route('**/api/me', async (route) => {
+      await me;
+      await route.fallback();
+    });
+    await context.route('**/api/workspaces', async (route) => {
+      await workspace;
+      await route.fallback();
+    });
+    await page.reload();
+    await expect(page.getByText('LOCAL_FIRST_RESTORE').first()).toBeVisible();
+    await expect(page.getByTestId('workspace-bootstrap-loading')).toHaveCount(0);
+    await expect(page.getByTestId('workspace-yjs-status')).toContainText('已打开本地副本');
+    await page.getByText('LOCAL_FIRST_RESTORE', { exact: true }).first().click();
+    await page.locator('#table-name').fill('LOCAL_EDIT_DURING_AUTH');
+    releaseMe();
+    await expect(page.getByTestId('workspace-yjs-status')).toContainText('同步服务不可用');
+    await expect(page.locator('#table-name')).toHaveValue('LOCAL_EDIT_DURING_AUTH');
+    releaseWorkspace();
+    await expect
+      .poll(() => workspaceYDocPersisted(page, workspaceId, 'LOCAL_EDIT_DURING_AUTH'))
+      .toBe(true);
+  } finally {
+    releaseMe();
+    releaseWorkspace();
+    await context.close();
+  }
+});
+
+for (const failure of ['me', 'workspaces', 'expired']) {
+  test(`cached workspace stays usable when ${failure} is unavailable`, async ({ browser }) => {
+    const workspaceId = `ws-local-error-${failure}-${Date.now()}`;
+    const context = await browser.newContext({ locale: 'zh-CN' });
+    await mockSignedInWorkspace(context, workspaceId);
+    await context.route(`**/api/workspaces/${workspaceId}/yjs`, (route) =>
+      route.fulfill({ status: 503 }),
+    );
+    const page = await context.newPage();
+    try {
+      await page.goto('/');
+      await page.getByRole('button', { name: '新建草稿' }).click();
+      await page.locator('#table-name').fill('LOCAL_WITHOUT_SERVER');
+      await expect
+        .poll(() => workspaceYDocPersisted(page, workspaceId, 'LOCAL_WITHOUT_SERVER'))
+        .toBe(true);
+      await context.route(`**/api/${failure === 'expired' ? 'me' : failure}`, (route) =>
+        route.fulfill(
+          failure === 'expired'
+            ? { json: { signedIn: false, user: null } }
+            : { status: 503, json: { error: 'Unavailable' } },
+        ),
+      );
+      await page.reload();
+      await expect(page.getByText('LOCAL_WITHOUT_SERVER').first()).toBeVisible();
+      await page.getByRole('button', { name: '新建草稿' }).click();
+      await page.locator('#table-name').fill('EDIT_WITHOUT_SERVER');
+      await expect
+        .poll(() => workspaceYDocPersisted(page, workspaceId, 'EDIT_WITHOUT_SERVER'))
+        .toBe(true);
+    } finally {
+      await context.close();
+    }
+  });
+}
 const DEAD_SHARE_ID = '2f9c9a3e-1f2a-4c6d-8b7e-9a1c2d3e4f50';
 
 /** 复现 IndexedDB 打不开的真实故障：open() 既不 success 也不 error，whenSynced 永远 pending。 */

@@ -46,6 +46,14 @@ export function WorkspaceYDocStatus() {
         iconClassName: '',
       };
     }
+    if (workspaceYDoc.connectionState === 'idle') {
+      return {
+        icon: HardDrive,
+        label: t('workspaceYDoc.status.localCopy'),
+        className: 'border-border bg-muted/60 text-muted-foreground',
+        iconClassName: '',
+      };
+    }
     if (workspaceYDoc.connectionState === 'error') {
       const label =
         workspaceYDoc.failureReason === 'auth'

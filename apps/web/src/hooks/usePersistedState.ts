@@ -40,10 +40,7 @@ import {
 } from './workspacePersistence/usePersistenceQueue';
 import { useDraftRecords } from './workspacePersistence/useDraftRecords';
 import { useSavedTableDraftRecords } from './workspacePersistence/useSavedTableDraftRecords';
-import {
-  useWorkspaceInitialHydration,
-  type ShareLoadStatus,
-} from './workspacePersistence/useWorkspaceInitialHydration';
+import { useWorkspaceInitialHydration } from './workspacePersistence/useWorkspaceInitialHydration';
 import {
   useWorkspaceYDocSubscription,
   type PendingLocalSave,
@@ -60,7 +57,6 @@ export interface UsePersistedStateReturn {
   saveState: (payload: WorkspaceSavePayload) => void;
   clearState: () => void;
   resetWorkspaceSelection: () => void;
-  shareLoadStatus: ShareLoadStatus;
   isShareView: boolean;
   activeSource: WorkspaceSelection;
   draftSummaries: DraftSummary[];
@@ -184,7 +180,7 @@ export function usePersistedState(): UsePersistedStateReturn {
     persistedStateRef.current = persistedState;
   }, [persistedState]);
 
-  const { hydrated, setHydrated, shareLoadStatus } = useWorkspaceInitialHydration({
+  const { hydrated, setHydrated } = useWorkspaceInitialHydration({
     pathInvalid: pathInfo.invalid,
     shareId,
     shareStorageKey,
@@ -377,7 +373,6 @@ export function usePersistedState(): UsePersistedStateReturn {
     saveState,
     clearState,
     resetWorkspaceSelection: resetToDefaultDraft,
-    shareLoadStatus,
     isShareView: Boolean(shareId),
     activeSource,
     draftSummaries,

@@ -20,6 +20,7 @@ vi.mock('@/auth/AuthSessionProvider', () => ({
     status: 'signed_in',
     userId: 'user',
     workspaceId: 'workspace',
+    workspaceScope: { kind: 'user', userId: 'user', workspaceId: 'workspace' },
     creditsStatus: 'ready',
     creditBalance: 1000,
     refreshCredits: vi.fn(),

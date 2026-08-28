@@ -271,6 +271,7 @@ describe('useSavedTables', () => {
       configured: true,
       userId: 'user_1',
       workspaceId: 'workspace_1',
+      workspaceScope: { kind: 'user', userId: 'user_1', workspaceId: 'workspace_1' },
     } as any);
     mockWorkspaceYDoc.value = {
       doc,
@@ -312,6 +313,7 @@ describe('useSavedTables', () => {
       configured: true,
       userId: 'user_1',
       workspaceId: 'workspace_1',
+      workspaceScope: { kind: 'user', userId: 'user_1', workspaceId: 'workspace_1' },
     } as any);
     mockWorkspaceYDoc.value = {
       doc: { transact: (callback: () => void) => callback() },
@@ -348,6 +350,7 @@ describe('useSavedTables', () => {
       configured: true,
       userId: 'user_1',
       workspaceId: 'workspace_1',
+      workspaceScope: { kind: 'user', userId: 'user_1', workspaceId: 'workspace_1' },
     } as any);
     mockWorkspaceYDoc.value = {
       doc: { transact: (callback: () => void) => callback() },
@@ -383,6 +386,7 @@ describe('useSavedTables', () => {
       configured: true,
       userId: 'user_1',
       workspaceId: 'workspace_1',
+      workspaceScope: { kind: 'user', userId: 'user_1', workspaceId: 'workspace_1' },
     } as any);
     mockWorkspaceYDoc.value = {
       doc: { transact: (callback: () => void) => callback() },
@@ -416,6 +420,7 @@ describe('useSavedTables', () => {
       configured: true,
       userId: 'user_1',
       workspaceId: 'workspace_1',
+      workspaceScope: { kind: 'user', userId: 'user_1', workspaceId: 'workspace_1' },
     } as any);
     mockWorkspaceYDoc.value = {
       doc,
@@ -481,6 +486,7 @@ describe('useSavedTables', () => {
       configured: true,
       userId: 'user_1',
       workspaceId: 'workspace_1',
+      workspaceScope: { kind: 'user', userId: 'user_1', workspaceId: 'workspace_1' },
     } as any);
     mockWorkspaceYDoc.value = {
       doc,
@@ -542,6 +548,7 @@ describe('useSavedTables', () => {
       configured: true,
       userId: 'user_1',
       workspaceId: 'workspace_1',
+      workspaceScope: { kind: 'user', userId: 'user_1', workspaceId: 'workspace_1' },
     } as any);
     mockWorkspaceYDoc.value = {
       doc,

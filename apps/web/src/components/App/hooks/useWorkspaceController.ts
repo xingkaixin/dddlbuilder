@@ -13,7 +13,6 @@ export function useWorkspaceController() {
   const workspaceScope = useWorkspaceScope();
 
   useWorkspaceNotifications({
-    shareLoadStatus: persistence.shareLoadStatus,
     hydrated: persistence.hydrated,
     isShareView: persistence.isShareView,
     persistenceFailure: persistence.persistenceFailure,

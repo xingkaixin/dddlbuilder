@@ -105,14 +105,26 @@ for (const { status, code, attempts: expectedAttempts, message } of [
 ]) {
   test(`分享读取返回 ${status} 时显示对应错误 @tools`, async ({ page }) => {
     let attempts = 0;
+    let releaseAuth = () => {};
+    const authentication = new Promise<void>((resolve) => {
+      releaseAuth = resolve;
+    });
+    await page.route('**/api/me', async (route) => {
+      await authentication;
+      await route.fallback();
+    });
     await page.route(`**/api/share/${SHARE_ID}`, async (route) => {
       attempts += 1;
       await route.fulfill({ status, json: { error: 'Share unavailable', code } });
     });
 
-    await page.goto(`/share/${SHARE_ID}`);
-    await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByText(message)).toBeVisible();
-    expect(attempts).toBe(expectedAttempts);
+    try {
+      await page.goto(`/share/${SHARE_ID}`);
+      await expect(page).toHaveURL(/\/$/);
+      await expect(page.getByText(message)).toBeVisible();
+      expect(attempts).toBe(expectedAttempts);
+    } finally {
+      releaseAuth();
+    }
   });
 }

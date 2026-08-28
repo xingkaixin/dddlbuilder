@@ -9,30 +9,12 @@ export const useWorkspaceScope = (): WorkspaceScope | null => {
 };
 
 export const useWorkspaceScopeState = () => {
-  const { status, userId, workspaceId } = useAuthSession();
+  const { status, workspaceScope } = useAuthSession();
 
   return useMemo(() => {
-    if (status !== 'signed_in') {
-      return {
-        scope: getAnonymousWorkspaceScope(),
-        ready: status !== 'loading',
-      };
-    }
-
-    if (!userId || !workspaceId) {
-      return {
-        scope: getAnonymousWorkspaceScope(),
-        ready: false,
-      };
-    }
-
     return {
-      scope: {
-        kind: 'user' as const,
-        userId,
-        workspaceId,
-      },
-      ready: true,
+      scope: workspaceScope ?? getAnonymousWorkspaceScope(),
+      ready: Boolean(workspaceScope) || status === 'signed_out',
     };
-  }, [status, userId, workspaceId]);
+  }, [status, workspaceScope]);
 };

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import i18n from '@/i18n';
 import type * as Y from 'yjs';
 import type { PersistedState } from '@ddlbuilder/shared-types';
 import type {
@@ -30,8 +32,6 @@ import {
 import { normalizePersistedState, normalizeWorkspaceSession } from './normalize';
 import { leaveShareRoute } from './shareRoute';
 import { readStorageJson, writeStorageJson } from './storage';
-
-export type ShareLoadStatus = 'idle' | 'not_found' | 'error';
 
 interface UseWorkspaceInitialHydrationParams {
   pathInvalid: boolean;
@@ -67,7 +67,6 @@ export function useWorkspaceInitialHydration({
     enabled: Boolean(shareId && shareStorageKey && !pathInvalid),
   });
   const [hydrated, setHydrated] = useState(false);
-  const [shareLoadStatus, setShareLoadStatus] = useState<ShareLoadStatus>('idle');
 
   useEffect(() => {
     let cancelled = false;
@@ -138,8 +137,7 @@ export function useWorkspaceInitialHydration({
     };
 
     if (pathInvalid) {
-      // oxlint-disable-next-line react/set-state-in-effect
-      setShareLoadStatus('error');
+      toast(i18n.t('app.shareLoadFailed'));
       leaveShareRoute();
       return () => {
         cancelled = true;
@@ -165,14 +163,11 @@ export function useWorkspaceInitialHydration({
       hydrateWithState(shareQuery.data);
       writeStorageJson(shareStorageKey, shareQuery.data);
     } else if (shareQuery.isError) {
-      if (
-        shareQuery.error instanceof ShareApiError &&
-        shareQuery.error.code === 'SHARE_NOT_FOUND'
-      ) {
-        setShareLoadStatus('not_found');
-      } else {
-        setShareLoadStatus('error');
-      }
+      const messageKey =
+        shareQuery.error instanceof ShareApiError && shareQuery.error.code === 'SHARE_NOT_FOUND'
+          ? 'app.shareNotFound'
+          : 'app.shareLoadFailed';
+      toast(i18n.t(messageKey));
       leaveShareRoute();
     }
 
@@ -198,5 +193,5 @@ export function useWorkspaceInitialHydration({
     yDoc,
   ]);
 
-  return { hydrated, setHydrated, shareLoadStatus };
+  return { hydrated, setHydrated };
 }

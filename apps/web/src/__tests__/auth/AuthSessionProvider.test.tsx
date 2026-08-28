@@ -1,6 +1,12 @@
-import { fireEvent, render, screen, waitFor } from '@/__tests__/utils/test-utils';
+import { act, fireEvent, render, screen, waitFor } from '@/__tests__/utils/test-utils';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { useEffect } from 'react';
+import { setupMemoryLocalStorage } from '@/__tests__/utils/memoryLocalStorage';
+import {
+  readWorkspaceIdentity,
+  writeWorkspaceIdentity,
+  WORKSPACE_IDENTITY_KEY,
+} from '@/services/workspaceIdentity';
 import {
   AuthSessionProvider,
   useAuthSession,
@@ -58,6 +64,11 @@ const SessionProbe = () => {
       <span data-testid="email">{session.email ?? ''}</span>
       <span data-testid="user-id">{session.userId ?? ''}</span>
       <span data-testid="workspace-id">{session.workspaceId ?? ''}</span>
+      <span data-testid="workspace-scope">
+        {session.workspaceScope
+          ? `${session.workspaceScope.userId}:${session.workspaceScope.workspaceId}`
+          : ''}
+      </span>
       <span data-testid="credits">{session.creditBalance ?? ''}</span>
       <span data-testid="credits-status">{session.creditsStatus}</span>
       <span data-testid="auth-dialog">{session.authDialogOpen ? 'open' : 'closed'}</span>
@@ -80,6 +91,7 @@ const SessionProbe = () => {
 describe('AuthSessionProvider', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    setupMemoryLocalStorage();
     signInEmailMock.mockReset();
     signUpEmailMock.mockReset();
     requestPasswordResetMock.mockReset();
@@ -123,6 +135,7 @@ describe('AuthSessionProvider', () => {
         configured: true,
         userId: null,
         workspaceId: null,
+        workspaceScope: null,
         email: null,
         name: null,
         emailVerified: false,
@@ -232,6 +245,118 @@ describe('AuthSessionProvider', () => {
   });
 
   describe('component behavior', () => {
+    it('does not restore an account from an auth response arriving after another tab signs out', async () => {
+      writeWorkspaceIdentity({ kind: 'user', userId: 'user-1', workspaceId: 'ws-1' });
+      let respond = (_response: Response) => {};
+      const response = new Promise<Response>((resolve) => {
+        respond = resolve;
+      });
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+        if (input === '/api/me') return response;
+        if (input === '/api/credits/balance') return Response.json({ balance: 100 });
+        return Response.json({ workspaceId: 'ws-1' });
+      });
+      render(
+        <AuthSessionProvider>
+          <SessionProbe />
+        </AuthSessionProvider>,
+      );
+      await act(async () => {
+        localStorage.removeItem(WORKSPACE_IDENTITY_KEY);
+        window.dispatchEvent(
+          new StorageEvent('storage', { key: WORKSPACE_IDENTITY_KEY, newValue: null }),
+        );
+        respond(
+          Response.json({
+            signedIn: true,
+            user: {
+              userId: 'user-1',
+              name: 'User',
+              email: 'user@example.com',
+              emailVerified: true,
+            },
+          }),
+        );
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      });
+      expect(screen.getByTestId('status')).toHaveTextContent('signed_out');
+      expect(screen.getByTestId('workspace-scope').textContent).toBe('');
+      expect(readWorkspaceIdentity()).toBeNull();
+    });
+
+    it('opens the remembered local workspace before authentication resolves', () => {
+      writeWorkspaceIdentity({
+        kind: 'user',
+        userId: 'remembered-user',
+        workspaceId: 'remembered-ws',
+      });
+      vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
+      render(
+        <AuthSessionProvider>
+          <SessionProbe />
+        </AuthSessionProvider>,
+      );
+      expect(screen.getByTestId('workspace-scope')).toHaveTextContent(
+        'remembered-user:remembered-ws',
+      );
+      expect(screen.getByTestId('status')).toHaveTextContent('loading');
+      expect(screen.getByTestId('user-id')).toBeEmptyDOMElement();
+    });
+
+    it.each(['expired', 'unavailable'])(
+      'keeps the local workspace when authentication is %s',
+      async (result) => {
+        writeWorkspaceIdentity({
+          kind: 'user',
+          userId: 'remembered-user',
+          workspaceId: 'remembered-ws',
+        });
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+          result === 'expired'
+            ? Response.json({ signedIn: false, user: null })
+            : Response.json({ error: 'Unavailable' }, { status: 503 }),
+        );
+        render(
+          <AuthSessionProvider>
+            <SessionProbe />
+          </AuthSessionProvider>,
+        );
+        await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('signed_out'));
+        expect(screen.getByTestId('workspace-scope')).toHaveTextContent(
+          'remembered-user:remembered-ws',
+        );
+        expect(screen.getByTestId('user-id')).toBeEmptyDOMElement();
+      },
+    );
+
+    it.each(['remembered-user', 'different-user'])(
+      'only reuses a local workspace owned by authenticated user %s',
+      async (userId) => {
+        writeWorkspaceIdentity({
+          kind: 'user',
+          userId: 'remembered-user',
+          workspaceId: 'remembered-ws',
+        });
+        vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+          if (input === '/api/me')
+            return Response.json({
+              signedIn: true,
+              user: { userId, name: 'User', email: 'user@example.com', emailVerified: true },
+            });
+          return new Promise(() => {});
+        });
+        render(
+          <AuthSessionProvider>
+            <SessionProbe />
+          </AuthSessionProvider>,
+        );
+        await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('signed_in'));
+        expect(screen.getByTestId('workspace-scope').textContent).toBe(
+          userId === 'remembered-user' ? 'remembered-user:remembered-ws' : '',
+        );
+      },
+    );
+
     it('restores signed-in state from existing session', async () => {
       vi.spyOn(globalThis, 'fetch')
         .mockResolvedValueOnce(
@@ -505,6 +630,7 @@ describe('AuthSessionProvider', () => {
         expect(await outcome).toBe(confirmed ? 'signed_out' : 'cancelled');
         expect(signOutMock).toHaveBeenCalledTimes(confirmed ? 1 : 0);
         expect(clearLocalWorkspaceDataMock).toHaveBeenCalledTimes(confirmed ? 1 : 0);
+        expect(readWorkspaceIdentity() === null).toBe(confirmed);
         await waitFor(() =>
           expect(screen.getByTestId('sign-out-status')).toHaveTextContent(
             confirmed ? 'signed_out' : 'signed_in',
