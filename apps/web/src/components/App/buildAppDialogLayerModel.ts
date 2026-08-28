@@ -46,6 +46,7 @@ interface BuildAppDialogLayerModelParams {
     FieldTemplateData['templates'][number] | TableTemplateData['templates'][number]
   >;
   handleCopyDiff: () => void;
+  onBatchImportComplete: () => void;
   handleRollbackVersion: (state: PersistedState) => void;
   handleSelectTableFromEr: (state: PersistedState) => void;
 }
@@ -68,6 +69,7 @@ export function buildAppDialogLayerModel({
   dialogStates,
   aiGenerateExistingConfig,
   aiGenerateTemplates,
+  onBatchImportComplete,
   handleCopyDiff,
   handleRollbackVersion,
   handleSelectTableFromEr,
@@ -253,9 +255,8 @@ export function buildAppDialogLayerModel({
     aiPatch: {
       open: ui.isAISchemaPatchOpen,
       onOpenChange: ui.setIsAISchemaPatchOpen,
-      dbType: editor.dbType,
       currentState: derived.currentPersistedState,
-      templates: [...fieldTemplateData.templates, ...tableTemplateData.templates],
+      templates: aiGenerateTemplates,
       onApplyChanges: aiPatchFlow.applyChanges,
       onFocusChange: aiPatchFlow.focusChange,
     },
@@ -279,7 +280,7 @@ export function buildAppDialogLayerModel({
       savedTables: savedTableData.savedTables,
       folderTree: folderData.folderTree,
       onBatchImport: savedTableData.importTables,
-      onBatchImportComplete: () => ui.setSavedTablesDrawerOpen(true),
+      onBatchImportComplete,
     },
   };
 }

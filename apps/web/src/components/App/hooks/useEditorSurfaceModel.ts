@@ -55,6 +55,7 @@ export function useEditorSurfaceModel({
 }: UseEditorSurfaceModelInput): EditorSurfaceModel {
   const { t } = useTranslation();
   const { editor, auth, sharding, animations, partition, tableOptions } = domains;
+  const { setObjectType, setActiveTab } = editor;
   const {
     derived: { availableFields, canSaveCurrent, filledRowCount, tableDiff },
     sql,
@@ -68,10 +69,10 @@ export function useEditorSurfaceModel({
   } = schemaController;
   const handleObjectTypeChange = useCallback(
     (value: typeof editor.objectType) => {
-      editor.setObjectType(value);
-      editor.setActiveTab('fields');
+      setObjectType(value);
+      setActiveTab('fields');
     },
-    [editor],
+    [setObjectType, setActiveTab],
   );
   const expandOutput = useCallback(() => setOutputPanelOpen(true), [setOutputPanelOpen]);
   const collapseOutput = useCallback(() => setOutputPanelOpen(false), [setOutputPanelOpen]);

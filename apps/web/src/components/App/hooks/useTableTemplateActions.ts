@@ -24,6 +24,7 @@ export function useTableTemplateActions({
   const [isManagerOpen, setIsManagerOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [pendingBlueprint, setPendingBlueprint] = useState<TableBlueprint | null>(null);
+  const handleManageTemplates = useCallback(() => setIsManagerOpen(true), []);
 
   const handleSaveAsTemplate = useCallback(() => {
     const blueprint = createBlueprintFromState(currentState);
@@ -62,7 +63,7 @@ export function useTableTemplateActions({
     isCreateDialogOpen,
     setIsCreateDialogOpen,
     pendingBlueprint,
-    handleManageTemplates: () => setIsManagerOpen(true),
+    handleManageTemplates,
     handleSaveAsTemplate,
     handleCreateTemplate,
     handleApplyTemplate,

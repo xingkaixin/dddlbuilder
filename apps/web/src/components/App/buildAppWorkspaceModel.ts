@@ -76,7 +76,7 @@ export function buildAppWorkspaceModel({
       onShare: shareAction.handleShare,
       isSharing: shareAction.isSharing,
       onOpenImport: openImportDialog,
-      onOpenSettings: () => ui.setIsUserSettingsOpen(true),
+      onOpenSettings: navigationActions.handleOpenSettings,
       onOpenAIGenerate: navigationActions.handleOpenAIGenerateDialog,
     },
     drawer: {

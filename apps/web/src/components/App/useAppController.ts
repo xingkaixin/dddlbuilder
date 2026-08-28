@@ -1,4 +1,4 @@
-import { isSameSavedTable } from '@ddlbuilder/shared-types/workspace';
+import { useTemplateCatalog } from './hooks/useTemplateCatalog';
 import { useCallback, useMemo } from 'react';
 import type { DatabaseType, PersistedState } from '@ddlbuilder/shared-types';
 import { isTabAvailable } from '@/utils/tabUtils';
@@ -7,8 +7,6 @@ import { useWorkspaceController } from './hooks/useWorkspaceController';
 import { useDialogStates } from './hooks/useDialogStates';
 import { useSchemaController } from './hooks/useSchemaController';
 import { useFolderActions } from './hooks/useFolderActions';
-import { useTemplateActions } from './hooks/useTemplateActions';
-import { useTableTemplateActions } from './hooks/useTableTemplateActions';
 import { useSchemaApplyActions } from './hooks/useSchemaApplyActions';
 import { useSavedTableFlowActions } from './hooks/useSavedTableFlowActions';
 import { useTabLifecycle } from './hooks/useTabLifecycle';
@@ -16,7 +14,6 @@ import { usePersistedSync } from './hooks/usePersistedSync';
 import { applySavedState } from './applySavedState';
 import { useClearAllActions } from './hooks/useClearAllActions';
 import { useNavigationActions } from './hooks/useNavigationActions';
-import { useTemplateToolbarLeft } from './hooks/useTemplateToolbarLeft';
 import { useFireworksIntro } from './hooks/useFireworksIntro';
 import { useAISchemaPatchFlow } from './hooks/useAISchemaPatchFlow';
 import { useSavedTableTabIntegration } from './hooks/useSavedTableTabIntegration';
@@ -24,8 +21,6 @@ import { useWorkspaceTabActions } from './hooks/useWorkspaceTabActions';
 import { useWorkspaceTrashActions } from './hooks/useWorkspaceTrashActions';
 import { useWorkspacePresentation } from './hooks/useWorkspacePresentation';
 import { useEditorSurfaceModel } from './hooks/useEditorSurfaceModel';
-import { useFieldTemplates } from '@/hooks/useFieldTemplates';
-import { useTableTemplates } from '@/hooks/useTableTemplates';
 import { useTranslation } from 'react-i18next';
 import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { useWebMcpTools } from '@/webmcp/useWebMcpTools';
@@ -46,6 +41,8 @@ export function useAppController() {
     folderData,
     workspaceScope,
     loadedTableSource,
+    loadedTable,
+    loadedTableId,
     loadedTableNormalizedName,
     loadedTableName,
     loadedTableSignature,
@@ -84,6 +81,7 @@ export function useAppController() {
     setIsStorageEstimatorOpen,
     setIsAIGenerateDialogOpen,
     setIsMockDataDialogOpen,
+    setIsUserSettingsOpen,
   } = ui;
 
   const dialogStates = useDialogStates({
@@ -131,11 +129,6 @@ export function useAppController() {
     permanentlyDeleteDraftById,
   } = persistence;
   const { triggerIndexAnimation, triggerFieldTableHighlight } = animations;
-
-  const loadedTableId =
-    savedTableData.savedTables.find(
-      (table) => loadedTableSource && isSameSavedTable(table, loadedTableSource),
-    )?.tableId ?? null;
 
   const schemaController = useSchemaController({
     domains: { editor, ui, auth, sharding, animations, partition, tableOptions },
@@ -197,20 +190,6 @@ export function useAppController() {
     deleteFolder: deleteFolderAction,
   } = folderData;
 
-  const fieldTemplateData = useFieldTemplates();
-  const {
-    templates,
-    loading: templatesLoading,
-    createFromFields: createTemplateFromFields,
-  } = fieldTemplateData;
-
-  const tableTemplateData = useTableTemplates();
-  const {
-    templates: tableTemplates,
-    loading: tableTemplatesLoading,
-    create: createTableTemplate,
-  } = tableTemplateData;
-
   const folderActions = useFolderActions({
     folderTree,
     savedTables,
@@ -221,14 +200,6 @@ export function useAppController() {
     moveTableToFolder,
     showToast,
   });
-  const templateActions = useTemplateActions({
-    rows,
-    setRows,
-    createTemplateFromFields,
-    showToast,
-  });
-  const { handleManageTemplates, handleApplyTemplate, handleSaveAsTemplate } = templateActions;
-
   usePersistedSync({
     hydrated,
     enabled: isShareView || canSyncActiveTab,
@@ -307,17 +278,20 @@ export function useAppController() {
   });
   const { openStateInNewDraftTab } = workspaceTabs;
 
-  const tableTemplateActions = useTableTemplateActions({
+  const {
+    fieldTemplateData,
+    tableTemplateData,
+    templateActions,
+    tableTemplateActions,
+    templates: aiGenerateTemplates,
+    toolbar: dataTableToolbarLeft,
+  } = useTemplateCatalog({
+    rows,
+    setRows,
+    showToast,
     currentState: currentPersistedState,
     applyState: openStateInNewDraftTab,
-    createTemplate: createTableTemplate,
-    showToast,
   });
-  const {
-    handleManageTemplates: handleManageTableTemplates,
-    handleSaveAsTemplate: handleSaveAsTableTemplate,
-    handleApplyTemplate: handleApplyTableTemplate,
-  } = tableTemplateActions;
 
   const trashActions = useWorkspaceTrashActions({
     folderTree,
@@ -356,27 +330,18 @@ export function useAppController() {
     setVersionHistoryTarget,
     setIsAIGenerateDialogOpen,
     setIsMockDataDialogOpen,
+    setIsUserSettingsOpen,
   });
-  const { handleViewVersionHistory } = navigationActions;
+  const { handleViewVersionHistory, handleOpenAIGenerateDialog } = navigationActions;
 
   const handleViewCurrentVersionHistory = useCallback(() => {
-    if (!loadedTableNormalizedName || !loadedTableName) return;
-    const currentTable = savedTables.find(
-      (table) => loadedTableSource && isSameSavedTable(table, loadedTableSource),
-    );
-    if (!currentTable) return;
+    if (!loadedTable) return;
     handleViewVersionHistory({
-      tableId: currentTable.tableId,
-      normalizedName: loadedTableNormalizedName,
-      name: loadedTableName,
+      tableId: loadedTable.tableId,
+      normalizedName: loadedTable.normalizedName,
+      name: loadedTable.name,
     });
-  }, [
-    handleViewVersionHistory,
-    loadedTableName,
-    loadedTableNormalizedName,
-    loadedTableSource,
-    savedTables,
-  ]);
+  }, [handleViewVersionHistory, loadedTable]);
 
   const handleSelectTableFromEr = useCallback(
     (state: PersistedState) => {
@@ -402,11 +367,6 @@ export function useAppController() {
   const aiGenerateExistingConfig = useMemo(
     () => ({ schemaName, tableName, tableComment, rows, indexes }),
     [schemaName, tableName, tableComment, rows, indexes],
-  );
-
-  const aiGenerateTemplates = useMemo(
-    () => [...templates, ...tableTemplates],
-    [templates, tableTemplates],
   );
 
   const handleDbTypeChange = useCallback(
@@ -440,24 +400,11 @@ export function useAppController() {
   const openErDiagram = useCallback(() => setIsErDialogOpen(true), [setIsErDialogOpen]);
   const openAISchemaPatch = useCallback(() => {
     if (tabs.length === 0 && !isShareView) {
-      navigationActions.handleOpenAIGenerateDialog();
+      handleOpenAIGenerateDialog();
       return;
     }
     setIsAISchemaPatchOpen(true);
-  }, [isShareView, navigationActions, setIsAISchemaPatchOpen, tabs.length]);
-
-  const dataTableToolbarLeft = useTemplateToolbarLeft({
-    templates,
-    templatesLoading,
-    handleApplyTemplate,
-    handleManageTemplates,
-    handleSaveAsTemplate,
-    tableTemplates,
-    tableTemplatesLoading,
-    handleApplyTableTemplate,
-    handleManageTableTemplates,
-    handleSaveAsTableTemplate,
-  });
+  }, [isShareView, handleOpenAIGenerateDialog, setIsAISchemaPatchOpen, tabs.length]);
 
   const workspacePresentation = useWorkspacePresentation({
     activeSourceKind: activeEditorSource.kind,
@@ -545,6 +492,7 @@ export function useAppController() {
     dialogStates,
     aiGenerateExistingConfig,
     aiGenerateTemplates,
+    onBatchImportComplete: navigationActions.handleOpenSavedTablesDrawer,
     handleCopyDiff,
     handleRollbackVersion,
     handleSelectTableFromEr,
