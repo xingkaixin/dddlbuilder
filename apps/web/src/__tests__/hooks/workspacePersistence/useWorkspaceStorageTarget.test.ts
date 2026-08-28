@@ -6,6 +6,20 @@ import { useWorkspaceStorageTarget } from '@/hooks/workspacePersistence/useWorks
 describe('useWorkspaceStorageTarget', () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it('rejects user writes while the authoritative YDoc is loading', async () => {
+    const scope = { kind: 'user', userId: 'user-1', workspaceId: 'workspace-1' } as const;
+    const writeLocal = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useWorkspaceStorageTarget({ scope, yDoc: null, runInYDoc: vi.fn() }),
+    );
+    const outcome = await result.current.write({ yDoc: vi.fn(), local: writeLocal }).then(
+      () => 'written',
+      () => 'rejected',
+    );
+    expect(outcome).toBe('rejected');
+    expect(writeLocal).not.toHaveBeenCalled();
+  });
+
   it('匿名工作区写入本地分区', async () => {
     const scope = { kind: 'anonymous' } as const;
     const runInYDoc = vi.fn();

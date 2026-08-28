@@ -38,6 +38,8 @@ export function useWorkspaceStorageTarget({
   const writeLocal = useCallback(
     async (write: (currentScope: WorkspaceScope) => Promise<void>) => {
       const currentScope = requireScope();
+      if (currentScope.kind === 'user')
+        throw new Error(i18n.t('savedTables.toast.workspaceNotReady'));
       await write(currentScope);
     },
     [requireScope],

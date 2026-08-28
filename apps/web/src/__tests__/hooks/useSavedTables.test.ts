@@ -8,6 +8,7 @@ import { getSavedTable } from '@/utils/savedTablesDb';
 import { listVersions } from '@/utils/tableVersions';
 import { listReviews, saveReview } from '@/utils/reviewHistory';
 import { createQueryClientWrapper } from '@/__tests__/utils/queryClient';
+import type * as WorkspaceYDocAdapter from '@/services/workspaceYDocAdapter';
 
 const renderHook = <Result, Props>(render: (initialProps: Props) => Result) => {
   const { wrapper } = createQueryClientWrapper();
@@ -52,7 +53,8 @@ vi.mock('@/services/workspaceLegacyMigrationMarker', () => ({
   invalidateLegacyWorkspaceMigration: mockMigrationMarker.invalidateLegacyWorkspaceMigration,
 }));
 
-vi.mock('@/services/workspaceYDocAdapter', () => ({
+vi.mock('@/services/workspaceYDocAdapter', async (importOriginal) => ({
+  ...(await importOriginal<typeof WorkspaceYDocAdapter>()),
   deleteSavedTableFromYDoc: mockYDocAdapter.deleteSavedTableFromYDoc,
   getSavedTableFromYDoc: mockYDocAdapter.getSavedTableFromYDoc,
   listSavedTableMetadataFromYDoc: mockYDocAdapter.listSavedTableMetadataFromYDoc,
@@ -304,9 +306,7 @@ describe('useSavedTables', () => {
     ).resolves.toBeNull();
   });
 
-  // 分享页在本地 Y.Doc 加载完成前仍然放行「另存为副本」，那次写入只落本地分区；
-  // legacy 迁移的一次性标记会让它永远留在那里，所以写入方要负责重开迁移。
-  it('本地 Y.Doc 未就绪时保存，应重开 legacy 迁移', async () => {
+  it('本地 Y.Doc 未就绪时保存，应拒绝写入旧分区', async () => {
     mockUseAuthSession.mockReturnValue({
       status: 'signed_in',
       configured: true,
@@ -328,19 +328,21 @@ describe('useSavedTables', () => {
 
     await act(async () => {
       const saveResult = await result.current.saveTable('Shared copy', createState('shared_copy'));
-      expect(saveResult.ok).toBe(true);
+      expect(saveResult).toMatchObject({ ok: false, reason: 'error' });
       await flushPromises();
     });
 
     expect(mockYDocAdapter.upsertSavedTableInYDoc).not.toHaveBeenCalled();
-    expect(mockMigrationMarker.invalidateLegacyWorkspaceMigration).toHaveBeenCalledWith({
-      kind: 'user',
-      userId: 'user_1',
-      workspaceId: 'workspace_1',
-    });
+    await expect(
+      getSavedTable('shared copy', {
+        kind: 'user',
+        userId: 'user_1',
+        workspaceId: 'workspace_1',
+      }),
+    ).resolves.toBeNull();
   });
 
-  it('本地 Y.Doc 未就绪时批量导入，应重开 legacy 迁移', async () => {
+  it('本地 Y.Doc 未就绪时批量导入，应明确报告未写入', async () => {
     mockUseAuthSession.mockReturnValue({
       status: 'signed_in',
       configured: true,
@@ -358,18 +360,21 @@ describe('useSavedTables', () => {
 
     await act(async () => {
       await flushPromises();
-      await result.current.importTables({
+      const imported = await result.current.importTables({
         items: [{ name: 'Imported', state: createState('imported') }],
         conflictStrategy: 'skip',
       });
+      expect(imported).toEqual({ successCount: 0, skipCount: 0, failCount: 1 });
       await flushPromises();
     });
 
-    expect(mockMigrationMarker.invalidateLegacyWorkspaceMigration).toHaveBeenCalledWith({
-      kind: 'user',
-      userId: 'user_1',
-      workspaceId: 'workspace_1',
-    });
+    await expect(
+      getSavedTable('imported', {
+        kind: 'user',
+        userId: 'user_1',
+        workspaceId: 'workspace_1',
+      }),
+    ).resolves.toBeNull();
   });
 
   it('本地 Y.Doc 就绪时保存，不应重开 legacy 迁移', async () => {
