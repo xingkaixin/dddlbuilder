@@ -204,14 +204,21 @@ const decodeCitusConfig = (value: unknown): CitusShardingConfig | undefined => {
   };
 };
 
-const decodeMysqlPartitionConfig = (value: unknown): MysqlPartitionConfig | undefined => {
+export const decodeMysqlPartitionConfig = (value: unknown): MysqlPartitionConfig | undefined => {
   if (!isRecord(value) || !MYSQL_PARTITION_TYPES.has(value.type as MysqlPartitionType)) {
     return undefined;
   }
+  const usedIds = new Set<string>();
   const partitions = Array.isArray(value.partitions)
-    ? value.partitions.flatMap((item) =>
+    ? value.partitions.flatMap((item, index) =>
         isRecord(item) && typeof item.name === 'string' && typeof item.value === 'string'
-          ? [{ name: item.name, value: item.value }]
+          ? [
+              {
+                id: decodeUniqueEntityId(item.id, `legacy-partition-${index}`, usedIds),
+                name: item.name,
+                value: item.value,
+              },
+            ]
           : [],
       )
     : undefined;

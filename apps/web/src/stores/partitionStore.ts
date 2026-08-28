@@ -1,5 +1,6 @@
 import {
   normalizeMysqlPartitionCount,
+  createEntityId,
   type MysqlPartitionConfig,
   type PartitionDefinition,
 } from '@ddlbuilder/shared-types';
@@ -62,27 +63,27 @@ export const createPartitionSlice = (set: EditorSetState): PartitionSlice => ({
         partitions: [...(state.mysqlPartitionConfig.partitions || []), partition],
       },
     })),
-  removePartition: (index) =>
+  removePartition: (id) =>
     set((state) => ({
       mysqlPartitionConfig: {
         ...state.mysqlPartitionConfig,
         partitions: (state.mysqlPartitionConfig.partitions || []).filter(
-          (_, current) => current !== index,
+          (current) => current.id !== id,
         ),
       },
     })),
-  updatePartition: (index, partition) =>
+  updatePartition: (id, partition) =>
     set((state) => ({
       mysqlPartitionConfig: {
         ...state.mysqlPartitionConfig,
-        partitions: (state.mysqlPartitionConfig.partitions || []).map((current, currentIndex) =>
-          currentIndex === index ? partition : current,
+        partitions: (state.mysqlPartitionConfig.partitions || []).map((current) =>
+          current.id === id ? { ...partition, id } : current,
         ),
       },
     })),
   generateRangePartitions: (preset) => {
     const currentYear = new Date().getFullYear();
-    let partitions: PartitionDefinition[] = [];
+    let partitions: Omit<PartitionDefinition, 'id'>[] = [];
 
     switch (preset) {
       case 'year':
@@ -113,7 +114,7 @@ export const createPartitionSlice = (set: EditorSetState): PartitionSlice => ({
     set((state) => ({
       mysqlPartitionConfig: {
         ...state.mysqlPartitionConfig,
-        partitions,
+        partitions: partitions.map((partition) => ({ ...partition, id: createEntityId() })),
       },
     }));
   },

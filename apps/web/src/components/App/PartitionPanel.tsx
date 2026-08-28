@@ -1,4 +1,5 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
+import { createEntityId, normalizeMysqlPartitionCount } from '@ddlbuilder/shared-types';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -49,8 +50,8 @@ interface PartitionPanelProps {
   onExpressionChange: (expression: string) => void;
   onPartitionCountChange: (count: number) => void;
   onAddPartition: (partition: PartitionDefinition) => void;
-  onRemovePartition: (index: number) => void;
-  onUpdatePartition: (index: number, partition: PartitionDefinition) => void;
+  onRemovePartition: (id: string) => void;
+  onUpdatePartition: (id: string, partition: PartitionDefinition) => void;
   onGeneratePartitions: (preset: 'year' | 'month' | 'day') => void;
 }
 
@@ -74,6 +75,36 @@ const supportsExpression = (type: MysqlPartitionType): boolean => {
   return ['HASH', 'KEY', 'RANGE', 'LIST'].includes(type);
 };
 
+function PartitionCountInput({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (count: number) => void;
+}) {
+  const [input, setInput] = useState<string | null>(null);
+  const commit = () => {
+    const text = input ?? String(value);
+    const count = normalizeMysqlPartitionCount(text.trim() ? Number(text) : Number.NaN);
+    setInput(null);
+    onChange(count);
+  };
+  return (
+    <Input
+      type="number"
+      min={1}
+      max={8192}
+      value={input ?? String(value)}
+      onChange={(event) => setInput(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur();
+      }}
+      className="w-32 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+    />
+  );
+}
+
 export const PartitionPanel = memo<PartitionPanelProps>(
   ({
     config,
@@ -95,6 +126,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
       let nextIndex = (config.partitions?.length || 0) + 1;
       while (existingNames.has(`p${nextIndex}`)) nextIndex += 1;
       onAddPartition({
+        id: createEntityId(),
         name: `p${nextIndex}`,
         value: '',
       });
@@ -270,15 +302,9 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                     <Label className="text-sm font-semibold">
                       {t('partitionPanel.partitionCount')}
                     </Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={1024}
-                      value={config.partitionCount || 4}
-                      onChange={(e) =>
-                        onPartitionCountChange(Number.parseInt(e.target.value, 10) || 4)
-                      }
-                      className="w-32 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                    <PartitionCountInput
+                      value={config.partitionCount ?? 4}
+                      onChange={onPartitionCountChange}
                     />
                     <p className="text-xs text-muted-foreground">
                       {t('partitionPanel.partitionCountHint')}
@@ -379,16 +405,16 @@ export const PartitionPanel = memo<PartitionPanelProps>(
 
                     {config.partitions && config.partitions.length > 0 && (
                       <div className="space-y-2">
-                        {config.partitions.map((partition, index) => (
+                        {config.partitions.map((partition) => (
                           <div
-                            key={index}
+                            key={partition.id}
                             className="flex items-center gap-2 rounded-lg border bg-muted/30 p-3"
                           >
                             <Input
                               placeholder={t('partitionPanel.partitionName')}
                               value={partition.name}
                               onChange={(e) =>
-                                onUpdatePartition(index, {
+                                onUpdatePartition(partition.id, {
                                   ...partition,
                                   name: e.target.value,
                                 })
@@ -408,7 +434,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                               }
                               value={partition.value}
                               onChange={(e) =>
-                                onUpdatePartition(index, {
+                                onUpdatePartition(partition.id, {
                                   ...partition,
                                   value: e.target.value,
                                 })
@@ -421,7 +447,7 @@ export const PartitionPanel = memo<PartitionPanelProps>(
                                   type="button"
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => onRemovePartition(index)}
+                                  onClick={() => onRemovePartition(partition.id)}
                                   className="h-8 w-8 text-destructive hover:text-destructive"
                                 >
                                   <X className="h-4 w-4" />

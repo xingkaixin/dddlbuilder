@@ -1,7 +1,9 @@
 import {
+  createEntityId,
   normalizeMysqlPartitionCount,
   type MysqlPartitionConfig,
   type MysqlPartitionType,
+  type PartitionDefinition,
 } from '@ddlbuilder/shared-types';
 
 export const PARTITION_BY_REGEX = /\bPARTITION\s+BY\b/i;
@@ -150,7 +152,7 @@ function resolvePartitionKey(partitionKey: string): {
 function parsePartitionDefinitions(definitionsText: string, partitionType: MysqlPartitionType) {
   if (!definitionsText.trim()) return [];
 
-  const partitions: Array<{ name: string; value: string }> = [];
+  const partitions: PartitionDefinition[] = [];
   const valuePattern =
     partitionType === 'RANGE' || partitionType === 'RANGE COLUMNS'
       ? /PARTITION\s+([`"\w]+)\s+VALUES\s+LESS\s+THAN\s*\(([^)]*)\)/gi
@@ -159,6 +161,7 @@ function parsePartitionDefinitions(definitionsText: string, partitionType: Mysql
   let match = valuePattern.exec(definitionsText);
   while (match !== null) {
     partitions.push({
+      id: createEntityId(),
       name: unwrapIdentifier(match[1]),
       value: match[2].trim(),
     });

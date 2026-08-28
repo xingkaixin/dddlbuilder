@@ -99,6 +99,27 @@ describe('decodePersistedState', () => {
     expect(decodePersistedState(JSON.parse(JSON.stringify(decoded)), mode)).toEqual(decoded);
   });
 
+  it('assigns deterministic unique IDs to legacy partitions and keeps existing identities', () => {
+    const source = externalState({
+      mysqlPartitionConfig: {
+        enabled: true,
+        type: 'RANGE',
+        columns: ['id'],
+        partitions: [
+          { name: 'p1', value: '10' },
+          { id: 'stable', name: 'p2', value: '20' },
+          { id: 'stable', name: 'p3', value: '30' },
+        ],
+      },
+    });
+    const decoded = decodePersistedState(source);
+    const ids = decoded?.mysqlPartitionConfig?.partitions?.map((partition) => partition.id) ?? [];
+    expect(new Set(ids).size).toBe(3);
+    expect(ids[1]).toBe('stable');
+    expect(decodePersistedState(source)).toEqual(decoded);
+    expect(decodePersistedState(decoded)).toEqual(decoded);
+  });
+
   it('没有合法枚举成员时保留空数组，非数组元数据不进入字段', () => {
     const decoded = decodePersistedState(
       externalState({
@@ -364,7 +385,7 @@ describe('decodePersistedState', () => {
         columns: ['created_at'],
         expression: 'YEAR(created_at)',
         partitionCount: 4,
-        partitions: [{ name: 'p0', value: '2025' }],
+        partitions: [{ id: 'legacy-partition-0', name: 'p0', value: '2025' }],
       },
       tableMiscConfig: {
         enabled: true,

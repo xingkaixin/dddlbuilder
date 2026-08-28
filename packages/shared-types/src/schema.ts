@@ -63,6 +63,7 @@ export type MysqlPartitionType =
   | 'KEY';
 
 export type PartitionDefinition = {
+  id: string;
   name: string;
   value: string;
 };

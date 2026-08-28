@@ -68,8 +68,8 @@ describe('partitionParser', () => {
       columns: ['created_at'],
       partitionCount: 4,
       partitions: [
-        { name: 'p2024', value: "'2025-01-01'" },
-        { name: 'pmax', value: 'MAXVALUE' },
+        { id: expect.any(String), name: 'p2024', value: "'2025-01-01'" },
+        { id: expect.any(String), name: 'pmax', value: 'MAXVALUE' },
       ],
       expression: undefined,
     });
@@ -90,8 +90,8 @@ describe('partitionParser', () => {
       columns: ['region_id'],
       partitionCount: 4,
       partitions: [
-        { name: 'p_cn', value: '1,2' },
-        { name: 'p_us', value: '3,4' },
+        { id: expect.any(String), name: 'p_cn', value: '1,2' },
+        { id: expect.any(String), name: 'p_us', value: '3,4' },
       ],
       expression: undefined,
     });

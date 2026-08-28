@@ -40,7 +40,7 @@ describe('editor store partition state', () => {
 
     // First add a partition
     act(() => {
-      result.current.addPartition({ name: 'p1', value: '2024' });
+      result.current.addPartition({ id: 'p1', name: 'p1', value: '2024' });
     });
     expect(result.current.mysqlPartitionConfig.partitions).toHaveLength(1);
 
@@ -119,20 +119,20 @@ describe('editor store partition state', () => {
 
     // Add partitions
     act(() => {
-      result.current.addPartition({ name: 'p1', value: '2024' });
-      result.current.addPartition({ name: 'p2', value: '2025' });
+      result.current.addPartition({ id: 'p1', name: 'p1', value: '2024' });
+      result.current.addPartition({ id: 'p2', name: 'p2', value: '2025' });
     });
     expect(result.current.mysqlPartitionConfig.partitions).toHaveLength(2);
 
     // Update partition
     act(() => {
-      result.current.updatePartition(0, { name: 'p1', value: '2023' });
+      result.current.updatePartition('p1', { id: 'p1', name: 'p1', value: '2023' });
     });
     expect(result.current.mysqlPartitionConfig.partitions?.[0].value).toBe('2023');
 
     // Remove partition
     act(() => {
-      result.current.removePartition(0);
+      result.current.removePartition('p1');
     });
     expect(result.current.mysqlPartitionConfig.partitions).toHaveLength(1);
     expect(result.current.mysqlPartitionConfig.partitions?.[0].name).toBe('p2');

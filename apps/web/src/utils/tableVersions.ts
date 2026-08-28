@@ -1,4 +1,4 @@
-import { decodeIndexDefinitions } from '@ddlbuilder/workspace-core';
+import { decodeIndexDefinitions, decodeMysqlPartitionConfig } from '@ddlbuilder/workspace-core';
 import {
   createEntityId,
   normalizePersistedRows,
@@ -27,6 +27,9 @@ const decodeVersion = (version: TableVersion): TableVersion => ({
   state: {
     ...normalizePersistedRows(version.state),
     indexes: decodeIndexDefinitions(version.state.indexes),
+    ...(version.state.mysqlPartitionConfig
+      ? { mysqlPartitionConfig: decodeMysqlPartitionConfig(version.state.mysqlPartitionConfig) }
+      : {}),
   },
 });
 

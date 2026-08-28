@@ -1,4 +1,4 @@
-import { decodeIndexDefinitions } from '@ddlbuilder/workspace-core';
+import { decodeIndexDefinitions, decodeMysqlPartitionConfig } from '@ddlbuilder/workspace-core';
 import { savedTableReference, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { buildScopedWorkspaceKey, getWorkspaceScopeStorageKey } from './workspaceScope';
@@ -59,6 +59,9 @@ const decodeScopedTableRecord = (
     state: {
       ...normalizePersistedRows(record.state),
       indexes: decodeIndexDefinitions(record.state.indexes),
+      ...(record.state.mysqlPartitionConfig
+        ? { mysqlPartitionConfig: decodeMysqlPartitionConfig(record.state.mysqlPartitionConfig) }
+        : {}),
     },
   };
 };

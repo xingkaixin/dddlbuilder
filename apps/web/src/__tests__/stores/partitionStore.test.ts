@@ -14,7 +14,7 @@ describe('partitionStore', () => {
   it('应该在切换分区类型时清空分区定义与字段', () => {
     const state = useEditorStore.getState();
 
-    state.addPartition({ name: 'p1', value: '2024' });
+    state.addPartition({ id: 'p1', name: 'p1', value: '2024' });
     state.setPartitionColumns(['created_at']);
     state.setPartitionType('HASH');
 

@@ -12,6 +12,7 @@ export {
 export {
   decodePersistedState,
   decodeIndexDefinitions,
+  decodeMysqlPartitionConfig,
   decodeSavedDraftBase,
   decodeSchemaDocumentState,
   decodeWorkspaceSnapshot,
