@@ -500,11 +500,16 @@ test('AI 修改拒绝缺失字段的索引，补选字段后允许应用', async
   const changes = dialog.getByRole('button', { name: '切换变更选择' });
   await expect(changes).toHaveCount(2);
   await changes.nth(1).click();
+  await page.keyboard.press('Escape');
+  await expect(dialog).not.toBeVisible();
+  await page.getByRole('button', { name: 'AI 修改', exact: true }).click();
+  await expect(dialog.locator('#ai-patch-input')).toHaveValue('新增 email 和对应索引');
   await dialog.getByRole('button', { name: '应用 1 项变更' }).click();
-  await expect(page.getByText(/未能应用变更.*Unknown index field: email/)).toBeVisible();
+  await expect(dialog.getByRole('alert')).toContainText('Unknown index field: email');
   await expect(dialog.getByRole('button', { name: '应用 1 项变更' })).toBeEnabled();
   await expect(dialog.getByText('email', { exact: true })).toBeVisible();
   await changes.first().click();
+  await expect(dialog.getByRole('alert')).toHaveCount(0);
   await dialog.getByRole('button', { name: '应用 2 项变更' }).click();
   await expect(dialog.getByText('本次没有发现可应用的结构变更')).toBeVisible();
   await page.keyboard.press('Escape');

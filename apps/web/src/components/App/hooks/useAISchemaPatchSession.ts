@@ -10,7 +10,6 @@ import {
   type AISchemaChange,
   type AISchemaChangeStatus,
 } from '@/utils/aiSchemaChanges';
-import { useToast } from '@/hooks/useToast';
 
 export const MAX_PATCH_INPUT_LENGTH = 500;
 const EMPTY_CHANGE_STATUSES: Record<string, AISchemaChangeStatus> = {};
@@ -31,7 +30,6 @@ export function useAISchemaPatchSession({
 }: AISchemaPatchSessionParams) {
   const { t } = useTranslation();
   const dbType = currentState.dbType;
-  const { error: showApplyError } = useToast();
   const [input, setInput] = useState('');
   const {
     isLoading,
@@ -49,6 +47,7 @@ export function useAISchemaPatchSession({
     result,
     values: {} as Record<string, AISchemaChangeStatus>,
     appliedState: null as PersistedState | null,
+    error: null as string | null,
   }));
   const statuses = statusState.result === result ? statusState.values : EMPTY_CHANGE_STATUSES;
   const reviewBaseState =
@@ -64,6 +63,7 @@ export function useAISchemaPatchSession({
         result,
         values: update(current.result === result ? current.values : {}),
         appliedState: appliedState ?? (current.result === result ? current.appliedState : null),
+        error: null,
       }));
     },
     [result],
@@ -100,7 +100,7 @@ export function useAISchemaPatchSession({
   const handleReset = useCallback(() => {
     clearResult();
     clearConversation();
-    setStatusState({ result: null, values: {}, appliedState: null });
+    setStatusState({ result: null, values: {}, appliedState: null, error: null });
     setInput('');
   }, [clearConversation, clearResult]);
 
@@ -124,11 +124,13 @@ export function useAISchemaPatchSession({
     try {
       appliedState = onApplyChanges(acceptedChanges, candidateState, reviewBaseState);
     } catch (error) {
-      showApplyError(
-        t('aiPatch.applyFailed', {
+      setStatusState((current) => ({
+        ...current,
+        result,
+        error: t('aiPatch.applyFailed', {
           reason: error instanceof Error ? error.message : String(error),
         }),
-      );
+      }));
       return;
     }
     const appliedIds = new Set(acceptedChanges.map((change) => change.id));
@@ -137,15 +139,7 @@ export function useAISchemaPatchSession({
       for (const id of appliedIds) next[id] = 'applied';
       return next;
     }, appliedState);
-  }, [
-    acceptedChanges,
-    candidateState,
-    reviewBaseState,
-    onApplyChanges,
-    showApplyError,
-    t,
-    updateStatuses,
-  ]);
+  }, [acceptedChanges, candidateState, reviewBaseState, onApplyChanges, result, t, updateStatuses]);
 
   const handleSelectAll = useCallback(() => {
     updateStatuses((current) => {
@@ -183,7 +177,7 @@ export function useAISchemaPatchSession({
   return {
     input,
     isLoading,
-    error,
+    error: (statusState.result === result && statusState.error) || error,
     result,
     partialResult,
     changes,
