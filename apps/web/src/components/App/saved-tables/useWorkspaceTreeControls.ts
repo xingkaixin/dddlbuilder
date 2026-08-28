@@ -17,7 +17,6 @@ type DragFeedback = {
 interface UseWorkspaceTreeControlsParams {
   items: SavedTableSummary[];
   folders: FolderTreeNode[];
-  initiallyExpandedFolderIds?: string[];
   onMoveToFolder?: (
     item: SavedTableSummary,
     folderId?: string,
@@ -31,7 +30,6 @@ interface UseWorkspaceTreeControlsParams {
 export function useWorkspaceTreeControls({
   items,
   folders,
-  initiallyExpandedFolderIds,
   onMoveToFolder,
   onMoveFolder,
 }: UseWorkspaceTreeControlsParams) {
@@ -40,9 +38,7 @@ export function useWorkspaceTreeControls({
   const [selectedFolderId, setSelectedFolderId] = useState<string>();
   const [dragFeedback, setDragFeedback] = useState<DragFeedback | null>(null);
   const dragFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { expandedFolders, toggleFolder, expandFolder } = useFolderExpansion(
-    initiallyExpandedFolderIds,
-  );
+  const { expandedFolders, toggleFolder, expandFolder } = useFolderExpansion(folders);
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 6 },

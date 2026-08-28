@@ -117,7 +117,6 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
     const treeControls = useWorkspaceTreeControls({
       items,
       folders,
-      initiallyExpandedFolderIds: folders.map((folder) => folder.id),
       onMoveToFolder,
       onMoveFolder,
     });
@@ -178,82 +177,6 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
         onViewHistory,
         tablePresentations,
       ],
-    );
-
-    const renderTrashTable = (item: SavedTableSummary) => (
-      <div
-        key={item.tableId}
-        className="group flex items-center gap-1 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
-      >
-        <Trash2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1 truncate font-medium">{item.name}</span>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 opacity-0 group-hover:opacity-100"
-            >
-              <MoreHorizontal className="h-3.5 w-3.5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-36">
-            {onRestore && (
-              <DropdownMenuItem onClick={() => onRestore(item)}>
-                <RotateCcw className="mr-2 h-4 w-4" />
-                {t('savedTables.restore')}
-              </DropdownMenuItem>
-            )}
-            {onDeletePermanently && (
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={() => onDeletePermanently(item)}
-              >
-                <X className="mr-2 h-4 w-4" />
-                {t('savedTables.deletePermanently')}
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    );
-
-    const renderTrashDraft = (draft: DraftSummary) => (
-      <div
-        key={draft.draftId}
-        className="group flex items-center gap-1 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
-      >
-        <Trash2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1 truncate font-medium">{draft.name}</span>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 opacity-0 group-hover:opacity-100"
-            >
-              <MoreHorizontal className="h-3.5 w-3.5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-36">
-            {onRestoreDraft && (
-              <DropdownMenuItem onClick={() => onRestoreDraft(draft.draftId)}>
-                <RotateCcw className="mr-2 h-4 w-4" />
-                {t('savedTables.restore')}
-              </DropdownMenuItem>
-            )}
-            {onDeleteDraftPermanently && (
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={() => onDeleteDraftPermanently(draft.draftId)}
-              >
-                <X className="mr-2 h-4 w-4" />
-                {t('savedTables.deletePermanently')}
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
     );
 
     const totalTrashedCount = trashedItems.length + trashedDraftItems.length;
@@ -411,8 +334,30 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
                   </div>
                   {totalTrashedCount > 0 ? (
                     <>
-                      {trashedItems.map((item) => renderTrashTable(item))}
-                      {trashedDraftItems.map((draft) => renderTrashDraft(draft))}
+                      {trashedItems.map((item) => (
+                        <TrashRow
+                          key={item.tableId}
+                          name={item.name}
+                          onRestore={onRestore ? () => onRestore(item) : undefined}
+                          onDeletePermanently={
+                            onDeletePermanently ? () => onDeletePermanently(item) : undefined
+                          }
+                        />
+                      ))}
+                      {trashedDraftItems.map((draft) => (
+                        <TrashRow
+                          key={draft.draftId}
+                          name={draft.name}
+                          onRestore={
+                            onRestoreDraft ? () => onRestoreDraft(draft.draftId) : undefined
+                          }
+                          onDeletePermanently={
+                            onDeleteDraftPermanently
+                              ? () => onDeleteDraftPermanently(draft.draftId)
+                              : undefined
+                          }
+                        />
+                      ))}
                     </>
                   ) : (
                     <div className="px-2 py-2 text-xs text-muted-foreground">
@@ -468,3 +413,45 @@ export const WorkspaceSidebar = memo<WorkspaceSidebarProps>(
 );
 
 WorkspaceSidebar.displayName = 'WorkspaceSidebar';
+
+function TrashRow({
+  name,
+  onRestore,
+  onDeletePermanently,
+}: {
+  name: string;
+  onRestore?: () => void;
+  onDeletePermanently?: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="group flex items-center gap-1 rounded-md px-2 py-1.5 text-sm hover:bg-accent">
+      <Trash2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <span className="min-w-0 flex-1 truncate font-medium">{name}</span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100">
+            <MoreHorizontal className="h-3.5 w-3.5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-36">
+          {onRestore && (
+            <DropdownMenuItem onClick={onRestore}>
+              <RotateCcw className="mr-2 h-4 w-4" />
+              {t('savedTables.restore')}
+            </DropdownMenuItem>
+          )}
+          {onDeletePermanently && (
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={onDeletePermanently}
+            >
+              <X className="mr-2 h-4 w-4" />
+              {t('savedTables.deletePermanently')}
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
