@@ -1,4 +1,5 @@
 import type { DatabaseType } from '@ddlbuilder/shared-types';
+import { getDatabaseFamily } from '../databaseFamily';
 import { formatSqlIdentifier } from '../sqlIdentifiers';
 import { formatSqlTableName } from '../databaseTypeMapping';
 import { buildForeignKeyDDL } from '../foreignKeys';
@@ -13,28 +14,11 @@ export function generateDropForeignKey(
   const fk = fkDiff.foreignKey;
   const constraintName = formatSqlIdentifier(fk.name, dbType);
 
-  switch (dbType) {
-    case 'mysql':
-    case 'mariadb':
-    case 'tidb':
-    case 'oceanbase':
-      return `ALTER TABLE ${tableName} DROP FOREIGN KEY ${constraintName};`;
-    case 'postgresql':
-    case 'postgresql-citus':
-    case 'sqlserver':
-    case 'oracle':
-    case 'oceanbase-oracle':
-    case 'dm':
-      return `ALTER TABLE ${tableName} DROP CONSTRAINT ${constraintName};`;
-    case 'kingbase':
-    case 'gaussdb':
-      return `ALTER TABLE ${tableName} DROP CONSTRAINT ${constraintName};`;
-    case 'gbase':
-    case 'polardb':
-      return `ALTER TABLE ${tableName} DROP FOREIGN KEY ${constraintName};`;
-    default:
-      return `ALTER TABLE ${tableName} DROP CONSTRAINT ${constraintName};`;
+  // 只有 MySQL 系用 DROP FOREIGN KEY 语法，其余方言（含派生系）统一 DROP CONSTRAINT
+  if (getDatabaseFamily(dbType) === 'mysql') {
+    return `ALTER TABLE ${tableName} DROP FOREIGN KEY ${constraintName};`;
   }
+  return `ALTER TABLE ${tableName} DROP CONSTRAINT ${constraintName};`;
 }
 
 export function generateAddForeignKey(

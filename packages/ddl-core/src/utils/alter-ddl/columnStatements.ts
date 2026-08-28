@@ -1,5 +1,6 @@
 import type { NormalizedField, DatabaseType } from '@ddlbuilder/shared-types';
 import type { FieldDiff } from '../tableDiff';
+import { getDatabaseFamily } from '../databaseFamily';
 import {
   escapeSingleQuotes,
   getFieldTypeForDatabase,
@@ -9,7 +10,6 @@ import { buildDialectColumn } from '../../strategies/dialectColumn';
 import { formatSqlIdentifier, unquoteSqlIdentifier } from '../sqlIdentifiers';
 import { buildDefaultClause } from './defaultClause';
 import { buildColumnComment } from '../../strategies/dialectComments';
-import { getDatabaseFamily } from '../databaseFamily';
 import {
   generateSqlServerDropDefault,
   generateSqlServerModifyColumn,
@@ -68,25 +68,11 @@ export function generateRenameColumn(
     return '';
   }
 
-  switch (dbType) {
-    case 'mysql':
-    case 'mariadb':
-    case 'tidb':
-    case 'oceanbase':
-      // MySQL 8.0+ 支持 RENAME COLUMN，旧版本需要 CHANGE COLUMN
-      return `ALTER TABLE ${tableName} RENAME COLUMN ${oldName} TO ${newName};`;
-    case 'postgresql':
-    case 'postgresql-citus':
-      return `ALTER TABLE ${tableName} RENAME COLUMN ${oldName} TO ${newName};`;
-    case 'sqlserver':
-      return `EXEC sp_rename '${escapeSingleQuotes(`${tableName}.${oldName}`)}', '${escapeSingleQuotes(unquoteSqlIdentifier(newName))}', 'COLUMN';`;
-    case 'oracle':
-    case 'oceanbase-oracle':
-    case 'dm':
-      return `ALTER TABLE ${tableName} RENAME COLUMN ${oldName} TO ${newName};`;
-    default:
-      return `ALTER TABLE ${tableName} RENAME COLUMN ${oldName} TO ${newName};`;
+  if (getDatabaseFamily(dbType) === 'sqlserver') {
+    return `EXEC sp_rename '${escapeSingleQuotes(`${tableName}.${oldName}`)}', '${escapeSingleQuotes(unquoteSqlIdentifier(newName))}', 'COLUMN';`;
   }
+  // MySQL 8.0+ 支持 RENAME COLUMN，旧版本需要 CHANGE COLUMN
+  return `ALTER TABLE ${tableName} RENAME COLUMN ${oldName} TO ${newName};`;
 }
 
 export function generateAddColumn(
