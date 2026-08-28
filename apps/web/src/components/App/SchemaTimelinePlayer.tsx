@@ -488,7 +488,7 @@ const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
   },
 );
 
-SchemaTimelinePlayer.displayName = 'SchemaTimelinePlayer';
+TimelinePlayerContent.displayName = 'TimelinePlayerContent';
 
 export const SchemaTimelinePlayer = (props: SchemaTimelinePlayerProps) => (
   <TimelinePlayerContent
