@@ -1,5 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
-import { setupHydratedState } from '../utils';
+import { test, expect, type Page, type Route } from '@playwright/test';
+import { setupHydratedState, ensureBuilderVisible } from '../utils';
 
 test.describe('核心 UI 交互功能测试 @core', () => {
   test.beforeEach(async ({ page }) => {
@@ -171,4 +171,17 @@ test.describe('核心 UI 交互功能测试 @core', () => {
     await expandButton.click();
     await expect(outputPanel).toBeVisible();
   });
+});
+
+test('编辑器测试页面不依赖外部字体和统计服务完成加载', async ({ page }) => {
+  const pending: Route[] = [];
+  await page.route(/^https:\/\//, (route) => {
+    pending.push(route);
+  });
+  try {
+    await page.goto('/');
+    await ensureBuilderVisible(page);
+  } finally {
+    await Promise.all(pending.map((route) => route.abort()));
+  }
 });
