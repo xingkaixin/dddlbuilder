@@ -216,6 +216,11 @@ describe('savedTablesDb', () => {
     };
     const createStore = () => ({
       createIndex: vi.fn(),
+      openCursor: () => {
+        const cursorRequest = { result: null, onsuccess: null as null | (() => void) };
+        queueMicrotask(() => cursorRequest.onsuccess?.());
+        return cursorRequest;
+      },
     });
 
     const db = {
@@ -230,7 +235,7 @@ describe('savedTablesDb', () => {
       error: unknown;
       onsuccess: null | (() => void);
       onerror: null | (() => void);
-      onupgradeneeded: null | (() => void);
+      onupgradeneeded: null | ((event: IDBVersionChangeEvent) => void);
       transaction: { objectStore: (storeName: string) => unknown };
     } = {
       result: db,
@@ -239,7 +244,7 @@ describe('savedTablesDb', () => {
       onerror: null,
       onupgradeneeded: null,
       transaction: {
-        objectStore: () => tableStore,
+        objectStore: (storeName) => (storeName === STORE_NAME ? tableStore : createStore()),
       },
     };
 

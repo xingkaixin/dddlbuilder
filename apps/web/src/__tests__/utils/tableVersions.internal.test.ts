@@ -1,11 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-type Behavior =
-  | 'get_request_error_null'
-  | 'get_tx_error_null'
-  | 'list_result_undefined'
-  | 'list_rows_missing'
-  | 'idle';
+type Behavior = 'get_request_error_null' | 'get_tx_error_null' | 'list_rows_missing' | 'idle';
 
 const mocks = vi.hoisted(() => ({
   behavior: 'idle' as Behavior,
@@ -57,8 +52,6 @@ const mocks = vi.hoisted(() => ({
                   state: { dbType: 'mysql' },
                 },
               ];
-            } else if (mocks.behavior === 'list_result_undefined') {
-              req.result = undefined;
             } else {
               req.result = [];
             }
@@ -108,8 +101,8 @@ describe('tableVersions internal branches', () => {
     await expect(getVersion('v1', target)).rejects.toThrow('IndexedDB 事务失败');
   });
 
-  it('should fallback listVersions result to empty array', async () => {
-    mocks.behavior = 'list_result_undefined';
+  it('returns an empty list when the table has no versions', async () => {
+    mocks.behavior = 'idle';
     await expect(listVersions(target)).resolves.toEqual([]);
   });
 });
