@@ -4,6 +4,7 @@ import { SqlParser } from '@ddlbuilder/ddl-core/parser';
 import type { ApiEnv } from '../lib/context.js';
 import {
   errorResponse,
+  getRequestId,
   parseJsonBodyWithLimit,
   withMeta,
   type JsonBodyResult,
@@ -100,6 +101,18 @@ export function registerParseSqlRoute(app: Hono<ApiEnv>) {
     try {
       const parser = new SqlParser();
       const { results, failed } = await parser.parseMultiAsync(sql, dbType);
+      if (results.length === 0 && failed.length > 0) {
+        return c.json(
+          {
+            results,
+            failed,
+            error: 'SQL parse failed',
+            code: 'SQL_PARSE_FAILED',
+            requestId: getRequestId(c),
+          },
+          400,
+        );
+      }
 
       return c.json(withMeta(c, { results, failed }));
     } catch (error) {

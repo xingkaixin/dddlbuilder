@@ -90,6 +90,30 @@ describe('parse-multi-sql route', () => {
     expect(payload.results).toHaveLength(2);
   });
 
+  it('部分 SQL 语法错误时保留成功结果和失败原语句', async () => {
+    const response = await app.fetch(
+      createRequest('/api/parse-multi-sql', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          sql: 'CREATE TABLE users (id INT); CREATE TABLE broken (id INT, missing);',
+          dbType: 'mysql',
+        }),
+      }),
+      createEnv(),
+    );
+
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.results).toEqual([expect.objectContaining({ tableName: 'users' })]);
+    expect(payload.failed).toEqual([
+      expect.objectContaining({
+        statement: expect.stringContaining('CREATE TABLE broken'),
+        error: expect.any(String),
+      }),
+    ]);
+  });
+
   it('SQL 语法错误时应返回 SQL_PARSE_FAILED', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -103,8 +127,8 @@ describe('parse-multi-sql route', () => {
       env,
     );
 
-    expect(response.status).toBe(400);
     const payload = await response.json();
+    expect(response.status).toBe(400);
     expect(payload).toMatchObject({
       error: 'SQL parse failed',
       code: 'SQL_PARSE_FAILED',
