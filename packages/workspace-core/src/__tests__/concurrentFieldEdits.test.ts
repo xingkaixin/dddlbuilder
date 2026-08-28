@@ -56,6 +56,22 @@ const forkPeers = (initial: PersistedState) => {
 };
 
 describe('并发字段编辑', () => {
+  it('keeps inserted field properties when a concurrent deletion changes its position', () => {
+    const id = row('id', 'id', { fieldType: 'int', nullable: false });
+    const name = row('name', 'name', { fieldType: 'varchar', nullable: true });
+    const inserted = row('x', 'x', { fieldType: 'varchar', nullable: true });
+    const { tableA, tableB, converge } = forkPeers(state([id, name]));
+    applySchemaDocumentStateToTableDoc(tableA, state([id, inserted, name]), {
+      compactSnapshotBase: true,
+    });
+    applySchemaDocumentStateToTableDoc(tableB, state([name]), { compactSnapshotBase: true });
+    const [merged, peer] = converge();
+    expect(merged.rows).toMatchObject([
+      { id: 'x', fieldType: 'varchar', nullable: true },
+      { id: 'name', fieldType: 'varchar', nullable: true },
+    ]);
+    expect(peer).toEqual(merged);
+  });
   const ID = row('f-id', 'id');
   const NAME = row('f-name', 'name');
   const AGE = row('f-age', 'age');

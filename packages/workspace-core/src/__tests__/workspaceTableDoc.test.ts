@@ -215,7 +215,7 @@ describe('workspace table doc', () => {
   it('fills missing field values from the matching snapshot row', () => {
     const enumMeta = [{ value: 'a', color: '#fff' }];
     const clientState = createClientState({
-      rows: [{ ...createClientState().rows[0], enumMeta }],
+      rows: [{ ...createClientState().rows[0], id: 'field-1', enumMeta }],
     });
     const tableDoc = createLegacyTableDoc(clientState);
     const fields = new Y.Map<Y.Map<unknown>>();

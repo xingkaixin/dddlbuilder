@@ -81,10 +81,8 @@ const hasRemovedKey = <T>(previous: T | undefined, next: T, keys: readonly (keyo
 
 const hasRemovedStateKey = (previous: SchemaDocumentState, next: SchemaDocumentState) => {
   if (hasRemovedKey(previous, next, TABLE_SCALAR_KEYS)) return true;
-  const previousRows = previous.rows ?? [];
-  return (next.rows ?? []).some((row, index) =>
-    hasRemovedKey(previousRows[index], row, FIELD_KEYS),
-  );
+  const previousRows = new Map((previous.rows ?? []).map((row) => [row.id, row]));
+  return (next.rows ?? []).some((row) => hasRemovedKey(previousRows.get(row.id), row, FIELD_KEYS));
 };
 
 const readStateSnapshot = (tableDoc: Y.Map<unknown>): SchemaDocumentState | null => {
@@ -126,18 +124,18 @@ const readFieldRow = (
   fieldMap: Y.Map<unknown>,
   fallbackRow?: FieldRow,
 ): FieldRow => {
-  const row: JsonRecord = readJsonMap(fieldMap);
-  const fallback: JsonRecord = (fallbackRow ?? {}) as unknown as JsonRecord;
-  const text = (key: string) =>
-    [row[key], fallback[key]].find((value) => typeof value === 'string');
+  const row = readJsonMap(fieldMap);
+  const fallback = (fallbackRow ?? {}) as unknown as JsonRecord;
+  const candidates = (key: string) => (row[key] === null ? [] : [row[key], fallback[key]]);
+  const text = (key: string) => candidates(key).find((value) => typeof value === 'string');
   // nullable 迁移前存中文字符串、迁移后存布尔，两种都算合法值，其余类型继续回落
-  const nullable = [row.nullable, fallback.nullable].find(
+  const nullable = candidates('nullable').find(
     (value) => typeof value === 'boolean' || typeof value === 'string',
   );
   const defaultKind = text('defaultKind');
   const defaultValue = text('defaultValue');
   const onUpdate = text('onUpdate');
-  const enumMeta = [row.enumMeta, fallback.enumMeta].find((value) => Array.isArray(value));
+  const enumMeta = candidates('enumMeta').find((value) => Array.isArray(value));
 
   return {
     id: fieldId,
@@ -215,21 +213,25 @@ export const applySchemaDocumentStateToTableDoc = (
   }
 
   const snapshotRows = previousSnapshot?.rows ?? [];
+  const snapshotRowsById = new Map(snapshotRows.map((row) => [row.id, row]));
   if (
     writeAllKeys ||
     hasFieldDoc(tableDoc) ||
     stableStringify(snapshotRows) !== stableStringify(nextRows)
   ) {
     const existingFields = getFields(tableDoc);
-    const fieldPatches = nextRows.map((row, index) =>
-      buildPatch(
-        existingFields?.get(fieldIds[index]),
+    const fieldPatches = nextRows.map((row, index) => {
+      const field = existingFields?.get(fieldIds[index]);
+      const patch = buildPatch(
+        field,
         FIELD_KEYS,
         row,
-        snapshotRows[index],
-        writeAllKeys,
-      ),
-    );
+        snapshotRowsById.get(fieldIds[index]),
+        writeAllKeys || FIELD_KEYS.some((key) => !field?.has(key)),
+      );
+      // null 是显式清除，缺键仅供旧稀疏文档按字段身份读取快照。
+      return Object.fromEntries(Object.entries(patch).map(([key, value]) => [key, value ?? null]));
+    });
     const fields = ensureMap(tableDoc, 'fields');
     const activeFieldIds = new Set(fieldIds);
     for (const fieldId of Array.from(fields.keys())) {
@@ -290,6 +292,7 @@ export const normalizeSchemaDocumentState = (
 
 export const tableDocToSchemaDocumentState = (tableDoc: Y.Map<unknown>): SchemaDocumentState => {
   const stateSnapshot = readStateSnapshot(tableDoc);
+  const snapshotRowsById = new Map((stateSnapshot?.rows ?? []).map((row) => [row.id, row]));
   const state = {
     ...stateSnapshot,
     ...Object.fromEntries(
@@ -303,9 +306,9 @@ export const tableDocToSchemaDocumentState = (tableDoc: Y.Map<unknown>): SchemaD
     ? (stateSnapshot?.rows ?? [])
     : fields
       ? getFieldOrder(tableDoc)
-          .map((fieldId, index) => {
+          .map((fieldId) => {
             const fieldMap = fields.get(fieldId);
-            return fieldMap ? readFieldRow(fieldId, fieldMap, stateSnapshot?.rows[index]) : null;
+            return fieldMap ? readFieldRow(fieldId, fieldMap, snapshotRowsById.get(fieldId)) : null;
           })
           .filter((row): row is FieldRow => row != null)
       : [];

@@ -245,7 +245,9 @@ describe('workspace YDoc codec', () => {
   it('reads legacy snapshots and falls back to them for malformed fine-grained values', () => {
     const doc = new Y.Doc();
     const legacy = new Y.Map<unknown>();
-    legacy.set('stateSnapshot', createState('legacy'));
+    const snapshot = createState('legacy');
+    snapshot.rows[0].id = 'field-1';
+    legacy.set('stateSnapshot', snapshot);
     legacy.set('metadata', new Y.Map());
     doc.getMap<Y.Map<unknown>>('drafts').set('legacy', legacy);
 
