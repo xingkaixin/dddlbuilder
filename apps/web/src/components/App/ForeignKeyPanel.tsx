@@ -7,11 +7,27 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useEditorStore } from '@/stores';
 import type { ForeignKeyAction } from '@ddlbuilder/shared-types';
 import { useTranslation } from 'react-i18next';
-import { getForeignKeyActions, getForeignKeyIssue } from '@ddlbuilder/ddl-core';
+import {
+  buildIndexName,
+  getIdentifierNameMaxLength,
+  getForeignKeyActions,
+  getForeignKeyIssue,
+} from '@ddlbuilder/ddl-core';
 
 interface ForeignKeyPanelProps {
   availableFields: string[];
 }
+
+type ForeignKeyDraft = {
+  name: string;
+  fields: string[];
+  refSchema: string;
+  refTable: string;
+  refFields: string[];
+  refFieldInput: string;
+  onDelete?: ForeignKeyAction;
+  onUpdate?: ForeignKeyAction;
+};
 
 export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) => {
   const { t } = useTranslation();
@@ -22,29 +38,27 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
   const removeForeignKey = useEditorStore((state) => state.removeForeignKey);
   const updateForeignKey = useEditorStore((state) => state.updateForeignKey);
 
-  const [isAdding, setIsAdding] = useState(false);
+  const [draft, setDraft] = useState<ForeignKeyDraft | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const editInputRef = useRef<HTMLInputElement>(null);
 
-  // Add form state
-  const [newFkName, setNewFkName] = useState('');
-  const [selectedFields, setSelectedFields] = useState<string[]>([]);
-  const [refSchema, setRefSchema] = useState('');
-  const [refTable, setRefTable] = useState('');
-  const [refFields, setRefFields] = useState<string[]>([]);
-  const [onDelete, setOnDelete] = useState<ForeignKeyAction | undefined>(undefined);
-  const [onUpdate, setOnUpdate] = useState<ForeignKeyAction | undefined>(undefined);
   const deleteActions = getForeignKeyActions(dbType, 'onDelete');
   const updateActions = getForeignKeyActions(dbType, 'onUpdate');
-  const pendingForeignKey = {
-    fields: selectedFields,
-    refTable: refTable.trim(),
-    refFields,
-    onDelete,
-    onUpdate,
+  const pendingForeignKey = draft && {
+    fields: draft.fields,
+    refTable: draft.refTable.trim(),
+    refFields: [...new Set([...draft.refFields, draft.refFieldInput.trim()].filter(Boolean))],
+    onDelete: draft.onDelete,
+    onUpdate: draft.onUpdate,
   };
-  const pendingIssue = getForeignKeyIssue(pendingForeignKey, dbType);
+  const pendingIssue = pendingForeignKey && getForeignKeyIssue(pendingForeignKey, dbType);
+  const updateDraft = (patch: Partial<ForeignKeyDraft>) =>
+    setDraft((current) => current && { ...current, ...patch });
+  const commitRefField = () => {
+    if (pendingForeignKey)
+      updateDraft({ refFields: pendingForeignKey.refFields, refFieldInput: '' });
+  };
 
   useEffect(() => {
     if (editingId && editInputRef.current) {
@@ -72,48 +86,25 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
   };
 
   const handleToggleField = (field: string) => {
-    setSelectedFields((prev) =>
-      prev.includes(field) ? prev.filter((f) => f !== field) : [...prev, field],
-    );
-  };
-
-  const handleToggleRefField = (field: string) => {
-    setRefFields((prev) =>
-      prev.includes(field) ? prev.filter((f) => f !== field) : [...prev, field],
-    );
+    if (!draft) return;
+    updateDraft({
+      fields: draft.fields.includes(field)
+        ? draft.fields.filter((current) => current !== field)
+        : [...draft.fields, field],
+    });
   };
 
   const handleAdd = () => {
-    if (pendingIssue) return;
-
-    const name = newFkName.trim() || `fk_${tableName || 'table'}_${selectedFields.join('_')}`;
-
+    if (!draft || !pendingForeignKey || pendingIssue) return;
+    const name =
+      draft.name.trim() ||
+      buildIndexName('fk', tableName || 'table', draft.fields, getIdentifierNameMaxLength(dbType));
     addForeignKey({
       ...pendingForeignKey,
       name,
-      refSchema: refSchema.trim() || undefined,
+      refSchema: draft.refSchema.trim() || undefined,
     });
-
-    // Reset form
-    setNewFkName('');
-    setSelectedFields([]);
-    setRefSchema('');
-    setRefTable('');
-    setRefFields([]);
-    setOnDelete(undefined);
-    setOnUpdate(undefined);
-    setIsAdding(false);
-  };
-
-  const handleCancelAdd = () => {
-    setIsAdding(false);
-    setNewFkName('');
-    setSelectedFields([]);
-    setRefSchema('');
-    setRefTable('');
-    setRefFields([]);
-    setOnDelete(undefined);
-    setOnUpdate(undefined);
+    setDraft(null);
   };
 
   return (
@@ -124,12 +115,21 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
       <div className="relative p-4">
         <div className="space-y-3">
           {/* Add button */}
-          {!isAdding && (
+          {!draft && (
             <Button
               size="sm"
               variant="outline"
               className="h-7 gap-1.5 px-2 text-xs font-medium transition-all duration-200 hover:scale-105 hover:shadow-md"
-              onClick={() => setIsAdding(true)}
+              onClick={() =>
+                setDraft({
+                  name: '',
+                  fields: [],
+                  refSchema: '',
+                  refTable: '',
+                  refFields: [],
+                  refFieldInput: '',
+                })
+              }
             >
               <Plus className="h-3.5 w-3.5" />
               {t('foreignKeyPanel.add')}
@@ -137,7 +137,7 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
           )}
 
           {/* Add form */}
-          {isAdding && (
+          {draft && (
             <div className="space-y-4 rounded-xl border bg-muted/40 p-4">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
@@ -146,8 +146,8 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                   </label>
                   <Input
                     placeholder={t('foreignKeyPanel.namePlaceholder')}
-                    value={newFkName}
-                    onChange={(e) => setNewFkName(e.target.value)}
+                    value={draft.name}
+                    onChange={(e) => updateDraft({ name: e.target.value })}
                     className="h-8 text-sm"
                   />
                 </div>
@@ -157,8 +157,8 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                   </label>
                   <Input
                     placeholder={t('foreignKeyPanel.refSchemaPlaceholder')}
-                    value={refSchema}
-                    onChange={(e) => setRefSchema(e.target.value)}
+                    value={draft.refSchema}
+                    onChange={(e) => updateDraft({ refSchema: e.target.value })}
                     className="h-8 text-sm"
                   />
                 </div>
@@ -170,8 +170,8 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                 </label>
                 <Input
                   placeholder={t('foreignKeyPanel.refTablePlaceholder')}
-                  value={refTable}
-                  onChange={(e) => setRefTable(e.target.value)}
+                  value={draft.refTable}
+                  onChange={(e) => updateDraft({ refTable: e.target.value })}
                   className="h-8 text-sm"
                 />
               </div>
@@ -190,7 +190,7 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                         onClick={() => handleToggleField(field)}
                         className={cn(
                           'rounded-md border px-2.5 py-1 text-xs transition-all duration-200',
-                          selectedFields.includes(field)
+                          draft.fields.includes(field)
                             ? 'border-primary bg-primary/10 text-primary font-medium'
                             : 'border-border bg-background text-muted-foreground hover:bg-muted',
                         )}
@@ -210,7 +210,7 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                   {t('foreignKeyPanel.refFields')} *
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {refFields.map((field) => (
+                  {draft.refFields.map((field) => (
                     <span
                       key={field}
                       className="inline-flex items-center gap-1 rounded-md border border-primary bg-primary/10 px-2 py-1 text-xs font-medium text-primary"
@@ -218,7 +218,11 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                       {field}
                       <button
                         type="button"
-                        onClick={() => handleToggleRefField(field)}
+                        onClick={() =>
+                          updateDraft({
+                            refFields: draft.refFields.filter((current) => current !== field),
+                          })
+                        }
                         className="rounded-full p-0.5 hover:bg-primary/20"
                       >
                         <X className="h-3 w-3" />
@@ -228,14 +232,13 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                   <Input
                     placeholder={t('foreignKeyPanel.refFieldPlaceholder')}
                     className="h-7 w-32 text-xs"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        const value = e.currentTarget.value.trim();
-                        if (value && !refFields.includes(value)) {
-                          setRefFields((prev) => [...prev, value]);
-                          e.currentTarget.value = '';
-                        }
+                    value={draft.refFieldInput}
+                    onChange={(event) => updateDraft({ refFieldInput: event.target.value })}
+                    onBlur={commitRefField}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        commitRefField();
                       }
                     }}
                   />
@@ -253,14 +256,16 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                   </label>
                   <select
                     id="foreign-key-on-delete"
-                    value={onDelete || ''}
-                    onChange={(e) => setOnDelete((e.target.value as ForeignKeyAction) || undefined)}
+                    value={draft.onDelete || ''}
+                    onChange={(e) =>
+                      updateDraft({ onDelete: (e.target.value as ForeignKeyAction) || undefined })
+                    }
                     className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
                   >
                     <option value="">{t('foreignKeyPanel.noAction')}</option>
-                    {onDelete && !deleteActions.includes(onDelete) && (
-                      <option value={onDelete} disabled>
-                        {t('foreignKeyPanel.unsupportedAction', { action: onDelete })}
+                    {draft.onDelete && !deleteActions.includes(draft.onDelete) && (
+                      <option value={draft.onDelete} disabled>
+                        {t('foreignKeyPanel.unsupportedAction', { action: draft.onDelete })}
                       </option>
                     )}
                     {deleteActions.map((action) => (
@@ -279,14 +284,16 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                   </label>
                   <select
                     id="foreign-key-on-update"
-                    value={onUpdate || ''}
-                    onChange={(e) => setOnUpdate((e.target.value as ForeignKeyAction) || undefined)}
+                    value={draft.onUpdate || ''}
+                    onChange={(e) =>
+                      updateDraft({ onUpdate: (e.target.value as ForeignKeyAction) || undefined })
+                    }
                     className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
                   >
                     <option value="">{t('foreignKeyPanel.noAction')}</option>
-                    {onUpdate && !updateActions.includes(onUpdate) && (
-                      <option value={onUpdate} disabled>
-                        {t('foreignKeyPanel.unsupportedAction', { action: onUpdate })}
+                    {draft.onUpdate && !updateActions.includes(draft.onUpdate) && (
+                      <option value={draft.onUpdate} disabled>
+                        {t('foreignKeyPanel.unsupportedAction', { action: draft.onUpdate })}
                       </option>
                     )}
                     {updateActions.map((action) => (
@@ -300,7 +307,7 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
 
               {pendingIssue &&
                 (pendingIssue.kind === 'actions' ||
-                  (selectedFields.length > 0 && refFields.length > 0)) && (
+                  (draft.fields.length > 0 && draft.refFields.length > 0)) && (
                   <p role="alert" className="text-xs text-destructive">
                     {t(`foreignKeyPanel.issues.${pendingIssue.kind}`)}
                   </p>
@@ -316,7 +323,12 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
                 >
                   {t('foreignKeyPanel.confirmAdd')}
                 </Button>
-                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={handleCancelAdd}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs"
+                  onClick={() => setDraft(null)}
+                >
                   {t('foreignKeyPanel.cancel')}
                 </Button>
               </div>
@@ -433,7 +445,7 @@ export const ForeignKeyPanel = memo<ForeignKeyPanelProps>(({ availableFields }) 
             </div>
           )}
 
-          {foreignKeys.length === 0 && !isAdding && (
+          {foreignKeys.length === 0 && !draft && (
             <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
               {t('foreignKeyPanel.empty')}
             </div>

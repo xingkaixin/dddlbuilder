@@ -8,6 +8,22 @@ describe('ForeignKeyPanel dialect actions', () => {
     useEditorStore.setState({ dbType: 'oracle', tableName: 'orders', foreignKeys: [] });
   });
 
+  it('includes the pending reference field when confirming and bounds generated names', () => {
+    useEditorStore.setState({ tableName: 'orders_with_a_very_long_table_name' });
+    render(<ForeignKeyPanel availableFields={['user_id']} />);
+    fireEvent.click(screen.getByRole('button', { name: '添加外键' }));
+    fireEvent.click(screen.getByRole('button', { name: 'user_id' }));
+    fireEvent.change(screen.getByPlaceholderText('例如: users'), { target: { value: 'users' } });
+    fireEvent.change(screen.getByPlaceholderText('输入字段名，回车添加'), {
+      target: { value: 'id' },
+    });
+    const confirm = screen.getByRole('button', { name: '确认添加' });
+    expect(confirm).toBeEnabled();
+    fireEvent.click(confirm);
+    expect(useEditorStore.getState().foreignKeys[0].refFields).toEqual(['id']);
+    expect(useEditorStore.getState().foreignKeys[0].name.length).toBeLessThanOrEqual(30);
+  });
+
   it('requires matching field counts before adding a composite foreign key', () => {
     render(<ForeignKeyPanel availableFields={['tenant_id', 'user_id']} />);
     fireEvent.click(screen.getByRole('button', { name: '添加外键' }));

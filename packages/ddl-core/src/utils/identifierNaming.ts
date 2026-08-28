@@ -35,7 +35,7 @@ export const truncateIdentifierName = (
 };
 
 export const buildIndexName = (
-  prefix: 'idx' | 'uk' | 'pk',
+  prefix: 'idx' | 'uk' | 'pk' | 'fk',
   tableName: string,
   fieldNames: string[],
   maxLength: number = DEFAULT_IDENTIFIER_NAME_MAX_LENGTH,
