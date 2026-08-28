@@ -46,3 +46,5 @@ WebMCP 把 DDLBuilder 的领域操作声明为结构化工具。Agent 不需要�
 - 返回 `CONFLICT`：当前结构在预览后发生变化，重新读取结构并生成新的预览。
 - 分享页面无法修改：只读分享页只允许读取和检查，不允许应用结构变更。
 - WebMCP 不是后台接口：无头或云端 Agent 若没有当前浏览器标签页，应使用带授权的后端 MCP，而不是依赖 WebMCP。
+
+索引数据使用 `kind` 表达类型：`index`（普通索引）、`unique_index`（唯一索引）、`unique_constraint`（唯一约束）、`primary`（主键）。工具输出和新写入应使用 `kind`；旧保存数据中的 `unique`、`isPrimary`、`isUniqueConstraint` 会在读取时兼容转换。

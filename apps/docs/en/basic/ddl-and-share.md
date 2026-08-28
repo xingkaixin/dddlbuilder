@@ -35,3 +35,9 @@ You can make clear what to copy and what others can do after sharing, avoiding w
 - Copying only DDL but not DCL may lead to table creation without synchronized privilege grants.
 - Share links expire. Regenerate links again for critical review windows.
 - ORM model code is generated from current field structure snapshot; field changes require re-copying, not automatically synced to business projects.
+
+## Database versions and object scope
+
+- Oracle table DDL no longer creates a `PUBLIC SYNONYM` automatically. If your application needs a synonym, have an administrator with the required privileges create it separately. A public synonym name has no schema qualifier; its target table may have one.
+- Constant defaults for MySQL TEXT, BLOB, JSON and related types use expression syntax, such as `DEFAULT ('{}')`, which requires MySQL 8.0.13 or later. Remove these defaults on older versions and verify support on compatible databases against the version you deploy.
+- MySQL family strings are generated with backslash escaping enabled. Check string semantics before executing them in a session with `NO_BACKSLASH_ESCAPES`.

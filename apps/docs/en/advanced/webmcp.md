@@ -45,3 +45,5 @@ WebMCP exposes DDLBuilder domain operations as structured tools. The agent can w
 - `CONFLICT`: inspect the active schema again and create a new preview.
 - Read-only share: inspection and linting work, while schema writes are rejected.
 - Headless or cloud agent: use an authorized backend MCP because WebMCP requires the live browser tab.
+
+Index data uses `kind`: `index`, `unique_index`, `unique_constraint`, or `primary`. Tool output and new writes use `kind`. Legacy saved data containing `unique`, `isPrimary`, and `isUniqueConstraint` is converted when read.

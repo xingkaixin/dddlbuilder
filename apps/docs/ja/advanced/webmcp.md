@@ -45,3 +45,5 @@ WebMCP は DDLBuilder の操作を構造化ツールとして公開します。A
 - `CONFLICT`：現在のスキーマを再取得し、新しいプレビューを作成します。
 - 読み取り専用共有：確認とチェックは可能ですが、書き込みは拒否されます。
 - ヘッドレスまたはクラウド Agent：WebMCP ではなく、認可済みのバックエンド MCP を使用します。
+
+インデックスの種類は `kind` で表します。値は `index`、`unique_index`、`unique_constraint`、`primary` です。ツール出力と新しい書き込みには `kind` を使用します。旧保存データの `unique`、`isPrimary`、`isUniqueConstraint` は読み込み時に変換されます。
