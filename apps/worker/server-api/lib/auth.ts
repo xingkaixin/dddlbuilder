@@ -11,6 +11,34 @@ export type AuthenticatedAppUser = {
   name: string;
 };
 
+export const readSessionAccess = async (
+  env: ApiEnv['Bindings'],
+  userId: string,
+  workspaceId: string | null = null,
+) => {
+  const { results } = await env.USER_DB.prepare(`
+    SELECT s.id, f.user_id AS disabled
+    FROM user u
+    LEFT JOIN session s ON s.user_id = u.id AND s.expires_at > ?
+    LEFT JOIN admin_user_flags f ON f.user_id = u.id
+    WHERE u.id = ? AND (? IS NULL OR EXISTS (
+      SELECT 1 FROM workspaces w WHERE w.id = ? AND w.user_id = u.id
+    ))
+  `)
+    .bind(Date.now(), userId, workspaceId, workspaceId)
+    .all<{ id: string | null; disabled: string | null }>();
+  const disabled = results.some((row) => row.disabled != null);
+  return {
+    disabled,
+    sessionIds: new Set(disabled ? [] : results.flatMap((row) => (row.id ? [row.id] : []))),
+  };
+};
+
+export const revokeUserSessions = async (env: ApiEnv['Bindings'], userId: string) => {
+  const context = await createBetterAuth(env).$context;
+  await context.internalAdapter.deleteUserSessions(userId);
+};
+
 export const resolveAuthenticatedUser = async (
   env: ApiEnv['Bindings'],
   headers: Headers,
@@ -34,13 +62,9 @@ export const resolveAuthenticatedUser = async (
     return null;
   }
 
-  const flags = await env.USER_DB.prepare('SELECT user_id FROM admin_user_flags WHERE user_id = ?')
-    .bind(session.user.id)
-    .first();
-
-  if (flags) {
-    throw new DomainError(403, 'USER_DISABLED', 'USER_DISABLED');
-  }
+  const access = await readSessionAccess(env, session.user.id);
+  if (access.disabled) throw new DomainError(403, 'USER_DISABLED', 'USER_DISABLED');
+  if (!access.sessionIds.has(session.session.id)) return null;
 
   return {
     userId: session.user.id,

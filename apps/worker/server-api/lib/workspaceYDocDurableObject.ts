@@ -1,3 +1,4 @@
+import { readSessionAccess } from './auth.js';
 import * as Y from 'yjs';
 import * as syncProtocol from 'y-protocols/sync';
 import * as decoding from 'lib0/decoding';
@@ -399,15 +400,11 @@ export class WorkspaceYDocDurableObject {
     if (this.authCache && this.authCache.key === key && this.authCache.expiresAt > now) {
       return this.authCache.sessionIds;
     }
-    const { results } = await this.env.USER_DB.prepare(
-      `SELECT s.id FROM session s
-       JOIN workspaces w ON w.user_id = s.user_id
-       WHERE w.id = ? AND s.user_id = ? AND s.expires_at > ?
-         AND NOT EXISTS (SELECT 1 FROM admin_user_flags f WHERE f.user_id = s.user_id)`,
-    )
-      .bind(this.workspaceId ?? null, this.userId ?? null, now)
-      .all<{ id: string }>();
-    const sessionIds = new Set(results.map(({ id }) => id));
+    const { sessionIds } = await readSessionAccess(
+      this.env,
+      this.userId ?? '',
+      this.workspaceId ?? '',
+    );
     this.authCache = { key, sessionIds, expiresAt: now + AUTH_CACHE_TTL_MS };
     return sessionIds;
   }

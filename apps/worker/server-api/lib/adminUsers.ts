@@ -129,14 +129,12 @@ export const disableAdminUser = async (
   userId: string,
   reason?: string,
 ): Promise<void> => {
-  await db.batch([
-    db
-      .prepare(
-        'INSERT OR IGNORE INTO admin_user_flags (user_id, disabled_at, disabled_reason) VALUES (?, ?, ?)',
-      )
-      .bind(userId, Date.now(), reason ?? null),
-    db.prepare('DELETE FROM session WHERE user_id = ?').bind(userId),
-  ]);
+  await db
+    .prepare(
+      'INSERT OR IGNORE INTO admin_user_flags (user_id, disabled_at, disabled_reason) VALUES (?, ?, ?)',
+    )
+    .bind(userId, Date.now(), reason ?? null)
+    .run();
 };
 
 export const enableAdminUser = async (db: D1Database, userId: string): Promise<void> => {
@@ -148,20 +146,10 @@ export const setAdminUserEmailVerification = async (
   userId: string,
   verified: boolean,
 ): Promise<void> => {
-  const updatedAt = Date.now();
-  if (verified) {
-    await db
-      .prepare('UPDATE user SET email_verified = 1, updated_at = ? WHERE id = ?')
-      .bind(updatedAt, userId)
-      .run();
-    return;
-  }
-  await db.batch([
-    db
-      .prepare('UPDATE user SET email_verified = 0, updated_at = ? WHERE id = ?')
-      .bind(updatedAt, userId),
-    db.prepare('DELETE FROM session WHERE user_id = ?').bind(userId),
-  ]);
+  await db
+    .prepare('UPDATE user SET email_verified = ?, updated_at = ? WHERE id = ?')
+    .bind(verified ? 1 : 0, Date.now(), userId)
+    .run();
 };
 
 export const listAdminUsageEvents = async (

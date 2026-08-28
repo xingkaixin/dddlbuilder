@@ -5,7 +5,7 @@ import { errorResponse, withMeta, parseJsonBodyWithLimit } from '../lib/http.js'
 import { createBetterAuth } from '../lib/betterAuth.js';
 import { applyCreditMutation, listCreditLedger } from '../lib/credits.js';
 import { enforceIpRateLimit } from '../lib/requestRateLimit.js';
-import { kickWorkspaceSockets } from '../lib/sessionRevocation.js';
+import { revokeUserSessions } from '../lib/auth.js';
 import {
   adminUserExists,
   disableAdminUser,
@@ -48,10 +48,11 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
     );
     if (limited) return limited;
 
-    const { data: body, errorResponse: err } = await parseJsonBodyWithLimit<{
+    const parsedBody = await parseJsonBodyWithLimit<{
       password?: string;
     }>(c, 1024);
-    if (err) return err;
+    if (!parsedBody.ok) return parsedBody.response;
+    const body = parsedBody.data;
 
     const password = typeof body.password === 'string' ? body.password.trim() : '';
     if (!password) {
@@ -120,19 +121,18 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
 
   app.post('/admin/users/:userId/disable', async (c) => {
     const userId = c.req.param('userId');
-    const { data: body, errorResponse: err } = await parseJsonBodyWithLimit<{
+    const parsedBody = await parseJsonBodyWithLimit<{
       reason?: string;
     }>(c, 1024);
-    if (err) return err;
+    if (!parsedBody.ok) return parsedBody.response;
+    const body = parsedBody.data;
 
     if (!(await adminUserExists(c.env.USER_DB, userId))) {
       return errorResponse(c, 404, 'User not found');
     }
 
     await disableAdminUser(c.env.USER_DB, userId, body.reason);
-    if (c.env.WORKSPACE_YDOC) {
-      c.executionCtx.waitUntil(kickWorkspaceSockets(c.env, { userId }));
-    }
+    await revokeUserSessions(c.env, userId);
 
     return c.json(withMeta(c, { ok: true }));
   });
@@ -146,10 +146,11 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
 
   app.post('/admin/users/:userId/email-verification', async (c) => {
     const userId = c.req.param('userId');
-    const { data: body, errorResponse: err } = await parseJsonBodyWithLimit<{
+    const parsedBody = await parseJsonBodyWithLimit<{
       verified?: boolean;
     }>(c, 1024);
-    if (err) return err;
+    if (!parsedBody.ok) return parsedBody.response;
+    const body = parsedBody.data;
 
     if (typeof body.verified !== 'boolean') {
       return errorResponse(c, 400, 'Verified flag must be a boolean');
@@ -160,9 +161,7 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
     }
 
     await setAdminUserEmailVerification(c.env.USER_DB, userId, body.verified);
-    if (!body.verified && c.env.WORKSPACE_YDOC) {
-      c.executionCtx.waitUntil(kickWorkspaceSockets(c.env, { userId }));
-    }
+    if (!body.verified) await revokeUserSessions(c.env, userId);
 
     return c.json(withMeta(c, { ok: true, emailVerified: body.verified }));
   });
@@ -171,11 +170,12 @@ export function registerAdminRoutes(app: Hono<ApiEnv>) {
 
   app.post('/admin/users/:userId/credits', async (c) => {
     const userId = c.req.param('userId');
-    const { data: body, errorResponse: err } = await parseJsonBodyWithLimit<{
+    const parsedBody = await parseJsonBodyWithLimit<{
       amount?: number;
       note?: string;
     }>(c, 1024);
-    if (err) return err;
+    if (!parsedBody.ok) return parsedBody.response;
+    const body = parsedBody.data;
 
     const amount = Number(body.amount);
     if (!Number.isSafeInteger(amount) || amount <= 0) {

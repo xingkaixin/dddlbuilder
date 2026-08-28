@@ -31,6 +31,11 @@ describe('authentication credit initialization', () => {
         'INSERT INTO user (id, name, email, email_verified, created_at, updated_at) VALUES (?, ?, ?, 1, 1, 1)',
       )
       .run('user-1', 'User One', 'user@example.com');
+    fixture.sqlite
+      .prepare(
+        'INSERT INTO session (id,token,user_id,expires_at,created_at,updated_at) VALUES (?, ?, ?, ?, 1, 1)',
+      )
+      .run('session-1', 'token', 'user-1', Date.now() + 60000);
     env = {
       USER_DB: fixture.database,
       BETTER_AUTH_SECRET: 'test-secret',

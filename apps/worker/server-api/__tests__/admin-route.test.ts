@@ -57,14 +57,27 @@ describe('/api/admin/*', () => {
     vi.resetModules();
     vi.clearAllMocks();
     requestRateLimitMocks.enforceIpRateLimit.mockResolvedValue(null);
+    vi.doMock('../lib/betterAuth.js', () => ({
+      createBetterAuth: () => ({
+        $context: Promise.resolve({
+          internalAdapter: { deleteUserSessions: vi.fn().mockResolvedValue(undefined) },
+        }),
+      }),
+    }));
   });
 
   it.each([
     ['disable', { reason: 'security' }],
     ['email-verification', { verified: false }],
-  ])('kicks workspace sockets when admin action %s revokes sessions', async (action, body) => {
+  ])('revokes sessions through better-auth for admin action %s', async (action, body) => {
     vi.doMock('../lib/adminAuth.js', () => ({
       resolveAdminSession: vi.fn().mockResolvedValue(true),
+    }));
+    const deleteUserSessions = vi.fn().mockResolvedValue(undefined);
+    vi.doMock('../lib/betterAuth.js', () => ({
+      createBetterAuth: () => ({
+        $context: Promise.resolve({ internalAdapter: { deleteUserSessions } }),
+      }),
     }));
     const fetchSocket = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
     const waitUntil = vi.fn();
@@ -86,12 +99,8 @@ describe('/api/admin/*', () => {
       { waitUntil, passThroughOnException() {} } as ExecutionContext,
     );
     await Promise.all(waitUntil.mock.calls.map(([task]) => task));
+    expect(deleteUserSessions).toHaveBeenCalledWith('user-1');
     expect(response.status).toBe(200);
-    expect(fetchSocket).toHaveBeenCalledWith(
-      'https://workspace-ydoc.internal/kick',
-      expect.objectContaining({ headers: { 'x-ddlbuilder-user-id': 'user-1' } }),
-    );
-    expect(waitUntil).toHaveBeenCalled();
   });
 
   // ─── Session management ──────────────────────────────────────────
@@ -681,7 +690,7 @@ describe('/api/admin/*', () => {
 
       expect(response.status).toBe(200);
       expect(await response.json()).toMatchObject({ ok: true });
-      expect(d1Mock.batch).toHaveBeenCalled();
+      expect(d1Mock.prepare).toHaveBeenCalled();
     });
 
     it('disables user without reason', async () => {
@@ -707,7 +716,7 @@ describe('/api/admin/*', () => {
 
       expect(response.status).toBe(200);
       expect(await response.json()).toMatchObject({ ok: true });
-      expect(d1Mock.batch).toHaveBeenCalled();
+      expect(d1Mock.prepare).toHaveBeenCalled();
     });
   });
 
@@ -852,7 +861,7 @@ describe('/api/admin/*', () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toMatchObject({ ok: true, emailVerified: true });
       expect(d1Mock.prepare).toHaveBeenCalledWith(
-        'UPDATE user SET email_verified = 1, updated_at = ? WHERE id = ?',
+        'UPDATE user SET email_verified = ?, updated_at = ? WHERE id = ?',
       );
     });
 
@@ -879,7 +888,7 @@ describe('/api/admin/*', () => {
 
       expect(response.status).toBe(200);
       expect(await response.json()).toMatchObject({ ok: true, emailVerified: false });
-      expect(d1Mock.batch).toHaveBeenCalled();
+      expect(d1Mock.prepare).toHaveBeenCalled();
     });
   });
 
