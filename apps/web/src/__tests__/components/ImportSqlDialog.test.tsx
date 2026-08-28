@@ -25,6 +25,56 @@ const mockedRequestSqlParse = vi.mocked(requestSqlParse);
 const mockedRequestMultiSqlParse = vi.mocked(requestMultiSqlParse);
 
 describe('ImportSqlDialog', () => {
+  it('imports the edited, reordered and filtered preview', async () => {
+    const parsed = {
+      tableName: 'users',
+      tableComment: '',
+      fields: ['id', 'name', 'removed'].map((name) => ({
+        name,
+        type: 'int',
+        comment: '',
+        nullable: true,
+        defaultKind: 'none' as const,
+        defaultValue: '',
+        onUpdate: 'none' as const,
+      })),
+      indexes: [],
+      foreignKeys: [],
+      authObjects: [],
+    };
+    mockedRequestSqlParse.mockResolvedValue(parsed);
+    const onImport = vi.fn();
+    render(
+      <ImportSqlDialog
+        currentDbType="mysql"
+        onImport={onImport}
+        open
+        onOpenChange={vi.fn()}
+        hideTrigger
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('SQL 内容'), {
+      target: { value: 'CREATE TABLE users (id int);' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '下一步' }));
+    fireEvent.change(await screen.findByLabelText('字段名 #1'), {
+      target: { value: 'account_id' },
+    });
+    fireEvent.change(screen.getByLabelText('字段类型 #1'), { target: { value: 'bigint' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Move down #1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete #3' }));
+    fireEvent.click(screen.getByRole('button', { name: '下一步' }));
+    fireEvent.click(screen.getByRole('button', { name: '确认导入' }));
+    expect(
+      onImport.mock.calls[0]?.[0].fields.map((field: { name: string; type: string }) => [
+        field.name,
+        field.type,
+      ]),
+    ).toEqual([
+      ['name', 'int'],
+      ['account_id', 'bigint'],
+    ]);
+  });
   beforeEach(() => {
     vi.clearAllMocks();
   });

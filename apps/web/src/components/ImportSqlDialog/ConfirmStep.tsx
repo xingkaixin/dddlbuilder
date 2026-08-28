@@ -4,11 +4,10 @@ import { useTranslation } from 'react-i18next';
 
 interface ConfirmStepProps {
   parsedResult: ParsedResult | null;
-  previewFieldCount: number;
   selectedDbType: DatabaseType;
 }
 
-export function ConfirmStep({ parsedResult, previewFieldCount, selectedDbType }: ConfirmStepProps) {
+export function ConfirmStep({ parsedResult, selectedDbType }: ConfirmStepProps) {
   const { t } = useTranslation();
   return (
     <div className="space-y-4">
@@ -23,7 +22,7 @@ export function ConfirmStep({ parsedResult, previewFieldCount, selectedDbType }:
           </p>
           <p>
             {t('importSql.confirm.fieldCount')}:{' '}
-            <span className="text-foreground">{previewFieldCount}</span>
+            <span className="text-foreground">{parsedResult?.fields.length ?? 0}</span>
           </p>
           <p>
             {t('importSql.confirm.indexCount')}:{' '}

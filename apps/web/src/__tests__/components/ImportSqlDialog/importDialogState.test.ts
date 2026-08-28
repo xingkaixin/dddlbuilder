@@ -3,7 +3,7 @@ import {
   createImportDialogState,
   importDialogReducer,
 } from '@/components/ImportSqlDialog/importDialogState';
-import type { ParsedTableItem, PreviewField } from '@/components/ImportSqlDialog/types';
+import type { ParsedTableItem } from '@/components/ImportSqlDialog/types';
 
 const parsedResult = {
   tableName: 'users',
@@ -13,24 +13,24 @@ const parsedResult = {
   authObjects: [],
 };
 
-const previewFields: PreviewField[] = [
+const previewFields = [
   {
-    order: 0,
-    fieldName: 'id',
-    fieldType: 'INT',
-    fieldComment: '',
+    name: 'id',
+    type: 'INT',
+    comment: '',
     nullable: false,
-    defaultKind: 'none',
+    defaultKind: 'none' as const,
     defaultValue: '',
+    onUpdate: 'none' as const,
   },
   {
-    order: 1,
-    fieldName: 'name',
-    fieldType: 'VARCHAR',
-    fieldComment: '',
+    name: 'name',
+    type: 'VARCHAR',
+    comment: '',
     nullable: true,
-    defaultKind: 'none',
+    defaultKind: 'none' as const,
     defaultValue: '',
+    onUpdate: 'none' as const,
   },
 ];
 
@@ -40,6 +40,34 @@ const parsedTables: ParsedTableItem[] = [
 ];
 
 describe('importDialogReducer', () => {
+  it('keeps indexes aligned with renamed and deleted preview fields', () => {
+    const preview = importDialogReducer(createImportDialogState('mysql'), {
+      type: 'workspace_validated',
+      result: {
+        ...parsedResult,
+        fields: previewFields,
+        indexes: [
+          {
+            id: 'index',
+            name: 'idx_id',
+            fields: [{ name: 'id', direction: 'ASC' }],
+            unique: false,
+          },
+        ],
+      },
+    });
+    const renamed = importDialogReducer(preview, {
+      type: 'update_preview_field',
+      index: 0,
+      field: 'name',
+      value: 'user_id',
+    });
+    expect(renamed.mode === 'workspace' && renamed.parsedResult?.indexes[0].fields[0].name).toBe(
+      'user_id',
+    );
+    const removed = importDialogReducer(renamed, { type: 'delete_preview_field', index: 0 });
+    expect(removed.mode === 'workspace' && removed.parsedResult?.indexes).toEqual([]);
+  });
   it('keeps workspace and saved-table steps mutually exclusive', () => {
     const workspace = createImportDialogState('mysql');
     const saved = importDialogReducer(workspace, { type: 'set_mode', mode: 'saved' });
@@ -68,7 +96,6 @@ describe('importDialogReducer', () => {
     const result = importDialogReducer(saved, {
       type: 'workspace_validated',
       result: parsedResult,
-      fields: [],
     });
 
     expect(result).toBe(saved);
@@ -107,13 +134,12 @@ describe('importDialogReducer', () => {
     });
     const preview = importDialogReducer(failed, {
       type: 'workspace_validated',
-      result: parsedResult,
-      fields: previewFields,
+      result: { ...parsedResult, fields: previewFields },
     });
     const renamed = importDialogReducer(preview, {
       type: 'update_preview_field',
       index: 0,
-      field: 'fieldName',
+      field: 'name',
       value: 'user_id',
     });
     const movedDown = importDialogReducer(renamed, {
@@ -134,10 +160,10 @@ describe('importDialogReducer', () => {
     expect(withDatabase.selectedDbType).toBe('postgresql');
     expect(validating).toMatchObject({ operation: 'validating', validationResult: null });
     expect(failed).toMatchObject({ operation: 'idle', validationResult: { success: false } });
-    expect(renamed.mode === 'workspace' && renamed.previewFields[0]?.fieldName).toBe('user_id');
-    expect(movedDown.mode === 'workspace' && movedDown.previewFields[0]?.fieldName).toBe('name');
-    expect(movedUp.mode === 'workspace' && movedUp.previewFields[0]?.fieldName).toBe('user_id');
-    expect(deleted.mode === 'workspace' && deleted.previewFields).toHaveLength(1);
+    expect(renamed.mode === 'workspace' && renamed.parsedResult?.fields[0]?.name).toBe('user_id');
+    expect(movedDown.mode === 'workspace' && movedDown.parsedResult?.fields[0]?.name).toBe('name');
+    expect(movedUp.mode === 'workspace' && movedUp.parsedResult?.fields[0]?.name).toBe('user_id');
+    expect(deleted.mode === 'workspace' && deleted.parsedResult?.fields).toHaveLength(1);
     expect(confirmed).toMatchObject({ mode: 'workspace', step: 'confirm' });
     expect(importDialogReducer(confirmed, { type: 'back' })).toMatchObject({ step: 'preview' });
     expect(importDialogReducer(preview, { type: 'back' })).toMatchObject({ step: 'validate' });
@@ -189,8 +215,7 @@ describe('importDialogReducer', () => {
     const workspace = createImportDialogState('mysql');
     const preview = importDialogReducer(workspace, {
       type: 'workspace_validated',
-      result: parsedResult,
-      fields: previewFields,
+      result: { ...parsedResult, fields: previewFields },
     });
     const saved = importDialogReducer(workspace, { type: 'set_mode', mode: 'saved' });
 
@@ -200,7 +225,7 @@ describe('importDialogReducer', () => {
       importDialogReducer(preview, {
         type: 'update_preview_field',
         index: 9,
-        field: 'fieldName',
+        field: 'name',
         value: 'missing',
       }),
     ).toBe(preview);
@@ -222,7 +247,7 @@ describe('importDialogReducer', () => {
       importDialogReducer(saved, {
         type: 'update_preview_field',
         index: 0,
-        field: 'fieldName',
+        field: 'name',
         value: 'ignored',
       }),
     ).toBe(saved);

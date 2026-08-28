@@ -32,7 +32,7 @@ import { ConfirmStep } from './ConfirmStep';
 import { TableSelectStep } from './TableSelectStep';
 import { SaveConfigStep } from './SaveConfigStep';
 import { createImportDialogState, importDialogReducer } from './importDialogState';
-import type { ImportSourceType, ParsedTableItem, PreviewField } from './types';
+import type { ImportSourceType, ParsedTableItem, PreviewFieldKey } from './types';
 
 interface ImportSqlDialogProps {
   currentDbType: DatabaseType;
@@ -94,7 +94,6 @@ export function ImportSqlDialog({
   const importMode = dialogState.mode;
   const step = dialogState.step;
   const parsedResult = dialogState.mode === 'workspace' ? dialogState.parsedResult : null;
-  const previewFields = dialogState.mode === 'workspace' ? dialogState.previewFields : [];
   const parsedTables = dialogState.mode === 'saved' ? dialogState.parsedTables : [];
   const failedItems = dialogState.mode === 'saved' ? dialogState.failedItems : [];
   const selectedFolderId = dialogState.mode === 'saved' ? dialogState.selectedFolderId : undefined;
@@ -158,18 +157,6 @@ export function ImportSqlDialog({
     );
   }, [file, sourceType, sql, t]);
 
-  const buildPreviewFields = useCallback((result: ParsedResult): PreviewField[] => {
-    return result.fields.map((field, index) => ({
-      order: index + 1,
-      fieldName: field.name,
-      fieldType: field.type,
-      fieldComment: field.comment,
-      nullable: field.nullable,
-      defaultKind: field.defaultKind,
-      defaultValue: field.defaultValue || '-',
-    }));
-  }, []);
-
   const validateForWorkspace = useCallback(async () => {
     dispatch({ type: 'validation_started' });
 
@@ -193,7 +180,6 @@ export function ImportSqlDialog({
       dispatch({
         type: 'workspace_validated',
         result,
-        fields: buildPreviewFields(result),
       });
     } catch (err) {
       dispatch({
@@ -209,15 +195,7 @@ export function ImportSqlDialog({
         },
       });
     }
-  }, [
-    sourceType,
-    sql,
-    selectedDbType,
-    buildStructuredTables,
-    buildPreviewFields,
-    sqlParseMutation,
-    t,
-  ]);
+  }, [sourceType, sql, selectedDbType, buildStructuredTables, sqlParseMutation, t]);
 
   const validateForSaved = useCallback(async () => {
     dispatch({ type: 'validation_started' });
@@ -336,11 +314,7 @@ export function ImportSqlDialog({
     );
   };
 
-  const handleFieldChange = (
-    index: number,
-    field: keyof PreviewField,
-    value: string | number | boolean,
-  ) => {
+  const handleFieldChange = (index: number, field: PreviewFieldKey, value: string | boolean) => {
     dispatch({ type: 'update_preview_field', index, field, value });
   };
 
@@ -512,7 +486,6 @@ export function ImportSqlDialog({
           {step === 'preview' && parsedResult && (
             <PreviewStep
               parsedResult={parsedResult}
-              previewFields={previewFields}
               onFieldChange={handleFieldChange}
               onMoveField={moveField}
               onDeleteField={deleteField}
@@ -520,11 +493,7 @@ export function ImportSqlDialog({
           )}
 
           {step === 'confirm' && (
-            <ConfirmStep
-              parsedResult={parsedResult}
-              previewFieldCount={previewFields.length}
-              selectedDbType={selectedDbType}
-            />
+            <ConfirmStep parsedResult={parsedResult} selectedDbType={selectedDbType} />
           )}
 
           {step === 'select' && (

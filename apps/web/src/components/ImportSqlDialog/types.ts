@@ -1,4 +1,3 @@
-import type { FieldDefaultKind } from '@ddlbuilder/shared-types';
 import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import type { SavedTableConflictStrategy } from '@/utils/savedTableBatchImport';
 
@@ -18,15 +17,7 @@ export interface ValidationResult {
   lineNumber?: number;
 }
 
-export interface PreviewField {
-  order: number;
-  fieldName: string;
-  fieldType: string;
-  fieldComment: string;
-  nullable: boolean;
-  defaultKind: FieldDefaultKind;
-  defaultValue: string;
-}
+export type PreviewFieldKey = 'name' | 'type' | 'nullable';
 
 export type ParsedTableItem = ParsedResult & {
   selected: boolean;

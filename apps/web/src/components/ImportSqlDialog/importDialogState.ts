@@ -1,4 +1,10 @@
-import type { DatabaseType } from '@ddlbuilder/shared-types';
+import {
+  withDefaultEditorSession,
+  type DatabaseType,
+  type PersistedState,
+} from '@ddlbuilder/shared-types';
+import { updateDocumentFields, removeFieldsFromDocument } from '@/stores/editorDocumentMutations';
+import { normalizeFields } from '@/utils/helpers';
 import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
 import type {
   ConflictStrategy,
@@ -6,7 +12,7 @@ import type {
   ImportMode,
   ImportSourceType,
   ParsedTableItem,
-  PreviewField,
+  PreviewFieldKey,
   SavedStep,
   ValidationResult,
   WorkspaceStep,
@@ -27,7 +33,6 @@ interface WorkspaceImportState extends CommonImportState {
   mode: 'workspace';
   step: WorkspaceStep;
   parsedResult: ParsedResult | null;
-  previewFields: PreviewField[];
 }
 
 interface SavedImportState extends CommonImportState {
@@ -50,15 +55,15 @@ export type ImportDialogAction =
   | { type: 'set_db_type'; dbType: DatabaseType }
   | { type: 'validation_started' }
   | { type: 'validation_failed'; result: ValidationResult }
-  | { type: 'workspace_validated'; result: ParsedResult; fields: PreviewField[] }
+  | { type: 'workspace_validated'; result: ParsedResult }
   | { type: 'saved_validated'; tables: ParsedTableItem[]; failedItems: FailedItem[] }
   | { type: 'advance' }
   | { type: 'back' }
   | {
       type: 'update_preview_field';
       index: number;
-      field: keyof PreviewField;
-      value: string | number | boolean;
+      field: PreviewFieldKey;
+      value: string | boolean;
     }
   | { type: 'move_preview_field'; index: number; direction: 'up' | 'down' }
   | { type: 'delete_preview_field'; index: number }
@@ -80,7 +85,6 @@ export function createImportDialogState(dbType: DatabaseType): ImportDialogState
     validationResult: null,
     operation: 'idle',
     parsedResult: null,
-    previewFields: [],
   };
 }
 
@@ -100,7 +104,6 @@ function switchMode(state: ImportDialogState, mode: ImportMode): ImportDialogSta
         mode,
         step: 'validate',
         parsedResult: null,
-        previewFields: [],
       }
     : {
         ...common,
@@ -111,6 +114,43 @@ function switchMode(state: ImportDialogState, mode: ImportMode): ImportDialogSta
         selectedFolderId: undefined,
         conflictStrategy: 'skip',
       };
+}
+
+function editPreview(
+  state: WorkspaceImportState,
+  edit: (document: PersistedState) => PersistedState,
+): WorkspaceImportState {
+  const result = state.parsedResult;
+  if (!result) return state;
+  const document = withDefaultEditorSession({
+    ...result,
+    schemaName: result.schemaName ?? '',
+    dbType: state.selectedDbType,
+    authInput: '',
+    rows: result.fields.map((field, index) => ({
+      id: String(index),
+      fieldName: field.name,
+      fieldType: field.type,
+      fieldComment: field.comment,
+      nullable: field.nullable,
+      defaultKind: field.defaultKind,
+      defaultValue: field.defaultValue,
+      onUpdate: field.onUpdate,
+      enumMeta: field.enumMeta,
+    })),
+  });
+  const next = edit(document);
+  return {
+    ...state,
+    parsedResult: {
+      ...result,
+      fields: normalizeFields(next.rows),
+      indexes: next.indexes,
+      foreignKeys: next.foreignKeys ?? [],
+      ...(result.mysqlPartitionConfig ? { mysqlPartitionConfig: next.mysqlPartitionConfig } : {}),
+      ...(result.tableMiscConfig ? { tableMiscConfig: next.tableMiscConfig } : {}),
+    },
+  };
 }
 
 export function importDialogReducer(
@@ -142,7 +182,6 @@ export function importDialogReducer(
         operation: 'idle',
         validationResult: { success: true },
         parsedResult: action.result,
-        previewFields: action.fields,
       };
     case 'saved_validated':
       if (state.mode !== 'saved') return state;
@@ -172,33 +211,30 @@ export function importDialogReducer(
       }
       return state;
     case 'update_preview_field': {
-      if (state.mode !== 'workspace') return state;
-      const currentField = state.previewFields[action.index];
-      if (!currentField) return state;
-      const previewFields = state.previewFields.slice();
-      previewFields[action.index] = {
-        ...currentField,
-        [action.field]: action.value,
-      };
-      return { ...state, previewFields };
+      if (state.mode !== 'workspace' || !state.parsedResult?.fields[action.index]) return state;
+      const key = { name: 'fieldName', type: 'fieldType', nullable: 'nullable' } as const;
+      return editPreview(state, (document) =>
+        updateDocumentFields(
+          document,
+          document.rows.map((row, index) =>
+            index === action.index ? { ...row, [key[action.field]]: action.value } : row,
+          ),
+        ),
+      );
     }
     case 'move_preview_field': {
-      if (state.mode !== 'workspace') return state;
+      if (state.mode !== 'workspace' || !state.parsedResult?.fields[action.index]) return state;
       const targetIndex = action.direction === 'up' ? action.index - 1 : action.index + 1;
-      if (targetIndex < 0 || targetIndex >= state.previewFields.length) return state;
-      const previewFields = state.previewFields.slice();
-      [previewFields[action.index], previewFields[targetIndex]] = [
-        previewFields[targetIndex],
-        previewFields[action.index],
-      ];
-      return { ...state, previewFields };
+      const fields = state.parsedResult.fields.slice();
+      if (!fields[targetIndex]) return state;
+      [fields[action.index], fields[targetIndex]] = [fields[targetIndex], fields[action.index]];
+      return { ...state, parsedResult: { ...state.parsedResult, fields } };
     }
     case 'delete_preview_field':
-      if (state.mode !== 'workspace') return state;
-      return {
-        ...state,
-        previewFields: state.previewFields.filter((_, index) => index !== action.index),
-      };
+      if (state.mode !== 'workspace' || !state.parsedResult?.fields[action.index]) return state;
+      return editPreview(state, (document) =>
+        removeFieldsFromDocument(document, (_, index) => index === action.index),
+      );
     case 'toggle_table': {
       if (state.mode !== 'saved') return state;
       const currentTable = state.parsedTables[action.index];

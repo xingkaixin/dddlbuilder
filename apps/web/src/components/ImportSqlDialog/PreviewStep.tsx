@@ -9,25 +9,19 @@ import {
 } from '@/components/ui/select';
 import { Eye, ArrowLeft, ArrowRight, Trash2 } from '@/components/icons';
 import type { ParsedResult } from '@ddlbuilder/ddl-core/parser';
-import type { PreviewField } from './types';
+import type { PreviewFieldKey } from './types';
 import { useTranslation } from 'react-i18next';
 import { getNullableLabel } from '@/i18n/fieldEnums';
 
 interface PreviewStepProps {
   parsedResult: ParsedResult;
-  previewFields: PreviewField[];
-  onFieldChange: (
-    index: number,
-    field: keyof PreviewField,
-    value: string | number | boolean,
-  ) => void;
+  onFieldChange: (index: number, field: PreviewFieldKey, value: string | boolean) => void;
   onMoveField: (index: number, direction: 'up' | 'down') => void;
   onDeleteField: (index: number) => void;
 }
 
 export function PreviewStep({
   parsedResult,
-  previewFields,
   onFieldChange,
   onMoveField,
   onDeleteField,
@@ -47,7 +41,7 @@ export function PreviewStep({
           </span>
         )}
         <span>
-          {t('importSql.preview.fieldCount')}: <strong>{previewFields.length}</strong>
+          {t('importSql.preview.fieldCount')}: <strong>{parsedResult.fields.length}</strong>
         </span>
         <span>
           {t('importSql.preview.indexCount')}: <strong>{parsedResult.indexes.length}</strong>
@@ -63,7 +57,6 @@ export function PreviewStep({
           <thead className="sticky top-0 bg-muted">
             <tr>
               <th className="w-16 px-2 py-2 text-center">{t('importSql.preview.order')}</th>
-              <th className="w-16 px-2 py-2 text-center">{t('importSql.preview.order')}</th>
               <th className="px-2 py-2 text-left">{t('importSql.preview.fieldName')}</th>
               <th className="px-2 py-2 text-left">{t('importSql.preview.fieldType')}</th>
               <th className="px-2 py-2 text-center">{t('importSql.preview.nullable')}</th>
@@ -71,32 +64,21 @@ export function PreviewStep({
             </tr>
           </thead>
           <tbody>
-            {previewFields.map((field, index) => (
+            {parsedResult.fields.map((field, index) => (
               <tr key={index} className="border-t">
-                <td className="px-2 py-2 text-center">
-                  <Input
-                    type="number"
-                    value={field.order}
-                    onChange={(e) =>
-                      onFieldChange(index, 'order', parseInt(e.target.value, 10) || 0)
-                    }
-                    className="h-7 w-16 text-center"
-                    min={1}
-                    aria-label={`${t('importSql.preview.order')} #${index + 1}`}
-                  />
-                </td>
+                <td className="px-2 py-2 text-center">{index + 1}</td>
                 <td className="px-2 py-2">
                   <Input
-                    value={field.fieldName}
-                    onChange={(e) => onFieldChange(index, 'fieldName', e.target.value)}
+                    value={field.name}
+                    onChange={(e) => onFieldChange(index, 'name', e.target.value)}
                     className="h-7"
                     aria-label={`${t('importSql.preview.fieldName')} #${index + 1}`}
                   />
                 </td>
                 <td className="px-2 py-2">
                   <Input
-                    value={field.fieldType}
-                    onChange={(e) => onFieldChange(index, 'fieldType', e.target.value)}
+                    value={field.type}
+                    onChange={(e) => onFieldChange(index, 'type', e.target.value)}
                     className="h-7"
                     aria-label={`${t('importSql.preview.fieldType')} #${index + 1}`}
                   />
@@ -135,7 +117,7 @@ export function PreviewStep({
                       size="icon"
                       className="h-7 w-7"
                       onClick={() => onMoveField(index, 'down')}
-                      disabled={index === previewFields.length - 1}
+                      disabled={index === parsedResult.fields.length - 1}
                       aria-label={`Move down #${index + 1}`}
                     >
                       <ArrowRight className="h-4 w-4" />
