@@ -1,4 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { tableVersionsOptions } from '@/queries/tableVersions';
+import { getWorkspaceScopeStorageKey } from '@/utils/workspaceScope';
 import {
   Play,
   Pause,
@@ -16,7 +19,7 @@ import type { TableVersion } from '@/utils/workspaceStorageTypes';
 import type { FieldRow } from '@ddlbuilder/shared-types';
 import type { TableDiff, FieldDiff, FieldChangeType } from '@ddlbuilder/ddl-core';
 import { diffPersistedState } from '@ddlbuilder/ddl-core';
-import { listVersions, type TableVersionTarget } from '@/utils/tableVersions';
+import { type TableVersionTarget } from '@/utils/tableVersions';
 import { useTranslation } from 'react-i18next';
 import { getDefaultKindLabel, getNullableLabel, getOnUpdateLabel } from '@/i18n/fieldEnums';
 import { useLocale } from '@/i18n/LocaleContext';
@@ -27,6 +30,8 @@ interface SchemaTimelinePlayerProps {
   target: TableVersionTarget | null;
   tableName: string | null;
 }
+const EMPTY_VERSIONS: TableVersion[] = [];
+const chronological = (versions: TableVersion[]) => [...versions].reverse();
 
 type RowChangeStatus = 'added' | 'modified' | 'renamed' | 'unchanged';
 
@@ -116,28 +121,18 @@ function buildChangeSummary(
   return parts.join(' · ') || t('timelinePlayer.noChange');
 }
 
-export const SchemaTimelinePlayer = memo<SchemaTimelinePlayerProps>(
+const TimelinePlayerContent = memo<SchemaTimelinePlayerProps>(
   ({ open, onOpenChange, target, tableName }) => {
     const { t } = useTranslation();
     const { resolvedLocale } = useLocale();
-    const [versions, setVersions] = useState<TableVersion[]>([]);
-    const [loading, setLoading] = useState(open && Boolean(target));
+    const { data: versions = EMPTY_VERSIONS, isPending: loading } = useQuery({
+      ...tableVersionsOptions(target),
+      enabled: open && Boolean(target),
+      select: chronological,
+    });
     const [currentFrame, setCurrentFrame] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
     const [speed, setSpeed] = useState<Speed>(1);
-
-    // Load versions when dialog opens
-    useEffect(() => {
-      if (!open || !target) return;
-      void listVersions(target)
-        .then((list) => {
-          // Sort ascending (oldest first)
-          const sorted = list.sort((a, b) => a.createdAt - b.createdAt);
-          setVersions(sorted);
-          setCurrentFrame(0);
-        })
-        .finally(() => setLoading(false));
-    }, [open, target]);
 
     // Precompute diffs for each frame
     const frameDiffs = useMemo<(TableDiff | null)[]>(() => {
@@ -494,3 +489,14 @@ export const SchemaTimelinePlayer = memo<SchemaTimelinePlayerProps>(
 );
 
 SchemaTimelinePlayer.displayName = 'SchemaTimelinePlayer';
+
+export const SchemaTimelinePlayer = (props: SchemaTimelinePlayerProps) => (
+  <TimelinePlayerContent
+    key={
+      props.target
+        ? JSON.stringify([getWorkspaceScopeStorageKey(props.target.scope), props.target.tableId])
+        : 'none'
+    }
+    {...props}
+  />
+);

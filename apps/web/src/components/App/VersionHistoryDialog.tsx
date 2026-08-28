@@ -1,4 +1,6 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { tableVersionsOptions } from '@/queries/tableVersions';
 import { History, RotateCcw, Trash2, Loader2, Play } from '@/components/icons';
 import {
   Dialog,
@@ -25,7 +27,6 @@ import type { PersistedState } from '@ddlbuilder/shared-types';
 import type { TableDiff } from '@ddlbuilder/ddl-core';
 import { diffPersistedState } from '@ddlbuilder/ddl-core';
 import {
-  listVersions,
   getVersion,
   deleteVersion,
   INITIAL_VERSION_MESSAGE_KEY,
@@ -44,6 +45,7 @@ interface VersionHistoryDialogProps {
   onRollback?: (state: PersistedState) => void;
   onPlayTimeline?: () => void;
 }
+const EMPTY_VERSIONS: TableVersion[] = [];
 
 function formatDate(
   timestamp: number,
@@ -111,8 +113,11 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
     const { t } = useTranslation();
     const { resolvedLocale } = useLocale();
     const { showToast } = useToast();
-    const [versions, setVersions] = useState<TableVersion[]>([]);
-    const [loading, setLoading] = useState(open && Boolean(target));
+    const queryClient = useQueryClient();
+    const { data: versions = EMPTY_VERSIONS, isPending: loading } = useQuery({
+      ...tableVersionsOptions(target),
+      enabled: open && Boolean(target),
+    });
     const [requestedSelectedId, setSelectedId] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -133,23 +138,6 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
       },
       [t],
     );
-
-    // 加载版本列表（完整版本，用于计算 diff）
-    const loadVersions = useCallback(async () => {
-      if (!target) return;
-      try {
-        const list = await listVersions(target);
-        // listVersions 返回倒序，保持倒序（最新在前）用于时间轴展示
-        setVersions(list);
-        setSelectedId(list[0]?.id ?? null);
-      } finally {
-        setLoading(false);
-      }
-    }, [target]);
-
-    useEffect(() => {
-      if (open && target) void loadVersions();
-    }, [open, target, loadVersions]);
 
     // 预计算相邻版本之间的 diff（时间轴上每个节点 vs 它的下一个/更老的版本）
     const versionDiffs = useMemo(() => {
@@ -206,14 +194,14 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
       try {
         await deleteVersion(deleteConfirmId, target);
         setDeleteConfirmId(null);
-        await loadVersions();
+        await queryClient.invalidateQueries({ queryKey: tableVersionsOptions(target).queryKey });
         showToast(t('versionHistory.deleteSuccess'));
       } catch {
         showToast(t('versionHistory.deleteFailed'));
       } finally {
         setActionLoading(false);
       }
-    }, [deleteConfirmId, loadVersions, showToast, t, target]);
+    }, [deleteConfirmId, queryClient, showToast, t, target]);
 
     return (
       <>
@@ -326,6 +314,7 @@ export const VersionHistoryDialog = memo<VersionHistoryDialogProps>(
                         <button
                           type="button"
                           onClick={() => setSelectedId(v.id)}
+                          aria-pressed={isSelected}
                           className={cn(
                             'ml-5 flex w-[calc(100%-1.25rem)] flex-col gap-1 rounded-lg border p-3 pr-10 text-left transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                             isSelected
