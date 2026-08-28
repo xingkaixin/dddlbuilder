@@ -287,6 +287,8 @@ export const zhCNCommon = {
     placeholder: "SELECT id, name, status\nFROM users\nWHERE status = 'active'",
   },
   indexPanel: {
+    sourceRemoved: '原索引已被删除，编辑内容已保留为新索引草稿。再次保存即可创建。',
+    deleteConfirmation: '删除索引可能影响主键、唯一约束和外键引用。确定删除吗？',
     inputPlaceholder: '输入字段名进行匹配...',
     configTitle: '索引配置',
     configDescription: '为查询、唯一约束和主键生成索引定义。',
@@ -880,6 +882,8 @@ export const zhCNCommon = {
     tableGenerating: '生成中...',
   },
   aiPatch: {
+    closeWhileGenerating: '正在生成，请先取消生成或等待完成。',
+    resetConfirmation: '重新开始将清除当前对话和未应用的修改，是否继续？',
     title: 'AI 修改当前表',
     description: '基于当前表信息、字段、索引和数据库类型生成可审阅的结构变更',
     inputPlaceholder:

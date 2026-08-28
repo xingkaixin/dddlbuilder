@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { AISchemaPatchPanel } from './AISchemaPatchPanel';
+import { AISchemaPatchDialog } from './AISchemaPatchDialog';
+import { useAuthSession } from '@/auth/AuthSessionProvider';
 import { AIIndexAdvisorDialog } from './AIIndexAdvisorDialog';
 import { GlobalDialogs } from './containers/GlobalDialogs';
 import type { AppDialogLayerModel } from './buildAppDialogLayerModel';
@@ -22,6 +22,7 @@ interface AppDialogLayerProps {
 
 export function AppDialogLayer({ model }: AppDialogLayerProps) {
   const { t } = useTranslation();
+  const authSession = useAuthSession();
   const { globalDialogs, aiPatch, indexAdvisor, importDialog } = model;
   const objectLabel = t(
     model.saveObjectType === 'view'
@@ -50,20 +51,10 @@ export function AppDialogLayer({ model }: AppDialogLayerProps) {
       <WebMcpChangeDialog model={model.webMcpDialog} />
       <GlobalDialogs {...globalDialogs} saveDialog={saveDialog} />
 
-      {aiPatch.open && (
-        <Dialog open={aiPatch.open} onOpenChange={aiPatch.onOpenChange}>
-          <DialogContent className="flex max-h-[88vh] w-[min(1080px,calc(100vw-2rem))] max-w-none flex-col overflow-hidden p-0">
-            <DialogTitle className="sr-only">{t('aiPatch.title')}</DialogTitle>
-            <AISchemaPatchPanel
-              dbType={aiPatch.dbType}
-              currentState={aiPatch.currentState}
-              templates={aiPatch.templates}
-              onApplyChanges={aiPatch.onApplyChanges}
-              onFocusChange={aiPatch.onFocusChange}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
+      <AISchemaPatchDialog
+        key={JSON.stringify([authSession.userId, authSession.workspaceId])}
+        {...aiPatch}
+      />
 
       {indexAdvisor.open && <AIIndexAdvisorDialog {...indexAdvisor} />}
 

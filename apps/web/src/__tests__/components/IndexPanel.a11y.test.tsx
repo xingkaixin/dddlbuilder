@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@/__tests__/utils/test-utils';
+import { act, fireEvent, render, screen, waitFor, within } from '@/__tests__/utils/test-utils';
 import { IndexPanel } from '@/components/App/IndexPanel';
 import { useEditorStore } from '@/stores';
 
@@ -44,8 +44,51 @@ function setupStores() {
 }
 
 describe('IndexPanel a11y', () => {
+  it('keeps an edited draft when its source index is removed externally', () => {
+    useEditorStore.getState().setIndexes([
+      {
+        id: 'original',
+        name: 'idx_orders_id',
+        fields: [{ name: 'id', direction: 'ASC' }],
+        unique: false,
+      },
+    ]);
+    render(<IndexPanel />);
+    fireEvent.click(screen.getAllByRole('button', { name: '编辑' })[0]);
+    const nameInput = screen.getByDisplayValue('idx_orders_id');
+    fireEvent.change(nameInput, { target: { value: 'local_draft_index' } });
+    act(() => useEditorStore.getState().setIndexes([]));
+    fireEvent.click(screen.getByRole('button', { name: '保存索引' }));
+    expect(useEditorStore.getState().indexes).toEqual([]);
+    expect(screen.getByDisplayValue('local_draft_index')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '保存索引' }));
+    expect(useEditorStore.getState().indexes).toEqual([
+      expect.objectContaining({ name: 'local_draft_index' }),
+    ]);
+  });
   beforeEach(() => {
     setupStores();
+  });
+
+  it('requires confirmation before deleting a primary index', () => {
+    useEditorStore.getState().setIndexes([
+      {
+        id: 'primary',
+        name: 'pk_orders',
+        fields: [{ name: 'id', direction: 'ASC' }],
+        unique: true,
+        isPrimary: true,
+      },
+    ]);
+    render(<IndexPanel />);
+    fireEvent.click(screen.getByRole('button', { name: '删除索引' }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: '取消' }));
+    expect(useEditorStore.getState().indexes).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: '删除索引' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: '删除索引' }),
+    );
+    expect(useEditorStore.getState().indexes).toEqual([]);
   });
 
   it('字段建议输入框应具备 combobox/listbox 语义并支持上下键导航', async () => {

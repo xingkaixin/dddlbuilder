@@ -296,6 +296,10 @@ export const enUSCommon = {
     placeholder: "SELECT id, name, status\nFROM users\nWHERE status = 'active'",
   },
   indexPanel: {
+    sourceRemoved:
+      'The original index was removed. Your edits are preserved as a new draft. Save again to create it.',
+    deleteConfirmation:
+      'Deleting this index may affect primary keys, unique constraints, and foreign key references. Continue?',
     inputPlaceholder: 'Type field name to match...',
     configTitle: 'Index Config',
     configDescription:
@@ -908,6 +912,9 @@ export const enUSCommon = {
     tableGenerating: 'Generating...',
   },
   aiPatch: {
+    closeWhileGenerating:
+      'Generation is in progress. Cancel it or wait for completion before closing.',
+    resetConfirmation: 'Restarting clears this conversation and unapplied changes. Continue?',
     staleResult: 'The table has changed. Generate new suggestions from the current schema.',
     title: 'AI Edit Current Table',
     description:

@@ -8,6 +8,17 @@ import {
 import { buildPrimaryKeyName } from '@ddlbuilder/ddl-core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/useToast';
 import { DragDropVerticalIcon, Hash, Key, Lock, Pencil, Trash2, X } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { buildNormalizedFields, useEditorStore } from '@/stores';
@@ -24,7 +35,6 @@ interface IndexPanelProps {
 }
 
 type IndexType = 'normal' | 'unique' | 'primary';
-type PanelMode = 'view' | 'edit';
 
 type DraftIndex = {
   id: string | null;
@@ -33,6 +43,9 @@ type DraftIndex = {
   fields: IndexField[];
 };
 
+type PanelState = { kind: 'view'; id: string | null } | { kind: 'edit'; draft: DraftIndex };
+const EMPTY_DRAFT: DraftIndex = { id: null, name: '', type: 'normal', fields: [] };
+
 const getIndexType = (index: IndexDefinition): IndexType => {
   if (index.isPrimary) return 'primary';
   return index.unique ? 'unique' : 'normal';
@@ -40,6 +53,7 @@ const getIndexType = (index: IndexDefinition): IndexType => {
 
 export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIndexIds }) => {
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const rows = useEditorStore((state) => state.rows);
   const tableName = useEditorStore((state) => state.tableName);
   const dbType = useEditorStore((state) => state.dbType);
@@ -55,27 +69,26 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
     [rows],
   );
 
-  const [selectedIndexId, setSelectedIndexId] = useState<string | null>(indexes[0]?.id ?? null);
-  const [mode, setMode] = useState<PanelMode>(indexes.length ? 'view' : 'edit');
-  const [draft, setDraft] = useState<DraftIndex>({
-    id: null,
-    name: '',
-    type: 'normal',
-    fields: [],
-  });
+  const [panel, setPanel] = useState<PanelState>(() =>
+    indexes.length ? { kind: 'view', id: indexes[0].id } : { kind: 'edit', draft: EMPTY_DRAFT },
+  );
+  const [deleteIndexId, setDeleteIndexId] = useState<string | null>(null);
+  const draft = panel.kind === 'edit' ? panel.draft : EMPTY_DRAFT;
+  const setDraft = (update: DraftIndex | ((draft: DraftIndex) => DraftIndex)) => {
+    setPanel((current) =>
+      current.kind === 'edit'
+        ? { kind: 'edit', draft: typeof update === 'function' ? update(current.draft) : update }
+        : current,
+    );
+  };
   const [fieldQuery, setFieldQuery] = useState('');
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<number>(-1);
   const [draggedFieldIndex, setDraggedFieldIndex] = useState<number | null>(null);
 
-  const isCreating = mode === 'edit' && !draft.id;
+  const selectedIndexId = panel.kind === 'view' ? panel.id : draft.id;
   const requestedIndex = indexes.find((index) => index.id === selectedIndexId) ?? null;
-  const selectedIndex = requestedIndex ?? (isCreating ? null : (indexes[0] ?? null));
-  const visibleMode: PanelMode =
-    !requestedIndex && !isCreating && selectedIndex
-      ? 'view'
-      : selectedIndex || isCreating
-        ? mode
-        : 'edit';
+  const selectedIndex = requestedIndex ?? (panel.kind === 'view' ? (indexes[0] ?? null) : null);
+  const visibleMode = panel.kind;
   const selectedFieldNames = useMemo(
     () => new Set(draft.fields.map((field) => field.name)),
     [draft.fields],
@@ -95,32 +108,33 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
       : Math.min(Math.max(activeSuggestionIndex, 0), fieldSuggestions.length - 1);
 
   const startCreate = (type: IndexType) => {
-    setDraft({
-      id: null,
-      name: '',
-      type,
-      fields: [],
+    setPanel({
+      kind: 'edit',
+      draft: {
+        id: null,
+        name: '',
+        type,
+        fields: [],
+      },
     });
-    setSelectedIndexId(null);
-    setMode('edit');
     setFieldQuery('');
   };
 
   const startEdit = (index: IndexDefinition) => {
-    setDraft({
-      id: index.id,
-      name: index.name,
-      type: getIndexType(index),
-      fields: [...index.fields],
+    setPanel({
+      kind: 'edit',
+      draft: {
+        id: index.id,
+        name: index.name,
+        type: getIndexType(index),
+        fields: [...index.fields],
+      },
     });
-    setSelectedIndexId(index.id);
-    setMode('edit');
     setFieldQuery('');
   };
 
   const selectIndex = (index: IndexDefinition) => {
-    setSelectedIndexId(index.id);
-    setMode('view');
+    setPanel({ kind: 'view', id: index.id });
   };
 
   const buildDraftName = () => {
@@ -138,7 +152,19 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
 
   const saveDraft = () => {
     if (draft.fields.length === 0) return;
-    if (!draft.id && draft.type === 'primary' && indexes.some((index) => index.isPrimary)) return;
+    const latestIndexes = useEditorStore.getState().indexes;
+    if (draft.id && !latestIndexes.some((index) => index.id === draft.id)) {
+      setDraft({ ...draft, id: null });
+      showToast(t('indexPanel.sourceRemoved'));
+      return;
+    }
+    if (
+      draft.type === 'primary' &&
+      latestIndexes.some((index) => index.isPrimary && index.id !== draft.id)
+    ) {
+      showToast(t('indexPanel.primaryExists'));
+      return;
+    }
 
     const nextIndex: IndexDefinition = {
       id: draft.id ?? createEntityId(),
@@ -153,8 +179,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
         ? prev.map((index) => (index.id === draft.id ? nextIndex : index))
         : [...prev, nextIndex],
     );
-    setSelectedIndexId(nextIndex.id);
-    setMode('view');
+    setPanel({ kind: 'view', id: nextIndex.id });
     setFieldQuery('');
   };
 
@@ -347,7 +372,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
                     className="absolute right-3 bottom-2 h-6 w-6 text-destructive opacity-0 hover:text-destructive group-hover:opacity-100"
                     onClick={(event) => {
                       event.stopPropagation();
-                      removeIndex(index.id);
+                      setDeleteIndexId(index.id);
                     }}
                     aria-label={t('indexPanel.deleteIndexTip')}
                   >
@@ -569,14 +594,12 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
                   <Button
                     variant="outline"
                     onClick={() => {
-                      if (selectedIndex) {
-                        setMode('view');
-                        return;
-                      }
-                      const nextIndex = indexes[0] ?? null;
-                      setSelectedIndexId(nextIndex?.id ?? null);
-                      setMode(nextIndex ? 'view' : 'edit');
-                      setDraft({ id: null, name: '', type: draft.type, fields: [] });
+                      const nextIndex = selectedIndex ?? indexes[0];
+                      setPanel(
+                        nextIndex
+                          ? { kind: 'view', id: nextIndex.id }
+                          : { kind: 'edit', draft: { ...EMPTY_DRAFT, type: draft.type } },
+                      );
                     }}
                   >
                     {t('indexPanel.cancel')}
@@ -594,6 +617,29 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
           )}
         </div>
       </div>
+      <AlertDialog
+        open={deleteIndexId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteIndexId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('indexPanel.deleteIndexTip')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('indexPanel.deleteConfirmation')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('indexPanel.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteIndexId) removeIndex(deleteIndexId);
+              }}
+            >
+              {t('indexPanel.deleteIndexTip')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 });

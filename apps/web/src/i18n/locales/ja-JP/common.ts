@@ -300,6 +300,10 @@ export const jaJPCommon = {
     placeholder: "ID、名前、ステータスを選択します\nユーザーから\nWHERE ステータス = 'アクティブ'",
   },
   indexPanel: {
+    sourceRemoved:
+      '元のインデックスは削除されました。編集内容は新規下書きとして保持されています。再度保存すると作成されます。',
+    deleteConfirmation:
+      'このインデックスを削除すると、主キー、一意制約、外部キー参照に影響する可能性があります。続行しますか？',
     inputPlaceholder: '一致するフィールド名を入力してください...',
     configTitle: 'インデックス構成',
     configDescription: 'クエリ、一意制約、および主キーのインデックス定義を作成します。',
@@ -915,6 +919,8 @@ export const jaJPCommon = {
     tableGenerating: '生成中...',
   },
   aiPatch: {
+    closeWhileGenerating: '生成中です。閉じるには、生成をキャンセルするか完了をお待ちください。',
+    resetConfirmation: '再起動すると、この会話と未適用の変更が消去されます。続行しますか？',
     staleResult: 'テーブル構造が変更されています。現在の内容から提案を再生成してください。',
     title: 'AI 現在のテーブルを編集',
     description:
