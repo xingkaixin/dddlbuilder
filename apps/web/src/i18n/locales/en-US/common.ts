@@ -1,4 +1,9 @@
 export const enUSCommon = {
+  common: {
+    retry: 'Retry',
+    noData: 'No data',
+    cancel: 'Cancel',
+  },
   locale: {
     label: 'Language',
     zhCN: '中文',
@@ -308,6 +313,7 @@ export const enUSCommon = {
     placeholder: "SELECT id, name, status\nFROM users\nWHERE status = 'active'",
   },
   indexPanel: {
+    fieldSuggestionsLabel: 'Field suggestions',
     sourceRemoved:
       'The original index was removed. Your edits are preserved as a new draft. Save again to create it.',
     deleteConfirmation:
@@ -1586,6 +1592,17 @@ export const enUSCommon = {
       noUsers: 'No users yet',
     },
     detail: {
+      lastActive: 'Last active',
+      errors: {
+        resetPassword: 'Failed to send reset email',
+        disable: 'Failed to disable user',
+        enable: 'Failed to enable user',
+        emailVerification: 'Failed to update email verification',
+        grantCredits: 'Failed to grant credits',
+        loadUser: 'Failed to load user',
+        loadLedger: 'Failed to load credit ledger',
+        loadUsage: 'Failed to load usage events',
+      },
       back: 'Back to list',
       sendResetEmail: 'Send Reset Email',
       resetEmailSent: 'Password reset email sent',

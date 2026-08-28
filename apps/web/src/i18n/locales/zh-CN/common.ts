@@ -1,4 +1,9 @@
 export const zhCNCommon = {
+  common: {
+    retry: '重试',
+    noData: '暂无数据',
+    cancel: '取消',
+  },
   locale: {
     label: '语言',
     zhCN: '中文',
@@ -297,6 +302,7 @@ export const zhCNCommon = {
     placeholder: "SELECT id, name, status\nFROM users\nWHERE status = 'active'",
   },
   indexPanel: {
+    fieldSuggestionsLabel: '字段建议',
     sourceRemoved: '原索引已被删除，编辑内容已保留为新索引草稿。再次保存即可创建。',
     deleteConfirmation: '删除索引可能影响主键、唯一约束和外键引用。确定删除吗？',
     inputPlaceholder: '输入字段名进行匹配...',
@@ -1534,6 +1540,17 @@ export const zhCNCommon = {
       noUsers: '暂无用户',
     },
     detail: {
+      lastActive: '最近活跃',
+      errors: {
+        resetPassword: '发送重置邮件失败',
+        disable: '禁用用户失败',
+        enable: '启用用户失败',
+        emailVerification: '更新邮箱验证状态失败',
+        grantCredits: '增加额度失败',
+        loadUser: '加载用户失败',
+        loadLedger: '加载额度记录失败',
+        loadUsage: '加载使用记录失败',
+      },
       back: '返回列表',
       sendResetEmail: '发送重置邮件',
       resetEmailSent: '密码重置邮件已发送',

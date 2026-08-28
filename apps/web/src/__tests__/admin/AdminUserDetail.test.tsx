@@ -26,6 +26,8 @@ vi.mock('@/admin/lib/adminApi', () => ({
   grantUserCredits: mocks.grantUserCredits,
 }));
 
+vi.mock('@/i18n/LocaleContext', () => ({ useLocale: () => ({ resolvedLocale: 'zh-CN' }) }));
+
 vi.mock('sonner', () => ({
   toast: {
     success: mocks.toastSuccess,
@@ -52,6 +54,31 @@ describe('AdminUserDetailView', () => {
     mocks.getUserCreditLedger.mockResolvedValue([]);
     mocks.getUserUsageEvents.mockResolvedValue({ items: [], total: 0 });
     mocks.grantUserCredits.mockResolvedValue(600);
+  });
+
+  it('displays credit consumption as a debit', async () => {
+    mocks.getUserCreditLedger.mockResolvedValue([
+      {
+        id: 'consume-1',
+        kind: 'consume',
+        source: 'ai_request',
+        amount: 50,
+        balanceAfter: 50,
+        createdAt: '2026-08-28T00:00:00.000Z',
+      },
+    ]);
+    render(<AdminUserDetailView userId="user-1" onBack={vi.fn()} />);
+    await screen.findByRole('table');
+    expect(screen.getByText('-50')).toBeInTheDocument();
+  });
+
+  it('localizes failed password reset notifications', async () => {
+    mocks.resetUserPassword.mockRejectedValue(new Error('upstream failed'));
+    render(<AdminUserDetailView userId="user-1" onBack={vi.fn()} />);
+    await screen.findByText('user@example.com');
+    fireEvent.click(screen.getByRole('button', { name: '发送重置邮件' }));
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalled());
+    expect(mocks.toastError).toHaveBeenCalledWith('发送重置邮件失败');
   });
 
   it('输入额度后点击确认会提交增加额度请求', async () => {

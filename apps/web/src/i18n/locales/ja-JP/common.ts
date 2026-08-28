@@ -1,4 +1,9 @@
 export const jaJPCommon = {
+  common: {
+    retry: '再試行',
+    noData: 'データなし',
+    cancel: 'キャンセル',
+  },
   locale: {
     label: '言語',
     zhCN: '中文',
@@ -312,6 +317,7 @@ export const jaJPCommon = {
     placeholder: "ID、名前、ステータスを選択します\nユーザーから\nWHERE ステータス = 'アクティブ'",
   },
   indexPanel: {
+    fieldSuggestionsLabel: 'フィールドの候補',
     sourceRemoved:
       '元のインデックスは削除されました。編集内容は新規下書きとして保持されています。再度保存すると作成されます。',
     deleteConfirmation:
@@ -1596,6 +1602,17 @@ export const jaJPCommon = {
       noUsers: 'まだユーザーがいません',
     },
     detail: {
+      lastActive: '最終利用',
+      errors: {
+        resetPassword: 'リセットメールを送信できませんでした',
+        disable: 'ユーザーを無効にできませんでした',
+        enable: 'ユーザーを有効にできませんでした',
+        emailVerification: 'メール認証状態を更新できませんでした',
+        grantCredits: 'クレジットを追加できませんでした',
+        loadUser: 'ユーザーを読み込めませんでした',
+        loadLedger: 'クレジット履歴を読み込めませんでした',
+        loadUsage: '利用履歴を読み込めませんでした',
+      },
       back: 'リストに戻る',
       sendResetEmail: 'リセットメールを送信する',
       resetEmailSent: 'パスワードリセットメールを送信しました',

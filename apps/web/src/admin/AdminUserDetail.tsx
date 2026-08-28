@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { useLocale } from '@/i18n/LocaleContext';
+import { formatSignedCreditAmount } from '@/services/creditService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -43,6 +45,7 @@ type AdminUserDetailProps = {
 
 export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
   const { t } = useTranslation();
+  const { resolvedLocale } = useLocale();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('credits');
   const userQuery = useQuery(adminUserOptions(userId));
@@ -87,7 +90,7 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
       await resetPasswordMutation.mutateAsync();
       toast.success(t('admin.detail.resetEmailSent'));
     } catch {
-      toast.error('Failed to send reset email');
+      toast.error(t('admin.detail.errors.resetPassword'));
     }
   };
 
@@ -99,7 +102,7 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
       setDisableReason('');
       await queryClient.invalidateQueries({ queryKey: adminQueryKeys.usersRoot });
     } catch {
-      toast.error('Failed to disable user');
+      toast.error(t('admin.detail.errors.disable'));
     }
   };
 
@@ -109,7 +112,7 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
       toast.success(t('admin.detail.enableSuccess'));
       await queryClient.invalidateQueries({ queryKey: adminQueryKeys.usersRoot });
     } catch {
-      toast.error('Failed to enable user');
+      toast.error(t('admin.detail.errors.enable'));
     }
   };
 
@@ -123,7 +126,7 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
       );
       await queryClient.invalidateQueries({ queryKey: adminQueryKeys.usersRoot });
     } catch {
-      toast.error('Failed to update email verification');
+      toast.error(t('admin.detail.errors.emailVerification'));
     }
   };
 
@@ -140,7 +143,7 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
       setCreditNote('');
       await queryClient.invalidateQueries({ queryKey: adminQueryKeys.usersRoot });
     } catch {
-      toast.error('Failed to grant credits');
+      toast.error(t('admin.detail.errors.grantCredits'));
     }
   };
 
@@ -152,10 +155,12 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
     return (
       <div className="py-20 text-center">
         <p className="text-destructive">
-          {userQuery.error instanceof Error ? userQuery.error.message : 'Failed to load user'}
+          {userQuery.error instanceof Error
+            ? userQuery.error.message
+            : t('admin.detail.errors.loadUser')}
         </p>
         <Button variant="outline" className="mt-4" onClick={() => void userQuery.refetch()}>
-          {t('common.retry', '重试')}
+          {t('common.retry')}
         </Button>
       </div>
     );
@@ -213,10 +218,14 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
                 {t('admin.users.balance')}: {user.balance}
               </span>
               <span>
-                {t('admin.users.createdAt')}: {new Date(user.createdAt).toLocaleDateString()}
+                {t('admin.users.createdAt')}:{' '}
+                {new Date(user.createdAt).toLocaleDateString(resolvedLocale)}
               </span>
               {user.lastActiveAt && (
-                <span>Last active: {new Date(user.lastActiveAt).toLocaleDateString()}</span>
+                <span>
+                  {t('admin.detail.lastActive')}:{' '}
+                  {new Date(user.lastActiveAt).toLocaleDateString(resolvedLocale)}
+                </span>
               )}
             </div>
           </div>
@@ -268,7 +277,9 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
           {ledgerQuery.isPending ? (
             <div className="py-8 text-center text-muted-foreground">...</div>
           ) : ledgerQuery.isError ? (
-            <div className="py-8 text-center text-destructive">Failed to load credit ledger</div>
+            <div className="py-8 text-center text-destructive">
+              {t('admin.detail.errors.loadLedger')}
+            </div>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <table className="w-full text-sm">
@@ -295,7 +306,7 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
                   {ledger.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
-                        {t('common.noData', '暂无数据')}
+                        {t('common.noData')}
                       </td>
                     </tr>
                   ) : (
@@ -315,10 +326,12 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{item.source}</td>
-                        <td className="px-4 py-3 text-right tabular-nums">+{item.amount}</td>
+                        <td className="px-4 py-3 text-right tabular-nums">
+                          {formatSignedCreditAmount(item)}
+                        </td>
                         <td className="px-4 py-3 text-right tabular-nums">{item.balanceAfter}</td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">
-                          {new Date(item.createdAt).toLocaleString()}
+                          {new Date(item.createdAt).toLocaleString(resolvedLocale)}
                         </td>
                       </tr>
                     ))
@@ -333,7 +346,9 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
           {usageQuery.isPending ? (
             <div className="py-8 text-center text-muted-foreground">...</div>
           ) : usageQuery.isError ? (
-            <div className="py-8 text-center text-destructive">Failed to load usage events</div>
+            <div className="py-8 text-center text-destructive">
+              {t('admin.detail.errors.loadUsage')}
+            </div>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
               <table className="w-full text-sm">
@@ -360,7 +375,7 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
                   {usageEvents.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
-                        {t('common.noData', '暂无数据')}
+                        {t('common.noData')}
                       </td>
                     </tr>
                   ) : (
@@ -387,7 +402,7 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">
-                          {new Date(item.createdAt).toLocaleString()}
+                          {new Date(item.createdAt).toLocaleString(resolvedLocale)}
                         </td>
                       </tr>
                     ))
@@ -416,7 +431,7 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
             rows={2}
           />
           <AlertDialogFooter>
-            <AlertDialogCancel>{t('common.cancel', '取消')}</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDisable}>
               {t('admin.detail.disableUser')}
             </AlertDialogAction>
@@ -451,12 +466,12 @@ export function AdminUserDetailView({ userId, onBack }: AdminUserDetailProps) {
                 <Input
                   value={creditNote}
                   onChange={(e) => setCreditNote(e.target.value)}
-                  placeholder={t('admin.detail.notePlaceholder', '可选备注')}
+                  placeholder={t('admin.detail.notePlaceholder')}
                 />
               </div>
             </div>
             <AlertDialogFooter>
-              <AlertDialogCancel type="button">{t('common.cancel', '取消')}</AlertDialogCancel>
+              <AlertDialogCancel type="button">{t('common.cancel')}</AlertDialogCancel>
               <Button type="submit" disabled={!isValidCreditAmount(creditAmount)}>
                 {t('admin.detail.addCreditsSubmit')}
               </Button>

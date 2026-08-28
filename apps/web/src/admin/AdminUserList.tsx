@@ -25,7 +25,7 @@ export function AdminUserList({ onSelectUser }: AdminUserListProps) {
       <div className="text-center py-20">
         <p className="text-destructive">{message}</p>
         <Button variant="outline" className="mt-4" onClick={() => void usersQuery.refetch()}>
-          {t('common.retry', '重试')}
+          {t('common.retry')}
         </Button>
       </div>
     );

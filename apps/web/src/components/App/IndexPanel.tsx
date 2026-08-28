@@ -510,7 +510,7 @@ export const IndexPanel = memo<IndexPanelProps>(({ animatingIndexIds, removingIn
                           <div
                             id="index-field-suggestions-listbox"
                             role="listbox"
-                            aria-label={t('indexPanel.fieldSuggestionsLabel', '字段建议')}
+                            aria-label={t('indexPanel.fieldSuggestionsLabel')}
                             className="absolute z-20 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-lg"
                           >
                             {fieldSuggestions.map((field, idx) => (
