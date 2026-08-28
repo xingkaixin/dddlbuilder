@@ -36,6 +36,25 @@ const createState = (overrides: Partial<PersistedState> = {}): PersistedState =>
 });
 
 describe('savedTablesDb', () => {
+  it('decodes index kinds from legacy saved tables', async () => {
+    const state = createState({
+      indexes: [
+        {
+          id: 'pk',
+          name: 'pk_id',
+          fields: [{ name: 'id', direction: 'ASC' }],
+          unique: false,
+          isPrimary: true,
+        },
+      ] as unknown as PersistedState['indexes'],
+    });
+    await addSavedTable(
+      { normalizedName: 'legacy', name: 'legacy', state, createdAt: 1, updatedAt: 1 },
+      anonymousScope,
+    );
+    const loaded = await getSavedTable('legacy', anonymousScope);
+    expect(loaded?.state.indexes[0]).toMatchObject({ kind: 'primary' });
+  });
   beforeEach(() => {
     setupFakeIndexedDB();
   });

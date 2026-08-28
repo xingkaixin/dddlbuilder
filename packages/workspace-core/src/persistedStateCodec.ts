@@ -100,7 +100,7 @@ const decodeIndexFields = (value: unknown): IndexField[] =>
     return name ? [{ name, direction: item.direction === 'DESC' ? 'DESC' : 'ASC' }] : [];
   });
 
-const decodeIndexes = (value: unknown): IndexDefinition[] => {
+export const decodeIndexDefinitions = (value: unknown): IndexDefinition[] => {
   const usedIds = new Set<string>();
   return (Array.isArray(value) ? value : []).flatMap((item, index) => {
     if (!isRecord(item)) return [];
@@ -352,7 +352,7 @@ export const decodePersistedState = (
     addCount: normalizeAddCount(value.addCount),
     indexInput: toText(value.indexInput),
     currentIndexFields: decodeIndexFields(value.currentIndexFields),
-    indexes: decodeIndexes(value.indexes),
+    indexes: decodeIndexDefinitions(value.indexes),
     authInput: toText(value.authInput),
     authObjects: toStringArray(value.authObjects),
     ...(citusShardingConfig ? { citusShardingConfig } : {}),

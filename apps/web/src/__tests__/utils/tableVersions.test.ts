@@ -40,6 +40,27 @@ function createMockState(overrides: Partial<PersistedState> = {}): PersistedStat
 }
 
 describe('tableVersions', () => {
+  it('decodes index kinds from legacy version snapshots', async () => {
+    const target = {
+      scope: { kind: 'anonymous' } as const,
+      tableId: 'legacy-kind',
+      normalizedName: 'legacy',
+    };
+    const state = createMockState({
+      indexes: [
+        {
+          id: 'uq',
+          name: 'uq_id',
+          fields: [{ name: 'id', direction: 'ASC' }],
+          unique: true,
+          isUniqueConstraint: true,
+        },
+      ] as unknown as PersistedState['indexes'],
+    });
+    const version = await createVersion(target, state);
+    const loaded = await getVersion(version.id, target);
+    expect(loaded?.state.indexes[0]).toMatchObject({ kind: 'unique_constraint' });
+  });
   let testId = 0;
   const getTestTableName = () => {
     const normalizedName = `test_table_${Date.now()}_${testId++}`;

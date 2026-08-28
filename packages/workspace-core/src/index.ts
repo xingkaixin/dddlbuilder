@@ -11,6 +11,7 @@ export {
 } from './workspaceSnapshotNormalization';
 export {
   decodePersistedState,
+  decodeIndexDefinitions,
   decodeSavedDraftBase,
   decodeSchemaDocumentState,
   decodeWorkspaceSnapshot,

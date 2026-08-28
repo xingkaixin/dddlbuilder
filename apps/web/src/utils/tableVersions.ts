@@ -1,3 +1,4 @@
+import { decodeIndexDefinitions } from '@ddlbuilder/workspace-core';
 import {
   createEntityId,
   normalizePersistedRows,
@@ -23,7 +24,10 @@ const getTableKey = ({ scope, tableId }: TableVersionTarget) =>
 
 const decodeVersion = (version: TableVersion): TableVersion => ({
   ...version,
-  state: normalizePersistedRows(version.state),
+  state: {
+    ...normalizePersistedRows(version.state),
+    indexes: decodeIndexDefinitions(version.state.indexes),
+  },
 });
 
 async function runWithStore<T>(

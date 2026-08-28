@@ -24,7 +24,11 @@ const deleteHistory = async (scope: WorkspaceScope, keepTableIds?: () => Set<str
       request.onsuccess = () => {
         const cursor = request.result;
         if (!cursor) return;
-        const key = String(cursor.key).slice(prefix.length);
+        if (typeof cursor.key !== 'string') {
+          cursor.continue();
+          return;
+        }
+        const key = cursor.key.slice(prefix.length);
         const tableId =
           name === VERSION_STORE_NAME ? key : key.startsWith('table:') ? key.slice(6) : null;
         if (!tableIds || (tableId !== null && !tableIds.has(tableId)))

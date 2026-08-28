@@ -1,3 +1,4 @@
+import { decodeIndexDefinitions } from '@ddlbuilder/workspace-core';
 import { savedTableReference, type SavedTableTarget } from '@ddlbuilder/shared-types/workspace';
 import type { WorkspaceScope } from '@ddlbuilder/shared-types/workspace';
 import { buildScopedWorkspaceKey, getWorkspaceScopeStorageKey } from './workspaceScope';
@@ -55,7 +56,10 @@ const decodeScopedTableRecord = (
     tableId: resolveSavedTableId(record),
     normalizedName: decoded.key,
     scope: decoded.scope,
-    state: normalizePersistedRows(record.state),
+    state: {
+      ...normalizePersistedRows(record.state),
+      indexes: decodeIndexDefinitions(record.state.indexes),
+    },
   };
 };
 
